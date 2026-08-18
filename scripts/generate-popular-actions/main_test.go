@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,12 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 )
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
 
 // Normal cases
 
@@ -467,7 +474,16 @@ func TestDetectErrorBadRequest(t *testing.T) {
 	stdout := io.Discard
 	stderr := &bytes.Buffer{}
 	f := filepath.Join("testdata", "registry", "empty_slug.json")
-	status := newGen(stdout, stderr, io.Discard).run([]string{"test", "-d", "-r", f})
+	g := newGen(stdout, stderr, io.Discard)
+	g.client = &http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusInternalServerError,
+			Status:     "500 Internal Server Error",
+			Body:       http.NoBody,
+			Request:    req,
+		}, nil
+	})}
+	status := g.run([]string{"test", "-d", "-r", f})
 	if status != 1 {
 		t.Fatal("exit status is not 1:", status)
 	}

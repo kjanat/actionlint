@@ -3173,7 +3173,10 @@ jobs:
 Output:
 
 ```
-test.yaml:0:0: could not parse as YAML: yaml: unknown anchor 'credentials' referenced [syntax-check]
+test.yaml:9:14: could not parse as YAML: unknown anchor 'credentials' referenced [syntax-check]
+  |
+9 |         env: *credentials
+  |              ^~~~~~~~~~~~
 ```
 
 [Playground](https://rhysd.github.io/actionlint/#eNosyjEOwjAMheE9p3gzUsqe26TEUkGRXeXZcH1k6PQP/2facAaPUl62sxXAhZ4FVihrgthDPers+X6LLif/CqgpG7b7sI9O62PjcS1A9N1weywZov7sk98AAAD//6p1Iic=)
