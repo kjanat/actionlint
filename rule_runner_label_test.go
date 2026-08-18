@@ -19,12 +19,32 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 			labels: []string{"ubuntu-24.04"},
 		},
 		{
+			what:   "Ubuntu 26.04 runner label",
+			labels: []string{"ubuntu-26.04"},
+		},
+		{
+			what:   "Ubuntu 26.04 Arm runner label",
+			labels: []string{"ubuntu-26.04-arm"},
+		},
+		{
 			what:   "simple GH-hosted Windows runner label",
 			labels: []string{"windows-latest"},
 		},
 		{
+			what:   "simple GH-hosted Windows 11 VS 2026 Arm runner label",
+			labels: []string{"windows-11-vs2026-arm"},
+		},
+		{
 			what:   "simple GH-hosted macOS runner label",
 			labels: []string{"macos-14"},
+		},
+		{
+			what:   "Xcode 27 runner label",
+			labels: []string{"xcode-27"},
+		},
+		{
+			what:   "Xcode 27 XLarge runner label",
+			labels: []string{"xcode-27-xlarge"},
 		},
 		{
 			what:   "simple GH-hosted runner label in upper case",
@@ -40,11 +60,11 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 		},
 		{
 			what:   "self-hosted all macOS runner labels",
-			labels: []string{"self-hosted", "macOS", "macOS-latest", "macOS-15"},
+			labels: []string{"self-hosted", "macOS", "macOS-latest", "macOS-26"},
 		},
 		{
 			what:   "self-hosted all Windows runner labels",
-			labels: []string{"self-hosted", "windows", "windows-latest", "windows-2022"},
+			labels: []string{"self-hosted", "windows", "windows-latest", "windows-2025"},
 		},
 		{
 			what:   "self-hosted Linux runner in upper case",
@@ -76,11 +96,15 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 		},
 		{
 			what:   "multiple labels for GH-hosted Windows runner",
-			labels: []string{"windows-latest", "windows-2022"},
+			labels: []string{"windows-latest", "windows-2025", "windows-2025-vs2026"},
 		},
 		{
 			what:   "multiple labels for GH-hosted macOS runner",
-			labels: []string{"macos-latest", "macos-15"},
+			labels: []string{"macos-latest", "macos-26"},
+		},
+		{
+			what:   "multiple labels for GH-hosted large macOS runner",
+			labels: []string{"macos-latest-large", "macos-26-large"},
 		},
 		{
 			what:   "user-defined labels",
@@ -244,14 +268,29 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 			errs:   []string{`label "macos-15" conflicts with label "macos-14"`},
 		},
 		{
+			what:   "macOS latest label conflicts with previous version",
+			labels: []string{"macos-latest", "macos-15"},
+			errs:   []string{`label "macos-15" conflicts with label "macos-latest"`},
+		},
+		{
 			what:   "Windows labels version conflict",
 			labels: []string{"windows-2025", "windows-2022"},
 			errs:   []string{`label "windows-2022" conflicts with label "windows-2025"`},
 		},
 		{
-			what:   "Linux labels architecture conflict",
+			what:   "Windows latest label conflicts with previous version",
+			labels: []string{"windows-latest", "windows-2022"},
+			errs:   []string{`label "windows-2022" conflicts with label "windows-latest"`},
+		},
+		{
+			what:   "Linux labels architecture conflict, 22 and 24",
 			labels: []string{"ubuntu-24.04", "ubuntu-22.04"},
 			errs:   []string{`label "ubuntu-22.04" conflicts with label "ubuntu-24.04"`},
+		},
+		{
+			what:   "Linux labels architecture conflict, 24 and 26",
+			labels: []string{"ubuntu-26.04", "ubuntu-24.04"},
+			errs:   []string{`label "ubuntu-24.04" conflicts with label "ubuntu-26.04"`},
 		},
 		{
 			what:   "macOS labels architecture conflict",
@@ -269,9 +308,19 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 			errs:   []string{`label "windows-11-arm" conflicts with label "windows-2025"`},
 		},
 		{
+			what:   "Windows 11 Arm image labels conflict",
+			labels: []string{"windows-11-arm", "windows-11-vs2026-arm"},
+			errs:   []string{`label "windows-11-vs2026-arm" conflicts with label "windows-11-arm"`},
+		},
+		{
 			what:   "macOS XL and normal labels conflict",
 			labels: []string{"macos-26-xlarge", "macos-26"},
 			errs:   []string{`label "macos-26" conflicts with label "macos-26-xlarge"`},
+		},
+		{
+			what:   "Xcode 27 XLarge and normal labels conflict",
+			labels: []string{"xcode-27-xlarge", "xcode-27"},
+			errs:   []string{`label "xcode-27" conflicts with label "xcode-27-xlarge"`},
 		},
 		{
 			what:   "larger runner labels conflict",

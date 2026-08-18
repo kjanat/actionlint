@@ -160,7 +160,7 @@ func (rule *RuleShellName) getPlatformFromRunner(runner *Runner) platformKind {
 		l := strings.ToLower(label.Value)
 		if strings.HasPrefix(l, "windows-") || l == "windows" {
 			k = platformKindWindows
-		} else if strings.HasPrefix(l, "macos-") || strings.HasPrefix(l, "ubuntu-") || l == "macos" || l == "linux" {
+		} else if strings.HasPrefix(l, "macos-") || strings.HasPrefix(l, "ubuntu-") || strings.HasPrefix(l, "xcode-") || l == "macos" || l == "linux" {
 			k = platformKindMacOrLinux
 		}
 
