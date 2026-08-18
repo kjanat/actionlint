@@ -1,3 +1,11 @@
+<a id="unreleased"></a>
+# Unreleased
+
+- Support the [`queue` configuration in workflow- and job-level `concurrency`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#concurrency). The documented literal values `single` (default) and `max` are accepted, and invalid values or `queue: max` combined with `cancel-in-progress: true` are reported as errors. (rhysd/actionlint#654, rhysd/actionlint#657)
+
+[Changes][Unreleased]
+
+
 <a id="v1.7.12"></a>
 # [v1.7.12](https://github.com/rhysd/actionlint/releases/tag/v1.7.12) - 2026-03-30
 
@@ -2088,6 +2096,7 @@ See documentation for more details:
 [Changes][v1.0.0]
 
 
+[Unreleased]: https://github.com/rhysd/actionlint/compare/v1.7.12...HEAD
 [v1.7.12]: https://github.com/rhysd/actionlint/compare/v1.7.11...v1.7.12
 [v1.7.11]: https://github.com/rhysd/actionlint/compare/v1.7.10...v1.7.11
 [v1.7.10]: https://github.com/rhysd/actionlint/compare/v1.7.9...v1.7.10

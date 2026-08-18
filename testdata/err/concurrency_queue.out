@@ -1,0 +1,4 @@
+test.yaml:5:10: invalid value "invalid" for "queue" in "concurrency" section. valid values are "single" and "max" [syntax-check]
+test.yaml:13:14: "queue: max" cannot be combined with "cancel-in-progress: true" in "concurrency" section [syntax-check]
+test.yaml:20:14: invalid value "${{ vars.QUEUE }}" for "queue" in "concurrency" section. valid values are "single" and "max" [syntax-check]
+test.yaml:27:14: invalid value "prefix-${{ vars.QUEUE }}" for "queue" in "concurrency" section. valid values are "single" and "max" [syntax-check]
