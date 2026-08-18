@@ -5,8 +5,21 @@ on:
       - "v*.*.*"
 
 jobs:
+  fork-check:
+    runs-on: ubuntu-latest
+    if: github.repository_owner != 'rhysd'
+    env: { GITHUB_REPOSITORY: '${{ github.repository }}' }
+    steps:
+      - name: Check fork
+        run: |
+          if [[ "${GITHUB_REPOSITORY}" != 'rhysd/actionlint' ]]; then
+            echo "::notice::This repository is a fork of rhysd/actionlint. The release workflow is disabled for forks."
+            exit 1
+          fi
   binaries:
     runs-on: ubuntu-latest
+    needs: fork-check
+    if: needs.fork-check.result == 'skipped'
     permissions:
       contents: write
       id-token: write
@@ -59,10 +72,12 @@ jobs:
         with:
           identifier: rhysd.actionlint
           installers-regex: '_windows_\w+\.zip$'
-          release-notes-url: 'https://github.com/rhysd/actionlint/blob/main/CHANGELOG.md#${{ github.ref_name }}'
+          release-notes-url: '${{ github.server_url }}/${{ github.repository }}/blob/HEAD/CHANGELOG.md#${{ github.ref_name }}'
           token: ${{ secrets.WINGET_TOKEN }}
   docker:
     runs-on: ubuntu-latest
+    needs: fork-check
+    if: needs.fork-check.result == 'skipped'
     steps:
       - uses: actions/checkout@v7
       - name: Get tag name
@@ -88,5 +103,5 @@ jobs:
             ACTIONLINT_VER=${{ steps.tag.outputs.name }}
           push: true
           tags: |
-            rhysd/actionlint:${{ steps.tag.outputs.name }}
-            rhysd/actionlint:latest
+            ${{ github.repository }}:${{ steps.tag.outputs.name }}
+            ${{ github.repository }}:latest
