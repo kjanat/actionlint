@@ -67,6 +67,7 @@ homebrew_casks:
     commit_author:
       name: 'github-actions[bot]'
       email: '41898282+github-actions[bot]@users.noreply.github.com'
+    skip_upload: true
 
 changelog:
   disable: true

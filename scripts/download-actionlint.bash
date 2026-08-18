@@ -8,7 +8,7 @@ function usage() {
     echo >&2
     echo 'This script downloads actionlint binary from the following release page. curl' >&2
     echo 'command is required as dependency' >&2
-    echo 'https://github.com/rhysd/actionlint/releases' >&2
+    echo 'https://github.com/kjanat/actionlint/releases' >&2
     echo >&2
     echo 'DIR:' >&2
     echo '  Directory to put the downloaded binary (e.g. /path/to/dir). When this value is' >&2
@@ -43,7 +43,7 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
 fi
 
 # Default value is updated manually on release
-version="1.7.12"
+version="1.8.0"
 if [ -n "$1" ]; then
     if [[ "$1" != 'latest' && "$1" != 'LATEST' ]]; then
         if [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -109,9 +109,9 @@ esac
 
 echo "Detected OS=${os} ext=${ext} arch=${arch}"
 
-# https://github.com/rhysd/actionlint/releases/download/v1.0.0/actionlint_1.0.0_linux_386.tar.gz
+# https://github.com/kjanat/actionlint/releases/download/v1.0.0/actionlint_1.0.0_linux_386.tar.gz
 file="actionlint_${version}_${os}_${arch}.${ext}"
-url="https://github.com/rhysd/actionlint/releases/download/v${version}/${file}"
+url="https://github.com/kjanat/actionlint/releases/download/v${version}/${file}"
 
 echo "Downloading ${url} with curl"
 

@@ -102,39 +102,39 @@ Documents for more details are available online.
 
 ### Checks
 
-https://github.com/rhysd/actionlint/blob/v1.7.12/docs/checks.md
+https://github.com/kjanat/actionlint/blob/v1.8.0/docs/checks.md
 
 Full list of all checks done by actionlint with example inputs, outputs, and playground links.
 
 ### Installation
 
-https://github.com/rhysd/actionlint/blob/v1.7.12/docs/install.md
+https://github.com/kjanat/actionlint/blob/v1.8.0/docs/install.md
 
 Installation instructions. Prebuilt binaries, Homebrew package, building from source, a Docker
 image, a download script (for CI) are available.
 
 ### Usage
 
-https://github.com/rhysd/actionlint/blob/v1.7.12/docs/usage.md
+https://github.com/kjanat/actionlint/blob/v1.8.0/docs/usage.md
 
 How to use `actionlint` command locally or on GitHub Actions, the online playground, an official
 Docker image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit.
 
 ### Configuration
 
-https://github.com/rhysd/actionlint/blob/v1.7.12/docs/config.md
+https://github.com/kjanat/actionlint/blob/v1.8.0/docs/config.md
 
 How to configure actionlint behavior by the configuration file `actionlint.yaml`.
 
 ### Go API
 
-https://github.com/rhysd/actionlint/blob/v1.7.12/docs/api.md
+https://github.com/kjanat/actionlint/blob/v1.8.0/docs/api.md
 
 How to use actionlint as Go library.
 
 ### References
 
-https://github.com/rhysd/actionlint/blob/v1.7.12/docs/reference.md
+https://github.com/kjanat/actionlint/blob/v1.8.0/docs/reference.md
 
 Links to resources.
 
@@ -162,7 +162,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Download actionlint
         id: get_actionlint
-        run: bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+        run: bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash)
         shell: bash
       - name: Check workflow files
         run: ${{ steps.get_actionlint.outputs.executable }} -color
@@ -174,7 +174,7 @@ or simply run
 ```yaml
 - name: Check workflow files
   run: |
-    bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+    bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash)
     ./actionlint -color
   shell: bash
 ```

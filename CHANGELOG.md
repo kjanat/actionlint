@@ -1,11 +1,18 @@
 <a id="unreleased"></a>
 # Unreleased
 
+
+<a id="v1.8.0"></a>
+# [v1.8.0](https://github.com/kjanat/actionlint/releases/tag/v1.8.0) - 2026-08-19
+
 - Support the [`queue` configuration in workflow- and job-level `concurrency`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#concurrency). The documented literal values `single` (default) and `max` are accepted, and invalid values or `queue: max` combined with `cancel-in-progress: true` are reported as errors. (rhysd/actionlint#654, rhysd/actionlint#657)
 - Support the `ubuntu-26.04`, `ubuntu-26.04-arm`, `xcode-27`, `xcode-27-xlarge`, and `windows-11-vs2026-arm` runner labels, incorporating rhysd/actionlint#683 and rhysd/actionlint#710.
 - Follow the moving runner aliases: `macos-latest` now maps to `macos-26`, `macos-latest-large` maps to `macos-26-large`, and `windows-latest` and `windows-2025` map to `windows-2025-vs2026`. The macOS and Windows migrations are confirmed in actions/runner-images#14167 (https://github.com/actions/runner-images/issues/14167) and actions/runner-images#14017 (https://github.com/actions/runner-images/issues/14017).
 - Update Go dependencies to the latest versions, including go-yaml v4.0.0-rc.6. YAML parse errors now report corrected columns and source positions for undefined aliases.
 - Keep CI compatible with current Windows arm64 runner and hadolint images by installing ShellCheck with Chocolatey and using Alpine's numeric guest UID in the container image.
+- Enable releases from `kjanat/actionlint`, publish multi-platform Docker images to `ghcr.io/kjanat/actionlint` with `GITHUB_TOKEN`, and skip Winget and Homebrew publishing.
+
+[Changes][v1.8.0]
 
 
 <a id="v1.7.12"></a>
@@ -2098,6 +2105,7 @@ See documentation for more details:
 [Changes][v1.0.0]
 
 
+[v1.8.0]: https://github.com/kjanat/actionlint/compare/914e7df21a07ef503a81201c76d2b11c789d3fca...v1.8.0
 [v1.7.12]: https://github.com/rhysd/actionlint/compare/v1.7.11...v1.7.12
 [v1.7.11]: https://github.com/rhysd/actionlint/compare/v1.7.10...v1.7.11
 [v1.7.10]: https://github.com/rhysd/actionlint/compare/v1.7.9...v1.7.10
