@@ -1,3 +1,9 @@
+<a id="unreleased"></a>
+# Unreleased
+
+- Support the `ubuntu-26.04`, `ubuntu-26.04-arm`, `xcode-27`, `xcode-27-xlarge`, and `windows-11-vs2026-arm` runner labels, incorporating rhysd/actionlint#683 and rhysd/actionlint#710.
+
+
 <a id="v1.7.12"></a>
 # [v1.7.12](https://github.com/rhysd/actionlint/releases/tag/v1.7.12) - 2026-03-30
 
