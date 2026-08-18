@@ -1,6 +1,7 @@
 <a id="unreleased"></a>
 # Unreleased
 
+- Support the [`queue` configuration in workflow- and job-level `concurrency`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#concurrency). The documented literal values `single` (default) and `max` are accepted, and invalid values or `queue: max` combined with `cancel-in-progress: true` are reported as errors. (rhysd/actionlint#654, rhysd/actionlint#657)
 - Support the `ubuntu-26.04`, `ubuntu-26.04-arm`, `xcode-27`, `xcode-27-xlarge`, and `windows-11-vs2026-arm` runner labels, incorporating rhysd/actionlint#683 and rhysd/actionlint#710.
 - Follow the moving runner aliases: `macos-latest` now maps to `macos-26`, `macos-latest-large` maps to `macos-26-large`, and `windows-latest` and `windows-2025` map to `windows-2025-vs2026`. The macOS and Windows migrations are confirmed in actions/runner-images#14167 (https://github.com/actions/runner-images/issues/14167) and actions/runner-images#14017 (https://github.com/actions/runner-images/issues/14017).
 

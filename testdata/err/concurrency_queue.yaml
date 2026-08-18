@@ -1,0 +1,29 @@
+on: push
+
+concurrency:
+  group: test
+  queue: invalid
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: job-test
+      cancel-in-progress: true
+      queue: max
+    steps:
+      - run: echo
+  expression:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: expression
+      queue: ${{ vars.QUEUE }}
+    steps:
+      - run: echo
+  interpolated-expression:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: interpolated-expression
+      queue: prefix-${{ vars.QUEUE }}
+    steps:
+      - run: echo
