@@ -34,7 +34,7 @@ jobs:
         with:
           subject-checksums: ${{ format('./dist/actionlint_{0}_checksums.txt', env.VERSION) }}
       - name: Post-release download check
-        run: bash ./scripts/download-actionlint.bash "$VERSION"
+        run: bash ./scripts/download-actionlint.bash
       - name: Clone nested repository to make version bump commit
         uses: actions/checkout@v7
         with:

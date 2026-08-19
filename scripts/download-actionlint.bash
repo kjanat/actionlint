@@ -43,9 +43,16 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
 fi
 
 # Default value is updated manually on release
-version="1.9.0"
+version="1.10.0"
 if [ -n "$1" ]; then
-    if [[ "$1" != 'latest' && "$1" != 'LATEST' ]]; then
+    if [[ "$1" == 'latest' || "$1" == 'LATEST' ]]; then
+        latest_url="$(curl --fail --silent --show-error --location --head --output /dev/null --write-out '%{url_effective}' https://github.com/kjanat/actionlint/releases/latest)"
+        version="${latest_url##*/v}"
+        if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Could not determine the latest version from '${latest_url}'" >&2
+            exit 1
+        fi
+    else
         if [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             version="$1"
         else
@@ -115,16 +122,21 @@ url="https://github.com/kjanat/actionlint/releases/download/v${version}/${file}"
 
 echo "Downloading ${url} with curl"
 
+tempdir="$(mktemp -d actionlint.XXXXXXXXXXXXXXXX)"
+trap 'rm -rf "$tempdir"' EXIT
+archive="$tempdir/$file"
+curl --fail --location --output "$archive" "${url}"
+
 if [[ "$os" == "windows" ]]; then
-    tempdir="$(mktemp -d actionlint.XXXXXXXXXXXXXXXX)"
-    curl -L -o "$tempdir/tmp.zip" "${url}"
-    unzip "$tempdir/tmp.zip" actionlint.exe -d "$target_dir"
-    rm -r "$tempdir"
+    unzip "$archive" actionlint.exe -d "$target_dir"
     exe="$target_dir/actionlint.exe"
 else
-    curl -L "${url}" | tar xvz -C "$target_dir" actionlint
+    tar xvz -f "$archive" -C "$target_dir" actionlint
     exe="$target_dir/actionlint"
 fi
+
+rm -rf "$tempdir"
+trap - EXIT
 
 echo "Downloaded and unarchived executable: ${exe}"
 

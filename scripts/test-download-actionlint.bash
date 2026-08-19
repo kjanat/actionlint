@@ -18,8 +18,8 @@ pushd "$temp_dir"
 # Normal cases
 set -e
 
-# No arguments
-out="$(bash "$script")"
+# Latest release
+out="$(bash "$script" latest)"
 if [ -n "$GITHUB_ACTION" ]; then
     if [[ "$out" != *"executable="* ]]; then
         echo "'executable' step output is not set: '${out}'" >&2
@@ -33,9 +33,9 @@ fi
 rm -f ./actionlint
 
 # Specify only version
-bash "$script" '1.6.12'
+bash "$script" '1.8.0'
 out="$(./actionlint -version | head -n 1)"
-if [[ "$out" != '1.6.12' ]]; then
+if [[ "$out" != '1.8.0' ]]; then
     echo "Unexpected version: '${out}'" 1>&2
     exit 1
 fi
@@ -53,9 +53,9 @@ rm -rf ./test1
 
 # Specify both version and a download directory
 mkdir ./test2
-bash "$script" '1.6.12' ./test2
+bash "$script" '1.8.0' ./test2
 out="$(./test2/actionlint -version | head -n 1)"
-if [[ "$out" != '1.6.12' ]]; then
+if [[ "$out" != '1.8.0' ]]; then
     echo "Unexpected version: '${out}'" 1>&2
     exit 1
 fi
@@ -65,7 +65,7 @@ rm -rf ./test2
 set +e
 
 fails=0
-if bash "$script" 'v1.6.12'; then
+if bash "$script" 'v1.8.0'; then
     echo "FAIL: Invalid version at the first argument did not cause any error" >&2
     ((fails++))
 fi

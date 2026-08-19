@@ -7,7 +7,7 @@ COPY go.* *.go ./
 COPY cmd cmd/
 ENV CGO_ENABLED=0
 ARG ACTIONLINT_VER=
-RUN go build -v -ldflags "-s -w -X github.com/rhysd/actionlint.version=${ACTIONLINT_VER}" ./cmd/actionlint
+RUN go build -v -ldflags "-s -w -X github.com/kjanat/actionlint.version=${ACTIONLINT_VER}" ./cmd/actionlint
 
 FROM koalaman/shellcheck-alpine:stable AS shellcheck
 

@@ -3,7 +3,7 @@ References
 
 This document describes links to resources related to actionlint and GitHub Actions.
 
-- Repository: https://github.com/rhysd/actionlint
+- Repository: https://github.com/kjanat/actionlint
 - Playground: https://rhysd.github.io/actionlint/
 - GitHub Actions official documentations
   - Workflow syntax: https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions

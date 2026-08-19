@@ -37,11 +37,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - run: echo "Checking commit '${{ github.event.head_commit.message }}'"
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node_version: 18.x
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.npm
           key: ${{ matrix.platform }}-node-${{ hashFiles('**/package-lock.json') }}
@@ -68,7 +68,7 @@ test.yaml:13:41: "github.event.head_commit.message" is potentially untrusted. av
    |
 13 |       - run: echo "Checking commit '${{ github.event.head_commit.message }}'"
    |                                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:17:11: input "node_version" is not defined in action "actions/setup-node@v4". available inputs are "always-auth", "architecture", "cache", "cache-dependency-path", "check-latest", "node-version", "node-version-file", "registry-url", "scope", "token" [action]
+test.yaml:17:11: input "node_version" is not defined in action "actions/setup-node@v7". available inputs are "architecture", "cache", "cache-dependency-path", "check-latest", "mirror", "mirror-token", "node-version", "node-version-file", "package-manager-cache", "registry-url", "scope", "token" [action]
    |
 17 |           node_version: 18.x
    |           ^~~~~~~~~~~~~
@@ -84,12 +84,13 @@ test.yaml:22:17: receiver of object dereference "permissions" must be type of ob
 
 ## Quick start
 
-Install `actionlint` command by downloading [the released binary][releases] or by Homebrew or by `go install`. See
+Install `actionlint` command by downloading [the released binary][releases], using the download script, running the Docker
+image, or by `go install`. See
 [the installation document][install] for more details like how to manage the command with several package managers
 or run via Docker container.
 
 ```sh
-go install github.com/rhysd/actionlint/cmd/actionlint@latest
+go install github.com/kjanat/actionlint/cmd/actionlint@latest
 ```
 
 Basically all you need to do is run the `actionlint` command in your repository. actionlint automatically detects workflows and
@@ -129,8 +130,8 @@ actionlint is distributed under [the MIT license](./LICENSE.txt).
 
 [ci-badge]: https://github.com/rhysd/actionlint/actions/workflows/ci.yaml/badge.svg
 [ci]: https://github.com/rhysd/actionlint/actions/workflows/ci.yaml
-[apidoc-badge]: https://pkg.go.dev/badge/github.com/rhysd/actionlint.svg
-[apidoc]: https://pkg.go.dev/github.com/rhysd/actionlint
+[apidoc-badge]: https://pkg.go.dev/badge/github.com/kjanat/actionlint.svg
+[apidoc]: https://pkg.go.dev/github.com/kjanat/actionlint
 [repo]: https://github.com/rhysd/actionlint
 [playground]: https://rhysd.github.io/actionlint/
 [shellcheck]: https://github.com/koalaman/shellcheck
@@ -139,10 +140,10 @@ actionlint is distributed under [the MIT license](./LICENSE.txt).
 [filter-pattern-doc]: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
 [script-injection-doc]: https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks
 [releases]: https://github.com/kjanat/actionlint/releases
-[checks]: https://github.com/kjanat/actionlint/blob/v1.9.0/docs/checks.md
-[install]: https://github.com/kjanat/actionlint/blob/v1.9.0/docs/install.md
-[usage]: https://github.com/kjanat/actionlint/blob/v1.9.0/docs/usage.md
-[config]: https://github.com/kjanat/actionlint/blob/v1.9.0/docs/config.md
-[api]: https://github.com/kjanat/actionlint/blob/v1.9.0/docs/api.md
-[refs]: https://github.com/kjanat/actionlint/blob/v1.9.0/docs/reference.md
+[checks]: https://github.com/kjanat/actionlint/blob/v1.10.0/docs/checks.md
+[install]: https://github.com/kjanat/actionlint/blob/v1.10.0/docs/install.md
+[usage]: https://github.com/kjanat/actionlint/blob/v1.10.0/docs/usage.md
+[config]: https://github.com/kjanat/actionlint/blob/v1.10.0/docs/config.md
+[api]: https://github.com/kjanat/actionlint/blob/v1.10.0/docs/api.md
+[refs]: https://github.com/kjanat/actionlint/blob/v1.10.0/docs/reference.md
 [issue-form]: https://github.com/rhysd/actionlint/issues/new

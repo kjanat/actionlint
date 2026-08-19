@@ -58,9 +58,9 @@ func printUsageHeader(out io.Writer) {
 
 Documents:
 
-  - List of checks: https://github.com/rhysd/actionlint/tree/%s/docs/checks.md
-  - Usage:          https://github.com/rhysd/actionlint/tree/%s/docs/usage.md
-  - Configuration:  https://github.com/rhysd/actionlint/tree/%s/docs/config.md
+  - List of checks: https://github.com/kjanat/actionlint/tree/%s/docs/checks.md
+  - Usage:          https://github.com/kjanat/actionlint/tree/%s/docs/usage.md
+  - Configuration:  https://github.com/kjanat/actionlint/tree/%s/docs/config.md
 
 Flags:
 `, b, b, b)

@@ -103,8 +103,8 @@ Note that the following targets are not tested since GitHub Actions doesn't supp
 To install these binaries [`gh`][gh] command is useful. The following command is an example for x86_64 Linux.
 
 ```sh
-gh release download --repo rhysd/actionlint --pattern '*_linux_amd64.tar.gz' v1.7.11
-tar xf actionlint_1.7.11_linux_amd64.tar.gz
+gh release download --repo kjanat/actionlint --pattern '*_linux_amd64.tar.gz' v1.10.0
+tar xf actionlint_1.10.0_linux_amd64.tar.gz
 ./actionlint -version
 ```
 
@@ -112,7 +112,7 @@ Optionally you can verify the [attestation][attestations] of the downloaded arti
 security. Note that the attestation support was introduced since actionlint v1.7.11.
 
 ```sh
-gh attestation verify -R rhysd/actionlint actionlint_1.7.11_linux_amd64.tar.gz
+gh attestation verify -R kjanat/actionlint actionlint_1.10.0_linux_amd64.tar.gz
 ```
 
 <a id="download-script"></a>
@@ -123,14 +123,14 @@ It downloads the latest version of actionlint (`actionlint.exe` on Windows and `
 directory automatically. This is a recommended way if you install actionlint in some shell script.
 
 ```sh
-bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash)
 ```
 
 When you need to install specific version of actionlint, please give the version to the 1st command line argument. The following
-example installs v1.6.17.
+example installs v1.10.0.
 
 ```sh
-bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.6.17
+bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash) 1.10.0
 ```
 
 This script downloads `actionlint` (or `actionlint.exe` on Windows) binary to the current working directory. When you need to put
@@ -138,7 +138,7 @@ the downloaded binary to some other directory, please give the directory path to
 example installs the latest version to `/usr/bin`.
 
 ```sh
-bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) latest /usr/bin
+bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash) latest /usr/bin
 ```
 
 For the usage of actionlint on GitHub Actions, see [the usage document](usage.md#on-github-actions).
@@ -192,10 +192,10 @@ Recent [Go][] toolchain is necessary to build actionlint from source. Last two m
 
 ```sh
 # Install the latest stable version
-go install github.com/rhysd/actionlint/cmd/actionlint@latest
+go install github.com/kjanat/actionlint/cmd/actionlint@latest
 
 # Install the head of the main branch
-go install github.com/rhysd/actionlint/cmd/actionlint@main
+go install github.com/kjanat/actionlint/cmd/actionlint@main
 ```
 
 ---
@@ -204,7 +204,7 @@ go install github.com/rhysd/actionlint/cmd/actionlint@main
 
 [formula]: https://formulae.brew.sh/formula/actionlint
 [homebrew]: https://brew.sh/
-[releases]: https://github.com/rhysd/actionlint/releases
+[releases]: https://github.com/kjanat/actionlint/releases
 [gh]: https://docs.github.com/en/github-cli/github-cli/about-github-cli
 [attestations]: https://docs.github.com/en/actions/concepts/security/artifact-attestations
 [Go]: https://golang.org/

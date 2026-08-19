@@ -11,7 +11,7 @@ before:
 builds:
   - <<: &build_defaults
       main: ./cmd/actionlint
-      ldflags: -s -w -X github.com/rhysd/actionlint.version={{.Version}} -X "github.com/rhysd/actionlint.installedFrom=installed by downloading from release page"
+      ldflags: -s -w -X github.com/kjanat/actionlint.version={{.Version}} -X "github.com/kjanat/actionlint.installedFrom=installed by downloading from release page"
       env:
         - CGO_ENABLED=0
     id: macos
@@ -57,7 +57,7 @@ homebrew_casks:
     directory: Casks
     binaries: [actionlint]
     manpages: [man/actionlint.1]
-    homepage: https://github.com/rhysd/actionlint#readme
+    homepage: https://github.com/kjanat/actionlint#readme
     description: Static checker for GitHub Actions workflow files
     dependencies:
       - formula: shellcheck

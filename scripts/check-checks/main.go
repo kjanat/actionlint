@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/rhysd/actionlint"
+	"github.com/kjanat/actionlint"
 )
 
 func Actionlint(src []byte) ([]byte, error) {

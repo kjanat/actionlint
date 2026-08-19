@@ -1,6 +1,7 @@
 name: Download script
 on:
   push:
+    branches: ["**"]
     paths:
       - scripts/download-actionlint.bash
       - scripts/test-download-actionlint.bash

@@ -2,6 +2,15 @@
 # Unreleased
 
 
+<a id="v1.10.0"></a>
+# [v1.10.0](https://github.com/kjanat/actionlint/releases/tag/v1.10.0) - 2026-08-19
+
+- Move the Go module to `github.com/kjanat/actionlint` and update installation and API documentation for the fork.
+- Update the README workflow example to the current major versions of `actions/checkout`, `actions/setup-node`, and `actions/cache`.
+- Make download-script CI release-safe by resolving `latest` dynamically on branch pushes, testing the pinned default only after release assets are uploaded, and failing cleanly for missing assets.
+
+[Changes][v1.10.0]
+
 <a id="v1.9.0"></a>
 # [v1.9.0](https://github.com/kjanat/actionlint/releases/tag/v1.9.0) - 2026-08-19
 
@@ -2119,6 +2128,7 @@ See documentation for more details:
 [Changes][v1.0.0]
 
 
+[v1.10.0]: https://github.com/kjanat/actionlint/compare/v1.9.0...v1.10.0
 [v1.9.0]: https://github.com/kjanat/actionlint/compare/v1.8.0...v1.9.0
 [v1.8.0]: https://github.com/kjanat/actionlint/compare/914e7df21a07ef503a81201c76d2b11c789d3fca...v1.8.0
 [v1.7.12]: https://github.com/rhysd/actionlint/compare/v1.7.11...v1.7.12
