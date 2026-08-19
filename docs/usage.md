@@ -90,8 +90,8 @@ Output:
 property "platform" is not defined in object type {os: string}
 
 ```plaintext
-key: ${{ matrix.platform }}-node-${{ hashFiles('**/package-lock.json') }}
-         ^~~~~~~~~~~~~~~
+          key: ${{ matrix.platform }}-node-${{ hashFiles('**/package-lock.json') }}
+                   ^~~~~~~~~~~~~~~
 ```
 ````
 
