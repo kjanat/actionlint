@@ -169,6 +169,9 @@ func (p *parser) plainScriptSource(n *yaml.Node) *scriptSource {
 			}
 		}
 		candidate := strings.TrimRight(raw[start:], " \t")
+		if candidate == "" {
+			continue
+		}
 		matched := 0
 		for matched < len(candidate) && offset+matched < len(n.Value) && candidate[matched] == n.Value[offset+matched] {
 			matched++

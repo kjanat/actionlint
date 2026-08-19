@@ -160,6 +160,23 @@ func TestParserScriptSource(t *testing.T) {
 			t.Fatalf("mapped end position is %v but wanted %v", end, want)
 		}
 	})
+
+	t.Run("parser-backed plain scalar with blank continuation", func(t *testing.T) {
+		input := "run: echo first\n\n  echo $foo\n"
+		var root yaml.Node
+		if err := yaml.Unmarshal([]byte(input), &root); err != nil {
+			t.Fatal(err)
+		}
+		run := root.Content[0].Content[1]
+		p := &parser{sourceLines: splitSourceLines([]byte(input))}
+		pos, ok := p.scriptSource(run).pos(2, 6)
+		if !ok {
+			t.Fatal("script position after blank continuation was not mapped")
+		}
+		if want := (Pos{Line: 3, Col: 8}); *pos != want {
+			t.Fatalf("mapped position is %v but wanted %v", pos, want)
+		}
+	})
 }
 
 func BenchmarkParseWorkflow(b *testing.B) {
