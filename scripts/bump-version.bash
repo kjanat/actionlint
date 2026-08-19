@@ -75,29 +75,23 @@ echo "Updating $download_script"
 sed_checked_ "s/^version=\"[0-9]+\.[0-9]+\.[0-9]+\"/version=\"${version}\"/" "$download_script"
 
 echo "Updating $usage_doc"
-sed_checked_ "\
-    s/    rev: v[0-9]+\.[0-9]+\.[0-9]+/    rev: v${version}/; \
-    s/ actionlint@[0-9]+\.[0-9]+\.[0-9]+/ actionlint@${version}/g; \
-    s/\`ghcr\.io\/kjanat\/actionlint:[0-9]+\.[0-9]+\.[0-9]+\`/\`ghcr.io\/kjanat\/actionlint:${version}\`/g; \
-    s/(download-actionlint\.bash\)) [0-9]+\.[0-9]+\.[0-9]+/\1 ${version}/g; \
-    " "$usage_doc"
+sed_checked_ "s/    rev: v[0-9]+\.[0-9]+\.[0-9]+/    rev: v${version}/" "$usage_doc"
+sed_checked_ "s/ actionlint@[0-9]+\.[0-9]+\.[0-9]+/ actionlint@${version}/g" "$usage_doc"
+sed_checked_ "s/\`ghcr\.io\/kjanat\/actionlint:[0-9]+\.[0-9]+\.[0-9]+\`/\`ghcr.io\/kjanat\/actionlint:${version}\`/g" "$usage_doc"
+sed_checked_ "s/(download-actionlint\.bash\)) [0-9]+\.[0-9]+\.[0-9]+/\1 ${version}/g" "$usage_doc"
 
 echo "Updating $action_metadata"
 sed_checked_ "s/(image: docker:\/\/ghcr\.io\/kjanat\/actionlint:action-)[0-9]+\.[0-9]+\.[0-9]+/\1${version}/" "$action_metadata"
 
 echo "Updating $install_doc"
-sed_checked_ "\
-    s/(--pattern '[^']+' )v[0-9]+\.[0-9]+\.[0-9]+/\1v${version}/; \
-    s/(actionlint_)[0-9]+\.[0-9]+\.[0-9]+(_linux_amd64\.tar\.gz)/\1${version}\2/g; \
-    s/(example installs v)[0-9]+\.[0-9]+\.[0-9]+/\1${version}/; \
-    s/(\.bash\) )[0-9]+\.[0-9]+\.[0-9]+/\1${version}/; \
-    " "$install_doc"
+sed_checked_ "s/(--pattern '[^']+' )v[0-9]+\.[0-9]+\.[0-9]+/\1v${version}/" "$install_doc"
+sed_checked_ "s/(actionlint_)[0-9]+\.[0-9]+\.[0-9]+(_linux_amd64\.tar\.gz)/\1${version}\2/g" "$install_doc"
+sed_checked_ "s/(example installs v)[0-9]+\.[0-9]+\.[0-9]+/\1${version}/" "$install_doc"
+sed_checked_ "s/(\.bash\) )[0-9]+\.[0-9]+\.[0-9]+/\1${version}/" "$install_doc"
 
 echo "Updating $playground_html"
-sed_checked_ "\
-    s/kjanat\/actionlint\/releases\/tag\/v[0-9]+\.[0-9]+\.[0-9]+/kjanat\/actionlint\/releases\/tag\/v${version}/; \
-    s/id=\"version\">v[0-9]+\.[0-9]+\.[0-9]+/id=\"version\">v${version}/; \
-    " "$playground_html"
+sed_checked_ "s/kjanat\/actionlint\/releases\/tag\/v[0-9]+\.[0-9]+\.[0-9]+/kjanat\/actionlint\/releases\/tag\/v${version}/" "$playground_html"
+sed_checked_ "s/id=\"version\">v[0-9]+\.[0-9]+\.[0-9]+/id=\"version\">v${version}/" "$playground_html"
 
 for f in "$readme_doc" "$man_ronn" "$playground_html"; do
     echo "Updating document links in $f"
