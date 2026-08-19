@@ -58,12 +58,12 @@
 # Neither target listens on a port, and each intentionally has its own entrypoint.
 [[overrides]]
 paths = ["Dockerfile"]
-skip = ["DF022", "DF039"]
+skip = ["DF022", "DF039", "DF052"]
 
 # These Dockerfiles are parser fixtures rather than published images.
 [[overrides]]
 paths = ["testdata/**/Dockerfile"]
-skip = ["DF001"]
+skip = ["DF001", "DF020"]
 
 # Image label schema
 # strict-labels = false
