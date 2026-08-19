@@ -93,6 +93,8 @@ jobs:
             GOLANG_VER=1.26
             ACTIONLINT_VER=${{ steps.tag.outputs.name }}
           push: true
+          annotations: |
+            index:org.opencontainers.image.description=Static checker for GitHub Actions workflow files
           tags: |
             ghcr.io/${{ github.repository }}:${{ steps.tag.outputs.name }}
             ghcr.io/${{ github.repository }}:latest
