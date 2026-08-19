@@ -272,7 +272,7 @@ and pyflakes).
 Available tags are:
 
 - `ghcr.io/kjanat/actionlint:latest`: Latest stable version of actionlint. This image is recommended.
-- `ghcr.io/kjanat/actionlint:{version}`: Specific version of actionlint. (e.g. `ghcr.io/kjanat/actionlint:1.8.0`)
+- `ghcr.io/kjanat/actionlint:{version}`: Specific version of actionlint. (e.g. `ghcr.io/kjanat/actionlint:1.9.0`)
 
 Just run the image with `docker run`:
 
@@ -366,7 +366,7 @@ Add this to your `.pre-commit-config.yaml` in your repository:
 ---
 repos:
   - repo: https://github.com/kjanat/actionlint
-    rev: v1.8.0
+    rev: v1.9.0
     hooks:
       - id: actionlint
 ```
@@ -425,7 +425,7 @@ trunk check enable actionlint
 or if you'd like a specific version:
 
 ```bash
-trunk check enable actionlint@1.8.0
+trunk check enable actionlint@1.9.0
 ```
 
 or modify `.trunk/trunk.yaml` in your repository to contain:
@@ -433,7 +433,7 @@ or modify `.trunk/trunk.yaml` in your repository to contain:
 ```yaml
 lint:
   enabled:
-    - actionlint@1.8.0
+    - actionlint@1.9.0
 ```
 
 Then just run:
