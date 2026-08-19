@@ -30,11 +30,23 @@ jobs:
         run: |
           npm ci --prefix playground
           make -C playground build test
+      - name: Build command manual
+        env:
+          BUNDLE_GEMFILE: man/Gemfile
+          BUNDLE_JOBS: "4"
+          BUNDLE_PATH: ${{ runner.temp }}/bundle
+          BUNDLE_RETRY: "3"
+        run: |
+          bundle install
+          bundle exec ronn man/actionlint.1.ronn
       - name: Package playground
         run: |
           mkdir playground-dist
           cp playground/index.html playground/index.js playground/index.js.map playground/index.ts playground/main.wasm playground/style.css playground-dist/
           cp -R playground/lib playground-dist/lib
+          cp playground/index.html playground-dist/404.html
+          cp man/actionlint.1.html playground-dist/man.html
+          cp man/actionlint.1.html playground-dist/usage.html
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with: { path: playground-dist }

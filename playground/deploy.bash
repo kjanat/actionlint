@@ -44,6 +44,8 @@ echo "Copying built assets from ./playground to ./playground-dist: " "${files[@]
 for f in "${files[@]}"; do
     cp -R "./playground/${f}" "./playground-dist/${f}"
 done
+cp ./playground/index.html ./playground-dist/404.html
+files+=(404.html)
 
 if [[ "$SKIP_BUILD_WASM" == "" ]]; then
     echo 'Applying wasm-opt to ./playground-dist/main.wasm'
@@ -74,7 +76,8 @@ done
 
 echo 'Adding manual'
 cp ./playground-dist/man.html ./man.html
-git add ./man.html
+cp ./playground-dist/man.html ./usage.html
+git add ./man.html ./usage.html
 
 echo 'Making commit for new deploy'
 git commit -m "deploy from ${sha}"

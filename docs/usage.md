@@ -409,12 +409,11 @@ Go APIs are available. See [the Go API document](api.md) for more details.
 
 ## Tools integration
 
-> [!WARNING]
-> These integrations support upstream `rhysd/actionlint`. They may not install
-> releases from this fork or expose its additional functionality. Verify how an
-> integration obtains actionlint before relying on fork-specific changes.
-
 ### reviewdog
+
+> [!WARNING]
+> `reviewdog/action-actionlint` uses a hard-coded installer for `rhysd/actionlint`.
+> It does NOT use this fork.
 
 [reviewdog][reviewdog] is an automated review tool for various code hosting
 services. It officially [supports actionlint][reviewdog-actionlint]. You can
@@ -439,6 +438,10 @@ jobs:
 <a id="problem-matchers"></a>
 
 ### Problem Matchers
+
+> [!NOTE]
+> The example below downloads this fork and installs this fork's problem matcher,
+> so annotations include fork-specific checks.
 
 [Problem Matchers][problem-matchers] is a feature to extract GitHub Actions
 annotations from terminal outputs of linters.
@@ -470,6 +473,11 @@ annotate the diff with the extracted error message.
 
 ### super-linter
 
+> [!WARNING]
+> super-linter copies the binary from the `rhysd/actionlint` container image
+> into its own image. Its GitHub Actions linter therefore runs upstream, not
+> this fork.
+
 [super-linter][super-linter] is a Bash script for a simple combination of
 various linters, provided by GitHub. It has support for actionlint. Running
 super-linter in your repository automatically runs actionlint.
@@ -481,6 +489,11 @@ Please see
 for the discussion.
 
 ### pre-commit
+
+> [!NOTE]
+> The configuration below points directly at `kjanat/actionlint`. The
+> `actionlint` hook builds this fork, `actionlint-docker` pulls this fork's
+> image, and `actionlint-system` runs the `actionlint` executable on `PATH`.
 
 [pre-commit][pre-commit] is a framework for managing and maintaining
 multi-language Git pre-commit hooks. actionlint is available as a pre-commit
@@ -508,11 +521,22 @@ hooks are available.
 
 ### VS Code
 
+> [!NOTE]
+> The extension runs the command configured in `linter-actionlint.config`,
+> which defaults to `actionlint` on `PATH`. It uses this fork when that command
+> resolves to a fork build; it does not download actionlint itself.
+
 [Linter extension][vsc-extension] for [VS Code][vscode] is available. The
 extension automatically detects `.github/workflows` directory, runs `actionlint`
 command, and reports errors in the code editor while editing workflow files.
 
 ### Emacs
+
+> [!NOTE]
+> Both plugins run a locally installed executable named `actionlint` by
+> default. Flycheck exposes `flycheck-actionlint-executable`, and Flymake
+> exposes `flymake-actionlint-executable`, so either can select this fork
+> explicitly.
 
 Plugins for both [Flycheck][emacs-flycheck] and [Flymake][emacs-flymake] are
 available via [MELPA][emacs-melpa].
@@ -522,6 +546,11 @@ Their respective repositories are
 [flymake-actionlint][emacs-flymake-extension].
 
 ### Vim and Neovim
+
+> [!NOTE]
+> Both integrations run a local `actionlint` executable. nvim-lint's linter
+> command can be overridden, and ALE exposes
+> `g:ale_yaml_actionlint_executable`, so either can select this fork.
 
 [nvim-lint][nvim-lint] supports actionlint on Neovim. The plugin automatically
 and asynchronously runs actionlint and notifies errors on the fly when you edit
@@ -535,6 +564,11 @@ documentation for more details.
 
 ### Pulsar Edit
 
+> [!NOTE]
+> The package runs the local executable configured by `actionsExecutablePath`,
+> which defaults to `actionlint` on `PATH`. Point that setting at this fork's
+> binary to use fork-specific checks.
+
 A [Linter package][pulsar-linter] for [Pulsar Edit][pulsar] is available. The
 package automatically detects a `workflows` directory, executes the `actionlint`
 command on any detected GitHub Actions files within the directory, and reports
@@ -543,11 +577,21 @@ files.
 
 ### Nova
 
+> [!NOTE]
+> The extension runs the local executable configured by
+> `actionlint.binarypath`, which defaults to `actionlint` on `PATH`. Point that
+> setting at this fork's binary to use fork-specific checks.
+
 [Nova.app][nova] is a MacOS only editor and IDE. The
 [Actionlint for Nova][nova-extension] allows you to get inline feedback while
 editing actions.
 
 ### trunk
+
+> [!WARNING]
+> trunk's actionlint plugin downloads releases from `rhysd/actionlint` using
+> hard-coded upstream URLs. The `trunk check enable actionlint` commands below
+> install upstream, not this fork.
 
 [trunk][trunk-io] is an extendable superlinter with a builtin language server
 and preexisting issue detection. Actionlint is integrated in [trunk-io/plugins].
@@ -592,7 +636,7 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 [Checks](checks.md) | [Installation](install.md) | [Configuration](config.md) | [Go API](api.md) | [References](reference.md)
 
 [actionlint-matcher]: https://raw.githubusercontent.com/kjanat/actionlint/main/.github/actionlint-matcher.json
-[cmd-manual]: https://github.com/kjanat/actionlint/blob/main/man/actionlint.1.ronn
+[cmd-manual]: https://kjanat.github.io/actionlint/usage.html
 [docker-image]: https://github.com/kjanat/actionlint/pkgs/container/actionlint
 [docker]: https://www.docker.com/
 [emacs-flycheck-extension]: https://github.com/tirimia/flycheck-actionlint
