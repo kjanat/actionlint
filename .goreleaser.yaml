@@ -2,7 +2,7 @@ version: 2
 
 release:
   draft: false
-  prerelease: true
+  prerelease: false
 
 before:
   hooks:
