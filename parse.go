@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"go.yaml.in/yaml/v4"
 )
@@ -67,15 +68,136 @@ func (l *delayedSprintf) String() string {
 }
 
 type parser struct {
-	errors []*Error
+	errors      []*Error
+	sourceLines []string
+}
+
+func splitSourceLines(b []byte) []string {
+	lines := strings.Split(string(b), "\n")
+	for i := range lines {
+		lines[i] = strings.TrimSuffix(lines[i], "\r")
+	}
+	return lines
+}
+
+func (p *parser) scriptSource(n *yaml.Node) *scriptSource {
+	switch n.Style {
+	case yaml.LiteralStyle:
+		return p.literalScriptSource(n)
+	case 0:
+		return p.plainScriptSource(n)
+	default:
+		return nil
+	}
+}
+
+func (p *parser) literalScriptSource(n *yaml.Node) *scriptSource {
+	decoded := strings.Split(n.Value, "\n")
+	indent := -1
+
+	for i, line := range decoded {
+		if line == "" {
+			continue
+		}
+		sourceLine := n.Line + i
+		if sourceLine >= len(p.sourceLines) {
+			return nil
+		}
+		raw := p.sourceLines[sourceLine]
+		if !strings.HasSuffix(raw, line) {
+			return nil
+		}
+		prefix := raw[:len(raw)-len(line)]
+		if strings.Trim(prefix, " ") != "" {
+			return nil
+		}
+		if indent < 0 {
+			indent = len(prefix)
+		} else if len(prefix) != indent {
+			return nil
+		}
+	}
+
+	if indent < 0 {
+		return nil
+	}
+
+	source := newScriptSource(n.Value)
+	offset := 0
+	for i, line := range decoded {
+		scriptOffset := offset
+		offset += len(line) + 1
+		sourceLine := n.Line + i
+		if sourceLine >= len(p.sourceLines) {
+			break
+		}
+		raw := p.sourceLines[sourceLine]
+		if line == "" {
+			if strings.TrimSpace(raw) != "" {
+				continue
+			}
+		} else if len(raw) < indent || raw[indent:] != line {
+			return nil
+		}
+		if !source.mapBytes(scriptOffset, len(line), sourceLine+1, indent+1) {
+			return nil
+		}
+	}
+	return source
+}
+
+func (p *parser) plainScriptSource(n *yaml.Node) *scriptSource {
+	if n.Line <= 0 || n.Line > len(p.sourceLines) || n.Column <= 0 {
+		return nil
+	}
+
+	source := newScriptSource(n.Value)
+	offset := 0
+	for sourceLine := n.Line - 1; sourceLine < len(p.sourceLines) && offset < len(n.Value); sourceLine++ {
+		raw := p.sourceLines[sourceLine]
+		var start int
+		if sourceLine == n.Line-1 {
+			var ok bool
+			start, ok = byteOffsetAtColumn(raw, n.Column)
+			if !ok {
+				return nil
+			}
+		} else {
+			start = len(raw) - len(strings.TrimLeft(raw, " "))
+			for offset < len(n.Value) && (n.Value[offset] == ' ' || n.Value[offset] == '\n') {
+				offset++
+			}
+		}
+		candidate := strings.TrimRight(raw[start:], " \t")
+		if candidate == "" {
+			continue
+		}
+		matched := 0
+		for matched < len(candidate) && offset+matched < len(n.Value) && candidate[matched] == n.Value[offset+matched] {
+			matched++
+		}
+		if matched == 0 {
+			return nil
+		}
+		sourceCol := utf8.RuneCountInString(raw[:start]) + 1
+		if !source.mapBytes(offset, matched, sourceLine+1, sourceCol) {
+			return nil
+		}
+		offset += matched
+	}
+
+	if strings.TrimSpace(n.Value[offset:]) != "" {
+		return nil
+	}
+	return source
 }
 
 func (p *parser) error(n *yaml.Node, m string) {
-	p.errors = append(p.errors, &Error{m, "", n.Line, n.Column, "syntax-check"})
+	p.errors = append(p.errors, &Error{Message: m, Line: n.Line, Column: n.Column, Kind: "syntax-check"})
 }
 
 func (p *parser) errorAt(pos *Pos, m string) {
-	p.errors = append(p.errors, &Error{m, "", pos.Line, pos.Col, "syntax-check"})
+	p.errors = append(p.errors, &Error{Message: m, Line: pos.Line, Column: pos.Col, Kind: "syntax-check"})
 }
 
 func (p *parser) errorfAt(pos *Pos, format string, args ...interface{}) {
@@ -1188,6 +1310,7 @@ func (p *parser) parseStepExecRun(entries []workflowMappingEntry) *ExecRun {
 		case "run":
 			ret.Run = p.parseString(e.val, false)
 			ret.RunPos = e.key.Pos
+			ret.source = p.scriptSource(e.val)
 		case "shell":
 			ret.Shell = p.parseString(e.val, false)
 		case "working-directory":
@@ -1726,7 +1849,7 @@ func Parse(b []byte) (*Workflow, []*Error) {
 	// Uncomment for checking YAML tree
 	// dumpYAML(&n, 0)
 
-	p := &parser{}
+	p := &parser{sourceLines: splitSourceLines(b)}
 	w := p.parse(&n)
 
 	return w, p.errors

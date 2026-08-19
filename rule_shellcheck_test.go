@@ -62,6 +62,14 @@ func TestRuleShellcheckSanitizeExpressionsInScript(t *testing.T) {
 			"a}}b${{c}}d",
 			"a}}b______d",
 		},
+		{
+			"before ${{\nfoo\n}} after",
+			"before ___\n___\n__ after",
+		},
+		{
+			"before ${{\né\n}} after",
+			"before ___\n_\n__ after",
+		},
 	}
 
 	for i, tc := range testCases {

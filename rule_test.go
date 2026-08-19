@@ -45,7 +45,7 @@ func TestRuleBaseErrorfAndErrs(t *testing.T) {
 			Kind:    "dummy name",
 		},
 	}
-	if diff := cmp.Diff(errs, want); diff != "" {
+	if diff := cmp.Diff(errs, want, cmp.AllowUnexported(Error{})); diff != "" {
 		t.Error("unexpected errors from Errs() method:", diff)
 	}
 }

@@ -882,14 +882,14 @@ jobs:
 Output:
 
 ```
-test.yaml:6:9: shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting [shellcheck]
+test.yaml:6:19: shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting [shellcheck]
   |
 6 |       - run: echo $FOO
-  |         ^~~~
-test.yaml:14:9: shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting [shellcheck]
+  |                   ^~~~
+test.yaml:14:19: shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting [shellcheck]
    |
 14 |       - run: echo $FOO
-   |         ^~~~
+   |                   ^~~~
 ```
 
 <!-- Skip playground link -->
@@ -902,7 +902,9 @@ default shell is `bash`, and on Windows it is `pwsh`. Shell can be configured by
 level or job level. Each step can configure shell to run scripts by `shell:`.
 
 In the above example output, `SC2086:info:1:6:` means that shellcheck reported SC2086 rule violation and the location is at
-line 1, column 6. Note that the location is relative to the script of the `run:` section.
+line 1, column 6 relative to the script of the `run:` section. When that script position can be mapped exactly to the YAML
+source, actionlint reports and underlines the offending range there. This mapping is supported for plain scalars and literal
+blocks. Other scalar forms, such as folded blocks, fall back to reporting the `run:` key when an exact mapping is not safe.
 
 actionlint remembers the default shell and checks what OS the job runs on. Only when the shell is `bash` or `sh`, actionlint
 applies shellcheck to scripts.

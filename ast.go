@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"go.yaml.in/yaml/v4"
 )
@@ -15,6 +16,119 @@ type Pos struct {
 	Line int
 	// Col is a column number of the position. This value is 1-based.
 	Col int
+}
+
+type scriptSourceLine struct {
+	start int
+	end   int
+}
+
+type scriptSourceSpan struct {
+	start      int
+	end        int
+	yamlLine   int
+	yamlColumn int
+}
+
+// scriptSource maps spans in a decoded run script back to positions in the YAML source. Bytes that
+// were synthesized while decoding YAML, such as whitespace between folded plain-scalar lines, are
+// intentionally left outside the mapped spans.
+type scriptSource struct {
+	value string
+	lines []scriptSourceLine
+	spans []scriptSourceSpan
+}
+
+func newScriptSource(value string) *scriptSource {
+	s := &scriptSource{value: value}
+	start := 0
+	for {
+		i := strings.IndexByte(value[start:], '\n')
+		if i < 0 {
+			s.lines = append(s.lines, scriptSourceLine{start: start, end: len(value)})
+			return s
+		}
+		end := start + i
+		s.lines = append(s.lines, scriptSourceLine{start: start, end: end})
+		start = end + 1
+	}
+}
+
+func (s *scriptSource) mapBytes(offset, length, line, col int) bool {
+	end := offset + length
+	if offset < 0 || length < 0 || end > len(s.value) || line <= 0 || col <= 0 {
+		return false
+	}
+	i := sort.Search(len(s.lines), func(i int) bool {
+		return s.lines[i].end >= offset
+	})
+	if i == len(s.lines) || offset < s.lines[i].start || end > s.lines[i].end {
+		return false
+	}
+	if n := len(s.spans); n > 0 && offset < s.spans[n-1].end {
+		return false
+	}
+	s.spans = append(s.spans, scriptSourceSpan{
+		start:      offset,
+		end:        end,
+		yamlLine:   line,
+		yamlColumn: col,
+	})
+	return true
+}
+
+func (s *scriptSource) pos(line, col int) (*Pos, bool) {
+	return s.lookup(line, col, false)
+}
+
+func (s *scriptSource) endPos(line, col int) (*Pos, bool) {
+	return s.lookup(line, col, true)
+}
+
+func (s *scriptSource) lookup(line, col int, endPosition bool) (*Pos, bool) {
+	if s == nil || line <= 0 || line > len(s.lines) || col <= 0 {
+		return nil, false
+	}
+	l := s.lines[line-1]
+	rel, ok := byteOffsetAtColumn(s.value[l.start:l.end], col)
+	if !ok {
+		return nil, false
+	}
+	offset := l.start + rel
+	i := sort.Search(len(s.spans), func(i int) bool {
+		if endPosition {
+			return s.spans[i].end >= offset
+		}
+		return s.spans[i].end > offset
+	})
+	if i == len(s.spans) {
+		return nil, false
+	}
+	span := s.spans[i]
+	if offset < span.start || (endPosition && offset == span.start) {
+		return nil, false
+	}
+	column := span.yamlColumn + utf8.RuneCountInString(s.value[span.start:offset])
+	return &Pos{Line: span.yamlLine, Col: column}, true
+}
+
+// byteOffsetAtColumn converts a 1-based character column to a byte offset. The column immediately
+// after the final character is valid because external analyzers use it as an exclusive range end.
+func byteOffsetAtColumn(s string, column int) (int, bool) {
+	if column <= 0 {
+		return 0, false
+	}
+	c := 1
+	for offset := range s {
+		if c == column {
+			return offset, true
+		}
+		c++
+	}
+	if c == column {
+		return len(s), true
+	}
+	return 0, false
 }
 
 func (p *Pos) String() string {
@@ -446,6 +560,9 @@ type Exec interface {
 type ExecRun struct {
 	// Run is script to run.
 	Run *String
+	// source maps positions in Run.Value back to the original YAML source when this can be done
+	// exactly. It is intentionally kept internal because it is parser metadata rather than syntax.
+	source *scriptSource
 	// Shell represents optional 'shell' field. Nil means nothing specified.
 	Shell *String
 	// WorkingDirectory represents optional 'working-directory' field. Nil means nothing specified.

@@ -1,7 +1,8 @@
 <a id="unreleased"></a>
 # Unreleased
 
-- Add a first-party Docker action with validated inputs, GitHub annotations, multiple output formats, and structured result outputs, following up on rhysd/actionlint#257 and rhysd/actionlint#479. Release images are published as `action-{version}`, `action-v1`, and `action-latest`, so consumer workflows pull a prebuilt actionlint, ShellCheck, and pyflakes image instead of compiling actionlint. Releases also update the moving `v1` Git tag for `kjanat/actionlint@v1`. (https://github.com/kjanat/actionlint/pull/5
+- Add a first-party Docker action with validated inputs, GitHub annotations, multiple output formats, and structured result outputs, following up on rhysd/actionlint#257 and rhysd/actionlint#479. Release images are published as `action-{version}`, `action-v1`, and `action-latest`, so consumer workflows pull a prebuilt actionlint, ShellCheck, and pyflakes image instead of compiling actionlint. Releases also update the moving `v1` Git tag for `kjanat/actionlint@v1`. (https://github.com/kjanat/actionlint/pull/5)
+- Report ShellCheck findings at their exact YAML source locations for literal block and plain `run:` scripts, including precise ranges. Scalar forms that cannot be mapped safely continue to report at the `run:` key. (rhysd/actionlint#88, rhysd/actionlint#360; building on the direction explored in rhysd/actionlint#556, thanks @dpsutton)
 - Update the playground's preloaded workflow to the current major versions of `actions/checkout`, `actions/setup-node`, and `actions/cache`.
 
 <a id="v1.10.0"></a>
