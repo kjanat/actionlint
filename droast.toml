@@ -1,0 +1,88 @@
+#:schema https://raw.githubusercontent.com/immanuwell/dockerfile-roast/main/schemas/droast.schema.json
+#
+# droast.toml - optional project and organization policy
+# https://github.com/immanuwell/dockerfile-roast
+#
+# All settings are optional and commented out by default.
+# This file has no effect until you uncomment a line.
+# CLI flags always take precedence over values set here.
+
+# Inherit one or more local policy files. Relative paths start here.
+# extends = [".config/company-droast.toml"]
+
+# Built-in presets: minimal | security | performance | production | strict
+# Explicit settings below override preset defaults.
+# preset = "production"
+
+# Rules and severity
+# skip = ["DF012", "DF022"]
+# min-severity = "info"
+# fail-on = "error" # info | warning | error
+# categories = ["security", "supply-chain"]
+# skip-categories = ["maintainability"]
+
+# Optional ShellCheck bridge. `auto` runs an installed `shellcheck` when it is
+# available; `required` turns a missing or failed executable into SC0000.
+# [shellcheck]
+# mode = "auto" # off | auto | required
+# exclude = ["SC2086"]
+
+# Build-context conventions. Podman mode prefers .containerignore over
+# .dockerignore and enables Quadlet and kube-play Containerfile discovery.
+# [workflow]
+# engine = "podman" # docker (default) | podman
+
+# Governed inline suppressions
+# Syntax:
+#   # droast ignore=DF001 reason="migration" expires=2026-09-30
+#   # droast global ignore=DF020 reason="runtime user" expires=2026-09-30
+# inline-suppressions = true
+# require-suppression-reason = false
+# suppression-reason-pattern = "^(SEC|PLAT)-[0-9]+ .+$"
+# require-suppression-expiration = false
+# max-suppression-days = 90
+# report-unused-suppressions = false
+
+# Supply-chain allowlists support glob patterns.
+# approved-registries = ["docker.io", "ghcr.io", "registry.example.com"]
+# extend-approved-registries = ["mirror.example.com"]
+# approved-base-images = ["alpine:3.*", "ghcr.io/example/runtime@sha256:*"]
+# extend-approved-base-images = ["ghcr.io/example/extra-runtime@sha256:*"]
+
+# Output and behavior
+# format = "terminal"
+# no-roast = false
+# no-fail = false
+
+# The root Dockerfile defines separate CLI and GitHub Action targets.
+# Neither target listens on a port, and each intentionally has its own entrypoint.
+[[overrides]]
+paths = ["Dockerfile"]
+skip = ["DF022", "DF039"]
+
+# These Dockerfiles are parser fixtures rather than published images.
+[[overrides]]
+paths = ["testdata/**/Dockerfile"]
+skip = ["DF001"]
+
+# Image label schema
+# strict-labels = false
+#
+# [severity-overrides]
+# DF013 = "error"
+# DF033 = "warning"
+#
+# [required-labels]
+# "org.opencontainers.image.source" = "url"
+# "org.opencontainers.image.version" = "semver"
+# "org.opencontainers.image.revision" = "hash"
+# "org.opencontainers.image.licenses" = "spdx"
+
+# Path-specific policy. Matching blocks are applied in order.
+# [[overrides]]
+# paths = ["services/**/Dockerfile", "services/**/*.Dockerfile"]
+# preset = "strict"
+# skip = ["DF012"]
+#
+# [overrides.severity-overrides]
+# DF020 = "error"

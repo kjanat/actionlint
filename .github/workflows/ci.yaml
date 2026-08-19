@@ -1,68 +1,69 @@
 name: CI
 on: [push, pull_request]
-
+env: { GO: 1.26 }
+permissions: { contents: read }
 jobs:
   unit-tests:
     name: Unit tests
     strategy:
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest, macos-26-intel, windows-11-arm]
-        go: ['1.25', '1.26']
+        go: [1.25, 1.26]
     runs-on: ${{ matrix.os }}
+    permissions: { id-token: write }
     steps:
       - name: Install dependencies on macOS
+        if: ${{ runner.os == 'macOS' }}
         run: |
           set -x
+          brew untap aws/tap
           brew install --quiet shellcheck python3 pipx
           # https://pipx.pypa.io/stable/installation/
           pipx ensurepath
           pipx install pyflakes
           shellcheck --version
           pyflakes --version
-        if: ${{ runner.os == 'macOS' }}
       - name: Install dependencies on Linux
+        if: ${{ runner.os == 'Linux' }}
         run: |
           set -x
           sudo apt-get install -y shellcheck
           pip install pyflakes
           shellcheck --version
           pyflakes --version
-        if: ${{ runner.os == 'Linux' }}
       - name: Install dependencies on Windows
+        if: ${{ runner.os == 'Windows' }}
         run: |
           choco install shellcheck -y --no-progress
           pip install pyflakes
           pyflakes --version
-        if: ${{ runner.os == 'Windows' }}
+
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
-        with:
-          go-version: ${{ matrix.go }}
-          check-latest: true
-      - run: go test -v -race -coverprofile coverage.txt -covermode=atomic ./...
+        with: { go-version: "${{ matrix.go }}", check-latest: true }
+
+      - if: ${{ matrix.os != 'windows-11-arm' }}
         # Arm Windows doesn't support -race
-        if: ${{ matrix.os != 'windows-11-arm' }}
-      - run: go test -v -coverprofile coverage.txt -covermode=atomic ./...
-        if: ${{ matrix.os == 'windows-11-arm' }}
+        run: go test -v -race -coverprofile coverage.txt -covermode=atomic ./...
+      - if: ${{ matrix.os == 'windows-11-arm' }}
+        run: go test -v -coverprofile coverage.txt -covermode=atomic ./...
+
       - run: go tool cover -func ./coverage.txt
+
       # Check build without CGO
       - run: go build ./cmd/actionlint
-        env:
-          # Note: -race requires cgo
-          CGO_ENABLED: 0
+        env: { CGO_ENABLED: 0 } # Note: -race requires cgo
+
       # Set -race for catching data races on dog fooding (#333)
       - run: go build -race ./cmd/actionlint
         if: ${{ matrix.os != 'windows-11-arm' }}
+
       - name: Dog fooding 🐶
-        run: |
-          echo "::add-matcher::.github/actionlint-matcher.json"
-          ./actionlint -color
+        run: echo "::add-matcher::.github/actionlint-matcher.json"; ./actionlint -color
+
       - uses: codecov/codecov-action@v7
-        with:
-          env_vars: OS
-          token: ${{ secrets.CODECOV_TOKEN }}
-        env:
-          OS: ${{ matrix.os }}
+        with: { env_vars: OS, use_oidc: true }
+        env: { OS: "${{ matrix.os }}" }
   wasm:
     name: Wasm
     runs-on: ubuntu-latest
@@ -72,9 +73,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
-        with:
-          go-version: '1.26'
-          check-latest: true
+        with: { go-version: "${{ env.GO }}", check-latest: true }
       - uses: actions/setup-node@v7
         with:
           node-version: "lts/*"
@@ -92,9 +91,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
-        with:
-          go-version: '1.26'
-          check-latest: true
+        with: { go-version: "${{ env.GO }}", check-latest: true }
       - name: Install dependencies
         run: |
           sudo apt-get install -y shellcheck
@@ -124,14 +121,29 @@ jobs:
       - name: Build image
         id: image
         uses: docker/build-push-action@v7
-        with:
-          build-args: |
-            GOLANG_VER=1.26
-          push: false
+        with: { build-args: "GOLANG_VER=${{ env.GO }}", push: false }
       - name: Test Docker image
+        env: { DIG: "${{ steps.image.outputs.digest }}" }
         run: docker container run
           --mount type=bind,source="$(pwd)",target=/mnt/app
           --workdir /mnt/app
-          -- ${{ steps.image.outputs.digest }} -color -verbose
+          -- "${DIG}" -color -verbose
       - name: Lint Dockerfile with hadolint
         run: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 --strict-labels - < Dockerfile
+      - name: Lint Dockerfile with droast
+        uses: immanuwell/dockerfile-roast@1.6.0
+  action:
+    name: GitHub Action
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build action image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: action
+          build-args: GOLANG_VER=${{ env.GO }}
+          load: true
+          tags: actionlint-action:test
+      - name: Test action image
+        run: ./scripts/test-action.bash actionlint-action:test

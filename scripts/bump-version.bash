@@ -44,6 +44,7 @@ function sed_() {
 
 pre_commit_hook='./.pre-commit-hooks.yaml'
 usage_doc='./docs/usage.md'
+action_metadata='./action.yml'
 install_doc='./docs/install.md'
 download_script='./scripts/download-actionlint.bash'
 tag="v${version}"
@@ -68,6 +69,9 @@ sed_ "\
     s/\`ghcr\.io\/kjanat\/actionlint:[0-9]+\.[0-9]+\.[0-9]+\`/\`ghcr.io\/kjanat\/actionlint:${version}\`/g; \
     " "$usage_doc"
 
+echo "Updating $action_metadata"
+sed_ "s/(image: docker:\/\/ghcr\.io\/kjanat\/actionlint:action-)[0-9]+\.[0-9]+\.[0-9]+/\1${version}/" "$action_metadata"
+
 echo "Updating $install_doc"
 sed_ "\
     s/(--pattern '[^']+' )v[0-9]+\.[0-9]+\.[0-9]+/\1v${version}/; \
@@ -88,7 +92,7 @@ for f in "$readme_doc" "$man_ronn" "$playground_html"; do
 done
 
 echo 'Creating a version bump commit and a version tag'
-git add "$pre_commit_hook" "$usage_doc" "$install_doc" "$download_script" "$playground_html" "$readme_doc" "$man_ronn"
+git add "$pre_commit_hook" "$usage_doc" "$action_metadata" "$install_doc" "$download_script" "$playground_html" "$readme_doc" "$man_ronn"
 git commit -m "bump up version to ${tag}"
 git tag "$tag"
 

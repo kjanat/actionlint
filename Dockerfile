@@ -11,9 +11,16 @@ RUN go build -v -ldflags "-s -w -X github.com/kjanat/actionlint.version=${ACTION
 
 FROM koalaman/shellcheck-alpine:stable AS shellcheck
 
-FROM alpine:${ALPINE_VER}
+FROM alpine:${ALPINE_VER} AS runtime
 COPY --from=builder /go/src/app/actionlint /usr/local/bin/
 COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
 RUN apk add --no-cache py3-pyflakes
+
+FROM runtime AS action
+COPY action-entrypoint.py /usr/local/bin/actionlint-action
+COPY testdata/format/sarif_template.txt /usr/local/share/actionlint/sarif-template.txt
+ENTRYPOINT ["/usr/local/bin/actionlint-action"]
+
+FROM runtime AS cli
 USER 405
 ENTRYPOINT ["/usr/local/bin/actionlint"]

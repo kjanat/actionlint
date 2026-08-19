@@ -1,6 +1,7 @@
 <a id="unreleased"></a>
 # Unreleased
 
+- Add a first-party Docker action with validated inputs, GitHub annotations, multiple output formats, and structured result outputs, following up on rhysd/actionlint#257 and rhysd/actionlint#479. Release images are published as `action-{version}`, `action-v1`, and `action-latest`, so consumer workflows pull a prebuilt actionlint, ShellCheck, and pyflakes image instead of compiling actionlint. Releases also update the moving `v1` Git tag for `kjanat/actionlint@v1`.
 
 <a id="v1.10.0"></a>
 # [v1.10.0](https://github.com/kjanat/actionlint/releases/tag/v1.10.0) - 2026-08-19

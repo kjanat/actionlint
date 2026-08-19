@@ -73,7 +73,9 @@ jobs:
       - name: Get tag name
         id: tag
         run: |
-          echo "name=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          version="${GITHUB_REF#refs/tags/v}"
+          echo "name=$version" >> "$GITHUB_OUTPUT"
+          echo "major=${version%%.*}" >> "$GITHUB_OUTPUT"
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
       - name: Set up Docker Buildx
@@ -85,10 +87,11 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and push
+      - name: Build and push CLI image
         uses: docker/build-push-action@v7
         with:
           platforms: linux/amd64,linux/arm64
+          target: cli
           build-args: |
             GOLANG_VER=1.26
             ACTIONLINT_VER=${{ steps.tag.outputs.name }}
@@ -98,3 +101,49 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:${{ steps.tag.outputs.name }}
             ghcr.io/${{ github.repository }}:latest
+      - name: Build and push GitHub Action image
+        uses: docker/build-push-action@v7
+        with:
+          platforms: linux/amd64,linux/arm64
+          target: action
+          build-args: |
+            GOLANG_VER=1.26
+            ACTIONLINT_VER=${{ steps.tag.outputs.name }}
+          push: true
+          annotations: |
+            index:org.opencontainers.image.description=GitHub Action for actionlint
+          tags: |
+            ghcr.io/${{ github.repository }}:action-${{ steps.tag.outputs.name }}
+            ghcr.io/${{ github.repository }}:action-v${{ steps.tag.outputs.major }}
+            ghcr.io/${{ github.repository }}:action-latest
+  major-tag:
+    name: Update major action tag
+    needs: [binaries, docker]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Verify release commit signature
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          commit_api="repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}"
+          verified="$(gh api "$commit_api" --jq '.commit.verification.verified')"
+          test "$verified" = true
+      - name: Move major tag to the release commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --force --tags origin
+          version="${GITHUB_REF_NAME#v}"
+          major="v${version%%.*}"
+          pattern="${major}.*.*"
+          latest="$(git tag --list "$pattern" --sort=-version:refname | head -n 1)"
+          if [[ "$GITHUB_REF_NAME" != "$latest" ]]; then
+            echo "Skipping ${major}: latest release is ${latest}"
+            exit 0
+          fi
+          git push --force origin "${GITHUB_SHA}:refs/tags/${major}"
