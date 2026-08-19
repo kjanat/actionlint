@@ -14,13 +14,13 @@
 <a id="v1.9.0"></a>
 # [v1.9.0](https://github.com/kjanat/actionlint/releases/tag/v1.9.0) - 2026-08-19
 
-- Support `background`, `wait`, `wait-all`, `cancel`, and `parallel` steps, including validation of background-step references and invalid nested parallel steps. (rhysd/actionlint#695)
-- Support the `code-quality` and `vulnerability-alerts` permission scopes with their GitHub-supported access levels. (rhysd/actionlint#674, rhysd/actionlint#714)
+- Support `background`, `wait`, `wait-all`, `cancel`, and `parallel` steps, including validation of background-step references and invalid nested parallel steps. (rhysd/actionlint#695, thanks @devantler)
+- Support the `code-quality` and `vulnerability-alerts` permission scopes with their GitHub-supported access levels, and accept the `models` and `repository-projects` permission names. (rhysd/actionlint#674, thanks @smlx; rhysd/actionlint#714, thanks @kalverra)
 - Support `$/path` self-repository references for actions and reusable workflows, including local metadata, input, and output validation. (rhysd/actionlint#711)
-- Support `job.workflow_file_path`, `job.workflow_ref`, `job.workflow_repository`, `job.workflow_sha`, and `jobs.<job_id>.result` in expressions. (rhysd/actionlint#696, rhysd/actionlint#707, rhysd/actionlint#724)
-- Avoid false errors for repository secrets in reusable workflows that also define another trigger. (rhysd/actionlint#701)
+- Support `job.workflow_file_path`, `job.workflow_ref`, `job.workflow_repository`, `job.workflow_sha`, and `jobs.<job_id>.result` in expressions. (rhysd/actionlint#696, thanks @nikolauspschuetz; rhysd/actionlint#707, thanks @l46983284-cpu; rhysd/actionlint#724, thanks @Eljees)
+- Avoid false errors for repository secrets in reusable workflows that also define another trigger. (rhysd/actionlint#701, rhysd/actionlint#703, thanks @Eljees)
 - Support the `destroyed` activity type for the `merge_group` event and refresh the generated webhook activity types. (rhysd/actionlint#726)
-- Update the popular actions data set with current major releases, including `actions/checkout@v7`, `actions/cache@v6`, `actions/setup-go@v7`, and `codecov/codecov-action@v7`. (rhysd/actionlint#718)
+- Update the popular actions data set with current major releases, including `actions/checkout@v7`, `actions/cache@v6`, `actions/setup-go@v7`, and `codecov/codecov-action@v7`. (Based on rhysd/actionlint#718, thanks @kolyshkin)
 
 [Changes][v1.9.0]
 
@@ -28,9 +28,11 @@
 <a id="v1.8.0"></a>
 # [v1.8.0](https://github.com/kjanat/actionlint/releases/tag/v1.8.0) - 2026-08-19
 
-- Support the [`queue` configuration in workflow- and job-level `concurrency`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#concurrency). The documented literal values `single` (default) and `max` are accepted, and invalid values or `queue: max` combined with `cancel-in-progress: true` are reported as errors. (rhysd/actionlint#654, rhysd/actionlint#657)
-- Support the `ubuntu-26.04`, `ubuntu-26.04-arm`, `xcode-27`, `xcode-27-xlarge`, and `windows-11-vs2026-arm` runner labels, incorporating rhysd/actionlint#683 and rhysd/actionlint#710.
-- Follow the moving runner aliases: `macos-latest` now maps to `macos-26`, `macos-latest-large` maps to `macos-26-large`, and `windows-latest` and `windows-2025` map to `windows-2025-vs2026`. The macOS and Windows migrations are confirmed in actions/runner-images#14167 (https://github.com/actions/runner-images/issues/14167) and actions/runner-images#14017 (https://github.com/actions/runner-images/issues/14017).
+- Add support for `entrypoint` and `command` in service containers. (rhysd/actionlint#645, thanks @mkusaka)
+- Fix a macOS ShellCheck integration deadlock when linting large scripts concurrently. (rhysd/actionlint#651, thanks @attehuhtakangas)
+- Support the [`queue` configuration in workflow- and job-level `concurrency`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#concurrency). The documented literal values `single` (default) and `max` are accepted, and invalid values or `queue: max` combined with `cancel-in-progress: true` are reported as errors. (rhysd/actionlint#654, rhysd/actionlint#657, thanks @vvoland)
+- Support the `ubuntu-26.04`, `ubuntu-26.04-arm`, `xcode-27`, `xcode-27-xlarge`, and `windows-11-vs2026-arm` runner labels. (rhysd/actionlint#683, thanks @ericcornelissen; rhysd/actionlint#710, thanks @TheAlphaEngineerCode)
+- Follow the moving runner aliases: `macos-latest` now maps to `macos-26`, `macos-latest-large` maps to `macos-26-large`, and `windows-latest` and `windows-2025` map to `windows-2025-vs2026`. The macOS and Windows migrations are confirmed in [actions/runner-images#14167](https://github.com/actions/runner-images/issues/14167) and [actions/runner-images#14017](https://github.com/actions/runner-images/issues/14017).
 - Update Go dependencies to the latest versions, including go-yaml v4.0.0-rc.6. YAML parse errors now report corrected columns and source positions for undefined aliases.
 - Keep CI compatible with current Windows arm64 runner and hadolint images by installing ShellCheck with Chocolatey and using Alpine's numeric guest UID in the container image.
 - Enable releases from `kjanat/actionlint`, publish multi-platform Docker images to `ghcr.io/kjanat/actionlint` with `GITHUB_TOKEN`, and skip Winget and Homebrew publishing.
