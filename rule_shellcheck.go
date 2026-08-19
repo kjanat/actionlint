@@ -8,11 +8,13 @@ import (
 )
 
 type shellcheckError struct {
-	Line    int    `json:"line"`
-	Column  int    `json:"column"`
-	Level   string `json:"level"`
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+	Line      int    `json:"line"`
+	EndLine   int    `json:"endLine"`
+	Column    int    `json:"column"`
+	EndColumn int    `json:"endColumn"`
+	Level     string `json:"level"`
+	Code      int    `json:"code"`
+	Message   string `json:"message"`
 }
 
 // RuleShellcheck is a rule to check shell scripts at 'run:' using shellcheck.
@@ -57,7 +59,7 @@ func (rule *RuleShellcheck) VisitStep(n *Step) error {
 		return nil
 	}
 
-	rule.runShellcheck(run.Run.Value, rule.getShellName(run), run.RunPos)
+	rule.runShellcheck(run.Run.Value, run.source, rule.getShellName(run), run.RunPos)
 	return nil
 }
 
@@ -149,18 +151,20 @@ func sanitizeExpressionsInScript(src string) string {
 		}
 		e += s + 2 // 2 is offset for len("}}")
 
-		// Note: If ${{ ... }} includes newline, line and column reported by shellcheck will be
-		// shifted.
 		b.WriteString(src[:s])
-		for i := 0; i < e-s; i++ {
-			b.WriteByte('_')
+		for i := s; i < e; i++ {
+			if src[i] == '\n' || src[i] == '\r' {
+				b.WriteByte(src[i])
+			} else {
+				b.WriteByte('_')
+			}
 		}
 
 		src = src[e:]
 	}
 }
 
-func (rule *RuleShellcheck) runShellcheck(src, shell string, pos *Pos) {
+func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shell string, pos *Pos) {
 	var sh string
 	if shell == "bash" || shell == "sh" {
 		sh = shell
@@ -218,16 +222,15 @@ func (rule *RuleShellcheck) runShellcheck(src, shell string, pos *Pos) {
 		// Synchronize rule.Errorf calls
 		rule.mu.Lock()
 		defer rule.mu.Unlock()
-		// It's better to show source location in the script as position of error, but it's not
-		// possible easily. YAML has multiple block styles with '|', '>', '|+', '>+', '|-', '>-'. Some
-		// of them remove indentation and/or blank lines. So restoring source position in block string
-		// is not possible. Sourcemap is necessary to do it.
-		// Instead, actionlint shows position of 'run:' as position of error. And separately show
-		// location in script which is reported by shellcheck in error message.
 		for _, err := range errs {
 			// Consider the first line is setup for running shell which was implicitly added for better check
 			line := err.Line - 1
 			msg := strings.TrimSuffix(err.Message, ".") // Trim period aligning style of error message
+			if start, ok := source.pos(line, err.Column); ok {
+				end, _ := source.pos(err.EndLine-1, err.EndColumn)
+				rule.errorfRange(start, end, "shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", err.Code, err.Level, line, err.Column, msg)
+				continue
+			}
 			rule.Errorf(pos, "shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", err.Code, err.Level, line, err.Column, msg)
 		}
 

@@ -53,6 +53,15 @@ func (r *RuleBase) Errorf(pos *Pos, format string, args ...interface{}) {
 	r.errs = append(r.errs, err)
 }
 
+// errorfRange reports an error with an exclusive source-range end.
+func (r *RuleBase) errorfRange(start, end *Pos, format string, args ...interface{}) {
+	err := errorfAt(start, r.name, format, args...)
+	if end != nil && end.Line == start.Line && end.Col > start.Col {
+		err.endColumn = end.Col - 1
+	}
+	r.errs = append(r.errs, err)
+}
+
 // Debug prints debug log to the output. The output is specified by the argument of EnableDebug method.
 // By default, no output is set so debug log is not printed.
 func (r *RuleBase) Debug(format string, args ...interface{}) {

@@ -34,6 +34,9 @@ type Error struct {
 	Column int
 	// Kind is a string to represent kind of the error. Usually rule name which found the error.
 	Kind string
+	// endColumn is the inclusive column where the error range ends. A zero value lets the formatter
+	// infer the range from the source token at Column.
+	endColumn int
 }
 
 // Error returns summary of the error as string.
@@ -70,11 +73,9 @@ func (e *Error) GetTemplateFields(source []byte) *ErrorTemplateFields {
 	if len(source) > 0 && e.Line > 0 {
 		if l, ok := e.getLine(source); ok {
 			snippet = l
-			if len(l) >= e.Column-1 {
-				if i := e.getIndicator(l); i != "" {
-					snippet += "\n" + i
-					end = len(i) // Byte length can be used here because this line only contains ASCII
-				}
+			if i := e.getIndicator(l); i != "" {
+				snippet += "\n" + i
+				end = len(i) // Byte length can be used here because this line only contains ASCII
 			}
 		}
 	}
@@ -137,17 +138,28 @@ func (e *Error) getIndicator(line string) string {
 		return ""
 	}
 
-	start := e.Column - 1 // Column is 1-based
+	start, ok := byteOffsetAtColumn(line, e.Column)
+	if !ok {
+		return ""
+	}
 
 	// Count width of non-space characters after '^' for underline
 	uw := 0
-	r := strings.NewReader(line[start:])
-	for {
-		c, s, err := r.ReadRune()
-		if err != nil || s == 0 || c == ' ' || c == '\t' || c == '\n' || c == '\r' {
-			break
+	if e.endColumn >= e.Column {
+		end, ok := byteOffsetAtColumn(line, e.endColumn+1)
+		if !ok {
+			end = len(line)
 		}
-		uw += runewidth.RuneWidth(c)
+		uw = runewidth.StringWidth(line[start:end])
+	} else {
+		r := strings.NewReader(line[start:])
+		for {
+			c, s, err := r.ReadRune()
+			if err != nil || s == 0 || c == ' ' || c == '\t' || c == '\n' || c == '\r' {
+				break
+			}
+			uw += runewidth.RuneWidth(c)
+		}
 	}
 	if uw > 0 {
 		uw-- // Decrement for place for '^'
@@ -175,6 +187,7 @@ func equalsErrors(lhs, rhs *Error) bool {
 	return lhs.Filepath == rhs.Filepath &&
 		lhs.Line == rhs.Line &&
 		lhs.Column == rhs.Column &&
+		lhs.endColumn == rhs.endColumn &&
 		lhs.Message == rhs.Message
 }
 

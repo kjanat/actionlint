@@ -17,6 +17,82 @@ type Pos struct {
 	Col int
 }
 
+// scriptSource maps byte boundaries in a decoded run script back to positions in the YAML source.
+// A zero position means that the corresponding boundary cannot be mapped safely.
+type scriptSource struct {
+	value     string
+	positions []Pos
+	lineStart []int
+	lineEnd   []int
+}
+
+func newScriptSource(value string) *scriptSource {
+	s := &scriptSource{
+		value:     value,
+		positions: make([]Pos, len(value)+1),
+		lineStart: []int{0},
+	}
+	for i, c := range []byte(value) {
+		if c == '\n' {
+			s.lineEnd = append(s.lineEnd, i)
+			s.lineStart = append(s.lineStart, i+1)
+		}
+	}
+	s.lineEnd = append(s.lineEnd, len(value))
+	return s
+}
+
+func (s *scriptSource) mapBytes(offset, length, line, col int) bool {
+	end := offset + length
+	if offset < 0 || length < 0 || end > len(s.value) {
+		return false
+	}
+
+	column := col
+	for i := range s.value[offset:end] {
+		s.positions[offset+i] = Pos{Line: line, Col: column}
+		column++
+	}
+	s.positions[end] = Pos{Line: line, Col: column}
+	return true
+}
+
+func (s *scriptSource) pos(line, col int) (*Pos, bool) {
+	if s == nil || line <= 0 || line > len(s.lineStart) || col <= 0 {
+		return nil, false
+	}
+	start, end := s.lineStart[line-1], s.lineEnd[line-1]
+	rel, ok := byteOffsetAtColumn(s.value[start:end], col)
+	if !ok {
+		return nil, false
+	}
+	offset := start + rel
+	pos := s.positions[offset]
+	if pos.Line <= 0 || pos.Col <= 0 {
+		return nil, false
+	}
+	return &pos, true
+}
+
+// byteOffsetAtColumn converts a 1-based character column to a byte offset. The column immediately
+// after the final character is valid because external analyzers use it as an exclusive range end.
+func byteOffsetAtColumn(s string, column int) (int, bool) {
+	if column <= 0 {
+		return 0, false
+	}
+	c := 1
+	for offset := range s {
+		if c == column {
+			return offset, true
+		}
+		c++
+	}
+	if c == column {
+		return len(s), true
+	}
+	return 0, false
+}
+
 func (p *Pos) String() string {
 	return fmt.Sprintf("line:%d,col:%d", p.Line, p.Col)
 }
@@ -446,6 +522,9 @@ type Exec interface {
 type ExecRun struct {
 	// Run is script to run.
 	Run *String
+	// source maps positions in Run.Value back to the original YAML source when this can be done
+	// exactly. It is intentionally kept internal because it is parser metadata rather than syntax.
+	source *scriptSource
 	// Shell represents optional 'shell' field. Nil means nothing specified.
 	Shell *String
 	// WorkingDirectory represents optional 'working-directory' field. Nil means nothing specified.

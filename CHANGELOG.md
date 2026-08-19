@@ -1,6 +1,7 @@
 <a id="unreleased"></a>
 # Unreleased
 
+- Report ShellCheck findings at their exact YAML source locations for literal block and plain `run:` scripts, including precise ranges. Scalar forms that cannot be mapped safely continue to report at the `run:` key. (rhysd/actionlint#88, rhysd/actionlint#360; building on the direction explored in rhysd/actionlint#556, thanks @dpsutton)
 - Update the playground's preloaded workflow to the current major versions of `actions/checkout`, `actions/setup-node`, and `actions/cache`.
 
 <a id="v1.10.0"></a>

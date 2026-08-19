@@ -405,6 +405,30 @@ func TestErrorGetTemplateFieldsColumnIsOutOfBounds(t *testing.T) {
 	}
 }
 
+func TestErrorGetTemplateFieldsExplicitEndColumn(t *testing.T) {
+	err := errorAt(&Pos{Line: 1, Col: 6}, "kind", "this is message")
+	err.endColumn = 9
+	f := err.GetTemplateFields([]byte("echo $foo bar"))
+	if f.Snippet != "echo $foo bar\n     ^~~~" {
+		t.Fatalf("unexpected snippet: %q", f.Snippet)
+	}
+	if f.EndColumn != 9 {
+		t.Fatalf("end column is %d but wanted 9", f.EndColumn)
+	}
+}
+
+func TestErrorGetTemplateFieldsExplicitEndColumnAfterUnicode(t *testing.T) {
+	err := errorAt(&Pos{Line: 1, Col: 8}, "kind", "this is message")
+	err.endColumn = 11
+	f := err.GetTemplateFields([]byte("echo é $foo"))
+	if f.Snippet != "echo é $foo\n       ^~~~" {
+		t.Fatalf("unexpected snippet: %q", f.Snippet)
+	}
+	if f.EndColumn != 11 {
+		t.Fatalf("end column is %d but wanted 11", f.EndColumn)
+	}
+}
+
 func TestErrorErrorToString(t *testing.T) {
 	err := &Error{
 		Message: "this is message",
