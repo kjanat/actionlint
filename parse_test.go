@@ -126,7 +126,11 @@ func TestParserScriptSource(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			p := &parser{sourceLines: splitSourceLines([]byte(tc.source))}
 			source := p.scriptSource(tc.node)
-			have, ok := source.pos(tc.line, tc.column)
+			var have *Pos
+			var ok bool
+			if source != nil {
+				have, ok = source.pos(tc.line, tc.column)
+			}
 			if ok != tc.wantMapped {
 				t.Fatalf("mapped=%v but wanted %v (position=%v)", ok, tc.wantMapped, have)
 			}
