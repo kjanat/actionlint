@@ -79,6 +79,23 @@ func TestParserScriptSource(t *testing.T) {
 			wantMapped: true,
 		},
 		{
+			name:       "synthetic whitespace in plain scalar",
+			source:     "run: echo first\n  echo $foo\nnext: value\n",
+			node:       &yaml.Node{Value: "echo first echo $foo", Line: 1, Column: 6},
+			line:       1,
+			column:     11,
+			wantMapped: false,
+		},
+		{
+			name:       "short continuation of plain scalar",
+			source:     "step:\n  run: echo first\n    x\n",
+			node:       &yaml.Node{Value: "echo first x", Line: 2, Column: 8},
+			line:       1,
+			column:     12,
+			want:       Pos{Line: 3, Col: 5},
+			wantMapped: true,
+		},
+		{
 			name:       "plain scalar with unicode",
 			source:     "run: echo é $foo\n",
 			node:       &yaml.Node{Value: "echo é $foo", Line: 1, Column: 6},
@@ -118,6 +135,31 @@ func TestParserScriptSource(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("parser-backed literal block", func(t *testing.T) {
+		input := "run: |\n  echo $foo\n"
+		var root yaml.Node
+		if err := yaml.Unmarshal([]byte(input), &root); err != nil {
+			t.Fatal(err)
+		}
+		run := root.Content[0].Content[1]
+		p := &parser{sourceLines: splitSourceLines([]byte(input))}
+		source := p.scriptSource(run)
+		pos, ok := source.pos(1, 6)
+		if !ok {
+			t.Fatal("script position was not mapped")
+		}
+		if want := (Pos{Line: 2, Col: 8}); *pos != want {
+			t.Fatalf("mapped position is %v but wanted %v", pos, want)
+		}
+		end, ok := source.endPos(1, 10)
+		if !ok {
+			t.Fatal("script end position was not mapped")
+		}
+		if want := (Pos{Line: 2, Col: 12}); *end != want {
+			t.Fatalf("mapped end position is %v but wanted %v", end, want)
+		}
+	})
 }
 
 func BenchmarkParseWorkflow(b *testing.B) {

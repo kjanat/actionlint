@@ -3,3 +3,5 @@ test.yaml:10:21: shellcheck reported issue in this script: SC2086:info:1:8: Doub
 test.yaml:18:19: shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting [shellcheck]
 test.yaml:25:16: shellcheck reported issue in this script: SC2086:info:2:6: Double quote to prevent globbing and word splitting [shellcheck]
 test.yaml:29:9: shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting [shellcheck]
+test.yaml:35:11: shellcheck reported issue in this script: SC2291:info:1:1: Quote repeated spaces to avoid them collapsing into one [shellcheck]
+test.yaml:35:20: shellcheck reported issue in this script: SC2086:info:1:10: Double quote to prevent globbing and word splitting [shellcheck]

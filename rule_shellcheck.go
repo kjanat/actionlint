@@ -17,6 +17,10 @@ type shellcheckError struct {
 	Message   string `json:"message"`
 }
 
+type shellcheckResult struct {
+	Comments []shellcheckError `json:"comments"`
+}
+
 // RuleShellcheck is a rule to check shell scripts at 'run:' using shellcheck.
 // https://github.com/koalaman/shellcheck
 type RuleShellcheck struct {
@@ -152,9 +156,9 @@ func sanitizeExpressionsInScript(src string) string {
 		e += s + 2 // 2 is offset for len("}}")
 
 		b.WriteString(src[:s])
-		for i := s; i < e; i++ {
-			if src[i] == '\n' || src[i] == '\r' {
-				b.WriteByte(src[i])
+		for _, r := range src[s:e] {
+			if r == '\n' || r == '\r' {
+				b.WriteRune(r)
 			} else {
 				b.WriteByte('_')
 			}
@@ -194,7 +198,7 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 	//           this can happen. For example, `if [ -z ${{ env.FOO }} ]` -> `if [ -z ______________ ]` (#113).
 	// - SC2043: Loop can be detected as only running once when the target of iteration is a placeholder. (#355)
 	//           e.g. `for foo in ${{ inputs.foo }}; do`
-	args := []string{"--norc", "-f", "json", "-x", "--shell", sh, "-e", "SC1091,SC2194,SC2050,SC2153,SC2154,SC2157,SC2043", "-"}
+	args := []string{"--norc", "-f", "json1", "-x", "--shell", sh, "-e", "SC1091,SC2194,SC2050,SC2153,SC2154,SC2157,SC2043", "-"}
 	rule.Debug("%s: Running %s command with %s", pos, rule.cmd.exe, args)
 
 	// Use same options to run shell process described at document
@@ -211,10 +215,11 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 			return fmt.Errorf("`%s %s` did not run successfully while checking script at %s: %w", rule.cmd.exe, strings.Join(args, " "), pos, err)
 		}
 
-		errs := []shellcheckError{}
-		if err := json.Unmarshal(stdout, &errs); err != nil {
+		result := shellcheckResult{}
+		if err := json.Unmarshal(stdout, &result); err != nil {
 			return fmt.Errorf("could not parse JSON output from shellcheck: %w: stdout=%q", err, stdout)
 		}
+		errs := result.Comments
 		if len(errs) == 0 {
 			return nil
 		}
@@ -227,7 +232,7 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 			line := err.Line - 1
 			msg := strings.TrimSuffix(err.Message, ".") // Trim period aligning style of error message
 			if start, ok := source.pos(line, err.Column); ok {
-				end, _ := source.pos(err.EndLine-1, err.EndColumn)
+				end, _ := source.endPos(err.EndLine-1, err.EndColumn)
 				rule.errorfRange(start, end, "shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", err.Code, err.Level, line, err.Column, msg)
 				continue
 			}

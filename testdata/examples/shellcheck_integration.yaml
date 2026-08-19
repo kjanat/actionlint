@@ -28,3 +28,8 @@ jobs:
     steps:
       - run: >
           echo $FOO
+  test-tab:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "x"	$FOO

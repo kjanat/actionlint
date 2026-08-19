@@ -123,7 +123,10 @@ func (p *parser) literalScriptSource(n *yaml.Node) *scriptSource {
 	}
 
 	source := newScriptSource(n.Value)
+	offset := 0
 	for i, line := range decoded {
+		scriptOffset := offset
+		offset += len(line) + 1
 		sourceLine := n.Line + i
 		if sourceLine >= len(p.sourceLines) {
 			break
@@ -136,7 +139,7 @@ func (p *parser) literalScriptSource(n *yaml.Node) *scriptSource {
 		} else if len(raw) < indent || raw[indent:] != line {
 			return nil
 		}
-		if !source.mapBytes(source.lineStart[i], len(line), sourceLine+1, indent+1) {
+		if !source.mapBytes(scriptOffset, len(line), sourceLine+1, indent+1) {
 			return nil
 		}
 	}
@@ -152,18 +155,18 @@ func (p *parser) plainScriptSource(n *yaml.Node) *scriptSource {
 	offset := 0
 	for sourceLine := n.Line - 1; sourceLine < len(p.sourceLines) && offset < len(n.Value); sourceLine++ {
 		raw := p.sourceLines[sourceLine]
-		start, ok := byteOffsetAtColumn(raw, n.Column)
-		if !ok {
-			return nil
-		}
-		if sourceLine != n.Line-1 {
+		var start int
+		if sourceLine == n.Line-1 {
+			var ok bool
+			start, ok = byteOffsetAtColumn(raw, n.Column)
+			if !ok {
+				return nil
+			}
+		} else {
 			start = len(raw) - len(strings.TrimLeft(raw, " "))
 			for offset < len(n.Value) && (n.Value[offset] == ' ' || n.Value[offset] == '\n') {
 				offset++
 			}
-		}
-		if start > len(raw) {
-			return nil
 		}
 		candidate := strings.TrimRight(raw[start:], " \t")
 		matched := 0
