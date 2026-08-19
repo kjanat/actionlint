@@ -20,6 +20,7 @@ List of checks:
 - [pyflakes integration for `run:`](#check-pyflakes-integ)
 - [Script injection by potentially untrusted inputs](#untrusted-inputs)
 - [Job dependencies validation](#check-job-deps)
+- [Parallel steps](#check-parallel-step-refs)
 - [Matrix values](#check-matrix-values)
 - [Webhook events validation](#check-webhook-events)
 - [Workflow dispatch event validation](#check-workflow-dispatch-events)
@@ -74,7 +75,7 @@ test.yaml:6:5: unexpected key "default" for "job" section. expected one of "conc
   |
 6 |     default:
   |     ^~~~~~~~
-test.yaml:12:9: unexpected key "Shell" for step to run shell command. expected one of "continue-on-error", "env", "id", "if", "name", "run", "shell", "timeout-minutes", "working-directory" [syntax-check]
+test.yaml:12:9: unexpected key "Shell" for step to run shell command. expected one of "background", "continue-on-error", "env", "id", "if", "name", "run", "shell", "timeout-minutes", "working-directory" [syntax-check]
    |
 12 |         Shell: bash
    |         ^~~~~~
@@ -1222,6 +1223,38 @@ test.yaml:8:3: job "bar" needs job "unknown" which does not exist in this workfl
 
 [Playground](https://rhysd.github.io/actionlint/#eNqkjDsOAjEMRPucYrptyAXcwRFoEUUMRuEjexXb4vooS0VNNdLMvGdKWNN7eRg7FeBmNgNQkasTTtzGDof98by1I9XrhJJTI+urhXhsk4es/mWBOp8EuXTD0u9LAbiNX3PqU+2t/4k/AQAA//96DTh7)
 
+<a id="check-parallel-step-refs"></a>
+## Parallel steps
+
+Wait and cancel targets are checked against preceding steps declared with `background: true`. A `parallel` group may contain only `run` and `uses` steps.
+
+Example input:
+
+```yaml
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start server
+        id: server
+        run: echo 'start'
+        background: true
+      - run: echo 'tests'
+      - cancel: serverr
+```
+
+Output:
+
+```
+test.yaml:11:17: "serverr" is not the ID of a preceding background step. "wait" and "cancel" steps can only refer to an earlier step that has "background: true" [parallel-steps]
+   |
+11 |       - cancel: serverr
+   |                 ^~~~~~~
+```
+
+[Playground](https://rhysd.github.io/actionlint/#eNpczssNAjEMBND7VjG3nNKA26CCJGuxwOKs/KF+FD4R4mTJz6NxF8IRti3XXo0WwNl8TEBDLA+PGuKR9zLsReZ82PsKyJByZ8LJizqM9cH6IeCy0v9KQwjcto5kI5Km1NJuZ+0hK8E1eBb8RMYPlqa0Io33b4c+AwAA//+anjvx)
+
 <a id="check-matrix-values"></a>
 ## Matrix values
 
@@ -1310,7 +1343,7 @@ test.yaml:7:5: both "paths" and "paths-ignore" filters cannot be used for the sa
   |
 7 |     paths-ignore: path/to/foo
   |     ^~~~~~~~~~~~~
-test.yaml:10:12: invalid activity type "created" for "issues" Webhook event. available types are "assigned", "closed", "deleted", "demilestoned", "edited", "labeled", "locked", "milestoned", "opened", "pinned", "reopened", "transferred", "typed", "unassigned", "unlabeled", "unlocked", "unpinned", "untyped" [events]
+test.yaml:10:12: invalid activity type "created" for "issues" Webhook event. available types are "assigned", "closed", "deleted", "demilestoned", "edited", "field_added", "field_removed", "labeled", "locked", "milestoned", "opened", "pinned", "reopened", "transferred", "typed", "unassigned", "unlabeled", "unlocked", "unpinned", "untyped" [events]
    |
 10 |     types: created
    |            ^~~~~~~
@@ -1731,11 +1764,11 @@ jobs:
 Output:
 
 ```
-test.yaml:7:15: specifying action "actions/checkout" in invalid format because ref is missing. available formats are "{owner}/{repo}@{ref}" or "{owner}/{repo}/{path}@{ref}" [action]
+test.yaml:7:15: specifying action "actions/checkout" in invalid format because ref is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
   |
 7 |       - uses: actions/checkout
   |               ^~~~~~~~~~~~~~~~
-test.yaml:9:15: specifying action "checkout@v2" in invalid format because owner is missing. available formats are "{owner}/{repo}@{ref}" or "{owner}/{repo}/{path}@{ref}" [action]
+test.yaml:9:15: specifying action "checkout@v2" in invalid format because owner is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
   |
 9 |       - uses: checkout@v2
   |               ^~~~~~~~~~~
@@ -1743,7 +1776,7 @@ test.yaml:11:15: tag of Docker action should not be empty: "docker://image" [act
    |
 11 |       - uses: 'docker://image:'
    |               ^~~~~~~~~~~~~~~~~
-test.yaml:13:15: specifying action ".github/my-actions/do-something" in invalid format because ref is missing. available formats are "{owner}/{repo}@{ref}" or "{owner}/{repo}/{path}@{ref}" [action]
+test.yaml:13:15: specifying action ".github/my-actions/do-something" in invalid format because ref is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
    |
 13 |       - uses: .github/my-actions/do-something
    |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1751,10 +1784,11 @@ test.yaml:13:15: specifying action ".github/my-actions/do-something" in invalid 
 
 [Playground](https://rhysd.github.io/actionlint/#eNpczbEOwyAMBNA9X+EtE0XqyNRfAWIBTbGj2K7Uv69olYXppHsnHVOAw6QuT04SFgBF0ZEAp5G44ZaM1NwrDvuRKB7yXwE4MEEJELM2JvG5Yt7ZdOKrfrzvk6wb5x3P4H3rsWBYJ7+VptWS7x93fWzshDtqbVS+AQAA//+oTjwo)
 
-Action needs to be specified in a format defined in [the document][action-uses-doc]. There are 3 types of actions:
+Action needs to be specified in a format defined in [the document][action-uses-doc]. There are 4 types of actions:
 
 - action hosted on GitHub: `owner/repo/path@ref`
 - local action: `./path/to/my-action`
+- action in the workflow's repository at the running commit: `$/path/to/my-action`
 - Docker action: `docker://image:tag`
 
 actionlint checks values at `uses:` sections follow one of these formats.
@@ -1823,7 +1857,7 @@ test.yaml:13:11: input "additions" is not defined in action "My action" defined 
 
 <!-- Skip playground link -->
 
-When a local action is run in `uses:` of `step:`, actionlint reads `action.yml` file in the local action directory and
+When a local or self-repository action is run in `uses:` of `step:`, actionlint reads `action.yml` from the repository and
 validates inputs at `with:` in the workflow are correct. Missing required inputs and unexpected inputs can be detected.
 
 <a id="check-popular-action-inputs"></a>
@@ -2123,6 +2157,8 @@ jobs:
       issues: readable
       # ERROR: "models" doesn't have "write" scope
       models: write
+      # ERROR: "vulnerability-alerts" only supports "read" or "none"
+      vulnerability-alerts: write
     steps:
       - run: echo hello
 ```
@@ -2134,7 +2170,7 @@ test.yaml:4:14: "write" is invalid for permission for all the scopes. available 
   |
 4 | permissions: write
   |              ^~~~~
-test.yaml:11:7: unknown permission scope "check". all available permission scopes are "actions", "artifact-metadata", "attestations", "checks", "contents", "deployments", "discussions", "id-token", "issues", "models", "packages", "pages", "pull-requests", "repository-projects", "security-events", "statuses" [permissions]
+test.yaml:11:7: unknown permission scope "check". all available permission scopes are "actions", "artifact-metadata", "attestations", "checks", "code-quality", "contents", "deployments", "discussions", "id-token", "issues", "models", "packages", "pages", "pull-requests", "repository-projects", "security-events", "statuses", "vulnerability-alerts" [permissions]
    |
 11 |       check: write
    |       ^~~~~~
@@ -2146,9 +2182,13 @@ test.yaml:15:15: "write" is invalid as permission of scope "models". available v
    |
 15 |       models: write
    |               ^~~~~
+test.yaml:17:29: "write" is invalid as permission of scope "vulnerability-alerts". available values are "read", "none" [permissions]
+   |
+17 |       vulnerability-alerts: write
+   |                             ^~~~~
 ```
 
-[Playground](https://rhysd.github.io/actionlint/#eNpMjdENwyAMBf+Z4i3AAmwDxBK0BCMeVtevSJUqX5bu7LP2gGEszg2ZZyWrdgZ8Zl3i3EsTgwOWcO0JTOv0+8iS9WW+xe0u9QxcAMhF8vuu/VAlTRgwJR4xtRufekjjc5VLxj/k9+MAyUVRpDX9BgAA//8fnji8)
+[Playground](https://rhysd.github.io/actionlint/#eNpUjtGtwyAMRf+ZwguwANtAYgnecwD52q26fUWqVM2XpXOvjz16oumoIUzWowFtdCR6ajMO4W8UpEBkDFuTSL0jriUv3s2j5JWd0a/gBERb5e3/sn1QA5yRSDnvuciFj7Gz4F59uHTWXJo0e8UsrHZrwHh+T8X1WiLe6qDKIuMdAAD//6u/RE0=)
 
 Permissions of `GITHUB_TOKEN` token can be configured at workflow-level or job-level by [`permissions:` section][perm-config-doc].
 Each permission scopes have their access levels. The default levels and available levels are described in
@@ -2264,7 +2304,7 @@ test.yaml:6:5: when a reusable workflow is called with "uses", "runs-on" is not 
   |
 6 |     runs-on: ubuntu-latest
   |     ^~~~~~~~
-test.yaml:9:11: reusable workflow call "./.github/workflows/ci.yml@main" at "uses" is not following the format "owner/repo/path/to/workflow.yml@ref" nor "./path/to/workflow.yml". see https://docs.github.com/en/actions/learn-github-actions/reusing-workflows for more details [workflow-call]
+test.yaml:9:11: reusable workflow call "./.github/workflows/ci.yml@main" at "uses" is not following the format "owner/repo/path/to/workflow.yml@ref", "./path/to/workflow.yml", nor "$/path/to/workflow.yml". see https://docs.github.com/en/actions/learn-github-actions/reusing-workflows for more details [workflow-call]
   |
 9 |     uses: ./.github/workflows/ci.yml@main
   |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2285,10 +2325,12 @@ For example, `secrets:` is not available when running steps in a normal job. And
 a reusable workflow since the called workflow determines which OS is used. actionlint checks such keys are used correctly
 to call a reusable workflow or to run steps in a normal job.
 
-And the workflow syntax at `uses:` must follow the format `owner/repo/path/to/workflow.yml@ref` as described in
-[the official document][create-reusable-workflow-doc]. actionlint checks if the value follows the format.
+And the workflow syntax at `uses:` must follow the format `owner/repo/path/to/workflow.yml@ref`,
+`./path/to/workflow.yml`, or `$/path/to/workflow.yml` as described in [the official document][create-reusable-workflow-doc].
+actionlint checks if the value follows the format.
 
-actionlint also validates the called workflow file is actually existing when it is a local workflow (starting with `./`).
+actionlint also validates the called workflow file is actually existing when it is local or self-repository referenced
+(starting with `./` or `$/`).
 actionlint reports an error when it does not exist.
 
 ### Check types of `inputs.*` and `secrets.*` in reusable workflow
@@ -2525,7 +2567,7 @@ And reusable workflows must define types of their inputs by `type:` field. Workf
 expressions (`inputs: ${{ ... }}`) to the inputs or secrets. actionlint checks types of values passed to inputs in workflow call.
 When a type of input doesn't match to its definition, actionlint reports an error.
 
-Note that this check only works with local reusable workflow (it starts with `./`).
+Note that this check only works with local or self-repository reusable workflows (starting with `./` or `$/`).
 
 ### Check outputs of workflow call in downstream jobs
 
@@ -2587,7 +2629,7 @@ object types in downstream jobs.
 In the above example, `get-build-info.yaml` has one output `version`. actionlint types the outputs object of workflow call job
 as `{version: string}`. In the downstream job, actionlint can report an error at undefined key `tag` in the object.
 
-Note that this check only works with local reusable workflow (starting with `./`).
+Note that this check only works with local or self-repository reusable workflows (starting with `./` or `$/`).
 
 <a id="id-naming-convention"></a>
 ## ID naming convention

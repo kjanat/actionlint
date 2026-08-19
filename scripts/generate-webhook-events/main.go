@@ -16,6 +16,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 
@@ -313,6 +314,27 @@ var AllWebhookTypes = map[string][]string{`)
 	return nil
 }
 
+// addWebhookOnlyActivityTypes supplements the Actions trigger documentation with activity types
+// that GitHub documents only in its webhook payload reference. Keep this separate from parse so the
+// HTML parser remains a faithful representation of its input.
+func addWebhookOnlyActivityTypes(parsed map[string][]string) {
+	additional := map[string][]string{
+		"merge_group": {"destroyed"},
+	}
+	for event, types := range additional {
+		current, ok := parsed[event]
+		if !ok {
+			continue
+		}
+		for _, typ := range types {
+			if !slices.Contains(current, typ) {
+				current = append(current, typ)
+			}
+		}
+		parsed[event] = current
+	}
+}
+
 func fetch(url string) ([]byte, error) {
 	var c http.Client
 
@@ -374,6 +396,7 @@ func run(args []string, stdout, dbgout io.Writer, srcURL string) error {
 	if err != nil {
 		return err
 	}
+	addWebhookOnlyActivityTypes(p)
 
 	if err := write(p, out); err != nil {
 		return err

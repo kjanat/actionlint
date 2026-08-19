@@ -2,6 +2,7 @@ package actionlint
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -52,8 +53,8 @@ func (rule *RuleWorkflowCall) VisitJobPre(n *Job) error {
 		return nil
 	}
 
-	if isWorkflowCallUsesLocalFormat(u.Value) {
-		rule.checkWorkflowCallUsesLocal(n.WorkflowCall)
+	if local, ok := workflowCallUsesLocalSpec(u.Value); ok {
+		rule.checkWorkflowCallUsesLocal(n.WorkflowCall, local)
 		return nil
 	}
 
@@ -61,7 +62,7 @@ func (rule *RuleWorkflowCall) VisitJobPre(n *Job) error {
 		return nil
 	}
 
-	if strings.HasPrefix(u.Value, "./") {
+	if strings.HasPrefix(u.Value, "./") || strings.HasPrefix(u.Value, "$/") {
 		// When the specification is invalid and it is local reusable workflow call, remember it caused
 		// an error by setting `nil` to cache. This can prevent redundant 'could not read workflow call'
 		// error.
@@ -70,17 +71,18 @@ func (rule *RuleWorkflowCall) VisitJobPre(n *Job) error {
 
 	rule.Errorf(
 		u.Pos,
-		"reusable workflow call %q at \"uses\" is not following the format \"owner/repo/path/to/workflow.yml@ref\" nor \"./path/to/workflow.yml\". see https://docs.github.com/en/actions/learn-github-actions/reusing-workflows for more details",
+		"reusable workflow call %q at \"uses\" is not following the format \"owner/repo/path/to/workflow.yml@ref\", \"./path/to/workflow.yml\", nor \"$/path/to/workflow.yml\". see https://docs.github.com/en/actions/learn-github-actions/reusing-workflows for more details",
 		u.Value,
 	)
 	return nil
 }
 
-func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall) {
+func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, localSpec string) {
 	u := call.Uses
-	m, err := rule.cache.FindMetadata(u.Value)
+	m, err := rule.cache.FindMetadata(localSpec)
 	if err != nil {
-		rule.Error(u.Pos, err.Error())
+		msg := strings.Replace(err.Error(), strconv.Quote(localSpec), strconv.Quote(u.Value), 1)
+		rule.Error(u.Pos, msg)
 		return
 	}
 	if m == nil {
@@ -145,28 +147,29 @@ func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall) {
 	rule.Debug("Validated reusable workflow %q", u.Value)
 }
 
-// Parse ./{path/{filename}
-// https://docs.github.com/en/actions/learn-github-actions/reusing-workflows#calling-a-reusable-workflow
-func isWorkflowCallUsesLocalFormat(u string) bool {
-	if !strings.HasPrefix(u, "./") {
-		return false
+// Normalize a local or self-repository reusable workflow reference to the existing local cache key.
+func workflowCallUsesLocalSpec(u string) (string, bool) {
+	if strings.HasPrefix(u, "$/") {
+		u = "." + u[1:]
+	} else if !strings.HasPrefix(u, "./") {
+		return "", false
 	}
-	u = strings.TrimPrefix(u, "./")
+	path := strings.TrimPrefix(u, "./")
 
-	// Cannot container a ref
-	idx := strings.IndexRune(u, '@')
+	// Cannot contain a ref
+	idx := strings.IndexRune(path, '@')
 	if idx > 0 {
-		return false
+		return "", false
 	}
 
-	return len(u) > 0
+	return u, len(path) > 0
 }
 
 // Parse {owner}/{repo}/{path to workflow.yml}@{ref}
 // https://docs.github.com/en/actions/learn-github-actions/reusing-workflows#calling-a-reusable-workflow
 func isWorkflowCallUsesRepoFormat(u string) bool {
 	// Repo reference must start with owner
-	if strings.HasPrefix(u, ".") {
+	if strings.HasPrefix(u, ".") || strings.HasPrefix(u, "$") {
 		return false
 	}
 

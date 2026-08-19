@@ -1,0 +1,42 @@
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'install'
+      # 'background' runs a step asynchronously and continues to the next step
+      - name: Start server
+        id: server
+        run: echo 'start server'
+        background: true
+      # 'background' is also valid on an action step
+      - uses: actions/checkout@v4
+        id: checkout
+        background: true
+      # 'wait' pauses until the named background step(s) complete
+      - id: wait-server
+        name: Wait for the server
+        continue-on-error: true
+        wait: server
+      - wait: [server, checkout]
+      # 'wait-all' pauses until all preceding background steps complete
+      - wait-all:
+      - wait-all: true
+      - run: echo 'run tests'
+      # 'background' may itself be an expression
+      - name: Maybe background
+        run: echo 'maybe'
+        background: ${{ github.event_name == 'push' }}
+      # 'cancel' terminates a single background step that is no longer needed
+      - cancel: server
+      - id: cancel-checkout
+        name: Cancel checkout
+        continue-on-error: false
+        cancel: checkout
+      # 'parallel' runs a group of steps in parallel
+      - parallel:
+          - run: echo 'a'
+          - name: Task b
+            run: echo 'b'
+          - uses: actions/setup-node@v4

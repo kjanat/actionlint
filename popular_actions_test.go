@@ -35,3 +35,17 @@ func TestPopularActionsDataset(t *testing.T) {
 		}
 	}
 }
+
+func TestPopularActionsCurrentMajors(t *testing.T) {
+	for _, spec := range []string{
+		"actions/cache@v6",
+		"actions/checkout@v7",
+		"actions/setup-go@v7",
+		"codecov/codecov-action@v7",
+		"dawidd6/action-download-artifact@v23",
+	} {
+		if _, ok := PopularActions[spec]; !ok {
+			t.Errorf("popular action %q is missing", spec)
+		}
+	}
+}

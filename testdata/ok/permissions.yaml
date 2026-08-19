@@ -1,0 +1,18 @@
+on: push
+
+permissions:
+  code-quality: write
+  models: read
+  repository-projects: write
+  vulnerability-alerts: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      code-quality: none
+      models: none
+      repository-projects: read
+      vulnerability-alerts: none
+    steps:
+      - run: echo ok

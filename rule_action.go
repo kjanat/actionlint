@@ -330,7 +330,18 @@ func (rule *RuleAction) VisitStep(n *Step) error {
 
 	if strings.HasPrefix(spec, "./") {
 		// Relative to repository root
-		rule.checkLocalAction(spec, e)
+		rule.checkLocalAction(spec, spec, e)
+		return nil
+	}
+
+	if strings.HasPrefix(spec, "$/") {
+		// Relative to the repository and commit that contain the running workflow. Normalize it
+		// to the existing local path form so metadata and output validation still work.
+		if len(spec) == 2 {
+			rule.invalidActionFormat(e.Uses.Pos, spec, "path is missing")
+			return nil
+		}
+		rule.checkLocalAction("."+spec[1:], spec, e)
 		return nil
 	}
 
@@ -392,7 +403,7 @@ func (rule *RuleAction) checkRepoAction(spec string, exec *ExecAction) {
 }
 
 func (rule *RuleAction) invalidActionFormat(pos *Pos, spec string, why string) {
-	rule.Errorf(pos, "specifying action %q in invalid format because %s. available formats are \"{owner}/{repo}@{ref}\" or \"{owner}/{repo}/{path}@{ref}\"", spec, why)
+	rule.Errorf(pos, "specifying action %q in invalid format because %s. available formats are \"{owner}/{repo}@{ref}\", \"{owner}/{repo}/{path}@{ref}\", \"./{path}\", or \"$/{path}\"", spec, why)
 }
 
 func (rule *RuleAction) missingRunsProp(pos *Pos, prop, ty, action, path string) {
@@ -574,8 +585,8 @@ func (rule *RuleAction) checkLocalActionMetadata(meta *ActionMetadata, action *E
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-action-in-the-same-repository-as-the-workflow
-func (rule *RuleAction) checkLocalAction(spec string, action *ExecAction) {
-	meta, cached, err := rule.cache.FindMetadata(spec)
+func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *ExecAction) {
+	meta, cached, err := rule.cache.FindMetadata(localSpec)
 	if err != nil {
 		rule.Error(action.Uses.Pos, err.Error())
 		return
@@ -585,12 +596,12 @@ func (rule *RuleAction) checkLocalAction(spec string, action *ExecAction) {
 	}
 
 	if !cached {
-		rule.Debug("Checking metadata of %s action %q at %q", meta.Runs, meta.Name, spec)
+		rule.Debug("Checking metadata of %s action %q at %q", meta.Runs, meta.Name, displaySpec)
 		rule.checkLocalActionMetadata(meta, action)
 	}
 
 	rule.checkAction(meta, action, func(m *ActionMetadata) string {
-		return fmt.Sprintf("%q defined at %q", m.Name, spec)
+		return fmt.Sprintf("%q defined at %q", m.Name, displaySpec)
 	})
 }
 

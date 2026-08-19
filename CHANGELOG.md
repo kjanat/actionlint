@@ -1,6 +1,13 @@
 <a id="unreleased"></a>
 # Unreleased
 
+- Support `background`, `wait`, `wait-all`, `cancel`, and `parallel` steps, including validation of background-step references and invalid nested parallel steps. (rhysd/actionlint#695)
+- Support the `code-quality` and `vulnerability-alerts` permission scopes with their GitHub-supported access levels. (rhysd/actionlint#674, rhysd/actionlint#714)
+- Support `$/path` self-repository references for actions and reusable workflows, including local metadata, input, and output validation. (rhysd/actionlint#711)
+- Support `job.workflow_file_path`, `job.workflow_ref`, `job.workflow_repository`, `job.workflow_sha`, and `jobs.<job_id>.result` in expressions. (rhysd/actionlint#696, rhysd/actionlint#707, rhysd/actionlint#724)
+- Avoid false errors for repository secrets in reusable workflows that also define another trigger. (rhysd/actionlint#701)
+- Support the `destroyed` activity type for the `merge_group` event and refresh the generated webhook activity types. (rhysd/actionlint#726)
+- Update the popular actions data set with current major releases, including `actions/checkout@v7`, `actions/cache@v6`, `actions/setup-go@v7`, and `codecov/codecov-action@v7`. (rhysd/actionlint#718)
 
 <a id="v1.8.0"></a>
 # [v1.8.0](https://github.com/kjanat/actionlint/releases/tag/v1.8.0) - 2026-08-19
