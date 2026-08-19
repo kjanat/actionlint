@@ -4,6 +4,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo $FOO
+  test-unicode:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo é $FOO
   test-win:
     runs-on: windows-latest
     steps:
@@ -13,3 +17,19 @@ jobs:
       # This script is run with bash due to 'shell:' configuration
       - run: echo $FOO
         shell: bash
+  test-literal:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |2-
+          echo start
+          echo $FOO
+  test-folded:
+    runs-on: ubuntu-latest
+    steps:
+      - run: >
+          echo $FOO
+  test-tab:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "x"	$FOO

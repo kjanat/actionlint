@@ -8,11 +8,17 @@ import (
 )
 
 type shellcheckError struct {
-	Line    int    `json:"line"`
-	Column  int    `json:"column"`
-	Level   string `json:"level"`
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+	Line      int    `json:"line"`
+	EndLine   int    `json:"endLine"`
+	Column    int    `json:"column"`
+	EndColumn int    `json:"endColumn"`
+	Level     string `json:"level"`
+	Code      int    `json:"code"`
+	Message   string `json:"message"`
+}
+
+type shellcheckResult struct {
+	Comments []shellcheckError `json:"comments"`
 }
 
 // RuleShellcheck is a rule to check shell scripts at 'run:' using shellcheck.
@@ -57,7 +63,7 @@ func (rule *RuleShellcheck) VisitStep(n *Step) error {
 		return nil
 	}
 
-	rule.runShellcheck(run.Run.Value, rule.getShellName(run), run.RunPos)
+	rule.runShellcheck(run.Run.Value, run.source, rule.getShellName(run), run.RunPos)
 	return nil
 }
 
@@ -149,18 +155,20 @@ func sanitizeExpressionsInScript(src string) string {
 		}
 		e += s + 2 // 2 is offset for len("}}")
 
-		// Note: If ${{ ... }} includes newline, line and column reported by shellcheck will be
-		// shifted.
 		b.WriteString(src[:s])
-		for i := 0; i < e-s; i++ {
-			b.WriteByte('_')
+		for _, r := range src[s:e] {
+			if r == '\n' || r == '\r' {
+				b.WriteRune(r)
+			} else {
+				b.WriteByte('_')
+			}
 		}
 
 		src = src[e:]
 	}
 }
 
-func (rule *RuleShellcheck) runShellcheck(src, shell string, pos *Pos) {
+func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shell string, pos *Pos) {
 	var sh string
 	if shell == "bash" || shell == "sh" {
 		sh = shell
@@ -190,7 +198,7 @@ func (rule *RuleShellcheck) runShellcheck(src, shell string, pos *Pos) {
 	//           this can happen. For example, `if [ -z ${{ env.FOO }} ]` -> `if [ -z ______________ ]` (#113).
 	// - SC2043: Loop can be detected as only running once when the target of iteration is a placeholder. (#355)
 	//           e.g. `for foo in ${{ inputs.foo }}; do`
-	args := []string{"--norc", "-f", "json", "-x", "--shell", sh, "-e", "SC1091,SC2194,SC2050,SC2153,SC2154,SC2157,SC2043", "-"}
+	args := []string{"--norc", "-f", "json1", "-x", "--shell", sh, "-e", "SC1091,SC2194,SC2050,SC2153,SC2154,SC2157,SC2043", "-"}
 	rule.Debug("%s: Running %s command with %s", pos, rule.cmd.exe, args)
 
 	// Use same options to run shell process described at document
@@ -207,10 +215,11 @@ func (rule *RuleShellcheck) runShellcheck(src, shell string, pos *Pos) {
 			return fmt.Errorf("`%s %s` did not run successfully while checking script at %s: %w", rule.cmd.exe, strings.Join(args, " "), pos, err)
 		}
 
-		errs := []shellcheckError{}
-		if err := json.Unmarshal(stdout, &errs); err != nil {
+		result := shellcheckResult{}
+		if err := json.Unmarshal(stdout, &result); err != nil {
 			return fmt.Errorf("could not parse JSON output from shellcheck: %w: stdout=%q", err, stdout)
 		}
+		errs := result.Comments
 		if len(errs) == 0 {
 			return nil
 		}
@@ -218,16 +227,15 @@ func (rule *RuleShellcheck) runShellcheck(src, shell string, pos *Pos) {
 		// Synchronize rule.Errorf calls
 		rule.mu.Lock()
 		defer rule.mu.Unlock()
-		// It's better to show source location in the script as position of error, but it's not
-		// possible easily. YAML has multiple block styles with '|', '>', '|+', '>+', '|-', '>-'. Some
-		// of them remove indentation and/or blank lines. So restoring source position in block string
-		// is not possible. Sourcemap is necessary to do it.
-		// Instead, actionlint shows position of 'run:' as position of error. And separately show
-		// location in script which is reported by shellcheck in error message.
 		for _, err := range errs {
 			// Consider the first line is setup for running shell which was implicitly added for better check
 			line := err.Line - 1
 			msg := strings.TrimSuffix(err.Message, ".") // Trim period aligning style of error message
+			if start, ok := source.pos(line, err.Column); ok {
+				end, _ := source.endPos(err.EndLine-1, err.EndColumn)
+				rule.errorfRange(start, end, "shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", err.Code, err.Level, line, err.Column, msg)
+				continue
+			}
 			rule.Errorf(pos, "shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", err.Code, err.Level, line, err.Column, msg)
 		}
 
