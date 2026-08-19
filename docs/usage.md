@@ -152,15 +152,19 @@ The sequence can be traversed with `range` action, which is like `for ... = rang
 
 The error object has the following fields.
 
+<!-- markdownlint-disable MD038 -->
+
 | Field                | Description                                           | Example                                                          |
 | -------------------- | ----------------------------------------------------- | ---------------------------------------------------------------- |
 | `{{$err.Message}}`   | Body of error message                                 | `property "platform" is not defined in object type {os: string}` |
-| `{{$err.Snippet}}`   | Code snippet to indicate error position               | `node_version: 16.x\n          ^~~~~~~~~~~~~`                    |
+| `{{$err.Snippet}}`   | Code snippet to indicate error position               | `          node_version: 16.x\n          ^~~~~~~~~~~~~`          |
 | `{{$err.Kind}}`      | Name of rule the error belongs to                     | `expression`                                                     |
 | `{{$err.Filepath}}`  | Canonical relative file path of the error position    | `.github/workflows/ci.yaml`                                      |
 | `{{$err.Line}}`      | Line number of the error position (1-based)           | `9`                                                              |
 | `{{$err.Column}}`    | Column number of the error's start position (1-based) | `11`                                                             |
 | `{{$err.EndColumn}}` | Column number of the error's end position (1-based)   | `23`                                                             |
+
+<!-- markdownlint-enable MD038 -->
 
 Functions called in `{{ }}` placeholder are template actions. There are many
 actions defined by Go standard library. In addition, there are a few custom
@@ -191,8 +195,7 @@ line is {{$err.Line}}, col is {{$err.Column}}, message is {{$err.Message | print
 will produce output like below.
 
 ```text
-line is 21, col is 20, message is "property \"platform\" is not defined in
-object type {os: string}"
+line is 21, col is 20, message is "property \"platform\" is not defined in object type {os: string}"
 ```
 
 In `{{ }}` placeholder, input can be piped and action can be used to transform
@@ -296,7 +299,7 @@ jobs:
         with: { persist-credentials: false }
       - name: Download actionlint
         id: get_actionlint
-        run: bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/660e09026c0fa2c7dba89925c54c5d5de85493b9/scripts/download-actionlint.bash) 1.11.0
+        run: bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash) 1.11.0
         shell: bash
       - name: Check workflow files
         run: ${{ steps.get_actionlint.outputs.executable }} -color
@@ -308,7 +311,7 @@ Or simply download the executable and run it in one step:
 ```yaml
 - name: Check workflow files
   run: |
-    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/660e09026c0fa2c7dba89925c54c5d5de85493b9/scripts/download-actionlint.bash) 1.11.0
+    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash) 1.11.0
     ./actionlint -color
   shell: bash
 ```
@@ -338,7 +341,7 @@ jobs:
       - uses: actions/checkout@v6
         with: { persist-credentials: false }
       - name: Check workflow files
-        uses: docker://ghcr.io/kjanat/actionlint@sha256:5495f4db8a7b54435d53b74243ae6f0b002db80ee0026ea330716998a3456e0f
+        uses: docker://ghcr.io/kjanat/actionlint:latest
         with:
           args: -color
 ```
@@ -348,7 +351,7 @@ jobs:
 Thanks to WebAssembly, actionlint playground is available on your browser. It
 never sends any data to outside your browser.
 
-<https://rhysd.github.io/actionlint/>
+<https://kjanat.github.io/actionlint>
 
 Paste your workflow content to the code editor at left pane. It automatically
 shows the results at right pane. When editing the workflow content in the code
@@ -406,6 +409,11 @@ Go APIs are available. See [the Go API document](api.md) for more details.
 
 ## Tools integration
 
+> [!WARNING]
+> These integrations support upstream `rhysd/actionlint`. They may not install
+> releases from this fork or expose its additional functionality. Verify how an
+> integration obtains actionlint before relying on fork-specific changes.
+
 ### reviewdog
 
 [reviewdog][reviewdog] is an automated review tool for various code hosting
@@ -445,7 +453,7 @@ in the step of your workflow.
 - name: Check workflow files
   run: |
     echo "::add-matcher::.github/actionlint-matcher.json"
-    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/660e09026c0fa2c7dba89925c54c5d5de85493b9/scripts/download-actionlint.bash) 1.11.0
+    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash) 1.11.0
     ./actionlint -color
   shell: bash
 ```
@@ -583,8 +591,8 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 
 [Checks](checks.md) | [Installation](install.md) | [Configuration](config.md) | [Go API](api.md) | [References](reference.md)
 
-[actionlint-matcher]: https://raw.githubusercontent.com/kjanat/actionlint/660e09026c0fa2c7dba89925c54c5d5de85493b9/.github/actionlint-matcher.json
-[cmd-manual]: https://rhysd.github.io/actionlint/usage.html
+[actionlint-matcher]: https://raw.githubusercontent.com/kjanat/actionlint/main/.github/actionlint-matcher.json
+[cmd-manual]: https://github.com/kjanat/actionlint/blob/main/man/actionlint.1.ronn
 [docker-image]: https://github.com/kjanat/actionlint/pkgs/container/actionlint
 [docker]: https://www.docker.com/
 [emacs-flycheck-extension]: https://github.com/tirimia/flycheck-actionlint

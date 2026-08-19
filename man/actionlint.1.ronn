@@ -195,7 +195,7 @@ or simply run
 Thanks to WebAssembly, actionlint playground is available on your browser. It never sends any data
 to outside of the browser.
 
-https://rhysd.github.io/actionlint/
+https://kjanat.github.io/actionlint/
 
 Paste your workflow content to the code editor at left pane. It automatically shows the results at
 right pane. When editing the workflow content at the left pane, the results will be updated on the

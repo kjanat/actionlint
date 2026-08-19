@@ -206,7 +206,7 @@ actionlint is distributed under [the MIT license](./LICENSE.txt).
 [apidoc-badge]: https://pkg.go.dev/badge/github.com/kjanat/actionlint.svg
 [apidoc]: https://pkg.go.dev/github.com/kjanat/actionlint
 [repo]: https://github.com/rhysd/actionlint
-[playground]: https://rhysd.github.io/actionlint/
+[playground]: https://kjanat.github.io/actionlint/
 [shellcheck]: https://github.com/koalaman/shellcheck
 [pyflakes]: https://github.com/PyCQA/pyflakes
 [syntax-doc]: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions

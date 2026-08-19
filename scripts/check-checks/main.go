@@ -151,7 +151,7 @@ func (u *Updater) PlaygroundLink(src []byte) string {
 	u.err(comp.Close())
 	u.err(b64.Close())
 
-	return fmt.Sprintf("[Playground](https://rhysd.github.io/actionlint/#%s)", out.Bytes())
+	return fmt.Sprintf("[Playground](https://kjanat.github.io/actionlint/#%s)", out.Bytes())
 }
 
 func (u *Updater) state(s state, reason string) {
