@@ -1,6 +1,7 @@
 <a id="unreleased"></a>
 # Unreleased
 
+- Update the playground's preloaded workflow to the current major versions of `actions/checkout`, `actions/setup-node`, and `actions/cache`.
 
 <a id="v1.10.0"></a>
 # [v1.10.0](https://github.com/kjanat/actionlint/releases/tag/v1.10.0) - 2026-08-19
