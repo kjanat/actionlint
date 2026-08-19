@@ -12,6 +12,7 @@ from typing import Literal, NotRequired, TypedDict, assert_never, cast
 
 ACTIONLINT = "/usr/local/bin/actionlint"
 SARIF_TEMPLATE = "/usr/local/share/actionlint/sarif-template.txt"
+ACTIONLINT_TIMEOUT_SECONDS = 300
 type FormatName = Literal[
     "github", "default", "oneline", "json", "json-lines", "markdown", "sarif"
 ]
@@ -64,7 +65,7 @@ def boolean(name: str, value: str) -> bool:
 
 
 def within_workspace(
-    workspace: Path, value: str, name: str, *, directory: bool
+    workspace: Path, value: str | Path, name: str, *, directory: bool
 ) -> Path:
     path = (workspace / value).resolve()
     try:
@@ -242,9 +243,9 @@ def parse_inputs(argv: Sequence[str]) -> ActionInputs:
             "Input 'format' must be github, default, oneline, json, json-lines, markdown, or sarif"
         )
     files = lines(files_input)
-    if "-" in files:
+    if any(path.startswith("-") for path in files):
         raise InputError(
-            "Input 'files' does not support standard input; provide workflow file paths"
+            "Input 'files' entries must not start with '-'; provide workflow file paths"
         )
     return ActionInputs(
         files=files,
@@ -259,22 +260,61 @@ def parse_inputs(argv: Sequence[str]) -> ActionInputs:
     )
 
 
-def build_command(inputs: ActionInputs) -> list[str]:
+def build_command(
+    inputs: ActionInputs, workspace: Path, working_dir: Path
+) -> list[str]:
     command = [ACTIONLINT, "-no-color"]
     if inputs.format_name == "sarif":
         command.extend(("-format", Path(SARIF_TEMPLATE).read_text(encoding="utf-8")))
     else:
         command.extend(("-format", "{{json .}}"))
     if inputs.config_file:
-        command.extend(("-config-file", inputs.config_file))
+        config_file = within_workspace(
+            workspace,
+            working_dir / inputs.config_file,
+            "config-file",
+            directory=False,
+        )
+        command.extend(("-config-file", str(config_file)))
     for pattern in inputs.ignore:
         command.extend(("-ignore", pattern))
     if not inputs.shellcheck:
         command.append("-shellcheck=")
     if not inputs.pyflakes:
         command.append("-pyflakes=")
+    for path in inputs.files:
+        _ = within_workspace(workspace, working_dir / path, "files", directory=False)
     command.extend(inputs.files)
     return command
+
+
+def timeout_output(value: str | bytes | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value
+
+
+def run_actionlint(
+    command: list[str], working_dir: Path
+) -> subprocess.CompletedProcess[str]:
+    try:
+        return subprocess.run(
+            command,
+            cwd=working_dir,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=ACTIONLINT_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as error:
+        stdout = timeout_output(error.stdout)
+        stderr = timeout_output(error.stderr)
+        message = f"actionlint timed out after {ACTIONLINT_TIMEOUT_SECONDS} seconds\n"
+        return subprocess.CompletedProcess(command, 3, stdout, message + stderr)
 
 
 def render_completed(
@@ -339,16 +379,8 @@ def main(argv: Sequence[str]) -> int:
         "working-directory",
         directory=True,
     )
-    command = build_command(inputs)
-    completed = subprocess.run(
-        command,
-        cwd=working_dir,
-        check=False,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
+    command = build_command(inputs, workspace, working_dir)
+    completed = run_actionlint(command, working_dir)
     completed, problem_count, rendered = render_completed(
         completed, command, inputs.format_name
     )

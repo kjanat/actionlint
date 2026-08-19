@@ -39,8 +39,8 @@ actionlint -ignore 'label ".+" is unknown' -ignore '".+" is potentially untruste
 
 `-shellcheck` and `-pyflakes` specifies file paths of executables. Setting empty
 string to them disables `shellcheck` and `pyflakes` rules. As a bonus, disabling
-them makes actionlint much faster Since these external linter integrations spawn
-many processes.
+them makes actionlint much faster. These external linter integrations spawn many
+processes.
 
 ```sh
 actionlint -shellcheck= -pyflakes=
@@ -230,12 +230,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with: { persist-credentials: false }
       - name: Check workflow files
         uses: kjanat/actionlint@v1.11.0
 ```
 
-Docker actions require a Linux runner. Pin a full release tag or commit for an
-immutable action reference.
+Docker actions require a Linux runner. `v1.11.0` is a versioned release tag, but
+only a full-length commit SHA provides an immutable action reference.
 
 The action accepts these inputs:
 
@@ -292,9 +293,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with: { persist-credentials: false }
       - name: Download actionlint
         id: get_actionlint
-        run: bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash)
+        run: bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/660e09026c0fa2c7dba89925c54c5d5de85493b9/scripts/download-actionlint.bash) 1.11.0
         shell: bash
       - name: Check workflow files
         run: ${{ steps.get_actionlint.outputs.executable }} -color
@@ -306,7 +308,7 @@ Or simply download the executable and run it in one step:
 ```yaml
 - name: Check workflow files
   run: |
-    bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash)
+    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/660e09026c0fa2c7dba89925c54c5d5de85493b9/scripts/download-actionlint.bash) 1.11.0
     ./actionlint -color
   shell: bash
 ```
@@ -334,8 +336,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with: { persist-credentials: false }
       - name: Check workflow files
-        uses: docker://ghcr.io/kjanat/actionlint:latest
+        uses: docker://ghcr.io/kjanat/actionlint@sha256:5495f4db8a7b54435d53b74243ae6f0b002db80ee0026ea330716998a3456e0f
         with:
           args: -color
 ```
@@ -364,9 +367,9 @@ Available tags are:
 - `ghcr.io/kjanat/actionlint:latest`: Latest stable version of actionlint.
   This image is recommended.
 - `ghcr.io/kjanat/actionlint:{version}`: Specific version of actionlint. (e.g. `ghcr.io/kjanat/actionlint:1.10.0`)
-- `ghcr.io/kjanat/actionlint:action-latest`: Latest image used by the GitHub Action.
-- `ghcr.io/kjanat/actionlint:action-v1`: Latest compatible v1 image used by the GitHub Action.
-- `ghcr.io/kjanat/actionlint:action-{version}`: Versioned GitHub Action image. (e.g. `action-1.11.0`)
+- `ghcr.io/kjanat/actionlint:action-{version}`: Versioned image used by `action.yml`. (e.g. `action-1.11.0`)
+- `ghcr.io/kjanat/actionlint:action-v1`: Latest compatible v1 alias available to Docker Action users.
+- `ghcr.io/kjanat/actionlint:action-latest`: Latest stable alias available to Docker Action users.
 
 Just run the image with `docker run`:
 
@@ -379,7 +382,7 @@ directory as a volume and run actionlint in the mounted directory. When you are
 at a root directory of your repository:
 
 ```sh
-docker run --rm -v $(pwd):/repo --workdir /repo ghcr.io/kjanat/actionlint:latest -color
+docker run --rm -v "$(pwd):/repo" --workdir /repo ghcr.io/kjanat/actionlint:latest -color
 ```
 
 To check a file with actionlint in a Docker container, pass the file content via
@@ -421,6 +424,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with: { persist-credentials: false }
       - uses: reviewdog/action-actionlint@v1
 ```
 
@@ -441,7 +445,7 @@ in the step of your workflow.
 - name: Check workflow files
   run: |
     echo "::add-matcher::.github/actionlint-matcher.json"
-    bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash)
+    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/660e09026c0fa2c7dba89925c54c5d5de85493b9/scripts/download-actionlint.bash) 1.11.0
     ./actionlint -color
   shell: bash
 ```
@@ -579,7 +583,7 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 
 [Checks](checks.md) | [Installation](install.md) | [Configuration](config.md) | [Go API](api.md) | [References](reference.md)
 
-[actionlint-matcher]: https://raw.githubusercontent.com/rhysd/actionlint/main/.github/actionlint-matcher.json
+[actionlint-matcher]: https://raw.githubusercontent.com/kjanat/actionlint/660e09026c0fa2c7dba89925c54c5d5de85493b9/.github/actionlint-matcher.json
 [cmd-manual]: https://rhysd.github.io/actionlint/usage.html
 [docker-image]: https://github.com/kjanat/actionlint/pkgs/container/actionlint
 [docker]: https://www.docker.com/

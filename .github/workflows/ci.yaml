@@ -1,6 +1,6 @@
 name: CI
 on: [push, pull_request]
-env: { GO: 1.26 }
+env: { GO: "1.26" }
 permissions: { contents: read }
 jobs:
   unit-tests:
@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest, macos-26-intel, windows-11-arm]
-        go: [1.25, 1.26]
+        go: ["1.25", "1.26"]
     runs-on: ${{ matrix.os }}
     permissions: { id-token: write }
     steps:
@@ -39,6 +39,7 @@ jobs:
           pyflakes --version
 
       - uses: actions/checkout@v7
+        with: { persist-credentials: false }
       - uses: actions/setup-go@v7
         with: { go-version: "${{ matrix.go }}", check-latest: true }
 
@@ -72,6 +73,7 @@ jobs:
         working-directory: ./playground
     steps:
       - uses: actions/checkout@v7
+        with: { persist-credentials: false }
       - uses: actions/setup-go@v7
         with: { go-version: "${{ env.GO }}", check-latest: true }
       - uses: actions/setup-node@v7
@@ -90,6 +92,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with: { persist-credentials: false }
       - uses: actions/setup-go@v7
         with: { go-version: "${{ env.GO }}", check-latest: true }
       - name: Install dependencies
@@ -118,6 +121,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with: { persist-credentials: false }
       - name: Build image
         id: image
         uses: docker/build-push-action@v7
@@ -137,6 +141,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with: { persist-credentials: false }
       - name: Build action image
         uses: docker/build-push-action@v7
         with:

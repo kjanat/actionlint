@@ -49,6 +49,24 @@ function show_log() {
 	sed 's/^/action test: /' "${tmp}/action.log" >&2
 }
 
+function expect_status() {
+	local expected="$1"
+	local description="$2"
+	shift 2
+	if run_action "$@"; then
+		echo "Expected ${description} to fail with status ${expected}" >&2
+		show_log
+		exit 1
+	else
+		local status="$?"
+	fi
+	if [[ "${status}" != "${expected}" ]]; then
+		echo "Expected ${description} status ${expected}, got ${status}" >&2
+		show_log
+		exit 1
+	fi
+}
+
 if ! run_action testdata/ok/minimal.yaml json '' '' true true . '' true; then
 	show_log
 	exit 1
@@ -74,22 +92,15 @@ run_action testdata/err/one_error.yaml json-lines '' '' true true . actionlint-r
 test "$(output output-file)" = actionlint-results.jsonl
 grep -q '"message"' "${tmp}/workspace/actionlint-results.jsonl"
 
-if run_action testdata/err/one_error.yaml github '' '' true true . '' true; then
-	echo 'Expected actionlint findings to fail the action' >&2
-	exit 1
-else
-	status="$?"
-fi
-test "${status}" = 1
+expect_status 1 'actionlint findings' testdata/err/one_error.yaml github '' '' true true . '' true
 test "$(output exit-code)" = 1
 test "$(output result)" = problems-found
 
-if run_action '' invalid '' '' true true . '' true; then
-	echo 'Expected an invalid format to fail the action' >&2
-	exit 1
-else
-	status="$?"
-fi
-test "${status}" = 2
+expect_status 2 'an invalid format' '' invalid '' '' true true . '' true
+expect_status 2 'an escaping working-directory' testdata/ok/minimal.yaml json '' '' true true .. '' true
+expect_status 2 'an escaping output-file' testdata/ok/minimal.yaml json '' '' true true . ../escaped.json true
+test ! -e "${tmp}/escaped.json"
+expect_status 2 'an escaping config-file' testdata/ok/minimal.yaml json '' ../actionlint.yaml true true . '' true
+expect_status 2 'an option-like file path' --help json '' '' true true . '' true
 
 echo 'GitHub Action image tests passed'

@@ -42,6 +42,18 @@ function sed_() {
     esac
 }
 
+function sed_checked_() {
+    local expression="$1"
+    local file="$2"
+    local before
+    before="$(git hash-object "$file")"
+    sed_ "$expression" "$file"
+    if [[ "$(git hash-object "$file")" == "$before" ]]; then
+        echo "Expected version replacement did not change $file" >&2
+        exit 1
+    fi
+}
+
 pre_commit_hook='./.pre-commit-hooks.yaml'
 usage_doc='./docs/usage.md'
 action_metadata='./action.yml'
@@ -57,23 +69,24 @@ echo "Bumping up version to ${version} (tag: ${tag})"
 
 # Update container image tag in pre-commit hook (See #116 for more details)
 echo "Updating $pre_commit_hook"
-sed_ "s/entry: ghcr\\.io\\/kjanat\\/actionlint:.*/entry: ghcr.io\\/kjanat\\/actionlint:${version}/" "$pre_commit_hook"
+sed_checked_ "s/entry: ghcr\\.io\\/kjanat\\/actionlint:.*/entry: ghcr.io\\/kjanat\\/actionlint:${version}/" "$pre_commit_hook"
 
 echo "Updating $download_script"
-sed_ "s/^version=\"[0-9]+\.[0-9]+\.[0-9]+\"/version=\"${version}\"/" "$download_script"
+sed_checked_ "s/^version=\"[0-9]+\.[0-9]+\.[0-9]+\"/version=\"${version}\"/" "$download_script"
 
 echo "Updating $usage_doc"
-sed_ "\
+sed_checked_ "\
     s/    rev: v[0-9]+\.[0-9]+\.[0-9]+/    rev: v${version}/; \
     s/ actionlint@[0-9]+\.[0-9]+\.[0-9]+/ actionlint@${version}/g; \
     s/\`ghcr\.io\/kjanat\/actionlint:[0-9]+\.[0-9]+\.[0-9]+\`/\`ghcr.io\/kjanat\/actionlint:${version}\`/g; \
+    s/(download-actionlint\.bash\)) [0-9]+\.[0-9]+\.[0-9]+/\1 ${version}/g; \
     " "$usage_doc"
 
 echo "Updating $action_metadata"
-sed_ "s/(image: docker:\/\/ghcr\.io\/kjanat\/actionlint:action-)[0-9]+\.[0-9]+\.[0-9]+/\1${version}/" "$action_metadata"
+sed_checked_ "s/(image: docker:\/\/ghcr\.io\/kjanat\/actionlint:action-)[0-9]+\.[0-9]+\.[0-9]+/\1${version}/" "$action_metadata"
 
 echo "Updating $install_doc"
-sed_ "\
+sed_checked_ "\
     s/(--pattern '[^']+' )v[0-9]+\.[0-9]+\.[0-9]+/\1v${version}/; \
     s/(actionlint_)[0-9]+\.[0-9]+\.[0-9]+(_linux_amd64\.tar\.gz)/\1${version}\2/g; \
     s/(example installs v)[0-9]+\.[0-9]+\.[0-9]+/\1${version}/; \
@@ -81,14 +94,14 @@ sed_ "\
     " "$install_doc"
 
 echo "Updating $playground_html"
-sed_ "\
+sed_checked_ "\
     s/kjanat\/actionlint\/releases\/tag\/v[0-9]+\.[0-9]+\.[0-9]+/kjanat\/actionlint\/releases\/tag\/v${version}/; \
     s/id=\"version\">v[0-9]+\.[0-9]+\.[0-9]+/id=\"version\">v${version}/; \
     " "$playground_html"
 
 for f in "$readme_doc" "$man_ronn" "$playground_html"; do
     echo "Updating document links in $f"
-    sed_ "s/\/kjanat\/actionlint\/blob\/v[0-9]+\.[0-9]+\.[0-9]+\/docs\//\/kjanat\/actionlint\/blob\/v${version}\/docs\//g" "$f"
+    sed_checked_ "s/\/kjanat\/actionlint\/blob\/v[0-9]+\.[0-9]+\.[0-9]+\/docs\//\/kjanat\/actionlint\/blob\/v${version}\/docs\//g" "$f"
 done
 
 echo 'Creating a version bump commit and a version tag'

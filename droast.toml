@@ -3,8 +3,8 @@
 # droast.toml - optional project and organization policy
 # https://github.com/immanuwell/dockerfile-roast
 #
-# All settings are optional and commented out by default.
-# This file has no effect until you uncomment a line.
+# Commented settings below are optional defaults. The active [[overrides]]
+# blocks already affect linting.
 # CLI flags always take precedence over values set here.
 
 # Inherit one or more local policy files. Relative paths start here.

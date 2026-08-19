@@ -82,7 +82,8 @@ test.yaml:22:17: receiver of object dereference "permissions" must be type of ob
    |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
-## Quick start
+Quick start
+-----------
 
 Install `actionlint` command by downloading [the released binary][releases], using the download script, running the Docker
 image, using the repository as a GitHub Action, or by `go install`. See
@@ -105,7 +106,8 @@ Another option to try actionlint is [the online playground][playground]. Your br
 
 See [the usage document][usage] for more details.
 
-## GitHub Action
+GitHub Action
+-------------
 
 This repository can be used directly as a Docker action. The prebuilt image includes actionlint, ShellCheck, and pyflakes, and
 reports problems as GitHub annotations by default. Docker actions require a Linux runner.
@@ -119,12 +121,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with: { persist-credentials: false }
       - uses: kjanat/actionlint@v1
 ```
 
-The moving `v1` tag follows compatible v1 releases. Pin a full release tag or commit SHA when an immutable reference is required.
+The moving `v1` tag follows compatible v1 releases. `v1.11.0` is a versioned release tag, but only a full-length commit SHA
+provides an immutable action reference.
 
-### Inputs
+Inputs
+------
 
 | Input               | Default       | Description                                                                                  |
 | ------------------- | ------------- | -------------------------------------------------------------------------------------------- |
@@ -138,7 +143,8 @@ The moving `v1` tag follows compatible v1 releases. Pin a full release tag or co
 | `output-file`       | none          | Repository-relative file to receive the selected output format.                              |
 | `fail-on-error`     | `true`        | Fail when problems are found. Invalid options and fatal errors always fail.                   |
 
-### Outputs
+Outputs
+-------
 
 | Output           | Description                                                                                          |
 | ---------------- | ---------------------------------------------------------------------------------------------------- |
@@ -169,7 +175,8 @@ Give the step an `id` to consume its outputs. For example, this writes JSON Line
 
 See [the usage document][usage] for additional examples and output behavior.
 
-## Documents
+Documents
+---------
 
 - [Checks][checks]: Full list of all checks done by actionlint with example inputs, outputs, and playground links.
 - [Installation][install]: Installation instructions. Prebuilt binaries, a Docker image, building from source, a download script
@@ -181,14 +188,16 @@ See [the usage document][usage] for additional examples and output behavior.
 - [Go API][api]: How to use actionlint as Go library.
 - [References][refs]: Links to resources.
 
-## Bug reporting
+Bug reporting
+-------------
 
 When you see some bugs or false positives, it is helpful to [file a new issue][issue-form] with a minimal example
 of input. Giving me some feedbacks like feature requests or ideas of additional checks is also welcome.
 
 See the [contribution guide](./CONTRIBUTING.md) for more details.
 
-## License
+License
+-------
 
 actionlint is distributed under [the MIT license](./LICENSE.txt).
 
