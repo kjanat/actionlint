@@ -63,11 +63,10 @@ func (r *repo) preflight(tag string) error {
 		return fmt.Errorf("this command must run at the repository root but %q is not %q", resolved, topResolved)
 	}
 
-	if _, err := r.git("diff", "--quiet"); err != nil {
-		return errors.New("the working tree is dirty. commit or stash all changes before bumping the version")
-	}
-	if _, err := r.git("diff", "--cached", "--quiet"); err != nil {
-		return errors.New("the Git index is dirty. commit or reset all staged changes before bumping the version")
+	if out, err := r.git("status", "--porcelain", "--untracked-files=all"); err != nil {
+		return err
+	} else if out != "" {
+		return errors.New("the working tree is not clean. commit, stash, or remove all changed and untracked files before bumping the version")
 	}
 
 	branch, err := r.git("rev-parse", "--abbrev-ref", "HEAD")
@@ -80,6 +79,13 @@ func (r *repo) preflight(tag string) error {
 
 	if _, err := r.git("rev-parse", "--verify", "--quiet", "refs/tags/"+tag); err == nil {
 		return fmt.Errorf("tag %s already exists", tag)
+	}
+	out, err := r.git("ls-remote", "--tags", "origin", "refs/tags/"+tag)
+	if err != nil {
+		return fmt.Errorf("could not check origin for tag %s: %w", tag, err)
+	}
+	if strings.TrimSpace(out) != "" {
+		return fmt.Errorf("tag %s already exists on origin", tag)
 	}
 	return nil
 }

@@ -170,7 +170,7 @@ To move the defaults to newer base images:
 
 When releasing v1.2.3 as example:
 
-1. Ensure all changes were already pushed to remote by checking `git push origin master` outputs `Everything up-to-date`
+1. Ensure all changes were already pushed to remote by checking `git push origin main` outputs `Everything up-to-date`
 2. Run `go run ./scripts/bump-version -check` to list every declared version reference and confirm the declaration is in
    sync with the repository
 3. Run `go run ./scripts/bump-version -push 1.2.3`. It updates every version reference, verifies the result, then creates

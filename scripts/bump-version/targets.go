@@ -32,7 +32,7 @@ var targets = []*target{
 	{
 		path: ".pre-commit-hooks.yaml",
 		rules: []rule{
-			mustRule("pre-commit Docker image tag", `(?m)^  entry: ghcr\.io/kjanat/actionlint:(\d+\.\d+\.\d+)$`, 1),
+			mustRule("pre-commit Docker image tag", `(?m)^  entry: ghcr\.io/kjanat/actionlint:(\d+\.\d+\.\d+)\r?$`, 1),
 		},
 		unrelated: []string{"minimum_pre_commit_version: 3.0.0"},
 	},
@@ -45,7 +45,7 @@ var targets = []*target{
 	{
 		path: "scripts/download-actionlint.bash",
 		rules: []rule{
-			mustRule("default version of the download script", `(?m)^version="(\d+\.\d+\.\d+)"$`, 1),
+			mustRule("default version of the download script", `(?m)^version="(\d+\.\d+\.\d+)"\r?$`, 1),
 		},
 		unrelated: []string{
 			"1.6.9",
@@ -60,7 +60,7 @@ var targets = []*target{
 			mustRule("download script argument", `download-actionlint\.bash\) (\d+\.\d+\.\d+)`, 3),
 			mustRule("CLI image tag example", "`ghcr\\.io/kjanat/actionlint:(\\d+\\.\\d+\\.\\d+)`", 1),
 			mustRule("action image tag example", "`action-(\\d+\\.\\d+\\.\\d+)`", 1),
-			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)$`, 1),
+			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
 			mustRule("Trunk linter version", ` actionlint@(\d+\.\d+\.\d+)`, 2),
 		},
 		unrelated: []string{"sarif/v2.1.0/sarif-v2.1.0.html"},

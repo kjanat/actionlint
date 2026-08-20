@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -90,6 +89,9 @@ func TestParseVersion(t *testing.T) {
 		{"0.0.0", true, version{0, 0, 0}},
 		{"1.11.0", true, version{1, 11, 0}},
 		{"v1.2.3", false, version{}},
+		{"01.2.3", false, version{}},
+		{"1.02.3", false, version{}},
+		{"1.2.03", false, version{}},
 		{"1.2", false, version{}},
 		{"1.2.3.4", false, version{}},
 		{"1.2.3-rc1", false, version{}},
@@ -348,10 +350,119 @@ func TestDeclaredTargetsAreWellFormed(t *testing.T) {
 }
 
 func TestDeclaredTargetsMatchRepository(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("bump-version doesn't support Windows")
-	}
 	if err := Check(filepath.Join("..", ".."), targets, io.Discard); err != nil {
 		t.Fatalf("the declared version references are out of sync with the repository: %v", err)
+	}
+}
+
+func TestDeclaredTargetsAcceptCRLF(t *testing.T) {
+	root := filepath.Join("..", "..")
+	for _, tgt := range targets {
+		content, err := os.ReadFile(filepath.Join(root, tgt.path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		lf := bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
+		crlf := bytes.ReplaceAll(lf, []byte("\n"), []byte("\r\n"))
+		if _, err := tgt.scan(crlf); err != nil {
+			t.Errorf("%s with CRLF line endings: %v", tgt.path, err)
+		}
+	}
+}
+
+func TestBumpRestoresFilesWhenWriteFails(t *testing.T) {
+	root := copyFixture(t)
+	locked := filepath.Join(root, "page.html")
+	if err := os.Chmod(locked, 0o444); err != nil {
+		t.Fatal(err)
+	}
+
+	err := Bump(root, fixtureTargets(), mustParse(t, "2.0.0"), io.Discard)
+	if err == nil {
+		t.Fatal("Bump succeeded although one file was not writable")
+	}
+	if want := "the previously updated files were restored"; !strings.Contains(err.Error(), want) {
+		t.Errorf("error %q does not mention %q", err, want)
+	}
+
+	for _, name := range []string{"docs.md", "download.bash"} {
+		got, err := os.ReadFile(filepath.Join(root, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := readFixture(t, "repo", name); !bytes.Equal(got, want) {
+			t.Errorf("%s was left modified after the failed bump:\n%s", name, got)
+		}
+	}
+}
+
+func gitRepo(t *testing.T) *repo {
+	t.Helper()
+	dir := t.TempDir()
+	r := &repo{root: dir, out: io.Discard}
+	run := func(args ...string) {
+		t.Helper()
+		if _, err := r.git(args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run("init", "--initial-branch=main")
+	run("config", "user.email", "test@example.com")
+	run("config", "user.name", "test")
+	run("config", "commit.gpgsign", "false")
+	run("config", "tag.gpgsign", "false")
+	run("config", "tag.forceSignAnnotated", "false")
+	if err := os.WriteFile(filepath.Join(dir, "file.txt"), []byte("x\n"), 0o666); err != nil {
+		t.Fatal(err)
+	}
+	run("add", "file.txt")
+	run("commit", "-m", "init")
+
+	remote := t.TempDir()
+	if _, err := (&repo{root: remote, out: io.Discard}).git("init", "--bare"); err != nil {
+		t.Fatal(err)
+	}
+	run("remote", "add", "origin", remote)
+	return r
+}
+
+func TestPreflightPassesOnCleanRepo(t *testing.T) {
+	r := gitRepo(t)
+	if err := r.preflight("v9.9.9"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPreflightRejectsUntrackedFile(t *testing.T) {
+	r := gitRepo(t)
+	if err := os.WriteFile(filepath.Join(r.root, "scratch.txt"), []byte("x\n"), 0o666); err != nil {
+		t.Fatal(err)
+	}
+	err := r.preflight("v9.9.9")
+	if err == nil {
+		t.Fatal("preflight accepted a working tree with an untracked file")
+	}
+	if want := "not clean"; !strings.Contains(err.Error(), want) {
+		t.Errorf("error %q does not mention %q", err, want)
+	}
+}
+
+func TestPreflightRejectsRemoteOnlyTag(t *testing.T) {
+	r := gitRepo(t)
+	for _, args := range [][]string{
+		{"tag", "-m", "v9.9.9", "v9.9.9"},
+		{"push", "origin", "v9.9.9"},
+		{"tag", "-d", "v9.9.9"},
+	} {
+		if _, err := r.git(args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	err := r.preflight("v9.9.9")
+	if err == nil {
+		t.Fatal("preflight accepted a tag which already exists on origin")
+	}
+	if want := "already exists on origin"; !strings.Contains(err.Error(), want) {
+		t.Errorf("error %q does not mention %q", err, want)
 	}
 }

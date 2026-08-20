@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -13,7 +14,7 @@ import (
 )
 
 var (
-	semverPattern = regexp.MustCompile(`^(\d+)\.(\d+)\.(\d+)$`)
+	semverPattern = regexp.MustCompile(`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$`)
 	anyVersion    = regexp.MustCompile(`\d+\.\d+\.\d+`)
 )
 
@@ -24,7 +25,7 @@ type version struct {
 func parseVersion(s string) (version, error) {
 	m := semverPattern.FindStringSubmatch(s)
 	if m == nil {
-		return version{}, fmt.Errorf("version %q does not match `^\\d+\\.\\d+\\.\\d+$`", s)
+		return version{}, fmt.Errorf("version %q is not three dot-separated numbers without leading zeroes", s)
 	}
 	nums := [3]int{}
 	for i := range nums {
@@ -233,9 +234,10 @@ func Check(root string, ts []*target, out io.Writer) error {
 
 func Bump(root string, ts []*target, v version, out io.Writer) error {
 	type update struct {
-		path    string
-		content []byte
-		count   int
+		path     string
+		original []byte
+		content  []byte
+		count    int
 	}
 
 	updates := make([]update, 0, len(ts))
@@ -249,12 +251,17 @@ func Bump(root string, ts []*target, v version, out io.Writer) error {
 		if err != nil {
 			return err
 		}
-		updates = append(updates, update{path, updated, n})
+		updates = append(updates, update{path, content, updated, n})
 	}
 
-	for _, u := range updates {
+	for i, u := range updates {
 		if err := os.WriteFile(u.path, u.content, 0666); err != nil {
-			return fmt.Errorf("could not write %s: %w", u.path, err)
+			for _, w := range updates[:i] {
+				if rerr := os.WriteFile(w.path, w.original, 0666); rerr != nil {
+					return fmt.Errorf("could not write %s, and restoring %s failed leaving a partial bump: %w", u.path, w.path, errors.Join(err, rerr))
+				}
+			}
+			return fmt.Errorf("could not write %s. the previously updated files were restored: %w", u.path, err)
 		}
 	}
 
