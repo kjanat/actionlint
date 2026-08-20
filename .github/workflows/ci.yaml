@@ -111,10 +111,14 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         # staticcheck 2026.1 reads export data up to Go 1.26
         with: { go-version: "1.26", check-latest: true }
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       - name: Install dependencies
+        # check-checks reproduces docs examples with shellcheck and pyflakes
         run: |
           sudo apt-get install -y shellcheck
+          uv tool install pyflakes
           shellcheck --version
+          pyflakes --version
       - name: Check Go sources are formatted
         run: |
           diffs="$(gofmt -d ./*.go ./cmd/*/*.go ./scripts/*/*.go ./playground/*.go)"
