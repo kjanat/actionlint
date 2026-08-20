@@ -22,8 +22,8 @@ type cmdExecution struct {
 	combineOutput bool
 }
 
-func (e *cmdExecution) run() ([]byte, error) {
-	cmd := exec.Command(e.cmd, e.args...)
+func (e *cmdExecution) run(ctx context.Context) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, e.cmd, e.args...)
 	cmd.Stderr = nil
 	// Set stdin via an io.Reader so that exec.Cmd pipes the bytes to the child
 	// after Start(). Writing to cmd.StdinPipe() before Start() relies on the
@@ -93,7 +93,7 @@ func (proc *concurrentProcess) run(eg *errgroup.Group, exec *cmdExecution, callb
 		if err := proc.sema.Acquire(proc.ctx, 1); err != nil {
 			return fmt.Errorf("could not acquire semaphore to run %q: %w", exec.cmd, err)
 		}
-		stdout, err := exec.run()
+		stdout, err := exec.run(proc.ctx)
 		proc.sema.Release(1)
 		return callback(stdout, err)
 	})

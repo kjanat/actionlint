@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"go/format"
@@ -16,6 +17,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
@@ -292,7 +294,13 @@ func source(args []string, url string) ([]byte, error) {
 
 	dbg.Println("Fetching source from URL:", url)
 
-	res, err := c.Get(url)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not build request for %s: %w", url, err)
+	}
+	res, err := c.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch %s: %w", url, err)
 	}

@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	_ "embed"
 	"encoding/json"
 	"errors"
@@ -17,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"actionlint.kjanat.dev"
 	"go.yaml.in/yaml/v4"
@@ -96,7 +98,15 @@ type gen struct {
 
 func newGen(stdout, stderr, dbgout io.Writer) *gen {
 	l := log.New(dbgout, "", log.LstdFlags)
-	return &gen{stdout, stderr, l, defaultPopularActionsJSON, http.DefaultClient}
+	return &gen{stdout, stderr, l, defaultPopularActionsJSON, &http.Client{Timeout: 30 * time.Second}}
+}
+
+func (g *gen) get(ctx context.Context, method, url string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	return g.client.Do(req)
 }
 
 func (g *gen) registry() ([]*registry, error) {
@@ -128,6 +138,11 @@ func (g *gen) fetchRemote() (map[string]*actionlint.ActionMetadata, error) {
 	reqs := make(chan *request)
 	done := make(chan struct{})
 
+	// Cancel requests already in flight when this function returns. Closing done only stops
+	// workers from picking up new work.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for range 5 {
 		go func(ret chan<- *fetched, reqs <-chan *request, done <-chan struct{}) {
 			for {
@@ -135,7 +150,7 @@ func (g *gen) fetchRemote() (map[string]*actionlint.ActionMetadata, error) {
 				case req := <-reqs:
 					url := req.action.rawURL(req.tag)
 					g.log.Println("Start fetching", url)
-					res, err := g.client.Get(url)
+					res, err := g.get(ctx, http.MethodGet, url)
 					if err != nil {
 						ret <- &fetched{err: fmt.Errorf("could not fetch %s: %w", url, err)}
 						break
@@ -382,6 +397,9 @@ func (g *gen) detectNewReleaseURLs() ([]string, error) {
 	errs := make(chan error)
 	reqs := make(chan *registry)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for range 4 {
 		go func(ret chan<- string, errs chan<- error, reqs <-chan *registry, done <-chan struct{}) {
 			for {
@@ -389,7 +407,7 @@ func (g *gen) detectNewReleaseURLs() ([]string, error) {
 				case r := <-reqs:
 					url := r.rawURL(r.Next)
 					g.log.Println("Checking", url)
-					res, err := g.client.Head(url)
+					res, err := g.get(ctx, http.MethodHead, url)
 					if err != nil {
 						errs <- fmt.Errorf("could not send head request to %s: %w", url, err)
 						break

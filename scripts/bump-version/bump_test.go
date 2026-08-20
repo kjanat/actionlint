@@ -399,7 +399,7 @@ func TestBumpRestoresFilesWhenWriteFails(t *testing.T) {
 func gitRepo(t *testing.T) *repo {
 	t.Helper()
 	dir := t.TempDir()
-	r := &repo{root: dir, out: io.Discard}
+	r := &repo{ctx: t.Context(), root: dir, out: io.Discard}
 	run := func(args ...string) {
 		t.Helper()
 		if _, err := r.git(args...); err != nil {
@@ -419,7 +419,7 @@ func gitRepo(t *testing.T) *repo {
 	run("commit", "-m", "init")
 
 	remote := t.TempDir()
-	if _, err := (&repo{root: remote, out: io.Discard}).git("init", "--bare"); err != nil {
+	if _, err := (&repo{ctx: t.Context(), root: remote, out: io.Discard}).git("init", "--bare"); err != nil {
 		t.Fatal(err)
 	}
 	run("remote", "add", "origin", remote)

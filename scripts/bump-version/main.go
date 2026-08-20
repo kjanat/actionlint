@@ -2,25 +2,29 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 const releaseJobURL = "https://github.com/kjanat/actionlint/actions/workflows/release.yaml"
 
 type repo struct {
+	ctx  context.Context
 	root string
 	out  io.Writer
 }
 
 func (r *repo) git(args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
+	cmd := exec.CommandContext(r.ctx, "git", args...)
 	cmd.Dir = r.root
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -89,7 +93,7 @@ func (r *repo) preflight(tag string) error {
 	return nil
 }
 
-func Main(args []string, stdout, stderr io.Writer) error {
+func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	var check, commit, push bool
 	var root, notes string
 
@@ -147,7 +151,7 @@ func Main(args []string, stdout, stderr io.Writer) error {
 	}
 	tag := "v" + v.String()
 
-	r := &repo{root: root, out: stdout}
+	r := &repo{ctx: ctx, root: root, out: stdout}
 	if err := r.preflight(tag); err != nil {
 		return err
 	}
@@ -200,7 +204,11 @@ func Main(args []string, stdout, stderr io.Writer) error {
 }
 
 func main() {
-	if err := Main(os.Args, os.Stdout, os.Stderr); err != nil {
+	// Interrupting the release flow must kill an in-flight `git push`, not orphan it.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	err := Main(ctx, os.Args, os.Stdout, os.Stderr)
+	stop()
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

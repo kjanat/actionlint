@@ -9,6 +9,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"go/format"
@@ -20,6 +21,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"time"
 
 	"golang.org/x/net/html"
 )
@@ -336,7 +338,13 @@ func fetch(url string) ([]byte, error) {
 
 	dbg.Println("Fetching", url)
 
-	res, err := c.Get(url)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not build request for %s: %w", url, err)
+	}
+	res, err := c.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch %s: %w", url, err)
 	}
