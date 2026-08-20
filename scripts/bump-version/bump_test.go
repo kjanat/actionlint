@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -347,6 +348,9 @@ func TestDeclaredTargetsAreWellFormed(t *testing.T) {
 }
 
 func TestDeclaredTargetsMatchRepository(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("bump-version doesn't support Windows")
+	}
 	if err := Check(filepath.Join("..", ".."), targets, io.Discard); err != nil {
 		t.Fatalf("the declared version references are out of sync with the repository: %v", err)
 	}

@@ -1,6 +1,7 @@
 /cmd/actionlint-action/sarif_template.txt -text
 /testdata/** -text
 /actup.schema.json linguist-generated=true -diff
+/scripts/bump-version/testdata/** -text
 /scripts/generate-popular-actions/testdata/** -text
 /scripts/generate-webhook-events/testdata/** -text
 /scripts/generate-availability/testdata/** -text
