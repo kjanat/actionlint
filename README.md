@@ -51,7 +51,7 @@ jobs:
 
 **actionlint reports 7 errors:**
 
-```
+```console
 test.yaml:3:5: unexpected key "branch" for "push" section. expected one of "branches", "branches-ignore", "paths", "paths-ignore", "tags", "tags-ignore", "types", "workflows" [syntax-check]
   |
 3 |     branch: main

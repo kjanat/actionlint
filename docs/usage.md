@@ -242,8 +242,9 @@ jobs:
         uses: kjanat/actionlint@v1
 ```
 
-Docker actions require a Linux runner. `v1.11.0` is a versioned release tag, but
-only a full-length commit SHA provides an immutable action reference.
+Docker actions require a Linux runner. `v1` moves to each new release.
+`v1.11.0` is a versioned release tag, but only a full-length commit SHA provides
+an immutable action reference.
 
 The action accepts these inputs:
 
@@ -383,6 +384,11 @@ Available tags are:
   Moving alias for the latest compatible v1 image available to Docker Action users.
 - `ghcr.io/kjanat/actionlint:action-latest`:\
   Moving alias for the latest stable image available to Docker Action users.
+
+The CLI image is also published to Docker Hub as `kjanat/actionlint:latest` and
+`kjanat/actionlint:{version}`. Both registries carry the same manifest, so pick
+whichever your setup pulls from more easily. The `action-*` tags exist on
+`ghcr.io` only, since `action.yml` refers to them there.
 
 For byte-for-byte reproducibility, use the image's manifest digest as
 `ghcr.io/kjanat/actionlint:{version}@sha256:<digest>`.

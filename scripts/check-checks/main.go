@@ -14,8 +14,8 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev"
 	"github.com/google/go-cmp/cmp"
-	"github.com/kjanat/actionlint"
 )
 
 func Actionlint(src []byte) ([]byte, error) {

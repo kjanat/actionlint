@@ -55,7 +55,6 @@ var targets = []*target{
 	{
 		path: "docs/usage.md",
 		rules: []rule{
-			mustRule("action reference in workflow examples", `uses: kjanat/actionlint@v(\d+\.\d+\.\d+)`, 2),
 			mustRule("versioned release tag note", "`v(\\d+\\.\\d+\\.\\d+)` is a versioned release tag", 1),
 			mustRule("download script argument", `download-actionlint\.bash\) (\d+\.\d+\.\d+)`, 3),
 			mustRule("CLI image tag example", "`ghcr\\.io/kjanat/actionlint:(\\d+\\.\\d+\\.\\d+)`", 1),

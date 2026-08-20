@@ -17,7 +17,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kjanat/actionlint"
+	"actionlint.kjanat.dev"
 	"go.yaml.in/yaml/v4"
 )
 
