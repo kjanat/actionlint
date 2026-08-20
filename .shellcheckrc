@@ -1,0 +1,5 @@
+# ShellCheck configuration
+# https://github.com/koalaman/shellcheck/wiki/Directive
+
+enable=all
+external-sources=true
