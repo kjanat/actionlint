@@ -170,17 +170,22 @@ To move the defaults to newer base images:
 
 When releasing v1.2.3 as example:
 
-1. Ensure all changes were already pushed to remote by checking `git push origin master` outputs `Everything up-to-date`
-2. Run `bash ./scripts/bump-version.bash 1.2.3`
-3. Wait until [the CI release job](.github/workflows/release.yaml) completes successfully:
+1. Ensure all changes were already pushed to remote by checking `git push origin main` outputs `Everything up-to-date`
+2. Run `go run ./scripts/bump-version -check` to list every declared version reference and confirm the declaration is in
+   sync with the repository
+3. Run `go run ./scripts/bump-version -push 1.2.3`. It updates every version reference, verifies the result, then creates
+   and pushes the bump commit and the `v1.2.3` tag. Drop `-push` to leave the changes in the working tree for review, or
+   use `-commit` to create the commit and the tag without pushing. See
+   [the script README](./scripts/bump-version/README.md) for the declared files and fields.
+4. Wait until [the CI release job](.github/workflows/release.yaml) completes successfully:
    - GoReleaser builds release binaries and make pre-release at GitHub and updates [Homebrew formula](./HomebrewFormula/actionlint.rb)
    - The CI job also updates version string in `./scripts/download-actionlint.bash`
-4. Open the pre-release at [release page](https://github.com/rhysd/actionlint/releases) with browser
-5. Write up release notes, uncheck pre-release checkbox and publish the new release
-6. Run `make CHANGELOG.md` to update [CHANGELOG.md](./CHANGELOG.md) and make a commit for the change. This step requires
+5. Open the pre-release at [release page](https://github.com/rhysd/actionlint/releases) with browser
+6. Write up release notes, uncheck pre-release checkbox and publish the new release
+7. Run `make CHANGELOG.md` to update [CHANGELOG.md](./CHANGELOG.md) and make a commit for the change. This step requires
    [changelog-from-release](https://github.com/rhysd/changelog-from-release).
-7. Run `git pull` to merge upstream changes to local `main` branch and run `git push origin main`
-8. Update the playground by `./playground/deploy.bash` if it is not updated yet for the release
+8. Run `git pull` to merge upstream changes to local `main` branch and run `git push origin main`
+9. Update the playground by `./playground/deploy.bash` if it is not updated yet for the release
 
 > [!NOTE]
 > If you see workflow failure at releasing a new winget package, check the [fork repository](https://github.com/rhysd/winget-pkgs)
