@@ -4,5 +4,10 @@
 {
   "formatter": [{ "external": { "command": "dprint", "arguments": ["fmt", "--stdin", "{buffer_path}"] } }],
   "prettier": { "allowed": false },
-  "languages": { "Ruby": { "language_servers": ["!solargraph", "..."] } }
+  // The only Ruby here is man/Gemfile for ronn, so no Ruby server has anything to serve.
+  "languages": {
+    "Ruby": {
+      "language_servers": ["!solargraph", "!steep", "!rubocop", "!sorbet", "!ruby-lsp", "..."]
+    }
+  }
 }

@@ -1,0 +1,64 @@
+#:schema https://golangci-lint.run/jsonschema/golangci.v2.jsonschema.json
+
+version = "2"
+
+[linters]
+default = "standard"
+enable  = [
+  "asasalint",
+  "asciicheck",
+  "bidichk",
+  "bodyclose",
+  "copyloopvar",
+  "dupword",
+  "durationcheck",
+  "errname",
+  "errorlint",
+  "exptostd",
+  "fatcontext",
+  "forcetypeassert",
+  "gocheckcompilerdirectives",
+  "gocritic",
+  "intrange",
+  "iotamixing",
+  "makezero",
+  "mirror",
+  "misspell",
+  "modernize",
+  "nilerr",
+  "nilnesserr",
+  "noctx",
+  "perfsprint",
+  "prealloc",
+  "predeclared",
+  "reassign",
+  "recvcheck",
+  "testableexamples",
+  "unconvert",
+  "unparam",
+  "usestdlibvars",
+  "wastedassign",
+  "whitespace"
+]
+
+[linters.exclusions]
+generated = "lax"
+presets   = ["comments", "std-error-handling"]
+paths     = [
+  # An npm dependency ships Go sources that are not part of this module.
+  "node_modules",
+]
+
+[[linters.exclusions.rules]]
+path    = "_test\\.go"
+linters = ["forcetypeassert", "prealloc"]
+
+[formatters]
+enable = ["gofmt"]
+
+[formatters.exclusions]
+paths = ["node_modules"]
+
+[issues]
+max-issues-per-linter = 0
+max-same-issues       = 0
