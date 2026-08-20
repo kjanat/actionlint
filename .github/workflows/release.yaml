@@ -47,23 +47,6 @@ jobs:
           subject-checksums: ${{ format('./dist/actionlint_{0}_checksums.txt', env.VERSION) }}
       - name: Post-release download check
         run: bash ./scripts/download-actionlint.bash
-      - name: Clone nested repository to make version bump commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          path: ./tmp-actionlint-for-update-ver
-          ref: main
-          fetch-depth: 0
-      - name: Update version in download script
-        run: |
-          set -x
-          cd ./tmp-actionlint-for-update-ver
-          sed -i -E "s/version=\"[0-9]+\\.[0-9]+\\.[0-9]+\"/version=\"${VERSION}\"/" ./scripts/download-actionlint.bash
-          git diff
-          git diff --quiet --exit-code -- ./scripts/download-actionlint.bash && exit 0
-          git add ./scripts/download-actionlint.bash
-          git -c user.email='41898282+github-actions[bot]@users.noreply.github.com' -c user.name='github-actions[bot]' commit -m "update version to $VERSION in download-actionlint.bash"
-          git log -n 1
-          git push
   winget:
     runs-on: ubuntu-latest
     needs: binaries
