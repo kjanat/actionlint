@@ -22,6 +22,15 @@ function themeFor(isDark: boolean): Extension {
 	return isDark ? oneDark : [];
 }
 
+// Spreading the whole array into String.fromCharCode throws RangeError past about 128 KiB.
+function toBase64(bytes: Uint8Array): string {
+	let s = '';
+	for (const b of bytes) {
+		s += String.fromCharCode(b);
+	}
+	return btoa(s);
+}
+
 (async function() {
 	function getElementById(id: string): HTMLElement {
 		const e = document.getElementById(id);
@@ -343,13 +352,21 @@ jobs:
 		editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: src } });
 	});
 
-	permalinkButton.addEventListener('click', e => {
-		e.preventDefault();
-		const src = getSource();
-		const bin = new TextEncoder().encode(src);
-		const compressed = pako.deflate(bin);
-		const b64 = btoa(String.fromCharCode(...compressed));
-		window.location.hash = b64;
+	permalinkButton.addEventListener('click', () => {
+		void (async () => {
+			const compressed = pako.deflate(new TextEncoder().encode(getSource()));
+			window.location.hash = toBase64(compressed);
+			const label = permalinkButton.textContent;
+			try {
+				await navigator.clipboard.writeText(window.location.href);
+				permalinkButton.textContent = 'Copied!';
+			} catch {
+				permalinkButton.textContent = 'In address bar';
+			}
+			window.setTimeout(() => {
+				permalinkButton.textContent = label;
+			}, 1500);
+		})();
 	});
 
 	preferDark.addEventListener('change', event => {

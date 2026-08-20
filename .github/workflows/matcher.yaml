@@ -2,7 +2,8 @@ name: Problem Matchers
 on:
   push:
     paths:
-      - "scripts/generate-actionlint-matcher/*.js"
+      - "scripts/generate-actionlint-matcher/*.mjs"
+      - "scripts/generate-actionlint-matcher/testdata/*"
       - "testdata/examples/*.out"
       - "testdata/err/*.out"
     branches:
@@ -31,7 +32,7 @@ jobs:
       - name: Update test data
         run: make ./scripts/generate-actionlint-matcher/testdata/* SKIP_GO_GENERATE=true
       - name: Test actionlint-matcher.json
-        run: node ./scripts/generate-actionlint-matcher/test.mjs
+        run: npm run matcher:test
       - name: Ensure .github/actionlint-matcher.json is up-to-date
         run: |
           make .github/actionlint-matcher.json
