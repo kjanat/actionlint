@@ -9,12 +9,12 @@ const regexp = new RegExp(pattern.regexp);
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 {
-	const file = path.join(dirname, 'test', 'want.json');
+	const file = path.join(dirname, 'testdata', 'want.json');
 	const want = JSON.parse(fs.readFileSync(file, 'utf8'))[0];
 
 	for (const file of ['escape.txt', 'no_escape.txt']) {
-		console.log(`Testing test/${file}`);
-		const escaped = path.join(dirname, 'test', file);
+		console.log(`Testing testdata/${file}`);
+		const escaped = path.join(dirname, 'testdata', file);
 		const lines = fs.readFileSync(escaped, 'utf8').split('\n');
 		const m = lines[0].match(regexp);
 		assert.ok(m); // not null
@@ -23,7 +23,7 @@ const dirname = path.dirname(fileURLToPath(import.meta.url));
 		assert.equal(want.column.toString(), m[pattern.column]);
 		assert.equal(want.message, m[pattern.message]);
 		assert.equal(want.kind, m[pattern.code]);
-		console.log(`Success test/${file}`);
+		console.log(`Success testdata/${file}`);
 	}
 }
 

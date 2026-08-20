@@ -62,6 +62,11 @@ main {
   border-radius: 4px;
 }
 
+/* @codemirror/view and @codemirror/lint set no width on the tooltip. */
+.cm-tooltip {
+  max-width: min(40rem, 90vw);
+}
+
 #lint-result {
   --bulma-table-background-color: #efeff8;
 

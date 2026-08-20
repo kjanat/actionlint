@@ -94,12 +94,12 @@ bench:
 .github/actionlint-matcher.json: scripts/generate-actionlint-matcher/object.mjs
 	node ./scripts/generate-actionlint-matcher/main.mjs .github/actionlint-matcher.json
 
-scripts/generate-actionlint-matcher/test/escape.txt: $(TARGET)
-	./actionlint -color ./testdata/err/one_error.yaml > ./scripts/generate-actionlint-matcher/test/escape.txt || true
-scripts/generate-actionlint-matcher/test/no_escape.txt: $(TARGET)
-	./actionlint -no-color ./testdata/err/one_error.yaml > ./scripts/generate-actionlint-matcher/test/no_escape.txt || true
-scripts/generate-actionlint-matcher/test/want.json: $(TARGET)
-	./actionlint -format '{{json .}}' ./testdata/err/one_error.yaml > scripts/generate-actionlint-matcher/test/want.json || true
+scripts/generate-actionlint-matcher/testdata/escape.txt: $(TARGET)
+	./actionlint -color ./testdata/err/one_error.yaml > ./scripts/generate-actionlint-matcher/testdata/escape.txt || true
+scripts/generate-actionlint-matcher/testdata/no_escape.txt: $(TARGET)
+	./actionlint -no-color ./testdata/err/one_error.yaml > ./scripts/generate-actionlint-matcher/testdata/no_escape.txt || true
+scripts/generate-actionlint-matcher/testdata/want.json: $(TARGET)
+	./actionlint -format '{{json .}}' ./testdata/err/one_error.yaml > scripts/generate-actionlint-matcher/testdata/want.json || true
 
 CHANGELOG.md:
 	changelog-from-release > CHANGELOG.md
