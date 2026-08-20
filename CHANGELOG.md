@@ -7,14 +7,18 @@
 - Publish the CLI image to Docker Hub as `kjanat/actionlint` alongside `ghcr.io/kjanat/actionlint`. Both registries carry the same manifest. The `action-*` tags stay on `ghcr.io` only, since `action.yml` refers to them there.
 - Publish the Homebrew cask to `kjanat/homebrew-actionlint` on every release instead of skipping it.
 - Rebuild the playground on Vite with CodeMirror 6 and Vitest, and report lint errors through `@codemirror/lint` so they appear as inline underlines and tooltips instead of a custom gutter. This required the wasm bridge to pass the end column of each error.
-- Allow the ShellCheck and pyflakes subprocesses to be cancelled. `concurrentProcess` already held a context and used it to acquire its semaphore, but never passed it to `exec.Command`.
+- Add a `Context` field to `LinterOptions` so a caller can bound the lifetime of a lint run. Cancelling it kills the ShellCheck and pyflakes subprocesses, which `concurrentProcess` could not do before: it held a context to acquire its semaphore but never passed one to `exec.Command`.
+- Fix `jobs.<job_id>.container.volumes` being parsed into `Container.Ports`. `Container.Volumes` was always nil, so `${{ }}` expressions inside volume strings were never checked, and on a container declaring both keys the volumes replaced the ports.
+- Fix the end column reported for lines holding wide or non-ASCII characters. `ErrorTemplateFields.EndColumn` carried the display width of the `^~~~` indicator rather than a column, so it drifted from `Column` wherever a preceding character was not one cell wide. The value reaches `endColumn=` in the action's GitHub annotations and `{{$err.EndColumn}}` in `-format` templates.
 - Fix `make` overwriting expected-output test fixtures with their input directories, caused by GNU make's built-in `%.out: %` rule.
 - Compile, vet and test the fuzz targets. They carried a `gofuzz` build tag for dvyukov/go-fuzz, which made the toolchain exclude the whole package. They are `testing.F` targets now, and `make fuzz` drives `go test -fuzz`.
 - Check the type assertions in `UpdateInputs` and `UpdateDispatchInputs`, which would panic if the expression variable map ever held another type.
 - Give every outbound HTTP request in the code generators a deadline. They ran on clients with no timeout, so a stalled connection hung the generator indefinitely.
 - Make `generate-availability` idempotent. It emitted map literals carrying a redundant element type that the formatter then stripped, so every run produced a diff that was immediately reverted.
 - Lint the repository with golangci-lint, and lint the repository's own workflows with all optional ShellCheck rules enabled, which actionlint's `--norc` had been hiding.
+- Verify the downloaded archive against its build provenance attestation in `download-actionlint.bash` when `gh` is installed and authenticated, and print a notice when it is skipped. Every release since v1.11.0 is attested.
 - Confine the code generators' output paths and declare explicit permissions on every workflow.
+- Render the command manual with pandoc from `man/actionlint.1.md` instead of ronn, which takes the Ruby toolchain and `man/Gemfile` out of the contributor setup. `make man` produces both the roff manual and the HTML one the site serves, and `man/manual.css` styles the latter.
 - Replace Prettier and Stylelint with dprint, pin every action to a commit SHA, and drop the timestamp stamp files and the pre-push hook from the build.
 
 <a id="v1.11.0"></a>
