@@ -4,7 +4,7 @@ import { promises as fs } from 'fs';
 import { JSDOM } from 'jsdom';
 
 // This polyfill is necessary for Node.js v18 or earlier. `global.crypto` was added at v19.
-// https://github.com/nodejs/node/pull/42083/files
+// @see https://github.com/nodejs/node/pull/42083/files
 if (typeof globalThis.crypto === 'undefined') {
 	globalThis.crypto = new Crypto();
 }

@@ -26,14 +26,15 @@ make clean
 
 ## Lint
 
-Sources are linted with [eslint](https://eslint.org/) with [typescript-eslint](https://github.com/typescript-eslint/typescript-eslint),
-[prettier](https://prettier.io/) and [stylelint](https://stylelint.io/).
+Sources are linted with [eslint](https://eslint.org/) with [typescript-eslint](https://github.com/typescript-eslint/typescript-eslint).
 
-`lint` npm script applies all the liters:
+`lint` npm script applies all the linters:
 
 ```sh
 npm run lint
 ```
+
+Formatting is handled from the repository root by [dprint](https://dprint.dev/). See [`.dprint.jsonc`](../.dprint.jsonc).
 
 ## Deployment
 

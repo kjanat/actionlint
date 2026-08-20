@@ -2,6 +2,9 @@
 // to add properties to `CodeMirror.EditorConfiguration` object but we don't use import statement.
 /// <reference types="codemirror/addon/selection/active-line" />
 
+import CodeMirror from 'codemirror';
+import pako from 'pako';
+
 (async function() {
 	function getElementById(id: string): HTMLElement {
 		const e = document.getElementById(id);

@@ -375,7 +375,7 @@ test.yaml:19:14: type of expression at "env" must be object but found type strin
    |              ^~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqckL/KgzAUxXef4iCCU74HCHyDDkKnFLdORSX4hzaR5Ka0SN69pCpW3DqF+yPn5JerFcfobBcNurY8AkhaCidgyVQk29c8AfeKTP9cJ0Cqx9WS6VW7MYAhLYT4z7MyPdLz6SLSXYGuB9nQvqAQgiPPyiMM+Q81TlkW3F3tFDl2q4L3oi1HuxaycJNDNp1GnBRCxN+vcyTTtPzrb7OB97/F523A+3cAAAD//4EEWVQ=)
+[Playground](https://kjanat.github.io/actionlint/#eNqckL0KgzAUhXef4hBc0wcIdNBB6JTi1qmoBH9oE0luSovk3UuqIuLWKdyPnJMv12iB0bsuGUztRAKQchRPwJGtSLWfeQKeFdn+vU6A0q+7I9vrdmMAByukPOdZyY70erlJtisw9aAa2hcUUgrkWXmEMf+j1mvHo7uvvSbPH1X0XrTV6NZCHm8KqKYzYGkh968LpNO0/Ou02SCE/+LzNhDCNwAA//9t+VlA)
 
 In above example, environment variables mapping is expanded at `env:` section. actionlint checks type of the expanded value.
 
@@ -539,7 +539,7 @@ test.yaml:22:24: property "get_value" is not defined in object type {} [expressi
    |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqskDFrhEAQhXt/xWMRrPQHLMQiTZIqKbQWNWs0mB1xZtKI/z3sxgQODo7jrprifd88eOQtFuUx+aSObQKIYwkXWNVzHnLt1IvmcxuyGJHKosK/HDAQWWTptoHFLVx8OGm+21ldcYCFb78c9j2LQoT+3Dz0WLh+pCtenHpmIHqItEFZwqRPL9Vz/di81tVbXZnDAKZ3i//Hd+w/6/Xk+1l5In9YJKNbL0572zg/AQAA//8kVZJl)
+[Playground](https://kjanat.github.io/actionlint/#eNqskLFqhUAQRXu/4rIIVvoBC7FIk6RKCq1FzRoNZkecmTTiv4fdmFTCe/BeNcU9Zy5c8haL8ph8Usc2AcSxhAus6jkPuXbqRfO5DVmMSGVR4V8OGIgsTLptYHELFx9Omu92VlccYOHbL4d9N1GI0J+bhx4L14+E7IoX2YlnBqKHSBuUJUz69FI914/Na1291ZU5DGB6t/h/fMf+U68n38/KE/nDIhndenHa28b5CQAA//8V15Jb)
 
 Outputs of step can be accessed via `steps.<step_id>` objects. The `steps` context is dynamic:
 
@@ -711,7 +711,7 @@ test.yaml:34:24: property "os" is not defined in object type {} [expression]
    |                        ^~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqMUk1v6yAQvOdXzOFJJFJsKU+xIiG9XxK9A7FxQmsDYiFplfLfK+JQ58NVe0K7zCyzMxjNYQMdZi9mR3wGeEk+nQB5J7zcvw8V0Avv1FuuAEMc27AL2oeiE4m3xEnpxpzoWv//wmrTSI7tar3EqhrbVtSvYi/HmUABLXrJwVpj2E0fMNYro0XH4V2QU5SdcN9RWtHRyFG67kLz+O5F46q6m6Btz7Epq3J9abugqUie/Tmfr4aUhhDj1TFpKQ8tEphD1gcDdgO3nfCtcT1iZD9BB3vKRh6f0R83OgdmCuRRF3tCpTVxlI7Uwx6XiylGTgkT0pLziBHzbPW/CVC+Q4yLyZ217bMkKAJZWatWyWbUotrh+dpoL5SmeRZt+yXYpqzYYkgh/bu//D6su0/6+6QGAz8DAAD//6xO5N4=)
+[Playground](https://kjanat.github.io/actionlint/#eNqMUu1qwjAU/e9THGRQBVtwWITAnkT2I7apZmuTkJvohsu7j1iz+tGx/Qr35pybc8+JVgzG037yprfEJoAT5OIJkLPcid1nXwEdd1Z+pArQxLDxW6+cz1seeQscpar1kS716w9W6VowbJarBZbl0Da8euc7McwEcijeCYZpo/X0qg9o46RWvGVw1osxypbb3ygNb2ngSFW1vr5/96xxWd5MUKZjWBdlsTq3rVeUR8+eTqeLIYUmhHBxTBhKQ/MIZhDVXiO7gpuWu0bbDiFkf0F7e4paHB7RX1c6e2YM5F5X9oCKa+IgLMm7Pc4XY4yUEkakRecRAmbJ6pcRULpDCPPRnZXpkiRIAhlRyUaKetAim/75SivHpaJZEm26BbJ1UWbzPoX4757ZbVg3n/T/SfUGfgcAAP//e8Dkyg==)
 
 Types of `matrix` context are contextually checked by the semantics checker. Type of matrix values in `matrix:` section
 is deduced from element values of its array. When the matrix value is an array of objects, objects' properties are checked
@@ -803,7 +803,7 @@ test.yaml:33:24: property "build" is not defined in object type {} [expression]
    |                        ^~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqkkUFOxDAMRfdzir9A6ob2ALkKQqglhnRU4qh2xGLUuyNnMqmAESBmUamu7f/+dzk6pCzhcORJ3AGYo+i4LPYKcNaUVc5F65F36IZh6MrnNUfpTSZPOWrul1FJtLREKbXl3iYd6DkwuqoE4TfSMMdX00orpXGlq+jau51sKvZ8Rn8buzudEIm8DJU8VEOX2mPbbHPK8+LPpDLv8FDD3V9MP14LZHt6c5pC36PgfdaA3Xt10ry3H4htwxg9/hzzhwN9hbww/75klp+OPNVJ1kCr+/8dduFykealXNkYHwEAAP//zBzrFQ==)
+[Playground](https://kjanat.github.io/actionlint/#eNqkkd1KxDAQhe/7FIdF2BubB8iriEhrRtOlJqEzwYul7y6Tzaaoi4q9KHQ6P985pzFYpMy+O8WRbQdMgWWYZ30FYpaUhS9F65GzOBhjDuXzkgP3eiaPOUju50GIpbRYKLXlXict6NlHHOslcHwj8VN4PXZAWigNC91E195+sl7R5zP629jd+YxA5NhUsqmCrrXDuurmmKfZXUhl3uKhmru/in68ZUj3ZLebQt+s4H0Sj017VdK0tx+IdcUQHP5s84eAvkJeYvx9SSU/neJYJ6N4Wuz/c9gOl0SalpKyMj4CAAD//41M6vc=)
 
 Job dependencies can be defined at [`needs:`][needs-doc]. A job runs after all jobs defined in `needs:` are done.
 Outputs from the jobs can be accessed only from jobs following them via [`needs` context][needs-context-doc].
@@ -1588,15 +1588,15 @@ Output:
 ```console
 test.yaml:6:10: character '^' is invalid for branch and tag names. ref name cannot contain spaces, ~, ^, :, [, ?, *. see `man git-check-ref-format` for more details. note that regular expression is unavailable. note: filter pattern syntax is explained at https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet [glob]
   |
-6 |       - '^foo-'
+6 |       - "^foo-"
   |          ^~~~~~
 test.yaml:9:12: invalid glob pattern. unexpected character '+' while checking special character + (one or more). the preceding character must not be special character. note: filter pattern syntax is explained at https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet [glob]
   |
-9 |       - 'v*+'
+9 |       - "v*+"
   |            ^~
 test.yaml:11:14: invalid glob pattern. unexpected character '1' while checking character range in []. start of range '9' (57) is larger than end of range '1' (49). note: filter pattern syntax is explained at https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet [glob]
    |
-11 |       - 'v[9-1]'
+11 |       - "v[9-1]"
    |              ^~~
 test.yaml:14:9: '.' and '..' are not allowed in glob path. note: filter pattern syntax is explained at https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet [glob]
    |
@@ -1604,7 +1604,7 @@ test.yaml:14:9: '.' and '..' are not allowed in glob path. note: filter pattern 
    |         ^~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNpMjMGqAyEMRfd+xd0J76FDl/VXSgs6OJVSEtGk9PPL6MZVODmHyxQMULWX8wKpRdpL7pMAB/s4mJ0dLPG5ms/fv13odnWX+3zUKGUp/XYwbyk2L18x5sVpSMldZtSUumMK0KQk6t7xdEN1yXWZakoBeS8M7/0vAAD//zXfMEo=)
+[Playground](https://kjanat.github.io/actionlint/#eNpMjMGqAyEMRfd+xcXle+jQZf2V0oIOTqWURDQp/fwyunEVTs7hMgUDVO3lvEBqkfaS+yTAwT4OZmcHS3yu5vP3bxe6Xd3lPh81SllKvx3MW4rNy1eMeXEaUnKXGTWl7pgCNCmJunc83VBdcl2mmlJA3gvDe/8LAAD//yaAMCw=)
 
 For filtering branches, tags and paths in Webhook events, [glob syntax][filter-pattern-doc] is available.
 actionlint validates glob patterns `branches:`, `branches-ignore:`, `tags:`, `tags-ignore:`, `paths:`, `paths-ignore:` in a
@@ -1648,19 +1648,19 @@ Output:
 ```console
 test.yaml:4:13: invalid CRON format "0 */3 * *" in schedule event: expected exactly 5 fields, found 4: [0 */3 * *] [events]
   |
-4 |     - cron: '0 */3 * *'
+4 |     - cron: "0 */3 * *"
   |             ^~
 test.yaml:6:13: scheduled job runs too frequently. it runs once per 60 seconds. the shortest interval is once every 5 minutes [events]
   |
-6 |     - cron: '* */3 * * *'
+6 |     - cron: "* */3 * * *"
   |             ^~
 test.yaml:9:17: invalid timezone "Asia/Somewhere" in schedule event. it must be a valid IANA timezone name [events]
   |
-9 |       timezone: 'Asia/Somewhere'
+9 |       timezone: "Asia/Somewhere"
   |                 ^~~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNpkjUHKwjAQRvc5xbcLBJL88OMmO8/gCdo4kEqbkUyC4OllrF2Iu+G94XtckwEkF7qOlfQGPHLjmmD/4OI/HJz95u7gvyaedn4YoC8bPblSgj3LMsULb/Qo1Mgac+NZtNlJ+t5uo4rXqTGP2odfJ3VvJZ3ukj6rXj8TKBdGCOEVAAD//8YnMuQ=)
+[Playground](https://kjanat.github.io/actionlint/#eNpkjUHKwjAQRvc5xUeWgSQ//LjJzjN4gjYOpNJmJJMgeHoZaxfibnhv+B7XZADJha5jJb0Bj9y4Jtg/uPgPB2e/uTv4r4mnnR8G6MtGT66UYM+yTPHCGz0KNbLG3HgWbXaSvrfbqOJ1asyj9uHXSd1bSae7pM+q188EyoURQngFAAD//7JoMrw=)
 
 To trigger a workflow in specific interval, [scheduled event][schedule-event-doc] can be defined in [POSIX CRON syntax][cron-syntax].
 
@@ -1799,7 +1799,7 @@ test.yaml:9:15: specifying action "checkout@v2" in invalid format because owner 
   |               ^~~~~~~~~~~
 test.yaml:11:15: tag of Docker action should not be empty: "docker://image" [action]
    |
-11 |       - uses: 'docker://image:'
+11 |       - uses: "docker://image:"
    |               ^~~~~~~~~~~~~~~~~
 test.yaml:13:15: specifying action ".github/my-actions/do-something" in invalid format because ref is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
    |
@@ -1807,7 +1807,7 @@ test.yaml:13:15: specifying action ".github/my-actions/do-something" in invalid 
    |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNpczbEOwyAMBNA9X+EtE0XqyNRfAWIBTbGj2K7Uv69olYXppHsnHVOAw6QuT04SFgBF0ZEAp5G44ZaM1NwrDvuRKB7yXwE4MEEJELM2JvG5Yt7ZdOKrfrzvk6wb5x3P4H3rsWBYJ7+VptWS7x93fWzshDtqbVS+AQAA//+oTjwo)
+[Playground](https://kjanat.github.io/actionlint/#eNpczbEKwzAMBNA9XyGyu4aOnvortiNsN7UUIqnQvy9uyeLp4N7BMQU4TOry5CRhAVAUHQlwGokbbslIzb3isB+J4iH/FYADE5QAMWtjEp8r5p1NJ77qx/s+ybpx3vEM3rceC4Z18ltpWi35/nHXx8ZOuKPWRuUbAAD//6YoPB4=)
 
 Action needs to be specified in a format defined in [the document][action-uses-doc]. There are 4 types of actions:
 
@@ -2035,7 +2035,7 @@ test.yaml:27:16: shell name "sh" is invalid on Windows. available names are "bas
    |                ^~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqkkM2qgzAQhfc+xdm5Eu46bxN1JF7GTHAyWCh99zJWSnHVn91JzkfycSQHFNPU/EuvoQF4znbxAKyWtXPAesvVOo6VtO6VVir6oIDOyQAakqBNxCzt0QDq54AxanqfLrLRuucGWOJw0lniIPpqM9IUjetTyD84vznNh8Gn6m2hlXH9u3mzzXmUTU9Cx+0vA303zz0AAP//Pn9+pA==)
+[Playground](https://kjanat.github.io/actionlint/#eNqkkM2qgzAQhfd5ioMbV8Jd522ijsTLmAlOBgul715ipRRX/dmd5HwkH0eSRzaN7l969Q7gOdmlBmC1pF0FrLdUrONQSMteaaGsDwroKulBQxS0kZilPRpA69ljDBrfp7NstO7ZAUsYTjpLGERfbUaagnF5CtUPzm9O82HwqXqTaWVc/26NA7Y5jbLpSei4/WWg7+a5BwAA//84lH6a)
 
 Available shells for runners are defined in [the documentation][shell-doc]. actionlint checks shell names at `shell:`
 configuration are properly using the available shells.
@@ -2125,7 +2125,7 @@ test.yaml:17:21: "password" section in "redis" service should be specified via s
    |                     ^~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNp0kLFuxSAMRff3Fd6Y0rfzNzxy1VCBjWxo+vkVNEUd0gnrHF8uQthT7XY8PuRl/kHUYG2cRNrZtuH7q3PrWw7DTRWFW0gM/dkkSiW8w5PDVyg14y1KecrJ0Oc07lqLih3cUsj2myTqBuVQ4Oe0cA1mp+ju5zSxQT9TxMoq9vTnousRky54W/lv6X1tQ13hbfyLJ8RDyB3IWdx3AAAA//9SS13D)
+[Playground](https://kjanat.github.io/actionlint/#eNp0kLFuxSAMRff3FdZb3pRm528IuWqowEY2NP38CpqiDumEdY4vFyHsqDQ7Hh+ymXsQVVjtJ5E2tqX7tjWubUm+u6GCcPWRoT+bRDH7dzh64svnkvAWJK9yMnQd5nmtBcUOrtEn+00SNYOyz3Bjmrh4s1N0d2Ma2KCfMWBmFXv8c9H1iEEnvK38t/S+tqLM8NL/xRHCIfQ6kJK8vgMAAP//SSdduQ==)
 
 [Credentials for container][credentials-doc] can be put in `container:` configuration. Password should be put in secrets
 and the value should be expanded with `${{ }}` syntax at `password:`. actionlint checks hardcoded credentials, and reports
@@ -2289,7 +2289,7 @@ Output:
 ```console
 test.yaml:15:18: input of workflow_call event "port" is typed as number but its default value ":1234" cannot be parsed as a float number: strconv.ParseFloat: parsing ":1234": invalid syntax [events]
    |
-15 |         default: ':1234'
+15 |         default: ":1234"
    |                  ^~~~~~~
 test.yaml:20:15: invalid value "object" for input type of workflow_call event. it must be one of "boolean", "number", or "string" [syntax-check]
    |
@@ -2297,11 +2297,11 @@ test.yaml:20:15: invalid value "object" for input type of workflow_call event. i
    |               ^~~~~~
 test.yaml:25:18: input "path" of workflow_call event has the default value "", but it is also required. if an input is marked as required, its default value will never be used [events]
    |
-25 |         default: ''
+25 |         default: ""
    |                  ^~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNp8kbtu8zAMhff/KYjgBzI5QS+TnqFDL+hcyDJdOZVFhaKQBoHevVDsBIYbd7M/kodHPOTVP4AD8Vfr6PBhtHMFAHQ+JInDN0A0Fnu8/AE0GA13QTryCt7ORaAW3l+fJi2tTk4UWJEQr1iOARVE4c5/jtBSFPV7Dr91HxxuDPV/TQdiWTD2TCyLttbq7v7hcT2T9qmvkUe4T8jHBe2XUpuLDxpU79DIxZ4Wu2RPi50rMO5Tx9goEE54w/X69i12VJ/DamhYxsnHqixJdfKSKqcF4+ApCoZrsFXpVIDGEqz+n05j7pshcMhZbbcTXKIqcILK/SHnKSnvynn1EwAA//+1Oa7A)
+[Playground](https://kjanat.github.io/actionlint/#eNp8kbtu8zAMhff/KQjjX52gl0nP0KEXdC5kma6cyqJCUUiDQO9eKHYCw4272R/JwyMe8uofwIH4q3N0+DDauQIAeh+SxPEbIBqLA17+AFqMhvsgPXkFb+ciUAfvr0+zlk4nJwqsSIhXLMeACqJw7z8naCmK+j2H33oIDjeGhr+mA7GsGHsmllVblbq7f3isFtI+DQ3yBPcJ+bii/VJqS/FRg5odGrnY02LX7GmxSwXGfeoZWwXCCW+4rm7fYkfNOayWxmWcfKzLktQkL6l2WjCOnqJguAZbl04FaCxB9f90mnLfjIFDzmq7neESVYEzVO4POc9JeVfO1U8AAAD//6DQrqw=)
 
 Unlike inputs of action, inputs of a workflow must specify their types. actionlint validates input types and checks the default
 values are correctly typed. For more details, see [the official document][create-reusable-workflow-doc].
@@ -2411,7 +2411,7 @@ test.yaml:23:22: property "credentials" is not defined in object type {actions_r
    |                      ^~~~~~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNp8UL1q80AQ7PUUU3ygSuIjuLo+VUIC+amNdNqEi897Yu82Rph792CdIpkU7pbZ+dnZwKYCTkEOHz6c9rbz/gIAjkdNscyAiv8dgYGiFTcmF9ignoIK3l8e63WfppEMYhLHnwvo1R6mPeuxJ7lpNBNRiH8dCzqDkazQdp4VGoiT625fudHqqvoK/axPFFNRiXJsLmztlZM2d7v2/67EJRrXsAbcHcnglXjA0KVujRRlA6vi8e98Xj7YqjjkjGa4Bq//gZxXB+LvrQHw9vxw/2Rm4dK43TpE5PwTAAD//6vehKY=)
+[Playground](https://kjanat.github.io/actionlint/#eNp8UM1q8zAQvPspBvNdbT5KTrr31NJCf87BlrdFjbIyK22DCXr3Esu1Qw+5LbPzs7OBTQWcghw+fDjtbef9BQAcj5pimQEV/zsCA0UrbkwusEE9BRW8vzzW6z5NIxnEJI4/F9CrPUx71mNPctNoJqIQ/zoWdAYjWaHtPCs0ECfX3b5yo9VV9RX6WZ8opqIS5dhc2NorJ23udu3/XYlLNK5hDbg7ksEr8YChS90aKcoGVsXj3/m8fLBVccgZzXANXv8DOa8OxN9bA+Dt+eH+yczCpXG7dYjI+ScAAP//iUeEiA==)
 
 Inputs of reusable workflow calls are set to `inputs.*` properties following the definitions at `on.workflow_call.inputs`.
 And in a job of a reusable workflow, `secrets.*` are passed from caller of the workflow so it is set following the definitions at
@@ -3170,21 +3170,21 @@ jobs:
 Output:
 
 ```console
-test.yaml:11:21: "password" section in "nginx" service should be specified via secrets. do not put password value directly [credentials]
+test.yaml:10:21: "password" section in "nginx" service should be specified via secrets. do not put password value directly [credentials]
    |
-11 |           password: P@ssw0rd
+10 |           password: P@ssw0rd
    |                     ^~~~~~~~
-test.yaml:11:21: "password" section in "redis" service should be specified via secrets. do not put password value directly [credentials]
+test.yaml:10:21: "password" section in "redis" service should be specified via secrets. do not put password value directly [credentials]
    |
-11 |           password: P@ssw0rd
+10 |           password: P@ssw0rd
    |                     ^~~~~~~~
-test.yaml:13:11: unexpected key "email" for "credentials" section. expected one of "password", "username" [syntax-check]
+test.yaml:12:11: unexpected key "email" for "credentials" section. expected one of "password", "username" [syntax-check]
    |
-13 |           email: me@example.com
+12 |           email: me@example.com
    |           ^~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNp8kM1KxDAUhfd9irNyIaS6zmoewTeQTHNpI703JSdxxreXMLUUBVfhOz/kcLN5bI3LMHzkK/0AVGHtL0Apn2kSPgiwOdn9B4CkYRa/q2vovcObikSxmsJKj6cTHQmgUYoFFQ/9ch1cp1NgC+Qtl+jxdiFvryWeTNGQVg+Vi9yDbquMU9bdLxIT/wx9qP8Nff49tDSj6ydq12a1uVOZVbbjD9eTHuNLzO/MKnVJNo9cvgMAAP//l3xngQ==)
+[Playground](https://kjanat.github.io/actionlint/#eNp8kMtK9DAcxfd9igMffAuh1XVWA+Ja6QtI2hzbaC4l/8TOvL3EGUtAcBV+55JwEoPCVmTtuvc4ieqATMn1BITp086UKwFhseH8A4D1eqG6qU7X3uHNiYYhW+1E4X9D+IencXweFR4bUSeCfqIxNDA2cc7uAhuwx/Tx5uJ+XAwUYQraU8Ff+gp9pSawaZE9JqPwchLZH5JpTHptnYLniWftN8dhjv7mJxorv/Zd1b/23TX0nUglSF9/tkwl5NI3Zcncjjf6mlQY7k18leiZVxuWQdavAAAA///OgHrq)
 
 actionlint also checks usage of anchors and aliases. In the following example actionlint reports recursive aliases and unused
 anchors as error.

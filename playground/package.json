@@ -8,15 +8,13 @@
   "main": "main.js",
   "scripts": {
     "build": "tsc -p .",
-    "lint": "npm run lint:prettier && npm run lint:eslint && npm run lint:stylelint && npm run lint:tsc-eslint",
+    "lint": "run -qs lint:eslint lint:tsc-eslint",
     "lint:eslint": "eslint --max-warnings 0 *.ts *.mjs",
-    "lint:prettier": "prettier --check *.ts *.mjs",
-    "lint:stylelint": "stylelint style.css",
     "lint:tsc-eslint": "tsc -p tsconfig.eslint.json",
-    "prettier": "prettier --write *.ts *.mjs",
     "serve": "http-server . -p 1234",
     "start": "npm run serve",
     "test": "mocha ./test.js",
+    "typecheck": "run -q tsc7 --noEmit",
     "watch": "tsc -p . --watch"
   },
   "overrides": {
@@ -44,10 +42,9 @@
     "http-server": "^14.1.1",
     "jsdom": "^28.0.0",
     "mocha": "^11.7.5",
-    "prettier": "^3.7.4",
-    "stylelint": "^16.26.1",
-    "stylelint-config-standard": "^39.0.1",
-    "typescript": "^5.9.3",
+    "runner-run": "^0.25.1",
+    "tsc7": "npm:typescript@^7",
+    "typescript": "^6",
     "typescript-eslint": "^8.50.0"
   }
 }
