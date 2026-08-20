@@ -170,13 +170,14 @@ func sanitizeExpressionsInScript(src string) string {
 
 func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shell string, pos *Pos) {
 	var sh string
-	if shell == "bash" || shell == "sh" {
+	switch {
+	case shell == "bash" || shell == "sh":
 		sh = shell
-	} else if strings.HasPrefix(shell, "bash ") {
+	case strings.HasPrefix(shell, "bash "):
 		sh = "bash"
-	} else if strings.HasPrefix(shell, "sh ") {
+	case strings.HasPrefix(shell, "sh "):
 		sh = "sh"
-	} else {
+	default:
 		return // Skip checking this shell script since shellcheck doesn't support it
 	}
 

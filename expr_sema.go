@@ -2,6 +2,7 @@ package actionlint
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -48,10 +49,11 @@ func parseFormatFuncSpecifiers(f string, n int) map[int]struct{} {
 
 		// Inside specifier
 		if end == none {
-			if r == '{' && i == start {
+			switch {
+			case r == '{' && i == start:
 				// Escaped '{'
 				start = none
-			} else if r == '}' {
+			case r == '}':
 				if i == start {
 					// Empty specifier '{}'
 					start = none
@@ -59,7 +61,7 @@ func parseFormatFuncSpecifiers(f string, n int) map[int]struct{} {
 					// Closing brace.
 					end = i
 				}
-			} else if r < '0' || r > '9' {
+			case r < '0' || r > '9':
 				if r == '{' {
 					start = i + 1
 				} else {
@@ -474,8 +476,8 @@ func (sema *ExprSemanticsChecker) UpdateSecrets(ty *ObjectType) {
 // UpdateInputs updates 'inputs' context object to given object type.
 func (sema *ExprSemanticsChecker) UpdateInputs(ty *ObjectType) {
 	sema.ensureVarsCopied()
-	o := sema.vars["inputs"].(*ObjectType)
-	if len(o.Props) == 0 && o.IsStrict() {
+	o, ok := sema.vars["inputs"].(*ObjectType)
+	if !ok || len(o.Props) == 0 && o.IsStrict() {
 		sema.vars["inputs"] = ty
 		return
 	}
@@ -500,7 +502,11 @@ func (sema *ExprSemanticsChecker) UpdateDispatchInputs(ty *ObjectType) {
 	ty = NewStrictObjectType(p)
 
 	sema.ensureGithubVarCopied()
-	sema.vars["github"].(*ObjectType).Props["event"].(*ObjectType).Props["inputs"] = ty
+	if gh, ok := sema.vars["github"].(*ObjectType); ok {
+		if ev, ok := gh.Props["event"].(*ObjectType); ok {
+			ev.Props["inputs"] = ty
+		}
+	}
 }
 
 // UpdateJobs updates 'jobs' context object to given object type.
@@ -820,7 +826,7 @@ func checkFuncSignature(n *FuncCallNode, sig *FuncSignature, args []ExprType) *E
 		)
 	}
 
-	for i := 0; i < len(sig.Params); i++ {
+	for i := range len(sig.Params) {
 		p, a := sig.Params[i], args[i]
 		if !p.Assignable(a) {
 			return errorfAtExpr(
@@ -891,7 +897,7 @@ func (sema *ExprSemanticsChecker) checkBuiltinFuncCall(n *FuncCallNode, sig *Fun
 		if err == nil {
 			return typeOfJSONValue(v)
 		}
-		if s, ok := err.(*json.SyntaxError); ok {
+		if s, ok := errors.AsType[*json.SyntaxError](err); ok {
 			sema.errorf(lit, "broken JSON string is passed to fromJSON() at offset %d: %s", s.Offset, s)
 		}
 	case "case":

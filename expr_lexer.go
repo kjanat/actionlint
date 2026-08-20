@@ -174,7 +174,7 @@ func NewExprLexer(src string) *ExprLexer {
 	}
 	l.scan.Init(strings.NewReader(src))
 	l.scan.Error = func(_ *scanner.Scanner, m string) {
-		l.error(fmt.Sprintf("scan error while lexing expression: %s", m))
+		l.error("scan error while lexing expression: " + m)
 	}
 	return l
 }

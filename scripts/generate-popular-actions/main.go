@@ -5,6 +5,7 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"go/format"
@@ -127,7 +128,7 @@ func (g *gen) fetchRemote() (map[string]*actionlint.ActionMetadata, error) {
 	reqs := make(chan *request)
 	done := make(chan struct{})
 
-	for i := 0; i <= 4; i++ {
+	for range 5 {
 		go func(ret chan<- *fetched, reqs <-chan *request, done <-chan struct{}) {
 			for {
 				select {
@@ -190,7 +191,7 @@ func (g *gen) fetchRemote() (map[string]*actionlint.ActionMetadata, error) {
 	}(reqs, done)
 
 	ret := make(map[string]*actionlint.ActionMetadata, n)
-	for i := 0; i < n; i++ {
+	for range n {
 		f := <-results
 		if f.err != nil {
 			close(done)
@@ -393,7 +394,8 @@ func (g *gen) detectNewReleaseURLs() ([]string, error) {
 						errs <- fmt.Errorf("could not send head request to %s: %w", url, err)
 						break
 					}
-					if res.StatusCode == 404 {
+					_ = res.Body.Close()
+					if res.StatusCode == http.StatusNotFound {
 						g.log.Println("Not found:", url)
 						ret <- ""
 						break
@@ -422,7 +424,7 @@ func (g *gen) detectNewReleaseURLs() ([]string, error) {
 	}(done)
 
 	us := []string{}
-	for i := 0; i < len(actions); i++ {
+	for range actions {
 		select {
 		case u := <-urls:
 			if u != "" {
@@ -476,7 +478,7 @@ Flags:`)
 		flags.PrintDefaults()
 	}
 	if err := flags.Parse(args[1:]); err != nil {
-		if err == flag.ErrHelp {
+		if errors.Is(err, flag.ErrHelp) {
 			return 0 // When -h or -help
 		}
 		return 1

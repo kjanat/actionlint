@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"go/format"
 	"html"
@@ -141,7 +142,7 @@ func stripAndUnescape(s string) (string, error) {
 func generate(src []byte, out io.Writer) error {
 	t, ok := parseContextAvailabilityTable(src)
 	if !ok {
-		return fmt.Errorf("no \"Context availability\" table was found")
+		return errors.New("no \"Context availability\" table was found")
 	}
 	dbg.Println("\"Context availability\" table was found")
 

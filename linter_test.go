@@ -144,10 +144,8 @@ func checkErrors(t *testing.T, outfile string, errs []*Error) {
 			if !want.MatchString(have) {
 				t.Errorf("error message mismatch at %dth error does not match to regular expression\n  want: /%s/\n  have: %q", i+1, want, have)
 			}
-		} else {
-			if want != have {
-				t.Errorf("error message mismatch at %dth error does not match exactly\n  want: %q\n  have: %q", i+1, want, have)
-			}
+		} else if want != have {
+			t.Errorf("error message mismatch at %dth error does not match exactly\n  want: %q\n  have: %q", i+1, want, have)
 		}
 	}
 }
@@ -672,7 +670,7 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 	scripts := filepath.Join("testdata", "bench", "many_scripts.yaml")
 	small := filepath.Join("testdata", "bench", "small.yaml")
 	large := filepath.Join("testdata", "bench", "large.yaml")
-	min := filepath.Join("testdata", "bench", "minimal.yaml")
+	minimal := filepath.Join("testdata", "bench", "minimal.yaml")
 	proj := &Project{root: "."}
 	shellcheck, err := execabs.LookPath("shellcheck")
 	if err != nil {
@@ -701,21 +699,21 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 	}{
 		{
 			what:  "minimal",
-			files: []string{min},
+			files: []string{minimal},
 		},
 		{
 			what:  "minimal",
-			files: []string{min, min, min, min, min},
+			files: []string{minimal, minimal, minimal, minimal, minimal},
 		},
 		{
 			what:  "minimal",
-			files: []string{min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min},
+			files: []string{minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal},
 		},
 		{
 			what: "minimal",
 			files: []string{
-				min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min,
-				min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min, min,
+				minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal,
+				minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal,
 			},
 		},
 		{
@@ -793,7 +791,7 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 			fm = "-format"
 		}
 		b.Run(fmt.Sprintf("%s%s%s-%d", bm.what, sc, fm, len(bm.files)), func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				opts := LinterOptions{
 					Shellcheck: bm.shellcheck,
 					Format:     bm.format,
@@ -844,7 +842,7 @@ func BenchmarkLintWorkflowContent(b *testing.B) {
 		}
 
 		b.Run(name, func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				opts := LinterOptions{}
 				l, err := NewLinter(io.Discard, &opts)
 				if err != nil {
@@ -879,7 +877,7 @@ func BenchmarkExamplesLintFiles(b *testing.B) {
 		b.Skipf("pyflakes is not found: %s", err)
 	}
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		opts := LinterOptions{
 			Shellcheck: shellcheck,
 			Pyflakes:   pyflakes,
@@ -903,7 +901,7 @@ func BenchmarkExamplesLintFiles(b *testing.B) {
 }
 
 func BenchmarkLintRepository(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		opts := LinterOptions{}
 		l, err := NewLinter(io.Discard, &opts)
 		if err != nil {

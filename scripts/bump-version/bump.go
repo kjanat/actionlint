@@ -166,20 +166,20 @@ func rewrite(content []byte, occs []occurrence, v version) []byte {
 	return append(out, content[last:]...)
 }
 
-func (t *target) verify(content []byte, v version) ([]occurrence, error) {
+func (t *target) verify(content []byte, v version) error {
 	occs, err := t.scan(content)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	for _, o := range occs {
 		if o.version != v {
-			return nil, fmt.Errorf(
+			return fmt.Errorf(
 				"%s:%d: %s refers to version %s but %s was expected",
 				t.path, lineAt(content, o.value.start), o.rule, o.version, v,
 			)
 		}
 	}
-	return occs, nil
+	return nil
 }
 
 func (t *target) bump(content []byte, v version) ([]byte, int, error) {
@@ -196,7 +196,7 @@ func (t *target) bump(content []byte, v version) ([]byte, int, error) {
 		}
 	}
 	updated := rewrite(content, occs, v)
-	if _, err := t.verify(updated, v); err != nil {
+	if err := t.verify(updated, v); err != nil {
 		return nil, 0, fmt.Errorf("the update did not produce a consistent file: %w", err)
 	}
 	return updated, len(occs), nil
@@ -270,7 +270,7 @@ func Bump(root string, ts []*target, v version, out io.Writer) error {
 		if err != nil {
 			return fmt.Errorf("could not re-read %s: %w", t.path, err)
 		}
-		if _, err := t.verify(content, v); err != nil {
+		if err := t.verify(content, v); err != nil {
 			return fmt.Errorf("the repository is inconsistent after the update: %w", err)
 		}
 		_, _ = fmt.Fprintf(out, "%s: %d reference(s) set to %s\n", t.path, updates[i].count, v)

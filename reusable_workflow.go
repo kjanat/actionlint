@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -332,7 +333,7 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 
 	n := &w.On
 	if n.Line == 0 && n.Column == 0 {
-		return nil, fmt.Errorf("\"on:\" is not found")
+		return nil, errors.New("\"on:\" is not found")
 	}
 
 	switch n.Kind {

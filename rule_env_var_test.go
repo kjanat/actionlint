@@ -74,5 +74,4 @@ func TestRuleEnvVarSkipEdgeCaseEnv(t *testing.T) {
 	if errs := r.Errs(); len(errs) > 0 {
 		t.Fatal("no error should be detected when `Env` is constructed by expression", errs)
 	}
-
 }

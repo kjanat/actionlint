@@ -48,12 +48,10 @@ cov: coverage.out coverage.html
 	go tool cover -func=coverage.out
 
 l lint:
-	go vet ./...
-	# ./... is not available because ./node_modules/ contains some Go packages
-	staticcheck ./ ./scripts/... ./cmd/...
-	govulncheck ./...
+	golangci-lint run
+	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 ifneq ($(OS),Windows_NT)
-	GOOS=js GOARCH=wasm staticcheck ./playground
+	GOOS=js GOARCH=wasm golangci-lint run ./playground
 	go run ./scripts/check-checks -quiet ./docs/checks.md
 endif
 

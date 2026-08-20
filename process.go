@@ -2,6 +2,7 @@ package actionlint
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -39,7 +40,7 @@ func (e *cmdExecution) run() ([]byte, error) {
 	}
 
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			code := exitErr.ExitCode()
 
 			stderr := exitErr.Stderr
@@ -153,7 +154,7 @@ type externalCommand struct {
 // process.
 func (cmd *externalCommand) run(args []string, stdin string, callback func([]byte, error) error) {
 	if len(cmd.args) > 0 {
-		var allArgs []string
+		allArgs := make([]string, 0, len(cmd.args)+len(args))
 		allArgs = append(allArgs, cmd.args...)
 		allArgs = append(allArgs, args...)
 		args = allArgs

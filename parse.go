@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"errors"
 	"fmt"
 	"iter"
 	"math"
@@ -259,20 +260,20 @@ func (p *parser) unexpectedKey(s *String, sec string, expected []string) {
 	if !strings.ContainsRune(sec, ' ') {
 		sec = fmt.Sprintf("%q section", sec)
 	}
-	l := len(expected)
 	var m string
-	if l == 1 {
+	switch l := len(expected); {
+	case l == 1:
 		m = fmt.Sprintf("expected %q key for %s but got %q", expected[0], sec, s.Value)
-	} else if l > 1 {
+	case l > 1:
 		m = fmt.Sprintf("unexpected key %q for %s. expected one of %v", s.Value, sec, sortedQuotes(expected))
-	} else {
+	default:
 		m = fmt.Sprintf("unexpected key %q for %s", s.Value, sec)
 	}
 	p.errorAt(s.Pos, m)
 }
 
-func (p *parser) checkNotEmpty(sec string, len int, n *yaml.Node) bool {
-	if len == 0 {
+func (p *parser) checkNotEmpty(sec string, count int, n *yaml.Node) bool {
+	if count == 0 {
 		p.errorf(n, "%q section should not be empty", sec)
 		return false
 	}
@@ -330,14 +331,14 @@ func (p *parser) parseString(n *yaml.Node, allowEmpty bool) *String {
 	return newString(n)
 }
 
-func (p *parser) parseStringSequence(sec string, n *yaml.Node, allowEmpty bool, allowElemEmpty bool) []*String {
+func (p *parser) parseStringSequence(sec string, n *yaml.Node, allowEmpty bool) []*String {
 	if ok := p.checkSequence(sec, n, allowEmpty); !ok {
 		return nil
 	}
 
 	ss := make([]*String, 0, len(n.Content))
 	for _, c := range n.Content {
-		s := p.parseString(c, allowElemEmpty)
+		s := p.parseString(c, false)
 		if s != nil {
 			ss = append(ss, s)
 		}
@@ -345,15 +346,12 @@ func (p *parser) parseStringSequence(sec string, n *yaml.Node, allowEmpty bool, 
 	return ss
 }
 
-func (p *parser) parseStringOrStringSequence(sec string, n *yaml.Node, allowEmpty bool, allowElemEmpty bool) []*String {
+func (p *parser) parseStringOrStringSequence(sec string, n *yaml.Node) []*String {
 	switch n.Kind {
 	case yaml.ScalarNode:
-		if allowEmpty && n.Tag == "!!null" {
-			return []*String{} // In the case of 'foo:'
-		}
-		return []*String{p.parseString(n, allowElemEmpty)}
+		return []*String{p.parseString(n, false)}
 	default:
-		return p.parseStringSequence(sec, n, allowEmpty, allowElemEmpty)
+		return p.parseStringSequence(sec, n, false)
 	}
 }
 
@@ -561,7 +559,7 @@ func (p *parser) parseWorkflowDispatchEventInput(name *String, n *yaml.Node) *Di
 				p.errorf(e.val, `input type of workflow_dispatch event must be one of "string", "number", "boolean", "choice", "environment" but got %q`, e.val.Value)
 			}
 		case "options":
-			ret.Options = p.parseStringSequence("options", e.val, false, false)
+			ret.Options = p.parseStringSequence("options", e.val, false)
 		default:
 			p.unexpectedKey(e.key, "inputs", []string{"description", "required", "default"})
 		}
@@ -597,7 +595,7 @@ func (p *parser) parseRepositoryDispatchEvent(pos *Pos, n *yaml.Node) *Repositor
 	// Note: Omitting 'types' is ok. In the case, all types trigger the workflow
 	for e := range p.parseSectionMapping("repository_dispatch", n, true, true) {
 		if e.id == "types" {
-			ret.Types = p.parseStringOrStringSequence("types", e.val, false, false)
+			ret.Types = p.parseStringOrStringSequence("types", e.val)
 		} else {
 			p.unexpectedKey(e.key, "repository_dispatch", []string{"types"})
 		}
@@ -608,7 +606,7 @@ func (p *parser) parseRepositoryDispatchEvent(pos *Pos, n *yaml.Node) *Repositor
 
 // https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#using-filters
 func (p *parser) parseWebhookEventFilter(name *String, n *yaml.Node) *WebhookEventFilter {
-	v := p.parseStringOrStringSequence(name.Value, n, false, false)
+	v := p.parseStringOrStringSequence(name.Value, n)
 	return &WebhookEventFilter{name, v}
 }
 
@@ -628,7 +626,7 @@ func (p *parser) parseWebhookEvent(name *String, n *yaml.Node) *WebhookEvent {
 		// message. So parser allows empty patterns here.
 		switch e.id {
 		case "types":
-			ret.Types = p.parseStringOrStringSequence(e.key.Value, e.val, false, false)
+			ret.Types = p.parseStringOrStringSequence(e.key.Value, e.val)
 		case "branches":
 			ret.Branches = p.parseWebhookEventFilter(e.key, e.val)
 		case "branches-ignore":
@@ -642,7 +640,7 @@ func (p *parser) parseWebhookEvent(name *String, n *yaml.Node) *WebhookEvent {
 		case "paths-ignore":
 			ret.PathsIgnore = p.parseWebhookEventFilter(e.key, e.val)
 		case "workflows":
-			ret.Workflows = p.parseStringOrStringSequence(e.key.Value, e.val, false, false)
+			ret.Workflows = p.parseStringOrStringSequence(e.key.Value, e.val)
 		default:
 			p.unexpectedKey(e.key, name.Value, []string{
 				"types",
@@ -777,9 +775,9 @@ func (p *parser) parseImageVersionEvent(pos *Pos, n *yaml.Node) *ImageVersionEve
 	for e := range p.parseSectionMapping("image_version", n, true, true) {
 		switch e.id {
 		case "names":
-			ret.Names = p.parseStringSequence("names", e.val, false, false)
+			ret.Names = p.parseStringSequence("names", e.val, false)
 		case "versions":
-			ret.Versions = p.parseStringSequence("versions", e.val, false, false)
+			ret.Versions = p.parseStringSequence("versions", e.val, false)
 		default:
 			p.unexpectedKey(e.key, "image_version", []string{"names", "versions"})
 		}
@@ -1197,9 +1195,9 @@ func (p *parser) parseContainer(sec string, pos *Pos, n *yaml.Node) *Container {
 		case "env":
 			ret.Env = p.parseEnv(e.val)
 		case "ports":
-			ret.Ports = p.parseStringSequence("ports", e.val, true, false)
+			ret.Ports = p.parseStringSequence("ports", e.val, true)
 		case "volumes":
-			ret.Ports = p.parseStringSequence("volumes", e.val, true, false)
+			ret.Ports = p.parseStringSequence("volumes", e.val, true)
 		case "options":
 			ret.Options = p.parseString(e.val, true)
 		case "command":
@@ -1347,7 +1345,7 @@ func (p *parser) parseStepExecWait(entries []workflowMappingEntry) *ExecWait {
 		switch e.id {
 		case "wait":
 			waitGiven = true
-			ret.Names = p.parseStringOrStringSequence("wait", e.val, false, false)
+			ret.Names = p.parseStringOrStringSequence("wait", e.val)
 		case "wait-all":
 			// A bare 'wait-all:' is equivalent to 'wait-all: true'. GitHub also accepts an
 			// explicit boolean but rejects false because it would make the step a no-op.
@@ -1517,7 +1515,7 @@ func (p *parser) parseRunsOn(n *yaml.Node) *Runner {
 	}
 
 	if n.Kind == yaml.ScalarNode || n.Kind == yaml.SequenceNode {
-		labels := p.parseStringOrStringSequence("runs-on", n, false, false)
+		labels := p.parseStringOrStringSequence("runs-on", n)
 		return &Runner{labels, nil, nil}
 	}
 
@@ -1529,7 +1527,7 @@ func (p *parser) parseRunsOn(n *yaml.Node) *Runner {
 				r.LabelsExpr = expr
 				continue
 			}
-			r.Labels = p.parseStringOrStringSequence("labels", e.val, false, false)
+			r.Labels = p.parseStringOrStringSequence("labels", e.val)
 		case "group":
 			r.Group = p.parseString(e.val, false)
 		default:
@@ -1600,7 +1598,7 @@ func (p *parser) parseJob(id *String, n *yaml.Node) *Job {
 				ret.Needs = []*String{p.parseString(v, false)}
 			} else {
 				// needs: [job1, job2]
-				ret.Needs = p.parseStringSequence("needs", v, false, false)
+				ret.Needs = p.parseStringSequence("needs", v, false)
 			}
 		case "runs-on":
 			ret.RunsOn = p.parseRunsOn(v)
@@ -1808,11 +1806,12 @@ func (p *parser) parse(n *yaml.Node) *Workflow {
 // }
 
 func handleYAMLUnmarshalError(err error) []*Error {
-	if es, ok := err.(*yaml.LoadErrors); ok {
+	es := &yaml.LoadErrors{}
+	if errors.As(err, &es) {
 		errs := make([]*Error, 0, len(es.Errors))
 		for _, e := range es.Errors {
 			errs = append(errs, &Error{
-				Message: fmt.Sprintf("could not parse as YAML: %s", e.Message),
+				Message: "could not parse as YAML: " + e.Message,
 				Line:    e.Mark.Line,
 				Column:  e.Mark.Column,
 				Kind:    "syntax-check",
@@ -1821,9 +1820,10 @@ func handleYAMLUnmarshalError(err error) []*Error {
 		return errs
 	}
 
-	if e, ok := err.(*yaml.LoadError); ok {
+	e := &yaml.LoadError{}
+	if errors.As(err, &e) {
 		return []*Error{{
-			Message: fmt.Sprintf("could not parse as YAML: %s", e.Message),
+			Message: "could not parse as YAML: " + e.Message,
 			Kind:    "syntax-check",
 			Line:    e.Mark.Line,
 			Column:  e.Mark.Column,
@@ -1831,7 +1831,7 @@ func handleYAMLUnmarshalError(err error) []*Error {
 	}
 
 	return []*Error{{
-		Message: fmt.Sprintf("could not parse as YAML: %s", err.Error()),
+		Message: "could not parse as YAML: " + err.Error(),
 		Kind:    "syntax-check",
 	}}
 }

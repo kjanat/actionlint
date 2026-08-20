@@ -41,17 +41,17 @@ func quotes(ss []string) string {
 	if l == 0 {
 		return ""
 	}
-	n, max := 0, 0
+	n, longest := 0, 0
 	for _, s := range ss {
 		m := len(s) + 2 // 2 for delims
 		n += m
-		if m > max {
-			max = m
+		if m > longest {
+			longest = m
 		}
 	}
 	n += (l - 1) * 2 // comma
 	b := quotesBuilder{}
-	b.buf = make([]byte, 0, max)
+	b.buf = make([]byte, 0, longest)
 	b.inner.Grow(n)
 	for _, s := range ss {
 		b.append(s)
@@ -65,19 +65,19 @@ func sortedQuotes(ss []string) string {
 }
 
 func quotesAll(sss ...[]string) string {
-	n, max := 0, 0
+	n, longest := 0, 0
 	for _, ss := range sss {
 		for _, s := range ss {
 			m := len(s) + 2 // 2 for delims
 			n += m
-			if m > max {
-				max = m
+			if m > longest {
+				longest = m
 			}
 		}
 		n += (len(ss) - 1) * 2 // comma
 	}
 	b := quotesBuilder{}
-	b.buf = make([]byte, 0, max)
+	b.buf = make([]byte, 0, longest)
 	n += (len(sss) - 1) * 2 // comma
 	if n > 0 {
 		b.inner.Grow(n)

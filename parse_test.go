@@ -203,7 +203,7 @@ func BenchmarkParseWorkflow(b *testing.B) {
 		loadBench("large"),
 	} {
 		b.Run(bc.name, func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				if _, errs := Parse(bc.input); len(errs) > 0 {
 					b.Fatal(errs)
 				}
@@ -240,7 +240,7 @@ func BenchmarkParseTestData(b *testing.B) {
 		loadBench("err"),
 	} {
 		b.Run(bc.name, func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				for _, in := range bc.inputs {
 					// Note: Some workflows may cause parse error
 					Parse(in)

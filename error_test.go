@@ -258,7 +258,7 @@ func TestErrorSortErrorsByPosition(t *testing.T) {
 
 			slices.SortFunc(errs, compareErrors)
 
-			for i := 0; i < len(errs)-1; i++ {
+			for i := range len(errs) - 1 {
 				l, r := errs[i], errs[i+1]
 				sorted := l.Line <= r.Line
 				if l.Line == r.Line {

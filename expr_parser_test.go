@@ -1,7 +1,6 @@
 package actionlint
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -792,7 +791,7 @@ func TestParseExpressionNumberLiteralsError(t *testing.T) {
 			if err == nil {
 				t.Fatal("Parse error did not occur:", tc.tok.Value)
 			}
-			want := fmt.Sprintf("parsing invalid %s", tc.what)
+			want := "parsing invalid " + tc.what
 			if !strings.Contains(err.Error(), want) {
 				t.Fatalf("error message %q does not contain %q", err.Error(), want)
 			}

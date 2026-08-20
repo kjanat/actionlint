@@ -33,7 +33,6 @@ enable  = [
   "predeclared",
   "reassign",
   "recvcheck",
-  "testableexamples",
   "unconvert",
   "unparam",
   "usestdlibvars",
@@ -51,7 +50,7 @@ paths     = [
 
 [[linters.exclusions.rules]]
 path    = "_test\\.go"
-linters = ["forcetypeassert", "prealloc"]
+linters = ["dupword", "forcetypeassert", "prealloc", "unparam"]
 
 [formatters]
 enable = ["gofmt"]

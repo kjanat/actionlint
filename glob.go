@@ -62,7 +62,7 @@ func (v *globValidator) unexpected(char rune, what, why string) {
 
 	while := ""
 	if what != "" {
-		while = fmt.Sprintf(" while checking %s", what)
+		while = " while checking " + what
 	}
 
 	v.error(fmt.Sprintf("invalid glob pattern. %s%s. %s", unexpected, while, why))

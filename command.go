@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -151,7 +152,7 @@ func (cmd *Command) Main(args []string) int {
 		flags.PrintDefaults()
 	}
 	if err := flags.Parse(args[1:]); err != nil {
-		if err == flag.ErrHelp {
+		if errors.Is(err, flag.ErrHelp) {
 			// When -h or -help
 			return ExitStatusSuccessNoProblem
 		}

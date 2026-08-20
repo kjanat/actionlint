@@ -370,7 +370,7 @@ func Main(args []string) error {
 	}
 
 	if err := flags.Parse(args[1:]); err != nil {
-		if err == flag.ErrHelp {
+		if errors.Is(err, flag.ErrHelp) {
 			return nil
 		}
 		return err

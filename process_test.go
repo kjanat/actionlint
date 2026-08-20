@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"errors"
 	"fmt"
 	"runtime"
 	"strings"
@@ -258,7 +259,7 @@ func TestProcessErrorInCallback(t *testing.T) {
 			t.Error(err)
 			return err
 		}
-		return fmt.Errorf("dummy error")
+		return errors.New("dummy error")
 	})
 
 	echoDone := &atomic.Bool{}
