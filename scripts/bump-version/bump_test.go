@@ -618,6 +618,26 @@ func TestSectionNotesOfRepositoryChangelog(t *testing.T) {
 	}
 }
 
+func TestRepositoryChangelogAcceptsCRLF(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("..", "..", changelogFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lf := bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
+	crlf := bytes.ReplaceAll(lf, []byte("\n"), []byte("\r\n"))
+
+	if err := checkChangelogSections(crlf); err != nil {
+		t.Errorf("%s with CRLF line endings: %v", changelogFile, err)
+	}
+	notes, err := sectionNotes(crlf, "v1.11.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(notes, "\r") {
+		t.Errorf("the v1.11.0 notes keep their carriage returns: %q", notes)
+	}
+}
+
 func TestChangelogReleaseRejects(t *testing.T) {
 	for name, tc := range map[string]struct {
 		content string

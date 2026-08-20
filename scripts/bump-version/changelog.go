@@ -17,10 +17,10 @@ const (
 )
 
 var (
-	changelogAnchor  = regexp.MustCompile(`(?m)^<a id="(v\d+\.\d+\.\d+)"></a>$`)
-	changelogHeading = regexp.MustCompile(`(?m)^#{1,2} \[(v\d+\.\d+\.\d+)\]\((https://\S+/releases/tag/(v\d+\.\d+\.\d+))\) - \d{4}-\d{2}-\d{2}$`)
-	changelogChanges = regexp.MustCompile(`(?m)^\[Changes\]\[(v\d+\.\d+\.\d+)\]$`)
-	changelogLink    = regexp.MustCompile(`(?m)^\[(v\d+\.\d+\.\d+)\]: (https://\S+)$`)
+	changelogAnchor  = regexp.MustCompile(`(?m)^<a id="(v\d+\.\d+\.\d+)"></a>\r?$`)
+	changelogHeading = regexp.MustCompile(`(?m)^#{1,2} \[(v\d+\.\d+\.\d+)\]\((https://\S+/releases/tag/(v\d+\.\d+\.\d+))\) - \d{4}-\d{2}-\d{2}\r?$`)
+	changelogChanges = regexp.MustCompile(`(?m)^\[Changes\]\[(v\d+\.\d+\.\d+)\]\r?$`)
+	changelogLink    = regexp.MustCompile(`(?m)^\[(v\d+\.\d+\.\d+)\]: (https://\S+)\r?$`)
 	changelogEntry   = regexp.MustCompile(`(?m)^- \S`)
 )
 
@@ -154,7 +154,7 @@ func sectionNotes(content []byte, tag string) (string, error) {
 		if changes := changelogChanges.FindIndex(notes); changes != nil {
 			notes = notes[:changes[0]]
 		}
-		return strings.TrimSpace(string(notes)) + "\n", nil
+		return strings.TrimSpace(strings.ReplaceAll(string(notes), "\r\n", "\n")) + "\n", nil
 	}
 
 	entries, found := changelogEntries(content)
