@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -31,7 +32,7 @@ var reReplaceholder = regexp.MustCompile("{%[^%]+%}")
 // https://github.com/yuin/goldmark/issues/471
 func textOf(n ast.Node, src []byte) string {
 	var b strings.Builder
-	ast.Walk(n, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+	_ = ast.Walk(n, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if entering {
 			if t, ok := n.(*ast.Text); ok {
 				b.Write(t.Value(src))
@@ -74,10 +75,8 @@ func (sc switchCases) ForEach(pred func(c *switchCase)) {
 
 func (sc switchCases) Contains(key string) bool {
 	for _, sw := range sc {
-		for _, k := range sw.cond {
-			if k == key {
-				return true
-			}
+		if slices.Contains(sw.cond, key) {
+			return true
 		}
 	}
 	return false
@@ -281,10 +280,11 @@ func WorkflowKeyAvailability(key string) ([]string, []string) {
 
 func source(args []string, url string) ([]byte, error) {
 	if len(args) == 2 {
-		if !filepath.IsLocal(args[0]) {
-			return nil, fmt.Errorf("source file path must be relative to the current directory: %q", args[0])
+		srcFile := args[0]
+		if !filepath.IsLocal(srcFile) {
+			return nil, fmt.Errorf("source file path must be relative to the current directory: %q", srcFile)
 		}
-		return os.ReadFile(args[0])
+		return os.ReadFile(srcFile)
 	}
 
 	var c http.Client
@@ -295,6 +295,7 @@ func source(args []string, url string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch %s: %w", url, err)
 	}
+	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode < 200 || 300 <= res.StatusCode {
 		return nil, fmt.Errorf("request was not successful for %s: %s", url, res.Status)
 	}
@@ -302,7 +303,6 @@ func source(args []string, url string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch body for %s: %w", url, err)
 	}
-	res.Body.Close()
 
 	dbg.Printf("Fetched %d bytes from %s", len(body), url)
 	return body, nil
@@ -312,7 +312,7 @@ func run(args []string, stdout, stderr, dbgout io.Writer, srcURL string) int {
 	dbg.SetOutput(dbgout)
 
 	if len(args) > 2 {
-		fmt.Fprintln(stderr, "usage: generate-availability [[srcfile] dstfile]")
+		_, _ = fmt.Fprintln(stderr, "usage: generate-availability [[srcfile] dstfile]")
 		return 1
 	}
 
@@ -320,32 +320,41 @@ func run(args []string, stdout, stderr, dbgout io.Writer, srcURL string) int {
 
 	src, err := source(args, srcURL)
 	if err != nil {
-		fmt.Fprintln(stderr, err)
+		_, _ = fmt.Fprintln(stderr, err)
 		return 1
 	}
 
 	out := stdout
 	dst := "<stdout>"
+	var dstFile *os.File
 	if len(args) > 0 && args[len(args)-1] != "-" {
 		dst = args[len(args)-1]
 		if !filepath.IsLocal(dst) {
-			fmt.Fprintf(stderr, "output file path must be relative to the current directory: %q\n", dst)
+			_, _ = fmt.Fprintf(stderr, "output file path must be relative to the current directory: %q\n", dst)
 			return 1
 		}
 		f, err := os.Create(dst)
 		if err != nil {
-			fmt.Fprintln(stderr, err)
+			_, _ = fmt.Fprintln(stderr, err)
 			return 1
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
+		dstFile = f
 		out = f
 	}
 
 	dbg.Println("Writing output to", dst)
 
 	if err := generate(src, out); err != nil {
-		fmt.Fprintln(stderr, err)
+		_, _ = fmt.Fprintln(stderr, err)
 		return 1
+	}
+
+	if dstFile != nil {
+		if err := dstFile.Close(); err != nil {
+			_, _ = fmt.Fprintln(stderr, err)
+			return 1
+		}
 	}
 
 	dbg.Println("Wrote output to", dst)

@@ -12,7 +12,7 @@ func TestExprSemanticsCheckRealWorld(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	s := bufio.NewScanner(f)
 	for s.Scan() {
@@ -43,7 +43,7 @@ func BenchmarkExprRealWorld(b *testing.B) {
 	for s.Scan() {
 		exprs = append(exprs, s.Text()+"}}")
 	}
-	f.Close()
+	_ = f.Close()
 	if err := s.Err(); err != nil {
 		b.Fatal(err)
 	}

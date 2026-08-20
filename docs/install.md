@@ -1,5 +1,4 @@
-Installation
-============
+# Installation
 
 This document describes how to install [actionlint](../docs).
 
@@ -116,6 +115,7 @@ gh attestation verify -R kjanat/actionlint actionlint_1.11.0_linux_amd64.tar.gz
 ```
 
 <a id="download-script"></a>
+
 ## Download script
 
 To install `actionlint` executable with one command, [the download script](../scripts/download-actionlint.bash) is available.
@@ -188,7 +188,7 @@ mise use -g actionlint@latest
 
 ## Build from source
 
-Recent [Go][] toolchain is necessary to build actionlint from source. Last two major versions of Go are supported.
+Recent [Go][Go] toolchain is necessary to build actionlint from source. Last two major versions of Go are supported.
 
 ```sh
 # Install the latest stable version

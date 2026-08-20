@@ -1,5 +1,4 @@
-generate-availability
-=====================
+# generate-availability
 
 This is a script for generating [`availability.go`](../../availability.go).
 

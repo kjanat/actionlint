@@ -838,7 +838,7 @@ func TestLexTokenPos(t *testing.T) {
 		t.Fatalf("length of inputs mismatch. want=%d, have=%d", len(want), len(ts))
 	}
 
-	for i := 0; i < len(ts); i++ {
+	for i := range ts {
 		if ts[i].Offset != want[i] {
 			t.Errorf("%dth token offsets mismatch. want=%d, have=%d", i+1, want[i], ts[i].Offset)
 		}

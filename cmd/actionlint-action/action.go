@@ -32,12 +32,11 @@ func (a *action) run() int {
 	if err == nil {
 		return code
 	}
-	var invalid *inputError
-	if errors.As(err, &invalid) {
-		fmt.Fprintf(a.stdout, "::error title=Invalid action input::%s\n", commandEscape(err.Error()))
+	if _, ok := errors.AsType[*inputError](err); ok {
+		_, _ = fmt.Fprintf(a.stdout, "::error title=Invalid action input::%s\n", commandEscape(err.Error()))
 		return actionlint.ExitStatusInvalidCommandOption
 	}
-	fmt.Fprintf(a.stdout, "::error title=actionlint action failed::%s\n", commandEscape(err.Error()))
+	_, _ = fmt.Fprintf(a.stdout, "::error title=actionlint action failed::%s\n", commandEscape(err.Error()))
 	return actionlint.ExitStatusFailure
 }
 

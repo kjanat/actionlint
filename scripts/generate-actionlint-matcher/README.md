@@ -1,5 +1,4 @@
-generate-actionlint-matcher
-===========================
+# generate-actionlint-matcher
 
 This script generates [`actionlint-matcher.json`](../../.github/actionlint-matcher.json).
 

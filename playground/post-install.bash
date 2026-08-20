@@ -3,7 +3,7 @@
 set -e -o pipefail
 
 pkg_dir() {
-    dirname "$(node -p "require.resolve('$1/package.json')")"
+	dirname "$(node -p "require.resolve('$1/package.json')")"
 }
 
 codemirror="$(pkg_dir codemirror)"
@@ -29,7 +29,7 @@ cp "${pako}/dist/pako.min.js" ./lib/js/
 
 wasm_exec="$(go env GOROOT)/lib/wasm/wasm_exec.js"
 if [ ! -f "${wasm_exec}" ]; then
-    echo "${wasm_exec} does not exist"
-    exit 1
+	echo "${wasm_exec} does not exist"
+	exit 1
 fi
-cat "${wasm_exec}" > ./lib/js/wasm_exec.js
+cat "${wasm_exec}" >./lib/js/wasm_exec.js

@@ -41,13 +41,7 @@ func TestWorkflowKeyAvailability(t *testing.T) {
 				if !ok {
 					t.Errorf("special function %q is not registered in SpecialFunctionNames: %v", s, SpecialFunctionNames)
 				}
-				ok = false
-				for _, k := range ks {
-					if k == key {
-						ok = true
-						break
-					}
-				}
+				ok = slices.Contains(ks, key)
 				if !ok {
 					t.Errorf("Key %q is not in candidates of special function %q: %v", key, s, ks)
 				}

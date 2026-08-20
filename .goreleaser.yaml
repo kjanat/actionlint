@@ -65,8 +65,8 @@ homebrew_casks:
       owner: rhysd
       name: actionlint
     commit_author:
-      name: 'github-actions[bot]'
-      email: '41898282+github-actions[bot]@users.noreply.github.com'
+      name: "github-actions[bot]"
+      email: "41898282+github-actions[bot]@users.noreply.github.com"
     skip_upload: true
 
 changelog:

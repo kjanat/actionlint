@@ -1,5 +1,4 @@
-Configuration
-=============
+# Configuration
 
 This document describes how to configure [actionlint](..) behavior.
 
@@ -11,7 +10,7 @@ cases.
 
 Configuration file `actionlint.yaml` or `actionlint.yml` can be put in `.github` directory.
 
-Note: If you're using [Super-Linter][], the file should be placed in a different directory. Please check the project's document.
+Note: If you're using [Super-Linter][Super-Linter], the file should be placed in a different directory. Please check the project's document.
 
 ```yaml
 # Configuration related to self-hosted runner.
@@ -36,7 +35,7 @@ paths:
     # List of regular expressions to filter errors by the error messages.
     ignore:
       # Ignore the specific error from shellcheck
-      - 'shellcheck reported issue in this script: SC2086:.+'
+      - "shellcheck reported issue in this script: SC2086:.+"
   # This pattern only matches '.github/workflows/release.yaml' file.
   .github/workflows/release.yaml:
     ignore:
@@ -53,7 +52,7 @@ paths:
   configuration.
   - `{glob}`: A file path glob pattern to apply the configuration. The path separator is always '/'. It is matched to the
     relative path from the repository root. For example `.github/workflows/**/*.yaml` matches all the workflow files (with
-    `.yaml` file extension). For the glob syntax, please read the [doublestar][] library's documentation.
+    `.yaml` file extension). For the glob syntax, please read the [doublestar][doublestar] library's documentation.
     - `ignore`: The configuration to ignore (filter) the errors by the error messages. This is an array of regular
       expressions. When one of the patterns matches the error message, the error will be ignored. It's similar to the
       `-ignore` command line option.

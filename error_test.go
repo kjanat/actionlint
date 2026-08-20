@@ -713,7 +713,7 @@ func TestErrorFormatterRegisterRuleInParallel(t *testing.T) {
 	}
 
 	rules := []Rule{}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		rules = append(rules,
 			&RuleBase{
 				name: fmt.Sprintf("rule%d", i),
@@ -724,7 +724,7 @@ func TestErrorFormatterRegisterRuleInParallel(t *testing.T) {
 
 	done := make(chan struct{})
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		go func() {
 			for _, r := range rules {
 				f.RegisterRule(r)
@@ -733,7 +733,7 @@ func TestErrorFormatterRegisterRuleInParallel(t *testing.T) {
 		}()
 	}
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		<-done
 	}
 

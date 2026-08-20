@@ -3,8 +3,8 @@
 set -e -o pipefail
 
 if [ ! -d .git ]; then
-    echo 'This script must be run from root of repository: bash ./playground/deploy.bash' 1>&2
-    exit 1
+	echo 'This script must be run from root of repository: bash ./playground/deploy.bash' 1>&2
+	exit 1
 fi
 
 echo "Ensuring gh-pages branch is up-to-date"
@@ -21,38 +21,38 @@ rm -rf ./playground-dist
 mkdir ./playground-dist
 
 files=(
-    index.html
-    index.js
-    index.js.map
-    index.ts
-    lib
-    main.wasm
-    style.css
+	index.html
+	index.js
+	index.js.map
+	index.ts
+	lib
+	main.wasm
+	style.css
 )
 
 if [[ "$SKIP_BUILD_WASM" != "" ]]; then
-    # Remove main.wasm from $files
-    for i in "${!files[@]}"; do
-        if [[ "${files[i]}" == "main.wasm" ]]; then
-            unset 'files[i]'
-            break
-        fi
-    done
+	# Remove main.wasm from $files
+	for i in "${!files[@]}"; do
+		if [[ "${files[i]}" == "main.wasm" ]]; then
+			unset 'files[i]'
+			break
+		fi
+	done
 fi
 
 echo "Copying built assets from ./playground to ./playground-dist: " "${files[@]}"
 for f in "${files[@]}"; do
-    cp -R "./playground/${f}" "./playground-dist/${f}"
+	cp -R "./playground/${f}" "./playground-dist/${f}"
 done
 cp ./playground/index.html ./playground-dist/404.html
 files+=(404.html)
 
 if [[ "$SKIP_BUILD_WASM" == "" ]]; then
-    echo 'Applying wasm-opt to ./playground-dist/main.wasm'
-    wasm-opt -O -o ./playground-dist/opt.wasm ./playground-dist/main.wasm --enable-bulk-memory
-    mv ./playground-dist/opt.wasm ./playground-dist/main.wasm
+	echo 'Applying wasm-opt to ./playground-dist/main.wasm'
+	wasm-opt -O -o ./playground-dist/opt.wasm ./playground-dist/main.wasm --enable-bulk-memory
+	mv ./playground-dist/opt.wasm ./playground-dist/main.wasm
 else
-    echo 'Skipped applying wasm-opt because SKIP_BUILD_WASM environment variable is set'
+	echo 'Skipped applying wasm-opt because SKIP_BUILD_WASM environment variable is set'
 fi
 
 echo 'Generating and copying manual'
@@ -64,14 +64,14 @@ git checkout gh-pages
 
 echo 'Removing previous assets in branch'
 for f in "${files[@]}"; do
-    # This command fails when $f is new file
-    git rm -rf "./${f}" || true
+	# This command fails when $f is new file
+	git rm -rf "./${f}" || true
 done
 
 echo 'Adding new assets to branch'
 for f in "${files[@]}"; do
-    mv "./playground-dist/${f}" .
-    git add "./${f}"
+	mv "./playground-dist/${f}" .
+	git add "./${f}"
 done
 
 echo 'Adding manual'
@@ -85,4 +85,7 @@ git commit -m "deploy from ${sha}"
 rm -r ./playground-dist
 
 echo "Successfully prepared deployment. Visit http://localhost:1234 and do the final check before deployment. If it looks good, stop the server with Ctrl+C and deploy it by 'git push'"
-(trap '' INT; ./node_modules/.bin/http-server . -p 1234 || true)
+(
+	trap '' INT
+	./node_modules/.bin/http-server . -p 1234 || true
+)

@@ -1,5 +1,5 @@
-Go API
-======
+# Go API
+
 [![API Document][api-badge]][apidoc]
 
 This document describes how to use [actionlint](..) as Go library.

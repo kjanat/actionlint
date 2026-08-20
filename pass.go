@@ -43,7 +43,7 @@ func (v *Visitor) EnableDebug(w io.Writer) {
 }
 
 func (v *Visitor) reportElapsedTime(what string, start time.Time) {
-	fmt.Fprintf(v.dbg, "[Visitor] %s took %vms\n", what, time.Since(start).Milliseconds())
+	_, _ = fmt.Fprintf(v.dbg, "[Visitor] %s took %vms\n", what, time.Since(start).Milliseconds())
 }
 
 // Visit visits given syntax tree in depth-first order

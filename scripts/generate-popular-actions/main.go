@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -74,10 +75,8 @@ var defaultPopularActionsJSON []byte
 const minNodeRunnerVersion = 20
 
 func isOutdated(spec, runs string) bool {
-	for _, s := range outdatedActions {
-		if s == spec {
-			return true
-		}
+	if slices.Contains(outdatedActions, spec) {
+		return true
 	}
 	if !strings.HasPrefix(runs, "node") {
 		return false
@@ -145,7 +144,7 @@ func (g *gen) fetchRemote() (map[string]*actionlint.ActionMetadata, error) {
 						break
 					}
 					body, err := io.ReadAll(res.Body)
-					res.Body.Close()
+					_ = res.Body.Close()
 					if err != nil {
 						ret <- &fetched{err: fmt.Errorf("could not read body for %s: %w", url, err)}
 						break
@@ -341,7 +340,7 @@ func (g *gen) readJSONL(file string) (map[string]*actionlint.ActionMetadata, err
 	if err != nil {
 		return nil, fmt.Errorf("could not read file %s: %w", file, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	r := bufio.NewReader(f)
 	ret := map[string]*actionlint.ActionMetadata{}
@@ -382,7 +381,7 @@ func (g *gen) detectNewReleaseURLs() ([]string, error) {
 	errs := make(chan error)
 	reqs := make(chan *registry)
 
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		go func(ret chan<- string, errs chan<- error, reqs <-chan *registry, done <-chan struct{}) {
 			for {
 				select {
@@ -457,7 +456,7 @@ func (g *gen) run(args []string) int {
 	flags.BoolVar(&quiet, "q", false, "disable log output to stderr")
 	flags.SetOutput(g.stderr)
 	flags.Usage = func() {
-		fmt.Fprintln(g.stderr, `Usage: go run generate-popular-actions [FLAGS] [FILE]
+		_, _ = fmt.Fprintln(g.stderr, `Usage: go run generate-popular-actions [FLAGS] [FILE]
 
   This tool fetches action.yml files of popular actions and generates code to
   given file. When no file path is given in arguments, this tool outputs
@@ -483,7 +482,7 @@ Flags:`)
 		return 1
 	}
 	if flags.NArg() > 1 {
-		fmt.Fprintf(g.stderr, "this command takes one or zero argument but given: %s\n", flags.Args())
+		_, _ = fmt.Fprintf(g.stderr, "this command takes one or zero argument but given: %s\n", flags.Args())
 		return 1
 	}
 
@@ -495,7 +494,7 @@ Flags:`)
 	if registry != "" {
 		b, err := os.ReadFile(registry)
 		if err != nil {
-			fmt.Fprintf(g.stderr, "could not read the file for actions registry: %s\n", err)
+			_, _ = fmt.Fprintf(g.stderr, "could not read the file for actions registry: %s\n", err)
 			return 1
 		}
 		g.rawRegistry = b
@@ -506,22 +505,22 @@ Flags:`)
 	if detect {
 		urls, err := g.detectNewReleaseURLs()
 		if err != nil {
-			fmt.Fprintln(g.stderr, err)
+			_, _ = fmt.Fprintln(g.stderr, err)
 			return 1
 		}
 		if len(urls) == 0 {
-			fmt.Fprintln(g.stdout, "No new release was found")
+			_, _ = fmt.Fprintln(g.stdout, "No new release was found")
 			return 0
 		}
-		fmt.Fprintln(g.stdout, "Detected some new releases")
+		_, _ = fmt.Fprintln(g.stdout, "Detected some new releases")
 		for _, u := range urls {
-			fmt.Fprintln(g.stdout, u)
+			_, _ = fmt.Fprintln(g.stdout, u)
 		}
 		return 2
 	}
 
 	if format != "go" && format != "jsonl" {
-		fmt.Fprintf(g.stderr, "invalid value for -f option: %s\n", format)
+		_, _ = fmt.Fprintf(g.stderr, "invalid value for -f option: %s\n", format)
 		return 1
 	}
 
@@ -530,7 +529,7 @@ Flags:`)
 		g.log.Println("Fetching data from https://github.com")
 		m, err := g.fetchRemote()
 		if err != nil {
-			fmt.Fprintln(g.stderr, err)
+			_, _ = fmt.Fprintln(g.stderr, err)
 			return 1
 		}
 		actions = m
@@ -538,7 +537,7 @@ Flags:`)
 		g.log.Println("Fetching data from", source)
 		m, err := g.readJSONL(source)
 		if err != nil {
-			fmt.Fprintln(g.stderr, err)
+			_, _ = fmt.Fprintln(g.stderr, err)
 			return 1
 		}
 		actions = m
@@ -546,14 +545,16 @@ Flags:`)
 
 	where := "stdout"
 	out := g.stdout
+	var outFile *os.File
 	if flags.NArg() == 1 {
 		where = flags.Arg(0)
 		f, err := os.Create(where)
 		if err != nil {
-			fmt.Fprintf(g.stderr, "could not open file to output: %s\n", err)
+			_, _ = fmt.Fprintf(g.stderr, "could not open file to output: %s\n", err)
 			return 1
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
+		outFile = f
 		out = f
 	}
 
@@ -561,13 +562,20 @@ Flags:`)
 	case "go":
 		g.log.Println("Generating Go source code to", where)
 		if err := g.writeGo(out, actions); err != nil {
-			fmt.Fprintln(g.stderr, err)
+			_, _ = fmt.Fprintln(g.stderr, err)
 			return 1
 		}
 	case "jsonl":
 		g.log.Println("Generating JSONL source to", where)
 		if err := g.writeJSONL(out, actions); err != nil {
-			fmt.Fprintln(g.stderr, err)
+			_, _ = fmt.Fprintln(g.stderr, err)
+			return 1
+		}
+	}
+
+	if outFile != nil {
+		if err := outFile.Close(); err != nil {
+			_, _ = fmt.Fprintln(g.stderr, err)
 			return 1
 		}
 	}

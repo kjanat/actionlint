@@ -61,7 +61,9 @@ func TestRulePyflakesDetectPythonShell(t *testing.T) {
 					},
 				}
 			}
-			r.VisitWorkflowPre(w)
+			if err := r.VisitWorkflowPre(w); err != nil {
+				t.Fatal(err)
+			}
 
 			j := &Job{}
 			if tc.job != "" {
@@ -71,7 +73,9 @@ func TestRulePyflakesDetectPythonShell(t *testing.T) {
 					},
 				}
 			}
-			r.VisitJobPre(j)
+			if err := r.VisitJobPre(j); err != nil {
+				t.Fatal(err)
+			}
 
 			e := &ExecRun{}
 			if tc.step != "" {

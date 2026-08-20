@@ -45,7 +45,7 @@ func TestProcessRunConcurrently(t *testing.T) {
 	sleep := testSkipIfNoCommand(t, p, "sleep")
 
 	start := time.Now()
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		sleep.run([]string{"0.1"}, "", func(b []byte, err error) error {
 			if err != nil {
 				t.Error(err)
@@ -99,7 +99,7 @@ func TestProcessRunMultipleCommandsConcurrently(t *testing.T) {
 
 	done := make([]bool, 5)
 	cmds := make([]*externalCommand, 0, 5)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		idx := i
 		echo := testSkipIfNoCommand(t, p, "echo")
 		echo.run([]string{"hello"}, "", func(b []byte, err error) error {
@@ -130,7 +130,7 @@ func TestProcessWaitMultipleCommandsFinish(t *testing.T) {
 	p := newConcurrentProcess(2)
 
 	done := make([]bool, 3)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		idx := i
 		echo := testSkipIfNoCommand(t, p, "echo")
 		echo.run([]string{"hello"}, "", func(b []byte, err error) error {
@@ -190,7 +190,7 @@ func TestProcessConcurrentStdinDoesNotDeadlock(t *testing.T) {
 	go func() {
 		defer close(done)
 		cmds := make([]*externalCommand, 0, 5)
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			cat := testSkipIfNoCommand(t, p, "cat")
 			cat.run(nil, payload, func(b []byte, err error) error {
 				if err != nil {
@@ -315,9 +315,9 @@ func TestProcessRunConcurrentlyAndWait(t *testing.T) {
 	echo := testSkipIfNoCommand(t, p, "echo")
 
 	c := make(chan struct{})
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		go func() {
-			for i := 0; i < 5; i++ {
+			for range 5 {
 				echo.run(nil, "", func(b []byte, err error) error {
 					return err
 				})
@@ -326,7 +326,7 @@ func TestProcessRunConcurrentlyAndWait(t *testing.T) {
 		}()
 	}
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		<-c
 	}
 

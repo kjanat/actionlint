@@ -1,14 +1,14 @@
 #:schema actup.schema.json
 
-update_policy = "latest"
-ref_style = "preserve"
-branch_policy = "warn"
+update_policy    = "latest"
+ref_style        = "preserve"
+branch_policy    = "warn"
 allow_prerelease = false
-ignore = [
+ignore           = [
   "ruby/setup-ruby@v1",
   "vedantmgoyal9/winget-releaser@main",
 ]
-extra_paths = [
+extra_paths      = [
   "README.md",
   "docs/usage.md",
   "playground/index.ts",
@@ -19,11 +19,11 @@ extra_paths = [
 [actions]
 
 [cache]
-ttl = 86400
+ttl     = 86400
 enabled = true
 
 [fetch]
-api_mode = "graphql"
+api_mode          = "graphql"
 max_tags_per_repo = 100
 
 [hosts]

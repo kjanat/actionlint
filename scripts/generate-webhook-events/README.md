@@ -1,5 +1,4 @@
-generate-webhook-events
-=======================
+# generate-webhook-events
 
 This is a script for generating [`all_webhooks.go`](../../all_webhooks.go).
 

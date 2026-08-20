@@ -784,7 +784,7 @@ func TestReusableWorkflowMetadataCacheFindOneMetadataConcurrently(t *testing.T) 
 	ret := make(chan *ReusableWorkflowMetadata)
 	err := make(chan error)
 
-	for i := 0; i < n; i++ {
+	for range n {
 		go func() {
 			m, e := c.FindMetadata("./ok.yaml")
 			if e != nil {
@@ -797,7 +797,7 @@ func TestReusableWorkflowMetadataCacheFindOneMetadataConcurrently(t *testing.T) 
 
 	ms := []*ReusableWorkflowMetadata{}
 	errs := []error{}
-	for i := 0; i < n; i++ {
+	for range n {
 		select {
 		case m := <-ret:
 			ms = append(ms, m)
@@ -858,7 +858,7 @@ func TestReusableWorkflowMetadataCacheWriteFromFileAndASTNodeConcurrently(t *tes
 	}
 
 	errs := []error{}
-	for i := 0; i < n; i++ {
+	for range n {
 		select {
 		case <-ret:
 		case e := <-err:

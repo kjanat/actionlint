@@ -57,7 +57,7 @@ func errorAt(pos *Pos, kind string, msg string) *Error {
 	}
 }
 
-func errorfAt(pos *Pos, kind string, format string, args ...interface{}) *Error {
+func errorfAt(pos *Pos, kind string, format string, args ...any) *Error {
 	return &Error{
 		Message: fmt.Sprintf(format, args...),
 		Line:    pos.Line,
@@ -95,14 +95,14 @@ func (e *Error) GetTemplateFields(source []byte) *ErrorTemplateFields {
 // message with colorful output and source snippet with indicator. When nil is set to source, no
 // source snippet is not printed. To disable colorful output, set true to fatih/color.NoColor.
 func (e *Error) PrettyPrint(w io.Writer, source []byte) {
-	yellow.Fprint(w, e.Filepath)
-	gray.Fprint(w, ":")
-	fmt.Fprint(w, e.Line)
-	gray.Fprint(w, ":")
-	fmt.Fprint(w, e.Column)
-	gray.Fprint(w, ": ")
-	bold.Fprint(w, e.Message)
-	gray.Fprintf(w, " [%s]\n", e.Kind)
+	_, _ = yellow.Fprint(w, e.Filepath)
+	_, _ = gray.Fprint(w, ":")
+	_, _ = fmt.Fprint(w, e.Line)
+	_, _ = gray.Fprint(w, ":")
+	_, _ = fmt.Fprint(w, e.Column)
+	_, _ = gray.Fprint(w, ": ")
+	_, _ = bold.Fprint(w, e.Message)
+	_, _ = gray.Fprintf(w, " [%s]\n", e.Kind)
 
 	if len(source) == 0 || e.Line <= 0 {
 		return
@@ -114,11 +114,11 @@ func (e *Error) PrettyPrint(w io.Writer, source []byte) {
 
 	lnum := fmt.Sprintf("%d | ", e.Line)
 	indent := strings.Repeat(" ", len(lnum)-2)
-	gray.Fprintf(w, "%s|\n", indent)
-	gray.Fprint(w, lnum)
-	fmt.Fprintln(w, line)
-	gray.Fprintf(w, "%s| ", indent)
-	green.Fprintln(w, e.getIndicator(line))
+	_, _ = gray.Fprintf(w, "%s|\n", indent)
+	_, _ = gray.Fprint(w, lnum)
+	_, _ = fmt.Fprintln(w, line)
+	_, _ = gray.Fprintf(w, "%s| ", indent)
+	_, _ = green.Fprintln(w, e.getIndicator(line))
 }
 
 func (e *Error) getLine(source []byte) (string, bool) {
@@ -271,8 +271,8 @@ func NewErrorFormatter(format string) (*ErrorFormatter, error) {
 		"syntax-check": {"syntax-check", "Checks for GitHub Actions workflow syntax"},
 	}
 
-	funcs := template.FuncMap(map[string]interface{}{
-		"json": func(data interface{}) (string, error) {
+	funcs := template.FuncMap(map[string]any{
+		"json": func(data any) (string, error) {
 			var b strings.Builder
 			enc := json.NewEncoder(&b)
 			if err := enc.Encode(data); err != nil {

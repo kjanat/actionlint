@@ -199,20 +199,20 @@ func NewLinter(out io.Writer, opts *LinterOptions) (*Linter, error) {
 	return l, nil
 }
 
-func (l *Linter) log(args ...interface{}) {
+func (l *Linter) log(args ...any) {
 	if l.logLevel < LogLevelVerbose {
 		return
 	}
-	fmt.Fprint(l.logOut, "verbose: ")
-	fmt.Fprintln(l.logOut, args...)
+	_, _ = fmt.Fprint(l.logOut, "verbose: ")
+	_, _ = fmt.Fprintln(l.logOut, args...)
 }
 
-func (l *Linter) debug(format string, args ...interface{}) {
+func (l *Linter) debug(format string, args ...any) {
 	if l.logLevel < LogLevelDebug {
 		return
 	}
 	format = "[Linter] " + format + "\n"
-	fmt.Fprintf(l.logOut, format, args...)
+	_, _ = fmt.Fprintf(l.logOut, format, args...)
 }
 
 func (l *Linter) debugWriter() io.Writer {
@@ -253,8 +253,8 @@ func (l *Linter) GenerateDefaultConfig(dir string) error {
 		return err
 	}
 
-	fmt.Fprintf(l.out, "Config file was generated at %q\n", p)
-	return nil
+	_, err = fmt.Fprintf(l.out, "Config file was generated at %q\n", p)
+	return err
 }
 
 // LintRepository lints YAML workflow files and outputs the errors to given writer. It finds the
@@ -363,7 +363,9 @@ func (l *Linter) LintFiles(filepaths []string, project *Project) ([]*Error, erro
 
 		eg.Go(func() error {
 			// Bound concurrency on reading files to avoid "too many files to open" error (issue #3)
-			sema.Acquire(ctx, 1)
+			if err := sema.Acquire(ctx, 1); err != nil {
+				return err
+			}
 			src, err := os.ReadFile(w.path)
 			sema.Release(1)
 			if err != nil {
@@ -461,7 +463,9 @@ func (l *Linter) LintFile(path string, project *Project) ([]*Error, error) {
 	}
 
 	if l.errFmt != nil {
-		l.errFmt.PrintErrors(l.out, errs, src)
+		if err := l.errFmt.PrintErrors(l.out, errs, src); err != nil {
+			return nil, err
+		}
 	} else {
 		l.printErrors(errs, src)
 	}
@@ -503,7 +507,9 @@ func (l *Linter) Lint(path string, content []byte, project *Project) ([]*Error, 
 		return nil, err
 	}
 	if l.errFmt != nil {
-		l.errFmt.PrintErrors(l.out, errs, content)
+		if err := l.errFmt.PrintErrors(l.out, errs, content); err != nil {
+			return nil, err
+		}
 	} else {
 		l.printErrors(errs, content)
 	}

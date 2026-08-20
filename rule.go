@@ -48,13 +48,13 @@ func (r *RuleBase) Error(pos *Pos, msg string) {
 
 // Errorf reports a new error with the source position and the formatted error message and stores it
 // in the rule instance. The errors can be accessed by Errs method.
-func (r *RuleBase) Errorf(pos *Pos, format string, args ...interface{}) {
+func (r *RuleBase) Errorf(pos *Pos, format string, args ...any) {
 	err := errorfAt(pos, r.name, format, args...)
 	r.errs = append(r.errs, err)
 }
 
 // errorfRange reports an error with an exclusive source-range end.
-func (r *RuleBase) errorfRange(start, end *Pos, format string, args ...interface{}) {
+func (r *RuleBase) errorfRange(start, end *Pos, format string, args ...any) {
 	err := errorfAt(start, r.name, format, args...)
 	if end != nil && end.Line == start.Line && end.Col > start.Col {
 		err.endColumn = end.Col - 1
@@ -64,12 +64,12 @@ func (r *RuleBase) errorfRange(start, end *Pos, format string, args ...interface
 
 // Debug prints debug log to the output. The output is specified by the argument of EnableDebug method.
 // By default, no output is set so debug log is not printed.
-func (r *RuleBase) Debug(format string, args ...interface{}) {
+func (r *RuleBase) Debug(format string, args ...any) {
 	if r.dbg == nil {
 		return
 	}
 	format = fmt.Sprintf("[%s] %s\n", r.name, format)
-	fmt.Fprintf(r.dbg, format, args...)
+	_, _ = fmt.Fprintf(r.dbg, format, args...)
 }
 
 // Errs returns errors found by the rule.

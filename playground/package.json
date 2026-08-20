@@ -1,24 +1,28 @@
 {
   "name": "actionlint-playground",
-  "private": true,
   "version": "0.0.0",
+  "private": true,
   "description": "",
+  "license": "MIT",
+  "author": "rhysd <lin90162@yahoo.co.jp> (https://rhysd.github.io/)",
   "main": "main.js",
   "scripts": {
-    "lint:stylelint": "stylelint style.css",
-    "lint:prettier": "prettier --check *.ts *.mjs",
-    "lint:eslint": "eslint --max-warnings 0 *.ts *.mjs",
-    "lint:tsc-eslint": "tsc -p tsconfig.eslint.json",
-    "lint": "npm run lint:prettier && npm run lint:eslint && npm run lint:stylelint && npm run lint:tsc-eslint",
-    "prettier": "prettier --write *.ts *.mjs",
     "build": "tsc -p .",
-    "watch": "tsc -p . --watch",
+    "lint": "npm run lint:prettier && npm run lint:eslint && npm run lint:stylelint && npm run lint:tsc-eslint",
+    "lint:eslint": "eslint --max-warnings 0 *.ts *.mjs",
+    "lint:prettier": "prettier --check *.ts *.mjs",
+    "lint:stylelint": "stylelint style.css",
+    "lint:tsc-eslint": "tsc -p tsconfig.eslint.json",
+    "prettier": "prettier --write *.ts *.mjs",
     "serve": "http-server . -p 1234",
     "start": "npm run serve",
-    "test": "mocha ./test.js"
+    "test": "mocha ./test.js",
+    "watch": "tsc -p . --watch"
   },
-  "author": "rhysd <lin90162@yahoo.co.jp> (https://rhysd.github.io/)",
-  "license": "MIT",
+  "overrides": {
+    "diff": "^8.0.3",
+    "serialize-javascript": "^7.0.5"
+  },
   "dependencies": {
     "bulma": "^1.0.4",
     "codemirror": "^5.65.8",
@@ -45,9 +49,5 @@
     "stylelint-config-standard": "^39.0.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.50.0"
-  },
-  "overrides": {
-    "diff": "^8.0.3",
-    "serialize-javascript": "^7.0.5"
   }
 }

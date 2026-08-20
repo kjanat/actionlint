@@ -89,7 +89,7 @@ func renderMarkdown(problems []*problem) string {
 		fmt.Fprintf(&b, "### %s:%d:%d (%s)\n\n%s\n", p.Filepath, p.Line, p.Column, p.Kind, p.Message)
 		if p.Snippet != "" {
 			b.WriteString("\n")
-			for _, line := range strings.Split(strings.TrimSuffix(p.Snippet, "\n"), "\n") {
+			for line := range strings.SplitSeq(strings.TrimSuffix(p.Snippet, "\n"), "\n") {
 				b.WriteString("    " + line + "\n")
 			}
 		}

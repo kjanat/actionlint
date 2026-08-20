@@ -174,7 +174,7 @@ func TestLocalActionsFindMetadataOK(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.spec, func(t *testing.T) {
 			// read metadata repeatedly (should be cached)
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				have, cached, err := c.FindMetadata(tc.spec)
 				if err != nil {
 					t.Fatal(i, err)
@@ -197,7 +197,7 @@ func TestLocalActionsFindConcurrently(t *testing.T) {
 	ret := make(chan *ActionMetadata)
 	err := make(chan error)
 
-	for i := 0; i < n; i++ {
+	for range n {
 		go func() {
 			m, _, e := c.FindMetadata("./action-yml")
 			if e != nil {
@@ -210,7 +210,7 @@ func TestLocalActionsFindConcurrently(t *testing.T) {
 
 	ms := []*ActionMetadata{}
 	errs := []error{}
-	for i := 0; i < n; i++ {
+	for range n {
 		select {
 		case m := <-ret:
 			ms = append(ms, m)
@@ -292,7 +292,7 @@ func TestLocalActionsLogCacheHit(t *testing.T) {
 	c := NewLocalActionsCache(proj, dbg)
 
 	want := testGetWantedActionMetadata()
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		have, _, err := c.FindMetadata("./action-yml")
 		if err != nil {
 			t.Fatal(err)
@@ -403,7 +403,7 @@ func TestLocalActionsConcurrentFailures(t *testing.T) {
 	c := NewLocalActionsCache(proj, nil)
 	errC := make(chan error)
 
-	for i := 0; i < n; i++ {
+	for range n {
 		go func() {
 			_, _, err := c.FindMetadata("./broken")
 			errC <- err
@@ -411,7 +411,7 @@ func TestLocalActionsConcurrentFailures(t *testing.T) {
 	}
 
 	errs := []error{}
-	for i := 0; i < n; i++ {
+	for range n {
 		errs = append(errs, <-errC)
 	}
 
@@ -454,7 +454,7 @@ func TestLocalActionsConcurrentMultipleMetadataAndFailures(t *testing.T) {
 	errC := make(chan error)
 	done := make(chan struct{})
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		go func() {
 			for {
 				select {
@@ -484,7 +484,7 @@ func TestLocalActionsConcurrentMultipleMetadataAndFailures(t *testing.T) {
 
 	ret := []*ActionMetadata{}
 	errs := []error{}
-	for i := 0; i < len(inputs); i++ {
+	for range inputs {
 		select {
 		case m := <-retC:
 			ret = append(ret, m)

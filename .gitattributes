@@ -1,4 +1,4 @@
-/CHANGELOG.md -text
+* text=auto eol=lf
 /cmd/actionlint-action/sarif_template.txt -text
 /testdata/** -text
 /actup.schema.json linguist-generated=true -diff

@@ -31,7 +31,7 @@ func decodePlaygroundLinks(t *testing.T, doc []byte) []byte {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer r.Close()
+		defer func() { _ = r.Close() }()
 		dec, err := io.ReadAll(r)
 		if err != nil {
 			t.Fatal(err)
@@ -76,8 +76,12 @@ func TestMainGenerateOK(t *testing.T) {
 	path := filepath.FromSlash(root + "/minimal.in")
 	tmp := must(os.Create(path))
 	must(io.Copy(tmp, in))
-	in.Close()
-	tmp.Close()
+	if err := in.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := tmp.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	if err := Main([]string{"exe", "-fix", path}); err != nil {
 		t.Fatal(err)

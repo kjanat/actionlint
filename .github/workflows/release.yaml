@@ -58,7 +58,7 @@ jobs:
         with: { version: "~> v2", args: "release --clean --release-notes=${{ runner.temp }}/release-notes.md" }
         env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
-        with: { subject-checksums: "${{ format('./dist/actionlint_{0}_checksums.txt', env.VERSION) }}" }
+        with: { subject-checksums: "./dist/actionlint_${{ env.VERSION }}_checksums.txt" }
       - name: Post-release download check
         run: bash ./scripts/download-actionlint.bash
   winget:

@@ -203,6 +203,6 @@ func CheckChangelogRelease(root string, v version, out io.Writer) error {
 	if tag := "v" + v.String(); hasSection(content, tag) {
 		source = "the " + tag + " section"
 	}
-	fmt.Fprintf(out, "%s: %s describes this release\n", changelogFile, source)
+	_, _ = fmt.Fprintf(out, "%s: %s describes this release\n", changelogFile, source)
 	return nil
 }

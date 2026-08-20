@@ -3,18 +3,18 @@
   "private": true,
   "description": "Static checker for GitHub Actions workflow files",
   "license": "MIT",
-  "packageManager": "npm@11.19.0",
   "workspaces": [
     "playground"
   ],
   "scripts": {
     "build": "npm run build --workspace playground",
-    "watch": "npm run watch --workspace playground",
-    "serve": "npm run serve --workspace playground",
     "lint": "npm run lint --workspace playground",
-    "prettier": "npm run prettier --workspace playground",
-    "test": "npm run test --workspace playground",
     "matcher:generate": "node ./scripts/generate-actionlint-matcher/main.mjs .github/actionlint-matcher.json",
-    "matcher:test": "node ./scripts/generate-actionlint-matcher/test.mjs"
-  }
+    "matcher:test": "node ./scripts/generate-actionlint-matcher/test.mjs",
+    "prettier": "npm run prettier --workspace playground",
+    "serve": "npm run serve --workspace playground",
+    "test": "npm run test --workspace playground",
+    "watch": "npm run watch --workspace playground"
+  },
+  "packageManager": "npm@11.19.0"
 }

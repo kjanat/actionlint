@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"slices"
 	"strings"
 )
 
@@ -83,10 +84,8 @@ func (rule *RuleShellName) checkShellName(node *String) {
 	name := strings.ToLower(node.Value)
 	available := getAvailableShellNames(rule.platform)
 
-	for _, s := range available {
-		if name == s {
-			return // ok
-		}
+	if slices.Contains(available, name) {
+		return // ok
 	}
 
 	onPlatform := ""

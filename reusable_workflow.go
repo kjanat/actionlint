@@ -174,12 +174,12 @@ type LocalReusableWorkflowCache struct {
 	dbg   io.Writer
 }
 
-func (c *LocalReusableWorkflowCache) debug(format string, args ...interface{}) {
+func (c *LocalReusableWorkflowCache) debug(format string, args ...any) {
 	if c.dbg == nil {
 		return
 	}
 	format = "[LocalReusableWorkflowCache] " + format + "\n"
-	fmt.Fprintf(c.dbg, format, args...)
+	_, _ = fmt.Fprintf(c.dbg, format, args...)
 }
 
 func (c *LocalReusableWorkflowCache) readCache(key string) (*ReusableWorkflowMetadata, bool) {

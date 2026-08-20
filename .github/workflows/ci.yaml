@@ -89,7 +89,11 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version: "${{ env.GO }}", check-latest: true }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with: { node-version: "lts/*", cache: npm, cache-dependency-path: ./package-lock.json }
+        with: {
+          node-version: "lts/*",
+          cache: npm,
+          cache-dependency-path: ./package-lock.json,
+        }
       - name: Install JavaScript dependencies
         run: npm ci
       - name: Build playground
@@ -138,7 +142,12 @@ jobs:
         with: { persist-credentials: false }
       - name: Build image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with: { build-args: "GOLANG_VER=${{ env.GO }}", load: true, push: false, tags: actionlint:test }
+        with: {
+          build-args: "GOLANG_VER=${{ env.GO }}",
+          load: true,
+          push: false,
+          tags: actionlint:test,
+        }
       - name: Test Docker image
         run: docker container run
           --mount type=bind,source="$(pwd)",target=/w
@@ -155,6 +164,12 @@ jobs:
         with: { persist-credentials: false }
       - name: Build action image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with: { context: ., target: action, build-args: "GOLANG_VER=${{ env.GO }}", load: true, tags: actionlint-action:test }
+        with: {
+          context: .,
+          target: action,
+          build-args: "GOLANG_VER=${{ env.GO }}",
+          load: true,
+          tags: actionlint-action:test,
+        }
       - name: Test action image
         run: ./scripts/test-action.bash actionlint-action:test

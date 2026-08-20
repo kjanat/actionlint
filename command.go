@@ -33,7 +33,7 @@ func printUsageHeader(out io.Writer) {
 		b = "v" + v
 	}
 
-	fmt.Fprintf(out, `Usage: actionlint [FLAGS] [FILES...] [-]
+	_, _ = fmt.Fprintf(out, `Usage: actionlint [FLAGS] [FILES...] [-]
 
   actionlint is a linter for GitHub Actions workflow files.
 
@@ -159,7 +159,7 @@ func (cmd *Command) Main(args []string) int {
 	}
 
 	if ver {
-		fmt.Fprintf(
+		_, _ = fmt.Fprintf(
 			cmd.Stdout,
 			"%s\n%s\nbuilt with %s compiler for %s/%s\n",
 			getCommandVersion(),
@@ -183,7 +183,7 @@ func (cmd *Command) Main(args []string) int {
 
 	errs, err := cmd.runLinter(flags.Args(), &opts, initConfig)
 	if err != nil {
-		fmt.Fprintln(cmd.Stderr, err.Error())
+		_, _ = fmt.Fprintln(cmd.Stderr, err.Error())
 		return ExitStatusFailure
 	}
 	if len(errs) > 0 {

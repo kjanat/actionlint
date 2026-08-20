@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -45,12 +46,7 @@ func NewRuleJobNeeds() *RuleJobNeeds {
 }
 
 func contains[T comparable](heystack []T, needle T) bool {
-	for _, s := range heystack {
-		if s == needle {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(heystack, needle)
 }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
@@ -125,14 +121,14 @@ func (rule *RuleJobNeeds) VisitWorkflowPost(n *Workflow) error {
 		msg.WriteString("cyclic dependencies in \"needs\" job configurations are detected. detected cycle is ")
 
 		msg.WriteString(strconv.Quote(start.id))
-		from, to := start, edges[start]
+		to := edges[start]
 		for {
 			msg.WriteString(" -> ")
 			msg.WriteString(strconv.Quote(to.id))
-			from, to = to, edges[to]
-			if from == start {
+			if to == start {
 				break
 			}
+			to = edges[to]
 		}
 
 		rule.Error(start.pos, msg.String())

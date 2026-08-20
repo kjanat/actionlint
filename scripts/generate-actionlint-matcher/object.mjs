@@ -14,21 +14,21 @@ regexp = regexp.replace('M', MESSAGE);
 regexp = regexp.replace('K', KIND);
 
 const object = {
-    problemMatcher: [
-        {
-            owner: 'actionlint',
-            pattern: [
-                {
-                    regexp,
-                    file: 1,
-                    line: 2,
-                    column: 3,
-                    message: 4,
-                    code: 5,
-                },
-            ],
-        },
-    ],
+	problemMatcher: [
+		{
+			owner: 'actionlint',
+			pattern: [
+				{
+					regexp,
+					file: 1,
+					line: 2,
+					column: 3,
+					message: 4,
+					code: 5,
+				},
+			],
+		},
+	],
 };
 
 export default object;

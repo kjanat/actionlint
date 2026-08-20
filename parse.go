@@ -49,7 +49,7 @@ type workflowMappingEntry struct {
 
 type delayedSprintf struct {
 	result string
-	// Note: Currently only one string arg is sufficient and it's faster than keeping generic interface{} args.
+	// Note: Currently only one string arg is sufficient and it's faster than keeping generic any args.
 	// `arg` must not be empty when it is used. Empty value means the argument is unused.
 	arg string
 }
@@ -200,12 +200,12 @@ func (p *parser) errorAt(pos *Pos, m string) {
 	p.errors = append(p.errors, &Error{Message: m, Line: pos.Line, Column: pos.Col, Kind: "syntax-check"})
 }
 
-func (p *parser) errorfAt(pos *Pos, format string, args ...interface{}) {
+func (p *parser) errorfAt(pos *Pos, format string, args ...any) {
 	m := fmt.Sprintf(format, args...)
 	p.errorAt(pos, m)
 }
 
-func (p *parser) errorf(n *yaml.Node, format string, args ...interface{}) {
+func (p *parser) errorf(n *yaml.Node, format string, args ...any) {
 	m := fmt.Sprintf(format, args...)
 	p.error(n, m)
 }
@@ -1822,7 +1822,7 @@ func handleYAMLUnmarshalError(err error) []*Error {
 	}
 
 	if e, ok := err.(*yaml.LoadError); ok {
-		return []*Error{&Error{
+		return []*Error{{
 			Message: fmt.Sprintf("could not parse as YAML: %s", e.Message),
 			Kind:    "syntax-check",
 			Line:    e.Mark.Line,
@@ -1830,7 +1830,7 @@ func handleYAMLUnmarshalError(err error) []*Error {
 		}}
 	}
 
-	return []*Error{&Error{
+	return []*Error{{
 		Message: fmt.Sprintf("could not parse as YAML: %s", err.Error()),
 		Kind:    "syntax-check",
 	}}

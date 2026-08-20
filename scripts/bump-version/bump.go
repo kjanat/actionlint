@@ -215,7 +215,7 @@ func Check(root string, ts []*target, out io.Writer) error {
 			return err
 		}
 		for _, o := range occs {
-			fmt.Fprintf(out, "%s:%d: %s: %s\n", t.path, lineAt(content, o.value.start), o.rule, o.version)
+			_, _ = fmt.Fprintf(out, "%s:%d: %s: %s\n", t.path, lineAt(content, o.value.start), o.rule, o.version)
 			key := o.version.String()
 			found[key] = append(found[key], t.path)
 		}
@@ -227,7 +227,7 @@ func Check(root string, ts []*target, out io.Writer) error {
 	}
 	sort.Strings(versions)
 	for _, v := range versions {
-		fmt.Fprintf(out, "version %s is referenced %d time(s)\n", v, len(found[v]))
+		_, _ = fmt.Fprintf(out, "version %s is referenced %d time(s)\n", v, len(found[v]))
 	}
 	return nil
 }
@@ -273,7 +273,7 @@ func Bump(root string, ts []*target, v version, out io.Writer) error {
 		if _, err := t.verify(content, v); err != nil {
 			return fmt.Errorf("the repository is inconsistent after the update: %w", err)
 		}
-		fmt.Fprintf(out, "%s: %d reference(s) set to %s\n", t.path, updates[i].count, v)
+		_, _ = fmt.Fprintf(out, "%s: %d reference(s) set to %s\n", t.path, updates[i].count, v)
 	}
 	return nil
 }

@@ -1,5 +1,4 @@
-generate-popular-actions
-========================
+# generate-popular-actions
 
 This is a script for generating [`popular_actions.go`](../../popular_actions.go).
 
@@ -34,7 +33,7 @@ The data source of the popular actions is defined in [`popular_actions.json`](./
 of each action registry. Each registry is a JSON object containing the following keys:
 
 | Key            | Description                                                     | Example                    | Required? |
-|----------------|-----------------------------------------------------------------|----------------------------|-----------|
+| -------------- | --------------------------------------------------------------- | -------------------------- | --------- |
 | `slug`         | GitHub repository slug                                          | `"actions/checkout"`       | Yes       |
 | `tags`         | Known release tags                                              | `["v1", "v2", "v3", "v4"]` | Yes       |
 | `next`         | The next release tag. Empty means new version won't be detected | `"v5"`                     | No        |

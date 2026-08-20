@@ -135,12 +135,7 @@ func attr(n *html.Node, name string) string {
 }
 
 func hasClass(n *html.Node, want string) bool {
-	for _, c := range strings.Fields(attr(n, "class")) {
-		if c == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(strings.Fields(attr(n, "class")), want)
 }
 
 func walk(n *html.Node, visit func(*html.Node)) {
@@ -345,7 +340,7 @@ func fetch(url string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch %s: %w", url, err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode < 200 || 300 <= res.StatusCode {
 		return nil, fmt.Errorf("request was not successful for %s: %s", url, res.Status)
 	}
@@ -370,10 +365,11 @@ func run(args []string, stdout, dbgout io.Writer, srcURL string) error {
 	var src []byte
 	var err error
 	if len(args) == 2 {
-		if !filepath.IsLocal(args[0]) {
-			return fmt.Errorf("source file path must be relative to the current directory: %q", args[0])
+		srcFile := args[0]
+		if !filepath.IsLocal(srcFile) {
+			return fmt.Errorf("source file path must be relative to the current directory: %q", srcFile)
 		}
-		src, err = os.ReadFile(args[0])
+		src, err = os.ReadFile(srcFile)
 	} else {
 		src, err = fetch(srcURL)
 	}
@@ -383,6 +379,7 @@ func run(args []string, stdout, dbgout io.Writer, srcURL string) error {
 
 	var out io.Writer
 	var dst string
+	var dstFile *os.File
 	if len(args) == 0 || args[len(args)-1] == "-" {
 		out = stdout
 		dst = "stdout"
@@ -395,7 +392,8 @@ func run(args []string, stdout, dbgout io.Writer, srcURL string) error {
 		if err != nil {
 			return err
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
+		dstFile = f
 		out = f
 	}
 
@@ -407,6 +405,12 @@ func run(args []string, stdout, dbgout io.Writer, srcURL string) error {
 
 	if err := write(p, out); err != nil {
 		return err
+	}
+
+	if dstFile != nil {
+		if err := dstFile.Close(); err != nil {
+			return err
+		}
 	}
 
 	dbg.Println("Wrote the output to", dst)

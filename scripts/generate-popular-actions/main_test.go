@@ -166,7 +166,7 @@ func TestWriteJSONLFile(t *testing.T) {
 	}
 
 	out := filepath.Join("testdata", "out.jsonl")
-	defer os.Remove(out)
+	defer func() { _ = os.Remove(out) }()
 
 	stdout := io.Discard
 	stderr := io.Discard
@@ -190,7 +190,7 @@ func TestWriteJSONLFile(t *testing.T) {
 func TestWriteGoFile(t *testing.T) {
 	in := filepath.Join("testdata", "jsonl", "no_new_version.jsonl")
 	out := filepath.Join("testdata", "go", "out.go")
-	defer os.Remove(out)
+	defer func() { _ = os.Remove(out) }()
 
 	stdout := io.Discard
 	stderr := io.Discard

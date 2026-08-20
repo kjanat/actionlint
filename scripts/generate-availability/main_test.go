@@ -45,7 +45,7 @@ func TestOKWriteFile(t *testing.T) {
 	if status != 0 {
 		t.Fatalf("status was non-zero: %d: %q", status, stderr)
 	}
-	defer os.Remove(out)
+	defer func() { _ = os.Remove(out) }()
 
 	b, err := os.ReadFile(filepath.Join("testdata", "ok.go"))
 	if err != nil {

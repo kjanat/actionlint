@@ -1,5 +1,4 @@
-References
-==========
+# References
 
 This document describes links to resources related to actionlint and GitHub Actions.
 

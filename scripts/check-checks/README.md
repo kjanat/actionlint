@@ -1,5 +1,4 @@
-check-checks
-============
+# check-checks
 
 This is a script to maintain [the 'Checks' document](../../docs/checks.md).
 
@@ -44,6 +43,7 @@ The format of the section is:
 
 ````markdown
 <a id="some-id"></a>
+
 ## This is title of the check
 
 Example input:

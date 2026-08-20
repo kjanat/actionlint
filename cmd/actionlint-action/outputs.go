@@ -42,7 +42,7 @@ func (a *action) appendOutputs(values []namedOutput) error {
 		return err
 	}
 	if _, err := f.WriteString(b.String()); err != nil {
-		f.Close()
+		_ = f.Close()
 		return err
 	}
 	return f.Close()
@@ -70,7 +70,7 @@ func writeResultFile(root *os.Root, target, content string) (string, error) {
 		return "", err
 	}
 	if _, err := f.WriteString(content); err != nil {
-		f.Close()
+		_ = f.Close()
 		return "", err
 	}
 	if err := f.Close(); err != nil {
@@ -89,19 +89,19 @@ func (a *action) emit(rendered string, code int, format outputFormat) {
 		return
 	}
 	if code == actionlint.ExitStatusInvalidCommandOption || code == actionlint.ExitStatusFailure {
-		fmt.Fprintf(a.stdout, "::error title=actionlint failed::%s\n", commandEscape(rendered))
+		_, _ = fmt.Fprintf(a.stdout, "::error title=actionlint failed::%s\n", commandEscape(rendered))
 		return
 	}
 	if format == formatGitHub {
-		fmt.Fprint(a.stdout, rendered)
+		_, _ = fmt.Fprint(a.stdout, rendered)
 		return
 	}
 
 	token := a.newID()
-	fmt.Fprintf(a.stdout, "::stop-commands::%s\n", token)
-	fmt.Fprint(a.stdout, rendered)
+	_, _ = fmt.Fprintf(a.stdout, "::stop-commands::%s\n", token)
+	_, _ = fmt.Fprint(a.stdout, rendered)
 	if !strings.HasSuffix(rendered, "\n") {
-		fmt.Fprintln(a.stdout)
+		_, _ = fmt.Fprintln(a.stdout)
 	}
-	fmt.Fprintf(a.stdout, "::%s::\n", token)
+	_, _ = fmt.Fprintf(a.stdout, "::%s::\n", token)
 }

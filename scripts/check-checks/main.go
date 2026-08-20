@@ -165,7 +165,7 @@ func playgroundLinkPayload(line string) ([]byte, bool) {
 	if err != nil {
 		return nil, false
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 	dec, err := io.ReadAll(r)
 	if err != nil {
 		return nil, false
@@ -180,7 +180,8 @@ func (u *Updater) PlaygroundLink(src []byte) string {
 	var out bytes.Buffer
 	b64 := base64.NewEncoder(base64.StdEncoding, &out)
 	comp, _ := zlib.NewWriterLevel(b64, zlib.BestCompression)
-	comp.Write(payload)
+	_, err = comp.Write(payload)
+	u.err(err)
 	u.err(comp.Close())
 	u.err(b64.Close())
 
@@ -360,7 +361,7 @@ func Main(args []string) error {
 	flags.BoolVar(&quiet, "quiet", false, "disable trace logs")
 	flags.SetOutput(stderr)
 	flags.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: check-checks [FLAGS] FILE\n\nFlags:")
+		_, _ = fmt.Fprintln(stderr, "Usage: check-checks [FLAGS] FILE\n\nFlags:")
 		flags.PrintDefaults()
 	}
 

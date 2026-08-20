@@ -3,6 +3,8 @@ package actionlint
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -406,11 +408,11 @@ func errorAtExpr(e ExprNode, msg string) *ExprError {
 	}
 }
 
-func errorfAtExpr(e ExprNode, format string, args ...interface{}) *ExprError {
+func errorfAtExpr(e ExprNode, format string, args ...any) *ExprError {
 	return errorAtExpr(e, fmt.Sprintf(format, args...))
 }
 
-func (sema *ExprSemanticsChecker) errorf(e ExprNode, format string, args ...interface{}) {
+func (sema *ExprSemanticsChecker) errorf(e ExprNode, format string, args ...any) {
 	sema.errs = append(sema.errs, errorfAtExpr(e, format, args...))
 }
 
@@ -421,9 +423,7 @@ func (sema *ExprSemanticsChecker) ensureVarsCopied() {
 
 	// Make shallow copy of current variables map not to pollute global variable
 	copied := make(map[string]ExprType, len(sema.vars))
-	for k, v := range sema.vars {
-		copied[k] = v
-	}
+	maps.Copy(copied, sema.vars)
 	sema.vars = copied
 	sema.varsCopied = true
 }
@@ -467,9 +467,7 @@ func (sema *ExprSemanticsChecker) UpdateSecrets(ty *ObjectType) {
 		"actions_step_debug":   StringType{},
 		"actions_runner_debug": StringType{},
 	})
-	for n, v := range ty.Props {
-		copied.Props[n] = v
-	}
+	maps.Copy(copied.Props, ty.Props)
 	sema.vars["secrets"] = copied
 }
 
@@ -526,10 +524,8 @@ func (sema *ExprSemanticsChecker) SetContextAvailability(avail []string) {
 
 func (sema *ExprSemanticsChecker) checkAvailableContext(n *VariableNode) {
 	ctx := strings.ToLower(n.Name)
-	for _, c := range sema.availableContexts {
-		if c == ctx {
-			return
-		}
+	if slices.Contains(sema.availableContexts, ctx) {
+		return
 	}
 
 	var notes string
@@ -572,10 +568,8 @@ func (sema *ExprSemanticsChecker) checkSpecialFunctionAvailability(n *FuncCallNo
 		return // This function is not special
 	}
 
-	for _, sp := range sema.availableSpecialFuncs {
-		if sp == f {
-			return
-		}
+	if slices.Contains(sema.availableSpecialFuncs, f) {
+		return
 	}
 
 	sema.errorf(
@@ -876,7 +870,7 @@ func (sema *ExprSemanticsChecker) checkBuiltinFuncCall(n *FuncCallNode, sig *Fun
 
 		holders := parseFormatFuncSpecifiers(lit.Value, l)
 
-		for i := 0; i < l; i++ {
+		for i := range l {
 			if _, ok := holders[i]; !ok {
 				sema.errorf(n, "format string %q does not contain placeholder {%d}. remove argument which is unused in the format string", lit.Value, i)
 				continue

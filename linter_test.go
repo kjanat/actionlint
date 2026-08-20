@@ -136,7 +136,7 @@ func checkErrors(t *testing.T, outfile string, errs []*Error) {
 		t.Fatalf("%d errors are expected but actually got %d errors:\n%v", len(expected), len(errs), strings.Join(ms, "\n"))
 	}
 
-	for i := 0; i < len(errs); i++ {
+	for i := range errs {
 		errs[i].Filepath = filepath.ToSlash(errs[i].Filepath) // For Windows
 		want, have := expected[i], errs[i].Error()
 		if strings.HasPrefix(want, "/") && strings.HasSuffix(want, "/") {
@@ -449,7 +449,7 @@ func TestLinterFormatErrorMessageInSARIF(t *testing.T) {
 		out = strings.ReplaceAll(out, escaped, slash)
 	}
 
-	var have interface{}
+	var have any
 	if err := json.Unmarshal([]byte(out), &have); err != nil {
 		t.Fatalf("output is not JSON: %v: %q", err, out)
 	}
@@ -458,7 +458,7 @@ func TestLinterFormatErrorMessageInSARIF(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	var want interface{}
+	var want any
 	if err := json.Unmarshal(bytes, &want); err != nil {
 		panic(err)
 	}

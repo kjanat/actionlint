@@ -213,12 +213,12 @@ func newNullLocalActionsCache(dbg io.Writer) *LocalActionsCache {
 	return &LocalActionsCache{dbg: dbg}
 }
 
-func (c *LocalActionsCache) debug(format string, args ...interface{}) {
+func (c *LocalActionsCache) debug(format string, args ...any) {
 	if c.dbg == nil {
 		return
 	}
 	format = "[LocalActionsCache] " + format + "\n"
-	fmt.Fprintf(c.dbg, format, args...)
+	_, _ = fmt.Fprintf(c.dbg, format, args...)
 }
 
 func (c *LocalActionsCache) readCache(key string) (*ActionMetadata, bool) {

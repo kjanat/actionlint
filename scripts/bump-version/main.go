@@ -37,7 +37,7 @@ func (r *repo) git(args ...string) (string, error) {
 }
 
 func (r *repo) run(args ...string) error {
-	fmt.Fprintf(r.out, "+ git %s\n", strings.Join(args, " "))
+	_, _ = fmt.Fprintf(r.out, "+ git %s\n", strings.Join(args, " "))
 	_, err := r.git(args...)
 	return err
 }
@@ -117,7 +117,7 @@ func Main(args []string, stdout, stderr io.Writer) error {
 	flags.StringVar(&root, "root", ".", "repository root directory")
 	flags.SetOutput(stderr)
 	flags.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: bump-version [FLAGS] VERSION\n\nFlags:")
+		_, _ = fmt.Fprintln(stderr, "Usage: bump-version [FLAGS] VERSION\n\nFlags:")
 		flags.PrintDefaults()
 	}
 
@@ -171,7 +171,7 @@ func Main(args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 
-	fmt.Fprintf(stdout, "Bumping the version to %s (tag: %s)\n", v, tag)
+	_, _ = fmt.Fprintf(stdout, "Bumping the version to %s (tag: %s)\n", v, tag)
 	if err := Bump(root, targets, v, stdout); err != nil {
 		return err
 	}
@@ -181,12 +181,12 @@ func Main(args []string, stdout, stderr io.Writer) error {
 	}
 
 	if !commit && !push {
-		fmt.Fprint(stdout, "\nAll version references were updated and verified. To release, run:\n\n")
-		fmt.Fprintf(stdout, "  git add %s\n", strings.Join(paths(targets), " "))
-		fmt.Fprintf(stdout, "  git commit -m 'bump up version to %s'\n", tag)
-		fmt.Fprintf(stdout, "  git tag %s\n", tag)
-		fmt.Fprint(stdout, "  git push origin main\n")
-		fmt.Fprintf(stdout, "  git push origin %s\n", tag)
+		_, _ = fmt.Fprint(stdout, "\nAll version references were updated and verified. To release, run:\n\n")
+		_, _ = fmt.Fprintf(stdout, "  git add %s\n", strings.Join(paths(targets), " "))
+		_, _ = fmt.Fprintf(stdout, "  git commit -m 'bump up version to %s'\n", tag)
+		_, _ = fmt.Fprintf(stdout, "  git tag %s\n", tag)
+		_, _ = fmt.Fprint(stdout, "  git push origin main\n")
+		_, _ = fmt.Fprintf(stdout, "  git push origin %s\n", tag)
 		return nil
 	}
 
@@ -201,9 +201,9 @@ func Main(args []string, stdout, stderr io.Writer) error {
 	}
 
 	if !push {
-		fmt.Fprintf(stdout, "\nThe bump commit and the tag %s were created locally. To release, run:\n\n", tag)
-		fmt.Fprint(stdout, "  git push origin main\n")
-		fmt.Fprintf(stdout, "  git push origin %s\n", tag)
+		_, _ = fmt.Fprintf(stdout, "\nThe bump commit and the tag %s were created locally. To release, run:\n\n", tag)
+		_, _ = fmt.Fprint(stdout, "  git push origin main\n")
+		_, _ = fmt.Fprintf(stdout, "  git push origin %s\n", tag)
 		return nil
 	}
 
@@ -215,7 +215,7 @@ func Main(args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 
-	fmt.Fprintf(stdout, "\nCheck the release progress at %s\n", releaseJobURL)
+	_, _ = fmt.Fprintf(stdout, "\nCheck the release progress at %s\n", releaseJobURL)
 	return nil
 }
 

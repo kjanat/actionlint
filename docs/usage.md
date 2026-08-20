@@ -89,11 +89,15 @@ Output:
 
 property "platform" is not defined in object type {os: string}
 
+<!-- dprint-ignore-start -->
+
 ```plaintext
           key: ${{ matrix.platform }}-node-${{ hashFiles('**/package-lock.json') }}
                    ^~~~~~~~~~~~~~~
 ```
 ````
+
+<!-- dprint-ignore-end -->
 
 #### Example: Serialized in [JSON Lines][jsonl]
 
@@ -152,7 +156,7 @@ The sequence can be traversed with `range` action, which is like `for ... = rang
 
 The error object has the following fields.
 
-<!-- markdownlint-disable MD038 -->
+<!-- dprint-ignore-start -->
 
 | Field                | Description                                           | Example                                                          |
 | -------------------- | ----------------------------------------------------- | ---------------------------------------------------------------- |
@@ -164,7 +168,7 @@ The error object has the following fields.
 | `{{$err.Column}}`    | Column number of the error's start position (1-based) | `11`                                                             |
 | `{{$err.EndColumn}}` | Column number of the error's end position (1-based)   | `23`                                                             |
 
-<!-- markdownlint-enable MD038 -->
+<!-- dprint-ignore-end -->
 
 Functions called in `{{ }}` placeholder are template actions. There are many
 actions defined by Go standard library. In addition, there are a few custom

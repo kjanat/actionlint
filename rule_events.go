@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -101,13 +102,7 @@ func (rule *RuleEvents) filterNotAvailable(pos *Pos, filter, hook string, availa
 }
 
 func (rule *RuleEvents) checkExclusiveFilters(filter, ignore *WebhookEventFilter, hook string, available []string) {
-	ok := false
-	for _, a := range available {
-		if a == hook {
-			ok = true
-			break
-		}
-	}
+	ok := slices.Contains(available, hook)
 
 	if ok {
 		if !filter.IsEmpty() && !ignore.IsEmpty() {
@@ -182,13 +177,7 @@ func (rule *RuleEvents) checkTypes(hook *String, types []*String, expected []str
 	}
 
 	for _, ty := range types {
-		valid := false
-		for _, e := range expected {
-			if ty.Value == e {
-				valid = true
-				break
-			}
-		}
+		valid := slices.Contains(expected, ty.Value)
 		if !valid {
 			rule.Errorf(
 				ty.Pos,

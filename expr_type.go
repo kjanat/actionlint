@@ -2,6 +2,7 @@ package actionlint
 
 import (
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 )
@@ -337,9 +338,7 @@ func (ty *ObjectType) Merge(other ExprType) ExprType {
 		}
 
 		props := make(map[string]ExprType, len(ty.Props))
-		for n, l := range ty.Props {
-			props[n] = l
-		}
+		maps.Copy(props, ty.Props)
 		for n, r := range other.Props {
 			if l, ok := props[n]; ok {
 				props[n] = l.Merge(r)
@@ -435,8 +434,8 @@ func EqualTypes(l, r ExprType) bool {
 //   - bool, for JSON booleans
 //   - float64, for JSON numbers
 //   - string, for JSON strings
-//   - []interface{}, for JSON arrays
-//   - map[string]interface{}, for JSON objects
+//   - []any, for JSON arrays
+//   - map[string]any, for JSON objects
 //   - nil for JSON null
 func typeOfJSONValue(v any) ExprType {
 	switch v := v.(type) {

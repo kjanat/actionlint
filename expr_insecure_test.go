@@ -33,7 +33,7 @@ var testAllUntrustedInputs = []string{
 func TestExprInsecureBuiltinUntrustedInputs(t *testing.T) {
 	for _, input := range testAllUntrustedInputs {
 		cur := BuiltinUntrustedInputs
-		for _, name := range strings.Split(input, ".") {
+		for name := range strings.SplitSeq(input, ".") {
 			if m, ok := cur[name]; ok {
 				cur = m.Children
 				continue

@@ -57,7 +57,7 @@ type inputs struct {
 
 func splitLines(value string) []string {
 	ret := []string{}
-	for _, l := range strings.Split(value, "\n") {
+	for l := range strings.SplitSeq(value, "\n") {
 		if l = strings.TrimSuffix(l, "\r"); l != "" {
 			ret = append(ret, l)
 		}
