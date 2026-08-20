@@ -37,14 +37,26 @@ syntax is the same as [RE2][re2].
 actionlint -ignore 'label ".+" is unknown' -ignore '".+" is potentially untrusted'
 ```
 
-`-shellcheck` and `-pyflakes` specifies file paths of executables. Setting empty
-string to them disables `shellcheck` and `pyflakes` rules. As a bonus, disabling
-them makes actionlint much faster. These external linter integrations spawn many
-processes.
+`-shellcheck` and `-pyflakes` take a command line, not only a path. A command
+name, a file path, or a command with flags all work. Setting an empty string
+disables the `shellcheck` and `pyflakes` rules. As a bonus, disabling them makes
+actionlint much faster. These external linter integrations spawn many processes.
 
 ```sh
 actionlint -shellcheck= -pyflakes=
+actionlint -shellcheck 'shellcheck -e SC2086'
+actionlint -pyflakes 'python3 -m pyflakes'
 ```
+
+Your arguments are prepended to the ones actionlint appends itself, so do not
+pass `-f`/`--format` or file arguments. actionlint appends
+`--norc -f json1 -x --shell <sh> -e SC1091,SC2194,SC2050,SC2153,SC2154,SC2157,SC2043 -`
+and parses the JSON1 output.
+
+Because of that `--norc`, a repository `.shellcheckrc` is not read. Use
+`-shellcheck '<command line>'` or the [`SHELLCHECK_OPTS` environment variable](checks.md#check-shellcheck-integ) instead. pyflakes has no
+configuration file and no `# noqa`, so suppress its findings with `-ignore` or
+the `paths:` section of the configuration file.
 
 <a id="format"></a>
 
@@ -418,6 +430,19 @@ Or mount the workflows directory and pass the paths as arguments:
 ```sh
 docker run --rm -v /path/to/workflows:/workflows ghcr.io/kjanat/actionlint:latest -color /workflows/ci.yml
 ```
+
+The container inherits its environment from `docker run`, so `SHELLCHECK_OPTS`
+reaches shellcheck inside the image only when you pass it in with `-e`:
+
+```sh
+docker run --rm -v "$(git rev-parse --show-toplevel):/w" \
+  -e SHELLCHECK_OPTS='-e SC2086' ghcr.io/kjanat/actionlint:latest -color
+```
+
+The `action-*` images are the exception. Their `shellcheck` and `pyflakes`
+inputs are booleans that only switch the integrations on or off, so
+`SHELLCHECK_OPTS` in the step's `env:` is the only way to configure shellcheck
+there.
 
 ## Using actionlint from Go program
 

@@ -75,13 +75,15 @@ with Go template syntax.
   * `-oneline`:
     Use one line per one error. Useful for reading error messages from programs
 
-  * `-pyflakes` <EXECUTABLE>:
-    Command name or file path of "pyflakes" external command. If empty, pyflakes integration will be
-    disabled (default "pyflakes")
+  * `-pyflakes` <COMMAND>:
+    Command line of "pyflakes" external command. A command name, a file path, or a command with flags
+    such as "python3 -m pyflakes", or "uvx pyflakes".
+    If empty, pyflakes integration will be disabled (default "pyflakes")
 
-  * `-shellcheck` <EXECUTABLE>:
-    Command name or file path of "shellcheck" external command. If empty, shellcheck integration will
-    be disabled (default "shellcheck")
+  * `-shellcheck` <COMMAND>:
+    Command line of "shellcheck" external command. A command name, a file path, or a command with
+    flags such as "shellcheck -e SC2086".
+    If empty, shellcheck integration will be disabled (default "shellcheck")
 
   * `-verbose`:
     Enable verbose output

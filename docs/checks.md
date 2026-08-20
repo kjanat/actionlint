@@ -922,8 +922,12 @@ actionlint remembers the default shell and checks what OS the job runs on. Only 
 applies shellcheck to scripts.
 
 By default, actionlint checks if `shellcheck` command exists in your system and uses it when it is found. The `-shellcheck`
-option on running `actionlint` command specifies the executable path of shellcheck. Setting empty string by `shellcheck=`
-disables shellcheck integration explicitly.
+option on running `actionlint` command takes a command line: a command name, a file path, or a command with flags such as
+`-shellcheck 'shellcheck -e SC2086'`. Those arguments are prepended to the ones actionlint appends itself, so `-f`/`--format`
+and file arguments must not be passed. Setting empty string by `shellcheck=` disables shellcheck integration explicitly.
+
+actionlint runs shellcheck with `--norc`, so a repository `.shellcheckrc` is never read and changing it has no effect. Pass
+the options through `-shellcheck '<command line>'` or the `SHELLCHECK_OPTS` environment variable described below instead.
 
 Since both `${{ }}` expression syntax and ShellScript's variable access `$FOO` use `$`, the remaining `${{ }}` confuses
 shellcheck. To avoid it, actionlint replaces `${{ }}` with underscores. For example `echo '${{ matrix.os }}'` is replaced
@@ -1039,8 +1043,12 @@ actionlint runs pyflakes for scripts at `run:` steps in a workflow and reports e
 Python scripts in a workflow by checking `shell: python` at each step and `defaults:` configurations at workflows and jobs.
 
 By default, actionlint checks if `pyflakes` command exists in your system and uses it when found. The `-pyflakes` option
-of `actionlint` command allows to specify the executable path of pyflakes. Setting empty string by `pyflakes=` disables
-pyflakes integration explicitly.
+of `actionlint` command takes a command line: a command name, a file path, or a command with flags such as
+`-pyflakes 'python3 -m pyflakes'`. Setting empty string by `pyflakes=` disables pyflakes integration explicitly.
+
+pyflakes has no configuration file, no exclusion flag, and no `# noqa` support, so there is no pyflakes-side way to silence
+a single finding. Suppress it on the actionlint side with the `-ignore` option or the `ignore:` list under `paths:` in
+[the configuration file](config.md).
 
 Since both `${{ }}` expression syntax is invalid as Python, remaining `${{ }}` might confuse pyflakes. To avoid it,
 actionlint replaces `${{ }}` with underscores. For example `print('${{ matrix.os }}')` is replaced with

@@ -2,6 +2,21 @@
 
 # Unreleased
 
+- Move the Go module to `actionlint.kjanat.dev`. The `go-import` and `go-source` meta tags that resolve it are served from the fork's GitHub Pages site, so `go install actionlint.kjanat.dev/cmd/actionlint@latest` resolves from this release onward. Library consumers must update their import paths.
+- Rename the exported `InvalidGlobPattern` error type to `InvalidGlobPatternError`. It is returned by `ValidateRefGlob` and `ValidatePathGlob`, so consumers of those functions must update.
+- Publish the CLI image to Docker Hub as `kjanat/actionlint` alongside `ghcr.io/kjanat/actionlint`. Both registries carry the same manifest. The `action-*` tags stay on `ghcr.io` only, since `action.yml` refers to them there.
+- Publish the Homebrew cask to `kjanat/homebrew-actionlint` on every release instead of skipping it.
+- Rebuild the playground on Vite with CodeMirror 6 and Vitest, and report lint errors through `@codemirror/lint` so they appear as inline underlines and tooltips instead of a custom gutter. This required the wasm bridge to pass the end column of each error.
+- Allow the ShellCheck and pyflakes subprocesses to be cancelled. `concurrentProcess` already held a context and used it to acquire its semaphore, but never passed it to `exec.Command`.
+- Fix `make` overwriting expected-output test fixtures with their input directories, caused by GNU make's built-in `%.out: %` rule.
+- Compile, vet and test the fuzz targets. They carried a `gofuzz` build tag for dvyukov/go-fuzz, which made the toolchain exclude the whole package. They are `testing.F` targets now, and `make fuzz` drives `go test -fuzz`.
+- Check the type assertions in `UpdateInputs` and `UpdateDispatchInputs`, which would panic if the expression variable map ever held another type.
+- Give every outbound HTTP request in the code generators a deadline. They ran on clients with no timeout, so a stalled connection hung the generator indefinitely.
+- Make `generate-availability` idempotent. It emitted map literals carrying a redundant element type that the formatter then stripped, so every run produced a diff that was immediately reverted.
+- Lint the repository with golangci-lint, and lint the repository's own workflows with all optional ShellCheck rules enabled, which actionlint's `--norc` had been hiding.
+- Confine the code generators' output paths and declare explicit permissions on every workflow.
+- Replace Prettier and Stylelint with dprint, pin every action to a commit SHA, and drop the timestamp stamp files and the pre-push hook from the build.
+
 <a id="v1.11.0"></a>
 
 ## [v1.11.0](https://github.com/kjanat/actionlint/releases/tag/v1.11.0) - 2026-08-20
