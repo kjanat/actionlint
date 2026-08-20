@@ -1,8 +1,10 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+---
 version: 2
 
 release:
   draft: false
-  prerelease: false
+  prerelease: "false"
 
 before:
   hooks:
@@ -21,17 +23,17 @@ builds:
   - <<: *build_defaults
     id: linux
     goos: [linux]
-    goarch: [386, arm, amd64, arm64]
+    goarch: ["386", arm, amd64, arm64]
 
   - <<: *build_defaults
     id: windows
     goos: [windows]
-    goarch: [386, amd64, arm64]
+    goarch: ["386", amd64, arm64]
 
   - <<: *build_defaults
     id: freebsd
     goos: [freebsd]
-    goarch: [386, amd64]
+    goarch: ["386", amd64]
 
 checksum:
   name_template: "actionlint_{{.Version}}_checksums.txt"
