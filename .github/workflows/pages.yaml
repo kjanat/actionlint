@@ -30,15 +30,16 @@ jobs:
         run: |
           npm ci --prefix playground
           make -C playground build test
+      - uses: ruby/setup-ruby@v1
+        env:
+          BUNDLE_GEMFILE: man/Gemfile
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
       - name: Build command manual
         env:
           BUNDLE_GEMFILE: man/Gemfile
-          BUNDLE_JOBS: "4"
-          BUNDLE_PATH: ${{ runner.temp }}/bundle
-          BUNDLE_RETRY: "3"
-        run: |
-          bundle install
-          bundle exec ronn man/actionlint.1.ronn
+        run: bundle exec ronn man/actionlint.1.ronn
       - name: Package playground
         run: |
           mkdir playground-dist
