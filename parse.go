@@ -1197,7 +1197,7 @@ func (p *parser) parseContainer(sec string, pos *Pos, n *yaml.Node) *Container {
 		case "ports":
 			ret.Ports = p.parseStringSequence("ports", e.val, true)
 		case "volumes":
-			ret.Ports = p.parseStringSequence("volumes", e.val, true)
+			ret.Volumes = p.parseStringSequence("volumes", e.val, true)
 		case "options":
 			ret.Options = p.parseString(e.val, true)
 		case "command":

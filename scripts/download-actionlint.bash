@@ -126,6 +126,13 @@ trap 'rm -rf "$tempdir"' EXIT
 archive="${tempdir}/${file}"
 curl --fail --location --output "${archive}" "${url}"
 
+if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
+	echo "Verifying ${file} against its build provenance attestation"
+	gh attestation verify "${archive}" --repo kjanat/actionlint
+else
+	echo "Skipping attestation verification of ${file}: gh is not installed or not authenticated" >&2
+fi
+
 if [[ "${os}" == "windows" ]]; then
 	unzip "${archive}" actionlint.exe -d "${target_dir}"
 	exe="${target_dir}/actionlint.exe"

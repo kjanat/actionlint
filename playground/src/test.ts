@@ -1,6 +1,9 @@
+import { Text } from '@codemirror/state';
 import { strict as assert } from 'node:assert';
 import { promises as fs } from 'node:fs';
 import { beforeAll, describe, it } from 'vitest';
+
+import { errorRange } from './range';
 
 // The Go wasm runtime installs `globalThis.Go` as a side effect.
 import '../public/wasm_exec.js';
@@ -31,6 +34,27 @@ class CheckResults {
 		this.errors = null;
 	}
 }
+
+describe('errorRange', function() {
+	function error(line: number, column: number, endColumn: number): ActionlintError {
+		return { kind: 'k', message: 'm', line, column, endColumn };
+	}
+
+	it('maps columns to document offsets', function() {
+		const doc = Text.of(['on: push', 'jobs: {}']);
+		assert.deepEqual(errorRange(doc, error(2, 1, 4)), { from: 9, to: 13 });
+	});
+
+	it('counts an astral character as two code units', function() {
+		const doc = Text.of(['# 🚀🚀', 'on: foo']);
+		assert.deepEqual(errorRange(doc, error(1, 3, 4)), { from: 2, to: 6 });
+	});
+
+	it('clamps an end column past the line to the line end', function() {
+		const doc = Text.of(['on: foo', 'jobs: {}']);
+		assert.deepEqual(errorRange(doc, error(1, 5, 99)), { from: 4, to: 7 });
+	});
+});
 
 describe('main.wasm', function() {
 	const results = new CheckResults();

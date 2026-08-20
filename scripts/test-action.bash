@@ -31,9 +31,13 @@ function output() {
     ' "${tmp}/github/file_commands/output"
 }
 
-function run_action() {
+function reset_action_files() {
 	: >"${tmp}/github/file_commands/output"
 	: >"${tmp}/action.log"
+}
+
+function docker_action() {
+	local status=0
 	docker run --rm \
 		--mount "type=bind,source=${tmp}/github,target=/github" \
 		--mount "type=bind,source=${workspace}/testdata,target=/github/workspace/testdata,readonly" \
@@ -41,7 +45,15 @@ function run_action() {
 		-e GITHUB_ACTIONS=true \
 		-e GITHUB_OUTPUT=/github/file_commands/output \
 		-e GITHUB_WORKSPACE=/github/workspace \
-		"${image}" "$@" >"${tmp}/action.log" 2>&1
+		"${image}" "$@" >"${tmp}/action.log" 2>&1 || status="$?"
+	echo "${status}"
+}
+
+function run_action() {
+	local status
+	reset_action_files
+	status="$(docker_action "$@")"
+	return "${status}"
 }
 
 function show_log() {
@@ -61,12 +73,8 @@ function assert_output() {
 }
 
 function action_status() {
-	local status=0
-	set +e
-	run_action "$@"
-	status="$?"
-	set -e
-	echo "${status}"
+	reset_action_files
+	docker_action "$@"
 }
 
 function expect_status() {

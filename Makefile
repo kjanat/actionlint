@@ -71,9 +71,13 @@ endif
 
 b build: $(TARGET)
 
-# go test -fuzz accepts exactly one target, so running without FUZZ_FUNC lists the available ones.
+# go test -fuzz accepts exactly one target.
 fuzz:
-	go test -run '^$$' -fuzz '^$(FUZZ_FUNC)' ./fuzz
+ifdef FUZZ_FUNC
+	go test -run '^$$' -fuzz '^$(FUZZ_FUNC)$$' ./fuzz
+else
+	go test -list '^Fuzz' ./fuzz
+endif
 
 man/actionlint.1 man/actionlint.1.html: export BUNDLE_GEMFILE := man/Gemfile
 man/actionlint.1 man/actionlint.1.html: man/actionlint.1.ronn

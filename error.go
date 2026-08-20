@@ -75,7 +75,7 @@ func (e *Error) GetTemplateFields(source []byte) *ErrorTemplateFields {
 			snippet = l
 			if i := e.getIndicator(l); i != "" {
 				snippet += "\n" + i
-				end = len(i) // Byte length can be used here because this line only contains ASCII
+				end = e.getEndColumn(l)
 			}
 		}
 	}
@@ -133,6 +133,29 @@ func (e *Error) getLine(source []byte) (string, bool) {
 	return "", false
 }
 
+func (e *Error) getEndColumn(line string) int {
+	if e.endColumn >= e.Column {
+		return e.endColumn
+	}
+
+	start, ok := byteOffsetAtColumn(line, e.Column)
+	if !ok {
+		return e.Column
+	}
+
+	col := e.Column
+	for _, c := range line[start:] {
+		if c == ' ' || c == '\t' || c == '\n' || c == '\r' {
+			break
+		}
+		col++
+	}
+	if col > e.Column {
+		col--
+	}
+	return col
+}
+
 func (e *Error) getIndicator(line string) string {
 	if e.Column <= 0 {
 		return ""
@@ -145,21 +168,12 @@ func (e *Error) getIndicator(line string) string {
 
 	// Count width of non-space characters after '^' for underline
 	uw := 0
-	if e.endColumn >= e.Column {
-		end, ok := byteOffsetAtColumn(line, e.endColumn+1)
+	if end := e.getEndColumn(line); end >= e.Column {
+		off, ok := byteOffsetAtColumn(line, end+1)
 		if !ok {
-			end = len(line)
+			off = len(line)
 		}
-		uw = runewidth.StringWidth(line[start:end])
-	} else {
-		r := strings.NewReader(line[start:])
-		for {
-			c, s, err := r.ReadRune()
-			if err != nil || s == 0 || c == ' ' || c == '\t' || c == '\n' || c == '\r' {
-				break
-			}
-			uw += runewidth.RuneWidth(c)
-		}
+		uw = runewidth.StringWidth(line[start:off])
 	}
 	if uw > 0 {
 		uw-- // Decrement for place for '^'

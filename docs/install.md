@@ -191,10 +191,10 @@ Recent [Go][Go] toolchain is necessary to build actionlint from source. Last two
 
 ```sh
 # Install the latest stable version
-go install github.com/kjanat/actionlint/cmd/actionlint@latest
+go install actionlint.kjanat.dev/cmd/actionlint@latest
 
 # Install the head of the main branch
-go install github.com/kjanat/actionlint/cmd/actionlint@main
+go install actionlint.kjanat.dev/cmd/actionlint@main
 ```
 
 ---

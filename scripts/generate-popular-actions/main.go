@@ -143,44 +143,48 @@ func (g *gen) fetchRemote() (map[string]*actionlint.ActionMetadata, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	fetch := func(req *request) *fetched {
+		url := req.action.rawURL(req.tag)
+		g.log.Println("Start fetching", url)
+		res, err := g.get(ctx, http.MethodGet, url)
+		if err != nil {
+			return &fetched{err: fmt.Errorf("could not fetch %s: %w", url, err)}
+		}
+		defer func() { _ = res.Body.Close() }()
+		if res.StatusCode < 200 || 300 <= res.StatusCode {
+			return &fetched{err: fmt.Errorf("request was not successful %s: %s", url, res.Status)}
+		}
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			return &fetched{err: fmt.Errorf("could not read body for %s: %w", url, err)}
+		}
+		spec := req.action.spec(req.tag)
+		var meta actionlint.ActionMetadata
+		if err := yaml.Unmarshal(body, &meta); err != nil &&
+			// treosh/lighthouse-ci-action's metadata causes parse error due to typo. Ignore the error not to stop codegen
+			// https://github.com/treosh/lighthouse-ci-action/pull/153
+			(!strings.HasPrefix(spec, "treosh/lighthouse-ci-action@") || !strings.Contains(err.Error(), "unexpected key")) {
+			return &fetched{err: fmt.Errorf("could not parse metadata for %s: %w", url, err)}
+		}
+		if req.action.SkipInputs {
+			meta.SkipInputs = true
+		}
+		if req.action.SkipOutputs {
+			meta.SkipOutputs = true
+		}
+		return &fetched{spec: spec, meta: &meta}
+	}
+
 	for range 5 {
 		go func(ret chan<- *fetched, reqs <-chan *request, done <-chan struct{}) {
 			for {
 				select {
 				case req := <-reqs:
-					url := req.action.rawURL(req.tag)
-					g.log.Println("Start fetching", url)
-					res, err := g.get(ctx, http.MethodGet, url)
-					if err != nil {
-						ret <- &fetched{err: fmt.Errorf("could not fetch %s: %w", url, err)}
-						break
+					select {
+					case ret <- fetch(req):
+					case <-done:
+						return
 					}
-					if res.StatusCode < 200 || 300 <= res.StatusCode {
-						ret <- &fetched{err: fmt.Errorf("request was not successful %s: %s", url, res.Status)}
-						break
-					}
-					body, err := io.ReadAll(res.Body)
-					_ = res.Body.Close()
-					if err != nil {
-						ret <- &fetched{err: fmt.Errorf("could not read body for %s: %w", url, err)}
-						break
-					}
-					spec := req.action.spec(req.tag)
-					var meta actionlint.ActionMetadata
-					if err := yaml.Unmarshal(body, &meta); err != nil &&
-						// treosh/lighthouse-ci-action's metadata causes parse error due to typo. Ignore the error not to stop codegen
-						// https://github.com/treosh/lighthouse-ci-action/pull/153
-						(!strings.HasPrefix(spec, "treosh/lighthouse-ci-action@") || !strings.Contains(err.Error(), "unexpected key")) {
-						ret <- &fetched{err: fmt.Errorf("could not parse metadata for %s: %w", url, err)}
-						break
-					}
-					if req.action.SkipInputs {
-						meta.SkipInputs = true
-					}
-					if req.action.SkipOutputs {
-						meta.SkipOutputs = true
-					}
-					ret <- &fetched{spec: spec, meta: &meta}
 				case <-done:
 					return
 				}
@@ -400,30 +404,44 @@ func (g *gen) detectNewReleaseURLs() ([]string, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	check := func(r *registry) (string, error) {
+		url := r.rawURL(r.Next)
+		g.log.Println("Checking", url)
+		res, err := g.get(ctx, http.MethodHead, url)
+		if err != nil {
+			return "", fmt.Errorf("could not send head request to %s: %w", url, err)
+		}
+		_ = res.Body.Close()
+		if res.StatusCode == http.StatusNotFound {
+			g.log.Println("Not found:", url)
+			return "", nil
+		}
+		if res.StatusCode < 200 || 300 <= res.StatusCode {
+			return "", fmt.Errorf("head request for %s was not successful: %s", url, res.Status)
+		}
+		g.log.Println("Found:", url)
+		return r.githubURL(r.Next), nil
+	}
+
 	for range 4 {
 		go func(ret chan<- string, errs chan<- error, reqs <-chan *registry, done <-chan struct{}) {
 			for {
 				select {
 				case r := <-reqs:
-					url := r.rawURL(r.Next)
-					g.log.Println("Checking", url)
-					res, err := g.get(ctx, http.MethodHead, url)
+					u, err := check(r)
 					if err != nil {
-						errs <- fmt.Errorf("could not send head request to %s: %w", url, err)
+						select {
+						case errs <- err:
+						case <-done:
+							return
+						}
 						break
 					}
-					_ = res.Body.Close()
-					if res.StatusCode == http.StatusNotFound {
-						g.log.Println("Not found:", url)
-						ret <- ""
-						break
+					select {
+					case ret <- u:
+					case <-done:
+						return
 					}
-					if res.StatusCode < 200 || 300 <= res.StatusCode {
-						errs <- fmt.Errorf("head request for %s was not successful: %s", url, res.Status)
-						break
-					}
-					g.log.Println("Found:", url)
-					ret <- r.githubURL(r.Next)
 				case <-done:
 					return
 				}

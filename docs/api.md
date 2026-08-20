@@ -7,7 +7,7 @@ This document describes how to use [actionlint](..) as Go library.
 actionlint can be used from Go programs by importing the module.
 
 ```go
-import "github.com/kjanat/actionlint"
+import "actionlint.kjanat.dev"
 ```
 
 See [the documentation][apidoc] to know the list of all APIs. It contains
@@ -61,7 +61,7 @@ repository.
 
 [Checks](checks.md) | [Installation](install.md) | [Usage](usage.md) | [Configuration](config.md) | [References](reference.md)
 
-[api-badge]: https://pkg.go.dev/badge/github.com/kjanat/actionlint.svg
-[apidoc]: https://pkg.go.dev/github.com/kjanat/actionlint
+[api-badge]: https://pkg.go.dev/badge/actionlint.kjanat.dev.svg
+[apidoc]: https://pkg.go.dev/actionlint.kjanat.dev
 [go-yaml]: https://github.com/yaml/go-yaml
 [filter-pattern-doc]: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet

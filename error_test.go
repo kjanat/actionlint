@@ -429,6 +429,17 @@ func TestErrorGetTemplateFieldsExplicitEndColumnAfterUnicode(t *testing.T) {
 	}
 }
 
+func TestErrorGetTemplateFieldsEndColumnAfterWideRunes(t *testing.T) {
+	err := errorAt(&Pos{Line: 1, Col: 5}, "kind", "this is message")
+	f := err.GetTemplateFields([]byte("日本語 $foo"))
+	if f.Snippet != "日本語 $foo\n       ^~~~" {
+		t.Fatalf("unexpected snippet: %q", f.Snippet)
+	}
+	if f.EndColumn != 8 {
+		t.Fatalf("end column is %d but wanted 8", f.EndColumn)
+	}
+}
+
 func TestErrorErrorToString(t *testing.T) {
 	err := &Error{
 		Message: "this is message",

@@ -14,6 +14,8 @@ import { basicSetup } from 'codemirror';
 import isMobile from 'ismobilejs';
 import * as pako from 'pako';
 
+import { errorRange } from './range';
+
 const editorTheme = new Compartment();
 
 function themeFor(isDark: boolean): Extension {
@@ -255,10 +257,8 @@ jobs:
 		for (const error of errors) {
 			const row = document.createElement('tr');
 			row.addEventListener('click', () => {
-				const doc = editor.state.doc;
-				const line = doc.line(Math.min(Math.max(error.line, 1), doc.lines));
 				editor.dispatch({
-					selection: { anchor: Math.min(line.from + error.column - 1, line.to) },
+					selection: { anchor: errorRange(editor.state.doc, error).from },
 					scrollIntoView: true,
 				});
 				editor.focus();
@@ -284,12 +284,10 @@ jobs:
 
 			body.appendChild(row);
 
-			const doc = editor.state.doc;
-			const line = doc.line(Math.min(Math.max(error.line, 1), doc.lines));
-			const from = Math.min(line.from + error.column - 1, line.to);
+			const { from, to } = errorRange(editor.state.doc, error);
 			diagnostics.push({
 				from,
-				to: Math.max(from, Math.min(line.from + error.endColumn, line.to)),
+				to,
 				severity: 'error',
 				source: error.kind,
 				message: error.message,
