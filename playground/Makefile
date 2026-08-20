@@ -1,25 +1,26 @@
 LIBSRCS := $(filter-out ../%_test.go, $(wildcard ../*.go)) ../go.mod ../go.sum
+NODE_MODULES := ../node_modules
 
 serve: build
 	npm run serve
 
-b build: node_modules lib main.wasm index.js test.js
+b build: $(NODE_MODULES) lib main.wasm index.js test.js
 
-node_modules:
+$(NODE_MODULES):
 	npm install
 
 index.js test.js: index.ts test.ts lib.d.ts tsconfig.json
 	npm run build
 
-lib: node_modules
+lib: $(NODE_MODULES)
 	bash ./post-install.bash
 
-dep: node_modules lib
+dep: $(NODE_MODULES)
 
 main.wasm: main.go $(LIBSRCS)
 	GOOS=js GOARCH=wasm go build -o main.wasm
 
-.testtimestamp: node_modules lib test.js main.wasm
+.testtimestamp: $(NODE_MODULES) lib test.js main.wasm
 	npm test
 	touch .testtimestamp
 

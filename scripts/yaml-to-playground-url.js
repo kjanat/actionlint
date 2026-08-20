@@ -8,7 +8,7 @@
 //   node ./scripts/yaml-to-playground-url.js < test.yaml
 
 const fs = require('fs');
-const pako = require('../playground/node_modules/pako');
+const pako = require('pako');
 
 const re = /^\s*#/;
 const stdin = fs.readFileSync(process.stdin.fd, 'utf8').trim();
