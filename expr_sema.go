@@ -59,7 +59,7 @@ func parseFormatFuncSpecifiers(f string, n int) map[int]struct{} {
 					// Closing brace.
 					end = i
 				}
-			} else if !('0' <= r && r <= '9') {
+			} else if r < '0' || r > '9' {
 				if r == '{' {
 					start = i + 1
 				} else {

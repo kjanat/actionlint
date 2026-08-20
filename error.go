@@ -229,7 +229,8 @@ func unescapeBackslash(s string) string {
 
 func toPascalCase(s string) string {
 	ss := strings.FieldsFunc(s, func(r rune) bool {
-		return !('a' <= r && r <= 'z' || 'A' <= r && r <= 'Z' || '0' <= r && r <= '9')
+		alnum := 'a' <= r && r <= 'z' || 'A' <= r && r <= 'Z' || '0' <= r && r <= '9'
+		return !alnum
 	})
 	for i, s := range ss {
 		var c rune

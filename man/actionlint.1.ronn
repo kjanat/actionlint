@@ -218,3 +218,4 @@ https://github.com/kjanat/actionlint/issues
 https://github.com/kjanat/actionlint/blob/main/LICENSE.txt
 
 <!-- vim: set ft=markdown: -->
+<!-- markdownlint-disable-file -->
