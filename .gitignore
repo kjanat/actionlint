@@ -15,7 +15,9 @@
 /coverage.out
 /crashers
 /env.sh
+/man/.bundle/
 /man/actionlint.1
 /man/actionlint.1.html
 /node_modules
 /playground-dist
+/vendor/
