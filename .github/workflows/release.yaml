@@ -4,6 +4,11 @@ on:
     tags:
       - "v*.*.*"
 
+concurrency:
+  group: actionlint-release
+  cancel-in-progress: false
+  queue: max
+
 jobs:
   binaries:
     runs-on: ubuntu-latest

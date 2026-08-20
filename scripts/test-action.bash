@@ -12,7 +12,7 @@ workspace="$(pwd)"
 tmp="$(mktemp -d)"
 trap 'rm -rf "${tmp}"' EXIT
 
-mkdir -p "${tmp}/file-commands" "${tmp}/workspace/testdata"
+mkdir -p "${tmp}/github/file_commands" "${tmp}/github/workspace/testdata"
 
 function output() {
 	local name="$1"
@@ -28,16 +28,15 @@ function output() {
             }
             exit
         }
-    ' "${tmp}/file-commands/output"
+    ' "${tmp}/github/file_commands/output"
 }
 
 function run_action() {
-	: >"${tmp}/file-commands/output"
+	: >"${tmp}/github/file_commands/output"
 	: >"${tmp}/action.log"
 	docker run --rm \
-		--mount "type=bind,source=${tmp}/workspace,target=/github/workspace" \
+		--mount "type=bind,source=${tmp}/github,target=/github" \
 		--mount "type=bind,source=${workspace}/testdata,target=/github/workspace/testdata,readonly" \
-		--mount "type=bind,source=${tmp}/file-commands,target=/github/file_commands" \
 		--workdir /github/workspace \
 		-e GITHUB_ACTIONS=true \
 		-e GITHUB_OUTPUT=/github/file_commands/output \
@@ -47,6 +46,18 @@ function run_action() {
 
 function show_log() {
 	sed 's/^/action test: /' "${tmp}/action.log" >&2
+}
+
+function assert_output() {
+	local name="$1"
+	local expected="$2"
+	local actual
+	actual="$(output "${name}")"
+	if [[ "${actual}" != "${expected}" ]]; then
+		echo "Expected output '${name}' to be '${expected}', got '${actual}'" >&2
+		show_log
+		exit 1
+	fi
 }
 
 function expect_status() {
@@ -71,35 +82,35 @@ if ! run_action testdata/ok/minimal.yaml json '' '' true true . '' true; then
 	show_log
 	exit 1
 fi
-test "$(output exit-code)" = 0
-test "$(output result)" = success
-test "$(output problems-found)" = false
-test "$(output problem-count)" = 0
-test "$(output output)" = '[]'
+assert_output exit-code 0
+assert_output result success
+assert_output problems-found false
+assert_output problem-count 0
+assert_output output '[]'
 
 for format in github default oneline json json-lines markdown sarif; do
 	if ! run_action testdata/err/one_error.yaml "${format}" '' '' true true . '' false; then
 		show_log
 		exit 1
 	fi
-	test "$(output exit-code)" = 1
-	test "$(output result)" = problems-found
-	test "$(output problems-found)" = true
-	test "$(output problem-count)" = 1
+	assert_output exit-code 1
+	assert_output result problems-found
+	assert_output problems-found true
+	assert_output problem-count 1
 done
 
 run_action testdata/err/one_error.yaml json-lines '' '' true true . actionlint-results.jsonl false
-test "$(output output-file)" = actionlint-results.jsonl
-grep -q '"message"' "${tmp}/workspace/actionlint-results.jsonl"
+assert_output output-file actionlint-results.jsonl
+grep -q '"message"' "${tmp}/github/workspace/actionlint-results.jsonl"
 
 expect_status 1 'actionlint findings' testdata/err/one_error.yaml github '' '' true true . '' true
-test "$(output exit-code)" = 1
-test "$(output result)" = problems-found
+assert_output exit-code 1
+assert_output result problems-found
 
 expect_status 2 'an invalid format' '' invalid '' '' true true . '' true
 expect_status 2 'an escaping working-directory' testdata/ok/minimal.yaml json '' '' true true .. '' true
 expect_status 2 'an escaping output-file' testdata/ok/minimal.yaml json '' '' true true . ../escaped.json true
-test ! -e "${tmp}/escaped.json"
+test ! -e "${tmp}/github/escaped.json"
 expect_status 2 'a directory output-file' testdata/ok/minimal.yaml json '' '' true true . . true
 expect_status 2 'an escaping config-file' testdata/ok/minimal.yaml json '' ../actionlint.yaml true true . '' true
 expect_status 2 'an option-like file path' --help json '' '' true true . '' true
