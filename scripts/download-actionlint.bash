@@ -43,7 +43,7 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
 fi
 
 # Default value is updated manually on release
-version="1.10.0"
+version="1.11.0"
 if [ -n "$1" ]; then
     if [[ "$1" == 'latest' || "$1" == 'LATEST' ]]; then
         latest_url="$(curl --fail --silent --show-error --location --head --output /dev/null --write-out '%{url_effective}' https://github.com/kjanat/actionlint/releases/latest)"

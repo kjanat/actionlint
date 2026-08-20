@@ -371,7 +371,7 @@ Available tags are:
   Moving alias for the latest stable version of actionlint. This image is recommended.
 - `ghcr.io/kjanat/actionlint:{version}`:\
   Release-specific actionlint image rather than a moving alias.\
-  (e.g. `ghcr.io/kjanat/actionlint:1.10.0`)
+  (e.g. `ghcr.io/kjanat/actionlint:1.11.0`)
 - `ghcr.io/kjanat/actionlint:action-{version}`:\
   Release-specific image used by `action.yml` rather than a moving alias.\
   (e.g. `action-1.11.0`)
@@ -513,7 +513,7 @@ Add this to your `.pre-commit-config.yaml` in your repository:
 ---
 repos:
   - repo: https://github.com/kjanat/actionlint
-    rev: v1.10.0
+    rev: v1.11.0
     hooks:
       - id: actionlint
 ```
@@ -615,7 +615,7 @@ trunk check enable actionlint
 or if you'd like a specific version:
 
 ```bash
-trunk check enable actionlint@1.10.0
+trunk check enable actionlint@1.11.0
 ```
 
 or modify `.trunk/trunk.yaml` in your repository to contain:
@@ -623,7 +623,7 @@ or modify `.trunk/trunk.yaml` in your repository to contain:
 ```yaml
 lint:
   enabled:
-    - actionlint@1.10.0
+    - actionlint@1.11.0
 ```
 
 Then just run:
