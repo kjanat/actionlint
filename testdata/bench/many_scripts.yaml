@@ -23,9 +23,9 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' }}
       - run: shellcheck --version
       - run: pyflakes --version
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - run: git --version
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version: '1.16'
       - run: go build ./cmd/actionlint
@@ -51,14 +51,14 @@ jobs:
       - run: ./actionlint
       - run: ./actionlint
       - run: ./actionlint
-      - uses: codecov/codecov-action@v7
+      - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
   lint:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - run: git --version
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version: '1.16'
       - run: go version
@@ -67,7 +67,7 @@ jobs:
           go get honnef.co/go/tools/cmd/staticcheck@latest
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - run: make lint
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "lts/*"
       - run: cd ./playground && make main.wasm && npm install && npm run lint

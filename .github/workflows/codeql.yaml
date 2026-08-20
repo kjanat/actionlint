@@ -7,56 +7,52 @@ on:
     branches: [main]
   schedule:
     # Every Saturday 6:41 in JST
-    - cron: '41 21 * * 5'
+    - cron: "41 21 * * 5"
   workflow_dispatch:
 
 permissions:
+  contents: read
   security-events: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  analyze-go:
-    name: Analyze Go
+  analyze:
+    name: Analyze ${{ matrix.language }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: go
+            build-mode: manual
+          - language: javascript-typescript
+            build-mode: none
+          - language: python
+            build-mode: none
+          - language: actions
+            build-mode: none
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        if: ${{ matrix.language == 'go' }}
         with:
-          go-version: '1.26'
+          go-version: "1.27"
           check-latest: true
-      - uses: github/codeql-action/init@v4
+      - uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4
         with:
           config-file: ./.github/codeql/codeql-config.yaml
-          languages: go
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
       - name: Build Go sources
+        if: ${{ matrix.language == 'go' }}
         run: |
           set -x
-          go build -v ./cmd/actionlint
+          go build -v ./...
           GOOS=js GOARCH=wasm go build -v -o ./playground/main.wasm ./playground
-      - uses: github/codeql-action/analyze@v4
+      - uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4
         with:
-          category: "/language:go"
-  analyze-ts:
-    name: Analyze TypeScript
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./playground
-    steps:
-      - uses: actions/checkout@v7
-        with: { persist-credentials: false }
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "lts/*"
-          cache: npm
-          cache-dependency-path: ./playground/package-lock.json
-      - uses: github/codeql-action/init@v4
-        with:
-          config-file: ./.github/codeql/codeql-config.yaml
-          languages: javascript-typescript
-          source-root: ./playground
-      - name: Build playground
-        run: make build
-      - uses: github/codeql-action/analyze@v4
-        with:
-          category: "/language:javascript-typescript"
+          category: "/language:${{ matrix.language }}"

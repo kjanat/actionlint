@@ -2,30 +2,30 @@ name: Generate
 on:
   push:
     paths:
-      - 'scripts/generate-popular-actions/main.go'
-      - 'scripts/generate-webhook-events/main.go'
+      - "scripts/generate-popular-actions/main.go"
+      - "scripts/generate-webhook-events/main.go"
     branches:
       - main
     tags-ignore:
-      - '*'
+      - "*"
   schedule:
     # Every Saturday 10:21 in JST
-    - cron: '21 1 * * 6'
+    - cron: "21 1 * * 6"
   workflow_dispatch:
 
 jobs:
   go-generate:
-    if: github.repository_owner == 'rhysd'
+    if: github.repository_owner == 'kjanat'
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
-          go-version: '1.26'
+          go-version: "1.26"
           check-latest: true
       - name: Check new release on GitHub
         run: go run ./scripts/generate-popular-actions -d
@@ -38,13 +38,13 @@ jobs:
             echo "pr=true" >> "$GITHUB_OUTPUT"
           fi
         id: diff
-      - uses: peter-evans/create-pull-request@v8
+      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
-          branch: 'ci/${{ github.run_id }}'
-          commit-message: 'update generated files by `go generate` on CI'
-          committer: 'github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>'
-          author: 'github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>'
-          title: 'Update generated files by CI'
+          branch: "ci/${{ github.run_id }}"
+          commit-message: "update generated files by `go generate` on CI"
+          committer: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          title: "Update generated files by CI"
           body: |
             This PR updates some generated files to the latest by running `go generate`.
             This PR was created by [this workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) automatically.

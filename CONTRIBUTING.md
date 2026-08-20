@@ -147,6 +147,25 @@ or
 make fuzz FUZZ_FUNC=FuzzParse
 ```
 
+## Update the pinned Docker base images
+
+[`Dockerfile`](./Dockerfile) selects its base images with the `GOLANG_VER` and `ALPINE_VER` build arguments. Both default
+to explicit version tags and both can be overridden:
+
+```sh
+docker build --build-arg GOLANG_VER=1.27.0 --build-arg ALPINE_VER=3.24 -t actionlint .
+```
+
+To move the defaults to newer base images:
+
+1. Pick the new tags from Docker Hub ([golang](https://hub.docker.com/_/golang), [alpine](https://hub.docker.com/_/alpine)).
+   `GOLANG_VER` tracks the Go version used by CI (`GO` in [`ci.yaml`](.github/workflows/ci.yaml)). `ALPINE_VER` tracks the
+   Alpine release that `golang:<GOLANG_VER>-alpine` is built on.
+2. Update the `ARG` defaults in `Dockerfile` together with the `GOLANG_VER` build arguments in
+   [`ci.yaml`](.github/workflows/ci.yaml) and [`release.yaml`](.github/workflows/release.yaml).
+3. Verify with `droast Dockerfile` and `docker build -t actionlint .`.
+4. Send the upgrade as its own pull request.
+
 ## Make a new release
 
 When releasing v1.2.3 as example:
@@ -193,9 +212,9 @@ Run [`deploy.bash`](./playground/deploy.bash) at root of repository. It does:
 1. Ensure to install dependencies and to build `main.wasm`
 2. Copy all assets to `./playground-dist` directory
 3. Optimize `main.wasm` with `wasm-opt` which is a part of [Binaryen](https://github.com/WebAssembly/binaryen) toolchain
-3. Switch branch to `gh-pages`
-4. Move all files in `./playground-dist` to root of repository and add to repository
-5. Make commit for deployment
+4. Switch branch to `gh-pages`
+5. Move all files in `./playground-dist` to root of repository and add to repository
+6. Make commit for deployment
 
 ```sh
 # Prepare deployment
@@ -267,6 +286,7 @@ See [the readme of the script](./scripts/generate-availability/README.md) for th
 Update for `availability.go` is run weekly on CI by [`generate`](.github/workflows/generate.yaml) workflow.
 
 <a id="about-checks-doc"></a>
+
 ## How to write checks document
 
 The ['Checks' document](./docs/checks.md) is a large document to explain all checks by actionlint.

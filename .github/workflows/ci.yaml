@@ -1,70 +1,85 @@
 name: CI
-on: [push, pull_request]
-env: { GO: "1.26" }
+on:
+  push:
+    branches: [main]
+  pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+env: { GO: "1.27" }
 permissions: { contents: read }
 jobs:
   unit-tests:
     name: Unit tests
     strategy:
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest, macos-26-intel, windows-11-arm]
-        go: ["1.25", "1.26"]
+        include:
+          - { os: ubuntu-latest, go: "1.26" }
+          - { os: ubuntu-latest, go: "1.27" }
+          - { os: ubuntu-24.04-arm, go: "1.27" }
+          - { os: macos-latest, go: "1.27" }
+          - { os: macos-26-intel, go: "1.27" }
+          - { os: windows-latest, go: "1.27" }
+          - { os: windows-11-arm, go: "1.27" }
     runs-on: ${{ matrix.os }}
-    permissions: { contents: read, id-token: write }
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with: { go-version: "${{ matrix.go }}", check-latest: true }
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        if: ${{ runner.os != 'Linux' }}
+
       - name: Install dependencies on macOS
         if: ${{ runner.os == 'macOS' }}
         run: |
           set -x
           brew untap aws/tap
-          brew install --quiet shellcheck python3 pipx
-          # https://pipx.pypa.io/stable/installation/
-          pipx ensurepath
-          pipx install pyflakes
-          shellcheck --version
-          pyflakes --version
-      - name: Install dependencies on Linux
-        if: ${{ runner.os == 'Linux' }}
-        run: |
-          set -x
-          sudo apt-get install -y shellcheck
-          pip install pyflakes
+          brew install --quiet shellcheck
+          uv tool install pyflakes
           shellcheck --version
           pyflakes --version
       - name: Install dependencies on Windows
         if: ${{ runner.os == 'Windows' }}
         run: |
           choco install shellcheck -y --no-progress
-          pip install pyflakes
+          uv tool install pyflakes
           pyflakes --version
 
-      - uses: actions/checkout@v7
-        with: { persist-credentials: false }
-      - uses: actions/setup-go@v7
-        with: { go-version: "${{ matrix.go }}", check-latest: true }
-
-      - if: ${{ matrix.os != 'windows-11-arm' }}
-        # Arm Windows doesn't support -race
-        run: go test -v -race -coverprofile coverage.txt -covermode=atomic ./...
-      - if: ${{ matrix.os == 'windows-11-arm' }}
-        run: go test -v -coverprofile coverage.txt -covermode=atomic ./...
-
-      - run: go tool cover -func ./coverage.txt
+      - run: go test -v ./...
 
       # Check build without CGO
       - run: go build ./cmd/actionlint
-        env: { CGO_ENABLED: 0 } # Note: -race requires cgo
+        env: { CGO_ENABLED: 0 }
+  race:
+    name: Race detector and coverage
+    runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with: { go-version: "${{ env.GO }}", check-latest: true }
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - name: Install dependencies
+        run: |
+          set -x
+          sudo apt-get install -y shellcheck
+          uv tool install pyflakes
+          shellcheck --version
+          pyflakes --version
+
+      - run: go test -v -race -coverprofile coverage.txt -covermode=atomic ./...
+      - run: go tool cover -func ./coverage.txt
 
       # Set -race for catching data races on dog fooding (#333)
       - run: go build -race ./cmd/actionlint
-        if: ${{ matrix.os != 'windows-11-arm' }}
 
       - name: Dog fooding 🐶
         run: echo "::add-matcher::.github/actionlint-matcher.json"; ./actionlint -color
 
-      - uses: codecov/codecov-action@v7
-        with: { env_vars: OS, use_oidc: true }
-        env: { OS: "${{ matrix.os }}" }
+      - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with: { use_oidc: true }
   wasm:
     name: Wasm
     runs-on: ubuntu-latest
@@ -72,11 +87,11 @@ jobs:
       run:
         working-directory: ./playground
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version: "${{ env.GO }}", check-latest: true }
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "lts/*"
           cache: npm
@@ -91,19 +106,22 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
-      - uses: actions/setup-go@v7
-        with: { go-version: "${{ env.GO }}", check-latest: true }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        # staticcheck 2026.1 reads export data up to Go 1.26
+        with: { go-version: "1.26", check-latest: true }
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       - name: Install dependencies
+        # check-checks reproduces docs examples with shellcheck and pyflakes
         run: |
           sudo apt-get install -y shellcheck
-          pip install pyflakes
+          uv tool install pyflakes
           shellcheck --version
           pyflakes --version
       - name: Check Go sources are formatted
         run: |
-          diffs="$(gofmt -d ./*.go ./cmd/actionlint/*.go ./scripts/*/*.go ./playground/*.go)"
+          diffs="$(gofmt -d ./*.go ./cmd/*/*.go ./scripts/*/*.go ./playground/*.go)"
           if [[ "$diffs" != "" ]]; then
             echo "$diffs" >&2
             exit 1
@@ -120,10 +138,10 @@ jobs:
     name: Dockerfile
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
       - name: Build image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           build-args: "GOLANG_VER=${{ env.GO }}"
           load: true
@@ -136,15 +154,15 @@ jobs:
       - name: Lint Dockerfile with hadolint
         run: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 --strict-labels - < Dockerfile
       - name: Lint Dockerfile with droast
-        uses: immanuwell/dockerfile-roast@1.6.0
+        uses: immanuwell/dockerfile-roast@a9b99073c7b85d368387ba0eef1f48f550f92484 # 1.6.0
   action:
     name: GitHub Action
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
       - name: Build action image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           target: action
