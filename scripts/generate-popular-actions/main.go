@@ -154,7 +154,7 @@ func (g *gen) fetchRemote() (map[string]*actionlint.ActionMetadata, error) {
 					if err := yaml.Unmarshal(body, &meta); err != nil &&
 						// treosh/lighthouse-ci-action's metadata causes parse error due to typo. Ignore the error not to stop codegen
 						// https://github.com/treosh/lighthouse-ci-action/pull/153
-						!(strings.HasPrefix(spec, "treosh/lighthouse-ci-action@") && strings.Contains(err.Error(), "unexpected key")) {
+						(!strings.HasPrefix(spec, "treosh/lighthouse-ci-action@") || !strings.Contains(err.Error(), "unexpected key")) {
 						ret <- &fetched{err: fmt.Errorf("could not parse metadata for %s: %w", url, err)}
 						break
 					}
