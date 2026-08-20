@@ -11,6 +11,8 @@ on:
       - scripts/test-download-actionlint.bash
   workflow_dispatch:
 
+permissions: { contents: read }
+
 jobs:
   download:
     name: Test download script

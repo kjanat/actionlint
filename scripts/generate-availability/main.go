@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -280,6 +281,9 @@ func WorkflowKeyAvailability(key string) ([]string, []string) {
 
 func source(args []string, url string) ([]byte, error) {
 	if len(args) == 2 {
+		if !filepath.IsLocal(args[0]) {
+			return nil, fmt.Errorf("source file path must be relative to the current directory: %q", args[0])
+		}
 		return os.ReadFile(args[0])
 	}
 
@@ -324,6 +328,10 @@ func run(args []string, stdout, stderr, dbgout io.Writer, srcURL string) int {
 	dst := "<stdout>"
 	if len(args) > 0 && args[len(args)-1] != "-" {
 		dst = args[len(args)-1]
+		if !filepath.IsLocal(dst) {
+			fmt.Fprintf(stderr, "output file path must be relative to the current directory: %q\n", dst)
+			return 1
+		}
 		f, err := os.Create(dst)
 		if err != nil {
 			fmt.Fprintln(stderr, err)

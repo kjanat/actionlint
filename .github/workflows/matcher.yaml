@@ -11,6 +11,8 @@ on:
       - "*"
   workflow_dispatch:
 
+permissions: { contents: read }
+
 jobs:
   matcher-test:
     name: Test generate-actionlint-matcher

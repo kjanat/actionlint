@@ -9,6 +9,8 @@ concurrency:
 
 env: { GO: "1.27" }
 
+permissions: { contents: read }
+
 jobs:
   changelog:
     name: Check changelog

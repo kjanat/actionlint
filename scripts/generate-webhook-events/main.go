@@ -16,6 +16,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -369,6 +370,9 @@ func run(args []string, stdout, dbgout io.Writer, srcURL string) error {
 	var src []byte
 	var err error
 	if len(args) == 2 {
+		if !filepath.IsLocal(args[0]) {
+			return fmt.Errorf("source file path must be relative to the current directory: %q", args[0])
+		}
 		src, err = os.ReadFile(args[0])
 	} else {
 		src, err = fetch(srcURL)
@@ -384,6 +388,9 @@ func run(args []string, stdout, dbgout io.Writer, srcURL string) error {
 		dst = "stdout"
 	} else {
 		dst = args[len(args)-1]
+		if !filepath.IsLocal(dst) {
+			return fmt.Errorf("output file path must be relative to the current directory: %q", dst)
+		}
 		f, err := os.Create(dst)
 		if err != nil {
 			return err
