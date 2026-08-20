@@ -466,3 +466,233 @@ func TestPreflightRejectsRemoteOnlyTag(t *testing.T) {
 		t.Errorf("error %q does not mention %q", err, want)
 	}
 }
+
+func changelogRoot(t *testing.T, content string) string {
+	t.Helper()
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, changelogFile), []byte(content), 0o666); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+func TestCheckChangelogAcceptsUnreleasedEntries(t *testing.T) {
+	root := changelogRoot(t, `<a id="unreleased"></a>
+# Unreleased
+
+- Report ShellCheck findings at their source locations.
+
+<a id="v1.10.0"></a>
+# [v1.10.0](https://github.com/kjanat/actionlint/releases/tag/v1.10.0) - 2026-08-19
+
+- Move the module.
+
+[Changes][v1.10.0]
+
+[v1.10.0]: https://github.com/kjanat/actionlint/compare/v1.9.0...v1.10.0
+`)
+	if err := checkChangelog(root); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestChangelogEntriesIgnoresEmptyBullets(t *testing.T) {
+	entries, found := changelogEntries([]byte("# Unreleased\n\n-\n-   \n- Real entry.\n\n# [v1.10.0](x) - 2026-08-19\n\n- Not this one.\n"))
+	if !found {
+		t.Fatal("changelogEntries did not find the Unreleased heading")
+	}
+	if len(entries) != 1 || entries[0] != "- Real entry." {
+		t.Errorf("entries are %q but only the real entry was expected", entries)
+	}
+}
+
+func TestCheckChangelogRejectsMissingHeading(t *testing.T) {
+	err := checkChangelog(changelogRoot(t, "# [v1.10.0](https://example.com) - 2026-08-19\n\n- Move the module.\n"))
+	if err == nil {
+		t.Fatal("checkChangelog accepted a changelog without an Unreleased heading")
+	}
+	if want := "has no"; !strings.Contains(err.Error(), want) {
+		t.Errorf("error %q does not mention %q", err, want)
+	}
+}
+
+func TestCheckChangelogReportsMissingFile(t *testing.T) {
+	err := checkChangelog(t.TempDir())
+	if err == nil {
+		t.Fatal("checkChangelog accepted a repository without a changelog")
+	}
+	if want := "could not read CHANGELOG.md"; !strings.Contains(err.Error(), want) {
+		t.Errorf("error %q does not mention %q", err, want)
+	}
+}
+
+func TestRepositoryChangelogIsReleasable(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("..", "..", changelogFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, found := changelogEntries(content); !found {
+		t.Errorf("%s lost its %q heading, so no release can describe itself", changelogFile, unreleasedHeading)
+	}
+	if err := checkChangelogSections(content); err != nil {
+		t.Error(err)
+	}
+}
+
+const oneChangelogSection = `<a id="unreleased"></a>
+
+# Unreleased
+
+- Pending.
+
+<a id="v1.11.0"></a>
+
+# [v1.11.0](https://github.com/kjanat/actionlint/releases/tag/v1.11.0) - 2026-08-20
+
+- Release the thing.
+
+[Changes][v1.11.0]
+
+[v1.11.0]: https://github.com/kjanat/actionlint/compare/v1.10.0...v1.11.0
+`
+
+func TestCheckChangelogSectionsAcceptsCompleteSection(t *testing.T) {
+	if err := checkChangelogSections([]byte(oneChangelogSection)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCheckChangelogSectionsRejectsIncompleteSection(t *testing.T) {
+	for name, drop := range map[string]string{
+		"heading":         "# [v1.11.0](https://github.com/kjanat/actionlint/releases/tag/v1.11.0) - 2026-08-20",
+		"changes link":    "[Changes][v1.11.0]",
+		"link definition": "[v1.11.0]: https://github.com/kjanat/actionlint/compare/v1.10.0...v1.11.0",
+	} {
+		t.Run(name, func(t *testing.T) {
+			content := strings.Replace(oneChangelogSection, drop, "", 1)
+			err := checkChangelogSections([]byte(content))
+			if err == nil {
+				t.Fatalf("checkChangelogSections accepted a section without its %s", name)
+			}
+			if want := "v1.11.0"; !strings.Contains(err.Error(), want) {
+				t.Errorf("error %q does not mention %q", err, want)
+			}
+		})
+	}
+}
+
+func TestSectionNotesPrefersTheVersionSection(t *testing.T) {
+	notes, err := sectionNotes([]byte(oneChangelogSection), "v1.11.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "- Release the thing.\n"; notes != want {
+		t.Errorf("notes are %q but %q was expected", notes, want)
+	}
+}
+
+func TestSectionNotesFallsBackToUnreleased(t *testing.T) {
+	notes, err := sectionNotes([]byte(oneChangelogSection), "v1.12.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "- Pending.\n"; notes != want {
+		t.Errorf("notes are %q but %q was expected", notes, want)
+	}
+}
+
+func TestSectionNotesOfRepositoryChangelog(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("..", "..", changelogFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := sectionNotes(content, "v1.11.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(notes, "os.Root") {
+		t.Errorf("the v1.11.0 notes lost their entries:\n%s", notes)
+	}
+	if strings.Contains(notes, "[Changes]") || strings.Contains(notes, "releases/tag/") {
+		t.Errorf("the v1.11.0 notes carry the section wrapper:\n%s", notes)
+	}
+}
+
+func TestChangelogReleaseRejects(t *testing.T) {
+	for name, tc := range map[string]struct {
+		content string
+		version string
+		want    string
+	}{
+		"neither section nor entries": {
+			strings.Replace(oneChangelogSection, "- Pending.\n", "", 1),
+			"1.12.0",
+			"lists no entries",
+		},
+		"section without entries": {
+			strings.Replace(oneChangelogSection, "- Release the thing.\n", "", 1),
+			"1.11.0",
+			"describes no change",
+		},
+		"broken link definition": {
+			strings.Replace(oneChangelogSection, "compare/v1.10.0...v1.11.0", "compare/v1.9.0...v1.10.0", 1),
+			"1.11.0",
+			"does not end at v1.11.0",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := changelogRelease([]byte(tc.content), mustParse(t, tc.version))
+			if err == nil {
+				t.Fatal("changelogRelease accepted the changelog")
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("error %q does not mention %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestCheckChangelogSectionsRejectsBrokenSection(t *testing.T) {
+	for name, tc := range map[string]struct{ from, to, want string }{
+		"heading of another release": {
+			"# [v1.11.0](https://github.com/kjanat/actionlint/releases/tag/v1.11.0)",
+			"# [v1.11.0](https://github.com/kjanat/actionlint/releases/tag/v1.10.0)",
+			"links to the release page of v1.10.0",
+		},
+		"changes link of another release": {
+			"[Changes][v1.11.0]",
+			"[Changes][v1.10.0]",
+			"links its changes to v1.10.0",
+		},
+		"link definition of another release": {
+			"[v1.11.0]: https://github.com/kjanat/actionlint/compare/v1.10.0...v1.11.0",
+			"[v1.10.0]: https://github.com/kjanat/actionlint/compare/v1.9.0...v1.10.0",
+			"declares no v1.10.0 section",
+		},
+		"link definition pointing elsewhere": {
+			"compare/v1.10.0...v1.11.0",
+			"compare/v1.9.0...v1.10.0",
+			"does not end at v1.11.0",
+		},
+		"section without entries": {
+			"- Release the thing.\n",
+			"",
+			"the v1.11.0 section describes no change",
+		},
+		"duplicate section": {
+			`<a id="v1.11.0"></a>`,
+			"<a id=\"v1.11.0\"></a>\n\n<a id=\"v1.11.0\"></a>",
+			"declares the v1.11.0 section twice",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := checkChangelogSections([]byte(strings.Replace(oneChangelogSection, tc.from, tc.to, 1)))
+			if err == nil {
+				t.Fatal("checkChangelogSections accepted a broken changelog")
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("error %q does not mention %q", err, tc.want)
+			}
+		})
+	}
+}

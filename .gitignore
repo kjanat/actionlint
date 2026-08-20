@@ -10,6 +10,7 @@
 /actionlint-workflow-ast
 /actionlint.exe
 /actionlint_fuzz-fuzz.zip
+/bump-version
 /corpus
 /coverage.html
 /coverage.out

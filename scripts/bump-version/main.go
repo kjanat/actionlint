@@ -107,10 +107,11 @@ func touch(path string) error {
 
 func Main(args []string, stdout, stderr io.Writer) error {
 	var check, commit, push bool
-	var root string
+	var root, notes string
 
 	flags := flag.NewFlagSet(args[0], flag.ContinueOnError)
 	flags.BoolVar(&check, "check", false, "verify the declared version references and exit without modifying anything")
+	flags.StringVar(&notes, "notes", "", "print the changelog section of the given version tag and exit")
 	flags.BoolVar(&commit, "commit", false, "create the version bump commit and the version tag after verification")
 	flags.BoolVar(&push, "push", false, "push the version bump commit and the version tag, implies -commit")
 	flags.StringVar(&root, "root", ".", "repository root directory")
@@ -127,11 +128,30 @@ func Main(args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 
+	if notes != "" {
+		if flags.NArg() != 0 {
+			return fmt.Errorf("-notes takes no argument but got %v", flags.Args())
+		}
+		content, err := readChangelog(root)
+		if err != nil {
+			return err
+		}
+		section, err := sectionNotes(content, notes)
+		if err != nil {
+			return err
+		}
+		_, err = io.WriteString(stdout, section)
+		return err
+	}
+
 	if check {
 		if flags.NArg() != 0 {
 			return fmt.Errorf("-check takes no argument but got %v", flags.Args())
 		}
-		return Check(root, targets, stdout)
+		if err := Check(root, targets, stdout); err != nil {
+			return err
+		}
+		return checkChangelog(root)
 	}
 
 	if flags.NArg() != 1 {
@@ -145,6 +165,9 @@ func Main(args []string, stdout, stderr io.Writer) error {
 
 	r := &repo{root: root, out: stdout}
 	if err := r.preflight(tag); err != nil {
+		return err
+	}
+	if err := CheckChangelogRelease(root, v, stdout); err != nil {
 		return err
 	}
 

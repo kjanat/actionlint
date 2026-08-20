@@ -171,21 +171,27 @@ To move the defaults to newer base images:
 When releasing v1.2.3 as example:
 
 1. Ensure all changes were already pushed to remote by checking `git push origin main` outputs `Everything up-to-date`
-2. Run `go run ./scripts/bump-version -check` to list every declared version reference and confirm the declaration is in
+2. Describe the release in [CHANGELOG.md](./CHANGELOG.md), either under the `Unreleased` heading or in a `v1.2.3`
+   section written out in full. The release notes are the `v1.2.3` section when it exists and the `Unreleased` entries
+   otherwise, and `bump-version` refuses to run when neither describes anything.
+3. Run `go run ./scripts/bump-version -check` to list every declared version reference and confirm the declaration is in
    sync with the repository
-3. Run `go run ./scripts/bump-version -push 1.2.3`. It updates every version reference, verifies the result, then creates
+4. Run `go run ./scripts/bump-version -push 1.2.3`. It updates every version reference, verifies the result, then creates
    and pushes the bump commit and the `v1.2.3` tag. Drop `-push` to leave the changes in the working tree for review, or
    use `-commit` to create the commit and the tag without pushing. See
    [the script README](./scripts/bump-version/README.md) for the declared files and fields.
-4. Wait until [the CI release job](.github/workflows/release.yaml) completes successfully:
-   - GoReleaser builds release binaries and make pre-release at GitHub and updates [Homebrew formula](./HomebrewFormula/actionlint.rb)
-   - The CI job also updates version string in `./scripts/download-actionlint.bash`
-5. Open the pre-release at [release page](https://github.com/rhysd/actionlint/releases) with browser
-6. Write up release notes, uncheck pre-release checkbox and publish the new release
-7. Run `make CHANGELOG.md` to update [CHANGELOG.md](./CHANGELOG.md) and make a commit for the change. This step requires
-   [changelog-from-release](https://github.com/rhysd/changelog-from-release).
-8. Run `git pull` to merge upstream changes to local `main` branch and run `git push origin main`
-9. Update the playground by `./playground/deploy.bash` if it is not updated yet for the release
+5. Wait until [the CI release job](.github/workflows/release.yaml) completes successfully. It resolves the release notes
+   from the changelog and refuses to go further when they are missing, builds the manual, publishes the release binaries
+   and their build provenance, pushes the CLI and action images to ghcr.io, and moves the `v1` tag.
+6. Record the release in `CHANGELOG.md` under its own `v1.2.3` heading if it was released from `Unreleased`, following
+   the shape of the sections around it: the `<a id="v1.2.3"></a>` anchor, the heading linking to the release page, the
+   entries, the `[Changes][v1.2.3]` trailer, and the link definition at the end of the file. `bump-version -check`
+   verifies all four parts of every section.
+7. Update the playground by `./playground/deploy.bash` if it is not updated yet for the release
+
+The `make CHANGELOG.md` target runs [changelog-from-release](https://github.com/rhysd/changelog-from-release), which
+rewrites the whole file from the GitHub releases. It knows nothing about the `Unreleased` heading and drops it, and the
+release bodies carry a `## What's changed` line the sections do not, so it does not round-trip this file.
 
 > [!NOTE]
 > If you see workflow failure at releasing a new winget package, check the [fork repository](https://github.com/rhysd/winget-pkgs)
@@ -194,16 +200,17 @@ When releasing v1.2.3 as example:
 
 ## How to generate the manual
 
-`actionlint.1` manual is generated from [`actionlint.1.ronn`](./man/actionlint.1.ronn) by [ronn](https://github.com/rtomayko/ronn).
+`actionlint.1` manual is generated from [`actionlint.1.ronn`](./man/actionlint.1.ronn) by
+[ronn-ng](https://github.com/apjanke/ronn-ng), pinned in [`man/Gemfile`](./man/Gemfile).
 
 ```sh
-ronn ./man/actionlint.1.ronn
+make man
 ```
 
 or
 
 ```sh
-make man
+BUNDLE_GEMFILE=man/Gemfile bundle exec ronn ./man/actionlint.1.ronn
 ```
 
 ## How to develop playground
