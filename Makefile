@@ -18,6 +18,7 @@ GO_GEN_SRCS := scripts/generate-popular-actions/main.go \
 				scripts/generate-popular-actions/popular_actions.json \
 				scripts/generate-webhook-events/main.go \
 				scripts/generate-availability/main.go
+PANDOC := pandoc --standalone --from=markdown-smart --syntax-highlighting=none
 
 ifeq ($(OS),Windows_NT)
 	SHELL := powershell.exe
@@ -79,11 +80,13 @@ else
 	go test -list '^Fuzz' ./fuzz
 endif
 
-man/actionlint.1 man/actionlint.1.html: export BUNDLE_GEMFILE := man/Gemfile
-man/actionlint.1 man/actionlint.1.html: man/actionlint.1.ronn
-	bundle exec ronn man/actionlint.1.ronn
+man/actionlint.1: man/actionlint.1.md man/inline-code-bold.lua
+	$(PANDOC) --to=man --metadata=title:ACTIONLINT --lua-filter=man/inline-code-bold.lua --output=$@ $<
 
-man: man/actionlint.1
+man/actionlint.1.html: man/actionlint.1.md man/manual.css
+	$(PANDOC) --to=html --css=manual.css --output=$@ $<
+
+man: man/actionlint.1 man/actionlint.1.html
 
 bench:
 	go test -bench Lint -benchmem

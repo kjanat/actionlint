@@ -205,17 +205,12 @@ release bodies carry a `## What's changed` line the sections do not, so it does 
 
 ## How to generate the manual
 
-`actionlint.1` manual is generated from [`actionlint.1.ronn`](./man/actionlint.1.ronn) by
-[ronn-ng](https://github.com/apjanke/ronn-ng), pinned in [`man/Gemfile`](./man/Gemfile).
+[`man/actionlint.1.md`](./man/actionlint.1.md) is the single source. [pandoc](https://pandoc.org/)
+renders it to the roff manual `man/actionlint.1` and to `man/actionlint.1.html` for the site, which
+[`man/manual.css`](./man/manual.css) styles.
 
 ```sh
 make man
-```
-
-or
-
-```sh
-BUNDLE_GEMFILE=man/Gemfile bundle exec ronn ./man/actionlint.1.ronn
 ```
 
 ## How to develop playground

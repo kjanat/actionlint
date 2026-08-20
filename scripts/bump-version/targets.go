@@ -82,8 +82,9 @@ var targets = []*target{
 		},
 	},
 	{
-		path: "man/actionlint.1.ronn",
+		path: "man/actionlint.1.md",
 		rules: []rule{
+			mustRule("manual footer version", `(?m)^footer: actionlint (\d+\.\d+\.\d+)\r?$`, 1),
 			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 6),
 		},
 	},

@@ -61,5 +61,5 @@
     "https://plugins.dprint.dev/g-plane/markup_fmt-v0.27.3.wasm",
     "https://plugins.dprint.dev/kjanat/svg-v0.4.1.wasm",
   ],
-  "excludes": ["**/testdata/**"]
+  "excludes": ["**/testdata/**", "man/actionlint.1.md"]
 }

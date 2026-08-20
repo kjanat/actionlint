@@ -1,14 +1,21 @@
-actionlint(1) -- static checker for GitHub Actions workflow files
-=================================================================
+---
+title: actionlint
+section: 1
+header: General Commands Manual
+footer: actionlint 1.11.0
+---
 
-## SYNOPSIS
+# NAME
 
-`actionlint` [<flags>] <br>
-`actionlint` [<flags>] <file>...<br>
-`actionlint` [<flags>] -<br>
+**actionlint** - static checker for GitHub Actions workflow files
 
+# SYNOPSIS
 
-## DESCRIPTION
+**actionlint** \[*flags*\]\
+**actionlint** \[*flags*\] *file*...\
+**actionlint** \[*flags*\] -
+
+# DESCRIPTION
 
 **actionlint** is a linter for GitHub Actions workflow files.
 
@@ -24,8 +31,7 @@ Features:
 - **Other several useful checks**; glob syntax validation, dependencies check for `needs:`, runner
   label validation, cron syntax validation, ...
 
-
-## USAGE
+# USAGE
 
 To check all workflow files in the current repository, just run **actionlint** without arguments.
 It automatically finds the nearest `.github/workflows` directory:
@@ -46,109 +52,107 @@ with Go template syntax.
 
     $ actionlint -format '{{json .}}'
 
+# FLAGS
 
-## FLAGS
+**-color**
+: Always enable colorful output. This is useful to force colorful outputs
 
-  * `-color`:
-    Always enable colorful output. This is useful to force colorful outputs
+**-config-file** *PATH*
+: File path to config file
 
-  * `-config-file` <PATH>:
-    File path to config file
+**-debug**
+: Enable debug output (for development)
 
-  * `-debug`:
-    Enable debug output (for development)
+**-format** *FORMAT*
+: Custom template to format error messages in Go template syntax. See the usage documentation
+for more details.
 
-  * `-format` <FORMAT>:
-    Custom template to format error messages in Go template syntax. See the usage documentation
-    for more details.
+**-ignore** *PATTERN*
+: Regular expression matching to error messages you want to ignore. This flag is repeatable. For
+example, `-ignore A -ignore B` ignores errors whose message includes "A" OR "B".
 
-  * `-ignore` <PATTERN>:
-    Regular expression matching to error messages you want to ignore. This flag is repeatable. For
-    example, `-ignore A -ignore B` ignores errors whose message includes "A" OR "B".
+**-init-config**
+: Generate default config file at `.github/actionlint.yaml` in current project
 
-  * `-init-config`:
-    Generate default config file at `.github/actionlint.yaml` in current project
+**-no-color**
+: Disable colorful output
 
-  * `-no-color`:
-    Disable colorful output
+**-oneline**
+: Use one line per one error. Useful for reading error messages from programs
 
-  * `-oneline`:
-    Use one line per one error. Useful for reading error messages from programs
+**-pyflakes** *COMMAND*
+: Command line of "pyflakes" external command. A command name, a file path, or a command with flags
+such as "python3 -m pyflakes", or "uvx pyflakes".
+If empty, pyflakes integration will be disabled (default "pyflakes")
 
-  * `-pyflakes` <COMMAND>:
-    Command line of "pyflakes" external command. A command name, a file path, or a command with flags
-    such as "python3 -m pyflakes", or "uvx pyflakes".
-    If empty, pyflakes integration will be disabled (default "pyflakes")
+**-shellcheck** *COMMAND*
+: Command line of "shellcheck" external command. A command name, a file path, or a command with
+flags such as "shellcheck -e SC2086".
+If empty, shellcheck integration will be disabled (default "shellcheck")
 
-  * `-shellcheck` <COMMAND>:
-    Command line of "shellcheck" external command. A command name, a file path, or a command with
-    flags such as "shellcheck -e SC2086".
-    If empty, shellcheck integration will be disabled (default "shellcheck")
+**-verbose**
+: Enable verbose output
 
-  * `-verbose`:
-    Enable verbose output
+**-stdin-filename** *NAME*
+: File name when reading input from stdin (default `<stdin>`)
 
-  * `-stdin-filename` <NAME>:
-    File name when reading input from stdin (default `<stdin>`)
+**-version**
+: Show version and how this binary was installed
 
-  * `-version`:
-    Show version and how this binary was installed
+**-help**, **-h**
+: Show help
 
-  * `-help`, `-h`:
-    Show help
-
-
-## DOCUMENTS
+# DOCUMENTS
 
 Documents for more details are available online.
 
-### Checks
+## Checks
 
 https://github.com/kjanat/actionlint/blob/v1.11.0/docs/checks.md
 
 Full list of all checks done by actionlint with example inputs, outputs, and playground links.
 
-### Installation
+## Installation
 
 https://github.com/kjanat/actionlint/blob/v1.11.0/docs/install.md
 
 Installation instructions. Prebuilt binaries, Homebrew package, building from source, a Docker
 image, a download script (for CI) are available.
 
-### Usage
+## Usage
 
 https://github.com/kjanat/actionlint/blob/v1.11.0/docs/usage.md
 
 How to use `actionlint` command locally or on GitHub Actions, the online playground, an official
 Docker image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit.
 
-### Configuration
+## Configuration
 
 https://github.com/kjanat/actionlint/blob/v1.11.0/docs/config.md
 
 How to configure actionlint behavior by the configuration file `actionlint.yaml`.
 
-### Go API
+## Go API
 
 https://github.com/kjanat/actionlint/blob/v1.11.0/docs/api.md
 
 How to use actionlint as Go library.
 
-### References
+## References
 
 https://github.com/kjanat/actionlint/blob/v1.11.0/docs/reference.md
 
 Links to resources.
 
-## USAGE ON GITHUB ACTIONS
+# USAGE ON GITHUB ACTIONS
 
 Please try the download script.
 
 https://github.com/kjanat/actionlint/blob/main/scripts/download-actionlint.bash
 
 It downloads the latest version of actionlint executable to the current directory automatically.
-On GitHub Actions environment, it sets a file path to executable to`executable` output for using
-the executable in the following steps easily.
+On GitHub Actions environment, it sets a file path to executable to the `executable` output for
+using the executable in the following steps easily.
 
 Here is an example of simple workflow to run actionlint on GitHub Actions. Please ensure `shell: bash`
 since the default shell for Windows runners is `pwsh`.
@@ -181,18 +185,16 @@ or simply run
   shell: bash
 ```
 
-
-## EXIT STATUS
+# EXIT STATUS
 
 `actionlint` command exits with one of the following exit statuses.
 
-  - **0**: It ran successfully and no problem was found.
-  - **1**: It ran successfully and some problem was found.
-  - **2**: It failed due to invalid command line option.
-  - **3**: It failed due to some fatal error.
+- **0**: It ran successfully and no problem was found.
+- **1**: It ran successfully and some problem was found.
+- **2**: It failed due to invalid command line option.
+- **3**: It failed due to some fatal error.
 
-
-## PLAYGROUND
+# PLAYGROUND
 
 Thanks to WebAssembly, actionlint playground is available on your browser. It never sends any data
 to outside of the browser.
@@ -204,20 +206,17 @@ right pane. When editing the workflow content at the left pane, the results will
 fly in the right pane. Clicking an error message in the results table moves a cursor to the
 position of the error in the code editor.
 
-
-## BUGS
+# BUGS
 
 Please visit issues page to see known bugs. If you found a new bug or have some feature request,
 please report by making a new issue.
 
 https://github.com/kjanat/actionlint/issues
 
-
-## COPYRIGHT
+# COPYRIGHT
 
 **actionlint** is licensed under the MIT License: `Copyright (c) 2021 rhysd`
 
-https://github.com/kjanat/actionlint/blob/main/LICENSE.txt
+https://github.com/kjanat/actionlint/blob/HEAD/LICENSE.txt
 
-<!-- vim: set ft=markdown: -->
-<!-- markdownlint-disable-file -->
+<!-- markdownlint-disable-file code-block-style commands-show-output single-title -->

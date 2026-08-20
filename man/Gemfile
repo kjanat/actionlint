@@ -1,3 +1,0 @@
-source "https://rubygems.org"
-
-gem "ronn-ng", "0.10.1"
