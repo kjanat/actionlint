@@ -181,10 +181,18 @@ def append_outputs(values: Mapping[str, object]) -> None:
             _ = output.write(f"{delimiter}\n")
 
 
-def write_result_file(workspace: Path, relative_path: str, content: str) -> str:
+def resolve_output_file(workspace: Path, relative_path: str) -> Path | None:
     if not relative_path:
-        return ""
+        return None
     target = within_workspace(workspace, relative_path, "output-file", directory=False)
+    if target.is_dir():
+        raise InputError("Input 'output-file' must not identify a directory")
+    return target
+
+
+def write_result_file(workspace: Path, target: Path | None, content: str) -> str:
+    if target is None:
+        return ""
     missing_parents: list[Path] = []
     parent = target.parent
     while parent != workspace and not parent.exists():
@@ -373,6 +381,7 @@ def effective_exit_code(returncode: int, fail_on_error: bool) -> int:
 def main(argv: Sequence[str]) -> int:
     inputs = parse_inputs(argv)
     workspace = Path(os.environ.get("GITHUB_WORKSPACE", os.getcwd())).resolve()
+    output_file = resolve_output_file(workspace, inputs.output_file)
     working_dir = within_workspace(
         workspace,
         inputs.working_directory,
@@ -392,7 +401,7 @@ def main(argv: Sequence[str]) -> int:
         3: "failure",
     }.get(completed.returncode, "failure")
     problems_found = completed.returncode == 1
-    written_file = write_result_file(workspace, inputs.output_file, rendered)
+    written_file = write_result_file(workspace, output_file, rendered)
 
     append_outputs(
         {

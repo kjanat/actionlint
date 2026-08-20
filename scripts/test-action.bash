@@ -100,6 +100,7 @@ expect_status 2 'an invalid format' '' invalid '' '' true true . '' true
 expect_status 2 'an escaping working-directory' testdata/ok/minimal.yaml json '' '' true true .. '' true
 expect_status 2 'an escaping output-file' testdata/ok/minimal.yaml json '' '' true true . ../escaped.json true
 test ! -e "${tmp}/escaped.json"
+expect_status 2 'a directory output-file' testdata/ok/minimal.yaml json '' '' true true . . true
 expect_status 2 'an escaping config-file' testdata/ok/minimal.yaml json '' ../actionlint.yaml true true . '' true
 expect_status 2 'an option-like file path' --help json '' '' true true . '' true
 

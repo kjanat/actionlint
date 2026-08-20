@@ -367,12 +367,21 @@ executable and all dependencies (shellcheck and pyflakes).
 
 Available tags are:
 
-- `ghcr.io/kjanat/actionlint:latest`: Latest stable version of actionlint.
-  This image is recommended.
-- `ghcr.io/kjanat/actionlint:{version}`: Specific version of actionlint. (e.g. `ghcr.io/kjanat/actionlint:1.10.0`)
-- `ghcr.io/kjanat/actionlint:action-{version}`: Versioned image used by `action.yml`. (e.g. `action-1.11.0`)
-- `ghcr.io/kjanat/actionlint:action-v1`: Latest compatible v1 alias available to Docker Action users.
-- `ghcr.io/kjanat/actionlint:action-latest`: Latest stable alias available to Docker Action users.
+- `ghcr.io/kjanat/actionlint:latest`:\
+  Moving alias for the latest stable version of actionlint. This image is recommended.
+- `ghcr.io/kjanat/actionlint:{version}`:\
+  Release-specific actionlint image rather than a moving alias.\
+  (e.g. `ghcr.io/kjanat/actionlint:1.10.0`)
+- `ghcr.io/kjanat/actionlint:action-{version}`:\
+  Release-specific image used by `action.yml` rather than a moving alias.\
+  (e.g. `action-1.11.0`)
+- `ghcr.io/kjanat/actionlint:action-v1`:\
+  Moving alias for the latest compatible v1 image available to Docker Action users.
+- `ghcr.io/kjanat/actionlint:action-latest`:\
+  Moving alias for the latest stable image available to Docker Action users.
+
+For byte-for-byte reproducibility, use the image's manifest digest as
+`ghcr.io/kjanat/actionlint:{version}@sha256:<digest>`.
 
 Just run the image with `docker run`:
 
@@ -380,12 +389,11 @@ Just run the image with `docker run`:
 docker run --rm ghcr.io/kjanat/actionlint:latest -version
 ```
 
-To check all workflows in your repository, mount your repository's root
-directory as a volume and run actionlint in the mounted directory. When you are
-at a root directory of your repository:
+To check all workflows in your repository, mount your repository at the image's
+default working directory, `/w`:
 
 ```sh
-docker run --rm -v "$(pwd):/repo" --workdir /repo ghcr.io/kjanat/actionlint:latest -color
+docker run --rm -v "$(git rev-parse --show-toplevel):/w" ghcr.io/kjanat/actionlint:latest -color
 ```
 
 To check a file with actionlint in a Docker container, pass the file content via

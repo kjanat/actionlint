@@ -22,5 +22,6 @@ COPY testdata/format/sarif_template.txt /usr/local/share/actionlint/sarif-templa
 ENTRYPOINT ["/usr/local/bin/actionlint-action"]
 
 FROM runtime AS cli
+WORKDIR /w
 USER 405
 ENTRYPOINT ["/usr/local/bin/actionlint"]
