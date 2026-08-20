@@ -151,7 +151,7 @@ the executable in the following steps easily.
 Here is an example of simple workflow to run actionlint on GitHub Actions. Please ensure `shell: bash`
 since the default shell for Windows runners is `pwsh`.
 
-```
+```yaml
 name: Lint GitHub Actions workflows
 on: [push, pull_request]
 
@@ -208,13 +208,13 @@ position of the error in the code editor.
 Please visit issues page to see known bugs. If you found a new bug or have some feature request,
 please report by making a new issue.
 
-https://github.com/rhysd/actionlint/issues
+https://github.com/kjanat/actionlint/issues
 
 
 ## COPYRIGHT
 
 **actionlint** is licensed under the MIT License: `Copyright (c) 2021 rhysd`
 
-https://github.com/rhysd/actionlint/blob/main/LICENSE.txt
+https://github.com/kjanat/actionlint/blob/main/LICENSE.txt
 
 <!-- vim: set ft=markdown: -->

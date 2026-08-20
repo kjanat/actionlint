@@ -70,7 +70,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:6:5: unexpected key "default" for "job" section. expected one of "concurrency", "container", "continue-on-error", "defaults", "env", "environment", "if", "name", "needs", "outputs", "permissions", "runs-on", "secrets", "services", "snapshot", "steps", "strategy", "timeout-minutes", "uses", "with" [syntax-check]
   |
 6 |     default:
@@ -113,7 +113,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:3:3: "runs-on" section is missing in job "test" [syntax-check]
   |
 3 |   test:
@@ -146,7 +146,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:2:6: "jobs" section should not be empty. please remove this section if it's unnecessary [syntax-check]
   |
 2 | jobs:
@@ -184,7 +184,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:6:18: expecting a single ${{...}} expression or boolean literal "true" or "false", but found plain text node [syntax-check]
   |
 6 |       fail-fast: off
@@ -231,7 +231,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:7:24: got unexpected character '"' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' '. do you mean string literals? only single quotes are available for string delimiter [expression]
   |
 7 |       - run: echo '${{ "hello" }}'
@@ -300,7 +300,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:7:28: property access of object must be type of string but got "number" [expression]
   |
 7 |       - run: echo '${{ env[0] }}'
@@ -330,7 +330,7 @@ actionlint checks types more strictly. actionlint checks values evaluated at `${
 `'Object'`), array (replaced with string `'Array'`), nor null (replaced with string `''`). If you want to check a content of
 object or array, use `toJSON()` function.
 
-```
+```sh
 echo '${{ toJSON(github.event) }}'
 ```
 
@@ -368,7 +368,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:19:14: type of expression at "env" must be object but found type string [expression]
    |
 19 |         env: ${{ matrix.env_string }}
@@ -408,7 +408,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:7:24: undefined variable "unknown_context". available variables are "env", "github", "inputs", "job", "matrix", "needs", "runner", "secrets", "steps", "strategy", "vars" [expression]
   |
 7 |       - run: echo '${{ unknown_context }}'
@@ -471,7 +471,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:6:18: property "mac" is not defined in object type {linux: string; win: string} [expression]
   |
 6 |     runs-on: ${{ fromJSON('{"win":"windows-latest","linux":"ubuntul-latest"}')['mac'] }}
@@ -528,7 +528,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:10:24: property "get_value" is not defined in object type {} [expression]
    |
 10 |       - run: echo '${{ steps.get_value.outputs.name }}'
@@ -576,7 +576,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:8:23: property "cache" is not defined in object type {} [expression]
   |
 8 |       - run: echo ${{ steps.cache.outputs.cache-hit }}
@@ -635,7 +635,7 @@ Output:
 
 <!-- Skip update output -->
 
-```
+```console
 test.yaml:8:23: property "my_action" is not defined in object type {} [expression]
   |
 8 |       - run: echo ${{ steps.my_action.outputs.some_value }}
@@ -696,7 +696,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:19:24: property "platform" is not defined in object type {node: number; npm: string; os: string; package: {name: string; optional: bool}} [expression]
    |
 19 |       - run: echo '${{ matrix.platform }}'
@@ -784,7 +784,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:16:24: property "prepare" is not defined in object type {} [expression]
    |
 16 |       - run: echo '${{ needs.prepare.outputs.prepared }}'
@@ -837,7 +837,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:13:17: "object" value cannot be compared to "string" value with "==" operator [expression]
    |
 13 |         if: ${{ github.event == 'workflow_call' }}
@@ -893,7 +893,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:6:19: shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting [shellcheck]
   |
 6 |       - run: echo $FOO
@@ -1012,7 +1012,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:10:9: pyflakes reported issue in this script: 1:7: undefined name 'hello' [pyflakes]
    |
 10 |       - run: print(hello)
@@ -1082,7 +1082,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:10:24: "github.event.pull_request.title" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]
    |
 10 |         run: echo '${{ github.event.pull_request.title }}'
@@ -1194,7 +1194,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:3:3: cyclic dependencies in "needs" job configurations are detected. detected cycle is "prepare" -> "build" -> "install" -> "prepare" [job-needs]
   |
 3 |   prepare:
@@ -1227,7 +1227,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:4:18: job ID "BAR" duplicates in "needs" section. note that job ID is case insensitive [job-needs]
   |
 4 |     needs: [bar, BAR]
@@ -1264,7 +1264,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:11:17: "serverr" is not the ID of a preceding background step. "wait" and "cancel" steps can only refer to an earlier step that has "background: true" [parallel-steps]
    |
 11 |       - cancel: serverr
@@ -1299,7 +1299,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:6:28: duplicate value "14" is found in matrix "node". the same value is at line:6,col:24 [matrix]
   |
 6 |         node: [10, 12, 14, 14]
@@ -1354,7 +1354,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:4:5: unexpected key "branch" for "push" section. expected one of "branches", "branches-ignore", "paths", "paths-ignore", "tags", "tags-ignore", "types", "workflows" [syntax-check]
   |
 4 |     branch: foo
@@ -1455,7 +1455,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:6:15: input type of workflow_dispatch event must be one of "string", "number", "boolean", "choice", "environment" but got "text" [syntax-check]
   |
 6 |         type: text
@@ -1530,7 +1530,7 @@ inputs:
 
 `inputs` is typed as follows from these definitions:
 
-```
+```json
 {
   "string_input": string;
   "choice_input": string;
@@ -1543,7 +1543,7 @@ inputs:
 
 `github.event.inputs` is typed as follows since all properties of it are strings unlike `inputs`:
 
-```
+```json
 {
   "string_input": string;
   "choice_input": string;
@@ -1585,7 +1585,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:6:10: character '^' is invalid for branch and tag names. ref name cannot contain spaces, ~, ^, :, [, ?, *. see `man git-check-ref-format` for more details. note that regular expression is unavailable. note: filter pattern syntax is explained at https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet [glob]
   |
 6 |       - '^foo-'
@@ -1645,7 +1645,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:4:13: invalid CRON format "0 */3 * *" in schedule event: expected exactly 5 fields, found 4: [0 */3 * *] [events]
   |
 4 |     - cron: '0 */3 * *'
@@ -1708,7 +1708,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:10:13: label "linux-latest" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "xcode-27", "xcode-27-xlarge", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]
    |
 10 |           - linux-latest
@@ -1752,7 +1752,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:4:30: label "windows-latest" conflicts with label "ubuntu-latest" defined at line:4,col:15. note: to run your job on each workers, use matrix [runner-label]
   |
 4 |     runs-on: [ubuntu-latest, windows-latest]
@@ -1788,7 +1788,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:7:15: specifying action "actions/checkout" in invalid format because ref is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
   |
 7 |       - uses: actions/checkout
@@ -1871,7 +1871,7 @@ Output:
 
 <!-- Skip update output -->
 
-```
+```console
 test.yaml:7:15: missing input "message" which is required by action "My action" defined at "./.github/actions/my-action". all required inputs are "message" [action]
   |
 7 |       - uses: ./.github/actions/my-action
@@ -1911,7 +1911,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:7:15: missing input "key" which is required by action "actions/cache@v4". all required inputs are "key", "path" [action]
   |
 7 |       - uses: actions/cache@v4
@@ -1958,7 +1958,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:8:15: the runner of "actions/checkout@v3" action is too old to run on GitHub Actions. update the action's version to fix this issue [action]
   |
 8 |       - uses: actions/checkout@v3
@@ -2016,7 +2016,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:8:16: shell name "dash" is invalid. available names are "bash", "pwsh", "python", "sh" [shell-name]
   |
 8 |         shell: dash
@@ -2068,7 +2068,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:10:13: step ID "STEP_ID" duplicates. previously defined at line:7,col:13. step ID must be unique within a job. note that step ID is case insensitive [id]
    |
 10 |         id: STEP_ID
@@ -2114,7 +2114,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:10:19: "password" section in "container" section should be specified via secrets. do not put password value directly [credentials]
    |
 10 |         password: pass
@@ -2151,7 +2151,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:6:7: environment variable name "FOO=BAR" is invalid. '&', '=' and spaces should not be contained [env-var]
   |
 6 |       FOO=BAR: foo
@@ -2199,7 +2199,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:4:14: "write" is invalid for permission for all the scopes. available values are "read-all", "write-all" or {} [permissions]
   |
 4 | permissions: write
@@ -2286,7 +2286,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:15:18: input of workflow_call event "port" is typed as number but its default value ":1234" cannot be parsed as a float number: strconv.ParseFloat: parsing ":1234": invalid syntax [events]
    |
 15 |         default: ':1234'
@@ -2334,7 +2334,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:6:5: when a reusable workflow is called with "uses", "runs-on" is not available. only following keys are allowed: "name", "uses", "with", "secrets", "needs", "if", and "permissions" in job "job1" [syntax-check]
   |
 6 |     runs-on: ubuntu-latest
@@ -2400,7 +2400,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:20:23: property "uri" is not defined in object type {lucky_number: number; url: string} [expression]
    |
 20 |         run: curl ${{ inputs.uri }} -d ${{ inputs.lucky_number }}
@@ -2492,7 +2492,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:7:20: property "imagetag" is not defined in object type {image_tag: string} [expression]
   |
 7 |         value: ${{ jobs.gen-image-version.outputs.imagetag }}
@@ -2567,7 +2567,7 @@ Output:
 
 <!-- Skip update output -->
 
-```
+```console
 test.yaml:6:11: input "name" is required by "./.github/workflows/reusable.yaml" reusable workflow [workflow-call]
   |
 6 |     uses: ./.github/workflows/reusable.yaml
@@ -2650,7 +2650,7 @@ Output:
 
 <!-- Skip update output -->
 
-```
+```console
 test.yaml:13:24: property "tag" is not defined in object type {version: string} [expression]
    |
 13 |       - run: echo '${{ needs.get_build_info.outputs.tag }}'
@@ -2699,7 +2699,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:5:3: invalid job ID "foo-v1.2.3". job ID must start with a letter or _ and contain only alphanumeric characters, -, or _ [id]
   |
 5 |   foo-v1.2.3:
@@ -2768,7 +2768,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:6:16: context "env" is not allowed here. no context is available here. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
   |
 6 |     shell: ${{ env.SHELL }}
@@ -2835,7 +2835,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:8:14: workflow command "set-output" was deprecated. use `echo "{name}={value}" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]
   |
 8 |       - run: echo '::set-output name=foo::bar'
@@ -2894,7 +2894,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:9:13: constant expression "false" in condition. remove the if: section [if-cond]
   |
 9 |         if: false
@@ -2993,7 +2993,7 @@ Output:
 
 <!-- Skip update output -->
 
-```
+```console
 test.yaml:8:15: description is required in metadata of "My action" action at "/Users/rhysd/.go/src/github.com/rhysd/actionlint/.github/actions/my-invalid-action/action.yml" [action]
   |
 8 |       - uses: ./.github/actions/my-invalid-action
@@ -3062,7 +3062,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:9:11: avoid using deprecated input "fail_on_error" in action "reviewdog/action-actionlint@v1": Deprecated, use `fail_level` instead [action]
   |
 9 |           fail_on_error: true
@@ -3117,7 +3117,7 @@ Output:
 
 <!-- Skip update output -->
 
-```
+```console
 test.yaml:6:15: input "empty-message" is deprecated but "deprecationMessage" is empty in metadata of "My action" action at "/path/to/.github/actions/my-action/action.yaml" [action]
   |
 6 |       - uses: ./.github/actions/my-action
@@ -3169,7 +3169,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:11:21: "password" section in "nginx" service should be specified via secrets. do not put password value directly [credentials]
    |
 11 |           password: P@ssw0rd
@@ -3218,7 +3218,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:18:14: anchor "credentials" is defined but not used [syntax-check]
    |
 18 |         env: &credentials
@@ -3259,7 +3259,7 @@ jobs:
 
 Output:
 
-```
+```console
 test.yaml:9:14: could not parse as YAML: unknown anchor 'credentials' referenced [syntax-check]
   |
 9 |         env: *credentials
