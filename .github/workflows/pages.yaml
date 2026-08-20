@@ -4,10 +4,7 @@ on:
   push: { branches: [main] }
   workflow_dispatch: null
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+permissions: { contents: read, pages: write, id-token: write }
 
 concurrency:
   group: pages
@@ -22,24 +19,17 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version: "lts/*"
-          cache: npm
-          cache-dependency-path: package-lock.json
+        with: { node-version: "lts/*", cache: npm, cache-dependency-path: package-lock.json }
       - name: Build and test playground
         run: |
           npm ci
           make -C playground build test
       - uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
-        env:
-          BUNDLE_GEMFILE: man/Gemfile
-        with:
-          ruby-version: "3.4"
-          bundler-cache: true
+        with: { ruby-version: "3.4" }
       - name: Build command manual
-        env:
-          BUNDLE_GEMFILE: man/Gemfile
+        env: { BUNDLE_GEMFILE: man/Gemfile }
         run: |
+          bundle install
           bundle exec ronn man/actionlint.1.ronn
           sed -i 's|</head>|<link rel="stylesheet" href="dark.css">\n</head>|' man/actionlint.1.html
       - name: Package playground
