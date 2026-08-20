@@ -1,0 +1,32 @@
+name: Major tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag (vX.Y.Z) the major tag should follow"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  move:
+    name: Move major tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - name: Validate and move major tag
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          git fetch --force --tags origin
+          sha="$(git rev-parse "refs/tags/${TAG}^{commit}")"
+          major="${TAG%%.*}"
+          latest="$(git tag --list "${major}.*.*" --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)"
+          test "$TAG" = "$latest"
+          git push --force origin "${sha}:refs/tags/${major}"
