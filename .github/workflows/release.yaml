@@ -4,6 +4,11 @@ on:
     tags:
       - "v*.*.*"
 
+concurrency:
+  group: actionlint-release
+  cancel-in-progress: false
+  queue: max
+
 jobs:
   binaries:
     runs-on: ubuntu-latest
@@ -13,6 +18,7 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@v7
+        with: { persist-credentials: false }
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'
@@ -65,15 +71,48 @@ jobs:
           token: ${{ secrets.WINGET_TOKEN }}
   docker:
     runs-on: ubuntu-latest
+    outputs:
+      is-latest: ${{ steps.tag.outputs.is-latest }}
+      is-major-latest: ${{ steps.tag.outputs.is-major-latest }}
     permissions:
       contents: read
       packages: write
     steps:
       - uses: actions/checkout@v7
+        with: { fetch-depth: 0, persist-credentials: false }
       - name: Get tag name
         id: tag
         run: |
-          echo "name=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          git fetch --force --tags origin
+          version="${GITHUB_REF_NAME#v}"
+          major="${version%%.*}"
+          echo "name=$version" >> "$GITHUB_OUTPUT"
+          echo "major=$major" >> "$GITHUB_OUTPUT"
+
+          latest_stable_tag() {
+            local pattern="$1"
+            local candidate
+            while IFS= read -r candidate; do
+              if [[ "$candidate" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                echo "$candidate"
+                return
+              fi
+            done < <(git tag --list "$pattern" --sort=-version:refname)
+          }
+
+          latest="$(latest_stable_tag 'v*.*.*')"
+          major_latest="$(latest_stable_tag "v${major}.*.*")"
+          if [[ "$GITHUB_REF_NAME" == "$latest" ]]; then
+            echo "is-latest=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is-latest=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [[ "$GITHUB_REF_NAME" == "$major_latest" ]]; then
+            echo "is-major-latest=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is-major-latest=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
       - name: Set up Docker Buildx
@@ -85,10 +124,11 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and push
+      - name: Build and push CLI image
         uses: docker/build-push-action@v7
         with:
           platforms: linux/amd64,linux/arm64
+          target: cli
           build-args: |
             GOLANG_VER=1.26
             ACTIONLINT_VER=${{ steps.tag.outputs.name }}
@@ -97,4 +137,44 @@ jobs:
             index:org.opencontainers.image.description=Static checker for GitHub Actions workflow files
           tags: |
             ghcr.io/${{ github.repository }}:${{ steps.tag.outputs.name }}
-            ghcr.io/${{ github.repository }}:latest
+            ${{ steps.tag.outputs.is-latest == 'true' && format('ghcr.io/{0}:latest', github.repository) || '' }}
+      - name: Build and push GitHub Action image
+        uses: docker/build-push-action@v7
+        with:
+          platforms: linux/amd64,linux/arm64
+          target: action
+          build-args: |
+            GOLANG_VER=1.26
+            ACTIONLINT_VER=${{ steps.tag.outputs.name }}
+          push: true
+          annotations: |
+            index:org.opencontainers.image.description=GitHub Action for actionlint
+          tags: |
+            ghcr.io/${{ github.repository }}:action-${{ steps.tag.outputs.name }}
+            ${{ steps.tag.outputs.is-major-latest == 'true' && format('ghcr.io/{0}:action-v{1}', github.repository, steps.tag.outputs.major) || '' }}
+            ${{ steps.tag.outputs.is-latest == 'true' && format('ghcr.io/{0}:action-latest', github.repository) || '' }}
+  major-tag:
+    name: Update major action tag
+    needs: [binaries, docker]
+    if: needs.docker.outputs.is-major-latest == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Verify release commit signature
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          commit_api="repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}"
+          verified="$(gh api "$commit_api" --jq '.commit.verification.verified')"
+          test "$verified" = true
+      - name: Move major tag to the release commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          major="v${version%%.*}"
+          git push --force origin "${GITHUB_SHA}:refs/tags/${major}"

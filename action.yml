@@ -1,0 +1,88 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+---
+name: actionlint
+description: >-
+  Static-check GitHub Actions workflow files with actionlint, ShellCheck, and
+  pyflakes
+inputs:
+  files:
+    description: >-
+      Newline-separated workflow file paths. Empty checks every workflow in the
+      repository.
+    required: false
+    default: ""
+  format:
+    description: >-
+      Output format. Choose github, default, oneline, json, json-lines,
+      markdown, or sarif.
+    required: false
+    default: github
+  ignore:
+    description: >-
+      Newline-separated regular expressions for actionlint errors to ignore.
+    required: false
+    default: ""
+  config-file:
+    description: >-
+      Path to an actionlint configuration file, relative to working-directory.
+    required: false
+    default: ""
+  shellcheck:
+    description: Run ShellCheck for shell scripts in workflow steps.
+    required: false
+    default: "true"
+  pyflakes:
+    description: Run pyflakes for Python scripts in workflow steps.
+    required: false
+    default: "true"
+  working-directory:
+    description: Directory to lint, relative to the repository workspace.
+    required: false
+    default: .
+  output-file:
+    description: >-
+      Optional repository-relative file to receive the selected output format.
+    required: false
+    default: ""
+  fail-on-error:
+    description: >-
+      Fail the step when actionlint finds problems. Invalid options and fatal
+      errors always fail.
+    required: false
+    default: "true"
+outputs:
+  exit-code:
+    description: >-
+      actionlint exit code: 0 for clean, 1 for problems, 2 for invalid options,
+      or 3 for failure.
+  result:
+    description: >-
+      Result name: success, problems-found, invalid-options, or failure.
+  problems-found:
+    description: Whether actionlint found one or more problems.
+  problem-count:
+    description: >-
+      Number of problems found, or an empty string if actionlint could not
+      complete.
+  output:
+    description: Complete actionlint output in the selected format.
+  output-file:
+    description: >-
+      Repository-relative output file path, or an empty string when output-file
+      was not set.
+runs:
+  using: docker
+  image: docker://ghcr.io/kjanat/actionlint:action-1.11.0
+  args:
+    - ${{ inputs.files }}
+    - ${{ inputs.format }}
+    - ${{ inputs.ignore }}
+    - ${{ inputs.config-file }}
+    - ${{ inputs.shellcheck }}
+    - ${{ inputs.pyflakes }}
+    - ${{ inputs.working-directory }}
+    - ${{ inputs.output-file }}
+    - ${{ inputs.fail-on-error }}
+branding:
+  icon: check-circle
+  color: blue

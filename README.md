@@ -82,10 +82,11 @@ test.yaml:22:17: receiver of object dereference "permissions" must be type of ob
    |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
-## Quick start
+Quick start
+-----------
 
 Install `actionlint` command by downloading [the released binary][releases], using the download script, running the Docker
-image, or by `go install`. See
+image, using the repository as a GitHub Action, or by `go install`. See
 [the installation document][install] for more details like how to manage the command with several package managers
 or run via Docker container.
 
@@ -105,7 +106,77 @@ Another option to try actionlint is [the online playground][playground]. Your br
 
 See [the usage document][usage] for more details.
 
-## Documents
+GitHub Action
+-------------
+
+This repository can be used directly as a Docker action. The prebuilt image includes actionlint, ShellCheck, and pyflakes, and
+reports problems as GitHub annotations by default. Docker actions require a Linux runner.
+
+```yaml
+name: Lint GitHub Actions workflows
+on: [push, pull_request]
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - uses: kjanat/actionlint@v1
+```
+
+The moving `v1` tag follows compatible v1 releases. `v1.11.0` is a versioned release tag, but only a full-length commit SHA
+provides an immutable action reference.
+
+Inputs
+------
+
+| Input               | Default       | Description                                                                                  |
+| ------------------- | ------------- | -------------------------------------------------------------------------------------------- |
+| `files`             | all workflows | Newline-separated workflow paths. Empty checks every workflow in the repository.             |
+| `format`            | `github`      | Output format: `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, or `sarif`. |
+| `ignore`            | none          | Newline-separated regular expressions for actionlint errors to ignore.                       |
+| `config-file`       | automatic     | Configuration file path relative to `working-directory`.                                     |
+| `shellcheck`        | `true`        | Run ShellCheck for shell scripts in workflow steps.                                          |
+| `pyflakes`          | `true`        | Run pyflakes for Python scripts in workflow steps.                                           |
+| `working-directory` | `.`           | Directory to lint, relative to the repository workspace.                                     |
+| `output-file`       | none          | Repository-relative file to receive the selected output format.                              |
+| `fail-on-error`     | `true`        | Fail when problems are found. Invalid options and fatal errors always fail.                   |
+
+Outputs
+-------
+
+| Output           | Description                                                                                          |
+| ---------------- | ---------------------------------------------------------------------------------------------------- |
+| `exit-code`      | actionlint exit code: `0` for clean, `1` for problems, `2` for invalid options, or `3` for failure. |
+| `result`         | `success`, `problems-found`, `invalid-options`, or `failure`.                                        |
+| `problems-found` | Whether actionlint found one or more problems.                                                       |
+| `problem-count`  | Number of problems, or an empty string if actionlint could not complete.                             |
+| `output`         | Complete actionlint output in the selected format.                                                   |
+| `output-file`    | Repository-relative output path, or an empty string when no file was requested.                     |
+
+Give the step an `id` to consume its outputs. For example, this writes JSON Lines without failing the lint step:
+
+```yaml
+- name: Check workflows
+  id: actionlint
+  uses: kjanat/actionlint@v1
+  with:
+    format: json-lines
+    output-file: actionlint-results.jsonl
+    fail-on-error: false
+- name: Report result
+  if: always()
+  env:
+    RESULT: ${{ steps.actionlint.outputs.result }}
+    PROBLEM_COUNT: ${{ steps.actionlint.outputs.problem-count }}
+  run: echo "$RESULT ($PROBLEM_COUNT problems)"
+```
+
+See [the usage document][usage] for additional examples and output behavior.
+
+Documents
+---------
 
 - [Checks][checks]: Full list of all checks done by actionlint with example inputs, outputs, and playground links.
 - [Installation][install]: Installation instructions. Prebuilt binaries, a Docker image, building from source, a download script
@@ -117,14 +188,16 @@ See [the usage document][usage] for more details.
 - [Go API][api]: How to use actionlint as Go library.
 - [References][refs]: Links to resources.
 
-## Bug reporting
+Bug reporting
+-------------
 
 When you see some bugs or false positives, it is helpful to [file a new issue][issue-form] with a minimal example
 of input. Giving me some feedbacks like feature requests or ideas of additional checks is also welcome.
 
 See the [contribution guide](./CONTRIBUTING.md) for more details.
 
-## License
+License
+-------
 
 actionlint is distributed under [the MIT license](./LICENSE.txt).
 
@@ -133,7 +206,7 @@ actionlint is distributed under [the MIT license](./LICENSE.txt).
 [apidoc-badge]: https://pkg.go.dev/badge/github.com/kjanat/actionlint.svg
 [apidoc]: https://pkg.go.dev/github.com/kjanat/actionlint
 [repo]: https://github.com/rhysd/actionlint
-[playground]: https://rhysd.github.io/actionlint/
+[playground]: https://kjanat.github.io/actionlint/
 [shellcheck]: https://github.com/koalaman/shellcheck
 [pyflakes]: https://github.com/PyCQA/pyflakes
 [syntax-doc]: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions

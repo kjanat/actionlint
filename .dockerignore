@@ -1,0 +1,12 @@
+**
+!Dockerfile
+!.dockerignore
+!go.mod
+!go.sum
+!*.go
+!cmd
+!cmd/**
+!action-entrypoint.py
+!testdata
+!testdata/format
+!testdata/format/sarif_template.txt

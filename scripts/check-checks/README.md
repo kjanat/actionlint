@@ -6,7 +6,7 @@ This is a script to maintain [the 'Checks' document](../../docs/checks.md).
 This script does:
 
 - update the outputs of the example inputs; the code blocks after `Output:` header
-- update the links to the [playground](https://rhysd.github.io/actionlint/) for the example inputs
+- update the links to the [playground](https://kjanat.github.io/actionlint/) for the example inputs
 - check the document is up-to-date
 
 For making the implementation simple, this script does not support Windows.
