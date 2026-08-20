@@ -6,9 +6,9 @@ import (
 	"testing"
 )
 
-func TestInvalidGlobPatternMessage(t *testing.T) {
+func TestInvalidGlobPatternErrorMessage(t *testing.T) {
 	want := "42: this is message"
-	err := &InvalidGlobPattern{"this is message", 42}
+	err := &InvalidGlobPatternError{"this is message", 42}
 	have := err.Error()
 	if want != have {
 		t.Fatalf("want %q but have %q", want, have)
@@ -234,7 +234,7 @@ func TestValidateGlobSyntaxError(t *testing.T) {
 	for _, kind := range []string{"ref", "path"} {
 		for _, tc := range testCases {
 			t.Run(kind+"/"+tc.what, func(t *testing.T) {
-				var errs []InvalidGlobPattern
+				var errs []InvalidGlobPatternError
 				if kind == "ref" {
 					errs = ValidateRefGlob(tc.input)
 				} else {
