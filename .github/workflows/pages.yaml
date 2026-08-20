@@ -4,8 +4,6 @@ on:
   push: { branches: [main] }
   workflow_dispatch: null
 
-env: { PANDOC: "3.10.2" }
-
 permissions: { contents: read, pages: write, id-token: write }
 
 concurrency:
@@ -22,11 +20,7 @@ jobs:
         with: { go-version-file: go.mod }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with: { node-version: "lts/*", cache: npm, cache-dependency-path: package-lock.json }
-      - name: Install pandoc
-        run: |
-          curl --fail --location --output "${RUNNER_TEMP}/pandoc.deb" \
-            "https://github.com/jgm/pandoc/releases/download/${PANDOC}/pandoc-${PANDOC}-1-amd64.deb"
-          sudo dpkg --install "${RUNNER_TEMP}/pandoc.deb"
+      - uses: $/.github/actions/setup-pandoc
       - name: Build command manual
         run: make man
       - name: Build and test playground

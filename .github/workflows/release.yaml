@@ -7,7 +7,7 @@ concurrency:
   cancel-in-progress: false
   queue: max
 
-env: { GO: "1.27", PANDOC: "3.10.2" }
+env: { GO: "1.27" }
 
 permissions: { contents: read }
 
@@ -31,11 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
-      - name: Install pandoc
-        run: |
-          curl --fail --location --output "${RUNNER_TEMP}/pandoc.deb" \
-            "https://github.com/jgm/pandoc/releases/download/${PANDOC}/pandoc-${PANDOC}-1-amd64.deb"
-          sudo dpkg --install "${RUNNER_TEMP}/pandoc.deb"
+      - uses: $/.github/actions/setup-pandoc
       - run: make man/actionlint.1
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with: { name: manual, path: man/actionlint.1, if-no-files-found: error }

@@ -338,3 +338,5 @@ On refresh, do not silently delete reviewed rows that are no longer open upstrea
 4. Update volatile upstream fields without overwriting local dispositions or evidence.
 5. Verify items that disappeared from the open lists with `gh issue view` or `gh pr view`, then move them to the archived section.
 6. Update the snapshot time, counts, and branch SHAs after the rows have been reconciled.
+
+<!-- markdownlint-disable-file no-duplicate-heading -->
