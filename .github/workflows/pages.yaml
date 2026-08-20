@@ -39,7 +39,9 @@ jobs:
       - name: Build command manual
         env:
           BUNDLE_GEMFILE: man/Gemfile
-        run: bundle exec ronn man/actionlint.1.ronn
+        run: |
+          bundle exec ronn man/actionlint.1.ronn
+          sed -i 's|</head>|<link rel="stylesheet" href="dark.css">\n</head>|' man/actionlint.1.html
       - name: Package playground
         run: |
           mkdir playground-dist
@@ -48,6 +50,7 @@ jobs:
           cp playground/index.html playground-dist/404.html
           cp man/actionlint.1.html playground-dist/man.html
           cp man/actionlint.1.html playground-dist/usage.html
+          cp man/dark.css playground-dist/dark.css
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with: { path: playground-dist }
