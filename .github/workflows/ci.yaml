@@ -76,7 +76,9 @@ jobs:
       - run: go build -race ./cmd/actionlint
 
       - name: Dog fooding 🐶
-        run: echo "::add-matcher::.github/actionlint-matcher.json"; ./actionlint -color
+        # actionlint runs shellcheck with --norc, so .shellcheckrc's enable=all
+        # has to be repeated here to reach the scripts in `run:`.
+        run: echo "::add-matcher::.github/actionlint-matcher.json"; ./actionlint -color -shellcheck 'shellcheck -o all'
 
       - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with: { use_oidc: true }
@@ -122,15 +124,16 @@ jobs:
       - name: Check Go sources are formatted
         run: |
           diffs="$(gofmt -d ./*.go ./cmd/*/*.go ./scripts/*/*.go ./playground/*.go)"
-          if [[ "$diffs" != "" ]]; then
-            echo "$diffs" >&2
+          if [[ "${diffs}" != "" ]]; then
+            echo "${diffs}" >&2
             exit 1
           fi
       - name: Install staticcheck and govulncheck
         run: |
           go install honnef.co/go/tools/cmd/staticcheck@latest
           go install golang.org/x/vuln/cmd/govulncheck@latest
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          gopath="$(go env GOPATH)"
+          echo "${gopath}/bin" >> "${GITHUB_PATH}"
       - run: make lint SKIP_GO_GENERATE=true
       - name: Lint bash scripts
         run: shellcheck ./scripts/*.bash ./playground/*.bash
@@ -150,7 +153,7 @@ jobs:
         }
       - name: Test Docker image
         run: docker container run
-          --mount type=bind,source="$(pwd)",target=/w
+          --mount type=bind,source="${PWD}",target=/w
           -- actionlint:test -color -verbose
       - name: Lint Dockerfile with hadolint
         run: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 --strict-labels - < Dockerfile

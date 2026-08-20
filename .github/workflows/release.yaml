@@ -22,7 +22,7 @@ jobs:
         with: { go-version: "${{ env.GO }}", check-latest: true }
       - name: Resolve release notes
         env: { TAG: "${{ github.ref_name }}" }
-        run: go run ./scripts/bump-version -notes "$TAG" > "${RUNNER_TEMP}/release-notes.md"
+        run: go run ./scripts/bump-version -notes "${TAG}" > "${RUNNER_TEMP}/release-notes.md"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with: { name: release-notes, path: "${{ runner.temp }}/release-notes.md", if-no-files-found: error }
   manual:
@@ -53,7 +53,7 @@ jobs:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with: { name: release-notes, path: "${{ runner.temp }}" }
       - name: Get version
-        run: echo VERSION="${GITHUB_REF#refs/tags/v}" >> "$GITHUB_ENV"
+        run: echo VERSION="${GITHUB_REF#refs/tags/v}" >> "${GITHUB_ENV}"
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with: { version: "~> v2", args: "release --clean --release-notes=${{ runner.temp }}/release-notes.md" }
         env: {
@@ -90,31 +90,32 @@ jobs:
           git fetch --force --tags origin
           version="${GITHUB_REF_NAME#v}"
           major="${version%%.*}"
-          echo "name=$version" >> "$GITHUB_OUTPUT"
-          echo "major=$major" >> "$GITHUB_OUTPUT"
+          echo "name=${version}" >> "${GITHUB_OUTPUT}"
+          echo "major=${major}" >> "${GITHUB_OUTPUT}"
 
           latest_stable_tag() {
             local pattern="$1"
-            local candidate
+            local candidate tags
+            tags="$(git tag --list "${pattern}" --sort=-version:refname)"
             while IFS= read -r candidate; do
-              if [[ "$candidate" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-                echo "$candidate"
+              if [[ "${candidate}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                echo "${candidate}"
                 return
               fi
-            done < <(git tag --list "$pattern" --sort=-version:refname)
+            done <<< "${tags}"
           }
 
           latest="$(latest_stable_tag 'v*.*.*')"
           major_latest="$(latest_stable_tag "v${major}.*.*")"
-          if [[ "$GITHUB_REF_NAME" == "$latest" ]]; then
-            echo "is-latest=true" >> "$GITHUB_OUTPUT"
+          if [[ "${GITHUB_REF_NAME}" == "${latest}" ]]; then
+            echo "is-latest=true" >> "${GITHUB_OUTPUT}"
           else
-            echo "is-latest=false" >> "$GITHUB_OUTPUT"
+            echo "is-latest=false" >> "${GITHUB_OUTPUT}"
           fi
-          if [[ "$GITHUB_REF_NAME" == "$major_latest" ]]; then
-            echo "is-major-latest=true" >> "$GITHUB_OUTPUT"
+          if [[ "${GITHUB_REF_NAME}" == "${major_latest}" ]]; then
+            echo "is-major-latest=true" >> "${GITHUB_OUTPUT}"
           else
-            echo "is-major-latest=false" >> "$GITHUB_OUTPUT"
+            echo "is-major-latest=false" >> "${GITHUB_OUTPUT}"
           fi
       - name: Set up QEMU
         uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
@@ -183,8 +184,8 @@ jobs:
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
           commit_api="repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}"
-          verified="$(gh api "$commit_api" --jq '.commit.verification.verified')"
-          test "$verified" = true
+          verified="$(gh api "${commit_api}" --jq '.commit.verification.verified')"
+          test "${verified}" = true
       - name: Move major tag to the release commit
         shell: bash
         run: |

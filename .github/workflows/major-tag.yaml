@@ -22,10 +22,10 @@ jobs:
         env: { TAG: "${{ inputs.tag }}" }
         run: |
           set -euo pipefail
-          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           git fetch --force --tags origin
           sha="$(git rev-parse "refs/tags/${TAG}^{commit}")"
           major="${TAG%%.*}"
           latest="$(git tag --list "${major}.*.*" --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)"
-          test "$TAG" = "$latest"
+          test "${TAG}" = "${latest}"
           git push --force origin "${sha}:refs/tags/${major}"
