@@ -24,14 +24,10 @@ public/wasm_exec.js: $(WASM_EXEC)
 	mkdir -p public
 	cp $(WASM_EXEC) public/wasm_exec.js
 
-.testtimestamp: $(NODE_MODULES) $(ASSETS) $(SRCS)
+t test: $(NODE_MODULES) $(ASSETS)
 	npm test
-	touch .testtimestamp
-
-t test: .testtimestamp
 
 c clean:
 	rm -rf ./dist ./public
-	rm -f .testtimestamp
 
 .PHONY: build dep serve test clean b t c

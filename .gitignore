@@ -1,10 +1,6 @@
-/.bumptimestamp
-/.git-hooks/.timestamp
 /.github/actionlint.yaml
 /.github/actionlint.yml
 /.idea
-/.linttimestamp
-/.testtimestamp
 /.worktrees/
 /actionlint
 /actionlint-workflow-ast

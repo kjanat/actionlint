@@ -2,9 +2,9 @@
 # directory over it whenever the directory is newer, so no built-in rule may apply here.
 MAKEFLAGS += --no-builtin-rules
 
-SRCS := $(filter-out %_test.go, $(wildcard *.go cmd/*/*.go)) cmd/actionlint-action/sarif_template.txt go.mod go.sum .git-hooks/.timestamp
+SRCS := $(filter-out %_test.go, $(wildcard *.go cmd/*/*.go)) cmd/actionlint-action/sarif_template.txt go.mod go.sum
 TESTS := $(filter %_test.go, $(wildcard *.go cmd/*/*.go))
-TOOL := $(filter %_test.go, $(wildcard scripts/*/*.go))
+TOOL := $(wildcard scripts/*/*.go)
 TESTDATA := $(wildcard \
 		testdata/examples/* \
 		testdata/err/* \
@@ -35,15 +35,11 @@ endif
 
 all: build test lint
 
-.testtimestamp: $(TESTS) $(SRCS) $(TESTDATA) $(TOOL)
+t test:
 	go test $(RACE) ./...
-	$(TOUCH) .testtimestamp
-
-t test: .testtimestamp
 
 coverage.out: $(TESTS) $(SRCS) $(TESTDATA) $(TOOL)
 	go test $(RACE) -coverprofile coverage.out -covermode=atomic ./...
-	$(TOUCH) .testtimestamp
 
 coverage.html: coverage.out
 	go tool cover -html=coverage.out -o coverage.html
@@ -51,7 +47,7 @@ coverage.html: coverage.out
 cov: coverage.out coverage.html
 	go tool cover -func=coverage.out
 
-.linttimestamp: $(TESTS) $(SRCS) $(TOOL) docs/checks.md
+l lint:
 	go vet ./...
 	# ./... is not available because ./node_modules/ contains some Go packages
 	staticcheck ./ ./scripts/... ./cmd/...
@@ -60,9 +56,6 @@ ifneq ($(OS),Windows_NT)
 	GOOS=js GOARCH=wasm staticcheck ./playground
 	go run ./scripts/check-checks -quiet ./docs/checks.md
 endif
-	$(TOUCH) .linttimestamp
-
-l lint: .linttimestamp
 
 popular_actions.go all_webhooks.go availability.go: $(GO_GEN_SRCS)
 ifdef SKIP_GO_GENERATE
@@ -105,17 +98,11 @@ scripts/generate-actionlint-matcher/test/no_escape.txt: $(TARGET)
 scripts/generate-actionlint-matcher/test/want.json: $(TARGET)
 	./actionlint -format '{{json .}}' ./testdata/err/one_error.yaml > scripts/generate-actionlint-matcher/test/want.json || true
 
-CHANGELOG.md: .bumptimestamp
+CHANGELOG.md:
 	changelog-from-release > CHANGELOG.md
 
 c clean:
-	rm -f ./$(TARGET) ./.testtimestamp ./.linttimestamp ./actionlint_fuzz-fuzz.zip ./man/actionlint.1 ./man/actionlint.1.html ./actionlint-workflow-ast
+	rm -f ./$(TARGET) ./actionlint_fuzz-fuzz.zip ./man/actionlint.1 ./man/actionlint.1.html ./actionlint-workflow-ast
 	rm -rf ./corpus ./crashers
 
-.git-hooks/.timestamp: .git-hooks/pre-push
-ifneq ($(OS),Windows_NT)
-	[ -z "${CI}" ] && git config core.hooksPath .git-hooks || true
-endif
-	$(TOUCH) .git-hooks/.timestamp
-
-.PHONY: all test clean build lint fuzz man bench cov b t c l
+.PHONY: all test clean build lint fuzz man bench cov b t c l CHANGELOG.md

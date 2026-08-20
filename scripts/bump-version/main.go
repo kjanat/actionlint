@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 const releaseJobURL = "https://github.com/kjanat/actionlint/actions/workflows/release.yaml"
@@ -90,21 +89,6 @@ func (r *repo) preflight(tag string) error {
 	return nil
 }
 
-func touch(path string) error {
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
-	if err != nil {
-		return fmt.Errorf("could not update %s: %w", path, err)
-	}
-	if err := f.Close(); err != nil {
-		return fmt.Errorf("could not update %s: %w", path, err)
-	}
-	now := time.Now()
-	if err := os.Chtimes(path, now, now); err != nil {
-		return fmt.Errorf("could not update %s: %w", path, err)
-	}
-	return nil
-}
-
 func Main(args []string, stdout, stderr io.Writer) error {
 	var check, commit, push bool
 	var root, notes string
@@ -173,10 +157,6 @@ func Main(args []string, stdout, stderr io.Writer) error {
 
 	_, _ = fmt.Fprintf(stdout, "Bumping the version to %s (tag: %s)\n", v, tag)
 	if err := Bump(root, targets, v, stdout); err != nil {
-		return err
-	}
-
-	if err := touch(filepath.Join(root, ".bumptimestamp")); err != nil {
 		return err
 	}
 

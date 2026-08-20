@@ -12,7 +12,7 @@
       { "command": "gofmt -s", "exts": ["go"] }
     ]
   },
-  "shfmt": { "useTabs": true, "binaryNextLine": true, "switchCaseIndent": true, "associations": [".git-hooks/*"] },
+  "shfmt": { "useTabs": true, "binaryNextLine": true, "switchCaseIndent": true },
   "pwsh": {
     "braceStyle": "sameLine",
     "useTabs": true,
