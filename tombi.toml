@@ -1,0 +1,98 @@
+#:schema tombi://www.schemastore.org/tombi.json
+#:tombi toml-version = "v1.1.0"
+# Full structure example: https://tombi-toml.github.io/tombi/docs/configuration#full-structure
+#
+# curl -fsSLo "${OUT:-tombi.toml}" https://raw.githubusercontent.com/kjanat/kjanat/HEAD/configs/tombi.toml
+
+toml-version = "v1.0.0"
+
+[files]
+include              = ["**/*.toml", "**/.*.toml"]
+exclude              = ["**/fixtures", "**/.cache/**/*.toml"]
+respect-ignore-files = true
+
+[format]
+[format.rules]
+array-bracket-space-width         = 0
+array-comma-space-width           = 1
+date-time-delimiter               = "T"
+indent-style                      = "space"
+indent-sub-tables                 = false
+indent-table-key-value-pairs      = false
+indent-width                      = 2
+inline-table-brace-space-width    = 1
+inline-table-comma-space-width    = 1
+key-value-equals-sign-alignment   = true
+key-value-equals-sign-space-width = 1
+line-ending                       = "lf"
+line-width                        = 140
+string-quote-style                = "double"
+trailing-comment-alignment        = true
+trailing-comment-space-width      = 2
+
+[lint]
+[lint.rules]
+dotted-keys-out-of-order = "warn"
+key-empty                = "warn"
+tables-out-of-order      = "error"
+
+[lsp]
+code-action          = { enabled = true }
+completion           = { enabled = true }
+diagnostic           = { enabled = true }
+document-link        = { enabled = true }
+formatting           = { enabled = true }
+goto-declaration     = { enabled = true }
+goto-definition      = { enabled = true }
+goto-type-definition = { enabled = true }
+hover                = { enabled = true }
+references           = { enabled = true }
+workspace-diagnostic = { enabled = true }
+
+[schema]
+enabled = true
+strict  = true
+catalog = {
+  paths = [
+    "tombi://www.schemastore.org/api/json/catalog.json",
+    "https://www.schemastore.org/api/json/catalog.json",
+  ],
+}
+
+# Rust / Cargo
+[[schemas]]
+toml-version = "v1.0.0"
+path         = "https://www.schemastore.org/cargo.json"
+include      = ["Cargo.toml", "**/Cargo.toml"]
+lint.rules   = {
+  deprecated = "off",
+}
+
+[[schemas]]  # https://doc.rust-lang.org/cargo/reference/config.html#configuration-format
+path    = "https://gist.githubusercontent.com/kjanat/1172d9d2d6dbe7c6d9983aaabef2eea5/raw/cargo-config.bundle.json"
+include = ["**/.cargo/config.toml", "**/.config/nightly.toml"]
+
+# Python
+[[schemas]]  # https://docs.basedpyright.com/dev/configuration/config-files/#pyright-configuration
+root    = "tool.pyright"
+path    = "https://raw.githubusercontent.com/DetachHead/basedpyright/HEAD/packages/vscode-pyright/schemas/pyrightconfig.schema.json"
+include = ["pyproject.toml"]
+
+# Runner
+[[schemas]]
+path    = "https://kjanat.github.io/runner/schemas/runner.toml.schema.json"
+include = ["runner.toml", ".runner.toml"]
+
+# Zed Editor
+[[schemas]]
+path    = "https://raw.githubusercontent.com/kjanat/zed-editor/feature/extension-toml-schema/crates/extension_api/schemas/language-config.schema.json"
+include = ["**/languages/*/config.toml"]
+
+[[schemas]]
+path    = "https://raw.githubusercontent.com/kjanat/zed-editor/feature/extension-toml-schema/crates/extension_api/schemas/extension.schema.json"
+include = ["**/zed-*/extension.toml", "**/*-zed/extension.toml"]
+
+# AI Stuff
+[[schemas]]  # Documentation: https://developers.openai.com/codex/
+path    = "https://gist.githubusercontent.com/kjanat/5153798b521fbbc686932463327669c8/raw/codex-config.schema.json"
+include = [".codex/config.toml", "**/.codex/config.toml"]

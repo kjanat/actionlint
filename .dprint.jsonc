@@ -1,0 +1,48 @@
+{
+  "$schema": "https://dprint.dev/schemas/v0.json",
+  "exec": {
+    "cwd": "${configDir}",
+    "commands": [
+      {
+        "command": "tombi format - --stdin-filename {{file_path}}",
+        "exts": ["toml"],
+        "cacheKeyFiles": ["tombi.toml"],
+        "setupCommand": "npm i -g tombi"
+      },
+      { "command": "gofmt -s", "exts": ["go"] }
+    ]
+  },
+  "shfmt": { "useTabs": true, "binaryNextLine": true, "switchCaseIndent": true },
+  "pwsh": {
+    "braceStyle": "sameLine",
+    "useTabs": true,
+    "keywordCasing": true,
+    "spaceAroundOperator": true,
+    "spaceAroundPipe": true,
+    "spaceAfterSeparator": true
+  },
+  "dockerfile": { "associations": ["Dockerfile", "Dockerfile.*"] },
+  "markdown": { "textWrap": "maintain", "emphasisKind": "asterisks" },
+  "yaml": { "printWidth": 160 },
+  "sortPackageJson": { "associations": ["package.json"] },
+  "json": {
+    "jsonTrailingCommaFiles": ["**/.vscode/*.json", "**/.zed/{settings,tasks,debug}.json", "**/tsconfig*.json"],
+    "associations": ["package.json"]
+  },
+  "typescript": { "quoteStyle": "preferSingle", "useTabs": true },
+  "plugins": [
+    "https://plugins.dprint.dev/exec-0.7.3.json@a7898d5f1897e77bff474cec3d948c3ec3a7f455e32de2cc60c8adb9a5dd24aa",
+    "https://plugins.dprint.dev/dockerfile-0.4.1.wasm",
+    "https://plugins.dprint.dev/jakebailey/gofumpt-v0.0.14.wasm",
+    "https://plugins.dprint.dev/g-plane/pretty_yaml-v0.6.0.wasm",
+    "https://plugins.dprint.dev/dockerfile-0.4.1.wasm",
+    "https://plugins.dprint.dev/typescript-0.96.1.wasm",
+    "https://plugins.dprint.dev/markdown-0.22.1.wasm",
+    "https://plugins.dprint.dev/json-0.23.0.wasm",
+    "https://plugins.dprint.dev/sargunv/dprint-cmakefmt-0.1.0.wasm",
+    "https://plugins.dprint.dev/kjanat/pwsh-0.2.0.wasm",
+    "https://plugins.dprint.dev/kjanat/shfmt-1.0.0.wasm",
+    "https://plugins.dprint.dev/kjanat/sortpackagejson-0.2.1.wasm",
+  ],
+  "excludes": ["**/testdata/**"]
+}
