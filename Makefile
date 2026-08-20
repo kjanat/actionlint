@@ -1,4 +1,4 @@
-SRCS := $(filter-out %_test.go, $(wildcard *.go cmd/*/*.go)) go.mod go.sum .git-hooks/.timestamp
+SRCS := $(filter-out %_test.go, $(wildcard *.go cmd/*/*.go)) cmd/actionlint-action/sarif_template.txt go.mod go.sum .git-hooks/.timestamp
 TESTS := $(filter %_test.go, $(wildcard *.go cmd/*/*.go))
 TOOL := $(filter %_test.go, $(wildcard scripts/*/*.go))
 TESTDATA := $(wildcard \
