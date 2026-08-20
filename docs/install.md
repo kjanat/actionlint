@@ -69,12 +69,11 @@ nix-env -iA nixpkgs.actionlint
 brew install actionlint
 ```
 
-Alternatively, rhysd/actionlint repository also provides its own Homebrew cask, which is automatically updated on new releases.
-If you prefer it, tap the repository and install `actionlint` package with `--cask` option.
+That formula tracks the upstream project. To install this fork instead, use its own tap, which is updated automatically
+on every release:
 
 ```sh
-brew tap "rhysd/actionlint" "https://github.com/rhysd/actionlint"
-brew install --cask actionlint
+brew install kjanat/actionlint/actionlint
 ```
 
 > [!WARNING]

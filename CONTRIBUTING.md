@@ -10,21 +10,21 @@ maintain a heavy configuration file just for linting CI workflows.
 
 It's helpful to check if a similar patch has been rejected in the past before submitting it.
 
-# Reporting an issue
+## Reporting an issue
 
 To report a bug, please submit a new ticket on GitHub. It's helpful to search similar tickets before making it.
 
-https://github.com/rhysd/actionlint/issues/new
+https://github.com/kjanat/actionlint/issues/new
 
 Providing a reproducible workflow content is much appreciated. If only a small snippet of workflow is provided or no
 input is provided at all, such issue tickets may get lower priority because they are occasionally time consuming to
 investigate.
 
-# Sending a patch
+## Sending a patch
 
 Thank you for taking your time to improve this project. To send a patch, please submit a new pull request on GitHub.
 
-https://github.com/rhysd/actionlint/pulls
+https://github.com/kjanat/actionlint/pulls
 
 Before submitting your PR, please ensure the following points:
 
@@ -36,7 +36,7 @@ Before submitting your PR, please ensure the following points:
 Special thanks to the native English speakers for proofreading the documentation and error messages, as the author is not
 proficient in English.
 
-# Development
+## Development
 
 `make` (3.81 or later) is useful to run each tasks and reduce redundant builds/tests.
 
@@ -64,12 +64,12 @@ around linking libc. `make build` does this by default.
 
 ## Testing
 
-[![CI](https://github.com/rhysd/actionlint/actions/workflows/ci.yaml/badge.svg)](https://github.com/rhysd/actionlint/actions/workflows/ci.yaml)
-[![Generate](https://github.com/rhysd/actionlint/actions/workflows/generate.yaml/badge.svg)](https://github.com/rhysd/actionlint/actions/workflows/generate.yaml)
-[![Problem Matchers](https://github.com/rhysd/actionlint/actions/workflows/matcher.yaml/badge.svg)](https://github.com/rhysd/actionlint/actions/workflows/matcher.yaml)
-[![Download script](https://github.com/rhysd/actionlint/actions/workflows/download.yaml/badge.svg)](https://github.com/rhysd/actionlint/actions/workflows/download.yaml)
-[![Release](https://github.com/rhysd/actionlint/actions/workflows/release.yaml/badge.svg)](https://github.com/rhysd/actionlint/actions/workflows/release.yaml)
-[![Codecov](https://codecov.io/gh/rhysd/actionlint/graph/badge.svg?token=CgcOo0m9oW)](https://codecov.io/gh/rhysd/actionlint)
+[![CI](https://github.com/kjanat/actionlint/actions/workflows/ci.yaml/badge.svg)](https://github.com/kjanat/actionlint/actions/workflows/ci.yaml)
+[![Generate](https://github.com/kjanat/actionlint/actions/workflows/generate.yaml/badge.svg)](https://github.com/kjanat/actionlint/actions/workflows/generate.yaml)
+[![Problem Matchers](https://github.com/kjanat/actionlint/actions/workflows/matcher.yaml/badge.svg)](https://github.com/kjanat/actionlint/actions/workflows/matcher.yaml)
+[![Download script](https://github.com/kjanat/actionlint/actions/workflows/download.yaml/badge.svg)](https://github.com/kjanat/actionlint/actions/workflows/download.yaml)
+[![Release](https://github.com/kjanat/actionlint/actions/workflows/release.yaml/badge.svg)](https://github.com/kjanat/actionlint/actions/workflows/release.yaml)
+[![Codecov](https://codecov.io/gh/kjanat/actionlint/graph/badge.svg?token=CgcOo0m9oW)](https://codecov.io/gh/kjanat/actionlint)
 
 Run the following command at the root of this repository.
 
@@ -129,16 +129,13 @@ make lint
 
 ## Fuzzing
 
-Fuzz tests use [go-fuzz](https://github.com/dvyukov/go-fuzz). Install `go-fuzz` and `go-fuzz-build` in your system.
+The targets in [`fuzz/`](./fuzz) use [Go's built-in fuzzing](https://go.dev/doc/security/fuzz/), so no external tool is
+needed. Their seed corpora run as ordinary tests, which means `go test ./...` already compiles and exercises them.
 
-Since there are multiple fuzzing targets, `-func` argument is necessary. Specify a target which you want to run.
+`go test -fuzz` fuzzes exactly one target at a time, so name the one you want:
 
 ```sh
-# Create first corpus
-go-fuzz-build ./fuzz
-
-# Run fuzzer
-go-fuzz -bin ./actionlint_fuzz-fuzz.zip -func FuzzParse
+go test -run '^$' -fuzz '^FuzzParse$' ./fuzz
 ```
 
 or
@@ -146,6 +143,9 @@ or
 ```sh
 make fuzz FUZZ_FUNC=FuzzParse
 ```
+
+Running `make fuzz` without `FUZZ_FUNC` fails with a list of the available targets. Inputs that trigger a failure are
+written to `fuzz/testdata/fuzz/<target>/` and become part of the seed corpus once committed.
 
 ## Update the pinned Docker base images
 
@@ -167,6 +167,11 @@ To move the defaults to newer base images:
 4. Send the upgrade as its own pull request.
 
 ## Make a new release
+
+Updating [the Homebrew tap](https://github.com/kjanat/homebrew-actionlint) needs a `HOMEBREW_TAP_TOKEN` secret on this
+repository, because the built-in `GITHUB_TOKEN` cannot write to another one. It is a fine-grained personal access token
+whose repository access is `kjanat/homebrew-actionlint` alone, with `Contents: Read and write` and nothing else. The
+GoReleaser step fails without it.
 
 When releasing v1.2.3 as example:
 
@@ -242,7 +247,9 @@ automatically with `go generate`. The command runs [`generate-popular-actions`](
 The script also can detect new major releases of popular actions on GitHub by giving `-d` flag.
 
 The [`generate`](.github/workflows/generate.yaml) CI workflow weekly runs to detect new major releases and update
-`popular_actions.go`. Runs can be found [here](https://github.com/rhysd/actionlint/actions/workflows/generate.yaml).
+`popular_actions.go`. Runs can be found [actions/workflows/generate.yaml].
+
+[actions/workflows/generate.yaml]: https://github.com/kjanat/actionlint/actions/workflows/generate.yaml
 
 ### Maintain `all_webhooks.go`
 

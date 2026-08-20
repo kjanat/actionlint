@@ -56,7 +56,10 @@ jobs:
         run: echo VERSION="${GITHUB_REF#refs/tags/v}" >> "$GITHUB_ENV"
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with: { version: "~> v2", args: "release --clean --release-notes=${{ runner.temp }}/release-notes.md" }
-        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        env: {
+          GITHUB_TOKEN: "${{ github.token }}",
+          HOMEBREW_TAP_TOKEN: "${{ secrets.HOMEBREW_TAP_TOKEN }}",
+        }
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
         with: { subject-checksums: "./dist/actionlint_${{ env.VERSION }}_checksums.txt" }
       - name: Post-release download check

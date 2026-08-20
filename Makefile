@@ -73,11 +73,9 @@ endif
 
 b build: $(TARGET)
 
-actionlint_fuzz-fuzz.zip:
-	go-fuzz-build ./fuzz
-
-fuzz: actionlint_fuzz-fuzz.zip
-	go-fuzz -bin ./actionlint_fuzz-fuzz.zip -func $(FUZZ_FUNC)
+# go test -fuzz accepts exactly one target, so running without FUZZ_FUNC lists the available ones.
+fuzz:
+	go test -run '^$$' -fuzz '^$(FUZZ_FUNC)' ./fuzz
 
 man/actionlint.1 man/actionlint.1.html: export BUNDLE_GEMFILE := man/Gemfile
 man/actionlint.1 man/actionlint.1.html: man/actionlint.1.ronn
@@ -102,7 +100,6 @@ CHANGELOG.md:
 	changelog-from-release > CHANGELOG.md
 
 c clean:
-	rm -f ./$(TARGET) ./actionlint_fuzz-fuzz.zip ./man/actionlint.1 ./man/actionlint.1.html ./actionlint-workflow-ast
-	rm -rf ./corpus ./crashers
+	rm -f ./$(TARGET) ./man/actionlint.1 ./man/actionlint.1.html ./actionlint-workflow-ast
 
 .PHONY: all test clean build lint fuzz man bench cov b t c l CHANGELOG.md

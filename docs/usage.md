@@ -239,7 +239,7 @@ jobs:
       - uses: actions/checkout@v7
         with: { persist-credentials: false }
       - name: Check workflow files
-        uses: kjanat/actionlint@v1.11.0
+        uses: kjanat/actionlint@v1
 ```
 
 Docker actions require a Linux runner. `v1.11.0` is a versioned release tag, but
@@ -267,7 +267,7 @@ found:
 ```yaml
 - name: Check selected workflows
   id: actionlint
-  uses: kjanat/actionlint@v1.11.0
+  uses: kjanat/actionlint@v1
   with:
     files: |
       .github/workflows/ci.yaml
