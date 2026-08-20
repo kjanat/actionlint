@@ -1,2 +1,4 @@
 paths-ignore:
   - testdata
+
+threat-models: local
