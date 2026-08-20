@@ -91,6 +91,9 @@ type LinterOptions struct {
 	// function should return the modified rules.
 	// Note that syntax errors may be reported even if this function returns nil or an empty slice.
 	OnRulesCreated func([]Rule) []Rule
+	// Context bounds the lifetime of the linting. Cancelling it kills the shellcheck and pyflakes
+	// child processes which are running. When this value is nil, context.Background() is used.
+	Context context.Context
 	// More options will come here
 }
 
@@ -109,6 +112,7 @@ type Linter struct {
 	errFmt         *ErrorFormatter
 	cwd            string
 	onRulesCreated func([]Rule) []Rule
+	ctx            context.Context
 }
 
 // NewLinter creates a new Linter instance.
@@ -179,6 +183,11 @@ func NewLinter(out io.Writer, opts *LinterOptions) (*Linter, error) {
 		stdin = opts.StdinFileName
 	}
 
+	ctx := opts.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	l := &Linter{
 		NewProjects(),
 		out,
@@ -193,6 +202,7 @@ func NewLinter(out io.Writer, opts *LinterOptions) (*Linter, error) {
 		formatter,
 		cwd,
 		opts.OnRulesCreated,
+		ctx,
 	}
 
 	l.debug("Create a Linter instance with option %#v", opts)
@@ -326,9 +336,8 @@ func (l *Linter) LintFiles(filepaths []string, project *Project) ([]*Error, erro
 
 	cwd := l.cwd
 	cpus := runtime.NumCPU()
-	proc := newConcurrentProcess(cpus)
+	proc := newConcurrentProcess(l.ctx, cpus)
 	sema := semaphore.NewWeighted(int64(cpus))
-	ctx := context.Background()
 	dbg := l.debugWriter()
 	acf := NewLocalActionsCacheFactory(dbg)
 	rwcf := NewLocalReusableWorkflowCacheFactory(cwd, dbg)
@@ -363,7 +372,7 @@ func (l *Linter) LintFiles(filepaths []string, project *Project) ([]*Error, erro
 
 		eg.Go(func() error {
 			// Bound concurrency on reading files to avoid "too many files to open" error (issue #3)
-			if err := sema.Acquire(ctx, 1); err != nil {
+			if err := sema.Acquire(l.ctx, 1); err != nil {
 				return err
 			}
 			src, err := os.ReadFile(w.path)
@@ -452,7 +461,7 @@ func (l *Linter) LintFile(path string, project *Project) ([]*Error, error) {
 		}
 	}
 
-	proc := newConcurrentProcess(runtime.NumCPU())
+	proc := newConcurrentProcess(l.ctx, runtime.NumCPU())
 	dbg := l.debugWriter()
 	localActions := NewLocalActionsCache(project, dbg)
 	localReusableWorkflows := NewLocalReusableWorkflowCache(project, l.cwd, dbg)
@@ -497,7 +506,7 @@ func (l *Linter) Lint(path string, content []byte, project *Project) ([]*Error, 
 			project = p
 		}
 	}
-	proc := newConcurrentProcess(runtime.NumCPU())
+	proc := newConcurrentProcess(l.ctx, runtime.NumCPU())
 	dbg := l.debugWriter()
 	localActions := NewLocalActionsCache(project, dbg)
 	localReusableWorkflows := NewLocalReusableWorkflowCache(project, l.cwd, dbg)

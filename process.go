@@ -76,12 +76,13 @@ type concurrentProcess struct {
 	wg   sync.WaitGroup
 }
 
-// newConcurrentProcess creates a new ConcurrentProcess instance. The `par` argument represents how
-// many processes can be run in parallel. It is recommended to use the value returned from
-// runtime.NumCPU() for the argument.
-func newConcurrentProcess(par int) *concurrentProcess {
+// newConcurrentProcess creates a new ConcurrentProcess instance. The ctx argument acquires the
+// semaphore and runs each child process, so cancelling it kills the processes which are running.
+// The `par` argument represents how many processes can be run in parallel. It is recommended to
+// use the value returned from runtime.NumCPU() for the argument.
+func newConcurrentProcess(ctx context.Context, par int) *concurrentProcess {
 	return &concurrentProcess{
-		ctx:  context.Background(),
+		ctx:  ctx,
 		sema: semaphore.NewWeighted(int64(par)),
 	}
 }

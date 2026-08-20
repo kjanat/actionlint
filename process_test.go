@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"runtime"
@@ -42,7 +43,7 @@ func TestProcessRunConcurrently(t *testing.T) {
 		t.Skip("this test is flaky on Windows")
 	}
 
-	p := newConcurrentProcess(5)
+	p := newConcurrentProcess(t.Context(), 5)
 	sleep := testSkipIfNoCommand(t, p, "sleep")
 
 	start := time.Now()
@@ -66,13 +67,45 @@ func TestProcessRunConcurrently(t *testing.T) {
 	}
 }
 
+func TestProcessCancelStopsRunningCommand(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("this test is flaky on Windows")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	p := newConcurrentProcess(ctx, 1)
+	sleep := testSkipIfNoCommand(t, p, "sleep")
+
+	start := time.Now()
+	sleep.run([]string{"30"}, "", func(b []byte, err error) error {
+		return err
+	})
+
+	// Let the child process start before killing it
+	time.Sleep(100 * time.Millisecond)
+	cancel()
+
+	err := sleep.wait()
+	p.wait()
+
+	if err == nil {
+		t.Fatal("cancelling the context did not stop `sleep 30`")
+	}
+	if !strings.Contains(err.Error(), "was terminated") {
+		t.Fatalf("`sleep 30` should have been killed by the cancellation but the error was: %v", err)
+	}
+	if sec := time.Since(start).Seconds(); sec >= 5 {
+		t.Fatalf("`sleep 30` kept running after the cancellation. waiting for it took %v seconds", sec)
+	}
+}
+
 func TestProcessRunWithArgs(t *testing.T) {
 	if _, err := execabs.LookPath("echo"); err != nil {
 		t.Skipf("echo command is necessary to run this test: %s", err)
 	}
 
 	var done atomic.Bool
-	p := newConcurrentProcess(1)
+	p := newConcurrentProcess(t.Context(), 1)
 	echo, err := p.newCommandRunner("echo hello", false)
 	if err != nil {
 		t.Fatalf(`parsing "echo hello" failed: %v`, err)
@@ -96,7 +129,7 @@ func TestProcessRunWithArgs(t *testing.T) {
 }
 
 func TestProcessRunMultipleCommandsConcurrently(t *testing.T) {
-	p := newConcurrentProcess(3)
+	p := newConcurrentProcess(t.Context(), 3)
 
 	done := make([]bool, 5)
 	cmds := make([]*externalCommand, 0, 5)
@@ -128,7 +161,7 @@ func TestProcessRunMultipleCommandsConcurrently(t *testing.T) {
 }
 
 func TestProcessWaitMultipleCommandsFinish(t *testing.T) {
-	p := newConcurrentProcess(2)
+	p := newConcurrentProcess(t.Context(), 2)
 
 	done := make([]bool, 3)
 	for i := range 3 {
@@ -154,7 +187,7 @@ func TestProcessWaitMultipleCommandsFinish(t *testing.T) {
 }
 
 func TestProcessInputStdin(t *testing.T) {
-	p := newConcurrentProcess(1)
+	p := newConcurrentProcess(t.Context(), 1)
 	cat := testSkipIfNoCommand(t, p, "cat")
 	out := ""
 
@@ -181,7 +214,7 @@ func TestProcessInputStdin(t *testing.T) {
 // than the kernel pipe buffer used to deadlock on darwin because the payload
 // was written to cmd.StdinPipe() before cmd.Start().
 func TestProcessConcurrentStdinDoesNotDeadlock(t *testing.T) {
-	p := newConcurrentProcess(5)
+	p := newConcurrentProcess(t.Context(), 5)
 
 	// 64 KiB is above the default pipe buffer size on darwin and Linux so it
 	// forces the stdin copy to happen after the child has started.
@@ -221,7 +254,7 @@ func TestProcessConcurrentStdinDoesNotDeadlock(t *testing.T) {
 }
 
 func TestProcessErrorCommandNotFound(t *testing.T) {
-	p := newConcurrentProcess(1)
+	p := newConcurrentProcess(t.Context(), 1)
 	c := &externalCommand{
 		proc: p,
 		exe:  "this-command-does-not-exist",
@@ -251,7 +284,7 @@ func TestProcessErrorCommandNotFound(t *testing.T) {
 }
 
 func TestProcessErrorInCallback(t *testing.T) {
-	p := newConcurrentProcess(1)
+	p := newConcurrentProcess(t.Context(), 1)
 	echo := testSkipIfNoCommand(t, p, "echo")
 
 	echo.run([]string{}, "", func(b []byte, err error) error {
@@ -278,7 +311,7 @@ func TestProcessErrorInCallback(t *testing.T) {
 }
 
 func TestProcessErrorLinterFailed(t *testing.T) {
-	p := newConcurrentProcess(1)
+	p := newConcurrentProcess(t.Context(), 1)
 	ls := testSkipIfNoCommand(t, p, "ls")
 
 	// Running ls with directory which does not exist emulates external liter's failure.
@@ -312,7 +345,7 @@ func TestProcessErrorLinterFailed(t *testing.T) {
 }
 
 func TestProcessRunConcurrentlyAndWait(t *testing.T) {
-	p := newConcurrentProcess(2)
+	p := newConcurrentProcess(t.Context(), 2)
 	echo := testSkipIfNoCommand(t, p, "echo")
 
 	c := make(chan struct{})
@@ -335,7 +368,7 @@ func TestProcessRunConcurrentlyAndWait(t *testing.T) {
 }
 
 func TestProcessCombineStdoutAndStderr(t *testing.T) {
-	p := newConcurrentProcess(1)
+	p := newConcurrentProcess(t.Context(), 1)
 	bash := testSkipIfNoCommand(t, p, "bash")
 	bash.combineOutput = true
 	script := "echo 'hello stdout'; echo 'hello stderr' >&2"
@@ -365,7 +398,7 @@ func TestProcessCombineStdoutAndStderr(t *testing.T) {
 }
 
 func TestProcessCommandExitStatusNonZero(t *testing.T) {
-	p := newConcurrentProcess(1)
+	p := newConcurrentProcess(t.Context(), 1)
 	bash := testSkipIfNoCommand(t, p, "false")
 	done := make(chan error)
 
@@ -407,7 +440,7 @@ func TestProcessCommandlineParseError(t *testing.T) {
 		},
 	}
 
-	p := newConcurrentProcess(1)
+	p := newConcurrentProcess(t.Context(), 1)
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
 			_, err := p.newCommandRunner(tc.cmd, true)
