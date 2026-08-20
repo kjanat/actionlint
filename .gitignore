@@ -1,10 +1,6 @@
-/.bumptimestamp
-/.git-hooks/.timestamp
 /.github/actionlint.yaml
 /.github/actionlint.yml
 /.idea
-/.linttimestamp
-/.testtimestamp
 /.worktrees/
 /actionlint
 /actionlint-workflow-ast
@@ -16,7 +12,6 @@
 /coverage.out
 /crashers
 /env.sh
-/man/.bundle/
 /man/actionlint.1
 /man/actionlint.1.html
 /node_modules

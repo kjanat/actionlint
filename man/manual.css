@@ -1,0 +1,121 @@
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1f2328;
+  --heading: #1f2328;
+  --muted: #59636e;
+  --link: #0969da;
+  --rule: #d1d9e0;
+  --surface: #f6f8fa;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --fg: #e6edf3;
+    --heading: #f0f6fc;
+    --muted: #9198a1;
+    --link: #4493f8;
+    --rule: #3d444d;
+    --surface: #161b22;
+  }
+}
+
+body {
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+  max-width: 46rem;
+  background: var(--bg);
+  color: var(--fg);
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Helvetica,
+    Arial,
+    sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+#title-block-header {
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+h1.title {
+  margin: 0;
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    "SF Mono",
+    Menlo,
+    Consolas,
+    monospace;
+  font-size: 1.5rem;
+}
+
+h1,
+h2 {
+  margin: 2rem 0 0.5rem;
+  color: var(--heading);
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+h2 {
+  margin-left: 1rem;
+  color: var(--muted);
+  text-transform: none;
+}
+
+a {
+  color: var(--link);
+}
+
+code {
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    "SF Mono",
+    Menlo,
+    Consolas,
+    monospace;
+  font-size: 0.9em;
+}
+
+body > p,
+body > ul,
+body > dl,
+body > pre {
+  margin-left: 1rem;
+}
+
+pre {
+  overflow-x: auto;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  background: var(--surface);
+  line-height: 1.45;
+}
+
+dt {
+  margin-top: 1rem;
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    "SF Mono",
+    Menlo,
+    Consolas,
+    monospace;
+  font-size: 0.9rem;
+}
+
+dt em {
+  color: var(--muted);
+}
+
+dd {
+  margin-left: 2rem;
+}

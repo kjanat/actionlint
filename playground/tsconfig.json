@@ -1,10 +1,15 @@
 {
   "compilerOptions": {
-    "target": "es2019",
-    "module": "none",
-    "moduleResolution": "node",
-    "sourceMap": true,
-    "removeComments": true,
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": [
+      "ESNext",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "allowJs": true,
+    "checkJs": false,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
@@ -13,11 +18,17 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": [
+      "node",
+      "vite/client"
+    ],
+    "noEmit": true,
+    "isolatedModules": true
   },
-  "files": [
-    "index.ts",
-    "lib.d.ts",
-    "test.ts"
+  "include": [
+    "src",
+    "vite.config.ts",
+    "eslint.config.mjs"
   ]
 }

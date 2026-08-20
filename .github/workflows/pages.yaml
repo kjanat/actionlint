@@ -19,35 +19,15 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with: {
-          node-version: "lts/*",
-          cache: npm,
-          cache-dependency-path: package-lock.json,
-        }
-      - name: Build and test playground
-        run: |
-          npm ci
-          make -C playground build test
-      - uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
-        with: { ruby-version: "3.4" }
+        with: { node-version: "lts/*", cache: npm, cache-dependency-path: package-lock.json }
+      - uses: $/.github/actions/setup-pandoc
       - name: Build command manual
-        env: { BUNDLE_GEMFILE: man/Gemfile }
-        run: |
-          bundle install
-          bundle exec ronn man/actionlint.1.ronn
-          sed -i 's|</head>|<link rel="stylesheet" href="dark.css">\n</head>|' man/actionlint.1.html
-      - name: Package playground
-        run: |
-          mkdir playground-dist
-          cp playground/index.html playground/index.js playground/index.js.map playground/index.ts playground/main.wasm playground/style.css playground-dist/
-          cp -R playground/lib playground-dist/lib
-          cp playground/index.html playground-dist/404.html
-          cp man/actionlint.1.html playground-dist/man.html
-          cp man/actionlint.1.html playground-dist/usage.html
-          cp man/dark.css playground-dist/dark.css
+        run: make man
+      - name: Build and test playground
+        run: npm ci; make -C playground build test
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
-        with: { path: playground-dist }
+        with: { path: playground/dist }
 
   deploy:
     needs: build

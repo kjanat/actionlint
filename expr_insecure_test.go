@@ -2,6 +2,7 @@ package actionlint
 
 import (
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -53,7 +54,7 @@ func TestExprInsecureBuiltinUntrustedInputs(t *testing.T) {
 	var rec func(m map[string]*UntrustedInputMap, path []string)
 	rec = func(m map[string]*UntrustedInputMap, path []string) {
 		for k, v := range m {
-			p := append(path, k)
+			p := append(slices.Clone(path), k)
 			if k == "*" {
 				if len(m) != 1 {
 					t.Errorf("%v has * key but it also has other keys in %v", k, p)
@@ -663,7 +664,7 @@ func BenchmarkInsecureDetectUntrustedInputs(b *testing.B) {
 	untrustedNodes := parseNodes(untrustedExprs)
 
 	b.Run("UntrustedInput", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			c := NewUntrustedInputChecker(BuiltinUntrustedInputs)
 			for j, n := range untrustedNodes {
 				c.Init()
@@ -719,7 +720,7 @@ func BenchmarkInsecureDetectUntrustedInputs(b *testing.B) {
 	trustedNodes := parseNodes(trustedExprs)
 
 	b.Run("NoUntrustedInput", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			c := NewUntrustedInputChecker(BuiltinUntrustedInputs)
 			for j, n := range trustedNodes {
 				c.Init()

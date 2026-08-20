@@ -56,14 +56,10 @@ main {
   display: none;
 }
 
-.CodeMirror {
+.cm-editor {
   height: auto;
   border: solid 1px #ccc;
   border-radius: 4px;
-}
-
-.error-marker {
-  width: 1em;
 }
 
 #lint-result {
@@ -102,7 +98,7 @@ footer {
     color-scheme: dark;
   }
 
-  .CodeMirror {
+  .cm-editor {
     border: solid 1px #555;
   }
 

@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/kjanat/actionlint"
+	"actionlint.kjanat.dev"
 
 	_ "time/tzdata"
 )

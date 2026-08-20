@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -134,8 +135,8 @@ func (cmd *Command) Main(args []string) int {
 	flags := flag.NewFlagSet(args[0], flag.ContinueOnError)
 	flags.SetOutput(cmd.Stderr)
 	flags.Var(&ignorePats, "ignore", "Regular expression matching to error messages you want to ignore. This flag is repeatable")
-	flags.StringVar(&opts.Shellcheck, "shellcheck", "shellcheck", "Command name or file path of \"shellcheck\" external command. If empty, shellcheck integration will be disabled")
-	flags.StringVar(&opts.Pyflakes, "pyflakes", "pyflakes", "Command name or file path of \"pyflakes\" external command. If empty, pyflakes integration will be disabled")
+	flags.StringVar(&opts.Shellcheck, "shellcheck", "shellcheck", "Command line of \"shellcheck\" external command. A command name, a file path, or a command with flags such as \"shellcheck -e SC2086\". If empty, shellcheck integration will be disabled")
+	flags.StringVar(&opts.Pyflakes, "pyflakes", "pyflakes", "Command line of \"pyflakes\" external command. A command name, a file path, or a command with flags such as \"python3 -m pyflakes\" or \"uvx pyflakes\". If empty, pyflakes integration will be disabled")
 	flags.BoolVar(&opts.Oneline, "oneline", false, "Use one line per one error. Useful for reading error messages from programs")
 	flags.StringVar(&opts.Format, "format", "", "Custom template to format error messages in Go template syntax. See the usage documentation for more details")
 	flags.StringVar(&opts.ConfigFile, "config-file", "", "File path to config file")
@@ -151,7 +152,7 @@ func (cmd *Command) Main(args []string) int {
 		flags.PrintDefaults()
 	}
 	if err := flags.Parse(args[1:]); err != nil {
-		if err == flag.ErrHelp {
+		if errors.Is(err, flag.ErrHelp) {
 			// When -h or -help
 			return ExitStatusSuccessNoProblem
 		}

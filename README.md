@@ -51,7 +51,7 @@ jobs:
 
 **actionlint reports 7 errors:**
 
-```
+```console
 test.yaml:3:5: unexpected key "branch" for "push" section. expected one of "branches", "branches-ignore", "paths", "paths-ignore", "tags", "tags-ignore", "types", "workflows" [syntax-check]
   |
 3 |     branch: main
@@ -90,7 +90,7 @@ image, using the repository as a GitHub Action, or by `go install`. See
 or run via Docker container.
 
 ```sh
-go install github.com/kjanat/actionlint/cmd/actionlint@latest
+go install actionlint.kjanat.dev/cmd/actionlint@latest
 ```
 
 Basically all you need to do is run the `actionlint` command in your repository. actionlint automatically detects workflows and
@@ -196,8 +196,8 @@ actionlint is distributed under [the MIT license](./LICENSE.txt).
 
 [ci-badge]: https://github.com/rhysd/actionlint/actions/workflows/ci.yaml/badge.svg
 [ci]: https://github.com/rhysd/actionlint/actions/workflows/ci.yaml
-[apidoc-badge]: https://pkg.go.dev/badge/github.com/kjanat/actionlint.svg
-[apidoc]: https://pkg.go.dev/github.com/kjanat/actionlint
+[apidoc-badge]: https://pkg.go.dev/badge/actionlint.kjanat.dev.svg
+[apidoc]: https://pkg.go.dev/actionlint.kjanat.dev
 [repo]: https://github.com/rhysd/actionlint
 [playground]: https://kjanat.github.io/actionlint/
 [shellcheck]: https://github.com/koalaman/shellcheck

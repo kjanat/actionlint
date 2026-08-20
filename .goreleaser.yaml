@@ -1,8 +1,10 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+---
 version: 2
 
 release:
   draft: false
-  prerelease: false
+  prerelease: "false"
 
 before:
   hooks:
@@ -11,7 +13,7 @@ before:
 builds:
   - <<: &build_defaults
       main: ./cmd/actionlint
-      ldflags: -s -w -X github.com/kjanat/actionlint.version={{.Version}} -X "github.com/kjanat/actionlint.installedFrom=installed by downloading from release page"
+      ldflags: -s -w -X actionlint.kjanat.dev.version={{.Version}} -X "actionlint.kjanat.dev.installedFrom=installed by downloading from release page"
       env:
         - CGO_ENABLED=0
     id: macos
@@ -21,17 +23,17 @@ builds:
   - <<: *build_defaults
     id: linux
     goos: [linux]
-    goarch: [386, arm, amd64, arm64]
+    goarch: ["386", arm, amd64, arm64]
 
   - <<: *build_defaults
     id: windows
     goos: [windows]
-    goarch: [386, amd64, arm64]
+    goarch: ["386", amd64, arm64]
 
   - <<: *build_defaults
     id: freebsd
     goos: [freebsd]
-    goarch: [386, amd64]
+    goarch: ["386", amd64]
 
 checksum:
   name_template: "actionlint_{{.Version}}_checksums.txt"
@@ -62,12 +64,12 @@ homebrew_casks:
     dependencies:
       - formula: shellcheck
     repository:
-      owner: rhysd
-      name: actionlint
+      owner: kjanat
+      name: homebrew-actionlint
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     commit_author:
       name: "github-actions[bot]"
       email: "41898282+github-actions[bot]@users.noreply.github.com"
-    skip_upload: true
 
 changelog:
   disable: true

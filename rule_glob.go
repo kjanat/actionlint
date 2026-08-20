@@ -72,7 +72,7 @@ func (rule *RuleGlob) checkFilePathGlobs(filter *WebhookEventFilter) {
 	}
 }
 
-func (rule *RuleGlob) globErrors(errs []InvalidGlobPattern, pos *Pos, quoted bool) {
+func (rule *RuleGlob) globErrors(errs []InvalidGlobPatternError, pos *Pos, quoted bool) {
 	for i := range errs {
 		err := &errs[i]
 		p := *pos

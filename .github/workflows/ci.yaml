@@ -76,7 +76,8 @@ jobs:
       - run: go build -race ./cmd/actionlint
 
       - name: Dog fooding 🐶
-        run: echo "::add-matcher::.github/actionlint-matcher.json"; ./actionlint -color
+        # actionlint passes --norc to shellcheck, ignoring .shellcheckrc.
+        run: echo "::add-matcher::.github/actionlint-matcher.json"; ./actionlint -color -shellcheck 'shellcheck -o all'
 
       - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with: { use_oidc: true }
@@ -109,7 +110,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        # staticcheck 2026.1 reads export data up to Go 1.26
         with: { go-version: "1.26", check-latest: true }
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       - name: Install dependencies
@@ -119,21 +119,12 @@ jobs:
           uv tool install pyflakes
           shellcheck --version
           pyflakes --version
-      - name: Check Go sources are formatted
-        run: |
-          diffs="$(gofmt -d ./*.go ./cmd/*/*.go ./scripts/*/*.go ./playground/*.go)"
-          if [[ "$diffs" != "" ]]; then
-            echo "$diffs" >&2
-            exit 1
-          fi
-      - name: Install staticcheck and govulncheck
-        run: |
-          go install honnef.co/go/tools/cmd/staticcheck@latest
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Install golangci-lint
+        uses: golangci/golangci-lint-action@d583c34f0599d37dbac4a198b9c83201be380893 # v9.3.0
+        with: { version: v2.13.1, install-only: true }
       - run: make lint SKIP_GO_GENERATE=true
       - name: Lint bash scripts
-        run: shellcheck ./scripts/*.bash ./playground/*.bash
+        run: shellcheck ./scripts/*.bash
   docker:
     name: Dockerfile
     runs-on: ubuntu-latest
@@ -150,12 +141,12 @@ jobs:
         }
       - name: Test Docker image
         run: docker container run
-          --mount type=bind,source="$(pwd)",target=/w
+          --mount type=bind,source="${PWD}",target=/w
           -- actionlint:test -color -verbose
       - name: Lint Dockerfile with hadolint
         run: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 --strict-labels - < Dockerfile
       - name: Lint Dockerfile with droast
-        uses: immanuwell/dockerfile-roast@a9b99073c7b85d368387ba0eef1f48f550f92484 # 1.6.0
+        uses: immanuwell/dockerfile-roast@50689402f3eced348cf4bd822ffb57871b5c02d0 # 1.6.1
   action:
     name: GitHub Action
     runs-on: ubuntu-latest

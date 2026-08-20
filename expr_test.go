@@ -49,7 +49,7 @@ func BenchmarkExprRealWorld(b *testing.B) {
 	}
 
 	b.Run("Lex", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			for _, expr := range exprs {
 				l := NewExprLexer(expr)
 				for {
@@ -66,7 +66,7 @@ func BenchmarkExprRealWorld(b *testing.B) {
 	})
 
 	b.Run("LexParse", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			for _, expr := range exprs {
 				if _, err := NewExprParser().Parse(NewExprLexer(expr)); err != nil {
 					b.Fatal(err)
@@ -76,7 +76,7 @@ func BenchmarkExprRealWorld(b *testing.B) {
 	})
 
 	b.Run("LexParseSema", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			for _, expr := range exprs {
 				root, err := NewExprParser().Parse(NewExprLexer(expr + "}}"))
 				if err != nil {
@@ -88,7 +88,7 @@ func BenchmarkExprRealWorld(b *testing.B) {
 	})
 
 	trees := []ExprNode{}
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		for _, expr := range exprs {
 			t, err := NewExprParser().Parse(NewExprLexer(expr))
 			if err != nil {
@@ -99,7 +99,7 @@ func BenchmarkExprRealWorld(b *testing.B) {
 	}
 
 	b.Run("Sema-untrust", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			for _, t := range trees {
 				NewExprSemanticsChecker(true, nil).Check(t)
 			}
@@ -107,7 +107,7 @@ func BenchmarkExprRealWorld(b *testing.B) {
 	})
 
 	b.Run("Sema-trust", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			for _, t := range trees {
 				NewExprSemanticsChecker(false, nil).Check(t)
 			}

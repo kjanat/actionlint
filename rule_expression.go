@@ -466,12 +466,12 @@ func (rule *RuleExpression) checkArrayExpression(s *String, what, workflowKey st
 	return rule.checkArrayTy(ty, s.Pos, what)
 }
 
-func (rule *RuleExpression) checkNumberExpression(s *String, what, workflowKey string) ExprType {
+func (rule *RuleExpression) checkNumberExpression(s *String, what, workflowKey string) {
 	ty := rule.checkOneExpression(s, what, workflowKey)
 	if ty == nil {
-		return nil
+		return
 	}
-	return rule.checkNumberTy(ty, s.Pos, what)
+	rule.checkNumberTy(ty, s.Pos, what)
 }
 
 func (rule *RuleExpression) checkEnv(env *Env, workflowKey string) {

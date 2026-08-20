@@ -1,6 +1,10 @@
-SRCS := $(filter-out %_test.go, $(wildcard *.go cmd/*/*.go)) cmd/actionlint-action/sarif_template.txt go.mod go.sum .git-hooks/.timestamp
+# GNU make's built-in `%.out: %` rule deletes an expected-output fixture and copies its input
+# directory over it whenever the directory is newer, so no built-in rule may apply here.
+MAKEFLAGS += --no-builtin-rules
+
+SRCS := $(filter-out %_test.go, $(wildcard *.go cmd/*/*.go)) cmd/actionlint-action/sarif_template.txt go.mod go.sum
 TESTS := $(filter %_test.go, $(wildcard *.go cmd/*/*.go))
-TOOL := $(filter %_test.go, $(wildcard scripts/*/*.go))
+TOOL := $(wildcard scripts/*/*.go)
 TESTDATA := $(wildcard \
 		testdata/examples/* \
 		testdata/err/* \
@@ -14,6 +18,7 @@ GO_GEN_SRCS := scripts/generate-popular-actions/main.go \
 				scripts/generate-popular-actions/popular_actions.json \
 				scripts/generate-webhook-events/main.go \
 				scripts/generate-availability/main.go
+PANDOC := pandoc --standalone --from=markdown-smart --syntax-highlighting=none
 
 ifeq ($(OS),Windows_NT)
 	SHELL := powershell.exe
@@ -31,15 +36,11 @@ endif
 
 all: build test lint
 
-.testtimestamp: $(TESTS) $(SRCS) $(TESTDATA) $(TOOL)
+t test:
 	go test $(RACE) ./...
-	$(TOUCH) .testtimestamp
-
-t test: .testtimestamp
 
 coverage.out: $(TESTS) $(SRCS) $(TESTDATA) $(TOOL)
 	go test $(RACE) -coverprofile coverage.out -covermode=atomic ./...
-	$(TOUCH) .testtimestamp
 
 coverage.html: coverage.out
 	go tool cover -html=coverage.out -o coverage.html
@@ -47,18 +48,13 @@ coverage.html: coverage.out
 cov: coverage.out coverage.html
 	go tool cover -func=coverage.out
 
-.linttimestamp: $(TESTS) $(SRCS) $(TOOL) docs/checks.md
-	go vet ./...
-	# ./... is not available because ./node_modules/ contains some Go packages
-	staticcheck ./ ./scripts/... ./cmd/...
-	govulncheck ./...
+l lint:
+	golangci-lint run
+	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 ifneq ($(OS),Windows_NT)
-	GOOS=js GOARCH=wasm staticcheck ./playground
+	GOOS=js GOARCH=wasm golangci-lint run ./playground
 	go run ./scripts/check-checks -quiet ./docs/checks.md
 endif
-	$(TOUCH) .linttimestamp
-
-l lint: .linttimestamp
 
 popular_actions.go all_webhooks.go availability.go: $(GO_GEN_SRCS)
 ifdef SKIP_GO_GENERATE
@@ -76,17 +72,21 @@ endif
 
 b build: $(TARGET)
 
-actionlint_fuzz-fuzz.zip:
-	go-fuzz-build ./fuzz
+# go test -fuzz accepts exactly one target.
+fuzz:
+ifdef FUZZ_FUNC
+	go test -run '^$$' -fuzz '^$(FUZZ_FUNC)$$' ./fuzz
+else
+	go test -list '^Fuzz' ./fuzz
+endif
 
-fuzz: actionlint_fuzz-fuzz.zip
-	go-fuzz -bin ./actionlint_fuzz-fuzz.zip -func $(FUZZ_FUNC)
+man/actionlint.1: man/actionlint.1.md man/inline-code-bold.lua
+	$(PANDOC) --to=man --metadata=title:ACTIONLINT --lua-filter=man/inline-code-bold.lua --output=$@ $<
 
-man/actionlint.1 man/actionlint.1.html: export BUNDLE_GEMFILE := man/Gemfile
-man/actionlint.1 man/actionlint.1.html: man/actionlint.1.ronn
-	bundle exec ronn man/actionlint.1.ronn
+man/actionlint.1.html: man/actionlint.1.md man/manual.css
+	$(PANDOC) --to=html --css=manual.css --output=$@ $<
 
-man: man/actionlint.1
+man: man/actionlint.1 man/actionlint.1.html
 
 bench:
 	go test -bench Lint -benchmem
@@ -101,17 +101,10 @@ scripts/generate-actionlint-matcher/test/no_escape.txt: $(TARGET)
 scripts/generate-actionlint-matcher/test/want.json: $(TARGET)
 	./actionlint -format '{{json .}}' ./testdata/err/one_error.yaml > scripts/generate-actionlint-matcher/test/want.json || true
 
-CHANGELOG.md: .bumptimestamp
+CHANGELOG.md:
 	changelog-from-release > CHANGELOG.md
 
 c clean:
-	rm -f ./$(TARGET) ./.testtimestamp ./.linttimestamp ./actionlint_fuzz-fuzz.zip ./man/actionlint.1 ./man/actionlint.1.html ./actionlint-workflow-ast
-	rm -rf ./corpus ./crashers
+	rm -f ./$(TARGET) ./man/actionlint.1 ./man/actionlint.1.html ./actionlint-workflow-ast
 
-.git-hooks/.timestamp: .git-hooks/pre-push
-ifneq ($(OS),Windows_NT)
-	[ -z "${CI}" ] && git config core.hooksPath .git-hooks || true
-endif
-	$(TOUCH) .git-hooks/.timestamp
-
-.PHONY: all test clean build lint fuzz man bench cov b t c l
+.PHONY: all test clean build lint fuzz man bench cov b t c l CHANGELOG.md

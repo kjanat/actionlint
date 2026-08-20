@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/kjanat/actionlint"
+	"actionlint.kjanat.dev"
 )
 
 func ExampleLinter() {

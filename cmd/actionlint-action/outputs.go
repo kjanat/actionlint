@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/kjanat/actionlint"
+	"actionlint.kjanat.dev"
 )
 
 type namedOutput struct {

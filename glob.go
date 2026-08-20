@@ -18,8 +18,8 @@ import (
 //   - `man git-check-ref-format` for more details
 //   - \ is invalid character for ref names. it means that \ can be used only for escaping special chars
 
-// InvalidGlobPattern is an error on invalid glob pattern.
-type InvalidGlobPattern struct {
+// InvalidGlobPatternError is an error on invalid glob pattern.
+type InvalidGlobPatternError struct {
 	// Message is a human readable error message.
 	Message string
 	// Column is a column number of the error in the glob pattern. This value is 1-based, but zero
@@ -29,18 +29,18 @@ type InvalidGlobPattern struct {
 	Column int
 }
 
-func (err *InvalidGlobPattern) Error() string {
+func (err *InvalidGlobPatternError) Error() string {
 	return fmt.Sprintf("%d: %s", err.Column, err.Message)
 }
 
-func (err *InvalidGlobPattern) String() string {
+func (err *InvalidGlobPatternError) String() string {
 	return err.Error()
 }
 
 type globValidator struct {
 	isRef bool
 	prec  bool
-	errs  []InvalidGlobPattern
+	errs  []InvalidGlobPatternError
 	scan  scanner.Scanner
 }
 
@@ -51,7 +51,7 @@ func (v *globValidator) error(msg string) {
 	if p.Line > 1 {
 		c = 0 // fallback to 0
 	}
-	v.errs = append(v.errs, InvalidGlobPattern{msg, c})
+	v.errs = append(v.errs, InvalidGlobPatternError{msg, c})
 }
 
 func (v *globValidator) unexpected(char rune, what, why string) {
@@ -62,7 +62,7 @@ func (v *globValidator) unexpected(char rune, what, why string) {
 
 	while := ""
 	if what != "" {
-		while = fmt.Sprintf(" while checking %s", what)
+		while = " while checking " + what
 	}
 
 	v.error(fmt.Sprintf("invalid glob pattern. %s%s. %s", unexpected, while, why))
@@ -79,7 +79,7 @@ func (v *globValidator) invalidRefChar(c rune, why string) {
 }
 
 func (v *globValidator) init(pat string) {
-	v.errs = []InvalidGlobPattern{}
+	v.errs = []InvalidGlobPatternError{}
 	v.prec = false
 	v.scan.Init(strings.NewReader(pat))
 	v.scan.Error = func(s *scanner.Scanner, m string) {
@@ -147,8 +147,7 @@ func (v *globValidator) validateNext() bool {
 
 				chars += 2 // actually one or more. but this is ok since we only check chars > 1 later
 				s := c
-				//lint:ignore SA4006 c should always holds the current character even if it is unused
-				c = v.scan.Next() // eat -
+				v.scan.Next() // eat -
 				switch v.scan.Peek() {
 				case ']':
 					c = v.scan.Next() // eat ]
@@ -223,7 +222,7 @@ func (v *globValidator) validate(pat string) {
 	}
 }
 
-func validateGlob(pat string, isRef bool) []InvalidGlobPattern {
+func validateGlob(pat string, isRef bool) []InvalidGlobPatternError {
 	v := globValidator{}
 	v.isRef = isRef
 	v.validate(pat)
@@ -233,25 +232,25 @@ func validateGlob(pat string, isRef bool) []InvalidGlobPattern {
 // ValidateRefGlob checks a given input as glob pattern for Git ref names. It returns list of
 // errors found by the validation. See the following URL for more details of the syntax:
 // https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
-func ValidateRefGlob(pat string) []InvalidGlobPattern {
+func ValidateRefGlob(pat string) []InvalidGlobPatternError {
 	return validateGlob(pat, true)
 }
 
 // ValidatePathGlob checks a given input as glob pattern for file paths. It returns list of
 // errors found by the validation. See the following URL for more details of the syntax:
 // https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
-func ValidatePathGlob(pat string) []InvalidGlobPattern {
+func ValidatePathGlob(pat string) []InvalidGlobPatternError {
 	p := strings.TrimSpace(pat)
 
-	var errs []InvalidGlobPattern
+	var errs []InvalidGlobPatternError
 	if pat != p {
-		errs = append(errs, InvalidGlobPattern{"leading and trailing spaces are not allowed in glob path", 0})
+		errs = append(errs, InvalidGlobPatternError{"leading and trailing spaces are not allowed in glob path", 0})
 	}
 
 	// '.' is not handled by path filter (#521)
 	p = strings.TrimPrefix(p, "!")
 	if p == "." || p == ".." || strings.HasPrefix(p, "./") || strings.HasPrefix(p, "../") {
-		errs = append(errs, InvalidGlobPattern{"'.' and '..' are not allowed in glob path", 0})
+		errs = append(errs, InvalidGlobPatternError{"'.' and '..' are not allowed in glob path", 0})
 	}
 
 	if len(errs) > 0 {

@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -496,7 +497,7 @@ func TestReusableWorkflowConvertWorkflowPathToSpec(t *testing.T) {
 		{
 			what: "current dir",
 			proj: p,
-			path: filepath.Join("workflow.yaml"),
+			path: "workflow.yaml",
 			want: "./cwd/workflow.yaml",
 			ok:   true,
 		},
@@ -846,13 +847,13 @@ func TestReusableWorkflowMetadataCacheWriteFromFileAndASTNodeConcurrently(t *tes
 	fromNode := func() {
 		c.WriteWorkflowCallEvent("workflow.yaml", &WorkflowCallEvent{})
 		if _, ok := c.readCache("./workflow.yaml"); !ok {
-			err <- fmt.Errorf("Cache was not created from WorkflowCallEvent")
+			err <- errors.New("Cache was not created from WorkflowCallEvent")
 			return
 		}
 		ret <- struct{}{}
 	}
 
-	for i := 0; i < n/2; i++ {
+	for range n / 2 {
 		go fromFile()
 		go fromNode()
 	}

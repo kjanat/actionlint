@@ -3,6 +3,8 @@ interface ActionlintError {
 	message: string;
 	line: number;
 	column: number;
+	// Column where actionlint's `^~~~~` indicator ends, inclusive. Equal to column when there is none.
+	endColumn: number;
 }
 
 interface Window {
@@ -14,8 +16,6 @@ interface Window {
 }
 
 declare class Go {
-	importObject: Imports;
-	run(mod: Instance): Promise<unknown>;
+	importObject: WebAssembly.Imports;
+	run(mod: WebAssembly.Instance): Promise<unknown>;
 }
-
-declare const isMobile: IsMobile.isMobileResult;

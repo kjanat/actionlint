@@ -14,8 +14,8 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev"
 	"github.com/google/go-cmp/cmp"
-	"github.com/kjanat/actionlint"
 )
 
 func Actionlint(src []byte) ([]byte, error) {
@@ -268,6 +268,10 @@ func (u *Updater) Update() {
 			u.state(stateAnchor, "Found new <a> ID "+id)
 		}
 	case stateAnchor:
+		if l == "" {
+			// dprint's markdown plugin separates an anchor from its heading with a blank line.
+			break
+		}
 		if isHeading {
 			h := strings.TrimPrefix(l, "## ")
 			if n, ok := u.headings[h]; ok {
@@ -308,7 +312,7 @@ func (u *Updater) Update() {
 	case stateOutputHeader:
 		if isSkipOutput {
 			u.state(stateAfterOutput, "Skip updating output due to the comment")
-		} else if l == "```" {
+		} else if strings.HasPrefix(l, "```") {
 			u.state(stateOutputBlock, "Start code block for output")
 		}
 	case stateOutputBlock:
@@ -366,7 +370,7 @@ func Main(args []string) error {
 	}
 
 	if err := flags.Parse(args[1:]); err != nil {
-		if err == flag.ErrHelp {
+		if errors.Is(err, flag.ErrHelp) {
 			return nil
 		}
 		return err

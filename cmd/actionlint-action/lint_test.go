@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kjanat/actionlint"
+	"actionlint.kjanat.dev"
 )
 
 const cleanWorkflow = `on: push

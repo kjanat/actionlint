@@ -1,4 +1,4 @@
-module github.com/kjanat/actionlint
+module actionlint.kjanat.dev
 
 go 1.26.0
 

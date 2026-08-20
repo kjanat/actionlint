@@ -258,7 +258,7 @@ func TestErrorSortErrorsByPosition(t *testing.T) {
 
 			slices.SortFunc(errs, compareErrors)
 
-			for i := 0; i < len(errs)-1; i++ {
+			for i := range len(errs) - 1 {
 				l, r := errs[i], errs[i+1]
 				sorted := l.Line <= r.Line
 				if l.Line == r.Line {
@@ -426,6 +426,17 @@ func TestErrorGetTemplateFieldsExplicitEndColumnAfterUnicode(t *testing.T) {
 	}
 	if f.EndColumn != 11 {
 		t.Fatalf("end column is %d but wanted 11", f.EndColumn)
+	}
+}
+
+func TestErrorGetTemplateFieldsEndColumnAfterWideRunes(t *testing.T) {
+	err := errorAt(&Pos{Line: 1, Col: 5}, "kind", "this is message")
+	f := err.GetTemplateFields([]byte("日本語 $foo"))
+	if f.Snippet != "日本語 $foo\n       ^~~~" {
+		t.Fatalf("unexpected snippet: %q", f.Snippet)
+	}
+	if f.EndColumn != 8 {
+		t.Fatalf("end column is %d but wanted 8", f.EndColumn)
 	}
 }
 

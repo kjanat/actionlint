@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kjanat/actionlint"
+	"actionlint.kjanat.dev"
 )
 
 type recordedLint struct {

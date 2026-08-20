@@ -3,8 +3,10 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"go/format"
@@ -16,8 +18,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
-	"github.com/kjanat/actionlint"
+	"actionlint.kjanat.dev"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -95,7 +98,15 @@ type gen struct {
 
 func newGen(stdout, stderr, dbgout io.Writer) *gen {
 	l := log.New(dbgout, "", log.LstdFlags)
-	return &gen{stdout, stderr, l, defaultPopularActionsJSON, http.DefaultClient}
+	return &gen{stdout, stderr, l, defaultPopularActionsJSON, &http.Client{Timeout: 30 * time.Second}}
+}
+
+func (g *gen) get(ctx context.Context, method, url string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	return g.client.Do(req)
 }
 
 func (g *gen) registry() ([]*registry, error) {
@@ -127,44 +138,53 @@ func (g *gen) fetchRemote() (map[string]*actionlint.ActionMetadata, error) {
 	reqs := make(chan *request)
 	done := make(chan struct{})
 
-	for i := 0; i <= 4; i++ {
+	// Cancel requests already in flight when this function returns. Closing done only stops
+	// workers from picking up new work.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	fetch := func(req *request) *fetched {
+		url := req.action.rawURL(req.tag)
+		g.log.Println("Start fetching", url)
+		res, err := g.get(ctx, http.MethodGet, url)
+		if err != nil {
+			return &fetched{err: fmt.Errorf("could not fetch %s: %w", url, err)}
+		}
+		defer func() { _ = res.Body.Close() }()
+		if res.StatusCode < 200 || 300 <= res.StatusCode {
+			return &fetched{err: fmt.Errorf("request was not successful %s: %s", url, res.Status)}
+		}
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			return &fetched{err: fmt.Errorf("could not read body for %s: %w", url, err)}
+		}
+		spec := req.action.spec(req.tag)
+		var meta actionlint.ActionMetadata
+		if err := yaml.Unmarshal(body, &meta); err != nil &&
+			// treosh/lighthouse-ci-action's metadata causes parse error due to typo. Ignore the error not to stop codegen
+			// https://github.com/treosh/lighthouse-ci-action/pull/153
+			(!strings.HasPrefix(spec, "treosh/lighthouse-ci-action@") || !strings.Contains(err.Error(), "unexpected key")) {
+			return &fetched{err: fmt.Errorf("could not parse metadata for %s: %w", url, err)}
+		}
+		if req.action.SkipInputs {
+			meta.SkipInputs = true
+		}
+		if req.action.SkipOutputs {
+			meta.SkipOutputs = true
+		}
+		return &fetched{spec: spec, meta: &meta}
+	}
+
+	for range 5 {
 		go func(ret chan<- *fetched, reqs <-chan *request, done <-chan struct{}) {
 			for {
 				select {
 				case req := <-reqs:
-					url := req.action.rawURL(req.tag)
-					g.log.Println("Start fetching", url)
-					res, err := g.client.Get(url)
-					if err != nil {
-						ret <- &fetched{err: fmt.Errorf("could not fetch %s: %w", url, err)}
-						break
+					select {
+					case ret <- fetch(req):
+					case <-done:
+						return
 					}
-					if res.StatusCode < 200 || 300 <= res.StatusCode {
-						ret <- &fetched{err: fmt.Errorf("request was not successful %s: %s", url, res.Status)}
-						break
-					}
-					body, err := io.ReadAll(res.Body)
-					_ = res.Body.Close()
-					if err != nil {
-						ret <- &fetched{err: fmt.Errorf("could not read body for %s: %w", url, err)}
-						break
-					}
-					spec := req.action.spec(req.tag)
-					var meta actionlint.ActionMetadata
-					if err := yaml.Unmarshal(body, &meta); err != nil &&
-						// treosh/lighthouse-ci-action's metadata causes parse error due to typo. Ignore the error not to stop codegen
-						// https://github.com/treosh/lighthouse-ci-action/pull/153
-						!(strings.HasPrefix(spec, "treosh/lighthouse-ci-action@") && strings.Contains(err.Error(), "unexpected key")) {
-						ret <- &fetched{err: fmt.Errorf("could not parse metadata for %s: %w", url, err)}
-						break
-					}
-					if req.action.SkipInputs {
-						meta.SkipInputs = true
-					}
-					if req.action.SkipOutputs {
-						meta.SkipOutputs = true
-					}
-					ret <- &fetched{spec: spec, meta: &meta}
 				case <-done:
 					return
 				}
@@ -190,7 +210,7 @@ func (g *gen) fetchRemote() (map[string]*actionlint.ActionMetadata, error) {
 	}(reqs, done)
 
 	ret := make(map[string]*actionlint.ActionMetadata, n)
-	for i := 0; i < n; i++ {
+	for range n {
 		f := <-results
 		if f.err != nil {
 			close(done)
@@ -381,29 +401,47 @@ func (g *gen) detectNewReleaseURLs() ([]string, error) {
 	errs := make(chan error)
 	reqs := make(chan *registry)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	check := func(r *registry) (string, error) {
+		url := r.rawURL(r.Next)
+		g.log.Println("Checking", url)
+		res, err := g.get(ctx, http.MethodHead, url)
+		if err != nil {
+			return "", fmt.Errorf("could not send head request to %s: %w", url, err)
+		}
+		_ = res.Body.Close()
+		if res.StatusCode == http.StatusNotFound {
+			g.log.Println("Not found:", url)
+			return "", nil
+		}
+		if res.StatusCode < 200 || 300 <= res.StatusCode {
+			return "", fmt.Errorf("head request for %s was not successful: %s", url, res.Status)
+		}
+		g.log.Println("Found:", url)
+		return r.githubURL(r.Next), nil
+	}
+
 	for range 4 {
 		go func(ret chan<- string, errs chan<- error, reqs <-chan *registry, done <-chan struct{}) {
 			for {
 				select {
 				case r := <-reqs:
-					url := r.rawURL(r.Next)
-					g.log.Println("Checking", url)
-					res, err := g.client.Head(url)
+					u, err := check(r)
 					if err != nil {
-						errs <- fmt.Errorf("could not send head request to %s: %w", url, err)
+						select {
+						case errs <- err:
+						case <-done:
+							return
+						}
 						break
 					}
-					if res.StatusCode == 404 {
-						g.log.Println("Not found:", url)
-						ret <- ""
-						break
+					select {
+					case ret <- u:
+					case <-done:
+						return
 					}
-					if res.StatusCode < 200 || 300 <= res.StatusCode {
-						errs <- fmt.Errorf("head request for %s was not successful: %s", url, res.Status)
-						break
-					}
-					g.log.Println("Found:", url)
-					ret <- r.githubURL(r.Next)
 				case <-done:
 					return
 				}
@@ -422,7 +460,7 @@ func (g *gen) detectNewReleaseURLs() ([]string, error) {
 	}(done)
 
 	us := []string{}
-	for i := 0; i < len(actions); i++ {
+	for range actions {
 		select {
 		case u := <-urls:
 			if u != "" {
@@ -476,7 +514,7 @@ Flags:`)
 		flags.PrintDefaults()
 	}
 	if err := flags.Parse(args[1:]); err != nil {
-		if err == flag.ErrHelp {
+		if errors.Is(err, flag.ErrHelp) {
 			return 0 // When -h or -help
 		}
 		return 1

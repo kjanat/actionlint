@@ -1,0 +1,29 @@
+name: Setup pandoc (Linux)
+description: Install a pinned pandoc release, verified against its build provenance attestation.
+
+inputs:
+  version:
+    description: pandoc release tag to install.
+    default: "3.10.2"
+  repo:
+    description: GitHub repository to read the release from.
+    default: "jgm/pandoc"
+  token:
+    description: Token used to read the pandoc release and its attestation.
+    default: "${{ github.token }}"
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      if: ${{ runner.os == 'Linux' }}
+      env:
+        GH_REPO: ${{ inputs.repo }}
+        GH_TOKEN: ${{ inputs.token }}
+        VERSION: ${{ inputs.version }}
+      run: |
+        arch="$(dpkg --print-architecture)"
+        deb="${RUNNER_TEMP}/pandoc.deb"
+        gh release download "${VERSION}" --pattern "pandoc-${VERSION}-1-${arch}.deb" --output "${deb}"
+        gh release verify-asset "${VERSION}" "${deb}"
+        sudo dpkg --install "${deb}"

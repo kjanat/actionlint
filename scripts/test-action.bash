@@ -31,9 +31,13 @@ function output() {
     ' "${tmp}/github/file_commands/output"
 }
 
-function run_action() {
+function reset_action_files() {
 	: >"${tmp}/github/file_commands/output"
 	: >"${tmp}/action.log"
+}
+
+function docker_action() {
+	local status=0
 	docker run --rm \
 		--mount "type=bind,source=${tmp}/github,target=/github" \
 		--mount "type=bind,source=${workspace}/testdata,target=/github/workspace/testdata,readonly" \
@@ -41,7 +45,15 @@ function run_action() {
 		-e GITHUB_ACTIONS=true \
 		-e GITHUB_OUTPUT=/github/file_commands/output \
 		-e GITHUB_WORKSPACE=/github/workspace \
-		"$image" "$@" >"${tmp}/action.log" 2>&1
+		"${image}" "$@" >"${tmp}/action.log" 2>&1 || status="$?"
+	echo "${status}"
+}
+
+function run_action() {
+	local status
+	reset_action_files
+	status="$(docker_action "$@")"
+	return "${status}"
 }
 
 function show_log() {
@@ -60,16 +72,21 @@ function assert_output() {
 	fi
 }
 
+function action_status() {
+	reset_action_files
+	docker_action "$@"
+}
+
 function expect_status() {
 	local expected="$1"
 	local description="$2"
 	shift 2
-	if run_action "$@"; then
+	local status
+	status="$(action_status "$@")"
+	if [[ "${status}" == 0 ]]; then
 		echo "Expected ${description} to fail with status ${expected}" >&2
 		show_log
 		exit 1
-	else
-		local status="$?"
 	fi
 	if [[ "${status}" != "${expected}" ]]; then
 		echo "Expected ${description} status ${expected}, got ${status}" >&2
@@ -78,10 +95,16 @@ function expect_status() {
 	fi
 }
 
-if ! run_action testdata/ok/minimal.yaml json '' '' true true . '' true; then
-	show_log
-	exit 1
-fi
+function expect_success() {
+	local status
+	status="$(action_status "$@")"
+	if [[ "${status}" != 0 ]]; then
+		show_log
+		exit 1
+	fi
+}
+
+expect_success testdata/ok/minimal.yaml json '' '' true true . '' true
 assert_output exit-code 0
 assert_output result success
 assert_output problems-found false
@@ -89,10 +112,7 @@ assert_output problem-count 0
 assert_output output '[]'
 
 for format in github default oneline json json-lines markdown sarif; do
-	if ! run_action testdata/err/one_error.yaml "${format}" '' '' true true . '' false; then
-		show_log
-		exit 1
-	fi
+	expect_success testdata/err/one_error.yaml "${format}" '' '' true true . '' false
 	assert_output exit-code 1
 	assert_output result problems-found
 	assert_output problems-found true

@@ -17,7 +17,7 @@ func TestQuotesSortedQuotes(t *testing.T) {
 
 	for i, tc := range testCases {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			ss := tc[:]
+			ss := tc
 			sort.Strings(ss)
 			qs := make([]string, 0, len(ss))
 			for _, s := range tc {

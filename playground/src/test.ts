@@ -1,16 +1,12 @@
-import { Crypto } from '@peculiar/webcrypto';
-import { strict as assert } from 'assert';
-import { promises as fs } from 'fs';
-import { JSDOM } from 'jsdom';
+import { Text } from '@codemirror/state';
+import { strict as assert } from 'node:assert';
+import { promises as fs } from 'node:fs';
+import { beforeAll, describe, it } from 'vitest';
 
-// This polyfill is necessary for Node.js v18 or earlier. `global.crypto` was added at v19.
-// https://github.com/nodejs/node/pull/42083/files
-if (typeof globalThis.crypto === 'undefined') {
-	globalThis.crypto = new Crypto();
-}
+import { errorRange } from './range';
 
-// Inject global.Go for testing `main.wasm`.
-require('./lib/js/wasm_exec.js'); // eslint-disable-line @typescript-eslint/no-require-imports
+// The Go wasm runtime installs `globalThis.Go` as a side effect.
+import '../public/wasm_exec.js';
 
 class CheckResults {
 	errors: ActionlintError[] | null = null;
@@ -39,15 +35,35 @@ class CheckResults {
 	}
 }
 
+describe('errorRange', function() {
+	function error(line: number, column: number, endColumn: number): ActionlintError {
+		return { kind: 'k', message: 'm', line, column, endColumn };
+	}
+
+	it('maps columns to document offsets', function() {
+		const doc = Text.of(['on: push', 'jobs: {}']);
+		assert.deepEqual(errorRange(doc, error(2, 1, 4)), { from: 9, to: 13 });
+	});
+
+	it('counts an astral character as two code units', function() {
+		const doc = Text.of(['# 🚀🚀', 'on: foo']);
+		assert.deepEqual(errorRange(doc, error(1, 3, 4)), { from: 2, to: 6 });
+	});
+
+	it('clamps an end column past the line to the line end', function() {
+		const doc = Text.of(['on: foo', 'jobs: {}']);
+		assert.deepEqual(errorRange(doc, error(1, 5, 99)), { from: 4, to: 7 });
+	});
+});
+
 describe('main.wasm', function() {
 	const results = new CheckResults();
 
-	before(async function() {
-		const dom = new JSDOM('');
-		dom.window.dismissLoading = function() {
+	beforeAll(async function() {
+		window.dismissLoading = function() {
 			/*do nothing*/
 		};
-		dom.window.getYamlSource = function() {
+		window.getYamlSource = function() {
 			return `
 on: push
 
@@ -56,19 +72,14 @@ jobs:
     steps:
       - run: echo 'hi'`;
 		};
-		dom.window.onCheckCompleted = results.onCheckCompleted.bind(results);
-
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		global.window = dom.window as any;
+		window.onCheckCompleted = results.onCheckCompleted.bind(results);
 
 		const go = new Go();
-		const bin = await fs.readFile('./main.wasm');
-		const buf = bin.buffer;
-		const result = await WebAssembly.instantiate(buf, go.importObject);
+		const bin = await fs.readFile('./public/main.wasm');
+		const result = await WebAssembly.instantiate(bin.buffer, go.importObject);
 
-		// Do not `await` this method call since it will never be settled
-		// eslint-disable-next-line @typescript-eslint/no-floating-promises
-		go.run(result.instance);
+		// This promise is never settled, so it must not be awaited.
+		void go.run(result.instance);
 	});
 
 	it('shows first result on loading', async function() {
@@ -77,8 +88,8 @@ jobs:
 		const json = JSON.stringify(errors);
 		assert.equal(errors.length, 1, json);
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		const err = errors[0]!;
+		const [err] = errors;
+		assert.ok(err, json);
 		assert.equal(err.message, '"runs-on" section is missing in job "test"', `message is unexpected: ${json}`);
 		assert.equal(err.line, 5, `line is unexpected: ${json}`);
 		assert.equal(err.column, 3, `column is unexpected: ${json}`);
@@ -103,11 +114,13 @@ jobs:
 		const json = JSON.stringify(errors);
 		assert.equal(errors.length, 1, json);
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		const err = errors[0]!;
+		const [err] = errors;
+		assert.ok(err, json);
 		assert.ok(err.message.includes('unknown Webhook event "foo"'), `message is unexpected: ${json}`);
 		assert.equal(err.line, 2, `line is unexpected: ${json}`);
 		assert.equal(err.column, 5, `column is unexpected: ${json}`);
+		// Columns 5 to 7 are "foo", the range the editor underlines.
+		assert.equal(err.endColumn, 7, `end column is unexpected: ${json}`);
 		assert.equal(err.kind, 'events', `kind is unexpected: ${json}`);
 	});
 

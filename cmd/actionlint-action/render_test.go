@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kjanat/actionlint"
+	"actionlint.kjanat.dev"
 )
 
 func sampleProblem() *problem {

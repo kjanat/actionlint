@@ -2,15 +2,34 @@
 
 # Unreleased
 
+- Move the Go module to `actionlint.kjanat.dev`. The `go-import` and `go-source` meta tags that resolve it are served from the fork's GitHub Pages site, so `go install actionlint.kjanat.dev/cmd/actionlint@latest` resolves from this release onward. Library consumers must update their import paths.
+- Rename the exported `InvalidGlobPattern` error type to `InvalidGlobPatternError`. It is returned by `ValidateRefGlob` and `ValidatePathGlob`, so consumers of those functions must update.
+- Publish the CLI image to Docker Hub as `kjanat/actionlint` alongside `ghcr.io/kjanat/actionlint`. Both registries carry the same manifest. The `action-*` tags stay on `ghcr.io` only, since `action.yml` refers to them there.
+- Publish the Homebrew cask to `kjanat/homebrew-actionlint` on every release instead of skipping it.
+- Rebuild the playground on Vite with CodeMirror 6 and Vitest, and report lint errors through `@codemirror/lint` so they appear as inline underlines and tooltips instead of a custom gutter. This required the wasm bridge to pass the end column of each error.
+- Add a `Context` field to `LinterOptions` so a caller can bound the lifetime of a lint run. Cancelling it kills the ShellCheck and pyflakes subprocesses, which `concurrentProcess` could not do before: it held a context to acquire its semaphore but never passed one to `exec.Command`.
+- Fix `jobs.<job_id>.container.volumes` being parsed into `Container.Ports`. `Container.Volumes` was always nil, so `${{ }}` expressions inside volume strings were never checked, and on a container declaring both keys the volumes replaced the ports.
+- Fix the end column reported for lines holding wide or non-ASCII characters. `ErrorTemplateFields.EndColumn` carried the display width of the `^~~~` indicator rather than a column, so it drifted from `Column` wherever a preceding character was not one cell wide. The value reaches `endColumn=` in the action's GitHub annotations and `{{$err.EndColumn}}` in `-format` templates.
+- Fix `make` overwriting expected-output test fixtures with their input directories, caused by GNU make's built-in `%.out: %` rule.
+- Compile, vet and test the fuzz targets. They carried a `gofuzz` build tag for dvyukov/go-fuzz, which made the toolchain exclude the whole package. They are `testing.F` targets now, and `make fuzz` drives `go test -fuzz`.
+- Check the type assertions in `UpdateInputs` and `UpdateDispatchInputs`, which would panic if the expression variable map ever held another type.
+- Give every outbound HTTP request in the code generators a deadline. They ran on clients with no timeout, so a stalled connection hung the generator indefinitely.
+- Make `generate-availability` idempotent. It emitted map literals carrying a redundant element type that the formatter then stripped, so every run produced a diff that was immediately reverted.
+- Lint the repository with golangci-lint, and lint the repository's own workflows with all optional ShellCheck rules enabled, which actionlint's `--norc` had been hiding.
+- Verify the downloaded archive against its build provenance attestation in `download-actionlint.bash` when `gh` is installed and authenticated, and print a notice when it is skipped. Every release since v1.11.0 is attested.
+- Confine the code generators' output paths and declare explicit permissions on every workflow.
+- Render the command manual with pandoc from `man/actionlint.1.md` instead of ronn, which takes the Ruby toolchain and `man/Gemfile` out of the contributor setup. `make man` produces both the roff manual and the HTML one the site serves, and `man/manual.css` styles the latter.
+- Replace Prettier and Stylelint with dprint, pin every action to a commit SHA, and drop the timestamp stamp files and the pre-push hook from the build.
+
 <a id="v1.11.0"></a>
 
 ## [v1.11.0](https://github.com/kjanat/actionlint/releases/tag/v1.11.0) - 2026-08-20
 
-- Replace the Python action entrypoint with a Go program that reuses the actionlint package directly, keeping every declared input, output, format, and failure mode, and confining all workspace file access to an `os.Root` handle. (<https://github.com/kjanat/actionlint/pull/16>)
-- Replace `scripts/bump-version.bash` with a Go tool that declares every version-bearing file and its expected occurrence count, verifies each update, refuses to run on a dirty tree or an existing tag, and pushes only with an explicit flag. (<https://github.com/kjanat/actionlint/pull/17>)
-- Raise the minimum Go version to 1.26 with Go 1.27 as the CI default, replace the 6x2 test matrix with seven targeted jobs plus one race and coverage job, cancel superseded pull request runs, and pin every action and Docker base image to a commit SHA. (<https://github.com/kjanat/actionlint/pull/14>)
-- Consolidate the JavaScript tooling into a single root npm workspace with one lockfile. (<https://github.com/kjanat/actionlint/pull/15>)
-- Add a first-party Docker action with validated inputs, GitHub annotations, multiple output formats, and structured result outputs, following up on rhysd/actionlint#257 and rhysd/actionlint#479. Release images are published as `action-{version}`, `action-v1`, and `action-latest`, so consumer workflows pull a prebuilt actionlint, ShellCheck, and pyflakes image instead of compiling actionlint. Releases also update the moving `v1` Git tag for `kjanat/actionlint@v1`. (<https://github.com/kjanat/actionlint/pull/5>)
+- Replace the Python action entrypoint with a Go program that reuses the actionlint package directly, keeping every declared input, output, format, and failure mode, and confining all workspace file access to an `os.Root` handle. (https://github.com/kjanat/actionlint/pull/16)
+- Replace `scripts/bump-version.bash` with a Go tool that declares every version-bearing file and its expected occurrence count, verifies each update, refuses to run on a dirty tree or an existing tag, and pushes only with an explicit flag. (https://github.com/kjanat/actionlint/pull/17)
+- Raise the minimum Go version to 1.26 with Go 1.27 as the CI default, replace the 6x2 test matrix with seven targeted jobs plus one race and coverage job, cancel superseded pull request runs, and pin every action and Docker base image to a commit SHA. (https://github.com/kjanat/actionlint/pull/14)
+- Consolidate the JavaScript tooling into a single root npm workspace with one lockfile. (https://github.com/kjanat/actionlint/pull/15)
+- Add a first-party Docker action with validated inputs, GitHub annotations, multiple output formats, and structured result outputs, following up on rhysd/actionlint#257 and rhysd/actionlint#479. Release images are published as `action-{version}`, `action-v1`, and `action-latest`, so consumer workflows pull a prebuilt actionlint, ShellCheck, and pyflakes image instead of compiling actionlint. Releases also update the moving `v1` Git tag for `kjanat/actionlint@v1`. (https://github.com/kjanat/actionlint/pull/5)
 - Harden the Docker action and its release path by containing configuration and workflow inputs within the workspace, rejecting option-like paths and directory output destinations before linting, bounding actionlint execution time, pinning the Alpine runtime, defaulting the CLI image to `/w`, serializing releases before moving mutable image aliases, and verifying every expected version replacement independently.
 - Restore the generated command manual to the fork's Pages deployment at `usage.html` and `man.html`, add a `404.html` fallback, and document whether each third-party integration uses this fork, upstream actionlint, or a configurable local executable.
 - Report ShellCheck findings at their exact YAML source locations for literal block and plain `run:` scripts, including precise ranges. Scalar forms that cannot be mapped safely continue to report at the `run:` key. (rhysd/actionlint#88, rhysd/actionlint#360; building on the direction explored in rhysd/actionlint#556, thanks @dpsutton)

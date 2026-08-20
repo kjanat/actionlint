@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -268,7 +269,7 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 
 		// Unwrap load errors when a single error occurs to simplify the error message
 		var m string
-		if es, ok := err.(*yaml.LoadErrors); ok {
+		if es, ok := errors.AsType[*yaml.LoadErrors](err); ok {
 			if len(es.Errors) == 1 {
 				e := es.Errors[0]
 				if e.Mark.Line > 0 {

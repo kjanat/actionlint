@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -o pipefail
 set -e
 
-if [ ! -d .git ]; then
+if [[ ! -d .git ]]; then
 	echo 'This script must be run from root of repository' >&2
 	exit 1
 fi
@@ -13,29 +13,29 @@ set -x
 script="$(pwd)/scripts/download-actionlint.bash"
 temp_dir="$(mktemp -d)"
 trap 'popd && rm -rf $temp_dir' EXIT
-pushd "$temp_dir"
+pushd "${temp_dir}"
 
 # Normal cases
 set -e
 
 # Latest release
-out="$(bash "$script" latest)"
-if [ -n "$GITHUB_ACTION" ]; then
-	if [[ "$out" != *"executable="* ]]; then
+out="$(bash "${script}" latest)"
+if [[ -n "${GITHUB_ACTION}" ]]; then
+	if [[ "${out}" != *"executable="* ]]; then
 		echo "'executable' step output is not set: '${out}'" >&2
 	fi
 fi
 out="$(./actionlint -version)"
-if [[ "$out" != *'installed by downloading from release page'* ]]; then
+if [[ "${out}" != *'installed by downloading from release page'* ]]; then
 	echo "Output from ./actionlint -version is unexpected: '${out}'" >&2
 	exit 1
 fi
 rm -f ./actionlint
 
 # Specify only version
-bash "$script" '1.8.0'
+bash "${script}" '1.8.0'
 out="$(./actionlint -version | head -n 1)"
-if [[ "$out" != '1.8.0' ]]; then
+if [[ "${out}" != '1.8.0' ]]; then
 	echo "Unexpected version: '${out}'" 1>&2
 	exit 1
 fi
@@ -43,9 +43,9 @@ rm -f ./actionlint
 
 # Specify only a download directory
 mkdir ./test1
-bash "$script" latest ./test1
+bash "${script}" latest ./test1
 out="$(./test1/actionlint -version)"
-if [[ "$out" != *'installed by downloading from release page'* ]]; then
+if [[ "${out}" != *'installed by downloading from release page'* ]]; then
 	echo "Output from ./actionlint -version is unexpected: '${out}'" >&2
 	exit 1
 fi
@@ -53,9 +53,9 @@ rm -rf ./test1
 
 # Specify both version and a download directory
 mkdir ./test2
-bash "$script" '1.8.0' ./test2
+bash "${script}" '1.8.0' ./test2
 out="$(./test2/actionlint -version | head -n 1)"
-if [[ "$out" != '1.8.0' ]]; then
+if [[ "${out}" != '1.8.0' ]]; then
 	echo "Unexpected version: '${out}'" 1>&2
 	exit 1
 fi
@@ -65,21 +65,21 @@ rm -rf ./test2
 set +e
 
 fails=0
-if bash "$script" 'v1.8.0'; then
+if bash "${script}" 'v1.8.0'; then
 	echo "FAIL: Invalid version at the first argument did not cause any error" >&2
 	((fails++))
 fi
-if bash "$script" './this/dir/does/not/exist'; then
+if bash "${script}" './this/dir/does/not/exist'; then
 	echo "FAIL: Directory which does not exist at the first argument did not cause any error" >&2
 	((fails++))
 fi
-if bash "$script" '999999999999999999.9.9'; then
+if bash "${script}" '999999999999999999.9.9'; then
 	echo "FAIL: Unknown version at the first argument did not cause any error" >&2
 	((fails++))
 fi
 
 set -e
-if [[ "$fails" != "0" ]]; then
+if [[ "${fails}" != "0" ]]; then
 	echo "${fails} error cases failed. Check the above log" >&2
 	exit 1
 fi

@@ -2,6 +2,7 @@ package actionlint
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -21,8 +22,8 @@ type cmdExecution struct {
 	combineOutput bool
 }
 
-func (e *cmdExecution) run() ([]byte, error) {
-	cmd := exec.Command(e.cmd, e.args...)
+func (e *cmdExecution) run(ctx context.Context) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, e.cmd, e.args...)
 	cmd.Stderr = nil
 	// Set stdin via an io.Reader so that exec.Cmd pipes the bytes to the child
 	// after Start(). Writing to cmd.StdinPipe() before Start() relies on the
@@ -39,7 +40,7 @@ func (e *cmdExecution) run() ([]byte, error) {
 	}
 
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			code := exitErr.ExitCode()
 
 			stderr := exitErr.Stderr
@@ -75,12 +76,13 @@ type concurrentProcess struct {
 	wg   sync.WaitGroup
 }
 
-// newConcurrentProcess creates a new ConcurrentProcess instance. The `par` argument represents how
-// many processes can be run in parallel. It is recommended to use the value returned from
-// runtime.NumCPU() for the argument.
-func newConcurrentProcess(par int) *concurrentProcess {
+// newConcurrentProcess creates a new ConcurrentProcess instance. The ctx argument acquires the
+// semaphore and runs each child process, so cancelling it kills the processes which are running.
+// The `par` argument represents how many processes can be run in parallel. It is recommended to
+// use the value returned from runtime.NumCPU() for the argument.
+func newConcurrentProcess(ctx context.Context, par int) *concurrentProcess {
 	return &concurrentProcess{
-		ctx:  context.Background(),
+		ctx:  ctx,
 		sema: semaphore.NewWeighted(int64(par)),
 	}
 }
@@ -92,7 +94,7 @@ func (proc *concurrentProcess) run(eg *errgroup.Group, exec *cmdExecution, callb
 		if err := proc.sema.Acquire(proc.ctx, 1); err != nil {
 			return fmt.Errorf("could not acquire semaphore to run %q: %w", exec.cmd, err)
 		}
-		stdout, err := exec.run()
+		stdout, err := exec.run(proc.ctx)
 		proc.sema.Release(1)
 		return callback(stdout, err)
 	})
@@ -153,7 +155,7 @@ type externalCommand struct {
 // process.
 func (cmd *externalCommand) run(args []string, stdin string, callback func([]byte, error) error) {
 	if len(cmd.args) > 0 {
-		var allArgs []string
+		allArgs := make([]string, 0, len(cmd.args)+len(args))
 		allArgs = append(allArgs, cmd.args...)
 		allArgs = append(allArgs, args...)
 		args = allArgs
