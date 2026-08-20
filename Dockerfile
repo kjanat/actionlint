@@ -7,7 +7,7 @@ COPY go.* *.go ./
 COPY cmd cmd/
 ENV CGO_ENABLED=0
 ARG ACTIONLINT_VER=
-RUN go build -v -ldflags "-s -w -X github.com/kjanat/actionlint.version=${ACTIONLINT_VER}" ./cmd/actionlint
+RUN go build -v -ldflags "-s -w -X github.com/kjanat/actionlint.version=${ACTIONLINT_VER}" -o . ./cmd/actionlint ./cmd/actionlint-action
 
 FROM koalaman/shellcheck-alpine:stable AS shellcheck
 
@@ -17,8 +17,7 @@ COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
 RUN apk add --no-cache python3 py3-pyflakes
 
 FROM runtime AS action
-COPY action-entrypoint.py /usr/local/bin/actionlint-action
-COPY testdata/format/sarif_template.txt /usr/local/share/actionlint/sarif-template.txt
+COPY --from=builder /go/src/app/actionlint-action /usr/local/bin/
 ENTRYPOINT ["/usr/local/bin/actionlint-action"]
 
 FROM runtime AS cli
