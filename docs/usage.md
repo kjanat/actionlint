@@ -158,15 +158,15 @@ The error object has the following fields.
 
 <!-- dprint-ignore-start -->
 
-| Field                | Description                                           | Example                                                          |
-| -------------------- | ----------------------------------------------------- | ---------------------------------------------------------------- |
-| `{{$err.Message}}`   | Body of error message                                 | `property "platform" is not defined in object type {os: string}` |
-| `{{$err.Snippet}}`   | Code snippet to indicate error position               | `          node_version: 16.x\n          ^~~~~~~~~~~~~`          |
-| `{{$err.Kind}}`      | Name of rule the error belongs to                     | `expression`                                                     |
-| `{{$err.Filepath}}`  | Canonical relative file path of the error position    | `.github/workflows/ci.yaml`                                      |
-| `{{$err.Line}}`      | Line number of the error position (1-based)           | `9`                                                              |
-| `{{$err.Column}}`    | Column number of the error's start position (1-based) | `11`                                                             |
-| `{{$err.EndColumn}}` | Column number of the error's end position (1-based)   | `23`                                                             |
+| Field                | Description                                           | Example                                                             |
+| -------------------- | ----------------------------------------------------- | ------------------------------------------------------------------- |
+| `{{$err.Message}}`   | Body of error message                                 | `property "platform" is not defined in object type {os: string}`    |
+| `{{$err.Snippet}}`   | Code snippet to indicate error position               |  <code>          node_version: 16.x\n          ^~~~~~~~~~~~~</code> |
+| `{{$err.Kind}}`      | Name of rule the error belongs to                     | `expression`                                                        |
+| `{{$err.Filepath}}`  | Canonical relative file path of the error position    | `.github/workflows/ci.yaml`                                         |
+| `{{$err.Line}}`      | Line number of the error position (1-based)           | `9`                                                                 |
+| `{{$err.Column}}`    | Column number of the error's start position (1-based) | `11`                                                                |
+| `{{$err.EndColumn}}` | Column number of the error's end position (1-based)   | `23`                                                                |
 
 <!-- dprint-ignore-end -->
 
