@@ -99,6 +99,18 @@ for format in github default oneline json json-lines markdown sarif; do
 	assert_output problem-count 1
 done
 
+run_action testdata/err/shellcheck_default_shell_detection.yaml oneline '' '' true false . '' false
+assert_output problem-count 12
+
+run_action testdata/err/shellcheck_default_shell_detection.yaml oneline '' '' false false . '' false
+assert_output problem-count 0
+
+run_action testdata/err/pyflakes_step_shell.yaml oneline '' '' false true . '' false
+assert_output problem-count 3
+
+run_action testdata/err/pyflakes_step_shell.yaml oneline '' '' false false . '' false
+assert_output problem-count 0
+
 run_action testdata/err/one_error.yaml json-lines '' '' true true . actionlint-results.jsonl false
 assert_output output-file actionlint-results.jsonl
 grep -q '"message"' "${tmp}/github/workspace/actionlint-results.jsonl"
