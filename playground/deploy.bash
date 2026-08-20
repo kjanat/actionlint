@@ -85,4 +85,4 @@ git commit -m "deploy from ${sha}"
 rm -r ./playground-dist
 
 echo "Successfully prepared deployment. Visit http://localhost:1234 and do the final check before deployment. If it looks good, stop the server with Ctrl+C and deploy it by 'git push'"
-(trap '' INT; ./playground/node_modules/.bin/http-server . -p 1234 || true)
+(trap '' INT; ./node_modules/.bin/http-server . -p 1234 || true)
