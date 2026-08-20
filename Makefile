@@ -1,3 +1,7 @@
+# GNU make's built-in `%.out: %` rule deletes an expected-output fixture and copies its input
+# directory over it whenever the directory is newer, so no built-in rule may apply here.
+MAKEFLAGS += --no-builtin-rules
+
 SRCS := $(filter-out %_test.go, $(wildcard *.go cmd/*/*.go)) cmd/actionlint-action/sarif_template.txt go.mod go.sum .git-hooks/.timestamp
 TESTS := $(filter %_test.go, $(wildcard *.go cmd/*/*.go))
 TOOL := $(filter %_test.go, $(wildcard scripts/*/*.go))
