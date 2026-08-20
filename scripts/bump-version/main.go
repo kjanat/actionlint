@@ -168,7 +168,7 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		_, _ = fmt.Fprint(stdout, "\nAll version references were updated and verified. To release, run:\n\n")
 		_, _ = fmt.Fprintf(stdout, "  git add %s\n", strings.Join(paths(targets), " "))
 		_, _ = fmt.Fprintf(stdout, "  git commit -m 'bump up version to %s'\n", tag)
-		_, _ = fmt.Fprintf(stdout, "  git tag %s\n", tag)
+		_, _ = fmt.Fprintf(stdout, "  git tag -s -m %s %s\n", tag, tag)
 		_, _ = fmt.Fprint(stdout, "  git push origin main\n")
 		_, _ = fmt.Fprintf(stdout, "  git push origin %s\n", tag)
 		return nil
@@ -180,7 +180,8 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	if err := r.run("commit", "-m", "bump up version to "+tag); err != nil {
 		return err
 	}
-	if err := r.run("tag", tag); err != nil {
+	// A bare `git tag` picks up tag.gpgSign and then rejects the tag for having no message.
+	if err := r.run("tag", "-s", "-m", tag, tag); err != nil {
 		return err
 	}
 
