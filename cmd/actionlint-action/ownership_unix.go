@@ -7,8 +7,8 @@ import (
 	"syscall"
 )
 
-func inheritOwner(workspace string, paths []string) error {
-	info, err := os.Stat(workspace)
+func inheritOwner(root *os.Root, paths []string) error {
+	info, err := root.Stat(".")
 	if err != nil {
 		return err
 	}
@@ -17,7 +17,7 @@ func inheritOwner(workspace string, paths []string) error {
 		return nil
 	}
 	for _, p := range paths {
-		if err := os.Chown(p, int(owner.Uid), int(owner.Gid)); err != nil {
+		if err := root.Chown(p, int(owner.Uid), int(owner.Gid)); err != nil {
 			return err
 		}
 	}

@@ -32,9 +32,9 @@ type lintOutcome struct {
 	code   int
 }
 
-func buildRequest(in *inputs, workspace, workingDir string) (*lintRequest, error) {
+func buildRequest(in *inputs, workspaceDir, workingRel string) (*lintRequest, error) {
 	req := &lintRequest{
-		workingDir: workingDir,
+		workingDir: filepath.Join(workspaceDir, workingRel),
 		ignore:     in.ignore,
 		format:     "{{json .}}",
 	}
@@ -42,11 +42,11 @@ func buildRequest(in *inputs, workspace, workingDir string) (*lintRequest, error
 		req.format = sarifTemplate
 	}
 	if in.configFile != "" {
-		c, err := withinWorkspace(workspace, filepath.Join(workingDir, in.configFile), "config-file", false)
+		rel, err := workspaceRel(workspaceDir, filepath.Join(workingRel, in.configFile), "config-file")
 		if err != nil {
 			return nil, err
 		}
-		req.configFile = c
+		req.configFile = filepath.Join(workspaceDir, rel)
 	}
 	if in.shellcheck {
 		req.shellcheck = "shellcheck"
@@ -55,7 +55,7 @@ func buildRequest(in *inputs, workspace, workingDir string) (*lintRequest, error
 		req.pyflakes = "pyflakes"
 	}
 	for _, f := range in.files {
-		if _, err := withinWorkspace(workspace, filepath.Join(workingDir, f), "files", false); err != nil {
+		if _, err := workspaceRel(workspaceDir, filepath.Join(workingRel, f), "files"); err != nil {
 			return nil, err
 		}
 	}

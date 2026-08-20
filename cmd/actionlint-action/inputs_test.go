@@ -154,27 +154,33 @@ func TestParseInputsRejectsOptionLikeFiles(t *testing.T) {
 	}
 }
 
-func TestWithinWorkspace(t *testing.T) {
+func openRoot(t *testing.T, dir string) *os.Root {
+	t.Helper()
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = root.Close() })
+	return root
+}
+
+func TestWorkspaceRel(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
-	if err := os.MkdirAll(filepath.Join(workspace, "sub", "dir"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(workspace, "file.txt"), []byte("x"), 0o644); err != nil {
-		t.Fatal(err)
-	}
 
 	for _, tc := range []struct {
 		value string
 		want  string
 	}{
-		{"", workspace},
-		{".", workspace},
-		{"sub", filepath.Join(workspace, "sub")},
-		{"sub/dir", filepath.Join(workspace, "sub", "dir")},
-		{"./sub/../sub", filepath.Join(workspace, "sub")},
-		{filepath.Join(workspace, "sub"), filepath.Join(workspace, "sub")},
+		{"", "."},
+		{".", "."},
+		{"sub", "sub"},
+		{"sub/dir", filepath.Join("sub", "dir")},
+		{"./sub/../sub", "sub"},
+		{"missing/deep.json", filepath.Join("missing", "deep.json")},
+		{workspace, "."},
+		{filepath.Join(workspace, "sub"), "sub"},
 	} {
-		got, err := withinWorkspace(workspace, tc.value, "working-directory", true)
+		got, err := workspaceRel(workspace, tc.value, "working-directory")
 		if err != nil {
 			t.Errorf("%q: %v", tc.value, err)
 		} else if got != tc.want {
@@ -182,8 +188,52 @@ func TestWithinWorkspace(t *testing.T) {
 		}
 	}
 
-	for _, value := range []string{"..", "../elsewhere", "sub/../../elsewhere", filepath.Join(filepath.Dir(workspace), "elsewhere")} {
-		_, err := withinWorkspace(workspace, value, "working-directory", false)
+	for _, value := range []string{
+		"..",
+		"../elsewhere",
+		"sub/../../elsewhere",
+		filepath.Join(filepath.Dir(workspace), "elsewhere"),
+		workspace + "-other",
+	} {
+		_, err := workspaceRel(workspace, value, "working-directory")
+		want := "Input 'working-directory' must stay within the repository workspace"
+		if got := isInputError(t, err).Error(); got != want {
+			t.Errorf("%q: wanted %q but got %q", value, want, got)
+		}
+	}
+}
+
+func TestWorkingDirectory(t *testing.T) {
+	workspace := resolved(t, t.TempDir())
+	if err := os.MkdirAll(filepath.Join(workspace, "sub", "dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(workspace, "file.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	root := openRoot(t, workspace)
+
+	for _, tc := range []struct {
+		value string
+		want  string
+	}{
+		{"", "."},
+		{".", "."},
+		{"sub", "sub"},
+		{"sub/dir", filepath.Join("sub", "dir")},
+		{"./sub/../sub", "sub"},
+		{filepath.Join(workspace, "sub"), "sub"},
+	} {
+		got, err := workingDirectory(root, workspace, tc.value)
+		if err != nil {
+			t.Errorf("%q: %v", tc.value, err)
+		} else if got != tc.want {
+			t.Errorf("%q: wanted %q but got %q", tc.value, tc.want, got)
+		}
+	}
+
+	for _, value := range []string{"..", "../elsewhere", "sub/../../elsewhere"} {
+		_, err := workingDirectory(root, workspace, value)
 		want := "Input 'working-directory' must stay within the repository workspace"
 		if got := isInputError(t, err).Error(); got != want {
 			t.Errorf("%q: wanted %q but got %q", value, want, got)
@@ -191,44 +241,38 @@ func TestWithinWorkspace(t *testing.T) {
 	}
 
 	for _, value := range []string{"missing", "file.txt"} {
-		_, err := withinWorkspace(workspace, value, "working-directory", true)
+		_, err := workingDirectory(root, workspace, value)
 		want := "Input 'working-directory' must identify an existing directory"
 		if got := isInputError(t, err).Error(); got != want {
 			t.Errorf("%q: wanted %q but got %q", value, want, got)
 		}
 	}
-
-	if got, err := withinWorkspace(workspace, "missing/deep.json", "output-file", false); err != nil {
-		t.Error(err)
-	} else if want := filepath.Join(workspace, "missing", "deep.json"); got != want {
-		t.Errorf("wanted %q but got %q", want, got)
-	}
 }
 
-func TestWithinWorkspaceFollowsSymlinks(t *testing.T) {
+func TestWorkingDirectoryRejectsSymlinkEscape(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
 	outside := resolved(t, t.TempDir())
 	if err := os.Symlink(outside, filepath.Join(workspace, "escape")); err != nil {
 		t.Skipf("symlinks are unavailable: %v", err)
 	}
+	root := openRoot(t, workspace)
 
-	_, err := withinWorkspace(workspace, "escape", "working-directory", true)
-	want := "Input 'working-directory' must stay within the repository workspace"
-	if got := isInputError(t, err).Error(); got != want {
-		t.Errorf("wanted %q but got %q", want, got)
+	if _, err := workingDirectory(root, workspace, "escape"); err == nil {
+		t.Error("wanted a symlink leaving the workspace to be rejected")
 	}
 }
 
 func TestResolveOutputFile(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
+	root := openRoot(t, workspace)
 
-	if got, err := resolveOutputFile(workspace, ""); err != nil || got != "" {
+	if got, err := resolveOutputFile(root, workspace, ""); err != nil || got != "" {
 		t.Errorf("wanted no output file but got %q and %v", got, err)
 	}
 
-	if got, err := resolveOutputFile(workspace, "out/results.json"); err != nil {
+	if got, err := resolveOutputFile(root, workspace, "out/results.json"); err != nil {
 		t.Error(err)
-	} else if want := filepath.Join(workspace, "out", "results.json"); got != want {
+	} else if want := filepath.Join("out", "results.json"); got != want {
 		t.Errorf("wanted %q but got %q", want, got)
 	}
 
@@ -236,14 +280,14 @@ func TestResolveOutputFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, value := range []string{".", "sub"} {
-		_, err := resolveOutputFile(workspace, value)
+		_, err := resolveOutputFile(root, workspace, value)
 		want := "Input 'output-file' must not identify a directory"
 		if got := isInputError(t, err).Error(); got != want {
 			t.Errorf("%q: wanted %q but got %q", value, want, got)
 		}
 	}
 
-	_, err := resolveOutputFile(workspace, "../escaped.json")
+	_, err := resolveOutputFile(root, workspace, "../escaped.json")
 	want := "Input 'output-file' must stay within the repository workspace"
 	if got := isInputError(t, err).Error(); got != want {
 		t.Errorf("wanted %q but got %q", want, got)
@@ -260,19 +304,6 @@ func TestResolvePathRelativeToProcessDirectory(t *testing.T) {
 	}
 	if want := filepath.Join(dir, "nested", "leaf"); got != want {
 		t.Errorf("wanted %q but got %q", want, got)
-	}
-}
-
-func TestContainsRejectsSiblingPrefix(t *testing.T) {
-	workspace := filepath.Join(string(filepath.Separator), "github", "workspace")
-	if contains(workspace, workspace+"-other") {
-		t.Error("a sibling directory sharing the workspace prefix must not be contained")
-	}
-	if !contains(workspace, workspace) {
-		t.Error("the workspace itself must be contained")
-	}
-	if !contains(workspace, filepath.Join(workspace, "sub")) {
-		t.Error("a subdirectory must be contained")
 	}
 }
 

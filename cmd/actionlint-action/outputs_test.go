@@ -84,7 +84,7 @@ func TestAppendOutputsAvoidsDelimiterCollision(t *testing.T) {
 }
 
 func TestWriteResultFileWithoutTarget(t *testing.T) {
-	got, err := writeResultFile(t.TempDir(), "", "content")
+	got, err := writeResultFile(openRoot(t, t.TempDir()), "", "content")
 	if err != nil || got != "" {
 		t.Errorf("wanted no written file but got %q and %v", got, err)
 	}
@@ -92,35 +92,34 @@ func TestWriteResultFileWithoutTarget(t *testing.T) {
 
 func TestWriteResultFileCreatesMissingDirectories(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
-	target := filepath.Join(workspace, "a", "b", "results.json")
+	target := filepath.Join("a", "b", "results.json")
 
-	got, err := writeResultFile(workspace, target, "content")
+	got, err := writeResultFile(openRoot(t, workspace), target, "content")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if want := "a/b/results.json"; got != want {
 		t.Errorf("wanted %q but got %q", want, got)
 	}
-	if content := read(t, target); content != "content" {
+	if content := read(t, filepath.Join(workspace, target)); content != "content" {
 		t.Errorf("wanted the rendered content but got %q", content)
 	}
 }
 
 func TestWriteResultFileOverwritesExistingFile(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
-	target := filepath.Join(workspace, "results.json")
-	if err := os.WriteFile(target, []byte("stale"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(workspace, "results.json"), []byte("stale"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	got, err := writeResultFile(workspace, target, "fresh")
+	got, err := writeResultFile(openRoot(t, workspace), "results.json", "fresh")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got != "results.json" {
 		t.Errorf("wanted %q but got %q", "results.json", got)
 	}
-	if content := read(t, target); content != "fresh" {
+	if content := read(t, filepath.Join(workspace, "results.json")); content != "fresh" {
 		t.Errorf("wanted the file overwritten but got %q", content)
 	}
 }

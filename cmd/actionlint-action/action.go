@@ -58,19 +58,25 @@ func (a *action) execute() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	workspace, err := a.workspace()
+	workspaceDir, err := a.workspace()
 	if err != nil {
 		return 0, err
 	}
-	outputFile, err := resolveOutputFile(workspace, in.outputFile)
+	root, err := os.OpenRoot(workspaceDir)
 	if err != nil {
 		return 0, err
 	}
-	workingDir, err := withinWorkspace(workspace, in.workingDirectory, "working-directory", true)
+	defer func() { _ = root.Close() }()
+
+	outputFile, err := resolveOutputFile(root, workspaceDir, in.outputFile)
 	if err != nil {
 		return 0, err
 	}
-	req, err := buildRequest(in, workspace, workingDir)
+	workingRel, err := workingDirectory(root, workspaceDir, in.workingDirectory)
+	if err != nil {
+		return 0, err
+	}
+	req, err := buildRequest(in, workspaceDir, workingRel)
 	if err != nil {
 		return 0, err
 	}
@@ -80,7 +86,7 @@ func (a *action) execute() (int, error) {
 	if !ok {
 		result = "failure"
 	}
-	written, err := writeResultFile(workspace, outputFile, rendered)
+	written, err := writeResultFile(root, outputFile, rendered)
 	if err != nil {
 		return 0, err
 	}

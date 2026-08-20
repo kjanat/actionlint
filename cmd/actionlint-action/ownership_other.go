@@ -2,6 +2,8 @@
 
 package main
 
-func inheritOwner(workspace string, paths []string) error {
+import "os"
+
+func inheritOwner(root *os.Root, paths []string) error {
 	return nil
 }

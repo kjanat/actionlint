@@ -158,43 +158,45 @@ func resolvePath(path string) (string, error) {
 	}
 }
 
-func contains(workspace, path string) bool {
-	if path == workspace {
-		return true
+func workspaceRel(workspaceDir, value, name string) (string, error) {
+	rel := filepath.Clean(value)
+	if filepath.IsAbs(rel) {
+		r, err := filepath.Rel(workspaceDir, rel)
+		if err != nil {
+			return "", inputErrorf("Input '%s' must stay within the repository workspace", name)
+		}
+		rel = r
 	}
-	return strings.HasPrefix(path, workspace+string(filepath.Separator))
+	if rel == "." {
+		return ".", nil
+	}
+	if !filepath.IsLocal(rel) {
+		return "", inputErrorf("Input '%s' must stay within the repository workspace", name)
+	}
+	return rel, nil
 }
 
-func withinWorkspace(workspace, value, name string, directory bool) (string, error) {
-	joined := value
-	if !filepath.IsAbs(joined) {
-		joined = filepath.Join(workspace, joined)
-	}
-	path, err := resolvePath(joined)
+func workingDirectory(root *os.Root, workspaceDir, value string) (string, error) {
+	rel, err := workspaceRel(workspaceDir, value, "working-directory")
 	if err != nil {
 		return "", err
 	}
-	if !contains(workspace, path) {
-		return "", inputErrorf("Input '%s' must stay within the repository workspace", name)
+	if s, err := root.Stat(rel); err != nil || !s.IsDir() {
+		return "", inputErrorf("Input 'working-directory' must identify an existing directory")
 	}
-	if directory {
-		if s, err := os.Stat(path); err != nil || !s.IsDir() {
-			return "", inputErrorf("Input '%s' must identify an existing directory", name)
-		}
-	}
-	return path, nil
+	return rel, nil
 }
 
-func resolveOutputFile(workspace, value string) (string, error) {
+func resolveOutputFile(root *os.Root, workspaceDir, value string) (string, error) {
 	if value == "" {
 		return "", nil
 	}
-	target, err := withinWorkspace(workspace, value, "output-file", false)
+	rel, err := workspaceRel(workspaceDir, value, "output-file")
 	if err != nil {
 		return "", err
 	}
-	if s, err := os.Stat(target); err == nil && s.IsDir() {
+	if s, err := root.Stat(rel); err == nil && s.IsDir() {
 		return "", inputErrorf("Input 'output-file' must not identify a directory")
 	}
-	return target, nil
+	return rel, nil
 }

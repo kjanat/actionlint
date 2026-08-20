@@ -217,6 +217,21 @@ func TestActionRejectsEscapingPaths(t *testing.T) {
 	}
 }
 
+func TestActionReportsMissingWorkspace(t *testing.T) {
+	workspace := filepath.Join(resolved(t, t.TempDir()), "missing")
+	run, recorder := runAction(t, workspace, nil, "", "json", "", "", "true", "true", ".", "", "true")
+
+	if run.code != 3 {
+		t.Errorf("wanted exit code 3 but got %d", run.code)
+	}
+	if recorder.req != nil {
+		t.Error("wanted actionlint not to run without a workspace")
+	}
+	if !strings.Contains(run.stdout, "::error title=actionlint action failed::") {
+		t.Errorf("wanted a failure annotation but got %q", run.stdout)
+	}
+}
+
 func TestActionPassesInputsToLinter(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
 	if err := os.MkdirAll(filepath.Join(workspace, "sub"), 0o755); err != nil {

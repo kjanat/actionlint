@@ -48,38 +48,40 @@ func (a *action) appendOutputs(values []namedOutput) error {
 	return f.Close()
 }
 
-func writeResultFile(workspace, target, content string) (string, error) {
+func writeResultFile(root *os.Root, target, content string) (string, error) {
 	if target == "" {
 		return "", nil
 	}
 
 	missing := []string{}
-	for parent := filepath.Dir(target); parent != workspace; parent = filepath.Dir(parent) {
-		if _, err := os.Stat(parent); err == nil {
+	for parent := filepath.Dir(target); parent != "."; parent = filepath.Dir(parent) {
+		if _, err := root.Stat(parent); err == nil {
 			break
 		}
 		missing = append(missing, parent)
-		if filepath.Dir(parent) == parent {
-			break
+	}
+	if dir := filepath.Dir(target); dir != "." {
+		if err := root.MkdirAll(dir, 0o755); err != nil {
+			return "", err
 		}
 	}
-	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+	f, err := root.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+	if err != nil {
 		return "", err
 	}
-	if err := os.WriteFile(target, []byte(content), 0o644); err != nil {
+	if _, err := f.WriteString(content); err != nil {
+		f.Close()
+		return "", err
+	}
+	if err := f.Close(); err != nil {
 		return "", err
 	}
 
 	slices.Reverse(missing)
-	if err := inheritOwner(workspace, append(missing, target)); err != nil {
+	if err := inheritOwner(root, append(missing, target)); err != nil {
 		return "", err
 	}
-
-	rel, err := filepath.Rel(workspace, target)
-	if err != nil {
-		return "", err
-	}
-	return filepath.ToSlash(rel), nil
+	return filepath.ToSlash(target), nil
 }
 
 func (a *action) emit(rendered string, code int, format outputFormat) {
