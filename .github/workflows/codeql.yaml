@@ -37,14 +37,9 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         if: ${{ matrix.language == 'go' }}
-        with:
-          go-version: "1.27"
-          check-latest: true
+        with: { go-version: "1.27", check-latest: true }
       - uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4
-        with:
-          config-file: ./.github/codeql/codeql-config.yaml
-          languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
+        with: { config-file: ./.github/codeql/codeql-config.yaml, languages: "${{ matrix.language }}", build-mode: "${{ matrix.build-mode }}" }
       - name: Build Go sources
         if: ${{ matrix.language == 'go' }}
         run: |
@@ -52,5 +47,4 @@ jobs:
           go build -v ./...
           GOOS=js GOARCH=wasm go build -v -o ./playground/main.wasm ./playground
       - uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4
-        with:
-          category: "/language:${{ matrix.language }}"
+        with: { category: "/language:${{ matrix.language }}" }
