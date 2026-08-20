@@ -3,6 +3,8 @@ interface ActionlintError {
 	message: string;
 	line: number;
 	column: number;
+	// Column where actionlint's `^~~~~` indicator ends, inclusive. Equal to column when there is none.
+	endColumn: number;
 }
 
 interface Window {

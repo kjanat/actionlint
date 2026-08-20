@@ -4,49 +4,15 @@ import './style.css';
 
 import { indentWithTab } from '@codemirror/commands';
 import { yaml } from '@codemirror/lang-yaml';
-import { Compartment, type Extension, RangeSet, StateEffect, StateField } from '@codemirror/state';
+import type { Diagnostic } from '@codemirror/lint';
+import { lintGutter, setDiagnostics } from '@codemirror/lint';
+import type { Extension } from '@codemirror/state';
+import { Compartment } from '@codemirror/state';
 import { oneDark } from '@codemirror/theme-one-dark';
-import { EditorView, gutter, GutterMarker, keymap } from '@codemirror/view';
+import { EditorView, keymap } from '@codemirror/view';
 import { basicSetup } from 'codemirror';
 import isMobile from 'ismobilejs';
 import * as pako from 'pako';
-
-const setErrorLines = StateEffect.define<number[]>();
-
-const errorMarker = new class extends GutterMarker {
-	override toDOM(): Node {
-		const dot = document.createElement('span');
-		dot.className = 'error-marker';
-		dot.textContent = '●';
-		return dot;
-	}
-}();
-
-const errorMarkers = StateField.define<RangeSet<GutterMarker>>({
-	create() {
-		return RangeSet.empty;
-	},
-	update(markers, tr) {
-		markers = markers.map(tr.changes);
-		for (const effect of tr.effects) {
-			if (effect.is(setErrorLines)) {
-				markers = RangeSet.of(
-					effect.value
-						.filter(line => line >= 1 && line <= tr.state.doc.lines)
-						.map(line => errorMarker.range(tr.state.doc.line(line).from)),
-					true,
-				);
-			}
-		}
-		return markers;
-	},
-});
-
-const errorGutter = gutter({
-	class: 'cm-error-gutter',
-	markers: view => view.state.field(errorMarkers),
-	initialSpacer: () => errorMarker,
-});
 
 const editorTheme = new Compartment();
 
@@ -164,7 +130,7 @@ jobs:
 		errorMessage.style.display = 'none';
 		successMessage.style.display = 'none';
 		invalidInputMessage.style.display = 'none';
-		editor.dispatch({ effects: setErrorLines.of([]) });
+		editor.dispatch(setDiagnostics(editor.state, []));
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		window.runActionlint!(getSource());
 	}
@@ -199,8 +165,7 @@ jobs:
 			yaml(),
 			EditorView.lineWrapping,
 			keymap.of([indentWithTab]),
-			errorMarkers,
-			errorGutter,
+			lintGutter(),
 			editorTheme.of(themeFor(preferDark.matches)),
 			EditorView.updateListener.of(update => {
 				if (!update.docChanged) {
@@ -285,7 +250,7 @@ jobs:
 			return;
 		}
 
-		const errorLines: number[] = [];
+		const diagnostics: Diagnostic[] = [];
 
 		for (const error of errors) {
 			const row = document.createElement('tr');
@@ -319,10 +284,26 @@ jobs:
 
 			body.appendChild(row);
 
-			errorLines.push(error.line);
+			const doc = editor.state.doc;
+			const line = doc.line(Math.min(Math.max(error.line, 1), doc.lines));
+			const from = Math.min(line.from + error.column - 1, line.to);
+			diagnostics.push({
+				from,
+				to: Math.max(from, Math.min(line.from + error.endColumn, line.to)),
+				severity: 'error',
+				source: error.kind,
+				message: error.message,
+				renderMessage: () => {
+					const wrapper = document.createElement('div');
+					for (const elem of linkifyMessage(error.message)) {
+						wrapper.appendChild(elem);
+					}
+					return wrapper;
+				},
+			});
 		}
 
-		editor.dispatch({ effects: setErrorLines.of(errorLines) });
+		editor.dispatch(setDiagnostics(editor.state, diagnostics));
 	}
 
 	window.getYamlSource = getSource;

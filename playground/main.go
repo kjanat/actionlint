@@ -17,12 +17,14 @@ func fail(err error, when string) {
 	window.Call("showError", err.Error()+" on "+when)
 }
 
-func encodeErrorAsMap(err *actionlint.Error) map[string]any {
-	obj := make(map[string]any, 4)
-	obj["message"] = err.Message
-	obj["line"] = err.Line
-	obj["column"] = err.Column
-	obj["kind"] = err.Kind
+func encodeErrorAsMap(err *actionlint.Error, src []byte) map[string]any {
+	f := err.GetTemplateFields(src)
+	obj := make(map[string]any, 5)
+	obj["message"] = f.Message
+	obj["line"] = f.Line
+	obj["column"] = f.Column
+	obj["endColumn"] = f.EndColumn
+	obj["kind"] = f.Kind
 	return obj
 }
 
@@ -34,7 +36,8 @@ func lint(source string) any {
 		return nil
 	}
 
-	errs, err := linter.Lint("test.yaml", []byte(source), nil)
+	src := []byte(source)
+	errs, err := linter.Lint("test.yaml", src, nil)
 	if err != nil {
 		fail(err, "applying lint rules")
 		return nil
@@ -42,7 +45,7 @@ func lint(source string) any {
 
 	ret := make([]any, 0, len(errs))
 	for _, err := range errs {
-		ret = append(ret, encodeErrorAsMap(err))
+		ret = append(ret, encodeErrorAsMap(err, src))
 	}
 
 	window.Call("onCheckCompleted", js.ValueOf(ret))

@@ -95,6 +95,8 @@ jobs:
 		assert.ok(err.message.includes('unknown Webhook event "foo"'), `message is unexpected: ${json}`);
 		assert.equal(err.line, 2, `line is unexpected: ${json}`);
 		assert.equal(err.column, 5, `column is unexpected: ${json}`);
+		// Columns 5 to 7 are "foo", the range the editor underlines.
+		assert.equal(err.endColumn, 7, `end column is unexpected: ${json}`);
 		assert.equal(err.kind, 'events', `kind is unexpected: ${json}`);
 	});
 
