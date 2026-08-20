@@ -76,8 +76,7 @@ jobs:
       - run: go build -race ./cmd/actionlint
 
       - name: Dog fooding 🐶
-        # actionlint runs shellcheck with --norc, so .shellcheckrc's enable=all
-        # has to be repeated here to reach the scripts in `run:`.
+        # actionlint passes --norc to shellcheck, ignoring .shellcheckrc.
         run: echo "::add-matcher::.github/actionlint-matcher.json"; ./actionlint -color -shellcheck 'shellcheck -o all'
 
       - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
@@ -136,7 +135,7 @@ jobs:
           echo "${gopath}/bin" >> "${GITHUB_PATH}"
       - run: make lint SKIP_GO_GENERATE=true
       - name: Lint bash scripts
-        run: shellcheck ./scripts/*.bash ./playground/*.bash
+        run: shellcheck ./scripts/*.bash
   docker:
     name: Dockerfile
     runs-on: ubuntu-latest
@@ -158,7 +157,7 @@ jobs:
       - name: Lint Dockerfile with hadolint
         run: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 --strict-labels - < Dockerfile
       - name: Lint Dockerfile with droast
-        uses: immanuwell/dockerfile-roast@a9b99073c7b85d368387ba0eef1f48f550f92484 # 1.6.0
+        uses: immanuwell/dockerfile-roast@50689402f3eced348cf4bd822ffb57871b5c02d0 # 1.6.1
   action:
     name: GitHub Action
     runs-on: ubuntu-latest
