@@ -1,7 +1,5 @@
-/lib
-/main.wasm
-/node_modules
+/dist
 /image
-/*.js
-/*.js.map
+/node_modules
+/public
 /.testtimestamp

@@ -30,6 +30,20 @@
     "associations": ["package.json"]
   },
   "typescript": { "quoteStyle": "preferSingle", "useTabs": true },
+  "markup": {
+    "useTabs": true,
+    "html.void.selfClosing": false,
+    "formatComments": true,
+    "scriptIndent": true,
+    "styleIndent": true,
+    "doctypeKeywordCase": "upper",
+    "strictSvelteAttr": false,
+    "svelteAttrShorthand": true,
+    "svelteDirectiveShorthand": true,
+    "ignoreCommentDirective": "dprint-ignore",
+    "ignoreFileCommentDirective": "dprint-ignore-file",
+    "associations": ["!**/*.svg"]
+  },
   "plugins": [
     "https://plugins.dprint.dev/exec-0.7.3.json@a7898d5f1897e77bff474cec3d948c3ec3a7f455e32de2cc60c8adb9a5dd24aa",
     "https://plugins.dprint.dev/dockerfile-0.4.1.wasm",
@@ -43,6 +57,9 @@
     "https://plugins.dprint.dev/kjanat/pwsh-0.2.0.wasm",
     "https://plugins.dprint.dev/kjanat/shfmt-1.0.0.wasm",
     "https://plugins.dprint.dev/kjanat/sortpackagejson-0.2.1.wasm",
+    "https://plugins.dprint.dev/g-plane/malva-v0.16.0.wasm",
+    "https://plugins.dprint.dev/g-plane/markup_fmt-v0.27.3.wasm",
+    "https://plugins.dprint.dev/kjanat/svg-v0.4.1.wasm",
   ],
   "excludes": ["**/testdata/**"]
 }

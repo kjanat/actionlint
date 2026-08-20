@@ -1,14 +1,15 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": [
+      "ESNext",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "allowJs": true,
-    "checkJs": true,
-    "noEmit": true,
-    "sourceMap": true,
-    "removeComments": true,
+    "checkJs": false,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
@@ -18,13 +19,16 @@
     "noImplicitOverride": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["codemirror", "mocha", "pako", "node"]
+    "types": [
+      "node",
+      "vite/client"
+    ],
+    "noEmit": true,
+    "isolatedModules": true
   },
   "include": [
-    "./index.ts",
-    "./lib.d.ts",
-    "./test.ts",
-    "./*.config.mjs",
-    "./*.config.ts"
+    "src",
+    "vite.config.ts",
+    "eslint.config.mjs"
   ]
 }

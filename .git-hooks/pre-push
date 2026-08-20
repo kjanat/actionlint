@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -e -o pipefail
 
-if [[ "$CI" != "" ]]; then
+if [[ "${CI:-}" != "" ]]; then
 	exit
 fi
 

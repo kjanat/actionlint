@@ -187,7 +187,7 @@ When releasing v1.2.3 as example:
    the shape of the sections around it: the `<a id="v1.2.3"></a>` anchor, the heading linking to the release page, the
    entries, the `[Changes][v1.2.3]` trailer, and the link definition at the end of the file. `bump-version -check`
    verifies all four parts of every section.
-7. Update the playground by `./playground/deploy.bash` if it is not updated yet for the release
+7. The Pages workflow redeploys the playground on the next push to `main`
 
 The `make CHANGELOG.md` target runs [changelog-from-release](https://github.com/rhysd/changelog-from-release), which
 rewrites the whole file from the GitHub releases. It knows nothing about the `Unreleased` heading and drops it, and the
@@ -219,30 +219,15 @@ Visit [`playground/README.md`](./playground/README.md).
 
 ## How to deploy playground
 
-Run [`deploy.bash`](./playground/deploy.bash) at root of repository. It does:
+The [Pages workflow](./.github/workflows/pages.yaml) deploys on every push to `main`. It builds the bundle with
+`make -C playground build`, packages `playground/dist` together with the manual, and uploads it through
+`actions/upload-pages-artifact`.
 
-1. Ensure to install dependencies and to build `main.wasm`
-2. Copy all assets to `./playground-dist` directory
-3. Optimize `main.wasm` with `wasm-opt` which is a part of [Binaryen](https://github.com/WebAssembly/binaryen) toolchain
-4. Switch branch to `gh-pages`
-5. Move all files in `./playground-dist` to root of repository and add to repository
-6. Make commit for deployment
+To check a build locally before pushing:
 
 ```sh
-# Prepare deployment
-bash ./playground/deploy.bash
-# Check it works fine by visiting localhost:1234
-npm run serve
-# If it looks good, deploy it
-git push
-```
-
-Note: `SKIP_BUILD_WASM` environment variable can skip building `main.wasm` binary. Please set it when the Wasm binary
-doesn't need to be updated. It is important to avoid bloating a repository size by including a big Wasm binary in a
-commit.
-
-```sh
-SKIP_BUILD_WASM=true bash ./playground/deploy.bash
+make -C playground build
+npm run preview
 ```
 
 ## Maintain auto-generated sources

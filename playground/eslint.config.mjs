@@ -1,15 +1,16 @@
 // @ts-check
 
 import eslint from '@eslint/js';
-import mocha from 'eslint-plugin-mocha';
 import { defineConfig } from 'eslint/config';
 import ts from 'typescript-eslint';
 
 export default defineConfig(
+	// dist is build output and public holds the Go toolchain's wasm runtime glue.
+	{ ignores: ['dist/**', 'public/**'] },
 	eslint.configs.recommended,
 	ts.configs.strictTypeChecked,
 	{
-		files: ['*.ts'],
+		files: ['src/**/*.ts', 'vite.config.ts'],
 		languageOptions: {
 			parserOptions: {
 				projectService: true,
@@ -18,7 +19,7 @@ export default defineConfig(
 		},
 	},
 	{
-		files: ['*.ts', '*.mjs'],
+		files: ['src/**/*.ts', 'vite.config.ts', 'eslint.config.mjs'],
 		rules: {
 			eqeqeq: ['error', 'always'],
 			'@typescript-eslint/no-unnecessary-condition': ['error', { allowConstantLoopConditions: true }],
@@ -29,18 +30,9 @@ export default defineConfig(
 		},
 	},
 	{
-		files: ['test.ts'],
-		// The cast is workaround for https://github.com/lo1tuma/eslint-plugin-mocha/issues/392
-		.../** @type {{recommended: import('eslint').Linter.Config}} */ (mocha.configs).recommended,
-	},
-	{
-		files: ['test.ts'],
+		files: ['src/test.ts'],
 		rules: {
 			'@typescript-eslint/unbound-method': 'off', // For checking `window.runActionlint`
-			'mocha/no-exclusive-tests': 'error',
-			'mocha/no-pending-tests': 'error',
-			'mocha/no-top-level-hooks': 'error',
-			'mocha/consistent-interface': ['error', { interface: 'BDD' }],
 		},
 	},
 	{
@@ -48,7 +40,7 @@ export default defineConfig(
 		languageOptions: {
 			parserOptions: {
 				projectService: false,
-				project: 'tsconfig.eslint.json',
+				project: 'tsconfig.json',
 			},
 		},
 	},

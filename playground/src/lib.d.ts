@@ -14,8 +14,6 @@ interface Window {
 }
 
 declare class Go {
-	importObject: Imports;
-	run(mod: Instance): Promise<unknown>;
+	importObject: WebAssembly.Imports;
+	run(mod: WebAssembly.Instance): Promise<unknown>;
 }
-
-declare const isMobile: IsMobile.isMobileResult;

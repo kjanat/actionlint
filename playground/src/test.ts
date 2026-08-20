@@ -1,16 +1,9 @@
-import { Crypto } from '@peculiar/webcrypto';
-import { strict as assert } from 'assert';
-import { promises as fs } from 'fs';
-import { JSDOM } from 'jsdom';
+import { strict as assert } from 'node:assert';
+import { promises as fs } from 'node:fs';
+import { beforeAll, describe, it } from 'vitest';
 
-// This polyfill is necessary for Node.js v18 or earlier. `global.crypto` was added at v19.
-// @see https://github.com/nodejs/node/pull/42083/files
-if (typeof globalThis.crypto === 'undefined') {
-	globalThis.crypto = new Crypto();
-}
-
-// Inject global.Go for testing `main.wasm`.
-require('./lib/js/wasm_exec.js'); // eslint-disable-line @typescript-eslint/no-require-imports
+// The Go wasm runtime installs `globalThis.Go` as a side effect.
+import '../public/wasm_exec.js';
 
 class CheckResults {
 	errors: ActionlintError[] | null = null;
@@ -42,12 +35,11 @@ class CheckResults {
 describe('main.wasm', function() {
 	const results = new CheckResults();
 
-	before(async function() {
-		const dom = new JSDOM('');
-		dom.window.dismissLoading = function() {
+	beforeAll(async function() {
+		window.dismissLoading = function() {
 			/*do nothing*/
 		};
-		dom.window.getYamlSource = function() {
+		window.getYamlSource = function() {
 			return `
 on: push
 
@@ -56,19 +48,14 @@ jobs:
     steps:
       - run: echo 'hi'`;
 		};
-		dom.window.onCheckCompleted = results.onCheckCompleted.bind(results);
-
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		global.window = dom.window as any;
+		window.onCheckCompleted = results.onCheckCompleted.bind(results);
 
 		const go = new Go();
-		const bin = await fs.readFile('./main.wasm');
-		const buf = bin.buffer;
-		const result = await WebAssembly.instantiate(buf, go.importObject);
+		const bin = await fs.readFile('./public/main.wasm');
+		const result = await WebAssembly.instantiate(bin.buffer, go.importObject);
 
-		// Do not `await` this method call since it will never be settled
-		// eslint-disable-next-line @typescript-eslint/no-floating-promises
-		go.run(result.instance);
+		// This promise is never settled, so it must not be awaited.
+		void go.run(result.instance);
 	});
 
 	it('shows first result on loading', async function() {
@@ -77,8 +64,8 @@ jobs:
 		const json = JSON.stringify(errors);
 		assert.equal(errors.length, 1, json);
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		const err = errors[0]!;
+		const [err] = errors;
+		assert.ok(err, json);
 		assert.equal(err.message, '"runs-on" section is missing in job "test"', `message is unexpected: ${json}`);
 		assert.equal(err.line, 5, `line is unexpected: ${json}`);
 		assert.equal(err.column, 3, `column is unexpected: ${json}`);
@@ -103,8 +90,8 @@ jobs:
 		const json = JSON.stringify(errors);
 		assert.equal(errors.length, 1, json);
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		const err = errors[0]!;
+		const [err] = errors;
+		assert.ok(err, json);
 		assert.ok(err.message.includes('unknown Webhook event "foo"'), `message is unexpected: ${json}`);
 		assert.equal(err.line, 2, `line is unexpected: ${json}`);
 		assert.equal(err.column, 5, `column is unexpected: ${json}`);

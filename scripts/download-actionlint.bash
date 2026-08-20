@@ -44,11 +44,11 @@ fi
 
 # Default value is updated manually on release
 version="1.11.0"
-if [ -n "$1" ]; then
+if [[ -n "$1" ]]; then
 	if [[ "$1" == 'latest' || "$1" == 'LATEST' ]]; then
 		latest_url="$(curl --fail --silent --show-error --location --head --output /dev/null --write-out '%{url_effective}' https://github.com/kjanat/actionlint/releases/latest)"
 		version="${latest_url##*/v}"
-		if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+		if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 			echo "Could not determine the latest version from '${latest_url}'" >&2
 			exit 1
 		fi
@@ -65,8 +65,8 @@ if [ -n "$1" ]; then
 fi
 
 target_dir="$(pwd)"
-if [ -n "$2" ]; then
-	if [ -d "$2" ]; then
+if [[ -n "$2" ]]; then
+	if [[ -d "$2" ]]; then
 		target_dir="${2%/}"
 	else
 		echo "Directory '$2' does not exist" >&2
@@ -78,7 +78,7 @@ fi
 
 echo "Start downloading actionlint v${version} to ${target_dir}"
 
-case "$OSTYPE" in
+case "${OSTYPE}" in
 	linux-*)
 		os=linux
 		ext=tar.gz
@@ -102,7 +102,7 @@ case "$OSTYPE" in
 esac
 
 machine="$(uname -m)"
-case "$machine" in
+case "${machine}" in
 	x86_64) arch=amd64 ;;
 	i?86) arch=386 ;;
 	aarch64 | arm64) arch=arm64 ;;
@@ -123,28 +123,29 @@ echo "Downloading ${url} with curl"
 
 tempdir="$(mktemp -d actionlint.XXXXXXXXXXXXXXXX)"
 trap 'rm -rf "$tempdir"' EXIT
-archive="$tempdir/$file"
-curl --fail --location --output "$archive" "${url}"
+archive="${tempdir}/${file}"
+curl --fail --location --output "${archive}" "${url}"
 
-if [[ "$os" == "windows" ]]; then
-	unzip "$archive" actionlint.exe -d "$target_dir"
-	exe="$target_dir/actionlint.exe"
+if [[ "${os}" == "windows" ]]; then
+	unzip "${archive}" actionlint.exe -d "${target_dir}"
+	exe="${target_dir}/actionlint.exe"
 else
-	tar xvz -f "$archive" -C "$target_dir" actionlint
-	exe="$target_dir/actionlint"
+	tar xvz -f "${archive}" -C "${target_dir}" actionlint
+	exe="${target_dir}/actionlint"
 fi
 
-rm -rf "$tempdir"
+rm -rf "${tempdir}"
 trap - EXIT
 
 echo "Downloaded and unarchived executable: ${exe}"
 
-echo "Done: $("${exe}" -version)"
+installed_version="$("${exe}" -version)"
+echo "Done: ${installed_version}"
 
-if [ -n "$GITHUB_ACTION" ]; then
+if [[ -n "${GITHUB_ACTION}" ]]; then
 	# On GitHub Actions, set executable path to output
-	if [ -n "${GITHUB_OUTPUT}" ]; then
-		echo "executable=${exe}" >>"$GITHUB_OUTPUT"
+	if [[ -n "${GITHUB_OUTPUT}" ]]; then
+		echo "executable=${exe}" >>"${GITHUB_OUTPUT}"
 	else
 		# GitHub Enterprise instance may not introduce the new set-output command yet (see #240)
 		echo "::set-output name=executable::${exe}"

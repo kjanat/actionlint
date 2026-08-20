@@ -8,12 +8,12 @@
   ],
   "scripts": {
     "build": "npm run build --workspace playground",
+    "dev": "npm run dev --workspace playground",
     "lint": "npm run lint --workspace playground",
     "matcher:generate": "node ./scripts/generate-actionlint-matcher/main.mjs .github/actionlint-matcher.json",
     "matcher:test": "node ./scripts/generate-actionlint-matcher/test.mjs",
-    "serve": "npm run serve --workspace playground",
-    "test": "npm run test --workspace playground",
-    "watch": "npm run watch --workspace playground"
+    "preview": "npm run preview --workspace playground",
+    "test": "npm run test --workspace playground"
   },
   "packageManager": "npm@11.19.0"
 }

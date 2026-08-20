@@ -1,9 +1,58 @@
-// `styleActiveLine` is a property for active-line.js addon. @types/codemirror requires `import 'codemirror/addon/selection/active-line'`
-// to add properties to `CodeMirror.EditorConfiguration` object but we don't use import statement.
-/// <reference types="codemirror/addon/selection/active-line" />
+import 'bulma/css/bulma.min.css';
+import 'devicon/devicon.min.css';
+import './style.css';
 
-import CodeMirror from 'codemirror';
-import pako from 'pako';
+import { indentWithTab } from '@codemirror/commands';
+import { yaml } from '@codemirror/lang-yaml';
+import { Compartment, type Extension, RangeSet, StateEffect, StateField } from '@codemirror/state';
+import { oneDark } from '@codemirror/theme-one-dark';
+import { EditorView, gutter, GutterMarker, keymap } from '@codemirror/view';
+import { basicSetup } from 'codemirror';
+import isMobile from 'ismobilejs';
+import * as pako from 'pako';
+
+const setErrorLines = StateEffect.define<number[]>();
+
+const errorMarker = new class extends GutterMarker {
+	override toDOM(): Node {
+		const dot = document.createElement('span');
+		dot.className = 'error-marker';
+		dot.textContent = '●';
+		return dot;
+	}
+}();
+
+const errorMarkers = StateField.define<RangeSet<GutterMarker>>({
+	create() {
+		return RangeSet.empty;
+	},
+	update(markers, tr) {
+		markers = markers.map(tr.changes);
+		for (const effect of tr.effects) {
+			if (effect.is(setErrorLines)) {
+				markers = RangeSet.of(
+					effect.value
+						.filter(line => line >= 1 && line <= tr.state.doc.lines)
+						.map(line => errorMarker.range(tr.state.doc.line(line).from)),
+					true,
+				);
+			}
+		}
+		return markers;
+	},
+});
+
+const errorGutter = gutter({
+	class: 'cm-error-gutter',
+	markers: view => view.state.field(errorMarkers),
+	initialSpacer: () => errorMarker,
+});
+
+const editorTheme = new Compartment();
+
+function themeFor(isDark: boolean): Extension {
+	return isDark ? oneDark : [];
+}
 
 (async function() {
 	function getElementById(id: string): HTMLElement {
@@ -23,10 +72,6 @@ import pako from 'pako';
 	const permalinkButton = getElementById('permalink-btn');
 	const invalidInputMessage = getElementById('invalid-input');
 	const preferDark = window.matchMedia('(prefers-color-scheme: dark)');
-
-	function colorTheme(isDark: boolean): 'material-darker' | 'default' {
-		return isDark ? 'material-darker' : 'default';
-	}
 
 	async function getRemoteSource(url: string): Promise<string> {
 		function getUrlToFetch(u: string): string {
@@ -110,27 +155,21 @@ jobs:
 		return src;
 	}
 
-	const editorConfig: CodeMirror.EditorConfiguration = {
-		mode: 'yaml',
-		theme: colorTheme(preferDark.matches),
-		lineNumbers: true,
-		lineWrapping: true,
-		autofocus: true,
-		styleActiveLine: true,
-		gutters: ['CodeMirror-linenumbers', 'error-marker'],
-		extraKeys: {
-			Tab(cm) {
-				cm.execCommand(cm.somethingSelected() ? 'indentMore' : 'insertSoftTab');
-			},
-		},
-		value: await getDefaultSource(),
-	};
-	const editor = CodeMirror(getElementById('editor'), editorConfig);
-
-	const debounceInterval = isMobile.phone ? 1000 : 300;
+	const debounceInterval = isMobile().phone ? 1000 : 300;
 	let debounceId: number | null = null;
 	let contentChanged = false;
-	editor.on('change', function(_, e) {
+
+	function startActionlint(): void {
+		debounceId = null;
+		errorMessage.style.display = 'none';
+		successMessage.style.display = 'none';
+		invalidInputMessage.style.display = 'none';
+		editor.dispatch({ effects: setErrorLines.of([]) });
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+		window.runActionlint!(getSource());
+	}
+
+	function onDocChanged(pasted: boolean): void {
 		contentChanged = true;
 
 		if (typeof window.runActionlint !== 'function') {
@@ -142,17 +181,7 @@ jobs:
 			window.clearTimeout(debounceId);
 		}
 
-		function startActionlint(): void {
-			debounceId = null;
-			errorMessage.style.display = 'none';
-			successMessage.style.display = 'none';
-			invalidInputMessage.style.display = 'none';
-			editor.clearGutter('error-marker');
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			window.runActionlint!(editor.getValue());
-		}
-
-		if (e.origin === 'paste') {
+		if (pasted) {
 			startActionlint(); // When pasting some code, apply actionlint instantly
 			return;
 		}
@@ -160,10 +189,31 @@ jobs:
 		debounceId = window.setTimeout(() => {
 			startActionlint();
 		}, debounceInterval);
+	}
+
+	const editor = new EditorView({
+		doc: await getDefaultSource(),
+		parent: getElementById('editor'),
+		extensions: [
+			basicSetup,
+			yaml(),
+			EditorView.lineWrapping,
+			keymap.of([indentWithTab]),
+			errorMarkers,
+			errorGutter,
+			editorTheme.of(themeFor(preferDark.matches)),
+			EditorView.updateListener.of(update => {
+				if (!update.docChanged) {
+					return;
+				}
+				onDocChanged(update.transactions.some(tr => tr.isUserEvent('input.paste')));
+			}),
+		],
 	});
+	editor.focus();
 
 	function getSource(): string {
-		return editor.getValue();
+		return editor.state.doc.toString();
 	}
 
 	function showError(message: string): void {
@@ -235,10 +285,17 @@ jobs:
 			return;
 		}
 
+		const errorLines: number[] = [];
+
 		for (const error of errors) {
 			const row = document.createElement('tr');
 			row.addEventListener('click', () => {
-				editor.setCursor({ line: error.line - 1, ch: error.column - 1 });
+				const doc = editor.state.doc;
+				const line = doc.line(Math.min(Math.max(error.line, 1), doc.lines));
+				editor.dispatch({
+					selection: { anchor: Math.min(line.from + error.column - 1, line.to) },
+					scrollIntoView: true,
+				});
 				editor.focus();
 			});
 
@@ -262,11 +319,10 @@ jobs:
 
 			body.appendChild(row);
 
-			const marker = document.createElement('div');
-			marker.style.color = '#ff5370';
-			marker.textContent = '●';
-			editor.setGutterMarker(error.line - 1, 'error-marker', marker);
+			errorLines.push(error.line);
 		}
+
+		editor.dispatch({ effects: setErrorLines.of(errorLines) });
 	}
 
 	window.getYamlSource = getSource;
@@ -305,7 +361,7 @@ jobs:
 			return;
 		}
 		clearInvalidInputMessage();
-		editor.setValue(src);
+		editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: src } });
 	});
 
 	permalinkButton.addEventListener('click', e => {
@@ -318,7 +374,7 @@ jobs:
 	});
 
 	preferDark.addEventListener('change', event => {
-		editor.setOption('theme', colorTheme(event.matches));
+		editor.dispatch({ effects: editorTheme.reconfigure(themeFor(event.matches)) });
 	});
 
 	const go = new Go();
