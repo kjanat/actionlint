@@ -109,7 +109,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version: "${{ env.GO }}", check-latest: true }
+        # staticcheck 2026.1 reads export data up to Go 1.26
+        with: { go-version: "1.26", check-latest: true }
       - name: Install dependencies
         run: |
           sudo apt-get install -y shellcheck

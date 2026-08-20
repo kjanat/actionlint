@@ -1,16 +1,44 @@
 package main
 
 import (
+	"bytes"
+	"compress/zlib"
+	"encoding/base64"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 )
+
+var playgroundLinkRe = regexp.MustCompile(`\[Playground\]\(https://kjanat\.github\.io/actionlint/#([A-Za-z0-9+/=]+)\)`)
+
+// compress/flate output differs across Go releases.
+func decodePlaygroundLinks(t *testing.T, doc []byte) []byte {
+	t.Helper()
+	return playgroundLinkRe.ReplaceAllFunc(doc, func(m []byte) []byte {
+		enc := playgroundLinkRe.FindSubmatch(m)[1]
+		raw, err := base64.StdEncoding.DecodeString(string(enc))
+		if err != nil {
+			t.Fatal(err)
+		}
+		r, err := zlib.NewReader(bytes.NewReader(raw))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer r.Close()
+		dec, err := io.ReadAll(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return append([]byte("[Playground]("), append(dec, ')')...)
+	})
+}
 
 // Do not mess up the test output. Temporarily commenting out this function may be helpful when debugging some test cases.
 func init() {
@@ -57,7 +85,7 @@ func TestMainGenerateOK(t *testing.T) {
 
 	want := must(os.ReadFile(filepath.FromSlash("testdata/ok/minimal.out")))
 	have := must(os.ReadFile(path))
-	if diff := cmp.Diff(want, have); diff != "" {
+	if diff := cmp.Diff(decodePlaygroundLinks(t, want), decodePlaygroundLinks(t, have)); diff != "" {
 		t.Fatal(diff)
 	}
 }
@@ -140,7 +168,7 @@ func TestUpdateOK(t *testing.T) {
 				t.Fatal(err)
 			}
 			want := must(os.ReadFile(out))
-			if diff := cmp.Diff(want, have); diff != "" {
+			if diff := cmp.Diff(decodePlaygroundLinks(t, want), decodePlaygroundLinks(t, have)); diff != "" {
 				t.Fatal(diff)
 			}
 		})

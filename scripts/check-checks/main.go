@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
@@ -126,12 +127,10 @@ func (u *Updater) End() ([]byte, error) {
 	return u.out.Bytes(), u.firstErr
 }
 
-func (u *Updater) PlaygroundLink(src []byte) string {
+const playgroundURL = "https://kjanat.github.io/actionlint/#"
+
+func playgroundPayload(src []byte) ([]byte, error) {
 	var out bytes.Buffer
-
-	b64 := base64.NewEncoder(base64.StdEncoding, &out)
-	comp, _ := zlib.NewWriterLevel(b64, zlib.BestCompression)
-
 	scan := bufio.NewScanner(bytes.NewReader(src))
 	first := true
 	for scan.Scan() {
@@ -142,16 +141,50 @@ func (u *Updater) PlaygroundLink(src []byte) string {
 		if first {
 			first = false
 		} else {
-			comp.Write([]byte{'\n'})
+			out.WriteByte('\n')
 		}
-		comp.Write(l)
+		out.Write(l)
 	}
-	u.err(scan.Err())
+	return out.Bytes(), scan.Err()
+}
 
+func playgroundLinkPayload(line string) ([]byte, bool) {
+	rest, ok := strings.CutPrefix(line, "[Playground]("+playgroundURL)
+	if !ok {
+		return nil, false
+	}
+	enc, ok := strings.CutSuffix(rest, ")")
+	if !ok {
+		return nil, false
+	}
+	raw, err := base64.StdEncoding.DecodeString(enc)
+	if err != nil {
+		return nil, false
+	}
+	r, err := zlib.NewReader(bytes.NewReader(raw))
+	if err != nil {
+		return nil, false
+	}
+	defer r.Close()
+	dec, err := io.ReadAll(r)
+	if err != nil {
+		return nil, false
+	}
+	return dec, true
+}
+
+func (u *Updater) PlaygroundLink(src []byte) string {
+	payload, err := playgroundPayload(src)
+	u.err(err)
+
+	var out bytes.Buffer
+	b64 := base64.NewEncoder(base64.StdEncoding, &out)
+	comp, _ := zlib.NewWriterLevel(b64, zlib.BestCompression)
+	comp.Write(payload)
 	u.err(comp.Close())
 	u.err(b64.Close())
 
-	return fmt.Sprintf("[Playground](https://kjanat.github.io/actionlint/#%s)", out.Bytes())
+	return fmt.Sprintf("[Playground](%s%s)", playgroundURL, out.Bytes())
 }
 
 func (u *Updater) state(s state, reason string) {
@@ -168,10 +201,8 @@ func (u *Updater) Scan() bool {
 }
 
 func (u *Updater) expect(states ...state) {
-	for _, s := range states {
-		if s == u.cur {
-			return
-		}
+	if slices.Contains(states, u.cur) {
+		return
 	}
 	u.err(fmt.Errorf("unexpected state %q. expected %q", u.cur, states))
 }
@@ -292,7 +323,13 @@ func (u *Updater) Update() {
 			u.input.Reset()
 			u.state(stateEnd, "Skip updating playground link due to the comment")
 		} else if isPlaygroundLink {
-			ln := u.PlaygroundLink(u.input.Bytes())
+			// compress/flate output differs across Go releases.
+			ln := l
+			payload, perr := playgroundPayload(u.input.Bytes())
+			u.err(perr)
+			if dec, ok := playgroundLinkPayload(l); perr != nil || !ok || !bytes.Equal(dec, payload) {
+				ln = u.PlaygroundLink(u.input.Bytes())
+			}
 			u.out.WriteString(ln)
 			u.out.WriteByte('\n')
 			u.input.Reset()
