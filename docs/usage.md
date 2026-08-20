@@ -255,7 +255,7 @@ jobs:
 ```
 
 Docker actions require a Linux runner. `v1` moves to each new release.
-`v1.11.0` is a versioned release tag, but only a full-length commit SHA provides
+`v1.12.0` is a versioned release tag, but only a full-length commit SHA provides
 an immutable action reference.
 
 The action accepts these inputs:
@@ -316,7 +316,7 @@ jobs:
         with: { persist-credentials: false }
       - name: Download actionlint
         id: get_actionlint
-        run: bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash) 1.11.0
+        run: bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash) 1.12.0
         shell: bash
       - name: Check workflow files
         run: ${{ steps.get_actionlint.outputs.executable }} -color
@@ -328,7 +328,7 @@ Or simply download the executable and run it in one step:
 ```yaml
 - name: Check workflow files
   run: |
-    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash) 1.11.0
+    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash) 1.12.0
     ./actionlint -color
   shell: bash
 ```
@@ -388,10 +388,10 @@ Available tags are:
   Moving alias for the latest stable version of actionlint. This image is recommended.
 - `ghcr.io/kjanat/actionlint:{version}`:\
   Release-specific actionlint image rather than a moving alias.\
-  (e.g. `ghcr.io/kjanat/actionlint:1.11.0`)
+  (e.g. `ghcr.io/kjanat/actionlint:1.12.0`)
 - `ghcr.io/kjanat/actionlint:action-{version}`:\
   Release-specific image used by `action.yml` rather than a moving alias.\
-  (e.g. `action-1.11.0`)
+  (e.g. `action-1.12.0`)
 - `ghcr.io/kjanat/actionlint:action-v1`:\
   Moving alias for the latest compatible v1 image available to Docker Action users.
 - `ghcr.io/kjanat/actionlint:action-latest`:\
@@ -499,7 +499,7 @@ in the step of your workflow.
 - name: Check workflow files
   run: |
     echo "::add-matcher::.github/actionlint-matcher.json"
-    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash) 1.11.0
+    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash) 1.12.0
     ./actionlint -color
   shell: bash
 ```
@@ -548,7 +548,7 @@ Add this to your `.pre-commit-config.yaml` in your repository:
 ---
 repos:
   - repo: https://github.com/kjanat/actionlint
-    rev: v1.11.0
+    rev: v1.12.0
     hooks:
       - id: actionlint
 ```
@@ -650,7 +650,7 @@ trunk check enable actionlint
 or if you'd like a specific version:
 
 ```bash
-trunk check enable actionlint@1.11.0
+trunk check enable actionlint@1.12.0
 ```
 
 or modify `.trunk/trunk.yaml` in your repository to contain:
@@ -658,7 +658,7 @@ or modify `.trunk/trunk.yaml` in your repository to contain:
 ```yaml
 lint:
   enabled:
-    - actionlint@1.11.0
+    - actionlint@1.12.0
 ```
 
 Then just run:
