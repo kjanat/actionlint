@@ -10,14 +10,14 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.stack == null
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       # Without this action, dprint has to recompile the wasm plugins each time the action runs,
       # which is often, and wastes time, energy, and sanity.
-      - uses: kjanat/install-dprint@v2
-      - { uses: actions/setup-go@v7, with: { go-version: "1.26" } }
+      - uses: kjanat/install-dprint@fc7e4f62965bab609a936c9e58ad4893bb9da961 # v2
+      - { uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e, with: { go-version: "1.26" } } # v7
       - name: x/tools/go/analysis modernize
         run: go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...
       - name: format the code
         # autofix-ci will fail if the .github directory is touched
         run: dprint fmt --allow-no-files --diff --excludes .github
-      - uses: autofix-ci/action@v1
+      - uses: autofix-ci/action@c5b2d67aa2274e7b5a18224e8171550871fc7e4a # v1
