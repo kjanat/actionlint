@@ -42,12 +42,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { fetch-depth: 0, persist-credentials: false }
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-        with: { name: manual, path: man }
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version: "${{ env.GO }}", check-latest: true }
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-        with: { name: release-notes, path: "${{ runner.temp }}" }
+      - parallel:
+          - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+            with: { name: manual, path: man }
+          - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+            with: { name: release-notes, path: "${{ runner.temp }}" }
+          - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+            with: { go-version: "${{ env.GO }}", check-latest: true }
       - name: Get version
         run: echo VERSION="${GITHUB_REF#refs/tags/v}" >> "${GITHUB_ENV}"
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
@@ -118,12 +119,18 @@ jobs:
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with: { registry: ghcr.io, username: "${{ github.repository_owner }}", password: "${{ secrets.GITHUB_TOKEN }}" }
-      - name: Login to Docker Hub
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with: { username: "${{ github.repository_owner }}", password: "${{ secrets.DOCKERHUB_TOKEN }}" }
+      - parallel:
+          - name: Login to GitHub Container Registry
+            uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+            with: {
+              registry: ghcr.io,
+              username: "${{ github.repository_owner }}",
+              password: "${{ secrets.GITHUB_TOKEN }}",
+              scope: "${{ github.repository }}@push",
+            }
+          - name: Login to Docker Hub
+            uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+            with: { username: "${{ github.repository_owner }}", password: "${{ secrets.DOCKERHUB_TOKEN }}", scope: "${{ github.repository }}@push" }
       - name: Tags for the CLI image
         id: meta-cli
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
@@ -146,15 +153,24 @@ jobs:
           annotations: |
             index:org.opencontainers.image.description=Static checker for GitHub Actions workflow files
           tags: ${{ steps.meta-cli.outputs.tags }}
-      - name: Tags for the GitHub Action image
-        id: meta-action
-        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=raw,value=action-${{ steps.tag.outputs.name }}
-            type=raw,value=action-v${{ steps.tag.outputs.major }},enable=${{ steps.tag.outputs.is-major-latest }}
-            type=raw,value=action-latest,enable=${{ steps.tag.outputs.is-latest }}
+      - parallel:
+          - name: Update Docker Hub description
+            uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
+            with:
+              username: ${{ github.repository_owner }}
+              password: ${{ secrets.DOCKERHUB_TOKEN }}
+              repository: ${{ github.repository }}
+              short-description: ${{ github.event.repository.description }}
+              enable-url-completion: true
+          - name: Tags for the GitHub Action image
+            id: meta-action
+            uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+            with:
+              images: ghcr.io/${{ github.repository }}
+              tags: |
+                type=raw,value=action-${{ steps.tag.outputs.name }}
+                type=raw,value=action-v${{ steps.tag.outputs.major }},enable=${{ steps.tag.outputs.is-major-latest }}
+                type=raw,value=action-latest,enable=${{ steps.tag.outputs.is-latest }}
       - name: Build and push GitHub Action image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
