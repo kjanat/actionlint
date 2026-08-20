@@ -2,6 +2,9 @@ name: autofix.ci
 on:
   push: { branches: [main, master] }
   pull_request:
+
+permissions: { contents: read }
+
 jobs:
   autofix:
     runs-on: ubuntu-latest
