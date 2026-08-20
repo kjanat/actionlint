@@ -147,8 +147,7 @@ func (v *globValidator) validateNext() bool {
 
 				chars += 2 // actually one or more. but this is ok since we only check chars > 1 later
 				s := c
-				//lint:ignore SA4006 c should always holds the current character even if it is unused
-				c = v.scan.Next() // eat -
+				v.scan.Next() // eat -
 				switch v.scan.Peek() {
 				case ']':
 					c = v.scan.Next() // eat ]
