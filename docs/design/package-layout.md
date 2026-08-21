@@ -143,8 +143,9 @@ two constructors, and `byteOffsetAtColumn` in the two indicator helpers. Nothing
 
 1. **It would make `ast` depend on a terminal colour library.** `ast.go` imports five standard packages and
    `go.yaml.in/yaml/v4`. `Error.PrettyPrint` at `error.go:97-122` uses `github.com/fatih/color` through the
-   `bold`/`green`/`yellow`/`gray` vars, and `Error.getEndColumn` uses `github.com/mattn/go-runewidth`. Merging the two
-   puts both libraries in the dependency set of the workflow syntax tree.
+   `bold`/`green`/`yellow`/`gray` vars, and reaches `github.com/mattn/go-runewidth` through
+   `Error.getIndicator` at `error.go:176,183`. Merging the two puts both libraries in the dependency set of the
+   workflow syntax tree.
 2. **Two of the four published consumers need the diagnostic and no AST at all.** `cmd/actionlint-action` uses nine
    symbols from that side of `error.go` (`Error` and its fields plus `ErrorTemplateFields`) and zero AST nodes.
    `playground` uses seven and zero. Both name the type explicitly, at `cmd/actionlint-action/lint.go:84`
@@ -209,7 +210,7 @@ Each difference from the layout in the issue is forced by a measured edge.
 - **`glob` exists** because `glob.go` has zero outgoing edges and its consumers are `rule_glob.go` (5 symbols) and
   `fuzz`. Nothing in `actions` uses it. `ValidateRefGlob` and `ValidatePathGlob` are documented public API in
   `docs/api.md`, so `internal` would remove them from the published surface.
-- **`nodeKindName` moves to `ast`.** `reusable_workflow.go:19` calls it and `parse.go:16` declares it. It is a
+- **`nodeKindName` moves to `ast`.** `reusable_workflow.go:19` calls it and `parse.go:17` declares it. It is a
   17-line pure function over `yaml.Kind`, and `ast.go:10` already imports `go.yaml.in/yaml/v4`. Leaving it in `parse.go`
   puts an `actions -> root` edge in the graph, which is the last remaining cycle.
 
@@ -277,7 +278,7 @@ to change. The list is complete.
 | `(*scriptSource).pos` (`ast.go:80`)      | `rule_shellcheck.go:235`                                    | `ScriptSource.Pos`      |
 | `(*scriptSource).endPos` (`ast.go:84`)   | `rule_shellcheck.go:236`                                    | `ScriptSource.EndPos`   |
 | `ExecRun.source` (`ast.go:565`)          | written by `parse.go:1311`, read by `rule_shellcheck.go:66` | field `ExecRun.Source`  |
-| `nodeKindName` (`parse.go:16`)           | `reusable_workflow.go:19`                                   | `NodeKindName`          |
+| `nodeKindName` (`parse.go:17`)           | `reusable_workflow.go:19`                                   | `NodeKindName`          |
 
 `ExecRun.source` is written on one side of the boundary and read on the other, so a getter alone is not enough. Export
 the field. Every other field of `ExecRun` is already exported and `parse.go` builds all nodes field by field.
