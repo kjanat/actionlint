@@ -55,9 +55,9 @@ func TestExprInsecureBuiltinUntrustedInputs(t *testing.T) {
 	rec = func(m map[string]*UntrustedInputMap, path []string) {
 		for k, v := range m {
 			p := append(slices.Clone(path), k)
-			if k == "*" {
+			if k == "*" || k == "**" {
 				if len(m) != 1 {
-					t.Errorf("%v has * key but it also has other keys in %v", k, p)
+					t.Errorf("%v has %v key but it also has other keys in %v", k, k, p)
 				}
 			} else if !re.MatchString(k) {
 				t.Errorf("%v does not match to ^[a-z_]+$ in %v", k, p)
@@ -411,6 +411,66 @@ func TestExprInsecureCustomizedUntrustedInputMapping(t *testing.T) {
 			input: "foo.*.piyo[0]",
 			want:  `"foo.bar.piyo"`,
 		},
+		{
+			mapping: NewUntrustedInputMap("foo",
+				NewUntrustedInputMap("**"),
+			),
+			input: "foo.anything",
+			want:  `"foo.**"`,
+		},
+		{
+			mapping: NewUntrustedInputMap("foo",
+				NewUntrustedInputMap("**"),
+			),
+			input: "foo['anything']",
+			want:  `"foo.**"`,
+		},
+		{
+			mapping: NewUntrustedInputMap("foo",
+				NewUntrustedInputMap("**"),
+			),
+			input: "foo.*",
+			want:  `"foo.**"`,
+		},
+		{
+			mapping: NewUntrustedInputMap("foo",
+				NewUntrustedInputMap("**"),
+			),
+			input: "foo[0]",
+			want:  `"foo.**"`,
+		},
+		{
+			mapping: NewUntrustedInputMap("foo",
+				NewUntrustedInputMap("**"),
+			),
+			input: "foo[matrix.key]",
+			want:  `"foo.**"`,
+		},
+		{
+			mapping: NewUntrustedInputMap("foo",
+				NewUntrustedInputMap("**"),
+			),
+			input: "foo['*']",
+			want:  `"foo.**"`,
+		},
+		{
+			mapping: NewUntrustedInputMap("foo",
+				NewUntrustedInputMap("**",
+					NewUntrustedInputMap("bar"),
+				),
+			),
+			input: "foo.anything.bar",
+			want:  `"foo.**.bar"`,
+		},
+		{
+			mapping: NewUntrustedInputMap("foo",
+				NewUntrustedInputMap("**",
+					NewUntrustedInputMap("bar"),
+				),
+			),
+			input: "foo[matrix.key].bar",
+			want:  `"foo.**.bar"`,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -428,6 +488,50 @@ func TestExprInsecureCustomizedUntrustedInputMapping(t *testing.T) {
 				t.Fatalf("%q was wanted to be contained in error message %q", tc.want, err.Error())
 			}
 		})
+	}
+}
+
+func TestExprInsecureAnyPropertyWildcardNoMatch(t *testing.T) {
+	testCases := []struct {
+		mapping *UntrustedInputMap
+		inputs  []string
+	}{
+		{
+			mapping: NewUntrustedInputMap("foo",
+				NewUntrustedInputMap("**"),
+			),
+			inputs: []string{"foo", "foo.a.b"},
+		},
+		{
+			mapping: NewUntrustedInputMap("foo",
+				NewUntrustedInputMap("**",
+					NewUntrustedInputMap("bar"),
+				),
+			),
+			inputs: []string{"foo.a", "foo.*", "foo.a.qux"},
+		},
+		{
+			mapping: NewUntrustedInputMap("arr",
+				NewUntrustedInputMap("*",
+					NewUntrustedInputMap("bar"),
+				),
+			),
+			inputs: []string{"arr.x.bar"},
+		},
+	}
+
+	for _, tc := range testCases {
+		for _, input := range tc.inputs {
+			t.Run(input, func(t *testing.T) {
+				roots := UntrustedInputSearchRoots{}
+				roots.AddRoot(tc.mapping)
+				c := NewUntrustedInputChecker(roots)
+				testRunTrustedInputsCheckerForNode(t, c, input)
+				if errs := c.Errs(); len(errs) > 0 {
+					t.Fatalf("%q caused %d error(s): %v", input, len(errs), errs)
+				}
+			})
+		}
 	}
 }
 
