@@ -367,29 +367,39 @@ func (rule *RuleAction) VisitStep(n *Step) error {
 	return nil
 }
 
-// Parse {owner}/{repo}@{ref} or {owner}/{repo}/{path}@{ref}
-func (rule *RuleAction) checkRepoAction(spec string, exec *ExecAction) {
+// splitActionUses splits a `{owner}/{repo}@{ref}` or `{owner}/{repo}/{path}@{ref}` specification
+// into its owner, repository and ref. The problem is empty when the specification has one of those
+// shapes, in which case any of the three parts may still be empty.
+func splitActionUses(spec string) (owner, repo, ref, problem string) {
 	s := spec
 	idx := strings.IndexRune(s, '@')
 	if idx == -1 {
-		rule.invalidActionFormat(exec.Uses.Pos, spec, "ref is missing")
-		return
+		return "", "", "", "ref is missing"
 	}
-	ref := s[idx+1:]
+	ref = s[idx+1:]
 	s = s[:idx] // remove {ref}
 
 	idx = strings.IndexRune(s, '/')
 	if idx == -1 {
-		rule.invalidActionFormat(exec.Uses.Pos, spec, "owner is missing")
-		return
+		return "", "", "", "owner is missing"
 	}
 
-	owner := s[:idx]
+	owner = s[:idx]
 	s = s[idx+1:] // eat {owner}
 
-	repo := s
+	repo = s
 	if idx := strings.IndexRune(s, '/'); idx >= 0 {
 		repo = s[:idx]
+	}
+
+	return owner, repo, ref, ""
+}
+
+func (rule *RuleAction) checkRepoAction(spec string, exec *ExecAction) {
+	owner, repo, ref, problem := splitActionUses(spec)
+	if problem != "" {
+		rule.invalidActionFormat(exec.Uses.Pos, spec, problem)
+		return
 	}
 
 	if owner == "" || repo == "" || ref == "" {
