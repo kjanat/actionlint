@@ -12,6 +12,7 @@ var allPermissionScopes = map[string][]string{
 	"copilot-requests":     {"write", "none"},
 	"deployments":          {"read", "write", "none"},
 	"discussions":          {"read", "write", "none"},
+	"drives":               {"read", "write", "none"},
 	"id-token":             {"write", "none"},
 	"issues":               {"read", "write", "none"},
 	"models":               {"read", "none"},

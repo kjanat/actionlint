@@ -3,6 +3,7 @@ on: push
 permissions:
   code-quality: write
   copilot-requests: write
+  drives: read
   models: read
   repository-projects: write
   vulnerability-alerts: read
@@ -13,6 +14,7 @@ jobs:
     permissions:
       code-quality: none
       copilot-requests: none
+      drives: write
       models: none
       repository-projects: read
       vulnerability-alerts: none
