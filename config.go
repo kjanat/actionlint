@@ -58,6 +58,8 @@ type Policy struct {
 	// RequireCommitHash requires every "uses:" to be pinned to a full commit SHA, or to an image digest
 	// when it names a Docker image. Nil means the key was not set.
 	RequireCommitHash *bool `yaml:"require-commit-hash"`
+	// RequireJobTimeout requires every job to set "timeout-minutes". Nil means the key was not set.
+	RequireJobTimeout *JobTimeoutPolicy `yaml:"require-job-timeout"`
 	// RequiredActions is the actions every workflow must use. Each entry is written like a "uses:"
 	// value and both of its halves are glob patterns. Nil means the key was not set. An empty non-nil
 	// value requires no action, which disables the check.
@@ -102,6 +104,8 @@ func (p *Policy) UnmarshalYAML(n *yaml.Node) error {
 		switch k.Value {
 		case "require-commit-hash":
 			err = v.Decode(&p.RequireCommitHash)
+		case "require-job-timeout":
+			err = v.Decode(&p.RequireJobTimeout)
 		case "required-actions":
 			err = decodeRequiredActions(v, &p.RequiredActions)
 		default:
@@ -110,6 +114,61 @@ func (p *Policy) UnmarshalYAML(n *yaml.Node) error {
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// JobTimeoutPolicy is the value of the "require-job-timeout" policy in the configuration file. The
+// value is a boolean which turns the check on and off, or a mapping which turns it on and sets the
+// largest allowed number of minutes in its "max-minutes" key.
+type JobTimeoutPolicy struct {
+	enabled    bool
+	maxMinutes float64
+}
+
+// RequireJobTimeout creates a JobTimeoutPolicy which turns the check on. The argument is the largest
+// allowed number of minutes, where a value which is not larger than zero sets no upper limit.
+func RequireJobTimeout(maxMinutes float64) *JobTimeoutPolicy {
+	return &JobTimeoutPolicy{enabled: true, maxMinutes: maxMinutes}
+}
+
+// Enabled returns whether the check is turned on. It returns false when the receiver is nil.
+func (p *JobTimeoutPolicy) Enabled() bool {
+	return p != nil && p.enabled
+}
+
+// MaxMinutes returns the largest allowed "timeout-minutes:" value in minutes. The second return
+// value is false when the policy sets no upper limit.
+func (p *JobTimeoutPolicy) MaxMinutes() (float64, bool) {
+	if !p.Enabled() || p.maxMinutes <= 0 {
+		return 0, false
+	}
+	return p.maxMinutes, true
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (p *JobTimeoutPolicy) UnmarshalYAML(n *yaml.Node) error {
+	switch n.Kind {
+	case yaml.ScalarNode:
+		if err := n.Decode(&p.enabled); err != nil {
+			return fmt.Errorf("yaml: \"require-job-timeout\" must be a boolean or a mapping at line:%d,col:%d", n.Line, n.Column)
+		}
+	case yaml.MappingNode:
+		p.enabled = true
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			k, v := n.Content[i], n.Content[i+1]
+			if k.Value != "max-minutes" {
+				return fmt.Errorf("yaml: unknown key %q in \"require-job-timeout\" at line:%d,col:%d", k.Value, k.Line, k.Column)
+			}
+			if err := v.Decode(&p.maxMinutes); err != nil {
+				return err
+			}
+			if p.maxMinutes <= 0 {
+				return fmt.Errorf("yaml: \"max-minutes\" in \"require-job-timeout\" must be greater than zero but got %v at line:%d,col:%d", p.maxMinutes, v.Line, v.Column)
+			}
+		}
+	default:
+		return fmt.Errorf("yaml: \"require-job-timeout\" must be a boolean or a mapping at line:%d,col:%d", n.Line, n.Column)
 	}
 	return nil
 }
@@ -156,6 +215,15 @@ func (cfg *Config) PathConfigs(path string) []PathConfig {
 // when the receiver is nil or when the key is not set.
 func (cfg *Config) RequiresCommitHash() bool {
 	return cfg != nil && cfg.Policy.RequireCommitHash != nil && *cfg.Policy.RequireCommitHash
+}
+
+// RequiresJobTimeout returns the "require-job-timeout" policy. It returns nil when the receiver is
+// nil or when the key is not set.
+func (cfg *Config) RequiresJobTimeout() *JobTimeoutPolicy {
+	if cfg == nil {
+		return nil
+	}
+	return cfg.Policy.RequireJobTimeout
 }
 
 // RequiredActions returns the actions which every workflow must use following the "required-actions"
@@ -242,6 +310,9 @@ paths:
 #  # Require every "uses:" to be pinned to a full commit SHA or an image
 #  # digest.
 #  require-commit-hash: true
+#  # Require "timeout-minutes" on every job. A mapping with "max-minutes" also
+#  # caps the value.
+#  require-job-timeout: true
 #  # Actions every workflow must use. "owner/repo@ref" also pins the version.
 #  required-actions:
 #    - actions/checkout
