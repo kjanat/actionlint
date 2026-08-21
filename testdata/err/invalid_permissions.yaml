@@ -4,6 +4,7 @@ permissions:
   contents: foo
   unknown: bar
   id-token: read
+  copilot-requests: read
   models: write
   vulnerability-alerts: write
   pages: READ
@@ -16,6 +17,7 @@ jobs:
       contents: foo
       unknown: bar
       id-token: read
+      copilot-requests: read
       models: write
       vulnerability-alerts: write
       pages: READ
