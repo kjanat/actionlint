@@ -33,6 +33,16 @@ else
 	RACE = -race
 endif
 
+# The race detector makes the suite roughly twenty times slower, which is a poor
+# trade in an agent session that runs it after every edit. Setting NORACE=1 turns
+# it off, and CLAUDECODE=1 does the same, since Claude Code sets that itself.
+ifeq ($(CLAUDECODE),1)
+	RACE =
+endif
+ifeq ($(NORACE),1)
+	RACE =
+endif
+
 
 all: build test lint
 
