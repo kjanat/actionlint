@@ -165,6 +165,62 @@ func TestCompletionScriptSyntax(t *testing.T) {
 	}
 }
 
+func TestCompletionQuoting(t *testing.T) {
+	tests := []struct {
+		in   string
+		bash string
+		zsh  string
+		fish string
+		pwsh string
+	}{
+		{
+			in:   "plain",
+			bash: `'plain'`,
+			zsh:  "plain",
+			fish: "plain",
+			pwsh: `'plain'`,
+		},
+		{
+			in:   "we'ird",
+			bash: `'we'\''ird'`,
+			zsh:  `we'\''ird`,
+			fish: `'we\'ird'`,
+			pwsh: `'we''ird'`,
+		},
+		{
+			in:   "a[b]c:d",
+			bash: `'a[b]c:d'`,
+			zsh:  `a\[b\]c\:d`,
+			fish: `'a[b]c:d'`,
+			pwsh: `'a[b]c:d'`,
+		},
+		{
+			in:   `back\slash`,
+			bash: `'back\slash'`,
+			zsh:  `back\\slash`,
+			fish: `'back\\slash'`,
+			pwsh: `'back\slash'`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.in, func(t *testing.T) {
+			if have := completionQuoteBash(tc.in); have != tc.bash {
+				t.Errorf("bash quoting is %q but wanted %q", have, tc.bash)
+			}
+			if have := completionQuoteZsh(tc.in); have != tc.zsh {
+				t.Errorf("zsh quoting is %q but wanted %q", have, tc.zsh)
+			}
+			if have := completionQuoteFish(tc.in); have != tc.fish {
+				t.Errorf("fish quoting is %q but wanted %q", have, tc.fish)
+			}
+			if have := completionQuotePwsh(tc.in); have != tc.pwsh {
+				t.Errorf("pwsh quoting is %q but wanted %q", have, tc.pwsh)
+			}
+		})
+	}
+}
+
 func TestCompletionDescriptionEscaping(t *testing.T) {
 	for _, shell := range completionShells {
 		t.Run(string(shell), func(t *testing.T) {
