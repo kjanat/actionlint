@@ -44,8 +44,9 @@ List of checks:
 - [Deprecated inputs usage](#deprecated-inputs-usage)
 - [YAML anchors](#yaml-anchors)
 
-Note that actionlint focuses on catching mistakes in workflow files. If you want some general code style checks, please consider
-using a general YAML checker like [yamllint][yamllint].
+Note that the checks in this document always run and report mistakes in workflow files. actionlint also has policy
+checks that a repository turns on for itself, described in [the configuration document](config.md#policy-checks). For
+general code style checks, please consider using a general YAML checker like [yamllint][yamllint].
 
 <a id="check-unexpected-keys"></a>
 
