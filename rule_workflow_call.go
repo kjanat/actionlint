@@ -150,7 +150,11 @@ func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, loc
 // Normalize a local or self-repository reusable workflow reference to the existing local cache key.
 func workflowCallUsesLocalSpec(u string) (string, bool) {
 	if strings.HasPrefix(u, "$/") {
-		u = "." + u[1:]
+		s, ok := selfRepositoryUsesLocalSpec(u)
+		if !ok {
+			return "", false
+		}
+		u = s
 	} else if !strings.HasPrefix(u, "./") {
 		return "", false
 	}

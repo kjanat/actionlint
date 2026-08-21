@@ -296,6 +296,18 @@ func isImageOnDockerRegistry(image string) bool {
 		strings.HasPrefix(image, "docker.io/")
 }
 
+func selfRepositoryUsesLocalSpec(spec string) (string, bool) {
+	p, ok := strings.CutPrefix(spec, "$/")
+	if !ok {
+		return "", false
+	}
+	p = strings.TrimLeft(p, "/")
+	if p == "" {
+		return "", false
+	}
+	return "./" + p, true
+}
+
 // RuleAction is a rule to check running action in steps of jobs.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsuses
 type RuleAction struct {
@@ -337,11 +349,12 @@ func (rule *RuleAction) VisitStep(n *Step) error {
 	if strings.HasPrefix(spec, "$/") {
 		// Relative to the repository and commit that contain the running workflow. Normalize it
 		// to the existing local path form so metadata and output validation still work.
-		if len(spec) == 2 {
+		local, ok := selfRepositoryUsesLocalSpec(spec)
+		if !ok {
 			rule.invalidActionFormat(e.Uses.Pos, spec, "path is missing")
 			return nil
 		}
-		rule.checkLocalAction("."+spec[1:], spec, e)
+		rule.checkLocalAction(local, spec, e)
 		return nil
 	}
 

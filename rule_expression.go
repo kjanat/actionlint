@@ -335,8 +335,8 @@ func (rule *RuleExpression) getActionOutputsType(spec *String) *ObjectType {
 	}
 
 	localSpec := spec.Value
-	if strings.HasPrefix(localSpec, "$/") && len(localSpec) > 2 {
-		localSpec = "." + localSpec[1:]
+	if s, ok := selfRepositoryUsesLocalSpec(localSpec); ok {
+		localSpec = s
 	}
 	if strings.HasPrefix(localSpec, "./") {
 		meta, _, err := rule.localActions.FindMetadata(localSpec)

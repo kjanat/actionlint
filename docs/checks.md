@@ -1826,6 +1826,13 @@ Action needs to be specified in a format defined in [the document][action-uses-d
 
 actionlint checks values at `uses:` sections follow one of these formats.
 
+The `$/` form has extra constraints. Leading slashes after the prefix are stripped, so `$//path/to/my-action` and
+`$/path/to/my-action` name the same action, and a value consisting of `$/` followed by nothing but slashes is a format error.
+What the path is relative to depends on where the `uses:` is written: a step in a workflow resolves against the workflow's
+repository at the running commit, and a step in a composite action resolves against the repository and ref that action was
+loaded from. The runner also needs its `actions_self_repository` feature flag enabled; when it is off the job fails during
+Setup Job with an unhandled exception instead of a workflow annotation.
+
 Note that actionlint does not report any error when a directory for a local action does not exist in the repository because it is
 a common case where the action is managed in a separate repository and the action directory is cloned at running the workflow.
 (See [#25][issue-25] and [#40][issue-40] for more details).
