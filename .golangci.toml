@@ -40,9 +40,12 @@ enable  = [
   "whitespace"
 ]
 
+[linters.settings.staticcheck]
+checks = ["all", "-ST1003"]
+
 [linters.exclusions]
 generated = "lax"
-presets   = ["comments", "std-error-handling"]
+presets   = ["std-error-handling"]
 paths     = [
   # An npm dependency ships Go sources that are not part of this module.
   "node_modules",
