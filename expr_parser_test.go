@@ -111,6 +111,11 @@ func TestParseExpressionSyntaxOK(t *testing.T) {
 			expected: &FloatNode{Value: 0.123e+12},
 		},
 		{
+			what:     "float literal with zero-padded exponent part",
+			input:    "1e01",
+			expected: &FloatNode{Value: 1e01},
+		},
+		{
 			what:     "float zero value with exponent part",
 			input:    "0e3",
 			expected: &FloatNode{Value: 0e3},
