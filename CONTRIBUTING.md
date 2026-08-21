@@ -109,16 +109,27 @@ Automated tests are as follows.
 
 ## Linting
 
-[staticcheck](https://staticcheck.io/) is used to lint Go sources.
+[golangci-lint](https://golangci-lint.run/) runs the Go linters. [`.golangci.toml`](./.golangci.toml)
+configures them. Install the binary as described in
+[its documentation](https://golangci-lint.run/docs/welcome/install/); CI pins the version in
+[`ci.yaml`](.github/workflows/ci.yaml).
 
 ```sh
-staticcheck ./...
+golangci-lint run
 ```
 
-[govulncheck](https://go.dev/doc/security/vuln/) is used for security checks.
+[govulncheck](https://go.dev/doc/security/vuln/) is used for security checks. `go.mod` declares it as
+a tool, so it needs no separate installation.
 
 ```sh
-govulncheck ./...
+go tool govulncheck ./...
+```
+
+[modernize](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize) rewrites code to newer
+Go idioms. The [autofix workflow](.github/workflows/autofix.yml) applies it on every pull request.
+
+```sh
+go tool modernize -fix ./...
 ```
 
 These lints can be run with other checks by the following command.

@@ -8,3 +8,13 @@ updates:
       github-actions:
         patterns:
           - "*"
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    allow:
+      - dependency-type: "all"
+    groups:
+      gomod:
+        patterns:
+          - "*"
