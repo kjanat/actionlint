@@ -67,6 +67,42 @@ type Config struct {
 	// Paths is a "paths" mapping in the configuration file. The keys are glob patterns to match file paths.
 	// And the values are corresponding configurations applied to the file paths.
 	Paths map[string]PathConfig `yaml:"paths"`
+	// AssumeDefaultPermissions selects which repository "Workflow permissions" setting actionlint assumes
+	// when a workflow call's calling job declares no "permissions:" and neither does its workflow. The zero
+	// value means the key was not set, which is equivalent to DefaultPermissionsAssumptionRestricted.
+	AssumeDefaultPermissions DefaultPermissionsAssumption `yaml:"assume-default-permissions"`
+}
+
+// DefaultPermissionsAssumption is an assumption about the repository's "Workflow permissions" setting,
+// which actionlint cannot read from a workflow file.
+type DefaultPermissionsAssumption uint8
+
+const (
+	// DefaultPermissionsAssumptionUnset means the "assume-default-permissions" key was not set.
+	DefaultPermissionsAssumptionUnset DefaultPermissionsAssumption = iota
+	// DefaultPermissionsAssumptionRestricted assumes GitHub's restricted default token, which grants read
+	// access to "contents" and "packages" and nothing else.
+	DefaultPermissionsAssumptionRestricted
+	// DefaultPermissionsAssumptionPermissive assumes GitHub's permissive default token.
+	DefaultPermissionsAssumptionPermissive
+)
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (a *DefaultPermissionsAssumption) UnmarshalYAML(n *yaml.Node) error {
+	switch n.Value {
+	case "restricted":
+		*a = DefaultPermissionsAssumptionRestricted
+	case "permissive":
+		*a = DefaultPermissionsAssumptionPermissive
+	default:
+		return fmt.Errorf(
+			"yaml: \"assume-default-permissions\" must be \"restricted\" or \"permissive\" but got %q at line:%d,col:%d",
+			n.Value,
+			n.Line,
+			n.Column,
+		)
+	}
+	return nil
 }
 
 // PathConfigs returns a list of all PathConfig values matching to the given file path. The path must
@@ -153,6 +189,11 @@ config-variables: null
 paths:
 #  .github/workflows/**/*.yml:
 #    ignore: []
+
+# Permissions assumed for a caller workflow that declares no "permissions:"
+# block at all. "restricted" (the default) assumes GitHub's restricted default
+# token.
+#assume-default-permissions: restricted
 `)
 	if err := os.WriteFile(path, b, 0644); err != nil {
 		return fmt.Errorf("could not write default configuration file at %q: %w", path, err)

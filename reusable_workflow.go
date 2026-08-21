@@ -161,6 +161,10 @@ type ReusableWorkflowMetadata struct {
 	Inputs  ReusableWorkflowMetadataInputs  `yaml:"inputs"`
 	Outputs ReusableWorkflowMetadataOutputs `yaml:"outputs"`
 	Secrets ReusableWorkflowMetadataSecrets `yaml:"secrets"`
+	// JobPermissions maps a job ID of the reusable workflow to the permission scopes that job requires.
+	// A job which declares no "permissions:" of its own and inherits none from the workflow has no entry,
+	// and neither has a job whose declaration requires nothing.
+	JobPermissions map[string]PermissionScopeLevels `yaml:"-"`
 }
 
 // LocalReusableWorkflowCache is a cache for local reusable workflow metadata files. It avoids find/read/parse
@@ -263,6 +267,14 @@ func (c *LocalReusableWorkflowCache) convWorkflowPathToSpec(p string) (string, b
 // to workflow call spec, (3) some cache for the workflow is already existing.
 // This method is thread safe.
 func (c *LocalReusableWorkflowCache) WriteWorkflowCallEvent(wpath string, event *WorkflowCallEvent) {
+	c.WriteWorkflowCallEventFromWorkflow(wpath, event, nil)
+}
+
+// WriteWorkflowCallEventFromWorkflow is like WriteWorkflowCallEvent but also records the permissions
+// each job of the reusable workflow requires, taken from the workflow AST. The permission check on
+// workflow calls needs them. Passing a nil 'w' is equivalent to WriteWorkflowCallEvent. The same
+// do-nothing conditions and thread safety apply.
+func (c *LocalReusableWorkflowCache) WriteWorkflowCallEventFromWorkflow(wpath string, event *WorkflowCallEvent, w *Workflow) {
 	// Convert workflow path to workflow call spec
 	spec, ok := c.convWorkflowPathToSpec(wpath)
 	if !ok {
@@ -314,6 +326,23 @@ func (c *LocalReusableWorkflowCache) WriteWorkflowCallEvent(wpath string, event 
 		}
 	}
 
+	if w != nil {
+		wp := resolvePermissionsAST(w.Permissions)
+		for _, j := range w.Jobs {
+			p := wp
+			if j.Permissions != nil {
+				p = resolvePermissionsAST(j.Permissions)
+			}
+			if p.kind != permissionsDeclared || len(p.levels) == 0 {
+				continue
+			}
+			if m.JobPermissions == nil {
+				m.JobPermissions = map[string]PermissionScopeLevels{}
+			}
+			m.JobPermissions[j.ID.Value] = p.levels
+		}
+	}
+
 	c.mu.Lock()
 	c.cache[spec] = m
 	c.mu.Unlock()
@@ -323,7 +352,9 @@ func (c *LocalReusableWorkflowCache) WriteWorkflowCallEvent(wpath string, event 
 
 func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error) {
 	type workflow struct {
-		On yaml.Node `yaml:"on"`
+		On          yaml.Node `yaml:"on"`
+		Permissions yaml.Node `yaml:"permissions"`
+		Jobs        yaml.Node `yaml:"jobs"`
 	}
 
 	var w workflow
@@ -336,6 +367,7 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 		return nil, errors.New("\"on:\" is not found")
 	}
 
+	var m *ReusableWorkflowMetadata
 	switch n.Kind {
 	case yaml.MappingNode:
 		// on:
@@ -343,29 +375,58 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 		for i := 0; i < len(n.Content); i += 2 {
 			k := strings.ToLower(n.Content[i].Value)
 			if k == "workflow_call" {
-				var m ReusableWorkflowMetadata
-				if err := n.Content[i+1].Decode(&m); err != nil {
+				m = &ReusableWorkflowMetadata{}
+				if err := n.Content[i+1].Decode(m); err != nil {
 					return nil, err
 				}
-				return &m, nil
+				break
 			}
 		}
 	case yaml.ScalarNode:
 		// on: workflow_call
 		if v := strings.ToLower(n.Value); v == "workflow_call" {
-			return &ReusableWorkflowMetadata{}, nil
+			m = &ReusableWorkflowMetadata{}
 		}
 	case yaml.SequenceNode:
 		// on: [workflow_call]
 		for _, c := range n.Content {
 			e := strings.ToLower(c.Value)
 			if e == "workflow_call" {
-				return &ReusableWorkflowMetadata{}, nil
+				m = &ReusableWorkflowMetadata{}
+				break
 			}
 		}
 	}
 
-	return nil, fmt.Errorf("\"workflow_call\" event trigger is not found in \"on:\" at line:%d, column:%d", n.Line, n.Column)
+	if m == nil {
+		return nil, fmt.Errorf("\"workflow_call\" event trigger is not found in \"on:\" at line:%d, column:%d", n.Line, n.Column)
+	}
+
+	wp := resolvePermissionsYAML(&w.Permissions)
+	if w.Jobs.Kind == yaml.MappingNode {
+		for i := 0; i+1 < len(w.Jobs.Content); i += 2 {
+			id, job := w.Jobs.Content[i], w.Jobs.Content[i+1]
+			if job.Kind != yaml.MappingNode {
+				continue
+			}
+			p := wp
+			for k := 0; k+1 < len(job.Content); k += 2 {
+				if strings.ToLower(job.Content[k].Value) == "permissions" {
+					p = resolvePermissionsYAML(job.Content[k+1])
+					break
+				}
+			}
+			if p.kind != permissionsDeclared || len(p.levels) == 0 {
+				continue
+			}
+			if m.JobPermissions == nil {
+				m.JobPermissions = map[string]PermissionScopeLevels{}
+			}
+			m.JobPermissions[id.Value] = p.levels
+		}
+	}
+
+	return m, nil
 }
 
 // NewLocalReusableWorkflowCache creates a new LocalReusableWorkflowCache instance for the given

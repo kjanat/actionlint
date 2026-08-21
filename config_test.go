@@ -88,6 +88,14 @@ paths:
 `,
 			want: `invalid glob pattern`,
 		},
+		{
+			in:   "assume-default-permissions: foo\n",
+			want: `yaml: "assume-default-permissions" must be "restricted" or "permissive" but got "foo" at line:1,col:29`,
+		},
+		{
+			in:   "assume-default-permissions: [restricted]\n",
+			want: `yaml: "assume-default-permissions" must be "restricted" or "permissive" but got "" at line:1,col:29`,
+		},
 	}
 
 	for _, tc := range tests {
@@ -275,6 +283,9 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 	if len(c.Paths) != 0 {
 		t.Fatal(c.Paths)
 	}
+	if c.AssumeDefaultPermissions != DefaultPermissionsAssumptionUnset {
+		t.Fatal(c.AssumeDefaultPermissions)
+	}
 }
 
 func TestConfigGenerateDefaultConfigFileError(t *testing.T) {
@@ -286,5 +297,51 @@ func TestConfigGenerateDefaultConfigFileError(t *testing.T) {
 	msg := err.Error()
 	if !strings.Contains(msg, "could not write default configuration file") {
 		t.Fatalf("unexpected error message: %q", msg)
+	}
+}
+
+func TestConfigParseAssumeDefaultPermissions(t *testing.T) {
+	tests := []struct {
+		what  string
+		input string
+		want  DefaultPermissionsAssumption
+	}{
+		{
+			what:  "key is absent",
+			input: "",
+			want:  DefaultPermissionsAssumptionUnset,
+		},
+		{
+			what:  "empty value",
+			input: "assume-default-permissions:\n",
+			want:  DefaultPermissionsAssumptionUnset,
+		},
+		{
+			what:  "null value",
+			input: "assume-default-permissions: null\n",
+			want:  DefaultPermissionsAssumptionUnset,
+		},
+		{
+			what:  "restricted",
+			input: "assume-default-permissions: restricted\n",
+			want:  DefaultPermissionsAssumptionRestricted,
+		},
+		{
+			what:  "permissive",
+			input: "assume-default-permissions: permissive\n",
+			want:  DefaultPermissionsAssumptionPermissive,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.what, func(t *testing.T) {
+			c, err := ParseConfig([]byte(tc.input))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if c.AssumeDefaultPermissions != tc.want {
+				t.Fatalf("wanted %v but have %v", tc.want, c.AssumeDefaultPermissions)
+			}
+		})
 	}
 }
