@@ -57,6 +57,48 @@ func TestConfigParseSelfHostedRunnerOK(t *testing.T) {
 	}
 }
 
+func TestConfigParseConfigSecrets(t *testing.T) {
+	testCases := []struct {
+		what    string
+		input   string
+		secrets []string
+	}{
+		{
+			what:    "empty config",
+			input:   "",
+			secrets: nil,
+		},
+		{
+			what:    "null config-secrets",
+			input:   "config-secrets:",
+			secrets: nil,
+		},
+		{
+			what:    "empty config-secrets",
+			input:   "config-secrets: []",
+			secrets: []string{},
+		},
+		{
+			what:    "config-secrets",
+			input:   "config-secrets: [FOO, BAR]",
+			secrets: []string{"FOO", "BAR"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.what, func(t *testing.T) {
+			c, err := ParseConfig([]byte(tc.input))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if diff := cmp.Diff(c.ConfigSecrets, tc.secrets); diff != "" {
+				t.Fatal(diff)
+			}
+		})
+	}
+}
+
 func TestConfigParseError(t *testing.T) {
 	tests := []struct {
 		in   string
@@ -311,6 +353,9 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 	}
 	if c.ConfigVariables != nil {
 		t.Fatal(c.SelfHostedRunner.Labels)
+	}
+	if c.ConfigSecrets != nil {
+		t.Fatal(c.ConfigSecrets)
 	}
 	if len(c.Paths) != 0 {
 		t.Fatal(c.Paths)

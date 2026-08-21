@@ -260,6 +260,14 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 
 // Global variables
 
+// builtinSecretProps are the secrets which GitHub Actions always provides to a workflow.
+// ACTIONS_STEP_DEBUG and ACTIONS_RUNNER_DEBUG seem supplied from caller of the workflow (#130).
+var builtinSecretProps = map[string]ExprType{
+	"github_token":         StringType{},
+	"actions_step_debug":   StringType{},
+	"actions_runner_debug": StringType{},
+}
+
 // BuiltinGlobalVariableTypes defines types of all global variables. All context variables are
 // documented at https://docs.github.com/en/actions/learn-github-actions/contexts
 var BuiltinGlobalVariableTypes = map[string]ExprType{
@@ -345,7 +353,10 @@ var BuiltinGlobalVariableTypes = map[string]ExprType{
 		"environment": StringType{}, // https://github.com/github/docs/issues/32443
 	}),
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#secrets-context
-	"secrets": NewMapObjectType(StringType{}),
+	"secrets": &ObjectType{
+		Props:  maps.Clone(builtinSecretProps),
+		Mapped: StringType{},
+	},
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#strategy-context
 	"strategy": NewObjectType(map[string]ExprType{
 		"fail-fast":    BoolType{},
@@ -382,17 +393,22 @@ type ExprSemanticsChecker struct {
 	availableContexts     []string
 	availableSpecialFuncs []string
 	configVars            []string
+	configSecrets         []string
 }
 
 // NewExprSemanticsChecker creates new ExprSemanticsChecker instance. When checkUntrustedInput is
-// set to true, the checker will make use of possibly untrusted inputs error.
-func NewExprSemanticsChecker(checkUntrustedInput bool, configVars []string) *ExprSemanticsChecker {
+// set to true, the checker will make use of possibly untrusted inputs error. The cfg parameter is
+// the user configuration used by the config-driven checks. It may be nil.
+func NewExprSemanticsChecker(checkUntrustedInput bool, cfg *Config) *ExprSemanticsChecker {
 	c := &ExprSemanticsChecker{
 		funcs:           BuiltinFuncSignatures,
 		vars:            BuiltinGlobalVariableTypes,
 		varsCopied:      false,
 		githubVarCopied: false,
-		configVars:      configVars,
+	}
+	if cfg != nil {
+		c.configVars = cfg.ConfigVariables
+		c.configSecrets = cfg.ConfigSecrets
 	}
 	if checkUntrustedInput {
 		c.untrusted = NewUntrustedInputChecker(BuiltinUntrustedInputs)
@@ -458,17 +474,13 @@ func (sema *ExprSemanticsChecker) UpdateNeeds(ty *ObjectType) {
 	sema.vars["needs"] = ty
 }
 
-// UpdateSecrets updates 'secrets' context object to given object type.
+// UpdateSecrets updates 'secrets' context object to given object type. The strictness of the
+// given type is preserved, so an open type keeps allowing unknown secret names.
 func (sema *ExprSemanticsChecker) UpdateSecrets(ty *ObjectType) {
 	sema.ensureVarsCopied()
 
 	// Merges automatically supplied secrets with manually defined secrets.
-	// ACTIONS_STEP_DEBUG and ACTIONS_RUNNER_DEBUG seem supplied from caller of the workflow (#130)
-	copied := NewStrictObjectType(map[string]ExprType{
-		"github_token":         StringType{},
-		"actions_step_debug":   StringType{},
-		"actions_runner_debug": StringType{},
-	})
+	copied := &ObjectType{Props: maps.Clone(builtinSecretProps), Mapped: ty.Mapped}
 	maps.Copy(copied.Props, ty.Props)
 	sema.vars["secrets"] = copied
 }
@@ -623,8 +635,13 @@ func (sema *ExprSemanticsChecker) checkObjectDeref(n *ObjectDerefNode) ExprType 
 			return t
 		}
 		if ty.Mapped != nil {
-			if v, ok := n.Receiver.(*VariableNode); ok && v.Name == "vars" {
-				sema.checkConfigVariables(n)
+			if v, ok := n.Receiver.(*VariableNode); ok {
+				switch v.Name {
+				case "vars":
+					sema.checkConfigVariables(n)
+				case "secrets":
+					sema.checkConfigSecrets(n)
+				}
 			}
 			return ty.Mapped
 		}
@@ -714,6 +731,31 @@ func (sema *ExprSemanticsChecker) checkConfigVariables(n *ObjectDerefNode) {
 		"undefined configuration variable %q. defined configuration variables in actionlint.yaml are %s",
 		n.Property,
 		sortedQuotes(sema.configVars),
+	)
+}
+
+func (sema *ExprSemanticsChecker) checkConfigSecrets(n *ObjectDerefNode) {
+	if sema.configSecrets == nil {
+		return
+	}
+	if len(sema.configSecrets) == 0 {
+		sema.errorf(
+			n,
+			"no secret is allowed since the secrets list is empty in actionlint.yaml. you may forget adding the secret %q to the list",
+			n.Property,
+		)
+		return
+	}
+	if slices.ContainsFunc(sema.configSecrets, func(s string) bool {
+		return strings.EqualFold(s, n.Property)
+	}) {
+		return
+	}
+	sema.errorf(
+		n,
+		"undefined secret %q. defined secrets in actionlint.yaml are %s",
+		n.Property,
+		sortedQuotes(sema.configSecrets),
 	)
 }
 

@@ -1,0 +1,10 @@
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # Always provided by GitHub
+      - run: echo '${{ secrets.GITHUB_TOKEN }}'
+      # ERROR: The list is empty so no secret is allowed
+      - run: echo '${{ secrets.FOO }}'

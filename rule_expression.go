@@ -151,10 +151,13 @@ func (rule *RuleExpression) VisitWorkflowPre(n *Workflow) error {
 			// So `secrets` context must be typed as { string => string }. `e.Secrets` is nil when `secrets:` does not
 			// exist. When `e.Secrets` is an empty map, `secrets:` exists but it has no child. A workflow with another
 			// trigger can also access repository secrets on that trigger path, so its secrets type must remain open.
-			if e.Secrets != nil && !hasNonWorkflowCallTrigger {
+			if e.Secrets != nil {
 				sty := NewEmptyStrictObjectType()
 				for id := range e.Secrets {
 					sty.Props[id] = StringType{}
+				}
+				if hasNonWorkflowCallTrigger {
+					sty.Mapped = StringType{}
 				}
 				rule.secretsTy = sty
 			}
@@ -789,11 +792,7 @@ func (rule *RuleExpression) exprError(err *ExprError, lineBase, colBase int) {
 }
 
 func (rule *RuleExpression) checkSemanticsOfExprNode(expr ExprNode, line, col int, checkUntrusted bool, workflowKey string) (ExprType, bool) {
-	var v []string
-	if rule.config != nil {
-		v = rule.config.ConfigVariables
-	}
-	c := NewExprSemanticsChecker(checkUntrusted, v)
+	c := NewExprSemanticsChecker(checkUntrusted, rule.config)
 	if rule.matrixTy != nil {
 		c.UpdateMatrix(rule.matrixTy)
 	}
