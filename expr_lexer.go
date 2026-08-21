@@ -319,22 +319,17 @@ func (lex *ExprLexer) lexNum() *Token {
 
 	if r == 'e' || r == 'E' {
 		r = lex.eat() // eat 'e' or 'E'
-		if r == '-' {
+		if r == '-' || r == '+' {
 			r = lex.eat()
 		}
 
-		if r == '0' {
-			r = lex.eat() // eat the '0'
-		} else {
-			// r is 1..9
+		if !isNum(r) {
+			return lex.unexpected(r, "exponent part of float number", expectedDigitChars)
+		}
+		for {
+			r = lex.eat()
 			if !isNum(r) {
-				return lex.unexpected(r, "exponent part of float number", expectedDigitChars)
-			}
-			for {
-				r = lex.eat()
-				if !isNum(r) {
-					break
-				}
+				break
 			}
 		}
 

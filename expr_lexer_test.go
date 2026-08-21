@@ -164,6 +164,41 @@ func TestLexOneToken(t *testing.T) {
 			kind:  TokenKindFloat,
 		},
 		{
+			what:  "float positive exp part",
+			input: "1.0e+99",
+			kind:  TokenKindFloat,
+		},
+		{
+			what:  "float positive exp part with upper E",
+			input: "1.0E+99",
+			kind:  TokenKindFloat,
+		},
+		{
+			what:  "int with positive exp part",
+			input: "3e+42",
+			kind:  TokenKindFloat,
+		},
+		{
+			what:  "int with zero-padded exp part",
+			input: "1e01",
+			kind:  TokenKindFloat,
+		},
+		{
+			what:  "float with zero-padded exp part",
+			input: "1.0e01",
+			kind:  TokenKindFloat,
+		},
+		{
+			what:  "int with zero-padded positive exp part",
+			input: "1e+01",
+			kind:  TokenKindFloat,
+		},
+		{
+			what:  "int with zero-padded negative exp part",
+			input: "1e-01",
+			kind:  TokenKindFloat,
+		},
+		{
 			what:  "float zero with negative exp part",
 			input: "0.0e-99",
 			kind:  TokenKindFloat,
@@ -670,6 +705,18 @@ func TestLexExprError(t *testing.T) {
 			col:   6,
 		},
 		{
+			what:  "no number after + in exponent part",
+			input: "1.0e+",
+			want:  "unexpected EOF while lexing exponent part of float number",
+			col:   6,
+		},
+		{
+			what:  "invalid char in exponent part after +",
+			input: "1.0e+_",
+			want:  "unexpected character '_' while lexing exponent part of float number",
+			col:   6,
+		},
+		{
 			what:  "invalid char in hex int",
 			input: "0xg",
 			want:  "unexpected character 'g' while lexing hex integer",
@@ -776,18 +823,6 @@ func TestLexExprError(t *testing.T) {
 			input: "0x0e1",
 			want:  "unexpected character 'e' while lexing character following hex integer 0x0",
 			col:   4,
-		},
-		{
-			what:  "integer exponent part starts with zero",
-			input: "1e01",
-			want:  "unexpected character '1' while lexing character following number 1e0",
-			col:   4,
-		},
-		{
-			what:  "float number exponent part starts with zero",
-			input: "1.0e01",
-			want:  "unexpected character '1' while lexing character following number 1.0e0",
-			col:   6,
 		},
 		{
 			what:  "integer part lacks in float number",
