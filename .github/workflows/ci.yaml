@@ -144,7 +144,10 @@ jobs:
           --mount type=bind,source="${PWD}",target=/w
           -- actionlint:test -color -verbose
       - name: Lint Dockerfile with hadolint
-        run: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 --strict-labels - < Dockerfile
+        run: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 --strict-labels
+          --require-label org.opencontainers.image.source:url
+          --require-label org.opencontainers.image.licenses:spdx
+          - < Dockerfile
       - name: Lint Dockerfile with droast
         uses: immanuwell/dockerfile-roast@50689402f3eced348cf4bd822ffb57871b5c02d0 # 1.6.1
   action:
