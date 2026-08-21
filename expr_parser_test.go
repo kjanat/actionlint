@@ -101,6 +101,16 @@ func TestParseExpressionSyntaxOK(t *testing.T) {
 			expected: &FloatNode{Value: -0.123e-12},
 		},
 		{
+			what:     "float literal with positive exponent part",
+			input:    "99e+1",
+			expected: &FloatNode{Value: 99e+1},
+		},
+		{
+			what:     "float literal with fraction and positive exponent part",
+			input:    "0.123e+12",
+			expected: &FloatNode{Value: 0.123e+12},
+		},
+		{
 			what:     "float zero value with exponent part",
 			input:    "0e3",
 			expected: &FloatNode{Value: 0e3},
