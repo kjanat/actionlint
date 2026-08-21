@@ -167,3 +167,39 @@ jobs:
         }
       - name: Test action image
         run: ./scripts/test-action.bash actionlint-action:test
+  pre-commit-shellcheck:
+    name: pre-commit ShellCheck integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with: { go-version: "${{ env.GO }}", check-latest: true }
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - run: uv tool install pre-commit
+      # pre-commit's golang language prepends to PATH, so the runner's preinstalled shellcheck satisfies actionlint on its own.
+      - name: Remove the runner's ShellCheck so only the hook's own can be found
+        run: |
+          sudo apt-get remove -y shellcheck
+          if command -v shellcheck; then
+            echo "shellcheck is still on PATH; the hook dependency would not be the only source" >&2
+            exit 1
+          fi
+      - name: Confirm actionlint-shellcheck reports a fixture's SC2086
+        run: |
+          cat > .github/workflows/_pre-commit-shellcheck-fixture.yaml <<'FIXTURE'
+          on: push
+          jobs:
+            fixture:
+              runs-on: ubuntu-latest
+              steps:
+                - run: echo $GITHUB_SHA
+          FIXTURE
+          set +e
+          pre-commit try-repo . actionlint-shellcheck --files .github/workflows/_pre-commit-shellcheck-fixture.yaml --verbose > pre-commit-output.txt 2>&1
+          status=$?
+          set -e
+          cat pre-commit-output.txt
+          rm .github/workflows/_pre-commit-shellcheck-fixture.yaml
+          test "${status}" -ne 0
+          grep -q SC2086 pre-commit-output.txt

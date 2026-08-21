@@ -59,10 +59,13 @@ var targets = []*target{
 			mustRule("download script argument", `download-actionlint\.bash\) (\d+\.\d+\.\d+)`, 3),
 			mustRule("CLI image tag example", "`ghcr\\.io/kjanat/actionlint:(\\d+\\.\\d+\\.\\d+)`", 1),
 			mustRule("action image tag example", "`action-(\\d+\\.\\d+\\.\\d+)`", 1),
-			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
+			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 2),
 			mustRule("Trunk linter version", ` actionlint@(\d+\.\d+\.\d+)`, 2),
 		},
-		unrelated: []string{"sarif/v2.1.0/sarif-v2.1.0.html"},
+		unrelated: []string{
+			"sarif/v2.1.0/sarif-v2.1.0.html",
+			"github.com/wasilibs/go-shellcheck/cmd/shellcheck@v0.11.1",
+		},
 	},
 	{
 		path: "docs/install.md",
