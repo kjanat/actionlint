@@ -5,7 +5,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: $/.github/actions/example
+      - uses: $//.github/actions/example
+      - uses: $///.github/actions/example
   workflow:
     uses: $/.github/workflows/reusable.yaml
+    with:
+      required-input: ok
+  workflow-extra-slashes:
+    uses: $//.github/workflows/reusable.yaml
     with:
       required-input: ok

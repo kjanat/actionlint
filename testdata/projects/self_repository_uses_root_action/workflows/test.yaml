@@ -1,0 +1,9 @@
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: $//
+        id: root
+      - run: echo '${{ steps.root.outputs.undefined_output }}'

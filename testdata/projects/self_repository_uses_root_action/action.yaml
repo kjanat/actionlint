@@ -1,0 +1,10 @@
+name: 'Root action'
+description: 'Action metadata at the repository root'
+
+outputs:
+  result:
+    description: 'Result of the root action'
+
+runs:
+  using: 'node20'
+  main: 'index.js'

@@ -1,0 +1,1 @@
+workflows/test.yaml:7:15: specifying action "$//" in invalid format because path is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
