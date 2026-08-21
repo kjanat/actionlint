@@ -1,0 +1,7 @@
+test.yaml:25:22: type of expression at "float number value" must be number but found type string [expression]
+test.yaml:27:41: property access of object must be type of string but got "bool" [expression]
+test.yaml:28:41: property access of object must be type of string but got "number" [expression]
+test.yaml:29:41: property access of object must be type of string but got "number" [expression]
+test.yaml:30:41: property access of object must be type of string but got "number" [expression]
+test.yaml:31:41: property access of object must be type of string but got "number" [expression]
+test.yaml:32:41: property access of object must be type of string but got "null" [expression]

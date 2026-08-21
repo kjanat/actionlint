@@ -1,0 +1,32 @@
+on: push
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        obj:
+          - props:
+              foo: bar
+        upper_bool:
+          - v: True
+        hex_int:
+          - v: 0x1F
+        octal_int:
+          - v: 0o17
+        infinity:
+          - v: .inf
+        not_a_number:
+          - v: .nan
+        blank:
+          - v:
+        quoted_num:
+          - "5"
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ matrix.quoted_num }}
+    steps:
+      - run: echo "${{ matrix.obj.props[matrix.upper_bool.v] }}"
+      - run: echo "${{ matrix.obj.props[matrix.hex_int.v] }}"
+      - run: echo "${{ matrix.obj.props[matrix.octal_int.v] }}"
+      - run: echo "${{ matrix.obj.props[matrix.infinity.v] }}"
+      - run: echo "${{ matrix.obj.props[matrix.not_a_number.v] }}"
+      - run: echo "${{ matrix.obj.props[matrix.blank.v] }}"

@@ -1,11 +1,18 @@
 package actionlint
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 )
 
 //go:generate go run ./scripts/generate-availability ./availability.go
+
+// The integer and float productions of the YAML 1.2 core schema, as GitHub implements them.
+var (
+	reCoreSchemaInt   = regexp.MustCompile(`^([0-9]+|[-+][0-9]+|0x[0-9a-fA-F]+|0o[0-7]+)$`)
+	reCoreSchemaFloat = regexp.MustCompile(`^[-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?$`)
+)
 
 type typedExpr struct {
 	ty  ExprType
@@ -1077,18 +1084,30 @@ func (rule *RuleExpression) checkRawYAMLString(y *RawYAMLString) ExprType {
 		return ts[0].ty
 	}
 
-	s := strings.TrimSpace(y.Value)
-	// Note that keywords are case sensitive. TRUE, FALSE, NULL are invalid named value.
-	if s == "true" || s == "false" {
+	switch y.Tag {
+	case "!!bool":
 		return BoolType{}
-	}
-	if s == "null" {
+	case "!!null":
 		return NullType{}
+	case "!!int", "!!float":
+		if isCoreSchemaNumber(y.Value) {
+			return NumberType{}
+		}
+		return StringType{}
+	default:
+		return StringType{}
 	}
-	if _, err := strconv.ParseFloat(s, 64); err == nil {
-		return NumberType{}
+}
+
+// The YAML library resolves a plain scalar more permissively than GitHub does, which reads it with
+// the YAML 1.2 core schema.
+// https://github.com/actions/runner/blob/258d6c857db3519913f7deb6004b60172f8043ae/src/Sdk/WorkflowParser/Conversion/YamlObjectReader.cs#L497-L697
+func isCoreSchemaNumber(s string) bool {
+	switch s {
+	case ".inf", ".Inf", ".INF", "+.inf", "+.Inf", "+.INF", "-.inf", "-.Inf", "-.INF", ".nan", ".NaN", ".NAN":
+		return true
 	}
-	return StringType{}
+	return reCoreSchemaInt.MatchString(s) || reCoreSchemaFloat.MatchString(s)
 }
 
 func convertExprLineColToPos(line, col, lineBase, colBase int) *Pos {
