@@ -566,6 +566,14 @@ func TestConfigParseRequireJobTimeout(t *testing.T) {
 			wantMax:     30.5,
 			wantHasMax:  true,
 		},
+		{
+			what:        "max-minutes has a leading zero",
+			input:       "policy:\n  require-job-timeout:\n    max-minutes: 017\n",
+			wantSet:     true,
+			wantEnabled: true,
+			wantMax:     17,
+			wantHasMax:  true,
+		},
 	}
 
 	for _, tc := range tests {
@@ -631,7 +639,12 @@ func TestConfigParseRequireJobTimeoutError(t *testing.T) {
 		{
 			what:  "max-minutes is not a number",
 			input: "policy:\n  require-job-timeout:\n    max-minutes: hello\n",
-			want:  "cannot construct !!str `hello` into float64",
+			want:  `"max-minutes" in "require-job-timeout" must be a number but got "hello" at line:3,col:18`,
+		},
+		{
+			what:  "max-minutes is a mapping",
+			input: "policy:\n  require-job-timeout:\n    max-minutes:\n      a: 1\n",
+			want:  `"max-minutes" in "require-job-timeout" must be a number but got "" at line:4,col:7`,
 		},
 	}
 

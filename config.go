@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
@@ -160,9 +161,14 @@ func (p *JobTimeoutPolicy) UnmarshalYAML(n *yaml.Node) error {
 			if k.Value != "max-minutes" {
 				return fmt.Errorf("yaml: unknown key %q in \"require-job-timeout\" at line:%d,col:%d", k.Value, k.Line, k.Column)
 			}
-			if err := v.Decode(&p.maxMinutes); err != nil {
-				return err
+			// Decoding through the YAML library reads a leading zero as YAML 1.1 octal, so
+			// "max-minutes: 017" would become 15. The workflow parser reads numbers from the raw
+			// text with strconv, and so does this.
+			f, err := strconv.ParseFloat(v.Value, 64)
+			if err != nil || v.Kind != yaml.ScalarNode {
+				return fmt.Errorf("yaml: \"max-minutes\" in \"require-job-timeout\" must be a number but got %q at line:%d,col:%d", v.Value, v.Line, v.Column)
 			}
+			p.maxMinutes = f
 			if p.maxMinutes <= 0 {
 				return fmt.Errorf("yaml: \"max-minutes\" in \"require-job-timeout\" must be greater than zero but got %v at line:%d,col:%d", p.maxMinutes, v.Line, v.Column)
 			}
