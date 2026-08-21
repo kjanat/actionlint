@@ -12,6 +12,8 @@ RUN go build -v -ldflags "-s -w -X actionlint.kjanat.dev.version=${ACTIONLINT_VE
 FROM koalaman/shellcheck-alpine:stable AS shellcheck
 
 FROM alpine:${ALPINE_VER} AS runtime
+LABEL org.opencontainers.image.source="https://github.com/kjanat/actionlint"
+LABEL org.opencontainers.image.licenses="MIT"
 COPY --from=builder /go/src/app/actionlint /usr/local/bin/
 COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
 RUN apk add --no-cache python3 py3-pyflakes
