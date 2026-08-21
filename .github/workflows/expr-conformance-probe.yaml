@@ -1,0 +1,210 @@
+name: Expression conformance probe
+
+on:
+  workflow_dispatch:
+
+# contents: write creates and deletes the temporary case refs, and actions:
+# write is required by the workflow-dispatch endpoint that returns GitHub's
+# parser verdict. Neither is enough on its own: GITHUB_TOKEN is refused on any
+# ref update that touches .github/workflows, and the permissions block has no
+# key that grants it, so EXPR_PROBE_TOKEN must carry contents and workflows
+# write for this probe to run.
+permissions: { contents: write, actions: write }
+
+jobs:
+  probe:
+    name: Evaluate expression literals on GitHub
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ secrets.EXPR_PROBE_TOKEN || github.token }}
+      WF_PREFIX: probe/expr-conformance/${{ github.run_id }}
+    steps:
+      - name: Preflight
+        run: |
+          set -euo pipefail
+          repo="${GITHUB_REPOSITORY}"
+          wf_path="${GITHUB_WORKFLOW_REF%%@*}"
+          wf_path="${wf_path#"${repo}/"}"
+
+          if ! blob="$(jq -n '{content: "cHJlZmxpZ2h0Cg==", encoding: "base64"}' \
+            | gh api -X POST "repos/${repo}/git/blobs" --input - --jq .sha 2>&1)"; then
+            echo "::error::the probe token cannot write git objects: ${blob}"
+            echo 'Set the EXPR_PROBE_TOKEN secret to a token with contents write.'
+            exit 1
+          fi
+          echo "git object write: ok"
+
+          tree="$(jq -n --arg p "${wf_path}" --arg s "${blob}" \
+            '{tree: [{path: $p, mode: "100644", type: "blob", sha: $s}]}' \
+            | gh api -X POST "repos/${repo}/git/trees" --input - --jq .sha)"
+          commit="$(jq -n --arg t "${tree}" '{message: "preflight", tree: $t}' \
+            | gh api -X POST "repos/${repo}/git/commits" --input - --jq .sha)"
+          if ! out="$(jq -n --arg r "refs/heads/${WF_PREFIX}/preflight" --arg s "${commit}" \
+            '{ref: $r, sha: $s}' \
+            | gh api -X POST "repos/${repo}/git/refs" --input - --jq .ref 2>&1)"; then
+            echo "::error::the probe token may not write under .github/workflows: ${out}"
+            echo 'Set the EXPR_PROBE_TOKEN secret to a token that also has workflows write.'
+            exit 1
+          fi
+          echo "workflow ref write: ok"
+
+      - name: Probe
+        run: |
+          set -euo pipefail
+
+          # GitHub registers a workflow only once it is on the default branch or
+          # has already produced a run, so a ref-only file that has never run
+          # cannot be dispatched. Every case therefore reuses this file's own
+          # registered path on a ref of its own, dispatched with that ref. One
+          # case per file is not a choice: a workflow with an invalid expression
+          # is rejected whole, and the rejection lists at most ten parse errors.
+          dollar='$'
+          repo="${GITHUB_REPOSITORY}"
+          wf_path="${GITHUB_WORKFLOW_REF%%@*}"
+          wf_path="${wf_path#"${repo}/"}"
+          wf_id="$(gh api "repos/${repo}/actions/workflows" --paginate \
+            --jq ".workflows[] | select(.path == \"${wf_path}\") | .id")"
+          echo "workflow ${wf_path} is id ${wf_id}"
+
+          exprs=(
+            '1e5' '1e+5' '1E+5' '1e-5' '1e01' '1e+01' '1e0123' '1.0e+99'
+            '1.0e+' '1e+' '1e' '1e-0' '1e5e5' '1e309'
+            '0123' '00' '0' '-0' '1.5' '1.' '.5' '.5e1'
+            '0o17' '0O17' '0o8'
+            '0x1F' '0X1F' '0x01' '0x0123' '0x0e1' '0xG'
+            '0b101' '0B101'
+            '+1' '-1' '1_000'
+            'NaN' 'Infinity' '-Infinity'
+            '2147483648' '9007199254740993'
+            '0.1 + 0.2' '1 + 1' '1e+5 == 100000'
+          )
+
+          cases="${RUNNER_TEMP}/cases"
+          mkdir -p "${cases}"
+          for i in "${!exprs[@]}"; do
+            idx="$(printf '%02d' "${i}")"
+            expr="${exprs[${i}]}"
+            cat > "${cases}/${idx}.yaml" <<CASE
+          name: expression conformance case ${idx}
+          run-name: "CASE~${idx}~${dollar}{{ ${expr} }}~${dollar}{{ toJSON(${expr}) }}"
+          on:
+            workflow_dispatch:
+          permissions: {}
+          jobs:
+            eval:
+              runs-on: ubuntu-latest
+              steps:
+                - run: |
+                    echo "PROBE_ID=${idx}"
+                    echo "PROBE_VALUE=${dollar}{{ ${expr} }}"
+                    echo "PROBE_JSON=${dollar}{{ toJSON(${expr}) }}"
+                    echo "PROBE_IMAGE=\$ImageOS \$ImageVersion"
+          CASE
+            case_b64="$(base64 -w0 < "${cases}/${idx}.yaml")"
+            blob="$(jq -n --arg c "${case_b64}" \
+              '{content: $c, encoding: "base64"}' \
+              | gh api -X POST "repos/${repo}/git/blobs" --input - --jq .sha)"
+            tree="$(jq -n --arg p "${wf_path}" --arg s "${blob}" \
+              '{tree: [{path: $p, mode: "100644", type: "blob", sha: $s}]}' \
+              | gh api -X POST "repos/${repo}/git/trees" --input - --jq .sha)"
+            commit="$(jq -n --arg m "expression conformance case ${idx}" --arg t "${tree}" \
+              '{message: $m, tree: $t}' \
+              | gh api -X POST "repos/${repo}/git/commits" --input - --jq .sha)"
+            jq -n --arg r "refs/heads/${WF_PREFIX}/${idx}" --arg s "${commit}" \
+              '{ref: $r, sha: $s}' \
+              | gh api -X POST "repos/${repo}/git/refs" --input - --jq .ref
+          done
+          echo "created ${#exprs[@]} case refs under ${WF_PREFIX}"
+
+          verdicts=()
+          messages=()
+          for i in "${!exprs[@]}"; do
+            idx="$(printf '%02d' "${i}")"
+            set +e
+            body="$(gh api -X POST "repos/${repo}/actions/workflows/${wf_id}/dispatches" \
+              -f ref="${WF_PREFIX}/${idx}" 2>"${RUNNER_TEMP}/dispatch.err")"
+            rc=$?
+            message="$(printf '%s' "${body}" | jq -r '.message // empty')"
+            set -e
+            if [[ "${rc}" -eq 0 ]]; then
+              verdicts+=('accepted')
+              messages+=('')
+            elif [[ "${message#*failed to parse workflow}" != "${message}" ]]; then
+              verdicts+=('rejected')
+              messages+=("${message}")
+            else
+              verdicts+=('error')
+              messages+=("${message:-$(cat "${RUNNER_TEMP}/dispatch.err")}")
+            fi
+            printf '%s %-20s %-8s %s\n' \
+              "${idx}" "${exprs[${i}]}" "${verdicts[${i}]}" "${messages[${i}]}"
+          done
+
+          deadline=$(( $(date +%s) + 1200 ))
+          runs='{"workflow_runs":[]}'
+          while :; do
+            runs="$(gh api "repos/${repo}/actions/workflows/${wf_id}/runs?event=workflow_dispatch&per_page=100")"
+            pending=0
+            for i in "${!exprs[@]}"; do
+              if [[ "${verdicts[${i}]}" != 'accepted' ]]; then continue; fi
+              idx="$(printf '%02d' "${i}")"
+              status="$(printf '%s' "${runs}" | jq -r --arg b "${WF_PREFIX}/${idx}" \
+                '[.workflow_runs[] | select(.head_branch == $b)] | (first // {}) | .status // "missing"')"
+              if [[ "${status}" != 'completed' ]]; then pending=$(( pending + 1 )); fi
+            done
+            echo "waiting for ${pending} case run(s)"
+            if [[ "${pending}" -eq 0 ]]; then break; fi
+            now="$(date +%s)"
+            if [[ "${now}" -ge "${deadline}" ]]; then break; fi
+            sleep 15
+          done
+
+          bt=$'\x60'
+          measured="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          {
+            echo "## Expression literal conformance on GitHub"
+            echo
+            echo "- measured: ${measured}"
+            echo "- repository: \`${repo}\` at \`${GITHUB_SHA}\`"
+            echo "- driver runner: \`ubuntu-latest\` = \`${ImageOS:-unknown}\` \`${ImageVersion:-unknown}\`"
+            echo "- verdict: \`POST /actions/workflows/{id}/dispatches\`, HTTP 422 means rejected"
+            echo "- value: the \`run-name\` GitHub rendered for the accepted case"
+            echo
+            echo "| # | expression | verdict | value | toJSON | run | parser message |"
+            echo "| --- | --- | --- | --- | --- | --- | --- |"
+            for i in "${!exprs[@]}"; do
+              idx="$(printf '%02d' "${i}")"
+              value=''
+              json=''
+              conclusion=''
+              if [[ "${verdicts[${i}]}" == 'accepted' ]]; then
+                found="$(printf '%s' "${runs}" | jq -r --arg b "${WF_PREFIX}/${idx}" \
+                  '[.workflow_runs[] | select(.head_branch == $b)] | (first // {})
+                   | "\(.name // "")\t\(.conclusion // "incomplete")"')"
+                name="${found%%$'\t'*}"
+                conclusion="${found##*$'\t'}"
+                value="${name#"CASE~${idx}~"}"
+                json="${value##*~}"
+                value="${value%%~*}"
+              fi
+              printf '| %s | %s | %s | %s | %s | %s | %s |\n' \
+                "${idx}" "${bt}${exprs[${i}]}${bt}" "${verdicts[${i}]}" \
+                "${bt}${value}${bt}" "${bt}${json}${bt}" \
+                "${conclusion}" "${messages[${i}]//|/\\|}"
+            done
+          } | tee -a "${GITHUB_STEP_SUMMARY}"
+
+      - name: Delete the temporary case refs
+        if: always()
+        run: |
+          set -euo pipefail
+          refs="$(gh api "repos/${GITHUB_REPOSITORY}/git/matching-refs/heads/${WF_PREFIX}/" --jq '.[].ref')"
+          if [[ -z "${refs}" ]]; then
+            echo 'no case refs to delete'
+            exit 0
+          fi
+          while read -r ref; do
+            gh api --silent -X DELETE "repos/${GITHUB_REPOSITORY}/git/${ref}"
+            echo "deleted ${ref}"
+          done <<< "${refs}"
