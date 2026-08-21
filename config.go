@@ -58,6 +58,37 @@ type Policy struct {
 	// RequireCommitHash requires every "uses:" to be pinned to a full commit SHA, or to an image digest
 	// when it names a Docker image. Nil means the key was not set.
 	RequireCommitHash *bool `yaml:"require-commit-hash"`
+	// RequiredActions is the actions every workflow must use. Each entry is written like a "uses:"
+	// value and both of its halves are glob patterns. Nil means the key was not set. An empty non-nil
+	// value requires no action, which disables the check.
+	RequiredActions []string `yaml:"required-actions"`
+}
+
+// decodeRequiredActions decodes the value of the "required-actions" key and validates every entry of
+// it. A null value leaves the destination untouched so that a key set to nothing keeps the meaning of
+// an absent key.
+func decodeRequiredActions(n *yaml.Node, out *[]string) error {
+	if n.Kind == yaml.ScalarNode && n.Tag == "!!null" {
+		return nil
+	}
+	if n.Kind != yaml.SequenceNode {
+		return fmt.Errorf("yaml: \"required-actions\" must be a sequence node at line:%d,col:%d", n.Line, n.Column)
+	}
+	as := make([]string, 0, len(n.Content))
+	for _, c := range n.Content {
+		if c.Kind != yaml.ScalarNode || c.Tag != "!!str" {
+			return fmt.Errorf("yaml: an entry of \"required-actions\" must be a string at line:%d,col:%d", c.Line, c.Column)
+		}
+		if c.Value == "" {
+			return fmt.Errorf("yaml: an entry of \"required-actions\" must not be empty at line:%d,col:%d", c.Line, c.Column)
+		}
+		if p, ok := invalidActionPattern(c.Value); ok {
+			return fmt.Errorf("yaml: invalid glob pattern %q in an entry of \"required-actions\" at line:%d,col:%d", p, c.Line, c.Column)
+		}
+		as = append(as, c.Value)
+	}
+	*out = as
+	return nil
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
@@ -71,6 +102,8 @@ func (p *Policy) UnmarshalYAML(n *yaml.Node) error {
 		switch k.Value {
 		case "require-commit-hash":
 			err = v.Decode(&p.RequireCommitHash)
+		case "required-actions":
+			err = decodeRequiredActions(v, &p.RequiredActions)
 		default:
 			return fmt.Errorf("yaml: unknown key %q in \"policy\" at line:%d,col:%d", k.Value, k.Line, k.Column)
 		}
@@ -123,6 +156,15 @@ func (cfg *Config) PathConfigs(path string) []PathConfig {
 // when the receiver is nil or when the key is not set.
 func (cfg *Config) RequiresCommitHash() bool {
 	return cfg != nil && cfg.Policy.RequireCommitHash != nil && *cfg.Policy.RequireCommitHash
+}
+
+// RequiredActions returns the actions which every workflow must use following the "required-actions"
+// policy. It returns nil when the receiver is nil or when the key is not set.
+func (cfg *Config) RequiredActions() []string {
+	if cfg == nil {
+		return nil
+	}
+	return cfg.Policy.RequiredActions
 }
 
 // ParseConfig parses the given bytes as an actionlint config file. When deserializing the YAML file
@@ -200,6 +242,9 @@ paths:
 #  # Require every "uses:" to be pinned to a full commit SHA or an image
 #  # digest.
 #  require-commit-hash: true
+#  # Actions every workflow must use. "owner/repo@ref" also pins the version.
+#  required-actions:
+#    - actions/checkout
 `)
 	if err := os.WriteFile(path, b, 0644); err != nil {
 		return fmt.Errorf("could not write default configuration file at %q: %w", path, err)

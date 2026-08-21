@@ -590,6 +590,9 @@ func (l *Linter) check(
 		if cfg.RequiresCommitHash() {
 			rules = append(rules, NewRuleRequireCommitHash())
 		}
+		if len(cfg.RequiredActions()) > 0 {
+			rules = append(rules, NewRuleRequiredActions())
+		}
 		if l.shellcheck != "" {
 			r, err := NewRuleShellcheck(l.shellcheck, proc)
 			if err == nil {
