@@ -2,6 +2,7 @@ on: push
 
 permissions:
   code-quality: write
+  copilot-requests: write
   models: read
   repository-projects: write
   vulnerability-alerts: read
@@ -11,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       code-quality: none
+      copilot-requests: none
       models: none
       repository-projects: read
       vulnerability-alerts: none
