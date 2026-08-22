@@ -86,6 +86,25 @@ policy:
   require-commit-hash: true
 ```
 
+### required-actions
+
+This check reports a workflow which does not use an action this repository requires. An entry is written like a `uses:`
+value and both of its halves are glob patterns. `actions/checkout` accepts any ref, `actions/checkout@v5` accepts that
+ref only, and `actions/checkout@v4*` accepts `v4` and `v4.2.2`. `*` does not match `/`, so `github/codeql-action/*`
+matches every action in that repository. The name is matched case insensitively and the ref is matched case sensitively.
+
+One error per missing action is reported at the first job of the workflow. Only the steps written in the workflow file
+are searched, so the steps of a composite action and of a called reusable workflow are not. A workflow whose every job
+calls a reusable workflow runs no step of its own, so it is passed over. So is a workflow with a `uses:` built with
+`${{ }}`, because the action it names is not known before the workflow runs.
+
+```yaml
+policy:
+  required-actions:
+    - actions/checkout
+    - my-org/security-scan@v2*
+```
+
 ## Generate the initial configuration
 
 You don't need to write the first configuration file by your hand. `actionlint` command can generate a default configuration

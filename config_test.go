@@ -89,6 +89,45 @@ paths:
 `,
 			want: `invalid glob pattern`,
 		},
+		{
+			in: `
+policy:
+  required-actions: true
+`,
+			want: `"required-actions" must be a sequence node at line:3,col:21`,
+		},
+		{
+			in: `
+policy:
+  required-actions:
+    - 42
+`,
+			want: `an entry of "required-actions" must be a string at line:4,col:7`,
+		},
+		{
+			in: `
+policy:
+  required-actions:
+    - ""
+`,
+			want: `an entry of "required-actions" must not be empty at line:4,col:7`,
+		},
+		{
+			in: `
+policy:
+  required-actions:
+    - actions/[checkout
+`,
+			want: `invalid glob pattern "actions/[checkout" in an entry of "required-actions" at line:4,col:7`,
+		},
+		{
+			in: `
+policy:
+  required-actions:
+    - actions/checkout@[v5
+`,
+			want: `invalid glob pattern "[v5" in an entry of "required-actions" at line:4,col:7`,
+		},
 	}
 
 	for _, tc := range tests {
@@ -283,7 +322,7 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "#policy:\n#  # Require every \"uses:\" to be pinned to a full commit SHA or an image\n#  # digest.\n#  require-commit-hash: true\n"
+	want := "#policy:\n#  # Require every \"uses:\" to be pinned to a full commit SHA or an image\n#  # digest.\n#  require-commit-hash: true\n#  # Actions every workflow must use. \"owner/repo@ref\" also pins the version.\n#  required-actions:\n#    - actions/checkout\n"
 	if !strings.Contains(string(b), want) {
 		t.Fatalf("wanted generated config file %q to contain %q", string(b), want)
 	}
@@ -406,5 +445,62 @@ func TestConfigPolicyNilConfig(t *testing.T) {
 	var c *Config
 	if c.RequiresCommitHash() {
 		t.Fatal("\"require-commit-hash\" is enabled for a nil config")
+	}
+	if as := c.RequiredActions(); as != nil {
+		t.Fatalf("\"required-actions\" is %v for a nil config", as)
+	}
+}
+
+func TestConfigParseRequiredActionsOK(t *testing.T) {
+	tests := []struct {
+		what  string
+		input string
+		want  []string
+	}{
+		{
+			what:  "key is not set",
+			input: "policy: {}\n",
+			want:  nil,
+		},
+		{
+			what:  "key is null",
+			input: "policy:\n  required-actions:\n",
+			want:  nil,
+		},
+		{
+			what:  "key is an empty sequence",
+			input: "policy:\n  required-actions: []\n",
+			want:  []string{},
+		},
+		{
+			what:  "one action without a ref",
+			input: "policy:\n  required-actions:\n    - actions/checkout\n",
+			want:  []string{"actions/checkout"},
+		},
+		{
+			what:  "one action with a ref",
+			input: "policy:\n  required-actions:\n    - my-org/scan@v2\n",
+			want:  []string{"my-org/scan@v2"},
+		},
+		{
+			what:  "glob patterns",
+			input: "policy:\n  required-actions:\n    - github/codeql-action/*\n    - actions/checkout@v4*\n",
+			want:  []string{"github/codeql-action/*", "actions/checkout@v4*"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.what, func(t *testing.T) {
+			c, err := ParseConfig([]byte(tc.input))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(tc.want, c.Policy.RequiredActions); diff != "" {
+				t.Fatal(diff)
+			}
+			if diff := cmp.Diff(tc.want, c.RequiredActions()); diff != "" {
+				t.Fatal(diff)
+			}
+		})
 	}
 }
