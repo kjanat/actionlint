@@ -19,13 +19,14 @@
     "test:matcher": "node --test ./scripts/generate-actionlint-matcher/test.mjs",
     "test:shellcheck-versions": "node --test ./.github/actions/shellcheck-versions/shellcheck-version-lifecycle.test.mjs",
     "test:workspaces": "npm run test --workspaces",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "run -q @typescript/native --noEmit"
   },
   "devDependencies": {
     "@actions/github-script": "github:actions/github-script",
     "@types/node": "^26.2.0",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "runner-run": "^0.25.1",
-    "typescript": "^7.0.2"
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
   },
   "packageManager": "npm@12.0.2",
   "volta": {

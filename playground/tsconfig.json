@@ -17,6 +17,7 @@
     "skipLibCheck": true,
     "types": ["node", "vite/client"],
     "composite": true,
+    "tsBuildInfoFile": "../node_modules/.cache/typescript/playground.tsbuildinfo",
     "isolatedModules": true
   },
   "exclude": ["node_modules"]
