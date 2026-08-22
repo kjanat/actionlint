@@ -703,6 +703,18 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			configSecrets: []string{"My_Secret"},
 		},
 		{
+			what:          "known secret through index access",
+			input:         "secrets['MY_SECRET']",
+			expected:      StringType{},
+			configSecrets: []string{"MY_SECRET"},
+		},
+		{
+			what:       "known configuration variable through index access",
+			input:      "vars['SOME_VARIABLE']",
+			expected:   StringType{},
+			configVars: []string{"SOME_VARIABLE"},
+		},
+		{
 			what:          "builtin secret with allowlist",
 			input:         "secrets.GITHUB_TOKEN",
 			expected:      StringType{},
@@ -1385,6 +1397,22 @@ func TestExprSemanticsCheckError(t *testing.T) {
 				"undefined secret \"unknown_secret\". defined secrets in actionlint.yaml are \"MY_SECRET\"",
 			},
 			configSecrets: []string{"MY_SECRET"},
+		},
+		{
+			what:  "unknown secret through index access",
+			input: "secrets['UNKNOWN_SECRET']",
+			expected: []string{
+				"undefined secret \"unknown_secret\". defined secrets in actionlint.yaml are \"MY_SECRET\"",
+			},
+			configSecrets: []string{"MY_SECRET"},
+		},
+		{
+			what:  "unknown configuration variable through index access",
+			input: "vars['UNKNOWN_VARIABLE']",
+			expected: []string{
+				"undefined configuration variable \"unknown_variable\".",
+			},
+			configVars: []string{"FOO_BAR"},
 		},
 		{
 			what:  "declared secrets stay strict for a workflow_call-only workflow",

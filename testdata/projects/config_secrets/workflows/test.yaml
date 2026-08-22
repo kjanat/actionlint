@@ -14,3 +14,7 @@ jobs:
       - run: echo '${{ secrets.GITHUB_TOKEN }}'
       # ERROR: Undefined secret
       - run: echo '${{ secrets.PIYO }}'
+      # Index access with a string literal
+      - run: echo "${{ secrets['MY_SECRET'] }}"
+      # ERROR: Undefined secret
+      - run: echo "${{ secrets['FUGA'] }}"
