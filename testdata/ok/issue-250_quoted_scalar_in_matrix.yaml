@@ -34,6 +34,18 @@ jobs:
           - version: -0x10
         underscored:
           - version: 1_000
+        # The core schema has no boolean spelled as a word other than true and
+        # false, and no timestamp.
+        yes_word:
+          - version: yes
+        on_word:
+          - version: on
+        off_word:
+          - version: off
+        label:
+          - version: ubuntu-latest
+        date:
+          - version: 2026-08-21
     runs-on: ubuntu-latest
     steps:
       - run: echo "${{ matrix.os.container[matrix.double_quoted.version] }}"
@@ -45,3 +57,8 @@ jobs:
       - run: echo "${{ matrix.os.container[matrix.upper_binary.version] }}"
       - run: echo "${{ matrix.os.container[matrix.signed_hex.version] }}"
       - run: echo "${{ matrix.os.container[matrix.underscored.version] }}"
+      - run: echo "${{ matrix.os.container[matrix.yes_word.version] }}"
+      - run: echo "${{ matrix.os.container[matrix.on_word.version] }}"
+      - run: echo "${{ matrix.os.container[matrix.off_word.version] }}"
+      - run: echo "${{ matrix.os.container[matrix.label.version] }}"
+      - run: echo "${{ matrix.os.container[matrix.date.version] }}"

@@ -13,6 +13,7 @@ List of checks:
 - [Contexts and built-in functions](#check-contexts-and-builtin-func)
 - [Contextual typing for `steps.<step_id>` objects](#check-contextual-step-object)
 - [Contextual typing for `matrix` object](#check-contextual-matrix-object)
+- [YAML tags of matrix values](#check-matrix-value-tags)
 - [Contextual typing for `needs` object](#check-contextual-needs-object)
 - [Strict type checks for comparison operators](#check-comparison-types)
 - [shellcheck integration for `run:`](#check-shellcheck-integ)
@@ -772,6 +773,57 @@ strategy:
       - 0o17
       - .inf
 ```
+
+<a id="check-matrix-value-tags"></a>
+
+## YAML tags of matrix values
+
+Example input:
+
+```yaml
+on: push
+jobs:
+  test:
+    strategy:
+      matrix:
+        version:
+          # ERROR: The core schema has no binary integer, so "!!int" does not accept this value
+          - !!int 0b10
+        flag:
+          # ERROR: A quoted scalar cannot have a tag other than "!!str"
+          - !!bool "true"
+        released:
+          # ERROR: A matrix value cannot have a tag outside the core schema
+          - !!timestamp 2026-08-21
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo '${{ matrix.version }} ${{ matrix.flag }} ${{ matrix.released }}'
+```
+
+Output:
+
+```console
+test.yaml:8:13: invalid value "0b10" for "!!int" tag [syntax-check]
+  |
+8 |           - !!int 0b10
+  |             ^~~~~
+test.yaml:11:13: tag of a quoted or block scalar must be "!!str" but got "!!bool" [syntax-check]
+   |
+11 |           - !!bool "true"
+   |             ^~~~~~
+test.yaml:14:13: tag of a matrix scalar must be one of "!!str", "!!bool", "!!int", "!!float", "!!null" but got "!!timestamp" [syntax-check]
+   |
+14 |           - !!timestamp 2026-08-21
+   |             ^~~~~~~~~~~
+```
+
+[Playground](https://kjanat.github.io/actionlint/#eNpcj8FOgDAQRO98xUBMONUUDsbwN62uUFNa0t0aDem/myqg4dTM9GXzJoYJW+aleY+WpwYQYqkvwJKM0Pz1m4DVSHKfZwI+KLGL4a8AFNrWBYG2g77qN2/mO2Rj9OgkZequn0SeDNPrnRW3EotZN4x6fFL6WY3DD5JyYFUHZJuDZOVNlT/caePzkKrkBHpZIvqHfT+WPB4DUAr+tVX3Vp1mKKX/HgDm31SO)
+
+GitHub reads a matrix scalar with the YAML 1.2 core schema and rejects a workflow whose explicit tag does not fit the
+scalar. A tag other than `!!str` is allowed only on a plain scalar, and `!!bool`, `!!int`, `!!float` and `!!null` accept
+only the values their core schema production matches. Any other tag is rejected.
+
+actionlint reports such a tag while parsing and types the value as `string`.
 
 <a id="check-contextual-needs-object"></a>
 

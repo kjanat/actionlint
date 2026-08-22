@@ -776,7 +776,8 @@ func (a *RawYAMLArray) String() string {
 type RawYAMLString struct {
 	// Value is string representation of the scalar node.
 	Value string
-	// Tag is the YAML tag the parser resolved for the scalar node, such as "!!str" or "!!int".
+	// Tag is the YAML tag of the scalar node, such as "!!str" or "!!int". A tag the parser rejects
+	// is recorded as "!!str".
 	Tag string
 	pos *Pos
 }

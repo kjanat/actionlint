@@ -10,8 +10,8 @@ import (
 
 // The integer and float productions of the YAML 1.2 core schema, as GitHub implements them.
 var (
-	reCoreSchemaInt   = regexp.MustCompile(`^([0-9]+|[-+][0-9]+|0x[0-9a-fA-F]+|0o[0-7]+)$`)
-	reCoreSchemaFloat = regexp.MustCompile(`^[-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?$`)
+	reCoreSchemaInt   = regexp.MustCompile(`^(?:[0-9]+|[-+][0-9]+|0x[0-9a-fA-F]+|0o[0-7]+)$`)
+	reCoreSchemaFloat = regexp.MustCompile(`^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?$`)
 )
 
 type typedExpr struct {
@@ -1085,29 +1085,56 @@ func (rule *RuleExpression) checkRawYAMLString(y *RawYAMLString) ExprType {
 	}
 
 	switch y.Tag {
-	case "!!bool":
-		return BoolType{}
-	case "!!null":
-		return NullType{}
-	case "!!int", "!!float":
+	case yamlTagBool:
+		if isCoreSchemaBool(y.Value) {
+			return BoolType{}
+		}
+	case yamlTagNull:
+		if isCoreSchemaNull(y.Value) {
+			return NullType{}
+		}
+	case yamlTagInt, yamlTagFloat:
 		if isCoreSchemaNumber(y.Value) {
 			return NumberType{}
 		}
-		return StringType{}
-	default:
-		return StringType{}
 	}
+	return StringType{}
 }
 
-// The YAML library resolves a plain scalar more permissively than GitHub does, which reads it with
-// the YAML 1.2 core schema.
-// https://github.com/actions/runner/blob/258d6c857db3519913f7deb6004b60172f8043ae/src/Sdk/WorkflowParser/Conversion/YamlObjectReader.cs#L497-L697
-func isCoreSchemaNumber(s string) bool {
+// The bool, null, integer and float productions of the YAML 1.2 core schema, as GitHub implements them.
+// https://github.com/actions/runner/blob/258d6c857db3519913f7deb6004b60172f8043ae/src/Sdk/WorkflowParser/Conversion/YamlObjectReader.cs#L474-L717
+func isCoreSchemaBool(s string) bool {
+	switch s {
+	case "true", "True", "TRUE", "false", "False", "FALSE":
+		return true
+	}
+	return false
+}
+
+func isCoreSchemaNull(s string) bool {
+	switch s {
+	case "", "null", "Null", "NULL", "~":
+		return true
+	}
+	return false
+}
+
+func isCoreSchemaInt(s string) bool {
+	return reCoreSchemaInt.MatchString(s)
+}
+
+func isCoreSchemaFloat(s string) bool {
 	switch s {
 	case ".inf", ".Inf", ".INF", "+.inf", "+.Inf", "+.INF", "-.inf", "-.Inf", "-.INF", ".nan", ".NaN", ".NAN":
 		return true
 	}
-	return reCoreSchemaInt.MatchString(s) || reCoreSchemaFloat.MatchString(s)
+	return reCoreSchemaFloat.MatchString(s)
+}
+
+// The YAML library resolves a plain scalar more permissively than the core schema, and the runner
+// matches it against the integer production first and the float production second.
+func isCoreSchemaNumber(s string) bool {
+	return isCoreSchemaInt(s) || isCoreSchemaFloat(s)
 }
 
 func convertExprLineColToPos(line, col, lineBase, colBase int) *Pos {
