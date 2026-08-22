@@ -51,6 +51,36 @@ type PathConfig struct {
 	Ignore IgnorePatterns `yaml:"ignore"`
 }
 
+// Policy is the "policy" mapping in the configuration file. Each key enables one check that enforces a
+// convention chosen by the repository. A key which is not set inherits its value from the configuration file
+// of the next lower precedence, and all the checks are disabled when no configuration file sets them.
+type Policy struct {
+	// RequireCommitHash requires every "uses:" to be pinned to a full commit SHA, or to an image digest
+	// when it names a Docker image. Nil means the key was not set.
+	RequireCommitHash *bool `yaml:"require-commit-hash"`
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (p *Policy) UnmarshalYAML(n *yaml.Node) error {
+	if n.Kind != yaml.MappingNode {
+		return fmt.Errorf("yaml: \"policy\" must be a mapping node at line:%d,col:%d", n.Line, n.Column)
+	}
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		k, v := n.Content[i], n.Content[i+1]
+		var err error
+		switch k.Value {
+		case "require-commit-hash":
+			err = v.Decode(&p.RequireCommitHash)
+		default:
+			return fmt.Errorf("yaml: unknown key %q in \"policy\" at line:%d,col:%d", k.Value, k.Line, k.Column)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Config is configuration of actionlint. This struct instance is parsed from "actionlint.yaml"
 // file usually put in ".github" directory.
 type Config struct {
@@ -67,6 +97,9 @@ type Config struct {
 	// Paths is a "paths" mapping in the configuration file. The keys are glob patterns to match file paths.
 	// And the values are corresponding configurations applied to the file paths.
 	Paths map[string]PathConfig `yaml:"paths"`
+	// Policy is a "policy" mapping in the configuration file. It turns on the checks which enforce the
+	// conventions chosen by the repository.
+	Policy Policy `yaml:"policy"`
 }
 
 // PathConfigs returns a list of all PathConfig values matching to the given file path. The path must
@@ -84,6 +117,12 @@ func (cfg *Config) PathConfigs(path string) []PathConfig {
 		}
 	}
 	return ret
+}
+
+// RequiresCommitHash returns whether the "require-commit-hash" policy is enabled. It returns false
+// when the receiver is nil or when the key is not set.
+func (cfg *Config) RequiresCommitHash() bool {
+	return cfg != nil && cfg.Policy.RequireCommitHash != nil && *cfg.Policy.RequireCommitHash
 }
 
 // ParseConfig parses the given bytes as an actionlint config file. When deserializing the YAML file
@@ -153,6 +192,14 @@ config-variables: null
 paths:
 #  .github/workflows/**/*.yml:
 #    ignore: []
+
+# Policy checks. Each key turns on one check that enforces a convention of this
+# repository rather than reporting a mistake. They are all disabled when this
+# mapping is absent. The keys are in alphabetical order.
+#policy:
+#  # Require every "uses:" to be pinned to a full commit SHA or an image
+#  # digest.
+#  require-commit-hash: true
 `)
 	if err := os.WriteFile(path, b, 0644); err != nil {
 		return fmt.Errorf("could not write default configuration file at %q: %w", path, err)

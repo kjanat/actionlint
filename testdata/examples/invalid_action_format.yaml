@@ -11,3 +11,9 @@ jobs:
       - uses: 'docker://image:'
       # ERROR: local action must start with './'
       - uses: .github/my-actions/do-something
+      # ERROR: ref is empty
+      - uses: owner/repo@
+      # ERROR: owner is empty
+      - uses: /repo@ref
+      # ERROR: repo is empty
+      - uses: owner/@ref

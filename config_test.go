@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -275,6 +276,17 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 	if len(c.Paths) != 0 {
 		t.Fatal(c.Paths)
 	}
+	if diff := cmp.Diff(Policy{}, c.Policy); diff != "" {
+		t.Fatal(diff)
+	}
+	b, err := os.ReadFile(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "#policy:\n#  # Require every \"uses:\" to be pinned to a full commit SHA or an image\n#  # digest.\n#  require-commit-hash: true\n"
+	if !strings.Contains(string(b), want) {
+		t.Fatalf("wanted generated config file %q to contain %q", string(b), want)
+	}
 }
 
 func TestConfigGenerateDefaultConfigFileError(t *testing.T) {
@@ -286,5 +298,113 @@ func TestConfigGenerateDefaultConfigFileError(t *testing.T) {
 	msg := err.Error()
 	if !strings.Contains(msg, "could not write default configuration file") {
 		t.Fatalf("unexpected error message: %q", msg)
+	}
+}
+
+func TestConfigParsePolicyEmpty(t *testing.T) {
+	tests := []struct {
+		what  string
+		input string
+	}{
+		{
+			what:  "no policy",
+			input: "",
+		},
+		{
+			what:  "empty policy",
+			input: "policy:\n",
+		},
+		{
+			what:  "empty policy mapping",
+			input: "policy: {}\n",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.what, func(t *testing.T) {
+			c, err := ParseConfig([]byte(tc.input))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(Policy{}, c.Policy); diff != "" {
+				t.Fatal(diff)
+			}
+			if c.RequiresCommitHash() {
+				t.Fatal("\"require-commit-hash\" is enabled")
+			}
+		})
+	}
+}
+
+func TestConfigParsePolicyUnknownKey(t *testing.T) {
+	_, err := ParseConfig([]byte("policy:\n  require-commit-hashes: true\n"))
+	if err == nil {
+		t.Fatal("no error occurred")
+	}
+	want := `unknown key "require-commit-hashes" in "policy" at line:2,col:3`
+	if !strings.Contains(err.Error(), want) {
+		t.Fatalf("wanted error message %q to contain %q", err.Error(), want)
+	}
+}
+
+func TestConfigParsePolicyNotAMapping(t *testing.T) {
+	_, err := ParseConfig([]byte("policy: true\n"))
+	if err == nil {
+		t.Fatal("no error occurred")
+	}
+	want := `"policy" must be a mapping node at line:1,col:9`
+	if !strings.Contains(err.Error(), want) {
+		t.Fatalf("wanted error message %q to contain %q", err.Error(), want)
+	}
+}
+
+func TestConfigParsePolicyTriState(t *testing.T) {
+	tests := []struct {
+		what  string
+		input string
+		want  *bool
+	}{
+		{
+			what:  "key is not set",
+			input: "policy: {}\n",
+			want:  nil,
+		},
+		{
+			what:  "key is null",
+			input: "policy:\n  require-commit-hash:\n",
+			want:  nil,
+		},
+		{
+			what:  "key is false",
+			input: "policy:\n  require-commit-hash: false\n",
+			want:  new(false),
+		},
+		{
+			what:  "key is true",
+			input: "policy:\n  require-commit-hash: true\n",
+			want:  new(true),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.what, func(t *testing.T) {
+			c, err := ParseConfig([]byte(tc.input))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(tc.want, c.Policy.RequireCommitHash); diff != "" {
+				t.Fatal(diff)
+			}
+			if want := tc.want != nil && *tc.want; c.RequiresCommitHash() != want {
+				t.Fatalf("RequiresCommitHash() is %v but wanted %v", c.RequiresCommitHash(), want)
+			}
+		})
+	}
+}
+
+func TestConfigPolicyNilConfig(t *testing.T) {
+	var c *Config
+	if c.RequiresCommitHash() {
+		t.Fatal("\"require-commit-hash\" is enabled for a nil config")
 	}
 }

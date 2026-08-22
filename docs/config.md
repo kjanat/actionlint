@@ -65,14 +65,26 @@ turns it on, and a repository with no configuration file never sees them. Errors
 [the checks document](checks.md) are a different thing: those report a workflow that is broken, and they always run.
 
 Each check owns one key. The key name is also the name of the rule, so it is the name in the `[...]` suffix of the
-error message and the value of `{{$err.Kind}}` in the `-format` option. No policy check exists yet. Each one adds its
-own subsection here, in alphabetical order by key.
+error message and the value of `{{$err.Kind}}` in the `-format` option. Each one adds its own subsection here, in
+alphabetical order by key.
 
 Every key tells three states apart. Writing `false`, or an empty list for a key whose value is a list, turns the
 check off. Leaving the key out, or writing `null`, says nothing either way, so an empty `policy` mapping switches
 nothing off. That distinction is what lets a key which says nothing take its value from elsewhere once actionlint
 reads a user-global configuration file as well as the repository's. Today it reads one file: `-config-file` if given,
 otherwise the repository's.
+
+### require-commit-hash
+
+This check reports a `uses:` which names something that can move. An action and a reusable workflow must give a ref of
+40 or 64 hexadecimal digits, so a tag or a branch name is reported. A `docker://` image must give a digest in the
+`{image}@{algorithm}:{hex}` form, so an image with a tag or with no tag at all is reported. A local reference
+(`./path` or `$/path`) carries no ref and a `uses:` built with `${{ }}` cannot be read, so the check passes over them.
+
+```yaml
+policy:
+  require-commit-hash: true
+```
 
 ## Generate the initial configuration
 

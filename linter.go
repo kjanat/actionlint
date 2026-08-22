@@ -587,6 +587,9 @@ func (l *Linter) check(
 			NewRuleDeprecatedCommands(),
 			NewRuleIfCond(),
 		}
+		if cfg.RequiresCommitHash() {
+			rules = append(rules, NewRuleRequireCommitHash())
+		}
 		if l.shellcheck != "" {
 			r, err := NewRuleShellcheck(l.shellcheck, proc)
 			if err == nil {
