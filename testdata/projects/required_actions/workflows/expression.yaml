@@ -1,0 +1,7 @@
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ${{ format('{0}/checkout@v5', 'actions') }}

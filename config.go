@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
@@ -51,6 +52,133 @@ type PathConfig struct {
 	Ignore IgnorePatterns `yaml:"ignore"`
 }
 
+// Policy is the "policy" mapping in the configuration file. Each key enables one check that enforces a
+// convention chosen by the repository. A key which is not set inherits its value from the configuration file
+// of the next lower precedence, and all the checks are disabled when no configuration file sets them.
+type Policy struct {
+	// RequireCommitHash requires every "uses:" to be pinned to a full commit SHA, or to an image digest
+	// when it names a Docker image. Nil means the key was not set.
+	RequireCommitHash *bool `yaml:"require-commit-hash"`
+	// RequireJobTimeout requires every job to set "timeout-minutes". Nil means the key was not set.
+	RequireJobTimeout *JobTimeoutPolicy `yaml:"require-job-timeout"`
+	// RequiredActions is the actions every workflow must use. Each entry is written like a "uses:"
+	// value and both of its halves are glob patterns. Nil means the key was not set. An empty non-nil
+	// value requires no action, which disables the check.
+	RequiredActions []string `yaml:"required-actions"`
+}
+
+// decodeRequiredActions decodes the value of the "required-actions" key and validates every entry of
+// it. A null value leaves the destination untouched so that a key set to nothing keeps the meaning of
+// an absent key.
+func decodeRequiredActions(n *yaml.Node, out *[]string) error {
+	if n.Kind == yaml.ScalarNode && n.Tag == "!!null" {
+		return nil
+	}
+	if n.Kind != yaml.SequenceNode {
+		return fmt.Errorf("yaml: \"required-actions\" must be a sequence node at line:%d,col:%d", n.Line, n.Column)
+	}
+	as := make([]string, 0, len(n.Content))
+	for _, c := range n.Content {
+		if c.Kind != yaml.ScalarNode || c.Tag != "!!str" {
+			return fmt.Errorf("yaml: an entry of \"required-actions\" must be a string at line:%d,col:%d", c.Line, c.Column)
+		}
+		if c.Value == "" {
+			return fmt.Errorf("yaml: an entry of \"required-actions\" must not be empty at line:%d,col:%d", c.Line, c.Column)
+		}
+		if p, ok := invalidActionPattern(c.Value); ok {
+			return fmt.Errorf("yaml: invalid glob pattern %q in an entry of \"required-actions\" at line:%d,col:%d", p, c.Line, c.Column)
+		}
+		as = append(as, c.Value)
+	}
+	*out = as
+	return nil
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (p *Policy) UnmarshalYAML(n *yaml.Node) error {
+	if n.Kind != yaml.MappingNode {
+		return fmt.Errorf("yaml: \"policy\" must be a mapping node at line:%d,col:%d", n.Line, n.Column)
+	}
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		k, v := n.Content[i], n.Content[i+1]
+		var err error
+		switch k.Value {
+		case "require-commit-hash":
+			err = v.Decode(&p.RequireCommitHash)
+		case "require-job-timeout":
+			err = v.Decode(&p.RequireJobTimeout)
+		case "required-actions":
+			err = decodeRequiredActions(v, &p.RequiredActions)
+		default:
+			return fmt.Errorf("yaml: unknown key %q in \"policy\" at line:%d,col:%d", k.Value, k.Line, k.Column)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// JobTimeoutPolicy is the value of the "require-job-timeout" policy in the configuration file. The
+// value is a boolean which turns the check on and off, or a mapping which turns it on and sets the
+// largest allowed number of minutes in its "max-minutes" key.
+type JobTimeoutPolicy struct {
+	enabled    bool
+	maxMinutes float64
+}
+
+// RequireJobTimeout creates a JobTimeoutPolicy which turns the check on. The argument is the largest
+// allowed number of minutes, where a value which is not larger than zero sets no upper limit.
+func RequireJobTimeout(maxMinutes float64) *JobTimeoutPolicy {
+	return &JobTimeoutPolicy{enabled: true, maxMinutes: maxMinutes}
+}
+
+// Enabled returns whether the check is turned on. It returns false when the receiver is nil.
+func (p *JobTimeoutPolicy) Enabled() bool {
+	return p != nil && p.enabled
+}
+
+// MaxMinutes returns the largest allowed "timeout-minutes:" value in minutes. The second return
+// value is false when the policy sets no upper limit.
+func (p *JobTimeoutPolicy) MaxMinutes() (float64, bool) {
+	if !p.Enabled() || p.maxMinutes <= 0 {
+		return 0, false
+	}
+	return p.maxMinutes, true
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (p *JobTimeoutPolicy) UnmarshalYAML(n *yaml.Node) error {
+	switch n.Kind {
+	case yaml.ScalarNode:
+		if err := n.Decode(&p.enabled); err != nil {
+			return fmt.Errorf("yaml: \"require-job-timeout\" must be a boolean or a mapping at line:%d,col:%d", n.Line, n.Column)
+		}
+	case yaml.MappingNode:
+		p.enabled = true
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			k, v := n.Content[i], n.Content[i+1]
+			if k.Value != "max-minutes" {
+				return fmt.Errorf("yaml: unknown key %q in \"require-job-timeout\" at line:%d,col:%d", k.Value, k.Line, k.Column)
+			}
+			// Decoding through the YAML library reads a leading zero as YAML 1.1 octal, so
+			// "max-minutes: 017" would become 15. The workflow parser reads numbers from the raw
+			// text with strconv, and so does this.
+			f, err := strconv.ParseFloat(v.Value, 64)
+			if err != nil || v.Kind != yaml.ScalarNode {
+				return fmt.Errorf("yaml: \"max-minutes\" in \"require-job-timeout\" must be a number but got %q at line:%d,col:%d", v.Value, v.Line, v.Column)
+			}
+			p.maxMinutes = f
+			if p.maxMinutes <= 0 {
+				return fmt.Errorf("yaml: \"max-minutes\" in \"require-job-timeout\" must be greater than zero but got %v at line:%d,col:%d", p.maxMinutes, v.Line, v.Column)
+			}
+		}
+	default:
+		return fmt.Errorf("yaml: \"require-job-timeout\" must be a boolean or a mapping at line:%d,col:%d", n.Line, n.Column)
+	}
+	return nil
+}
+
 // Config is configuration of actionlint. This struct instance is parsed from "actionlint.yaml"
 // file usually put in ".github" directory.
 type Config struct {
@@ -64,6 +192,11 @@ type Config struct {
 	// listed here as undefined config variables.
 	// https://docs.github.com/en/actions/learn-github-actions/variables
 	ConfigVariables []string `yaml:"config-variables"`
+	// ConfigSecrets is names of secrets used in the checked workflows. When this value is nil, property
+	// names of `secrets` context will not be checked. Otherwise actionlint will report a name which is
+	// not listed here as an undefined secret.
+	// https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions
+	ConfigSecrets []string `yaml:"config-secrets"`
 	// Paths is a "paths" mapping in the configuration file. The keys are glob patterns to match file paths.
 	// And the values are corresponding configurations applied to the file paths.
 	Paths map[string]PathConfig `yaml:"paths"`
@@ -71,6 +204,9 @@ type Config struct {
 	// when a workflow call's calling job declares no "permissions:" and neither does its workflow. The zero
 	// value means the key was not set, which is equivalent to DefaultPermissionsAssumptionRestricted.
 	AssumeDefaultPermissions DefaultPermissionsAssumption `yaml:"assume-default-permissions"`
+	// Policy is a "policy" mapping in the configuration file. It turns on the checks which enforce the
+	// conventions chosen by the repository.
+	Policy Policy `yaml:"policy"`
 }
 
 // DefaultPermissionsAssumption is an assumption about the repository's "Workflow permissions" setting,
@@ -120,6 +256,30 @@ func (cfg *Config) PathConfigs(path string) []PathConfig {
 		}
 	}
 	return ret
+}
+
+// RequiresCommitHash returns whether the "require-commit-hash" policy is enabled. It returns false
+// when the receiver is nil or when the key is not set.
+func (cfg *Config) RequiresCommitHash() bool {
+	return cfg != nil && cfg.Policy.RequireCommitHash != nil && *cfg.Policy.RequireCommitHash
+}
+
+// RequiresJobTimeout returns the "require-job-timeout" policy. It returns nil when the receiver is
+// nil or when the key is not set.
+func (cfg *Config) RequiresJobTimeout() *JobTimeoutPolicy {
+	if cfg == nil {
+		return nil
+	}
+	return cfg.Policy.RequireJobTimeout
+}
+
+// RequiredActions returns the actions which every workflow must use following the "required-actions"
+// policy. It returns nil when the receiver is nil or when the key is not set.
+func (cfg *Config) RequiredActions() []string {
+	if cfg == nil {
+		return nil
+	}
+	return cfg.Policy.RequiredActions
 }
 
 // ParseConfig parses the given bytes as an actionlint config file. When deserializing the YAML file
@@ -179,6 +339,11 @@ func writeDefaultConfigFile(path string) error {
 # Empty array means no configuration variable is allowed.
 config-variables: null
 
+# Secrets in array of strings defined in your repository or organization.
+# ` + "`null`" + ` means disabling the secrets check. Empty array means no secret is
+# allowed.
+config-secrets: null
+
 # Configuration for file paths. The keys are glob patterns to match to file
 # paths relative to the repository root. The values are the configurations for
 # the file paths. Note that the path separator is always '/'.
@@ -194,6 +359,20 @@ paths:
 # block at all. "restricted" (the default) assumes GitHub's restricted default
 # token.
 #assume-default-permissions: restricted
+
+# Policy checks. Each key turns on one check that enforces a convention of this
+# repository rather than reporting a mistake. They are all disabled when this
+# mapping is absent. The keys are in alphabetical order.
+#policy:
+#  # Require every "uses:" to be pinned to a full commit SHA or an image
+#  # digest.
+#  require-commit-hash: true
+#  # Require "timeout-minutes" on every job. A mapping with "max-minutes" also
+#  # caps the value.
+#  require-job-timeout: true
+#  # Actions every workflow must use. "owner/repo@ref" also pins the version.
+#  required-actions:
+#    - actions/checkout
 `)
 	if err := os.WriteFile(path, b, 0644); err != nil {
 		return fmt.Errorf("could not write default configuration file at %q: %w", path, err)

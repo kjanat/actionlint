@@ -1,0 +1,14 @@
+on:
+  workflow_call:
+    secrets:
+      only_secret:
+        required: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # Declared by workflow_call
+      - run: echo '${{ secrets.only_secret }}'
+      # ERROR: The declaration is closed, the allowlist does not open it
+      - run: echo '${{ secrets.MY_SECRET }}'

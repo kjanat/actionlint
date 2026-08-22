@@ -61,7 +61,7 @@ func (rule *RuleWorkflowCall) VisitJobPre(n *Job) error {
 		return nil
 	}
 
-	if isWorkflowCallUsesRepoFormat(u.Value) {
+	if _, ok := workflowCallUsesRepoRef(u.Value); ok {
 		return nil
 	}
 
@@ -237,31 +237,35 @@ func workflowCallUsesLocalSpec(u string) (string, bool) {
 	return u, len(path) > 0
 }
 
-// Parse {owner}/{repo}/{path to workflow.yml}@{ref}
+// Parse {owner}/{repo}/{path to workflow.yml}@{ref} and return the {ref} part. The second return
+// value is false when the specification has another form.
 // https://docs.github.com/en/actions/learn-github-actions/reusing-workflows#calling-a-reusable-workflow
-func isWorkflowCallUsesRepoFormat(u string) bool {
+func workflowCallUsesRepoRef(u string) (string, bool) {
 	// Repo reference must start with owner
 	if strings.HasPrefix(u, ".") || strings.HasPrefix(u, "$") {
-		return false
+		return "", false
 	}
 
 	idx := strings.IndexRune(u, '/')
 	if idx <= 0 {
-		return false
+		return "", false
 	}
 	u = u[idx+1:] // Eat owner
 
 	idx = strings.IndexRune(u, '/')
 	if idx <= 0 {
-		return false
+		return "", false
 	}
 	u = u[idx+1:] // Eat repo
 
 	idx = strings.IndexRune(u, '@')
 	if idx <= 0 {
-		return false
+		return "", false
 	}
 	u = u[idx+1:] // Eat workflow path
 
-	return len(u) > 0
+	if len(u) == 0 {
+		return "", false
+	}
+	return u, true
 }

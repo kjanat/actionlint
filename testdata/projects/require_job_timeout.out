@@ -1,0 +1,2 @@
+workflows/test.yaml:5:3: "timeout-minutes" is not set in job "missing". it is required because "require-job-timeout" is enabled in the "policy" configuration. a job which does not set it is cancelled after the default of 360 minutes [require-job-timeout]
+workflows/test.yaml:24:22: "timeout-minutes" is 45 in job "too-long". it must not be larger than 30 because "max-minutes" of "require-job-timeout" is set in the "policy" configuration [require-job-timeout]

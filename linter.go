@@ -587,6 +587,15 @@ func (l *Linter) check(
 			NewRuleDeprecatedCommands(),
 			NewRuleIfCond(),
 		}
+		if cfg.RequiresCommitHash() {
+			rules = append(rules, NewRuleRequireCommitHash())
+		}
+		if p := cfg.RequiresJobTimeout(); p.Enabled() {
+			rules = append(rules, NewRuleRequireJobTimeout(p))
+		}
+		if len(cfg.RequiredActions()) > 0 {
+			rules = append(rules, NewRuleRequiredActions())
+		}
 		if l.shellcheck != "" {
 			r, err := NewRuleShellcheck(l.shellcheck, proc)
 			if err == nil {

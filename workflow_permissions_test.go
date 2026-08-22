@@ -184,6 +184,34 @@ func TestResolvePermissionsASTAndYAMLAgree(t *testing.T) {
 	}
 }
 
+func TestResolvePermissionsScopeNamesAreCaseSensitive(t *testing.T) {
+	src := []byte("on: push\npermissions:\n  Contents: read\n  issues: Write\n")
+	w, _ := Parse(src)
+	if w == nil {
+		t.Fatal("workflow was not parsed")
+	}
+
+	var n struct {
+		Permissions yaml.Node `yaml:"permissions"`
+	}
+	if err := yaml.Unmarshal(src, &n); err != nil {
+		t.Fatal(err)
+	}
+
+	want := PermissionScopeLevels{"issues": PermissionLevelWrite}
+	for route, have := range map[string]resolvedPermissions{
+		"AST":  resolvePermissionsAST(w.Permissions),
+		"YAML": resolvePermissionsYAML(&n.Permissions),
+	} {
+		if have.kind != permissionsDeclared {
+			t.Errorf("%s resolver returned kind %v", route, have.kind)
+		}
+		if diff := cmp.Diff(want, have.levels); diff != "" {
+			t.Errorf("%s resolver (-want +have):\n%s", route, diff)
+		}
+	}
+}
+
 func TestResolvePermissionsAbsent(t *testing.T) {
 	if have := resolvePermissionsAST(nil); have.kind != permissionsAbsent {
 		t.Errorf("nil AST node should be absent but got %v", have.kind)

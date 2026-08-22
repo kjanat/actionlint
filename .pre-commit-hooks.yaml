@@ -3,7 +3,7 @@
   name: Lint GitHub Actions workflow files
   description: Runs actionlint to lint GitHub Actions workflow files
   language: golang
-  types: ["yaml"]
+  types: [yaml]
   files: ^\.github/workflows/
   entry: actionlint
   minimum_pre_commit_version: 3.0.0
@@ -11,13 +11,22 @@
   name: Lint GitHub Actions workflow files
   description: Runs actionlint Docker image to lint GitHub Actions workflow files
   language: docker_image
-  types: ["yaml"]
+  types: [yaml]
   files: ^\.github/workflows/
   entry: ghcr.io/kjanat/actionlint:1.12.0
 - id: actionlint-system
   name: Lint GitHub Actions workflow files
   description: Runs system-installed actionlint to lint GitHub Actions workflow files
   language: system
-  types: ["yaml"]
+  types: [yaml]
   files: ^\.github/workflows/
   entry: actionlint
+- id: actionlint-shellcheck
+  name: Lint GitHub Actions workflow files (with ShellCheck)
+  description: Runs actionlint with the ShellCheck integration enabled via a Go build of ShellCheck
+  language: golang
+  types: [yaml]
+  files: ^\.github/workflows/
+  entry: actionlint
+  minimum_pre_commit_version: 3.0.0
+  additional_dependencies: [github.com/wasilibs/go-shellcheck/cmd/shellcheck@v0.11.1]

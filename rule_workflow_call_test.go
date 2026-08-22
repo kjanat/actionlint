@@ -459,6 +459,14 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 			callee:   map[string]PermissionScopeLevels{"snapshot": {"contents": PermissionLevelRead}},
 		},
 		{
+			what:     "incorrectly cased scope does not grant permission",
+			jobPerms: "permissions:\n  Contents: write",
+			callee:   map[string]PermissionScopeLevels{"snapshot": {"contents": PermissionLevelWrite}},
+			errs: []string{
+				"nested job \"snapshot\" of \"./callee.yaml\" requires \"contents: write\" but the calling job grants \"contents: none\"",
+			},
+		},
+		{
 			what:          "job says nothing so the workflow block is used",
 			workflowPerms: "permissions:\n  pull-requests: write",
 			callee:        map[string]PermissionScopeLevels{"snapshot": {"pull-requests": PermissionLevelWrite}},

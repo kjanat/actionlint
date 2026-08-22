@@ -1,0 +1,31 @@
+on: push
+
+jobs:
+  steps-job:
+    runs-on: ubuntu-latest
+    steps:
+      # ERROR: pinned to a branch name
+      - uses: some-owner/some-action@main
+      # ERROR: pinned to a tag
+      - uses: some-owner/some-action@v1.2.3
+      # ERROR: abbreviated commit SHA
+      - uses: some-owner/some-action@11bd719
+      # OK: 40 hexadecimal digits
+      - uses: some-owner/some-action@11bd71901bbe5b1630ceea73d27597364c9af683
+      # OK: upper case hexadecimal digits
+      - uses: some-owner/some-action@11BD71901BBE5B1630CEEA73D27597364C9AF683
+      # OK: 64 hexadecimal digits (SHA-256 object format)
+      - uses: some-owner/some-action@9e0151e5c03d787435d0cfd5f087d1899d257458a9e4b1d2880e499d208d7d35
+      # OK: action in a subdirectory
+      - uses: some-owner/some-repo/path/to/action@11bd71901bbe5b1630ceea73d27597364c9af683
+      # OK: local action has no ref
+      - uses: ./.github/actions/my-action
+      # OK: self-repository action has no ref
+      - uses: $/.github/actions/my-action
+      # OK: Docker image pinned to a digest
+      - uses: docker://alpine@sha256:f3302f1e3ff5f4d94d6a7d3f2e148b2cca81073dc03822b6b16300b6319dd178
+  call-pinned:
+    uses: some-owner/some-repo/.github/workflows/ci.yaml@11bd71901bbe5b1630ceea73d27597364c9af683
+  call-unpinned:
+    # ERROR: reusable workflow pinned to a tag
+    uses: some-owner/some-repo/.github/workflows/ci.yaml@v1

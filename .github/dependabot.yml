@@ -1,18 +1,21 @@
+# yaml-language-server: $schema=https://www.schemastore.org/dependabot-2.0.json
+---
 version: 2
 updates:
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    groups:
-      github-actions:
-        patterns:
-          - "*"
-  - package-ecosystem: "gomod"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    groups:
-      gomod:
-        patterns:
-          - "*"
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
+    groups: { "GitHub Actions": { patterns: ["*"] } }
+  - package-ecosystem: gomod
+    directory: /
+    schedule: { interval: monthly }
+    groups: { "Go modules": { patterns: ["*"] } }
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: monthly }
+    groups: { “npm modules”: { patterns: ["*"] } }
+    ignore: [{ dependency-name: "typescript", versions: ["^7"] }]
+  - package-ecosystem: docker
+    directory: /
+    schedule: { interval: monthly }
+    groups: { “docker images”: { patterns: ["*"] } }

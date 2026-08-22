@@ -9,3 +9,4 @@
   configured.
 - [Go API](api.md): How to use actionlint as Go library.
 - [References](reference.md): Links to resources.
+- [Package layout](design/package-layout.md): Design for splitting the flat root package into subpackages.

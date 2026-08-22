@@ -123,8 +123,8 @@ func resolvePermissionsAST(p *Permissions) resolvedPermissions {
 	}
 	if p.Scopes != nil {
 		ss := make(map[string]string, len(p.Scopes))
-		for n, s := range p.Scopes {
-			ss[n] = strings.ToLower(s.Value.Value)
+		for _, s := range p.Scopes {
+			ss[s.Name.Value] = strings.ToLower(s.Value.Value)
 		}
 		return resolvePermissions(permissionsSource{scopes: ss})
 	}
@@ -144,7 +144,7 @@ func resolvePermissionsYAML(n *yaml.Node) resolvedPermissions {
 	case yaml.MappingNode:
 		ss := make(map[string]string, len(n.Content)/2)
 		for i := 0; i+1 < len(n.Content); i += 2 {
-			ss[strings.ToLower(n.Content[i].Value)] = strings.ToLower(n.Content[i+1].Value)
+			ss[n.Content[i].Value] = strings.ToLower(n.Content[i+1].Value)
 		}
 		return resolvePermissions(permissionsSource{scopes: ss})
 	case yaml.ScalarNode:
