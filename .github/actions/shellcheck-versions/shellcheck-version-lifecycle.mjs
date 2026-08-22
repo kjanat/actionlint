@@ -180,14 +180,10 @@ function decodedContent(response, repository, file) {
 export async function checkVersions({
 	github,
 	core,
-	workspace = process.env.GITHUB_WORKSPACE,
+	workspace = process.cwd(),
 	updateFiles = false,
 	failOnOutdated = false,
 }) {
-	if (!workspace) {
-		throw new Error('GITHUB_WORKSPACE is not set');
-	}
-
 	const [shellcheckRelease, goShellcheckRelease] = await Promise.all([
 		github.rest.repos.getLatestRelease({ owner: 'koalaman', repo: 'shellcheck' }),
 		github.rest.repos.getLatestRelease({ owner: 'wasilibs', repo: 'go-shellcheck' }),
