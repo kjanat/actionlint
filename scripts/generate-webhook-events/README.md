@@ -10,7 +10,7 @@ It does:
 
 ## Usage
 
-```
+```sh
 generate-webhook-events [[srcfile] dstfile]
 ```
 

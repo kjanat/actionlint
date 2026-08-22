@@ -1,6 +1,5 @@
 name: Release
-on:
-  push: { tags: ["v*.*.*"] }
+on: { push: { tags: ["v*.*.*"] } }
 
 concurrency:
   group: actionlint-release
@@ -18,6 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
+      - name: Check pinned go-shellcheck version
+        uses: $/.github/actions/shellcheck-versions
+        with: { fail-on-outdated: true }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version: "${{ env.GO }}", check-latest: true }
       - name: Resolve release notes
@@ -66,7 +68,7 @@ jobs:
     needs: binaries
     if: github.repository == 'rhysd/actionlint'
     steps:
-      - uses: vedantmgoyal9/winget-releaser@b3a5dae0047c6180023acba3f548c55fdf6b7193 # main
+      - uses: vedantmgoyal9/winget-releaser@main
         with:
           identifier: rhysd.actionlint
           installers-regex: '_windows_\w+\.zip$'

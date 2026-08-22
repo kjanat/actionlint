@@ -6,10 +6,8 @@ on:
       - "scripts/generate-actionlint-matcher/testdata/*"
       - "testdata/examples/*.out"
       - "testdata/err/*.out"
-    branches:
-      - main
-    tags-ignore:
-      - "*"
+    branches: [main, master]
+    tags-ignore: ["*"]
   workflow_dispatch:
 
 permissions: { contents: read }
@@ -24,15 +22,11 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version: "1.26", check-latest: true }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with: {
-          node-version: "lts/*",
-          cache: npm,
-          cache-dependency-path: ./package-lock.json,
-        }
+        with: { node-version-file: .node-version, cache: npm, cache-dependency-path: ./package-lock.json }
       - name: Update test data
         run: make ./scripts/generate-actionlint-matcher/testdata/* SKIP_GO_GENERATE=true
       - name: Test actionlint-matcher.json
-        run: npm run matcher:test
+        run: npm run test:matcher
       - name: Ensure .github/actionlint-matcher.json is up-to-date
         run: |
           make .github/actionlint-matcher.json

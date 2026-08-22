@@ -17,7 +17,7 @@ node ./scripts/generate-actionlint-matcher/main.mjs .github/actionlint-matcher.j
 ## Test
 
 ```sh
-npm run matcher:test
+npm run test:matcher
 ```
 
 It runs on `node --test` and is also covered by `npm test`.

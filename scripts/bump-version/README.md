@@ -26,7 +26,7 @@ the rewritten repository is verified to reference the new version everywhere.
 
 ## Usage
 
-```
+```sh
 go run ./scripts/bump-version [FLAGS] VERSION
 ```
 
