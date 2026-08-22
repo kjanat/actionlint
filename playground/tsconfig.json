@@ -3,11 +3,7 @@
     "target": "esnext",
     "module": "esnext",
     "moduleResolution": "bundler",
-    "lib": [
-      "ESNext",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "allowJs": true,
     "checkJs": false,
     "strict": true,
@@ -19,16 +15,10 @@
     "noImplicitOverride": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": [
-      "node",
-      "vite/client"
-    ],
-    "noEmit": true,
+    "types": ["node", "vite/client"],
+    "composite": true,
+    "tsBuildInfoFile": "../node_modules/.cache/typescript/playground.tsbuildinfo",
     "isolatedModules": true
   },
-  "include": [
-    "src",
-    "vite.config.ts",
-    "eslint.config.mjs"
-  ]
+  "exclude": ["dist", "node_modules"]
 }

@@ -1,0 +1,11 @@
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'lint'

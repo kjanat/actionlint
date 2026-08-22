@@ -4,10 +4,7 @@ update_policy    = "latest"
 ref_style        = "preserve"
 branch_policy    = "warn"
 allow_prerelease = false
-ignore           = [
-  "ruby/setup-ruby@v1",
-  "vedantmgoyal9/winget-releaser@main",
-]
+ignore           = []
 extra_paths      = [
   "README.md",
   "docs/usage.md",
@@ -16,7 +13,13 @@ extra_paths      = [
   "testdata/examples/main.yaml",
 ]
 
-[actions]
+[actions."vedantmgoyal9/winget-releaser"]
+branch_policy = "ignore"
+ref_style     = "preserve"
+
+[actions."kjanat/runner"]
+branch_policy = "ignore"
+ref_style     = "preserve"
 
 [cache]
 ttl     = 86400

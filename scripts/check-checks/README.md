@@ -19,7 +19,7 @@ For making the implementation simple, this script does not support Windows.
 
 ## Usage
 
-```
+```sh
 go run ./scripts/check-checks [FLAGS] FILE
 ```
 

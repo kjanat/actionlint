@@ -1,9 +1,10 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-action.json
 ---
-name: actionlint
+name: actionlint by @kjanat
 description: >-
   Static-check GitHub Actions workflow files with actionlint, ShellCheck, and
-  pyflakes
+  pyflakes. Usage: `uses: kjanat/actionlint@v1`.
+  https://github.com/kjanat/actionlint#github-action
 inputs:
   files:
     description: >-

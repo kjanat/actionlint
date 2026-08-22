@@ -1,7 +1,7 @@
 name: Pages
 
 on:
-  push: { branches: [main] }
+  push: { branches: [main, master] }
   workflow_dispatch: null
 
 permissions: { contents: read, pages: write, id-token: write }
@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with: { node-version: "lts/*", cache: npm, cache-dependency-path: package-lock.json }
+        with: { node-version-file: .node-version, cache: npm, cache-dependency-path: package-lock.json }
       - uses: $/.github/actions/setup-pandoc
       - name: Build command manual
         run: make man

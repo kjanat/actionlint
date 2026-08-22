@@ -19,3 +19,5 @@ declare class Go {
 	importObject: WebAssembly.Imports;
 	run(mod: WebAssembly.Instance): Promise<unknown>;
 }
+
+declare module '*wasm_exec.js';
