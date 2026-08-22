@@ -86,6 +86,26 @@ policy:
   require-commit-hash: true
 ```
 
+### require-job-timeout
+
+This check reports a job which sets no `timeout-minutes:`. Such a job is cancelled after GitHub's default of 360
+minutes. A job which calls a reusable workflow with `uses:` cannot set the key, so the check passes over it.
+
+```yaml
+policy:
+  require-job-timeout: true
+```
+
+The value can also be a mapping. Its `max-minutes` key is the largest allowed number of minutes, and it must be
+greater than zero. With it, a job whose `timeout-minutes:` is larger than that number is reported as well. A value
+written with `${{ }}` is not compared because actionlint cannot read it.
+
+```yaml
+policy:
+  require-job-timeout:
+    max-minutes: 60
+```
+
 ### required-actions
 
 This check reports a workflow which does not use an action this repository requires. An entry is written like a `uses:`

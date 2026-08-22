@@ -590,6 +590,9 @@ func (l *Linter) check(
 		if cfg.RequiresCommitHash() {
 			rules = append(rules, NewRuleRequireCommitHash())
 		}
+		if p := cfg.RequiresJobTimeout(); p.Enabled() {
+			rules = append(rules, NewRuleRequireJobTimeout(p))
+		}
 		if len(cfg.RequiredActions()) > 0 {
 			rules = append(rules, NewRuleRequiredActions())
 		}

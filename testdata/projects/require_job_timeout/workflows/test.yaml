@@ -1,0 +1,38 @@
+on: push
+
+jobs:
+  # ERROR: "timeout-minutes" is not set
+  missing:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'hello'
+  # OK: below the maximum
+  ok:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - run: echo 'hello'
+  # OK: equal to the maximum
+  edge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - run: echo 'hello'
+  # ERROR: above the maximum
+  too-long:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - run: echo 'hello'
+  # OK: the value cannot be read from an expression
+  matrix-expr:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        timeout: [10, 20]
+    timeout-minutes: ${{ matrix.timeout }}
+    steps:
+      - run: echo 'hello'
+  # OK: a job calling a reusable workflow cannot set "timeout-minutes"
+  call:
+    uses: ./workflows/reusable.yaml

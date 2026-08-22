@@ -1,0 +1,3 @@
+policy:
+  require-job-timeout:
+    max-minutes: 30
