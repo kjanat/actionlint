@@ -21,3 +21,12 @@
   types: ["yaml"]
   files: ^\.github/workflows/
   entry: actionlint
+- id: actionlint-shellcheck
+  name: Lint GitHub Actions workflow files (with ShellCheck)
+  description: Runs actionlint with the ShellCheck integration enabled via a Go build of ShellCheck
+  language: golang
+  types: ["yaml"]
+  files: ^\.github/workflows/
+  entry: actionlint
+  minimum_pre_commit_version: 3.0.0
+  additional_dependencies: ["github.com/wasilibs/go-shellcheck/cmd/shellcheck@latest"]

@@ -537,6 +537,7 @@ for the discussion.
 > The configuration below points directly at `kjanat/actionlint`. The
 > `actionlint` hook builds this fork, `actionlint-docker` pulls this fork's
 > image, and `actionlint-system` runs the `actionlint` executable on `PATH`.
+> `actionlint-shellcheck` builds this fork and installs ShellCheck next to it.
 
 [pre-commit][pre-commit] is a framework for managing and maintaining
 multi-language Git pre-commit hooks. actionlint is available as a pre-commit
@@ -553,14 +554,35 @@ repos:
       - id: actionlint
 ```
 
-As alternatives to `actionlint` hook, `actionlint-docker` or `actionlint-system`
-hooks are available.
+As alternatives to `actionlint` hook, `actionlint-docker`, `actionlint-system`,
+or `actionlint-shellcheck` hooks are available.
 
-| Hook ID             | Explanation                                                                                                   |
-| ------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `actionlint`        | Automatically installs `actionlint` command in isolated `$GOPATH` directory using [Go toolchain][go-install]. |
-| `actionlint-docker` | Automatically pulls [the actionlint Docker image](#docker).                                                   |
-| `actionlint-system` | Uses system-installed `actionlint` command. The command is necessary to be [installed manually](install.md).  |
+| Hook ID                 | Explanation                                                                                                                                                                                                                         |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `actionlint`            | Automatically installs `actionlint` command in isolated `$GOPATH` directory using [Go toolchain][go-install].                                                                                                                       |
+| `actionlint-docker`     | Automatically pulls [the actionlint Docker image](#docker).                                                                                                                                                                         |
+| `actionlint-system`     | Uses system-installed `actionlint` command. The command is necessary to be [installed manually](install.md).                                                                                                                        |
+| `actionlint-shellcheck` | Same as `actionlint`, and additionally installs a Go build of ShellCheck ([`wasilibs/go-shellcheck`][go-shellcheck]) so [the shellcheck integration](checks.md#check-shellcheck-integ) works without a host-installed `shellcheck`. |
+
+The `actionlint` hook installs into an isolated `$GOPATH`, so it only finds a
+`shellcheck` executable that is already on `PATH`.
+
+`actionlint-shellcheck` asks for `@latest`, which resolves when pre-commit first
+builds the hook's environment. pre-commit then caches that environment and does
+not resolve it again, so the version you get is the one that was current when
+you installed the hook, and `pre-commit clean` is what fetches a newer one. To
+choose the version yourself, use `additional_dependencies` on the plain hook:
+
+```yaml
+---
+repos:
+  - repo: https://github.com/kjanat/actionlint
+    rev: v1.12.0
+    hooks:
+      - id: actionlint
+        additional_dependencies:
+          - github.com/wasilibs/go-shellcheck/cmd/shellcheck@v0.11.1
+```
 
 ### VS Code
 
@@ -689,6 +711,7 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 [emacs-melpa]: https://melpa.org/
 [ga-annotate-error]: https://docs.github.com/en/actions/learn-github-actions/workflow-commands-for-github-actions#setting-an-error-message
 [go-install]: https://go.dev/doc/install
+[go-shellcheck]: https://github.com/wasilibs/go-shellcheck
 [go-template]: https://pkg.go.dev/text/template
 [jsonl]: https://jsonlines.org/
 [nova-extension]: https://extensions.panic.com/extensions/org.netwrk/org.netwrk.actionlint/
