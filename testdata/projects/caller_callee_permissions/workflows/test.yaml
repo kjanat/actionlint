@@ -1,0 +1,12 @@
+on:
+  push:
+    branches: [main]
+
+jobs:
+  silent:
+    uses: ./workflows/reusable.yaml
+  granting:
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: ./workflows/reusable.yaml

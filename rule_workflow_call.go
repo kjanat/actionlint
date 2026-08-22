@@ -2,6 +2,7 @@ package actionlint
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -11,6 +12,7 @@ type RuleWorkflowCall struct {
 	RuleBase
 	workflowCallEventPos *Pos
 	workflowPath         string
+	workflowPermissions  *Permissions
 	cache                *LocalReusableWorkflowCache
 }
 
@@ -30,12 +32,13 @@ func NewRuleWorkflowCall(workflowPath string, cache *LocalReusableWorkflowCache)
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
 func (rule *RuleWorkflowCall) VisitWorkflowPre(n *Workflow) error {
+	rule.workflowPermissions = n.Permissions
 	for _, e := range n.On {
 		if e, ok := e.(*WorkflowCallEvent); ok {
 			rule.workflowCallEventPos = e.Pos
 			// Register this reusable workflow in cache so that it does not need to parse this workflow
 			// file again when this workflow is called by other workflows.
-			rule.cache.WriteWorkflowCallEvent(rule.workflowPath, e)
+			rule.cache.WriteWorkflowCallEventFromWorkflow(rule.workflowPath, e, n)
 			break
 		}
 	}
@@ -54,7 +57,7 @@ func (rule *RuleWorkflowCall) VisitJobPre(n *Job) error {
 	}
 
 	if local, ok := workflowCallUsesLocalSpec(u.Value); ok {
-		rule.checkWorkflowCallUsesLocal(n.WorkflowCall, local)
+		rule.checkWorkflowCallUsesLocal(n.WorkflowCall, n.Permissions, local)
 		return nil
 	}
 
@@ -77,7 +80,7 @@ func (rule *RuleWorkflowCall) VisitJobPre(n *Job) error {
 	return nil
 }
 
-func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, localSpec string) {
+func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, jobPerms *Permissions, localSpec string) {
 	u := call.Uses
 	m, err := rule.cache.FindMetadata(localSpec)
 	if err != nil {
@@ -144,7 +147,72 @@ func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, loc
 		}
 	}
 
+	rule.checkWorkflowCallPermissions(call, jobPerms, m)
+
 	rule.Debug("Validated reusable workflow %q", u.Value)
+}
+
+// checkWorkflowCallPermissions compares the permissions each job of the called workflow requires
+// against the permissions the calling job grants. GitHub validates this when the workflow is loaded,
+// so a shortfall aborts the whole run before any job starts, including any "if: failure()" handler.
+// "if:" on a job of the called workflow does not affect the comparison.
+func (rule *RuleWorkflowCall) checkWorkflowCallPermissions(call *WorkflowCall, jobPerms *Permissions, m *ReusableWorkflowMetadata) {
+	if len(m.JobPermissions) == 0 {
+		return
+	}
+
+	var granted resolvedPermissions
+	switch {
+	case jobPerms != nil:
+		granted = resolvePermissionsAST(jobPerms)
+	case rule.workflowPermissions != nil:
+		granted = resolvePermissionsAST(rule.workflowPermissions)
+	default:
+		a := DefaultPermissionsAssumptionUnset
+		if cfg := rule.Config(); cfg != nil {
+			a = cfg.AssumeDefaultPermissions
+		}
+		granted = resolvedPermissions{permissionsDeclared, defaultPermissionLevels(a)}
+	}
+	if granted.kind != permissionsDeclared {
+		return
+	}
+
+	ids := make([]string, 0, len(m.JobPermissions))
+	for id := range m.JobPermissions {
+		ids = append(ids, id)
+	}
+	slices.Sort(ids)
+
+	for _, id := range ids {
+		required := m.JobPermissions[id]
+		ss := make([]string, 0, len(required))
+		for s := range required {
+			ss = append(ss, s)
+		}
+		slices.Sort(ss)
+
+		want, have := []string{}, []string{}
+		for _, s := range ss {
+			if granted.levels[s] >= required[s] {
+				continue
+			}
+			want = append(want, s+": "+required[s].String())
+			have = append(have, s+": "+granted.levels[s].String())
+		}
+		if len(want) == 0 {
+			continue
+		}
+
+		rule.Errorf(
+			call.Uses.Pos,
+			"nested job %q of %q requires %s but the calling job grants %s",
+			id,
+			call.Uses.Value,
+			quotes(want),
+			quotes(have),
+		)
+	}
 }
 
 // Normalize a local or self-repository reusable workflow reference to the existing local cache key.

@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -919,5 +921,59 @@ func TestReusableWorkflowCacheFactory(t *testing.T) {
 	c4 := f.GetCache(nil)
 	if c4.proj != nil {
 		t.Errorf("Null cache should be returned when project is nil: %v", c4)
+	}
+}
+
+func TestReusableWorkflowMetadataJobPermissions(t *testing.T) {
+	readAll := PermissionScopeLevels{}
+	for s, vs := range allPermissionScopes {
+		if slices.Contains(vs, "read") {
+			readAll[s] = PermissionLevelRead
+		}
+	}
+
+	want := map[string]PermissionScopeLevels{
+		"inherits": {"contents": PermissionLevelRead},
+		"Override": {"pull-requests": PermissionLevelWrite},
+		"all-read": readAll,
+	}
+
+	proj := &Project{filepath.Join("testdata", "reusable_workflow_metadata"), nil}
+	c := NewLocalReusableWorkflowCache(proj, "", nil)
+	m, err := c.FindMetadata("./permissions.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if diff := cmp.Diff(want, m.JobPermissions); diff != "" {
+		t.Fatal(diff)
+	}
+}
+
+func TestReusableWorkflowMetadataJobPermissionsFromWorkflowNode(t *testing.T) {
+	src, err := os.ReadFile(filepath.Join("testdata", "reusable_workflow_metadata", "permissions.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	w, errs := Parse(src)
+	if w == nil {
+		t.Fatal("workflow was not parsed:", errs)
+	}
+
+	fromFile, err := parseReusableWorkflowMetadata(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cwd := filepath.Join("path", "to", "project")
+	c := NewLocalReusableWorkflowCache(&Project{cwd, nil}, cwd, nil)
+	c.WriteWorkflowCallEventFromWorkflow("test.yaml", &WorkflowCallEvent{}, w)
+	fromNode, ok := c.readCache("./test.yaml")
+	if !ok {
+		t.Fatal("metadata was not created")
+	}
+
+	if diff := cmp.Diff(fromFile.JobPermissions, fromNode.JobPermissions); diff != "" {
+		t.Fatal(diff)
 	}
 }

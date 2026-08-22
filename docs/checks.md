@@ -2259,6 +2259,7 @@ actionlint does several checks for both workflow calls (caller) and reusable wor
 - type checks for `inputs`, `outputs` and `secrets` context objects in reusable workflows
 - optional/required/undefined inputs and secrets at `uses:` in workflow calls
 - type checks for `outputs` objects used by downstream jobs of workflow calls
+- permissions required by the jobs of a reusable workflow against the permissions the calling job grants
 
 These checks are described in this section.
 
@@ -2681,6 +2682,59 @@ object types in downstream jobs.
 
 In the above example, `get-build-info.yaml` has one output `version`. actionlint types the outputs object of workflow call job
 as `{version: string}`. In the downstream job, actionlint can report an error at undefined key `tag` in the object.
+
+Note that this check only works with local or self-repository reusable workflows (starting with `./` or `$/`).
+
+### Check permissions of workflow call
+
+Example reusable workflow:
+
+```yaml
+# .github/workflows/reusable.yaml
+on:
+  workflow_call:
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - run: ...
+```
+
+Example input:
+
+```yaml
+on:
+  push:
+    branches: [main]
+
+jobs:
+  # ERROR: The calling job does not grant "pull-requests: write", which the called job requires
+  caller:
+    uses: ./.github/workflows/reusable.yaml
+```
+
+Output:
+
+<!-- Skip update output -->
+
+```console
+test.yaml:8:11: nested job "snapshot" of "./.github/workflows/reusable.yaml" requires "pull-requests: write" but the calling job grants "pull-requests: none" [workflow-call]
+  |
+8 |     uses: ./.github/workflows/reusable.yaml
+  |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+```
+
+<!-- Skip playground link -->
+
+A reusable workflow can only use the permissions its caller passes on. GitHub rejects the whole run before any job starts
+when a job of the called workflow asks for more, so actionlint compares each job of the called workflow against what the
+calling job grants. The grant is the calling job's `permissions:`, or the caller workflow's `permissions:` when the job has
+none. When neither exists the grant depends on the repository's "Workflow permissions" setting, which actionlint cannot
+read from a workflow file; the [`assume-default-permissions`](config.md#configuration-file) configuration selects which
+setting to assume.
 
 Note that this check only works with local or self-repository reusable workflows (starting with `./` or `$/`).
 
