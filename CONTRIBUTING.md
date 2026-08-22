@@ -1,14 +1,33 @@
 # Policy for actionlint's features
 
-- actionlint focuses on detecting mistakes. Feature requests and patches for checks that enforces code style or
-  some conventions are generally not accepted.
-- actionlint tries to keep [the configuration](docs/config.md) as minimal as possible. Feature requests and patches
-  for checks that require user configurations are generally not accepted.
+actionlint has two kinds of checks.
 
-These are important to keep actionlint useful and convenient for everyone. I believe that no one wants to create and
-maintain a heavy configuration file just for linting CI workflows.
+**Correctness checks** report a workflow that GitHub rejects, that runs differently than its author meant, or that
+refers to something which does not exist. They always run. A configuration key may tell such a check what exists in
+this project, as `self-hosted-runner.labels` and `config-variables` do, but the check still exists and still reports
+the same thing in a repository with no configuration file. Errors from them are filtered with the `-ignore` option or
+the `ignore` key in [the configuration](docs/config.md).
 
-It's helpful to check if a similar patch has been rejected in the past before submitting it.
+**Policy checks** report a workflow that GitHub runs happily but that breaks a convention the project chose for
+itself, such as pinning every action to a commit hash or setting `timeout-minutes` on every job. They stay silent
+until the `policy` mapping in [the configuration](docs/config.md) turns them on, so a repository that configures
+nothing never sees them. Being opinionated is fine in a check that only runs for the projects which asked for it.
+
+Patches for both kinds are welcome. A patch for a policy check needs its own key under `policy`, a default of off,
+and a section in [the configuration document](docs/config.md). A patch that makes an existing correctness check
+depend on configuration for its current behaviour is not accepted, because a repository with no configuration file
+must keep getting the same results.
+
+Every new key must tell "not set" apart from "set to off". A boolean key is therefore a `*bool`, and a key with a
+list or an object value uses nil for "not set". actionlint reads a single configuration file today, but it is meant
+to read a user-global one as well, and at that point a key which cannot express "not set" leaves a repository unable
+to opt out of what the user-global file turned on.
+
+The configuration is read once at the start of a run, so a check may rely on it being available.
+
+This is where the fork differs from [the upstream project](https://github.com/rhysd/actionlint), which accepts
+neither checks that enforce conventions nor checks that require user configuration. A patch turned down upstream for
+that reason is worth proposing here.
 
 ## Reporting an issue
 
