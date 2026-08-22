@@ -1,0 +1,24 @@
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # ERROR: pinned to a mutable tag
+      - uses: docker://alpine:3.20
+      # ERROR: neither tag nor digest
+      - uses: docker://alpine
+      # ERROR: too short to be a digest
+      - uses: docker://alpine@sha256:beef
+      # OK: pinned to an image digest
+      - uses: docker://alpine@sha256:f3302f1e3ff5f4d94d6a7d3f2e148b2cca81073dc03822b6b16300b6319dd178
+      # OK: registry host, tag, and digest
+      - uses: docker://ghcr.io/owner/image:1.0@sha256:f3302f1e3ff5f4d94d6a7d3f2e148b2cca81073dc03822b6b16300b6319dd178
+      # The empty tag is already reported as an invalid reference
+      - uses: "docker://alpine:"
+      # OK: the registry port is not a tag
+      - uses: docker://registry:5000/image@sha256:f3302f1e3ff5f4d94d6a7d3f2e148b2cca81073dc03822b6b16300b6319dd178
+      # ERROR: the registry port is not a digest
+      - uses: docker://registry:5000/image:1.0
+      # ERROR: a digest after ":" is a tag, which is what upstream accepted
+      - uses: docker://image:sha256:f3302f1e3ff5f4d94d6a7d3f2e148b2cca81073dc03822b6b16300b6319dd178

@@ -1,0 +1,2 @@
+workflows/missing.yaml:4:3: no step in this workflow uses action "my-org/scan@v2" which is required by the "required-actions" policy in actionlint.yaml [required-actions]
+workflows/ref_mismatch.yaml:4:3: no step in this workflow uses action "my-org/scan@v2" which is required by the "required-actions" policy in actionlint.yaml. "my-org/scan@v1" at line:8,col:15 matches the action name but not the required ref [required-actions]

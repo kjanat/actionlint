@@ -23,19 +23,32 @@ func (m *UntrustedInputMap) String() string {
 	return b.String()
 }
 
-// Find child object property in this map
-func (m *UntrustedInputMap) findObjectProp(name string) (*UntrustedInputMap, bool) {
+// Find child with the exact key in this map
+func (m *UntrustedInputMap) findChild(key string) (*UntrustedInputMap, bool) {
 	if m != nil && m.Children != nil {
-		if c, ok := m.Children[name]; ok {
+		if c, ok := m.Children[key]; ok {
 			return c, true
 		}
 	}
 	return nil, false
 }
 
+// Find child object property in this map. A `**` child matches any property name.
+func (m *UntrustedInputMap) findObjectProp(name string) (*UntrustedInputMap, bool) {
+	if c, ok := m.findChild(name); ok {
+		return c, true
+	}
+	return m.findAnyProp()
+}
+
 // Find child array element in this map. This is special case with object filter where its receiver is an array
 func (m *UntrustedInputMap) findArrayElem() (*UntrustedInputMap, bool) {
-	return m.findObjectProp("*")
+	return m.findChild("*")
+}
+
+// Find child which matches any property name in this map
+func (m *UntrustedInputMap) findAnyProp() (*UntrustedInputMap, bool) {
+	return m.findChild("**")
 }
 
 // Build path like `github.event.commits.*.body` by following parents
@@ -49,6 +62,9 @@ func (m *UntrustedInputMap) buildPath(b *strings.Builder) {
 
 // NewUntrustedInputMap creates new instance of UntrustedInputMap. It is used for node of search
 // tree of untrusted input checker.
+// The name `*` matches an array element and is reached by an index access or an object
+// filter. The name `**` matches any property name. A map which uses either name must have
+// it as its only child.
 func NewUntrustedInputMap(name string, children ...*UntrustedInputMap) *UntrustedInputMap {
 	m := &UntrustedInputMap{
 		Name:     name,
@@ -220,6 +236,10 @@ func (u *UntrustedInputChecker) onIndexAccess() {
 	compact := false
 	for i, cur := range u.cur {
 		if c, ok := cur.findArrayElem(); ok {
+			u.cur[i] = c
+			continue
+		}
+		if c, ok := cur.findAnyProp(); ok {
 			u.cur[i] = c
 			continue
 		}

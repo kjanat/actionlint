@@ -1,0 +1,7 @@
+on: push
+
+jobs:
+  no-timeout:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'hello'

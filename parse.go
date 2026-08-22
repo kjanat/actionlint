@@ -13,6 +13,14 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+const (
+	yamlTagStr   = "!!str"
+	yamlTagBool  = "!!bool"
+	yamlTagInt   = "!!int"
+	yamlTagFloat = "!!float"
+	yamlTagNull  = "!!null"
+)
+
 // https://pkg.go.dev/go.yaml.in/yaml/v4#Kind
 func nodeKindName(k yaml.Kind) string {
 	switch k {
@@ -43,9 +51,10 @@ func newString(n *yaml.Node) *String {
 // workflowMappingEntry represents a key-value entry in YAML mapping.
 type workflowMappingEntry struct {
 	// id is a key in lower case for comparing case-insensitive keys.
-	id  string
-	key *String
-	val *yaml.Node
+	id      string
+	key     *String
+	keyNode *yaml.Node
+	val     *yaml.Node
 }
 
 type delayedSprintf struct {
@@ -315,7 +324,7 @@ func (p *parser) parseExpression(n *yaml.Node, expecting string) *String {
 }
 
 func (p *parser) mayParseExpression(n *yaml.Node) *String {
-	if n.Tag != "!!str" {
+	if n.Tag != yamlTagStr {
 		return nil
 	}
 	if !isExprAssigned(n.Value) {
@@ -356,12 +365,12 @@ func (p *parser) parseStringOrStringSequence(sec string, n *yaml.Node) []*String
 }
 
 func (p *parser) parseBool(n *yaml.Node) *Bool {
-	if n.Kind != yaml.ScalarNode || (n.Tag != "!!bool" && n.Tag != "!!str") {
+	if n.Kind != yaml.ScalarNode || (n.Tag != yamlTagBool && n.Tag != yamlTagStr) {
 		p.errorf(n, "expected bool value but found %s node with %q tag", nodeKindName(n.Kind), n.Tag)
 		return nil
 	}
 
-	if n.Tag == "!!str" {
+	if n.Tag == yamlTagStr {
 		e := p.parseExpression(n, "boolean literal \"true\" or \"false\"")
 		return &Bool{
 			Expression: e,
@@ -376,12 +385,12 @@ func (p *parser) parseBool(n *yaml.Node) *Bool {
 }
 
 func (p *parser) parseInt(n *yaml.Node) *Int {
-	if n.Kind != yaml.ScalarNode || (n.Tag != "!!int" && n.Tag != "!!str") {
+	if n.Kind != yaml.ScalarNode || (n.Tag != yamlTagInt && n.Tag != yamlTagStr) {
 		p.errorf(n, "expected scalar node for integer value but found %s node with %q tag", nodeKindName(n.Kind), n.Tag)
 		return nil
 	}
 
-	if n.Tag == "!!str" {
+	if n.Tag == yamlTagStr {
 		e := p.parseExpression(n, "integer literal")
 		if e == nil {
 			return nil
@@ -405,12 +414,12 @@ func (p *parser) parseInt(n *yaml.Node) *Int {
 }
 
 func (p *parser) parseFloat(n *yaml.Node) *Float {
-	if n.Kind != yaml.ScalarNode || (n.Tag != "!!float" && n.Tag != "!!int" && n.Tag != "!!str") {
+	if n.Kind != yaml.ScalarNode || (n.Tag != yamlTagFloat && n.Tag != yamlTagInt && n.Tag != yamlTagStr) {
 		p.errorf(n, "expected scalar node for float value but found %s node with %q tag", nodeKindName(n.Kind), n.Tag)
 		return nil
 	}
 
-	if n.Tag == "!!str" {
+	if n.Tag == yamlTagStr {
 		e := p.parseExpression(n, "float number literal")
 		if e == nil {
 			return nil
@@ -435,7 +444,7 @@ func (p *parser) parseFloat(n *yaml.Node) *Float {
 
 func (p *parser) parseMapping(where delayedSprintf, n *yaml.Node, allowEmpty, caseSensitive bool) iter.Seq[workflowMappingEntry] {
 	return func(yield func(workflowMappingEntry) bool) {
-		if n.Kind == yaml.ScalarNode && n.Tag == "!!null" {
+		if n.Kind == yaml.ScalarNode && n.Tag == yamlTagNull {
 			if !allowEmpty {
 				p.errorf(n, "%s should not be empty. please remove this section if it's unnecessary", where.String())
 			}
@@ -476,7 +485,7 @@ func (p *parser) parseMapping(where delayedSprintf, n *yaml.Node, allowEmpty, ca
 				continue
 			}
 
-			if !yield(workflowMappingEntry{id, k, n.Content[i+1]}) {
+			if !yield(workflowMappingEntry{id, k, n.Content[i], n.Content[i+1]}) {
 				break
 			}
 
@@ -1004,10 +1013,45 @@ func (p *parser) parseOutputs(n *yaml.Node) map[string]*Output {
 	return ret
 }
 
+// GitHub reads an explicitly tagged scalar with the YAML 1.2 core schema and rejects a value the tag
+// does not accept, as well as any tag other than "!!str" on a quoted or block scalar.
+// https://github.com/actions/runner/blob/258d6c857db3519913f7deb6004b60172f8043ae/src/Sdk/WorkflowParser/Conversion/YamlObjectReader.cs#L36-L105
+func (p *parser) checkRawYAMLTag(n *yaml.Node) bool {
+	if n.Kind != yaml.ScalarNode || n.Style&yaml.TaggedStyle == 0 || n.Tag == yamlTagStr {
+		return true
+	}
+	if n.Style&(yaml.DoubleQuotedStyle|yaml.SingleQuotedStyle|yaml.LiteralStyle|yaml.FoldedStyle) != 0 {
+		p.errorf(n, "tag of a quoted or block scalar must be \"!!str\" but got %q", n.Tag)
+		return false
+	}
+	var ok bool
+	switch n.Tag {
+	case yamlTagBool:
+		ok = isCoreSchemaBool(n.Value)
+	case yamlTagNull:
+		ok = isCoreSchemaNull(n.Value)
+	case yamlTagInt:
+		ok = isCoreSchemaInt(n.Value)
+	case yamlTagFloat:
+		ok = isCoreSchemaFloat(n.Value)
+	default:
+		p.errorf(n, "tag of a matrix scalar must be one of \"!!str\", \"!!bool\", \"!!int\", \"!!float\", \"!!null\" but got %q", n.Tag)
+		return false
+	}
+	if !ok {
+		p.errorf(n, "invalid value %q for %q tag", n.Value, n.Tag)
+	}
+	return ok
+}
+
 func (p *parser) parseRawYAMLValue(n *yaml.Node) RawYAMLValue {
 	switch n.Kind {
 	case yaml.ScalarNode:
-		return &RawYAMLString{n.Value, posAt(n)}
+		tag := n.Tag
+		if !p.checkRawYAMLTag(n) {
+			tag = yamlTagStr
+		}
+		return &RawYAMLString{Value: n.Value, Tag: tag, pos: posAt(n)}
 	case yaml.SequenceNode:
 		vs := make([]RawYAMLValue, 0, len(n.Content))
 		for _, c := range n.Content {
@@ -1019,6 +1063,7 @@ func (p *parser) parseRawYAMLValue(n *yaml.Node) RawYAMLValue {
 	case yaml.MappingNode:
 		m := map[string]RawYAMLValue{}
 		for e := range p.parseMappingAt("matrix row value", n, true, false) {
+			p.checkRawYAMLTag(e.keyNode)
 			if v := p.parseRawYAMLValue(e.val); v != nil {
 				m[e.id] = v
 			}
@@ -1054,6 +1099,7 @@ func (p *parser) parseMatrixCombinations(sec string, n *yaml.Node) *MatrixCombin
 
 		assigns := map[string]*MatrixAssign{}
 		for e := range p.parseMapping(sprintf("element in %q section", sec), c, false, false) {
+			p.checkRawYAMLTag(e.keyNode)
 			if v := p.parseRawYAMLValue(e.val); v != nil {
 				assigns[e.id] = &MatrixAssign{e.key, v}
 			}
@@ -1075,6 +1121,7 @@ func (p *parser) parseMatrix(pos *Pos, n *yaml.Node) *Matrix {
 	ret := &Matrix{Pos: pos, Rows: make(map[string]*MatrixRow)}
 
 	for e := range p.parseSectionMapping("matrix", n, false, false) {
+		p.checkRawYAMLTag(e.keyNode)
 		switch e.id {
 		case "include":
 			ret.Include = p.parseMatrixCombinations("include", e.val)
@@ -1349,8 +1396,8 @@ func (p *parser) parseStepExecWait(entries []workflowMappingEntry) *ExecWait {
 		case "wait-all":
 			// A bare 'wait-all:' is equivalent to 'wait-all: true'. GitHub also accepts an
 			// explicit boolean but rejects false because it would make the step a no-op.
-			if e.val.Tag != "!!null" {
-				if b := p.parseBool(e.val); e.val.Tag == "!!bool" && b != nil && !b.Value {
+			if e.val.Tag != yamlTagNull {
+				if b := p.parseBool(e.val); e.val.Tag == yamlTagBool && b != nil && !b.Value {
 					p.error(e.val, "the value of \"wait-all\" must be true or omitted")
 				}
 			}

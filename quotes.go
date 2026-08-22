@@ -1,7 +1,7 @@
 package actionlint
 
 import (
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -60,8 +60,9 @@ func quotes(ss []string) string {
 }
 
 func sortedQuotes(ss []string) string {
-	sort.Strings(ss)
-	return quotes(ss)
+	sorted := slices.Clone(ss)
+	slices.Sort(sorted)
+	return quotes(sorted)
 }
 
 func quotesAll(sss ...[]string) string {

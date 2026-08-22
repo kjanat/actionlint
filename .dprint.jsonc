@@ -1,5 +1,6 @@
 {
   "$schema": "https://dprint.dev/schemas/v0.json",
+  "incremental": true,
   "exec": {
     "cwd": "${configDir}",
     "commands": [
@@ -61,5 +62,5 @@
     "https://plugins.dprint.dev/kjanat/sortpackagejson-0.2.1.wasm",
     "https://plugins.dprint.dev/kjanat/svg-v0.4.1.wasm",
   ],
-  "excludes": ["**/testdata/**", "man/actionlint.1.md"]
+  "excludes": ["**/testdata/**", "man/actionlint.1.md", ".claude/**", ".worktrees/**"]
 }

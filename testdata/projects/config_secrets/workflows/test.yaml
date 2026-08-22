@@ -1,0 +1,20 @@
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # These are listed
+      - run: echo '${{ secrets.MY_SECRET }}'
+      - run: echo '${{ secrets.API_KEY }}'
+      # Name is case-insensitive
+      - run: echo '${{ secrets.my_secret }}'
+      - run: echo '${{ secrets.My_Secret }}'
+      # Always provided by GitHub
+      - run: echo '${{ secrets.GITHUB_TOKEN }}'
+      # ERROR: Undefined secret
+      - run: echo '${{ secrets.PIYO }}'
+      # Index access with a string literal
+      - run: echo "${{ secrets['MY_SECRET'] }}"
+      # ERROR: Undefined secret
+      - run: echo "${{ secrets['FUGA'] }}"

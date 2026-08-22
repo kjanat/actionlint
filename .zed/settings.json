@@ -3,5 +3,16 @@
 // mkdir -p .zed; curl -fsSLo .zed/settings.json https://github.com/kjanat/kjanat/raw/HEAD/.zed/settings.json
 {
   "formatter": [{ "external": { "command": "dprint", "arguments": ["fmt", "--stdin", "{buffer_path}"] } }],
-  "prettier": { "allowed": false }
+  "prettier": { "allowed": false },
+  "lsp": {
+    "yaml-language-server": {
+      "settings": {
+        "schemas": {
+          "https://raw.githubusercontent.com/github/codeql-action/HEAD/src/db-config-schema.json": [
+            ".github/codeql/codeql-config.yaml"
+          ],
+        }
+      }
+    }
+  }
 }

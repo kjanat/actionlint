@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -56,6 +57,48 @@ func TestConfigParseSelfHostedRunnerOK(t *testing.T) {
 	}
 }
 
+func TestConfigParseConfigSecrets(t *testing.T) {
+	testCases := []struct {
+		what    string
+		input   string
+		secrets []string
+	}{
+		{
+			what:    "empty config",
+			input:   "",
+			secrets: nil,
+		},
+		{
+			what:    "null config-secrets",
+			input:   "config-secrets:",
+			secrets: nil,
+		},
+		{
+			what:    "empty config-secrets",
+			input:   "config-secrets: []",
+			secrets: []string{},
+		},
+		{
+			what:    "config-secrets",
+			input:   "config-secrets: [FOO, BAR]",
+			secrets: []string{"FOO", "BAR"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.what, func(t *testing.T) {
+			c, err := ParseConfig([]byte(tc.input))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if diff := cmp.Diff(c.ConfigSecrets, tc.secrets); diff != "" {
+				t.Fatal(diff)
+			}
+		})
+	}
+}
+
 func TestConfigParseError(t *testing.T) {
 	tests := []struct {
 		in   string
@@ -87,6 +130,45 @@ paths:
   foo.{txt,xml:
 `,
 			want: `invalid glob pattern`,
+		},
+		{
+			in: `
+policy:
+  required-actions: true
+`,
+			want: `"required-actions" must be a sequence node at line:3,col:21`,
+		},
+		{
+			in: `
+policy:
+  required-actions:
+    - 42
+`,
+			want: `an entry of "required-actions" must be a string at line:4,col:7`,
+		},
+		{
+			in: `
+policy:
+  required-actions:
+    - ""
+`,
+			want: `an entry of "required-actions" must not be empty at line:4,col:7`,
+		},
+		{
+			in: `
+policy:
+  required-actions:
+    - actions/[checkout
+`,
+			want: `invalid glob pattern "actions/[checkout" in an entry of "required-actions" at line:4,col:7`,
+		},
+		{
+			in: `
+policy:
+  required-actions:
+    - actions/checkout@[v5
+`,
+			want: `invalid glob pattern "[v5" in an entry of "required-actions" at line:4,col:7`,
 		},
 	}
 
@@ -272,8 +354,30 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 	if c.ConfigVariables != nil {
 		t.Fatal(c.SelfHostedRunner.Labels)
 	}
+	if c.ConfigSecrets != nil {
+		t.Fatal(c.ConfigSecrets)
+	}
 	if len(c.Paths) != 0 {
 		t.Fatal(c.Paths)
+	}
+	if diff := cmp.Diff(Policy{}, c.Policy); diff != "" {
+		t.Fatal(diff)
+	}
+	b, err := os.ReadFile(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "#policy:\n#  # Require every \"uses:\" to be pinned to a full commit SHA or an image\n#  # digest.\n#  require-commit-hash: true\n"
+	if !strings.Contains(string(b), want) {
+		t.Fatalf("wanted generated config file %q to contain %q", string(b), want)
+	}
+	want = "#  # Actions every workflow must use. \"owner/repo@ref\" also pins the version.\n#  required-actions:\n#    - actions/checkout\n"
+	if !strings.Contains(string(b), want) {
+		t.Fatalf("wanted generated config file %q to contain %q", string(b), want)
+	}
+	want = "#  # Require \"timeout-minutes\" on every job. A mapping with \"max-minutes\" also\n#  # caps the value.\n#  require-job-timeout: true\n"
+	if !strings.Contains(string(b), want) {
+		t.Fatalf("wanted generated config file %q to contain %q", string(b), want)
 	}
 }
 
@@ -286,5 +390,318 @@ func TestConfigGenerateDefaultConfigFileError(t *testing.T) {
 	msg := err.Error()
 	if !strings.Contains(msg, "could not write default configuration file") {
 		t.Fatalf("unexpected error message: %q", msg)
+	}
+}
+
+func TestConfigParsePolicyEmpty(t *testing.T) {
+	tests := []struct {
+		what  string
+		input string
+	}{
+		{
+			what:  "no policy",
+			input: "",
+		},
+		{
+			what:  "empty policy",
+			input: "policy:\n",
+		},
+		{
+			what:  "empty policy mapping",
+			input: "policy: {}\n",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.what, func(t *testing.T) {
+			c, err := ParseConfig([]byte(tc.input))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(Policy{}, c.Policy); diff != "" {
+				t.Fatal(diff)
+			}
+			if c.RequiresCommitHash() {
+				t.Fatal("\"require-commit-hash\" is enabled")
+			}
+		})
+	}
+}
+
+func TestConfigParsePolicyUnknownKey(t *testing.T) {
+	_, err := ParseConfig([]byte("policy:\n  require-commit-hashes: true\n"))
+	if err == nil {
+		t.Fatal("no error occurred")
+	}
+	want := `unknown key "require-commit-hashes" in "policy" at line:2,col:3`
+	if !strings.Contains(err.Error(), want) {
+		t.Fatalf("wanted error message %q to contain %q", err.Error(), want)
+	}
+}
+
+func TestConfigParsePolicyNotAMapping(t *testing.T) {
+	_, err := ParseConfig([]byte("policy: true\n"))
+	if err == nil {
+		t.Fatal("no error occurred")
+	}
+	want := `"policy" must be a mapping node at line:1,col:9`
+	if !strings.Contains(err.Error(), want) {
+		t.Fatalf("wanted error message %q to contain %q", err.Error(), want)
+	}
+}
+
+func TestConfigParsePolicyTriState(t *testing.T) {
+	tests := []struct {
+		what  string
+		input string
+		want  *bool
+	}{
+		{
+			what:  "key is not set",
+			input: "policy: {}\n",
+			want:  nil,
+		},
+		{
+			what:  "key is null",
+			input: "policy:\n  require-commit-hash:\n",
+			want:  nil,
+		},
+		{
+			what:  "key is false",
+			input: "policy:\n  require-commit-hash: false\n",
+			want:  new(false),
+		},
+		{
+			what:  "key is true",
+			input: "policy:\n  require-commit-hash: true\n",
+			want:  new(true),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.what, func(t *testing.T) {
+			c, err := ParseConfig([]byte(tc.input))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(tc.want, c.Policy.RequireCommitHash); diff != "" {
+				t.Fatal(diff)
+			}
+			if want := tc.want != nil && *tc.want; c.RequiresCommitHash() != want {
+				t.Fatalf("RequiresCommitHash() is %v but wanted %v", c.RequiresCommitHash(), want)
+			}
+		})
+	}
+}
+
+func TestConfigPolicyNilConfig(t *testing.T) {
+	var c *Config
+	if c.RequiresCommitHash() {
+		t.Fatal("\"require-commit-hash\" is enabled for a nil config")
+	}
+	if as := c.RequiredActions(); as != nil {
+		t.Fatalf("\"required-actions\" is %v for a nil config", as)
+	}
+}
+
+func TestConfigParseRequiredActionsOK(t *testing.T) {
+	tests := []struct {
+		what  string
+		input string
+		want  []string
+	}{
+		{
+			what:  "key is not set",
+			input: "policy: {}\n",
+			want:  nil,
+		},
+		{
+			what:  "key is null",
+			input: "policy:\n  required-actions:\n",
+			want:  nil,
+		},
+		{
+			what:  "key is an empty sequence",
+			input: "policy:\n  required-actions: []\n",
+			want:  []string{},
+		},
+		{
+			what:  "one action without a ref",
+			input: "policy:\n  required-actions:\n    - actions/checkout\n",
+			want:  []string{"actions/checkout"},
+		},
+		{
+			what:  "one action with a ref",
+			input: "policy:\n  required-actions:\n    - my-org/scan@v2\n",
+			want:  []string{"my-org/scan@v2"},
+		},
+		{
+			what:  "glob patterns",
+			input: "policy:\n  required-actions:\n    - github/codeql-action/*\n    - actions/checkout@v4*\n",
+			want:  []string{"github/codeql-action/*", "actions/checkout@v4*"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.what, func(t *testing.T) {
+			c, err := ParseConfig([]byte(tc.input))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(tc.want, c.Policy.RequiredActions); diff != "" {
+				t.Fatal(diff)
+			}
+			if diff := cmp.Diff(tc.want, c.RequiredActions()); diff != "" {
+				t.Fatal(diff)
+			}
+		})
+	}
+}
+
+func TestConfigParseRequireJobTimeout(t *testing.T) {
+	tests := []struct {
+		what        string
+		input       string
+		wantSet     bool
+		wantEnabled bool
+		wantMax     float64
+		wantHasMax  bool
+	}{
+		{
+			what:    "key is not set",
+			input:   "policy: {}\n",
+			wantSet: false,
+		},
+		{
+			what:    "key is null",
+			input:   "policy:\n  require-job-timeout:\n",
+			wantSet: false,
+		},
+		{
+			what:        "key is false",
+			input:       "policy:\n  require-job-timeout: false\n",
+			wantSet:     true,
+			wantEnabled: false,
+		},
+		{
+			what:        "key is true",
+			input:       "policy:\n  require-job-timeout: true\n",
+			wantSet:     true,
+			wantEnabled: true,
+		},
+		{
+			what:        "key is an empty mapping",
+			input:       "policy:\n  require-job-timeout: {}\n",
+			wantSet:     true,
+			wantEnabled: true,
+		},
+		{
+			what:        "mapping sets max-minutes",
+			input:       "policy:\n  require-job-timeout:\n    max-minutes: 60\n",
+			wantSet:     true,
+			wantEnabled: true,
+			wantMax:     60,
+			wantHasMax:  true,
+		},
+		{
+			what:        "max-minutes is a fraction",
+			input:       "policy:\n  require-job-timeout: {max-minutes: 30.5}\n",
+			wantSet:     true,
+			wantEnabled: true,
+			wantMax:     30.5,
+			wantHasMax:  true,
+		},
+		{
+			what:        "max-minutes has a leading zero",
+			input:       "policy:\n  require-job-timeout:\n    max-minutes: 017\n",
+			wantSet:     true,
+			wantEnabled: true,
+			wantMax:     17,
+			wantHasMax:  true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.what, func(t *testing.T) {
+			c, err := ParseConfig([]byte(tc.input))
+			if err != nil {
+				t.Fatal(err)
+			}
+			p := c.Policy.RequireJobTimeout
+			if tc.wantSet != (p != nil) {
+				t.Fatalf("policy is %v but wanted set=%v", p, tc.wantSet)
+			}
+			if p.Enabled() != tc.wantEnabled {
+				t.Fatalf("Enabled() is %v but wanted %v", p.Enabled(), tc.wantEnabled)
+			}
+			limit, ok := p.MaxMinutes()
+			if ok != tc.wantHasMax || limit != tc.wantMax {
+				t.Fatalf("MaxMinutes() is (%v, %v) but wanted (%v, %v)", limit, ok, tc.wantMax, tc.wantHasMax)
+			}
+			if got := c.RequiresJobTimeout(); got != p {
+				t.Fatalf("RequiresJobTimeout() is %v but wanted %v", got, p)
+			}
+		})
+	}
+}
+
+func TestConfigParseRequireJobTimeoutError(t *testing.T) {
+	tests := []struct {
+		what  string
+		input string
+		want  string
+	}{
+		{
+			what:  "value is a number",
+			input: "policy:\n  require-job-timeout: 60\n",
+			want:  `"require-job-timeout" must be a boolean or a mapping at line:2,col:24`,
+		},
+		{
+			what:  "value is a string",
+			input: "policy:\n  require-job-timeout: hello\n",
+			want:  `"require-job-timeout" must be a boolean or a mapping at line:2,col:24`,
+		},
+		{
+			what:  "value is a sequence",
+			input: "policy:\n  require-job-timeout:\n    - 60\n",
+			want:  `"require-job-timeout" must be a boolean or a mapping at line:3,col:5`,
+		},
+		{
+			what:  "unknown key in the mapping",
+			input: "policy:\n  require-job-timeout:\n    max_minutes: 60\n",
+			want:  `unknown key "max_minutes" in "require-job-timeout" at line:3,col:5`,
+		},
+		{
+			what:  "max-minutes is zero",
+			input: "policy:\n  require-job-timeout:\n    max-minutes: 0\n",
+			want:  `"max-minutes" in "require-job-timeout" must be greater than zero but got 0 at line:3,col:18`,
+		},
+		{
+			what:  "max-minutes is negative",
+			input: "policy:\n  require-job-timeout:\n    max-minutes: -5\n",
+			want:  `"max-minutes" in "require-job-timeout" must be greater than zero but got -5 at line:3,col:18`,
+		},
+		{
+			what:  "max-minutes is not a number",
+			input: "policy:\n  require-job-timeout:\n    max-minutes: hello\n",
+			want:  `"max-minutes" in "require-job-timeout" must be a number but got "hello" at line:3,col:18`,
+		},
+		{
+			what:  "max-minutes is a mapping",
+			input: "policy:\n  require-job-timeout:\n    max-minutes:\n      a: 1\n",
+			want:  `"max-minutes" in "require-job-timeout" must be a number but got "" at line:4,col:7`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.what, func(t *testing.T) {
+			_, err := ParseConfig([]byte(tc.input))
+			if err == nil {
+				t.Fatal("no error occurred")
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("wanted error message %q to contain %q", err.Error(), tc.want)
+			}
+		})
 	}
 }

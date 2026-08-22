@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -29,6 +30,19 @@ func TestQuotesSortedQuotes(t *testing.T) {
 				t.Errorf("want: %s\nhave: %s", want, have)
 			}
 		})
+	}
+}
+
+func TestQuotesSortedQuotesDoesNotSortItsArgument(t *testing.T) {
+	ss := []string{"piyo", "foo", "bar"}
+	want := []string{"piyo", "foo", "bar"}
+
+	if have := sortedQuotes(ss); have != `"bar", "foo", "piyo"` {
+		t.Fatalf("unexpected result: %s", have)
+	}
+
+	if !slices.Equal(ss, want) {
+		t.Errorf("argument was reordered\nwant: %v\nhave: %v", want, ss)
 	}
 }
 

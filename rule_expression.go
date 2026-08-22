@@ -1,11 +1,18 @@
 package actionlint
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 )
 
 //go:generate go run ./scripts/generate-availability ./availability.go
+
+// The integer and float productions of the YAML 1.2 core schema, as GitHub implements them.
+var (
+	reCoreSchemaInt   = regexp.MustCompile(`^(?:[0-9]+|[-+][0-9]+|0x[0-9a-fA-F]+|0o[0-7]+)$`)
+	reCoreSchemaFloat = regexp.MustCompile(`^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?$`)
+)
 
 type typedExpr struct {
 	ty  ExprType
@@ -151,10 +158,13 @@ func (rule *RuleExpression) VisitWorkflowPre(n *Workflow) error {
 			// So `secrets` context must be typed as { string => string }. `e.Secrets` is nil when `secrets:` does not
 			// exist. When `e.Secrets` is an empty map, `secrets:` exists but it has no child. A workflow with another
 			// trigger can also access repository secrets on that trigger path, so its secrets type must remain open.
-			if e.Secrets != nil && !hasNonWorkflowCallTrigger {
+			if e.Secrets != nil {
 				sty := NewEmptyStrictObjectType()
 				for id := range e.Secrets {
 					sty.Props[id] = StringType{}
+				}
+				if hasNonWorkflowCallTrigger {
+					sty.Mapped = StringType{}
 				}
 				rule.secretsTy = sty
 			}
@@ -789,11 +799,7 @@ func (rule *RuleExpression) exprError(err *ExprError, lineBase, colBase int) {
 }
 
 func (rule *RuleExpression) checkSemanticsOfExprNode(expr ExprNode, line, col int, checkUntrusted bool, workflowKey string) (ExprType, bool) {
-	var v []string
-	if rule.config != nil {
-		v = rule.config.ConfigVariables
-	}
-	c := NewExprSemanticsChecker(checkUntrusted, v)
+	c := NewExprSemanticsChecker(checkUntrusted, rule.config)
 	if rule.matrixTy != nil {
 		c.UpdateMatrix(rule.matrixTy)
 	}
@@ -1077,18 +1083,57 @@ func (rule *RuleExpression) checkRawYAMLString(y *RawYAMLString) ExprType {
 		return ts[0].ty
 	}
 
-	s := strings.TrimSpace(y.Value)
-	// Note that keywords are case sensitive. TRUE, FALSE, NULL are invalid named value.
-	if s == "true" || s == "false" {
-		return BoolType{}
-	}
-	if s == "null" {
-		return NullType{}
-	}
-	if _, err := strconv.ParseFloat(s, 64); err == nil {
-		return NumberType{}
+	switch y.Tag {
+	case yamlTagBool:
+		if isCoreSchemaBool(y.Value) {
+			return BoolType{}
+		}
+	case yamlTagNull:
+		if isCoreSchemaNull(y.Value) {
+			return NullType{}
+		}
+	case yamlTagInt, yamlTagFloat:
+		if isCoreSchemaNumber(y.Value) {
+			return NumberType{}
+		}
 	}
 	return StringType{}
+}
+
+// The bool, null, integer and float productions of the YAML 1.2 core schema, as GitHub implements them.
+// https://github.com/actions/runner/blob/258d6c857db3519913f7deb6004b60172f8043ae/src/Sdk/WorkflowParser/Conversion/YamlObjectReader.cs#L474-L717
+func isCoreSchemaBool(s string) bool {
+	switch s {
+	case "true", "True", "TRUE", "false", "False", "FALSE":
+		return true
+	}
+	return false
+}
+
+func isCoreSchemaNull(s string) bool {
+	switch s {
+	case "", "null", "Null", "NULL", "~":
+		return true
+	}
+	return false
+}
+
+func isCoreSchemaInt(s string) bool {
+	return reCoreSchemaInt.MatchString(s)
+}
+
+func isCoreSchemaFloat(s string) bool {
+	switch s {
+	case ".inf", ".Inf", ".INF", "+.inf", "+.Inf", "+.INF", "-.inf", "-.Inf", "-.INF", ".nan", ".NaN", ".NAN":
+		return true
+	}
+	return reCoreSchemaFloat.MatchString(s)
+}
+
+// The YAML library resolves a plain scalar more permissively than the core schema, and the runner
+// matches it against the integer production first and the float production second.
+func isCoreSchemaNumber(s string) bool {
+	return isCoreSchemaInt(s) || isCoreSchemaFloat(s)
 }
 
 func convertExprLineColToPos(line, col, lineBase, colBase int) *Pos {

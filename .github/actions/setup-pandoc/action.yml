@@ -15,15 +15,28 @@ inputs:
 runs:
   using: composite
   steps:
-    - shell: bash
-      if: ${{ runner.os == 'Linux' }}
-      env:
-        GH_REPO: ${{ inputs.repo }}
-        GH_TOKEN: ${{ inputs.token }}
-        VERSION: ${{ inputs.version }}
-      run: |
-        arch="$(dpkg --print-architecture)"
-        deb="${RUNNER_TEMP}/pandoc.deb"
-        gh release download "${VERSION}" --pattern "pandoc-${VERSION}-1-${arch}.deb" --output "${deb}"
-        gh release verify-asset "${VERSION}" "${deb}"
-        sudo dpkg --install "${deb}"
+    - parallel:
+        - shell: bash
+          env:
+            GH_REPO: ${{ inputs.repo }}
+            GH_TOKEN: ${{ inputs.token }}
+            VERSION: ${{ inputs.version }}
+          run: |
+            LATEST_RELEASE="$(gh release view --json name,tagName,url | tee /dev/stderr)"
+            LATEST="$(echo "${LATEST_RELEASE}" | jq -r '.tagName')"
+            URL="$(echo "${LATEST_RELEASE}" | jq -r '.url')"
+            if [[ "${VERSION}" != "${LATEST}" ]]; then
+              echo "::warning::The requested pandoc version '${VERSION}' is not the latest release '${LATEST}'. See ${URL} for details."
+            fi
+        - shell: bash
+          if: ${{ runner.os == 'Linux' }}
+          env:
+            GH_REPO: ${{ inputs.repo }}
+            GH_TOKEN: ${{ inputs.token }}
+            VERSION: ${{ inputs.version }}
+          run: |
+            arch="$(dpkg --print-architecture)"
+            deb="${RUNNER_TEMP}/pandoc.deb"
+            gh release download "${VERSION}" --pattern "pandoc-${VERSION}-1-${arch}.deb" --output "${deb}"
+            gh release verify-asset "${VERSION}" "${deb}"
+            sudo dpkg --install "${deb}"
