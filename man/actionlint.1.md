@@ -57,6 +57,10 @@ with Go template syntax.
 **-color**
 : Always enable colorful output. This is useful to force colorful outputs
 
+**-completion** *SHELL*
+: Print a shell completion script for the given shell to stdout. One of `bash`, `fish`,
+`powershell`, `zsh`.
+
 **-config-file** *PATH*
 : File path to config file
 

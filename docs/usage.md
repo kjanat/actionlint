@@ -27,6 +27,32 @@ cat path/to/workflow.yaml | actionlint -
 To know all flags and options, see an output of `actionlint -h` or
 [the online command manual][cmd-manual].
 
+### Shell completion
+
+`-completion` prints a completion script for the given shell to stdout. The
+supported shells are `bash`, `fish`, `powershell` and `zsh`. The script completes
+the flags, the values they take, and workflow file paths.
+
+```sh
+actionlint -completion bash > ~/.local/share/bash-completion/completions/actionlint
+```
+
+```sh
+actionlint -completion fish > ~/.config/fish/completions/actionlint.fish
+```
+
+The zsh script belongs in a directory listed in `$fpath`.
+
+```sh
+actionlint -completion zsh > "${fpath[1]}/_actionlint"
+```
+
+The PowerShell script is loaded from your profile.
+
+```powershell
+actionlint -completion powershell | Out-File -Append -Encoding utf8 $PROFILE
+```
+
 ### Ignore some errors
 
 To ignore some errors, `-ignore` option offers to filter errors by messages
