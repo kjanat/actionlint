@@ -774,11 +774,12 @@ func (a *RawYAMLArray) String() string {
 
 // RawYAMLString is raw YAML scalar value.
 type RawYAMLString struct {
-	// Note: Might be useful to add kind to check the string value is int/float/bool/null.
-
 	// Value is string representation of the scalar node.
 	Value string
-	pos   *Pos
+	// Tag is the YAML tag of the scalar node, such as "!!str" or "!!int". A tag the parser rejects
+	// is recorded as "!!str".
+	Tag string
+	pos *Pos
 }
 
 // Kind returns kind of raw YAML value.
