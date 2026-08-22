@@ -20,7 +20,7 @@ To check these limitations by actionlint, we maintain a table to map workflow ke
 
 ## Usage
 
-```
+```sh
 generate-availability [[srcfile] dstfile]
 ```
 

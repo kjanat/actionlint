@@ -1,21 +1,19 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
-import { fileURLToPath } from 'node:url';
 import object from './object.mjs';
 
 const pattern = object.problemMatcher[0].pattern[0];
 const regexp = new RegExp(pattern.regexp);
-const dirname = path.dirname(fileURLToPath(import.meta.url));
-const testdata = path.join(dirname, 'testdata');
+const testdata = path.join(import.meta.dirname, 'testdata');
 
 describe('problem matcher pattern', () => {
-	const want = JSON.parse(fs.readFileSync(path.join(testdata, 'want.json'), 'utf8'))[0];
+	const want = JSON.parse(readFileSync(path.join(testdata, 'want.json'), 'utf8'))[0];
 
 	for (const name of ['escape.txt', 'no_escape.txt']) {
 		it(`captures every field of ${name}`, () => {
-			const [line] = fs.readFileSync(path.join(testdata, name), 'utf8').split('\n');
+			const [line] = readFileSync(path.join(testdata, name), 'utf8').split('\n');
 			const m = line.match(regexp);
 			assert.ok(m, `${line} did not match ${regexp}`);
 			assert.equal(m[pattern.file], want.filepath);
@@ -27,13 +25,13 @@ describe('problem matcher pattern', () => {
 	}
 
 	for (const parent of ['examples', 'err']) {
-		const dir = path.join(dirname, '..', '..', 'testdata', parent);
-		for (const name of fs.readdirSync(dir)) {
+		const dir = path.join(import.meta.dirname, '..', '..', 'testdata', parent);
+		for (const name of readdirSync(dir)) {
 			if (!name.endsWith('.out')) {
 				continue;
 			}
 			it(`matches every error of ${parent}/${name}`, () => {
-				for (const line of fs.readFileSync(path.join(dir, name), 'utf8').split('\n')) {
+				for (const line of readFileSync(path.join(dir, name), 'utf8').split('\n')) {
 					if (line.length === 0 || line.startsWith('/')) {
 						continue;
 					}

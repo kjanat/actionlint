@@ -14,8 +14,7 @@ Features:
 - **Reusable workflow check** to check inputs/outputs/secrets of reusable workflows and workflow calls
 - **[shellcheck][shellcheck] and [pyflakes][pyflakes] integrations** for scripts at `run:`
 - **Security checks**; [script injection][script-injection-doc] by untrusted inputs, hard-coded credentials
-- **Other several useful checks**; [glob syntax][filter-pattern-doc] validation, dependencies check for `needs:`,
-  runner label validation, cron syntax validation, ...
+- **Other several useful checks**; [glob syntax][filter-pattern-doc] validation, dependencies check for `needs:`, runner label validation, cron syntax validation, ...
 
 See the [full list][checks] of checks done by actionlint.
 
@@ -84,18 +83,14 @@ test.yaml:22:17: receiver of object dereference "permissions" must be type of ob
 
 ## Quick start
 
-Install `actionlint` command by downloading [the released binary][releases], using the download script, running the Docker
-image, using the repository as a GitHub Action, or by `go install`. See
-[the installation document][install] for more details like how to manage the command with several package managers
-or run via Docker container.
+Install `actionlint` command by downloading [the released binary][releases], using the download script, running the Docker image, using the repository as a GitHub Action, or by `go install`. See
+[the installation document][install] for more details like how to manage the command with several package managers or run via Docker container.
 
 ```sh
 go install actionlint.kjanat.dev/cmd/actionlint@latest
 ```
 
-Basically all you need to do is run the `actionlint` command in your repository. actionlint automatically detects workflows and
-checks errors. actionlint focuses on finding out mistakes. It tries to catch errors as much as possible and make false positives
-as minimal as possible.
+Basically all you need to do is run the `actionlint` command in your repository. actionlint automatically detects workflows and checks errors. actionlint focuses on finding out mistakes. It tries to catch errors as much as possible and make false positives as minimal as possible.
 
 ```sh
 actionlint
@@ -107,8 +102,7 @@ See [the usage document][usage] for more details.
 
 ## GitHub Action
 
-This repository can be used directly as a Docker action. The prebuilt image includes actionlint, ShellCheck, and pyflakes, and
-reports problems as GitHub annotations by default. Docker actions require a Linux runner.
+This repository can be used directly as a Docker action. The prebuilt image includes actionlint, ShellCheck, and pyflakes, and reports problems as GitHub annotations by default. Docker actions require a Linux runner.
 
 ```yaml
 name: Lint GitHub Actions workflows
@@ -118,15 +112,13 @@ jobs:
   actionlint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-        with: { persist-credentials: false }
+      - { uses: actions/checkout@v7, with: { persist-credentials: false } }
       - uses: kjanat/actionlint@v1
 ```
 
-The moving `v1` tag follows compatible v1 releases. `v1.12.0` is a versioned release tag, but only a full-length commit SHA
-provides an immutable action reference.
+The moving `v1` tag follows compatible v1 releases. `v1.12.0` is a versioned release tag, but only a full-length commit SHA provides an immutable action reference.
 
-## Inputs
+<details><summary><h3>Inputs</h3></summary></details>
 
 | Input               | Default       | Description                                                                                  |
 | ------------------- | ------------- | -------------------------------------------------------------------------------------------- |
@@ -140,7 +132,8 @@ provides an immutable action reference.
 | `output-file`       | none          | Repository-relative file to receive the selected output format.                              |
 | `fail-on-error`     | `true`        | Fail when problems are found. Invalid options and fatal errors always fail.                  |
 
-## Outputs
+</details>
+<details><summary><h3>Outputs</h3></summary></details>
 
 | Output           | Description                                                                                         |
 | ---------------- | --------------------------------------------------------------------------------------------------- |
@@ -169,24 +162,22 @@ Give the step an `id` to consume its outputs. For example, this writes JSON Line
   run: echo "$RESULT ($PROBLEM_COUNT problems)"
 ```
 
+</details>
+
 See [the usage document][usage] for additional examples and output behavior.
 
 ## Documents
 
 - [Checks][checks]: Full list of all checks done by actionlint with example inputs, outputs, and playground links.
-- [Installation][install]: Installation instructions. Prebuilt binaries, a Docker image, building from source, a download script
-  (for CI), supports by several package managers are available.
-- [Usage][usage]: How to use `actionlint` command locally or on GitHub Actions, the online playground, an official Docker image,
-  and integrations with reviewdog, Problem Matchers, super-linter, pre-commit, VS Code.
-- [Configuration][config]: How to configure actionlint behavior. Currently, the labels of self-hosted runners, the configuration
-  variables, and ignore patterns of errors for each file paths can be set.
+- [Installation][install]: Installation instructions. Prebuilt binaries, a Docker image, building from source, a download script (for CI), supports by several package managers are available.
+- [Usage][usage]: How to use `actionlint` command locally or on GitHub Actions, the online playground, an official Docker image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit, VS Code.
+- [Configuration][config]: How to configure actionlint behavior. Currently, the labels of self-hosted runners, the configuration variables, and ignore patterns of errors for each file paths can be set.
 - [Go API][api]: How to use actionlint as Go library.
 - [References][refs]: Links to resources.
 
 ## Bug reporting
 
-When you see some bugs or false positives, it is helpful to [file a new issue][issue-form] with a minimal example
-of input. Giving me some feedbacks like feature requests or ideas of additional checks is also welcome.
+When you see some bugs or false positives, it is helpful to [file a new issue][issue-form] with a minimal example of input. Giving me some feedbacks like feature requests or ideas of additional checks is also welcome.
 
 See the [contribution guide](./CONTRIBUTING.md) for more details.
 

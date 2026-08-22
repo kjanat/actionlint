@@ -567,11 +567,11 @@ or `actionlint-shellcheck` hooks are available.
 The `actionlint` hook installs into an isolated `$GOPATH`, so it only finds a
 `shellcheck` executable that is already on `PATH`.
 
-`actionlint-shellcheck` asks for `@latest`, which resolves when pre-commit first
-builds the hook's environment. pre-commit then caches that environment and does
-not resolve it again, so the version you get is the one that was current when
-you installed the hook, and `pre-commit clean` is what fetches a newer one. To
-choose the version yourself, use `additional_dependencies` on the plain hook:
+`actionlint-shellcheck` pins go-shellcheck so each actionlint revision builds a
+reproducible pre-commit environment. A scheduled [version lifecycle workflow](../.github/workflows/shellcheck-versions.yaml) checks both go-shellcheck
+and the ShellCheck version it embeds, and proposes pin updates automatically.
+To choose a different version yourself, use `additional_dependencies` on the
+plain hook:
 
 ```yaml
 ---
