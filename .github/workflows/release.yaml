@@ -68,7 +68,7 @@ jobs:
     needs: binaries
     if: github.repository == 'rhysd/actionlint'
     steps:
-      - uses: vedantmgoyal9/winget-releaser@b3a5dae0047c6180023acba3f548c55fdf6b7193 # main
+      - uses: vedantmgoyal9/winget-releaser@main
         with:
           identifier: rhysd.actionlint
           installers-regex: '_windows_\w+\.zip$'
