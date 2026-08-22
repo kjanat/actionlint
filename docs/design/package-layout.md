@@ -15,12 +15,12 @@ attribute every `types.Object` in `TypesInfo.Uses` to the file holding the decla
 `_test.go` files, and split `error.go` at symbol level into the `Error` value object and the `ErrorFormatter` side.
 Without that split the `{ErrorFormatter, command, linter}` cycle is smeared across three apparent ones.
 
-Every figure below was measured at commit `8709d37`. Section [Reproducing the measurements](#reproducing-the-measurements)
+Every figure below was measured at commit `2f85e20`. Section [Reproducing the measurements](#reproducing-the-measurements)
 gives a command for each claim.
 
 ## What the root package holds today
 
-77 `.go` files in the repository root, 32719 lines. 43 production files with 19751 lines and 34 test files with 12968
+82 `.go` files in the repository root, 34163 lines. 46 production files with 20298 lines and 36 test files with 13865
 lines. There is no subpackage. In-repository consumers are `cmd/actionlint`, `cmd/actionlint-action`, `playground`
 (js/wasm), `fuzz`, `scripts/check-checks` and `scripts/generate-popular-actions`.
 
@@ -28,23 +28,30 @@ lines. There is no subpackage. In-repository consumers are `cmd/actionlint`, `cm
 
 | kind                                   | count   |
 | -------------------------------------- | ------- |
-| types                                  | 149     |
-| top-level funcs                        | 48      |
+| types                                  | 154     |
+| top-level funcs                        | 52      |
 | consts                                 | 60      |
 | vars                                   | 10      |
-| **top-level total**                    | **267** |
-| methods with an exported name          | 210     |
-| of which on an exported receiver       | 207     |
-| **total exported identifiers**         | **477** |
-| **reachable from outside the package** | **474** |
+| **top-level total**                    | **276** |
+| methods with an exported name          | 223     |
+| of which on an exported receiver       | 220     |
+| **total exported identifiers**         | **499** |
+| **reachable from outside the package** | **496** |
 
 Three files declare no exported top-level symbol: `process.go` (171 lines), `quotes.go` (91 lines) and `doc.go`
 (47 lines, package documentation and no code).
 
 ### Test coupling
 
-32 of the 34 test files are white-box `package actionlint`. Only `example_test.go` and `example_your_own_rule_test.go`
-are `package actionlint_test`. Every white-box file moves with the code it tests.
+34 of the 36 test files are white-box `package actionlint`. Only `example_test.go` and `example_your_own_rule_test.go`
+are `package actionlint_test`.
+
+The production graph below deliberately excludes tests, but the move cannot defer them. A separate type-based pass over
+the test variant finds multiple private symbols used across proposed package boundaries. `error_test.go` tests both the
+diagnostic value and the root formatter and must split. The parsing cases in `rule_required_actions_test.go` must become
+external `package rule_test` tests: leaving them white-box and importing the root for `Parse` creates
+`rule -> root -> rule`. Its helper-only cases move to `internal` or stay as white-box `rule` tests as appropriate. The
+other cross-boundary cases must be rewritten against the public APIs in the same phase as their production files.
 
 ### Measured dependency graph
 
@@ -56,7 +63,7 @@ all_webhooks         -> (none)
 ast                  -> (none)
 availability         -> (none)
 command              -> err:value(1) linter(19)
-config               -> err:value(2)
+config               -> err:value(2) rule_required_actions(1)
 err:formatter        -> command(1) err:value(3) rule(3)
 err:value            -> ast(4)
 expr                 -> (none)
@@ -68,11 +75,12 @@ expr_sema            -> availability(1) expr(5) expr_ast(42) expr_insecure(8) ex
                         expr_type(27) quotes(2)
 expr_type            -> (none)
 glob                 -> (none)
-linter               -> action_metadata(4) config(8) err:formatter(5) err:value(8) parse(1) pass(4)
+linter               -> action_metadata(4) config(12) err:formatter(5) err:value(8) parse(1) pass(4)
                         process(3) project(7) reusable_workflow(4) rule(5) rule_action(1)
                         rule_credentials(1) rule_deprecated_commands(1) rule_env_var(1) rule_events(1)
                         rule_expression(1) rule_glob(1) rule_id(1) rule_if_cond(1) rule_job_needs(1)
                         rule_matrix(1) rule_parallel_steps(1) rule_permissions(1) rule_pyflakes(1)
+                        rule_require_commit_hash(1) rule_require_job_timeout(1) rule_required_actions(1)
                         rule_runner_label(1) rule_shell_name(1) rule_shellcheck(1)
                         rule_workflow_call(1)
 parse                -> ast(246) err:value(5) quotes(1)
@@ -99,13 +107,16 @@ rule_matrix          -> ast(33) quotes(1) rule(5)
 rule_parallel_steps  -> ast(20) rule(4)
 rule_permissions     -> ast(11) quotes(2) rule(4)
 rule_pyflakes        -> ast(15) process(6) rule(5) rule_shellcheck(1)
+rule_require_commit_hash -> ast(11) rule(4) rule_action(1) rule_workflow_call(1)
+rule_require_job_timeout -> ast(10) config(3) rule(4)
+rule_required_actions -> ast(13) config(1) rule(5)
 rule_runner_label    -> ast(22) config(2) expr_ast(5) expr_lexer(1) expr_parser(2) quotes(1) rule(5)
 rule_shell_name      -> ast(17) quotes(1) rule(4)
 rule_shellcheck      -> ast(20) process(6) rule(6)
 rule_workflow_call   -> ast(17) quotes(1) reusable_workflow(10) rule(6) rule_action(1)
 ```
 
-The graph has exactly two strongly connected components with more than one member.
+The graph has exactly three strongly connected components with more than one member.
 
 **`{expr_insecure, expr_sema}`.** `expr_insecure.go:278,287` call `errorfAtExpr`, declared at `expr_sema.go:413`, while
 `expr_sema.go` uses `UntrustedInputChecker` and five of its methods from `expr_insecure.go`. Both files go into the same
@@ -115,6 +126,11 @@ target package, so this cycle does not constrain the split.
 `template.FuncMap`; `error.go:340` takes the `Rule` interface; `command.go:31,166` build the `Linter`; and `linter.go`
 holds an `*ErrorFormatter` and calls `NewErrorFormatter`, `Print`, `PrintErrors` and `RegisterRule`. This cycle does
 constrain the split, and the layout below resolves it by keeping all three in the root package.
+
+**`{config, rule_required_actions}`.** `config.go:88` calls `invalidActionPattern`, declared at
+`rule_required_actions.go:25`, while `rule_required_actions.go:125` calls `Config.RequiredActions`. Moving the three
+action-pattern helpers to `internal` removes the first edge; the rule then imports `project`, but `project` imports only
+`diag` and `internal`.
 
 Everything else is a directed acyclic graph.
 
@@ -152,9 +168,9 @@ two constructors, and `byteOffsetAtColumn` in the two indicator helpers. Nothing
    (`[]*actionlint.Error`), `cmd/actionlint-action/render.go:12` (`= actionlint.ErrorTemplateFields`) and
    `playground/main.go:20` (`*actionlint.Error`). Putting `Error` in `ast` makes all three read `*ast.Error` and
    `ast.ErrorTemplateFields` in programs that never touch a workflow node.
-3. **It would put the whole AST behind `project`.** `config.go` uses exactly two symbols from outside its own file,
+3. **It would put the whole AST behind `project`.** The diagnostic dependency of `config.go` is exactly two symbols,
    `Error` and `Error.Message`. With `Error` in `ast`, the configuration package imports the workflow syntax tree for
-   one struct.
+   one struct. Its separate required-action validator dependency moves to `internal` below.
 
 The package is called `diag` below. It sits one layer above `ast`, depends on it for `Pos` and `ByteOffsetAtColumn`,
 and nothing else.
@@ -189,7 +205,7 @@ actionlint.kjanat.dev/ast          Pos, AST nodes, Pass, Visitor, ScriptSource
 actionlint.kjanat.dev/data         generated tables: availability.go, all_webhooks.go
 actionlint.kjanat.dev/diag         Error, ErrorTemplateFields, ErrorAt, ErrorfAt, PrettyPrint
 actionlint.kjanat.dev/glob         ValidateRefGlob, ValidatePathGlob, InvalidGlobPatternError
-actionlint.kjanat.dev/internal     process.go, quotes.go
+actionlint.kjanat.dev/internal     process.go, quotes.go, action-pattern helpers
 actionlint.kjanat.dev/expr         lexer, parser, sema, types, insecure-input checker
 actionlint.kjanat.dev/project      Config, PathConfig, Project, Projects
 actionlint.kjanat.dev/actions      ActionMetadata, PopularActions, ReusableWorkflowMetadata
@@ -204,15 +220,18 @@ Each difference from the layout in the issue is forced by a measured edge.
   together have zero outgoing edges, so a leaf package holds them.
 - **`project` exists** because the `Rule` interface at `rule.go:115-116` declares `SetConfig(cfg *Config)` and
   `Config() *Config`, and because `action_metadata.go:198,204,254,319` and
-  `reusable_workflow.go:172,218,244,374,404` take `*Project` and call `Project.RootDir()`. `config.go` has one outgoing
-  edge and `project.go` has one.
+  `reusable_workflow.go:172,218,244,374,404` take `*Project` and call `Project.RootDir()`.
+- **The required-action pattern helpers move to `internal`.** Current `config.go:88` calls `invalidActionPattern` from
+  `rule_required_actions.go:25`, while the rule reads `Config.RequiredActions`. Leaving the helper in `rule` creates
+  `project -> rule -> project`. `SplitActionRef`, `InvalidActionPattern` and `MatchGlob` are private module plumbing,
+  so both packages can import them from the existing internal leaf without widening the published API.
 - **`diag` exists** for the reasons in the previous section.
 - **`glob` exists** because `glob.go` has zero outgoing edges and its consumers are `rule_glob.go` (5 symbols) and
   `fuzz`. Nothing in `actions` uses it. `ValidateRefGlob` and `ValidatePathGlob` are documented public API in
   `docs/api.md`, so `internal` would remove them from the published surface.
 - **`nodeKindName` moves to `ast`.** `reusable_workflow.go:19` calls it and `parse.go:17` declares it. It is a
   17-line pure function over `yaml.Kind`, and `ast.go:10` already imports `go.yaml.in/yaml/v4`. Leaving it in `parse.go`
-  puts an `actions -> root` edge in the graph, which is the last remaining cycle.
+  puts an `actions -> root` edge in the graph and closes `root -> actions -> root`.
 
 ### The layout is acyclic
 
@@ -225,10 +244,10 @@ glob     -> (none)
 internal -> (none)
 diag     -> ast(4)
 expr     -> data(1) internal(5)
-project  -> diag(2)
+project  -> diag(2) internal(1)
 actions  -> ast(19) expr(5) project(2)
-rule     -> actions(47) ast(227) data(2) diag(4) expr(46) glob(5) internal(12) project(4)
-root     -> actions(8) ast(250) diag(11) internal(4) project(15) rule(24)
+rule     -> actions(47) ast(230) data(2) diag(4) expr(46) glob(5) internal(14) project(8)
+root     -> actions(8) ast(251) diag(11) internal(4) project(19) rule(27)
 ```
 
 Six layers, no strongly connected component with more than one member:
@@ -252,18 +271,19 @@ Production files only.
 | `data`     | 2     | 107                            |
 | `diag`     | 1     | 228                            |
 | `glob`     | 1     | 261                            |
-| `internal` | 2     | 262                            |
-| `expr`     | 7     | 3192                           |
-| `project`  | 2     | 267                            |
+| `internal` | 3     | 288                            |
+| `expr`     | 7     | 3212                           |
+| `project`  | 2     | 436                            |
 | `actions`  | 3     | 6860 (of which 6110 generated) |
-| `rule`     | 19    | 4340                           |
-| root       | 5     | 2900                           |
+| `rule`     | 22    | 4663                           |
+| root       | 5     | 2909                           |
 
-`ast` gains 17 lines from `parse.go` and `diag` takes 228 lines from `error.go`, so the root loses both.
+`ast` gains 17 lines from `parse.go`, `diag` takes 228 lines from `error.go`, and `internal` gains 26 lines from
+`rule_required_actions.go`, so the source-line total stays unchanged.
 
 ## Symbols the new boundaries cut
 
-30 unexported symbols are used from a file that lands in a different package. Each has to be exported, or its user has
+33 unexported symbols are used from a file that lands in a different package. Each has to be exported, or its user has
 to change. The list is complete.
 
 ### `ast`
@@ -278,7 +298,7 @@ to change. The list is complete.
 | `(*scriptSource).pos` (`ast.go:80`)      | `rule_shellcheck.go:235`                                    | `ScriptSource.Pos`      |
 | `(*scriptSource).endPos` (`ast.go:84`)   | `rule_shellcheck.go:236`                                    | `ScriptSource.EndPos`   |
 | `ExecRun.source` (`ast.go:565`)          | written by `parse.go:1311`, read by `rule_shellcheck.go:66` | field `ExecRun.Source`  |
-| `nodeKindName` (`parse.go:17`)           | `reusable_workflow.go:19`                                   | `NodeKindName`          |
+| `nodeKindName` (`parse.go:17`)           | ten calls in `parse.go`, `reusable_workflow.go:19`          | `NodeKindName`          |
 
 `ExecRun.source` is written on one side of the boundary and read on the other, so a getter alone is not enough. Export
 the field. Every other field of `ExecRun` is already exported and `parse.go` builds all nodes field by field.
@@ -317,15 +337,17 @@ func ErrorfRangeAt(start, end *ast.Pos, kind string, format string, args ...any)
 | `externalCommand` and its `exe`, `run`, `wait` (`process.go`)                                                              | `rule_pyflakes.go`, `rule_shellcheck.go`                                |
 | `quotes`, `quotesAll`, `sortedQuotes` (`quotes.go`)                                                                        | `expr_sema.go`, `expr_insecure.go`, `parse.go`, seven `rule_*.go` files |
 | `quotesBuilder` and its `append`, `build` (`quotes.go`)                                                                    | `expr_parser.go`, `rule_events.go`                                      |
+| `splitActionRef`, `invalidActionPattern`, `matchGlob` (`rule_required_actions.go`)                                         | `config.go`, `rule_required_actions.go`                                 |
 
 Go's internal-import rule confines `actionlint.kjanat.dev/internal` to importers under `actionlint.kjanat.dev/`, so
-exporting these 14 symbols does not widen the published API.
+exporting these 17 symbols does not widen the published API. The action-pattern helpers become `SplitActionRef`,
+`InvalidActionPattern` and `MatchGlob`.
 
 ### `project` and `actions`
 
 | now                                                                     | used by                    | proposal                                |
 | ----------------------------------------------------------------------- | -------------------------- | --------------------------------------- |
-| `writeDefaultConfigFile` (`config.go:136`)                              | `linter.go:262`            | `WriteDefaultConfigFile`                |
+| `writeDefaultConfigFile` (`config.go:291`)                              | `linter.go:262`            | `WriteDefaultConfigFile`                |
 | `(*LocalReusableWorkflowCache).writeCache` (`reusable_workflow.go:193`) | `rule_workflow_call.go:69` | `LocalReusableWorkflowCache.WriteCache` |
 
 ## Code generators
@@ -402,8 +424,8 @@ If an alias layer is wanted, these are the Go rules, each verified in a throwawa
 The generic-function limit does not bite. `rg -n '^func [A-Z][A-Za-z0-9_]*\[|^type [A-Z][A-Za-z0-9_]*\[' *.go` returns
 nothing, so the package has no exported generic declaration.
 
-149 types and 60 consts, so 209 of the 267 top-level symbols, bridge with no loss, and the 207 methods on exported
-receivers come along with their type alias. The remaining 58 are 48 funcs and 10 vars. For the funcs, write a thin
+154 types and 60 consts, so 214 of the 276 top-level symbols bridge with no loss, and the 220 methods on exported
+receivers come along with their type alias. The remaining 62 are 52 funcs and 10 vars. For the funcs, write a thin
 wrapper function rather than `var F = pkg.F`. A wrapper stays a function in `go doc`, it can carry a doc comment, and
 consumers cannot rebind it, which `reassign` at `.golangci.toml:34` already forbids for the current package. All 10
 vars are maps
@@ -417,42 +439,49 @@ itself is lost. None of the ten is rebound anywhere in the repository.
 Go refuses import cycles at compile time, so `go build ./...` is itself the cycle check. Any phase that introduces one
 fails immediately.
 
-| phase | content                                                                                                                                                                | endpoint                                                                                      |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| 0     | this document                                                                                                                                                          | `dprint check`; no `.go` change                                                               |
-| 1     | `internal` from `process.go` and `quotes.go`; export the 14 symbols used from `expr`, `rule` and the root                                                              | `make build SKIP_GO_GENERATE=true`, `make test`, `make lint SKIP_GO_GENERATE=true`            |
-| 2     | `data` from `availability.go` and `all_webhooks.go`; generators emit `package data`; `Makefile` and `//go:generate` updated                                            | as phase 1, plus `go generate ./...` leaves a clean `git diff`                                |
-| 3     | `glob` from `glob.go`                                                                                                                                                  | as phase 1                                                                                    |
-| 4     | `ast` from `ast.go`, `pass.go` and `nodeKindName`; the nine boundary symbols exported                                                                                  | as phase 1, plus `go doc actionlint.kjanat.dev/ast Pos`                                       |
-| 5     | `diag` from `error.go:1-228`; `ErrorAt`, `ErrorfAt`, `CompareErrors`, `EqualsErrors`, `ErrorfRangeAt` exported; `ErrorFormatter` stays in the root                     | as phase 1, plus `go doc actionlint.kjanat.dev/diag Error`                                    |
-| 6     | `expr` from the seven `expr_*.go` files                                                                                                                                | as phase 1, plus `go list -deps actionlint.kjanat.dev/expr` names neither `rule` nor the root |
-| 7     | `project` from `config.go` and `project.go`                                                                                                                            | as phase 1                                                                                    |
-| 8     | `actions` from `action_metadata.go`, `popular_actions.go` and `reusable_workflow.go`                                                                                   | as phase 1                                                                                    |
-| 9     | `rule` from `rule.go` and the 18 `rule_*.go` files; the `Rule` interface takes `*project.Config`                                                                       | as phase 1                                                                                    |
-| 10    | consumers: `cmd/actionlint-action`, `playground`, `fuzz`, `scripts/check-checks`, `scripts/generate-popular-actions`; the 32 white-box test files move with their code | as phase 1, plus `GOOS=js GOARCH=wasm golangci-lint run ./playground` and `make fuzz`         |
-| 11    | `docs/api.md`, `doc.go`, `example_test.go`, `example_your_own_rule_test.go`; alias layer in the root if wanted                                                         | `go test ./...` including the `Example*` functions                                            |
+| phase | content                                                                                                                                                                                                                                | endpoint                                                                                      |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| 0     | this document                                                                                                                                                                                                                          | `dprint check`; no `.go` change                                                               |
+| 1     | `internal` from `process.go`, `quotes.go` and the three action-pattern helpers; export 17 boundary symbols; update every `expr`, `rule`, `project` and root caller; move or rewrite the directly affected tests; make `SRCS` recursive | `make build SKIP_GO_GENERATE=true`, `make test`, `make lint SKIP_GO_GENERATE=true`            |
+| 2     | `data` from `availability.go` and `all_webhooks.go`; move their tests; generators emit `package data`; `Makefile` and `//go:generate` updated                                                                                          | as phase 1, plus `go generate ./...` leaves a clean `git diff`                                |
+| 3     | `glob` from `glob.go`; move `glob_test.go` and update the fuzz consumer                                                                                                                                                                | as phase 1, plus `make fuzz`                                                                  |
+| 4     | `ast` from `ast.go`, `pass.go` and `nodeKindName`; export the nine boundary symbols; update all production and test consumers or add the corresponding transitional root aliases in this phase                                         | as phase 1, plus `go doc actionlint.kjanat.dev/ast Pos`                                       |
+| 5     | `diag` from `error.go:1-228`; split `error_test.go` between `diag` and the root; update `cmd/actionlint-action`, `playground` and examples or add transitional root aliases                                                            | as phase 1, plus `go doc actionlint.kjanat.dev/diag Error`                                    |
+| 6     | `expr` from the seven `expr_*.go` files; move the expression tests and update every production, fuzz and example consumer                                                                                                              | as phase 1, plus `go list -deps actionlint.kjanat.dev/expr` names neither `rule` nor the root |
+| 7     | `project` from `config.go` and `project.go`; move their tests; rewrite root and rule tests that currently reach private project fields or helpers                                                                                      | as phase 1                                                                                    |
+| 8     | `actions` from `action_metadata.go`, `popular_actions.go` and `reusable_workflow.go`; move their tests; rewrite rule tests against public cache methods                                                                                | as phase 1                                                                                    |
+| 9     | `rule` from `rule.go` and the 21 `rule_*.go` files; move its tests; split `rule_required_actions_test.go` into internal helper tests, white-box rule tests and external parsing tests                                                  | as phase 1                                                                                    |
+| 10    | finish remaining consumers and test-package conversions; exercise `cmd/actionlint-action`, `playground`, `fuzz`, `scripts/check-checks` and `scripts/generate-popular-actions`; remove transitional aliases if the API break is chosen | as phase 1, plus `GOOS=js GOARCH=wasm golangci-lint run ./playground` and `make fuzz`         |
+| 11    | `docs/api.md`, `doc.go` and examples; finalize the root alias layer if compatibility is chosen                                                                                                                                         | `go test ./...` including the `Example*` functions                                            |
+
+Every phase includes the consumers and tests that would otherwise stop compiling when that boundary moves. A
+transitional root alias or wrapper is acceptable, but it must land with the move and be removed in phase 10 if phase 11
+chooses the breaking API. Tests are not postponed wholesale: the owning phase moves or rewrites them.
 
 Every new package needs a package doc comment as a repository convention. Nothing enforces it today.
 `staticcheck.conf` lists `ST1000`, but golangci-lint does not read that file, and a package with no doc comment
 produces zero issues under this repository's `.golangci.toml`.
 
-Phases 1 to 3 are additive and touch no `rule_*.go` or `expr_*.go` file, so they can land while feature branches are
-open. Phases 4 to 10 move every one of the 43 production files and rewrite the path of all 77 root files. Any open
-branch touching a root file becomes unmergeable without hand re-pathing, so those phases need a window with no open
-feature branch.
+Phase 1 is not additive: qualifying the moved helpers changes `expr_parser.go`, `expr_sema.go`, `expr_insecure.go`,
+multiple `rule_*.go` files, `parse.go`, `linter.go` and `config.go`. It therefore needs coordination with branches that
+touch those callers. Phases 2 and 3 have narrower generator, data, glob, test and fuzz call sites. Phases 4 to 10
+relocate or split 41 of the 46 production files and can rewrite imports throughout the remaining production and test
+files. Any open branch touching a root file becomes unmergeable without hand re-pathing, so those phases need a window
+with no open feature branch.
 
 ## Corrections to issue #21
 
 | the issue says                                                                        | measured                                                                                                                                                                                                |
 | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "428 exported symbols (149 types, 255 funcs, 10 vars, 10 consts)"                     | 149 types, 48 funcs, 60 consts, 10 vars, 210 methods. The listed numbers also sum to 424                                                                                                                |
+| "428 exported symbols (149 types, 255 funcs, 10 vars, 10 consts)"                     | 154 types, 52 funcs, 60 consts, 10 vars, 223 methods. The listed numbers also sum to 424                                                                                                                |
 | two files have no exported symbols                                                    | three: `process.go`, `quotes.go`, `doc.go`                                                                                                                                                              |
 | "`actionlint.kjanat.dev` has never been tagged", "API breakage: None"                 | 63 tags, five versions on the module proxy, vanity import live                                                                                                                                          |
 | "27 commits touching root `.go` files in the last six months, across 10 unique files" | 14 commits over 10 unique root files. 27 is the count for any `.go` file in the module. The fetched `upstream/main` also stops at 2026-04-19, so the window holds about two months of upstream activity |
 | the five-package layout                                                               | contains three import cycles, none of them named in the issue                                                                                                                                           |
 
-58 of the 77 root files differ from `upstream/main` at `011a6d15`: 19 identical, 55 changed, 3 present only in the fork
-(`rule_parallel_steps.go`, `rule_action_test.go`, `rule_shell_name_test.go`).
+65 of the 82 root files differ from `upstream/main` at `011a6d15`: 17 identical, 57 changed, 8 present only in the fork
+(`rule_parallel_steps.go`, `rule_action_test.go`, `rule_shell_name_test.go`, the three policy-rule files and the two
+new policy test files).
 
 ## Reproducing the measurements
 
@@ -464,20 +493,21 @@ feature branch.
 | `reusable_workflow.go` uses `parse.go`                 | `rg -n 'nodeKindName' parse.go reusable_workflow.go`                                                                                                | no hit in `reusable_workflow.go`                                                                                                                                                        |
 | `{ErrorFormatter, command, linter}` is a cycle         | `rg -n 'getCommandVersion' error.go command.go` and `rg -n 'RegisterRule' error.go linter.go`                                                       | either returns nothing                                                                                                                                                                  |
 | `{expr_insecure, expr_sema}` is a cycle                | `rg -n 'errorfAtExpr\|UntrustedInputChecker' expr_sema.go expr_insecure.go`                                                                         | no use of `errorfAtExpr` in `expr_insecure.go`                                                                                                                                          |
+| `{config, rule_required_actions}` is a cycle           | `rg -n 'invalidActionPattern\|RequiredActions\(' config.go rule_required_actions.go`                                                                | no hit in either direction                                                                                                                                                              |
 | `expr` touches neither `Pos` nor `Error`               | `rg -n '\bPos\b\|\bError\b' expr.go expr_ast.go expr_lexer.go expr_parser.go expr_sema.go expr_type.go expr_insecure.go`                            | 11 hits, all from `text/scanner` (`scan.Pos()`, `scan.Error`) and `(*ExprError).Error()` at `expr.go:18,23`. A twelfth hit, or one naming `ast.Pos` or the linter `Error`, falsifies it |
 | the AST and the expression tree are independent        | `rg -n 'ExprNode\|ExprType\|ExprError' ast.go pass.go`                                                                                              | any hit                                                                                                                                                                                 |
 | `compareErrors` and `equalsErrors` are production code | `rg -n 'compareErrors\|equalsErrors' --type go`                                                                                                     | hits only in `_test.go` files                                                                                                                                                           |
 | `byteOffsetAtColumn` is used inside `ast.go`           | `rg -n 'byteOffsetAtColumn' --type go`                                                                                                              | no hit at `ast.go:93`                                                                                                                                                                   |
 | the module is published                                | `curl -sS 'https://proxy.golang.org/actionlint.kjanat.dev/@v/list'`                                                                                 | empty output or 404                                                                                                                                                                     |
 | the vanity import is live                              | `curl -sSI 'https://actionlint.kjanat.dev/?go-get=1'`                                                                                               | a status other than 200                                                                                                                                                                 |
-| 58 of 77 root files differ from upstream               | `for f in *.go; do git cat-file -e upstream/main:"$f" 2>/dev/null \|\| echo "$f new"; done` and `git diff --stat upstream/main HEAD -- '*.go'`      | a different count                                                                                                                                                                       |
+| 65 of 82 root files differ from upstream               | `for f in *.go; do git cat-file -e upstream/main:"$f" 2>/dev/null \|\| echo "$f new"; done` and `git diff --stat upstream/main HEAD -- '*.go'`      | a different count                                                                                                                                                                       |
 | 14 upstream commits touch root `.go` in six months     | `git log --oneline --since="$(date -d '6 months ago' +%Y-%m-%d)" upstream/main -- '*.go' ':!cmd' ':!scripts' ':!playground' ':!fuzz'`               | a different count                                                                                                                                                                       |
 | no exported generic declaration                        | `rg -n '^func [A-Z][A-Za-z0-9_]*\[\|^type [A-Z][A-Za-z0-9_]*\[' *.go`                                                                               | any hit                                                                                                                                                                                 |
 | the alias table                                        | a throwaway module with `type T = pkg.T`, `const C = pkg.C`, `var F = pkg.F`, `var V = pkg.V`, a `[C]int` array and a function that rebinds `pkg.V` | any row behaving differently                                                                                                                                                            |
 | `ST1000` does not fire                                 | a throwaway module with this repository's `.golangci.toml`, `staticcheck.conf` and a package without a doc comment, then `golangci-lint run ./...`  | any issue reported                                                                                                                                                                      |
 | the layout is acyclic                                  | after phase 10, `go build ./...` succeeds and `go list -deps actionlint.kjanat.dev/expr` names neither `rule` nor the root                          | `import cycle not allowed`, or an unexpected dependency                                                                                                                                 |
 
-Once the move is done the Go compiler enforces every cycle claim in this document. Before the move, the six rows at
+Once the move is done the Go compiler enforces every cycle claim in this document. Before the move, the seven rows at
 the top of the table carry the proof, and each is one `rg` away.
 
 ## Open questions
@@ -485,10 +515,10 @@ the top of the table carry the proof, and each is one `rg` away.
 1. `data` or `gha` as the name for the generated-table package. `data` says nothing, but `availability.go` and
    `all_webhooks.go` are both plain GitHub Actions reference data.
 2. `diag` or `errs` as the name for the diagnostic package.
-3. Alias layer in the root, yes or no. 209 of the 267 top-level symbols bridge without loss, 48 funcs need wrappers and
+3. Alias layer in the root, yes or no. 214 of the 276 top-level symbols bridge without loss, 52 funcs need wrappers and
    10 vars lose only rebinding. Roughly 300 lines of root code plus doc comments. The alternative is a `v2` module path
    and taking the break, which `docs/api.md:49-52` already warns consumers about.
-4. Whether `Rule` keeps `SetConfig(*project.Config)` or takes a local interface instead. Rules read exactly two members
-   of `Config`: `Config.SelfHostedRunner` in `rule_runner_label.go` and `Config.ConfigVariables` in
-   `rule_expression.go`. A local interface would leave `rule` independent of `project`, at the cost of a harder break
-   in the published `Rule` interface.
+4. Whether `Rule` keeps `SetConfig(*project.Config)` or takes a local interface instead. Rules read exactly three
+   members of `Config`: `Config.SelfHostedRunner` in `rule_runner_label.go`, `Config.ConfigVariables` in
+   `rule_expression.go` and `Config.RequiredActions()` in `rule_required_actions.go`. A local interface would leave
+   `rule` independent of `project`, at the cost of a harder break in the published `Rule` interface.
