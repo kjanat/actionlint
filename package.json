@@ -24,6 +24,9 @@
   "overrides": {
     "undici": ">=6.28.0"
   },
+  "dependencies": {
+    "feather-icons": "4.28.0"
+  },
   "devDependencies": {
     "@actions/github-script": "github:actions/github-script",
     "@types/node": "^26.2.0",

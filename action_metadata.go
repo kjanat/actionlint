@@ -206,6 +206,7 @@ type ActionMetadataBranding struct {
 type ActionMetadata struct {
 	dir  string
 	file string
+	src  []byte
 	// Name is "name" field of action.yaml.
 	Name string `yaml:"name" json:"name"`
 	// Description is "description" field of action.yaml.
@@ -336,6 +337,7 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 	}
 	meta.file = f
 	meta.dir = dir
+	meta.src = b
 
 	c.debug("New metadata parsed from action %s: %v", dir, &meta)
 	c.writeCache(spec, &meta)

@@ -5,8 +5,8 @@ import (
 	"io"
 )
 
-// RuleBase is a struct to be a base of rule structs. Embed this struct to define default methods
-// automatically
+// RuleBase is a struct to be a base of rule structs.
+// Embed this struct to define default methods automatically
 type RuleBase struct {
 	name   string
 	desc   string
@@ -15,8 +15,8 @@ type RuleBase struct {
 	config *Config
 }
 
-// NewRuleBase creates a new RuleBase instance. It should be embedded to your own
-// rule instance.
+// NewRuleBase creates a new RuleBase instance.
+// It should be embedded to your own rule instance.
 func NewRuleBase(name string, desc string) RuleBase {
 	return RuleBase{
 		name: name,
@@ -62,7 +62,8 @@ func (r *RuleBase) errorfRange(start, end *Pos, format string, args ...any) {
 	r.errs = append(r.errs, err)
 }
 
-// Debug prints debug log to the output. The output is specified by the argument of EnableDebug method.
+// Debug prints debug log to the output.
+// The output is specified by the argument of EnableDebug method.
 // By default, no output is set so debug log is not printed.
 func (r *RuleBase) Debug(format string, args ...any) {
 	if r.dbg == nil {
@@ -87,20 +88,21 @@ func (r *RuleBase) Description() string {
 	return r.desc
 }
 
-// EnableDebug enables debug output from the rule. Given io.Writer instance is used to print debug
-// information to console. Setting nil means disabling debug output.
+// EnableDebug enables debug output from the rule.
+// Given io.Writer instance is used to print debug information to console.
+// Setting nil means disabling debug output.
 func (r *RuleBase) EnableDebug(out io.Writer) {
 	r.dbg = out
 }
 
-// SetConfig populates user configuration of actionlint to the rule. When no config is set, rules
-// should behave as if the default configuration is set.
+// SetConfig populates user configuration of actionlint to the rule.
+// When no config is set, rules should behave as if the default configuration is set.
 func (r *RuleBase) SetConfig(cfg *Config) {
 	r.config = cfg
 }
 
-// Config returns the user configuration of actionlint. When no config was set to this rule by SetConfig,
-// this method returns nil.
+// Config returns the user configuration of actionlint.
+// When no config was set to this rule by SetConfig, this method returns nil.
 func (r *RuleBase) Config() *Config {
 	return r.config
 }
