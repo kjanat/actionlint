@@ -212,6 +212,10 @@ func (p *parser) errorf(n *yaml.Node, format string, args ...any) {
 }
 
 func (p *parser) resolveAliases(root *yaml.Node) {
+	resolveYAMLAliases(root, p.error)
+}
+
+func resolveYAMLAliases(root *yaml.Node, report func(n *yaml.Node, m string)) {
 	type usage struct {
 		used    bool
 		defined bool
@@ -239,7 +243,7 @@ func (p *parser) resolveAliases(root *yaml.Node) {
 				} else {
 					// Don't resolve the recursive alias because it causes stack overflow on parsing the tree as
 					// `RawYAMLValue`. (#610)
-					p.errorf(c, "recursive alias %q is found. anchor was declared at line:%d, column:%d", c.Alias.Anchor, c.Alias.Line, c.Alias.Column)
+					report(c, fmt.Sprintf("recursive alias %q is found. anchor was declared at line:%d, column:%d", c.Alias.Anchor, c.Alias.Line, c.Alias.Column))
 				}
 			}
 		}
@@ -251,7 +255,7 @@ func (p *parser) resolveAliases(root *yaml.Node) {
 
 	for n, u := range anchors {
 		if !u.used {
-			p.errorf(n, "anchor %q is defined but not used", n.Anchor)
+			report(n, fmt.Sprintf("anchor %q is defined but not used", n.Anchor))
 		}
 	}
 }

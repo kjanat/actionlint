@@ -2,6 +2,7 @@ package actionlint
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -402,6 +403,72 @@ func testParseWorkflowPermissions(t *testing.T, src string) *Permissions {
 		t.Fatal("workflow was not parsed:", errs)
 	}
 	return w.Permissions
+}
+
+func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
+	root := filepath.Join("testdata", "reusable_workflow_metadata")
+
+	run := func(t *testing.T, cache *LocalReusableWorkflowCache) []string {
+		t.Helper()
+		r := NewRuleWorkflowCall("caller.yaml", cache)
+		if err := r.VisitWorkflowPre(&Workflow{}); err != nil {
+			t.Fatal(err)
+		}
+		j := &Job{
+			ID:          &String{Value: "caller", Pos: &Pos{}},
+			Permissions: testParseWorkflowPermissions(t, "permissions: {}"),
+			WorkflowCall: &WorkflowCall{
+				Uses:    &String{Value: "./permissions.yaml", Pos: &Pos{}},
+				Inputs:  map[string]*WorkflowCallInput{},
+				Secrets: map[string]*WorkflowCallSecret{},
+			},
+		}
+		if err := r.VisitJobPre(j); err != nil {
+			t.Fatal(err)
+		}
+		msgs := []string{}
+		for _, err := range r.Errs() {
+			msgs = append(msgs, err.Message)
+		}
+		return msgs
+	}
+
+	fromFile := run(t, NewLocalReusableWorkflowCache(&Project{root, nil}, root, nil))
+
+	src, err := os.ReadFile(filepath.Join(root, "permissions.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	w, errs := Parse(src)
+	if w == nil {
+		t.Fatal("callee was not parsed:", errs)
+	}
+	var event *WorkflowCallEvent
+	for _, e := range w.On {
+		if ev, ok := e.(*WorkflowCallEvent); ok {
+			event = ev
+		}
+	}
+	if event == nil {
+		t.Fatal("callee has no workflow_call event")
+	}
+	astCache := NewLocalReusableWorkflowCache(&Project{root, nil}, root, nil)
+	astCache.WriteWorkflowCallEventFromWorkflow("permissions.yaml", event, w)
+	fromNode := run(t, astCache)
+
+	if len(fromFile) == 0 {
+		t.Fatal("no diagnostic was reported")
+	}
+	if diff := cmp.Diff(fromFile, fromNode); diff != "" {
+		t.Fatal("diagnostics differ between cache population paths. diff:\n" + diff)
+	}
+	for _, id := range []string{"aliased-perms", "base", "duplicate"} {
+		if !slices.ContainsFunc(fromFile, func(m string) bool {
+			return strings.Contains(m, fmt.Sprintf("nested job %q", id))
+		}) {
+			t.Errorf("no diagnostic mentions job %q in %v", id, fromFile)
+		}
+	}
 }
 
 func TestRuleWorkflowCallCheckPermissions(t *testing.T) {

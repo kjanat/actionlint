@@ -357,9 +357,26 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 		Jobs        yaml.Node `yaml:"jobs"`
 	}
 
+	var doc yaml.Node
+	if err := yaml.Unmarshal(src, &doc); err != nil {
+		return nil, err
+	}
+
+	var aliasErr error
+	resolveYAMLAliases(&doc, func(n *yaml.Node, m string) {
+		if aliasErr == nil {
+			aliasErr = fmt.Errorf("line:%d, column:%d: %s", n.Line, n.Column, m)
+		}
+	})
+	if aliasErr != nil {
+		return nil, aliasErr
+	}
+
 	var w workflow
-	if err := yaml.Unmarshal(src, &w); err != nil {
-		return nil, err // Unreachable
+	if doc.Kind != 0 {
+		if err := doc.Decode(&w); err != nil {
+			return nil, err
+		}
 	}
 
 	n := &w.On

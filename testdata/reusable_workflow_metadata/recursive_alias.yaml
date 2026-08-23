@@ -1,0 +1,9 @@
+on:
+  workflow_call:
+
+jobs:
+  a: &job
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+    with: *job

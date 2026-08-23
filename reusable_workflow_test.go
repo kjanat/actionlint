@@ -415,6 +415,11 @@ func TestReusableWorkflowCacheFindMetadataError(t *testing.T) {
 			spec: "./broken_secrets.yaml",
 			want: "error while parsing reusable workflow \"./broken_secrets.yaml\"",
 		},
+		{
+			what: "recursive alias",
+			spec: "./recursive_alias.yaml",
+			want: "recursive alias \"job\" is found",
+		},
 	}
 
 	for _, tc := range tests {
@@ -933,9 +938,12 @@ func TestReusableWorkflowMetadataJobPermissions(t *testing.T) {
 	}
 
 	want := map[string]PermissionScopeLevels{
-		"inherits": {"contents": PermissionLevelRead},
-		"Override": {"pull-requests": PermissionLevelWrite},
-		"all-read": readAll,
+		"inherits":      {"contents": PermissionLevelRead},
+		"Override":      {"pull-requests": PermissionLevelWrite},
+		"all-read":      readAll,
+		"aliased-perms": {"contents": PermissionLevelRead},
+		"base":          {"id-token": PermissionLevelWrite},
+		"duplicate":     {"id-token": PermissionLevelWrite},
 	}
 
 	proj := &Project{filepath.Join("testdata", "reusable_workflow_metadata"), nil}
