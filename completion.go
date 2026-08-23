@@ -99,6 +99,25 @@ func (s *completionShell) Set(v string) error {
 	return fmt.Errorf("must be one of %s, \"pwsh\", a path to one of them, or \"auto\"", completionShellNames())
 }
 
+// completionAliasArgs rewrites the "-completions" spelling to "-completion" so both work. The
+// alias stays out of the flag set on purpose, which keeps it out of the help output, the manual
+// and the completion scripts. Rewriting stops at "--", where the flag package stops parsing too.
+func completionAliasArgs(args []string) []string {
+	ret := slices.Clone(args)
+	for i, a := range ret {
+		if a == "--" {
+			break
+		}
+		for _, dash := range []string{"--", "-"} {
+			if rest, ok := strings.CutPrefix(a, dash+"completions"); ok && (rest == "" || strings.HasPrefix(rest, "=")) {
+				ret[i] = dash + "completion" + rest
+				break
+			}
+		}
+	}
+	return ret
+}
+
 // repeatableFlag is implemented by a flag.Value which accumulates every occurrence instead of
 // overwriting the previous one.
 type repeatableFlag interface {

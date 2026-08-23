@@ -299,6 +299,24 @@ func TestCommandCompletionFlag(t *testing.T) {
 			stdout: "Register-ArgumentCompleter -Native -CommandName actionlint",
 		},
 		{
+			what:   "completions alias",
+			args:   []string{"actionlint", "-completions", "bash"},
+			status: ExitStatusSuccessNoProblem,
+			stdout: "complete -o filenames -F _actionlint actionlint",
+		},
+		{
+			what:   "completions alias with double dash and equals sign",
+			args:   []string{"actionlint", "--completions=zsh"},
+			status: ExitStatusSuccessNoProblem,
+			stdout: "#compdef actionlint",
+		},
+		{
+			what:   "completions alias without a value names the canonical flag",
+			args:   []string{"actionlint", "-completions"},
+			status: ExitStatusInvalidCommandOption,
+			stderr: "flag needs an argument: -completion",
+		},
+		{
 			what:   "shell path",
 			args:   []string{"actionlint", "-completion", "/usr/bin/zsh"},
 			status: ExitStatusSuccessNoProblem,
@@ -353,6 +371,31 @@ func TestCompletionDescription(t *testing.T) {
 			}
 			if have := completionDescription(fl); have != tc.want {
 				t.Fatalf("description is %q but wanted %q", have, tc.want)
+			}
+		})
+	}
+}
+
+func TestCompletionAliasArgs(t *testing.T) {
+	tests := []struct {
+		what string
+		in   []string
+		want []string
+	}{
+		{"single dash", []string{"-completions", "bash"}, []string{"-completion", "bash"}},
+		{"double dash", []string{"--completions", "bash"}, []string{"--completion", "bash"}},
+		{"equals sign", []string{"-completions=zsh"}, []string{"-completion=zsh"}},
+		{"double dash with equals sign", []string{"--completions=zsh"}, []string{"--completion=zsh"}},
+		{"canonical spelling is untouched", []string{"-completion", "bash"}, []string{"-completion", "bash"}},
+		{"longer flag is untouched", []string{"-completionsx"}, []string{"-completionsx"}},
+		{"no rewrite after the terminator", []string{"--", "-completions"}, []string{"--", "-completions"}},
+		{"other arguments are untouched", []string{"-verbose", "a.yaml"}, []string{"-verbose", "a.yaml"}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.what, func(t *testing.T) {
+			if have := completionAliasArgs(tc.in); !slices.Equal(have, tc.want) {
+				t.Fatalf("completionAliasArgs(%q) = %q but wanted %q", tc.in, have, tc.want)
 			}
 		})
 	}

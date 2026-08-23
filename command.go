@@ -163,7 +163,7 @@ func (cmd *Command) Main(args []string) int {
 		printUsageHeader(cmd.Stderr)
 		flags.PrintDefaults()
 	}
-	if err := flags.Parse(args[1:]); err != nil {
+	if err := flags.Parse(completionAliasArgs(args[1:])); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			// When -h or -help
 			return ExitStatusSuccessNoProblem
