@@ -148,7 +148,7 @@ func (f *commandFlags) newFlagSet(name string, out io.Writer) *flag.FlagSet {
 	flags.BoolVar(&f.opts.Debug, "debug", false, "Enable debug output (for development)")
 	flags.BoolVar(&f.version, "version", false, "Show version and how this binary was installed")
 	flags.StringVar(&f.opts.StdinFileName, "stdin-filename", "<stdin>", "File name when reading input from stdin")
-	flags.Var(&f.completion, "completion", "Print a shell completion script for the given `shell`. One of \"bash\", \"fish\", \"powershell\", \"zsh\"")
+	flags.Var(&f.completion, "completion", "Print a shell completion script for the given `shell`. One of \"bash\", \"fish\", \"powershell\", \"zsh\". Also accepted are \"pwsh\", a shell path such as \"$SHELL\", and \"auto\" to detect the current shell")
 	return flags
 }
 
