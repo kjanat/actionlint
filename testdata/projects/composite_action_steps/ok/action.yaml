@@ -1,0 +1,29 @@
+name: 'Composite steps'
+author: 'rhysd <https://rhysd.github.io>'
+description: 'Steps the runner accepts'
+
+runs:
+  using: composite
+  steps:
+    - name: Script
+      id: script
+      if: runner.os == 'Linux'
+      run: echo hello
+      shell: bash
+      working-directory: sub
+      continue-on-error: true
+      env:
+        FOO: bar
+    - name: Action
+      id: action
+      if: runner.os == 'Linux'
+      uses: actions/checkout@v5
+      continue-on-error: true
+      env:
+        FOO: bar
+      with:
+        persist-credentials: false
+    - &greet
+      run: echo hello
+      shell: bash
+    - *greet

@@ -6,3 +6,4 @@ runs:
   using: 'composite'
   steps:
     - run: echo hello
+      shell: bash

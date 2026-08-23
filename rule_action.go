@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -481,12 +482,75 @@ func (rule *RuleAction) checkLocalDockerActionRuns(r *ActionMetadataRuns, dir, n
 	rule.checkInvalidRunsProps(pos, r, "Docker", name, dir, []string{"main", "pre", "pre-if", "post", "post-if", "steps"})
 }
 
+// Composite action steps are one of two disjoint mappings in the runner's template schema.
+// https://github.com/actions/runner/blob/main/src/Runner.Worker/action_yaml.json
+var (
+	compositeRunStepKeys  = []string{"continue-on-error", "env", "id", "if", "name", "run", "shell", "working-directory"}
+	compositeUsesStepKeys = []string{"continue-on-error", "env", "id", "if", "name", "uses", "with"}
+	compositeAnyStepKeys  = []string{"continue-on-error", "env", "id", "if", "name", "run", "shell", "uses", "with", "working-directory"}
+)
+
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-composite-actions
 func (rule *RuleAction) checkLocalCompositeActionRuns(r *ActionMetadataRuns, dir, name string, pos *Pos) {
 	if r.Steps == nil {
 		rule.missingRunsProp(pos, "steps", "Composite", name, dir)
 	}
+	for i, s := range r.Steps {
+		rule.checkCompositeActionStep(s, i, name, dir, pos)
+	}
 	rule.checkInvalidRunsProps(pos, r, "Composite", name, dir, []string{"main", "pre", "pre-if", "post", "post-if", "image", "pre-entrypoint", "entrypoint", "post-entrypoint", "args", "env"})
+}
+
+func (rule *RuleAction) compositeStepErrorf(pos *Pos, s *ActionCompositeStep, idx int, name, dir, format string, args ...any) {
+	m := fmt.Sprintf(format, args...)
+	rule.Errorf(pos, `step %d at line:%d,col:%d in "runs.steps" section in metadata of %q action %s. the action is defined at %q`, idx+1, s.Line, s.Column, name, m, dir)
+}
+
+func (rule *RuleAction) checkCompositeActionStepKeys(s *ActionCompositeStep, idx int, name, dir string, allowed []string, pos *Pos) {
+	for _, k := range s.Keys {
+		if !slices.Contains(allowed, strings.ToLower(k)) {
+			rule.compositeStepErrorf(pos, s, idx, name, dir, "has unexpected key %q. expected one of %s", k, sortedQuotes(allowed))
+		}
+	}
+}
+
+func (rule *RuleAction) checkCompositeActionStep(s *ActionCompositeStep, idx int, name, dir string, pos *Pos) {
+	if !s.IsMapping {
+		rule.compositeStepErrorf(pos, s, idx, name, dir, `must be a mapping with "run" or "uses" key`)
+		return
+	}
+
+	var hasRun, hasShell, hasUses bool
+	for _, k := range s.Keys {
+		switch strings.ToLower(k) {
+		case "run":
+			hasRun = true
+		case "shell":
+			hasShell = true
+		case "uses":
+			hasUses = true
+		}
+	}
+
+	switch {
+	case hasRun && hasUses:
+		rule.compositeStepErrorf(pos, s, idx, name, dir, `cannot have both "run" and "uses" keys`)
+	case hasRun:
+		if !hasShell {
+			rule.compositeStepErrorf(pos, s, idx, name, dir, `requires "shell" key since it has "run" key`)
+		}
+		rule.checkCompositeActionStepKeys(s, idx, name, dir, compositeRunStepKeys, pos)
+	case hasUses:
+		if s.Uses == nil {
+			rule.compositeStepErrorf(pos, s, idx, name, dir, `must have a string value at "uses" key`)
+		} else if u, _, _ := strings.Cut(*s.Uses, "@"); strings.HasSuffix(u, ".yml") || strings.HasSuffix(u, ".yaml") {
+			rule.compositeStepErrorf(pos, s, idx, name, dir, `cannot call reusable workflow %q at "uses" key`, *s.Uses)
+		}
+		rule.checkCompositeActionStepKeys(s, idx, name, dir, compositeUsesStepKeys, pos)
+	default:
+		rule.compositeStepErrorf(pos, s, idx, name, dir, `requires either "run" or "uses" key`)
+		rule.checkCompositeActionStepKeys(s, idx, name, dir, compositeAnyStepKeys, pos)
+	}
 }
 
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-javascript-actions

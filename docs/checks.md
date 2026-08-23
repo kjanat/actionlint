@@ -3185,6 +3185,8 @@ actionlint checks metadata files used in workflows and reports errors when they 
 - Runner name at `using:` is one of `composite`, `docker`, `node20`
 - Keys under `runs:` section are correct. Required/Valid keys are different depending on the type of action; Docker action or
   Composite action or JavaScript action (e.g. `image:` is required for Docker action).
+- Each step in `steps:` of Composite action is a mapping the runner accepts; a script step with `run:` and `shell:`, or
+  an action step with `uses:`.
 - Files specified in some keys under `runs` are existing. For example, JavaScript action defines a script file path for
   entrypoint at `main:`.
 - Icon name at `icon:` in `branding:` section is correct. Supported icon names are listed in
@@ -3195,7 +3197,11 @@ actionlint checks metadata files used in workflows and reports errors when they 
 actionlint checks action metadata files which are used by workflows. Currently, it is not supported to specify `action.yml`
 directly via command line arguments.
 
-Note that `steps` in Composite action's metadata is not checked at this point. It will be supported in the future.
+For a Composite action, each item in `steps:` must be a mapping in one of the two shapes the runner accepts: a script step
+with `run:` and `shell:` keys, or an action step with `uses:` key. actionlint reports a step which mixes the two shapes, misses
+`shell:` next to `run:`, has a key the runner does not know such as `parallel:` or `timeout-minutes:`, has a non-string value
+at `uses:`, or calls a reusable workflow at `uses:`. `working-directory:` is only allowed in a script step and `with:` is only
+allowed in an action step.
 
 <a id="deprecated-inputs-usage"></a>
 

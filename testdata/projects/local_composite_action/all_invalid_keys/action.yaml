@@ -6,6 +6,7 @@ runs:
   using: 'composite'
   steps:
     - run: echo hello
+      shell: bash
   main: index.js
   pre: pre.js
   pre-if: true

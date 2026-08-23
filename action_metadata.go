@@ -115,6 +115,54 @@ func (inputs *ActionMetadataOutputs) UnmarshalYAML(n *yaml.Node) error {
 	return nil
 }
 
+// ActionCompositeStep is a step in "steps" section in "runs" section of action.yaml for a
+// composite action. The runner only accepts a step which runs a script with "run" and "shell"
+// keys, or a step which runs another action with "uses" key.
+// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runssteps
+type ActionCompositeStep struct {
+	// Line is the line where the step starts in action.yaml.
+	Line int `json:"line"`
+	// Column is the column where the step starts in action.yaml.
+	Column int `json:"column"`
+	// IsMapping is whether the step is a mapping node. The runner requires every step to be a
+	// mapping.
+	IsMapping bool `json:"is_mapping"`
+	// Keys is the key names of the step mapping in file order.
+	Keys []string `json:"keys"`
+	// Uses is the value of "uses" key in the step. It is nil when the key is absent or its value
+	// is not a string.
+	Uses *string `json:"uses"`
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (s *ActionCompositeStep) UnmarshalYAML(n *yaml.Node) error {
+	for n.Kind == yaml.AliasNode && n.Alias != nil && n.Alias.Kind != yaml.AliasNode {
+		n = n.Alias
+	}
+
+	s.Line, s.Column = n.Line, n.Column
+	if n.Kind != yaml.MappingNode {
+		return nil
+	}
+
+	s.IsMapping = true
+	s.Keys = make([]string, 0, len(n.Content)/2)
+	for i := 0; i < len(n.Content); i += 2 {
+		k, v := n.Content[i], n.Content[i+1]
+		s.Keys = append(s.Keys, k.Value)
+		if strings.EqualFold(k.Value, "uses") {
+			for v.Kind == yaml.AliasNode && v.Alias != nil && v.Alias.Kind != yaml.AliasNode {
+				v = v.Alias
+			}
+			if v.Kind == yaml.ScalarNode && v.Tag == "!!str" {
+				u := v.Value
+				s.Uses = &u
+			}
+		}
+	}
+	return nil
+}
+
 // ActionMetadataRuns is "runs" section of action.yaml. It defines how the action is run.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs
 type ActionMetadataRuns struct {
@@ -131,7 +179,7 @@ type ActionMetadataRuns struct {
 	// PostIf is `post-if` configuration of action.yaml for JavaScript action.
 	PostIf string `yaml:"post-if" json:"post-if"`
 	// Steps is `steps` configuration of action.yaml for Composite action.
-	Steps []any `yaml:"steps" json:"steps"`
+	Steps []*ActionCompositeStep `yaml:"steps" json:"steps"`
 	// Image is `image` of action.yaml for Docker action.
 	Image string `yaml:"image" json:"image"`
 	// PreEntrypoint is `pre-entrypoint` of action.yaml for Docker action.
