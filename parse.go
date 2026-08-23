@@ -218,7 +218,7 @@ func (p *parser) resolveAliases(root *yaml.Node) {
 }
 
 // yamlAliasDiagnostic is the kind of a problem resolveYAMLAliases reports. A recursive alias leaves
-// an unresolved alias node in the tree, so walking the tree afterwards is only safe when no such
+// an unresolved alias node in the tree, so decoding the tree afterwards is only safe when no such
 // diagnostic was reported. An unused anchor leaves the tree fully resolved.
 type yamlAliasDiagnostic int
 
