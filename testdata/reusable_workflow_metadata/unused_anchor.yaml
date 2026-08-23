@@ -1,0 +1,11 @@
+on:
+  workflow_call:
+
+permissions: &unused
+  contents: read
+
+jobs:
+  attest:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi

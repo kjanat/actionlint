@@ -985,3 +985,46 @@ func TestReusableWorkflowMetadataJobPermissionsFromWorkflowNode(t *testing.T) {
 		t.Fatal(diff)
 	}
 }
+
+func TestReusableWorkflowMetadataUnusedAnchorParity(t *testing.T) {
+	root := filepath.Join("testdata", "reusable_workflow_metadata")
+	src, err := os.ReadFile(filepath.Join(root, "unused_anchor.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w, errs := Parse(src)
+	if w == nil {
+		t.Fatal("workflow was not parsed:", errs)
+	}
+	if !slices.ContainsFunc(errs, func(e *Error) bool {
+		return strings.Contains(e.Message, "defined but not used")
+	}) {
+		t.Fatal("parser did not report the unused anchor:", errs)
+	}
+
+	c := NewLocalReusableWorkflowCache(&Project{root, nil}, root, nil)
+	fromFile, err := c.FindMetadata("./unused_anchor.yaml")
+	if err != nil {
+		t.Fatal("unused anchor made metadata extraction fail:", err)
+	}
+	if fromFile == nil {
+		t.Fatal("no metadata was returned")
+	}
+
+	cwd := filepath.Join("path", "to", "project")
+	c2 := NewLocalReusableWorkflowCache(&Project{cwd, nil}, cwd, nil)
+	c2.WriteWorkflowCallEventFromWorkflow("test.yaml", &WorkflowCallEvent{}, w)
+	fromNode, ok := c2.readCache("./test.yaml")
+	if !ok {
+		t.Fatal("metadata was not created from the AST")
+	}
+
+	want := map[string]PermissionScopeLevels{"attest": {"contents": PermissionLevelRead}}
+	if diff := cmp.Diff(want, fromFile.JobPermissions); diff != "" {
+		t.Fatal("metadata from disk is unexpected. diff:\n" + diff)
+	}
+	if diff := cmp.Diff(fromFile.JobPermissions, fromNode.JobPermissions); diff != "" {
+		t.Fatal("disk and AST routes disagree. diff:\n" + diff)
+	}
+}
