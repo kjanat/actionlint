@@ -27,6 +27,48 @@ cat path/to/workflow.yaml | actionlint -
 To know all flags and options, see an output of `actionlint -h` or
 [the online command manual][cmd-manual].
 
+### Shell completion
+
+`-completion` prints a completion script for the given shell to stdout. The
+supported shells are `bash`, `fish`, `powershell` and `zsh`. The value also
+accepts `pwsh` as an alias for `powershell`, a shell path so that
+`actionlint -completion "$SHELL"` works, and `auto` to pick the shell from
+`$SHELL`, falling back to PowerShell when `$PSModulePath` is set. The script
+completes the flags in both their `-flag` and `--flag` spellings, the values
+they take, and workflow file paths.
+
+```sh
+mkdir -p ~/.local/share/bash-completion/completions
+actionlint -completion bash > ~/.local/share/bash-completion/completions/actionlint
+```
+
+```sh
+mkdir -p ~/.config/fish/completions
+actionlint -completion fish > ~/.config/fish/completions/actionlint.fish
+```
+
+The zsh script belongs in a directory listed in `$fpath`.
+
+```sh
+actionlint -completion zsh > "${fpath[1]}/_actionlint"
+```
+
+The PowerShell script is loaded from your profile. The first command creates
+the profile's directory, which does not exist on a fresh account and makes
+`Out-File` fail.
+
+```powershell
+New-Item -ItemType Directory -Force (Split-Path -Parent $PROFILE) | Out-Null
+actionlint -completion powershell | Out-File -Append -Encoding utf8 $PROFILE
+```
+
+To load the script into the current session only, pipe it through
+`Invoke-Expression` instead.
+
+```powershell
+actionlint -completion powershell | Out-String | Invoke-Expression
+```
+
 ### Ignore some errors
 
 To ignore some errors, `-ignore` option offers to filter errors by messages

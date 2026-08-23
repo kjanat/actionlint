@@ -30,6 +30,14 @@ jobs:
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         if: ${{ runner.os != 'Linux' }}
 
+      - name: Install shells for completion tests on Linux
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends zsh fish
+          zsh --version
+          fish --version
+
       - name: Install dependencies on macOS
         if: ${{ runner.os == 'macOS' }}
         run: |

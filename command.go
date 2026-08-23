@@ -120,38 +120,50 @@ func (i *ignorePatternFlags) Set(v string) error {
 	*i = append(*i, v)
 	return nil
 }
+func (i *ignorePatternFlags) repeatableFlag() {}
+
+type commandFlags struct {
+	opts       LinterOptions
+	ignorePats ignorePatternFlags
+	initConfig bool
+	noColor    bool
+	color      bool
+	version    bool
+	completion completionShell
+}
+
+func (f *commandFlags) newFlagSet(name string, out io.Writer) *flag.FlagSet {
+	flags := flag.NewFlagSet(name, flag.ContinueOnError)
+	flags.SetOutput(out)
+	flags.Var(&f.ignorePats, "ignore", "Regular expression matching to error messages you want to ignore. This flag is repeatable")
+	flags.StringVar(&f.opts.Shellcheck, "shellcheck", "shellcheck", "Command line of \"shellcheck\" external command. A command name, a file path, or a command with flags such as \"shellcheck -e SC2086\". If empty, shellcheck integration will be disabled")
+	flags.StringVar(&f.opts.Pyflakes, "pyflakes", "pyflakes", "Command line of \"pyflakes\" external command. A command name, a file path, or a command with flags such as \"python3 -m pyflakes\" or \"uvx pyflakes\". If empty, pyflakes integration will be disabled")
+	flags.BoolVar(&f.opts.Oneline, "oneline", false, "Use one line per one error. Useful for reading error messages from programs")
+	flags.StringVar(&f.opts.Format, "format", "", "Custom template to format error messages in Go template syntax. See the usage documentation for more details")
+	flags.StringVar(&f.opts.ConfigFile, "config-file", "", "File path to config file")
+	flags.BoolVar(&f.initConfig, "init-config", false, "Generate default config file at .github/actionlint.yaml in current project")
+	flags.BoolVar(&f.noColor, "no-color", false, "Disable colorful output")
+	flags.BoolVar(&f.color, "color", false, "Always enable colorful output. This is useful to force colorful outputs")
+	flags.BoolVar(&f.opts.Verbose, "verbose", false, "Enable verbose output")
+	flags.BoolVar(&f.opts.Debug, "debug", false, "Enable debug output (for development)")
+	flags.BoolVar(&f.version, "version", false, "Show version and how this binary was installed")
+	flags.StringVar(&f.opts.StdinFileName, "stdin-filename", "<stdin>", "File name when reading input from stdin")
+	flags.Var(&f.completion, "completion", "Print a shell completion script for the given `shell`. One of \"bash\", \"fish\", \"powershell\", \"zsh\". Also accepted are \"pwsh\", a shell path such as \"$SHELL\", and \"auto\" to detect the current shell")
+	return flags
+}
 
 // Main is main function of actionlint. It takes command line arguments as string slice and returns
 // exit status. The args should be entire arguments including the program name, usually given via
 // os.Args.
 func (cmd *Command) Main(args []string) int {
-	var ver bool
-	var opts LinterOptions
-	var ignorePats ignorePatternFlags
-	var initConfig bool
-	var noColor bool
-	var color bool
+	var f commandFlags
 
-	flags := flag.NewFlagSet(args[0], flag.ContinueOnError)
-	flags.SetOutput(cmd.Stderr)
-	flags.Var(&ignorePats, "ignore", "Regular expression matching to error messages you want to ignore. This flag is repeatable")
-	flags.StringVar(&opts.Shellcheck, "shellcheck", "shellcheck", "Command line of \"shellcheck\" external command. A command name, a file path, or a command with flags such as \"shellcheck -e SC2086\". If empty, shellcheck integration will be disabled")
-	flags.StringVar(&opts.Pyflakes, "pyflakes", "pyflakes", "Command line of \"pyflakes\" external command. A command name, a file path, or a command with flags such as \"python3 -m pyflakes\" or \"uvx pyflakes\". If empty, pyflakes integration will be disabled")
-	flags.BoolVar(&opts.Oneline, "oneline", false, "Use one line per one error. Useful for reading error messages from programs")
-	flags.StringVar(&opts.Format, "format", "", "Custom template to format error messages in Go template syntax. See the usage documentation for more details")
-	flags.StringVar(&opts.ConfigFile, "config-file", "", "File path to config file")
-	flags.BoolVar(&initConfig, "init-config", false, "Generate default config file at .github/actionlint.yaml in current project")
-	flags.BoolVar(&noColor, "no-color", false, "Disable colorful output")
-	flags.BoolVar(&color, "color", false, "Always enable colorful output. This is useful to force colorful outputs")
-	flags.BoolVar(&opts.Verbose, "verbose", false, "Enable verbose output")
-	flags.BoolVar(&opts.Debug, "debug", false, "Enable debug output (for development)")
-	flags.BoolVar(&ver, "version", false, "Show version and how this binary was installed")
-	flags.StringVar(&opts.StdinFileName, "stdin-filename", "<stdin>", "File name when reading input from stdin")
+	flags := f.newFlagSet(args[0], cmd.Stderr)
 	flags.Usage = func() {
 		printUsageHeader(cmd.Stderr)
 		flags.PrintDefaults()
 	}
-	if err := flags.Parse(args[1:]); err != nil {
+	if err := flags.Parse(completionAliasArgs(args[1:])); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			// When -h or -help
 			return ExitStatusSuccessNoProblem
@@ -159,7 +171,7 @@ func (cmd *Command) Main(args []string) int {
 		return ExitStatusInvalidCommandOption
 	}
 
-	if ver {
+	if f.version {
 		_, _ = fmt.Fprintf(
 			cmd.Stdout,
 			"%s\n%s\nbuilt with %s compiler for %s/%s\n",
@@ -172,17 +184,25 @@ func (cmd *Command) Main(args []string) int {
 		return ExitStatusSuccessNoProblem
 	}
 
-	opts.IgnorePatterns = ignorePats
-	opts.LogWriter = cmd.Stderr
-
-	if color {
-		opts.Color = ColorOptionKindAlways
-	}
-	if noColor {
-		opts.Color = ColorOptionKindNever
+	if f.completion != "" {
+		if err := writeCompletion(cmd.Stdout, f.completion, flags); err != nil {
+			_, _ = fmt.Fprintln(cmd.Stderr, err.Error())
+			return ExitStatusFailure
+		}
+		return ExitStatusSuccessNoProblem
 	}
 
-	errs, err := cmd.runLinter(flags.Args(), &opts, initConfig)
+	f.opts.IgnorePatterns = f.ignorePats
+	f.opts.LogWriter = cmd.Stderr
+
+	if f.color {
+		f.opts.Color = ColorOptionKindAlways
+	}
+	if f.noColor {
+		f.opts.Color = ColorOptionKindNever
+	}
+
+	errs, err := cmd.runLinter(flags.Args(), &f.opts, f.initConfig)
 	if err != nil {
 		_, _ = fmt.Fprintln(cmd.Stderr, err.Error())
 		return ExitStatusFailure
