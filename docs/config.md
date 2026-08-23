@@ -32,6 +32,10 @@ config-secrets:
   - DEPLOY_TOKEN
   - API_KEY
 
+# Which repository "Workflow permissions" setting to assume for a workflow call whose caller
+# declares no permissions at all.
+assume-default-permissions: restricted
+
 # Path-specific configurations.
 paths:
   # Glob pattern relative to the repository root for matching files. The path separator is always '/'.
@@ -57,6 +61,14 @@ paths:
   Names are compared case-insensitively. An empty array means no secret is allowed. The default value `null` disables
   the check. The secrets GitHub always provides (`GITHUB_TOKEN`, `ACTIONS_STEP_DEBUG`, `ACTIONS_RUNNER_DEBUG`) are
   always allowed. Secrets declared in `on.workflow_call.secrets` are also always allowed since a caller passes them.
+- `assume-default-permissions`: Which repository "Workflow permissions" setting actionlint assumes when checking the
+  permissions a [reusable workflow call](checks.md#check-permissions-of-workflow-call) passes on. It only applies to a
+  calling job that declares no `permissions:` and whose workflow declares none either. `restricted` assumes the setting
+  that grants read access to `contents` and `packages` and nothing else. `permissive` assumes the setting that grants
+  write access, which still leaves `id-token` at `none` because OIDC always needs an explicit `permissions:` entry.
+  Leaving the key out is the same as `restricted`. The setting lives in Settings > Actions > General > Workflow
+  permissions, and `gh api repos/{owner}/{repo}/actions/permissions/workflow --jq .default_workflow_permissions` prints
+  `read` for `restricted` and `write` for `permissive`.
 - `paths`: Configurations for specific file path patterns. This is a mapping from a glob pattern and the corresponding
   configuration.
   - `{glob}`: A file path glob pattern to apply the configuration. The path separator is always '/'. It is matched to the

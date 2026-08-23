@@ -221,6 +221,22 @@ func (p *parser) errorf(n *yaml.Node, format string, args ...any) {
 }
 
 func (p *parser) resolveAliases(root *yaml.Node) {
+	resolveYAMLAliases(root, func(n *yaml.Node, d yamlAliasDiagnostic, m string) {
+		p.error(n, m)
+	})
+}
+
+// yamlAliasDiagnostic is the kind of a problem resolveYAMLAliases reports. A recursive alias leaves
+// an unresolved alias node in the tree, so decoding the tree afterwards is only safe when no such
+// diagnostic was reported. An unused anchor leaves the tree fully resolved.
+type yamlAliasDiagnostic int
+
+const (
+	yamlAliasDiagnosticRecursive yamlAliasDiagnostic = iota
+	yamlAliasDiagnosticUnusedAnchor
+)
+
+func resolveYAMLAliases(root *yaml.Node, report func(n *yaml.Node, d yamlAliasDiagnostic, m string)) {
 	type usage struct {
 		used    bool
 		defined bool
@@ -248,7 +264,7 @@ func (p *parser) resolveAliases(root *yaml.Node) {
 				} else {
 					// Don't resolve the recursive alias because it causes stack overflow on parsing the tree as
 					// `RawYAMLValue`. (#610)
-					p.errorf(c, "recursive alias %q is found. anchor was declared at line:%d, column:%d", c.Alias.Anchor, c.Alias.Line, c.Alias.Column)
+					report(c, yamlAliasDiagnosticRecursive, fmt.Sprintf("recursive alias %q is found. anchor was declared at line:%d, column:%d", c.Alias.Anchor, c.Alias.Line, c.Alias.Column))
 				}
 			}
 		}
@@ -260,7 +276,7 @@ func (p *parser) resolveAliases(root *yaml.Node) {
 
 	for n, u := range anchors {
 		if !u.used {
-			p.errorf(n, "anchor %q is defined but not used", n.Anchor)
+			report(n, yamlAliasDiagnosticUnusedAnchor, fmt.Sprintf("anchor %q is defined but not used", n.Anchor))
 		}
 	}
 }

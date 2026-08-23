@@ -1,0 +1,46 @@
+name: with permissions
+
+on:
+  workflow_call:
+
+permissions: &default-perms
+  contents: read
+
+jobs:
+  inherits:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo inherits
+  Override:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - run: echo override
+  empty:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - run: echo empty
+  all-read:
+    runs-on: ubuntu-latest
+    permissions: read-all
+    steps:
+      - run: echo read-all
+  bad:
+    runs-on: ubuntu-latest
+    permissions: nonsense
+    steps:
+      - run: echo bad
+  aliased-perms:
+    runs-on: ubuntu-latest
+    permissions: *default-perms
+    steps:
+      - run: echo aliased-perms
+  base: &whole-job
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - run: echo whole-job
+  duplicate: *whole-job

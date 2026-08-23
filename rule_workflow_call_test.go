@@ -2,7 +2,9 @@ package actionlint
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -385,6 +387,322 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 				if !strings.Contains(have, want) {
 					t.Errorf("%d-th error is unexpected. %q should be contained in error message %q", i, want, have)
 				}
+			}
+		})
+	}
+}
+
+func testParseWorkflowPermissions(t *testing.T, src string) *Permissions {
+	t.Helper()
+	if src == "" {
+		return nil
+	}
+	b := []byte("on: push\n" + src + "\njobs:\n  j:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo\n")
+	w, errs := Parse(b)
+	if w == nil {
+		t.Fatal("workflow was not parsed:", errs)
+	}
+	return w.Permissions
+}
+
+func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
+	root := filepath.Join("testdata", "reusable_workflow_metadata")
+
+	run := func(t *testing.T, cache *LocalReusableWorkflowCache) []string {
+		t.Helper()
+		r := NewRuleWorkflowCall("caller.yaml", cache)
+		if err := r.VisitWorkflowPre(&Workflow{}); err != nil {
+			t.Fatal(err)
+		}
+		j := &Job{
+			ID:          &String{Value: "caller", Pos: &Pos{}},
+			Permissions: testParseWorkflowPermissions(t, "permissions: {}"),
+			WorkflowCall: &WorkflowCall{
+				Uses:    &String{Value: "./permissions.yaml", Pos: &Pos{}},
+				Inputs:  map[string]*WorkflowCallInput{},
+				Secrets: map[string]*WorkflowCallSecret{},
+			},
+		}
+		if err := r.VisitJobPre(j); err != nil {
+			t.Fatal(err)
+		}
+		msgs := []string{}
+		for _, err := range r.Errs() {
+			msgs = append(msgs, err.Message)
+		}
+		return msgs
+	}
+
+	fromFile := run(t, NewLocalReusableWorkflowCache(&Project{root, nil}, root, nil))
+
+	src, err := os.ReadFile(filepath.Join(root, "permissions.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	w, errs := Parse(src)
+	if w == nil {
+		t.Fatal("callee was not parsed:", errs)
+	}
+	var event *WorkflowCallEvent
+	for _, e := range w.On {
+		if ev, ok := e.(*WorkflowCallEvent); ok {
+			event = ev
+		}
+	}
+	if event == nil {
+		t.Fatal("callee has no workflow_call event")
+	}
+	astCache := NewLocalReusableWorkflowCache(&Project{root, nil}, root, nil)
+	astCache.WriteWorkflowCallEventFromWorkflow("permissions.yaml", event, w)
+	fromNode := run(t, astCache)
+
+	if len(fromFile) == 0 {
+		t.Fatal("no diagnostic was reported")
+	}
+	if diff := cmp.Diff(fromFile, fromNode); diff != "" {
+		t.Fatal("diagnostics differ between cache population paths. diff:\n" + diff)
+	}
+	for _, id := range []string{"aliased-perms", "base", "duplicate"} {
+		if !slices.ContainsFunc(fromFile, func(m string) bool {
+			return strings.Contains(m, fmt.Sprintf("nested job %q", id))
+		}) {
+			t.Errorf("no diagnostic mentions job %q in %v", id, fromFile)
+		}
+	}
+}
+
+func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
+	scopes := make([]string, 0, len(allPermissionScopes))
+	writeAll := PermissionScopeLevels{}
+	for s, vs := range allPermissionScopes {
+		scopes = append(scopes, s)
+		if slices.Contains(vs, "write") {
+			writeAll[s] = PermissionLevelWrite
+		} else {
+			writeAll[s] = PermissionLevelRead
+		}
+	}
+	slices.Sort(scopes)
+
+	writeAllWant, writeAllHave := []string{}, []string{}
+	for _, s := range scopes {
+		if s == "contents" {
+			continue
+		}
+		writeAllWant = append(writeAllWant, s+": "+writeAll[s].String())
+		writeAllHave = append(writeAllHave, s+": none")
+	}
+	writeAllMsg := fmt.Sprintf(
+		"nested job \"j\" of \"./callee.yaml\" requires %s but the calling job grants %s",
+		quotes(writeAllWant),
+		quotes(writeAllHave),
+	)
+
+	tests := []struct {
+		what          string
+		jobPerms      string
+		workflowPerms string
+		jobIf         bool
+		callee        map[string]PermissionScopeLevels
+		cfg           *Config
+		errs          []string
+	}{
+		{
+			what:     "job grant covers the requirement",
+			jobPerms: "permissions:\n  pull-requests: write",
+			callee:   map[string]PermissionScopeLevels{"snapshot": {"pull-requests": PermissionLevelWrite}},
+		},
+		{
+			what:     "job grants read but write is required",
+			jobPerms: "permissions:\n  pull-requests: read",
+			callee:   map[string]PermissionScopeLevels{"snapshot": {"pull-requests": PermissionLevelWrite}},
+			errs: []string{
+				"nested job \"snapshot\" of \"./callee.yaml\" requires \"pull-requests: write\" but the calling job grants \"pull-requests: read\"",
+			},
+		},
+		{
+			what:     "job grants write where read is required",
+			jobPerms: "permissions:\n  contents: write",
+			callee:   map[string]PermissionScopeLevels{"snapshot": {"contents": PermissionLevelRead}},
+		},
+		{
+			what:     "incorrectly cased scope does not grant permission",
+			jobPerms: "permissions:\n  Contents: write",
+			callee:   map[string]PermissionScopeLevels{"snapshot": {"contents": PermissionLevelWrite}},
+			errs: []string{
+				"nested job \"snapshot\" of \"./callee.yaml\" requires \"contents: write\" but the calling job grants \"contents: none\"",
+			},
+		},
+		{
+			what:          "job says nothing so the workflow block is used",
+			workflowPerms: "permissions:\n  pull-requests: write",
+			callee:        map[string]PermissionScopeLevels{"snapshot": {"pull-requests": PermissionLevelWrite}},
+		},
+		{
+			what:          "job block replaces the workflow block",
+			jobPerms:      "permissions:\n  contents: read",
+			workflowPerms: "permissions:\n  pull-requests: write",
+			callee:        map[string]PermissionScopeLevels{"snapshot": {"pull-requests": PermissionLevelWrite}},
+			errs: []string{
+				"nested job \"snapshot\" of \"./callee.yaml\" requires \"pull-requests: write\" but the calling job grants \"pull-requests: none\"",
+			},
+		},
+		{
+			what:   "restricted default covers contents",
+			callee: map[string]PermissionScopeLevels{"snapshot": {"contents": PermissionLevelRead}},
+		},
+		{
+			what:   "restricted default does not cover pull-requests",
+			callee: map[string]PermissionScopeLevels{"snapshot": {"pull-requests": PermissionLevelWrite}},
+			errs: []string{
+				"nested job \"snapshot\" of \"./callee.yaml\" requires \"pull-requests: write\" but the calling job grants \"pull-requests: none\"",
+			},
+		},
+		{
+			what:   "permissive default covers pull-requests",
+			callee: map[string]PermissionScopeLevels{"snapshot": {"pull-requests": PermissionLevelWrite}},
+			cfg:    &Config{AssumeDefaultPermissions: DefaultPermissionsAssumptionPermissive},
+		},
+		{
+			what:   "permissive default never covers id-token",
+			callee: map[string]PermissionScopeLevels{"attest": {"id-token": PermissionLevelWrite}},
+			cfg:    &Config{AssumeDefaultPermissions: DefaultPermissionsAssumptionPermissive},
+			errs: []string{
+				"nested job \"attest\" of \"./callee.yaml\" requires \"id-token: write\" but the calling job grants \"id-token: none\"",
+			},
+		},
+		{
+			what:   "restricted assumption set explicitly",
+			callee: map[string]PermissionScopeLevels{"snapshot": {"pull-requests": PermissionLevelWrite}},
+			cfg:    &Config{AssumeDefaultPermissions: DefaultPermissionsAssumptionRestricted},
+			errs: []string{
+				"nested job \"snapshot\" of \"./callee.yaml\" requires \"pull-requests: write\" but the calling job grants \"pull-requests: none\"",
+			},
+		},
+		{
+			what:     "empty caller block grants nothing",
+			jobPerms: "permissions: {}",
+			callee:   map[string]PermissionScopeLevels{"snapshot": {"contents": PermissionLevelRead}},
+			errs: []string{
+				"nested job \"snapshot\" of \"./callee.yaml\" requires \"contents: read\" but the calling job grants \"contents: none\"",
+			},
+		},
+		{
+			what:     "caller read-all does not cover id-token",
+			jobPerms: "permissions: read-all",
+			callee:   map[string]PermissionScopeLevels{"attest": {"id-token": PermissionLevelWrite}},
+			errs: []string{
+				"nested job \"attest\" of \"./callee.yaml\" requires \"id-token: write\" but the calling job grants \"id-token: none\"",
+			},
+		},
+		{
+			what:     "caller write-all covers everything write is available for",
+			jobPerms: "permissions: write-all",
+			callee: map[string]PermissionScopeLevels{
+				"snapshot": {
+					"contents":      PermissionLevelWrite,
+					"id-token":      PermissionLevelWrite,
+					"pull-requests": PermissionLevelWrite,
+				},
+			},
+		},
+		{
+			what:     "one error lists every missing scope of a job",
+			jobPerms: "permissions:\n  contents: write",
+			callee: map[string]PermissionScopeLevels{
+				"snapshot": {
+					"actions":  PermissionLevelWrite,
+					"contents": PermissionLevelWrite,
+					"issues":   PermissionLevelWrite,
+				},
+			},
+			errs: []string{
+				"nested job \"snapshot\" of \"./callee.yaml\" requires \"actions: write\", \"issues: write\" but the calling job grants \"actions: none\", \"issues: none\"",
+			},
+		},
+		{
+			what:     "callee requiring every scope produces a single error",
+			jobPerms: "permissions:\n  contents: write",
+			callee:   map[string]PermissionScopeLevels{"j": writeAll},
+			errs:     []string{writeAllMsg},
+		},
+		{
+			what:   "callee declares no permissions",
+			callee: map[string]PermissionScopeLevels{},
+		},
+		{
+			what:   "callee job requires nothing",
+			callee: map[string]PermissionScopeLevels{"snapshot": {}},
+		},
+		{
+			what:     "invalid caller block is not reported by this rule",
+			jobPerms: "permissions: bogus",
+			callee:   map[string]PermissionScopeLevels{"snapshot": {"contents": PermissionLevelRead}},
+		},
+		{
+			what:   "condition on the calling job does not suppress the check",
+			jobIf:  true,
+			callee: map[string]PermissionScopeLevels{"snapshot": {"pull-requests": PermissionLevelWrite}},
+			errs: []string{
+				"nested job \"snapshot\" of \"./callee.yaml\" requires \"pull-requests: write\" but the calling job grants \"pull-requests: none\"",
+			},
+		},
+		{
+			what:     "errors are sorted by job ID",
+			jobPerms: "permissions: {}",
+			callee: map[string]PermissionScopeLevels{
+				"zulu":  {"contents": PermissionLevelRead},
+				"alpha": {"issues": PermissionLevelWrite},
+			},
+			errs: []string{
+				"nested job \"alpha\" of \"./callee.yaml\" requires \"issues: write\" but the calling job grants \"issues: none\"",
+				"nested job \"zulu\" of \"./callee.yaml\" requires \"contents: read\" but the calling job grants \"contents: none\"",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.what, func(t *testing.T) {
+			cwd := filepath.Join("path", "to", "project")
+			cache := NewLocalReusableWorkflowCache(&Project{cwd, nil}, cwd, nil)
+			cache.writeCache("./callee.yaml", &ReusableWorkflowMetadata{JobPermissions: tc.callee})
+
+			r := NewRuleWorkflowCall("caller.yaml", cache)
+			if tc.cfg != nil {
+				r.SetConfig(tc.cfg)
+			}
+
+			w := &Workflow{Permissions: testParseWorkflowPermissions(t, tc.workflowPerms)}
+			if err := r.VisitWorkflowPre(w); err != nil {
+				t.Fatal(err)
+			}
+
+			j := &Job{
+				ID:          &String{Value: "caller", Pos: &Pos{}},
+				Permissions: testParseWorkflowPermissions(t, tc.jobPerms),
+				WorkflowCall: &WorkflowCall{
+					Uses:    &String{Value: "./callee.yaml", Pos: &Pos{}},
+					Inputs:  map[string]*WorkflowCallInput{},
+					Secrets: map[string]*WorkflowCallSecret{},
+				},
+			}
+			if tc.jobIf {
+				j.If = &String{Value: "${{ github.event_name == 'push' }}", Pos: &Pos{}}
+			}
+			if err := r.VisitJobPre(j); err != nil {
+				t.Fatal(err)
+			}
+
+			have := []string{}
+			for _, err := range r.Errs() {
+				have = append(have, err.Message)
+			}
+			want := tc.errs
+			if want == nil {
+				want = []string{}
+			}
+			if diff := cmp.Diff(want, have); diff != "" {
+				t.Fatal(diff)
 			}
 		})
 	}
