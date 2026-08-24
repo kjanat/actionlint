@@ -18,7 +18,7 @@ Features:
 
 See the [full list][checks] of checks done by actionlint.
 
-<img src="https://github.com/rhysd/ss/blob/master/actionlint/main.gif?raw=true" alt="actionlint reports 7 errors" width="806" height="492"/>
+<img src="https://cdn.jsdelivr.net/gh/rhysd/ss@5530c2526b44ad28dc12f91a3d71bcd57940f008/actionlint/main.gif" alt="actionlint reports 7 errors" width="806" height="492"/>
 
 **Example of broken workflow:**
 
@@ -185,8 +185,8 @@ See the [contribution guide](./CONTRIBUTING.md) for more details.
 
 actionlint is distributed under [the MIT license](./LICENSE.txt).
 
-[ci-badge]: https://github.com/rhysd/actionlint/actions/workflows/ci.yaml/badge.svg
-[ci]: https://github.com/rhysd/actionlint/actions/workflows/ci.yaml
+[ci-badge]: https://github.com/kjanat/actionlint/actions/workflows/ci.yaml/badge.svg
+[ci]: https://github.com/kjanat/actionlint/actions/workflows/ci.yaml
 [apidoc-badge]: https://pkg.go.dev/badge/actionlint.kjanat.dev.svg
 [apidoc]: https://pkg.go.dev/actionlint.kjanat.dev
 [repo]: https://github.com/rhysd/actionlint
@@ -203,4 +203,4 @@ actionlint is distributed under [the MIT license](./LICENSE.txt).
 [config]: https://github.com/kjanat/actionlint/blob/v1.12.0/docs/config.md
 [api]: https://github.com/kjanat/actionlint/blob/v1.12.0/docs/api.md
 [refs]: https://github.com/kjanat/actionlint/blob/v1.12.0/docs/reference.md
-[issue-form]: https://github.com/rhysd/actionlint/issues/new
+[issue-form]: https://github.com/kjanat/actionlint/issues/new
