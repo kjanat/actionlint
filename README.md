@@ -189,13 +189,13 @@ actionlint is distributed under [the MIT license](./LICENSE.txt).
 [ci]: https://github.com/kjanat/actionlint/actions/workflows/ci.yaml
 [apidoc-badge]: https://pkg.go.dev/badge/actionlint.kjanat.dev.svg
 [apidoc]: https://pkg.go.dev/actionlint.kjanat.dev
-[repo]: https://github.com/rhysd/actionlint
+[repo]: https://github.com/kjanat/actionlint
 [playground]: https://kjanat.github.io/actionlint/
 [shellcheck]: https://github.com/koalaman/shellcheck
 [pyflakes]: https://github.com/PyCQA/pyflakes
-[syntax-doc]: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions
-[filter-pattern-doc]: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
-[script-injection-doc]: https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks
+[syntax-doc]: https://docs.github.com/actions/reference/workflow-syntax-for-github-actions
+[filter-pattern-doc]: https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
+[script-injection-doc]: https://docs.github.com/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks
 [releases]: https://github.com/kjanat/actionlint/releases
 [checks]: https://github.com/kjanat/actionlint/blob/v1.12.0/docs/checks.md
 [install]: https://github.com/kjanat/actionlint/blob/v1.12.0/docs/install.md
