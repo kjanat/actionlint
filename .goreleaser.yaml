@@ -13,7 +13,7 @@ before:
 builds:
   - <<: &build_defaults
       main: ./cmd/actionlint
-      ldflags: -s -w -X actionlint.kjanat.dev.version={{.Version}} -X "actionlint.kjanat.dev.installedFrom=installed by downloading from release page"
+      ldflags: -s -w -X actionlint.kjanat.dev.version={{.Version}} -X "actionlint.kjanat.dev.installedFrom=release download"
       env:
         - CGO_ENABLED=0
     id: macos
