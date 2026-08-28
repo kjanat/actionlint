@@ -116,7 +116,7 @@ jobs:
       - uses: kjanat/actionlint@v1
 ```
 
-The moving `v1` tag follows compatible v1 releases. `v1.12.0` is a versioned release tag, but only a full-length commit SHA provides an immutable action reference.
+The moving `v1` tag follows compatible v1 releases. `v1.13.0` is a versioned release tag, but only a full-length commit SHA provides an immutable action reference.
 
 <details><summary><h3>Inputs</h3></summary></details>
 
@@ -197,10 +197,10 @@ actionlint is distributed under [the MIT license](./LICENSE.txt).
 [filter-pattern-doc]: https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
 [script-injection-doc]: https://docs.github.com/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks
 [releases]: https://github.com/kjanat/actionlint/releases
-[checks]: https://github.com/kjanat/actionlint/blob/v1.12.0/docs/checks.md
-[install]: https://github.com/kjanat/actionlint/blob/v1.12.0/docs/install.md
-[usage]: https://github.com/kjanat/actionlint/blob/v1.12.0/docs/usage.md
-[config]: https://github.com/kjanat/actionlint/blob/v1.12.0/docs/config.md
-[api]: https://github.com/kjanat/actionlint/blob/v1.12.0/docs/api.md
-[refs]: https://github.com/kjanat/actionlint/blob/v1.12.0/docs/reference.md
+[checks]: https://github.com/kjanat/actionlint/blob/v1.13.0/docs/checks.md
+[install]: https://github.com/kjanat/actionlint/blob/v1.13.0/docs/install.md
+[usage]: https://github.com/kjanat/actionlint/blob/v1.13.0/docs/usage.md
+[config]: https://github.com/kjanat/actionlint/blob/v1.13.0/docs/config.md
+[api]: https://github.com/kjanat/actionlint/blob/v1.13.0/docs/api.md
+[refs]: https://github.com/kjanat/actionlint/blob/v1.13.0/docs/reference.md
 [issue-form]: https://github.com/kjanat/actionlint/issues/new

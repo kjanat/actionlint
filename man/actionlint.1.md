@@ -2,7 +2,7 @@
 title: actionlint
 section: 1
 header: General Commands Manual
-footer: actionlint 1.12.0
+footer: actionlint 1.13.0
 ---
 
 # NAME
@@ -113,39 +113,39 @@ Documents for more details are available online.
 
 ## Checks
 
-https://github.com/kjanat/actionlint/blob/v1.12.0/docs/checks.md
+https://github.com/kjanat/actionlint/blob/v1.13.0/docs/checks.md
 
 Full list of all checks done by actionlint with example inputs, outputs, and playground links.
 
 ## Installation
 
-https://github.com/kjanat/actionlint/blob/v1.12.0/docs/install.md
+https://github.com/kjanat/actionlint/blob/v1.13.0/docs/install.md
 
 Installation instructions. Prebuilt binaries, Homebrew package, building from source, a Docker
 image, a download script (for CI) are available.
 
 ## Usage
 
-https://github.com/kjanat/actionlint/blob/v1.12.0/docs/usage.md
+https://github.com/kjanat/actionlint/blob/v1.13.0/docs/usage.md
 
 How to use `actionlint` command locally or on GitHub Actions, the online playground, an official
 Docker image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit.
 
 ## Configuration
 
-https://github.com/kjanat/actionlint/blob/v1.12.0/docs/config.md
+https://github.com/kjanat/actionlint/blob/v1.13.0/docs/config.md
 
 How to configure actionlint behavior by the configuration file `actionlint.yaml`.
 
 ## Go API
 
-https://github.com/kjanat/actionlint/blob/v1.12.0/docs/api.md
+https://github.com/kjanat/actionlint/blob/v1.13.0/docs/api.md
 
 How to use actionlint as Go library.
 
 ## References
 
-https://github.com/kjanat/actionlint/blob/v1.12.0/docs/reference.md
+https://github.com/kjanat/actionlint/blob/v1.13.0/docs/reference.md
 
 Links to resources.
 
