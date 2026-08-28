@@ -399,10 +399,16 @@ import goes unnoticed until release.
 
 ## API breakage and what aliases can carry
 
-The module is published. `proxy.golang.org/actionlint.kjanat.dev/@v/list` serves `v1.8.0` through `v1.12.0`, `@latest`
-resolves to `v1.12.0` at `7c5b0a3880b3d29c51072b1e5e0730e5988f8b7d`, the repository carries 63 tags, and
-`https://actionlint.kjanat.dev/?go-get=1` answers 200 with the `go-import` meta element. Those five versions are
-immutable on the proxy, so the flat API is a published contract regardless of whether any dependent is known.
+The module is published on the Go module proxy, and a version the proxy has served is immutable there, so the flat
+API is a published contract regardless of whether any dependent is known.
+[`@v/list`](https://proxy.golang.org/actionlint.kjanat.dev/@v/list) lists every released version, and
+[`@latest`](https://proxy.golang.org/actionlint.kjanat.dev/@latest) names the newest one together with the commit
+hash it was cut from, for anyone pinning to an exact revision:
+
+[![@latest version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fproxy.golang.org%2Factionlint.kjanat.dev%2F%40latest&query=%24.Version&label=%40latest)](https://proxy.golang.org/actionlint.kjanat.dev/@latest)
+[![@latest commit](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fproxy.golang.org%2Factionlint.kjanat.dev%2F%40latest&query=%24.Origin.Hash&label=commit)](https://proxy.golang.org/actionlint.kjanat.dev/@latest)
+
+The module path itself resolves through a `go-import` meta element on the Pages site.
 
 Against that, `docs/api.md:49-52` and `doc.go:17-21` both state that the version number belongs to the command line
 tool, that the library does not follow semantic versioning, and that any patch bump may introduce breaking changes.
