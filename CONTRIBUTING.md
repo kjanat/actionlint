@@ -208,7 +208,7 @@ GoReleaser step fails without it.
 
 When releasing v1.2.3 as example:
 
-1. Ensure all changes were already pushed to remote by checking `git push origin main` outputs `Everything up-to-date`
+1. Ensure all changes were already pushed to remote by checking `git push origin master` outputs `Everything up-to-date`
 2. Describe the release in [CHANGELOG.md](./CHANGELOG.md), either under the `Unreleased` heading or in a `v1.2.3`
    section written out in full. The release notes are the `v1.2.3` section when it exists and the `Unreleased` entries
    otherwise, and `bump-version` refuses to run when neither describes anything.
@@ -225,7 +225,7 @@ When releasing v1.2.3 as example:
    the shape of the sections around it: the `<a id="v1.2.3"></a>` anchor, the heading linking to the release page, the
    entries, the `[Changes][v1.2.3]` trailer, and the link definition at the end of the file. `bump-version -check`
    verifies all four parts of every section.
-7. The Pages workflow redeploys the playground on the next push to `main`
+7. The Pages workflow redeploys the playground on the next push to `master`
 
 The `make CHANGELOG.md` target runs [changelog-from-release](https://github.com/rhysd/changelog-from-release), which
 rewrites the whole file from the GitHub releases. It knows nothing about the `Unreleased` heading and drops it, and the
@@ -252,7 +252,7 @@ Visit [`playground/README.md`](./playground/README.md).
 
 ## How to deploy playground
 
-The [Pages workflow](./.github/workflows/pages.yaml) deploys on every push to `main`. It builds the bundle with
+The [Pages workflow](./.github/workflows/pages.yaml) deploys on every push to `master`. It builds the bundle with
 `make -C playground build`, packages `playground/dist` together with the manual, and uploads it through
 `actions/upload-pages-artifact`.
 

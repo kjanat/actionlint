@@ -49,5 +49,5 @@ Formatting is handled from the repository root by [dprint](https://dprint.dev/).
 
 ## Deployment
 
-The [Pages workflow](../.github/workflows/pages.yaml) deploys `dist/` on every push to `main`. See
+The [Pages workflow](../.github/workflows/pages.yaml) deploys `dist/` on every push to `master`. See
 [CONTRIBUTING.md](../CONTRIBUTING.md) for more details.

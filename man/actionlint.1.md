@@ -153,7 +153,7 @@ Links to resources.
 
 Please try the download script.
 
-https://github.com/kjanat/actionlint/blob/main/scripts/download-actionlint.bash
+https://github.com/kjanat/actionlint/blob/HEAD/scripts/download-actionlint.bash
 
 It downloads the latest version of actionlint executable to the current directory automatically.
 On GitHub Actions environment, it sets a file path to executable to the `executable` output for
@@ -173,7 +173,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Download actionlint
         id: get_actionlint
-        run: bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash)
+        run: bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash)
         shell: bash
       - name: Check workflow files
         run: ${{ steps.get_actionlint.outputs.executable }} -color
@@ -185,7 +185,7 @@ or simply run
 ```yaml
 - name: Check workflow files
   run: |
-    bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash)
+    bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash)
     ./actionlint -color
   shell: bash
 ```

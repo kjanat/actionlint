@@ -62,7 +62,7 @@ Print the release notes of a version, which is what the release workflow publish
 go run ./scripts/bump-version -notes v1.2.3
 ```
 
-Bumping the version requires a clean working tree, a clean index, the `main` branch, a version tag
+Bumping the version requires a clean working tree, a clean index, the `master` branch, a version tag
 which does not exist yet, and release notes for the version. The notes are the `v1.2.3` section of
 `CHANGELOG.md` when the file has one, and the `Unreleased` entries when it does not. The bump moves
 the `Unreleased` entries into a `v1.2.3` section dated today, so the bump commit carries the

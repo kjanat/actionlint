@@ -358,7 +358,7 @@ jobs:
         with: { persist-credentials: false }
       - name: Download actionlint
         id: get_actionlint
-        run: bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash) 1.13.0
+        run: bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) 1.13.0
         shell: bash
       - name: Check workflow files
         run: ${{ steps.get_actionlint.outputs.executable }} -color
@@ -370,7 +370,7 @@ Or simply download the executable and run it in one step:
 ```yaml
 - name: Check workflow files
   run: |
-    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash) 1.13.0
+    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) 1.13.0
     ./actionlint -color
   shell: bash
 ```
@@ -541,7 +541,7 @@ in the step of your workflow.
 - name: Check workflow files
   run: |
     echo "::add-matcher::.github/actionlint-matcher.json"
-    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash) 1.13.0
+    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) 1.13.0
     ./actionlint -color
   shell: bash
 ```
@@ -742,7 +742,7 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 
 [Checks](checks.md) | [Installation](install.md) | [Configuration](config.md) | [Go API](api.md) | [References](reference.md)
 
-[actionlint-matcher]: https://raw.githubusercontent.com/kjanat/actionlint/main/.github/actionlint-matcher.json
+[actionlint-matcher]: https://raw.githubusercontent.com/kjanat/actionlint/HEAD/.github/actionlint-matcher.json
 [cmd-manual]: https://kjanat.github.io/actionlint/usage.html
 [docker-image]: https://github.com/kjanat/actionlint/pkgs/container/actionlint
 [docker]: https://www.docker.com/

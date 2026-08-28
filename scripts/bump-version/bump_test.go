@@ -406,7 +406,7 @@ func gitRepo(t *testing.T) *repo {
 			t.Fatal(err)
 		}
 	}
-	run("init", "--initial-branch=main")
+	run("init", "--initial-branch=master")
 	run("config", "user.email", "test@example.com")
 	run("config", "user.name", "test")
 	run("config", "commit.gpgsign", "false")

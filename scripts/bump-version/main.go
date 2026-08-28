@@ -79,8 +79,8 @@ func (r *repo) preflight(tag string) error {
 	if err != nil {
 		return err
 	}
-	if branch != "main" {
-		return fmt.Errorf("this command must run on the 'main' branch but the current branch is %q", branch)
+	if branch != "master" {
+		return fmt.Errorf("this command must run on the 'master' branch but the current branch is %q", branch)
 	}
 
 	if _, err := r.git("rev-parse", "--verify", "--quiet", "refs/tags/"+tag); err == nil {
@@ -179,7 +179,7 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		_, _ = fmt.Fprintf(stdout, "  git add %s\n", strings.Join(append(paths(targets), changelogFile), " "))
 		_, _ = fmt.Fprintf(stdout, "  git commit -m 'bump up version to %s'\n", tag)
 		_, _ = fmt.Fprintf(stdout, "  git tag -s -m %s %s\n", tag, tag)
-		_, _ = fmt.Fprint(stdout, "  git push origin main\n")
+		_, _ = fmt.Fprint(stdout, "  git push origin master\n")
 		_, _ = fmt.Fprintf(stdout, "  git push origin %s\n", tag)
 		return nil
 	}
@@ -197,13 +197,13 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 
 	if !push {
 		_, _ = fmt.Fprintf(stdout, "\nThe bump commit and the tag %s were created locally. To release, run:\n\n", tag)
-		_, _ = fmt.Fprint(stdout, "  git push origin main\n")
+		_, _ = fmt.Fprint(stdout, "  git push origin master\n")
 		_, _ = fmt.Fprintf(stdout, "  git push origin %s\n", tag)
 		return nil
 	}
 
-	// docker/build-push-action resolves the tagged commit through the main branch, so main must be pushed first.
-	if err := r.run("push", "origin", "main"); err != nil {
+	// docker/build-push-action resolves the tagged commit through the default branch, so master must be pushed first.
+	if err := r.run("push", "origin", "master"); err != nil {
 		return err
 	}
 	if err := r.run("push", "origin", tag); err != nil {

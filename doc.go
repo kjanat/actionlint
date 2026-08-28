@@ -26,13 +26,13 @@ Minimum supported Go version is written in go.mod file in this library. That sai
 are actually not tested on CI. Last two major Go versions are recommended because they're tested on
 CI. For example, when the latest Go version is v1.22, v1.21 and v1.22 are nice to use.
 
-https://github.com/kjanat/actionlint/blob/main/go.mod
+https://github.com/kjanat/actionlint/blob/HEAD/go.mod
 
 # Other documentations
 
 All documentations for actionlint can be found in the following page.
 
-https://github.com/kjanat/actionlint/tree/main/docs
+https://github.com/kjanat/actionlint/tree/HEAD/docs
 
 # License
 
@@ -42,6 +42,6 @@ This library is provided under the MIT license.
 
 Full text can be found in the following page.
 
-https://github.com/kjanat/actionlint/blob/main/LICENSE.txt
+https://github.com/kjanat/actionlint/blob/HEAD/LICENSE.txt
 */
 package actionlint

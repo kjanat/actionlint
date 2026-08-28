@@ -29,7 +29,7 @@ const (
 
 func printUsageHeader(out io.Writer) {
 	v := getCommandVersion()
-	b := "main"
+	b := "HEAD"
 	if regexp.MustCompile(`^\d+\.\d+\.\d+$`).MatchString(v) {
 		b = "v" + v
 	}

@@ -122,14 +122,14 @@ It downloads the latest version of actionlint (`actionlint.exe` on Windows and `
 directory automatically. This is a recommended way if you install actionlint in some shell script.
 
 ```sh
-bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash)
+bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash)
 ```
 
 When you need to install specific version of actionlint, please give the version to the 1st command line argument. The following
 example installs v1.13.0.
 
 ```sh
-bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash) 1.13.0
+bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) 1.13.0
 ```
 
 This script downloads `actionlint` (or `actionlint.exe` on Windows) binary to the current working directory. When you need to put
@@ -137,7 +137,7 @@ the downloaded binary to some other directory, please give the directory path to
 example installs the latest version to `/usr/bin`.
 
 ```sh
-bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/main/scripts/download-actionlint.bash) latest /usr/bin
+bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) latest /usr/bin
 ```
 
 For the usage of actionlint on GitHub Actions, see [the usage document](usage.md#on-github-actions).
@@ -194,7 +194,7 @@ Recent [Go][Go] toolchain is necessary to build actionlint from source. Last two
 go install actionlint.kjanat.dev/cmd/actionlint@latest
 
 # Install the head of the main branch
-go install actionlint.kjanat.dev/cmd/actionlint@main
+go install actionlint.kjanat.dev/cmd/actionlint@master
 ```
 
 ---
