@@ -1,0 +1,16 @@
+/invalid_steps/action\.yaml:8:7: step 1 in "runs\.steps" section in metadata of "Composite steps" action has unexpected key "parallel"\. expected one of "continue-on-error", "env", "id", "if", "name", "run", "shell", "uses", "with", "working-directory" \[action\]/
+/invalid_steps/action\.yaml:8:7: step 1 in "runs\.steps" section in metadata of "Composite steps" action requires either "run" or "uses" key \[action\]/
+/invalid_steps/action\.yaml:11:7: step 2 in "runs\.steps" section in metadata of "Composite steps" action requires "shell" key since it has "run" key \[action\]/
+/invalid_steps/action\.yaml:12:7: step 3 in "runs\.steps" section in metadata of "Composite steps" action requires either "run" or "uses" key \[action\]/
+/invalid_steps/action\.yaml:13:7: step 4 in "runs\.steps" section in metadata of "Composite steps" action must have a string value at "uses" key \[action\]/
+/invalid_steps/action\.yaml:14:7: step 5 in "runs\.steps" section in metadata of "Composite steps" action must be a mapping with "run" or "uses" key \[action\]/
+/invalid_steps/action\.yaml:15:7: step 6 in "runs\.steps" section in metadata of "Composite steps" action cannot call reusable workflow "octo/repo/\.github/workflows/reuse\.yml@v1" at "uses" key \[action\]/
+/invalid_steps/action\.yaml:16:7: step 7 in "runs\.steps" section in metadata of "Composite steps" action cannot have both "run" and "uses" keys \[action\]/
+/invalid_steps/action\.yaml:19:7: step 8 in "runs\.steps" section in metadata of "Composite steps" action has unexpected key "working-directory"\. expected one of "continue-on-error", "env", "id", "if", "name", "uses", "with" \[action\]/
+/invalid_steps/action\.yaml:21:7: step 9 in "runs\.steps" section in metadata of "Composite steps" action has unexpected key "with"\. expected one of "continue-on-error", "env", "id", "if", "name", "run", "shell", "working-directory" \[action\]/
+/invalid_steps/action\.yaml:25:7: step 10 in "runs\.steps" section in metadata of "Composite steps" action has unexpected key "timeout-minutes"\. expected one of "continue-on-error", "env", "id", "if", "name", "run", "shell", "working-directory" \[action\]/
+/invalid_steps/action\.yaml:28:7: step 11 in "runs\.steps" section in metadata of "Composite steps" action must be a mapping with "run" or "uses" key \[action\]/
+/invalid_steps/action\.yaml:29:7: step 12 in "runs\.steps" section in metadata of "Composite steps" action must have a string value at "run" key \[action\]/
+/invalid_steps/action\.yaml:31:7: step 13 in "runs\.steps" section in metadata of "Composite steps" action must have a string value at "shell" key \[action\]/
+/invalid_steps/action\.yaml:33:7: step 14 in "runs\.steps" section in metadata of "Composite steps" action must have a string value at "run" key \[action\]/
+/invalid_steps/action\.yaml:35:7: step 15 in "runs\.steps" section in metadata of "Composite steps" action has empty "uses" value \[action\]/

@@ -657,7 +657,9 @@ func (l *Linter) check(
 	all = l.filterErrors(all, cfg.PathConfigs(path))
 
 	for _, err := range all {
-		err.Filepath = path // Populate filename in the error
+		if err.Filepath == "" {
+			err.Filepath = path // Populate filename in the error
+		}
 	}
 
 	slices.SortFunc(all, compareErrors)

@@ -7,12 +7,14 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 )
 
 // BrandingColors is a set of colors allowed at branding.color in action.yaml.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingcolor
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
 var BrandingColors = map[string]struct{}{
 	"white":     {},
 	"black":     {},
@@ -27,6 +29,30 @@ var BrandingColors = map[string]struct{}{
 
 // BrandingIcons is a set of icon names allowed at branding.icon in action.yaml.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingicon
+//
+// Note: The list of icons is based on [Feather Icons](https://feathericons.com/) [v4.28.0](https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/dist/icons.json).
+//
+// Omitted icons:
+// Brand icons, and all the following icons, are omitted.
+//
+// - coffee
+// - columns
+// - divide
+// - divide-circle
+// - divide-square
+// - frown
+// - hexagon
+// - key
+// - meh
+// - mouse-pointer
+// - smile
+// - tool
+// - x-octagon
+//
+// TODO:
+//
+//	generate the list of icons from the Feather Icons JSON file to keep it up-to-date.
+//	and embed the JSON file in the binary to avoid this crap.
 var BrandingIcons = map[string]struct{}{
 	"activity":           {},
 	"airplay":            {},
@@ -288,6 +314,15 @@ var BrandingIcons = map[string]struct{}{
 }
 
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runsimage
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
+//
+// Required! The Docker image to use as the container to run the action.
+// The value can be the Docker base image name, a local `Dockerfile` in your repository,
+// or a public image in Docker Hub or another registry.
+//
+// To reference a `Dockerfile` local to your repository, the file must be named `Dockerfile`
+// and you must use a path relative to your action metadata file.
+// The `docker` application will execute this file.
 func isImageOnDockerRegistry(image string) bool {
 	return strings.HasPrefix(image, "docker://") ||
 		strings.HasPrefix(image, "gcr.io/") ||
@@ -310,6 +345,7 @@ func selfRepositoryUsesLocalSpec(spec string) (string, bool) {
 
 // RuleAction is a rule to check running action in steps of jobs.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsuses
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
 type RuleAction struct {
 	RuleBase
 	cache *LocalActionsCache
@@ -347,8 +383,8 @@ func (rule *RuleAction) VisitStep(n *Step) error {
 	}
 
 	if strings.HasPrefix(spec, "$/") {
-		// Relative to the repository and commit that contain the running workflow. Normalize it
-		// to the existing local path form so metadata and output validation still work.
+		// Relative to the repository and commit that contain the running workflow.
+		// Normalize it to the existing local path form so metadata and output validation still work.
 		local, ok := selfRepositoryUsesLocalSpec(spec)
 		if !ok {
 			rule.invalidActionFormat(e.Uses.Pos, spec, "path is missing")
@@ -367,9 +403,8 @@ func (rule *RuleAction) VisitStep(n *Step) error {
 	return nil
 }
 
-// splitActionUses splits a `{owner}/{repo}@{ref}` or `{owner}/{repo}/{path}@{ref}` specification
-// into its owner, repository and ref. The problem is empty when the specification has one of those
-// shapes, in which case any of the three parts may still be empty.
+// splitActionUses splits a `{owner}/{repo}@{ref}` or `{owner}/{repo}/{path}@{ref}` specification into its owner, repository and ref.
+// The problem is empty when the specification has one of those shapes, in which case any of the three parts may still be empty.
 func splitActionUses(spec string) (owner, repo, ref, problem string) {
 	s := spec
 	idx := strings.IndexRune(s, '@')
@@ -466,6 +501,7 @@ func (rule *RuleAction) checkRunsFileExists(file, dir, prop, name string, pos *P
 }
 
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-docker-container-actions
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
 func (rule *RuleAction) checkLocalDockerActionRuns(r *ActionMetadataRuns, dir, name string, pos *Pos) {
 	if r.Image == "" {
 		rule.missingRunsProp(pos, "image", "Docker", name, dir)
@@ -481,15 +517,94 @@ func (rule *RuleAction) checkLocalDockerActionRuns(r *ActionMetadataRuns, dir, n
 	rule.checkInvalidRunsProps(pos, r, "Docker", name, dir, []string{"main", "pre", "pre-if", "post", "post-if", "steps"})
 }
 
+// Composite action steps are one of two disjoint mappings in the runner's template schema.
+// https://github.com/actions/runner/blob/main/src/Runner.Worker/action_yaml.json
+// Agents: https://github.com/actions/runner/raw/refs/heads/main/src/Runner.Worker/action_yaml.json
+var (
+	compositeRunStepKeys  = []string{"continue-on-error", "env", "id", "if", "name", "run", "shell", "working-directory"}
+	compositeUsesStepKeys = []string{"continue-on-error", "env", "id", "if", "name", "uses", "with"}
+	compositeAnyStepKeys  = []string{"continue-on-error", "env", "id", "if", "name", "run", "shell", "uses", "with", "working-directory"}
+)
+
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-composite-actions
-func (rule *RuleAction) checkLocalCompositeActionRuns(r *ActionMetadataRuns, dir, name string, pos *Pos) {
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
+func (rule *RuleAction) checkLocalCompositeActionRuns(meta *ActionMetadata, pos *Pos) {
+	r := &meta.Runs
 	if r.Steps == nil {
-		rule.missingRunsProp(pos, "steps", "Composite", name, dir)
+		rule.missingRunsProp(pos, "steps", "Composite", meta.Name, meta.Dir())
 	}
-	rule.checkInvalidRunsProps(pos, r, "Composite", name, dir, []string{"main", "pre", "pre-if", "post", "post-if", "image", "pre-entrypoint", "entrypoint", "post-entrypoint", "args", "env"})
+	for i, s := range r.Steps {
+		rule.checkCompositeActionStep(meta, s, i)
+	}
+	rule.checkInvalidRunsProps(pos, r, "Composite", meta.Name, meta.Dir(), []string{"main", "pre", "pre-if", "post", "post-if", "image", "pre-entrypoint", "entrypoint", "post-entrypoint", "args", "env"})
+}
+
+// compositeStepErrorf reports an error at the step's own position in the action metadata file
+// instead of at the "uses" site in the workflow being linted.
+func (rule *RuleAction) compositeStepErrorf(meta *ActionMetadata, s *ActionCompositeStep, idx int, format string, args ...any) {
+	m := fmt.Sprintf(format, args...)
+	err := errorAt(&Pos{Line: s.Line, Col: s.Column}, rule.name, fmt.Sprintf(`step %d in "runs.steps" section in metadata of %q action %s`, idx+1, meta.Name, m))
+	err.Filepath = meta.Path()
+	err.source = meta.src
+	rule.errs = append(rule.errs, err)
+}
+
+func (rule *RuleAction) checkCompositeActionStepKeys(meta *ActionMetadata, s *ActionCompositeStep, idx int, allowed []string) {
+	for _, k := range s.Keys {
+		if !slices.Contains(allowed, strings.ToLower(k)) {
+			rule.compositeStepErrorf(meta, s, idx, "has unexpected key %q. expected one of %s", k, sortedQuotes(allowed))
+		}
+	}
+}
+
+func (rule *RuleAction) checkCompositeActionStep(meta *ActionMetadata, s *ActionCompositeStep, idx int) {
+	if !s.IsMapping {
+		rule.compositeStepErrorf(meta, s, idx, `must be a mapping with "run" or "uses" key`)
+		return
+	}
+
+	var hasRun, hasShell, hasUses bool
+	for _, k := range s.Keys {
+		switch strings.ToLower(k) {
+		case "run":
+			hasRun = true
+		case "shell":
+			hasShell = true
+		case "uses":
+			hasUses = true
+		}
+	}
+
+	switch {
+	case hasRun && hasUses:
+		rule.compositeStepErrorf(meta, s, idx, `cannot have both "run" and "uses" keys`)
+	case hasRun:
+		if s.run == nil {
+			rule.compositeStepErrorf(meta, s, idx, `must have a string value at "run" key`)
+		}
+		if !hasShell {
+			rule.compositeStepErrorf(meta, s, idx, `requires "shell" key since it has "run" key`)
+		} else if s.shell == nil {
+			rule.compositeStepErrorf(meta, s, idx, `must have a string value at "shell" key`)
+		}
+		rule.checkCompositeActionStepKeys(meta, s, idx, compositeRunStepKeys)
+	case hasUses:
+		if s.Uses == nil {
+			rule.compositeStepErrorf(meta, s, idx, `must have a string value at "uses" key`)
+		} else if *s.Uses == "" {
+			rule.compositeStepErrorf(meta, s, idx, `has empty "uses" value`)
+		} else if u, _, _ := strings.Cut(*s.Uses, "@"); strings.HasSuffix(u, ".yml") || strings.HasSuffix(u, ".yaml") {
+			rule.compositeStepErrorf(meta, s, idx, `cannot call reusable workflow %q at "uses" key`, *s.Uses)
+		}
+		rule.checkCompositeActionStepKeys(meta, s, idx, compositeUsesStepKeys)
+	default:
+		rule.compositeStepErrorf(meta, s, idx, `requires either "run" or "uses" key`)
+		rule.checkCompositeActionStepKeys(meta, s, idx, compositeAnyStepKeys)
+	}
 }
 
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-javascript-actions
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
 func (rule *RuleAction) checkLocalJavaScriptActionRuns(r *ActionMetadataRuns, dir, name string, pos *Pos) {
 	if r.Main == "" {
 		rule.missingRunsProp(pos, "main", "JavaScript", name, dir)
@@ -525,6 +640,7 @@ func (rule *RuleAction) checkLocalActionInputs(meta *ActionMetadata, pos *Pos) {
 }
 
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
 func (rule *RuleAction) checkLocalActionRuns(meta *ActionMetadata, pos *Pos) {
 	switch r := &meta.Runs; r.Using {
 	case "":
@@ -532,7 +648,7 @@ func (rule *RuleAction) checkLocalActionRuns(meta *ActionMetadata, pos *Pos) {
 	case "docker":
 		rule.checkLocalDockerActionRuns(r, meta.Dir(), meta.Name, pos)
 	case "composite":
-		rule.checkLocalCompositeActionRuns(r, meta.Dir(), meta.Name, pos)
+		rule.checkLocalCompositeActionRuns(meta, pos)
 	case "node20", "node24":
 		rule.checkLocalJavaScriptActionRuns(r, meta.Dir(), meta.Name, pos)
 	default:
@@ -546,6 +662,7 @@ func (rule *RuleAction) checkLocalActionRuns(meta *ActionMetadata, pos *Pos) {
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-the-github-packages-container-registry
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
 func (rule *RuleAction) checkDockerAction(uri string, exec *ExecAction) {
 	tag := ""
 	tagExists := false
@@ -574,6 +691,7 @@ func (rule *RuleAction) checkDockerAction(uri string, exec *ExecAction) {
 }
 
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
 func (rule *RuleAction) checkLocalActionMetadata(meta *ActionMetadata, action *ExecAction) {
 	if meta.Name == "" {
 		rule.Errorf(action.Uses.Pos, "name is required in action metadata %q", meta.Path())
@@ -608,6 +726,7 @@ func (rule *RuleAction) checkLocalActionMetadata(meta *ActionMetadata, action *E
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-action-in-the-same-repository-as-the-workflow
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
 func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *ExecAction) {
 	meta, cached, err := rule.cache.FindMetadata(localSpec)
 	if err != nil {

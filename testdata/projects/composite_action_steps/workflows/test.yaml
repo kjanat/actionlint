@@ -1,0 +1,8 @@
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./ok
+      - uses: ./invalid_steps

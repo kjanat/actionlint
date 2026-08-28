@@ -37,6 +37,9 @@ type Error struct {
 	// endColumn is the inclusive column where the error range ends. A zero value lets the formatter
 	// infer the range from the source token at Column.
 	endColumn int
+	// source is the content of the file at Filepath when the error points at a file other than the
+	// linted workflow. It replaces the workflow source for rendering the snippet.
+	source []byte
 }
 
 // Error returns summary of the error as string.
@@ -66,8 +69,16 @@ func errorfAt(pos *Pos, kind string, format string, args ...any) *Error {
 	}
 }
 
+func (e *Error) sourceFor(source []byte) []byte {
+	if source != nil && e.source != nil {
+		return e.source
+	}
+	return source
+}
+
 // GetTemplateFields fields for formatting this error with Go template.
 func (e *Error) GetTemplateFields(source []byte) *ErrorTemplateFields {
+	source = e.sourceFor(source)
 	snippet := ""
 	end := e.Column
 	if len(source) > 0 && e.Line > 0 {
@@ -95,6 +106,7 @@ func (e *Error) GetTemplateFields(source []byte) *ErrorTemplateFields {
 // message with colorful output and source snippet with indicator. When nil is set to source, no
 // source snippet is not printed. To disable colorful output, set true to fatih/color.NoColor.
 func (e *Error) PrettyPrint(w io.Writer, source []byte) {
+	source = e.sourceFor(source)
 	_, _ = yellow.Fprint(w, e.Filepath)
 	_, _ = gray.Fprint(w, ":")
 	_, _ = fmt.Fprint(w, e.Line)

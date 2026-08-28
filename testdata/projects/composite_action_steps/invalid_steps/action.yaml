@@ -1,0 +1,35 @@
+name: 'Composite steps'
+author: 'rhysd <https://rhysd.github.io>'
+description: 'Steps the runner refuses'
+
+runs:
+  using: composite
+  steps:
+    - parallel:
+        - run: echo hello
+          shell: bash
+    - run: echo no shell
+    - shell: bash
+    - uses: []
+    - 42
+    - uses: octo/repo/.github/workflows/reuse.yml@v1
+    - run: echo both
+      shell: bash
+      uses: actions/checkout@v5
+    - uses: actions/checkout@v5
+      working-directory: sub
+    - run: echo hi
+      shell: bash
+      with:
+        foo: bar
+    - run: echo hi
+      shell: bash
+      timeout-minutes: 5
+    - null
+    - run: false
+      shell: bash
+    - run: echo hi
+      shell: 42
+    - run: [echo, hi]
+      shell: bash
+    - uses: ""
