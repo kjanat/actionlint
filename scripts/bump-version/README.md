@@ -14,6 +14,7 @@ This script does:
 - verify each declared reference occurs exactly the expected number of times
 - verify no version reference in a declared file is left undeclared
 - rewrite every declared reference and verify the result on disk
+- move the `Unreleased` entries of `CHANGELOG.md` into a dated section for the new version
 - optionally create the version bump commit, the version tag, and push them
 
 Nothing is written unless every file passes validation, and no commit, tag, or push happens unless
@@ -63,8 +64,10 @@ go run ./scripts/bump-version -notes v1.2.3
 
 Bumping the version requires a clean working tree, a clean index, the `main` branch, a version tag
 which does not exist yet, and release notes for the version. The notes are the `v1.2.3` section of
-`CHANGELOG.md` when the file has one, and the `Unreleased` entries when it does not. This script
-never writes `CHANGELOG.md`.
+`CHANGELOG.md` when the file has one, and the `Unreleased` entries when it does not. The bump moves
+the `Unreleased` entries into a `v1.2.3` section dated today, so the bump commit carries the
+complete changelog and no post-release edit is needed. Writing the entries under `Unreleased` as
+changes land is the only manual changelog work.
 
 ## Adding a version reference
 

@@ -562,6 +562,64 @@ func TestCheckChangelogSectionsAcceptsCompleteSection(t *testing.T) {
 	}
 }
 
+func TestSectionizeChangelogCreatesSection(t *testing.T) {
+	content, err := sectionizeChangelog([]byte(oneChangelogSection), "v1.12.0", "2026-08-28")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := checkChangelogSections(content); err != nil {
+		t.Fatal(err)
+	}
+	notes, err := sectionNotes(content, "v1.12.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if notes != "- Pending.\n" {
+		t.Fatalf("the new section holds %q", notes)
+	}
+	if entries, _ := changelogEntries(content); len(entries) != 0 {
+		t.Fatalf("the Unreleased heading still lists %v", entries)
+	}
+	text := string(content)
+	if !strings.Contains(text, "## [v1.12.0](https://github.com/kjanat/actionlint/releases/tag/v1.12.0) - 2026-08-28") {
+		t.Fatalf("the section heading is missing:\n%s", text)
+	}
+	if !strings.Contains(text, "[v1.12.0]: https://github.com/kjanat/actionlint/compare/v1.11.0...v1.12.0\n[v1.11.0]:") {
+		t.Fatalf("the link definition is missing or misplaced:\n%s", text)
+	}
+}
+
+func TestSectionizeChangelogKeepsExistingSection(t *testing.T) {
+	content, err := sectionizeChangelog([]byte(oneChangelogSection), "v1.11.0", "2026-08-28")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(content) != oneChangelogSection {
+		t.Fatalf("the changelog changed:\n%s", content)
+	}
+}
+
+func TestSectionizeChangelogRejectsEmptyUnreleased(t *testing.T) {
+	content := strings.Replace(oneChangelogSection, "- Pending.\n", "", 1)
+	if _, err := sectionizeChangelog([]byte(content), "v1.12.0", "2026-08-28"); err == nil {
+		t.Fatal("an empty Unreleased heading was accepted")
+	}
+}
+
+func TestSectionizeChangelogFirstRelease(t *testing.T) {
+	first := "<a id=\"unreleased\"></a>\n\n# Unreleased\n\n- First.\n"
+	content, err := sectionizeChangelog([]byte(first), "v1.0.0", "2026-08-28")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := checkChangelogSections(content); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(content), "[v1.0.0]: https://github.com/kjanat/actionlint/tree/v1.0.0") {
+		t.Fatalf("the first release link definition is missing:\n%s", content)
+	}
+}
+
 func TestCheckChangelogSectionsRejectsIncompleteSection(t *testing.T) {
 	for name, drop := range map[string]string{
 		"heading":         "# [v1.11.0](https://github.com/kjanat/actionlint/releases/tag/v1.11.0) - 2026-08-20",

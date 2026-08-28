@@ -13,9 +13,12 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 )
 
 const releaseJobURL = "https://github.com/kjanat/actionlint/actions/workflows/release.yaml"
+
+const releaseTimeZone = "Europe/Amsterdam"
 
 type repo struct {
 	ctx  context.Context
@@ -163,10 +166,17 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	if err := Bump(root, targets, v, stdout); err != nil {
 		return err
 	}
+	zone, err := time.LoadLocation(releaseTimeZone)
+	if err != nil {
+		return err
+	}
+	if err := SectionizeChangelog(root, v, time.Now().In(zone).Format("2006-01-02"), stdout); err != nil {
+		return err
+	}
 
 	if !commit && !push {
 		_, _ = fmt.Fprint(stdout, "\nAll version references were updated and verified. To release, run:\n\n")
-		_, _ = fmt.Fprintf(stdout, "  git add %s\n", strings.Join(paths(targets), " "))
+		_, _ = fmt.Fprintf(stdout, "  git add %s\n", strings.Join(append(paths(targets), changelogFile), " "))
 		_, _ = fmt.Fprintf(stdout, "  git commit -m 'bump up version to %s'\n", tag)
 		_, _ = fmt.Fprintf(stdout, "  git tag -s -m %s %s\n", tag, tag)
 		_, _ = fmt.Fprint(stdout, "  git push origin main\n")
@@ -174,7 +184,7 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		return nil
 	}
 
-	if err := r.run(append([]string{"add"}, paths(targets)...)...); err != nil {
+	if err := r.run(append([]string{"add"}, append(paths(targets), changelogFile)...)...); err != nil {
 		return err
 	}
 	if err := r.run("commit", "-m", "bump up version to "+tag); err != nil {

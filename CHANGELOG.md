@@ -2,6 +2,12 @@
 
 # Unreleased
 
+- Make `bump-version` move the `Unreleased` changelog entries into a dated section for the version it releases, so the bump commit carries the complete changelog and a release leaves no manual changelog work behind.
+
+<a id="v1.13.0"></a>
+
+## [v1.13.0](https://github.com/kjanat/actionlint/releases/tag/v1.13.0) - 2026-08-29
+
 - Add an opt-in `policy:` mapping to the configuration file for checks that enforce a convention the repository chose for itself. GitHub runs a workflow that violates one without complaining, so every policy check stays off until its key turns it on, and a repository with no configuration file never sees them. Correctness checks always run and are unaffected. (https://github.com/kjanat/actionlint/pull/39)
 - Add the `require-commit-hash` policy check. It reports a `uses:` which names something that can move: an action or reusable workflow whose ref is not 40 or 64 hexadecimal digits, and a `docker://` image without a `{image}@{algorithm}:{hex}` digest. Local `./` and `$/` references carry no ref and a `uses:` built with `${{ }}` cannot be read, so the check passes over them. (rhysd/actionlint#435, rhysd/actionlint#524, https://github.com/kjanat/actionlint/pull/40)
 - Add the `require-job-timeout` policy check. It reports a job which sets no `timeout-minutes:`, which GitHub cancels only after its default of 360 minutes. The value can also be a mapping whose `max-minutes` key additionally reports a job whose timeout exceeds that number. A job calling a reusable workflow cannot set the key and is passed over. (https://github.com/kjanat/actionlint/pull/44)
@@ -22,9 +28,11 @@
 - Add a pre-commit hook that installs ShellCheck alongside actionlint. (https://github.com/kjanat/actionlint/pull/31)
 - Add a hosted expression conformance probe that submits expressions to GitHub Actions and records how GitHub's own parser evaluates them, treating that parser as the oracle for expression semantics. (https://github.com/kjanat/actionlint/pull/35)
 
+[Changes][v1.13.0]
+
 <a id="v1.12.0"></a>
 
-## [v1.12.0](https://github.com/kjanat/actionlint/releases/tag/v1.12.0) - 2026-08-20
+## [v1.12.0](https://github.com/kjanat/actionlint/releases/tag/v1.12.0) - 2026-08-21
 
 - Move the Go module to `actionlint.kjanat.dev`. The `go-import` and `go-source` meta tags that resolve it are served from the fork's GitHub Pages site, so `go install actionlint.kjanat.dev/cmd/actionlint@latest` resolves from this release onward. Library consumers must update their import paths.
 - Rename the exported `InvalidGlobPattern` error type to `InvalidGlobPatternError`. It is returned by `ValidateRefGlob` and `ValidatePathGlob`, so consumers of those functions must update.
@@ -2399,6 +2407,7 @@ See documentation for more details:
 
 [Changes][v1.0.0]
 
+[v1.13.0]: https://github.com/kjanat/actionlint/compare/v1.12.0...v1.13.0
 [v1.12.0]: https://github.com/kjanat/actionlint/compare/v1.11.0...v1.12.0
 [v1.11.0]: https://github.com/kjanat/actionlint/compare/v1.10.0...v1.11.0
 [v1.10.0]: https://github.com/kjanat/actionlint/compare/v1.9.0...v1.10.0

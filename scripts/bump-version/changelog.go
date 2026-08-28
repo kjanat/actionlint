@@ -172,6 +172,87 @@ func changelogRelease(content []byte, v version) error {
 	return err
 }
 
+const changelogRepoURL = "https://github.com/kjanat/actionlint"
+
+var changelogUnreleased = regexp.MustCompile(`(?m)^` + unreleasedHeading + `[ \t]*\r?$`)
+
+// sectionizeChangelog moves the Unreleased entries into a new section for tag dated date, leaving
+// the Unreleased heading empty. Content already holding a section for tag is returned unchanged.
+func sectionizeChangelog(content []byte, tag, date string) ([]byte, error) {
+	if hasSection(content, tag) {
+		return content, nil
+	}
+
+	heading := changelogUnreleased.FindIndex(content)
+	if heading == nil {
+		return nil, fmt.Errorf("%s has no %q heading, so no entries can move into the %s section", changelogFile, unreleasedHeading, tag)
+	}
+	end := len(content)
+	if anchor := changelogAnchor.FindIndex(content[heading[1]:]); anchor != nil {
+		end = heading[1] + anchor[0]
+	} else if links := changelogLink.FindIndex(content[heading[1]:]); links != nil {
+		end = heading[1] + links[0]
+	}
+	entries := bytes.TrimSpace(content[heading[1]:end])
+	if !changelogEntry.Match(entries) {
+		return nil, fmt.Errorf("%s lists no entries under %q, so the %s section would describe no change", changelogFile, unreleasedHeading, tag)
+	}
+
+	previous := ""
+	if found := sections(content); len(found) > 0 {
+		previous = found[0].version
+	}
+	linkURL := changelogRepoURL + "/tree/" + tag
+	if previous != "" {
+		linkURL = changelogRepoURL + "/compare/" + previous + "..." + tag
+	}
+
+	var b bytes.Buffer
+	b.Grow(len(content) + 512)
+	b.Write(content[:heading[1]])
+	fmt.Fprintf(&b, "\n\n<a id=%q></a>\n\n## [%s](%s/releases/tag/%s) - %s\n\n", tag, tag, changelogRepoURL, tag, date)
+	b.Write(entries)
+	fmt.Fprintf(&b, "\n\n[Changes][%s]\n\n", tag)
+	rest := content[end:]
+	definition := fmt.Appendf(nil, "[%s]: %s\n", tag, linkURL)
+	if links := changelogLink.FindIndex(rest); links != nil {
+		b.Write(rest[:links[0]])
+		b.Write(definition)
+		b.Write(rest[links[0]:])
+	} else {
+		b.Write(bytes.TrimLeft(rest, "\n"))
+		b.WriteString("\n")
+		b.Write(definition)
+	}
+
+	result := b.Bytes()
+	if err := checkChangelogSections(result); err != nil {
+		return nil, fmt.Errorf("the rewritten changelog does not validate: %w", err)
+	}
+	return result, nil
+}
+
+func SectionizeChangelog(root string, v version, date string, out io.Writer) error {
+	content, err := readChangelog(root)
+	if err != nil {
+		return err
+	}
+	tag := "v" + v.String()
+	updated, err := sectionizeChangelog(content, tag, date)
+	if err != nil {
+		return err
+	}
+	if bytes.Equal(updated, content) {
+		_, _ = fmt.Fprintf(out, "%s: the %s section already exists\n", changelogFile, tag)
+		return nil
+	}
+	if err := os.WriteFile(filepath.Join(root, changelogFile), updated, 0666); err != nil {
+		return fmt.Errorf("could not write %s: %w", changelogFile, err)
+	}
+	_, _ = fmt.Fprintf(out, "%s: the Unreleased entries moved into the %s section\n", changelogFile, tag)
+	return nil
+}
+
 func readChangelog(root string) ([]byte, error) {
 	content, err := os.ReadFile(filepath.Join(root, changelogFile))
 	if err != nil {
