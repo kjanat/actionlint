@@ -9,3 +9,8 @@
 /invalid_steps/action\.yaml:19:7: step 8 in "runs\.steps" section in metadata of "Composite steps" action has unexpected key "working-directory"\. expected one of "continue-on-error", "env", "id", "if", "name", "uses", "with" \[action\]/
 /invalid_steps/action\.yaml:21:7: step 9 in "runs\.steps" section in metadata of "Composite steps" action has unexpected key "with"\. expected one of "continue-on-error", "env", "id", "if", "name", "run", "shell", "working-directory" \[action\]/
 /invalid_steps/action\.yaml:25:7: step 10 in "runs\.steps" section in metadata of "Composite steps" action has unexpected key "timeout-minutes"\. expected one of "continue-on-error", "env", "id", "if", "name", "run", "shell", "working-directory" \[action\]/
+/invalid_steps/action\.yaml:28:7: step 11 in "runs\.steps" section in metadata of "Composite steps" action must be a mapping with "run" or "uses" key \[action\]/
+/invalid_steps/action\.yaml:29:7: step 12 in "runs\.steps" section in metadata of "Composite steps" action must have a string value at "run" key \[action\]/
+/invalid_steps/action\.yaml:31:7: step 13 in "runs\.steps" section in metadata of "Composite steps" action must have a string value at "shell" key \[action\]/
+/invalid_steps/action\.yaml:33:7: step 14 in "runs\.steps" section in metadata of "Composite steps" action must have a string value at "run" key \[action\]/
+/invalid_steps/action\.yaml:35:7: step 15 in "runs\.steps" section in metadata of "Composite steps" action has empty "uses" value \[action\]/

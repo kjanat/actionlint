@@ -3200,8 +3200,8 @@ directly via command line arguments.
 For a Composite action, each item in `steps:` must be a mapping in one of the two shapes the runner accepts: a script step
 with `run:` and `shell:` keys, or an action step with `uses:` key. actionlint reports a step which mixes the two shapes, misses
 `shell:` next to `run:`, has a key the runner does not know such as `parallel:` or `timeout-minutes:`, has a non-string value
-at `uses:`, or calls a reusable workflow at `uses:`. `working-directory:` is only allowed in a script step and `with:` is only
-allowed in an action step.
+at `run:`, `shell:`, or `uses:`, has an empty `uses:` value, is `null`, or calls a reusable workflow at `uses:`.
+`working-directory:` is only allowed in a script step and `with:` is only allowed in an action step.
 
 <a id="deprecated-inputs-usage"></a>
 

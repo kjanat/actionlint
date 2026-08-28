@@ -25,3 +25,11 @@ runs:
     - run: echo hi
       shell: bash
       timeout-minutes: 5
+    - null
+    - run: false
+      shell: bash
+    - run: echo hi
+      shell: 42
+    - run: [echo, hi]
+      shell: bash
+    - uses: ""

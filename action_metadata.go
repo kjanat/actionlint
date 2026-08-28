@@ -128,7 +128,9 @@ type ActionCompositeStep struct {
 	// mapping.
 	IsMapping bool `json:"is_mapping"`
 	// Keys is the key names of the step mapping in file order.
-	Keys []string `json:"keys"`
+	Keys  []string `json:"keys"`
+	run   *string
+	shell *string
 	// Uses is the value of "uses" key in the step. It is nil when the key is absent or its value
 	// is not a string.
 	Uses *string `json:"uses"`
@@ -150,16 +152,56 @@ func (s *ActionCompositeStep) UnmarshalYAML(n *yaml.Node) error {
 	for i := 0; i < len(n.Content); i += 2 {
 		k, v := n.Content[i], n.Content[i+1]
 		s.Keys = append(s.Keys, k.Value)
-		if strings.EqualFold(k.Value, "uses") {
-			for v.Kind == yaml.AliasNode && v.Alias != nil && v.Alias.Kind != yaml.AliasNode {
-				v = v.Alias
-			}
-			if v.Kind == yaml.ScalarNode && v.Tag == "!!str" {
-				u := v.Value
-				s.Uses = &u
-			}
+		switch strings.ToLower(k.Value) {
+		case "run":
+			s.run = yamlStringScalar(v)
+		case "shell":
+			s.shell = yamlStringScalar(v)
+		case "uses":
+			s.Uses = yamlStringScalar(v)
 		}
 	}
+	return nil
+}
+
+func yamlStringScalar(n *yaml.Node) *string {
+	for n.Kind == yaml.AliasNode && n.Alias != nil && n.Alias.Kind != yaml.AliasNode {
+		n = n.Alias
+	}
+	if n.Kind == yaml.ScalarNode && n.Tag == "!!str" {
+		s := n.Value
+		return &s
+	}
+	return nil
+}
+
+type actionCompositeSteps []*ActionCompositeStep
+
+func (ss *actionCompositeSteps) UnmarshalYAML(n *yaml.Node) error {
+	for n.Kind == yaml.AliasNode && n.Alias != nil && n.Alias.Kind != yaml.AliasNode {
+		n = n.Alias
+	}
+	if n.Kind == yaml.ScalarNode && n.Tag == "!!null" {
+		*ss = nil
+		return nil
+	}
+	if n.Kind != yaml.SequenceNode {
+		return fmt.Errorf(
+			"yaml: steps must be sequence node but %s node was found at line:%d, col:%d",
+			nodeKindName(n.Kind),
+			n.Line,
+			n.Column,
+		)
+	}
+	steps := make(actionCompositeSteps, 0, len(n.Content))
+	for _, c := range n.Content {
+		s := &ActionCompositeStep{}
+		if err := s.UnmarshalYAML(c); err != nil {
+			return err
+		}
+		steps = append(steps, s)
+	}
+	*ss = steps
 	return nil
 }
 
@@ -179,7 +221,7 @@ type ActionMetadataRuns struct {
 	// PostIf is `post-if` configuration of action.yaml for JavaScript action.
 	PostIf string `yaml:"post-if" json:"post-if"`
 	// Steps is `steps` configuration of action.yaml for Composite action.
-	Steps []*ActionCompositeStep `yaml:"steps" json:"steps"`
+	Steps actionCompositeSteps `yaml:"steps" json:"steps"`
 	// Image is `image` of action.yaml for Docker action.
 	Image string `yaml:"image" json:"image"`
 	// PreEntrypoint is `pre-entrypoint` of action.yaml for Docker action.

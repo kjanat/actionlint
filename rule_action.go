@@ -579,13 +579,20 @@ func (rule *RuleAction) checkCompositeActionStep(meta *ActionMetadata, s *Action
 	case hasRun && hasUses:
 		rule.compositeStepErrorf(meta, s, idx, `cannot have both "run" and "uses" keys`)
 	case hasRun:
+		if s.run == nil {
+			rule.compositeStepErrorf(meta, s, idx, `must have a string value at "run" key`)
+		}
 		if !hasShell {
 			rule.compositeStepErrorf(meta, s, idx, `requires "shell" key since it has "run" key`)
+		} else if s.shell == nil {
+			rule.compositeStepErrorf(meta, s, idx, `must have a string value at "shell" key`)
 		}
 		rule.checkCompositeActionStepKeys(meta, s, idx, compositeRunStepKeys)
 	case hasUses:
 		if s.Uses == nil {
 			rule.compositeStepErrorf(meta, s, idx, `must have a string value at "uses" key`)
+		} else if *s.Uses == "" {
+			rule.compositeStepErrorf(meta, s, idx, `has empty "uses" value`)
 		} else if u, _, _ := strings.Cut(*s.Uses, "@"); strings.HasSuffix(u, ".yml") || strings.HasSuffix(u, ".yaml") {
 			rule.compositeStepErrorf(meta, s, idx, `cannot call reusable workflow %q at "uses" key`, *s.Uses)
 		}
