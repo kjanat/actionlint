@@ -172,9 +172,14 @@ func (cmd *Command) Main(args []string) int {
 	}
 
 	if f.version {
+		name := "actionlint"
+		if info, ok := debug.ReadBuildInfo(); ok && info.Main.Path != "" {
+			name = info.Main.Path
+		}
 		_, _ = fmt.Fprintf(
 			cmd.Stdout,
-			"%s\n%s\nbuilt with %s compiler for %s/%s\n",
+			"%s %s\n%s\nbuilt with %s compiler for %s/%s\n",
+			name,
 			getCommandVersion(),
 			installedFrom,
 			runtime.Version(),
