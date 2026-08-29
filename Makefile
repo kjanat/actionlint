@@ -73,11 +73,16 @@ else
 	go generate
 endif
 
+GIT_DESCRIBE := $(shell git describe --tags 2>/dev/null)
+ifneq ($(GIT_DESCRIBE),)
+BUILD_LDFLAGS = -ldflags "-X actionlint.kjanat.dev.version=$(GIT_DESCRIBE)"
+endif
+
 $(TARGET): $(SRCS)
 ifeq ($(OS),Windows_NT)
-	go build ./cmd/actionlint
+	go build $(BUILD_LDFLAGS) ./cmd/actionlint
 else
-	CGO_ENABLED=0 go build ./cmd/actionlint
+	CGO_ENABLED=0 go build $(BUILD_LDFLAGS) ./cmd/actionlint
 endif
 
 b build: $(TARGET)

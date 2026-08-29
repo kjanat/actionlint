@@ -13,7 +13,7 @@ import (
 // These variables might be modified by ldflags on building release binaries by GoReleaser. Do not modify manually
 var (
 	version       = ""
-	installedFrom = "installed by building from source"
+	installedFrom = ""
 )
 
 const (
@@ -65,6 +65,21 @@ Documents:
 
 Flags:
 `, b, b, b)
+}
+
+func getInstalledFrom() string {
+	if installedFrom != "" {
+		return installedFrom
+	}
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		for _, s := range info.Settings {
+			if s.Key == "vcs" {
+				return "from source"
+			}
+		}
+		return "go install"
+	}
+	return "from source"
 }
 
 func getCommandVersion() string {
@@ -172,11 +187,16 @@ func (cmd *Command) Main(args []string) int {
 	}
 
 	if f.version {
+		name := "actionlint"
+		if info, ok := debug.ReadBuildInfo(); ok && info.Main.Path != "" {
+			name = info.Main.Path
+		}
 		_, _ = fmt.Fprintf(
 			cmd.Stdout,
-			"%s\n%s\nbuilt with %s compiler for %s/%s\n",
+			"%s %s\n%s\nbuilt with %s compiler for %s/%s\n",
+			name,
 			getCommandVersion(),
-			installedFrom,
+			getInstalledFrom(),
 			runtime.Version(),
 			runtime.GOOS,
 			runtime.GOARCH,

@@ -53,6 +53,8 @@ jobs:
             with: { go-version: "${{ env.GO }}", check-latest: true }
       - name: Get version
         run: echo VERSION="${GITHUB_REF#refs/tags/v}" >> "${GITHUB_ENV}"
+      - name: Install syft for SBOM generation
+        uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with: { version: "~> v2", args: "release --clean --release-notes=${{ runner.temp }}/release-notes.md" }
         env: {
@@ -78,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: changelog
     outputs: { is-latest: "${{ steps.tag.outputs.is-latest }}", is-major-latest: "${{ steps.tag.outputs.is-major-latest }}" }
-    permissions: { contents: read, packages: write }
+    permissions: { contents: read, packages: write, id-token: write, attestations: write }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { fetch-depth: 0, persist-credentials: false }
@@ -89,8 +91,12 @@ jobs:
           git fetch --force --tags origin
           version="${GITHUB_REF_NAME#v}"
           major="${version%%.*}"
-          echo "name=${version}" >> "${GITHUB_OUTPUT}"
-          echo "major=${major}" >> "${GITHUB_OUTPUT}"
+          minor="${version%.*}"
+          {
+            echo "name=${version}"
+            echo "major=${major}"
+            echo "minor=${minor}"
+          } >> "${GITHUB_OUTPUT}"
 
           latest_stable_tag() {
             local pattern="$1"
@@ -115,6 +121,12 @@ jobs:
             echo "is-major-latest=true" >> "${GITHUB_OUTPUT}"
           else
             echo "is-major-latest=false" >> "${GITHUB_OUTPUT}"
+          fi
+          minor_latest="$(latest_stable_tag "v${minor}.*")"
+          if [[ "${GITHUB_REF_NAME}" == "${minor_latest}" ]]; then
+            echo "is-minor-latest=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "is-minor-latest=false" >> "${GITHUB_OUTPUT}"
           fi
       - name: Set up QEMU
         uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
@@ -142,8 +154,23 @@ jobs:
             docker.io/${{ github.repository }}
           tags: |
             type=raw,value=${{ steps.tag.outputs.name }}
+            type=raw,value=${{ steps.tag.outputs.minor }},enable=${{ steps.tag.outputs.is-minor-latest }}
+            type=raw,value=${{ steps.tag.outputs.major }},enable=${{ steps.tag.outputs.is-major-latest }}
             type=raw,value=latest,enable=${{ steps.tag.outputs.is-latest }}
+        env: { DOCKER_METADATA_ANNOTATIONS_LEVELS: "manifest,index" }
+      - name: Build CLI image for the smoke test
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          target: cli
+          build-args: |
+            GOLANG_VER=${{ env.GO }}
+            ACTIONLINT_VER=${{ steps.tag.outputs.name }}
+          load: true
+          tags: actionlint:smoke
+      - name: Smoke-test the CLI image
+        run: docker run --rm actionlint:smoke -version
       - name: Build and push CLI image
+        id: push-cli
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           platforms: linux/amd64,linux/arm64
@@ -152,8 +179,10 @@ jobs:
             GOLANG_VER=${{ env.GO }}
             ACTIONLINT_VER=${{ steps.tag.outputs.name }}
           push: true
-          annotations: |
-            index:org.opencontainers.image.description=Static checker for GitHub Actions workflow files
+          sbom: true
+          provenance: mode=max
+          labels: ${{ steps.meta-cli.outputs.labels }}
+          annotations: ${{ steps.meta-cli.outputs.annotations }}
           tags: ${{ steps.meta-cli.outputs.tags }}
       - parallel:
           - name: Update Docker Hub description
@@ -173,7 +202,9 @@ jobs:
                 type=raw,value=action-${{ steps.tag.outputs.name }}
                 type=raw,value=action-v${{ steps.tag.outputs.major }},enable=${{ steps.tag.outputs.is-major-latest }}
                 type=raw,value=action-latest,enable=${{ steps.tag.outputs.is-latest }}
+            env: { DOCKER_METADATA_ANNOTATIONS_LEVELS: "manifest,index" }
       - name: Build and push GitHub Action image
+        id: push-action
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           platforms: linux/amd64,linux/arm64
@@ -182,9 +213,29 @@ jobs:
             GOLANG_VER=${{ env.GO }}
             ACTIONLINT_VER=${{ steps.tag.outputs.name }}
           push: true
-          annotations: |
-            index:org.opencontainers.image.description=GitHub Action for actionlint
+          sbom: true
+          provenance: mode=max
+          labels: ${{ steps.meta-action.outputs.labels }}
+          annotations: ${{ steps.meta-action.outputs.annotations }}
           tags: ${{ steps.meta-action.outputs.tags }}
+      - parallel:
+          - name: Attest the CLI image
+            uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+            with:
+              subject-name: ghcr.io/${{ github.repository }}
+              subject-digest: ${{ steps.push-cli.outputs.digest }}
+              push-to-registry: true
+          - name: Attest the CLI image on Docker Hub
+            uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+            with:
+              subject-name: docker.io/${{ github.repository }}
+              subject-digest: ${{ steps.push-cli.outputs.digest }}
+          - name: Attest the GitHub Action image
+            uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+            with:
+              subject-name: ghcr.io/${{ github.repository }}
+              subject-digest: ${{ steps.push-action.outputs.digest }}
+              push-to-registry: true
   major-tag:
     name: Update major action tag
     needs: [binaries, docker]

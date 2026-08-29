@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Name the module in the first line of `-version`, so `actionlint.kjanat.dev v1.13.0` tells this fork apart from upstream actionlint on a machine holding both. `make build` now stamps the version with `git describe --tags`, so a checkout build reports `v1.13.0-3-gabc1234` instead of a pseudo-version or `(devel)`. The second line names how the binary got there: `from source`, `go install` (detected from the build info: a real version with no VCS stamp means a module install), the release page URL such as `https://github.com/kjanat/actionlint/releases/tag/v1.14.0`, or `official Docker image`, replacing the `installed by ...` sentences. (https://github.com/kjanat/actionlint/issues/66)
+- Publish `1` and `1.13` floating tags for the CLI image next to the exact version and `latest`, moved only when the release is the newest of its line the way the `action-v1` alias already worked. The images additionally carry SBOM attestations, explicit max-level provenance, and OCI labels and index annotations generated from the repository metadata, the release smoke-tests the image before anything is pushed, both image digests get a signed GitHub build-provenance attestation, and every release archive gets a syft-generated SPDX SBOM asset, so `gh attestation verify oci://docker.io/kjanat/actionlint:latest -R kjanat/actionlint` passes from this release on, and the same holds for the `ghcr.io` name. (https://github.com/kjanat/actionlint/issues/80)
 - Make `bump-version` move the `Unreleased` changelog entries into a dated section for the version it releases, so the bump commit carries the complete changelog and a release leaves no manual changelog work behind.
 
 <a id="v1.13.0"></a>
