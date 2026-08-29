@@ -22,7 +22,27 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version: "1.26", check-latest: true }
       - name: Check new release on GitHub
-        run: go run ./scripts/generate-popular-actions -d
+        run: |
+          set -euo pipefail
+          # The detector exits 2 when a tracked action has a new major.
+          status=0
+          releases="$(go run ./scripts/generate-popular-actions -d)" || status=$?
+          if [[ -n "${releases}" ]]; then
+            printf '%s\n' "${releases}"
+          fi
+          if [[ "${status}" -eq 2 ]]; then
+            echo '::notice title=New major releases::A tracked action has a new major. See the job summary.'
+            cat >> "${GITHUB_STEP_SUMMARY}" <<'SUMMARY'
+          ## New major releases
+
+          Move each version into the tags list and bump next in
+          scripts/generate-popular-actions/popular_actions.json.
+
+          SUMMARY
+            printf '%s\n' "${releases}" >> "${GITHUB_STEP_SUMMARY}"
+          elif [[ "${status}" -ne 0 ]]; then
+            exit "${status}"
+          fi
       - run: go generate
       - run: |
           if git diff-files --quiet; then
