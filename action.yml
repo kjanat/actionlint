@@ -3,8 +3,7 @@
 name: actionlint by @kjanat
 description: >-
   Static-check GitHub Actions workflow files with actionlint, ShellCheck, and
-  pyflakes. Usage: `uses: kjanat/actionlint@v1`.
-  https://github.com/kjanat/actionlint#github-action
+  pyflakes.
 inputs:
   files:
     description: >-
