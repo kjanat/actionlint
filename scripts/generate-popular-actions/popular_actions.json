@@ -149,8 +149,8 @@
   },
   {
     "slug": "actions/setup-java",
-    "tags": ["v1", "v2", "v3", "v4", "v5"],
-    "next": "v6"
+    "tags": ["v1", "v2", "v3", "v4", "v5", "v6"],
+    "next": "v7"
   },
   {
     "slug": "actions/setup-node",
@@ -230,9 +230,10 @@
       "v20",
       "v21",
       "v22",
-      "v23"
+      "v23",
+      "v24"
     ],
-    "next": "v24"
+    "next": "v25"
   },
   {
     "slug": "dawidd6/action-send-mail",
@@ -564,5 +565,10 @@
     "slug": "google-github-actions/run-gemini-cli",
     "tags": ["v0"],
     "next": "v1"
+  },
+  {
+    "slug": "kjanat/actionlint",
+    "tags": ["v1"],
+    "next": "v2"
   }
 ]
