@@ -1,0 +1,6 @@
+[tools]
+actionlint                 = "latest"
+"github:kjanat/actionlint" = "latest"
+
+[settings]
+minimum_release_age = "0s"

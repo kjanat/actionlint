@@ -23,69 +23,80 @@ See the [full list][checks] of checks done by actionlint.
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/actionlint-dark.gif">
   <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/actionlint-light.gif">
-  <img alt="actionlint reports a syntax error, an untrusted input, an always-true condition, and a ShellCheck finding" src="docs/screenshots/actionlint-light.gif">
+  <img alt="A terminal running actionlint on a workflow file, reporting each problem with the offending line underlined" src="docs/screenshots/actionlint-light.gif">
 </picture>
 
 <details><summary><h3>Example of a broken workflow</h3></summary>
 
+The same files the animation above records, run through both linters. This section is generated from them by [`scripts/check-readme`](scripts/check-readme), so it cannot drift.
+
+<!-- BEGIN generated demo -->
+
+`docs/screenshots/demo-workflow.yaml`:
+
 ```yaml
+name: Release
 on:
   push:
-    branch: main
-    tags:
-      - 'v\d+'
+    branches: [main]
 jobs:
-  test:
+  build:
     strategy:
       matrix:
-        os: [macos-latest, linux-latest]
-    runs-on: ${{ matrix.os }}
+        node: ["20", "22"]
+    runs-on: ubuntu-26.04
+    timeout-minutes: ${{ matrix.node }}
     steps:
-      - run: echo "Checking commit '${{ github.event.head_commit.message }}'"
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node_version: 18.x
-      - uses: actions/cache@v6
-        with:
-          path: ~/.npm
-          key: ${{ matrix.platform }}-node-${{ hashFiles('**/package-lock.json') }}
-        if: ${{ github.repository.permissions.admin == true }}
-      - run: npm install && npm test
+      - run: npm run mock-api
+        id: mock
+        background: true
+      - run: npm test
+      - wait: api
 ```
 
-**actionlint reports 7 errors:**
+`docs/screenshots/actionlint.yaml`:
+
+```yaml
+policy:
+  require-commit-hash: true
+```
+
+**Upstream actionlint 1.7.12 reports 3: `runner-label`, `syntax-check` ×2**
 
 ```console
-test.yaml:3:5: unexpected key "branch" for "push" section. expected one of "branches", "branches-ignore", "paths", "paths-ignore", "tags", "tags-ignore", "types", "workflows" [syntax-check]
-  |
-3 |     branch: main
-  |     ^~~~~~~
-test.yaml:5:11: character '\' is invalid for branch and tag names. only special characters [, ?, +, *, \, ! can be escaped with \. see `man git-check-ref-format` for more details. note that regular expression is unavailable. note: filter pattern syntax is explained at https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet [glob]
-  |
-5 |       - 'v\d+'
-  |           ^~~~
-test.yaml:10:28: label "linux-latest" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "xcode-27", "xcode-27-xlarge", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]
+demo-workflow.yaml:10:14: label "ubuntu-26.04" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]
    |
-10 |         os: [macos-latest, linux-latest]
-   |                            ^~~~~~~~~~~~~
-test.yaml:13:41: "github.event.head_commit.message" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]
+10 |     runs-on: ubuntu-26.04
+   |              ^~~~~~~~~~~~
+demo-workflow.yaml:16:9: unexpected key "background" for step to run shell command. expected one of "continue-on-error", "env", "id", "if", "name", "run", "shell", "timeout-minutes", "working-directory" [syntax-check]
    |
-13 |       - run: echo "Checking commit '${{ github.event.head_commit.message }}'"
-   |                                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:17:11: input "node_version" is not defined in action "actions/setup-node@v7". available inputs are "architecture", "cache", "cache-dependency-path", "check-latest", "mirror", "mirror-token", "node-version", "node-version-file", "package-manager-cache", "registry-url", "scope", "token" [action]
+16 |         background: true
+   |         ^~~~~~~~~~~
+demo-workflow.yaml:18:9: step must run script with "run" section or run action with "uses" section [syntax-check]
    |
-17 |           node_version: 18.x
-   |           ^~~~~~~~~~~~~
-test.yaml:21:20: property "platform" is not defined in object type {os: string} [expression]
-   |
-21 |           key: ${{ matrix.platform }}-node-${{ hashFiles('**/package-lock.json') }}
-   |                    ^~~~~~~~~~~~~~~
-test.yaml:22:17: receiver of object dereference "permissions" must be type of object but got "string" [expression]
-   |
-22 |         if: ${{ github.repository.permissions.admin == true }}
-   |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+18 |       - wait: api
+   |         ^~~~~
 ```
+
+**This fork 1.13.0 reports 3: `expression`, `require-commit-hash`, `parallel-steps`**
+
+```console
+demo-workflow.yaml:11:22: type of expression at "float number value" must be number but found type string [expression]
+   |
+11 |     timeout-minutes: ${{ matrix.node }}
+   |                      ^~~
+demo-workflow.yaml:13:15: the ref "v7" of action "actions/checkout@v7" is not a commit SHA. actions must be pinned to a full-length commit SHA (40 or 64 hexadecimal digits) because "require-commit-hash" is enabled in the "policy" configuration. see https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions for more details [require-commit-hash]
+   |
+13 |       - uses: actions/checkout@v7
+   |               ^~~~~~~~~~~~~~~~~~~
+demo-workflow.yaml:18:15: "api" is not the ID of a preceding background step. "wait" and "cancel" steps can only refer to an earlier step that has "background: true" [parallel-steps]
+   |
+18 |       - wait: api
+   |               ^~~
+```
+
+<!-- END generated demo -->
 
 </details>
 

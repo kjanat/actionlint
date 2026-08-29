@@ -64,6 +64,7 @@ l lint:
 ifneq ($(OS),Windows_NT)
 	GOOS=js GOARCH=wasm golangci-lint run ./playground
 	go run ./scripts/check-checks -quiet ./docs/checks.md
+	go run ./scripts/check-readme -quiet ./README.md
 endif
 
 popular_actions.go all_webhooks.go availability.go: $(GO_GEN_SRCS)
