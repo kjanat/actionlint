@@ -53,6 +53,8 @@ jobs:
             with: { go-version: "${{ env.GO }}", check-latest: true }
       - name: Get version
         run: echo VERSION="${GITHUB_REF#refs/tags/v}" >> "${GITHUB_ENV}"
+      - name: Install syft for SBOM generation
+        uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with: { version: "~> v2", args: "release --clean --release-notes=${{ runner.temp }}/release-notes.md" }
         env: {
@@ -78,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: changelog
     outputs: { is-latest: "${{ steps.tag.outputs.is-latest }}", is-major-latest: "${{ steps.tag.outputs.is-major-latest }}" }
-    permissions: { contents: read, packages: write }
+    permissions: { contents: read, packages: write, id-token: write, attestations: write }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { fetch-depth: 0, persist-credentials: false }
@@ -168,6 +170,7 @@ jobs:
       - name: Smoke-test the CLI image
         run: docker run --rm actionlint:smoke -version
       - name: Build and push CLI image
+        id: push-cli
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           platforms: linux/amd64,linux/arm64
@@ -201,6 +204,7 @@ jobs:
                 type=raw,value=action-latest,enable=${{ steps.tag.outputs.is-latest }}
             env: { DOCKER_METADATA_ANNOTATIONS_LEVELS: "manifest,index" }
       - name: Build and push GitHub Action image
+        id: push-action
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           platforms: linux/amd64,linux/arm64
@@ -214,6 +218,24 @@ jobs:
           labels: ${{ steps.meta-action.outputs.labels }}
           annotations: ${{ steps.meta-action.outputs.annotations }}
           tags: ${{ steps.meta-action.outputs.tags }}
+      - parallel:
+          - name: Attest the CLI image
+            uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+            with:
+              subject-name: ghcr.io/${{ github.repository }}
+              subject-digest: ${{ steps.push-cli.outputs.digest }}
+              push-to-registry: true
+          - name: Attest the CLI image on Docker Hub
+            uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+            with:
+              subject-name: docker.io/${{ github.repository }}
+              subject-digest: ${{ steps.push-cli.outputs.digest }}
+          - name: Attest the GitHub Action image
+            uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+            with:
+              subject-name: ghcr.io/${{ github.repository }}
+              subject-digest: ${{ steps.push-action.outputs.digest }}
+              push-to-registry: true
   major-tag:
     name: Update major action tag
     needs: [binaries, docker]

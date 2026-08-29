@@ -21,6 +21,9 @@ ref_style     = "preserve"
 branch_policy = "ignore"
 ref_style     = "preserve"
 
+[actions."github/codeql-action"]
+ref_style = "tag"
+
 [cache]
 ttl     = 86400
 enabled = true
