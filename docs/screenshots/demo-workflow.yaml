@@ -1,15 +1,18 @@
 name: Release
 on:
   push:
-    branch: main
+    branches: [main]
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ["20", "22"]
+    runs-on: ubuntu-26.04
+    timeout-minutes: ${{ matrix.node }}
     steps:
       - uses: actions/checkout@v7
-      - run: echo "Building ${{ github.event.pull_request.title }}"
-      - name: Package
-        if: ${{ github.event_name == 'push' }} && ${{ github.ref_name == 'main' }}
-        run: |
-          VERSION=$(jq -r .version package.json)
-          tar czf release-$VERSION.tgz dist
+      - run: npm run mock-api
+        id: mock
+        background: true
+      - run: npm test
+      - wait: api

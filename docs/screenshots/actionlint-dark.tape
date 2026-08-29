@@ -6,17 +6,17 @@ Output actionlint-dark.gif
 Set Theme "GitHub Dark"
 Set FontSize 15
 Set Width 1240
-Set Height 540
+Set Height 460
 Set Padding 24
 
 Hide
-Type 'export PATH="$PWD/../..:$PATH"'
+Type 'alias actionlint="$PWD/../../actionlint"'
 Enter
 Type 'clear'
 Enter
 Show
 
 Sleep 500ms
-Type 'actionlint demo-workflow.yaml'
+Type 'actionlint -config-file actionlint.yaml demo-workflow.yaml'
 Enter
 Sleep 12s
