@@ -87,6 +87,7 @@ var targets = []*target{
 		rules: []rule{
 			mustRule("versioned release tag note", "`v(\\d+\\.\\d+\\.\\d+)` is a versioned release tag", 1),
 			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 6),
+			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
 		},
 	},
 	{

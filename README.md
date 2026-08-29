@@ -166,6 +166,36 @@ Give the step an `id` to consume its outputs. For example, this writes JSON Line
 
 See [the usage document][usage] for additional examples and output behavior.
 
+## pre-commit
+
+Workflow files can be checked on every commit with [pre-commit][pre-commit]. Add this to `.pre-commit-config.yaml`:
+
+```yaml
+---
+repos:
+  - repo: https://github.com/kjanat/actionlint
+    rev: v1.13.0
+    hooks:
+      - id: actionlint
+```
+
+<details><summary><h3>Choosing a hook</h3></summary></details>
+
+Four hooks check `.github/workflows/` the same way and differ only in where the `actionlint` executable comes from.
+
+| Hook ID                 | Where the executable comes from                           | Requires                    |
+| ----------------------- | --------------------------------------------------------- | --------------------------- |
+| `actionlint`            | Built from this repository into an isolated `$GOPATH`.    | Go toolchain                |
+| `actionlint-shellcheck` | Same, plus a Go build of ShellCheck installed next to it. | Go toolchain                |
+| `actionlint-docker`     | Pulls this repository's image from `ghcr.io`.             | Docker                      |
+| `actionlint-system`     | Runs the `actionlint` already on `PATH`.                  | [A manual install][install] |
+
+The `actionlint` hook installs into an isolated `$GOPATH`, so [the ShellCheck integration][checks] finds a `shellcheck` executable only when one is already on `PATH`. `actionlint-shellcheck` supplies one itself, which is the option to pick when contributors should not have to install ShellCheck.
+
+</details>
+
+See [the usage document][usage] for the pinned ShellCheck build and how to choose a different one.
+
 ## Documents
 
 - [Checks][checks]: Full list of all checks done by actionlint with example inputs, outputs, and playground links.
@@ -191,6 +221,7 @@ actionlint is distributed under [the MIT license](./LICENSE.txt).
 [apidoc]: https://pkg.go.dev/actionlint.kjanat.dev
 [repo]: https://github.com/kjanat/actionlint
 [playground]: https://kjanat.github.io/actionlint/
+[pre-commit]: https://pre-commit.com
 [shellcheck]: https://github.com/koalaman/shellcheck
 [pyflakes]: https://github.com/PyCQA/pyflakes
 [syntax-doc]: https://docs.github.com/actions/reference/workflow-syntax-for-github-actions
