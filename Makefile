@@ -78,12 +78,15 @@ ifneq ($(GIT_DESCRIBE),)
 BUILD_LDFLAGS = -ldflags "-X actionlint.kjanat.dev.version=$(GIT_DESCRIBE)"
 endif
 
-$(TARGET): $(SRCS)
+# Creating or moving a tag changes the version stamp without touching a prerequisite.
+$(TARGET): $(SRCS) FORCE
 ifeq ($(OS),Windows_NT)
 	go build $(BUILD_LDFLAGS) ./cmd/actionlint
 else
 	CGO_ENABLED=0 go build $(BUILD_LDFLAGS) ./cmd/actionlint
 endif
+
+FORCE:
 
 b build: $(TARGET)
 
@@ -122,4 +125,4 @@ CHANGELOG.md:
 c clean:
 	rm -f ./$(TARGET) ./man/actionlint.1 ./man/actionlint.1.html ./actionlint-workflow-ast
 
-.PHONY: all test clean build lint fuzz man bench cov b t c l CHANGELOG.md
+.PHONY: all test clean build lint fuzz man bench cov b t c l CHANGELOG.md FORCE
