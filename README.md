@@ -23,7 +23,7 @@ See the [full list][checks] of checks done by actionlint.
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/actionlint-dark.gif">
   <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/actionlint-light.gif">
-  <img alt="actionlint reports a syntax error, an untrusted input, an always-true condition, and a ShellCheck finding" src="docs/screenshots/actionlint-light.gif" width="1240" height="540">
+  <img alt="actionlint reports a syntax error, an untrusted input, an always-true condition, and a ShellCheck finding" src="docs/screenshots/actionlint-light.gif">
 </picture>
 
 **Example of broken workflow:**
