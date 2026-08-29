@@ -170,9 +170,11 @@ jobs:
             GOLANG_VER=${{ env.GO }}
             ACTIONLINT_VER=${{ steps.tag.outputs.name }}
           load: true
+          cache-from: type=gha,scope=release-cli
+          cache-to: type=gha,scope=release-cli,mode=max
           tags: actionlint:smoke
       - name: Smoke-test the CLI image
-        run: docker run --rm actionlint:smoke -version
+        run: docker run --rm --mount type=bind,source="${PWD}",target=/w -- actionlint:smoke -color -verbose
       - name: Build and push CLI image
         id: push-cli
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
@@ -185,6 +187,8 @@ jobs:
           push: true
           sbom: true
           provenance: mode=max
+          cache-from: type=gha,scope=release-cli
+          cache-to: type=gha,scope=release-cli,mode=max
           labels: ${{ steps.meta-cli.outputs.labels }}
           annotations: ${{ steps.meta-cli.outputs.annotations }}
           tags: ${{ steps.meta-cli.outputs.tags }}
@@ -207,6 +211,19 @@ jobs:
                 type=raw,value=action-v${{ steps.tag.outputs.major }},enable=${{ steps.tag.outputs.is-major-latest }}
                 type=raw,value=action-latest,enable=${{ steps.tag.outputs.is-latest }}
             env: { DOCKER_METADATA_ANNOTATIONS_LEVELS: "manifest,index" }
+      - name: Build GitHub Action image for the smoke test
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          target: action
+          build-args: |
+            GOLANG_VER=${{ env.GO }}
+            ACTIONLINT_VER=${{ steps.tag.outputs.name }}
+          load: true
+          cache-from: type=gha,scope=release-action
+          cache-to: type=gha,scope=release-action,mode=max
+          tags: actionlint-action:smoke
+      - name: Smoke-test the GitHub Action image
+        run: ./scripts/test-action.bash actionlint-action:smoke
       - name: Build and push GitHub Action image
         id: push-action
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
@@ -219,6 +236,8 @@ jobs:
           push: true
           sbom: true
           provenance: mode=max
+          cache-from: type=gha,scope=release-action
+          cache-to: type=gha,scope=release-action,mode=max
           labels: ${{ steps.meta-action.outputs.labels }}
           annotations: ${{ steps.meta-action.outputs.annotations }}
           tags: ${{ steps.meta-action.outputs.tags }}
