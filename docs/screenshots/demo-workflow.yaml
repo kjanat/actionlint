@@ -1,0 +1,15 @@
+name: Release
+on:
+  push:
+    branch: main
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: echo "Building ${{ github.event.pull_request.title }}"
+      - name: Package
+        if: ${{ github.event_name == 'push' }} && ${{ github.ref_name == 'main' }}
+        run: |
+          VERSION=$(jq -r .version package.json)
+          tar czf release-$VERSION.tgz dist

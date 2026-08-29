@@ -5,6 +5,8 @@
 
 [actionlint][repo] is a static checker for GitHub Actions workflow files. [Try it online!][playground]
 
+This is an actively maintained fork of [rhysd/actionlint][upstream]. It carries the upstream checks plus opt-in [policy checks][config], composite action step validation, shell completion, and a first-party GitHub Action, and it ships attested binaries, a Docker image on [GHCR][ghcr] and [Docker Hub][dockerhub], and a Go module at `actionlint.kjanat.dev`. Report problems with this fork [here][issue-form], not upstream.
+
 Features:
 
 - **Syntax check for workflow files** to check unexpected or missing keys following [workflow syntax][syntax-doc]
@@ -18,7 +20,11 @@ Features:
 
 See the [full list][checks] of checks done by actionlint.
 
-<img src="https://cdn.jsdelivr.net/gh/rhysd/ss@5530c2526b44ad28dc12f91a3d71bcd57940f008/actionlint/main.gif" alt="actionlint reports 7 errors" width="806" height="492"/>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/actionlint-dark.gif">
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/actionlint-light.gif">
+  <img alt="actionlint reports a syntax error, an untrusted input, an always-true condition, and a ShellCheck finding" src="docs/screenshots/actionlint-light.gif" width="1240" height="540">
+</picture>
 
 **Example of broken workflow:**
 
@@ -207,7 +213,7 @@ See [the usage document][usage] for the pinned ShellCheck build and how to choos
 
 ## Bug reporting
 
-When you see some bugs or false positives, it is helpful to [file a new issue][issue-form] with a minimal example of input. Giving me some feedbacks like feature requests or ideas of additional checks is also welcome.
+When you see some bugs or false positives, it is helpful to [file a new issue][issue-form] with a minimal example of input. Feature requests and ideas for additional checks are welcome too.
 
 See the [contribution guide](./CONTRIBUTING.md) for more details.
 
@@ -222,6 +228,9 @@ actionlint is distributed under [the MIT license](./LICENSE.txt).
 [repo]: https://github.com/kjanat/actionlint
 [playground]: https://kjanat.github.io/actionlint/
 [pre-commit]: https://pre-commit.com
+[upstream]: https://github.com/rhysd/actionlint
+[ghcr]: https://github.com/kjanat/actionlint/pkgs/container/actionlint
+[dockerhub]: https://hub.docker.com/r/kjanat/actionlint
 [shellcheck]: https://github.com/koalaman/shellcheck
 [pyflakes]: https://github.com/PyCQA/pyflakes
 [syntax-doc]: https://docs.github.com/actions/reference/workflow-syntax-for-github-actions
