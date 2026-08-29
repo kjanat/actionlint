@@ -79,7 +79,11 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     needs: changelog
-    outputs: { is-latest: "${{ steps.tag.outputs.is-latest }}", is-major-latest: "${{ steps.tag.outputs.is-major-latest }}" }
+    outputs: {
+      is-latest: "${{ steps.tag.outputs.is-latest }}",
+      is-major-latest: "${{ steps.tag.outputs.is-major-latest }}",
+      action-digest: "${{ steps.push-action.outputs.digest }}",
+    }
     permissions: { contents: read, packages: write, id-token: write, attestations: write }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -251,10 +255,35 @@ jobs:
           commit_api="repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}"
           verified="$(gh api "${commit_api}" --jq '.commit.verification.verified')"
           test "${verified}" = true
-      - name: Move major tag to the release commit
+      # The image does not exist yet when the release commit is made, so the digest can only be
+      # pinned afterwards. The pinned commit is reachable through the major tag alone and never
+      # lands on the default branch, where a stale digest would survive the next version bump.
+      - name: Pin the action image to the digest it was published as
+        shell: bash
+        env: { DIGEST: "${{ needs.docker.outputs.action-digest }}" }
+        run: |
+          set -euo pipefail
+          case "${DIGEST}" in
+          sha256:*) ;;
+          *)
+            echo "::error::the docker job reported no digest for the action image"
+            exit 1
+            ;;
+          esac
+          version="${GITHUB_REF_NAME#v}"
+          tagged="ghcr.io/${GITHUB_REPOSITORY}:action-${version}"
+          tagged_lines="$(grep -c "^  image: docker://${tagged}\$" action.yml)"
+          test "${tagged_lines}" -eq 1
+          sed -i "s|^  image: docker://.*\$|  image: docker://${tagged}@${DIGEST}|" action.yml
+          git --no-pager diff -- action.yml
+      - name: Move major tag to the pinned commit
         shell: bash
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
           major="v${version%%.*}"
-          git push --force origin "${GITHUB_SHA}:refs/tags/${major}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add action.yml
+          git commit --message "pin the action image of ${GITHUB_REF_NAME} to its digest"
+          git push --force origin "HEAD:refs/tags/${major}"
