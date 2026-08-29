@@ -26,7 +26,7 @@ See the [full list][checks] of checks done by actionlint.
   <img alt="actionlint reports a syntax error, an untrusted input, an always-true condition, and a ShellCheck finding" src="docs/screenshots/actionlint-light.gif">
 </picture>
 
-**Example of broken workflow:**
+<details><summary><h3>Example of a broken workflow</h3></summary>
 
 ```yaml
 on:
@@ -86,6 +86,8 @@ test.yaml:22:17: receiver of object dereference "permissions" must be type of ob
 22 |         if: ${{ github.repository.permissions.admin == true }}
    |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
+
+</details>
 
 ## Quick start
 
