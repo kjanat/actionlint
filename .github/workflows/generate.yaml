@@ -27,7 +27,9 @@ jobs:
           # The detector exits 2 when a tracked action has a new major.
           status=0
           releases="$(go run ./scripts/generate-popular-actions -d)" || status=$?
-          printf '%s\n' "${releases}"
+          if [[ -n "${releases}" ]]; then
+            printf '%s\n' "${releases}"
+          fi
           if [[ "${status}" -eq 2 ]]; then
             echo '::notice title=New major releases::A tracked action has a new major. See the job summary.'
             cat >> "${GITHUB_STEP_SUMMARY}" <<'SUMMARY'
