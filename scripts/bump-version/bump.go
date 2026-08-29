@@ -135,6 +135,16 @@ func (t *target) scan(content []byte) ([]occurrence, error) {
 		covered = append(covered, found...)
 	}
 
+	for _, re := range t.generated {
+		ms := re.FindAllIndex(content, -1)
+		if len(ms) == 0 {
+			return nil, fmt.Errorf("%s: no version reference matches %q any more, so the declaration is stale", t.path, re)
+		}
+		for _, m := range ms {
+			covered = append(covered, span{m[0], m[1]})
+		}
+	}
+
 	for _, m := range anyVersion.FindAllIndex(content, -1) {
 		found := span{m[0], m[1]}
 		known := false

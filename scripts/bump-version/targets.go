@@ -15,6 +15,9 @@ type target struct {
 	path      string
 	rules     []rule
 	unrelated []string
+	// generated covers version references that another tool measures and rewrites, so a bump must
+	// leave them alone. Each pattern must match at least once.
+	generated []*regexp.Regexp
 }
 
 func mustRule(desc, pattern string, count int) rule {
@@ -88,6 +91,9 @@ var targets = []*target{
 			mustRule("versioned release tag note", "`v(\\d+\\.\\d+\\.\\d+)` is a versioned release tag", 1),
 			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 6),
 			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
+		},
+		generated: []*regexp.Regexp{
+			regexp.MustCompile(`(?m)^\*\*(?:Upstream actionlint|This fork) \d+\.\d+\.\d+ reports`),
 		},
 	},
 	{
