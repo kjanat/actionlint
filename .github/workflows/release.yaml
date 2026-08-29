@@ -272,7 +272,8 @@ jobs:
           esac
           version="${GITHUB_REF_NAME#v}"
           tagged="ghcr.io/${GITHUB_REPOSITORY}:action-${version}"
-          test "$(grep -c "^  image: docker://${tagged}\$" action.yml)" -eq 1
+          tagged_lines="$(grep -c "^  image: docker://${tagged}\$" action.yml)"
+          test "${tagged_lines}" -eq 1
           sed -i "s|^  image: docker://.*\$|  image: docker://${tagged}@${DIGEST}|" action.yml
           git --no-pager diff -- action.yml
       - name: Move major tag to the pinned commit
