@@ -118,7 +118,7 @@ jobs:
 
 The moving `v1` tag follows compatible v1 releases. `v1.13.0` is a versioned release tag, but only a full-length commit SHA provides an immutable action reference.
 
-<details><summary><h3>Inputs</h3></summary></details>
+<details><summary><h3>Inputs</h3></summary>
 
 | Input               | Default       | Description                                                                                  |
 | ------------------- | ------------- | -------------------------------------------------------------------------------------------- |
@@ -133,7 +133,7 @@ The moving `v1` tag follows compatible v1 releases. `v1.13.0` is a versioned rel
 | `fail-on-error`     | `true`        | Fail when problems are found. Invalid options and fatal errors always fail.                  |
 
 </details>
-<details><summary><h3>Outputs</h3></summary></details>
+<details><summary><h3>Outputs</h3></summary>
 
 | Output           | Description                                                                                         |
 | ---------------- | --------------------------------------------------------------------------------------------------- |
@@ -179,7 +179,7 @@ repos:
       - id: actionlint
 ```
 
-<details><summary><h3>Choosing a hook</h3></summary></details>
+<details><summary><h3>Choosing a hook</h3></summary>
 
 Four hooks check `.github/workflows/` the same way and differ only in where the `actionlint` executable comes from.
 
