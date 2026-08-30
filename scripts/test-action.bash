@@ -135,7 +135,7 @@ for format in github default oneline json json-lines markdown sarif; do
 done
 
 expect_status 3 'an empty workflow directory' '' github '' '' true true . '' true
-assert_log_matches '^actionlint [^:]+: failed while checking 0 workflow files \(shellcheck, pyflakes\)$'
+assert_log_matches '^actionlint [^:]+: failed with unknown problems while checking 0 workflow files \(shellcheck, pyflakes\)$'
 
 run_action testdata/err/shellcheck_default_shell_detection.yaml oneline '' '' true false . '' false
 assert_output problem-count 12
