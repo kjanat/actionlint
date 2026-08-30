@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"actionlint.kjanat.dev"
@@ -24,6 +25,30 @@ type lintRequest struct {
 	pyflakes   string
 	format     string
 	files      []string
+}
+
+func workflowFileCount(req *lintRequest) int {
+	if len(req.files) != 0 {
+		return len(req.files)
+	}
+
+	project, err := actionlint.NewProjects().At(req.workingDir)
+	if err != nil || project == nil {
+		return 0
+	}
+	count := 0
+	if err := filepath.Walk(project.WorkflowsDir(), func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && (strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml")) {
+			count++
+		}
+		return nil
+	}); err != nil {
+		return 0
+	}
+	return count
 }
 
 type lintOutcome struct {

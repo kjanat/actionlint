@@ -296,7 +296,29 @@ jobs:
         uses: kjanat/actionlint@v1
 ```
 
-Docker actions require a Linux runner. `v1` moves to each new release.
+Docker container actions run only on Linux, and this action also needs a
+reachable Docker daemon. `ubuntu-slim` is not supported: it runs the job in an
+unprivileged container and provides the Docker client, but no daemon or Docker
+socket. Standard Ubuntu runners, including `ubuntu-24.04-arm` and
+`ubuntu-26.04-arm`, are supported by the published `linux/amd64` and
+`linux/arm64` image.
+
+On a daemon-less runner such as `ubuntu-slim`, download and run the binary
+instead. `uses: docker://ghcr.io/kjanat/actionlint:latest` is not an alternative
+there because it has the same Docker daemon requirement.
+
+```yaml
+- uses: actions/checkout@v7
+  with: { persist-credentials: false }
+- name: Download and run actionlint
+  env: { GH_TOKEN: "${{ github.token }}", GH_REPO: "kjanat/actionlint" }
+  run: |
+    gh release download --pattern "actionlint_*_${RUNNER_OS,,}_${RUNNER_ARCH/X64/amd64}.tar.gz" --output - | tar -xzf - actionlint
+    ./actionlint -color
+```
+
+The binary-only path does not bundle ShellCheck or pyflakes; install them on the
+runner when those integrations are required. `v1` moves to each new release.
 `v1.13.0` is a versioned release tag, but only a full-length commit SHA provides
 an immutable action reference.
 

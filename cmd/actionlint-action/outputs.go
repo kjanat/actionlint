@@ -84,6 +84,53 @@ func writeResultFile(root *os.Root, target, content string) (string, error) {
 	return filepath.ToSlash(target), nil
 }
 
+func plural(count int, singular, plural string) string {
+	if count == 1 {
+		return singular
+	}
+	return plural
+}
+
+func (a *action) emitStatus(code int, problemCount string, fileCount int, in *inputs) {
+	integrations := []string{}
+	if in.shellcheck {
+		integrations = append(integrations, "shellcheck")
+	}
+	if in.pyflakes {
+		integrations = append(integrations, "pyflakes")
+	}
+	if len(integrations) == 0 {
+		integrations = append(integrations, "external linters disabled")
+	}
+
+	files := plural(fileCount, "workflow file", "workflow files")
+	if code == actionlint.ExitStatusSuccessNoProblem || code == actionlint.ExitStatusSuccessProblemFound {
+		problems := "problems"
+		if problemCount == "1" {
+			problems = "problem"
+		}
+		_, _ = fmt.Fprintf(
+			a.stdout,
+			"actionlint %s: %s %s in %d %s (%s)\n",
+			actionVersion(),
+			problemCount,
+			problems,
+			fileCount,
+			files,
+			strings.Join(integrations, ", "),
+		)
+		return
+	}
+	_, _ = fmt.Fprintf(
+		a.stdout,
+		"actionlint %s: failed while checking %d %s (%s)\n",
+		actionVersion(),
+		fileCount,
+		files,
+		strings.Join(integrations, ", "),
+	)
+}
+
 func (a *action) emit(rendered string, code int, format outputFormat) {
 	if rendered == "" {
 		return

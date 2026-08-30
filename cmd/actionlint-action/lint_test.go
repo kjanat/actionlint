@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,6 +53,25 @@ func TestRunLinterFindsNoProblem(t *testing.T) {
 	}
 	if got.stdout != "[]\n" {
 		t.Errorf("wanted an empty JSON array but got %q", got.stdout)
+	}
+}
+
+func TestWorkflowFileCount(t *testing.T) {
+	dir := workspaceWith(t, map[string]string{
+		".git":                           "",
+		".github/workflows/first.yaml":   cleanWorkflow,
+		".github/workflows/sub/next.yml": cleanWorkflow,
+		".github/workflows/readme.txt":   "not a workflow",
+	})
+
+	if got := workflowFileCount(&lintRequest{workingDir: dir}); got != 2 {
+		t.Errorf("wanted two discovered workflow files but got %d", got)
+	}
+	if got := workflowFileCount(&lintRequest{workingDir: dir, files: []string{"a.yaml", "b.yaml", "a.yaml"}}); got != 3 {
+		t.Errorf("wanted all three requested file entries counted but got %d", got)
+	}
+	if got := workflowFileCount(&lintRequest{workingDir: t.TempDir()}); got != 0 {
+		t.Errorf("wanted no workflow files outside a repository but got %d", got)
 	}
 }
 
@@ -228,8 +248,12 @@ func TestActionLintsWorkflowEndToEnd(t *testing.T) {
 	if content := read(t, filepath.Join(workspace, "results", "out.txt")); !strings.HasPrefix(content, want) {
 		t.Errorf("wanted the same content in the output file but got %q", content)
 	}
-	if !strings.HasPrefix(out.String(), "::stop-commands::DELIM\n"+want) {
-		t.Errorf("wanted the output wrapped in stop commands but got %q", out.String())
+	status := fmt.Sprintf(
+		"actionlint %s: 1 problem in 1 workflow file (external linters disabled)\n",
+		actionVersion(),
+	)
+	if !strings.HasPrefix(out.String(), status+"::stop-commands::DELIM\n"+want) {
+		t.Errorf("wanted the status and output wrapped in stop commands but got %q", out.String())
 	}
 }
 

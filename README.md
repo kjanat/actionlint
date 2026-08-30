@@ -121,7 +121,7 @@ See [the usage document][usage] for more details.
 
 ## GitHub Action
 
-This repository can be used directly as a Docker action. The prebuilt image includes actionlint, ShellCheck, and pyflakes, and reports problems as GitHub annotations by default. Docker actions require a Linux runner.
+This repository can be used directly as a Docker action. The prebuilt image includes actionlint, ShellCheck, and pyflakes, and reports problems as GitHub annotations by default. Docker container actions run only on Linux, and this action also needs a reachable Docker daemon. `ubuntu-slim` is not supported: its job runs in an unprivileged container with the Docker client but no daemon or Docker socket. Standard Ubuntu runners, including `ubuntu-24.04-arm` and `ubuntu-26.04-arm`, are supported by the published `linux/amd64` and `linux/arm64` image.
 
 ```yaml
 name: Lint GitHub Actions workflows
@@ -133,6 +133,18 @@ jobs:
     steps:
       - { uses: actions/checkout@v7, with: { persist-credentials: false } }
       - uses: kjanat/actionlint@v1
+```
+
+On a daemon-less runner such as `ubuntu-slim`, download and run the binary instead:
+
+```yaml
+- uses: actions/checkout@v7
+  with: { persist-credentials: false }
+- name: Download and run actionlint
+  env: { GH_TOKEN: "${{ github.token }}", GH_REPO: "kjanat/actionlint" }
+  run: |
+    gh release download --pattern "actionlint_*_${RUNNER_OS,,}_${RUNNER_ARCH/X64/amd64}.tar.gz" --output - | tar -xzf - actionlint
+    ./actionlint -color
 ```
 
 The moving `v1` tag follows compatible v1 releases. `v1.13.0` is a versioned release tag, but only a full-length commit SHA provides an immutable action reference.
@@ -178,7 +190,7 @@ Give the step an `id` to consume its outputs. For example, this writes JSON Line
   env:
     RESULT: ${{ steps.actionlint.outputs.result }}
     PROBLEM_COUNT: ${{ steps.actionlint.outputs.problem-count }}
-  run: echo "$RESULT ($PROBLEM_COUNT problems)"
+  run: echo "${RESULT} (${PROBLEM_COUNT} problems)"
 ```
 
 </details>
@@ -194,8 +206,7 @@ Workflow files can be checked on every commit with [pre-commit][pre-commit]. Add
 repos:
   - repo: https://github.com/kjanat/actionlint
     rev: v1.13.0
-    hooks:
-      - id: actionlint
+    hooks: [id: actionlint]
 ```
 
 <details><summary><h3>Choosing a hook</h3></summary>

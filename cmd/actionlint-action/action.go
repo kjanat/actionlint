@@ -5,11 +5,25 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"time"
 
 	"actionlint.kjanat.dev"
 )
+
+var version = ""
+
+func actionVersion() string {
+	if version != "" {
+		return version
+	}
+	info, ok := debug.ReadBuildInfo()
+	if !ok || info.Main.Version == "" {
+		return "unknown"
+	}
+	return info.Main.Version
+}
 
 type action struct {
 	args    []string
@@ -79,6 +93,7 @@ func (a *action) execute() (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	fileCount := workflowFileCount(req)
 
 	outcome, count, rendered := renderOutcome(a.runLint(req), in.format)
 	result, ok := results[outcome.code]
@@ -100,6 +115,7 @@ func (a *action) execute() (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	a.emitStatus(outcome.code, count, fileCount, in)
 	a.emit(rendered, outcome.code, in.format)
 
 	if outcome.code == actionlint.ExitStatusSuccessProblemFound && !in.failOnError {

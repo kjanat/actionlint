@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -93,8 +94,12 @@ func TestActionReportsSuccess(t *testing.T) {
 			t.Errorf("output %q: wanted %q but got %q", name, value, run.outputs[name])
 		}
 	}
-	if want := "::stop-commands::DELIM\n[]\n::DELIM::\n"; run.stdout != want {
-		t.Errorf("wanted %q but got %q", want, run.stdout)
+	wantLog := fmt.Sprintf(
+		"actionlint %s: 0 problems in 0 workflow files (shellcheck, pyflakes)\n",
+		actionVersion(),
+	) + "::stop-commands::DELIM\n[]\n::DELIM::\n"
+	if run.stdout != wantLog {
+		t.Errorf("wanted %q but got %q", wantLog, run.stdout)
 	}
 	if recorder.req.workingDir != workspace {
 		t.Errorf("wanted the workspace as the working directory but got %q", recorder.req.workingDir)
@@ -110,7 +115,7 @@ func TestActionReportsSuccess(t *testing.T) {
 func TestActionReportsProblems(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
 	run, _ := runAction(t, workspace, &lintOutcome{problemJSON(), "", actionlint.ExitStatusSuccessProblemFound},
-		"", "github", "", "", "true", "true", ".", "", "true")
+		"w.yaml", "github", "", "", "true", "true", ".", "", "true")
 
 	if run.code != 1 {
 		t.Errorf("wanted exit code 1 but got %d", run.code)
@@ -118,7 +123,10 @@ func TestActionReportsProblems(t *testing.T) {
 	if run.outputs["result"] != "problems-found" || run.outputs["problems-found"] != "true" || run.outputs["problem-count"] != "1" {
 		t.Errorf("wanted a single problem but got %#v", run.outputs)
 	}
-	want := "::error file=w.yaml,line=1,col=2,endColumn=3,title=actionlint (k)::m%0A%0Aa%0A^\n"
+	want := fmt.Sprintf(
+		"actionlint %s: 1 problem in 1 workflow file (shellcheck, pyflakes)\n",
+		actionVersion(),
+	) + "::error file=w.yaml,line=1,col=2,endColumn=3,title=actionlint (k)::m%0A%0Aa%0A^\n"
 	if run.stdout != want {
 		t.Errorf("wanted %q but got %q", want, run.stdout)
 	}
@@ -140,7 +148,7 @@ func TestActionKeepsProblemsNonFatal(t *testing.T) {
 func TestActionReportsFailure(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
 	run, _ := runAction(t, workspace, &lintOutcome{"", "could not read \"w.yaml\"\n", actionlint.ExitStatusFailure},
-		"", "json", "", "", "true", "true", ".", "", "false")
+		"w.yaml", "json", "", "", "true", "true", ".", "", "false")
 
 	if run.code != 3 {
 		t.Errorf("wanted exit code 3 but got %d", run.code)
@@ -148,7 +156,11 @@ func TestActionReportsFailure(t *testing.T) {
 	if run.outputs["result"] != "failure" || run.outputs["problem-count"] != "" {
 		t.Errorf("wanted a failure without a problem count but got %#v", run.outputs)
 	}
-	if want := "::error title=actionlint failed::could not read \"w.yaml\"%0A\n"; run.stdout != want {
+	want := fmt.Sprintf(
+		"actionlint %s: failed while checking 1 workflow file (shellcheck, pyflakes)\n",
+		actionVersion(),
+	) + "::error title=actionlint failed::could not read \"w.yaml\"%0A\n"
+	if run.stdout != want {
 		t.Errorf("wanted %q but got %q", want, run.stdout)
 	}
 }
