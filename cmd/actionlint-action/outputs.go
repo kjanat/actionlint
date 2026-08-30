@@ -121,10 +121,19 @@ func (a *action) emitStatus(code int, problemCount string, fileCount int, in *in
 		)
 		return
 	}
+	if problemCount == "" {
+		problemCount = "unknown"
+	}
+	problems := "problems"
+	if problemCount == "1" {
+		problems = "problem"
+	}
 	_, _ = fmt.Fprintf(
 		a.stdout,
-		"actionlint %s: failed while checking %d %s (%s)\n",
+		"actionlint %s: failed with %s %s while checking %d %s (%s)\n",
 		actionVersion(),
+		problemCount,
+		problems,
 		fileCount,
 		files,
 		strings.Join(integrations, ", "),

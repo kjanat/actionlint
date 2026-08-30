@@ -157,11 +157,31 @@ func TestActionReportsFailure(t *testing.T) {
 		t.Errorf("wanted a failure without a problem count but got %#v", run.outputs)
 	}
 	want := fmt.Sprintf(
-		"actionlint %s: failed while checking 1 workflow file (shellcheck, pyflakes)\n",
+		"actionlint %s: failed with unknown problems while checking 1 workflow file (shellcheck, pyflakes)\n",
 		actionVersion(),
 	) + "::error title=actionlint failed::could not read \"w.yaml\"%0A\n"
 	if run.stdout != want {
 		t.Errorf("wanted %q but got %q", want, run.stdout)
+	}
+}
+
+func TestActionReportsStatusBeforeResultPersistenceFailure(t *testing.T) {
+	workspace := resolved(t, t.TempDir())
+	if err := os.WriteFile(filepath.Join(workspace, "blocked"), []byte("not a directory"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run, _ := runAction(t, workspace, &lintOutcome{"[]\n", "", actionlint.ExitStatusSuccessNoProblem},
+		"", "json", "", "", "true", "true", ".", "blocked/results.json", "true")
+
+	if run.code != actionlint.ExitStatusFailure {
+		t.Errorf("wanted exit code %d but got %d", actionlint.ExitStatusFailure, run.code)
+	}
+	want := fmt.Sprintf(
+		"actionlint %s: 0 problems in 0 workflow files (shellcheck, pyflakes)\n",
+		actionVersion(),
+	)
+	if !strings.HasPrefix(run.stdout, want) {
+		t.Errorf("wanted status %q before the persistence failure but got %q", want, run.stdout)
 	}
 }
 

@@ -96,6 +96,7 @@ func (a *action) execute() (int, error) {
 	fileCount := workflowFileCount(req)
 
 	outcome, count, rendered := renderOutcome(a.runLint(req), in.format)
+	a.emitStatus(outcome.code, count, fileCount, in)
 	result, ok := results[outcome.code]
 	if !ok {
 		result = "failure"
@@ -115,7 +116,6 @@ func (a *action) execute() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	a.emitStatus(outcome.code, count, fileCount, in)
 	a.emit(rendered, outcome.code, in.format)
 
 	if outcome.code == actionlint.ExitStatusSuccessProblemFound && !in.failOnError {

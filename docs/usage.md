@@ -313,7 +313,14 @@ there because it has the same Docker daemon requirement.
 - name: Download and run actionlint
   env: { GH_TOKEN: "${{ github.token }}", GH_REPO: "kjanat/actionlint" }
   run: |
-    gh release download --pattern "actionlint_*_${RUNNER_OS,,}_${RUNNER_ARCH/X64/amd64}.tar.gz" --output - | tar -xzf - actionlint
+    case "${RUNNER_ARCH}" in
+      X64) asset_arch=amd64 ;;
+      ARM64) asset_arch=arm64 ;;
+      ARM) asset_arch=armv6 ;;
+      X86) asset_arch=386 ;;
+      *) echo "Unsupported runner architecture: ${RUNNER_ARCH}" >&2; exit 1 ;;
+    esac
+    gh release download --pattern "actionlint_*_${RUNNER_OS,,}_${asset_arch}.tar.gz" --output - | tar -xzf - actionlint
     ./actionlint -color
 ```
 
