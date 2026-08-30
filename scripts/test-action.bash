@@ -12,7 +12,11 @@ workspace="$(pwd)"
 tmp="$(mktemp -d)"
 trap 'rm -rf "${tmp}"' EXIT
 
-mkdir -p "${tmp}/github/file_commands" "${tmp}/github/workspace/testdata"
+mkdir -p \
+	"${tmp}/github/file_commands" \
+	"${tmp}/github/workspace/.git" \
+	"${tmp}/github/workspace/.github/workflows" \
+	"${tmp}/github/workspace/testdata"
 
 function output() {
 	local name="$1"
@@ -72,6 +76,15 @@ function assert_output() {
 	fi
 }
 
+function assert_log_matches() {
+	local expected="$1"
+	if ! grep -Eq "${expected}" "${tmp}/action.log"; then
+		echo "Expected action log to match '${expected}'" >&2
+		show_log
+		exit 1
+	fi
+}
+
 function action_status() {
 	reset_action_files
 	docker_action "$@"
@@ -105,6 +118,7 @@ function expect_success() {
 }
 
 expect_success testdata/ok/minimal.yaml json '' '' true true . '' true
+assert_log_matches '^actionlint [^:]+: 0 problems in 1 workflow file \(shellcheck, pyflakes\)$'
 assert_output exit-code 0
 assert_output result success
 assert_output problems-found false
@@ -113,11 +127,15 @@ assert_output output '[]'
 
 for format in github default oneline json json-lines markdown sarif; do
 	expect_success testdata/err/one_error.yaml "${format}" '' '' true true . '' false
+	assert_log_matches '^actionlint [^:]+: 1 problem in 1 workflow file \(shellcheck, pyflakes\)$'
 	assert_output exit-code 1
 	assert_output result problems-found
 	assert_output problems-found true
 	assert_output problem-count 1
 done
+
+expect_status 3 'an empty workflow directory' '' github '' '' true true . '' true
+assert_log_matches '^actionlint [^:]+: failed with unknown problems while checking 0 workflow files \(shellcheck, pyflakes\)$'
 
 run_action testdata/err/shellcheck_default_shell_detection.yaml oneline '' '' true false . '' false
 assert_output problem-count 12

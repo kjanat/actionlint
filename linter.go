@@ -91,6 +91,9 @@ type LinterOptions struct {
 	// function should return the modified rules.
 	// Note that syntax errors may be reported even if this function returns nil or an empty slice.
 	OnRulesCreated func([]Rule) []Rule
+	// OnFilesSelected is called with the exact file set passed to LintFiles. The callback receives
+	// a copy so modifying it does not affect linting.
+	OnFilesSelected func([]string)
 	// Context bounds the lifetime of the linting. Cancelling it kills the shellcheck and pyflakes
 	// child processes which are running. When this value is nil, context.Background() is used.
 	Context context.Context
@@ -99,20 +102,21 @@ type LinterOptions struct {
 
 // Linter is struct to lint workflow files.
 type Linter struct {
-	projects       *Projects
-	out            io.Writer
-	logOut         io.Writer
-	logLevel       LogLevel
-	oneline        bool
-	shellcheck     string
-	pyflakes       string
-	ignorePats     IgnorePatterns
-	stdin          string
-	defaultConfig  *Config
-	errFmt         *ErrorFormatter
-	cwd            string
-	onRulesCreated func([]Rule) []Rule
-	ctx            context.Context
+	projects        *Projects
+	out             io.Writer
+	logOut          io.Writer
+	logLevel        LogLevel
+	oneline         bool
+	shellcheck      string
+	pyflakes        string
+	ignorePats      IgnorePatterns
+	stdin           string
+	defaultConfig   *Config
+	errFmt          *ErrorFormatter
+	cwd             string
+	onRulesCreated  func([]Rule) []Rule
+	onFilesSelected func([]string)
+	ctx             context.Context
 }
 
 // NewLinter creates a new Linter instance.
@@ -202,6 +206,7 @@ func NewLinter(out io.Writer, opts *LinterOptions) (*Linter, error) {
 		formatter,
 		cwd,
 		opts.OnRulesCreated,
+		opts.OnFilesSelected,
 		ctx,
 	}
 
@@ -309,21 +314,28 @@ func (l *Linter) LintDir(dir string, project *Project) ([]*Error, error) {
 		return nil, fmt.Errorf("could not read files in %q: %w", dir, err)
 	}
 
+	// To make output deterministic, sort order of file paths
+	sort.Strings(files)
 	if len(files) == 0 {
+		l.filesSelected(files)
 		return nil, fmt.Errorf("no YAML file was found in %q", dir)
 	}
 	l.log("Collected", len(files), "YAML files")
 
-	// To make output deterministic, sort order of file paths
-	sort.Strings(files)
-
 	return l.LintFiles(files, project)
+}
+
+func (l *Linter) filesSelected(filepaths []string) {
+	if l.onFilesSelected != nil {
+		l.onFilesSelected(slices.Clone(filepaths))
+	}
 }
 
 // LintFiles lints YAML workflow files and outputs the errors to given writer. It applies lint
 // rules to all given files. The project parameter can be nil. In the case, a project is detected
 // from the file path.
 func (l *Linter) LintFiles(filepaths []string, project *Project) ([]*Error, error) {
+	l.filesSelected(filepaths)
 	n := len(filepaths)
 	switch n {
 	case 0:

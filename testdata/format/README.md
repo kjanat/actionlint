@@ -7,7 +7,7 @@ cd /path/to/actionlint
 make build
 
 # Generate output formatting with jq
-./actionlint -pyflakes= -shellcheck= -format "$(cat testdata/format/sarif_template.txt)" testdata/format/test.yaml | jq . > test.sarif
+./actionlint -pyflakes= -shellcheck= -format "$(cat sarif_template.txt)" testdata/format/test.yaml | jq . > test.sarif
 
 # Remove version because actionlint.version is empty string while running unit tests
 sed -i 's/(devel)//' test.sarif

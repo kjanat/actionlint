@@ -3149,27 +3149,27 @@ Output:
 <!-- Skip update output -->
 
 ```console
-test.yaml:8:15: description is required in metadata of "My action" action at "/Users/rhysd/.go/src/github.com/rhysd/actionlint/.github/actions/my-invalid-action/action.yml" [action]
+test.yaml:8:15: description is required in metadata of "My action" action at "/path/to/repo/.github/actions/my-invalid-action/action.yml" [action]
   |
 8 |       - uses: ./.github/actions/my-invalid-action
   |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:8:15: incorrect icon name "dog" at branding.icon in metadata of "My action" action at "/Users/rhysd/.go/src/github.com/rhysd/actionlint/.github/actions/my-invalid-action/action.yml". see the official document to know the exhaustive list of supported icons: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingicon [action]
+test.yaml:8:15: incorrect icon name "dog" at branding.icon in metadata of "My action" action at "/path/to/repo/.github/actions/my-invalid-action/action.yml". see the official document to know the exhaustive list of supported icons: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingicon [action]
   |
 8 |       - uses: ./.github/actions/my-invalid-action
   |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:8:15: incorrect color "gray-white" at branding.icon in metadata of "My action" action at "/Users/rhysd/.go/src/github.com/rhysd/actionlint/.github/actions/my-invalid-action/action.yml". see the official document to know the exhaustive list of supported colors: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingcolor [action]
+test.yaml:8:15: incorrect color "gray-white" at branding.icon in metadata of "My action" action at "/path/to/repo/.github/actions/my-invalid-action/action.yml". see the official document to know the exhaustive list of supported colors: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingcolor [action]
   |
 8 |       - uses: ./.github/actions/my-invalid-action
   |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:8:15: invalid runner name "node16" at runs.using in "My action" action defined at "/Users/rhysd/.go/src/github.com/rhysd/actionlint/.github/actions/my-invalid-action". valid runners are "composite", "docker", "node20", and "node24". see https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs [action]
+test.yaml:8:15: invalid runner name "node16" at runs.using in "My action" action defined at "/path/to/repo/.github/actions/my-invalid-action". valid runners are "composite", "docker", "node20", and "node24". see https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs [action]
   |
 8 |       - uses: ./.github/actions/my-invalid-action
   |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:8:15: file "this-file-does-not-exist.js" does not exist in "/Users/rhysd/.go/src/github.com/rhysd/actionlint/.github/actions/my-invalid-action". it is specified at "main" key in "runs" section in "My action" action [action]
+test.yaml:8:15: file "this-file-does-not-exist.js" does not exist in "/path/to/repo/.github/actions/my-invalid-action". it is specified at "main" key in "runs" section in "My action" action [action]
   |
 8 |       - uses: ./.github/actions/my-invalid-action
   |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:8:15: "env" is not allowed in "runs" section because "My action" is a JavaScript action. the action is defined at "/Users/rhysd/.go/src/github.com/rhysd/actionlint/.github/actions/my-invalid-action" [action]
+test.yaml:8:15: "env" is not allowed in "runs" section because "My action" is a JavaScript action. the action is defined at "/path/to/repo/.github/actions/my-invalid-action" [action]
   |
 8 |       - uses: ./.github/actions/my-invalid-action
   |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3434,7 +3434,7 @@ test.yaml:9:14: could not parse as YAML: unknown anchor 'credentials' referenced
 [Installation](install.md) | [Usage](usage.md) | [Configuration](config.md) | [Go API](api.md) | [References](reference.md)
 
 [yamllint]: https://github.com/adrienverge/yamllint
-[issue-form]: https://github.com/rhysd/actionlint/issues/new
+[issue-form]: https://github.com/kjanat/actionlint/issues/new
 [syntax-doc]: https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions
 [filter-pattern-doc]: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
 [shellcheck]: https://github.com/koalaman/shellcheck
@@ -3466,8 +3466,8 @@ test.yaml:9:14: could not parse as YAML: unknown anchor 'credentials' referenced
 [actions-cache]: https://github.com/actions/cache
 [permissions-doc]: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions
 [perm-config-doc]: https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#permissions
-[generate-webhook-events]: https://github.com/rhysd/actionlint/tree/main/scripts/generate-webhook-events
-[generate-popular-actions]: https://github.com/rhysd/actionlint/tree/main/scripts/generate-popular-actions
+[generate-webhook-events]: https://github.com/kjanat/actionlint/tree/HEAD/scripts/generate-webhook-events
+[generate-popular-actions]: https://github.com/kjanat/actionlint/tree/HEAD/scripts/generate-popular-actions
 [issue-25]: https://github.com/rhysd/actionlint/issues/25
 [issue-40]: https://github.com/rhysd/actionlint/issues/40
 [security-doc]: https://docs.github.com/en/actions/reference/security/secure-use

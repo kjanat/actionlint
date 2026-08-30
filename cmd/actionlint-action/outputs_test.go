@@ -133,6 +133,35 @@ func TestEmitSkipsEmptyOutput(t *testing.T) {
 	}
 }
 
+func TestEmitStatus(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		code       int
+		count      string
+		files      int
+		filesKnown bool
+		in         *inputs
+		contain    string
+	}{
+		{"clean", 0, "0", 2, true, &inputs{shellcheck: true, pyflakes: true}, ": 0 problems in 2 workflow files (shellcheck, pyflakes)\n"},
+		{"problem", 1, "1", 1, true, &inputs{shellcheck: true}, ": 1 problem in 1 workflow file (shellcheck)\n"},
+		{"zero files", 0, "0", 0, true, &inputs{}, ": 0 problems in 0 workflow files (external linters disabled)\n"},
+		{"unknown files", 0, "0", 0, false, &inputs{}, ": 0 problems in unknown workflow files (external linters disabled)\n"},
+		{"failure with unknown count", 3, "", 0, true, &inputs{pyflakes: true}, ": failed with unknown problems while checking 0 workflow files (pyflakes)\n"},
+		{"failure with known count", 3, "1", 1, true, &inputs{shellcheck: true}, ": failed with 1 problem while checking 1 workflow file (shellcheck)\n"},
+		{"failure with unknown files", 3, "", 0, false, &inputs{pyflakes: true}, ": failed with unknown problems while checking unknown workflow files (pyflakes)\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var out strings.Builder
+			a := newTestAction(t, &out, map[string]string{})
+			a.emitStatus(tc.code, tc.count, tc.files, tc.filesKnown, tc.in)
+			if !strings.HasPrefix(out.String(), "actionlint ") || !strings.HasSuffix(out.String(), tc.contain) {
+				t.Errorf("wanted a versioned status ending in %q but got %q", tc.contain, out.String())
+			}
+		})
+	}
+}
+
 func TestEmitAnnotatesFailures(t *testing.T) {
 	for _, code := range []int{2, 3} {
 		var out strings.Builder

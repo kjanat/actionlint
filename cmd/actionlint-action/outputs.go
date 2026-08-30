@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	"actionlint.kjanat.dev"
@@ -82,6 +83,67 @@ func writeResultFile(root *os.Root, target, content string) (string, error) {
 		return "", err
 	}
 	return filepath.ToSlash(target), nil
+}
+
+func plural(count int, singular, plural string) string {
+	if count == 1 {
+		return singular
+	}
+	return plural
+}
+
+func (a *action) emitStatus(code int, problemCount string, fileCount int, fileCountKnown bool, in *inputs) {
+	integrations := []string{}
+	if in.shellcheck {
+		integrations = append(integrations, "shellcheck")
+	}
+	if in.pyflakes {
+		integrations = append(integrations, "pyflakes")
+	}
+	if len(integrations) == 0 {
+		integrations = append(integrations, "external linters disabled")
+	}
+
+	fileCountText := "unknown"
+	files := "workflow files"
+	if fileCountKnown {
+		fileCountText = strconv.Itoa(fileCount)
+		files = plural(fileCount, "workflow file", "workflow files")
+	}
+	if code == actionlint.ExitStatusSuccessNoProblem || code == actionlint.ExitStatusSuccessProblemFound {
+		problems := "problems"
+		if problemCount == "1" {
+			problems = "problem"
+		}
+		_, _ = fmt.Fprintf(
+			a.stdout,
+			"actionlint %s: %s %s in %s %s (%s)\n",
+			actionVersion(),
+			problemCount,
+			problems,
+			fileCountText,
+			files,
+			strings.Join(integrations, ", "),
+		)
+		return
+	}
+	if problemCount == "" {
+		problemCount = "unknown"
+	}
+	problems := "problems"
+	if problemCount == "1" {
+		problems = "problem"
+	}
+	_, _ = fmt.Fprintf(
+		a.stdout,
+		"actionlint %s: failed with %s %s while checking %s %s (%s)\n",
+		actionVersion(),
+		problemCount,
+		problems,
+		fileCountText,
+		files,
+		strings.Join(integrations, ", "),
+	)
 }
 
 func (a *action) emit(rendered string, code int, format outputFormat) {

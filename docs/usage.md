@@ -193,7 +193,7 @@ reviewdog as explained in ['Tools integration' section](#tools-integ) below.
 [The Static Analysis Results Interchange Format (SARIF)][sarif] is a standardized format for the results of static analysis tools.
 
 Since this practical format is much more complex than the above examples, the template is not written here. Please read
-[the template file in test data](../testdata/format/sarif_template.txt).
+[the canonical template file](../sarif_template.txt).
 
 Outputs are also too large to be written here. Please read [the output example in test data](../testdata/format/test.sarif).
 
@@ -296,7 +296,36 @@ jobs:
         uses: kjanat/actionlint@v1
 ```
 
-Docker actions require a Linux runner. `v1` moves to each new release.
+Docker container actions run only on Linux, and this action also needs a
+reachable Docker daemon. `ubuntu-slim` is not supported: it runs the job in an
+unprivileged container and provides the Docker client, but no daemon or Docker
+socket. Standard Ubuntu runners, including `ubuntu-24.04-arm` and
+`ubuntu-26.04-arm`, are supported by the published `linux/amd64` and
+`linux/arm64` image.
+
+On a daemon-less runner such as `ubuntu-slim`, download and run the binary
+instead. `uses: docker://ghcr.io/kjanat/actionlint:latest` is not an alternative
+there because it has the same Docker daemon requirement.
+
+```yaml
+- uses: actions/checkout@v7
+  with: { persist-credentials: false }
+- name: Download and run actionlint
+  env: { GH_TOKEN: "${{ github.token }}", GH_REPO: "kjanat/actionlint" }
+  run: |
+    case "${RUNNER_ARCH}" in
+      X64) asset_arch=amd64 ;;
+      ARM64) asset_arch=arm64 ;;
+      ARM) asset_arch=armv6 ;;
+      X86) asset_arch=386 ;;
+      *) echo "Unsupported runner architecture: ${RUNNER_ARCH}" >&2; exit 1 ;;
+    esac
+    gh release download --pattern "actionlint_*_${RUNNER_OS,,}_${asset_arch}.tar.gz" --output - | tar -xzf - actionlint
+    ./actionlint -color
+```
+
+The binary-only path does not bundle ShellCheck or pyflakes; install them on the
+runner when those integrations are required. `v1` moves to each new release.
 `v1.13.0` is a versioned release tag, but only a full-length commit SHA provides
 an immutable action reference.
 

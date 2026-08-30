@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,9 +11,6 @@ import (
 )
 
 const lintTimeout = 300 * time.Second
-
-//go:embed sarif_template.txt
-var sarifTemplate string
 
 type lintRequest struct {
 	workingDir string
@@ -32,6 +28,12 @@ type lintOutcome struct {
 	code   int
 }
 
+type lintResult struct {
+	*lintOutcome
+	fileCount      int
+	fileCountKnown bool
+}
+
 func buildRequest(in *inputs, workspaceDir, workingRel string) (*lintRequest, error) {
 	req := &lintRequest{
 		workingDir: filepath.Join(workspaceDir, workingRel),
@@ -39,7 +41,7 @@ func buildRequest(in *inputs, workspaceDir, workingRel string) (*lintRequest, er
 		format:     "{{json .}}",
 	}
 	if in.format == formatSARIF {
-		req.format = sarifTemplate
+		req.format = actionlint.SARIFTemplate()
 	}
 	if in.configFile != "" {
 		rel, err := workspaceRel(workspaceDir, filepath.Join(workingRel, in.configFile), "config-file")
@@ -63,8 +65,9 @@ func buildRequest(in *inputs, workspaceDir, workingRel string) (*lintRequest, er
 	return req, nil
 }
 
-func runLinter(req *lintRequest) *lintOutcome {
+func runLinter(req *lintRequest) *lintResult {
 	var out, logs bytes.Buffer
+	result := &lintResult{}
 	opts := &actionlint.LinterOptions{
 		Color:          actionlint.ColorOptionKindNever,
 		Shellcheck:     req.shellcheck,
@@ -74,11 +77,16 @@ func runLinter(req *lintRequest) *lintOutcome {
 		Format:         req.format,
 		WorkingDir:     req.workingDir,
 		LogWriter:      &logs,
+		OnFilesSelected: func(files []string) {
+			result.fileCount = len(files)
+			result.fileCountKnown = true
+		},
 	}
 
 	l, err := actionlint.NewLinter(&out, opts)
 	if err != nil {
-		return &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
+		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
+		return result
 	}
 
 	var errs []*actionlint.Error
@@ -88,12 +96,15 @@ func runLinter(req *lintRequest) *lintOutcome {
 		errs, err = l.LintFiles(req.files, nil)
 	}
 	if err != nil {
-		return &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
+		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
+		return result
 	}
 	if len(errs) > 0 {
-		return &lintOutcome{out.String(), logs.String(), actionlint.ExitStatusSuccessProblemFound}
+		result.lintOutcome = &lintOutcome{out.String(), logs.String(), actionlint.ExitStatusSuccessProblemFound}
+		return result
 	}
-	return &lintOutcome{out.String(), logs.String(), actionlint.ExitStatusSuccessNoProblem}
+	result.lintOutcome = &lintOutcome{out.String(), logs.String(), actionlint.ExitStatusSuccessNoProblem}
+	return result
 }
 
 func chdir(dir string) (func(), error) {
@@ -107,14 +118,14 @@ func chdir(dir string) (func(), error) {
 	return func() { _ = os.Chdir(prev) }, nil
 }
 
-func (a *action) runLint(req *lintRequest) *lintOutcome {
+func (a *action) runLint(req *lintRequest) *lintResult {
 	restore, err := chdir(req.workingDir)
 	if err != nil {
-		return &lintOutcome{"", err.Error() + "\n", actionlint.ExitStatusFailure}
+		return &lintResult{lintOutcome: &lintOutcome{"", err.Error() + "\n", actionlint.ExitStatusFailure}}
 	}
 	defer restore()
 
-	done := make(chan *lintOutcome, 1)
+	done := make(chan *lintResult, 1)
 	go func() {
 		done <- a.lint(req)
 	}()
@@ -123,6 +134,6 @@ func (a *action) runLint(req *lintRequest) *lintOutcome {
 		return o
 	case <-time.After(a.timeout):
 		msg := fmt.Sprintf("actionlint timed out after %d seconds\n", int(a.timeout.Seconds()))
-		return &lintOutcome{"", msg, actionlint.ExitStatusFailure}
+		return &lintResult{lintOutcome: &lintOutcome{"", msg, actionlint.ExitStatusFailure}}
 	}
 }

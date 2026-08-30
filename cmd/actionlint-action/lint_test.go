@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,6 +54,24 @@ func TestRunLinterFindsNoProblem(t *testing.T) {
 	if got.stdout != "[]\n" {
 		t.Errorf("wanted an empty JSON array but got %q", got.stdout)
 	}
+	if !got.fileCountKnown || got.fileCount != 1 {
+		t.Errorf("wanted the selected file count to be 1 but got %#v", got)
+	}
+}
+
+func TestRunLinterDistinguishesEmptyDiscovery(t *testing.T) {
+	dir := workspaceWith(t, map[string]string{
+		".git":                         "",
+		".github/workflows/readme.txt": "not a workflow",
+	})
+	got := runLinter(&lintRequest{workingDir: dir, format: "{{json .}}"})
+
+	if got.code != actionlint.ExitStatusFailure || !strings.Contains(got.stderr, "no YAML file was found") {
+		t.Fatalf("wanted empty discovery to fail linting but got %#v", got)
+	}
+	if !got.fileCountKnown || got.fileCount != 0 {
+		t.Errorf("wanted a known zero file count but got %#v", got)
+	}
 }
 
 func TestRunLinterFindsProblems(t *testing.T) {
@@ -86,7 +105,7 @@ func TestRunLinterRendersSARIF(t *testing.T) {
 	dir := workspaceWith(t, map[string]string{"broken.yaml": brokenWorkflow})
 	t.Chdir(dir)
 
-	got := runLinter(&lintRequest{workingDir: dir, format: sarifTemplate, files: []string{"broken.yaml"}})
+	got := runLinter(&lintRequest{workingDir: dir, format: actionlint.SARIFTemplate(), files: []string{"broken.yaml"}})
 	if got.code != actionlint.ExitStatusSuccessProblemFound {
 		t.Fatalf("wanted exit code 1 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
@@ -119,29 +138,39 @@ func TestRunLinterReportsFatalErrors(t *testing.T) {
 	t.Chdir(dir)
 
 	for _, tc := range []struct {
-		name string
-		req  *lintRequest
-		want string
+		name       string
+		req        *lintRequest
+		want       string
+		count      int
+		countKnown bool
 	}{
 		{
 			"missing file",
 			&lintRequest{workingDir: dir, format: "{{json .}}", files: []string{"missing.yaml"}},
 			"could not read",
+			1,
+			true,
 		},
 		{
 			"invalid ignore pattern",
 			&lintRequest{workingDir: dir, format: "{{json .}}", files: []string{"clean.yaml"}, ignore: []string{"("}},
 			"invalid regular expression",
+			0,
+			false,
 		},
 		{
 			"missing config file",
 			&lintRequest{workingDir: dir, format: "{{json .}}", files: []string{"clean.yaml"}, configFile: filepath.Join(dir, "none.yaml")},
 			"could not read config file",
+			0,
+			false,
 		},
 		{
 			"no repository",
 			&lintRequest{workingDir: dir, format: "{{json .}}"},
 			"no project was found",
+			0,
+			false,
 		},
 	} {
 		got := runLinter(tc.req)
@@ -150,6 +179,9 @@ func TestRunLinterReportsFatalErrors(t *testing.T) {
 		}
 		if !strings.Contains(got.stderr, tc.want) {
 			t.Errorf("%s: wanted %q in %q", tc.name, tc.want, got.stderr)
+		}
+		if got.fileCountKnown != tc.countKnown || got.fileCount != tc.count {
+			t.Errorf("%s: wanted file count %d (known %t) but got %#v", tc.name, tc.count, tc.countKnown, got)
 		}
 	}
 }
@@ -172,6 +204,9 @@ func TestRunLinterLintsWholeRepository(t *testing.T) {
 	}
 	if len(problems) != 1 {
 		t.Fatalf("wanted one problem but got %#v", problems)
+	}
+	if !got.fileCountKnown || got.fileCount != 2 {
+		t.Errorf("wanted the two linted repository files counted but got %#v", got)
 	}
 	if want := filepath.Join(".github", "workflows", "broken.yaml"); problems[0].Filepath != want {
 		t.Errorf("wanted %q but got %q", want, problems[0].Filepath)
@@ -228,8 +263,12 @@ func TestActionLintsWorkflowEndToEnd(t *testing.T) {
 	if content := read(t, filepath.Join(workspace, "results", "out.txt")); !strings.HasPrefix(content, want) {
 		t.Errorf("wanted the same content in the output file but got %q", content)
 	}
-	if !strings.HasPrefix(out.String(), "::stop-commands::DELIM\n"+want) {
-		t.Errorf("wanted the output wrapped in stop commands but got %q", out.String())
+	status := fmt.Sprintf(
+		"actionlint %s: 1 problem in 1 workflow file (external linters disabled)\n",
+		actionVersion(),
+	)
+	if !strings.HasPrefix(out.String(), status+"::stop-commands::DELIM\n"+want) {
+		t.Errorf("wanted the status and output wrapped in stop commands but got %q", out.String())
 	}
 }
 
@@ -244,13 +283,13 @@ func TestActionRunLintRestoresProcessDirectory(t *testing.T) {
 	var seen string
 	a := &action{
 		timeout: time.Minute,
-		lint: func(*lintRequest) *lintOutcome {
+		lint: func(*lintRequest) *lintResult {
 			wd, err := os.Getwd()
 			if err != nil {
 				t.Error(err)
 			}
 			seen = wd
-			return &lintOutcome{"[]\n", "", actionlint.ExitStatusSuccessNoProblem}
+			return &lintResult{lintOutcome: &lintOutcome{"[]\n", "", actionlint.ExitStatusSuccessNoProblem}}
 		},
 	}
 	a.runLint(&lintRequest{workingDir: sub})
@@ -268,7 +307,7 @@ func TestActionRunLintRestoresProcessDirectory(t *testing.T) {
 }
 
 func TestActionRunLintReportsUnusableWorkingDirectory(t *testing.T) {
-	a := &action{timeout: time.Minute, lint: func(*lintRequest) *lintOutcome {
+	a := &action{timeout: time.Minute, lint: func(*lintRequest) *lintResult {
 		t.Error("actionlint must not run when the working directory is unusable")
 		return nil
 	}}

@@ -5,17 +5,31 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"time"
 
 	"actionlint.kjanat.dev"
 )
 
+var version = ""
+
+func actionVersion() string {
+	if version != "" {
+		return version
+	}
+	info, ok := debug.ReadBuildInfo()
+	if !ok || info.Main.Version == "" {
+		return "unknown"
+	}
+	return info.Main.Version
+}
+
 type action struct {
 	args    []string
 	stdout  io.Writer
 	env     func(string) string
-	lint    func(*lintRequest) *lintOutcome
+	lint    func(*lintRequest) *lintResult
 	newID   func() string
 	timeout time.Duration
 }
@@ -79,8 +93,9 @@ func (a *action) execute() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-
-	outcome, count, rendered := renderOutcome(a.runLint(req), in.format)
+	lint := a.runLint(req)
+	outcome, count, rendered := renderOutcome(lint.lintOutcome, in.format)
+	a.emitStatus(outcome.code, count, lint.fileCount, lint.fileCountKnown, in)
 	result, ok := results[outcome.code]
 	if !ok {
 		result = "failure"

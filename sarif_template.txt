@@ -7,7 +7,7 @@
                 "driver": {
                     "name": "GitHub Actions lint",
                     "version": {{ getVersion | json }},
-                    "informationUri": "https://github.com/rhysd/actionlint",
+                    "informationUri": "https://github.com/kjanat/actionlint",
                     "rules": [
                         {{$first := true}}
                         {{range $ := allKinds }}
@@ -20,12 +20,12 @@
                                 },
                                 "properties": {
                                     "description": {{json $.Description}},
-                                    "queryURI": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                                    "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
                                 },
                                 "fullDescription": {
                                     "text": {{json $.Description}}
                                 },
-                                "helpUri": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                                "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
                             }
                         {{end}}
                     ]

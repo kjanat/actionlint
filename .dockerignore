@@ -4,5 +4,6 @@
 !go.mod
 !go.sum
 !*.go
+!sarif_template.txt
 !cmd
 !cmd/**
