@@ -417,13 +417,7 @@ func TestLinterFormatErrorMessageInSARIF(t *testing.T) {
 	proj := &Project{root: dir}
 	file := filepath.Join(dir, "test.yaml")
 
-	bytes, err := os.ReadFile(filepath.Join(dir, "sarif_template.txt"))
-	if err != nil {
-		panic(err)
-	}
-	format := string(bytes)
-
-	opts := LinterOptions{Format: format}
+	opts := LinterOptions{Format: SARIFTemplate()}
 	var b strings.Builder
 	l, err := NewLinter(&b, &opts)
 	if err != nil {
@@ -452,7 +446,7 @@ func TestLinterFormatErrorMessageInSARIF(t *testing.T) {
 		t.Fatalf("output is not JSON: %v: %q", err, out)
 	}
 
-	bytes, err = os.ReadFile(filepath.Join(dir, "test.sarif"))
+	bytes, err := os.ReadFile(filepath.Join(dir, "test.sarif"))
 	if err != nil {
 		panic(err)
 	}
@@ -539,6 +533,32 @@ func TestLinterPathsNotFound(t *testing.T) {
 	msg := err.Error()
 	if !strings.Contains(msg, "could not read") {
 		t.Fatal("unexpected error:", msg)
+	}
+}
+
+func TestLinterOnFilesSelectedHook(t *testing.T) {
+	path := filepath.Join("testdata", "bench", "minimal.yaml")
+	paths := []string{path}
+	var selected []string
+	l, err := NewLinter(io.Discard, &LinterOptions{
+		OnFilesSelected: func(files []string) {
+			selected = slices.Clone(files)
+			files[0] = "modified-by-callback.yaml"
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	l.defaultConfig = &Config{}
+
+	if _, err := l.LintFiles(paths, &Project{root: "."}); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(selected, paths) {
+		t.Fatalf("wanted selected files %#v but got %#v", paths, selected)
+	}
+	if paths[0] != path {
+		t.Fatalf("callback modified the lint file set: %#v", paths)
 	}
 }
 

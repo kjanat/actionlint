@@ -2,20 +2,15 @@ package main
 
 import (
 	"bytes"
-	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"actionlint.kjanat.dev"
 )
 
 const lintTimeout = 300 * time.Second
-
-//go:embed sarif_template.txt
-var sarifTemplate string
 
 type lintRequest struct {
 	workingDir string
@@ -27,37 +22,16 @@ type lintRequest struct {
 	files      []string
 }
 
-func workflowFileCount(req *lintRequest) (int, error) {
-	if len(req.files) != 0 {
-		return len(req.files), nil
-	}
-
-	project, err := actionlint.NewProjects().At(req.workingDir)
-	if err != nil {
-		return 0, err
-	}
-	if project == nil {
-		return 0, fmt.Errorf("no project found from %q", req.workingDir)
-	}
-	count := 0
-	if err := filepath.Walk(project.WorkflowsDir(), func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() && (strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml")) {
-			count++
-		}
-		return nil
-	}); err != nil {
-		return 0, err
-	}
-	return count, nil
-}
-
 type lintOutcome struct {
 	stdout string
 	stderr string
 	code   int
+}
+
+type lintResult struct {
+	*lintOutcome
+	fileCount      int
+	fileCountKnown bool
 }
 
 func buildRequest(in *inputs, workspaceDir, workingRel string) (*lintRequest, error) {
@@ -67,7 +41,7 @@ func buildRequest(in *inputs, workspaceDir, workingRel string) (*lintRequest, er
 		format:     "{{json .}}",
 	}
 	if in.format == formatSARIF {
-		req.format = sarifTemplate
+		req.format = actionlint.SARIFTemplate()
 	}
 	if in.configFile != "" {
 		rel, err := workspaceRel(workspaceDir, filepath.Join(workingRel, in.configFile), "config-file")
@@ -91,8 +65,9 @@ func buildRequest(in *inputs, workspaceDir, workingRel string) (*lintRequest, er
 	return req, nil
 }
 
-func runLinter(req *lintRequest) *lintOutcome {
+func runLinter(req *lintRequest) *lintResult {
 	var out, logs bytes.Buffer
+	result := &lintResult{}
 	opts := &actionlint.LinterOptions{
 		Color:          actionlint.ColorOptionKindNever,
 		Shellcheck:     req.shellcheck,
@@ -102,11 +77,16 @@ func runLinter(req *lintRequest) *lintOutcome {
 		Format:         req.format,
 		WorkingDir:     req.workingDir,
 		LogWriter:      &logs,
+		OnFilesSelected: func(files []string) {
+			result.fileCount = len(files)
+			result.fileCountKnown = true
+		},
 	}
 
 	l, err := actionlint.NewLinter(&out, opts)
 	if err != nil {
-		return &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
+		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
+		return result
 	}
 
 	var errs []*actionlint.Error
@@ -116,12 +96,15 @@ func runLinter(req *lintRequest) *lintOutcome {
 		errs, err = l.LintFiles(req.files, nil)
 	}
 	if err != nil {
-		return &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
+		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
+		return result
 	}
 	if len(errs) > 0 {
-		return &lintOutcome{out.String(), logs.String(), actionlint.ExitStatusSuccessProblemFound}
+		result.lintOutcome = &lintOutcome{out.String(), logs.String(), actionlint.ExitStatusSuccessProblemFound}
+		return result
 	}
-	return &lintOutcome{out.String(), logs.String(), actionlint.ExitStatusSuccessNoProblem}
+	result.lintOutcome = &lintOutcome{out.String(), logs.String(), actionlint.ExitStatusSuccessNoProblem}
+	return result
 }
 
 func chdir(dir string) (func(), error) {
@@ -135,14 +118,14 @@ func chdir(dir string) (func(), error) {
 	return func() { _ = os.Chdir(prev) }, nil
 }
 
-func (a *action) runLint(req *lintRequest) *lintOutcome {
+func (a *action) runLint(req *lintRequest) *lintResult {
 	restore, err := chdir(req.workingDir)
 	if err != nil {
-		return &lintOutcome{"", err.Error() + "\n", actionlint.ExitStatusFailure}
+		return &lintResult{lintOutcome: &lintOutcome{"", err.Error() + "\n", actionlint.ExitStatusFailure}}
 	}
 	defer restore()
 
-	done := make(chan *lintOutcome, 1)
+	done := make(chan *lintResult, 1)
 	go func() {
 		done <- a.lint(req)
 	}()
@@ -151,6 +134,6 @@ func (a *action) runLint(req *lintRequest) *lintOutcome {
 		return o
 	case <-time.After(a.timeout):
 		msg := fmt.Sprintf("actionlint timed out after %d seconds\n", int(a.timeout.Seconds()))
-		return &lintOutcome{"", msg, actionlint.ExitStatusFailure}
+		return &lintResult{lintOutcome: &lintOutcome{"", msg, actionlint.ExitStatusFailure}}
 	}
 }

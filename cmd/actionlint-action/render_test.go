@@ -2,8 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -281,15 +279,5 @@ func TestRenderOutcomeKeepsFailureOutput(t *testing.T) {
 	_, _, rendered = renderOutcome(&lintOutcome{"partial", "", actionlint.ExitStatusInvalidCommandOption}, formatJSON)
 	if rendered != "partial" {
 		t.Errorf("wanted %q but got %q", "partial", rendered)
-	}
-}
-
-func TestEmbeddedSARIFTemplateMatchesRepository(t *testing.T) {
-	want, err := os.ReadFile(filepath.Join("..", "..", "testdata", "format", "sarif_template.txt"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(want) != sarifTemplate {
-		t.Error("the embedded SARIF template drifted from testdata/format/sarif_template.txt")
 	}
 }

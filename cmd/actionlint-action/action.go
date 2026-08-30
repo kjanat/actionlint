@@ -29,7 +29,7 @@ type action struct {
 	args    []string
 	stdout  io.Writer
 	env     func(string) string
-	lint    func(*lintRequest) *lintOutcome
+	lint    func(*lintRequest) *lintResult
 	newID   func() string
 	timeout time.Duration
 }
@@ -93,10 +93,9 @@ func (a *action) execute() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	fileCount, fileCountErr := workflowFileCount(req)
-
-	outcome, count, rendered := renderOutcome(a.runLint(req), in.format)
-	a.emitStatus(outcome.code, count, fileCount, fileCountErr, in)
+	lint := a.runLint(req)
+	outcome, count, rendered := renderOutcome(lint.lintOutcome, in.format)
+	a.emitStatus(outcome.code, count, lint.fileCount, lint.fileCountKnown, in)
 	result, ok := results[outcome.code]
 	if !ok {
 		result = "failure"

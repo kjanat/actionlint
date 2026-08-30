@@ -193,7 +193,7 @@ reviewdog as explained in ['Tools integration' section](#tools-integ) below.
 [The Static Analysis Results Interchange Format (SARIF)][sarif] is a standardized format for the results of static analysis tools.
 
 Since this practical format is much more complex than the above examples, the template is not written here. Please read
-[the template file in test data](../testdata/format/sarif_template.txt).
+[the canonical template file](../sarif_template.txt).
 
 Outputs are also too large to be written here. Please read [the output example in test data](../testdata/format/test.sarif).
 

@@ -12,13 +12,21 @@ import (
 )
 
 type recordedLint struct {
-	req     *lintRequest
-	outcome *lintOutcome
+	req    *lintRequest
+	result *lintResult
 }
 
-func (r *recordedLint) run(req *lintRequest) *lintOutcome {
+func (r *recordedLint) run(req *lintRequest) *lintResult {
 	r.req = req
-	return r.outcome
+	return r.result
+}
+
+func knownFiles(outcome *lintOutcome, count int) *lintResult {
+	return &lintResult{lintOutcome: outcome, fileCount: count, fileCountKnown: true}
+}
+
+func unknownFiles(outcome *lintOutcome) *lintResult {
+	return &lintResult{lintOutcome: outcome}
 }
 
 type actionRun struct {
@@ -28,9 +36,9 @@ type actionRun struct {
 	action  *action
 }
 
-func runAction(t *testing.T, workspace string, outcome *lintOutcome, argv ...string) (*actionRun, *recordedLint) {
+func runAction(t *testing.T, workspace string, result *lintResult, argv ...string) (*actionRun, *recordedLint) {
 	t.Helper()
-	recorder := &recordedLint{outcome: outcome}
+	recorder := &recordedLint{result: result}
 	outputPath := filepath.Join(t.TempDir(), "output")
 	var out strings.Builder
 	env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath}
@@ -78,7 +86,7 @@ func TestActionReportsSuccess(t *testing.T) {
 		".git":                         "",
 		".github/workflows/readme.txt": "not a workflow",
 	})
-	run, recorder := runAction(t, workspace, &lintOutcome{"[]\n", "", actionlint.ExitStatusSuccessNoProblem},
+	run, recorder := runAction(t, workspace, knownFiles(&lintOutcome{"[]\n", "", actionlint.ExitStatusSuccessNoProblem}, 0),
 		"", "json", "", "", "true", "true", ".", "", "true")
 
 	if run.code != 0 {
@@ -117,7 +125,7 @@ func TestActionReportsSuccess(t *testing.T) {
 
 func TestActionReportsProblems(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
-	run, _ := runAction(t, workspace, &lintOutcome{problemJSON(), "", actionlint.ExitStatusSuccessProblemFound},
+	run, _ := runAction(t, workspace, knownFiles(&lintOutcome{problemJSON(), "", actionlint.ExitStatusSuccessProblemFound}, 1),
 		"w.yaml", "github", "", "", "true", "true", ".", "", "true")
 
 	if run.code != 1 {
@@ -137,7 +145,7 @@ func TestActionReportsProblems(t *testing.T) {
 
 func TestActionKeepsProblemsNonFatal(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
-	run, _ := runAction(t, workspace, &lintOutcome{problemJSON(), "", actionlint.ExitStatusSuccessProblemFound},
+	run, _ := runAction(t, workspace, knownFiles(&lintOutcome{problemJSON(), "", actionlint.ExitStatusSuccessProblemFound}, 1),
 		"", "oneline", "", "", "true", "true", ".", "", "false")
 
 	if run.code != 0 {
@@ -150,7 +158,7 @@ func TestActionKeepsProblemsNonFatal(t *testing.T) {
 
 func TestActionReportsFailure(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
-	run, _ := runAction(t, workspace, &lintOutcome{"", "could not read \"w.yaml\"\n", actionlint.ExitStatusFailure},
+	run, _ := runAction(t, workspace, knownFiles(&lintOutcome{"", "could not read \"w.yaml\"\n", actionlint.ExitStatusFailure}, 1),
 		"w.yaml", "json", "", "", "true", "true", ".", "", "false")
 
 	if run.code != 3 {
@@ -170,7 +178,7 @@ func TestActionReportsFailure(t *testing.T) {
 
 func TestActionReportsUnknownWorkflowFileCount(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
-	run, _ := runAction(t, workspace, &lintOutcome{"", "no project\n", actionlint.ExitStatusFailure},
+	run, _ := runAction(t, workspace, unknownFiles(&lintOutcome{"", "no project\n", actionlint.ExitStatusFailure}),
 		"", "json", "", "", "true", "true", ".", "", "true")
 
 	want := fmt.Sprintf(
@@ -190,7 +198,7 @@ func TestActionReportsStatusBeforeResultPersistenceFailure(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(workspace, "blocked"), []byte("not a directory"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	run, _ := runAction(t, workspace, &lintOutcome{"[]\n", "", actionlint.ExitStatusSuccessNoProblem},
+	run, _ := runAction(t, workspace, knownFiles(&lintOutcome{"[]\n", "", actionlint.ExitStatusSuccessNoProblem}, 0),
 		"", "json", "", "", "true", "true", ".", "blocked/results.json", "true")
 
 	if run.code != actionlint.ExitStatusFailure {
@@ -226,7 +234,7 @@ func TestActionReportsInvalidInput(t *testing.T) {
 
 func TestActionWritesOutputFile(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
-	run, _ := runAction(t, workspace, &lintOutcome{problemJSON(), "", actionlint.ExitStatusSuccessProblemFound},
+	run, _ := runAction(t, workspace, knownFiles(&lintOutcome{problemJSON(), "", actionlint.ExitStatusSuccessProblemFound}, 1),
 		"", "json-lines", "", "", "true", "true", ".", "results/out.jsonl", "false")
 
 	if run.code != 0 {
@@ -296,7 +304,7 @@ func TestActionPassesInputsToLinter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, recorder := runAction(t, workspace, &lintOutcome{"[]\n", "", actionlint.ExitStatusSuccessNoProblem},
+	_, recorder := runAction(t, workspace, knownFiles(&lintOutcome{"[]\n", "", actionlint.ExitStatusSuccessNoProblem}, 3),
 		"w.yaml\n\nw.yaml", "sarif", "first\nsecond", "conf.yaml", "false", "false", "sub", "", "true")
 
 	req := recorder.req
@@ -318,7 +326,7 @@ func TestActionPassesInputsToLinter(t *testing.T) {
 	if req.shellcheck != "" || req.pyflakes != "" {
 		t.Errorf("wanted both external commands disabled but got %#v", req)
 	}
-	if req.format != sarifTemplate {
+	if req.format != actionlint.SARIFTemplate() {
 		t.Errorf("wanted the SARIF template but got %q", req.format)
 	}
 }
@@ -328,7 +336,7 @@ func TestActionFallsBackToProcessDirectory(t *testing.T) {
 	t.Chdir(workspace)
 
 	var out strings.Builder
-	recorder := &recordedLint{outcome: &lintOutcome{"[]\n", "", actionlint.ExitStatusSuccessNoProblem}}
+	recorder := &recordedLint{result: knownFiles(&lintOutcome{"[]\n", "", actionlint.ExitStatusSuccessNoProblem}, 0)}
 	a := &action{
 		args:    args("", "json", "", "", "true", "true", ".", "", "true"),
 		stdout:  &out,
@@ -361,9 +369,9 @@ func TestActionTimesOut(t *testing.T) {
 		args:   args("", "json", "", "", "true", "true", ".", "", "true"),
 		stdout: &out,
 		env:    func(name string) string { return env[name] },
-		lint: func(*lintRequest) *lintOutcome {
+		lint: func(*lintRequest) *lintResult {
 			<-release
-			return &lintOutcome{"[]\n", "", actionlint.ExitStatusSuccessNoProblem}
+			return knownFiles(&lintOutcome{"[]\n", "", actionlint.ExitStatusSuccessNoProblem}, 0)
 		},
 		newID:   fixedID("DELIM"),
 		timeout: 10 * time.Millisecond,
@@ -374,6 +382,9 @@ func TestActionTimesOut(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "actionlint timed out after") {
 		t.Errorf("wanted a timeout annotation but got %q", out.String())
+	}
+	if !strings.Contains(out.String(), "while checking unknown workflow files") {
+		t.Errorf("wanted timeout status to keep the file count unknown but got %q", out.String())
 	}
 	outputs := parseOutputs(read(t, outputPath))
 	if outputs["result"] != "failure" || outputs["exit-code"] != "3" {

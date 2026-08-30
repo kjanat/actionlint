@@ -92,7 +92,7 @@ func plural(count int, singular, plural string) string {
 	return plural
 }
 
-func (a *action) emitStatus(code int, problemCount string, fileCount int, fileCountErr error, in *inputs) {
+func (a *action) emitStatus(code int, problemCount string, fileCount int, fileCountKnown bool, in *inputs) {
 	integrations := []string{}
 	if in.shellcheck {
 		integrations = append(integrations, "shellcheck")
@@ -106,7 +106,7 @@ func (a *action) emitStatus(code int, problemCount string, fileCount int, fileCo
 
 	fileCountText := "unknown"
 	files := "workflow files"
-	if fileCountErr == nil {
+	if fileCountKnown {
 		fileCountText = strconv.Itoa(fileCount)
 		files = plural(fileCount, "workflow file", "workflow files")
 	}

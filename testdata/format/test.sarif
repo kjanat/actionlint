@@ -7,7 +7,7 @@
         "driver": {
           "name": "GitHub Actions lint",
           "version": "(devel)",
-          "informationUri": "https://github.com/rhysd/actionlint",
+          "informationUri": "https://github.com/kjanat/actionlint",
           "rules": [
             {
               "id": "action",
@@ -17,12 +17,12 @@
               },
               "properties": {
                 "description": "Checks for popular actions released on GitHub, local actions, and action calls at \"uses:\"",
-                "queryURI": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
                 "text": "Checks for popular actions released on GitHub, local actions, and action calls at \"uses:\""
               },
-              "helpUri": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
               "id": "credentials",
@@ -32,12 +32,12 @@
               },
               "properties": {
                 "description": "Checks for credentials in \"services:\" configuration",
-                "queryURI": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
                 "text": "Checks for credentials in \"services:\" configuration"
               },
-              "helpUri": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
               "id": "deprecated-commands",
@@ -47,12 +47,12 @@
               },
               "properties": {
                 "description": "Checks for deprecated \"set-output\", \"save-state\", \"set-env\", and \"add-path\" commands at \"run:\"",
-                "queryURI": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
                 "text": "Checks for deprecated \"set-output\", \"save-state\", \"set-env\", and \"add-path\" commands at \"run:\""
               },
-              "helpUri": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
               "id": "env-var",
@@ -62,12 +62,12 @@
               },
               "properties": {
                 "description": "Checks for environment variables configuration at \"env:\"",
-                "queryURI": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
                 "text": "Checks for environment variables configuration at \"env:\""
               },
-              "helpUri": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
               "id": "events",
@@ -77,12 +77,12 @@
               },
               "properties": {
                 "description": "Checks for workflow trigger events at \"on:\"",
-                "queryURI": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
                 "text": "Checks for workflow trigger events at \"on:\""
               },
-              "helpUri": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
               "id": "expression",
@@ -92,12 +92,12 @@
               },
               "properties": {
                 "description": "Syntax and semantics checks for expressions embedded with ${{ }} syntax",
-                "queryURI": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
                 "text": "Syntax and semantics checks for expressions embedded with ${{ }} syntax"
               },
-              "helpUri": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
               "id": "glob",
@@ -107,12 +107,12 @@
               },
               "properties": {
                 "description": "Checks for glob syntax used in branch names, tags, and paths",
-                "queryURI": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
                 "text": "Checks for glob syntax used in branch names, tags, and paths"
               },
-              "helpUri": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
               "id": "id",
@@ -122,12 +122,12 @@
               },
               "properties": {
                 "description": "Checks for duplication and naming convention of job/step IDs",
-                "queryURI": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
                 "text": "Checks for duplication and naming convention of job/step IDs"
               },
-              "helpUri": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
               "id": "if-cond",
@@ -137,12 +137,12 @@
               },
               "properties": {
                 "description": "Checks for if: conditions which are always true/false",
-                "queryURI": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
                 "text": "Checks for if: conditions which are always true/false"
               },
-              "helpUri": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
               "id": "job-needs",
@@ -152,12 +152,12 @@
               },
               "properties": {
                 "description": "Checks for job IDs in \"needs:\". Undefined IDs and cyclic dependencies are checked",
-                "queryURI": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
                 "text": "Checks for job IDs in \"needs:\". Undefined IDs and cyclic dependencies are checked"
               },
-              "helpUri": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
               "id": "matrix",
@@ -167,12 +167,12 @@
               },
               "properties": {
                 "description": "Checks for matrix combinations in \"matrix:\"",
-                "queryURI": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
                 "text": "Checks for matrix combinations in \"matrix:\""
               },
-              "helpUri": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
               "id": "parallel-steps",
@@ -182,12 +182,12 @@
               },
               "properties": {
                 "description": "Checks \"wait\"/\"cancel\" references to background steps and steps forbidden inside a \"parallel\" group",
-                "queryURI": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
                 "text": "Checks \"wait\"/\"cancel\" references to background steps and steps forbidden inside a \"parallel\" group"
               },
-              "helpUri": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
               "id": "permissions",
@@ -197,12 +197,12 @@
               },
               "properties": {
                 "description": "Checks for permissions configuration in \"permissions:\". Permission names and permission scopes are checked",
-                "queryURI": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
                 "text": "Checks for permissions configuration in \"permissions:\". Permission names and permission scopes are checked"
               },
-              "helpUri": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
               "id": "runner-label",
@@ -212,12 +212,12 @@
               },
               "properties": {
                 "description": "Checks for GitHub-hosted and preset self-hosted runner labels in \"runs-on:\"",
-                "queryURI": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
                 "text": "Checks for GitHub-hosted and preset self-hosted runner labels in \"runs-on:\""
               },
-              "helpUri": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
               "id": "shell-name",
@@ -227,12 +227,12 @@
               },
               "properties": {
                 "description": "Checks for shell names used for scripts in \"run:\"",
-                "queryURI": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
                 "text": "Checks for shell names used for scripts in \"run:\""
               },
-              "helpUri": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
               "id": "syntax-check",
@@ -242,12 +242,12 @@
               },
               "properties": {
                 "description": "Checks for GitHub Actions workflow syntax",
-                "queryURI": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
                 "text": "Checks for GitHub Actions workflow syntax"
               },
-              "helpUri": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
               "id": "workflow-call",
@@ -257,12 +257,12 @@
               },
               "properties": {
                 "description": "Checks for reusable workflow calls. Inputs and outputs of called reusable workflow are checked",
-                "queryURI": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
                 "text": "Checks for reusable workflow calls. Inputs and outputs of called reusable workflow are checked"
               },
-              "helpUri": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             }
           ]
         }
