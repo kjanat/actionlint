@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	"actionlint.kjanat.dev"
@@ -91,7 +92,7 @@ func plural(count int, singular, plural string) string {
 	return plural
 }
 
-func (a *action) emitStatus(code int, problemCount string, fileCount int, in *inputs) {
+func (a *action) emitStatus(code int, problemCount string, fileCount int, fileCountErr error, in *inputs) {
 	integrations := []string{}
 	if in.shellcheck {
 		integrations = append(integrations, "shellcheck")
@@ -103,7 +104,12 @@ func (a *action) emitStatus(code int, problemCount string, fileCount int, in *in
 		integrations = append(integrations, "external linters disabled")
 	}
 
-	files := plural(fileCount, "workflow file", "workflow files")
+	fileCountText := "unknown"
+	files := "workflow files"
+	if fileCountErr == nil {
+		fileCountText = strconv.Itoa(fileCount)
+		files = plural(fileCount, "workflow file", "workflow files")
+	}
 	if code == actionlint.ExitStatusSuccessNoProblem || code == actionlint.ExitStatusSuccessProblemFound {
 		problems := "problems"
 		if problemCount == "1" {
@@ -111,11 +117,11 @@ func (a *action) emitStatus(code int, problemCount string, fileCount int, in *in
 		}
 		_, _ = fmt.Fprintf(
 			a.stdout,
-			"actionlint %s: %s %s in %d %s (%s)\n",
+			"actionlint %s: %s %s in %s %s (%s)\n",
 			actionVersion(),
 			problemCount,
 			problems,
-			fileCount,
+			fileCountText,
 			files,
 			strings.Join(integrations, ", "),
 		)
@@ -130,11 +136,11 @@ func (a *action) emitStatus(code int, problemCount string, fileCount int, in *in
 	}
 	_, _ = fmt.Fprintf(
 		a.stdout,
-		"actionlint %s: failed with %s %s while checking %d %s (%s)\n",
+		"actionlint %s: failed with %s %s while checking %s %s (%s)\n",
 		actionVersion(),
 		problemCount,
 		problems,
-		fileCount,
+		fileCountText,
 		files,
 		strings.Join(integrations, ", "),
 	)

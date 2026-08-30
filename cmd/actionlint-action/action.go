@@ -93,10 +93,10 @@ func (a *action) execute() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	fileCount := workflowFileCount(req)
+	fileCount, fileCountErr := workflowFileCount(req)
 
 	outcome, count, rendered := renderOutcome(a.runLint(req), in.format)
-	a.emitStatus(outcome.code, count, fileCount, in)
+	a.emitStatus(outcome.code, count, fileCount, fileCountErr, in)
 	result, ok := results[outcome.code]
 	if !ok {
 		result = "failure"

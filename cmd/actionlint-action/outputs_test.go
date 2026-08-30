@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -139,19 +140,22 @@ func TestEmitStatus(t *testing.T) {
 		code    int
 		count   string
 		files   int
+		fileErr error
 		in      *inputs
 		contain string
 	}{
-		{"clean", 0, "0", 2, &inputs{shellcheck: true, pyflakes: true}, ": 0 problems in 2 workflow files (shellcheck, pyflakes)\n"},
-		{"problem", 1, "1", 1, &inputs{shellcheck: true}, ": 1 problem in 1 workflow file (shellcheck)\n"},
-		{"zero files", 0, "0", 0, &inputs{}, ": 0 problems in 0 workflow files (external linters disabled)\n"},
-		{"failure with unknown count", 3, "", 0, &inputs{pyflakes: true}, ": failed with unknown problems while checking 0 workflow files (pyflakes)\n"},
-		{"failure with known count", 3, "1", 1, &inputs{shellcheck: true}, ": failed with 1 problem while checking 1 workflow file (shellcheck)\n"},
+		{"clean", 0, "0", 2, nil, &inputs{shellcheck: true, pyflakes: true}, ": 0 problems in 2 workflow files (shellcheck, pyflakes)\n"},
+		{"problem", 1, "1", 1, nil, &inputs{shellcheck: true}, ": 1 problem in 1 workflow file (shellcheck)\n"},
+		{"zero files", 0, "0", 0, nil, &inputs{}, ": 0 problems in 0 workflow files (external linters disabled)\n"},
+		{"unknown files", 0, "0", 0, errors.New("boom"), &inputs{}, ": 0 problems in unknown workflow files (external linters disabled)\n"},
+		{"failure with unknown count", 3, "", 0, nil, &inputs{pyflakes: true}, ": failed with unknown problems while checking 0 workflow files (pyflakes)\n"},
+		{"failure with known count", 3, "1", 1, nil, &inputs{shellcheck: true}, ": failed with 1 problem while checking 1 workflow file (shellcheck)\n"},
+		{"failure with unknown files", 3, "", 0, errors.New("boom"), &inputs{pyflakes: true}, ": failed with unknown problems while checking unknown workflow files (pyflakes)\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var out strings.Builder
 			a := newTestAction(t, &out, map[string]string{})
-			a.emitStatus(tc.code, tc.count, tc.files, tc.in)
+			a.emitStatus(tc.code, tc.count, tc.files, tc.fileErr, tc.in)
 			if !strings.HasPrefix(out.String(), "actionlint ") || !strings.HasSuffix(out.String(), tc.contain) {
 				t.Errorf("wanted a versioned status ending in %q but got %q", tc.contain, out.String())
 			}

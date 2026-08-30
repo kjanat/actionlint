@@ -27,14 +27,17 @@ type lintRequest struct {
 	files      []string
 }
 
-func workflowFileCount(req *lintRequest) int {
+func workflowFileCount(req *lintRequest) (int, error) {
 	if len(req.files) != 0 {
-		return len(req.files)
+		return len(req.files), nil
 	}
 
 	project, err := actionlint.NewProjects().At(req.workingDir)
-	if err != nil || project == nil {
-		return 0
+	if err != nil {
+		return 0, err
+	}
+	if project == nil {
+		return 0, fmt.Errorf("no project found from %q", req.workingDir)
 	}
 	count := 0
 	if err := filepath.Walk(project.WorkflowsDir(), func(path string, info os.FileInfo, err error) error {
@@ -46,9 +49,9 @@ func workflowFileCount(req *lintRequest) int {
 		}
 		return nil
 	}); err != nil {
-		return 0
+		return 0, err
 	}
-	return count
+	return count, nil
 }
 
 type lintOutcome struct {

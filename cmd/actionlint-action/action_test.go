@@ -74,7 +74,10 @@ func problemJSON() string {
 }
 
 func TestActionReportsSuccess(t *testing.T) {
-	workspace := resolved(t, t.TempDir())
+	workspace := workspaceWith(t, map[string]string{
+		".git":                         "",
+		".github/workflows/readme.txt": "not a workflow",
+	})
 	run, recorder := runAction(t, workspace, &lintOutcome{"[]\n", "", actionlint.ExitStatusSuccessNoProblem},
 		"", "json", "", "", "true", "true", ".", "", "true")
 
@@ -165,8 +168,25 @@ func TestActionReportsFailure(t *testing.T) {
 	}
 }
 
-func TestActionReportsStatusBeforeResultPersistenceFailure(t *testing.T) {
+func TestActionReportsUnknownWorkflowFileCount(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
+	run, _ := runAction(t, workspace, &lintOutcome{"", "no project\n", actionlint.ExitStatusFailure},
+		"", "json", "", "", "true", "true", ".", "", "true")
+
+	want := fmt.Sprintf(
+		"actionlint %s: failed with unknown problems while checking unknown workflow files (shellcheck, pyflakes)\n",
+		actionVersion(),
+	)
+	if !strings.HasPrefix(run.stdout, want) {
+		t.Errorf("wanted unknown workflow file count in status %q but got %q", want, run.stdout)
+	}
+}
+
+func TestActionReportsStatusBeforeResultPersistenceFailure(t *testing.T) {
+	workspace := workspaceWith(t, map[string]string{
+		".git":                         "",
+		".github/workflows/readme.txt": "not a workflow",
+	})
 	if err := os.WriteFile(filepath.Join(workspace, "blocked"), []byte("not a directory"), 0o644); err != nil {
 		t.Fatal(err)
 	}

@@ -64,14 +64,29 @@ func TestWorkflowFileCount(t *testing.T) {
 		".github/workflows/readme.txt":   "not a workflow",
 	})
 
-	if got := workflowFileCount(&lintRequest{workingDir: dir}); got != 2 {
+	if got, err := workflowFileCount(&lintRequest{workingDir: dir}); err != nil || got != 2 {
 		t.Errorf("wanted two discovered workflow files but got %d", got)
 	}
-	if got := workflowFileCount(&lintRequest{workingDir: dir, files: []string{"a.yaml", "b.yaml", "a.yaml"}}); got != 3 {
+	if got, err := workflowFileCount(&lintRequest{workingDir: dir, files: []string{"a.yaml", "b.yaml", "a.yaml"}}); err != nil || got != 3 {
 		t.Errorf("wanted all three requested file entries counted but got %d", got)
 	}
-	if got := workflowFileCount(&lintRequest{workingDir: t.TempDir()}); got != 0 {
-		t.Errorf("wanted no workflow files outside a repository but got %d", got)
+	empty := workspaceWith(t, map[string]string{
+		".git":                         "",
+		".github/workflows/readme.txt": "not a workflow",
+	})
+	if got, err := workflowFileCount(&lintRequest{workingDir: empty}); err != nil || got != 0 {
+		t.Errorf("wanted a successful zero count but got %d and %v", got, err)
+	}
+	if got, err := workflowFileCount(&lintRequest{workingDir: t.TempDir()}); err == nil {
+		t.Errorf("wanted project discovery to fail instead of returning %d", got)
+	}
+	invalid := workspaceWith(t, map[string]string{
+		".git":                         "",
+		".github/actionlint.yaml":      "invalid: [\n",
+		".github/workflows/first.yaml": cleanWorkflow,
+	})
+	if got, err := workflowFileCount(&lintRequest{workingDir: invalid}); err == nil {
+		t.Errorf("wanted project resolution to fail instead of returning %d", got)
 	}
 }
 
