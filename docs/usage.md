@@ -178,7 +178,7 @@ actionlint -format '
 
 Output:
 
-<img src="https://github.com/rhysd/ss/blob/master/actionlint/ga-annotate.png?raw=true" alt="annotations on GitHub Actions" width="731" height="522"/>
+<img src="https://cdn.jsdelivr.net/gh/rhysd/ss@5530c2526b44ad28dc12f91a3d71bcd57940f008/actionlint/ga-annotate.png" alt="annotations on GitHub Actions" width="731" height="522"/>
 
 To include newlines in the annotation body, it prints `%0A`. (ref
 [actions/toolkit#193](https://github.com/actions/toolkit/issues/193)). And it
@@ -579,7 +579,7 @@ When you change your workflow and the changed line causes a new error, CI will
 annotate the diff with the extracted error message.
 
 <img
-  src="https://github.com/rhysd/ss/blob/master/actionlint/problem-matcher.png?raw=true"
+  src="https://cdn.jsdelivr.net/gh/rhysd/ss@5530c2526b44ad28dc12f91a3d71bcd57940f008/actionlint/problem-matcher.png"
   alt="annotation by Problem Matchers"
   width="715"
   height="221"
