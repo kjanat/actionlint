@@ -1,0 +1,35 @@
+name: GitHub Changelog monitor
+on:
+  schedule: [cron: "17 6 * * *"]
+  workflow_dispatch:
+    inputs:
+      lookback-days:
+        description: Only report entries published within this many days
+        required: false
+        default: "30"
+      max-issues:
+        description: Maximum number of issues opened per run
+        required: false
+        default: "10"
+
+concurrency:
+  group: github-changelog-monitor
+  cancel-in-progress: false
+  queue: single
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  monitor:
+    if: github.repository_owner == 'kjanat' && github.ref_name == 'master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - name: Report new Actions changelog entries
+        uses: $/.github/actions/changelog-monitor
+        with:
+          lookback-days: ${{ inputs.lookback-days || '30' }}
+          max-issues: ${{ inputs.max-issues || '10' }}
