@@ -39,8 +39,8 @@ As a package script:
 `actionlint` exits `0` when it finds nothing, `1` when it reports problems, and `2` or `3` on a usage error or a fatal
 error. Those statuses are forwarded verbatim, so it drops into CI unchanged.
 
-See the [usage documentation](https://github.com/kjanat/actionlint/blob/main/docs/usage.md) for the full command line,
-and [the checks list](https://github.com/kjanat/actionlint/blob/main/docs/checks.md) for what it looks for.
+See the [usage documentation](https://github.com/kjanat/actionlint/blob/master/docs/usage.md) for the full command line,
+and [the checks list](https://github.com/kjanat/actionlint/blob/master/docs/checks.md) for what it looks for.
 
 ### ShellCheck and Pyflakes
 
@@ -86,7 +86,7 @@ just `@kjanat/actionlint` — otherwise a fresh release installs the facade whil
 ## Other ways to install
 
 Homebrew, Arch (AUR), Scoop, Docker, a download script, and `go install` are all covered in
-[the installation documentation](https://github.com/kjanat/actionlint/blob/main/docs/install.md).
+[the installation documentation](https://github.com/kjanat/actionlint/blob/master/docs/install.md).
 
 ## License
 

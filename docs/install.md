@@ -4,6 +4,12 @@ This document describes how to install [actionlint](../docs).
 
 ## Windows
 
+> [!IMPORTANT]
+> All three package managers below install [the upstream project][upstream], not this fork. `winget install actionlint`
+> resolves the `rhysd.actionlint` identifier, and the Chocolatey and Scoop packages are upstream's too. This fork does
+> not publish a Windows package manager of its own yet; to install it on Windows use [npm](#npm),
+> [the prebuilt binaries](#prebuilt-binaries), or [the download script](#download-script).
+
 ### [Chocolatey](https://chocolatey.org/)
 
 [`actionlint` package][chocolatey] is available in the community repository:
@@ -72,7 +78,28 @@ On Non NixOS:
 nix-env -iA nixpkgs.actionlint
 ```
 
-### [npm](https://www.npmjs.com/)
+## macOS
+
+### [Homebrew][homebrew]
+
+[`actionlint`][formula] formula is provided by Homebrew officially.
+
+```sh
+brew install actionlint
+```
+
+That formula tracks the upstream project. To install this fork instead, use its own tap, which is updated automatically
+on every release:
+
+```sh
+brew install kjanat/actionlint/actionlint
+```
+
+> [!WARNING]
+> Since the `actionlint` executable is unsigned, macOS displays a warning and tries to move it to the Trash. To allow it to run,
+> go to 'Settings -> Privacy & Security' and grant the permission.
+
+## [npm](https://www.npmjs.com/)
 
 [`@kjanat/actionlint`][npm-package] installs a prebuilt binary, so no Go toolchain is needed:
 
@@ -96,27 +123,6 @@ release's published checksums before being repackaged.
 
 Linux users on Alpine need nothing special: the binaries are statically linked, so the `linux-*` packages run on musl
 and glibc alike.
-
-## macOS
-
-### [Homebrew][homebrew]
-
-[`actionlint`][formula] formula is provided by Homebrew officially.
-
-```sh
-brew install actionlint
-```
-
-That formula tracks the upstream project. To install this fork instead, use its own tap, which is updated automatically
-on every release:
-
-```sh
-brew install kjanat/actionlint/actionlint
-```
-
-> [!WARNING]
-> Since the `actionlint` executable is unsigned, macOS displays a warning and tries to move it to the Trash. To allow it to run,
-> go to 'Settings -> Privacy & Security' and grant the permission.
 
 ## Prebuilt binaries
 
@@ -248,6 +254,7 @@ go install actionlint.kjanat.dev/cmd/actionlint@master
 [asdf]: https://asdf-vm.com/
 [asdf-plugin]: https://github.com/crazy-matt/asdf-actionlint
 [chocolatey]: https://community.chocolatey.org/packages/actionlint
+[upstream]: https://github.com/rhysd/actionlint
 [scoop]: https://scoop.sh/#/apps?q=actionlint&s=0&d=1&o=true
 [winget]: https://github.com/microsoft/winget-pkgs/tree/master/manifests/r/rhysd/actionlint
 [archlinux]: https://archlinux.org/packages/extra/x86_64/actionlint/
