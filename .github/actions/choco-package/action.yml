@@ -1,0 +1,76 @@
+name: Publish Chocolatey package
+description: Lay out the Chocolatey package for a release, then pack and push it
+inputs:
+  version:
+    description: Release version, with or without a leading v
+    required: true
+  repository:
+    description: Repository to download the release archive from
+    required: false
+    default: ${{ github.repository }}
+  token:
+    description: Token used to download the release archive
+    required: false
+    default: ${{ github.token }}
+  api-key:
+    description: Chocolatey community feed API key; required unless dry-run
+    required: false
+    default: ""
+  source:
+    description: Chocolatey feed to push to
+    required: false
+    default: https://push.chocolatey.org/
+  out-dir:
+    description: Directory to lay the package out in
+    required: false
+    default: ${{ github.workspace }}/choco/dist
+  downloads:
+    description: Directory of already-downloaded release archives; anything missing is fetched
+    required: false
+    default: ""
+  dry-run:
+    description: Pack the package but do not push it
+    required: false
+    default: "false"
+outputs:
+  skipped:
+    description: Whether the version was a prerelease and no package was built
+    value: ${{ steps.layout.outputs.skipped }}
+runs:
+  using: composite
+  steps:
+    # Its own module, so it runs from the action directory and never depends on
+    # the checkout layout around it.
+    - name: Lay out the package
+      id: layout
+      shell: pwsh
+      working-directory: ${{ github.action_path }}
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_REPOSITORY: ${{ inputs.repository }}
+        INPUT_TOKEN: ${{ inputs.token }}
+        INPUT_OUT_DIR: ${{ inputs.out-dir }}
+        INPUT_DOWNLOADS: ${{ inputs.downloads }}
+      run: go run .
+
+    # choco resolves the nuspec's `tools\**` source relative to the working
+    # directory, so pack from the directory holding the nuspec.
+    - name: Pack
+      if: steps.layout.outputs.skipped != 'true'
+      shell: pwsh
+      working-directory: ${{ inputs.out-dir }}
+      run: choco pack --limit-output
+
+    - name: Push
+      if: steps.layout.outputs.skipped != 'true' && inputs.dry-run != 'true'
+      shell: pwsh
+      working-directory: ${{ inputs.out-dir }}
+      env:
+        CHOCO_API_KEY: ${{ inputs.api-key }}
+        CHOCO_SOURCE: ${{ inputs.source }}
+      run: |
+        If (-Not $env:CHOCO_API_KEY) { Throw 'no Chocolatey API key was provided' }
+        $pkg = Get-ChildItem -Filter *.nupkg | Select-Object -First 1
+        If (-Not $pkg) { Throw 'choco pack produced no .nupkg' }
+        Write-Host "pushing $($pkg.Name)"
+        choco push $pkg.FullName --source $env:CHOCO_SOURCE --api-key $env:CHOCO_API_KEY

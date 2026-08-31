@@ -5,10 +5,8 @@ This document describes how to install [actionlint](../docs).
 ## Windows
 
 > [!IMPORTANT]
-> All three package managers below install [the upstream project][upstream], not this fork. `winget install actionlint`
-> resolves the `rhysd.actionlint` identifier, and the Chocolatey and Scoop packages are upstream's too. This fork does
-> not publish a Windows package manager of its own yet; to install it on Windows use [npm](#npm),
-> [the prebuilt binaries](#prebuilt-binaries), or [the download script](#download-script).
+> The bare `actionlint` package in all three managers below is [the upstream project][upstream], not this fork. Each
+> section gives the fork's own package alongside it. [npm](#npm) works on Windows too.
 
 ### [Chocolatey](https://chocolatey.org/)
 
@@ -16,6 +14,12 @@ This document describes how to install [actionlint](../docs).
 
 ```powershell
 choco install actionlint
+```
+
+This fork is published separately as [`actionlint-kjanat`][choco-kjanat], since the `actionlint` id is upstream's:
+
+```powershell
+choco install actionlint-kjanat
 ```
 
 ### [Scoop](https://scoop.sh/)
@@ -26,12 +30,20 @@ choco install actionlint
 scoop install actionlint
 ```
 
-### [Winget](https://learn.microsoft.com/en-us/windows/package-manager/)
-
-[`actionlint` package][winget] is available in the winget-pkgs repository:
+This fork lives in its own bucket, which also carries other `kjanat` tools:
 
 ```powershell
-winget install actionlint
+scoop bucket add kjanat https://github.com/kjanat/scoop-bucket
+scoop install kjanat/actionlint
+```
+
+### [Winget](https://learn.microsoft.com/en-us/windows/package-manager/)
+
+[`actionlint` package][winget] is available in the winget-pkgs repository under the `rhysd.actionlint` identifier. This
+fork is a separate package:
+
+```powershell
+winget install kjanat.actionlint
 ```
 
 ## Linux
@@ -253,6 +265,7 @@ go install actionlint.kjanat.dev/cmd/actionlint@master
 [Go]: https://golang.org/
 [asdf]: https://asdf-vm.com/
 [asdf-plugin]: https://github.com/crazy-matt/asdf-actionlint
+[choco-kjanat]: https://community.chocolatey.org/packages/actionlint-kjanat
 [chocolatey]: https://community.chocolatey.org/packages/actionlint
 [upstream]: https://github.com/rhysd/actionlint
 [scoop]: https://scoop.sh/#/apps?q=actionlint&s=0&d=1&o=true

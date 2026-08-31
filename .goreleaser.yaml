@@ -73,3 +73,59 @@ homebrew_casks:
     commit_author:
       name: "github-actions[bot]"
       email: "41898282+github-actions[bot]@users.noreply.github.com"
+
+scoops:
+  - name: actionlint
+    # A bucket shared by every project, rather than one per project. Manifests
+    # stay at the repository root on purpose: scoop installs fine from a
+    # subdirectory, but `scoop bucket list` then reports zero manifests.
+    repository:
+      owner: kjanat
+      name: scoop-bucket
+      token: "{{ .Env.SCOOP_BUCKET_TOKEN }}"
+    ids: [windows]
+    homepage: https://actionlint.kjanat.dev
+    description: Static checker for GitHub Actions workflow files
+    license: MIT
+    commit_author:
+      name: "github-actions[bot]"
+      email: "41898282+github-actions[bot]@users.noreply.github.com"
+
+winget:
+  - name: actionlint
+    # Upstream owns rhysd.actionlint in winget-pkgs; this fork is its own package.
+    package_identifier: kjanat.actionlint
+    publisher: kjanat
+    publisher_url: https://github.com/kjanat
+    publisher_support_url: https://github.com/kjanat/actionlint/issues
+    author: Kaj Kowalski
+    homepage: https://actionlint.kjanat.dev
+    short_description: Static checker for GitHub Actions workflow files
+    description: |-
+      actionlint is a static checker for GitHub Actions workflow files. It checks the workflow syntax, the expressions
+      in ${{ }} placeholders, the shell scripts in run: steps, and many other mistakes that only surface once a
+      workflow runs. This is the kjanat fork.
+    license: MIT
+    license_url: https://github.com/kjanat/actionlint/blob/master/LICENSE.txt
+    copyright: Copyright (c) 2026 Kaj Kowalski, Copyright (c) 2021 rhysd
+    release_notes_url: "https://github.com/kjanat/actionlint/blob/{{ .Tag }}/CHANGELOG.md"
+    tags: [actionlint, github-actions, workflow, linter, static-analysis, yaml, ci]
+    ids: [windows]
+    # winget-pkgs takes contributions by pull request only, so this pushes a
+    # branch to a personal fork and opens the PR against microsoft/winget-pkgs.
+    # The fork is shared by every project, like the scoop bucket above.
+    repository:
+      owner: kjanat
+      name: winget-pkgs
+      branch: "actionlint-{{ .Version }}"
+      token: "{{ .Env.WINGET_TOKEN }}"
+      pull_request:
+        enabled: true
+        draft: false
+        base:
+          owner: microsoft
+          name: winget-pkgs
+          branch: master
+    commit_author:
+      name: "github-actions[bot]"
+      email: "41898282+github-actions[bot]@users.noreply.github.com"

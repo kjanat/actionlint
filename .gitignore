@@ -7,6 +7,7 @@
 /actionlint.exe
 /actionlint_fuzz-fuzz.zip
 /bump-version
+/choco/dist/
 /corpus
 /coverage.html
 /coverage.out
