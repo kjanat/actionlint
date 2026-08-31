@@ -1,0 +1,42 @@
+name: Prepare AUR PKGBUILD
+description: Rewrite a checked-in PKGBUILD so it describes a specific release, ready to push to the AUR
+inputs:
+  package:
+    description: AUR package name, matching a directory under aur/
+    required: true
+  version:
+    description: Release version, with or without a leading v
+    required: true
+  commit:
+    description: Commit the release tag points at; required only for the -git package
+    required: false
+    default: ""
+  repository:
+    description: Repository to read the release checksums manifest from
+    required: false
+    default: ${{ github.repository }}
+  token:
+    description: Token used to download the release checksums manifest
+    required: false
+    default: ${{ github.token }}
+  aur-dir:
+    description: Directory holding the per-package PKGBUILD directories
+    required: false
+    default: ${{ github.workspace }}/aur
+runs:
+  using: composite
+  steps:
+    # Its own module, so it runs from the action directory and never depends on
+    # the checkout layout around it. Go also ignores dot-directories when
+    # matching ./..., keeping it out of the repository's own build and lint runs.
+    - name: Rewrite PKGBUILD
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      env:
+        INPUT_PACKAGE: ${{ inputs.package }}
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_COMMIT: ${{ inputs.commit }}
+        INPUT_REPOSITORY: ${{ inputs.repository }}
+        INPUT_TOKEN: ${{ inputs.token }}
+        INPUT_AUR_DIR: ${{ inputs.aur-dir }}
+      run: go run .

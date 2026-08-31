@@ -1,0 +1,54 @@
+{
+  "name": "@kjanat/actionlint",
+  "version": "0.0.0",
+  "description": "Static checker for GitHub Actions workflow files",
+  "keywords": [
+    "actionlint",
+    "github-actions",
+    "workflow",
+    "linter",
+    "lint",
+    "static-analysis",
+    "cli",
+    "yaml",
+    "shellcheck"
+  ],
+  "homepage": "https://actionlint.kjanat.dev",
+  "bugs": {
+    "url": "https://github.com/kjanat/actionlint/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kjanat/actionlint.git"
+  },
+  "license": "MIT",
+  "author": "Kaj Kowalski <info+actionlint@kajkowalski.nl>",
+  "type": "module",
+  "imports": {
+    "#launch": "./lib/launch.mjs",
+    "#pkg": "./package.json",
+    "#resolve": "./lib/resolve.mjs"
+  },
+  "exports": {
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "actionlint": "bin/actionlint.mjs"
+  },
+  "directories": {
+    "lib": "./lib"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "README.md",
+    "LICENSE.txt"
+  ],
+  "dependencies": {
+    "ansispeck": "^0.4.2"
+  },
+  "optionalDependencies": {},
+  "engines": {
+    "node": ">=18.20.0"
+  }
+}

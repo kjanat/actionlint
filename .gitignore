@@ -15,5 +15,6 @@
 /man/actionlint.1
 /man/actionlint.1.html
 /node_modules
+/npm/dist/
 /playground-dist
 /vendor/

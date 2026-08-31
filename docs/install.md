@@ -38,10 +38,23 @@ winget install actionlint
 pacman -S actionlint
 ```
 
-Alternatively actionlint is also available on [AUR][aur]. The packages can be installed via [`paru`][paru] command.
+That package, and the [actionlint-bin][] and [actionlint-git][] packages on [AUR][aur], all track the upstream
+project. To install this fork instead, use its own AUR packages, which are updated automatically on every release:
 
-- [actionlint-bin](https://aur.archlinux.org/packages/actionlint-bin)
-- [actionlint-git](https://aur.archlinux.org/packages/actionlint-git)
+| Package                     | Builds                            |
+| --------------------------- | --------------------------------- |
+| [actionlint-kjanat][]       | from the tagged source tarball    |
+| [actionlint-kjanat-bin][]   | prebuilt from the release archive |
+| [actionlint-kjanat-git][]   | from the tip of `master`          |
+
+They can be installed via the [`paru`][paru] command:
+
+```sh
+paru -S actionlint-kjanat-bin
+```
+
+All of them install `/usr/bin/actionlint` and therefore conflict with each other and with the official `actionlint`
+package; install whichever you prefer, not several. Each ships the man page and bash, zsh and fish completions.
 
 ### [Nix](https://nixos.wiki/)
 
@@ -58,6 +71,31 @@ On Non NixOS:
 ```sh
 nix-env -iA nixpkgs.actionlint
 ```
+
+### [npm](https://www.npmjs.com/)
+
+[`@kjanat/actionlint`][npm-package] installs a prebuilt binary, so no Go toolchain is needed:
+
+```sh
+npm install --save-dev @kjanat/actionlint
+```
+
+Or run it without installing:
+
+```sh
+npx @kjanat/actionlint
+```
+
+The package itself carries no binary. It declares one `optionalDependencies` entry per platform, each holding a single
+executable and declaring its `os` and `cpu`, so your package manager downloads only the one matching your machine. The
+`actionlint` command is a small launcher that resolves that package and execs the binary inside it, forwarding the exit
+status unchanged.
+
+The binaries are the same ones attached to the [GitHub release][releases]; every archive is verified against the
+release's published checksums before being repackaged.
+
+Linux users on Alpine need nothing special: the binaries are statically linked, so the `linux-*` packages run on musl
+and glibc alike.
 
 ## macOS
 
@@ -213,7 +251,13 @@ go install actionlint.kjanat.dev/cmd/actionlint@master
 [scoop]: https://scoop.sh/#/apps?q=actionlint&s=0&d=1&o=true
 [winget]: https://github.com/microsoft/winget-pkgs/tree/master/manifests/r/rhysd/actionlint
 [archlinux]: https://archlinux.org/packages/extra/x86_64/actionlint/
+[actionlint-bin]: https://aur.archlinux.org/packages/actionlint-bin
+[actionlint-git]: https://aur.archlinux.org/packages/actionlint-git
+[actionlint-kjanat-bin]: https://aur.archlinux.org/packages/actionlint-kjanat-bin
+[actionlint-kjanat-git]: https://aur.archlinux.org/packages/actionlint-kjanat-git
+[actionlint-kjanat]: https://aur.archlinux.org/packages/actionlint-kjanat
 [aur]: https://aur.archlinux.org/
+[npm-package]: https://www.npmjs.com/package/@kjanat/actionlint
 [paru]: https://github.com/Morganamilo/paru
 [nixpkgs]: https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/analysis/actionlint/default.nix
 [mise]: https://github.com/jdx/mise
