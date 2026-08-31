@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="icon" type="image/svg+xml" href="./icon.svg">
+		<link rel="stylesheet" href="./style.css">
+		<title>GitHub Actions Changelog</title>
+	</head>
+	<body>
+		<main class="app">
+			<div class="topbar">
+				<div class="brand">
+					<h1>GitHub Actions Changelog</h1>
+					<p>
+						Live reader for
+						<code>github.blog/changelog/label/actions/feed/</code>
+					</p>
+				</div>
+
+				<div class="controls">
+					<button id="refreshBtn" type="button" class="primary">Refresh</button>
+					<button id="rawBtn" type="button" class="ghost" disabled>
+						Raw XML
+					</button>
+				</div>
+			</div>
+
+			<div id="errorBox" class="error-box" role="alert" hidden></div>
+
+			<section id="feedMeta" class="feed-meta" aria-live="polite">
+				<div>
+					<div id="feedTitle" class="feed-title"></div>
+					<div id="feedDescription" class="feed-description"></div>
+				</div>
+				<div id="feedStats" class="feed-stats"></div>
+			</section>
+
+			<div class="layout">
+				<aside class="sidebar">
+					<div class="filters">
+						<input
+							id="search"
+							type="search"
+							placeholder="Search title, author, content…"
+							disabled
+						>
+						<select id="typeFilter" disabled>
+							<option value="">All types</option>
+						</select>
+					</div>
+					<div id="items" class="items">
+						<div class="empty">No feed loaded yet.</div>
+					</div>
+				</aside>
+
+				<section id="viewer" class="viewer">
+					<div id="article" class="empty">
+						Loading the latest GitHub Actions entries…
+					</div>
+					<pre id="raw" class="raw"></pre>
+				</section>
+			</div>
+		</main>
+
+		<script defer src="./index.js"></script>
+	</body>
+</html>
