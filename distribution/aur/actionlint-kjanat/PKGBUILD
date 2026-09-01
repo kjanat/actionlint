@@ -1,0 +1,87 @@
+# Maintainer: Kaj Kowalski <info@kajkowalski.nl>
+
+# Source package: builds the `actionlint` binary from the tagged GitHub source
+# tarball with the Go toolchain. `pkgver` is rewritten and `sha256sums` is
+# refreshed by CI (.github/workflows/aur-release.yml) on every release; the
+# values below are only a checked-in reference snapshot.
+pkgname=actionlint-kjanat
+pkgver=1.13.0
+pkgrel=1
+pkgdesc='Static checker for GitHub Actions workflow files (kjanat fork)'
+arch=('x86_64' 'aarch64' 'armv7h')
+url='https://github.com/kjanat/actionlint'
+license=('MIT')
+# Built with cgo and -linkmode=external per the Arch Go packaging guidelines,
+# so unlike the -bin package this links against the system libc.
+depends=('glibc')
+makedepends=('go' 'pandoc-cli')
+optdepends=(
+	'shellcheck: check shell scripts in `run:` steps'
+	'python-pyflakes: check Python scripts in `run:` steps'
+)
+provides=("actionlint=$pkgver")
+conflicts=('actionlint' 'actionlint-kjanat-bin' 'actionlint-kjanat-git')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/kjanat/actionlint/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+# Go module path; the ldflags targets below are package-level vars in it.
+_module='actionlint.kjanat.dev'
+
+prepare() {
+	cd "actionlint-$pkgver"
+	go mod download
+}
+
+build() {
+	cd "actionlint-$pkgver"
+	export CGO_CPPFLAGS="${CPPFLAGS}"
+	export CGO_CFLAGS="${CFLAGS}"
+	export CGO_CXXFLAGS="${CXXFLAGS}"
+	export CGO_LDFLAGS="${LDFLAGS}"
+	# -ldflags stays off GOFLAGS: a second -ldflags on the command line would
+	# replace it wholesale rather than merge, dropping -linkmode=external.
+	export GOFLAGS='-buildmode=pie -trimpath -mod=readonly -modcacherw'
+	# No -s -w here; makepkg's own strip option handles symbols, and keeping
+	# them lets debuginfod work.
+	go build -o build/actionlint \
+		-ldflags "-linkmode=external -X ${_module}.version=$pkgver -X ${_module}.installedFrom=https://aur.archlinux.org/packages/$pkgname" \
+		./cmd/actionlint
+	make man/actionlint.1
+}
+
+check() {
+	cd "actionlint-$pkgver"
+	# The library and the command only. The ./scripts/... helpers are release
+	# tooling, not shipped here, and their tests reach the network. The
+	# shellcheck and pyflakes integration tests self-skip when those tools are
+	# absent, so this stays offline and deterministic either way.
+	go test . ./cmd/...
+}
+
+package() {
+	cd "actionlint-$pkgver"
+	install -Dm0755 build/actionlint "$pkgdir/usr/bin/actionlint"
+	install -Dm0644 LICENSE.txt "$pkgdir/usr/share/licenses/$pkgname/LICENSE.txt"
+	install -Dm0644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+	install -Dm0644 -t "$pkgdir/usr/share/doc/$pkgname/" docs/*.md
+
+	# Man page rendered from Markdown by build(). makepkg gzips it (zipman).
+	install -Dm0644 man/actionlint.1 "$pkgdir/usr/share/man/man1/actionlint.1"
+
+	# Shell completions. `-completion <shell>` writes a script for one shell to
+	# stdout; the binary was just built for $CARCH, so it can just be run.
+	install -dm0755 "$pkgdir/usr/share/bash-completion/completions" \
+		"$pkgdir/usr/share/zsh/site-functions" \
+		"$pkgdir/usr/share/fish/vendor_completions.d" \
+		"$pkgdir/usr/share/actionlint"
+	build/actionlint -completion bash >"$pkgdir/usr/share/bash-completion/completions/actionlint"
+	build/actionlint -completion zsh >"$pkgdir/usr/share/zsh/site-functions/_actionlint"
+	build/actionlint -completion fish >"$pkgdir/usr/share/fish/vendor_completions.d/actionlint.fish"
+	# PowerShell has no system autoload dir on Linux; pwsh users dot-source
+	# this file from their `$PROFILE`:  . /usr/share/actionlint/actionlint.ps1
+	build/actionlint -completion powershell >"$pkgdir/usr/share/actionlint/actionlint.ps1"
+	chmod 0644 "$pkgdir/usr/share/bash-completion/completions/actionlint" \
+		"$pkgdir/usr/share/zsh/site-functions/_actionlint" \
+		"$pkgdir/usr/share/fish/vendor_completions.d/actionlint.fish" \
+		"$pkgdir/usr/share/actionlint/actionlint.ps1"
+}
