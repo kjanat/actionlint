@@ -1,7 +1,7 @@
 name: GitHub Changelog monitor
 description: Open a labelled issue for every unreported GitHub Actions entry in the GitHub Changelog feed
 inputs:
-  github-token:
+  token:
     description: Token used to read and open issues
     required: true
     default: ${{ github.token }}
@@ -26,11 +26,9 @@ runs:
     - name: Open issues for new Actions changelog entries
       id: monitor
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
-      env:
-        LOOKBACK_DAYS: ${{ inputs.lookback-days }}
-        MAX_ISSUES: ${{ inputs.max-issues }}
+      env: { LOOKBACK_DAYS: "${{ inputs.lookback-days }}", MAX_ISSUES: "${{ inputs.max-issues }}" }
       with:
-        github-token: ${{ inputs.github-token }}
+        github-token: ${{ inputs.token }}
         retries: 3
         script: |
           const { default: run } = await import(`${process.env.GITHUB_ACTION_PATH}/monitor.mjs`)
