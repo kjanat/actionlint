@@ -4,6 +4,10 @@
   "description": "Static checker for GitHub Actions workflow files",
   "homepage": "https://actionlint.kjanat.dev",
   "repository": "https://github.com/kjanat/actionlint",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/kjanat"
+  },
   "license": "MIT",
   "type": "module",
   "workspaces": [
