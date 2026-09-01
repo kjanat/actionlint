@@ -27,13 +27,8 @@ outputs:
 runs:
   using: composite
   steps:
-    # The name and version come out of the tarball rather than out of npm's own
-    # --json output: that output is keyed by package name and has changed shape
-    # between majors, while the manifest inside the tarball is exactly what the
-    # registry will record.
-    #
-    # npm.im is npm's own path-preserving redirect to www.npmjs.com, so the
-    # deployment URL lands on the same page from a shorter link.
+    # Name and version come from the tarball's own manifest; npm's --json output
+    # is keyed by package name and has changed shape between majors.
     - name: Publish
       id: publish
       shell: bash
@@ -44,10 +39,8 @@ runs:
         DRY_RUN: ${{ inputs.dry-run }}
       run: |
         set -euo pipefail
-        # A relative spec needs an explicit ./ prefix or npm reads it as a
-        # GitHub shorthand: `tarballs/linux-x64.tgz` becomes a git ls-remote of
-        # ssh://git@github.com/tarballs/linux-x64.tgz.git, and the publish dies
-        # on a repository that was never meant to exist.
+        # A relative spec needs an explicit ./ prefix; npm reads a bare
+        # `tarballs/x.tgz` as a GitHub shorthand and tries to clone it.
         case "${TARBALL}" in
         /* | ./* | ../*) spec="${TARBALL}" ;;
         *) spec="./${TARBALL}" ;;

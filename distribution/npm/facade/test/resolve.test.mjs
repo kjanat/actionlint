@@ -130,8 +130,8 @@ describe('resolveBinary', () => {
 		);
 	});
 
-	// A half-unpacked install leaves package.json resolvable but no binary. That
-	// must be reported here, not as a bare ENOENT out of spawnSync later.
+	// A half-unpacked install leaves package.json resolvable but no binary. The
+	// resolver must report that, ahead of any ENOENT from spawnSync.
 	test('throws when the package is present but its binary is not', () => {
 		assert.throws(
 			() =>

@@ -189,7 +189,7 @@ func TestBuildsEveryTargetAndTheFacade(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", target.Pkg, err)
 		}
-		// Proves each package got its own binary, not a neighbour's.
+		// Each package must carry its own binary.
 		if want := "binary for " + target.Pkg; string(got) != want {
 			t.Errorf("%s: binary is %q, want %q", target.Pkg, got, want)
 		}
@@ -262,8 +262,7 @@ func TestBuildsEveryTargetAndTheFacade(t *testing.T) {
 	}
 }
 
-// The manual travels on the facade, and a facade-only build has to go and get
-// it rather than shipping a package without one.
+// The manual travels on the facade, so a facade-only build has to fetch one.
 func TestFacadeOnlyBuildFetchesTheManual(t *testing.T) {
 	cfg := fixture(t, "3.2.1")
 	tf, err := loadTargets(filepath.Join(cfg.npmDir, "targets.json"))
@@ -282,8 +281,7 @@ func TestFacadeOnlyBuildFetchesTheManual(t *testing.T) {
 	}
 }
 
-// A release that stopped shipping the manual must fail the build rather than
-// publish a facade whose declared man page is not in the tarball.
+// A release that stopped shipping the manual must fail the build.
 func TestRejectsArchiveWithoutTheManual(t *testing.T) {
 	cfg := fixture(t, "3.2.1")
 	tf, err := loadTargets(filepath.Join(cfg.npmDir, "targets.json"))
@@ -303,13 +301,13 @@ func TestRejectsArchiveWithoutTheManual(t *testing.T) {
 	if err == nil {
 		t.Fatal("built a package from an archive with no manual")
 	}
-	// Not merely any failure: it has to be the missing manual, not a digest.
+	// The failure has to be the missing manual.
 	if !strings.Contains(err.Error(), "actionlint.1") {
 		t.Errorf("failed with %v, want the missing manual", err)
 	}
 }
 
-// A corrupted or swapped asset must stop the build, not reach npm.
+// A corrupted or swapped asset must stop the build.
 func TestRejectsChecksumMismatch(t *testing.T) {
 	cfg := fixture(t, "3.2.1")
 	tf, err := loadTargets(filepath.Join(cfg.npmDir, "targets.json"))
@@ -341,8 +339,7 @@ func TestRejectsAssetWithNoRecordedDigest(t *testing.T) {
 	}
 }
 
-// The resolver derives <facade>-<os>-<cpu>, so a target named anything else
-// would publish a package it could never find.
+// The resolver derives <facade>-<os>-<cpu>; any other target name is unfindable.
 func TestTargetNamesMatchOsAndCpu(t *testing.T) {
 	tf, err := loadTargets(filepath.Join("../../..", "distribution", "npm", "targets.json"))
 	if err != nil {
