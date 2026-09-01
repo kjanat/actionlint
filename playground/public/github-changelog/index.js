@@ -1,7 +1,4 @@
-const NS = {
-	content: 'http://purl.org/rss/1.0/modules/content/',
-	dc: 'http://purl.org/dc/elements/1.1/',
-};
+import { FEED_URL, parseFeed } from './feed.mjs';
 
 const el = {
 	article: document.getElementById('article'),
@@ -53,16 +50,6 @@ function schedulePaneHeightSync() {
 	requestAnimationFrame(syncPaneHeight);
 }
 
-function text(parent, tag) {
-	return parent?.getElementsByTagName(tag)?.[0]?.textContent?.trim()
-		?? '';
-}
-
-function nsText(parent, ns, tag) {
-	return parent?.getElementsByTagNameNS(ns, tag)?.[0]?.textContent
-		?.trim() ?? '';
-}
-
 function parseDate(value) {
 	const date = new Date(value);
 	return Number.isNaN(date.getTime()) ? null : date;
@@ -75,13 +62,6 @@ function formatDate(value) {
 		dateStyle: 'medium',
 		timeStyle: 'short',
 	}).format(date);
-}
-
-function categories(item) {
-	return [...item.getElementsByTagName('category')].map(node => ({
-		domain: node.getAttribute('domain') || '',
-		value: node.textContent.trim(),
-	})).filter(x => x.value);
 }
 
 function sanitizeHtml(input) {
@@ -121,56 +101,6 @@ function safeArticleUrl(value) {
 	} catch {
 		return '';
 	}
-}
-
-function parseFeed(doc) {
-	const parseError = doc.querySelector('parsererror');
-	if (parseError) {
-		throw new Error(parseError.textContent.replace(/\s+/g, ' ').trim());
-	}
-
-	const channel = doc.querySelector('rss > channel')
-		|| doc.querySelector('channel');
-	if (!channel) {
-		throw new Error(
-			'No RSS <channel> found. This viewer currently targets RSS 2.0 feeds.',
-		);
-	}
-
-	const image = channel.querySelector(':scope > image');
-	const itemNodes = [...channel.querySelectorAll(':scope > item')];
-
-	const items = itemNodes.map((item, index) => {
-		const cats = categories(item);
-		const encoded = nsText(item, NS.content, 'encoded');
-		const description = text(item, 'description');
-
-		return {
-			id: text(item, 'guid') || text(item, 'link') || String(index),
-			title: text(item, 'title') || '(untitled)',
-			link: text(item, 'link'),
-			guid: text(item, 'guid'),
-			author: nsText(item, NS.dc, 'creator') || text(item, 'author'),
-			pubDate: text(item, 'pubDate'),
-			description,
-			content: encoded || description,
-			categories: cats,
-			types: cats.filter(x => x.domain === 'changelog-type').map(x => x.value),
-			labels: cats.filter(x => x.domain === 'changelog-label').map(x => x.value),
-		};
-	});
-
-	return {
-		title: text(channel, 'title') || 'RSS feed',
-		link: [...channel.children].find(x => x.tagName === 'link')?.textContent
-			?.trim() || '',
-		description: text(channel, 'description'),
-		language: text(channel, 'language'),
-		lastBuildDate: text(channel, 'lastBuildDate'),
-		generator: text(channel, 'generator'),
-		image: image ? text(image, 'url') : '',
-		items,
-	};
 }
 
 function unique(values) {
@@ -362,7 +292,6 @@ function renderArticle() {
 	}
 }
 
-const FEED_URL = 'https://github.blog/changelog/label/actions/feed/';
 const MAX_PAGES = 50;
 const DB_NAME = 'github-actions-changelog-reader';
 const DB_VERSION = 1;
@@ -545,16 +474,12 @@ function fetchFeedPage(page) {
 				reject(new Error(`HTTP ${request.status} ${request.statusText}`));
 				return;
 			}
-			if (!request.responseXML) {
-				reject(new Error('The response was not valid XML.'));
-				return;
-			}
 
 			try {
 				resolve({
 					url: url.href,
 					xmlText: request.responseText,
-					feed: parseFeed(request.responseXML),
+					feed: parseFeed(request.responseText),
 				});
 			} catch (error) {
 				reject(error);

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { issueBody, issueTitle, LABEL, marker, parseFeed, reportedGuids, selectEntries } from './monitor.mjs';
+import { parseFeed } from '../../../playground/public/github-changelog/feed.mjs';
+import { issueBody, issueTitle, LABEL, marker, reportedGuids, selectEntries, toEntry } from './monitor.mjs';
 
 const feed = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel>
@@ -28,10 +29,10 @@ const feed = `<?xml version="1.0" encoding="UTF-8"?>
 </item>
 </channel></rss>`;
 
-test('parseFeed reads every item', () => {
-	const entries = parseFeed(feed);
-	assert.equal(entries.length, 2);
-	assert.deepEqual(entries[0], {
+const entries = () => parseFeed(feed).items.map(toEntry);
+
+test('toEntry carries the categories and the lead paragraph', () => {
+	assert.deepEqual(entries()[0], {
 		guid: 'https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel',
 		link: 'https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel',
 		title: 'Actions steps can now be run in parallel',
@@ -42,13 +43,20 @@ test('parseFeed reads every item', () => {
 	});
 });
 
-test('parseFeed keeps the guid when it diverges from the link', () => {
-	const entries = parseFeed(feed);
+test('toEntry keeps the guid when it diverges from the link', () => {
+	const entry = entries()[1];
 	assert.equal(
-		entries[1].guid,
+		entry.guid,
 		'https://github.blog/changelog/2026-07-28-github-actions-holds-unproven-workflows-for-approval',
 	);
-	assert.notEqual(entries[1].guid, entries[1].link);
+	assert.notEqual(entry.guid, entry.link);
+});
+
+test('toEntry rejects an unparsable date', () => {
+	assert.throws(
+		() => toEntry({ ...parseFeed(feed).items[0], pubDate: 'whenever' }),
+		/unparsable pubDate/,
+	);
 });
 
 test('reportedGuids collects markers and ignores bodyless issues', () => {
@@ -62,8 +70,7 @@ test('reportedGuids collects markers and ignores bodyless issues', () => {
 });
 
 test('selectEntries drops reported entries and anything before the window', () => {
-	const entries = parseFeed(feed);
-	const selected = selectEntries(entries, {
+	const selected = selectEntries(entries(), {
 		reported: new Set(['https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel']),
 		since: new Date('2026-01-01T00:00:00Z'),
 		limit: 10,
@@ -73,7 +80,7 @@ test('selectEntries drops reported entries and anything before the window', () =
 	]);
 
 	assert.deepEqual(
-		selectEntries(entries, { reported: new Set(), since: new Date('2026-08-01T00:00:00Z'), limit: 10 }),
+		selectEntries(entries(), { reported: new Set(), since: new Date('2026-08-01T00:00:00Z'), limit: 10 }),
 		[],
 	);
 });
@@ -83,7 +90,7 @@ test('selectEntries drops an entry the feed does not label actions', () => {
 		'<category domain="changelog-label"><![CDATA[actions]]></category>\n\t<category domain="changelog-label"><![CDATA[supply chain security]]></category>',
 		'<category domain="changelog-label"><![CDATA[copilot]]></category>',
 	);
-	const selected = selectEntries(parseFeed(unrelated), {
+	const selected = selectEntries(parseFeed(unrelated).items.map(toEntry), {
 		reported: new Set(),
 		since: new Date('2026-01-01T00:00:00Z'),
 		limit: 10,
@@ -92,7 +99,7 @@ test('selectEntries drops an entry the feed does not label actions', () => {
 });
 
 test('issue title and body carry the dedupe marker and the link', () => {
-	const entry = parseFeed(feed)[1];
+	const entry = entries()[1];
 	assert.equal(issueTitle(entry), 'Changelog: GitHub Actions holds potentially malicious workflows for approval');
 	const body = issueBody(entry);
 	assert.equal(reportedGuids([{ body }]).has(entry.guid), true);

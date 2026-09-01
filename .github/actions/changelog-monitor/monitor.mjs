@@ -1,6 +1,9 @@
 // @ts-check
 
+import { decodeEntities, FEED_URL, parseFeed } from '../../../playground/public/github-changelog/feed.mjs';
+
 /** @typedef {import('@actions/github-script').AsyncFunctionArguments} AsyncFunctionArguments */
+/** @typedef {import('../../../playground/public/github-changelog/feed.mjs').FeedItem} FeedItem */
 
 /**
  * @typedef ChangelogEntry
@@ -13,11 +16,11 @@
  * @property {string[]} labels
  */
 
-export const FEED_URL = 'https://github.blog/changelog/label/actions/feed/';
-export const FEED_LABEL = 'actions';
 export const LABEL = 'github-changelog';
 export const LABEL_COLOR = '2088FF';
 export const LABEL_DESCRIPTION = 'GitHub Actions entries from the GitHub Changelog feed';
+export const FEED_LABEL = 'actions';
+export { FEED_URL, parseFeed };
 
 const MARKER_PREFIX = '<!-- github-changelog-guid: ';
 const MARKER_SUFFIX = ' -->';
@@ -26,43 +29,6 @@ const MARKER_PATTERN = /<!-- github-changelog-guid: (\S+) -->/g;
 /** @param {string} guid */
 export function marker(guid) {
 	return `${MARKER_PREFIX}${guid}${MARKER_SUFFIX}`;
-}
-
-const ENTITIES = new Map([
-	['amp', '&'],
-	['lt', '<'],
-	['gt', '>'],
-	['quot', '"'],
-	['apos', "'"],
-	['nbsp', ' '],
-]);
-
-/** @param {string} value */
-function decodeEntities(value) {
-	return value.replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z]+);/g, (whole, name) => {
-		if (name.startsWith('#x') || name.startsWith('#X')) {
-			return String.fromCodePoint(Number.parseInt(name.slice(2), 16));
-		}
-		if (name.startsWith('#')) {
-			return String.fromCodePoint(Number.parseInt(name.slice(1), 10));
-		}
-		return ENTITIES.get(name) ?? whole;
-	});
-}
-
-/** @param {string} value */
-function unwrap(value) {
-	const cdata = /^\s*<!\[CDATA\[([\s\S]*)\]\]>\s*$/.exec(value);
-	return decodeEntities(cdata === null ? value : cdata[1]).trim();
-}
-
-/**
- * @param {string} item
- * @param {string} tag
- */
-function element(item, tag) {
-	const match = new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`).exec(item);
-	return match === null ? undefined : unwrap(match[1]);
 }
 
 /** @param {string} html */
@@ -82,47 +48,23 @@ function summarize(description) {
 }
 
 /**
- * Read the CDATA values of one category domain.
- *
- * @param {string} item
- * @param {string} domain
- * @returns {string[]}
+ * @param {FeedItem} item
+ * @returns {ChangelogEntry}
  */
-function categories(item, domain) {
-	const pattern = new RegExp(`<category domain="${domain}">([\\s\\S]*?)</category>`, 'g');
-	return [...item.matchAll(pattern)].map((match) => unwrap(match[1]));
-}
-
-/**
- * @param {string} xml
- * @returns {ChangelogEntry[]}
- */
-export function parseFeed(xml) {
-	/** @type {ChangelogEntry[]} */
-	const entries = [];
-	for (const match of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
-		const item = match[1];
-		const link = element(item, 'link');
-		const title = element(item, 'title');
-		const pubDate = element(item, 'pubDate');
-		if (link === undefined || title === undefined || pubDate === undefined) {
-			throw new Error(`feed item is missing link, title, or pubDate: ${item.slice(0, 120)}`);
-		}
-		const published = new Date(pubDate);
-		if (Number.isNaN(published.getTime())) {
-			throw new Error(`feed item ${link} has an unparsable pubDate ${JSON.stringify(pubDate)}`);
-		}
-		entries.push({
-			guid: element(item, 'guid') ?? link,
-			link,
-			title,
-			published: published.toISOString(),
-			summary: summarize(element(item, 'description') ?? ''),
-			type: categories(item, 'changelog-type')[0] ?? '',
-			labels: categories(item, 'changelog-label'),
-		});
+export function toEntry(item) {
+	const published = new Date(item.pubDate);
+	if (Number.isNaN(published.getTime())) {
+		throw new Error(`feed item ${item.link} has an unparsable pubDate ${JSON.stringify(item.pubDate)}`);
 	}
-	return entries;
+	return {
+		guid: item.guid || item.link,
+		link: item.link,
+		title: item.title,
+		published: published.toISOString(),
+		summary: summarize(item.description),
+		type: item.types[0] ?? '',
+		labels: item.labels,
+	};
 }
 
 /**
@@ -222,11 +164,11 @@ async function ensureLabel({ github, context, core }) {
 	core.info(`Created label ${LABEL}`);
 }
 
-/** @param {string} url */
-async function fetchFeed(url) {
-	const response = await fetch(url, { headers: { accept: 'application/rss+xml, application/xml' } });
+/** The feed is a fixed endpoint, so no caller can steer the request. */
+async function fetchFeed() {
+	const response = await fetch(FEED_URL, { headers: { accept: 'application/rss+xml, application/xml' } });
 	if (!response.ok) {
-		throw new Error(`${url} responded ${response.status} ${response.statusText}`);
+		throw new Error(`${FEED_URL} responded ${response.status} ${response.statusText}`);
 	}
 	return response.text();
 }
@@ -242,10 +184,11 @@ export default async function run({ github, context, core }) {
 	const limit = positiveInteger(process.env, 'MAX_ISSUES', 10);
 	const since = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000);
 
-	const entries = parseFeed(await fetchFeed(process.env.FEED_URL ?? FEED_URL));
-	if (entries.length === 0) {
+	const feed = parseFeed(await fetchFeed());
+	if (feed.items.length === 0) {
 		throw new Error('feed carries no entries');
 	}
+	const entries = feed.items.map(toEntry);
 	core.info(`Feed carries ${entries.length} entries`);
 
 	await ensureLabel({ github, context, core });

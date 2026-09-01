@@ -13,10 +13,6 @@ inputs:
     description: Maximum number of issues opened per run
     required: false
     default: "10"
-  feed-url:
-    description: RSS feed to read
-    required: false
-    default: https://github.blog/changelog/label/actions/feed/
 outputs:
   issues-created:
     description: Number of issues opened by this invocation
@@ -32,7 +28,6 @@ runs:
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
       env:
         ACTION_PATH: ${{ github.action_path }}
-        FEED_URL: ${{ inputs.feed-url }}
         LOOKBACK_DAYS: ${{ inputs.lookback-days }}
         MAX_ISSUES: ${{ inputs.max-issues }}
       with:
