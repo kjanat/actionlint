@@ -352,7 +352,7 @@ func (c *config) platformManifest(tf *targetsFile, t target, name string) ([]byt
 	}
 	// Carried over verbatim so every published package points at the same
 	// project metadata as the facade.
-	for _, key := range []string{"homepage", "bugs", "repository", "license", "author"} {
+	for _, key := range []string{"homepage", "bugs", "repository", "funding", "license", "author"} {
 		if facade.has(key) {
 			o.keys = append(o.keys, key)
 			o.values[key] = facade.values[key]
