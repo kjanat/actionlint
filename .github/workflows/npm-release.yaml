@@ -1,0 +1,111 @@
+name: npm release
+run-name: ${{ format('npm {0} {1}', case(github.event_name == 'workflow_dispatch' && inputs.dry-run, 'dry-run', 'publish'), case(github.event_name == 'release', github.event.release.tag_name, inputs.tag)) }}
+on:
+  release: { types: [published] }
+  workflow_dispatch:
+    inputs:
+      tag: { description: "Release tag to publish (e.g. v1.13.0)", required: true, type: string }
+      dist-tag: { description: "npm dist-tag; auto picks next for a prerelease, otherwise latest", required: false, type: choice, options: [auto, latest, next], default: auto }
+      dry-run: { description: Build and smoke-test the packages but do not publish, required: true, default: false, type: boolean }
+
+permissions: { contents: read }
+
+# Never cancel a publish in flight: a half-published set would leave the facade
+# pointing at platform packages that do not exist.
+concurrency:
+  group: "npm-release-${{ case(github.event_name == 'release', github.event.release.tag_name, inputs.tag) }}"
+  cancel-in-progress: false
+
+env:
+  GO: "1.27"
+  REGISTRY: https://registry.npmjs.org/
+  RELEASE_TAG: ${{ case(github.event_name == 'release', github.event.release.tag_name, inputs.tag) }}
+  DRY_RUN: ${{ inputs.dry-run || 'false' }}
+
+jobs:
+  publish:
+    name: publish to npm
+    runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
+    environment: { name: npm, url: "https://www.npmjs.com/package/@kjanat/actionlint" }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { ref: "refs/tags/${{ env.RELEASE_TAG }}", persist-credentials: false }
+      - parallel:
+          - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+            with: { go-version: "${{ env.GO }}", check-latest: true }
+          - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+            with: { node-version-file: .node-version, registry-url: "${{ env.REGISTRY }}" }
+
+      # Downloads every release archive, verifies each against the release's own
+      # checksums manifest, and lays out one package per platform plus the facade.
+      - name: Build the publish tree
+        uses: $/.github/actions/npm-packages
+        with: { version: "${{ env.RELEASE_TAG }}" }
+
+      - name: Derive the dist-tag
+        id: dist
+        env: { REQUESTED: "${{ inputs.dist-tag || 'auto' }}" }
+        run: |
+          set -euo pipefail
+          if [[ -n "${REQUESTED}" && "${REQUESTED}" != 'auto' ]]; then
+            tag="${REQUESTED}"
+          elif [[ "${RELEASE_TAG#v}" == *-* ]]; then
+            # A semver prerelease must never become the default install.
+            tag=next
+          else
+            tag=latest
+          fi
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "publishing with dist-tag ${tag}"
+
+      # Exercises the launcher against a real binary before anything is
+      # published, so a broken facade cannot reach the registry.
+      - name: Smoke-test the built packages
+        env: { VERSION: "${{ env.RELEASE_TAG }}" }
+        run: |
+          set -euo pipefail
+          version="${VERSION#v}"
+          smoke="$(mktemp -d)"
+          mkdir -p "${smoke}/node_modules/@kjanat"
+          cp -r distribution/npm/dist/facade "${smoke}/node_modules/@kjanat/actionlint"
+          cp -r distribution/npm/dist/linux-x64 "${smoke}/node_modules/@kjanat/actionlint-linux-x64"
+          npm install --prefix "${smoke}" --no-save --no-audit --no-fund ansispeck
+          got="$(node "${smoke}/node_modules/@kjanat/actionlint/bin/actionlint.mjs" -version | head -1)"
+          echo "launcher reported: ${got}"
+          case "${got}" in
+          *"${version}") ;;
+          *)
+            echo "::error::the launcher reported '${got}', expected it to end with ${version}"
+            exit 1
+            ;;
+          esac
+
+      # Platform packages first: the facade pins them exactly, so publishing it
+      # first would leave a window where installing it cannot resolve a binary.
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          DIST_TAG: ${{ steps.dist.outputs.tag }}
+        run: |
+          set -euo pipefail
+          args=(--access public --tag "${DIST_TAG}")
+          if [[ "${DRY_RUN}" == 'true' ]]; then
+            args+=(--dry-run)
+          else
+            # Provenance links each tarball to this workflow run; it needs the
+            # id-token permission above and is rejected under --dry-run.
+            args+=(--provenance)
+          fi
+
+          shopt -s nullglob
+          for dir in distribution/npm/dist/*/; do
+            [[ "$(basename "${dir}")" == 'facade' ]] && continue
+            echo "::group::publish ${dir}"
+            npm publish "${dir}" "${args[@]}"
+            echo "::endgroup::"
+          done
+
+          echo "::group::publish the facade"
+          npm publish distribution/npm/dist/facade "${args[@]}"
+          echo "::endgroup::"

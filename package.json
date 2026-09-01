@@ -7,7 +7,7 @@
   "funding": { "type": "github", "url": "https://github.com/sponsors/kjanat" },
   "license": "MIT",
   "type": "module",
-  "workspaces": ["packages/*", "playground"],
+  "workspaces": ["packages/*", "distribution/npm/facade", "playground"],
   "scripts": {
     "build": "npm run build --workspace playground",
     "comment-cop": "node .github/actions/comment-cop/comment-cop.mjs",
@@ -15,10 +15,11 @@
     "lint": "npm run lint --workspace playground",
     "matcher:generate": "node ./scripts/generate-actionlint-matcher/main.mjs .github/actionlint-matcher.json",
     "preview": "npm run preview --workspace playground",
-    "test": "run -p test:comment-cop test:feed test:matcher test:shellcheck-versions typecheck",
+    "test": "run -p test:comment-cop test:feed test:matcher test:npm-facade test:shellcheck-versions typecheck",
     "test:comment-cop": "node --test ./.github/actions/comment-cop/comment-cop.test.mjs",
     "test:feed": "npm run test --workspace @kjlint/changelog-rss",
     "test:matcher": "node --test ./scripts/generate-actionlint-matcher/test.mjs",
+    "test:npm-facade": "node --test ./distribution/npm/facade/test/*.test.mjs",
     "test:shellcheck-versions": "node --test ./.github/actions/shellcheck-versions/shellcheck-version-lifecycle.test.mjs",
     "test:workspaces": "npm run test --workspaces",
     "typecheck": "run -q @typescript/native --noEmit"
