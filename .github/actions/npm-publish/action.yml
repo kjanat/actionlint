@@ -44,7 +44,20 @@ runs:
         DRY_RUN: ${{ inputs.dry-run }}
       run: |
         set -euo pipefail
-        manifest="$(tar -xzOf "${TARBALL}" package/package.json)"
+        # A relative spec needs an explicit ./ prefix or npm reads it as a
+        # GitHub shorthand: `tarballs/linux-x64.tgz` becomes a git ls-remote of
+        # ssh://git@github.com/tarballs/linux-x64.tgz.git, and the publish dies
+        # on a repository that was never meant to exist.
+        case "${TARBALL}" in
+        /* | ./* | ../*) spec="${TARBALL}" ;;
+        *) spec="./${TARBALL}" ;;
+        esac
+        if [[ ! -f "${spec}" ]]; then
+          echo "::error::no tarball at ${spec}"
+          exit 1
+        fi
+
+        manifest="$(tar -xzOf "${spec}" package/package.json)"
         name="$(jq -er .name <<<"${manifest}")"
         version="$(jq -er .version <<<"${manifest}")"
 
@@ -52,7 +65,7 @@ runs:
         if [[ "${DRY_RUN}" == 'true' ]]; then
           args+=(--dry-run)
         fi
-        npm publish "${TARBALL}" "${args[@]}"
+        npm publish "${spec}" "${args[@]}"
 
         {
           echo "name=${name}"
