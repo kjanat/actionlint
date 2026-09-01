@@ -25,11 +25,11 @@
     "undici": ">=6.28.0"
   },
   "dependencies": {
-    "feather-icons": "4.28.0"
+    "feather-icons": "4.29.2"
   },
   "devDependencies": {
     "@actions/github-script": "github:actions/github-script",
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.4.0",
     "@typescript/native": "npm:typescript@^7.0.2",
     "runner-run": "^0.25.1",
     "typescript": "npm:@typescript/typescript6@^6.0.2"
