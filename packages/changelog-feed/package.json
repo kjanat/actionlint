@@ -1,45 +1,29 @@
 {
   "name": "@kjlint/changelog-rss",
-  "version": "0.0.0",
-  "description": "RSS 2.0 parser for the GitHub Actions changelog feed",
+  "version": "0.0.1",
+  "description": "RSS parser, browser reader, and issue monitor for the GitHub Actions changelog feed",
+  "homepage": "https://actionlint.kjanat.dev/github-changelog",
   "repository": "kjanat/actionlint",
-  "funding": {
-    "type": "github",
-    "url": "https://github.com/sponsors/kjanat"
-  },
+  "funding": { "type": "github", "url": "https://github.com/sponsors/kjanat" },
   "license": "MIT",
+  "sideEffects": ["./index.js", "./github-actions-reader.js"],
   "type": "module",
   "imports": {
-    "#pkg": "./package.json",
-    "#feed": {
-      "types": "./github-actions-feed.d.ts",
-      "default": "./github-actions-feed.js"
-    },
-    "#reader": {
-      "types": "./github-actions-reader.d.ts",
-      "default": "./github-actions-reader.js"
-    },
-    "#rss": {
-      "types": "./index.d.ts",
-      "default": "./index.js"
-    }
+    "#action": { "types": "./github-actions-monitor.d.ts", "default": "./github-actions-monitor.js" },
+    "#feed": { "types": "./github-actions-feed.d.ts", "default": "./github-actions-feed.js" },
+    "#reader": { "types": "./github-actions-reader.d.ts", "default": "./github-actions-reader.js" },
+    "#rss": { "types": "./index.d.ts", "default": "./index.js" },
+    "#pkg": "./package.json"
   },
   "exports": {
-    ".": {
-      "types": "./index.d.ts",
-      "default": "./index.js"
-    },
-    "./feed": {
-      "types": "./github-actions-feed.d.ts",
-      "default": "./github-actions-feed.js"
-    },
-    "./reader": {
-      "types": "./github-actions-reader.d.ts",
-      "default": "./github-actions-reader.js"
-    },
+    ".": { "types": "./index.d.ts", "default": "./index.js" },
+    "./feed": { "types": "./github-actions-feed.d.ts", "default": "./github-actions-feed.js" },
+    "./reader": { "types": "./github-actions-reader.d.ts", "default": "./github-actions-reader.js" },
+    "./action": { "types": "./github-actions-monitor.d.ts", "default": "./github-actions-monitor.js" },
     "./package.json": "./package.json"
   },
   "files": ["/github-*", "/index.*"],
-  "scripts": { "test": "node --test ./tests/**/*test.*js" },
+  "scripts": { "test": "node --test ./tests/**/*test.*js", "typecheck": "tsc --noEmit" },
+  "devDependencies": { "@actions/github-script": "github:actions/github-script", "typescript": ">=7" },
   "volta": { "extends": "../../package.json" }
 }

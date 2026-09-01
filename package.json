@@ -4,16 +4,10 @@
   "description": "Static checker for GitHub Actions workflow files",
   "homepage": "https://actionlint.kjanat.dev",
   "repository": "https://github.com/kjanat/actionlint",
-  "funding": {
-    "type": "github",
-    "url": "https://github.com/sponsors/kjanat"
-  },
+  "funding": { "type": "github", "url": "https://github.com/sponsors/kjanat" },
   "license": "MIT",
   "type": "module",
-  "workspaces": [
-    "packages/*",
-    "playground"
-  ],
+  "workspaces": ["packages/*", "playground"],
   "scripts": {
     "build": "npm run build --workspace playground",
     "comment-cop": "node .github/actions/comment-cop/comment-cop.mjs",
@@ -21,8 +15,7 @@
     "lint": "npm run lint --workspace playground",
     "matcher:generate": "node ./scripts/generate-actionlint-matcher/main.mjs .github/actionlint-matcher.json",
     "preview": "npm run preview --workspace playground",
-    "test": "run -p test:changelog-monitor test:comment-cop test:feed test:matcher test:shellcheck-versions typecheck",
-    "test:changelog-monitor": "node --test ./.github/actions/changelog-monitor/monitor.test.mjs",
+    "test": "run -p test:comment-cop test:feed test:matcher test:shellcheck-versions typecheck",
     "test:comment-cop": "node --test ./.github/actions/comment-cop/comment-cop.test.mjs",
     "test:feed": "npm run test --workspace @kjlint/changelog-rss",
     "test:matcher": "node --test ./scripts/generate-actionlint-matcher/test.mjs",
@@ -30,12 +23,8 @@
     "test:workspaces": "npm run test --workspaces",
     "typecheck": "run -q @typescript/native --noEmit"
   },
-  "overrides": {
-    "undici": ">=6.28.0"
-  },
-  "dependencies": {
-    "feather-icons": "4.29.2"
-  },
+  "overrides": { "undici": ">=6.28.0" },
+  "dependencies": { "feather-icons": "4.29.2" },
   "devDependencies": {
     "@actions/github-script": "github:actions/github-script",
     "@types/node": "^26.4.0",
@@ -44,17 +33,6 @@
     "typescript": "npm:@typescript/typescript6@^6.0.2"
   },
   "packageManager": "npm@12.0.2",
-  "devEngines": {
-    "packageManager": [
-      {
-        "name": "npm",
-        "version": "12.0.2",
-        "onFail": "warn"
-      }
-    ]
-  },
-  "volta": {
-    "node": "26.8.1",
-    "npm": "12.0.2"
-  }
+  "devEngines": { "packageManager": [{ "name": "npm", "version": "12.0.2", "onFail": "warn" }] },
+  "volta": { "node": "26.8.1", "npm": "12.0.2" }
 }

@@ -1,9 +1,10 @@
 // @ts-check
 
-import { decodeEntities, FEED_URL, parseFeed } from '@kjlint/changelog-rss/feed';
+import { decodeEntities, FEED_URL, parseFeed } from './github-actions-feed.js';
 
 /** @typedef {import('@actions/github-script').AsyncFunctionArguments} AsyncFunctionArguments */
-/** @typedef {import('@kjlint/changelog-rss/feed').FeedItem} FeedItem */
+/** @typedef {Pick<AsyncFunctionArguments, 'github' | 'context' | 'core'>} RunArguments */
+/** @typedef {import('#feed').FeedItem} FeedItem */
 
 /**
  * @typedef ChangelogEntry
@@ -20,7 +21,6 @@ export const LABEL = 'github-changelog';
 export const LABEL_COLOR = '2088FF';
 export const LABEL_DESCRIPTION = 'GitHub Actions entries from the GitHub Changelog feed';
 export const FEED_LABEL = 'actions';
-export { FEED_URL, parseFeed };
 
 const MARKER_PREFIX = '<!-- github-changelog-guid: ';
 const MARKER_SUFFIX = ' -->';
@@ -176,7 +176,7 @@ async function fetchFeed() {
 /**
  * Workflow entry point.
  *
- * @param {AsyncFunctionArguments} args
+ * @param {RunArguments} args
  */
 export default async function run({ github, context, core }) {
 	const { owner, repo } = context.repo;

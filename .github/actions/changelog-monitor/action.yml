@@ -23,9 +23,9 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Link the workspace packages
+    - name: Install the changelog package
       shell: bash
-      run: npm i @kjlint/changelog-rss
+      run: npm install --no-save --package-lock=false --ignore-scripts --workspaces=false @kjlint/changelog-rss@latest
     - name: Open issues for new Actions changelog entries
       id: monitor
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
@@ -34,5 +34,5 @@ runs:
         github-token: ${{ inputs.token }}
         retries: 3
         script: |
-          const { default: run } = await import(`${process.env.GITHUB_ACTION_PATH}/monitor.mjs`)
-          await run({ github, context, core, exec, glob, io })
+          const { default: run } = require('@kjlint/changelog-rss/action')
+          await run({ github, context, core })

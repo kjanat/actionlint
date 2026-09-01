@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { parseFeed } from '@kjlint/changelog-rss/feed';
-import { issueBody, issueTitle, LABEL, marker, reportedGuids, selectEntries, toEntry } from './monitor.mjs';
+import { issueBody, issueTitle, LABEL, marker, reportedGuids, selectEntries, toEntry } from '#action';
+import { parseFeed } from '#feed';
 
-const feed = `<?xml version="1.0" encoding="UTF-8"?>
+const feed = `\
+<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel>
 <title>Use Case: actions - GitHub Changelog</title>
 <item>
