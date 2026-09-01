@@ -83,11 +83,11 @@ anything the `files` list omits fails there rather than at a user's install. The
 packed tarballs are what get published, so the bytes that were tested are the
 bytes that reach the registry.
 
-Publishing is one job per package, each with its own deployment environment
-(`npm <target>`, and plain `npm` for the facade) and its own registry URL as the
-deployment's target. The platform packages go first and the facade waits on all
-of them: the facade pins them exactly, so publishing it first would leave a
-window in which installing it cannot resolve a binary.
+Publishing is one job per package, each recording its own deployment with that
+package's registry URL as the target. They all deploy to the `npm` environment,
+which is where `NPM_TOKEN` lives. The platform packages go first and the facade
+waits on all of them: the facade pins them exactly, so publishing it first would
+leave a window in which installing it cannot resolve a binary.
 
 Releases are published with [npm provenance][provenance] — set through the
 `NPM_CONFIG_PROVENANCE` environment variable npm documents, which the
@@ -96,11 +96,6 @@ under the `next` dist-tag rather than `latest`.
 
 Use the workflow's `dry-run` input to build and smoke-test without publishing;
 it forces provenance off, there being nothing for the registry to attest.
-
-> [!NOTE]
-> The per-package environments are created on first use with no secrets and no
-> protection rules of their own, so `NPM_TOKEN` has to be a repository secret
-> rather than an environment secret.
 
 ## Adding a platform
 
