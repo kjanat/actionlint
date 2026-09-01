@@ -67,8 +67,8 @@ export function decodeEntities(value) {
  * @param {string} value
  */
 function unwrap(value) {
-	const cdata = /^\s*<!\[CDATA\[([\s\S]*)\]\]>\s*$/.exec(value);
-	return (cdata === null ? decodeEntities(value) : cdata[1]).trim();
+	const cdata = /^\s*<!\[CDATA\[([\s\S]*)\]\]>\s*$/.exec(value)?.[1];
+	return (cdata === undefined ? decodeEntities(value) : cdata).trim();
 }
 
 /**
@@ -76,8 +76,8 @@ function unwrap(value) {
  * @param {string} tag
  */
 function element(scope, tag) {
-	const match = new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`).exec(scope);
-	return match === null ? '' : unwrap(match[1]);
+	const inner = new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`).exec(scope)?.[1];
+	return inner === undefined ? '' : unwrap(inner);
 }
 
 /**
@@ -86,9 +86,9 @@ function element(scope, tag) {
  */
 function categories(item) {
 	return [...item.matchAll(/<category(\s[^>]*)?>([\s\S]*?)<\/category>/g)]
-		.map((match) => ({
-			domain: /domain="([^"]*)"/.exec(match[1] ?? '')?.[1] ?? '',
-			value: unwrap(match[2]),
+		.map(([, attributes = '', value = '']) => ({
+			domain: /domain="([^"]*)"/.exec(attributes)?.[1] ?? '',
+			value: unwrap(value),
 		}))
 		.filter((category) => category.value !== '');
 }
@@ -117,12 +117,11 @@ export function parseFeed(xmlText) {
 	const firstItem = source.search(/<item(?:\s[^>]*)?>/);
 	const head = (firstItem === -1 ? source : source.slice(0, firstItem))
 		.replace(/<image(?:\s[^>]*)?>[\s\S]*?<\/image>/, '');
-	const imageBlock = /<image(?:\s[^>]*)?>([\s\S]*?)<\/image>/.exec(source);
+	const imageBlock = /<image(?:\s[^>]*)?>([\s\S]*?)<\/image>/.exec(source)?.[1] ?? '';
 
 	/** @type {FeedItem[]} */
 	const items = [];
-	for (const match of source.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/g)) {
-		const item = match[1];
+	for (const [, item = ''] of source.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/g)) {
 		const cats = categories(item);
 		const description = element(item, 'description');
 		const encoded = element(item, 'content:encoded');
@@ -151,7 +150,7 @@ export function parseFeed(xmlText) {
 		language: element(head, 'language'),
 		lastBuildDate: element(head, 'lastBuildDate'),
 		generator: element(head, 'generator'),
-		image: imageBlock === null ? '' : element(imageBlock[1], 'url'),
+		image: element(imageBlock, 'url'),
 		items,
 	};
 }

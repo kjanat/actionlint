@@ -35,6 +35,8 @@ export default defineConfig(
 			'@typescript-eslint/unbound-method': 'off', // For checking `window.runActionlint`
 		},
 	},
+	// Plain JavaScript, so the type-aware rules have no program to consult.
+	{ files: ['test/**/*.mjs'], extends: [ts.configs.disableTypeChecked] },
 	{
 		files: ['eslint.config.mjs'],
 		languageOptions: {
