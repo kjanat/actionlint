@@ -1,0 +1,11 @@
+---
+name: Comment Cop
+on: { pull_request_target: { types: [opened, synchronize, reopened, ready_for_review] } }
+permissions: { contents: write, pull-requests: write }
+jobs:
+  comment-cop:
+    if: github.repository == 'kjanat/actionlint' && !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency: { group: "comment-cop-${{ github.event.pull_request.number }}", cancel-in-progress: false, queue: max }
+    steps: [{ name: Run Comment Cop, uses: $/.github/actions/comment-cop }]

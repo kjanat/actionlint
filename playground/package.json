@@ -48,13 +48,13 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^26.2.0",
-    "eslint": "^10.9.0",
+    "@types/node": "^26.4.0",
+    "eslint": "^10.9.1",
     "jsdom": "^30.0.1",
     "runner-run": "^0.25.1",
     "tsc7": "npm:typescript@^7",
     "typescript": "^6",
-    "typescript-eslint": "^8.67.0",
+    "typescript-eslint": "^8.68.0",
     "vite": "^8.2.2",
     "vitest": "^4.1.11"
   },

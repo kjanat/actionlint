@@ -11,12 +11,14 @@
   ],
   "scripts": {
     "build": "npm run build --workspace playground",
+    "comment-cop": "node .github/actions/comment-cop/comment-cop.mjs",
     "dev": "npm run dev --workspace playground",
     "lint": "npm run lint --workspace playground",
     "matcher:generate": "node ./scripts/generate-actionlint-matcher/main.mjs .github/actionlint-matcher.json",
     "preview": "npm run preview --workspace playground",
-    "test": "run -p test:changelog-monitor test:feed test:matcher test:shellcheck-versions typecheck",
+    "test": "run -p test:changelog-monitor test:comment-cop test:feed test:matcher test:shellcheck-versions typecheck",
     "test:changelog-monitor": "node --test ./.github/actions/changelog-monitor/monitor.test.mjs",
+    "test:comment-cop": "node --test ./.github/actions/comment-cop/comment-cop.test.mjs",
     "test:feed": "node --test ./playground/test/feed.test.mjs",
     "test:matcher": "node --test ./scripts/generate-actionlint-matcher/test.mjs",
     "test:shellcheck-versions": "node --test ./.github/actions/shellcheck-versions/shellcheck-version-lifecycle.test.mjs",
@@ -27,11 +29,11 @@
     "undici": ">=6.28.0"
   },
   "dependencies": {
-    "feather-icons": "4.28.0"
+    "feather-icons": "4.29.2"
   },
   "devDependencies": {
     "@actions/github-script": "github:actions/github-script",
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.4.0",
     "@typescript/native": "npm:typescript@^7.0.2",
     "runner-run": "^0.25.1",
     "typescript": "npm:@typescript/typescript6@^6.0.2"
