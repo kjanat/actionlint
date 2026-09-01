@@ -10,7 +10,7 @@ export default defineConfig(
 	eslint.configs.recommended,
 	ts.configs.strictTypeChecked,
 	{
-		files: ['src/**/*.ts', 'vite.config.ts'],
+		files: ['src/**/*.ts', 'test/**/*.mjs', 'vite.config.ts'],
 		languageOptions: {
 			parserOptions: {
 				projectService: true,
@@ -35,8 +35,6 @@ export default defineConfig(
 			'@typescript-eslint/unbound-method': 'off', // For checking `window.runActionlint`
 		},
 	},
-	// Plain JavaScript, so the type-aware rules have no program to consult.
-	{ files: ['test/**/*.mjs'], extends: [ts.configs.disableTypeChecked] },
 	{
 		files: ['eslint.config.mjs'],
 		languageOptions: {

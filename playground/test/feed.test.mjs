@@ -30,7 +30,7 @@ const feed = `<?xml version="1.0" encoding="UTF-8"?>
 </item>
 </channel></rss>`;
 
-test('channel metadata does not come from the image or the items', () => {
+await test('channel metadata does not come from the image or the items', () => {
 	const parsed = parseFeed(feed);
 	assert.equal(parsed.title, 'Use Case: actions - GitHub Changelog');
 	assert.equal(parsed.link, 'https://github.blog/changelog/label/actions/');
@@ -42,7 +42,7 @@ test('channel metadata does not come from the image or the items', () => {
 	assert.equal(parsed.items.length, 1);
 });
 
-test('an item exposes its fields, namespaced tags and categories', () => {
+await test('an item exposes its fields, namespaced tags and categories', () => {
 	const [item] = parseFeed(feed).items;
 	assert.equal(item.id, 'https://github.blog/changelog/2026-06-26-read-only-cache');
 	assert.equal(item.guid, 'https://github.blog/changelog/2026-06-26-read-only-cache');
@@ -58,22 +58,22 @@ test('an item exposes its fields, namespaced tags and categories', () => {
 	]);
 });
 
-test('CDATA markup reaches the caller as authored', () => {
+await test('CDATA markup reaches the caller as authored', () => {
 	const [item] = parseFeed(feed).items;
 	assert.equal(item.content, '<p>It won&rsquo;t write. &lt;script&gt;alert(1)&lt;/script&gt;</p>');
 	assert.equal(item.content.includes('<script>'), false);
 	assert.equal(item.description, '<p>Caches are read-only&#8230;</p>');
 });
 
-test('content falls back to the description', () => {
+await test('content falls back to the description', () => {
 	const [item] = parseFeed(feed.replace(/<content:encoded>[\s\S]*?<\/content:encoded>/, '')).items;
 	assert.equal(item.content, item.description);
 });
 
-test('a document without a channel is rejected', () => {
+await test('a document without a channel is rejected', () => {
 	assert.throws(() => parseFeed('<html><body>not a feed</body></html>'), /No RSS <channel> found/);
 });
 
-test('decodeEntities resolves named, decimal and hexadecimal references', () => {
+await test('decodeEntities resolves named, decimal and hexadecimal references', () => {
 	assert.equal(decodeEntities('a &amp; b &#8230; c &#x2014; d &unknown;'), 'a & b … c — d &unknown;');
 });
