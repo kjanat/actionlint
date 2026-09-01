@@ -1,5 +1,5 @@
 {
-  "$id": "https://github.com/kjanat/actionlint/blob/master/npm/targets.schema.json",
+  "$id": "https://github.com/kjanat/actionlint/blob/master/distribution/npm/targets.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "npm distribution targets",
   "description": "Platforms actionlint publishes a prebuilt npm package for, and the GoReleaser release asset each one is cut from.",

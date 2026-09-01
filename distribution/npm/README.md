@@ -4,7 +4,7 @@ Sources for the npm distribution. The published package is
 [`@kjanat/actionlint`](https://www.npmjs.com/package/@kjanat/actionlint).
 
 ```
-npm/
+distribution/npm/
   targets.json         the platforms published, and the release asset each is cut from
   targets.schema.json  schema for the above
   facade/              the published facade package: launcher sources and manifest
@@ -52,7 +52,7 @@ GITHUB_WORKSPACE="$(git rev-parse --show-toplevel)" \
 ```
 
 That fetches the release archives for the given version and writes the tree to
-`npm/dist/`. Add `INPUT_DOWNLOADS=/path/to/archives` to use already-downloaded
+`distribution/npm/dist/`. Add `INPUT_DOWNLOADS=/path/to/archives` to use already-downloaded
 assets, and `INPUT_ONLY=linux-x64` (or `facade`) to build just one package.
 
 ## Tests

@@ -78,7 +78,7 @@ Cut a release as usual, or dry-run first:
 - **Locally** (on an Arch box, from the repository root):
 
   ```bash
-  cd aur/actionlint-kjanat-bin \
+  cd distribution/aur/actionlint-kjanat-bin \
     && updpkgsums \
     && makepkg --printsrcinfo >/dev/null \
     && namcap PKGBUILD

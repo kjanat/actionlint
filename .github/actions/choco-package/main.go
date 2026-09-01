@@ -173,7 +173,7 @@ func loadConfig() (*config, error) {
 		return nil, fmt.Errorf("version %q is not X.Y.Z or X.Y.Z-prerelease", cfg.version)
 	}
 	if cfg.outDir == "" {
-		cfg.outDir = filepath.Join(workspace, "choco", "dist")
+		cfg.outDir = filepath.Join(workspace, "distribution", "chocolatey", "dist")
 	}
 	return cfg, nil
 }

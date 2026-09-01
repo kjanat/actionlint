@@ -68,8 +68,8 @@ jobs:
           version="${VERSION#v}"
           smoke="$(mktemp -d)"
           mkdir -p "${smoke}/node_modules/@kjanat"
-          cp -r npm/dist/facade "${smoke}/node_modules/@kjanat/actionlint"
-          cp -r npm/dist/linux-x64 "${smoke}/node_modules/@kjanat/actionlint-linux-x64"
+          cp -r distribution/npm/dist/facade "${smoke}/node_modules/@kjanat/actionlint"
+          cp -r distribution/npm/dist/linux-x64 "${smoke}/node_modules/@kjanat/actionlint-linux-x64"
           npm install --prefix "${smoke}" --no-save --no-audit --no-fund ansispeck
           got="$(node "${smoke}/node_modules/@kjanat/actionlint/bin/actionlint.mjs" -version | head -1)"
           echo "launcher reported: ${got}"
@@ -99,7 +99,7 @@ jobs:
           fi
 
           shopt -s nullglob
-          for dir in npm/dist/*/; do
+          for dir in distribution/npm/dist/*/; do
             [[ "$(basename "${dir}")" == 'facade' ]] && continue
             echo "::group::publish ${dir}"
             npm publish "${dir}" "${args[@]}"
@@ -107,5 +107,5 @@ jobs:
           done
 
           echo "::group::publish the facade"
-          npm publish npm/dist/facade "${args[@]}"
+          npm publish distribution/npm/dist/facade "${args[@]}"
           echo "::endgroup::"

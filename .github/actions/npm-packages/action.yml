@@ -15,11 +15,11 @@ inputs:
   npm-dir:
     description: Directory holding targets.json and the facade sources
     required: false
-    default: ${{ github.workspace }}/npm
+    default: ${{ github.workspace }}/distribution/npm
   out-dir:
     description: Directory to write the publish tree into
     required: false
-    default: ${{ github.workspace }}/npm/dist
+    default: ${{ github.workspace }}/distribution/npm/dist
   downloads:
     description: Directory of already-downloaded release archives; anything missing is fetched
     required: false

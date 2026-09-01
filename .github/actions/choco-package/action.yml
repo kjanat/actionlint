@@ -23,7 +23,7 @@ inputs:
   out-dir:
     description: Directory to lay the package out in
     required: false
-    default: ${{ github.workspace }}/choco/dist
+    default: ${{ github.workspace }}/distribution/chocolatey/dist
   downloads:
     description: Directory of already-downloaded release archives; anything missing is fetched
     required: false

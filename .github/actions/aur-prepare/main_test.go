@@ -187,7 +187,7 @@ func TestBinArchesCoverPKGBUILD(t *testing.T) {
 // exercise the real files rather than only the fixtures above. This is what
 // catches a PKGBUILD edit that renames or drops an anchor.
 func TestPrepareAgainstCheckedInPKGBUILDs(t *testing.T) {
-	const root = "../../.." // this package sits at .github/actions/aur-prepare
+	const root = "../../../distribution" // this package sits at .github/actions/aur-prepare
 
 	for _, tc := range []struct {
 		pkg    string

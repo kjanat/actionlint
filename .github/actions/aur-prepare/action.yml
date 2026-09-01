@@ -2,7 +2,7 @@ name: Prepare AUR PKGBUILD
 description: Rewrite a checked-in PKGBUILD so it describes a specific release, ready to push to the AUR
 inputs:
   package:
-    description: AUR package name, matching a directory under aur/
+    description: AUR package name, matching a directory under distribution/aur/
     required: true
   version:
     description: Release version, with or without a leading v
@@ -22,7 +22,7 @@ inputs:
   aur-dir:
     description: Directory holding the per-package PKGBUILD directories
     required: false
-    default: ${{ github.workspace }}/aur
+    default: ${{ github.workspace }}/distribution/aur
 runs:
   using: composite
   steps:

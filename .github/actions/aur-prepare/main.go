@@ -38,7 +38,7 @@ import (
 
 // binArches maps an Arch Linux $CARCH to the GOOS_GOARCH pair GoReleaser puts
 // in the release asset basename. Kept in lockstep with the source_<arch> arrays
-// in aur/actionlint-kjanat-bin/PKGBUILD. armv7h takes the armv6 build, which
+// in distribution/aur/actionlint-kjanat-bin/PKGBUILD. armv7h takes the armv6 build, which
 // runs on armv7 hardware. A slice rather than a map so the rewrite order, and
 // therefore the log output, is deterministic.
 var binArches = []struct{ carch, asset string }{
@@ -83,9 +83,9 @@ func run() error {
 		// The action passes an absolute path; this fallback is for local runs
 		// from a checkout root.
 		if ws := os.Getenv("GITHUB_WORKSPACE"); ws != "" {
-			dir = filepath.Join(ws, "aur")
+			dir = filepath.Join(ws, "distribution", "aur")
 		} else {
-			dir = "aur"
+			dir = filepath.Join("distribution", "aur")
 		}
 	}
 	if pkg == "" {

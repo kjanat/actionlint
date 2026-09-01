@@ -44,7 +44,7 @@ const maxArchive = 256 << 20 // 256 MiB
 
 var semverRe = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$`)
 
-// target is one published platform, as declared in npm/targets.json.
+// target is one published platform, as declared in distribution/npm/targets.json.
 type target struct {
 	Pkg    string `json:"pkg"`    // npm name suffix, always "<os>-<cpu>"
 	OS     string `json:"os"`     // Node process.platform value
@@ -64,6 +64,7 @@ type config struct {
 	version    string
 	repository string
 	token      string
+	repoRoot   string
 	npmDir     string
 	outDir     string
 	downloads  string
@@ -128,6 +129,7 @@ func loadConfig() (*config, error) {
 		version:    strings.TrimPrefix(os.Getenv("INPUT_VERSION"), "v"),
 		repository: os.Getenv("INPUT_REPOSITORY"),
 		token:      os.Getenv("INPUT_TOKEN"),
+		repoRoot:   workspace,
 		npmDir:     os.Getenv("INPUT_NPM_DIR"),
 		outDir:     os.Getenv("INPUT_OUT_DIR"),
 		downloads:  os.Getenv("INPUT_DOWNLOADS"),
@@ -137,7 +139,7 @@ func loadConfig() (*config, error) {
 		return nil, fmt.Errorf("version %q is not X.Y.Z or X.Y.Z-prerelease", cfg.version)
 	}
 	if cfg.npmDir == "" {
-		cfg.npmDir = filepath.Join(workspace, "npm")
+		cfg.npmDir = filepath.Join(workspace, "distribution", "npm")
 	}
 	if cfg.outDir == "" {
 		cfg.outDir = filepath.Join(cfg.npmDir, "dist")
@@ -411,10 +413,11 @@ func (c *config) buildFacade(tf *targetsFile) error {
 }
 
 // copyLegal places the repository's licence beside a package, npm having no way
-// to inherit one.
+// to inherit one. The root is passed in rather than derived from npmDir: that
+// only held while npm/ sat at the top level, and silently broke the moment the
+// sources moved under distribution/.
 func (c *config) copyLegal(dir string) error {
-	root := filepath.Dir(c.npmDir)
-	return copyFile(filepath.Join(root, "LICENSE.txt"), filepath.Join(dir, "LICENSE.txt"))
+	return copyFile(filepath.Join(c.repoRoot, "LICENSE.txt"), filepath.Join(dir, "LICENSE.txt"))
 }
 
 // extractBinary pulls a single named member out of a release archive. GoReleaser

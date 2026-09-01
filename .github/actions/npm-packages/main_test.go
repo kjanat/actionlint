@@ -63,16 +63,16 @@ func zipArchive(t *testing.T, name string, body []byte) []byte {
 	return buf.Bytes()
 }
 
-// fixture lays out a workspace with the real npm/ sources and a downloads
-// directory of synthetic release archives plus a matching checksums manifest.
+// fixture lays out a workspace with the real distribution/npm sources and a
+// downloads directory of synthetic release archives plus a checksums manifest.
 func fixture(t *testing.T, version string) *config {
 	t.Helper()
 	const repoRoot = "../../.." // this package sits at .github/actions/npm-packages
 
 	work := t.TempDir()
-	npmDir := filepath.Join(work, "npm")
-	if err := copyTree(filepath.Join(repoRoot, "npm"), npmDir); err != nil {
-		t.Fatalf("staging npm/: %v", err)
+	npmDir := filepath.Join(work, "distribution", "npm")
+	if err := copyTree(filepath.Join(repoRoot, "distribution", "npm"), npmDir); err != nil {
+		t.Fatalf("staging distribution/npm: %v", err)
 	}
 	if err := copyFile(filepath.Join(repoRoot, "LICENSE.txt"), filepath.Join(work, "LICENSE.txt")); err != nil {
 		t.Fatalf("staging LICENSE.txt: %v", err)
@@ -87,7 +87,13 @@ func fixture(t *testing.T, version string) *config {
 	if err := os.MkdirAll(downloads, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	cfg := &config{version: version, npmDir: npmDir, outDir: filepath.Join(work, "dist"), downloads: downloads}
+	cfg := &config{
+		version:   version,
+		repoRoot:  work,
+		npmDir:    npmDir,
+		outDir:    filepath.Join(work, "dist"),
+		downloads: downloads,
+	}
 
 	var manifest strings.Builder
 	for _, target := range tf.Targets {
@@ -263,7 +269,7 @@ func TestRejectsAssetWithNoRecordedDigest(t *testing.T) {
 // The resolver derives <facade>-<os>-<cpu>, so a target named anything else
 // would publish a package it could never find.
 func TestTargetNamesMatchOsAndCpu(t *testing.T) {
-	tf, err := loadTargets(filepath.Join("../../..", "npm", "targets.json"))
+	tf, err := loadTargets(filepath.Join("../../..", "distribution", "npm", "targets.json"))
 	if err != nil {
 		t.Fatalf("the checked-in targets.json is invalid: %v", err)
 	}
