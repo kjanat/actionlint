@@ -9,7 +9,16 @@ const here = dirname(fileURLToPath(import.meta.url));
 const facadeDir = join(here, '..');
 const npmDir = join(facadeDir, '..');
 
+/**
+ * @typedef {object} Target
+ * @property {string} pkg - npm name suffix, always `<os>-<cpu>`.
+ * @property {string} os - Node `process.platform` value.
+ * @property {string} cpu - Node `process.arch` value.
+ */
+
+/** @type {{ name: string, bin: Record<string, string>, files: string[], optionalDependencies: Record<string, string> }} */
 const facade = JSON.parse(readFileSync(join(facadeDir, 'package.json'), 'utf8'));
+/** @type {{ facade: string, binary: string, targets: Target[] }} */
 const targets = JSON.parse(readFileSync(join(npmDir, 'targets.json'), 'utf8'));
 
 const FACADE = facade.name;
@@ -34,6 +43,7 @@ function context({ platform, arch, packages = allPackages, installed, missingBin
 		platform,
 		arch,
 		packages,
+		/** @param {string} pkg */
 		resolvePackageJson(pkg) {
 			if (!present.has(pkg)) {
 				const err = new Error(`Cannot find module '${pkg}/package.json'`);
@@ -43,12 +53,14 @@ function context({ platform, arch, packages = allPackages, installed, missingBin
 			}
 			return `/fake/node_modules/${pkg}/package.json`;
 		},
+		/** @param {string} path */
 		fileExists: (path) => !missingBins.some((pkg) => path.startsWith(`/fake/node_modules/${pkg}/`)),
 	};
 }
 
 // The failure paths deliberately print a diagnostic before throwing; keep the
 // test output readable without losing the assertion that they threw.
+/** @type {typeof console.error} */
 let consoleError;
 before(() => {
 	consoleError = console.error;

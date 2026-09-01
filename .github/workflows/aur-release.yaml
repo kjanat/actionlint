@@ -38,7 +38,12 @@ jobs:
       # tag's commit here only keeps the AUR web page showing a real version.
       - name: Resolve the tagged commit
         id: commit
-        run: echo "sha=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
+        run: |
+          set -euo pipefail
+          # Assigned first rather than substituted inline: a command
+          # substitution inside echo masks git's exit status (SC2312).
+          sha="$(git rev-parse HEAD)"
+          echo "sha=${sha}" >> "${GITHUB_OUTPUT}"
 
       - name: Prepare PKGBUILD
         uses: $/.github/actions/aur-prepare
