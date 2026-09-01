@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { decodeEntities, parseFeed } from '../public/github-changelog/feed.mjs';
+import { decodeEntities, parseFeed } from './feed.mjs';
 
 const feed = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel>

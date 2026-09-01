@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { parseFeed } from '../../../playground/public/github-changelog/feed.mjs';
+import { parseFeed } from '../../../scripts/github-changelog/feed.mjs';
 import { issueBody, issueTitle, LABEL, marker, reportedGuids, selectEntries, toEntry } from './monitor.mjs';
 
 const feed = `<?xml version="1.0" encoding="UTF-8"?>

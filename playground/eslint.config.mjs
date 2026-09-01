@@ -6,11 +6,11 @@ import ts from 'typescript-eslint';
 
 export default defineConfig(
 	// dist is build output and public holds the Go toolchain's wasm runtime glue.
-	{ ignores: ['dist/**', 'public/**'] },
+	{ ignores: ['dist/**', 'github-changelog/*.js', 'public/**'] },
 	eslint.configs.recommended,
 	ts.configs.strictTypeChecked,
 	{
-		files: ['src/**/*.ts', 'test/**/*.mjs', 'vite.config.ts'],
+		files: ['src/**/*.ts', 'vite.config.ts'],
 		languageOptions: {
 			parserOptions: {
 				projectService: true,

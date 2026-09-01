@@ -37,6 +37,12 @@ export default defineConfig({
 		outDir,
 		emptyOutDir: true,
 		sourcemap: true,
+		rollupOptions: {
+			input: {
+				main: resolve(here, 'index.html'),
+				changelog: resolve(here, 'github-changelog/index.html'),
+			},
+		},
 	},
 	test: {
 		include: ['src/test.ts'],
