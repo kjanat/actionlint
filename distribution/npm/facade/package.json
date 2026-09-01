@@ -21,6 +21,10 @@
     "type": "git",
     "url": "git+https://github.com/kjanat/actionlint.git"
   },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/kjanat"
+  },
   "license": "MIT",
   "author": "Kaj Kowalski <info+actionlint@kajkowalski.nl>",
   "type": "module",

@@ -215,6 +215,13 @@ func TestBuildsEveryTargetAndTheFacade(t *testing.T) {
 		if cpu, ok := manifest["cpu"].([]any); !ok || len(cpu) != 1 || cpu[0] != target.CPU {
 			t.Errorf("%s: cpu is %v", target.Pkg, manifest["cpu"])
 		}
+		// Project metadata is carried from the facade so every published
+		// package points at the same project, funding included.
+		if funding, ok := manifest["funding"].(map[string]any); !ok {
+			t.Errorf("%s: funding is %v", target.Pkg, manifest["funding"])
+		} else if funding["url"] != "https://github.com/sponsors/kjanat" {
+			t.Errorf("%s: funding url is %v", target.Pkg, funding["url"])
+		}
 		for _, f := range []string{"README.md", "LICENSE.txt"} {
 			if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
 				t.Errorf("%s: missing %s", target.Pkg, f)
