@@ -1,4 +1,4 @@
-import { FEED_URL, parseFeed } from '../../scripts/github-changelog/feed.mjs';
+import { FEED_URL, parseFeed } from '@actionlint/changelog-feed';
 
 const el = {
 	article: document.getElementById('article'),

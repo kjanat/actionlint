@@ -4,9 +4,11 @@
   "description": "Static checker for GitHub Actions workflow files",
   "homepage": "https://actionlint.kjanat.dev",
   "repository": "https://github.com/kjanat/actionlint",
+  "funding": { "type": "github", "url": "https://github.com/sponsors/kjanat" },
   "license": "MIT",
   "type": "module",
   "workspaces": [
+    "packages/*",
     "playground"
   ],
   "scripts": {
@@ -19,7 +21,7 @@
     "test": "run -p test:changelog-monitor test:comment-cop test:feed test:matcher test:shellcheck-versions typecheck",
     "test:changelog-monitor": "node --test ./.github/actions/changelog-monitor/monitor.test.mjs",
     "test:comment-cop": "node --test ./.github/actions/comment-cop/comment-cop.test.mjs",
-    "test:feed": "node --test ./scripts/github-changelog/test.mjs",
+    "test:feed": "npm run test --workspace @actionlint/changelog-feed",
     "test:matcher": "node --test ./scripts/generate-actionlint-matcher/test.mjs",
     "test:shellcheck-versions": "node --test ./.github/actions/shellcheck-versions/shellcheck-version-lifecycle.test.mjs",
     "test:workspaces": "npm run test --workspaces",

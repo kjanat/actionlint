@@ -1,0 +1,17 @@
+{
+  "name": "@kjlint/changelog-rss",
+  "version": "0.0.0",
+  "description": "RSS 2.0 parser for the GitHub Actions changelog feed",
+  "repository": "kjanat/actionlint",
+  "funding": { "type": "github", "url": "https://github.com/sponsors/kjanat" },
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./feed.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": ["/feed.mjs"],
+  "scripts": {
+    "test": "node --test ./test.mjs"
+  }
+}
