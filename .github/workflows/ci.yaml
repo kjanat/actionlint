@@ -180,8 +180,22 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
+      # The published actionlint the action installs is older than this branch,
+      # so linting the repository itself would report syntax this release does
+      # not know yet. A fixture keeps the job about the action.
+      - name: Write a fixture workflow
+        run: |
+          mkdir -p "${RUNNER_TEMP}/fixture"
+          cat > "${RUNNER_TEMP}/fixture/smoke.yaml" <<'FIXTURE'
+          on: push
+          jobs:
+            smoke:
+              runs-on: ubuntu-latest
+              steps:
+                - run: echo hello
+          FIXTURE
       - uses: $/action/cli
-        with: { pyflakes: "false" }
+        with: { pyflakes: "false", flags: "${{ runner.temp }}/fixture/smoke.yaml" }
 
   pre-commit-shellcheck:
     name: pre-commit ShellCheck integration
