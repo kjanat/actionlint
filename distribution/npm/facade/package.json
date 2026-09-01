@@ -35,12 +35,17 @@
   "bin": {
     "actionlint": "bin/actionlint.mjs"
   },
+  "man": [
+    "./man/actionlint.1"
+  ],
   "directories": {
-    "lib": "./lib"
+    "lib": "./lib",
+    "man": "./man"
   },
   "files": [
     "bin/",
     "lib/",
+    "man/",
     "README.md",
     "LICENSE.txt"
   ],

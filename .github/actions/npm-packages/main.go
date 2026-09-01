@@ -69,6 +69,11 @@ type config struct {
 	outDir     string
 	downloads  string
 	only       string
+
+	// manual is the roff man page, lifted from the first archive unpacked.
+	// Every archive carries the same copy, so the facade reuses it rather
+	// than downloading a second time.
+	manual []byte
 }
 
 func main() {
@@ -244,28 +249,51 @@ func (c *config) readAsset(name string) ([]byte, error) {
 	return get(url, c.token)
 }
 
-func (c *config) buildPlatformPackage(tf *targetsFile, t target, sums map[string]string) error {
+// verifiedArchive returns a target's release archive, checked against the
+// release's own digest before any caller unpacks it, so a truncated download or
+// a swapped asset is caught here rather than shipped to npm.
+func (c *config) verifiedArchive(t target, sums map[string]string) ([]byte, error) {
 	asset := c.assetName(t)
 	archive, err := c.readAsset(asset)
+	if err != nil {
+		return nil, err
+	}
+	want, ok := sums[asset]
+	if !ok {
+		return nil, fmt.Errorf("the checksums manifest lists no digest for %s", asset)
+	}
+	if got := hex.EncodeToString(sha256Sum(archive)); got != want {
+		return nil, fmt.Errorf("%s digest mismatch: manifest says %s, downloaded %s", asset, want, got)
+	}
+	return archive, nil
+}
+
+// manualName is the archive member holding the roff manual. GoReleaser packs it
+// at man/<binary>.1 in every archive, so only the base name is needed.
+func manualName(tf *targetsFile) string { return tf.Binary + ".1" }
+
+func (c *config) buildPlatformPackage(tf *targetsFile, t target, sums map[string]string) error {
+	archive, err := c.verifiedArchive(t, sums)
 	if err != nil {
 		return err
 	}
 
-	// Verify before unpacking, so a truncated download or a swapped asset is
-	// caught here rather than shipped to npm.
-	want, ok := sums[asset]
-	if !ok {
-		return fmt.Errorf("the checksums manifest lists no digest for %s", asset)
-	}
-	if got := hex.EncodeToString(sha256Sum(archive)); got != want {
-		return fmt.Errorf("%s digest mismatch: manifest says %s, downloaded %s", asset, want, got)
+	// Taken while an archive is open anyway. It is required rather than
+	// best-effort: a release that stopped shipping a manual should fail here,
+	// not quietly publish a facade without one.
+	if c.manual == nil {
+		manual, err := extractMember(archive, t.Format, manualName(tf))
+		if err != nil {
+			return err
+		}
+		c.manual = manual
 	}
 
 	exe := tf.Binary
 	if t.OS == "win32" {
 		exe += ".exe"
 	}
-	binary, err := extractBinary(archive, t.Format, exe)
+	binary, err := extractMember(archive, t.Format, exe)
 	if err != nil {
 		return err
 	}
@@ -384,7 +412,7 @@ func (c *config) buildFacade(tf *targetsFile) error {
 	}
 
 	dir := filepath.Join(c.outDir, "facade")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, "man"), 0o755); err != nil {
 		return err
 	}
 	src := filepath.Join(c.npmDir, "facade")
@@ -400,6 +428,16 @@ func (c *config) buildFacade(tf *targetsFile) error {
 		return err
 	}
 
+	// The manual is platform-independent, so it rides on the facade — the one
+	// package a user actually installs — rather than in all eleven binaries.
+	manual, err := c.manualFor(tf)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(dir, "man", manualName(tf)), manual, 0o644); err != nil {
+		return err
+	}
+
 	encoded, err := manifest.encode()
 	if err != nil {
 		return err
@@ -412,6 +450,33 @@ func (c *config) buildFacade(tf *targetsFile) error {
 	return nil
 }
 
+// manualFor returns the roff manual. A full build already unpacked an archive
+// and kept it; a facade-only build has to fetch one, and any target will do
+// because every archive carries the same manual.
+func (c *config) manualFor(tf *targetsFile) ([]byte, error) {
+	if c.manual != nil {
+		return c.manual, nil
+	}
+	if len(tf.Targets) == 0 {
+		return nil, errors.New("targets.json lists no target to take the manual from")
+	}
+	t := tf.Targets[0]
+	sums, err := c.checksums()
+	if err != nil {
+		return nil, err
+	}
+	archive, err := c.verifiedArchive(t, sums)
+	if err != nil {
+		return nil, err
+	}
+	manual, err := extractMember(archive, t.Format, manualName(tf))
+	if err != nil {
+		return nil, err
+	}
+	c.manual = manual
+	return manual, nil
+}
+
 // copyLegal places the repository's licence beside a package, npm having no way
 // to inherit one. The root is passed in rather than derived from npmDir: that
 // only held while npm/ sat at the top level, and silently broke the moment the
@@ -420,9 +485,10 @@ func (c *config) copyLegal(dir string) error {
 	return copyFile(filepath.Join(c.repoRoot, "LICENSE.txt"), filepath.Join(dir, "LICENSE.txt"))
 }
 
-// extractBinary pulls a single named member out of a release archive. GoReleaser
-// writes the executable at the archive root, so only the base name is compared.
-func extractBinary(archive []byte, format, name string) ([]byte, error) {
+// extractMember pulls a single named member out of a release archive. Members
+// sit at the archive root or one directory down, so only the base name is
+// compared.
+func extractMember(archive []byte, format, name string) ([]byte, error) {
 	switch format {
 	case "tar.gz":
 		return extractTarGz(archive, name)

@@ -41,6 +41,27 @@ func tarGz(t *testing.T, name string, body []byte) []byte {
 	return buf.Bytes()
 }
 
+// tarGzOnly builds an archive holding nothing but the executable.
+func tarGzOnly(t *testing.T, name string, body []byte) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+	if err := tw.WriteHeader(&tar.Header{Name: name, Mode: 0o755, Size: int64(len(body)), Typeflag: tar.TypeReg}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tw.Write(body); err != nil {
+		t.Fatal(err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
 func zipArchive(t *testing.T, name string, body []byte) []byte {
 	t.Helper()
 	var buf bytes.Buffer
@@ -48,7 +69,7 @@ func zipArchive(t *testing.T, name string, body []byte) []byte {
 	for _, f := range []struct {
 		n string
 		b []byte
-	}{{"README.md", []byte("readme")}, {name, body}} {
+	}{{"README.md", []byte("readme")}, {name, body}, {"man/actionlint.1", []byte("man")}} {
 		w, err := zw.Create(f.n)
 		if err != nil {
 			t.Fatal(err)
@@ -221,7 +242,7 @@ func TestBuildsEveryTargetAndTheFacade(t *testing.T) {
 		}
 	}
 	// The launcher sources have to travel with the facade or its bin shim breaks.
-	for _, f := range []string{"bin/actionlint.mjs", "lib/resolve.mjs", "lib/launch.mjs", "README.md", "LICENSE.txt"} {
+	for _, f := range []string{"bin/actionlint.mjs", "lib/resolve.mjs", "lib/launch.mjs", "README.md", "LICENSE.txt", "man/actionlint.1"} {
 		if _, err := os.Stat(filepath.Join(facadeDir, filepath.FromSlash(f))); err != nil {
 			t.Errorf("facade is missing %s", f)
 		}
@@ -231,6 +252,53 @@ func TestBuildsEveryTargetAndTheFacade(t *testing.T) {
 		if info.Mode()&0o111 == 0 {
 			t.Errorf("facade bin shim is not executable (%v)", info.Mode())
 		}
+	}
+}
+
+// The manual travels on the facade, and a facade-only build has to go and get
+// it rather than shipping a package without one.
+func TestFacadeOnlyBuildFetchesTheManual(t *testing.T) {
+	cfg := fixture(t, "3.2.1")
+	tf, err := loadTargets(filepath.Join(cfg.npmDir, "targets.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cfg.buildFacade(tf); err != nil {
+		t.Fatalf("facade: %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(cfg.outDir, "facade", "man", "actionlint.1"))
+	if err != nil {
+		t.Fatalf("facade manual: %v", err)
+	}
+	if string(got) != "man" {
+		t.Errorf("facade manual is %q", got)
+	}
+}
+
+// A release that stopped shipping the manual must fail the build rather than
+// publish a facade whose declared man page is not in the tarball.
+func TestRejectsArchiveWithoutTheManual(t *testing.T) {
+	cfg := fixture(t, "3.2.1")
+	tf, err := loadTargets(filepath.Join(cfg.npmDir, "targets.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := tf.Targets[0]
+
+	// Rewrite the asset, and its digest, with an archive holding only the binary.
+	archive := tarGzOnly(t, tf.Binary, []byte("binary"))
+	asset := cfg.assetName(target)
+	if err := os.WriteFile(filepath.Join(cfg.downloads, asset), archive, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sums := map[string]string{asset: hex.EncodeToString(sha256Sum(archive))}
+	err = cfg.buildPlatformPackage(tf, target, sums)
+	if err == nil {
+		t.Fatal("built a package from an archive with no manual")
+	}
+	// Not merely any failure: it has to be the missing manual, not a digest.
+	if !strings.Contains(err.Error(), "actionlint.1") {
+		t.Errorf("failed with %v, want the missing manual", err)
 	}
 }
 
@@ -298,17 +366,17 @@ func TestLoadTargetsRejectsMismatchedName(t *testing.T) {
 	}
 }
 
-func TestExtractBinaryFindsRootMember(t *testing.T) {
+func TestExtractMemberFindsMemberByBaseName(t *testing.T) {
 	body := []byte("payload")
-	got, err := extractBinary(tarGz(t, "actionlint", body), "tar.gz", "actionlint")
+	got, err := extractMember(tarGz(t, "actionlint", body), "tar.gz", "actionlint")
 	if err != nil || !bytes.Equal(got, body) {
 		t.Fatalf("tar.gz: %v %q", err, got)
 	}
-	got, err = extractBinary(zipArchive(t, "actionlint.exe", body), "zip", "actionlint.exe")
+	got, err = extractMember(zipArchive(t, "actionlint.exe", body), "zip", "actionlint.exe")
 	if err != nil || !bytes.Equal(got, body) {
 		t.Fatalf("zip: %v %q", err, got)
 	}
-	if _, err := extractBinary(tarGz(t, "actionlint", body), "tar.gz", "absent"); err == nil {
+	if _, err := extractMember(tarGz(t, "actionlint", body), "tar.gz", "absent"); err == nil {
 		t.Error("expected an error for a missing member")
 	}
 }
