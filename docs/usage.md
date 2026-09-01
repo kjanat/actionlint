@@ -303,29 +303,32 @@ socket. Standard Ubuntu runners, including `ubuntu-24.04-arm` and
 `ubuntu-26.04-arm`, are supported by the published `linux/amd64` and
 `linux/arm64` image.
 
-On a daemon-less runner such as `ubuntu-slim`, download and run the binary
-instead. `uses: docker://ghcr.io/kjanat/actionlint:latest` is not an alternative
-there because it has the same Docker daemon requirement.
+On a daemon-less runner such as `ubuntu-slim`, use the CLI action at
+`action/cli` instead. `uses: docker://ghcr.io/kjanat/actionlint:latest` is not an
+alternative there because it has the same Docker daemon requirement.
 
 ```yaml
 - uses: actions/checkout@v7
   with: { persist-credentials: false }
-- name: Download and run actionlint
-  env: { GH_TOKEN: "${{ github.token }}", GH_REPO: "kjanat/actionlint" }
-  run: |
-    case "${RUNNER_ARCH}" in
-      X64) asset_arch=amd64 ;;
-      ARM64) asset_arch=arm64 ;;
-      ARM) asset_arch=armv6 ;;
-      X86) asset_arch=386 ;;
-      *) echo "Unsupported runner architecture: ${RUNNER_ARCH}" >&2; exit 1 ;;
-    esac
-    gh release download --pattern "actionlint_*_${RUNNER_OS,,}_${asset_arch}.tar.gz" --output - | tar -xzf - actionlint
-    ./actionlint -color
+- uses: kjanat/actionlint/action/cli@v1
 ```
 
-The binary-only path does not bundle ShellCheck or pyflakes; install them on the
-runner when those integrations are required. `v1` moves to each new release.
+It installs actionlint with [mise][mise], which picks the release asset for the
+runner's platform, and registers the [problem matcher](#problem-matchers) so
+errors appear as annotations. No Docker daemon and no copied matcher file are
+needed.
+
+ShellCheck and pyflakes are installed alongside actionlint unless you turn them
+off:
+
+```yaml
+- uses: kjanat/actionlint/action/cli@v1
+  with: { shellcheck: "false", pyflakes: "false" }
+```
+
+The other inputs are `version` for the actionlint release, `working-directory`,
+and `flags` for extra command line options such as `-ignore`. `v1` moves to each
+new release.
 `v1.13.0` is a versioned release tag, but only a full-length commit SHA provides
 an immutable action reference.
 
@@ -785,6 +788,7 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 [go-shellcheck]: https://github.com/wasilibs/go-shellcheck
 [go-template]: https://pkg.go.dev/text/template
 [jsonl]: https://jsonlines.org/
+[mise]: https://mise.jdx.dev
 [nova-extension]: https://extensions.panic.com/extensions/org.netwrk/org.netwrk.actionlint/
 [nova]: https://nova.app
 [nvim-lint]: https://github.com/mfussenegger/nvim-lint

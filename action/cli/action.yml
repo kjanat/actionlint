@@ -1,0 +1,60 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+---
+name: actionlint CLI by @kjanat
+description: >-
+  Run actionlint on GitHub Actions workflow files and report problems as
+  annotations. Installs actionlint with mise, so no Docker daemon is needed.
+inputs:
+  version:
+    description: >-
+      actionlint release to install, for example 1.13.0. "latest" takes the
+      newest release.
+    required: false
+    default: latest
+  shellcheck:
+    description: >-
+      Install ShellCheck so actionlint checks shell scripts in "run" steps.
+    required: false
+    default: "true"
+  pyflakes:
+    description: >-
+      Install pyflakes so actionlint checks Python scripts in "run" steps.
+    required: false
+    default: "true"
+  working-directory:
+    description: Directory to run actionlint in, relative to the workspace.
+    required: false
+    default: .
+  flags:
+    description: >-
+      Extra actionlint flags, for example "-ignore SC2086". Split on whitespace,
+      so it is for workflow authors rather than untrusted input.
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+      with:
+        mise_toml: |
+          [tools]
+          "github:kjanat/actionlint" = "${{ inputs.version }}"
+          ${{ inputs.shellcheck == 'true' && 'shellcheck = "latest"' || '' }}
+          ${{ inputs.pyflakes == 'true' && '"pipx:pyflakes" = "latest"' || '' }}
+
+          [settings]
+          minimum_release_age = "0s"
+
+    - shell: bash
+      env:
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        FLAGS: ${{ inputs.flags }}
+      run: |
+        set -euo pipefail
+        echo "::add-matcher::${GITHUB_ACTION_PATH}/actionlint-matcher.json"
+        read -ra flags <<< "${FLAGS}"
+        cd "${WORKING_DIRECTORY}"
+        actionlint -color "${flags[@]}"
+branding:
+  icon: check-circle
+  color: blue
