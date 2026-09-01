@@ -70,12 +70,62 @@ function unwrap(value) {
 }
 
 /**
+ * @typedef Block
+ * @property {string} attributes
+ * @property {string} inner
+ */
+
+/**
+ * Walk every <tag>…</tag> block. Each search resumes where the previous block
+ * ended, so a document of unclosed tags costs one pass rather than one per tag.
+ *
+ * @param {string} source
+ * @param {string} tag
+ * @returns {Generator<Block>}
+ */
+function* blocks(source, tag) {
+	const open = `<${tag}`;
+	const close = `</${tag}>`;
+	let from = 0;
+
+	for (;;) {
+		const start = source.indexOf(open, from);
+		if (start === -1) return;
+
+		const afterName = start + open.length;
+		const delimiter = source[afterName];
+		if (delimiter !== '>' && delimiter !== ' ' && delimiter !== '\t' && delimiter !== '\n' && delimiter !== '\r') {
+			from = afterName;
+			continue;
+		}
+
+		const openEnd = source.indexOf('>', afterName);
+		if (openEnd === -1) return;
+		const end = source.indexOf(close, openEnd + 1);
+		if (end === -1) return;
+
+		yield { attributes: source.slice(afterName, openEnd), inner: source.slice(openEnd + 1, end) };
+		from = end + close.length;
+	}
+}
+
+/**
+ * @param {string} source
+ * @param {string} tag
+ * @returns {Block | undefined}
+ */
+function firstBlock(source, tag) {
+	for (const block of blocks(source, tag)) return block;
+	return undefined;
+}
+
+/**
  * @param {string} scope
  * @param {string} tag
  */
 function element(scope, tag) {
-	const inner = new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`).exec(scope)?.[1];
-	return inner === undefined ? '' : unwrap(inner);
+	for (const block of blocks(scope, tag)) return unwrap(block.inner);
+	return '';
 }
 
 /**
@@ -83,10 +133,10 @@ function element(scope, tag) {
  * @returns {Category[]}
  */
 function categories(item) {
-	return [...item.matchAll(/<category(\s[^>]*)?>([\s\S]*?)<\/category>/g)]
-		.map(([, attributes = '', value = '']) => ({
-			domain: /domain="([^"]*)"/.exec(attributes)?.[1] ?? '',
-			value: unwrap(value),
+	return [...blocks(item, 'category')]
+		.map((block) => ({
+			domain: /domain="([^"]*)"/.exec(block.attributes)?.[1] ?? '',
+			value: unwrap(block.inner),
 		}))
 		.filter((category) => category.value !== '');
 }
@@ -108,18 +158,20 @@ function valuesOf(cats, domain) {
  */
 export function parseFeed(xmlText) {
 	const source = String(xmlText ?? '');
-	if (!/<channel(?:\s[^>]*)?>/.test(source)) {
+	const channel = firstBlock(source, 'channel');
+	if (channel === undefined) {
 		throw new Error('No RSS <channel> found. This viewer currently targets RSS 2.0 feeds.');
 	}
 
-	const firstItem = source.search(/<item(?:\s[^>]*)?>/);
-	const head = (firstItem === -1 ? source : source.slice(0, firstItem))
-		.replace(/<image(?:\s[^>]*)?>[\s\S]*?<\/image>/, '');
-	const imageBlock = /<image(?:\s[^>]*)?>([\s\S]*?)<\/image>/.exec(source)?.[1] ?? '';
+	const image = firstBlock(channel.inner, 'image');
+	const head = image === undefined
+		? channel.inner
+		: channel.inner.replace(`<image${image.attributes}>${image.inner}</image>`, '');
+	const imageBlock = image?.inner ?? '';
 
 	/** @type {FeedItem[]} */
 	const items = [];
-	for (const [, item = ''] of source.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/g)) {
+	for (const { inner: item } of blocks(channel.inner, 'item')) {
 		const cats = categories(item);
 		const description = element(item, 'description');
 		const encoded = element(item, 'content:encoded');
