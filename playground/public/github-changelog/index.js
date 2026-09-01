@@ -70,7 +70,6 @@ function sanitizeHtml(input) {
 	if (typeof container.setHTML === 'function') {
 		container.setHTML(input || '');
 	} else {
-		// Older browsers get readable plain text instead of unsanitized markup.
 		container.textContent = input || '';
 	}
 
@@ -658,14 +657,6 @@ async function refreshLatest() {
 		state.pageSize = Math.max(1, first.feed.items.length);
 		state.nextPage = Math.max(2, state.nextPage);
 
-		/*
-		 * Normal refresh ends here.
-		 *
-		 * Only if page 1 contains *no* previously known item do we know that >= one
-		 * complete page of new entries arrived since our cache. In that case fetch just
-		 * enough following pages to reconnect with the cached history, so no new entry
-		 * can fall through the page boundary.
-		 */
 		if (hadFeed && knownBefore.size && !firstOverlapsCache) {
 			for (let page = 2; page <= MAX_PAGES; page++) {
 				const result = await fetchFeedPage(page);
@@ -711,13 +702,6 @@ async function refreshLatest() {
 }
 
 function start() {
-	/*
-	 * Stale-while-revalidate:
-	 *   1. IndexedDB may paint immediately.
-	 *   2. Page 1 is independently refreshed from the network.
-	 *   3. Historical pages stay lazy until the list needs a scrollbar, the user
-	 *      scrolls near the bottom, or a search/filter needs the full history.
-	 */
 	void readCache().then(cached => {
 		if (!state.feed && cached?.feed?.items?.length) {
 			const inferredNextPage = Number.isInteger(cached.nextPage)
