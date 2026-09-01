@@ -73,3 +73,18 @@ homebrew_casks:
     commit_author:
       name: "github-actions[bot]"
       email: "41898282+github-actions[bot]@users.noreply.github.com"
+scoops:
+  - name: actionlint
+    # One bucket for every project. Manifests stay at the repository root:
+    # `scoop bucket list` reports zero manifests from a subdirectory.
+    repository:
+      owner: kjanat
+      name: scoop-bucket
+      token: "{{ .Env.SCOOP_BUCKET_TOKEN }}"
+    ids: [windows]
+    homepage: https://actionlint.kjanat.dev
+    description: Static checker for GitHub Actions workflow files
+    license: MIT
+    commit_author:
+      name: "github-actions[bot]"
+      email: "41898282+github-actions[bot]@users.noreply.github.com"
