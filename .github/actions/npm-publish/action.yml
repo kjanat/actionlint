@@ -31,6 +31,9 @@ runs:
     # --json output: that output is keyed by package name and has changed shape
     # between majors, while the manifest inside the tarball is exactly what the
     # registry will record.
+    #
+    # npm.im is npm's own path-preserving redirect to www.npmjs.com, so the
+    # deployment URL lands on the same page from a shorter link.
     - name: Publish
       id: publish
       shell: bash
@@ -54,5 +57,5 @@ runs:
         {
           echo "name=${name}"
           echo "version=${version}"
-          echo "url=https://www.npmjs.com/package/${name}/v/${version}"
+          echo "url=https://npm.im/package/${name}/v/${version}"
         } >> "${GITHUB_OUTPUT}"
