@@ -45,6 +45,12 @@ var targets = []*target{
 		},
 	},
 	{
+		path: "action/compat/action.yml",
+		rules: []rule{
+			mustRule("downloaded release version", `(?m)^    default: (\d+\.\d+\.\d+)\r?$`, 1),
+		},
+	},
+	{
 		path: "action.yml",
 		rules: []rule{
 			mustRule("action Docker image tag", `image: docker://ghcr\.io/kjanat/actionlint:action-(\d+\.\d+\.\d+)`, 1),
