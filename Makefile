@@ -46,6 +46,9 @@ endif
 
 all: build test lint
 
+comment-cop:
+	node .github/actions/comment-cop/comment-cop.mjs $(COMMENT_COP_BASE)
+
 t test:
 	go test $(RACE) ./...
 
@@ -126,4 +129,4 @@ CHANGELOG.md:
 c clean:
 	rm -f ./$(TARGET) ./man/actionlint.1 ./man/actionlint.1.html ./actionlint-workflow-ast
 
-.PHONY: all test clean build lint fuzz man bench cov b t c l CHANGELOG.md FORCE
+.PHONY: all comment-cop test clean build lint fuzz man bench cov b t c l CHANGELOG.md FORCE
