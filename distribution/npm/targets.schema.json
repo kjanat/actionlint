@@ -1,0 +1,66 @@
+{
+  "$id": "https://github.com/kjanat/actionlint/blob/master/distribution/npm/targets.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "npm distribution targets",
+  "description": "Platforms actionlint publishes a prebuilt npm package for, and the GoReleaser release asset each one is cut from.",
+  "type": "object",
+  "required": ["facade", "binary", "targets"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "facade": {
+      "description": "npm name of the user-facing package. Platform packages are named \"<facade>-<pkg>\".",
+      "type": "string",
+      "pattern": "^(@[a-z0-9][a-z0-9-]*/)?[a-z0-9][a-z0-9._-]*$"
+    },
+    "binary": {
+      "description": "Executable inside each release archive, without any .exe suffix.",
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$"
+    },
+    "targets": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/target" }
+    }
+  },
+  "$defs": {
+    "target": {
+      "description": "One published platform package.",
+      "type": "object",
+      "required": ["pkg", "os", "cpu", "asset", "format"],
+      "additionalProperties": false,
+      "properties": {
+        "pkg": {
+          "description": "npm name suffix. Must equal \"<os>-<cpu>\": the launcher derives the package name that way, so any other value publishes a package it can never resolve.",
+          "type": "string",
+          "pattern": "^[a-z0-9]+-[a-z0-9]+$"
+        },
+        "os": {
+          "description": "Node process.platform value, used as the package's \"os\" field.",
+          "enum": ["aix", "darwin", "freebsd", "linux", "openbsd", "sunos", "win32"]
+        },
+        "cpu": {
+          "description": "Node process.arch value, used as the package's \"cpu\" field.",
+          "enum": ["arm", "arm64", "ia32", "loong64", "mips", "mipsel", "ppc64", "riscv64", "s390x", "x64"]
+        },
+        "asset": {
+          "description": "GOOS_GOARCH pair as it appears in the release asset name, e.g. \"linux_amd64\". ARM builds carry the variant, e.g. \"linux_armv6\".",
+          "type": "string",
+          "pattern": "^[a-z0-9]+_[a-z0-9]+$"
+        },
+        "format": {
+          "description": "Archive format GoReleaser publishes for this platform.",
+          "enum": ["tar.gz", "zip"]
+        },
+        "tier": {
+          "description": "1 for platforms covered by CI, 2 for best-effort builds.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        }
+      }
+    }
+  }
+}
