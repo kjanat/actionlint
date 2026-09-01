@@ -328,9 +328,9 @@ off:
 
 The other inputs are `version` for the actionlint release, `working-directory`,
 and `flags` for extra command line options such as `-ignore`. `v1` moves to each
-new release. `v1.13.0` is a
-versioned release tag, but only a full-length commit SHA provides an immutable
-action reference.
+new release.
+`v1.13.0` is a versioned release tag, but only a full-length commit SHA provides
+an immutable action reference.
 
 The action accepts these inputs:
 
