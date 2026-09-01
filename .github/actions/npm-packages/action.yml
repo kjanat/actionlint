@@ -31,9 +31,8 @@ inputs:
 runs:
   using: composite
   steps:
-    # Its own module, so it runs from the action directory and never depends on
-    # the checkout layout around it. Go also ignores dot-directories when
-    # matching ./..., keeping it out of the repository's own build and lint runs.
+    # Self-contained module: runs from the action directory, and invisible to
+    # ./... at the repository root because the go tool skips dot-directories.
     - name: Assemble packages
       shell: bash
       working-directory: ${{ github.action_path }}

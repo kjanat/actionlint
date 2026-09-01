@@ -27,15 +27,14 @@ function exists(path) {
 /**
  * Name of the platform package holding the build for a host.
  *
- * The `<facade>-<os>-<cpu>` convention is the contract, so the name is derived
- * rather than searched for. Resolution then never depends on the order
- * `optionalDependencies` happens to be generated in.
+ * The `<facade>-<os>-<cpu>` convention is the contract, and the name is derived
+ * from it. Resolution never depends on the order `optionalDependencies` is
+ * generated in.
  *
- * Note there is no libc dimension. The release binaries are built with
- * `CGO_ENABLED=0`, so they are statically linked and the same `linux-<cpu>`
- * package runs on glibc and musl hosts alike — Alpine included. That is the one
- * way this resolver is simpler than the equivalent for a Rust binary, which has
- * to detect the host libc and pick between a gnu and a musl build.
+ * There is no libc dimension. The release binaries are built with
+ * `CGO_ENABLED=0`, so one `linux-<cpu>` package covers glibc and musl hosts,
+ * Alpine included. A Rust equivalent has to detect the host libc and pick
+ * between a gnu and a musl build.
  *
  * @param {string} facade - npm name of the facade package.
  * @param {string} os - Node `platform` string.
@@ -80,10 +79,9 @@ ${indent}- ask for this platform: ${link(issues, issues)}
 /**
  * Report that the matching platform package is unusable, then throw.
  *
- * The two ways it can be unusable need different fixes — install it, versus
- * reinstall it — so `summary` distinguishes them in the thrown error too, not
- * only in the diagnostic block. The thrown message is what ends up in a stack
- * trace or a CI log, where the printed block above it may be lost.
+ * The two ways it can be unusable need different fixes (install it, reinstall
+ * it), and `summary` carries that into the thrown error as well as the
+ * diagnostic block. A stack trace or CI log may keep only the thrown message.
  *
  * @param {string} wanted
  * @param {string} detail - Why it is unusable, shown in the diagnostic.
@@ -156,9 +154,8 @@ export function resolveBinary(name, context = {}) {
 
 	const exe = hostPlatform === 'win32' ? `${name}.exe` : name;
 	const binPath = join(dirname(pkgJsonPath), 'bin', exe);
-	// Resolving package.json proves the package exists, not the binary. They can
-	// disagree when an install half-succeeded or a bin was deleted by hand.
-	// Prefer a clear error here over an opaque ENOENT from spawnSync later.
+	// Resolving package.json proves the package exists; the binary is separate.
+	// A half-succeeded install or a hand-deleted bin makes them disagree.
 	if (!fileExists(binPath)) {
 		failNotInstalled(
 			wanted,

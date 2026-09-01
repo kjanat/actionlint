@@ -24,10 +24,10 @@ binary through npm:
 
 At run time the launcher derives the platform package name as
 `<facade>-<process.platform>-<process.arch>`, resolves it, and execs the binary
-inside. The name is derived rather than searched for, so resolution never
-depends on the order `optionalDependencies` happens to be written in — which is
-why `targets.json` requires every `pkg` to equal `<os>-<cpu>`, and why both the
-builder and the launcher tests assert it.
+inside. Deriving the name from the convention keeps resolution independent of
+the order `optionalDependencies` is written in. `targets.json` therefore
+requires every `pkg` to equal `<os>-<cpu>`, and both the builder and the
+launcher tests assert it.
 
 There is deliberately no libc dimension. The release binaries are built with
 `CGO_ENABLED=0` and are statically linked, so one `linux-<cpu>` package serves
@@ -40,7 +40,7 @@ They are not rebuilt. `.github/actions/npm-packages` downloads the GoReleaser
 archives already attached to the GitHub release, checks each one against the
 release's own published checksums manifest, and unpacks the executable. What
 npm serves is byte-for-byte what the release attested, and a truncated download
-or a swapped asset fails the build instead of reaching the registry.
+or a swapped asset fails the build.
 
 ## Building locally
 
@@ -78,21 +78,20 @@ cd .github/actions/npm-packages && go test ./...
 event, and on a manual `workflow_dispatch`.
 
 The build job assembles the tree, packs every package with `npm pack`, and
-smoke-tests the launcher against a real binary — unpacked from the tarball, so
-anything the `files` list omits fails there rather than at a user's install. The
-packed tarballs are what get published, so the bytes that were tested are the
-bytes that reach the registry.
+smoke-tests the launcher against a real binary, unpacked from the tarball, so
+anything the `files` list omits fails in CI. The packed tarballs are the ones
+published, making the tested bytes the published bytes.
 
 Publishing is one job per package, each recording its own deployment with that
 package's registry URL as the target. They all deploy to the `npm` environment,
 which is where `NPM_TOKEN` lives. The platform packages go first and the facade
-waits on all of them: the facade pins them exactly, so publishing it first would
-leave a window in which installing it cannot resolve a binary.
+waits on all of them: the facade pins them exactly, and publishing it first
+opens a window in which installing it resolves no binary.
 
-Releases are published with [npm provenance][provenance] — set through the
+Releases are published with [npm provenance][provenance], set through the
 `NPM_CONFIG_PROVENANCE` environment variable npm documents, which the
 `PROVENANCE` repository variable can turn off. A semver prerelease tag goes out
-under the `next` dist-tag rather than `latest`.
+under the `next` dist-tag.
 
 Use the workflow's `dry-run` input to build and smoke-test without publishing;
 it forces provenance off, there being nothing for the registry to attest.
@@ -103,11 +102,11 @@ it forces provenance off, there being nothing for the registry to attest.
    `.goreleaser.yaml`, so the release actually carries the archive.
 2. Add a target to `targets.json`. `pkg` must be `<os>-<cpu>` using Node's
    `process.platform` and `process.arch` spellings, and `asset` must match the
-   `GOOS_GOARCH` pair GoReleaser puts in the asset name — note that ARM builds
-   carry the variant, as in `linux_armv6`.
+   `GOOS_GOARCH` pair GoReleaser puts in the asset name. ARM builds carry the
+   variant, as in `linux_armv6`.
 3. Mention it in the table in `facade/README.md`.
 
-The tests fail if a target's name and its `os`/`cpu` disagree, which is the
-mistake that would otherwise publish a package the launcher can never find.
+The tests fail if a target's name and its `os`/`cpu` disagree. That mistake
+publishes a package the launcher never finds.
 
 [provenance]: https://docs.npmjs.com/generating-provenance-statements

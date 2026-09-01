@@ -87,8 +87,8 @@ release's published checksums before being repackaged.
 The launcher fails with an explanation, but the usual cause is a package manager that skipped optional dependencies.
 Reinstall without `--no-optional` or `--omit=optional`.
 
-Using Bun with `minimumReleaseAge`? Add the `@kjanat/actionlint-*` platform packages to `minimumReleaseAgeExcludes`, not
-just `@kjanat/actionlint` — otherwise a fresh release installs the facade while its binaries are still age-gated.
+Using Bun with `minimumReleaseAge`? Add the `@kjanat/actionlint-*` platform packages to `minimumReleaseAgeExcludes` alongside
+`@kjanat/actionlint`. A fresh release otherwise installs the facade while its binaries are still age-gated.
 
 ## Other ways to install
 

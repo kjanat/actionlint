@@ -17,11 +17,8 @@ export default function launch(name) {
 			windowsHide: false,
 		});
 		if (result.error) throw result.error;
-		// The child died from a signal (SIGINT, SIGTERM, ...). Re-raise it on
-		// ourselves so the parent shell sees WIFSIGNALED / exit code 128 + N
-		// rather than a generic 1; `set -e`, trap handlers and Ctrl+C chaining
-		// all depend on that. POSIX only: Windows has no signal exit semantics,
-		// so fall through to the generic failure exit there.
+		// Re-raise the child's signal on ourselves; `set -e`, traps and Ctrl+C
+		// chaining read WIFSIGNALED / 128 + N. POSIX only, Windows falls through.
 		if (result.signal && process.platform !== 'win32') {
 			process.removeAllListeners(result.signal);
 			process.kill(process.pid, result.signal);

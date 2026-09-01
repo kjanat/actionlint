@@ -129,9 +129,8 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version: stable, check-latest: true }
-      # The release actions under .github/actions are self-contained modules, so
-      # `go test ./...` at the repository root cannot reach them: the go tool
-      # skips dot-directories when expanding a ... pattern. Test each in place.
+      # Self-contained modules under a dot-directory, which the go tool skips
+      # when expanding a ... pattern. Test each in place.
       - name: Test and vet each action module
         run: |
           set -euo pipefail

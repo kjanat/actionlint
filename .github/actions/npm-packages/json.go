@@ -9,9 +9,9 @@ import (
 
 // object is a JSON object that remembers the order its keys were written in.
 //
-// A published package.json is read by people, not only by npm, so the key order
-// of the checked-in template is worth preserving. Decoding into a map and
-// re-encoding would sort the keys alphabetically and scramble the manifest.
+// A published package.json is read by people as well as by npm, so the key
+// order of the checked-in template is worth preserving. Decoding into a map and
+// re-encoding sorts the keys alphabetically and scrambles the manifest.
 type object struct {
 	keys   []string
 	values map[string]json.RawMessage

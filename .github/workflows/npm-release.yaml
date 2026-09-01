@@ -28,9 +28,7 @@ env:
   RELEASE_TAG: ${{ case(github.event_name == 'release', github.event.release.tag_name, inputs.tag) }}
   DRY_RUN: ${{ inputs.dry-run || 'false' }}
   # The env var npm documents for publishers that do not call `npm publish`
-  # themselves; it applies to the tarball publishes below just the same. Opt out
-  # by setting the PROVENANCE repository variable to false. A dry run forces it
-  # off, the registry having nothing to attest against.
+  # themselves. PROVENANCE=false opts out; a dry run forces it off.
   NPM_CONFIG_PROVENANCE: ${{ (inputs.dry-run && 'false') || vars.PROVENANCE || 'true' }}
 
 jobs:
@@ -81,11 +79,8 @@ jobs:
           echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
           echo "publishing with dist-tag ${tag}"
 
-      # Packing here rather than publishing a directory later means the bytes
-      # that get smoke-tested are the bytes that reach the registry, so anything
-      # the "files" list leaves out is caught before it is published rather than
-      # after. Each tarball is renamed to its target so the publish matrix can
-      # address it without recomputing npm's own naming.
+      # Packing here makes the smoke-tested bytes the published bytes, and
+      # renames each tarball to its target for the publish matrix.
       - name: Pack the tarballs
         id: pack
         run: |
@@ -95,9 +90,8 @@ jobs:
           mkdir -p "${out}"
           for dir in distribution/npm/dist/*/; do
             pkg="$(basename "${dir}")"
-            # Packed into an empty directory and taken by glob rather than by
-            # the name npm reports: for a scoped package that name has not
-            # always matched the file npm actually wrote.
+            # Packed into an empty directory and taken by glob. For a scoped
+            # package, the name npm reports has not always matched the file.
             staging="$(mktemp -d)"
             npm pack "./${dir}" --pack-destination "${staging}"
             packed=("${staging}"/*.tgz)
@@ -111,18 +105,16 @@ jobs:
           platforms="$(jq -c '[.targets[].pkg]' distribution/npm/targets.json)"
           echo "platforms=${platforms}" >> "${GITHUB_OUTPUT}"
 
-      # Exercises the launcher against a real binary before anything is
-      # published, so a broken facade cannot reach the registry. It unpacks the
-      # tarballs rather than the build tree, so a file missing from the tarball
-      # fails here instead of at a user's install.
+      # Exercises the launcher against a real binary before any publish, and
+      # unpacks the tarballs: a file missing from one fails here.
       - name: Smoke-test the packed tarballs
         env: { VERSION: "${{ env.RELEASE_TAG }}" }
         run: |
           set -euo pipefail
           version="${VERSION#v}"
           smoke="$(mktemp -d)"
-          # Before the packages are laid down, not after: npm prunes what it
-          # considers extraneous from the prefix it installs into.
+          # Before the packages are laid down. npm prunes what it considers
+          # extraneous from the prefix it installs into.
           npm install --prefix "${smoke}" --no-save --no-audit --no-fund ansispeck
           modules="${smoke}/node_modules/@kjanat"
           mkdir -p "${modules}"
@@ -142,8 +134,8 @@ jobs:
             exit 1
             ;;
           esac
-          # The manual is declared in the facade's manifest, so it has to be in
-          # the tarball; npm would publish a dangling "man" entry without it.
+          # Declared in the facade's manifest, so it has to be in the tarball;
+          # a missing file leaves a dangling "man" entry.
           if [[ ! -s "${modules}/actionlint/man/actionlint.1" ]]; then
             echo "::error::the facade tarball carries no man/actionlint.1"
             exit 1
@@ -152,11 +144,8 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with: { name: npm-tarballs, path: distribution/npm/tarballs, retention-days: 7 }
 
-  # The leaves first: the facade pins them exactly, so publishing it before them
-  # would leave a window where installing it cannot resolve a binary. One job per
-  # package, so each records its own deployment and its own npm URL, but they all
-  # deploy to the npm environment rather than taking one each: an environment
-  # secret belongs to exactly one environment, and NPM_TOKEN lives on this one.
+  # Leaves first: the facade pins them exactly. One job per package, all in
+  # the npm environment where NPM_TOKEN lives, each with its own deployment.
   platforms:
     name: publish ${{ matrix.pkg }}
     needs: build

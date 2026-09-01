@@ -38,8 +38,7 @@ import (
 	"time"
 )
 
-// maxArchive caps how much is read from a release asset, so a malformed or
-// hostile response cannot exhaust memory.
+// maxArchive bounds memory use when reading a release asset.
 const maxArchive = 256 << 20 // 256 MiB
 
 var semverRe = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$`)
@@ -70,9 +69,8 @@ type config struct {
 	downloads  string
 	only       string
 
-	// manual is the roff man page, lifted from the first archive unpacked.
-	// Every archive carries the same copy, so the facade reuses it rather
-	// than downloading a second time.
+	// manual is the roff man page from the first archive unpacked. Every
+	// archive carries the same copy; the facade reuses this one.
 	manual []byte
 }
 
@@ -102,8 +100,7 @@ func run() error {
 		return err
 	}
 
-	// Fetched once and shared by every target, so a release is verified against
-	// a single manifest rather than re-downloading it per architecture.
+	// Fetched once and shared by every target: one manifest per release.
 	var sums map[string]string
 	if len(selected) > 0 {
 		if sums, err = cfg.checksums(); err != nil {
@@ -165,8 +162,8 @@ func loadTargets(path string) (*targetsFile, error) {
 		return nil, fmt.Errorf("%s must set both facade and binary", path)
 	}
 	for _, t := range tf.Targets {
-		// The resolver derives the package name as <facade>-<os>-<cpu>, so a
-		// pkg that disagrees would publish something it can never find.
+		// The resolver derives the package name as <facade>-<os>-<cpu>. A pkg
+		// that disagrees names a package the resolver never finds.
 		if want := t.OS + "-" + t.CPU; t.Pkg != want {
 			return nil, fmt.Errorf("target %q must be named %q to match os and cpu", t.Pkg, want)
 		}
@@ -250,8 +247,8 @@ func (c *config) readAsset(name string) ([]byte, error) {
 }
 
 // verifiedArchive returns a target's release archive, checked against the
-// release's own digest before any caller unpacks it, so a truncated download or
-// a swapped asset is caught here rather than shipped to npm.
+// release's own digest before any caller unpacks it. A truncated download or a
+// swapped asset fails here.
 func (c *config) verifiedArchive(t target, sums map[string]string) ([]byte, error) {
 	asset := c.assetName(t)
 	archive, err := c.readAsset(asset)
@@ -278,9 +275,8 @@ func (c *config) buildPlatformPackage(tf *targetsFile, t target, sums map[string
 		return err
 	}
 
-	// Taken while an archive is open anyway. It is required rather than
-	// best-effort: a release that stopped shipping a manual should fail here,
-	// not quietly publish a facade without one.
+	// Taken while an archive is open anyway, and required: a release that
+	// stopped shipping a manual fails the build here.
 	if c.manual == nil {
 		manual, err := extractMember(archive, t.Format, manualName(tf))
 		if err != nil {
@@ -394,8 +390,8 @@ func (c *config) buildFacade(tf *targetsFile) error {
 		return err
 	}
 
-	// Exact pins, not ranges: the facade and its binaries are one release, and
-	// a range would let npm pair a facade with a mismatched binary.
+	// Exact pins: the facade and its binaries are one release. A range lets
+	// npm pair a facade with a mismatched binary.
 	optional := &object{values: map[string]json.RawMessage{}}
 	for _, t := range tf.Targets {
 		if err := optional.set(packageName(tf.Facade, t.Pkg), c.version); err != nil {
@@ -428,8 +424,8 @@ func (c *config) buildFacade(tf *targetsFile) error {
 		return err
 	}
 
-	// The manual is platform-independent, so it rides on the facade — the one
-	// package a user actually installs — rather than in all eleven binaries.
+	// The manual is platform-independent and rides on the facade, the one
+	// package a user installs.
 	manual, err := c.manualFor(tf)
 	if err != nil {
 		return err
@@ -478,9 +474,9 @@ func (c *config) manualFor(tf *targetsFile) ([]byte, error) {
 }
 
 // copyLegal places the repository's licence beside a package, npm having no way
-// to inherit one. The root is passed in rather than derived from npmDir: that
-// only held while npm/ sat at the top level, and silently broke the moment the
-// sources moved under distribution/.
+// to inherit one. The root is passed in: deriving it from npmDir held only
+// while npm/ sat at the top level, and broke silently once the sources moved
+// under distribution/.
 func (c *config) copyLegal(dir string) error {
 	return copyFile(filepath.Join(c.repoRoot, "LICENSE.txt"), filepath.Join(dir, "LICENSE.txt"))
 }
@@ -608,10 +604,10 @@ func copyTree(src, dst string) error {
 	})
 }
 
-// get retrieves url, retrying briefly so a release asset that has not finished
-// propagating to the CDN does not fail the build. The token is sent only for
-// github.com; Go's client drops the Authorization header across a redirect to
-// another host, which is what the asset CDN requires.
+// get retrieves url, retrying briefly for a release asset still propagating to
+// the CDN. The token is sent only for github.com; Go's client drops the
+// Authorization header across a redirect to another host, as the asset CDN
+// requires.
 func get(url, token string) ([]byte, error) {
 	var lastErr error
 	for attempt := range 4 {
