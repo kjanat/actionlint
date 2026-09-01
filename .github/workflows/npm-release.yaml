@@ -5,7 +5,13 @@ on:
   workflow_dispatch:
     inputs:
       tag: { description: "Release tag to publish (e.g. v1.13.0)", required: true, type: string }
-      dist-tag: { description: "npm dist-tag; auto picks next for a prerelease, otherwise latest", required: false, type: choice, options: [auto, latest, next], default: auto }
+      dist-tag: {
+        description: "npm dist-tag; auto picks next for a prerelease, otherwise latest",
+        required: false,
+        type: choice,
+        options: [auto, latest, next],
+        default: auto,
+      }
       dry-run: { description: Build and smoke-test the packages but do not publish, required: true, default: false, type: boolean }
 
 permissions: { contents: read }
@@ -21,13 +27,20 @@ env:
   REGISTRY: https://registry.npmjs.org/
   RELEASE_TAG: ${{ case(github.event_name == 'release', github.event.release.tag_name, inputs.tag) }}
   DRY_RUN: ${{ inputs.dry-run || 'false' }}
+  # The env var npm documents for publishers that do not call `npm publish`
+  # themselves; it applies to the tarball publishes below just the same. Opt out
+  # by setting the PROVENANCE repository variable to false. A dry run forces it
+  # off, the registry having nothing to attest against.
+  NPM_CONFIG_PROVENANCE: ${{ (inputs.dry-run && 'false') || vars.PROVENANCE || 'true' }}
 
 jobs:
-  publish:
-    name: publish to npm
+  build:
+    name: build and smoke-test
     runs-on: ubuntu-latest
-    permissions: { contents: read, id-token: write }
-    environment: { name: npm, url: "https://www.npmjs.com/package/@kjanat/actionlint" }
+    outputs:
+      dist-tag: ${{ steps.dist.outputs.tag }}
+      platforms: ${{ steps.pack.outputs.platforms }}
+      node: ${{ steps.node.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { ref: "refs/tags/${{ env.RELEASE_TAG }}", persist-credentials: false }
@@ -36,6 +49,15 @@ jobs:
             with: { go-version: "${{ env.GO }}", check-latest: true }
           - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
             with: { node-version-file: .node-version, registry-url: "${{ env.REGISTRY }}" }
+
+      # The publish jobs check out nothing, so .node-version cannot reach them.
+      # Passing the version this job resolved keeps one source of truth.
+      - name: Report the Node version
+        id: node
+        run: |
+          set -euo pipefail
+          version="$(node --version)"
+          echo "version=${version#v}" >> "${GITHUB_OUTPUT}"
 
       # Downloads every release archive, verifies each against the release's own
       # checksums manifest, and lays out one package per platform plus the facade.
@@ -59,19 +81,59 @@ jobs:
           echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
           echo "publishing with dist-tag ${tag}"
 
+      # Packing here rather than publishing a directory later means the bytes
+      # that get smoke-tested are the bytes that reach the registry, so anything
+      # the "files" list leaves out is caught before it is published rather than
+      # after. Each tarball is renamed to its target so the publish matrix can
+      # address it without recomputing npm's own naming.
+      - name: Pack the tarballs
+        id: pack
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          out=distribution/npm/tarballs
+          mkdir -p "${out}"
+          for dir in distribution/npm/dist/*/; do
+            pkg="$(basename "${dir}")"
+            # Packed into an empty directory and taken by glob rather than by
+            # the name npm reports: for a scoped package that name has not
+            # always matched the file npm actually wrote.
+            staging="$(mktemp -d)"
+            npm pack "./${dir}" --pack-destination "${staging}"
+            packed=("${staging}"/*.tgz)
+            if [[ "${#packed[@]}" -ne 1 ]]; then
+              echo "::error::npm pack wrote ${#packed[@]} tarballs for ${pkg}, expected 1"
+              exit 1
+            fi
+            mv "${packed[0]}" "${out}/${pkg}.tgz"
+            echo "packed ${pkg}.tgz"
+          done
+          platforms="$(jq -c '[.targets[].pkg]' distribution/npm/targets.json)"
+          echo "platforms=${platforms}" >> "${GITHUB_OUTPUT}"
+
       # Exercises the launcher against a real binary before anything is
-      # published, so a broken facade cannot reach the registry.
-      - name: Smoke-test the built packages
+      # published, so a broken facade cannot reach the registry. It unpacks the
+      # tarballs rather than the build tree, so a file missing from the tarball
+      # fails here instead of at a user's install.
+      - name: Smoke-test the packed tarballs
         env: { VERSION: "${{ env.RELEASE_TAG }}" }
         run: |
           set -euo pipefail
           version="${VERSION#v}"
           smoke="$(mktemp -d)"
-          mkdir -p "${smoke}/node_modules/@kjanat"
-          cp -r distribution/npm/dist/facade "${smoke}/node_modules/@kjanat/actionlint"
-          cp -r distribution/npm/dist/linux-x64 "${smoke}/node_modules/@kjanat/actionlint-linux-x64"
+          # Before the packages are laid down, not after: npm prunes what it
+          # considers extraneous from the prefix it installs into.
           npm install --prefix "${smoke}" --no-save --no-audit --no-fund ansispeck
-          got="$(node "${smoke}/node_modules/@kjanat/actionlint/bin/actionlint.mjs" -version | head -1)"
+          modules="${smoke}/node_modules/@kjanat"
+          mkdir -p "${modules}"
+          unpack() {
+            local tarball="$1" dest="$2"
+            mkdir -p "${dest}"
+            tar -xzf "${tarball}" -C "${dest}" --strip-components=1
+          }
+          unpack distribution/npm/tarballs/facade.tgz "${modules}/actionlint"
+          unpack distribution/npm/tarballs/linux-x64.tgz "${modules}/actionlint-linux-x64"
+          got="$(node "${modules}/actionlint/bin/actionlint.mjs" -version | head -1)"
           echo "launcher reported: ${got}"
           case "${got}" in
           *"${version}") ;;
@@ -80,32 +142,61 @@ jobs:
             exit 1
             ;;
           esac
-
-      # Platform packages first: the facade pins them exactly, so publishing it
-      # first would leave a window where installing it cannot resolve a binary.
-      - name: Publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          DIST_TAG: ${{ steps.dist.outputs.tag }}
-        run: |
-          set -euo pipefail
-          args=(--access public --tag "${DIST_TAG}")
-          if [[ "${DRY_RUN}" == 'true' ]]; then
-            args+=(--dry-run)
-          else
-            # Provenance links each tarball to this workflow run; it needs the
-            # id-token permission above and is rejected under --dry-run.
-            args+=(--provenance)
+          # The manual is declared in the facade's manifest, so it has to be in
+          # the tarball; npm would publish a dangling "man" entry without it.
+          if [[ ! -s "${modules}/actionlint/man/actionlint.1" ]]; then
+            echo "::error::the facade tarball carries no man/actionlint.1"
+            exit 1
           fi
 
-          shopt -s nullglob
-          for dir in distribution/npm/dist/*/; do
-            [[ "$(basename "${dir}")" == 'facade' ]] && continue
-            echo "::group::publish ${dir}"
-            npm publish "${dir}" "${args[@]}"
-            echo "::endgroup::"
-          done
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with: { name: npm-tarballs, path: distribution/npm/tarballs, retention-days: 7 }
 
-          echo "::group::publish the facade"
-          npm publish distribution/npm/dist/facade "${args[@]}"
-          echo "::endgroup::"
+  # The leaves first: the facade pins them exactly, so publishing it before them
+  # would leave a window where installing it cannot resolve a binary. One job per
+  # package, so each gets its own deployment and its own npm URL.
+  platforms:
+    name: publish ${{ matrix.pkg }}
+    needs: build
+    runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
+    environment:
+      name: npm ${{ matrix.pkg }}
+      url: ${{ steps.publish.outputs.url }}
+    strategy:
+      fail-fast: false
+      matrix:
+        pkg: ${{ fromJSON(needs.build.outputs.platforms) }}
+    steps:
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: { node-version: "${{ needs.build.outputs.node }}", registry-url: "${{ env.REGISTRY }}" }
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with: { name: npm-tarballs, path: tarballs }
+      - uses: $/.github/actions/npm-publish
+        id: publish
+        with:
+          tarball: tarballs/${{ matrix.pkg }}.tgz
+          dist-tag: "${{ needs.build.outputs.dist-tag }}"
+          token: "${{ secrets.NPM_TOKEN }}"
+          dry-run: "${{ env.DRY_RUN }}"
+
+  facade:
+    name: publish the facade
+    needs: [build, platforms]
+    runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
+    environment:
+      name: npm
+      url: ${{ steps.publish.outputs.url }}
+    steps:
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: { node-version: "${{ needs.build.outputs.node }}", registry-url: "${{ env.REGISTRY }}" }
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with: { name: npm-tarballs, path: tarballs }
+      - uses: $/.github/actions/npm-publish
+        id: publish
+        with:
+          tarball: tarballs/facade.tgz
+          dist-tag: "${{ needs.build.outputs.dist-tag }}"
+          token: "${{ secrets.NPM_TOKEN }}"
+          dry-run: "${{ env.DRY_RUN }}"

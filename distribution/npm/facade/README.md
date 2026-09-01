@@ -42,6 +42,13 @@ error. Those statuses are forwarded verbatim, so it drops into CI unchanged.
 See the [usage documentation](https://github.com/kjanat/actionlint/blob/master/docs/usage.md) for the full command line,
 and [the checks list](https://github.com/kjanat/actionlint/blob/master/docs/checks.md) for what it looks for.
 
+The manual page ships in the package as `man/actionlint.1`. npm registered man pages with the system `man` program up to
+v11; from v12 it no longer does, so on a current npm read it directly:
+
+```sh
+man ./node_modules/@kjanat/actionlint/man/actionlint.1
+```
+
 ### ShellCheck and Pyflakes
 
 `actionlint` also checks the shell scripts inside `run:` steps with [ShellCheck][shellcheck], and Python scripts with

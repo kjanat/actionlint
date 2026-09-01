@@ -65,7 +65,8 @@ npm run test:npm-facade
 ```
 
 The builder has its own tests, which assemble synthetic release archives, run
-the whole pipeline, and assert each package ends up with its own binary:
+the whole pipeline, and assert each package ends up with its own binary and the
+facade with the manual:
 
 ```bash
 cd .github/actions/npm-packages && go test ./...
@@ -74,15 +75,32 @@ cd .github/actions/npm-packages && go test ./...
 ## Automation
 
 `.github/workflows/npm-release.yaml` publishes on every `release: published`
-event, and on a manual `workflow_dispatch`. It builds the tree, smoke-tests the
-launcher against a real binary, then publishes the platform packages **before**
-the facade — publishing the facade first would leave a window in which
-installing it cannot resolve a binary.
+event, and on a manual `workflow_dispatch`.
 
-Releases are published with [npm provenance][provenance], and a semver
-prerelease tag goes out under the `next` dist-tag rather than `latest`.
+The build job assembles the tree, packs every package with `npm pack`, and
+smoke-tests the launcher against a real binary — unpacked from the tarball, so
+anything the `files` list omits fails there rather than at a user's install. The
+packed tarballs are what get published, so the bytes that were tested are the
+bytes that reach the registry.
 
-Use the workflow's `dry-run` input to build and smoke-test without publishing.
+Publishing is one job per package, each with its own deployment environment
+(`npm <target>`, and plain `npm` for the facade) and its own registry URL as the
+deployment's target. The platform packages go first and the facade waits on all
+of them: the facade pins them exactly, so publishing it first would leave a
+window in which installing it cannot resolve a binary.
+
+Releases are published with [npm provenance][provenance] — set through the
+`NPM_CONFIG_PROVENANCE` environment variable npm documents, which the
+`PROVENANCE` repository variable can turn off. A semver prerelease tag goes out
+under the `next` dist-tag rather than `latest`.
+
+Use the workflow's `dry-run` input to build and smoke-test without publishing;
+it forces provenance off, there being nothing for the registry to attest.
+
+> [!NOTE]
+> The per-package environments are created on first use with no secrets and no
+> protection rules of their own, so `NPM_TOKEN` has to be a repository secret
+> rather than an environment secret.
 
 ## Adding a platform
 
