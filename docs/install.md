@@ -6,10 +6,17 @@ This document describes how to install [actionlint](../docs).
 
 ### [Chocolatey](https://chocolatey.org/)
 
-[`actionlint` package][chocolatey] is available in the community repository:
+[`actionlint` package][chocolatey] is available in the community repository, packaging
+[the upstream project][upstream]:
 
 ```powershell
 choco install actionlint
+```
+
+This fork is published separately as [`actionlint-kjanat`][choco-kjanat], since the `actionlint` id is upstream's:
+
+```powershell
+choco install actionlint-kjanat
 ```
 
 ### [Scoop](https://scoop.sh/)
@@ -256,6 +263,7 @@ go install actionlint.kjanat.dev/cmd/actionlint@master
 [Go]: https://golang.org/
 [asdf]: https://asdf-vm.com/
 [asdf-plugin]: https://github.com/crazy-matt/asdf-actionlint
+[choco-kjanat]: https://community.chocolatey.org/packages/actionlint-kjanat
 [chocolatey]: https://community.chocolatey.org/packages/actionlint
 [npm-package]: https://www.npmjs.com/package/@kjanat/actionlint
 [upstream]: https://github.com/rhysd/actionlint

@@ -67,6 +67,24 @@ jobs:
         with: { subject-checksums: "./dist/actionlint_${{ env.VERSION }}_checksums.txt" }
       - name: Post-release download check
         run: bash ./scripts/download-actionlint.bash
+  chocolatey:
+    name: Chocolatey
+    needs: binaries
+    runs-on: windows-latest
+    permissions: { contents: read }
+    environment: { name: chocolatey, url: "https://community.chocolatey.org/packages/actionlint-kjanat" }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with: { go-version: "${{ env.GO }}", check-latest: true }
+      # Not a GoReleaser chocolateys block: that pipe shells out to choco and so
+      # only runs on Windows, while the release job above runs on Linux.
+      - uses: $/.github/actions/choco-package
+        with:
+          version: ${{ github.ref_name }}
+          api-key: ${{ secrets.CHOCOLATEY_API_KEY }}
+
   docker:
     runs-on: ubuntu-latest
     needs: changelog
