@@ -61,22 +61,12 @@ jobs:
           GITHUB_TOKEN: "${{ github.token }}",
           HOMEBREW_TAP_TOKEN: "${{ secrets.HOMEBREW_TAP_TOKEN }}",
           SCOOP_BUCKET_TOKEN: "${{ secrets.SCOOP_BUCKET_TOKEN }}",
+          WINGET_TOKEN: "${{ secrets.WINGET_TOKEN }}",
         }
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
         with: { subject-checksums: "./dist/actionlint_${{ env.VERSION }}_checksums.txt" }
       - name: Post-release download check
         run: bash ./scripts/download-actionlint.bash
-  winget:
-    runs-on: ubuntu-latest
-    needs: binaries
-    if: github.repository == 'rhysd/actionlint'
-    steps:
-      - uses: vedantmgoyal9/winget-releaser@main
-        with:
-          identifier: rhysd.actionlint
-          installers-regex: '_windows_\w+\.zip$'
-          release-notes-url: "${{ github.server_url }}/${{ github.repository }}/blob/HEAD/CHANGELOG.md#${{ github.ref_name }}"
-          token: ${{ secrets.WINGET_TOKEN }}
   docker:
     runs-on: ubuntu-latest
     needs: changelog

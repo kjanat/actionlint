@@ -30,10 +30,11 @@ scoop install kjanat/actionlint
 
 ### [Winget](https://learn.microsoft.com/en-us/windows/package-manager/)
 
-[`actionlint` package][winget] is available in the winget-pkgs repository:
+[`actionlint` package][winget] is available in the winget-pkgs repository under the `rhysd.actionlint` identifier,
+which is [the upstream project][upstream]. This fork is a separate package:
 
 ```powershell
-winget install actionlint
+winget install kjanat.actionlint
 ```
 
 ## Linux
