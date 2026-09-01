@@ -27,12 +27,11 @@ runs:
       id: monitor
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
       env:
-        ACTION_PATH: ${{ github.action_path }}
         LOOKBACK_DAYS: ${{ inputs.lookback-days }}
         MAX_ISSUES: ${{ inputs.max-issues }}
       with:
         github-token: ${{ inputs.github-token }}
         retries: 3
         script: |
-          const { default: run } = await import(`${process.env.ACTION_PATH}/monitor.mjs`)
+          const { default: run } = await import(`${process.env.GITHUB_ACTION_PATH}/monitor.mjs`)
           await run({ github, context, core, exec, glob, io })
