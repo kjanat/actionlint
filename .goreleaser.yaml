@@ -35,6 +35,23 @@ builds:
     goos: [freebsd]
     goarch: ["386", amd64]
 
+  # GoReleaser names the binary after ProjectName unless "binary" says otherwise,
+  # which would put an "actionlint" file inside the actionlint-action archive.
+  - <<: &action_build_defaults
+      main: ./cmd/actionlint-action
+      binary: actionlint-action
+      ldflags: -s -w -X main.version={{ .Version }}
+      env:
+        - CGO_ENABLED=0
+    id: action-nix
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+
+  - <<: *action_build_defaults
+    id: action-windows
+    goos: [windows]
+    goarch: [amd64, arm64]
+
 sboms:
   - artifacts: archive
 
@@ -55,6 +72,18 @@ archives:
   - <<: *archives_defaults
     id: windows
     ids: [windows]
+    formats: [zip]
+
+  - <<: &action_archive_defaults
+      name_template: actionlint-action_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+      files:
+        - LICENSE.txt
+    id: action-nix
+    ids: [action-nix]
+    formats: [tar.gz]
+  - <<: *action_archive_defaults
+    id: action-windows
+    ids: [action-windows]
     formats: [zip]
 
 homebrew_casks:

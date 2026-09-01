@@ -329,6 +329,20 @@ off:
 The other inputs are `version` for the actionlint release, `working-directory`,
 and `flags` for extra command line options such as `-ignore`. `v1` moves to each
 new release.
+
+When a step after it needs the problem count or the output itself, use
+`action/compat` instead. It downloads the release binary that backs the Docker
+action, so it carries the same inputs and the same outputs, at the cost of
+installing no external linters.
+
+```yaml
+- uses: kjanat/actionlint/action/compat@v1
+  id: lint
+  with: { format: sarif, output-file: actionlint.sarif }
+- run: echo "found ${COUNT} problems"
+  env: { COUNT: "${{ steps.lint.outputs.problem-count }}" }
+```
+
 `v1.13.0` is a versioned release tag, but only a full-length commit SHA provides
 an immutable action reference.
 

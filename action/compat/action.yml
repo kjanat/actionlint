@@ -1,0 +1,162 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+---
+name: actionlint binary by @kjanat
+description: >-
+  Static-check GitHub Actions workflow files with actionlint on runners without
+  a Docker daemon.
+inputs:
+  files:
+    description: >-
+      Newline-separated workflow file paths. Empty checks every workflow in the
+      repository.
+    required: false
+    default: ""
+  format:
+    description: >-
+      Output format. Choose github, default, oneline, json, json-lines,
+      markdown, or sarif.
+    required: false
+    default: github
+  ignore:
+    description: >-
+      Newline-separated regular expressions for actionlint errors to ignore.
+    required: false
+    default: ""
+  config-file:
+    description: >-
+      Path to an actionlint configuration file, relative to working-directory.
+    required: false
+    default: ""
+  shellcheck:
+    description: >-
+      Run ShellCheck for shell scripts in workflow steps. Requires shellcheck on
+      PATH; this action installs nothing.
+    required: false
+    default: "true"
+  pyflakes:
+    description: >-
+      Run pyflakes for Python scripts in workflow steps. Requires pyflakes on
+      PATH; this action installs nothing.
+    required: false
+    default: "true"
+  working-directory:
+    description: Directory to lint, relative to the repository workspace.
+    required: false
+    default: .
+  output-file:
+    description: >-
+      Optional repository-relative file to receive the selected output format.
+    required: false
+    default: ""
+  fail-on-error:
+    description: >-
+      Fail the step when actionlint finds problems. Invalid options and fatal
+      errors always fail.
+    required: false
+    default: "true"
+  version:
+    description: Release version of the actionlint binary to download.
+    required: false
+    default: 1.13.0
+outputs:
+  exit-code:
+    description: >-
+      actionlint exit code: 0 for clean, 1 for problems, 2 for invalid options,
+      or 3 for failure.
+    value: ${{ steps.run.outputs.exit-code }}
+  result:
+    description: >-
+      Result name: success, problems-found, invalid-options, or failure.
+    value: ${{ steps.run.outputs.result }}
+  problems-found:
+    description: Whether actionlint found one or more problems.
+    value: ${{ steps.run.outputs.problems-found }}
+  problem-count:
+    description: >-
+      Number of problems found, or an empty string if actionlint could not
+      complete.
+    value: ${{ steps.run.outputs.problem-count }}
+  output:
+    description: Complete actionlint output in the selected format.
+    value: ${{ steps.run.outputs.output }}
+  output-file:
+    description: >-
+      Repository-relative output file path, or an empty string when output-file
+      was not set.
+    value: ${{ steps.run.outputs.output-file }}
+runs:
+  using: composite
+  steps:
+    - name: Download actionlint
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: kjanat/actionlint
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+
+        case "${RUNNER_OS}" in
+          Linux) asset_os=linux; asset_ext=tar.gz ;;
+          macOS) asset_os=darwin; asset_ext=tar.gz ;;
+          Windows) asset_os=windows; asset_ext=zip ;;
+          *) echo "::error title=actionlint::Unsupported runner OS: ${RUNNER_OS}"; exit 1 ;;
+        esac
+
+        case "${RUNNER_ARCH}" in
+          X64) asset_arch=amd64 ;;
+          ARM64) asset_arch=arm64 ;;
+          *) echo "::error title=actionlint::Unsupported runner architecture: ${RUNNER_ARCH}"; exit 1 ;;
+        esac
+
+        asset="actionlint-action_${VERSION}_${asset_os}_${asset_arch}.${asset_ext}"
+        sums="actionlint_${VERSION}_checksums.txt"
+        dir="${RUNNER_TEMP}/actionlint-action"
+
+        mkdir -p "${dir}"
+        gh release download "v${VERSION}" \
+          --pattern "${asset}" --pattern "${sums}" --dir "${dir}" --clobber
+
+        cd "${dir}"
+        if command -v sha256sum >/dev/null 2>&1; then
+          grep " ${asset}\$" "${sums}" | sha256sum --check --strict
+        else
+          grep " ${asset}\$" "${sums}" | shasum -a 256 --check
+        fi
+
+        if [ "${asset_ext}" = zip ]; then
+          unzip -o -j "${asset}" actionlint-action.exe
+          echo "ACTIONLINT_ACTION_BIN=${dir}/actionlint-action.exe" >> "${GITHUB_ENV}"
+        else
+          tar -xzf "${asset}" actionlint-action
+          echo "ACTIONLINT_ACTION_BIN=${dir}/actionlint-action" >> "${GITHUB_ENV}"
+        fi
+
+    - name: Run actionlint
+      id: run
+      shell: bash
+      env:
+        FILES: ${{ inputs.files }}
+        FORMAT: ${{ inputs.format }}
+        IGNORE: ${{ inputs.ignore }}
+        CONFIG_FILE: ${{ inputs.config-file }}
+        SHELLCHECK: ${{ inputs.shellcheck }}
+        PYFLAKES: ${{ inputs.pyflakes }}
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        OUTPUT_FILE: ${{ inputs.output-file }}
+        FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
+      run: |
+        set -euo pipefail
+        "${ACTIONLINT_ACTION_BIN}" \
+          "${FILES}" \
+          "${FORMAT}" \
+          "${IGNORE}" \
+          "${CONFIG_FILE}" \
+          "${SHELLCHECK}" \
+          "${PYFLAKES}" \
+          "${WORKING_DIRECTORY}" \
+          "${OUTPUT_FILE}" \
+          "${FAIL_ON_ERROR}"
+branding:
+  icon: check-circle
+  color: blue
