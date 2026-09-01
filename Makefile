@@ -110,8 +110,10 @@ man: man/actionlint.1 man/actionlint.1.html
 bench:
 	go test -bench Lint -benchmem
 
-.github/actionlint-matcher.json: scripts/generate-actionlint-matcher/object.mjs
-	node ./scripts/generate-actionlint-matcher/main.mjs .github/actionlint-matcher.json
+.github/actionlint-matcher.json action/cli/actionlint-matcher.json: scripts/generate-actionlint-matcher/object.mjs
+	node ./scripts/generate-actionlint-matcher/main.mjs $@
+
+matcher: .github/actionlint-matcher.json action/cli/actionlint-matcher.json
 
 scripts/generate-actionlint-matcher/testdata/escape.txt: $(TARGET)
 	./actionlint -color ./testdata/err/one_error.yaml > ./scripts/generate-actionlint-matcher/testdata/escape.txt || true
@@ -126,4 +128,4 @@ CHANGELOG.md:
 c clean:
 	rm -f ./$(TARGET) ./man/actionlint.1 ./man/actionlint.1.html ./actionlint-workflow-ast
 
-.PHONY: all test clean build lint fuzz man bench cov b t c l CHANGELOG.md FORCE
+.PHONY: all test clean build lint fuzz man matcher bench cov b t c l CHANGELOG.md FORCE

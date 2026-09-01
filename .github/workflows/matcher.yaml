@@ -27,13 +27,13 @@ jobs:
         run: make ./scripts/generate-actionlint-matcher/testdata/* SKIP_GO_GENERATE=true
       - name: Test actionlint-matcher.json
         run: npm run test:matcher
-      - name: Ensure .github/actionlint-matcher.json is up-to-date
+      - name: Ensure the generated matcher files are up-to-date
         run: |
-          make .github/actionlint-matcher.json
+          make matcher
           if git diff --quiet; then
             echo 'OK'
           else
-            echo 'ERROR! .github/actionlint-matcher.json is outdated. Update it by "make .github/actionlint-matcher.json"' >&2
+            echo 'ERROR! A generated actionlint-matcher.json is outdated. Update both by "make matcher"' >&2
             set -x
             git diff
             exit 1

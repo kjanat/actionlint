@@ -135,24 +135,14 @@ jobs:
       - uses: kjanat/actionlint@v1
 ```
 
-On a daemon-less runner such as `ubuntu-slim`, download and run the binary instead:
+On a daemon-less runner such as `ubuntu-slim`, use the CLI action instead. It installs actionlint with [mise](https://mise.jdx.dev) and registers the problem matcher, so errors still show up as annotations:
 
 ```yaml
-- uses: actions/checkout@v7
-  with: { persist-credentials: false }
-- name: Download and run actionlint
-  env: { GH_TOKEN: "${{ github.token }}", GH_REPO: "kjanat/actionlint" }
-  run: |
-    case "${RUNNER_ARCH}" in
-      X64) asset_arch=amd64 ;;
-      ARM64) asset_arch=arm64 ;;
-      ARM) asset_arch=armv6 ;;
-      X86) asset_arch=386 ;;
-      *) echo "Unsupported runner architecture: ${RUNNER_ARCH}" >&2; exit 1 ;;
-    esac
-    gh release download --pattern "actionlint_*_${RUNNER_OS,,}_${asset_arch}.tar.gz" --output - | tar -xzf - actionlint
-    ./actionlint -color
+- { uses: actions/checkout@v7, with: { persist-credentials: false } }
+- uses: kjanat/actionlint/action/cli@v1
 ```
+
+ShellCheck and pyflakes are installed alongside actionlint unless you set `shellcheck: "false"` and `pyflakes: "false"`.
 
 The moving `v1` tag follows compatible v1 releases. `v1.13.0` is a versioned release tag, but only a full-length commit SHA provides an immutable action reference.
 
