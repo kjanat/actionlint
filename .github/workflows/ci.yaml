@@ -98,7 +98,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version: "${{ env.GO }}", check-latest: true }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with: { node-version-file: .node-version, cache: npm, cache-dependency-path: ./package-lock.json }
+        with: { node-version-file: .node-version }
       - uses: kjanat/runner@master
       - name: Install JavaScript dependencies
         run: runner install --frozen
