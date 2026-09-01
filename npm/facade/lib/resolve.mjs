@@ -67,7 +67,9 @@ function failUnsupported(os, cpu, packages) {
 Published platforms: ${cyan(supported)}
 
 Workarounds:
-${indent}- build from source, which works anywhere Go does: ${cyan('go install actionlint.kjanat.dev/cmd/actionlint@latest')}
+${indent}- build from source, which works anywhere Go does: ${
+			cyan('go install actionlint.kjanat.dev/cmd/actionlint@latest')
+		}
 ${indent}- ask for this platform: ${link(issues, issues)}
 `,
 	);

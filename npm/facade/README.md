@@ -52,19 +52,19 @@ checks.
 
 This package contains no binary itself. It declares one `optionalDependencies` entry per platform:
 
-| Package                            | Runs on                     |
-| ---------------------------------- | --------------------------- |
-| `@kjanat/actionlint-linux-x64`     | Linux x86-64                |
-| `@kjanat/actionlint-linux-arm64`   | Linux ARM64                 |
-| `@kjanat/actionlint-darwin-x64`    | macOS Intel                 |
-| `@kjanat/actionlint-darwin-arm64`  | macOS Apple silicon         |
-| `@kjanat/actionlint-win32-x64`     | Windows x86-64              |
-| `@kjanat/actionlint-win32-arm64`   | Windows ARM64               |
-| `@kjanat/actionlint-linux-ia32`    | Linux 32-bit x86            |
-| `@kjanat/actionlint-linux-arm`     | Linux ARMv6 and ARMv7       |
-| `@kjanat/actionlint-win32-ia32`    | Windows 32-bit x86          |
-| `@kjanat/actionlint-freebsd-x64`   | FreeBSD x86-64              |
-| `@kjanat/actionlint-freebsd-ia32`  | FreeBSD 32-bit x86          |
+| Package                           | Runs on               |
+| --------------------------------- | --------------------- |
+| `@kjanat/actionlint-linux-x64`    | Linux x86-64          |
+| `@kjanat/actionlint-linux-arm64`  | Linux ARM64           |
+| `@kjanat/actionlint-darwin-x64`   | macOS Intel           |
+| `@kjanat/actionlint-darwin-arm64` | macOS Apple silicon   |
+| `@kjanat/actionlint-win32-x64`    | Windows x86-64        |
+| `@kjanat/actionlint-win32-arm64`  | Windows ARM64         |
+| `@kjanat/actionlint-linux-ia32`   | Linux 32-bit x86      |
+| `@kjanat/actionlint-linux-arm`    | Linux ARMv6 and ARMv7 |
+| `@kjanat/actionlint-win32-ia32`   | Windows 32-bit x86    |
+| `@kjanat/actionlint-freebsd-x64`  | FreeBSD x86-64        |
+| `@kjanat/actionlint-freebsd-ia32` | FreeBSD 32-bit x86    |
 
 Each declares `os` and `cpu`, so your package manager downloads only the one matching your machine and skips the rest.
 The `actionlint` command here is a small launcher that resolves that package and execs the binary inside it.

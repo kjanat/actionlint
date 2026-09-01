@@ -2,11 +2,11 @@
 
 Three packages on the [AUR](https://aur.archlinux.org/):
 
-| Package                  | Builds                              | Arches                    |
-| ------------------------ | ----------------------------------- | ------------------------- |
-| `actionlint-kjanat`      | from the tagged source tarball      | x86_64, aarch64, armv7h   |
-| `actionlint-kjanat-bin`  | prebuilt from GitHub release tars   | x86_64, aarch64, armv7h   |
-| `actionlint-kjanat-git`  | from the tip of `master`            | x86_64, aarch64, armv7h   |
+| Package                 | Builds                            | Arches                  |
+| ----------------------- | --------------------------------- | ----------------------- |
+| `actionlint-kjanat`     | from the tagged source tarball    | x86_64, aarch64, armv7h |
+| `actionlint-kjanat-bin` | prebuilt from GitHub release tars | x86_64, aarch64, armv7h |
+| `actionlint-kjanat-git` | from the tip of `master`          | x86_64, aarch64, armv7h |
 
 All three install `/usr/bin/actionlint`, so each `provides` and `conflicts` the
 other two as well as the `actionlint` package in the official repositories.

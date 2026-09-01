@@ -56,14 +56,14 @@ winget install kjanat.actionlint
 pacman -S actionlint
 ```
 
-That package, and the [actionlint-bin][] and [actionlint-git][] packages on [AUR][aur], all track the upstream
+That package, and the [actionlint-bin][actionlint-bin] and [actionlint-git][actionlint-git] packages on [AUR][aur], all track the upstream
 project. To install this fork instead, use its own AUR packages, which are updated automatically on every release:
 
-| Package                     | Builds                            |
-| --------------------------- | --------------------------------- |
-| [actionlint-kjanat][]       | from the tagged source tarball    |
-| [actionlint-kjanat-bin][]   | prebuilt from the release archive |
-| [actionlint-kjanat-git][]   | from the tip of `master`          |
+| Package                                        | Builds                            |
+| ---------------------------------------------- | --------------------------------- |
+| [actionlint-kjanat][actionlint-kjanat]         | from the tagged source tarball    |
+| [actionlint-kjanat-bin][actionlint-kjanat-bin] | prebuilt from the release archive |
+| [actionlint-kjanat-git][actionlint-kjanat-git] | from the tip of `master`          |
 
 They can be installed via the [`paru`][paru] command:
 

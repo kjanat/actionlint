@@ -1,9 +1,9 @@
+import { platformPackage, resolveBinary } from '#resolve';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { after, before, describe, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { platformPackage, resolveBinary } from '#resolve';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const facadeDir = join(here, '..');

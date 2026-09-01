@@ -1,6 +1,6 @@
+import { resolveBinary } from '#resolve';
 import { spawnSync } from 'node:child_process';
 import process from 'node:process';
-import { resolveBinary } from '#resolve';
 
 const { argv, exit, stderr } = process;
 
