@@ -2079,7 +2079,7 @@ docker run --rm -v $(pwd):/repo --workdir /repo rhysd/actionlint:latest -color
 
 - [Problem Matchers](https://github.com/actions/toolkit/blob/master/docs/problem-matchers.md) is now officially supported by actionlint, which annotates errors from actionlint on GitHub as follows. The matcher definition is maintained at [`.github/actionlint-matcher.json`](https://github.com/rhysd/actionlint/blob/main/.github/actionlint-matcher.json) by [script](https://github.com/rhysd/actionlint/tree/main/scripts/generate-actionlint-matcher). For the usage, see [the document](https://github.com/rhysd/actionlint/blob/main/docs/usage.md#problem-matchers).
 
-<img src="https://github.com/rhysd/ss/blob/master/actionlint/problem-matcher.png?raw=true" alt="annotation by Problem Matchers" width="715" height="221"/>
+<img src="https://cdn.jsdelivr.net/gh/rhysd/ss@5530c2526b44ad28dc12f91a3d71bcd57940f008/actionlint/problem-matcher.png?raw=true" alt="annotation by Problem Matchers" width="715" height="221"/>
 
 - `runner_label` rule now checks conflicts in labels at `runs-on`. For example, there is no runner which meats both `ubuntu-latest` and `windows-latest`. This kind of misconfiguration sometimes happen when a beginner misunderstands the usage of `runs-on:`. To run a job on each runners, `matrix:` should be used. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-runner-labels) for more information.
 

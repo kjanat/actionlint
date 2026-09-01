@@ -6,6 +6,7 @@
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "allowJs": true,
     "checkJs": false,
+    "outDir": ".cache",
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

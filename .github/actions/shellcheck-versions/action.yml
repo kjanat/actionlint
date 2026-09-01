@@ -1,7 +1,7 @@
 name: Check ShellCheck versions
 description: Compare ShellCheck, go-shellcheck, and the version pinned by actionlint
 inputs:
-  github-token:
+  token:
     description: Token used to read upstream GitHub releases
     required: true
     default: ${{ github.token }}
@@ -44,13 +44,10 @@ runs:
     - name: Compare ShellCheck versions
       id: check
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
-      env:
-        ACTION_PATH: ${{ github.action_path }}
-        UPDATE_FILES: ${{ inputs.update-files }}
-        FAIL_ON_OUTDATED: ${{ inputs.fail-on-outdated }}
+      env: { UPDATE_FILES: "${{ inputs.update-files }}", FAIL_ON_OUTDATED: "${{ inputs.fail-on-outdated }}" }
       with:
-        github-token: ${{ inputs.github-token }}
+        github-token: ${{ inputs.token }}
         retries: 3
         script: |
-          const { default: run } = await import(`${process.env.ACTION_PATH}/shellcheck-version-lifecycle.mjs`)
+          const { default: run } = await import(`${process.env.GITHUB_ACTION_PATH}/shellcheck-version-lifecycle.mjs`)
           await run({ github, context, core, exec, glob, io })

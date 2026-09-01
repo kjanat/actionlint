@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
 const here = import.meta.dirname;
-const oneUp = dirname(import.meta.dirname);
+const oneUp = dirname(here);
 const outDir = resolve(here, 'dist');
 
 const manual = resolve(oneUp, 'man/actionlint.1.html');
@@ -37,6 +37,12 @@ export default defineConfig({
 		outDir,
 		emptyOutDir: true,
 		sourcemap: true,
+		rollupOptions: {
+			input: {
+				main: resolve(here, 'index.html'),
+				changelog: resolve(here, 'github-changelog/index.html'),
+			},
+		},
 	},
 	test: {
 		include: ['src/test.ts'],

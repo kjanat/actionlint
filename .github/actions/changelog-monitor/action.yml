@@ -1,0 +1,38 @@
+name: GitHub Changelog monitor
+description: Open a labelled issue for every unreported GitHub Actions entry in the GitHub Changelog feed
+inputs:
+  token:
+    description: Token used to read and open issues
+    required: true
+    default: ${{ github.token }}
+  lookback-days:
+    description: Only report entries published within this many days
+    required: false
+    default: "30"
+  max-issues:
+    description: Maximum number of issues opened per run
+    required: false
+    default: "10"
+outputs:
+  issues-created:
+    description: Number of issues opened by this invocation
+    value: ${{ steps.monitor.outputs.issues-created }}
+  issue-urls:
+    description: Newline-separated URLs of the issues opened by this invocation
+    value: ${{ steps.monitor.outputs.issue-urls }}
+runs:
+  using: composite
+  steps:
+    - name: Install the changelog package
+      shell: bash
+      run: npm install --no-save --package-lock=false --ignore-scripts --workspaces=false @kjlint/changelog-rss@latest
+    - name: Open issues for new Actions changelog entries
+      id: monitor
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+      env: { LOOKBACK_DAYS: "${{ inputs.lookback-days }}", MAX_ISSUES: "${{ inputs.max-issues }}" }
+      with:
+        github-token: ${{ inputs.token }}
+        retries: 3
+        script: |
+          const { default: run } = require('@kjlint/changelog-rss/action')
+          await run({ github, context, core })

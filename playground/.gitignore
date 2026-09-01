@@ -1,4 +1,6 @@
+/.cache
 /dist
 /image
 /node_modules
-/public
+/public/main.wasm
+/public/wasm_exec.js

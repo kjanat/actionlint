@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link
+			rel="icon"
+			type="image/svg+xml"
+			href="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgNjQgNjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHJlY3Qgcng9IjE0IiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIGZpbGw9IiMyNDI5MmYiIC8+CiAgPHBhdGggZD0iTTE4IDE3aDI4YTUgNSAwIDAgMSA1IDV2MjBhNSA1IDAgMCAxLTUgNUgxOGE1IDUgMCAwIDEtNS01VjIyYTUgNSAwIDAgMSA1LTVaIgogICAgICAgIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSI0IiAvPgogIDxwYXRoIGQ9Ik0yNCAyNWw5IDctOSA3VjI1Wm0xMyAwaDR2MTRoLTRWMjVaIiBmaWxsPSIjZmZmIiAvPgo8L3N2Zz4K"
+		>
+		<link rel="stylesheet" href="./style.css">
+		<title>GitHub Actions Changelog</title>
+	</head>
+	<body>
+		<main class="app">
+			<div class="topbar">
+				<div class="brand">
+					<h1>GitHub Actions Changelog</h1>
+					<p>
+						Live reader for
+						<code>github.blog/changelog/label/actions/feed/</code>
+					</p>
+				</div>
+
+				<div class="controls">
+					<button id="refreshBtn" type="button" class="primary">Refresh</button>
+					<button id="rawBtn" type="button" class="ghost" disabled>
+						Raw XML
+					</button>
+				</div>
+			</div>
+
+			<div id="errorBox" class="error-box" role="alert" hidden></div>
+
+			<section id="feedMeta" class="feed-meta" aria-live="polite">
+				<div>
+					<div id="feedTitle" class="feed-title"></div>
+					<div id="feedDescription" class="feed-description"></div>
+				</div>
+				<div id="feedStats" class="feed-stats"></div>
+			</section>
+
+			<div class="layout">
+				<aside class="sidebar">
+					<div class="filters">
+						<input
+							id="search"
+							type="search"
+							placeholder="Search title, author, content…"
+							disabled
+						>
+						<select id="typeFilter" disabled>
+							<option value="">All types</option>
+						</select>
+					</div>
+					<div id="items" class="items">
+						<div class="empty">No feed loaded yet.</div>
+					</div>
+				</aside>
+
+				<section id="viewer" class="viewer">
+					<div id="article" class="empty">
+						Loading the latest GitHub Actions entries…
+					</div>
+					<pre id="raw" class="raw"></pre>
+				</section>
+			</div>
+		</main>
+
+		<script type="importmap">
+		{
+		  "imports": {
+		    "@kjlint/changelog-rss": "https://esm.run/@kjlint/changelog-rss"
+		  }
+		}
+		</script>
+		<script type="module">
+			await import(/* @vite-ignore */ '@kjlint/changelog-rss');
+		</script>
+	</body>
+</html>
