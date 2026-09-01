@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
 const here = import.meta.dirname;
-const oneUp = dirname(import.meta.dirname);
+const oneUp = dirname(here);
 const outDir = resolve(here, 'dist');
 
 const manual = resolve(oneUp, 'man/actionlint.1.html');

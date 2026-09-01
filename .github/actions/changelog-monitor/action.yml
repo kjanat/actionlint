@@ -25,8 +25,7 @@ runs:
   steps:
     - name: Link the workspace packages
       shell: bash
-      working-directory: ${{ github.workspace }}
-      run: npm ci --omit=dev --ignore-scripts
+      run: npm i @kjlint/changelog-rss
     - name: Open issues for new Actions changelog entries
       id: monitor
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9

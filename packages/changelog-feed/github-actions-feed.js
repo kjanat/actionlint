@@ -1,5 +1,3 @@
-// @ts-check
-
 /**
  * @typedef Category
  * @property {string} domain

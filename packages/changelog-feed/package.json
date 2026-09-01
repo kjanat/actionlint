@@ -3,15 +3,43 @@
   "version": "0.0.0",
   "description": "RSS 2.0 parser for the GitHub Actions changelog feed",
   "repository": "kjanat/actionlint",
-  "funding": { "type": "github", "url": "https://github.com/sponsors/kjanat" },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/kjanat"
+  },
   "license": "MIT",
   "type": "module",
+  "imports": {
+    "#pkg": "./package.json",
+    "#feed": {
+      "types": "./github-actions-feed.d.ts",
+      "default": "./github-actions-feed.js"
+    },
+    "#reader": {
+      "types": "./github-actions-reader.d.ts",
+      "default": "./github-actions-reader.js"
+    },
+    "#rss": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
   "exports": {
-    ".": "./feed.mjs",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./feed": {
+      "types": "./github-actions-feed.d.ts",
+      "default": "./github-actions-feed.js"
+    },
+    "./reader": {
+      "types": "./github-actions-reader.d.ts",
+      "default": "./github-actions-reader.js"
+    },
     "./package.json": "./package.json"
   },
-  "files": ["/feed.mjs"],
-  "scripts": {
-    "test": "node --test ./test.mjs"
-  }
+  "files": ["/github-*", "/index.*"],
+  "scripts": { "test": "node --test ./tests/**/*test.*js" },
+  "volta": { "extends": "../../package.json" }
 }

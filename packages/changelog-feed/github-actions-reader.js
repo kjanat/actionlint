@@ -1,21 +1,60 @@
-import { FEED_URL, parseFeed } from '@actionlint/changelog-feed';
+import { FEED_URL, parseFeed } from './github-actions-feed.js';
+
+/** @typedef {import('#feed').Feed} Feed */
+/** @typedef {import('#feed').FeedItem} FeedItem */
+
+/**
+ * @typedef CachedFeed
+ * @property {boolean} complete
+ * @property {Feed} feed
+ * @property {number} nextPage
+ * @property {string} rawXml
+ */
+
+/**
+ * @template {keyof HTMLElementTagNameMap} K
+ * @param {string} id
+ * @param {K} tagName
+ * @returns {HTMLElementTagNameMap[K]}
+ */
+function requireElement(id, tagName) {
+	const node = document.getElementById(id);
+	if (!node || node.localName !== tagName) {
+		throw new Error(`Expected <${tagName} id="${id}">.`);
+	}
+	return /** @type {HTMLElementTagNameMap[K]} */ (node);
+}
 
 const el = {
-	article: document.getElementById('article'),
-	errorBox: document.getElementById('errorBox'),
-	feedDescription: document.getElementById('feedDescription'),
-	feedMeta: document.getElementById('feedMeta'),
-	feedStats: document.getElementById('feedStats'),
-	feedTitle: document.getElementById('feedTitle'),
-	items: document.getElementById('items'),
-	layout: document.querySelector('.layout'),
-	raw: document.getElementById('raw'),
-	rawBtn: document.getElementById('rawBtn'),
-	refreshBtn: document.getElementById('refreshBtn'),
-	search: document.getElementById('search'),
-	typeFilter: document.getElementById('typeFilter'),
+	article: requireElement('article', 'div'),
+	errorBox: requireElement('errorBox', 'div'),
+	feedDescription: requireElement('feedDescription', 'div'),
+	feedMeta: requireElement('feedMeta', 'section'),
+	feedStats: requireElement('feedStats', 'div'),
+	feedTitle: requireElement('feedTitle', 'div'),
+	items: requireElement('items', 'div'),
+	layout: /** @type {HTMLDivElement | null} */ (document.querySelector('.layout')),
+	raw: requireElement('raw', 'pre'),
+	rawBtn: requireElement('rawBtn', 'button'),
+	refreshBtn: requireElement('refreshBtn', 'button'),
+	search: requireElement('search', 'input'),
+	typeFilter: requireElement('typeFilter', 'select'),
 };
 
+/**
+ * @type {{
+ *   cacheComplete: boolean,
+ *   feed: Feed | null,
+ *   filtered: FeedItem[],
+ *   loadingAll: boolean,
+ *   loadingOlder: boolean,
+ *   nextPage: number,
+ *   pageSize: number,
+ *   rawVisible: boolean,
+ *   rawXml: string,
+ *   selectedId: string | null,
+ * }}
+ */
 let state = {
 	cacheComplete: false,
 	feed: null,
@@ -50,11 +89,13 @@ function schedulePaneHeightSync() {
 	requestAnimationFrame(syncPaneHeight);
 }
 
+/** @param {string} value */
 function parseDate(value) {
 	const date = new Date(value);
 	return Number.isNaN(date.getTime()) ? null : date;
 }
 
+/** @param {string} value */
 function formatDate(value) {
 	const date = parseDate(value);
 	if (!date) return value || 'Unknown date';
@@ -64,8 +105,11 @@ function formatDate(value) {
 	}).format(date);
 }
 
+/** @param {string} input */
 function sanitizeHtml(input) {
-	const container = document.createElement('div');
+	const container = /** @type {HTMLDivElement & { setHTML?: (input: string) => void }} */ (
+		document.createElement('div')
+	);
 
 	if (typeof container.setHTML === 'function') {
 		container.setHTML(input || '');
@@ -93,6 +137,7 @@ function sanitizeHtml(input) {
 	return fragment;
 }
 
+/** @param {string} value */
 function safeArticleUrl(value) {
 	try {
 		const href = new URL(value, FEED_URL).href;
@@ -102,10 +147,16 @@ function safeArticleUrl(value) {
 	}
 }
 
+/** @param {string[]} values */
 function unique(values) {
 	return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
+/**
+ * @param {HTMLSelectElement} select
+ * @param {string[]} values
+ * @param {string} label
+ */
 function fillSelect(select, values, label) {
 	const current = select.value;
 	select.replaceChildren(new Option(label, ''));
@@ -113,6 +164,7 @@ function fillSelect(select, values, label) {
 	if (values.includes(current)) select.value = current;
 }
 
+/** @param {string} message */
 function showError(message) {
 	el.errorBox.hidden = false;
 	el.errorBox.textContent = message;
@@ -123,6 +175,7 @@ function clearError() {
 	el.errorBox.textContent = '';
 }
 
+/** @param {FeedItem} item */
 function itemSearchText(item) {
 	const content = sanitizeHtml(item.content);
 	return [
@@ -135,6 +188,7 @@ function itemSearchText(item) {
 	].join(' ').toLowerCase();
 }
 
+/** @param {{ preserveArticle?: boolean }} [options] */
 function applyFilters({ preserveArticle = false } = {}) {
 	if (!state.feed) return;
 
@@ -161,7 +215,10 @@ function applyFilters({ preserveArticle = false } = {}) {
 
 function renderList() {
 	const scrollTop = el.items.scrollTop;
-	const anchor = [...el.items.querySelectorAll('.item')]
+	const itemNodes = /** @type {NodeListOf<HTMLElement>} */ (
+		el.items.querySelectorAll('.item')
+	);
+	const anchor = [...itemNodes]
 		.find(node => node.offsetTop + node.offsetHeight > scrollTop);
 	const anchorId = anchor?.dataset.id ?? null;
 	const anchorOffset = anchor ? anchor.offsetTop - scrollTop : 0;
@@ -215,7 +272,11 @@ function renderList() {
 
 	el.items.append(frag);
 	const nextAnchor = anchorId
-		? [...el.items.querySelectorAll('.item')].find(node => node.dataset.id === anchorId)
+		? [
+			.../** @type {NodeListOf<HTMLElement>} */ (
+				el.items.querySelectorAll('.item')
+			),
+		].find(node => node.dataset.id === anchorId)
 		: null;
 	el.items.scrollTop = nextAnchor
 		? nextAnchor.offsetTop - anchorOffset
@@ -296,6 +357,7 @@ const DB_NAME = 'github-actions-changelog-reader';
 const DB_VERSION = 1;
 const STORE_NAME = 'feeds';
 
+/** @param {FeedItem[]} items */
 function sortItems(items) {
 	items.sort((a, b) => {
 		const aTime = parseDate(a.pubDate)?.getTime() ?? 0;
@@ -304,6 +366,7 @@ function sortItems(items) {
 	});
 }
 
+/** @param {{ preserveArticle?: boolean }} [options] */
 function updateFeedUi({ preserveArticle = false } = {}) {
 	if (!state.feed) return;
 
@@ -331,6 +394,11 @@ function updateFeedUi({ preserveArticle = false } = {}) {
 	applyFilters({ preserveArticle });
 }
 
+/**
+ * @param {Feed} feed
+ * @param {string} rawXml
+ * @param {{ complete?: boolean, preserveArticle?: boolean, nextPage?: number }} [options]
+ */
 function hydrateFeed(feed, rawXml, {
 	complete = false,
 	preserveArticle = false,
@@ -350,6 +418,11 @@ function hydrateFeed(feed, rawXml, {
 	updateFeedUi({ preserveArticle });
 }
 
+/**
+ * @param {Feed} feedPage
+ * @param {{ preserveArticle?: boolean }} [options]
+ * @returns {{ added: number, updated: number }}
+ */
 function overlayItems(feedPage, { preserveArticle = true } = {}) {
 	if (!state.feed) {
 		hydrateFeed({ ...feedPage, items: [...feedPage.items] }, '', {
@@ -392,6 +465,7 @@ function overlayItems(feedPage, { preserveArticle = true } = {}) {
 	return { added, updated };
 }
 
+/** @returns {Promise<IDBDatabase>} */
 function openDb() {
 	return new Promise((resolve, reject) => {
 		if (!('indexedDB' in window)) {
@@ -411,6 +485,7 @@ function openDb() {
 	});
 }
 
+/** @returns {Promise<CachedFeed | null>} */
 async function readCache() {
 	try {
 		const db = await openDb();
@@ -418,7 +493,10 @@ async function readCache() {
 			const tx = db.transaction(STORE_NAME, 'readonly');
 			const request = tx.objectStore(STORE_NAME).get(FEED_URL);
 			request.onerror = () => reject(request.error);
-			request.onsuccess = () => resolve(request.result ?? null);
+			request.onsuccess = () =>
+				resolve(
+					/** @type {CachedFeed | null} */ (request.result ?? null),
+				);
 			tx.oncomplete = () => db.close();
 		});
 	} catch {
@@ -426,6 +504,7 @@ async function readCache() {
 	}
 }
 
+/** @param {boolean} [complete] */
 async function writeCache(complete = state.cacheComplete) {
 	if (!state.feed) return;
 	try {
@@ -441,7 +520,7 @@ async function writeCache(complete = state.cacheComplete) {
 				feed: state.feed,
 			}, FEED_URL);
 			tx.onerror = () => reject(tx.error);
-			tx.oncomplete = resolve;
+			tx.oncomplete = () => resolve(undefined);
 		});
 		db.close();
 	} catch {
@@ -449,6 +528,10 @@ async function writeCache(complete = state.cacheComplete) {
 	}
 }
 
+/**
+ * @param {number} page
+ * @returns {Promise<{ url: string, xmlText: string, feed: Feed } | null>}
+ */
 function fetchFeedPage(page) {
 	const url = new URL(FEED_URL);
 	if (page > 1) url.searchParams.set('paged', String(page));
@@ -490,14 +573,16 @@ function fetchFeedPage(page) {
 	});
 }
 
+/** @returns {Promise<void>} */
 function nextFrame() {
-	return new Promise(resolve => requestAnimationFrame(() => resolve()));
+	return new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
 }
 
 function hasActiveHistoryQuery() {
 	return Boolean(el.search.value.trim() || el.typeFilter.value);
 }
 
+/** @param {number} [page] */
 async function loadHistoricalPage(page = state.nextPage) {
 	if (state.cacheComplete || state.loadingOlder) return false;
 
@@ -722,13 +807,14 @@ function start() {
 
 el.refreshBtn.addEventListener('click', () => void refreshLatest());
 
+/** @type {number | null} */
 let searchTimer = null;
 el.search.addEventListener('input', () => {
 	applyFilters();
-	clearTimeout(searchTimer);
+	if (searchTimer !== null) window.clearTimeout(searchTimer);
 
 	if (el.search.value.trim()) {
-		searchTimer = setTimeout(() => void loadAllHistory(), 120);
+		searchTimer = window.setTimeout(() => void loadAllHistory(), 120);
 	} else {
 		void ensureScrollable();
 	}

@@ -1,9 +1,9 @@
 // @ts-check
 
-import { decodeEntities, FEED_URL, parseFeed } from '@actionlint/changelog-feed';
+import { decodeEntities, FEED_URL, parseFeed } from '@kjlint/changelog-rss/feed';
 
 /** @typedef {import('@actions/github-script').AsyncFunctionArguments} AsyncFunctionArguments */
-/** @typedef {import('@actionlint/changelog-feed').FeedItem} FeedItem */
+/** @typedef {import('@kjlint/changelog-rss/feed').FeedItem} FeedItem */
 
 /**
  * @typedef ChangelogEntry
