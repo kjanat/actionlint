@@ -2,4 +2,4 @@
 // the module it is checked out inside. Standard library only, hence no require.
 module npm-packages
 
-go 1.26
+go 1.27
