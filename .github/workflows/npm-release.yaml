@@ -154,14 +154,16 @@ jobs:
 
   # The leaves first: the facade pins them exactly, so publishing it before them
   # would leave a window where installing it cannot resolve a binary. One job per
-  # package, so each gets its own deployment and its own npm URL.
+  # package, so each records its own deployment and its own npm URL, but they all
+  # deploy to the npm environment rather than taking one each: an environment
+  # secret belongs to exactly one environment, and NPM_TOKEN lives on this one.
   platforms:
     name: publish ${{ matrix.pkg }}
     needs: build
     runs-on: ubuntu-latest
     permissions: { contents: read, id-token: write }
     environment:
-      name: npm ${{ matrix.pkg }}
+      name: npm
       url: ${{ steps.publish.outputs.url }}
     strategy:
       fail-fast: false
