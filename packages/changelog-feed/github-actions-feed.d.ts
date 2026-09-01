@@ -30,6 +30,13 @@ export interface Feed {
 
 export const FEED_URL: string;
 
+export interface Block {
+	attributes: string;
+	inner: string;
+}
+
+export function blocks(source: string, tag: string): Generator<Block>;
+
 export function decodeEntities(value: string): string;
 
 export function parseFeed(xmlText: string): Feed;

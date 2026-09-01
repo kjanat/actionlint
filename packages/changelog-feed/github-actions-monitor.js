@@ -1,6 +1,6 @@
 // @ts-check
 
-import { decodeEntities, FEED_URL, parseFeed } from './github-actions-feed.js';
+import { blocks, decodeEntities, FEED_URL, parseFeed } from './github-actions-feed.js';
 
 /** @typedef {import('@actions/github-script').AsyncFunctionArguments} AsyncFunctionArguments */
 /** @typedef {Pick<AsyncFunctionArguments, 'github' | 'context' | 'core'>} RunArguments */
@@ -32,8 +32,23 @@ export function marker(guid) {
 }
 
 /** @param {string} html */
+function stripTags(html) {
+	let text = '';
+	let from = 0;
+
+	for (;;) {
+		const start = html.indexOf('<', from);
+		if (start === -1) return text + html.slice(from);
+		const end = html.indexOf('>', start + 1);
+		if (end === -1) return text + html.slice(from);
+		text += `${html.slice(from, start)} `;
+		from = end + 1;
+	}
+}
+
+/** @param {string} html */
 function plainText(html) {
-	return decodeEntities(html.replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
+	return decodeEntities(stripTags(html)).replace(/\s+/g, ' ').trim();
 }
 
 /**
@@ -42,7 +57,7 @@ function plainText(html) {
  * @param {string} description
  */
 function summarize(description) {
-	const paragraphs = [...description.matchAll(/<p>([\s\S]*?)<\/p>/g)].map((match) => plainText(match[1]));
+	const paragraphs = [...blocks(description, 'p')].map((block) => plainText(block.inner));
 	const lead = paragraphs.find((paragraph) => paragraph !== '' && !paragraph.startsWith('The post '));
 	return lead ?? plainText(description);
 }

@@ -76,14 +76,11 @@ function unwrap(value) {
  */
 
 /**
- * Walk every <tag>…</tag> block. Each search resumes where the previous block
- * ended, so a document of unclosed tags costs one pass rather than one per tag.
- *
  * @param {string} source
  * @param {string} tag
  * @returns {Generator<Block>}
  */
-function* blocks(source, tag) {
+export function* blocks(source, tag) {
 	const open = `<${tag}`;
 	const close = `</${tag}>`;
 	let from = 0;
