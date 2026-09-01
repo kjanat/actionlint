@@ -85,270 +85,45 @@ function categories(item) {
 }
 
 function sanitizeHtml(input) {
-	const doc = new DOMParser().parseFromString(input || '', 'text/html');
-	const blocked = new Set([
-		'script',
-		'style',
-		'iframe',
-		'object',
-		'embed',
-		'form',
-		'input',
-		'button',
-		'textarea',
-		'select',
-		'meta',
-		'base',
-	]);
+	const container = document.createElement('div');
 
-	[...doc.body.querySelectorAll('*')].forEach(node => {
-		const tag = node.tagName.toLowerCase();
-		if (blocked.has(tag)) {
-			node.remove();
-			return;
-		}
+	if (typeof container.setHTML === 'function') {
+		container.setHTML(input || '');
+	} else {
+		// Older browsers get readable plain text instead of unsanitized markup.
+		container.textContent = input || '';
+	}
 
-		[...node.attributes].forEach(attr => {
-			const name = attr.name.toLowerCase();
-			const value = attr.value.trim();
-
-			if (name.startsWith('on') || name === 'srcdoc') {
-				node.removeAttribute(attr.name);
-				return;
-			}
-
-			if (
-				(name === 'href' || name === 'src' || name === 'poster')
-				&& /^\s*(javascript|data:text\/html)/i.test(value)
-			) {
-				node.removeAttribute(attr.name);
-			}
-		});
-
-		if (tag === 'a') {
-			node.setAttribute('target', '_blank');
-			node.setAttribute('rel', 'noopener noreferrer');
-		}
-
-		if (tag === 'video') {
-			node.setAttribute('controls', '');
-			node.removeAttribute('autoplay');
-		}
-
-		if (tag === 'img') {
-			node.setAttribute('loading', 'lazy');
-			node.setAttribute('decoding', 'async');
-		}
+	container.querySelectorAll('a').forEach(node => {
+		node.target = '_blank';
+		node.rel = 'noopener noreferrer';
 	});
 
-	return doc.body.innerHTML;
+	container.querySelectorAll('video').forEach(node => {
+		node.controls = true;
+		node.autoplay = false;
+	});
+
+	container.querySelectorAll('img').forEach(node => {
+		node.loading = 'lazy';
+		node.decoding = 'async';
+	});
+
+	const fragment = document.createDocumentFragment();
+	fragment.append(...container.childNodes);
+	return fragment;
 }
 
-function formatHtmlFragment(htmlText, baseDepth = 0) {
-	const doc = new DOMParser().parseFromString(
-		htmlText || '',
-		'text/html',
-	);
-	const lines = [];
-	const voidTags = new Set([
-		'area',
-		'base',
-		'br',
-		'col',
-		'embed',
-		'hr',
-		'img',
-		'input',
-		'link',
-		'meta',
-		'param',
-		'source',
-		'track',
-		'wbr',
-	]);
-
-	function attrs(node) {
-		return [...node.attributes].map(attr =>
-			` ${attr.name}="${attr.value.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"`
-		).join('');
+function safeArticleUrl(value) {
+	try {
+		const href = new URL(value, FEED_URL).href;
+		return href.startsWith('https://github.blog/') ? href : '';
+	} catch {
+		return '';
 	}
-
-	function walk(node, depth) {
-		const pad = '  '.repeat(depth);
-
-		if (node.nodeType === Node.TEXT_NODE) {
-			const value = node.nodeValue.replace(/\s+/g, ' ').trim();
-			if (value) lines.push(pad + value);
-			return;
-		}
-
-		if (node.nodeType === Node.COMMENT_NODE) {
-			lines.push(`${pad}<!--${node.nodeValue}-->`);
-			return;
-		}
-
-		if (node.nodeType !== Node.ELEMENT_NODE) return;
-
-		const tag = node.tagName.toLowerCase();
-		const opening = `<${tag}${attrs(node)}>`;
-		if (voidTags.has(tag)) {
-			lines.push(pad + opening);
-			return;
-		}
-
-		const children = [...node.childNodes];
-		const onlyText = children.length === 1
-			&& children[0].nodeType === Node.TEXT_NODE;
-		const textValue = onlyText
-			? children[0].nodeValue.replace(/\s+/g, ' ').trim()
-			: '';
-
-		if (onlyText && textValue) {
-			lines.push(`${pad}${opening}${textValue}</${tag}>`);
-			return;
-		}
-
-		lines.push(pad + opening);
-		for (const child of children) walk(child, depth + 1);
-		lines.push(`${pad}</${tag}>`);
-	}
-
-	for (const child of [...doc.body.childNodes]) walk(child, baseDepth);
-	return lines.join('\n');
 }
 
-function formatXml(xmlText) {
-	const source = String(xmlText || '').trim();
-	if (!source) return '';
-
-	const doc = new DOMParser().parseFromString(
-		source,
-		'application/xml',
-	);
-	if (doc.querySelector('parsererror')) {
-		// Fall back to the original source rather than mangling malformed XML.
-		return source;
-	}
-
-	const lines = [];
-
-	function xmlAttrs(node) {
-		return [...node.attributes].map(attr =>
-			` ${attr.name}="${attr.value.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"`
-		).join('');
-	}
-
-	function walk(node, depth) {
-		const pad = '  '.repeat(depth);
-
-		if (node.nodeType === Node.PROCESSING_INSTRUCTION_NODE) {
-			lines.push(`${pad}<?${node.nodeName} ${node.nodeValue}?>`);
-			return;
-		}
-
-		if (node.nodeType === Node.COMMENT_NODE) {
-			lines.push(`${pad}<!--${node.nodeValue}-->`);
-			return;
-		}
-
-		if (node.nodeType === Node.CDATA_SECTION_NODE) {
-			const value = node.nodeValue || '';
-			const trimmed = value.trim();
-
-			if (/<[A-Za-z][\s\S]*>/.test(trimmed)) {
-				lines.push(`${pad}<![CDATA[`);
-				const prettyHtml = formatHtmlFragment(trimmed, depth + 1);
-				if (prettyHtml) lines.push(prettyHtml);
-				lines.push(`${pad}]]>`);
-			} else if (trimmed) {
-				lines.push(`${pad}<![CDATA[${trimmed}]]>`);
-			} else {
-				lines.push(`${pad}<![CDATA[]]>`);
-			}
-			return;
-		}
-
-		if (node.nodeType === Node.TEXT_NODE) {
-			const value = node.nodeValue.replace(/\s+/g, ' ').trim();
-			if (value) lines.push(pad + value);
-			return;
-		}
-
-		if (node.nodeType !== Node.ELEMENT_NODE) return;
-
-		const name = node.tagName;
-		const opening = `<${name}${xmlAttrs(node)}>`;
-		const children = [...node.childNodes].filter(child => child.nodeType !== Node.TEXT_NODE || child.nodeValue.trim());
-
-		if (!children.length) {
-			lines.push(`${pad}<${name}${xmlAttrs(node)}/>`);
-			return;
-		}
-
-		if (
-			children.length === 1
-			&& children[0].nodeType === Node.TEXT_NODE
-		) {
-			const value = children[0].nodeValue.replace(/\s+/g, ' ').trim();
-			lines.push(`${pad}${opening}${value}</${name}>`);
-			return;
-		}
-
-		if (
-			children.length === 1
-			&& children[0].nodeType === Node.CDATA_SECTION_NODE
-			&& !/<[A-Za-z][\s\S]*>/.test(children[0].nodeValue.trim())
-		) {
-			lines.push(
-				`${pad}${opening}<![CDATA[${children[0].nodeValue.trim()}]]></${name}>`,
-			);
-			return;
-		}
-
-		lines.push(pad + opening);
-		for (const child of children) walk(child, depth + 1);
-		lines.push(`${pad}</${name}>`);
-	}
-
-	if (doc.xmlVersion) {
-		lines.push(
-			`<?xml version="${doc.xmlVersion}" encoding="${doc.xmlEncoding || 'UTF-8'}"?>`,
-		);
-	}
-
-	if (doc.doctype) {
-		let d = `<!DOCTYPE ${doc.doctype.name}`;
-		if (doc.doctype.publicId) d += ` PUBLIC "${doc.doctype.publicId}"`;
-		if (doc.doctype.systemId) d += ` "${doc.doctype.systemId}"`;
-		d += '>';
-		lines.push(d);
-	}
-
-	walk(doc.documentElement, 0);
-	return lines.join('\n');
-}
-
-function formatRawPages(rawXml) {
-	const text = String(rawXml || '');
-	const chunks = text.split(/(?=<!-- Feed page \d+ -->)/g).filter(
-		chunk => chunk.trim(),
-	);
-
-	return chunks.map(chunk => {
-		const match = chunk.match(
-			/^\s*(<!-- Feed page \d+ -->)\s*([\s\S]*)$/,
-		);
-		if (!match) return formatXml(chunk);
-		const [, header, xml] = match;
-		return `${header}\n${formatXml(xml)}`;
-	}).join('\n\n');
-}
-
-function parseFeed(xmlText) {
-	const doc = new DOMParser().parseFromString(
-		xmlText,
-		'application/xml',
-	);
+function parseFeed(doc) {
 	const parseError = doc.querySelector('parsererror');
 	if (parseError) {
 		throw new Error(parseError.textContent.replace(/\s+/g, ' ').trim());
@@ -419,57 +194,15 @@ function clearError() {
 	el.errorBox.textContent = '';
 }
 
-function loadXml(xmlText, sourceName = 'feed.xml') {
-	try {
-		const feed = parseFeed(xmlText);
-		state = {
-			rawXml: xmlText,
-			feed,
-			filtered: feed.items.slice(),
-			selectedId: feed.items[0]?.id ?? null,
-			rawVisible: false,
-		};
-
-		el.feedTitle.textContent = feed.title;
-		el.feedDescription.textContent = feed.description;
-		el.feedStats.textContent = `${feed.items.length} items`
-			+ (feed.lastBuildDate
-				? ` · built ${formatDate(feed.lastBuildDate)}`
-				: '')
-			+ ` · ${sourceName}`;
-		el.feedMeta.classList.add('visible');
-		schedulePaneHeightSync();
-
-		fillSelect(
-			el.typeFilter,
-			unique(feed.items.flatMap(i => i.types)),
-			'All types',
-		);
-
-		el.search.disabled = false;
-		el.typeFilter.disabled = false;
-		el.rawBtn.disabled = false;
-		el.rawBtn.textContent = 'Raw XML';
-
-		el.raw.textContent = formatXml(xmlText);
-		el.raw.classList.remove('visible');
-		el.article.style.display = '';
-		applyFilters();
-	} catch (error) {
-		showError(error instanceof Error ? error.message : String(error));
-	}
-}
-
 function itemSearchText(item) {
-	const temp = document.createElement('div');
-	temp.innerHTML = sanitizeHtml(item.content);
+	const content = sanitizeHtml(item.content);
 	return [
 		item.title,
 		item.author,
 		item.pubDate,
 		item.types.join(' '),
 		item.labels.join(' '),
-		temp.textContent || '',
+		content.textContent || '',
 	].join(' ').toLowerCase();
 }
 
@@ -566,25 +299,30 @@ function renderArticle() {
 	const item = state.feed.items.find(i => i.id === state.selectedId);
 	if (!item) {
 		el.article.className = 'empty';
-		el.article.innerHTML = 'No entry selected.';
+		el.article.textContent = 'No entry selected.';
 		return;
 	}
 
-	const safe = sanitizeHtml(item.content);
+	const header = document.createElement('header');
+	header.className = 'article-head';
+
+	const title = document.createElement('h2');
+	title.textContent = item.title;
+
+	const meta = document.createElement('div');
+	meta.className = 'meta';
+
+	const actions = document.createElement('div');
+	actions.className = 'article-actions';
+
+	header.append(title, meta, actions);
+
+	const content = document.createElement('article');
+	content.className = 'article-content';
 
 	el.article.className = '';
-	el.article.innerHTML = `
-          <header class="article-head">
-            <h2></h2>
-            <div class="meta"></div>
-            <div class="article-actions"></div>
-          </header>
-          <article class="article-content"></article>
-        `;
+	el.article.replaceChildren(header, content);
 
-	el.article.querySelector('h2').textContent = item.title;
-
-	const meta = el.article.querySelector('.meta');
 	const parts = [
 		item.author ? `By ${item.author}` : '',
 		item.pubDate ? formatDate(item.pubDate) : '',
@@ -604,18 +342,24 @@ function renderArticle() {
 		meta.append(span);
 	});
 
-	const actions = el.article.querySelector('.article-actions');
-	if (item.link) {
+	const href = safeArticleUrl(item.link);
+	if (href) {
 		const link = document.createElement('a');
-		link.href = item.link;
+		link.href = href;
 		link.target = '_blank';
 		link.rel = 'noopener noreferrer';
 		link.textContent = 'Open original ↗';
 		actions.append(link);
 	}
 
-	const content = el.article.querySelector('.article-content');
-	content.innerHTML = safe || '<p>No content in this entry.</p>';
+	const safeContent = sanitizeHtml(item.content);
+	if (safeContent.hasChildNodes()) {
+		content.append(safeContent);
+	} else {
+		const empty = document.createElement('p');
+		empty.textContent = 'No content in this entry.';
+		content.append(empty);
+	}
 }
 
 const FEED_URL = 'https://github.blog/changelog/label/actions/feed/';
@@ -655,7 +399,7 @@ function updateFeedUi({ preserveArticle = false } = {}) {
 	el.typeFilter.disabled = false;
 	el.rawBtn.disabled = false;
 
-	el.raw.textContent = formatRawPages(state.rawXml);
+	el.raw.textContent = state.rawXml;
 	applyFilters({ preserveArticle });
 }
 
@@ -777,24 +521,49 @@ async function writeCache(complete = state.cacheComplete) {
 	}
 }
 
-async function fetchFeedPage(page) {
+function fetchFeedPage(page) {
 	const url = new URL(FEED_URL);
 	if (page > 1) url.searchParams.set('paged', String(page));
+	url.searchParams.set('_', String(Date.now()));
 
-	const response = await fetch(url.href, {
-		cache: 'no-store',
-		headers: {
-			'Accept': 'application/rss+xml, application/xml, text/xml, */*',
-		},
+	return new Promise((resolve, reject) => {
+		const request = new XMLHttpRequest();
+		request.open('GET', url.href);
+		request.overrideMimeType('application/rss+xml');
+		request.setRequestHeader(
+			'Accept',
+			'application/rss+xml, application/xml, text/xml, */*',
+		);
+		request.timeout = 30_000;
+
+		request.onload = () => {
+			if (page > 1 && request.status === 404) {
+				resolve(null);
+				return;
+			}
+			if (request.status < 200 || request.status >= 300) {
+				reject(new Error(`HTTP ${request.status} ${request.statusText}`));
+				return;
+			}
+			if (!request.responseXML) {
+				reject(new Error('The response was not valid XML.'));
+				return;
+			}
+
+			try {
+				resolve({
+					url: url.href,
+					xmlText: request.responseText,
+					feed: parseFeed(request.responseXML),
+				});
+			} catch (error) {
+				reject(error);
+			}
+		};
+		request.onerror = () => reject(new Error('Network request failed.'));
+		request.ontimeout = () => reject(new Error('The feed request timed out.'));
+		request.send();
 	});
-
-	if (!response.ok) {
-		if (page > 1 && response.status === 404) return null;
-		throw new Error(`HTTP ${response.status} ${response.statusText}`);
-	}
-
-	const xmlText = await response.text();
-	return { url: url.href, xmlText, feed: parseFeed(xmlText) };
 }
 
 function nextFrame() {
@@ -825,7 +594,7 @@ async function loadHistoricalPage(page = state.nextPage) {
 
 		// Raw XML is diagnostic only; keep the pages that were actually fetched this session.
 		state.rawXml += `${state.rawXml ? '\n\n' : ''}<!-- Feed page ${page} -->\n${result.xmlText}`;
-		el.raw.textContent = formatRawPages(state.rawXml);
+		el.raw.textContent = state.rawXml;
 
 		if (
 			result.feed.items.length < previousPageSize
@@ -907,7 +676,7 @@ async function loadAllHistory() {
 			state.nextPage = page + 1;
 
 			state.rawXml += `${state.rawXml ? '\n\n' : ''}<!-- Feed page ${page} -->\n${result.xmlText}`;
-			el.raw.textContent = formatRawPages(state.rawXml);
+			el.raw.textContent = state.rawXml;
 
 			if (result.feed.items.length < previousPageSize) {
 				state.cacheComplete = true;
@@ -958,7 +727,7 @@ async function refreshLatest() {
 		} else {
 			overlayItems(first.feed, { preserveArticle: true });
 			state.rawXml = `<!-- Feed page 1 -->\n${first.xmlText}`;
-			el.raw.textContent = formatRawPages(state.rawXml);
+			el.raw.textContent = state.rawXml;
 		}
 
 		state.pageSize = Math.max(1, first.feed.items.length);
@@ -985,7 +754,7 @@ async function refreshLatest() {
 				state.nextPage = Math.max(state.nextPage, page + 1);
 
 				state.rawXml += `\n\n<!-- Feed page ${page} -->\n${result.xmlText}`;
-				el.raw.textContent = formatRawPages(state.rawXml);
+				el.raw.textContent = state.rawXml;
 
 				if (
 					overlapsCache || result.feed.items.length < state.pageSize
