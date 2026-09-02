@@ -1,6 +1,7 @@
 /.github/actionlint.yaml
 /.github/actionlint.yml
 /.idea
+/.playwright-mcp/
 /.worktrees/
 /actionlint
 /actionlint-workflow-ast
@@ -15,6 +16,6 @@
 /man/actionlint.1
 /man/actionlint.1.html
 /node_modules
+/packages/*/dist/
 /playground-dist
 /vendor/
-/packages/*/dist/
