@@ -1,6 +1,6 @@
 {
   "name": "@kjlint/changelog-rss",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "RSS parser, browser reader, and issue monitor for the GitHub Actions changelog feed",
   "homepage": "https://actionlint.kjanat.dev/github-changelog",
   "repository": "kjanat/actionlint",

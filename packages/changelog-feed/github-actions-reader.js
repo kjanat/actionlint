@@ -366,6 +366,35 @@ const DB_NAME = 'github-actions-changelog-reader';
 const DB_VERSION = 1;
 const STORE_NAME = 'feeds';
 
+/**
+ * @param {number} page
+ * @param {string} xmlText
+ */
+function setRawPage(page, xmlText) {
+	const marker = `<!-- Feed page ${page} -->`;
+	const block = `${marker}\n${xmlText}`;
+
+	if (!state.rawXml) {
+		state.rawXml = block;
+	} else {
+		if (!state.rawXml.startsWith('<!-- Feed page ')) {
+			state.rawXml = `<!-- Feed page 1 -->\n${state.rawXml}`;
+		}
+
+		const start = state.rawXml.indexOf(marker);
+		if (start === -1) {
+			state.rawXml += `\n\n${block}`;
+		} else {
+			const next = state.rawXml.indexOf('\n\n<!-- Feed page ', start + marker.length);
+			state.rawXml = next === -1
+				? `${state.rawXml.slice(0, start)}${block}`
+				: `${state.rawXml.slice(0, start)}${block}${state.rawXml.slice(next)}`;
+		}
+	}
+
+	el.raw.textContent = state.rawXml;
+}
+
 /** @param {FeedItem[]} items */
 function sortItems(items) {
 	items.sort((a, b) => {
@@ -608,9 +637,7 @@ async function loadHistoricalPage(page = state.nextPage) {
 		state.pageSize = Math.max(1, result.feed.items.length);
 		state.nextPage = Math.max(state.nextPage, page + 1);
 
-		// Raw XML is diagnostic only; keep the pages that were actually fetched this session.
-		state.rawXml += `${state.rawXml ? '\n\n' : ''}<!-- Feed page ${page} -->\n${result.xmlText}`;
-		el.raw.textContent = state.rawXml;
+		setRawPage(page, result.xmlText);
 
 		if (
 			result.feed.items.length < previousPageSize
@@ -704,7 +731,7 @@ async function loadAllHistory() {
 				feedPages.push(result.feed);
 				state.pageSize = Math.max(1, result.feed.items.length);
 				state.nextPage = page + 1;
-				state.rawXml += `${state.rawXml ? '\n\n' : ''}<!-- Feed page ${page} -->\n${result.xmlText}`;
+				setRawPage(page, result.xmlText);
 
 				if (result.feed.items.length < previousPageSize) {
 					state.cacheComplete = true;
@@ -754,7 +781,7 @@ async function refreshLatest() {
 		if (!state.feed) {
 			hydrateFeed(
 				{ ...first.feed, items: [...first.feed.items] },
-				first.xmlText,
+				'',
 				{
 					complete: false,
 					preserveArticle: false,
@@ -763,9 +790,8 @@ async function refreshLatest() {
 			);
 		} else {
 			overlayItems(first.feed, { preserveArticle: true });
-			state.rawXml = `<!-- Feed page 1 -->\n${first.xmlText}`;
-			el.raw.textContent = state.rawXml;
 		}
+		setRawPage(1, first.xmlText);
 
 		state.pageSize = Math.max(1, first.feed.items.length);
 		state.nextPage = Math.max(2, state.nextPage);
@@ -782,8 +808,7 @@ async function refreshLatest() {
 				overlayItems(result.feed, { preserveArticle: true });
 				state.nextPage = Math.max(state.nextPage, page + 1);
 
-				state.rawXml += `\n\n<!-- Feed page ${page} -->\n${result.xmlText}`;
-				el.raw.textContent = state.rawXml;
+				setRawPage(page, result.xmlText);
 
 				if (
 					overlapsCache || result.feed.items.length < state.pageSize
