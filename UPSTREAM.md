@@ -7,21 +7,20 @@ This document inventories open issues and pull requests in [`rhysd/actionlint`](
 <!-- date -u +%Y-%m-%dT%H:%M:%SZ -->
 
 - Captured: `2026-08-20T14:03:46Z` (139 issues, 45 pull requests)
-- Reconciled: `2026-08-28T02:08:28Z` against fork [`e3e06140fb59504bafef5cf5afc5fb9d2416ec5a`](https://github.com/kjanat/actionlint/tree/e3e06140fb59504bafef5cf5afc5fb9d2416ec5a)
+- Reconciled: `2026-09-02T10:56:48Z` against fork [`42f39ea1aa8f9b0c33e003a0f512905b7cec1066`](https://github.com/kjanat/actionlint/tree/42f39ea1aa8f9b0c33e003a0f512905b7cec1066)
 - Upstream default branch: `main@011a6d15e749bb3f2d771eed9c7aa0e7e3e10ee7`
-- Fork remote default branch: `main@e3e06140fb59504bafef5cf5afc5fb9d2416ec5a`
-- Local checkout: `main@e3e06140fb59504bafef5cf5afc5fb9d2416ec5a`
+- Fork remote default branch: `master@4ae4ab14222e2b27c4d924dcc4070d9319b160fb`
+- Local checkout: `fix/oidc-claims@42f39ea1aa8f9b0c33e003a0f512905b7cec1066`
 - Open upstream issues: **140**
-- Open upstream pull requests: **47**
-- Local reconciliation: **completed** for the 184 captured items. Five later items sit under `Unreviewed upstream items`.
+- Open upstream pull requests: **48**
+- Local reconciliation: **completed** for all 189 inventoried items.
 
 The branch SHAs only identify the snapshot. They do not establish whether an individual change is present; each row must be checked semantically against the current fork.
 
 ## How to use this tracker
 
-- Add newly discovered items under `Unreviewed upstream items` with a clear checkbox.
-- Check the box only after recording a local disposition and concrete evidence.
-- Move each reviewed row into exactly one local-disposition section.
+- Review new items before adding them to the tracker.
+- Add each reviewed item once, checked, under one local disposition with concrete evidence.
 - Use one of these local dispositions: `Implemented locally`, `Partially implemented`, `Still affects fork`, `Candidate to port`, `Needs reproduction`, `Not applicable`, or `Superseded/duplicate`.
 - When a row is promoted to a local issue or pull request, mirror its disposition with the matching label: `Still affects fork` → `upstream:still-affects`, `Partially implemented` → `upstream:partial`, `Candidate to port` → `upstream:candidate-to-port`, `Not applicable` → `upstream:not-applicable`. `Implemented locally`, `Needs reproduction`, and `Superseded/duplicate` carry no label and stay in this document only.
 - Update the label whenever the disposition changes, and move the row in the same change, so the labels and this document cannot disagree.
@@ -40,9 +39,9 @@ Items are ordered by local disposition first, then retain their original upstrea
 | Partially implemented | 2             | 4      | 6     | Some requested behavior exists locally, but material work remains.          |
 | Candidate to port     | 2             | 36     | 38    | Useful upstream work or request that needs a local implementation decision. |
 | Needs reproduction    | 1             | 7      | 8     | Evidence is insufficient or no longer reproduces as reported.               |
-| Implemented locally   | 28            | 50     | 78    | Equivalent or broader behavior is already present in the fork.              |
-| Superseded/duplicate  | 6             | 15     | 21    | Tracked by a newer or canonical item.                                       |
-| Not applicable        | 6             | 17     | 23    | Invalid, external, operational, or outside this fork scope.                 |
+| Implemented locally   | 31            | 50     | 81    | Equivalent or broader behavior is already present in the fork.              |
+| Superseded/duplicate  | 6             | 16     | 22    | Tracked by a newer or canonical item.                                       |
+| Not applicable        | 7             | 17     | 24    | Invalid, external, operational, or outside this fork scope.                 |
 
 ## Still affects fork (10)
 
@@ -157,14 +156,17 @@ Evidence is insufficient or no longer reproduces as reported.
 | [x]     | [#349](https://github.com/rhysd/actionlint/issues/349) | Exclude ${{ insert }} from expression linter                                                      | @TheFox0x7    | 2023   | —                | —                | 2023-09-03 | `${{ insert }}` is undocumented for GitHub Actions and absent from the local expression language. Before accepting a magic identifier, current github.com runner behavior and scope need a reproducible, authoritative basis.                |
 | [x]     | [#172](https://github.com/rhysd/actionlint/issues/172) | Property check case sensitive?                                                                    | @lejtemxviw   | 2022   | —                | —                | 2022-08-13 | Property lookup is intentionally case-insensitive and normalizes both declared and accessed names. The issue supplies only a diagnostic, not the workflow/action metadata needed to demonstrate a mismatch.                                  |
 
-## Implemented locally (78)
+## Implemented locally (81)
 
 Equivalent or broader behavior is already present in the fork.
 
-### Pull requests (28)
+### Pull requests (31)
 
 | Checked | PR                                                   | Title                                                                                                     | Author                | State            | Merge    | Review            | Closing issues                                         | Updated    | Completed in | Evidence / notes                                                                                                                                                                                                                                                                      |
 | ------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | --------------------- | ---------------- | -------- | ----------------- | ------------------------------------------------------ | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [x]     | [#732](https://github.com/rhysd/actionlint/pull/732) | Support the `$/` self-repository `uses:` syntax                                                           | @ArloL                | Ready for review | UNSTABLE | -                 | [#711](https://github.com/rhysd/actionlint/issues/711) | 2026-09-01 | v1.9.0       | Local `1c3a18e` supports `$/` action and reusable-workflow references with tests and docs.                                                                                                                                                                                            |
+| [x]     | [#731](https://github.com/rhysd/actionlint/pull/731) | deps: bump golang.org/x/net to v0.55.0 (5 reachable advisories)                                           | @Portll               | Ready for review | UNSTABLE | -                 | -                                                      | 2026-08-26 | v1.8.0       | Local `47ff132` already uses newer `x/net` v0.58.0 and `x/sys` v0.47.0.                                                                                                                                                                                                               |
+| [x]     | [#730](https://github.com/rhysd/actionlint/pull/730) | fix: Upgrade go.yaml.in/yaml/v4 to v4.0.0-rc.6 and switch to the new LoadError API                        | @paulojmdias          | Ready for review | UNSTABLE | -                 | -                                                      | 2026-08-25 | v1.8.0       | Local `47ff132` uses rc.6, `yaml.LoadErrors`, and updated parser fixtures.                                                                                                                                                                                                            |
 | [x]     | [#727](https://github.com/rhysd/actionlint/pull/727) | Treat a matrix scalar tagged !!str as a string                                                            | @hdimer               | Ready for review | UNSTABLE | —                 | [#250](https://github.com/rhysd/actionlint/issues/250) | 2026-08-19 | Unreleased   | Local pull request #38 types matrix scalars from the YAML tag. `parseRawYAMLValue` keeps `Tag`; a quoted numeric string is `!!str`. Upstream commit `ff1d88c` is not an ancestor.                                                                                                     |
 | [x]     | [#724](https://github.com/rhysd/actionlint/pull/724) | Define jobs.<job_id>.result in workflow_call outputs                                                      | @Eljees               | Ready for review | UNSTABLE | —                 | [#343](https://github.com/rhysd/actionlint/issues/343) | 2026-08-15 | v1.9.0       | Local commit `1c3a18e` adds `jobs.<job_id>.result` as a string, the same regression fixture, documentation, and changelog coverage. Upstream commit `e40fbcd` is not an ancestor, but its behavior is present.                                                                        |
 | [x]     | [#723](https://github.com/rhysd/actionlint/pull/723) | Add Ubuntu 26.04 runner label support                                                                     | @soumeh01             | Ready for review | UNSTABLE | —                 | —                                                      | 2026-08-12 | v1.8.0       | Local commit `6bdb110` already adds both `ubuntu-26.04` variants, compatibility conflicts, tests, generated documentation, and additional current runner labels. Upstream commit `bfc8e29` is not an ancestor but is covered.                                                         |
@@ -249,7 +251,7 @@ Equivalent or broader behavior is already present in the fork.
 | [x]     | [#74](https://github.com/rhysd/actionlint/issues/74)   | The env reference cannot happen on the same level                                                                                              | @chenrui333              | 2021   | bug                            | —                                                    | 2021-11-28 | v1.8.0       | Generated availability rules exclude the `env` context from workflow- and job-level `env` mappings while allowing it at step level, matching the reported scope rule.                                                       |
 | [x]     | [#49](https://github.com/rhysd/actionlint/issues/49)   | Feature Request: add rule to force `timeout-minutes`                                                                                           | @yuhr                    | 2021   | enhancement                    | —                                                    | 2025-11-22 | Unreleased   | Local pull request #44 adds the `require-job-timeout` policy check, which reports jobs that declare no `timeout-minutes`.                                                                                                   |
 
-## Superseded/duplicate (21)
+## Superseded/duplicate (22)
 
 Tracked by a newer or canonical item.
 
@@ -264,10 +266,11 @@ Tracked by a newer or canonical item.
 | [x]     | [#658](https://github.com/rhysd/actionlint/pull/658) | Add `code-quality` as allowed permission                 | @jkbschmid        | Ready for review | CLEAN    | —      | —                                                      | 2026-05-18 | This is the narrower predecessor of upstream #674. Local commit `1c3a18e` already implements the permission with access-level tests and documentation.                                                      |
 | [x]     | [#652](https://github.com/rhysd/actionlint/pull/652) | Fix stale metadata for `actions/create-github-app-token` | @anthonymonori    | Ready for review | CLEAN    | —      | [#648](https://github.com/rhysd/actionlint/issues/648) | 2026-06-16 | This is superseded upstream by the more complete #668. Local commit `1c3a18e` contains the current v3 `client-id` metadata and all additional inputs from that later regeneration.                          |
 
-### Issues (15)
+### Issues (16)
 
 | Checked | Issue                                                  | Title                                                                         | Author          | Opened | Labels      | Open closing PRs | Updated    | Evidence / notes                                                                                                                                                                                                                      |
 | ------- | ------------------------------------------------------ | ----------------------------------------------------------------------------- | --------------- | ------ | ----------- | ---------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [x]     | [#728](https://github.com/rhysd/actionlint/issues/728) | Request: Warn on missing permissions                                          | @mcandre        | 2026   | -           | -                | 2026-08-20 | Duplicate of #525's explicit-permissions policy request.                                                                                                                                                                              |
 | [x]     | [#687](https://github.com/rhysd/actionlint/issues/687) | group concurrency                                                             | @pelikhan       | 2026   | —           | —                | 2026-06-14 | Upstream discussion identifies this as a duplicate of #657/#680. Local commit `ce89f3d` implements both `queue` values, `single` and `max`, plus the invalid `max`/cancel combination check.                                          |
 | [x]     | [#680](https://github.com/rhysd/actionlint/issues/680) | Linter error with Concurency in github workflow                               | @AndyR-KA       | 2026   | —           | —                | 2026-06-09 | Duplicate of #657. Local `ce89f3d` accepts literal `queue: max` and validates the documented incompatibility with literal `cancel-in-progress: true`.                                                                                 |
 | [x]     | [#667](https://github.com/rhysd/actionlint/issues/667) | How to exclude/ignore agentic compiled .lock.yml workflows?                   | @cogni-ai-ee    | 2026   | —           | —                | 2026-05-19 | Path-scoped ignore configuration already provides the requested exclusion. The concrete diagnostics listed later are #647 and #657, both implemented locally, so the fork no longer needs a blanket ignore for those generated files. |
@@ -284,14 +287,15 @@ Tracked by a newer or canonical item.
 | [x]     | [#71](https://github.com/rhysd/actionlint/issues/71)   | Feature request: Provide a way to link detected issues to their documentation | @radomirbosak   | 2021   | enhancement | —                | 2021-11-19 | Upstream discussion chose unique diagnostic IDs as the prerequisite for stable documentation links. That consolidated output/API feature remains tracked as candidate #75.                                                            |
 | [x]     | [#68](https://github.com/rhysd/actionlint/issues/68)   | Feature request: always-false expressions due to event name are errors        | @webignition    | 2021   | enhancement | —                | 2021-11-18 | This is the impossible-branch half of #69's same trigger-versus-`event_name` analysis. It should be implemented and tested as one consolidated rule.                                                                                  |
 
-## Not applicable (23)
+## Not applicable (24)
 
 Invalid, external, operational, or outside this fork scope.
 
-### Pull requests (6)
+### Pull requests (7)
 
 | Checked | PR                                                   | Title                                                        | Author           | State            | Merge    | Review | Closing issues                                         | Updated    | Evidence / notes                                                                                      |
 | ------- | ---------------------------------------------------- | ------------------------------------------------------------ | ---------------- | ---------------- | -------- | ------ | ------------------------------------------------------ | ---------- | ----------------------------------------------------------------------------------------------------- |
+| [x]     | [#729](https://github.com/rhysd/actionlint/pull/729) | ci: add ProofX execution proof to release workflow           | @EslaM-X         | Ready for review | UNSTABLE | -      | -                                                      | 2026-08-22 | Ephemeral key, no release assets; local OIDC attestations bind checksums and image digests.           |
 | [x]     | [#725](https://github.com/rhysd/actionlint/pull/725) | Document Debian installation from the pkg.haus APT archive   | @barnumbirr      | Ready for review | UNSTABLE | -      | -                                                      | 2026-08-16 | `pkg.haus`: upstream install; no fork gap.                                                            |
 | [x]     | [#722](https://github.com/rhysd/actionlint/pull/722) | Mention MegaLinter in the tools integration doc              | @nvuillam        | Ready for review | UNSTABLE | -      | -                                                      | 2026-08-08 | MegaLinter runs upstream; docs would misstate fork support.                                           |
 | [x]     | [#684](https://github.com/rhysd/actionlint/pull/684) | Add `staticcheck` and `govulncheck` as tool dependencies     | @ericcornelissen | Ready for review | UNSTABLE | -      | -                                                      | 2026-06-12 | Local #27 rejected stale `govulncheck` and pointless `modernize` pins; staticcheck fix: #36.          |
@@ -325,16 +329,6 @@ Invalid, external, operational, or outside this fork scope.
 | [x]     | [#242](https://github.com/rhysd/actionlint/issues/242) | Workflows not in repository root are not detected                                                           | @AndreyNautilus     | 2022   | —                        | —                                                    | 2023-04-19 | Automatic discovery intentionally targets the current repository's canonical `.github/workflows`. Generated/template workflows elsewhere can already be linted by passing their explicit file paths or shell-expanded globs.                                                             |
 | [x]     | [#73](https://github.com/rhysd/actionlint/issues/73)   | A Visual Studio Code extension would be great                                                               | @xucian             | 2021   | enhancement, help wanted | —                                                    | 2021-11-20 | This requests a separately maintained editor extension rather than core actionlint behavior. Existing VS Code/diagnostic integrations can invoke the CLI; a native extension would be its own project.                                                                                   |
 
-## Unreviewed upstream items
-
-Opened after the 2026-08-20 capture. Check the box only after recording a local disposition and moving the row.
-
-- [ ] [#728](https://github.com/rhysd/actionlint/issues/728) Request: Warn on missing permissions
-- [ ] [#729](https://github.com/rhysd/actionlint/pull/729) ci: add ProofX execution proof to release workflow
-- [ ] [#730](https://github.com/rhysd/actionlint/pull/730) fix: Upgrade `go.yaml.in/yaml/v4` to v4.0.0-rc.6 and switch to the new LoadError API
-- [ ] [#731](https://github.com/rhysd/actionlint/pull/731) deps: bump `golang.org/x/net` to v0.55.0 (5 reachable advisories)
-- [ ] [#732](https://github.com/rhysd/actionlint/pull/732) Support the `$/` self-repository `uses:` syntax
-
 ## Archived upstream items
 
 None in the initial snapshot.
@@ -344,8 +338,8 @@ On refresh, do not silently delete reviewed rows that are no longer open upstrea
 ## Refresh procedure
 
 1. Re-query all open issues and PRs with `gh issue list --repo rhysd/actionlint --state open --limit 1000` and `gh pr list --repo rhysd/actionlint --state open --limit 1000`.
-2. Add new upstream items as unchecked rows under `Unreviewed upstream items`.
-3. After reconciliation, move each reviewed row to its local-disposition section.
+2. Review each new item, then add it to one local-disposition section.
+3. Record every reviewed row as checked with concrete local evidence.
 4. Update volatile upstream fields without overwriting local dispositions or evidence.
 5. Verify items that disappeared from the open lists with `gh issue view` or `gh pr view`, then move them to the archived section.
 6. Update the snapshot time, counts, and branch SHAs after the rows have been reconciled.
