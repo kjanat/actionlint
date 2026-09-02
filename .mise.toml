@@ -1,6 +1,9 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+
 [tools]
 actionlint                 = "latest"
 "github:kjanat/actionlint" = "latest"
+shellcheck                 = "latest"
 
 [settings]
-minimum_release_age = "0s"
+minimum_release_age_excludes = ["github:kjanat/actionlint"]
