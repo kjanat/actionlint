@@ -41,10 +41,8 @@ type RuleExpression struct {
 // NewRuleExpression creates new RuleExpression instance.
 func NewRuleExpression(actionsCache *LocalActionsCache, workflowCache *LocalReusableWorkflowCache) *RuleExpression {
 	return &RuleExpression{
-		RuleBase: RuleBase{
-			name: "expression",
-			desc: "Syntax and semantics checks for expressions embedded with ${{ }} syntax",
-		},
+		name:             "expression",
+		desc:             "Syntax and semantics checks for expressions embedded with ${{ }} syntax",
 		matrixTy:         nil,
 		stepsTy:          nil,
 		needsTy:          nil,

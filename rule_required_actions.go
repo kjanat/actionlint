@@ -79,10 +79,8 @@ type RuleRequiredActions struct {
 // NewRuleRequiredActions creates a new RuleRequiredActions instance.
 func NewRuleRequiredActions() *RuleRequiredActions {
 	return &RuleRequiredActions{
-		RuleBase: RuleBase{
-			name: "required-actions",
-			desc: "Checks that the actions listed in the \"required-actions\" policy in actionlint.yaml are used",
-		},
+		name: "required-actions",
+		desc: "Checks that the actions listed in the \"required-actions\" policy in actionlint.yaml are used",
 	}
 }
 

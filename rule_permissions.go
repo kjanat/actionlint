@@ -34,10 +34,8 @@ type RulePermissions struct {
 // NewRulePermissions creates new RulePermissions instance.
 func NewRulePermissions() *RulePermissions {
 	return &RulePermissions{
-		RuleBase: RuleBase{
-			name: "permissions",
-			desc: "Checks for permissions configuration in \"permissions:\". Permission names and permission scopes are checked",
-		},
+		name: "permissions",
+		desc: "Checks for permissions configuration in \"permissions:\". Permission names and permission scopes are checked",
 	}
 }
 

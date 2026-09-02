@@ -37,10 +37,8 @@ type RulePyflakes struct {
 
 func newRulePyflakes(cmd *externalCommand) *RulePyflakes {
 	return &RulePyflakes{
-		RuleBase: RuleBase{
-			name: "pyflakes",
-			desc: "Checks for Python script when \"shell: python\" is configured using Pyflakes",
-		},
+		name:                  "pyflakes",
+		desc:                  "Checks for Python script when \"shell: python\" is configured using Pyflakes",
 		cmd:                   cmd,
 		workflowShellIsPython: shellIsPythonKindUnspecified,
 		jobShellIsPython:      shellIsPythonKindUnspecified,
