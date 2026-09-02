@@ -605,6 +605,16 @@ func TestCompletionBashBehaviour(t *testing.T) {
 	}
 }
 
+func testCompletionLastToken(line string) string {
+	start := 0
+	for i := 0; i < len(line); i++ {
+		if line[i] == ' ' && (i == 0 || line[i-1] != '\\') {
+			start = i + 1
+		}
+	}
+	return strings.ReplaceAll(line[start:], `\ `, " ")
+}
+
 func TestCompletionFishBehaviour(t *testing.T) {
 	bin, err := exec.LookPath("fish")
 	if err != nil {
@@ -649,9 +659,12 @@ func TestCompletionFishBehaviour(t *testing.T) {
 				t.Fatalf("driving the fish completion failed: %v\n%s", err, out)
 			}
 
+			// fish 4.0 through 4.3.2 add subsequence matches and long options to the
+			// `complete -C` output for a short-option token (fish-shell 85e76ba3561).
+			token := testCompletionLastToken(tc.line)
 			var have []string
 			for line := range strings.SplitSeq(strings.TrimRight(string(out), "\n"), "\n") {
-				if cand, _, _ := strings.Cut(line, "\t"); cand != "" {
+				if cand, _, _ := strings.Cut(line, "\t"); cand != "" && strings.HasPrefix(cand, token) {
 					have = append(have, cand)
 				}
 			}
