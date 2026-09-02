@@ -129,6 +129,8 @@ jobs:
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with: { version: v2.13.1, install-only: true }
+      - name: Build through Makefile
+        run: make build SKIP_GO_GENERATE=true
       - run: make lint SKIP_GO_GENERATE=true
       - name: Lint bash scripts
         run: shellcheck ./scripts/*.bash

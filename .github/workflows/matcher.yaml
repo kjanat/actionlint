@@ -1,13 +1,9 @@
 name: Problem Matchers
 on:
   push:
-    paths:
-      - "scripts/generate-actionlint-matcher/*.mjs"
-      - "scripts/generate-actionlint-matcher/testdata/*"
-      - "testdata/examples/*.out"
-      - "testdata/err/*.out"
     branches: [main, master]
     tags-ignore: ["*"]
+  pull_request:
   workflow_dispatch:
 
 permissions: { contents: read }
