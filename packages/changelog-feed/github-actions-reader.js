@@ -68,6 +68,9 @@ let state = {
 	selectedId: null,
 };
 
+/** @type {WeakMap<FeedItem, string>} */
+const itemSearchTextCache = new WeakMap();
+
 function syncPaneHeight() {
 	if (!el.layout) return;
 
@@ -177,8 +180,11 @@ function clearError() {
 
 /** @param {FeedItem} item */
 function itemSearchText(item) {
+	const cached = itemSearchTextCache.get(item);
+	if (cached !== undefined) return cached;
+
 	const content = sanitizeHtml(item.content);
-	return [
+	const text = [
 		item.title,
 		item.author,
 		item.pubDate,
@@ -186,6 +192,8 @@ function itemSearchText(item) {
 		item.labels.join(' '),
 		content.textContent || '',
 	].join(' ').toLowerCase();
+	itemSearchTextCache.set(item, text);
+	return text;
 }
 
 /** @param {{ preserveArticle?: boolean }} [options] */
@@ -353,6 +361,7 @@ function renderArticle() {
 }
 
 const MAX_PAGES = 50;
+const HISTORY_BATCH_SIZE = 8;
 const DB_NAME = 'github-actions-changelog-reader';
 const DB_VERSION = 1;
 const STORE_NAME = 'feeds';
@@ -669,25 +678,46 @@ async function loadAllHistory() {
 
 	try {
 		while (!state.cacheComplete && state.nextPage <= MAX_PAGES) {
-			const page = state.nextPage;
-			const result = await fetchFeedPage(page);
+			const pages = Array.from(
+				{
+					length: Math.min(
+						HISTORY_BATCH_SIZE,
+						MAX_PAGES - state.nextPage + 1,
+					),
+				},
+				(_, offset) => state.nextPage + offset,
+			);
+			const results = await Promise.all(pages.map(async page => ({
+				page,
+				result: await fetchFeedPage(page),
+			})));
+			/** @type {Feed[]} */
+			const feedPages = [];
 
-			if (!result || result.feed.items.length === 0) {
-				state.cacheComplete = true;
-				break;
+			for (const { page, result } of results) {
+				if (!result || result.feed.items.length === 0) {
+					state.cacheComplete = true;
+					break;
+				}
+
+				const previousPageSize = state.pageSize;
+				feedPages.push(result.feed);
+				state.pageSize = Math.max(1, result.feed.items.length);
+				state.nextPage = page + 1;
+				state.rawXml += `${state.rawXml ? '\n\n' : ''}<!-- Feed page ${page} -->\n${result.xmlText}`;
+
+				if (result.feed.items.length < previousPageSize) {
+					state.cacheComplete = true;
+					break;
+				}
 			}
 
-			const previousPageSize = state.pageSize;
-			overlayItems(result.feed, { preserveArticle: true });
-			state.pageSize = Math.max(1, result.feed.items.length);
-			state.nextPage = page + 1;
-
-			state.rawXml += `${state.rawXml ? '\n\n' : ''}<!-- Feed page ${page} -->\n${result.xmlText}`;
-			el.raw.textContent = state.rawXml;
-
-			if (result.feed.items.length < previousPageSize) {
-				state.cacheComplete = true;
-				break;
+			const [firstPage] = feedPages;
+			if (firstPage) {
+				overlayItems({
+					...firstPage,
+					items: feedPages.flatMap(feed => feed.items),
+				}, { preserveArticle: true });
 			}
 		}
 
