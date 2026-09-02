@@ -1,9 +1,10 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 
 [tools]
-actionlint                 = "latest"
 "github:kjanat/actionlint" = "latest"
 shellcheck                 = "latest"
 
 [settings]
+# tombi trips on this, awaiting new release shortly
+# already merged: https://github.com/tombi-toml/tombi/pull/2152
 minimum_release_age_excludes = ["github:kjanat/actionlint"]
