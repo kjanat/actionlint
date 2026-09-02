@@ -34,6 +34,15 @@
     "./action": { "types": "./dist/github-actions-monitor.d.ts", "default": "./dist/github-actions-monitor.js" },
     "./package.json": "./package.json"
   },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "feed": ["./dist/github-actions-feed.d.ts"],
+      "reader": ["./dist/github-actions-reader.d.ts"],
+      "action": ["./dist/github-actions-monitor.d.ts"]
+    }
+  },
   "files": ["/dist", "/src"],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
