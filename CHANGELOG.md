@@ -2,6 +2,10 @@
 
 # Unreleased
 
+<a id="v1.14.0"></a>
+
+## [v1.14.0](https://github.com/kjanat/actionlint/releases/tag/v1.14.0) - 2026-09-02
+
 - Accept `github.artifacts` and `github.artifacts_list` as strings in expressions, avoiding false errors for current artifact command files.
 - Correct `github.retention_days` from a number to the string type documented and returned by GitHub Actions.
 - Make successful Docker action runs visible in the step log with the actionlint version, problem count, workflow-file count, and enabled external linters. A run that checks no workflow files is now visibly distinct from a clean run. Document that the action needs a reachable Docker daemon, that `ubuntu-slim` is unsupported despite including the Docker client, that standard Arm Ubuntu runners are supported, and that daemon-less runners can download the binary instead. (https://github.com/kjanat/actionlint/issues/56)
@@ -11,6 +15,8 @@
 - Pin the action's runtime image to the digest it was published as. `action.yml` names the image by tag when the release commit is made, because the image does not exist yet at that point, so the release now rewrites it to `action-{version}@sha256:...` afterwards and points the moving `v1` tag at that commit. `uses: kjanat/actionlint@v1` therefore resolves an action whose image cannot be replaced under it. The pinned commit is reachable through the major tag alone and never lands on the default branch, where a stale digest would survive the next version bump, and `uses: kjanat/actionlint@v1.14.0` still reads the tagged `action.yml`, which carries the tag reference.
 - Make `bump-version` move the `Unreleased` changelog entries into a dated section for the version it releases, so the bump commit carries the complete changelog and a release leaves no manual changelog work behind.
 - Raise the minimum Go version to 1.27, so `go install actionlint.kjanat.dev/cmd/actionlint@latest` needs a 1.27 toolchain. CI reads the version from `go.mod`, runs the unit tests on `ubuntu-26.04`, `ubuntu-26.04-arm`, `macos-26`, `macos-26-intel`, `windows-2025-vs2026` and `windows-11-vs2026-arm`, checks the generated Go tables against their generators, builds a goreleaser snapshot with SBOMs on every pull request, and the default branch requires a pull request with every check green. (https://github.com/kjanat/actionlint/pull/106)
+
+[Changes][v1.14.0]
 
 <a id="v1.13.0"></a>
 
@@ -2415,6 +2421,7 @@ See documentation for more details:
 
 [Changes][v1.0.0]
 
+[v1.14.0]: https://github.com/kjanat/actionlint/compare/v1.13.0...v1.14.0
 [v1.13.0]: https://github.com/kjanat/actionlint/compare/v1.12.0...v1.13.0
 [v1.12.0]: https://github.com/kjanat/actionlint/compare/v1.11.0...v1.12.0
 [v1.11.0]: https://github.com/kjanat/actionlint/compare/v1.10.0...v1.11.0
