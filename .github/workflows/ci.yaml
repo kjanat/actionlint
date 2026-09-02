@@ -6,27 +6,19 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-env: { GO: "1.27" }
 permissions: { contents: read }
 jobs:
   unit-tests:
     name: Unit tests
     strategy:
       matrix:
-        include:
-          - { os: ubuntu-latest, go: "1.26" }
-          - { os: ubuntu-latest, go: "1.27" }
-          - { os: ubuntu-24.04-arm, go: "1.27" }
-          - { os: macos-latest, go: "1.27" }
-          - { os: macos-26-intel, go: "1.27" }
-          - { os: windows-latest, go: "1.27" }
-          - { os: windows-11-arm, go: "1.27" }
+        os: [ubuntu-26.04, ubuntu-26.04-arm, macos-latest, macos-26-intel, windows-2025-vs2026, windows-11-vs2026-arm]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version: "${{ matrix.go }}", check-latest: true }
+        with: { go-version-file: go.mod }
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         if: ${{ runner.os != 'Linux' }}
 
@@ -67,7 +59,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version: "${{ env.GO }}", check-latest: true }
+        with: { go-version-file: go.mod }
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       - name: Install dependencies
         run: |
@@ -96,18 +88,35 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version: "${{ env.GO }}", check-latest: true }
+        with: { go-version-file: go.mod }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with: { node-version-file: .node-version, package-manager-cache: false }
       - uses: kjanat/runner@master
+      - uses: $/.github/actions/setup-pandoc
       - name: Install JavaScript dependencies
         run: runner install --frozen
-      - name: Build playground
-        run: run build
+      - name: Build command manual
+        run: make man
+      - name: Build and test playground
+        run: make -C playground build test
       - name: Lint playground
         run: run lint
-      - name: Run tests for wasm
-        run: run test
+  release-snapshot:
+    name: Release snapshot
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { fetch-depth: 0, persist-credentials: false }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with: { go-version-file: go.mod }
+      - uses: $/.github/actions/setup-pandoc
+      - run: make man/actionlint.1
+      - name: Install syft for SBOM generation
+        uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with: { version: v2.18.0, args: release --snapshot --clean }
+      - name: Smoke-test the linux/amd64 snapshot binary
+        run: ./dist/linux_linux_amd64_v1/actionlint -version
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -115,7 +124,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version: "1.26", check-latest: true }
+        with: { go-version-file: go.mod }
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with: { cache: false }
@@ -129,6 +138,7 @@ jobs:
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with: { version: v2.13.1, install-only: true }
+      - run: go mod tidy -diff
       - name: Build through Makefile
         run: make build SKIP_GO_GENERATE=true
       - run: make lint SKIP_GO_GENERATE=true
@@ -143,7 +153,6 @@ jobs:
       - name: Build image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with: {
-          build-args: "GOLANG_VER=${{ env.GO }}",
           load: true,
           push: false,
           tags: actionlint:test,
@@ -158,7 +167,7 @@ jobs:
           --require-label org.opencontainers.image.licenses:spdx
           - < Dockerfile
       - name: Lint Dockerfile with droast
-        uses: immanuwell/dockerfile-roast@50689402f3eced348cf4bd822ffb57871b5c02d0 # 1.6.1
+        uses: immanuwell/dockerfile-roast@1c87b2aa189338c24db4acde40864dae8994de8f # 1.7.0
   action:
     name: GitHub Action
     runs-on: ubuntu-latest
@@ -170,7 +179,6 @@ jobs:
         with: {
           context: .,
           target: action,
-          build-args: "GOLANG_VER=${{ env.GO }}",
           load: true,
           tags: actionlint-action:test,
         }
@@ -183,7 +191,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version: "${{ env.GO }}", check-latest: true }
+        with: { go-version-file: go.mod }
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       - run: uv tool install pre-commit
       # pre-commit's golang language prepends to PATH, so the runner's preinstalled shellcheck satisfies actionlint on its own.

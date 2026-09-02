@@ -113,7 +113,7 @@ man: man/actionlint.1 man/actionlint.1.html
 bench:
 	go test -bench Lint -benchmem
 
-.github/actionlint-matcher.json: scripts/generate-actionlint-matcher/object.mjs
+.github/actionlint-matcher.json: scripts/generate-actionlint-matcher/main.mjs scripts/generate-actionlint-matcher/object.mjs
 	node ./scripts/generate-actionlint-matcher/main.mjs .github/actionlint-matcher.json
 
 scripts/generate-actionlint-matcher/testdata/escape.txt: $(TARGET)

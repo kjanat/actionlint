@@ -1,26 +1,43 @@
 name: Generate
 on:
   push:
-    paths:
-      - "scripts/generate-popular-actions/main.go"
-      - "scripts/generate-webhook-events/main.go"
+    paths: &paths
+      - .github/workflows/generate.yaml
+      - scripts/generate-availability/main.go
+      - scripts/generate-popular-actions/main.go
+      - scripts/generate-popular-actions/popular_actions.json
+      - scripts/generate-webhook-events/main.go
     branches: [main, master]
     tags-ignore: ["*"]
+  pull_request:
+    paths: *paths
   schedule:
     # Every Saturday 10:21 in JST
     - cron: "21 1 * * 6"
   workflow_dispatch:
 
 jobs:
+  freshness:
+    name: Generated files match their generators
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions: { contents: read }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with: { go-version-file: go.mod }
+      - run: go generate
+      - run: git diff --exit-code -- popular_actions.go all_webhooks.go availability.go
   go-generate:
-    if: github.repository_owner == 'kjanat'
+    if: github.event_name != 'pull_request' && github.repository_owner == 'kjanat'
     runs-on: ubuntu-latest
     permissions: { contents: write, pull-requests: write }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version: "1.26", check-latest: true }
+        with: { go-version-file: go.mod }
       - name: Check new release on GitHub
         run: |
           set -euo pipefail
