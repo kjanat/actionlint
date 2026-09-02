@@ -21,6 +21,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with: { enable-cache: false }
         if: ${{ runner.os != 'Linux' }}
 
       - name: Install shells for completion tests on Linux
@@ -62,6 +63,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with: { enable-cache: false }
       - name: Install dependencies
         run: |
           set -x
@@ -128,6 +130,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with: { enable-cache: false }
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with: { cache: false }
       - name: Install dependencies
@@ -198,6 +201,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with: { enable-cache: false }
       - run: uv tool install pre-commit
       # pre-commit's golang language prepends to PATH, so the runner's preinstalled shellcheck satisfies actionlint on its own.
       - name: Remove the runner's ShellCheck so only the hook's own can be found
