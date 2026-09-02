@@ -44,6 +44,7 @@ await test('channel metadata does not come from the image or the items', () => {
 
 await test('an item exposes its fields, namespaced tags and categories', () => {
 	const [item] = parseFeed(feed).items;
+	assert.ok(item);
 	assert.equal(item.id, 'https://github.blog/changelog/2026-06-26-read-only-cache');
 	assert.equal(item.guid, 'https://github.blog/changelog/2026-06-26-read-only-cache');
 	assert.equal(item.link, 'https://github.blog/changelog/2026-06-26-read-only-actions-cache-for-untrusted-triggers');
@@ -60,6 +61,7 @@ await test('an item exposes its fields, namespaced tags and categories', () => {
 
 await test('CDATA markup reaches the caller as authored', () => {
 	const [item] = parseFeed(feed).items;
+	assert.ok(item);
 	assert.equal(item.content, '<p>It won&rsquo;t write. &lt;script&gt;alert(1)&lt;/script&gt;</p>');
 	assert.equal(item.content.includes('<script>'), false);
 	assert.equal(item.description, '<p>Caches are read-only&#8230;</p>');
@@ -67,6 +69,7 @@ await test('CDATA markup reaches the caller as authored', () => {
 
 await test('content falls back to the description', () => {
 	const [item] = parseFeed(feed.replace(/<content:encoded>[\s\S]*?<\/content:encoded>/, '')).items;
+	assert.ok(item);
 	assert.equal(item.content, item.description);
 });
 

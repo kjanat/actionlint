@@ -60,10 +60,14 @@ await run({ github, context, core });
 
 ## Development
 
-Run the package tests from the repository root:
+The source is TypeScript under `src/`, compiled to `dist/` by `tsc`. The tests run
+against `src/` directly on Node's type stripping.
 
 ```sh
-npm run test:feed
+run test:feed
+run --dir packages/changelog-feed build
 ```
+
+`npm pack` and `npm publish` build first through `prepack`.
 
 [GitHub Actions changelog feed]: https://github.blog/changelog/label/actions/feed/

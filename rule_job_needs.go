@@ -37,10 +37,8 @@ type RuleJobNeeds struct {
 // NewRuleJobNeeds creates new RuleJobNeeds instance.
 func NewRuleJobNeeds() *RuleJobNeeds {
 	return &RuleJobNeeds{
-		RuleBase: RuleBase{
-			name: "job-needs",
-			desc: "Checks for job IDs in \"needs:\". Undefined IDs and cyclic dependencies are checked",
-		},
+		name:  "job-needs",
+		desc:  "Checks for job IDs in \"needs:\". Undefined IDs and cyclic dependencies are checked",
 		nodes: map[string]*jobNode{},
 	}
 }

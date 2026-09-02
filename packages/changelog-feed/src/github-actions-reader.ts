@@ -1,61 +1,57 @@
-import { FEED_URL, feedPageUrl, parseFeed } from './github-actions-feed.js';
+import { FEED_URL, feedPageUrl, parseFeed } from './github-actions-feed.ts';
+import type { Feed, FeedItem } from './github-actions-feed.ts';
 
-/** @typedef {import('#feed').Feed} Feed */
-/** @typedef {import('#feed').FeedItem} FeedItem */
+interface CachedFeed {
+	complete?: boolean;
+	feed: Feed;
+	nextPage?: number;
+	rawXml?: string;
+}
 
-/**
- * @typedef CachedFeed
- * @property {boolean} complete
- * @property {Feed} feed
- * @property {number} nextPage
- * @property {string} rawXml
- */
+interface FeedPage {
+	url: string;
+	xmlText: string;
+	feed: Feed;
+}
 
-/**
- * @template {keyof HTMLElementTagNameMap} K
- * @param {string} id
- * @param {K} tagName
- * @returns {HTMLElementTagNameMap[K]}
- */
-function requireElement(id, tagName) {
+interface State {
+	cacheComplete: boolean;
+	feed: Feed | null;
+	filtered: FeedItem[];
+	loadingAll: boolean;
+	loadingOlder: boolean;
+	nextPage: number;
+	pageSize: number;
+	rawVisible: boolean;
+	rawXml: string;
+	selectedId: string | null;
+}
+
+function requireElement<T extends HTMLElement>(id: string, kind: new() => T): T {
 	const node = document.getElementById(id);
-	if (!node || node.localName !== tagName) {
-		throw new Error(`Expected <${tagName} id="${id}">.`);
+	if (!(node instanceof kind)) {
+		throw new Error(`Expected <${kind.name} id="${id}">.`);
 	}
-	return /** @type {HTMLElementTagNameMap[K]} */ (node);
+	return node;
 }
 
 const el = {
-	article: requireElement('article', 'div'),
-	errorBox: requireElement('errorBox', 'div'),
-	feedDescription: requireElement('feedDescription', 'div'),
-	feedMeta: requireElement('feedMeta', 'section'),
-	feedStats: requireElement('feedStats', 'div'),
-	feedTitle: requireElement('feedTitle', 'div'),
-	items: requireElement('items', 'div'),
-	layout: /** @type {HTMLDivElement | null} */ (document.querySelector('.layout')),
-	raw: requireElement('raw', 'pre'),
-	rawBtn: requireElement('rawBtn', 'button'),
-	refreshBtn: requireElement('refreshBtn', 'button'),
-	search: requireElement('search', 'input'),
-	typeFilter: requireElement('typeFilter', 'select'),
+	article: requireElement('article', HTMLDivElement),
+	errorBox: requireElement('errorBox', HTMLDivElement),
+	feedDescription: requireElement('feedDescription', HTMLDivElement),
+	feedMeta: requireElement('feedMeta', HTMLElement),
+	feedStats: requireElement('feedStats', HTMLDivElement),
+	feedTitle: requireElement('feedTitle', HTMLDivElement),
+	items: requireElement('items', HTMLDivElement),
+	layout: document.querySelector<HTMLElement>('.layout'),
+	raw: requireElement('raw', HTMLPreElement),
+	rawBtn: requireElement('rawBtn', HTMLButtonElement),
+	refreshBtn: requireElement('refreshBtn', HTMLButtonElement),
+	search: requireElement('search', HTMLInputElement),
+	typeFilter: requireElement('typeFilter', HTMLSelectElement),
 };
 
-/**
- * @type {{
- *   cacheComplete: boolean,
- *   feed: Feed | null,
- *   filtered: FeedItem[],
- *   loadingAll: boolean,
- *   loadingOlder: boolean,
- *   nextPage: number,
- *   pageSize: number,
- *   rawVisible: boolean,
- *   rawXml: string,
- *   selectedId: string | null,
- * }}
- */
-let state = {
+const state: State = {
 	cacheComplete: false,
 	feed: null,
 	filtered: [],
@@ -68,8 +64,7 @@ let state = {
 	selectedId: null,
 };
 
-/** @type {WeakMap<FeedItem, string>} */
-const itemSearchTextCache = new WeakMap();
+const itemSearchTextCache = new WeakMap<FeedItem, string>();
 
 function syncPaneHeight() {
 	if (!el.layout) return;
@@ -92,14 +87,12 @@ function schedulePaneHeightSync() {
 	requestAnimationFrame(syncPaneHeight);
 }
 
-/** @param {string} value */
-function parseDate(value) {
+function parseDate(value: string): Date | null {
 	const date = new Date(value);
 	return Number.isNaN(date.getTime()) ? null : date;
 }
 
-/** @param {string} value */
-function formatDate(value) {
+function formatDate(value: string): string {
 	const date = parseDate(value);
 	if (!date) return value || 'Unknown date';
 	return new Intl.DateTimeFormat(undefined, {
@@ -108,13 +101,18 @@ function formatDate(value) {
 	}).format(date);
 }
 
-/** @param {string} input */
-function sanitizeHtml(input) {
-	const container = /** @type {HTMLDivElement & { setHTML?: (input: string) => void }} */ (
-		document.createElement('div')
-	);
+interface SanitizingElement {
+	setHTML(input: string): void;
+}
 
-	if (typeof container.setHTML === 'function') {
+function hasSetHTML(node: HTMLElement): node is HTMLElement & SanitizingElement {
+	return 'setHTML' in node && typeof node.setHTML === 'function';
+}
+
+function sanitizeHtml(input: string): DocumentFragment {
+	const container = document.createElement('div');
+
+	if (hasSetHTML(container)) {
 		container.setHTML(input || '');
 	} else {
 		container.textContent = input || '';
@@ -140,8 +138,7 @@ function sanitizeHtml(input) {
 	return fragment;
 }
 
-/** @param {string} value */
-function safeArticleUrl(value) {
+function safeArticleUrl(value: string): string {
 	try {
 		const href = new URL(value, FEED_URL).href;
 		return href.startsWith('https://github.blog/') ? href : '';
@@ -150,25 +147,18 @@ function safeArticleUrl(value) {
 	}
 }
 
-/** @param {string[]} values */
-function unique(values) {
+function unique(values: string[]): string[] {
 	return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
-/**
- * @param {HTMLSelectElement} select
- * @param {string[]} values
- * @param {string} label
- */
-function fillSelect(select, values, label) {
+function fillSelect(select: HTMLSelectElement, values: string[], label: string): void {
 	const current = select.value;
 	select.replaceChildren(new Option(label, ''));
 	values.forEach(value => select.add(new Option(value, value)));
 	if (values.includes(current)) select.value = current;
 }
 
-/** @param {string} message */
-function showError(message) {
+function showError(message: string): void {
 	el.errorBox.hidden = false;
 	el.errorBox.textContent = message;
 }
@@ -178,8 +168,7 @@ function clearError() {
 	el.errorBox.textContent = '';
 }
 
-/** @param {FeedItem} item */
-function itemSearchText(item) {
+function itemSearchText(item: FeedItem): string {
 	const cached = itemSearchTextCache.get(item);
 	if (cached !== undefined) return cached;
 
@@ -196,8 +185,11 @@ function itemSearchText(item) {
 	return text;
 }
 
-/** @param {{ preserveArticle?: boolean }} [options] */
-function applyFilters({ preserveArticle = false } = {}) {
+interface RenderOptions {
+	preserveArticle?: boolean;
+}
+
+function applyFilters({ preserveArticle = false }: RenderOptions = {}): void {
 	if (!state.feed) return;
 
 	const query = el.search.value.trim().toLowerCase();
@@ -223,9 +215,7 @@ function applyFilters({ preserveArticle = false } = {}) {
 
 function renderList() {
 	const scrollTop = el.items.scrollTop;
-	const itemNodes = /** @type {NodeListOf<HTMLElement>} */ (
-		el.items.querySelectorAll('.item')
-	);
+	const itemNodes = el.items.querySelectorAll<HTMLElement>('.item');
 	const anchor = [...itemNodes]
 		.find(node => node.offsetTop + node.offsetHeight > scrollTop);
 	const anchorId = anchor?.dataset.id ?? null;
@@ -280,11 +270,7 @@ function renderList() {
 
 	el.items.append(frag);
 	const nextAnchor = anchorId
-		? [
-			.../** @type {NodeListOf<HTMLElement>} */ (
-				el.items.querySelectorAll('.item')
-			),
-		].find(node => node.dataset.id === anchorId)
+		? [...el.items.querySelectorAll<HTMLElement>('.item')].find(node => node.dataset.id === anchorId)
 		: null;
 	el.items.scrollTop = nextAnchor
 		? nextAnchor.offsetTop - anchorOffset
@@ -366,8 +352,32 @@ const DB_NAME = 'github-actions-changelog-reader';
 const DB_VERSION = 1;
 const STORE_NAME = 'feeds';
 
-/** @param {FeedItem[]} items */
-function sortItems(items) {
+function setRawPage(page: number, xmlText: string): void {
+	const marker = `<!-- Feed page ${page} -->`;
+	const block = `${marker}\n${xmlText}`;
+
+	if (!state.rawXml) {
+		state.rawXml = block;
+	} else {
+		if (!state.rawXml.startsWith('<!-- Feed page ')) {
+			state.rawXml = `<!-- Feed page 1 -->\n${state.rawXml}`;
+		}
+
+		const start = state.rawXml.indexOf(marker);
+		if (start === -1) {
+			state.rawXml += `\n\n${block}`;
+		} else {
+			const next = state.rawXml.indexOf('\n\n<!-- Feed page ', start + marker.length);
+			state.rawXml = next === -1
+				? `${state.rawXml.slice(0, start)}${block}`
+				: `${state.rawXml.slice(0, start)}${block}${state.rawXml.slice(next)}`;
+		}
+	}
+
+	el.raw.textContent = state.rawXml;
+}
+
+function sortItems(items: FeedItem[]): void {
 	items.sort((a, b) => {
 		const aTime = parseDate(a.pubDate)?.getTime() ?? 0;
 		const bTime = parseDate(b.pubDate)?.getTime() ?? 0;
@@ -375,8 +385,7 @@ function sortItems(items) {
 	});
 }
 
-/** @param {{ preserveArticle?: boolean }} [options] */
-function updateFeedUi({ preserveArticle = false } = {}) {
+function updateFeedUi({ preserveArticle = false }: RenderOptions = {}): void {
 	if (!state.feed) return;
 
 	el.feedTitle.textContent = state.feed.title;
@@ -403,16 +412,16 @@ function updateFeedUi({ preserveArticle = false } = {}) {
 	applyFilters({ preserveArticle });
 }
 
-/**
- * @param {Feed} feed
- * @param {string} rawXml
- * @param {{ complete?: boolean, preserveArticle?: boolean, nextPage?: number }} [options]
- */
-function hydrateFeed(feed, rawXml, {
+interface HydrateOptions extends RenderOptions {
+	complete?: boolean;
+	nextPage?: number;
+}
+
+function hydrateFeed(feed: Feed, rawXml: string, {
 	complete = false,
 	preserveArticle = false,
 	nextPage = 2,
-} = {}) {
+}: HydrateOptions = {}): void {
 	const selectedId = state.selectedId;
 	sortItems(feed.items);
 	state.feed = feed;
@@ -427,12 +436,10 @@ function hydrateFeed(feed, rawXml, {
 	updateFeedUi({ preserveArticle });
 }
 
-/**
- * @param {Feed} feedPage
- * @param {{ preserveArticle?: boolean }} [options]
- * @returns {{ added: number, updated: number }}
- */
-function overlayItems(feedPage, { preserveArticle = true } = {}) {
+function overlayItems(
+	feedPage: Feed,
+	{ preserveArticle = true }: RenderOptions = {},
+): { added: number; updated: number } {
 	if (!state.feed) {
 		hydrateFeed({ ...feedPage, items: [...feedPage.items] }, '', {
 			preserveArticle: false,
@@ -474,8 +481,7 @@ function overlayItems(feedPage, { preserveArticle = true } = {}) {
 	return { added, updated };
 }
 
-/** @returns {Promise<IDBDatabase>} */
-function openDb() {
+function openDb(): Promise<IDBDatabase> {
 	return new Promise((resolve, reject) => {
 		if (!('indexedDB' in window)) {
 			reject(new Error('IndexedDB is unavailable'));
@@ -494,18 +500,23 @@ function openDb() {
 	});
 }
 
-/** @returns {Promise<CachedFeed | null>} */
-async function readCache() {
+function isCachedFeed(value: unknown): value is CachedFeed {
+	if (typeof value !== 'object' || value === null || !('feed' in value)) return false;
+	const feed: unknown = value.feed;
+	return typeof feed === 'object' && feed !== null && 'items' in feed && Array.isArray(feed.items);
+}
+
+async function readCache(): Promise<CachedFeed | null> {
 	try {
 		const db = await openDb();
-		return await new Promise((resolve, reject) => {
+		return await new Promise<CachedFeed | null>((resolve, reject) => {
 			const tx = db.transaction(STORE_NAME, 'readonly');
 			const request = tx.objectStore(STORE_NAME).get(FEED_URL);
 			request.onerror = () => reject(request.error);
-			request.onsuccess = () =>
-				resolve(
-					/** @type {CachedFeed | null} */ (request.result ?? null),
-				);
+			request.onsuccess = () => {
+				const result: unknown = request.result;
+				resolve(isCachedFeed(result) ? result : null);
+			};
 			tx.oncomplete = () => db.close();
 		});
 	} catch {
@@ -513,8 +524,7 @@ async function readCache() {
 	}
 }
 
-/** @param {boolean} [complete] */
-async function writeCache(complete = state.cacheComplete) {
+async function writeCache(complete: boolean = state.cacheComplete): Promise<void> {
 	if (!state.feed) return;
 	try {
 		const db = await openDb();
@@ -537,14 +547,10 @@ async function writeCache(complete = state.cacheComplete) {
 	}
 }
 
-/**
- * @param {number} page
- * @returns {Promise<{ url: string, xmlText: string, feed: Feed } | null>}
- */
-function fetchFeedPage(page) {
+function fetchFeedPage(page: number): Promise<FeedPage | null> {
 	const url = feedPageUrl(page);
 
-	return new Promise((resolve, reject) => {
+	return new Promise<FeedPage | null>((resolve, reject) => {
 		const request = new XMLHttpRequest();
 		request.open('GET', url);
 		request.overrideMimeType('application/rss+xml');
@@ -580,8 +586,7 @@ function fetchFeedPage(page) {
 	});
 }
 
-/** @returns {Promise<void>} */
-function nextFrame() {
+function nextFrame(): Promise<void> {
 	return new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
 }
 
@@ -589,8 +594,7 @@ function hasActiveHistoryQuery() {
 	return Boolean(el.search.value.trim() || el.typeFilter.value);
 }
 
-/** @param {number} [page] */
-async function loadHistoricalPage(page = state.nextPage) {
+async function loadHistoricalPage(page: number = state.nextPage): Promise<boolean> {
 	if (state.cacheComplete || state.loadingOlder) return false;
 
 	state.loadingOlder = true;
@@ -608,9 +612,7 @@ async function loadHistoricalPage(page = state.nextPage) {
 		state.pageSize = Math.max(1, result.feed.items.length);
 		state.nextPage = Math.max(state.nextPage, page + 1);
 
-		// Raw XML is diagnostic only; keep the pages that were actually fetched this session.
-		state.rawXml += `${state.rawXml ? '\n\n' : ''}<!-- Feed page ${page} -->\n${result.xmlText}`;
-		el.raw.textContent = state.rawXml;
+		setRawPage(page, result.xmlText);
 
 		if (
 			result.feed.items.length < previousPageSize
@@ -691,8 +693,7 @@ async function loadAllHistory() {
 				page,
 				result: await fetchFeedPage(page),
 			})));
-			/** @type {Feed[]} */
-			const feedPages = [];
+			const feedPages: Feed[] = [];
 
 			for (const { page, result } of results) {
 				if (!result || result.feed.items.length === 0) {
@@ -704,7 +705,7 @@ async function loadAllHistory() {
 				feedPages.push(result.feed);
 				state.pageSize = Math.max(1, result.feed.items.length);
 				state.nextPage = page + 1;
-				state.rawXml += `${state.rawXml ? '\n\n' : ''}<!-- Feed page ${page} -->\n${result.xmlText}`;
+				setRawPage(page, result.xmlText);
 
 				if (result.feed.items.length < previousPageSize) {
 					state.cacheComplete = true;
@@ -754,7 +755,7 @@ async function refreshLatest() {
 		if (!state.feed) {
 			hydrateFeed(
 				{ ...first.feed, items: [...first.feed.items] },
-				first.xmlText,
+				'',
 				{
 					complete: false,
 					preserveArticle: false,
@@ -763,9 +764,8 @@ async function refreshLatest() {
 			);
 		} else {
 			overlayItems(first.feed, { preserveArticle: true });
-			state.rawXml = `<!-- Feed page 1 -->\n${first.xmlText}`;
-			el.raw.textContent = state.rawXml;
 		}
+		setRawPage(1, first.xmlText);
 
 		state.pageSize = Math.max(1, first.feed.items.length);
 		state.nextPage = Math.max(2, state.nextPage);
@@ -782,8 +782,7 @@ async function refreshLatest() {
 				overlayItems(result.feed, { preserveArticle: true });
 				state.nextPage = Math.max(state.nextPage, page + 1);
 
-				state.rawXml += `\n\n<!-- Feed page ${page} -->\n${result.xmlText}`;
-				el.raw.textContent = state.rawXml;
+				setRawPage(page, result.xmlText);
 
 				if (
 					overlapsCache || result.feed.items.length < state.pageSize
@@ -814,14 +813,14 @@ async function refreshLatest() {
 	}
 }
 
-function start() {
+function start(): void {
 	void readCache().then(cached => {
-		if (!state.feed && cached?.feed?.items?.length) {
-			const inferredNextPage = Number.isInteger(cached.nextPage)
+		if (!state.feed && cached && cached.feed.items.length > 0) {
+			const inferredNextPage = cached.nextPage !== undefined && Number.isInteger(cached.nextPage)
 				? cached.nextPage
 				: Math.max(2, Math.floor(cached.feed.items.length / 10) + 1);
 
-			hydrateFeed(cached.feed, cached.rawXml, {
+			hydrateFeed(cached.feed, cached.rawXml ?? '', {
 				complete: Boolean(cached.complete),
 				preserveArticle: false,
 				nextPage: inferredNextPage,
@@ -835,8 +834,7 @@ function start() {
 
 el.refreshBtn.addEventListener('click', () => void refreshLatest());
 
-/** @type {number | null} */
-let searchTimer = null;
+let searchTimer: number | null = null;
 el.search.addEventListener('input', () => {
 	applyFilters();
 	if (searchTimer !== null) window.clearTimeout(searchTimer);

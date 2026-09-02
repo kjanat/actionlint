@@ -16,10 +16,8 @@ type RuleDeprecatedCommands struct {
 // NewRuleDeprecatedCommands creates a new RuleDeprecatedCommands instance.
 func NewRuleDeprecatedCommands() *RuleDeprecatedCommands {
 	return &RuleDeprecatedCommands{
-		RuleBase: RuleBase{
-			name: "deprecated-commands",
-			desc: "Checks for deprecated \"set-output\", \"save-state\", \"set-env\", and \"add-path\" commands at \"run:\"",
-		},
+		name: "deprecated-commands",
+		desc: "Checks for deprecated \"set-output\", \"save-state\", \"set-env\", and \"add-path\" commands at \"run:\"",
 	}
 }
 

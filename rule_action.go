@@ -354,10 +354,8 @@ type RuleAction struct {
 // NewRuleAction creates new RuleAction instance.
 func NewRuleAction(cache *LocalActionsCache) *RuleAction {
 	return &RuleAction{
-		RuleBase: RuleBase{
-			name: "action",
-			desc: "Checks for popular actions released on GitHub, local actions, and action calls at \"uses:\"",
-		},
+		name:  "action",
+		desc:  "Checks for popular actions released on GitHub, local actions, and action calls at \"uses:\"",
 		cache: cache,
 	}
 }

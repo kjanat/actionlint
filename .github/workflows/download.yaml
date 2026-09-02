@@ -2,13 +2,13 @@ name: Download script
 on:
   push:
     branches: [main, master]
-    paths:
+    paths: &paths
+      - .github/workflows/download.yaml
+      - .goreleaser.yaml
       - scripts/download-actionlint.bash
       - scripts/test-download-actionlint.bash
   pull_request:
-    paths:
-      - scripts/download-actionlint.bash
-      - scripts/test-download-actionlint.bash
+    paths: *paths
   workflow_dispatch:
 
 permissions: { contents: read }

@@ -140,10 +140,8 @@ type RuleRunnerLabel struct {
 // NewRuleRunnerLabel creates new RuleRunnerLabel instance.
 func NewRuleRunnerLabel() *RuleRunnerLabel {
 	return &RuleRunnerLabel{
-		RuleBase: RuleBase{
-			name: "runner-label",
-			desc: "Checks for GitHub-hosted and preset self-hosted runner labels in \"runs-on:\"",
-		},
+		name:    "runner-label",
+		desc:    "Checks for GitHub-hosted and preset self-hosted runner labels in \"runs-on:\"",
 		compats: nil,
 	}
 }
