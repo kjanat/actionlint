@@ -607,7 +607,7 @@ func TestCompletionBashBehaviour(t *testing.T) {
 
 func testCompletionLastToken(line string) string {
 	start := 0
-	for i := 0; i < len(line); i++ {
+	for i := range len(line) {
 		if line[i] == ' ' && (i == 0 || line[i-1] != '\\') {
 			start = i + 1
 		}
