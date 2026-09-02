@@ -30,6 +30,8 @@ export interface Feed {
 
 export const FEED_URL: string;
 
+export function feedPageUrl(page: number, cacheKey?: number): string;
+
 export interface Block {
 	attributes: string;
 	inner: string;

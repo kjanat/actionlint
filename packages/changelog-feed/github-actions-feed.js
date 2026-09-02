@@ -33,6 +33,17 @@
 
 export const FEED_URL = 'https://github.blog/changelog/label/actions/feed/';
 
+/**
+ * @param {number} page
+ * @param {number} [cacheKey]
+ */
+export function feedPageUrl(page, cacheKey = Date.now()) {
+	const url = new URL(FEED_URL);
+	if (page > 1) url.searchParams.set('paged', String(page));
+	else url.searchParams.set('_', String(cacheKey));
+	return url.href;
+}
+
 const ENTITIES = new Map([
 	['amp', '&'],
 	['lt', '<'],

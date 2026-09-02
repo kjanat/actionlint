@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { decodeEntities, parseFeed } from '#feed';
+import { decodeEntities, feedPageUrl, parseFeed } from '#feed';
 
 const feed = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel>
@@ -76,4 +76,9 @@ await test('a document without a channel is rejected', () => {
 
 await test('decodeEntities resolves named, decimal and hexadecimal references', () => {
 	assert.equal(decodeEntities('a &amp; b &#8230; c &#x2014; d &unknown;'), 'a & b … c — d &unknown;');
+});
+
+await test('only the latest feed page gets a cache-busting parameter', () => {
+	assert.equal(feedPageUrl(1, 123), 'https://github.blog/changelog/label/actions/feed/?_=123');
+	assert.equal(feedPageUrl(2, 123), 'https://github.blog/changelog/label/actions/feed/?paged=2');
 });

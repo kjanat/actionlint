@@ -1,4 +1,4 @@
-import { FEED_URL, parseFeed } from './github-actions-feed.js';
+import { FEED_URL, feedPageUrl, parseFeed } from './github-actions-feed.js';
 
 /** @typedef {import('#feed').Feed} Feed */
 /** @typedef {import('#feed').FeedItem} FeedItem */
@@ -533,13 +533,11 @@ async function writeCache(complete = state.cacheComplete) {
  * @returns {Promise<{ url: string, xmlText: string, feed: Feed } | null>}
  */
 function fetchFeedPage(page) {
-	const url = new URL(FEED_URL);
-	if (page > 1) url.searchParams.set('paged', String(page));
-	url.searchParams.set('_', String(Date.now()));
+	const url = feedPageUrl(page);
 
 	return new Promise((resolve, reject) => {
 		const request = new XMLHttpRequest();
-		request.open('GET', url.href);
+		request.open('GET', url);
 		request.overrideMimeType('application/rss+xml');
 		request.setRequestHeader(
 			'Accept',
@@ -559,7 +557,7 @@ function fetchFeedPage(page) {
 
 			try {
 				resolve({
-					url: url.href,
+					url,
 					xmlText: request.responseText,
 					feed: parseFeed(request.responseText),
 				});
