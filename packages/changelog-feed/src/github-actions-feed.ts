@@ -1,43 +1,36 @@
-/**
- * @typedef Category
- * @property {string} domain
- * @property {string} value
- */
+export interface Category {
+	domain: string;
+	value: string;
+}
 
-/**
- * @typedef FeedItem
- * @property {string} id
- * @property {string} title
- * @property {string} link
- * @property {string} guid
- * @property {string} author
- * @property {string} pubDate
- * @property {string} description
- * @property {string} content
- * @property {Category[]} categories
- * @property {string[]} types
- * @property {string[]} labels
- */
+export interface FeedItem {
+	id: string;
+	title: string;
+	link: string;
+	guid: string;
+	author: string;
+	pubDate: string;
+	description: string;
+	content: string;
+	categories: Category[];
+	types: string[];
+	labels: string[];
+}
 
-/**
- * @typedef Feed
- * @property {string} title
- * @property {string} link
- * @property {string} description
- * @property {string} language
- * @property {string} lastBuildDate
- * @property {string} generator
- * @property {string} image
- * @property {FeedItem[]} items
- */
+export interface Feed {
+	title: string;
+	link: string;
+	description: string;
+	language: string;
+	lastBuildDate: string;
+	generator: string;
+	image: string;
+	items: FeedItem[];
+}
 
 export const FEED_URL = 'https://github.blog/changelog/label/actions/feed/';
 
-/**
- * @param {number} page
- * @param {number} [cacheKey]
- */
-export function feedPageUrl(page, cacheKey = Date.now()) {
+export function feedPageUrl(page: number, cacheKey: number = Date.now()): string {
 	const url = new URL(FEED_URL);
 	if (page > 1) url.searchParams.set('paged', String(page));
 	else url.searchParams.set('_', String(cacheKey));
@@ -53,13 +46,8 @@ const ENTITIES = new Map([
 	['nbsp', ' '],
 ]);
 
-/**
- * Resolve XML and HTML character references.
- *
- * @param {string} value
- */
-export function decodeEntities(value) {
-	return value.replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z]+);/g, (whole, name) => {
+export function decodeEntities(value: string): string {
+	return value.replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z]+);/g, (whole, name: string) => {
 		if (name.startsWith('#x') || name.startsWith('#X')) {
 			return String.fromCodePoint(Number.parseInt(name.slice(2), 16));
 		}
@@ -70,28 +58,17 @@ export function decodeEntities(value) {
 	});
 }
 
-/**
- * CDATA is markup-free by definition, so its text is returned as authored.
- *
- * @param {string} value
- */
-function unwrap(value) {
+function unwrap(value: string): string {
 	const cdata = /^\s*<!\[CDATA\[([\s\S]*)\]\]>\s*$/.exec(value)?.[1];
 	return (cdata === undefined ? decodeEntities(value) : cdata).trim();
 }
 
-/**
- * @typedef Block
- * @property {string} attributes
- * @property {string} inner
- */
+export interface Block {
+	attributes: string;
+	inner: string;
+}
 
-/**
- * @param {string} source
- * @param {string} tag
- * @returns {Generator<Block>}
- */
-export function* blocks(source, tag) {
+export function* blocks(source: string, tag: string): Generator<Block> {
 	const open = `<${tag}`;
 	const close = `</${tag}>`;
 	let from = 0;
@@ -117,30 +94,17 @@ export function* blocks(source, tag) {
 	}
 }
 
-/**
- * @param {string} source
- * @param {string} tag
- * @returns {Block | undefined}
- */
-function firstBlock(source, tag) {
+function firstBlock(source: string, tag: string): Block | undefined {
 	for (const block of blocks(source, tag)) return block;
 	return undefined;
 }
 
-/**
- * @param {string} scope
- * @param {string} tag
- */
-function element(scope, tag) {
+function element(scope: string, tag: string): string {
 	for (const block of blocks(scope, tag)) return unwrap(block.inner);
 	return '';
 }
 
-/**
- * @param {string} item
- * @returns {Category[]}
- */
-function categories(item) {
+function categories(item: string): Category[] {
 	return [...blocks(item, 'category')]
 		.map((block) => ({
 			domain: /domain="([^"]*)"/.exec(block.attributes)?.[1] ?? '',
@@ -149,22 +113,11 @@ function categories(item) {
 		.filter((category) => category.value !== '');
 }
 
-/**
- * @param {Category[]} cats
- * @param {string} domain
- */
-function valuesOf(cats, domain) {
+function valuesOf(cats: Category[], domain: string): string[] {
 	return cats.filter((category) => category.domain === domain).map((category) => category.value);
 }
 
-/**
- * Parse an RSS 2.0 document without a DOM, so the reader and the changelog
- * monitor share one implementation.
- *
- * @param {string} xmlText
- * @returns {Feed}
- */
-export function parseFeed(xmlText) {
+export function parseFeed(xmlText: string): Feed {
 	const source = String(xmlText ?? '');
 	const channel = firstBlock(source, 'channel');
 	if (channel === undefined) {
@@ -177,8 +130,7 @@ export function parseFeed(xmlText) {
 		: channel.inner.replace(`<image${image.attributes}>${image.inner}</image>`, '');
 	const imageBlock = image?.inner ?? '';
 
-	/** @type {FeedItem[]} */
-	const items = [];
+	const items: FeedItem[] = [];
 	for (const { inner: item } of blocks(channel.inner, 'item')) {
 		const cats = categories(item);
 		const description = element(item, 'description');

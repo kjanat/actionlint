@@ -96,9 +96,9 @@ jobs:
       - name: Install JavaScript dependencies
         run: runner install --frozen
       - name: Build command manual
-        run: make man
+        run: run make:man
       - name: Build and test playground
-        run: make -C playground build test
+        run: run --dir playground -s make:build make:test
       - name: Lint playground
         run: run lint
   release-snapshot:
@@ -110,7 +110,8 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
       - uses: $/.github/actions/setup-pandoc
-      - run: make man/actionlint.1
+      - uses: kjanat/runner@master
+      - run: run make:man/actionlint.1
       - name: Install syft for SBOM generation
         uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
@@ -138,10 +139,13 @@ jobs:
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with: { version: v2.13.1, install-only: true }
+      - uses: kjanat/runner@master
       - run: go mod tidy -diff
       - name: Build through Makefile
-        run: make build SKIP_GO_GENERATE=true
-      - run: make lint SKIP_GO_GENERATE=true
+        run: run make:build
+        env: { SKIP_GO_GENERATE: "true" }
+      - run: run make:lint
+        env: { SKIP_GO_GENERATE: "true" }
       - name: Lint bash scripts
         run: shellcheck ./scripts/*.bash
   docker:

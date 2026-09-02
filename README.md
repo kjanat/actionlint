@@ -21,9 +21,18 @@ Features:
 See the [full list][checks] of checks done by actionlint.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/actionlint-dark.gif">
-  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/actionlint-light.gif">
-  <img alt="A terminal running actionlint on a workflow file, reporting each problem with the offending line underlined" src="docs/screenshots/actionlint-light.gif">
+  <source
+    media="(prefers-color-scheme: dark)"
+    srcset="docs/screenshots/actionlint-dark.gif"
+  >
+  <source
+    media="(prefers-color-scheme: light)"
+    srcset="docs/screenshots/actionlint-light.gif"
+  >
+  <img
+    alt="A terminal running actionlint on a workflow file, reporting each problem with the offending line underlined"
+    src="docs/screenshots/actionlint-light.gif"
+  >
 </picture>
 
 <details><summary><h3>Example of a broken workflow</h3></summary>

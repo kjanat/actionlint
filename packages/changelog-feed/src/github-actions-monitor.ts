@@ -1,21 +1,19 @@
-// @ts-check
+import type { AsyncFunctionArguments } from '@actions/github-script';
 
-import { blocks, decodeEntities, FEED_URL, parseFeed } from './github-actions-feed.js';
+import { blocks, decodeEntities, FEED_URL, parseFeed } from './github-actions-feed.ts';
+import type { FeedItem } from './github-actions-feed.ts';
 
-/** @typedef {import('@actions/github-script').AsyncFunctionArguments} AsyncFunctionArguments */
-/** @typedef {Pick<AsyncFunctionArguments, 'github' | 'context' | 'core'>} RunArguments */
-/** @typedef {import('#feed').FeedItem} FeedItem */
+export type RunArguments = Pick<AsyncFunctionArguments, 'github' | 'context' | 'core'>;
 
-/**
- * @typedef ChangelogEntry
- * @property {string} guid
- * @property {string} link
- * @property {string} title
- * @property {string} published
- * @property {string} summary
- * @property {string} type
- * @property {string[]} labels
- */
+export interface ChangelogEntry {
+	guid: string;
+	link: string;
+	title: string;
+	published: string;
+	summary: string;
+	type: string;
+	labels: string[];
+}
 
 export const LABEL = 'github-changelog';
 export const LABEL_COLOR = '2088FF';
@@ -26,13 +24,11 @@ const MARKER_PREFIX = '<!-- github-changelog-guid: ';
 const MARKER_SUFFIX = ' -->';
 const MARKER_PATTERN = /<!-- github-changelog-guid: (\S+) -->/g;
 
-/** @param {string} guid */
-export function marker(guid) {
+export function marker(guid: string): string {
 	return `${MARKER_PREFIX}${guid}${MARKER_SUFFIX}`;
 }
 
-/** @param {string} html */
-function stripTags(html) {
+function stripTags(html: string): string {
 	let text = '';
 	let from = 0;
 
@@ -46,27 +42,17 @@ function stripTags(html) {
 	}
 }
 
-/** @param {string} html */
-function plainText(html) {
+function plainText(html: string): string {
 	return decodeEntities(stripTags(html)).replace(/\s+/g, ' ').trim();
 }
 
-/**
- * Reduce an item description to its lead paragraph, dropping the syndication footer.
- *
- * @param {string} description
- */
-function summarize(description) {
+function summarize(description: string): string {
 	const paragraphs = [...blocks(description, 'p')].map((block) => plainText(block.inner));
 	const lead = paragraphs.find((paragraph) => paragraph !== '' && !paragraph.startsWith('The post '));
 	return lead ?? plainText(description);
 }
 
-/**
- * @param {FeedItem} item
- * @returns {ChangelogEntry}
- */
-export function toEntry(item) {
+export function toEntry(item: FeedItem): ChangelogEntry {
 	const published = new Date(item.pubDate);
 	if (Number.isNaN(published.getTime())) {
 		throw new Error(`feed item ${item.link} has an unparsable pubDate ${JSON.stringify(item.pubDate)}`);
@@ -82,31 +68,27 @@ export function toEntry(item) {
 	};
 }
 
-/**
- * @param {Iterable<{ body?: string | null }>} issues
- * @returns {Set<string>}
- */
-export function reportedGuids(issues) {
-	/** @type {Set<string>} */
-	const guids = new Set();
+export function reportedGuids(issues: Iterable<{ body?: string | null }>): Set<string> {
+	const guids = new Set<string>();
 	for (const issue of issues) {
 		if (typeof issue.body !== 'string') {
 			continue;
 		}
 		for (const match of issue.body.matchAll(MARKER_PATTERN)) {
-			guids.add(match[1]);
+			const guid = match[1];
+			if (guid !== undefined) guids.add(guid);
 		}
 	}
 	return guids;
 }
 
-/**
- * Oldest first, so issue numbers follow publication order.
- *
- * @param {ChangelogEntry[]} entries
- * @param {{ reported: Set<string>, since: Date, limit: number }} options
- */
-export function selectEntries(entries, { reported, since, limit }) {
+export interface SelectOptions {
+	reported: Set<string>;
+	since: Date;
+	limit: number;
+}
+
+export function selectEntries(entries: ChangelogEntry[], { reported, since, limit }: SelectOptions): ChangelogEntry[] {
 	return entries
 		.filter((entry) =>
 			entry.labels.includes(FEED_LABEL)
@@ -117,13 +99,11 @@ export function selectEntries(entries, { reported, since, limit }) {
 		.slice(0, limit);
 }
 
-/** @param {ChangelogEntry} entry */
-export function issueTitle(entry) {
+export function issueTitle(entry: ChangelogEntry): string {
 	return `Changelog: ${entry.title}`;
 }
 
-/** @param {ChangelogEntry} entry */
-export function issueBody(entry) {
+export function issueBody(entry: ChangelogEntry): string {
 	const summary = entry.summary === '' ? '' : `\n\n${entry.summary}`;
 	const type = entry.type === '' ? '' : ` ${entry.type}.`;
 	const topics = entry.labels.length === 0 ? '' : `\n\nChangelog labels: ${entry.labels.join(', ')}.`;
@@ -136,12 +116,7 @@ Published ${entry.published.slice(0, 10)}.${type}${summary}${topics}
 Opened by the GitHub Changelog monitor workflow. Close it once the change is evaluated against this fork.`;
 }
 
-/**
- * @param {NodeJS.ProcessEnv} env
- * @param {string} name
- * @param {number} fallback
- */
-function positiveInteger(env, name, fallback) {
+function positiveInteger(env: NodeJS.ProcessEnv, name: string, fallback: number): number {
 	const value = env[name] ?? '';
 	if (value === '') {
 		return fallback;
@@ -152,14 +127,7 @@ function positiveInteger(env, name, fallback) {
 	return Number(value);
 }
 
-/**
- * @param {{
- *   github: AsyncFunctionArguments['github'],
- *   context: AsyncFunctionArguments['context'],
- *   core: AsyncFunctionArguments['core'],
- * }} options
- */
-async function ensureLabel({ github, context, core }) {
+async function ensureLabel({ github, context, core }: RunArguments): Promise<void> {
 	const { owner, repo } = context.repo;
 	try {
 		await github.rest.issues.getLabel({ owner, repo, name: LABEL });
@@ -179,8 +147,7 @@ async function ensureLabel({ github, context, core }) {
 	core.info(`Created label ${LABEL}`);
 }
 
-/** The feed is a fixed endpoint, so no caller can steer the request. */
-async function fetchFeed() {
+async function fetchFeed(): Promise<string> {
 	const response = await fetch(FEED_URL, { headers: { accept: 'application/rss+xml, application/xml' } });
 	if (!response.ok) {
 		throw new Error(`${FEED_URL} responded ${response.status} ${response.statusText}`);
@@ -188,12 +155,7 @@ async function fetchFeed() {
 	return response.text();
 }
 
-/**
- * Workflow entry point.
- *
- * @param {RunArguments} args
- */
-export default async function run({ github, context, core }) {
+export default async function run({ github, context, core }: RunArguments): Promise<void> {
 	const { owner, repo } = context.repo;
 	const lookbackDays = positiveInteger(process.env, 'LOOKBACK_DAYS', 30);
 	const limit = positiveInteger(process.env, 'MAX_ISSUES', 10);
@@ -222,8 +184,7 @@ export default async function run({ github, context, core }) {
 		return;
 	}
 
-	/** @type {string[]} */
-	const opened = [];
+	const opened: string[] = [];
 	for (const entry of selected) {
 		const created = await github.rest.issues.create({
 			owner,

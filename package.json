@@ -17,7 +17,7 @@
     "preview": "npm run preview --workspace playground",
     "test": "run -p test:comment-cop test:feed test:matcher test:shellcheck-versions typecheck",
     "test:comment-cop": "node --test ./.github/actions/comment-cop/comment-cop.test.mjs",
-    "test:feed": "npm run test --workspace @kjlint/changelog-rss",
+    "test:feed": "npm run typecheck --workspace @kjlint/changelog-rss && npm run test --workspace @kjlint/changelog-rss",
     "test:matcher": "node --test ./scripts/generate-actionlint-matcher/test.mjs",
     "test:shellcheck-versions": "node --test ./.github/actions/shellcheck-versions/shellcheck-version-lifecycle.test.mjs",
     "test:workspaces": "npm run test --workspaces",
