@@ -27,11 +27,11 @@ jobs:
         run: run test:matcher
       - name: Ensure .github/actionlint-matcher.json is up-to-date
         run: |
-          run make:.github/actionlint-matcher.json
+          run matcher:generate
           if git diff --quiet; then
             echo 'OK'
           else
-            echo 'ERROR! .github/actionlint-matcher.json is outdated. Update it by "run make:.github/actionlint-matcher.json"' >&2
+            echo 'ERROR! .github/actionlint-matcher.json is outdated. Update it by "run matcher:generate"' >&2
             set -x
             git diff
             exit 1

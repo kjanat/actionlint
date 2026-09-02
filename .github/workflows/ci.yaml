@@ -11,6 +11,7 @@ jobs:
   unit-tests:
     name: Unit tests
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-26.04, ubuntu-26.04-arm, macos-latest, macos-26-intel, windows-2025-vs2026, windows-11-vs2026-arm]
     runs-on: ${{ matrix.os }}
