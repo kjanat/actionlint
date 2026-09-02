@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Accept `github.artifacts` and `github.artifacts_list` as strings in expressions, avoiding false errors for current artifact command files.
+- Correct `github.retention_days` from a number to the string type documented and returned by GitHub Actions.
 - Make successful Docker action runs visible in the step log with the actionlint version, problem count, workflow-file count, and enabled external linters. A run that checks no workflow files is now visibly distinct from a clean run. Document that the action needs a reachable Docker daemon, that `ubuntu-slim` is unsupported despite including the Docker client, that standard Arm Ubuntu runners are supported, and that daemon-less runners can download the binary instead. (https://github.com/kjanat/actionlint/issues/56)
 - Point SARIF tool and rule-documentation metadata at this fork, and use one canonical template for both the documented CLI format and the Docker action so the two cannot drift.
 - Name the module in the first line of `-version`, so `actionlint.kjanat.dev v1.13.0` tells this fork apart from upstream actionlint on a machine holding both. `make build` now stamps the version with `git describe --tags`, so a checkout build reports `v1.13.0-3-gabc1234` instead of a pseudo-version or `(devel)`. The second line names how the binary got there: `from source`, `go install` (detected from the build info: a real version with no VCS stamp means a module install), the release page URL such as `https://github.com/kjanat/actionlint/releases/tag/v1.14.0`, or `official Docker image`, replacing the `installed by ...` sentences. (https://github.com/kjanat/actionlint/issues/66)
