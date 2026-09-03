@@ -639,7 +639,7 @@ The `actionlint` hook installs into an isolated `$GOPATH`, so it only finds a
 `shellcheck` executable that is already on `PATH`.
 
 `actionlint-shellcheck` pins go-shellcheck so each actionlint revision builds a
-reproducible pre-commit environment. A scheduled [version lifecycle workflow](../.github/workflows/shellcheck-versions.yaml) checks both go-shellcheck
+reproducible pre-commit environment. The scheduled [Upkeep workflow](../.github/workflows/upkeep.yaml) checks both go-shellcheck
 and the ShellCheck version it embeds, and proposes pin updates automatically.
 To choose a different version yourself, use `additional_dependencies` on the
 plain hook:

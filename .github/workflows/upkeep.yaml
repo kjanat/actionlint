@@ -1,0 +1,213 @@
+name: Upkeep
+on:
+  schedule:
+    # Every Saturday 10:21 in JST
+    - cron: "21 1 * * 6"
+  workflow_run: { workflows: [Release], types: [completed] }
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/upkeep.yaml
+      - README.md
+      - docs/screenshots/**
+      - scripts/check-readme/**
+      - scripts/generate-availability/main.go
+      - scripts/generate-popular-actions/main.go
+      - scripts/generate-popular-actions/popular_actions.json
+      - scripts/generate-webhook-events/main.go
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || 'upkeep' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions: { contents: read }
+
+jobs:
+  generated-files:
+    name: Generated files match their generators
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with: { go-version-file: go.mod }
+      - run: go generate
+      - run: git diff --exit-code -- popular_actions.go all_webhooks.go availability.go
+  readme-demo:
+    name: README demo section matches the latest releases
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with: { go-version-file: go.mod }
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with: { cache: false }
+      - run: go run ./scripts/check-readme -quiet ./README.md
+        env: { GITHUB_TOKEN: "${{ github.token }}" }
+
+  generate:
+    name: Regenerate the Go tables
+    if: github.event_name != 'pull_request' && github.event_name != 'workflow_run' && github.repository_owner == 'kjanat'
+    runs-on: ubuntu-latest
+    permissions: { contents: write, pull-requests: write }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with: { go-version-file: go.mod }
+      - name: Check new release on GitHub
+        run: |
+          set -euo pipefail
+          # The detector exits 2 when a tracked action has a new major.
+          status=0
+          releases="$(go run ./scripts/generate-popular-actions -d)" || status=$?
+          if [[ -n "${releases}" ]]; then
+            printf '%s\n' "${releases}"
+          fi
+          if [[ "${status}" -eq 2 ]]; then
+            echo '::notice title=New major releases::A tracked action has a new major. See the job summary.'
+            cat >> "${GITHUB_STEP_SUMMARY}" <<'SUMMARY'
+          ## New major releases
+
+          Move each version into the tags list and bump next in
+          scripts/generate-popular-actions/popular_actions.json.
+
+          SUMMARY
+            printf '%s\n' "${releases}" >> "${GITHUB_STEP_SUMMARY}"
+          elif [[ "${status}" -ne 0 ]]; then
+            exit "${status}"
+          fi
+      - run: go generate
+      - name: Warn when the pull request will carry no CI
+        env: { UPKEEP_TOKEN: "${{ secrets.UPKEEP_TOKEN }}" }
+        run: |
+          if [[ -z "${UPKEEP_TOKEN}" ]]; then
+            echo '::warning title=No UPKEEP_TOKEN::GITHUB_TOKEN opens the pull request, and GitHub runs no workflows on it. Store a fine-grained token with contents and pull-requests write as the UPKEEP_TOKEN secret.'
+          fi
+      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.UPKEEP_TOKEN || github.token }}
+          branch: ci/go-generate
+          delete-branch: true
+          add-paths: |
+            popular_actions.go
+            all_webhooks.go
+            availability.go
+          commit-message: "Update the generated Go tables"
+          title: "Update the generated Go tables"
+          body: |
+            `go generate` produced new `popular_actions.go`, `all_webhooks.go`, or `availability.go`.
+
+            Created by [this Upkeep run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+          labels: |
+            area:codegen
+            type:maintenance
+          assignees: ${{ github.repository_owner }}
+  readme:
+    name: Refresh the README demo section
+    if: github.event_name != 'pull_request' && github.repository_owner == 'kjanat' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    permissions: { contents: write, pull-requests: write }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with: { go-version-file: go.mod }
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with: { cache: false }
+      - run: go run ./scripts/check-readme -fix ./README.md
+        env: { GITHUB_TOKEN: "${{ github.token }}" }
+      - name: Read the versions the section now describes
+        id: versions
+        run: |
+          set -euo pipefail
+          fork="$(awk '/^\*\*This fork / { print $3; exit }' README.md)"
+          upstream="$(awk '/^\*\*Upstream actionlint / { print $3; exit }' README.md)"
+          test -n "${fork}" && test -n "${upstream}"
+          {
+            echo "fork=${fork}"
+            echo "upstream=${upstream}"
+          } >> "${GITHUB_OUTPUT}"
+      - name: Warn when the pull request will carry no CI
+        env: { UPKEEP_TOKEN: "${{ secrets.UPKEEP_TOKEN }}" }
+        run: |
+          if [[ -z "${UPKEEP_TOKEN}" ]]; then
+            echo '::warning title=No UPKEEP_TOKEN::GITHUB_TOKEN opens the pull request, and GitHub runs no workflows on it. Store a fine-grained token with contents and pull-requests write as the UPKEEP_TOKEN secret.'
+          fi
+      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.UPKEEP_TOKEN || github.token }}
+          branch: ci/readme-demo
+          delete-branch: true
+          add-paths: README.md
+          commit-message: "Refresh the README demo for fork ${{ steps.versions.outputs.fork }} and upstream ${{ steps.versions.outputs.upstream }}"
+          title: "Refresh the README demo for fork ${{ steps.versions.outputs.fork }} and upstream ${{ steps.versions.outputs.upstream }}"
+          body: |
+            `scripts/check-readme -fix` regenerated the demo section with fork `${{ steps.versions.outputs.fork }}` and upstream `${{ steps.versions.outputs.upstream }}`, the latest releases mise resolves.
+
+            Created by [this Upkeep run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+          labels: |
+            documentation
+            type:maintenance
+          assignees: ${{ github.repository_owner }}
+  shellcheck:
+    name: Bump go-shellcheck
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository_owner == 'kjanat'
+    runs-on: ubuntu-latest
+    permissions: { contents: write, issues: write, pull-requests: write }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - name: Check ShellCheck versions
+        id: versions
+        uses: $/.github/actions/shellcheck-versions
+        with: { update-files: true }
+      - name: Warn when the pull request will carry no CI
+        env: { UPKEEP_TOKEN: "${{ secrets.UPKEEP_TOKEN }}" }
+        run: |
+          if [[ -z "${UPKEEP_TOKEN}" ]]; then
+            echo '::warning title=No UPKEEP_TOKEN::GITHUB_TOKEN opens the pull request, and GitHub runs no workflows on it. Store a fine-grained token with contents and pull-requests write as the UPKEEP_TOKEN secret.'
+          fi
+      - name: Create or update the go-shellcheck bump
+        id: bump
+        if: steps.versions.outputs.files-updated == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.UPKEEP_TOKEN || github.token }}
+          branch: ci/go-shellcheck-version
+          delete-branch: true
+          add-paths: |
+            .pre-commit-hooks.yaml
+            docs/usage.md
+            scripts/bump-version/targets.go
+          commit-message: "Bump go-shellcheck to ${{ steps.versions.outputs.go-shellcheck-version }}"
+          title: "Bump go-shellcheck to ${{ steps.versions.outputs.go-shellcheck-version }}"
+          body: |
+            Updates the pinned go-shellcheck dependency from `${{ steps.versions.outputs.pinned-go-shellcheck-version }}` to `${{ steps.versions.outputs.go-shellcheck-version }}`.
+
+            The new go-shellcheck release embeds ShellCheck `${{ steps.versions.outputs.embedded-shellcheck-version }}`. Latest upstream ShellCheck: `${{ steps.versions.outputs.shellcheck-version }}`.
+
+            Created by [this Upkeep run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+          labels: |
+            area:ci
+            dependencies
+          assignees: ${{ github.repository_owner }}
+      - name: Reconcile upstream ShellCheck tracking issue
+        if: ${{ always() && steps.versions.outcome == 'success' && steps.bump.outcome != 'failure' && steps.bump.outcome != 'cancelled' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          BUMP_PR_URL: ${{ steps.bump.outputs.pull-request-url }}
+          EMBEDDED_SHELLCHECK_VERSION: ${{ steps.versions.outputs.embedded-shellcheck-version }}
+          GO_SHELLCHECK_LAGGING: ${{ steps.versions.outputs.wrapper-lagging }}
+          GO_SHELLCHECK_VERSION: ${{ steps.versions.outputs.go-shellcheck-version }}
+          SHELLCHECK_VERSION: ${{ steps.versions.outputs.shellcheck-version }}
+        with:
+          github-token: ${{ github.token }}
+          retries: 3
+          script: |
+            const modulePath = `${process.env.GITHUB_WORKSPACE}/.github/actions/shellcheck-versions/reconcile-shellcheck-tracking-issue.mjs`
+            const { default: run } = await import(modulePath)
+            await run({ github, context, core, exec, glob, io })
