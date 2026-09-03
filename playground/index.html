@@ -4,75 +4,35 @@
 		<title>actionlint playground</title>
 		<meta charset="utf-8">
 		<meta name="twitter:card" content="summary_large_image">
-		<meta
-			name="twitter:title"
-			content="actionlint, a static checker for GitHub Actions workflow files"
-		>
-		<meta
-			name="twitter:image"
-			content="https://cdn.jsdelivr.net/gh/rhysd/ss@5530c2526b44ad28dc12f91a3d71bcd57940f008/actionlint/ogp.jpg"
-		>
-		<meta
-			name="twitter:image:alt"
-			content="Screenshot of actionlint playground"
-		>
-		<meta
-			name="go-import"
-			content="actionlint.kjanat.dev git https://github.com/kjanat/actionlint"
-		>
-		<meta
-			name="go-source"
-			content="actionlint.kjanat.dev https://github.com/kjanat/actionlint https://github.com/kjanat/actionlint/tree/HEAD{/dir} https://github.com/kjanat/actionlint/blob/HEAD{/dir}/{file}#L{line}"
-		>
+		<meta name="twitter:title" content="actionlint, a static checker for GitHub Actions workflow files">
+		<meta name="twitter:image" content="https://cdn.jsdelivr.net/gh/rhysd/ss@5530c2526b44ad28dc12f91a3d71bcd57940f008/actionlint/ogp.jpg">
+		<meta name="twitter:image:alt" content="Screenshot of actionlint playground">
+		<meta name="go-import" content="actionlint.kjanat.dev git https://github.com/kjanat/actionlint">
+		<meta name="go-source" content="actionlint.kjanat.dev https://github.com/kjanat/actionlint https://github.com/kjanat/actionlint/tree/HEAD{/dir} https://github.com/kjanat/actionlint/blob/HEAD{/dir}/{file}#L{line}">
 		<script src="/wasm_exec.js"></script>
 		<script type="module" src="/src/index.ts"></script>
 	</head>
 	<body>
-		<nav
-			id="header-bar"
-			class="navbar"
-			role="navigation"
-			aria-label="header navigation bar"
-		>
+		<nav id="header-bar" class="navbar" role="navigation" aria-label="header navigation bar">
 			<header class="header">
 				<h1 class="title">
-					<a
-						id="logo"
-						rel="noopener"
-						href="https://github.com/kjanat/actionlint"
-					><i class="devicon-github-original"></i></a>
+					<a id="logo" rel="noopener" href="https://github.com/kjanat/actionlint"><i class="devicon-github-original"></i></a>
 					actionlint playground
-					<a
-						rel="noopener"
-						href="https://github.com/kjanat/actionlint/releases/tag/v1.14.0"
-					>
+					<a rel="noopener" href="https://github.com/kjanat/actionlint/releases/tag/v1.14.0">
 						<span class="tag is-dark" id="version">v1.14.0</span>
 					</a>
 				</h1>
-				<h2 class="subtitle">
-					Static checker for GitHub Actions workflow files
-				</h2>
+				<h2 class="subtitle">Static checker for GitHub Actions workflow files</h2>
 			</header>
 			<div id="controls" class="navbar-end">
-				<div class="control">
-					<a id="permalink-btn" class="button">Permalink</a>
-				</div>
+				<div class="control"><a id="permalink-btn" class="button">Permalink</a></div>
 				<div class="field">
 					<div id="url-input" class="field has-addons">
 						<div class="control">
-							<label class="is-sr-only" for="check-url-input">
-								GitHub or Gist URL
-							</label>
-							<input
-								id="check-url-input"
-								class="input"
-								type="text"
-								placeholder="GitHub or Gist URL"
-							>
+							<label class="is-sr-only" for="check-url-input">GitHub or Gist URL</label>
+							<input id="check-url-input" class="input" type="text" placeholder="GitHub or Gist URL">
 						</div>
-						<div class="control">
-							<a id="check-url-btn" class="button">Check</a>
-						</div>
+						<div class="control"><a id="check-url-btn" class="button">Check</a></div>
 					</div>
 					<p id="invalid-input" class="help is-danger"></p>
 				</div>
@@ -85,11 +45,8 @@
 					<div id="loading" class="notification sticky has-text-centered">
 						Loading WebAssembly binary...
 					</div>
-					<table id="lint-result" class="table sticky is-hoverable">
-						<tbody id="lint-result-body"></tbody>
-					</table>
-					<div id="error-msg" class="notification sticky is-danger is-light">
-					</div>
+					<table id="lint-result" class="table sticky is-hoverable"><tbody id="lint-result-body"></tbody></table>
+					<div id="error-msg" class="notification sticky is-danger is-light"></div>
 					<div id="success-msg" class="notification sticky">
 						Yay! No error was detected.
 					</div>
@@ -98,41 +55,26 @@
 			<section id="resources" class="section">
 				<div class="container content">
 					<h2>
-						<i id="res-icon" class="devicon-githubactions-plain"></i>Resources
+						<i id="res-icon" class="devicon-githubactions-plain"></i>
+						Resources
 					</h2>
 					<p>
 						<ul>
 							<li>
-								<a
-									class="has-text-link-my-light"
-									target="_blank"
-									rel="noopener"
-									href="https://github.com/kjanat/actionlint/blob/v1.14.0/docs/checks.md"
-								>Checks by actionlint</a>
+								<a class="has-text-link-my-light" target="_blank" rel="noopener" href="https://github.com/kjanat/actionlint/blob/v1.14.0/docs/checks.md">
+									Checks by actionlint</a>
 							</li>
 							<li>
-								<a
-									class="has-text-link-my-light"
-									target="_blank"
-									rel="noopener"
-									href="https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions"
-								>Workflow syntax for GitHub Actions</a>
+								<a class="has-text-link-my-light" target="_blank" rel="noopener" href="https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions">
+									Workflow syntax for GitHub Actions</a>
 							</li>
 							<li>
-								<a
-									class="has-text-link-my-light"
-									target="_blank"
-									rel="noopener"
-									href="https://docs.github.com/en/actions/learn-github-actions/contexts"
-								>Available contexts in workflow</a>
+								<a class="has-text-link-my-light" target="_blank" rel="noopener" href="https://docs.github.com/en/actions/learn-github-actions/contexts">
+									Available contexts in workflow</a>
 							</li>
 							<li>
-								<a
-									class="has-text-link-my-light"
-									target="_blank"
-									rel="noopener"
-									href="https://docs.github.com/en/actions/reference/security/secure-use"
-								>Security hardening for GitHub Actions</a>
+								<a class="has-text-link-my-light" target="_blank" rel="noopener" href="https://docs.github.com/en/actions/reference/security/secure-use">
+									Security hardening for GitHub Actions</a>
 							</li>
 						</ul>
 					</p>
@@ -142,27 +84,13 @@
 		<footer class="footer">
 			<div class="content is-small has-text-centered has-text-grey">
 				<p>
-					<a
-						class="has-text-link-my-light"
-						rel="noopener"
-						href="https://github.com/rhysd/actionlint"
-					>actionlint</a> was created by <a
-						class="has-text-link-my-light"
-						rel="noopener"
-						href="https://github.com/rhysd"
-					>@rhysd</a>. This <a
-						class="has-text-link-my-light"
-						rel="noopener"
-						href="https://github.com/kjanat/actionlint"
-					>fork</a> is maintained by <a
-						class="has-text-link-my-light"
-						rel="noopener"
-						href="https://github.com/kjanat"
-					>@kjanat</a>. The source code and website content are licensed <a
-						class="has-text-link-my-light"
-						rel="noopener"
-						href="https://github.com/kjanat/actionlint/blob/HEAD/LICENSE.txt"
-					>MIT</a>.
+					<a class="has-text-link-my-light" rel="noopener" href="https://github.com/rhysd/actionlint">
+						actionlint</a> was created by <a class="has-text-link-my-light" rel="noopener" href="https://github.com/rhysd">
+						@rhysd</a>. This <a class="has-text-link-my-light" rel="noopener" href="https://github.com/kjanat/actionlint">
+						fork</a> is maintained by
+					<a class="has-text-link-my-light" rel="noopener" href="https://github.com/kjanat">
+						@kjanat</a>. The source code and website content are licensed <a class="has-text-link-my-light" rel="noopener" href="https://github.com/kjanat/actionlint/blob/HEAD/LICENSE.txt">
+						MIT</a>.
 				</p>
 			</div>
 		</footer>
