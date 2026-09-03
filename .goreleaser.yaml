@@ -62,6 +62,9 @@ homebrew_casks:
     directory: Casks
     binaries: [actionlint]
     manpages: [man/actionlint.1]
+    generate_completions_from_executable:
+      args: [-completion]
+      shells: [bash, zsh, fish, pwsh]
     homepage: https://actionlint.kjanat.dev
     description: Static checker for GitHub Actions workflow files
     dependencies:
