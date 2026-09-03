@@ -23,8 +23,10 @@ type RuleShellName struct {
 // NewRuleShellName creates new RuleShellName instance.
 func NewRuleShellName() *RuleShellName {
 	return &RuleShellName{
-		name:     "shell-name",
-		desc:     "Checks for shell names used for scripts in \"run:\"",
+		RuleBase: RuleBase{
+			name: "shell-name",
+			desc: "Checks for shell names used for scripts in \"run:\"",
+		},
 		platform: platformKindAny,
 	}
 }

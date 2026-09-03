@@ -153,6 +153,49 @@ jobs:
             documentation
             type:maintenance
           assignees: ${{ github.repository_owner }}
+  go-toolchain:
+    name: Bump Go toolchain
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository_owner == 'kjanat'
+    runs-on: ubuntu-latest
+    permissions: { contents: write, pull-requests: write }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with: { go-version-file: go.mod }
+      - name: Check the latest stable Go toolchain
+        id: version
+        run: |
+          set -euo pipefail
+          version="$(curl --fail --silent --show-error --location 'https://go.dev/VERSION?m=text' | sed -n '1p')"
+          if [[ ! "${version}" =~ ^go[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error title=Invalid Go version::go.dev returned '${version}'"
+            exit 1
+          fi
+          go mod edit -toolchain="${version}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+      - name: Warn when the pull request will carry no CI
+        env: { UPKEEP_TOKEN: "${{ secrets.UPKEEP_TOKEN }}" }
+        run: |
+          if [[ -z "${UPKEEP_TOKEN}" ]]; then
+            echo '::warning title=No UPKEEP_TOKEN::GITHUB_TOKEN opens the pull request, and GitHub runs no workflows on it. Store a fine-grained token with contents and pull-requests write as the UPKEEP_TOKEN secret.'
+          fi
+      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.UPKEEP_TOKEN || github.token }}
+          branch: ci/go-toolchain-version
+          delete-branch: true
+          add-paths: go.mod
+          commit-message: "Bump Go toolchain to ${{ steps.version.outputs.version }}"
+          title: "Bump Go toolchain to ${{ steps.version.outputs.version }}"
+          body: |
+            Updates the preferred Go toolchain in `go.mod` to `${{ steps.version.outputs.version }}`. The minimum supported Go version remains unchanged.
+
+            Created by [this Upkeep run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+          labels: |
+            area:toolchain
+            type:maintenance
+          assignees: ${{ github.repository_owner }}
   shellcheck:
     name: Bump go-shellcheck
     if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository_owner == 'kjanat'
