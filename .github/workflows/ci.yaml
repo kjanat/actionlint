@@ -131,8 +131,6 @@ jobs:
         with: { go-version-file: go.mod }
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with: { enable-cache: false }
-      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
-        with: { cache: false }
       - name: Install dependencies
         # check-checks reproduces docs examples with shellcheck and pyflakes
         run: |

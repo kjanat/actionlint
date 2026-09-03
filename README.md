@@ -88,7 +88,7 @@ demo-workflow.yaml:18:9: step must run script with "run" section or run action w
    |         ^~~~~
 ```
 
-**This fork reports 3: `expression`, `require-commit-hash`, `parallel-steps`**
+**This fork 1.14.0 reports 3: `expression`, `require-commit-hash`, `parallel-steps`**
 
 ```console
 demo-workflow.yaml:11:22: type of expression at "float number value" must be number but found type string [expression]

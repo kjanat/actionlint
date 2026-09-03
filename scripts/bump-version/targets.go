@@ -93,7 +93,7 @@ var targets = []*target{
 			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
 		},
 		generated: []*regexp.Regexp{
-			regexp.MustCompile(`(?m)^\*\*(?:Upstream actionlint \d+\.\d+\.\d+|This fork) reports`),
+			regexp.MustCompile(`(?m)^\*\*(?:Upstream actionlint|This fork) \d+\.\d+\.\d+ reports`),
 		},
 	},
 	{

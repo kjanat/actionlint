@@ -25,7 +25,8 @@ const (
 	fixtureDir   = "docs/screenshots"
 	workflow     = "demo-workflow.yaml"
 	config       = "actionlint.yaml"
-	upstreamTool = "actionlint@latest"
+	forkTool     = "github:kjanat/actionlint"
+	upstreamTool = "actionlint"
 )
 
 var (
@@ -65,19 +66,30 @@ type generator struct {
 	log  *log.Logger
 }
 
-func (g *generator) lint() (string, error) {
-	g.log.Println("linting", workflow)
-	out, err := g.command("go", "run", "./cmd/actionlint", "-no-color",
+// lint reports what the latest released fork makes of the fixture, and the version that made it.
+func (g *generator) lint() (string, string, error) {
+	v, err := g.mise("exec", forkTool+"@latest", "--", "actionlint", "-version")
+	if err != nil {
+		return "", "", err
+	}
+	line, _, _ := strings.Cut(strings.TrimSpace(string(v)), "\n")
+	version := line[strings.LastIndex(line, " ")+1:]
+	if version == "" {
+		return "", "", errors.New("mise reported no version for this fork")
+	}
+
+	g.log.Println("linting", workflow, "with", version)
+	out, err := g.mise("exec", forkTool+"@latest", "--", "actionlint", "-no-color",
 		"-config-file", filepath.Join(fixtureDir, config),
 		filepath.Join(fixtureDir, workflow))
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if len(out) == 0 {
-		return "", fmt.Errorf("%s reported nothing, so the demo section would show no problem", workflow)
+		return "", "", fmt.Errorf("%s reported nothing, so the demo section would show no problem", workflow)
 	}
 	// The path is reported the way it was passed, and the section shows it relative to the fixture.
-	return strings.ReplaceAll(string(out), fixtureDir+string(filepath.Separator), ""), nil
+	return strings.ReplaceAll(string(out), fixtureDir+string(filepath.Separator), ""), version, nil
 }
 
 func (g *generator) read(name string) (string, error) {
@@ -97,7 +109,7 @@ func (g *generator) section() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	out, err := g.lint()
+	out, forkVersion, err := g.lint()
 	if err != nil {
 		return "", err
 	}
@@ -113,7 +125,7 @@ func (g *generator) section() (string, error) {
 	fmt.Fprintf(&b, "`%s/%s`:\n\n```yaml\n%s\n```\n\n", fixtureDir, config, cfg)
 	fmt.Fprintf(&b, "**Upstream actionlint %s reports %d: %s**\n\n", version, len(diagnostic.FindAllString(up, -1)), summarise(up))
 	fmt.Fprintf(&b, "```console\n%s```\n\n", up)
-	fmt.Fprintf(&b, "**This fork reports %d: %s**\n\n", len(diagnostic.FindAllString(out, -1)), summarise(out))
+	fmt.Fprintf(&b, "**This fork %s reports %d: %s**\n\n", forkVersion, len(diagnostic.FindAllString(out, -1)), summarise(out))
 	fmt.Fprintf(&b, "```console\n%s```\n\n%s", out, endMarker)
 	return b.String(), nil
 }
@@ -126,6 +138,9 @@ func (g *generator) command(name string, args ...string) ([]byte, error) {
 		"MISE_SILENT=1",
 		"MISE_SAFE=1",
 		"MISE_TRUSTED_CONFIG_PATHS="+g.root,
+		// The fork releases faster than the age gate admits, and the gate would hold the
+		// comparison on the previous release.
+		"MISE_MINIMUM_RELEASE_AGE_EXCLUDES="+forkTool,
 	)
 	out, err := cmd.Output()
 	if err != nil {
@@ -144,7 +159,7 @@ func (g *generator) mise(args ...string) ([]byte, error) {
 
 // measureUpstream reports what the latest upstream command makes of the fixture.
 func (g *generator) measureUpstream() (string, string, error) {
-	v, err := g.mise("exec", upstreamTool, "--", "actionlint", "-version")
+	v, err := g.mise("exec", upstreamTool+"@latest", "--", "actionlint", "-version")
 	if err != nil {
 		return "", "", err
 	}
@@ -154,7 +169,7 @@ func (g *generator) measureUpstream() (string, string, error) {
 	}
 	g.log.Println("measuring upstream", version)
 
-	out, err := g.mise("exec", upstreamTool, "--", "actionlint", "-no-color",
+	out, err := g.mise("exec", upstreamTool+"@latest", "--", "actionlint", "-no-color",
 		filepath.Join(fixtureDir, workflow))
 	if err != nil {
 		return "", "", err
