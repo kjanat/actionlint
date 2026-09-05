@@ -32,37 +32,52 @@ check_latest_version() {
 	fi
 }
 
+download() {
+	local out output
+
+	: >"${github_output}"
+	out="$(GITHUB_ACTION=true GITHUB_OUTPUT="${github_output}" bash "${script}" "$@")"
+	output="$(<"${github_output}")"
+	if [[ "${output}" != executable=* || "${output}" == *$'\n'* || -z "${output#executable=}" ]]; then
+		echo "'executable' step output is not set correctly in ${github_output}:" >&2
+		cat "${github_output}" >&2
+		echo "Download script output: '${out}'" >&2
+		exit 1
+	fi
+
+	executable="${output#executable=}"
+	if [[ ! -f "${executable}" ]]; then
+		echo "Downloaded executable does not exist: '${executable}'" >&2
+		echo "Download script output: '${out}'" >&2
+		exit 1
+	fi
+}
+
 # Latest release
 github_output="${temp_dir}/github-output"
-out="$(GITHUB_ACTION=true GITHUB_OUTPUT="${github_output}" bash "${script}" latest)"
-if ! grep -Fqx "executable=${temp_dir}/actionlint" "${github_output}"; then
-	echo "'executable' step output is not set correctly in ${github_output}:" >&2
-	cat "${github_output}" >&2
-	echo "Download script output: '${out}'" >&2
-	exit 1
-fi
-check_latest_version ./actionlint
-rm -f ./actionlint
+download latest
+check_latest_version "${executable}"
+rm -f "${executable}"
 
 # Specify only version
-bash "${script}" '1.8.0'
-out="$(./actionlint -version | head -n 1)"
+download '1.8.0'
+out="$("${executable}" -version | head -n 1)"
 if [[ "${out}" != '1.8.0' ]]; then
 	echo "Unexpected version: '${out}'" 1>&2
 	exit 1
 fi
-rm -f ./actionlint
+rm -f "${executable}"
 
 # Specify only a download directory
 mkdir ./test1
-bash "${script}" latest ./test1
-check_latest_version ./test1/actionlint
+download latest ./test1
+check_latest_version "${executable}"
 rm -rf ./test1
 
 # Specify both version and a download directory
 mkdir ./test2
-bash "${script}" '1.8.0' ./test2
-out="$(./test2/actionlint -version | head -n 1)"
+download '1.8.0' ./test2
+out="$("${executable}" -version | head -n 1)"
 if [[ "${out}" != '1.8.0' ]]; then
 	echo "Unexpected version: '${out}'" 1>&2
 	exit 1

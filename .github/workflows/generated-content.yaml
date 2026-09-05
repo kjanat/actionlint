@@ -1,0 +1,33 @@
+name: Generated content
+on:
+  pull_request:
+    paths:
+      - .github/workflows/generated-content.yaml
+      - go.mod
+      - action_metadata.go
+      - all_webhooks.go
+      - availability.go
+      - popular_actions.go
+      - rule_events.go
+      - rule_expression.go
+      - scripts/generate-availability/**
+      - scripts/generate-popular-actions/**
+      - scripts/generate-webhook-events/**
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: { contents: read }
+
+jobs:
+  generated-files:
+    name: Generated files match their generators
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with: { go-version-file: go.mod }
+      - run: go generate
+      - run: git diff --exit-code -- popular_actions.go all_webhooks.go availability.go
