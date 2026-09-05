@@ -12,6 +12,7 @@
 /coverage.html
 /coverage.out
 /crashers
+/dist/
 /distribution/*/dist/
 /env.sh
 /man/actionlint.1
