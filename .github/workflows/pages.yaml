@@ -21,7 +21,7 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with: { node-version-file: .node-version, package-manager-cache: false }
       - uses: $/.github/actions/setup-pandoc
-      - uses: kjanat/runner@master
+      - uses: kjanat/runner@6e752d37c4b3de6bda86c89b2f5bc487097425cd # master
       - name: Install JavaScript dependencies
         run: runner install --frozen
       - name: Build command manual
