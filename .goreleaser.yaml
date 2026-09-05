@@ -136,8 +136,8 @@ aurs:
         "${pkgdir}/usr/share/fish/vendor_completions.d/actionlint.fish" \
         "${pkgdir}/usr/share/actionlint/actionlint.ps1"
     commit_author:
-      name: "github-actions[bot]"
-      email: "41898282+github-actions[bot]@users.noreply.github.com"
+      name: "{{ .Env.COMMIT_USER }}"
+      email: "{{ .Env.COMMIT_EMAIL }}"
 
 aur_sources:
   - name: actionlint-kjanat
@@ -191,5 +191,5 @@ aur_sources:
         "${pkgdir}/usr/share/fish/vendor_completions.d/actionlint.fish" \
         "${pkgdir}/usr/share/actionlint/actionlint.ps1"
     commit_author:
-      name: "github-actions[bot]"
-      email: "41898282+github-actions[bot]@users.noreply.github.com"
+      name: "{{ .Env.COMMIT_USER }}"
+      email: "{{ .Env.COMMIT_EMAIL }}"
