@@ -86,11 +86,23 @@ nix-env -iA nixpkgs.actionlint
 brew install actionlint
 ```
 
-That formula tracks the upstream project. To install this fork instead, use its own tap, which is updated automatically
-on every release:
+That formula tracks the upstream project. To install this fork instead, use the `kjanat/tap` tap, which is updated
+automatically on every release:
 
 ```sh
-brew install kjanat/actionlint/actionlint
+brew install kjanat/tap/actionlint
+```
+
+The cask is also published to the per-project `kjanat/actionlint` tap, so an existing `brew install
+kjanat/actionlint/actionlint` keeps upgrading.
+
+The cask installs the `actionlint` binary and nothing else. The [shellcheck integration](checks.md#check-shellcheck-integ)
+needs a `shellcheck` on `PATH`. The `shellcheck` formula from homebrew-core builds it with GHC and, on Linux, pulls in `gcc`
+and `glibc` as runtime dependencies. The `kjanat/tap/shellcheck` cask installs the static binary ShellCheck itself
+releases, with no dependencies, and conflicts with the formula:
+
+```sh
+brew install kjanat/tap/shellcheck
 ```
 
 > [!WARNING]

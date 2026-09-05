@@ -201,10 +201,11 @@ To move the defaults to newer base images:
 
 ## Make a new release
 
-Updating [the Homebrew tap](https://github.com/kjanat/homebrew-actionlint) needs a `HOMEBREW_TAP_TOKEN` secret on this
+Updating the Homebrew taps, [kjanat/homebrew-tap](https://github.com/kjanat/homebrew-tap) and
+[kjanat/homebrew-actionlint](https://github.com/kjanat/homebrew-actionlint), needs a `HOMEBREW_TAP_TOKEN` secret on this
 repository, because the built-in `GITHUB_TOKEN` cannot write to another one. It is a fine-grained personal access token
-whose repository access is `kjanat/homebrew-actionlint` alone, with `Contents: Read and write` and nothing else. The
-GoReleaser step fails without it.
+whose repository access is those two repositories alone, with `Contents: Read and write` and nothing else. The GoReleaser
+step fails without it.
 
 When releasing v1.2.3 as example:
 
