@@ -95,6 +95,7 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with: { node-version-file: .node-version, package-manager-cache: false }
       - uses: kjanat/runner@6e752d37c4b3de6bda86c89b2f5bc487097425cd # master
+        with: { version: "0.25" } # 0.26.0 cannot resolve make targets under --dir
       - uses: $/.github/actions/setup-pandoc
       - name: Install JavaScript dependencies
         run: runner install --frozen
@@ -114,6 +115,7 @@ jobs:
         with: { go-version-file: go.mod }
       - uses: $/.github/actions/setup-pandoc
       - uses: kjanat/runner@6e752d37c4b3de6bda86c89b2f5bc487097425cd # master
+        with: { version: "0.25" } # 0.26.0 cannot resolve make targets under --dir
       - run: run make:man/actionlint.1
       - name: Install syft for SBOM generation
         uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
@@ -161,6 +163,7 @@ jobs:
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with: { version: v2.13.1, install-only: true }
       - uses: kjanat/runner@6e752d37c4b3de6bda86c89b2f5bc487097425cd # master
+        with: { version: "0.25" } # 0.26.0 cannot resolve make targets under --dir
       - run: go mod tidy -diff
       - name: Build through Makefile
         run: run make:build

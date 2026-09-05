@@ -33,6 +33,7 @@ jobs:
         with: { persist-credentials: false }
       - uses: $/.github/actions/setup-pandoc
       - uses: kjanat/runner@6e752d37c4b3de6bda86c89b2f5bc487097425cd # master
+        with: { version: "0.25" } # 0.26.0 cannot resolve make targets under --dir
       - run: run make:man/actionlint.1
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with: { name: manual, path: man/actionlint.1, if-no-files-found: error }
