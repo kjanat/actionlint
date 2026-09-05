@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/generated-content.yaml
+      - .dprint.jsonc
       - go.mod
       - go.sum
       - config.go
@@ -33,5 +34,7 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
+      - uses: kjanat/install-dprint@fc7e4f62965bab609a936c9e58ad4893bb9da961 # v2
       - run: go generate
+      - run: dprint fmt actionlint.schema.json
       - run: git diff --exit-code -- popular_actions.go all_webhooks.go availability.go actionlint.schema.json

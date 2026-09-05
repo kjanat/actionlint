@@ -1,13 +1,13 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"os"
 	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev"
+	"github.com/google/go-cmp/cmp"
 	validator "github.com/santhosh-tekuri/jsonschema/v6"
 	"go.yaml.in/yaml/v4"
 )
@@ -28,8 +28,17 @@ func TestGeneratedSchemaUpToDate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(got, want) {
-		t.Fatal("actionlint.schema.json is stale; run go generate -run generate-config-schema")
+	// The schema formatter owns whitespace and object key ordering. Compare
+	// JSON values here so unit tests do not need dprint installed.
+	var gotDocument, wantDocument any
+	if err := json.Unmarshal(got, &gotDocument); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(want, &wantDocument); err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff(wantDocument, gotDocument); diff != "" {
+		t.Fatalf("actionlint.schema.json is stale; run go generate -run generate-config-schema (-want +got):\n%s", diff)
 	}
 }
 

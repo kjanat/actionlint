@@ -21,7 +21,8 @@ For completion, hover documentation, and validation in editors using YAML Langua
 
 The [JSON Schema](../actionlint.schema.json) includes this fork's settings and is generated from the Go configuration
 types, YAML tags, and comments. Regenerate it with `go generate -run generate-config-schema` (or `go generate` for all
-generated files). CI checks that it stays up to date. Custom YAML types have explicit mappings in
+generated files), then run `dprint fmt actionlint.schema.json` to apply the repository's schema formatting. CI checks
+that it stays up to date. Custom YAML types have explicit mappings in
 [`scripts/generate-config-schema`](../scripts/generate-config-schema/main.go); nullable values and field constraints
 use `jsonschema` struct tags. The schema catches unknown keys; actionlint itself validates Go regex and glob syntax.
 

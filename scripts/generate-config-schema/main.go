@@ -54,7 +54,7 @@ func generate() ([]byte, error) {
 		return nil, fmt.Errorf("read config comments: %w", err)
 	}
 	s := r.Reflect(actionlint.Config{})
-	s.ID = "https://raw.githubusercontent.com/kjanat/actionlint/master/actionlint.schema.json"
+	s.ID = "https://raw.githubusercontent.com/kjanat/actionlint/HEAD/actionlint.schema.json"
 	s.Title = "actionlint configuration"
 	s.Comments = "Generated from config.go by go generate -run generate-config-schema. DO NOT EDIT."
 	b, err := json.MarshalIndent(s, "", "  ")
