@@ -66,36 +66,108 @@ source:
 
 homebrew_casks:
   - name: actionlint
+    ids: [nix]
     directory: Casks
     binaries: [actionlint]
     manpages: [man/actionlint.1]
+    # shell_parameter_format stays unset: Homebrew then appends the bare shell
+    # name, the form -completion takes.
     generate_completions_from_executable:
+      executable: actionlint
       args: [-completion]
+      base_name: actionlint
       shells: [bash, zsh, fish, pwsh]
+    url:
+      template: "https://github.com/kjanat/actionlint/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+      verified: github.com/kjanat/actionlint/
+    commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"
     homepage: https://actionlint.kjanat.dev
     description: Static checker for GitHub Actions workflow files
+    skip_upload: auto
     dependencies:
       - formula: shellcheck
+    # The binary is not notarized. Without this, Gatekeeper blocks it, and the
+    # completion generation above runs it during install.
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/actionlint"]
+          end
     repository:
       owner: kjanat
       name: homebrew-actionlint
+      branch: master
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     commit_author:
       name: "github-actions[bot]"
       email: "41898282+github-actions[bot]@users.noreply.github.com"
 scoops:
   - name: actionlint
+    ids: [windows]
     # One bucket for every project. Scoop reads manifests from bucket/ when
     # that directory exists, leaving the root to the bucket's own config.
     directory: bucket
-    repository:
-      owner: kjanat
-      name: scoop-bucket
-      token: "{{ .Env.SCOOP_BUCKET_TOKEN }}"
-    ids: [windows]
+    goamd64: v1
+    url_template: "https://github.com/kjanat/actionlint/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
     homepage: https://actionlint.kjanat.dev
     description: Static checker for GitHub Actions workflow files
     license: MIT
+    skip_upload: auto
+    repository:
+      owner: kjanat
+      name: scoop-bucket
+      branch: master
+      token: "{{ .Env.SCOOP_BUCKET_TOKEN }}"
+    commit_author:
+      name: "github-actions[bot]"
+      email: "41898282+github-actions[bot]@users.noreply.github.com"
+winget:
+  - name: actionlint
+    package_name: actionlint
+    # Upstream owns rhysd.actionlint in winget-pkgs; this fork is its own package.
+    package_identifier: kjanat.actionlint
+    default_locale: en-US
+    publisher: kjanat
+    publisher_url: https://github.com/kjanat
+    publisher_support_url: https://github.com/kjanat/actionlint/issues
+    author: Kaj Kowalski
+    homepage: https://actionlint.kjanat.dev
+    short_description: Static checker for GitHub Actions workflow files
+    description: |-
+      actionlint is a static checker for GitHub Actions workflow files. It checks the workflow syntax, expression
+      placeholders, the shell scripts in run: steps, and many other mistakes that only surface once a workflow
+      runs. This is the kjanat fork.
+    license: MIT
+    license_url: "https://github.com/kjanat/actionlint/blob/{{ .Tag }}/LICENSE.txt"
+    copyright: Copyright (c) 2026 Kaj Kowalski, Copyright (c) 2021 rhysd
+    copyright_url: "https://github.com/kjanat/actionlint/blob/{{ .Tag }}/LICENSE.txt"
+    release_notes: "{{ .Changelog }}"
+    release_notes_url: "https://github.com/kjanat/actionlint/releases/tag/{{ .Tag }}"
+    installation_notes: >-
+      ShellCheck and pyflakes are optional; when installed, actionlint can use them
+      to check shell and Python scripts in workflow run steps.
+    tags: [actionlint, github-actions, workflow, linter, static-analysis, yaml, ci]
+    ids: [windows]
+    goamd64: v1
+    url_template: "https://github.com/kjanat/actionlint/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    commit_msg_template: "New version: {{ .PackageIdentifier }} {{ .Version }}"
+    skip_upload: auto
+    # winget-pkgs takes pull requests only: push a branch to a personal fork,
+    # shared by every project like the scoop bucket, and open the PR from there.
+    repository:
+      owner: kjanat
+      name: winget-pkgs
+      branch: "actionlint-{{ .Version }}"
+      token: "{{ .Env.WINGET_TOKEN }}"
+      pull_request:
+        enabled: true
+        draft: false
+        base:
+          owner: microsoft
+          name: winget-pkgs
+          branch: master
     commit_author:
       name: "github-actions[bot]"
       email: "41898282+github-actions[bot]@users.noreply.github.com"
