@@ -109,7 +109,7 @@ aurs:
     description: Static checker for GitHub Actions workflow files (kjanat fork, prebuilt binary)
     maintainers: ["Kaj Kowalski <info at kajkowalski dot nl>"]
     license: MIT
-    private_key: "{{ .Env.AUR_KEY }}"
+    private_key: "{{ .Env.AUR_SSH_PRIVATE_KEY }}"
     git_url: ssh://aur@aur.archlinux.org/actionlint-kjanat-bin.git
     skip_upload: auto
     provides: [actionlint, actionlint-kjanat]
@@ -145,7 +145,7 @@ aur_sources:
     description: Static checker for GitHub Actions workflow files (kjanat fork)
     maintainers: ["Kaj Kowalski <info at kajkowalski dot nl>"]
     license: MIT
-    private_key: "{{ .Env.AUR_KEY }}"
+    private_key: "{{ .Env.AUR_SSH_PRIVATE_KEY }}"
     git_url: ssh://aur@aur.archlinux.org/actionlint-kjanat.git
     skip_upload: auto
     arches: [x86_64, aarch64, armv7h]
