@@ -57,6 +57,13 @@ archives:
     ids: [windows]
     formats: [zip]
 
+# Carries the rendered manual, and its prefix spells the version the way
+# pkgver does (_ for -), which the AUR source package relies on.
+source:
+  enabled: true
+  prefix_template: '{{ .ProjectName }}-{{ replace .Version "-" "_" }}/'
+  files: [man/actionlint.1]
+
 homebrew_casks:
   - name: actionlint
     directory: Casks
@@ -126,6 +133,100 @@ winget:
           owner: microsoft
           name: winget-pkgs
           branch: master
+    commit_author:
+      name: "github-actions[bot]"
+      email: "41898282+github-actions[bot]@users.noreply.github.com"
+
+# Both AUR packages carry the -kjanat suffix: actionlint is in Arch extra and
+# actionlint-bin on the AUR tracks upstream under another maintainer.
+aurs:
+  - name: actionlint-kjanat-bin
+    ids: [nix]
+    homepage: https://actionlint.kjanat.dev
+    description: Static checker for GitHub Actions workflow files (kjanat fork, prebuilt binary)
+    maintainers: ["Kaj Kowalski <info at kajkowalski dot nl>"]
+    license: MIT
+    private_key: "{{ .Env.AUR_SSH_PRIVATE_KEY }}"
+    git_url: ssh://aur@aur.archlinux.org/actionlint-kjanat-bin.git
+    skip_upload: auto
+    provides: [actionlint, actionlint-kjanat]
+    conflicts: [actionlint, actionlint-kjanat]
+    optdepends:
+      - "shellcheck: check shell scripts in run steps"
+      - "python-pyflakes: check Python scripts in run steps"
+    package: |-
+      install -Dm0755 actionlint "${pkgdir}/usr/bin/actionlint"
+      install -Dm0644 LICENSE.txt "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.txt"
+      install -Dm0644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+      install -Dm0644 -t "${pkgdir}/usr/share/doc/${pkgname}/" docs/*.md
+      install -Dm0644 man/actionlint.1 "${pkgdir}/usr/share/man/man1/actionlint.1"
+      install -dm0755 "${pkgdir}/usr/share/bash-completion/completions" \
+        "${pkgdir}/usr/share/zsh/site-functions" \
+        "${pkgdir}/usr/share/fish/vendor_completions.d" \
+        "${pkgdir}/usr/share/actionlint"
+      ./actionlint -completion bash >"${pkgdir}/usr/share/bash-completion/completions/actionlint"
+      ./actionlint -completion zsh >"${pkgdir}/usr/share/zsh/site-functions/_actionlint"
+      ./actionlint -completion fish >"${pkgdir}/usr/share/fish/vendor_completions.d/actionlint.fish"
+      ./actionlint -completion powershell >"${pkgdir}/usr/share/actionlint/actionlint.ps1"
+      chmod 0644 "${pkgdir}/usr/share/bash-completion/completions/actionlint" \
+        "${pkgdir}/usr/share/zsh/site-functions/_actionlint" \
+        "${pkgdir}/usr/share/fish/vendor_completions.d/actionlint.fish" \
+        "${pkgdir}/usr/share/actionlint/actionlint.ps1"
+    commit_author:
+      name: "github-actions[bot]"
+      email: "41898282+github-actions[bot]@users.noreply.github.com"
+
+aur_sources:
+  - name: actionlint-kjanat
+    homepage: https://actionlint.kjanat.dev
+    description: Static checker for GitHub Actions workflow files (kjanat fork)
+    maintainers: ["Kaj Kowalski <info at kajkowalski dot nl>"]
+    license: MIT
+    private_key: "{{ .Env.AUR_SSH_PRIVATE_KEY }}"
+    git_url: ssh://aur@aur.archlinux.org/actionlint-kjanat.git
+    skip_upload: auto
+    arches: [x86_64, aarch64, armv7h]
+    provides: [actionlint]
+    conflicts: [actionlint, actionlint-kjanat-bin]
+    # Built with cgo and -linkmode=external per the Arch Go guidelines, so it
+    # links against the system libc, unlike the static release binaries.
+    depends: [glibc]
+    makedepends: [go, git]
+    optdepends:
+      - "shellcheck: check shell scripts in run steps"
+      - "python-pyflakes: check Python scripts in run steps"
+    prepare: |-
+      cd "actionlint-${pkgver}"
+      go mod download
+    build: |-
+      cd "actionlint-${pkgver}"
+      export CGO_CPPFLAGS="${CPPFLAGS}"
+      export CGO_CFLAGS="${CFLAGS}"
+      export CGO_CXXFLAGS="${CXXFLAGS}"
+      export CGO_LDFLAGS="${LDFLAGS}"
+      export GOFLAGS="-buildmode=pie -trimpath -mod=readonly -modcacherw"
+      go build -o build/actionlint \
+        -ldflags "-linkmode=external -X actionlint.kjanat.dev.version=${pkgver} -X actionlint.kjanat.dev.installedFrom=https://aur.archlinux.org/packages/${pkgname}" \
+        ./cmd/actionlint
+    package: |-
+      cd "actionlint-${pkgver}"
+      install -Dm0755 build/actionlint "${pkgdir}/usr/bin/actionlint"
+      install -Dm0644 LICENSE.txt "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.txt"
+      install -Dm0644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+      install -Dm0644 -t "${pkgdir}/usr/share/doc/${pkgname}/" docs/*.md
+      install -Dm0644 man/actionlint.1 "${pkgdir}/usr/share/man/man1/actionlint.1"
+      install -dm0755 "${pkgdir}/usr/share/bash-completion/completions" \
+        "${pkgdir}/usr/share/zsh/site-functions" \
+        "${pkgdir}/usr/share/fish/vendor_completions.d" \
+        "${pkgdir}/usr/share/actionlint"
+      build/actionlint -completion bash >"${pkgdir}/usr/share/bash-completion/completions/actionlint"
+      build/actionlint -completion zsh >"${pkgdir}/usr/share/zsh/site-functions/_actionlint"
+      build/actionlint -completion fish >"${pkgdir}/usr/share/fish/vendor_completions.d/actionlint.fish"
+      build/actionlint -completion powershell >"${pkgdir}/usr/share/actionlint/actionlint.ps1"
+      chmod 0644 "${pkgdir}/usr/share/bash-completion/completions/actionlint" \
+        "${pkgdir}/usr/share/zsh/site-functions/_actionlint" \
+        "${pkgdir}/usr/share/fish/vendor_completions.d/actionlint.fish" \
+        "${pkgdir}/usr/share/actionlint/actionlint.ps1"
     commit_author:
       name: "github-actions[bot]"
       email: "41898282+github-actions[bot]@users.noreply.github.com"

@@ -61,6 +61,7 @@ jobs:
           HOMEBREW_TAP_TOKEN: "${{ secrets.HOMEBREW_TAP_TOKEN }}",
           SCOOP_BUCKET_TOKEN: "${{ secrets.SCOOP_BUCKET_TOKEN }}",
           WINGET_TOKEN: "${{ secrets.WINGET_TOKEN }}",
+          AUR_SSH_PRIVATE_KEY: "${{ secrets.AUR_SSH_PRIVATE_KEY }}",
         }
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
         with: { subject-checksums: "./dist/actionlint_${{ env.VERSION }}_checksums.txt" }
