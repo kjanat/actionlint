@@ -40,12 +40,13 @@ winget install actionlint
 
 ### [Arch Linux](https://archlinux.org/)
 
-This fork publishes two packages to the [AUR][aur], updated automatically on every release:
+This fork publishes three packages to the [AUR][aur]. The first two are updated automatically on every release:
 
 | Package                                        | Builds                            |
 | ---------------------------------------------- | --------------------------------- |
 | [actionlint-kjanat][actionlint-kjanat]         | from the release source tarball   |
 | [actionlint-kjanat-bin][actionlint-kjanat-bin] | prebuilt from the release archive |
+| [actionlint-kjanat-git][actionlint-kjanat-git] | from the tip of `master`          |
 
 They can be installed via the [`paru`][paru] command:
 
@@ -53,7 +54,7 @@ They can be installed via the [`paru`][paru] command:
 paru -S actionlint-kjanat-bin
 ```
 
-Both install `/usr/bin/actionlint` and therefore conflict with each other and with `actionlint` in the official
+All three install `/usr/bin/actionlint` and therefore conflict with each other and with `actionlint` in the official
 repository, `actionlint-bin` and `actionlint-git`, which all track the upstream project; install exactly one. Each
 ships the man page and bash, zsh and fish completions.
 
@@ -254,6 +255,7 @@ go install actionlint.kjanat.dev/cmd/actionlint@master
 [scoop]: https://scoop.sh/#/apps?q=actionlint&s=0&d=1&o=true
 [winget]: https://github.com/microsoft/winget-pkgs/tree/master/manifests/r/rhysd/actionlint
 [actionlint-kjanat-bin]: https://aur.archlinux.org/packages/actionlint-kjanat-bin
+[actionlint-kjanat-git]: https://aur.archlinux.org/packages/actionlint-kjanat-git
 [actionlint-kjanat]: https://aur.archlinux.org/packages/actionlint-kjanat
 [aur]: https://aur.archlinux.org/
 [paru]: https://github.com/Morganamilo/paru
