@@ -19,11 +19,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
-      # Runs makepkg --printsrcinfo in an Arch container, then commits and pushes.
+      # Builds the package from the current master in an Arch container first;
+      # a PKGBUILD that does not build is not pushed.
       - uses: KSXGitHub/github-actions-deploy-aur@084b0d9b15415bf9cdb65d44dad1efe37a354050 # v4.2.0
         with:
           pkgname: actionlint-kjanat-git
           pkgbuild: distribution/aur/actionlint-kjanat-git/PKGBUILD
+          test: true
+          test_flags: --clean --cleanbuild --syncdeps --noconfirm
           commit_username: ${{ vars.COMMIT_USER }}
           commit_email: ${{ vars.COMMIT_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
