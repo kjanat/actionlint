@@ -1,0 +1,47 @@
+name: Build npm packages
+description: Assemble the npm publish tree from a release's GoReleaser archives
+inputs:
+  version:
+    description: Release version, with or without a leading v
+    required: true
+  repository:
+    description: Repository to download the release archives from
+    required: false
+    default: ${{ github.repository }}
+  token:
+    description: Token used to download the release archives
+    required: false
+    default: ${{ github.token }}
+  npm-dir:
+    description: Directory holding targets.json and the facade sources
+    required: false
+    default: ${{ github.workspace }}/distribution/npm
+  out-dir:
+    description: Directory to write the publish tree into
+    required: false
+    default: ${{ github.workspace }}/distribution/npm/dist
+  downloads:
+    description: Directory of already-downloaded release archives; anything missing is fetched
+    required: false
+    default: ""
+  only:
+    description: Build a single target (e.g. linux-x64), or "facade"; empty builds everything
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    # Self-contained module: runs from the action directory, and invisible to
+    # ./... at the repository root because the go tool skips dot-directories.
+    - name: Assemble packages
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_REPOSITORY: ${{ inputs.repository }}
+        INPUT_TOKEN: ${{ inputs.token }}
+        INPUT_NPM_DIR: ${{ inputs.npm-dir }}
+        INPUT_OUT_DIR: ${{ inputs.out-dir }}
+        INPUT_DOWNLOADS: ${{ inputs.downloads }}
+        INPUT_ONLY: ${{ inputs.only }}
+      run: go run .
