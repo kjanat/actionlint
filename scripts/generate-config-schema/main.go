@@ -65,13 +65,13 @@ func generate() ([]byte, error) {
 }
 
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./scripts/generate-config-schema OUTPUT")
+	if len(os.Args) != 1 {
+		fmt.Fprintln(os.Stderr, "usage: go run ./scripts/generate-config-schema")
 		os.Exit(1)
 	}
 	b, err := generate()
 	if err == nil {
-		err = os.WriteFile(os.Args[1], b, 0644)
+		err = os.WriteFile("actionlint.schema.json", b, 0644)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

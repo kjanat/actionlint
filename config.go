@@ -13,7 +13,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-//go:generate go run ./scripts/generate-config-schema ./actionlint.schema.json
+//go:generate go run ./scripts/generate-config-schema
 
 // IgnorePatterns is a list of regular expressions. These patterns are used for filtering errors by
 // matching the error messages.
