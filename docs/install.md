@@ -51,9 +51,8 @@ project. To install this fork instead, use its own AUR packages, which are updat
 
 | Package                                        | Builds                            |
 | ---------------------------------------------- | --------------------------------- |
-| [actionlint-kjanat][actionlint-kjanat]         | from the tagged source tarball    |
+| [actionlint-kjanat][actionlint-kjanat]         | from the release source tarball   |
 | [actionlint-kjanat-bin][actionlint-kjanat-bin] | prebuilt from the release archive |
-| [actionlint-kjanat-git][actionlint-kjanat-git] | from the tip of `master`          |
 
 They can be installed via the [`paru`][paru] command:
 
@@ -61,7 +60,7 @@ They can be installed via the [`paru`][paru] command:
 paru -S actionlint-kjanat-bin
 ```
 
-All of them install `/usr/bin/actionlint` and therefore conflict with each other and with the official `actionlint`
+Both install `/usr/bin/actionlint` and therefore conflict with each other and with the official `actionlint`
 package; install exactly one. Each ships the man page and bash, zsh and fish completions.
 
 ### [Nix](https://nixos.wiki/)
@@ -264,7 +263,6 @@ go install actionlint.kjanat.dev/cmd/actionlint@master
 [actionlint-bin]: https://aur.archlinux.org/packages/actionlint-bin
 [actionlint-git]: https://aur.archlinux.org/packages/actionlint-git
 [actionlint-kjanat-bin]: https://aur.archlinux.org/packages/actionlint-kjanat-bin
-[actionlint-kjanat-git]: https://aur.archlinux.org/packages/actionlint-kjanat-git
 [actionlint-kjanat]: https://aur.archlinux.org/packages/actionlint-kjanat
 [aur]: https://aur.archlinux.org/
 [paru]: https://github.com/Morganamilo/paru
