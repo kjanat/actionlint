@@ -19,15 +19,17 @@ binary through npm:
 - `@kjanat/actionlint` contains no binary. It declares every platform package in
   `optionalDependencies`, pinned to the exact same version, and its `bin` entry
   is a small launcher.
-- `@kjanat/actionlint-<os>-<cpu>` contains one executable and declares `os` and
-  `cpu`, so a package manager downloads only the one matching the host.
+- `@kjanat-actionlint/actionlint-<os>-<cpu>` contains one executable and declares `os` and
+  `cpu`, so a package manager downloads only the one matching the host. The
+  platform packages sit in their own npm organisation, `kjanat-actionlint`, so
+  eleven binary-only packages nobody installs by hand stay out of `@kjanat/*`.
 
-At run time the launcher derives the platform package name as
-`<facade>-<process.platform>-<process.arch>`, resolves it, and execs the binary
-inside. Deriving the name from the convention keeps resolution independent of
-the order `optionalDependencies` is written in. `targets.json` therefore
-requires every `pkg` to equal `<os>-<cpu>`, and both the builder and the
-launcher tests assert it.
+At run time the launcher looks up `actionlint-<process.platform>-<process.arch>`
+among the declared platform packages, resolves the match, and execs the binary inside.
+Matching by name keeps resolution independent of the order
+`optionalDependencies` is written in. `targets.json` therefore requires every
+`pkg` to equal `<os>-<cpu>`, and both the builder and the launcher tests assert
+it.
 
 There is deliberately no libc dimension. The release binaries are built with
 `CGO_ENABLED=0` and are statically linked, so one `linux-<cpu>` package serves
@@ -83,14 +85,16 @@ anything the `files` list omits fails in CI. The packed tarballs are the ones
 published, making the tested bytes the published bytes.
 
 Publishing is one job per package, each recording its own deployment with that
-package's registry URL as the target. They all deploy to the `npm` environment,
-which is where `NPM_TOKEN` lives. The platform packages go first and the facade
-waits on all of them: the facade pins them exactly, and publishing it first
-opens a window in which installing it resolves no binary.
+package's registry URL as the target. The platform packages deploy from the
+`npm-actionlint` environment and the facade from `npm`; each environment holds
+the `NPM_TOKEN` for its scope and its own `PROVENANCE` variable. The platform
+packages go first and the facade waits on all of them: the facade pins them
+exactly, and publishing it first opens a window in which installing it resolves
+no binary.
 
 Releases are published with [npm provenance][provenance], set through the
-`NPM_CONFIG_PROVENANCE` environment variable npm documents, which the
-`PROVENANCE` repository variable can turn off. A semver prerelease tag goes out
+`NPM_CONFIG_PROVENANCE` environment variable npm documents, which a
+`PROVENANCE` variable on either environment can turn off. A semver prerelease tag goes out
 under the `next` dist-tag.
 
 Use the workflow's `dry-run` input to build and smoke-test without publishing;

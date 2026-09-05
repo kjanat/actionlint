@@ -27,22 +27,39 @@ function exists(path) {
 /**
  * Name of the platform package holding the build for a host.
  *
- * The `<facade>-<os>-<cpu>` convention is the contract, and the name is derived
- * from it. Resolution never depends on the order `optionalDependencies` is
- * generated in.
+ * The `<scope>/<binary>-<os>-<cpu>` convention is the contract. The platform
+ * packages live in their own scope, apart from the facade.
  *
  * There is no libc dimension. The release binaries are built with
  * `CGO_ENABLED=0`, so one `linux-<cpu>` package covers glibc and musl hosts,
  * Alpine included. A Rust equivalent has to detect the host libc and pick
  * between a gnu and a musl build.
  *
- * @param {string} facade - npm name of the facade package.
+ * @param {string} scope - npm scope the platform packages are published under.
+ * @param {string} binary - Base name of the executable.
  * @param {string} os - Node `platform` string.
  * @param {string} cpu - Node `arch` string.
  * @returns {string}
  */
-export function platformPackage(facade, os, cpu) {
-	return `${facade}-${os}-${cpu}`;
+export function platformPackage(scope, binary, os, cpu) {
+	return `${scope}/${binary}-${os}-${cpu}`;
+}
+
+/**
+ * Find the declared platform package for a host by its `-<os>-<cpu>` tail.
+ *
+ * The scope comes from the declaration itself; the facade carries no copy of
+ * it. Matching is by name, independent of `optionalDependencies` order.
+ *
+ * @param {readonly string[]} packages - Declared platform packages.
+ * @param {string} binary - Base name of the executable.
+ * @param {string} os
+ * @param {string} cpu
+ * @returns {string | undefined}
+ */
+function declaredPackage(packages, binary, os, cpu) {
+	const suffix = `/${binary}-${os}-${cpu}`;
+	return packages.find((pkg) => pkg.endsWith(suffix));
 }
 
 /**
@@ -56,7 +73,7 @@ export function platformPackage(facade, os, cpu) {
 function failUnsupported(os, cpu, packages) {
 	const indent = '  ';
 	const supported = packages
-		.map((pkg) => pkg.slice(`${pkgName}-`.length))
+		.map((pkg) => pkg.slice(pkg.indexOf('/') + 1).replace(/^[^-]+-/, ''))
 		.sort()
 		.join(', ');
 
@@ -103,9 +120,9 @@ This usually means your package manager skipped ${cyan('optionalDependencies')}
 Workarounds:
 ${indent}- reinstall without ${cyan('--no-optional')} / ${cyan('--omit=optional')}
 ${indent}- install it explicitly: ${cyan(`npm install ${wanted}`)}
-${indent}- bun + ${cyan('minimumReleaseAge')}: add ${cyan(`${pkgName}-*`)} (not just ${cyan(pkgName)}) to ${
-			cyan('minimumReleaseAgeExcludes')
-		}; a fresh release is otherwise age-gated
+${indent}- bun + ${cyan('minimumReleaseAge')}: add ${cyan(`${wanted.slice(0, wanted.indexOf('/'))}/*`)} alongside ${
+			cyan(pkgName)
+		} in ${cyan('minimumReleaseAgeExcludes')}; a fresh release is otherwise age-gated
 ${indent}- build from source instead: ${cyan('go install actionlint.kjanat.dev/cmd/actionlint@latest')}
 ${indent}- file an issue: ${link(issues, issues)}
 `,
@@ -136,10 +153,10 @@ export function resolveBinary(name, context = {}) {
 		fileExists = exists,
 	} = context;
 
-	const wanted = platformPackage(pkgName, hostPlatform, hostArch);
+	const wanted = declaredPackage(packages, name, hostPlatform, hostArch);
 	// Absent from the manifest means no build exists for this host at all,
 	// which is a different problem from one that exists but was not installed.
-	if (!packages.includes(wanted)) failUnsupported(hostPlatform, hostArch, packages);
+	if (!wanted) failUnsupported(hostPlatform, hostArch, packages);
 
 	let pkgJsonPath;
 	try {

@@ -202,7 +202,7 @@ func TestBuildsEveryTargetAndTheFacade(t *testing.T) {
 		}
 
 		manifest := readJSON(t, filepath.Join(dir, "package.json"))
-		if name := manifest["name"]; name != tf.Facade+"-"+target.Pkg {
+		if name := manifest["name"]; name != packageName(tf.PlatformScope, tf.Binary, target.Pkg) {
 			t.Errorf("%s: name is %v", target.Pkg, name)
 		}
 		if manifest["version"] != version {
@@ -242,7 +242,7 @@ func TestBuildsEveryTargetAndTheFacade(t *testing.T) {
 		t.Errorf("facade declares %d platform packages, want %d", len(optional), len(tf.Targets))
 	}
 	for _, target := range tf.Targets {
-		name := tf.Facade + "-" + target.Pkg
+		name := packageName(tf.PlatformScope, tf.Binary, target.Pkg)
 		// Exact pins: a range could pair this facade with another release's binary.
 		if optional[name] != version {
 			t.Errorf("facade pins %s to %v, want the exact %s", name, optional[name], version)
@@ -360,13 +360,45 @@ func TestTargetNamesMatchOsAndCpu(t *testing.T) {
 func TestLoadTargetsRejectsMismatchedName(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "targets.json")
-	bad := `{"facade":"@kjanat/actionlint","binary":"actionlint","targets":[
+	bad := `{"facade":"@kjanat/actionlint","platformScope":"@kjanat-actionlint","binary":"actionlint","targets":[
 		{"pkg":"linux-amd64","os":"linux","cpu":"x64","asset":"linux_amd64","format":"tar.gz"}]}`
 	if err := os.WriteFile(path, []byte(bad), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := loadTargets(path); err == nil {
 		t.Error("expected a name mismatch to be rejected")
+	}
+}
+
+func TestLoadTargetsRejectsBadPlatformScope(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "targets.json")
+	target := `{"pkg":"linux-x64","os":"linux","cpu":"x64","asset":"linux_amd64","format":"tar.gz"}`
+	for _, scope := range []string{``, `"kjanat-actionlint"`, `"@kjanat/actionlint"`} {
+		field := ""
+		if scope != "" {
+			field = `"platformScope":` + scope + `,`
+		}
+		src := `{"facade":"@kjanat/actionlint",` + field + `"binary":"actionlint","targets":[` + target + `]}`
+		if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := loadTargets(path); err == nil {
+			t.Errorf("platformScope %s: expected rejection", scope)
+		}
+	}
+}
+
+func TestSelectTargetsAcceptsShortAndFullNames(t *testing.T) {
+	tf := &targetsFile{PlatformScope: "@kjanat-actionlint", Binary: "actionlint", Targets: []target{{Pkg: "linux-x64"}, {Pkg: "win32-arm64"}}}
+	for _, only := range []string{"win32-arm64", "@kjanat-actionlint/actionlint-win32-arm64"} {
+		got, err := selectTargets(tf, only)
+		if err != nil || len(got) != 1 || got[0].Pkg != "win32-arm64" {
+			t.Errorf("%q: got %v, %v", only, got, err)
+		}
+	}
+	if _, err := selectTargets(tf, "@kjanat-actionlint/win32-arm64"); err == nil {
+		t.Error("a name without the binary prefix must not select anything")
 	}
 }
 
