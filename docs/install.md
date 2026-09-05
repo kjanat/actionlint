@@ -41,14 +41,7 @@ winget install kjanat.actionlint
 
 ### [Arch Linux](https://archlinux.org/)
 
-[`actionlint` package][archlinux] is available in the official repository:
-
-```sh
-pacman -S actionlint
-```
-
-That package, and the [actionlint-bin][actionlint-bin] and [actionlint-git][actionlint-git] packages on [AUR][aur], all track the upstream
-project. To install this fork instead, use its own AUR packages, which are updated automatically on every release:
+This fork publishes two packages to the [AUR][aur], updated automatically on every release:
 
 | Package                                        | Builds                            |
 | ---------------------------------------------- | --------------------------------- |
@@ -61,8 +54,9 @@ They can be installed via the [`paru`][paru] command:
 paru -S actionlint-kjanat-bin
 ```
 
-Both install `/usr/bin/actionlint` and therefore conflict with each other and with the official `actionlint`
-package; install exactly one. Each ships the man page and bash, zsh and fish completions.
+Both install `/usr/bin/actionlint` and therefore conflict with each other and with `actionlint` in the official
+repository, `actionlint-bin` and `actionlint-git`, which all track the upstream project; install exactly one. Each
+ships the man page and bash, zsh and fish completions.
 
 ### [Nix](https://nixos.wiki/)
 
@@ -260,9 +254,6 @@ go install actionlint.kjanat.dev/cmd/actionlint@master
 [upstream]: https://github.com/rhysd/actionlint
 [scoop]: https://scoop.sh/#/apps?q=actionlint&s=0&d=1&o=true
 [winget]: https://github.com/microsoft/winget-pkgs/tree/master/manifests/r/rhysd/actionlint
-[archlinux]: https://archlinux.org/packages/extra/x86_64/actionlint/
-[actionlint-bin]: https://aur.archlinux.org/packages/actionlint-bin
-[actionlint-git]: https://aur.archlinux.org/packages/actionlint-git
 [actionlint-kjanat-bin]: https://aur.archlinux.org/packages/actionlint-kjanat-bin
 [actionlint-kjanat]: https://aur.archlinux.org/packages/actionlint-kjanat
 [aur]: https://aur.archlinux.org/
