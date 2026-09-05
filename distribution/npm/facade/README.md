@@ -57,21 +57,22 @@ checks.
 
 ## How this package is put together
 
-This package contains no binary itself. It declares one `optionalDependencies` entry per platform:
+This package contains no binary itself. It declares one `optionalDependencies` entry per platform, each published
+under the `@kjanat-actionlint` scope so the binaries stay out of the `@kjanat` namespace:
 
-| Package                           | Runs on               |
-| --------------------------------- | --------------------- |
-| `@kjanat/actionlint-linux-x64`    | Linux x86-64          |
-| `@kjanat/actionlint-linux-arm64`  | Linux ARM64           |
-| `@kjanat/actionlint-darwin-x64`   | macOS Intel           |
-| `@kjanat/actionlint-darwin-arm64` | macOS Apple silicon   |
-| `@kjanat/actionlint-win32-x64`    | Windows x86-64        |
-| `@kjanat/actionlint-win32-arm64`  | Windows ARM64         |
-| `@kjanat/actionlint-linux-ia32`   | Linux 32-bit x86      |
-| `@kjanat/actionlint-linux-arm`    | Linux ARMv6 and ARMv7 |
-| `@kjanat/actionlint-win32-ia32`   | Windows 32-bit x86    |
-| `@kjanat/actionlint-freebsd-x64`  | FreeBSD x86-64        |
-| `@kjanat/actionlint-freebsd-ia32` | FreeBSD 32-bit x86    |
+| Package                                      | Runs on               |
+| -------------------------------------------- | --------------------- |
+| `@kjanat-actionlint/actionlint-linux-x64`    | Linux x86-64          |
+| `@kjanat-actionlint/actionlint-linux-arm64`  | Linux ARM64           |
+| `@kjanat-actionlint/actionlint-darwin-x64`   | macOS Intel           |
+| `@kjanat-actionlint/actionlint-darwin-arm64` | macOS Apple silicon   |
+| `@kjanat-actionlint/actionlint-win32-x64`    | Windows x86-64        |
+| `@kjanat-actionlint/actionlint-win32-arm64`  | Windows ARM64         |
+| `@kjanat-actionlint/actionlint-linux-ia32`   | Linux 32-bit x86      |
+| `@kjanat-actionlint/actionlint-linux-arm`    | Linux ARMv6 and ARMv7 |
+| `@kjanat-actionlint/actionlint-win32-ia32`   | Windows 32-bit x86    |
+| `@kjanat-actionlint/actionlint-freebsd-x64`  | FreeBSD x86-64        |
+| `@kjanat-actionlint/actionlint-freebsd-ia32` | FreeBSD 32-bit x86    |
 
 Each declares `os` and `cpu`, so your package manager downloads only the one matching your machine and skips the rest.
 The `actionlint` command here is a small launcher that resolves that package and execs the binary inside it.
@@ -87,7 +88,7 @@ release's published checksums before being repackaged.
 The launcher fails with an explanation, but the usual cause is a package manager that skipped optional dependencies.
 Reinstall without `--no-optional` or `--omit=optional`.
 
-Using Bun with `minimumReleaseAge`? Add the `@kjanat/actionlint-*` platform packages to `minimumReleaseAgeExcludes` alongside
+Using Bun with `minimumReleaseAge`? Add `@kjanat-actionlint/*` to `minimumReleaseAgeExcludes` alongside
 `@kjanat/actionlint`. A fresh release otherwise installs the facade while its binaries are still age-gated.
 
 ## Other ways to install

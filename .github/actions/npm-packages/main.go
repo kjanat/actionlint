@@ -54,9 +54,10 @@ type target struct {
 }
 
 type targetsFile struct {
-	Facade  string   `json:"facade"`
-	Binary  string   `json:"binary"`
-	Targets []target `json:"targets"`
+	Facade        string   `json:"facade"`
+	PlatformScope string   `json:"platformScope"`
+	Binary        string   `json:"binary"`
+	Targets       []target `json:"targets"`
 }
 
 type config struct {
@@ -91,7 +92,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	selected, err := selectTargets(targets.Targets, cfg.only)
+	selected, err := selectTargets(targets, cfg.only)
 	if err != nil {
 		return err
 	}
@@ -158,11 +159,14 @@ func loadTargets(path string) (*targetsFile, error) {
 	if err := json.Unmarshal(data, &tf); err != nil {
 		return nil, fmt.Errorf("parsing %s: %w", path, err)
 	}
-	if tf.Facade == "" || tf.Binary == "" {
-		return nil, fmt.Errorf("%s must set both facade and binary", path)
+	if tf.Facade == "" || tf.PlatformScope == "" || tf.Binary == "" {
+		return nil, fmt.Errorf("%s must set facade, platformScope and binary", path)
+	}
+	if !strings.HasPrefix(tf.PlatformScope, "@") || strings.Contains(tf.PlatformScope, "/") {
+		return nil, fmt.Errorf("%s: platformScope %q must be a bare npm scope such as @kjanat-actionlint", path, tf.PlatformScope)
 	}
 	for _, t := range tf.Targets {
-		// The resolver derives the package name as <facade>-<os>-<cpu>. A pkg
+		// The resolver looks for <platformScope>/<binary>-<os>-<cpu>. A pkg
 		// that disagrees names a package the resolver never finds.
 		if want := t.OS + "-" + t.CPU; t.Pkg != want {
 			return nil, fmt.Errorf("target %q must be named %q to match os and cpu", t.Pkg, want)
@@ -176,29 +180,26 @@ func loadTargets(path string) (*targetsFile, error) {
 
 // selectTargets narrows the target list to the one named by only. An empty only
 // builds everything; "facade" builds no platform packages at all.
-func selectTargets(targets []target, only string) ([]target, error) {
+func selectTargets(tf *targetsFile, only string) ([]target, error) {
 	switch only {
 	case "":
-		return targets, nil
+		return tf.Targets, nil
 	case "facade":
 		return nil, nil
 	}
-	for _, t := range targets {
-		if t.Pkg == only || only == packageName("", t.Pkg) {
-			return []target{t}, nil
-		}
-	}
-	// Also accept the fully qualified npm name.
-	for _, t := range targets {
-		if strings.HasSuffix(only, "-"+t.Pkg) {
+	// Either the short form or the fully qualified npm name.
+	for _, t := range tf.Targets {
+		if only == t.Pkg || only == packageName(tf.PlatformScope, tf.Binary, t.Pkg) {
 			return []target{t}, nil
 		}
 	}
 	return nil, fmt.Errorf("no target matches %q", only)
 }
 
-// packageName builds the npm name of a platform package.
-func packageName(facade, pkg string) string { return facade + "-" + pkg }
+// packageName builds the npm name of a platform package. The binary's name is
+// kept in the package name: a lockfile or scanner shows the package name alone,
+// and "linux-x64" says nothing about what it holds.
+func packageName(scope, binary, pkg string) string { return scope + "/" + binary + "-" + pkg }
 
 // assetName is the release asset holding a target's binary.
 func (c *config) assetName(t target) string {
@@ -294,7 +295,7 @@ func (c *config) buildPlatformPackage(tf *targetsFile, t target, sums map[string
 		return err
 	}
 
-	name := packageName(tf.Facade, t.Pkg)
+	name := packageName(tf.PlatformScope, tf.Binary, t.Pkg)
 	dir := filepath.Join(c.outDir, t.Pkg)
 	if err := os.MkdirAll(filepath.Join(dir, "bin"), 0o755); err != nil {
 		return err
@@ -394,7 +395,7 @@ func (c *config) buildFacade(tf *targetsFile) error {
 	// npm pair a facade with a mismatched binary.
 	optional := &object{values: map[string]json.RawMessage{}}
 	for _, t := range tf.Targets {
-		if err := optional.set(packageName(tf.Facade, t.Pkg), c.version); err != nil {
+		if err := optional.set(packageName(tf.PlatformScope, tf.Binary, t.Pkg), c.version); err != nil {
 			return err
 		}
 	}

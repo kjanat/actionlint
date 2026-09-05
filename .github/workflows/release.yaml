@@ -6,8 +6,6 @@ concurrency:
   cancel-in-progress: false
   queue: max
 
-env: { GO: "1.27" }
-
 permissions: { contents: read }
 
 jobs:
@@ -21,7 +19,7 @@ jobs:
         uses: $/.github/actions/shellcheck-versions
         with: { fail-on-outdated: true }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version: "${{ env.GO }}", check-latest: true }
+        with: { go-version-file: go.mod }
       - name: Resolve release notes
         env: { TAG: "${{ github.ref_name }}" }
         run: go run ./scripts/bump-version -notes "${TAG}" > "${RUNNER_TEMP}/release-notes.md"
@@ -34,7 +32,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
       - uses: $/.github/actions/setup-pandoc
-      - run: make man/actionlint.1
+      - uses: kjanat/runner@6e752d37c4b3de6bda86c89b2f5bc487097425cd # master
+      - run: run make:man/actionlint.1
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with: { name: manual, path: man/actionlint.1, if-no-files-found: error }
   binaries:
@@ -50,13 +49,13 @@ jobs:
           - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
             with: { name: release-notes, path: "${{ runner.temp }}" }
           - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-            with: { go-version: "${{ env.GO }}", check-latest: true }
+            with: { go-version-file: go.mod }
       - name: Get version
         run: echo VERSION="${GITHUB_REF#refs/tags/v}" >> "${GITHUB_ENV}"
       - name: Install syft for SBOM generation
         uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
-        with: { version: "~> v2", args: "release --clean --release-notes=${{ runner.temp }}/release-notes.md" }
+        with: { version: v2.18.0, args: "release --clean --release-notes=${{ runner.temp }}/release-notes.md" }
         env: {
           GITHUB_TOKEN: "${{ github.token }}",
           HOMEBREW_TAP_TOKEN: "${{ secrets.HOMEBREW_TAP_TOKEN }}",
@@ -73,6 +72,7 @@ jobs:
     outputs: {
       is-latest: "${{ steps.tag.outputs.is-latest }}",
       is-major-latest: "${{ steps.tag.outputs.is-major-latest }}",
+      is-minor-latest: "${{ steps.tag.outputs.is-minor-latest }}",
       action-digest: "${{ steps.push-action.outputs.digest }}",
     }
     permissions: { contents: read, packages: write, id-token: write, attestations: write }
@@ -124,19 +124,14 @@ jobs:
             echo "is-minor-latest=false" >> "${GITHUB_OUTPUT}"
           fi
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
       - parallel:
           - name: Login to GitHub Container Registry
             uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-            with: {
-              registry: ghcr.io,
-              username: "${{ github.repository_owner }}",
-              password: "${{ secrets.GITHUB_TOKEN }}",
-              scope: "${{ github.repository }}@push",
-            }
+            with: { registry: ghcr.io, username: "${{ github.repository_owner }}", password: "${{ secrets.GITHUB_TOKEN }}" }
           - name: Login to Docker Hub
             uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
             with: { username: "${{ github.repository_owner }}", password: "${{ secrets.DOCKERHUB_TOKEN }}", scope: "${{ github.repository }}@push" }
@@ -158,7 +153,6 @@ jobs:
         with:
           target: cli
           build-args: |
-            GOLANG_VER=${{ env.GO }}
             ACTIONLINT_VER=${{ steps.tag.outputs.name }}
           load: true
           cache-from: type=gha,scope=release-cli
@@ -173,7 +167,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
           target: cli
           build-args: |
-            GOLANG_VER=${{ env.GO }}
             ACTIONLINT_VER=${{ steps.tag.outputs.name }}
           push: true
           sbom: true
@@ -199,6 +192,7 @@ jobs:
               images: ghcr.io/${{ github.repository }}
               tags: |
                 type=raw,value=action-${{ steps.tag.outputs.name }}
+                type=raw,value=action-v${{ steps.tag.outputs.minor }},enable=${{ steps.tag.outputs.is-minor-latest }}
                 type=raw,value=action-v${{ steps.tag.outputs.major }},enable=${{ steps.tag.outputs.is-major-latest }}
                 type=raw,value=action-latest,enable=${{ steps.tag.outputs.is-latest }}
             env: { DOCKER_METADATA_ANNOTATIONS_LEVELS: "manifest,index" }
@@ -207,7 +201,6 @@ jobs:
         with:
           target: action
           build-args: |
-            GOLANG_VER=${{ env.GO }}
             ACTIONLINT_VER=${{ steps.tag.outputs.name }}
           load: true
           cache-from: type=gha,scope=release-action
@@ -222,7 +215,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
           target: action
           build-args: |
-            GOLANG_VER=${{ env.GO }}
             ACTIONLINT_VER=${{ steps.tag.outputs.name }}
           push: true
           sbom: true
@@ -250,23 +242,24 @@ jobs:
               subject-name: ghcr.io/${{ github.repository }}
               subject-digest: ${{ steps.push-action.outputs.digest }}
               push-to-registry: true
-  major-tag:
-    name: Update major action tag
+  floating-tags:
+    name: Update floating action tags
     needs: [binaries, docker]
-    if: needs.docker.outputs.is-major-latest == 'true'
+    if: needs.docker.outputs.is-major-latest == 'true' || needs.docker.outputs.is-minor-latest == 'true'
     runs-on: ubuntu-latest
-    permissions: { contents: write }
+    permissions: { contents: write, id-token: write }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { fetch-depth: 0 }
+      - uses: kjanat/gpg-signing-service@cbcb8600547bd6799cdca0b339e8dad044481435 # v1.2.0
+        with: { version: v1.2.0 }
       - name: Verify release commit signature
-        env: { GH_TOKEN: "${{ github.token }}" }
+        env: { GH_TOKEN: "${{ github.token }}", COMMIT_API: "${{ format('repos/{0}/commits/{1}', github.repository, github.sha) }}" }
         run: |
-          commit_api="repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}"
-          verified="$(gh api "${commit_api}" --jq '.commit.verification.verified')"
+          verified="$(gh api "${COMMIT_API}" --jq '.commit.verification.verified')"
           test "${verified}" = true
       # The image does not exist yet when the release commit is made, so the digest can only be
-      # pinned afterwards. The pinned commit is reachable through the major tag alone and never
+      # pinned afterwards. The pinned commit is reachable through floating tags alone and never
       # lands on the default branch, where a stale digest would survive the next version bump.
       - name: Pin the action image to the digest it was published as
         shell: bash
@@ -286,14 +279,40 @@ jobs:
           test "${tagged_lines}" -eq 1
           sed -i "s|^  image: docker://.*\$|  image: docker://${tagged}@${DIGEST}|" action.yml
           git --no-pager diff -- action.yml
-      - name: Move major tag to the pinned commit
+      # GitHub verifies a signature against the committer address, which the bot identity cannot supply.
+      - name: Commit the pin and sign it with the release key
         shell: bash
+        run: |
+          set -euo pipefail
+          uid="$(gpg-sign public-key | gpg --show-keys --with-colons | awk -F: '$1 == "uid" { print $10; exit }')"
+          test -n "${uid}"
+          email="${uid##*<}"
+          git config user.name "${uid%% <*}"
+          git config user.email "${email%>}"
+          git add action.yml
+          git commit --message "pin the action image of ${GITHUB_REF_NAME} to its digest"
+          GPG_SIGN_TOKEN="$(curl --fail --silent --show-error \
+            --header "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=gpg-signing-service" \
+            | jq --raw-output .value)"
+          export GPG_SIGN_TOKEN
+          gpg-sign sign-commit --base HEAD~1
+      - name: Move floating tags to the pinned commit
+        shell: bash
+        env: {
+          MOVE_MAJOR: "${{ needs.docker.outputs.is-major-latest }}",
+          MOVE_MINOR: "${{ needs.docker.outputs.is-minor-latest }}",
+        }
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
           major="v${version%%.*}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add action.yml
-          git commit --message "pin the action image of ${GITHUB_REF_NAME} to its digest"
-          git push --force origin "HEAD:refs/tags/${major}"
+          minor="v${version%.*}"
+          refs=()
+          if [[ "${MOVE_MAJOR}" == true ]]; then
+            refs+=("HEAD:refs/tags/${major}")
+          fi
+          if [[ "${MOVE_MINOR}" == true ]]; then
+            refs+=("HEAD:refs/tags/${minor}")
+          fi
+          git push --atomic --force origin "${refs[@]}"

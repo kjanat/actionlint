@@ -37,8 +37,8 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         if: ${{ matrix.language == 'go' }}
-        with: { go-version: "1.27", check-latest: true }
-      - uses: github/codeql-action/init@v4
+        with: { go-version-file: go.mod }
+      - uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4
         with: {
           config-file: ./.github/codeql/codeql-config.yaml,
           languages: "${{ matrix.language }}",
@@ -50,5 +50,5 @@ jobs:
           set -x
           go build -v ./...
           GOOS=js GOARCH=wasm go build -v -o ./playground/main.wasm ./playground
-      - uses: github/codeql-action/analyze@v4
+      - uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4
         with: { category: "/language:${{ matrix.language }}" }
