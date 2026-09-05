@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"flag"
@@ -68,7 +69,7 @@ type generator struct {
 
 // lint reports what the latest released fork makes of the fixture, and the version that made it.
 func (g *generator) lint() (string, string, error) {
-	v, err := g.mise("exec", forkTool+"@latest", "--", "actionlint", "-version")
+	v, err := g.mise(false, "exec", forkTool+"@latest", "--", "actionlint", "-version")
 	if err != nil {
 		return "", "", err
 	}
@@ -79,7 +80,7 @@ func (g *generator) lint() (string, string, error) {
 	}
 
 	g.log.Println("linting", workflow, "with", version)
-	out, err := g.mise("exec", forkTool+"@latest", "--", "actionlint", "-no-color",
+	out, err := g.mise(true, "exec", forkTool+"@latest", "--", "actionlint", "-no-color",
 		"-config-file", filepath.Join(fixtureDir, config),
 		filepath.Join(fixtureDir, workflow))
 	if err != nil {
@@ -130,7 +131,7 @@ func (g *generator) section() (string, error) {
 	return b.String(), nil
 }
 
-func (g *generator) command(name string, args ...string) ([]byte, error) {
+func (g *generator) command(allowExitOne bool, name string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(g.ctx, name, args...)
 	cmd.Dir = g.root
 	cmd.Env = append(os.Environ(),
@@ -142,24 +143,30 @@ func (g *generator) command(name string, args ...string) ([]byte, error) {
 		// comparison on the previous release.
 		"MISE_MINIMUM_RELEASE_AGE_EXCLUDES="+forkTool,
 	)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	if err != nil {
 		var e *exec.ExitError
-		if errors.As(err, &e) && e.ExitCode() == 1 {
+		if allowExitOne && errors.As(err, &e) && e.ExitCode() == 1 && stderr.Len() == 0 {
 			return out, nil // actionlint exits 1 when it reports problems
 		}
-		return nil, fmt.Errorf("could not run `%s`: %w", strings.Join(append([]string{name}, args...), " "), err)
+		command := strings.Join(append([]string{name}, args...), " ")
+		if detail := strings.TrimSpace(stderr.String()); detail != "" {
+			return nil, fmt.Errorf("could not run `%s`: %w\n%s", command, err, detail)
+		}
+		return nil, fmt.Errorf("could not run `%s`: %w", command, err)
 	}
 	return out, nil
 }
 
-func (g *generator) mise(args ...string) ([]byte, error) {
-	return g.command("mise", args...)
+func (g *generator) mise(allowExitOne bool, args ...string) ([]byte, error) {
+	return g.command(allowExitOne, "mise", args...)
 }
 
 // measureUpstream reports what the latest upstream command makes of the fixture.
 func (g *generator) measureUpstream() (string, string, error) {
-	v, err := g.mise("exec", upstreamTool+"@latest", "--", "actionlint", "-version")
+	v, err := g.mise(false, "exec", upstreamTool+"@latest", "--", "actionlint", "-version")
 	if err != nil {
 		return "", "", err
 	}
@@ -169,7 +176,7 @@ func (g *generator) measureUpstream() (string, string, error) {
 	}
 	g.log.Println("measuring upstream", version)
 
-	out, err := g.mise("exec", upstreamTool+"@latest", "--", "actionlint", "-no-color",
+	out, err := g.mise(true, "exec", upstreamTool+"@latest", "--", "actionlint", "-no-color",
 		filepath.Join(fixtureDir, workflow))
 	if err != nil {
 		return "", "", err

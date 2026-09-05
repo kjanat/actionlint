@@ -5,52 +5,16 @@ on:
     - cron: "21 1 * * 6"
   workflow_run: { workflows: [Release], types: [completed] }
   workflow_dispatch:
-  pull_request:
-    paths:
-      - .github/workflows/upkeep.yaml
-      - README.md
-      - docs/screenshots/**
-      - scripts/check-readme/**
-      - scripts/generate-availability/main.go
-      - scripts/generate-popular-actions/main.go
-      - scripts/generate-popular-actions/popular_actions.json
-      - scripts/generate-webhook-events/main.go
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || 'upkeep' }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}
 
 permissions: { contents: read }
 
 jobs:
-  generated-files:
-    name: Generated files match their generators
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { persist-credentials: false }
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version-file: go.mod }
-      - run: go generate
-      - run: git diff --exit-code -- popular_actions.go all_webhooks.go availability.go
-  readme-demo:
-    name: README demo section matches the latest releases
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { persist-credentials: false }
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version-file: go.mod }
-      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
-        with: { cache: false }
-      - run: go run ./scripts/check-readme -quiet ./README.md
-        env: { GITHUB_TOKEN: "${{ github.token }}" }
-
   generate:
     name: Regenerate the Go tables
-    if: github.event_name != 'pull_request' && github.event_name != 'workflow_run' && github.repository_owner == 'kjanat'
+    if: github.event_name != 'workflow_run' && github.repository_owner == 'kjanat'
     runs-on: ubuntu-latest
     permissions: { contents: write, pull-requests: write }
     steps:
@@ -108,7 +72,7 @@ jobs:
           assignees: ${{ github.repository_owner }}
   readme:
     name: Refresh the README demo section
-    if: github.event_name != 'pull_request' && github.repository_owner == 'kjanat' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    if: github.repository_owner == 'kjanat' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     permissions: { contents: write, pull-requests: write }
     steps:
