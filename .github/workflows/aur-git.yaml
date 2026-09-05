@@ -24,7 +24,7 @@ jobs:
         with:
           pkgname: actionlint-kjanat-git
           pkgbuild: distribution/aur/actionlint-kjanat-git/PKGBUILD
-          commit_username: Kaj Kowalski
-          commit_email: info@kajkowalski.nl
+          commit_username: ${{ vars.COMMIT_USER }}
+          commit_email: ${{ vars.COMMIT_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: Update PKGBUILD
