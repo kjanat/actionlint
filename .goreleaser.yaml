@@ -105,12 +105,16 @@ scoops:
 aurs:
   - name: actionlint-kjanat-bin
     ids: [nix]
+    goamd64: v1
     homepage: https://actionlint.kjanat.dev
     description: Static checker for GitHub Actions workflow files (kjanat fork, prebuilt binary)
     maintainers: ["Kaj Kowalski <info at kajkowalski dot nl>"]
     license: MIT
+    rel: "1"
+    url_template: "https://github.com/kjanat/actionlint/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     private_key: "{{ .Env.AUR_SSH_PRIVATE_KEY }}"
     git_url: ssh://aur@aur.archlinux.org/actionlint-kjanat-bin.git
+    commit_msg_template: "Update to {{ .Tag }}"
     skip_upload: auto
     provides: [actionlint, actionlint-kjanat]
     conflicts: [actionlint, actionlint-bin, actionlint-git, actionlint-kjanat]
@@ -145,8 +149,11 @@ aur_sources:
     description: Static checker for GitHub Actions workflow files (kjanat fork)
     maintainers: ["Kaj Kowalski <info at kajkowalski dot nl>"]
     license: MIT
+    rel: "1"
+    url_template: "https://github.com/kjanat/actionlint/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     private_key: "{{ .Env.AUR_SSH_PRIVATE_KEY }}"
     git_url: ssh://aur@aur.archlinux.org/actionlint-kjanat.git
+    commit_msg_template: "Update to {{ .Tag }}"
     skip_upload: auto
     arches: [x86_64, aarch64, armv7h]
     provides: [actionlint]
