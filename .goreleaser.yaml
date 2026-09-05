@@ -97,7 +97,7 @@ homebrew_casks:
     repository:
       owner: kjanat
       name: homebrew-actionlint
-      branch: main
+      branch: master
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     commit_author:
       name: "github-actions[bot]"
