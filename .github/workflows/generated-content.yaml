@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/generated-content.yaml
+      - go.mod
       - action_metadata.go
       - all_webhooks.go
       - availability.go

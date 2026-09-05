@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/readme-demo.yaml
+      - go.mod
       - README.md
       - docs/screenshots/**
       - scripts/check-readme/**
