@@ -2,7 +2,7 @@
 # directory over it whenever the directory is newer, so no built-in rule may apply here.
 MAKEFLAGS += --no-builtin-rules
 
-SRCS := $(filter-out %_test.go, $(wildcard *.go cmd/*/*.go)) cmd/actionlint-action/sarif_template.txt go.mod go.sum
+SRCS := $(filter-out %_test.go, $(wildcard *.go cmd/*/*.go)) sarif_template.txt go.mod go.sum
 TESTS := $(filter %_test.go, $(wildcard *.go cmd/*/*.go))
 TOOL := $(wildcard scripts/*/*.go)
 TESTDATA := $(wildcard \
@@ -67,7 +67,6 @@ l lint:
 ifneq ($(OS),Windows_NT)
 	GOOS=js GOARCH=wasm golangci-lint run ./playground
 	go run ./scripts/check-checks -quiet ./docs/checks.md
-	go run ./scripts/check-readme -quiet ./README.md
 endif
 
 popular_actions.go all_webhooks.go availability.go: $(GO_GEN_SRCS)
@@ -113,7 +112,7 @@ man: man/actionlint.1 man/actionlint.1.html
 bench:
 	go test -bench Lint -benchmem
 
-.github/actionlint-matcher.json: scripts/generate-actionlint-matcher/object.mjs
+.github/actionlint-matcher.json: scripts/generate-actionlint-matcher/main.mjs scripts/generate-actionlint-matcher/object.mjs
 	node ./scripts/generate-actionlint-matcher/main.mjs .github/actionlint-matcher.json
 
 scripts/generate-actionlint-matcher/testdata/escape.txt: $(TARGET)

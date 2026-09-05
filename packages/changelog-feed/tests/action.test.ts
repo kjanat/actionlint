@@ -46,6 +46,7 @@ test('toEntry carries the categories and the lead paragraph', () => {
 
 test('toEntry keeps the guid when it diverges from the link', () => {
 	const entry = entries()[1];
+	assert.ok(entry);
 	assert.equal(
 		entry.guid,
 		'https://github.blog/changelog/2026-07-28-github-actions-holds-unproven-workflows-for-approval',
@@ -54,8 +55,10 @@ test('toEntry keeps the guid when it diverges from the link', () => {
 });
 
 test('toEntry rejects an unparsable date', () => {
+	const [item] = parseFeed(feed).items;
+	assert.ok(item);
 	assert.throws(
-		() => toEntry({ ...parseFeed(feed).items[0], pubDate: 'whenever' }),
+		() => toEntry({ ...item, pubDate: 'whenever' }),
 		/unparsable pubDate/,
 	);
 });
@@ -101,6 +104,7 @@ test('selectEntries drops an entry the feed does not label actions', () => {
 
 test('issue title and body carry the dedupe marker and the link', () => {
 	const entry = entries()[1];
+	assert.ok(entry);
 	assert.equal(issueTitle(entry), 'Changelog: GitHub Actions holds potentially malicious workflows for approval');
 	const body = issueBody(entry);
 	assert.equal(reportedGuids([{ body }]).has(entry.guid), true);

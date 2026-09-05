@@ -5,6 +5,8 @@ import (
 	"go/parser"
 	"go/token"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -119,11 +121,16 @@ func TestParseError(t *testing.T) {
 }
 
 func TestFetchURL(t *testing.T) {
-	b, err := fetch("https://github.com")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "test response")
+	}))
+	defer server.Close()
+
+	b, err := fetch(server.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(b) == 0 {
-		t.Fatal("Fetched source is empty")
+	if string(b) != "test response" {
+		t.Fatalf("fetched source is unexpected: %q", b)
 	}
 }

@@ -18,13 +18,14 @@ const npmDir = join(facadeDir, '..');
 
 /** @type {{ name: string, bin: Record<string, string>, files: string[], optionalDependencies: Record<string, string> }} */
 const facade = JSON.parse(readFileSync(join(facadeDir, 'package.json'), 'utf8'));
-/** @type {{ facade: string, binary: string, targets: Target[] }} */
+/** @type {{ facade: string, platformScope: string, binary: string, targets: Target[] }} */
 const targets = JSON.parse(readFileSync(join(npmDir, 'targets.json'), 'utf8'));
 
-const FACADE = facade.name;
+const SCOPE = targets.platformScope;
+const BINARY = targets.binary;
 
 /** Every platform package name the published facade would declare. */
-const allPackages = targets.targets.map((t) => `${FACADE}-${t.pkg}`);
+const allPackages = targets.targets.map((t) => `${SCOPE}/${BINARY}-${t.pkg}`);
 
 /**
  * A resolver context that pretends the named packages are installed, without
@@ -71,16 +72,16 @@ after(() => {
 });
 
 describe('platformPackage', () => {
-	test('follows the <facade>-<os>-<cpu> convention', () => {
-		assert.equal(platformPackage(FACADE, 'linux', 'x64'), '@kjanat/actionlint-linux-x64');
-		assert.equal(platformPackage(FACADE, 'win32', 'arm64'), '@kjanat/actionlint-win32-arm64');
+	test('follows the <scope>/<binary>-<os>-<cpu> convention', () => {
+		assert.equal(platformPackage(SCOPE, BINARY, 'linux', 'x64'), '@kjanat-actionlint/actionlint-linux-x64');
+		assert.equal(platformPackage(SCOPE, BINARY, 'win32', 'arm64'), '@kjanat-actionlint/actionlint-win32-arm64');
 	});
 
 	test('derives exactly the names targets.json declares', () => {
 		for (const target of targets.targets) {
 			assert.equal(
-				platformPackage(FACADE, target.os, target.cpu),
-				`${FACADE}-${target.pkg}`,
+				platformPackage(SCOPE, BINARY, target.os, target.cpu),
+				`${SCOPE}/${BINARY}-${target.pkg}`,
 				`target ${target.pkg} must equal <os>-<cpu>, or the resolver cannot find it`,
 			);
 		}
@@ -90,7 +91,7 @@ describe('platformPackage', () => {
 describe('resolveBinary', () => {
 	test('resolves the package matching the host', () => {
 		const path = resolveBinary('actionlint', context({ platform: 'linux', arch: 'x64' }));
-		assert.equal(path, '/fake/node_modules/@kjanat/actionlint-linux-x64/bin/actionlint');
+		assert.equal(path, '/fake/node_modules/@kjanat-actionlint/actionlint-linux-x64/bin/actionlint');
 	});
 
 	test('appends .exe on Windows only', () => {
@@ -102,7 +103,7 @@ describe('resolveBinary', () => {
 		for (const target of targets.targets) {
 			const path = resolveBinary('actionlint', context({ platform: target.os, arch: target.cpu }));
 			assert.ok(
-				path.includes(`${FACADE}-${target.pkg}/`),
+				path.includes(`${SCOPE}/${BINARY}-${target.pkg}/`),
 				`${target.pkg} resolved to the wrong package: ${path}`,
 			);
 		}
@@ -112,7 +113,7 @@ describe('resolveBinary', () => {
 	// Alpine package to pick: linux-x64 is the answer on glibc and musl alike.
 	test('uses one linux package regardless of libc', () => {
 		const path = resolveBinary('actionlint', context({ platform: 'linux', arch: 'x64' }));
-		assert.ok(path.includes('actionlint-linux-x64/'));
+		assert.ok(path.includes('/actionlint-linux-x64/'));
 		assert.ok(!path.includes('musl') && !path.includes('gnu'));
 	});
 
@@ -137,7 +138,7 @@ describe('resolveBinary', () => {
 			() =>
 				resolveBinary(
 					'actionlint',
-					context({ platform: 'linux', arch: 'x64', missingBins: [`${FACADE}-linux-x64`] }),
+					context({ platform: 'linux', arch: 'x64', missingBins: [`${SCOPE}/${BINARY}-linux-x64`] }),
 				),
 			/binary is missing/,
 		);

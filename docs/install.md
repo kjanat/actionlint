@@ -147,8 +147,8 @@ Note that the following targets are not tested since GitHub Actions doesn't supp
 To install these binaries [`gh`][gh] command is useful. The following command is an example for x86_64 Linux.
 
 ```sh
-gh release download --repo kjanat/actionlint --pattern '*_linux_amd64.tar.gz' v1.13.0
-tar xf actionlint_1.13.0_linux_amd64.tar.gz
+gh release download --repo kjanat/actionlint --pattern '*_linux_amd64.tar.gz' v1.14.0
+tar xf actionlint_1.14.0_linux_amd64.tar.gz
 ./actionlint -version
 ```
 
@@ -156,7 +156,7 @@ Optionally you can verify the [attestation][attestations] of the downloaded arti
 security. Note that the attestation support was introduced since actionlint v1.7.11.
 
 ```sh
-gh attestation verify -R kjanat/actionlint actionlint_1.13.0_linux_amd64.tar.gz
+gh attestation verify -R kjanat/actionlint actionlint_1.14.0_linux_amd64.tar.gz
 ```
 
 <a id="download-script"></a>
@@ -172,10 +172,10 @@ bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/dow
 ```
 
 When you need to install specific version of actionlint, please give the version to the 1st command line argument. The following
-example installs v1.13.0.
+example installs v1.14.0.
 
 ```sh
-bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) 1.13.0
+bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) 1.14.0
 ```
 
 This script downloads `actionlint` (or `actionlint.exe` on Windows) binary to the current working directory. When you need to put
