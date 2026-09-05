@@ -18,18 +18,30 @@ pushd "${temp_dir}"
 # Normal cases
 set -e
 
-# Latest release
-out="$(bash "${script}" latest)"
-if [[ -n "${GITHUB_ACTION}" ]]; then
-	if [[ "${out}" != *"executable="* ]]; then
-		echo "'executable' step output is not set: '${out}'" >&2
+check_latest_version() {
+	local executable="$1"
+	local out first_line version
+
+	out="$("${executable}" -version)"
+	first_line="${out%%$'\n'*}"
+	version="${first_line#actionlint.kjanat.dev }"
+	if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+		|| [[ "${out}" != *"https://github.com/kjanat/actionlint/releases/tag/v${version}"* ]]; then
+		echo "Output from ${executable} -version is unexpected: '${out}'" >&2
+		exit 1
 	fi
-fi
-out="$(./actionlint -version)"
-if [[ "${out}" != *'installed by downloading from release page'* ]]; then
-	echo "Output from ./actionlint -version is unexpected: '${out}'" >&2
+}
+
+# Latest release
+github_output="${temp_dir}/github-output"
+out="$(GITHUB_ACTION=true GITHUB_OUTPUT="${github_output}" bash "${script}" latest)"
+if ! grep -Fqx "executable=${temp_dir}/actionlint" "${github_output}"; then
+	echo "'executable' step output is not set correctly in ${github_output}:" >&2
+	cat "${github_output}" >&2
+	echo "Download script output: '${out}'" >&2
 	exit 1
 fi
+check_latest_version ./actionlint
 rm -f ./actionlint
 
 # Specify only version
@@ -44,11 +56,7 @@ rm -f ./actionlint
 # Specify only a download directory
 mkdir ./test1
 bash "${script}" latest ./test1
-out="$(./test1/actionlint -version)"
-if [[ "${out}" != *'installed by downloading from release page'* ]]; then
-	echo "Output from ./actionlint -version is unexpected: '${out}'" >&2
-	exit 1
-fi
+check_latest_version ./test1/actionlint
 rm -rf ./test1
 
 # Specify both version and a download directory
