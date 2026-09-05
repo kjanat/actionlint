@@ -133,6 +133,9 @@ winget:
           owner: microsoft
           name: winget-pkgs
           branch: master
+    commit_author:
+      name: "github-actions[bot]"
+      email: "41898282+github-actions[bot]@users.noreply.github.com"
 
 # Both AUR packages carry the -kjanat suffix: actionlint is in Arch extra and
 # actionlint-bin on the AUR tracks upstream under another maintainer.
