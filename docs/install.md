@@ -40,16 +40,23 @@ winget install actionlint
 
 ### [Arch Linux](https://archlinux.org/)
 
-[`actionlint` package][archlinux] is available in the official repository:
+This fork publishes three packages to the [AUR][aur]. The first two are updated automatically on every release:
+
+| Package                                        | Builds                            |
+| ---------------------------------------------- | --------------------------------- |
+| [actionlint-kjanat][actionlint-kjanat]         | from the release source tarball   |
+| [actionlint-kjanat-bin][actionlint-kjanat-bin] | prebuilt from the release archive |
+| [actionlint-kjanat-git][actionlint-kjanat-git] | from the tip of `master`          |
+
+They can be installed via the [`paru`][paru] command:
 
 ```sh
-pacman -S actionlint
+paru -S actionlint-kjanat-bin
 ```
 
-Alternatively actionlint is also available on [AUR][aur]. The packages can be installed via [`paru`][paru] command.
-
-- [actionlint-bin](https://aur.archlinux.org/packages/actionlint-bin)
-- [actionlint-git](https://aur.archlinux.org/packages/actionlint-git)
+All three install `/usr/bin/actionlint` and therefore conflict with each other and with `actionlint` in the official
+repository, `actionlint-bin` and `actionlint-git`, which all track the upstream project; install exactly one. Each
+ships the man page and bash, zsh and fish completions.
 
 ### [Nix](https://nixos.wiki/)
 
@@ -247,7 +254,9 @@ go install actionlint.kjanat.dev/cmd/actionlint@master
 [upstream]: https://github.com/rhysd/actionlint
 [scoop]: https://scoop.sh/#/apps?q=actionlint&s=0&d=1&o=true
 [winget]: https://github.com/microsoft/winget-pkgs/tree/master/manifests/r/rhysd/actionlint
-[archlinux]: https://archlinux.org/packages/extra/x86_64/actionlint/
+[actionlint-kjanat-bin]: https://aur.archlinux.org/packages/actionlint-kjanat-bin
+[actionlint-kjanat-git]: https://aur.archlinux.org/packages/actionlint-kjanat-git
+[actionlint-kjanat]: https://aur.archlinux.org/packages/actionlint-kjanat
 [aur]: https://aur.archlinux.org/
 [paru]: https://github.com/Morganamilo/paru
 [nixpkgs]: https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/analysis/actionlint/default.nix
