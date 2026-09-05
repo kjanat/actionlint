@@ -96,6 +96,15 @@ brew install kjanat/tap/actionlint
 The cask is also published to the per-project `kjanat/actionlint` tap, so an existing `brew install
 kjanat/actionlint/actionlint` keeps upgrading.
 
+The cask installs the `actionlint` binary and nothing else. The [shellcheck integration](checks.md#check-shellcheck-integ)
+needs a `shellcheck` on `PATH`. The `shellcheck` formula from homebrew-core builds it with GHC and, on Linux, pulls in `gcc`
+and `glibc` as runtime dependencies. The `kjanat/tap/shellcheck` cask installs the static binary ShellCheck itself
+releases, with no dependencies, and conflicts with the formula:
+
+```sh
+brew install kjanat/tap/shellcheck
+```
+
 > [!WARNING]
 > Since the `actionlint` executable is unsigned, macOS displays a warning and tries to move it to the Trash. To allow it to run,
 > go to 'Settings -> Privacy & Security' and grant the permission.

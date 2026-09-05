@@ -85,8 +85,6 @@ homebrew_casks:
     homepage: https://actionlint.kjanat.dev
     description: Static checker for GitHub Actions workflow files
     skip_upload: auto
-    dependencies:
-      - formula: shellcheck
     # The binary is not notarized. Without this, Gatekeeper blocks it, and the
     # completion generation above runs it during install.
     hooks:
