@@ -20,7 +20,6 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with: { node-version-file: .node-version, package-manager-cache: false }
       - uses: kjanat/runner@6e752d37c4b3de6bda86c89b2f5bc487097425cd # master
-        with: { version: "0.25" } # 0.26.0 cannot resolve make targets under --dir
       - name: Update test data
         run: run -s make:scripts/generate-actionlint-matcher/testdata/escape.txt make:scripts/generate-actionlint-matcher/testdata/no_escape.txt make:scripts/generate-actionlint-matcher/testdata/want.json
         env: { SKIP_GO_GENERATE: "true" }

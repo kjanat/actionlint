@@ -22,7 +22,6 @@ jobs:
         with: { node-version-file: .node-version, package-manager-cache: false }
       - uses: $/.github/actions/setup-pandoc
       - uses: kjanat/runner@6e752d37c4b3de6bda86c89b2f5bc487097425cd # master
-        with: { version: "0.25" } # 0.26.0 cannot resolve make targets under --dir
       - name: Install JavaScript dependencies
         run: runner install --frozen
       - name: Build command manual
