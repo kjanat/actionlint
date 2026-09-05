@@ -23,8 +23,10 @@ type RuleParallelSteps struct {
 // NewRuleParallelSteps creates a new RuleParallelSteps instance.
 func NewRuleParallelSteps() *RuleParallelSteps {
 	return &RuleParallelSteps{
-		name: "parallel-steps",
-		desc: "Checks \"wait\"/\"cancel\" references to background steps and steps forbidden inside a \"parallel\" group",
+		RuleBase: RuleBase{
+			name: "parallel-steps",
+			desc: "Checks \"wait\"/\"cancel\" references to background steps and steps forbidden inside a \"parallel\" group",
+		},
 	}
 }
 

@@ -10,8 +10,10 @@ type RuleEnvVar struct {
 // NewRuleEnvVar creates new RuleEnvVar instance.
 func NewRuleEnvVar() *RuleEnvVar {
 	return &RuleEnvVar{
-		name: "env-var",
-		desc: "Checks for environment variables configuration at \"env:\"",
+		RuleBase: RuleBase{
+			name: "env-var",
+			desc: "Checks for environment variables configuration at \"env:\"",
+		},
 	}
 }
 

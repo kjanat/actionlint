@@ -10,8 +10,10 @@ type RuleMatrix struct {
 // NewRuleMatrix creates new RuleMatrix instance.
 func NewRuleMatrix() *RuleMatrix {
 	return &RuleMatrix{
-		name: "matrix",
-		desc: "Checks for matrix combinations in \"matrix:\"",
+		RuleBase: RuleBase{
+			name: "matrix",
+			desc: "Checks for matrix combinations in \"matrix:\"",
+		},
 	}
 }
 

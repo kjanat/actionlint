@@ -12,8 +12,10 @@ type RuleRequireJobTimeout struct {
 // NewRuleRequireJobTimeout creates a new RuleRequireJobTimeout instance with the given policy.
 func NewRuleRequireJobTimeout(policy *JobTimeoutPolicy) *RuleRequireJobTimeout {
 	return &RuleRequireJobTimeout{
-		name:   "require-job-timeout",
-		desc:   "Checks that every job sets \"timeout-minutes:\" within the configured maximum",
+		RuleBase: RuleBase{
+			name: "require-job-timeout",
+			desc: "Checks that every job sets \"timeout-minutes:\" within the configured maximum",
+		},
 		policy: policy,
 	}
 }

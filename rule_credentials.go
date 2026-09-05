@@ -12,8 +12,10 @@ type RuleCredentials struct {
 // NewRuleCredentials creates new RuleCredentials instance
 func NewRuleCredentials() *RuleCredentials {
 	return &RuleCredentials{
-		name: "credentials",
-		desc: "Checks for credentials in \"services:\" configuration",
+		RuleBase: RuleBase{
+			name: "credentials",
+			desc: "Checks for credentials in \"services:\" configuration",
+		},
 	}
 }
 
