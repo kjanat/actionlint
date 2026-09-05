@@ -150,7 +150,7 @@ aurs:
     git_url: ssh://aur@aur.archlinux.org/actionlint-kjanat-bin.git
     skip_upload: auto
     provides: [actionlint, actionlint-kjanat]
-    conflicts: [actionlint, actionlint-kjanat]
+    conflicts: [actionlint, actionlint-bin, actionlint-git, actionlint-kjanat]
     optdepends:
       - "shellcheck: check shell scripts in run steps"
       - "python-pyflakes: check Python scripts in run steps"
@@ -187,7 +187,7 @@ aur_sources:
     skip_upload: auto
     arches: [x86_64, aarch64, armv7h]
     provides: [actionlint]
-    conflicts: [actionlint, actionlint-kjanat-bin]
+    conflicts: [actionlint, actionlint-bin, actionlint-git, actionlint-kjanat-bin]
     # Built with cgo and -linkmode=external per the Arch Go guidelines, so it
     # links against the system libc, unlike the static release binaries.
     depends: [glibc]
