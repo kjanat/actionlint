@@ -5,16 +5,16 @@ package actionlint
 // PopularActions is data set of known popular actions. Keys are specs (owner/repo@ref) of actions
 // and values are their metadata.
 var PopularActions = map[string]*ActionMetadata{
-	"rhysd/action-setup-vim@v1.3.2": {
-		Name: "Setup Vim",
+	"kjanat/actions-shells@v0.1.0": {
+		Name: "Actions Shells",
 		Inputs: ActionMetadataInputs{
-			"configure-args": {"configure-args", false, false, ""},
-			"neovim":         {"neovim", false, false, ""},
-			"token":          {"token", false, false, ""},
-			"version":        {"version", false, false, ""},
+			"doctor":   {"doctor", false, false, ""},
+			"runtimes": {"runtimes", false, false, ""},
 		},
 		Outputs: ActionMetadataOutputs{
-			"executable": {"executable"},
+			"bin-dir": {"bin-dir"},
+			"cli":     {"cli"},
+			"version": {"version"},
 		},
 	},
 	"rhysd/changelog-from-release/action@v2.2.2": {
