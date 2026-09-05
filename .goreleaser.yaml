@@ -65,7 +65,8 @@ source:
   files: [man/actionlint.1]
 
 homebrew_casks:
-  - name: actionlint
+  - &actionlint_cask
+    name: actionlint
     ids: [nix]
     directory: Casks
     binaries: [actionlint]
@@ -102,6 +103,14 @@ homebrew_casks:
     commit_author:
       name: "github-actions[bot]"
       email: "41898282+github-actions[bot]@users.noreply.github.com"
+  # One tap for every project. The per-project tap keeps receiving the cask
+  # until it is archived, since Homebrew cannot redirect a tap.
+  - <<: *actionlint_cask
+    repository:
+      owner: kjanat
+      name: homebrew-tap
+      branch: master
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
 scoops:
   - name: actionlint
     ids: [windows]

@@ -86,12 +86,15 @@ nix-env -iA nixpkgs.actionlint
 brew install actionlint
 ```
 
-That formula tracks the upstream project. To install this fork instead, use its own tap, which is updated automatically
-on every release:
+That formula tracks the upstream project. To install this fork instead, use the `kjanat/tap` tap, which is updated
+automatically on every release:
 
 ```sh
-brew install kjanat/actionlint/actionlint
+brew install kjanat/tap/actionlint
 ```
+
+The cask is also published to the per-project `kjanat/actionlint` tap, so an existing `brew install
+kjanat/actionlint/actionlint` keeps upgrading.
 
 > [!WARNING]
 > Since the `actionlint` executable is unsigned, macOS displays a warning and tries to move it to the Trash. To allow it to run,
