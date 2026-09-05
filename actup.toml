@@ -1,28 +1,11 @@
 #:schema actup.schema.json
 
 update_policy    = "latest"
-ref_style        = "preserve"
+ref_style        = "sha"
 branch_policy    = "warn"
 allow_prerelease = false
 ignore           = []
-extra_paths      = [
-  "README.md",
-  "docs/usage.md",
-  "playground/index.ts",
-  "testdata/bench/*.yaml",
-  "testdata/examples/main.yaml",
-]
-
-[actions."vedantmgoyal9/winget-releaser"]
-branch_policy = "ignore"
-ref_style     = "preserve"
-
-[actions."kjanat/runner"]
-branch_policy = "ignore"
-ref_style     = "preserve"
-
-[actions."github/codeql-action"]
-ref_style = "tag"
+extra_paths      = ["README.md", "docs/usage.md", "playground/index.ts"]
 
 [cache]
 ttl     = 86400
