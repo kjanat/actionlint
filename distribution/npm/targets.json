@@ -1,6 +1,7 @@
 {
   "$schema": "./targets.schema.json",
   "facade": "@kjanat/actionlint",
+  "platformScope": "@kjanat-actionlint",
   "binary": "actionlint",
   "targets": [
     { "pkg": "linux-x64", "os": "linux", "cpu": "x64", "asset": "linux_amd64", "format": "tar.gz", "tier": 1 },

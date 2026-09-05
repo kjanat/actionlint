@@ -18,43 +18,66 @@ pushd "${temp_dir}"
 # Normal cases
 set -e
 
-# Latest release
-out="$(bash "${script}" latest)"
-if [[ -n "${GITHUB_ACTION}" ]]; then
-	if [[ "${out}" != *"executable="* ]]; then
-		echo "'executable' step output is not set: '${out}'" >&2
+check_latest_version() {
+	local executable="$1"
+	local out first_line version
+
+	out="$("${executable}" -version)"
+	first_line="${out%%$'\n'*}"
+	version="${first_line#actionlint.kjanat.dev }"
+	if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+		|| [[ "${out}" != *"https://github.com/kjanat/actionlint/releases/tag/v${version}"* ]]; then
+		echo "Output from ${executable} -version is unexpected: '${out}'" >&2
+		exit 1
 	fi
-fi
-out="$(./actionlint -version)"
-if [[ "${out}" != *'installed by downloading from release page'* ]]; then
-	echo "Output from ./actionlint -version is unexpected: '${out}'" >&2
-	exit 1
-fi
-rm -f ./actionlint
+}
+
+download() {
+	local out output
+
+	: >"${github_output}"
+	out="$(GITHUB_ACTION=true GITHUB_OUTPUT="${github_output}" bash "${script}" "$@")"
+	output="$(<"${github_output}")"
+	if [[ "${output}" != executable=* || "${output}" == *$'\n'* || -z "${output#executable=}" ]]; then
+		echo "'executable' step output is not set correctly in ${github_output}:" >&2
+		cat "${github_output}" >&2
+		echo "Download script output: '${out}'" >&2
+		exit 1
+	fi
+
+	executable="${output#executable=}"
+	if [[ ! -f "${executable}" ]]; then
+		echo "Downloaded executable does not exist: '${executable}'" >&2
+		echo "Download script output: '${out}'" >&2
+		exit 1
+	fi
+}
+
+# Latest release
+github_output="${temp_dir}/github-output"
+download latest
+check_latest_version "${executable}"
+rm -f "${executable}"
 
 # Specify only version
-bash "${script}" '1.8.0'
-out="$(./actionlint -version | head -n 1)"
+download '1.8.0'
+out="$("${executable}" -version | head -n 1)"
 if [[ "${out}" != '1.8.0' ]]; then
 	echo "Unexpected version: '${out}'" 1>&2
 	exit 1
 fi
-rm -f ./actionlint
+rm -f "${executable}"
 
 # Specify only a download directory
 mkdir ./test1
-bash "${script}" latest ./test1
-out="$(./test1/actionlint -version)"
-if [[ "${out}" != *'installed by downloading from release page'* ]]; then
-	echo "Output from ./actionlint -version is unexpected: '${out}'" >&2
-	exit 1
-fi
+download latest ./test1
+check_latest_version "${executable}"
 rm -rf ./test1
 
 # Specify both version and a download directory
 mkdir ./test2
-bash "${script}" '1.8.0' ./test2
-out="$(./test2/actionlint -version | head -n 1)"
+download '1.8.0' ./test2
+out="$("${executable}" -version | head -n 1)"
 if [[ "${out}" != '1.8.0' ]]; then
 	echo "Unexpected version: '${out}'" 1>&2
 	exit 1

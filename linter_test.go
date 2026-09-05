@@ -413,6 +413,12 @@ func TestLinterFormatErrorMessageOK(t *testing.T) {
 }
 
 func TestLinterFormatErrorMessageInSARIF(t *testing.T) {
+	saved := version
+	t.Cleanup(func() {
+		version = saved
+	})
+	version = "(devel)"
+
 	dir := filepath.Join("testdata", "format")
 	proj := &Project{root: dir}
 	file := filepath.Join(dir, "test.yaml")

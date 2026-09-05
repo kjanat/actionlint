@@ -8,7 +8,7 @@ jobs:
         test:
           - ${{ github.retention_days }}
     steps:
-      # ERROR: `matrix.test` is a number value
+      # ERROR: `matrix.test` is a string value
       - run: echo ${{ matrix.test.foo }}
   no-error:
     runs-on: ubuntu-latest

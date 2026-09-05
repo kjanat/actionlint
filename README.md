@@ -21,9 +21,18 @@ Features:
 See the [full list][checks] of checks done by actionlint.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/actionlint-dark.gif">
-  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/actionlint-light.gif">
-  <img alt="A terminal running actionlint on a workflow file, reporting each problem with the offending line underlined" src="docs/screenshots/actionlint-light.gif">
+  <source
+    media="(prefers-color-scheme: dark)"
+    srcset="docs/screenshots/actionlint-dark.gif"
+  >
+  <source
+    media="(prefers-color-scheme: light)"
+    srcset="docs/screenshots/actionlint-light.gif"
+  >
+  <img
+    alt="A terminal running actionlint on a workflow file, reporting each problem with the offending line underlined"
+    src="docs/screenshots/actionlint-light.gif"
+  >
 </picture>
 
 <details><summary><h3>Example of a broken workflow</h3></summary>
@@ -79,7 +88,7 @@ demo-workflow.yaml:18:9: step must run script with "run" section or run action w
    |         ^~~~~
 ```
 
-**This fork 1.13.0 reports 3: `expression`, `require-commit-hash`, `parallel-steps`**
+**This fork 1.14.0 reports 3: `expression`, `require-commit-hash`, `parallel-steps`**
 
 ```console
 demo-workflow.yaml:11:22: type of expression at "float number value" must be number but found type string [expression]
@@ -108,6 +117,8 @@ Install `actionlint` command by downloading [the released binary][releases], usi
 ```sh
 go install actionlint.kjanat.dev/cmd/actionlint@latest
 ```
+
+<sub><em><code>actionlint.kjanat.dev</code> is only a <a href="https://pkg.go.dev/cmd/go#hdr-Fully_qualified_import_paths" title="Fully-qualified import paths">Go vanity import path</a>. The Go toolchain resolves it to <a href="https://github.com/kjanat/actionlint" title="https://github.com/kjanat/actionlint">this GitHub repository</a>, where the source, releases, and issue tracker live. Further reading available here: <a href="https://go.dev/ref/mod#goproxy-protocol" title="GOPROXY protocol">GOPROXY protocol</a>. Check for yourself: </em><code>curl https://proxy.golang.org/actionlint.kjanat.dev/@latest</code></sub>
 
 Basically all you need to do is run the `actionlint` command in your repository. actionlint automatically detects workflows and checks errors. actionlint focuses on finding out mistakes. It tries to catch errors as much as possible and make false positives as minimal as possible.
 
@@ -154,7 +165,7 @@ On a daemon-less runner such as `ubuntu-slim`, download and run the binary inste
     ./actionlint -color
 ```
 
-The moving `v1` tag follows compatible v1 releases. `v1.13.0` is a versioned release tag, but only a full-length commit SHA provides an immutable action reference.
+The moving `v1` tag follows compatible v1 releases. `v1.14.0` is a versioned release tag, but only a full-length commit SHA provides an immutable action reference.
 
 <details><summary><h3>Inputs</h3></summary>
 
@@ -212,7 +223,7 @@ Workflow files can be checked on every commit with [pre-commit][pre-commit]. Add
 ---
 repos:
   - repo: https://github.com/kjanat/actionlint
-    rev: v1.13.0
+    rev: v1.14.0
     hooks: [id: actionlint]
 ```
 
@@ -268,10 +279,10 @@ actionlint is distributed under [the MIT license](./LICENSE.txt).
 [filter-pattern-doc]: https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
 [script-injection-doc]: https://docs.github.com/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks
 [releases]: https://github.com/kjanat/actionlint/releases
-[checks]: https://github.com/kjanat/actionlint/blob/v1.13.0/docs/checks.md
-[install]: https://github.com/kjanat/actionlint/blob/v1.13.0/docs/install.md
-[usage]: https://github.com/kjanat/actionlint/blob/v1.13.0/docs/usage.md
-[config]: https://github.com/kjanat/actionlint/blob/v1.13.0/docs/config.md
-[api]: https://github.com/kjanat/actionlint/blob/v1.13.0/docs/api.md
-[refs]: https://github.com/kjanat/actionlint/blob/v1.13.0/docs/reference.md
+[checks]: https://github.com/kjanat/actionlint/blob/v1.14.0/docs/checks.md
+[install]: https://github.com/kjanat/actionlint/blob/v1.14.0/docs/install.md
+[usage]: https://github.com/kjanat/actionlint/blob/v1.14.0/docs/usage.md
+[config]: https://github.com/kjanat/actionlint/blob/v1.14.0/docs/config.md
+[api]: https://github.com/kjanat/actionlint/blob/v1.14.0/docs/api.md
+[refs]: https://github.com/kjanat/actionlint/blob/v1.14.0/docs/reference.md
 [issue-form]: https://github.com/kjanat/actionlint/issues/new

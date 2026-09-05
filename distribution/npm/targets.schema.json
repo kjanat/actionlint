@@ -4,14 +4,19 @@
   "title": "npm distribution targets",
   "description": "Platforms actionlint publishes a prebuilt npm package for, and the GoReleaser release asset each one is cut from.",
   "type": "object",
-  "required": ["facade", "binary", "targets"],
+  "required": ["facade", "platformScope", "binary", "targets"],
   "additionalProperties": false,
   "properties": {
     "$schema": { "type": "string" },
     "facade": {
-      "description": "npm name of the user-facing package. Platform packages are named \"<facade>-<pkg>\".",
+      "description": "npm name of the user-facing package.",
       "type": "string",
       "pattern": "^(@[a-z0-9][a-z0-9-]*/)?[a-z0-9][a-z0-9._-]*$"
+    },
+    "platformScope": {
+      "description": "npm scope the platform packages are published under, so they are named \"<platformScope>/<binary>-<pkg>\". A separate scope keeps eleven binary-only packages out of the facade's namespace.",
+      "type": "string",
+      "pattern": "^@[a-z0-9][a-z0-9-]*$"
     },
     "binary": {
       "description": "Executable inside each release archive, without any .exe suffix.",
@@ -33,7 +38,7 @@
       "additionalProperties": false,
       "properties": {
         "pkg": {
-          "description": "npm name suffix. Must equal \"<os>-<cpu>\": the launcher derives the package name that way, so any other value publishes a package it can never resolve.",
+          "description": "Platform suffix of the package name, <platformScope>/<binary>-<pkg>. Must equal \"<os>-<cpu>\": the launcher derives the package name that way, so any other value publishes a package it can never resolve.",
           "type": "string",
           "pattern": "^[a-z0-9]+-[a-z0-9]+$"
         },

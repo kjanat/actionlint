@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"flag"
@@ -20,12 +21,13 @@ import (
 )
 
 const (
-	beginMarker = "<!-- BEGIN generated demo -->"
-	endMarker   = "<!-- END generated demo -->"
-	fixtureDir  = "docs/screenshots"
-	workflow    = "demo-workflow.yaml"
-	config      = "actionlint.yaml"
-	fork        = "github:kjanat/actionlint"
+	beginMarker  = "<!-- BEGIN generated demo -->"
+	endMarker    = "<!-- END generated demo -->"
+	fixtureDir   = "docs/screenshots"
+	workflow     = "demo-workflow.yaml"
+	config       = "actionlint.yaml"
+	forkTool     = "github:kjanat/actionlint"
+	upstreamTool = "actionlint"
 )
 
 var (
@@ -65,18 +67,20 @@ type generator struct {
 	log  *log.Logger
 }
 
+// lint reports what the latest released fork makes of the fixture, and the version that made it.
 func (g *generator) lint() (string, string, error) {
-	v, err := g.mise("exec", fork, "--", "actionlint", "-version")
+	v, err := g.mise(false, "exec", forkTool+"@latest", "--", "actionlint", "-version")
 	if err != nil {
 		return "", "", err
 	}
-	version, _, _ := strings.Cut(strings.TrimSpace(string(v)), "\n")
+	line, _, _ := strings.Cut(strings.TrimSpace(string(v)), "\n")
+	version := line[strings.LastIndex(line, " ")+1:]
 	if version == "" {
 		return "", "", errors.New("mise reported no version for this fork")
 	}
 
-	g.log.Println("linting", workflow)
-	out, err := g.mise("exec", fork, "--", "actionlint", "-no-color",
+	g.log.Println("linting", workflow, "with", version)
+	out, err := g.mise(true, "exec", forkTool+"@latest", "--", "actionlint", "-no-color",
 		"-config-file", filepath.Join(fixtureDir, config),
 		filepath.Join(fixtureDir, workflow))
 	if err != nil {
@@ -127,32 +131,42 @@ func (g *generator) section() (string, error) {
 	return b.String(), nil
 }
 
-// mise runs a command through mise, which installs the tool on first use. The settings keep that
-// installation silent and unattended so the output stays reproducible on a cold cache.
-func (g *generator) mise(args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(g.ctx, "mise", args...)
+func (g *generator) command(allowExitOne bool, name string, args ...string) ([]byte, error) {
+	cmd := exec.CommandContext(g.ctx, name, args...)
 	cmd.Dir = g.root
 	cmd.Env = append(os.Environ(),
 		"MISE_YES=1",
 		"MISE_SILENT=1",
 		"MISE_SAFE=1",
 		"MISE_TRUSTED_CONFIG_PATHS="+g.root,
+		// The fork releases faster than the age gate admits, and the gate would hold the
+		// comparison on the previous release.
+		"MISE_MINIMUM_RELEASE_AGE_EXCLUDES="+forkTool,
 	)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	if err != nil {
 		var e *exec.ExitError
-		if errors.As(err, &e) && e.ExitCode() == 1 {
+		if allowExitOne && errors.As(err, &e) && e.ExitCode() == 1 && stderr.Len() == 0 {
 			return out, nil // actionlint exits 1 when it reports problems
 		}
-		return nil, fmt.Errorf("could not run `mise %s`: %w", strings.Join(args, " "), err)
+		command := strings.Join(append([]string{name}, args...), " ")
+		if detail := strings.TrimSpace(stderr.String()); detail != "" {
+			return nil, fmt.Errorf("could not run `%s`: %w\n%s", command, err, detail)
+		}
+		return nil, fmt.Errorf("could not run `%s`: %w", command, err)
 	}
 	return out, nil
 }
 
-// measureUpstream reports what the released upstream command makes of the fixture. It runs on every
-// check so the comparison cannot outlive the upstream release it describes.
+func (g *generator) mise(allowExitOne bool, args ...string) ([]byte, error) {
+	return g.command(allowExitOne, "mise", args...)
+}
+
+// measureUpstream reports what the latest upstream command makes of the fixture.
 func (g *generator) measureUpstream() (string, string, error) {
-	v, err := g.mise("exec", "actionlint", "--", "actionlint", "-version")
+	v, err := g.mise(false, "exec", upstreamTool+"@latest", "--", "actionlint", "-version")
 	if err != nil {
 		return "", "", err
 	}
@@ -162,7 +176,7 @@ func (g *generator) measureUpstream() (string, string, error) {
 	}
 	g.log.Println("measuring upstream", version)
 
-	out, err := g.mise("exec", "actionlint", "--", "actionlint", "-no-color",
+	out, err := g.mise(true, "exec", upstreamTool+"@latest", "--", "actionlint", "-no-color",
 		filepath.Join(fixtureDir, workflow))
 	if err != nil {
 		return "", "", err
