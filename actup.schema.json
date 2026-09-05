@@ -1,87 +1,5 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Actup configuration",
-  "description": "Configuration options for the GitHub Actions-like updater.\n\nMain configuration struct.\n\n# Example Configuration\n\n```yaml\n# .actup.toml - Conservative security-focused config\nupdate_policy = \"patch\"\nref_style = \"sha\"\nbranch_policy = \"warn\"\n\n# Result in workflow:\n# Before:\n# - uses: actions/checkout@v4\n# After:\n# - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1\n```\n\n```yaml\n# .actup.toml - Permissive always-latest config\nupdate_policy = \"major\"\nref_style = \"tag\"\nallow_prerelease = true\n\n# Result in workflow:\n# Before:\n# - uses: actions/checkout@v3\n# After:\n# - uses: actions/checkout@v4.2.0\n```\n\n```toml\n# .actup.toml - Selective ignore patterns\nignore = [\n  \"actions/checkout\",              # Ignore all refs of this action\n  \"my-org/*\",                      # Ignore all actions from my-org\n  \"dtolnay/rust-toolchain@1.91.0\", # Ignore specific MSRV version\n]\n\n# Result: dtolnay/rust-toolchain@stable is checked, @1.91.0 is ignored\n```",
-  "type": "object",
-  "properties": {
-    "actions": {
-      "description": "Per-action policy overrides, keyed by `owner/repo`.\n\nEach entry can override `update_policy`, `ref_style`, `branch_policy`,\nor `ignore` for just that action.\n\n```toml\n[actions.\"actions/checkout\"]\nupdate_policy = \"patch\"    # only patch-bump this one\n```",
-      "type": "object",
-      "additionalProperties": {
-        "$ref": "#/$defs/ActionOverride"
-      },
-      "default": {}
-    },
-    "allow_prerelease": {
-      "description": "Consider prerelease tags (e.g. `v2.0.0-rc.1`) when picking a target.\n\n```toml\nallow_prerelease = false   # skip -rc/-beta tags unless already on one\n```",
-      "type": "boolean",
-      "default": false
-    },
-    "branch_policy": {
-      "description": "How to handle floating branch refs like `@main` or `@v2`.\n\n`ignore` leaves them untouched (default), `warn` flags them as\nfloating, `update` pins the branch to its current HEAD SHA.\n\n```toml\nbranch_policy = \"warn\"   # @main -> flagged, pin to a tag or SHA\n```",
-      "$ref": "#/$defs/Branch",
-      "default": "ignore"
-    },
-    "cache": {
-      "description": "Version-cache settings (TTL, location, on/off).\n\n```toml\n[cache]\nttl = 86400        # re-check a repo at most once a day\nenabled = true\n```",
-      "$ref": "#/$defs/Cache",
-      "default": {
-        "enabled": true,
-        "path": null,
-        "ttl": 86400
-      }
-    },
-    "default_host": {
-      "description": "Host used for bare `owner/repo` refs that carry no host prefix.\n\nAbsent resolves to `github.com` via the built-in preset.\n\n```toml\ndefault_host = \"github.com\"\n```",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null
-    },
-    "extra_paths": {
-      "description": "Additional paths to scan (beyond defaults)\n\nBy default, actup scans:\n- `.github/workflows/**/*.{yml,yaml}` (workflows)\n- `.github/actions/**/action.{yml,yaml}` (composite actions)\n\nUse `extra_paths` to scan additional locations:\n\nExamples:\n- `\".gitea/workflows\"` - Gitea workflow directory\n- `\".woodpecker/*.yml\"` - Woodpecker CI pipelines\n- `\"ci/pipelines/**/*.yaml\"` - Custom CI directory\n- `\".drone.yml\"` - Specific Drone CI config file\n- `\"infra/terraform/github-actions.tf\"` - GitHub Actions in Terraform",
-      "type": "array",
-      "default": [],
-      "items": {
-        "type": "string"
-      }
-    },
-    "fetch": {
-      "description": "API fallback settings, used only when the git protocol can't list a repo.\n\n```toml\n[fetch]\napi_mode = \"graphql\"       # or \"rest\"\nmax_tags_per_repo = 10\n```",
-      "$ref": "#/$defs/FetchSettings",
-      "default": {
-        "api_mode": "graphql",
-        "max_tags_per_repo": 10
-      }
-    },
-    "hosts": {
-      "description": "Per-host provider config, keyed by lowercase hostname.\n\nUsed for GitHub Enterprise, self-hosted GitLab/Gitea, and custom tokens.\n\n```toml\n[hosts.\"ghe.corp.internal\"]\nkind = \"github\"\napi_base = \"https://ghe.corp.internal/api/v3\"\ntoken_env = \"GHE_TOKEN\"\n```",
-      "type": "object",
-      "additionalProperties": {
-        "$ref": "#/$defs/HostConfig"
-      },
-      "default": {}
-    },
-    "ignore": {
-      "description": "Actions to ignore (supports owner/repo, owner/repo@ref, and owner/* patterns)\n\nExamples:\n- `\"actions/checkout\"` - ignores all refs of this action\n- `\"actions/checkout@v2\"` - ignores only the v2 ref\n- `\"my-org/*\"` - ignores all actions from my-org\n- `\"tool/action@1.91.0\"` - ignores specific version (e.g., MSRV pin)",
-      "type": "array",
-      "default": [],
-      "items": {
-        "type": "string"
-      }
-    },
-    "ref_style": {
-      "description": "How a ref is written when updating.\n\n`preserve` keeps the current style (tag stays a tag, SHA stays a SHA),\n`tag` rewrites to the version tag, `sha` pins to the commit SHA with a\n`# vX.Y.Z` comment.\n\n```toml\nref_style = \"sha\"   # actions/checkout@v4 -> @<sha> # v4.2.0\n```",
-      "$ref": "#/$defs/Style",
-      "default": "preserve"
-    },
-    "update_policy": {
-      "description": "How far to bump outdated version refs.\n\n`patch` stays on `major.minor`, `minor` stays on `major`, `major`\nallows a new major, `latest` takes the newest stable overall.\n\n```toml\nupdate_policy = \"minor\"   # v1.2.3 -> v1.5.0, never v2\n```",
-      "$ref": "#/$defs/Update",
-      "default": "latest"
-    }
-  },
   "$defs": {
     "ActionOverride": {
       "title": "Per-action override configuration.",
@@ -90,6 +8,7 @@
       "properties": {
         "branch_policy": {
           "description": "Override branch-ref handling for this action.\n\nSame values as the global `branch_policy`: `ignore` leaves branch refs\nuntouched, `warn` flags them as floating, `update` pins them to the\nbranch's current HEAD SHA.\n\n```toml\nbranch_policy = \"ignore\"           # quiet everywhere by default\n\n[actions.\"kjanat/runner\"]\nbranch_policy = \"update\"           # but pin this one to its master SHA\n```",
+          "default": null,
           "anyOf": [
             {
               "$ref": "#/$defs/Branch"
@@ -97,16 +16,16 @@
             {
               "type": "null"
             }
-          ],
-          "default": null
+          ]
         },
         "ignore": {
           "description": "Whether to completely ignore this action",
-          "type": "boolean",
-          "default": false
+          "default": false,
+          "type": "boolean"
         },
         "ref_style": {
           "description": "Override ref style for this action",
+          "default": null,
           "anyOf": [
             {
               "$ref": "#/$defs/Style"
@@ -114,11 +33,11 @@
             {
               "type": "null"
             }
-          ],
-          "default": null
+          ]
         },
         "update_policy": {
           "description": "Override update policy for this action",
+          "default": null,
           "anyOf": [
             {
               "$ref": "#/$defs/Update"
@@ -126,8 +45,7 @@
             {
               "type": "null"
             }
-          ],
-          "default": null
+          ]
         }
       }
     },
@@ -172,23 +90,23 @@
       "properties": {
         "enabled": {
           "description": "Whether caching is enabled",
-          "type": "boolean",
-          "default": true
+          "default": true,
+          "type": "boolean"
         },
         "path": {
           "description": "Custom cache directory (None = use OS default)",
+          "default": null,
           "type": [
-            "string",
-            "null"
-          ],
-          "default": null
+            "null",
+            "string"
+          ]
         },
         "ttl": {
           "description": "Cache time-to-live in seconds",
-          "type": "integer",
-          "format": "uint64",
           "default": 86400,
-          "minimum": 0
+          "type": "integer",
+          "minimum": 0,
+          "format": "uint64"
         }
       }
     },
@@ -197,17 +115,17 @@
       "type": "object",
       "properties": {
         "api_mode": {
-          "description": "API fallback mode: `\"graphql\"` (batched, requires auth) or `\"rest\"` (parallel)",
           "$ref": "#/$defs/ApiMode",
+          "description": "API fallback mode: `\"graphql\"` (batched, requires auth) or `\"rest\"` (parallel)",
           "default": "graphql"
         },
         "max_tags_per_repo": {
           "description": "Maximum tags the API fallback fetches per repository (1–255).",
-          "type": "integer",
-          "format": "uint8",
           "default": 10,
+          "type": "integer",
+          "minimum": 1,
           "maximum": 255,
-          "minimum": 1
+          "format": "uint8"
         }
       },
       "additionalProperties": false
@@ -219,8 +137,8 @@
         "api_base": {
           "description": "API base URL. Required after merge (may be inferred by provider registration).\nMust include scheme (`http://` or `https://`), no query or fragment.",
           "type": [
-            "string",
-            "null"
+            "null",
+            "string"
           ]
         },
         "api_mode": {
@@ -251,15 +169,15 @@
             "integer",
             "null"
           ],
-          "format": "uint8",
+          "minimum": 1,
           "maximum": 255,
-          "minimum": 1
+          "format": "uint8"
         },
         "token_env": {
           "description": "Env var name for auth token. Required after merge (may be defaulted by preset).",
           "type": [
-            "string",
-            "null"
+            "null",
+            "string"
           ]
         }
       },
@@ -329,6 +247,88 @@
           "const": "latest"
         }
       ]
+    }
+  },
+  "title": "Actup configuration",
+  "description": "Configuration options for the GitHub Actions-like updater.\n\nMain configuration struct.\n\n# Example Configuration\n\n```yaml\n# .actup.toml - Conservative security-focused config\nupdate_policy = \"patch\"\nref_style = \"sha\"\nbranch_policy = \"warn\"\n\n# Result in workflow:\n# Before:\n# - uses: actions/checkout@v4\n# After:\n# - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1\n```\n\n```yaml\n# .actup.toml - Permissive always-latest config\nupdate_policy = \"major\"\nref_style = \"tag\"\nallow_prerelease = true\n\n# Result in workflow:\n# Before:\n# - uses: actions/checkout@v3\n# After:\n# - uses: actions/checkout@v4.2.0\n```\n\n```toml\n# .actup.toml - Selective ignore patterns\nignore = [\n  \"actions/checkout\",              # Ignore all refs of this action\n  \"my-org/*\",                      # Ignore all actions from my-org\n  \"dtolnay/rust-toolchain@1.91.0\", # Ignore specific MSRV version\n]\n\n# Result: dtolnay/rust-toolchain@stable is checked, @1.91.0 is ignored\n```",
+  "type": "object",
+  "properties": {
+    "actions": {
+      "description": "Per-action policy overrides, keyed by `owner/repo`.\n\nEach entry can override `update_policy`, `ref_style`, `branch_policy`,\nor `ignore` for just that action.\n\n```toml\n[actions.\"actions/checkout\"]\nupdate_policy = \"patch\"    # only patch-bump this one\n```",
+      "default": {},
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/ActionOverride"
+      }
+    },
+    "allow_prerelease": {
+      "description": "Consider prerelease tags (e.g. `v2.0.0-rc.1`) when picking a target.\n\n```toml\nallow_prerelease = false   # skip -rc/-beta tags unless already on one\n```",
+      "default": false,
+      "type": "boolean"
+    },
+    "branch_policy": {
+      "$ref": "#/$defs/Branch",
+      "description": "How to handle floating branch refs like `@main` or `@v2`.\n\n`ignore` leaves them untouched (default), `warn` flags them as\nfloating, `update` pins the branch to its current HEAD SHA.\n\n```toml\nbranch_policy = \"warn\"   # @main -> flagged, pin to a tag or SHA\n```",
+      "default": "ignore"
+    },
+    "cache": {
+      "$ref": "#/$defs/Cache",
+      "description": "Version-cache settings (TTL, location, on/off).\n\n```toml\n[cache]\nttl = 86400        # re-check a repo at most once a day\nenabled = true\n```",
+      "default": {
+        "enabled": true,
+        "path": null,
+        "ttl": 86400
+      }
+    },
+    "default_host": {
+      "description": "Host used for bare `owner/repo` refs that carry no host prefix.\n\nAbsent resolves to `github.com` via the built-in preset.\n\n```toml\ndefault_host = \"github.com\"\n```",
+      "default": null,
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "extra_paths": {
+      "description": "Additional paths to scan (beyond defaults)\n\nBy default, actup scans:\n- `.github/workflows/**/*.{yml,yaml}` (workflows)\n- `.github/actions/**/action.{yml,yaml}` (composite actions)\n\nUse `extra_paths` to scan additional locations:\n\nExamples:\n- `\".gitea/workflows\"` - Gitea workflow directory\n- `\".woodpecker/*.yml\"` - Woodpecker CI pipelines\n- `\"ci/pipelines/**/*.yaml\"` - Custom CI directory\n- `\".drone.yml\"` - Specific Drone CI config file\n- `\"infra/terraform/github-actions.tf\"` - GitHub Actions in Terraform",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "fetch": {
+      "$ref": "#/$defs/FetchSettings",
+      "description": "API fallback settings, used only when the git protocol can't list a repo.\n\n```toml\n[fetch]\napi_mode = \"graphql\"       # or \"rest\"\nmax_tags_per_repo = 10\n```",
+      "default": {
+        "api_mode": "graphql",
+        "max_tags_per_repo": 10
+      }
+    },
+    "hosts": {
+      "description": "Per-host provider config, keyed by lowercase hostname.\n\nUsed for GitHub Enterprise, self-hosted GitLab/Gitea, and custom tokens.\n\n```toml\n[hosts.\"ghe.corp.internal\"]\nkind = \"github\"\napi_base = \"https://ghe.corp.internal/api/v3\"\ntoken_env = \"GHE_TOKEN\"\n```",
+      "default": {},
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/HostConfig"
+      }
+    },
+    "ignore": {
+      "description": "Actions to ignore (supports owner/repo, owner/repo@ref, and owner/* patterns)\n\nExamples:\n- `\"actions/checkout\"` - ignores all refs of this action\n- `\"actions/checkout@v2\"` - ignores only the v2 ref\n- `\"my-org/*\"` - ignores all actions from my-org\n- `\"tool/action@1.91.0\"` - ignores specific version (e.g., MSRV pin)",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ref_style": {
+      "$ref": "#/$defs/Style",
+      "description": "How a ref is written when updating.\n\n`preserve` keeps the current style (tag stays a tag, SHA stays a SHA),\n`tag` rewrites to the version tag, `sha` pins to the commit SHA with a\n`# vX.Y.Z` comment.\n\n```toml\nref_style = \"sha\"   # actions/checkout@v4 -> @<sha> # v4.2.0\n```",
+      "default": "preserve"
+    },
+    "update_policy": {
+      "$ref": "#/$defs/Update",
+      "description": "How far to bump outdated version refs.\n\n`patch` stays on `major.minor`, `minor` stays on `major`, `major`\nallows a new major, `latest` takes the newest stable overall.\n\n```toml\nupdate_policy = \"minor\"   # v1.2.3 -> v1.5.0, never v2\n```",
+      "default": "latest"
     }
   }
 }
