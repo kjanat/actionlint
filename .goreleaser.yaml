@@ -70,8 +70,8 @@ homebrew_casks:
     directory: Casks
     binaries: [actionlint]
     manpages: [man/actionlint.1]
-    # No shell_parameter_format: unset, Homebrew appends the shell name as a
-    # plain argument, which is what -completion takes.
+    # shell_parameter_format stays unset: Homebrew then appends the bare shell
+    # name, the form -completion takes.
     generate_completions_from_executable:
       executable: actionlint
       args: [-completion]
