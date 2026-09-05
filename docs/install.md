@@ -20,6 +20,14 @@ choco install actionlint
 scoop install actionlint
 ```
 
+That package is [the upstream project][upstream]. This fork lives in its own bucket, which also carries other `kjanat`
+tools:
+
+```powershell
+scoop bucket add kjanat https://github.com/kjanat/scoop-bucket
+scoop install kjanat/actionlint
+```
+
 ### [Winget](https://learn.microsoft.com/en-us/windows/package-manager/)
 
 [`actionlint` package][winget] is available in the winget-pkgs repository:
@@ -236,6 +244,7 @@ go install actionlint.kjanat.dev/cmd/actionlint@master
 [asdf-plugin]: https://github.com/crazy-matt/asdf-actionlint
 [chocolatey]: https://community.chocolatey.org/packages/actionlint
 [npm-package]: https://www.npmjs.com/package/@kjanat/actionlint
+[upstream]: https://github.com/rhysd/actionlint
 [scoop]: https://scoop.sh/#/apps?q=actionlint&s=0&d=1&o=true
 [winget]: https://github.com/microsoft/winget-pkgs/tree/master/manifests/r/rhysd/actionlint
 [archlinux]: https://archlinux.org/packages/extra/x86_64/actionlint/
