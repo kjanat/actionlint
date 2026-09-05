@@ -103,9 +103,9 @@ winget:
     homepage: https://actionlint.kjanat.dev
     short_description: Static checker for GitHub Actions workflow files
     description: |-
-      actionlint is a static checker for GitHub Actions workflow files. It checks the workflow syntax, the expressions
-      in ${{ }} placeholders, the shell scripts in run: steps, and many other mistakes that only surface once a
-      workflow runs. This is the kjanat fork.
+      actionlint is a static checker for GitHub Actions workflow files. It checks the workflow syntax, expression
+      placeholders, the shell scripts in run: steps, and many other mistakes that only surface once a workflow
+      runs. This is the kjanat fork.
     license: MIT
     license_url: https://github.com/kjanat/actionlint/blob/master/LICENSE.txt
     copyright: Copyright (c) 2026 Kaj Kowalski, Copyright (c) 2021 rhysd
