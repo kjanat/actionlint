@@ -12,6 +12,25 @@ Configuration file `actionlint.yaml` or `actionlint.yml` can be put in `.github`
 
 Note: If you're using [Super-Linter][Super-Linter], the file should be placed in a different directory. Please check the project's document.
 
+For completion, hover documentation, and validation in editors using YAML Language Server, add this line to your config:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kjanat/actionlint/HEAD/actionlint.schema.json
+---
+```
+
+The [JSON Schema](../actionlint.schema.json) includes this fork's settings and is generated from the Go configuration
+types, YAML tags, and comments. Regenerate it with `go generate -run generate-config-schema` (or `go generate` for all
+generated files), then run `dprint fmt actionlint.schema.json` to apply the repository's schema formatting. CI checks
+that it stays up to date. Custom YAML types have explicit mappings in
+[`scripts/generate-config-schema`](../scripts/generate-config-schema/main.go); nullable values and field constraints
+use `jsonschema` struct tags.
+
+The schema rejects unknown keys everywhere. Runtime parsing ignores unknown keys at the top level, inside
+`self-hosted-runner`, and inside each `paths` entry. For example, `config-secret` is silently ignored. Both validators
+reject unknown keys inside `policy` and `require-job-timeout`. Go regular expression and glob syntax require additional
+validation by actionlint when it loads the configuration.
+
 ```yaml
 # Configuration related to self-hosted runner.
 self-hosted-runner:
