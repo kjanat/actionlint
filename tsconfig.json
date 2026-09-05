@@ -11,7 +11,7 @@
     "target": "ES2024",
     "types": ["node"]
   },
-  "exclude": ["node_modules", "playground", "testdata", "github-docs"],
+  "exclude": ["node_modules", "packages", "playground", "testdata", "github-docs"],
   "references": [
     { "path": "./playground/tsconfig.json" }
   ]

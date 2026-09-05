@@ -21,10 +21,13 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with: { node-version-file: .node-version, package-manager-cache: false }
       - uses: $/.github/actions/setup-pandoc
+      - uses: kjanat/runner@6e752d37c4b3de6bda86c89b2f5bc487097425cd # master
+      - name: Install JavaScript dependencies
+        run: runner install --frozen
       - name: Build command manual
-        run: make man
+        run: run make:man
       - name: Build and test playground
-        run: npm ci; make -C playground build test
+        run: run --dir playground -s make:build make:test
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with: { path: playground/dist }
@@ -40,6 +43,6 @@ jobs:
       {
         name: Deploy to GitHub Pages,
         id: deployment,
-        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128,
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346, # v5.0.1
       },
     ] # v5

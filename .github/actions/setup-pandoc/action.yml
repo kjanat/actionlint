@@ -4,7 +4,7 @@ description: Install a pinned pandoc release, verified against its build provena
 inputs:
   version:
     description: pandoc release tag to install.
-    default: "3.10.2"
+    default: "3.11"
   repo:
     description: GitHub repository to read the release from.
     default: "jgm/pandoc"

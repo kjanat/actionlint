@@ -99,6 +99,21 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			expected: StringType{},
 		},
 		{
+			what:     "github context artifacts property",
+			input:    "github.artifacts",
+			expected: StringType{},
+		},
+		{
+			what:     "github context artifacts_list property",
+			input:    "github.artifacts_list",
+			expected: StringType{},
+		},
+		{
+			what:     "github context retention_days property",
+			input:    "github.retention_days",
+			expected: StringType{},
+		},
+		{
 			what:     "object property dereference for any type",
 			input:    "github.event.labels",
 			expected: AnyType{},

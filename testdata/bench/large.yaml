@@ -158,7 +158,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version: '1.25'
-      - uses: github/codeql-action/init@v4
+      - uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4
         with:
           config-file: ./.github/codeql/codeql-config.yaml
           languages: go
@@ -167,7 +167,7 @@ jobs:
           set -x
           go build -v ./cmd/actionlint
           GOOS=js GOARCH=wasm go build -v -o ./playground/main.wasm ./playground
-      - uses: github/codeql-action/analyze@v4
+      - uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4
         with:
           category: "/language:go"
   analyze-ts:
@@ -322,7 +322,7 @@ jobs:
         run: |
           echo "name=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4
+        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4

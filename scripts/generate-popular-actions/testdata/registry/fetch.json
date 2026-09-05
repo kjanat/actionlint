@@ -1,8 +1,8 @@
 [
     {
-      "slug": "rhysd/action-setup-vim",
-      "tags": ["v1.3.2"],
-      "next": "v2"
+      "slug": "kjanat/actions-shells",
+      "tags": ["v0.1.0"],
+      "next": "v0.2.0"
     },
     {
       "slug": "rhysd/changelog-from-release",

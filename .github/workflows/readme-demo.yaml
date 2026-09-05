@@ -1,0 +1,29 @@
+name: README demo
+on:
+  pull_request:
+    paths:
+      - .github/workflows/readme-demo.yaml
+      - go.mod
+      - README.md
+      - docs/screenshots/**
+      - scripts/check-readme/**
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: { contents: read }
+
+jobs:
+  readme-demo:
+    name: README demo section matches the latest releases
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with: { go-version-file: go.mod }
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with: { cache: false }
+      - run: go run ./scripts/check-readme -quiet ./README.md
+        env: { GITHUB_TOKEN: "${{ github.token }}" }

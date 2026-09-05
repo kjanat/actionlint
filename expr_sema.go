@@ -271,7 +271,8 @@ var builtinSecretProps = map[string]ExprType{
 // BuiltinGlobalVariableTypes defines types of all global variables. All context variables are
 // documented at https://docs.github.com/en/actions/learn-github-actions/contexts
 var BuiltinGlobalVariableTypes = map[string]ExprType{
-	// https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/accessing-contextual-information-about-workflow-runs#github-context
+	// https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#github-context
+	// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/contexts
 	"github": NewStrictObjectType(map[string]ExprType{
 		"action":                    StringType{},
 		"action_path":               StringType{}, // Note: Composite actions only
@@ -281,7 +282,9 @@ var BuiltinGlobalVariableTypes = map[string]ExprType{
 		"actor":                     StringType{},
 		"actor_id":                  StringType{},
 		"api_url":                   StringType{},
-		"artifact_cache_size_limit": NumberType{}, // Note: Undocumented
+		"artifact_cache_size_limit": NumberType{}, // Note: Missing from the context reference
+		"artifacts":                 StringType{},
+		"artifacts_list":            StringType{},
 		"base_ref":                  StringType{},
 		"env":                       StringType{},
 		"event":                     NewEmptyObjectType(), // Note: Stricter type check for this payload would be possible
@@ -290,7 +293,7 @@ var BuiltinGlobalVariableTypes = map[string]ExprType{
 		"graphql_url":               StringType{},
 		"head_ref":                  StringType{},
 		"job":                       StringType{},
-		"output":                    StringType{}, // Note: Undocumented
+		"output":                    StringType{}, // Note: Runner-provided file command path missing from the context reference
 		"path":                      StringType{},
 		"ref":                       StringType{},
 		"ref_name":                  StringType{},
@@ -300,17 +303,17 @@ var BuiltinGlobalVariableTypes = map[string]ExprType{
 		"repository_id":             StringType{},
 		"repository_owner":          StringType{},
 		"repository_owner_id":       StringType{},
-		"repository_visibility":     StringType{}, // Note: Undocumented
+		"repository_visibility":     StringType{}, // Note: Missing from the context reference; documented as an OIDC claim
 		"repositoryurl":             StringType{}, // repositoryUrl
-		"retention_days":            NumberType{},
+		"retention_days":            StringType{},
 		"run_attempt":               StringType{},
 		"run_id":                    StringType{},
 		"run_number":                StringType{},
 		"secret_source":             StringType{},
 		"server_url":                StringType{},
 		"sha":                       StringType{},
-		"state":                     StringType{}, // Note: Undocumented
-		"step_summary":              StringType{}, // Note: Undocumented
+		"state":                     StringType{}, // Note: Runner-provided file command path missing from the context reference
+		"step_summary":              StringType{}, // Note: Runner-provided file command path missing from the context reference
 		"token":                     StringType{},
 		"triggering_actor":          StringType{},
 		"workflow":                  StringType{},

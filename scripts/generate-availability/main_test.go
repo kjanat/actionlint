@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -139,12 +141,15 @@ func TestWriteError(t *testing.T) {
 }
 
 func TestFetchError(t *testing.T) {
+	notFound := httptest.NewServer(http.NotFoundHandler())
+	defer notFound.Close()
+
 	testCases := []struct {
 		what string
 		url  string
 		want string
 	}{
-		{"not found", "https://raw.githubusercontent.com/rhysd/actionlint/main/this-file-does-not-exist.txt", "request was not successful"},
+		{"not found", notFound.URL, "request was not successful"},
 		{"invalid url", "foo://bar", "could not fetch"},
 	}
 
