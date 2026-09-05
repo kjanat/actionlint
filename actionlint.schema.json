@@ -3,13 +3,16 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "Generated from config.go by go generate -run generate-config-schema. DO NOT EDIT.",
   "title": "actionlint configuration",
-  "description": "Config is configuration of actionlint.",
+  "description": "Configures validation of GitHub Actions workflows for this repository.\n\nDeclare custom runner labels and available variable or secret names, suppress selected diagnostics by file path, choose assumed token permissions, and enable repository policy checks. Save as `.github/actionlint.yaml` or `.github/actionlint.yml`, or select a file with `-config-file`. Every setting is optional; normal workflow correctness checks run without a configuration file.",
+  "markdownDescription": "Configures validation of GitHub Actions workflows for this repository.\n\nDeclare custom runner labels and available variable or secret names, suppress selected diagnostics by file path, choose assumed token permissions, and enable repository policy checks. Save as `.github/actionlint.yaml` or `.github/actionlint.yml`, or select a file with `-config-file`. Every setting is optional; normal workflow correctness checks run without a configuration file.",
   "type": "object",
   "properties": {
     "assume-default-permissions": {
+      "title": "assume-default-permissions",
+      "description": "Selects the repository's assumed default token permissions when checking reusable workflow calls whose calling job and workflow both omit `permissions:`.\n\n`restricted` (the default) grants read access to `contents` and `packages` only. `permissive` assumes read/write access, except `id-token`, which still requires an explicit grant. Omit this key or use `null` to assume `restricted`.",
+      "markdownDescription": "Selects the repository's assumed default token permissions when checking reusable workflow calls whose calling job and workflow both omit `permissions:`.\n\n`restricted` (the default) grants read access to `contents` and `packages` only. `permissive` assumes read/write access, except `id-token`, which still requires an explicit grant. Omit this key or use `null` to assume `restricted`.",
       "oneOf": [
         {
-          "description": "AssumeDefaultPermissions selects which repository \"Workflow permissions\" setting actionlint assumes\nwhen a workflow call's calling job declares no \"permissions:\" and neither does its workflow. The zero\nvalue means the key was not set, which is equivalent to DefaultPermissionsAssumptionRestricted.",
           "default": "restricted",
           "type": "string",
           "enum": [
@@ -23,9 +26,11 @@
       ]
     },
     "config-secrets": {
+      "title": "config-secrets",
+      "description": "Lists secret names available to the checked workflows through `secrets`.\n\nOmit this key or use `null` to disable secret-name checking. Use `[]` to allow only built-in secrets and secrets declared in `on.workflow_call.secrets`. A list such as `[DEPLOY_TOKEN, API_KEY]` also allows those names; other names are reported as undefined. Matching is case-insensitive.\n\n`GITHUB_TOKEN`, `ACTIONS_STEP_DEBUG`, and `ACTIONS_RUNNER_DEBUG` are always allowed. List names only, never secret values.",
+      "markdownDescription": "Lists secret names available to the checked workflows through `secrets`.\n\nOmit this key or use `null` to disable secret-name checking. Use `[]` to allow only built-in secrets and secrets declared in `on.workflow_call.secrets`. A list such as `[DEPLOY_TOKEN, API_KEY]` also allows those names; other names are reported as undefined. Matching is case-insensitive.\n\n`GITHUB_TOKEN`, `ACTIONS_STEP_DEBUG`, and `ACTIONS_RUNNER_DEBUG` are always allowed. List names only, never secret values.",
       "oneOf": [
         {
-          "description": "ConfigSecrets is names of secrets used in the checked workflows. When this value is nil, property\nnames of `secrets` context will not be checked. Otherwise actionlint will report a name which is\nnot listed here as an undefined secret.\nhttps://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions",
           "type": "array",
           "items": {
             "type": "string"
@@ -37,9 +42,11 @@
       ]
     },
     "config-variables": {
+      "title": "config-variables",
+      "description": "Lists configuration variable names available to the checked workflows through `vars`.\n\nOmit this key or use `null` to disable variable-name checking. Use `[]` to allow no variables. A list such as `[DEFAULT_RUNNER, ENVIRONMENT_STAGE]` reports names outside that list as undefined.",
+      "markdownDescription": "Lists configuration variable names available to the checked workflows through `vars`.\n\nOmit this key or use `null` to disable variable-name checking. Use `[]` to allow no variables. A list such as `[DEFAULT_RUNNER, ENVIRONMENT_STAGE]` reports names outside that list as undefined.",
       "oneOf": [
         {
-          "description": "ConfigVariables is names of configuration variables used in the checked workflows. When this value is nil,\nproperty names of `vars` context will not be checked. Otherwise actionlint will report a name which is not\nlisted here as undefined config variables.\nhttps://docs.github.com/en/actions/learn-github-actions/variables",
           "type": "array",
           "items": {
             "type": "string"
@@ -51,18 +58,23 @@
       ]
     },
     "paths": {
+      "title": "paths",
+      "description": "Applies configuration to workflow files matching a glob pattern.\n\nKeys are paths relative to the repository root, using `/` separators and doublestar glob syntax, for example `.github/workflows/**/*.yaml`. All matching entries apply. Each entry can set `ignore`.",
+      "markdownDescription": "Applies configuration to workflow files matching a glob pattern.\n\nKeys are paths relative to the repository root, using `/` separators and doublestar glob syntax, for example `.github/workflows/**/*.yaml`. All matching entries apply. Each entry can set `ignore`.",
       "oneOf": [
         {
-          "description": "Paths is a \"paths\" mapping in the configuration file. The keys are glob patterns to match file paths.\nAnd the values are corresponding configurations applied to the file paths.",
           "type": "object",
           "additionalProperties": {
-            "description": "PathConfig is a configuration for specific file path pattern.",
+            "description": "Is a configuration for specific file path pattern. This is for values of the \"paths\" mapping in the configuration file.",
+            "markdownDescription": "Is a configuration for specific file path pattern. This is for values of the \"paths\" mapping in the configuration file.",
             "type": "object",
             "properties": {
               "ignore": {
+                "title": "ignore",
+                "description": "Suppresses diagnostics whose message matches any of these Go regular expressions.\n\nApplies only to workflow files matching the parent path glob. For example, `[\"shellcheck reported issue in this script: SC2086\"]` ignores that ShellCheck diagnostic. Omit this key, use `null`, or use `[]` to suppress nothing. Like the `-ignore` CLI option.",
+                "markdownDescription": "Suppresses diagnostics whose message matches any of these Go regular expressions.\n\nApplies only to workflow files matching the parent path glob. For example, `[\"shellcheck reported issue in this script: SC2086\"]` ignores that ShellCheck diagnostic. Omit this key, use `null`, or use `[]` to suppress nothing. Like the `-ignore` CLI option.",
                 "oneOf": [
                   {
-                    "description": "Ignore is a list of patterns. They are used for ignoring errors by matching to the error messages.\nIt is similar to the \"-ignore\" command line option.",
                     "type": "array",
                     "items": {
                       "type": "string"
@@ -83,15 +95,19 @@
       ]
     },
     "policy": {
+      "title": "policy",
+      "description": "Enables opt-in checks for repository conventions, such as pinned actions and job timeouts.\n\nAll policy checks are disabled by default. Set individual keys to enable them; omit the mapping or use `{}` or `null` to leave them unset. Normal workflow correctness checks always run.",
+      "markdownDescription": "Enables opt-in checks for repository conventions, such as pinned actions and job timeouts.\n\nAll policy checks are disabled by default. Set individual keys to enable them; omit the mapping or use `{}` or `null` to leave them unset. Normal workflow correctness checks always run.",
       "oneOf": [
         {
-          "description": "Policy is a \"policy\" mapping in the configuration file. It turns on the checks which enforce the\nconventions chosen by the repository.",
           "type": "object",
           "properties": {
             "require-commit-hash": {
+              "title": "require-commit-hash",
+              "description": "Requires `uses:` references to be pinned to a full commit SHA, or an image digest for Docker images, when set to `true`.\n\nSet `false` to disable the check. Omit this key or use `null` to leave it unset; the check is disabled by default. Local references and references built with expressions are skipped.",
+              "markdownDescription": "Requires `uses:` references to be pinned to a full commit SHA, or an image digest for Docker images, when set to `true`.\n\nSet `false` to disable the check. Omit this key or use `null` to leave it unset; the check is disabled by default. Local references and references built with expressions are skipped.",
               "oneOf": [
                 {
-                  "description": "RequireCommitHash requires every \"uses:\" to be pinned to a full commit SHA, or to an image digest\nwhen it names a Docker image. Nil means the key was not set.",
                   "type": "boolean"
                 },
                 {
@@ -100,9 +116,11 @@
               ]
             },
             "require-job-timeout": {
+              "title": "require-job-timeout",
+              "description": "Requires jobs to declare `timeout-minutes` when set to `true`.\n\nUse `{max-minutes: 60}` to also cap the timeout at 60 minutes. The maximum must be greater than zero; `{}` enables the check without a cap. Jobs calling reusable workflows are skipped.\n\nSet `false` to disable the check. Omit this key or use `null` to leave it unset; the check is disabled by default.",
+              "markdownDescription": "Requires jobs to declare `timeout-minutes` when set to `true`.\n\nUse `{max-minutes: 60}` to also cap the timeout at 60 minutes. The maximum must be greater than zero; `{}` enables the check without a cap. Jobs calling reusable workflows are skipped.\n\nSet `false` to disable the check. Omit this key or use `null` to leave it unset; the check is disabled by default.",
               "oneOf": [
                 {
-                  "description": "RequireJobTimeout requires every job to set \"timeout-minutes\". Nil means the key was not set.",
                   "oneOf": [
                     {
                       "type": "boolean"
@@ -111,7 +129,9 @@
                       "type": "object",
                       "properties": {
                         "max-minutes": {
+                          "title": "max-minutes",
                           "description": "Largest allowed job timeout in minutes.",
+                          "markdownDescription": "Largest allowed job timeout in minutes.",
                           "type": "number",
                           "exclusiveMinimum": 0
                         }
@@ -126,9 +146,11 @@
               ]
             },
             "required-actions": {
+              "title": "required-actions",
+              "description": "Lists actions that every workflow must use in its steps.\n\nWrite entries like `uses:` values: `actions/checkout` accepts any ref, while `actions/checkout@v4*` also matches the ref. Both halves support glob patterns; `*` does not match `/`. Names are matched case-insensitively and refs case-sensitively.\n\nUse `[]` to disable the check. Omit this key or use `null` to leave it unset; no actions are required by default. Actions inside composite actions or called workflows are not counted.",
+              "markdownDescription": "Lists actions that every workflow must use in its steps.\n\nWrite entries like `uses:` values: `actions/checkout` accepts any ref, while `actions/checkout@v4*` also matches the ref. Both halves support glob patterns; `*` does not match `/`. Names are matched case-insensitively and refs case-sensitively.\n\nUse `[]` to disable the check. Omit this key or use `null` to leave it unset; no actions are required by default. Actions inside composite actions or called workflows are not counted.",
               "oneOf": [
                 {
-                  "description": "RequiredActions is the actions every workflow must use. Each entry is written like a \"uses:\"\nvalue and both of its halves are glob patterns. Nil means the key was not set. An empty non-nil\nvalue requires no action, which disables the check.",
                   "type": "array",
                   "items": {
                     "type": "string",
@@ -149,15 +171,19 @@
       ]
     },
     "self-hosted-runner": {
+      "title": "self-hosted-runner",
+      "description": "Configures extra labels accepted for self-hosted runners.\n\nAdd your labels under `labels`, for example `{labels: [linux.2xlarge]}`.",
+      "markdownDescription": "Configures extra labels accepted for self-hosted runners.\n\nAdd your labels under `labels`, for example `{labels: [linux.2xlarge]}`.",
       "oneOf": [
         {
-          "description": "SelfHostedRunner is configuration for self-hosted runner.",
           "type": "object",
           "properties": {
             "labels": {
+              "title": "labels",
+              "description": "Lists additional self-hosted runner labels accepted in `runs-on`.\n\nFor example, `[linux.2xlarge, custom-*]` accepts that label and matching custom labels. Patterns use Go `path.Match` syntax. Omit this key, use `null`, or use `[]` to add no labels.",
+              "markdownDescription": "Lists additional self-hosted runner labels accepted in `runs-on`.\n\nFor example, `[linux.2xlarge, custom-*]` accepts that label and matching custom labels. Patterns use Go `path.Match` syntax. Omit this key, use `null`, or use `[]` to add no labels.",
               "oneOf": [
                 {
-                  "description": "Labels is label names for self-hosted runner.",
                   "type": "array",
                   "items": {
                     "type": "string"

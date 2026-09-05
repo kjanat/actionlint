@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"os"
-	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev"
@@ -142,14 +141,41 @@ policy: {required-actions: []}
 
 func TestSchemaDescriptions(t *testing.T) {
 	b := generatedSchema(t)
-	for _, description := range []string{
-		"Labels is label names for self-hosted runner",
-		"ConfigSecrets is names of secrets",
-		"RequireJobTimeout requires every job",
-		"It is similar to the",
-	} {
-		if !strings.Contains(string(b), description) {
-			t.Errorf("schema is missing Go comment %q", description)
+	var document map[string]any
+	if err := json.Unmarshal(b, &document); err != nil {
+		t.Fatal(err)
+	}
+	// Hover must work on the property itself, even when the value is null.
+	// Finding a description somewhere inside a non-null branch is not enough.
+	var check func(any, string)
+	check = func(value any, path string) {
+		switch value := value.(type) {
+		case map[string]any:
+			if properties, ok := value["properties"].(map[string]any); ok {
+				for name, raw := range properties {
+					property := raw.(map[string]any)
+					t.Run(path+"."+name, func(t *testing.T) {
+						if property["title"] != name {
+							t.Errorf("hover title = %v, want %s", property["title"], name)
+						}
+						description, _ := property["description"].(string)
+						if description == "" {
+							t.Fatal("property has no description outside its type variants")
+						}
+						if property["markdownDescription"] != description {
+							t.Error("hover is missing the Markdown version of the field documentation")
+						}
+					})
+				}
+			}
+			for key, child := range value {
+				check(child, path+"."+key)
+			}
+		case []any:
+			for _, child := range value {
+				check(child, path)
+			}
 		}
 	}
+	check(document, "config")
 }
