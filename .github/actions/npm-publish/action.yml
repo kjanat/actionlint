@@ -1,0 +1,67 @@
+name: Publish an npm tarball
+description: Publish one packed tarball to the registry and report where it landed
+inputs:
+  tarball:
+    description: Path to the .tgz to publish
+    required: true
+  dist-tag:
+    description: npm dist-tag to publish under
+    required: true
+  token:
+    description: npm automation token
+    required: true
+  dry-run:
+    description: Run the publish without sending anything to the registry
+    required: false
+    default: "false"
+outputs:
+  name:
+    description: Published package name
+    value: ${{ steps.publish.outputs.name }}
+  version:
+    description: Published version
+    value: ${{ steps.publish.outputs.version }}
+  url:
+    description: Registry page for the published version
+    value: ${{ steps.publish.outputs.url }}
+runs:
+  using: composite
+  steps:
+    # Name and version come from the tarball's own manifest; npm's --json output
+    # is keyed by package name and has changed shape between majors.
+    - name: Publish
+      id: publish
+      shell: bash
+      env:
+        NODE_AUTH_TOKEN: ${{ inputs.token }}
+        TARBALL: ${{ inputs.tarball }}
+        DIST_TAG: ${{ inputs.dist-tag }}
+        DRY_RUN: ${{ inputs.dry-run }}
+      run: |
+        set -euo pipefail
+        # A relative spec needs an explicit ./ prefix; npm reads a bare
+        # `tarballs/x.tgz` as a GitHub shorthand and tries to clone it.
+        case "${TARBALL}" in
+        /* | ./* | ../*) spec="${TARBALL}" ;;
+        *) spec="./${TARBALL}" ;;
+        esac
+        if [[ ! -f "${spec}" ]]; then
+          echo "::error::no tarball at ${spec}"
+          exit 1
+        fi
+
+        manifest="$(tar -xzOf "${spec}" package/package.json)"
+        name="$(jq -er .name <<<"${manifest}")"
+        version="$(jq -er .version <<<"${manifest}")"
+
+        args=(--access public --tag "${DIST_TAG}")
+        if [[ "${DRY_RUN}" == 'true' ]]; then
+          args+=(--dry-run)
+        fi
+        npm publish "${spec}" "${args[@]}"
+
+        {
+          echo "name=${name}"
+          echo "version=${version}"
+          echo "url=https://npm.im/package/${name}/v/${version}"
+        } >> "${GITHUB_OUTPUT}"

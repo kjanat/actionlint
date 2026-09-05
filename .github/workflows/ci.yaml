@@ -121,6 +121,25 @@ jobs:
         with: { version: v2.18.0, args: release --snapshot --clean }
       - name: Smoke-test the linux/amd64 snapshot binary
         run: ./dist/linux_linux_amd64_v1/actionlint -version
+  action-modules:
+    name: Action modules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with: { go-version: stable, check-latest: true }
+      # Self-contained modules under a dot-directory, which the go tool skips
+      # when expanding a ... pattern. Test each in place.
+      - name: Test and vet each action module
+        run: |
+          set -euo pipefail
+          for mod in .github/actions/*/go.mod; do
+            dir="$(dirname "${mod}")"
+            echo "::group::${dir}"
+            (cd "${dir}" && go vet ./... && go test ./...)
+            echo "::endgroup::"
+          done
   lint:
     name: Lint
     runs-on: ubuntu-latest

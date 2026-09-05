@@ -80,6 +80,31 @@ brew install kjanat/actionlint/actionlint
 > Since the `actionlint` executable is unsigned, macOS displays a warning and tries to move it to the Trash. To allow it to run,
 > go to 'Settings -> Privacy & Security' and grant the permission.
 
+## [npm](https://www.npmjs.com/)
+
+[`@kjanat/actionlint`][npm-package] installs a prebuilt binary, so no Go toolchain is needed:
+
+```sh
+npm install --save-dev @kjanat/actionlint
+```
+
+Or run it without installing:
+
+```sh
+npx @kjanat/actionlint
+```
+
+The package itself carries no binary. It declares one `optionalDependencies` entry per platform, each holding a single
+executable and declaring its `os` and `cpu`, so your package manager downloads only the one matching your machine. The
+`actionlint` command is a small launcher that resolves that package and execs the binary inside it, forwarding the exit
+status unchanged.
+
+The binaries are the same ones attached to the [GitHub release][releases]; every archive is verified against the
+release's published checksums before being repackaged.
+
+Linux users on Alpine need nothing special: the binaries are statically linked, so the `linux-*` packages run on musl
+and glibc alike.
+
 ## Prebuilt binaries
 
 Download an archive file from [the releases page][releases] for your platform, unarchive it and put the executable file to a
@@ -210,6 +235,7 @@ go install actionlint.kjanat.dev/cmd/actionlint@master
 [asdf]: https://asdf-vm.com/
 [asdf-plugin]: https://github.com/crazy-matt/asdf-actionlint
 [chocolatey]: https://community.chocolatey.org/packages/actionlint
+[npm-package]: https://www.npmjs.com/package/@kjanat/actionlint
 [scoop]: https://scoop.sh/#/apps?q=actionlint&s=0&d=1&o=true
 [winget]: https://github.com/microsoft/winget-pkgs/tree/master/manifests/r/rhysd/actionlint
 [archlinux]: https://archlinux.org/packages/extra/x86_64/actionlint/

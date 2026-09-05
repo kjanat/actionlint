@@ -1,0 +1,19 @@
+{
+  "$schema": "./targets.schema.json",
+  "facade": "@kjanat/actionlint",
+  "platformScope": "@kjanat-actionlint",
+  "binary": "actionlint",
+  "targets": [
+    { "pkg": "linux-x64", "os": "linux", "cpu": "x64", "asset": "linux_amd64", "format": "tar.gz", "tier": 1 },
+    { "pkg": "linux-arm64", "os": "linux", "cpu": "arm64", "asset": "linux_arm64", "format": "tar.gz", "tier": 1 },
+    { "pkg": "darwin-x64", "os": "darwin", "cpu": "x64", "asset": "darwin_amd64", "format": "tar.gz", "tier": 1 },
+    { "pkg": "darwin-arm64", "os": "darwin", "cpu": "arm64", "asset": "darwin_arm64", "format": "tar.gz", "tier": 1 },
+    { "pkg": "win32-x64", "os": "win32", "cpu": "x64", "asset": "windows_amd64", "format": "zip", "tier": 1 },
+    { "pkg": "win32-arm64", "os": "win32", "cpu": "arm64", "asset": "windows_arm64", "format": "zip", "tier": 1 },
+    { "pkg": "linux-ia32", "os": "linux", "cpu": "ia32", "asset": "linux_386", "format": "tar.gz", "tier": 2 },
+    { "pkg": "linux-arm", "os": "linux", "cpu": "arm", "asset": "linux_armv6", "format": "tar.gz", "tier": 2 },
+    { "pkg": "win32-ia32", "os": "win32", "cpu": "ia32", "asset": "windows_386", "format": "zip", "tier": 2 },
+    { "pkg": "freebsd-x64", "os": "freebsd", "cpu": "x64", "asset": "freebsd_amd64", "format": "tar.gz", "tier": 2 },
+    { "pkg": "freebsd-ia32", "os": "freebsd", "cpu": "ia32", "asset": "freebsd_386", "format": "tar.gz", "tier": 2 }
+  ]
+}
