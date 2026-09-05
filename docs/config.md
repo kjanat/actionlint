@@ -24,11 +24,12 @@ types, YAML tags, and comments. Regenerate it with `go generate -run generate-co
 generated files), then run `dprint fmt actionlint.schema.json` to apply the repository's schema formatting. CI checks
 that it stays up to date. Custom YAML types have explicit mappings in
 [`scripts/generate-config-schema`](../scripts/generate-config-schema/main.go); nullable values and field constraints
-use `jsonschema` struct tags. The schema rejects unknown keys everywhere. For compatibility, runtime parsing ignores
-unknown keys at the top level, inside `self-hosted-runner`, and inside each `paths` entry; for example, `config-secret`
-is ignored rather than treated as `config-secrets`. Unknown keys inside `policy` and `require-job-timeout` are rejected
-by both. Go regular expressions and glob patterns are checked for syntax by actionlint, not by the schema, so passing
-schema validation does not guarantee that actionlint will accept the configuration.
+use `jsonschema` struct tags.
+
+The schema rejects unknown keys everywhere. Runtime parsing ignores unknown keys at the top level, inside
+`self-hosted-runner`, and inside each `paths` entry. For example, `config-secret` is silently ignored. Both validators
+reject unknown keys inside `policy` and `require-job-timeout`. Go regular expression and glob syntax require additional
+validation by actionlint when it loads the configuration.
 
 ```yaml
 # Configuration related to self-hosted runner.
