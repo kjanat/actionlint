@@ -20,15 +20,22 @@ func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 var testRemoteActionYAML = map[string]string{
-	"https://raw.githubusercontent.com/rhysd/action-setup-vim/v1.3.2/action.yml": `
-name: Setup Vim
+	"https://raw.githubusercontent.com/kjanat/actions-shells/v0.1.0/action.yml": `
+name: Actions Shells
 inputs:
-  configure-args: {}
-  neovim: {}
-  token: {}
-  version: {}
+  doctor:
+    required: false
+    default: "false"
+  runtimes:
+    required: false
+    default: ""
 outputs:
-  executable: {}
+  bin-dir: {}
+  cli: {}
+  version: {}
+runs:
+  using: node24
+  main: setup.mjs
 `,
 	"https://raw.githubusercontent.com/rhysd/changelog-from-release/v2.2.2/action/action.yml": `
 name: Run changelog-from-release
