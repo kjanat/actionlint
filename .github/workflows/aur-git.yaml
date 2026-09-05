@@ -1,0 +1,30 @@
+name: AUR git package
+on:
+  push:
+    branches: [master]
+    paths: [distribution/aur/actionlint-kjanat-git/PKGBUILD, .github/workflows/aur-git.yaml]
+  workflow_dispatch:
+
+permissions: { contents: read }
+
+# One AUR repository; a second run must wait for the first.
+concurrency: { group: aur-git, cancel-in-progress: false }
+
+jobs:
+  publish:
+    name: Publish actionlint-kjanat-git
+    runs-on: ubuntu-latest
+    permissions: { contents: read }
+    environment: { name: aur, url: "https://aur.archlinux.org/packages/actionlint-kjanat-git" }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      # Runs makepkg --printsrcinfo in an Arch container, then commits and pushes.
+      - uses: KSXGitHub/github-actions-deploy-aur@084b0d9b15415bf9cdb65d44dad1efe37a354050 # v4.2.0
+        with:
+          pkgname: actionlint-kjanat-git
+          pkgbuild: distribution/aur/actionlint-kjanat-git/PKGBUILD
+          commit_username: Kaj Kowalski
+          commit_email: info@kajkowalski.nl
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: Update PKGBUILD
