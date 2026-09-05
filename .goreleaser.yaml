@@ -57,9 +57,8 @@ archives:
     ids: [windows]
     formats: [zip]
 
-# The rendered manual rides along, so the AUR source package needs no pandoc.
-# The prefix spells the version the way pkgver does, with _ for -, so the
-# PKGBUILD's cd matches for a prerelease too.
+# Carries the rendered manual, and its prefix spells the version the way
+# pkgver does (_ for -), which the AUR source package relies on.
 source:
   enabled: true
   prefix_template: '{{ .ProjectName }}-{{ replace .Version "-" "_" }}/'
