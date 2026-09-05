@@ -13,6 +13,7 @@
       { "command": "gofmt -s", "exts": ["go"] }
     ]
   },
+  "jsonSchemaSort": { "associations": ["**/schema.json", "**/*.schema.json"] },
   "shfmt": { "useTabs": true, "binaryNextLine": true, "switchCaseIndent": true },
   "pwsh": {
     "braceStyle": "sameLine",
@@ -47,6 +48,7 @@
     "associations": ["!**/*.svg"]
   },
   "plugins": [
+    "https://plugins.dprint.dev/kjanat/json-schema-sort-0.1.2.wasm",
     "npm:@dprint/exec@0.7.3/plugin.json@704701df449dd7e942a71144773778ac529d68c2e4657bfc236d393b898b9a67",
     "npm:@dprint/dockerfile@0.6.0",
     "npm:@dprint/dockerfile@0.6.0",

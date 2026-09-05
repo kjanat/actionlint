@@ -13,6 +13,8 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+//go:generate go run ./scripts/generate-config-schema ./actionlint.schema.json
+
 // IgnorePatterns is a list of regular expressions. These patterns are used for filtering errors by
 // matching the error messages.
 type IgnorePatterns []*regexp.Regexp
@@ -49,7 +51,7 @@ func (pats *IgnorePatterns) UnmarshalYAML(n *yaml.Node) error {
 type PathConfig struct {
 	// Ignore is a list of patterns. They are used for ignoring errors by matching to the error messages.
 	// It is similar to the "-ignore" command line option.
-	Ignore IgnorePatterns `yaml:"ignore"`
+	Ignore IgnorePatterns `yaml:"ignore" jsonschema:"nullable"`
 }
 
 // Policy is the "policy" mapping in the configuration file. Each key enables one check that enforces a
@@ -58,13 +60,13 @@ type PathConfig struct {
 type Policy struct {
 	// RequireCommitHash requires every "uses:" to be pinned to a full commit SHA, or to an image digest
 	// when it names a Docker image. Nil means the key was not set.
-	RequireCommitHash *bool `yaml:"require-commit-hash"`
+	RequireCommitHash *bool `yaml:"require-commit-hash" jsonschema:"nullable"`
 	// RequireJobTimeout requires every job to set "timeout-minutes". Nil means the key was not set.
-	RequireJobTimeout *JobTimeoutPolicy `yaml:"require-job-timeout"`
+	RequireJobTimeout *JobTimeoutPolicy `yaml:"require-job-timeout" jsonschema:"nullable"`
 	// RequiredActions is the actions every workflow must use. Each entry is written like a "uses:"
 	// value and both of its halves are glob patterns. Nil means the key was not set. An empty non-nil
 	// value requires no action, which disables the check.
-	RequiredActions []string `yaml:"required-actions"`
+	RequiredActions []string `yaml:"required-actions" jsonschema:"nullable,minLength=1"`
 }
 
 // decodeRequiredActions decodes the value of the "required-actions" key and validates every entry of
@@ -179,34 +181,37 @@ func (p *JobTimeoutPolicy) UnmarshalYAML(n *yaml.Node) error {
 	return nil
 }
 
+// SelfHostedRunnerConfig is configuration for self-hosted runners.
+type SelfHostedRunnerConfig struct {
+	// Labels is label names for self-hosted runner.
+	Labels []string `yaml:"labels" jsonschema:"nullable"`
+}
+
 // Config is configuration of actionlint. This struct instance is parsed from "actionlint.yaml"
 // file usually put in ".github" directory.
 type Config struct {
 	// SelfHostedRunner is configuration for self-hosted runner.
-	SelfHostedRunner struct {
-		// Labels is label names for self-hosted runner.
-		Labels []string `yaml:"labels"`
-	} `yaml:"self-hosted-runner"`
+	SelfHostedRunner SelfHostedRunnerConfig `yaml:"self-hosted-runner" jsonschema:"nullable"`
 	// ConfigVariables is names of configuration variables used in the checked workflows. When this value is nil,
 	// property names of `vars` context will not be checked. Otherwise actionlint will report a name which is not
 	// listed here as undefined config variables.
 	// https://docs.github.com/en/actions/learn-github-actions/variables
-	ConfigVariables []string `yaml:"config-variables"`
+	ConfigVariables []string `yaml:"config-variables" jsonschema:"nullable"`
 	// ConfigSecrets is names of secrets used in the checked workflows. When this value is nil, property
 	// names of `secrets` context will not be checked. Otherwise actionlint will report a name which is
 	// not listed here as an undefined secret.
 	// https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions
-	ConfigSecrets []string `yaml:"config-secrets"`
+	ConfigSecrets []string `yaml:"config-secrets" jsonschema:"nullable"`
 	// Paths is a "paths" mapping in the configuration file. The keys are glob patterns to match file paths.
 	// And the values are corresponding configurations applied to the file paths.
-	Paths map[string]PathConfig `yaml:"paths"`
+	Paths map[string]PathConfig `yaml:"paths" jsonschema:"nullable"`
 	// AssumeDefaultPermissions selects which repository "Workflow permissions" setting actionlint assumes
 	// when a workflow call's calling job declares no "permissions:" and neither does its workflow. The zero
 	// value means the key was not set, which is equivalent to DefaultPermissionsAssumptionRestricted.
-	AssumeDefaultPermissions DefaultPermissionsAssumption `yaml:"assume-default-permissions"`
+	AssumeDefaultPermissions DefaultPermissionsAssumption `yaml:"assume-default-permissions" jsonschema:"nullable"`
 	// Policy is a "policy" mapping in the configuration file. It turns on the checks which enforce the
 	// conventions chosen by the repository.
-	Policy Policy `yaml:"policy"`
+	Policy Policy `yaml:"policy" jsonschema:"nullable"`
 }
 
 // DefaultPermissionsAssumption is an assumption about the repository's "Workflow permissions" setting,

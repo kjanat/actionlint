@@ -4,6 +4,9 @@ on:
     paths:
       - .github/workflows/generated-content.yaml
       - go.mod
+      - go.sum
+      - config.go
+      - actionlint.schema.json
       - action_metadata.go
       - all_webhooks.go
       - availability.go
@@ -11,6 +14,7 @@ on:
       - rule_events.go
       - rule_expression.go
       - scripts/generate-availability/**
+      - scripts/generate-config-schema/**
       - scripts/generate-popular-actions/**
       - scripts/generate-webhook-events/**
 
@@ -30,4 +34,4 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
       - run: go generate
-      - run: git diff --exit-code -- popular_actions.go all_webhooks.go availability.go
+      - run: git diff --exit-code -- popular_actions.go all_webhooks.go availability.go actionlint.schema.json
