@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Call npm publishing as a reusable workflow after the release binaries are uploaded, attested, and checked. This avoids relying on a `release: published` event that GitHub suppresses for releases created with `GITHUB_TOKEN`, while keeping manual publication and dry runs available.
+
 - Name the fork version in the README demo section next to the upstream one, and keep both current through the new `Upkeep` workflow. It regenerates the section after every release and weekly, and opens a pull request when the text moved, so the default branch no longer goes red the moment this fork or upstream ships. The weekly `go generate` and go-shellcheck bumps moved into the same workflow, each on its own pull request branch, and `make lint` no longer compares the README against the releases. The README check still runs on pull requests that touch the fixture, the script, or the section.
 
 <a id="v1.14.0"></a>

@@ -76,8 +76,16 @@ cd .github/actions/npm-packages && go test ./...
 
 ## Automation
 
-`.github/workflows/npm-release.yaml` publishes on every `release: published`
-event, and on a manual `workflow_dispatch`.
+`.github/workflows/release.yaml` calls the reusable
+`.github/workflows/npm-release.yaml` after the binaries job finishes uploading
+and attesting the release archives and checking the download. The call passes
+the release tag directly: releases created with `GITHUB_TOKEN` do not trigger
+another workflow through `release: published`.
+
+The npm workflow also accepts `release: published` events from releases created
+outside that pipeline, and manual `workflow_dispatch` runs. Reusable callers
+can pass `tag`, `dist-tag`, and `dry-run`; the defaults publish under `latest`
+for stable releases and `next` for prereleases.
 
 The build job assembles the tree, packs every package with `npm pack`, and
 smoke-tests the launcher against a real binary, unpacked from the tarball, so

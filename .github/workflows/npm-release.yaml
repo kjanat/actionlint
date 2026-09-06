@@ -1,6 +1,11 @@
 name: npm release
-run-name: ${{ format('npm {0} {1}', case(github.event_name == 'workflow_dispatch' && inputs.dry-run, 'dry-run', 'publish'), case(github.event_name == 'release', github.event.release.tag_name, inputs.tag)) }}
+run-name: ${{ format('npm {0} {1}', case(inputs.dry-run, 'dry-run', 'publish'), case(github.event_name == 'release', github.event.release.tag_name, inputs.tag)) }}
 on:
+  workflow_call:
+    inputs:
+      tag: { description: Release tag to publish, required: true, type: string }
+      dist-tag: { description: npm dist-tag; auto selects next for prereleases and latest otherwise, default: auto, type: string }
+      dry-run: { description: Build and smoke-test without publishing, default: false, type: boolean }
   release: { types: [published] }
   workflow_dispatch:
     inputs:
