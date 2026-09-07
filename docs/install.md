@@ -32,8 +32,7 @@ The [`actionlint` package in Scoop's main bucket][scoop] installs the upstream p
 
 [![WinGet Package Version][winget-badge]][winget-submission]
 
-The first submission for this fork, [`kjanat.actionlint`][winget-submission], is awaiting review. Until it is merged
-and available in the WinGet source, use Scoop or a release archive. Once available, the command will be:
+The first submission for this fork, `kjanat.actionlint` (microsoft/winget-pkgs#430563), is awaiting review. Until it is merged and available in the WinGet source, use Scoop or a release archive. Once available, the command will be:
 
 ```powershell
 winget install --id kjanat.actionlint --exact --source winget
