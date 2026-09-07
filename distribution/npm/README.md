@@ -49,7 +49,7 @@ or a swapped asset fails the build.
 ```bash
 cd .github/actions/npm-packages
 GITHUB_WORKSPACE="$(git rev-parse --show-toplevel)" \
-  INPUT_VERSION=1.14.0 \
+  INPUT_VERSION=1.15.0 \
   go run .
 ```
 

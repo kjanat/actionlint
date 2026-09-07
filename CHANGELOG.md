@@ -2,6 +2,10 @@
 
 # Unreleased
 
+<a id="v1.15.0"></a>
+
+## [v1.15.0](https://github.com/kjanat/actionlint/releases/tag/v1.15.0) - 2026-09-07
+
 - Add a generated `actionlint.schema.json` for configuration completion, hover documentation, and validation in editors. `actionlint -init-config` now includes the YAML Language Server schema directive automatically. The schema follows the Go configuration types and documents where editor validation differs from runtime parsing. (https://github.com/kjanat/actionlint/pull/120)
 
 - Restore Go 1.26 compatibility for source builds and `go install`, while retaining Go 1.27.1 as the preferred development toolchain. (https://github.com/kjanat/actionlint/pull/111)
@@ -15,6 +19,8 @@
 - Refresh the command manual and installation guide to describe current flags, configuration, output formats, completions, and package availability. Document mise's `github:kjanat/actionlint` backend and distinguish fork packages from upstream packages. Update workflow action pins and checkout examples, and link the GitHub Actions changelog reader from the README, docs, and playground. Extend the version-bump script to cover npm examples and the AUR git package template. (https://github.com/kjanat/actionlint/pull/123)
 
 - Name the fork version in the README demo section next to the upstream one, and keep both current through the new `Upkeep` workflow. It regenerates the section after every release and weekly, and opens a pull request when the text moved, so the default branch no longer goes red the moment this fork or upstream ships. The weekly `go generate` and go-shellcheck bumps moved into the same workflow, each on its own pull request branch, and `make lint` no longer compares the README against the releases. The README check still runs on pull requests that touch the fixture, the script, or the section.
+
+[Changes][v1.15.0]
 
 <a id="v1.14.0"></a>
 
@@ -2435,6 +2441,7 @@ See documentation for more details:
 
 [Changes][v1.0.0]
 
+[v1.15.0]: https://github.com/kjanat/actionlint/compare/v1.14.0...v1.15.0
 [v1.14.0]: https://github.com/kjanat/actionlint/compare/v1.13.0...v1.14.0
 [v1.13.0]: https://github.com/kjanat/actionlint/compare/v1.12.0...v1.13.0
 [v1.12.0]: https://github.com/kjanat/actionlint/compare/v1.11.0...v1.12.0

@@ -2,7 +2,7 @@
 title: actionlint
 section: 1
 header: General Commands Manual
-footer: actionlint 1.14.0
+footer: actionlint 1.15.0
 ---
 
 # NAME
@@ -305,39 +305,39 @@ Detailed documentation for this release is available online.
 
 ## Checks
 
-https://github.com/kjanat/actionlint/blob/v1.14.0/docs/checks.md
+https://github.com/kjanat/actionlint/blob/v1.15.0/docs/checks.md
 
 Full list of all checks done by actionlint with example inputs, outputs, and playground links.
 
 ## Installation
 
-https://github.com/kjanat/actionlint/blob/v1.14.0/docs/install.md
+https://github.com/kjanat/actionlint/blob/v1.15.0/docs/install.md
 
 Installation instructions. Prebuilt binaries, Homebrew package, building from source, a Docker
 image, a download script (for CI) are available.
 
 ## Usage
 
-https://github.com/kjanat/actionlint/blob/v1.14.0/docs/usage.md
+https://github.com/kjanat/actionlint/blob/v1.15.0/docs/usage.md
 
 CLI usage, shell completion, output templates, the GitHub Action, Docker images, and editor
 and CI integrations.
 
 ## Configuration
 
-https://github.com/kjanat/actionlint/blob/v1.14.0/docs/config.md
+https://github.com/kjanat/actionlint/blob/v1.15.0/docs/config.md
 
 Repository configuration, runner labels, variables, secrets, and opt-in policy checks.
 
 ## Go API
 
-https://github.com/kjanat/actionlint/blob/v1.14.0/docs/api.md
+https://github.com/kjanat/actionlint/blob/v1.15.0/docs/api.md
 
 How to use actionlint as Go library.
 
 ## References
 
-https://github.com/kjanat/actionlint/blob/v1.14.0/docs/reference.md
+https://github.com/kjanat/actionlint/blob/v1.15.0/docs/reference.md
 
 Links to resources.
 
