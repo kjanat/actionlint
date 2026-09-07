@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Check contexts used in `${{ }}` expressions inside `runs.steps` of a composite action. The `secrets`, `vars`, and `needs` contexts are not available to composite actions; `secrets` and `vars` must be passed as action `inputs:`. This is a first step toward checking the contents of `steps:` in action metadata files. (rhysd/actionlint#46)
+
 <a id="v1.15.0"></a>
 
 ## [v1.15.0](https://github.com/kjanat/actionlint/releases/tag/v1.15.0) - 2026-09-07

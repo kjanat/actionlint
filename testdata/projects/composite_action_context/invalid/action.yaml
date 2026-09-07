@@ -1,0 +1,30 @@
+name: 'Context availability'
+description: 'Uses contexts a composite action cannot see'
+
+inputs:
+  token:
+    description: token
+
+runs:
+  using: composite
+  steps:
+    - name: bad run
+      run: echo "${{ secrets.TOKEN }} ${{ vars.REGION }}"
+      shell: bash
+    - name: bad if
+      if: needs.build.result == 'success'
+      run: echo hi
+      shell: bash
+    - name: bad with
+      uses: actions/checkout@v5
+      with:
+        token: ${{ secrets.GH_TOKEN }}
+    - name: bad env
+      run: echo hi
+      shell: bash
+      env:
+        REGION: ${{ vars.REGION }}
+    - name: ok
+      if: runner.os == 'Linux'
+      run: echo "${{ github.sha }} ${{ inputs.token }} ${{ steps.x.outputs.y }}"
+      shell: bash

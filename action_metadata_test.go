@@ -626,6 +626,51 @@ inputs:
 				},
 			},
 		},
+		{
+			what: "composite steps capture expression fields",
+			input: `name: Test
+runs:
+  using: composite
+  steps:
+    - if: runner.os == 'Linux'
+      run: echo ${{ secrets.TOKEN }}
+      shell: bash
+      working-directory: sub
+      name: step one
+      env:
+        FOO: ${{ vars.BAR }}
+    - uses: actions/checkout@v5
+      with:
+        token: ${{ secrets.GH }}
+`,
+			want: ActionMetadata{
+				Name: "Test",
+				Runs: ActionMetadataRuns{
+					Using: "composite",
+					Steps: actionCompositeSteps{
+						{
+							Line: 5, Column: 7, IsMapping: true,
+							Keys:             []string{"if", "run", "shell", "working-directory", "name", "env"},
+							If:               &ActionExprString{Value: "runner.os == 'Linux'", Line: 5, Column: 11},
+							Run:              &ActionExprString{Value: "echo ${{ secrets.TOKEN }}", Line: 6, Column: 12},
+							WorkingDirectory: &ActionExprString{Value: "sub", Line: 8, Column: 26},
+							StepName:         &ActionExprString{Value: "step one", Line: 9, Column: 13},
+							Env: []*ActionKeyValue{
+								{Name: "FOO", Value: ActionExprString{Value: "${{ vars.BAR }}", Line: 11, Column: 14}},
+							},
+						},
+						{
+							Line: 12, Column: 7, IsMapping: true,
+							Keys: []string{"uses", "with"},
+							Uses: strPtr("actions/checkout@v5"),
+							With: []*ActionKeyValue{
+								{Name: "token", Value: ActionExprString{Value: "${{ secrets.GH }}", Line: 14, Column: 16}},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -634,10 +679,12 @@ inputs:
 			if err := yaml.Unmarshal([]byte(tc.input), &have); err != nil {
 				t.Fatal(err)
 			}
-			testDiffActionMetadata(t, &tc.want, &have)
+			testDiffActionMetadata(t, &tc.want, &have, cmpopts.IgnoreUnexported(ActionCompositeStep{}))
 		})
 	}
 }
+
+func strPtr(s string) *string { return &s }
 
 func TestActionMetadataYAMLUnmarshalError(t *testing.T) {
 	testCases := []struct {

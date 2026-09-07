@@ -3203,6 +3203,12 @@ with `run:` and `shell:` keys, or an action step with `uses:` key. actionlint re
 at `run:`, `shell:`, or `uses:`, has an empty `uses:` value, is `null`, or calls a reusable workflow at `uses:`.
 `working-directory:` is only allowed in a script step and `with:` is only allowed in an action step.
 
+Inside a Composite action's `steps:`, actionlint also checks the contexts used in
+`${{ }}` expressions at `if:`, `run:`, `working-directory:`, `name:`, `with:`,
+and `env:`. The `secrets`, `vars`, and `needs` contexts are not available to a
+composite action and are reported as errors — `secrets` and `vars` values must be
+passed to the action as `inputs:` instead.
+
 <a id="deprecated-inputs-usage"></a>
 
 ## Deprecated inputs usage
