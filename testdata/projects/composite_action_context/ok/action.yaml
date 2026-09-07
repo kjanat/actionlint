@@ -1,0 +1,19 @@
+name: 'Context availability OK'
+description: 'Only uses contexts a composite action can see'
+
+inputs:
+  token:
+    description: token
+
+runs:
+  using: composite
+  steps:
+    - name: ${{ 'text }} ${{ secrets.TOKEN }}' }} ${{ github.repository }}
+      if: runner.os == 'Linux'
+      run: echo "${{ github.repository }} ${{ inputs.token }}"
+      shell: bash
+      env:
+        OUT: ${{ steps.prev.outputs.value }}
+    - uses: actions/checkout@v5
+      with:
+        ref: ${{ github.ref }}

@@ -115,6 +115,21 @@ func (inputs *ActionMetadataOutputs) UnmarshalYAML(n *yaml.Node) error {
 	return nil
 }
 
+// ActionExprString is a string value from a composite action step that may contain
+// ${{ }} expressions, together with the position of the value node in the metadata file.
+type ActionExprString struct {
+	Value  string `json:"value"`
+	Line   int    `json:"line"`
+	Column int    `json:"column"`
+}
+
+// ActionKeyValue is a named string value (with position) inside a composite action step,
+// used for the "with" and "env" mappings.
+type ActionKeyValue struct {
+	Name  string           `json:"name"`
+	Value ActionExprString `json:"value"`
+}
+
 // ActionCompositeStep is a step in "steps" section in "runs" section of action.yaml for a
 // composite action. The runner only accepts a step which runs a script with "run" and "shell"
 // keys, or a step which runs another action with "uses" key.
@@ -128,8 +143,20 @@ type ActionCompositeStep struct {
 	// mapping.
 	IsMapping bool `json:"is_mapping"`
 	// Keys is the key names of the step mapping in file order.
-	Keys  []string `json:"keys"`
-	run   *string
+	Keys []string `json:"keys"`
+	// If is the "if" key value when it is a string.
+	If *ActionExprString `json:"if"`
+	// Run is the "run" key value when it is a string. It is nil when the key is absent or its
+	// value is not a string.
+	Run *ActionExprString `json:"run"`
+	// WorkingDirectory is the "working-directory" key value when it is a string.
+	WorkingDirectory *ActionExprString `json:"working_directory"`
+	// StepName is the "name" key value when it is a string.
+	StepName *ActionExprString `json:"name"`
+	// With holds each "with" input value that is a string.
+	With []*ActionKeyValue `json:"with"`
+	// Env holds each "env" variable value that is a string.
+	Env   []*ActionKeyValue `json:"env"`
 	shell *string
 	// Uses is the value of "uses" key in the step. It is nil when the key is absent or its value
 	// is not a string.
@@ -153,8 +180,18 @@ func (s *ActionCompositeStep) UnmarshalYAML(n *yaml.Node) error {
 		k, v := n.Content[i], n.Content[i+1]
 		s.Keys = append(s.Keys, k.Value)
 		switch strings.ToLower(k.Value) {
+		case "if":
+			s.If = yamlExprString(v)
 		case "run":
-			s.run = yamlStringScalar(v)
+			s.Run = yamlExprString(v)
+		case "working-directory":
+			s.WorkingDirectory = yamlExprString(v)
+		case "name":
+			s.StepName = yamlExprString(v)
+		case "with":
+			s.With = yamlKeyValues(v)
+		case "env":
+			s.Env = yamlKeyValues(v)
 		case "shell":
 			s.shell = yamlStringScalar(v)
 		case "uses":
@@ -173,6 +210,34 @@ func yamlStringScalar(n *yaml.Node) *string {
 		return &s
 	}
 	return nil
+}
+
+func yamlExprString(n *yaml.Node) *ActionExprString {
+	for n.Kind == yaml.AliasNode && n.Alias != nil && n.Alias.Kind != yaml.AliasNode {
+		n = n.Alias
+	}
+	if n.Kind == yaml.ScalarNode && n.Tag == "!!str" {
+		return &ActionExprString{Value: n.Value, Line: n.Line, Column: n.Column}
+	}
+	return nil
+}
+
+func yamlKeyValues(n *yaml.Node) []*ActionKeyValue {
+	for n.Kind == yaml.AliasNode && n.Alias != nil && n.Alias.Kind != yaml.AliasNode {
+		n = n.Alias
+	}
+	if n.Kind != yaml.MappingNode {
+		return nil
+	}
+	kvs := make([]*ActionKeyValue, 0, len(n.Content)/2)
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		v := yamlExprString(n.Content[i+1])
+		if v == nil {
+			continue // non-string values (bool/number) cannot hold ${{ }}
+		}
+		kvs = append(kvs, &ActionKeyValue{Name: n.Content[i].Value, Value: *v})
+	}
+	return kvs
 }
 
 type actionCompositeSteps []*ActionCompositeStep

@@ -526,6 +526,80 @@ var (
 	compositeAnyStepKeys  = []string{"continue-on-error", "env", "id", "if", "name", "run", "shell", "uses", "with", "working-directory"}
 )
 
+// compositeStepContexts is the allow-list of contexts usable in ${{ }} expressions inside
+// `runs.steps` of a composite action. `secrets`, `vars`, and `needs` are intentionally
+// omitted: `secrets` is documented as unavailable to composite actions (pass secrets as
+// inputs), the runner rejects `vars` with "Unrecognized named-value: 'vars'"
+// (actions/runner#2551), and `needs` is scoped to workflow jobs. `matrix` / `strategy` are
+// allowed for now; their availability inside actions is undocumented and we prefer no false
+// positives.
+var compositeStepContexts = []string{
+	"env", "github", "inputs", "job", "matrix", "runner", "steps", "strategy",
+}
+
+// compositeStepUnavailableContexts parses every ${{ }} expression in s and returns, in first-
+// seen order with duplicates removed, the names of contexts that are not available inside a
+// composite action step. When bare is true and s contains no ${{ }}, the whole string is
+// parsed as a single expression (used for `if:`). A parse error stops the scan without a
+// diagnostic: reporting syntax errors is out of scope for this check.
+func compositeStepUnavailableContexts(s string, bare bool) []string {
+	if bare && !strings.Contains(s, "${{") {
+		s = "${{" + s + "}}" // }} lets the expression lexer terminate; see checkIfCondition
+	}
+
+	seen := map[string]struct{}{}
+	var out []string
+	for {
+		i := strings.Index(s, "${{")
+		if i < 0 {
+			break
+		}
+		s = s[i+3:]
+		lex := NewExprLexer(s)
+		expr, err := NewExprParser().Parse(lex)
+		if err != nil || expr == nil {
+			break
+		}
+		// The lexer skips delimiters inside string literals and consumes the closing }}.
+		s = s[lex.Offset():]
+		c := NewExprSemanticsChecker(false, nil)
+		c.SetContextAvailability(compositeStepContexts)
+		_, errs := c.Check(expr)
+		for _, e := range errs {
+			name, ok := unavailableContextName(e.Message)
+			if !ok {
+				continue
+			}
+			if _, dup := seen[name]; dup {
+				continue
+			}
+			seen[name] = struct{}{}
+			out = append(out, name)
+		}
+	}
+	return out
+}
+
+// unavailableContextName extracts the context name from the message produced by
+// ExprSemanticsChecker.checkAvailableContext, which has the exact form:
+//
+//	context "NAME" is not allowed here. <note>. see <url>
+//
+// It deliberately does not match the special-function message
+// (`calling function "NAME" is not allowed here...`).
+func unavailableContextName(msg string) (string, bool) {
+	const prefix = `context "`
+	if !strings.HasPrefix(msg, prefix) || !strings.Contains(msg, `" is not allowed here`) {
+		return "", false
+	}
+	rest := msg[len(prefix):]
+	before, _, ok := strings.Cut(rest, "\"")
+	if !ok {
+		return "", false
+	}
+	return before, true
+}
+
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-composite-actions
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
 func (rule *RuleAction) checkLocalCompositeActionRuns(meta *ActionMetadata, pos *Pos) {
@@ -542,8 +616,14 @@ func (rule *RuleAction) checkLocalCompositeActionRuns(meta *ActionMetadata, pos 
 // compositeStepErrorf reports an error at the step's own position in the action metadata file
 // instead of at the "uses" site in the workflow being linted.
 func (rule *RuleAction) compositeStepErrorf(meta *ActionMetadata, s *ActionCompositeStep, idx int, format string, args ...any) {
+	rule.compositeStepErrorfAt(meta, idx, s.Line, s.Column, format, args...)
+}
+
+// compositeStepErrorfAt is compositeStepErrorf with an explicit position, used to point at a
+// specific key's value inside the step.
+func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, idx, line, col int, format string, args ...any) {
 	m := fmt.Sprintf(format, args...)
-	err := errorAt(&Pos{Line: s.Line, Col: s.Column}, rule.name, fmt.Sprintf(`step %d in "runs.steps" section in metadata of %q action %s`, idx+1, meta.Name, m))
+	err := errorAt(&Pos{Line: line, Col: col}, rule.name, fmt.Sprintf(`step %d in "runs.steps" section in metadata of %q action %s`, idx+1, meta.Name, m))
 	err.Filepath = meta.Path()
 	err.source = meta.src
 	rule.errs = append(rule.errs, err)
@@ -579,7 +659,7 @@ func (rule *RuleAction) checkCompositeActionStep(meta *ActionMetadata, s *Action
 	case hasRun && hasUses:
 		rule.compositeStepErrorf(meta, s, idx, `cannot have both "run" and "uses" keys`)
 	case hasRun:
-		if s.run == nil {
+		if s.Run == nil {
 			rule.compositeStepErrorf(meta, s, idx, `must have a string value at "run" key`)
 		}
 		if !hasShell {
@@ -600,6 +680,47 @@ func (rule *RuleAction) checkCompositeActionStep(meta *ActionMetadata, s *Action
 	default:
 		rule.compositeStepErrorf(meta, s, idx, `requires either "run" or "uses" key`)
 		rule.checkCompositeActionStepKeys(meta, s, idx, compositeAnyStepKeys)
+	}
+
+	rule.checkCompositeActionStepExprs(meta, s, idx)
+}
+
+func (rule *RuleAction) checkCompositeActionStepExprs(meta *ActionMetadata, s *ActionCompositeStep, idx int) {
+	report := func(key string, v *ActionExprString, bare bool) {
+		if v == nil {
+			return
+		}
+		for _, ctx := range compositeStepUnavailableContexts(v.Value, bare) {
+			rule.compositeStepErrorfAt(
+				meta, idx, v.Line, v.Column,
+				`uses context %q at %q key which is not available in a composite action. %s`,
+				ctx, key, compositeStepContextHint(ctx),
+			)
+		}
+	}
+
+	report("if", s.If, true)
+	report("run", s.Run, false)
+	report("working-directory", s.WorkingDirectory, false)
+	report("name", s.StepName, false)
+	for _, kv := range s.With {
+		report(`with.`+kv.Name, &kv.Value, false)
+	}
+	for _, kv := range s.Env {
+		report(`env.`+kv.Name, &kv.Value, false)
+	}
+}
+
+func compositeStepContextHint(ctx string) string {
+	switch ctx {
+	case "secrets":
+		return "pass secrets to the action as inputs instead"
+	case "vars":
+		return "the runner does not provide the vars context to actions; pass the values as inputs instead"
+	case "needs":
+		return "the needs context is only available in workflow jobs"
+	default:
+		return "see https://docs.github.com/en/actions/reference/workflows-and-actions/contexts for details"
 	}
 }
 
