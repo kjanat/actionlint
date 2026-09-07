@@ -610,6 +610,7 @@ func (rule *RuleAction) checkLocalCompositeActionRuns(meta *ActionMetadata, pos 
 	for i, s := range r.Steps {
 		rule.checkCompositeActionStep(meta, s, i)
 	}
+	rule.checkCompositeActionInputDefaults(meta)
 	rule.checkInvalidRunsProps(pos, r, "Composite", meta.Name, meta.Dir(), []string{"main", "pre", "pre-if", "post", "post-if", "image", "pre-entrypoint", "entrypoint", "post-entrypoint", "args", "env"})
 }
 
@@ -627,6 +628,30 @@ func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, idx, line, c
 	err.Filepath = meta.Path()
 	err.source = meta.src
 	rule.errs = append(rule.errs, err)
+}
+
+// metadataErrorfAt reports an error at an explicit position inside the action metadata file
+// instead of at the "uses" site in the workflow being linted.
+func (rule *RuleAction) metadataErrorfAt(meta *ActionMetadata, line, col int, format string, args ...any) {
+	err := errorfAt(&Pos{Line: line, Col: col}, rule.name, format, args...)
+	err.Filepath = meta.Path()
+	err.source = meta.src
+	rule.errs = append(rule.errs, err)
+}
+
+// checkCompositeActionInputDefaults checks the ${{ }} expressions in a composite action's
+// input `default` values for contexts the runner does not provide to actions. For example
+// `default: ${{ secrets.TOKEN }}` silently resolves to an empty string at runtime.
+func (rule *RuleAction) checkCompositeActionInputDefaults(meta *ActionMetadata) {
+	for _, kv := range meta.InputDefaults {
+		for _, ctx := range compositeStepUnavailableContexts(kv.Value.Value, false) {
+			rule.metadataErrorfAt(
+				meta, kv.Value.Line, kv.Value.Column,
+				`default value of input %q in metadata of %q action uses context %q which is not available in a composite action. %s`,
+				kv.Name, meta.Name, ctx, compositeStepContextHint(ctx),
+			)
+		}
+	}
 }
 
 func (rule *RuleAction) checkCompositeActionStepKeys(meta *ActionMetadata, s *ActionCompositeStep, idx int, allowed []string) {

@@ -3212,6 +3212,10 @@ An `if:` expression is also checked without the optional `${{ }}` wrapper. Delim
 are treated as literal text. These checks report unavailable contexts; they do not perform full type checking of
 composite step expressions or apply every workflow step rule inside the action.
 
+The same check is applied to the `default:` value of each `inputs:` entry in a
+Composite action's metadata. For example `default: ${{ secrets.GITHUB_TOKEN }}`
+silently resolves to an empty string at runtime, so it is reported as an error.
+
 <a id="deprecated-inputs-usage"></a>
 
 ## Deprecated inputs usage

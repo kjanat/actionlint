@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Apply the composite action context check to the `default:` value of each `inputs:` entry in an action's metadata. A default such as `${{ secrets.GITHUB_TOKEN }}` silently resolves to an empty string at runtime. (rhysd/actionlint#46, thanks @johnament)
+
 - Use npm trusted publishing through OIDC for the launcher, platform packages, and changelog package. Standardize workflow filenames on `.yml` and update workflow references and publishing configuration.
 
 <a id="v1.15.1"></a>

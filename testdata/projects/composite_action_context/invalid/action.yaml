@@ -4,6 +4,10 @@ description: 'Uses contexts a composite action cannot see'
 inputs:
   token:
     description: token
+    default: ${{ secrets.DEFAULT_TOKEN }}
+  region:
+    description: region
+    default: "${{ vars.DEFAULT_REGION }}"
 
 runs:
   using: composite

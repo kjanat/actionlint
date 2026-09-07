@@ -29,6 +29,9 @@ func testGetWantedActionMetadata() *ActionMetadata {
 			Using: "node20",
 			Main:  "index.js",
 		},
+		InputDefaults: []*ActionKeyValue{
+			{Name: "name", Value: ActionExprString{Value: "anonymous", Line: 8, Column: 14}},
+		},
 	}
 	return want
 }
@@ -90,6 +93,7 @@ func TestLocalActionsFindMetadataOK(t *testing.T) {
 	wantEmpty := testGetWantedActionMetadata()
 	wantEmpty.Inputs = nil
 	wantEmpty.Outputs = nil
+	wantEmpty.InputDefaults = nil
 
 	wantUpper := testGetWantedActionMetadata()
 	for _, i := range wantUpper.Inputs {
@@ -98,10 +102,17 @@ func TestLocalActionsFindMetadataOK(t *testing.T) {
 	for _, o := range wantUpper.Outputs {
 		o.Name = strings.ToUpper(o.Name)
 	}
+	for _, d := range wantUpper.InputDefaults {
+		d.Name = strings.ToUpper(d.Name)
+	}
 
 	wantBranding := testGetWantedActionMetadata()
 	wantBranding.Branding.Icon = "edit"
 	wantBranding.Branding.Color = "white"
+	// The "branding" section pushes the inputs (and the "default" value node) down the file.
+	wantBranding.InputDefaults = []*ActionKeyValue{
+		{Name: "name", Value: ActionExprString{Value: "anonymous", Line: 11, Column: 14}},
+	}
 
 	wantNode24 := testGetWantedActionMetadata()
 	wantNode24.Runs.Using = "node24"
@@ -578,6 +589,40 @@ inputs:
 					"input5":           {"input5", true, false, ""},
 					"input_snake-case": {"input_snake-case", false, false, ""},
 					"camelcaseinput":   {"camelCaseInput", false, false, ""},
+				},
+				InputDefaults: []*ActionKeyValue{
+					{Name: "input3", Value: ActionExprString{Value: "default", Line: 11, Column: 14}},
+					{Name: "input4", Value: ActionExprString{Value: "default", Line: 15, Column: 14}},
+				},
+			},
+		},
+		{
+			what: "input default expressions are captured with position",
+			input: `name: Test
+inputs:
+  token:
+    description: test
+    default: ${{ secrets.TOKEN }}
+  region:
+    description: test
+    default: "${{ vars.REGION }}"
+  flag:
+    description: test
+    default: true
+  plain:
+    description: test
+`,
+			want: ActionMetadata{
+				Name: "Test",
+				Inputs: ActionMetadataInputs{
+					"token":  {"token", false, false, ""},
+					"region": {"region", false, false, ""},
+					"flag":   {"flag", false, false, ""},
+					"plain":  {"plain", false, false, ""},
+				},
+				InputDefaults: []*ActionKeyValue{
+					{Name: "token", Value: ActionExprString{Value: "${{ secrets.TOKEN }}", Line: 5, Column: 14}},
+					{Name: "region", Value: ActionExprString{Value: "${{ vars.REGION }}", Line: 8, Column: 14}},
 				},
 			},
 		},

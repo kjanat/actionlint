@@ -4,6 +4,10 @@ description: 'Only uses contexts a composite action can see'
 inputs:
   token:
     description: token
+    default: ${{ github.token }}
+  ref:
+    description: ref
+    default: "${{ github.ref }}-${{ inputs.token }}"
 
 runs:
   using: composite
