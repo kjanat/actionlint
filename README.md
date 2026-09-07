@@ -118,7 +118,7 @@ Install `actionlint` command by downloading [the released binary][releases], usi
 go install actionlint.kjanat.dev/cmd/actionlint@latest
 ```
 
-<sub><em><code>actionlint.kjanat.dev</code> is only a <a href="https://pkg.go.dev/cmd/go#hdr-Fully_qualified_import_paths" title="Fully-qualified import paths">Go vanity import path</a>. The Go toolchain resolves it to <a href="https://github.com/kjanat/actionlint" title="https://github.com/kjanat/actionlint">this GitHub repository</a>, where the source, releases, and issue tracker live. Further reading available here: <a href="https://go.dev/ref/mod#goproxy-protocol" title="GOPROXY protocol">GOPROXY protocol</a>. Check for yourself: </em><code>curl https://proxy.golang.org/actionlint.kjanat.dev/@latest</code></sub>
+<sub><em><code>actionlint.kjanat.dev</code> is a <a href="https://pkg.go.dev/cmd/go#hdr-Fully_qualified_import_paths" title="Fully-qualified import paths">Go vanity import path</a>. The Go toolchain resolves it to <a href="https://github.com/kjanat/actionlint" title="https://github.com/kjanat/actionlint">this GitHub repository</a>, where the source, releases, and issue tracker live. Further reading available here: <a href="https://go.dev/ref/mod#goproxy-protocol" title="GOPROXY protocol">GOPROXY protocol</a>. Check for yourself: </em><code>curl https://proxy.golang.org/actionlint.kjanat.dev/@latest</code></sub>
 
 Basically all you need to do is run the `actionlint` command in your repository. actionlint automatically detects workflows and checks errors. actionlint focuses on finding out mistakes. It tries to catch errors as much as possible and make false positives as minimal as possible.
 
@@ -252,6 +252,7 @@ See [the usage document][usage] for the pinned ShellCheck build and how to choos
 - [Configuration][config]: How to configure actionlint behavior. Currently, the labels of self-hosted runners, the configuration variables, and ignore patterns of errors for each file paths can be set.
 - [Go API][api]: How to use actionlint as Go library.
 - [References][refs]: Links to resources.
+- [GitHub Actions changelog][github-changelog]: Browse and search the latest entries from GitHub's Actions changelog feed.
 
 ## Bug reporting
 
@@ -269,6 +270,7 @@ actionlint is distributed under [the MIT license](./LICENSE.txt).
 [apidoc]: https://pkg.go.dev/actionlint.kjanat.dev
 [repo]: https://github.com/kjanat/actionlint
 [playground]: https://kjanat.github.io/actionlint/
+[github-changelog]: https://actionlint.kjanat.dev/github-changelog/
 [pre-commit]: https://pre-commit.com
 [upstream]: https://github.com/rhysd/actionlint
 [ghcr]: https://github.com/kjanat/actionlint/pkgs/container/actionlint

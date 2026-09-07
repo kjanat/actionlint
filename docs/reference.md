@@ -4,6 +4,7 @@ This document describes links to resources related to actionlint and GitHub Acti
 
 - Repository: https://github.com/kjanat/actionlint
 - Playground: https://kjanat.github.io/actionlint/
+- GitHub Actions changelog reader: https://actionlint.kjanat.dev/github-changelog/
 - GitHub Actions official documentations
   - Workflow syntax: https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions
   - Expression syntax: https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/evaluate-expressions-in-workflows-and-actions

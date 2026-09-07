@@ -154,9 +154,9 @@ jobs:
 		}
 	}
 
-	want := `no step in this workflow uses action "actions/checkout@v6" which is required by the "required-actions" policy in actionlint.yaml. "actions/checkout@v4" at line:7,col:15 matches the action name but not the required ref`
+	want := `no step in this workflow uses action "actions/checkout@v7" which is required by the "required-actions" policy in actionlint.yaml. "actions/checkout@v4" at line:7,col:15 matches the action name but not the required ref`
 	for range 100 {
-		errs := runRuleRequiredActions(t, src, []string{"actions/checkout@v6"})
+		errs := runRuleRequiredActions(t, src, []string{"actions/checkout@v7"})
 		if len(errs) != 1 {
 			t.Fatalf("wanted exactly one error but got %v", errs)
 		}

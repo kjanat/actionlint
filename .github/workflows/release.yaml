@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
       - uses: $/.github/actions/setup-pandoc
-      - uses: kjanat/runner@6e752d37c4b3de6bda86c89b2f5bc487097425cd # master
+      - uses: kjanat/runner@a850e622e01897a79e62013804abd26f0e38e63c # v0.26.1
       - run: run make:man/actionlint.1
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with: { name: manual, path: man/actionlint.1, if-no-files-found: error }
@@ -260,7 +260,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { fetch-depth: 0 }
-      - uses: kjanat/gpg-signing-service@cbcb8600547bd6799cdca0b339e8dad044481435 # v1.2.0
+      - uses: kjanat/gpg-signing-service@feb987c332d4857f7667518938a2e7f269d8853e # v1.2.0
         with: { version: v1.2.0 }
       - name: Verify release commit signature
         env: { GH_TOKEN: "${{ github.token }}", COMMIT_API: "${{ format('repos/{0}/commits/{1}', github.repository, github.sha) }}" }

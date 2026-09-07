@@ -385,7 +385,7 @@ jobs:
   actionlint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with: { persist-credentials: false }
       - name: Download actionlint
         id: get_actionlint
@@ -428,7 +428,7 @@ jobs:
   actionlint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with: { persist-credentials: false }
       - name: Check workflow files
         uses: docker://ghcr.io/kjanat/actionlint:latest
@@ -548,7 +548,7 @@ jobs:
   actionlint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with: { persist-credentials: false }
       - uses: reviewdog/action-actionlint@v1
 ```

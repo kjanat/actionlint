@@ -17,7 +17,7 @@
 /env.sh
 /man/actionlint.1
 /man/actionlint.1.html
-/node_modules
 /packages/*/dist/
 /playground-dist
 /vendor/
+node_modules/

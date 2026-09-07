@@ -9,4 +9,6 @@
   configured.
 - [Go API](api.md): How to use actionlint as Go library.
 - [References](reference.md): Links to resources.
+- [GitHub Actions changelog](https://actionlint.kjanat.dev/github-changelog/): Browse and search the latest entries from
+  GitHub's Actions changelog feed.
 - [Package layout](design/package-layout.md): Design for splitting the flat root package into subpackages.
