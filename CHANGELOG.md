@@ -2,7 +2,13 @@
 
 # Unreleased
 
-- Check contexts used in `${{ }}` expressions inside `runs.steps` of a composite action. The `secrets`, `vars`, and `needs` contexts are not available to composite actions; `secrets` and `vars` must be passed as action `inputs:`. This is a first step toward checking the contents of `steps:` in action metadata files. (rhysd/actionlint#46)
+- Check contexts used in `${{ }}` expressions inside `runs.steps` of a composite action. The `secrets`, `vars`, and `needs` contexts are not available to composite actions; `secrets` and `vars` must be passed as action `inputs:`. This is a first step toward checking the contents of `steps:` in action metadata files. (rhysd/actionlint#46, kjanat/actionlint#124)
+
+- Respect quoted `}}` delimiters when scanning composite step expressions, avoiding false context errors for expression-like text inside strings. Cover following expressions, escaped quotes, and UTF-8 text with regression tests. (kjanat/actionlint#124)
+
+- Remove the GPG signing service from floating action tag updates so a signing failure cannot block publishing the digest-pinned action commit. Exact release tags remain separate from these moving aliases.
+
+- Refresh installation and release documentation for the published npm and AUR packages, pending WinGet review, the canonical Homebrew tap, and immutable releases. Update the upstream tracker with released feature versions, Go 1.26 compatibility, and the composite context checks.
 
 <a id="v1.15.0"></a>
 

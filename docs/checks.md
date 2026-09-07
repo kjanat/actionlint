@@ -3182,7 +3182,7 @@ All actions require a metadata file `action.yml` or `action.yaml`. The syntax is
 actionlint checks metadata files used in workflows and reports errors when they are not following the syntax.
 
 - `name:`, `description:`, `runs:` sections are required
-- Runner name at `using:` is one of `composite`, `docker`, `node20`
+- Runner name at `using:` is one of `composite`, `docker`, `node20`, or `node24`
 - Keys under `runs:` section are correct. Required/Valid keys are different depending on the type of action; Docker action or
   Composite action or JavaScript action (e.g. `image:` is required for Docker action).
 - Each step in `steps:` of Composite action is a mapping the runner accepts; a script step with `run:` and `shell:`, or
@@ -3208,6 +3208,9 @@ Inside a Composite action's `steps:`, actionlint also checks the contexts used i
 and `env:`. The `secrets`, `vars`, and `needs` contexts are not available to a
 composite action and are reported as errors — `secrets` and `vars` values must be
 passed to the action as `inputs:` instead.
+An `if:` expression is also checked without the optional `${{ }}` wrapper. Delimiters inside quoted expression strings
+are treated as literal text. These checks report unavailable contexts; they do not perform full type checking of
+composite step expressions or apply every workflow step rule inside the action.
 
 <a id="deprecated-inputs-usage"></a>
 

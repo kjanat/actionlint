@@ -201,18 +201,22 @@ To move the defaults to newer base images:
 
 ## Make a new release
 
-Updating the Homebrew taps, [kjanat/homebrew-tap](https://github.com/kjanat/homebrew-tap) and
-[kjanat/homebrew-actionlint](https://github.com/kjanat/homebrew-actionlint), needs a `HOMEBREW_TAP_TOKEN` secret on this
+Updating [kjanat/homebrew-tap](https://github.com/kjanat/homebrew-tap) needs a `HOMEBREW_TAP_TOKEN` secret on this
 repository, because the built-in `GITHUB_TOKEN` cannot write to another one. It is a fine-grained personal access token
-whose repository access is those two repositories alone, with `Contents: Read and write` and nothing else. The GoReleaser
-step fails without it.
+whose repository access is that repository alone, with `Contents: Read and write`. The former
+`kjanat/homebrew-actionlint` tap contains migration metadata and is not updated by releases.
+
+GoReleaser also uses `SCOOP_BUCKET_TOKEN`, `WINGET_TOKEN`, and `AUR_SSH_PRIVATE_KEY` for the other distribution updates.
+The npm reusable workflow runs after the binaries job and publishes the platform packages before the launcher package.
+WinGet submissions still require review in `microsoft/winget-pkgs`; a successful release does not mean the package is
+already available through WinGet.
 
 When releasing v1.2.3 as example:
 
-1. Ensure all changes were already pushed to remote by checking `git push origin master` outputs `Everything up-to-date`
-2. Describe the release in [CHANGELOG.md](./CHANGELOG.md), either under the `Unreleased` heading or in a `v1.2.3`
+1. Describe the release in [CHANGELOG.md](./CHANGELOG.md), either under the `Unreleased` heading or in a `v1.2.3`
    section written out in full. The release notes are the `v1.2.3` section when it exists and the `Unreleased` entries
    otherwise, and `bump-version` refuses to run when neither describes anything.
+2. Validate and commit the release changes on `master`, including the changelog, and push them to `origin`.
 3. Run `go run ./scripts/bump-version -check` to list every declared version reference and confirm the declaration is in
    sync with the repository
 4. Run `go run ./scripts/bump-version -push 1.2.3`. It updates every version reference, verifies the result, then creates
@@ -221,19 +225,20 @@ When releasing v1.2.3 as example:
    [the script README](./scripts/bump-version/README.md) for the declared files and fields.
 5. Wait until [the CI release job](.github/workflows/release.yaml) completes successfully. It resolves the release notes
    from the changelog and refuses to go further when they are missing, builds the manual, publishes the release binaries
-   and their build provenance, pushes the CLI and action images to ghcr.io, and moves the `v1` tag.
-6. Record the release in `CHANGELOG.md` under its own `v1.2.3` heading if it was released from `Unreleased`, following
-   the shape of the sections around it: the `<a id="v1.2.3"></a>` anchor, the heading linking to the release page, the
-   entries, the `[Changes][v1.2.3]` trailer, and the link definition at the end of the file. `bump-version -check`
-   verifies all four parts of every section.
-7. The Pages workflow redeploys the playground on the next push to `master`
+   and their build provenance, updates the distributions, and pushes the CLI and action images to GHCR and Docker Hub.
+   The floating `v1` and `v1.2` action tags move to a separate commit that pins the action image digest; the release tag
+   remains on the version-bump commit. Floating-tag commits do not use the GPG signing service.
+6. Verify the release assets, npm packages, distribution updates, and floating action tags. The bump script has already
+   moved `Unreleased` entries into the dated release section with its anchor and comparison link; no manual
+   post-release changelog edit is needed. Published releases are immutable, so corrections require a new version.
+7. The Pages workflow redeploys the playground on the push to `master`.
 
 The `make CHANGELOG.md` target runs [changelog-from-release](https://github.com/rhysd/changelog-from-release), which
 rewrites the whole file from the GitHub releases. It knows nothing about the `Unreleased` heading and drops it, and the
 release bodies carry a `## What's changed` line the sections do not, so it does not round-trip this file.
 
 > [!NOTE]
-> If you see workflow failure at releasing a new winget package, check the [fork repository](https://github.com/rhysd/winget-pkgs)
+> If you see workflow failure at releasing a new winget package, check the [fork repository](https://github.com/kjanat/winget-pkgs)
 > is up-to-date. If it is outdated, click 'Sync fork' button to update it to the latest. And re-run the failed job
 > again.
 
