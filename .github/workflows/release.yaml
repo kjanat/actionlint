@@ -296,8 +296,9 @@ jobs:
           uid="$(gpg-sign public-key | gpg --show-keys --with-colons | awk -F: '$1 == "uid" { print $10; exit }')"
           test -n "${uid}"
           email="${uid##*<}"
-          git config user.name "${uid%% <*}"
-          git config user.email "${email%>}"
+          export GIT_AUTHOR_NAME="${uid%% <*}" GIT_AUTHOR_EMAIL="${email%>}"
+          export GIT_COMMITTER_NAME="${GIT_AUTHOR_NAME}" GIT_COMMITTER_EMAIL="${GIT_AUTHOR_EMAIL}"
+          git switch --create "action-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           git add action.yml
           git commit --message "pin the action image of ${GITHUB_REF_NAME} to its digest"
           GPG_SIGN_TOKEN="$(curl --fail --silent --show-error \
