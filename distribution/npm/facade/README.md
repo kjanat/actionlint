@@ -12,7 +12,7 @@ Go toolchain is needed.
 npm install --save-dev @kjanat/actionlint
 ```
 
-Or run it without installing:
+Or run it without adding it to the project:
 
 ```sh
 npx @kjanat/actionlint
@@ -20,7 +20,7 @@ npx @kjanat/actionlint
 
 ## Usage
 
-Run it in a repository and it finds the workflows itself:
+After installing it as a development dependency, run it in the project and it finds the workflows itself:
 
 ```sh
 npx actionlint
@@ -62,17 +62,17 @@ under the `@kjanat-actionlint` scope so the binaries stay out of the `@kjanat` n
 
 | Package                                      | Runs on               |
 | -------------------------------------------- | --------------------- |
-| `@kjanat-actionlint/actionlint-linux-x64`    | Linux x86-64          |
-| `@kjanat-actionlint/actionlint-linux-arm64`  | Linux ARM64           |
-| `@kjanat-actionlint/actionlint-darwin-x64`   | macOS Intel           |
 | `@kjanat-actionlint/actionlint-darwin-arm64` | macOS Apple silicon   |
-| `@kjanat-actionlint/actionlint-win32-x64`    | Windows x86-64        |
-| `@kjanat-actionlint/actionlint-win32-arm64`  | Windows ARM64         |
-| `@kjanat-actionlint/actionlint-linux-ia32`   | Linux 32-bit x86      |
-| `@kjanat-actionlint/actionlint-linux-arm`    | Linux ARMv6 and ARMv7 |
-| `@kjanat-actionlint/actionlint-win32-ia32`   | Windows 32-bit x86    |
-| `@kjanat-actionlint/actionlint-freebsd-x64`  | FreeBSD x86-64        |
+| `@kjanat-actionlint/actionlint-darwin-x64`   | macOS Intel           |
 | `@kjanat-actionlint/actionlint-freebsd-ia32` | FreeBSD 32-bit x86    |
+| `@kjanat-actionlint/actionlint-freebsd-x64`  | FreeBSD x86-64        |
+| `@kjanat-actionlint/actionlint-linux-arm64`  | Linux ARM64           |
+| `@kjanat-actionlint/actionlint-linux-arm`    | Linux ARMv6 and ARMv7 |
+| `@kjanat-actionlint/actionlint-linux-ia32`   | Linux 32-bit x86      |
+| `@kjanat-actionlint/actionlint-linux-x64`    | Linux x86-64          |
+| `@kjanat-actionlint/actionlint-win32-arm64`  | Windows ARM64         |
+| `@kjanat-actionlint/actionlint-win32-ia32`   | Windows 32-bit x86    |
+| `@kjanat-actionlint/actionlint-win32-x64`    | Windows x86-64        |
 
 Each declares `os` and `cpu`, so your package manager downloads only the one matching your machine and skips the rest.
 The `actionlint` command here is a small launcher that resolves that package and execs the binary inside it.

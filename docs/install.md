@@ -32,7 +32,9 @@ The [`actionlint` package in Scoop's main bucket][scoop] installs the upstream p
 
 [![WinGet Package Version][winget-badge]][winget-submission]
 
-The first submission for this fork, `kjanat.actionlint` (microsoft/winget-pkgs#430563), is awaiting review. Until it is merged and available in the WinGet source, use Scoop or a release archive. Once available, the command will be:
+The `kjanat.actionlint` submissions, microsoft/winget-pkgs#430563 and microsoft/winget-pkgs#430894,
+are awaiting review. Until the package is available in the WinGet source, use [npm](#npm), [Scoop](#scoop), or a release archive.
+Once accepted, install it with:
 
 ```powershell
 winget install --id kjanat.actionlint --exact --source winget
@@ -48,18 +50,22 @@ The existing [`rhysd.actionlint` package][winget] installs the upstream project.
 [![AUR Version (binary)][aur-bin-badge]][actionlint-kjanat-bin]
 [![AUR Version (source)][aur-source-badge]][actionlint-kjanat]
 
-[`actionlint-kjanat-git`][actionlint-kjanat-git] is available in the [AUR][aur] and builds this fork from `master`.
-Install it with an AUR helper such as [`paru`][paru]:
+Three packages for this fork are available in the [AUR][aur]:
+
+| Package                                          | Installs                                      |
+| ------------------------------------------------ | --------------------------------------------- |
+| [`actionlint-kjanat-bin`][actionlint-kjanat-bin] | The prebuilt binary from a stable release     |
+| [`actionlint-kjanat`][actionlint-kjanat]         | A stable release built from source            |
+| [`actionlint-kjanat-git`][actionlint-kjanat-git] | The current `master` branch built from source |
+
+Choose one and install it with an AUR helper such as [`paru`][paru]. For the prebuilt binary:
 
 ```sh
-paru -S actionlint-kjanat-git
+paru -S actionlint-kjanat-bin
 ```
 
-It installs the manpage and shell completions. It conflicts with the upstream `actionlint`, `actionlint-bin`, and
-`actionlint-git` packages because they provide the same executable.
-
-The release configuration also defines `actionlint-kjanat` (release source) and `actionlint-kjanat-bin` (prebuilt binary),
-but those two packages have not yet been published to the AUR. For a stable fork release, use a release archive or mise.
+All three install the manpage and shell completions. They conflict with one another and with the upstream
+`actionlint`, `actionlint-bin`, and `actionlint-git` packages because they provide the same executable.
 
 ### [Nix](https://nix.dev/)
 
@@ -102,8 +108,8 @@ brew install --cask kjanat/tap/shellcheck
 
 [![NPM Version][npm-badge]][npm-package]
 
-Publishing for [`@kjanat/actionlint`][npm-package] is implemented, but its first package has not yet been published to
-the public npm registry. Until then, use a release archive or mise. Once published, it will install a prebuilt binary:
+[`@kjanat/actionlint`][npm-package] is available on the public npm registry. It installs a prebuilt binary for your
+platform; no Go toolchain is needed:
 
 ```sh
 npm install --save-dev @kjanat/actionlint
@@ -115,7 +121,7 @@ Or run it without adding it to the project:
 npx @kjanat/actionlint
 ```
 
-The planned distribution uses platform packages containing the GitHub release binaries. Keep npm's optional
+The distribution uses platform packages containing the GitHub release binaries. Keep npm's optional
 dependencies enabled, since the launcher needs the package matching your operating system and architecture.
 Linux binaries are statically linked and work with both musl and glibc.
 
@@ -262,7 +268,7 @@ go install actionlint.kjanat.dev/cmd/actionlint@master
 [scoop-bucket]: https://github.com/kjanat/scoop-bucket/blob/master/bucket/actionlint.json
 [scoop-badge]: https://img.shields.io/scoop/v/actionlint?bucket=https%3A%2F%2Fgithub.com%2Fkjanat%2Fscoop-bucket
 [winget]: https://github.com/microsoft/winget-pkgs/tree/master/manifests/r/rhysd/actionlint
-[winget-submission]: https://github.com/microsoft/winget-pkgs/pull/430563
+[winget-submission]: https://github.com/microsoft/winget-pkgs/pull/430894
 [winget-badge]: https://img.shields.io/winget/v/kjanat.actionlint
 [actionlint-kjanat-git]: https://aur.archlinux.org/packages/actionlint-kjanat-git
 [actionlint-kjanat-bin]: https://aur.archlinux.org/packages/actionlint-kjanat-bin

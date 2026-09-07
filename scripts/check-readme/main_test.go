@@ -10,6 +10,24 @@ import (
 
 const commandHelper = "CHECK_README_COMMAND_HELPER"
 
+func TestNormalizeDiagnostics(t *testing.T) {
+	const want = "demo-workflow.yaml:10:14: unknown label [runner-label]\n" +
+		"demo-workflow.yaml:16:9: unexpected key [syntax-check]\n"
+	for _, prefix := range []string{"docs/screenshots/", `docs\screenshots\`} {
+		t.Run(prefix, func(t *testing.T) {
+			input := strings.ReplaceAll(want, workflow, prefix+workflow)
+			input = strings.ReplaceAll(input, "\n", "\r\n")
+			got := normalizeDiagnostics(input)
+			if got != want {
+				t.Fatalf("normalized diagnostics = %q, want %q", got, want)
+			}
+			if count := len(diagnostic.FindAllString(got, -1)); count != 2 {
+				t.Fatalf("counted %d diagnostics, want 2", count)
+			}
+		})
+	}
+}
+
 func TestGeneratorCommandExitOne(t *testing.T) {
 	tests := []struct {
 		name         string

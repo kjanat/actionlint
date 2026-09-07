@@ -89,8 +89,13 @@ func (g *generator) lint() (string, string, error) {
 	if len(out) == 0 {
 		return "", "", fmt.Errorf("%s reported nothing, so the demo section would show no problem", workflow)
 	}
-	// The path is reported the way it was passed, and the section shows it relative to the fixture.
-	return strings.ReplaceAll(string(out), fixtureDir+string(filepath.Separator), ""), version, nil
+	return normalizeDiagnostics(string(out)), version, nil
+}
+
+// normalizeDiagnostics makes the fixture paths and line endings independent of the host platform.
+func normalizeDiagnostics(out string) string {
+	return strings.NewReplacer("\r\n", "\n", fixtureDir+"/", "",
+		strings.ReplaceAll(fixtureDir, "/", "\\")+"\\", "").Replace(out)
 }
 
 func (g *generator) read(name string) (string, error) {
@@ -181,8 +186,7 @@ func (g *generator) measureUpstream() (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	// The path is reported the way it was passed, and the section shows it relative to the fixture.
-	return strings.ReplaceAll(string(out), fixtureDir+string(filepath.Separator), ""), version, nil
+	return normalizeDiagnostics(string(out)), version, nil
 }
 
 func replace(doc, section string) (string, error) {

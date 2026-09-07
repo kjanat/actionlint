@@ -7,7 +7,7 @@ Sources for the npm distribution. The published package is
 distribution/npm/
   targets.json         the platforms published, and the release asset each is cut from
   targets.schema.json  schema for the above
-  facade/              the published facade package: launcher sources and manifest
+  facade/              the facade template: launcher sources and unstamped manifest
   dist/                build output, gitignored
 ```
 
@@ -49,6 +49,7 @@ or a swapped asset fails the build.
 ```bash
 cd .github/actions/npm-packages
 GITHUB_WORKSPACE="$(git rev-parse --show-toplevel)" \
+  INPUT_REPOSITORY=kjanat/actionlint \
   INPUT_VERSION=1.15.0 \
   go run .
 ```
@@ -73,6 +74,16 @@ facade with the manual:
 ```bash
 cd .github/actions/npm-packages && go test ./...
 ```
+
+Run published-package smoke tests from a directory outside this checkout:
+
+```sh
+npx --yes @kjanat/actionlint@latest -version
+```
+
+Inside the checkout, npm links `distribution/npm/facade` as a workspace. An unversioned
+`npx @kjanat/actionlint` can select that `0.0.0` template, whose platform dependencies are filled in only during
+packaging, and report an empty list of published platforms.
 
 ## Automation
 
@@ -99,6 +110,9 @@ the `NPM_TOKEN` for its scope and its own `PROVENANCE` variable. The platform
 packages go first and the facade waits on all of them: the facade pins them
 exactly, and publishing it first opens a window in which installing it resolves
 no binary.
+
+If publishing fails after some packages succeed, rerun only the failed jobs. npm does not permit overwriting a
+published version; rerunning successful publish jobs attempts to upload those versions again.
 
 Releases are published with [npm provenance][provenance], set through the
 `NPM_CONFIG_PROVENANCE` environment variable npm documents, which a

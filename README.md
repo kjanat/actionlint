@@ -88,7 +88,7 @@ demo-workflow.yaml:18:9: step must run script with "run" section or run action w
    |         ^~~~~
 ```
 
-**This fork 1.14.0 reports 3: `expression`, `require-commit-hash`, `parallel-steps`**
+**This fork 1.15.0 reports 3: `expression`, `require-commit-hash`, `parallel-steps`**
 
 ```console
 demo-workflow.yaml:11:22: type of expression at "float number value" must be number but found type string [expression]
@@ -111,8 +111,15 @@ demo-workflow.yaml:18:15: "api" is not the ID of a preceding background step. "w
 
 ## Quick start
 
-Install `actionlint` command by downloading [the released binary][releases], using the download script, running the Docker image, using the repository as a GitHub Action, or by `go install`. See
-[the installation document][install] for more details like how to manage the command with several package managers or run via Docker container.
+Install with [npm](docs/install.md#npm), [Homebrew](docs/install.md#homebrew), [AUR](docs/install.md#arch-linux),
+[Scoop](docs/install.md#scoop), or [mise](docs/install.md#mise), or download [a release archive][releases].
+See [the installation document][install] for all options. To run it through npm:
+
+```sh
+npx @kjanat/actionlint
+```
+
+With a Go toolchain, install it from source:
 
 ```sh
 go install actionlint.kjanat.dev/cmd/actionlint@latest
@@ -165,7 +172,10 @@ On a daemon-less runner such as `ubuntu-slim`, download and run the binary inste
     ./actionlint -color
 ```
 
-The moving `v1` tag follows compatible v1 releases. `v1.15.0` is a versioned release tag, but only a full-length commit SHA provides an immutable action reference.
+The moving `v1` tag follows compatible v1 releases, and `v1.15` follows v1.15 patch releases. These tags point to a
+commit immediately after the release that pins the published container image by digest. `v1.15.0` is a versioned release tag.
+For an immutable action reference with a pinned image, use the full commit SHA resolved from a
+floating tag.
 
 <details><summary><h3>Inputs</h3></summary>
 
@@ -247,9 +257,9 @@ See [the usage document][usage] for the pinned ShellCheck build and how to choos
 ## Documents
 
 - [Checks][checks]: Full list of all checks done by actionlint with example inputs, outputs, and playground links.
-- [Installation][install]: Installation instructions. Prebuilt binaries, a Docker image, building from source, a download script (for CI), supports by several package managers are available.
+- [Installation][install]: Install with npm, Homebrew, AUR, Scoop, mise, release archives, the download script, Docker, or Go. Includes the status of WinGet and upstream-only package names.
 - [Usage][usage]: How to use `actionlint` command locally or on GitHub Actions, the online playground, an official Docker image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit, VS Code.
-- [Configuration][config]: How to configure actionlint behavior. Currently, the labels of self-hosted runners, the configuration variables, and ignore patterns of errors for each file paths can be set.
+- [Configuration][config]: Runner labels, variables, secrets, default permissions, error filters, and opt-in policy checks, with YAML Language Server schema support.
 - [Go API][api]: How to use actionlint as Go library.
 - [References][refs]: Links to resources.
 - [GitHub Actions changelog][github-changelog]: Browse and search the latest entries from GitHub's Actions changelog feed.
@@ -282,7 +292,7 @@ actionlint is distributed under [the MIT license](./LICENSE.txt).
 [script-injection-doc]: https://docs.github.com/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks
 [releases]: https://github.com/kjanat/actionlint/releases
 [checks]: https://github.com/kjanat/actionlint/blob/v1.15.0/docs/checks.md
-[install]: https://github.com/kjanat/actionlint/blob/v1.15.0/docs/install.md
+[install]: https://github.com/kjanat/actionlint/blob/master/docs/install.md
 [usage]: https://github.com/kjanat/actionlint/blob/v1.15.0/docs/usage.md
 [config]: https://github.com/kjanat/actionlint/blob/v1.15.0/docs/config.md
 [api]: https://github.com/kjanat/actionlint/blob/v1.15.0/docs/api.md

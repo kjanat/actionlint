@@ -88,7 +88,7 @@ var targets = []*target{
 		path: "README.md",
 		rules: []rule{
 			mustRule("versioned release tag note", "`v(\\d+\\.\\d+\\.\\d+)` is a versioned release tag", 1),
-			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 6),
+			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 5),
 			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
 		},
 		generated: []*regexp.Regexp{
@@ -99,7 +99,7 @@ var targets = []*target{
 		path: "man/actionlint.1.md",
 		rules: []rule{
 			mustRule("manual footer version", `(?m)^footer: actionlint (\d+\.\d+\.\d+)\r?$`, 1),
-			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 6),
+			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 5),
 		},
 	},
 	{
@@ -121,6 +121,7 @@ var targets = []*target{
 		rules: []rule{
 			mustRule("npm package build version", `INPUT_VERSION=(\d+\.\d+\.\d+)`, 1),
 		},
+		unrelated: []string{"0.0.0"}, // The unpublished workspace template, not a release version.
 	},
 	{
 		path: "distribution/aur/actionlint-kjanat-git/PKGBUILD",

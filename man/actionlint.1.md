@@ -301,7 +301,7 @@ PowerShell fallback indicated by a nonempty `PSModulePath`.
 
 # DOCUMENTS
 
-Detailed documentation for this release is available online.
+Detailed documentation for this release and current installation options are available online.
 
 ## Checks
 
@@ -311,10 +311,10 @@ Full list of all checks done by actionlint with example inputs, outputs, and pla
 
 ## Installation
 
-https://github.com/kjanat/actionlint/blob/v1.15.0/docs/install.md
+https://github.com/kjanat/actionlint/blob/master/docs/install.md
 
-Installation instructions. Prebuilt binaries, Homebrew package, building from source, a Docker
-image, a download script (for CI) are available.
+Installation instructions for npm, Homebrew, AUR, Scoop, mise, release archives, the download
+script, Docker, and Go, plus the status of WinGet and upstream-only package names.
 
 ## Usage
 

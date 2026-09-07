@@ -327,9 +327,12 @@ there because it has the same Docker daemon requirement.
 ```
 
 The binary-only path does not bundle ShellCheck or pyflakes; install them on the
-runner when those integrations are required. `v1` moves to each new release.
-`v1.15.0` is a versioned release tag, but only a full-length commit SHA provides
-an immutable action reference.
+runner when those integrations are required.
+
+`v1` follows compatible v1 releases, and `v1.15` follows v1.15 patch releases. Each points to a commit immediately
+after the release that pins the published container image by digest. `v1.15.0` is a versioned release tag.
+For an immutable action reference with a pinned image, use the full commit SHA resolved from a
+floating tag.
 
 The action accepts these inputs:
 
