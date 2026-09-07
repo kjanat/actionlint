@@ -601,11 +601,11 @@ func unavailableContextName(msg string) (string, bool) {
 		return "", false
 	}
 	rest := msg[len(prefix):]
-	i := strings.IndexByte(rest, '"')
-	if i < 0 {
+	before, _, ok := strings.Cut(rest, "\"")
+	if !ok {
 		return "", false
 	}
-	return rest[:i], true
+	return before, true
 }
 
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-composite-actions

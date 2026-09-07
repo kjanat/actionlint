@@ -662,7 +662,7 @@ runs:
 						{
 							Line: 12, Column: 7, IsMapping: true,
 							Keys: []string{"uses", "with"},
-							Uses: strPtr("actions/checkout@v5"),
+							Uses: new("actions/checkout@v5"),
 							With: []*ActionKeyValue{
 								{Name: "token", Value: ActionExprString{Value: "${{ secrets.GH }}", Line: 14, Column: 16}},
 							},
@@ -684,7 +684,8 @@ runs:
 	}
 }
 
-func strPtr(s string) *string { return &s }
+//go:fix inline
+func strPtr(s string) *string { return new(s) }
 
 func TestActionMetadataYAMLUnmarshalError(t *testing.T) {
 	testCases := []struct {
