@@ -325,6 +325,19 @@ func TestCheckReportsEveryReference(t *testing.T) {
 	}
 }
 
+func TestCheckRejectsInconsistentVersions(t *testing.T) {
+	root := copyFixture(t)
+	path := filepath.Join(root, "download.bash")
+	content := bytes.ReplaceAll(readFixture(t, "repo", "download.bash"), []byte("1.2.0"), []byte("1.3.0"))
+	if err := os.WriteFile(path, content, 0666); err != nil {
+		t.Fatal(err)
+	}
+	err := Check(root, fixtureTargets(), io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "release version references are inconsistent: 1.2.0, 1.3.0") {
+		t.Fatalf("expected mismatched release versions to fail validation, got %v", err)
+	}
+}
+
 func TestDeclaredTargetsAreWellFormed(t *testing.T) {
 	seen := map[string]bool{}
 	for _, tgt := range targets {

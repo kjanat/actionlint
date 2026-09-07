@@ -372,7 +372,9 @@ func loadRepoConfig(root string) (*Config, error) {
 }
 
 func writeDefaultConfigFile(path string) error {
-	b := []byte(`self-hosted-runner:
+	b := []byte(`# yaml-language-server: $schema=https://raw.githubusercontent.com/kjanat/actionlint/HEAD/actionlint.schema.json
+---
+self-hosted-runner:
   # Labels of self-hosted runner in array of strings.
   labels: []
 

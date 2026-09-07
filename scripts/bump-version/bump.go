@@ -239,6 +239,9 @@ func Check(root string, ts []*target, out io.Writer) error {
 	for _, v := range versions {
 		_, _ = fmt.Fprintf(out, "version %s is referenced %d time(s)\n", v, len(found[v]))
 	}
+	if len(versions) > 1 {
+		return fmt.Errorf("release version references are inconsistent: %s", strings.Join(versions, ", "))
+	}
 	return nil
 }
 

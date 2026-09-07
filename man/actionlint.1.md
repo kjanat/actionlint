@@ -95,6 +95,7 @@ matching either pattern. Suppressed diagnostics do not cause exit status 1.
 
 **-init-config**
 : Create `.github/actionlint.yaml` in the detected repository and exit without linting.
+Includes the YAML Language Server schema directive for editor completion, hover documentation, and validation.
 Requires a repository with `.github/workflows` and refuses to overwrite either supported
 configuration filename.
 

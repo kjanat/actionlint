@@ -31,7 +31,7 @@ the rewritten repository is verified to reference the new version everywhere.
 go run ./scripts/bump-version [FLAGS] VERSION
 ```
 
-Report every declared version reference without modifying anything.
+Report every declared version reference without modifying anything, and fail if the references disagree on the release version.
 
 ```sh
 go run ./scripts/bump-version -check

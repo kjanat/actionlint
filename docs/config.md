@@ -12,7 +12,8 @@ Configuration file `actionlint.yaml` or `actionlint.yml` can be put in `.github`
 
 Note: If you're using [Super-Linter][Super-Linter], the file should be placed in a different directory. Please check the project's document.
 
-For completion, hover documentation, and validation in editors using YAML Language Server, add this line to your config:
+`actionlint -init-config` includes the YAML Language Server schema directive automatically. For completion, hover
+documentation, and validation in an existing config, add:
 
 ```yaml
 # yaml-language-server: $schema=https://raw.githubusercontent.com/kjanat/actionlint/HEAD/actionlint.schema.json

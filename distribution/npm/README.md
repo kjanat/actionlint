@@ -3,7 +3,7 @@
 Sources for the npm distribution. The published package is
 [`@kjanat/actionlint`](https://www.npmjs.com/package/@kjanat/actionlint).
 
-```
+```text
 distribution/npm/
   targets.json         the platforms published, and the release asset each is cut from
   targets.schema.json  schema for the above
@@ -49,7 +49,7 @@ or a swapped asset fails the build.
 ```bash
 cd .github/actions/npm-packages
 GITHUB_WORKSPACE="$(git rev-parse --show-toplevel)" \
-  INPUT_VERSION=1.13.0 \
+  INPUT_VERSION=1.14.0 \
   go run .
 ```
 
@@ -107,6 +107,8 @@ under the `next` dist-tag.
 
 Use the workflow's `dry-run` input to build and smoke-test without publishing;
 it forces provenance off, there being nothing for the registry to attest.
+Dry runs use the packaging sources from the selected workflow commit and binaries from the requested release, so
+packaging changes can be tested with an existing release. Publishing uses the packaging sources from the release tag.
 
 ## Adding a platform
 

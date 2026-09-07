@@ -110,4 +110,24 @@ var targets = []*target{
 			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 1),
 		},
 	},
+	{
+		path: ".github/workflows/npm-release.yaml",
+		rules: []rule{
+			mustRule("npm workflow release tag example", `Release tag to publish \(e\.g\. v(\d+\.\d+\.\d+)\)`, 1),
+		},
+	},
+	{
+		path: "distribution/npm/README.md",
+		rules: []rule{
+			mustRule("npm package build version", `INPUT_VERSION=(\d+\.\d+\.\d+)`, 1),
+		},
+	},
+	{
+		path: "distribution/aur/actionlint-kjanat-git/PKGBUILD",
+		rules: []rule{
+			mustRule("AUR git package base version", `(?m)^pkgver=(\d+\.\d+\.\d+)\.r0\.g0000000\r?$`, 1),
+			mustRule("AUR git describe example", `# v(\d+\.\d+\.\d+)-12-gabc1234`, 1),
+			mustRule("AUR pkgver example", `-> (\d+\.\d+\.\d+)\.r12\.gabc1234`, 1),
+		},
+	},
 }

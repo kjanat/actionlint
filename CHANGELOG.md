@@ -2,7 +2,17 @@
 
 # Unreleased
 
-- Call npm publishing as a reusable workflow after the release binaries are uploaded, attested, and checked. This avoids relying on a `release: published` event that GitHub suppresses for releases created with `GITHUB_TOKEN`, while keeping manual publication and dry runs available.
+- Add a generated `actionlint.schema.json` for configuration completion, hover documentation, and validation in editors. `actionlint -init-config` now includes the YAML Language Server schema directive automatically. The schema follows the Go configuration types and documents where editor validation differs from runtime parsing. (https://github.com/kjanat/actionlint/pull/120)
+
+- Restore Go 1.26 compatibility for source builds and `go install`, while retaining Go 1.27.1 as the preferred development toolchain. (https://github.com/kjanat/actionlint/pull/111)
+
+- Distribute the release binaries through `@kjanat/actionlint` on npm, with eleven platform packages, a launcher that selects the host binary, and the manpage. Call npm publishing as a reusable workflow after the release binaries are uploaded, attested, and checked, avoiding the suppressed `release: published` event when releases use `GITHUB_TOKEN`. Dry runs can test current packaging sources against an existing release. (https://github.com/kjanat/actionlint/pull/95, https://github.com/kjanat/actionlint/pull/123)
+
+- Add automated release updates for the `kjanat/actionlint` Scoop package, the `actionlint-kjanat` and `actionlint-kjanat-bin` AUR packages, and WinGet submissions under `kjanat.actionlint`. The AUR also provides `actionlint-kjanat-git` for builds from `master`; WinGet availability follows review in `winget-pkgs`. Each distribution uses a separate identity for this fork. (https://github.com/kjanat/actionlint/pull/96, https://github.com/kjanat/actionlint/pull/97, https://github.com/kjanat/actionlint/pull/98)
+
+- Publish the Homebrew cask only to `kjanat/tap`, with a manpage and generated Bash, Fish, Zsh, and PowerShell completions. The former `kjanat/actionlint` tap redirects through migration metadata. ShellCheck is optional and can be installed separately from `kjanat/tap/shellcheck`. (https://github.com/kjanat/actionlint/pull/121)
+
+- Refresh the command manual and installation guide to describe current flags, configuration, output formats, completions, and package availability. Document mise's `github:kjanat/actionlint` backend and distinguish fork packages from upstream packages. Extend the version-bump script to cover npm examples and the AUR git package template. (https://github.com/kjanat/actionlint/pull/123)
 
 - Name the fork version in the README demo section next to the upstream one, and keep both current through the new `Upkeep` workflow. It regenerates the section after every release and weekly, and opens a pull request when the text moved, so the default branch no longer goes red the moment this fork or upstream ships. The weekly `go generate` and go-shellcheck bumps moved into the same workflow, each on its own pull request branch, and `make lint` no longer compares the README against the releases. The README check still runs on pull requests that touch the fixture, the script, or the section.
 

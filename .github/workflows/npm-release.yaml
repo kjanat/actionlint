@@ -9,7 +9,7 @@ on:
   release: { types: [published] }
   workflow_dispatch:
     inputs:
-      tag: { description: "Release tag to publish (e.g. v1.13.0)", required: true, type: string }
+      tag: { description: "Release tag to publish (e.g. v1.14.0)", required: true, type: string }
       dist-tag: {
         description: "npm dist-tag; auto picks next for a prerelease, otherwise latest",
         required: false,
@@ -43,7 +43,7 @@ jobs:
       node: ${{ steps.node.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { ref: "refs/tags/${{ env.RELEASE_TAG }}", persist-credentials: false }
+        with: { ref: "${{ case(inputs.dry-run, github.sha, format('refs/tags/{0}', env.RELEASE_TAG)) }}", persist-credentials: false }
       - parallel:
           - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
             with: { go-version: "${{ env.GO }}", check-latest: true }
