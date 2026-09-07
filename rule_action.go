@@ -532,7 +532,7 @@ var (
 // inputs), the runner rejects `vars` with "Unrecognized named-value: 'vars'"
 // (actions/runner#2551), and `needs` is scoped to workflow jobs. `matrix` / `strategy` are
 // allowed for now; their availability inside actions is undocumented and we prefer no false
-// positives. See docs/plans/2026-09-07-composite-action-context-check-design.md.
+// positives.
 var compositeStepContexts = []string{
 	"env", "github", "inputs", "job", "matrix", "runner", "steps", "strategy",
 }
@@ -540,36 +540,28 @@ var compositeStepContexts = []string{
 // compositeStepUnavailableContexts parses every ${{ }} expression in s and returns, in first-
 // seen order with duplicates removed, the names of contexts that are not available inside a
 // composite action step. When bare is true and s contains no ${{ }}, the whole string is
-// parsed as a single expression (used for `if:`). Parse errors are ignored: reporting them is
-// out of scope for this check.
+// parsed as a single expression (used for `if:`). A parse error stops the scan without a
+// diagnostic: reporting syntax errors is out of scope for this check.
 func compositeStepUnavailableContexts(s string, bare bool) []string {
-	var srcs []string
 	if bare && !strings.Contains(s, "${{") {
-		srcs = append(srcs, s+"}}") // }} lets the expression lexer terminate; see checkIfCondition
-	} else {
-		rest := s
-		for {
-			i := strings.Index(rest, "${{")
-			if i < 0 {
-				break
-			}
-			rest = rest[i+3:]
-			srcs = append(srcs, rest) // the lexer stops at the closing }}
-			j := strings.Index(rest, "}}")
-			if j < 0 {
-				break
-			}
-			rest = rest[j+2:]
-		}
+		s = "${{" + s + "}}" // }} lets the expression lexer terminate; see checkIfCondition
 	}
 
 	seen := map[string]struct{}{}
 	var out []string
-	for _, src := range srcs {
-		expr, err := NewExprParser().Parse(NewExprLexer(src))
-		if err != nil || expr == nil {
-			continue
+	for {
+		i := strings.Index(s, "${{")
+		if i < 0 {
+			break
 		}
+		s = s[i+3:]
+		lex := NewExprLexer(s)
+		expr, err := NewExprParser().Parse(lex)
+		if err != nil || expr == nil {
+			break
+		}
+		// The lexer skips delimiters inside string literals and consumes the closing }}.
+		s = s[lex.Offset():]
 		c := NewExprSemanticsChecker(false, nil)
 		c.SetContextAvailability(compositeStepContexts)
 		_, errs := c.Check(expr)
@@ -624,12 +616,12 @@ func (rule *RuleAction) checkLocalCompositeActionRuns(meta *ActionMetadata, pos 
 // compositeStepErrorf reports an error at the step's own position in the action metadata file
 // instead of at the "uses" site in the workflow being linted.
 func (rule *RuleAction) compositeStepErrorf(meta *ActionMetadata, s *ActionCompositeStep, idx int, format string, args ...any) {
-	rule.compositeStepErrorfAt(meta, s, idx, s.Line, s.Column, format, args...)
+	rule.compositeStepErrorfAt(meta, idx, s.Line, s.Column, format, args...)
 }
 
 // compositeStepErrorfAt is compositeStepErrorf with an explicit position, used to point at a
 // specific key's value inside the step.
-func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, s *ActionCompositeStep, idx, line, col int, format string, args ...any) {
+func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, idx, line, col int, format string, args ...any) {
 	m := fmt.Sprintf(format, args...)
 	err := errorAt(&Pos{Line: line, Col: col}, rule.name, fmt.Sprintf(`step %d in "runs.steps" section in metadata of %q action %s`, idx+1, meta.Name, m))
 	err.Filepath = meta.Path()
@@ -700,7 +692,7 @@ func (rule *RuleAction) checkCompositeActionStepExprs(meta *ActionMetadata, s *A
 		}
 		for _, ctx := range compositeStepUnavailableContexts(v.Value, bare) {
 			rule.compositeStepErrorfAt(
-				meta, s, idx, v.Line, v.Column,
+				meta, idx, v.Line, v.Column,
 				`uses context %q at %q key which is not available in a composite action. %s`,
 				ctx, key, compositeStepContextHint(ctx),
 			)

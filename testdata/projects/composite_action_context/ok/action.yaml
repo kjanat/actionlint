@@ -8,7 +8,8 @@ inputs:
 runs:
   using: composite
   steps:
-    - if: runner.os == 'Linux'
+    - name: ${{ 'text }} ${{ secrets.TOKEN }}' }} ${{ github.repository }}
+      if: runner.os == 'Linux'
       run: echo "${{ github.repository }} ${{ inputs.token }}"
       shell: bash
       env:

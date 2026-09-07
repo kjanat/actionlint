@@ -684,9 +684,6 @@ runs:
 	}
 }
 
-//go:fix inline
-func strPtr(s string) *string { return new(s) }
-
 func TestActionMetadataYAMLUnmarshalError(t *testing.T) {
 	testCases := []struct {
 		what  string
