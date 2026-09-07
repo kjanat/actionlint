@@ -8,7 +8,7 @@
 
 ## [v1.15.1](https://github.com/kjanat/actionlint/releases/tag/v1.15.1) - 2026-09-07
 
-- Check contexts used in `${{ }}` expressions inside `runs.steps` of a composite action. The `secrets`, `vars`, and `needs` contexts are not available to composite actions; `secrets` and `vars` must be passed as action `inputs:`. This is a first step toward checking the contents of `steps:` in action metadata files. (rhysd/actionlint#46, kjanat/actionlint#124)
+- Check contexts used in `${{ }}` expressions inside `runs.steps` of a composite action. The `secrets`, `vars`, and `needs` contexts are not available to composite actions; `secrets` and `vars` must be passed as action `inputs:`. This is a first step toward checking the contents of `steps:` in action metadata files. (rhysd/actionlint#46, kjanat/actionlint#124, thanks @johnament)
 
 - Respect quoted `}}` delimiters when scanning composite step expressions, avoiding false context errors for expression-like text inside strings. Cover following expressions, escaped quotes, and UTF-8 text with regression tests. (kjanat/actionlint#124)
 
@@ -30,7 +30,7 @@
 
 - Add automated release updates for the `kjanat/actionlint` Scoop package, the `actionlint-kjanat` and `actionlint-kjanat-bin` AUR packages, and WinGet submissions under `kjanat.actionlint`. The AUR also provides `actionlint-kjanat-git` for builds from `master`; WinGet availability follows review in `winget-pkgs`. Each distribution uses a separate identity for this fork. (https://github.com/kjanat/actionlint/pull/96, https://github.com/kjanat/actionlint/pull/97, https://github.com/kjanat/actionlint/pull/98)
 
-- Publish the Homebrew cask only to `kjanat/tap`, with a manpage and generated Bash, Fish, Zsh, and PowerShell completions. The former `kjanat/actionlint` tap redirects through migration metadata. ShellCheck is optional and can be installed separately from `kjanat/tap/shellcheck`. (https://github.com/kjanat/actionlint/pull/121)
+- Publish the Homebrew cask only to `kjanat/tap`, with a manpage and generated Bash, Fish, Zsh, and PowerShell completions (kjanat/actionlint#113, thanks @muzimuzhi). The former `kjanat/actionlint` tap redirects through migration metadata. ShellCheck is optional and can be installed separately from `kjanat/tap/shellcheck`. (https://github.com/kjanat/actionlint/pull/121)
 
 - Refresh the command manual and installation guide to describe current flags, configuration, output formats, completions, and package availability. Document mise's `github:kjanat/actionlint` backend and distinguish fork packages from upstream packages. Update workflow action pins and checkout examples, and link the GitHub Actions changelog reader from the README, docs, and playground. Isolate the changelog monitor's dependency installation from npm workspaces. Extend the version-bump script to cover npm examples and the AUR git package template. (https://github.com/kjanat/actionlint/pull/123)
 
