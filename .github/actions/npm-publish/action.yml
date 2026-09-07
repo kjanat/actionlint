@@ -52,7 +52,8 @@ runs:
 
         args=(--access public --tag "${DIST_TAG}")
         if [[ "${DRY_RUN}" == 'true' ]]; then
-          args+=(--dry-run)
+          # Allow testing existing releases; --dry-run still prevents uploads.
+          args+=(--dry-run --force)
         fi
         npm publish "${spec}" "${args[@]}"
 
