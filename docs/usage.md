@@ -1,5 +1,7 @@
 # Usage
 
+[![GitHub Release][release-badge]][releases]
+
 This document describes how to use [actionlint](../README.md).
 
 ## `actionlint` command
@@ -138,12 +140,12 @@ actionlint -format '
 
 Output:
 
+<!-- dprint-ignore-start -->
+
 ````markdown
 ### Error at line 21, col 20 of `test.yaml`
 
 property "platform" is not defined in object type {os: string}
-
-<!-- dprint-ignore-start -->
 
 ```plaintext
           key: ${{ matrix.platform }}-node-${{ hashFiles('**/package-lock.json') }}
@@ -449,6 +451,8 @@ results table moves a cursor to position of the error in the code editor.
 <a id="docker"></a>
 
 ## [Docker][docker] image
+
+[![Docker Image Version][docker-badge]][dockerhub]
 
 [Docker image][docker-image] is available. The image contains `actionlint`
 executable and all dependencies (shellcheck and pyflakes).
@@ -773,6 +777,8 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 
 [actionlint-matcher]: https://raw.githubusercontent.com/kjanat/actionlint/HEAD/.github/actionlint-matcher.json
 [cmd-manual]: https://kjanat.github.io/actionlint/usage.html
+[docker-badge]: https://img.shields.io/docker/v/kjanat/actionlint
+[dockerhub]: https://hub.docker.com/r/kjanat/actionlint
 [docker-image]: https://github.com/kjanat/actionlint/pkgs/container/actionlint
 [docker]: https://www.docker.com/
 [emacs-flycheck-extension]: https://github.com/tirimia/flycheck-actionlint
@@ -794,6 +800,8 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 [pulsar-linter]: https://web.pulsar-edit.dev/packages/linter-github-actions
 [pulsar]: https://pulsar-edit.dev/
 [re2]: https://golang.org/s/re2syntax
+[release-badge]: https://img.shields.io/github/v/release/kjanat/actionlint
+[releases]: https://github.com/kjanat/actionlint/releases
 [reviewdog-actionlint]: https://github.com/reviewdog/action-actionlint
 [reviewdog]: https://github.com/reviewdog/reviewdog
 [sarif]: https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html
