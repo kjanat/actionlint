@@ -107,12 +107,12 @@ configuration filename.
 **-pyflakes** *COMMAND*
 : Command used to check Python `run:` scripts. Accepts an executable name, a path, or a quoted
 command line such as `"python3 -m pyflakes"` or `"uvx pyflakes"`. Defaults to `pyflakes`;
-**-pyflakes=** disables the integration.
+`-pyflakes=` disables the integration.
 
 **-shellcheck** *COMMAND*
 : Command used to check supported shell `run:` scripts. Accepts an executable name, a path,
 or a quoted command line such as `"shellcheck -e SC2086"`. Defaults to `shellcheck`;
-**-shellcheck=** disables the integration.
+`-shellcheck=` disables the integration.
 
 **-stdin-filename** *NAME*
 : Filename used for standard-input diagnostics. Defaults to `<stdin>`. An existing path also
