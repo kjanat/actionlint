@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Use npm trusted publishing through OIDC for the launcher, platform packages, and changelog package. Standardize workflow filenames on `.yml` and update workflow references and publishing configuration.
+
 <a id="v1.15.1"></a>
 
 ## [v1.15.1](https://github.com/kjanat/actionlint/releases/tag/v1.15.1) - 2026-09-07

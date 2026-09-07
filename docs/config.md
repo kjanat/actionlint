@@ -65,8 +65,8 @@ paths:
     ignore:
       # Ignore the specific error from shellcheck
       - "shellcheck reported issue in this script: SC2086:.+"
-  # This pattern only matches '.github/workflows/release.yaml' file.
-  .github/workflows/release.yaml:
+  # This pattern only matches '.github/workflows/release.yml' file.
+  .github/workflows/release.yml:
     ignore:
       # Ignore errors from the old runner check. This may be useful for (outdated) self-hosted runner environment.
       - 'the runner of ".+" action is too old to run on GitHub Actions'

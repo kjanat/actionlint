@@ -2,7 +2,7 @@ name: README demo
 on:
   pull_request:
     paths:
-      - .github/workflows/readme-demo.yaml
+      - .github/workflows/readme-demo.yml
       - go.mod
       - README.md
       - docs/screenshots/**

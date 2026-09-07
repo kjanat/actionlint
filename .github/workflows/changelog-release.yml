@@ -1,0 +1,43 @@
+name: Changelog npm release
+run-name: ${{ case(inputs.dry-run, 'Check changelog npm package', 'Publish changelog npm package') }}
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run: { description: Build and test without publishing, required: true, default: true, type: boolean }
+
+concurrency: { group: changelog-npm-release, cancel-in-progress: false }
+permissions: { contents: read }
+
+jobs:
+  publish:
+    if: github.repository_owner == 'kjanat' && github.ref_name == 'master'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
+    environment: { name: npm, url: "${{ steps.publish.outputs.url }}" }
+    env: { NPM_CONFIG_PROVENANCE: "${{ !inputs.dry-run }}" }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: { node-version-file: .node-version, registry-url: https://registry.npmjs.org/, package-manager-cache: false }
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Check types and test the changelog package
+        run: |
+          npm run typecheck --workspace @kjlint/changelog-rss
+          npm test --workspace @kjlint/changelog-rss
+      - name: Build and pack the changelog package
+        id: pack
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          out="${RUNNER_TEMP}/changelog-tarball"
+          mkdir -p "${out}"
+          npm pack --workspace @kjlint/changelog-rss --pack-destination "${out}"
+          packed=("${out}"/*.tgz)
+          test "${#packed[@]}" -eq 1
+          echo "tarball=${packed[0]}" >> "${GITHUB_OUTPUT}"
+      - uses: $/.github/actions/npm-publish
+        id: publish
+        with: { tarball: "${{ steps.pack.outputs.tarball }}", dist-tag: latest, dry-run: "${{ inputs.dry-run }}" }

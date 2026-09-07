@@ -1,7 +1,7 @@
 name: Pages
 
 on:
-  push: { branches: [main, master] }
+  push: { branches: [master] }
   workflow_dispatch: null
 
 permissions: { contents: read, pages: write, id-token: write }

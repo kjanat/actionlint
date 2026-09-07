@@ -87,8 +87,8 @@ packaging, and report an empty list of published platforms.
 
 ## Automation
 
-`.github/workflows/release.yaml` calls the reusable
-`.github/workflows/npm-release.yaml` after the binaries job finishes uploading
+`.github/workflows/release.yml` calls the reusable
+`.github/workflows/npm-release.yml` after the binaries job finishes uploading
 and attesting the release archives and checking the download. The call passes
 the release tag directly: releases created with `GITHUB_TOKEN` do not trigger
 another workflow through `release: published`.
@@ -105,8 +105,11 @@ published, making the tested bytes the published bytes.
 
 Publishing is one job per package, each recording its own deployment with that
 package's registry URL as the target. The platform packages deploy from the
-`npm-actionlint` environment and the facade from `npm`; each environment holds
-the `NPM_TOKEN` for its scope and its own `PROVENANCE` variable. The platform
+`npm-actionlint` environment and the facade from `npm`. Every package trusts
+`kjanat/actionlint` with that environment and both `release.yml` (the reusable
+workflow's caller) and `npm-release.yml` (manual or release-event publishing).
+The jobs use OIDC with `id-token: write`; no `NPM_TOKEN` is passed to publishing.
+Each environment can set its own `PROVENANCE` variable. The platform
 packages go first and the facade waits on all of them: the facade pins them
 exactly, and publishing it first opens a window in which installing it resolves
 no binary.
@@ -123,6 +126,18 @@ Use the workflow's `dry-run` input to build and smoke-test without publishing;
 it forces provenance off, there being nothing for the registry to attest.
 Dry runs use the packaging sources from the selected workflow commit and binaries from the requested release, so
 packaging changes can be tested with an existing release. Publishing uses the packaging sources from the release tag.
+
+Manage these bindings with `npm trust list PACKAGE` and `npm trust github PACKAGE
+--repository=kjanat/actionlint --file=WORKFLOW.yml --environment=ENVIRONMENT
+--allow-publish --yes`. npm requires an authenticated account with package write
+access and 2FA. Configure both workflow files for the facade and every platform
+package. After renaming a workflow, add the new binding and remove the obsolete
+one with `npm trust revoke PACKAGE --id=TRUST_ID`.
+
+`@kjlint/changelog-rss` publishes separately through `changelog-release.yml` and
+the `npm` environment. That workflow checks types and tests, builds and packs the
+workspace, and uses the same OIDC publish action. Its manual dispatch defaults
+to a dry run; bump the workspace version before publishing a new package version.
 
 ## Adding a platform
 

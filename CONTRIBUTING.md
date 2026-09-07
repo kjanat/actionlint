@@ -83,11 +83,11 @@ around linking libc. `make build` does this by default.
 
 ## Testing
 
-[![CI](https://github.com/kjanat/actionlint/actions/workflows/ci.yaml/badge.svg)](https://github.com/kjanat/actionlint/actions/workflows/ci.yaml)
-[![Upkeep](https://github.com/kjanat/actionlint/actions/workflows/upkeep.yaml/badge.svg)](https://github.com/kjanat/actionlint/actions/workflows/upkeep.yaml)
-[![Problem Matchers](https://github.com/kjanat/actionlint/actions/workflows/matcher.yaml/badge.svg)](https://github.com/kjanat/actionlint/actions/workflows/matcher.yaml)
-[![Download script](https://github.com/kjanat/actionlint/actions/workflows/download.yaml/badge.svg)](https://github.com/kjanat/actionlint/actions/workflows/download.yaml)
-[![Release](https://github.com/kjanat/actionlint/actions/workflows/release.yaml/badge.svg)](https://github.com/kjanat/actionlint/actions/workflows/release.yaml)
+[![CI](https://github.com/kjanat/actionlint/actions/workflows/ci.yml/badge.svg)](https://github.com/kjanat/actionlint/actions/workflows/ci.yml)
+[![Upkeep](https://github.com/kjanat/actionlint/actions/workflows/upkeep.yml/badge.svg)](https://github.com/kjanat/actionlint/actions/workflows/upkeep.yml)
+[![Problem Matchers](https://github.com/kjanat/actionlint/actions/workflows/matcher.yml/badge.svg)](https://github.com/kjanat/actionlint/actions/workflows/matcher.yml)
+[![Download script](https://github.com/kjanat/actionlint/actions/workflows/download.yml/badge.svg)](https://github.com/kjanat/actionlint/actions/workflows/download.yml)
+[![Release](https://github.com/kjanat/actionlint/actions/workflows/release.yml/badge.svg)](https://github.com/kjanat/actionlint/actions/workflows/release.yml)
 [![Codecov](https://codecov.io/gh/kjanat/actionlint/graph/badge.svg?token=CgcOo0m9oW)](https://codecov.io/gh/kjanat/actionlint)
 
 Run the following command at the root of this repository.
@@ -130,7 +130,7 @@ Automated tests are as follows.
 
 [golangci-lint](https://golangci-lint.run/) runs the Go linters, configured by [`.golangci.toml`](./.golangci.toml).
 Install the binary as described in [its documentation](https://golangci-lint.run/docs/welcome/install/). CI pins the
-version in [`ci.yaml`](.github/workflows/ci.yaml).
+version in [`ci.yml`](.github/workflows/ci.yml).
 
 ```sh
 golangci-lint run
@@ -192,10 +192,10 @@ docker build --build-arg GOLANG_VER=1.27.0 --build-arg ALPINE_VER=3.24 -t action
 To move the defaults to newer base images:
 
 1. Pick the new tags from Docker Hub ([golang](https://hub.docker.com/_/golang), [alpine](https://hub.docker.com/_/alpine)).
-   `GOLANG_VER` tracks the Go version used by CI (`GO` in [`ci.yaml`](.github/workflows/ci.yaml)). `ALPINE_VER` tracks the
+   `GOLANG_VER` tracks the Go version used by CI (`GO` in [`ci.yml`](.github/workflows/ci.yml)). `ALPINE_VER` tracks the
    Alpine release that `golang:<GOLANG_VER>-alpine` is built on.
 2. Update the `ARG` defaults in `Dockerfile` together with the `GOLANG_VER` build arguments in
-   [`ci.yaml`](.github/workflows/ci.yaml) and [`release.yaml`](.github/workflows/release.yaml).
+   [`ci.yml`](.github/workflows/ci.yml) and [`release.yml`](.github/workflows/release.yml).
 3. Verify with `droast Dockerfile` and `docker build -t actionlint .`.
 4. Send the upgrade as its own pull request.
 
@@ -223,7 +223,7 @@ When releasing v1.2.3 as example:
    and pushes the bump commit and the `v1.2.3` tag. Drop `-push` to leave the changes in the working tree for review, or
    use `-commit` to create the commit and the tag without pushing. See
    [the script README](./scripts/bump-version/README.md) for the declared files and fields.
-5. Wait until [the CI release job](.github/workflows/release.yaml) completes successfully. It resolves the release notes
+5. Wait until [the CI release job](.github/workflows/release.yml) completes successfully. It resolves the release notes
    from the changelog and refuses to go further when they are missing, builds the manual, publishes the release binaries
    and their build provenance, updates the distributions, and pushes the CLI and action images to GHCR and Docker Hub.
    The floating `v1` and `v1.2` action tags move to a separate commit that pins the action image digest; the release tag
@@ -258,7 +258,7 @@ Visit [`playground/README.md`](./playground/README.md).
 
 ## How to deploy playground
 
-The [Pages workflow](./.github/workflows/pages.yaml) deploys on every push to `master`. It builds the bundle with
+The [Pages workflow](./.github/workflows/pages.yml) deploys on every push to `master`. It builds the bundle with
 `make -C playground build`, packages `playground/dist` together with the manual, and uploads it through
 `actions/upload-pages-artifact`.
 
@@ -280,10 +280,10 @@ automatically with `go generate`. The command runs [`generate-popular-actions`](
 
 The script also can detect new major releases of popular actions on GitHub by giving `-d` flag.
 
-The [`Upkeep`](.github/workflows/upkeep.yaml) CI workflow weekly runs to detect new major releases and update
-`popular_actions.go`, and opens a pull request with the result. Runs can be found [actions/workflows/upkeep.yaml].
+The [`Upkeep`](.github/workflows/upkeep.yml) CI workflow weekly runs to detect new major releases and update
+`popular_actions.go`, and opens a pull request with the result. Runs can be found [actions/workflows/upkeep.yml].
 
-[actions/workflows/upkeep.yaml]: https://github.com/kjanat/actionlint/actions/workflows/upkeep.yaml
+[actions/workflows/upkeep.yml]: https://github.com/kjanat/actionlint/actions/workflows/upkeep.yml
 
 ### Maintain `all_webhooks.go`
 
@@ -296,7 +296,7 @@ It fetches [`events-that-trigger-workflows.md`](https://raw.githubusercontent.co
 parses the markdown document, and extracts webhook names and their types. For more details, see
 [README.md at the script directory](./scripts/generate-webhook-events/README.md).
 
-Updating `all_webhooks.go` is run weekly on CI by the [`Upkeep`](.github/workflows/upkeep.yaml) workflow.
+Updating `all_webhooks.go` is run weekly on CI by the [`Upkeep`](.github/workflows/upkeep.yml) workflow.
 
 ### Maintain `actionlint-matcher.json`
 
@@ -321,7 +321,7 @@ contexts and special functions. GitHub Actions limits contexts and functions in 
 using [generate-availability](./scripts/generate-availability) script. It is run through `go generate` in `rule_expression.go`.
 See [the readme of the script](./scripts/generate-availability/README.md) for the usage of the script.
 
-Update for `availability.go` is run weekly on CI by the [`Upkeep`](.github/workflows/upkeep.yaml) workflow.
+Update for `availability.go` is run weekly on CI by the [`Upkeep`](.github/workflows/upkeep.yml) workflow.
 
 <a id="about-checks-doc"></a>
 

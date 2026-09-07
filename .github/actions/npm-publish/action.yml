@@ -1,14 +1,11 @@
 name: Publish an npm tarball
-description: Publish one packed tarball to the registry and report where it landed
+description: Publish one packed tarball through npm trusted publishing and report where it landed
 inputs:
   tarball:
     description: Path to the .tgz to publish
     required: true
   dist-tag:
     description: npm dist-tag to publish under
-    required: true
-  token:
-    description: npm automation token
     required: true
   dry-run:
     description: Run the publish without sending anything to the registry
@@ -33,7 +30,6 @@ runs:
       id: publish
       shell: bash
       env:
-        NODE_AUTH_TOKEN: ${{ inputs.token }}
         TARBALL: ${{ inputs.tarball }}
         DIST_TAG: ${{ inputs.dist-tag }}
         DRY_RUN: ${{ inputs.dry-run }}

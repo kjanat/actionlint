@@ -111,7 +111,7 @@ var targets = []*target{
 		},
 	},
 	{
-		path: ".github/workflows/npm-release.yaml",
+		path: ".github/workflows/npm-release.yml",
 		rules: []rule{
 			mustRule("npm workflow release tag example", `Release tag to publish \(e\.g\. v(\d+\.\d+\.\d+)\)`, 1),
 		},

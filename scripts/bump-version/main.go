@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-const releaseJobURL = "https://github.com/kjanat/actionlint/actions/workflows/release.yaml"
+const releaseJobURL = "https://github.com/kjanat/actionlint/actions/workflows/release.yml"
 
 const releaseTimeZone = "Europe/Amsterdam"
 

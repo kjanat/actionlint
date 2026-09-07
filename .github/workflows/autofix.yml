@@ -1,6 +1,6 @@
 name: autofix.ci
 on:
-  push: { branches: [main, master] }
+  push: { branches: [master] }
   pull_request: null
 
 permissions: { contents: read }

@@ -50,7 +50,7 @@ go run ./scripts/bump-version -commit 1.2.3
 ```
 
 Update all references, create the bump commit and the tag, and push both to `origin`. Pushing the
-tag starts [the release workflow](../../.github/workflows/release.yaml).
+tag starts [the release workflow](../../.github/workflows/release.yml).
 
 ```sh
 go run ./scripts/bump-version -push 1.2.3

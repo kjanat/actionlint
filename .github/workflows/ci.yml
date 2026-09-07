@@ -1,7 +1,7 @@
 name: CI
 on:
   push:
-    branches: [main, master]
+    branches: [master]
   pull_request:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -230,7 +230,7 @@ jobs:
           fi
       - name: Confirm actionlint-shellcheck reports a fixture's SC2086
         run: |
-          cat > .github/workflows/_pre-commit-shellcheck-fixture.yaml <<'FIXTURE'
+          cat > .github/workflows/_pre-commit-shellcheck-fixture.yml <<'FIXTURE'
           on: push
           jobs:
             fixture:
@@ -239,10 +239,10 @@ jobs:
                 - run: echo $GITHUB_SHA
           FIXTURE
           set +e
-          pre-commit try-repo . actionlint-shellcheck --files .github/workflows/_pre-commit-shellcheck-fixture.yaml --verbose > pre-commit-output.txt 2>&1
+          pre-commit try-repo . actionlint-shellcheck --files .github/workflows/_pre-commit-shellcheck-fixture.yml --verbose > pre-commit-output.txt 2>&1
           status=$?
           set -e
           cat pre-commit-output.txt
-          rm .github/workflows/_pre-commit-shellcheck-fixture.yaml
+          rm .github/workflows/_pre-commit-shellcheck-fixture.yml
           test "${status}" -ne 0
           grep -q SC2086 pre-commit-output.txt

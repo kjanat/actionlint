@@ -2,7 +2,7 @@ name: AUR git package
 on:
   push:
     branches: [master]
-    paths: [distribution/aur/actionlint-kjanat-git/PKGBUILD, .github/workflows/aur-git.yaml]
+    paths: [distribution/aur/actionlint-kjanat-git/PKGBUILD, .github/workflows/aur-git.yml]
   workflow_dispatch:
 
 permissions: { contents: read }

@@ -1,7 +1,7 @@
 name: Problem Matchers
 on:
   push:
-    branches: [main, master]
+    branches: [master]
     tags-ignore: ["*"]
   pull_request:
   workflow_dispatch:

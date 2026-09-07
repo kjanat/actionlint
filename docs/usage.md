@@ -219,7 +219,7 @@ The error object has the following fields.
 | `{{$err.Message}}`   | Body of error message                                 | `property "platform" is not defined in object type {os: string}`    |
 | `{{$err.Snippet}}`   | Code snippet to indicate error position               |  <code>          node_version: 16.x\n          ^~~~~~~~~~~~~</code> |
 | `{{$err.Kind}}`      | Name of rule the error belongs to                     | `expression`                                                        |
-| `{{$err.Filepath}}`  | Canonical relative file path of the error position    | `.github/workflows/ci.yaml`                                         |
+| `{{$err.Filepath}}`  | Canonical relative file path of the error position    | `.github/workflows/ci.yml`                                         |
 | `{{$err.Line}}`      | Line number of the error position (1-based)           | `9`                                                                 |
 | `{{$err.Column}}`    | Column number of the error's start position (1-based) | `11`                                                                |
 | `{{$err.EndColumn}}` | Column number of the error's end position (1-based)   | `23`                                                                |
@@ -359,8 +359,8 @@ found:
   uses: kjanat/actionlint@v1
   with:
     files: |
-      .github/workflows/ci.yaml
-      .github/workflows/release.yaml
+      .github/workflows/ci.yml
+      .github/workflows/release.yml
     format: json-lines
     output-file: actionlint-results.jsonl
     fail-on-error: false
@@ -646,7 +646,7 @@ The `actionlint` hook installs into an isolated `$GOPATH`, so it only finds a
 `shellcheck` executable that is already on `PATH`.
 
 `actionlint-shellcheck` pins go-shellcheck so each actionlint revision builds a
-reproducible pre-commit environment. The scheduled [Upkeep workflow](../.github/workflows/upkeep.yaml) checks both go-shellcheck
+reproducible pre-commit environment. The scheduled [Upkeep workflow](../.github/workflows/upkeep.yml) checks both go-shellcheck
 and the ShellCheck version it embeds, and proposes pin updates automatically.
 To choose a different version yourself, use `additional_dependencies` on the
 plain hook:

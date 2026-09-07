@@ -148,7 +148,7 @@ jobs:
         with: { name: npm-tarballs, path: distribution/npm/tarballs, retention-days: 7 }
 
   # Leaves first: the facade pins them exactly. One job per package, each with
-  # its own deployment, from the environment holding the token for its scope.
+  # its own deployment, from the environment named in its npm trusted publisher.
   platforms:
     name: publish ${{ matrix.pkg }}
     needs: build
@@ -175,7 +175,6 @@ jobs:
         with:
           tarball: tarballs/${{ matrix.pkg }}.tgz
           dist-tag: "${{ needs.build.outputs.dist-tag }}"
-          token: "${{ secrets.NPM_TOKEN }}"
           dry-run: "${{ env.DRY_RUN }}"
 
   facade:
@@ -198,5 +197,4 @@ jobs:
         with:
           tarball: tarballs/facade.tgz
           dist-tag: "${{ needs.build.outputs.dist-tag }}"
-          token: "${{ secrets.NPM_TOKEN }}"
           dry-run: "${{ env.DRY_RUN }}"

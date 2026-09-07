@@ -35,7 +35,7 @@ Update the document. This command directly modifies the file.
 go run ./scripts/check-checks -fix ./docs/checks.md
 ```
 
-The check is run on the [CI workflow](../../.github/workflows/ci.yaml).
+The check is run on the [CI workflow](../../.github/workflows/ci.yml).
 
 ## Format
 

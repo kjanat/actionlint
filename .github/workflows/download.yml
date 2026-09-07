@@ -1,9 +1,9 @@
 name: Download script
 on:
   push:
-    branches: [main, master]
+    branches: [master]
     paths:
-      - .github/workflows/download.yaml
+      - .github/workflows/download.yml
       - .goreleaser.yaml
       - scripts/download-actionlint.bash
       - scripts/test-download-actionlint.bash

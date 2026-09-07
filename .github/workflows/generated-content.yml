@@ -2,7 +2,7 @@ name: Generated content
 on:
   pull_request:
     paths:
-      - .github/workflows/generated-content.yaml
+      - .github/workflows/generated-content.yml
       - .dprint.jsonc
       - go.mod
       - go.sum
