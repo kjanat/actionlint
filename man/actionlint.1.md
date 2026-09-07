@@ -17,99 +17,290 @@ footer: actionlint 1.14.0
 
 # DESCRIPTION
 
-**actionlint** is a linter for GitHub Actions workflow files.
+**actionlint** checks GitHub Actions workflow files without executing the workflows. This is
+the maintained `kjanat/actionlint` fork, distributed as the Go module `actionlint.kjanat.dev`.
 
-Features:
+Checks include workflow syntax, expression types and context availability, action inputs and
+outputs, local action metadata and composite steps, reusable workflow inputs and permissions,
+job dependencies, parallel steps, runner labels, event filters, schedules, and YAML anchors.
+Security checks report potentially unsafe expression interpolation in scripts and hard-coded
+credentials. Optional ShellCheck and pyflakes integrations check scripts in `run:` steps.
 
-- **Syntax check for workflow files** to check unexpected or missing keys following workflow syntax
-- **Strong type check for `${{ }}` expressions** to catch several semantic errors like access to
-  not existing property, type mismatches, ...
-- **Actions usage check** to check that inputs at `with:` and outputs in `steps.{id}.outputs` are
-  correct
-- **shellcheck and pyflakes integrations** for scripts at `run:`
-- **Security checks**; script injection by untrusted inputs, hard-coded credentials
-- **Other several useful checks**; glob syntax validation, dependencies check for `needs:`, runner
-  label validation, cron syntax validation, ...
+Repository policy checks can require immutable action references, job timeouts, and particular
+actions. These checks are enabled explicitly in the configuration file; ordinary workflow
+checks do not require configuration.
 
 # USAGE
 
-To check all workflow files in the current repository, just run **actionlint** without arguments.
-It automatically finds the nearest `.github/workflows` directory:
+With no file arguments, **actionlint** searches the current directory and its parents for a
+repository containing both `.git` and `.github/workflows`. It recursively checks `.yml` and
+`.yaml` files in that workflow directory:
 
     $ actionlint
 
-To check specific workflow files, pass the file paths as arguments:
+To check specific workflow files, pass their paths. Explicit files can be outside a repository:
 
     $ actionlint file1.yaml file2.yaml
 
-To check a content which is not saved in file yet (e.g. output from some command), pass **-**
-argument. It reads stdin and checks it as workflow file:
+Pass **-** as the only file argument to read a workflow from standard input:
 
     $ actionlint -
 
-To serialize errors into JSON, use **-format** option. It allows to format error messages flexibly
-with Go template syntax.
+Use **-stdin-filename** to label diagnostics. If that path exists in a detected repository,
+actionlint also uses its repository configuration and local action metadata. For an unsaved
+file, select configuration explicitly with **-config-file** when needed:
+
+    $ actionlint -stdin-filename .github/workflows/ci.yml - < .github/workflows/ci.yml
+    $ actionlint -config-file .github/actionlint.yaml - < /tmp/workflow.yml
+
+Local action metadata and reusable workflows are read from disk when referenced by a workflow.
+Passing an `action.yml` file directly does not select a standalone action-metadata lint mode.
+
+Place flags before file arguments. Both `-flag` and `--flag` spellings are accepted, and a value
+can follow a flag or an equals sign. Use `--` to end flag parsing before a filename that starts
+with a dash. Boolean flags accept `=true` or `=false`.
+
+Use **-format** to serialize diagnostics or customize their presentation with Go templates:
 
     $ actionlint -format '{{json .}}'
 
 # FLAGS
 
 **-color**
-: Always enable colorful output. This is useful to force colorful outputs
+: Force colored output, including when standard output is redirected. **-no-color** takes
+precedence if both flags are set.
 
 **-completion** *SHELL*
 : Print a shell completion script for the given shell to stdout. One of `bash`, `fish`,
 `powershell`, `zsh`. Also accepted are `pwsh`, a shell path such as `$SHELL`, and `auto` to
-detect the current shell from the environment.
+detect the current shell from `SHELL`, falling back to PowerShell when `PSModulePath` is set.
+Prints the script and exits without linting. See SHELL COMPLETION below.
 
 **-config-file** *PATH*
-: File path to config file
+: Read configuration from *PATH* instead of using the detected repository's configuration.
+Relative paths are resolved from the current working directory.
 
 **-debug**
-: Enable debug output (for development)
+: Write development diagnostics to standard error. Use without **-verbose**, which takes
+precedence when both flags are set.
 
 **-format** *FORMAT*
-: Custom template to format error messages in Go template syntax. See the usage documentation
-for more details.
+: Format diagnostics using a Go text template. The template receives a sequence of error
+objects. See OUTPUT below. This overrides **-oneline**.
 
 **-ignore** *PATTERN*
-: Regular expression matching to error messages you want to ignore. This flag is repeatable. For
-example, `-ignore A -ignore B` ignores errors whose message includes "A" OR "B".
+: Suppress diagnostics whose message matches *PATTERN*, using Go regular expression syntax.
+Repeat the flag to match any of several patterns: `-ignore A -ignore B` suppresses messages
+matching either pattern. Suppressed diagnostics do not cause exit status 1.
 
 **-init-config**
-: Generate default config file at `.github/actionlint.yaml` in current project
+: Create `.github/actionlint.yaml` in the detected repository and exit without linting.
+Requires a repository with `.github/workflows` and refuses to overwrite either supported
+configuration filename.
 
 **-no-color**
-: Disable colorful output
+: Disable colored output, even when **-color** is also set.
 
 **-oneline**
-: Use one line per one error. Useful for reading error messages from programs
+: Print one line per diagnostic, without the source snippet and position marker.
 
 **-pyflakes** *COMMAND*
-: Command line of "pyflakes" external command. A command name, a file path, or a command with flags
-such as "python3 -m pyflakes", or "uvx pyflakes".
-If empty, pyflakes integration will be disabled (default "pyflakes")
+: Command used to check Python `run:` scripts. Accepts an executable name, a path, or a quoted
+command line such as `"python3 -m pyflakes"` or `"uvx pyflakes"`. Defaults to `pyflakes`;
+**-pyflakes=** disables the integration.
 
 **-shellcheck** *COMMAND*
-: Command line of "shellcheck" external command. A command name, a file path, or a command with
-flags such as "shellcheck -e SC2086".
-If empty, shellcheck integration will be disabled (default "shellcheck")
-
-**-verbose**
-: Enable verbose output
+: Command used to check supported shell `run:` scripts. Accepts an executable name, a path,
+or a quoted command line such as `"shellcheck -e SC2086"`. Defaults to `shellcheck`;
+**-shellcheck=** disables the integration.
 
 **-stdin-filename** *NAME*
-: File name when reading input from stdin (default `<stdin>`)
+: Filename used for standard-input diagnostics. Defaults to `<stdin>`. An existing path also
+allows repository discovery; see USAGE above.
+
+**-verbose**
+: Write progress information to standard error, including file discovery and disabled external
+linter integrations.
 
 **-version**
-: Show version and how this binary was installed
+: Print the build's module name and version, installation source, Go compiler version, and
+target operating system and architecture, then exit.
 
 **-help**, **-h**
-: Show help
+: Print command usage and flags to standard error, then exit successfully.
+
+# CONFIGURATION
+
+Configuration is optional. In a detected repository, actionlint reads `.github/actionlint.yaml`,
+or `.github/actionlint.yml` if the first filename is absent. **-config-file** selects a different
+file; settings are not merged with the repository file or a user-global configuration.
+
+The available settings are:
+
+**self-hosted-runner.labels**
+: Additional runner-label patterns. Patterns use Go `path.Match` glob syntax.
+
+**config-variables**
+: Allowed names in the `vars` context. Omitted or `null` disables this check; an empty list
+allows no configuration variables.
+
+**config-secrets**
+: Allowed secret names, compared case-insensitively. Omitted or `null` disables this check.
+The built-in secrets `GITHUB_TOKEN`, `ACTIONS_STEP_DEBUG`, and `ACTIONS_RUNNER_DEBUG`, and
+secrets declared in `on.workflow_call.secrets`, remain allowed even with an empty list.
+
+**assume-default-permissions**
+: Permission assumption for a local reusable workflow call when neither the calling job nor
+its workflow declares `permissions`. Defaults to `restricted`, which assumes read access to
+`contents` and `packages`. `permissive` assumes write access; `id-token` still requires an
+explicit grant. This setting does not change the repository's actual GitHub permissions.
+
+**paths**
+: Map repository-relative glob patterns to configuration. Patterns use `/` separators and
+support `**` and brace alternatives. Each entry's `ignore` list contains message regular
+expressions, applied in addition to **-ignore**.
+
+**policy.require-commit-hash**
+: When `true`, require action and reusable workflow references to use 40- or 64-digit hexadecimal
+commit IDs, and `docker://` images to use digests. Local references and expression-based
+references are skipped.
+
+**policy.require-job-timeout**
+: When `true`, require `timeout-minutes` on jobs that run steps. A mapping such as
+`{ max-minutes: 60 }` also limits literal timeout values. Jobs calling reusable workflows are
+skipped; expression-based timeouts are not compared with the maximum.
+
+**policy.required-actions**
+: List actions every workflow must use. Entries accept name and ref glob patterns, such as
+`actions/checkout` or `my-org/security-scan@v2*`. Only steps directly in the workflow are
+searched. Workflows consisting entirely of reusable workflow calls, or containing an
+expression-based action reference, are skipped.
+
+Policy checks are off until enabled. For example:
+
+```yaml
+self-hosted-runner: { labels: [linux.2xlarge] }
+config-variables: [DEFAULT_RUNNER]
+config-secrets: [DEPLOY_TOKEN]
+assume-default-permissions: restricted
+policy:
+  require-commit-hash: true
+  require-job-timeout: { max-minutes: 60 }
+  required-actions: [actions/checkout]
+paths:
+  ".github/workflows/**/*.{yml,yaml}":
+    ignore: ['shellcheck reported issue in this script: SC2086:.+']
+```
+
+The repository supplies `actionlint.schema.json` for editor completion and validation. See the
+configuration document below for the schema URL and full matching rules.
+
+# EXTERNAL LINTERS
+
+ShellCheck checks supported shell scripts in `run:` steps; pyflakes checks Python scripts.
+The executables must be available through `PATH` or the corresponding command flag. If a
+command cannot be resolved, its integration is skipped; **-verbose** explains why.
+
+    $ actionlint -shellcheck= -pyflakes=
+    $ actionlint -shellcheck 'shellcheck -e SC2086'
+    $ actionlint -pyflakes 'python3 -m pyflakes'
+
+Command strings are parsed into an executable and arguments, not executed by a shell. Shell
+pipes and redirections are not supported in these flags. Your arguments precede actionlint's
+own arguments, so do not supply input filenames or override ShellCheck's output format.
+
+actionlint invokes ShellCheck with `--norc` and JSON1 output, so `.shellcheckrc` is not read.
+Use **-shellcheck** arguments or `SHELLCHECK_OPTS` for ShellCheck options. Filter pyflakes
+diagnostics with **-ignore** or the configuration's `paths` entries.
+
+# OUTPUT
+
+Diagnostics go to standard output. Command usage, progress logs, and fatal errors go to standard
+error. The default diagnostic includes the file, line, column, message, rule name, and source
+snippet. **-oneline** omits the snippet; **-format** replaces the diagnostic presentation.
+
+The Go template receives a sequence of errors. Each has `Message`, `Snippet`, `Kind`, `Filepath`,
+`Line`, `Column`, and `EndColumn` fields. Line and column numbers start at 1. Custom template
+functions include `json`, `replace`, `toPascalCase`, `allKinds`, and `getVersion`.
+
+JSON:
+
+    $ actionlint -format '{{json .}}'
+
+JSON Lines:
+
+    $ actionlint -format '{{range .}}{{json .}}{{end}}'
+
+Custom lines:
+
+    $ actionlint -format '{{range .}}{{.Filepath}}:{{.Line}}:{{.Column}}: {{.Message}} [{{.Kind}}]\n{{end}}'
+
+Backslash escapes such as `\n` in the format string are expanded before the template is parsed.
+
+For SARIF, pass the contents of `sarif_template.txt` from the actionlint source repository to
+**-format**, for example in Bash:
+
+    $ actionlint -format "$(cat sarif_template.txt)" > actionlint.sarif
+
+The CLI's **-format** accepts template text. The GitHub Action's `format` input instead accepts
+names such as `json` and `sarif`. Changing output format does not change the lint exit status.
+
+# SHELL COMPLETION
+
+**-completion** generates native completion scripts for Bash, Fish, Zsh, and PowerShell. Scripts
+complete flags, flag values, and workflow paths. Load one into the current shell session:
+
+Bash:
+
+    $ source <(actionlint -completion bash)
+
+Fish:
+
+    $ actionlint -completion fish | source
+
+Zsh, after initializing its completion system:
+
+    $ autoload -Uz compinit && compinit
+    $ source <(actionlint -completion zsh)
+
+PowerShell:
+
+```powershell
+actionlint -completion powershell | Out-String | Invoke-Expression
+```
+
+For persistent installation, save Bash output in a directory loaded by bash-completion, Fish
+output as `~/.config/fish/completions/actionlint.fish`, or Zsh output as `_actionlint` in a
+directory on `fpath`. Load PowerShell output from your profile. Regenerate saved scripts after
+upgrading actionlint so they reflect the installed CLI. See the usage document for setup examples.
+
+# ENVIRONMENT
+
+**PATH**
+: Used to find ShellCheck and pyflakes, including the executable selected by their command flags.
+
+**NO_COLOR**
+: A nonempty value disables automatic color. **-color** can force color; **-no-color** always
+disables it.
+
+**SHELL**, **PSModulePath**
+: Used by **-completion auto**. A supported shell named by `SHELL` takes precedence over the
+PowerShell fallback indicated by a nonempty `PSModulePath`.
+
+**SHELLCHECK_OPTS**
+: Additional options interpreted by the external ShellCheck process.
+
+# FILES
+
+**.github/workflows/**
+: Workflow directory scanned when no filenames are provided.
+
+**.github/actionlint.yaml**, **.github/actionlint.yml**
+: Optional repository configuration; the `.yaml` spelling takes precedence.
 
 # DOCUMENTS
 
-Documents for more details are available online.
+Detailed documentation for this release is available online.
 
 ## Checks
 
@@ -128,14 +319,14 @@ image, a download script (for CI) are available.
 
 https://github.com/kjanat/actionlint/blob/v1.14.0/docs/usage.md
 
-How to use `actionlint` command locally or on GitHub Actions, the online playground, an official
-Docker image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit.
+CLI usage, shell completion, output templates, the GitHub Action, Docker images, and editor
+and CI integrations.
 
 ## Configuration
 
 https://github.com/kjanat/actionlint/blob/v1.14.0/docs/config.md
 
-How to configure actionlint behavior by the configuration file `actionlint.yaml`.
+Repository configuration, runner labels, variables, secrets, and opt-in policy checks.
 
 ## Go API
 
@@ -151,44 +342,39 @@ Links to resources.
 
 # USAGE ON GITHUB ACTIONS
 
-Please try the download script.
-
-https://github.com/kjanat/actionlint/blob/HEAD/scripts/download-actionlint.bash
-
-It downloads the latest version of actionlint executable to the current directory automatically.
-On GitHub Actions environment, it sets a file path to executable to the `executable` output for
-using the executable in the following steps easily.
-
-Here is an example of simple workflow to run actionlint on GitHub Actions. Please ensure `shell: bash`
-since the default shell for Windows runners is `pwsh`.
+The repository provides a GitHub Action with actionlint, ShellCheck, and pyflakes in a prebuilt
+Docker image. It reports GitHub annotations by default and fails when problems are found:
 
 ```yaml
 name: Lint GitHub Actions workflows
 on: [push, pull_request]
+permissions: { contents: read }
 
 jobs:
   actionlint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Download actionlint
-        id: get_actionlint
-        run: bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash)
-        shell: bash
-      - name: Check workflow files
-        run: ${{ steps.get_actionlint.outputs.executable }} -color
-        shell: bash
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - uses: kjanat/actionlint@v1
 ```
 
-or simply run
+The Docker action requires a Linux runner with a reachable Docker daemon. To run the binary
+directly, including on macOS, Windows with Bash, or a runner without a Docker daemon, use the
+download script:
 
 ```yaml
 - name: Check workflow files
   run: |
-    bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash)
+    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) latest
     ./actionlint -color
   shell: bash
 ```
+
+The script accepts `latest` to resolve the newest release, or a specific version. Without a
+version argument, it uses the default recorded in the script. It writes the executable to the
+current directory and, on GitHub Actions, exposes its path as the
+`executable` step output. External linters must be available separately when using the binary.
 
 # EXIT STATUS
 
@@ -196,31 +382,33 @@ or simply run
 
 - **0**: It ran successfully and no problem was found.
 - **1**: It ran successfully and some problem was found.
-- **2**: It failed due to invalid command line option.
-- **3**: It failed due to some fatal error.
+- **2**: Command-line flag parsing failed, for example because of an unknown flag or missing value.
+- **3**: Initialization or linting failed, for example because a file cannot be read, a project
+  cannot be found, or a configuration, ignore pattern, or output template is invalid.
 
 # PLAYGROUND
 
-Thanks to WebAssembly, actionlint playground is available on your browser. It never sends any data
-to outside of the browser.
+The WebAssembly playground runs actionlint in your browser. Workflow linting happens locally in
+the browser; it does not execute workflows or run the external ShellCheck and pyflakes programs.
 
 https://kjanat.github.io/actionlint/
 
-Paste your workflow content to the code editor at left pane. It automatically shows the results at
-right pane. When editing the workflow content at the left pane, the results will be updated on the
-fly in the right pane. Clicking an error message in the results table moves a cursor to the
-position of the error in the code editor.
+Paste a workflow into the editor to see diagnostics update as you type. Select a diagnostic to
+jump to its source position.
 
 # BUGS
 
-Please visit issues page to see known bugs. If you found a new bug or have some feature request,
-please report by making a new issue.
+Report problems with this fork to its issue tracker. Include the output of **-version**, the
+relevant configuration, and a minimal workflow that reproduces the problem.
 
 https://github.com/kjanat/actionlint/issues
 
 # COPYRIGHT
 
-**actionlint** is licensed under the MIT License: `Copyright (c) 2021 rhysd`
+**actionlint** is licensed under the MIT License.
+
+Copyright (c) 2026 Kaj Kowalski\
+Copyright (c) 2021 rhysd
 
 https://github.com/kjanat/actionlint/blob/HEAD/LICENSE.txt
 

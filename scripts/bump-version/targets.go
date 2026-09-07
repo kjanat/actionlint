@@ -83,7 +83,6 @@ var targets = []*target{
 			mustRule("download script example description", `example installs v(\d+\.\d+\.\d+)`, 1),
 			mustRule("download script argument", `download-actionlint\.bash\) (\d+\.\d+\.\d+)`, 1),
 		},
-		unrelated: []string{"actionlint v1.7.11"},
 	},
 	{
 		path: "README.md",

@@ -1,154 +1,140 @@
 # Installation
 
-This document describes how to install [actionlint](../docs).
+[![GitHub Release][release-badge]][releases]
+
+This document describes how to install the [kjanat/actionlint fork](../README.md). Package names matter: several
+registries also provide [rhysd/actionlint][upstream] under the unqualified name `actionlint`.
+
+ShellCheck and pyflakes are optional external linters. The standalone actionlint binary uses them when available on
+`PATH`; see [external linter configuration](usage.md#ignore-some-errors).
 
 ## Windows
 
 ### [Chocolatey](https://chocolatey.org/)
 
-[`actionlint` package][chocolatey] is available in the community repository:
-
-```powershell
-choco install actionlint
-```
+The community [`actionlint` package][chocolatey] installs the upstream project. This fork does not currently publish a
+Chocolatey package. Use [Scoop](#scoop), [mise](#mise), or a [release archive](#prebuilt-binaries) on Windows.
 
 ### [Scoop](https://scoop.sh/)
 
-[`actionlint` package][scoop] is available in the main bucket:
+[![Scoop Version][scoop-badge]][scoop-bucket]
 
-```powershell
-scoop install actionlint
-```
-
-That package is [the upstream project][upstream]. This fork lives in its own bucket, which also carries other `kjanat`
-tools:
+This fork is available in the [kjanat bucket][scoop-bucket]:
 
 ```powershell
 scoop bucket add kjanat https://github.com/kjanat/scoop-bucket
 scoop install kjanat/actionlint
 ```
 
+The [`actionlint` package in Scoop's main bucket][scoop] installs the upstream project.
+
 ### [Winget](https://learn.microsoft.com/en-us/windows/package-manager/)
 
-[`actionlint` package][winget] is available in the winget-pkgs repository under the `rhysd.actionlint` identifier,
-which is [the upstream project][upstream]. This fork is submitted to winget-pkgs as the separate `kjanat.actionlint`
-package on every release. Once its first submission has been merged there:
+[![WinGet Package Version][winget-badge]][winget-submission]
+
+The first submission for this fork, [`kjanat.actionlint`][winget-submission], is awaiting review. Until it is merged
+and available in the WinGet source, use Scoop or a release archive. Once available, the command will be:
 
 ```powershell
-winget install kjanat.actionlint
+winget install --id kjanat.actionlint --exact --source winget
 ```
+
+The existing [`rhysd.actionlint` package][winget] installs the upstream project.
 
 ## Linux
 
 ### [Arch Linux](https://archlinux.org/)
 
-This fork publishes three packages to the [AUR][aur]. The first two are updated automatically on every release:
+[![AUR Version (git)][aur-git-badge]][actionlint-kjanat-git]
+[![AUR Version (binary)][aur-bin-badge]][actionlint-kjanat-bin]
+[![AUR Version (source)][aur-source-badge]][actionlint-kjanat]
 
-| Package                                        | Builds                            |
-| ---------------------------------------------- | --------------------------------- |
-| [actionlint-kjanat][actionlint-kjanat]         | from the release source tarball   |
-| [actionlint-kjanat-bin][actionlint-kjanat-bin] | prebuilt from the release archive |
-| [actionlint-kjanat-git][actionlint-kjanat-git] | from the tip of `master`          |
-
-They can be installed via the [`paru`][paru] command:
+[`actionlint-kjanat-git`][actionlint-kjanat-git] is available in the [AUR][aur] and builds this fork from `master`.
+Install it with an AUR helper such as [`paru`][paru]:
 
 ```sh
-paru -S actionlint-kjanat-bin
+paru -S actionlint-kjanat-git
 ```
 
-All three install `/usr/bin/actionlint` and therefore conflict with each other and with `actionlint` in the official
-repository, `actionlint-bin` and `actionlint-git`, which all track the upstream project; install exactly one. Each
-ships the man page and bash, zsh and fish completions.
+It installs the manpage and shell completions. It conflicts with the upstream `actionlint`, `actionlint-bin`, and
+`actionlint-git` packages because they provide the same executable.
 
-### [Nix](https://nixos.wiki/)
+The release configuration also defines `actionlint-kjanat` (release source) and `actionlint-kjanat-bin` (prebuilt binary),
+but those two packages have not yet been published to the AUR. For a stable fork release, use a release archive or mise.
 
-[`actionlint` package][nixpkgs] is available in the Nix ecosystem:
+### [Nix](https://nix.dev/)
 
-On NixOS:
+The [`actionlint` definition in Nixpkgs][nixpkgs] builds the upstream project. This applies to `pkgs.actionlint`,
+`nixpkgs#actionlint`, and the older `nix-env` commands. They do not install this fork.
+
+This repository does not currently provide a Nix derivation or flake. The fork's statically linked Linux release
+binary runs on NixOS; use a [release archive](#prebuilt-binaries) or the [download script](#download-script) to obtain it.
+That installs a standalone executable rather than a Nix-managed package.
+
+<a id="homebrew"></a>
+
+## [Homebrew][homebrew] on macOS and Linux
+
+Install this fork from the `kjanat/tap` tap:
 
 ```sh
-nix-env -iA nixos.actionlint
+brew install --cask kjanat/tap/actionlint
 ```
 
-On Non NixOS:
+The unqualified [`actionlint` formula][formula] in Homebrew core installs the upstream project.
+
+The per-project `kjanat/actionlint` tap redirects to `kjanat/tap` through Homebrew's tap migration metadata, so existing
+`kjanat/actionlint/actionlint` installations keep upgrading. Releases publish only to `kjanat/tap`.
+
+The cask has no package dependencies. [ShellCheck integration](checks.md#check-shellcheck-integ) is optional and uses
+`shellcheck` when it is available on `PATH`; installing actionlint does not install ShellCheck. To add it separately,
+the `kjanat/tap/shellcheck` cask provides the upstream static binary and shell completions with no dependencies.
+Uninstall the homebrew-core formula first if it already owns the `shellcheck` binary:
 
 ```sh
-nix-env -iA nixpkgs.actionlint
-```
-
-## macOS
-
-### [Homebrew][homebrew]
-
-[`actionlint`][formula] formula is provided by Homebrew officially.
-
-```sh
-brew install actionlint
-```
-
-That formula tracks the upstream project. To install this fork instead, use the `kjanat/tap` tap, which is updated
-automatically on every release:
-
-```sh
-brew install kjanat/tap/actionlint
-```
-
-The cask is also published to the per-project `kjanat/actionlint` tap, so an existing `brew install
-kjanat/actionlint/actionlint` keeps upgrading.
-
-The cask installs the `actionlint` binary and nothing else. The [shellcheck integration](checks.md#check-shellcheck-integ)
-needs a `shellcheck` on `PATH`. The `shellcheck` formula from homebrew-core builds it with GHC and, on Linux, pulls in `gcc`
-and `glibc` as runtime dependencies. The `kjanat/tap/shellcheck` cask installs the static binary ShellCheck itself
-releases, with no dependencies, and conflicts with the formula:
-
-```sh
-brew install kjanat/tap/shellcheck
+brew install --cask kjanat/tap/shellcheck
 ```
 
 > [!WARNING]
-> Since the `actionlint` executable is unsigned, macOS displays a warning and tries to move it to the Trash. To allow it to run,
-> go to 'Settings -> Privacy & Security' and grant the permission.
+> The macOS executable is not notarized. If Gatekeeper blocks a downloaded copy, review and allow it in
+> **System Settings → Privacy & Security**.
 
 ## [npm](https://www.npmjs.com/)
 
-[`@kjanat/actionlint`][npm-package] installs a prebuilt binary, so no Go toolchain is needed:
+[![NPM Version][npm-badge]][npm-package]
+
+Publishing for [`@kjanat/actionlint`][npm-package] is implemented, but its first package has not yet been published to
+the public npm registry. Until then, use a release archive or mise. Once published, it will install a prebuilt binary:
 
 ```sh
 npm install --save-dev @kjanat/actionlint
 ```
 
-Or run it without installing:
+Or run it without adding it to the project:
 
 ```sh
 npx @kjanat/actionlint
 ```
 
-The package itself carries no binary. It declares one `optionalDependencies` entry per platform, each holding a single
-executable and declaring its `os` and `cpu`, so your package manager downloads only the one matching your machine. The
-`actionlint` command is a small launcher that resolves that package and execs the binary inside it, forwarding the exit
-status unchanged.
-
-The binaries are the same ones attached to the [GitHub release][releases]; every archive is verified against the
-release's published checksums before being repackaged.
-
-Linux users on Alpine need nothing special: the binaries are statically linked, so the `linux-*` packages run on musl
-and glibc alike.
+The planned distribution uses platform packages containing the GitHub release binaries. Keep npm's optional
+dependencies enabled, since the launcher needs the package matching your operating system and architecture.
+Linux binaries are statically linked and work with both musl and glibc.
 
 ## Prebuilt binaries
 
 Download an archive file from [the releases page][releases] for your platform, unarchive it and put the executable file to a
 directory in `$PATH`.
 
-Prebuilt binaries are built at each releases by CI for the following OS and arch:
+Release archives are available for:
 
 - macOS (x86_64, arm64)
-- Linux (i386, x86_64, arm32, arm64)
+- Linux (i386, x86_64, ARMv6-compatible 32-bit ARM, arm64)
 - Windows (i386, x86_64, arm64)
 - FreeBSD (i386, x86_64)
 
-Note that the following targets are not tested since GitHub Actions doesn't support them:
+The release matrix builds all these targets, but native CI tests do not cover:
 
-- Linux i386, arm32
+- Linux i386, 32-bit ARM
 - Windows i386
 - FreeBSD i386, x86_64
 
@@ -160,8 +146,7 @@ tar xf actionlint_1.14.0_linux_amd64.tar.gz
 ./actionlint -version
 ```
 
-Optionally you can verify the [attestation][attestations] of the downloaded artifact. This is highly recommended in terms of
-security. Note that the attestation support was introduced since actionlint v1.7.11.
+Verify the downloaded archive's [build provenance attestation][attestations] against this repository:
 
 ```sh
 gh attestation verify -R kjanat/actionlint actionlint_1.14.0_linux_amd64.tar.gz
@@ -172,82 +157,85 @@ gh attestation verify -R kjanat/actionlint actionlint_1.14.0_linux_amd64.tar.gz
 ## Download script
 
 To install `actionlint` executable with one command, [the download script](../scripts/download-actionlint.bash) is available.
-It downloads the latest version of actionlint (`actionlint.exe` on Windows and `actionlint` on other OSes) to the current
-directory automatically. This is a recommended way if you install actionlint in some shell script.
+It downloads `actionlint.exe` on Windows and `actionlint` on other supported platforms. Pass `latest` to resolve the
+newest release, or omit the argument to use the default version recorded in the script:
 
 ```sh
-bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash)
+bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) latest
 ```
 
 When you need to install specific version of actionlint, please give the version to the 1st command line argument. The following
 example installs v1.14.0.
 
 ```sh
-bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) 1.14.0
+bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) 1.14.0
 ```
 
 This script downloads `actionlint` (or `actionlint.exe` on Windows) binary to the current working directory. When you need to put
 the downloaded binary to some other directory, please give the directory path to the 2nd command line argument. The following
-example installs the latest version to `/usr/bin`.
+example installs the latest version to `~/.local/bin`. The destination must already exist and be on your `PATH`:
 
 ```sh
-bash <(curl https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) latest /usr/bin
+mkdir -p "$HOME/.local/bin"
+bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) latest "$HOME/.local/bin"
 ```
+
+The script verifies the archive's attestation when an authenticated `gh` command is available; otherwise it reports
+that attestation verification was skipped. It extracts only the executable, so use the complete release archive if you
+also want the manpage and documentation.
 
 For the usage of actionlint on GitHub Actions, see [the usage document](usage.md#on-github-actions).
 
 ## Docker image
 
-See [the usage document](./usage.md#docker) to know how to install and use an official actionlint Docker image.
+[![Docker Image Version][docker-badge]][dockerhub]
+
+The fork publishes CLI images as `ghcr.io/kjanat/actionlint` and `docker.io/kjanat/actionlint`. See
+[Docker usage](usage.md#docker) for running the linter with a mounted repository.
 
 ## Cross-platform version managers
 
 ### asdf
 
-You can install actionlint with the [asdf version manager][asdf] using the [asdf-actionlint][asdf-plugin] plugin, which
-automates the process of installing (and switching between) various versions of GitHub release binaries. With asdf already
-installed, run these commands to install actionlint:
-
-```bash
-# Add actionlint plugin
-asdf plugin add actionlint
-
-# Show all installable versions
-asdf list-all actionlint
-
-# Install specific version
-asdf install actionlint latest
-
-# Set a version globally (on your ~/.tool-versions file)
-asdf global actionlint latest
-```
+The [asdf-actionlint plugin][asdf-plugin] downloads upstream releases. This fork does not currently provide an asdf
+plugin. Use mise's GitHub backend or a release archive instead.
 
 ### mise
 
-You can install actionlint with the [mise-en-place][mise] which automates the process of installing (and switching
-between) various versions of GitHub release binaries. With mise already installed, run these commands to install
-actionlint:
+Use [mise's GitHub backend][mise-github] with this repository's full name. The short `actionlint` tool name resolves to
+upstream packages in mise's registry.
 
 ```bash
 # Show all installable versions
-mise ls-remote actionlint
+mise ls-remote github:kjanat/actionlint
 
-# Install specific version
-mise install actionlint@latest
+# Install the latest release
+mise install github:kjanat/actionlint@latest
 
 # Set a version globally (on your ~/.config/mise/config.toml file)
-mise use -g actionlint@latest
+mise use -g github:kjanat/actionlint@latest
+```
+
+For a project-local selection, put this in `mise.toml` and run `mise install`:
+
+```toml
+[tools]
+"github:kjanat/actionlint" = "latest"
 ```
 
 ## Build from source
 
-Recent [Go][Go] toolchain is necessary to build actionlint from source. Last two major versions of Go are supported.
+[![Go Module Version][go-module-badge]][go-module]
+
+Use a [Go][Go] toolchain compatible with the revision's [`go.mod`](../go.mod). Its `go` directive specifies the minimum
+Go version and its `toolchain` directive specifies the preferred toolchain; Go's automatic toolchain selection may
+download a newer compiler. No Go toolchain is needed when using prebuilt binaries.
 
 ```sh
 # Install the latest stable version
 go install actionlint.kjanat.dev/cmd/actionlint@latest
 
-# Install the head of the main branch
+# Install the head of the master branch
 go install actionlint.kjanat.dev/cmd/actionlint@master
 ```
 
@@ -258,20 +246,32 @@ go install actionlint.kjanat.dev/cmd/actionlint@master
 [formula]: https://formulae.brew.sh/formula/actionlint
 [homebrew]: https://brew.sh/
 [releases]: https://github.com/kjanat/actionlint/releases
+[release-badge]: https://img.shields.io/github/v/release/kjanat/actionlint
 [gh]: https://docs.github.com/en/github-cli/github-cli/about-github-cli
 [attestations]: https://docs.github.com/en/actions/concepts/security/artifact-attestations
-[Go]: https://golang.org/
-[asdf]: https://asdf-vm.com/
+[Go]: https://go.dev/
+[go-module]: https://pkg.go.dev/actionlint.kjanat.dev
+[go-module-badge]: https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fproxy.golang.org%2Factionlint.kjanat.dev%2F%40latest&query=%24.Version&label=Go%20module
 [asdf-plugin]: https://github.com/crazy-matt/asdf-actionlint
 [chocolatey]: https://community.chocolatey.org/packages/actionlint
+[docker-badge]: https://img.shields.io/docker/v/kjanat/actionlint
+[dockerhub]: https://hub.docker.com/r/kjanat/actionlint
 [npm-package]: https://www.npmjs.com/package/@kjanat/actionlint
+[npm-badge]: https://img.shields.io/npm/v/%40kjanat%2Factionlint
 [upstream]: https://github.com/rhysd/actionlint
 [scoop]: https://scoop.sh/#/apps?q=actionlint&s=0&d=1&o=true
+[scoop-bucket]: https://github.com/kjanat/scoop-bucket/blob/master/bucket/actionlint.json
+[scoop-badge]: https://img.shields.io/scoop/v/actionlint?bucket=https%3A%2F%2Fgithub.com%2Fkjanat%2Fscoop-bucket
 [winget]: https://github.com/microsoft/winget-pkgs/tree/master/manifests/r/rhysd/actionlint
-[actionlint-kjanat-bin]: https://aur.archlinux.org/packages/actionlint-kjanat-bin
+[winget-submission]: https://github.com/microsoft/winget-pkgs/pull/430563
+[winget-badge]: https://img.shields.io/winget/v/kjanat.actionlint
 [actionlint-kjanat-git]: https://aur.archlinux.org/packages/actionlint-kjanat-git
+[actionlint-kjanat-bin]: https://aur.archlinux.org/packages/actionlint-kjanat-bin
 [actionlint-kjanat]: https://aur.archlinux.org/packages/actionlint-kjanat
+[aur-git-badge]: https://img.shields.io/aur/version/actionlint-kjanat-git?label=AUR%20%28git%29
+[aur-bin-badge]: https://img.shields.io/aur/version/actionlint-kjanat-bin?label=AUR%20%28binary%29
+[aur-source-badge]: https://img.shields.io/aur/version/actionlint-kjanat?label=AUR%20%28source%29
 [aur]: https://aur.archlinux.org/
 [paru]: https://github.com/Morganamilo/paru
-[nixpkgs]: https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/analysis/actionlint/default.nix
-[mise]: https://github.com/jdx/mise
+[nixpkgs]: https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/ac/actionlint/package.nix
+[mise-github]: https://mise.jdx.dev/dev-tools/backends/github.html

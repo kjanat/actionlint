@@ -65,14 +65,11 @@ source:
   files: [man/actionlint.1]
 
 homebrew_casks:
-  - &actionlint_cask
-    name: actionlint
+  - name: actionlint
     ids: [nix]
     directory: Casks
     binaries: [actionlint]
     manpages: [man/actionlint.1]
-    # shell_parameter_format stays unset: Homebrew then appends the bare shell
-    # name, the form -completion takes.
     generate_completions_from_executable:
       executable: actionlint
       args: [-completion]
@@ -95,20 +92,12 @@ homebrew_casks:
           end
     repository:
       owner: kjanat
-      name: homebrew-actionlint
+      name: homebrew-tap
       branch: master
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     commit_author:
       name: "github-actions[bot]"
       email: "41898282+github-actions[bot]@users.noreply.github.com"
-  # One tap for every project. The per-project tap keeps receiving the cask
-  # until it is archived, since Homebrew cannot redirect a tap.
-  - <<: *actionlint_cask
-    repository:
-      owner: kjanat
-      name: homebrew-tap
-      branch: master
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
 scoops:
   - name: actionlint
     ids: [windows]
