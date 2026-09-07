@@ -25,7 +25,7 @@ runs:
   steps:
     - name: Install the changelog package
       shell: bash
-      run: npm install --no-save --package-lock=false --ignore-scripts --workspaces=false @kjlint/changelog-rss@latest
+      run: npm install --prefix "${RUNNER_TEMP}/actionlint-changelog" --no-save --package-lock=false --ignore-scripts @kjlint/changelog-rss@latest
     - name: Open issues for new Actions changelog entries
       id: monitor
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
@@ -34,5 +34,6 @@ runs:
         github-token: ${{ inputs.token }}
         retries: 3
         script: |
-          const { default: run } = require('@kjlint/changelog-rss/action')
+          const load = require('node:module').createRequire(`${process.env.RUNNER_TEMP}/actionlint-changelog/package.json`)
+          const { default: run } = load('@kjlint/changelog-rss/action')
           await run({ github, context, core })
