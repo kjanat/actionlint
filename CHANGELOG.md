@@ -2,6 +2,10 @@
 
 # Unreleased
 
+<a id="v1.15.1"></a>
+
+## [v1.15.1](https://github.com/kjanat/actionlint/releases/tag/v1.15.1) - 2026-09-07
+
 - Check contexts used in `${{ }}` expressions inside `runs.steps` of a composite action. The `secrets`, `vars`, and `needs` contexts are not available to composite actions; `secrets` and `vars` must be passed as action `inputs:`. This is a first step toward checking the contents of `steps:` in action metadata files. (rhysd/actionlint#46, kjanat/actionlint#124)
 
 - Respect quoted `}}` delimiters when scanning composite step expressions, avoiding false context errors for expression-like text inside strings. Cover following expressions, escaped quotes, and UTF-8 text with regression tests. (kjanat/actionlint#124)
@@ -9,6 +13,8 @@
 - Remove the GPG signing service from floating action tag updates so a signing failure cannot block publishing the digest-pinned action commit. Exact release tags remain separate from these moving aliases.
 
 - Refresh installation and release documentation for the published npm and AUR packages, pending WinGet review, the canonical Homebrew tap, and immutable releases. Update the upstream tracker with released feature versions, Go 1.26 compatibility, and the composite context checks.
+
+[Changes][v1.15.1]
 
 <a id="v1.15.0"></a>
 
@@ -2449,6 +2455,7 @@ See documentation for more details:
 
 [Changes][v1.0.0]
 
+[v1.15.1]: https://github.com/kjanat/actionlint/compare/v1.15.0...v1.15.1
 [v1.15.0]: https://github.com/kjanat/actionlint/compare/v1.14.0...v1.15.0
 [v1.14.0]: https://github.com/kjanat/actionlint/compare/v1.13.0...v1.14.0
 [v1.13.0]: https://github.com/kjanat/actionlint/compare/v1.12.0...v1.13.0
