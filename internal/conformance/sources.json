@@ -1,0 +1,26 @@
+[
+  {
+    "name": "languageservices",
+    "repository": "actions/languageservices",
+    "revision": "4043eda158e16579cc5fb1b0b07a4bce2a76f0b5",
+    "sha256": "21715cfc48f75413ff1c6f78d3771bdc6ea2aa60b2b4189000d181d51f942672"
+  },
+  {
+    "name": "runner",
+    "repository": "actions/runner",
+    "revision": "602c0085328df8cb595fc2641d69f640a11377a4",
+    "sha256": "acdc27f68728b0623e73b117b9af5e0109023547e85a81bfd177b7f4ddcf6341"
+  },
+  {
+    "name": "schemastore",
+    "repository": "SchemaStore/schemastore",
+    "revision": "7d8659ecbca26d6d6d39646ef3f0d92f5f35ded1",
+    "sha256": "eeb121d5cacf88e7a883fb0dce11d13820830b5da6b65e054b4f6e6efd582d9a"
+  },
+  {
+    "name": "yaml-test-suite",
+    "repository": "yaml/yaml-test-suite",
+    "revision": "6ad3d2c62885d82fc349026c136ef560838fdf3d",
+    "sha256": "57ac1326b1fd5628fff811696d5280231b56999c259cd04a4abf99fee9acebe1"
+  }
+]

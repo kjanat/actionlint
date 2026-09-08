@@ -53,6 +53,11 @@ comment-cop:
 t test:
 	go test $(RACE) ./...
 
+.PHONY: conformance
+conformance:
+	go run ./scripts/fetch-conformance
+	go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m .
+
 coverage.out: $(TESTS) $(SRCS) $(TESTDATA) $(TOOL)
 	go test $(RACE) -coverprofile coverage.out -covermode=atomic ./...
 

@@ -1,5 +1,6 @@
 /.github/actionlint.yaml
 /.github/actionlint.yml
+/.cache/
 /.idea
 /.playwright-mcp/
 /.worktrees/
