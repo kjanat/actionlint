@@ -75,7 +75,8 @@ paths:
     ignore: ['(?i)shellcheck reported .+']
 policy:
   require-commit-hash: true
-  require-job-timeout: {max-minutes: 60.5}
+  require-job-timeout: {min-minutes: 5, max-minutes: 60.5}
+  require-permissions: {scope: job}
   required-actions: [actions/checkout, 'github/codeql-action/*@v4*']
 `, true, true},
 		{"null settings", `
@@ -89,7 +90,7 @@ policy: null
 		{"null nested settings", `
 self-hosted-runner: {labels: null}
 paths: {'**': {ignore: null}}
-policy: {require-commit-hash: null, require-job-timeout: null, required-actions: null}
+policy: {require-commit-hash: null, require-job-timeout: null, require-permissions: null, required-actions: null}
 `, true, true},
 		{"empty lists", `
 self-hosted-runner: {labels: []}
@@ -102,6 +103,21 @@ policy: {required-actions: []}
 		{"timeout enabled", `policy: {require-job-timeout: true}`, true, true},
 		{"timeout disabled", `policy: {require-job-timeout: false}`, true, true},
 		{"timeout without maximum", `policy: {require-job-timeout: {}}`, true, true},
+		{"timeout minimum", `policy: {require-job-timeout: {min-minutes: 1.5}}`, true, true},
+		{"timeout equal bounds", `policy: {require-job-timeout: {min-minutes: 5, max-minutes: 5}}`, true, true},
+		{"timeout reversed bounds", `policy: {require-job-timeout: {min-minutes: 30, max-minutes: 5}}`, true, false},
+		{"timeout zero minimum", `policy: {require-job-timeout: {min-minutes: 0}}`, false, false},
+		{"timeout negative minimum", `policy: {require-job-timeout: {min-minutes: -1}}`, false, false},
+		{"timeout null minimum", `policy: {require-job-timeout: {min-minutes: null}}`, false, false},
+		{"permissions enabled", `policy: {require-permissions: true}`, true, true},
+		{"permissions disabled", `policy: {require-permissions: false}`, true, true},
+		{"permissions default scope", `policy: {require-permissions: {}}`, true, true},
+		{"permissions workflow scope", `policy: {require-permissions: {scope: workflow}}`, true, true},
+		{"permissions job scope", `policy: {require-permissions: {scope: job}}`, true, true},
+		{"permissions unknown scope", `policy: {require-permissions: {scope: step}}`, false, false},
+		{"permissions null scope", `policy: {require-permissions: {scope: null}}`, false, false},
+		{"permissions unknown key", `policy: {require-permissions: {level: job}}`, false, false},
+		{"permissions string", `policy: {require-permissions: 'true'}`, false, false},
 		{"commit hash disabled", `policy: {require-commit-hash: false}`, true, true},
 		{"unknown setting", `config-secret: []`, false, true},
 		{"unknown runner setting", `self-hosted-runner: {label: []}`, false, true},

@@ -46,8 +46,8 @@ selection.
 
 The schema rejects unknown keys everywhere. Runtime parsing ignores unknown keys at the top level, inside
 `self-hosted-runner`, and inside each `paths` entry. For example, `config-secret` is silently ignored. Both validators
-reject unknown keys inside `policy` and `require-job-timeout`. Go regular expression and glob syntax require additional
-validation by actionlint when it loads the configuration.
+reject unknown keys inside `policy`, `require-job-timeout`, and `require-permissions`. Go regular expression and glob syntax
+require additional validation by actionlint when it loads the configuration.
 
 ```yaml
 # Configuration related to self-hosted runner.
@@ -154,15 +154,49 @@ policy:
   require-job-timeout: true
 ```
 
-The value can also be a mapping. Its `max-minutes` key is the largest allowed number of minutes, and it must be
-greater than zero. With it, a job whose `timeout-minutes:` is larger than that number is reported as well. A value
-written with `${{ }}` is not compared because actionlint cannot read it.
+The value can also be a mapping with `min-minutes` and `max-minutes`. Either bound can be omitted, and both are inclusive.
+Each configured bound must be finite and greater than zero. The minimum must not exceed the maximum; actionlint validates
+that relationship when reading configuration because JSON Schema cannot compare these two property values.
+A value written with `${{ }}` is not compared because actionlint cannot evaluate it statically.
 
 ```yaml
 policy:
   require-job-timeout:
+    min-minutes: 5
     max-minutes: 60
 ```
+
+This configuration accepts literal timeouts from 5 through 60 minutes. `{min-minutes: 5}` requires at least 5 minutes
+without an upper bound. `{}` requires the key without limiting its value.
+
+### require-permissions
+
+This check requires an explicit `permissions:` declaration. It is disabled by default because GitHub accepts workflows
+that inherit the repository's token permissions.
+
+```yaml
+policy:
+  require-permissions: true
+```
+
+`true`, `{}`, and `{scope: workflow}` require a workflow-level declaration. `permissions: {}` satisfies the policy and
+provides an empty baseline; grant the scopes each job needs on that job. A workflow with permissions declared only on
+its jobs still needs the workflow-level declaration under this policy.
+
+For a declaration on every job, use job scope:
+
+```yaml
+policy:
+  require-permissions: { scope: job }
+```
+
+In this mode, a workflow-level declaration does not satisfy the check. Jobs calling reusable workflows are included:
+GitHub permits `permissions:` on those calls, and the called workflow cannot elevate the permissions it receives.
+The existing [reusable workflow permission check](checks.md#check-permissions-of-workflow-call) checks known caller/callee grants.
+
+Either mode accepts an empty mapping, named scopes, `read-all`, or `write-all`. This policy checks whether the declaration
+exists; it does not determine least privilege or require an empty workflow baseline. `assume-default-permissions` does
+not disable the policy or change its diagnostics. Set `false` to disable it, or omit the key or use `null` to leave it unset.
 
 ### required-actions
 

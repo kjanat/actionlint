@@ -605,6 +605,9 @@ func (l *Linter) check(
 		if p := cfg.RequiresJobTimeout(); p.Enabled() {
 			rules = append(rules, NewRuleRequireJobTimeout(p))
 		}
+		if p := cfg.RequiresPermissions(); p.Enabled() {
+			rules = append(rules, NewRuleRequirePermissions(p))
+		}
 		if len(cfg.RequiredActions()) > 0 {
 			rules = append(rules, NewRuleRequiredActions())
 		}

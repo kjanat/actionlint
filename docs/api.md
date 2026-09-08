@@ -21,6 +21,10 @@ Followings are unexhaustive list of interesting APIs.
   program, please use this struct.
 - `Project` and `Projects` detect a project (Git repository) in a given directory path and find configuration in it.
 - `Config` represents structure of `actionlint.yaml` config file. It can be decoded by [yaml/go-yaml][go-yaml] library.
+- `RequireJobTimeout(max)` enables the timeout policy with an optional maximum. `RequireJobTimeoutRange(min, max)` also
+  supports a minimum; zero omits a bound, and invalid ranges return an error. Assign the result to `Config.Policy.RequireJobTimeout`.
+- `RequirePermissions("workflow")` or `RequirePermissions("job")` enables the permissions policy at that scope; invalid scopes
+  return an error. Assign the result to `Config.Policy.RequirePermissions`. A nil policy is unset; a zero-value policy explicitly disables it.
 - `Workflow`, `Job`, `Step`, ... are nodes of workflow syntax tree. `Workflow` is a root node.
 - `Parse()` parses given contents into a workflow syntax tree. It tries to find syntax errors as much as possible and
   returns found errors as slice.
