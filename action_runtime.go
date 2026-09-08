@@ -9,7 +9,7 @@ import (
 )
 
 // ActionRuntime describes a JavaScript runtime accepted by the runner's action metadata parser.
-// Removed refers to the bundled executable, not whether runs.using is valid syntax.
+// Removed means the runner no longer bundles its executable; the metadata value remains accepted.
 type ActionRuntime struct {
 	Removed        bool
 	Deprecated     bool

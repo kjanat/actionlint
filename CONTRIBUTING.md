@@ -303,15 +303,16 @@ legacy manifest parsers for accepted `runs.using` values, `src/Misc/externals.sh
 at `runs.using`; it cannot supply the accepted versions or their lifecycle.
 
 The generator resolves the newest commit touching those inputs and downloads all of them from jsDelivr at that
-revision. The generated file records each source. Parser disagreement, missing packaging data, or an unrecognized
-migration declaration fails generation before replacing the output. Review upstream source changes when that happens.
+revision. The generated header links that revision; `runtimeSourcePaths` in the generator lists the files. Parser
+disagreement, missing packaging data, or an unrecognized migration declaration fails generation before replacing the
+output. Review upstream source changes when that happens.
 No upstream source files are vendored, and ordinary builds and lint runs do not fetch anything.
 
 `go generate` refreshes runtime data before popular-action metadata; weekly `Upkeep` includes both in its PR.
-Popular actions retain their JavaScript runtime alongside input/output metadata so deprecation diagnostics do not
-disable other checks. A scheduled removal date is informational: the generator classifies removal from packaging
-evidence, not the local clock or the general Node.js release calendar. GitHub can override migration dates and runtime
-selection through server-side flags, so this data describes the upstream runner rather than an individual installation.
+Popular actions retain their JavaScript runtime alongside input/output metadata. Input/output checks continue when
+the runtime is deprecated. The generator identifies removed runtimes from the runner's packaging sources and includes
+scheduled removal dates in diagnostics. This data describes the upstream runner. Individual installations can use
+different migration dates and runtimes through GitHub's server-side flags.
 
 ### Maintain `popular_actions.go`
 
