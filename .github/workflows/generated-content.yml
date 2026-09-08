@@ -10,6 +10,8 @@ on:
       - actionlint.schema.json
       - action_metadata.go
       - action_metadata_availability.go
+      - action_runtime.go
+      - action_runtimes.go
       - all_webhooks.go
       - availability.go
       - popular_actions.go
@@ -40,4 +42,4 @@ jobs:
       - run: go generate
         env: { GH_TOKEN: "${{ github.token }}" }
       - run: dprint fmt actionlint.schema.json
-      - run: git diff --exit-code -- popular_actions.go all_webhooks.go availability.go action_metadata_availability.go actionlint.schema.json
+      - run: git diff --exit-code -- popular_actions.go all_webhooks.go availability.go action_metadata_availability.go action_runtimes.go actionlint.schema.json

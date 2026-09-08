@@ -565,7 +565,7 @@ jobs:
       # ERROR: The step is not run yet at this point
       - run: echo ${{ steps.cache.outputs.cache-hit }}
       # actions/cache sets cache-hit output
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         id: cache
         with:
           key: ${{ hashFiles('**/*.lock') }}
@@ -589,7 +589,7 @@ test.yaml:18:23: property "cache_hit" is not defined in object type {cache-hit: 
    |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqkjsFKxDAQhu99iv8grBbaXjzNyZOvIdk4OLElCc6MIsu+uyRd6lUwlzDzfT//lEyorjIM7+WsNADGau0HPjzr1AQ/ezafttBYR2pcdbeAqZkEjlJwd7nscI4hCs/FrbrdpkmS4Xo9Yq6shBAtlaxLV54+H28YSK+Evjw2X8mEjglY+Zt6pQSV57Sx3p/GcRnnrcT19PDb1V4NJoR5qSGu4Y31v9f/Mfayx34CAAD//4ltbNw=)
+[Playground](https://kjanat.github.io/actionlint/#eNqkjsFKxDAQhu99iv8grBba3jzMyZOvIdk4OLElCc6MIsu+uyRd6lUwlzDzfT//lEyorjIM7+WsNADGau0HPjzr1AQ/ezafttBYR2pcdbeAqZkEjlJwd7nscI4hCs/FrbrdpkmS4Xo9Yq6shBAtlaxLV54+H28YSK+Evjw2X8mEjglY+Zt6pQSV57Sx3p/GcRnnrcT19PDb1V4NJoR5qSGu4Y31v9f/Mfayx34CAAD//4sbbN4=)
 
 In the above example, [actions/cache][actions-cache] action sets `cache-hit` output so that the following steps can know
 whether the cache was hit or not. At line 8, the cache action is not run yet. So `cache` property does not exist in the
@@ -609,7 +609,7 @@ outputs:
     description: some value returned from this action
 
 runs:
-  using: "node20"
+  using: "node24"
   main: "index.js"
 ```
 
@@ -1157,12 +1157,12 @@ jobs:
       - name: Print pull request title
         # ERROR: Using the potentially untrusted input can cause script injection
         run: echo '${{ github.event.pull_request.title }}'
-      - uses: actions/stale@v9
+      - uses: actions/stale@v10
         with:
           repo-token: ${{ secrets.TOKEN }}
           # This is OK because action input is not evaluated by shell
           stale-pr-message: ${{ github.event.pull_request.title }} was closed
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v9
         with:
           # ERROR: Using the potentially untrusted input can cause script injection
           script: console.log('${{ github.event.head_commit.author.name }}')
@@ -1191,7 +1191,7 @@ test.yaml:22:31: object filter extracts potentially untrusted properties "github
    |                               ^~~~~~~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqEkUFr20AQhe/+FQ9RsFMq9Vi6oZBDS2kDSSC5hRDW64l369WOujPrUIL/e1nJmLjF5CRG8+Z7T0/J9mRwR6IzTgZDifEx0+9SX8x+8VLMDFASrU8glyRtFZZlSVraaOtuXInSIJMKaDGBb3JIOlKxp0KDRtrLRqABOc+Yv3t5wTqoL8uOtpS0ex2mG8+w280PDkVIDKzTwEk+itpIF9vPB/JzUG8OE5Bp4FZ5Q8mgWgm5TCrd3fXltyvsdq+kI6sdctuTiF3TdPB2NjxbgYsstDqRcmK04nIY9GL76WTaSWHgOAlH6iKvF/835MmuHh33fdDOFvWcu9p7rensnz/xnRRVSUnlVPvKP2+vrxZHFu+7Ja/+nB01PxG/MoR7Uh/SeswP58lt6iSbMBybhCfco6kmjpPakGRxus/9p4y1fsD8/vbyx83DvGZo8AWN5kINHs6hntIUv6mOzTmewt8AAAD//6j/5EY=)
+[Playground](https://kjanat.github.io/actionlint/#eNqEkUFr20AQhe/+FQ9RsFMqtT12QyGHltIGkkByCyGs1xPv1qsddWfWoQT/97KSMXGL6UmM5s33np6S7cngjkRnnAyGEuNjpl+lvpj95KWYGaAkWp9ALknaKizLkrS00dbduBKlQSYV0GIC3+SQdKRiT4UGjbSXjUADcp4xf/PygnVQX5YdbSlp9zpMN55ht5sfHIqQGFingZO8F7WRLrYfPxzQz0G9OUxApoFb5Q0lg+ol5DKpdHfXl1+vsNu9ko6wdshtTyJ2TdPB/8Ph2QpcZKHViZgToxWXw6AX208n004KA8dJOFIXeb34tyJPdvXouO+Ddrao59zV4mtPZ3/9im+kqEpKKqfqV/5xe321OLJ42y159fvsqPqJ+IUh3JP6kNZjfjhPblMn2YTh2CQ84R5NNXGc1IYki9N97j9lrPUd5ve3l99vHuY1Q4PPaDQXavBwDvWUpvhNdWzO8RT+BAAA//8/bORw)
 
 Since `${{ }}` placeholders are evaluated and replaced directly by GitHub Actions runtime, you need to use them carefully in
 inline scripts at `run:`. For example, if we have step as follows,
@@ -1946,7 +1946,7 @@ inputs:
     required: false
 
 runs:
-  using: "node20"
+  using: "node24"
   main: "index.js"
 ```
 
@@ -2001,7 +2001,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           keys: |
             ${{ hashFiles('**/*.lock') }}
@@ -2013,19 +2013,19 @@ jobs:
 Output:
 
 ```console
-test.yaml:7:15: missing input "key" which is required by action "actions/cache@v4". all required inputs are "key", "path" [action]
+test.yaml:7:15: missing input "key" which is required by action "actions/cache@v6". all required inputs are "key", "path" [action]
   |
-7 |       - uses: actions/cache@v4
+7 |       - uses: actions/cache@v6
   |               ^~~~~~~~~~~~~~~~
-test.yaml:9:11: input "keys" is not defined in action "actions/cache@v4". available inputs are "enableCrossOsArchive", "fail-on-cache-miss", "key", "lookup-only", "path", "restore-keys", "save-always", "upload-chunk-size" [action]
+test.yaml:9:11: input "keys" is not defined in action "actions/cache@v6". available inputs are "enableCrossOsArchive", "fail-on-cache-miss", "key", "lookup-only", "path", "restore-keys", "save-always", "upload-chunk-size" [action]
   |
 9 |           keys: |
   |           ^~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqEjrHKwkAQhPs8xRQ/5DeQpLG6ysr32ByLFy/eHdlbRWLeXRIliI3VsvN9MBODQVJxRXGOnZgCyCx5ucCoQepF0E5D1nqgha1IMid5WUANFRYDsrmPQVpL1vHhun9j4NZnZ7YP8HwXg8dHAvxNExyJO/YDy39ZVW3VDNH6cod5/mmuld9qouwMmjaR9XRi2eaOGgwu5PkZAAD///tlRBU=)
+[Playground](https://kjanat.github.io/actionlint/#eNqEjrHKwkAQhPs8xRQ/5DeQpLO4ysr32ByLFy/eHdlbRWLeXRIliI3VsvN9MBODQVJxRXGOnZgCyCx5ucCoQepF0E5D1nqgha1IMid5WUANFRYDsrmPQVpL1vHhun9j4NZnZ7YP8HwXg8dHAvxNExyJO/YDy39ZVW3VDNH6cod5/mmuld9qouwMmjaR9XRi2eaOGgwu5PkZAAD///yrRBc=)
 
-actionlint checks inputs of many popular actions such as `actions/checkout@v4`. It checks
+actionlint checks inputs of many popular actions such as `actions/checkout@v7`. It checks
 
 - some input is required by the action but it is not set at `with:`
 - input set at `with:` is not defined in the action (this commonly occurs by a typo)
@@ -2033,8 +2033,8 @@ actionlint checks inputs of many popular actions such as `actions/checkout@v4`. 
 this is done by checking `with:` section items with a small database collected at building `actionlint` binary. actionlint
 can check popular actions without fetching any `action.yml` of the actions from the remote so that it can run efficiently.
 
-Note that it only supports the case of specifying major versions like `actions/checkout@v4`. Fixing version of action like
-`actions/checkout@v4.0.1` and using the HEAD of action like `actions/checkout@main` are not supported for now.
+Note that it only supports the case of specifying major versions like `actions/checkout@v7`. Fixing version of action like
+`actions/checkout@v7.0.1` and using the HEAD of action like `actions/checkout@main` are not supported for now.
 
 So far, actionlint supports more than 100 popular actions The data set is embedded at [`popular_actions.go`](../popular_actions.go)
 and were automatically collected by [a script][generate-popular-actions]. If you want more checks for other actions, please
@@ -2060,7 +2060,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:8:15: the runner of "actions/checkout@v3" action is too old to run on GitHub Actions. update the action's version to fix this issue [action]
+test.yaml:8:15: the runtime or service used by "actions/checkout@v3" action is retired on GitHub.com. update the action's version to fix this issue [action]
   |
 8 |       - uses: actions/checkout@v3
   |               ^~~~~~~~~~~~~~~~~~~
@@ -2069,11 +2069,12 @@ test.yaml:8:15: the runner of "actions/checkout@v3" action is too old to run on 
 [Playground](https://kjanat.github.io/actionlint/#eNokyjEOxCAMRNGeU8wF0BbbUe1VAFlik8hGGTvnj0iqX/xnWjCDI6XNGksCXOirwBnKvEC0UI981PWeRZfJVwEZQWFB7f435acP6buF/67vHQAA//90iR3O)
 
 In addition to the checks for inputs of actions described in [the previous section](#check-popular-action-inputs), actionlint
-reports an error when a popular action is 'outdated'. An action is outdated when the runner used by the action is no longer
-supported by GitHub Actions runtime. For example, `node12` is no longer available so any actions can not use `node12` runner.
+reports an error when a popular action declares a deprecated or removed runtime, or uses a known retired service.
+Node 20 deprecation is reported while its metadata remains available for input and output checks. Local JavaScript
+actions receive the same runtime lifecycle checks. Runtime metadata is generated from GitHub's runner source.
 
-Note that this check doesn't report that the action version is up-to-date. For example, even if you use `actions/checkout@v4` and
-newer version `actions/checkout@v5` is available, actionlint reports no error as long as `actions/checkout@v4` is not outdated.
+This check does not require the newest release of an action. An older release remains accepted if it uses a current
+runtime and service. SHA references whose metadata is absent from the popular-action data set are not resolved online.
 If you want to keep actions used by your workflows up-to-date, consider to use [Dependabot][dependabot-doc].
 
 <a id="check-shell-names"></a>
@@ -3161,7 +3162,7 @@ test.yaml:8:15: incorrect color "gray-white" at branding.icon in metadata of "My
   |
 8 |       - uses: ./.github/actions/my-invalid-action
   |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:8:15: invalid runner name "node16" at runs.using in "My action" action defined at "/path/to/repo/.github/actions/my-invalid-action". valid runners are "composite", "docker", "node20", and "node24". see https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs [action]
+test.yaml:8:15: runtime "node16" is no longer bundled with current GitHub Actions runners. update runs.using in local action "My action" to a current runtime [action]
   |
 8 |       - uses: ./.github/actions/my-invalid-action
   |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3182,7 +3183,11 @@ All actions require a metadata file `action.yml` or `action.yaml`. The syntax is
 actionlint checks metadata files used in workflows and reports errors when they are not following the syntax.
 
 - `name:`, `description:`, `runs:` sections are required
-- Runner name at `using:` is one of `composite`, `docker`, `node20`, or `node24`
+- Runner name at `using:` is `composite`, `docker`, or a JavaScript runtime accepted by GitHub's manifest parser.
+  The generated runtime table currently includes `node12`, `node16`, `node20`, and `node24`. Accepted metadata syntax
+  is separate from lifecycle: `node12` and `node16` are no longer bundled, `node20` is deprecated, and `node24` is current.
+  GitHub can execute a legacy declaration on a newer runtime. `node22` is a valid Node.js release but is not accepted
+  as an action's `runs.using` value. The check does not infer action runtime support from Node.js release numbers.
 - Keys under `runs:` section are correct. Required/Valid keys are different depending on the type of action; Docker action or
   Composite action or JavaScript action (e.g. `image:` is required for Docker action).
 - Each step in `steps:` of Composite action is a mapping the runner accepts; a script step with `run:` and `shell:`, or

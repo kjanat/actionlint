@@ -12,6 +12,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+//go:generate go run ./scripts/generate-action-metadata -runtimes
 //go:generate go run ./scripts/generate-popular-actions ./popular_actions.go
 //go:generate go run ./scripts/generate-action-metadata
 

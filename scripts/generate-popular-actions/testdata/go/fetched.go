@@ -7,6 +7,7 @@ package actionlint
 var PopularActions = map[string]*ActionMetadata{
 	"kjanat/actions-shells@v0.1.0": {
 		Name: "Actions Shells",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"doctor":   {"doctor", false, false, ""},
 			"runtimes": {"runtimes", false, false, ""},

@@ -117,11 +117,13 @@ var defaultRunnerOSCompats = map[string]runnerOSCompat{
 	"windows-2025":           compatWindows2025VS2026,
 	"windows-2025-vs2026":    compatWindows2025VS2026,
 	"windows-2022":           compatWindows2022,
-	"windows-11-arm":         compatWindows11Arm,
-	"windows-11-vs2026-arm":  compatWindows11VS2026Arm,
-	"linux":                  compatUbuntu2604 | compatUbuntu2404 | compatUbuntu2204, // Note: "linux" does not always indicate Ubuntu. It might be Fedora or Arch or ...
-	"macos":                  compatXcode270 | compatXcode270XL | compatMacOS260 | compatMacOS260Intel | compatMacOS260L | compatMacOS260XL | compatMacOS150 | compatMacOS150Intel | compatMacOS150L | compatMacOS150XL | compatMacOS140 | compatMacOS140L | compatMacOS140XL,
-	"windows":                compatWindows2025VS2026 | compatWindows2022 | compatWindows11Arm | compatWindows11VS2026Arm,
+	// The alias migrates from VS2022 to VS2026 during September 21-30, 2026.
+	// Allow both images while GitHub rolls the alias forward.
+	"windows-11-arm":        compatWindows11Arm | compatWindows11VS2026Arm,
+	"windows-11-vs2026-arm": compatWindows11VS2026Arm,
+	"linux":                 compatUbuntu2604 | compatUbuntu2404 | compatUbuntu2204, // Note: "linux" does not always indicate Ubuntu. It might be Fedora or Arch or ...
+	"macos":                 compatXcode270 | compatXcode270XL | compatMacOS260 | compatMacOS260Intel | compatMacOS260L | compatMacOS260XL | compatMacOS150 | compatMacOS150Intel | compatMacOS150L | compatMacOS150XL | compatMacOS140 | compatMacOS140L | compatMacOS140XL,
+	"windows":               compatWindows2025VS2026 | compatWindows2022 | compatWindows11Arm | compatWindows11VS2026Arm,
 }
 
 // RuleRunnerLabel is a rule to check runner label like "ubuntu-latest". There are two types of

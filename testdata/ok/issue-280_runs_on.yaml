@@ -6,26 +6,26 @@ jobs:
     runs-on:
       group: ubuntu-runners
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
   test2:
     runs-on:
       labels: x64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
   test3:
     runs-on:
       group: ubuntu-runners
       labels: x64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
   test4:
     runs-on:
       labels: [x64, self-hosted]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
   test5:
     runs-on:
       group: ubuntu-runners
       labels: [x64, self-hosted]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
