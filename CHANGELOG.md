@@ -2,6 +2,14 @@
 
 # Unreleased
 
+- Reject YAML anchor and alias names containing `+`, which GitHub Actions does not accept. (kjanat/actionlint#114)
+
+- Compare matrix scalars by YAML type and resolved value. Keep quoted numbers distinct from numbers, recognize equivalent numeric spellings, and preserve the distinction in diagnostics. (kjanat/actionlint#57)
+
+- Validate matrix exclusions against the original rows. Values added by `include` cannot satisfy an exclusion because GitHub processes them afterwards. (rhysd/actionlint#634, thanks @muzimuzhi for the report)
+
+- Place `required-actions` errors at the first job that runs its own steps when an earlier job calls a reusable workflow. (kjanat/actionlint#54)
+
 - Include and export `actionlint.schema.json` in `@kjanat/actionlint`, and export `package.json` from every platform package. (kjanat/actionlint#136)
 
 - Generate accepted JavaScript action runtimes, bundled-runtime availability, and deprecation details from GitHub's runner source. Distinguish invalid metadata values from deprecated and removed runtimes, report Node 20 deprecation for local and known popular actions, and preserve input/output validation for deprecated actions. Refresh the data through `go generate` and weekly Upkeep.

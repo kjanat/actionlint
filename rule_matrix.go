@@ -135,11 +135,11 @@ func isYAMLValueSubset(v, sub RawYAMLValue) bool {
 }
 
 func (rule *RuleMatrix) checkExclude(m *Matrix) {
-	if m.Exclude == nil || len(m.Exclude.Combinations) == 0 || (m.Include != nil && m.Include.ContainsExpression()) {
+	if m.Exclude == nil || len(m.Exclude.Combinations) == 0 {
 		return
 	}
 
-	if len(m.Rows) == 0 && (m.Include == nil || len(m.Include.Combinations) == 0) {
+	if len(m.Rows) == 0 {
 		rule.Error(m.Pos, "\"exclude\" section exists but no matrix variation exists")
 		return
 	}
@@ -153,24 +153,6 @@ func (rule *RuleMatrix) checkExclude(m *Matrix) {
 			continue
 		}
 		rows[n] = r.Values
-	}
-
-	if m.Include != nil {
-		for _, c := range m.Include.Combinations {
-		Include:
-			for n, a := range c.Assigns {
-				if _, ok := ignored[n]; ok {
-					continue
-				}
-				row := rows[n]
-				for _, v := range row {
-					if v.Equals(a.Value) {
-						continue Include
-					}
-				}
-				rows[n] = append(row, a.Value)
-			}
-		}
 	}
 
 	for _, c := range m.Exclude.Combinations {

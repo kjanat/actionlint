@@ -40,13 +40,11 @@ func matchGlob(pattern, value string) bool {
 	return err == nil && ok
 }
 
-// firstJobPos returns the position of the job which appears first in the workflow source. Jobs are
-// stored in a map, so the smallest position is picked to keep the reported position stable across
-// runs. It returns nil when the workflow has no job.
-func firstJobPos(w *Workflow) *Pos {
+// Jobs are stored in a map. Source order keeps diagnostics stable across runs.
+func firstStepsJobPos(w *Workflow) *Pos {
 	var ret *Pos
 	for _, j := range w.Jobs {
-		if j == nil || j.Pos == nil {
+		if j == nil || j.Pos == nil || j.WorkflowCall != nil {
 			continue
 		}
 		if ret == nil || j.Pos.IsBefore(ret) {
@@ -54,18 +52,6 @@ func firstJobPos(w *Workflow) *Pos {
 		}
 	}
 	return ret
-}
-
-// runsOwnSteps reports whether at least one job of the workflow runs steps written in this file. A
-// job which calls a reusable workflow runs the steps of the callee, and those are not part of this
-// workflow.
-func runsOwnSteps(w *Workflow) bool {
-	for _, j := range w.Jobs {
-		if j != nil && j.WorkflowCall == nil {
-			return true
-		}
-	}
-	return false
 }
 
 // RuleRequiredActions is a rule to check that a workflow uses the actions which the repository
@@ -115,10 +101,10 @@ func (rule *RuleRequiredActions) VisitStep(n *Step) error {
 
 // VisitWorkflowPost is callback when visiting Workflow node after visiting its children.
 func (rule *RuleRequiredActions) VisitWorkflowPost(n *Workflow) error {
-	if rule.unknown || !runsOwnSteps(n) {
+	if rule.unknown {
 		return nil
 	}
-	pos := firstJobPos(n)
+	pos := firstStepsJobPos(n)
 	if pos == nil {
 		return nil
 	}

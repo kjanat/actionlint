@@ -109,7 +109,7 @@ jobs:
 	}
 }
 
-func TestRuleRequiredActionsFirstJobPos(t *testing.T) {
+func TestRuleRequiredActionsFirstStepsJobPos(t *testing.T) {
 	w := &Workflow{Jobs: map[string]*Job{}}
 	for i := range 8 {
 		id := string(rune('a' + i))
@@ -118,9 +118,13 @@ func TestRuleRequiredActionsFirstJobPos(t *testing.T) {
 			Pos: &Pos{Line: 2 + i, Col: 3},
 		}
 	}
+	w.Jobs["call"] = &Job{Pos: &Pos{Line: 1, Col: 1}, WorkflowCall: &WorkflowCall{}}
+	w.Jobs["nil"] = nil
+	w.Jobs["no-position"] = &Job{}
+	w.Jobs["same-line"] = &Job{Pos: &Pos{Line: 2, Col: 4}}
 
 	for range 100 {
-		p := firstJobPos(w)
+		p := firstStepsJobPos(w)
 		if p == nil {
 			t.Fatal("no position was returned")
 		}
@@ -129,7 +133,7 @@ func TestRuleRequiredActionsFirstJobPos(t *testing.T) {
 		}
 	}
 
-	if p := firstJobPos(&Workflow{}); p != nil {
+	if p := firstStepsJobPos(&Workflow{}); p != nil {
 		t.Fatalf("wanted nil for a workflow without a job but got %s", p)
 	}
 }
@@ -227,6 +231,36 @@ jobs:
 	errs := runRuleRequiredActions(t, src, []string{"actions/checkout"})
 	if len(errs) > 0 {
 		t.Fatalf("wanted no error for a workflow which runs no step of its own but got %v", errs)
+	}
+}
+
+func TestRuleRequiredActionsMixedJobs(t *testing.T) {
+	src := `on: push
+jobs:
+  call:
+    uses: ./.github/workflows/reusable.yaml
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+  later:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo test
+`
+	for range 100 {
+		errs := runRuleRequiredActions(t, src, []string{"actions/checkout@v7", "my-org/scan"})
+		if len(errs) != 2 {
+			t.Fatalf("wanted two errors, got %v", errs)
+		}
+		for _, err := range errs {
+			if err.Line != 5 || err.Column != 3 {
+				t.Fatalf("wanted line:5,col:3, got %v", err)
+			}
+		}
+		if !strings.Contains(errs[0].Message, `"actions/checkout@v4" at line:8,col:15`) {
+			t.Fatal("missing the location of the mismatched use:", errs[0])
+		}
 	}
 }
 
