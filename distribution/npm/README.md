@@ -18,11 +18,15 @@ binary through npm:
 
 - `@kjanat/actionlint` contains no binary. It declares every platform package in
   `optionalDependencies`, pinned to the exact same version, and its `bin` entry
-  is a small launcher.
+  is a small launcher. It also includes the manual and configuration schema.
 - `@kjanat-actionlint/actionlint-<os>-<cpu>` contains one executable and declares `os` and
   `cpu`, so a package manager downloads only the one matching the host. The
   platform packages sit in their own npm organisation, `kjanat-actionlint`, so
   eleven binary-only packages nobody installs by hand stay out of `@kjanat/*`.
+
+Every package exports `./package.json`. The facade exports its configuration schema as `./schema`, pointing to
+`./actionlint.schema.json`, copied from the repository checkout during packaging. Published builds use the schema from
+the release tag.
 
 At run time the launcher looks up `actionlint-<process.platform>-<process.arch>`
 among the declared platform packages, resolves the match, and execs the binary inside.
@@ -69,7 +73,7 @@ npm run test:npm-facade
 
 The builder has its own tests, which assemble synthetic release archives, run
 the whole pipeline, and assert each package ends up with its own binary and the
-facade with the manual:
+facade with the manual and the workspace's schema:
 
 ```bash
 cd .github/actions/npm-packages && go test ./...
@@ -99,8 +103,8 @@ can pass `tag`, `dist-tag`, and `dry-run`; the defaults publish under `latest`
 for stable releases and `next` for prereleases.
 
 The build job assembles the tree, packs every package with `npm pack`, and
-smoke-tests the launcher against a real binary, unpacked from the tarball, so
-anything the `files` list omits fails in CI. The packed tarballs are the ones
+smoke-tests the launcher against a real binary, unpacked from the tarball. It also loads every package's exported
+manifest and the facade's exported schema, comparing the schema with the source file. The packed tarballs are the ones
 published, making the tested bytes the published bytes.
 
 Publishing is one job per package, each recording its own deployment with that

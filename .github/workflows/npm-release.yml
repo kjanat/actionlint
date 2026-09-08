@@ -125,9 +125,16 @@ jobs:
             local tarball="$1" dest="$2"
             mkdir -p "${dest}"
             tar -xzf "${tarball}" -C "${dest}" --strip-components=1
+            local name
+            name="$(jq -r .name "${dest}/package.json")"
+            (cd "${smoke}" && node -e 'require(process.argv[1] + "/package.json")' "${name}")
           }
           unpack distribution/npm/tarballs/facade.tgz "${facade}"
-          unpack distribution/npm/tarballs/linux-x64.tgz "${scope}/actionlint-linux-x64"
+          for pkg in $(jq -r '.targets[].pkg' distribution/npm/targets.json); do
+            unpack "distribution/npm/tarballs/${pkg}.tgz" "${scope}/actionlint-${pkg}"
+          done
+          cmp actionlint.schema.json "${facade}/actionlint.schema.json"
+          (cd "${smoke}" && node -e 'require("@kjanat/actionlint/schema")')
           got="$(node "${facade}/bin/actionlint.mjs" -version | head -1)"
           echo "launcher reported: ${got}"
           case "${got}" in

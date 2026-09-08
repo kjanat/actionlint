@@ -49,6 +49,49 @@ v11; from v12 it no longer does, so on a current npm read it directly:
 man ./node_modules/@kjanat/actionlint/man/actionlint.1
 ```
 
+### Configuration schema
+
+The package includes `actionlint.schema.json` for completion and validation in configuration editors. For a config at
+`.github/actionlint.yaml`, use the installed copy with:
+
+```yaml
+# yaml-language-server: $schema=../node_modules/@kjanat/actionlint/actionlint.schema.json
+```
+
+<details>
+<summary>CDN URLs for the JSON schema</summary>
+
+These URLs require an npm release containing the schema:
+
+jsDelivr:
+
+```text
+https://cdn.jsdelivr.net/npm/@kjanat/actionlint/actionlint.schema.json
+```
+
+esm.sh:
+
+```text
+https://esm.sh/@kjanat/actionlint/actionlint.schema.json
+```
+
+UNPKG:
+
+```text
+https://unpkg.com/@kjanat/actionlint/actionlint.schema.json
+```
+
+For example, use jsDelivr in an editor's schema directive:
+
+```yaml
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/@kjanat/actionlint/actionlint.schema.json
+```
+
+Unversioned URLs follow the latest npm release. Insert `@<version>` after `@kjanat/actionlint` to select the schema for
+a specific release that includes it.
+
+</details>
+
 ### ShellCheck and Pyflakes
 
 `actionlint` also checks the shell scripts inside `run:` steps with [ShellCheck][shellcheck], and Python scripts with

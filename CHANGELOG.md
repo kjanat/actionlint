@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Include and export `actionlint.schema.json` in `@kjanat/actionlint`, and export `package.json` from every platform package. (kjanat/actionlint#136)
+
 - Generate accepted JavaScript action runtimes, bundled-runtime availability, and deprecation details from GitHub's runner source. Distinguish invalid metadata values from deprecated and removed runtimes, report Node 20 deprecation for local and known popular actions, and preserve input/output validation for deprecated actions. Refresh the data through `go generate` and weekly Upkeep.
 
 - Allow the `windows-11-arm` alias to overlap `windows-11-vs2026-arm` during its announced Visual Studio 2026 migration while retaining incompatible image diagnostics. (kjanat/actionlint#126)

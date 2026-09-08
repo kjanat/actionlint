@@ -364,6 +364,9 @@ func (c *config) platformManifest(tf *targetsFile, t target, name string) ([]byt
 	if err := o.set("files", []string{"bin/"}); err != nil {
 		return nil, err
 	}
+	if err := o.set("exports", map[string]string{"./package.json": "./package.json"}); err != nil {
+		return nil, err
+	}
 	// Tells Yarn's PnP linker to keep this package unzipped on disk, since an
 	// executable has to be a real file to be spawned.
 	if err := o.set("preferUnplugged", true); err != nil {
@@ -419,6 +422,9 @@ func (c *config) buildFacade(tf *targetsFile) error {
 		}
 	}
 	if err := copyFile(filepath.Join(src, "README.md"), filepath.Join(dir, "README.md")); err != nil {
+		return err
+	}
+	if err := copyFile(filepath.Join(c.repoRoot, "actionlint.schema.json"), filepath.Join(dir, "actionlint.schema.json")); err != nil {
 		return err
 	}
 	if err := c.copyLegal(dir); err != nil {
