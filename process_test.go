@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"runtime"
 	"strings"
 	"sync/atomic" // Note: atomic.Bool was added at Go 1.19
@@ -210,46 +212,65 @@ func TestProcessInputStdin(t *testing.T) {
 	}
 }
 
-// Regression test for issue #650: concurrent runs with a stdin payload larger
-// than the kernel pipe buffer used to deadlock on darwin because the payload
-// was written to cmd.StdinPipe() before cmd.Start().
+func TestProcessStdinHelper(t *testing.T) {
+	if os.Getenv("ACTIONLINT_TEST_STDIN_HELPER") != "1" {
+		return
+	}
+	if _, err := io.Copy(os.Stdout, os.Stdin); err != nil {
+		t.Fatal(err)
+	}
+	os.Exit(0)
+}
+
+// The Linux reproducer in rhysd/actionlint#651 filled a 64 KiB pipe with one script.
+// Larger input must finish with one worker as well as concurrent workers.
 func TestProcessConcurrentStdinDoesNotDeadlock(t *testing.T) {
-	p := newConcurrentProcess(t.Context(), 5)
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ACTIONLINT_TEST_STDIN_HELPER", "1")
+	payload := strings.Repeat("0123456789abcdef", 8192)
 
-	// 64 KiB is above the default pipe buffer size on darwin and Linux so it
-	// forces the stdin copy to happen after the child has started.
-	payload := strings.Repeat("x", 64*1024)
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		cmds := make([]*externalCommand, 0, 5)
-		for range 5 {
-			cat := testSkipIfNoCommand(t, p, "cat")
-			cat.run(nil, payload, func(b []byte, err error) error {
-				if err != nil {
-					t.Errorf("cat failed: %v", err)
-					return err
+	for _, workers := range []int{1, 5} {
+		for _, combined := range []bool{false, true} {
+			t.Run(fmt.Sprintf("workers=%d/combined=%t", workers, combined), func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+				defer cancel()
+				p := newConcurrentProcess(ctx, workers)
+				cmd := &externalCommand{proc: p, exe: exe, combineOutput: combined}
+				var completed atomic.Int32
+				for range workers {
+					cmd.run([]string{"-test.run=^TestProcessStdinHelper$"}, payload, func(b []byte, err error) error {
+						if err != nil {
+							return err
+						}
+						if string(b) != payload {
+							return fmt.Errorf("stdin was not preserved: got %d bytes, want %d", len(b), len(payload))
+						}
+						completed.Add(1)
+						return nil
+					})
 				}
-				if len(b) != len(payload) {
-					t.Errorf("cat output length %d, want %d", len(b), len(payload))
+				done := make(chan error, 1)
+				go func() {
+					err := cmd.wait()
+					p.wait()
+					done <- err
+				}()
+				select {
+				case err := <-done:
+					if err != nil {
+						t.Fatal(err)
+					}
+				case <-ctx.Done():
+					t.Fatal("stdin larger than the pipe buffer did not finish")
 				}
-				return nil
+				if got := completed.Load(); got != int32(workers) {
+					t.Fatalf("completed %d commands, want %d", got, workers)
+				}
 			})
-			cmds = append(cmds, cat)
 		}
-		for _, c := range cmds {
-			if err := c.wait(); err != nil {
-				t.Errorf("cat wait failed: %v", err)
-			}
-		}
-		p.wait()
-	}()
-
-	select {
-	case <-done:
-	case <-time.After(10 * time.Second):
-		t.Fatal("concurrent stdin writes deadlocked — see issue #650")
 	}
 }
 

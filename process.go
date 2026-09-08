@@ -25,10 +25,8 @@ type cmdExecution struct {
 func (e *cmdExecution) run(ctx context.Context) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, e.cmd, e.args...)
 	cmd.Stderr = nil
-	// Set stdin via an io.Reader so that exec.Cmd pipes the bytes to the child
-	// after Start(). Writing to cmd.StdinPipe() before Start() relies on the
-	// kernel pipe buffer being large enough to absorb the whole payload, which
-	// deadlocks on darwin when multiple workers run concurrently (issue #650).
+	// Let os/exec start the reader before copying stdin. Writing the whole script
+	// before Start can fill the pipe and deadlock, even with a single worker.
 	cmd.Stdin = strings.NewReader(e.stdin)
 
 	var stdout []byte
