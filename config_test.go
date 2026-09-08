@@ -390,9 +390,12 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 	if !strings.Contains(string(b), want) {
 		t.Fatalf("wanted generated config file %q to contain %q", string(b), want)
 	}
-	want = "#  # Require \"timeout-minutes\" on every job. A mapping with \"max-minutes\" also\n#  # caps the value.\n#  require-job-timeout: true\n"
+	want = "#  # Require \"timeout-minutes\" on every job. A mapping with \"min-minutes\" and\n#  # \"max-minutes\" also sets inclusive bounds.\n#  require-job-timeout: true\n"
 	if !strings.Contains(string(b), want) {
 		t.Fatalf("wanted generated config file %q to contain %q", string(b), want)
+	}
+	if !strings.Contains(string(b), "#  require-permissions: true\n") {
+		t.Fatal("generated config omits the permissions policy")
 	}
 }
 

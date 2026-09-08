@@ -117,8 +117,8 @@
             },
             "require-job-timeout": {
               "title": "require-job-timeout",
-              "description": "Requires jobs to declare `timeout-minutes` when set to `true`.\n\nUse `{max-minutes: 60}` to also cap the timeout at 60 minutes. The maximum must be greater than zero; `{}` enables the check without a cap. Jobs calling reusable workflows are skipped.\n\nSet `false` to disable the check. Omit this key or use `null` to leave it unset; the check is disabled by default.",
-              "markdownDescription": "Requires jobs to declare `timeout-minutes` when set to `true`.\n\nUse `{max-minutes: 60}` to also cap the timeout at 60 minutes. The maximum must be greater than zero; `{}` enables the check without a cap. Jobs calling reusable workflows are skipped.\n\nSet `false` to disable the check. Omit this key or use `null` to leave it unset; the check is disabled by default.",
+              "description": "Requires jobs to declare `timeout-minutes` when set to `true`.\n\nUse `{min-minutes: 5, max-minutes: 60}` to require a timeout between 5 and 60 minutes. Either bound may be omitted. Bounds must be finite and greater than zero, and the minimum must not exceed the maximum. `{}` requires the key without bounds. Reusable workflow calls are skipped.\n\nSet `false` to disable the check. Omit this key or use `null` to leave it unset; the check is disabled by default.",
+              "markdownDescription": "Requires jobs to declare `timeout-minutes` when set to `true`.\n\nUse `{min-minutes: 5, max-minutes: 60}` to require a timeout between 5 and 60 minutes. Either bound may be omitted. Bounds must be finite and greater than zero, and the minimum must not exceed the maximum. `{}` requires the key without bounds. Reusable workflow calls are skipped.\n\nSet `false` to disable the check. Omit this key or use `null` to leave it unset; the check is disabled by default.",
               "oneOf": [
                 {
                   "oneOf": [
@@ -134,6 +134,47 @@
                           "markdownDescription": "Largest allowed job timeout in minutes.",
                           "type": "number",
                           "exclusiveMinimum": 0
+                        },
+                        "min-minutes": {
+                          "title": "min-minutes",
+                          "description": "Smallest allowed job timeout in minutes. Must not exceed max-minutes.",
+                          "markdownDescription": "Smallest allowed job timeout in minutes. Must not exceed max-minutes.",
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "require-permissions": {
+              "title": "require-permissions",
+              "description": "Requires an explicit `permissions:` declaration.\n\n`true` or `{scope: workflow}` requires a workflow-level declaration, including `permissions: {}`. `{scope: job}` requires a declaration on every job, including reusable workflow calls. `{}` enables workflow scope. This checks presence only; it does not infer the scopes a job needs.\n\nSet `false` to disable the check. Omit this key or use `null` to leave it unset; it is disabled by default.",
+              "markdownDescription": "Requires an explicit `permissions:` declaration.\n\n`true` or `{scope: workflow}` requires a workflow-level declaration, including `permissions: {}`. `{scope: job}` requires a declaration on every job, including reusable workflow calls. `{}` enables workflow scope. This checks presence only; it does not infer the scopes a job needs.\n\nSet `false` to disable the check. Omit this key or use `null` to leave it unset; it is disabled by default.",
+              "oneOf": [
+                {
+                  "oneOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "scope": {
+                          "title": "scope",
+                          "description": "Require a workflow-level declaration or a declaration on every job.",
+                          "markdownDescription": "Require a workflow-level declaration or a declaration on every job.",
+                          "default": "workflow",
+                          "type": "string",
+                          "enum": [
+                            "workflow",
+                            "job"
+                          ]
                         }
                       },
                       "additionalProperties": false

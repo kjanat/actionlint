@@ -2,6 +2,10 @@
 
 # Unreleased
 
+- Add inclusive `min-minutes` bounds to the `require-job-timeout` policy, validate minimum/maximum ranges, and expose `RequireJobTimeoutRange` in the Go API. (kjanat/actionlint#55)
+
+- Add the opt-in `require-permissions` policy for explicit workflow-level or per-job permission declarations, including reusable workflow calls. Empty permission mappings satisfy the check. (kjanat/actionlint#83; rhysd/actionlint#728)
+
 - Retry failed GitHub release requests when installing Pandoc in CI, replacing partial downloads and retaining asset verification before installation. (kjanat/actionlint#138)
 
 - Reject YAML anchor and alias names containing `+`, which GitHub Actions does not accept. (kjanat/actionlint#114)

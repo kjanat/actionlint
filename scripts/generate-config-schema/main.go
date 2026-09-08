@@ -39,7 +39,15 @@ func mapYAMLType(t reflect.Type) *jsonschema.Schema {
 		// The runtime type stores private state and accepts either a boolean or
 		// this mapping. Keep this in sync with JobTimeoutPolicy.UnmarshalYAML.
 		mapping := reflector().Reflect(struct {
+			MinMinutes float64 `yaml:"min-minutes" jsonschema:"exclusiveMinimum=0,description=Smallest allowed job timeout in minutes. Must not exceed max-minutes."`
 			MaxMinutes float64 `yaml:"max-minutes" jsonschema:"exclusiveMinimum=0,description=Largest allowed job timeout in minutes."`
+		}{})
+		mapping.Version = ""
+		mapping.ID = ""
+		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "boolean"}, mapping}}
+	case reflect.TypeFor[actionlint.PermissionsPolicy]():
+		mapping := reflector().Reflect(struct {
+			Scope string `yaml:"scope" jsonschema:"enum=workflow,enum=job,default=workflow,description=Require a workflow-level declaration or a declaration on every job."`
 		}{})
 		mapping.Version = ""
 		mapping.ID = ""

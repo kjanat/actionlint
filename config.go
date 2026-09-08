@@ -3,6 +3,7 @@ package actionlint
 import (
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -69,12 +70,21 @@ type Policy struct {
 	RequireCommitHash *bool `yaml:"require-commit-hash" jsonschema:"nullable"`
 	// RequireJobTimeout requires jobs to declare `timeout-minutes` when set to `true`.
 	//
-	// Use `{max-minutes: 60}` to also cap the timeout at 60 minutes. The maximum must be greater
-	// than zero; `{}` enables the check without a cap. Jobs calling reusable workflows are skipped.
+	// Use `{min-minutes: 5, max-minutes: 60}` to require a timeout between 5 and 60 minutes.
+	// Either bound may be omitted. Bounds must be finite and greater than zero, and the minimum
+	// must not exceed the maximum. `{}` requires the key without bounds. Reusable workflow calls are skipped.
 	//
 	// Set `false` to disable the check. Omit this key or use `null` to leave it unset; the check is
 	// disabled by default.
 	RequireJobTimeout *JobTimeoutPolicy `yaml:"require-job-timeout" jsonschema:"nullable"`
+	// RequirePermissions requires an explicit `permissions:` declaration.
+	//
+	// `true` or `{scope: workflow}` requires a workflow-level declaration, including `permissions: {}`.
+	// `{scope: job}` requires a declaration on every job, including reusable workflow calls.
+	// `{}` enables workflow scope. This checks presence only; it does not infer the scopes a job needs.
+	//
+	// Set `false` to disable the check. Omit this key or use `null` to leave it unset; it is disabled by default.
+	RequirePermissions *PermissionsPolicy `yaml:"require-permissions" jsonschema:"nullable"`
 	// RequiredActions lists actions that every workflow must use in its steps.
 	//
 	// Write entries like `uses:` values: `actions/checkout` accepts any ref, while
@@ -126,6 +136,8 @@ func (p *Policy) UnmarshalYAML(n *yaml.Node) error {
 			err = v.Decode(&p.RequireCommitHash)
 		case "require-job-timeout":
 			err = v.Decode(&p.RequireJobTimeout)
+		case "require-permissions":
+			err = v.Decode(&p.RequirePermissions)
 		case "required-actions":
 			err = decodeRequiredActions(v, &p.RequiredActions)
 		default:
@@ -140,9 +152,10 @@ func (p *Policy) UnmarshalYAML(n *yaml.Node) error {
 
 // JobTimeoutPolicy is the value of the "require-job-timeout" policy in the configuration file. The
 // value is a boolean which turns the check on and off, or a mapping which turns it on and sets the
-// largest allowed number of minutes in its "max-minutes" key.
+// allowed range in its "min-minutes" and "max-minutes" keys.
 type JobTimeoutPolicy struct {
 	enabled    bool
+	minMinutes float64
 	maxMinutes float64
 }
 
@@ -152,9 +165,31 @@ func RequireJobTimeout(maxMinutes float64) *JobTimeoutPolicy {
 	return &JobTimeoutPolicy{enabled: true, maxMinutes: maxMinutes}
 }
 
+// RequireJobTimeoutRange requires job timeouts within the inclusive bounds. Zero omits a bound.
+// It rejects negative or non-finite bounds and a minimum larger than a nonzero maximum.
+func RequireJobTimeoutRange(minMinutes, maxMinutes float64) (*JobTimeoutPolicy, error) {
+	for _, bound := range []float64{minMinutes, maxMinutes} {
+		if bound < 0 || math.IsNaN(bound) || math.IsInf(bound, 0) {
+			return nil, fmt.Errorf("job timeout bounds must be finite and nonnegative, got %v", bound)
+		}
+	}
+	if maxMinutes > 0 && minMinutes > maxMinutes {
+		return nil, fmt.Errorf("minimum job timeout %v exceeds maximum %v", minMinutes, maxMinutes)
+	}
+	return &JobTimeoutPolicy{enabled: true, minMinutes: minMinutes, maxMinutes: maxMinutes}, nil
+}
+
 // Enabled returns whether the check is turned on. It returns false when the receiver is nil.
 func (p *JobTimeoutPolicy) Enabled() bool {
 	return p != nil && p.enabled
+}
+
+// MinMinutes returns the smallest allowed timeout in minutes. The boolean is false without an enabled lower bound.
+func (p *JobTimeoutPolicy) MinMinutes() (float64, bool) {
+	if !p.Enabled() || p.minMinutes <= 0 {
+		return 0, false
+	}
+	return p.minMinutes, true
 }
 
 // MaxMinutes returns the largest allowed "timeout-minutes:" value in minutes. The second return
@@ -168,6 +203,7 @@ func (p *JobTimeoutPolicy) MaxMinutes() (float64, bool) {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (p *JobTimeoutPolicy) UnmarshalYAML(n *yaml.Node) error {
+	*p = JobTimeoutPolicy{}
 	switch n.Kind {
 	case yaml.ScalarNode:
 		if err := n.Decode(&p.enabled); err != nil {
@@ -177,7 +213,7 @@ func (p *JobTimeoutPolicy) UnmarshalYAML(n *yaml.Node) error {
 		p.enabled = true
 		for i := 0; i+1 < len(n.Content); i += 2 {
 			k, v := n.Content[i], n.Content[i+1]
-			if k.Value != "max-minutes" {
+			if k.Value != "min-minutes" && k.Value != "max-minutes" {
 				return fmt.Errorf("yaml: unknown key %q in \"require-job-timeout\" at line:%d,col:%d", k.Value, k.Line, k.Column)
 			}
 			// Decoding through the YAML library reads a leading zero as YAML 1.1 octal, so
@@ -185,15 +221,78 @@ func (p *JobTimeoutPolicy) UnmarshalYAML(n *yaml.Node) error {
 			// text with strconv, and so does this.
 			f, err := strconv.ParseFloat(v.Value, 64)
 			if err != nil || v.Kind != yaml.ScalarNode {
-				return fmt.Errorf("yaml: \"max-minutes\" in \"require-job-timeout\" must be a number but got %q at line:%d,col:%d", v.Value, v.Line, v.Column)
+				return fmt.Errorf("yaml: %q in \"require-job-timeout\" must be a number but got %q at line:%d,col:%d", k.Value, v.Value, v.Line, v.Column)
 			}
-			p.maxMinutes = f
-			if p.maxMinutes <= 0 {
-				return fmt.Errorf("yaml: \"max-minutes\" in \"require-job-timeout\" must be greater than zero but got %v at line:%d,col:%d", p.maxMinutes, v.Line, v.Column)
+			if math.IsNaN(f) || math.IsInf(f, 0) {
+				return fmt.Errorf("yaml: %q in \"require-job-timeout\" must be finite but got %q at line:%d,col:%d", k.Value, v.Value, v.Line, v.Column)
 			}
+			if f <= 0 {
+				return fmt.Errorf("yaml: %q in \"require-job-timeout\" must be greater than zero but got %v at line:%d,col:%d", k.Value, f, v.Line, v.Column)
+			}
+			if k.Value == "min-minutes" {
+				p.minMinutes = f
+			} else {
+				p.maxMinutes = f
+			}
+		}
+		if p.maxMinutes > 0 && p.minMinutes > p.maxMinutes {
+			return fmt.Errorf("yaml: \"min-minutes\" must not exceed \"max-minutes\" in \"require-job-timeout\" at line:%d,col:%d", n.Line, n.Column)
 		}
 	default:
 		return fmt.Errorf("yaml: \"require-job-timeout\" must be a boolean or a mapping at line:%d,col:%d", n.Line, n.Column)
+	}
+	return nil
+}
+
+// PermissionsPolicy selects where the "require-permissions" policy requires a declaration.
+type PermissionsPolicy struct {
+	enabled bool
+	scope   string
+}
+
+// RequirePermissions enables the policy with "workflow" or "job" scope. Other values return an error.
+func RequirePermissions(scope string) (*PermissionsPolicy, error) {
+	if scope != "workflow" && scope != "job" {
+		return nil, fmt.Errorf("permissions policy scope must be \"workflow\" or \"job\", got %q", scope)
+	}
+	return &PermissionsPolicy{enabled: true, scope: scope}, nil
+}
+
+// Enabled reports whether the policy is enabled. A nil receiver disables it.
+func (p *PermissionsPolicy) Enabled() bool {
+	return p != nil && p.enabled
+}
+
+// Scope returns "workflow" or "job", or an empty string when the policy is disabled.
+func (p *PermissionsPolicy) Scope() string {
+	if !p.Enabled() {
+		return ""
+	}
+	return p.scope
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (p *PermissionsPolicy) UnmarshalYAML(n *yaml.Node) error {
+	*p = PermissionsPolicy{scope: "workflow"}
+	switch n.Kind {
+	case yaml.ScalarNode:
+		if err := n.Decode(&p.enabled); err != nil {
+			return fmt.Errorf("yaml: \"require-permissions\" must be a boolean or a mapping at line:%d,col:%d", n.Line, n.Column)
+		}
+	case yaml.MappingNode:
+		p.enabled = true
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			k, v := n.Content[i], n.Content[i+1]
+			if k.Value != "scope" {
+				return fmt.Errorf("yaml: unknown key %q in \"require-permissions\" at line:%d,col:%d", k.Value, k.Line, k.Column)
+			}
+			if v.Kind != yaml.ScalarNode || v.Tag != "!!str" || (v.Value != "workflow" && v.Value != "job") {
+				return fmt.Errorf("yaml: \"scope\" in \"require-permissions\" must be \"workflow\" or \"job\" at line:%d,col:%d", v.Line, v.Column)
+			}
+			p.scope = v.Value
+		}
+	default:
+		return fmt.Errorf("yaml: \"require-permissions\" must be a boolean or a mapping at line:%d,col:%d", n.Line, n.Column)
 	}
 	return nil
 }
@@ -315,6 +414,14 @@ func (cfg *Config) RequiresJobTimeout() *JobTimeoutPolicy {
 	return cfg.Policy.RequireJobTimeout
 }
 
+// RequiresPermissions returns the "require-permissions" policy, or nil for an unset key or nil receiver.
+func (cfg *Config) RequiresPermissions() *PermissionsPolicy {
+	if cfg == nil {
+		return nil
+	}
+	return cfg.Policy.RequirePermissions
+}
+
 // RequiredActions returns the actions which every workflow must use following the "required-actions"
 // policy. It returns nil when the receiver is nil or when the key is not set.
 func (cfg *Config) RequiredActions() []string {
@@ -411,9 +518,11 @@ paths:
 #  # Require every "uses:" to be pinned to a full commit SHA or an image
 #  # digest.
 #  require-commit-hash: true
-#  # Require "timeout-minutes" on every job. A mapping with "max-minutes" also
-#  # caps the value.
+#  # Require "timeout-minutes" on every job. A mapping with "min-minutes" and
+#  # "max-minutes" also sets inclusive bounds.
 #  require-job-timeout: true
+#  # Require workflow-level "permissions". Use {scope: job} for every job.
+#  require-permissions: true
 #  # Actions every workflow must use. "owner/repo@ref" also pins the version.
 #  required-actions:
 #    - actions/checkout

@@ -36,3 +36,8 @@ jobs:
   # OK: a job calling a reusable workflow cannot set "timeout-minutes"
   call:
     uses: ./workflows/reusable.yaml
+  too-short:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - run: echo hello
