@@ -3,6 +3,7 @@
 This is a script to update every release version reference in this repository.
 
 The complete set of version-bearing files and fields is declared in [`targets.go`](./targets.go).
+The Playground derives its version and links from Git during the Vite build, so its HTML is not a bump target.
 Each declaration names a file, a regular expression capturing the version, and the exact number of
 occurrences expected in that file.
 

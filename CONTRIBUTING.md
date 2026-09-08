@@ -220,8 +220,8 @@ already available through WinGet.
 When releasing v1.2.3 as example:
 
 1. Describe the release in [CHANGELOG.md](./CHANGELOG.md), either under the `Unreleased` heading or in a `v1.2.3`
-   section written out in full. The release notes are the `v1.2.3` section when it exists and the `Unreleased` entries
-   otherwise, and `bump-version` refuses to run when neither describes anything.
+   section written out in full. The workflow seeds the release notes from the `v1.2.3` section when it exists and the
+   `Unreleased` entries otherwise. `bump-version` refuses to run when neither describes anything.
 2. Validate and commit the release changes on `master`, including the changelog, and push them to `origin`.
 3. Run `go run ./scripts/bump-version -check` to list every declared version reference and confirm the declaration is in
    sync with the repository
@@ -236,8 +236,12 @@ When releasing v1.2.3 as example:
    remains on the version-bump commit. Floating-tag commits do not use the GPG signing service.
 6. Verify the release assets, npm packages, distribution updates, and floating action tags. The bump script has already
    moved `Unreleased` entries into the dated release section with its anchor and comparison link; no manual
-   post-release changelog edit is needed. Published releases are immutable, so corrections require a new version.
-7. The Pages workflow redeploys the playground on the push to `master`.
+   post-release changelog edit is needed. Published release tags and assets are immutable; changing those requires a new version.
+7. After publication, expand the GitHub release notes with examples, explanations of changed behavior, and practical
+   benefits for users. Keep the changelog concise. Preserve contributor mentions and issue/PR references in both, and
+   verify examples against the released binary. The release title and notes remain editable.
+8. The Pages workflow redeploys the playground on pushes to `master` and after a successful release, deriving its version
+   from Git. Upkeep refreshes the measured README demo after the release workflow succeeds.
 
 The `make CHANGELOG.md` target runs [changelog-from-release](https://github.com/rhysd/changelog-from-release), which
 rewrites the whole file from the GitHub releases. It knows nothing about the `Unreleased` heading and drops it, and the
@@ -264,7 +268,8 @@ Visit [`playground/README.md`](./playground/README.md).
 
 ## How to deploy playground
 
-The [Pages workflow](./.github/workflows/pages.yml) deploys on every push to `master`. It builds the bundle with
+The [Pages workflow](./.github/workflows/pages.yml) deploys on pushes to `master` and after successful Release runs.
+Release-triggered builds check out that release's commit. It builds the bundle with
 `make -C playground build`, packages `playground/dist` together with the manual, and uploads it through
 `actions/upload-pages-artifact`.
 

@@ -103,14 +103,6 @@ var targets = []*target{
 		},
 	},
 	{
-		path: "playground/index.html",
-		rules: []rule{
-			mustRule("release page link", `releases/tag/v(\d+\.\d+\.\d+)`, 1),
-			mustRule("version badge", `id="version">v(\d+\.\d+\.\d+)`, 1),
-			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 1),
-		},
-	},
-	{
 		path: ".github/workflows/npm-release.yml",
 		rules: []rule{
 			mustRule("npm workflow release tag example", `Release tag to publish \(e\.g\. v(\d+\.\d+\.\d+)\)`, 1),

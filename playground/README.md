@@ -36,6 +36,10 @@ make clean
 
 `npm run dev` starts the Vite dev server with hot reloading against an already built `public/main.wasm`.
 
+Vite derives the version badge and links from Git when it starts. A clean release tag links to its release; development
+builds show `git describe` and link to their commit. Documentation links use that same commit. Without tags, the badge
+shows the commit; without Git metadata, it shows `development`. No release version is maintained in `index.html`.
+
 ## Lint
 
 Sources are linted with [eslint](https://eslint.org/) with [typescript-eslint](https://github.com/typescript-eslint/typescript-eslint),
@@ -49,5 +53,7 @@ Formatting is handled from the repository root by [dprint](https://dprint.dev/).
 
 ## Deployment
 
-The [Pages workflow](../.github/workflows/pages.yml) deploys `dist/` on every push to `master`. See
+The [Pages workflow](../.github/workflows/pages.yml) builds the WASM and site from the same checkout and deploys `dist/`
+on pushes to `master` and after successful Release runs. The release-triggered build checks out the release commit with
+its tags, so the badge updates once the release exists. See
 [CONTRIBUTING.md](../CONTRIBUTING.md) for more details.

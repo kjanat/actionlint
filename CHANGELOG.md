@@ -2,6 +2,12 @@
 
 # Unreleased
 
+<a id="v1.16.0"></a>
+
+## [v1.16.0](https://github.com/kjanat/actionlint/releases/tag/v1.16.0) - 2026-09-08
+
+- Derive the Playground version badge and links from Git during the Vite build, and redeploy after successful releases. Releases no longer require editing the Playground HTML. (kjanat/actionlint#144)
+
 - Add inclusive `min-minutes` bounds to the `require-job-timeout` policy, validate minimum/maximum ranges, and expose `RequireJobTimeoutRange` in the Go API. (kjanat/actionlint#55)
 
 - Add the opt-in `require-permissions` policy for explicit workflow-level or per-job permission declarations, including reusable workflow calls. Empty permission mappings satisfy the check. (kjanat/actionlint#83; rhysd/actionlint#728)
@@ -27,6 +33,8 @@
 - Generate action metadata context and special-function rules, including composite step keys, from GitHub's runner schema through the existing `go generate` and weekly Upkeep flow. Extend input-default checks to JavaScript and Docker actions, check composite `shell`, `continue-on-error`, and whole `with`/`env` expressions, and report unavailable status functions or incorrect special-function argument counts. Builds and lint runs use the generated data without downloading the schema. This continues @johnament's work in kjanat/actionlint#124 and kjanat/actionlint#131.
 
 - Use npm trusted publishing through OIDC for the launcher, platform packages, and changelog package. Standardize workflow filenames on `.yml` and update workflow references and publishing configuration.
+
+[Changes][v1.16.0]
 
 <a id="v1.15.1"></a>
 
@@ -2483,6 +2491,7 @@ See documentation for more details:
 
 [Changes][v1.0.0]
 
+[v1.16.0]: https://github.com/kjanat/actionlint/compare/v1.15.1...v1.16.0
 [v1.15.1]: https://github.com/kjanat/actionlint/compare/v1.15.0...v1.15.1
 [v1.15.0]: https://github.com/kjanat/actionlint/compare/v1.14.0...v1.15.0
 [v1.14.0]: https://github.com/kjanat/actionlint/compare/v1.13.0...v1.14.0
