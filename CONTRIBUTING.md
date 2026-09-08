@@ -220,6 +220,10 @@ The npm reusable workflow runs after the binaries job and publishes the platform
 WinGet submissions still require review in `microsoft/winget-pkgs`; a successful release does not mean the package is
 already available through WinGet.
 
+WinGet uploads are paused with `winget[].skip_upload: true` in `.goreleaser.yaml` while
+microsoft/winget-pkgs#430563 awaits review. GoReleaser still generates the manifests in `dist/`.
+After the initial package is merged, restore `skip_upload: auto` to resume version submissions on stable releases.
+
 When releasing v1.2.3 as example:
 
 1. Describe the release in [CHANGELOG.md](./CHANGELOG.md), either under the `Unreleased` heading or in a `v1.2.3`

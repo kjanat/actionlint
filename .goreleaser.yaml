@@ -149,7 +149,8 @@ winget:
     goamd64: v1
     url_template: "https://github.com/kjanat/actionlint/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     commit_msg_template: "New version: {{ .PackageIdentifier }} {{ .Version }}"
-    skip_upload: auto
+    # Resume uploads after microsoft/winget-pkgs#430563 is merged.
+    skip_upload: true
     # winget-pkgs takes pull requests only: push a branch to a personal fork,
     # shared by every project like the scoop bucket, and open the PR from there.
     repository:

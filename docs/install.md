@@ -8,14 +8,13 @@ registries also provide [rhysd/actionlint][upstream] under the unqualified name 
 ShellCheck and pyflakes are optional external linters. The standalone actionlint binary uses them when available on
 `PATH`; see [external linter configuration](usage.md#ignore-some-errors).
 
-## Windows
+## Project-maintained distributions
 
-### [Chocolatey](https://chocolatey.org/)
+These methods install packages, binaries, or source published by this project.
 
-The community [`actionlint` package][chocolatey] installs the upstream project. This fork does not currently publish a
-Chocolatey package. Use [Scoop](#scoop), [mise](#mise), or a [release archive](#prebuilt-binaries) on Windows.
+### Windows
 
-### [Scoop](https://scoop.sh/)
+#### [Scoop](https://scoop.sh/)
 
 [![Scoop Version][scoop-badge]][scoop-bucket]
 
@@ -28,23 +27,9 @@ scoop install kjanat/actionlint
 
 The [`actionlint` package in Scoop's main bucket][scoop] installs the upstream project.
 
-### [Winget](https://learn.microsoft.com/en-us/windows/package-manager/)
+### Linux
 
-[![WinGet Package Version][winget-badge]][winget-submission]
-
-The `kjanat.actionlint` submissions, microsoft/winget-pkgs#430563 and microsoft/winget-pkgs#430894,
-are awaiting review. Until the package is available in the WinGet source, use [npm](#npm), [Scoop](#scoop), or a release archive.
-Once accepted, install it with:
-
-```powershell
-winget install --id kjanat.actionlint --exact --source winget
-```
-
-The existing [`rhysd.actionlint` package][winget] installs the upstream project.
-
-## Linux
-
-### [Arch Linux](https://archlinux.org/)
+#### [Arch Linux](https://archlinux.org/)
 
 [![AUR Version (git)][aur-git-badge]][actionlint-kjanat-git]
 [![AUR Version (binary)][aur-bin-badge]][actionlint-kjanat-bin]
@@ -67,18 +52,9 @@ paru -S actionlint-kjanat-bin
 All three install the manpage and shell completions. They conflict with one another and with the upstream
 `actionlint`, `actionlint-bin`, and `actionlint-git` packages because they provide the same executable.
 
-### [Nix](https://nix.dev/)
-
-The [`actionlint` definition in Nixpkgs][nixpkgs] builds the upstream project. This applies to `pkgs.actionlint`,
-`nixpkgs#actionlint`, and the older `nix-env` commands. They do not install this fork.
-
-This repository does not currently provide a Nix derivation or flake. The fork's statically linked Linux release
-binary runs on NixOS; use a [release archive](#prebuilt-binaries) or the [download script](#download-script) to obtain it.
-That installs a standalone executable rather than a Nix-managed package.
-
 <a id="homebrew"></a>
 
-## [Homebrew][homebrew] on macOS and Linux
+### [Homebrew][homebrew] on macOS and Linux
 
 Install this fork from the `kjanat/tap` tap:
 
@@ -104,7 +80,7 @@ brew install --cask kjanat/tap/shellcheck
 > The macOS executable is not notarized. If Gatekeeper blocks a downloaded copy, review and allow it in
 > **System Settings → Privacy & Security**.
 
-## [npm](https://www.npmjs.com/)
+### [npm](https://www.npmjs.com/)
 
 [![NPM Version][npm-badge]][npm-package]
 
@@ -125,7 +101,7 @@ The distribution uses platform packages containing the GitHub release binaries. 
 dependencies enabled, since the launcher needs the package matching your operating system and architecture.
 Linux binaries are statically linked and work with both musl and glibc.
 
-## Prebuilt binaries
+### Prebuilt binaries
 
 Download an archive file from [the releases page][releases] for your platform, unarchive it and put the executable file to a
 directory in `$PATH`.
@@ -159,7 +135,7 @@ gh attestation verify -R kjanat/actionlint actionlint_1.16.0_linux_amd64.tar.gz
 
 <a id="download-script"></a>
 
-## Download script
+### Download script
 
 To install `actionlint` executable with one command, [the download script](../scripts/download-actionlint.bash) is available.
 It downloads `actionlint.exe` on Windows and `actionlint` on other supported platforms. Pass `latest` to resolve the
@@ -191,21 +167,16 @@ also want the manpage and documentation.
 
 For the usage of actionlint on GitHub Actions, see [the usage document](usage.md#on-github-actions).
 
-## Docker image
+### Docker image
 
 [![Docker Image Version][docker-badge]][dockerhub]
 
 The fork publishes CLI images as `ghcr.io/kjanat/actionlint` and `docker.io/kjanat/actionlint`. See
 [Docker usage](usage.md#docker) for running the linter with a mounted repository.
 
-## Cross-platform version managers
+### Cross-platform version managers
 
-### asdf
-
-The [asdf-actionlint plugin][asdf-plugin] downloads upstream releases. This fork does not currently provide an asdf
-plugin. Use mise's GitHub backend or a release archive instead.
-
-### mise
+#### mise
 
 Use [mise's GitHub backend][mise-github] with this repository's full name. The short `actionlint` tool name resolves to
 upstream packages in mise's registry.
@@ -228,7 +199,7 @@ For a project-local selection, put this in `mise.toml` and run `mise install`:
 "github:kjanat/actionlint" = "latest"
 ```
 
-## Build from source
+### Build from source
 
 [![Go Module Version][go-module-badge]][go-module]
 
@@ -243,6 +214,80 @@ go install actionlint.kjanat.dev/cmd/actionlint@latest
 # Install the head of the master branch
 go install actionlint.kjanat.dev/cmd/actionlint@master
 ```
+
+## Community-maintained integrations
+
+### Python (pip and uv)
+
+[![PyPI Version][pypi-badge]][pypi-package]
+
+[`actionlint-py-kjanat`][pypi-package] is a community Python wrapper for this fork, maintained by
+[René Fritze (@renefritze)][python-wrapper]. His [migration PR][python-wrapper-pr] switched the wrapper to this fork's
+release binaries and gave it a separate PyPI package name.
+
+Install it in your Python environment:
+
+```sh
+python -m pip install actionlint-py-kjanat
+actionlint --version
+```
+
+Or run it in an isolated environment with [uv][uv-tools]:
+
+```sh
+uvx --from actionlint-py-kjanat actionlint
+```
+
+Installation downloads the binary for your platform from this repository's GitHub releases and verifies its SHA-256
+checksum. It needs access to GitHub as well as PyPI; no Go toolchain is required.
+
+The wrapper has its own release schedule and may package an older actionlint release. Its version includes an extra
+wrapper revision; `actionlint --version` reports the binary's version. The original `actionlint-py` package wraps
+the upstream project.
+
+## Pending packages
+
+### [Winget](https://learn.microsoft.com/en-us/windows/package-manager/)
+
+[![WinGet Package Version][winget-badge]][winget-submission]
+
+The initial `kjanat.actionlint` submission, [microsoft/winget-pkgs#430563][winget-submission], is awaiting review.
+The later version submissions remain drafts. Until the package is available in the WinGet source, use [npm](#npm),
+[Scoop](#scoop), or a [release archive](#prebuilt-binaries). Once available, install it with:
+
+```powershell
+winget install --id kjanat.actionlint --exact --source winget
+```
+
+The existing [`rhysd.actionlint` package][winget] installs the upstream project.
+
+### [Nix](https://nix.dev/)
+
+The [`actionlint` definition in Nixpkgs][nixpkgs] currently builds the upstream project. This applies to `pkgs.actionlint`,
+`nixpkgs#actionlint`, and the older `nix-env` commands. They do not install this fork.
+
+[@voidlily](https://github.com/voidlily) has proposed switching the package to this fork at v1.16.0 in
+[NixOS/nixpkgs#561437][nixpkgs-fork-pr]. The PR is open and awaiting review.
+
+This repository does not currently provide a Nix derivation or flake. The fork's statically linked Linux release
+binary runs on NixOS; use a [release archive](#prebuilt-binaries) or the [download script](#download-script) to obtain it.
+These downloads provide a standalone executable that you install and update manually.
+
+<a id="packages-for-upstream-actionlint"></a>
+
+## Not yet implemented
+
+### [Chocolatey](https://chocolatey.org/)
+
+The [`actionlint` package][chocolatey] installs the upstream project. Packaging this fork is being discussed in
+[kai2nenobu/chocolatey-packages#40](https://github.com/kai2nenobu/chocolatey-packages/issues/40).
+This fork does not currently publish a Chocolatey package. Use [Scoop](#scoop),
+[mise](#mise), or a [release archive](#prebuilt-binaries) on Windows.
+
+### asdf
+
+The [asdf-actionlint plugin][asdf-plugin] downloads upstream releases. This fork does not currently provide an asdf
+plugin. Use mise's GitHub backend or a release archive instead.
 
 ---
 
@@ -263,12 +308,17 @@ go install actionlint.kjanat.dev/cmd/actionlint@master
 [dockerhub]: https://hub.docker.com/r/kjanat/actionlint
 [npm-package]: https://www.npmjs.com/package/@kjanat/actionlint
 [npm-badge]: https://img.shields.io/npm/v/%40kjanat%2Factionlint
+[pypi-package]: https://pypi.org/project/actionlint-py-kjanat/
+[pypi-badge]: https://img.shields.io/pypi/v/actionlint-py-kjanat?label=PyPI%20%28community%29
+[python-wrapper]: https://github.com/renefritze/actionlint-py-kjanat
+[python-wrapper-pr]: https://github.com/renefritze/actionlint-py-kjanat/pull/1
+[uv-tools]: https://docs.astral.sh/uv/guides/tools/
 [upstream]: https://github.com/rhysd/actionlint
 [scoop]: https://scoop.sh/#/apps?q=actionlint&s=0&d=1&o=true
 [scoop-bucket]: https://github.com/kjanat/scoop-bucket/blob/master/bucket/actionlint.json
 [scoop-badge]: https://img.shields.io/scoop/v/actionlint?bucket=https%3A%2F%2Fgithub.com%2Fkjanat%2Fscoop-bucket
 [winget]: https://github.com/microsoft/winget-pkgs/tree/master/manifests/r/rhysd/actionlint
-[winget-submission]: https://github.com/microsoft/winget-pkgs/pull/430894
+[winget-submission]: https://github.com/microsoft/winget-pkgs/pull/430563
 [winget-badge]: https://img.shields.io/winget/v/kjanat.actionlint
 [actionlint-kjanat-git]: https://aur.archlinux.org/packages/actionlint-kjanat-git
 [actionlint-kjanat-bin]: https://aur.archlinux.org/packages/actionlint-kjanat-bin
@@ -279,4 +329,5 @@ go install actionlint.kjanat.dev/cmd/actionlint@master
 [aur]: https://aur.archlinux.org/
 [paru]: https://github.com/Morganamilo/paru
 [nixpkgs]: https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/ac/actionlint/package.nix
+[nixpkgs-fork-pr]: https://github.com/NixOS/nixpkgs/pull/561437
 [mise-github]: https://mise.jdx.dev/dev-tools/backends/github.html

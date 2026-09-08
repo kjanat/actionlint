@@ -257,7 +257,7 @@ See [the usage document][usage] for the pinned ShellCheck build and how to choos
 ## Documents
 
 - [Checks][checks]: Full list of all checks done by actionlint with example inputs, outputs, and playground links.
-- [Installation][install]: Install with npm, Homebrew, AUR, Scoop, mise, release archives, the download script, Docker, or Go. Includes the status of WinGet and upstream-only package names.
+- [Installation][install]: Install with npm, Homebrew, AUR, Scoop, mise, the community pip/uv wrapper, release archives, the download script, Docker, or Go. Includes the status of WinGet and upstream-only package names.
 - [Usage][usage]: How to use `actionlint` command locally or on GitHub Actions, the online playground, an official Docker image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit, VS Code.
 - [Configuration][config]: Runner labels, variables, secrets, default permissions, error filters, and opt-in policy checks, with YAML Language Server schema support.
 - [Go API][api]: How to use actionlint as Go library.
