@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { mock } from 'node:test';
 
-import { bodyFor, groupsFromPatch, keyFor } from './comment-cop.mjs';
+import run, { bodyFor, groupsFromPatch, keyFor } from './comment-cop.mjs';
+
+/** @typedef {Parameters<Parameters<typeof run>[0]['github']['rest']['pulls']['createReview']>[0]} ReviewParams */
 
 test('flags a long implementation comment', () => {
 	const groups = groupsFromPatch(
@@ -182,7 +184,8 @@ test('tailors advice to the finding and keeps contributor guidance in a sub foot
 	assert.match(lengthBody, /length-only flag/);
 	assert.doesNotMatch(consequenceBody, /length-only flag/);
 	assert.match(consequenceBody, /consequence or failure mode/);
-	assert.match(consequenceBody, /<sub>[^<]*advisory[^<]*resolve this thread[^<]*<\/sub>$/);
+	assert.match(consequenceBody, /<sub>[^<]*advisory[^<]*resolve this thread[^<]*<\/sub>/);
+	assert.match(consequenceBody, /<br><sub>Any AI agents[^<]*justify the closure with a reply[^<]*<\/sub>$/);
 });
 
 test('combines different advice and deduplicates equivalent contrast advice', () => {
@@ -198,4 +201,153 @@ test('combines different advice and deduplicates equivalent contrast advice', ()
 	assert.equal(body.split('\n').filter(line => line.startsWith('- ')).length, 2);
 	assert.match(body, /length-only flag/);
 	assert.match(body, /comparison explains a real constraint/);
+});
+
+const reviewFiles = [
+	{
+		filename: 'docs/first.md',
+		status: 'modified',
+		contents_url: 'first',
+		patch:
+			'@@ -0,0 +1,5 @@\n+That said, the cache stores values.\n+Read the cached entry.\n+\n+\n+Moreover, refresh the entry.',
+	},
+	{
+		filename: 'docs/second.md',
+		status: 'modified',
+		contents_url: 'second',
+		patch: '@@ -0,0 +1,1 @@\n+Use the cache rather than fetching again.',
+	},
+];
+const firstGroup = {
+	path: 'docs/first.md',
+	start: 1,
+	end: 2,
+	text: 'That said, the cache stores values.\nRead the cached entry.',
+	reasons: ['filler phrase'],
+};
+
+/** @param {string[]} seenBodies @param {Error | undefined} submitError */
+function reviewHarness(seenBodies = [], submitError = undefined, files = reviewFiles) {
+	const createReview = mock.fn(async (/** @type {ReviewParams} */ params) => {
+		if (submitError) throw submitError;
+		return params;
+	});
+	const warning = mock.fn();
+	const info = mock.fn();
+	const graphql = mock.fn(async () => ({
+		repository: {
+			pullRequest: {
+				reviewThreads: {
+					pageInfo: { hasNextPage: false, endCursor: null },
+					nodes: seenBodies.map((body, i) => ({
+						id: `thread-${i}`,
+						isResolved: false,
+						path: 'docs/first.md',
+						comments: { nodes: [{ body, viewerDidAuthor: true }] },
+					})),
+				},
+			},
+		},
+	}));
+	const args = {
+		github: {
+			rest: { pulls: { listFiles: mock.fn(), createReview } },
+			paginate: mock.fn(async () => files),
+			request: mock.fn(async () => ({ data: 'Plain Markdown with no code fences.' })),
+			graphql,
+		},
+		context: {
+			repo: { owner: 'owner', repo: 'repo' },
+			payload: { pull_request: { number: 42, head: { sha: 'a'.repeat(40) } } },
+		},
+		core: { warning, info },
+	};
+	return {
+		args: /** @type {Parameters<typeof run>[0]} */ (/** @type {unknown} */ (args)),
+		createReview,
+		warning,
+		info,
+		graphql,
+	};
+}
+
+test('submits comments across files and line ranges in one review', async () => {
+	const h = reviewHarness();
+	await run(h.args);
+
+	assert.equal(h.createReview.mock.callCount(), 1);
+	const params = h.createReview.mock.calls[0].arguments[0];
+	assert.deepEqual(params, {
+		owner: 'owner',
+		repo: 'repo',
+		pull_number: 42,
+		commit_id: 'a'.repeat(40),
+		event: 'COMMENT',
+		body: 'Please review the flagged wording in the inline comments.',
+		comments: [
+			{ path: 'docs/first.md', line: 2, side: 'RIGHT', body: bodyFor(firstGroup), start_line: 1, start_side: 'RIGHT' },
+			{
+				path: 'docs/first.md',
+				line: 5,
+				side: 'RIGHT',
+				body: bodyFor({
+					...firstGroup,
+					start: 5,
+					end: 5,
+					text: 'Moreover, refresh the entry.',
+					reasons: ['connective glue'],
+				}),
+			},
+			{
+				path: 'docs/second.md',
+				line: 1,
+				side: 'RIGHT',
+				body: bodyFor({
+					path: 'docs/second.md',
+					start: 1,
+					end: 1,
+					text: 'Use the cache rather than fetching again.',
+					reasons: ['"X rather than Y"'],
+				}),
+			},
+		],
+	});
+	assert.equal(h.warning.mock.callCount(), 0);
+	assert.match(h.info.mock.calls[0].arguments[0], /3 posted/);
+
+	assert.ok(params.comments);
+	const rerun = reviewHarness(params.comments.map(comment => comment.body));
+	await run(rerun.args);
+	assert.equal(rerun.createReview.mock.callCount(), 0);
+	assert.equal(rerun.graphql.mock.callCount(), 1);
+});
+
+test('excludes existing findings from the next review', async () => {
+	const h = reviewHarness([bodyFor(firstGroup)]);
+	await run(h.args);
+
+	assert.equal(h.createReview.mock.callCount(), 1);
+	const params = h.createReview.mock.calls[0].arguments[0];
+	assert.ok(params.comments);
+	assert.deepEqual(params.comments.map(({ path, line }) => ({ path, line })), [
+		{ path: 'docs/first.md', line: 5 },
+		{ path: 'docs/second.md', line: 1 },
+	]);
+});
+
+test('does not submit an empty review when the diff has no findings', async () => {
+	const h = reviewHarness([], undefined, []);
+	await run(h.args);
+
+	assert.equal(h.createReview.mock.callCount(), 0);
+	assert.match(h.info.mock.calls[0].arguments[0], /0 posted/);
+});
+
+test('reports a failed batch without submitting individual reviews', async () => {
+	const h = reviewHarness([], new Error('Review rejected'));
+	await run(h.args);
+
+	assert.equal(h.createReview.mock.callCount(), 1);
+	assert.deepEqual(h.warning.mock.calls[0].arguments, ['Could not submit Comment Cop review: Review rejected']);
+	assert.match(h.info.mock.calls[0].arguments[0], /0 posted/);
 });

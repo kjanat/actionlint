@@ -394,27 +394,30 @@ export default async function run({ github, context, core }) {
 		}
 	}
 
+	const comments = groups.filter(group => !seenKeys.has(keyFor(group))).map(group => ({
+		path: group.path,
+		line: group.end,
+		side: RIGHT,
+		body: bodyFor(group),
+		...(group.start < group.end
+			? { start_line: group.start, start_side: RIGHT }
+			: {}),
+	}));
 	let posted = 0;
-	for (const group of groups) {
-		if (seenKeys.has(keyFor(group))) continue;
-		const params = {
-			owner,
-			repo,
-			pull_number: pullNumber,
-			commit_id: headSha,
-			path: group.path,
-			line: group.end,
-			side: RIGHT,
-			body: bodyFor(group),
-			...(group.start < group.end
-				? { start_line: group.start, start_side: RIGHT }
-				: {}),
-		};
+	if (comments.length > 0) {
 		try {
-			await github.rest.pulls.createReviewComment(params);
-			posted++;
+			await github.rest.pulls.createReview({
+				owner,
+				repo,
+				pull_number: pullNumber,
+				commit_id: headSha,
+				event: 'COMMENT',
+				body: 'Please review the flagged wording in the inline comments.',
+				comments,
+			});
+			posted = comments.length;
 		} catch (error) {
-			core.warning(`Could not comment on ${group.path}:${group.start}-${group.end}: ${errorMessage(error)}`);
+			core.warning(`Could not submit Comment Cop review: ${errorMessage(error)}`);
 		}
 	}
 
