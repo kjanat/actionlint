@@ -58,14 +58,25 @@ The package includes `actionlint.schema.json` for completion and validation in c
 # yaml-language-server: $schema=../node_modules/@kjanat/actionlint/actionlint.schema.json
 ```
 
-The schema is exported as `./schema`. Tooling can load it alongside the package manifest:
+<details>
+<summary>CDN URLs for the JSON schema</summary>
 
-```js
-const schema = require('@kjanat/actionlint/schema');
-const manifest = require('@kjanat/actionlint/package.json');
+These URLs require an npm release containing the schema:
+
+- [jsDelivr](https://cdn.jsdelivr.net/npm/@kjanat/actionlint/actionlint.schema.json)
+- [esm.sh (raw)](https://esm.sh/@kjanat/actionlint/actionlint.schema.json?raw)
+- [UNPKG](https://unpkg.com/@kjanat/actionlint/actionlint.schema.json)
+
+For example, use jsDelivr in an editor's schema directive:
+
+```yaml
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/@kjanat/actionlint/actionlint.schema.json
 ```
 
-Each platform package also exports its own `package.json`.
+Unversioned URLs follow the latest npm release. Insert `@<version>` after `@kjanat/actionlint` to select the schema for
+a specific release that includes it.
+
+</details>
 
 ### ShellCheck and Pyflakes
 

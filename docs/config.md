@@ -34,8 +34,15 @@ your project, a config at `.github/actionlint.yaml` can use the local schema:
 # yaml-language-server: $schema=../node_modules/@kjanat/actionlint/actionlint.schema.json
 ```
 
-Node.js tooling can load it with `require("@kjanat/actionlint/schema")` or locate it with
-`require.resolve("@kjanat/actionlint/schema")`.
+The published schema is also available through a CDN for editor configuration:
+
+```yaml
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/@kjanat/actionlint/actionlint.schema.json
+```
+
+This URL follows the latest npm release and requires a release containing the schema. See the
+[npm package documentation](../distribution/npm/facade/README.md#configuration-schema) for other CDN URLs and version
+selection.
 
 The schema rejects unknown keys everywhere. Runtime parsing ignores unknown keys at the top level, inside
 `self-hosted-runner`, and inside each `paths` entry. For example, `config-secret` is silently ignored. Both validators
