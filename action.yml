@@ -72,7 +72,7 @@ outputs:
       was not set.
 runs:
   using: docker
-  image: docker://ghcr.io/kjanat/actionlint:action-1.16.0
+  image: docker://ghcr.io/kjanat/actionlint:action-1.16.0@sha256:cab22a6945bf32909839f9bf8ccba01a7605320ed47e1866dcc4eb26e659879c
   args:
     - ${{ inputs.files }}
     - ${{ inputs.format }}
