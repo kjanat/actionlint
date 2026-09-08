@@ -22,28 +22,50 @@ const LANGS = [
 	[/\.md$/, 'md'],
 ];
 
-/** @type {Array<[string, RegExp]>} */
+const CONTRAST_GUIDANCE =
+	'Check whether the comparison explains a real constraint. If it does, keep it; otherwise describe the chosen behavior directly.';
+
+/** @type {Array<[string, RegExp, string]>} */
 const TELLS = [
-	['em dash', /[—–]/],
-	['"X, not Y"', /,[\s]+not\s+\S/],
-	['"X rather than Y"', /\brather than\b/i],
-	['"X instead of Y"', /\b(?:instead of|as opposed to)\b/i],
-	['"not just X but Y"', /\bnot (?:just|merely|only|because)\b[^.]{0,80}?\bbut\b/i],
-	['emphatic cleft', /\b(?:which|that) is (?:what|why|how)\b|\bexactly (?:what|why|how|the)\b/i],
+	[
+		'em dash',
+		/[—–]/,
+		'For ordinary prose, consider a comma, colon, parentheses, or separate sentence. Preserve punctuation that is part of quoted material.',
+	],
+	['"X, not Y"', /,[\s]+not\s+\S/, CONTRAST_GUIDANCE],
+	['"X rather than Y"', /\brather than\b/i, CONTRAST_GUIDANCE],
+	['"X instead of Y"', /\b(?:instead of|as opposed to)\b/i, CONTRAST_GUIDANCE],
+	['"not just X but Y"', /\bnot (?:just|merely|only|because)\b[^.]{0,80}?\bbut\b/i, CONTRAST_GUIDANCE],
+	[
+		'emphatic cleft',
+		/\b(?:which|that) is (?:what|why|how)\b|\bexactly (?:what|why|how|the)\b/i,
+		'Consider stating the behavior or reason directly. Keep the emphasis if it carries a meaningful distinction.',
+	],
 	[
 		'filler phrase',
 		/\b(?:in other words|it(?:'s| is) (?:worth noting|important to note)|that said|under the hood|at its core|(?:simply put|put simply)|in short|in essence|bottom line|needless to say|when it comes to|at the end of the day|think of (?:it|this) as|no more,? no less|(?:that|which) is to say|here(?:'s| is) (?:why|the thing)|the (?:whole|entire) point|the key (?:insight|takeaway))\b/i,
+		'Check whether the introductory phrase adds meaning. If the explanation reads clearly without it, omit the phrase.',
 	],
 	[
 		'inflated diction',
 		/\b(?:leverag(?:e|es|ing)|utiliz(?:e|es|ing)|seamless(?:ly)?|delv(?:e|es|ing)|myriad|plethora|robust|comprehensive(?:ly)?|crucial(?:ly)?|vital(?:ly)?|elegant(?:ly)?|powerful(?:ly)?|intuitive(?:ly)?|nuanced|holistic|granular|meticulous|facilitat(?:e|es|ing)|streamlin(?:e|es|ing)|empower(?:s|ing)?|cutting[-\s]edge|state[-\s]of[-\s]the[-\s]art|arguably|essentially|fundamentally|a wealth of)\b/i,
+		'Consider a plain, precise term. Keep the existing word if it has a specific technical meaning here.',
 	],
-	['connective glue', /\b(?:moreover|furthermore|conversely|as such|it turns out|notably|importantly)\b/i],
+	[
+		'connective glue',
+		/\b(?:moreover|furthermore|conversely|as such|it turns out|notably|importantly)\b/i,
+		'Check whether the transition helps connect the surrounding points. It can be omitted when that connection is already clear.',
+	],
 	[
 		'counterfactual justification',
 		/\bso\b[^.]{0,60}\b(?:cannot|can't|could not|never|would)\b|\bwithout\b[^.]{0,70}\bwould\b|\bwould otherwise\b|\botherwise\b[^.]{0,70}\bwould\b|\bso that\b|\b(?:which|that) (?:prevents|keeps|stops)\b/i,
+		'An explanation of a consequence or failure mode can be useful. Keep it when it documents a non-obvious constraint; otherwise state the behavior directly.',
 	],
-	['paste artifact', /[“”‘’]|[\u00A0\u00AD\u200B-\u200D\uFEFF]/],
+	[
+		'paste artifact',
+		/[“”‘’]|[\u00A0\u00AD\u200B-\u200D\uFEFF]/,
+		'Check typographic quotes and nonstandard whitespace for accidental pasted characters. Preserve intentional examples and quotations.',
+	],
 ];
 
 const TOP_LEVEL_DECL = /^(?:package|const|func|type|var)\b/;
@@ -80,16 +102,28 @@ function stripCommentPrefix(line) {
 		.trim();
 }
 
-/** @param {PendingGroup} group @param {string} nextLine */
-function isDocBlock(group, nextLine) {
-	return group.doc
-		|| (group.lang === 'go' && group.topLevel && TOP_LEVEL_DECL.test(nextLine));
+/** @param {PendingGroup} group @param {string} nextLine @param {string[] | undefined} sourceLines */
+function isDocBlock(group, nextLine, sourceLines) {
+	if (group.doc) return true;
+	if (group.lang !== 'go') return false;
+	let firstLine = group.lines[0];
+	if (sourceLines !== undefined) {
+		let before = group.start - 1;
+		let after = group.end;
+		while (before > 0 && isCommentLine(sourceLines[before - 1], 'go')) before--;
+		while (after < sourceLines.length && isCommentLine(sourceLines[after], 'go')) after++;
+		firstLine = sourceLines[before] ?? firstLine;
+		nextLine = sourceLines[after] ?? nextLine;
+	}
+	if (group.topLevel && TOP_LEVEL_DECL.test(nextLine)) return true;
+	const field = /^\s+([A-Za-z_]\w*)\s+(?:[A-Za-z_*]|\[)/.exec(nextLine)?.[1];
+	return field !== undefined && stripCommentPrefix(firstLine).startsWith(`${field} `);
 }
 
-/** @param {PendingGroup} group @param {string} nextLine */
-function reasonsFor(group, nextLine) {
+/** @param {PendingGroup} group @param {string} nextLine @param {string[] | undefined} sourceLines */
+function reasonsFor(group, nextLine, sourceLines) {
 	const reasons = [];
-	if (group.lang !== 'md' && group.lines.length >= 3 && !isDocBlock(group, nextLine)) {
+	if (group.lang !== 'md' && group.lines.length >= 3 && !isDocBlock(group, nextLine, sourceLines)) {
 		reasons.push(`${group.lines.length} lines`);
 	}
 
@@ -131,6 +165,7 @@ export function groupsFromPatch(path, patch, source) {
 	const lang = langFor(path);
 	if (lang === null) return [];
 	const markdown = lang === 'md';
+	const sourceLines = source?.split('\n');
 	/** @type {Group[]} */
 	const groups = [];
 	/** @type {PendingGroup | null} */
@@ -142,7 +177,7 @@ export function groupsFromPatch(path, patch, source) {
 	/** @param {string} nextLine */
 	const flush = nextLine => {
 		if (pending !== null) {
-			const reasons = reasonsFor(pending, nextLine);
+			const reasons = reasonsFor(pending, nextLine, sourceLines);
 			if (reasons.length > 0) {
 				groups.push({
 					path,
@@ -233,12 +268,23 @@ export const keyFor = group =>
 /** @type {'RIGHT'} */
 const RIGHT = 'RIGHT';
 
+/** @param {string} reason */
+function guidanceFor(reason) {
+	if (/^\d+ lines$/.test(reason)) {
+		return 'This is a length-only flag. Check whether each line adds useful context; a necessary explanation can stay.';
+	}
+	return TELLS.find(([name]) => name === reason)?.[2] ?? 'Review the flagged wording in context.';
+}
+
 /** @param {Group} group */
-const bodyFor = group =>
-	`<!-- actionlint-comment-cop:${keyFor(group)} -->\n`
-	+ `Flagged for: ${group.reasons.join(', ')}.\n\n`
-	+ `This comment is doing too much of the code's job. `
-	+ `Prefer explicit ownership, state, or control flow in code, and keep only the non-obvious constraint here.`;
+export function bodyFor(group) {
+	const guidance = [...new Set(group.reasons.map(guidanceFor))];
+	const advice = guidance.length === 1 ? guidance[0] : guidance.map(text => `- ${text}`).join('\n');
+	return `<!-- actionlint-comment-cop:${keyFor(group)} -->\n`
+		+ `Flagged for: ${group.reasons.join(', ')}.\n\n${advice}\n\n`
+		+ `<sub>Comment Cop is intentionally sensitive; its suggestions are advisory. `
+		+ `If this is a false positive, you are welcome to resolve this thread without changing the text.</sub>`;
+}
 
 /** @param {unknown} error */
 function errorMessage(error) {
@@ -280,7 +326,7 @@ export default async function run({ github, context, core }) {
 		}
 
 		let source;
-		if (langFor(file.filename) === 'md') {
+		if (file.filename.endsWith('.go') || langFor(file.filename) === 'md') {
 			try {
 				const contentsUrl = requiredString(file.contents_url, `contents URL for ${file.filename}`);
 				const response = await github.request(contentsUrl, {
@@ -289,7 +335,7 @@ export default async function run({ github, context, core }) {
 				source = requiredString(response.data, `contents of ${file.filename}`);
 			} catch (error) {
 				unscannedPaths.add(file.filename);
-				core.warning(`Could not read ${file.filename}; skipping Markdown scan: ${errorMessage(error)}`);
+				core.warning(`Could not read ${file.filename}; skipping comment scan: ${errorMessage(error)}`);
 				continue;
 			}
 		}
