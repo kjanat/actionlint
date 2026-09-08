@@ -1,0 +1,1823 @@
+[
+  {
+    "reason": "Action context gap: the runner restricts Docker runs.env expressions to inputs; actionlint does not reject the github context here.",
+    "cases": {
+      "runner/src/Test/TestData/dockerfileaction_env_invalid_context.yml": []
+    }
+  },
+  {
+    "reason": "Action metadata gap: SchemaStore accepts Docker pre-if and post-if; actionlint currently forbids these keys for Docker actions.",
+    "cases": {
+      "schemastore/src/test/github-action/docker.json": [
+        ":1:1: \"pre-if\" is not allowed in \"runs\" section because \"Test Docker action\" is a Docker action. the action is defined at \"<action>\" [action]",
+        ":1:1: \"post-if\" is not allowed in \"runs\" section because \"Test Docker action\" is a Docker action. the action is defined at \"<action>\" [action]"
+      ]
+    }
+  },
+  {
+    "reason": "Action metadata gap: the runner accepts Docker pre-if and post-if; actionlint currently forbids these keys for Docker actions.",
+    "cases": {
+      "runner/src/Test/TestData/dockerfileaction_cleanup.yml": [
+        ":1:1: \"post-if\" is not allowed in \"runs\" section because \"Hello World\" is a Docker action. the action is defined at \"<action>\" [action]"
+      ],
+      "runner/src/Test/TestData/dockerfileaction_init.yml": [
+        ":1:1: \"pre-if\" is not allowed in \"runs\" section because \"Hello World\" is a Docker action. the action is defined at \"<action>\" [action]"
+      ]
+    }
+  },
+  {
+    "reason": "Action output gap: actionlint does not reject value on JavaScript action outputs.",
+    "cases": {
+      "schemastore/src/negative_test/github-action/javascript-output-with-value.json": []
+    }
+  },
+  {
+    "reason": "Action output gap: actionlint does not require value on composite action outputs.",
+    "cases": {
+      "schemastore/src/negative_test/github-action/composite-output-missing-value.json": []
+    }
+  },
+  {
+    "reason": "Empty-input contract difference: the upstream expression parser accepts empty input as null; actionlint requires an expression.",
+    "cases": {
+      "languageservices/expressions/testdata/basic.json/empty_expression/0": [
+        "1:1:0: unexpected end of input while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ]
+    }
+  },
+  {
+    "reason": "Event shape difference: this reader fixture accepts types under image_version; actionlint accepts names and versions.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/on-event-config-image-version-names.yml": [
+        "<stdin>:3:5: unexpected key \"types\" for \"image_version\" section. expected one of \"names\", \"versions\" [syntax-check]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/on-event-config-image-version-versions.yml": [
+        "<stdin>:3:5: unexpected key \"types\" for \"image_version\" section. expected one of \"names\", \"versions\" [syntax-check]"
+      ]
+    }
+  },
+  {
+    "reason": "Event shape gap: the reader accepts scalar image_version names and versions; actionlint currently requires sequences.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/on-event-config-image-version-name-version.yml": [
+        "<stdin>:3:12: \"names\" section must be sequence node but got scalar node with \"!!str\" tag [syntax-check]",
+        "<stdin>:4:15: \"versions\" section must be sequence node but got scalar node with \"!!str\" tag [syntax-check]"
+      ]
+    }
+  },
+  {
+    "reason": "Expression gap: actionlint rejects the non-breaking space in this expression; the reader fixture accepts it. The fixture also uses a retired action.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/bad-character.yml": [
+        "<stdin>:12:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:16:43: got unexpected character '\\u00a0' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' ' [expression]"
+      ]
+    }
+  },
+  {
+    "reason": "Expression limit gap: actionlint does not enforce the upstream maximum expression depth of 50.",
+    "cases": {
+      "languageservices/expressions/testdata/syntax-errors.json/depth-errors/0": [],
+      "languageservices/expressions/testdata/syntax-errors.json/depth-errors/10": [],
+      "languageservices/expressions/testdata/syntax-errors.json/depth-errors/2": [],
+      "languageservices/expressions/testdata/syntax-errors.json/depth-errors/4": [],
+      "languageservices/expressions/testdata/syntax-errors.json/depth-errors/6": []
+    }
+  },
+  {
+    "reason": "Expression literal gap: actionlint does not recognize NaN or Infinity literals accepted by the upstream expression corpus.",
+    "cases": {
+      "languageservices/expressions/testdata/coerce_number.json/array/0": [
+        "1:19:18: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/coerce_number.json/array/1": [
+        "1:19:18: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/coerce_number.json/array/2": [
+        "1:18:17: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/coerce_number.json/array/3": [
+        "1:18:17: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/coerce_number.json/object/0": [
+        "1:19:18: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/coerce_number.json/object/1": [
+        "1:19:18: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/coerce_number.json/object/2": [
+        "1:18:17: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/coerce_number.json/object/3": [
+        "1:18:17: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/coerce_number.json/string/10": [
+        "1:12:11: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/coerce_number.json/string/11": [
+        "1:11:10: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/coerce_number.json/string/12": [
+        "1:11:10: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/coerce_number.json/string/13": [
+        "1:12:11: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/coerce_number.json/string/14": [
+        "1:12:11: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/coerce_number.json/string/15": [
+        "1:11:10: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/coerce_number.json/string/16": [
+        "1:11:10: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/coerce_number.json/string/7": [
+        "1:17:16: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/coerce_number.json/string/8": [
+        "1:19:18: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/coerce_number.json/string/9": [
+        "1:12:11: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/coerce_string.json/number/27": [
+        "1:15:14: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/coerce_string.json/number/28": [
+        "1:16:15: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/coerce_string.json/number/29": [
+        "1:15:14: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/format.json/format/16": [
+        "1:15:14: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/format.json/format/17": [
+        "1:16:15: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/format.json/format/18": [
+        "1:15:14: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/number.json/number/11": [
+        "1:15:14: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/number.json/number/8": [
+        "1:16:15: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/number.json/number/9": [
+        "1:15:14: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_eq.json/coerce_bool_number/2": [
+        "1:10:9: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_eq.json/coerce_number_bool/2": [
+        "1:1:0: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_eq.json/coerce_number_string/11": [
+        "1:1:0: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_eq.json/coerce_number_string/12": [
+        "1:2:1: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/op_eq.json/coerce_number_string/13": [
+        "1:1:0: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_eq.json/coerce_string_number/11": [
+        "1:17:16: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_eq.json/coerce_string_number/12": [
+        "1:19:18: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/op_eq.json/coerce_string_number/13": [
+        "1:10:9: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_eq.json/number/5": [
+        "1:1:0: undefined variable \"NaN\". available variables are ",
+        "1:8:7: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_eq.json/number/6": [
+        "1:1:0: undefined variable \"Infinity\". available variables are ",
+        "1:13:12: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_eq.json/number/7": [
+        "1:2:1: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/op_eq.json/number/8": [
+        "1:6:5: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_eq.json/number/9": [
+        "1:6:5: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_gt.json/coerce_bool_number/4": [
+        "1:9:8: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_gt.json/coerce_bool_number/5": [
+        "1:8:7: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_gt.json/coerce_bool_number/6": [
+        "1:9:8: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_gt.json/coerce_bool_number/7": [
+        "1:8:7: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_gt.json/coerce_bool_number/8": [
+        "1:10:9: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/op_gt.json/coerce_bool_number/9": [
+        "1:9:8: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/op_gt.json/coerce_number_bool/4": [
+        "1:1:0: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_gt.json/coerce_number_bool/5": [
+        "1:1:0: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_gt.json/coerce_number_bool/6": [
+        "1:1:0: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_gt.json/coerce_number_bool/7": [
+        "1:1:0: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_gt.json/coerce_number_bool/8": [
+        "1:2:1: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/op_gt.json/coerce_number_bool/9": [
+        "1:2:1: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/op_idx.json/array-index-out-of-range/2": [
+        "1:6:5: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/op_idx.json/array-index-out-of-range/3": [
+        "1:5:4: undefined variable \"Infinity\". available variables are \"foo\""
+      ],
+      "languageservices/expressions/testdata/op_idx.json/array-index-out-of-range/4": [
+        "1:5:4: undefined variable \"NaN\". available variables are \"foo\""
+      ],
+      "languageservices/expressions/testdata/op_idx.json/object-index-coercion/4": [
+        "1:5:4: undefined variable \"NaN\". available variables are \"foo\""
+      ],
+      "languageservices/expressions/testdata/op_idx.json/object-index-coercion/5": [
+        "1:5:4: undefined variable \"Infinity\". available variables are \"foo\""
+      ],
+      "languageservices/expressions/testdata/op_idx.json/object-index-coercion/6": [
+        "1:6:5: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/op_lt.json/coerce_bool_number/4": [
+        "1:9:8: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_lt.json/coerce_bool_number/5": [
+        "1:8:7: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_lt.json/coerce_bool_number/6": [
+        "1:9:8: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_lt.json/coerce_bool_number/7": [
+        "1:8:7: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_lt.json/coerce_bool_number/8": [
+        "1:10:9: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/op_lt.json/coerce_bool_number/9": [
+        "1:9:8: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/op_lt.json/coerce_number_bool/4": [
+        "1:1:0: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_lt.json/coerce_number_bool/5": [
+        "1:1:0: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_lt.json/coerce_number_bool/6": [
+        "1:1:0: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_lt.json/coerce_number_bool/7": [
+        "1:1:0: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_lt.json/coerce_number_bool/8": [
+        "1:2:1: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/op_lt.json/coerce_number_bool/9": [
+        "1:2:1: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/op_ne.json/coerce_bool_number/3": [
+        "1:10:9: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_ne.json/coerce_number_bool/4": [
+        "1:1:0: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_ne.json/coerce_number_string/11": [
+        "1:1:0: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_ne.json/coerce_number_string/12": [
+        "1:2:1: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/op_ne.json/coerce_number_string/13": [
+        "1:1:0: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_ne.json/coerce_string_number/11": [
+        "1:17:16: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_ne.json/coerce_string_number/12": [
+        "1:19:18: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/op_ne.json/coerce_string_number/13": [
+        "1:10:9: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_ne.json/number/10": [
+        "1:6:5: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_ne.json/number/11": [
+        "1:6:5: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_ne.json/number/5": [
+        "1:1:0: undefined variable \"NaN\". available variables are ",
+        "1:8:7: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_ne.json/number/6": [
+        "1:6:5: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_ne.json/number/7": [
+        "1:6:5: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_ne.json/number/8": [
+        "1:1:0: undefined variable \"Infinity\". available variables are ",
+        "1:13:12: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_ne.json/number/9": [
+        "1:2:1: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/op_not.json/not/10": [
+        "1:3:2: undefined variable \"Infinity\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_not.json/not/11": [
+        "1:3:2: undefined variable \"NaN\". available variables are "
+      ],
+      "languageservices/expressions/testdata/op_not.json/not/9": [
+        "1:4:3: got unexpected character 'I' while lexing integer part of number, expecting '0'..'9'"
+      ]
+    }
+  },
+  {
+    "reason": "Expression numeric syntax gap: actionlint accepts negative hexadecimal -0xFF; the upstream parser rejects it.",
+    "cases": {
+      "languageservices/expressions/testdata/number.json/number/33": []
+    }
+  },
+  {
+    "reason": "Expression numeric syntax gap: leading-dot decimals, unary plus, octal prefixes, and some hexadecimal spellings differ from the upstream lexer.",
+    "cases": {
+      "languageservices/expressions/testdata/coerce_string.json/number/1": [
+        "1:15:14: unexpected token \".\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/coerce_string.json/number/13": [
+        "1:15:14: got unexpected character '+' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' '"
+      ],
+      "languageservices/expressions/testdata/coerce_string.json/number/20": [
+        "1:16:15: got unexpected character 'o' while lexing character following number 0, expecting ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' '"
+      ],
+      "languageservices/expressions/testdata/coerce_string.json/number/5": [
+        "1:16:15: got unexpected character '.' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/number.json/number/1": [
+        "1:1:0: unexpected token \".\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/number.json/number/10": [
+        "1:15:14: got unexpected character '+' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' '"
+      ],
+      "languageservices/expressions/testdata/number.json/number/17": [
+        "1:4:3: got unexpected character '0' while lexing character following hex integer 0x0, expecting ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' '"
+      ],
+      "languageservices/expressions/testdata/number.json/number/21": [
+        "1:2:1: got unexpected character 'o' while lexing character following number 0, expecting ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' '"
+      ],
+      "languageservices/expressions/testdata/number.json/number/22": [
+        "1:2:1: got unexpected character 'o' while lexing character following number 0, expecting ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' '"
+      ],
+      "languageservices/expressions/testdata/number.json/number/23": [
+        "1:2:1: got unexpected character 'o' while lexing character following number 0, expecting ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' '"
+      ],
+      "languageservices/expressions/testdata/number.json/number/24": [
+        "1:2:1: got unexpected character 'o' while lexing character following number 0, expecting ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' '"
+      ],
+      "languageservices/expressions/testdata/number.json/number/5": [
+        "1:1:0: got unexpected character '+' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' '"
+      ],
+      "languageservices/expressions/testdata/number.json/number/6": [
+        "1:2:1: got unexpected character '.' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/op_idx.json/object-index-coercion/1": [
+        "1:5:4: unexpected token \".\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx.json/object-index-coercion/2": [
+        "1:6:5: got unexpected character '.' while lexing integer part of number, expecting '0'..'9'"
+      ],
+      "languageservices/expressions/testdata/op_idx.json/object-index-coercion/3": [
+        "1:8:7: got unexpected character 'f' while lexing character following hex integer 0x0, expecting ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' '"
+      ],
+      "languageservices/expressions/testdata/op_not.json/not/3": [
+        "1:3:2: unexpected token \".\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_not.json/not/7": [
+        "1:4:3: got unexpected character '.' while lexing integer part of number, expecting '0'..'9'"
+      ]
+    }
+  },
+  {
+    "reason": "Expression syntax gap: actionlint accepts dot wildcards but does not parse bracket wildcards such as items[*].",
+    "cases": {
+      "languageservices/expressions/testdata/op_dot.json/property-basics/9": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx.json/index-star/0": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx.json/index-star/2": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/double-index/0": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-array-index-coercion/0": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-array-index-coercion/1": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-array-index-coercion/2": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-array-index-coercion/3": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-array-index-coercion/4": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-array-index-coercion/5": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-array-index-coercion/6": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-array-index-coercion/7": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-array-index-not-found/0": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-array-index-not-found/1": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-array-index-not-found/2": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-array-index-not-found/3": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-array-index-not-found/4": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-array/0": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-object-property-coercion/0": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-object-property-coercion/1": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-object-property-coercion/2": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-object-property-coercion/3": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-object-property-coercion/4": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-object-property-coercion/5": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-object-property-coercion/6": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-object-property-coercion/7": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-object-property-coercion/8": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/nested-object/1": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/not-found-always-returns-empty-array/0": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/op_idx_star.json/not-found-always-returns-empty-array/1": [
+        "1:5:4: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ],
+      "languageservices/expressions/testdata/syntax-errors.json/depth-errors/9": [
+        "1:8:7: unexpected token \"*\" while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\""
+      ]
+    }
+  },
+  {
+    "reason": "Extra expression type check: a whole steps object is interpolated into a string.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/job-with-outputs-context.yml": [
+        "<stdin>:6:20: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {conclusion: string; outcome: string; outputs: {string => string}} [expression]"
+      ]
+    }
+  },
+  {
+    "reason": "Extra expression type check: the fixture references an undeclared steps.foo property.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/step-run.yml": [
+        "<stdin>:8:23: property \"foo\" is not defined in object type {} [expression]"
+      ]
+    }
+  },
+  {
+    "reason": "Extra lifecycle check: the fixture uses the retired windows-2019 runner label.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/workflow-env.yml": [
+        "<stdin>:6:14: label \"windows-2019\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]"
+      ]
+    }
+  },
+  {
+    "reason": "Extra lifecycle checks: these historical fixtures remain parser-valid, while actionlint reports their deprecated or retired action runtimes.",
+    "cases": {
+      "languageservices/languageservice/src/validate.yaml-anchors.test.ts/should handle anchors in steps": [
+        "<stdin>:8:15: runtime \"node20\" is deprecated in GitHub Actions; removal is scheduled for September 23rd, 2026. see https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/. update the version of action \"actions/checkout@v4\" [action]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/background-steps.yml": [
+        "<stdin>:10:15: runtime \"node20\" is deprecated in GitHub Actions; removal is scheduled for September 23rd, 2026. see https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/. update the version of action \"actions/checkout@v4\" [action]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/basic.yml": [
+        "<stdin>:6:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/events-mapping-repo-dispatch.yml": [
+        "<stdin>:9:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/events-mapping.yml": [
+        "<stdin>:25:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/events-sequence.yml": [
+        "<stdin>:6:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/events-single-with-types.yml": [
+        "<stdin>:8:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/events-single.yml": [
+        "<stdin>:6:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/float-folded-style.yml": [
+        "<stdin>:7:13: the runtime or service used by \"actions/setup-python@v4\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/misc-steps.yml": [
+        "<stdin>:7:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/mvp.yml": [
+        "<stdin>:26:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/permissions.yml": [
+        "<stdin>:20:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:40:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/root-env-defaults.yml": [
+        "<stdin>:12:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/step-id-generates-counter-per-collision.yml": [
+        "<stdin>:6:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:8:15: the runtime or service used by \"actions/setup-node@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:11:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:13:15: the runtime or service used by \"actions/setup-node@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/step-id-generates-when-empty-and-considers-collisions.yml": [
+        "<stdin>:6:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:7:15: the runtime or service used by \"actions/setup-node@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:10:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:11:15: the runtime or service used by \"actions/setup-node@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/step-id-generates-when-empty.yml": [
+        "<stdin>:6:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/step-id.yml": [
+        "<stdin>:6:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "runner/src/Test/TestData/node16action.yml": [
+        ":1:1: runtime \"node16\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ],
+      "runner/src/Test/TestData/node20action.yml": [
+        ":1:1: runtime \"node20\" is deprecated in GitHub Actions; removal is scheduled for September 23rd, 2026. see https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ],
+      "runner/src/Test/TestData/nodeaction.yml": [
+        ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ],
+      "runner/src/Test/TestData/nodeaction_cleanup.yml": [
+        ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ],
+      "runner/src/Test/TestData/nodeaction_cleanup_default.yml": [
+        ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ],
+      "runner/src/Test/TestData/nodeaction_init.yml": [
+        ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ],
+      "runner/src/Test/TestData/nodeaction_init_default.yml": [
+        ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ],
+      "schemastore/src/test/github-workflow/1567.yaml": [
+        "<stdin>:17:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "schemastore/src/test/github-workflow/919.yaml": [
+        "<stdin>:11:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:12:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "schemastore/src/test/github-workflow/env-from-json.yaml": [
+        "<stdin>:11:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:12:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "schemastore/src/test/github-workflow/issue_2463_file_1.yaml": [
+        "<stdin>:23:15: the runtime or service used by \"actions/cache@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "schemastore/src/test/github-workflow/npm-publish.yaml": [
+        "<stdin>:14:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:15:15: the runtime or service used by \"actions/setup-node@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:24:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:25:15: the runtime or service used by \"actions/setup-node@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:40:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:41:15: the runtime or service used by \"actions/setup-node@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "schemastore/src/test/github-workflow/parallel-steps.yaml": [
+        "<stdin>:21:15: runtime \"node20\" is deprecated in GitHub Actions; removal is scheduled for September 23rd, 2026. see https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/. update the version of action \"actions/checkout@v4\" [action]",
+        "<stdin>:78:15: runtime \"node20\" is deprecated in GitHub Actions; removal is scheduled for September 23rd, 2026. see https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/. update the version of action \"actions/checkout@v4\" [action]",
+        "<stdin>:93:19: runtime \"node20\" is deprecated in GitHub Actions; removal is scheduled for September 23rd, 2026. see https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/. update the version of action \"actions/setup-node@v4\" [action]",
+        "<stdin>:94:19: runtime \"node20\" is deprecated in GitHub Actions; removal is scheduled for September 23rd, 2026. see https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/. update the version of action \"actions/setup-python@v5\" [action]",
+        "<stdin>:100:15: runtime \"node20\" is deprecated in GitHub Actions; removal is scheduled for September 23rd, 2026. see https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/. update the version of action \"actions/checkout@v4\" [action]"
+      ],
+      "schemastore/src/test/github-workflow/reusable-workflow.yaml": [
+        "<stdin>:27:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "schemastore/src/test/github-workflow/runs-on-interpolated.yaml": [
+        "<stdin>:13:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "schemastore/src/test/github-workflow/workflow_dispatch-inputs.yaml": [
+        "<stdin>:48:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ]
+    }
+  },
+  {
+    "reason": "Extra lint checks: cmd is used on Linux and github.test is not a known context property.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/job-defaults.yml": [
+        "<stdin>:7:16: shell name \"cmd\" is invalid on macOS or Linux. available names are \"bash\", \"pwsh\", \"python\", \"sh\" [shell-name]",
+        "<stdin>:8:31: property \"test\" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; artifacts: string; artifacts_list: string; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: string; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression]"
+      ]
+    }
+  },
+  {
+    "reason": "Extra lint checks: constant conditions and a reference to an undeclared step are accepted by this reader fixture.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/step-if.yml": [
+        "<stdin>:12:13: constant expression \"123\" in condition. remove the if: section [if-cond]",
+        "<stdin>:14:13: constant expression \"0 || 1\" in condition. remove the if: section [if-cond]",
+        "<stdin>:18:13: constant expression \"0 || 1\" in condition. remove the if: section [if-cond]",
+        "<stdin>:28:13: constant expression \"true || 'success()'\" in condition. remove the if: section [if-cond]",
+        "<stdin>:37:18: property \"build\" is not defined in object type {} [expression]"
+      ]
+    }
+  },
+  {
+    "reason": "Extra lint checks: empty environment names and references to missing step outputs are accepted by this reader fixture.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/job-environment.yml": [
+        "<stdin>:9:18: string should not be empty [syntax-check]",
+        "<stdin>:21:22: property \"env\" is not defined in object type {} [expression]",
+        "<stdin>:27:17: property \"env\" is not defined in object type {} [expression]"
+      ]
+    }
+  },
+  {
+    "reason": "Extra lint checks: misleading and constant conditions, incompatible runner labels, and a placeholder runner label are accepted by this serialization fixture.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/escape-html-values.yml": [
+        "<stdin>:6:9: if: condition \"false || ${{ true && true }}\" is always evaluated to true because extra characters are around ${{ }} [if-cond]",
+        "<stdin>:7:28: label \"linux\" conflicts with label \"macos-latest\" defined at line:7,col:15. note: to run your job on each workers, use matrix [runner-label]",
+        "<stdin>:7:47: label \"<\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:11:9: constant expression \"false\" in condition. remove the if: section [if-cond]"
+      ]
+    }
+  },
+  {
+    "reason": "Extra lint checks: the fixture uses arbitrary runner labels without configuring them as self-hosted labels.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/job-runs-on.yml": [
+        "<stdin>:9:9: label \"label 1\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:10:9: label \"label 2\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:17:11: label \"label 1\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:18:11: label \"label 2\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:25:11: label \"label 1\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:26:11: label \"label 2\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:33:11: label \"label 1\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:34:11: label \"label 2\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:41:11: label \"label 1\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:42:11: label \"label 2\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:49:11: label \"label 1\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:50:11: label \"label 2\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:54:16: label \"inf\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:54:21: label \"-inf\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:54:27: label \"+inf\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:54:33: label \"infinity\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:54:43: label \"NaN\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:54:48: label \"nan\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:54:53: label \"-infinity\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]"
+      ]
+    }
+  },
+  {
+    "reason": "Extra lint checks: the reader accepts incomplete jobs and string coercion in cancel-in-progress; actionlint requires steps and a boolean expression. A retired action is also reported.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/concurrency.yml": [
+        "<stdin>:9:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:15:3: \"steps\" section is missing in job \"build2\" [syntax-check]",
+        "<stdin>:18:3: \"steps\" section is missing in job \"build3\" [syntax-check]",
+        "<stdin>:21:3: \"steps\" section is missing in job \"build4\" [syntax-check]",
+        "<stdin>:25:27: type of expression must be bool but found type string [expression]",
+        "<stdin>:26:3: \"steps\" section is missing in job \"build5\" [syntax-check]"
+      ]
+    }
+  },
+  {
+    "reason": "Extra matrix check: the YAML scalar reader fixtures deliberately contain equivalent values; actionlint reports duplicate matrix entries after resolving their YAML types.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/yaml-schema-bool.yml": [
+        "<stdin>:11:13: duplicate value True is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:12:13: duplicate value TRUE is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:14:13: duplicate value False is found in matrix \"vector-1\". the same value is at line:13,col:13 [matrix]",
+        "<stdin>:15:13: duplicate value FALSE is found in matrix \"vector-1\". the same value is at line:13,col:13 [matrix]",
+        "<stdin>:18:13: duplicate value true is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:19:13: duplicate value FALSE is found in matrix \"vector-1\". the same value is at line:13,col:13 [matrix]",
+        "<stdin>:20:13: duplicate value true is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:21:13: duplicate value FALSE is found in matrix \"vector-1\". the same value is at line:13,col:13 [matrix]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/yaml-schema-float.yml": [
+        "<stdin>:11:13: duplicate value 0.5 is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:13:13: duplicate value +.5 is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:14:13: duplicate value -0.5 is found in matrix \"vector-1\". the same value is at line:12,col:13 [matrix]",
+        "<stdin>:15:13: duplicate value +0.5 is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:19:13: duplicate value -0.0 is found in matrix \"vector-1\". the same value is at line:18,col:13 [matrix]",
+        "<stdin>:20:13: duplicate value +0.0 is found in matrix \"vector-1\". the same value is at line:18,col:13 [matrix]",
+        "<stdin>:22:13: duplicate value +123456.789 is found in matrix \"vector-1\". the same value is at line:21,col:13 [matrix]",
+        "<stdin>:26:13: duplicate value 1.2E2 is found in matrix \"vector-1\". the same value is at line:25,col:13 [matrix]",
+        "<stdin>:27:13: duplicate value 1.2e+2 is found in matrix \"vector-1\". the same value is at line:25,col:13 [matrix]",
+        "<stdin>:28:13: duplicate value 1.2E+2 is found in matrix \"vector-1\". the same value is at line:25,col:13 [matrix]",
+        "<stdin>:30:13: duplicate value 1.2E-2 is found in matrix \"vector-1\". the same value is at line:29,col:13 [matrix]",
+        "<stdin>:31:13: duplicate value +1.2e2 is found in matrix \"vector-1\". the same value is at line:25,col:13 [matrix]",
+        "<stdin>:32:13: duplicate value +1.2E2 is found in matrix \"vector-1\". the same value is at line:25,col:13 [matrix]",
+        "<stdin>:33:13: duplicate value +1.2e+2 is found in matrix \"vector-1\". the same value is at line:25,col:13 [matrix]",
+        "<stdin>:34:13: duplicate value +1.2E+2 is found in matrix \"vector-1\". the same value is at line:25,col:13 [matrix]",
+        "<stdin>:35:13: duplicate value +1.2e-2 is found in matrix \"vector-1\". the same value is at line:29,col:13 [matrix]",
+        "<stdin>:36:13: duplicate value +1.2E-2 is found in matrix \"vector-1\". the same value is at line:29,col:13 [matrix]",
+        "<stdin>:38:13: duplicate value -1.2E2 is found in matrix \"vector-1\". the same value is at line:37,col:13 [matrix]",
+        "<stdin>:39:13: duplicate value -1.2e+2 is found in matrix \"vector-1\". the same value is at line:37,col:13 [matrix]",
+        "<stdin>:40:13: duplicate value -1.2E+2 is found in matrix \"vector-1\". the same value is at line:37,col:13 [matrix]",
+        "<stdin>:42:13: duplicate value -1.2E-2 is found in matrix \"vector-1\". the same value is at line:41,col:13 [matrix]",
+        "<stdin>:44:13: duplicate value .Inf is found in matrix \"vector-1\". the same value is at line:43,col:13 [matrix]",
+        "<stdin>:45:13: duplicate value .INF is found in matrix \"vector-1\". the same value is at line:43,col:13 [matrix]",
+        "<stdin>:46:13: duplicate value +.inf is found in matrix \"vector-1\". the same value is at line:43,col:13 [matrix]",
+        "<stdin>:47:13: duplicate value +.Inf is found in matrix \"vector-1\". the same value is at line:43,col:13 [matrix]",
+        "<stdin>:48:13: duplicate value +.INF is found in matrix \"vector-1\". the same value is at line:43,col:13 [matrix]",
+        "<stdin>:50:13: duplicate value -.Inf is found in matrix \"vector-1\". the same value is at line:49,col:13 [matrix]",
+        "<stdin>:51:13: duplicate value -.INF is found in matrix \"vector-1\". the same value is at line:49,col:13 [matrix]",
+        "<stdin>:53:13: duplicate value .NaN is found in matrix \"vector-1\". the same value is at line:52,col:13 [matrix]",
+        "<stdin>:54:13: duplicate value .NAN is found in matrix \"vector-1\". the same value is at line:52,col:13 [matrix]",
+        "<stdin>:58:13: duplicate value 2 is found in matrix \"vector-1\". the same value is at line:17,col:13 [matrix]",
+        "<stdin>:60:13: duplicate value +1 is found in matrix \"vector-1\". the same value is at line:57,col:13 [matrix]",
+        "<stdin>:61:13: duplicate value 0 is found in matrix \"vector-1\". the same value is at line:18,col:13 [matrix]",
+        "<stdin>:62:13: duplicate value -0 is found in matrix \"vector-1\". the same value is at line:18,col:13 [matrix]",
+        "<stdin>:63:13: duplicate value +0 is found in matrix \"vector-1\". the same value is at line:18,col:13 [matrix]",
+        "<stdin>:64:13: duplicate value .Inf is found in matrix \"vector-1\". the same value is at line:43,col:13 [matrix]",
+        "<stdin>:65:13: duplicate value .NaN is found in matrix \"vector-1\". the same value is at line:52,col:13 [matrix]",
+        "<stdin>:66:13: duplicate value 1 is found in matrix \"vector-1\". the same value is at line:57,col:13 [matrix]",
+        "<stdin>:67:13: duplicate value 2 is found in matrix \"vector-1\". the same value is at line:17,col:13 [matrix]",
+        "<stdin>:68:13: duplicate value -1 is found in matrix \"vector-1\". the same value is at line:59,col:13 [matrix]",
+        "<stdin>:69:13: duplicate value +1 is found in matrix \"vector-1\". the same value is at line:57,col:13 [matrix]",
+        "<stdin>:70:13: duplicate value 0 is found in matrix \"vector-1\". the same value is at line:18,col:13 [matrix]",
+        "<stdin>:71:13: duplicate value -0 is found in matrix \"vector-1\". the same value is at line:18,col:13 [matrix]",
+        "<stdin>:72:13: duplicate value +0 is found in matrix \"vector-1\". the same value is at line:18,col:13 [matrix]",
+        "<stdin>:73:13: duplicate value .Inf is found in matrix \"vector-1\". the same value is at line:43,col:13 [matrix]",
+        "<stdin>:74:13: duplicate value .NaN is found in matrix \"vector-1\". the same value is at line:52,col:13 [matrix]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/yaml-schema-int.yml": [
+        "<stdin>:13:13: duplicate value +1 is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:15:13: duplicate value -0 is found in matrix \"vector-1\". the same value is at line:14,col:13 [matrix]",
+        "<stdin>:16:13: duplicate value +0 is found in matrix \"vector-1\". the same value is at line:14,col:13 [matrix]",
+        "<stdin>:17:13: duplicate value 0000 is found in matrix \"vector-1\". the same value is at line:14,col:13 [matrix]",
+        "<stdin>:18:13: duplicate value -0000 is found in matrix \"vector-1\". the same value is at line:14,col:13 [matrix]",
+        "<stdin>:20:13: duplicate value 0xFF is found in matrix \"vector-1\". the same value is at line:19,col:13 [matrix]",
+        "<stdin>:23:13: duplicate value 00755 is found in matrix \"vector-1\". the same value is at line:22,col:13 [matrix]",
+        "<stdin>:24:13: duplicate value +00755 is found in matrix \"vector-1\". the same value is at line:22,col:13 [matrix]",
+        "<stdin>:28:13: duplicate value 1 is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:29:13: duplicate value -1 is found in matrix \"vector-1\". the same value is at line:12,col:13 [matrix]",
+        "<stdin>:30:13: duplicate value +1 is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:31:13: duplicate value 0xff is found in matrix \"vector-1\". the same value is at line:19,col:13 [matrix]",
+        "<stdin>:32:13: duplicate value 0o10 is found in matrix \"vector-1\". the same value is at line:21,col:13 [matrix]",
+        "<stdin>:33:13: duplicate value 1 is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:34:13: duplicate value -1 is found in matrix \"vector-1\". the same value is at line:12,col:13 [matrix]",
+        "<stdin>:35:13: duplicate value +1 is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:36:13: duplicate value 0xff is found in matrix \"vector-1\". the same value is at line:19,col:13 [matrix]",
+        "<stdin>:37:13: duplicate value 0o10 is found in matrix \"vector-1\". the same value is at line:21,col:13 [matrix]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/yaml-schema-null.yml": [
+        "<stdin>:11:13: duplicate value Null is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:12:13: duplicate value NULL is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:13:13: duplicate value ~ is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:16:13: duplicate value null is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:17:13: duplicate value null is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:18:13: duplicate value ~ is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:19:13: duplicate value null is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:20:13: duplicate value null is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]",
+        "<stdin>:21:13: duplicate value ~ is found in matrix \"vector-1\". the same value is at line:10,col:13 [matrix]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/yaml-schema-str-block-styles.yml": [
+        "<stdin>:55:13: duplicate value \"Line 1\\nLine 2\\n\\nLine 4\\n  Line 5\\nLine 6\\nLine 7\\n\" is found in matrix \"vector-1\". the same value is at line:22,col:13 [matrix]",
+        "<stdin>:66:13: duplicate value \"Line 1\\nLine 2\\n\\nLine 4\\n  Line 5\\nLine 6\\nLine 7\" is found in matrix \"vector-1\". the same value is at line:33,col:13 [matrix]",
+        "<stdin>:77:13: duplicate value \"Line 1\\nLine 2\\n\\nLine 4\\n  Line 5\\nLine 6\\nLine 7\\n\\n\\n\" is found in matrix \"vector-1\". the same value is at line:44,col:13 [matrix]",
+        "<stdin>:121:13: duplicate value \"Line 1 Line 2\\nLine 4\\n  Line 5\\nLine 6 Line 7\\n\" is found in matrix \"vector-1\". the same value is at line:88,col:13 [matrix]",
+        "<stdin>:132:13: duplicate value \"Line 1 Line 2\\nLine 4\\n  Line 5\\nLine 6 Line 7\" is found in matrix \"vector-1\". the same value is at line:99,col:13 [matrix]",
+        "<stdin>:143:13: duplicate value \"Line 1 Line 2\\nLine 4\\n  Line 5\\nLine 6 Line 7\\n\\n\\n\" is found in matrix \"vector-1\". the same value is at line:110,col:13 [matrix]",
+        "<stdin>:157:13: duplicate value \"hello\\nworld\\n\" is found in matrix \"vector-1\". the same value is at line:154,col:13 [matrix]",
+        "<stdin>:173:13: duplicate value \"\\nhello\\n\" is found in matrix \"vector-1\". the same value is at line:165,col:13 [matrix]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/yaml-schema-str-flow-styles.yml": [
+        "<stdin>:14:13: duplicate value \"foo bar\" is found in matrix \"vector-1\". the same value is at line:13,col:13 [matrix]",
+        "<stdin>:15:13: duplicate value \"foo bar\" is found in matrix \"vector-1\". the same value is at line:13,col:13 [matrix]",
+        "<stdin>:21:13: duplicate value \"foo bar\" is found in matrix \"vector-1\". the same value is at line:13,col:13 [matrix]",
+        "<stdin>:23:13: duplicate value \"foo bar\" is found in matrix \"vector-1\". the same value is at line:13,col:13 [matrix]",
+        "<stdin>:24:13: duplicate value \"null\" is found in matrix \"vector-1\". the same value is at line:18,col:13 [matrix]",
+        "<stdin>:25:13: duplicate value \"true\" is found in matrix \"vector-1\". the same value is at line:19,col:13 [matrix]",
+        "<stdin>:26:13: duplicate value \"0\" is found in matrix \"vector-1\". the same value is at line:20,col:13 [matrix]",
+        "<stdin>:27:13: duplicate value \"foo bar\" is found in matrix \"vector-1\". the same value is at line:13,col:13 [matrix]",
+        "<stdin>:28:13: duplicate value \"\\\\\\\"foo bar\\\\\\\"\" is found in matrix \"vector-1\". the same value is at line:22,col:13 [matrix]",
+        "<stdin>:29:13: duplicate value \"foo bar\" is found in matrix \"vector-1\". the same value is at line:13,col:13 [matrix]"
+      ]
+    }
+  },
+  {
+    "reason": "Extra typo check: the reader ignores unknown workflow_dispatch keys; actionlint reports them.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/on-workflow_dispatch-unknown-keys-ignored.yml": [
+        "<stdin>:3:5: expected \"inputs\" key for \"workflow_dispatch\" section but got \"unknown-key\" [syntax-check]"
+      ]
+    }
+  },
+  {
+    "reason": "Fixture reference differs from documented workflow-call syntax: the owner begins with a dot. actionlint rejects that uses reference.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/is-partial-rerun.yml": [
+        "<stdin>:9:11: reusable workflow call \".contoso/templates/.github/workflows/deploy.yml@v1\" at \"uses\" is not following the format \"owner/repo/path/to/workflow.yml@ref\", \"./path/to/workflow.yml\", nor \"$/path/to/workflow.yml\". see https://docs.github.com/en/actions/learn-github-actions/reusing-workflows for more details [workflow-call]"
+      ]
+    }
+  },
+  {
+    "reason": "Function arity difference: actionlint requires a replacement argument for format(); the upstream parser accepts a format string alone.",
+    "cases": {
+      "languageservices/expressions/testdata/format.json/format/0": [
+        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
+      ],
+      "languageservices/expressions/testdata/format.json/format/2": [
+        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
+      ],
+      "languageservices/expressions/testdata/format.json/format/21": [
+        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
+      ],
+      "languageservices/expressions/testdata/format.json/format/25": [
+        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
+      ],
+      "languageservices/expressions/testdata/format.json/format/27": [
+        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
+      ],
+      "languageservices/expressions/testdata/format.json/format/29": [
+        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
+      ],
+      "languageservices/expressions/testdata/format.json/format/31": [
+        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
+      ],
+      "languageservices/expressions/testdata/format.json/format/33": [
+        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
+      ],
+      "languageservices/expressions/testdata/format.json/format/36": [
+        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
+      ],
+      "languageservices/expressions/testdata/syntax-errors.json/depth-errors/13": [
+        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:18:17: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:35:34: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:52:51: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:69:68: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:87:86: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:105:104: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:123:122: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:141:140: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:159:158: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:177:176: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:195:194: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:213:212: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:231:230: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:249:248: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:267:266: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:285:284: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:303:302: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:321:320: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:339:338: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:357:356: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:375:374: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:393:392: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:411:410: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:429:428: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
+      ],
+      "languageservices/expressions/testdata/syntax-errors.json/depth-errors/15": [
+        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:18:17: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:35:34: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:52:51: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:69:68: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:87:86: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:105:104: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:123:122: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:141:140: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:159:158: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:177:176: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:195:194: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:213:212: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:231:230: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:249:248: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:267:266: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:285:284: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:303:302: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:321:320: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:339:338: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:357:356: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:375:374: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:393:392: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:411:410: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
+        "1:429:428: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
+      ]
+    }
+  },
+  {
+    "reason": "Mixed reader differences: missing steps, undefined matrix and step properties, numeric coercion, and the unsupported cancel-timeout-minutes field.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/misc-jobs.yml": [
+        "<stdin>:3:3: \"steps\" section is missing in job \"build\" [syntax-check]",
+        "<stdin>:4:18: property \"os\" is not defined in object type {} [expression]",
+        "<stdin>:5:28: property \"experimental\" is not defined in object type {} [expression]",
+        "<stdin>:7:22: type of expression at \"float number value\" must be number but found type string [expression]",
+        "<stdin>:8:5: unexpected key \"cancel-timeout-minutes\" for \"job\" section. expected one of \"concurrency\", \"container\", \"continue-on-error\", \"defaults\", \"env\", \"environment\", \"if\", \"name\", \"needs\", \"outputs\", \"permissions\", \"runs-on\", \"secrets\", \"services\", \"snapshot\", \"steps\", \"strategy\", \"timeout-minutes\", \"uses\", \"with\" [syntax-check]",
+        "<stdin>:15:17: property \"step_id\" is not defined in object type {} [expression]",
+        "<stdin>:18:20: property \"step1\" is not defined in object type {} [expression]",
+        "<stdin>:19:20: property \"step2\" is not defined in object type {} [expression]",
+        "<stdin>:24:3: \"steps\" section is missing in job \"build2\" [syntax-check]",
+        "<stdin>:29:5: unexpected key \"cancel-timeout-minutes\" for \"job\" section. expected one of \"concurrency\", \"container\", \"continue-on-error\", \"defaults\", \"env\", \"environment\", \"if\", \"name\", \"needs\", \"outputs\", \"permissions\", \"runs-on\", \"secrets\", \"services\", \"snapshot\", \"steps\", \"strategy\", \"timeout-minutes\", \"uses\", \"with\" [syntax-check]"
+      ]
+    }
+  },
+  {
+    "reason": "Numeric parsing gap: the fixture exercises overflow, infinity, and NaN values that actionlint does not accept in these numeric fields.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/round-to-infinity.yml": [
+        "<stdin>:5:22: expecting a single ${{...}} expression or float number literal, but found plain text node [syntax-check]",
+        "<stdin>:10:22: expecting a single ${{...}} expression or float number literal, but found plain text node [syntax-check]",
+        "<stdin>:15:22: expecting a single ${{...}} expression or float number literal, but found plain text node [syntax-check]",
+        "<stdin>:20:26: undefined variable \"NaN\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]",
+        "<stdin>:33:26: expecting a single ${{...}} expression or float number literal, but found plain text node [syntax-check]",
+        "<stdin>:39:26: expecting a single ${{...}} expression or float number literal, but found plain text node [syntax-check]"
+      ]
+    }
+  },
+  {
+    "reason": "Parser gap: the reader rejects the explicit timestamp tag, which actionlint currently accepts.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/errors-yaml-tags-explicit-unsupported.yml": []
+    }
+  },
+  {
+    "reason": "Reader field gap: cancel-timeout-minutes is not accepted by actionlint.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/job-cancel-timeout-minutes.yml": [
+        "<stdin>:5:5: unexpected key \"cancel-timeout-minutes\" for \"job\" section. expected one of \"concurrency\", \"container\", \"continue-on-error\", \"defaults\", \"env\", \"environment\", \"if\", \"name\", \"needs\", \"outputs\", \"permissions\", \"runs-on\", \"secrets\", \"services\", \"snapshot\", \"steps\", \"strategy\", \"timeout-minutes\", \"uses\", \"with\" [syntax-check]",
+        "<stdin>:17:5: unexpected key \"cancel-timeout-minutes\" for \"job\" section. expected one of \"concurrency\", \"container\", \"continue-on-error\", \"defaults\", \"env\", \"environment\", \"if\", \"name\", \"needs\", \"outputs\", \"permissions\", \"runs-on\", \"secrets\", \"services\", \"snapshot\", \"steps\", \"strategy\", \"timeout-minutes\", \"uses\", \"with\" [syntax-check]"
+      ],
+      "languageservices/workflow-parser/testdata/reader/job-concurrency.yml": [
+        "<stdin>:17:5: unexpected key \"cancel-timeout-minutes\" for \"job\" section. expected one of \"concurrency\", \"container\", \"continue-on-error\", \"defaults\", \"env\", \"environment\", \"if\", \"name\", \"needs\", \"outputs\", \"permissions\", \"runs-on\", \"secrets\", \"services\", \"snapshot\", \"steps\", \"strategy\", \"timeout-minutes\", \"uses\", \"with\" [syntax-check]"
+      ]
+    }
+  },
+  {
+    "reason": "Reader field gap: cancel-timeout-minutes is not accepted by actionlint. This fixture also uses the retired windows-2019 label.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/job-basic.yml": [
+        "<stdin>:4:14: label \"windows-2019\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:8:14: label \"windows-2019\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:9:5: unexpected key \"cancel-timeout-minutes\" for \"job\" section. expected one of \"concurrency\", \"container\", \"continue-on-error\", \"defaults\", \"env\", \"environment\", \"if\", \"name\", \"needs\", \"outputs\", \"permissions\", \"runs-on\", \"secrets\", \"services\", \"snapshot\", \"steps\", \"strategy\", \"timeout-minutes\", \"uses\", \"with\" [syntax-check]"
+      ]
+    }
+  },
+  {
+    "reason": "Reader field gap: the reader accepts a workflow-level description field; actionlint currently rejects it.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/workflow-description.yml": [
+        "<stdin>:1:1: unexpected key \"description\" for \"workflow\" section. expected one of \"concurrency\", \"defaults\", \"env\", \"jobs\", \"name\", \"on\", \"permissions\", \"run-name\" [syntax-check]"
+      ]
+    }
+  },
+  {
+    "reason": "Reader fixture versus lint checks: combined include/exclude filters, retired events, stacked activity types, one-minute schedules, and required inputs with defaults produce additional diagnostics.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/events-mapping-all.yml": [
+        "<stdin>:76:5: both \"branches\" and \"branches-ignore\" filters cannot be used for the same event \"merge_group\". note: use '!' to negate patterns [events]",
+        "<stdin>:88:3: unknown Webhook event \"project\". see https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#webhook-events for list of all Webhook event names [events]",
+        "<stdin>:95:3: unknown Webhook event \"project_card\". see https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#webhook-events for list of all Webhook event names [events]",
+        "<stdin>:102:3: unknown Webhook event \"project_column\". see https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#webhook-events for list of all Webhook event names [events]",
+        "<stdin>:113:5: both \"branches\" and \"branches-ignore\" filters cannot be used for the same event \"pull_request\". note: use '!' to negate patterns [events]",
+        "<stdin>:115:5: both \"paths\" and \"paths-ignore\" filters cannot be used for the same event \"pull_request\". note: use '!' to negate patterns [events]",
+        "<stdin>:138:9: invalid activity type \"stacked\" for \"pull_request\" Webhook event. available types are \"assigned\", \"auto_merge_disabled\", \"auto_merge_enabled\", \"closed\", \"converted_to_draft\", \"demilestoned\", \"dequeued\", \"edited\", \"enqueued\", \"labeled\", \"locked\", \"milestoned\", \"opened\", \"ready_for_review\", \"reopened\", \"review_request_removed\", \"review_requested\", \"synchronize\", \"unassigned\", \"unlabeled\", \"unlocked\" [events]",
+        "<stdin>:139:3: unknown Webhook event \"pull_request_comment\". see https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#webhook-events for list of all Webhook event names [events]",
+        "<stdin>:158:5: both \"branches\" and \"branches-ignore\" filters cannot be used for the same event \"pull_request_target\". note: use '!' to negate patterns [events]",
+        "<stdin>:160:5: both \"paths\" and \"paths-ignore\" filters cannot be used for the same event \"pull_request_target\". note: use '!' to negate patterns [events]",
+        "<stdin>:183:9: invalid activity type \"stacked\" for \"pull_request_target\" Webhook event. available types are \"assigned\", \"auto_merge_disabled\", \"auto_merge_enabled\", \"closed\", \"converted_to_draft\", \"demilestoned\", \"dequeued\", \"edited\", \"enqueued\", \"labeled\", \"locked\", \"milestoned\", \"opened\", \"ready_for_review\", \"reopened\", \"review_request_removed\", \"review_requested\", \"synchronize\", \"unassigned\", \"unlabeled\", \"unlocked\" [events]",
+        "<stdin>:188:5: both \"branches\" and \"branches-ignore\" filters cannot be used for the same event \"push\". note: use '!' to negate patterns [events]",
+        "<stdin>:192:5: both \"tags\" and \"tags-ignore\" filters cannot be used for the same event \"push\". note: use '!' to negate patterns [events]",
+        "<stdin>:194:5: both \"paths\" and \"paths-ignore\" filters cannot be used for the same event \"push\". note: use '!' to negate patterns [events]",
+        "<stdin>:209:13: scheduled job runs too frequently. it runs once per 60 seconds. the shortest interval is once every 5 minutes [events]",
+        "<stdin>:210:13: scheduled job runs too frequently. it runs once per 60 seconds. the shortest interval is once every 5 minutes [events]",
+        "<stdin>:220:18: input \"foo\" of workflow_call event has the default value \"bar\", but it is also required. if an input is marked as required, its default value will never be used [events]",
+        "<stdin>:234:5: both \"branches\" and \"branches-ignore\" filters cannot be used for the same event \"workflow_run\". note: use '!' to negate patterns [events]",
+        "<stdin>:239:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ]
+    }
+  },
+  {
+    "reason": "Reader versus lint checks: empty and constant conditions, unknown context properties, and arguments to success() produce diagnostics.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/job-if.yml": [
+        "<stdin>:6:9: constant expression \"true\" in condition. remove the if: section [if-cond]",
+        "<stdin>:11:9: string should not be empty [syntax-check]",
+        "<stdin>:11:9: unexpected end of input while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\" [expression]",
+        "<stdin>:16:13: property \"foo\" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; artifacts: string; artifacts_list: string; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: string; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression]",
+        "<stdin>:24:13: number of arguments is wrong. function \"success() -> bool\" takes 0 parameters but 2 arguments are given [expression]",
+        "<stdin>:29:9: property \"foo\" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; artifacts: string; artifacts_list: string; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: string; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression]",
+        "<stdin>:34:9: constant expression \"null\" in condition. remove the if: section [if-cond]",
+        "<stdin>:44:9: constant expression \"false || (true && true)\" in condition. remove the if: section [if-cond]"
+      ]
+    }
+  },
+  {
+    "reason": "Resolution boundary: the upstream fixture supplies remote reusable workflows to a mock file provider. actionlint analyzes the caller offline and does not resolve those remote bodies, permissions, or nested calls.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-inputs-required.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-inputs-type-mismatch.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-inputs-undefined.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-nested-depth-exceeded.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-nested-permissions-not-allowed-job-level-from-caller-job-level.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-nested-permissions-not-allowed-job-level-from-caller-workflow-level.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-nested-permissions-not-allowed-workflow-level-from-caller-job-level.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-nested-permissions-not-allowed-workflow-level-from-caller-workflow-level.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-secrets-required.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-secrets-undefined.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-max-result-size.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-job-level-from-caller-default.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-job-level-from-caller-job-level.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-job-level-from-caller-workflow-level.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-request-actions-write.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-request-checks-write.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-request-contents-write.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-request-deployments-write.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-request-discussions-write.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-request-id-token-write.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-request-issues-write.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-request-packages-write.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-request-pages-write.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-request-pull-requests-write.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-request-read-all-allowed-none.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-request-repository-projects-write.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-request-security-events-write.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-request-statuses-write.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-request-write-all-allowed-none.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-request-write-all-allowed-read-all.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-workflow-level-from-caller-default.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-workflow-level-from-caller-job-level.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-workflow-level-from-caller-workflow-level.yml": []
+    }
+  },
+  {
+    "reason": "Runner limit gap: actionlint does not enforce the expansion, object-size, or expression-length limit configured by this reader fixture.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/errors-max-job-limit-with-reusable-workflow.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-max-result-size.yml": [],
+      "languageservices/workflow-parser/testdata/reader/errors-step-run-exceeds-length.yml": []
+    }
+  },
+  {
+    "reason": "Runner-internal contract: plugin actions omit runs.using; actionlint validates public action metadata and requires it.",
+    "cases": {
+      "runner/src/Test/TestData/pluginaction.yml": [
+        ":1:1: \"runs.using\" is missing in local action \"Hello World\" defined at \"<action>\" [action]"
+      ]
+    }
+  },
+  {
+    "reason": "Schema versus lint contract: this JavaScript action fixture omits description and uses node12; actionlint requires a description and reports the retired runtime.",
+    "cases": {
+      "schemastore/src/test/github-action/javascript.json": [
+        ":1:1: description is required in metadata of \"Test JavaScript action\" action at \"<action>/action.yml\" [action]",
+        ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Test JavaScript action\" to a current runtime [action]"
+      ]
+    }
+  },
+  {
+    "reason": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, deprecated-commands, runner-label). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+    "cases": {
+      "schemastore/src/test/github-workflow/issue_2463_file_2.yaml": [
+        "<stdin>:91:15: the runtime or service used by \"actions/setup-python@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:105:14: workflow command \"set-output\" was deprecated. use `echo \"{name}={value}\" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]",
+        "<stdin>:110:14: workflow command \"set-output\" was deprecated. use `echo \"{name}={value}\" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]",
+        "<stdin>:115:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:125:14: workflow command \"set-output\" was deprecated. use `echo \"{name}={value}\" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]",
+        "<stdin>:136:14: workflow command \"set-output\" was deprecated. use `echo \"{name}={value}\" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]",
+        "<stdin>:149:14: workflow command \"set-output\" was deprecated. use `echo \"{name}={value}\" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]",
+        "<stdin>:188:14: workflow command \"set-output\" was deprecated. use `echo \"{name}={value}\" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]",
+        "<stdin>:199:14: workflow command \"set-output\" was deprecated. use `echo \"{name}={value}\" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]",
+        "<stdin>:207:14: workflow command \"set-output\" was deprecated. use `echo \"{name}={value}\" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]",
+        "<stdin>:246:15: the runtime or service used by \"actions/setup-python@v4\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:254:14: workflow command \"set-output\" was deprecated. use `echo \"{name}={value}\" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]",
+        "<stdin>:263:14: workflow command \"set-output\" was deprecated. use `echo \"{name}={value}\" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]",
+        "<stdin>:286:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:337:15: the runtime or service used by \"actions/upload-artifact@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:385:13: label \"ubuntu-20.04\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:386:13: label \"macos-12\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:387:13: label \"macos-11\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:410:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:415:15: the runtime or service used by \"actions/download-artifact@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:422:15: the runtime or service used by \"actions/setup-python@v4\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:429:14: workflow command \"set-output\" was deprecated. use `echo \"{name}={value}\" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]",
+        "<stdin>:436:15: the runtime or service used by \"actions/cache@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:478:15: the runtime or service used by \"codecov/codecov-action@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:523:15: the runtime or service used by \"actions/download-artifact@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:551:15: the runtime or service used by \"actions/download-artifact@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:560:11: avoid using deprecated input \"repository_url\" in action \"pypa/gh-action-pypi-publish@release/v1\": The inputs have been normalized to use kebab-case. Use `repository-url` instead [action]",
+        "<stdin>:573:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:610:15: the runtime or service used by \"actions/download-artifact@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ]
+    }
+  },
+  {
+    "reason": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, events). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+    "cases": {
+      "schemastore/src/test/github-workflow/918.yaml": [
+        "<stdin>:5:5: \"tags\" filter is not available for create event. it is only for push event [events]",
+        "<stdin>:11:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:12:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:21:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:22:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "schemastore/src/test/github-workflow/event-trigger.yaml": [
+        "<stdin>:11:13: scheduled job runs too frequently. it runs once per 60 seconds. the shortest interval is once every 5 minutes [events]",
+        "<stdin>:12:13: scheduled job runs too frequently. it runs once per 60 seconds. the shortest interval is once every 5 minutes [events]",
+        "<stdin>:13:13: scheduled job runs too frequently. it runs once per 60 seconds. the shortest interval is once every 5 minutes [events]",
+        "<stdin>:14:13: scheduled job runs too frequently. it runs once per 60 seconds. the shortest interval is once every 5 minutes [events]",
+        "<stdin>:21:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:22:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ]
+    }
+  },
+  {
+    "reason": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, expression). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+    "cases": {
+      "schemastore/src/test/github-workflow/matrix_from_json.yaml": [
+        "<stdin>:11:27: property \"job1\" is not defined in object type {} [expression]",
+        "<stdin>:13:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:14:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "schemastore/src/test/github-workflow/matrix_include.yaml": [
+        "<stdin>:25:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:26:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:28:29: property \"node-version\" is not defined in object type {experimental: bool; node: number; os: string} [expression]"
+      ],
+      "schemastore/src/test/github-workflow/matrix_include_expression.yaml": [
+        "<stdin>:12:32: property \"job1\" is not defined in object type {} [expression]",
+        "<stdin>:15:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:16:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ],
+      "schemastore/src/test/github-workflow/workflow_call_input_issue_2501.yaml": [
+        "<stdin>:33:15: the runtime or service used by \"actions/labeler@v4\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:36:35: property \"config-path\" is not defined in object type {aws_env: string; aws_region: string; terraform_command: string; terraform_version: string; working_directory: string} [expression]"
+      ]
+    }
+  },
+  {
+    "reason": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, if-cond). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+    "cases": {
+      "schemastore/src/test/github-workflow/conditions.yaml": [
+        "<stdin>:8:9: constant expression \"false\" in condition. remove the if: section [if-cond]",
+        "<stdin>:10:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:11:13: constant expression \"false\" in condition. remove the if: section [if-cond]",
+        "<stdin>:14:9: constant expression \"0\" in condition. remove the if: section [if-cond]",
+        "<stdin>:16:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:17:13: constant expression \"0\" in condition. remove the if: section [if-cond]",
+        "<stdin>:22:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:26:9: constant expression \"false\" in condition. remove the if: section [if-cond]",
+        "<stdin>:29:9: constant expression \"0\" in condition. remove the if: section [if-cond]"
+      ]
+    }
+  },
+  {
+    "reason": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, runner-label). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+    "cases": {
+      "schemastore/src/test/github-workflow/2579-1.yaml": [
+        "<stdin>:8:15: label \"ubuntu-20.04-16core\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:10:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:11:15: the runtime or service used by \"actions/setup-node@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      ]
+    }
+  },
+  {
+    "reason": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, syntax-check). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+    "cases": {
+      "schemastore/src/test/github-workflow/with-from-json.yaml": [
+        "<stdin>:11:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:12:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+        "<stdin>:13:15: \"with\" section is scalar node but mapping node is expected [syntax-check]"
+      ]
+    }
+  },
+  {
+    "reason": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (events, runner-label). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+    "cases": {
+      "schemastore/src/test/github-workflow/runs-on.yaml": [
+        "<stdin>:11:13: scheduled job runs too frequently. it runs once per 60 seconds. the shortest interval is once every 5 minutes [events]",
+        "<stdin>:14:13: scheduled job runs too frequently. it runs once per 60 seconds. the shortest interval is once every 5 minutes [events]",
+        "<stdin>:37:14: label \"ubuntu-20.04\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:41:14: label \"ubuntu-18.04\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:49:14: label \"macos-10.15\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:53:14: label \"macos-11\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:69:14: label \"windows-2019\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:77:13: label \"ubuntu-20.04\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:78:13: label \"ubuntu-18.04\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:112:9: label \"x86\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:114:9: label \"gpu\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:115:9: label \"large\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:121:9: label \"gpu\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
+        "<stdin>:122:9: label \"on-prem\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]"
+      ]
+    }
+  },
+  {
+    "reason": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (events, syntax-check). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+    "cases": {
+      "schemastore/src/test/github-workflow/on-event_name-null.yaml": [
+        "<stdin>:18:3: unknown Webhook event \"project\". see https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#webhook-events for list of all Webhook event names [events]",
+        "<stdin>:19:3: unknown Webhook event \"project_card\". see https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#webhook-events for list of all Webhook event names [events]",
+        "<stdin>:20:3: unknown Webhook event \"project_column\". see https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#webhook-events for list of all Webhook event names [events]",
+        "<stdin>:33:3: no workflow is configured for \"workflow_run\" event [events]",
+        "<stdin>:39:14: string should not be empty [syntax-check]"
+      ]
+    }
+  },
+  {
+    "reason": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (expression). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+    "cases": {
+      "schemastore/src/test/github-workflow/defaults.yaml": [
+        "<stdin>:16:20: property \"shell\" is not defined in object type {} [expression]"
+      ],
+      "schemastore/src/test/github-workflow/env-with-simple-expression.yaml": [
+        "<stdin>:15:14: type of expression at \"env\" must be object but found type string [expression]"
+      ]
+    }
+  },
+  {
+    "reason": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (runner-label, syntax-check). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+    "cases": {
+      "schemastore/src/test/github-workflow/2579-2.yaml": [
+        "<stdin>:5:3: \"steps\" section is missing in job \"check-bats-version\" [syntax-check]",
+        "<stdin>:8:29: label \"label-1\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]"
+      ],
+      "schemastore/src/test/github-workflow/issue-3208.yaml": [
+        "<stdin>:4:3: \"steps\" section is missing in job \"ci\" [syntax-check]",
+        "<stdin>:5:14: label \"unknown\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]"
+      ]
+    }
+  },
+  {
+    "reason": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (syntax-check). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+    "cases": {
+      "schemastore/src/test/github-workflow/1162.yaml": [
+        "<stdin>:8:3: \"steps\" section is missing in job \"check_run\" [syntax-check]"
+      ],
+      "schemastore/src/test/github-workflow/concurrency.yaml": [
+        "<stdin>:7:3: \"steps\" section is missing in job \"build\" [syntax-check]",
+        "<stdin>:10:3: \"steps\" section is missing in job \"test\" [syntax-check]",
+        "<stdin>:21:14: string should not be empty [syntax-check]"
+      ],
+      "schemastore/src/test/github-workflow/containers.yaml": [
+        "<stdin>:6:3: \"steps\" section is missing in job \"build\" [syntax-check]",
+        "<stdin>:27:3: \"steps\" section is missing in job \"test\" [syntax-check]"
+      ],
+      "schemastore/src/test/github-workflow/environments.yaml": [
+        "<stdin>:6:3: \"steps\" section is missing in job \"build\" [syntax-check]",
+        "<stdin>:11:3: \"steps\" section is missing in job \"test\" [syntax-check]"
+      ],
+      "schemastore/src/test/github-workflow/fail-fast.yaml": [
+        "<stdin>:6:3: \"steps\" section is missing in job \"boolean\" [syntax-check]",
+        "<stdin>:14:3: \"steps\" section is missing in job \"non-boolean\" [syntax-check]"
+      ]
+    }
+  },
+  {
+    "reason": "Template gap: actionlint does not implement the reader insert directive. The fixture also references an undeclared step output.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/insert.yml": [
+        "<stdin>:6:23: property \"set-matrix\" is not defined in object type {} [expression]",
+        "<stdin>:13:11: undefined variable \"insert\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]"
+      ]
+    }
+  },
+  {
+    "reason": "Validation gap: actionlint does not check the organization/enterprise prefix of runs-on group names.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/errors-job-runs-on-group-invalid-prefix.yml": []
+    }
+  },
+  {
+    "reason": "Validation gap: the reader reserves job IDs beginning with two underscores; actionlint currently accepts them.",
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/errors-job-id-leading-underscores.yml": []
+    }
+  },
+  {
+    "reason": "Workflow-call validation gap: actionlint accepts the non-YAML filename that SchemaStore rejects.",
+    "cases": {
+      "schemastore/src/negative_test/github-workflow/reusable-workflow-uses-has-wrong-filetype.yaml": []
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml accepts invalid YAML for \"Block scalar with more spaces than first content line\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/S98Z/in.yaml": []
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml accepts invalid YAML for \"Comment without whitespace after block scalar indicator\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/X4QW/in.yaml": []
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml accepts invalid YAML for \"Comment without whitespace after doublequoted scalar\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/SU5Z/in.yaml": []
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml accepts invalid YAML for \"Dash in flow sequence\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/YJV2/in.yaml": []
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml accepts invalid YAML for \"Directive variants\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/MUS6/00/in.yaml": []
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml accepts invalid YAML for \"Double quoted scalar with escaped single quote\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/HRE5/in.yaml": []
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml accepts invalid YAML for \"Invalid comment after comma\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/CVW2/in.yaml": []
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml accepts invalid YAML for \"Invalid comment after end of flow sequence\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/9JBA/in.yaml": []
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml accepts invalid YAML for \"Need document footer before directives\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/9HCY/in.yaml": []
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml accepts invalid YAML for \"Plain dashes in flow sequence\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/G5U8/in.yaml": []
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml accepts invalid YAML for \"Tabs in various contexts\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/Y79Y/003/in.yaml": []
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml accepts invalid YAML for \"Tabs that look like indentation\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/DK95/01/in.yaml": []
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml accepts invalid YAML for \"Wrong indented flow sequence\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/9C9N/in.yaml": []
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml accepts invalid YAML for \"Wrong indented multiline quoted scalar\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/QB6E/in.yaml": []
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Aliases in Explicit Block Mapping\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/6M2F/in.yaml": [
+        "go-yaml load error in parser (while parsing a block mapping) at L1.C1-L3.C1: did not find expected key"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Allowed characters in alias\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/W5VH/in.yaml": [
+        "go-yaml load error in scanner (while scanning an anchor) at L1.C4-C5: did not find expected alphabetic or numeric character"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Anchor with unicode character\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/8XYN/in.yaml": [
+        "go-yaml load error in scanner (while scanning an anchor) at L2.C3-C4: did not find expected alphabetic or numeric character"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Anchors With Colon in Name\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/2SXE/in.yaml": [
+        "go-yaml load error in scanner at L1.C8: mapping values are not allowed in this context"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Bare document after document end marker\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/7Z25/in.yaml": [
+        "go-yaml load error in parser at L4.C1: did not find expected <document start>"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Block Mapping with Missing Keys\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/2JQS/in.yaml": [
+        "go-yaml load error in parser (while parsing a block mapping) at L1.C1: did not find expected key"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Colon and adjacent value after comment on next line\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/K3WX/in.yaml": [
+        "go-yaml load error in parser (while parsing a flow mapping) at L2.C1-L3.C3: did not find expected ',' or '}'"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Colon and adjacent value on next line\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/5MUD/in.yaml": [
+        "go-yaml load error in parser (while parsing a flow mapping) at L2.C1-L3.C3: did not find expected ',' or '}'"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Colon at the beginning of adjacent flow scalar\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/5T43/in.yaml": [
+        "go-yaml load error in parser (while parsing a flow node) at L2.C11: did not find expected node content"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Directive variants\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/MUS6/05/in.yaml": [
+        "go-yaml load error in scanner (while scanning a directive) at L1.C1-C5: found unknown directive name"
+      ],
+      "yaml-test-suite/MUS6/06/in.yaml": [
+        "go-yaml load error in scanner (while scanning a directive) at L1.C1-C7: found unknown directive name"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Empty Lines at End of Document\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/NHX8/in.yaml": [
+        "go-yaml load error in parser (while parsing a block mapping) at L1.C1: did not find expected key"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Empty implicit key in single pair flow sequences\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/CFD4/in.yaml": [
+        "go-yaml load error in parser (while parsing a flow node) at L1.C5: did not find expected node content"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Empty keys in block and flow mapping\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/NKF9/in.yaml": [
+        "go-yaml load error in parser (while parsing a block mapping) at L2.C1-L3.C1: did not find expected key"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Escaped slash in double quotes\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/3UYS/in.yaml": [
+        "go-yaml load error in scanner (while scanning a quoted scalar) at L1.C16-C18: found unknown escape character"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Flow collections over many lines\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/VJP3/01/in.yaml": [
+        "go-yaml load error in parser (while parsing a flow mapping) at L1.C4-L3.C2: did not find expected ',' or '}'"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Flow mapping colon on line after key\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/4MUZ/00/in.yaml": [
+        "go-yaml load error in parser (while parsing a flow mapping) at L1.C1-L2.C1: did not find expected ',' or '}'"
+      ],
+      "yaml-test-suite/4MUZ/01/in.yaml": [
+        "go-yaml load error in parser (while parsing a flow mapping) at L1.C1-L2.C1: did not find expected ',' or '}'"
+      ],
+      "yaml-test-suite/4MUZ/02/in.yaml": [
+        "go-yaml load error in parser (while parsing a flow mapping) at L1.C1-L2.C1: did not find expected ',' or '}'"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Flow mapping edge cases\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/58MP/in.yaml": [
+        "go-yaml load error in parser (while parsing a flow node) at L1.C5: did not find expected node content"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Leading tab content in literals\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/96NN/00/in.yaml": [
+        "go-yaml load error in scanner (while scanning a block scalar) at L1.C6-L2.C2: found a tab character where an indentation space is expected"
+      ],
+      "yaml-test-suite/96NN/01/in.yaml": [
+        "go-yaml load error in scanner (while scanning a block scalar) at L1.C6-L2.C2: found a tab character where an indentation space is expected"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Multiline double quoted flow mapping key\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/9SA2/in.yaml": [
+        "go-yaml load error in parser (while parsing a flow mapping) at L3.C3-L4.C8: did not find expected ',' or '}'"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Multiline plain flow mapping key\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/NJ66/in.yaml": [
+        "go-yaml load error in parser (while parsing a flow mapping) at L3.C3-L4.C7: did not find expected ',' or '}'"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Question mark edge cases\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/M2N8/00/in.yaml": [
+        "go-yaml load error in parser (while parsing a block mapping) at L1.C5: did not find expected key"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Question marks in scalars\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/JR7V/in.yaml": [
+        "go-yaml load error in parser (while parsing a flow sequence) at L5.C3-C12: did not find expected ',' or ']'"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Single character streams\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/SM9W/01/in.yaml": [
+        "go-yaml load error in parser (while parsing a block mapping) at L1.C1: did not find expected key"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Spec Example 5.9. Directive Indicator\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/27NA/in.yaml": [
+        "go-yaml load error in parser at L1.C1: found incompatible YAML document"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Spec Example 6.13. Reserved Directives [1.3]\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/2LFX/in.yaml": [
+        "go-yaml load error in scanner (while scanning a directive) at L1.C1-C5: found unknown directive name"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Spec Example 6.13. Reserved Directives\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/6LVF/in.yaml": [
+        "go-yaml load error in scanner (while scanning a directive) at L1.C1-C5: found unknown directive name"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Spec Example 6.14. “YAML” directive\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/BEC7/in.yaml": [
+        "go-yaml load error in parser at L1.C1: found incompatible YAML document"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Spec Example 6.2. Indentation Indicators\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/A2M4/in.yaml": [
+        "go-yaml load error in scanner (while scanning for the next token) at L2.C4: found character that cannot start any token"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Spec Example 6.3. Separation Spaces\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/6BCT/in.yaml": [
+        "go-yaml load error in scanner (while scanning for the next token) at L3.C4: found character that cannot start any token"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Spec Example 7.2. Empty Content\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/WZ62/in.yaml": [
+        "go-yaml load error in scanner (while parsing a tag) at L2.C9-C14: found character ',' that is not allowed in a YAML tag"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Spec Example 7.3. Completely Empty Flow Nodes\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/FRK4/in.yaml": [
+        "go-yaml load error in parser (while parsing a flow node) at L3.C3: did not find expected node content"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Spec Example 8.18. Implicit Block Mapping Entries\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/S3PD/in.yaml": [
+        "go-yaml load error in parser (while parsing a block mapping) at L1.C1-L2.C1: did not find expected key"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Spec Example 8.2. Block Indentation Indicator\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/R4YG/in.yaml": [
+        "go-yaml load error in scanner (while scanning a block scalar) at L9.C3-L10.C2: found a tab character where an indentation space is expected"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Spec Example 9.2. Document Markers\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/RTP8/in.yaml": [
+        "go-yaml load error in parser at L1.C1: found incompatible YAML document"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Spec Example 9.3. Bare Documents\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/M7A3/in.yaml": [
+        "go-yaml load error in parser at L6.C1: did not find expected <document start>"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Spec Example 9.4. Explicit Documents\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/UT92/in.yaml": [
+        "go-yaml load error in parser (while parsing a flow mapping) at L2.C1-L3.C3: did not find expected ',' or '}'"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Spec Example 9.5. Directives Documents\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/W4TN/in.yaml": [
+        "go-yaml load error in parser at L1.C1: found incompatible YAML document"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Spec Example 9.6. Stream [1.3]\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/9DXL/in.yaml": [
+        "go-yaml load error in parser at L5.C1: found incompatible YAML document"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Spec Example 9.6. Stream\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/6ZKB/in.yaml": [
+        "go-yaml load error in parser at L5.C1: found incompatible YAML document"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Syntax character edge cases\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/UKK6/00/in.yaml": [
+        "go-yaml load error in parser (while parsing a block mapping) at L1.C3: did not find expected key"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Tab at beginning of line followed by a flow mapping\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/Q5MG/in.yaml": [
+        "go-yaml load error in scanner (while scanning for the next token) at L1.C1: found character that cannot start any token"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Tab indented top flow\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/6CA3/in.yaml": [
+        "go-yaml load error in scanner (while scanning for the next token) at L1.C1: found character that cannot start any token"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Tabs in various contexts\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/Y79Y/001/in.yaml": [
+        "go-yaml load error in scanner (while scanning a block scalar) at L1.C6-L2.C2: found a tab character where an indentation space is expected"
+      ],
+      "yaml-test-suite/Y79Y/010/in.yaml": [
+        "go-yaml load error in scanner (while scanning for the next token) at L1.C2: found character that cannot start any token"
+      ]
+    }
+  },
+  {
+    "reason": "YAML dependency difference: go.yaml rejects valid YAML for \"Tabs that look like indentation\" according to YAML Test Suite. This is a YAML-stream test, not a GitHub workflow verdict.",
+    "cases": {
+      "yaml-test-suite/DK95/00/in.yaml": [
+        "go-yaml load error in scanner (while scanning for the next token) at L2.C2: found character that cannot start any token"
+      ],
+      "yaml-test-suite/DK95/03/in.yaml": [
+        "go-yaml load error in scanner (while scanning for the next token) at L1.C2: found character that cannot start any token"
+      ],
+      "yaml-test-suite/DK95/04/in.yaml": [
+        "go-yaml load error in scanner (while scanning a plain scalar) at L1.C6-L2.C1: found a tab character that violates indentation"
+      ],
+      "yaml-test-suite/DK95/07/in.yaml": [
+        "go-yaml load error in parser at L1.C1: found incompatible YAML document"
+      ]
+    }
+  }
+]

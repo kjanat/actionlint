@@ -21,6 +21,10 @@ Local composite-action evidence and Go requirements were refreshed against `6dbd
 
 ## How to use this tracker
 
+The [upstream conformance suite](docs/conformance.md) provides additional evidence for parser and validation work.
+Its recorded differences include extra lint checks and limits of offline analysis; adopting a fixture does not by
+itself mean the related feature is implemented.
+
 - Review new items before adding them to the tracker.
 - Add each reviewed item once, checked, under one local disposition with concrete evidence.
 - Use one of these local dispositions: `Implemented locally`, `Partially implemented`, `Still affects fork`, `Candidate to port`, `Needs reproduction`, `Not applicable`, or `Superseded/duplicate`.

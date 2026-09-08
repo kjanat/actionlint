@@ -119,6 +119,9 @@ open coverage.html
 
 Automated tests are as follows.
 
+- [Upstream conformance tests](docs/conformance.md) compare actionlint with fixtures from GitHub's language services and
+  runner, SchemaStore, and YAML Test Suite. Run `make conformance` when changing parsing or validation. Known differences
+  remain visible and are checked for changes; a green job does not mean full runtime compatibility.
 - Unit tests are implemented in `*_test.go` files for testing the corresponding APIs. Test data for unit tests are put in
   `testdata/` directory.
 - UI tests based on matching to error messages are implemented in `linter_test.go` and all test data are stored in `testdata/`

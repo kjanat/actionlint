@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Add upstream conformance tests using GitHub's language-services and runner fixtures, with SchemaStore and YAML Test Suite comparisons. Run them across Linux, macOS, and Windows and report known differences separately from agreements.
+
 <a id="v1.16.0"></a>
 
 ## [v1.16.0](https://github.com/kjanat/actionlint/releases/tag/v1.16.0) - 2026-09-08
