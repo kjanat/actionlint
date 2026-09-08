@@ -829,7 +829,10 @@ func (s *RawYAMLString) scalarValue() any {
 		if strings.HasPrefix(s.Value, "0x") || strings.HasPrefix(s.Value, "0o") {
 			// GitHub converts hexadecimal and octal scalars through a signed 32-bit integer.
 			if n, err := strconv.ParseUint(s.Value, 0, 32); err == nil {
-				return float64(int32(n))
+				if n > math.MaxInt32 {
+					return float64(n) - (1 << 32)
+				}
+				return float64(n)
 			}
 		} else if n, err := strconv.ParseFloat(s.Value, 64); err == nil {
 			return n

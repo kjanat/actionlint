@@ -18,6 +18,8 @@ func TestRawYAMLScalarEquals(t *testing.T) {
 		{"hexadecimal", "0x10", "16", yamlTagInt, yamlTagInt, true},
 		{"octal", "0o10", "8", yamlTagInt, yamlTagInt, true},
 		{"signed hexadecimal", "0xffffffff", "-1", yamlTagInt, yamlTagInt, true},
+		{"maximum signed integer", "0x7fffffff", "2147483647", yamlTagInt, yamlTagInt, true},
+		{"minimum signed integer", "0x80000000", "-2147483648", yamlTagInt, yamlTagInt, true},
 		{"hexadecimal overflow", "0x100000000", "4294967296", yamlTagInt, yamlTagInt, false},
 		{"exponent", "1e2", "100", yamlTagFloat, yamlTagInt, true},
 		{"signed zero", "-0.0", "0", yamlTagFloat, yamlTagInt, true},
