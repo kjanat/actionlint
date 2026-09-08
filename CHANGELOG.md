@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Retry failed GitHub release requests when installing Pandoc in CI, replacing partial downloads and retaining asset verification before installation. (kjanat/actionlint#138)
+
 - Reject YAML anchor and alias names containing `+`, which GitHub Actions does not accept. (kjanat/actionlint#114)
 
 - Compare matrix scalars by YAML type and resolved value. Keep quoted numbers distinct from numbers, recognize equivalent numeric spellings, and preserve the distinction in diagnostics. (kjanat/actionlint#57)
