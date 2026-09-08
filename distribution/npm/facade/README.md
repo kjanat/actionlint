@@ -63,9 +63,23 @@ The package includes `actionlint.schema.json` for completion and validation in c
 
 These URLs require an npm release containing the schema:
 
-- [jsDelivr](https://cdn.jsdelivr.net/npm/@kjanat/actionlint/actionlint.schema.json)
-- [esm.sh (raw)](https://esm.sh/@kjanat/actionlint/actionlint.schema.json?raw)
-- [UNPKG](https://unpkg.com/@kjanat/actionlint/actionlint.schema.json)
+jsDelivr:
+
+```text
+https://cdn.jsdelivr.net/npm/@kjanat/actionlint/actionlint.schema.json
+```
+
+esm.sh:
+
+```text
+https://esm.sh/@kjanat/actionlint/actionlint.schema.json
+```
+
+UNPKG:
+
+```text
+https://unpkg.com/@kjanat/actionlint/actionlint.schema.json
+```
 
 For example, use jsDelivr in an editor's schema directive:
 
