@@ -3212,9 +3212,11 @@ An `if:` expression is also checked without the optional `${{ }}` wrapper. Delim
 are treated as literal text. These checks report unavailable contexts; they do not perform full type checking of
 composite step expressions or apply every workflow step rule inside the action.
 
-The same check is applied to the `default:` value of each `inputs:` entry in a
-Composite action's metadata. For example `default: ${{ secrets.GITHUB_TOKEN }}`
-silently resolves to an empty string at runtime, so it is reported as an error.
+Input `default:` expressions in a Composite action's metadata have a narrower set of contexts:
+`github`, `job`, `matrix`, `runner`, and `strategy`, as defined in the runner's
+[`action_yaml.json`](https://github.com/actions/runner/blob/main/src/Runner.Worker/action_yaml.json).
+References to `inputs`, `env`, `steps`, `secrets`, `vars`, or `needs` in a default are reported
+at the value in the action metadata file. The expression checks do not perform full type checking.
 
 <a id="deprecated-inputs-usage"></a>
 

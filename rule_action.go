@@ -526,23 +526,20 @@ var (
 	compositeAnyStepKeys  = []string{"continue-on-error", "env", "id", "if", "name", "run", "shell", "uses", "with", "working-directory"}
 )
 
-// compositeStepContexts is the allow-list of contexts usable in ${{ }} expressions inside
-// `runs.steps` of a composite action. `secrets`, `vars`, and `needs` are intentionally
-// omitted: `secrets` is documented as unavailable to composite actions (pass secrets as
-// inputs), the runner rejects `vars` with "Unrecognized named-value: 'vars'"
-// (actions/runner#2551), and `needs` is scoped to workflow jobs. `matrix` / `strategy` are
-// allowed for now; their availability inside actions is undocumented and we prefer no false
-// positives.
+// The runner's template schema gives input defaults fewer contexts than composite steps.
+// https://github.com/actions/runner/blob/main/src/Runner.Worker/action_yaml.json
+var actionInputDefaultContexts = []string{"github", "job", "matrix", "runner", "strategy"}
+
 var compositeStepContexts = []string{
 	"env", "github", "inputs", "job", "matrix", "runner", "steps", "strategy",
 }
 
-// compositeStepUnavailableContexts parses every ${{ }} expression in s and returns, in first-
-// seen order with duplicates removed, the names of contexts that are not available inside a
-// composite action step. When bare is true and s contains no ${{ }}, the whole string is
+// actionUnavailableContexts parses every ${{ }} expression in s and returns, in first-seen
+// order with duplicates removed, the names of contexts outside the given allow-list.
+// When bare is true and s contains no ${{ }}, the whole string is
 // parsed as a single expression (used for `if:`). A parse error stops the scan without a
 // diagnostic: reporting syntax errors is out of scope for this check.
-func compositeStepUnavailableContexts(s string, bare bool) []string {
+func actionUnavailableContexts(s string, bare bool, contexts []string) []string {
 	if bare && !strings.Contains(s, "${{") {
 		s = "${{" + s + "}}" // }} lets the expression lexer terminate; see checkIfCondition
 	}
@@ -563,7 +560,7 @@ func compositeStepUnavailableContexts(s string, bare bool) []string {
 		// The lexer skips delimiters inside string literals and consumes the closing }}.
 		s = s[lex.Offset():]
 		c := NewExprSemanticsChecker(false, nil)
-		c.SetContextAvailability(compositeStepContexts)
+		c.SetContextAvailability(contexts)
 		_, errs := c.Check(expr)
 		for _, e := range errs {
 			name, ok := unavailableContextName(e.Message)
@@ -640,15 +637,14 @@ func (rule *RuleAction) metadataErrorfAt(meta *ActionMetadata, line, col int, fo
 }
 
 // checkCompositeActionInputDefaults checks the ${{ }} expressions in a composite action's
-// input `default` values for contexts the runner does not provide to actions. For example
-// `default: ${{ secrets.TOKEN }}` silently resolves to an empty string at runtime.
+// input `default` values for contexts the runner does not provide when evaluating defaults.
 func (rule *RuleAction) checkCompositeActionInputDefaults(meta *ActionMetadata) {
 	for _, kv := range meta.InputDefaults {
-		for _, ctx := range compositeStepUnavailableContexts(kv.Value.Value, false) {
+		for _, ctx := range actionUnavailableContexts(kv.Value.Value, false, actionInputDefaultContexts) {
 			rule.metadataErrorfAt(
 				meta, kv.Value.Line, kv.Value.Column,
-				`default value of input %q in metadata of %q action uses context %q which is not available in a composite action. %s`,
-				kv.Name, meta.Name, ctx, compositeStepContextHint(ctx),
+				`default value of input %q in metadata of %q action uses context %q which is not available in input defaults. available contexts are %s`,
+				kv.Name, meta.Name, ctx, quotes(actionInputDefaultContexts),
 			)
 		}
 	}
@@ -715,7 +711,7 @@ func (rule *RuleAction) checkCompositeActionStepExprs(meta *ActionMetadata, s *A
 		if v == nil {
 			return
 		}
-		for _, ctx := range compositeStepUnavailableContexts(v.Value, bare) {
+		for _, ctx := range actionUnavailableContexts(v.Value, bare, compositeStepContexts) {
 			rule.compositeStepErrorfAt(
 				meta, idx, v.Line, v.Column,
 				`uses context %q at %q key which is not available in a composite action. %s`,

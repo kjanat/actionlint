@@ -7,7 +7,7 @@ inputs:
     default: ${{ secrets.DEFAULT_TOKEN }}
   region:
     description: region
-    default: "${{ vars.DEFAULT_REGION }}"
+    default: "${{ vars.DEFAULT_REGION }}${{ inputs.token }}${{ env.REGION }}${{ steps.previous.outputs.region }}"
 
 runs:
   using: composite

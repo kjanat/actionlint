@@ -779,6 +779,32 @@ inputs:
 	}
 }
 
+func TestActionMetadataPreservesPartialDecode(t *testing.T) {
+	fixture, err := os.ReadFile("testdata/action_metadata_lighthouse.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, using := range []string{"node16", "node20"} {
+		t.Run(using, func(t *testing.T) {
+			src := bytes.ReplaceAll(fixture, []byte("node16"), []byte(using))
+			var md ActionMetadata
+			err := yaml.Unmarshal(src, &md)
+			if err == nil || !strings.Contains(err.Error(), "unexpected key") || !strings.Contains(err.Error(), `input "temporaryPublicStorage"`) {
+				t.Fatalf("expected the upstream typo error, got %v", err)
+			}
+			if md.Name != "Lighthouse CI Action" || md.Runs.Using != using || md.Runs.Main != "dist/index.js" {
+				t.Fatalf("partially decoded metadata was lost: %+v", md)
+			}
+			if md.Inputs["temporarypublicstorage"] == nil || md.Outputs["links"] == nil {
+				t.Fatalf("partially decoded inputs or outputs were lost: %+v", md)
+			}
+			if len(md.InputDefaults) != 1 || md.InputDefaults[0].Value.Line != 5 {
+				t.Fatalf("positioned default was lost: %+v", md.InputDefaults)
+			}
+		})
+	}
+}
+
 func TestLocalActionsCacheFactory(t *testing.T) {
 	f := NewLocalActionsCacheFactory(io.Discard)
 	p1 := &Project{"path/to/project1", nil}

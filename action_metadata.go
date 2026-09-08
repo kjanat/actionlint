@@ -345,12 +345,11 @@ type ActionMetadata struct {
 func (md *ActionMetadata) UnmarshalYAML(n *yaml.Node) error {
 	type metadata ActionMetadata // Alias type to avoid infinite recursion into this method
 	var m metadata
-	if err := n.Decode(&m); err != nil {
-		return err
-	}
+	err := n.Decode(&m)
+	// The popular-actions generator uses partial metadata after tolerated input errors.
 	*md = ActionMetadata(m)
 	md.InputDefaults = collectInputDefaults(n)
-	return nil
+	return err
 }
 
 // collectInputDefaults walks the raw metadata mapping node and returns the "default" value of

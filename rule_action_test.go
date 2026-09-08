@@ -66,7 +66,30 @@ func TestCompositeStepUnavailableContexts(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
-			got := compositeStepUnavailableContexts(tc.expr, tc.bare)
+			got := actionUnavailableContexts(tc.expr, tc.bare, compositeStepContexts)
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Fatal(diff)
+			}
+		})
+	}
+}
+
+func TestActionInputDefaultUnavailableContexts(t *testing.T) {
+	tests := []struct {
+		what string
+		expr string
+		want []string
+	}{
+		{"step-only contexts", "${{ inputs.token }}${{ env.TOKEN }}${{ steps.previous.outputs.token }}", []string{"inputs", "env", "steps"}},
+		{"unavailable action contexts", "${{ secrets.TOKEN }}${{ vars.REGION }}${{ needs.build.result }}", []string{"secrets", "vars", "needs"}},
+		{"allowed contexts", "${{ github.sha }}${{ job.status }}${{ matrix.os }}${{ runner.os }}${{ strategy.job-index }}", nil},
+		{"quoted marker followed by context", "${{ 'text }} ${{ inputs.token }}' }}${{ env.TOKEN }}", []string{"env"}},
+		{"case-insensitive duplicates", "${{ INPUTS.a }}${{ inputs.b }}", []string{"inputs"}},
+		{"allowed function", "${{ format('{0}', hashFiles('*.go')) }}", nil},
+	}
+	for _, tc := range tests {
+		t.Run(tc.what, func(t *testing.T) {
+			got := actionUnavailableContexts(tc.expr, false, actionInputDefaultContexts)
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Fatal(diff)
 			}

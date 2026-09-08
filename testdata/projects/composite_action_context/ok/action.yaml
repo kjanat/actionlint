@@ -7,7 +7,7 @@ inputs:
     default: ${{ github.token }}
   ref:
     description: ref
-    default: "${{ github.ref }}-${{ inputs.token }}"
+    default: "${{ github.ref }}-${{ github.token }}"
 
 runs:
   using: composite
