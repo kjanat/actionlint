@@ -256,11 +256,15 @@ func refresh(ctx context.Context, client *http.Client, token, output string) err
 func run(args []string) error {
 	f := flag.NewFlagSet("generate-action-metadata", flag.ContinueOnError)
 	output := f.String("output", "action_metadata_availability.go", "Generated Go file")
+	runtimes := f.Bool("runtimes", false, "Generate accepted JavaScript runtimes and their lifecycle instead of expression tables")
 	if err := f.Parse(args); err != nil {
 		return err
 	}
 	if f.NArg() != 0 {
 		return errors.New("unexpected positional arguments")
+	}
+	if *runtimes && *output == "action_metadata_availability.go" {
+		*output = "action_runtimes.go"
 	}
 	if !filepath.IsLocal(*output) {
 		return fmt.Errorf("output file path must be relative to the current directory: %q", *output)
@@ -270,6 +274,9 @@ func run(args []string) error {
 	token := os.Getenv("GH_TOKEN")
 	if token == "" {
 		token = os.Getenv("GITHUB_TOKEN")
+	}
+	if *runtimes {
+		return refreshRuntimes(ctx, http.DefaultClient, token, *output)
 	}
 	return refresh(ctx, http.DefaultClient, token, *output)
 }

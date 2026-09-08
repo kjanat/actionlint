@@ -7,6 +7,7 @@ package actionlint
 var PopularActions = map[string]*ActionMetadata{
 	"8398a7/action-slack@v3": {
 		Name: "action-slack",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"author_name":       {"author_name", false, false, ""},
 			"cancelled_message": {"cancelled_message", false, false, ""},
@@ -29,6 +30,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"Azure/functions-action@v1": {
 		Name: "Azure Functions Action",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"app-name":                       {"app-name", true, false, ""},
 			"enable-oryx-build":              {"enable-oryx-build", false, false, ""},
@@ -130,6 +132,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"JamesIves/github-pages-deploy-action@v4": {
 		Name: "Deploy to GitHub Pages",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"attempt-limit":         {"attempt-limit", false, false, ""},
 			"branch":                {"branch", false, false, ""},
@@ -157,6 +160,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"ReactiveCircus/android-emulator-runner@v2": {
 		Name: "Android Emulator Runner",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"api-level":                  {"api-level", true, false, ""},
 			"arch":                       {"arch", false, false, ""},
@@ -188,6 +192,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"SamKirkland/FTP-Deploy-Action@v4.3.6": {
 		Name: "FTP Deploy",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"dangerous-clean-slate": {"dangerous-clean-slate", false, false, ""},
 			"dry-run":               {"dry-run", false, false, ""},
@@ -207,6 +212,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"Swatinem/rust-cache@v2": {
 		Name: "Rust Cache",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"add-job-id-key":                {"add-job-id-key", false, false, ""},
 			"add-rust-environment-hash-key": {"add-rust-environment-hash-key", false, false, ""},
@@ -232,6 +238,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/add-to-project@v1.0.1": {
 		Name: "Add To GitHub projects",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"github-token":   {"github-token", true, false, ""},
 			"label-operator": {"label-operator", false, false, ""},
@@ -244,6 +251,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/add-to-project@v1.0.2": {
 		Name: "Add To GitHub projects",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"github-token":   {"github-token", true, false, ""},
 			"label-operator": {"label-operator", false, false, ""},
@@ -256,6 +264,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/add-to-project@v2": {
 		Name: "Add To GitHub projects",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"github-token":   {"github-token", true, false, ""},
 			"label-operator": {"label-operator", false, false, ""},
@@ -268,6 +277,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/ai-inference@v1": {
 		Name: "AI Inference",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"enable-github-mcp":  {"enable-github-mcp", false, false, ""},
 			"endpoint":           {"endpoint", false, false, ""},
@@ -289,6 +299,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/ai-inference@v2": {
 		Name: "AI Inference",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"copilot-allow-tools":   {"copilot-allow-tools", false, false, ""},
 			"copilot-cli-path":      {"copilot-cli-path", false, false, ""},
@@ -318,6 +329,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/ai-inference@v3": {
 		Name: "AI Inference",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"copilot-allow-tools": {"copilot-allow-tools", false, false, ""},
 			"copilot-cli-path":    {"copilot-cli-path", false, false, ""},
@@ -477,6 +489,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/cache/restore@v4": {
 		Name: "Restore Cache",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"enablecrossosarchive": {"enableCrossOsArchive", false, false, ""},
 			"fail-on-cache-miss":   {"fail-on-cache-miss", false, false, ""},
@@ -493,6 +506,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/cache/restore@v5": {
 		Name: "Restore Cache",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"enablecrossosarchive": {"enableCrossOsArchive", false, false, ""},
 			"fail-on-cache-miss":   {"fail-on-cache-miss", false, false, ""},
@@ -509,6 +523,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/cache/restore@v6": {
 		Name: "Restore Cache",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"enablecrossosarchive": {"enableCrossOsArchive", false, false, ""},
 			"fail-on-cache-miss":   {"fail-on-cache-miss", false, false, ""},
@@ -525,6 +540,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/cache/save@v4": {
 		Name: "Save a cache",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"enablecrossosarchive": {"enableCrossOsArchive", false, false, ""},
 			"key":                  {"key", true, false, ""},
@@ -534,6 +550,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/cache/save@v5": {
 		Name: "Save a cache",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"enablecrossosarchive": {"enableCrossOsArchive", false, false, ""},
 			"key":                  {"key", true, false, ""},
@@ -543,6 +560,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/cache/save@v6": {
 		Name: "Save a cache",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"enablecrossosarchive": {"enableCrossOsArchive", false, false, ""},
 			"key":                  {"key", true, false, ""},
@@ -552,6 +570,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/cache@v4": {
 		Name: "Cache",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"enablecrossosarchive": {"enableCrossOsArchive", false, false, ""},
 			"fail-on-cache-miss":   {"fail-on-cache-miss", false, false, ""},
@@ -568,6 +587,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/cache@v5": {
 		Name: "Cache",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"enablecrossosarchive": {"enableCrossOsArchive", false, false, ""},
 			"fail-on-cache-miss":   {"fail-on-cache-miss", false, false, ""},
@@ -584,6 +604,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/cache@v6": {
 		Name: "Cache",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"enablecrossosarchive": {"enableCrossOsArchive", false, false, ""},
 			"fail-on-cache-miss":   {"fail-on-cache-miss", false, false, ""},
@@ -600,6 +621,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/checkout@v4": {
 		Name: "Checkout",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"allow-unsafe-pr-checkout":  {"allow-unsafe-pr-checkout", false, false, ""},
 			"clean":                     {"clean", false, false, ""},
@@ -630,6 +652,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/checkout@v5": {
 		Name: "Checkout",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"allow-unsafe-pr-checkout":  {"allow-unsafe-pr-checkout", false, false, ""},
 			"clean":                     {"clean", false, false, ""},
@@ -660,6 +683,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/checkout@v6": {
 		Name: "Checkout",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"allow-unsafe-pr-checkout":  {"allow-unsafe-pr-checkout", false, false, ""},
 			"clean":                     {"clean", false, false, ""},
@@ -690,6 +714,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/checkout@v7": {
 		Name: "Checkout",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"allow-unsafe-pr-checkout":  {"allow-unsafe-pr-checkout", false, false, ""},
 			"clean":                     {"clean", false, false, ""},
@@ -720,6 +745,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/configure-pages@v4": {
 		Name: "Configure GitHub Pages",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"enablement":            {"enablement", false, false, ""},
 			"generator_config_file": {"generator_config_file", false, false, ""},
@@ -735,6 +761,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/configure-pages@v5": {
 		Name: "Configure GitHub Pages",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"enablement":            {"enablement", false, false, ""},
 			"generator_config_file": {"generator_config_file", false, false, ""},
@@ -750,6 +777,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/configure-pages@v6": {
 		Name: "Configure GitHub Pages",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"enablement":            {"enablement", false, false, ""},
 			"generator_config_file": {"generator_config_file", false, false, ""},
@@ -765,6 +793,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/create-github-app-token@v1": {
 		Name: "Create GitHub App Token",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"app-id":                                                 {"app-id", false, false, ""},
 			"app_id":                                                 {"app_id", false, true, "'app_id' is deprecated and will be removed in a future version. Use 'app-id' instead."},
@@ -832,6 +861,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/create-github-app-token@v2": {
 		Name: "Create GitHub App Token",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"app-id":                    {"app-id", true, false, ""},
 			"github-api-url":            {"github-api-url", false, false, ""},
@@ -898,6 +928,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/create-github-app-token@v3": {
 		Name: "Create GitHub App Token",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"app-id":                       {"app-id", false, true, "Use 'client-id' instead."},
 			"client-id":                    {"client-id", false, false, ""},
@@ -970,6 +1001,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/delete-package-versions@v5": {
 		Name: "Delete Package Versions",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"delete-only-pre-release-versions": {"delete-only-pre-release-versions", false, false, ""},
 			"delete-only-untagged-versions":    {"delete-only-untagged-versions", false, false, ""},
@@ -985,6 +1017,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/dependency-review-action@v4": {
 		Name: "Dependency Review",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"allow-dependencies-licenses":        {"allow-dependencies-licenses", false, false, ""},
 			"allow-ghsas":                        {"allow-ghsas", false, false, ""},
@@ -1019,6 +1052,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/dependency-review-action@v5": {
 		Name: "Dependency Review",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"allow-dependencies-licenses":        {"allow-dependencies-licenses", false, false, ""},
 			"allow-ghsas":                        {"allow-ghsas", false, false, ""},
@@ -1053,6 +1087,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/deploy-pages@v3": {
 		Name: "Deploy GitHub Pages site",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"artifact_name":      {"artifact_name", false, false, ""},
 			"error_count":        {"error_count", false, false, ""},
@@ -1067,6 +1102,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/deploy-pages@v4": {
 		Name: "Deploy GitHub Pages site",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"artifact_name":      {"artifact_name", false, false, ""},
 			"error_count":        {"error_count", false, false, ""},
@@ -1081,6 +1117,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/deploy-pages@v5": {
 		Name: "Deploy GitHub Pages site",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"artifact_name":      {"artifact_name", false, false, ""},
 			"error_count":        {"error_count", false, false, ""},
@@ -1095,6 +1132,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/download-artifact@v3-node20": {
 		Name: "Download a Build Artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"name": {"name", false, false, ""},
 			"path": {"path", false, false, ""},
@@ -1105,6 +1143,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/download-artifact@v4": {
 		Name: "Download a Build Artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"artifact-ids":   {"artifact-ids", false, false, ""},
 			"github-token":   {"github-token", false, false, ""},
@@ -1121,6 +1160,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/download-artifact@v5": {
 		Name: "Download a Build Artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"artifact-ids":   {"artifact-ids", false, false, ""},
 			"github-token":   {"github-token", false, false, ""},
@@ -1137,6 +1177,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/download-artifact@v6": {
 		Name: "Download a Build Artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"artifact-ids":   {"artifact-ids", false, false, ""},
 			"github-token":   {"github-token", false, false, ""},
@@ -1153,6 +1194,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/download-artifact@v7": {
 		Name: "Download a Build Artifact",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"artifact-ids":   {"artifact-ids", false, false, ""},
 			"github-token":   {"github-token", false, false, ""},
@@ -1169,6 +1211,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/download-artifact@v8": {
 		Name: "Download a Build Artifact",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"artifact-ids":    {"artifact-ids", false, false, ""},
 			"digest-mismatch": {"digest-mismatch", false, false, ""},
@@ -1195,6 +1238,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/first-interaction@v2": {
 		Name: "First Interaction",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"issue_message": {"issue_message", false, false, ""},
 			"pr_message":    {"pr_message", false, false, ""},
@@ -1203,6 +1247,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/first-interaction@v3": {
 		Name: "First Interaction",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"issue_message": {"issue_message", false, false, ""},
 			"pr_message":    {"pr_message", false, false, ""},
@@ -1211,6 +1256,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/github-script@v7": {
 		Name: "GitHub Script",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"base-url":                  {"base-url", false, false, ""},
 			"debug":                     {"debug", false, false, ""},
@@ -1228,6 +1274,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/github-script@v8": {
 		Name: "GitHub Script",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"base-url":                  {"base-url", false, false, ""},
 			"debug":                     {"debug", false, false, ""},
@@ -1245,6 +1292,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/github-script@v9": {
 		Name: "GitHub Script",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"base-url":                  {"base-url", false, false, ""},
 			"debug":                     {"debug", false, false, ""},
@@ -1262,6 +1310,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/labeler@v5": {
 		Name: "Labeler",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"configuration-path": {"configuration-path", false, false, ""},
 			"dot":                {"dot", false, false, ""},
@@ -1276,6 +1325,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/labeler@v6": {
 		Name: "Labeler",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"configuration-path": {"configuration-path", false, false, ""},
 			"dot":                {"dot", false, false, ""},
@@ -1290,6 +1340,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/labeler@v7": {
 		Name: "Labeler",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"configuration-path": {"configuration-path", false, false, ""},
 			"dot":                {"dot", false, false, ""},
@@ -1304,6 +1355,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/setup-dotnet@v4": {
 		Name: "Setup .NET Core SDK",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"cache":                 {"cache", false, false, ""},
 			"cache-dependency-path": {"cache-dependency-path", false, false, ""},
@@ -1321,6 +1373,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/setup-dotnet@v5": {
 		Name: "Setup .NET Core SDK",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"architecture":          {"architecture", false, false, ""},
 			"cache":                 {"cache", false, false, ""},
@@ -1341,6 +1394,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/setup-dotnet@v6": {
 		Name: "Setup .NET Core SDK",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"architecture":          {"architecture", false, false, ""},
 			"cache":                 {"cache", false, false, ""},
@@ -1361,6 +1415,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/setup-go@v5": {
 		Name: "Setup Go environment",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"architecture":          {"architecture", false, false, ""},
 			"cache":                 {"cache", false, false, ""},
@@ -1377,6 +1432,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/setup-go@v6": {
 		Name: "Setup Go environment",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"architecture":          {"architecture", false, false, ""},
 			"cache":                 {"cache", false, false, ""},
@@ -1394,6 +1450,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/setup-go@v7": {
 		Name: "Setup Go environment",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"architecture":          {"architecture", false, false, ""},
 			"cache":                 {"cache", false, false, ""},
@@ -1411,6 +1468,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/setup-java@v4": {
 		Name: "Setup Java JDK",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"architecture":          {"architecture", false, false, ""},
 			"cache":                 {"cache", false, false, ""},
@@ -1442,6 +1500,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/setup-java@v5": {
 		Name: "Setup Java JDK",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"architecture":                {"architecture", false, false, ""},
 			"cache":                       {"cache", false, false, ""},
@@ -1479,6 +1538,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/setup-java@v6": {
 		Name: "Setup Java JDK",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"architecture":                        {"architecture", false, false, ""},
 			"cache":                               {"cache", false, false, ""},
@@ -1528,6 +1588,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/setup-node@v4": {
 		Name: "Setup Node.js environment",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"always-auth":           {"always-auth", false, false, ""},
 			"architecture":          {"architecture", false, false, ""},
@@ -1549,6 +1610,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/setup-node@v5": {
 		Name: "Setup Node.js environment",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"always-auth":           {"always-auth", false, false, ""},
 			"architecture":          {"architecture", false, false, ""},
@@ -1571,6 +1633,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/setup-node@v6": {
 		Name: "Setup Node.js environment",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"architecture":          {"architecture", false, false, ""},
 			"cache":                 {"cache", false, false, ""},
@@ -1592,6 +1655,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/setup-node@v7": {
 		Name: "Setup Node.js environment",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"architecture":          {"architecture", false, false, ""},
 			"cache":                 {"cache", false, false, ""},
@@ -1615,6 +1679,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/setup-python@v5": {
 		Name: "Setup Python",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"allow-prereleases":     {"allow-prereleases", false, false, ""},
 			"architecture":          {"architecture", false, false, ""},
@@ -1635,6 +1700,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/setup-python@v6": {
 		Name: "Setup Python",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"allow-prereleases":     {"allow-prereleases", false, false, ""},
 			"architecture":          {"architecture", false, false, ""},
@@ -1657,6 +1723,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/setup-python@v7": {
 		Name: "Setup Python",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"allow-prereleases":     {"allow-prereleases", false, false, ""},
 			"architecture":          {"architecture", false, false, ""},
@@ -1678,6 +1745,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/stale@v10": {
 		Name: "Close Stale Issues",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"any-of-issue-labels":             {"any-of-issue-labels", false, false, ""},
 			"any-of-labels":                   {"any-of-labels", false, false, ""},
@@ -1742,6 +1810,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/stale@v11": {
 		Name: "Close Stale Issues",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"any-of-issue-labels":             {"any-of-issue-labels", false, false, ""},
 			"any-of-labels":                   {"any-of-labels", false, false, ""},
@@ -1806,6 +1875,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/stale@v9": {
 		Name: "Close Stale Issues",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"any-of-issue-labels":             {"any-of-issue-labels", false, false, ""},
 			"any-of-labels":                   {"any-of-labels", false, false, ""},
@@ -1868,6 +1938,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/upload-artifact@v3-node20": {
 		Name: "Upload a Build Artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"if-no-files-found":    {"if-no-files-found", false, false, ""},
 			"include-hidden-files": {"include-hidden-files", false, false, ""},
@@ -1878,6 +1949,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/upload-artifact@v4": {
 		Name: "Upload a Build Artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"compression-level":    {"compression-level", false, false, ""},
 			"if-no-files-found":    {"if-no-files-found", false, false, ""},
@@ -1895,6 +1967,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/upload-artifact@v5": {
 		Name: "Upload a Build Artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"compression-level":    {"compression-level", false, false, ""},
 			"if-no-files-found":    {"if-no-files-found", false, false, ""},
@@ -1912,6 +1985,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/upload-artifact@v6": {
 		Name: "Upload a Build Artifact",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"compression-level":    {"compression-level", false, false, ""},
 			"if-no-files-found":    {"if-no-files-found", false, false, ""},
@@ -1929,6 +2003,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"actions/upload-artifact@v7": {
 		Name: "Upload a Build Artifact",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"archive":              {"archive", false, false, ""},
 			"compression-level":    {"compression-level", false, false, ""},
@@ -2049,6 +2124,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"aws-actions/configure-aws-credentials@v4": {
 		Name: "\"Configure AWS Credentials\" Action for GitHub Actions",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"audience":                      {"audience", false, false, ""},
 			"aws-access-key-id":             {"aws-access-key-id", false, false, ""},
@@ -2084,6 +2160,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"aws-actions/configure-aws-credentials@v5": {
 		Name: "\"Configure AWS Credentials\" Action for GitHub Actions",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"action-timeout-s":              {"action-timeout-s", false, false, ""},
 			"allowed-account-ids":           {"allowed-account-ids", false, false, ""},
@@ -2123,6 +2200,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"aws-actions/configure-aws-credentials@v6": {
 		Name: "\"Configure AWS Credentials\" Action for GitHub Actions",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"action-timeout-s":              {"action-timeout-s", false, false, ""},
 			"allowed-account-ids":           {"allowed-account-ids", false, false, ""},
@@ -2167,6 +2245,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"azure/aks-set-context@v4": {
 		Name: "Azure Kubernetes set context",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"admin":          {"admin", false, false, ""},
 			"cluster-name":   {"cluster-name", true, false, ""},
@@ -2179,6 +2258,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"azure/aks-set-context@v5": {
 		Name: "Azure Kubernetes set context",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"admin":          {"admin", false, false, ""},
 			"cluster-name":   {"cluster-name", true, false, ""},
@@ -2191,6 +2271,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"azure/login@v2": {
 		Name: "Azure Login",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"allow-no-subscriptions": {"allow-no-subscriptions", false, false, ""},
 			"audience":               {"audience", false, false, ""},
@@ -2205,6 +2286,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"azure/login@v3": {
 		Name: "Azure Login",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"allow-no-subscriptions": {"allow-no-subscriptions", false, false, ""},
 			"audience":               {"audience", false, false, ""},
@@ -2219,6 +2301,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"bahmutov/npm-install@v1": {
 		Name: "NPM or Yarn install with caching",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"cache-key-prefix":  {"cache-key-prefix", false, false, ""},
 			"install-command":   {"install-command", false, false, ""},
@@ -2229,6 +2312,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"codecov/codecov-action@v4": {
 		Name: "Codecov",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"codecov_yml_path":           {"codecov_yml_path", false, false, ""},
 			"commit_parent":              {"commit_parent", false, false, ""},
@@ -2433,6 +2517,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v10": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -2467,6 +2552,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v11": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -2501,6 +2587,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v12": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -2535,6 +2622,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v13": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -2569,6 +2657,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v14": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -2603,6 +2692,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v15": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -2637,6 +2727,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v16": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -2671,6 +2762,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v17": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -2705,6 +2797,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v18": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -2739,6 +2832,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v19": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -2773,6 +2867,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v20": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -2807,6 +2902,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v21": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -2841,6 +2937,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v22": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -2875,6 +2972,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v23": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -2908,6 +3006,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v24": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -2941,6 +3040,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v3": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -2972,6 +3072,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v5": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -3003,6 +3104,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v6": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -3034,6 +3136,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v7": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -3065,6 +3168,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v8": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -3097,6 +3201,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-download-artifact@v9": {
 		Name: "Download workflow artifact",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"allow_forks":          {"allow_forks", false, false, ""},
 			"branch":               {"branch", false, false, ""},
@@ -3144,6 +3249,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-send-mail@v10": {
 		Name: "Send email",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"attachments":      {"attachments", false, false, ""},
 			"bcc":              {"bcc", false, false, ""},
@@ -3172,6 +3278,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-send-mail@v11": {
 		Name: "Send email",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"attachments":      {"attachments", false, false, ""},
 			"bcc":              {"bcc", false, false, ""},
@@ -3201,6 +3308,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-send-mail@v12": {
 		Name: "Send email",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"attachments":      {"attachments", false, false, ""},
 			"bcc":              {"bcc", false, false, ""},
@@ -3230,6 +3338,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-send-mail@v13": {
 		Name: "Send email",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"attachments":      {"attachments", false, false, ""},
 			"bcc":              {"bcc", false, false, ""},
@@ -3259,6 +3368,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-send-mail@v14": {
 		Name: "Send email",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"attachments":      {"attachments", false, false, ""},
 			"bcc":              {"bcc", false, false, ""},
@@ -3288,6 +3398,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-send-mail@v15": {
 		Name: "Send email",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"attachments":      {"attachments", false, false, ""},
 			"bcc":              {"bcc", false, false, ""},
@@ -3317,6 +3428,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-send-mail@v16": {
 		Name: "Send email",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"attachments":      {"attachments", false, false, ""},
 			"bcc":              {"bcc", false, false, ""},
@@ -3346,6 +3458,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-send-mail@v17": {
 		Name: "Send email",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"attachments":      {"attachments", false, false, ""},
 			"bcc":              {"bcc", false, false, ""},
@@ -3375,6 +3488,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-send-mail@v18": {
 		Name: "Send email",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"attachments":      {"attachments", false, false, ""},
 			"bcc":              {"bcc", false, false, ""},
@@ -3404,6 +3518,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-send-mail@v3": {
 		Name: "Send email",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"attachments":      {"attachments", false, false, ""},
 			"bcc":              {"bcc", false, false, ""},
@@ -3430,6 +3545,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-send-mail@v4": {
 		Name: "Send email",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"attachments":      {"attachments", false, false, ""},
 			"bcc":              {"bcc", false, false, ""},
@@ -3456,6 +3572,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-send-mail@v5": {
 		Name: "Send email",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"attachments":      {"attachments", false, false, ""},
 			"bcc":              {"bcc", false, false, ""},
@@ -3484,6 +3601,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-send-mail@v6": {
 		Name: "Send email",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"attachments":      {"attachments", false, false, ""},
 			"bcc":              {"bcc", false, false, ""},
@@ -3512,6 +3630,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-send-mail@v7": {
 		Name: "Send email",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"attachments":      {"attachments", false, false, ""},
 			"bcc":              {"bcc", false, false, ""},
@@ -3540,6 +3659,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-send-mail@v8": {
 		Name: "Send email",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"attachments":      {"attachments", false, false, ""},
 			"bcc":              {"bcc", false, false, ""},
@@ -3568,6 +3688,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dawidd6/action-send-mail@v9": {
 		Name: "Send email",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"attachments":      {"attachments", false, false, ""},
 			"bcc":              {"bcc", false, false, ""},
@@ -3596,6 +3717,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dessant/lock-threads@v5": {
 		Name: "Lock Threads",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"add-discussion-labels":              {"add-discussion-labels", false, false, ""},
 			"add-issue-labels":                   {"add-issue-labels", false, false, ""},
@@ -3650,6 +3772,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dessant/lock-threads@v6": {
 		Name: "Lock Threads",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"add-discussion-labels":              {"add-discussion-labels", false, false, ""},
 			"add-issue-labels":                   {"add-issue-labels", false, false, ""},
@@ -3725,6 +3848,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"docker/build-push-action@v5": {
 		Name: "Build and push Docker images",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"add-hosts":        {"add-hosts", false, false, ""},
 			"allow":            {"allow", false, false, ""},
@@ -3767,6 +3891,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"docker/build-push-action@v6": {
 		Name: "Build and push Docker images",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"add-hosts":        {"add-hosts", false, false, ""},
 			"allow":            {"allow", false, false, ""},
@@ -3810,6 +3935,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"docker/build-push-action@v7": {
 		Name: "Build and push Docker images",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"add-hosts":        {"add-hosts", false, false, ""},
 			"allow":            {"allow", false, false, ""},
@@ -3853,6 +3979,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"docker/login-action@v3": {
 		Name: "Docker Login",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"ecr":           {"ecr", false, false, ""},
 			"logout":        {"logout", false, false, ""},
@@ -3865,6 +3992,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"docker/login-action@v4": {
 		Name: "Docker Login",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"ecr":           {"ecr", false, false, ""},
 			"logout":        {"logout", false, false, ""},
@@ -3877,6 +4005,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"docker/metadata-action@v5": {
 		Name: "Docker Metadata action",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"annotations":     {"annotations", false, false, ""},
 			"bake-target":     {"bake-target", false, false, ""},
@@ -3905,6 +4034,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"docker/metadata-action@v6": {
 		Name: "Docker Metadata action",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"annotations":     {"annotations", false, false, ""},
 			"bake-target":     {"bake-target", false, false, ""},
@@ -3933,6 +4063,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"docker/setup-buildx-action@v3": {
 		Name: "Docker Setup Buildx",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"append":                  {"append", false, false, ""},
 			"buildkitd-config":        {"buildkitd-config", false, false, ""},
@@ -3964,6 +4095,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"docker/setup-buildx-action@v4": {
 		Name: "Docker Setup Buildx",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"append":                  {"append", false, false, ""},
 			"buildkitd-config":        {"buildkitd-config", false, false, ""},
@@ -3992,6 +4124,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"docker/setup-qemu-action@v3": {
 		Name: "Docker Setup QEMU",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"cache-image": {"cache-image", false, false, ""},
 			"image":       {"image", false, false, ""},
@@ -4003,6 +4136,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"docker/setup-qemu-action@v4": {
 		Name: "Docker Setup QEMU",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"cache-image": {"cache-image", false, false, ""},
 			"image":       {"image", false, false, ""},
@@ -4015,6 +4149,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dorny/paths-filter@v3": {
 		Name: "Paths Changes Filter",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"base":                 {"base", false, false, ""},
 			"filters":              {"filters", true, false, ""},
@@ -4029,6 +4164,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"dorny/paths-filter@v4": {
 		Name: "Paths Changes Filter",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"base":                 {"base", false, false, ""},
 			"filters":              {"filters", true, false, ""},
@@ -4082,6 +4218,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"erlef/setup-beam@v1": {
 		Name: "setup-beam",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"disable_problem_matchers": {"disable_problem_matchers", false, false, ""},
 			"elixir-version":           {"elixir-version", false, false, ""},
@@ -4106,6 +4243,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"game-ci/unity-builder@v4": {
 		Name: "Unity - Builder",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"allowdirtybuild":               {"allowDirtyBuild", false, false, ""},
 			"androidexporttype":             {"androidExportType", false, false, ""},
@@ -4175,6 +4313,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"game-ci/unity-builder@v5": {
 		Name: "Unity - Builder",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"allowdirtybuild":                  {"allowDirtyBuild", false, false, ""},
 			"androidexporttype":                {"androidExportType", false, false, ""},
@@ -4228,6 +4367,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"github/codeql-action/analyze@v3": {
 		Name: "CodeQL: Finish",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"add-snippets":              {"add-snippets", false, true, "The input \"add-snippets\" has been removed and no longer has any effect."},
 			"category":                  {"category", false, false, ""},
@@ -4256,6 +4396,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"github/codeql-action/analyze@v4": {
 		Name: "CodeQL: Finish",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"add-snippets":              {"add-snippets", false, true, "The input \"add-snippets\" has been removed and no longer has any effect."},
 			"category":                  {"category", false, false, ""},
@@ -4284,6 +4425,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"github/codeql-action/autobuild@v3": {
 		Name: "CodeQL: Autobuild",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"matrix":            {"matrix", false, false, ""},
 			"token":             {"token", false, false, ""},
@@ -4292,6 +4434,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"github/codeql-action/autobuild@v4": {
 		Name: "CodeQL: Autobuild",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"matrix":            {"matrix", false, false, ""},
 			"token":             {"token", false, false, ""},
@@ -4300,6 +4443,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"github/codeql-action/init@v3": {
 		Name: "CodeQL: Init",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"analysis-kinds":            {"analysis-kinds", false, false, ""},
 			"build-mode":                {"build-mode", false, false, ""},
@@ -4333,6 +4477,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"github/codeql-action/init@v4": {
 		Name: "CodeQL: Init",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"analysis-kinds":            {"analysis-kinds", false, false, ""},
 			"build-mode":                {"build-mode", false, false, ""},
@@ -4381,6 +4526,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"golangci/golangci-lint-action@v4": {
 		Name: "Run golangci-lint",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"args":              {"args", false, false, ""},
 			"github-token":      {"github-token", false, false, ""},
@@ -4395,6 +4541,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"golangci/golangci-lint-action@v5": {
 		Name: "Golangci-lint",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"annotations":                 {"annotations", false, false, ""},
 			"args":                        {"args", false, false, ""},
@@ -4410,6 +4557,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"golangci/golangci-lint-action@v6": {
 		Name: "Golangci-lint",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"args":                        {"args", false, false, ""},
 			"cache-invalidation-interval": {"cache-invalidation-interval", false, false, ""},
@@ -4426,6 +4574,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"golangci/golangci-lint-action@v7": {
 		Name: "Golangci-lint",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"args":                        {"args", false, false, ""},
 			"cache-invalidation-interval": {"cache-invalidation-interval", false, false, ""},
@@ -4442,6 +4591,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"golangci/golangci-lint-action@v8": {
 		Name: "Golangci-lint",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"args":                        {"args", false, false, ""},
 			"cache-invalidation-interval": {"cache-invalidation-interval", false, false, ""},
@@ -4458,6 +4608,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"golangci/golangci-lint-action@v9": {
 		Name: "Golangci-lint",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"args":                        {"args", false, false, ""},
 			"cache-invalidation-interval": {"cache-invalidation-interval", false, false, ""},
@@ -4478,6 +4629,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"google-github-actions/auth@v2": {
 		Name: "Authenticate to Google Cloud",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"access_token_lifetime":        {"access_token_lifetime", false, false, ""},
 			"access_token_scopes":          {"access_token_scopes", false, false, ""},
@@ -4510,6 +4662,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"google-github-actions/auth@v3": {
 		Name: "Authenticate to Google Cloud",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"access_token_lifetime":        {"access_token_lifetime", false, false, ""},
 			"access_token_scopes":          {"access_token_scopes", false, false, ""},
@@ -4539,6 +4692,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"google-github-actions/get-secretmanager-secrets@v2": {
 		Name: "Get Secret Manager secrets",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"encoding":              {"encoding", false, false, ""},
 			"export_to_environment": {"export_to_environment", false, false, ""},
@@ -4550,6 +4704,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"google-github-actions/get-secretmanager-secrets@v3": {
 		Name: "Get Secret Manager secrets",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"encoding":              {"encoding", false, false, ""},
 			"export_to_environment": {"export_to_environment", false, false, ""},
@@ -4591,6 +4746,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"google-github-actions/setup-gcloud@v2": {
 		Name: "Set up gcloud Cloud SDK environment",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"install_components": {"install_components", false, false, ""},
 			"project_id":         {"project_id", false, false, ""},
@@ -4604,6 +4760,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"google-github-actions/setup-gcloud@v3": {
 		Name: "Set up gcloud Cloud SDK environment",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"cache":              {"cache", false, false, ""},
 			"install_components": {"install_components", false, false, ""},
@@ -4617,6 +4774,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"google-github-actions/upload-cloud-storage@v2": {
 		Name: "Cloud Storage Uploader",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"concurrency":          {"concurrency", false, false, ""},
 			"destination":          {"destination", true, false, ""},
@@ -4638,6 +4796,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"google-github-actions/upload-cloud-storage@v3": {
 		Name: "Cloud Storage Uploader",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"concurrency":          {"concurrency", false, false, ""},
 			"destination":          {"destination", true, false, ""},
@@ -4659,6 +4818,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"goreleaser/goreleaser-action@v5": {
 		Name: "GoReleaser Action",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"args":         {"args", false, false, ""},
 			"distribution": {"distribution", false, false, ""},
@@ -4673,6 +4833,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"goreleaser/goreleaser-action@v6": {
 		Name: "GoReleaser Action",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"args":         {"args", false, false, ""},
 			"distribution": {"distribution", false, false, ""},
@@ -4687,6 +4848,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"goreleaser/goreleaser-action@v7": {
 		Name: "GoReleaser Action",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"args":         {"args", false, false, ""},
 			"distribution": {"distribution", false, false, ""},
@@ -4702,6 +4864,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"gradle/wrapper-validation-action@v2": {
 		Name: "Gradle Wrapper Validation",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"allow-checksums":   {"allow-checksums", false, false, ""},
 			"allow-snapshots":   {"allow-snapshots", false, false, ""},
@@ -4746,9 +4909,11 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"microsoft/playwright-github-action@v1": {
 		Name: "Run Playwright tests",
+		Runs: ActionMetadataRuns{Using: "node20"},
 	},
 	"mikepenz/release-changelog-builder-action@v4": {
 		Name: "Release Changelog Builder",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"baseurl":                 {"baseUrl", false, false, ""},
 			"cache":                   {"cache", false, false, ""},
@@ -4789,6 +4954,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"mikepenz/release-changelog-builder-action@v5": {
 		Name: "Release Changelog Builder",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"baseurl":                 {"baseUrl", false, false, ""},
 			"cache":                   {"cache", false, false, ""},
@@ -4831,6 +4997,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"mikepenz/release-changelog-builder-action@v6": {
 		Name: "Release Changelog Builder",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"baseurl":                 {"baseUrl", false, false, ""},
 			"cache":                   {"cache", false, false, ""},
@@ -4875,6 +5042,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"msys2/setup-msys2@v2": {
 		Name: "Setup MSYS2",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"cache":                   {"cache", false, false, ""},
 			"install":                 {"install", false, false, ""},
@@ -4892,6 +5060,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"ncipollo/release-action@v1": {
 		Name: "Create Release",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"allowupdates":                    {"allowUpdates", false, false, ""},
 			"artifact":                        {"artifact", false, true, "Use 'artifacts' instead."},
@@ -4935,6 +5104,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"nwtgck/actions-netlify@v3": {
 		Name: "Netlify Actions",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"alias":                           {"alias", false, false, ""},
 			"deploy-message":                  {"deploy-message", false, false, ""},
@@ -4959,6 +5129,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"nwtgck/actions-netlify@v4": {
 		Name: "Netlify Actions",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"alias":                           {"alias", false, false, ""},
 			"deploy-message":                  {"deploy-message", false, false, ""},
@@ -4983,6 +5154,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"octokit/graphql-action@v2.x": {
 		Name: "GitHub GraphQL API Query",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"mediatype": {"mediaType", false, false, ""},
 			"query":     {"query", true, false, ""},
@@ -4994,6 +5166,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"octokit/graphql-action@v3.x": {
 		Name: "GitHub GraphQL API Query",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"mediatype": {"mediaType", false, false, ""},
 			"query":     {"query", true, false, ""},
@@ -5005,6 +5178,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"octokit/request-action@v2.x": {
 		Name:       "GitHub API Request",
+		Runs:       ActionMetadataRuns{Using: "node20"},
 		SkipInputs: true,
 		Outputs: ActionMetadataOutputs{
 			"data":    {"data"},
@@ -5014,6 +5188,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"octokit/request-action@v3.x": {
 		Name:       "GitHub API Request",
+		Runs:       ActionMetadataRuns{Using: "node24"},
 		SkipInputs: true,
 		Outputs: ActionMetadataOutputs{
 			"data":    {"data"},
@@ -5065,6 +5240,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"peaceiris/actions-gh-pages@v4": {
 		Name: "GitHub Pages action",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"allow_empty_commit":  {"allow_empty_commit", false, false, ""},
 			"cname":               {"cname", false, false, ""},
@@ -5090,6 +5266,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"peaceiris/actions-hugo@v3": {
 		Name: "Hugo setup",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"extended":     {"extended", false, false, ""},
 			"hugo-version": {"hugo-version", false, false, ""},
@@ -5097,6 +5274,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"peter-evans/create-or-update-comment@v4": {
 		Name: "Create or Update Comment",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"append-separator":    {"append-separator", false, false, ""},
 			"body":                {"body", false, false, ""},
@@ -5116,6 +5294,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"peter-evans/create-or-update-comment@v5": {
 		Name: "Create or Update Comment",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"append-separator":    {"append-separator", false, false, ""},
 			"body":                {"body", false, false, ""},
@@ -5135,6 +5314,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"peter-evans/create-pull-request@v6": {
 		Name: "Create Pull Request",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"add-paths":      {"add-paths", false, false, ""},
 			"assignees":      {"assignees", false, false, ""},
@@ -5169,6 +5349,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"peter-evans/create-pull-request@v7": {
 		Name: "Create Pull Request",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"add-paths":             {"add-paths", false, false, ""},
 			"assignees":             {"assignees", false, false, ""},
@@ -5205,6 +5386,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"peter-evans/create-pull-request@v8": {
 		Name: "Create Pull Request",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"add-paths":             {"add-paths", false, false, ""},
 			"assignees":             {"assignees", false, false, ""},
@@ -5241,6 +5423,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"preactjs/compressed-size-action@v2": {
 		Name: "compressed-size-action",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"base-ref":                 {"base-ref", false, false, ""},
 			"build-script":             {"build-script", false, false, ""},
@@ -5266,6 +5449,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"preactjs/compressed-size-action@v3": {
 		Name: "compressed-size-action",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"base-ref":                 {"base-ref", false, false, ""},
 			"build-script":             {"build-script", true, false, ""},
@@ -5294,6 +5478,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"pulumi/actions@v5": {
 		Name: "Pulumi CLI Action",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"always-include-summary": {"always-include-summary", false, false, ""},
 			"cloud-url":              {"cloud-url", false, false, ""},
@@ -5333,6 +5518,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"pulumi/actions@v6": {
 		Name: "Pulumi CLI Action",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"always-include-summary": {"always-include-summary", false, false, ""},
 			"cloud-url":              {"cloud-url", false, false, ""},
@@ -5378,6 +5564,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"pulumi/actions@v7": {
 		Name: "Pulumi CLI Action",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"always-include-summary": {"always-include-summary", false, false, ""},
 			"cloud-url":              {"cloud-url", false, false, ""},
@@ -5442,6 +5629,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"release-drafter/release-drafter@v6": {
 		Name: "Release Drafter",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"commitish":             {"commitish", false, false, ""},
 			"config-name":           {"config-name", false, false, ""},
@@ -5474,6 +5662,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"release-drafter/release-drafter@v7": {
 		Name: "Release Drafter",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"commitish":             {"commitish", false, false, ""},
 			"config-name":           {"config-name", false, false, ""},
@@ -5550,6 +5739,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"reviewdog/action-golangci-lint@v2": {
 		Name: "Run golangci-lint with reviewdog",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"cache":                 {"cache", false, false, ""},
 			"fail_level":            {"fail_level", false, false, ""},
@@ -5680,6 +5870,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"rhysd/action-setup-vim@v1": {
 		Name: "Setup Vim",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"configure-args": {"configure-args", false, false, ""},
 			"neovim":         {"neovim", false, false, ""},
@@ -5693,6 +5884,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"ridedott/merge-me-action@v2": {
 		Name: "Merge me!",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"enable_github_api_preview":  {"ENABLE_GITHUB_API_PREVIEW", false, false, ""},
 			"enabled_for_manual_changes": {"ENABLED_FOR_MANUAL_CHANGES", false, false, ""},
@@ -5708,6 +5900,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"ruby/setup-ruby@v1": {
 		Name: "Setup Ruby, JRuby and TruffleRuby",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"bundler":           {"bundler", false, false, ""},
 			"bundler-cache":     {"bundler-cache", false, false, ""},
@@ -5725,6 +5918,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"shivammathur/setup-php@v2": {
 		Name: "Setup PHP Action",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"coverage":         {"coverage", false, false, ""},
 			"extensions":       {"extensions", false, false, ""},
@@ -5741,6 +5935,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"softprops/action-gh-release@v2": {
 		Name: "GH Release",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"append_body":              {"append_body", false, false, ""},
 			"body":                     {"body", false, false, ""},
@@ -5771,6 +5966,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"softprops/action-gh-release@v3": {
 		Name: "GH Release",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"append_body":              {"append_body", false, false, ""},
 			"body":                     {"body", false, false, ""},
@@ -5830,6 +6026,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"treosh/lighthouse-ci-action@v11": {
 		Name: "Lighthouse CI Action",
+		Runs: ActionMetadataRuns{Using: "node20"},
 		Inputs: ActionMetadataInputs{
 			"artifactname":           {"artifactName", false, false, ""},
 			"basicauthpassword":      {"basicAuthPassword", false, false, ""},
@@ -5852,6 +6049,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"treosh/lighthouse-ci-action@v12": {
 		Name: "Lighthouse CI Action",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"artifactname":           {"artifactName", false, false, ""},
 			"basicauthpassword":      {"basicAuthPassword", false, false, ""},
@@ -5874,6 +6072,7 @@ var PopularActions = map[string]*ActionMetadata{
 	},
 	"wearerequired/lint-action@v3": {
 		Name: "Lint Action",
+		Runs: ActionMetadataRuns{Using: "node24"},
 		Inputs: ActionMetadataInputs{
 			"auto_fix":                             {"auto_fix", false, false, ""},
 			"autopep8":                             {"autopep8", false, false, ""},

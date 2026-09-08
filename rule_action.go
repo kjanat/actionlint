@@ -444,11 +444,14 @@ func (rule *RuleAction) checkRepoAction(spec string, exec *ExecAction) {
 	meta, ok := PopularActions[spec]
 	if !ok {
 		if _, ok := OutdatedPopularActionSpecs[spec]; ok {
-			rule.Errorf(exec.Uses.Pos, "the runner of %q action is too old to run on GitHub Actions. update the action's version to fix this issue", spec)
+			rule.Errorf(exec.Uses.Pos, "the runtime or service used by %q action is retired on GitHub.com. update the action's version to fix this issue", spec)
 			return
 		}
 		rule.Debug("This action is not found in popular actions data set: %s", spec)
 		return
+	}
+	if problem := actionRuntimeProblem(meta.Runs.Using); problem != "" {
+		rule.Errorf(exec.Uses.Pos, "%s. update the version of action %q", problem, spec)
 	}
 	if meta.SkipInputs {
 		rule.Debug("This action skips to check inputs: %s", spec)
@@ -718,20 +721,24 @@ func (rule *RuleAction) checkLocalActionInputs(meta *ActionMetadata, pos *Pos) {
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
 func (rule *RuleAction) checkLocalActionRuns(meta *ActionMetadata, pos *Pos) {
-	switch r := &meta.Runs; r.Using {
+	r := &meta.Runs
+	using := strings.ToLower(r.Using)
+	switch using {
 	case "":
 		rule.Errorf(pos, `"runs.using" is missing in local action %q defined at %q`, meta.Name, meta.Dir())
 	case "docker":
 		rule.checkLocalDockerActionRuns(r, meta.Dir(), meta.Name, pos)
 	case "composite":
 		rule.checkLocalCompositeActionRuns(meta, pos)
-	case "node20", "node24":
-		rule.checkLocalJavaScriptActionRuns(r, meta.Dir(), meta.Name, pos)
 	default:
-		rule.Errorf(pos, `invalid runner name %q at runs.using in %q action defined at %q. valid runners are "composite", "docker", "node20", and "node24". see https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs`, r.Using, meta.Name, meta.Dir())
+		if _, ok := ActionRuntimes[using]; !ok {
+			rule.Errorf(pos, `invalid runner name %q at runs.using in %q action defined at %q. valid runners are %s. see https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs`, r.Using, meta.Name, meta.Dir(), validActionRuntimes())
+		} else if problem := actionRuntimeProblem(using); problem != "" {
+			rule.Errorf(pos, "%s. update runs.using in local action %q to a current runtime", problem, meta.Name)
+		}
 
-		// Probably invalid version of Node.js runner. Assume it is JavaScript action to find as many errors as possible
-		if strings.HasPrefix(r.Using, "node") {
+		// Validate JavaScript fields even when the runtime declaration has a diagnostic.
+		if strings.HasPrefix(using, "node") {
 			rule.checkLocalJavaScriptActionRuns(r, meta.Dir(), meta.Name, pos)
 		}
 	}

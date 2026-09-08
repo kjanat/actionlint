@@ -18,7 +18,7 @@ GO_GEN_SRCS := scripts/generate-popular-actions/main.go \
 				scripts/generate-popular-actions/popular_actions.json \
 				scripts/generate-webhook-events/main.go \
 				scripts/generate-availability/main.go \
-				scripts/generate-action-metadata/main.go
+				$(wildcard scripts/generate-action-metadata/*.go)
 PANDOC := pandoc --standalone --from=markdown-smart --syntax-highlighting=none
 
 ifeq ($(OS),Windows_NT)
@@ -70,9 +70,9 @@ ifneq ($(OS),Windows_NT)
 	go run ./scripts/check-checks -quiet ./docs/checks.md
 endif
 
-popular_actions.go all_webhooks.go availability.go action_metadata_availability.go: $(GO_GEN_SRCS)
+popular_actions.go all_webhooks.go availability.go action_metadata_availability.go action_runtimes.go: $(GO_GEN_SRCS)
 ifdef SKIP_GO_GENERATE
-	$(TOUCH) popular_actions.go all_webhooks.go availability.go action_metadata_availability.go
+	$(TOUCH) popular_actions.go all_webhooks.go availability.go action_metadata_availability.go action_runtimes.go
 else
 	go generate
 endif

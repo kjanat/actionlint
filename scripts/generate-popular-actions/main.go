@@ -16,7 +16,6 @@ import (
 	"os"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -75,17 +74,11 @@ func (r *registry) spec(tag string) string {
 //go:embed popular_actions.json
 var defaultPopularActionsJSON []byte
 
-const minNodeRunnerVersion = 20
-
 func isOutdated(spec, runs string) bool {
 	if slices.Contains(outdatedActions, spec) {
 		return true
 	}
-	if !strings.HasPrefix(runs, "node") {
-		return false
-	}
-	v, err := strconv.ParseUint(runs[len("node"):], 10, 8)
-	return err == nil && v < minNodeRunnerVersion
+	return actionlint.ActionRuntimes[strings.ToLower(runs)].Removed
 }
 
 type gen struct {
@@ -284,6 +277,9 @@ var PopularActions = map[string]*ActionMetadata{
 
 		fmt.Fprintf(b, "%q: {\n", spec)
 		fmt.Fprintf(b, "Name: %q,\n", meta.Name)
+		if strings.HasPrefix(strings.ToLower(meta.Runs.Using), "node") {
+			fmt.Fprintf(b, "Runs: ActionMetadataRuns{Using: %q},\n", meta.Runs.Using)
+		}
 
 		if meta.SkipInputs {
 			fmt.Fprintf(b, "SkipInputs: true,\n")

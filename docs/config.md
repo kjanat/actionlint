@@ -69,7 +69,7 @@ paths:
   .github/workflows/release.yml:
     ignore:
       # Ignore errors from the old runner check. This may be useful for (outdated) self-hosted runner environment.
-      - 'the runner of ".+" action is too old to run on GitHub Actions'
+      - 'the runtime or service used by ".+" action is retired on GitHub.com'
 ```
 
 - `self-hosted-runner`: Configuration for your self-hosted runner environment.
@@ -151,7 +151,7 @@ policy:
 
 This check reports a workflow which does not use an action this repository requires. An entry is written like a `uses:`
 value and both of its halves are glob patterns. `actions/checkout` accepts any ref, `actions/checkout@v5` accepts that
-ref only, and `actions/checkout@v4*` accepts `v4` and `v4.2.2`. `*` does not match `/`, so `github/codeql-action/*`
+ref only, and `actions/checkout@v7*` accepts `v4` and `v4.2.2`. `*` does not match `/`, so `github/codeql-action/*`
 matches every action in that repository. The name is matched case insensitively and the ref is matched case sensitively.
 
 One error per missing action is reported at the first job of the workflow. Only the steps written in the workflow file

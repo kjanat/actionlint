@@ -62,10 +62,11 @@ jobs:
             all_webhooks.go
             availability.go
             action_metadata_availability.go
+            action_runtimes.go
           commit-message: "Update the generated Go tables"
           title: "Update the generated Go tables"
           body: |
-            `go generate` refreshed the popular actions, webhook events, workflow availability, or runner action-metadata tables.
+            `go generate` refreshed the popular actions, webhook events, workflow availability, runner action-metadata tables, or JavaScript runtime lifecycle.
 
             Created by [this Upkeep run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
           labels: |

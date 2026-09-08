@@ -63,6 +63,9 @@ runs:
 `,
 	"https://raw.githubusercontent.com/rhysd/action-setup-vim/v1/action.yml": `
 name: Setup Vim
+runs:
+  using: node20
+  main: src/index.js
 `,
 }
 

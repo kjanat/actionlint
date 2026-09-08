@@ -2,6 +2,10 @@
 
 # Unreleased
 
+- Generate accepted JavaScript action runtimes, bundled-runtime availability, and deprecation details from GitHub's runner source. Distinguish invalid metadata values from deprecated and removed runtimes, report Node 20 deprecation for local and known popular actions, and preserve input/output validation for deprecated actions. Refresh the data through `go generate` and weekly Upkeep.
+
+- Allow the `windows-11-arm` alias to overlap `windows-11-vs2026-arm` during its announced Visual Studio 2026 migration while retaining incompatible image diagnostics. (kjanat/actionlint#126)
+
 - Check expressions in composite action input defaults against the runner's narrower set of available contexts, reporting errors at the value in the metadata file. (rhysd/actionlint#46, kjanat/actionlint#131, thanks @johnament)
 
 - Generate action metadata context and special-function rules, including composite step keys, from GitHub's runner schema through the existing `go generate` and weekly Upkeep flow. Extend input-default checks to JavaScript and Docker actions, check composite `shell`, `continue-on-error`, and whole `with`/`env` expressions, and report unavailable status functions or incorrect special-function argument counts. Builds and lint runs use the generated data without downloading the schema. This continues @johnament's work in kjanat/actionlint#124 and kjanat/actionlint#131.

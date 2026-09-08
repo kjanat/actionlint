@@ -1,0 +1,1 @@
+test.yaml:7:15: runtime "node20" is deprecated in GitHub Actions; removal is scheduled for September 23rd, 2026. see https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/. update the version of action "actions/download-artifact@v3-node20" [action]

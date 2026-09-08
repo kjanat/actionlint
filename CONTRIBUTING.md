@@ -295,6 +295,24 @@ accepts `GITHUB_TOKEN`, or uses the public API unauthenticated when neither is s
 To refresh only these tables, run `go run ./scripts/generate-action-metadata`. Normal builds and lint runs use the
 checked-in Go data and do not fetch the schema. Workflow expression availability is maintained separately below.
 
+### JavaScript action runtime lifecycle
+
+`go run ./scripts/generate-action-metadata -runtimes` refreshes `action_runtimes.go`. It reads the runner's current and
+legacy manifest parsers for accepted `runs.using` values, `src/Misc/externals.sh` for bundled Node executables, and
+`Constants.cs` for deprecation notices and removal dates. The action template schema only requires a nonempty string
+at `runs.using`; it cannot supply the accepted versions or their lifecycle.
+
+The generator resolves the newest commit touching those inputs and downloads all of them from jsDelivr at that
+revision. The generated file records each source. Parser disagreement, missing packaging data, or an unrecognized
+migration declaration fails generation before replacing the output. Review upstream source changes when that happens.
+No upstream source files are vendored, and ordinary builds and lint runs do not fetch anything.
+
+`go generate` refreshes runtime data before popular-action metadata; weekly `Upkeep` includes both in its PR.
+Popular actions retain their JavaScript runtime alongside input/output metadata so deprecation diagnostics do not
+disable other checks. A scheduled removal date is informational: the generator classifies removal from packaging
+evidence, not the local clock or the general Node.js release calendar. GitHub can override migration dates and runtime
+selection through server-side flags, so this data describes the upstream runner rather than an individual installation.
+
 ### Maintain `popular_actions.go`
 
 [`popular_actions.go`](./popular_actions.go) is a data set of metadata of popular actions hosted on GitHub. It is generated
