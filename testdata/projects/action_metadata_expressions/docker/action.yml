@@ -1,0 +1,12 @@
+name: Docker defaults
+description: Defaults use the same runner context for Docker actions
+inputs:
+  valid:
+    description: GitHub context is available
+    default: ${{ github.sha }}
+  invalid:
+    description: Environment context is unavailable
+    default: ${{ env.TOKEN }}
+runs:
+  using: docker
+  image: Dockerfile

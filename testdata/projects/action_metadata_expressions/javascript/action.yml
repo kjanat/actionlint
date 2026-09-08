@@ -1,0 +1,12 @@
+name: JavaScript defaults
+description: Defaults use the same runner context for JavaScript actions
+inputs:
+  valid:
+    description: Runner context is available
+    default: ${{ runner.os }}
+  invalid:
+    description: Inputs are unavailable
+    default: ${{ inputs.valid }}
+runs:
+  using: node24
+  main: main.js

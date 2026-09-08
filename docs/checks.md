@@ -3203,20 +3203,27 @@ with `run:` and `shell:` keys, or an action step with `uses:` key. actionlint re
 at `run:`, `shell:`, or `uses:`, has an empty `uses:` value, is `null`, or calls a reusable workflow at `uses:`.
 `working-directory:` is only allowed in a script step and `with:` is only allowed in an action step.
 
-Inside a Composite action's `steps:`, actionlint also checks the contexts used in
-`${{ }}` expressions at `if:`, `run:`, `working-directory:`, `name:`, `with:`,
-and `env:`. The `secrets`, `vars`, and `needs` contexts are not available to a
-composite action and are reported as errors — `secrets` and `vars` values must be
+Inside a Composite action's `steps:`, actionlint checks expression contexts at
+`if:`, `run:`, `working-directory:`, `name:`, `shell:`, `continue-on-error:`, `with:`,
+and `env:`, including expressions supplying a whole `with:` or `env:` mapping.
+The `secrets`, `vars`, and `needs` contexts are not available to a
+composite action and are reported as errors. `secrets` and `vars` values must be
 passed to the action as `inputs:` instead.
 An `if:` expression is also checked without the optional `${{ }}` wrapper. Delimiters inside quoted expression strings
-are treated as literal text. These checks report unavailable contexts; they do not perform full type checking of
-composite step expressions or apply every workflow step rule inside the action.
+are treated as literal text.
 
-Input `default:` expressions in a Composite action's metadata have a narrower set of contexts:
+Input `default:` expressions in JavaScript, Docker, and Composite actions have a narrower set of contexts:
 `github`, `job`, `matrix`, `runner`, and `strategy`, as defined in the runner's
 [`action_yaml.json`](https://github.com/actions/runner/blob/main/src/Runner.Worker/action_yaml.json).
 References to `inputs`, `env`, `steps`, `secrets`, `vars`, or `needs` in a default are reported
-at the value in the action metadata file. The expression checks do not perform full type checking.
+at the value in the action metadata file.
+
+The step keys, expression contexts, and special-function availability come from the runner's template schema.
+`hashFiles()` accepts 1 to 255 arguments in input defaults and composite step expressions.
+The status functions `always()`, `cancelled()`, `failure()`, and `success()` are available in composite `if:` conditions
+and accept no arguments. Using one in a step name or input default is reported at that value.
+These checks do not perform full expression type checking or apply every workflow step rule inside the action.
+The schema-derived data ships with actionlint; linting does not download the schema.
 
 <a id="deprecated-inputs-usage"></a>
 

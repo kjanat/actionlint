@@ -45,6 +45,7 @@ jobs:
             exit "${status}"
           fi
       - run: go generate
+        env: { GH_TOKEN: "${{ github.token }}" }
       - name: Warn when the pull request will carry no CI
         env: { UPKEEP_TOKEN: "${{ secrets.UPKEEP_TOKEN }}" }
         run: |
@@ -60,10 +61,11 @@ jobs:
             popular_actions.go
             all_webhooks.go
             availability.go
+            action_metadata_availability.go
           commit-message: "Update the generated Go tables"
           title: "Update the generated Go tables"
           body: |
-            `go generate` produced new `popular_actions.go`, `all_webhooks.go`, or `availability.go`.
+            `go generate` refreshed the popular actions, webhook events, workflow availability, or runner action-metadata tables.
 
             Created by [this Upkeep run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
           labels: |

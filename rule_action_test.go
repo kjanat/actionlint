@@ -66,8 +66,12 @@ func TestCompositeStepUnavailableContexts(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
-			got := actionUnavailableContexts(tc.expr, tc.bare, compositeStepContexts)
-			if diff := cmp.Diff(tc.want, got); diff != "" {
+			got := actionExpressionViolations(tc.expr, tc.bare, "runs.steps.*.if")
+			var want []actionExpressionViolation
+			for _, ctx := range tc.want {
+				want = append(want, actionExpressionViolation{context: ctx})
+			}
+			if diff := cmp.Diff(want, got, cmp.AllowUnexported(actionExpressionViolation{})); diff != "" {
 				t.Fatal(diff)
 			}
 		})
@@ -89,8 +93,12 @@ func TestActionInputDefaultUnavailableContexts(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
-			got := actionUnavailableContexts(tc.expr, false, actionInputDefaultContexts)
-			if diff := cmp.Diff(tc.want, got); diff != "" {
+			got := actionExpressionViolations(tc.expr, false, "inputs.*.default")
+			var want []actionExpressionViolation
+			for _, ctx := range tc.want {
+				want = append(want, actionExpressionViolation{context: ctx})
+			}
+			if diff := cmp.Diff(want, got, cmp.AllowUnexported(actionExpressionViolation{})); diff != "" {
 				t.Fatal(diff)
 			}
 		})

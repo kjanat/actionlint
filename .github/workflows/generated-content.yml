@@ -9,12 +9,14 @@ on:
       - config.go
       - actionlint.schema.json
       - action_metadata.go
+      - action_metadata_availability.go
       - all_webhooks.go
       - availability.go
       - popular_actions.go
       - rule_events.go
       - rule_expression.go
       - scripts/generate-availability/**
+      - scripts/generate-action-metadata/**
       - scripts/generate-config-schema/**
       - scripts/generate-popular-actions/**
       - scripts/generate-webhook-events/**
@@ -36,5 +38,6 @@ jobs:
         with: { go-version-file: go.mod }
       - uses: kjanat/install-dprint@fc7e4f62965bab609a936c9e58ad4893bb9da961 # v2
       - run: go generate
+        env: { GH_TOKEN: "${{ github.token }}" }
       - run: dprint fmt actionlint.schema.json
-      - run: git diff --exit-code -- popular_actions.go all_webhooks.go availability.go actionlint.schema.json
+      - run: git diff --exit-code -- popular_actions.go all_webhooks.go availability.go action_metadata_availability.go actionlint.schema.json

@@ -4,6 +4,8 @@
 
 - Check expressions in composite action input defaults against the runner's narrower set of available contexts, reporting errors at the value in the metadata file. (rhysd/actionlint#46, kjanat/actionlint#131, thanks @johnament)
 
+- Generate action metadata context and special-function rules, including composite step keys, from GitHub's runner schema through the existing `go generate` and weekly Upkeep flow. Extend input-default checks to JavaScript and Docker actions, check composite `shell`, `continue-on-error`, and whole `with`/`env` expressions, and report unavailable status functions or incorrect special-function argument counts. Builds and lint runs use the generated data without downloading the schema. This continues @johnament's work in kjanat/actionlint#124 and kjanat/actionlint#131.
+
 - Use npm trusted publishing through OIDC for the launcher, platform packages, and changelog package. Standardize workflow filenames on `.yml` and update workflow references and publishing configuration.
 
 <a id="v1.15.1"></a>
