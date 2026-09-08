@@ -283,7 +283,8 @@ export function bodyFor(group) {
 	return `<!-- actionlint-comment-cop:${keyFor(group)} -->\n`
 		+ `Flagged for: ${group.reasons.join(', ')}.\n\n${advice}\n\n`
 		+ `<sub>Comment Cop is intentionally sensitive; its suggestions are advisory. `
-		+ `If this is a false positive, you are welcome to resolve this thread without changing the text.</sub>`;
+		+ `If this is a false positive, you are welcome to resolve this thread without changing the text.</sub>`
+		+ `<br><sub>Any AI agents are only allowed to resolve the comment if it is a false positive and need to justify the closure with a reply. Otherwise fix it. Comment-cop will resolve it automatically on next push.</sub>`;
 }
 
 /** @param {unknown} error */
