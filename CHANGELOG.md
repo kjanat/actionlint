@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Check expressions in composite action input defaults against the runner's narrower set of available contexts, reporting errors at the value in the metadata file. (rhysd/actionlint#46, kjanat/actionlint#131, thanks @johnament)
+
 - Use npm trusted publishing through OIDC for the launcher, platform packages, and changelog package. Standardize workflow filenames on `.yml` and update workflow references and publishing configuration.
 
 <a id="v1.15.1"></a>

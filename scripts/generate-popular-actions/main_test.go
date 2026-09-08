@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -311,6 +312,38 @@ func TestFetchRemoteYAML(t *testing.T) {
 
 			if diff := cmp.Diff(want, have); diff != "" {
 				t.Fatalf("fetched JSONL data does not match: %s", diff)
+			}
+		})
+	}
+}
+
+func TestLighthouseMetadataTypoPreservesClassification(t *testing.T) {
+	fixture, err := os.ReadFile("../../testdata/action_metadata_lighthouse.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		tag, using string
+		outdated   bool
+	}{{"v10", "node16", true}, {"v11", "node20", false}} {
+		t.Run(tc.tag, func(t *testing.T) {
+			g := newGen(io.Discard, io.Discard, io.Discard)
+			g.rawRegistry = fmt.Appendf(nil, `[{"slug":"treosh/lighthouse-ci-action","tags":[%q]}]`, tc.tag)
+			g.client = &http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+				body := bytes.ReplaceAll(fixture, []byte("node16"), []byte(tc.using))
+				return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewReader(body)), Request: req}, nil
+			})}
+			metadata, err := g.fetchRemote()
+			if err != nil {
+				t.Fatal(err)
+			}
+			spec := "treosh/lighthouse-ci-action@" + tc.tag
+			md := metadata[spec]
+			if md == nil || md.Name != "Lighthouse CI Action" || len(md.Inputs) != 1 || len(md.Outputs) != 1 || md.Runs.Using != tc.using {
+				t.Fatalf("Lighthouse metadata was lost: %+v", md)
+			}
+			if have := isOutdated(spec, md.Runs.Using); have != tc.outdated {
+				t.Fatalf("outdated = %v, want %v", have, tc.outdated)
 			}
 		})
 	}

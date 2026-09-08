@@ -1,0 +1,11 @@
+name: Lighthouse CI Action
+inputs:
+  temporaryPublicStorage:
+    descripton: Known upstream typo
+    default: '${{ github.token }}'
+outputs:
+  links:
+    description: Links
+runs:
+  using: node16
+  main: dist/index.js

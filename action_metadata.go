@@ -333,6 +333,71 @@ type ActionMetadata struct {
 	Runs ActionMetadataRuns `yaml:"runs" json:"runs"`
 	// Branding is "branding" field of action.yaml.
 	Branding ActionMetadataBranding `yaml:"branding" json:"-"`
+	// InputDefaults holds the "default" value of each input whose default is a string, along with
+	// its position in the metadata file. It is used to check ${{ }} expressions in a composite
+	// action's input defaults for contexts the runner does not provide to actions.
+	InputDefaults []*ActionKeyValue `yaml:"-" json:"-"`
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler. In addition to the struct tags, it captures the
+// value and position of each input's "default" so that ${{ }} expressions used there can be
+// checked for contexts unavailable to composite actions.
+func (md *ActionMetadata) UnmarshalYAML(n *yaml.Node) error {
+	type metadata ActionMetadata // Alias type to avoid infinite recursion into this method
+	var m metadata
+	err := n.Decode(&m)
+	// The popular-actions generator uses partial metadata after tolerated input errors.
+	*md = ActionMetadata(m)
+	md.InputDefaults = collectInputDefaults(n)
+	return err
+}
+
+// collectInputDefaults walks the raw metadata mapping node and returns the "default" value of
+// every input that is a string, together with its position.
+func collectInputDefaults(n *yaml.Node) []*ActionKeyValue {
+	for n.Kind == yaml.AliasNode && n.Alias != nil && n.Alias.Kind != yaml.AliasNode {
+		n = n.Alias
+	}
+	if n.Kind != yaml.MappingNode {
+		return nil
+	}
+
+	var inputs *yaml.Node
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		if strings.ToLower(n.Content[i].Value) == "inputs" {
+			inputs = n.Content[i+1]
+			break
+		}
+	}
+	if inputs == nil {
+		return nil
+	}
+	for inputs.Kind == yaml.AliasNode && inputs.Alias != nil && inputs.Alias.Kind != yaml.AliasNode {
+		inputs = inputs.Alias
+	}
+	if inputs.Kind != yaml.MappingNode {
+		return nil
+	}
+
+	var out []*ActionKeyValue
+	for i := 0; i+1 < len(inputs.Content); i += 2 {
+		name, def := inputs.Content[i].Value, inputs.Content[i+1]
+		for def.Kind == yaml.AliasNode && def.Alias != nil && def.Alias.Kind != yaml.AliasNode {
+			def = def.Alias
+		}
+		if def.Kind != yaml.MappingNode {
+			continue
+		}
+		for j := 0; j+1 < len(def.Content); j += 2 {
+			if strings.ToLower(def.Content[j].Value) != "default" {
+				continue
+			}
+			if v := yamlExprString(def.Content[j+1]); v != nil {
+				out = append(out, &ActionKeyValue{Name: name, Value: *v})
+			}
+		}
+	}
+	return out
 }
 
 // Dir returns a directory path of the action.

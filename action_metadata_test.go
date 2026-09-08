@@ -29,6 +29,9 @@ func testGetWantedActionMetadata() *ActionMetadata {
 			Using: "node20",
 			Main:  "index.js",
 		},
+		InputDefaults: []*ActionKeyValue{
+			{Name: "name", Value: ActionExprString{Value: "anonymous", Line: 8, Column: 14}},
+		},
 	}
 	return want
 }
@@ -90,6 +93,7 @@ func TestLocalActionsFindMetadataOK(t *testing.T) {
 	wantEmpty := testGetWantedActionMetadata()
 	wantEmpty.Inputs = nil
 	wantEmpty.Outputs = nil
+	wantEmpty.InputDefaults = nil
 
 	wantUpper := testGetWantedActionMetadata()
 	for _, i := range wantUpper.Inputs {
@@ -98,10 +102,17 @@ func TestLocalActionsFindMetadataOK(t *testing.T) {
 	for _, o := range wantUpper.Outputs {
 		o.Name = strings.ToUpper(o.Name)
 	}
+	for _, d := range wantUpper.InputDefaults {
+		d.Name = strings.ToUpper(d.Name)
+	}
 
 	wantBranding := testGetWantedActionMetadata()
 	wantBranding.Branding.Icon = "edit"
 	wantBranding.Branding.Color = "white"
+	// The "branding" section pushes the inputs (and the "default" value node) down the file.
+	wantBranding.InputDefaults = []*ActionKeyValue{
+		{Name: "name", Value: ActionExprString{Value: "anonymous", Line: 11, Column: 14}},
+	}
 
 	wantNode24 := testGetWantedActionMetadata()
 	wantNode24.Runs.Using = "node24"
@@ -579,6 +590,40 @@ inputs:
 					"input_snake-case": {"input_snake-case", false, false, ""},
 					"camelcaseinput":   {"camelCaseInput", false, false, ""},
 				},
+				InputDefaults: []*ActionKeyValue{
+					{Name: "input3", Value: ActionExprString{Value: "default", Line: 11, Column: 14}},
+					{Name: "input4", Value: ActionExprString{Value: "default", Line: 15, Column: 14}},
+				},
+			},
+		},
+		{
+			what: "input default expressions are captured with position",
+			input: `name: Test
+inputs:
+  token:
+    description: test
+    default: ${{ secrets.TOKEN }}
+  region:
+    description: test
+    default: "${{ vars.REGION }}"
+  flag:
+    description: test
+    default: true
+  plain:
+    description: test
+`,
+			want: ActionMetadata{
+				Name: "Test",
+				Inputs: ActionMetadataInputs{
+					"token":  {"token", false, false, ""},
+					"region": {"region", false, false, ""},
+					"flag":   {"flag", false, false, ""},
+					"plain":  {"plain", false, false, ""},
+				},
+				InputDefaults: []*ActionKeyValue{
+					{Name: "token", Value: ActionExprString{Value: "${{ secrets.TOKEN }}", Line: 5, Column: 14}},
+					{Name: "region", Value: ActionExprString{Value: "${{ vars.REGION }}", Line: 8, Column: 14}},
+				},
 			},
 		},
 		{
@@ -729,6 +774,32 @@ inputs:
 			msg := err.Error()
 			if !strings.Contains(msg, tc.want) {
 				t.Fatalf("%q is not contained in error message %q", tc.want, msg)
+			}
+		})
+	}
+}
+
+func TestActionMetadataPreservesPartialDecode(t *testing.T) {
+	fixture, err := os.ReadFile("testdata/action_metadata_lighthouse.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, using := range []string{"node16", "node20"} {
+		t.Run(using, func(t *testing.T) {
+			src := bytes.ReplaceAll(fixture, []byte("node16"), []byte(using))
+			var md ActionMetadata
+			err := yaml.Unmarshal(src, &md)
+			if err == nil || !strings.Contains(err.Error(), "unexpected key") || !strings.Contains(err.Error(), `input "temporaryPublicStorage"`) {
+				t.Fatalf("expected the upstream typo error, got %v", err)
+			}
+			if md.Name != "Lighthouse CI Action" || md.Runs.Using != using || md.Runs.Main != "dist/index.js" {
+				t.Fatalf("partially decoded metadata was lost: %+v", md)
+			}
+			if md.Inputs["temporarypublicstorage"] == nil || md.Outputs["links"] == nil {
+				t.Fatalf("partially decoded inputs or outputs were lost: %+v", md)
+			}
+			if len(md.InputDefaults) != 1 || md.InputDefaults[0].Value.Line != 5 {
+				t.Fatalf("positioned default was lost: %+v", md.InputDefaults)
 			}
 		})
 	}
