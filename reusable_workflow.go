@@ -364,7 +364,7 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 
 	var aliasErr error
 	resolveYAMLAliases(&doc, func(n *yaml.Node, d yamlAliasDiagnostic, m string) {
-		if d == yamlAliasDiagnosticRecursive && aliasErr == nil {
+		if d != yamlAliasDiagnosticUnusedAnchor && aliasErr == nil {
 			aliasErr = fmt.Errorf("line:%d, column:%d: %s", n.Line, n.Column, m)
 		}
 	})

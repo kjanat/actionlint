@@ -234,6 +234,7 @@ type yamlAliasDiagnostic int
 const (
 	yamlAliasDiagnosticRecursive yamlAliasDiagnostic = iota
 	yamlAliasDiagnosticUnusedAnchor
+	yamlAliasDiagnosticInvalidName
 )
 
 func resolveYAMLAliases(root *yaml.Node, report func(n *yaml.Node, d yamlAliasDiagnostic, m string)) {
@@ -248,6 +249,9 @@ func resolveYAMLAliases(root *yaml.Node, report func(n *yaml.Node, d yamlAliasDi
 	resolve = func(n *yaml.Node) {
 		var u *usage
 		if len(n.Anchor) != 0 {
+			if strings.ContainsRune(n.Anchor, '+') {
+				report(n, yamlAliasDiagnosticInvalidName, fmt.Sprintf("anchor name %q contains '+' which is not allowed by GitHub Actions", n.Anchor))
+			}
 			u = &usage{}
 			anchors[n] = u
 		}
@@ -255,6 +259,9 @@ func resolveYAMLAliases(root *yaml.Node, report func(n *yaml.Node, d yamlAliasDi
 			if c.Kind != yaml.AliasNode {
 				resolve(c)
 				continue
+			}
+			if strings.ContainsRune(c.Value, '+') {
+				report(c, yamlAliasDiagnosticInvalidName, fmt.Sprintf("alias name %q contains '+' which is not allowed by GitHub Actions", c.Value))
 			}
 			// Note: Unknown anchors are detected by go-yaml parser so we don't need to detect them by ourselves.
 			if u, ok := anchors[c.Alias]; ok {

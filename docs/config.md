@@ -171,7 +171,7 @@ value and both of its halves are glob patterns. `actions/checkout` accepts any r
 ref only, and `actions/checkout@v7*` accepts `v4` and `v4.2.2`. `*` does not match `/`, so `github/codeql-action/*`
 matches every action in that repository. The name is matched case insensitively and the ref is matched case sensitively.
 
-One error per missing action is reported at the first job of the workflow. Only the steps written in the workflow file
+One error per missing action is reported at the first job that runs its own steps. Only the steps written in the workflow file
 are searched, so the steps of a composite action and of a called reusable workflow are not. A workflow whose every job
 calls a reusable workflow runs no step of its own, so it is passed over. So is a workflow with a `uses:` built with
 `${{ }}`, because the action it names is not known before the workflow runs.

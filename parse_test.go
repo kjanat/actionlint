@@ -1,12 +1,37 @@
 package actionlint
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"go.yaml.in/yaml/v4"
 )
+
+func TestParserAnchorNames(t *testing.T) {
+	for _, name := range []string{"git+opts", "git-opts", "git_opts", "opts123"} {
+		t.Run(name, func(t *testing.T) {
+			src := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: &%s echo test\n      - run: *%s\n", name, name)
+			_, errs := Parse([]byte(src))
+			if name != "git+opts" {
+				if len(errs) != 0 {
+					t.Fatal(errs)
+				}
+				return
+			}
+			if len(errs) != 2 {
+				t.Fatalf("wanted anchor and alias errors, got %v", errs)
+			}
+			for i, err := range errs {
+				if err.Line != 6+i || err.Column != 14 || !strings.Contains(err.Message, `"git+opts"`) {
+					t.Fatalf("unexpected anchor diagnostic: %v", err)
+				}
+			}
+		})
+	}
+}
 
 func TestParserScriptSource(t *testing.T) {
 	tests := []struct {

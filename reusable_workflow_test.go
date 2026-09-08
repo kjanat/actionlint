@@ -986,6 +986,14 @@ func TestReusableWorkflowMetadataJobPermissionsFromWorkflowNode(t *testing.T) {
 	}
 }
 
+func TestReusableWorkflowMetadataInvalidAnchorName(t *testing.T) {
+	src := []byte("on: workflow_call\njobs:\n  first: &build+job\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n  second: *build+job\n")
+	_, err := parseReusableWorkflowMetadata(src)
+	if err == nil || !strings.Contains(err.Error(), `line:3, column:10: anchor name "build+job"`) {
+		t.Fatalf("wanted the invalid anchor diagnostic, got %v", err)
+	}
+}
+
 func TestReusableWorkflowMetadataUnusedAnchorParity(t *testing.T) {
 	root := filepath.Join("testdata", "reusable_workflow_metadata")
 	src, err := os.ReadFile(filepath.Join(root, "unused_anchor.yaml"))

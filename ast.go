@@ -2,6 +2,7 @@ package actionlint
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -791,10 +792,50 @@ func (s *RawYAMLString) Kind() RawYAMLValueKind {
 func (s *RawYAMLString) Equals(other RawYAMLValue) bool {
 	switch other := other.(type) {
 	case *RawYAMLString:
-		return s.Value == other.Value
+		a, b := s.scalarValue(), other.scalarValue()
+		if a == b {
+			return true
+		}
+		x, xok := a.(float64)
+		y, yok := b.(float64)
+		return xok && yok && math.IsNaN(x) && math.IsNaN(y)
 	default:
 		return false
 	}
+}
+
+func (s *RawYAMLString) scalarValue() any {
+	switch s.Tag {
+	case yamlTagBool:
+		if isCoreSchemaBool(s.Value) {
+			return strings.EqualFold(s.Value, "true")
+		}
+	case yamlTagNull:
+		if isCoreSchemaNull(s.Value) {
+			return nil
+		}
+	case yamlTagInt, yamlTagFloat:
+		if !isCoreSchemaNumber(s.Value) {
+			break
+		}
+		switch strings.ToLower(s.Value) {
+		case ".inf", "+.inf":
+			return math.Inf(1)
+		case "-.inf":
+			return math.Inf(-1)
+		case ".nan":
+			return math.NaN()
+		}
+		if strings.HasPrefix(s.Value, "0x") || strings.HasPrefix(s.Value, "0o") {
+			// GitHub converts hexadecimal and octal scalars through a signed 32-bit integer.
+			if n, err := strconv.ParseUint(s.Value, 0, 32); err == nil {
+				return float64(int32(n))
+			}
+		} else if n, err := strconv.ParseFloat(s.Value, 64); err == nil {
+			return n
+		}
+	}
+	return s.Value
 }
 
 // Pos returns the start position of the value in the source file
@@ -803,7 +844,13 @@ func (s *RawYAMLString) Pos() *Pos {
 }
 
 func (s *RawYAMLString) String() string {
-	return strconv.Quote(s.Value)
+	if _, ok := s.scalarValue().(string); ok {
+		return strconv.Quote(s.Value)
+	}
+	if s.Value == "" {
+		return "null"
+	}
+	return s.Value
 }
 
 // MatrixRow is one row of matrix. One matrix row can take multiple values. Those variations are

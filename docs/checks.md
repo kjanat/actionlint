@@ -1394,11 +1394,11 @@ jobs:
 Output:
 
 ```console
-test.yaml:6:28: duplicate value "14" is found in matrix "node". the same value is at line:6,col:24 [matrix]
+test.yaml:6:28: duplicate value 14 is found in matrix "node". the same value is at line:6,col:24 [matrix]
   |
 6 |         node: [10, 12, 14, 14]
   |                            ^~~
-test.yaml:9:19: value "13" in "exclude" does not match in matrix "node" combinations. possible values are "10", "12", "14", "14" [matrix]
+test.yaml:9:19: value 13 in "exclude" does not match in matrix "node" combinations. possible values are 10, 12, 14, 14 [matrix]
   |
 9 |           - node: 13
   |                   ^~
@@ -1413,8 +1413,11 @@ test.yaml:12:13: "platform" in "exclude" section does not exist in matrix. avail
 [`matrix:`][matrix-doc] defines combinations of multiple values. Nested `include:` and `exclude:` can add/remove specific
 combination of matrix values. actionlint checks
 
-- values in `exclude:` appear in `matrix:` or `include:`
+- values in `exclude:` appear in the original `matrix:` rows
 - duplicate variations of matrix values
+
+GitHub processes `exclude:` before `include:`. Exclusions can only match values in the original rows.
+Scalar comparisons preserve YAML types: `1` and `"1"` are different values, while `1` and `1.0` are the same number.
 
 <a id="check-webhook-events"></a>
 
@@ -3327,6 +3330,8 @@ them.
 
 GitHub Actions [supports][anochor-support-announce] YAML [anchor and alias nodes][yaml-anchor-spec]. actionlint checks them in
 workflows.
+
+Anchor and alias names containing `+`, such as `&git+opts` and `*git+opts`, are rejected by GitHub Actions and reported as errors.
 
 actionlint detects errors under YAML anchors. When an alias node references an erroneous anchor, actionlint checks them as if the
 alias node is replaced with the anchor node. This means that one anchor node may be checked multiple times and actionlint may
