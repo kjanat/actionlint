@@ -95,8 +95,10 @@ func fixture(t *testing.T, version string) *config {
 	if err := copyTree(filepath.Join(repoRoot, "distribution", "npm"), npmDir); err != nil {
 		t.Fatalf("staging distribution/npm: %v", err)
 	}
-	if err := copyFile(filepath.Join(repoRoot, "LICENSE.txt"), filepath.Join(work, "LICENSE.txt")); err != nil {
-		t.Fatalf("staging LICENSE.txt: %v", err)
+	for _, file := range []string{"LICENSE.txt", "actionlint.schema.json"} {
+		if err := copyFile(filepath.Join(repoRoot, file), filepath.Join(work, file)); err != nil {
+			t.Fatalf("staging %s: %v", file, err)
+		}
 	}
 
 	tf, err := loadTargets(filepath.Join(npmDir, "targets.json"))
@@ -208,6 +210,9 @@ func TestBuildsEveryTargetAndTheFacade(t *testing.T) {
 		if manifest["version"] != version {
 			t.Errorf("%s: version is %v", target.Pkg, manifest["version"])
 		}
+		if exports, ok := manifest["exports"].(map[string]any); !ok || exports["./package.json"] != "./package.json" {
+			t.Errorf("%s: package.json export is missing or incorrect: %v", target.Pkg, manifest["exports"])
+		}
 		// os and cpu are what stop npm installing this package elsewhere.
 		if osv, ok := manifest["os"].([]any); !ok || len(osv) != 1 || osv[0] != target.OS {
 			t.Errorf("%s: os is %v", target.Pkg, manifest["os"])
@@ -231,6 +236,7 @@ func TestBuildsEveryTargetAndTheFacade(t *testing.T) {
 
 	facadeDir := filepath.Join(cfg.outDir, "facade")
 	facade := readJSON(t, filepath.Join(facadeDir, "package.json"))
+	checkFacadeSchema(t, cfg)
 	if facade["version"] != version {
 		t.Errorf("facade version is %v", facade["version"])
 	}
@@ -278,6 +284,49 @@ func TestFacadeOnlyBuildFetchesTheManual(t *testing.T) {
 	}
 	if string(got) != "man" {
 		t.Errorf("facade manual is %q", got)
+	}
+	checkFacadeSchema(t, cfg)
+}
+
+func checkFacadeSchema(t *testing.T, cfg *config) {
+	t.Helper()
+	want, err := os.ReadFile(filepath.Join(cfg.repoRoot, "actionlint.schema.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(cfg.outDir, "facade")
+	got, err := os.ReadFile(filepath.Join(dir, "actionlint.schema.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Error("facade schema differs from the workspace schema")
+	}
+	manifest := readJSON(t, filepath.Join(dir, "package.json"))
+	exports, ok := manifest["exports"].(map[string]any)
+	if !ok {
+		t.Fatalf("facade exports is %T", manifest["exports"])
+	}
+	if len(exports) != 2 || exports["./package.json"] != "./package.json" {
+		t.Errorf("facade exports are %v, want only package.json and schema", exports)
+	}
+	if exports["./schema"] != "./actionlint.schema.json" {
+		t.Errorf("facade schema alias is %v", exports["./schema"])
+	}
+}
+
+func TestFacadeRejectsMissingSchema(t *testing.T) {
+	cfg := fixture(t, "3.2.1")
+	tf, err := loadTargets(filepath.Join(cfg.npmDir, "targets.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(cfg.repoRoot, "actionlint.schema.json")); err != nil {
+		t.Fatal(err)
+	}
+	err = cfg.buildFacade(tf)
+	if err == nil || !strings.Contains(err.Error(), "actionlint.schema.json") {
+		t.Fatalf("buildFacade returned %v, want the missing schema error", err)
 	}
 }
 

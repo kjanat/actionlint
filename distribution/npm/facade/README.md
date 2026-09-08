@@ -49,6 +49,24 @@ v11; from v12 it no longer does, so on a current npm read it directly:
 man ./node_modules/@kjanat/actionlint/man/actionlint.1
 ```
 
+### Configuration schema
+
+The package includes `actionlint.schema.json` for completion and validation in configuration editors. For a config at
+`.github/actionlint.yaml`, use the installed copy with:
+
+```yaml
+# yaml-language-server: $schema=../node_modules/@kjanat/actionlint/actionlint.schema.json
+```
+
+The schema is exported as `./schema`. Tooling can load it alongside the package manifest:
+
+```js
+const schema = require('@kjanat/actionlint/schema');
+const manifest = require('@kjanat/actionlint/package.json');
+```
+
+Each platform package also exports its own `package.json`.
+
 ### ShellCheck and Pyflakes
 
 `actionlint` also checks the shell scripts inside `run:` steps with [ShellCheck][shellcheck], and Python scripts with

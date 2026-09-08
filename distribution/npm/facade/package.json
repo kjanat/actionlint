@@ -34,7 +34,8 @@
     "#resolve": "./lib/resolve.mjs"
   },
   "exports": {
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./schema": "./actionlint.schema.json"
   },
   "bin": {
     "actionlint": "bin/actionlint.mjs"
@@ -50,6 +51,7 @@
     "bin/",
     "lib/",
     "man/",
+    "actionlint.schema.json",
     "README.md",
     "LICENSE.txt"
   ],

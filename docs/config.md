@@ -27,6 +27,16 @@ that it stays up to date. Custom YAML types have explicit mappings in
 [`scripts/generate-config-schema`](../scripts/generate-config-schema/main.go); nullable values and field constraints
 use `jsonschema` struct tags.
 
+The `@kjanat/actionlint` npm package includes and exports the schema for its release. If the package is installed in
+your project, a config at `.github/actionlint.yaml` can use the local schema:
+
+```yaml
+# yaml-language-server: $schema=../node_modules/@kjanat/actionlint/actionlint.schema.json
+```
+
+Node.js tooling can load it with `require("@kjanat/actionlint/schema")` or locate it with
+`require.resolve("@kjanat/actionlint/schema")`.
+
 The schema rejects unknown keys everywhere. Runtime parsing ignores unknown keys at the top level, inside
 `self-hosted-runner`, and inside each `paths` entry. For example, `config-secret` is silently ignored. Both validators
 reject unknown keys inside `policy` and `require-job-timeout`. Go regular expression and glob syntax require additional
