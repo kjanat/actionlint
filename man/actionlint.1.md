@@ -168,8 +168,15 @@ references are skipped.
 
 **policy.require-job-timeout**
 : When `true`, require `timeout-minutes` on jobs that run steps. A mapping such as
-`{ max-minutes: 60 }` also limits literal timeout values. Jobs calling reusable workflows are
-skipped; expression-based timeouts are not compared with the maximum.
+`{ min-minutes: 5, max-minutes: 60 }` sets inclusive bounds for literal timeout values.
+Either bound can be omitted; each must be finite and positive, and the minimum cannot exceed
+the maximum. Jobs calling reusable workflows are skipped; expression-based timeouts are not compared.
+
+**policy.require-permissions**
+: When `true` or `{ scope: workflow }`, require a workflow-level `permissions` declaration.
+Use `{ scope: job }` to require one on every job, including reusable workflow calls, even when
+the workflow declares permissions. Empty mappings, named scopes, `read-all`, and `write-all`
+satisfy the check. This policy checks declaration presence; it does not infer least privilege.
 
 **policy.required-actions**
 : List actions every workflow must use. Entries accept name and ref glob patterns, such as
@@ -186,7 +193,8 @@ config-secrets: [DEPLOY_TOKEN]
 assume-default-permissions: restricted
 policy:
   require-commit-hash: true
-  require-job-timeout: { max-minutes: 60 }
+  require-job-timeout: { min-minutes: 5, max-minutes: 60 }
+  require-permissions: true
   required-actions: [actions/checkout]
 paths:
   ".github/workflows/**/*.{yml,yaml}":
