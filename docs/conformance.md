@@ -59,19 +59,19 @@ CI runs on Linux, macOS, and Windows. Each job caches the archives, publishes a 
 - **Action manifests:** parse and validate metadata. Empty companion files satisfy the file-existence checks which
   the runner's manifest-parser fixtures do not exercise. Scripts and containers are never executed. Runtime
   deprecation diagnostics remain visible as additional lint findings.
-- **YAML:** decode every document in each stream and compare success with the upstream `error` marker. This tests
-  stream acceptance, not event sequences, scalar resolution, or GitHub's more restrictive YAML rules.
+- **YAML:** decode every document in each stream and compare success with the upstream `error` marker. The assertion
+  covers stream acceptance. Event sequences, scalar resolution, and GitHub's more restrictive YAML rules are outside
+  its scope.
 
-These are selected contracts from the upstream suites, not their complete test runners. Editor completion, hover,
-protocol behavior, runner execution, and expression evaluation are outside this harness. An acceptance match on a
-negative case means both implementations report an error; it does not prove they identify the same error. Existing
-actionlint tests continue to check exact diagnostics and positions.
+The harness exercises the upstream contracts listed above. Editor completion, hover, protocol behavior, runner
+execution, and expression evaluation are outside its scope. Matching rejection establishes that both implementations
+report an error. They may report different errors; existing actionlint tests check exact diagnostics and positions.
 
 ## Known differences
 
-The initial comparison has **1,721 cases: 1,368 agreements and 353 differences**. That is a starting inventory, not a
-compatibility score. Several fixtures exercise the same missing feature, and some differences are intentional lint
-checks or limits of offline analysis.
+The initial comparison has **1,721 cases: 1,368 agreements and 353 differences**. Several fixtures exercise the same
+missing feature, and some differences are intentional lint checks or limits of offline analysis. These counts help
+track changes in the imported cases; evaluating compatibility requires reviewing the individual differences.
 
 [`differences.json`](../testdata/conformance/differences.json) groups exact case IDs and current diagnostics under an
 explanation. Every listed case still runs. CI fails if a new difference appears, recorded diagnostics change, a known
@@ -95,8 +95,9 @@ To update a source, resolve the desired commit in its repository (`main` for Git
 SHA-256 digest. Update its revision and digest together in `sources.json`, then run the fetch command and tests.
 
 Review changed upstream assertions, fixture counts, adapter formats, and each new or resolved difference. The adapter
-checks exact inventory counts so a changed fixture layout cannot silently reduce coverage. Update this document when
-the selected contracts change. Never refresh the difference file merely to make CI green.
+requires the recorded fixture counts to match the imported corpus. Review count changes when updating the sources,
+and update this document when the selected contracts change. Each change to the difference file needs a reviewed
+explanation.
 
 The upstream projects retain authorship of their fixtures. The cache keeps their archives unmodified, including any
 license notices they contain; fixture source text is not copied into this repository or release packages.
