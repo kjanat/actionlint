@@ -517,86 +517,6 @@ func (rule *RuleAction) checkLocalDockerActionRuns(r *ActionMetadataRuns, dir, n
 	rule.checkInvalidRunsProps(pos, r, "Docker", name, dir, []string{"main", "pre", "pre-if", "post", "post-if", "steps"})
 }
 
-// Composite action steps are one of two disjoint mappings in the runner's template schema.
-// https://github.com/actions/runner/blob/main/src/Runner.Worker/action_yaml.json
-// Agents: https://github.com/actions/runner/raw/refs/heads/main/src/Runner.Worker/action_yaml.json
-var (
-	compositeRunStepKeys  = []string{"continue-on-error", "env", "id", "if", "name", "run", "shell", "working-directory"}
-	compositeUsesStepKeys = []string{"continue-on-error", "env", "id", "if", "name", "uses", "with"}
-	compositeAnyStepKeys  = []string{"continue-on-error", "env", "id", "if", "name", "run", "shell", "uses", "with", "working-directory"}
-)
-
-// The runner's template schema gives input defaults fewer contexts than composite steps.
-// https://github.com/actions/runner/blob/main/src/Runner.Worker/action_yaml.json
-var actionInputDefaultContexts = []string{"github", "job", "matrix", "runner", "strategy"}
-
-var compositeStepContexts = []string{
-	"env", "github", "inputs", "job", "matrix", "runner", "steps", "strategy",
-}
-
-// actionUnavailableContexts parses every ${{ }} expression in s and returns, in first-seen
-// order with duplicates removed, the names of contexts outside the given allow-list.
-// When bare is true and s contains no ${{ }}, the whole string is
-// parsed as a single expression (used for `if:`). A parse error stops the scan without a
-// diagnostic: reporting syntax errors is out of scope for this check.
-func actionUnavailableContexts(s string, bare bool, contexts []string) []string {
-	if bare && !strings.Contains(s, "${{") {
-		s = "${{" + s + "}}" // }} lets the expression lexer terminate; see checkIfCondition
-	}
-
-	seen := map[string]struct{}{}
-	var out []string
-	for {
-		i := strings.Index(s, "${{")
-		if i < 0 {
-			break
-		}
-		s = s[i+3:]
-		lex := NewExprLexer(s)
-		expr, err := NewExprParser().Parse(lex)
-		if err != nil || expr == nil {
-			break
-		}
-		// The lexer skips delimiters inside string literals and consumes the closing }}.
-		s = s[lex.Offset():]
-		c := NewExprSemanticsChecker(false, nil)
-		c.SetContextAvailability(contexts)
-		_, errs := c.Check(expr)
-		for _, e := range errs {
-			name, ok := unavailableContextName(e.Message)
-			if !ok {
-				continue
-			}
-			if _, dup := seen[name]; dup {
-				continue
-			}
-			seen[name] = struct{}{}
-			out = append(out, name)
-		}
-	}
-	return out
-}
-
-// unavailableContextName extracts the context name from the message produced by
-// ExprSemanticsChecker.checkAvailableContext, which has the exact form:
-//
-//	context "NAME" is not allowed here. <note>. see <url>
-//
-// It deliberately does not match the special-function message
-// (`calling function "NAME" is not allowed here...`).
-func unavailableContextName(msg string) (string, bool) {
-	const prefix = `context "`
-	if !strings.HasPrefix(msg, prefix) || !strings.Contains(msg, `" is not allowed here`) {
-		return "", false
-	}
-	rest := msg[len(prefix):]
-	before, _, ok := strings.Cut(rest, "\"")
-	if !ok {
-		return "", false
-	}
-	return before, true
-}
-
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-composite-actions
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
 func (rule *RuleAction) checkLocalCompositeActionRuns(meta *ActionMetadata, pos *Pos) {
@@ -607,7 +527,6 @@ func (rule *RuleAction) checkLocalCompositeActionRuns(meta *ActionMetadata, pos 
 	for i, s := range r.Steps {
 		rule.checkCompositeActionStep(meta, s, i)
 	}
-	rule.checkCompositeActionInputDefaults(meta)
 	rule.checkInvalidRunsProps(pos, r, "Composite", meta.Name, meta.Dir(), []string{"main", "pre", "pre-if", "post", "post-if", "image", "pre-entrypoint", "entrypoint", "post-entrypoint", "args", "env"})
 }
 
@@ -636,15 +555,20 @@ func (rule *RuleAction) metadataErrorfAt(meta *ActionMetadata, line, col int, fo
 	rule.errs = append(rule.errs, err)
 }
 
-// checkCompositeActionInputDefaults checks the ${{ }} expressions in a composite action's
-// input `default` values for contexts the runner does not provide when evaluating defaults.
-func (rule *RuleAction) checkCompositeActionInputDefaults(meta *ActionMetadata) {
+func (rule *RuleAction) checkActionInputDefaults(meta *ActionMetadata) {
+	const field = "inputs.*.default"
 	for _, kv := range meta.InputDefaults {
-		for _, ctx := range actionUnavailableContexts(kv.Value.Value, false, actionInputDefaultContexts) {
+		for _, v := range actionExpressionViolations(kv.Value.Value, false, field) {
+			message := v.message
+			if v.context != "" {
+				message = fmt.Sprintf(
+					`uses context %q which is not available in input defaults. available contexts are %s`,
+					v.context, quotes(actionMetadataAvailability[field].contexts),
+				)
+			}
 			rule.metadataErrorfAt(
 				meta, kv.Value.Line, kv.Value.Column,
-				`default value of input %q in metadata of %q action uses context %q which is not available in input defaults. available contexts are %s`,
-				kv.Name, meta.Name, ctx, quotes(actionInputDefaultContexts),
+				`default value of input %q in metadata of %q action %s`, kv.Name, meta.Name, message,
 			)
 		}
 	}
@@ -688,7 +612,7 @@ func (rule *RuleAction) checkCompositeActionStep(meta *ActionMetadata, s *Action
 		} else if s.shell == nil {
 			rule.compositeStepErrorf(meta, s, idx, `must have a string value at "shell" key`)
 		}
-		rule.checkCompositeActionStepKeys(meta, s, idx, compositeRunStepKeys)
+		rule.checkCompositeActionStepKeys(meta, s, idx, actionMetadataKeys["run-step"])
 	case hasUses:
 		if s.Uses == nil {
 			rule.compositeStepErrorf(meta, s, idx, `must have a string value at "uses" key`)
@@ -697,38 +621,48 @@ func (rule *RuleAction) checkCompositeActionStep(meta *ActionMetadata, s *Action
 		} else if u, _, _ := strings.Cut(*s.Uses, "@"); strings.HasSuffix(u, ".yml") || strings.HasSuffix(u, ".yaml") {
 			rule.compositeStepErrorf(meta, s, idx, `cannot call reusable workflow %q at "uses" key`, *s.Uses)
 		}
-		rule.checkCompositeActionStepKeys(meta, s, idx, compositeUsesStepKeys)
+		rule.checkCompositeActionStepKeys(meta, s, idx, actionMetadataKeys["uses-step"])
 	default:
 		rule.compositeStepErrorf(meta, s, idx, `requires either "run" or "uses" key`)
-		rule.checkCompositeActionStepKeys(meta, s, idx, compositeAnyStepKeys)
+		keys := slices.Concat(actionMetadataKeys["run-step"], actionMetadataKeys["uses-step"])
+		slices.Sort(keys)
+		rule.checkCompositeActionStepKeys(meta, s, idx, slices.Compact(keys))
 	}
 
 	rule.checkCompositeActionStepExprs(meta, s, idx)
 }
 
 func (rule *RuleAction) checkCompositeActionStepExprs(meta *ActionMetadata, s *ActionCompositeStep, idx int) {
-	report := func(key string, v *ActionExprString, bare bool) {
+	report := func(key, field string, v *ActionExprString, bare bool) {
 		if v == nil {
 			return
 		}
-		for _, ctx := range actionUnavailableContexts(v.Value, bare, compositeStepContexts) {
-			rule.compositeStepErrorfAt(
-				meta, idx, v.Line, v.Column,
-				`uses context %q at %q key which is not available in a composite action. %s`,
-				ctx, key, compositeStepContextHint(ctx),
-			)
+		for _, violation := range actionExpressionViolations(v.Value, bare, "runs.steps.*."+field) {
+			if ctx := violation.context; ctx != "" {
+				rule.compositeStepErrorfAt(
+					meta, idx, v.Line, v.Column,
+					`uses context %q at %q key which is not available in a composite action. %s`,
+					ctx, key, compositeStepContextHint(ctx),
+				)
+			} else {
+				rule.compositeStepErrorfAt(meta, idx, v.Line, v.Column, `%s at %q key`, violation.message, key)
+			}
 		}
 	}
 
-	report("if", s.If, true)
-	report("run", s.Run, false)
-	report("working-directory", s.WorkingDirectory, false)
-	report("name", s.StepName, false)
+	report("if", "if", s.If, true)
+	report("run", "run", s.Run, false)
+	report("working-directory", "working-directory", s.WorkingDirectory, false)
+	report("name", "name", s.StepName, false)
+	report("shell", "shell", s.shell, false)
+	report("continue-on-error", "continue-on-error", s.continueOnError, false)
+	report("with", "with", s.withExpr, false)
+	report("env", "env", s.envExpr, false)
 	for _, kv := range s.With {
-		report(`with.`+kv.Name, &kv.Value, false)
+		report(`with.`+kv.Name, "with.*", &kv.Value, false)
 	}
 	for _, kv := range s.Env {
-		report(`env.`+kv.Name, &kv.Value, false)
+		report(`env.`+kv.Name, "env.*", &kv.Value, false)
 	}
 }
 
@@ -864,6 +798,7 @@ func (rule *RuleAction) checkLocalActionMetadata(meta *ActionMetadata, action *E
 		}
 	}
 	rule.checkLocalActionInputs(meta, action.Uses.Pos)
+	rule.checkActionInputDefaults(meta)
 	rule.checkLocalActionRuns(meta, action.Uses.Pos)
 }
 

@@ -1,0 +1,26 @@
+name: Composite expressions
+description: Field-specific expression availability
+inputs:
+  allowed:
+    description: Hashes are available in defaults
+    default: ${{ hashFiles('*.go') }}
+  invalid:
+    description: Status functions are unavailable in defaults
+    default: ${{ always() }}
+runs:
+  using: composite
+  steps:
+    - name: ${{ success() }}
+      if: always() && failure() == false
+      run: echo ok
+      shell: ${{ secrets.SHELL }}
+      continue-on-error: ${{ vars.IGNORE }}
+      env: ${{ fromJSON(inputs.allowed) }}
+    - run: echo ok
+      shell: ${{ inputs.shell || 'bash' }}
+      continue-on-error: ${{ inputs.ignore == 'yes' }}
+      env: ${{ fromJSON(secrets.ENV) }}
+    - uses: actions/checkout@v7
+      with: ${{ fromJSON(secrets.WITH) }}
+    - uses: actions/checkout@v7
+      with: ${{ fromJSON(inputs.allowed) }}

@@ -13,6 +13,7 @@ import (
 )
 
 //go:generate go run ./scripts/generate-popular-actions ./popular_actions.go
+//go:generate go run ./scripts/generate-action-metadata
 
 // ActionMetadataInput is input metadata in "inputs" section in action.yml metadata file.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#inputs
@@ -115,7 +116,7 @@ func (inputs *ActionMetadataOutputs) UnmarshalYAML(n *yaml.Node) error {
 	return nil
 }
 
-// ActionExprString is a string value from a composite action step that may contain
+// ActionExprString is a string value from action metadata that may contain
 // ${{ }} expressions, together with the position of the value node in the metadata file.
 type ActionExprString struct {
 	Value  string `json:"value"`
@@ -123,8 +124,8 @@ type ActionExprString struct {
 	Column int    `json:"column"`
 }
 
-// ActionKeyValue is a named string value (with position) inside a composite action step,
-// used for the "with" and "env" mappings.
+// ActionKeyValue is a named, positioned string in action metadata, used for input defaults
+// and composite step "with" and "env" mappings.
 type ActionKeyValue struct {
 	Name  string           `json:"name"`
 	Value ActionExprString `json:"value"`
@@ -156,8 +157,11 @@ type ActionCompositeStep struct {
 	// With holds each "with" input value that is a string.
 	With []*ActionKeyValue `json:"with"`
 	// Env holds each "env" variable value that is a string.
-	Env   []*ActionKeyValue `json:"env"`
-	shell *string
+	Env             []*ActionKeyValue `json:"env"`
+	shell           *ActionExprString
+	continueOnError *ActionExprString
+	withExpr        *ActionExprString
+	envExpr         *ActionExprString
 	// Uses is the value of "uses" key in the step. It is nil when the key is absent or its value
 	// is not a string.
 	Uses *string `json:"uses"`
@@ -190,10 +194,14 @@ func (s *ActionCompositeStep) UnmarshalYAML(n *yaml.Node) error {
 			s.StepName = yamlExprString(v)
 		case "with":
 			s.With = yamlKeyValues(v)
+			s.withExpr = yamlExprString(v)
 		case "env":
 			s.Env = yamlKeyValues(v)
+			s.envExpr = yamlExprString(v)
 		case "shell":
-			s.shell = yamlStringScalar(v)
+			s.shell = yamlExprString(v)
+		case "continue-on-error":
+			s.continueOnError = yamlExprString(v)
 		case "uses":
 			s.Uses = yamlStringScalar(v)
 		}
@@ -333,15 +341,13 @@ type ActionMetadata struct {
 	Runs ActionMetadataRuns `yaml:"runs" json:"runs"`
 	// Branding is "branding" field of action.yaml.
 	Branding ActionMetadataBranding `yaml:"branding" json:"-"`
-	// InputDefaults holds the "default" value of each input whose default is a string, along with
-	// its position in the metadata file. It is used to check ${{ }} expressions in a composite
-	// action's input defaults for contexts the runner does not provide to actions.
+	// InputDefaults holds each string input default and its position in the metadata file.
 	InputDefaults []*ActionKeyValue `yaml:"-" json:"-"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler. In addition to the struct tags, it captures the
 // value and position of each input's "default" so that ${{ }} expressions used there can be
-// checked for contexts unavailable to composite actions.
+// checked against the runner's input-default context.
 func (md *ActionMetadata) UnmarshalYAML(n *yaml.Node) error {
 	type metadata ActionMetadata // Alias type to avoid infinite recursion into this method
 	var m metadata
