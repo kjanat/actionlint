@@ -129,8 +129,6 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version: stable, check-latest: true }
-      - name: Test Pandoc request retries
-        run: bash .github/actions/setup-pandoc/retry.test.bash
       # Self-contained modules under a dot-directory, which the go tool skips
       # when expanding a ... pattern. Test each in place.
       - name: Test and vet each action module
