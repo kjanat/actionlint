@@ -2,8 +2,10 @@ package actionlint
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"runtime/debug"
+	"slices"
 
 	"github.com/spf13/cobra"
 )
@@ -75,14 +77,70 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 	if args == nil {
 		args = []string{}
 	}
-	args = normalizeCommandArgs(app.root.Flags(), args)
-	if len(args) > 0 && (args[0] == cobra.ShellCompRequestCmd || args[0] == cobra.ShellCompNoDescRequestCmd) {
+	if len(args) > 0 && !commandFileExists(args[0]) && (args[0] == cobra.ShellCompRequestCmd || args[0] == cobra.ShellCompNoDescRequestCmd) {
 		app.root.SetErr(io.Discard)
+		app.root.SetArgs(normalizeCommandArgs(app.root.Flags(), args))
+		if err := app.root.ExecuteContext(ctx); err != nil {
+			return app.reportError(commandUsageError{err})
+		}
+		return app.status
 	}
-	app.errorJSON = commandRequestsJSON(app.root.Flags(), args)
-	app.root.SetArgs(args)
-	if err := app.root.ExecuteContext(ctx); err != nil {
+	rest, forced, terminated, err := app.parseLegacy(args)
+	if err != nil {
 		return app.reportError(err)
 	}
+	if app.helpShown {
+		return app.status
+	}
+	legacyOperation := app.opts.version || app.opts.initConfig || app.opts.completion != "" || app.opts.helpLegacy
+	modern := forced != "" || (!legacyOperation && !terminated && len(rest) > 0 && isCommandName(rest[0]) && !commandFileExists(rest[0]))
+	if modern {
+		if forced != "" {
+			if !isCommandName(forced) {
+				return app.reportError(commandUsageError{fmt.Errorf("unknown command %q", forced)})
+			}
+			rest = append([]string{forced}, rest...)
+		}
+		app.errorJSON = app.errorJSON || requestsJSON(app.root.Flags(), rest[1:], true)
+		app.root.SetArgs(rest)
+		app.prefixIgnore = slices.Clone(app.inv.Check.IgnoreRegex)
+		if err := app.root.ExecuteContext(ctx); err != nil {
+			return app.reportError(commandUsageError{err})
+		}
+	} else {
+		app.inv.Legacy = true
+		app.inv.Check.Paths = rest
+		switch {
+		case app.opts.helpLegacy:
+			app.legacyHelp()
+		case app.opts.version:
+			app.inv.Operation = "version"
+		case app.opts.completion != "":
+			app.inv.Operation, app.inv.Shell = "completion", string(app.opts.completion)
+		case app.opts.initConfig:
+			app.inv.Operation = "config init"
+		}
+	}
+	if app.helpShown {
+		return app.status
+	}
+	if err := app.prepareInvocation(); err != nil {
+		return app.reportError(err)
+	}
+	if app.inv.Operation == "completion" {
+		var shell completionShell
+		if err := shell.Set(app.inv.Shell); err != nil {
+			return app.reportError(commandUsageError{err})
+		}
+		if err := writeCompletion(app.streams.Stdout, shell, app.root); err != nil {
+			return app.reportError(err)
+		}
+		return 0
+	}
+	status, err := executeInvocation(ctx, app.streams, app.inv)
+	if err != nil {
+		return app.reportError(err)
+	}
+	app.status = status
 	return app.status
 }

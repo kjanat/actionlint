@@ -29,23 +29,50 @@ cat path/to/workflow.yaml | actionlint -
 To know all flags and options, see an output of `actionlint -h` or
 [the online command manual][cmd-manual].
 
-### Flags and compatibility
+### Commands and compatibility
 
-Long options use `--`, with short options `-h` (help), `-v` (verbose), `-q` (quiet),
-`-o` (output), and `-f` (template). Existing spellings such as `-version`,
-`-config-file`, and `-format` still work. Place options before file arguments;
-parsing stops at the first filename. Use `--` before filenames starting with a dash.
-Boolean options accept `=true` and `=false`, and value options accept either a
-following argument or `=value`.
+The root invocation remains supported. It uses the original Go flag grammar:
+`-format` and `--format` are equivalent, boolean options accept `=false`, and
+parsing stops at the first filename. The explicit `check` command accepts options
+before or after filenames. Both routes use the same analysis engine.
 
 ```sh
-actionlint --help
-actionlint --version
-actionlint --output json .github/workflows/ci.yml
-actionlint -- --workflow.yml
+actionlint
+actionlint workflow.yml
+actionlint check workflow.yml --output-format=json
+actionlint check --stdin-filename=.github/workflows/ci.yml -
+actionlint config show --origin
+actionlint rules expression
+actionlint doctor
+actionlint version
 ```
 
-When running through npm, these two forms pass the help flag to actionlint:
+`check` accepts workflow files or a lone `-` for stdin. With no paths, it uses the
+same repository workflow discovery as the root. Directory arguments and standalone
+action-manifest linting are not added by the command redesign.
+
+An existing regular file named `check`, `config`, `rules`, `doctor`, `completion`,
+`version` or `help` takes precedence over the corresponding root command. Use `--`
+to force filenames or `--command NAME` to force a command despite a matching file.
+Root options still belong before filenames:
+
+```sh
+actionlint -- --workflow.yml
+actionlint --command check workflow.yml --json
+```
+
+Normal help and completion recommend the modern names. `--help-legacy` lists the
+supported old names without deprecation warnings. `--format` remains an alias for
+Go templates; it never interprets template text as a built-in format name.
+`-o`, `-f`, `-q` and `-h` mean output format, template, quiet and help.
+`-v` remains available for progress logging; new examples use `--log-level=info`.
+Attached short-option values such as `-ojson` belong to `check`'s modern grammar.
+
+The root's `-color=false` means not forcing color on. If both `-color` and
+`-no-color` are true, `-no-color` wins regardless of order. The modern command
+accepts `check --color=auto|always|never`; bare `--color` means `always`.
+
+When running through npm, these forms pass the help flag to actionlint:
 
 ```sh
 npx @kjanat/actionlint --help
@@ -55,52 +82,113 @@ npm exec --package=@kjanat/actionlint -- actionlint --help
 Do not put an extra `--` after the package in the first form. It reaches actionlint
 as the end of options, making the following `--help` a filename.
 
-### Built-in output and machine-readable metadata
+### Output and machine-readable metadata
 
 ```sh
-actionlint --json
-actionlint --output jsonl
-actionlint --output sarif > actionlint.sarif
-actionlint --help --json
-actionlint --version --json
-actionlint --init-config --json
+actionlint check --json
+actionlint check --output-format=jsonl
+actionlint check --output-format=sarif --output-file=actionlint.sarif
+actionlint check --output-format=github
+actionlint check --template-file=report.tmpl
+actionlint check --help --json
+actionlint version --json
 ```
 
-`--output` accepts `text`, `oneline`, `json`, `jsonl`, and `sarif`. `--json` selects
-`json`. The existing `--format` Go templates retain their output and take precedence
-over the legacy `--oneline` flag. A nonempty `--format` cannot be combined with the
-new `--output` or `--json` options.
+`--output-format` accepts `text`, `oneline`, `json`, `jsonl`, `sarif` and `github`.
+`--json` selects JSON. `--template` and its supported `--format` alias render the
+existing Go-template fields and functions. `--template-file` reads the same syntax
+from a file. A template cannot be combined with a built-in output selector.
+The legacy `-oneline` option still yields to a nonempty template.
 
-Native JSON uses the existing template's diagnostic fields: `message`, `filepath`,
-`line`, `column`, `kind`, `snippet`, and `end_column`. Positions start at 1. Empty
-optional fields may be omitted. It writes one array across all checked files and
-`[]` when there are no findings. JSON Lines writes one object per finding and
-nothing when there are no findings. SARIF uses the bundled template.
+JSON returns a versioned document. Each diagnostic has `rule`, `message`, `path`,
+`start`, `end` and an optional `snippet`. Positions use one-based Unicode character
+columns, and the end column is inclusive. For example:
 
-Diagnostics go to stdout. Help, logs, and fatal errors normally go to stderr;
-version information and generated completions go to stdout. In JSON modes, fatal
-errors are stderr objects with `error` and `exit_code`. Progress and debug output
-become stderr JSON Lines records with a `log` field. `--quiet` suppresses logs,
-including with `--verbose` or `--debug`, while retaining findings and fatal errors.
-Check the exit status before interpreting an empty stdout as success.
+```json
+{
+  "schema_version": 1,
+  "diagnostics": [
+    {
+      "rule": "expression",
+      "message": "undefined variable \"missing\"",
+      "path": ".github/workflows/ci.yml",
+      "start": { "line": 6, "column": 24 },
+      "end": { "line": 6, "column": 36 }
+    }
+  ]
+}
+```
 
-| Exit status | Meaning                                                                        |
-| ----------- | ------------------------------------------------------------------------------ |
-| `0`         | Completed with no findings, or completed an information/configuration command  |
-| `1`         | Completed with findings                                                        |
-| `2`         | Invalid arguments or incompatible output options                               |
-| `3`         | Could not initialize or complete, including invalid config, regex, or template |
+A clean JSON result has an empty `diagnostics` array. JSON Lines emits those
+individual diagnostic objects, or nothing for a clean result. Legacy
+`-format '{{json .}}'` retains its original array and field names, including
+`kind`, `filepath` and `end_column`. SARIF uses the bundled renderer. `github`
+emits escaped workflow annotation commands; it is enabled only by that explicit
+format choice, including when running inside GitHub Actions.
 
-`--help --json` writes the flag definitions, choices, default spellings, shorthand,
-repeatability, groups, aliases, and exit codes to stdout. `--version --json` writes
-build metadata (`name`, `version`, `installed_from`, `go_version`, `os`, `goarch`).
-`--init-config --json` returns an object with the generated file's `path` and keeps
-the editor schema directive in that file. The existing three-line version output
-and repository configuration discovery rules remain unchanged.
+Results go to stdout, or to `--output-file PATH`. `--output-file -` means stdout.
+A report file is replaced only after analysis completes; an operational failure
+preserves any previous report. An output file cannot also be a selected input.
+Logs and operational errors go to stderr. Structured output never includes ANSI
+color or terminal hyperlinks. A clean default text run stays silent.
+
+`--log-level=none|info|debug` controls logging. `--summary` adds an opt-in count on
+stderr. `--quiet` suppresses logs and summaries while preserving requested results
+and errors. In JSON modes, stderr errors have `error` and `exit_code` fields, log
+records have `log`, and the summary has `summary.files` and `summary.findings`.
+Check the exit status before interpreting empty stdout as success.
+
+| Exit status | Meaning                                                                       |
+| ----------- | ----------------------------------------------------------------------------- |
+| `0`         | Completed without findings, or completed an information/configuration command |
+| `1`         | Completed with findings                                                       |
+| `2`         | Invalid CLI arguments or incompatible options                                 |
+| `3`         | Could not initialize or complete, including invalid config, regex or template |
+
+`--help --json` describes commands, flags, choices, defaults and exit codes.
+`version --json` exposes build metadata. The old `-version` and `--version` flags
+retain their original three-line text output.
+
+### Configuration inspection
+
+```sh
+actionlint check --config=other.yml workflow.yml
+actionlint check --no-config workflow.yml
+actionlint config init
+actionlint config path
+actionlint config show --origin
+actionlint config validate
+```
+
+Configuration selection remains one explicit file or the repository's
+`.github/actionlint.yaml`, then `.github/actionlint.yml`. There is no new global
+configuration search, merge policy or environment override. `--no-config` skips
+configuration loading. An explicit `check --config` also avoids parsing an
+unselected repository config.
+
+`config path` prints the selected path, or nothing when none is selected. It can
+identify an invalid file without parsing it. `config show` prints effective YAML;
+`--json` returns a document with `path` and `config`. `--origin` adds an `origins`
+map keyed by JSON Pointer. Sources distinguish `default` from `config`, and
+states distinguish missing keys, explicit `null` and explicit values such as
+`false` and `[]`. Config sources include line and column positions. A default
+value does not imply that the user explicitly set it.
+
+`config validate` uses the same parser and validation as analysis, including its
+current handling of unknown keys described in [Configuration](config.md). It does
+not silently introduce the stricter JSON Schema validation policy.
+`config init` retains the repository destination, refuses to overwrite either
+config filename, and includes the YAML Language Server schema directive.
+
+`rules` lists checks by name, description and category; `rules NAME` explains one
+check. `doctor` reports the selected config and resolves configured external-tool
+commands without executing them. Missing optional tools are reported as unavailable;
+a malformed selected configuration returns exit status 3. Help, version, rules and
+completion do not load configuration or create a linter.
 
 ### Shell completion
 
-`--completion` prints a completion script for the given shell to stdout. The
+`completion <shell>` prints a completion script for the given shell to stdout. The
 supported shells are `bash`, `fish`, `powershell` and `zsh`. The value also
 accepts `pwsh` as an alias for `powershell` and executable paths such as `$SHELL`.
 `auto` selects the shell from `$SHELL`, then tries PowerShell when `$PSModulePath`
@@ -109,19 +197,19 @@ short options, values, and workflow paths. Install `bash-completion` for Bash,
 and initialize `compinit` for Zsh. Regenerate saved scripts after upgrading.
 
 ```sh
-mkdir -p ~/.local/share/bash--completion/completions
-actionlint --completion bash > ~/.local/share/bash--completion/completions/actionlint
+mkdir -p ~/.local/share/bash-completion/completions
+actionlint completion bash > ~/.local/share/bash-completion/completions/actionlint
 ```
 
 ```sh
 mkdir -p ~/.config/fish/completions
-actionlint --completion fish > ~/.config/fish/completions/actionlint.fish
+actionlint completion fish > ~/.config/fish/completions/actionlint.fish
 ```
 
 The zsh script belongs in a directory listed in `$fpath`.
 
 ```sh
-actionlint --completion zsh > "${fpath[1]}/_actionlint"
+actionlint completion zsh > "${fpath[1]}/_actionlint"
 ```
 
 The PowerShell script is loaded from your profile. The first command creates
@@ -130,14 +218,14 @@ the profile's directory, which does not exist on a fresh account and makes
 
 ```powershell
 New-Item -ItemType Directory -Force (Split-Path -Parent $PROFILE) | Out-Null
-actionlint --completion powershell | Out-File -Append -Encoding utf8 $PROFILE
+actionlint completion powershell | Out-File -Append -Encoding utf8 $PROFILE
 ```
 
 To load the script into the current session only, pipe it through
 `Invoke-Expression` instead.
 
 ```powershell
-actionlint --completion powershell | Out-String | Invoke-Expression
+actionlint completion powershell | Out-String | Invoke-Expression
 ```
 
 ### Ignore some errors
@@ -179,17 +267,14 @@ the `paths:` section of the configuration file.
 
 Before explaining the formatting details, let's see some examples.
 
-#### Example: Serialized into JSON
+#### Example: Legacy template JSON
 
 ```sh
-actionlint --json
+actionlint -format '{{json .}}'
 ```
 
-Output:
-
-```json
-[{"message":"unexpected key \"branch\" for ...
-```
+This returns the original template-field array. Use `check --json` for the
+versioned native result described above.
 
 #### Example: Markdown
 

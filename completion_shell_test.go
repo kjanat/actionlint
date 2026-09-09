@@ -32,7 +32,9 @@ func TestCompletionShellBehaviour(t *testing.T) {
 		{completionShellPowerShell, "pwsh", `param($Script)
 . $Script
 Set-PSReadLineKeyHandler -Key Tab -Function TabCompleteNext
-foreach ($Line in @('actionlint --co', 'actionlint --output j', 'actionlint -completion z')) {
+foreach ($Line in @('actionlint --co', 'actionlint --output j', 'actionlint -completion z',
+  'actionlint check workflow.yml --output-format j', 'actionlint config show --or',
+  'actionlint completion z', 'actionlint rules express')) {
   $r = TabExpansion2 -inputScript $Line -cursorColumn $Line.Length
   Write-Output (@($r.CompletionMatches | ForEach-Object { $_.CompletionText }) -join '|')
 }
@@ -46,7 +48,9 @@ if ($EmptyResult.Count -ne 1 -or $EmptyResult[0] -ne '') { throw 'Expected the n
 Write-Output ''
 `, []string{"-NoProfile", "-NonInteractive", "-File"}},
 		{completionShellFish, "fish", `source $argv[1]
-for line in 'actionlint --co' 'actionlint --output j' 'actionlint -completion z' 'actionlint --ignore '
+for line in 'actionlint --co' 'actionlint --output j' 'actionlint -completion z' \
+    'actionlint check workflow.yml --output-format j' 'actionlint config show --or' \
+    'actionlint completion z' 'actionlint rules express' 'actionlint --ignore '
   set results (complete -C "$line" | string split -f1 \t)
   echo (string join -- '|' $results)
 end
@@ -68,10 +72,14 @@ run() {
 run actionlint --co
 run actionlint --output j
 run actionlint -completion z
+run actionlint check workflow.yml --output-format j
+run actionlint config show --or
+run actionlint completion z
+run actionlint rules express
 run actionlint --ignore ''
 `, []string{"--noprofile", "--norc"}},
 	}
-	want := [][]string{{"--color", "--completion", "--config-file"}, {"json", "jsonl"}, {"zsh"}, nil}
+	want := [][]string{{"--color", "--config"}, {"json", "jsonl"}, {"zsh"}, {"json", "jsonl"}, {"--origin"}, {"zsh"}, {"expression"}, nil}
 	for _, tc := range tests {
 		t.Run(string(tc.shell), func(t *testing.T) {
 			if runtime.GOOS == "windows" && tc.shell != completionShellPowerShell {

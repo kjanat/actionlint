@@ -80,8 +80,8 @@ type LinterOptions struct {
 	// Format is a custom template to format error messages. It must follow Go Template format and
 	// contain at least one {{ }} placeholder. https://pkg.go.dev/text/template
 	Format string
-	// OutputFormat selects text, oneline, json, jsonl or sarif output. It cannot
-	// be combined with Format. JSON modes use the ErrorTemplateFields schema.
+	// OutputFormat selects a built-in renderer and cannot be combined with Format.
+	// JSON emits CheckResult; JSONL emits individual Diagnostic records.
 	OutputFormat OutputFormat
 	// StdinFileName is a file name when reading input from stdin. When this value is empty, "<stdin>"
 	// is used as the default value.
@@ -183,6 +183,8 @@ func NewLinter(out io.Writer, opts *LinterOptions) (*Linter, error) {
 		formatter = jsonDiagnosticFormatter{lines: opts.OutputFormat == OutputFormatJSONL}
 	case OutputFormatSARIF:
 		format = SARIFTemplate()
+	case OutputFormatGitHub:
+		formatter = githubDiagnosticFormatter{}
 	default:
 		return nil, fmt.Errorf("unknown output format %q", opts.OutputFormat)
 	}
@@ -274,8 +276,11 @@ func (l *Linter) generateDefaultConfig(dir string) (string, error) {
 	}
 
 	l.log("Generating default actionlint.yaml in repository:", dir)
+	return generateProjectConfig(l.projects, dir)
+}
 
-	proj, err := l.projects.At(dir)
+func generateProjectConfig(projects *Projects, dir string) (string, error) {
+	proj, err := projects.At(dir)
 	if err != nil {
 		return "", err
 	}
@@ -607,24 +612,7 @@ func (l *Linter) check(
 	if w != nil {
 		dbg := l.debugWriter()
 
-		rules := []Rule{
-			NewRuleMatrix(),
-			NewRuleCredentials(),
-			NewRuleShellName(),
-			NewRuleRunnerLabel(),
-			NewRuleEvents(),
-			NewRuleJobNeeds(),
-			NewRuleParallelSteps(),
-			NewRuleAction(localActions),
-			NewRuleEnvVar(),
-			NewRuleID(),
-			NewRuleGlob(),
-			NewRulePermissions(),
-			NewRuleWorkflowCall(path, localReusableWorkflows),
-			NewRuleExpression(localActions, localReusableWorkflows),
-			NewRuleDeprecatedCommands(),
-			NewRuleIfCond(),
-		}
+		rules := workflowRules(path, localActions, localReusableWorkflows)
 		if cfg.RequiresCommitHash() {
 			rules = append(rules, NewRuleRequireCommitHash())
 		}

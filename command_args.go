@@ -51,10 +51,20 @@ func normalizeCommandArgs(flags *pflag.FlagSet, args []string) []string {
 // Select the error format even when a bad option precedes --json. Known option
 // values and filenames remain data during this scan.
 func commandRequestsJSON(flags *pflag.FlagSet, args []string) bool {
+	return requestsJSON(flags, args, false)
+}
+
+func requestsJSON(flags *pflag.FlagSet, args []string, interspersed bool) bool {
 	jsonMode, output := false, ""
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		if arg == "--" || arg == "-" || !strings.HasPrefix(arg, "-") {
+		if arg == "--" {
+			break
+		}
+		if arg == "-" || !strings.HasPrefix(arg, "-") {
+			if interspersed {
+				continue
+			}
 			break
 		}
 		name, value, equal := strings.Cut(strings.TrimLeft(arg, "-"), "=")
@@ -83,7 +93,7 @@ func commandRequestsJSON(flags *pflag.FlagSet, args []string) bool {
 		switch flag.Name {
 		case "json":
 			jsonMode, _ = strconv.ParseBool(value)
-		case "output":
+		case "output", "output-format":
 			output = value
 		}
 	}

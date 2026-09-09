@@ -2,7 +2,7 @@
 
 # Unreleased
 
-- Rebuild the CLI with Cobra, grouped help, short options, generated Bash/Fish/PowerShell/Zsh completions, native JSON/JSON Lines/SARIF output, JSON help and build metadata, and quiet logging. Preserve existing single-dash options, custom templates, default diagnostics, version output, stream routing, and exit statuses. Add compatibility transcripts and real-shell completion tests.
+- Rebuild the CLI with a typed invocation model, a preserved Go flag parser for root calls, and Cobra commands for `check`, config inspection, rules, doctor, completion and version. Add JSON/JSONL/SARIF/GitHub output, template and output files, opt-in summaries, configuration origins and generated four-shell completion. Preserve legacy options, templates, default diagnostics, version output, streams and exit codes. Test both grammars, command/file collisions and output side effects.
 
 - Report YAML alias type errors at each invalid alias use, with the anchor location included in the message. Preserve source locations inside anchored content and avoid missing-ref errors for malformed `uses` values. (kjanat/actionlint#149)
 

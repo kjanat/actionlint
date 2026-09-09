@@ -117,3 +117,13 @@ type Rule interface {
 	SetConfig(cfg *Config)
 	Config() *Config
 }
+
+func workflowRules(path string, actions *LocalActionsCache, workflows *LocalReusableWorkflowCache) []Rule {
+	return []Rule{
+		NewRuleMatrix(), NewRuleCredentials(), NewRuleShellName(), NewRuleRunnerLabel(),
+		NewRuleEvents(), NewRuleJobNeeds(), NewRuleParallelSteps(), NewRuleAction(actions),
+		NewRuleEnvVar(), NewRuleID(), NewRuleGlob(), NewRulePermissions(),
+		NewRuleWorkflowCall(path, workflows), NewRuleExpression(actions, workflows),
+		NewRuleDeprecatedCommands(), NewRuleIfCond(),
+	}
+}

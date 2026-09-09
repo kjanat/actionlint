@@ -32,122 +32,163 @@ checks do not require configuration.
 
 # USAGE
 
-With no file arguments, **actionlint** searches the current directory and its parents for a
-repository containing both `.git` and `.github/workflows`. It recursively checks `.yml` and
-`.yaml` files in that workflow directory:
+With no paths, **actionlint** and **actionlint check** find the current repository
+containing both `.git` and `.github/workflows`, then recursively check workflow
+YAML files in that directory. Explicit file arguments and a lone **-** for stdin
+remain supported. Passing a directory does not enable recursive input expansion;
+passing an action manifest does not select standalone action-metadata linting.
 
     $ actionlint
-
-To check specific workflow files, pass their paths. Explicit files can be outside a repository:
-
     $ actionlint file1.yaml file2.yaml
+    $ actionlint check file1.yaml --output-format=json
+    $ actionlint check --stdin-filename .github/workflows/ci.yml -
 
-Pass **-** as the only file argument to read a workflow from standard input:
+The root stops option parsing at the first filename. **check** accepts options
+before or after filenames. **--** forces subsequent arguments to be filenames.
+An existing regular file named like a command takes precedence on the root.
+The hidden `--command NAME` escape explicitly selects a command in that case.
 
-    $ actionlint -
+# COMMANDS
 
-Use **--stdin-filename** to label diagnostics. If that path exists in a detected repository,
-actionlint also uses its repository configuration and local action metadata. For an unsaved
-file, select configuration explicitly with **--config-file** when needed:
+**check** [*flags*] [*files*...]
+: Check workflows with the modern option grammar. Uses the same engine and
+repository discovery as the root invocation.
 
-    $ actionlint --stdin-filename .github/workflows/ci.yml - < .github/workflows/ci.yml
-    $ actionlint --config-file .github/actionlint.yaml - < /tmp/workflow.yml
+**config init**
+: Create `.github/actionlint.yaml` with its YAML Language Server directive.
+Refuse to overwrite either supported config filename.
 
-Local action metadata and reusable workflows are read from disk when referenced by a workflow.
-Passing an `action.yml` file directly does not select a standalone action-metadata lint mode.
+**config path**
+: Print the selected configuration path without parsing it, or nothing if absent.
 
-Place flags before file arguments. Both `-flag` and `--flag` spellings are accepted, and a value
-can follow a flag or an equals sign. Use `--` to end flag parsing before a filename that starts
-with a dash. Boolean flags accept `=true` or `=false`.
+**config show** [**--origin**]
+: Show effective configuration as YAML. **--json** returns `path` and `config`.
+With `--origin`, include sources keyed by JSON Pointer: `default` or `config`,
+missing/null/value state, and positions for file settings. Explicit false and
+empty lists remain distinguishable from defaults and null.
 
-Select built-in JSON, JSON Lines, or SARIF output with **--output**. **--json** is a shortcut
-for **--output json**. Custom Go templates remain available through **--format**:
+**config validate**
+: Validate with the same loader as analysis. This retains existing unknown-key
+handling; it does not substitute the stricter editor JSON Schema validator.
 
-    $ actionlint --json
-    $ actionlint --output sarif > actionlint.sarif
-    $ actionlint --format '{{range .}}{{.Kind}}: {{.Message}}\n{{end}}'
+**rules** [*name*]
+: List checks by name and category, or explain one check. Supports **--json**.
 
-Short options **-o**, **-f**, **-q**, **-v**, and **-h** select output, template, quiet, verbose,
-and help respectively. Existing single-dash long names such as `-version` remain accepted.
+**doctor**
+: Inspect configuration and external-tool resolution without executing tools.
+Missing optional tools are reported; malformed selected config returns status 3.
+
+**completion** *shell*
+: Print the generated completion script for the selected shell.
+
+**version**
+: Show version and build details. Supports **--json**.
 
 # FLAGS
 
-**--color**
-: Force colored output, including when standard output is redirected. **--no-color** takes
-precedence if both flags are set.
+These options belong to the root and to **check**, unless noted otherwise.
+Root parsing retains the original single- and double-dash spellings; **check**
+uses long options and short aliases. Run **--help-legacy** for old spellings.
 
-**--completion** *SHELL*
-: Print a shell completion script for the given shell to stdout. One of `bash`, `fish`,
-`powershell`, `zsh`. Also accepted are `pwsh`, a shell path such as `$SHELL`, and `auto` to
-detect the current shell from `SHELL`, falling back to PowerShell when `PSModulePath` is set.
-Prints the script and exits without linting. See SHELL COMPLETION below.
-
-**--config-file** *PATH*
-: Read configuration from *PATH* instead of using the detected repository's configuration.
-Relative paths are resolved from the current working directory.
-
-**--debug**
-: Write development diagnostics to standard error. Use without **--verbose**, which takes
-precedence when both flags are set.
-
-**--format**, **-f** *FORMAT*
-: Format diagnostics using a Go text template. The template receives a sequence of error
-objects. See OUTPUT below. This overrides **--oneline**.
-
-**--ignore** *PATTERN*
-: Suppress diagnostics whose message matches *PATTERN*, using Go regular expression syntax.
-Repeat the flag to match any of several patterns: `--ignore A --ignore B` suppresses messages
-matching either pattern. Suppressed diagnostics do not cause exit status 1.
-
-**--init-config**
-: Create `.github/actionlint.yaml` in the detected repository and exit without linting.
-Includes the YAML Language Server schema directive for editor completion, hover documentation, and validation.
-Requires a repository with `.github/workflows` and refuses to overwrite either supported
-configuration filename.
+**--output-format**, **--output**, **-o** *MODE*
+: Select `text`, `oneline`, `json`, `jsonl`, `sarif`, or `github`. The default is
+`text`. **--output** is a supported alias. JSON emits a versioned document with
+`schema_version` and `diagnostics`; JSONL emits one diagnostic per line. GitHub
+annotations are emitted only when explicitly selected.
 
 **--json**
-: Write diagnostics as a JSON array. With **--help**, emit the command definition as JSON;
-with **--version**, emit build metadata; with **--init-config**, emit the generated file's path.
+: Select JSON output. With help, version, config, rules or doctor, emit JSON
+metadata. Operational errors are JSON objects on stderr.
 
-**--output**, **-o** *MODE*
-: Select `text` (default), `oneline`, `json`, `jsonl`, or `sarif`. Cannot be combined with a
-nonempty **--format**. **--json** cannot select a different **--output** mode at the same time.
+**--template**, **--format**, **-f** *TEMPLATE*
+: Render diagnostics with a Go template. Existing template fields and functions
+remain unchanged, including the JSON array returned by `{{json .}}`. Cannot be
+combined with a built-in output selector. A nonempty template takes precedence
+over the legacy **--oneline** option.
 
-**--quiet**, **-q**
-: Suppress progress and debug logs, including when **--verbose** or **--debug** is set.
-Findings and fatal errors remain visible and retain their exit statuses.
+**--template-file** *PATH*
+: Read a Go template from a file. Cannot be combined with an inline template.
+
+**--output-file** *PATH*
+: Write results to the given path. `-` means stdout. Replace the file
+only after successful analysis, including analysis that found problems. A failure
+preserves a previous report. The output cannot also be a selected input.
+
+**--color**[=*MODE*]
+: On **check**, select `auto`, `always`, or `never`; a bare flag means `always`.
+On the root, retain the boolean syntax: `-color=false` does not force color on.
+Structured output contains no terminal color codes.
 
 **--no-color**
-: Disable colored output, even when **--color** is also set.
+: Disable color. This supported legacy option wins over the root's **--color**
+boolean regardless of argument order.
 
-**--oneline**
-: Print one line per diagnostic, without the source snippet and position marker.
+**--config**, **--config-file** *PATH*
+: Select the configuration file. This takes precedence over repository discovery. **--config-file**
+is the supported legacy name. Also available on **config** and **doctor**.
 
-**--pyflakes** *COMMAND*
-: Command used to check Python `run:` scripts. Accepts an executable name, a path, or a quoted
-command line such as `"python3 -m pyflakes"` or `"uvx pyflakes"`. Defaults to `pyflakes`;
-`--pyflakes=` disables the integration.
+**--no-config**
+: Use defaults without loading a configuration file. Cannot be combined with a
+nonempty explicit config path. Also available on **config** and **doctor**.
 
-**--shellcheck** *COMMAND*
-: Command used to check supported shell `run:` scripts. Accepts an executable name, a path,
-or a quoted command line such as `"shellcheck -e SC2086"`. Defaults to `shellcheck`;
-`--shellcheck=` disables the integration.
+**--ignore-regex**, **--ignore** *REGEXP*
+: Suppress findings whose messages match this Go regular expression. Repeat to
+add patterns. **--ignore** is the
+supported legacy name.
 
-**--stdin-filename** *NAME*
-: Filename used for standard-input diagnostics. Defaults to `<stdin>`. An existing path also
-allows repository discovery; see USAGE above.
+**--stdin-filename** *PATH*
+: Set the path used for stdin diagnostics and project detection. The default is
+`<stdin>`. Use an existing workflow path to select its repository context.
+
+**--log-level** *LEVEL*
+: Select `none`, `info`, or `debug`. The default is `none`.
+
+**--quiet**, **-q**
+: Suppress progress, debug logs and summaries. Requested results and operational
+errors remain visible. Also available on information and config commands.
+
+**--summary**
+: Print selected workflow and finding counts on stderr after checking. In JSON
+modes this is a JSON record with a `summary` field. A normal clean run stays silent.
 
 **--verbose**, **-v**
-: Write progress information to standard error, including file discovery and disabled external
-linter integrations.
+: Retain legacy progress logging. Prefer **--log-level**=info on **check**.
+
+**--debug**
+: Retain legacy debug logging. On the legacy route, **--verbose** wins when both
+flags are true. An explicit **--log-level** selects the requested new log level.
+
+**--oneline**
+: Retain one-line diagnostic output. Prefer **--output-format**=oneline.
+
+**--shellcheck** *COMMAND*
+: ShellCheck command, executable path or command line with arguments. Defaults
+to `shellcheck`; an empty value disables it. Also available on **doctor**.
+
+**--pyflakes** *COMMAND*
+: Pyflakes command, executable path or command line with arguments. Defaults to
+`pyflakes`; an empty value disables it. Also available on **doctor**.
+
+**--init-config**
+: Root-only alias for **config init**, retaining existing initialization behavior.
+
+**--completion**, **--completions** *SHELL*
+: Root-only supported aliases for **completion** *SHELL*. Accept `bash`, `fish`,
+`powershell`, `zsh`, `pwsh`, shell executable paths, and `auto`. Cobra generates
+all four completion scripts. Install bash-completion for Bash and run compinit
+for Zsh. Regenerate saved scripts after upgrading.
 
 **--version**
-: Print the build's module name and version, installation source, Go compiler version, and
-target operating system and architecture, then exit.
+: Root-only version flag. Retains its original three-line output. Use the
+**version** command for the new presentation or **version --json** for metadata.
 
 **--help**, **-h**
-: Print grouped usage, examples, flags, and exit statuses to standard error, then exit successfully.
-With **--json**, write the command definition to standard output instead.
+: Show grouped help on stderr, or JSON command metadata on stdout with **--json**.
+
+**--help-legacy**
+: Explain supported legacy option spellings and parsing rules without
+introducing deprecation warnings.
+
 
 # CONFIGURATION
 

@@ -21,8 +21,8 @@ Followings are unexhaustive list of interesting APIs.
 - `Linter` manages linter lifecycle and applies checks to given files. If you want to run actionlint checks in your
   program, please use this struct.
 - `LinterOptions.OutputFormat` selects `OutputFormatText`, `OutputFormatOneline`, `OutputFormatJSON`, `OutputFormatJSONL`,
-  or `OutputFormatSARIF`. Leave it empty to retain the existing `Format` and `Oneline` behavior. A nonempty `OutputFormat`
-  cannot be combined with `Format`. JSON diagnostics use the `ErrorTemplateFields` fields and JSON names.
+  `OutputFormatSARIF`, or `OutputFormatGitHub`. Leave it empty to retain the existing `Format` and `Oneline` behavior. A nonempty `OutputFormat`
+  cannot be combined with `Format`. JSON emits a versioned `CheckResult`; JSONL emits `Diagnostic` records. Legacy `Format` templates retain `ErrorTemplateFields`.
 - `Project` and `Projects` detect a project (Git repository) in a given directory path and find configuration in it.
 - `Config` represents structure of `actionlint.yaml` config file. It can be decoded by [yaml/go-yaml][go-yaml] library.
 - `RequireJobTimeout(max)` enables the timeout policy with an optional maximum. `RequireJobTimeoutRange(min, max)` also

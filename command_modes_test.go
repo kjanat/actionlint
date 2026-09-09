@@ -36,19 +36,19 @@ func TestCommandArgumentCompatibility(t *testing.T) {
 		{"long", []string{"--oneline", "-"}, 1, "[expression]"},
 		{"legacy", []string{"-oneline", "-"}, 1, "[expression]"},
 		{"short format", []string{"-f", "{{range .}}{{.Kind}}{{end}}", "-"}, 1, "expression"},
-		{"short output", []string{"-ojson", "-"}, 1, `"kind":"expression"`},
+		{"short output", []string{"-o", "json", "-"}, 1, `"rule":"expression"`},
 		{"option-like value", []string{"--stdin-filename", "-completions", "-"}, 1, "-completions:6:"},
 		{"option-like equal value", []string{"-stdin-filename=-completions", "-"}, 1, "-completions:6:"},
 		{"ignore literal flag", []string{"-ignore", "--json", "-"}, 1, "[expression]"},
 		{"true value", []string{"--oneline=TRUE", "-"}, 1, "[expression]"},
-		{"unknown", []string{"--unknown"}, 2, "unknown flag"},
+		{"unknown", []string{"--unknown"}, 2, "flag provided but not defined"},
 		{"missing value", []string{"--output"}, 2, "needs an argument"},
-		{"invalid bool", []string{"--oneline=maybe"}, 2, "invalid syntax"},
+		{"invalid bool", []string{"--oneline=maybe"}, 2, "invalid boolean value"},
 		{"unknown shell", []string{"--completion", "not-a-shell"}, 2, "shell"},
 		{"help exits early", []string{"--help", "--unknown"}, 0, "Usage:"},
 		{"legacy help value", []string{"-help=false"}, 0, "Usage:"},
 		{"help short", []string{"-h"}, 0, "Usage:"},
-		{"invalid before help", []string{"--unknown", "--help"}, 2, "unknown flag"},
+		{"invalid before help", []string{"--unknown", "--help"}, 2, "flag provided but not defined"},
 		{"format conflict", []string{"--json", "--format={{json .}}", "-"}, 2, "cannot be combined"},
 		{"output conflict", []string{"--json", "--output=jsonl", "-"}, 2, "cannot be combined"},
 		{"bad output", []string{"--output=csv", "-"}, 2, "invalid output mode"},
@@ -90,24 +90,35 @@ func TestCommandNativeJSON(t *testing.T) {
 			if got.Status != legacy.Status || got.Stderr != "" {
 				t.Fatalf("%q: %+v", args, got)
 			}
-			var want, have []ErrorTemplateFields
+			var want []*ErrorTemplateFields
+			var have CheckResult
 			if err := json.Unmarshal([]byte(legacy.Stdout), &want); err != nil {
 				t.Fatal(err)
 			}
 			if err := json.Unmarshal([]byte(got.Stdout), &have); err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(want, have); diff != "" {
+			if diff := cmp.Diff(checkResult(want), have); diff != "" {
 				t.Fatal(diff)
 			}
-			if len(have) == 0 && got.Stdout != "[]\n" {
+			if len(have.Diagnostics) == 0 && got.Stdout != "{\"schema_version\":1,\"diagnostics\":[]}\n" {
 				t.Fatalf("empty diagnostics: %q", got.Stdout)
 			}
 		}
-		legacyLines := testRunCommand(input, "-format", "{{range .}}{{json .}}{{end}}", "-")
 		lines := testRunCommand(input, "--output=jsonl", "-")
-		if diff := cmp.Diff(legacyLines, lines); diff != "" {
-			t.Fatal(diff)
+		array := testRunCommand(input, "--json", "-")
+		var result CheckResult
+		if err := json.Unmarshal([]byte(array.Stdout), &result); err != nil {
+			t.Fatal(err)
+		}
+		var expected bytes.Buffer
+		for _, diagnostic := range result.Diagnostics {
+			if err := json.NewEncoder(&expected).Encode(diagnostic); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if lines.Status != array.Status || lines.Stderr != "" || lines.Stdout != expected.String() {
+			t.Fatalf("JSONL differs from JSON diagnostics: %+v", lines)
 		}
 	}
 }
@@ -120,15 +131,16 @@ func TestCommandMultiFileJSON(t *testing.T) {
 		}
 	}
 	got := testRunCommand("", "--json", "one.yml", "two.yml")
-	var fields []ErrorTemplateFields
-	if err := json.Unmarshal([]byte(got.Stdout), &fields); err != nil {
+	var result CheckResult
+	if err := json.Unmarshal([]byte(got.Stdout), &result); err != nil {
 		t.Fatal(err)
 	}
+	fields := result.Diagnostics
 	if got.Status != 1 || got.Stderr != "" || len(fields) != 2 {
 		t.Fatalf("%+v", got)
 	}
 	for i, path := range []string{"one.yml", "two.yml"} {
-		if fields[i].Filepath != path || fields[i].Line != 6 || fields[i].Kind != "expression" || !strings.Contains(fields[i].Snippet, "missing.value") {
+		if fields[i].Path != path || fields[i].Start.Line != 6 || fields[i].Rule != "expression" || !strings.Contains(fields[i].Snippet, "missing.value") {
 			t.Errorf("wrong diagnostic: %+v", fields[i])
 		}
 	}
@@ -231,14 +243,14 @@ func TestCommandJSONHelpAndVersion(t *testing.T) {
 		if err := json.Unmarshal([]byte(got.Stdout), &help); err != nil {
 			t.Fatalf("%+v: %v", got, err)
 		}
-		if got.Status != 0 || got.Stderr != "" || help.Name != "actionlint" || len(help.Flags) != 18 {
+		if got.Status != 0 || got.Stderr != "" || help.Name != "actionlint" || len(help.Commands) != 6 {
 			t.Fatalf("%+v", got)
 		}
 		for _, flag := range help.Flags {
 			if flag.Description == "" || flag.Group == "" || flag.Name == "" {
 				t.Errorf("incomplete flag: %+v", flag)
 			}
-			if flag.Name == "ignore" && !flag.Repeatable {
+			if flag.Name == "ignore-regex" && !flag.Repeatable {
 				t.Error("ignore must be repeatable")
 			}
 		}
@@ -295,7 +307,7 @@ func TestCommandConfigAndEmptyArgs(t *testing.T) {
 		t.Fatal(err)
 	}
 	got = testRunCommand(commandBadWorkflow, "--config-file", created.Path, "--json", "-")
-	if got.Status != 0 || got.Stdout != "[]\n" || got.Stderr != "" {
+	if got.Status != 0 || got.Stdout != "{\"schema_version\":1,\"diagnostics\":[]}\n" || got.Stderr != "" {
 		t.Fatalf("explicit config not applied: %+v", got)
 	}
 }
