@@ -3,7 +3,7 @@ name: Setup ShellCheck
 description: Install a pinned ShellCheck release, verified against its GitHub release asset checksum.
 inputs:
   shellcheck-version:
-    description: ShellCheck version to install (e.g., 0.11.0 or v0.11.0), or latest.
+    description: ShellCheck version to install (e.g., 0.11.0 or v0.11.0), or latest. Requires GitHub release asset SHA-256 checksums.
     required: false
     default: "0.11.0"
   update-path:
@@ -57,15 +57,23 @@ runs:
           echo '::error::The release does not have a stable ShellCheck version tag.'
           exit 1
         fi
-        asset="shellcheck-${tag}.${platform}.tar.gz"
+        assets=("shellcheck-${tag}.${platform}.tar.gz" "shellcheck-${tag}.${platform}.tar.xz")
         binary=shellcheck
         if [[ "${platform}" == windows ]]; then
-          asset="shellcheck-${tag}.zip"
+          assets=("shellcheck-${tag}.zip")
           binary=shellcheck.exe
         fi
-        digest="$(jq -r --arg name "${asset}" '.assets[] | select(.name == $name) | .digest' <<< "${release}")"
+        for asset in "${assets[@]}"; do
+          metadata="$(jq -c --arg name "${asset}" '.assets[] | select(.name == $name)' <<< "${release}")"
+          if [[ -n "${metadata}" ]]; then break; fi
+        done
+        if [[ -z "${metadata}" ]]; then
+          echo "::error::No ShellCheck release asset is available for ${platform} in ${tag}."
+          exit 1
+        fi
+        digest="$(jq -r '.digest' <<< "${metadata}")"
         if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
-          echo '::error::The release asset is missing a SHA-256 checksum.'
+          echo "::error::The release asset ${asset} is missing a valid SHA-256 checksum."
           exit 1
         fi
 
@@ -83,7 +91,7 @@ runs:
           unzip -p "${archive}" shellcheck.exe > "${install_dir}/${binary}"
           install_dir="$(cygpath -m "${install_dir}")"
         else
-          tar -xzf "${archive}" -C "${install_dir}" --strip-components=1 "shellcheck-${tag}/shellcheck"
+          tar -xf "${archive}" -C "${install_dir}" --strip-components=1 "shellcheck-${tag}/shellcheck"
         fi
         "${install_dir}/${binary}" --version
         printf 'shellcheck-path=%s/%s\n' "${install_dir}" "${binary}" >> "${GITHUB_OUTPUT}"

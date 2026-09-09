@@ -32,7 +32,10 @@ func (r *repo) nixCommand(command string) ([]string, error) {
 func findNix(command, goos string, lookPath func(string) (string, error), output func(...string) ([]byte, error)) ([]string, error) {
 	if command != "" {
 		args, err := shellwords.Parse(command)
-		if err != nil || len(args) == 0 {
+		if err != nil {
+			return nil, fmt.Errorf("invalid Nix command %q: %w", command, err)
+		}
+		if len(args) == 0 {
 			return nil, fmt.Errorf("invalid Nix command %q: expected an executable and optional arguments", command)
 		}
 		if _, err := lookPath(args[0]); err != nil {
