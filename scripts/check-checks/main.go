@@ -37,6 +37,16 @@ func Actionlint(src []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if p == nil {
+		root, err := os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+		p, err = actionlint.NewProject(root)
+		if err != nil {
+			return nil, err
+		}
+	}
 	errs, err := l.Lint("test.yaml", src, p)
 	if err != nil {
 		return nil, err
@@ -45,11 +55,8 @@ func Actionlint(src []byte) ([]byte, error) {
 		return nil, errors.New("the input example caused no error")
 	}
 
-	// Some error message contains absolute file paths. Replace them not to make the document depend
-	// on the current file system.
-	b := bytes.ReplaceAll(out.Bytes(), []byte(p.RootDir()), []byte("/path/to/repo"))
-
-	return b, nil
+	// Replace checkout-specific paths in diagnostics with a stable example path.
+	return bytes.ReplaceAll(out.Bytes(), []byte(p.RootDir()), []byte("/path/to/repo")), nil
 }
 
 type state int

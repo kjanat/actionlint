@@ -4,6 +4,8 @@
 
 - Keep project-discovery test repositories in temporary directories so running tests does not add fake repositories to editors' repository lists.
 
+- Allow source packages without Git metadata to run the documentation checker and full test suite, retaining local reusable-workflow checks and normalized diagnostic paths.
+
 - Restrict release-triggered Pages builds to successful push runs from this repository and grant Pages write and OIDC permissions only to the deployment job.
 
 - Add upstream conformance tests using GitHub's language-services and runner fixtures, with SchemaStore and YAML Test Suite comparisons. Run them across Linux, macOS, and Windows and report known differences separately from agreements.

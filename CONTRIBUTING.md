@@ -87,6 +87,34 @@ make build SKIP_GO_GENERATE=1
 Since actionlint doesn't use any cgo features, setting `CGO_ENABLED=0` environment variable is recommended to avoid troubles
 around linking libc. `make build` does this by default.
 
+### Packaging source builds
+
+Use the module path from `go.mod` when stamping the version:
+`-ldflags "-X actionlint.kjanat.dev.version=<package-version>"`. A different module path silently leaves the
+binary reporting a development version and linking to development documentation.
+
+The source tarball uploaded by the release workflow includes `man/actionlint.1`. GitHub's automatically generated
+source downloads do not. Generate just the installed manpage with:
+
+```sh
+make man/actionlint.1
+```
+
+For Pandoc 3.7, which lacks `--syntax-highlighting=none`, override the command using its equivalent older option:
+
+```sh
+make man/actionlint.1 PANDOC='pandoc --standalone --from=markdown-smart --no-highlight'
+```
+
+Shell completions come from the built binary's
+`-completion bash`, `-completion zsh`, and `-completion fish` commands. Install `actionlint.schema.json` alongside
+the package if users need a local configuration schema.
+
+Run `go test ./...` from the source root, including when only `cmd/actionlint` is built. That command directory
+has no tests; the linter tests live in the root package. Put Git, Bash, ShellCheck, and Pyflakes on `PATH` for
+the tests. Ordinary builds use the checked-in generated sources; dependency fetching can happen before an
+offline build, as with Nix's `buildGoModule`.
+
 ## Testing
 
 [![CI](https://github.com/kjanat/actionlint/actions/workflows/ci.yml/badge.svg)](https://github.com/kjanat/actionlint/actions/workflows/ci.yml)

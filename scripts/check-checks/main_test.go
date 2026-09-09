@@ -66,6 +66,46 @@ func testErr(t *testing.T, err error, want ...string) {
 	}
 }
 
+func TestActionlintOutsideRepository(t *testing.T) {
+	t.Chdir(t.TempDir())
+	for _, tc := range []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "expression",
+			src: `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ unknown }}
+`,
+			want: `test.yaml:6:23: undefined variable "unknown"`,
+		},
+		{
+			name: "local reusable workflow",
+			src: `on: push
+jobs:
+  test:
+    uses: ./.github/workflows/not-existing-workflow.yml
+`,
+			want: `could not read reusable workflow file for "./.github/workflows/not-existing-workflow.yml": open /path/to/repo`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out, err := Actionlint([]byte(tc.src))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Contains(out, []byte(tc.want)) {
+				t.Fatalf("expected diagnostic containing %q outside a Git checkout, got:\n%s", tc.want, out)
+			}
+		})
+	}
+}
+
 func TestMainGenerateOK(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("check-checks doesn't support Windows")
