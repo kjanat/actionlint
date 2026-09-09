@@ -16,13 +16,13 @@ jobs:
     name: Check changelog
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { persist-credentials: false }
+      - uses: &ActionsCheckout actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: &NoCreds { persist-credentials: false }
       - name: Check pinned go-shellcheck version
         uses: $/.github/actions/shellcheck-versions
         with: { fail-on-outdated: true }
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version-file: go.mod }
+      - uses: &SetupGo actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with: &GoMod { go-version-file: go.mod }
       - name: Resolve release notes
         env: { TAG: "${{ github.ref_name }}" }
         run: go run ./scripts/bump-version -notes "${TAG}" > "${RUNNER_TEMP}/release-notes.md"
@@ -32,8 +32,8 @@ jobs:
     name: Build command manual
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { persist-credentials: false }
+      - uses: *ActionsCheckout
+        with: *NoCreds
       - uses: $/.github/actions/setup-pandoc
       - uses: kjanat/runner@a850e622e01897a79e62013804abd26f0e38e63c # v0.26.1
       - run: run make:man/actionlint.1
@@ -44,15 +44,15 @@ jobs:
     needs: [changelog, manual, nix]
     permissions: { contents: write, id-token: write, attestations: write }
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: *ActionsCheckout
         with: { fetch-depth: 0, persist-credentials: false }
       - parallel:
           - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
             with: { name: manual, path: man }
           - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
             with: { name: release-notes, path: "${{ runner.temp }}" }
-          - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-            with: { go-version-file: go.mod }
+          - uses: *SetupGo
+            with: *GoMod
       - name: Get version
         run: echo VERSION="${GITHUB_REF#refs/tags/v}" >> "${GITHUB_ENV}"
       - name: Install syft for SBOM generation
@@ -88,7 +88,7 @@ jobs:
     }
     permissions: { contents: read, packages: write, id-token: write, attestations: write }
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: *ActionsCheckout
         with: { fetch-depth: 0, persist-credentials: false }
       - name: Get tag name
         id: tag
@@ -260,7 +260,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: { contents: write }
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: *ActionsCheckout
         with: { fetch-depth: 0 }
       - name: Verify release commit signature
         env: { GH_TOKEN: "${{ github.token }}", COMMIT_API: "${{ format('repos/{0}/commits/{1}', github.repository, github.sha) }}" }
