@@ -80,6 +80,7 @@ func (l *delayedSprintf) String() string {
 type parser struct {
 	errors      []*Error
 	sourceLines []string
+	aliases     map[*yaml.Node]*yaml.Node
 }
 
 func splitSourceLines(b []byte) []string {
@@ -220,8 +221,17 @@ func (p *parser) errorf(n *yaml.Node, format string, args ...any) {
 	p.error(n, m)
 }
 
+func (p *parser) typeErrorf(n *yaml.Node, format string, args ...any) {
+	m := fmt.Sprintf(format, args...)
+	if alias, ok := p.aliases[n]; ok {
+		m += fmt.Sprintf(". alias %q refers to the anchor at line:%d, column:%d", alias.Value, n.Line, n.Column)
+		n = alias
+	}
+	p.error(n, m)
+}
+
 func (p *parser) resolveAliases(root *yaml.Node) {
-	resolveYAMLAliases(root, func(n *yaml.Node, d yamlAliasDiagnostic, m string) {
+	p.aliases = resolveYAMLAliases(root, func(n *yaml.Node, d yamlAliasDiagnostic, m string) {
 		p.error(n, m)
 	})
 }
@@ -237,13 +247,14 @@ const (
 	yamlAliasDiagnosticInvalidName
 )
 
-func resolveYAMLAliases(root *yaml.Node, report func(n *yaml.Node, d yamlAliasDiagnostic, m string)) {
+func resolveYAMLAliases(root *yaml.Node, report func(n *yaml.Node, d yamlAliasDiagnostic, m string)) map[*yaml.Node]*yaml.Node {
 	type usage struct {
 		used    bool
 		defined bool
 	}
 
 	anchors := map[*yaml.Node]*usage{}
+	var aliases map[*yaml.Node]*yaml.Node
 
 	var resolve func(*yaml.Node) // For recursive call
 	resolve = func(n *yaml.Node) {
@@ -267,7 +278,13 @@ func resolveYAMLAliases(root *yaml.Node, report func(n *yaml.Node, d yamlAliasDi
 			if u, ok := anchors[c.Alias]; ok {
 				u.used = true
 				if u.defined {
-					n.Content[i] = c.Alias // Resolved
+					// Keep each alias use distinct without relocating the anchored content.
+					resolved := *c.Alias
+					n.Content[i] = &resolved
+					if aliases == nil {
+						aliases = map[*yaml.Node]*yaml.Node{}
+					}
+					aliases[&resolved] = c
 				} else {
 					// Don't resolve the recursive alias because it causes stack overflow on parsing the tree as
 					// `RawYAMLValue`. (#610)
@@ -286,6 +303,7 @@ func resolveYAMLAliases(root *yaml.Node, report func(n *yaml.Node, d yamlAliasDi
 			report(n, yamlAliasDiagnosticUnusedAnchor, fmt.Sprintf("anchor %q is defined but not used", n.Anchor))
 		}
 	}
+	return aliases
 }
 
 func (p *parser) unexpectedKey(s *String, sec string, expected []string) {
@@ -314,7 +332,7 @@ func (p *parser) checkNotEmpty(sec string, count int, n *yaml.Node) bool {
 
 func (p *parser) checkSequence(sec string, n *yaml.Node, allowEmpty bool) bool {
 	if n.Kind != yaml.SequenceNode {
-		p.errorf(n, "%q section must be sequence node but got %s node with %q tag", sec, nodeKindName(n.Kind), n.Tag)
+		p.typeErrorf(n, "%q section must be sequence node but got %s node with %q tag", sec, nodeKindName(n.Kind), n.Tag)
 		return false
 	}
 	return allowEmpty || p.checkNotEmpty(sec, len(n.Content), n)
@@ -324,7 +342,7 @@ func (p *parser) checkString(n *yaml.Node, allowEmpty bool) bool {
 	// Do not check n.Tag is !!str because we don't need to check the node is string strictly.
 	// In almost all cases, other nodes (like 42) are handled as string with its string representation.
 	if n.Kind != yaml.ScalarNode {
-		p.errorf(n, "expected scalar node for string value but found %s node with %q tag", nodeKindName(n.Kind), n.Tag)
+		p.typeErrorf(n, "expected scalar node for string value but found %s node with %q tag", nodeKindName(n.Kind), n.Tag)
 		return false
 	}
 	if !allowEmpty && n.Value == "" {
@@ -335,7 +353,7 @@ func (p *parser) checkString(n *yaml.Node, allowEmpty bool) bool {
 }
 
 func (p *parser) missingExpression(n *yaml.Node, expecting string) {
-	p.errorf(n, "expecting a single ${{...}} expression or %s, but found plain text node", expecting)
+	p.typeErrorf(n, "expecting a single ${{...}} expression or %s, but found plain text node", expecting)
 }
 
 func (p *parser) parseExpression(n *yaml.Node, expecting string) *String {
@@ -389,7 +407,7 @@ func (p *parser) parseStringOrStringSequence(sec string, n *yaml.Node) []*String
 
 func (p *parser) parseBool(n *yaml.Node) *Bool {
 	if n.Kind != yaml.ScalarNode || (n.Tag != yamlTagBool && n.Tag != yamlTagStr) {
-		p.errorf(n, "expected bool value but found %s node with %q tag", nodeKindName(n.Kind), n.Tag)
+		p.typeErrorf(n, "expected bool value but found %s node with %q tag", nodeKindName(n.Kind), n.Tag)
 		return nil
 	}
 
@@ -409,7 +427,7 @@ func (p *parser) parseBool(n *yaml.Node) *Bool {
 
 func (p *parser) parseInt(n *yaml.Node) *Int {
 	if n.Kind != yaml.ScalarNode || (n.Tag != yamlTagInt && n.Tag != yamlTagStr) {
-		p.errorf(n, "expected scalar node for integer value but found %s node with %q tag", nodeKindName(n.Kind), n.Tag)
+		p.typeErrorf(n, "expected scalar node for integer value but found %s node with %q tag", nodeKindName(n.Kind), n.Tag)
 		return nil
 	}
 
@@ -438,7 +456,7 @@ func (p *parser) parseInt(n *yaml.Node) *Int {
 
 func (p *parser) parseFloat(n *yaml.Node) *Float {
 	if n.Kind != yaml.ScalarNode || (n.Tag != yamlTagFloat && n.Tag != yamlTagInt && n.Tag != yamlTagStr) {
-		p.errorf(n, "expected scalar node for float value but found %s node with %q tag", nodeKindName(n.Kind), n.Tag)
+		p.typeErrorf(n, "expected scalar node for float value but found %s node with %q tag", nodeKindName(n.Kind), n.Tag)
 		return nil
 	}
 
@@ -475,7 +493,7 @@ func (p *parser) parseMapping(where delayedSprintf, n *yaml.Node, allowEmpty, ca
 		}
 
 		if n.Kind != yaml.MappingNode {
-			p.errorf(n, "%s is %s node but mapping node is expected", where.String(), nodeKindName(n.Kind))
+			p.typeErrorf(n, "%s is %s node but mapping node is expected", where.String(), nodeKindName(n.Kind))
 			return
 		}
 
@@ -882,7 +900,7 @@ func (p *parser) parseEvents(n *yaml.Node) []Event {
 
 		return ret
 	default:
-		p.errorf(n, "\"on\" section value is expected to be mapping or sequence but found %s node", nodeKindName(n.Kind))
+		p.typeErrorf(n, "\"on\" section value is expected to be mapping or sequence but found %s node", nodeKindName(n.Kind))
 		return nil
 	}
 }
@@ -1093,7 +1111,7 @@ func (p *parser) parseRawYAMLValue(n *yaml.Node) RawYAMLValue {
 		}
 		return &RawYAMLObject{m, posAt(n)}
 	default:
-		p.errorf(n, "unexpected %s node on parsing value in matrix row", nodeKindName(n.Kind))
+		p.typeErrorf(n, "unexpected %s node on parsing value in matrix row", nodeKindName(n.Kind))
 		return nil
 	}
 }
@@ -1327,7 +1345,9 @@ func (p *parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 	for _, e := range entries {
 		switch e.id {
 		case "uses":
-			ret.Uses = p.parseString(e.val, false)
+			if p.checkString(e.val, false) {
+				ret.Uses = newString(e.val)
+			}
 		case "with":
 			ret.Inputs = map[string]*Input{}
 			with := p.parseSectionMapping("with", e.val, false, false)
@@ -1366,7 +1386,6 @@ func (p *parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 		}
 	}
 
-	// Note: `ret.Uses` is never `nil` because `parseStep` checks `uses` key in advance
 	return ret
 }
 
@@ -1631,7 +1650,7 @@ func (p *parser) parseSnapshot(pos *Pos, n *yaml.Node) *Snapshot {
 		}
 		return ret
 	default:
-		p.errorf(n, "\"snapshot\" section value must be string or mapping but found %s node", nodeKindName(n.Kind))
+		p.typeErrorf(n, "\"snapshot\" section value must be string or mapping but found %s node", nodeKindName(n.Kind))
 		return nil
 	}
 }

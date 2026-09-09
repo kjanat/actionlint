@@ -3333,6 +3333,10 @@ workflows.
 
 Anchor and alias names containing `+`, such as `&git+opts` and `*git+opts`, are rejected by GitHub Actions and reported as errors.
 
+If an alias supplies the wrong value type, actionlint reports the error at that alias use and includes the anchor's location.
+For example, `- &Runner { uses: example/action@v1 }` defines a complete step mapping. Reusing it as `- *Runner` is valid, but
+`- uses: *Runner` is a type error because `uses` requires a scalar string. Each incorrect use gets its own diagnostic.
+
 actionlint detects errors under YAML anchors. When an alias node references an erroneous anchor, actionlint checks them as if the
 alias node is replaced with the anchor node. This means that one anchor node may be checked multiple times and actionlint may
 report multiple similar errors at the same source location.
@@ -3432,9 +3436,7 @@ test.yaml:22:14: recursive alias "recursive" is found. anchor was declared at li
 
 [Playground](https://kjanat.github.io/actionlint/#eNpsj8FqwzAQRO/+ijkUHwp27/qZothLomKvxI7kFEL+vYjGwiE5mRm/p92N6pAKL133E090HZCFuX4Bim1hEv4nQM9Bf/cAhNWfxT3axVev/ZtMZtEc/EKH/pAaARSKqV/F4eN2A2UyyRxri/v9wCVPXqPNz9ze7qwV5VCvKaeiuQyHhZgltSOGSjqMX3O86hL9PPLSholuDp+v6zappLdK/07pTaZiDJs0+PEK4yrfnCyk/Dq9WX8BAAD//wHceU8=)
 
-actionlint checks dangling aliases as syntax error. Note that the error position is currently incorrect as the below output
-indicates. This issue is due to go-yaml library and the [fix](https://github.com/yaml/go-yaml/pull/191) will be included at the
-next release of the library.
+actionlint reports dangling aliases at the alias use when no matching anchor has been defined.
 
 Example input:
 
