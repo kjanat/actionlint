@@ -1,5 +1,5 @@
 ---
-name: Setup ShellCheck (Linux)
+name: Setup ShellCheck
 description: Install a pinned ShellCheck release, verified against its GitHub release asset checksum.
 inputs:
   shellcheck-version:
@@ -29,15 +29,15 @@ runs:
         VERSION: ${{ inputs.shellcheck-version }}
         UPDATE_PATH: ${{ inputs.update-path }}
       run: |
-        source "${GITHUB_ACTION_PATH}/retry.bash"
-        if [[ "${RUNNER_OS}" != Linux ]]; then
-          echo '::error::setup-shellcheck only supports Linux runners.'
-          exit 1
-        fi
-        case "${RUNNER_ARCH}" in
-          X64) arch=x86_64 ;;
-          ARM64) arch=aarch64 ;;
-          *) echo '::error::Unsupported Linux runner architecture.'; exit 1 ;;
+        source "${GITHUB_ACTION_PATH//\\//}/retry.bash"
+        case "${RUNNER_OS}/${RUNNER_ARCH}" in
+          Linux/X64) platform=linux.x86_64 ;;
+          Linux/ARM64) platform=linux.aarch64 ;;
+          macOS/X64) platform=darwin.x86_64 ;;
+          macOS/ARM64) platform=darwin.aarch64 ;;
+          # The Windows release uses x64 emulation on ARM64 runners.
+          Windows/X64|Windows/ARM64) platform=windows ;;
+          *) echo '::error::Unsupported runner platform.'; exit 1 ;;
         esac
         case "${UPDATE_PATH}" in
           true|false) ;;
@@ -57,20 +57,36 @@ runs:
           echo '::error::The release does not have a stable ShellCheck version tag.'
           exit 1
         fi
-        asset="shellcheck-${tag}.linux.${arch}.tar.xz"
+        asset="shellcheck-${tag}.${platform}.tar.gz"
+        binary=shellcheck
+        if [[ "${platform}" == windows ]]; then
+          asset="shellcheck-${tag}.zip"
+          binary=shellcheck.exe
+        fi
         digest="$(jq -r --arg name "${asset}" '.assets[] | select(.name == $name) | .digest' <<< "${release}")"
         if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
           echo '::error::The release asset is missing a SHA-256 checksum.'
           exit 1
         fi
 
-        install_dir="$(mktemp -d "${RUNNER_TEMP}/shellcheck.XXXXXXXX")"
+        install_dir="$(mktemp -d "${RUNNER_TEMP//\\//}/shellcheck.XXXXXXXX")"
         archive="${install_dir}/${asset}"
         retry gh release download "${tag}" --pattern "${asset}" --output "${archive}" --clobber
-        printf '%s  %s\n' "${digest#sha256:}" "${archive}" | sha256sum --check --status
-        tar -xJf "${archive}" -C "${install_dir}" --strip-components=1 "shellcheck-${tag}/shellcheck"
-        "${install_dir}/shellcheck" --version
-        printf 'shellcheck-path=%s/shellcheck\n' "${install_dir}" >> "${GITHUB_OUTPUT}"
+        checksum=(sha256sum)
+        if [[ "${RUNNER_OS}" == macOS ]]; then checksum=(shasum -a 256); fi
+        actual="$("${checksum[@]}" "${archive}")"
+        if [[ "${actual%% *}" != "${digest#sha256:}" ]]; then
+          echo '::error::The ShellCheck download does not match its SHA-256 checksum.'
+          exit 1
+        fi
+        if [[ "${platform}" == windows ]]; then
+          unzip -p "${archive}" shellcheck.exe > "${install_dir}/${binary}"
+          install_dir="$(cygpath -m "${install_dir}")"
+        else
+          tar -xzf "${archive}" -C "${install_dir}" --strip-components=1 "shellcheck-${tag}/shellcheck"
+        fi
+        "${install_dir}/${binary}" --version
+        printf 'shellcheck-path=%s/%s\n' "${install_dir}" "${binary}" >> "${GITHUB_OUTPUT}"
         if [[ "${UPDATE_PATH}" == true ]]; then
           printf '%s\n' "${install_dir}" >> "${GITHUB_PATH}"
         fi

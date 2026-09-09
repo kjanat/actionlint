@@ -117,8 +117,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - *ActCheckNocred
+      - *Go
       - parallel:
-          - *Go
           - *Uv
           - *InstallShellCheck
           - name: Install golangci-lint
