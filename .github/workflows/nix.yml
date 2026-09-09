@@ -1,0 +1,30 @@
+name: Nix
+on:
+  workflow_call:
+    inputs:
+      tag: { description: Release tag to verify before publishing, type: string, default: "" }
+permissions: { contents: read }
+jobs:
+  check:
+    name: Nix (${{ matrix.system }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, system: x86_64-linux }
+          - { os: ubuntu-26.04-arm, system: aarch64-linux }
+          - { os: macos-latest, system: aarch64-darwin }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+      - name: Verify release version
+        if: inputs.tag != ''
+        env: { TAG: "${{ inputs.tag }}", SYSTEM: "${{ matrix.system }}" }
+        run: test "${TAG}" = "v$(nix eval --no-update-lock-file --raw ".#packages.${SYSTEM}.default.version")"
+      - name: Evaluate all supported platforms
+        if: matrix.system == 'x86_64-linux'
+        run: nix flake check --all-systems --no-build --no-update-lock-file
+      - name: Build and check the package
+        run: nix flake check --no-update-lock-file --print-build-logs

@@ -8,6 +8,7 @@ runCommand "actionlint-nix-integration" { nativeBuildInputs = [ git ]; } ''
   ${actionlint}/bin/actionlint -version | grep -Fx 'actionlint.kjanat.dev ${actionlint.version}'
   ${actionlint}/bin/actionlint -help > help.txt 2>&1
   grep -F 'Usage: actionlint' help.txt
+  grep -F 'https://github.com/kjanat/actionlint/tree/v${actionlint.version}/docs/usage.md' help.txt
 
   for file in \
     share/man/man1/actionlint.1.gz \

@@ -215,8 +215,10 @@ nix profile install github:kjanat/actionlint
 ```
 
 The package includes ShellCheck and Pyflakes, the manpage, Bash/Zsh/Fish completions, and the configuration schema
-at `share/actionlint/actionlint.schema.json`. Flake builds identify their source revision as `unstable-<revision>`.
-Use a commit in the flake reference to select a specific checkout, or keep this flake as a locked input in your own project.
+at `share/actionlint/actionlint.schema.json`. The package version is updated by the release bump script.
+The unversioned commands above build the default branch. Use a release tag or commit in the flake reference to
+select a specific checkout, or keep this flake as a locked input in your own project. Release tags created before
+the flake was added do not provide it.
 
 The flake exposes packages for x86-64 and ARM64 Linux, and Apple silicon macOS. See [Nix development](../CONTRIBUTING.md#nix-development) for local
 builds, checks, and the development shell. The separate [Nixpkgs package proposal](#nixpkgs) is still pending.

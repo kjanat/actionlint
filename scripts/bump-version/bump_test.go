@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -477,6 +478,71 @@ func TestPreflightRejectsRemoteOnlyTag(t *testing.T) {
 	}
 	if want := "already exists on origin"; !strings.Contains(err.Error(), want) {
 		t.Errorf("error %q does not mention %q", err, want)
+	}
+}
+
+func TestNixFailureProcess(t *testing.T) {
+	if os.Getenv("ACTIONLINT_TEST_NIX_FAILURE") != "1" {
+		return
+	}
+	if got := strings.Join(os.Args[len(os.Args)-4:], " "); got != "flake check --no-update-lock-file --print-build-logs" {
+		fmt.Fprintln(os.Stderr, "unexpected Nix arguments:", got)
+		os.Exit(2)
+	}
+	if err := Check(".", targets, io.Discard); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	content, err := os.ReadFile("flake.nix")
+	if err != nil || !bytes.Contains(content, []byte(`version = "9.9.9";`)) {
+		fmt.Fprintln(os.Stderr, "the Nix check did not receive the bumped source")
+		os.Exit(2)
+	}
+	fmt.Fprintln(os.Stderr, "simulated Nix build failure")
+	os.Exit(7)
+}
+
+func TestReleaseStopsBeforeCommitAndTagWhenNixFails(t *testing.T) {
+	r := gitRepo(t)
+	for _, name := range append(paths(targets), changelogFile) {
+		content, err := os.ReadFile(filepath.Join("..", "..", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(r.root, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, content, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := r.run("add", "."); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.run("commit", "-m", "release inputs"); err != nil {
+		t.Fatal(err)
+	}
+	before, err := r.git("rev-parse", "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ACTIONLINT_TEST_NIX_FAILURE", "1")
+	command := fmt.Sprintf("'%s' -test.run=^TestNixFailureProcess$ --", exe)
+	var stderr bytes.Buffer
+	err = Main(t.Context(), []string{"bump-version", "-root", r.root, "-nix-command", command, "-commit", "9.9.9"}, io.Discard, &stderr)
+	if err == nil || !strings.Contains(err.Error(), "nix flake check failed") || !strings.Contains(stderr.String(), "simulated Nix build failure") {
+		t.Fatalf("expected the Nix build failure to stop the release, got %v; stderr: %s", err, &stderr)
+	}
+	if after, err := r.git("rev-parse", "HEAD"); err != nil || after != before {
+		t.Fatalf("the failed check changed HEAD: %q -> %q, %v", before, after, err)
+	}
+	if tag, err := r.git("tag", "--list", "v9.9.9"); err != nil || tag != "" {
+		t.Fatalf("the failed check created a release tag: %q, %v", tag, err)
 	}
 }
 
