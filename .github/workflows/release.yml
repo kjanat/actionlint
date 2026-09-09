@@ -79,7 +79,7 @@ jobs:
     with: { tag: "${{ github.ref_name }}" }
   docker:
     runs-on: ubuntu-latest
-    needs: changelog
+    needs: [changelog, nix]
     outputs: {
       is-latest: "${{ steps.tag.outputs.is-latest }}",
       is-major-latest: "${{ steps.tag.outputs.is-major-latest }}",

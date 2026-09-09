@@ -22,7 +22,7 @@ jobs:
       - name: Verify release version
         if: inputs.tag != ''
         env: { TAG: "${{ inputs.tag }}", SYSTEM: "${{ matrix.system }}" }
-        run: test "${TAG}" = "v$(nix eval --no-update-lock-file --raw ".#packages.${SYSTEM}.default.version")"
+        run: version="$(nix eval --no-update-lock-file --raw ".#packages.${SYSTEM}.default.version")"; test "${TAG}" = "v${version}"
       - name: Evaluate all supported platforms
         if: matrix.system == 'x86_64-linux'
         run: nix flake check --all-systems --no-build --no-update-lock-file
