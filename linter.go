@@ -80,6 +80,9 @@ type LinterOptions struct {
 	// Format is a custom template to format error messages. It must follow Go Template format and
 	// contain at least one {{ }} placeholder. https://pkg.go.dev/text/template
 	Format string
+	// OutputFormat selects text, oneline, json, jsonl or sarif output. It cannot
+	// be combined with Format. JSON modes use the ErrorTemplateFields schema.
+	OutputFormat OutputFormat
 	// StdinFileName is a file name when reading input from stdin. When this value is empty, "<stdin>"
 	// is used as the default value.
 	StdinFileName string
@@ -112,7 +115,7 @@ type Linter struct {
 	ignorePats      IgnorePatterns
 	stdin           string
 	defaultConfig   *Config
-	errFmt          *ErrorFormatter
+	errFmt          diagnosticFormatter
 	cwd             string
 	onRulesCreated  func([]Rule) []Rule
 	onFilesSelected func([]string)
@@ -166,9 +169,25 @@ func NewLinter(out io.Writer, opts *LinterOptions) (*Linter, error) {
 		ignore = append(ignore, r)
 	}
 
-	var formatter *ErrorFormatter
-	if opts.Format != "" {
-		f, err := NewErrorFormatter(opts.Format)
+	format := opts.Format
+	oneline := opts.Oneline
+	if opts.OutputFormat != "" && format != "" {
+		return nil, errors.New("OutputFormat cannot be combined with a custom Format template")
+	}
+	var formatter diagnosticFormatter
+	switch opts.OutputFormat {
+	case "", OutputFormatText:
+	case OutputFormatOneline:
+		oneline = true
+	case OutputFormatJSON, OutputFormatJSONL:
+		formatter = jsonDiagnosticFormatter{lines: opts.OutputFormat == OutputFormatJSONL}
+	case OutputFormatSARIF:
+		format = SARIFTemplate()
+	default:
+		return nil, fmt.Errorf("unknown output format %q", opts.OutputFormat)
+	}
+	if format != "" {
+		f, err := NewErrorFormatter(format)
 		if err != nil {
 			return nil, err
 		}
@@ -197,7 +216,7 @@ func NewLinter(out io.Writer, opts *LinterOptions) (*Linter, error) {
 		out,
 		lout,
 		level,
-		opts.Oneline,
+		oneline,
 		opts.Shellcheck,
 		opts.Pyflakes,
 		ignore,
@@ -241,6 +260,15 @@ func (l *Linter) debugWriter() io.Writer {
 // which the given directory path belongs to. When the directory path is empty, the current directory
 // will be used instead.
 func (l *Linter) GenerateDefaultConfig(dir string) error {
+	p, err := l.generateDefaultConfig(dir)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(l.out, "Config file was generated at %q\n", p)
+	return err
+}
+
+func (l *Linter) generateDefaultConfig(dir string) (string, error) {
 	if dir == "" {
 		dir = l.cwd
 	}
@@ -249,27 +277,25 @@ func (l *Linter) GenerateDefaultConfig(dir string) error {
 
 	proj, err := l.projects.At(dir)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if proj == nil {
-		return errors.New("project is not found. check current project is initialized as Git repository and \".github/workflows\" directory exists")
+		return "", errors.New("project is not found. check current project is initialized as Git repository and \".github/workflows\" directory exists")
 	}
 
 	d := filepath.Join(proj.RootDir(), ".github")
 	for _, f := range []string{"actionlint.yaml", "actionlint.yml"} {
 		p := filepath.Join(d, f)
 		if _, err := os.Stat(p); err == nil {
-			return fmt.Errorf("config file already exists at %q", p)
+			return "", fmt.Errorf("config file already exists at %q", p)
 		}
 	}
 
 	p := filepath.Join(d, "actionlint.yaml")
 	if err := writeDefaultConfigFile(p); err != nil {
-		return err
+		return "", err
 	}
-
-	_, err = fmt.Fprintf(l.out, "Config file was generated at %q\n", p)
-	return err
+	return p, nil
 }
 
 // LintRepository lints YAML workflow files and outputs the errors to given writer. It finds the
@@ -662,9 +688,9 @@ func (l *Linter) check(
 			all = append(all, errs...)
 		}
 
-		if l.errFmt != nil {
+		if formatter, ok := l.errFmt.(*ErrorFormatter); ok {
 			for _, rule := range rules {
-				l.errFmt.RegisterRule(rule)
+				formatter.RegisterRule(rule)
 			}
 		}
 	}

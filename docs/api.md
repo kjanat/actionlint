@@ -16,9 +16,13 @@ a workflow file parser built on top of `yaml/go-yaml` library, expression `${{ }
 Followings are unexhaustive list of interesting APIs.
 
 - `Command` struct represents entire `actionlint` command. `Command.Main` takes command line arguments and runs command
-  until the end and returns exit status.
+  until the end and returns exit status. `MainContext` also accepts a context for cancelling linting and external processes.
+  Both methods accept the executable name as the first argument and use the supplied stdin, stdout, and stderr streams.
 - `Linter` manages linter lifecycle and applies checks to given files. If you want to run actionlint checks in your
   program, please use this struct.
+- `LinterOptions.OutputFormat` selects `OutputFormatText`, `OutputFormatOneline`, `OutputFormatJSON`, `OutputFormatJSONL`,
+  or `OutputFormatSARIF`. Leave it empty to retain the existing `Format` and `Oneline` behavior. A nonempty `OutputFormat`
+  cannot be combined with `Format`. JSON diagnostics use the `ErrorTemplateFields` fields and JSON names.
 - `Project` and `Projects` detect a project (Git repository) in a given directory path and find configuration in it.
 - `Config` represents structure of `actionlint.yaml` config file. It can be decoded by [yaml/go-yaml][go-yaml] library.
 - `RequireJobTimeout(max)` enables the timeout policy with an optional maximum. `RequireJobTimeoutRange(min, max)` also

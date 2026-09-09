@@ -29,30 +29,99 @@ cat path/to/workflow.yaml | actionlint -
 To know all flags and options, see an output of `actionlint -h` or
 [the online command manual][cmd-manual].
 
-### Shell completion
+### Flags and compatibility
 
-`-completion` prints a completion script for the given shell to stdout. The
-supported shells are `bash`, `fish`, `powershell` and `zsh`. The value also
-accepts `pwsh` as an alias for `powershell`, a shell path so that
-`actionlint -completion "$SHELL"` works, and `auto` to pick the shell from
-`$SHELL`, falling back to PowerShell when `$PSModulePath` is set. The script
-completes the flags in both their `-flag` and `--flag` spellings, the values
-they take, and workflow file paths.
+Long options use `--`, with short options `-h` (help), `-v` (verbose), `-q` (quiet),
+`-o` (output), and `-f` (template). Existing spellings such as `-version`,
+`-config-file`, and `-format` still work. Place options before file arguments;
+parsing stops at the first filename. Use `--` before filenames starting with a dash.
+Boolean options accept `=true` and `=false`, and value options accept either a
+following argument or `=value`.
 
 ```sh
-mkdir -p ~/.local/share/bash-completion/completions
-actionlint -completion bash > ~/.local/share/bash-completion/completions/actionlint
+actionlint --help
+actionlint --version
+actionlint --output json .github/workflows/ci.yml
+actionlint -- --workflow.yml
+```
+
+When running through npm, these two forms pass the help flag to actionlint:
+
+```sh
+npx @kjanat/actionlint --help
+npm exec --package=@kjanat/actionlint -- actionlint --help
+```
+
+Do not put an extra `--` after the package in the first form. It reaches actionlint
+as the end of options, making the following `--help` a filename.
+
+### Built-in output and machine-readable metadata
+
+```sh
+actionlint --json
+actionlint --output jsonl
+actionlint --output sarif > actionlint.sarif
+actionlint --help --json
+actionlint --version --json
+actionlint --init-config --json
+```
+
+`--output` accepts `text`, `oneline`, `json`, `jsonl`, and `sarif`. `--json` selects
+`json`. The existing `--format` Go templates retain their output and take precedence
+over the legacy `--oneline` flag. A nonempty `--format` cannot be combined with the
+new `--output` or `--json` options.
+
+Native JSON uses the existing template's diagnostic fields: `message`, `filepath`,
+`line`, `column`, `kind`, `snippet`, and `end_column`. Positions start at 1. Empty
+optional fields may be omitted. It writes one array across all checked files and
+`[]` when there are no findings. JSON Lines writes one object per finding and
+nothing when there are no findings. SARIF uses the bundled template.
+
+Diagnostics go to stdout. Help, logs, and fatal errors normally go to stderr;
+version information and generated completions go to stdout. In JSON modes, fatal
+errors are stderr objects with `error` and `exit_code`. Progress and debug output
+become stderr JSON Lines records with a `log` field. `--quiet` suppresses logs,
+including with `--verbose` or `--debug`, while retaining findings and fatal errors.
+Check the exit status before interpreting an empty stdout as success.
+
+| Exit status | Meaning                                                                        |
+| ----------- | ------------------------------------------------------------------------------ |
+| `0`         | Completed with no findings, or completed an information/configuration command  |
+| `1`         | Completed with findings                                                        |
+| `2`         | Invalid arguments or incompatible output options                               |
+| `3`         | Could not initialize or complete, including invalid config, regex, or template |
+
+`--help --json` writes the flag definitions, choices, default spellings, shorthand,
+repeatability, groups, aliases, and exit codes to stdout. `--version --json` writes
+build metadata (`name`, `version`, `installed_from`, `go_version`, `os`, `goarch`).
+`--init-config --json` returns an object with the generated file's `path` and keeps
+the editor schema directive in that file. The existing three-line version output
+and repository configuration discovery rules remain unchanged.
+
+### Shell completion
+
+`--completion` prints a completion script for the given shell to stdout. The
+supported shells are `bash`, `fish`, `powershell` and `zsh`. The value also
+accepts `pwsh` as an alias for `powershell` and executable paths such as `$SHELL`.
+`auto` selects the shell from `$SHELL`, then tries PowerShell when `$PSModulePath`
+is set. Cobra generates the scripts from the CLI definitions. They complete long flags,
+short options, values, and workflow paths. Install `bash-completion` for Bash,
+and initialize `compinit` for Zsh. Regenerate saved scripts after upgrading.
+
+```sh
+mkdir -p ~/.local/share/bash--completion/completions
+actionlint --completion bash > ~/.local/share/bash--completion/completions/actionlint
 ```
 
 ```sh
 mkdir -p ~/.config/fish/completions
-actionlint -completion fish > ~/.config/fish/completions/actionlint.fish
+actionlint --completion fish > ~/.config/fish/completions/actionlint.fish
 ```
 
 The zsh script belongs in a directory listed in `$fpath`.
 
 ```sh
-actionlint -completion zsh > "${fpath[1]}/_actionlint"
+actionlint --completion zsh > "${fpath[1]}/_actionlint"
 ```
 
 The PowerShell script is loaded from your profile. The first command creates
@@ -61,14 +130,14 @@ the profile's directory, which does not exist on a fresh account and makes
 
 ```powershell
 New-Item -ItemType Directory -Force (Split-Path -Parent $PROFILE) | Out-Null
-actionlint -completion powershell | Out-File -Append -Encoding utf8 $PROFILE
+actionlint --completion powershell | Out-File -Append -Encoding utf8 $PROFILE
 ```
 
 To load the script into the current session only, pipe it through
 `Invoke-Expression` instead.
 
 ```powershell
-actionlint -completion powershell | Out-String | Invoke-Expression
+actionlint --completion powershell | Out-String | Invoke-Expression
 ```
 
 ### Ignore some errors
@@ -113,7 +182,7 @@ Before explaining the formatting details, let's see some examples.
 #### Example: Serialized into JSON
 
 ```sh
-actionlint -format '{{json .}}'
+actionlint --json
 ```
 
 Output:
@@ -158,7 +227,7 @@ property "platform" is not defined in object type {os: string}
 #### Example: Serialized in [JSON Lines][jsonl]
 
 ```sh
-actionlint -format '{{range $err := .}}{{json $err}}{{end}}'
+actionlint --output jsonl
 ```
 
 Output:
@@ -194,8 +263,13 @@ reviewdog as explained in ['Tools integration' section](#tools-integ) below.
 
 [The Static Analysis Results Interchange Format (SARIF)][sarif] is a standardized format for the results of static analysis tools.
 
-Since this practical format is much more complex than the above examples, the template is not written here. Please read
-[the canonical template file](../sarif_template.txt).
+Use the built-in format directly:
+
+```sh
+actionlint --output sarif > actionlint.sarif
+```
+
+The [canonical template](../sarif_template.txt) remains available for custom formatting.
 
 Outputs are also too large to be written here. Please read [the output example in test data](../testdata/format/test.sarif).
 

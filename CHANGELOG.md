@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Rebuild the CLI with Cobra, grouped help, short options, generated Bash/Fish/PowerShell/Zsh completions, native JSON/JSON Lines/SARIF output, JSON help and build metadata, and quiet logging. Preserve existing single-dash options, custom templates, default diagnostics, version output, stream routing, and exit statuses. Add compatibility transcripts and real-shell completion tests.
+
 - Report YAML alias type errors at each invalid alias use, with the anchor location included in the message. Preserve source locations inside anchored content and avoid missing-ref errors for malformed `uses` values. (kjanat/actionlint#149)
 
 - Keep project-discovery test repositories in temporary directories so running tests does not add fake repositories to editors' repository lists.
