@@ -87,6 +87,60 @@ make build SKIP_GO_GENERATE=1
 Since actionlint doesn't use any cgo features, setting `CGO_ENABLED=0` environment variable is recommended to avoid troubles
 around linking libc. `make build` does this by default.
 
+### Packaging source builds
+
+Use the module path from `go.mod` when stamping the version:
+`-ldflags "-X actionlint.kjanat.dev.version=<package-version>"`. A different module path silently leaves the
+binary reporting a development version and linking to development documentation.
+
+The source tarball uploaded by the release workflow includes `man/actionlint.1`. GitHub's automatically generated
+source downloads do not. Generate just the installed manpage with:
+
+```sh
+make man/actionlint.1
+```
+
+For Pandoc 3.7, which lacks `--syntax-highlighting=none`, override the command using its equivalent older option:
+
+```sh
+make man/actionlint.1 PANDOC='pandoc --standalone --from=markdown-smart --no-highlight'
+```
+
+Shell completions come from the built binary's
+`-completion bash`, `-completion zsh`, and `-completion fish` commands. Install `actionlint.schema.json` alongside
+the package if users need a local configuration schema.
+
+Run `go test ./...` from the source root, including when only `cmd/actionlint` is built. That command directory
+has no tests; the linter tests live in the root package. Put Git, Bash, ShellCheck, and Pyflakes on `PATH` for
+the tests. Ordinary builds use the checked-in generated sources; dependency fetching can happen before an
+offline build, as with Nix's `buildGoModule`.
+
+### Nix development
+
+The [flake](flake.nix) builds the current checkout and pins Nixpkgs through `flake.lock`.
+From the repository root:
+
+```sh
+nix build
+nix run . -- --help
+nix flake check
+nix develop
+```
+
+The default package runs `go test ./...` with the external linters and completion shells available. The flake's
+integration check verifies the installed version, help, configuration generation, package files, and ShellCheck
+and Pyflakes diagnostics. `nix develop` provides Go, Git, Make, Pandoc, the linters, Bash, Zsh, Fish, and `nixfmt`.
+It sets `GOTOOLCHAIN=local` so Go uses the compiler selected by Nix. Format the Nix files with `nix fmt`.
+
+The bump script updates the version in `flake.nix` together with the other release references and runs
+`nix flake check --no-update-lock-file` before creating a commit or tag. CI checks the package on every supported
+platform. Publishing binaries and images also requires those checks, including a match between the Nix version
+and the release tag. Update the package set with `nix flake update nixpkgs`, then run the checks.
+When Go dependencies change, update `vendorHash` in [nix/package.nix](nix/package.nix): temporarily set it to
+`lib.fakeHash`, run `nix build`, and replace it with the hash reported by Nix.
+
+Nix includes only files known to Git when building a checkout. Add new source files to Git before testing the flake.
+
 ## Testing
 
 [![CI](https://github.com/kjanat/actionlint/actions/workflows/ci.yml/badge.svg)](https://github.com/kjanat/actionlint/actions/workflows/ci.yml)
@@ -232,10 +286,11 @@ When releasing v1.2.3 as example:
 2. Validate and commit the release changes on `master`, including the changelog, and push them to `origin`.
 3. Run `go run ./scripts/bump-version -check` to list every declared version reference and confirm the declaration is in
    sync with the repository
-4. Run `go run ./scripts/bump-version -push 1.2.3`. It updates every version reference, verifies the result, then creates
+4. Run `go run ./scripts/bump-version -push 1.2.3`. It updates every version reference, runs the Nix package checks, then creates
    and pushes the bump commit and the `v1.2.3` tag. Drop `-push` to leave the changes in the working tree for review, or
    use `-commit` to create the commit and the tag without pushing. See
-   [the script README](./scripts/bump-version/README.md) for the declared files and fields.
+   [the script README](./scripts/bump-version/README.md) for the declared files and fields. On Windows, the script automatically
+   finds Nix in an installed WSL distribution when it is absent from `PATH`.
 5. Wait until [the CI release job](.github/workflows/release.yml) completes successfully. It resolves the release notes
    from the changelog and refuses to go further when they are missing, builds the manual, publishes the release binaries
    and their build provenance, updates the distributions, and pushes the CLI and action images to GHCR and Docker Hub.

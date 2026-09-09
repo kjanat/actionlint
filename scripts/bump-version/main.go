@@ -48,6 +48,19 @@ func (r *repo) run(args ...string) error {
 	return err
 }
 
+func (r *repo) checkNix(args []string, stderr io.Writer) error {
+	args = append(args, "flake", "check", "--no-update-lock-file", "--print-build-logs")
+	_, _ = fmt.Fprintf(r.out, "+ %s\n", strings.Join(args, " "))
+	cmd := exec.CommandContext(r.ctx, args[0], args[1:]...)
+	cmd.Dir = r.root
+	cmd.Stdout = r.out
+	cmd.Stderr = stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("nix flake check failed; the updated files remain for review, and no commit or tag was created: %w", err)
+	}
+	return nil
+}
+
 func (r *repo) preflight(tag string) error {
 	top, err := r.git("rev-parse", "--show-toplevel")
 	if err != nil {
@@ -98,7 +111,7 @@ func (r *repo) preflight(tag string) error {
 
 func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	var check, commit, push bool
-	var root, notes string
+	var root, notes, nix string
 
 	flags := flag.NewFlagSet(args[0], flag.ContinueOnError)
 	flags.BoolVar(&check, "check", false, "verify the declared version references and exit without modifying anything")
@@ -106,6 +119,7 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	flags.BoolVar(&commit, "commit", false, "create the version bump commit and the version tag after verification")
 	flags.BoolVar(&push, "push", false, "push the version bump commit and the version tag, implies -commit")
 	flags.StringVar(&root, "root", ".", "repository root directory")
+	flags.StringVar(&nix, "nix-command", "", "override automatic Nix detection with an executable and optional launcher arguments")
 	flags.SetOutput(stderr)
 	flags.Usage = func() {
 		_, _ = fmt.Fprintln(stderr, "Usage: bump-version [FLAGS] VERSION\n\nFlags:")
@@ -161,6 +175,10 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	if err := CheckChangelogRelease(root, v, stdout); err != nil {
 		return err
 	}
+	nixArgs, err := r.nixCommand(nix)
+	if err != nil {
+		return err
+	}
 
 	_, _ = fmt.Fprintf(stdout, "Bumping the version to %s (tag: %s)\n", v, tag)
 	if err := Bump(root, targets, v, stdout); err != nil {
@@ -171,6 +189,9 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 	if err := SectionizeChangelog(root, v, time.Now().In(zone).Format("2006-01-02"), stdout); err != nil {
+		return err
+	}
+	if err := r.checkNix(nixArgs, stderr); err != nil {
 		return err
 	}
 

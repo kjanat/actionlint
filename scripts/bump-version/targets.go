@@ -35,6 +35,12 @@ const goShellcheckDependency = "github.com/wasilibs/go-shellcheck/cmd/shellcheck
 
 var targets = []*target{
 	{
+		path: "flake.nix",
+		rules: []rule{
+			mustRule("Nix package version", `(?m)^      version = "(\d+\.\d+\.\d+)";\r?$`, 1),
+		},
+	},
+	{
 		path: ".pre-commit-hooks.yaml",
 		rules: []rule{
 			mustRule("pre-commit Docker image tag", `(?m)^  entry: ghcr\.io/kjanat/actionlint:(\d+\.\d+\.\d+)\r?$`, 1),
