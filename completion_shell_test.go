@@ -31,6 +31,7 @@ func TestCompletionShellBehaviour(t *testing.T) {
 	}{
 		{completionShellPowerShell, "pwsh", `param($Script)
 . $Script
+Set-PSReadLineKeyHandler -Key Tab -Function TabCompleteNext
 foreach ($Line in @('actionlint --co', 'actionlint --output j', 'actionlint -completion z')) {
   $r = TabExpansion2 -inputScript $Line -cursorColumn $Line.Length
   Write-Output (@($r.CompletionMatches | ForEach-Object { $_.CompletionText }) -join '|')
