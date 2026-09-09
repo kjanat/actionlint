@@ -4,17 +4,29 @@
 
 - Rebuild the CLI with a typed invocation model, a preserved Go flag parser for root calls, and Cobra commands for `check`, config inspection, rules, doctor, completion and version. Add JSON/JSONL/SARIF/GitHub output, template and output files, opt-in summaries, configuration origins and generated four-shell completion. Preserve legacy options, templates, default diagnostics, version output, streams and exit codes. Test both grammars, command/file collisions and output side effects.
 
-- Report YAML alias type errors at each invalid alias use, with the anchor location included in the message. Preserve source locations inside anchored content and avoid missing-ref errors for malformed `uses` values. (kjanat/actionlint#149)
+<a id="v1.16.1"></a>
 
-- Keep project-discovery test repositories in temporary directories so running tests does not add fake repositories to editors' repository lists.
+## [v1.16.1](https://github.com/kjanat/actionlint/releases/tag/v1.16.1) - 2026-09-09
 
-- Add a Nix flake with source builds, packaged external linters, completions, the manpage and configuration schema, a development shell, and package integration checks. Update its version during release preparation and require Nix checks before tagging and publishing. (NixOS/nixpkgs#561437; thanks @voidlily for the initial packaging proposal.)
+- Report YAML alias type errors at each invalid alias use, with the anchor location included in the message. Preserve source locations inside anchored content and avoid missing-ref errors for malformed `uses` values. (kjanat/actionlint#149; kjanat/actionlint#154)
 
-- Allow source packages without Git metadata to run the documentation checker and full test suite, retaining local reusable-workflow checks and normalized diagnostic paths.
+- Keep project-discovery test repositories in temporary directories so running tests does not add fake repositories to editors' repository lists. (kjanat/actionlint#150)
 
-- Restrict release-triggered Pages builds to successful push runs from this repository and grant Pages write and OIDC permissions only to the deployment job.
+- Add a Nix flake with source builds, packaged external linters, completions, the manpage and configuration schema, a development shell, and package integration checks. Update its version during release preparation and require Nix checks before tagging and publishing. (kjanat/actionlint#151; NixOS/nixpkgs#561437; thanks @voidlily for the initial packaging proposal.)
 
-- Add upstream conformance tests using GitHub's language-services and runner fixtures, with SchemaStore and YAML Test Suite comparisons. Run them across Linux, macOS, and Windows and report known differences separately from agreements.
+- Allow source packages without Git metadata to run the documentation checker and full test suite, retaining local reusable-workflow checks and normalized diagnostic paths. (kjanat/actionlint#151)
+
+- Restrict release-triggered Pages builds to successful push runs from this repository and grant Pages write and OIDC permissions only to the deployment job. (kjanat/actionlint#148)
+
+- Add upstream conformance tests using GitHub's language-services and runner fixtures, with SchemaStore and YAML Test Suite comparisons. Run them across Linux, macOS, and Windows and report known differences separately from agreements. (kjanat/actionlint#147)
+
+- Expand large-script ShellCheck regression tests across platforms, including a single large workflow and a required diagnostic after a long comment. The underlying stdin deadlock fix already shipped in v1.8.0. (kjanat/actionlint#146; rhysd/actionlint#651)
+
+- Share CI setup and pin the ShellCheck version across runners and pre-commit hooks. (kjanat/actionlint#152)
+
+- Give the release-failure test its own changelog so the full test suite passes after a version bump empties the real `Unreleased` section.
+
+[Changes][v1.16.1]
 
 <a id="v1.16.0"></a>
 
@@ -2505,6 +2517,7 @@ See documentation for more details:
 
 [Changes][v1.0.0]
 
+[v1.16.1]: https://github.com/kjanat/actionlint/compare/v1.16.0...v1.16.1
 [v1.16.0]: https://github.com/kjanat/actionlint/compare/v1.15.1...v1.16.0
 [v1.15.1]: https://github.com/kjanat/actionlint/compare/v1.15.0...v1.15.1
 [v1.15.0]: https://github.com/kjanat/actionlint/compare/v1.14.0...v1.15.0
