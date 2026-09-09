@@ -504,7 +504,7 @@ func TestNixFailureProcess(t *testing.T) {
 
 func TestReleaseStopsBeforeCommitAndTagWhenNixFails(t *testing.T) {
 	r := gitRepo(t)
-	for _, name := range append(paths(targets), changelogFile) {
+	for _, name := range paths(targets) {
 		content, err := os.ReadFile(filepath.Join("..", "..", name))
 		if err != nil {
 			t.Fatal(err)
@@ -516,6 +516,22 @@ func TestReleaseStopsBeforeCommitAndTagWhenNixFails(t *testing.T) {
 		if err := os.WriteFile(path, content, 0o644); err != nil {
 			t.Fatal(err)
 		}
+	}
+	changelog := `# Unreleased
+
+- Test release notes.
+
+<a id="v9.9.8"></a>
+## [v9.9.8](https://github.com/kjanat/actionlint/releases/tag/v9.9.8) - 2026-01-01
+
+- Previous release.
+
+[Changes][v9.9.8]
+
+[v9.9.8]: https://github.com/kjanat/actionlint/compare/v9.9.7...v9.9.8
+`
+	if err := os.WriteFile(filepath.Join(r.root, changelogFile), []byte(changelog), 0o644); err != nil {
+		t.Fatal(err)
 	}
 	if err := r.run("add", "."); err != nil {
 		t.Fatal(err)

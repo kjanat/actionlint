@@ -2,6 +2,10 @@
 
 # Unreleased
 
+<a id="v1.16.1"></a>
+
+## [v1.16.1](https://github.com/kjanat/actionlint/releases/tag/v1.16.1) - 2026-09-09
+
 - Report YAML alias type errors at each invalid alias use, with the anchor location included in the message. Preserve source locations inside anchored content and avoid missing-ref errors for malformed `uses` values. (kjanat/actionlint#149; kjanat/actionlint#154)
 
 - Keep project-discovery test repositories in temporary directories so running tests does not add fake repositories to editors' repository lists. (kjanat/actionlint#150)
@@ -17,6 +21,10 @@
 - Expand large-script ShellCheck regression tests across platforms, including a single large workflow and a required diagnostic after a long comment. The underlying stdin deadlock fix already shipped in v1.8.0. (kjanat/actionlint#146; rhysd/actionlint#651)
 
 - Share CI setup and pin the ShellCheck version across runners and pre-commit hooks. (kjanat/actionlint#152)
+
+- Give the release-failure test its own changelog so the full test suite passes after a version bump empties the real `Unreleased` section.
+
+[Changes][v1.16.1]
 
 <a id="v1.16.0"></a>
 
@@ -2507,6 +2515,7 @@ See documentation for more details:
 
 [Changes][v1.0.0]
 
+[v1.16.1]: https://github.com/kjanat/actionlint/compare/v1.16.0...v1.16.1
 [v1.16.0]: https://github.com/kjanat/actionlint/compare/v1.15.1...v1.16.0
 [v1.15.1]: https://github.com/kjanat/actionlint/compare/v1.15.0...v1.15.1
 [v1.15.0]: https://github.com/kjanat/actionlint/compare/v1.14.0...v1.15.0

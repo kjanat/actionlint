@@ -173,7 +173,7 @@ On a daemon-less runner such as `ubuntu-slim`, download and run the binary inste
 ```
 
 The moving `v1` tag follows compatible v1 releases, and `v1.16` follows v1.16 patch releases. These tags point to a
-commit immediately after the release that pins the published container image by digest. `v1.16.0` is a versioned release tag.
+commit immediately after the release that pins the published container image by digest. `v1.16.1` is a versioned release tag.
 For an immutable action reference with a pinned image, use the full commit SHA resolved from a
 floating tag.
 
@@ -233,7 +233,7 @@ Workflow files can be checked on every commit with [pre-commit][pre-commit]. Add
 ---
 repos:
   - repo: https://github.com/kjanat/actionlint
-    rev: v1.16.0
+    rev: v1.16.1
     hooks: [id: actionlint]
 ```
 
@@ -291,10 +291,10 @@ actionlint is distributed under [the MIT license](./LICENSE.txt).
 [filter-pattern-doc]: https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
 [script-injection-doc]: https://docs.github.com/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks
 [releases]: https://github.com/kjanat/actionlint/releases
-[checks]: https://github.com/kjanat/actionlint/blob/v1.16.0/docs/checks.md
+[checks]: https://github.com/kjanat/actionlint/blob/v1.16.1/docs/checks.md
 [install]: https://github.com/kjanat/actionlint/blob/master/docs/install.md
-[usage]: https://github.com/kjanat/actionlint/blob/v1.16.0/docs/usage.md
-[config]: https://github.com/kjanat/actionlint/blob/v1.16.0/docs/config.md
-[api]: https://github.com/kjanat/actionlint/blob/v1.16.0/docs/api.md
-[refs]: https://github.com/kjanat/actionlint/blob/v1.16.0/docs/reference.md
+[usage]: https://github.com/kjanat/actionlint/blob/v1.16.1/docs/usage.md
+[config]: https://github.com/kjanat/actionlint/blob/v1.16.1/docs/config.md
+[api]: https://github.com/kjanat/actionlint/blob/v1.16.1/docs/api.md
+[refs]: https://github.com/kjanat/actionlint/blob/v1.16.1/docs/reference.md
 [issue-form]: https://github.com/kjanat/actionlint/issues/new

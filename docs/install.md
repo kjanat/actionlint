@@ -122,15 +122,15 @@ The release matrix builds all these targets, but native CI tests do not cover:
 To install these binaries [`gh`][gh] command is useful. The following command is an example for x86_64 Linux.
 
 ```sh
-gh release download --repo kjanat/actionlint --pattern '*_linux_amd64.tar.gz' v1.16.0
-tar xf actionlint_1.16.0_linux_amd64.tar.gz
+gh release download --repo kjanat/actionlint --pattern '*_linux_amd64.tar.gz' v1.16.1
+tar xf actionlint_1.16.1_linux_amd64.tar.gz
 ./actionlint -version
 ```
 
 Verify the downloaded archive's [build provenance attestation][attestations] against this repository:
 
 ```sh
-gh attestation verify -R kjanat/actionlint actionlint_1.16.0_linux_amd64.tar.gz
+gh attestation verify -R kjanat/actionlint actionlint_1.16.1_linux_amd64.tar.gz
 ```
 
 <a id="download-script"></a>
@@ -146,10 +146,10 @@ bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scrip
 ```
 
 When you need to install specific version of actionlint, please give the version to the 1st command line argument. The following
-example installs v1.16.0.
+example installs v1.16.1.
 
 ```sh
-bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) 1.16.0
+bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) 1.16.1
 ```
 
 This script downloads `actionlint` (or `actionlint.exe` on Windows) binary to the current working directory. When you need to put

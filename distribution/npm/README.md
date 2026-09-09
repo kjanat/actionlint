@@ -54,7 +54,7 @@ or a swapped asset fails the build.
 cd .github/actions/npm-packages
 GITHUB_WORKSPACE="$(git rev-parse --show-toplevel)" \
   INPUT_REPOSITORY=kjanat/actionlint \
-  INPUT_VERSION=1.16.0 \
+  INPUT_VERSION=1.16.1 \
   go run .
 ```
 
