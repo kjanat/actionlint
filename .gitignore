@@ -20,5 +20,7 @@
 /man/actionlint.1.html
 /packages/*/dist/
 /playground-dist
+/result
+/result-*
 /vendor/
 node_modules/

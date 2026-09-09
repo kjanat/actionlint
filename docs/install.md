@@ -199,6 +199,28 @@ For a project-local selection, put this in `mise.toml` and run `mise install`:
 "github:kjanat/actionlint" = "latest"
 ```
 
+### [Nix](https://nix.dev/)
+
+The project's flake builds this fork from source. With Nix's `nix-command` and `flakes` features enabled, run it
+without installing it into your profile:
+
+```sh
+nix run github:kjanat/actionlint -- --help
+```
+
+Or install it into your profile:
+
+```sh
+nix profile install github:kjanat/actionlint
+```
+
+The package includes ShellCheck and Pyflakes, the manpage, Bash/Zsh/Fish completions, and the configuration schema
+at `share/actionlint/actionlint.schema.json`. Flake builds identify their source revision as `unstable-<revision>`.
+Use a commit in the flake reference to select a specific checkout, or keep this flake as a locked input in your own project.
+
+The flake exposes packages for x86-64 and ARM64 Linux, and Apple silicon macOS. See [Nix development](../CONTRIBUTING.md#nix-development) for local
+builds, checks, and the development shell. The separate [Nixpkgs package proposal](#nixpkgs) is still pending.
+
 ### Build from source
 
 [![Go Module Version][go-module-badge]][go-module]
@@ -261,7 +283,7 @@ winget install --id kjanat.actionlint --exact --source winget
 
 The existing [`rhysd.actionlint` package][winget] installs the upstream project.
 
-### [Nix](https://nix.dev/)
+### Nixpkgs
 
 The [`actionlint` definition in Nixpkgs][nixpkgs] currently builds the upstream project. This applies to `pkgs.actionlint`,
 `nixpkgs#actionlint`, and the older `nix-env` commands. They do not install this fork.
@@ -269,9 +291,7 @@ The [`actionlint` definition in Nixpkgs][nixpkgs] currently builds the upstream 
 [@voidlily](https://github.com/voidlily) has proposed switching the package to this fork at v1.16.0 in
 [NixOS/nixpkgs#561437][nixpkgs-fork-pr]. The PR is open and awaiting review.
 
-This repository does not currently provide a Nix derivation or flake. The fork's statically linked Linux release
-binary runs on NixOS; use a [release archive](#prebuilt-binaries) or the [download script](#download-script) to obtain it.
-These downloads provide a standalone executable that you install and update manually.
+Use the [project's flake](#nix) to install this fork directly while the Nixpkgs proposal is pending.
 
 <a id="packages-for-upstream-actionlint"></a>
 

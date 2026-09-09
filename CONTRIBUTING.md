@@ -115,6 +115,30 @@ has no tests; the linter tests live in the root package. Put Git, Bash, ShellChe
 the tests. Ordinary builds use the checked-in generated sources; dependency fetching can happen before an
 offline build, as with Nix's `buildGoModule`.
 
+### Nix development
+
+The [flake](flake.nix) builds the current checkout and pins Nixpkgs through `flake.lock`.
+From the repository root:
+
+```sh
+nix build
+nix run . -- --help
+nix flake check
+nix develop
+```
+
+The default package runs `go test ./...` with the external linters and completion shells available. The flake's
+integration check verifies the installed version, help, configuration generation, package files, and ShellCheck
+and Pyflakes diagnostics. `nix develop` provides Go, Git, Make, Pandoc, the linters, Bash, Zsh, Fish, and `nixfmt`.
+It sets `GOTOOLCHAIN=local` so Go uses the compiler selected by Nix. Format the Nix files with `nix fmt`.
+
+Flake builds report their source revision, including a dirty marker for uncommitted changes. They do not require
+a separate version edit when releasing. Update the package set with `nix flake update nixpkgs`, then run the checks.
+When Go dependencies change, update `vendorHash` in [nix/package.nix](nix/package.nix): temporarily set it to
+`lib.fakeHash`, run `nix build`, and replace it with the hash reported by Nix.
+
+Nix includes only files known to Git when building a checkout. Add new source files to Git before testing the flake.
+
 ## Testing
 
 [![CI](https://github.com/kjanat/actionlint/actions/workflows/ci.yml/badge.svg)](https://github.com/kjanat/actionlint/actions/workflows/ci.yml)

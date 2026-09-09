@@ -1,0 +1,9 @@
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: bash
+        run: echo $unquoted
+      - shell: python
+        run: print(undefined_name)
