@@ -5,6 +5,7 @@ import (
 	"flag"
 	"io"
 	"os"
+	"slices"
 	"strings"
 )
 
@@ -53,7 +54,35 @@ func (a *commandApp) parseLegacy(args []string) (rest []string, forced string, t
 	f.Var(&o.completion, "completion", "")
 	f.Var(&o.completion, "completions", "")
 	a.errorJSON = commandRequestsJSON(a.root.Flags(), args)
-	if err = f.Parse(args); err != nil {
+	// --command selects the modern parser for everything after its value.
+	// Option values that happen to contain --command or -- remain data.
+	end := len(args)
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			terminated = true
+			break
+		}
+		if arg == "-" || !strings.HasPrefix(arg, "-") {
+			break
+		}
+		name, _, equals := strings.Cut(strings.TrimLeft(arg, "-"), "=")
+		v := f.Lookup(name)
+		if v == nil {
+			continue
+		}
+		if !equals {
+			b, ok := v.Value.(interface{ IsBoolFlag() bool })
+			if !ok || !b.IsBoolFlag() {
+				i++
+			}
+		}
+		if name == "command" {
+			end = min(i+1, len(args))
+			break
+		}
+	}
+	if err = f.Parse(args[:end]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			a.inv.JSON = a.errorJSON
 			a.help(a.root, nil)
@@ -62,33 +91,29 @@ func (a *commandApp) parseLegacy(args []string) (rest []string, forced string, t
 		return nil, "", false, commandUsageError{err}
 	}
 	f.Visit(func(v *flag.Flag) { a.set[v.Name] = true })
-	// A terminator used as an option value is data, so scan with the flag types.
-	for i := 0; i < len(args)-len(f.Args()); i++ {
-		if args[i] == "--" {
-			terminated = true
-			break
+	if a.set["command"] {
+		if forced == "" {
+			return nil, "", false, commandUsageError{errors.New("--command requires a command name")}
 		}
-		name, _, equals := strings.Cut(strings.TrimLeft(args[i], "-"), "=")
-		v := f.Lookup(name)
-		if v != nil && !equals {
-			b, ok := v.Value.(interface{ IsBoolFlag() bool })
-			if !ok || !b.IsBoolFlag() {
-				i++
-			}
-		}
+		return args[end:], forced, false, nil
 	}
 	return f.Args(), forced, terminated, nil
 }
 
-func commandFileExists(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && info.Mode().IsRegular()
+func commandFileExists(name string) bool {
+	for _, candidate := range append(commandNames(), "__complete", "__completeNoDesc") {
+		if name == candidate {
+			info, err := os.Stat(candidate)
+			return err == nil && info.Mode().IsRegular()
+		}
+	}
+	return false
 }
 
 func isCommandName(name string) bool {
-	switch name {
-	case "check", "config", "rules", "doctor", "completion", "version", "help":
-		return true
-	}
-	return false
+	return slices.Contains(commandNames(), name)
+}
+
+func commandNames() []string {
+	return []string{"check", "config", "rules", "doctor", "completion", "version", "help"}
 }

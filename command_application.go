@@ -23,6 +23,9 @@ func (a *commandApp) prepareInvocation() error {
 			}
 		}
 	}
+	if i.Operation != "check" && i.Render.OutputFile != "" {
+		return commandUsageError{errors.New("--output-file is only supported for checks")}
+	}
 	if i.Operation == "version" || i.Operation == "completion" {
 		return nil
 	}

@@ -71,6 +71,11 @@ func TestModernCommandDispatch(t *testing.T) {
 	if err := json.Unmarshal([]byte(forced.Stdout), &build); err != nil || forced.Status != 0 || build.Version == "" {
 		t.Fatalf("command escape: %+v (%v)", forced, err)
 	}
+	for _, args := range [][]string{{"--command", "check", "--color=never", "-ojson", "good.yml"}, {"--command=check", "--json", "good.yml"}} {
+		if got := testRunCommand("", args...); got.Status != 0 || got.Stdout != "{\"schema_version\":1,\"diagnostics\":[]}\n" || got.Stderr != "" {
+			t.Fatalf("command escape used legacy grammar: %q: %+v", args, got)
+		}
+	}
 	unknown := testRunCommand("", "--command", "not-a-command")
 	if unknown.Status != 2 {
 		t.Fatal(unknown)
@@ -91,6 +96,15 @@ func TestModernRepeatedIgnoreAliases(t *testing.T) {
 
 func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
 	commandTestRepo(t)
+	for _, operation := range [][]string{{"-init-config"}, {"config", "init"}, {"version"}, {"rules"}} {
+		args := append([]string{"--output-file", ".github/actionlint.yaml"}, operation...)
+		if got := testRunCommand("", args...); got.Status != 2 {
+			t.Fatalf("accepted check output destination for %q: %+v", operation, got)
+		}
+		if _, err := os.Stat(".github/actionlint.yaml"); !os.IsNotExist(err) {
+			t.Fatalf("invalid output destination created config: %v", err)
+		}
+	}
 	created := testRunCommand("", "config", "init", "--json")
 	var result map[string]string
 	if err := json.Unmarshal([]byte(created.Stdout), &result); err != nil || created.Status != 0 {

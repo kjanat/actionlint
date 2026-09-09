@@ -126,7 +126,8 @@ individual diagnostic objects, or nothing for a clean result. Legacy
 emits escaped workflow annotation commands; it is enabled only by that explicit
 format choice, including when running inside GitHub Actions.
 
-Results go to stdout, or to `--output-file PATH`. `--output-file -` means stdout.
+Check results go to stdout, or to `--output-file PATH`. `--output-file -` means stdout.
+This destination option applies only to checks.
 A report file is replaced only after analysis completes; an operational failure
 preserves any previous report. An output file cannot also be a selected input.
 Logs and operational errors go to stderr. Structured output never includes ANSI
