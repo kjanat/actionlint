@@ -5,7 +5,7 @@ on:
   workflow_run: { workflows: [Release], types: [completed] }
   workflow_dispatch: null
 
-permissions: { contents: read, pages: write, id-token: write }
+permissions: { contents: read }
 
 concurrency:
   group: pages
@@ -13,7 +13,10 @@ concurrency:
 
 jobs:
   build:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -30,18 +33,19 @@ jobs:
         run: run make:man
       - name: Build and test playground
         run: run --dir playground -s make:build make:test
-      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with: { path: playground/dist }
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions: { pages: write, id-token: write }
     environment: {
       name: github-pages,
       url: "${{ steps.deployment.outputs.page_url }}",
     }
     steps: [
+      { uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d }, # v6
       {
         name: Deploy to GitHub Pages,
         id: deployment,
