@@ -1,0 +1,12 @@
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - &Runner { uses: example/action@v1 }
+      - *Runner
+      - uses: &Action example/action@v1
+      - uses: *Action
+      - run: &Script |
+          echo "${{ github.ref }}"
+      - run: *Script

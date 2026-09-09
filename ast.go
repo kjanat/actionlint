@@ -590,6 +590,7 @@ type Input struct {
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsuses
 type ExecAction struct {
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsuses
+	// Uses is nil when its value could not be parsed as a nonempty string.
 	Uses *String
 	// Inputs represents inputs to the action to execute in 'with' section. Keys are in lower case since they are case-insensitive.
 	Inputs map[string]*Input

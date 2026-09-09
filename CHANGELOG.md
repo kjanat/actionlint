@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Report YAML alias type errors at each invalid alias use, with the anchor location included in the message. Preserve source locations inside anchored content and avoid missing-ref errors for malformed `uses` values. (kjanat/actionlint#149)
+
 - Keep project-discovery test repositories in temporary directories so running tests does not add fake repositories to editors' repository lists.
 
 - Add a Nix flake with source builds, packaged external linters, completions, the manpage and configuration schema, a development shell, and package integration checks. Update its version during release preparation and require Nix checks before tagging and publishing. (NixOS/nixpkgs#561437; thanks @voidlily for the initial packaging proposal.)
