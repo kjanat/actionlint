@@ -24,3 +24,4 @@
 /result-*
 /vendor/
 node_modules/
+.zed-save-backup-*

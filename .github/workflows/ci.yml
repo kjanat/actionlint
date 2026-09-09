@@ -1,56 +1,38 @@
+---
 name: CI
 on:
-  push:
-    branches: [master]
-  pull_request:
+  push: { branches: [master] }
+  pull_request: null
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions: { contents: read }
+defaults: { run: { shell: "bash --noprofile --norc -exo pipefail {0}" } }
 jobs:
   nix: { uses: $/.github/workflows/nix.yml }
   unit-tests:
     name: Unit tests
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu-26.04, ubuntu-26.04-arm, macos-latest, macos-26-intel, windows-2025-vs2026, windows-11-vs2026-arm]
+      matrix: { os: [ubuntu-26.04, ubuntu-26.04-arm, macos-latest, macos-26-intel, windows-2025-vs2026, windows-11-vs2026-arm] }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { persist-credentials: false }
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version-file: go.mod }
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with: { enable-cache: false }
-        if: ${{ runner.os != 'Linux' }}
-
+      - uses: &ActionsCheckout actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: &NoCreds { persist-credentials: false }
+      - parallel:
+          - uses: &SetupGo actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+            with: &GoMod { go-version-file: go.mod }
+          - uses: &SetupUv astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+            with: &NoCache { enable-cache: false }
+      - name: Install pyflakes
+        run: &InstallPyflakes uv tool install pyflakes; pyflakes --version
+      - &InstallShellCheck { name: Install ShellCheck, uses: $/.github/actions/setup-shellcheck }
       - name: Install shells for completion tests on Linux
         if: ${{ runner.os == 'Linux' }}
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends zsh fish
-          zsh --version
-          fish --version
-
-      - name: Install dependencies on macOS
-        if: ${{ runner.os == 'macOS' }}
-        run: |
-          set -x
-          brew untap aws/tap
-          brew install --quiet shellcheck
-          uv tool install pyflakes
-          shellcheck --version
-          pyflakes --version
-      - name: Install dependencies on Windows
-        if: ${{ runner.os == 'Windows' }}
-        run: |
-          choco install shellcheck -y --no-progress
-          uv tool install pyflakes
-          pyflakes --version
-
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends zsh fish
+          zsh --version; fish --version
       - run: go test -v ./...
-
       # Check build without CGO
       - run: go build ./cmd/actionlint
         env: { CGO_ENABLED: 0 }
@@ -59,19 +41,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions: { contents: read, id-token: write }
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { persist-credentials: false }
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version-file: go.mod }
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with: { enable-cache: false }
-      - name: Install dependencies
-        run: |
-          set -x
-          sudo apt-get install -y shellcheck
-          uv tool install pyflakes
-          shellcheck --version
-          pyflakes --version
+      - &ActCheckNocred { uses: *ActionsCheckout, with: *NoCreds }
+      - &GoGomod { uses: *SetupGo, with: *GoMod }
+      - *InstallShellCheck
+      - &Uv { uses: *SetupUv, with: *NoCache }
+      - &PyFlakes { name: Install pyflakes, run: *InstallPyflakes }
 
       - run: go test -v -race -coverprofile coverage.txt -covermode=atomic ./...
       - run: go tool cover -func ./coverage.txt
@@ -89,14 +63,12 @@ jobs:
     name: Wasm
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { persist-credentials: false }
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version-file: go.mod }
+      - *ActCheckNocred
+      - *GoGomod
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with: { node-version-file: .node-version, package-manager-cache: false }
-      - uses: kjanat/runner@a850e622e01897a79e62013804abd26f0e38e63c # v0.26.1
-      - uses: $/.github/actions/setup-pandoc
+      - &Runner { uses: kjanat/runner@a850e622e01897a79e62013804abd26f0e38e63c } # v0.26.1
+      - &Pandoc { name: Install Pandoc, uses: $/.github/actions/setup-pandoc }
       - name: Install JavaScript dependencies
         run: runner install --frozen
       - name: Build command manual
@@ -109,12 +81,12 @@ jobs:
     name: Release snapshot
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: *ActionsCheckout
         with: { fetch-depth: 0, persist-credentials: false }
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version-file: go.mod }
-      - uses: $/.github/actions/setup-pandoc
-      - uses: kjanat/runner@a850e622e01897a79e62013804abd26f0e38e63c # v0.26.1
+      - parallel:
+          - &Go { uses: *SetupGo, with: *GoMod }
+          - *Pandoc
+          - *Runner
       - run: run make:man/actionlint.1
       - name: Install syft for SBOM generation
         uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
@@ -126,9 +98,8 @@ jobs:
     name: Action modules
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { persist-credentials: false }
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+      - *ActCheckNocred
+      - uses: *SetupGo
         with: { go-version: stable, check-latest: true }
       # Self-contained modules under a dot-directory, which the go tool skips
       # when expanding a ... pattern. Test each in place.
@@ -145,44 +116,32 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { persist-credentials: false }
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version-file: go.mod }
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with: { enable-cache: false }
-      - name: Install dependencies
-        # check-checks reproduces docs examples with shellcheck and pyflakes
-        run: |
-          sudo apt-get install -y shellcheck
-          uv tool install pyflakes
-          shellcheck --version
-          pyflakes --version
-      - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
-        with: { version: v2.13.1, install-only: true }
-      - uses: kjanat/runner@a850e622e01897a79e62013804abd26f0e38e63c # v0.26.1
+      - *ActCheckNocred
+      - *Go
+      - parallel:
+          - *Uv
+          - *InstallShellCheck
+          - name: Install golangci-lint
+            uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+            with: { version: v2.13.1, install-only: true }
+          - *Runner
+      - *PyFlakes
       - run: go mod tidy -diff
       - name: Build through Makefile
         run: run make:build
-        env: { SKIP_GO_GENERATE: "true" }
+        env: &SkipGoGen { SKIP_GO_GENERATE: "true" }
       - run: run make:lint
-        env: { SKIP_GO_GENERATE: "true" }
+        env: *SkipGoGen
       - name: Lint bash scripts
         run: shellcheck ./scripts/*.bash
   docker:
     name: Dockerfile
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { persist-credentials: false }
+      - *ActCheckNocred
       - name: Build image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with: {
-          load: true,
-          push: false,
-          tags: actionlint:test,
-        }
+        uses: &DockerBuildPush docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with: { load: true, push: false, tags: actionlint:test }
       - name: Test Docker image
         run: docker container run
           --mount type=bind,source="${PWD}",target=/w
@@ -198,46 +157,30 @@ jobs:
     name: GitHub Action
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { persist-credentials: false }
+      - *ActCheckNocred
       - name: Build action image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with: {
-          context: .,
-          target: action,
-          load: true,
-          tags: actionlint-action:test,
-        }
+        uses: *DockerBuildPush
+        with: { context: ., target: action, load: true, tags: actionlint-action:test }
       - name: Test action image
         run: ./scripts/test-action.bash actionlint-action:test
   pre-commit-shellcheck:
     name: pre-commit ShellCheck integration
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { persist-credentials: false }
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version-file: go.mod }
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with: { enable-cache: false }
-      - run: uv tool install pre-commit
-      # pre-commit's golang language prepends to PATH, so the runner's preinstalled shellcheck satisfies actionlint on its own.
-      - name: Remove the runner's ShellCheck so only the hook's own can be found
-        run: |
-          sudo apt-get remove -y shellcheck
-          if command -v shellcheck; then
-            echo "shellcheck is still on PATH; the hook dependency would not be the only source" >&2
-            exit 1
-          fi
+      - *ActCheckNocred
+      - parallel: [*Go, *Uv]
+      - parallel:
+          - run: uv tool install pre-commit
+          - name: Remove the runner's ShellCheck so only the hook's own can be found
+            run: sudo apt-get remove -y shellcheck
+      - name: Confirm shellcheck is not on PATH
+        run: if command -v shellcheck; then echo "shellcheck is still on PATH; test invalid" >&2; exit 1; fi
       - name: Confirm actionlint-shellcheck reports a fixture's SC2086
         run: |
           cat > .github/workflows/_pre-commit-shellcheck-fixture.yml <<'FIXTURE'
+          name: CI
           on: push
-          jobs:
-            fixture:
-              runs-on: ubuntu-latest
-              steps:
-                - run: echo $GITHUB_SHA
+          jobs: {fixture: {runs-on: ubuntu-latest, steps: [{run: "echo $GITHUB_SHA"}]}}
           FIXTURE
           set +e
           pre-commit try-repo . actionlint-shellcheck --files .github/workflows/_pre-commit-shellcheck-fixture.yml --verbose > pre-commit-output.txt 2>&1

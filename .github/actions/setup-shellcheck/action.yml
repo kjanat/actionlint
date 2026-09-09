@@ -1,0 +1,100 @@
+---
+name: Setup ShellCheck
+description: Install a pinned ShellCheck release, verified against its GitHub release asset checksum.
+inputs:
+  shellcheck-version:
+    description: ShellCheck version to install (e.g., 0.11.0 or v0.11.0), or latest. Requires GitHub release asset SHA-256 checksums.
+    required: false
+    default: "0.11.0"
+  update-path:
+    description: Add the installed binaries to the PATH.
+    required: false
+    default: "true"
+  token:
+    description: Token used to read and download the ShellCheck release.
+    default: "${{ github.token }}"
+outputs:
+  shellcheck-path:
+    description: Path to the installed ShellCheck binary.
+    value: ${{ steps.install.outputs.shellcheck-path }}
+runs:
+  using: composite
+  steps:
+    - name: Download, verify, and install ShellCheck
+      id: install
+      shell: bash
+      env:
+        GH_REPO: koalaman/shellcheck
+        GH_TOKEN: ${{ inputs.token }}
+        VERSION: ${{ inputs.shellcheck-version }}
+        UPDATE_PATH: ${{ inputs.update-path }}
+      run: |
+        source "${GITHUB_ACTION_PATH//\\//}/retry.bash"
+        case "${RUNNER_OS}/${RUNNER_ARCH}" in
+          Linux/X64) platform=linux.x86_64 ;;
+          Linux/ARM64) platform=linux.aarch64 ;;
+          macOS/X64) platform=darwin.x86_64 ;;
+          macOS/ARM64) platform=darwin.aarch64 ;;
+          # The Windows release uses x64 emulation on ARM64 runners.
+          Windows/X64|Windows/ARM64) platform=windows ;;
+          *) echo '::error::Unsupported runner platform.'; exit 1 ;;
+        esac
+        case "${UPDATE_PATH}" in
+          true|false) ;;
+          *) echo '::error::update-path must be true or false.'; exit 1 ;;
+        esac
+
+        if [[ "${VERSION}" == latest ]]; then
+          release="$(retry gh api "repos/${GH_REPO}/releases/latest")"
+        elif [[ "${VERSION}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          release="$(retry gh api "repos/${GH_REPO}/releases/tags/v${VERSION#v}")"
+        else
+          echo '::error::shellcheck-version must be a release version or latest.'
+          exit 1
+        fi
+        tag="$(jq -r '.tag_name' <<< "${release}")"
+        if [[ ! "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo '::error::The release does not have a stable ShellCheck version tag.'
+          exit 1
+        fi
+        assets=("shellcheck-${tag}.${platform}.tar.gz" "shellcheck-${tag}.${platform}.tar.xz")
+        binary=shellcheck
+        if [[ "${platform}" == windows ]]; then
+          assets=("shellcheck-${tag}.zip")
+          binary=shellcheck.exe
+        fi
+        for asset in "${assets[@]}"; do
+          metadata="$(jq -c --arg name "${asset}" '.assets[] | select(.name == $name)' <<< "${release}")"
+          if [[ -n "${metadata}" ]]; then break; fi
+        done
+        if [[ -z "${metadata}" ]]; then
+          echo "::error::No ShellCheck release asset is available for ${platform} in ${tag}."
+          exit 1
+        fi
+        digest="$(jq -r '.digest' <<< "${metadata}")"
+        if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+          echo "::error::The release asset ${asset} is missing a valid SHA-256 checksum."
+          exit 1
+        fi
+
+        install_dir="$(mktemp -d "${RUNNER_TEMP//\\//}/shellcheck.XXXXXXXX")"
+        archive="${install_dir}/${asset}"
+        retry gh release download "${tag}" --pattern "${asset}" --output "${archive}" --clobber
+        checksum=(sha256sum)
+        if [[ "${RUNNER_OS}" == macOS ]]; then checksum=(shasum -a 256); fi
+        actual="$("${checksum[@]}" "${archive}")"
+        if [[ "${actual%% *}" != "${digest#sha256:}" ]]; then
+          echo '::error::The ShellCheck download does not match its SHA-256 checksum.'
+          exit 1
+        fi
+        if [[ "${platform}" == windows ]]; then
+          unzip -p "${archive}" shellcheck.exe > "${install_dir}/${binary}"
+          install_dir="$(cygpath -m "${install_dir}")"
+        else
+          tar -xf "${archive}" -C "${install_dir}" --strip-components=1 "shellcheck-${tag}/shellcheck"
+        fi
+        "${install_dir}/${binary}" --version
+        printf 'shellcheck-path=%s/%s\n' "${install_dir}" "${binary}" >> "${GITHUB_OUTPUT}"
+        if [[ "${UPDATE_PATH}" == true ]]; then
+          printf '%s\n' "${install_dir}" >> "${GITHUB_PATH}"
+        fi
