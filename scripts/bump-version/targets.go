@@ -83,6 +83,7 @@ var targets = []*target{
 			mustRule("download script example description", `example installs v(\d+\.\d+\.\d+)`, 1),
 			mustRule("download script argument", `download-actionlint\.bash\) (\d+\.\d+\.\d+)`, 1),
 		},
+		unrelated: []string{"has proposed switching the package to this fork at v1.16.0"},
 	},
 	{
 		path: "README.md",
