@@ -7,25 +7,26 @@ import (
 	"testing"
 )
 
-// Create `.git` directory since actionlint finds the directory to detect the repository root.
-// Without creating this directory, this test case will fail when `actionlint/.git` directory
-// doesn't exist. When cloning actionlint repository with Git, it never happens. However, when
-// downloading sources tarball from github.com, it doesn't contain `.git` directory so it
-// happens. Please see #307 for more details.
-func testEnsureDotGitDir(dir string) {
-	d := filepath.Join(dir, ".git")
-	if err := os.MkdirAll(d, 0750); err != nil {
-		panic(err)
+// Project discovery needs a .git marker. Keep it in a temporary fixture copy so
+// tests also work without a checkout and editors do not discover fake repositories.
+func testProjectDir(t *testing.T, fixture string) string {
+	t.Helper()
+	d := t.TempDir()
+	if err := os.CopyFS(d, os.DirFS(fixture)); err != nil {
+		t.Fatal(err)
 	}
+	if err := os.MkdirAll(filepath.Join(d, ".git"), 0750); err != nil {
+		t.Fatal(err)
+	}
+	return d
 }
 
 func TestProjectsFindProjectFromPath(t *testing.T) {
-	d := filepath.Join("testdata", "find_project")
+	d := testProjectDir(t, filepath.Join("testdata", "find_project"))
 	abs, err := filepath.Abs(d)
 	if err != nil {
 		panic(err)
 	}
-	testEnsureDotGitDir(d)
 
 	ps := NewProjects()
 	for _, tc := range []struct {
@@ -81,12 +82,11 @@ func TestProjectsFindProjectFromPath(t *testing.T) {
 }
 
 func TestProjectsDoesNotFindProjectFromOutside(t *testing.T) {
-	d := filepath.Join("testdata", "find_project")
+	d := testProjectDir(t, filepath.Join("testdata", "find_project"))
 	abs, err := filepath.Abs(d)
 	if err != nil {
 		panic(err)
 	}
-	testEnsureDotGitDir(d)
 
 	outside := filepath.Join(d, "..")
 	ps := NewProjects()
@@ -101,8 +101,7 @@ func TestProjectsDoesNotFindProjectFromOutside(t *testing.T) {
 
 func TestProjectsLoadProjectConfig(t *testing.T) {
 	for _, n := range []string{"ok", "yml"} {
-		d := filepath.Join("testdata", "config", "projects", n)
-		testEnsureDotGitDir(d)
+		d := testProjectDir(t, filepath.Join("testdata", "config", "projects", n))
 		ps := NewProjects()
 		p, err := ps.At(d)
 		if err != nil {
@@ -118,8 +117,7 @@ func TestProjectsLoadProjectConfig(t *testing.T) {
 }
 
 func TestProjectsLoadingNoProjectConfig(t *testing.T) {
-	d := filepath.Join("testdata", "config", "projects", "none")
-	testEnsureDotGitDir(d)
+	d := testProjectDir(t, filepath.Join("testdata", "config", "projects", "none"))
 	ps := NewProjects()
 	p, err := ps.At(d)
 	if err != nil {
@@ -135,8 +133,7 @@ func TestProjectsLoadingNoProjectConfig(t *testing.T) {
 
 func TestProjectsLoadingBrokenProjectConfig(t *testing.T) {
 	want := "could not parse config file"
-	d := filepath.Join("testdata", "config", "projects", "err")
-	testEnsureDotGitDir(d)
+	d := testProjectDir(t, filepath.Join("testdata", "config", "projects", "err"))
 	ps := NewProjects()
 	p, err := ps.At(d)
 	if err == nil {
