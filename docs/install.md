@@ -211,7 +211,7 @@ nix run github:kjanat/actionlint -- --help
 Or install it into your profile:
 
 ```sh
-nix profile install github:kjanat/actionlint
+nix profile add github:kjanat/actionlint
 ```
 
 The package includes ShellCheck and Pyflakes, the manpage, Bash/Zsh/Fish completions, and the configuration schema
