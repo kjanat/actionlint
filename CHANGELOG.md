@@ -2,17 +2,21 @@
 
 # Unreleased
 
-- Report YAML alias type errors at each invalid alias use, with the anchor location included in the message. Preserve source locations inside anchored content and avoid missing-ref errors for malformed `uses` values. (kjanat/actionlint#149)
+- Report YAML alias type errors at each invalid alias use, with the anchor location included in the message. Preserve source locations inside anchored content and avoid missing-ref errors for malformed `uses` values. (kjanat/actionlint#149; kjanat/actionlint#154)
 
-- Keep project-discovery test repositories in temporary directories so running tests does not add fake repositories to editors' repository lists.
+- Keep project-discovery test repositories in temporary directories so running tests does not add fake repositories to editors' repository lists. (kjanat/actionlint#150)
 
-- Add a Nix flake with source builds, packaged external linters, completions, the manpage and configuration schema, a development shell, and package integration checks. Update its version during release preparation and require Nix checks before tagging and publishing. (NixOS/nixpkgs#561437; thanks @voidlily for the initial packaging proposal.)
+- Add a Nix flake with source builds, packaged external linters, completions, the manpage and configuration schema, a development shell, and package integration checks. Update its version during release preparation and require Nix checks before tagging and publishing. (kjanat/actionlint#151; NixOS/nixpkgs#561437; thanks @voidlily for the initial packaging proposal.)
 
-- Allow source packages without Git metadata to run the documentation checker and full test suite, retaining local reusable-workflow checks and normalized diagnostic paths.
+- Allow source packages without Git metadata to run the documentation checker and full test suite, retaining local reusable-workflow checks and normalized diagnostic paths. (kjanat/actionlint#151)
 
-- Restrict release-triggered Pages builds to successful push runs from this repository and grant Pages write and OIDC permissions only to the deployment job.
+- Restrict release-triggered Pages builds to successful push runs from this repository and grant Pages write and OIDC permissions only to the deployment job. (kjanat/actionlint#148)
 
-- Add upstream conformance tests using GitHub's language-services and runner fixtures, with SchemaStore and YAML Test Suite comparisons. Run them across Linux, macOS, and Windows and report known differences separately from agreements.
+- Add upstream conformance tests using GitHub's language-services and runner fixtures, with SchemaStore and YAML Test Suite comparisons. Run them across Linux, macOS, and Windows and report known differences separately from agreements. (kjanat/actionlint#147)
+
+- Expand large-script ShellCheck regression tests across platforms, including a single large workflow and a required diagnostic after a long comment. The underlying stdin deadlock fix already shipped in v1.8.0. (kjanat/actionlint#146; rhysd/actionlint#651)
+
+- Share CI setup and pin the ShellCheck version across runners and pre-commit hooks. (kjanat/actionlint#152)
 
 <a id="v1.16.0"></a>
 
