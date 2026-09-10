@@ -1,12 +1,9 @@
 package cli
 
 import (
-	"errors"
-	"fmt"
 	"io"
 	"strings"
 
-	"actionlint.kjanat.dev"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -32,6 +29,7 @@ type commandApp struct {
 type commandUsageError struct{ error }
 
 const commandGroupAnnotation = "actionlint/group"
+
 const commandChoicesAnnotation = "actionlint/choices"
 
 func newCommandApp(streams *Command) *commandApp {
@@ -251,20 +249,4 @@ func (a *commandApp) capture(op operation) func(*cobra.Command, []string) error 
 
 func (a *commandApp) jsonOutput() bool {
 	return a.inv.JSON || a.opts.output == "json" || a.opts.output == "jsonl"
-}
-
-func (a *commandApp) reportError(err error) int {
-	status := actionlint.ExitStatusFailure
-	if _, ok := errors.AsType[commandUsageError](err); ok {
-		status = actionlint.ExitStatusInvalidCommandOption
-	}
-	if a.errorJSON || a.jsonOutput() {
-		_ = writeCommandJSON(a.streams.Stderr, struct {
-			Error    string `json:"error"`
-			ExitCode int    `json:"exit_code"`
-		}{err.Error(), status})
-	} else {
-		_, _ = fmt.Fprintln(a.streams.Stderr, err)
-	}
-	return status
 }

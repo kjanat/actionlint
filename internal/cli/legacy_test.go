@@ -15,12 +15,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-type commandTranscript struct {
-	Status int    `json:"status"`
-	Stdout string `json:"stdout"`
-	Stderr string `json:"stderr"`
-}
-
 func TestCommandCompatibility(t *testing.T) {
 	oldColor := color.NoColor
 	t.Cleanup(func() { color.NoColor = oldColor })

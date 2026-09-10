@@ -1,14 +1,8 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"regexp"
-	"runtime"
-	"runtime/debug"
-	"strings"
-	"sync"
 
 	"actionlint.kjanat.dev"
 	"github.com/spf13/cobra"
@@ -16,41 +10,8 @@ import (
 )
 
 var commandHelpGroups = []string{"Input", "Output", "External linters", "Information"}
+
 var releaseVersionPattern = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
-
-func writeCommandJSON(out io.Writer, value any) error {
-	return json.NewEncoder(out).Encode(value)
-}
-
-type commandBuildInfo struct {
-	Name          string `json:"name"`
-	Version       string `json:"version"`
-	InstalledFrom string `json:"installed_from"`
-	GoVersion     string `json:"go_version"`
-	OS            string `json:"os"`
-	GOARCH        string `json:"goarch"`
-}
-
-func commandBuild() commandBuildInfo {
-	name := "actionlint"
-	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Path != "" {
-		name = info.Main.Path
-	}
-	return commandBuildInfo{name, actionlint.Version(), actionlint.InstalledFrom(), runtime.Version(), runtime.GOOS, runtime.GOARCH}
-}
-
-func writeVersion(out io.Writer, asJSON, legacy bool) error {
-	b := commandBuild()
-	if asJSON {
-		return writeCommandJSON(out, b)
-	}
-	if !legacy {
-		_, err := fmt.Fprintf(out, "actionlint %s\nInstalled: %s\nBuild: %s, %s/%s\n", b.Version, b.InstalledFrom, b.GoVersion, b.OS, b.GOARCH)
-		return err
-	}
-	_, err := fmt.Fprintf(out, "%s %s\n%s\nbuilt with %s compiler for %s/%s\n", b.Name, b.Version, b.InstalledFrom, b.GoVersion, b.OS, b.GOARCH)
-	return err
-}
 
 func (a *commandApp) help(c *cobra.Command, _ []string) {
 	a.helpShown = true
@@ -120,33 +81,6 @@ Root parsing stops at the first filename. -- ends option parsing.
 Existing files named check, config, rules, doctor, completion or version win
 over commands. Use --command NAME to select a command despite such a file.
 Legacy options are supported without deprecation warnings.`)
-}
-
-// Debug output can arrive in fragments and from concurrent file checks. Emit
-// complete JSON log records without interleaving their contents.
-type commandJSONLogWriter struct {
-	mu      sync.Mutex
-	pending string
-	out     io.Writer
-}
-
-func (w *commandJSONLogWriter) Write(p []byte) (int, error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.pending += string(p)
-	for {
-		line, rest, ok := strings.Cut(w.pending, "\n")
-		if !ok {
-			break
-		}
-		w.pending = rest
-		if err := writeCommandJSON(w.out, struct {
-			Log string `json:"log"`
-		}{line}); err != nil {
-			return 0, err
-		}
-	}
-	return len(p), nil
 }
 
 type commandFlagDescription struct {
