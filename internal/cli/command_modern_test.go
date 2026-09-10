@@ -1,4 +1,4 @@
-package actionlint
+package cli
 
 import (
 	"bytes"
@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev"
 	"github.com/fatih/color"
 )
 
@@ -122,7 +123,7 @@ func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := testRunCommand("", "config", "show", "--origin", "--json")
-	var inspection configInspection
+	var inspection actionlint.ConfigInspection
 	if err := json.Unmarshal([]byte(got.Stdout), &inspection); err != nil || got.Status != 0 {
 		t.Fatalf("%+v (%v)", got, err)
 	}
@@ -141,7 +142,7 @@ func TestModernConfigSelectionAndOrigins(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := testRunCommand("", "config", "show", "--json", "--origin")
-	var inspection configInspection
+	var inspection actionlint.ConfigInspection
 	if err := json.Unmarshal([]byte(got.Stdout), &inspection); err != nil || got.Status != 0 {
 		t.Fatalf("%+v (%v)", got, err)
 	}
@@ -292,18 +293,9 @@ func TestModernRendererAndUsageErrors(t *testing.T) {
 	if got := testRunCommand(commandBadWorkflow, "check", "-", "--json=false", "--output-format=jsonl"); got.Status != 1 || got.Stderr != "" {
 		t.Fatal(got)
 	}
-	var out bytes.Buffer
-	fields := []*ErrorTemplateFields{{Filepath: "a%,:\r\nb.yml", Message: "bad%\r\n::notice::text", Kind: "expression", Line: 2, Column: 3, EndColumn: 4}}
-	if err := (githubDiagnosticFormatter{}).Print(&out, fields); err != nil {
-		t.Fatal(err)
-	}
-	want := "::error file=a%25%2C%3A%0D%0Ab.yml,line=2,col=3,endColumn=4,title=expression::bad%25%0D%0A::notice::text\n"
-	if out.String() != want {
-		t.Fatalf("annotation escaping: %q", out.String())
-	}
 	rules := commandRules()
 	for _, name := range []string{"syntax-check", "expression", "shellcheck", "pyflakes", "require-commit-hash"} {
-		if !slices.ContainsFunc(rules, func(r ruleDescriptor) bool { return r.Name == name && r.Description != "" }) {
+		if !slices.ContainsFunc(rules, func(r actionlint.RuleInfo) bool { return r.Name == name && r.Description != "" }) {
 			t.Errorf("missing rule %q", name)
 		}
 	}

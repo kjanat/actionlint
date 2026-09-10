@@ -15,9 +15,13 @@ a workflow file parser built on top of `yaml/go-yaml` library, expression `${{ }
 
 Followings are unexhaustive list of interesting APIs.
 
-- `Command` struct represents entire `actionlint` command. `Command.Main` takes command line arguments and runs command
-  until the end and returns exit status. `MainContext` also accepts a context for cancelling linting and external processes.
-  Both methods accept the executable name as the first argument and use the supplied stdin, stdout, and stderr streams.
+- `AnalysisSession` discovers local workflows, resolves their configuration and returns an `AnalysisResult` without printing
+  diagnostics. `AnalysisOptions` supplies the context, external tools and discovery settings. Use `Analyze` with an
+  `AnalysisRequest` when workflow contents and configuration are already resolved.
+- `AnalysisRenderer` renders those results as text, structured output or a Go template. `AnalysisResult.FileCount()` counts
+  checked workflows, including those with no findings.
+- `InspectConfig` returns effective configuration and optional YAML origins. `BuiltinRules` lists available checks without
+  starting external tools.
 - `Linter` manages linter lifecycle and applies checks to given files. If you want to run actionlint checks in your
   program, please use this struct.
 - `LinterOptions.OutputFormat` selects `OutputFormatText`, `OutputFormatOneline`, `OutputFormatJSON`, `OutputFormatJSONL`,
@@ -55,6 +59,10 @@ Followings are unexhaustive list of interesting APIs.
   `jobs.<job_id>.outputs.<output_id>`. This function uses the data collected by [the script](../scripts/generate-availability).
 
 ## Library versioning
+
+The command frontend lives in `internal/cli`; `Command` is no longer exported by the root package. Programs that previously
+used it should call the analysis APIs above, or execute the binary when they need CLI argument parsing. Existing command-line
+invocations retain their behavior. Importing the root package does not load Cobra or pflag.
 
 The version of this repository is for command line tool `actionlint`. So it does not represent the version of the library.
 It means that the library does not follow semantic versioning and any patch version bump may introduce some breaking changes.

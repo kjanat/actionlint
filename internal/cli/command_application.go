@@ -1,4 +1,4 @@
-package actionlint
+package cli
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"actionlint.kjanat.dev"
 	"github.com/fatih/color"
 	"github.com/mattn/go-colorable"
 )
@@ -58,7 +59,7 @@ func (a *commandApp) prepareInvocation() error {
 	case "text", "oneline", "json", "jsonl", "sarif", "github":
 		if explicitOutput || i.JSON {
 			i.Render.Oneline = false
-			i.Render.Format = OutputFormat(o.output)
+			i.Render.Format = actionlint.OutputFormat(o.output)
 		}
 	default:
 		return commandUsageError{fmt.Errorf("invalid output mode %q: choose text, oneline, json, jsonl, sarif or github", o.output)}
@@ -76,22 +77,22 @@ func (a *commandApp) prepareInvocation() error {
 		}
 	}
 	if o.color {
-		i.Render.Color = ColorOptionKindAlways
+		i.Render.Color = actionlint.ColorOptionKindAlways
 	}
 	if !i.Legacy && a.set["modern-color"] {
 		switch o.colorMode {
 		case "auto":
-			i.Render.Color = ColorOptionKindAuto
+			i.Render.Color = actionlint.ColorOptionKindAuto
 		case "always":
-			i.Render.Color = ColorOptionKindAlways
+			i.Render.Color = actionlint.ColorOptionKindAlways
 		case "never":
-			i.Render.Color = ColorOptionKindNever
+			i.Render.Color = actionlint.ColorOptionKindNever
 		default:
 			return commandUsageError{fmt.Errorf("invalid color mode %q: choose auto, always or never", o.colorMode)}
 		}
 	}
 	if o.noColor {
-		i.Render.Color = ColorOptionKindNever
+		i.Render.Color = actionlint.ColorOptionKindNever
 	}
 	return nil
 }
@@ -153,15 +154,15 @@ func executeCheck(ctx context.Context, streams Command, inv invocation) (status 
 			}
 			_ = os.Remove(file.Name())
 		}()
-		if r.Color == ColorOptionKindAuto {
-			r.Color = ColorOptionKindNever
+		if r.Color == actionlint.ColorOptionKindAuto {
+			r.Color = actionlint.ColorOptionKindNever
 		}
 	}
 	log := streams.Stderr
 	if inv.JSON {
 		log = &commandJSONLogWriter{out: log}
 	}
-	options := LinterOptions{
+	options := actionlint.LinterOptions{
 		Context: ctx, LogWriter: log, Color: r.Color, Oneline: r.Oneline,
 		Shellcheck: c.ShellCheck, Pyflakes: c.Pyflakes, ConfigFile: c.Config.Path,
 		IgnorePatterns: c.IgnoreRegex, StdinFileName: c.StdinFilename,
@@ -169,32 +170,37 @@ func executeCheck(ctx context.Context, streams Command, inv invocation) (status 
 		Verbose: c.Verbose && !r.Quiet, Debug: c.Debug && !r.Quiet,
 	}
 	if inv.Legacy {
-		out = legacyColorOutput(out, r.Color)
+		out = actionlint.LegacyColorOutput(out, r.Color)
 	} else {
 		options.WorkingDir, err = os.Getwd()
 		if err != nil {
 			return 0, err
 		}
 	}
-	app, err := newAnalysisApplication(&options)
+	app, err := actionlint.NewAnalysisSession(actionlint.AnalysisOptions{
+		Context: ctx, WorkingDir: options.WorkingDir, StdinFileName: options.StdinFileName,
+		ConfigFile: options.ConfigFile, Shellcheck: options.Shellcheck, Pyflakes: options.Pyflakes,
+		IgnorePatterns: options.IgnorePatterns, Verbose: options.Verbose, Debug: options.Debug, LogWriter: log,
+		SkipProjectConfig: c.Config.Disabled || (!inv.Legacy && c.Config.Path != ""), QuietSelection: !inv.Legacy,
+	})
 	if err != nil {
 		return 0, err
 	}
-	app.logSelection = inv.Legacy
-	app.projects.skipConfig = c.Config.Disabled || (!inv.Legacy && c.Config.Path != "")
-	var renderer *analysisRenderer
+	var renderer *actionlint.AnalysisRenderer
 	if inv.Legacy {
 		// Root invocations validate templates before reading any workflow input.
-		renderer, err = newAnalysisRenderer(r.Format, r.Template, r.Oneline)
+		renderer, err = actionlint.NewAnalysisRenderer(r.Format, r.Template, r.Oneline)
 		if err != nil {
 			return 0, err
 		}
-		app.debug("Create a Linter instance with option %#v", &options)
+		if options.Debug && !options.Verbose {
+			_, _ = fmt.Fprintf(log, "[Linter] Create a Linter instance with option %#v\n", &options)
+		}
 	}
 	result, err := analyzeCommand(app, streams.Stdin, c.Paths, !inv.Legacy)
 	if err != nil {
 		if inv.Legacy {
-			err = legacyAnalysisError(err)
+			err = actionlint.LegacyAnalysisError(err)
 		}
 		return 0, err
 	}
@@ -207,16 +213,16 @@ func executeCheck(ctx context.Context, streams Command, inv invocation) (status 
 		}
 	}
 	if !inv.Legacy {
-		renderer, err = newAnalysisRenderer(r.Format, r.Template, r.Oneline)
+		renderer, err = actionlint.NewAnalysisRenderer(r.Format, r.Template, r.Oneline)
 		if err != nil {
 			return 0, err
 		}
 		previous := color.NoColor
 		defer func() { color.NoColor = previous }()
 		switch r.Color {
-		case ColorOptionKindNever:
+		case actionlint.ColorOptionKindNever:
 			color.NoColor = true
-		case ColorOptionKindAlways:
+		case actionlint.ColorOptionKindAlways:
 			color.NoColor = false
 		}
 		if file, ok := out.(*os.File); ok && !color.NoColor {
@@ -228,20 +234,20 @@ func executeCheck(ctx context.Context, streams Command, inv invocation) (status 
 		writes = &commandResultWriter{Writer: out}
 		out = writes
 	}
-	if err := renderer.render(out, result); err != nil {
+	if err := renderer.Render(out, result); err != nil {
 		return 0, err
 	}
 	if writes != nil && writes.err != nil {
 		return 0, writes.err
 	}
-	app.completed(result)
+	app.Completed(result)
 	if len(result.Diagnostics) > 0 {
-		status = ExitStatusSuccessProblemFound
+		status = actionlint.ExitStatusSuccessProblemFound
 	}
 	if r.Summary && !r.Quiet {
-		summary := CheckSummary{Files: len(result.files), Findings: len(result.Diagnostics)}
+		summary := actionlint.CheckSummary{Files: result.FileCount(), Findings: len(result.Diagnostics)}
 		if inv.JSON {
-			err = writeCommandJSON(streams.Stderr, map[string]CheckSummary{"summary": summary})
+			err = writeCommandJSON(streams.Stderr, map[string]actionlint.CheckSummary{"summary": summary})
 		} else {
 			_, err = fmt.Fprintf(streams.Stderr, "Checked %d workflows; %d findings.\n", summary.Files, summary.Findings)
 		}
@@ -286,4 +292,11 @@ func resolveTemplate(r renderOptions) (renderOptions, error) {
 		}
 	}
 	return r, nil
+}
+
+func absPath(path string) string {
+	if p, err := filepath.Abs(path); err == nil {
+		return p
+	}
+	return path
 }

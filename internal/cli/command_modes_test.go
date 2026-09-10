@@ -1,4 +1,4 @@
-package actionlint
+package cli
 
 import (
 	"bytes"
@@ -13,6 +13,7 @@ import (
 	"sync"
 	"testing"
 
+	"actionlint.kjanat.dev"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -90,17 +91,17 @@ func TestCommandNativeJSON(t *testing.T) {
 			if got.Status != legacy.Status || got.Stderr != "" {
 				t.Fatalf("%q: %+v", args, got)
 			}
-			var want []*ErrorTemplateFields
-			var have CheckResult
+			var want []*actionlint.ErrorTemplateFields
+			var have actionlint.CheckResult
 			if err := json.Unmarshal([]byte(legacy.Stdout), &want); err != nil {
 				t.Fatal(err)
 			}
 			if err := json.Unmarshal([]byte(got.Stdout), &have); err != nil {
 				t.Fatal(err)
 			}
-			expected := CheckResult{SchemaVersion: 1, Diagnostics: []Diagnostic{}}
+			expected := actionlint.CheckResult{SchemaVersion: 1, Diagnostics: []actionlint.Diagnostic{}}
 			for _, field := range want {
-				expected.Diagnostics = append(expected.Diagnostics, Diagnostic{Rule: field.Kind, Message: field.Message, Path: field.Filepath, Start: DiagnosticPosition{field.Line, field.Column}, End: DiagnosticPosition{field.Line, field.EndColumn + 1}, Snippet: strings.Split(field.Snippet, "\n")[0]})
+				expected.Diagnostics = append(expected.Diagnostics, actionlint.Diagnostic{Rule: field.Kind, Message: field.Message, Path: field.Filepath, Start: actionlint.DiagnosticPosition{Line: field.Line, Column: field.Column}, End: actionlint.DiagnosticPosition{Line: field.Line, Column: field.EndColumn + 1}, Snippet: strings.Split(field.Snippet, "\n")[0]})
 			}
 			if diff := cmp.Diff(expected, have); diff != "" {
 				t.Fatal(diff)
@@ -111,7 +112,7 @@ func TestCommandNativeJSON(t *testing.T) {
 		}
 		lines := testRunCommand(input, "--output=jsonl", "-")
 		array := testRunCommand(input, "--json", "-")
-		var result CheckResult
+		var result actionlint.CheckResult
 		if err := json.Unmarshal([]byte(array.Stdout), &result); err != nil {
 			t.Fatal(err)
 		}
@@ -119,7 +120,7 @@ func TestCommandNativeJSON(t *testing.T) {
 		for _, diagnostic := range result.Diagnostics {
 			if err := json.NewEncoder(&expected).Encode(struct {
 				SchemaVersion int `json:"schema_version"`
-				Diagnostic
+				actionlint.Diagnostic
 			}{1, diagnostic}); err != nil {
 				t.Fatal(err)
 			}
@@ -138,7 +139,7 @@ func TestCommandMultiFileJSON(t *testing.T) {
 		}
 	}
 	got := testRunCommand("", "--json", "one.yml", "two.yml")
-	var result CheckResult
+	var result actionlint.CheckResult
 	if err := json.Unmarshal([]byte(got.Stdout), &result); err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +161,7 @@ func TestCommandOutputSelection(t *testing.T) {
 		case "oneline":
 			args = append(args, "-oneline")
 		case "sarif":
-			args = append(args, "-format", SARIFTemplate())
+			args = append(args, "-format", actionlint.SARIFTemplate())
 		}
 		legacy := testRunCommand(commandBadWorkflow, append(args, "-")...)
 		got := testRunCommand(commandBadWorkflow, "--output", mode, "-")
@@ -171,9 +172,9 @@ func TestCommandOutputSelection(t *testing.T) {
 }
 
 func TestLinterBuiltInOutput(t *testing.T) {
-	for _, format := range []OutputFormat{OutputFormatText, OutputFormatOneline, OutputFormatJSON, OutputFormatJSONL, OutputFormatSARIF} {
+	for _, format := range []actionlint.OutputFormat{actionlint.OutputFormatText, actionlint.OutputFormatOneline, actionlint.OutputFormatJSON, actionlint.OutputFormatJSONL, actionlint.OutputFormatSARIF} {
 		var out bytes.Buffer
-		linter, err := NewLinter(&out, &LinterOptions{Color: ColorOptionKindNever, OutputFormat: format})
+		linter, err := actionlint.NewLinter(&out, &actionlint.LinterOptions{Color: actionlint.ColorOptionKindNever, OutputFormat: format})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -186,8 +187,8 @@ func TestLinterBuiltInOutput(t *testing.T) {
 			t.Fatalf("Go API and CLI differ for %s: %s", format, cmp.Diff(cli.Stdout, out.String()))
 		}
 	}
-	for _, opts := range []LinterOptions{{OutputFormat: "csv"}, {OutputFormat: OutputFormatJSON, Format: "{{json .}}"}} {
-		if _, err := NewLinter(io.Discard, &opts); err == nil {
+	for _, opts := range []actionlint.LinterOptions{{OutputFormat: "csv"}, {OutputFormat: actionlint.OutputFormatJSON, Format: "{{json .}}"}} {
+		if _, err := actionlint.NewLinter(io.Discard, &opts); err == nil {
 			t.Fatalf("invalid output options accepted: %+v", opts)
 		}
 	}

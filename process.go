@@ -107,7 +107,7 @@ func (proc *concurrentProcess) wait() {
 // is resolved in this function.
 func (proc *concurrentProcess) newCommandRunner(exe string, combineOutput bool) (*externalCommand, error) {
 	var args []string
-	p, args, err := resolveExternalCommand(exe)
+	p, args, err := ResolveExternalCommand(exe)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,8 @@ func (proc *concurrentProcess) newCommandRunner(exe string, combineOutput bool) 
 	return cmd, nil
 }
 
-func resolveExternalCommand(exe string) (string, []string, error) {
+// ResolveExternalCommand locates an executable or parses a command with arguments without running it.
+func ResolveExternalCommand(exe string) (string, []string, error) {
 	c, err := execabs.LookPath(exe)
 	if err == nil {
 		return c, nil, nil

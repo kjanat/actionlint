@@ -1,12 +1,13 @@
 package actionlint
 
 import (
-	"go.yaml.in/yaml/v4"
 	"strings"
+
+	"go.yaml.in/yaml/v4"
 )
 
 // configOrigins asks the YAML decoder to resolve each mapping, including merge precedence.
-func configOrigins(node *yaml.Node, prefix string, origins map[string]configOrigin) error {
+func configOrigins(node *yaml.Node, prefix string, origins map[string]ConfigOrigin) error {
 	if node.Kind == yaml.DocumentNode {
 		if len(node.Content) == 0 {
 			return nil
@@ -32,7 +33,7 @@ func configOrigins(node *yaml.Node, prefix string, origins map[string]configOrig
 		if value.Tag == "!!null" {
 			state = "null"
 		}
-		origins[pointer] = configOrigin{Source: "config", State: state, Line: value.Line, Column: value.Column}
+		origins[pointer] = ConfigOrigin{Source: "config", State: state, Line: value.Line, Column: value.Column}
 		if err := configOrigins(&value, pointer, origins); err != nil {
 			return err
 		}

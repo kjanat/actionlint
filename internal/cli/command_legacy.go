@@ -1,4 +1,4 @@
-package actionlint
+package cli
 
 import (
 	"errors"

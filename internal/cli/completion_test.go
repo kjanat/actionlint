@@ -1,4 +1,4 @@
-package actionlint
+package cli
 
 import (
 	"bytes"
@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev"
 )
 
 func testCheckShellSyntax(t *testing.T, shell completionShell, script string) {
@@ -139,7 +141,7 @@ func TestCommandCompletionAuto(t *testing.T) {
 		t.Setenv("SHELL", "/usr/bin/fish")
 		stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 		cmd := &Command{Stdin: bytes.NewReader(nil), Stdout: stdout, Stderr: stderr}
-		if status := cmd.Main([]string{"actionlint", "-completion", "auto"}); status != ExitStatusSuccessNoProblem {
+		if status := cmd.Main([]string{"actionlint", "-completion", "auto"}); status != actionlint.ExitStatusSuccessNoProblem {
 			t.Fatalf("exit status is %d. stderr:\n%s", status, stderr)
 		}
 		if !strings.Contains(stdout.String(), "# fish completion for actionlint") {
@@ -152,7 +154,7 @@ func TestCommandCompletionAuto(t *testing.T) {
 		t.Setenv("PSModulePath", "")
 		stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 		cmd := &Command{Stdin: bytes.NewReader(nil), Stdout: stdout, Stderr: stderr}
-		if status := cmd.Main([]string{"actionlint", "-completion", "auto"}); status != ExitStatusInvalidCommandOption {
+		if status := cmd.Main([]string{"actionlint", "-completion", "auto"}); status != actionlint.ExitStatusInvalidCommandOption {
 			t.Fatalf("exit status is %d. stdout:\n%s", status, stdout)
 		}
 		if !strings.Contains(stderr.String(), "cannot detect the current shell") {

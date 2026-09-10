@@ -96,29 +96,29 @@ type LinterOptions struct {
 
 // Linter is struct to lint workflow files.
 type Linter struct {
-	*analysisApplication
+	*AnalysisSession
 	out      io.Writer
-	renderer *analysisRenderer
+	renderer *AnalysisRenderer
 }
 
 // NewLinter creates a compatibility facade with caller-selected output and options.
 // Set out to io.Discard to return findings without printing them.
 func NewLinter(out io.Writer, opts *LinterOptions) (*Linter, error) {
-	out = legacyColorOutput(out, opts.Color)
-	app, err := newAnalysisApplication(opts)
+	out = LegacyColorOutput(out, opts.Color)
+	app, err := newLegacyAnalysisSession(opts)
 	if err != nil {
 		return nil, err
 	}
-	renderer, err := newAnalysisRenderer(opts.OutputFormat, opts.Format, opts.Oneline)
+	renderer, err := NewAnalysisRenderer(opts.OutputFormat, opts.Format, opts.Oneline)
 	if err != nil {
 		return nil, err
 	}
 	app.debug("Create a Linter instance with option %#v", opts)
-	return &Linter{analysisApplication: app, out: out, renderer: renderer}, nil
+	return &Linter{AnalysisSession: app, out: out, renderer: renderer}, nil
 }
 
-// legacyColorOutput preserves NewLinter's process-wide color setting and Windows writer.
-func legacyColorOutput(out io.Writer, option ColorOptionKind) io.Writer {
+// LegacyColorOutput preserves NewLinter's process-wide color setting and Windows writer.
+func LegacyColorOutput(out io.Writer, option ColorOptionKind) io.Writer {
 	if option == ColorOptionKindNever {
 		color.NoColor = true
 	} else {
@@ -180,7 +180,7 @@ func generateProjectConfig(projects *Projects, dir string) (string, error) {
 // LintRepository finds workflows in the nearest project and prints their findings.
 // An empty directory starts discovery at LinterOptions.WorkingDir.
 func (l *Linter) LintRepository(dir string) ([]*Error, error) {
-	return l.report(l.repository(dir))
+	return l.report(l.Repository(dir))
 }
 
 // LintDir checks YAML workflows recursively in dir, in sorted path order.
@@ -190,7 +190,7 @@ func (l *Linter) LintDir(dir string, project *Project) ([]*Error, error) {
 
 // LintFiles checks paths in the supplied order. A nil project enables per-file discovery.
 func (l *Linter) LintFiles(paths []string, project *Project) ([]*Error, error) {
-	return l.report(l.files(paths, project))
+	return l.report(l.Files(paths, project))
 }
 
 // LintFile reads and checks one workflow. A nil project enables discovery from path.
@@ -200,7 +200,7 @@ func (l *Linter) LintFile(path string, project *Project) ([]*Error, error) {
 
 // LintStdin checks the reader using LinterOptions.StdinFileName, or <stdin> by default.
 func (l *Linter) LintStdin(stdin io.Reader) ([]*Error, error) {
-	return l.report(l.readStdin(stdin, false))
+	return l.report(l.ReadStdin(stdin, false))
 }
 
 // Lint checks content without reading path. An existing path can identify its project.
@@ -210,19 +210,20 @@ func (l *Linter) Lint(path string, content []byte, project *Project) ([]*Error, 
 
 func (l *Linter) report(result *AnalysisResult, err error) ([]*Error, error) {
 	if err != nil {
-		return nil, legacyAnalysisError(err)
+		return nil, LegacyAnalysisError(err)
 	}
 	// LintFiles with no paths has always returned an empty slice without output.
 	if len(result.files) != 0 {
-		if err := l.renderer.render(l.out, result); err != nil {
+		if err := l.renderer.Render(l.out, result); err != nil {
 			return nil, err
 		}
 	}
-	l.completed(result)
+	l.Completed(result)
 	return result.legacyErrors(), nil
 }
 
-func legacyAnalysisError(err error) error {
+// LegacyAnalysisError preserves the single-file and batch error messages of Lint methods.
+func LegacyAnalysisError(err error) error {
 	if source, ok := errors.AsType[*sourceAnalysisError](err); ok {
 		if source.batch {
 			return fmt.Errorf("fatal error while checking %s: %w", source.path, source.err)
@@ -230,4 +231,19 @@ func legacyAnalysisError(err error) error {
 		return source.err
 	}
 	return err
+}
+
+func newLegacyAnalysisSession(opts *LinterOptions) (*AnalysisSession, error) {
+	return NewAnalysisSession(AnalysisOptions{
+		Context: opts.Context, WorkingDir: opts.WorkingDir, StdinFileName: opts.StdinFileName,
+		ConfigFile: opts.ConfigFile, Shellcheck: opts.Shellcheck, Pyflakes: opts.Pyflakes,
+		IgnorePatterns: opts.IgnorePatterns, Verbose: opts.Verbose, Debug: opts.Debug,
+		LogWriter: opts.LogWriter, OnRulesCreated: opts.OnRulesCreated, OnFilesSelected: opts.OnFilesSelected,
+	})
+}
+
+// GenerateProjectConfig creates a repository config and returns its path without printing.
+// skipConfig permits creation checks without first parsing an existing config.
+func GenerateProjectConfig(dir string, skipConfig bool) (string, error) {
+	return generateProjectConfig(&Projects{skipConfig: skipConfig}, dir)
 }

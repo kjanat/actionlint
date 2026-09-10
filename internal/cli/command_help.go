@@ -1,4 +1,4 @@
-package actionlint
+package cli
 
 import (
 	"encoding/json"
@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"actionlint.kjanat.dev"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -35,7 +36,7 @@ func commandBuild() commandBuildInfo {
 	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Path != "" {
 		name = info.Main.Path
 	}
-	return commandBuildInfo{name, getCommandVersion(), getInstalledFrom(), runtime.Version(), runtime.GOOS, runtime.GOARCH}
+	return commandBuildInfo{name, actionlint.Version(), actionlint.InstalledFrom(), runtime.Version(), runtime.GOOS, runtime.GOARCH}
 }
 
 func writeVersion(out io.Writer, asJSON, legacy bool) error {
@@ -92,7 +93,7 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 		}
 	}
 	ref := "HEAD"
-	if v := getCommandVersion(); releaseVersionPattern.MatchString(v) {
+	if v := actionlint.Version(); releaseVersionPattern.MatchString(v) {
 		ref = "v" + v
 	}
 	_, _ = fmt.Fprintf(out, "\nCompatibility:\n  Root options precede filenames. check accepts options after filenames.\n  Existing -flag and --flag spellings remain supported; see --help-legacy.\n  Use -- to force filenames, including names that match commands.\n\nExit status:\n  0  No findings   1  Findings   2  Invalid arguments   3  Could not complete\n\nDocumentation:\n  https://github.com/kjanat/actionlint/tree/%s/docs/usage.md\n", ref)

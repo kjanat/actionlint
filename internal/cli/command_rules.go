@@ -1,4 +1,4 @@
-package actionlint
+package cli
 
 import (
 	"fmt"
@@ -7,11 +7,13 @@ import (
 	"slices"
 	"strings"
 	"text/tabwriter"
+
+	"actionlint.kjanat.dev"
 )
 
-func commandRules() []ruleDescriptor {
-	rules := builtinRuleDescriptors()
-	slices.SortFunc(rules, func(a, b ruleDescriptor) int { return strings.Compare(a.Name, b.Name) })
+func commandRules() []actionlint.RuleInfo {
+	rules := actionlint.BuiltinRules()
+	slices.SortFunc(rules, func(a, b actionlint.RuleInfo) int { return strings.Compare(a.Name, b.Name) })
 	return rules
 }
 
@@ -55,7 +57,7 @@ func writeDoctor(out io.Writer, req checkInvocation, asJSON bool) error {
 	if err != nil {
 		return err
 	}
-	config, configErr := inspectConfig(req.Config, false)
+	config, configErr := actionlint.InspectConfig(req.Config, false)
 	report := struct {
 		Build          commandBuildInfo `json:"build"`
 		Directory      string           `json:"directory"`
@@ -70,7 +72,7 @@ func writeDoctor(out io.Writer, req checkInvocation, asJSON bool) error {
 	for _, item := range []struct{ name, command string }{{"shellcheck", req.ShellCheck}, {"pyflakes", req.Pyflakes}} {
 		tool := doctorTool{Name: item.name, Command: item.command, Status: "disabled"}
 		if item.command != "" {
-			tool.Path, tool.Arguments, err = resolveExternalCommand(item.command)
+			tool.Path, tool.Arguments, err = actionlint.ResolveExternalCommand(item.command)
 			tool.Status = "available"
 			if err != nil {
 				tool.Status, tool.Error = "unavailable", err.Error()

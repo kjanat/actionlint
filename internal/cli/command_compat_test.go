@@ -1,4 +1,4 @@
-package actionlint
+package cli
 
 import (
 	"bytes"
@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev"
 	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"
 )
@@ -21,9 +22,8 @@ type commandTranscript struct {
 }
 
 func TestCommandCompatibility(t *testing.T) {
-	oldVersion, oldInstalled, oldColor := version, installedFrom, color.NoColor
-	version, installedFrom = "1.16.0", "compatibility-test"
-	t.Cleanup(func() { version, installedFrom, color.NoColor = oldVersion, oldInstalled, oldColor })
+	oldColor := color.NoColor
+	t.Cleanup(func() { color.NoColor = oldColor })
 	repoDir, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -100,6 +100,10 @@ func TestCommandCompatibility(t *testing.T) {
 			status := cmd.Main(args)
 			normalize := strings.NewReplacer(runtime.Version(), "GO_VERSION", runtime.GOOS+"/"+runtime.GOARCH, "GO_PLATFORM", root, "REPO_ROOT")
 			got := commandTranscript{status, normalize.Replace(stdout.String()), normalize.Replace(stderr.String())}
+			if strings.Contains(tc.name, "version") {
+				got.Stdout = strings.Replace(got.Stdout, " "+actionlint.Version()+"\n", " 1.16.0\n", 1)
+				got.Stdout = strings.Replace(got.Stdout, "\n"+actionlint.InstalledFrom()+"\n", "\ncompatibility-test\n", 1)
+			}
 			if tc.name == "color" {
 				// Windows' colorable writer removes ANSI escapes from buffer output.
 				got.Stdout = regexp.MustCompile("\x1b\\[[0-9;]*m").ReplaceAllString(got.Stdout, "")

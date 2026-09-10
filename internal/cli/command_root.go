@@ -1,4 +1,4 @@
-package actionlint
+package cli
 
 import (
 	"errors"
@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 
+	"actionlint.kjanat.dev"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -253,9 +254,9 @@ func (a *commandApp) jsonOutput() bool {
 }
 
 func (a *commandApp) reportError(err error) int {
-	status := ExitStatusFailure
+	status := actionlint.ExitStatusFailure
 	if _, ok := errors.AsType[commandUsageError](err); ok {
-		status = ExitStatusInvalidCommandOption
+		status = actionlint.ExitStatusInvalidCommandOption
 	}
 	if a.errorJSON || a.jsonOutput() {
 		_ = writeCommandJSON(a.streams.Stderr, struct {

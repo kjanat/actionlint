@@ -6,17 +6,19 @@ import (
 	"io"
 )
 
-type analysisRenderer struct {
+// AnalysisRenderer formats analysis results and retains custom-template rule metadata across calls.
+type AnalysisRenderer struct {
 	format    OutputFormat
 	oneline   bool
 	formatter diagnosticFormatter
 }
 
-func newAnalysisRenderer(format OutputFormat, template string, oneline bool) (*analysisRenderer, error) {
+// NewAnalysisRenderer validates a built-in format or custom Go template before rendering.
+func NewAnalysisRenderer(format OutputFormat, template string, oneline bool) (*AnalysisRenderer, error) {
 	if format != "" && template != "" {
 		return nil, errors.New("OutputFormat cannot be combined with a custom Format template")
 	}
-	r := &analysisRenderer{format: format, oneline: oneline}
+	r := &AnalysisRenderer{format: format, oneline: oneline}
 	switch format {
 	case "", OutputFormatText, OutputFormatJSON, OutputFormatJSONL:
 	case OutputFormatOneline:
@@ -38,7 +40,8 @@ func newAnalysisRenderer(format OutputFormat, template string, oneline bool) (*a
 	return r, nil
 }
 
-func (r *analysisRenderer) render(out io.Writer, result *AnalysisResult) error {
+// Render writes findings using their original sources and the selected output format.
+func (r *AnalysisRenderer) Render(out io.Writer, result *AnalysisResult) error {
 	if r.format == OutputFormatJSON || r.format == OutputFormatJSONL {
 		return writeDiagnostics(out, result.Diagnostics, r.format == OutputFormatJSONL)
 	}

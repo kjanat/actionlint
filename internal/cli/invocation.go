@@ -1,4 +1,6 @@
-package actionlint
+package cli
+
+import "actionlint.kjanat.dev"
 
 // invocation describes a CLI operation independently of its argument parser.
 type invocation struct {
@@ -12,16 +14,10 @@ type invocation struct {
 	Shell     string
 }
 
-// configSelection selects one configuration file, repository discovery, or no file.
-type configSelection struct {
-	Path     string
-	Disabled bool
-}
-
 // checkInvocation contains analysis inputs. It carries no command-framework state.
 type checkInvocation struct {
 	Paths         []string
-	Config        configSelection
+	Config        actionlint.ConfigSelection
 	StdinFilename string
 	IgnoreRegex   []string
 	ShellCheck    string
@@ -32,11 +28,11 @@ type checkInvocation struct {
 
 // renderOptions controls result presentation without changing analysis.
 type renderOptions struct {
-	Format       OutputFormat
+	Format       actionlint.OutputFormat
 	Template     string
 	TemplateFile string
 	OutputFile   string
-	Color        ColorOptionKind
+	Color        actionlint.ColorOptionKind
 	Oneline      bool
 	Quiet        bool
 	Summary      bool

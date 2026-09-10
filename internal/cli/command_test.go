@@ -1,4 +1,4 @@
-package actionlint
+package cli
 
 import (
 	"bytes"
@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev"
 )
 
 func TestCommandMain(t *testing.T) {
@@ -47,7 +49,7 @@ func TestCommandVersionNamesTheModule(t *testing.T) {
 	var output bytes.Buffer
 	cmd := Command{Stdin: os.Stdin, Stdout: &output, Stderr: &output}
 
-	if status := cmd.Main([]string{"actionlint", "-version"}); status != ExitStatusSuccessNoProblem {
+	if status := cmd.Main([]string{"actionlint", "-version"}); status != actionlint.ExitStatusSuccessNoProblem {
 		t.Fatal("exit status should be 0 but got", status)
 	}
 

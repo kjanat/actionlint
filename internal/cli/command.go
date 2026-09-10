@@ -1,57 +1,13 @@
-package actionlint
+package cli
 
 import (
 	"context"
 	"fmt"
 	"io"
-	"runtime/debug"
 	"slices"
 
 	"github.com/spf13/cobra"
 )
-
-// These variables might be modified by ldflags on building release binaries by GoReleaser. Do not modify manually.
-var (
-	version       = ""
-	installedFrom = ""
-)
-
-const (
-	// ExitStatusSuccessNoProblem means linting completed without findings.
-	ExitStatusSuccessNoProblem = 0
-	// ExitStatusSuccessProblemFound means linting completed with findings.
-	ExitStatusSuccessProblemFound = 1
-	// ExitStatusInvalidCommandOption means command-line parsing or validation failed.
-	ExitStatusInvalidCommandOption = 2
-	// ExitStatusFailure means linting could not complete.
-	ExitStatusFailure = 3
-)
-
-func getInstalledFrom() string {
-	if installedFrom != "" {
-		return installedFrom
-	}
-	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
-		for _, s := range info.Settings {
-			if s.Key == "vcs" {
-				return "from source"
-			}
-		}
-		return "go install"
-	}
-	return "from source"
-}
-
-func getCommandVersion() string {
-	if version != "" {
-		return version
-	}
-	info, ok := debug.ReadBuildInfo()
-	if !ok || info.Main.Version == "" {
-		return "unknown"
-	}
-	return info.Main.Version
-}
 
 // Command runs the CLI with caller-provided streams. Each invocation has its own
 // argument parser and option state, so a Command can be reused.
@@ -68,7 +24,7 @@ func (cmd *Command) Main(args []string) int {
 }
 
 // MainContext runs the CLI with a context that also controls external linters.
-// Cancellation returns ExitStatusFailure. Args includes the executable name.
+// Cancellation returns actionlint.ExitStatusFailure. Args includes the executable name.
 func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 	app := newCommandApp(cmd)
 	if len(args) > 0 {

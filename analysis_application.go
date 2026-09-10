@@ -11,9 +11,29 @@ import (
 	"strings"
 )
 
-// analysisApplication resolves local inputs before handing them to Analyze.
+// AnalysisOptions controls source discovery and analysis without selecting an output format.
+type AnalysisOptions struct {
+	Context       context.Context
+	WorkingDir    string
+	StdinFileName string
+	ConfigFile    string
+	// SkipProjectConfig disables per-project config reads; ConfigFile still applies.
+	SkipProjectConfig bool
+	// QuietSelection suppresses the legacy file-selection and completion log messages.
+	QuietSelection  bool
+	Shellcheck      string
+	Pyflakes        string
+	IgnorePatterns  []string
+	Verbose         bool
+	Debug           bool
+	LogWriter       io.Writer
+	OnRulesCreated  func([]Rule) []Rule
+	OnFilesSelected func([]string)
+}
+
+// AnalysisSession resolves local inputs before handing them to Analyze.
 // It retains project discovery state for callers that reuse a Linter.
-type analysisApplication struct {
+type AnalysisSession struct {
 	analysisLogger
 	projects        *Projects
 	defaultConfig   *Config
@@ -50,11 +70,13 @@ func (l *analysisLogger) debugWriter() io.Writer {
 	return l.logOut
 }
 
-func newAnalysisApplication(opts *LinterOptions) (*analysisApplication, error) {
-	a := &analysisApplication{
+// NewAnalysisSession prepares project discovery, configuration and external linters.
+// It does not read workflow inputs or render findings.
+func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
+	a := &AnalysisSession{
 		projects: NewProjects(), ctx: opts.Context, cwd: opts.WorkingDir,
 		stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected,
-		logSelection:   true,
+		logSelection:   !opts.QuietSelection,
 		request:        AnalysisRequest{ShellCheck: opts.Shellcheck, Pyflakes: opts.Pyflakes, OnRulesCreated: opts.OnRulesCreated},
 		analysisLogger: analysisLogger{logOut: opts.LogWriter},
 	}
@@ -76,7 +98,8 @@ func newAnalysisApplication(opts *LinterOptions) (*analysisApplication, error) {
 			return nil, err
 		}
 	}
-	a.request.IgnorePatterns, err = compileIgnorePatterns(opts.IgnorePatterns)
+	a.projects.skipConfig = opts.SkipProjectConfig
+	a.request.IgnorePatterns, err = CompileIgnorePatterns(opts.IgnorePatterns)
 	if err != nil {
 		return nil, err
 	}
@@ -93,13 +116,14 @@ func newAnalysisApplication(opts *LinterOptions) (*analysisApplication, error) {
 	return a, nil
 }
 
-func (a *analysisApplication) selectionLog(args ...any) {
+func (a *AnalysisSession) selectionLog(args ...any) {
 	if a.logSelection {
 		a.log(args...)
 	}
 }
 
-func (a *analysisApplication) repository(dir string) (*AnalysisResult, error) {
+// Repository analyzes the nearest repository's workflows. An empty dir uses WorkingDir.
+func (a *AnalysisSession) Repository(dir string) (*AnalysisResult, error) {
 	if dir == "" {
 		dir = a.cwd
 	}
@@ -115,7 +139,7 @@ func (a *analysisApplication) repository(dir string) (*AnalysisResult, error) {
 	return a.directory(project.WorkflowsDir(), project)
 }
 
-func (a *analysisApplication) directory(dir string, project *Project) (*AnalysisResult, error) {
+func (a *AnalysisSession) directory(dir string, project *Project) (*AnalysisResult, error) {
 	paths := []string{}
 	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -134,16 +158,17 @@ func (a *analysisApplication) directory(dir string, project *Project) (*Analysis
 		return nil, fmt.Errorf("no YAML file was found in %q", dir)
 	}
 	a.selectionLog("Collected", len(paths), "YAML files")
-	return a.files(paths, project)
+	return a.Files(paths, project)
 }
 
-func (a *analysisApplication) filesSelected(paths []string) {
+func (a *AnalysisSession) filesSelected(paths []string) {
 	if a.onFilesSelected != nil {
 		a.onFilesSelected(slices.Clone(paths))
 	}
 }
 
-func (a *analysisApplication) files(paths []string, project *Project) (*AnalysisResult, error) {
+// Files analyzes paths in order, discovering each file's project when project is nil.
+func (a *AnalysisSession) Files(paths []string, project *Project) (*AnalysisResult, error) {
 	a.filesSelected(paths)
 	if len(paths) == 0 {
 		return &AnalysisResult{Diagnostics: []Diagnostic{}}, nil
@@ -154,7 +179,7 @@ func (a *analysisApplication) files(paths []string, project *Project) (*Analysis
 	return a.readFiles(paths, project)
 }
 
-func (a *analysisApplication) readFiles(paths []string, project *Project) (*AnalysisResult, error) {
+func (a *AnalysisSession) readFiles(paths []string, project *Project) (*AnalysisResult, error) {
 	sources := make([]SourceUnit, 0, len(paths))
 	for _, path := range paths {
 		proj := project
@@ -176,14 +201,16 @@ func (a *analysisApplication) readFiles(paths []string, project *Project) (*Anal
 	return a.analyze(sources)
 }
 
-func (a *analysisApplication) relativePath(path string) string {
+func (a *AnalysisSession) relativePath(path string) string {
 	if rel, err := filepath.Rel(a.cwd, path); err == nil {
 		return rel
 	}
 	return path
 }
 
-func (a *analysisApplication) readStdin(stdin io.Reader, normalizePath bool) (*AnalysisResult, error) {
+// ReadStdin analyzes a reader using StdinFileName. normalizePath makes its diagnostic
+// path relative to WorkingDir; false preserves the caller's spelling.
+func (a *AnalysisSession) ReadStdin(stdin io.Reader, normalizePath bool) (*AnalysisResult, error) {
 	a.selectionLog("Reading the input from stdin")
 	content, err := io.ReadAll(stdin)
 	if err != nil {
@@ -192,7 +219,7 @@ func (a *analysisApplication) readStdin(stdin io.Reader, normalizePath bool) (*A
 	return a.content(a.stdin, content, nil, normalizePath)
 }
 
-func (a *analysisApplication) content(path string, content []byte, project *Project, normalizePath bool) (*AnalysisResult, error) {
+func (a *AnalysisSession) content(path string, content []byte, project *Project, normalizePath bool) (*AnalysisResult, error) {
 	if project == nil && path != "<stdin>" {
 		if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
 			var err error
@@ -210,7 +237,7 @@ func (a *analysisApplication) content(path string, content []byte, project *Proj
 	return a.analyze([]SourceUnit{source})
 }
 
-func (a *analysisApplication) source(path string, content []byte, project *Project) SourceUnit {
+func (a *AnalysisSession) source(path string, content []byte, project *Project) SourceUnit {
 	cfg := a.defaultConfig
 	if cfg == nil && project != nil {
 		cfg = project.Config()
@@ -218,7 +245,7 @@ func (a *analysisApplication) source(path string, content []byte, project *Proje
 	return SourceUnit{Path: path, Content: content, Config: cfg, Project: project}
 }
 
-func (a *analysisApplication) analyze(sources []SourceUnit) (*AnalysisResult, error) {
+func (a *AnalysisSession) analyze(sources []SourceUnit) (*AnalysisResult, error) {
 	request := a.request
 	request.Sources = sources
 	result, err := analyze(a.ctx, request, a.logOut, a.logLevel)
@@ -235,7 +262,8 @@ func (a *analysisApplication) analyze(sources []SourceUnit) (*AnalysisResult, er
 	return result, nil
 }
 
-func (a *analysisApplication) completed(result *AnalysisResult) {
+// Completed writes the selection summary after a caller has successfully rendered a result.
+func (a *AnalysisSession) Completed(result *AnalysisResult) {
 	if len(result.files) > 1 {
 		a.selectionLog("Found", len(result.Diagnostics), "errors in", len(result.files), "files")
 	}

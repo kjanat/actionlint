@@ -54,3 +54,20 @@ func builtinRuleBase(name string) RuleBase {
 	}
 	panic("unregistered built-in rule: " + name)
 }
+
+// RuleInfo describes an available check without constructing a rule or external process.
+type RuleInfo struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Category    string `json:"category"`
+}
+
+// BuiltinRules returns metadata for the registered built-in checks.
+func BuiltinRules() []RuleInfo {
+	descriptors := builtinRuleDescriptors()
+	result := make([]RuleInfo, len(descriptors))
+	for i, rule := range descriptors {
+		result[i] = RuleInfo{rule.Name, rule.Description, rule.Category}
+	}
+	return result
+}

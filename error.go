@@ -312,7 +312,7 @@ func NewErrorFormatter(format string) (*ErrorFormatter, error) {
 			return strings.NewReplacer(oldnew...).Replace(s)
 		},
 		"toPascalCase": toPascalCase,
-		"getVersion":   getCommandVersion,
+		"getVersion":   Version,
 		"allKinds": func() []*ruleTemplateFields {
 			ret := make([]*ruleTemplateFields, 0, len(r))
 			for _, e := range r {

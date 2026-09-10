@@ -161,7 +161,8 @@ func (r *AnalysisResult) legacyErrors() []*Error {
 	return errors
 }
 
-func compileIgnorePatterns(patterns []string) (IgnorePatterns, error) {
+// CompileIgnorePatterns validates message filters used by analysis and config initialization.
+func CompileIgnorePatterns(patterns []string) (IgnorePatterns, error) {
 	ignore := make(IgnorePatterns, 0, len(patterns))
 	for _, pattern := range patterns {
 		re, err := regexp.Compile(pattern)
@@ -172,3 +173,6 @@ func compileIgnorePatterns(patterns []string) (IgnorePatterns, error) {
 	}
 	return ignore, nil
 }
+
+// FileCount reports the number of workflows analyzed, including those with no findings.
+func (r *AnalysisResult) FileCount() int { return len(r.files) }
