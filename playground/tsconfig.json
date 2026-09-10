@@ -3,6 +3,8 @@
     "target": "esnext",
     "module": "esnext",
     "moduleResolution": "bundler",
+    "customConditions": ["source"],
+    "allowImportingTsExtensions": true,
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "allowJs": true,
     "checkJs": false,
@@ -19,7 +21,8 @@
     "types": ["node", "vite/client"],
     "composite": true,
     "tsBuildInfoFile": "../node_modules/.cache/typescript/playground.tsbuildinfo",
-    "isolatedModules": true
+    "emitDeclarationOnly": true,
+    "isolatedModules": true,
   },
   "exclude": ["dist", "node_modules"]
 }
