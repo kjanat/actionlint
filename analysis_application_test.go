@@ -91,6 +91,48 @@ func TestLinterAnalysisFacades(t *testing.T) {
 	}
 }
 
+func TestCommandWorkflowPaths(t *testing.T) {
+	root := t.TempDir()
+	repo := filepath.Join(root, "repo")
+	for _, dir := range []string{filepath.Join(repo, ".git"), filepath.Join(repo, ".github", "workflows")} {
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	outside := filepath.Join(root, "outside.yml")
+	for _, path := range []string{outside, filepath.Join(repo, ".github", "workflows", "ci.yml")} {
+		if err := os.WriteFile(path, []byte(commandBadWorkflow), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Chdir(repo)
+	for _, modern := range []bool{false, true} {
+		for _, input := range []string{"", outside, filepath.Join("..", "outside.yml")} {
+			t.Run(fmtTestName(modern, input), func(t *testing.T) {
+				args := []string{"--json"}
+				if input != "" {
+					args = append(args, input)
+				}
+				if modern {
+					args = append([]string{"check"}, args...)
+				}
+				got := testRunCommand("", args...)
+				var report CheckResult
+				if err := json.Unmarshal([]byte(got.Stdout), &report); err != nil || got.Status != 1 || got.Stderr != "" || len(report.Diagnostics) != 1 {
+					t.Fatalf("selected workflow was not analyzed: %+v (%v)", got, err)
+				}
+				want := filepath.Join("..", "outside.yml")
+				if input == "" {
+					want = filepath.Join(".github", "workflows", "ci.yml")
+				}
+				if report.Diagnostics[0].Path != want || report.Diagnostics[0].Rule != "expression" {
+					t.Fatalf("wrong workflow diagnostic: %+v", report.Diagnostics[0])
+				}
+			})
+		}
+	}
+}
+
 func TestLinterEmptySelection(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
