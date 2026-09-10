@@ -2,8 +2,9 @@
 # directory over it whenever the directory is newer, so no built-in rule may apply here.
 MAKEFLAGS += --no-builtin-rules
 
-SRCS := $(filter-out %_test.go, $(wildcard *.go cmd/*/*.go)) sarif_template.txt go.mod go.sum
-TESTS := $(filter %_test.go, $(wildcard *.go cmd/*/*.go))
+GO_FILES := $(wildcard *.go cmd/*/*.go internal/*/*.go)
+SRCS := $(filter-out %_test.go, $(GO_FILES)) sarif_template.txt go.mod go.sum
+TESTS := $(filter %_test.go, $(GO_FILES))
 TOOL := $(wildcard scripts/*/*.go)
 TESTDATA := $(wildcard \
 		testdata/examples/* \

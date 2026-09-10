@@ -5,6 +5,7 @@ FROM golang:${GOLANG_VER} AS builder
 WORKDIR /go/src/app
 COPY go.* *.go sarif_template.txt ./
 COPY cmd cmd/
+COPY internal internal/
 ENV CGO_ENABLED=0
 ARG ACTIONLINT_VER=
 RUN go build -v -ldflags "-s -w -X actionlint.kjanat.dev.version=${ACTIONLINT_VER} -X main.version=${ACTIONLINT_VER} -X 'actionlint.kjanat.dev.installedFrom=official Docker image'" -o . ./cmd/actionlint ./cmd/actionlint-action

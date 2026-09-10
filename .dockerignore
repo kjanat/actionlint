@@ -7,3 +7,5 @@
 !sarif_template.txt
 !cmd
 !cmd/**
+!internal
+!internal/**
