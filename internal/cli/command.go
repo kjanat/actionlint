@@ -68,7 +68,7 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 		app.inv.Check.Paths = rest
 		switch {
 		case app.opts.helpLegacy:
-			app.legacyHelp()
+			app.legacyHelp(app.root)
 		case app.opts.version:
 			app.inv.Operation = "version"
 		case app.opts.completion != "":

@@ -44,7 +44,7 @@ func (a *commandApp) parseLegacy(args []string) (rest []string, forced string, t
 	boolean(&c.Debug, "debug")
 	boolean(&o.color, "color")
 	boolean(&o.noColor, "no-color")
-	boolean(&o.version, "version")
+	boolean(&o.version, "version", "V")
 	boolean(&o.initConfig, "init-config")
 	boolean(&o.helpLegacy, "help-legacy")
 	boolean(&a.inv.JSON, "json")

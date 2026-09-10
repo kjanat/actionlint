@@ -344,6 +344,7 @@ func TestCompletionProtocol(t *testing.T) {
 		absent []string
 	}{
 		{"flags", []string{"--j"}, []string{"--json", ":4"}, nil},
+		{"version shorthand", []string{"-V"}, []string{"-V", ":4"}, nil},
 		{"output choices", []string{"--output", "j"}, []string{"text", "oneline", "json", "jsonl", "sarif", ":4"}, nil},
 		{"legacy flag values", []string{"-completion", ""}, []string{"bash", "fish", "powershell", "zsh"}, nil},
 		{"plural alias values", []string{"--completions", ""}, []string{"bash", "powershell"}, nil},

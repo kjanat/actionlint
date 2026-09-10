@@ -170,7 +170,7 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 		f.StringVar(&a.opts.colorMode, "color", "auto", "Color mode: auto, always or never")
 		f.Lookup("color").NoOptDefVal = "always"
 	} else {
-		f.BoolVar(&a.opts.color, "color", false, "Always use color in text diagnostics")
+		f.BoolVar(&a.opts.color, "color", false, "Always use color in text diagnostics and help")
 	}
 	f.BoolVar(&a.opts.noColor, "no-color", false, "Disable color")
 	f.BoolVar(&a.opts.helpLegacy, "help-legacy", false, "Show supported legacy options")
@@ -188,11 +188,12 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 		_ = f.MarkHidden(name)
 	}
 	if !modern {
-		f.BoolVar(&a.opts.version, "version", false, "Show version and build information")
+		f.BoolVarP(&a.opts.version, "version", "V", false, "Show version and build information")
+		annotateFlag(f, "version", "Information")
 		f.BoolVar(&a.opts.initConfig, "init-config", false, "Create the repository config")
 		f.Var(&a.opts.completion, "completion", "Print generated completions for a shell")
 		f.Var(&a.opts.completion, "completions", "Alias for --completion")
-		for _, name := range []string{"version", "init-config", "completion", "completions"} {
+		for _, name := range []string{"init-config", "completion", "completions"} {
 			annotateFlag(f, name, "Information")
 			_ = f.MarkHidden(name)
 		}
@@ -241,7 +242,7 @@ func (a *commandApp) capture(op operation) func(*cobra.Command, []string) error 
 			a.set["modern-color"] = true
 		}
 		if a.opts.helpLegacy {
-			a.legacyHelp()
+			a.legacyHelp(c)
 		}
 		return nil
 	}

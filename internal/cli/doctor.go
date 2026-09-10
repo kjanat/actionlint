@@ -1,9 +1,11 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"text/tabwriter"
 
 	"actionlint.kjanat.dev"
 )
@@ -48,16 +50,22 @@ func writeDoctor(out io.Writer, req checkInvocation, asJSON bool) error {
 	if asJSON {
 		err = writeCommandJSON(out, report)
 	} else {
-		_, err = fmt.Fprintf(out, "actionlint %s\nDirectory: %s\nConfiguration: %s\n", report.Build.Version, cwd, config.Path)
+		w := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
+		_, err = fmt.Fprintf(w, "actionlint %s\nDirectory:\t%s\nConfiguration:\t%s\n", report.Build.Version, cwd, config.Path)
 		if err == nil && configErr != nil {
-			_, err = fmt.Fprintln(out, "Configuration error:", configErr)
+			_, err = fmt.Fprintf(w, "Configuration error:\t%s\n", configErr)
 		}
 		for _, tool := range report.Tools {
 			if err != nil {
 				break
 			}
-			_, err = fmt.Fprintf(out, "%s: %s %s\n", tool.Name, tool.Status, tool.Path)
+			value := tool.Path
+			if value == "" {
+				value = tool.Status
+			}
+			_, err = fmt.Fprintf(w, "%s:\t%s\n", tool.Name, value)
 		}
+		err = errors.Join(err, w.Flush())
 	}
 	if err != nil {
 		return err

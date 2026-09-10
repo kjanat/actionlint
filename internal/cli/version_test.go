@@ -9,6 +9,22 @@ import (
 	"actionlint.kjanat.dev"
 )
 
+func TestVersionShorthand(t *testing.T) {
+	for _, tail := range [][]string{nil, {"--json"}} {
+		want := testRunCommand("", append([]string{"--version"}, tail...)...)
+		got := testRunCommand("", append([]string{"-V"}, tail...)...)
+		if want != got || got.Status != 0 {
+			t.Fatalf("-V differs from --version: %+v / %+v", got, want)
+		}
+	}
+	if got := testRunCommand(commandGoodWorkflow, "-v", "-"); got.Status != 0 || got.Stdout != "" || !strings.Contains(got.Stderr, "verbose: Linting") {
+		t.Fatalf("-v stopped enabling verbose checks: %+v", got)
+	}
+	if got := testRunCommand(commandGoodWorkflow, "-V=false", "-"); got != (commandTranscript{}) {
+		t.Fatalf("-V=false did not run the check: %+v", got)
+	}
+}
+
 func TestCommandVersionNamesTheModule(t *testing.T) {
 	var output bytes.Buffer
 	cmd := Command{Stdin: os.Stdin, Stdout: &output, Stderr: &output}

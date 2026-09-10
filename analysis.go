@@ -84,6 +84,9 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	if level != LogLevelNone {
+		log = &analysisLogWriter{out: log}
+	}
 	engine := &analysisEngine{ctx: ctx, shellcheck: request.ShellCheck, pyflakes: request.Pyflakes,
 		ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: analysisLogger{log, level}}
 	inputs := &inputFiles{}

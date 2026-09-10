@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 )
 
 // AnalysisOptions controls source discovery and analysis without selecting an output format.
@@ -50,10 +51,20 @@ type analysisLogger struct {
 	logLevel LogLevel
 }
 
+type analysisLogWriter struct {
+	mu  sync.Mutex
+	out io.Writer
+}
+
+func (w *analysisLogWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.out.Write(p)
+}
+
 func (l *analysisLogger) log(args ...any) {
 	if l.logLevel >= LogLevelVerbose {
-		_, _ = fmt.Fprint(l.logOut, "verbose: ")
-		_, _ = fmt.Fprintln(l.logOut, args...)
+		_, _ = io.WriteString(l.logOut, "verbose: "+fmt.Sprintln(args...))
 	}
 }
 

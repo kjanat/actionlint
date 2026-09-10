@@ -66,11 +66,18 @@ supported old names without deprecation warnings. `--format` remains an alias fo
 Go templates; it never interprets template text as a built-in format name.
 `-o`, `-f`, `-q` and `-h` mean output format, template, quiet and help.
 `-v` remains available for progress logging; new examples use `--log-level=info`.
+`-V` is the short form of `--version` and preserves its three-line output.
 Attached short-option values such as `-ojson` belong to `check`'s modern grammar.
 
 The root's `-color=false` means not forcing color on. If both `-color` and
 `-no-color` are true, `-no-color` wins regardless of order. The modern command
 accepts `check --color=auto|always|never`; bare `--color` means `always`.
+
+Human-readable help styles headings, command names and flags when stderr is a
+terminal. Redirected help stays plain in auto mode. `NO_COLOR` or `TERM=dumb`
+disables automatic styling; an explicit color request overrides those settings.
+`--no-color` and `check --color=never` disable styling. Root color flags belong
+before `--help`, since root help exits immediately. JSON help is always uncolored.
 
 When running through npm, these forms pass the help flag to actionlint:
 

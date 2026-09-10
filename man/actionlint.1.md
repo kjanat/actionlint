@@ -117,6 +117,8 @@ preserves a previous report. The output cannot also be a selected input.
 **--color**[=*MODE*]
 : On **check**, select `auto`, `always`, or `never`; a bare flag means `always`.
 On the root, retain the boolean syntax: `-color=false` does not force color on.
+Help uses the same controls: automatic styling follows stderr's terminal status,
+**NO_COLOR**, and **TERM=dumb**. Put root color flags before **--help**.
 Structured output contains no terminal color codes.
 
 **--no-color**
@@ -178,9 +180,10 @@ to `shellcheck`; an empty value disables it. Also available on **doctor**.
 all four completion scripts. Install bash-completion for Bash and run compinit
 for Zsh. Regenerate saved scripts after upgrading.
 
-**--version**
+**--version**, **-V**
 : Root-only version flag. Retains its original three-line output. Use the
 **version** command for the new presentation or **version --json** for metadata.
+Lowercase **-v** continues to enable verbose logging.
 
 **--help**, **-h**
 : Show grouped help on stderr, or JSON command metadata on stdout with **--json**.

@@ -2,9 +2,15 @@ package cli
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"regexp"
+	"strings"
 
 	"actionlint.kjanat.dev"
+	"github.com/fatih/color"
+	"github.com/mattn/go-colorable"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -12,6 +18,55 @@ import (
 var commandHelpGroups = []string{"Input", "Output", "External linters", "Information"}
 
 var releaseVersionPattern = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
+
+var helpFlagPattern = regexp.MustCompile(`(?m)(^|[ \t])--?[a-zA-Z][a-zA-Z0-9-]*`)
+
+func (a *commandApp) helpOutput(c *cobra.Command) (io.Writer, bool) {
+	out := a.streams.Stderr
+	file, ok := out.(*os.File)
+	terminal := ok && (isatty.IsTerminal(file.Fd()) || isatty.IsCygwinTerminal(file.Fd()))
+	enabled := a.helpColor(c, terminal)
+	if terminal && enabled {
+		out = colorable.NewColorable(file)
+	}
+	return out, enabled
+}
+
+func (a *commandApp) helpColor(c *cobra.Command, terminal bool) bool {
+	if a.opts.noColor || a.jsonOutput() {
+		return false
+	}
+	force := a.opts.color
+	// Help runs before capture and prepareInvocation, but its flags are parsed.
+	if c != a.root && c.Flags().Changed("color") {
+		switch a.opts.colorMode {
+		case "always":
+			force = true
+		case "never":
+			return false
+		case "auto":
+			force = false
+		}
+	}
+	return force || (terminal && os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "dumb")
+}
+
+func helpStyle(enabled bool, attributes ...color.Attribute) *color.Color {
+	style := color.New(attributes...)
+	if enabled {
+		style.EnableColor()
+	} else {
+		style.DisableColor()
+	}
+	return style
+}
+
+func styleHelpFlags(text string, style *color.Color) string {
+	return helpFlagPattern.ReplaceAllStringFunc(text, func(match string) string {
+		start := strings.IndexByte(match, '-')
+		return match[:start] + style.Sprint(match[start:])
+	})
+}
 
 func (a *commandApp) help(c *cobra.Command, _ []string) {
 	a.helpShown = true
@@ -23,19 +78,22 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 		}
 		return
 	}
-	out := a.streams.Stderr
-	_, _ = fmt.Fprintf(out, "%s\n\nUsage:\n  %s\n", c.Short, c.UseLine())
+	out, colored := a.helpOutput(c)
+	heading := helpStyle(colored, color.Bold, color.FgCyan)
+	command := helpStyle(colored, color.Bold)
+	option := helpStyle(colored, color.FgCyan)
+	_, _ = fmt.Fprintf(out, "%s\n\n%s\n  %s\n", command.Sprint(c.Short), heading.Sprint("Usage:"), command.Sprint(c.UseLine()))
 	if c.Long != "" {
 		_, _ = fmt.Fprintf(out, "\n%s\n", c.Long)
 	}
 	if c.Example != "" {
-		_, _ = fmt.Fprintf(out, "\nExamples:\n%s\n", c.Example)
+		_, _ = fmt.Fprintf(out, "\n%s\n%s\n", heading.Sprint("Examples:"), c.Example)
 	}
 	if c.HasAvailableSubCommands() {
-		_, _ = fmt.Fprintln(out, "\nCommands:")
+		_, _ = fmt.Fprintln(out, "\n"+heading.Sprint("Commands:"))
 		for _, sub := range c.Commands() {
 			if !sub.Hidden && sub.Name() != "help" {
-				_, _ = fmt.Fprintf(out, "  %-12s %s\n", sub.Name(), sub.Short)
+				_, _ = fmt.Fprintf(out, "  %s %s\n", command.Sprintf("%-12s", sub.Name()), sub.Short)
 			}
 		}
 	}
@@ -50,20 +108,23 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 			}
 		})
 		if usage := fs.FlagUsagesWrapped(88); usage != "" {
-			_, _ = fmt.Fprintf(out, "\n%s:\n%s", group, usage)
+			_, _ = fmt.Fprintf(out, "\n%s\n%s", heading.Sprint(group+":"), styleHelpFlags(usage, option))
 		}
 	}
 	ref := "HEAD"
 	if v := actionlint.Version(); releaseVersionPattern.MatchString(v) {
 		ref = "v" + v
 	}
-	_, _ = fmt.Fprintf(out, "\nCompatibility:\n  Root options precede filenames. check accepts options after filenames.\n  Existing -flag and --flag spellings remain supported; see --help-legacy.\n  Use -- to force filenames, including names that match commands.\n\nExit status:\n  0  No findings   1  Findings   2  Invalid arguments   3  Could not complete\n\nDocumentation:\n  https://github.com/kjanat/actionlint/tree/%s/docs/usage.md\n", ref)
+	_, _ = fmt.Fprintf(out, "\n%s\n  Root options precede filenames. check accepts options after filenames.\n  Existing -flag and --flag spellings remain supported; see --help-legacy.\n  Use -- to force filenames, including names that match commands.\n\n%s\n  0  No findings   1  Findings   2  Invalid arguments   3  Could not complete\n\n%s\n  https://github.com/kjanat/actionlint/tree/%s/docs/usage.md\n", heading.Sprint("Compatibility:"), heading.Sprint("Exit status:"), heading.Sprint("Documentation:"), ref)
 }
 
-func (a *commandApp) legacyHelp() {
+func (a *commandApp) legacyHelp(c *cobra.Command) {
 	a.helpShown = true
-	_, _ = fmt.Fprintln(a.streams.Stderr, `Legacy root interface (both -name and --name remain supported):
-
+	out, colored := a.helpOutput(c)
+	heading := helpStyle(colored, color.Bold, color.FgCyan)
+	option := helpStyle(colored, color.FgCyan)
+	_, _ = fmt.Fprintln(out, heading.Sprint("Legacy root interface (both -name and --name remain supported):"))
+	_, _ = fmt.Fprintln(out, styleHelpFlags(`
   -format TEMPLATE        --template TEMPLATE
   -oneline                --output-format=oneline
   -ignore REGEX           --ignore-regex REGEX (repeatable; message matching)
@@ -80,7 +141,7 @@ func (a *commandApp) legacyHelp() {
 Root parsing stops at the first filename. -- ends option parsing.
 Existing files named check, config, rules, doctor, completion or version win
 over commands. Use --command NAME to select a command despite such a file.
-Legacy options are supported without deprecation warnings.`)
+Legacy options are supported without deprecation warnings.`, option))
 }
 
 type commandFlagDescription struct {

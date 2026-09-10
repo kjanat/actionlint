@@ -8,12 +8,67 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 )
+
+type analysisRecordingLog struct {
+	active  atomic.Int32
+	overlap atomic.Bool
+	mu      sync.Mutex
+	records []string
+}
+
+func (w *analysisRecordingLog) Write(p []byte) (int, error) {
+	if w.active.Add(1) != 1 {
+		w.overlap.Store(true)
+	}
+	defer w.active.Add(-1)
+	runtime.Gosched()
+	w.mu.Lock()
+	w.records = append(w.records, string(p))
+	w.mu.Unlock()
+	return len(p), nil
+}
+
+func TestAnalysisConcurrentLogRecords(t *testing.T) {
+	for _, level := range []LogLevel{LogLevelVerbose, LogLevelDebug} {
+		t.Run(fmt.Sprint(level), func(t *testing.T) {
+			var log analysisRecordingLog
+			request := AnalysisRequest{}
+			for i := range 32 {
+				request.Sources = append(request.Sources, SourceUnit{Path: fmt.Sprintf("workflow-%d.yml", i), Content: []byte(commandGoodWorkflow)})
+			}
+			result, err := analyze(t.Context(), request, &log, level)
+			if err != nil || len(result.Diagnostics) != 0 {
+				t.Fatalf("analysis failed: %v", err)
+			}
+			if log.overlap.Load() {
+				t.Fatal("concurrent checks wrote to the caller's log writer simultaneously")
+			}
+			seen := map[string]int{}
+			for _, record := range log.records {
+				if !strings.HasSuffix(record, "\n") || (!strings.HasPrefix(record, "verbose: ") && !strings.HasPrefix(record, "[")) {
+					t.Fatalf("incomplete log record: %q", record)
+				}
+				if path, ok := strings.CutPrefix(record, "verbose: Linting "); ok {
+					seen[strings.TrimSuffix(path, "\n")]++
+				}
+			}
+			for _, source := range request.Sources {
+				if seen[source.Path] != 1 {
+					t.Errorf("%s: want one complete Linting record, got %d", source.Path, seen[source.Path])
+				}
+			}
+		})
+	}
+}
 
 func TestLinterAnalysisFacades(t *testing.T) {
 	root := t.TempDir()
