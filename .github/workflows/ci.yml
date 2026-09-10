@@ -65,18 +65,28 @@ jobs:
     steps:
       - *ActCheckNocred
       - *GoGomod
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+      - &NodeTooling
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with: { node-version-file: .node-version, package-manager-cache: false }
-      - &Runner { uses: kjanat/runner@8baa9ee978cfed038b98741749673c788ff161d1 } # v0.26.1
+      - &Runner { uses: kjanat/runner@8baa9ee978cfed038b98741749673c788ff161d1 } # v0.26.2
       - &Pandoc { name: Install Pandoc, uses: $/.github/actions/setup-pandoc }
       - name: Install JavaScript dependencies
         run: runner install --frozen
       - name: Build command manual
         run: run make:man
       - name: Build and test playground
-        run: run --dir playground -s make:build make:test
+        run: run -s playground:make:build playground:make:test
       - name: Lint JavaScript workspaces
         run: run lint
+  javascript:
+    name: JavaScript
+    runs-on: ubuntu-latest
+    steps:
+      - *ActCheckNocred
+      - *NodeTooling
+      - *Runner
+      - name: Install dependencies and test JavaScript tooling
+        run: runner install --frozen test:js
   release-snapshot:
     name: Release snapshot
     runs-on: ubuntu-latest
@@ -87,6 +97,8 @@ jobs:
           - &Go { uses: *SetupGo, with: *GoMod }
           - *Pandoc
           - *Runner
+          - name: Install syft for SBOM generation
+            uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
           - uses: &SetupNode actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
             with: { node-version: "24", package-manager-cache: false }
       - name: Build JavaScript Action release files outside the checkout
@@ -95,8 +107,6 @@ jobs:
           tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude '*-*')"
           node scripts/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${tag#v}"
       - run: run make:man/actionlint.1
-      - name: Install syft for SBOM generation
-        uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with: { version: v2.18.0, args: release --snapshot --clean }
       - name: Smoke-test the linux/amd64 snapshot binary
@@ -158,13 +168,14 @@ jobs:
         run: docker build --target action -t actionlint:action-test .
       - name: Check Docker Action compatibility
         run: bash scripts/test-docker-action.bash actionlint:action-test
-      - name: Lint Dockerfile with hadolint
-        run: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 --strict-labels
-          --require-label org.opencontainers.image.source:url
-          --require-label org.opencontainers.image.licenses:spdx
-          - < Dockerfile
-      - name: Lint Dockerfile with droast
-        uses: immanuwell/dockerfile-roast@1c87b2aa189338c24db4acde40864dae8994de8f # 1.7.0
+      - parallel:
+          - name: Lint Dockerfile with hadolint
+            run: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 --strict-labels
+              --require-label org.opencontainers.image.source:url
+              --require-label org.opencontainers.image.licenses:spdx
+              - < Dockerfile
+          - name: Lint Dockerfile with droast
+            uses: immanuwell/dockerfile-roast@1c87b2aa189338c24db4acde40864dae8994de8f # 1.7.0
   action:
     name: GitHub Action
     strategy:
