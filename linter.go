@@ -5,18 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
-	"runtime"
-	"slices"
-	"sort"
-	"strings"
 
 	"github.com/fatih/color"
 	"github.com/mattn/go-colorable"
-	"golang.org/x/sync/errgroup"
-	"golang.org/x/sync/semaphore"
 )
 
 // LogLevel is log level of logger used in Linter instance.
@@ -103,155 +96,40 @@ type LinterOptions struct {
 
 // Linter is struct to lint workflow files.
 type Linter struct {
-	projects        *Projects
-	out             io.Writer
-	logOut          io.Writer
-	logLevel        LogLevel
-	oneline         bool
-	shellcheck      string
-	pyflakes        string
-	ignorePats      IgnorePatterns
-	stdin           string
-	defaultConfig   *Config
-	errFmt          diagnosticFormatter
-	cwd             string
-	onRulesCreated  func([]Rule) []Rule
-	onFilesSelected func([]string)
-	ctx             context.Context
-	inputs          *inputFiles
+	*analysisApplication
+	out      io.Writer
+	renderer *analysisRenderer
 }
 
-// NewLinter creates a new Linter instance.
-// The out parameter is used to output errors from Linter instance. Set io.Discard if you don't
-// want the outputs.
-// The opts parameter is LinterOptions instance which configures behavior of linting.
+// NewLinter creates a compatibility facade with caller-selected output and options.
+// Set out to io.Discard to return findings without printing them.
 func NewLinter(out io.Writer, opts *LinterOptions) (*Linter, error) {
-	level := LogLevelNone
-	if opts.Verbose {
-		level = LogLevelVerbose
-	} else if opts.Debug {
-		level = LogLevelDebug
+	out = legacyColorOutput(out, opts.Color)
+	app, err := newAnalysisApplication(opts)
+	if err != nil {
+		return nil, err
 	}
+	renderer, err := newAnalysisRenderer(opts.OutputFormat, opts.Format, opts.Oneline)
+	if err != nil {
+		return nil, err
+	}
+	app.debug("Create a Linter instance with option %#v", opts)
+	return &Linter{analysisApplication: app, out: out, renderer: renderer}, nil
+}
 
-	if opts.Color == ColorOptionKindNever {
+// legacyColorOutput preserves NewLinter's process-wide color setting and Windows writer.
+func legacyColorOutput(out io.Writer, option ColorOptionKind) io.Writer {
+	if option == ColorOptionKindNever {
 		color.NoColor = true
 	} else {
-		if opts.Color == ColorOptionKindAlways {
+		if option == ColorOptionKindAlways {
 			color.NoColor = false
 		}
-		// Allow colorful output on Windows
 		if f, ok := out.(*os.File); ok {
 			out = colorable.NewColorable(f)
 		}
 	}
-
-	lout := io.Discard
-	if opts.LogWriter != nil {
-		lout = opts.LogWriter
-	}
-
-	var cfg *Config
-	if opts.ConfigFile != "" {
-		c, err := ReadConfigFile(opts.ConfigFile)
-		if err != nil {
-			return nil, err
-		}
-		cfg = c
-	}
-
-	ignore, err := compileIgnorePatterns(opts.IgnorePatterns)
-	if err != nil {
-		return nil, err
-	}
-
-	format := opts.Format
-	oneline := opts.Oneline
-	if opts.OutputFormat != "" && format != "" {
-		return nil, errors.New("OutputFormat cannot be combined with a custom Format template")
-	}
-	var formatter diagnosticFormatter
-	switch opts.OutputFormat {
-	case "", OutputFormatText:
-	case OutputFormatOneline:
-		oneline = true
-	case OutputFormatJSON, OutputFormatJSONL:
-		formatter = jsonDiagnosticFormatter{lines: opts.OutputFormat == OutputFormatJSONL}
-	case OutputFormatSARIF:
-		format = SARIFTemplate()
-	case OutputFormatGitHub:
-		formatter = githubDiagnosticFormatter{}
-	default:
-		return nil, fmt.Errorf("unknown output format %q", opts.OutputFormat)
-	}
-	if format != "" {
-		f, err := NewErrorFormatter(format)
-		if err != nil {
-			return nil, err
-		}
-		formatter = f
-	}
-
-	cwd := "."
-	if opts.WorkingDir != "" {
-		cwd = opts.WorkingDir
-	} else if d, err := os.Getwd(); err == nil {
-		cwd = d
-	}
-
-	stdin := "<stdin>"
-	if opts.StdinFileName != "" {
-		stdin = opts.StdinFileName
-	}
-
-	ctx := opts.Context
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
-	l := &Linter{
-		NewProjects(),
-		out,
-		lout,
-		level,
-		oneline,
-		opts.Shellcheck,
-		opts.Pyflakes,
-		ignore,
-		stdin,
-		cfg,
-		formatter,
-		cwd,
-		opts.OnRulesCreated,
-		opts.OnFilesSelected,
-		ctx,
-		&inputFiles{},
-	}
-
-	l.debug("Create a Linter instance with option %#v", opts)
-	return l, nil
-}
-
-func (l *Linter) log(args ...any) {
-	if l.logLevel < LogLevelVerbose {
-		return
-	}
-	_, _ = fmt.Fprint(l.logOut, "verbose: ")
-	_, _ = fmt.Fprintln(l.logOut, args...)
-}
-
-func (l *Linter) debug(format string, args ...any) {
-	if l.logLevel < LogLevelDebug {
-		return
-	}
-	format = "[Linter] " + format + "\n"
-	_, _ = fmt.Fprintf(l.logOut, format, args...)
-}
-
-func (l *Linter) debugWriter() io.Writer {
-	if l.logLevel < LogLevelDebug {
-		return nil
-	}
-	return l.logOut
+	return out
 }
 
 // GenerateDefaultConfig generates default config file at ".github/actionlint.yaml" in the project
@@ -299,313 +177,57 @@ func generateProjectConfig(projects *Projects, dir string) (string, error) {
 	return p, nil
 }
 
-// LintRepository lints YAML workflow files and outputs the errors to given writer. It finds the
-// nearest `.github/workflows` directory based on `dir` and applies lint rules to all YAML workflow
-// files under the directory. When the directory path is empty, the current working directory will
-// be used instead.
+// LintRepository finds workflows in the nearest project and prints their findings.
+// An empty directory starts discovery at LinterOptions.WorkingDir.
 func (l *Linter) LintRepository(dir string) ([]*Error, error) {
-	if dir == "" {
-		dir = l.cwd
-	}
-
-	l.log("Linting all workflow files in repository:", dir)
-
-	p, err := l.projects.At(dir)
-	if err != nil {
-		return nil, err
-	}
-	if p == nil {
-		return nil, fmt.Errorf("no project was found in any parent directories of %q. check workflows directory is put correctly in your Git repository", dir)
-	}
-
-	l.log("Detected project:", p.RootDir())
-	wd := p.WorkflowsDir()
-	return l.LintDir(wd, p)
+	return l.report(l.repository(dir))
 }
 
-// LintDir lints all YAML workflow files in the given directory recursively.
+// LintDir checks YAML workflows recursively in dir, in sorted path order.
 func (l *Linter) LintDir(dir string, project *Project) ([]*Error, error) {
-	files := []string{}
-	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-		if strings.HasSuffix(path, ".yml") || strings.HasSuffix(path, ".yaml") {
-			files = append(files, path)
-		}
-		return nil
-	}); err != nil {
-		return nil, fmt.Errorf("could not read files in %q: %w", dir, err)
-	}
-
-	// To make output deterministic, sort order of file paths
-	sort.Strings(files)
-	if len(files) == 0 {
-		l.filesSelected(files)
-		return nil, fmt.Errorf("no YAML file was found in %q", dir)
-	}
-	l.log("Collected", len(files), "YAML files")
-
-	return l.LintFiles(files, project)
+	return l.report(l.directory(dir, project))
 }
 
-func (l *Linter) filesSelected(filepaths []string) {
-	if l.onFilesSelected != nil {
-		l.onFilesSelected(slices.Clone(filepaths))
-	}
+// LintFiles checks paths in the supplied order. A nil project enables per-file discovery.
+func (l *Linter) LintFiles(paths []string, project *Project) ([]*Error, error) {
+	return l.report(l.files(paths, project))
 }
 
-// LintFiles lints YAML workflow files and outputs the errors to given writer. It applies lint
-// rules to all given files. The project parameter can be nil. In the case, a project is detected
-// from the file path.
-func (l *Linter) LintFiles(filepaths []string, project *Project) ([]*Error, error) {
-	l.filesSelected(filepaths)
-	n := len(filepaths)
-	switch n {
-	case 0:
-		return []*Error{}, nil
-	case 1:
-		return l.LintFile(filepaths[0], project)
-	}
-
-	l.log("Linting", n, "files")
-
-	cwd := l.cwd
-	cpus := runtime.NumCPU()
-	proc := newConcurrentProcess(l.ctx, cpus)
-	sema := semaphore.NewWeighted(int64(cpus))
-	dbg := l.debugWriter()
-	acf := NewLocalActionsCacheFactory(dbg)
-	rwcf := NewLocalReusableWorkflowCacheFactory(cwd, dbg)
-
-	type workspace struct {
-		path string
-		errs []*Error
-		src  []byte
-	}
-
-	ws := make([]workspace, 0, len(filepaths))
-	for _, p := range filepaths {
-		ws = append(ws, workspace{path: p})
-	}
-
-	eg := errgroup.Group{}
-	for i := range ws {
-		// Each element of ws is accessed by single goroutine so mutex is unnecessary
-		w := &ws[i]
-		proj := project
-		if proj == nil {
-			// This method modifies state of l.projects so it cannot be called in parallel.
-			// Before entering goroutine, resolve project instance.
-			p, err := l.projects.At(w.path)
-			if err != nil {
-				return nil, err
-			}
-			proj = p
-		}
-		ac := acf.GetCache(proj) // #173
-		rwc := rwcf.GetCache(proj)
-		if ac.onRead == nil {
-			ac.onRead = l.inputs.add
-		}
-		if rwc.onRead == nil {
-			rwc.onRead = l.inputs.add
-		}
-
-		eg.Go(func() error {
-			// Bound concurrency on reading files to avoid "too many files to open" error (issue #3)
-			if err := sema.Acquire(l.ctx, 1); err != nil {
-				return err
-			}
-			src, err := os.ReadFile(w.path)
-			sema.Release(1)
-			if err != nil {
-				return fmt.Errorf("could not read %q: %w", w.path, err)
-			}
-
-			if cwd != "" {
-				if r, err := filepath.Rel(cwd, w.path); err == nil {
-					w.path = r // Use relative path if possible
-				}
-			}
-			errs, err := l.check(w.path, src, proj, proc, ac, rwc)
-			if err != nil {
-				return fmt.Errorf("fatal error while checking %s: %w", w.path, err)
-			}
-			w.src = src
-			w.errs = errs
-			return nil
-		})
-	}
-
-	if err := eg.Wait(); err != nil {
-		return nil, err
-	}
-
-	// Ensure that all processes finish. `proc.wait()` must be called after `eg.Wait()`.
-	// Calling `WaitGroup.Add` after `WaitGroup.Wait` can cause a race condition (specifically when
-	// increasing the group count from 0 to 1 and calling `Wait` and at the same time).
-	// `WaitGroup.Add` is called in `proc.run()` and `WaitGroup.Wait` is called in `proc.wait()`.
-	// After traversing all workflows, `proc.run()` is no longer called so `proc.wait()` can be
-	// called safely.
-	proc.wait()
-
-	total := 0
-	for i := range ws {
-		total += len(ws[i].errs)
-	}
-
-	all := make([]*Error, 0, total)
-	if native, ok := l.errFmt.(jsonDiagnosticFormatter); ok {
-		diagnostics := []Diagnostic{}
-		for _, w := range ws {
-			for _, e := range w.errs {
-				diagnostics = append(diagnostics, e.diagnostic(w.src))
-			}
-			all = append(all, w.errs...)
-		}
-		if err := writeDiagnostics(l.out, diagnostics, native.lines); err != nil {
-			return nil, err
-		}
-	} else if l.errFmt != nil {
-		temp := make([]*ErrorTemplateFields, 0, total)
-		for i := range ws {
-			w := &ws[i]
-			for _, err := range w.errs {
-				temp = append(temp, err.GetTemplateFields(w.src))
-			}
-			all = append(all, w.errs...)
-		}
-		if err := l.errFmt.Print(l.out, temp); err != nil {
-			return nil, err
-		}
-	} else {
-		for i := range ws {
-			w := &ws[i]
-			l.printErrors(w.errs, w.src)
-			all = append(all, w.errs...)
-		}
-	}
-
-	l.log("Found", total, "errors in", n, "files")
-
-	return all, nil
-}
-
-// LintFile lints one YAML workflow file and outputs the errors to given writer. The project
-// parameter can be nil. In the case, the project is detected from the given path.
+// LintFile reads and checks one workflow. A nil project enables discovery from path.
 func (l *Linter) LintFile(path string, project *Project) ([]*Error, error) {
-	if project == nil {
-		p, err := l.projects.At(path)
-		if err != nil {
-			return nil, err
-		}
-		project = p
-	}
-
-	src, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("could not read %q: %w", path, err)
-	}
-
-	if l.cwd != "" {
-		if r, err := filepath.Rel(l.cwd, path); err == nil {
-			path = r
-		}
-	}
-
-	proc := newConcurrentProcess(l.ctx, runtime.NumCPU())
-	dbg := l.debugWriter()
-	localActions := NewLocalActionsCache(project, dbg)
-	localReusableWorkflows := NewLocalReusableWorkflowCache(project, l.cwd, dbg)
-	localActions.onRead, localReusableWorkflows.onRead = l.inputs.add, l.inputs.add
-	errs, err := l.check(path, src, project, proc, localActions, localReusableWorkflows)
-	proc.wait()
-	if err != nil {
-		return nil, err
-	}
-
-	if l.errFmt != nil {
-		if err := l.errFmt.PrintErrors(l.out, errs, src); err != nil {
-			return nil, err
-		}
-	} else {
-		l.printErrors(errs, src)
-	}
-	return errs, err
+	return l.report(l.readFiles([]string{path}, project))
 }
 
-// LintStdin lints the content read from STDIN. The stdin parameter is a reader to read from STDIN,
-// which is usually os.Stdin. The file name is determined by LinterOptions.StdinFileName. When the
-// option is empty, "<stdin>" is the default value.
+// LintStdin checks the reader using LinterOptions.StdinFileName, or <stdin> by default.
 func (l *Linter) LintStdin(stdin io.Reader) ([]*Error, error) {
-	l.log("Reading the input from stdin")
-	b, err := io.ReadAll(stdin)
-	if err != nil {
-		return nil, fmt.Errorf("could not read stdin: %w", err)
-	}
-	return l.Lint(l.stdin, b, nil)
+	return l.report(l.readStdin(stdin, false))
 }
 
-// Lint lints YAML workflow file content given as byte slice. The path parameter is used as file
-// path where the content came from.
-// When nil is passed to the project parameter, it tries to find the project from the path parameter.
+// Lint checks content without reading path. An existing path can identify its project.
 func (l *Linter) Lint(path string, content []byte, project *Project) ([]*Error, error) {
-	if project == nil && path != "<stdin>" {
-		if _, err := os.Stat(path); !errors.Is(err, fs.ErrNotExist) {
-			p, err := l.projects.At(path)
-			if err != nil {
-				return nil, err
-			}
-			project = p
-		}
-	}
-	proc := newConcurrentProcess(l.ctx, runtime.NumCPU())
-	dbg := l.debugWriter()
-	localActions := NewLocalActionsCache(project, dbg)
-	localReusableWorkflows := NewLocalReusableWorkflowCache(project, l.cwd, dbg)
-	localActions.onRead, localReusableWorkflows.onRead = l.inputs.add, l.inputs.add
-	errs, err := l.check(path, content, project, proc, localActions, localReusableWorkflows)
-	proc.wait()
+	return l.report(l.content(path, content, project, false))
+}
+
+func (l *Linter) report(result *AnalysisResult, err error) ([]*Error, error) {
 	if err != nil {
-		return nil, err
+		return nil, legacyAnalysisError(err)
 	}
-	if l.errFmt != nil {
-		if err := l.errFmt.PrintErrors(l.out, errs, content); err != nil {
+	// LintFiles with no paths has always returned an empty slice without output.
+	if len(result.files) != 0 {
+		if err := l.renderer.render(l.out, result); err != nil {
 			return nil, err
 		}
-	} else {
-		l.printErrors(errs, content)
 	}
-	return errs, nil
+	l.completed(result)
+	return result.legacyErrors(), nil
 }
 
-func (l *Linter) check(path string, content []byte, project *Project, proc *concurrentProcess, actions *LocalActionsCache, workflows *LocalReusableWorkflowCache) ([]*Error, error) {
-	l.inputs.add(path)
-	cfg := l.defaultConfig
-	if cfg == nil && project != nil {
-		cfg = project.Config()
-	}
-	engine := &analysisEngine{ctx: l.ctx, shellcheck: l.shellcheck, pyflakes: l.pyflakes,
-		ignorePats: l.ignorePats, onRulesCreated: l.onRulesCreated, logOut: l.logOut, logLevel: l.logLevel}
-	var rules []Rule
-	errs, err := engine.check(path, content, project, cfg, proc, actions, workflows, &rules)
-	if formatter, ok := l.errFmt.(*ErrorFormatter); ok {
-		for _, rule := range rules {
-			formatter.RegisterRule(rule)
+func legacyAnalysisError(err error) error {
+	if source, ok := errors.AsType[*sourceAnalysisError](err); ok {
+		if source.batch {
+			return fmt.Errorf("fatal error while checking %s: %w", source.path, source.err)
 		}
+		return source.err
 	}
-	return errs, err
-}
-
-func (l *Linter) printErrors(errs []*Error, src []byte) {
-	if l.oneline {
-		src = nil
-	}
-	for _, err := range errs {
-		err.PrettyPrint(l.out, src)
-	}
+	return err
 }

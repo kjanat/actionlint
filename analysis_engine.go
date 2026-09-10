@@ -3,41 +3,16 @@ package actionlint
 import (
 	"context"
 	"fmt"
-	"io"
 	"slices"
 	"time"
 )
 
 type analysisEngine struct {
+	analysisLogger
 	ctx                  context.Context
 	shellcheck, pyflakes string
 	ignorePats           IgnorePatterns
 	onRulesCreated       func([]Rule) []Rule
-	logOut               io.Writer
-	logLevel             LogLevel
-}
-
-func (l *analysisEngine) log(args ...any) {
-	if l.logLevel < LogLevelVerbose {
-		return
-	}
-	_, _ = fmt.Fprint(l.logOut, "verbose: ")
-	_, _ = fmt.Fprintln(l.logOut, args...)
-}
-
-func (l *analysisEngine) debug(format string, args ...any) {
-	if l.logLevel < LogLevelDebug {
-		return
-	}
-	format = "[Linter] " + format + "\n"
-	_, _ = fmt.Fprintf(l.logOut, format, args...)
-}
-
-func (l *analysisEngine) debugWriter() io.Writer {
-	if l.logLevel < LogLevelDebug {
-		return nil
-	}
-	return l.logOut
 }
 
 func (l *analysisEngine) check(

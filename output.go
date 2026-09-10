@@ -2,7 +2,6 @@ package actionlint
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -94,13 +93,6 @@ func writeDiagnostics(out io.Writer, diagnostics []Diagnostic, lines bool) error
 
 type diagnosticFormatter interface {
 	Print(io.Writer, []*ErrorTemplateFields) error
-	PrintErrors(io.Writer, []*Error, []byte) error
-}
-
-type jsonDiagnosticFormatter struct{ lines bool }
-
-func (f jsonDiagnosticFormatter) Print(out io.Writer, fields []*ErrorTemplateFields) error {
-	return errors.New("native JSON requires analysis diagnostics, not template fields")
 }
 
 type githubDiagnosticFormatter struct{}
@@ -114,20 +106,4 @@ func (githubDiagnosticFormatter) Print(out io.Writer, fields []*ErrorTemplateFie
 		}
 	}
 	return nil
-}
-
-func (f githubDiagnosticFormatter) PrintErrors(out io.Writer, errs []*Error, src []byte) error {
-	fields := make([]*ErrorTemplateFields, 0, len(errs))
-	for _, err := range errs {
-		fields = append(fields, err.GetTemplateFields(src))
-	}
-	return f.Print(out, fields)
-}
-
-func (f jsonDiagnosticFormatter) PrintErrors(out io.Writer, errs []*Error, src []byte) error {
-	diagnostics := make([]Diagnostic, 0, len(errs))
-	for _, err := range errs {
-		diagnostics = append(diagnostics, err.diagnostic(src))
-	}
-	return writeDiagnostics(out, diagnostics, f.lines)
 }

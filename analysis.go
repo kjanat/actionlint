@@ -19,6 +19,8 @@ type SourceUnit struct {
 	Content []byte
 	Config  *Config
 	Project *Project
+	// inputPath retains the opened path when Path is made relative for diagnostics.
+	inputPath string
 }
 
 // AnalysisRequest contains resolved sources and analysis settings, not CLI flags or renderers.
@@ -28,6 +30,8 @@ type AnalysisRequest struct {
 	Pyflakes       string
 	IgnorePatterns IgnorePatterns
 	OnRulesCreated func([]Rule) []Rule
+	// WorkingDir resolves workflow paths in reusable-workflow caches. Empty uses os.Getwd.
+	WorkingDir string
 }
 
 // AnalysisResult contains findings, their sources, and every local input read during analysis.
@@ -77,14 +81,21 @@ func Analyze(ctx context.Context, request AnalysisRequest) (*AnalysisResult, err
 }
 
 func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level LogLevel) (*AnalysisResult, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	engine := &analysisEngine{ctx: ctx, shellcheck: request.ShellCheck, pyflakes: request.Pyflakes,
-		ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, logOut: log, logLevel: level}
+		ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: analysisLogger{log, level}}
 	inputs := &inputFiles{}
 	proc := newConcurrentProcess(ctx, runtime.NumCPU())
 	actions := NewLocalActionsCacheFactory(engine.debugWriter())
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
+	cwd := request.WorkingDir
+	if cwd == "" {
+		var err error
+		cwd, err = os.Getwd()
+		if err != nil {
+			return nil, err
+		}
 	}
 	workflows := NewLocalReusableWorkflowCacheFactory(cwd, engine.debugWriter())
 	result := &AnalysisResult{Diagnostics: []Diagnostic{}, files: make([]analyzedFile, len(request.Sources))}
@@ -96,17 +107,24 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	group := errgroup.Group{}
 	group.SetLimit(runtime.NumCPU())
 	for i, source := range request.Sources {
-		inputs.add(source.Path)
+		path := source.inputPath
+		if path == "" {
+			path = source.Path
+		}
+		inputs.add(path)
 		ac, wc := actions.GetCache(source.Project), workflows.GetCache(source.Project)
 		group.Go(func() error {
 			file := &result.files[i]
 			file.source = source
 			var err error
 			file.errors, err = engine.check(source.Path, source.Content, source.Project, source.Config, proc, ac, wc, &file.rules)
+			if err != nil {
+				return &sourceAnalysisError{path: source.Path, err: err, batch: len(request.Sources) > 1}
+			}
 			return err
 		})
 	}
-	err = group.Wait()
+	err := group.Wait()
 	proc.wait()
 	if err != nil {
 		return nil, err
@@ -121,6 +139,26 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	}
 	result.Inputs = inputs.list()
 	return result, nil
+}
+
+type sourceAnalysisError struct {
+	batch bool
+	path  string
+	err   error
+}
+
+func (e *sourceAnalysisError) Error() string { return e.err.Error() }
+func (e *sourceAnalysisError) Unwrap() error { return e.err }
+
+func (r *AnalysisResult) legacyErrors() []*Error {
+	if len(r.files) == 1 {
+		return r.files[0].errors
+	}
+	errors := make([]*Error, 0, len(r.Diagnostics))
+	for _, file := range r.files {
+		errors = append(errors, file.errors...)
+	}
+	return errors
 }
 
 func compileIgnorePatterns(patterns []string) (IgnorePatterns, error) {

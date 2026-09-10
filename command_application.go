@@ -7,6 +7,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/fatih/color"
+	"github.com/mattn/go-colorable"
 )
 
 func (a *commandApp) prepareInvocation() error {
@@ -158,35 +161,6 @@ func executeCheck(ctx context.Context, streams Command, inv invocation) (status 
 	if inv.JSON {
 		log = &commandJSONLogWriter{out: log}
 	}
-	if !inv.Legacy {
-		result, inputs, e := analyzeCommand(ctx, streams.Stdin, c, log, r.Quiet)
-		if e != nil {
-			return 0, e
-		}
-		inputs = append(inputs, c.Config.Path, r.TemplateFile, c.StdinFilename)
-		if r.OutputFile != "" && r.OutputFile != "-" {
-			for _, path := range inputs {
-				if path != "" && sameCommandFile(path, r.OutputFile) {
-					return 0, fmt.Errorf("output file %q is also an input", r.OutputFile)
-				}
-			}
-		}
-		if e := renderAnalysis(out, result, r); e != nil {
-			return 0, e
-		}
-		if len(result.Diagnostics) > 0 {
-			status = ExitStatusSuccessProblemFound
-		}
-		if r.Summary && !r.Quiet {
-			summary := CheckSummary{Files: len(result.files), Findings: len(result.Diagnostics)}
-			if inv.JSON {
-				err = writeCommandJSON(streams.Stderr, map[string]CheckSummary{"summary": summary})
-			} else {
-				_, err = fmt.Fprintf(streams.Stderr, "Checked %d workflows; %d findings.\n", summary.Files, summary.Findings)
-			}
-		}
-		return status, err
-	}
 	options := LinterOptions{
 		Context: ctx, LogWriter: log, Color: r.Color, Oneline: r.Oneline,
 		Shellcheck: c.ShellCheck, Pyflakes: c.Pyflakes, ConfigFile: c.Config.Path,
@@ -194,66 +168,82 @@ func executeCheck(ctx context.Context, streams Command, inv invocation) (status 
 		Format: r.Template, OutputFormat: r.Format,
 		Verbose: c.Verbose && !r.Quiet, Debug: c.Debug && !r.Quiet,
 	}
-	selected := 0
-	var inputPaths []string
-	options.OnFilesSelected = func(paths []string) { selected = len(paths); inputPaths = paths }
-	l, err := NewLinter(out, &options)
-	if err != nil {
-		return 0, err
-	}
-	var writes *commandResultWriter
-	if !inv.Legacy || r.OutputFile != "" {
-		writes = &commandResultWriter{Writer: l.out}
-		l.out = writes
-	}
-	if c.Config.Disabled || (!inv.Legacy && c.Config.Path != "") {
-		l.projects.skipConfig = true
-	}
-
-	var findings []*Error
-	switch {
-	case len(c.Paths) == 0:
-		findings, err = l.LintRepository("")
-	case len(c.Paths) == 1 && c.Paths[0] == "-":
-		selected = 1
-		findings, err = l.LintStdin(streams.Stdin)
-	default:
-		findings, err = l.LintFiles(c.Paths, nil)
-	}
-	if err != nil {
-		return 0, err
-	}
-	if writes != nil && writes.err != nil {
-		return 0, writes.err
-	}
-	if err := ctx.Err(); err != nil {
-		return 0, err
-	}
-	if r.OutputFile != "" && r.OutputFile != "-" {
-		inputPaths = append(inputPaths, l.inputs.list()...)
-		inputPaths = append(inputPaths, c.StdinFilename, c.Config.Path, r.TemplateFile)
-		for _, project := range l.projects.known {
-			if project.Config() != nil {
-				for _, name := range []string{"actionlint.yaml", "actionlint.yml"} {
-					inputPaths = append(inputPaths, filepath.Join(project.RootDir(), ".github", name))
-				}
-			}
+	if inv.Legacy {
+		out = legacyColorOutput(out, r.Color)
+	} else {
+		options.WorkingDir, err = os.Getwd()
+		if err != nil {
+			return 0, err
 		}
-		for _, path := range inputPaths {
+	}
+	app, err := newAnalysisApplication(&options)
+	if err != nil {
+		return 0, err
+	}
+	app.logSelection = inv.Legacy
+	app.projects.skipConfig = c.Config.Disabled || (!inv.Legacy && c.Config.Path != "")
+	var renderer *analysisRenderer
+	if inv.Legacy {
+		// Root invocations validate templates before reading any workflow input.
+		renderer, err = newAnalysisRenderer(r.Format, r.Template, r.Oneline)
+		if err != nil {
+			return 0, err
+		}
+		app.debug("Create a Linter instance with option %#v", &options)
+	}
+	result, err := analyzeCommand(app, streams.Stdin, c.Paths, !inv.Legacy)
+	if err != nil {
+		if inv.Legacy {
+			err = legacyAnalysisError(err)
+		}
+		return 0, err
+	}
+	inputs := append([]string{c.Config.Path, r.TemplateFile, c.StdinFilename}, result.Inputs...)
+	if r.OutputFile != "" && r.OutputFile != "-" {
+		for _, path := range inputs {
 			if path != "" && sameCommandFile(path, r.OutputFile) {
 				return 0, fmt.Errorf("output file %q is also an input", r.OutputFile)
 			}
 		}
 	}
-	if len(findings) > 0 {
+	if !inv.Legacy {
+		renderer, err = newAnalysisRenderer(r.Format, r.Template, r.Oneline)
+		if err != nil {
+			return 0, err
+		}
+		previous := color.NoColor
+		defer func() { color.NoColor = previous }()
+		switch r.Color {
+		case ColorOptionKindNever:
+			color.NoColor = true
+		case ColorOptionKindAlways:
+			color.NoColor = false
+		}
+		if file, ok := out.(*os.File); ok && !color.NoColor {
+			out = colorable.NewColorable(file)
+		}
+	}
+	var writes *commandResultWriter
+	if !inv.Legacy || r.OutputFile != "" {
+		writes = &commandResultWriter{Writer: out}
+		out = writes
+	}
+	if err := renderer.render(out, result); err != nil {
+		return 0, err
+	}
+	if writes != nil && writes.err != nil {
+		return 0, writes.err
+	}
+	app.completed(result)
+	if len(result.Diagnostics) > 0 {
 		status = ExitStatusSuccessProblemFound
 	}
 	if r.Summary && !r.Quiet {
-		summary := CheckSummary{Files: selected, Findings: len(findings)}
+		summary := CheckSummary{Files: len(result.files), Findings: len(result.Diagnostics)}
 		if inv.JSON {
 			err = writeCommandJSON(streams.Stderr, map[string]CheckSummary{"summary": summary})
 		} else {
-			_, err = fmt.Fprintf(streams.Stderr, "Checked %d workflows; %d findings.\n", selected, len(findings))
+			_, err = fmt.Fprintf(streams.Stderr, "Checked %d workflows; %d findings.\n", summary.Files, summary.Findings)
 		}
 	}
 	return status, err
