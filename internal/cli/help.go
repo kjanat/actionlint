@@ -52,7 +52,7 @@ func (a *commandApp) helpColor(c *cobra.Command, terminal bool) bool {
 			force = false
 		}
 	}
-	return force || (terminal && os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "dumb")
+	return force || githubActionsColor(a.streams.Stderr) || (terminal && os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "dumb")
 }
 
 func helpStyle(enabled bool, attributes ...color.Attribute) *color.Color {

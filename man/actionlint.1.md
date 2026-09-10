@@ -118,7 +118,10 @@ preserves a previous report. The output cannot also be a selected input.
 : On **check**, select `auto`, `always`, or `never`; a bare flag means `always`.
 On the root, retain the boolean syntax: `-color=false` does not force color on.
 Help uses the same controls: automatic styling follows stderr's terminal status,
-**NO_COLOR**, and **TERM=dumb**. Put root color flags before **--help**.
+**NO_COLOR**, and **TERM=dumb**. With **GITHUB_ACTIONS=true**, help and text
+diagnostics also use color in workflow logs without a terminal, even with
+**TERM=dumb**. Regular files and **--output-file** reports stay plain in auto mode;
+custom templates receive no added color. Put root color flags before **--help**.
 Structured output contains no terminal color codes.
 
 **--no-color**
@@ -390,6 +393,10 @@ upgrading actionlint so they reflect the installed CLI. See the usage document f
 **NO_COLOR**
 : A nonempty value disables automatic color. **--color** can force color; **--no-color** always
 disables it.
+
+**GITHUB_ACTIONS**
+: The value `true` enables automatic color for help and text diagnostics in workflow
+logs. **NO_COLOR** and explicit color controls still apply. This does not enable hyperlinks.
 
 **NO_HYPERLINKS**, **FORCE_HYPERLINKS**
 : In `auto` mode, a nonempty **NO_HYPERLINKS** disables help links. Otherwise,

@@ -14,6 +14,7 @@ import (
 )
 
 func TestHelpColorFlags(t *testing.T) {
+	t.Setenv("GITHUB_ACTIONS", "")
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("TERM", "xterm-256color")
 	ansi := regexp.MustCompile(`\x1b\[[0-9;]*m`)

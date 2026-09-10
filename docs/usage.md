@@ -74,8 +74,12 @@ The root's `-color=false` means not forcing color on. If both `-color` and
 accepts `check --color=auto|always|never`; bare `--color` means `always`.
 
 Human-readable help styles headings, command names and flags when stderr is a
-terminal. Redirected help stays plain in auto mode. `NO_COLOR` or `TERM=dumb`
-disables automatic styling; an explicit color request overrides those settings.
+terminal. With `GITHUB_ACTIONS=true`, help and text diagnostics also use color in
+workflow logs without a terminal, including when `TERM=dumb`. Redirects to regular
+files and `--output-file` reports stay plain in auto mode. Structured output and
+custom templates receive no added color. A non-empty `NO_COLOR` disables automatic
+color; `TERM=dumb` disables automatic help styling outside GitHub Actions.
+An explicit color request overrides those environment settings.
 `--no-color` and `check --color=never` disable styling. Root color flags belong
 before `--help`, since root help exits immediately. JSON help is always uncolored.
 

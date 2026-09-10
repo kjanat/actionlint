@@ -16,10 +16,11 @@ import (
 )
 
 var (
-	bold   = color.New(color.Bold)
-	green  = color.New(color.FgGreen)
-	yellow = color.New(color.FgYellow)
-	gray   = color.New(color.FgHiBlack)
+	// Follow color.NoColor so command-line overrides also apply after initialization.
+	bold   = new(color.Color).Add(color.Bold)
+	green  = new(color.Color).Add(color.FgGreen)
+	yellow = new(color.Color).Add(color.FgYellow)
+	gray   = new(color.Color).Add(color.FgHiBlack)
 )
 
 // Error represents an error detected by actionlint rules

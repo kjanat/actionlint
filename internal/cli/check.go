@@ -48,6 +48,7 @@ func executeCheck(ctx context.Context, streams Command, inv invocation) (status 
 			r.Color = actionlint.ColorOptionKindNever
 		}
 	}
+	r.resolveGitHubActionsColor(out)
 	log := streams.Stderr
 	if inv.JSON {
 		log = &commandJSONLogWriter{out: log}
