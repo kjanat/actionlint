@@ -79,6 +79,25 @@ disables automatic styling; an explicit color request overrides those settings.
 `--no-color` and `check --color=never` disable styling. Root color flags belong
 before `--help`, since root help exits immediately. JSON help is always uncolored.
 
+Help can make the project name and documentation URLs clickable using OSC 8
+terminal hyperlinks. Select `--hyperlinks=auto|always|never` independently of
+color. The default `auto` follows the [no-hyperlinks convention](https://no-hyperlinks.org/spec):
+non-empty `NO_HYPERLINKS` disables links, then non-empty `FORCE_HYPERLINKS`
+enables them, then stderr's TTY status and known terminal capabilities decide.
+Even `0` is a non-empty value. Explicit `always` or `never` overrides both variables.
+Unknown terminals and multiplexers use plain URLs in auto mode; `always` can
+enable links when the terminal and multiplexer are configured to pass them through.
+Both modes keep destination URLs visible. JSON, diagnostics, templates, version
+output and generated completion scripts remain free of added hyperlink sequences.
+
+```sh
+actionlint --hyperlinks=always --help
+actionlint check --hyperlinks=never --help
+```
+
+Put root hyperlink flags before `--help`, just like color flags. The same modes
+are available in subcommand help and generated shell completions.
+
 When running through npm, these forms pass the help flag to actionlint:
 
 ```sh

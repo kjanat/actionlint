@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev"
 	"github.com/fatih/color"
 	"github.com/mattn/go-colorable"
-	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -21,15 +20,20 @@ var releaseVersionPattern = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 
 var helpFlagPattern = regexp.MustCompile(`(?m)(^|[ \t])--?[a-zA-Z][a-zA-Z0-9-]*`)
 
-func (a *commandApp) helpOutput(c *cobra.Command) (io.Writer, bool) {
+func (a *commandApp) helpOutput(c *cobra.Command) (io.Writer, bool, func()) {
 	out := a.streams.Stderr
-	file, ok := out.(*os.File)
-	terminal := ok && (isatty.IsTerminal(file.Fd()) || isatty.IsCygwinTerminal(file.Fd()))
+	file, terminal := terminalFile(out)
 	enabled := a.helpColor(c, terminal)
-	if terminal && enabled {
+	links := a.helpHyperlinks()
+	restore := func() {}
+	if terminal && (enabled || links) {
+		restore = enableHelpVT(file)
+	}
+	// The Windows color fallback does not pass OSC 8 through.
+	if terminal && enabled && !links {
 		out = colorable.NewColorable(file)
 	}
-	return out, enabled
+	return out, enabled, restore
 }
 
 func (a *commandApp) helpColor(c *cobra.Command, terminal bool) bool {
@@ -78,11 +82,14 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 		}
 		return
 	}
-	out, colored := a.helpOutput(c)
+	out, colored, restore := a.helpOutput(c)
+	defer restore()
+	links := a.helpHyperlinks()
 	heading := helpStyle(colored, color.Bold, color.FgCyan)
 	command := helpStyle(colored, color.Bold)
 	option := helpStyle(colored, color.FgCyan)
-	_, _ = fmt.Fprintf(out, "%s\n\n%s\n  %s\n", command.Sprint(c.Short), heading.Sprint("Usage:"), command.Sprint(c.UseLine()))
+	usage := strings.Replace(c.UseLine(), "actionlint", helpLink(links, "actionlint", projectURL), 1)
+	_, _ = fmt.Fprintf(out, "%s\n\n%s\n  %s\n", command.Sprint(c.Short), heading.Sprint("Usage:"), command.Sprint(usage))
 	if c.Long != "" {
 		_, _ = fmt.Fprintf(out, "\n%s\n", c.Long)
 	}
@@ -111,16 +118,14 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 			_, _ = fmt.Fprintf(out, "\n%s\n%s", heading.Sprint(group+":"), styleHelpFlags(usage, option))
 		}
 	}
-	ref := "HEAD"
-	if v := actionlint.Version(); releaseVersionPattern.MatchString(v) {
-		ref = "v" + v
-	}
-	_, _ = fmt.Fprintf(out, "\n%s\n  Root options precede filenames. check accepts options after filenames.\n  Existing -flag and --flag spellings remain supported; see --help-legacy.\n  Use -- to force filenames, including names that match commands.\n\n%s\n  0  No findings   1  Findings   2  Invalid arguments   3  Could not complete\n\n%s\n  https://github.com/kjanat/actionlint/tree/%s/docs/usage.md\n", heading.Sprint("Compatibility:"), heading.Sprint("Exit status:"), heading.Sprint("Documentation:"), ref)
+	_, _ = fmt.Fprintf(out, "\n%s\n  Root options precede filenames. check accepts options after filenames.\n  Existing -flag and --flag spellings remain supported; see --help-legacy.\n  Use -- to force filenames, including names that match commands.\n\n%s\n  0  No findings   1  Findings   2  Invalid arguments   3  Could not complete\n", heading.Sprint("Compatibility:"), heading.Sprint("Exit status:"))
+	writeHelpDestinations(out, heading, links)
 }
 
 func (a *commandApp) legacyHelp(c *cobra.Command) {
 	a.helpShown = true
-	out, colored := a.helpOutput(c)
+	out, colored, restore := a.helpOutput(c)
+	defer restore()
 	heading := helpStyle(colored, color.Bold, color.FgCyan)
 	option := helpStyle(colored, color.FgCyan)
 	_, _ = fmt.Fprintln(out, heading.Sprint("Legacy root interface (both -name and --name remain supported):"))
@@ -142,6 +147,16 @@ Root parsing stops at the first filename. -- ends option parsing.
 Existing files named check, config, rules, doctor, completion or version win
 over commands. Use --command NAME to select a command despite such a file.
 Legacy options are supported without deprecation warnings.`, option))
+	writeHelpDestinations(out, heading, a.helpHyperlinks())
+}
+
+func writeHelpDestinations(out io.Writer, heading *color.Color, links bool) {
+	ref := "HEAD"
+	if v := actionlint.Version(); releaseVersionPattern.MatchString(v) {
+		ref = "v" + v
+	}
+	documentation := projectURL + "/tree/" + ref + "/docs/usage.md"
+	_, _ = fmt.Fprintf(out, "\n%s\n  %s\n\n%s\n  %s\n", heading.Sprint("Project:"), helpLink(links, projectURL, projectURL), heading.Sprint("Documentation:"), helpLink(links, documentation, documentation))
 }
 
 type commandFlagDescription struct {

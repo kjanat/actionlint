@@ -77,7 +77,7 @@ func newCommandApp(streams *Command) *commandApp {
 		Long: "Select one explicit configuration file or the repository's .github/actionlint.yaml or .yml.\nNo global configuration, merging or environment overrides are applied.",
 	}
 	a.configFlags(config.PersistentFlags())
-	a.commonFlags(config.PersistentFlags())
+	a.commonFlags(config, config.PersistentFlags())
 	for _, item := range []struct{ name, description string }{
 		{"init", "Create the repository config with its editor schema directive"},
 		{"path", "Print the selected configuration path"},
@@ -103,9 +103,9 @@ func newCommandApp(streams *Command) *commandApp {
 			return names, cobra.ShellCompDirectiveNoFileComp
 		},
 	}
-	a.commonFlags(rules.Flags())
+	a.commonFlags(rules, rules.Flags())
 	doctor := &cobra.Command{Use: "doctor", Short: "Inspect configuration and external tool availability", Args: cobra.NoArgs, RunE: a.capture("doctor")}
-	a.commonFlags(doctor.Flags())
+	a.commonFlags(doctor, doctor.Flags())
 	a.configFlags(doctor.Flags())
 	a.toolFlags(doctor.Flags())
 	completion := &cobra.Command{
@@ -114,7 +114,8 @@ func newCommandApp(streams *Command) *commandApp {
 		ValidArgsFunction: cobra.FixedCompletions(append(completionShellNameList(), "pwsh", "auto"), cobra.ShellCompDirectiveNoFileComp),
 	}
 	version := &cobra.Command{Use: "version", Short: "Show version and build information", Args: cobra.NoArgs, RunE: a.capture("version")}
-	a.commonFlags(version.Flags())
+	a.commonFlags(version, version.Flags())
+	a.hyperlinkFlag(completion, completion.Flags())
 	a.root.AddCommand(check, config, rules, doctor, completion, version)
 	return a
 }
@@ -123,11 +124,22 @@ func annotateFlag(f *pflag.FlagSet, name, group string) {
 	f.Lookup(name).Annotations = map[string][]string{commandGroupAnnotation: {group}}
 }
 
-func (a *commandApp) commonFlags(f *pflag.FlagSet) {
+func (a *commandApp) commonFlags(c *cobra.Command, f *pflag.FlagSet) {
 	f.BoolVar(&a.inv.JSON, "json", false, "Write JSON results or metadata")
 	f.BoolVarP(&a.inv.Render.Quiet, "quiet", "q", false, "Suppress progress and summaries; keep findings and errors")
 	annotateFlag(f, "json", "Output")
 	annotateFlag(f, "quiet", "Output")
+	a.hyperlinkFlag(c, f)
+}
+
+func (a *commandApp) hyperlinkFlag(c *cobra.Command, f *pflag.FlagSet) {
+	f.Var(&a.inv.Render.Hyperlinks, "hyperlinks", "Hyperlinks in help: auto, always or never")
+	annotateFlag(f, "hyperlinks", "Output")
+	choices := []string{"auto", "always", "never"}
+	f.Lookup("hyperlinks").Annotations[commandChoicesAnnotation] = choices
+	if err := c.RegisterFlagCompletionFunc("hyperlinks", cobra.FixedCompletions(choices, cobra.ShellCompDirectiveNoFileComp)); err != nil {
+		panic(err)
+	}
 }
 
 func (a *commandApp) configFlags(f *pflag.FlagSet) {
@@ -149,7 +161,7 @@ func (a *commandApp) toolFlags(f *pflag.FlagSet) {
 
 func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	f := c.Flags()
-	a.commonFlags(f)
+	a.commonFlags(c, f)
 	a.configFlags(f)
 	a.toolFlags(f)
 	f.StringVar(&a.inv.Check.StdinFilename, "stdin-filename", "<stdin>", "Use this filename for stdin diagnostics and project detection")

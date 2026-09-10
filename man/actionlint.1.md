@@ -125,6 +125,18 @@ Structured output contains no terminal color codes.
 : Disable color. This supported legacy option wins over the root's **--color**
 boolean regardless of argument order.
 
+**--hyperlinks** *MODE*
+: Select `auto` (default), `always`, or `never` for OSC 8 links in help.
+`always` and `never` override the environment. In `auto`, non-empty
+**NO_HYPERLINKS** disables links before non-empty **FORCE_HYPERLINKS** enables
+them; otherwise stderr must be a TTY with a known capable terminal.
+Unknown terminals and multiplexers default to plain URLs. Explicit `always`
+can enable links through a multiplexer configured to pass them through.
+Color controls are independent. Destination URLs stay visible when links are
+disabled. JSON, diagnostics, templates, version output and generated completion
+scripts receive no added hyperlink sequences. Put root flags before **--help**.
+See https://no-hyperlinks.org/spec for the convention.
+
 **--config**, **--config-file** *PATH*
 : Select the configuration file. This takes precedence over repository discovery. **--config-file**
 is the supported legacy name. Also available on **config** and **doctor**.
@@ -378,6 +390,12 @@ upgrading actionlint so they reflect the installed CLI. See the usage document f
 **NO_COLOR**
 : A nonempty value disables automatic color. **--color** can force color; **--no-color** always
 disables it.
+
+**NO_HYPERLINKS**, **FORCE_HYPERLINKS**
+: In `auto` mode, a nonempty **NO_HYPERLINKS** disables help links. Otherwise,
+a nonempty **FORCE_HYPERLINKS** enables them even in redirected output.
+An empty value has no effect; `0` counts as nonempty. Explicit hyperlink modes
+override both variables. These controls are independent of color.
 
 **SHELL**, **PSModulePath**
 : Used by **--completion auto**. A supported shell named by `SHELL` takes precedence over the

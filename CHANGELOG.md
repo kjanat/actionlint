@@ -2,6 +2,7 @@
 
 # Unreleased
 
+- Add OSC 8 links to the project name and URLs in CLI help. `--hyperlinks=auto|always|never` follows the [no-hyperlinks convention](https://no-hyperlinks.org/spec), including `NO_HYPERLINKS` and `FORCE_HYPERLINKS`. Keep destination URLs visible and leave diagnostics and machine-readable output unchanged. (kjanat/actionlint#65)
 - Rebuild the CLI with a typed invocation model, a preserved Go flag parser for root calls, and Cobra commands for `check`, config inspection, rules, doctor, completion and version. Add JSON/JSONL/SARIF/GitHub output, template and output files, opt-in summaries, configuration origins and generated four-shell completion. Style terminal help while respecting color controls, add `-V` as a version alias, align doctor output, and keep concurrent verbose/debug log records intact. Preserve legacy options, templates, default diagnostics, version output, streams and exit codes. Test both grammars, command/file collisions and output side effects. Use the same input resolution, analysis results and renderers for commands and legacy `Lint*` methods. Preserve callbacks, working-directory handling and legacy write-error behavior. Protect all consumed local inputs from report replacement and retain configuration provenance through YAML merges. Move the frontend into `internal/cli` so library and Wasm builds do not import Cobra or pflag; Go callers can use the shared analysis APIs instead of the former root `Command` type.
 
 <a id="v1.16.1"></a>

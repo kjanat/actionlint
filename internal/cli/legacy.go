@@ -53,6 +53,7 @@ func (a *commandApp) parseLegacy(args []string) (rest []string, forced string, t
 	}
 	f.Var(&o.completion, "completion", "")
 	f.Var(&o.completion, "completions", "")
+	f.Var(&r.Hyperlinks, "hyperlinks", "")
 	a.errorJSON = commandRequestsJSON(a.root.Flags(), args)
 	// --command selects the modern parser for everything after its value.
 	// Option values that happen to contain --command or -- remain data.

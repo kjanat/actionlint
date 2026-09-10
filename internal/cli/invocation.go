@@ -34,6 +34,7 @@ type checkInvocation struct {
 
 // renderOptions controls result presentation without changing analysis.
 type renderOptions struct {
+	Hyperlinks   hyperlinkMode
 	Format       actionlint.OutputFormat
 	Template     string
 	TemplateFile string
