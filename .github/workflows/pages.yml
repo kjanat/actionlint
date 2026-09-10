@@ -1,38 +1,40 @@
+---
 name: Pages
-
 on:
   push: { branches: [master] }
   workflow_run: { workflows: [Release], types: [completed] }
   workflow_dispatch: null
-
 permissions: { contents: read }
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
+concurrency: { group: pages, cancel-in-progress: false }
+env:
+  go: "go.mod"
+  node: ".node-version"
+  pandoc: "3.11"
 jobs:
   build:
     if: >-
       github.event_name != 'workflow_run' ||
-      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_repository.full_name == github.repository)
+      (
+        github.event.workflow_run.conclusion   == 'success'
+          && github.event.workflow_run.event   == 'push'
+          && github.event.workflow_run.head_repository.full_name == github.repository
+      )
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false, fetch-depth: 0, ref: "${{ github.event.workflow_run.head_sha || github.sha }}" }
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version-file: go.mod }
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with: { node-version-file: .node-version, package-manager-cache: false }
-      - uses: $/.github/actions/setup-pandoc
-      - uses: kjanat/runner@a850e622e01897a79e62013804abd26f0e38e63c # v0.26.1
-      - name: Install JavaScript dependencies
-        run: runner install --frozen
-      - name: Build command manual
-        run: run make:man
+      - parallel:
+          - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+            with: { go-version-file: "${{ env.go }}" }
+          - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+            with: { node-version-file: "${{ env.node }}", package-manager-cache: false }
+          - { uses: $/.github/actions/setup-pandoc, with: { version: "${{ env.pandoc }}" } }
+          - uses: kjanat/runner@8baa9ee978cfed038b98741749673c788ff161d1 # v0.26.2
+      - parallel:
+          - { name: Install js deps, run: runner install --frozen }
+          - { name: Build command manual, run: run make:man }
       - name: Build and test playground
-        run: run --dir playground -s make:build make:test
+        run: run -s playground:make:build playground:make:test
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with: { path: playground/dist }
 
@@ -40,14 +42,5 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     permissions: { pages: write, id-token: write }
-    environment: {
-      name: github-pages,
-      url: "${{ steps.deployment.outputs.page_url }}",
-    }
-    steps: [
-      {
-        name: Deploy to GitHub Pages,
-        id: deployment,
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346, # v5.0.1
-      },
-    ] # v5
+    environment: { name: github-pages, url: "${{ steps.d.outputs.page_url }}" }
+    steps: [{ name: Deploy, id: d, uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 }] # v5.0.1

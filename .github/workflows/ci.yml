@@ -1,3 +1,17 @@
+# Yes, this file is absolutely cursed and unreadable by anyone but me.
+# I do apologize for that.
+#
+# It is a GitHub Actions workflow file for continuous integration (CI) of the actionlint project.
+# It defines multiple jobs that run on different operating systems and perform various tasks such as unit tests,
+# race detection, Web Assembly (Wasm) builds, JavaScript tests, release snapshots, action module tests, linting,
+# Docker image builds, and pre-commit ShellCheck integration.
+#
+# As this is "actionlint", I need to see how far both github actions and actionlint can be stretched, as in what
+# works, what doesn't, and what is just plain weird. This workflow is a result of that exploration.
+#
+# Want to see a less cursed version, have yq serialize this file to JSON and then run it back through yq to get a more readable YAML output.
+# It will be functionally equivalent, but much easier to read:
+# yq .github/workflows/ci.yml -oj | yq -oy -pj
 ---
 name: CI
 on:
@@ -8,6 +22,11 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions: { contents: read }
 defaults: { run: { shell: "bash --noprofile --norc -exo pipefail {0}" } }
+env: # Centralized versions for tools used in this workflow. Update here to update all jobs.
+  golangci: "v2.13.1"
+  goreleaser: "v2.18.0"
+  node: ".node-version"
+  pandoc: "3.11"
 jobs:
   nix: { uses: $/.github/workflows/nix.yml }
   unit-tests:
@@ -17,15 +36,11 @@ jobs:
       matrix: { os: [ubuntu-26.04, ubuntu-26.04-arm, macos-latest, macos-26-intel, windows-2025-vs2026, windows-11-vs2026-arm] }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: &ActionsCheckout actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: &NoCreds { persist-credentials: false }
+      - &ActCheckNocred { uses: &ActionsCheckout actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1, with: { persist-credentials: false } } # v7
       - parallel:
-          - uses: &SetupGo actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-            with: &GoMod { go-version-file: go.mod }
-          - uses: &SetupUv astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-            with: &NoCache { enable-cache: false }
-      - name: Install pyflakes
-        run: &InstallPyflakes uv tool install pyflakes; pyflakes --version
+          - &GoGomod { uses: &SetupGo actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e, with: &GoMod { go-version-file: go.mod } } # v7
+          - &Uv { uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d, with: { enable-cache: false } } # v10.0.1
+      - &PyFlakes { name: Install pyflakes, run: "uv tool install pyflakes; pyflakes --version" }
       - &InstallShellCheck { name: Install ShellCheck, uses: $/.github/actions/setup-shellcheck }
       - name: Install shells for completion tests on Linux
         if: ${{ runner.os == 'Linux' }}
@@ -38,14 +53,14 @@ jobs:
         env: { CGO_ENABLED: 0 }
   race:
     name: Race detector and coverage
-    runs-on: ubuntu-latest
+    runs-on: &UL ubuntu-latest
     permissions: { contents: read, id-token: write }
     steps:
-      - &ActCheckNocred { uses: *ActionsCheckout, with: *NoCreds }
-      - &GoGomod { uses: *SetupGo, with: *GoMod }
+      - *ActCheckNocred
+      - *GoGomod
       - *InstallShellCheck
-      - &Uv { uses: *SetupUv, with: *NoCache }
-      - &PyFlakes { name: Install pyflakes, run: *InstallPyflakes }
+      - *Uv
+      - *PyFlakes
 
       - run: go test -v -race -coverprofile coverage.txt -covermode=atomic ./...
       - run: go tool cover -func ./coverage.txt
@@ -61,25 +76,36 @@ jobs:
         with: { use_oidc: true }
   wasm:
     name: Wasm
-    runs-on: ubuntu-latest
+    runs-on: *UL
     steps:
       - *ActCheckNocred
       - *GoGomod
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with: { node-version-file: .node-version, package-manager-cache: false }
-      - &Runner { uses: kjanat/runner@a850e622e01897a79e62013804abd26f0e38e63c } # v0.26.1
-      - &Pandoc { name: Install Pandoc, uses: $/.github/actions/setup-pandoc }
+      - &Node {
+          uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020, # v7
+          with: { node-version-file: "${{ env.node }}", package-manager-cache: false },
+        }
+      - &Runner { uses: kjanat/runner@8baa9ee978cfed038b98741749673c788ff161d1 } # v0.26.2
+      - &Pandoc { name: Install Pandoc, uses: $/.github/actions/setup-pandoc, with: { version: "${{ env.pandoc }}" } }
       - name: Install JavaScript dependencies
         run: runner install --frozen
       - name: Build command manual
         run: run make:man
       - name: Build and test playground
-        run: run --dir playground -s make:build make:test
+        run: run -s playground:make:build playground:make:test
       - name: Lint playground
-        run: run lint
+        run: run playground:lint
+  javascript:
+    name: JavaScript
+    runs-on: *UL
+    steps:
+      - *ActCheckNocred
+      - *Node
+      - *Runner
+      - name: Install JavaScript dependencies
+        run: runner install --frozen test:js
   release-snapshot:
     name: Release snapshot
-    runs-on: ubuntu-latest
+    runs-on: *UL
     steps:
       - uses: *ActionsCheckout
         with: { fetch-depth: 0, persist-credentials: false }
@@ -87,20 +113,19 @@ jobs:
           - &Go { uses: *SetupGo, with: *GoMod }
           - *Pandoc
           - *Runner
+          - name: Install syft for SBOM generation
+            uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
       - run: run make:man/actionlint.1
-      - name: Install syft for SBOM generation
-        uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
-        with: { version: v2.18.0, args: release --snapshot --clean }
+        with: { version: "${{ env.goreleaser }}", args: release --snapshot --clean }
       - name: Smoke-test the linux/amd64 snapshot binary
         run: ./dist/linux_linux_amd64_v1/actionlint -version
   action-modules:
     name: Action modules
-    runs-on: ubuntu-latest
+    runs-on: *UL
     steps:
       - *ActCheckNocred
-      - uses: *SetupGo
-        with: { go-version: stable, check-latest: true }
+      - { uses: *SetupGo, with: { go-version: stable, check-latest: true } }
       # Self-contained modules under a dot-directory, which the go tool skips
       # when expanding a ... pattern. Test each in place.
       - name: Test and vet each action module
@@ -114,7 +139,7 @@ jobs:
           done
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: *UL
     steps:
       - *ActCheckNocred
       - *Go
@@ -123,7 +148,7 @@ jobs:
           - *InstallShellCheck
           - name: Install golangci-lint
             uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
-            with: { version: v2.13.1, install-only: true }
+            with: { version: "${{ env.golangci }}", install-only: true }
           - *Runner
       - *PyFlakes
       - run: go mod tidy -diff
@@ -136,7 +161,7 @@ jobs:
         run: shellcheck ./scripts/*.bash
   docker:
     name: Dockerfile
-    runs-on: ubuntu-latest
+    runs-on: *UL
     steps:
       - *ActCheckNocred
       - name: Build image
@@ -146,16 +171,17 @@ jobs:
         run: docker container run
           --mount type=bind,source="${PWD}",target=/w
           -- actionlint:test -color -verbose
-      - name: Lint Dockerfile with hadolint
-        run: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 --strict-labels
-          --require-label org.opencontainers.image.source:url
-          --require-label org.opencontainers.image.licenses:spdx
-          - < Dockerfile
-      - name: Lint Dockerfile with droast
-        uses: immanuwell/dockerfile-roast@1c87b2aa189338c24db4acde40864dae8994de8f # 1.7.0
+      - parallel:
+          - name: Lint Dockerfile with hadolint
+            run: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 --strict-labels
+              --require-label org.opencontainers.image.source:url
+              --require-label org.opencontainers.image.licenses:spdx
+              - < Dockerfile
+          - name: Lint Dockerfile with droast
+            uses: immanuwell/dockerfile-roast@1c87b2aa189338c24db4acde40864dae8994de8f # 1.7.0
   action:
     name: GitHub Action
-    runs-on: ubuntu-latest
+    runs-on: *UL
     steps:
       - *ActCheckNocred
       - name: Build action image
@@ -165,16 +191,17 @@ jobs:
         run: ./scripts/test-action.bash actionlint-action:test
   pre-commit-shellcheck:
     name: pre-commit ShellCheck integration
-    runs-on: ubuntu-latest
+    runs-on: *UL
     steps:
-      - *ActCheckNocred
+      - parallel:
+          - *ActCheckNocred
+          - name: remove shellcheck
+            run: sudo apt-get remove -y shellcheck
       - parallel: [*Go, *Uv]
       - parallel:
           - run: uv tool install pre-commit
-          - name: Remove the runner's ShellCheck so only the hook's own can be found
-            run: sudo apt-get remove -y shellcheck
-      - name: Confirm shellcheck is not on PATH
-        run: if command -v shellcheck; then echo "shellcheck is still on PATH; test invalid" >&2; exit 1; fi
+          - name: shellcheck gone
+            run: if command -v shellcheck; then echo "shellcheck is still on PATH; test invalid" >&2; exit 1; fi
       - name: Confirm actionlint-shellcheck reports a fixture's SC2086
         run: |
           cat > .github/workflows/_pre-commit-shellcheck-fixture.yml <<'FIXTURE'

@@ -1,13 +1,9 @@
 name: Changelog npm release
 run-name: ${{ case(inputs.dry-run, 'Check changelog npm package', 'Publish changelog npm package') }}
-on:
-  workflow_dispatch:
-    inputs:
-      dry-run: { description: Build and test without publishing, required: true, default: true, type: boolean }
-
+on: { workflow_dispatch: { inputs: { dry-run: { required: true, default: true, type: boolean } } } }
 concurrency: { group: changelog-npm-release, cancel-in-progress: false }
 permissions: { contents: read }
-
+env: { node: ".node-version" }
 jobs:
   publish:
     if: github.repository_owner == 'kjanat' && github.ref_name == 'master'
@@ -16,23 +12,19 @@ jobs:
     environment: { name: npm, url: "${{ steps.publish.outputs.url }}" }
     env: { NPM_CONFIG_PROVENANCE: "${{ !inputs.dry-run }}" }
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { persist-credentials: false }
+      - { uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1, with: { persist-credentials: false } } # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with: { node-version-file: .node-version, registry-url: https://registry.npmjs.org/, package-manager-cache: false }
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-      - name: Check types and test the changelog package
-        run: |
-          npm run typecheck --workspace @kjlint/changelog-rss
-          npm test --workspace @kjlint/changelog-rss
+        with: { node-version-file: "${{ env.node }}", registry-url: https://registry.npmjs.org/, package-manager-cache: false }
+      - uses: kjanat/runner@8baa9ee978cfed038b98741749673c788ff161d1 # v0.26.2
+      - name: Install, check types, test package
+        run: runner --pm=npm install --frozen --no-scripts @kjlint/changelog-rss:typecheck @kjlint/changelog-rss:test
       - name: Build and pack the changelog package
         id: pack
         shell: bash
+        env: { out: "${{ runner.temp }}/changelog-tarball" }
         run: |
           set -euo pipefail
           shopt -s nullglob
-          out="${RUNNER_TEMP}/changelog-tarball"
           mkdir -p "${out}"
           npm pack --workspace @kjlint/changelog-rss --pack-destination "${out}"
           packed=("${out}"/*.tgz)

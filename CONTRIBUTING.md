@@ -333,7 +333,7 @@ Visit [`playground/README.md`](./playground/README.md).
 The [Pages workflow](./.github/workflows/pages.yml) deploys on pushes to `master` and after successful Release runs
 triggered by pushes within this repository. Release-triggered builds check out that release's commit. The build job has
 read-only repository access and builds the bundle with
-`make -C playground build`, packages `playground/dist` together with the manual, and uploads it through
+`run playground:make:build`, packages `playground/dist` together with the manual, and uploads it through
 `actions/upload-pages-artifact`.
 
 Only the separate deployment job receives Pages write and OIDC permissions.
@@ -341,8 +341,8 @@ Only the separate deployment job receives Pages write and OIDC permissions.
 To check a build locally before pushing:
 
 ```sh
-make -C playground build
-npm run preview
+run playground:make:build
+run playground:preview
 ```
 
 ## Maintain auto-generated sources
