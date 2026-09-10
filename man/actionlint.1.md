@@ -391,8 +391,9 @@ upgrading actionlint so they reflect the installed CLI. See the usage document f
 : Used to find ShellCheck and pyflakes, including the executable selected by their command flags.
 
 **NO_COLOR**
-: A nonempty value disables automatic color. **--color** can force color; **--no-color** always
-disables it.
+: Any nonempty value, including `0` or `false`, disables automatic color; an empty
+value has no effect. **--color** can force color; **--no-color** always disables it.
+See the [NO_COLOR convention](https://no-color.org/).
 
 **GITHUB_ACTIONS**
 : The value `true` enables automatic color for help and text diagnostics in workflow
