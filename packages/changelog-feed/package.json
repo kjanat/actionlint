@@ -6,7 +6,12 @@
   "repository": "kjanat/actionlint",
   "funding": { "type": "github", "url": "https://github.com/sponsors/kjanat" },
   "license": "MIT",
-  "sideEffects": ["./dist/index.js", "./dist/github-actions-reader.js"],
+  "sideEffects": [
+    "./dist/index.js",
+    "./dist/github-actions-reader.js",
+    "./src/index.ts",
+    "./src/github-actions-reader.ts"
+  ],
   "type": "module",
   "imports": {
     "#action": {
@@ -28,10 +33,22 @@
     "#pkg": "./package.json"
   },
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-    "./feed": { "types": "./dist/github-actions-feed.d.ts", "default": "./dist/github-actions-feed.js" },
-    "./reader": { "types": "./dist/github-actions-reader.d.ts", "default": "./dist/github-actions-reader.js" },
-    "./action": { "types": "./dist/github-actions-monitor.d.ts", "default": "./dist/github-actions-monitor.js" },
+    ".": { "source": "./src/index.ts", "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./feed": {
+      "source": "./src/github-actions-feed.ts",
+      "types": "./dist/github-actions-feed.d.ts",
+      "default": "./dist/github-actions-feed.js"
+    },
+    "./reader": {
+      "source": "./src/github-actions-reader.ts",
+      "types": "./dist/github-actions-reader.d.ts",
+      "default": "./dist/github-actions-reader.js"
+    },
+    "./action": {
+      "source": "./src/github-actions-monitor.ts",
+      "types": "./dist/github-actions-monitor.d.ts",
+      "default": "./dist/github-actions-monitor.js"
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.js",
