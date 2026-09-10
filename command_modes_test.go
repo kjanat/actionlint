@@ -98,7 +98,11 @@ func TestCommandNativeJSON(t *testing.T) {
 			if err := json.Unmarshal([]byte(got.Stdout), &have); err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(checkResult(want), have); diff != "" {
+			expected := CheckResult{SchemaVersion: 1, Diagnostics: []Diagnostic{}}
+			for _, field := range want {
+				expected.Diagnostics = append(expected.Diagnostics, Diagnostic{Rule: field.Kind, Message: field.Message, Path: field.Filepath, Start: DiagnosticPosition{field.Line, field.Column}, End: DiagnosticPosition{field.Line, field.EndColumn + 1}, Snippet: strings.Split(field.Snippet, "\n")[0]})
+			}
+			if diff := cmp.Diff(expected, have); diff != "" {
 				t.Fatal(diff)
 			}
 			if len(have.Diagnostics) == 0 && got.Stdout != "{\"schema_version\":1,\"diagnostics\":[]}\n" {
@@ -113,7 +117,10 @@ func TestCommandNativeJSON(t *testing.T) {
 		}
 		var expected bytes.Buffer
 		for _, diagnostic := range result.Diagnostics {
-			if err := json.NewEncoder(&expected).Encode(diagnostic); err != nil {
+			if err := json.NewEncoder(&expected).Encode(struct {
+				SchemaVersion int `json:"schema_version"`
+				Diagnostic
+			}{1, diagnostic}); err != nil {
 				t.Fatal(err)
 			}
 		}

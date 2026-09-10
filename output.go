@@ -2,6 +2,7 @@ package actionlint
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -20,7 +21,7 @@ const (
 	OutputFormatGitHub  OutputFormat = "github"
 )
 
-// DiagnosticPosition uses one-based Unicode character positions. Range ends are inclusive.
+// DiagnosticPosition uses one-based Unicode character positions. Range ends are exclusive and may lie on a later line.
 type DiagnosticPosition struct {
 	Line   int `json:"line"`
 	Column int `json:"column"`
@@ -48,12 +49,47 @@ type CheckSummary struct {
 	Findings int `json:"findings"`
 }
 
-func checkResult(fields []*ErrorTemplateFields) CheckResult {
-	result := CheckResult{SchemaVersion: 1, Diagnostics: make([]Diagnostic, 0, len(fields))}
-	for _, f := range fields {
-		result.Diagnostics = append(result.Diagnostics, Diagnostic{f.Kind, f.Message, f.Filepath, DiagnosticPosition{f.Line, f.Column}, DiagnosticPosition{f.Line, f.EndColumn}, f.Snippet})
+func (e *Error) diagnostic(source []byte) Diagnostic {
+	source = e.sourceFor(source)
+	end := DiagnosticPosition{e.Line, e.Column + 1}
+	snippet, _ := e.getLine(source)
+	if snippet != "" {
+		end.Column = e.getEndColumn(snippet) + 1
 	}
-	return result
+	if e.endPosition != nil {
+		end = DiagnosticPosition{e.endPosition.Line, e.endPosition.Col}
+	}
+	return Diagnostic{Rule: e.Kind, Message: e.Message, Path: e.Filepath,
+		Start: DiagnosticPosition{e.Line, e.Column}, End: end, Snippet: snippet}
+}
+
+// legacyError adapts a canonical half-open span to the legacy renderer's inclusive columns.
+func (d Diagnostic) legacyError() *Error {
+	e := &Error{Kind: d.Rule, Message: d.Message, Filepath: d.Path, Line: d.Start.Line, Column: d.Start.Column,
+		endPosition: &Pos{Line: d.End.Line, Col: d.End.Column}}
+	if d.End.Line == d.Start.Line && d.End.Column > d.Start.Column {
+		e.endColumn = d.End.Column - 1
+	}
+	return e
+}
+
+func writeDiagnostics(out io.Writer, diagnostics []Diagnostic, lines bool) error {
+	enc := json.NewEncoder(out)
+	if lines {
+		for _, d := range diagnostics {
+			if err := enc.Encode(struct {
+				SchemaVersion int `json:"schema_version"`
+				Diagnostic
+			}{1, d}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if diagnostics == nil {
+		diagnostics = []Diagnostic{}
+	}
+	return enc.Encode(CheckResult{SchemaVersion: 1, Diagnostics: diagnostics})
 }
 
 type diagnosticFormatter interface {
@@ -64,20 +100,7 @@ type diagnosticFormatter interface {
 type jsonDiagnosticFormatter struct{ lines bool }
 
 func (f jsonDiagnosticFormatter) Print(out io.Writer, fields []*ErrorTemplateFields) error {
-	enc := json.NewEncoder(out)
-	result := checkResult(fields)
-	if f.lines {
-		for _, field := range result.Diagnostics {
-			if err := enc.Encode(field); err != nil {
-				return fmt.Errorf("could not write JSON diagnostic: %w", err)
-			}
-		}
-		return nil
-	}
-	if err := enc.Encode(result); err != nil {
-		return fmt.Errorf("could not write JSON diagnostics: %w", err)
-	}
-	return nil
+	return errors.New("native JSON requires analysis diagnostics, not template fields")
 }
 
 type githubDiagnosticFormatter struct{}
@@ -102,9 +125,9 @@ func (f githubDiagnosticFormatter) PrintErrors(out io.Writer, errs []*Error, src
 }
 
 func (f jsonDiagnosticFormatter) PrintErrors(out io.Writer, errs []*Error, src []byte) error {
-	fields := make([]*ErrorTemplateFields, 0, len(errs))
+	diagnostics := make([]Diagnostic, 0, len(errs))
 	for _, err := range errs {
-		fields = append(fields, err.GetTemplateFields(src))
+		diagnostics = append(diagnostics, err.diagnostic(src))
 	}
-	return f.Print(out, fields)
+	return writeDiagnostics(out, diagnostics, f.lines)
 }

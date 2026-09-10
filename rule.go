@@ -56,6 +56,10 @@ func (r *RuleBase) Errorf(pos *Pos, format string, args ...any) {
 // errorfRange reports an error with an exclusive source-range end.
 func (r *RuleBase) errorfRange(start, end *Pos, format string, args ...any) {
 	err := errorfAt(start, r.name, format, args...)
+	if end != nil {
+		copied := *end
+		err.endPosition = &copied
+	}
 	if end != nil && end.Line == start.Line && end.Col > start.Col {
 		err.endColumn = end.Col - 1
 	}
@@ -116,14 +120,4 @@ type Rule interface {
 	EnableDebug(out io.Writer)
 	SetConfig(cfg *Config)
 	Config() *Config
-}
-
-func workflowRules(path string, actions *LocalActionsCache, workflows *LocalReusableWorkflowCache) []Rule {
-	return []Rule{
-		NewRuleMatrix(), NewRuleCredentials(), NewRuleShellName(), NewRuleRunnerLabel(),
-		NewRuleEvents(), NewRuleJobNeeds(), NewRuleParallelSteps(), NewRuleAction(actions),
-		NewRuleEnvVar(), NewRuleID(), NewRuleGlob(), NewRulePermissions(),
-		NewRuleWorkflowCall(path, workflows), NewRuleExpression(actions, workflows),
-		NewRuleDeprecatedCommands(), NewRuleIfCond(),
-	}
 }

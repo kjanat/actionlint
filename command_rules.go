@@ -9,24 +9,9 @@ import (
 	"text/tabwriter"
 )
 
-type commandRule struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Category    string `json:"category"`
-}
-
-func commandRules() []commandRule {
-	rules := []commandRule{{"syntax-check", "Checks for GitHub Actions workflow syntax", "correctness"}}
-	add := func(category string, checks ...Rule) {
-		for _, r := range checks {
-			rules = append(rules, commandRule{r.Name(), r.Description(), category})
-		}
-	}
-	add("correctness", workflowRules("", nil, nil)...)
-	permission, _ := RequirePermissions("workflow")
-	add("policy", NewRuleRequireCommitHash(), NewRuleRequireJobTimeout(RequireJobTimeout(0)), NewRuleRequirePermissions(permission), NewRuleRequiredActions())
-	add("external", newRuleShellcheck(nil), newRulePyflakes(nil))
-	slices.SortFunc(rules, func(a, b commandRule) int { return strings.Compare(a.Name, b.Name) })
+func commandRules() []ruleDescriptor {
+	rules := builtinRuleDescriptors()
+	slices.SortFunc(rules, func(a, b ruleDescriptor) int { return strings.Compare(a.Name, b.Name) })
 	return rules
 }
 
@@ -65,7 +50,7 @@ type doctorTool struct {
 	Error     string   `json:"error,omitempty"`
 }
 
-func writeDoctor(out io.Writer, req CheckRequest, asJSON bool) error {
+func writeDoctor(out io.Writer, req checkInvocation, asJSON bool) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err

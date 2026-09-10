@@ -313,10 +313,13 @@ SARIF uses the bundled template and needs no separate template file:
 The CLI's **--format** accepts template text. The GitHub Action's `format` input instead accepts
 names such as `json` and `sarif`. Changing output format does not change the lint exit status.
 
-Native JSON uses the same fields as the existing `{{json .}}` template: `message`, `filepath`,
-`line`, `column`, `kind`, `snippet`, and `end_column`. Optional empty fields may be omitted.
-A successful check with no findings writes `[]`; JSON Lines writes nothing. Multiple files
-produce one array in JSON mode. JSON Lines writes one object per finding.
+Native JSON returns a versioned document with `schema_version` and `diagnostics`.
+Each diagnostic contains `rule`, `message`, `path`, `start`, `end`, and an optional source-line
+`snippet`. Positions use one-based Unicode character columns and exclusive end positions;
+a range may end on a later line. A clean check writes `{"schema_version":1,"diagnostics":[]}`.
+JSON Lines writes one diagnostic per line with `schema_version: 1` on every record, or nothing
+for a clean check. The legacy `{{json .}}` template retains its array, field names, and inclusive
+`end_column` contract.
 
 In JSON modes, fatal errors are JSON objects on standard error with `error` and `exit_code`.
 Requested progress or debug logs are separate JSON Lines records with a `log` field on standard

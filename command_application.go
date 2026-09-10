@@ -15,9 +15,9 @@ func (a *commandApp) prepareInvocation() error {
 	i.JSON = a.jsonOutput()
 	if !i.Legacy {
 		switch i.Operation {
-		case "completion":
+		case operationCompletion:
 			i.Shell = i.Check.Paths[0]
-		case "rules":
+		case operationRules:
 			if len(i.Check.Paths) > 0 {
 				i.Rule = i.Check.Paths[0]
 			}
@@ -93,45 +93,51 @@ func (a *commandApp) prepareInvocation() error {
 	return nil
 }
 
-func executeInvocation(ctx context.Context, streams Command, inv Invocation) (int, error) {
+func executeInvocation(ctx context.Context, streams Command, inv invocation) (int, error) {
 	switch inv.Operation {
-	case "version":
+	case operationVersion:
 		return 0, writeVersion(streams.Stdout, inv.JSON, inv.Legacy)
-	case "rules":
+	case operationRules:
 		return 0, writeRules(streams.Stdout, inv.Rule, inv.JSON)
-	case "doctor":
+	case operationDoctor:
 		return 0, writeDoctor(streams.Stdout, inv.Check, inv.JSON)
-	case "config path", "config show", "config validate":
+	case operationConfigPath, operationConfigShow, operationConfigValidate:
 		return 0, runConfigCommand(streams.Stdout, inv)
-	case "config init":
-		if !inv.Legacy {
-			return 0, initCommandConfig(streams.Stdout, inv)
+	case operationConfigInit:
+		if err := ctx.Err(); err != nil {
+			return 0, err
 		}
+		return 0, initCommandConfig(streams, inv)
+	case operationCheck:
+		if err := ctx.Err(); err != nil {
+			return 0, err
+		}
+		return executeCheck(ctx, streams, inv)
+	default:
+		return 0, commandUsageError{fmt.Errorf("unknown operation %q", inv.Operation)}
 	}
-	if err := ctx.Err(); err != nil {
-		return 0, err
-	}
-	return executeCheck(ctx, streams, inv)
 }
 
-func executeCheck(ctx context.Context, streams Command, inv Invocation) (status int, err error) {
+func executeCheck(ctx context.Context, streams Command, inv invocation) (status int, err error) {
 	c, r := inv.Check, inv.Render
-	if r.TemplateFile != "" {
-		data, err := os.ReadFile(r.TemplateFile)
-		if err != nil {
-			return 0, fmt.Errorf("could not read template file %q: %w", r.TemplateFile, err)
-		}
-		r.Template = string(data)
-		if r.Template == "" {
-			return 0, fmt.Errorf("template file %q is empty", r.TemplateFile)
-		}
+	r, err = resolveTemplate(r)
+	if err != nil {
+		return 0, err
 	}
+
 	// A completed analysis replaces the previous report atomically.
 	out := streams.Stdout
 	if r.OutputFile != "" && r.OutputFile != "-" {
 		file, e := os.CreateTemp(filepath.Dir(r.OutputFile), ".actionlint-report-*")
 		if e != nil {
 			return 0, e
+		}
+		if info, statErr := os.Stat(r.OutputFile); statErr == nil {
+			if modeErr := file.Chmod(info.Mode().Perm()); modeErr != nil {
+				file.Close()
+				os.Remove(file.Name())
+				return 0, modeErr
+			}
 		}
 		out = file
 		defer func() {
@@ -151,6 +157,35 @@ func executeCheck(ctx context.Context, streams Command, inv Invocation) (status 
 	log := streams.Stderr
 	if inv.JSON {
 		log = &commandJSONLogWriter{out: log}
+	}
+	if !inv.Legacy {
+		result, inputs, e := analyzeCommand(ctx, streams.Stdin, c, log, r.Quiet)
+		if e != nil {
+			return 0, e
+		}
+		inputs = append(inputs, c.Config.Path, r.TemplateFile, c.StdinFilename)
+		if r.OutputFile != "" && r.OutputFile != "-" {
+			for _, path := range inputs {
+				if path != "" && sameCommandFile(path, r.OutputFile) {
+					return 0, fmt.Errorf("output file %q is also an input", r.OutputFile)
+				}
+			}
+		}
+		if e := renderAnalysis(out, result, r); e != nil {
+			return 0, e
+		}
+		if len(result.Diagnostics) > 0 {
+			status = ExitStatusSuccessProblemFound
+		}
+		if r.Summary && !r.Quiet {
+			summary := CheckSummary{Files: len(result.files), Findings: len(result.Diagnostics)}
+			if inv.JSON {
+				err = writeCommandJSON(streams.Stderr, map[string]CheckSummary{"summary": summary})
+			} else {
+				_, err = fmt.Fprintf(streams.Stderr, "Checked %d workflows; %d findings.\n", summary.Files, summary.Findings)
+			}
+		}
+		return status, err
 	}
 	options := LinterOptions{
 		Context: ctx, LogWriter: log, Color: r.Color, Oneline: r.Oneline,
@@ -174,16 +209,7 @@ func executeCheck(ctx context.Context, streams Command, inv Invocation) (status 
 	if c.Config.Disabled || (!inv.Legacy && c.Config.Path != "") {
 		l.projects.skipConfig = true
 	}
-	if inv.Operation == "config init" {
-		if inv.JSON {
-			path, err := l.generateDefaultConfig("")
-			if err != nil {
-				return 0, err
-			}
-			return 0, writeCommandJSON(out, map[string]string{"path": path})
-		}
-		return 0, l.GenerateDefaultConfig("")
-	}
+
 	var findings []*Error
 	switch {
 	case len(c.Paths) == 0:
@@ -204,7 +230,8 @@ func executeCheck(ctx context.Context, streams Command, inv Invocation) (status 
 		return 0, err
 	}
 	if r.OutputFile != "" && r.OutputFile != "-" {
-		inputPaths = append(inputPaths, c.Config.Path, r.TemplateFile)
+		inputPaths = append(inputPaths, l.inputs.list()...)
+		inputPaths = append(inputPaths, c.StdinFilename, c.Config.Path, r.TemplateFile)
 		for _, project := range l.projects.known {
 			if project.Config() != nil {
 				for _, name := range []string{"actionlint.yaml", "actionlint.yml"} {
@@ -255,4 +282,18 @@ func sameCommandFile(a, b string) bool {
 	aInfo, aErr := os.Stat(a)
 	bInfo, bErr := os.Stat(b)
 	return aErr == nil && bErr == nil && os.SameFile(aInfo, bInfo)
+}
+
+func resolveTemplate(r renderOptions) (renderOptions, error) {
+	if r.TemplateFile != "" {
+		data, err := os.ReadFile(r.TemplateFile)
+		if err != nil {
+			return r, fmt.Errorf("could not read template file %q: %w", r.TemplateFile, err)
+		}
+		r.Template = string(data)
+		if r.Template == "" {
+			return r, fmt.Errorf("template file %q is empty", r.TemplateFile)
+		}
+	}
+	return r, nil
 }

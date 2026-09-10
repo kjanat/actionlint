@@ -303,7 +303,7 @@ func TestModernRendererAndUsageErrors(t *testing.T) {
 	}
 	rules := commandRules()
 	for _, name := range []string{"syntax-check", "expression", "shellcheck", "pyflakes", "require-commit-hash"} {
-		if !slices.ContainsFunc(rules, func(r commandRule) bool { return r.Name == name && r.Description != "" }) {
+		if !slices.ContainsFunc(rules, func(r ruleDescriptor) bool { return r.Name == name && r.Description != "" }) {
 			t.Errorf("missing rule %q", name)
 		}
 	}

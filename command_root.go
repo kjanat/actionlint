@@ -19,7 +19,7 @@ type commandOptions struct {
 type commandApp struct {
 	root         *cobra.Command
 	streams      Command
-	inv          Invocation
+	inv          invocation
 	opts         commandOptions
 	set          map[string]bool
 	status       int
@@ -85,7 +85,7 @@ func newCommandApp(streams *Command) *commandApp {
 		{"show", "Show effective configuration settings"},
 		{"validate", "Validate the selected configuration using actionlint's loader"},
 	} {
-		c := &cobra.Command{Use: item.name, Short: item.description, Args: cobra.NoArgs, RunE: a.capture("config " + item.name)}
+		c := &cobra.Command{Use: item.name, Short: item.description, Args: cobra.NoArgs, RunE: a.capture(operation("config " + item.name))}
 		if item.name == "show" {
 			c.Flags().BoolVar(&a.inv.Origin, "origin", false, "Include the source of each setting")
 			annotateFlag(c.Flags(), "origin", "Input")
@@ -230,9 +230,9 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	}
 }
 
-func (a *commandApp) capture(operation string) func(*cobra.Command, []string) error {
+func (a *commandApp) capture(op operation) func(*cobra.Command, []string) error {
 	return func(c *cobra.Command, args []string) error {
-		a.inv.Operation = operation
+		a.inv.Operation = op
 		a.inv.Check.Paths = args
 		c.Flags().Visit(func(f *pflag.Flag) { a.set[f.Name] = true })
 		if c.Name() == "check" && (c.Flags().Changed("ignore-regex") || c.Flags().Changed("ignore")) {

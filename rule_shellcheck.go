@@ -34,10 +34,7 @@ type RuleShellcheck struct {
 
 func newRuleShellcheck(cmd *externalCommand) *RuleShellcheck {
 	return &RuleShellcheck{
-		RuleBase: RuleBase{
-			name: "shellcheck",
-			desc: "Checks for shell script sources in \"run:\" using shellcheck",
-		},
+		RuleBase:      builtinRuleBase("shellcheck"),
 		cmd:           cmd,
 		workflowShell: "",
 		jobShell:      "",

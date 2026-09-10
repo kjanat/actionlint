@@ -8,12 +8,10 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"slices"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/fatih/color"
 	"github.com/mattn/go-colorable"
@@ -120,6 +118,7 @@ type Linter struct {
 	onRulesCreated  func([]Rule) []Rule
 	onFilesSelected func([]string)
 	ctx             context.Context
+	inputs          *inputFiles
 }
 
 // NewLinter creates a new Linter instance.
@@ -160,13 +159,9 @@ func NewLinter(out io.Writer, opts *LinterOptions) (*Linter, error) {
 		cfg = c
 	}
 
-	ignore := make([]*regexp.Regexp, 0, len(opts.IgnorePatterns))
-	for _, s := range opts.IgnorePatterns {
-		r, err := regexp.Compile(s)
-		if err != nil {
-			return nil, fmt.Errorf("invalid regular expression for ignore pattern %q: %s", s, err.Error())
-		}
-		ignore = append(ignore, r)
+	ignore, err := compileIgnorePatterns(opts.IgnorePatterns)
+	if err != nil {
+		return nil, err
 	}
 
 	format := opts.Format
@@ -229,6 +224,7 @@ func NewLinter(out io.Writer, opts *LinterOptions) (*Linter, error) {
 		opts.OnRulesCreated,
 		opts.OnFilesSelected,
 		ctx,
+		&inputFiles{},
 	}
 
 	l.debug("Create a Linter instance with option %#v", opts)
@@ -412,6 +408,12 @@ func (l *Linter) LintFiles(filepaths []string, project *Project) ([]*Error, erro
 		}
 		ac := acf.GetCache(proj) // #173
 		rwc := rwcf.GetCache(proj)
+		if ac.onRead == nil {
+			ac.onRead = l.inputs.add
+		}
+		if rwc.onRead == nil {
+			rwc.onRead = l.inputs.add
+		}
 
 		eg.Go(func() error {
 			// Bound concurrency on reading files to avoid "too many files to open" error (issue #3)
@@ -457,7 +459,18 @@ func (l *Linter) LintFiles(filepaths []string, project *Project) ([]*Error, erro
 	}
 
 	all := make([]*Error, 0, total)
-	if l.errFmt != nil {
+	if native, ok := l.errFmt.(jsonDiagnosticFormatter); ok {
+		diagnostics := []Diagnostic{}
+		for _, w := range ws {
+			for _, e := range w.errs {
+				diagnostics = append(diagnostics, e.diagnostic(w.src))
+			}
+			all = append(all, w.errs...)
+		}
+		if err := writeDiagnostics(l.out, diagnostics, native.lines); err != nil {
+			return nil, err
+		}
+	} else if l.errFmt != nil {
 		temp := make([]*ErrorTemplateFields, 0, total)
 		for i := range ws {
 			w := &ws[i]
@@ -508,6 +521,7 @@ func (l *Linter) LintFile(path string, project *Project) ([]*Error, error) {
 	dbg := l.debugWriter()
 	localActions := NewLocalActionsCache(project, dbg)
 	localReusableWorkflows := NewLocalReusableWorkflowCache(project, l.cwd, dbg)
+	localActions.onRead, localReusableWorkflows.onRead = l.inputs.add, l.inputs.add
 	errs, err := l.check(path, src, project, proc, localActions, localReusableWorkflows)
 	proc.wait()
 	if err != nil {
@@ -553,6 +567,7 @@ func (l *Linter) Lint(path string, content []byte, project *Project) ([]*Error, 
 	dbg := l.debugWriter()
 	localActions := NewLocalActionsCache(project, dbg)
 	localReusableWorkflows := NewLocalReusableWorkflowCache(project, l.cwd, dbg)
+	localActions.onRead, localReusableWorkflows.onRead = l.inputs.add, l.inputs.add
 	errs, err := l.check(path, content, project, proc, localActions, localReusableWorkflows)
 	proc.wait()
 	if err != nil {
@@ -568,164 +583,22 @@ func (l *Linter) Lint(path string, content []byte, project *Project) ([]*Error, 
 	return errs, nil
 }
 
-func (l *Linter) check(
-	path string,
-	content []byte,
-	project *Project,
-	proc *concurrentProcess,
-	localActions *LocalActionsCache,
-	localReusableWorkflows *LocalReusableWorkflowCache,
-) ([]*Error, error) {
-	// Note: This method is called to check multiple files in parallel.
-	// It must be thread safe assuming fields of Linter are not modified while running.
-
-	var start time.Time
-	if l.logLevel >= LogLevelVerbose {
-		start = time.Now()
-	}
-
-	l.log("Linting", path)
-	if project != nil {
-		l.log("Using project at", project.RootDir())
-	}
-
-	var cfg *Config
-	if l.defaultConfig != nil {
-		// `-config-file` option has higher priority than repository config file
-		cfg = l.defaultConfig
-	} else if project != nil {
+func (l *Linter) check(path string, content []byte, project *Project, proc *concurrentProcess, actions *LocalActionsCache, workflows *LocalReusableWorkflowCache) ([]*Error, error) {
+	l.inputs.add(path)
+	cfg := l.defaultConfig
+	if cfg == nil && project != nil {
 		cfg = project.Config()
 	}
-	if cfg != nil {
-		l.debug("Config: %#v", cfg)
-	} else {
-		l.debug("No config was found")
-	}
-
-	w, all := Parse(content)
-
-	if l.logLevel >= LogLevelVerbose {
-		elapsed := time.Since(start)
-		l.log("Found", len(all), "parse errors in", elapsed.Milliseconds(), "ms for", path)
-	}
-
-	if w != nil {
-		dbg := l.debugWriter()
-
-		rules := workflowRules(path, localActions, localReusableWorkflows)
-		if cfg.RequiresCommitHash() {
-			rules = append(rules, NewRuleRequireCommitHash())
-		}
-		if p := cfg.RequiresJobTimeout(); p.Enabled() {
-			rules = append(rules, NewRuleRequireJobTimeout(p))
-		}
-		if p := cfg.RequiresPermissions(); p.Enabled() {
-			rules = append(rules, NewRuleRequirePermissions(p))
-		}
-		if len(cfg.RequiredActions()) > 0 {
-			rules = append(rules, NewRuleRequiredActions())
-		}
-		if l.shellcheck != "" {
-			r, err := NewRuleShellcheck(l.shellcheck, proc)
-			if err == nil {
-				rules = append(rules, r)
-			} else {
-				l.log("Rule \"shellcheck\" was disabled:", err)
-			}
-		} else {
-			l.log("Rule \"shellcheck\" was disabled since shellcheck command name was empty")
-		}
-		if l.pyflakes != "" {
-			r, err := NewRulePyflakes(l.pyflakes, proc)
-			if err == nil {
-				rules = append(rules, r)
-			} else {
-				l.log("Rule \"pyflakes\" was disabled:", err)
-			}
-		} else {
-			l.log("Rule \"pyflakes\" was disabled since pyflakes command name was empty")
-		}
-		if l.onRulesCreated != nil {
-			rules = l.onRulesCreated(rules)
-		}
-
-		v := NewVisitor()
+	engine := &analysisEngine{ctx: l.ctx, shellcheck: l.shellcheck, pyflakes: l.pyflakes,
+		ignorePats: l.ignorePats, onRulesCreated: l.onRulesCreated, logOut: l.logOut, logLevel: l.logLevel}
+	var rules []Rule
+	errs, err := engine.check(path, content, project, cfg, proc, actions, workflows, &rules)
+	if formatter, ok := l.errFmt.(*ErrorFormatter); ok {
 		for _, rule := range rules {
-			v.AddPass(rule)
-		}
-		if dbg != nil {
-			v.EnableDebug(dbg)
-			for _, r := range rules {
-				r.EnableDebug(dbg)
-			}
-		}
-		if cfg != nil {
-			for _, r := range rules {
-				r.SetConfig(cfg)
-			}
-		}
-
-		if err := v.Visit(w); err != nil {
-			l.debug("Error occurred while visiting workflow syntax tree: %v", err)
-			return nil, err
-		}
-
-		for _, rule := range rules {
-			errs := rule.Errs()
-			l.debug("%s found %d errors", rule.Name(), len(errs))
-			all = append(all, errs...)
-		}
-
-		if formatter, ok := l.errFmt.(*ErrorFormatter); ok {
-			for _, rule := range rules {
-				formatter.RegisterRule(rule)
-			}
+			formatter.RegisterRule(rule)
 		}
 	}
-
-	all = l.filterErrors(all, cfg.PathConfigs(path))
-
-	for _, err := range all {
-		if err.Filepath == "" {
-			err.Filepath = path // Populate filename in the error
-		}
-	}
-
-	slices.SortFunc(all, compareErrors)
-	all = slices.CompactFunc(all, equalsErrors) // Alias may duplicate errors
-
-	if l.logLevel >= LogLevelVerbose {
-		elapsed := time.Since(start)
-		l.log("Found total", len(all), "errors in", elapsed.Milliseconds(), "ms for", path)
-	}
-
-	return all, nil
-}
-
-func (l *Linter) filterErrors(errs []*Error, cfgs []PathConfig) []*Error {
-	if len(l.ignorePats) == 0 && len(cfgs) == 0 {
-		return errs
-	}
-
-	filtered := make([]*Error, 0, len(errs))
-Loop:
-	for _, err := range errs {
-		if l.ignorePats.Match(err) {
-			l.debug("Error %q is ignored due to -ignore command line option", err.Message)
-			continue Loop
-		}
-		for _, c := range cfgs {
-			if c.Ignore.Match(err) {
-				l.debug("Error %q is ignored due to the \"ignore\" config in the config file", err.Message)
-				continue Loop
-			}
-		}
-		filtered = append(filtered, err)
-	}
-	if len(filtered) != len(errs) {
-		l.log("Filtered", len(errs)-len(filtered), "error(s) due to \"-ignore\" command line option and \"ignore\" configuration")
-	}
-	return filtered
+	return errs, err
 }
 
 func (l *Linter) printErrors(errs []*Error, src []byte) {

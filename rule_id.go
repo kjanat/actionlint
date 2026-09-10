@@ -16,10 +16,7 @@ type RuleID struct {
 // NewRuleID creates a new RuleID instance.
 func NewRuleID() *RuleID {
 	return &RuleID{
-		RuleBase: RuleBase{
-			name: "id",
-			desc: "Checks for duplication and naming convention of job/step IDs",
-		},
+		RuleBase: builtinRuleBase("id"),
 	}
 }
 

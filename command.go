@@ -77,7 +77,7 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 	if args == nil {
 		args = []string{}
 	}
-	if len(args) > 0 && (args[0] == cobra.ShellCompRequestCmd || args[0] == cobra.ShellCompNoDescRequestCmd) && !commandFileExists(args[0]) {
+	if len(args) > 0 && (args[0] == cobra.ShellCompRequestCmd || args[0] == cobra.ShellCompNoDescRequestCmd) {
 		app.root.SetErr(io.Discard)
 		app.root.SetArgs(normalizeCommandArgs(app.root.Flags(), args))
 		if err := app.root.ExecuteContext(ctx); err != nil {

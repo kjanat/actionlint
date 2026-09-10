@@ -36,7 +36,8 @@ type Error struct {
 	Kind string
 	// endColumn is the inclusive column where the error range ends. A zero value lets the formatter
 	// infer the range from the source token at Column.
-	endColumn int
+	endColumn   int
+	endPosition *Pos
 	// source is the content of the file at Filepath when the error points at a file other than the
 	// linted workflow. It replaces the workflow source for rendering the snippet.
 	source []byte

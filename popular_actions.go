@@ -2295,6 +2295,8 @@ var PopularActions = map[string]*ActionMetadata{
 			"creds":                  {"creds", false, false, ""},
 			"enable-azpssession":     {"enable-AzPSSession", false, false, ""},
 			"environment":            {"environment", false, false, ""},
+			"mask-client-id":         {"mask-client-id", false, false, ""},
+			"max-context-population": {"max-context-population", false, false, ""},
 			"subscription-id":        {"subscription-id", false, false, ""},
 			"tenant-id":              {"tenant-id", false, false, ""},
 		},

@@ -102,7 +102,7 @@ The legacy `-oneline` option still yields to a nonempty template.
 
 JSON returns a versioned document. Each diagnostic has `rule`, `message`, `path`,
 `start`, `end` and an optional `snippet`. Positions use one-based Unicode character
-columns, and the end column is inclusive. For example:
+columns, and the end position is exclusive. Ranges may span multiple lines. For example:
 
 ```json
 {
@@ -120,7 +120,7 @@ columns, and the end column is inclusive. For example:
 ```
 
 A clean JSON result has an empty `diagnostics` array. JSON Lines emits those
-individual diagnostic objects, or nothing for a clean result. Legacy
+individual diagnostic objects with `schema_version: 1` on every record, or nothing for a clean result. Legacy
 `-format '{{json .}}'` retains its original array and field names, including
 `kind`, `filepath` and `end_column`. SARIF uses the bundled renderer. `github`
 emits escaped workflow annotation commands; it is enabled only by that explicit
@@ -129,7 +129,7 @@ format choice, including when running inside GitHub Actions.
 Check results go to stdout, or to `--output-file PATH`. `--output-file -` means stdout.
 This destination option applies only to checks.
 A report file is replaced only after analysis completes; an operational failure
-preserves any previous report. An output file cannot also be a selected input.
+preserves any previous report. An output file cannot replace a consumed workflow, local action, reusable workflow, configuration, template, or existing stdin filename, including links to those files. Replacing a report preserves its permission bits; a new report is private to the current user.
 Logs and operational errors go to stderr. Structured output never includes ANSI
 color or terminal hyperlinks. A clean default text run stays silent.
 
