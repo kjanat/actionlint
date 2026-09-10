@@ -178,11 +178,11 @@ The fork publishes CLI images as `ghcr.io/kjanat/actionlint` and `docker.io/kjan
 
 #### mise
 
-Use [mise's GitHub backend][mise-github] with this repository's full name. The short `actionlint` tool name resolves to
+Use [mise's GitHub backend][mise-github] with this repository's full name. By default, the short `actionlint` tool name resolves to
 upstream packages in mise's registry.
 
 ```bash
-# Show all installable versions
+# Show all installable versions (excluding minimum-release-age and pre-releases)
 mise ls-remote github:kjanat/actionlint
 
 # Install the latest release
@@ -190,6 +190,9 @@ mise install github:kjanat/actionlint@latest
 
 # Set a version globally (on your ~/.config/mise/config.toml file)
 mise use -g github:kjanat/actionlint@latest
+
+# and simply run:
+actionlint # or more explicitly: mise exec github:kjanat/actionlint@latest -- actionlint -version
 ```
 
 For a project-local selection, put this in `mise.toml` and run `mise install`:
@@ -198,6 +201,58 @@ For a project-local selection, put this in `mise.toml` and run `mise install`:
 [tools]
 "github:kjanat/actionlint" = "latest"
 ```
+
+To make the short `actionlint` name resolve to this fork, add a [tool alias](https://mise.jdx.dev/dev-tools/aliases.html):
+
+```sh
+mise alias add actionlint github:kjanat/actionlint
+mise use -g actionlint@1.16.1
+```
+
+`mise alias add` (also available as `mise tool-alias set`) writes the alias to `~/.config/mise/config.toml`.
+The second command installs and selects the version globally.
+
+To share the alias and version with a project instead, put both in its `mise.toml` and run `mise install`:
+
+```toml
+#:schema https://mise.jdx.dev/schema/mise.json
+
+[tools]
+actionlint = "1.16.1"
+
+[tool_alias]
+actionlint = "github:kjanat/actionlint"
+```
+
+With the alias configured, commands such as `mise install actionlint` and `mise ls-remote actionlint` use this fork's
+GitHub releases. To list the `1.16` releases with metadata:
+
+```sh
+mise ls-remote --minimum-release-age 0 --json actionlint 1.16 | jq .
+# `--minimum-release-age 0` includes releases newer than the default 24h.
+# 1.16 filters by prefix.
+```
+
+<details><summary>console output</summary>
+
+```json
+[
+  {
+    "version": "1.16.0",
+    "created_at": "2026-09-08T16:30:53Z",
+    "release_url": "https://github.com/kjanat/actionlint/releases/tag/v1.16.0",
+    "prerelease": false
+  },
+  {
+    "version": "1.16.1",
+    "created_at": "2026-09-09T19:28:57Z",
+    "release_url": "https://github.com/kjanat/actionlint/releases/tag/v1.16.1",
+    "prerelease": false
+  }
+]
+```
+
+</details>
 
 ### [Nix](https://nix.dev/)
 
