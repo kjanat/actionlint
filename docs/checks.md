@@ -36,6 +36,7 @@ List of checks:
 - [Hardcoded credentials](#check-hardcoded-credentials)
 - [Environment variable names](#check-env-var-names)
 - [Cache access](#cache-mode)
+- [Cache safety policies](#cache-policies)
 - [Permissions](#permissions)
 - [Reusable workflows](#check-reusable-workflows)
 - [ID naming convention](#id-naming-convention)
@@ -46,8 +47,8 @@ List of checks:
 - [Deprecated inputs usage](#deprecated-inputs-usage)
 - [YAML anchors](#yaml-anchors)
 
-Note that the checks in this document always run and report mistakes in workflow files. actionlint also has policy
-checks that a repository turns on for itself, described in [the configuration document](config.md#policy-checks). For
+The checks in this document run by default, including the configurable cache safety policies. Other policy checks
+are opt-in, as described in [the configuration document](config.md#policy-checks). For
 general code style checks, please consider using a general YAML checker like [yamllint][yamllint].
 
 <a id="check-unexpected-keys"></a>
@@ -2330,6 +2331,58 @@ and a `write-only` caller cannot grant `read`. Diagnostics identify the called j
 An unspecified caller mode leaves the callee free to declare its own mode, including write access on a low-trust
 trigger. Invalid declarations produce syntax diagnostics and are excluded from access comparisons. Cache access
 validation covers workflows available in the local repository.
+
+<a id="cache-policies"></a>
+
+## Cache safety policies
+
+Example input:
+
+```yaml
+on: pull_request_target
+jobs:
+  call:
+    uses: example/repository/.github/workflows/build.yml@main
+  build:
+    runs-on: ubuntu-latest
+    cache-mode: write
+    steps:
+      - run: echo hello
+  restore:
+    runs-on: ubuntu-latest
+    cache-mode: none
+    steps:
+      - uses: actions/cache/restore@v5
+        with: { path: .cache, key: build }
+```
+
+Output:
+
+```console
+test.yaml:4:11: reusable workflow call "example/repository/.github/workflows/build.yml@main" has no explicit cache access limit for low-trust trigger(s) "pull_request_target". the callee can request writes despite the trigger's read-only default. set "cache-mode: read" or "cache-mode: none" on this job or workflow [cache-call-unrestricted]
+  |
+4 |     uses: example/repository/.github/workflows/build.yml@main
+  |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+test.yaml:7:17: cache-mode "write" grants cache writes for low-trust trigger(s) "pull_request_target". untrusted code or input can poison caches consumed by privileged workflows. use "read" or "none", or document a reviewed exception with an inline suppression [cache-write-untrusted]
+  |
+7 |     cache-mode: write
+  |                 ^~~~~
+test.yaml:14:15: "actions/cache/restore" cannot restore caches with effective cache-mode "none". GitHub skips the operation; remove this cache step or select an action and mode that match the job's intended cache access [cache-operation]
+   |
+14 |       - uses: actions/cache/restore@v5
+   |               ^~~~~~~~~~~~~~~~~~~~~~~~
+```
+
+<!-- Skip playground link -->
+
+These three policies are enabled by default. `cache-write-untrusted` reports write grants on low-trust events that
+can use default-branch caches. `cache-call-unrestricted` requires an explicit cap on reusable calls from those events,
+because the callee can otherwise request write access. `cache-operation` reports official cache steps that an
+explicit mode makes ineffective. An ordinary job without `cache-mode` retains GitHub's trigger default and is not
+reported for omission. Ordinary pull request caching is not treated as the default-branch cache risk.
+
+See [policy configuration and inline exceptions](config.md#policy-checks)
+for the event list, exact action/mode combinations, limitations, and ways to document reviewed exceptions.
 
 <a id="permissions"></a>
 

@@ -58,10 +58,19 @@ type PathConfig struct {
 	Ignore IgnorePatterns `yaml:"ignore" jsonschema:"nullable"`
 }
 
-// Policy is the "policy" mapping in the configuration file. Each key enables one check that enforces a
-// convention chosen by the repository. A key which is not set inherits its value from the configuration file
-// of the next lower precedence, and all the checks are disabled when no configuration file sets them.
+// Policy configures checks for cache safety and repository conventions.
+// Cache policies are enabled by default; the remaining checks are opt-in.
+// An omitted or null setting retains the check's default.
 type Policy struct {
+	// CacheCallUnrestricted requires explicit cache ceilings on low-trust reusable calls.
+	// Enabled by default. Set false to disable it; null or omission keeps the default.
+	CacheCallUnrestricted *bool `yaml:"cache-call-unrestricted" jsonschema:"nullable,default=true"`
+	// CacheOperation reports official cache action steps disabled by an explicit cache mode.
+	// Enabled by default. Set false to disable it; null or omission keeps the default.
+	CacheOperation *bool `yaml:"cache-operation" jsonschema:"nullable,default=true"`
+	// CacheWriteUntrusted reports write-capable cache modes on low-trust triggers.
+	// Enabled by default. Set false to disable it; null or omission keeps the default.
+	CacheWriteUntrusted *bool `yaml:"cache-write-untrusted" jsonschema:"nullable,default=true"`
 	// RequireCommitHash requires `uses:` references to be pinned to a full commit SHA, or an image digest
 	// for Docker images, when set to `true`.
 	//
@@ -132,6 +141,12 @@ func (p *Policy) UnmarshalYAML(n *yaml.Node) error {
 		k, v := n.Content[i], n.Content[i+1]
 		var err error
 		switch k.Value {
+		case "cache-write-untrusted":
+			err = v.Decode(&p.CacheWriteUntrusted)
+		case "cache-call-unrestricted":
+			err = v.Decode(&p.CacheCallUnrestricted)
+		case "cache-operation":
+			err = v.Decode(&p.CacheOperation)
 		case "require-commit-hash":
 			err = v.Decode(&p.RequireCommitHash)
 		case "require-job-timeout":
@@ -343,10 +358,10 @@ type Config struct {
 	// `permissive` assumes read/write access, except `id-token`, which still requires an explicit grant.
 	// Omit this key or use `null` to assume `restricted`.
 	AssumeDefaultPermissions DefaultPermissionsAssumption `yaml:"assume-default-permissions" jsonschema:"nullable"`
-	// Policy enables opt-in checks for repository conventions, such as pinned actions and job timeouts.
+	// Policy configures cache safety checks and repository conventions, such as pinned actions and job timeouts.
 	//
-	// All policy checks are disabled by default. Set individual keys to enable them; omit the mapping
-	// or use `{}` or `null` to leave them unset. Normal workflow correctness checks always run.
+	// Cache policies default to true; other policies are opt-in. Set individual keys to override their
+	// defaults. Omit the mapping or use `{}` or `null` to keep defaults. Syntax checks always run.
 	Policy Policy `yaml:"policy" jsonschema:"nullable"`
 }
 
@@ -511,10 +526,12 @@ paths:
 # token.
 #assume-default-permissions: restricted
 
-# Policy checks. Each key turns on one check that enforces a convention of this
-# repository rather than reporting a mistake. They are all disabled when this
-# mapping is absent. The keys are in alphabetical order.
+# Cache policies are enabled by default. Set a cache policy to false to disable
+# it. The remaining policies are opt-in repository conventions.
 #policy:
+#  cache-call-unrestricted: true
+#  cache-operation: true
+#  cache-write-untrusted: true
 #  # Require every "uses:" to be pinned to a full commit SHA or an image
 #  # digest.
 #  require-commit-hash: true

@@ -96,12 +96,54 @@
     },
     "policy": {
       "title": "policy",
-      "description": "Enables opt-in checks for repository conventions, such as pinned actions and job timeouts.\n\nAll policy checks are disabled by default. Set individual keys to enable them; omit the mapping or use `{}` or `null` to leave them unset. Normal workflow correctness checks always run.",
-      "markdownDescription": "Enables opt-in checks for repository conventions, such as pinned actions and job timeouts.\n\nAll policy checks are disabled by default. Set individual keys to enable them; omit the mapping or use `{}` or `null` to leave them unset. Normal workflow correctness checks always run.",
+      "description": "Configures cache safety checks and repository conventions, such as pinned actions and job timeouts.\n\nCache policies default to true; other policies are opt-in. Set individual keys to override their defaults. Omit the mapping or use `{}` or `null` to keep defaults. Syntax checks always run.",
+      "markdownDescription": "Configures cache safety checks and repository conventions, such as pinned actions and job timeouts.\n\nCache policies default to true; other policies are opt-in. Set individual keys to override their defaults. Omit the mapping or use `{}` or `null` to keep defaults. Syntax checks always run.",
       "oneOf": [
         {
           "type": "object",
           "properties": {
+            "cache-call-unrestricted": {
+              "title": "cache-call-unrestricted",
+              "description": "Requires explicit cache ceilings on low-trust reusable calls. Enabled by default. Set false to disable it; null or omission keeps the default.",
+              "markdownDescription": "Requires explicit cache ceilings on low-trust reusable calls. Enabled by default. Set false to disable it; null or omission keeps the default.",
+              "oneOf": [
+                {
+                  "default": true,
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "cache-operation": {
+              "title": "cache-operation",
+              "description": "Reports official cache action steps disabled by an explicit cache mode. Enabled by default. Set false to disable it; null or omission keeps the default.",
+              "markdownDescription": "Reports official cache action steps disabled by an explicit cache mode. Enabled by default. Set false to disable it; null or omission keeps the default.",
+              "oneOf": [
+                {
+                  "default": true,
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "cache-write-untrusted": {
+              "title": "cache-write-untrusted",
+              "description": "Reports write-capable cache modes on low-trust triggers. Enabled by default. Set false to disable it; null or omission keeps the default.",
+              "markdownDescription": "Reports write-capable cache modes on low-trust triggers. Enabled by default. Set false to disable it; null or omission keeps the default.",
+              "oneOf": [
+                {
+                  "default": true,
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "require-commit-hash": {
               "title": "require-commit-hash",
               "description": "Requires `uses:` references to be pinned to a full commit SHA, or an image digest for Docker images, when set to `true`.\n\nSet `false` to disable the check. Omit this key or use `null` to leave it unset; the check is disabled by default. Local references and references built with expressions are skipped.",

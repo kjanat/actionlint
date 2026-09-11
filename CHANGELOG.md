@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Enable cache safety policies by default: report explicit writes on low-trust triggers that can use default-branch caches, reusable calls without an explicit cache limit on those triggers, and official cache actions disabled by an explicit mode. Each policy can be disabled in configuration or suppressed on a specific line with a rule name and a reason.
+
 - Support workflow- and job-level `cache-mode` values, including jobs that call reusable workflows. Check explicit cache access limits through nested local workflow calls, preserving job overrides and the distinction between omitted settings and `none`. Report invalid values and types at their source locations. (kjanat/actionlint#163)
 
 <a id="v1.16.1"></a>

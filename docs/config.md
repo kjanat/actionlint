@@ -117,20 +117,120 @@ paths:
 
 ## Policy checks
 
-The keys under `policy` turn on checks that enforce a convention the repository chose for itself. GitHub runs a
-workflow that violates one of them without complaining, so none of these checks reports anything until this mapping
-turns it on, and a repository with no configuration file never sees them. Errors from the checks in
-[the checks document](checks.md) are a different thing: those report a workflow that is broken, and they always run.
+The keys under `policy` configure checks for cache safety and repository conventions. The three cache policies below
+are **enabled by default**, including when no configuration file exists. The remaining policies are opt-in.
+These checks can report workflows that GitHub accepts: accepting a write grant does not make it safe, and a disabled
+cache operation can silently do nothing.
 
 Each check owns one key. The key name is also the name of the rule, so it is the name in the `[...]` suffix of the
 error message and the value of `{{$err.Kind}}` in the `-format` option. Each one adds its own subsection here, in
 alphabetical order by key.
 
-Every key tells three states apart. Writing `false`, or an empty list for a key whose value is a list, turns the
-check off. Leaving the key out, or writing `null`, says nothing either way, so an empty `policy` mapping switches
-nothing off. That distinction is what lets a key which says nothing take its value from elsewhere once actionlint
-reads a user-global configuration file as well as the repository's. Today it reads one file: `-config-file` if given,
-otherwise the repository's.
+Writing `false`, or an empty list for a list-valued key, turns that check off. Leaving the key out or writing `null`
+retains its default, so `policy: {}` does not disable cache policies. actionlint reads one configuration file:
+`-config-file` if given, otherwise the repository's.
+
+### cache-call-unrestricted
+
+Enabled by default. Requires an explicit `cache-mode` at a reusable call site, or inherited from its workflow, on
+the low-trust triggers listed under [cache-write-untrusted](#cache-write-untrusted). GitHub's default read-only mode
+does not cap a callee that explicitly asks for write access. Set `cache-mode: read` or `cache-mode: none` to establish
+that cap. This applies to local and remote reusable calls, even when a local callee currently uses only read access;
+the caller's restriction should survive a later callee change. Remote workflows are not downloaded.
+
+```yaml
+policy:
+  cache-call-unrestricted: false
+```
+
+An explicit write-capable mode satisfies the declaration check but is reported separately by
+`cache-write-untrusted`. Invalid declarations produce syntax diagnostics without an additional policy finding.
+
+### cache-operation
+
+Enabled by default. Reports official cache actions whose operation is disabled by the job's effective explicit mode:
+
+| Action                  | Modes reported       |
+| ----------------------- | -------------------- |
+| `actions/cache/save`    | `read`, `none`       |
+| `actions/cache/restore` | `write-only`, `none` |
+| `actions/cache`         | `none`               |
+
+Job declarations override workflow declarations. With `read`, the combined action can still restore; with `write-only`,
+it can still save, so neither produces a finding for the combined action. Omitted modes are not guessed from event
+payloads. Wrappers, custom cache actions and package-manager caching options are not inspected by this check.
+GitHub skips a forbidden operation without failing the job; this diagnostic helps catch ineffective steps.
+
+```yaml
+policy:
+  cache-operation: false
+```
+
+### cache-write-untrusted
+
+Enabled by default. Reports explicit `write` and `write-only` grants on low-trust triggers that can use caches under
+the default branch. These grants override GitHub's read-only default. If untrusted code or input controls the saved
+contents, a later privileged workflow can consume a poisoned cache.
+
+The checked triggers are `branch_protection_rule`, `check_run`, `check_suite`, `deployment`, `deployment_status`,
+`discussion`, `discussion_comment`, `fork`, `gollum`, `image_version`, `issue_comment`, `issues`, `label`, `milestone`,
+`public`, `pull_request_target`, `status`, `watch`, and `workflow_run`. Deployment events are included because their
+target can be the default branch. A workflow with multiple triggers is checked if any listed trigger is present.
+
+This is a conservative declaration check. It does not prove that attacker-controlled code executes, interpret `if`
+guards, inspect cache keys, or establish the trust of downloaded artifacts. For a reviewed exception, use an
+[inline suppression](#inline-cache-policy-exceptions). Ordinary `pull_request`, review events and `merge_group` use
+their own refs and are not classified as this default-branch cache risk. Trusted write-default events, such as `push`,
+and a standalone `workflow_call` trigger do not produce this finding.
+
+Set `read` or `none` on the affected job. An inherited workflow declaration is reported once, and is not reported
+if every job overrides it with a safe mode. Omitting the mode on an ordinary job retains GitHub's safe trigger default;
+reusable calls are covered separately by `cache-call-unrestricted`.
+
+```yaml
+policy:
+  cache-write-untrusted: false
+```
+
+The event classification follows GitHub's [cache access defaults](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#cache-access-for-low-trust-workflow-triggers)
+and [event ref definitions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows).
+
+### Inline cache policy exceptions
+
+Prefer an exception next to the reviewed declaration over disabling a policy for the entire repository:
+
+```yaml
+on: pull_request_target
+cache-mode: write # actionlint:ignore cache-write-untrusted -- jobs use reviewed default-branch code only
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Report metadata without running pull request code"
+```
+
+Alternatively, put the directive on its own line immediately before the reported declaration:
+
+```yaml
+jobs:
+  report:
+    # actionlint:ignore-next-line cache-call-unrestricted -- reviewed callee manages its own cache limit
+    uses: example/repository/.github/workflows/report.yml@main
+```
+
+Both forms require an exact rule name and a nonempty reason after `--`. A comma-separated list selects multiple
+cache rules. Only `cache-call-unrestricted`, `cache-operation`, and `cache-write-untrusted` can be suppressed this way.
+A directive affects the reported line only, including multiple findings of the selected rule on that line; it does
+not affect other rules or later lines. A blank line separates a preceding directive from its target. Unknown selectors,
+missing reasons and incorrectly placed directives report `inline-suppression` errors.
+
+Use trailing comments on the same physical line as the reported value, or standalone comments immediately before
+that line. For aliases, put the exception at the anchor declaration when the diagnostic points there. Text inside
+quoted YAML strings or `run: |` scripts is not an actionlint directive. General inline ignores for other rules are
+not supported; existing CLI and path-based ignore patterns remain available.
+
+These findings use normal diagnostic output and exit status 1. Suppression removes only the selected finding; it
+does not change cache access in GitHub Actions.
 
 ### require-commit-hash
 
