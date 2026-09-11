@@ -48,8 +48,12 @@ func newRulePyflakes(cmd *externalCommand) *RulePyflakes {
 // or relative/absolute file path. When the given executable is not found in system, it returns
 // an error.
 func NewRulePyflakes(executable string, proc *concurrentProcess) (*RulePyflakes, error) {
+	return configuredPyflakes(executable, nil, proc)
+}
+
+func configuredPyflakes(executable string, options *ExternalCommandOptions, proc *concurrentProcess) (*RulePyflakes, error) {
 	// Combine output because pyflakes outputs lint errors to stdout and outputs syntax errors to stderr. (#411)
-	cmd, err := proc.newCommandRunner(executable, true)
+	cmd, err := proc.configuredCommandRunner(executable, options, true)
 	if err != nil {
 		return nil, err
 	}

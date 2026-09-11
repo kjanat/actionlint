@@ -4,4 +4,4 @@ package cli
 
 import "os"
 
-func enableHelpVT(*os.File) func() { return func() {} }
+func enableTerminalVT(*os.File) func() { return func() {} }

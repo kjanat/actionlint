@@ -25,11 +25,13 @@ type SourceUnit struct {
 
 // AnalysisRequest contains resolved sources and analysis settings, not CLI flags or renderers.
 type AnalysisRequest struct {
-	Sources        []SourceUnit
-	ShellCheck     string
-	Pyflakes       string
-	IgnorePatterns IgnorePatterns
-	OnRulesCreated func([]Rule) []Rule
+	Sources           []SourceUnit
+	ShellCheck        string
+	Pyflakes          string
+	ShellcheckOptions *ExternalCommandOptions
+	PyflakesOptions   *ExternalCommandOptions
+	IgnorePatterns    IgnorePatterns
+	OnRulesCreated    func([]Rule) []Rule
 	// WorkingDir resolves workflow paths in reusable-workflow caches. Empty uses os.Getwd.
 	WorkingDir string
 }
@@ -88,6 +90,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		log = &analysisLogWriter{out: log}
 	}
 	engine := &analysisEngine{ctx: ctx, shellcheck: request.ShellCheck, pyflakes: request.Pyflakes,
+		shellcheckOptions: request.ShellcheckOptions, pyflakesOptions: request.PyflakesOptions,
 		ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: analysisLogger{log, level}}
 	inputs := &inputFiles{}
 	proc := newConcurrentProcess(ctx, runtime.NumCPU())

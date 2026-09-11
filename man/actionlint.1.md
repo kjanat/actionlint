@@ -76,6 +76,8 @@ handling; it does not substitute the stricter editor JSON Schema validator.
 
 **doctor**
 : Inspect configuration and external-tool resolution without executing tools.
+Directory, configuration and executable paths use `file://` links when hyperlinks
+are enabled. Link targets support Windows drive and UNC paths and encode special characters.
 Missing optional tools are reported; malformed selected config returns status 3.
 
 **completion** *shell*
@@ -100,6 +102,11 @@ annotations are emitted only when explicitly selected.
 : Select JSON output. With help, version, config, rules or doctor, emit JSON
 metadata. Operational errors are JSON objects on stderr.
 
+**--json-pretty**[=*BOOL*]
+: Format JSON and SARIF on a terminal with installed jq. Default: true. False
+keeps the original JSON. Pipes, files, JSONL, templates and stderr records are
+unchanged. Unavailable or failing jq falls back to the original JSON.
+
 **--template**, **--format**, **-f** *TEMPLATE*
 : Render diagnostics with a Go template. Existing template fields and functions
 remain unchanged, including the JSON array returned by `{{json .}}`. Cannot be
@@ -122,17 +129,19 @@ Help uses the same controls: automatic styling follows stderr's terminal status,
 diagnostics also use color in workflow logs without a terminal, even with
 **TERM=dumb**. Regular files and **--output-file** reports stay plain in auto mode;
 custom templates receive no added color. Put root color flags before **--help**.
-Structured output contains no terminal color codes.
+Redirected structured output contains no terminal color codes. Optional jq
+formatting can color JSON and SARIF written directly to a terminal.
 
 **--no-color**
 : Disable color. This supported legacy option wins over the root's **--color**
 boolean regardless of argument order.
 
 **--hyperlinks** *MODE*
-: Select `auto` (default), `always`, or `never` for OSC 8 links in help.
+: Select `auto` (default), `always`, or `never` for OSC 8 links in help and doctor.
 `always` and `never` override the environment. In `auto`, non-empty
 **NO_HYPERLINKS** disables links before non-empty **FORCE_HYPERLINKS** enables
-them; otherwise stderr must be a TTY with a known capable terminal.
+them; otherwise the output must be a TTY with a known capable terminal
+(stderr for help, stdout for doctor).
 Unknown terminals and multiplexers default to plain URLs. Explicit `always`
 can enable links through a multiplexer configured to pass them through.
 Color controls are independent. Destination URLs stay visible when links are
@@ -387,6 +396,46 @@ upgrading actionlint so they reflect the installed CLI. See the usage document f
 
 # ENVIRONMENT
 
+**ACTIONLINT_CONFIG**, **ACTIONLINT_NO_CONFIG**, **ACTIONLINT_CONFIG_ORIGIN**
+: Configuration selection and origin-display defaults. Explicit config flags
+override environment selection. **config init** ignores these defaults.
+
+**ACTIONLINT_STDIN_FILENAME**, **ACTIONLINT_IGNORE_REGEX**
+: Stdin filename and message-filter defaults. The filter value is a JSON string
+array. Explicit ignore flags replace that list.
+
+**ACTIONLINT_OUTPUT_FORMAT**, **ACTIONLINT_JSON**, **ACTIONLINT_TEMPLATE**,
+**ACTIONLINT_TEMPLATE_FILE**, **ACTIONLINT_OUTPUT_FILE**
+: Output defaults. Explicit format flags replace environment format selection.
+Templates and output files apply only to checks.
+
+**ACTIONLINT_JSON_PRETTY**
+: Whether terminal JSON may use installed **jq**. Default: true. The
+**--json-pretty=false** flag disables this. Pipes, files, JSONL, templates and
+stderr records retain their existing output. Missing or failing jq falls back
+to the original JSON.
+
+**ACTIONLINT_LOG_LEVEL**, **ACTIONLINT_QUIET**, **ACTIONLINT_SUMMARY**
+: Logging and summary defaults. Explicit flags, including false values, take precedence.
+
+**ACTIONLINT_COLOR**, **ACTIONLINT_HYPERLINKS**
+: Presentation defaults: auto, always or never. NO_COLOR and NO_HYPERLINKS
+override these defaults; explicit CLI controls take precedence over the environment.
+
+**ACTIONLINT_SHELLCHECK_BIN**, **ACTIONLINT_PYFLAKES_BIN**
+: Literal external-linter executable names or paths. Empty disables the tool.
+
+**ACTIONLINT_SHELLCHECK_FLAGS**, **ACTIONLINT_PYFLAKES_FLAGS**
+: Additional arguments as a JSON string array or a quoted argument list. No shell
+execution or variable expansion is performed.
+
+**ACTIONLINT_SHELLCHECK_ENV**, **ACTIONLINT_PYFLAKES_ENV**
+: Child environment overrides, as a JSON object or quoted NAME=value entries and
+variable names. JSON null or bare names forward inherited values; strings set values.
+An explicit tool command flag overrides its BIN, FLAGS and ENV settings together.
+
+See [Environment variables](../docs/env.md) for precedence, defaults and examples.
+
 **PATH**
 : Used to find ShellCheck and pyflakes, including the executable selected by their command flags.
 
@@ -400,7 +449,7 @@ See the [NO_COLOR convention](https://no-color.org/).
 logs. **NO_COLOR** and explicit color controls still apply. This does not enable hyperlinks.
 
 **NO_HYPERLINKS**, **FORCE_HYPERLINKS**
-: In `auto` mode, a nonempty **NO_HYPERLINKS** disables help links. Otherwise,
+: In `auto` mode, a nonempty **NO_HYPERLINKS** disables help and doctor links. Otherwise,
 a nonempty **FORCE_HYPERLINKS** enables them even in redirected output.
 An empty value has no effect; `0` counts as nonempty. Explicit hyperlink modes
 override both variables. These controls are independent of color.

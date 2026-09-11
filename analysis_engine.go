@@ -9,10 +9,11 @@ import (
 
 type analysisEngine struct {
 	analysisLogger
-	ctx                  context.Context
-	shellcheck, pyflakes string
-	ignorePats           IgnorePatterns
-	onRulesCreated       func([]Rule) []Rule
+	ctx                                context.Context
+	shellcheck, pyflakes               string
+	shellcheckOptions, pyflakesOptions *ExternalCommandOptions
+	ignorePats                         IgnorePatterns
+	onRulesCreated                     func([]Rule) []Rule
 }
 
 func (l *analysisEngine) check(
@@ -55,6 +56,7 @@ func (l *analysisEngine) check(
 
 		rules := []Rule{}
 		c := ruleContext{path: path, config: cfg, actions: localActions, workflows: localReusableWorkflows, process: proc, shellcheck: l.shellcheck, pyflakes: l.pyflakes}
+		c.shellcheckOptions, c.pyflakesOptions = l.shellcheckOptions, l.pyflakesOptions
 		for _, descriptor := range builtinRuleDescriptors() {
 			if descriptor.build == nil {
 				continue

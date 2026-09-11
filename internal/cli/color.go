@@ -1,11 +1,42 @@
 package cli
 
 import (
+	"fmt"
 	"io"
 	"os"
 
 	"actionlint.kjanat.dev"
 )
+
+func parseColorMode(mode string) (actionlint.ColorOptionKind, error) {
+	switch mode {
+	case "auto":
+		return actionlint.ColorOptionKindAuto, nil
+	case "always":
+		return actionlint.ColorOptionKindAlways, nil
+	case "never":
+		return actionlint.ColorOptionKindNever, nil
+	default:
+		return 0, fmt.Errorf("invalid color mode %q: choose auto, always or never", mode)
+	}
+}
+
+func (a *commandApp) prepareColor() error {
+	if a.opts.color {
+		a.inv.Render.Color = actionlint.ColorOptionKindAlways
+	}
+	if a.set["modern-color"] {
+		color, err := parseColorMode(a.opts.colorMode)
+		if err != nil {
+			return commandUsageError{err}
+		}
+		a.inv.Render.Color = color
+	}
+	if a.opts.noColor {
+		a.inv.Render.Color = actionlint.ColorOptionKindNever
+	}
+	return nil
+}
 
 func githubActionsColor(out io.Writer) bool {
 	if os.Getenv("GITHUB_ACTIONS") != "true" || os.Getenv("NO_COLOR") != "" {

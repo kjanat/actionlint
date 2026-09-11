@@ -19,7 +19,7 @@ type doctorTool struct {
 	Error     string   `json:"error,omitempty"`
 }
 
-func writeDoctor(out io.Writer, req checkInvocation, asJSON bool) error {
+func writeDoctor(out io.Writer, req checkInvocation, asJSON bool, mode hyperlinkMode) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -36,10 +36,16 @@ func writeDoctor(out io.Writer, req checkInvocation, asJSON bool) error {
 	if configErr != nil {
 		report.ConfigError = configErr.Error()
 	}
-	for _, item := range []struct{ name, command string }{{"shellcheck", req.ShellCheck}, {"pyflakes", req.Pyflakes}} {
+	for _, item := range []struct {
+		name, command string
+		options       *actionlint.ExternalCommandOptions
+	}{{"shellcheck", req.ShellCheck, req.ShellcheckOptions}, {"pyflakes", req.Pyflakes, req.PyflakesOptions}} {
+		if item.options != nil && item.options.Executable != nil {
+			item.command = *item.options.Executable
+		}
 		tool := doctorTool{Name: item.name, Command: item.command, Status: "disabled"}
 		if item.command != "" {
-			tool.Path, tool.Arguments, err = actionlint.ResolveExternalCommand(item.command)
+			tool.Path, tool.Arguments, err = actionlint.ResolveExternalCommandOptions(item.command, item.options)
 			tool.Status = "available"
 			if err != nil {
 				tool.Status, tool.Error = "unavailable", err.Error()
@@ -50,8 +56,14 @@ func writeDoctor(out io.Writer, req checkInvocation, asJSON bool) error {
 	if asJSON {
 		err = writeCommandJSON(out, report)
 	} else {
+		file, terminal := terminalFile(out)
+		links := mode.enabled(terminal, os.Getenv)
+		if links && terminal {
+			restore := enableTerminalVT(file)
+			defer restore()
+		}
 		w := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
-		_, err = fmt.Fprintf(w, "actionlint %s\nDirectory:\t%s\nConfiguration:\t%s\n", report.Build.Version, cwd, config.Path)
+		_, err = fmt.Fprintf(w, "actionlint %s\nDirectory:\t%s\nConfiguration:\t%s\n", report.Build.Version, fileLink(links, cwd), fileLink(links, config.Path))
 		if err == nil && configErr != nil {
 			_, err = fmt.Fprintf(w, "Configuration error:\t%s\n", configErr)
 		}
@@ -59,7 +71,7 @@ func writeDoctor(out io.Writer, req checkInvocation, asJSON bool) error {
 			if err != nil {
 				break
 			}
-			value := tool.Path
+			value := fileLink(links, tool.Path)
 			if value == "" {
 				value = tool.Status
 			}

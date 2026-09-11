@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"runtime/debug"
 	"strings"
 
 	"actionlint.kjanat.dev"
@@ -16,8 +17,6 @@ import (
 
 var commandHelpGroups = []string{"Input", "Output", "External linters", "Information"}
 
-var releaseVersionPattern = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
-
 var helpFlagPattern = regexp.MustCompile(`(?m)(^|[ \t])--?[a-zA-Z][a-zA-Z0-9-]*`)
 
 func (a *commandApp) helpOutput(c *cobra.Command) (io.Writer, bool, func()) {
@@ -27,7 +26,7 @@ func (a *commandApp) helpOutput(c *cobra.Command) (io.Writer, bool, func()) {
 	links := a.helpHyperlinks()
 	restore := func() {}
 	if terminal && (enabled || links) {
-		restore = enableHelpVT(file)
+		restore = enableTerminalVT(file)
 	}
 	// The Windows color fallback does not pass OSC 8 through.
 	if terminal && enabled && !links {
@@ -41,6 +40,14 @@ func (a *commandApp) helpColor(c *cobra.Command, terminal bool) bool {
 		return false
 	}
 	force := a.opts.color
+	if !a.anySet("color", "modern-color", "no-color") {
+		switch a.inv.Render.Color {
+		case actionlint.ColorOptionKindAlways:
+			force = true
+		case actionlint.ColorOptionKindNever:
+			return false
+		}
+	}
 	// Help runs before capture and prepareInvocation, but its flags are parsed.
 	if c != a.root && c.Flags().Changed("color") {
 		switch a.opts.colorMode {
@@ -74,10 +81,26 @@ func styleHelpFlags(text string, style *color.Color) string {
 
 func (a *commandApp) help(c *cobra.Command, _ []string) {
 	a.helpShown = true
+	c.Flags().Visit(func(f *pflag.Flag) { a.set[f.Name] = true })
+	if err := a.presentationEnvironment(); err != nil {
+		a.status = a.reportError(err)
+		return
+	}
 	c.InitDefaultHelpFlag()
 	annotateFlag(c.Flags(), "help", "Information")
 	if a.jsonOutput() {
-		if err := writeCommandJSON(a.streams.Stdout, describeCommand(c)); err != nil {
+		if c != a.root && c.Flags().Changed("color") {
+			a.set["modern-color"] = true
+		}
+		if err := a.prepareColor(); err != nil {
+			a.status = a.reportError(err)
+			return
+		}
+		out := a.streams.Stdout
+		if a.inv.Render.PrettyJSON {
+			out = &terminalJSONOutput{Writer: out, ctx: c.Context(), color: a.inv.Render.Color}
+		}
+		if err := writeCommandJSON(out, describeCommand(c)); err != nil {
 			a.status = a.reportError(err)
 		}
 		return
@@ -88,7 +111,7 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 	heading := helpStyle(colored, color.Bold, color.FgCyan)
 	command := helpStyle(colored, color.Bold)
 	option := helpStyle(colored, color.FgCyan)
-	usage := strings.Replace(c.UseLine(), "actionlint", helpLink(links, "actionlint", projectURL), 1)
+	usage := strings.Replace(c.UseLine(), "actionlint", terminalLink(links, "actionlint", projectURL), 1)
 	_, _ = fmt.Fprintf(out, "%s\n\n%s\n  %s\n", command.Sprint(c.Short), heading.Sprint("Usage:"), command.Sprint(usage))
 	if c.Long != "" {
 		_, _ = fmt.Fprintf(out, "\n%s\n", c.Long)
@@ -151,12 +174,10 @@ Legacy options are supported without deprecation warnings.`, option))
 }
 
 func writeHelpDestinations(out io.Writer, heading *color.Color, links bool) {
-	ref := "HEAD"
-	if v := actionlint.Version(); releaseVersionPattern.MatchString(v) {
-		ref = "v" + v
-	}
+	info, _ := debug.ReadBuildInfo()
+	ref := documentationRef(actionlint.Version(), info)
 	documentation := projectURL + "/tree/" + ref + "/docs/usage.md"
-	_, _ = fmt.Fprintf(out, "\n%s\n  %s\n\n%s\n  %s\n", heading.Sprint("Project:"), helpLink(links, projectURL, projectURL), heading.Sprint("Documentation:"), helpLink(links, documentation, documentation))
+	_, _ = fmt.Fprintf(out, "\n%s\n  %s\n\n%s\n  %s\n", heading.Sprint("Project:"), terminalLink(links, projectURL, projectURL), heading.Sprint("Documentation:"), terminalLink(links, documentation, documentation))
 }
 
 type commandFlagDescription struct {

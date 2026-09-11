@@ -74,7 +74,7 @@ func newCommandApp(streams *Command) *commandApp {
 	a.checkFlags(check, true)
 	config := &cobra.Command{
 		Use: "config", Short: "Inspect and validate configuration",
-		Long: "Select one explicit configuration file or the repository's .github/actionlint.yaml or .yml.\nNo global configuration, merging or environment overrides are applied.",
+		Long: "Select one explicit configuration file or the repository's .github/actionlint.yaml or .yml.\nACTIONLINT_CONFIG and ACTIONLINT_NO_CONFIG supply defaults for selection.\nNo global configuration or file merging is applied.",
 	}
 	a.configFlags(config.PersistentFlags())
 	a.commonFlags(config, config.PersistentFlags())
@@ -126,14 +126,16 @@ func annotateFlag(f *pflag.FlagSet, name, group string) {
 
 func (a *commandApp) commonFlags(c *cobra.Command, f *pflag.FlagSet) {
 	f.BoolVar(&a.inv.JSON, "json", false, "Write JSON results or metadata")
+	f.BoolVar(&a.inv.Render.PrettyJSON, "json-pretty", true, "Format terminal JSON with jq when installed; pipes stay unchanged")
 	f.BoolVarP(&a.inv.Render.Quiet, "quiet", "q", false, "Suppress progress and summaries; keep findings and errors")
 	annotateFlag(f, "json", "Output")
+	annotateFlag(f, "json-pretty", "Output")
 	annotateFlag(f, "quiet", "Output")
 	a.hyperlinkFlag(c, f)
 }
 
 func (a *commandApp) hyperlinkFlag(c *cobra.Command, f *pflag.FlagSet) {
-	f.Var(&a.inv.Render.Hyperlinks, "hyperlinks", "Hyperlinks in help: auto, always or never")
+	f.Var(&a.inv.Render.Hyperlinks, "hyperlinks", "Hyperlinks in help and doctor: auto, always or never")
 	annotateFlag(f, "hyperlinks", "Output")
 	choices := []string{"auto", "always", "never"}
 	f.Lookup("hyperlinks").Annotations[commandChoicesAnnotation] = choices

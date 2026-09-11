@@ -9,12 +9,13 @@ type ruleDescriptor struct {
 	enabled     func(ruleContext) bool
 }
 type ruleContext struct {
-	path                 string
-	config               *Config
-	actions              *LocalActionsCache
-	workflows            *LocalReusableWorkflowCache
-	process              *concurrentProcess
-	shellcheck, pyflakes string
+	path                               string
+	config                             *Config
+	actions                            *LocalActionsCache
+	workflows                          *LocalReusableWorkflowCache
+	process                            *concurrentProcess
+	shellcheck, pyflakes               string
+	shellcheckOptions, pyflakesOptions *ExternalCommandOptions
 }
 
 func builtinRuleDescriptors() []ruleDescriptor {
@@ -42,8 +43,10 @@ func builtinRuleDescriptors() []ruleDescriptor {
 			return NewRuleRequirePermissions(c.config.RequiresPermissions()), nil
 		}, enabled: func(c ruleContext) bool { return c.config.RequiresPermissions().Enabled() }},
 		{Name: "required-actions", Description: "Checks that the actions listed in the \"required-actions\" policy in actionlint.yaml are used", Category: "policy", build: func(c ruleContext) (Rule, error) { return NewRuleRequiredActions(), nil }, enabled: func(c ruleContext) bool { return len(c.config.RequiredActions()) > 0 }},
-		{Name: "shellcheck", Description: "Checks for shell script sources in \"run:\" using shellcheck", Category: "external", build: func(c ruleContext) (Rule, error) { return NewRuleShellcheck(c.shellcheck, c.process) }, enabled: func(c ruleContext) bool { return c.shellcheck != "" }},
-		{Name: "pyflakes", Description: "Checks for Python script when \"shell: python\" is configured using Pyflakes", Category: "external", build: func(c ruleContext) (Rule, error) { return NewRulePyflakes(c.pyflakes, c.process) }, enabled: func(c ruleContext) bool { return c.pyflakes != "" }},
+		{Name: "shellcheck", Description: "Checks for shell script sources in \"run:\" using shellcheck", Category: "external", build: func(c ruleContext) (Rule, error) {
+			return configuredShellcheck(c.shellcheck, c.shellcheckOptions, c.process)
+		}, enabled: func(c ruleContext) bool { return externalCommandEnabled(c.shellcheck, c.shellcheckOptions) }},
+		{Name: "pyflakes", Description: "Checks for Python script when \"shell: python\" is configured using Pyflakes", Category: "external", build: func(c ruleContext) (Rule, error) { return configuredPyflakes(c.pyflakes, c.pyflakesOptions, c.process) }, enabled: func(c ruleContext) bool { return externalCommandEnabled(c.pyflakes, c.pyflakesOptions) }},
 	}
 }
 func builtinRuleBase(name string) RuleBase {

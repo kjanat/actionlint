@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -48,7 +49,11 @@ func executeCheck(ctx context.Context, streams Command, inv invocation) (status 
 			r.Color = actionlint.ColorOptionKindNever
 		}
 	}
+	jsonColor := r.Color
 	r.resolveGitHubActionsColor(out)
+	jsonDestination := out
+	_, terminal := terminalFile(out)
+	prettyJSON := terminal && r.PrettyJSON && r.Template == "" && (r.Format == actionlint.OutputFormatJSON || r.Format == actionlint.OutputFormatSARIF)
 	log := streams.Stderr
 	if inv.JSON {
 		log = &commandJSONLogWriter{out: log}
@@ -71,6 +76,7 @@ func executeCheck(ctx context.Context, streams Command, inv invocation) (status 
 	app, err := actionlint.NewAnalysisSession(actionlint.AnalysisOptions{
 		Context: ctx, WorkingDir: options.WorkingDir, StdinFileName: options.StdinFileName,
 		ConfigFile: options.ConfigFile, Shellcheck: options.Shellcheck, Pyflakes: options.Pyflakes,
+		ShellcheckOptions: c.ShellcheckOptions, PyflakesOptions: c.PyflakesOptions,
 		IgnorePatterns: options.IgnorePatterns, Verbose: options.Verbose, Debug: options.Debug, LogWriter: log,
 		SkipProjectConfig: c.Config.Disabled || (!inv.Legacy && c.Config.Path != ""), QuietSelection: !inv.Legacy,
 	})
@@ -125,7 +131,15 @@ func executeCheck(ctx context.Context, streams Command, inv invocation) (status 
 		writes = &commandResultWriter{Writer: out}
 		out = writes
 	}
-	if err := renderer.Render(out, result); err != nil {
+	if prettyJSON {
+		var data bytes.Buffer
+		if err := renderer.Render(&data, result); err != nil {
+			return 0, err
+		}
+		if err := writeTerminalJSON(ctx, jsonDestination, jsonColor, data.Bytes()); err != nil {
+			return 0, err
+		}
+	} else if err := renderer.Render(out, result); err != nil {
 		return 0, err
 	}
 	if writes != nil && writes.err != nil {

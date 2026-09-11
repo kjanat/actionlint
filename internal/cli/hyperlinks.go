@@ -3,9 +3,12 @@ package cli
 import (
 	"fmt"
 	"io"
+	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/mattn/go-isatty"
 )
@@ -99,9 +102,58 @@ func (a *commandApp) helpHyperlinks() bool {
 	return !a.jsonOutput() && a.inv.Render.Hyperlinks.enabled(terminal, os.Getenv)
 }
 
-func helpLink(enabled bool, label, url string) string {
-	if !enabled {
+func terminalLink(enabled bool, label, url string) string {
+	if !enabled || url == "" {
 		return label
 	}
 	return "\x1b]8;;" + url + "\x1b\\" + label + "\x1b]8;;\x1b\\"
+}
+
+func fileLink(enabled bool, path string) string {
+	if path == "" {
+		return ""
+	}
+	if strings.IndexFunc(path, unicode.IsControl) >= 0 {
+		return strconv.Quote(path)
+	}
+	label := filepath.Clean(path)
+	if !enabled {
+		return label
+	}
+	return terminalLink(true, label, fileURL(path))
+}
+
+// File URI syntax follows https://www.rfc-editor.org/rfc/rfc8089.
+func fileURL(path string) string {
+	if path == "" {
+		return ""
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return ""
+	}
+	path = filepath.ToSlash(abs)
+	u := url.URL{Scheme: "file"}
+	if filepath.Separator == '\\' {
+		switch {
+		case strings.HasPrefix(strings.ToUpper(path), "//?/UNC/"):
+			path = "//" + path[len("//?/UNC/"):]
+		case strings.HasPrefix(path, "//?/"):
+			path = path[len("//?/"):]
+		case strings.HasPrefix(path, "//./"):
+			return ""
+		}
+		switch {
+		case strings.HasPrefix(path, "//"):
+			var rest string
+			u.Host, rest, _ = strings.Cut(path[2:], "/")
+			path = "/" + rest
+		case len(path) >= 2 && path[1] == ':':
+			path = "/" + path
+		default:
+			return ""
+		}
+	}
+	u.Path = path
+	return u.String()
 }

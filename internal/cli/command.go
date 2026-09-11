@@ -80,6 +80,9 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 	if app.helpShown {
 		return app.status
 	}
+	if err := app.applyEnvironment(); err != nil {
+		return app.reportError(err)
+	}
 	if err := app.prepareInvocation(); err != nil {
 		return app.reportError(err)
 	}

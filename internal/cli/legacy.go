@@ -48,6 +48,7 @@ func (a *commandApp) parseLegacy(args []string) (rest []string, forced string, t
 	boolean(&o.initConfig, "init-config")
 	boolean(&o.helpLegacy, "help-legacy")
 	boolean(&a.inv.JSON, "json")
+	f.BoolVar(&r.PrettyJSON, "json-pretty", true, "")
 	for _, name := range []string{"ignore", "ignore-regex"} {
 		f.Func(name, "", func(s string) error { c.IgnoreRegex = append(c.IgnoreRegex, s); return nil })
 	}
@@ -83,7 +84,9 @@ func (a *commandApp) parseLegacy(args []string) (rest []string, forced string, t
 			break
 		}
 	}
-	if err = f.Parse(args[:end]); err != nil {
+	err = f.Parse(args[:end])
+	f.Visit(func(v *flag.Flag) { a.set[v.Name] = true })
+	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			a.inv.JSON = a.errorJSON
 			a.help(a.root, nil)
@@ -91,7 +94,6 @@ func (a *commandApp) parseLegacy(args []string) (rest []string, forced string, t
 		}
 		return nil, "", false, commandUsageError{err}
 	}
-	f.Visit(func(v *flag.Flag) { a.set[v.Name] = true })
 	if a.set["command"] {
 		if forced == "" {
 			return nil, "", false, commandUsageError{errors.New("--command requires a command name")}

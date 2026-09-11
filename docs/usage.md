@@ -76,19 +76,27 @@ accepts `check --color=auto|always|never`; bare `--color` means `always`.
 Human-readable help styles headings, command names and flags when stderr is a
 terminal. With `GITHUB_ACTIONS=true`, help and text diagnostics also use color in
 workflow logs without a terminal, including when `TERM=dumb`. Redirects to regular
-files and `--output-file` reports stay plain in auto mode. Structured output and
-custom templates receive no added color. Following the [NO_COLOR convention](https://no-color.org/),
+files and `--output-file` reports stay plain in auto mode. Custom templates receive
+no added color. JSON can use optional terminal formatting described below.
+Following the [NO_COLOR convention](https://no-color.org/),
 any non-empty `NO_COLOR` value, including `0` or `false`, disables automatic color;
 an empty value has no effect. `TERM=dumb` disables automatic help styling outside GitHub Actions.
 An explicit color request overrides those environment settings.
 `--no-color` and `check --color=never` disable styling. Root color flags belong
-before `--help`, since root help exits immediately. JSON help is always uncolored.
+before `--help`, since root help exits immediately. Redirected JSON help is uncolored.
 
 Help can make the project name and documentation URLs clickable using OSC 8
-terminal hyperlinks. Select `--hyperlinks=auto|always|never` independently of
+terminal hyperlinks. The documentation URL uses the release tag or the build's
+source commit. Without embedded version or VCS metadata, it falls back to `HEAD`;
+use `go run -buildvcs=true ./cmd/actionlint --help` to include the checkout revision
+when running from source.
+
+Doctor uses `file://` links for its directory, configuration
+file and resolved executables. Select `--hyperlinks=auto|always|never` independently of
 color. The default `auto` follows the [no-hyperlinks convention](https://no-hyperlinks.org/spec):
 non-empty `NO_HYPERLINKS` disables links, then non-empty `FORCE_HYPERLINKS`
-enables them, then stderr's TTY status and known terminal capabilities decide.
+enables them, then the output stream's TTY status and known terminal capabilities decide:
+stderr for help, stdout for doctor.
 Even `0` is a non-empty value. Explicit `always` or `never` overrides both variables.
 Unknown terminals and multiplexers use plain URLs in auto mode; `always` can
 enable links when the terminal and multiplexer are configured to pass them through.
@@ -98,6 +106,7 @@ output and generated completion scripts remain free of added hyperlink sequences
 ```sh
 actionlint --hyperlinks=always --help
 actionlint check --hyperlinks=never --help
+actionlint doctor --hyperlinks=always
 ```
 
 Put root hyperlink flags before `--help`, just like color flags. The same modes
@@ -181,6 +190,16 @@ Check the exit status before interpreting empty stdout as success.
 `version --json` exposes build metadata. The old `-version` and `--version` flags
 retain their original three-line text output.
 
+When stdout is a terminal and `jq` is installed, JSON metadata and JSON/SARIF
+diagnostics are indented and colored according to the color controls. Use
+`--json-pretty=false` to disable this. Pipes, files, JSONL, templates and stderr
+records retain their existing output. Missing or failing `jq` falls back to the
+original JSON; it is never installed automatically.
+
+CLI defaults can also come from [environment variables](env.md), including
+configuration selection, output, logging and external linters. Explicit flags
+take precedence, including empty strings and `false`.
+
 ### Configuration inspection
 
 ```sh
@@ -194,7 +213,9 @@ actionlint config validate
 
 Configuration selection remains one explicit file or the repository's
 `.github/actionlint.yaml`, then `.github/actionlint.yml`. There is no new global
-configuration search, merge policy or environment override. `--no-config` skips
+configuration search or merge policy. `ACTIONLINT_CONFIG` and
+`ACTIONLINT_NO_CONFIG` provide selection defaults; explicit config flags override
+both. `--no-config` skips
 configuration loading. An explicit `check --config` also avoids parsing an
 unselected repository config.
 
@@ -214,7 +235,9 @@ config filename, and includes the YAML Language Server schema directive.
 
 `rules` lists checks by name, description and category; `rules NAME` explains one
 check. `doctor` reports the selected config and resolves configured external-tool
-commands without executing them. Missing optional tools are reported as unavailable;
+commands without executing them. Its paths become clickable `file://` links when
+hyperlinks are enabled, with spaces and non-ASCII characters encoded in the target.
+Windows drive and UNC paths are supported. Missing optional tools are reported as unavailable;
 a malformed selected configuration returns exit status 3. Help, version, rules and
 completion do not load configuration or create a linter.
 
@@ -280,6 +303,13 @@ actionlint -shellcheck= -pyflakes=
 actionlint -shellcheck 'shellcheck -e SC2086'
 actionlint -pyflakes 'python3 -m pyflakes'
 ```
+
+To configure executables, arguments and child environments separately, use
+`ACTIONLINT_SHELLCHECK_BIN`, `ACTIONLINT_SHELLCHECK_FLAGS`, and
+`ACTIONLINT_SHELLCHECK_ENV`, or their `ACTIONLINT_PYFLAKES_*` equivalents.
+An explicit tool flag overrides all three environment settings for that tool.
+See [External linter environment settings](env.md#external-linters) for quoting,
+Windows paths and examples.
 
 Your arguments are prepended to the ones actionlint appends itself, so do not
 pass `-f`/`--format` or file arguments. actionlint appends
@@ -410,7 +440,7 @@ The error object has the following fields.
 | `{{$err.Message}}`   | Body of error message                                 | `property "platform" is not defined in object type {os: string}`    |
 | `{{$err.Snippet}}`   | Code snippet to indicate error position               |  <code>          node_version: 16.x\n          ^~~~~~~~~~~~~</code> |
 | `{{$err.Kind}}`      | Name of rule the error belongs to                     | `expression`                                                        |
-| `{{$err.Filepath}}`  | Canonical relative file path of the error position    | `.github/workflows/ci.yml`                                         |
+| `{{$err.Filepath}}`  | Canonical relative file path of the error position    | `.github/workflows/ci.yml`                                          |
 | `{{$err.Line}}`      | Line number of the error position (1-based)           | `9`                                                                 |
 | `{{$err.Column}}`    | Column number of the error's start position (1-based) | `11`                                                                |
 | `{{$err.EndColumn}}` | Column number of the error's end position (1-based)   | `23`                                                                |
@@ -586,7 +616,8 @@ jobs:
         run: bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) 1.16.1
         shell: bash
       - name: Check workflow files
-        run: ${{ steps.get_actionlint.outputs.executable }} -color
+        env: { actionlint: "${{ steps.get_actionlint.outputs.executable }}" }
+        run: "${actionlint}" -color
         shell: bash
 ```
 

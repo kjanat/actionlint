@@ -6,7 +6,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-func enableHelpVT(file *os.File) func() {
+func enableTerminalVT(file *os.File) func() {
 	handle := windows.Handle(file.Fd())
 	var mode uint32
 	if windows.GetConsoleMode(handle, &mode) != nil || mode&windows.ENABLE_VIRTUAL_TERMINAL_PROCESSING != 0 {

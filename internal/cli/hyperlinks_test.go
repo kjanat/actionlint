@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -182,5 +183,65 @@ func TestHyperlinkCompletion(t *testing.T) {
 		if code := cmd.Main(append([]string{"actionlint"}, args...)); code != 0 || !strings.Contains(out.String(), "auto\nalways\nnever\n:4") {
 			t.Fatalf("missing hyperlink choices: %d, %s, %s", code, &out, &stderr)
 		}
+	}
+}
+
+func TestFileURL(t *testing.T) {
+	cases := []struct{ path, want string }{
+		{"", ""},
+	}
+	if filepath.Separator == '\\' {
+		cases = append(cases, []struct{ path, want string }{
+			{`C:\Users\Kaj Kowalski\répo #1\100%.yaml`, "file:///C:/Users/Kaj%20Kowalski/r%C3%A9po%20%231/100%25.yaml"},
+			{`C:\repo\\.github\actionlint.yaml`, "file:///C:/repo/.github/actionlint.yaml"},
+			{`\\server\share\folder name\workflow.yml`, "file://server/share/folder%20name/workflow.yml"},
+			{`\\?\C:\repo\workflow.yml`, "file:///C:/repo/workflow.yml"},
+			{`\\?\UNC\server\share\workflow.yml`, "file://server/share/workflow.yml"},
+			{`\\.\NUL`, ""},
+		}...)
+	} else {
+		cases = append(cases, []struct{ path, want string }{
+			{"/tmp/répo #1/100%.yaml", "file:///tmp/r%C3%A9po%20%231/100%25.yaml"},
+			{"/tmp/repo//.github/actionlint.yaml", "file:///tmp/repo/.github/actionlint.yaml"},
+			{"/tmp/a?b\\c.yaml", "file:///tmp/a%3Fb%5Cc.yaml"},
+		}...)
+	}
+	for _, tc := range cases {
+		t.Run(tc.path, func(t *testing.T) {
+			if got := fileURL(tc.path); got != tc.want {
+				t.Fatalf("URL = %q, want %q", got, tc.want)
+			}
+		})
+	}
+	t.Run("relative path", func(t *testing.T) {
+		t.Chdir(t.TempDir())
+		cwd, err := os.Getwd()
+		if err != nil {
+			t.Fatal(err)
+		}
+		link, err := url.Parse(fileURL("config #%.yaml"))
+		if err != nil || link.Scheme != "file" || link.Host != "" || link.Fragment != "" || link.RawQuery != "" {
+			t.Fatalf("invalid file URI: %v (%v)", link, err)
+		}
+		path := link.Path
+		if filepath.Separator == '\\' {
+			path = strings.TrimPrefix(path, "/")
+		}
+		if got, want := filepath.FromSlash(path), filepath.Join(cwd, "config #%.yaml"); got != want {
+			t.Fatalf("link resolves to %q, want %q", got, want)
+		}
+	})
+}
+
+func TestFileLinkPresentation(t *testing.T) {
+	path := "." + string(filepath.Separator) + string(filepath.Separator) + "config.yaml"
+	if got := fileLink(false, path); got != "config.yaml" {
+		t.Fatalf("unclean path label: %q", got)
+	}
+	if got := fileLink(true, ""); got != "" {
+		t.Fatalf("empty path produced a link: %q", got)
+	}
+	if got := fileLink(true, "bad\tname.yaml"); got != `"bad\tname.yaml"` {
+		t.Fatalf("control character leaked into terminal output: %q", got)
 	}
 }

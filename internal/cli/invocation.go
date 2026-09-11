@@ -22,18 +22,21 @@ type invocation struct {
 
 // checkInvocation contains analysis inputs. It carries no command-framework state.
 type checkInvocation struct {
-	Paths         []string
-	Config        actionlint.ConfigSelection
-	StdinFilename string
-	IgnoreRegex   []string
-	ShellCheck    string
-	Pyflakes      string
-	Verbose       bool
-	Debug         bool
+	Paths             []string
+	Config            actionlint.ConfigSelection
+	StdinFilename     string
+	IgnoreRegex       []string
+	ShellCheck        string
+	Pyflakes          string
+	ShellcheckOptions *actionlint.ExternalCommandOptions
+	PyflakesOptions   *actionlint.ExternalCommandOptions
+	Verbose           bool
+	Debug             bool
 }
 
 // renderOptions controls result presentation without changing analysis.
 type renderOptions struct {
+	PrettyJSON   bool
 	Hyperlinks   hyperlinkMode
 	Format       actionlint.OutputFormat
 	Template     string
@@ -48,6 +51,7 @@ type renderOptions struct {
 func defaultInvocation() invocation {
 	return invocation{
 		Operation: "check",
+		Render:    renderOptions{PrettyJSON: true},
 		Check:     checkInvocation{StdinFilename: "<stdin>", ShellCheck: "shellcheck", Pyflakes: "pyflakes"},
 	}
 }
@@ -69,6 +73,9 @@ const (
 
 func (a *commandApp) prepareInvocation() error {
 	i, o := &a.inv, &a.opts
+	if err := a.prepareColor(); err != nil {
+		return err
+	}
 	jsonRequested := i.JSON
 	i.JSON = a.jsonOutput()
 	if !i.Legacy {
@@ -130,35 +137,20 @@ func (a *commandApp) prepareInvocation() error {
 			return commandUsageError{fmt.Errorf("invalid log level %q: choose none, info or debug", o.logLevel)}
 		}
 	}
-	if o.color {
-		i.Render.Color = actionlint.ColorOptionKindAlways
-	}
-	if !i.Legacy && a.set["modern-color"] {
-		switch o.colorMode {
-		case "auto":
-			i.Render.Color = actionlint.ColorOptionKindAuto
-		case "always":
-			i.Render.Color = actionlint.ColorOptionKindAlways
-		case "never":
-			i.Render.Color = actionlint.ColorOptionKindNever
-		default:
-			return commandUsageError{fmt.Errorf("invalid color mode %q: choose auto, always or never", o.colorMode)}
-		}
-	}
-	if o.noColor {
-		i.Render.Color = actionlint.ColorOptionKindNever
-	}
 	return nil
 }
 
 func executeInvocation(ctx context.Context, streams Command, inv invocation) (int, error) {
+	if inv.JSON && inv.Render.PrettyJSON && inv.Operation != operationCheck {
+		streams.Stdout = &terminalJSONOutput{Writer: streams.Stdout, ctx: ctx, color: inv.Render.Color}
+	}
 	switch inv.Operation {
 	case operationVersion:
 		return 0, writeVersion(streams.Stdout, inv.JSON, inv.Legacy)
 	case operationRules:
 		return 0, writeRules(streams.Stdout, inv.Rule, inv.JSON)
 	case operationDoctor:
-		return 0, writeDoctor(streams.Stdout, inv.Check, inv.JSON)
+		return 0, writeDoctor(streams.Stdout, inv.Check, inv.JSON, inv.Render.Hyperlinks)
 	case operationConfigPath, operationConfigShow, operationConfigValidate:
 		return 0, runConfigCommand(streams.Stdout, inv)
 	case operationConfigInit:

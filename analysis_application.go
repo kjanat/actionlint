@@ -21,15 +21,17 @@ type AnalysisOptions struct {
 	// SkipProjectConfig disables per-project config reads; ConfigFile still applies.
 	SkipProjectConfig bool
 	// QuietSelection suppresses the legacy file-selection and completion log messages.
-	QuietSelection  bool
-	Shellcheck      string
-	Pyflakes        string
-	IgnorePatterns  []string
-	Verbose         bool
-	Debug           bool
-	LogWriter       io.Writer
-	OnRulesCreated  func([]Rule) []Rule
-	OnFilesSelected func([]string)
+	QuietSelection    bool
+	Shellcheck        string
+	Pyflakes          string
+	ShellcheckOptions *ExternalCommandOptions
+	PyflakesOptions   *ExternalCommandOptions
+	IgnorePatterns    []string
+	Verbose           bool
+	Debug             bool
+	LogWriter         io.Writer
+	OnRulesCreated    func([]Rule) []Rule
+	OnFilesSelected   func([]string)
 }
 
 // AnalysisSession resolves local inputs before handing them to Analyze.
@@ -88,7 +90,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 		projects: NewProjects(), ctx: opts.Context, cwd: opts.WorkingDir,
 		stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected,
 		logSelection:   !opts.QuietSelection,
-		request:        AnalysisRequest{ShellCheck: opts.Shellcheck, Pyflakes: opts.Pyflakes, OnRulesCreated: opts.OnRulesCreated},
+		request:        AnalysisRequest{ShellCheck: opts.Shellcheck, Pyflakes: opts.Pyflakes, ShellcheckOptions: opts.ShellcheckOptions, PyflakesOptions: opts.PyflakesOptions, OnRulesCreated: opts.OnRulesCreated},
 		analysisLogger: analysisLogger{logOut: opts.LogWriter},
 	}
 	if a.ctx == nil {
