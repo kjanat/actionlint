@@ -5,17 +5,71 @@ import (
 	"strings"
 )
 
-// cacheRestrictedEvents lists triggers which can use default-branch caches without
-// belonging to GitHub's trusted cache-writer list.
-// https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#cache-access-for-low-trust-workflow-triggers
-// https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
+type cacheEventClass uint8
+
+const (
+	cacheEventUnknown cacheEventClass = iota
+	cacheEventRestricted
+	cacheEventTrusted
+	cacheEventRefScoped
+	cacheEventInherited
+)
+
+// cacheEventClasses records a cache trust decision for every generated webhook.
+// Ref-scoped events use a created ref, release tag, PR merge ref, or merge-group ref.
+//
+// workflow_call inherits its caller's context.
+//
+// - https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#cache-access-for-low-trust-workflow-triggers
+//
+// - https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
+var cacheEventClasses = map[string]cacheEventClass{
+	"branch_protection_rule":      cacheEventRestricted,
+	"check_run":                   cacheEventRestricted,
+	"check_suite":                 cacheEventRestricted,
+	"create":                      cacheEventRefScoped,
+	"delete":                      cacheEventTrusted,
+	"deployment":                  cacheEventRestricted,
+	"deployment_status":           cacheEventRestricted,
+	"discussion":                  cacheEventRestricted,
+	"discussion_comment":          cacheEventRestricted,
+	"fork":                        cacheEventRestricted,
+	"gollum":                      cacheEventRestricted,
+	"image_version":               cacheEventRestricted,
+	"issue_comment":               cacheEventRestricted,
+	"issues":                      cacheEventRestricted,
+	"label":                       cacheEventRestricted,
+	"merge_group":                 cacheEventRefScoped,
+	"milestone":                   cacheEventRestricted,
+	"page_build":                  cacheEventTrusted,
+	"public":                      cacheEventRestricted,
+	"pull_request":                cacheEventRefScoped,
+	"pull_request_review":         cacheEventRefScoped,
+	"pull_request_review_comment": cacheEventRefScoped,
+	"pull_request_target":         cacheEventRestricted,
+	"push":                        cacheEventTrusted,
+	"registry_package":            cacheEventTrusted,
+	"release":                     cacheEventRefScoped,
+	"repository_dispatch":         cacheEventTrusted,
+	"schedule":                    cacheEventTrusted,
+	"status":                      cacheEventRestricted,
+	"watch":                       cacheEventRestricted,
+	"workflow_call":               cacheEventInherited,
+	"workflow_dispatch":           cacheEventTrusted,
+	"workflow_run":                cacheEventRestricted,
+}
+
+// cacheRestrictedEvents includes unclassified triggers conservatively.
+//
+// Inventory tests require an explicit decision before a new generated event can ship.
 func cacheRestrictedEvents(w *Workflow) []string {
 	var events []string
 	for _, event := range w.On {
-		switch name := event.EventName(); name {
-		case "branch_protection_rule", "check_run", "check_suite", "deployment", "deployment_status",
-			"discussion", "discussion_comment", "fork", "gollum", "image_version", "issue_comment",
-			"issues", "label", "milestone", "public", "pull_request_target", "status", "watch", "workflow_run":
+		name := event.EventName()
+		switch cacheEventClasses[name] {
+		case cacheEventTrusted, cacheEventRefScoped, cacheEventInherited:
+			continue
+		default:
 			events = append(events, name)
 		}
 	}
@@ -76,7 +130,7 @@ func (r *RuleCacheCallUnrestricted) VisitWorkflowPre(w *Workflow) error {
 // VisitJobPre requires an explicit ceiling at each affected call site.
 func (r *RuleCacheCallUnrestricted) VisitJobPre(job *Job) error {
 	call := job.WorkflowCall
-	if len(r.events) == 0 || call == nil || call.Uses == nil || effectiveCacheMode(r.workflow, job.CacheMode) != nil {
+	if len(r.events) == 0 || call == nil || call.Uses == nil || call.Uses.ContainsExpression() || effectiveCacheMode(r.workflow, job.CacheMode) != nil {
 		return nil
 	}
 	if _, local := workflowCallUsesLocalSpec(call.Uses.Value); !local {
@@ -126,17 +180,26 @@ func (r *RuleCacheOperation) VisitStep(step *Step) error {
 	if !ok || ref == "" || ContainsExpression(action.Uses.Value) {
 		return nil
 	}
+	owner, rest, ok := strings.Cut(name, "/")
+	if !ok || !strings.EqualFold(owner, "actions") {
+		return nil
+	}
+	repo, path, hasPath := strings.Cut(rest, "/")
+	if !strings.EqualFold(repo, "cache") || hasPath && path == "" {
+		return nil
+	}
+	// Repository names are case-insensitive; action subpaths address files in the downloaded repository and retain their case.
 	operation := ""
-	switch strings.ToLower(name) {
-	case "actions/cache/save":
+	switch path {
+	case "save":
 		if access&2 == 0 {
 			operation = "save caches"
 		}
-	case "actions/cache/restore":
+	case "restore":
 		if access&1 == 0 {
 			operation = "restore caches"
 		}
-	case "actions/cache":
+	case "":
 		if access == 0 {
 			operation = "restore or save caches"
 		}
