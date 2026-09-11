@@ -13,9 +13,9 @@ func TestDisallowSuppressionsConfig(t *testing.T) {
 		want  suppressionReport
 	}{
 		{"null", suppressionsAllowed}, {"false", suppressionsAllowed},
-		{"true", reportBoth}, {"{}", reportBoth},
+		{"true", reportAll}, {"{}", reportAll},
 		{"{report: suppression}", reportSuppression},
-		{"{report: violation}", reportViolation}, {"{report: both}", reportBoth},
+		{"{report: violation}", reportViolation}, {"{report: all}", reportAll},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
 			cfg, err := ParseConfig([]byte("policy: {disallow-suppressions: " + tc.value + "}"))
@@ -50,7 +50,7 @@ func TestDisallowSuppressionsInvalidConfig(t *testing.T) {
 		"{rules: null}", "{rules: []}", "{rules: cache-operation}", "{rules: [1]}",
 		"{rules: ['']}", "{rules: ['*']}", "{rules: [expression]}",
 		"{rules: [disallow-suppressions]}", "{rules: [cache-operation, typo]}",
-		"{typo: true}", "{report: both, report: violation}",
+		"{typo: true}", "{report: all, report: violation}",
 	} {
 		t.Run(value, func(t *testing.T) {
 			_, err := ParseConfig([]byte("policy:\n  disallow-suppressions: " + value))

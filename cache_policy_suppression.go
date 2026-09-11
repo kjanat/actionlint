@@ -89,7 +89,7 @@ func filterCachePolicySuppressions(source []byte, errors []*Error, policy *Suppr
 		var prohibited []string
 		for _, name := range names {
 			mode := policy.reportFor(name)
-			if mode == reportSuppression || mode == reportBoth {
+			if mode == reportSuppression || mode == reportAll {
 				if !slices.Contains(prohibited, name) {
 					prohibited = append(prohibited, name)
 				}

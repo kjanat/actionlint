@@ -13,7 +13,7 @@ const (
 	suppressionsAllowed suppressionReport = iota
 	reportSuppression
 	reportViolation
-	reportBoth
+	reportAll
 )
 
 // SuppressionsPolicy controls whether inline exceptions may hide cache policy
@@ -26,7 +26,7 @@ type SuppressionsPolicy struct {
 // UnmarshalYAML implements yaml.Unmarshaler. Each successful decode replaces the
 // previous rule selection and reporting mode.
 func (p *SuppressionsPolicy) UnmarshalYAML(n *yaml.Node) error {
-	next := SuppressionsPolicy{report: reportBoth}
+	next := SuppressionsPolicy{report: reportAll}
 	switch {
 	case n.Kind == yaml.ScalarNode && n.Tag == "!!bool":
 		var enabled bool
@@ -47,17 +47,17 @@ func (p *SuppressionsPolicy) UnmarshalYAML(n *yaml.Node) error {
 			switch key.Value {
 			case "report":
 				if value.Kind != yaml.ScalarNode || value.Tag != "!!str" {
-					return suppressionConfigError(value, "report must be suppression, violation, or both")
+					return suppressionConfigError(value, "report must be suppression, violation, or all")
 				}
 				switch value.Value {
 				case "suppression":
 					next.report = reportSuppression
 				case "violation":
 					next.report = reportViolation
-				case "both":
-					next.report = reportBoth
+				case "all":
+					next.report = reportAll
 				default:
-					return suppressionConfigError(value, fmt.Sprintf("unknown report %q; expected suppression, violation, or both", value.Value))
+					return suppressionConfigError(value, fmt.Sprintf("unknown report %q; expected suppression, violation, or all", value.Value))
 				}
 			case "rules":
 				if value.Kind != yaml.SequenceNode || len(value.Content) == 0 {
