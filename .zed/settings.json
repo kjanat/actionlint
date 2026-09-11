@@ -11,6 +11,10 @@
           "https://raw.githubusercontent.com/github/codeql-action/HEAD/src/db-config-schema.json": [
             ".github/codeql/codeql-config.yaml"
           ],
+          "https://cdn.jsdelivr.net/npm/@kjanat/actionlint/actionlint.schema.json": [
+            "actionlint.yaml",
+            "actionlint.yml"
+          ]
         }
       }
     }
