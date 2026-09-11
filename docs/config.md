@@ -159,6 +159,8 @@ Enabled by default. Reports official cache actions whose operation is disabled b
 Job declarations override workflow declarations. With `read`, the combined action can still restore; with `write-only`,
 it can still save, so neither produces a finding for the combined action. Omitted modes are not guessed from event
 payloads. Wrappers, custom cache actions and package-manager caching options are not inspected by this check.
+Only the three exact entry points above are recognized. Owner and repository names are case-insensitive, but
+the `save` and `restore` subpaths retain their case. Similarly named repositories and other subpaths are excluded.
 GitHub skips a forbidden operation without failing the job; this diagnostic helps catch ineffective steps.
 
 ```yaml
@@ -194,6 +196,8 @@ policy:
 
 The event classification follows GitHub's [cache access defaults](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#cache-access-for-low-trust-workflow-triggers)
 and [event ref definitions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows).
+Tests require an explicit trust classification for every event in the generated webhook inventory. An unclassified
+event is conservatively treated as restricted; event syntax validation still runs separately.
 
 ### Inline cache policy exceptions
 
@@ -221,13 +225,22 @@ jobs:
 Both forms require an exact rule name and a nonempty reason after `--`. A comma-separated list selects multiple
 cache rules. Only `cache-call-unrestricted`, `cache-operation`, and `cache-write-untrusted` can be suppressed this way.
 A directive affects the reported line only, including multiple findings of the selected rule on that line; it does
-not affect other rules or later lines. A blank line separates a preceding directive from its target. Unknown selectors,
-missing reasons and incorrectly placed directives report `inline-suppression` errors.
+not affect other rules or later lines. Duplicate selectors have no additional effect; empty selectors are invalid.
+The first `--` surrounded by spaces starts the reason, which may itself contain `--` or directive-like text.
+
+Only comments attached to a declaration are interpreted. A blank line, another comment or a document separator
+between a preceding directive and its target detaches it; orphan comments at the end of a document are also inert.
+For attached directives, unknown selectors, missing reasons, standalone `ignore` and trailing `ignore-next-line`
+report `inline-suppression` errors.
 
 Use trailing comments on the same physical line as the reported value, or standalone comments immediately before
 that line. For aliases, put the exception at the anchor declaration when the diagnostic points there. Text inside
 quoted YAML strings or `run: |` scripts is not an actionlint directive. General inline ignores for other rules are
 not supported; existing CLI and path-based ignore patterns remain available.
+
+Inline exceptions are applied before CLI and path-based ignore patterns. Those patterns can filter remaining cache
+findings and `inline-suppression` errors. A valid exception remains valid when another ignore also covers its finding;
+there is no unused-suppression diagnostic. As with workflow parsing, only the first YAML document is inspected.
 
 These findings use normal diagnostic output and exit status 1. Suppression removes only the selected finding; it
 does not change cache access in GitHub Actions.

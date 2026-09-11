@@ -15,10 +15,24 @@ func filterCachePolicySuppressions(source []byte, errors []*Error) []*Error {
 		return errors
 	}
 	var root yaml.Node
-	if err := yaml.Unmarshal(source, &root); err != nil {
+	// Normalizing line endings keeps YAML comment attachment consistent while
+	// preserving every source line and column used by diagnostics.
+	if err := yaml.Unmarshal(bytes.ReplaceAll(source, []byte("\r\n"), []byte("\n")), &root); err != nil {
 		return errors
 	}
 	lines := splitSourceLines(source)
+	documentEnd := len(lines)
+	if len(root.Content) != 0 {
+		// Unmarshal and Parse read the first document only. Block scalar content
+		// is indented, so only column-one markers delimit this source range.
+		for i := root.Content[0].Line; i < len(lines); i++ {
+			line := lines[i]
+			if (strings.HasPrefix(line, "---") || strings.HasPrefix(line, "...")) && (len(line) == 3 || line[3] == ' ' || line[3] == '\t') {
+				documentEnd = i
+				break
+			}
+		}
+	}
 	suppressed := map[int]map[string]bool{}
 	seen := map[int]bool{}
 	var directiveErrors []*Error
@@ -83,12 +97,24 @@ func filterCachePolicySuppressions(source []byte, errors []*Error) []*Error {
 			}
 		}
 	}
-	var visit func(*yaml.Node)
-	visit = func(node *yaml.Node) {
+	var visit func(*yaml.Node, int)
+	visit = func(node *yaml.Node, endLine int) {
 		if node.Line > 0 && node.Line <= len(lines) {
+			if node.Style&yaml.FlowStyle != 0 {
+				readCachePolicyFlowOpeningComments(node, lines, endLine, readComment)
+			}
 			comment := strings.TrimSpace(node.LineComment)
-			if comment != "" && strings.HasSuffix(strings.TrimSpace(lines[node.Line-1]), comment) {
-				readComment(node.Line, comment, false)
+			if comment != "" {
+				line := node.Line
+				if node.Style&(yaml.FlowStyle|yaml.SingleQuotedStyle|yaml.DoubleQuotedStyle) != 0 {
+					line = cachePolicyClosingCommentLine(node, comment, lines, endLine)
+				}
+				if line > 0 && strings.HasSuffix(strings.TrimSpace(lines[line-1]), comment) {
+					readComment(line, comment, false)
+					if line > node.Line {
+						endLine = line - 1
+					}
+				}
 			}
 			readPreceding(node.Line, node.HeadComment)
 		}
@@ -101,10 +127,14 @@ func filterCachePolicySuppressions(source []byte, errors []*Error) []*Error {
 			} else if node.Kind == yaml.SequenceNode && i > 0 {
 				readPreceding(child.Line, node.Content[i-1].FootComment)
 			}
-			visit(child)
+			childEnd := endLine
+			if i+1 < len(node.Content) {
+				childEnd = min(childEnd, node.Content[i+1].Line-1)
+			}
+			visit(child, max(child.Line, childEnd))
 		}
 	}
-	visit(&root)
+	visit(&root, documentEnd)
 	filtered := make([]*Error, 0, len(errors)+len(directiveErrors))
 	for _, err := range errors {
 		if err.source == nil && isCachePolicy(err.Kind) && suppressed[err.Line][err.Kind] {
@@ -113,4 +143,73 @@ func filterCachePolicySuppressions(source []byte, errors []*Error) []*Error {
 		filtered = append(filtered, err)
 	}
 	return append(filtered, directiveErrors...)
+}
+
+// cachePolicyClosingCommentLine locates a comment stored on a node's opening
+// position even when its flow collection or quoted scalar spans multiple lines.
+func cachePolicyClosingCommentLine(node *yaml.Node, comment string, lines []string, endLine int) int {
+	last := node
+	for len(last.Content) > 0 {
+		last = last.Content[len(last.Content)-1]
+	}
+	for line := endLine; line >= last.Line; line-- {
+		text := strings.TrimSpace(lines[line-1])
+		if strings.HasPrefix(text, "#") || !strings.HasSuffix(text, comment) {
+			continue
+		}
+		prefix := strings.TrimSpace(strings.TrimSuffix(text, comment))
+		prefix = strings.TrimSpace(strings.TrimSuffix(prefix, ","))
+		if node.Kind == yaml.ScalarNode || strings.HasSuffix(prefix, "}") || strings.HasSuffix(prefix, "]") {
+			return line
+		}
+	}
+	return 0
+}
+
+// readCachePolicyFlowOpeningComments reads comments at a parsed flow opener and
+// its optional tag or anchor. YAML overwrites them with the closing comment.
+func readCachePolicyFlowOpeningComments(node *yaml.Node, lines []string, endLine int, read func(int, string, bool)) {
+	line := node.Line
+	text := string([]rune(lines[line-1])[node.Column-1:])
+	declaration := true
+	for {
+		text = strings.TrimLeft(text, " \t")
+		switch {
+		case text == "":
+			if line >= endLine {
+				return
+			}
+			line++
+			text = lines[line-1]
+			declaration = false
+		case strings.HasPrefix(text, "#"):
+			if declaration {
+				read(line, text, false)
+			} else if line < endLine {
+				next := strings.TrimLeft(lines[line], " \t")
+				if next != "" && strings.ContainsAny(next[:1], "{[&!") {
+					read(line, text, true)
+				}
+			}
+			text = ""
+		case strings.HasPrefix(text, "!<"):
+			_, text, _ = strings.Cut(text, ">")
+			declaration = true
+		case strings.HasPrefix(text, "&"), strings.HasPrefix(text, "!"):
+			end := strings.IndexAny(text, " \t{[")
+			if end < 0 {
+				text = ""
+			} else {
+				text = text[end:]
+			}
+			declaration = true
+		case strings.HasPrefix(text, "{"), strings.HasPrefix(text, "["):
+			if comment := strings.TrimLeft(text[1:], " \t"); strings.HasPrefix(comment, "#") {
+				read(line, comment, false)
+			}
+			return
+		default:
+			return
+		}
+	}
 }
