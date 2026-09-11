@@ -165,6 +165,30 @@ type ReusableWorkflowMetadata struct {
 	// A job which declares no "permissions:" of its own and inherits none from the workflow has no entry,
 	// and neither has a job whose declaration requires nothing.
 	JobPermissions map[string]PermissionScopeLevels `yaml:"-"`
+	// JobCacheAccess records effective declarations and local workflow calls by job ID.
+	JobCacheAccess map[string]ReusableWorkflowCacheAccess `yaml:"-"`
+}
+
+// ReusableWorkflowCacheAccess describes a job's declared cache access and any local callee.
+type ReusableWorkflowCacheAccess struct {
+	// Mode is nil when the job inherits the calling workflow's access limit.
+	Mode *CacheMode
+	// Uses is the normalized local workflow reference, or empty for other jobs.
+	Uses string
+}
+
+func (m *ReusableWorkflowMetadata) recordJobCacheAccess(id string, mode *CacheMode, uses string) {
+	local, ok := workflowCallUsesLocalSpec(uses)
+	if !ok {
+		local = ""
+	}
+	if mode == nil && local == "" {
+		return
+	}
+	if m.JobCacheAccess == nil {
+		m.JobCacheAccess = map[string]ReusableWorkflowCacheAccess{}
+	}
+	m.JobCacheAccess[id] = ReusableWorkflowCacheAccess{Mode: mode, Uses: local}
 }
 
 // LocalReusableWorkflowCache is a cache for local reusable workflow metadata files. It avoids find/read/parse
@@ -329,6 +353,11 @@ func (c *LocalReusableWorkflowCache) WriteWorkflowCallEventFromWorkflow(wpath st
 	if w != nil {
 		wp := resolvePermissionsAST(w.Permissions)
 		for _, j := range w.Jobs {
+			uses := ""
+			if j.WorkflowCall != nil && j.WorkflowCall.Uses != nil {
+				uses = j.WorkflowCall.Uses.Value
+			}
+			m.recordJobCacheAccess(j.ID.Value, effectiveCacheMode(w.CacheMode, j.CacheMode), uses)
 			p := wp
 			if j.Permissions != nil {
 				p = resolvePermissionsAST(j.Permissions)
@@ -354,6 +383,7 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 	type workflow struct {
 		On          yaml.Node `yaml:"on"`
 		Permissions yaml.Node `yaml:"permissions"`
+		CacheMode   yaml.Node `yaml:"cache-mode"`
 		Jobs        yaml.Node `yaml:"jobs"`
 	}
 
@@ -420,6 +450,7 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 	}
 
 	wp := resolvePermissionsYAML(&w.Permissions)
+	wc := cacheModeFromYAML(&w.CacheMode)
 	if w.Jobs.Kind == yaml.MappingNode {
 		for i := 0; i+1 < len(w.Jobs.Content); i += 2 {
 			id, job := w.Jobs.Content[i], w.Jobs.Content[i+1]
@@ -427,12 +458,20 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 				continue
 			}
 			p := wp
+			mode, uses := wc, ""
 			for k := 0; k+1 < len(job.Content); k += 2 {
-				if strings.ToLower(job.Content[k].Value) == "permissions" {
+				switch strings.ToLower(job.Content[k].Value) {
+				case "permissions":
 					p = resolvePermissionsYAML(job.Content[k+1])
-					break
+				case "cache-mode":
+					mode = cacheModeFromYAML(job.Content[k+1])
+				case "uses":
+					if n := job.Content[k+1]; n.Kind == yaml.ScalarNode {
+						uses = n.Value
+					}
 				}
 			}
+			m.recordJobCacheAccess(id.Value, mode, uses)
 			if p.kind != permissionsDeclared || len(p.levels) == 0 {
 				continue
 			}

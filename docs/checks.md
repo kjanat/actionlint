@@ -35,6 +35,7 @@ List of checks:
 - [Job ID and step ID uniqueness](#check-job-step-ids)
 - [Hardcoded credentials](#check-hardcoded-credentials)
 - [Environment variable names](#check-env-var-names)
+- [Cache access](#cache-mode)
 - [Permissions](#permissions)
 - [Reusable workflows](#check-reusable-workflows)
 - [ID naming convention](#id-naming-convention)
@@ -73,7 +74,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:6:5: unexpected key "default" for "job" section. expected one of "concurrency", "container", "continue-on-error", "defaults", "env", "environment", "if", "name", "needs", "outputs", "permissions", "runs-on", "secrets", "services", "snapshot", "steps", "strategy", "timeout-minutes", "uses", "with" [syntax-check]
+test.yaml:6:5: unexpected key "default" for "job" section. expected one of "cache-mode", "concurrency", "container", "continue-on-error", "defaults", "env", "environment", "if", "name", "needs", "outputs", "permissions", "runs-on", "secrets", "services", "snapshot", "steps", "strategy", "timeout-minutes", "uses", "with" [syntax-check]
   |
 6 |     default:
   |     ^~~~~~~~
@@ -2274,6 +2275,62 @@ cases they are mistakes, and they may cause some issues on using them in shell s
 
 actionlint checks environment variable names are correct in `env:` configuration.
 
+<a id="cache-mode"></a>
+
+## Cache access
+
+Example input:
+
+```yaml
+on: push
+cache-mode: restore
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    cache-mode: read-write
+    steps:
+      - run: echo ok
+```
+
+Output:
+
+```console
+test.yaml:2:13: "restore" is invalid for "cache-mode". expected one of "read", "write", "write-only", "none" [syntax-check]
+  |
+2 | cache-mode: restore
+  |             ^~~~~~~
+test.yaml:6:17: "read-write" is invalid for "cache-mode". expected one of "read", "write", "write-only", "none" [syntax-check]
+  |
+6 |     cache-mode: read-write
+  |                 ^~~~~~~~~~
+```
+
+<!-- Skip playground link -->
+
+The [`cache-mode` key](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#cache-mode)
+controls cache access independently of `permissions`. actionlint accepts it at workflow level and on ordinary jobs
+or jobs that call reusable workflows. It checks that the value is one of these strings:
+
+| Value        | Restore caches | Save caches |
+| ------------ | -------------- | ----------- |
+| `read`       | Yes            | No          |
+| `write`      | Yes            | Yes         |
+| `write-only` | No             | Yes         |
+| `none`       | No             | No          |
+
+A job's declaration overrides its workflow's declaration. Omitted settings retain GitHub's trigger-dependent
+defaults. Explicit `write` and `write-only` declarations are valid even on low-trust events; GitHub warns about
+their security implications. Cache operations skipped by the selected mode do not fail the workflow.
+
+For local reusable workflows referenced through `./` or `$/`, actionlint checks that the called jobs' declarations
+fit within the caller's explicit limit. The check follows nested local calls, including intermediate workflows
+that omit `cache-mode`. It compares restore and save access separately: a `read` caller cannot grant `write-only`,
+and a `write-only` caller cannot grant `read`. Diagnostics identify the called job and point to the caller's `uses`.
+
+An unspecified caller mode leaves the callee free to declare its own mode, including write access on a low-trust
+trigger. Invalid declarations produce syntax diagnostics and are excluded from access comparisons. Cache access
+validation covers workflows available in the local repository.
+
 <a id="permissions"></a>
 
 ## Permissions
@@ -2441,7 +2498,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:6:5: when a reusable workflow is called with "uses", "runs-on" is not available. only following keys are allowed: "name", "uses", "with", "secrets", "needs", "if", and "permissions" in job "job1" [syntax-check]
+test.yaml:6:5: when a reusable workflow is called with "uses", "runs-on" is not available. only following keys are allowed: "name", "uses", "with", "secrets", "needs", "if", "permissions", and "cache-mode" in job "job1" [syntax-check]
   |
 6 |     runs-on: ubuntu-latest
   |     ^~~~~~~~
