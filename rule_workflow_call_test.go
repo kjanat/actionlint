@@ -2,6 +2,7 @@ package actionlint
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -11,6 +12,46 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 )
+
+func TestWorkflowCallMetadataFailureSpelling(t *testing.T) {
+	for _, malformed := range []bool{false, true} {
+		for _, prefix := range []string{"./", "$/", "$//"} {
+			t.Run(fmt.Sprintf("malformed=%v/prefix=%s", malformed, prefix), func(t *testing.T) {
+				root := t.TempDir()
+				if malformed {
+					if err := os.WriteFile(filepath.Join(root, "broken.yaml"), []byte("on: ["), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				proj := &Project{root: root}
+				cache := NewLocalReusableWorkflowCache(proj, root, nil)
+				l, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root})
+				if err != nil {
+					t.Fatal(err)
+				}
+				uses := prefix + "broken.yaml"
+				source := []byte("on: push\njobs:\n  call:\n    uses: " + uses + "\n    with: {arg: '${{ github.ref }}'}\n  consumer:\n    needs: call\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo '${{ needs.call.outputs.result }}'\n")
+				for _, pass := range []string{"cold cache", "warm cache"} {
+					errs, err := l.check("caller.yaml", source, proj, nil, nil, cache)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if len(errs) != 1 || errs[0].Line != 4 || errs[0].Column != 11 {
+						t.Fatalf("%s: want one failure at the uses value, got %v", pass, errs)
+					}
+					if !strings.Contains(errs[0].Message, fmt.Sprintf("%q", uses)) {
+						t.Fatalf("%s: original reference lost: %v", pass, errs)
+					}
+				}
+				// Rendering a caller's spelling must not alter the cached error.
+				_, err = cache.FindMetadata("./broken.yaml")
+				if err == nil || !strings.Contains(err.Error(), `"./broken.yaml"`) {
+					t.Fatalf("cache no longer retains its lookup failure: %v", err)
+				}
+			})
+		}
+	}
+}
 
 func TestRuleWorkflowCallCheckWorkflowCallUsesFormat(t *testing.T) {
 	tests := []struct {
