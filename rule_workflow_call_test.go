@@ -143,7 +143,7 @@ func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
 		t.Fatal(errs)
 	}
 
-	m, ok := c.readCache("./test-workflow.yaml")
+	m, _, ok := c.readCache("./test-workflow.yaml")
 	if !ok {
 		t.Fatal("no metadata was created")
 	}
@@ -205,7 +205,7 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 			Secrets: ReusableWorkflowMetadataSecrets{},
 		},
 	} {
-		cache.writeCache(fmt.Sprintf("./workflow%d.yaml", i), md)
+		cache.writeCache(fmt.Sprintf("./workflow%d.yaml", i), md, nil)
 	}
 
 	tests := []struct {
@@ -665,7 +665,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		t.Run(tc.what, func(t *testing.T) {
 			cwd := filepath.Join("path", "to", "project")
 			cache := NewLocalReusableWorkflowCache(&Project{cwd, nil}, cwd, nil)
-			cache.writeCache("./callee.yaml", &ReusableWorkflowMetadata{JobPermissions: tc.callee})
+			cache.writeCache("./callee.yaml", &ReusableWorkflowMetadata{JobPermissions: tc.callee}, nil)
 
 			r := NewRuleWorkflowCall("caller.yaml", cache)
 			if tc.cfg != nil {

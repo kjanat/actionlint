@@ -39,7 +39,11 @@ func (rule *RuleWorkflowCall) checkWorkflowCallCacheMode(pos *Pos, spec string, 
 			continue
 		}
 		next, err := rule.cache.FindMetadata(access.Uses)
-		if err != nil || next == nil {
+		if err != nil {
+			rule.Errorf(pos, "could not validate cache access through job %q of %q: %s", id, spec, err)
+			continue
+		}
+		if next == nil {
 			rule.Debug("Skip nested cache-mode check for %q: metadata unavailable", access.Uses)
 			continue
 		}

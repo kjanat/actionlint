@@ -71,7 +71,7 @@ func (rule *RuleWorkflowCall) VisitJobPre(n *Job) error {
 		// When the specification is invalid and it is local reusable workflow call, remember it caused
 		// an error by setting `nil` to cache. This can prevent redundant 'could not read workflow call'
 		// error.
-		rule.cache.writeCache(u.Value, nil)
+		rule.cache.writeCache(u.Value, nil, nil)
 	}
 
 	rule.Errorf(
