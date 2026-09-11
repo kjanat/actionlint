@@ -986,6 +986,64 @@ func TestReusableWorkflowMetadataJobPermissionsFromWorkflowNode(t *testing.T) {
 	}
 }
 
+func TestReusableWorkflowMetadataJobKeyCase(t *testing.T) {
+	for _, field := range []struct{ key, value string }{
+		{"cache-mode", "write"},
+		{"uses", "./leaf.yaml"},
+		{"permissions", "{contents: write}"},
+	} {
+		for _, exact := range []bool{false, true} {
+			key := field.key
+			if !exact {
+				key = strings.ToUpper(key)
+			}
+			t.Run(key, func(t *testing.T) {
+				source := []byte("on: workflow_call\ncache-mode: read\npermissions: {contents: read}\njobs:\n  build:\n    " + key + ": " + field.value + "\n")
+				if key != "uses" {
+					source = append(source, []byte("    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n")...)
+				}
+				workflow, diagnostics := Parse(source)
+				if exact && len(diagnostics) != 0 {
+					t.Fatal(diagnostics)
+				}
+				if !exact && (len(diagnostics) != 1 || diagnostics[0].Kind != "syntax-check" || !strings.Contains(diagnostics[0].Message, fmt.Sprintf("unexpected key %q", key))) {
+					t.Fatalf("expected only the case-invalid key diagnostic, got %v", diagnostics)
+				}
+				event, ok := workflow.FindWorkflowCallEvent()
+				if !ok {
+					t.Fatal("workflow_call was not parsed")
+				}
+				root := t.TempDir()
+				if err := os.WriteFile(filepath.Join(root, "callee.yaml"), source, 0o600); err != nil {
+					t.Fatal(err)
+				}
+				project := &Project{root: root}
+				astCache := NewLocalReusableWorkflowCache(project, root, nil)
+				astCache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
+				fromAST, _, ok := astCache.readCache("./callee.yaml")
+				if !ok {
+					t.Fatal("AST metadata was not cached")
+				}
+				fileCache := NewLocalReusableWorkflowCache(project, root, nil)
+				for _, cache := range []*LocalReusableWorkflowCache{fileCache, astCache} {
+					for pass := range 2 {
+						metadata, err := cache.FindMetadata("./callee.yaml")
+						if err != nil {
+							t.Fatal(err)
+						}
+						if diff := cmp.Diff(fromAST.JobCacheAccess, metadata.JobCacheAccess); diff != "" {
+							t.Fatalf("lookup %d cache access differs from AST: %s", pass, diff)
+						}
+						if diff := cmp.Diff(fromAST.JobPermissions, metadata.JobPermissions); diff != "" {
+							t.Fatalf("lookup %d permissions differ from AST: %s", pass, diff)
+						}
+					}
+				}
+			})
+		}
+	}
+}
+
 func TestReusableWorkflowMetadataInvalidAnchorName(t *testing.T) {
 	src := []byte("on: workflow_call\njobs:\n  first: &build+job\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n  second: *build+job\n")
 	_, err := parseReusableWorkflowMetadata(src)

@@ -484,7 +484,7 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 			p := wp
 			mode, uses := wc, ""
 			for k := 0; k+1 < len(job.Content); k += 2 {
-				switch strings.ToLower(job.Content[k].Value) {
+				switch job.Content[k].Value {
 				case "permissions":
 					p = resolvePermissionsYAML(job.Content[k+1])
 				case "cache-mode":
