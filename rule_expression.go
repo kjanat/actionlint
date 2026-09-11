@@ -381,13 +381,9 @@ func (rule *RuleExpression) getWorkflowCallOutputsType(call *WorkflowCall) *Obje
 		return NewMapObjectType(StringType{})
 	}
 
-	uses := call.Uses.Value
-	if local, ok := workflowCallUsesLocalSpec(uses); ok {
-		uses = local
-	}
-	m, err := rule.localWorkflows.FindMetadata(uses)
+	m, err := rule.localWorkflows.findMetadataForCall(call.Uses.Value)
 	if err != nil {
-		rule.Error(call.Uses.Pos, workflowCallMetadataError(err, uses, call.Uses.Value))
+		rule.Error(call.Uses.Pos, err.Error())
 		return NewMapObjectType(StringType{})
 	}
 	if m == nil {
@@ -550,13 +546,9 @@ func (rule *RuleExpression) checkWorkflowCall(c *WorkflowCall) {
 
 	rule.checkString(c.Uses, "")
 
-	uses := c.Uses.Value
-	if local, ok := workflowCallUsesLocalSpec(uses); ok {
-		uses = local
-	}
-	m, err := rule.localWorkflows.FindMetadata(uses)
+	m, err := rule.localWorkflows.findMetadataForCall(c.Uses.Value)
 	if err != nil {
-		rule.Error(c.Uses.Pos, workflowCallMetadataError(err, uses, c.Uses.Value))
+		rule.Error(c.Uses.Pos, err.Error())
 	}
 
 	for n, i := range c.Inputs {

@@ -3,7 +3,6 @@ package actionlint
 import (
 	"fmt"
 	"slices"
-	"strconv"
 	"strings"
 )
 
@@ -84,9 +83,9 @@ func (rule *RuleWorkflowCall) VisitJobPre(n *Job) error {
 
 func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, jobPerms *Permissions, jobCacheMode *CacheMode, localSpec string) {
 	u := call.Uses
-	m, err := rule.cache.FindMetadata(localSpec)
+	m, err := rule.cache.findMetadataForCall(u.Value)
 	if err != nil {
-		rule.Error(u.Pos, workflowCallMetadataError(err, localSpec, u.Value))
+		rule.Error(u.Pos, err.Error())
 		return
 	}
 	if m == nil {
@@ -152,12 +151,6 @@ func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, job
 	rule.checkWorkflowCallCacheMode(call.Uses.Pos, localSpec, effectiveCacheMode(rule.workflowCacheMode, jobCacheMode), m, map[workflowCacheModeVisit]bool{})
 
 	rule.Debug("Validated reusable workflow %q", u.Value)
-}
-
-// workflowCallMetadataError preserves the source spelling across rules so the
-// same cached failure can be deduplicated at a call site.
-func workflowCallMetadataError(err error, localSpec, sourceSpec string) string {
-	return strings.Replace(err.Error(), strconv.Quote(localSpec), strconv.Quote(sourceSpec), 1)
 }
 
 // checkWorkflowCallPermissions compares the permissions each job of the called workflow requires
