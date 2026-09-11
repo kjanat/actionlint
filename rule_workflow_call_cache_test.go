@@ -16,8 +16,8 @@ func TestWorkflowCallCacheModeNestedMetadataErrors(t *testing.T) {
 	for _, malformed := range []bool{false, true} {
 		t.Run(fmt.Sprintf("malformed=%v", malformed), func(t *testing.T) {
 			root := t.TempDir()
-			caller := []byte("on: push\ncache-mode: read\njobs:\n  call:\n    uses: ./middle.yaml\n")
-			middle := []byte("on: workflow_call\njobs:\n  nested:\n    uses: ./leaf.yaml\n")
+			caller := []byte("on: push\ncache-mode: read\njobs:\n  call:\n    uses: $/middle.yaml\n")
+			middle := []byte("on: workflow_call\njobs:\n  nested:\n    uses: $/leaf.yaml\n")
 			if err := os.WriteFile(filepath.Join(root, "caller.yaml"), caller, 0o600); err != nil {
 				t.Fatal(err)
 			}
@@ -39,6 +39,9 @@ func TestWorkflowCallCacheModeNestedMetadataErrors(t *testing.T) {
 			if err != nil || len(errs) != 1 || !strings.Contains(errs[0].Message, "could not validate cache access through job") {
 				t.Fatalf("nested validation did not report the callee failure: errors=%v, err=%v", errs, err)
 			}
+			if !strings.Contains(errs[0].Message, `of "$/middle.yaml"`) || !strings.Contains(errs[0].Message, `"$/leaf.yaml"`) {
+				t.Fatalf("nested lookup lost source spelling: %v", errs)
+			}
 			var wg sync.WaitGroup
 			for range 8 {
 				wg.Go(func() {
@@ -47,7 +50,7 @@ func TestWorkflowCallCacheModeNestedMetadataErrors(t *testing.T) {
 						t.Error(err)
 						return
 					}
-					if len(errs) != 1 || errs[0].Kind != "workflow-call" || errs[0].Line != 4 || !strings.Contains(errs[0].Message, "./leaf.yaml") {
+					if len(errs) != 1 || errs[0].Kind != "workflow-call" || errs[0].Line != 4 || !strings.Contains(errs[0].Message, "$/leaf.yaml") {
 						t.Errorf("direct validation lost the callee error after nested lookup: %v", errs)
 					}
 				})
@@ -64,7 +67,7 @@ func TestWorkflowCallCacheModeNestedMetadataErrors(t *testing.T) {
 				}
 				seen := map[string]int{}
 				for _, diagnostic := range errs {
-					if diagnostic.Kind != "workflow-call" || !strings.Contains(diagnostic.Message, "./leaf.yaml") {
+					if diagnostic.Kind != "workflow-call" || !strings.Contains(diagnostic.Message, "$/leaf.yaml") {
 						t.Errorf("unexpected diagnostic: %v", diagnostic)
 					}
 					seen[filepath.Base(diagnostic.Filepath)]++
@@ -187,6 +190,9 @@ func TestWorkflowCallCacheModeInheritance(t *testing.T) {
 				if (len(errs) != 0) != tt.wantError {
 					t.Fatalf("wantError=%v, got %v", tt.wantError, errs)
 				}
+				if tt.wantError && !strings.Contains(errs[0].Message, `of "$/callee.yaml"`) {
+					t.Fatalf("direct cache diagnostic lost source spelling: %v", errs)
+				}
 			})
 		}
 	}
@@ -223,7 +229,7 @@ func TestWorkflowCallCacheModeNested(t *testing.T) {
 				if (len(errs) != 0) != tt.wantError {
 					t.Fatalf("wantError=%v, got %v", tt.wantError, errs)
 				}
-				if tt.wantError && (len(errs) != 1 || !strings.Contains(errs[0].Message, `of "./leaf.yaml"`)) {
+				if tt.wantError && (len(errs) != 1 || !strings.Contains(errs[0].Message, `of "$/leaf.yaml"`)) {
 					t.Fatalf("wanted one diagnostic identifying the nested callee, got %v", errs)
 				}
 			})
@@ -233,7 +239,7 @@ func TestWorkflowCallCacheModeNested(t *testing.T) {
 
 func TestWorkflowCallCacheModeCycleAndUnknownCallee(t *testing.T) {
 	caller := "on: push\ncache-mode: read\njobs:\n  call:\n    uses: ./middle.yaml\n"
-	for _, uses := range []string{"./middle.yaml", "owner/repo/.github/workflows/remote.yaml@main"} {
+	for _, uses := range []string{"./middle.yaml", "$/middle.yaml", "$//middle.yaml", "owner/repo/.github/workflows/remote.yaml@main"} {
 		middle := "on: workflow_call\njobs:\n  nested:\n    uses: " + uses + "\n"
 		if errs := checkCacheModeCall(t, caller, map[string]string{"middle.yaml": middle}, false); len(errs) != 0 {
 			t.Fatal(errs)
@@ -243,7 +249,7 @@ func TestWorkflowCallCacheModeCycleAndUnknownCallee(t *testing.T) {
 
 func TestWorkflowCallCacheModeSharedCallee(t *testing.T) {
 	caller := "on: push\ncache-mode: write\njobs:\n  call:\n    uses: ./middle.yaml\n"
-	middle := "on: workflow_call\njobs:\n  allowed:\n    cache-mode: write\n    uses: ./leaf.yaml\n  denied:\n    cache-mode: read\n    uses: ./leaf.yaml\n  duplicate:\n    cache-mode: read\n    uses: ./leaf.yaml\n"
+	middle := "on: workflow_call\njobs:\n  allowed:\n    cache-mode: write\n    uses: ./leaf.yaml\n  denied:\n    cache-mode: read\n    uses: ./leaf.yaml\n  duplicate:\n    cache-mode: read\n    uses: $/leaf.yaml\n"
 	leaf := "on: workflow_call\ncache-mode: write\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
 	errs := checkCacheModeCall(t, caller, map[string]string{"middle.yaml": middle, "leaf.yaml": leaf}, false)
 	if len(errs) != 1 || !strings.Contains(errs[0].Message, `calling job allows "read"`) {

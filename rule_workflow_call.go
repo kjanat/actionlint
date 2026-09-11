@@ -148,7 +148,7 @@ func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, job
 	}
 
 	rule.checkWorkflowCallPermissions(call, jobPerms, m)
-	rule.checkWorkflowCallCacheMode(call.Uses.Pos, localSpec, effectiveCacheMode(rule.workflowCacheMode, jobCacheMode), m, map[workflowCacheModeVisit]bool{})
+	rule.checkWorkflowCallCacheMode(call.Uses.Pos, localSpec, call.Uses.Value, effectiveCacheMode(rule.workflowCacheMode, jobCacheMode), m, map[workflowCacheModeVisit]bool{})
 
 	rule.Debug("Validated reusable workflow %q", u.Value)
 }

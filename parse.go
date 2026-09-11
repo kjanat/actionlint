@@ -1655,6 +1655,17 @@ func (p *parser) parseSnapshot(pos *Pos, n *yaml.Node) *Snapshot {
 	}
 }
 
+// jobKeyRequiresSteps is shared with file-based reusable workflow metadata.
+// A job containing one of these keys cannot populate Job.WorkflowCall.
+func jobKeyRequiresSteps(key string) bool {
+	switch key {
+	case "runs-on", "environment", "outputs", "env", "defaults", "steps", "timeout-minutes", "continue-on-error", "container":
+		return true
+	default:
+		return false
+	}
+}
+
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_id
 func (p *parser) parseJob(id *String, n *yaml.Node) *Job {
 	ret := &Job{ID: id, Pos: id.Pos}
@@ -1679,6 +1690,9 @@ func (p *parser) parseJob(id *String, n *yaml.Node) *Job {
 
 	for e := range p.parseMapping(sprintf("%q job", id.Value), n, false, true) {
 		k, v := e.key, e.val
+		if jobKeyRequiresSteps(e.id) {
+			stepsOnlyKey = k
+		}
 		switch e.id {
 		case "name":
 			ret.Name = p.parseString(v, true)
@@ -1692,41 +1706,32 @@ func (p *parser) parseJob(id *String, n *yaml.Node) *Job {
 			}
 		case "runs-on":
 			ret.RunsOn = p.parseRunsOn(v)
-			stepsOnlyKey = k
 		case "permissions":
 			ret.Permissions = p.parsePermissions(k.Pos, v)
 		case "cache-mode":
 			ret.CacheMode = p.parseCacheMode(v)
 		case "environment":
 			ret.Environment = p.parseEnvironment(k.Pos, v)
-			stepsOnlyKey = k
 		case "concurrency":
 			ret.Concurrency = p.parseConcurrency(k.Pos, v)
 		case "outputs":
 			ret.Outputs = p.parseOutputs(v)
-			stepsOnlyKey = k
 		case "env":
 			ret.Env = p.parseEnv(v)
-			stepsOnlyKey = k
 		case "defaults":
 			ret.Defaults = p.parseDefaults(k.Pos, v)
-			stepsOnlyKey = k
 		case "if":
 			ret.If = p.parseString(v, false)
 		case "steps":
 			ret.Steps = p.parseSteps(v)
-			stepsOnlyKey = k
 		case "timeout-minutes":
 			ret.TimeoutMinutes = p.parseTimeoutMinutes(v)
-			stepsOnlyKey = k
 		case "strategy":
 			ret.Strategy = p.parseStrategy(k.Pos, v)
 		case "continue-on-error":
 			ret.ContinueOnError = p.parseBool(v)
-			stepsOnlyKey = k
 		case "container":
 			ret.Container = p.parseContainer("container", k.Pos, v)
-			stepsOnlyKey = k
 		case "services":
 			ret.Services = p.parseServices(v)
 		case "uses":

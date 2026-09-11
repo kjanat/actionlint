@@ -176,12 +176,15 @@ type ReusableWorkflowCacheAccess struct {
 	Mode *CacheMode
 	// Uses is the normalized local workflow reference, or empty for other jobs.
 	Uses string
+	// SourceUses preserves the local reference's source spelling for diagnostics.
+	SourceUses string
 }
 
 func (m *ReusableWorkflowMetadata) recordJobCacheAccess(id string, mode *CacheMode, uses string) {
 	local, ok := workflowCallUsesLocalSpec(uses)
 	if !ok {
 		local = ""
+		uses = ""
 	}
 	if mode == nil && local == "" {
 		return
@@ -189,7 +192,7 @@ func (m *ReusableWorkflowMetadata) recordJobCacheAccess(id string, mode *CacheMo
 	if m.JobCacheAccess == nil {
 		m.JobCacheAccess = map[string]ReusableWorkflowCacheAccess{}
 	}
-	m.JobCacheAccess[id] = ReusableWorkflowCacheAccess{Mode: mode, Uses: local}
+	m.JobCacheAccess[id] = ReusableWorkflowCacheAccess{Mode: mode, Uses: local, SourceUses: uses}
 }
 
 // LocalReusableWorkflowCache is a cache for local reusable workflow metadata files. It avoids find/read/parse
@@ -483,7 +486,11 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 			}
 			p := wp
 			mode, uses := wc, ""
+			stepsOnly := false
 			for k := 0; k+1 < len(job.Content); k += 2 {
+				if jobKeyRequiresSteps(job.Content[k].Value) {
+					stepsOnly = true
+				}
 				switch job.Content[k].Value {
 				case "permissions":
 					p = resolvePermissionsYAML(job.Content[k+1])
@@ -494,6 +501,9 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 						uses = n.Value
 					}
 				}
+			}
+			if stepsOnly {
+				uses = ""
 			}
 			m.recordJobCacheAccess(id.Value, mode, uses)
 			if p.kind != permissionsDeclared || len(p.levels) == 0 {
