@@ -86,8 +86,7 @@ func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, job
 	u := call.Uses
 	m, err := rule.cache.FindMetadata(localSpec)
 	if err != nil {
-		msg := strings.Replace(err.Error(), strconv.Quote(localSpec), strconv.Quote(u.Value), 1)
-		rule.Error(u.Pos, msg)
+		rule.Error(u.Pos, workflowCallMetadataError(err, localSpec, u.Value))
 		return
 	}
 	if m == nil {
@@ -153,6 +152,12 @@ func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, job
 	rule.checkWorkflowCallCacheMode(call.Uses.Pos, localSpec, effectiveCacheMode(rule.workflowCacheMode, jobCacheMode), m, map[workflowCacheModeVisit]bool{})
 
 	rule.Debug("Validated reusable workflow %q", u.Value)
+}
+
+// workflowCallMetadataError preserves the source spelling across rules so the
+// same cached failure can be deduplicated at a call site.
+func workflowCallMetadataError(err error, localSpec, sourceSpec string) string {
+	return strings.Replace(err.Error(), strconv.Quote(localSpec), strconv.Quote(sourceSpec), 1)
 }
 
 // checkWorkflowCallPermissions compares the permissions each job of the called workflow requires
