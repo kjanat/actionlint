@@ -34,6 +34,42 @@ func TestCachePolicyCommandOutput(t *testing.T) {
 	}
 }
 
+func TestCachePolicyInvalidSuppressionSARIF(t *testing.T) {
+	t.Chdir(t.TempDir())
+	source := "on: pull_request_target\ncache-mode: write # actionlint:ignore cache-write-untrusted\njobs:\n  test:\n" + cachePolicySteps
+	var stdout, stderr strings.Builder
+	cmd := Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
+	status := cmd.Main([]string{"actionlint", "-shellcheck=", "-pyflakes=", "-format", SARIFTemplate(), "-"})
+	if status != ExitStatusSuccessProblemFound || stderr.Len() != 0 {
+		t.Fatalf("status=%d stderr=%s", status, &stderr)
+	}
+	var report struct {
+		Runs []struct {
+			Tool struct {
+				Driver struct {
+					Rules []struct{ ID string }
+				}
+			}
+			Results []struct{ RuleID string }
+		}
+	}
+	if err := json.Unmarshal([]byte(stdout.String()), &report); err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Runs) != 1 || len(report.Runs[0].Results) != 2 {
+		t.Fatalf("expected policy and directive results: %s", &stdout)
+	}
+	descriptors := map[string]bool{}
+	for _, rule := range report.Runs[0].Tool.Driver.Rules {
+		descriptors[rule.ID] = true
+	}
+	for _, result := range report.Runs[0].Results {
+		if !descriptors[result.RuleID] {
+			t.Errorf("SARIF result %q has no rule descriptor", result.RuleID)
+		}
+	}
+}
+
 func TestCachePolicyInlineSuppression(t *testing.T) {
 	const header = "on: pull_request_target\n"
 	const body = "jobs:\n  test:\n" + cachePolicySteps
