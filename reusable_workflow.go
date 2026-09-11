@@ -198,9 +198,14 @@ func (m *ReusableWorkflowMetadata) recordJobCacheAccess(id string, mode *CacheMo
 type LocalReusableWorkflowCache struct {
 	mu    sync.RWMutex
 	proj  *Project // maybe nil
-	cache map[string]*ReusableWorkflowMetadata
+	cache map[string]reusableWorkflowMetadataResult
 	cwd   string
 	dbg   io.Writer
+}
+
+type reusableWorkflowMetadataResult struct {
+	metadata *ReusableWorkflowMetadata
+	err      error
 }
 
 func (c *LocalReusableWorkflowCache) debug(format string, args ...any) {
@@ -211,26 +216,24 @@ func (c *LocalReusableWorkflowCache) debug(format string, args ...any) {
 	_, _ = fmt.Fprintf(c.dbg, format, args...)
 }
 
-func (c *LocalReusableWorkflowCache) readCache(key string) (*ReusableWorkflowMetadata, bool) {
+func (c *LocalReusableWorkflowCache) readCache(key string) (*ReusableWorkflowMetadata, error, bool) {
 	c.mu.RLock()
-	m, ok := c.cache[key]
+	result, ok := c.cache[key]
 	c.mu.RUnlock()
-	return m, ok
+	return result.metadata, result.err, ok
 }
 
-func (c *LocalReusableWorkflowCache) writeCache(key string, val *ReusableWorkflowMetadata) {
+func (c *LocalReusableWorkflowCache) writeCache(key string, val *ReusableWorkflowMetadata, err error) {
 	c.mu.Lock()
-	c.cache[key] = val
+	c.cache[key] = reusableWorkflowMetadataResult{val, err}
 	c.mu.Unlock()
 }
 
 // FindMetadata finds/parses a reusable workflow metadata located by the 'spec' argument. When project
 // is not set to 'proj' field or the spec does not start with "./", this method immediately returns with nil.
 //
-// Note that an error is not cached. At first search, let's say this method returned an error since
-// the reusable workflow is invalid. In this case, calling this method with the same spec later will
-// not return the error again. It just will return nil. This behavior prevents repeating to report
-// the same error from multiple places.
+// Read and parse errors are cached alongside metadata and returned on every lookup. Each caller
+// can report the failure at its own source position, regardless of the order of concurrent checks.
 //
 // Calling this method is thread-safe.
 func (c *LocalReusableWorkflowCache) FindMetadata(spec string) (*ReusableWorkflowMetadata, error) {
@@ -238,27 +241,29 @@ func (c *LocalReusableWorkflowCache) FindMetadata(spec string) (*ReusableWorkflo
 		return nil, nil
 	}
 
-	if m, ok := c.readCache(spec); ok {
+	if m, err, ok := c.readCache(spec); ok {
 		c.debug("Cache hit for %s: %v", spec, m)
-		return m, nil
+		return m, err
 	}
 
 	file := filepath.Join(c.proj.RootDir(), filepath.FromSlash(spec))
 	src, err := os.ReadFile(file)
 	if err != nil {
-		c.writeCache(spec, nil) // Remember the workflow file was not found
-		return nil, fmt.Errorf("could not read reusable workflow file for %q: %w", spec, err)
+		err = fmt.Errorf("could not read reusable workflow file for %q: %w", spec, err)
+		c.writeCache(spec, nil, err)
+		return nil, err
 	}
 
 	m, err := parseReusableWorkflowMetadata(src)
 	if err != nil {
-		c.writeCache(spec, nil) // Remember the workflow file was invalid
 		msg := strings.ReplaceAll(err.Error(), "\n", " ")
-		return nil, fmt.Errorf("error while parsing reusable workflow %q: %s", spec, msg)
+		err = fmt.Errorf("error while parsing reusable workflow %q: %s", spec, msg)
+		c.writeCache(spec, nil, err)
+		return nil, err
 	}
 
 	c.debug("New reusable workflow metadata at %s: %v", file, m)
-	c.writeCache(spec, m)
+	c.writeCache(spec, m, nil)
 	return m, nil
 }
 
@@ -373,7 +378,9 @@ func (c *LocalReusableWorkflowCache) WriteWorkflowCallEventFromWorkflow(wpath st
 	}
 
 	c.mu.Lock()
-	c.cache[spec] = m
+	if _, exists := c.cache[spec]; !exists {
+		c.cache[spec] = reusableWorkflowMetadataResult{metadata: m}
+	}
 	c.mu.Unlock()
 
 	c.debug("Workflow call metadata from workflow %s: %v", wpath, m)
@@ -491,7 +498,7 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 func NewLocalReusableWorkflowCache(proj *Project, cwd string, dbg io.Writer) *LocalReusableWorkflowCache {
 	return &LocalReusableWorkflowCache{
 		proj:  proj,
-		cache: map[string]*ReusableWorkflowMetadata{},
+		cache: map[string]reusableWorkflowMetadataResult{},
 		cwd:   cwd,
 		dbg:   dbg,
 	}

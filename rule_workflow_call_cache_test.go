@@ -2,13 +2,80 @@ package actionlint
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 )
+
+func TestWorkflowCallCacheModeNestedMetadataErrors(t *testing.T) {
+	for _, malformed := range []bool{false, true} {
+		t.Run(fmt.Sprintf("malformed=%v", malformed), func(t *testing.T) {
+			root := t.TempDir()
+			caller := []byte("on: push\ncache-mode: read\njobs:\n  call:\n    uses: ./middle.yaml\n")
+			middle := []byte("on: workflow_call\njobs:\n  nested:\n    uses: ./leaf.yaml\n")
+			if err := os.WriteFile(filepath.Join(root, "caller.yaml"), caller, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(root, "middle.yaml"), middle, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if malformed {
+				if err := os.WriteFile(filepath.Join(root, "leaf.yaml"), []byte("on: ["), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			proj := &Project{root: root}
+			l, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root})
+			if err != nil {
+				t.Fatal(err)
+			}
+			cache := NewLocalReusableWorkflowCache(proj, root, nil)
+			errs, err := l.check("caller.yaml", caller, proj, nil, nil, cache)
+			if err != nil || len(errs) != 1 || !strings.Contains(errs[0].Message, "could not validate cache access through job") {
+				t.Fatalf("nested validation did not report the callee failure: errors=%v, err=%v", errs, err)
+			}
+			var wg sync.WaitGroup
+			for range 8 {
+				wg.Go(func() {
+					errs, err := l.check("middle.yaml", middle, proj, nil, nil, cache)
+					if err != nil {
+						t.Error(err)
+						return
+					}
+					if len(errs) != 1 || errs[0].Kind != "workflow-call" || errs[0].Line != 4 || !strings.Contains(errs[0].Message, "./leaf.yaml") {
+						t.Errorf("direct validation lost the callee error after nested lookup: %v", errs)
+					}
+				})
+			}
+			wg.Wait()
+			for _, names := range [][]string{{"caller.yaml", "middle.yaml"}, {"middle.yaml", "caller.yaml"}} {
+				paths := []string{filepath.Join(root, names[0]), filepath.Join(root, names[1])}
+				errs, err := l.LintFiles(paths, proj)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(errs) != 2 {
+					t.Fatalf("LintFiles(%v): wanted errors at both call sites, got %v", names, errs)
+				}
+				seen := map[string]int{}
+				for _, diagnostic := range errs {
+					if diagnostic.Kind != "workflow-call" || !strings.Contains(diagnostic.Message, "./leaf.yaml") {
+						t.Errorf("unexpected diagnostic: %v", diagnostic)
+					}
+					seen[filepath.Base(diagnostic.Filepath)]++
+				}
+				if seen["caller.yaml"] != 1 || seen["middle.yaml"] != 1 {
+					t.Errorf("LintFiles(%v): unexpected diagnostic locations %v", names, seen)
+				}
+			}
+		})
+	}
+}
 
 func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, fromAST bool) []*Error {
 	t.Helper()
@@ -166,7 +233,7 @@ func TestWorkflowCallCacheModeNested(t *testing.T) {
 
 func TestWorkflowCallCacheModeCycleAndUnknownCallee(t *testing.T) {
 	caller := "on: push\ncache-mode: read\njobs:\n  call:\n    uses: ./middle.yaml\n"
-	for _, uses := range []string{"./middle.yaml", "./missing.yaml", "owner/repo/.github/workflows/remote.yaml@main"} {
+	for _, uses := range []string{"./middle.yaml", "owner/repo/.github/workflows/remote.yaml@main"} {
 		middle := "on: workflow_call\njobs:\n  nested:\n    uses: " + uses + "\n"
 		if errs := checkCacheModeCall(t, caller, map[string]string{"middle.yaml": middle}, false); len(errs) != 0 {
 			t.Fatal(errs)
@@ -198,7 +265,7 @@ func TestReusableWorkflowCacheModeMetadataParity(t *testing.T) {
 	cache := NewLocalReusableWorkflowCache(&Project{root, nil}, root, nil)
 	event, _ := w.FindWorkflowCallEvent()
 	cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, w)
-	fromAST, ok := cache.readCache("./callee.yaml")
+	fromAST, _, ok := cache.readCache("./callee.yaml")
 	if !ok {
 		t.Fatal("no metadata was cached")
 	}
