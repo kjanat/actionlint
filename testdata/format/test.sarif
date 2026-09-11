@@ -190,6 +190,21 @@
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
+              "id": "inline-suppression",
+              "name": "InlineSuppression",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Checks inline cache policy exception directives",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {
+                "text": "Checks inline cache policy exception directives"
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
               "id": "job-needs",
               "name": "JobNeeds",
               "defaultConfiguration": {
