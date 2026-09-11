@@ -2,6 +2,7 @@ package actionlint
 
 import (
 	"bytes"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -10,7 +11,7 @@ import (
 
 // filterCachePolicySuppressions reads exceptions from YAML comments. Script text
 // and quoted strings remain values even when they contain directive-like text.
-func filterCachePolicySuppressions(source []byte, errors []*Error) []*Error {
+func filterCachePolicySuppressions(source []byte, errors []*Error, policy *SuppressionsPolicy) []*Error {
 	if !bytes.Contains(source, []byte("actionlint:")) {
 		return errors
 	}
@@ -85,8 +86,20 @@ func filterCachePolicySuppressions(source []byte, errors []*Error) []*Error {
 		if suppressed[target] == nil {
 			suppressed[target] = map[string]bool{}
 		}
+		var prohibited []string
 		for _, name := range names {
-			suppressed[target][name] = true
+			mode := policy.reportFor(name)
+			if mode == reportSuppression || mode == reportBoth {
+				if !slices.Contains(prohibited, name) {
+					prohibited = append(prohibited, name)
+				}
+			}
+			if mode == suppressionsAllowed || mode == reportSuppression {
+				suppressed[target][name] = true
+			}
+		}
+		if len(prohibited) != 0 {
+			directiveErrors = append(directiveErrors, errorfAt(pos, "disallow-suppressions", "inline suppression of %s is disallowed by policy.disallow-suppressions", strings.Join(prohibited, ", ")))
 		}
 	}
 	readPreceding := func(line int, comments string) {
