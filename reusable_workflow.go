@@ -172,11 +172,12 @@ type ReusableWorkflowMetadata struct {
 // indicated by 'proj' field. One LocalReusableWorkflowCache instance needs to be created per one
 // project.
 type LocalReusableWorkflowCache struct {
-	mu    sync.RWMutex
-	proj  *Project // maybe nil
-	cache map[string]*ReusableWorkflowMetadata
-	cwd   string
-	dbg   io.Writer
+	onRead func(string)
+	mu     sync.RWMutex
+	proj   *Project // maybe nil
+	cache  map[string]*ReusableWorkflowMetadata
+	cwd    string
+	dbg    io.Writer
 }
 
 func (c *LocalReusableWorkflowCache) debug(format string, args ...any) {
@@ -226,6 +227,9 @@ func (c *LocalReusableWorkflowCache) FindMetadata(spec string) (*ReusableWorkflo
 		return nil, fmt.Errorf("could not read reusable workflow file for %q: %w", spec, err)
 	}
 
+	if c.onRead != nil {
+		c.onRead(file)
+	}
 	m, err := parseReusableWorkflowMetadata(src)
 	if err != nil {
 		c.writeCache(spec, nil) // Remember the workflow file was invalid

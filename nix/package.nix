@@ -5,6 +5,7 @@
   makeWrapper,
   git,
   bash,
+  bash-completion,
   zsh,
   fish,
   pandoc,
@@ -17,7 +18,7 @@
 buildGoModule {
   pname = "actionlint";
   inherit src version;
-  vendorHash = "sha256-PVEf1pJvwQu/2dFS0YhWoXahnTqvqmRdYjVfujjs04k=";
+  vendorHash = "sha256-OLlj12BiG9bSmniz91NI3LwkKWP7unJZQsYlQBHtbwQ=";
   subPackages = [ "cmd/actionlint" ];
 
   env.CGO_ENABLED = 0;
@@ -36,6 +37,7 @@ buildGoModule {
   nativeCheckInputs = [
     git
     bash
+    bash-completion
     zsh
     fish
     shellcheck
@@ -45,6 +47,7 @@ buildGoModule {
   checkPhase = ''
     runHook preCheck
     export GOFLAGS=''${GOFLAGS//-trimpath/}
+    export BASH_COMPLETION_FILE=${bash-completion}/share/bash-completion/bash_completion
     go test ./...
     runHook postCheck
   '';

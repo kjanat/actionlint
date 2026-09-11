@@ -32,108 +32,195 @@ checks do not require configuration.
 
 # USAGE
 
-With no file arguments, **actionlint** searches the current directory and its parents for a
-repository containing both `.git` and `.github/workflows`. It recursively checks `.yml` and
-`.yaml` files in that workflow directory:
+With no paths, **actionlint** and **actionlint check** find the current repository
+containing both `.git` and `.github/workflows`, then recursively check workflow
+YAML files in that directory. Explicit file arguments and a lone **-** for stdin
+remain supported. Passing a directory does not enable recursive input expansion;
+passing an action manifest does not select standalone action-metadata linting.
 
     $ actionlint
-
-To check specific workflow files, pass their paths. Explicit files can be outside a repository:
-
     $ actionlint file1.yaml file2.yaml
+    $ actionlint check file1.yaml --output-format=json
+    $ actionlint check --stdin-filename .github/workflows/ci.yml -
 
-Pass **-** as the only file argument to read a workflow from standard input:
+The root stops option parsing at the first filename. **check** accepts options
+before or after filenames. **--** forces subsequent arguments to be filenames.
+An existing regular file named like a command takes precedence on the root.
+The hidden `--command NAME` escape explicitly selects a command in that case.
 
-    $ actionlint -
+# COMMANDS
 
-Use **-stdin-filename** to label diagnostics. If that path exists in a detected repository,
-actionlint also uses its repository configuration and local action metadata. For an unsaved
-file, select configuration explicitly with **-config-file** when needed:
+**check** [*flags*] [*files*...]
+: Check workflows with the modern option grammar. Uses the same engine and
+repository discovery as the root invocation.
 
-    $ actionlint -stdin-filename .github/workflows/ci.yml - < .github/workflows/ci.yml
-    $ actionlint -config-file .github/actionlint.yaml - < /tmp/workflow.yml
+**config init**
+: Create `.github/actionlint.yaml` with its YAML Language Server directive.
+Refuse to overwrite either supported config filename.
 
-Local action metadata and reusable workflows are read from disk when referenced by a workflow.
-Passing an `action.yml` file directly does not select a standalone action-metadata lint mode.
+**config path**
+: Print the selected configuration path without parsing it, or nothing if absent.
 
-Place flags before file arguments. Both `-flag` and `--flag` spellings are accepted, and a value
-can follow a flag or an equals sign. Use `--` to end flag parsing before a filename that starts
-with a dash. Boolean flags accept `=true` or `=false`.
+**config show** [**--origin**]
+: Show effective configuration as YAML. **--json** returns `path` and `config`.
+With `--origin`, include sources keyed by JSON Pointer: `default` or `config`,
+missing/null/value state, and positions for file settings. Explicit false and
+empty lists remain distinguishable from defaults and null.
 
-Use **-format** to serialize diagnostics or customize their presentation with Go templates:
+**config validate**
+: Validate with the same loader as analysis. This retains existing unknown-key
+handling; it does not substitute the stricter editor JSON Schema validator.
 
-    $ actionlint -format '{{json .}}'
+**rules** [*name*]
+: List checks by name and category, or explain one check. Supports **--json**.
+
+**doctor**
+: Inspect configuration and external-tool resolution without executing tools.
+Directory, configuration and executable paths use `file://` links when hyperlinks
+are enabled. Link targets support Windows drive and UNC paths and encode special characters.
+Missing optional tools are reported; malformed selected config returns status 3.
+
+**completion** *shell*
+: Print the generated completion script for the selected shell.
+
+**version**
+: Show version and build details. Supports **--json**.
 
 # FLAGS
 
-**-color**
-: Force colored output, including when standard output is redirected. **-no-color** takes
-precedence if both flags are set.
+These options belong to the root and to **check**, unless noted otherwise.
+Root parsing retains the original single- and double-dash spellings; **check**
+uses long options and short aliases. Run **--help-legacy** for old spellings.
 
-**-completion** *SHELL*
-: Print a shell completion script for the given shell to stdout. One of `bash`, `fish`,
-`powershell`, `zsh`. Also accepted are `pwsh`, a shell path such as `$SHELL`, and `auto` to
-detect the current shell from `SHELL`, falling back to PowerShell when `PSModulePath` is set.
-Prints the script and exits without linting. See SHELL COMPLETION below.
+**--output-format**, **--output**, **-o** *MODE*
+: Select `text`, `oneline`, `json`, `jsonl`, `sarif`, or `github`. The default is
+`text`. **--output** is a supported alias. JSON emits a versioned document with
+`schema_version` and `diagnostics`; JSONL emits one diagnostic per line. GitHub
+annotations are emitted only when explicitly selected.
 
-**-config-file** *PATH*
-: Read configuration from *PATH* instead of using the detected repository's configuration.
-Relative paths are resolved from the current working directory.
+**--json**
+: Select JSON output. With help, version, config, rules or doctor, emit JSON
+metadata. Operational errors are JSON objects on stderr.
 
-**-debug**
-: Write development diagnostics to standard error. Use without **-verbose**, which takes
-precedence when both flags are set.
+**--json-pretty**[=*BOOL*]
+: Format JSON and SARIF on a terminal with installed jq. Default: true. False
+keeps the original JSON. Pipes, files, JSONL, templates and stderr records are
+unchanged. Unavailable or failing jq falls back to the original JSON.
 
-**-format** *FORMAT*
-: Format diagnostics using a Go text template. The template receives a sequence of error
-objects. See OUTPUT below. This overrides **-oneline**.
+**--template**, **--format**, **-f** *TEMPLATE*
+: Render diagnostics with a Go template. Existing template fields and functions
+remain unchanged, including the JSON array returned by `{{json .}}`. Cannot be
+combined with a built-in output selector. A nonempty template takes precedence
+over the legacy **--oneline** option.
 
-**-ignore** *PATTERN*
-: Suppress diagnostics whose message matches *PATTERN*, using Go regular expression syntax.
-Repeat the flag to match any of several patterns: `-ignore A -ignore B` suppresses messages
-matching either pattern. Suppressed diagnostics do not cause exit status 1.
+**--template-file** *PATH*
+: Read a Go template from a file. Cannot be combined with an inline template.
 
-**-init-config**
-: Create `.github/actionlint.yaml` in the detected repository and exit without linting.
-Includes the YAML Language Server schema directive for editor completion, hover documentation, and validation.
-Requires a repository with `.github/workflows` and refuses to overwrite either supported
-configuration filename.
+**--output-file** *PATH*
+: Write results to the given path. `-` means stdout. Replace the file
+only after successful analysis, including analysis that found problems. A failure
+preserves a previous report. The output cannot also be a selected input.
 
-**-no-color**
-: Disable colored output, even when **-color** is also set.
+**--color**[=*MODE*]
+: On **check**, select `auto`, `always`, or `never`; a bare flag means `always`.
+On the root, retain the boolean syntax: `-color=false` does not force color on.
+Help uses the same controls: automatic styling follows stderr's terminal status,
+**NO_COLOR**, and **TERM=dumb**. With **GITHUB_ACTIONS=true**, help and text
+diagnostics also use color in workflow logs without a terminal, even with
+**TERM=dumb**. Regular files and **--output-file** reports stay plain in auto mode;
+custom templates receive no added color. Put root color flags before **--help**.
+Redirected structured output contains no terminal color codes. Optional jq
+formatting can color JSON and SARIF written directly to a terminal.
 
-**-oneline**
-: Print one line per diagnostic, without the source snippet and position marker.
+**--no-color**
+: Disable color. This supported legacy option wins over the root's **--color**
+boolean regardless of argument order.
 
-**-pyflakes** *COMMAND*
-: Command used to check Python `run:` scripts. Accepts an executable name, a path, or a quoted
-command line such as `"python3 -m pyflakes"` or `"uvx pyflakes"`. Defaults to `pyflakes`;
-`-pyflakes=` disables the integration.
+**--hyperlinks** *MODE*
+: Select `auto` (default), `always`, or `never` for OSC 8 links in help and doctor.
+`always` and `never` override the environment. In `auto`, non-empty
+**NO_HYPERLINKS** disables links before non-empty **FORCE_HYPERLINKS** enables
+them; otherwise the output must be a TTY with a known capable terminal
+(stderr for help, stdout for doctor).
+Unknown terminals and multiplexers default to plain URLs. Explicit `always`
+can enable links through a multiplexer configured to pass them through.
+Color controls are independent. Destination URLs stay visible when links are
+disabled. JSON, diagnostics, templates, version output and generated completion
+scripts receive no added hyperlink sequences. Put root flags before **--help**.
+See https://no-hyperlinks.org/spec for the convention.
 
-**-shellcheck** *COMMAND*
-: Command used to check supported shell `run:` scripts. Accepts an executable name, a path,
-or a quoted command line such as `"shellcheck -e SC2086"`. Defaults to `shellcheck`;
-`-shellcheck=` disables the integration.
+**--config**, **--config-file** *PATH*
+: Select the configuration file. This takes precedence over repository discovery. **--config-file**
+is the supported legacy name. Also available on **config** and **doctor**.
 
-**-stdin-filename** *NAME*
-: Filename used for standard-input diagnostics. Defaults to `<stdin>`. An existing path also
-allows repository discovery; see USAGE above.
+**--no-config**
+: Use defaults without loading a configuration file. Cannot be combined with a
+nonempty explicit config path. Also available on **config** and **doctor**.
 
-**-verbose**
-: Write progress information to standard error, including file discovery and disabled external
-linter integrations.
+**--ignore-regex**, **--ignore** *REGEXP*
+: Suppress findings whose messages match this Go regular expression. Repeat to
+add patterns. **--ignore** is the
+supported legacy name.
 
-**-version**
-: Print the build's module name and version, installation source, Go compiler version, and
-target operating system and architecture, then exit.
+**--stdin-filename** *PATH*
+: Set the path used for stdin diagnostics and project detection. The default is
+`<stdin>`. Use an existing workflow path to select its repository context.
 
-**-help**, **-h**
-: Print command usage and flags to standard error, then exit successfully.
+**--log-level** *LEVEL*
+: Select `none`, `info`, or `debug`. The default is `none`.
+
+**--quiet**, **-q**
+: Suppress progress, debug logs and summaries. Requested results and operational
+errors remain visible. Also available on information and config commands.
+
+**--summary**
+: Print selected workflow and finding counts on stderr after checking. In JSON
+modes this is a JSON record with a `summary` field. A normal clean run stays silent.
+
+**--verbose**, **-v**
+: Retain legacy progress logging. Prefer **--log-level**=info on **check**.
+
+**--debug**
+: Retain legacy debug logging. On the legacy route, **--verbose** wins when both
+flags are true. An explicit **--log-level** selects the requested new log level.
+
+**--oneline**
+: Retain one-line diagnostic output. Prefer **--output-format**=oneline.
+
+**--shellcheck** *COMMAND*
+: ShellCheck command, executable path or command line with arguments. Defaults
+to `shellcheck`; an empty value disables it. Also available on **doctor**.
+
+**--pyflakes** *COMMAND*
+: Pyflakes command, executable path or command line with arguments. Defaults to
+`pyflakes`; an empty value disables it. Also available on **doctor**.
+
+**--init-config**
+: Root-only alias for **config init**, retaining existing initialization behavior.
+
+**--completion**, **--completions** *SHELL*
+: Root-only supported aliases for **completion** *SHELL*. Accept `bash`, `fish`,
+`powershell`, `zsh`, `pwsh`, shell executable paths, and `auto`. Cobra generates
+all four completion scripts. Install bash-completion for Bash and run compinit
+for Zsh. Regenerate saved scripts after upgrading.
+
+**--version**, **-V**
+: Root-only version flag. Retains its original three-line output. Use the
+**version** command for the new presentation or **version --json** for metadata.
+Lowercase **-v** continues to enable verbose logging.
+
+**--help**, **-h**
+: Show grouped help on stderr, or JSON command metadata on stdout with **--json**.
+
+**--help-legacy**
+: Explain supported legacy option spellings and parsing rules without
+introducing deprecation warnings.
+
 
 # CONFIGURATION
 
 Configuration is optional. In a detected repository, actionlint reads `.github/actionlint.yaml`,
-or `.github/actionlint.yml` if the first filename is absent. **-config-file** selects a different
+or `.github/actionlint.yml` if the first filename is absent. **--config-file** selects a different
 file; settings are not merged with the repository file or a user-global configuration.
 
 The available settings are:
@@ -159,7 +246,7 @@ explicit grant. This setting does not change the repository's actual GitHub perm
 **paths**
 : Map repository-relative glob patterns to configuration. Patterns use `/` separators and
 support `**` and brace alternatives. Each entry's `ignore` list contains message regular
-expressions, applied in addition to **-ignore**.
+expressions, applied in addition to **--ignore**.
 
 **policy.require-commit-hash**
 : When `true`, require action and reusable workflow references to use 40- or 64-digit hexadecimal
@@ -208,25 +295,25 @@ configuration document below for the schema URL and full matching rules.
 
 ShellCheck checks supported shell scripts in `run:` steps; pyflakes checks Python scripts.
 The executables must be available through `PATH` or the corresponding command flag. If a
-command cannot be resolved, its integration is skipped; **-verbose** explains why.
+command cannot be resolved, its integration is skipped; **--verbose** explains why.
 
-    $ actionlint -shellcheck= -pyflakes=
-    $ actionlint -shellcheck 'shellcheck -e SC2086'
-    $ actionlint -pyflakes 'python3 -m pyflakes'
+    $ actionlint --shellcheck= --pyflakes=
+    $ actionlint --shellcheck 'shellcheck -e SC2086'
+    $ actionlint --pyflakes 'python3 -m pyflakes'
 
 Command strings are parsed into an executable and arguments, not executed by a shell. Shell
 pipes and redirections are not supported in these flags. Your arguments precede actionlint's
 own arguments, so do not supply input filenames or override ShellCheck's output format.
 
 actionlint invokes ShellCheck with `--norc` and JSON1 output, so `.shellcheckrc` is not read.
-Use **-shellcheck** arguments or `SHELLCHECK_OPTS` for ShellCheck options. Filter pyflakes
-diagnostics with **-ignore** or the configuration's `paths` entries.
+Use **--shellcheck** arguments or `SHELLCHECK_OPTS` for ShellCheck options. Filter pyflakes
+diagnostics with **--ignore** or the configuration's `paths` entries.
 
 # OUTPUT
 
 Diagnostics go to standard output. Command usage, progress logs, and fatal errors go to standard
 error. The default diagnostic includes the file, line, column, message, rule name, and source
-snippet. **-oneline** omits the snippet; **-format** replaces the diagnostic presentation.
+snippet. **--oneline** omits the snippet; **--format** replaces the diagnostic presentation.
 
 The Go template receives a sequence of errors. Each has `Message`, `Snippet`, `Kind`, `Filepath`,
 `Line`, `Column`, and `EndColumn` fields. Line and column numbers start at 1. Custom template
@@ -234,48 +321,72 @@ functions include `json`, `replace`, `toPascalCase`, `allKinds`, and `getVersion
 
 JSON:
 
-    $ actionlint -format '{{json .}}'
+    $ actionlint --json
 
 JSON Lines:
 
-    $ actionlint -format '{{range .}}{{json .}}{{end}}'
+    $ actionlint --output jsonl
 
 Custom lines:
 
-    $ actionlint -format '{{range .}}{{.Filepath}}:{{.Line}}:{{.Column}}: {{.Message}} [{{.Kind}}]\n{{end}}'
+    $ actionlint --format '{{range .}}{{.Filepath}}:{{.Line}}:{{.Column}}: {{.Message}} [{{.Kind}}]\n{{end}}'
 
 Backslash escapes such as `\n` in the format string are expanded before the template is parsed.
 
-For SARIF, pass the contents of `sarif_template.txt` from the actionlint source repository to
-**-format**, for example in Bash:
+SARIF uses the bundled template and needs no separate template file:
 
-    $ actionlint -format "$(cat sarif_template.txt)" > actionlint.sarif
+    $ actionlint --output sarif > actionlint.sarif
 
-The CLI's **-format** accepts template text. The GitHub Action's `format` input instead accepts
+The CLI's **--format** accepts template text. The GitHub Action's `format` input instead accepts
 names such as `json` and `sarif`. Changing output format does not change the lint exit status.
+
+Native JSON returns a versioned document with `schema_version` and `diagnostics`.
+Each diagnostic contains `rule`, `message`, `path`, `start`, `end`, and an optional source-line
+`snippet`. Positions use one-based Unicode character columns and exclusive end positions;
+a range may end on a later line. A clean check writes `{"schema_version":1,"diagnostics":[]}`.
+JSON Lines writes one diagnostic per line with `schema_version: 1` on every record, or nothing
+for a clean check. The legacy `{{json .}}` template retains its array, field names, and inclusive
+`end_column` contract.
+
+In JSON modes, fatal errors are JSON objects on standard error with `error` and `exit_code`.
+Requested progress or debug logs are separate JSON Lines records with a `log` field on standard
+error. **--quiet** suppresses these log records. Standard output contains only the requested result.
+An early failure can leave standard output empty; always check the exit status.
+
+Machine-readable metadata:
+
+    $ actionlint --help --json
+    $ actionlint --version --json
+    $ actionlint --init-config --json
+
+JSON help describes flag names, shorthand, types, default spellings, groups, choices, repeatability,
+legacy aliases, and exit codes. JSON version includes `name`, `version`, `installed_from`,
+`go_version`, `os`, and `goarch`. JSON config creation returns `{"path":"..."}`.
+The default three-line version format remains unchanged.
 
 # SHELL COMPLETION
 
-**-completion** generates native completion scripts for Bash, Fish, Zsh, and PowerShell. Scripts
-complete flags, flag values, and workflow paths. Load one into the current shell session:
+**--completion** generates native completion scripts for Bash, Fish, Zsh, and PowerShell. Cobra generates these scripts from the CLI flag definitions. Scripts
+complete long flags, short options, flag values, and workflow paths. Bash requires the
+`bash-completion` package; Zsh requires `compinit`. Load one into the current shell session:
 
 Bash:
 
-    $ source <(actionlint -completion bash)
+    $ source <(actionlint --completion bash)
 
 Fish:
 
-    $ actionlint -completion fish | source
+    $ actionlint --completion fish | source
 
 Zsh, after initializing its completion system:
 
     $ autoload -Uz compinit && compinit
-    $ source <(actionlint -completion zsh)
+    $ source <(actionlint --completion zsh)
 
 PowerShell:
 
 ```powershell
-actionlint -completion powershell | Out-String | Invoke-Expression
+actionlint --completion powershell | Out-String | Invoke-Expression
 ```
 
 For persistent installation, save Bash output in a directory loaded by bash-completion, Fish
@@ -285,15 +396,66 @@ upgrading actionlint so they reflect the installed CLI. See the usage document f
 
 # ENVIRONMENT
 
+**ACTIONLINT_CONFIG**, **ACTIONLINT_NO_CONFIG**, **ACTIONLINT_CONFIG_ORIGIN**
+: Configuration selection and origin-display defaults. Explicit config flags
+override environment selection. **config init** ignores these defaults.
+
+**ACTIONLINT_STDIN_FILENAME**, **ACTIONLINT_IGNORE_REGEX**
+: Stdin filename and message-filter defaults. The filter value is a JSON string
+array. Explicit ignore flags replace that list.
+
+**ACTIONLINT_OUTPUT_FORMAT**, **ACTIONLINT_JSON**, **ACTIONLINT_TEMPLATE**,
+**ACTIONLINT_TEMPLATE_FILE**, **ACTIONLINT_OUTPUT_FILE**
+: Output defaults. Explicit format flags replace environment format selection.
+Templates and output files apply only to checks.
+
+**ACTIONLINT_JSON_PRETTY**
+: Whether terminal JSON may use installed **jq**. Default: true. The
+**--json-pretty=false** flag disables this. Pipes, files, JSONL, templates and
+stderr records retain their existing output. Missing or failing jq falls back
+to the original JSON.
+
+**ACTIONLINT_LOG_LEVEL**, **ACTIONLINT_QUIET**, **ACTIONLINT_SUMMARY**
+: Logging and summary defaults. Explicit flags, including false values, take precedence.
+
+**ACTIONLINT_COLOR**, **ACTIONLINT_HYPERLINKS**
+: Presentation defaults: auto, always or never. NO_COLOR and NO_HYPERLINKS
+override these defaults; explicit CLI controls take precedence over the environment.
+
+**ACTIONLINT_SHELLCHECK_BIN**, **ACTIONLINT_PYFLAKES_BIN**
+: Literal external-linter executable names or paths. Empty disables the tool.
+
+**ACTIONLINT_SHELLCHECK_FLAGS**, **ACTIONLINT_PYFLAKES_FLAGS**
+: Additional arguments as a JSON string array or a quoted argument list. No shell
+execution or variable expansion is performed.
+
+**ACTIONLINT_SHELLCHECK_ENV**, **ACTIONLINT_PYFLAKES_ENV**
+: Child environment overrides, as a JSON object or quoted NAME=value entries and
+variable names. JSON null or bare names forward inherited values; strings set values.
+An explicit tool command flag overrides its BIN, FLAGS and ENV settings together.
+
+See [Environment variables](../docs/env.md) for precedence, defaults and examples.
+
 **PATH**
 : Used to find ShellCheck and pyflakes, including the executable selected by their command flags.
 
 **NO_COLOR**
-: A nonempty value disables automatic color. **-color** can force color; **-no-color** always
-disables it.
+: Any nonempty value, including `0` or `false`, disables automatic color; an empty
+value has no effect. **--color** can force color; **--no-color** always disables it.
+See the [NO_COLOR convention](https://no-color.org/).
+
+**GITHUB_ACTIONS**
+: The value `true` enables automatic color for help and text diagnostics in workflow
+logs. **NO_COLOR** and explicit color controls still apply. This does not enable hyperlinks.
+
+**NO_HYPERLINKS**, **FORCE_HYPERLINKS**
+: In `auto` mode, a nonempty **NO_HYPERLINKS** disables help and doctor links. Otherwise,
+a nonempty **FORCE_HYPERLINKS** enables them even in redirected output.
+An empty value has no effect; `0` counts as nonempty. Explicit hyperlink modes
+override both variables. These controls are independent of color.
 
 **SHELL**, **PSModulePath**
-: Used by **-completion auto**. A supported shell named by `SHELL` takes precedence over the
+: Used by **--completion auto**. A supported shell named by `SHELL` takes precedence over the
 PowerShell fallback indicated by a nonempty `PSModulePath`.
 
 **SHELLCHECK_OPTS**
@@ -376,7 +538,7 @@ download script:
 - name: Check workflow files
   run: |
     bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) latest
-    ./actionlint -color
+    ./actionlint --color
   shell: bash
 ```
 
@@ -391,7 +553,8 @@ current directory and, on GitHub Actions, exposes its path as the
 
 - **0**: It ran successfully and no problem was found.
 - **1**: It ran successfully and some problem was found.
-- **2**: Command-line flag parsing failed, for example because of an unknown flag or missing value.
+- **2**: Command-line parsing or option validation failed, such as an unknown flag, missing value,
+  unknown output mode, or incompatible output flags.
 - **3**: Initialization or linting failed, for example because a file cannot be read, a project
   cannot be found, or a configuration, ignore pattern, or output template is invalid.
 
@@ -407,7 +570,7 @@ jump to its source position.
 
 # BUGS
 
-Report problems with this fork to its issue tracker. Include the output of **-version**, the
+Report problems with this fork to its issue tracker. Include the output of **--version**, the
 relevant configuration, and a minimal workflow that reproduces the problem.
 
 https://github.com/kjanat/actionlint/issues

@@ -36,6 +36,7 @@
             go
             git
             bash
+            bash-completion
             zsh
             fish
             gnumake
@@ -45,6 +46,7 @@
             nixfmt
           ];
           GOTOOLCHAIN = "local";
+          BASH_COMPLETION_FILE = "${pkgs.bash-completion}/share/bash-completion/bash_completion";
         };
       });
 

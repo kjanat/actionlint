@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -20,11 +21,15 @@ type cmdExecution struct {
 	args          []string
 	stdin         string
 	combineOutput bool
+	env           []string
 }
 
 func (e *cmdExecution) run(ctx context.Context) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, e.cmd, e.args...)
 	cmd.Stderr = nil
+	if len(e.env) > 0 {
+		cmd.Env = append(os.Environ(), e.env...)
+	}
 	// Let os/exec start the reader before copying stdin. Writing the whole script
 	// before Start can fill the pipe and deadlock, even with a single worker.
 	cmd.Stdin = strings.NewReader(e.stdin)
@@ -106,8 +111,11 @@ func (proc *concurrentProcess) wait() {
 // newCommandRunner creates new external command runner for given executable. The executable path
 // is resolved in this function.
 func (proc *concurrentProcess) newCommandRunner(exe string, combineOutput bool) (*externalCommand, error) {
-	var args []string
-	p, args, err := resolveExternalCommand(exe)
+	return proc.configuredCommandRunner(exe, nil, combineOutput)
+}
+
+func (proc *concurrentProcess) configuredCommandRunner(exe string, options *ExternalCommandOptions, combineOutput bool) (*externalCommand, error) {
+	p, args, err := ResolveExternalCommandOptions(exe, options)
 	if err != nil {
 		return nil, err
 	}
@@ -117,10 +125,46 @@ func (proc *concurrentProcess) newCommandRunner(exe string, combineOutput bool) 
 		args:          args,
 		combineOutput: combineOutput,
 	}
+	if options != nil {
+		cmd.env = append([]string(nil), options.Environment...)
+	}
 	return cmd, nil
 }
 
-func resolveExternalCommand(exe string) (string, []string, error) {
+// ExternalCommandOptions supplies literal arguments and child environment overrides.
+// A non-nil Executable replaces the command line with a literal executable path;
+// an empty executable disables the tool. Nil retains the existing command parser.
+type ExternalCommandOptions struct {
+	Executable  *string
+	Arguments   []string
+	Environment []string
+}
+
+func externalCommandEnabled(command string, options *ExternalCommandOptions) bool {
+	if options != nil && options.Executable != nil {
+		return *options.Executable != ""
+	}
+	return command != ""
+}
+
+// ResolveExternalCommandOptions locates a configured tool without executing it.
+func ResolveExternalCommandOptions(command string, options *ExternalCommandOptions) (string, []string, error) {
+	if options == nil {
+		return ResolveExternalCommand(command)
+	}
+	if !externalCommandEnabled(command, options) {
+		return "", nil, nil
+	}
+	if options.Executable != nil {
+		path, err := execabs.LookPath(*options.Executable)
+		return path, append([]string(nil), options.Arguments...), err
+	}
+	path, args, err := ResolveExternalCommand(command)
+	return path, append(args, options.Arguments...), err
+}
+
+// ResolveExternalCommand locates an executable or parses a command with arguments without running it.
+func ResolveExternalCommand(exe string) (string, []string, error) {
 	c, err := execabs.LookPath(exe)
 	if err == nil {
 		return c, nil, nil
@@ -146,6 +190,7 @@ type externalCommand struct {
 	exe           string
 	args          []string
 	combineOutput bool
+	env           []string
 }
 
 // run runs the command with given arguments and stdin. The callback function is called after the
@@ -158,7 +203,7 @@ func (cmd *externalCommand) run(args []string, stdin string, callback func([]byt
 		allArgs = append(allArgs, args...)
 		args = allArgs
 	}
-	exec := &cmdExecution{cmd.exe, args, stdin, cmd.combineOutput}
+	exec := &cmdExecution{cmd: cmd.exe, args: args, stdin: stdin, combineOutput: cmd.combineOutput, env: cmd.env}
 	cmd.proc.run(&cmd.eg, exec, callback)
 }
 

@@ -24,10 +24,7 @@ type RuleRequireCommitHash struct {
 // NewRuleRequireCommitHash creates a new RuleRequireCommitHash instance.
 func NewRuleRequireCommitHash() *RuleRequireCommitHash {
 	return &RuleRequireCommitHash{
-		RuleBase: RuleBase{
-			name: "require-commit-hash",
-			desc: "Checks that every \"uses:\" is pinned to a full-length commit SHA or an image digest",
-		},
+		RuleBase: builtinRuleBase("require-commit-hash"),
 	}
 }
 
