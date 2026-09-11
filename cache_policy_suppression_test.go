@@ -155,11 +155,11 @@ func TestCachePolicyInlineSuppressionKeepsOtherDiagnostics(t *testing.T) {
 		{Line: 1, Kind: "syntax-check"},
 		{Line: 2, Kind: "cache-operation"},
 	}
-	if diff := cmp.Diff(errs[1:], filterCachePolicySuppressions(source, errs), cmp.AllowUnexported(Error{})); diff != "" {
+	if diff := cmp.Diff(errs[1:], filterCachePolicySuppressions(source, errs, nil), cmp.AllowUnexported(Error{})); diff != "" {
 		t.Fatal(diff)
 	}
 	source = []byte("name: café # actionlint:ignore typo -- reason\n")
-	got := filterCachePolicySuppressions(source, nil)
+	got := filterCachePolicySuppressions(source, nil, nil)
 	if len(got) != 1 || got[0].Line != 1 || got[0].Column != 12 {
 		t.Fatalf("expected directive error at 1:12, got %v", got)
 	}

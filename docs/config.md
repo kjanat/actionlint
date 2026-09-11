@@ -245,6 +245,53 @@ there is no unused-suppression diagnostic. As with workflow parsing, only the fi
 These findings use normal diagnostic output and exit status 1. Suppression removes only the selected finding; it
 does not change cache access in GitHub Actions.
 
+### disallow-suppressions
+
+Prevent inline exceptions from hiding cache policy findings:
+
+```yaml
+policy:
+  disallow-suppressions: true
+```
+
+With `true` or `{}`, actionlint reports each prohibited directive as `disallow-suppressions` at the comment and
+retains the original violation at its source location. Both `actionlint:ignore` and `actionlint:ignore-next-line`
+are covered. An inline directive cannot exempt itself from this policy. Omission, `null`, or `false` permits
+inline exceptions as described above.
+
+To restrict only specific rules or choose which diagnostics appear:
+
+```yaml
+policy:
+  disallow-suppressions:
+    rules: [cache-call-unrestricted, cache-write-untrusted]
+    report: both
+```
+
+| `report`         | Prohibited directive | Original violation |
+| ---------------- | -------------------- | ------------------ |
+| `both` (default) | Reported             | Retained           |
+| `suppression`    | Reported             | Suppressed         |
+| `violation`      | Not reported         | Retained           |
+
+Omitted `rules` selects all supported inline rule IDs. Explicit lists must be nonempty and contain only
+`cache-call-unrestricted`, `cache-operation`, or `cache-write-untrusted`; duplicate entries have no additional
+effect. A directive with multiple selectors can still suppress rules outside the prohibited set. Unknown fields,
+rule IDs, report values, and null mapping fields are configuration errors.
+
+In `both` and `suppression` modes, a valid prohibited directive is reported even when it hides no finding, including
+when the underlying rule is disabled. `violation` mode only retains actual findings; it does not enable disabled
+rules or invent a finding for an unused directive. Malformed directives still produce `inline-suppression` errors
+and suppress nothing. The comment attachment and physical-line scope described above remain unchanged.
+
+These controls follow the distinction between preventing local exceptions ([Rust's `forbid`](https://doc.rust-lang.org/stable/rustc/lints/levels.html#forbid))
+and configuring how the linter handles inline directives ([ESLint's linter options](https://eslint.org/docs/latest/use/configure/configuration-files#configure-linter-options)).
+Unused-directive reporting is a separate concern; enabling this policy does not add an unused-suppression check.
+
+CLI and configured path ignore patterns still run afterwards and can filter either diagnostic. This
+setting governs inline comments; it does not override those explicit filters or changes to the configuration itself.
+Remaining diagnostics use the usual output formats and exit status 1.
+
 ### require-commit-hash
 
 This check reports a `uses:` which names something that can move. An action and a reusable workflow must give a ref of

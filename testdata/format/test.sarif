@@ -100,6 +100,21 @@
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
+              "id": "disallow-suppressions",
+              "name": "DisallowSuppressions",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Reports inline exceptions prohibited by configuration",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {
+                "text": "Reports inline exceptions prohibited by configuration"
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
               "id": "env-var",
               "name": "EnvVar",
               "defaultConfiguration": {

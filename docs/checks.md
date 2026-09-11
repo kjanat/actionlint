@@ -2383,6 +2383,8 @@ reported for omission. Ordinary pull request caching is not treated as the defau
 
 See [policy configuration and inline exceptions](config.md#policy-checks)
 for the event list, exact action/mode combinations, limitations, and ways to document reviewed exceptions.
+Use [`policy.disallow-suppressions`](config.md#disallow-suppressions) to prohibit those inline exceptions for all
+or selected cache rules, reporting the prohibited comment, the original violation, or both.
 
 <a id="permissions"></a>
 

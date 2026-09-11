@@ -144,6 +144,56 @@
                 }
               ]
             },
+            "disallow-suppressions": {
+              "title": "disallow-suppressions",
+              "description": "Restricts inline cache policy exceptions. `true` or `{}` reports each prohibited directive and retains its original violations. Omission, null, or false permits exceptions. Both ignore and ignore-next-line are covered equally.\n\nUse `{rules: [cache-call-unrestricted], report: both}` to restrict selected rule IDs. Omitted rules selects all suppressible rules; an explicit list must be nonempty. Report accepts suppression (directive only), violation (original findings only), or both.",
+              "markdownDescription": "Restricts inline cache policy exceptions. `true` or `{}` reports each prohibited directive and retains its original violations. Omission, null, or false permits exceptions. Both ignore and ignore-next-line are covered equally.\n\nUse `{rules: [cache-call-unrestricted], report: both}` to restrict selected rule IDs. Omitted rules selects all suppressible rules; an explicit list must be nonempty. Report accepts suppression (directive only), violation (original findings only), or both.",
+              "oneOf": [
+                {
+                  "oneOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "report": {
+                          "title": "report",
+                          "description": "Report the prohibited directive or retain original violations or both.",
+                          "markdownDescription": "Report the prohibited directive or retain original violations or both.",
+                          "default": "both",
+                          "type": "string",
+                          "enum": [
+                            "suppression",
+                            "violation",
+                            "both"
+                          ]
+                        },
+                        "rules": {
+                          "title": "rules",
+                          "description": "Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules.",
+                          "markdownDescription": "Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules.",
+                          "type": "array",
+                          "minItems": 1,
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "cache-call-unrestricted",
+                              "cache-operation",
+                              "cache-write-untrusted"
+                            ]
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "require-commit-hash": {
               "title": "require-commit-hash",
               "description": "Requires `uses:` references to be pinned to a full commit SHA, or an image digest for Docker images, when set to `true`.\n\nSet `false` to disable the check. Omit this key or use `null` to leave it unset; the check is disabled by default. Local references and references built with expressions are skipped.",

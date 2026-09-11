@@ -71,6 +71,14 @@ type Policy struct {
 	// CacheWriteUntrusted reports write-capable cache modes on low-trust triggers.
 	// Enabled by default. Set false to disable it; null or omission keeps the default.
 	CacheWriteUntrusted *bool `yaml:"cache-write-untrusted" jsonschema:"nullable,default=true"`
+	// DisallowSuppressions restricts inline cache policy exceptions. `true` or `{}` reports
+	// each prohibited directive and retains its original violations. Omission, null, or false
+	// permits exceptions. Both ignore and ignore-next-line are covered equally.
+	//
+	// Use `{rules: [cache-call-unrestricted], report: both}` to restrict selected rule IDs.
+	// Omitted rules selects all suppressible rules; an explicit list must be nonempty.
+	// Report accepts suppression (directive only), violation (original findings only), or both.
+	DisallowSuppressions *SuppressionsPolicy `yaml:"disallow-suppressions" jsonschema:"nullable"`
 	// RequireCommitHash requires `uses:` references to be pinned to a full commit SHA, or an image digest
 	// for Docker images, when set to `true`.
 	//
@@ -147,6 +155,8 @@ func (p *Policy) UnmarshalYAML(n *yaml.Node) error {
 			err = v.Decode(&p.CacheCallUnrestricted)
 		case "cache-operation":
 			err = v.Decode(&p.CacheOperation)
+		case "disallow-suppressions":
+			err = v.Decode(&p.DisallowSuppressions)
 		case "require-commit-hash":
 			err = v.Decode(&p.RequireCommitHash)
 		case "require-job-timeout":
@@ -532,6 +542,7 @@ paths:
 #  cache-call-unrestricted: true
 #  cache-operation: true
 #  cache-write-untrusted: true
+#  disallow-suppressions: false
 #  # Require every "uses:" to be pinned to a full commit SHA or an image
 #  # digest.
 #  require-commit-hash: true
