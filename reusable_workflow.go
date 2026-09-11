@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -264,6 +265,22 @@ func (c *LocalReusableWorkflowCache) FindMetadata(spec string) (*ReusableWorkflo
 
 	c.debug("New reusable workflow metadata at %s: %v", file, m)
 	c.writeCache(spec, m, nil)
+	return m, nil
+}
+
+// findMetadataForCall owns the source-reference boundary for diagnostic rules.
+// Cache keys and cached errors retain the normalized ./ spelling; each lookup
+// renders a separate error using the source spelling without changing the cache.
+// Invalid, remote, and expression references are handled by syntax validation.
+func (c *LocalReusableWorkflowCache) findMetadataForCall(sourceSpec string) (*ReusableWorkflowMetadata, error) {
+	localSpec, ok := workflowCallUsesLocalSpec(sourceSpec)
+	if !ok {
+		return nil, nil
+	}
+	m, err := c.FindMetadata(localSpec)
+	if err != nil {
+		return m, errors.New(strings.Replace(err.Error(), strconv.Quote(localSpec), strconv.Quote(sourceSpec), 1))
+	}
 	return m, nil
 }
 

@@ -43,6 +43,13 @@ func TestWorkflowCallMetadataFailureSpelling(t *testing.T) {
 						t.Fatalf("%s: original reference lost: %v", pass, errs)
 					}
 				}
+				errs, err := l.Lint("caller.yaml", source, proj)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(errs) != 1 || errs[0].Line != 4 || errs[0].Column != 11 || !strings.Contains(errs[0].Message, fmt.Sprintf("%q", uses)) {
+					t.Fatalf("Lint: want one failure using the source reference, got %v", errs)
+				}
 				// Rendering a caller's spelling must not alter the cached error.
 				_, err = cache.FindMetadata("./broken.yaml")
 				if err == nil || !strings.Contains(err.Error(), `"./broken.yaml"`) {
