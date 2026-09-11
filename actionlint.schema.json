@@ -146,8 +146,8 @@
             },
             "disallow-suppressions": {
               "title": "disallow-suppressions",
-              "description": "Restricts inline cache policy exceptions. `true` or `{}` reports each prohibited directive and retains its original violations. Omission, null, or false permits exceptions. Both ignore and ignore-next-line are covered equally.\n\nUse `{rules: [cache-call-unrestricted], report: both}` to restrict selected rule IDs. Omitted rules selects all suppressible rules; an explicit list must be nonempty. Report accepts suppression (directive only), violation (original findings only), or both.",
-              "markdownDescription": "Restricts inline cache policy exceptions. `true` or `{}` reports each prohibited directive and retains its original violations. Omission, null, or false permits exceptions. Both ignore and ignore-next-line are covered equally.\n\nUse `{rules: [cache-call-unrestricted], report: both}` to restrict selected rule IDs. Omitted rules selects all suppressible rules; an explicit list must be nonempty. Report accepts suppression (directive only), violation (original findings only), or both.",
+              "description": "Restricts inline cache policy exceptions. `true` or `{}` reports each prohibited directive and retains its original violations. Omission, null, or false permits exceptions. Both ignore and ignore-next-line are covered equally.\n\nUse `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs. Omitted rules selects all suppressible rules; an explicit list must be nonempty. Report accepts suppression (directive only), violation (original findings only), or all (both kinds of diagnostic).",
+              "markdownDescription": "Restricts inline cache policy exceptions. `true` or `{}` reports each prohibited directive and retains its original violations. Omission, null, or false permits exceptions. Both ignore and ignore-next-line are covered equally.\n\nUse `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs. Omitted rules selects all suppressible rules; an explicit list must be nonempty. Report accepts suppression (directive only), violation (original findings only), or all (both kinds of diagnostic).",
               "oneOf": [
                 {
                   "oneOf": [
@@ -161,12 +161,12 @@
                           "title": "report",
                           "description": "Report the prohibited directive or retain original violations or both.",
                           "markdownDescription": "Report the prohibited directive or retain original violations or both.",
-                          "default": "both",
+                          "default": "all",
                           "type": "string",
                           "enum": [
                             "suppression",
                             "violation",
-                            "both"
+                            "all"
                           ]
                         },
                         "rules": {

@@ -265,21 +265,21 @@ To restrict only specific rules or choose which diagnostics appear:
 policy:
   disallow-suppressions:
     rules: [cache-call-unrestricted, cache-write-untrusted]
-    report: both
+    report: all
 ```
 
-| `report`         | Prohibited directive | Original violation |
-| ---------------- | -------------------- | ------------------ |
-| `both` (default) | Reported             | Retained           |
-| `suppression`    | Reported             | Suppressed         |
-| `violation`      | Not reported         | Retained           |
+| `report`        | Prohibited directive | Original violation |
+| --------------- | -------------------- | ------------------ |
+| `all` (default) | Reported             | Retained           |
+| `suppression`   | Reported             | Suppressed         |
+| `violation`     | Not reported         | Retained           |
 
 Omitted `rules` selects all supported inline rule IDs. Explicit lists must be nonempty and contain only
 `cache-call-unrestricted`, `cache-operation`, or `cache-write-untrusted`; duplicate entries have no additional
 effect. A directive with multiple selectors can still suppress rules outside the prohibited set. Unknown fields,
 rule IDs, report values, and null mapping fields are configuration errors.
 
-In `both` and `suppression` modes, a valid prohibited directive is reported even when it hides no finding, including
+In `all` and `suppression` modes, a valid prohibited directive is reported even when it hides no finding, including
 when the underlying rule is disabled. `violation` mode only retains actual findings; it does not enable disabled
 rules or invent a finding for an unused directive. Malformed directives still produce `inline-suppression` errors
 and suppress nothing. The comment attachment and physical-line scope described above remain unchanged.

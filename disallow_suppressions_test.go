@@ -21,7 +21,7 @@ func TestDisallowSuppressionsCommand(t *testing.T) {
 		{"false", "policy: {disallow-suppressions: false}", nil},
 		{"true", "policy: {disallow-suppressions: true}", []string{"cache-call-unrestricted", "disallow-suppressions"}},
 		{"mapping", "policy: {disallow-suppressions: {}}", []string{"cache-call-unrestricted", "disallow-suppressions"}},
-		{"both", "policy: {disallow-suppressions: {report: both}}", []string{"cache-call-unrestricted", "disallow-suppressions"}},
+		{"all", "policy: {disallow-suppressions: {report: all}}", []string{"cache-call-unrestricted", "disallow-suppressions"}},
 		{"suppression", "policy: {disallow-suppressions: {report: suppression}}", []string{"disallow-suppressions"}},
 		{"violation", "policy: {disallow-suppressions: {report: violation}}", []string{"cache-call-unrestricted"}},
 		{"selected", "policy: {disallow-suppressions: {rules: [cache-call-unrestricted]}}", []string{"cache-call-unrestricted", "disallow-suppressions"}},

@@ -129,7 +129,7 @@ policy: {required-actions: []}
 		{"suppressions allowed", `policy: {disallow-suppressions: false}`, true, true},
 		{"suppressions default", `policy: {disallow-suppressions: null}`, true, true},
 		{"suppressions empty mapping", `policy: {disallow-suppressions: {}}`, true, true},
-		{"suppressions selected", `policy: {disallow-suppressions: {rules: [cache-operation], report: both}}`, true, true},
+		{"suppressions selected", `policy: {disallow-suppressions: {rules: [cache-operation], report: all}}`, true, true},
 		{"suppressions directive only", `policy: {disallow-suppressions: {report: suppression}}`, true, true},
 		{"suppressions violation only", `policy: {disallow-suppressions: {report: violation}}`, true, true},
 		{"suppressions duplicate selector", `policy: {disallow-suppressions: {rules: [cache-operation, cache-operation]}}`, true, true},

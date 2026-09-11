@@ -75,9 +75,9 @@ type Policy struct {
 	// each prohibited directive and retains its original violations. Omission, null, or false
 	// permits exceptions. Both ignore and ignore-next-line are covered equally.
 	//
-	// Use `{rules: [cache-call-unrestricted], report: both}` to restrict selected rule IDs.
+	// Use `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs.
 	// Omitted rules selects all suppressible rules; an explicit list must be nonempty.
-	// Report accepts suppression (directive only), violation (original findings only), or both.
+	// Report accepts suppression (directive only), violation (original findings only), or all (both kinds of diagnostic).
 	DisallowSuppressions *SuppressionsPolicy `yaml:"disallow-suppressions" jsonschema:"nullable"`
 	// RequireCommitHash requires `uses:` references to be pinned to a full commit SHA, or an image digest
 	// for Docker images, when set to `true`.
