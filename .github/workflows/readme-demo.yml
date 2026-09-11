@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/readme-demo.yml
+      - .mise.toml
       - go.mod
       - README.md
       - docs/screenshots/**
