@@ -39,6 +39,7 @@ func TestParserAliasTypeLocations(t *testing.T) {
 		check                func(*parser, *yaml.Node)
 	}{
 		{"string", "{}", "expected scalar node for string value", func(p *parser, n *yaml.Node) { p.parseString(n, false) }},
+		{"cache mode", "{}", "expected string for \"cache-mode\"", func(p *parser, n *yaml.Node) { p.parseCacheMode(n) }},
 		{"sequence", "{}", "must be sequence node", func(p *parser, n *yaml.Node) { p.checkSequence("steps", n, false) }},
 		{"mapping", "[]", "mapping node is expected", func(p *parser, n *yaml.Node) {
 			for range p.parseSectionMapping("env", n, false, false) {

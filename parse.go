@@ -1671,6 +1671,7 @@ func (p *parser) parseJob(id *String, n *yaml.Node) *Job {
 	//   - jobs.<job_id>.needs
 	//   - jobs.<job_id>.if
 	//   - jobs.<job_id>.permissions
+	//   - jobs.<job_id>.cache-mode
 
 	// https://docs.github.com/en/actions/using-workflows/reusing-workflows#supported-keywords-for-jobs-that-call-a-reusable-workflow
 	var stepsOnlyKey *String
@@ -1694,6 +1695,8 @@ func (p *parser) parseJob(id *String, n *yaml.Node) *Job {
 			stepsOnlyKey = k
 		case "permissions":
 			ret.Permissions = p.parsePermissions(k.Pos, v)
+		case "cache-mode":
+			ret.CacheMode = p.parseCacheMode(v)
 		case "environment":
 			ret.Environment = p.parseEnvironment(k.Pos, v)
 			stepsOnlyKey = k
@@ -1765,6 +1768,7 @@ func (p *parser) parseJob(id *String, n *yaml.Node) *Job {
 				"needs",
 				"runs-on",
 				"permissions",
+				"cache-mode",
 				"environment",
 				"concurrency",
 				"outputs",
@@ -1789,7 +1793,7 @@ func (p *parser) parseJob(id *String, n *yaml.Node) *Job {
 		if stepsOnlyKey != nil {
 			p.errorfAt(
 				stepsOnlyKey.Pos,
-				"when a reusable workflow is called with \"uses\", %q is not available. only following keys are allowed: \"name\", \"uses\", \"with\", \"secrets\", \"needs\", \"if\", and \"permissions\" in job %q",
+				"when a reusable workflow is called with \"uses\", %q is not available. only following keys are allowed: \"name\", \"uses\", \"with\", \"secrets\", \"needs\", \"if\", \"permissions\", and \"cache-mode\" in job %q",
 				stepsOnlyKey.Value,
 				id.Value,
 			)
@@ -1853,6 +1857,8 @@ func (p *parser) parse(n *yaml.Node) *Workflow {
 			w.On = p.parseEvents(v)
 		case "permissions":
 			w.Permissions = p.parsePermissions(k.Pos, v)
+		case "cache-mode":
+			w.CacheMode = p.parseCacheMode(v)
 		case "env":
 			w.Env = p.parseEnv(v)
 		case "defaults":
@@ -1869,6 +1875,7 @@ func (p *parser) parse(n *yaml.Node) *Workflow {
 				"run-name",
 				"on",
 				"permissions",
+				"cache-mode",
 				"env",
 				"defaults",
 				"concurrency",

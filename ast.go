@@ -1131,6 +1131,8 @@ type Job struct {
 	RunsOn *Runner
 	// Permissions is permission configuration for running the job.
 	Permissions *Permissions
+	// CacheMode overrides the workflow's cache access for this job. Nil means inherit.
+	CacheMode *CacheMode
 	// Environment is environment specification where the job runs.
 	Environment *Environment
 	// Concurrency is concurrency configuration on running the job.
@@ -1187,6 +1189,8 @@ type Workflow struct {
 	On []Event
 	// Permissions is configuration of permissions of this workflow.
 	Permissions *Permissions
+	// CacheMode sets default cache access. Nil leaves the trigger-dependent default in effect.
+	CacheMode *CacheMode
 	// Env is a default set of environment variables while running this workflow.
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#env
 	Env *Env

@@ -13,6 +13,7 @@ type RuleWorkflowCall struct {
 	workflowCallEventPos *Pos
 	workflowPath         string
 	workflowPermissions  *Permissions
+	workflowCacheMode    *CacheMode
 	cache                *LocalReusableWorkflowCache
 }
 
@@ -33,6 +34,7 @@ func NewRuleWorkflowCall(workflowPath string, cache *LocalReusableWorkflowCache)
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
 func (rule *RuleWorkflowCall) VisitWorkflowPre(n *Workflow) error {
 	rule.workflowPermissions = n.Permissions
+	rule.workflowCacheMode = n.CacheMode
 	for _, e := range n.On {
 		if e, ok := e.(*WorkflowCallEvent); ok {
 			rule.workflowCallEventPos = e.Pos
@@ -57,7 +59,7 @@ func (rule *RuleWorkflowCall) VisitJobPre(n *Job) error {
 	}
 
 	if local, ok := workflowCallUsesLocalSpec(u.Value); ok {
-		rule.checkWorkflowCallUsesLocal(n.WorkflowCall, n.Permissions, local)
+		rule.checkWorkflowCallUsesLocal(n.WorkflowCall, n.Permissions, n.CacheMode, local)
 		return nil
 	}
 
@@ -80,7 +82,7 @@ func (rule *RuleWorkflowCall) VisitJobPre(n *Job) error {
 	return nil
 }
 
-func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, jobPerms *Permissions, localSpec string) {
+func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, jobPerms *Permissions, jobCacheMode *CacheMode, localSpec string) {
 	u := call.Uses
 	m, err := rule.cache.FindMetadata(localSpec)
 	if err != nil {
@@ -148,6 +150,7 @@ func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, job
 	}
 
 	rule.checkWorkflowCallPermissions(call, jobPerms, m)
+	rule.checkWorkflowCallCacheMode(call.Uses.Pos, localSpec, effectiveCacheMode(rule.workflowCacheMode, jobCacheMode), m, map[workflowCacheModeVisit]bool{})
 
 	rule.Debug("Validated reusable workflow %q", u.Value)
 }
