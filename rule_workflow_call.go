@@ -3,7 +3,6 @@ package actionlint
 import (
 	"fmt"
 	"slices"
-	"strconv"
 	"strings"
 )
 
@@ -13,6 +12,7 @@ type RuleWorkflowCall struct {
 	workflowCallEventPos *Pos
 	workflowPath         string
 	workflowPermissions  *Permissions
+	workflowCacheMode    *CacheMode
 	cache                *LocalReusableWorkflowCache
 }
 
@@ -33,6 +33,7 @@ func NewRuleWorkflowCall(workflowPath string, cache *LocalReusableWorkflowCache)
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
 func (rule *RuleWorkflowCall) VisitWorkflowPre(n *Workflow) error {
 	rule.workflowPermissions = n.Permissions
+	rule.workflowCacheMode = n.CacheMode
 	for _, e := range n.On {
 		if e, ok := e.(*WorkflowCallEvent); ok {
 			rule.workflowCallEventPos = e.Pos
@@ -57,7 +58,7 @@ func (rule *RuleWorkflowCall) VisitJobPre(n *Job) error {
 	}
 
 	if local, ok := workflowCallUsesLocalSpec(u.Value); ok {
-		rule.checkWorkflowCallUsesLocal(n.WorkflowCall, n.Permissions, local)
+		rule.checkWorkflowCallUsesLocal(n.WorkflowCall, n.Permissions, n.CacheMode, local)
 		return nil
 	}
 
@@ -69,7 +70,7 @@ func (rule *RuleWorkflowCall) VisitJobPre(n *Job) error {
 		// When the specification is invalid and it is local reusable workflow call, remember it caused
 		// an error by setting `nil` to cache. This can prevent redundant 'could not read workflow call'
 		// error.
-		rule.cache.writeCache(u.Value, nil)
+		rule.cache.writeCache(u.Value, nil, nil)
 	}
 
 	rule.Errorf(
@@ -80,12 +81,11 @@ func (rule *RuleWorkflowCall) VisitJobPre(n *Job) error {
 	return nil
 }
 
-func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, jobPerms *Permissions, localSpec string) {
+func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, jobPerms *Permissions, jobCacheMode *CacheMode, localSpec string) {
 	u := call.Uses
-	m, err := rule.cache.FindMetadata(localSpec)
+	m, err := rule.cache.findMetadataForCall(u.Value)
 	if err != nil {
-		msg := strings.Replace(err.Error(), strconv.Quote(localSpec), strconv.Quote(u.Value), 1)
-		rule.Error(u.Pos, msg)
+		rule.Error(u.Pos, err.Error())
 		return
 	}
 	if m == nil {
@@ -148,6 +148,7 @@ func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, job
 	}
 
 	rule.checkWorkflowCallPermissions(call, jobPerms, m)
+	rule.checkWorkflowCallCacheMode(call.Uses.Pos, localSpec, call.Uses.Value, effectiveCacheMode(rule.workflowCacheMode, jobCacheMode), m, map[workflowCacheModeVisit]bool{})
 
 	rule.Debug("Validated reusable workflow %q", u.Value)
 }

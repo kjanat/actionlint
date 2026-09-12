@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Support workflow- and job-level `cache-mode` values, including jobs that call reusable workflows. Check explicit cache access limits through nested local workflow calls, preserving job overrides and the distinction between omitted settings and `none`. Report invalid values and types at their source locations. (kjanat/actionlint#163)
+
 <a id="v1.16.1"></a>
 
 ## [v1.16.1](https://github.com/kjanat/actionlint/releases/tag/v1.16.1) - 2026-09-09
