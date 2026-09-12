@@ -382,7 +382,7 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 	if !strings.HasPrefix(string(b), schemaHeader) {
 		t.Fatalf("generated config must start with the YAML Language Server schema directive, got %q", string(b))
 	}
-	want := "#policy:\n#  cache-call-unrestricted: true\n#  cache-operation: true\n#  cache-write-untrusted: true\n"
+	want := "#policy:\n#  cache-call-unrestricted: true\n#  cache-operation: true\n#  cache-write-untrusted: true\n#  disallow-suppressions: false\n"
 	if !strings.Contains(string(b), want) {
 		t.Fatalf("wanted generated config file %q to contain %q", string(b), want)
 	}
