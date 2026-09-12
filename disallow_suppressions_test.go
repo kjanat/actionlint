@@ -146,7 +146,7 @@ func TestDisallowSuppressionsDiagnostic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := filterCachePolicySuppressions([]byte(source), nil, cfg.Policy.DisallowSuppressions)
+	got := filterInlineSuppressions([]byte(source), nil, cfg.Policy.DisallowSuppressions)
 	if len(got) != 1 {
 		t.Fatalf("expected one directive diagnostic, got %v", got)
 	}

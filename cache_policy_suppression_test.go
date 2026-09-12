@@ -155,11 +155,11 @@ func TestCachePolicyInlineSuppressionKeepsOtherDiagnostics(t *testing.T) {
 		{Line: 1, Kind: "syntax-check"},
 		{Line: 2, Kind: "cache-operation"},
 	}
-	if diff := cmp.Diff(errs[1:], filterCachePolicySuppressions(source, errs, nil), cmp.AllowUnexported(Error{})); diff != "" {
+	if diff := cmp.Diff(errs[1:], filterInlineSuppressions(source, errs, nil), cmp.AllowUnexported(Error{})); diff != "" {
 		t.Fatal(diff)
 	}
 	source = []byte("name: café # actionlint:ignore typo -- reason\n")
-	got := filterCachePolicySuppressions(source, nil, nil)
+	got := filterInlineSuppressions(source, nil, nil)
 	if len(got) != 1 || got[0].Line != 1 || got[0].Column != 12 {
 		t.Fatalf("expected directive error at 1:12, got %v", got)
 	}
@@ -303,12 +303,12 @@ func TestCachePolicySuppressionFilterPrecedence(t *testing.T) {
 	}{
 		{"redundant CLI ignore", "cache-write-untrusted -- reviewed", "poison caches", "", nil},
 		{"CLI ignore keeps directive errors", "typo -- reviewed", "poison caches", "", []string{"inline-suppression"}},
-		{"CLI ignore removes directive errors", "typo -- reviewed", "unknown cache policy rule", "", []string{"cache-write-untrusted"}},
+		{"CLI ignore removes directive errors", "typo -- reviewed", "unknown inline suppression rule", "", []string{"cache-write-untrusted"}},
 		{"redundant path ignore", "cache-write-untrusted -- reviewed", "", "poison caches", nil},
 		{"path ignore keeps directive errors", "typo -- reviewed", "", "poison caches", []string{"inline-suppression"}},
-		{"path ignore removes directive errors", "typo -- reviewed", "", "unknown cache policy rule", []string{"cache-write-untrusted"}},
+		{"path ignore removes directive errors", "typo -- reviewed", "", "unknown inline suppression rule", []string{"cache-write-untrusted"}},
 		{"all filters overlap", "cache-operation,cache-write-untrusted -- reviewed", "poison caches", "poison caches", nil},
-		{"separate filters remove both errors", "typo -- reviewed", "poison caches", "unknown cache policy rule", nil},
+		{"separate filters remove both errors", "typo -- reviewed", "poison caches", "unknown inline suppression rule", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Chdir(t.TempDir())
