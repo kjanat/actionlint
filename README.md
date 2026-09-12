@@ -2,6 +2,7 @@
 
 [![CI Status][ci-badge]][ci]
 [![API Document][apidoc-badge]][apidoc]
+[![Sponsor this project][sponsor-badge]][sponsor]
 
 [actionlint][repo] is a static checker for GitHub Actions workflow files. [Try it online!][playground]
 
@@ -278,6 +279,8 @@ actionlint is distributed under [the MIT license](./LICENSE.txt).
 [ci]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml
 [apidoc-badge]: https://pkg.go.dev/badge/actionlint.kjanat.dev.svg
 [apidoc]: https://pkg.go.dev/actionlint.kjanat.dev
+[sponsor-badge]: https://img.shields.io/badge/Sponsor-ea4aaa?logo=githubsponsors&logoColor=white
+[sponsor]: https://github.com/sponsors/kjanat
 [repo]: https://github.com/kjanat/actionlint
 [playground]: https://kjanat.github.io/actionlint/
 [github-changelog]: https://actionlint.kjanat.dev/github-changelog/
