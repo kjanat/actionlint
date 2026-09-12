@@ -16,11 +16,80 @@ const (
 	reportAll
 )
 
+func parseSuppressionReport(value string) (suppressionReport, bool) {
+	switch value {
+	case "suppression":
+		return reportSuppression, true
+	case "violation":
+		return reportViolation, true
+	case "all":
+		return reportAll, true
+	default:
+		return suppressionsAllowed, false
+	}
+}
+
 // SuppressionsPolicy controls whether inline exceptions may hide cache policy
 // findings. Its YAML representation is a boolean or a rules/report mapping.
+// A nil pointer or zero value permits inline suppressions. Use DisallowSuppressions
+// to construct an enabled policy.
 type SuppressionsPolicy struct {
 	report suppressionReport
 	rules  []string
+}
+
+// DisallowSuppressions enables restrictions with report set to "suppression",
+// "violation", or "all". With no rule IDs, it applies to all suppressible rules.
+// It rejects unknown report values and rule IDs, removes duplicate IDs, and owns
+// a copy of the selection. Assign the result to Config.Policy.DisallowSuppressions.
+func DisallowSuppressions(report string, rules ...string) (*SuppressionsPolicy, error) {
+	mode, ok := parseSuppressionReport(report)
+	if !ok {
+		return nil, fmt.Errorf("unknown suppression report %q; expected suppression, violation, or all", report)
+	}
+	p := &SuppressionsPolicy{report: mode}
+	for _, rule := range rules {
+		if !isInlineSuppressibleRule(rule) {
+			return nil, fmt.Errorf("unknown suppressible rule %q", rule)
+		}
+		if !slices.Contains(p.rules, rule) {
+			p.rules = append(p.rules, rule)
+		}
+	}
+	return p, nil
+}
+
+// Enabled reports whether inline suppression restrictions are enabled.
+// Nil and zero-value policies return false.
+func (p *SuppressionsPolicy) Enabled() bool {
+	return p != nil && p.report != suppressionsAllowed
+}
+
+// Report returns "suppression", "violation", or "all", or an empty string when
+// the policy is disabled.
+func (p *SuppressionsPolicy) Report() string {
+	if p == nil {
+		return ""
+	}
+	switch p.report {
+	case reportSuppression:
+		return "suppression"
+	case reportViolation:
+		return "violation"
+	case reportAll:
+		return "all"
+	default:
+		return ""
+	}
+}
+
+// Rules returns a copy of the explicit rule selection. Nil means all suppressible
+// rules when Enabled is true, or no restriction when Enabled is false.
+func (p *SuppressionsPolicy) Rules() []string {
+	if !p.Enabled() {
+		return nil
+	}
+	return slices.Clone(p.rules)
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler. Each successful decode replaces the
@@ -49,16 +118,11 @@ func (p *SuppressionsPolicy) UnmarshalYAML(n *yaml.Node) error {
 				if value.Kind != yaml.ScalarNode || value.Tag != "!!str" {
 					return suppressionConfigError(value, "report must be suppression, violation, or all")
 				}
-				switch value.Value {
-				case "suppression":
-					next.report = reportSuppression
-				case "violation":
-					next.report = reportViolation
-				case "all":
-					next.report = reportAll
-				default:
+				mode, ok := parseSuppressionReport(value.Value)
+				if !ok {
 					return suppressionConfigError(value, fmt.Sprintf("unknown report %q; expected suppression, violation, or all", value.Value))
 				}
+				next.report = mode
 			case "rules":
 				if value.Kind != yaml.SequenceNode || len(value.Content) == 0 {
 					return suppressionConfigError(value, "rules must be a nonempty list of suppressible rule IDs")

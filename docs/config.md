@@ -297,6 +297,11 @@ CLI and configured path ignore patterns still run afterwards and can filter eith
 setting governs inline comments; it does not override those explicit filters or changes to the configuration itself.
 Remaining diagnostics use the usual output formats and exit status 1.
 
+Go callers can construct this policy with `DisallowSuppressions("all", "cache-operation")` and assign it to
+`Config.Policy.DisallowSuppressions`. Omit the rule arguments to cover all suppressible rules. Invalid report values
+and rule IDs return an error. `Enabled()`, `Report()` and `Rules()` expose the parsed settings; `Rules()` returns a copy
+of the explicit selection, or `nil` for all rules on an enabled policy. Nil and zero-value policies are disabled.
+
 ### require-commit-hash
 
 This check reports a `uses:` which names something that can move. An action and a reusable workflow must give a ref of
