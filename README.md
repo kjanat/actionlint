@@ -68,6 +68,8 @@ jobs:
 `docs/screenshots/actionlint.yaml`:
 
 ```yaml
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/@kjanat/actionlint/actionlint.schema.json
+---
 policy:
   require-commit-hash: true
 ```

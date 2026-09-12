@@ -14,12 +14,3 @@ func (cfg *Config) cachePolicyEnabled(name string) bool {
 	}
 	return enabled == nil || *enabled
 }
-
-func isCachePolicy(name string) bool {
-	switch name {
-	case "cache-write-untrusted", "cache-call-unrestricted", "cache-operation":
-		return true
-	default:
-		return false
-	}
-}

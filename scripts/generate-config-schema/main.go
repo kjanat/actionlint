@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -54,9 +55,15 @@ func mapYAMLType(t reflect.Type) *jsonschema.Schema {
 		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "boolean"}, mapping}}
 	case reflect.TypeFor[actionlint.SuppressionsPolicy]():
 		mapping := reflector().Reflect(struct {
-			Rules  []string `yaml:"rules" jsonschema:"minItems=1,enum=cache-call-unrestricted,enum=cache-operation,enum=cache-write-untrusted,description=Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules."`
+			Rules  []string `yaml:"rules" jsonschema:"minItems=1,description=Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules."`
 			Report string   `yaml:"report" jsonschema:"enum=suppression,enum=violation,enum=all,default=all,description=Report the prohibited directive or retain original violations or both."`
 		}{})
+		rules, _ := mapping.Properties.Get("rules")
+		names := actionlint.InlineSuppressibleRules()
+		slices.Sort(names)
+		for _, name := range names {
+			rules.Items.Enum = append(rules.Items.Enum, name)
+		}
 		mapping.Version = ""
 		mapping.ID = ""
 		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "boolean"}, mapping}}

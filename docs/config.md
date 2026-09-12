@@ -226,6 +226,8 @@ Both forms require an exact rule name and a nonempty reason after `--`. A comma-
 cache rules. Only `cache-call-unrestricted`, `cache-operation`, and `cache-write-untrusted` can be suppressed this way.
 A directive affects the reported line only, including multiple findings of the selected rule on that line; it does
 not affect other rules or later lines. Duplicate selectors have no additional effect; empty selectors are invalid.
+Scope follows physical lines: a comment after a one-line flow mapping can suppress matching
+findings from multiple entries on that line. Putting a directive above `jobs:` does not cover the jobs below it.
 The first `--` surrounded by spaces starts the reason, which may itself contain `--` or directive-like text.
 
 Only comments attached to a declaration are interpreted. A blank line, another comment or a document separator
@@ -237,6 +239,9 @@ Use trailing comments on the same physical line as the reported value, or standa
 that line. For aliases, put the exception at the anchor declaration when the diagnostic points there. Text inside
 quoted YAML strings or `run: |` scripts is not an actionlint directive. General inline ignores for other rules are
 not supported; existing CLI and path-based ignore patterns remain available.
+
+Comments after multiline plain, quoted, tagged or anchored values are interpreted at the comment's physical line.
+If the diagnostic points at the value's opening line, an exception on its closing line does not suppress it.
 
 Inline exceptions are applied before CLI and path-based ignore patterns. Those patterns can filter remaining cache
 findings and `inline-suppression` errors. A valid exception remains valid when another ignore also covers its finding;

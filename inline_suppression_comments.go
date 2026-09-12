@@ -2,24 +2,31 @@ package actionlint
 
 import (
 	"bytes"
-	"slices"
 	"strings"
 	"unicode/utf8"
 
 	"go.yaml.in/yaml/v4"
 )
 
-// filterCachePolicySuppressions reads exceptions from YAML comments. Script text
-// and quoted strings remain values even when they contain directive-like text.
-func filterCachePolicySuppressions(source []byte, errors []*Error, policy *SuppressionsPolicy) []*Error {
+// inlineSuppressionComment is a real YAML comment attached to a declaration.
+// Its position refers to the comment, independently of the YAML node's start.
+type inlineSuppressionComment struct {
+	pos        Pos
+	text       string
+	standalone bool
+}
+
+// collectInlineSuppressionComments isolates YAML attachment and source recovery
+// from directive grammar and policy. Strings and script bodies are never comments.
+func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment {
 	if !bytes.Contains(source, []byte("actionlint:")) {
-		return errors
+		return nil
 	}
 	var root yaml.Node
 	// Normalizing line endings keeps YAML comment attachment consistent while
 	// preserving every source line and column used by diagnostics.
 	if err := yaml.Unmarshal(bytes.ReplaceAll(source, []byte("\r\n"), []byte("\n")), &root); err != nil {
-		return errors
+		return nil
 	}
 	lines := splitSourceLines(source)
 	documentEnd := len(lines)
@@ -34,73 +41,23 @@ func filterCachePolicySuppressions(source []byte, errors []*Error, policy *Suppr
 			}
 		}
 	}
-	suppressed := map[int]map[string]bool{}
+	var comments []inlineSuppressionComment
 	seen := map[int]bool{}
-	var directiveErrors []*Error
 	readComment := func(line int, comment string, standalone bool) {
 		text := strings.TrimSpace(strings.TrimPrefix(comment, "#"))
 		if !strings.HasPrefix(text, "actionlint:") || seen[line] {
 			return
 		}
-		seen[line] = true
 		col := strings.LastIndex(lines[line-1], comment)
 		if col < 0 {
 			return
 		}
-		pos := &Pos{Line: line, Col: utf8.RuneCountInString(lines[line-1][:col]) + 1}
-		report := func(message string) {
-			directiveErrors = append(directiveErrors, errorAt(pos, "inline-suppression", message))
-		}
-		declaration, reason, hasReason := strings.Cut(text, " -- ")
-		command, selectors, _ := strings.Cut(declaration, " ")
-		target := line
-		switch command {
-		case "actionlint:ignore":
-			if standalone {
-				report("use \"actionlint:ignore-next-line\" in a comment before the declaration")
-				return
-			}
-		case "actionlint:ignore-next-line":
-			if !standalone {
-				report("\"actionlint:ignore-next-line\" must be on its own line immediately before the declaration")
-				return
-			}
-			target++
-		default:
-			report("unknown inline suppression directive. use \"actionlint:ignore RULE -- reason\" or \"actionlint:ignore-next-line RULE -- reason\"")
-			return
-		}
-		if !hasReason || strings.TrimSpace(reason) == "" {
-			report("inline suppression requires a reason after \" -- \"")
-			return
-		}
-		names := strings.Split(selectors, ",")
-		for i, name := range names {
-			name = strings.TrimSpace(name)
-			if !isCachePolicy(name) {
-				directiveErrors = append(directiveErrors, errorfAt(pos, "inline-suppression", "unknown cache policy rule %q. expected \"cache-write-untrusted\", \"cache-call-unrestricted\", or \"cache-operation\"", name))
-				return
-			}
-			names[i] = name
-		}
-		if suppressed[target] == nil {
-			suppressed[target] = map[string]bool{}
-		}
-		var prohibited []string
-		for _, name := range names {
-			mode := policy.reportFor(name)
-			if mode == reportSuppression || mode == reportAll {
-				if !slices.Contains(prohibited, name) {
-					prohibited = append(prohibited, name)
-				}
-			}
-			if mode == suppressionsAllowed || mode == reportSuppression {
-				suppressed[target][name] = true
-			}
-		}
-		if len(prohibited) != 0 {
-			directiveErrors = append(directiveErrors, errorfAt(pos, "disallow-suppressions", "inline suppression of %s is disallowed by policy.disallow-suppressions", strings.Join(prohibited, ", ")))
-		}
+		seen[line] = true
+		comments = append(comments, inlineSuppressionComment{
+			pos:        Pos{Line: line, Col: utf8.RuneCountInString(lines[line-1][:col]) + 1},
+			text:       text,
+			standalone: standalone,
+		})
 	}
 	readPreceding := func(line int, comments string) {
 		if line > 1 && line <= len(lines) && comments != "" {
@@ -113,19 +70,25 @@ func filterCachePolicySuppressions(source []byte, errors []*Error, policy *Suppr
 	var visit func(*yaml.Node, int)
 	visit = func(node *yaml.Node, endLine int) {
 		if node.Line > 0 && node.Line <= len(lines) {
-			if node.Style&yaml.FlowStyle != 0 {
-				readCachePolicyFlowOpeningComments(node, lines, endLine, readComment)
+			if node.Style&yaml.FlowStyle != 0 || node.Kind == yaml.ScalarNode {
+				readYAMLNodePrefixComments(node, lines, endLine, readComment)
 			}
-			comment := strings.TrimSpace(node.LineComment)
-			if comment != "" {
+			commentEnd := endLine
+			// YAML can combine property and value comments into one string.
+			// Locate each physical comment independently within the node's range.
+			for part := range strings.SplitSeq(node.LineComment, "\n") {
+				comment := strings.TrimSpace(part)
+				if comment == "" {
+					continue
+				}
 				line := node.Line
-				if node.Style&(yaml.FlowStyle|yaml.SingleQuotedStyle|yaml.DoubleQuotedStyle) != 0 {
-					line = cachePolicyClosingCommentLine(node, comment, lines, endLine)
+				if node.Style&yaml.FlowStyle != 0 || node.Kind == yaml.ScalarNode && node.Style&(yaml.LiteralStyle|yaml.FoldedStyle) == 0 {
+					line = yamlClosingCommentLine(node, comment, lines, commentEnd)
 				}
 				if line > 0 && strings.HasSuffix(strings.TrimSpace(lines[line-1]), comment) {
 					readComment(line, comment, false)
-					if line > node.Line {
-						endLine = line - 1
+					if node.Style&yaml.FlowStyle != 0 && line > node.Line {
+						endLine = min(endLine, line-1)
 					}
 				}
 			}
@@ -148,19 +111,12 @@ func filterCachePolicySuppressions(source []byte, errors []*Error, policy *Suppr
 		}
 	}
 	visit(&root, documentEnd)
-	filtered := make([]*Error, 0, len(errors)+len(directiveErrors))
-	for _, err := range errors {
-		if err.source == nil && isCachePolicy(err.Kind) && suppressed[err.Line][err.Kind] {
-			continue
-		}
-		filtered = append(filtered, err)
-	}
-	return append(filtered, directiveErrors...)
+	return comments
 }
 
-// cachePolicyClosingCommentLine locates a comment stored on a node's opening
-// position even when its flow collection or quoted scalar spans multiple lines.
-func cachePolicyClosingCommentLine(node *yaml.Node, comment string, lines []string, endLine int) int {
+// yamlClosingCommentLine locates a comment stored on a node's opening
+// position even when its flow collection or scalar spans multiple lines.
+func yamlClosingCommentLine(node *yaml.Node, comment string, lines []string, endLine int) int {
 	last := node
 	for len(last.Content) > 0 {
 		last = last.Content[len(last.Content)-1]
@@ -179,9 +135,10 @@ func cachePolicyClosingCommentLine(node *yaml.Node, comment string, lines []stri
 	return 0
 }
 
-// readCachePolicyFlowOpeningComments reads comments at a parsed flow opener and
-// its optional tag or anchor. YAML overwrites them with the closing comment.
-func readCachePolicyFlowOpeningComments(node *yaml.Node, lines []string, endLine int, read func(int, string, bool)) {
+// readYAMLNodePrefixComments reads comments on tags, anchors, flow openers and
+// block scalar headers. Stop at value content, which can contain comment-like text.
+// YAML may overwrite these prefix comments with the final value comment.
+func readYAMLNodePrefixComments(node *yaml.Node, lines []string, endLine int, read func(int, string, bool)) {
 	line := node.Line
 	text := string([]rune(lines[line-1])[node.Column-1:])
 	declaration := true
@@ -200,7 +157,7 @@ func readCachePolicyFlowOpeningComments(node *yaml.Node, lines []string, endLine
 				read(line, text, false)
 			} else if line < endLine {
 				next := strings.TrimLeft(lines[line], " \t")
-				if next != "" && strings.ContainsAny(next[:1], "{[&!") {
+				if next != "" && !strings.HasPrefix(next, "#") {
 					read(line, text, true)
 				}
 			}
@@ -219,6 +176,13 @@ func readCachePolicyFlowOpeningComments(node *yaml.Node, lines []string, endLine
 		case strings.HasPrefix(text, "{"), strings.HasPrefix(text, "["):
 			if comment := strings.TrimLeft(text[1:], " \t"); strings.HasPrefix(comment, "#") {
 				read(line, comment, false)
+			}
+			return
+		case strings.HasPrefix(text, "|"), strings.HasPrefix(text, ">"):
+			if end := strings.IndexAny(text, " \t"); end >= 0 {
+				if comment := strings.TrimLeft(text[end:], " \t"); strings.HasPrefix(comment, "#") {
+					read(line, comment, false)
+				}
 			}
 			return
 		default:

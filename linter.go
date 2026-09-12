@@ -678,7 +678,7 @@ func (l *Linter) check(
 	if cfg != nil {
 		suppressionPolicy = cfg.Policy.DisallowSuppressions
 	}
-	all = filterCachePolicySuppressions(content, all, suppressionPolicy)
+	all = filterInlineSuppressions(content, all, suppressionPolicy)
 	all = l.filterErrors(all, cfg.PathConfigs(path))
 
 	for _, err := range all {
