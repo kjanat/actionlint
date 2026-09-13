@@ -134,11 +134,12 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 					rule.actionSchemaError(meta, n, path, message)
 				}
 			}
-			return // The runner validates the evaluated value's type at runtime.
-		}
-		// A literal string expression is an escape, accepted even when expressions
-		// are forbidden. It becomes a literal token before schema validation.
-		if !actionLiteralExpression(value.Value) {
+			if d.kind == actionSchemaString || parseAssignedExpression(value.Value) != nil {
+				return // The runner validates the evaluated value's type at runtime.
+			}
+		} else if !actionLiteralExpression(value.Value) {
+			// A literal string expression is an escape, accepted even when expressions
+			// are forbidden. It becomes a literal token before schema validation.
 			rule.actionSchemaError(meta, n, path, "expressions are not allowed")
 		}
 	}

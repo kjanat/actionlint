@@ -344,7 +344,9 @@ func (p *parser) checkString(n *yaml.Node, allowEmpty bool) bool {
 		p.typeErrorf(n, "expected scalar node for string value but found %s node with %q tag", nodeKindName(n.Kind), n.Tag)
 		return false
 	}
-	p.checkRawYAMLTag(n)
+	if !p.checkRawYAMLTag(n) {
+		return false
+	}
 	if !allowEmpty && n.Value == "" {
 		p.error(n, "string should not be empty")
 		return false

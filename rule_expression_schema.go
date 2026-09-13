@@ -192,16 +192,21 @@ func (rule *RuleExpression) checkWorkflowExpression(s *String, what, key string,
 }
 
 func workflowExpressionLiteral(s *String) (any, bool) {
-	i := strings.Index(s.Value, "${{")
-	if i < 0 {
+	expr := parseAssignedExpression(s.Value)
+	if expr == nil {
 		return nil, false
 	}
-	expr, err := NewExprParser().Parse(NewExprLexer(s.Value[i+3:]))
-	if err != nil {
-		return nil, false
-	}
-	if literal, ok := expr.(*StringNode); ok {
+	switch literal := expr.(type) {
+	case *StringNode:
 		return literal.Value, true
+	case *IntNode:
+		return float64(literal.Value), true
+	case *FloatNode:
+		return literal.Value, true
+	case *BoolNode:
+		return literal.Value, true
+	case *NullNode:
+		return nil, true
 	}
 	if call, ok := expr.(*FuncCallNode); ok && strings.EqualFold(call.Callee, "fromJSON") && len(call.Args) == 1 {
 		if literal, ok := call.Args[0].(*StringNode); ok {

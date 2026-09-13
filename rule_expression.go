@@ -555,6 +555,25 @@ func (rule *RuleExpression) checkConcurrency(c *Concurrency, workflowKey string)
 		rule.checkString(c.Queue, workflowKey)
 	}
 	rule.checkBool(c.CancelInProgress, workflowKey)
+	if c.Queue == nil || c.CancelInProgress == nil {
+		return
+	}
+	// Literal YAML conflicts are diagnosed by the parser. Resolve known
+	// expression values here, retaining unknown values for runtime validation.
+	if !c.Queue.ContainsExpression() && c.CancelInProgress.Expression == nil {
+		return
+	}
+	var queue any = c.Queue.Value
+	if c.Queue.ContainsExpression() {
+		queue, _ = workflowExpressionLiteral(c.Queue)
+	}
+	var cancel any = c.CancelInProgress.Value
+	if c.CancelInProgress.Expression != nil {
+		cancel, _ = workflowExpressionLiteral(c.CancelInProgress.Expression)
+	}
+	if queue == "max" && cancel == true {
+		rule.Error(c.Queue.Pos, `"queue: max" cannot be combined with "cancel-in-progress: true" in "concurrency" section`)
+	}
 }
 
 func (rule *RuleExpression) checkDefaults(d *Defaults, workflowKey string) {
