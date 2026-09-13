@@ -217,7 +217,8 @@ func (r *RuleCacheOperation) checkCallOperations(pos *Pos, sourceSpec string, gr
 				}
 			}
 		}
-		if job.Uses != "" {
+		// An explicit intermediate mode owns its downstream operation diagnostics.
+		if job.Uses != "" && job.Mode == nil {
 			r.checkCallOperations(pos, job.SourceUses, mode, checked)
 		}
 	}

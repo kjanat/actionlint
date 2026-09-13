@@ -56,7 +56,7 @@ func TestCacheOperationCallerBoundaries(t *testing.T) {
 		{name: "explicit callee mode owns diagnostic", caller: caller, callee: "cache-mode: read\n" + save, kind: "cache-operation", file: "callee.yaml", fragment: "effective cache-mode"},
 		{name: "escalation owns diagnostic", caller: caller, callee: "cache-mode: write\n" + save, kind: "workflow-call", file: "caller.yaml", fragment: "requests cache-mode"},
 		{name: "nested inherited mode", caller: caller, callee: "on: workflow_call\njobs:\n  nested:\n    uses: $/leaf.yaml\n", leaf: save, kind: "cache-operation", file: "caller.yaml", fragment: `of "$/leaf.yaml"`},
-		{name: "nested explicit ceiling", caller: "on: push\njobs:\n  call:\n    uses: $/callee.yaml\n", callee: "on: workflow_call\njobs:\n  nested:\n    cache-mode: read\n    uses: $/leaf.yaml\n", leaf: save, kind: "cache-operation", file: "caller.yaml", fragment: `of "$/leaf.yaml"`},
+		{name: "nested explicit ceiling stays at callee", caller: "on: push\njobs:\n  call:\n    uses: $/callee.yaml\n", callee: "on: workflow_call\njobs:\n  nested:\n    cache-mode: read\n    uses: $/leaf.yaml\n", leaf: save},
 		{name: "cycle", caller: caller, callee: "on: workflow_call\njobs:\n  recurse:\n    uses: $/callee.yaml\n"},
 		{name: "remote", caller: strings.ReplaceAll(caller, "$/callee.yaml", "owner/repo/.github/workflows/callee.yaml@main")},
 		{name: "missing", caller: caller, kind: "workflow-call", file: "caller.yaml", fragment: "could not read reusable workflow"},
@@ -142,6 +142,96 @@ func TestCacheOperationDistinctCallerCeilings(t *testing.T) {
 		}
 		if len(diagnostics) != 1 || diagnostics[0].Kind != "cache-operation" || filepath.Base(diagnostics[0].Filepath) != "read.yaml" {
 			t.Fatal(diagnostics)
+		}
+	}
+}
+
+func TestCacheOperationIntermediateCeilingOwnership(t *testing.T) {
+	for _, tc := range []struct {
+		name, ancestor, intermediate, owner string
+		workflow                            bool
+	}{
+		{"intermediate job ceiling", "", "read", "callee.yaml", false},
+		{"intermediate workflow ceiling", "", "read", "callee.yaml", true},
+		{"same ancestor ceiling", "read", "read", "callee.yaml", false},
+		{"narrower intermediate ceiling", "write", "read", "callee.yaml", false},
+		{"no access", "none", "none", "callee.yaml", false},
+		{"inherited ancestor ceiling", "read", "", "caller.yaml", false},
+	} {
+		for _, suppressed := range []string{"", "caller.yaml", "callee.yaml"} {
+			t.Run(tc.name+"/suppress="+suppressed, func(t *testing.T) {
+				caller := "on: push\n"
+				if tc.ancestor != "" {
+					caller += "cache-mode: " + tc.ancestor + "\n"
+				}
+				caller += "jobs:\n  call:\n    uses: $/callee.yaml"
+				callee := "on: workflow_call\n"
+				if tc.workflow {
+					callee += "cache-mode: " + tc.intermediate + "\n"
+				}
+				callee += "jobs:\n  nested:\n"
+				if tc.intermediate != "" && !tc.workflow {
+					callee += "    cache-mode: " + tc.intermediate + "\n"
+				}
+				callee += "    uses: $/leaf.yaml"
+				files := map[string]string{
+					"caller.yaml": caller,
+					"callee.yaml": callee,
+					"leaf.yaml":   "on: workflow_call\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/cache/save@v5\n        with: {key: test, path: cache}\n",
+				}
+				if suppressed != "" {
+					files[suppressed] += " # actionlint:ignore cache-operation -- reviewed skipped save\n"
+				}
+				root := t.TempDir()
+				for name, source := range files {
+					if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				project := &Project{root: root}
+				l, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root, Shellcheck: "", Pyflakes: ""})
+				if err != nil {
+					t.Fatal(err)
+				}
+				check := func(diagnostics []*Error, want bool) {
+					t.Helper()
+					if !want || suppressed == tc.owner {
+						if len(diagnostics) != 0 {
+							t.Fatalf("unexpected diagnostics outside the owning call: %v", diagnostics)
+						}
+						return
+					}
+					before, _, found := strings.Cut(files[tc.owner], "    uses:")
+					if !found {
+						t.Fatal("fixture has no workflow call")
+					}
+					line := strings.Count(before, "\n") + 1
+					if len(diagnostics) != 1 || diagnostics[0].Kind != "cache-operation" || filepath.Base(diagnostics[0].Filepath) != tc.owner || diagnostics[0].Line != line || !strings.Contains(diagnostics[0].Message, `of "$/leaf.yaml"`) {
+						t.Fatalf("want exactly one diagnostic at the owning call in %s: %v", tc.owner, diagnostics)
+					}
+				}
+				for _, order := range [][]string{{"caller.yaml", "callee.yaml", "leaf.yaml"}, {"leaf.yaml", "callee.yaml", "caller.yaml"}} {
+					cache := NewLocalReusableWorkflowCache(project, root, nil)
+					for range 2 {
+						for _, name := range order {
+							diagnostics, err := l.check(name, []byte(files[name]), project, nil, nil, cache)
+							if err != nil {
+								t.Fatal(err)
+							}
+							check(diagnostics, name == tc.owner)
+						}
+					}
+					paths := make([]string, 0, len(order))
+					for _, name := range order {
+						paths = append(paths, filepath.Join(root, name))
+					}
+					diagnostics, err := l.LintFiles(paths, project)
+					if err != nil {
+						t.Fatal(err)
+					}
+					check(diagnostics, true)
+				}
+			})
 		}
 	}
 }
