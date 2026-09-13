@@ -382,13 +382,13 @@ func (p *parser) parseString(n *yaml.Node, allowEmpty bool) *String {
 }
 
 // parseStaticString folds a sole literal expression before downstream validation.
-func (p *parser) parseStaticString(n *yaml.Node, allowEmpty bool) *String {
+func (p *parser) parseStaticString(n *yaml.Node) *String {
 	if value := literalExpressionValue(n.Value); value != nil {
 		literal := *n
 		literal.Value = *value
-		return p.parseString(&literal, allowEmpty)
+		return p.parseString(&literal, false)
 	}
-	return p.parseString(n, allowEmpty)
+	return p.parseString(n, false)
 }
 
 func (p *parser) parseStringSequence(sec string, n *yaml.Node, allowEmpty bool) []*String {
@@ -1457,7 +1457,7 @@ func (p *parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 		switch e.id {
 		case "uses":
 			if p.checkString(e.val, false) {
-				ret.Uses = p.parseStaticString(e.val, false)
+				ret.Uses = p.parseStaticString(e.val)
 			}
 		case "with":
 			if expr := p.mayParseExpression(e.val); expr != nil {
@@ -1514,7 +1514,7 @@ func (p *parser) parseStepExecRun(entries []workflowMappingEntry) *ExecRun {
 			ret.RunPos = e.key.Pos
 			ret.source = p.scriptSource(e.val)
 		case "shell":
-			ret.Shell = p.parseStaticString(e.val, false)
+			ret.Shell = p.parseStaticString(e.val)
 		case "working-directory":
 			ret.WorkingDirectory = p.parseString(e.val, false)
 		case "id", "if", "name", "env", "continue-on-error", "timeout-minutes", "background":
@@ -1644,7 +1644,7 @@ func (p *parser) parseStep(n *yaml.Node) *Step {
 	for _, e := range entries {
 		switch e.id {
 		case "id":
-			ret.ID = p.parseStaticString(e.val, false)
+			ret.ID = p.parseStaticString(e.val)
 		case "if":
 			ret.If = p.parseString(e.val, false)
 		case "name":
@@ -1846,7 +1846,7 @@ func (p *parser) parseJob(id *String, n *yaml.Node) *Job {
 		case "services":
 			ret.Services = p.parseServices(v)
 		case "uses":
-			call.Uses = p.parseStaticString(v, false)
+			call.Uses = p.parseStaticString(v)
 			callOnlyKey = k
 		case "with":
 			call.Inputs = map[string]*WorkflowCallInput{}
