@@ -212,7 +212,7 @@ func TestCachePolicyRemoteCallBoundaries(t *testing.T) {
 		{"empty ref", "example/repo/.github/workflows/build.yaml@", "", "", []string{"workflow-call"}},
 		{"empty repository", "example//.github/workflows/build.yaml@main", "", "", []string{"workflow-call"}},
 		{"missing workflow path", "example/repo@main", "", "", []string{"workflow-call"}},
-		{"expression", "${{ '" + remote + "' }}", "", "", nil},
+		{"literal expression", "${{ '" + remote + "' }}", "", "", []string{"cache-call-unrestricted"}},
 		{"path expression", "example/repo/.github/workflows/${{ 'build' }}.yaml@main", "", "", []string{"expression"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

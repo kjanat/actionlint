@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -98,7 +99,7 @@ func TestCacheOperationCallerBoundaries(t *testing.T) {
 
 func TestCacheOperationDistinctCallerCeilings(t *testing.T) {
 	root := t.TempDir()
-	callee := "on: workflow_call\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/cache/save@v5\n        with: {key: test, path: cache}\n"
+	callee := "on: workflow_call\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - parallel:\n          - uses: actions/cache/save@v5\n            with: {key: test, path: cache}\n"
 	files := map[string]string{
 		"callee.yaml": callee,
 		"read.yaml":   "on: push\ncache-mode: read\njobs:\n  call:\n    uses: $/callee.yaml\n",
@@ -141,6 +142,34 @@ func TestCacheOperationDistinctCallerCeilings(t *testing.T) {
 		}
 		if len(diagnostics) != 1 || diagnostics[0].Kind != "cache-operation" || filepath.Base(diagnostics[0].Filepath) != "read.yaml" {
 			t.Fatal(diagnostics)
+		}
+	}
+}
+
+func TestCacheOperationParallelCallerCeilings(t *testing.T) {
+	for _, mode := range []string{"read", "write", "write-only", "none"} {
+		for _, action := range []string{"actions/cache", "actions/cache/save", "actions/cache/restore"} {
+			for _, suppressed := range []bool{false, true} {
+				t.Run(mode+"/"+action+"/suppressed="+fmt.Sprint(suppressed), func(t *testing.T) {
+					caller := "on: push\ncache-mode: " + mode + "\njobs:\n  call:\n    uses: $/callee.yaml"
+					if suppressed {
+						caller += " # actionlint:ignore cache-operation -- reviewed skipped operation"
+					}
+					callee := "on: workflow_call\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - parallel:\n          - run: echo ok\n          - uses: ${{ '" + action + "@v5' }}\n            with: {key: test, path: cache}\n"
+					want := !suppressed && (mode == "none" || mode == "read" && action == "actions/cache/save" || mode == "write-only" && action == "actions/cache/restore")
+					checkCacheOperationCalls(t, map[string]string{"caller.yaml": caller, "callee.yaml": callee}, "", func(t *testing.T, diagnostics []*Error) {
+						if !want {
+							if len(diagnostics) != 0 {
+								t.Fatal(diagnostics)
+							}
+							return
+						}
+						if len(diagnostics) != 1 || diagnostics[0].Kind != "cache-operation" || filepath.Base(diagnostics[0].Filepath) != "caller.yaml" || diagnostics[0].Line != 5 || !strings.Contains(diagnostics[0].Message, action) {
+							t.Fatalf("wanted one call-site cache-operation diagnostic: %v", diagnostics)
+						}
+					})
+				})
+			}
 		}
 	}
 }

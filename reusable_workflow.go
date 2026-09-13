@@ -188,14 +188,7 @@ func (m *ReusableWorkflowMetadata) recordJobCacheAccess(id string, mode *CacheMo
 		local = ""
 		uses = ""
 	}
-	var operations []string
-	for _, step := range steps {
-		if action, ok := step.Exec.(*ExecAction); ok && action.Uses != nil {
-			if name := cacheActionName(action.Uses.Value); name != "" {
-				operations = append(operations, name)
-			}
-		}
-	}
+	operations := collectCacheOperations(nil, steps)
 	if mode == nil && local == "" && len(operations) == 0 {
 		return
 	}
@@ -203,6 +196,22 @@ func (m *ReusableWorkflowMetadata) recordJobCacheAccess(id string, mode *CacheMo
 		m.JobCacheAccess = map[string]ReusableWorkflowCacheAccess{}
 	}
 	m.JobCacheAccess[id] = ReusableWorkflowCacheAccess{Mode: mode, Uses: local, SourceUses: uses, Operations: operations}
+}
+
+func collectCacheOperations(operations []string, steps []*Step) []string {
+	for _, step := range steps {
+		switch exec := step.Exec.(type) {
+		case *ExecAction:
+			if exec.Uses != nil {
+				if name := cacheActionName(exec.Uses.Value); name != "" {
+					operations = append(operations, name)
+				}
+			}
+		case *ExecParallel:
+			operations = collectCacheOperations(operations, exec.Steps)
+		}
+	}
+	return operations
 }
 
 // LocalReusableWorkflowCache is a cache for local reusable workflow metadata files. It avoids find/read/parse
