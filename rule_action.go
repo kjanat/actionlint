@@ -846,8 +846,20 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *
 var reNewlineWithIndent = regexp.MustCompile(`\s*\r?\n\s*`)
 
 func (rule *RuleAction) checkAction(meta *ActionMetadata, exec *ExecAction, describe func(*ActionMetadata) string) {
+	inputs, known := exec.Inputs, exec.InputsExpression == nil
+	if exec.InputsExpression != nil {
+		if value, ok := workflowExpressionLiteral(exec.InputsExpression); ok {
+			if mapping, ok := value.(map[string]any); ok {
+				known = true
+				inputs = make(map[string]*Input, len(mapping))
+				for name := range mapping {
+					inputs[strings.ToLower(name)] = &Input{Name: &String{Value: name, Pos: exec.InputsExpression.Pos}}
+				}
+			}
+		}
+	}
 	// Check specified inputs are defined in action's inputs spec
-	for id, i := range exec.Inputs {
+	for id, i := range inputs {
 		m, ok := meta.Inputs[id]
 		if !ok {
 			ns := make([]string, 0, len(meta.Inputs))
@@ -879,8 +891,8 @@ func (rule *RuleAction) checkAction(meta *ActionMetadata, exec *ExecAction, desc
 
 	// Check mandatory inputs are specified
 	for id, i := range meta.Inputs {
-		if i.Required && exec.InputsExpression == nil {
-			if _, ok := exec.Inputs[id]; !ok {
+		if i.Required && known {
+			if _, ok := inputs[id]; !ok {
 				ns := make([]string, 0, len(meta.Inputs))
 				for _, i := range meta.Inputs {
 					if i.Required {

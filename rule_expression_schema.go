@@ -75,6 +75,9 @@ func (shape workflowExpressionObject) validate(ty ExprType, path string) []strin
 			continue
 		}
 		key := strings.ToLower(name)
+		if seen[key] {
+			errors = append(errors, fmt.Sprintf("%s has duplicate property %q", path, key))
+		}
 		seen[key] = true
 		field, ok := shape.props[key]
 		if !ok {
@@ -138,9 +141,15 @@ var (
 	workflowRunner    = workflowExpressionUnion{workflowNonEmpty, workflowExpressionArray{workflowNonEmpty}, workflowExpressionObject{props: map[string]workflowExpressionShape{"group": workflowNonEmpty, "labels": workflowLabels}}}
 	workflowStrategy  = workflowExpressionObject{props: map[string]workflowExpressionShape{
 		"fail-fast": workflowBool, "max-parallel": workflowNumber,
-		"matrix": workflowExpressionObject{mapped: workflowAny},
+		"matrix": workflowExpressionObject{
+			props: map[string]workflowExpressionShape{
+				"include": workflowExpressionArray{workflowExpressionObject{mapped: workflowAny}},
+				"exclude": workflowExpressionArray{workflowExpressionObject{mapped: workflowAny}},
+			},
+			mapped: workflowExpressionArray{workflowAny},
+		},
 	}}
-	workflowDefaultsRun = workflowExpressionObject{props: map[string]workflowExpressionShape{"shell": workflowString, "working-directory": workflowString}}
+	workflowDefaultsRun = workflowExpressionObject{props: map[string]workflowExpressionShape{"shell": workflowNonEmpty, "working-directory": workflowNonEmpty}}
 	workflowCredentials = workflowExpressionObject{props: map[string]workflowExpressionShape{"username": workflowNonEmpty, "password": workflowNonEmpty}}
 	workflowConcurrency = workflowExpressionUnion{workflowString, workflowExpressionObject{props: map[string]workflowExpressionShape{"group": workflowNonEmpty, "cancel-in-progress": workflowBool, "queue": workflowQueue}, required: []string{"group"}}}
 	workflowEnvironment = workflowExpressionUnion{workflowString, workflowExpressionObject{props: map[string]workflowExpressionShape{"name": workflowString, "url": workflowString, "deployment": workflowBool}, required: []string{"name"}}}
@@ -242,13 +251,27 @@ func workflowExpressionLiteralErrors(shape workflowExpressionShape, value any, p
 					errors = append(errors, workflowExpressionLiteralErrors(field, item, path+"."+name)...)
 				}
 			}
-			if path == "concurrency" && values["queue"] == "max" && values["cancel-in-progress"] == true {
+			if path == "concurrency" && workflowObjectProperty(values, "queue") == "max" && workflowObjectProperty(values, "cancel-in-progress") == true {
 				errors = append(errors, "concurrency.queue max cannot be combined with cancel-in-progress true")
 			}
 		}
 	}
 	slices.Sort(errors)
 	return errors
+}
+
+// Workflow schema property names are case-insensitive, including evaluated keys.
+func workflowObjectProperty[T any](properties map[string]T, name string) T {
+	if value, ok := properties[name]; ok {
+		return value
+	}
+	for key, value := range properties {
+		if strings.EqualFold(key, name) {
+			return value
+		}
+	}
+	var zero T
+	return zero
 }
 
 func matrixTypeFromExpression(ty ExprType) *ObjectType {
@@ -258,6 +281,7 @@ func matrixTypeFromExpression(ty ExprType) *ObjectType {
 	}
 	result := &ObjectType{Props: map[string]ExprType{}, Mapped: object.Mapped}
 	for name, value := range object.Props {
+		name = strings.ToLower(name)
 		if name == "include" || name == "exclude" {
 			continue
 		}
@@ -266,9 +290,11 @@ func matrixTypeFromExpression(ty ExprType) *ObjectType {
 		}
 		result.Props[name] = value
 	}
-	if include, ok := object.Props["include"].(*ArrayType); ok {
+	includeType := workflowObjectProperty(object.Props, "include")
+	if include, ok := includeType.(*ArrayType); ok {
 		if combination, ok := include.Elem.(*ObjectType); ok {
 			for name, value := range combination.Props {
+				name = strings.ToLower(name)
 				if current, ok := result.Props[name]; ok {
 					value = current.Merge(value)
 				}
@@ -277,7 +303,7 @@ func matrixTypeFromExpression(ty ExprType) *ObjectType {
 		} else {
 			result.Loose()
 		}
-	} else if _, unknown := object.Props["include"].(AnyType); unknown {
+	} else if _, unknown := includeType.(AnyType); unknown {
 		result.Loose()
 	}
 	return result

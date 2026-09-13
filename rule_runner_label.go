@@ -2,6 +2,7 @@ package actionlint
 
 import (
 	"path"
+	"strconv"
 	"strings"
 )
 
@@ -185,6 +186,12 @@ func (rule *RuleRunnerLabel) VisitJobPre(n *Job) error {
 // https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
 func (rule *RuleRunnerLabel) checkLabelAndConflict(l *String, m *Matrix) {
 	if l.ContainsExpression() {
+		if labels, known := knownRunnerExpressionLabels(l); known {
+			for _, label := range labels {
+				rule.checkCompat(rule.verifyRunnerLabel(label), label)
+			}
+			return
+		}
 		ss := rule.tryToGetLabelsInMatrix(l, m)
 		cs := make([]runnerOSCompat, 0, len(ss))
 		for _, s := range ss {
@@ -201,6 +208,12 @@ func (rule *RuleRunnerLabel) checkLabelAndConflict(l *String, m *Matrix) {
 
 func (rule *RuleRunnerLabel) checkLabel(l *String, m *Matrix) {
 	if l.ContainsExpression() {
+		if labels, known := knownRunnerExpressionLabels(l); known {
+			for _, label := range labels {
+				rule.verifyRunnerLabel(label)
+			}
+			return
+		}
 		ss := rule.tryToGetLabelsInMatrix(l, m)
 		for _, s := range ss {
 			rule.verifyRunnerLabel(s)
@@ -209,6 +222,48 @@ func (rule *RuleRunnerLabel) checkLabel(l *String, m *Matrix) {
 	}
 
 	rule.verifyRunnerLabel(l)
+}
+
+func knownRunnerExpressionLabels(expr *String) ([]*String, bool) {
+	if !expr.IsExpressionAssigned() {
+		return nil, false
+	}
+	value, known := workflowExpressionLiteral(expr)
+	if !known {
+		return nil, false
+	}
+	if object, ok := value.(map[string]any); ok {
+		value = nil
+		for name, field := range object {
+			if strings.EqualFold(name, "labels") {
+				value = field
+				break
+			}
+		}
+	}
+	var labels []*String
+	appendLabel := func(value any) {
+		var label string
+		switch value := value.(type) {
+		case string:
+			label = value
+		case bool:
+			label = strconv.FormatBool(value)
+		case float64:
+			label = strconv.FormatFloat(value, 'g', -1, 64)
+		default:
+			return
+		}
+		labels = append(labels, &String{Value: label, Pos: expr.Pos})
+	}
+	if array, ok := value.([]any); ok {
+		for _, item := range array {
+			appendLabel(item)
+		}
+	} else {
+		appendLabel(value)
+	}
+	return labels, true
 }
 
 func (rule *RuleRunnerLabel) verifyRunnerLabel(label *String) runnerOSCompat {

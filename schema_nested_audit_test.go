@@ -8,7 +8,7 @@ import (
 
 func TestSchemaNestedTimezoneAliases(t *testing.T) {
 	// LoadLocation can resolve casing variants through the host filesystem.
-	// Use a nonexistent zone, not lowercase UTC, to test an invalid IANA name.
+	// Invalid/Timezone exercises rejection independently of filesystem casing.
 	for _, tz := range []struct {
 		name  string
 		valid bool

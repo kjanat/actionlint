@@ -1778,21 +1778,7 @@ func (p *parser) parseJob(id *String, n *yaml.Node) *Job {
 	ret := &Job{ID: id, Pos: id.Pos}
 	call := &WorkflowCall{}
 
-	// Only below keys are allowed on reusable workflow call
-	// https://docs.github.com/en/actions/learn-github-actions/reusing-workflows#supported-keywords-for-jobs-that-call-a-reusable-workflow
-	//   - jobs.<job_id>.name
-	//   - jobs.<job_id>.uses
-	//   - jobs.<job_id>.with
-	//   - jobs.<job_id>.with.<input_id>
-	//   - jobs.<job_id>.secrets
-	//   - jobs.<job_id>.secrets.<secret_id>
-	//   - jobs.<job_id>.needs
-	//   - jobs.<job_id>.if
-	//   - jobs.<job_id>.permissions
-	//   - jobs.<job_id>.cache-mode
-	//   - jobs.<job_id>.strategy
-	//   - jobs.<job_id>.concurrency
-
+	// jobKeyRequiresSteps identifies keys excluded from reusable workflow calls.
 	// https://docs.github.com/en/actions/using-workflows/reusing-workflows#supported-keywords-for-jobs-that-call-a-reusable-workflow
 	var stepsOnlyKey *String
 	var callOnlyKey *String

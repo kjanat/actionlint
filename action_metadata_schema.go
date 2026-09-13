@@ -111,7 +111,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 		case "composite-step":
 			variant = "uses-step"
 			for i := 0; i+1 < len(n.Content); i += 2 {
-				if strings.EqualFold(n.Content[i].Value, "run") {
+				if strings.EqualFold(actionMetadataKey(n.Content[i]), "run") {
 					variant = "run-step"
 				}
 			}

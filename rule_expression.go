@@ -222,7 +222,7 @@ func (rule *RuleExpression) VisitJobPre(n *Job) error {
 			ty := rule.checkWorkflowExpression(n.Strategy.Expression, "strategy", "jobs.<job_id>.strategy", workflowStrategy)
 			rule.matrixTy = NewEmptyObjectType()
 			if object, ok := ty.(*ObjectType); ok {
-				rule.matrixTy = matrixTypeFromExpression(object.Props["matrix"])
+				rule.matrixTy = matrixTypeFromExpression(workflowObjectProperty(object.Props, "matrix"))
 			}
 		} else if n.Strategy.Matrix != nil {
 			// Check and guess type of the matrix.

@@ -479,19 +479,32 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 	wp := resolvePermissionsYAML(&w.Permissions)
 	wc := cacheModeFromYAML(&w.CacheMode)
 	if w.Jobs.Kind == yaml.MappingNode {
+		seenJobs := map[string]bool{}
 		for i := 0; i+1 < len(w.Jobs.Content); i += 2 {
 			id, job := w.Jobs.Content[i], w.Jobs.Content[i+1]
+			key := strings.ToLower(id.Value)
+			if seenJobs[key] {
+				continue
+			}
+			seenJobs[key] = true
 			if job.Kind != yaml.MappingNode {
 				continue
 			}
 			p := wp
 			mode, uses := wc, ""
 			stepsOnly := false
+			seenKeys := map[string]bool{}
 			for k := 0; k+1 < len(job.Content); k += 2 {
-				if jobKeyRequiresSteps(job.Content[k].Value) {
+				key := job.Content[k].Value
+				// parseMapping keeps the first occurrence after reporting a duplicate.
+				if seenKeys[key] {
+					continue
+				}
+				seenKeys[key] = true
+				if jobKeyRequiresSteps(key) {
 					stepsOnly = true
 				}
-				switch job.Content[k].Value {
+				switch key {
 				case "permissions":
 					p = resolvePermissionsYAML(job.Content[k+1])
 				case "cache-mode":
