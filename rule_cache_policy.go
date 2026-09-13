@@ -177,9 +177,9 @@ func (r *RuleCacheOperation) VisitJobPre(job *Job) error {
 	return nil
 }
 
-// checkCallOperations reports inherited restrictions at the calling source, where
-// inline suppression and policy configuration apply. Metadata remains independent
-// of the caller, so concurrent calls with different ceilings cannot contaminate it.
+// checkCallOperations reports inherited restrictions at the call site, where
+// inline suppression and policy configuration apply. Metadata stores callee
+// operations; each traversal evaluates them against the caller's ceiling.
 func (r *RuleCacheOperation) checkCallOperations(pos *Pos, sourceSpec string, granted *CacheMode, checked map[workflowCacheModeVisit]bool) {
 	spec, local := workflowCallUsesLocalSpec(sourceSpec)
 	if !local {
