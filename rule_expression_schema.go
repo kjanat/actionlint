@@ -3,6 +3,7 @@ package actionlint
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 )
@@ -32,7 +33,7 @@ func (shape workflowExpressionScalar) validate(ty ExprType, path string) []strin
 		}
 	case "bool":
 		_, valid = ty.(BoolType)
-	case "positive number":
+	case "positive integer":
 		_, valid = ty.(NumberType)
 	}
 	if valid {
@@ -130,7 +131,7 @@ const (
 	workflowAny      = workflowExpressionScalar("any")
 	workflowString   = workflowExpressionScalar("string")
 	workflowBool     = workflowExpressionScalar("bool")
-	workflowPositive = workflowExpressionScalar("positive number")
+	workflowPositive = workflowExpressionScalar("positive integer")
 	workflowNonEmpty = workflowExpressionScalar("non-empty string")
 	workflowQueue    = workflowExpressionScalar("concurrency queue")
 )
@@ -229,8 +230,12 @@ func workflowExpressionLiteralErrors(shape workflowExpressionShape, value any, p
 	var errors []string
 	switch shape := shape.(type) {
 	case workflowExpressionScalar:
-		if number, ok := value.(float64); shape == workflowPositive && ok && number <= 0 {
-			errors = append(errors, path+" must be greater than zero")
+		if number, ok := value.(float64); shape == workflowPositive && ok {
+			if number <= 0 {
+				errors = append(errors, path+" must be greater than zero")
+			} else if math.Trunc(number) != number {
+				errors = append(errors, path+" must be an integer")
+			}
 		}
 		if shape == workflowNonEmpty && (value == nil || value == "") {
 			errors = append(errors, path+" must be a non-empty string")

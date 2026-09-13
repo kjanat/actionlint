@@ -26,8 +26,8 @@ type shellcheckResult struct {
 type RuleShellcheck struct {
 	RuleBase
 	cmd           *externalCommand
-	workflowShell string
-	jobShell      string
+	workflowShell shellValue
+	jobShell      shellValue
 	runnerShell   string
 	mu            sync.Mutex
 }
@@ -38,10 +38,7 @@ func newRuleShellcheck(cmd *externalCommand) *RuleShellcheck {
 			name: "shellcheck",
 			desc: "Checks for shell script sources in \"run:\" using shellcheck",
 		},
-		cmd:           cmd,
-		workflowShell: "",
-		jobShell:      "",
-		runnerShell:   "",
+		cmd: cmd,
 	}
 }
 
@@ -69,20 +66,9 @@ func (rule *RuleShellcheck) VisitStep(n *Step) error {
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
 func (rule *RuleShellcheck) VisitJobPre(n *Job) error {
-	if n.Defaults != nil && n.Defaults.Run != nil && n.Defaults.Run.Shell != nil {
-		rule.jobShell = n.Defaults.Run.Shell.Value
-	}
-
-	if n.RunsOn != nil {
-		for _, label := range n.RunsOn.Labels {
-			l := strings.ToLower(label.Value)
-			// Default shell on Windows is PowerShell.
-			// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#using-a-specific-shell
-			if l == "windows" || strings.HasPrefix(l, "windows-") {
-				rule.runnerShell = "pwsh"
-				break
-			}
-		}
+	rule.jobShell = defaultsShellValue(n.Defaults)
+	if runnerPlatform(n.RunsOn) == platformKindWindows {
+		rule.runnerShell = "pwsh"
 	}
 
 	return nil
@@ -90,34 +76,33 @@ func (rule *RuleShellcheck) VisitJobPre(n *Job) error {
 
 // VisitJobPost is callback when visiting Job node after visiting its children.
 func (rule *RuleShellcheck) VisitJobPost(n *Job) error {
-	rule.jobShell = ""
+	rule.jobShell = shellValue{}
 	rule.runnerShell = ""
 	return nil
 }
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
 func (rule *RuleShellcheck) VisitWorkflowPre(n *Workflow) error {
-	if n.Defaults != nil && n.Defaults.Run != nil && n.Defaults.Run.Shell != nil {
-		rule.workflowShell = n.Defaults.Run.Shell.Value
-	}
+	rule.workflowShell = defaultsShellValue(n.Defaults)
 	return nil
 }
 
 // VisitWorkflowPost is callback when visiting Workflow node after visiting its children.
 func (rule *RuleShellcheck) VisitWorkflowPost(n *Workflow) error {
-	rule.workflowShell = ""
+	rule.workflowShell = shellValue{}
 	return rule.cmd.wait() // Wait until all processes running for this rule
 }
 
 func (rule *RuleShellcheck) getShellName(exec *ExecRun) string {
-	if exec.Shell != nil {
-		return exec.Shell.Value
-	}
-	if rule.jobShell != "" {
-		return rule.jobShell
-	}
-	if rule.workflowShell != "" {
-		return rule.workflowShell
+	for _, shell := range []shellValue{shellValueFromString(exec.Shell), rule.jobShell, rule.workflowShell} {
+		switch shell.kind {
+		case shellValueSource, shellValueEvaluated:
+			return shell.value.Value
+		case shellValueUnknown:
+			return ""
+		case shellValueUnspecified:
+			continue
+		}
 	}
 	if rule.runnerShell != "" {
 		return rule.runnerShell

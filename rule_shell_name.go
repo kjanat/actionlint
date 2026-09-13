@@ -44,10 +44,8 @@ func (rule *RuleShellName) VisitJobPre(n *Job) error {
 	if n.RunsOn == nil {
 		return nil
 	}
-	rule.platform = rule.getPlatformFromRunner(n.RunsOn)
-	if n.Defaults != nil && n.Defaults.Run != nil {
-		rule.checkShellName(n.Defaults.Run.Shell)
-	}
+	rule.platform = runnerPlatform(n.RunsOn)
+	rule.checkShellValue(defaultsShellValue(n.Defaults))
 	return nil
 }
 
@@ -59,25 +57,26 @@ func (rule *RuleShellName) VisitJobPost(n *Job) error {
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
 func (rule *RuleShellName) VisitWorkflowPre(n *Workflow) error {
-	if n.Defaults != nil && n.Defaults.Run != nil {
-		rule.checkShellName(n.Defaults.Run.Shell)
-	}
+	rule.checkShellValue(defaultsShellValue(n.Defaults))
 	return nil
 }
 
 func (rule *RuleShellName) checkShellName(node *String) {
-	if node == nil {
+	rule.checkShellValue(shellValueFromString(node))
+}
+
+func (rule *RuleShellName) checkShellValue(shell shellValue) {
+	if shell.kind != shellValueSource && shell.kind != shellValueEvaluated {
+		return
+	}
+	node := shell.value
+	if shell.kind == shellValueSource && node.ContainsExpression() {
 		return
 	}
 
 	// Ignore custom shell
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#custom-shell
 	if strings.Contains(node.Value, "{0}") {
-		return
-	}
-
-	// Ignore dynamic shell name
-	if node.ContainsExpression() {
 		return
 	}
 
@@ -145,7 +144,7 @@ func getAvailableShellNames(kind platformKind) []string {
 	}
 }
 
-func (rule *RuleShellName) getPlatformFromRunner(runner *Runner) platformKind {
+func runnerPlatform(runner *Runner) platformKind {
 	if runner == nil {
 		return platformKindAny
 	}
@@ -154,7 +153,7 @@ func (rule *RuleShellName) getPlatformFromRunner(runner *Runner) platformKind {
 	// https://docs.github.com/en/actions/hosting-your-own-runners/using-labels-with-self-hosted-runners
 
 	ret := platformKindAny
-	for _, label := range runner.Labels {
+	for _, label := range runnerPlatformLabels(runner) {
 		k := platformKindAny
 		l := strings.ToLower(label.Value)
 		if strings.HasPrefix(l, "windows-") || l == "windows" {

@@ -262,7 +262,7 @@ func (rule *RuleExpression) VisitJobPre(n *Job) error {
 	if n.Strategy != nil {
 		// Note: Types in "jobs.<job_id>.strategy.matrix" were checked `checkMatrix`
 		rule.checkBool(n.Strategy.FailFast, "jobs.<job_id>.strategy")
-		rule.checkInt(n.Strategy.MaxParallel, "jobs.<job_id>.strategy")
+		rule.checkMaxParallel(n.Strategy.MaxParallel, "jobs.<job_id>.strategy")
 	}
 
 	rule.checkBool(n.ContinueOnError, "jobs.<job_id>.continue-on-error")
@@ -798,11 +798,19 @@ func (rule *RuleExpression) checkBool(b *Bool, workflowKey string) {
 	}
 }
 
-func (rule *RuleExpression) checkInt(i *Int, workflowKey string) {
-	if i == nil {
+func (rule *RuleExpression) checkMaxParallel(i *Int, workflowKey string) {
+	if i == nil || i.Expression == nil {
 		return
 	}
-	rule.checkNumberExpression(i.Expression, "integer value", workflowKey)
+	ty := rule.checkOneExpression(i.Expression, "integer value", workflowKey)
+	if rule.checkNumberTy(ty, i.Expression.Pos, "integer value") == nil {
+		return
+	}
+	if value, known := workflowExpressionLiteral(i.Expression); known {
+		for _, message := range workflowExpressionLiteralErrors(workflowPositive, value, "max-parallel") {
+			rule.Error(i.Expression.Pos, message)
+		}
+	}
 }
 
 func (rule *RuleExpression) checkFloat(f *Float, workflowKey string) {

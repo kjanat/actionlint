@@ -12,6 +12,7 @@ test.yaml:54:16: "volumes" section must be sequence node but got scalar node wit
 test.yaml:55:7: both "username" and "password" must be specified in "credentials" section [syntax-check]
 test.yaml:55:20: "credentials" section is scalar node but mapping node is expected [syntax-check]
 test.yaml:56:12: expecting a single ${{...}} expression or mapping value for "env" section, but found plain text node [syntax-check]
+test.yaml:65:19: "password" section in "container" section should be specified via secrets. do not put password value directly [credentials]
 test.yaml:66:9: unexpected key "foo1" for "credentials" section. expected one of "password", "username" [syntax-check]
 test.yaml:67:7: unexpected key "foo2" for "container" section. expected one of "credentials", "env", "image", "options", "ports", "volumes" [syntax-check]
 test.yaml:72:16: string should not be empty [syntax-check]

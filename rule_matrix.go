@@ -1,6 +1,10 @@
 package actionlint
 
-import "strings"
+import (
+	"strings"
+
+	"go.yaml.in/yaml/v4"
+)
 
 // RuleMatrix is a rule checker to check 'matrix' field of job.
 type RuleMatrix struct {
@@ -19,11 +23,18 @@ func NewRuleMatrix() *RuleMatrix {
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
 func (rule *RuleMatrix) VisitJobPre(n *Job) error {
-	if n.Strategy == nil || n.Strategy.Matrix == nil || n.Strategy.Matrix.Expression != nil {
+	if n.Strategy == nil {
 		return nil
 	}
 
 	m := n.Strategy.Matrix
+	evaluated := n.Strategy.Expression != nil
+	if evaluated {
+		m = knownStrategyMatrix(n.Strategy.Expression)
+	}
+	if m == nil || m.Expression != nil {
+		return nil
+	}
 
 	for _, row := range m.Rows {
 		rule.checkDuplicateInRow(row)
@@ -39,8 +50,36 @@ func (rule *RuleMatrix) VisitJobPre(n *Job) error {
 	//     - os: windows-latest
 	//       sh: pwsh
 
-	rule.checkExclude(m)
+	rule.checkExclude(m, !evaluated)
 	return nil
+}
+
+func knownStrategyMatrix(expression *String) *Matrix {
+	value, known := workflowExpressionLiteral(expression)
+	if !known {
+		return nil
+	}
+	strategy, ok := value.(map[string]any)
+	if !ok {
+		return nil
+	}
+	matrix, ok := workflowObjectProperty(strategy, "matrix").(map[string]any)
+	if !ok || len(workflowExpressionLiteralErrors(workflowStrategy.props["matrix"], matrix, "matrix")) != 0 {
+		return nil
+	}
+	var node yaml.Node
+	if err := node.Encode(matrix); err != nil {
+		return nil
+	}
+	var setPosition func(*yaml.Node)
+	setPosition = func(n *yaml.Node) {
+		n.Line, n.Column = expression.Pos.Line, expression.Pos.Col
+		for _, child := range n.Content {
+			setPosition(child)
+		}
+	}
+	setPosition(&node)
+	return (&parser{}).parseMatrix(expression.Pos, &node)
 }
 
 func (rule *RuleMatrix) checkDuplicateInRow(row *MatrixRow) {
@@ -69,7 +108,7 @@ func (rule *RuleMatrix) checkDuplicateInRow(row *MatrixRow) {
 	}
 }
 
-func isYAMLValueSubset(v, sub RawYAMLValue) bool {
+func isYAMLValueSubset(v, sub RawYAMLValue, expressions bool) bool {
 	// When the filter side is dynamically constructed with some expression, it is not possible to statically check if the filter
 	// matches the value. To avoid false positives, assume such filter always matches to the value. (#414)
 	// ```
@@ -78,7 +117,7 @@ func isYAMLValueSubset(v, sub RawYAMLValue) bool {
 	//   exclude:
 	//     foo: ${{ fromJSON('...') }}
 	// ```
-	if s, ok := sub.(*RawYAMLString); ok && ContainsExpression(s.Value) {
+	if s, ok := sub.(*RawYAMLString); expressions && ok && ContainsExpression(s.Value) {
 		return true
 	}
 
@@ -104,7 +143,7 @@ func isYAMLValueSubset(v, sub RawYAMLValue) bool {
 			return false
 		}
 		for n, s := range sub.Props {
-			if p, ok := v.Props[n]; !ok || !isYAMLValueSubset(p, s) {
+			if p, ok := v.Props[n]; !ok || !isYAMLValueSubset(p, s, expressions) {
 				return false
 			}
 		}
@@ -118,14 +157,14 @@ func isYAMLValueSubset(v, sub RawYAMLValue) bool {
 			return false
 		}
 		for i, v := range v.Elems {
-			if !isYAMLValueSubset(v, sub.Elems[i]) {
+			if !isYAMLValueSubset(v, sub.Elems[i], expressions) {
 				return false
 			}
 		}
 		return true
 	case *RawYAMLString:
 		// When some item is constructed with ${{ }} dynamically, give up checking combinations (#261)
-		if ContainsExpression(v.Value) {
+		if expressions && ContainsExpression(v.Value) {
 			return true
 		}
 		return v.Equals(sub)
@@ -134,7 +173,7 @@ func isYAMLValueSubset(v, sub RawYAMLValue) bool {
 	}
 }
 
-func (rule *RuleMatrix) checkExclude(m *Matrix) {
+func (rule *RuleMatrix) checkExclude(m *Matrix, expressions bool) {
 	if m.Exclude == nil || len(m.Exclude.Combinations) == 0 {
 		return
 	}
@@ -177,7 +216,7 @@ func (rule *RuleMatrix) checkExclude(m *Matrix) {
 			}
 
 			for _, v := range row {
-				if isYAMLValueSubset(v, a.Value) {
+				if isYAMLValueSubset(v, a.Value, expressions) {
 					continue Exclude
 				}
 			}

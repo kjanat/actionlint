@@ -3,7 +3,6 @@ package actionlint
 import (
 	"maps"
 	"path"
-	"strconv"
 	"strings"
 )
 
@@ -257,17 +256,8 @@ func runnerExpressionLabels(value any, pos *Pos, nullIsLabel bool) []*String {
 }
 
 func runnerExpressionLabel(value any, pos *Pos) *String {
-	var label string
-	switch value := value.(type) {
-	case nil:
-		label = ""
-	case string:
-		label = value
-	case bool:
-		label = strconv.FormatBool(value)
-	case float64:
-		label = strconv.FormatFloat(value, 'g', -1, 64)
-	default:
+	label, ok := workflowScalarString(value)
+	if !ok {
 		return nil
 	}
 	return &String{Value: label, Pos: pos}
