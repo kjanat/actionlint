@@ -300,7 +300,7 @@ actionlint is distributed under [the MIT license](./LICENSE.txt).
 [checks]: https://github.com/kjanat/actionlint/blob/v1.16.1/docs/checks.md
 [install]: https://github.com/kjanat/actionlint/blob/master/docs/install.md
 [usage]: https://github.com/kjanat/actionlint/blob/v1.16.1/docs/usage.md
-[config]: https://github.com/kjanat/actionlint/blob/v1.16.1/docs/config.md
+[config]: docs/config.md
 [api]: https://github.com/kjanat/actionlint/blob/v1.16.1/docs/api.md
 [refs]: https://github.com/kjanat/actionlint/blob/v1.16.1/docs/reference.md
 [issue-form]: https://github.com/kjanat/actionlint/issues/new

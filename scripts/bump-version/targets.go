@@ -95,7 +95,7 @@ var targets = []*target{
 		path: "README.md",
 		rules: []rule{
 			mustRule("versioned release tag note", "`v(\\d+\\.\\d+\\.\\d+)` is a versioned release tag", 1),
-			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 5),
+			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 4),
 			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
 		},
 		generated: []*regexp.Regexp{

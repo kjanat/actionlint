@@ -1,10 +1,10 @@
 package actionlint
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -150,7 +150,7 @@ func TestCacheOperationParallelCallerCeilings(t *testing.T) {
 	for _, mode := range []string{"read", "write", "write-only", "none"} {
 		for _, action := range []string{"actions/cache", "actions/cache/save", "actions/cache/restore"} {
 			for _, suppressed := range []bool{false, true} {
-				t.Run(mode+"/"+action+"/suppressed="+fmt.Sprint(suppressed), func(t *testing.T) {
+				t.Run(mode+"/"+action+"/suppressed="+strconv.FormatBool(suppressed), func(t *testing.T) {
 					caller := "on: push\ncache-mode: " + mode + "\njobs:\n  call:\n    uses: $/callee.yaml"
 					if suppressed {
 						caller += " # actionlint:ignore cache-operation -- reviewed skipped operation"
