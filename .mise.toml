@@ -1,10 +1,31 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 
 [tools]
-"github:kjanat/actionlint" = "latest"
-shellcheck                 = "latest"
+actionlint    = { version = "latest", minimum_release_age = "0", depends = ["shellcheck"] }
+go            = { version = "latest" }
+golangci-lint = { version = "latest", lazy = true }
+shellcheck    = { version = "latest" }
+tombi         = { version = "latest", lazy = true }
+
+[tool_alias]
+"actionlint"        = "github:kjanat/actionlint"
+"actionlint-kjanat" = "github:kjanat/actionlint"
+"actionlint-rhysd"  = "github:rhysd/actionlint"
 
 [settings]
-# tombi trips on this, awaiting new release shortly
-# already merged: https://github.com/tombi-toml/tombi/pull/2152
-minimum_release_age_excludes = ["github:kjanat/actionlint"]
+minimum_release_age_excludes = [
+  "actionlint",
+  "github:kjanat/actionlint",
+  "github:rhysd/actionlint",
+]
+
+[env]
+GOFLAGS = "-buildvcs=true"
+
+[tasks]
+[tasks.build]
+alias       = "bin"
+description = "Build actionlint binary"
+run         = "go build -o actionlint ./cmd/actionlint"
+outputs     = ["./actionlint", "./actionlint.exe"]
+env         = { GOFLAGS = "-buildvcs=true" }

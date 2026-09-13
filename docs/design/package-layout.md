@@ -7,6 +7,12 @@ measurement shows is acyclic, and lists what each phase of the move has to do.
 
 Nothing here changes Go code. Phase 0 is this document.
 
+Implementation update for [#155](https://github.com/kjanat/actionlint/pull/155): the frontend now lives in `internal/cli`.
+The root package exposes analysis sessions, result rendering and configuration inspection, and no longer imports Cobra or
+pflag. Build metadata remains in `version.go`, which also supplies the template's `getVersion` function. This removes the
+frontend/version dependency described below. The measurements and proposed broader package split remain the historical
+snapshot at `2f85e20`.
+
 ## How the graph was measured
 
 Load the root package with `golang.org/x/tools/go/packages` in a mode that includes `NeedSyntax`, `NeedTypes` and

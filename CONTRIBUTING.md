@@ -111,7 +111,7 @@ Shell completions come from the built binary's
 the package if users need a local configuration schema.
 
 Run `go test ./...` from the source root, including when only `cmd/actionlint` is built. That command directory
-has no tests; the linter tests live in the root package. Put Git, Bash, ShellCheck, and Pyflakes on `PATH` for
+has no tests; engine tests live in the root package and frontend tests in `internal/cli`. Put Git, Bash, ShellCheck, and Pyflakes on `PATH` for
 the tests. Ordinary builds use the checked-in generated sources; dependency fetching can happen before an
 offline build, as with Nix's `buildGoModule`.
 

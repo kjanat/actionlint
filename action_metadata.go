@@ -422,10 +422,11 @@ func (md *ActionMetadata) Path() string {
 // This cache is not available across multiple repositories. One LocalActionsCache instance needs
 // to be created per one repository.
 type LocalActionsCache struct {
-	mu    sync.RWMutex
-	proj  *Project // might be nil
-	cache map[string]*ActionMetadata
-	dbg   io.Writer
+	onRead func(string)
+	mu     sync.RWMutex
+	proj   *Project // might be nil
+	cache  map[string]*ActionMetadata
+	dbg    io.Writer
 }
 
 // NewLocalActionsCache creates new LocalActionsCache instance for the given project.
@@ -527,6 +528,9 @@ func (c *LocalActionsCache) readLocalActionMetadataFile(dir string) ([]byte, str
 	for _, f := range []string{"action.yaml", "action.yml"} {
 		p := filepath.Join(dir, f)
 		if b, err := os.ReadFile(p); err == nil {
+			if c.onRead != nil {
+				c.onRead(p)
+			}
 			return b, f, true
 		}
 	}

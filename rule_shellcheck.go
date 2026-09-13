@@ -34,10 +34,7 @@ type RuleShellcheck struct {
 
 func newRuleShellcheck(cmd *externalCommand) *RuleShellcheck {
 	return &RuleShellcheck{
-		RuleBase: RuleBase{
-			name: "shellcheck",
-			desc: "Checks for shell script sources in \"run:\" using shellcheck",
-		},
+		RuleBase:      builtinRuleBase("shellcheck"),
 		cmd:           cmd,
 		workflowShell: "",
 		jobShell:      "",
@@ -49,7 +46,11 @@ func newRuleShellcheck(cmd *externalCommand) *RuleShellcheck {
 // name or relative/absolute file path. When the given executable is not found in system, it returns
 // an error as 2nd return value.
 func NewRuleShellcheck(executable string, proc *concurrentProcess) (*RuleShellcheck, error) {
-	cmd, err := proc.newCommandRunner(executable, false)
+	return configuredShellcheck(executable, nil, proc)
+}
+
+func configuredShellcheck(executable string, options *ExternalCommandOptions, proc *concurrentProcess) (*RuleShellcheck, error) {
+	cmd, err := proc.configuredCommandRunner(executable, options, false)
 	if err != nil {
 		return nil, err
 	}

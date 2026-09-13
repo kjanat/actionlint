@@ -9,11 +9,8 @@ type RuleRequirePermissions struct {
 // NewRuleRequirePermissions creates a rule for the given policy.
 func NewRuleRequirePermissions(policy *PermissionsPolicy) *RuleRequirePermissions {
 	return &RuleRequirePermissions{
-		RuleBase: RuleBase{
-			name: "require-permissions",
-			desc: "Checks for an explicit permissions declaration at workflow or job scope",
-		},
-		policy: policy,
+		RuleBase: builtinRuleBase("require-permissions"),
+		policy:   policy,
 	}
 }
 

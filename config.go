@@ -434,17 +434,29 @@ func (cfg *Config) RequiredActions() []string {
 // ParseConfig parses the given bytes as an actionlint config file. When deserializing the YAML file
 // or the config validation fails, this function returns an error.
 func ParseConfig(b []byte) (*Config, error) {
+	c, _, err := parseConfigDocument(b)
+	return c, err
+}
+
+// parseConfigDocument decodes the same YAML node used for configuration provenance.
+func parseConfigDocument(b []byte) (*Config, *yaml.Node, error) {
+	var document yaml.Node
 	var c Config
-	if err := yaml.Unmarshal(b, &c); err != nil {
-		msg := strings.ReplaceAll(err.Error(), "\n", " ")
-		return nil, errors.New(msg)
+	if err := yaml.Unmarshal(b, &document); err != nil {
+		return nil, nil, errors.New(strings.ReplaceAll(err.Error(), "\n", " "))
 	}
-	for pat := range c.Paths {
-		if !doublestar.ValidatePattern(pat) {
-			return nil, fmt.Errorf("invalid glob pattern %q in \"paths\"", pat)
+	if len(document.Content) > 0 {
+		if err := document.Decode(&c); err != nil {
+			return nil, nil, errors.New(strings.ReplaceAll(err.Error(), "\n", " "))
 		}
 	}
-	return &c, nil
+
+	for pat := range c.Paths {
+		if !doublestar.ValidatePattern(pat) {
+			return nil, nil, fmt.Errorf("invalid glob pattern %q in \"paths\"", pat)
+		}
+	}
+	return &c, &document, nil
 }
 
 // ReadConfigFile reads actionlint config file (actionlint.yaml) from the given file path.
