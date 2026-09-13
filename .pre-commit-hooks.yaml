@@ -3,30 +3,42 @@
   name: Lint GitHub Actions workflow files
   description: Runs actionlint to lint GitHub Actions workflow files
   language: golang
-  types: [yaml]
-  files: ^\.github/workflows/
-  entry: actionlint
+  pass_filenames: false
+  always_run: true
+  entry: &workflow-check >-
+    sh -c '
+    [ -d .github/workflows ] || exit 0;
+    workflows=$(find .github/workflows ! -type d \( -name "*.yml" -o -name "*.yaml" \) -print) || exit;
+    [ -n "$workflows" ] || exit 0;
+    exec actionlint "$@"
+    ' --
   minimum_pre_commit_version: 3.0.0
 - id: actionlint-docker
   name: Lint GitHub Actions workflow files
   description: Runs actionlint Docker image to lint GitHub Actions workflow files
   language: docker_image
-  types: [yaml]
-  files: ^\.github/workflows/
-  entry: ghcr.io/kjanat/actionlint:1.17.0
+  pass_filenames: false
+  always_run: true
+  entry: >-
+    --entrypoint sh ghcr.io/kjanat/actionlint:1.17.0 -c '
+    [ -d .github/workflows ] || exit 0;
+    workflows=$(find .github/workflows ! -type d \( -name "*.yml" -o -name "*.yaml" \) -print) || exit;
+    [ -n "$workflows" ] || exit 0;
+    exec actionlint "$@"
+    ' --
 - id: actionlint-system
   name: Lint GitHub Actions workflow files
   description: Runs system-installed actionlint to lint GitHub Actions workflow files
   language: system
-  types: [yaml]
-  files: ^\.github/workflows/
-  entry: actionlint
+  pass_filenames: false
+  always_run: true
+  entry: *workflow-check
 - id: actionlint-shellcheck
   name: Lint GitHub Actions workflow files (with ShellCheck)
   description: Runs actionlint with the ShellCheck integration enabled via a Go build of ShellCheck
   language: golang
-  types: [yaml]
-  files: ^\.github/workflows/
-  entry: actionlint
+  pass_filenames: false
+  always_run: true
+  entry: *workflow-check
   minimum_pre_commit_version: 3.0.0
   additional_dependencies: [github.com/wasilibs/go-shellcheck/cmd/shellcheck@v0.11.1]
