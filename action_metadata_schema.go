@@ -41,6 +41,16 @@ func actionSchemaNode(n *yaml.Node) *yaml.Node {
 // actionSchemaScalar mirrors TemplateReader.Validate: null, booleans and
 // numbers are converted to strings when a string definition is expected.
 func actionSchemaScalar(n *yaml.Node) *string {
+	v := actionSchemaLiteralScalar(n)
+	if v != nil {
+		if literal := literalExpressionValue(*v); literal != nil {
+			return literal
+		}
+	}
+	return v
+}
+
+func actionSchemaLiteralScalar(n *yaml.Node) *string {
 	n = actionSchemaNode(n)
 	if n == nil || n.Kind != yaml.ScalarNode {
 		return nil
@@ -48,9 +58,6 @@ func actionSchemaScalar(n *yaml.Node) *string {
 	v := n.Value
 	if n.Tag == "!!null" {
 		v = ""
-	}
-	if literal := literalExpressionValue(v); literal != nil {
-		v = *literal
 	}
 	return &v
 }
@@ -71,14 +78,14 @@ func (rule *RuleAction) checkActionMetadataSchema(meta *ActionMetadata) {
 		}
 	}
 	checkTags(meta.schemaRoot)
-	rule.checkActionSchemaValue(meta, meta.schemaRoot, "action-root", "", 0)
+	rule.checkActionSchemaValue(meta, meta.schemaRoot, "action-root", "", 0, false)
 }
 
 func (rule *RuleAction) actionSchemaError(meta *ActionMetadata, n *yaml.Node, path, message string) {
 	rule.metadataErrorfAt(meta, n.Line, n.Column, "%s at %q in action metadata", message, path)
 }
 
-func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.Node, definition, path string, depth int) {
+func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.Node, definition, path string, depth int, evaluated bool) {
 	n := actionSchemaNode(node)
 	if n == nil || definition == "any" {
 		return
@@ -111,19 +118,23 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 		case "composite-step":
 			variant = "uses-step"
 			for i := 0; i+1 < len(n.Content); i += 2 {
-				if strings.EqualFold(actionMetadataKey(n.Content[i]), "run") {
+				key := n.Content[i].Value
+				if !evaluated {
+					key = actionMetadataKey(n.Content[i])
+				}
+				if strings.EqualFold(key, "run") {
 					variant = "run-step"
 				}
 			}
 		}
 		if slices.Contains(d.variants, variant) {
-			rule.checkActionSchemaValue(meta, n, variant, path, depth)
+			rule.checkActionSchemaValue(meta, n, variant, path, depth, evaluated)
 		}
 		return
 	}
 
 	// Input/composite checks provide specific hints; other fields use the shared availability table.
-	if value := yamlExprString(n); value != nil && strings.Contains(value.Value, "${{") {
+	if value := yamlExprString(n); !evaluated && value != nil && strings.Contains(value.Value, "${{") {
 		if _, allowed := actionMetadataAvailability[path]; allowed {
 			if !strings.HasPrefix(path, "runs.steps.*.") && path != "inputs.*.default" {
 				for _, violation := range actionExpressionViolations(value.Value, false, path) {
@@ -134,7 +145,18 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 					rule.actionSchemaError(meta, n, path, message)
 				}
 			}
-			if d.kind == actionSchemaString || parseAssignedExpression(value.Value) != nil {
+			if definition == "step-if" {
+				return // Conditions use expression truthiness, including object and array values.
+			}
+			if literal, known := workflowExpressionLiteral(&String{Value: value.Value}); known {
+				var result yaml.Node
+				if err := result.Encode(literal); err != nil {
+					rule.actionSchemaError(meta, n, path, fmt.Sprintf("could not validate expression value: %v", err))
+					return
+				}
+				actionSchemaSetPosition(&result, n.Line, n.Column)
+				n, evaluated = &result, true
+			} else if d.kind == actionSchemaString || parseAssignedExpression(value.Value) != nil {
 				return // The runner validates the evaluated value's type at runtime.
 			}
 		} else if !actionLiteralExpression(value.Value) {
@@ -144,11 +166,16 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 		}
 	}
 
+	// Evaluated strings and keys are data, including any expression delimiters.
+	scalar := actionSchemaScalar
+	if evaluated {
+		scalar = actionSchemaLiteralScalar
+	}
 	switch d.kind {
 	case actionSchemaString:
-		v := actionSchemaScalar(n)
+		v := scalar(n)
 		if v == nil {
-			if path != "runs.steps.*.run" && path != "runs.steps.*.shell" && path != "runs.steps.*.uses" {
+			if evaluated || path != "runs.steps.*.run" && path != "runs.steps.*.shell" && path != "runs.steps.*.uses" {
 				rule.actionSchemaError(meta, n, path, "expected a scalar string")
 			}
 		} else if d.nonEmpty && *v == "" && path != "runs.steps.*.uses" {
@@ -167,7 +194,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 			return
 		}
 		for _, value := range n.Content {
-			rule.checkActionSchemaValue(meta, value, d.item, path+".*", depth+1)
+			rule.checkActionSchemaValue(meta, value, d.item, path+".*", depth+1, evaluated)
 		}
 	case actionSchemaMapping:
 		if n.Kind != yaml.MappingNode {
@@ -179,13 +206,13 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 		seen := map[string]bool{}
 		for i := 0; i+1 < len(n.Content); i += 2 {
 			key, value := n.Content[i], n.Content[i+1]
-			if expr := yamlExprString(key); expr != nil && strings.Contains(expr.Value, "${{") && !actionLiteralExpression(expr.Value) {
+			if expr := yamlExprString(key); !evaluated && expr != nil && strings.Contains(expr.Value, "${{") && !actionLiteralExpression(expr.Value) {
 				if _, allowed := actionMetadataAvailability[path]; !allowed {
 					rule.actionSchemaError(meta, key, path, "expressions are not allowed in keys")
 				} else if strings.TrimSpace(expr.Value) == "${{ insert }}" {
 					// The template reader treats insert as a mapping directive,
 					// whose value is another mapping or a mapping expression.
-					rule.checkActionSchemaValue(meta, value, definition, path, depth+1)
+					rule.checkActionSchemaValue(meta, value, definition, path, depth+1, evaluated)
 					continue
 				} else {
 					for _, violation := range actionExpressionViolations(expr.Value, false, path) {
@@ -197,7 +224,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 					}
 				}
 			}
-			name := actionSchemaScalar(key)
+			name := scalar(key)
 			if name == nil || *name == "" {
 				rule.actionSchemaError(meta, key, path, "expected a non-empty scalar key")
 				continue
@@ -220,13 +247,20 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 					continue
 				}
 			}
-			rule.checkActionSchemaValue(meta, value, child, childPath, depth+1)
+			rule.checkActionSchemaValue(meta, value, child, childPath, depth+1, evaluated)
 		}
 		for _, key := range d.required {
 			if !seen[key] && (path != "runs.steps.*" || !slices.Contains([]string{"run", "shell", "uses"}, key)) {
 				rule.actionSchemaError(meta, n, path, fmt.Sprintf("missing required key %q", key))
 			}
 		}
+	}
+}
+
+func actionSchemaSetPosition(n *yaml.Node, line, column int) {
+	n.Line, n.Column = line, column
+	for _, child := range n.Content {
+		actionSchemaSetPosition(child, line, column)
 	}
 }
 

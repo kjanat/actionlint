@@ -40,6 +40,51 @@ func TestParseYAMLIntegerRadixBounds(t *testing.T) {
 	}
 }
 
+func TestParserRejectsInvalidMappingKeys(t *testing.T) {
+	var doc yaml.Node
+	if err := yaml.Unmarshal([]byte("!!int first: {nested: !!bool nope}\n!!bool second: value\n'': empty\nvalid: kept\nVALID: duplicate\n"), &doc); err != nil {
+		t.Fatal(err)
+	}
+	p := &parser{}
+	var keys []string
+	for e := range p.parseSectionMapping("test", doc.Content[0], false, false) {
+		keys = append(keys, e.id)
+	}
+	if len(keys) != 1 || keys[0] != "valid" {
+		t.Fatalf("invalid keys entered mapping: %v", keys)
+	}
+	want := []string{
+		`invalid value "first" for "!!int" tag`,
+		`invalid value "nope" for "!!bool" tag`,
+		`invalid value "second" for "!!bool" tag`,
+		`string should not be empty`,
+		`key "VALID" is duplicated`,
+	}
+	if len(p.errors) != len(want) {
+		t.Fatalf("want %d diagnostics, got %v", len(want), p.errors)
+	}
+	for i, message := range want {
+		if !strings.HasPrefix(p.errors[i].Message, message) {
+			t.Errorf("diagnostic %d: want %q, got %s", i, message, p.errors[i])
+		}
+	}
+	for _, source := range []string{"!!int invalid: value", "? [invalid]\n: value"} {
+		t.Run(source, func(t *testing.T) {
+			var doc yaml.Node
+			if err := yaml.Unmarshal([]byte(source), &doc); err != nil {
+				t.Fatal(err)
+			}
+			p := &parser{}
+			for entry := range p.parseSectionMapping("test", doc.Content[0], false, false) {
+				t.Fatalf("invalid entry retained: %v", entry)
+			}
+			if len(p.errors) != 1 || strings.Contains(p.errors[0].Message, "should not be empty") {
+				t.Fatalf("want only the invalid key diagnostic: %v", p.errors)
+			}
+		})
+	}
+}
+
 func TestParserAnchorNames(t *testing.T) {
 	for _, name := range []string{"git+opts", "git-opts", "git_opts", "opts123"} {
 		t.Run(name, func(t *testing.T) {

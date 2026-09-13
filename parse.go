@@ -568,7 +568,12 @@ func (p *parser) parseMapping(where delayedSprintf, n *yaml.Node, allowEmpty, ca
 		keys := make(map[string]*Pos, len(n.Content)/2)
 		empty := true
 		for i := 0; i < len(n.Content); i += 2 {
-			k := p.parseString(n.Content[i], false)
+			if !p.checkString(n.Content[i], false) {
+				p.checkRawYAMLTags(n.Content[i+1])
+				empty = false
+				continue
+			}
+			k := newString(n.Content[i])
 
 			if k.Value == "<<" {
 				p.errorAt(k.Pos, "GitHub Actions does not support YAML merge key \"<<\"")
@@ -1156,6 +1161,14 @@ func (p *parser) checkRawYAMLTag(n *yaml.Node) bool {
 		return false
 	}
 	return true
+}
+
+// Retain tag diagnostics in values whose invalid mapping key prevents decoding.
+func (p *parser) checkRawYAMLTags(n *yaml.Node) {
+	p.checkRawYAMLTag(n)
+	for _, child := range n.Content {
+		p.checkRawYAMLTags(child)
+	}
 }
 
 func rawYAMLTagError(n *yaml.Node) string {
