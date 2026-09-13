@@ -197,7 +197,7 @@ func (s *ActionCompositeStep) UnmarshalYAML(n *yaml.Node) error {
 		case "id":
 			s.id = yamlActionExprString(v)
 			if s.id != nil {
-				if literal := actionLiteralExpressionValue(s.id.Value); literal != nil {
+				if literal := literalExpressionValue(s.id.Value); literal != nil {
 					s.id.Value = *literal
 				}
 			}
@@ -424,7 +424,7 @@ func (md *ActionMetadata) UnmarshalYAML(n *yaml.Node) error {
 		&md.Runs.PreIf, &md.Runs.PostIf, &md.Runs.Image,
 		&md.Runs.Entrypoint, &md.Runs.PreEntrypoint, &md.Runs.PostEntrypoint,
 	} {
-		if literal := actionLiteralExpressionValue(*value); literal != nil {
+		if literal := literalExpressionValue(*value); literal != nil {
 			*value = *literal
 		}
 	}

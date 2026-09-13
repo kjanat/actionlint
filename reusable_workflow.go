@@ -512,6 +512,9 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 				case "uses":
 					if n := job.Content[k+1]; n.Kind == yaml.ScalarNode {
 						uses = n.Value
+						if literal := literalExpressionValue(uses); literal != nil {
+							uses = *literal
+						}
 					}
 				}
 			}

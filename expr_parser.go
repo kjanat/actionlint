@@ -413,3 +413,19 @@ func expressionExceedingDepth(root ExprNode) ExprNode {
 	}
 	return nil
 }
+
+// literalExpressionValue evaluates a single string literal and requires complete input consumption.
+func literalExpressionValue(s string) *string {
+	if !strings.HasPrefix(s, "${{") {
+		return nil
+	}
+	lex := NewExprLexer(s[3:])
+	expr, err := NewExprParser().Parse(lex)
+	if err != nil || lex.Offset() != len(s)-3 {
+		return nil
+	}
+	if literal, ok := expr.(*StringNode); ok {
+		return &literal.Value
+	}
+	return nil
+}

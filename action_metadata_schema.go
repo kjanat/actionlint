@@ -49,7 +49,7 @@ func actionSchemaScalar(n *yaml.Node) *string {
 	if n.Tag == "!!null" {
 		v = ""
 	}
-	if literal := actionLiteralExpressionValue(v); literal != nil {
+	if literal := literalExpressionValue(v); literal != nil {
 		v = *literal
 	}
 	return &v
@@ -262,20 +262,5 @@ func actionRunsPropertyChecked(meta *ActionMetadata, key string) bool {
 }
 
 func actionLiteralExpression(s string) bool {
-	return actionLiteralExpressionValue(s) != nil
-}
-
-func actionLiteralExpressionValue(s string) *string {
-	if !strings.HasPrefix(s, "${{") {
-		return nil
-	}
-	lex := NewExprLexer(s[3:])
-	expr, err := NewExprParser().Parse(lex)
-	if err != nil || lex.Offset() != len(s)-3 {
-		return nil
-	}
-	if literal, ok := expr.(*StringNode); ok {
-		return &literal.Value
-	}
-	return nil
+	return literalExpressionValue(s) != nil
 }

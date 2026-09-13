@@ -32,7 +32,7 @@ func (shape workflowExpressionScalar) validate(ty ExprType, path string) []strin
 		}
 	case "bool":
 		_, valid = ty.(BoolType)
-	case "number":
+	case "positive number":
 		_, valid = ty.(NumberType)
 	}
 	if valid {
@@ -130,7 +130,7 @@ const (
 	workflowAny      = workflowExpressionScalar("any")
 	workflowString   = workflowExpressionScalar("string")
 	workflowBool     = workflowExpressionScalar("bool")
-	workflowNumber   = workflowExpressionScalar("number")
+	workflowPositive = workflowExpressionScalar("positive number")
 	workflowNonEmpty = workflowExpressionScalar("non-empty string")
 	workflowQueue    = workflowExpressionScalar("concurrency queue")
 )
@@ -140,7 +140,7 @@ var (
 	workflowLabels    = workflowExpressionUnion{workflowNonEmpty, workflowExpressionArray{workflowNonEmpty}}
 	workflowRunner    = workflowExpressionUnion{workflowNonEmpty, workflowExpressionArray{workflowNonEmpty}, workflowExpressionObject{props: map[string]workflowExpressionShape{"group": workflowNonEmpty, "labels": workflowLabels}}}
 	workflowStrategy  = workflowExpressionObject{props: map[string]workflowExpressionShape{
-		"fail-fast": workflowBool, "max-parallel": workflowNumber,
+		"fail-fast": workflowBool, "max-parallel": workflowPositive,
 		"matrix": workflowExpressionObject{
 			props: map[string]workflowExpressionShape{
 				"include": workflowExpressionArray{workflowExpressionObject{mapped: workflowAny}},
@@ -152,7 +152,7 @@ var (
 	workflowDefaultsRun = workflowExpressionObject{props: map[string]workflowExpressionShape{"shell": workflowNonEmpty, "working-directory": workflowNonEmpty}}
 	workflowCredentials = workflowExpressionObject{props: map[string]workflowExpressionShape{"username": workflowNonEmpty, "password": workflowNonEmpty}}
 	workflowConcurrency = workflowExpressionUnion{workflowString, workflowExpressionObject{props: map[string]workflowExpressionShape{"group": workflowNonEmpty, "cancel-in-progress": workflowBool, "queue": workflowQueue}, required: []string{"group"}}}
-	workflowEnvironment = workflowExpressionUnion{workflowString, workflowExpressionObject{props: map[string]workflowExpressionShape{"name": workflowString, "url": workflowString, "deployment": workflowBool}, required: []string{"name"}}}
+	workflowEnvironment = workflowExpressionUnion{workflowNonEmpty, workflowExpressionObject{props: map[string]workflowExpressionShape{"name": workflowNonEmpty, "url": workflowString, "deployment": workflowBool}, required: []string{"name"}}}
 	workflowSnapshot    = workflowExpressionUnion{workflowNonEmpty, workflowExpressionObject{props: map[string]workflowExpressionShape{"image-name": workflowNonEmpty, "version": workflowNonEmpty, "if": workflowString}, required: []string{"image-name"}}}
 )
 
@@ -166,7 +166,7 @@ func workflowContainerShape(service bool) workflowExpressionShape {
 		props["command"] = workflowString
 		props["entrypoint"] = workflowString
 	}
-	return workflowExpressionUnion{workflowString, workflowExpressionObject{props: props}}
+	return workflowExpressionUnion{workflowString, workflowExpressionObject{props: props, required: []string{"image"}}}
 }
 
 func (rule *RuleExpression) checkWorkflowExpression(s *String, what, key string, shape workflowExpressionShape) ExprType {
@@ -222,6 +222,9 @@ func workflowExpressionLiteralErrors(shape workflowExpressionShape, value any, p
 	var errors []string
 	switch shape := shape.(type) {
 	case workflowExpressionScalar:
+		if number, ok := value.(float64); shape == workflowPositive && ok && number <= 0 {
+			errors = append(errors, path+" must be greater than zero")
+		}
 		if shape == workflowNonEmpty && (value == nil || value == "") {
 			errors = append(errors, path+" must be a non-empty string")
 		}
