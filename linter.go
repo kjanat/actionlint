@@ -611,7 +611,7 @@ func (l *Linter) check(
 		if len(cfg.RequiredActions()) > 0 {
 			rules = append(rules, NewRuleRequiredActions())
 		}
-		for _, rule := range []Rule{NewRuleCacheWriteUntrusted(), NewRuleCacheCallUnrestricted(), NewRuleCacheOperation()} {
+		for _, rule := range []Rule{NewRuleCacheWriteUntrusted(), NewRuleCacheCallUnrestricted(), newRuleCacheOperation(localReusableWorkflows)} {
 			if cfg.cachePolicyEnabled(rule.Name()) {
 				rules = append(rules, rule)
 			}

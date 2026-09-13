@@ -163,6 +163,12 @@ Only the three exact entry points above are recognized. Owner and repository nam
 the `save` and `restore` subpaths retain their case. Similarly named repositories and other subpaths are excluded.
 GitHub skips a forbidden operation without failing the job; this diagnostic helps catch ineffective steps.
 
+For local reusable workflows, the check follows nested calls and inherits each caller's explicit cache ceiling.
+When a callee omits its own mode, disabled operations are reported at the caller's `uses` value, including the
+callee reference and job ID. Put a reviewed `cache-operation` suppression on that call site, or disable the
+policy in the caller's configuration. An explicit callee mode is checked in the callee itself; an attempted
+increase beyond the caller's ceiling remains a `workflow-call` error. Remote workflow bodies are not inspected.
+
 ```yaml
 policy:
   cache-operation: false
