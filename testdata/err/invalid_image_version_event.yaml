@@ -1,6 +1,6 @@
 on:
   image_version:
-    # It must be array of string
+    # A scalar image name is valid
     names: MyImage
     # Empty string is not allowed
     versions: ['']

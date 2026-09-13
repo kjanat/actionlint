@@ -59,9 +59,7 @@ func TestCompositeStepUnavailableContexts(t *testing.T) {
 		{"allowed contexts are clean", "${{ github.sha }} ${{ inputs.x }} ${{ steps.a.outputs.b }} ${{ env.E }} ${{ runner.os }} ${{ job.status }} ${{ matrix.m }} ${{ strategy.job-index }}", false, nil},
 		{"no expression at all", "echo hello secrets.TOKEN", false, nil},
 		{"bare literal", "true", true, nil},
-		{"parse error is ignored", "echo ${{ }}", false, nil},
 		{"status function is not reported", "always()", true, nil},
-		{"unterminated expression", "echo ${{ secrets.A", false, nil},
 	}
 
 	for _, tc := range tests {

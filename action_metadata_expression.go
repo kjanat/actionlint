@@ -38,6 +38,7 @@ func actionExpressionViolations(s string, bare bool, field string) []actionExpre
 		lex := NewExprLexer(s)
 		expr, err := NewExprParser().Parse(lex)
 		if err != nil || expr == nil {
+			out = append(out, actionExpressionViolation{message: fmt.Sprintf("has an invalid expression: %v", err)})
 			break
 		}
 		// The lexer consumes the closing delimiter and skips delimiters inside strings.
@@ -55,7 +56,15 @@ func actionExpressionViolations(s string, bare bool, field string) []actionExpre
 			case *FuncCallNode:
 				name := strings.ToLower(n.Callee)
 				if !slices.Contains(actionMetadataSpecialFunctions, name) {
-					return
+					signatures, ok := BuiltinFuncSignatures[name]
+					if !ok {
+						v.message = fmt.Sprintf("calls unknown function %q", name)
+					} else if !actionFunctionArityMatches(signatures, len(n.Args)) ||
+						(name == "format" || name == "case") && len(n.Args) > 255 ||
+						name == "case" && len(n.Args)%2 == 0 {
+						v.message = fmt.Sprintf("calls function %q with an invalid number of arguments (%d)", name, len(n.Args))
+					}
+					break
 				}
 				bounds, ok := avail.functions[name]
 				if !ok {
@@ -74,4 +83,13 @@ func actionExpressionViolations(s string, bare bool, field string) []actionExpre
 		})
 	}
 	return out
+}
+
+func actionFunctionArityMatches(signatures []*FuncSignature, count int) bool {
+	for _, signature := range signatures {
+		if signature.VariableLengthParams && count >= len(signature.Params) || !signature.VariableLengthParams && count == len(signature.Params) {
+			return true
+		}
+	}
+	return false
 }

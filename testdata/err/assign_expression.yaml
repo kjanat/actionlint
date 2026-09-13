@@ -3,7 +3,7 @@ on:
     inputs:
       ok:
         type: boolean
-        # OK
+        # ERROR: required is a static boolean
         required: ${{ true }}
       error:
         type: boolean

@@ -514,10 +514,8 @@ func (rule *RuleAction) checkLocalDockerActionRuns(r *ActionMetadataRuns, dir, n
 			rule.Errorf(pos, `the local file %q referenced from "image" key must be named "Dockerfile" in %q action. the action is defined at %q`, r.Image, name, dir)
 		}
 	}
-	rule.checkRunsFileExists(r.PreEntrypoint, dir, "pre-entrypoint", name, pos)
-	rule.checkRunsFileExists(r.Entrypoint, dir, "entrypoint", name, pos)
-	rule.checkRunsFileExists(r.PostEntrypoint, dir, "post-entrypoint", name, pos)
-	rule.checkInvalidRunsProps(pos, r, "Docker", name, dir, []string{"main", "pre", "pre-if", "post", "post-if", "steps"})
+	// Entrypoints resolve inside the container image; only a local Dockerfile can be checked here.
+	rule.checkInvalidRunsProps(pos, r, "Docker", name, dir, []string{"main", "pre", "post", "steps"})
 }
 
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-composite-actions
@@ -527,7 +525,18 @@ func (rule *RuleAction) checkLocalCompositeActionRuns(meta *ActionMetadata, pos 
 	if r.Steps == nil {
 		rule.missingRunsProp(pos, "steps", "Composite", meta.Name, meta.Dir())
 	}
+	ids := map[string]bool{}
 	for i, s := range r.Steps {
+		if s.id != nil && s.id.Value != "" {
+			id := s.id.Value
+			switch {
+			case !jobIDPattern.MatchString(id) || len(id) >= 100 || strings.HasPrefix(id, "__"):
+				rule.compositeStepErrorfAt(meta, i, s.id.Line, s.id.Column, "has invalid ID %q; IDs must start with a letter or _, contain only alphanumeric characters, - or _, be shorter than 100 characters, and must not start with __", id)
+			case ids[strings.ToLower(id)]:
+				rule.compositeStepErrorfAt(meta, i, s.id.Line, s.id.Column, "has duplicate ID %q; step IDs are case insensitive", id)
+			}
+			ids[strings.ToLower(id)] = true
+		}
 		rule.checkCompositeActionStep(meta, s, i)
 	}
 	rule.checkInvalidRunsProps(pos, r, "Composite", meta.Name, meta.Dir(), []string{"main", "pre", "pre-if", "post", "post-if", "image", "pre-entrypoint", "entrypoint", "post-entrypoint", "args", "env"})
@@ -725,7 +734,9 @@ func (rule *RuleAction) checkLocalActionRuns(meta *ActionMetadata, pos *Pos) {
 	using := strings.ToLower(r.Using)
 	switch using {
 	case "":
-		rule.Errorf(pos, `"runs.using" is missing in local action %q defined at %q`, meta.Name, meta.Dir())
+		if r.Plugin == "" {
+			rule.Errorf(pos, `"runs.using" is missing in local action %q defined at %q`, meta.Name, meta.Dir())
+		}
 	case "docker":
 		rule.checkLocalDockerActionRuns(r, meta.Dir(), meta.Name, pos)
 	case "composite":
@@ -776,6 +787,7 @@ func (rule *RuleAction) checkDockerAction(uri string, exec *ExecAction) {
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
 func (rule *RuleAction) checkLocalActionMetadata(meta *ActionMetadata, action *ExecAction) {
+	rule.checkActionMetadataSchema(meta)
 	if meta.Name == "" {
 		rule.Errorf(action.Uses.Pos, "name is required in action metadata %q", meta.Path())
 	}
@@ -867,7 +879,7 @@ func (rule *RuleAction) checkAction(meta *ActionMetadata, exec *ExecAction, desc
 
 	// Check mandatory inputs are specified
 	for id, i := range meta.Inputs {
-		if i.Required {
+		if i.Required && exec.InputsExpression == nil {
 			if _, ok := exec.Inputs[id]; !ok {
 				ns := make([]string, 0, len(meta.Inputs))
 				for _, i := range meta.Inputs {

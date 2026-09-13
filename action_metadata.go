@@ -51,6 +51,9 @@ func (inputs *ActionMetadataInputs) UnmarshalYAML(n *yaml.Node) error {
 	md := make(ActionMetadataInputs, len(n.Content)/2)
 	for i := 0; i < len(n.Content); i += 2 {
 		k, v := n.Content[i].Value, n.Content[i+1]
+		if name := actionSchemaScalar(n.Content[i]); name != nil {
+			k = *name
+		}
 
 		var m actionInputMetadata
 		if err := v.Decode(&m); err != nil {
@@ -106,6 +109,9 @@ func (inputs *ActionMetadataOutputs) UnmarshalYAML(n *yaml.Node) error {
 	md := make(ActionMetadataOutputs, len(n.Content)/2)
 	for i := 0; i < len(n.Content); i += 2 {
 		k := n.Content[i].Value
+		if name := actionSchemaScalar(n.Content[i]); name != nil {
+			k = *name
+		}
 		id := strings.ToLower(k)
 		if _, ok := md[id]; ok {
 			return fmt.Errorf("output %q is duplicated", k)
@@ -163,6 +169,7 @@ type ActionCompositeStep struct {
 	continueOnError *ActionExprString
 	withExpr        *ActionExprString
 	envExpr         *ActionExprString
+	id              *ActionExprString
 	// Uses is the value of "uses" key in the step. It is nil when the key is absent or its value
 	// is not a string.
 	Uses *string `json:"uses"`
@@ -185,14 +192,21 @@ func (s *ActionCompositeStep) UnmarshalYAML(n *yaml.Node) error {
 		k, v := n.Content[i], n.Content[i+1]
 		s.Keys = append(s.Keys, k.Value)
 		switch strings.ToLower(k.Value) {
+		case "id":
+			s.id = yamlActionExprString(v)
+			if s.id != nil {
+				if literal := actionLiteralExpressionValue(s.id.Value); literal != nil {
+					s.id.Value = *literal
+				}
+			}
 		case "if":
-			s.If = yamlExprString(v)
+			s.If = yamlActionExprString(v)
 		case "run":
-			s.Run = yamlExprString(v)
+			s.Run = yamlActionExprString(v)
 		case "working-directory":
-			s.WorkingDirectory = yamlExprString(v)
+			s.WorkingDirectory = yamlActionExprString(v)
 		case "name":
-			s.StepName = yamlExprString(v)
+			s.StepName = yamlActionExprString(v)
 		case "with":
 			s.With = yamlKeyValues(v)
 			s.withExpr = yamlExprString(v)
@@ -200,23 +214,23 @@ func (s *ActionCompositeStep) UnmarshalYAML(n *yaml.Node) error {
 			s.Env = yamlKeyValues(v)
 			s.envExpr = yamlExprString(v)
 		case "shell":
-			s.shell = yamlExprString(v)
+			s.shell = yamlActionExprString(v)
 		case "continue-on-error":
 			s.continueOnError = yamlExprString(v)
 		case "uses":
-			s.Uses = yamlStringScalar(v)
+			s.Uses = actionSchemaScalar(v)
 		}
 	}
 	return nil
 }
 
-func yamlStringScalar(n *yaml.Node) *string {
-	for n.Kind == yaml.AliasNode && n.Alias != nil && n.Alias.Kind != yaml.AliasNode {
-		n = n.Alias
+func yamlActionExprString(n *yaml.Node) *ActionExprString {
+	n = actionSchemaNode(n)
+	if value := yamlExprString(n); value != nil {
+		return value
 	}
-	if n.Kind == yaml.ScalarNode && n.Tag == "!!str" {
-		s := n.Value
-		return &s
+	if value := actionSchemaScalar(n); value != nil {
+		return &ActionExprString{Value: *value, Line: n.Line, Column: n.Column}
 	}
 	return nil
 }
@@ -282,6 +296,8 @@ func (ss *actionCompositeSteps) UnmarshalYAML(n *yaml.Node) error {
 // ActionMetadataRuns is "runs" section of action.yaml. It defines how the action is run.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs
 type ActionMetadataRuns struct {
+	// Plugin is the runner-internal plugin action entrypoint.
+	Plugin string `yaml:"plugin" json:"plugin,omitempty"`
 	// Using is `using` configuration of action.yaml. It defines what runner is used for the action.
 	Using string `yaml:"using" json:"using"`
 	// Main is `main` configuration of action.yaml for JavaScript action.
@@ -320,9 +336,10 @@ type ActionMetadataBranding struct {
 // ActionMetadata represents structure of action.yaml.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 type ActionMetadata struct {
-	dir  string
-	file string
-	src  []byte
+	dir        string
+	file       string
+	src        []byte
+	schemaRoot *yaml.Node
 	// Name is "name" field of action.yaml.
 	Name string `yaml:"name" json:"name"`
 	// Description is "description" field of action.yaml.
@@ -355,6 +372,19 @@ func (md *ActionMetadata) UnmarshalYAML(n *yaml.Node) error {
 	err := n.Decode(&m)
 	// The popular-actions generator uses partial metadata after tolerated input errors.
 	*md = ActionMetadata(m)
+	// The runner turns a single string-literal expression into a literal before
+	// dispatching the runtime or resolving entrypoint files.
+	for _, value := range []*string{
+		&md.Name, &md.Description, &md.Runs.Using, &md.Runs.Plugin,
+		&md.Runs.Main, &md.Runs.Pre, &md.Runs.Post,
+		&md.Runs.PreIf, &md.Runs.PostIf, &md.Runs.Image,
+		&md.Runs.Entrypoint, &md.Runs.PreEntrypoint, &md.Runs.PostEntrypoint,
+	} {
+		if literal := actionLiteralExpressionValue(*value); literal != nil {
+			*value = *literal
+		}
+	}
+	md.schemaRoot = n
 	md.InputDefaults = collectInputDefaults(n)
 	return err
 }

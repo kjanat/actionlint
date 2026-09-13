@@ -18,6 +18,8 @@ func TestWorkflowCallMixedJobMetadataOrder(t *testing.T) {
 		{"env", "{FLAG: value}"}, {"defaults", "{run: {shell: bash}}"},
 		{"timeout-minutes", "10"}, {"continue-on-error", "false"}, {"container", "ubuntu:latest"},
 		{"services", "{redis: {image: redis:latest}}"},
+		{"snapshot", "{image-name: test-image}"},
+		{"cancel-timeout-minutes", "5"},
 	} {
 		for _, leaf := range []struct{ name, source string }{
 			{"missing", ""}, {"malformed", "on: ["},

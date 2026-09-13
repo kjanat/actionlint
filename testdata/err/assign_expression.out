@@ -1,3 +1,4 @@
-test.yaml:11:19: expecting a single ${{...}} expression or boolean literal "true" or "false", but found plain text node [syntax-check]
+test.yaml:7:19: expected boolean literal but found scalar node with "!!str" tag [syntax-check]
+test.yaml:11:19: expected boolean literal but found scalar node with "!!str" tag [syntax-check]
 test.yaml:20:21: expecting a single ${{...}} expression or integer literal, but found plain text node [syntax-check]
 test.yaml:24:22: expecting a single ${{...}} expression or float number literal, but found plain text node [syntax-check]

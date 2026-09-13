@@ -426,6 +426,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		out := upstreamDiagnostics(rule.Errs())
 		quotedDir := strings.TrimSuffix(strings.TrimPrefix(strconv.Quote(meta.dir), `"`), `"`)
 		for i := range out {
+			out[i] = strings.ReplaceAll(out[i], filepath.ToSlash(meta.dir), "<action>")
 			out[i] = strings.ReplaceAll(out[i], quotedDir, "<action>")
 			out[i] = strings.ReplaceAll(out[i], `<action>\\action.yml`, "<action>/action.yml")
 		}

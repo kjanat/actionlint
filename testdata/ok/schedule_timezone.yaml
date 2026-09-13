@@ -6,6 +6,8 @@ on:
     # With another timezone
     - cron: '0 6 * * *'
       timezone: "Europe/London"
+    - cron: '0 0 * * *'
+      timezone: "UTC"
     # Without timezone (still valid)
     - cron: '*/5 * * * *'
 

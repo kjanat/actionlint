@@ -2,6 +2,12 @@
 
 # Unreleased
 
+- Support current workflow schema fields and expression objects, including workflow descriptions, cancellation timeouts, image-version filters, stacked pull requests, empty choice options, disabled service images, and UTC timezone aliases.
+
+- Validate action manifests against generated runner schema constraints. Correct workflow expression contexts, matrix inference, function arity, expression depth, scalar decoding, required flags, schedule entries, and step ID checks.
+
+- Document the pinned workflow/action schema audit, complete definition coverage, regression evidence, and retained compatibility differences.
+
 - Support workflow- and job-level `cache-mode` values, including jobs that call reusable workflows. Check explicit cache access limits through nested local workflow calls, preserving job overrides and the distinction between omitted settings and `none`. Report invalid values and types at their source locations. (kjanat/actionlint#163)
 
 <a id="v1.16.1"></a>

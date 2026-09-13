@@ -1,2 +1,2 @@
 test.yaml:9:15: "services" section is scalar node but mapping node is expected [syntax-check]
-test.yaml:14:15: type of expression at "services" must be object but found type string [expression]
+test.yaml:14:15: services must be object but found string [expression]

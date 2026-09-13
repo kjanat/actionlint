@@ -74,7 +74,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:6:5: unexpected key "default" for "job" section. expected one of "cache-mode", "concurrency", "container", "continue-on-error", "defaults", "env", "environment", "if", "name", "needs", "outputs", "permissions", "runs-on", "secrets", "services", "snapshot", "steps", "strategy", "timeout-minutes", "uses", "with" [syntax-check]
+test.yaml:6:5: unexpected key "default" for "job" section. expected one of "cache-mode", "cancel-timeout-minutes", "concurrency", "container", "continue-on-error", "defaults", "env", "environment", "if", "name", "needs", "outputs", "permissions", "runs-on", "secrets", "services", "snapshot", "steps", "strategy", "timeout-minutes", "uses", "with" [syntax-check]
   |
 6 |     default:
   |     ^~~~~~~~
@@ -372,7 +372,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:19:14: type of expression at "env" must be object but found type string [expression]
+test.yaml:19:14: env must be object but found string [expression]
    |
 19 |         env: ${{ matrix.env_string }}
    |              ^~~
@@ -813,7 +813,7 @@ test.yaml:11:13: tag of a quoted or block scalar must be "!!str" but got "!!bool
    |
 11 |           - !!bool "true"
    |             ^~~~~~
-test.yaml:14:13: tag of a matrix scalar must be one of "!!str", "!!bool", "!!int", "!!float", "!!null" but got "!!timestamp" [syntax-check]
+test.yaml:14:13: tag of a YAML scalar must be one of "!!str", "!!bool", "!!int", "!!float", "!!null" but got "!!timestamp" [syntax-check]
    |
 14 |           - !!timestamp 2026-08-21
    |             ^~~~~~~~~~~
@@ -2498,7 +2498,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:6:5: when a reusable workflow is called with "uses", "runs-on" is not available. only following keys are allowed: "name", "uses", "with", "secrets", "needs", "if", "permissions", and "cache-mode" in job "job1" [syntax-check]
+test.yaml:6:5: when a reusable workflow is called with "uses", "runs-on" is not available. only following keys are allowed: "name", "uses", "with", "secrets", "needs", "if", "permissions", "cache-mode", "strategy", and "concurrency" in job "job1" [syntax-check]
   |
 6 |     runs-on: ubuntu-latest
   |     ^~~~~~~~
@@ -3001,7 +3001,7 @@ test.yaml:30:20: context "env" is not allowed here. no context is available here
    |
 30 |         shell: ${{ env.SHELL}}
    |                    ^~~~~~~~~~~
-test.yaml:32:33: calling function "success" is not allowed here. "success" is only available in "jobs.<job_id>.if", "jobs.<job_id>.steps.if". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
+test.yaml:32:33: calling function "success" is not allowed here. "success" is only available in "jobs.<job_id>.if", "jobs.<job_id>.steps.if", "jobs.<job_id>.snapshot.if". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
    |
 32 |         run: echo 'Success? ${{ success() }}'
    |                                 ^~~~~~~~~

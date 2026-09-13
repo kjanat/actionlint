@@ -96,3 +96,149 @@ var actionMetadataKeys = map[string][]string{
 	"uses-step": {"continue-on-error", "env", "id", "if", "name", "uses", "with"},
 }
 var actionMetadataSpecialFunctions = []string{"always", "cancelled", "failure", "hashfiles", "success"}
+var actionMetadataSchema = map[string]actionSchemaDefinition{
+	"action-root": {
+		kind: actionSchemaMapping,
+		properties: map[string]string{
+			"description": "string",
+			"inputs":      "inputs",
+			"name":        "string",
+			"outputs":     "outputs",
+			"runs":        "runs",
+		},
+		loose: "any",
+	},
+	"boolean-steps-context": {
+		kind: actionSchemaBoolean,
+	},
+	"composite-runs": {
+		kind: actionSchemaMapping,
+		properties: map[string]string{
+			"steps": "composite-steps",
+			"using": "non-empty-string",
+		},
+	},
+	"composite-step": {
+		kind: actionSchemaUnion, variants: []string{"run-step", "uses-step"},
+	},
+	"composite-steps": {
+		kind: actionSchemaSequence, item: "composite-step",
+	},
+	"container-runs": {
+		kind: actionSchemaMapping,
+		properties: map[string]string{
+			"args":            "container-runs-args",
+			"entrypoint":      "non-empty-string",
+			"env":             "container-runs-env",
+			"image":           "non-empty-string",
+			"post-entrypoint": "non-empty-string",
+			"post-if":         "non-empty-string",
+			"pre-entrypoint":  "non-empty-string",
+			"pre-if":          "non-empty-string",
+			"using":           "non-empty-string",
+		},
+	},
+	"container-runs-args": {
+		kind: actionSchemaSequence, item: "container-runs-context",
+	},
+	"container-runs-context": {
+		kind: actionSchemaString,
+	},
+	"container-runs-env": {
+		kind:  actionSchemaMapping,
+		loose: "string",
+	},
+	"input": {
+		kind: actionSchemaMapping,
+		properties: map[string]string{
+			"default": "input-default-context",
+		},
+		loose: "any",
+	},
+	"input-default-context": {
+		kind: actionSchemaString,
+	},
+	"inputs": {
+		kind:  actionSchemaMapping,
+		loose: "input",
+	},
+	"node-runs": {
+		kind: actionSchemaMapping,
+		properties: map[string]string{
+			"main":    "non-empty-string",
+			"post":    "non-empty-string",
+			"post-if": "non-empty-string",
+			"pre":     "non-empty-string",
+			"pre-if":  "non-empty-string",
+			"using":   "non-empty-string",
+		},
+	},
+	"non-empty-string": {
+		kind:     actionSchemaString,
+		nonEmpty: true,
+	},
+	"output-definition": {
+		kind: actionSchemaMapping,
+		properties: map[string]string{
+			"description": "string",
+			"value":       "output-value",
+		},
+	},
+	"output-value": {
+		kind: actionSchemaString,
+	},
+	"outputs": {
+		kind:  actionSchemaMapping,
+		loose: "output-definition",
+	},
+	"plugin-runs": {
+		kind: actionSchemaMapping,
+		properties: map[string]string{
+			"plugin": "non-empty-string",
+		},
+	},
+	"run-step": {
+		kind: actionSchemaMapping,
+		properties: map[string]string{
+			"continue-on-error": "boolean-steps-context",
+			"env":               "step-env",
+			"id":                "non-empty-string",
+			"if":                "step-if",
+			"name":              "string-steps-context",
+			"run":               "string-steps-context",
+			"shell":             "string-steps-context",
+			"working-directory": "string-steps-context",
+		},
+		required: []string{"run", "shell"},
+	},
+	"runs": {
+		kind: actionSchemaUnion, variants: []string{"container-runs", "node-runs", "plugin-runs", "composite-runs"},
+	},
+	"step-env": {
+		kind:  actionSchemaMapping,
+		loose: "string",
+	},
+	"step-if": {
+		kind: actionSchemaString,
+	},
+	"step-with": {
+		kind:  actionSchemaMapping,
+		loose: "string",
+	},
+	"string-steps-context": {
+		kind: actionSchemaString,
+	},
+	"uses-step": {
+		kind: actionSchemaMapping,
+		properties: map[string]string{
+			"continue-on-error": "boolean-steps-context",
+			"env":               "step-env",
+			"id":                "non-empty-string",
+			"if":                "step-if",
+			"name":              "string-steps-context",
+			"uses":              "non-empty-string",
+			"with":              "step-with",
+		},
+		required: []string{"uses"},
+	},
+}
