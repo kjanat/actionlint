@@ -431,7 +431,28 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 
 	var w workflow
 	if doc.Kind != 0 {
-		if err := doc.Decode(&w); err != nil {
+		n := &doc
+		if n.Kind == yaml.DocumentNode && len(n.Content) > 0 {
+			n = n.Content[0]
+		}
+		if n.Kind == yaml.MappingNode {
+			first := *n
+			first.Content = make([]*yaml.Node, 0, len(n.Content))
+			seen := map[string]bool{}
+			for i := 0; i+1 < len(n.Content); i += 2 {
+				key := n.Content[i]
+				if key.Kind == yaml.ScalarNode {
+					// The workflow parser reports duplicate keys and retains the first value.
+					if seen[key.Value] {
+						continue
+					}
+					seen[key.Value] = true
+				}
+				first.Content = append(first.Content, key, n.Content[i+1])
+			}
+			n = &first
+		}
+		if err := n.Decode(&w); err != nil {
 			return nil, err
 		}
 	}

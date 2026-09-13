@@ -170,12 +170,26 @@ func (s *String) ContainsExpression() bool {
 }
 
 func isExprAssigned(s string) bool {
-	v := strings.TrimSpace(s)
-	// Do not check `strings.Count(s.Value, "}}") == 1` because it might appear in JSON string
-	//   if: ${{ env.foo == '{"foo": {"bar": true}}' }}
-	return strings.HasPrefix(v, "${{") &&
-		strings.HasSuffix(v, "}}") &&
-		strings.Count(v, "${{") == 1
+	if !strings.HasPrefix(s, "${{") || !strings.HasSuffix(s, "}}") {
+		return false
+	}
+	// Delimiters inside single-quoted strings are data. Doubled quotes toggle
+	// twice, keeping the scan inside the same string literal.
+	inString := false
+	for i := 3; i < len(s)-1; i++ {
+		if s[i] == '\'' {
+			inString = !inString
+		} else if !inString {
+			if strings.HasPrefix(s[i:], "}}") {
+				return i+2 == len(s)
+			}
+			if strings.HasPrefix(s[i:], "${{") {
+				return false
+			}
+		}
+	}
+	// Let the expression parser diagnose an unterminated string literal.
+	return inString
 }
 
 // IsExpressionAssigned returns whether a single expression is assigned to the string.

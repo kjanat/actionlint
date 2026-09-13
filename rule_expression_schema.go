@@ -149,11 +149,13 @@ var (
 			mapped: workflowExpressionArray{workflowAny},
 		},
 	}}
-	workflowDefaultsRun = workflowExpressionObject{props: map[string]workflowExpressionShape{"shell": workflowNonEmpty, "working-directory": workflowNonEmpty}}
-	workflowCredentials = workflowExpressionObject{props: map[string]workflowExpressionShape{"username": workflowNonEmpty, "password": workflowNonEmpty}}
-	workflowConcurrency = workflowExpressionUnion{workflowString, workflowExpressionObject{props: map[string]workflowExpressionShape{"group": workflowNonEmpty, "cancel-in-progress": workflowBool, "queue": workflowQueue}, required: []string{"group"}}}
-	workflowEnvironment = workflowExpressionUnion{workflowNonEmpty, workflowExpressionObject{props: map[string]workflowExpressionShape{"name": workflowNonEmpty, "url": workflowString, "deployment": workflowBool}, required: []string{"name"}}}
-	workflowSnapshot    = workflowExpressionUnion{workflowNonEmpty, workflowExpressionObject{props: map[string]workflowExpressionShape{"image-name": workflowNonEmpty, "version": workflowNonEmpty, "if": workflowString}, required: []string{"image-name"}}}
+	workflowDefaultsRun        = workflowExpressionObject{props: map[string]workflowExpressionShape{"shell": workflowNonEmpty, "working-directory": workflowNonEmpty}}
+	workflowCredentials        = workflowExpressionObject{props: map[string]workflowExpressionShape{"username": workflowNonEmpty, "password": workflowNonEmpty}}
+	workflowConcurrencyMapping = workflowExpressionObject{props: map[string]workflowExpressionShape{"group": workflowNonEmpty, "cancel-in-progress": workflowBool, "queue": workflowQueue}, required: []string{"group"}}
+	workflowConcurrency        = workflowExpressionUnion{workflowString, workflowConcurrencyMapping}
+	workflowJobConcurrency     = workflowExpressionUnion{workflowNonEmpty, workflowConcurrencyMapping}
+	workflowEnvironment        = workflowExpressionUnion{workflowNonEmpty, workflowExpressionObject{props: map[string]workflowExpressionShape{"name": workflowNonEmpty, "url": workflowString, "deployment": workflowBool}, required: []string{"name"}}}
+	workflowSnapshot           = workflowExpressionUnion{workflowNonEmpty, workflowExpressionObject{props: map[string]workflowExpressionShape{"image-name": workflowNonEmpty, "version": workflowNonEmpty, "if": workflowString}, required: []string{"image-name"}}}
 )
 
 func workflowContainerShape(service bool) workflowExpressionShape {

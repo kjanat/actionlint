@@ -416,13 +416,12 @@ func expressionExceedingDepth(root ExprNode) ExprNode {
 
 // parseAssignedExpression accepts one complete expression, excluding interpolation.
 func parseAssignedExpression(s string) ExprNode {
-	text := strings.TrimSpace(s)
-	if !strings.HasPrefix(text, "${{") {
+	if !strings.HasPrefix(s, "${{") {
 		return nil
 	}
-	lex := NewExprLexer(text[3:])
+	lex := NewExprLexer(s[3:])
 	expr, err := NewExprParser().Parse(lex)
-	if err != nil || lex.Offset() != len(text)-3 {
+	if err != nil || lex.Offset() != len(s)-3 {
 		return nil
 	}
 	return expr

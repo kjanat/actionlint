@@ -122,12 +122,12 @@ func TestCheckStringRejectsRawTagReview(t *testing.T) {
 }
 
 func TestWorkflowExpressionLiteralBoundaryReview(t *testing.T) {
-	for _, value := range []string{"pre-${{ '' }}", "${{ '' }}-post", "${{ '' }}-${{ '' }}", "${{ '' }}tail}}"} {
+	for _, value := range []string{"pre-${{ '' }}", "${{ '' }}-post", "${{ '' }}-${{ '' }}", "${{ '' }}tail}}", "  ${{ '' }}  ", "${{ '' }}\n", "\t${{ '' }}"} {
 		if got, known := workflowExpressionLiteral(&String{Value: value}); known {
 			t.Errorf("fragment %q folded to %#v", value, got)
 		}
 	}
-	if got, known := workflowExpressionLiteral(&String{Value: "  ${{ '' }}  "}); !known || got != "" {
+	if got, known := workflowExpressionLiteral(&String{Value: "${{  ''  }}"}); !known || got != "" {
 		t.Fatalf("sole expression: %#v, known=%v", got, known)
 	}
 }

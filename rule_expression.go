@@ -547,8 +547,16 @@ func (rule *RuleExpression) checkConcurrency(c *Concurrency, workflowKey string)
 	if c == nil {
 		return
 	}
-	rule.checkWorkflowExpression(c.Expression, "concurrency", workflowKey, workflowConcurrency)
-	rule.checkString(c.Group, workflowKey)
+	shape := workflowConcurrency
+	if workflowKey == "jobs.<job_id>.concurrency" {
+		shape = workflowJobConcurrency
+	}
+	rule.checkWorkflowExpression(c.Expression, "concurrency", workflowKey, shape)
+	if c.Group != nil && c.Group.IsExpressionAssigned() {
+		rule.checkWorkflowExpression(c.Group, "concurrency.group", workflowKey, workflowNonEmpty)
+	} else {
+		rule.checkString(c.Group, workflowKey)
+	}
 	if c.Queue != nil && c.Queue.IsExpressionAssigned() {
 		rule.checkWorkflowExpression(c.Queue, "concurrency.queue", workflowKey, workflowQueue)
 	} else {
