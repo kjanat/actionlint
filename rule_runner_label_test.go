@@ -249,13 +249,9 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 			errs:   []string{`label "ubuntu-latest" conflicts with label`},
 		},
 		{
-			what:   "GH-hosted labels conflicts with multiple matrixes",
+			what:   "Repeated matrix references select the same value",
 			labels: []string{"${{matrix.os}}", "${{matrix.os}}"},
 			matrix: []string{"windows-latest", "macos-latest"},
-			errs: []string{
-				`label "windows-latest" conflicts with label "macos-latest"`,
-				`label "macos-latest" conflicts with label "windows-latest"`,
-			},
 		},
 		{
 			what:   "Linux labels version conflict",

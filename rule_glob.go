@@ -37,10 +37,35 @@ func (rule *RuleGlob) VisitWorkflowPre(n *Workflow) error {
 }
 
 func (rule *RuleGlob) VisitJobPre(n *Job) error {
-	if n.Snapshot != nil && n.Snapshot.Version != nil {
+	if n.Snapshot == nil {
+		return nil
+	}
+	if expression := n.Snapshot.Expression; expression != nil {
+		if value, known := workflowExpressionLiteral(expression); known {
+			if snapshot, ok := value.(map[string]any); ok {
+				rule.checkKnownRefGlob(workflowObjectProperty(snapshot, "version"), expression.Pos)
+			}
+		}
+	} else if version := n.Snapshot.Version; version != nil && version.ContainsExpression() {
+		if value, known := workflowExpressionLiteral(version); known {
+			rule.checkKnownRefGlob(value, version.Pos)
+		}
+	} else {
 		rule.checkRefGlob(n.Snapshot.Version)
 	}
 	return nil
+}
+
+func (rule *RuleGlob) checkKnownRefGlob(value any, pos *Pos) {
+	pattern, known := workflowScalarString(value)
+	if !known || pattern == "" {
+		return
+	}
+	errs := ValidateRefGlob(pattern)
+	for i := range errs {
+		errs[i].Column = 0 // Evaluated offsets refer to the result; report the source expression.
+	}
+	rule.globErrors(errs, pos, false)
 }
 
 func (rule *RuleGlob) checkRefGlob(s *String) {

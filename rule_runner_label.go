@@ -3,6 +3,7 @@ package actionlint
 import (
 	"maps"
 	"path"
+	"slices"
 	"strings"
 )
 
@@ -154,6 +155,9 @@ func NewRuleRunnerLabel() *RuleRunnerLabel {
 // VisitJobPre is callback when visiting Job node before visiting its children.
 func (rule *RuleRunnerLabel) VisitJobPre(n *Job) error {
 	if n.RunsOn == nil {
+		return nil
+	}
+	if rule.checkCorrelatedMatrixLabels(n) {
 		return nil
 	}
 
@@ -340,20 +344,10 @@ func (rule *RuleRunnerLabel) tryToGetLabelsInMatrix(label *String, strategy *Str
 	if strategy == nil {
 		return nil
 	}
-
-	deref, ok := parseAssignedExpression(label.Value).(*ObjectDerefNode)
-	if !ok {
+	prop := runnerMatrixProperty(label)
+	if prop == "" {
 		return nil
 	}
-	recv, ok := deref.Receiver.(*VariableNode)
-	if !ok {
-		return nil
-	}
-	if recv.Name != "matrix" {
-		return nil
-	}
-
-	prop := deref.Property
 	if strategy.Expression != nil {
 		return knownStrategyRunnerLabels(strategy.Expression, prop)
 	}
@@ -385,6 +379,205 @@ func (rule *RuleRunnerLabel) tryToGetLabelsInMatrix(label *String, strategy *Str
 		}
 	}
 
+	return labels
+}
+
+func runnerMatrixProperty(label *String) string {
+	deref, ok := parseAssignedExpression(label.Value).(*ObjectDerefNode)
+	if !ok {
+		return ""
+	}
+	if recv, ok := deref.Receiver.(*VariableNode); ok && recv.Name == "matrix" {
+		return deref.Property
+	}
+	return ""
+}
+
+func (rule *RuleRunnerLabel) checkCorrelatedMatrixLabels(job *Job) bool {
+	properties := make([]string, len(job.RunsOn.Labels))
+	references := 0
+	for i, label := range job.RunsOn.Labels {
+		properties[i] = runnerMatrixProperty(label)
+		if properties[i] != "" {
+			references++
+		}
+	}
+	if references < 2 {
+		return false
+	}
+
+	rule.compats = map[runnerOSCompat]*String{}
+	defer func() { rule.compats = nil }()
+	checkLabels := func(labels []*String) {
+		for _, label := range labels {
+			rule.checkCompat(defaultRunnerOSCompats[strings.ToLower(label.Value)], label)
+		}
+	}
+	for i, label := range job.RunsOn.Labels {
+		rule.checkLabel(label, job.Strategy)
+		if properties[i] == "" {
+			if labels, known := knownRunnerExpressionLabels(label); known {
+				checkLabels(labels)
+			} else if !label.ContainsExpression() {
+				checkLabels([]*String{label})
+			}
+		}
+	}
+	fixed := rule.compats
+	if combinations, known := knownRunnerMatrixCombinations(job.Strategy); known {
+		for _, combination := range combinations {
+			rule.compats = maps.Clone(fixed)
+			for _, property := range properties {
+				if value, ok := combination[property]; ok {
+					checkLabels(runnerMatrixValueLabels(value))
+				}
+			}
+		}
+	} else {
+		// Unknown combinations retain checks against fixed labels and within each value.
+		for i, label := range job.RunsOn.Labels {
+			if properties[i] == "" {
+				continue
+			}
+			for _, labels := range rule.tryToGetLabelsInMatrix(label, job.Strategy) {
+				rule.compats = maps.Clone(fixed)
+				checkLabels(labels)
+			}
+		}
+	}
+	return true
+}
+
+type runnerMatrixCombination map[string]RawYAMLValue
+
+func knownRunnerMatrixCombinations(strategy *Strategy) ([]runnerMatrixCombination, bool) {
+	if strategy == nil {
+		return nil, false
+	}
+	matrix := strategy.Matrix
+	evaluated := strategy.Expression != nil
+	if evaluated {
+		matrix = knownStrategyMatrix(strategy.Expression)
+	}
+	if matrix == nil || matrix.Expression != nil {
+		return nil, false
+	}
+	known := func(value RawYAMLValue) bool { return evaluated || !ContainsExpression(value.String()) }
+	for _, combinations := range []*MatrixCombinations{matrix.Include, matrix.Exclude} {
+		if combinations == nil {
+			continue
+		}
+		if combinations.ContainsExpression() {
+			return nil, false
+		}
+		for _, combination := range combinations.Combinations {
+			for _, assign := range combination.Assigns {
+				if !known(assign.Value) {
+					return nil, false
+				}
+			}
+		}
+	}
+
+	// GitHub permits at most 256 matrix jobs. Bound expansion before allocating rows.
+	const limit = 256
+	var originals []runnerMatrixCombination
+	if len(matrix.Rows) != 0 {
+		originals = []runnerMatrixCombination{{}}
+	}
+	for _, name := range slices.Sorted(maps.Keys(matrix.Rows)) {
+		row := matrix.Rows[name]
+		if row.Expression != nil || len(row.Values) > 0 && len(originals) > limit/len(row.Values) {
+			return nil, false
+		}
+		for _, value := range row.Values {
+			if !known(value) {
+				return nil, false
+			}
+		}
+		expanded := make([]runnerMatrixCombination, 0, len(originals)*len(row.Values))
+		for _, original := range originals {
+			for _, value := range row.Values {
+				combination := maps.Clone(original)
+				combination[name] = value
+				expanded = append(expanded, combination)
+			}
+		}
+		originals = expanded
+	}
+	if matrix.Exclude != nil {
+		originals = slices.DeleteFunc(originals, func(combination runnerMatrixCombination) bool {
+			for _, exclude := range matrix.Exclude.Combinations {
+				matches := true
+				for name, assign := range exclude.Assigns {
+					if !isYAMLValueSubset(combination[name], assign.Value, false) {
+						matches = false
+						break
+					}
+				}
+				if matches {
+					return true
+				}
+			}
+			return false
+		})
+	}
+	result := make([]runnerMatrixCombination, 0, len(originals))
+	for _, original := range originals {
+		result = append(result, maps.Clone(original))
+	}
+	if matrix.Include != nil {
+		for _, include := range matrix.Include.Combinations {
+			added := false
+			for i, original := range originals {
+				matches := true
+				for name, assign := range include.Assigns {
+					if value, exists := original[name]; exists && !isYAMLValueSubset(value, assign.Value, false) {
+						matches = false
+						break
+					}
+				}
+				if matches {
+					for name, assign := range include.Assigns {
+						if _, axis := matrix.Rows[name]; !axis {
+							result[i][name] = assign.Value
+						}
+					}
+					added = true
+				}
+			}
+			if !added {
+				if len(result) == limit {
+					return nil, false
+				}
+				combination := runnerMatrixCombination{}
+				for name, assign := range include.Assigns {
+					combination[name] = assign.Value
+				}
+				result = append(result, combination)
+			}
+		}
+	}
+	return result, true
+}
+
+func runnerMatrixValueLabels(value RawYAMLValue) []*String {
+	if object, ok := value.(*RawYAMLObject); ok {
+		value = object.Props["labels"]
+	}
+	var labels []*String
+	appendLabel := func(value RawYAMLValue) {
+		if scalar, ok := value.(*RawYAMLString); ok {
+			labels = append(labels, runnerExpressionLabel(scalar.scalarValue(), scalar.Pos()))
+		}
+	}
+	if array, ok := value.(*RawYAMLArray); ok {
+		for _, item := range array.Elems {
+			appendLabel(item)
+		}
+	} else {
+		appendLabel(value)
+	}
 	return labels
 }
 

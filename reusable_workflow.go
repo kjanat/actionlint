@@ -441,13 +441,14 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 			seen := map[string]bool{}
 			for i := 0; i+1 < len(n.Content); i += 2 {
 				key := n.Content[i]
-				if key.Kind == yaml.ScalarNode {
-					// The workflow parser reports duplicate keys and retains the first value.
-					if seen[key.Value] {
-						continue
-					}
-					seen[key.Value] = true
+				if key.Kind != yaml.ScalarNode || key.Value == "" || key.Value == "<<" || rawYAMLTagError(key) != "" {
+					continue
 				}
+				// The workflow parser reports duplicate keys and retains the first value.
+				if seen[key.Value] {
+					continue
+				}
+				seen[key.Value] = true
 				first.Content = append(first.Content, key, n.Content[i+1])
 			}
 			n = &first

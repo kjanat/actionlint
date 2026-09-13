@@ -239,7 +239,11 @@ func (rule *RuleExpression) VisitJobPre(n *Job) error {
 			if ty := rule.checkOneExpression(n.RunsOn.LabelsExpr, "runner label at \"runs-on\" section", "jobs.<job_id>.runs-on"); ty != nil {
 				switch ty.(type) {
 				case *ArrayType, StringType, AnyType:
-					// OK
+					if value, known := workflowExpressionLiteral(n.RunsOn.LabelsExpr); known {
+						if labels, ok := value.([]any); ok && len(labels) == 0 {
+							rule.Error(n.RunsOn.LabelsExpr.Pos, "runs-on.labels must contain at least one value")
+						}
+					}
 				default:
 					rule.Errorf(n.RunsOn.LabelsExpr.Pos, "type of expression at \"runs-on\" must be string or array but found type %q", ty.String())
 				}
@@ -536,8 +540,8 @@ func (rule *RuleExpression) checkContainer(c *Container, workflowKey, childWorkf
 	rule.checkEnv(c.Env, childWorkflowKey+".env.<env_id>") // e.g. jobs.<job_id>.container.env.<env_id>
 	rule.checkStrings(c.Ports, workflowKey)
 	rule.checkStrings(c.Volumes, workflowKey)
-	rule.checkWorkflowExpression(c.PortsExpression, "ports", workflowKey, workflowExpressionArray{workflowNonEmpty})
-	rule.checkWorkflowExpression(c.VolumesExpression, "volumes", workflowKey, workflowExpressionArray{workflowNonEmpty})
+	rule.checkWorkflowExpression(c.PortsExpression, "ports", workflowKey, workflowExpressionArray{elem: workflowNonEmpty})
+	rule.checkWorkflowExpression(c.VolumesExpression, "volumes", workflowKey, workflowExpressionArray{elem: workflowNonEmpty})
 	rule.checkString(c.Options, workflowKey)
 	rule.checkString(c.Command, workflowKey)
 	rule.checkString(c.Entrypoint, workflowKey)
@@ -663,8 +667,16 @@ func (rule *RuleExpression) checkSnapshot(s *Snapshot) {
 		return
 	}
 	rule.checkWorkflowExpression(s.Expression, "snapshot", "jobs.<job_id>.snapshot", workflowSnapshot)
-	rule.checkString(s.ImageName, "jobs.<job_id>.snapshot")
-	rule.checkString(s.Version, "jobs.<job_id>.snapshot")
+	for _, field := range []struct {
+		value *String
+		name  string
+	}{{s.ImageName, "image-name"}, {s.Version, "version"}} {
+		if field.value != nil && field.value.IsExpressionAssigned() {
+			rule.checkWorkflowExpression(field.value, "snapshot."+field.name, "jobs.<job_id>.snapshot", workflowNonEmpty)
+		} else {
+			rule.checkString(field.value, "jobs.<job_id>.snapshot")
+		}
+	}
 	rule.checkIfCondition(s.If, "jobs.<job_id>.snapshot.if")
 }
 

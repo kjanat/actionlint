@@ -3,6 +3,7 @@ package actionlint
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -191,5 +192,225 @@ func TestRunnerMatrixIncludeExcludeParity(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestRunnerMatrixCorrelatedLabels(t *testing.T) {
+	for _, tc := range []struct {
+		name, matrix, runsOn string
+		want                 []string
+	}{
+		{"include rows", `{"include":[{"os":"linux","image":"ubuntu-latest"},{"os":"windows","image":"windows-latest"}]}`, "", nil},
+		{"case insensitive properties", `{"INCLUDE":[{"OS":"linux","IMAGE":"ubuntu-latest"},{"OS":"windows","IMAGE":"windows-latest"}]}`, "", nil},
+		{"include row conflict", `{"include":[{"os":"linux","image":"windows-latest"},{"os":"windows","image":"windows-latest"}]}`, "", []string{`label "windows-latest" conflicts with label "linux"`}},
+		{"independent axes", `{"os":["linux","windows"],"image":["ubuntu-latest","windows-latest"]}`, "", []string{`label "windows-latest" conflicts with label "linux"`, `label "ubuntu-latest" conflicts with label "windows"`}},
+		{"exclude mismatches", `{"os":["linux","windows"],"image":["ubuntu-latest","windows-latest"],"exclude":[{"os":"linux","image":"windows-latest"},{"os":"windows","image":"ubuntu-latest"}]}`, "", nil},
+		{"include extends matching originals", `{"os":["linux","windows"],"include":[{"os":"linux","image":"ubuntu-latest"},{"os":"windows","image":"windows-latest"}]}`, "", nil},
+		{"case insensitive include filters", `{"os":["LINUX","WINDOWS"],"include":[{"os":"linux","image":"ubuntu-latest"},{"os":"windows","image":"windows-latest"}]}`, "", nil},
+		{"case insensitive exclude filters", `{"os":["LINUX"],"image":["windows-latest"],"exclude":[{"os":"linux"}]}`, "", nil},
+		{"partial object include preserves axis", `{"os":["windows"],"image":["ubuntu-latest"],"settings":[{"family":"linux","version":24}],"include":[{"settings":{"family":"linux"},"extra":"x64"}]}`, "", []string{`label "ubuntu-latest" conflicts with label "windows"`}},
+		{"partial object include overrides extras", `{"os":["linux","windows"],"config":[{"name":"build","version":24}],"include":[{"image":"ubuntu-latest"},{"os":"windows","config":{"name":"build"},"image":"windows-latest"}]}`, "", nil},
+		{"partial array include overrides extras", `{"os":["linux","windows"],"config":[["build",24]],"include":[{"image":"ubuntu-latest"},{"os":"windows","config":["build"],"image":"windows-latest"}]}`, "", nil},
+		{"partial array excludes mismatch", `{"os":["linux","windows"],"image":["ubuntu-latest"],"config":[["build",24]],"exclude":[{"os":"windows","config":["build"]}]}`, "", nil},
+		{"include overwrites added values", `{"os":["linux","windows"],"include":[{"image":"ubuntu-latest"},{"os":"windows","image":"windows-latest"}]}`, "", nil},
+		{"include adds separate row", `{"os":["linux"],"image":["ubuntu-latest"],"include":[{"os":"windows","image":"windows-latest"}]}`, "", nil},
+		{"appended rows remain separate", `{"os":["linux"],"image":["ubuntu-latest"],"include":[{"os":"windows","image":"windows-latest"},{"os":"windows","image":"ubuntu-latest"}]}`, "", []string{`label "ubuntu-latest" conflicts with label "windows"`}},
+		{"include reintroduces excluded conflict", `{"os":["linux"],"image":["windows-latest"],"exclude":[{"os":"linux"}],"include":[{"os":"linux","image":"windows-latest"}]}`, "", []string{`label "windows-latest" conflicts with label "linux"`}},
+		{"repeated property", `{"os":["linux","windows"]}`, `["${{ matrix.os }}", "${{ matrix.os }}"]`, nil},
+		{"fixed label still conflicts", `{"include":[{"os":"windows","image":"x64"}]}`, `[linux, "${{ matrix.os }}", "${{ matrix.image }}"]`, []string{`label "windows" conflicts with label "linux"`}},
+		{"unknown label remains checked", `{"include":[{"os":"linux","image":"ubuntu-lates"}]}`, "", []string{`label "ubuntu-lates" is unknown`}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, expression := range []bool{false, true} {
+				t.Run(fmt.Sprintf("expression=%v", expression), func(t *testing.T) {
+					strategy := "strategy:\n      matrix: " + tc.matrix
+					if expression {
+						strategy = "strategy: ${{ fromJSON('{\"matrix\":" + tc.matrix + "}') }}"
+					}
+					runsOn := tc.runsOn
+					if runsOn == "" {
+						runsOn = `["${{ matrix.os }}", "${{ matrix.image }}"]`
+					}
+					source := "on: push\njobs:\n  test:\n    " + strategy + "\n    runs-on: " + runsOn + "\n    steps:\n      - run: echo ok\n"
+					linter, err := NewLinter(io.Discard, &LinterOptions{})
+					if err != nil {
+						t.Fatal(err)
+					}
+					errors, err := linter.Lint("test.yaml", []byte(source), nil)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if len(errors) != len(tc.want) {
+						t.Fatalf("wanted %v, got %v", tc.want, errors)
+					}
+					for _, want := range tc.want {
+						found := false
+						for _, diagnostic := range errors {
+							if diagnostic.Kind == "runner-label" && strings.Contains(diagnostic.Message, want) {
+								found = true
+								if expression && (diagnostic.Line != 4 || diagnostic.Column != 15) {
+									t.Fatalf("incorrect strategy diagnostic source: %v", diagnostic)
+								}
+							}
+						}
+						if !found {
+							t.Fatalf("missing %q in %v", want, errors)
+						}
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestRunnerMatrixFilterExpansion(t *testing.T) {
+	// Matrix filters compare leaf values; include entries preserve original axes.
+	// https://github.com/actions/runner/blob/759385a3510197a58b5c08dc1f373b74b9f4643b/src/Sdk/WorkflowParser/Conversion/MatrixBuilder.cs#L553-L620
+	for _, tc := range []struct {
+		name, matrix string
+		want         []string
+	}{
+		{"object include", `{"config":[{"os":"linux","version":24}],"include":[{"config":{"os":"LINUX"},"label":"ubuntu-latest"}]}`, []string{`{"config": {"os": "linux", "version": 24}, "label": "ubuntu-latest"}`}},
+		{"array include", `{"config":[["linux",24]],"include":[{"config":["LINUX"],"label":"ubuntu-latest"}]}`, []string{`{"config": ["linux", 24], "label": "ubuntu-latest"}`}},
+		{"object exclude", `{"config":[{"os":"linux","version":24}],"exclude":[{"config":{"os":"LINUX"}}]}`, nil},
+		{"array exclude", `{"config":[["linux",24]],"exclude":[{"config":["LINUX"]}]}`, nil},
+		{"numeric string include", `{"version":[24],"include":[{"version":"24","label":"ubuntu-latest"}]}`, []string{`{"label": "ubuntu-latest", "version": 24}`}},
+		{"numeric string exclude", `{"version":[24],"exclude":[{"version":"24"}]}`, nil},
+		{"numeric bool exclude", `{"version":[1],"exclude":[{"version":true}]}`, nil},
+		{"hex string exclude", `{"version":[24],"exclude":[{"version":"0x18"}]}`, nil},
+		{"octal string exclude", `{"version":[24],"exclude":[{"version":"0o30"}]}`, nil},
+		{"signed hex string exclude", `{"version":[-1],"exclude":[{"version":"0xffffffff"}]}`, nil},
+		{"signed octal string exclude", `{"version":[-1],"exclude":[{"version":"0o37777777777"}]}`, nil},
+		{"trimmed numeric string", `{"version":[24],"exclude":[{"version":" 24 "}]}`, nil},
+		{"empty string excludes false", `{"version":[false],"exclude":[{"version":""}]}`, nil},
+		{"null excludes zero", `{"version":[0],"exclude":[{"version":null}]}`, nil},
+		{"different strings do not coerce", `{"version":["24"],"exclude":[{"version":"024"}]}`, []string{`{"version": "24"}`}},
+		{"reject YAML null spelling", `{"version":[0],"exclude":[{"version":"null"}]}`, []string{`{"version": 0}`}},
+		{"reject YAML bool spelling", `{"version":[1],"exclude":[{"version":"true"}]}`, []string{`{"version": 1}`}},
+		{"reject underscores", `{"version":[24],"exclude":[{"version":"2_4"}]}`, []string{`{"version": 24}`}},
+		{"reject uppercase radix prefix", `{"version":[24],"exclude":[{"version":"0X18"}]}`, []string{`{"version": 24}`}},
+		{"reject hexadecimal floats", `{"version":[24],"exclude":[{"version":"0x1.8p4"}]}`, []string{`{"version": 24}`}},
+		{"missing null leaf", `{"config":[{"os":"linux"}],"exclude":[{"config":{"version":null}}]}`, nil},
+		{"array null past last index", `{"config":[["linux"]],"exclude":[{"config":["LINUX",null]}]}`, nil},
+		{"empty nested filter", `{"config":[{"os":"linux"}],"exclude":[{"config":{}}]}`, nil},
+		{"missing nonnull leaf", `{"config":[{"os":"linux"}],"exclude":[{"config":{"version":24}}]}`, []string{`{"config": {"os": "linux"}}`}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, expression := range []bool{false, true} {
+				strategy := "strategy:\n      matrix: " + tc.matrix
+				if expression {
+					strategy = "strategy: ${{ fromJSON('{\"matrix\":" + tc.matrix + "}') }}"
+				}
+				source := "on: push\njobs:\n  test:\n    " + strategy + "\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+				workflow, errs := Parse([]byte(source))
+				if len(errs) != 0 {
+					t.Fatal(errs)
+				}
+				combinations, known := knownRunnerMatrixCombinations(workflow.Jobs["test"].Strategy)
+				if !known || len(combinations) != len(tc.want) {
+					t.Fatalf("known=%v, wanted %v, got %v", known, tc.want, combinations)
+				}
+				for i, combination := range combinations {
+					value := &RawYAMLObject{Props: combination}
+					if got := value.String(); got != tc.want[i] {
+						t.Fatalf("wanted %s, got %s", tc.want[i], got)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestRunnerMatrixNumericFilters(t *testing.T) {
+	for _, tc := range []struct {
+		value, filter string
+		matches       bool
+	}{
+		{".inf", "Infinity", true},
+		{".inf", "infinity", true},
+		{".inf", "+Infinity", true},
+		{".inf", "1e999", true},
+		{"-.inf", "-1e999", true},
+		{".inf", ".inf", false},
+		{".inf", "Inf", false},
+		{".nan", "NaN", false},
+		{"0", "1e-999", true},
+	} {
+		t.Run(tc.value+"_"+tc.filter, func(t *testing.T) {
+			source := "on: push\njobs:\n  test:\n    strategy:\n      matrix: {value: [" + tc.value + "], exclude: [{value: '" + tc.filter + "'}]}\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			workflow, errs := Parse([]byte(source))
+			if len(errs) != 0 {
+				t.Fatal(errs)
+			}
+			combinations, known := knownRunnerMatrixCombinations(workflow.Jobs["test"].Strategy)
+			if !known || (len(combinations) == 0) != tc.matches {
+				t.Fatalf("known=%v, expected exclusion=%v, got %v", known, tc.matches, combinations)
+			}
+		})
+	}
+}
+
+func TestRunnerMatrixCorrelationFallback(t *testing.T) {
+	var extra []string
+	for i := range 257 {
+		extra = append(extra, strconv.Itoa(i))
+	}
+	for _, tc := range []struct {
+		name, matrix, runsOn string
+		want                 string
+	}{
+		{"unknown includes", `{os: [linux, windows], image: [ubuntu-latest, windows-latest], include: "${{ fromJSON(vars.INCLUDE) }}"}`, "", ""},
+		{"unknown keeps fixed conflicts", `{os: [windows], image: [x64], include: "${{ fromJSON(vars.INCLUDE) }}"}`, `[linux, "${{ matrix.os }}", "${{ matrix.image }}"]`, `label "windows" conflicts with label "linux"`},
+		{"unknown keeps label diagnostics", `{os: [linux], image: [ubuntu-lates], include: "${{ fromJSON(vars.INCLUDE) }}"}`, "", `label "ubuntu-lates" is unknown`},
+		{"unknown matrix values", `{os: [linux, "${{ vars.OS }}"], image: [ubuntu-latest, windows-latest]}`, "", ""},
+		{"bounded expansion keeps fixed conflicts", `{os: [windows], image: [x64], extra: [` + strings.Join(extra, ",") + `]}`, `[linux, "${{ matrix.os }}", "${{ matrix.image }}"]`, `label "windows" conflicts with label "linux"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runsOn := tc.runsOn
+			if runsOn == "" {
+				runsOn = `["${{ matrix.os }}", "${{ matrix.image }}"]`
+			}
+			source := "on: push\njobs:\n  test:\n    strategy:\n      matrix: " + tc.matrix + "\n    runs-on: " + runsOn + "\n    steps:\n      - run: echo ok\n"
+			linter, err := NewLinter(io.Discard, &LinterOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			errors, err := linter.Lint("test.yaml", []byte(source), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.want == "" {
+				if len(errors) != 0 {
+					t.Fatal(errors)
+				}
+			} else if len(errors) != 1 || errors[0].Kind != "runner-label" || !strings.Contains(errors[0].Message, tc.want) {
+				t.Fatalf("wanted one %q diagnostic, got %v", tc.want, errors)
+			}
+		})
+	}
+}
+
+func TestKnownStrategyCorrelatedLabelsStayData(t *testing.T) {
+	source := `on: push
+jobs:
+  test:
+    strategy: ${{ fromJSON('{"matrix":{"include":[{"os":"${{ vars.RUNNER }}","image":"x64"}]}}') }}
+    runs-on: ["${{ matrix.os }}", "${{ matrix.image }}"]
+    steps:
+      - run: echo ok
+`
+	linter, err := NewLinter(io.Discard, &LinterOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	errors, err := linter.Lint("test.yaml", []byte(source), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(errors) != 1 || errors[0].Kind != "runner-label" || !strings.Contains(errors[0].Message, `label "${{ vars.RUNNER }}" is unknown`) {
+		t.Fatalf("evaluated label data was reinterpreted: %v", errors)
+	}
+	if errors[0].Line != 4 || errors[0].Column != 15 {
+		t.Fatalf("incorrect diagnostic source: %v", errors[0])
 	}
 }

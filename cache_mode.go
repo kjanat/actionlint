@@ -69,7 +69,11 @@ func cacheModeFromYAML(n *yaml.Node) *CacheMode {
 	}
 	m := &CacheMode{Pos: posAt(n)}
 	if n.Kind == yaml.ScalarNode && n.Tag == yamlTagStr {
-		switch n.Value {
+		value := n.Value
+		if literal := literalExpressionValue(value); literal != nil {
+			value = *literal
+		}
+		switch value {
 		case "none":
 			m.Kind = CacheModeNone
 		case "read":

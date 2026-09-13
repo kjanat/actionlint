@@ -42,7 +42,10 @@ func (shape workflowExpressionScalar) validate(ty ExprType, path string) []strin
 	return []string{fmt.Sprintf("%s must be %s but found %s", path, shape, ty.String())}
 }
 
-type workflowExpressionArray struct{ elem workflowExpressionShape }
+type workflowExpressionArray struct {
+	elem     workflowExpressionShape
+	nonempty bool
+}
 
 func (shape workflowExpressionArray) validate(ty ExprType, path string) []string {
 	if _, unknown := ty.(AnyType); unknown {
@@ -138,16 +141,17 @@ const (
 
 var (
 	workflowStringMap = workflowExpressionObject{mapped: workflowString}
-	workflowLabels    = workflowExpressionUnion{workflowNonEmpty, workflowExpressionArray{workflowNonEmpty}}
-	workflowRunner    = workflowExpressionUnion{workflowNonEmpty, workflowExpressionArray{workflowNonEmpty}, workflowExpressionObject{props: map[string]workflowExpressionShape{"group": workflowNonEmpty, "labels": workflowLabels}}}
+	workflowLabelList = workflowExpressionArray{elem: workflowNonEmpty, nonempty: true}
+	workflowLabels    = workflowExpressionUnion{workflowNonEmpty, workflowLabelList}
+	workflowRunner    = workflowExpressionUnion{workflowNonEmpty, workflowLabelList, workflowExpressionObject{props: map[string]workflowExpressionShape{"group": workflowNonEmpty, "labels": workflowLabels}}}
 	workflowStrategy  = workflowExpressionObject{props: map[string]workflowExpressionShape{
 		"fail-fast": workflowBool, "max-parallel": workflowPositive,
 		"matrix": workflowExpressionObject{
 			props: map[string]workflowExpressionShape{
-				"include": workflowExpressionArray{workflowExpressionObject{mapped: workflowAny}},
-				"exclude": workflowExpressionArray{workflowExpressionObject{mapped: workflowAny}},
+				"include": workflowExpressionArray{elem: workflowExpressionObject{mapped: workflowAny}},
+				"exclude": workflowExpressionArray{elem: workflowExpressionObject{mapped: workflowAny}},
 			},
-			mapped: workflowExpressionArray{workflowAny},
+			mapped: workflowExpressionArray{elem: workflowAny},
 		},
 	}}
 	workflowDefaultsRun        = workflowExpressionObject{props: map[string]workflowExpressionShape{"shell": workflowNonEmpty, "working-directory": workflowNonEmpty}}
@@ -163,7 +167,7 @@ func workflowContainerShape(service bool) workflowExpressionShape {
 	props := map[string]workflowExpressionShape{
 		"image": workflowString, "options": workflowString,
 		"env": workflowStringMap, "credentials": workflowCredentials,
-		"ports": workflowExpressionArray{workflowNonEmpty}, "volumes": workflowExpressionArray{workflowNonEmpty},
+		"ports": workflowExpressionArray{elem: workflowNonEmpty}, "volumes": workflowExpressionArray{elem: workflowNonEmpty},
 	}
 	if service {
 		props["command"] = workflowString
@@ -251,6 +255,9 @@ func workflowExpressionLiteralErrors(shape workflowExpressionShape, value any, p
 		}
 	case workflowExpressionArray:
 		if values, ok := value.([]any); ok {
+			if shape.nonempty && len(values) == 0 {
+				errors = append(errors, path+" must contain at least one value")
+			}
 			for i, item := range values {
 				errors = append(errors, workflowExpressionLiteralErrors(shape.elem, item, fmt.Sprintf("%s[%d]", path, i))...)
 			}
