@@ -1659,7 +1659,7 @@ func (p *parser) parseSnapshot(pos *Pos, n *yaml.Node) *Snapshot {
 // A job containing one of these keys cannot populate Job.WorkflowCall.
 func jobKeyRequiresSteps(key string) bool {
 	switch key {
-	case "runs-on", "environment", "outputs", "env", "defaults", "steps", "timeout-minutes", "continue-on-error", "container":
+	case "runs-on", "environment", "outputs", "env", "defaults", "steps", "timeout-minutes", "continue-on-error", "container", "services":
 		return true
 	default:
 		return false
