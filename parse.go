@@ -484,7 +484,15 @@ func parseYAMLInteger(value string) (int, error) {
 		return 0, errors.New("invalid YAML integer")
 	}
 	n, err := strconv.ParseUint(value[2:], base, 32)
-	return int(int32(uint32(n))), err
+	if err != nil {
+		return 0, err
+	}
+	// Decode the runner's two's-complement representation without narrowing
+	// an unsigned value into a signed type. Both branches fit a 32-bit int.
+	if n <= math.MaxInt32 {
+		return int(n), nil
+	}
+	return -1 - int(math.MaxUint32-n), nil
 }
 
 func (p *parser) parseFloat(n *yaml.Node) *Float {

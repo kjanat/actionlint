@@ -7,10 +7,12 @@ import (
 )
 
 func TestSchemaNestedTimezoneAliases(t *testing.T) {
+	// LoadLocation can resolve casing variants through the host filesystem.
+	// Use a nonexistent zone, not lowercase UTC, to test an invalid IANA name.
 	for _, tz := range []struct {
 		name  string
 		valid bool
-	}{{"UTC", true}, {"Etc/UTC", true}, {"Universal", true}, {"Europe/Amsterdam", true}, {"Local", false}, {"local", false}, {"utc", false}} {
+	}{{"UTC", true}, {"Etc/UTC", true}, {"Universal", true}, {"Europe/Amsterdam", true}, {"Local", false}, {"local", false}, {"Invalid/Timezone", false}} {
 		t.Run(tz.name, func(t *testing.T) {
 			rule := NewRuleEvents()
 			rule.checkTimezone(&String{Value: tz.name, Pos: &Pos{Line: 1, Col: 1}})

@@ -10,6 +10,36 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+func TestParseYAMLIntegerRadixBounds(t *testing.T) {
+	for _, tc := range []struct {
+		value string
+		want  int
+	}{
+		{"0x0", 0},
+		{"0x7fffffff", 2147483647},
+		{"0x80000000", -2147483648},
+		{"0xffffffff", -1},
+		{"0o0", 0},
+		{"0o17777777777", 2147483647},
+		{"0o20000000000", -2147483648},
+		{"0o37777777777", -1},
+	} {
+		t.Run(tc.value, func(t *testing.T) {
+			got, err := parseYAMLInteger(tc.value)
+			if err != nil || got != tc.want {
+				t.Fatalf("got (%d, %v), want (%d, nil)", got, err, tc.want)
+			}
+		})
+	}
+	for _, value := range []string{"0x100000000", "0o40000000000", "0x", "0o8"} {
+		t.Run(value, func(t *testing.T) {
+			if _, err := parseYAMLInteger(value); err == nil {
+				t.Fatal("expected invalid or overflowing integer to fail")
+			}
+		})
+	}
+}
+
 func TestParserAnchorNames(t *testing.T) {
 	for _, name := range []string{"git+opts", "git-opts", "git_opts", "opts123"} {
 		t.Run(name, func(t *testing.T) {
