@@ -611,6 +611,11 @@ func (l *Linter) check(
 		if len(cfg.RequiredActions()) > 0 {
 			rules = append(rules, NewRuleRequiredActions())
 		}
+		for _, rule := range []Rule{NewRuleCacheWriteUntrusted(), NewRuleCacheCallUnrestricted(), NewRuleCacheOperation()} {
+			if cfg.cachePolicyEnabled(rule.Name()) {
+				rules = append(rules, rule)
+			}
+		}
 		if l.shellcheck != "" {
 			r, err := NewRuleShellcheck(l.shellcheck, proc)
 			if err == nil {
@@ -669,6 +674,11 @@ func (l *Linter) check(
 		}
 	}
 
+	var suppressionPolicy *SuppressionsPolicy
+	if cfg != nil {
+		suppressionPolicy = cfg.Policy.DisallowSuppressions
+	}
+	all = filterInlineSuppressions(content, all, suppressionPolicy)
 	all = l.filterErrors(all, cfg.PathConfigs(path))
 
 	for _, err := range all {

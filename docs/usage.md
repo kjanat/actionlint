@@ -73,6 +73,13 @@ actionlint -completion powershell | Out-String | Invoke-Expression
 
 ### Ignore some errors
 
+The three cache policies support [inline exceptions](config.md#inline-cache-policy-exceptions) with a rule name and
+a reason. Place the comment on the reported line, or use `actionlint:ignore-next-line` immediately before it:
+
+```yaml
+cache-mode: write # actionlint:ignore cache-write-untrusted -- this job runs reviewed default-branch code only
+```
+
 To ignore some errors, `-ignore` option offers to filter errors by messages
 using regular expression. The option is repeatable. The regular expression
 syntax is the same as [RE2][re2].

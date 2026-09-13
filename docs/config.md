@@ -117,20 +117,190 @@ paths:
 
 ## Policy checks
 
-The keys under `policy` turn on checks that enforce a convention the repository chose for itself. GitHub runs a
-workflow that violates one of them without complaining, so none of these checks reports anything until this mapping
-turns it on, and a repository with no configuration file never sees them. Errors from the checks in
-[the checks document](checks.md) are a different thing: those report a workflow that is broken, and they always run.
+The keys under `policy` configure checks for cache safety and repository conventions. The three cache policies below
+are **enabled by default**, including when no configuration file exists. The remaining policies are opt-in.
+These checks can report workflows that GitHub accepts: accepting a write grant does not make it safe, and a disabled
+cache operation can silently do nothing.
 
 Each check owns one key. The key name is also the name of the rule, so it is the name in the `[...]` suffix of the
 error message and the value of `{{$err.Kind}}` in the `-format` option. Each one adds its own subsection here, in
 alphabetical order by key.
 
-Every key tells three states apart. Writing `false`, or an empty list for a key whose value is a list, turns the
-check off. Leaving the key out, or writing `null`, says nothing either way, so an empty `policy` mapping switches
-nothing off. That distinction is what lets a key which says nothing take its value from elsewhere once actionlint
-reads a user-global configuration file as well as the repository's. Today it reads one file: `-config-file` if given,
-otherwise the repository's.
+Writing `false`, or an empty list for a list-valued key, turns that check off. Leaving the key out or writing `null`
+retains its default, so `policy: {}` does not disable cache policies. actionlint reads one configuration file:
+`-config-file` if given, otherwise the repository's.
+
+### cache-call-unrestricted
+
+Enabled by default. Requires an explicit `cache-mode` at a reusable call site, or inherited from its workflow, on
+the low-trust triggers listed under [cache-write-untrusted](#cache-write-untrusted). GitHub's default read-only mode
+does not cap a callee that explicitly asks for write access. Set `cache-mode: read` or `cache-mode: none` to establish
+that cap. This applies to local and remote reusable calls, even when a local callee currently uses only read access;
+the caller's restriction should survive a later callee change. Remote workflows are not downloaded.
+
+```yaml
+policy:
+  cache-call-unrestricted: false
+```
+
+An explicit write-capable mode satisfies the declaration check but is reported separately by
+`cache-write-untrusted`. Invalid declarations produce syntax diagnostics without an additional policy finding.
+
+### cache-operation
+
+Enabled by default. Reports official cache actions whose operation is disabled by the job's effective explicit mode:
+
+| Action                  | Modes reported       |
+| ----------------------- | -------------------- |
+| `actions/cache/save`    | `read`, `none`       |
+| `actions/cache/restore` | `write-only`, `none` |
+| `actions/cache`         | `none`               |
+
+Job declarations override workflow declarations. With `read`, the combined action can still restore; with `write-only`,
+it can still save, so neither produces a finding for the combined action. Omitted modes are not guessed from event
+payloads. Wrappers, custom cache actions and package-manager caching options are not inspected by this check.
+Only the three exact entry points above are recognized. Owner and repository names are case-insensitive, but
+the `save` and `restore` subpaths retain their case. Similarly named repositories and other subpaths are excluded.
+GitHub skips a forbidden operation without failing the job; this diagnostic helps catch ineffective steps.
+
+```yaml
+policy:
+  cache-operation: false
+```
+
+### cache-write-untrusted
+
+Enabled by default. Reports explicit `write` and `write-only` grants on low-trust triggers that can use caches under
+the default branch. These grants override GitHub's read-only default. If untrusted code or input controls the saved
+contents, a later privileged workflow can consume a poisoned cache.
+
+The checked triggers are `branch_protection_rule`, `check_run`, `check_suite`, `deployment`, `deployment_status`,
+`discussion`, `discussion_comment`, `fork`, `gollum`, `image_version`, `issue_comment`, `issues`, `label`, `milestone`,
+`public`, `pull_request_target`, `status`, `watch`, and `workflow_run`. Deployment events are included because their
+target can be the default branch. A workflow with multiple triggers is checked if any listed trigger is present.
+
+This is a conservative declaration check. It does not prove that attacker-controlled code executes, interpret `if`
+guards, inspect cache keys, or establish the trust of downloaded artifacts. For a reviewed exception, use an
+[inline suppression](#inline-cache-policy-exceptions). Ordinary `pull_request`, review events and `merge_group` use
+their own refs and are not classified as this default-branch cache risk. Trusted write-default events, such as `push`,
+and a standalone `workflow_call` trigger do not produce this finding.
+
+Set `read` or `none` on the affected job. An inherited workflow declaration is reported once, and is not reported
+if every job overrides it with a safe mode. Omitting the mode on an ordinary job retains GitHub's safe trigger default;
+reusable calls are covered separately by `cache-call-unrestricted`.
+
+```yaml
+policy:
+  cache-write-untrusted: false
+```
+
+The event classification follows GitHub's [cache access defaults](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#cache-access-for-low-trust-workflow-triggers)
+and [event ref definitions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows).
+Tests require an explicit trust classification for every event in the generated webhook inventory. An unclassified
+event is conservatively treated as restricted; event syntax validation still runs separately.
+
+### Inline cache policy exceptions
+
+Prefer an exception next to the reviewed declaration over disabling a policy for the entire repository:
+
+```yaml
+on: pull_request_target
+cache-mode: write # actionlint:ignore cache-write-untrusted -- jobs use reviewed default-branch code only
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Report metadata without running pull request code"
+```
+
+Alternatively, put the directive on its own line immediately before the reported declaration:
+
+```yaml
+jobs:
+  report:
+    # actionlint:ignore-next-line cache-call-unrestricted -- reviewed callee manages its own cache limit
+    uses: example/repository/.github/workflows/report.yml@main
+```
+
+Both forms require an exact rule name and a nonempty reason after `--`. A comma-separated list selects multiple
+cache rules. Only `cache-call-unrestricted`, `cache-operation`, and `cache-write-untrusted` can be suppressed this way.
+A directive affects the reported line only, including multiple findings of the selected rule on that line; it does
+not affect other rules or later lines. Duplicate selectors have no additional effect; empty selectors are invalid.
+Scope follows physical lines: a comment after a one-line flow mapping can suppress matching
+findings from multiple entries on that line. Putting a directive above `jobs:` does not cover the jobs below it.
+The first `--` surrounded by spaces starts the reason, which may itself contain `--` or directive-like text.
+
+Only comments attached to a declaration are interpreted. A blank line, another comment or a document separator
+between a preceding directive and its target detaches it; orphan comments at the end of a document are also inert.
+For attached directives, unknown selectors, missing reasons, standalone `ignore` and trailing `ignore-next-line`
+report `inline-suppression` errors.
+
+Use trailing comments on the same physical line as the reported value, or standalone comments immediately before
+that line. For aliases, put the exception at the anchor declaration when the diagnostic points there. Text inside
+quoted YAML strings or `run: |` scripts is not an actionlint directive. General inline ignores for other rules are
+not supported; existing CLI and path-based ignore patterns remain available.
+
+Comments after multiline plain, quoted, tagged or anchored values are interpreted at the comment's physical line.
+If the diagnostic points at the value's opening line, an exception on its closing line does not suppress it.
+
+Inline exceptions are applied before CLI and path-based ignore patterns. Those patterns can filter remaining cache
+findings and `inline-suppression` errors. A valid exception remains valid when another ignore also covers its finding;
+there is no unused-suppression diagnostic. As with workflow parsing, only the first YAML document is inspected.
+
+These findings use normal diagnostic output and exit status 1. Suppression removes only the selected finding; it
+does not change cache access in GitHub Actions.
+
+### disallow-suppressions
+
+Prevent inline exceptions from hiding cache policy findings:
+
+```yaml
+policy:
+  disallow-suppressions: true
+```
+
+With `true` or `{}`, actionlint reports each prohibited directive as `disallow-suppressions` at the comment and
+retains the original violation at its source location. Both `actionlint:ignore` and `actionlint:ignore-next-line`
+are covered. An inline directive cannot exempt itself from this policy. Omission, `null`, or `false` permits
+inline exceptions as described above.
+
+To restrict only specific rules or choose which diagnostics appear:
+
+```yaml
+policy:
+  disallow-suppressions:
+    rules: [cache-call-unrestricted, cache-write-untrusted]
+    report: all
+```
+
+| `report`        | Prohibited directive | Original violation |
+| --------------- | -------------------- | ------------------ |
+| `all` (default) | Reported             | Retained           |
+| `suppression`   | Reported             | Suppressed         |
+| `violation`     | Not reported         | Retained           |
+
+Omitted `rules` selects all supported inline rule IDs. Explicit lists must be nonempty and contain only
+`cache-call-unrestricted`, `cache-operation`, or `cache-write-untrusted`; duplicate entries have no additional
+effect. A directive with multiple selectors can still suppress rules outside the prohibited set. Unknown fields,
+rule IDs, report values, and null mapping fields are configuration errors.
+
+In `all` and `suppression` modes, a valid prohibited directive is reported even when it hides no finding, including
+when the underlying rule is disabled. `violation` mode only retains actual findings; it does not enable disabled
+rules or invent a finding for an unused directive. Malformed directives still produce `inline-suppression` errors
+and suppress nothing. The comment attachment and physical-line scope described above remain unchanged.
+
+These controls follow the distinction between preventing local exceptions ([Rust's `forbid`](https://doc.rust-lang.org/stable/rustc/lints/levels.html#forbid))
+and configuring how the linter handles inline directives ([ESLint's linter options](https://eslint.org/docs/latest/use/configure/configuration-files#configure-linter-options)).
+Unused-directive reporting is a separate concern; enabling this policy does not add an unused-suppression check.
+
+CLI and configured path ignore patterns still run afterwards and can filter either diagnostic. This
+setting governs inline comments; it does not override those explicit filters or changes to the configuration itself.
+Remaining diagnostics use the usual output formats and exit status 1.
+
+Go callers can construct this policy with `DisallowSuppressions("all", "cache-operation")` and assign it to
+`Config.Policy.DisallowSuppressions`. Omit the rule arguments to cover all suppressible rules. Invalid report values
+and rule IDs return an error. `Enabled()`, `Report()` and `Rules()` expose the parsed settings; `Rules()` returns a copy
+of the explicit selection, or `nil` for all rules on an enabled policy. Nil and zero-value policies are disabled.
 
 ### require-commit-hash
 

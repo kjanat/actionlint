@@ -25,6 +25,51 @@
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
+              "id": "cache-call-unrestricted",
+              "name": "CacheCallUnrestricted",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Checks cache access ceilings on low-trust reusable workflow calls",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {
+                "text": "Checks cache access ceilings on low-trust reusable workflow calls"
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
+              "id": "cache-operation",
+              "name": "CacheOperation",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Checks cache actions disabled by explicit cache access modes",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {
+                "text": "Checks cache actions disabled by explicit cache access modes"
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
+              "id": "cache-write-untrusted",
+              "name": "CacheWriteUntrusted",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Checks cache write grants on low-trust triggers",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {
+                "text": "Checks cache write grants on low-trust triggers"
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
               "id": "credentials",
               "name": "Credentials",
               "defaultConfiguration": {
@@ -51,6 +96,21 @@
               },
               "fullDescription": {
                 "text": "Checks for deprecated \"set-output\", \"save-state\", \"set-env\", and \"add-path\" commands at \"run:\""
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
+              "id": "disallow-suppressions",
+              "name": "DisallowSuppressions",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Reports inline exceptions prohibited by configuration",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {
+                "text": "Reports inline exceptions prohibited by configuration"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -141,6 +201,21 @@
               },
               "fullDescription": {
                 "text": "Checks for if: conditions which are always true/false"
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
+              "id": "inline-suppression",
+              "name": "InlineSuppression",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Checks inline cache policy exception directives",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {
+                "text": "Checks inline cache policy exception directives"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },

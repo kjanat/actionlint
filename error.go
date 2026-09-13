@@ -295,7 +295,9 @@ func NewErrorFormatter(format string) (*ErrorFormatter, error) {
 	}
 
 	r := map[string]*ruleTemplateFields{
-		"syntax-check": {"syntax-check", "Checks for GitHub Actions workflow syntax"},
+		"syntax-check":          {"syntax-check", "Checks for GitHub Actions workflow syntax"},
+		"inline-suppression":    {"inline-suppression", "Checks inline cache policy exception directives"},
+		"disallow-suppressions": {"disallow-suppressions", "Reports inline exceptions prohibited by configuration"},
 	}
 
 	funcs := template.FuncMap(map[string]any{
