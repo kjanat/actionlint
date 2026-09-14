@@ -3,6 +3,9 @@
 The conformance job runs upstream fixtures through actionlint's Go implementation. It gives us independent inputs and
 expectations before changing the implementation or attempting a language port.
 
+For live GitHub expression evaluation, coercion and `fromJSON()` behavior, see the separate
+[expression reference and reproduction workflow](expression-behavior.md).
+
 ## Sources and coverage
 
 | Source                                                                  | Imported cases | What is compared                                                                                  |

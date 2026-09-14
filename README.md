@@ -265,6 +265,7 @@ See [the usage document][usage] for the pinned ShellCheck build and how to choos
 - [Configuration][config]: Runner labels, variables, secrets, default permissions, error filters, and opt-in policy checks, with YAML Language Server schema support.
 - [Go API][api]: How to use actionlint as Go library.
 - [Schema audit](docs/schema-audit.md): Pinned upstream definitions, compatibility fixes, validation evidence, and retained differences.
+- [Expression behavior](docs/expression-behavior.md): Reproduce GitHub's runtime behavior, understand parser differences, and avoid surprising workflow decisions.
 - [References][refs]: Links to resources.
 - [GitHub Actions changelog][github-changelog]: Browse and search the latest entries from GitHub's Actions changelog feed.
 

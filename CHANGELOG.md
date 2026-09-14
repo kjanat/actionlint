@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Add a GitHub Actions expression reference with evaluated examples for numeric parsing, coercion and workflow conditions, backed by a reproducible 85-case probe and archived measurement results. (kjanat/actionlint#171)
+
 <a id="v1.17.0"></a>
 
 ## [v1.17.0](https://github.com/kjanat/actionlint/releases/tag/v1.17.0) - 2026-09-13
