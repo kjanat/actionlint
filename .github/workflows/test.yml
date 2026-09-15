@@ -1,0 +1,14 @@
+name: Reproduce fromJSON document parsing
+on: { push: { branches: ["4030087"] } }
+permissions: {}
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print the parsed value
+        env:
+          RAW: ${{ inputs.value || '31 trailing' }}
+          PARSED: ${{ toJSON(fromJSON(inputs.value || '31 trailing')) }}
+        shell: bash
+        run: |
+          printf 'raw=%s\nparsed=%s\n' "${RAW}" "${PARSED}"
