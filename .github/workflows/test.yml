@@ -1,14 +1,54 @@
 name: Reproduce fromJSON document parsing
-on: { push: { branches: ["4030087"] } }
+
+on:
+  push:
+
 permissions: {}
+
 jobs:
   compare:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - input: "31"
+            expected_gha: "31"
+            json_parse: Accepted
+          - input: "31 trailing"
+            expected_gha: "31"
+            json_parse: Rejected
+          - input: '{"n":1} garbage'
+            expected_gha: '{"n":1}'
+            json_parse: Rejected
+          - input: '{"n":1}{"n":2}'
+            expected_gha: '{"n":1}'
+            json_parse: Rejected
+          - input: '/* comment */{"n":1}'
+            expected_gha: '" comment "'
+            json_parse: Rejected
     steps:
-      - name: Print the parsed value
+      - name: Print parsed value
         env:
-          RAW: ${{ inputs.value || '31 trailing' }}
-          PARSED: ${{ toJSON(fromJSON(inputs.value || '31 trailing')) }}
+          RAW: ${{ matrix.input }}
+          PARSED: ${{ toJSON(fromJSON(matrix.input)) }}
+          EXPECTED: ${{ matrix.expected_gha }}
+          JSON_PARSE: ${{ matrix.json_parse }}
         shell: bash
         run: |
-          printf 'raw=%s\nparsed=%s\n' "${RAW}" "${PARSED}"
+          printf 'raw=%s\nparsed=%s\nexpected_gha=%s\njson.parse=%s\n' \
+            "${RAW}" "${PARSED}" "${EXPECTED}" "${JSON_PARSE}"
+
+          node -e '
+            const raw = process.env.RAW;
+            try {
+              JSON.parse(raw);
+              console.log("node_json_parse=Accepted");
+            } catch {
+              console.log("node_json_parse=Rejected");
+            }
+          '
+
+          if [[ "${PARSED}" != "${EXPECTED}" ]]; then
+            echo "::warning::GHA fromJSON result mismatch"
+          fi
