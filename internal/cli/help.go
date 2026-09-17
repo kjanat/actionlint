@@ -107,6 +107,10 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 	}
 	out, colored, restore := a.helpOutput(c)
 	defer restore()
+	width := 0
+	if file, ok := a.streams.Stderr.(*os.File); ok {
+		width = terminalWidth(file)
+	}
 	links := a.helpHyperlinks()
 	heading := helpStyle(colored, color.Bold, color.FgCyan)
 	command := helpStyle(colored, color.Bold)
@@ -137,7 +141,7 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 				fs.AddFlag(f)
 			}
 		})
-		if usage := fs.FlagUsagesWrapped(88); usage != "" {
+		if usage := fs.FlagUsagesWrapped(width); usage != "" {
 			_, _ = fmt.Fprintf(out, "\n%s\n%s", heading.Sprint(group+":"), styleHelpFlags(usage, option))
 		}
 	}
