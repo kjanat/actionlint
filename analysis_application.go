@@ -261,16 +261,7 @@ func (a *AnalysisSession) source(path string, content []byte, project *Project) 
 func (a *AnalysisSession) analyze(sources []SourceUnit) (*AnalysisResult, error) {
 	request := a.request
 	request.Sources = sources
-	result, err := analyze(a.ctx, request, a.logOut, a.logLevel)
-	if err != nil {
-		return nil, err
-	}
-	for _, project := range a.projects.known {
-		if project.configPath != "" {
-			result.Inputs = append(result.Inputs, project.configPath)
-		}
-	}
-	return result, nil
+	return analyze(a.ctx, request, a.logOut, a.logLevel)
 }
 
 // Completed writes the selection summary after a caller has successfully rendered a result.

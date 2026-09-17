@@ -185,6 +185,59 @@ func TestAnalysisSelectedConfigInput(t *testing.T) {
 	}
 }
 
+func TestAnalysisSessionConfigInputs(t *testing.T) {
+	root := t.TempDir()
+	workflowA := filepath.Join(root, "a", ".github", "workflows", "first.yml")
+	workflowB := filepath.Join(root, "b", ".github", "workflows", "first.yml")
+	secondB := filepath.Join(root, "b", ".github", "workflows", "second.yml")
+	configA := filepath.Join(root, "a", ".github", "actionlint.yaml")
+	configB := filepath.Join(root, "b", ".github", "actionlint.yml")
+	loose := filepath.Join(root, "loose.yml")
+	for _, name := range []string{"a", "b"} {
+		for _, dir := range []string{".git", ".github/workflows"} {
+			if err := os.MkdirAll(filepath.Join(root, name, dir), 0700); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	for _, path := range []string{workflowA, workflowB, secondB, loose} {
+		if err := os.WriteFile(path, []byte(commandGoodWorkflow), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, path := range []string{configA, configB} {
+		if err := os.WriteFile(path, []byte("{}\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name   string
+		paths  []string
+		inputs []string
+	}{
+		{"first project", []string{workflowA}, []string{workflowA, configA}},
+		{"second project", []string{workflowB, secondB}, []string{workflowB, secondB, configB}},
+		{"both projects", []string{workflowA, workflowB}, []string{workflowA, workflowB, configA, configB}},
+		{"no project", []string{loose}, []string{loose}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := session.Files(tc.paths, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			slices.Sort(tc.inputs)
+			slices.Sort(result.Inputs)
+			if diff := cmp.Diff(tc.inputs, result.Inputs); diff != "" {
+				t.Fatalf("analysis input mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
 func TestLinterEmptySelection(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()

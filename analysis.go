@@ -118,6 +118,9 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 			path = source.Path
 		}
 		inputs.add(path)
+		if source.Project != nil {
+			inputs.add(source.Project.configPath)
+		}
 		ac, wc := actions.GetCache(source.Project), workflows.GetCache(source.Project)
 		group.Go(func() error {
 			file := &result.files[i]
