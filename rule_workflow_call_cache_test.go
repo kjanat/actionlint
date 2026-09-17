@@ -83,7 +83,7 @@ func TestWorkflowCallCacheModeNestedMetadataErrors(t *testing.T) {
 func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, fromAST bool) []*Error {
 	t.Helper()
 	root := t.TempDir()
-	cache := NewLocalReusableWorkflowCache(&Project{root, nil}, root, nil)
+	cache := NewLocalReusableWorkflowCache(&Project{root: root}, root, nil)
 	for name, src := range callees {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(src), 0o600); err != nil {
 			t.Fatal(err)
@@ -268,7 +268,7 @@ func TestReusableWorkflowCacheModeMetadataParity(t *testing.T) {
 		t.Fatalf("expected the invalid null declaration, got %v", errs)
 	}
 	root := t.TempDir()
-	cache := NewLocalReusableWorkflowCache(&Project{root, nil}, root, nil)
+	cache := NewLocalReusableWorkflowCache(&Project{root: root}, root, nil)
 	event, _ := w.FindWorkflowCallEvent()
 	cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, w)
 	fromAST, _, ok := cache.readCache("./callee.yaml")

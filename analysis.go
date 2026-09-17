@@ -23,7 +23,7 @@ type SourceUnit struct {
 	inputPath string
 }
 
-// AnalysisRequest contains resolved sources and analysis settings, not CLI flags or renderers.
+// AnalysisRequest contains resolved sources and analysis settings.
 type AnalysisRequest struct {
 	Sources           []SourceUnit
 	ShellCheck        string

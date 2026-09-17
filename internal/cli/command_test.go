@@ -133,6 +133,7 @@ func TestCancelledMetadataCommands(t *testing.T) {
 	for _, args := range [][]string{
 		{"version"}, {"rules"}, {"doctor", "--no-config"},
 		{"config", "path"}, {"config", "show"}, {"config", "validate"},
+		{"completion", "bash"}, {"--completion", "bash"},
 	} {
 		var out, errout bytes.Buffer
 		cmd := Command{Stdout: &out, Stderr: &errout}

@@ -1,7 +1,7 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 
 [tools]
-actionlint    = { version = "latest", minimum_release_age = "0", depends = ["shellcheck"] }
+actionlint    = { version = "latest", minimum_release_age = "0s", depends = ["shellcheck"] }
 go            = { version = "latest" }
 golangci-lint = { version = "latest", lazy = true }
 shellcheck    = { version = "latest" }

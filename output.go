@@ -91,17 +91,20 @@ func writeDiagnostics(out io.Writer, diagnostics []Diagnostic, lines bool) error
 	return enc.Encode(CheckResult{SchemaVersion: 1, Diagnostics: diagnostics})
 }
 
-type diagnosticFormatter interface {
-	Print(io.Writer, []*ErrorTemplateFields) error
-}
-
-type githubDiagnosticFormatter struct{}
-
-func (githubDiagnosticFormatter) Print(out io.Writer, fields []*ErrorTemplateFields) error {
+func writeGitHubDiagnostics(out io.Writer, diagnostics []Diagnostic) error {
 	data := strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A")
 	property := strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A", ":", "%3A", ",", "%2C")
-	for _, f := range fields {
-		if _, err := fmt.Fprintf(out, "::error file=%s,line=%d,col=%d,endColumn=%d,title=%s::%s\n", property.Replace(f.Filepath), f.Line, f.Column, f.EndColumn, property.Replace(f.Kind), data.Replace(f.Message)); err != nil {
+	for _, diagnostic := range diagnostics {
+		endLine := diagnostic.End.Line
+		if endLine > diagnostic.Start.Line && diagnostic.End.Column == 1 {
+			endLine-- // An exclusive end at the next line's start does not include that line.
+		}
+		position := fmt.Sprintf("line=%d,endLine=%d", diagnostic.Start.Line, endLine)
+		// GitHub rejects column properties on multiline annotations.
+		if diagnostic.Start.Line == diagnostic.End.Line {
+			position += fmt.Sprintf(",col=%d,endColumn=%d", diagnostic.Start.Column, max(diagnostic.Start.Column, diagnostic.End.Column-1))
+		}
+		if _, err := fmt.Fprintf(out, "::error file=%s,%s,title=%s::%s\n", property.Replace(diagnostic.Path), position, property.Replace(diagnostic.Rule), data.Replace(diagnostic.Message)); err != nil {
 			return err
 		}
 	}

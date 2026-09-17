@@ -87,6 +87,9 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 		return app.reportError(err)
 	}
 	if app.inv.Operation == "completion" {
+		if err := ctx.Err(); err != nil {
+			return app.reportError(err)
+		}
 		var shell completionShell
 		if err := shell.Set(app.inv.Shell); err != nil {
 			return app.reportError(commandUsageError{err})

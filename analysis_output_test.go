@@ -60,11 +60,11 @@ func TestEffectiveConfigFieldCoverage(t *testing.T) {
 
 func TestGitHubAnnotationEscaping(t *testing.T) {
 	var out bytes.Buffer
-	fields := []*ErrorTemplateFields{{Filepath: "a%,:\r\nb.yml", Message: "bad%\r\n::notice::text", Kind: "expression", Line: 2, Column: 3, EndColumn: 4}}
-	if err := (githubDiagnosticFormatter{}).Print(&out, fields); err != nil {
+	diagnostics := []Diagnostic{{Path: "a%,:\r\nb.yml", Message: "bad%\r\n::notice::text", Rule: "expression", Start: DiagnosticPosition{2, 3}, End: DiagnosticPosition{2, 5}}}
+	if err := writeGitHubDiagnostics(&out, diagnostics); err != nil {
 		t.Fatal(err)
 	}
-	want := "::error file=a%25%2C%3A%0D%0Ab.yml,line=2,col=3,endColumn=4,title=expression::bad%25%0D%0A::notice::text\n"
+	want := "::error file=a%25%2C%3A%0D%0Ab.yml,line=2,endLine=2,col=3,endColumn=4,title=expression::bad%25%0D%0A::notice::text\n"
 	if out.String() != want {
 		t.Fatalf("annotation escaping: %q", out.String())
 	}

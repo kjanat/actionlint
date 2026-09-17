@@ -8,8 +8,9 @@ import (
 
 // Project represents one GitHub project. One Git repository corresponds to one project.
 type Project struct {
-	root   string
-	config *Config
+	root       string
+	config     *Config
+	configPath string
 }
 
 func absPath(path string) string {
@@ -44,11 +45,11 @@ func findProjectConfig(path string, skipConfig bool) (*Project, error) {
 // NewProject creates a new instance with a file path to the root directory of the repository.
 // This function returns an error when failing to parse an actionlint config file in the repository.
 func NewProject(root string) (*Project, error) {
-	c, err := loadRepoConfig(root)
+	c, path, err := loadRepoConfig(root)
 	if err != nil {
 		return nil, err
 	}
-	return &Project{root, c}, nil
+	return &Project{root: root, config: c, configPath: path}, nil
 }
 
 // RootDir returns a root directory path of the GitHub project repository.

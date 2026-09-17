@@ -236,13 +236,10 @@ func TestCommandMultiFileJSON(t *testing.T) {
 }
 
 func TestCommandOutputSelection(t *testing.T) {
-	for _, mode := range []string{"text", "oneline", "sarif"} {
+	for _, mode := range []string{"text", "oneline"} {
 		args := []string{}
-		switch mode {
-		case "oneline":
+		if mode == "oneline" {
 			args = append(args, "-oneline")
-		case "sarif":
-			args = append(args, "-format", actionlint.SARIFTemplate())
 		}
 		legacy := testRunCommand(commandBadWorkflow, append(args, "-")...)
 		got := testRunCommand(commandBadWorkflow, "--output", mode, "-")
@@ -337,6 +334,34 @@ func TestReportCannotReplaceConsumedFile(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestReportMayReplaceUnselectedConfig(t *testing.T) {
+	for _, modern := range []bool{false, true} {
+		t.Run(fmtTestName(modern, "config"), func(t *testing.T) {
+			commandTestRepo(t)
+			selected := filepath.Join(".github", "actionlint.yaml")
+			if err := os.WriteFile(selected, []byte("{}\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			unused := filepath.Join(".github", "actionlint.yml")
+			args := []string{"--json", "--output-file", unused}
+			if modern {
+				args = append([]string{"check"}, args...)
+			}
+			got := testRunCommand("", args...)
+			data, err := os.ReadFile(unused)
+			if got.Status != 1 || got.Stderr != "" || err != nil || !json.Valid(data) {
+				t.Fatalf("unused config name prevented report output: %+v (%v)", got, err)
+			}
+			args[len(args)-1] = selected
+			got = testRunCommand("", args...)
+			data, err = os.ReadFile(selected)
+			if got.Status != 3 || !strings.Contains(got.Stderr, "also an input") || err != nil || string(data) != "{}\n" {
+				t.Fatalf("selected config was not protected: %+v (%v)", got, err)
+			}
+		})
 	}
 }
 

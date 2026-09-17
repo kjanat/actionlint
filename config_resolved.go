@@ -97,7 +97,7 @@ func (a DefaultPermissionsAssumption) MarshalYAML() (any, error) {
 	return "restricted", nil
 }
 
-// MarshalYAML serializes patterns rather than regexp implementation details.
+// MarshalYAML serializes regular expressions as pattern strings.
 func (pats IgnorePatterns) MarshalYAML() (any, error) {
 	values := make([]string, len(pats))
 	for i, pattern := range pats {

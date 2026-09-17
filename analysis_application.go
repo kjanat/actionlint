@@ -266,10 +266,8 @@ func (a *AnalysisSession) analyze(sources []SourceUnit) (*AnalysisResult, error)
 		return nil, err
 	}
 	for _, project := range a.projects.known {
-		if project.Config() != nil {
-			for _, name := range []string{"actionlint.yaml", "actionlint.yml"} {
-				result.Inputs = append(result.Inputs, filepath.Join(project.RootDir(), ".github", name))
-			}
+		if project.configPath != "" {
+			result.Inputs = append(result.Inputs, project.configPath)
 		}
 	}
 	return result, nil

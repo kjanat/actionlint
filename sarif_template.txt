@@ -50,7 +50,7 @@
                                     "region": {
                                         "startLine": {{$.Line}},
                                         "startColumn": {{$.Column}},
-                                        "endColumn": {{$.EndColumn}},
+                                        {{block "sarifEndLine" $}}{{end}}"endColumn": {{$.EndColumn}},
                                         "snippet": {
                                             "text": {{json $.Snippet}}
                                         }

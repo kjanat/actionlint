@@ -517,7 +517,7 @@ func ReadConfigFile(path string) (*Config, error) {
 
 // loadRepoConfig reads config file from the repository's .github/actionlint.yml or
 // .github/actionlint.yaml.
-func loadRepoConfig(root string) (*Config, error) {
+func loadRepoConfig(root string) (*Config, string, error) {
 	for _, f := range []string{"actionlint.yaml", "actionlint.yml"} {
 		p := filepath.Join(root, ".github", f)
 		c, err := ReadConfigFile(p)
@@ -525,12 +525,12 @@ func loadRepoConfig(root string) (*Config, error) {
 		case errors.Is(err, os.ErrNotExist):
 			continue
 		case err != nil:
-			return nil, fmt.Errorf("could not parse config file %q: %w", p, err)
+			return nil, "", fmt.Errorf("could not parse config file %q: %w", p, err)
 		default:
-			return c, nil
+			return c, p, nil
 		}
 	}
-	return nil, nil
+	return nil, "", nil
 }
 
 func writeDefaultConfigFile(path string) error {

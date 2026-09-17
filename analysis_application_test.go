@@ -146,6 +146,45 @@ func TestLinterAnalysisFacades(t *testing.T) {
 	}
 }
 
+func TestAnalysisSelectedConfigInput(t *testing.T) {
+	for _, names := range [][]string{nil, {"actionlint.yaml"}, {"actionlint.yml"}, {"actionlint.yaml", "actionlint.yml"}} {
+		t.Run(strings.Join(names, "+"), func(t *testing.T) {
+			root := t.TempDir()
+			for _, dir := range []string{".git", ".github/workflows"} {
+				if err := os.MkdirAll(filepath.Join(root, dir), 0700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
+			if err := os.WriteFile(workflow, []byte(commandGoodWorkflow), 0600); err != nil {
+				t.Fatal(err)
+			}
+			want := []string{workflow}
+			for _, name := range names {
+				if err := os.WriteFile(filepath.Join(root, ".github", name), []byte("{}\n"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if len(names) > 0 {
+				want = append(want, filepath.Join(root, ".github", names[0]))
+			}
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := session.Repository("")
+			if err != nil {
+				t.Fatal(err)
+			}
+			slices.Sort(want)
+			slices.Sort(result.Inputs)
+			if diff := cmp.Diff(want, result.Inputs); diff != "" {
+				t.Fatalf("consumed inputs mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
 func TestLinterEmptySelection(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
