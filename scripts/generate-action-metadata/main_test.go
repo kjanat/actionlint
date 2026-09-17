@@ -39,6 +39,26 @@ const testSchema = `{
 
 const testRevision = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
+// The fixture is the complete runner schema at runner revision
+// 759385a3510197a58b5c08dc1f373b74b9f4643b. Its last schema edit is fee24199.
+func TestCompleteRunnerActionSchema(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("testdata", "action_yaml.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated, err := generate(data, "fee24199cba8acf6c25da3a061c986066f42327a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkedIn, err := os.ReadFile(filepath.Join("..", "..", "action_metadata_availability.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(generated, bytes.ReplaceAll(checkedIn, []byte("\r\n"), []byte("\n"))) {
+		t.Fatal("complete runner schema and generated structural/context tables differ; regenerate them together")
+	}
+}
+
 func TestCollect(t *testing.T) {
 	defs, err := readSchema([]byte("\ufeff" + testSchema))
 	if err != nil {

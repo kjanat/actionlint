@@ -357,6 +357,88 @@ func (p *ExprParser) Parse(l *ExprLexer) (ExprNode, *ExprError) {
 		p.errorf("parser did not reach end of input after parsing the expression. %d remaining token(s) in the input: %s", c, qb.build())
 		return nil, p.err
 	}
+	if node := expressionExceedingDepth(root); node != nil {
+		p.err = errorAtToken(node.Token(), "exceeded max expression depth 50")
+		return nil, p.err
+	}
 
 	return root, nil
+}
+
+// The runner limits the evaluated expression tree to 50 levels. Its parser
+// flattens adjacent && and || nodes, so a long chain of one logical operator
+// consumes only one level. Parentheses themselves do not add tree nodes.
+func expressionExceedingDepth(root ExprNode) ExprNode {
+	type entry struct {
+		node  ExprNode
+		depth int
+	}
+	stack := []entry{{root, 1}}
+	for len(stack) > 0 {
+		current := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if current.depth > 50 {
+			return current.node
+		}
+		push := func(child ExprNode) {
+			depth := current.depth + 1
+			if parent, ok := current.node.(*LogicalOpNode); ok {
+				if nested, ok := child.(*LogicalOpNode); ok && nested.Kind == parent.Kind {
+					depth = current.depth
+				}
+			}
+			stack = append(stack, entry{child, depth})
+		}
+		switch node := current.node.(type) {
+		case *ObjectDerefNode:
+			push(node.Receiver)
+		case *ArrayDerefNode:
+			push(node.Receiver)
+		case *IndexAccessNode:
+			push(node.Operand)
+			push(node.Index)
+		case *NotOpNode:
+			push(node.Operand)
+		case *CompareOpNode:
+			push(node.Left)
+			push(node.Right)
+		case *LogicalOpNode:
+			push(node.Left)
+			push(node.Right)
+		case *FuncCallNode:
+			for _, arg := range node.Args {
+				push(arg)
+			}
+		}
+	}
+	return nil
+}
+
+// parseAssignedExpression accepts one complete expression, excluding interpolation.
+func parseAssignedExpression(s string) ExprNode {
+	if !strings.HasPrefix(s, "${{") {
+		return nil
+	}
+	lex := NewExprLexer(s[3:])
+	expr, err := NewExprParser().Parse(lex)
+	if err != nil || lex.Offset() != len(s)-3 {
+		return nil
+	}
+	return expr
+}
+
+// literalExpressionValue evaluates a single string literal and requires complete input consumption.
+func literalExpressionValue(s string) *string {
+	if !strings.HasPrefix(s, "${{") {
+		return nil
+	}
+	lex := NewExprLexer(s[3:])
+	expr, err := NewExprParser().Parse(lex)
+	if err != nil || lex.Offset() != len(s)-3 {
+		return nil
+	}
+	if literal, ok := expr.(*StringNode); ok {
+		return &literal.Value
+	}
+	return nil
 }

@@ -89,13 +89,17 @@ var targets = []*target{
 			mustRule("download script example description", `example installs v(\d+\.\d+\.\d+)`, 1),
 			mustRule("download script argument", `download-actionlint\.bash\) (\d+\.\d+\.\d+)`, 1),
 		},
-		unrelated: []string{"has proposed switching the package to this fork at v1.16.0"},
+		unrelated: []string{
+			"has proposed switching the package to this fork at v1.16.0",
+			"mise 2026.9.7 release PR",
+			"On mise 2026.9.6,",
+		},
 	},
 	{
 		path: "README.md",
 		rules: []rule{
 			mustRule("versioned release tag note", "`v(\\d+\\.\\d+\\.\\d+)` is a versioned release tag", 1),
-			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 5),
+			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 4),
 			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
 		},
 		generated: []*regexp.Regexp{

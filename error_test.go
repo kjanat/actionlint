@@ -583,6 +583,8 @@ func TestErrorPrintAllKinds(t *testing.T) {
 
 	for _, want := range []string{
 		"syntax-check: Checks for GitHub Actions workflow syntax\n",
+		"inline-suppression: Checks inline cache policy exception directives\n",
+		"disallow-suppressions: Reports inline exceptions prohibited by configuration\n",
 		"rule1: description for rule1\n",
 		"rule2: description for rule2\n",
 	} {
@@ -722,6 +724,7 @@ func TestErrorFormatterRegisterRuleInParallel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	initialRules := len(f.rules)
 
 	rules := []Rule{}
 	for i := range 100 {
@@ -748,8 +751,7 @@ func TestErrorFormatterRegisterRuleInParallel(t *testing.T) {
 		<-done
 	}
 
-	// Note: `syntax-check` rule is registered by NewErrorFormatter
-	if len(f.rules) != 101 {
+	if len(f.rules) != initialRules+len(rules) {
 		t.Fatalf("not all rules were registered. %d rules were registered", len(f.rules))
 	}
 }

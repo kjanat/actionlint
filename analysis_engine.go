@@ -109,6 +109,11 @@ func (l *analysisEngine) check(
 		*usedRules = rules
 	}
 
+	var suppressionPolicy *SuppressionsPolicy
+	if cfg != nil {
+		suppressionPolicy = cfg.Policy.DisallowSuppressions
+	}
+	all = filterInlineSuppressions(content, all, suppressionPolicy)
 	all = l.filterErrors(all, cfg.PathConfigs(path))
 
 	for _, err := range all {

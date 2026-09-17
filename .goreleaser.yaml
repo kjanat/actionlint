@@ -37,6 +37,8 @@ builds:
 
 sboms:
   - artifacts: archive
+    env:
+      - SYFT_GOLANG_SEARCH_REMOTE_LICENSES=true
 
 checksum:
   name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"

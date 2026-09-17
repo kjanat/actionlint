@@ -1168,10 +1168,10 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			},
 		},
 		{
-			what:  "zero format arguments for format() call",
-			input: "format('hi')",
+			what:  "missing argument for format() placeholder",
+			input: "format('{0}')",
 			expected: []string{
-				"takes at least 2 parameters but 1 arguments are given",
+				"contains placeholder {0} but only 0 arguments are given",
 			},
 		},
 		{

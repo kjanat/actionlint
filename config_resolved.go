@@ -43,59 +43,100 @@ func configOrigins(node *yaml.Node, prefix string, origins map[string]ConfigOrig
 
 func configPointerPart(s string) string { return strings.NewReplacer("~", "~0", "/", "~1").Replace(s) }
 
-func effectiveConfig(cfg *Config) map[string]any {
-	optionalList := func(values []string) any {
-		if values == nil {
-			return nil
+func configDefaultOrigins(values map[string]any, prefix string, origins map[string]ConfigOrigin) {
+	for key, value := range values {
+		pointer := prefix + "/" + configPointerPart(key)
+		origins[pointer] = ConfigOrigin{Source: "default", State: "missing"}
+		if nested, ok := value.(map[string]any); ok {
+			configDefaultOrigins(nested, pointer, origins)
 		}
-		return values
 	}
-	permissions := "restricted"
-	if cfg.AssumeDefaultPermissions == DefaultPermissionsAssumptionPermissive {
-		permissions = "permissive"
+}
+
+// effectiveConfig serializes the configuration schema after resolving defaults.
+// Struct YAML tags remain the source of field names; policy marshalers own their
+// public representation, so new config fields are included automatically.
+func effectiveConfig(cfg *Config) (map[string]any, error) {
+	resolved := *cfg
+	resolved.Policy.CacheCallUnrestricted = new(cfg.cachePolicyEnabled("cache-call-unrestricted"))
+	resolved.Policy.CacheOperation = new(cfg.cachePolicyEnabled("cache-operation"))
+	resolved.Policy.CacheWriteUntrusted = new(cfg.cachePolicyEnabled("cache-write-untrusted"))
+	resolved.Policy.RequireCommitHash = new(cfg.RequiresCommitHash())
+	if resolved.Policy.RequireJobTimeout == nil {
+		resolved.Policy.RequireJobTimeout = &JobTimeoutPolicy{}
 	}
-	var timeout any = false
-	if policy := cfg.RequiresJobTimeout(); policy.Enabled() {
-		bounds := map[string]any{}
-		if minimum, ok := policy.MinMinutes(); ok {
-			bounds["min-minutes"] = minimum
+	if resolved.Policy.RequirePermissions == nil {
+		resolved.Policy.RequirePermissions = &PermissionsPolicy{}
+	}
+	if resolved.Policy.DisallowSuppressions == nil {
+		resolved.Policy.DisallowSuppressions = &SuppressionsPolicy{}
+	}
+	var document yaml.Node
+	if err := document.Encode(resolved); err != nil {
+		return nil, err
+	}
+	// Unlike other lists, nil variables/secrets disables checking; [] permits none.
+	for i := 0; i+1 < len(document.Content); i += 2 {
+		key := document.Content[i].Value
+		if (key == "config-variables" && cfg.ConfigVariables == nil) || (key == "config-secrets" && cfg.ConfigSecrets == nil) {
+			document.Content[i+1] = &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null", Value: "null"}
 		}
-		if maximum, ok := policy.MaxMinutes(); ok {
-			bounds["max-minutes"] = maximum
-		}
-		timeout = bounds
 	}
-	var requiredPermissions any = false
-	if policy := cfg.RequiresPermissions(); policy.Enabled() {
-		requiredPermissions = map[string]any{"scope": policy.Scope()}
+	var values map[string]any
+	if err := document.Decode(&values); err != nil {
+		return nil, err
 	}
-	paths := map[string]any{}
-	for pattern, path := range cfg.Paths {
-		patterns := make([]string, 0, len(path.Ignore))
-		for _, p := range path.Ignore {
-			patterns = append(patterns, p.String())
-		}
-		paths[pattern] = map[string]any{"ignore": patterns}
+	return values, nil
+}
+
+// MarshalYAML preserves the public string representation of permission assumptions.
+func (a DefaultPermissionsAssumption) MarshalYAML() (any, error) {
+	if a == DefaultPermissionsAssumptionPermissive {
+		return "permissive", nil
 	}
-	labels := cfg.SelfHostedRunner.Labels
-	if labels == nil {
-		labels = []string{}
+	return "restricted", nil
+}
+
+// MarshalYAML serializes patterns rather than regexp implementation details.
+func (pats IgnorePatterns) MarshalYAML() (any, error) {
+	values := make([]string, len(pats))
+	for i, pattern := range pats {
+		values[i] = pattern.String()
 	}
-	required := cfg.RequiredActions()
-	if required == nil {
-		required = []string{}
+	return values, nil
+}
+
+// MarshalYAML emits false or the enabled policy's timeout bounds.
+func (p *JobTimeoutPolicy) MarshalYAML() (any, error) {
+	if !p.Enabled() {
+		return false, nil
 	}
-	return map[string]any{
-		"self-hosted-runner":         map[string]any{"labels": labels},
-		"config-variables":           optionalList(cfg.ConfigVariables),
-		"config-secrets":             optionalList(cfg.ConfigSecrets),
-		"assume-default-permissions": permissions,
-		"paths":                      paths,
-		"policy": map[string]any{
-			"require-commit-hash": cfg.RequiresCommitHash(),
-			"require-job-timeout": timeout,
-			"require-permissions": requiredPermissions,
-			"required-actions":    required,
-		},
+	bounds := map[string]float64{}
+	if minimum, ok := p.MinMinutes(); ok {
+		bounds["min-minutes"] = minimum
 	}
+	if maximum, ok := p.MaxMinutes(); ok {
+		bounds["max-minutes"] = maximum
+	}
+	return bounds, nil
+}
+
+// MarshalYAML emits false or the enabled policy's declaration scope.
+func (p *PermissionsPolicy) MarshalYAML() (any, error) {
+	if !p.Enabled() {
+		return false, nil
+	}
+	return map[string]string{"scope": p.Scope()}, nil
+}
+
+// MarshalYAML emits false or the enabled policy's rule selection and reporting mode.
+func (p *SuppressionsPolicy) MarshalYAML() (any, error) {
+	if !p.Enabled() {
+		return false, nil
+	}
+	value := map[string]any{"report": p.Report()}
+	if rules := p.Rules(); len(rules) != 0 {
+		value["rules"] = rules
+	}
+	return value, nil
 }

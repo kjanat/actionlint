@@ -1,6 +1,12 @@
 package actionlint
 
-import "strings"
+import (
+	"math"
+	"strconv"
+	"strings"
+
+	"go.yaml.in/yaml/v4"
+)
 
 // RuleMatrix is a rule checker to check 'matrix' field of job.
 type RuleMatrix struct {
@@ -16,11 +22,18 @@ func NewRuleMatrix() *RuleMatrix {
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
 func (rule *RuleMatrix) VisitJobPre(n *Job) error {
-	if n.Strategy == nil || n.Strategy.Matrix == nil || n.Strategy.Matrix.Expression != nil {
+	if n.Strategy == nil {
 		return nil
 	}
 
 	m := n.Strategy.Matrix
+	evaluated := n.Strategy.Expression != nil
+	if evaluated {
+		m = knownStrategyMatrix(n.Strategy.Expression)
+	}
+	if m == nil || m.Expression != nil {
+		return nil
+	}
 
 	for _, row := range m.Rows {
 		rule.checkDuplicateInRow(row)
@@ -36,8 +49,36 @@ func (rule *RuleMatrix) VisitJobPre(n *Job) error {
 	//     - os: windows-latest
 	//       sh: pwsh
 
-	rule.checkExclude(m)
+	rule.checkExclude(m, !evaluated)
 	return nil
+}
+
+func knownStrategyMatrix(expression *String) *Matrix {
+	value, known := workflowExpressionLiteral(expression)
+	if !known {
+		return nil
+	}
+	strategy, ok := value.(map[string]any)
+	if !ok {
+		return nil
+	}
+	matrix, ok := workflowObjectProperty(strategy, "matrix").(map[string]any)
+	if !ok || len(workflowExpressionLiteralErrors(workflowStrategy.props["matrix"], matrix, "matrix")) != 0 {
+		return nil
+	}
+	var node yaml.Node
+	if err := node.Encode(matrix); err != nil {
+		return nil
+	}
+	var setPosition func(*yaml.Node)
+	setPosition = func(n *yaml.Node) {
+		n.Line, n.Column = expression.Pos.Line, expression.Pos.Col
+		for _, child := range n.Content {
+			setPosition(child)
+		}
+	}
+	setPosition(&node)
+	return (&parser{}).parseMatrix(expression.Pos, &node)
 }
 
 func (rule *RuleMatrix) checkDuplicateInRow(row *MatrixRow) {
@@ -66,72 +107,102 @@ func (rule *RuleMatrix) checkDuplicateInRow(row *MatrixRow) {
 	}
 }
 
-func isYAMLValueSubset(v, sub RawYAMLValue) bool {
-	// When the filter side is dynamically constructed with some expression, it is not possible to statically check if the filter
-	// matches the value. To avoid false positives, assume such filter always matches to the value. (#414)
-	// ```
-	// matrix:
-	//   foo: ['a', 'b']
-	//   exclude:
-	//     foo: ${{ fromJSON('...') }}
-	// ```
-	if s, ok := sub.(*RawYAMLString); ok && ContainsExpression(s.Value) {
-		return true
-	}
-
-	switch v := v.(type) {
-	case *RawYAMLObject:
-		// `exclude` filter can match to objects in matrix as subset of them (#249).
-		// For example,
-		//
-		// matrix:
-		//   os:
-		//     - { name: Ubuntu, matrix: ubuntu }
-		//     - { name: Windows, matrix: windows }
-		//   arch:
-		//     - { name: ARM, matrix: arm }
-		//     - { name: Intel, matrix: intel }
-		//   exclude:
-		//     - os: { matrix: windows }
-		//       arch: { matrix: arm }
-		//
-		// The `exclude` filters out `{ os: { name: Windows, matrix: windows }, arch: {name: ARM, matrix: arm } }`
-		sub, ok := sub.(*RawYAMLObject)
-		if !ok {
-			return false
+// Matrix filters compare selected properties and indices with expression equality.
+func isYAMLValueSubset(value, filter RawYAMLValue, expressions bool) bool {
+	// Dynamic values or filter leaves cannot establish a mismatch. Evaluated
+	// expression results use expressions=false so embedded syntax remains data.
+	if expressions {
+		for _, item := range []RawYAMLValue{value, filter} {
+			if scalar, ok := item.(*RawYAMLString); ok && ContainsExpression(scalar.Value) {
+				return true
+			}
 		}
-		for n, s := range sub.Props {
-			if p, ok := v.Props[n]; !ok || !isYAMLValueSubset(p, s) {
+	}
+	lookup := func(key string) RawYAMLValue {
+		switch value := value.(type) {
+		case *RawYAMLObject:
+			return value.Props[key]
+		case *RawYAMLArray:
+			index := matrixFilterNumber(key)
+			if index >= 0 && index < float64(len(value.Elems)) && index <= math.MaxInt32 {
+				return value.Elems[int(index)]
+			}
+		}
+		return nil
+	}
+	switch filter := filter.(type) {
+	case *RawYAMLObject:
+		for key, item := range filter.Props {
+			if !isYAMLValueSubset(lookup(key), item, expressions) {
 				return false
 			}
 		}
 		return true
 	case *RawYAMLArray:
-		sub, ok := sub.(*RawYAMLArray)
-		if !ok {
-			return false
-		}
-		if len(v.Elems) != len(sub.Elems) {
-			return false
-		}
-		for i, v := range v.Elems {
-			if !isYAMLValueSubset(v, sub.Elems[i]) {
+		for i, item := range filter.Elems {
+			if !isYAMLValueSubset(lookup(strconv.Itoa(i)), item, expressions) {
 				return false
 			}
 		}
 		return true
 	case *RawYAMLString:
-		// When some item is constructed with ${{ }} dynamically, give up checking combinations (#261)
-		if ContainsExpression(v.Value) {
-			return true
+		var actual any
+		if scalar, ok := value.(*RawYAMLString); ok {
+			actual = scalar.scalarValue()
+		} else if value != nil {
+			return false
 		}
-		return v.Equals(sub)
+		expected := filter.scalarValue()
+		if a, ok := actual.(string); ok {
+			if b, ok := expected.(string); ok {
+				return strings.EqualFold(a, b)
+			}
+		}
+		return matrixFilterNumber(actual) == matrixFilterNumber(expected)
 	default:
-		return v.Equals(sub)
+		return false
 	}
 }
 
-func (rule *RuleMatrix) checkExclude(m *Matrix) {
+func matrixFilterNumber(value any) float64 {
+	switch value := value.(type) {
+	case nil:
+		return 0
+	case bool:
+		if value {
+			return 1
+		}
+		return 0
+	case float64:
+		return value
+	case string:
+		value = strings.TrimSpace(value)
+		switch strings.ToLower(value) {
+		case "":
+			return 0
+		case "infinity", "+infinity":
+			return math.Inf(1)
+		case "-infinity":
+			return math.Inf(-1)
+		}
+		if reCoreSchemaFloat.MatchString(value) {
+			if number, err := strconv.ParseFloat(value, 64); err == nil || math.IsInf(number, 0) {
+				return number
+			}
+		} else if (strings.HasPrefix(value, "0x") || strings.HasPrefix(value, "0o")) && isCoreSchemaInt(value) {
+			// ExpressionUtility.ParseNumber uses signed 32-bit hexadecimal/octal conversion.
+			if number, err := strconv.ParseUint(value, 0, 32); err == nil {
+				if number > math.MaxInt32 {
+					return float64(number) - (1 << 32)
+				}
+				return float64(number)
+			}
+		}
+	}
+	return math.NaN()
+}
+
+func (rule *RuleMatrix) checkExclude(m *Matrix, expressions bool) {
 	if m.Exclude == nil || len(m.Exclude.Combinations) == 0 {
 		return
 	}
@@ -174,7 +245,7 @@ func (rule *RuleMatrix) checkExclude(m *Matrix) {
 			}
 
 			for _, v := range row {
-				if isYAMLValueSubset(v, a.Value) {
+				if isYAMLValueSubset(v, a.Value, expressions) {
 					continue Exclude
 				}
 			}

@@ -35,6 +35,8 @@ List of checks:
 - [Job ID and step ID uniqueness](#check-job-step-ids)
 - [Hardcoded credentials](#check-hardcoded-credentials)
 - [Environment variable names](#check-env-var-names)
+- [Cache access](#cache-mode)
+- [Cache safety policies](#cache-policies)
 - [Permissions](#permissions)
 - [Reusable workflows](#check-reusable-workflows)
 - [ID naming convention](#id-naming-convention)
@@ -45,8 +47,8 @@ List of checks:
 - [Deprecated inputs usage](#deprecated-inputs-usage)
 - [YAML anchors](#yaml-anchors)
 
-Note that the checks in this document always run and report mistakes in workflow files. actionlint also has policy
-checks that a repository turns on for itself, described in [the configuration document](config.md#policy-checks). For
+The checks in this document run by default, including the configurable cache safety policies. Other policy checks
+are opt-in, as described in [the configuration document](config.md#policy-checks). For
 general code style checks, please consider using a general YAML checker like [yamllint][yamllint].
 
 <a id="check-unexpected-keys"></a>
@@ -73,7 +75,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:6:5: unexpected key "default" for "job" section. expected one of "concurrency", "container", "continue-on-error", "defaults", "env", "environment", "if", "name", "needs", "outputs", "permissions", "runs-on", "secrets", "services", "snapshot", "steps", "strategy", "timeout-minutes", "uses", "with" [syntax-check]
+test.yaml:6:5: unexpected key "default" for "job" section. expected one of "cache-mode", "cancel-timeout-minutes", "concurrency", "container", "continue-on-error", "defaults", "env", "environment", "if", "name", "needs", "outputs", "permissions", "runs-on", "secrets", "services", "snapshot", "steps", "strategy", "timeout-minutes", "uses", "with" [syntax-check]
   |
 6 |     default:
   |     ^~~~~~~~
@@ -371,7 +373,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:19:14: type of expression at "env" must be object but found type string [expression]
+test.yaml:19:14: env must be object but found string [expression]
    |
 19 |         env: ${{ matrix.env_string }}
    |              ^~~
@@ -812,7 +814,7 @@ test.yaml:11:13: tag of a quoted or block scalar must be "!!str" but got "!!bool
    |
 11 |           - !!bool "true"
    |             ^~~~~~
-test.yaml:14:13: tag of a matrix scalar must be one of "!!str", "!!bool", "!!int", "!!float", "!!null" but got "!!timestamp" [syntax-check]
+test.yaml:14:13: tag of a YAML scalar must be one of "!!str", "!!bool", "!!int", "!!float", "!!null" but got "!!timestamp" [syntax-check]
    |
 14 |           - !!timestamp 2026-08-21
    |             ^~~~~~~~~~~
@@ -2274,6 +2276,116 @@ cases they are mistakes, and they may cause some issues on using them in shell s
 
 actionlint checks environment variable names are correct in `env:` configuration.
 
+<a id="cache-mode"></a>
+
+## Cache access
+
+Example input:
+
+```yaml
+on: push
+cache-mode: restore
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    cache-mode: read-write
+    steps:
+      - run: echo ok
+```
+
+Output:
+
+```console
+test.yaml:2:13: "restore" is invalid for "cache-mode". expected one of "read", "write", "write-only", "none" [syntax-check]
+  |
+2 | cache-mode: restore
+  |             ^~~~~~~
+test.yaml:6:17: "read-write" is invalid for "cache-mode". expected one of "read", "write", "write-only", "none" [syntax-check]
+  |
+6 |     cache-mode: read-write
+  |                 ^~~~~~~~~~
+```
+
+<!-- Skip playground link -->
+
+The [`cache-mode` key](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#cache-mode)
+controls cache access independently of `permissions`. actionlint accepts it at workflow level and on ordinary jobs
+or jobs that call reusable workflows. It checks that the value is one of these strings:
+
+| Value        | Restore caches | Save caches |
+| ------------ | -------------- | ----------- |
+| `read`       | Yes            | No          |
+| `write`      | Yes            | Yes         |
+| `write-only` | No             | Yes         |
+| `none`       | No             | No          |
+
+A job's declaration overrides its workflow's declaration. Omitted settings retain GitHub's trigger-dependent
+defaults. Explicit `write` and `write-only` declarations are valid even on low-trust events; GitHub warns about
+their security implications. Cache operations skipped by the selected mode do not fail the workflow.
+
+For local reusable workflows referenced through `./` or `$/`, actionlint checks that the called jobs' declarations
+fit within the caller's explicit limit. The check follows nested local calls, including intermediate workflows
+that omit `cache-mode`. It compares restore and save access separately: a `read` caller cannot grant `write-only`,
+and a `write-only` caller cannot grant `read`. Diagnostics identify the called job and point to the caller's `uses`.
+
+An unspecified caller mode leaves the callee free to declare its own mode, including write access on a low-trust
+trigger. Invalid declarations produce syntax diagnostics and are excluded from access comparisons. Cache access
+validation covers workflows available in the local repository.
+
+<a id="cache-policies"></a>
+
+## Cache safety policies
+
+Example input:
+
+```yaml
+on: pull_request_target
+jobs:
+  call:
+    uses: example/repository/.github/workflows/build.yml@main
+  build:
+    runs-on: ubuntu-latest
+    cache-mode: write
+    steps:
+      - run: echo hello
+  restore:
+    runs-on: ubuntu-latest
+    cache-mode: none
+    steps:
+      - uses: actions/cache/restore@v5
+        with: { path: .cache, key: build }
+```
+
+Output:
+
+```console
+test.yaml:4:11: reusable workflow call "example/repository/.github/workflows/build.yml@main" has no explicit cache access limit for low-trust trigger(s) "pull_request_target". the callee can request writes despite the trigger's read-only default. set "cache-mode: read" or "cache-mode: none" on this job or workflow [cache-call-unrestricted]
+  |
+4 |     uses: example/repository/.github/workflows/build.yml@main
+  |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+test.yaml:7:17: cache-mode "write" grants cache writes for low-trust trigger(s) "pull_request_target". untrusted code or input can poison caches consumed by privileged workflows. use "read" or "none", or document a reviewed exception with an inline suppression [cache-write-untrusted]
+  |
+7 |     cache-mode: write
+  |                 ^~~~~
+test.yaml:14:15: "actions/cache/restore" cannot restore caches with effective cache-mode "none". GitHub skips the operation; remove this cache step or select an action and mode that match the job's intended cache access [cache-operation]
+   |
+14 |       - uses: actions/cache/restore@v5
+   |               ^~~~~~~~~~~~~~~~~~~~~~~~
+```
+
+<!-- Skip playground link -->
+
+These three policies are enabled by default. `cache-write-untrusted` reports write grants on low-trust events that
+can use default-branch caches. `cache-call-unrestricted` requires an explicit cap on reusable calls from those events,
+because the callee can otherwise request write access. `cache-operation` reports official cache steps that an
+explicit mode makes ineffective. An ordinary job without `cache-mode` retains GitHub's trigger default and is not
+reported for omission. Ordinary pull request caching is not treated as the default-branch cache risk.
+
+See [policy configuration and inline exceptions](config.md#policy-checks)
+for the event list, exact action/mode combinations, limitations, and ways to document reviewed exceptions.
+Use [`policy.disallow-suppressions`](config.md#disallow-suppressions) to prohibit those inline exceptions for all
+or selected cache rules, reporting the prohibited comment, the original violation, or both.
+
 <a id="permissions"></a>
 
 ## Permissions
@@ -2441,7 +2553,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:6:5: when a reusable workflow is called with "uses", "runs-on" is not available. only following keys are allowed: "name", "uses", "with", "secrets", "needs", "if", and "permissions" in job "job1" [syntax-check]
+test.yaml:6:5: when a reusable workflow is called with "uses", "runs-on" is not available. only following keys are allowed: "name", "uses", "with", "secrets", "needs", "if", "permissions", "cache-mode", "strategy", and "concurrency" in job "job1" [syntax-check]
   |
 6 |     runs-on: ubuntu-latest
   |     ^~~~~~~~
@@ -2944,7 +3056,7 @@ test.yaml:30:20: context "env" is not allowed here. no context is available here
    |
 30 |         shell: ${{ env.SHELL}}
    |                    ^~~~~~~~~~~
-test.yaml:32:33: calling function "success" is not allowed here. "success" is only available in "jobs.<job_id>.if", "jobs.<job_id>.steps.if". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
+test.yaml:32:33: calling function "success" is not allowed here. "success" is only available in "jobs.<job_id>.if", "jobs.<job_id>.steps.if", "jobs.<job_id>.snapshot.if". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
    |
 32 |         run: echo 'Success? ${{ success() }}'
    |                                 ^~~~~~~~~

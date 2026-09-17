@@ -79,8 +79,8 @@ func (rule *RuleEvents) checkCron(spec *String) {
 
 // https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onschedule
 func (rule *RuleEvents) checkTimezone(tz *String) {
-	// `time.LoadLocation` accepts special values "", "UTC", and "Local" but they are not correct IANA timezone names.
-	ok := tz.Value != "" && !strings.EqualFold(tz.Value, "utc") && !strings.EqualFold(tz.Value, "local")
+	// Local is a Go host-timezone selector; UTC is a valid IANA alias for Etc/UTC.
+	ok := tz.Value != "" && !strings.EqualFold(tz.Value, "local")
 	if ok {
 		_, err := time.LoadLocation(tz.Value)
 		ok = err == nil
@@ -292,7 +292,9 @@ func (rule *RuleEvents) checkWorkflowDispatchEvent(event *WorkflowDispatchEvent)
 	}
 }
 
-// https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#image_version_ready
+// https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#image_version
 func (rule *RuleEvents) checkImageVersionEvent(event *ImageVersionEvent) {
-	// Do nothing
+	// Both official workflow schemas define these activities in image-version-activity-type.
+	hook := &String{Value: event.EventName(), Pos: event.Pos}
+	rule.checkTypes(hook, event.Types, []string{"created", "ready", "deleted"})
 }

@@ -58,8 +58,15 @@ func TestStringIsExpressionAssigned(t *testing.T) {
 		want  bool
 	}{
 		{"${{...}}", true},
-		{" ${{...}} ", true},
+		{" ${{...}} ", false},
+		{"${{...}}\n", false},
+		{"\t${{...}}", false},
+		{"${{ ... }}", true},
 		{`${{ foo == '{"a": {"b": "c"}}' }}`, true}, // edge case
+		{`${{ fromJSON('{"matrix":{"os":["${{ vars.RUNNER }}"]}}') }}`, true},
+		{`${{ '}}' }}`, true},
+		{`${{ 'it''s ${{ data }}' }}`, true},
+		{`${{ 'unfinished }}`, true},
 		{"", false},
 		{"${}", false},
 		{"{{}}", false},
@@ -68,6 +75,7 @@ func TestStringIsExpressionAssigned(t *testing.T) {
 		{"${{ ${{ }}", false},
 		{"abc ${{...}}", false},
 		{"${{...}} abc", false},
+		{`${{ '}}' }}suffix}}`, false},
 		{"${{...}}${{...}}", false},
 	}
 

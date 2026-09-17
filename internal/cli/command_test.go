@@ -126,6 +126,23 @@ func TestCommandStreamsAndContext(t *testing.T) {
 	}
 }
 
+func TestCancelledMetadataCommands(t *testing.T) {
+	t.Chdir(t.TempDir())
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	for _, args := range [][]string{
+		{"version"}, {"rules"}, {"doctor", "--no-config"},
+		{"config", "path"}, {"config", "show"}, {"config", "validate"},
+	} {
+		var out, errout bytes.Buffer
+		cmd := Command{Stdout: &out, Stderr: &errout}
+		status := cmd.MainContext(ctx, append([]string{"actionlint"}, args...))
+		if status != 3 || out.Len() != 0 || !strings.Contains(errout.String(), "context canceled") {
+			t.Errorf("%q ignored cancellation: status=%d stdout=%q stderr=%q", args, status, &out, &errout)
+		}
+	}
+}
+
 func TestCommandMain(t *testing.T) {
 	var output bytes.Buffer
 

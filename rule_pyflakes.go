@@ -25,6 +25,14 @@ func getShellIsPythonKind(shell *String) shellIsPythonKind {
 	return shellIsPythonKindNotPython
 }
 
+func defaultsShellIsPython(defaults *Defaults) shellIsPythonKind {
+	shell := defaultsShellValue(defaults)
+	if shell.kind == shellValueUnknown {
+		return shellIsPythonKindNotPython
+	}
+	return getShellIsPythonKind(shell.value)
+}
+
 // RulePyflakes is a rule to check Python scripts at 'run:' using pyflakes.
 // https://github.com/PyCQA/pyflakes
 type RulePyflakes struct {
@@ -62,9 +70,7 @@ func configuredPyflakes(executable string, options *ExternalCommandOptions, proc
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
 func (rule *RulePyflakes) VisitJobPre(n *Job) error {
-	if n.Defaults != nil && n.Defaults.Run != nil {
-		rule.jobShellIsPython = getShellIsPythonKind(n.Defaults.Run.Shell)
-	}
+	rule.jobShellIsPython = defaultsShellIsPython(n.Defaults)
 	return nil
 }
 
@@ -76,9 +82,7 @@ func (rule *RulePyflakes) VisitJobPost(n *Job) error {
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
 func (rule *RulePyflakes) VisitWorkflowPre(n *Workflow) error {
-	if n.Defaults != nil && n.Defaults.Run != nil {
-		rule.workflowShellIsPython = getShellIsPythonKind(n.Defaults.Run.Shell)
-	}
+	rule.workflowShellIsPython = defaultsShellIsPython(n.Defaults)
 	return nil
 }
 

@@ -35,7 +35,7 @@ jobs:
       - uses: *ActionsCheckout
         with: *NoCreds
       - uses: $/.github/actions/setup-pandoc
-      - uses: kjanat/runner@a850e622e01897a79e62013804abd26f0e38e63c # v0.26.1
+      - uses: kjanat/runner@8baa9ee978cfed038b98741749673c788ff161d1 # v0.26.2
       - run: run make:man/actionlint.1
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with: { name: manual, path: man/actionlint.1, if-no-files-found: error }

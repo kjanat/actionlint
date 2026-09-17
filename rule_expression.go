@@ -58,6 +58,7 @@ func NewRuleExpression(actionsCache *LocalActionsCache, workflowCache *LocalReus
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
 func (rule *RuleExpression) VisitWorkflowPre(n *Workflow) error {
 	rule.checkString(n.Name, "")
+	rule.checkString(n.Description, "")
 	hasNonWorkflowCallTrigger := len(n.On) > 1
 
 	for _, e := range n.On {
@@ -174,6 +175,7 @@ func (rule *RuleExpression) VisitWorkflowPre(n *Workflow) error {
 				// o.Value will be checked in VisitWorkflowPost
 			}
 		case *ImageVersionEvent:
+			rule.checkStrings(e.Types, "")
 			rule.checkStrings(e.Names, "")
 			rule.checkStrings(e.Versions, "")
 		}
@@ -212,20 +214,33 @@ func (rule *RuleExpression) VisitJobPre(n *Job) error {
 	//         matrix:
 	//           os: [ubuntu-latest, macos-latest, windows-latest]
 	//       runs-on: ${{ matrix.os }}
-	if n.Strategy != nil && n.Strategy.Matrix != nil {
-		// Check and guess type of the matrix
-		rule.matrixTy = rule.checkMatrix(n.Strategy.Matrix)
+	if n.Strategy != nil {
+		if n.Strategy.Expression != nil {
+			ty := rule.checkWorkflowExpression(n.Strategy.Expression, "strategy", "jobs.<job_id>.strategy", workflowStrategy)
+			rule.matrixTy = NewEmptyObjectType()
+			if object, ok := ty.(*ObjectType); ok {
+				rule.matrixTy = matrixTypeFromExpression(workflowObjectProperty(object.Props, "matrix"))
+			}
+		} else if n.Strategy.Matrix != nil {
+			// Check and guess type of the matrix.
+			rule.matrixTy = rule.checkMatrix(n.Strategy.Matrix)
+		}
 	}
 
 	rule.checkString(n.Name, "jobs.<job_id>.name")
 	rule.checkStrings(n.Needs, "")
 
 	if n.RunsOn != nil {
+		rule.checkWorkflowExpression(n.RunsOn.Expression, "runs-on", "jobs.<job_id>.runs-on", workflowRunner)
 		if n.RunsOn.LabelsExpr != nil {
 			if ty := rule.checkOneExpression(n.RunsOn.LabelsExpr, "runner label at \"runs-on\" section", "jobs.<job_id>.runs-on"); ty != nil {
 				switch ty.(type) {
 				case *ArrayType, StringType, AnyType:
-					// OK
+					if value, known := workflowExpressionLiteral(n.RunsOn.LabelsExpr); known {
+						if labels, ok := value.([]any); ok && len(labels) == 0 {
+							rule.Error(n.RunsOn.LabelsExpr.Pos, "runs-on.labels must contain at least one value")
+						}
+					}
 				default:
 					rule.Errorf(n.RunsOn.LabelsExpr.Pos, "type of expression at \"runs-on\" must be string or array but found type %q", ty.String())
 				}
@@ -248,22 +263,22 @@ func (rule *RuleExpression) VisitJobPre(n *Job) error {
 	if n.Strategy != nil {
 		// Note: Types in "jobs.<job_id>.strategy.matrix" were checked `checkMatrix`
 		rule.checkBool(n.Strategy.FailFast, "jobs.<job_id>.strategy")
-		rule.checkInt(n.Strategy.MaxParallel, "jobs.<job_id>.strategy")
+		rule.checkMaxParallel(n.Strategy.MaxParallel, "jobs.<job_id>.strategy")
 	}
 
 	rule.checkBool(n.ContinueOnError, "jobs.<job_id>.continue-on-error")
 	rule.checkFloat(n.TimeoutMinutes, "jobs.<job_id>.timeout-minutes")
+	rule.checkFloat(n.CancelTimeoutMinutes, "jobs.<job_id>.cancel-timeout-minutes")
 	rule.checkContainer(n.Container, "jobs.<job_id>.container", "")
 
 	if n.Services != nil {
-		rule.checkObjectExpression(n.Services.Expression, "services", "jobs.<job_id>.services")
+		rule.checkWorkflowExpression(n.Services.Expression, "services", "jobs.<job_id>.services", workflowExpressionObject{mapped: workflowContainerShape(true)})
 		for _, s := range n.Services.Value {
 			rule.checkContainer(s.Container, "jobs.<job_id>.services", "<service_id>")
 		}
 	}
 
 	rule.checkWorkflowCall(n.WorkflowCall)
-	rule.checkSnapshot(n.Snapshot)
 
 	rule.stepsTy = NewEmptyStrictObjectType()
 
@@ -272,8 +287,11 @@ func (rule *RuleExpression) VisitJobPre(n *Job) error {
 
 // VisitJobPost is callback when visiting Job node after visiting its children
 func (rule *RuleExpression) VisitJobPost(n *Job) error {
+	// Snapshot conditions run after the job's steps, so their outputs are available.
+	rule.checkSnapshot(n.Snapshot)
 	// 'environment' and 'outputs' sections are evaluated after all steps are run
 	if n.Environment != nil {
+		rule.checkWorkflowExpression(n.Environment.Expression, "environment", "jobs.<job_id>.environment", workflowEnvironment)
 		rule.checkString(n.Environment.Name, "jobs.<job_id>.environment")
 		rule.checkString(n.Environment.URL, "jobs.<job_id>.environment.url")
 		rule.checkBool(n.Environment.Deployment, "jobs.<job_id>.environment")
@@ -302,6 +320,7 @@ func (rule *RuleExpression) VisitStep(n *Step) error {
 		rule.checkString(e.WorkingDirectory, "jobs.<job_id>.steps.working-directory")
 	case *ExecAction:
 		rule.checkString(e.Uses, "")
+		rule.checkWorkflowExpression(e.InputsExpression, "with", "jobs.<job_id>.steps.with", workflowStringMap)
 		for n, i := range e.Inputs {
 			if e.Uses != nil && strings.HasPrefix(e.Uses.Value, "actions/github-script@") && n == "script" {
 				rule.checkScriptString(i.Value, "jobs.<job_id>.steps.with")
@@ -316,6 +335,8 @@ func (rule *RuleExpression) VisitStep(n *Step) error {
 
 	rule.checkEnv(n.Env, "jobs.<job_id>.steps.env") // env: at step level can refer 'env' context (#158)
 	rule.checkBool(n.ContinueOnError, "jobs.<job_id>.steps.continue-on-error")
+	// Preserve the background-expression extension with the continue-on-error profile.
+	rule.checkBool(n.Background, "jobs.<job_id>.steps.continue-on-error")
 	rule.checkFloat(n.TimeoutMinutes, "jobs.<job_id>.steps.timeout-minutes")
 
 	if n.ID != nil {
@@ -378,11 +399,7 @@ func (rule *RuleExpression) getWorkflowCallOutputsType(call *WorkflowCall) *Obje
 		return NewMapObjectType(StringType{})
 	}
 
-	uses := call.Uses.Value
-	if local, ok := workflowCallUsesLocalSpec(uses); ok {
-		uses = local
-	}
-	m, err := rule.localWorkflows.FindMetadata(uses)
+	m, err := rule.localWorkflows.findMetadataForCall(call.Uses.Value)
 	if err != nil {
 		rule.Error(call.Uses.Pos, err.Error())
 		return NewMapObjectType(StringType{})
@@ -495,13 +512,14 @@ func (rule *RuleExpression) checkEnv(env *Env, workflowKey string) {
 	}
 
 	// When form of "env: ${{...}}"
-	rule.checkObjectExpression(env.Expression, "env", workflowKey)
+	rule.checkWorkflowExpression(env.Expression, "env", workflowKey, workflowStringMap)
 }
 
 func (rule *RuleExpression) checkContainer(c *Container, workflowKey, childWorkflowKeyPrefix string) {
 	if c == nil {
 		return
 	}
+	rule.checkWorkflowExpression(c.Expression, "container", workflowKey, workflowContainerShape(childWorkflowKeyPrefix != ""))
 	childWorkflowKey := workflowKey
 	if childWorkflowKeyPrefix != "" {
 		childWorkflowKey += "." + childWorkflowKeyPrefix
@@ -510,7 +528,7 @@ func (rule *RuleExpression) checkContainer(c *Container, workflowKey, childWorkf
 	if c.Credentials != nil {
 		k := childWorkflowKey + ".credentials" // e.g. jobs.<job_id>.container.credentials
 		if c.Credentials.Expression != nil {
-			rule.checkObjectExpression(c.Credentials.Expression, "credentials", k)
+			rule.checkWorkflowExpression(c.Credentials.Expression, "credentials", k, workflowCredentials)
 		} else {
 			rule.checkString(c.Credentials.Username, k)
 			rule.checkString(c.Credentials.Password, k)
@@ -519,6 +537,8 @@ func (rule *RuleExpression) checkContainer(c *Container, workflowKey, childWorkf
 	rule.checkEnv(c.Env, childWorkflowKey+".env.<env_id>") // e.g. jobs.<job_id>.container.env.<env_id>
 	rule.checkStrings(c.Ports, workflowKey)
 	rule.checkStrings(c.Volumes, workflowKey)
+	rule.checkWorkflowExpression(c.PortsExpression, "ports", workflowKey, workflowExpressionArray{elem: workflowNonEmpty})
+	rule.checkWorkflowExpression(c.VolumesExpression, "volumes", workflowKey, workflowExpressionArray{elem: workflowNonEmpty})
 	rule.checkString(c.Options, workflowKey)
 	rule.checkString(c.Command, workflowKey)
 	rule.checkString(c.Entrypoint, workflowKey)
@@ -528,14 +548,48 @@ func (rule *RuleExpression) checkConcurrency(c *Concurrency, workflowKey string)
 	if c == nil {
 		return
 	}
-	rule.checkString(c.Group, workflowKey)
+	shape := workflowConcurrency
+	if workflowKey == "jobs.<job_id>.concurrency" {
+		shape = workflowJobConcurrency
+	}
+	rule.checkWorkflowExpression(c.Expression, "concurrency", workflowKey, shape)
+	if c.Group != nil && c.Group.IsExpressionAssigned() {
+		rule.checkWorkflowExpression(c.Group, "concurrency.group", workflowKey, workflowNonEmpty)
+	} else {
+		rule.checkString(c.Group, workflowKey)
+	}
+	if c.Queue != nil && c.Queue.IsExpressionAssigned() {
+		rule.checkWorkflowExpression(c.Queue, "concurrency.queue", workflowKey, workflowQueue)
+	} else {
+		rule.checkString(c.Queue, workflowKey)
+	}
 	rule.checkBool(c.CancelInProgress, workflowKey)
+	if c.Queue == nil || c.CancelInProgress == nil {
+		return
+	}
+	// Literal YAML conflicts are diagnosed by the parser. Resolve known
+	// expression values here, retaining unknown values for runtime validation.
+	if !c.Queue.ContainsExpression() && c.CancelInProgress.Expression == nil {
+		return
+	}
+	var queue any = c.Queue.Value
+	if c.Queue.ContainsExpression() {
+		queue, _ = workflowExpressionLiteral(c.Queue)
+	}
+	var cancel any = c.CancelInProgress.Value
+	if c.CancelInProgress.Expression != nil {
+		cancel, _ = workflowExpressionLiteral(c.CancelInProgress.Expression)
+	}
+	if queue == "max" && cancel == true {
+		rule.Error(c.Queue.Pos, `"queue: max" cannot be combined with "cancel-in-progress: true" in "concurrency" section`)
+	}
 }
 
 func (rule *RuleExpression) checkDefaults(d *Defaults, workflowKey string) {
 	if d == nil || d.Run == nil {
 		return
 	}
+	rule.checkWorkflowExpression(d.Run.Expression, "defaults.run", workflowKey, workflowDefaultsRun)
 	rule.checkString(d.Run.Shell, workflowKey)
 	rule.checkString(d.Run.WorkingDirectory, workflowKey)
 }
@@ -547,11 +601,7 @@ func (rule *RuleExpression) checkWorkflowCall(c *WorkflowCall) {
 
 	rule.checkString(c.Uses, "")
 
-	uses := c.Uses.Value
-	if local, ok := workflowCallUsesLocalSpec(uses); ok {
-		uses = local
-	}
-	m, err := rule.localWorkflows.FindMetadata(uses)
+	m, err := rule.localWorkflows.findMetadataForCall(c.Uses.Value)
 	if err != nil {
 		rule.Error(c.Uses.Pos, err.Error())
 	}
@@ -612,6 +662,17 @@ func (rule *RuleExpression) checkWorkflowCall(c *WorkflowCall) {
 func (rule *RuleExpression) checkSnapshot(s *Snapshot) {
 	if s == nil {
 		return
+	}
+	rule.checkWorkflowExpression(s.Expression, "snapshot", "jobs.<job_id>.snapshot", workflowSnapshot)
+	for _, field := range []struct {
+		value *String
+		name  string
+	}{{s.ImageName, "image-name"}, {s.Version, "version"}} {
+		if field.value != nil && field.value.IsExpressionAssigned() {
+			rule.checkWorkflowExpression(field.value, "snapshot."+field.name, "jobs.<job_id>.snapshot", workflowNonEmpty)
+		} else {
+			rule.checkString(field.value, "jobs.<job_id>.snapshot")
+		}
 	}
 	rule.checkIfCondition(s.If, "jobs.<job_id>.snapshot.if")
 }
@@ -704,6 +765,12 @@ func (rule *RuleExpression) checkString(str *String, workflowKey string) []typed
 	if !ok {
 		return nil
 	}
+	// Contextless schema definitions reject expressions. The runner folds a sole
+	// string literal expression into a string, but interpolation remains an expression.
+	if workflowKey == "" && len(ts) > 0 && (len(ts) != 1 || !str.IsExpressionAssigned()) {
+		rule.Error(str.Pos, "expressions are not allowed in this static workflow field")
+		return nil
+	}
 
 	rule.checkTemplateEvaluatedType(ts)
 	return ts
@@ -740,11 +807,19 @@ func (rule *RuleExpression) checkBool(b *Bool, workflowKey string) {
 	}
 }
 
-func (rule *RuleExpression) checkInt(i *Int, workflowKey string) {
-	if i == nil {
+func (rule *RuleExpression) checkMaxParallel(i *Int, workflowKey string) {
+	if i == nil || i.Expression == nil {
 		return
 	}
-	rule.checkNumberExpression(i.Expression, "integer value", workflowKey)
+	ty := rule.checkOneExpression(i.Expression, "integer value", workflowKey)
+	if rule.checkNumberTy(ty, i.Expression.Pos, "integer value") == nil {
+		return
+	}
+	if value, known := workflowExpressionLiteral(i.Expression); known {
+		for _, message := range workflowExpressionLiteralErrors(workflowPositive, value, "max-parallel") {
+			rule.Error(i.Expression.Pos, message)
+		}
+	}
 }
 
 func (rule *RuleExpression) checkFloat(f *Float, workflowKey string) {
@@ -819,17 +894,22 @@ func (rule *RuleExpression) checkSemanticsOfExprNode(expr ExprNode, line, col in
 		c.UpdateJobs(rule.jobsTy)
 	}
 	if workflowKey != "" {
-		ctx, sp := WorkflowKeyAvailability(workflowKey)
+		ctx, _ := WorkflowKeyAvailability(workflowKey)
 		if len(ctx) == 0 {
 			rule.Debug("No context availability was found for workflow key %q", workflowKey)
 		}
-		c.SetContextAvailability(ctx)
-		c.SetSpecialFunctionAvailability(sp)
+		c.SetWorkflowKeyAvailability(workflowKey)
 	}
 
 	ty, errs := c.Check(expr)
 	for _, err := range errs {
 		rule.exprError(err, line, col)
+	}
+	if workflowKey == "" && len(errs) == 0 {
+		if _, literal := expr.(*StringNode); !literal {
+			rule.Error(&Pos{Line: line, Col: col}, "expressions are not allowed in this static workflow field")
+			return ty, false
+		}
 	}
 
 	return ty, len(errs) == 0
@@ -890,35 +970,7 @@ func (rule *RuleExpression) populateDependantNeedsTypes(out *ObjectType, job *Jo
 
 func (rule *RuleExpression) checkMatrixExpression(expr *String) *ObjectType {
 	ty := rule.checkObjectExpression(expr, "matrix", "jobs.<job_id>.strategy")
-	if ty == nil {
-		return NewEmptyObjectType()
-	}
-	matTy, ok := ty.(*ObjectType)
-	if !ok {
-		return NewEmptyObjectType()
-	}
-
-	// Consider properties in include section elements since 'include' section adds matrix values
-	incTy, ok := matTy.Props["include"]
-	if ok {
-		delete(matTy.Props, "include")
-		if a, ok := incTy.(*ArrayType); ok {
-			if o, ok := a.Elem.(*ObjectType); ok {
-				for n, p := range o.Props {
-					t, ok := matTy.Props[n]
-					if !ok {
-						matTy.Props[n] = p
-						continue
-					}
-					matTy.Props[n] = t.Merge(p)
-				}
-			}
-		}
-	}
-
-	delete(matTy.Props, "exclude")
-
-	return matTy
+	return matrixTypeFromExpression(ty)
 }
 
 func (rule *RuleExpression) checkMatrix(m *Matrix) *ObjectType {
@@ -966,7 +1018,7 @@ func (rule *RuleExpression) checkMatrix(m *Matrix) *ObjectType {
 
 	for _, combi := range m.Include.Combinations {
 		if combi.Expression != nil {
-			ty := rule.checkOneExpression(m.Include.Expression, "matrix combination at element of include section", "jobs.<job_id>.strategy")
+			ty := rule.checkObjectExpression(combi.Expression, "matrix combination at element of include section", "jobs.<job_id>.strategy")
 			if ty == nil {
 				continue
 			}

@@ -1,31 +1,5 @@
 [
   {
-    "reason": "Action context gap: the runner restricts Docker runs.env expressions to inputs; actionlint does not reject the github context here.",
-    "cases": {
-      "runner/src/Test/TestData/dockerfileaction_env_invalid_context.yml": []
-    }
-  },
-  {
-    "reason": "Action metadata gap: SchemaStore accepts Docker pre-if and post-if; actionlint currently forbids these keys for Docker actions.",
-    "cases": {
-      "schemastore/src/test/github-action/docker.json": [
-        ":1:1: \"pre-if\" is not allowed in \"runs\" section because \"Test Docker action\" is a Docker action. the action is defined at \"<action>\" [action]",
-        ":1:1: \"post-if\" is not allowed in \"runs\" section because \"Test Docker action\" is a Docker action. the action is defined at \"<action>\" [action]"
-      ]
-    }
-  },
-  {
-    "reason": "Action metadata gap: the runner accepts Docker pre-if and post-if; actionlint currently forbids these keys for Docker actions.",
-    "cases": {
-      "runner/src/Test/TestData/dockerfileaction_cleanup.yml": [
-        ":1:1: \"post-if\" is not allowed in \"runs\" section because \"Hello World\" is a Docker action. the action is defined at \"<action>\" [action]"
-      ],
-      "runner/src/Test/TestData/dockerfileaction_init.yml": [
-        ":1:1: \"pre-if\" is not allowed in \"runs\" section because \"Hello World\" is a Docker action. the action is defined at \"<action>\" [action]"
-      ]
-    }
-  },
-  {
     "reason": "Action output gap: actionlint does not reject value on JavaScript action outputs.",
     "cases": {
       "schemastore/src/negative_test/github-action/javascript-output-with-value.json": []
@@ -46,42 +20,12 @@
     }
   },
   {
-    "reason": "Event shape difference: this reader fixture accepts types under image_version; actionlint accepts names and versions.",
-    "cases": {
-      "languageservices/workflow-parser/testdata/reader/on-event-config-image-version-names.yml": [
-        "<stdin>:3:5: unexpected key \"types\" for \"image_version\" section. expected one of \"names\", \"versions\" [syntax-check]"
-      ],
-      "languageservices/workflow-parser/testdata/reader/on-event-config-image-version-versions.yml": [
-        "<stdin>:3:5: unexpected key \"types\" for \"image_version\" section. expected one of \"names\", \"versions\" [syntax-check]"
-      ]
-    }
-  },
-  {
-    "reason": "Event shape gap: the reader accepts scalar image_version names and versions; actionlint currently requires sequences.",
-    "cases": {
-      "languageservices/workflow-parser/testdata/reader/on-event-config-image-version-name-version.yml": [
-        "<stdin>:3:12: \"names\" section must be sequence node but got scalar node with \"!!str\" tag [syntax-check]",
-        "<stdin>:4:15: \"versions\" section must be sequence node but got scalar node with \"!!str\" tag [syntax-check]"
-      ]
-    }
-  },
-  {
     "reason": "Expression gap: actionlint rejects the non-breaking space in this expression; the reader fixture accepts it. The fixture also uses a retired action.",
     "cases": {
       "languageservices/workflow-parser/testdata/reader/bad-character.yml": [
         "<stdin>:12:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
         "<stdin>:16:43: got unexpected character '\\u00a0' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' ' [expression]"
       ]
-    }
-  },
-  {
-    "reason": "Expression limit gap: actionlint does not enforce the upstream maximum expression depth of 50.",
-    "cases": {
-      "languageservices/expressions/testdata/syntax-errors.json/depth-errors/0": [],
-      "languageservices/expressions/testdata/syntax-errors.json/depth-errors/10": [],
-      "languageservices/expressions/testdata/syntax-errors.json/depth-errors/2": [],
-      "languageservices/expressions/testdata/syntax-errors.json/depth-errors/4": [],
-      "languageservices/expressions/testdata/syntax-errors.json/depth-errors/6": []
     }
   },
   {
@@ -880,105 +824,17 @@
     }
   },
   {
-    "reason": "Function arity difference: actionlint requires a replacement argument for format(); the upstream parser accepts a format string alone.",
-    "cases": {
-      "languageservices/expressions/testdata/format.json/format/0": [
-        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
-      ],
-      "languageservices/expressions/testdata/format.json/format/2": [
-        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
-      ],
-      "languageservices/expressions/testdata/format.json/format/21": [
-        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
-      ],
-      "languageservices/expressions/testdata/format.json/format/25": [
-        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
-      ],
-      "languageservices/expressions/testdata/format.json/format/27": [
-        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
-      ],
-      "languageservices/expressions/testdata/format.json/format/29": [
-        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
-      ],
-      "languageservices/expressions/testdata/format.json/format/31": [
-        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
-      ],
-      "languageservices/expressions/testdata/format.json/format/33": [
-        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
-      ],
-      "languageservices/expressions/testdata/format.json/format/36": [
-        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
-      ],
-      "languageservices/expressions/testdata/syntax-errors.json/depth-errors/13": [
-        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:18:17: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:35:34: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:52:51: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:69:68: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:87:86: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:105:104: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:123:122: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:141:140: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:159:158: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:177:176: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:195:194: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:213:212: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:231:230: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:249:248: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:267:266: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:285:284: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:303:302: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:321:320: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:339:338: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:357:356: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:375:374: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:393:392: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:411:410: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:429:428: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
-      ],
-      "languageservices/expressions/testdata/syntax-errors.json/depth-errors/15": [
-        "1:1:0: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:18:17: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:35:34: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:52:51: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:69:68: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:87:86: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:105:104: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:123:122: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:141:140: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:159:158: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:177:176: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:195:194: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:213:212: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:231:230: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:249:248: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:267:266: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:285:284: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:303:302: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:321:320: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:339:338: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:357:356: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:375:374: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:393:392: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:411:410: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given",
-        "1:429:428: number of arguments is wrong. function \"format(string, any...) -> string\" takes at least 2 parameters but 1 arguments are given"
-      ]
-    }
-  },
-  {
-    "reason": "Mixed reader differences: missing steps, undefined matrix and step properties, numeric coercion, and the unsupported cancel-timeout-minutes field.",
+    "reason": "Mixed reader differences: missing steps, undefined matrix and step properties, and numeric expression type checks.",
     "cases": {
       "languageservices/workflow-parser/testdata/reader/misc-jobs.yml": [
         "<stdin>:3:3: \"steps\" section is missing in job \"build\" [syntax-check]",
         "<stdin>:4:18: property \"os\" is not defined in object type {} [expression]",
         "<stdin>:5:28: property \"experimental\" is not defined in object type {} [expression]",
         "<stdin>:7:22: type of expression at \"float number value\" must be number but found type string [expression]",
-        "<stdin>:8:5: unexpected key \"cancel-timeout-minutes\" for \"job\" section. expected one of \"concurrency\", \"container\", \"continue-on-error\", \"defaults\", \"env\", \"environment\", \"if\", \"name\", \"needs\", \"outputs\", \"permissions\", \"runs-on\", \"secrets\", \"services\", \"snapshot\", \"steps\", \"strategy\", \"timeout-minutes\", \"uses\", \"with\" [syntax-check]",
         "<stdin>:15:17: property \"step_id\" is not defined in object type {} [expression]",
         "<stdin>:18:20: property \"step1\" is not defined in object type {} [expression]",
         "<stdin>:19:20: property \"step2\" is not defined in object type {} [expression]",
-        "<stdin>:24:3: \"steps\" section is missing in job \"build2\" [syntax-check]",
-        "<stdin>:29:5: unexpected key \"cancel-timeout-minutes\" for \"job\" section. expected one of \"concurrency\", \"container\", \"continue-on-error\", \"defaults\", \"env\", \"environment\", \"if\", \"name\", \"needs\", \"outputs\", \"permissions\", \"runs-on\", \"secrets\", \"services\", \"snapshot\", \"steps\", \"strategy\", \"timeout-minutes\", \"uses\", \"with\" [syntax-check]"
+        "<stdin>:24:3: \"steps\" section is missing in job \"build2\" [syntax-check]"
       ]
     }
   },
@@ -996,43 +852,24 @@
     }
   },
   {
-    "reason": "Parser gap: the reader rejects the explicit timestamp tag, which actionlint currently accepts.",
+    "reason": "Reader versus expression type validation: cancel-timeout-minutes evaluates a string-valued github.sha where a number is required.",
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/errors-yaml-tags-explicit-unsupported.yml": []
-    }
-  },
-  {
-    "reason": "Reader field gap: cancel-timeout-minutes is not accepted by actionlint.",
-    "cases": {
-      "languageservices/workflow-parser/testdata/reader/job-cancel-timeout-minutes.yml": [
-        "<stdin>:5:5: unexpected key \"cancel-timeout-minutes\" for \"job\" section. expected one of \"concurrency\", \"container\", \"continue-on-error\", \"defaults\", \"env\", \"environment\", \"if\", \"name\", \"needs\", \"outputs\", \"permissions\", \"runs-on\", \"secrets\", \"services\", \"snapshot\", \"steps\", \"strategy\", \"timeout-minutes\", \"uses\", \"with\" [syntax-check]",
-        "<stdin>:17:5: unexpected key \"cancel-timeout-minutes\" for \"job\" section. expected one of \"concurrency\", \"container\", \"continue-on-error\", \"defaults\", \"env\", \"environment\", \"if\", \"name\", \"needs\", \"outputs\", \"permissions\", \"runs-on\", \"secrets\", \"services\", \"snapshot\", \"steps\", \"strategy\", \"timeout-minutes\", \"uses\", \"with\" [syntax-check]"
-      ],
       "languageservices/workflow-parser/testdata/reader/job-concurrency.yml": [
-        "<stdin>:17:5: unexpected key \"cancel-timeout-minutes\" for \"job\" section. expected one of \"concurrency\", \"container\", \"continue-on-error\", \"defaults\", \"env\", \"environment\", \"if\", \"name\", \"needs\", \"outputs\", \"permissions\", \"runs-on\", \"secrets\", \"services\", \"snapshot\", \"steps\", \"strategy\", \"timeout-minutes\", \"uses\", \"with\" [syntax-check]"
+        "<stdin>:17:29: type of expression at \"float number value\" must be number but found type string [expression]"
       ]
     }
   },
   {
-    "reason": "Reader field gap: cancel-timeout-minutes is not accepted by actionlint. This fixture also uses the retired windows-2019 label.",
+    "reason": "Reader versus lint policy: this fixture uses the retired windows-2019 runner label.",
     "cases": {
       "languageservices/workflow-parser/testdata/reader/job-basic.yml": [
         "<stdin>:4:14: label \"windows-2019\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
-        "<stdin>:8:14: label \"windows-2019\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
-        "<stdin>:9:5: unexpected key \"cancel-timeout-minutes\" for \"job\" section. expected one of \"concurrency\", \"container\", \"continue-on-error\", \"defaults\", \"env\", \"environment\", \"if\", \"name\", \"needs\", \"outputs\", \"permissions\", \"runs-on\", \"secrets\", \"services\", \"snapshot\", \"steps\", \"strategy\", \"timeout-minutes\", \"uses\", \"with\" [syntax-check]"
+        "<stdin>:8:14: label \"windows-2019\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]"
       ]
     }
   },
   {
-    "reason": "Reader field gap: the reader accepts a workflow-level description field; actionlint currently rejects it.",
-    "cases": {
-      "languageservices/workflow-parser/testdata/reader/workflow-description.yml": [
-        "<stdin>:1:1: unexpected key \"description\" for \"workflow\" section. expected one of \"concurrency\", \"defaults\", \"env\", \"jobs\", \"name\", \"on\", \"permissions\", \"run-name\" [syntax-check]"
-      ]
-    }
-  },
-  {
-    "reason": "Reader fixture versus lint checks: combined include/exclude filters, retired events, stacked activity types, one-minute schedules, and required inputs with defaults produce additional diagnostics.",
+    "reason": "Reader fixture versus lint checks: combined include/exclude filters, retired events, one-minute schedules, and required inputs with defaults produce additional diagnostics.",
     "cases": {
       "languageservices/workflow-parser/testdata/reader/events-mapping-all.yml": [
         "<stdin>:76:5: both \"branches\" and \"branches-ignore\" filters cannot be used for the same event \"merge_group\". note: use '!' to negate patterns [events]",
@@ -1041,11 +878,9 @@
         "<stdin>:102:3: unknown Webhook event \"project_column\". see https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#webhook-events for list of all Webhook event names [events]",
         "<stdin>:113:5: both \"branches\" and \"branches-ignore\" filters cannot be used for the same event \"pull_request\". note: use '!' to negate patterns [events]",
         "<stdin>:115:5: both \"paths\" and \"paths-ignore\" filters cannot be used for the same event \"pull_request\". note: use '!' to negate patterns [events]",
-        "<stdin>:138:9: invalid activity type \"stacked\" for \"pull_request\" Webhook event. available types are \"assigned\", \"auto_merge_disabled\", \"auto_merge_enabled\", \"closed\", \"converted_to_draft\", \"demilestoned\", \"dequeued\", \"edited\", \"enqueued\", \"labeled\", \"locked\", \"milestoned\", \"opened\", \"ready_for_review\", \"reopened\", \"review_request_removed\", \"review_requested\", \"synchronize\", \"unassigned\", \"unlabeled\", \"unlocked\" [events]",
         "<stdin>:139:3: unknown Webhook event \"pull_request_comment\". see https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#webhook-events for list of all Webhook event names [events]",
         "<stdin>:158:5: both \"branches\" and \"branches-ignore\" filters cannot be used for the same event \"pull_request_target\". note: use '!' to negate patterns [events]",
         "<stdin>:160:5: both \"paths\" and \"paths-ignore\" filters cannot be used for the same event \"pull_request_target\". note: use '!' to negate patterns [events]",
-        "<stdin>:183:9: invalid activity type \"stacked\" for \"pull_request_target\" Webhook event. available types are \"assigned\", \"auto_merge_disabled\", \"auto_merge_enabled\", \"closed\", \"converted_to_draft\", \"demilestoned\", \"dequeued\", \"edited\", \"enqueued\", \"labeled\", \"locked\", \"milestoned\", \"opened\", \"ready_for_review\", \"reopened\", \"review_request_removed\", \"review_requested\", \"synchronize\", \"unassigned\", \"unlabeled\", \"unlocked\" [events]",
         "<stdin>:188:5: both \"branches\" and \"branches-ignore\" filters cannot be used for the same event \"push\". note: use '!' to negate patterns [events]",
         "<stdin>:192:5: both \"tags\" and \"tags-ignore\" filters cannot be used for the same event \"push\". note: use '!' to negate patterns [events]",
         "<stdin>:194:5: both \"paths\" and \"paths-ignore\" filters cannot be used for the same event \"push\". note: use '!' to negate patterns [events]",
@@ -1058,14 +893,13 @@
     }
   },
   {
-    "reason": "Reader versus lint checks: empty and constant conditions, unknown context properties, and arguments to success() produce diagnostics.",
+    "reason": "Reader versus lint checks: empty and constant conditions and unknown context properties produce diagnostics.",
     "cases": {
       "languageservices/workflow-parser/testdata/reader/job-if.yml": [
         "<stdin>:6:9: constant expression \"true\" in condition. remove the if: section [if-cond]",
         "<stdin>:11:9: string should not be empty [syntax-check]",
         "<stdin>:11:9: unexpected end of input while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\" [expression]",
         "<stdin>:16:13: property \"foo\" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; artifacts: string; artifacts_list: string; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: string; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression]",
-        "<stdin>:24:13: number of arguments is wrong. function \"success() -> bool\" takes 0 parameters but 2 arguments are given [expression]",
         "<stdin>:29:9: property \"foo\" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; artifacts: string; artifacts_list: string; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: string; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression]",
         "<stdin>:34:9: constant expression \"null\" in condition. remove the if: section [if-cond]",
         "<stdin>:44:9: constant expression \"false || (true && true)\" in condition. remove the if: section [if-cond]"
@@ -1116,14 +950,6 @@
       "languageservices/workflow-parser/testdata/reader/errors-max-job-limit-with-reusable-workflow.yml": [],
       "languageservices/workflow-parser/testdata/reader/errors-max-result-size.yml": [],
       "languageservices/workflow-parser/testdata/reader/errors-step-run-exceeds-length.yml": []
-    }
-  },
-  {
-    "reason": "Runner-internal contract: plugin actions omit runs.using; actionlint validates public action metadata and requires it.",
-    "cases": {
-      "runner/src/Test/TestData/pluginaction.yml": [
-        ":1:1: \"runs.using\" is missing in local action \"Hello World\" defined at \"<action>\" [action]"
-      ]
     }
   },
   {
@@ -1242,12 +1068,11 @@
     }
   },
   {
-    "reason": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, syntax-check). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+    "reason": "Schema versus lint policy: the fixture uses retired actions/checkout@v1 and actions/setup-node@v1 runtimes; its dynamic with mapping is supported.",
     "cases": {
       "schemastore/src/test/github-workflow/with-from-json.yaml": [
         "<stdin>:11:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-        "<stdin>:12:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-        "<stdin>:13:15: \"with\" section is scalar node but mapping node is expected [syntax-check]"
+        "<stdin>:12:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
       ]
     }
   },
@@ -1291,7 +1116,7 @@
         "<stdin>:16:20: property \"shell\" is not defined in object type {} [expression]"
       ],
       "schemastore/src/test/github-workflow/env-with-simple-expression.yaml": [
-        "<stdin>:15:14: type of expression at \"env\" must be object but found type string [expression]"
+        "<stdin>:15:14: env must be object but found string [expression]"
       ]
     }
   },
@@ -1817,6 +1642,14 @@
       ],
       "yaml-test-suite/DK95/07/in.yaml": [
         "go-yaml load error in parser at L1.C1: found incompatible YAML document"
+      ]
+    }
+  },
+  {
+    "reason": "SchemaStore accepts duplicate composite step IDs; runner WorkflowTemplateConverter.ConvertToSteps and IdBuilder.TryAddKnownId require case-insensitive uniqueness. The fixture repeats pleasantries.",
+    "cases": {
+      "schemastore/src/test/github-action/composite-run-steps.json": [
+        "<action>/action.yml:38:15: step 4 in \"runs.steps\" section in metadata of \"Test composite run steps\" action has duplicate ID \"pleasantries\"; step IDs are case insensitive [action]"
       ]
     }
   }

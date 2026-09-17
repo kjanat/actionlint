@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"go.yaml.in/yaml/v4"
 )
 
 // ConfigSelection selects an explicit file, repository discovery, or no configuration.
@@ -63,35 +61,20 @@ func InspectConfig(selection ConfigSelection, withOrigin bool) (ConfigInspection
 	if err != nil {
 		return ConfigInspection{}, err
 	}
-	cfg := &Config{}
-	document := &yaml.Node{}
+	var data []byte
 	if path != "" {
-		data, err := os.ReadFile(path)
+		data, err = os.ReadFile(path)
 		if err != nil {
 			return ConfigInspection{Path: path}, fmt.Errorf("could not read config file %q: %w", path, err)
 		}
-		cfg, document, err = parseConfigDocument(data)
-		if err != nil {
-			return ConfigInspection{Path: path}, fmt.Errorf("could not parse config file %q: %w", path, err)
-		}
 	}
-	result := ConfigInspection{Path: path, Config: effectiveConfig(cfg)}
+	resolved, err := resolveConfigDocument(data)
+	if err != nil {
+		return ConfigInspection{Path: path}, fmt.Errorf("could not parse config file %q: %w", path, err)
+	}
+	result := ConfigInspection{Path: path, Config: resolved.values}
 	if withOrigin {
-		result.Origins = map[string]ConfigOrigin{}
-		var defaults func(map[string]any, string)
-		defaults = func(values map[string]any, prefix string) {
-			for key, value := range values {
-				pointer := prefix + "/" + configPointerPart(key)
-				result.Origins[pointer] = ConfigOrigin{Source: "default", State: "missing"}
-				if nested, ok := value.(map[string]any); ok {
-					defaults(nested, pointer)
-				}
-			}
-		}
-		defaults(result.Config, "")
-		if err := configOrigins(document, "", result.Origins); err != nil {
-			return ConfigInspection{}, err
-		}
+		result.Origins = resolved.origins
 	}
 	return result, nil
 }

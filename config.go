@@ -58,10 +58,27 @@ type PathConfig struct {
 	Ignore IgnorePatterns `yaml:"ignore" jsonschema:"nullable"`
 }
 
-// Policy is the "policy" mapping in the configuration file. Each key enables one check that enforces a
-// convention chosen by the repository. A key which is not set inherits its value from the configuration file
-// of the next lower precedence, and all the checks are disabled when no configuration file sets them.
+// Policy configures checks for cache safety and repository conventions.
+// Cache policies are enabled by default; the remaining checks are opt-in.
+// An omitted or null setting retains the check's default.
 type Policy struct {
+	// CacheCallUnrestricted requires explicit cache ceilings on low-trust reusable calls.
+	// Enabled by default. Set false to disable it; null or omission keeps the default.
+	CacheCallUnrestricted *bool `yaml:"cache-call-unrestricted" jsonschema:"nullable,default=true"`
+	// CacheOperation reports official cache action steps disabled by an explicit cache mode.
+	// Enabled by default. Set false to disable it; null or omission keeps the default.
+	CacheOperation *bool `yaml:"cache-operation" jsonschema:"nullable,default=true"`
+	// CacheWriteUntrusted reports write-capable cache modes on low-trust triggers.
+	// Enabled by default. Set false to disable it; null or omission keeps the default.
+	CacheWriteUntrusted *bool `yaml:"cache-write-untrusted" jsonschema:"nullable,default=true"`
+	// DisallowSuppressions restricts inline cache policy exceptions. `true` or `{}` reports
+	// each prohibited directive and retains its original violations. Omission, null, or false
+	// permits exceptions. Both ignore and ignore-next-line are covered equally.
+	//
+	// Use `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs.
+	// Omitted rules selects all suppressible rules; an explicit list must be nonempty.
+	// Report accepts suppression (directive only), violation (original findings only), or all (both kinds of diagnostic).
+	DisallowSuppressions *SuppressionsPolicy `yaml:"disallow-suppressions" jsonschema:"nullable"`
 	// RequireCommitHash requires `uses:` references to be pinned to a full commit SHA, or an image digest
 	// for Docker images, when set to `true`.
 	//
@@ -132,6 +149,14 @@ func (p *Policy) UnmarshalYAML(n *yaml.Node) error {
 		k, v := n.Content[i], n.Content[i+1]
 		var err error
 		switch k.Value {
+		case "cache-write-untrusted":
+			err = v.Decode(&p.CacheWriteUntrusted)
+		case "cache-call-unrestricted":
+			err = v.Decode(&p.CacheCallUnrestricted)
+		case "cache-operation":
+			err = v.Decode(&p.CacheOperation)
+		case "disallow-suppressions":
+			err = v.Decode(&p.DisallowSuppressions)
 		case "require-commit-hash":
 			err = v.Decode(&p.RequireCommitHash)
 		case "require-job-timeout":
@@ -343,10 +368,10 @@ type Config struct {
 	// `permissive` assumes read/write access, except `id-token`, which still requires an explicit grant.
 	// Omit this key or use `null` to assume `restricted`.
 	AssumeDefaultPermissions DefaultPermissionsAssumption `yaml:"assume-default-permissions" jsonschema:"nullable"`
-	// Policy enables opt-in checks for repository conventions, such as pinned actions and job timeouts.
+	// Policy configures cache safety checks and repository conventions, such as pinned actions and job timeouts.
 	//
-	// All policy checks are disabled by default. Set individual keys to enable them; omit the mapping
-	// or use `{}` or `null` to leave them unset. Normal workflow correctness checks always run.
+	// Cache policies default to true; other policies are opt-in. Set individual keys to override their
+	// defaults. Omit the mapping or use `{}` or `null` to keep defaults. Syntax checks always run.
 	Policy Policy `yaml:"policy" jsonschema:"nullable"`
 }
 
@@ -434,29 +459,47 @@ func (cfg *Config) RequiredActions() []string {
 // ParseConfig parses the given bytes as an actionlint config file. When deserializing the YAML file
 // or the config validation fails, this function returns an error.
 func ParseConfig(b []byte) (*Config, error) {
-	c, _, err := parseConfigDocument(b)
-	return c, err
+	resolved, err := resolveConfigDocument(b)
+	if err != nil {
+		return nil, err
+	}
+	return resolved.config, nil
 }
 
-// parseConfigDocument decodes the same YAML node used for configuration provenance.
-func parseConfigDocument(b []byte) (*Config, *yaml.Node, error) {
+// resolvedConfig keeps validated values and their provenance from the same document.
+type resolvedConfig struct {
+	config  *Config
+	values  map[string]any
+	origins map[string]ConfigOrigin
+}
+
+func resolveConfigDocument(b []byte) (resolvedConfig, error) {
 	var document yaml.Node
 	var c Config
 	if err := yaml.Unmarshal(b, &document); err != nil {
-		return nil, nil, errors.New(strings.ReplaceAll(err.Error(), "\n", " "))
+		return resolvedConfig{}, errors.New(strings.ReplaceAll(err.Error(), "\n", " "))
 	}
 	if len(document.Content) > 0 {
 		if err := document.Decode(&c); err != nil {
-			return nil, nil, errors.New(strings.ReplaceAll(err.Error(), "\n", " "))
+			return resolvedConfig{}, errors.New(strings.ReplaceAll(err.Error(), "\n", " "))
 		}
 	}
 
 	for pat := range c.Paths {
 		if !doublestar.ValidatePattern(pat) {
-			return nil, nil, fmt.Errorf("invalid glob pattern %q in \"paths\"", pat)
+			return resolvedConfig{}, fmt.Errorf("invalid glob pattern %q in \"paths\"", pat)
 		}
 	}
-	return &c, &document, nil
+	values, err := effectiveConfig(&c)
+	if err != nil {
+		return resolvedConfig{}, err
+	}
+	origins := map[string]ConfigOrigin{}
+	configDefaultOrigins(values, "", origins)
+	if err := configOrigins(&document, "", origins); err != nil {
+		return resolvedConfig{}, err
+	}
+	return resolvedConfig{config: &c, values: values, origins: origins}, nil
 }
 
 // ReadConfigFile reads actionlint config file (actionlint.yaml) from the given file path.
@@ -523,10 +566,13 @@ paths:
 # token.
 #assume-default-permissions: restricted
 
-# Policy checks. Each key turns on one check that enforces a convention of this
-# repository rather than reporting a mistake. They are all disabled when this
-# mapping is absent. The keys are in alphabetical order.
+# Cache policies are enabled by default. Set a cache policy to false to disable
+# it. The remaining policies are opt-in repository conventions.
 #policy:
+#  cache-call-unrestricted: true
+#  cache-operation: true
+#  cache-write-untrusted: true
+#  disallow-suppressions: false
 #  # Require every "uses:" to be pinned to a full commit SHA or an image
 #  # digest.
 #  require-commit-hash: true

@@ -122,15 +122,15 @@ The release matrix builds all these targets, but native CI tests do not cover:
 To install these binaries [`gh`][gh] command is useful. The following command is an example for x86_64 Linux.
 
 ```sh
-gh release download --repo kjanat/actionlint --pattern '*_linux_amd64.tar.gz' v1.16.1
-tar xf actionlint_1.16.1_linux_amd64.tar.gz
+gh release download --repo kjanat/actionlint --pattern '*_linux_amd64.tar.gz' v1.17.0
+tar xf actionlint_1.17.0_linux_amd64.tar.gz
 ./actionlint -version
 ```
 
 Verify the downloaded archive's [build provenance attestation][attestations] against this repository:
 
 ```sh
-gh attestation verify -R kjanat/actionlint actionlint_1.16.1_linux_amd64.tar.gz
+gh attestation verify -R kjanat/actionlint actionlint_1.17.0_linux_amd64.tar.gz
 ```
 
 <a id="download-script"></a>
@@ -138,18 +138,21 @@ gh attestation verify -R kjanat/actionlint actionlint_1.16.1_linux_amd64.tar.gz
 ### Download script
 
 To install `actionlint` executable with one command, [the download script](../scripts/download-actionlint.bash) is available.
+
+The examples pin the script to a commit. The separate version argument selects the binary release; `latest` resolves
+the newest release. Update the script pin when adopting script changes, independently of the binary version.
 It downloads `actionlint.exe` on Windows and `actionlint` on other supported platforms. Pass `latest` to resolve the
 newest release, or omit the argument to use the default version recorded in the script:
 
 ```sh
-bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) latest
+bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) latest
 ```
 
 When you need to install specific version of actionlint, please give the version to the 1st command line argument. The following
-example installs v1.16.1.
+example installs v1.17.0.
 
 ```sh
-bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) 1.16.1
+bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) 1.17.0
 ```
 
 This script downloads `actionlint` (or `actionlint.exe` on Windows) binary to the current working directory. When you need to put
@@ -158,7 +161,7 @@ example installs the latest version to `~/.local/bin`. The destination must alre
 
 ```sh
 mkdir -p "$HOME/.local/bin"
-bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) latest "$HOME/.local/bin"
+bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) latest "$HOME/.local/bin"
 ```
 
 The script verifies the archive's attestation when an authenticated `gh` command is available; otherwise it reports
@@ -176,10 +179,38 @@ The fork publishes CLI images as `ghcr.io/kjanat/actionlint` and `docker.io/kjan
 
 ### Cross-platform version managers
 
+#### aqua
+
+[![aqua registry: kjanat/actionlint][aqua-badge]][aqua-package]
+
+The [aqua registry entry][aqua-package]
+installs this fork's release binaries and specifies SHA-256 checksums and GitHub artifact attestations for verification.
+With [aqua](https://aquaproj.github.io/) installed and an initialized `aqua.yaml`, use a standard registry version
+containing [aquaproj/aqua-registry#60566](https://github.com/aquaproj/aqua-registry/pull/60566), then add and install the package:
+
+```sh
+aqua g -i kjanat/actionlint
+```
+
+Use the full `kjanat/actionlint` name to select this fork; the upstream package is `rhysd/actionlint`.
+
 #### mise
 
-Use [mise's GitHub backend][mise-github] with this repository's full name. The short `actionlint` tool name resolves to
-upstream packages in mise's registry.
+Choose one backend for the `actionlint` executable:
+
+| Backend                                                   | Project-local command                              | Installation                                                                                             |
+| --------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| [GitHub][mise-github]                                     | `mise use github:kjanat/actionlint`                | Prebuilt release binary; independent of registry snapshots.                                              |
+| [aqua](https://mise.jdx.dev/dev-tools/backends/aqua.html) | `mise use aqua:kjanat/actionlint`                  | Prebuilt release binary using aqua's checksum and attestation metadata; see registry availability below. |
+| [npm](https://mise.jdx.dev/dev-tools/backends/npm.html)   | `mise use 'npm:@kjanat/actionlint'`                | The npm launcher and its platform binary; requires Node.js at runtime and optional dependencies enabled. |
+| [Go](https://mise.jdx.dev/dev-tools/backends/go.html)     | `mise use go:actionlint.kjanat.dev/cmd/actionlint` | Builds from source with `go install`; requires a compatible Go toolchain.                                |
+
+The short `actionlint` tool name resolves to upstream packages in mise's registry. Use the full identifiers above
+to select this fork. The npm route installs the executable into mise's tool directory; use
+[`npm install --save-dev`](#npm) instead when it belongs in your project's dependencies.
+For the Go route, see [source-build requirements](#build-from-source).
+
+For example, using the GitHub backend:
 
 ```bash
 # Show all installable versions
@@ -198,6 +229,28 @@ For a project-local selection, put this in `mise.toml` and run `mise install`:
 [tools]
 "github:kjanat/actionlint" = "latest"
 ```
+
+Alternatively, [mise's built-in aqua backend](https://mise.jdx.dev/dev-tools/backends/aqua.html) uses the same
+registry metadata for checksum and attestation verification, without installing the aqua CLI:
+
+```sh
+mise use aqua:kjanat/actionlint
+```
+
+mise bundles its registry snapshot. The entry is included in the pending
+[mise 2026.9.7 release PR](https://github.com/jdx/mise/pull/13125); use a release containing that update.
+On mise 2026.9.6, opt into the current registry through `mise.toml` to use the entry before that release:
+
+```toml
+[settings]
+registry_floating = true
+
+[tools]
+"aqua:kjanat/actionlint" = "latest"
+```
+
+This [setting](https://mise.jdx.dev/configuration/settings.html#registry_floating) floats both mise and aqua registries.
+The GitHub backend examples above work independently of the bundled registry.
 
 ### [Nix](https://nix.dev/)
 
@@ -353,3 +406,5 @@ plugin. Use mise's GitHub backend or a release archive instead.
 [nixpkgs]: https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/ac/actionlint/package.nix
 [nixpkgs-fork-pr]: https://github.com/NixOS/nixpkgs/pull/561437
 [mise-github]: https://mise.jdx.dev/dev-tools/backends/github.html
+[aqua-package]: https://github.com/aquaproj/aqua-registry/tree/main/pkgs/kjanat/actionlint
+[aqua-badge]: https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2Faquaproj%2Faqua-registry%2Fmain%2Fpkgs%2Fkjanat%2Factionlint%2Fregistry.yaml&query=%24.packages%5B0%5D.repo_name&prefix=kjanat%2F&label=aqua%20registry&color=blue

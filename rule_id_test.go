@@ -87,13 +87,17 @@ func TestCheckValidJobNames(t *testing.T) {
 
 	for _, input := range inputs {
 		t.Run(input, func(t *testing.T) {
+			stepID := input
+			if strings.HasPrefix(stepID, "__") {
+				stepID = "step" + stepID
+			}
 			job := &Job{
 				ID: &String{Value: input, Pos: &Pos{}},
 				Needs: []*String{
 					{Value: input, Pos: &Pos{}},
 				},
 				Steps: []*Step{
-					{ID: &String{Value: input, Pos: &Pos{}}},
+					{ID: &String{Value: stepID, Pos: &Pos{}}},
 				},
 			}
 			r := NewRuleID()

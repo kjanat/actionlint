@@ -23,7 +23,10 @@ func TestAnalysisSourceRanges(t *testing.T) {
 	}
 }
 func TestEffectiveConfigFieldCoverage(t *testing.T) {
-	resolved := effectiveConfig(&Config{})
+	resolved, err := effectiveConfig(&Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	var check func(reflect.Type, map[string]any)
 	check = func(typ reflect.Type, values map[string]any) {
 		t.Helper()

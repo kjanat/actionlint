@@ -2,7 +2,7 @@
 title: actionlint
 section: 1
 header: General Commands Manual
-footer: actionlint 1.16.1
+footer: actionlint 1.17.0
 ---
 
 # NAME
@@ -27,8 +27,8 @@ Security checks report potentially unsafe expression interpolation in scripts an
 credentials. Optional ShellCheck and pyflakes integrations check scripts in `run:` steps.
 
 Repository policy checks can require immutable action references, job timeouts, and particular
-actions. These checks are enabled explicitly in the configuration file; ordinary workflow
-checks do not require configuration.
+actions. These checks are enabled explicitly in the configuration file. Cache safety policies
+are enabled by default; ordinary workflow checks do not require configuration.
 
 # USAGE
 
@@ -271,7 +271,37 @@ satisfy the check. This policy checks declaration presence; it does not infer le
 searched. Workflows consisting entirely of reusable workflow calls, or containing an
 expression-based action reference, are skipped.
 
-Policy checks are off until enabled. For example:
+**policy.cache-write-untrusted**
+: Enabled by default. Report explicit cache write grants on low-trust triggers that can access
+default-branch caches. Set to `false` to disable this check.
+
+**policy.cache-call-unrestricted**
+: Enabled by default. Require an explicit cache access limit on reusable workflow calls under
+those low-trust triggers. A workflow-level declaration can supply the limit. Set to `false`
+to disable this check.
+
+**policy.cache-operation**
+: Enabled by default. Report official cache actions disabled by the effective explicit cache
+mode, including restrictions inherited through nested local reusable workflow calls.
+Set to `false` to disable this check.
+
+**policy.disallow-suppressions**
+: Prohibit inline exceptions for all cache policies with `true`, or select a nonempty `rules`
+list in a mapping. `report` selects `all` (default), `suppression`, or `violation`. Omission,
+`null`, or `false` permits inline exceptions.
+
+The three cache policies accept line-scoped exceptions with an exact rule name and a reason:
+
+```yaml
+cache-mode: write # actionlint:ignore cache-write-untrusted -- jobs use reviewed default-branch code only
+```
+
+Alternatively, place `# actionlint:ignore-next-line RULE -- REASON` immediately before the
+reported declaration. These directives do not suppress other rules. CLI and configured
+ignore patterns still apply afterwards. See the configuration document for the full trigger
+list, cache action modes, nested-call behavior, and suppression controls.
+
+Other policy checks are off until enabled. For example:
 
 ```yaml
 self-hosted-runner: { labels: [linux.2xlarge] }
@@ -475,7 +505,7 @@ Detailed documentation for this release and current installation options are ava
 
 ## Checks
 
-https://github.com/kjanat/actionlint/blob/v1.16.1/docs/checks.md
+https://github.com/kjanat/actionlint/blob/v1.17.0/docs/checks.md
 
 Full list of all checks done by actionlint with example inputs, outputs, and playground links.
 
@@ -483,31 +513,31 @@ Full list of all checks done by actionlint with example inputs, outputs, and pla
 
 https://github.com/kjanat/actionlint/blob/master/docs/install.md
 
-Installation instructions for npm, Homebrew, AUR, Scoop, mise, release archives, the download
+Installation instructions for npm, Homebrew, AUR, Scoop, aqua, mise, release archives, the download
 script, Docker, and Go, plus the status of WinGet and upstream-only package names.
 
 ## Usage
 
-https://github.com/kjanat/actionlint/blob/v1.16.1/docs/usage.md
+https://github.com/kjanat/actionlint/blob/v1.17.0/docs/usage.md
 
 CLI usage, shell completion, output templates, the GitHub Action, Docker images, and editor
 and CI integrations.
 
 ## Configuration
 
-https://github.com/kjanat/actionlint/blob/v1.16.1/docs/config.md
+https://github.com/kjanat/actionlint/blob/v1.17.0/docs/config.md
 
-Repository configuration, runner labels, variables, secrets, and opt-in policy checks.
+Repository configuration, runner labels, variables, secrets, and policy checks.
 
 ## Go API
 
-https://github.com/kjanat/actionlint/blob/v1.16.1/docs/api.md
+https://github.com/kjanat/actionlint/blob/v1.17.0/docs/api.md
 
 How to use actionlint as Go library.
 
 ## References
 
-https://github.com/kjanat/actionlint/blob/v1.16.1/docs/reference.md
+https://github.com/kjanat/actionlint/blob/v1.17.0/docs/reference.md
 
 Links to resources.
 
@@ -537,7 +567,7 @@ download script:
 ```yaml
 - name: Check workflow files
   run: |
-    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) latest
+    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) latest
     ./actionlint --color
   shell: bash
 ```

@@ -313,11 +313,14 @@ var AllWebhookTypes = map[string][]string{`)
 }
 
 // addWebhookOnlyActivityTypes supplements the Actions trigger documentation with activity types
-// that GitHub documents only in its webhook payload reference. Keep this separate from parse so the
+// in its webhook reference or official workflow schema. Keep this separate from parse so the
 // HTML parser remains a faithful representation of its input.
 func addWebhookOnlyActivityTypes(parsed map[string][]string) {
 	additional := map[string][]string{
 		"merge_group": {"destroyed"},
+		// https://github.com/actions/languageservices/pull/384
+		"pull_request":        {"stacked"},
+		"pull_request_target": {"stacked"},
 	}
 	for event, types := range additional {
 		current, ok := parsed[event]

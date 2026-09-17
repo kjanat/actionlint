@@ -296,8 +296,11 @@ func NewErrorFormatter(format string) (*ErrorFormatter, error) {
 		return nil, fmt.Errorf("template to format error messages must contain at least one {{ }} placeholder: %s", format)
 	}
 
-	r := map[string]*ruleTemplateFields{
-		"syntax-check": {"syntax-check", "Checks for GitHub Actions workflow syntax"},
+	r := map[string]*ruleTemplateFields{}
+	for _, descriptor := range builtinRuleDescriptors() {
+		if descriptor.build == nil {
+			r[descriptor.Name] = &ruleTemplateFields{descriptor.Name, descriptor.Description}
+		}
 	}
 
 	funcs := template.FuncMap(map[string]any{

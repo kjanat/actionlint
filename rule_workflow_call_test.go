@@ -2,6 +2,7 @@ package actionlint
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -11,6 +12,119 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 )
+
+func TestWorkflowCallMetadataFailureSpelling(t *testing.T) {
+	for _, malformed := range []bool{false, true} {
+		for _, prefix := range []string{"./", "$/", "$//"} {
+			t.Run(fmt.Sprintf("malformed=%v/prefix=%s", malformed, prefix), func(t *testing.T) {
+				root := t.TempDir()
+				if malformed {
+					if err := os.WriteFile(filepath.Join(root, "broken.yaml"), []byte("on: ["), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				proj := &Project{root: root}
+				cache := NewLocalReusableWorkflowCache(proj, root, nil)
+				l, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root})
+				if err != nil {
+					t.Fatal(err)
+				}
+				uses := prefix + "broken.yaml"
+				source := []byte("on: push\njobs:\n  call:\n    uses: " + uses + "\n    with: {arg: '${{ github.ref }}'}\n  consumer:\n    needs: call\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo '${{ needs.call.outputs.result }}'\n")
+				for _, pass := range []string{"cold cache", "warm cache"} {
+					errs, err := l.check("caller.yaml", source, proj, nil, nil, cache)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if len(errs) != 1 || errs[0].Line != 4 || errs[0].Column != 11 {
+						t.Fatalf("%s: want one failure at the uses value, got %v", pass, errs)
+					}
+					if !strings.Contains(errs[0].Message, fmt.Sprintf("%q", uses)) {
+						t.Fatalf("%s: original reference lost: %v", pass, errs)
+					}
+				}
+				errs, err := l.Lint("caller.yaml", source, proj)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(errs) != 1 || errs[0].Line != 4 || errs[0].Column != 11 || !strings.Contains(errs[0].Message, fmt.Sprintf("%q", uses)) {
+					t.Fatalf("Lint: want one failure using the source reference, got %v", errs)
+				}
+				// Rendering a caller's spelling must not alter the cached error.
+				_, err = cache.FindMetadata("./broken.yaml")
+				if err == nil || !strings.Contains(err.Error(), `"./broken.yaml"`) {
+					t.Fatalf("cache no longer retains its lookup failure: %v", err)
+				}
+			})
+		}
+	}
+}
+
+func TestWorkflowCallInvalidJobKeyDiagnostics(t *testing.T) {
+	for _, tc := range []struct {
+		name, key, value, leaf string
+	}{
+		{"cache mode", "CACHE-MODE", "write", ""},
+		{"permissions", "PERMISSIONS", "{contents: write}", ""},
+		{"missing unintended callee", "USES", "./leaf.yaml", ""},
+		{"malformed unintended callee", "USES", "./leaf.yaml", "on: ["},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			caller := []byte("on: push\ncache-mode: read\npermissions: {contents: read}\njobs:\n  call:\n    uses: ./callee.yaml\n")
+			callee := []byte("on: workflow_call\njobs:\n  build:\n    " + tc.key + ": " + tc.value + "\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n")
+			for name, source := range map[string][]byte{"caller.yaml": caller, "callee.yaml": callee} {
+				if err := os.WriteFile(filepath.Join(root, name), source, 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if tc.leaf != "" {
+				if err := os.WriteFile(filepath.Join(root, "leaf.yaml"), []byte(tc.leaf), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			project := &Project{root: root}
+			linter, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root, Shellcheck: "", Pyflakes: ""})
+			if err != nil {
+				t.Fatal(err)
+			}
+			checkDiagnostics := func(diagnostics []*Error, includeCallee bool) {
+				t.Helper()
+				if !includeCallee {
+					if len(diagnostics) != 0 {
+						t.Fatalf("invalid callee key affected caller: %v", diagnostics)
+					}
+					return
+				}
+				if len(diagnostics) != 1 || diagnostics[0].Kind != "syntax-check" || diagnostics[0].Line != 4 || diagnostics[0].Column != 5 || filepath.Base(diagnostics[0].Filepath) != "callee.yaml" || !strings.Contains(diagnostics[0].Message, fmt.Sprintf("unexpected key %q", tc.key)) {
+					t.Fatalf("expected only the invalid key at callee.yaml:4:5, got %v", diagnostics)
+				}
+			}
+			for _, order := range [][]string{{"caller.yaml", "callee.yaml"}, {"callee.yaml", "caller.yaml"}} {
+				cache := NewLocalReusableWorkflowCache(project, root, nil)
+				for range 2 {
+					for _, name := range order {
+						source := caller
+						if name == "callee.yaml" {
+							source = callee
+						}
+						diagnostics, err := linter.check(name, source, project, nil, nil, cache)
+						if err != nil {
+							t.Fatal(err)
+						}
+						checkDiagnostics(diagnostics, name == "callee.yaml")
+					}
+				}
+				paths := []string{filepath.Join(root, order[0]), filepath.Join(root, order[1])}
+				diagnostics, err := linter.LintFiles(paths, project)
+				if err != nil {
+					t.Fatal(err)
+				}
+				checkDiagnostics(diagnostics, true)
+			}
+		})
+	}
+}
 
 func TestRuleWorkflowCallCheckWorkflowCallUsesFormat(t *testing.T) {
 	tests := []struct {
@@ -143,7 +257,7 @@ func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
 		t.Fatal(errs)
 	}
 
-	m, ok := c.readCache("./test-workflow.yaml")
+	m, _, ok := c.readCache("./test-workflow.yaml")
 	if !ok {
 		t.Fatal("no metadata was created")
 	}
@@ -205,7 +319,7 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 			Secrets: ReusableWorkflowMetadataSecrets{},
 		},
 	} {
-		cache.writeCache(fmt.Sprintf("./workflow%d.yaml", i), md)
+		cache.writeCache(fmt.Sprintf("./workflow%d.yaml", i), md, nil)
 	}
 
 	tests := []struct {
@@ -665,7 +779,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		t.Run(tc.what, func(t *testing.T) {
 			cwd := filepath.Join("path", "to", "project")
 			cache := NewLocalReusableWorkflowCache(&Project{cwd, nil}, cwd, nil)
-			cache.writeCache("./callee.yaml", &ReusableWorkflowMetadata{JobPermissions: tc.callee})
+			cache.writeCache("./callee.yaml", &ReusableWorkflowMetadata{JobPermissions: tc.callee}, nil)
 
 			r := NewRuleWorkflowCall("caller.yaml", cache)
 			if tc.cfg != nil {

@@ -1,14 +1,13 @@
 package cli
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
 	"actionlint.kjanat.dev"
 )
 
-// invocation describes a CLI operation independently of its argument parser.
+// invocation holds parser state until it is converted to an operation-specific request.
 type invocation struct {
 	Operation operation
 	Check     checkInvocation
@@ -140,30 +139,35 @@ func (a *commandApp) prepareInvocation() error {
 	return nil
 }
 
-func executeInvocation(ctx context.Context, streams Command, inv invocation) (int, error) {
-	if inv.JSON && inv.Render.PrettyJSON && inv.Operation != operationCheck {
-		streams.Stdout = &terminalJSONOutput{Writer: streams.Stdout, ctx: ctx, color: inv.Render.Color}
-	}
+func (inv invocation) request() (commandRequest, error) {
 	switch inv.Operation {
 	case operationVersion:
-		return 0, writeVersion(streams.Stdout, inv.JSON, inv.Legacy)
+		return versionRequest{JSON: inv.JSON, Legacy: inv.Legacy}, nil
 	case operationRules:
-		return 0, writeRules(streams.Stdout, inv.Rule, inv.JSON)
+		return rulesRequest{Name: inv.Rule, JSON: inv.JSON}, nil
 	case operationDoctor:
-		return 0, writeDoctor(streams.Stdout, inv.Check, inv.JSON, inv.Render.Hyperlinks)
-	case operationConfigPath, operationConfigShow, operationConfigValidate:
-		return 0, runConfigCommand(streams.Stdout, inv)
+		return doctorRequest{Config: inv.Check.Config, ShellCheck: inv.Check.ShellCheck, Pyflakes: inv.Check.Pyflakes,
+			ShellcheckOptions: inv.Check.ShellcheckOptions, PyflakesOptions: inv.Check.PyflakesOptions,
+			JSON: inv.JSON, Hyperlinks: inv.Render.Hyperlinks}, nil
+	case operationConfigPath:
+		return configPathRequest{Config: inv.Check.Config, JSON: inv.JSON}, nil
+	case operationConfigShow:
+		return configShowRequest{Config: inv.Check.Config, JSON: inv.JSON, Origin: inv.Origin}, nil
+	case operationConfigValidate:
+		return configValidateRequest{Config: inv.Check.Config, JSON: inv.JSON}, nil
 	case operationConfigInit:
-		if err := ctx.Err(); err != nil {
-			return 0, err
+		if inv.Legacy {
+			return legacyConfigInitRequest{ConfigPath: inv.Check.Config.Path, IgnoreRegex: inv.Check.IgnoreRegex,
+				Template: inv.Render.Template, TemplateFile: inv.Render.TemplateFile,
+				Log: (inv.Check.Verbose || inv.Check.Debug) && !inv.Render.Quiet, JSON: inv.JSON}, nil
 		}
-		return 0, initCommandConfig(streams, inv)
+		if inv.Check.Config.Path != "" || inv.Check.Config.Disabled {
+			return nil, commandUsageError{errors.New("config init always creates the repository config; omit --config and --no-config")}
+		}
+		return configInitRequest{JSON: inv.JSON}, nil
 	case operationCheck:
-		if err := ctx.Err(); err != nil {
-			return 0, err
-		}
-		return executeCheck(ctx, streams, inv)
+		return checkRequest{Check: inv.Check, Render: inv.Render, JSON: inv.JSON, Legacy: inv.Legacy}, nil
 	default:
-		return 0, commandUsageError{fmt.Errorf("unknown operation %q", inv.Operation)}
+		return nil, commandUsageError{fmt.Errorf("unknown operation %q", inv.Operation)}
 	}
 }

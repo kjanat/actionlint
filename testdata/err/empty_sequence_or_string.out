@@ -1,6 +1,5 @@
 test.yaml:2:13: "schedule" section should not be empty [syntax-check]
 test.yaml:6:18: "options" section should not be empty [syntax-check]
-test.yaml:10:13: string should not be empty [syntax-check]
 test.yaml:12:12: "types" section should not be empty [syntax-check]
 test.yaml:14:12: "types" section should not be empty [syntax-check]
 test.yaml:15:15: "branches" section should not be empty [syntax-check]

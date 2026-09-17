@@ -9,11 +9,10 @@ func TestRuleShellNameGetPlatformFromXcodeRunner(t *testing.T) {
 		"Xcode-27",
 	}
 
-	rule := NewRuleShellName()
 	for _, label := range testCases {
 		t.Run(label, func(t *testing.T) {
 			runner := &Runner{Labels: []*String{{Value: label}}}
-			if got := rule.getPlatformFromRunner(runner); got != platformKindMacOrLinux {
+			if got := runnerPlatform(runner); got != platformKindMacOrLinux {
 				t.Fatalf("platform for runner label %q is %v, want %v", label, got, platformKindMacOrLinux)
 			}
 		})

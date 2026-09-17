@@ -21,6 +21,8 @@ type ruleContext struct {
 func builtinRuleDescriptors() []ruleDescriptor {
 	return []ruleDescriptor{
 		{Name: "syntax-check", Description: "Checks for GitHub Actions workflow syntax", Category: "correctness"},
+		{Name: "inline-suppression", Description: "Checks inline cache policy exception directives", Category: "correctness"},
+		{Name: "disallow-suppressions", Description: "Reports inline exceptions prohibited by configuration", Category: "policy"},
 		{Name: "matrix", Description: "Checks for matrix combinations in \"matrix:\"", Category: "correctness", build: func(c ruleContext) (Rule, error) { return NewRuleMatrix(), nil }},
 		{Name: "credentials", Description: "Checks for credentials in \"services:\" configuration", Category: "correctness", build: func(c ruleContext) (Rule, error) { return NewRuleCredentials(), nil }},
 		{Name: "shell-name", Description: "Checks for shell names used for scripts in \"run:\"", Category: "correctness", build: func(c ruleContext) (Rule, error) { return NewRuleShellName(), nil }},
@@ -43,6 +45,9 @@ func builtinRuleDescriptors() []ruleDescriptor {
 			return NewRuleRequirePermissions(c.config.RequiresPermissions()), nil
 		}, enabled: func(c ruleContext) bool { return c.config.RequiresPermissions().Enabled() }},
 		{Name: "required-actions", Description: "Checks that the actions listed in the \"required-actions\" policy in actionlint.yaml are used", Category: "policy", build: func(c ruleContext) (Rule, error) { return NewRuleRequiredActions(), nil }, enabled: func(c ruleContext) bool { return len(c.config.RequiredActions()) > 0 }},
+		{Name: "cache-write-untrusted", Description: "Checks cache write grants on low-trust triggers", Category: "policy", build: func(c ruleContext) (Rule, error) { return NewRuleCacheWriteUntrusted(), nil }, enabled: func(c ruleContext) bool { return c.config.cachePolicyEnabled("cache-write-untrusted") }},
+		{Name: "cache-call-unrestricted", Description: "Checks cache access ceilings on low-trust reusable workflow calls", Category: "policy", build: func(c ruleContext) (Rule, error) { return NewRuleCacheCallUnrestricted(), nil }, enabled: func(c ruleContext) bool { return c.config.cachePolicyEnabled("cache-call-unrestricted") }},
+		{Name: "cache-operation", Description: "Checks cache actions disabled by explicit cache access modes", Category: "policy", build: func(c ruleContext) (Rule, error) { return newRuleCacheOperation(c.workflows), nil }, enabled: func(c ruleContext) bool { return c.config.cachePolicyEnabled("cache-operation") }},
 		{Name: "shellcheck", Description: "Checks for shell script sources in \"run:\" using shellcheck", Category: "external", build: func(c ruleContext) (Rule, error) {
 			return configuredShellcheck(c.shellcheck, c.shellcheckOptions, c.process)
 		}, enabled: func(c ruleContext) bool { return externalCommandEnabled(c.shellcheck, c.shellcheckOptions) }},

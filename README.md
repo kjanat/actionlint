@@ -2,10 +2,11 @@
 
 [![CI Status][ci-badge]][ci]
 [![API Document][apidoc-badge]][apidoc]
+[![Sponsor this project][sponsor-badge]][sponsor]
 
 [actionlint][repo] is a static checker for GitHub Actions workflow files. [Try it online!][playground]
 
-This is an actively maintained fork of [rhysd/actionlint][upstream]. It carries the upstream checks plus opt-in [policy checks][config], composite action step validation, shell completion, and a first-party GitHub Action, and it ships attested binaries, a Docker image on [GHCR][ghcr] and [Docker Hub][dockerhub], and a Go module at `actionlint.kjanat.dev`. Report problems with this fork [here][issue-form], not upstream.
+This is an actively maintained fork of [rhysd/actionlint][upstream]. It carries the upstream checks plus cache safety policies enabled by default, configurable opt-in [policy checks][config], composite action step validation, shell completion, and a first-party GitHub Action, and it ships attested binaries, a Docker image on [GHCR][ghcr] and [Docker Hub][dockerhub], and a Go module at `actionlint.kjanat.dev`. Report problems through [this fork's issue tracker][issue-form].
 
 Features:
 
@@ -67,6 +68,8 @@ jobs:
 `docs/screenshots/actionlint.yaml`:
 
 ```yaml
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/@kjanat/actionlint/actionlint.schema.json
+---
 policy:
   require-commit-hash: true
 ```
@@ -88,7 +91,7 @@ demo-workflow.yaml:18:9: step must run script with "run" section or run action w
    |         ^~~~~
 ```
 
-**This fork 1.16.1 reports 3: `expression`, `require-commit-hash`, `parallel-steps`**
+**This fork 1.17.0 reports 3: `expression`, `require-commit-hash`, `parallel-steps`**
 
 ```console
 demo-workflow.yaml:11:22: type of expression at "float number value" must be number but found type string [expression]
@@ -173,7 +176,7 @@ On a daemon-less runner such as `ubuntu-slim`, download and run the binary inste
 ```
 
 The moving `v1` tag follows compatible v1 releases, and `v1.16` follows v1.16 patch releases. These tags point to a
-commit immediately after the release that pins the published container image by digest. `v1.16.1` is a versioned release tag.
+commit immediately after the release that pins the published container image by digest. `v1.17.0` is a versioned release tag.
 For an immutable action reference with a pinned image, use the full commit SHA resolved from a
 floating tag.
 
@@ -233,7 +236,7 @@ Workflow files can be checked on every commit with [pre-commit][pre-commit]. Add
 ---
 repos:
   - repo: https://github.com/kjanat/actionlint
-    rev: v1.16.1
+    rev: v1.17.0
     hooks: [id: actionlint]
 ```
 
@@ -257,10 +260,12 @@ See [the usage document][usage] for the pinned ShellCheck build and how to choos
 ## Documents
 
 - [Checks][checks]: Full list of all checks done by actionlint with example inputs, outputs, and playground links.
-- [Installation][install]: Install with npm, Homebrew, AUR, Scoop, mise, the community pip/uv wrapper, release archives, the download script, Docker, or Go. Includes the status of WinGet and upstream-only package names.
+- [Installation][install]: Install with npm, Homebrew, AUR, Scoop, aqua, mise, the community pip/uv wrapper, release archives, the download script, Docker, or Go. Includes the status of WinGet and upstream-only package names.
 - [Usage][usage]: How to use `actionlint` command locally or on GitHub Actions, the online playground, an official Docker image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit, VS Code.
 - [Configuration][config]: Runner labels, variables, secrets, default permissions, error filters, and opt-in policy checks, with YAML Language Server schema support.
 - [Go API][api]: How to use actionlint as Go library.
+- [Schema audit](docs/schema-audit.md): Pinned upstream definitions, compatibility fixes, validation evidence, and retained differences.
+- [Expression behavior](docs/expression-behavior.md): Reproduce GitHub's runtime behavior, understand parser differences, and avoid surprising workflow decisions.
 - [References][refs]: Links to resources.
 - [GitHub Actions changelog][github-changelog]: Browse and search the latest entries from GitHub's Actions changelog feed.
 
@@ -278,6 +283,8 @@ actionlint is distributed under [the MIT license](./LICENSE.txt).
 [ci]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml
 [apidoc-badge]: https://pkg.go.dev/badge/actionlint.kjanat.dev.svg
 [apidoc]: https://pkg.go.dev/actionlint.kjanat.dev
+[sponsor-badge]: https://img.shields.io/badge/Sponsor-ea4aaa?logo=githubsponsors&logoColor=white
+[sponsor]: https://github.com/sponsors/kjanat
 [repo]: https://github.com/kjanat/actionlint
 [playground]: https://kjanat.github.io/actionlint/
 [github-changelog]: https://actionlint.kjanat.dev/github-changelog/
@@ -291,10 +298,10 @@ actionlint is distributed under [the MIT license](./LICENSE.txt).
 [filter-pattern-doc]: https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
 [script-injection-doc]: https://docs.github.com/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks
 [releases]: https://github.com/kjanat/actionlint/releases
-[checks]: https://github.com/kjanat/actionlint/blob/v1.16.1/docs/checks.md
+[checks]: https://github.com/kjanat/actionlint/blob/v1.17.0/docs/checks.md
 [install]: https://github.com/kjanat/actionlint/blob/master/docs/install.md
-[usage]: https://github.com/kjanat/actionlint/blob/v1.16.1/docs/usage.md
-[config]: https://github.com/kjanat/actionlint/blob/v1.16.1/docs/config.md
-[api]: https://github.com/kjanat/actionlint/blob/v1.16.1/docs/api.md
-[refs]: https://github.com/kjanat/actionlint/blob/v1.16.1/docs/reference.md
+[usage]: https://github.com/kjanat/actionlint/blob/v1.17.0/docs/usage.md
+[config]: docs/config.md
+[api]: https://github.com/kjanat/actionlint/blob/v1.17.0/docs/api.md
+[refs]: https://github.com/kjanat/actionlint/blob/v1.17.0/docs/reference.md
 [issue-form]: https://github.com/kjanat/actionlint/issues/new

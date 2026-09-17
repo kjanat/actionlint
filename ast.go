@@ -170,12 +170,26 @@ func (s *String) ContainsExpression() bool {
 }
 
 func isExprAssigned(s string) bool {
-	v := strings.TrimSpace(s)
-	// Do not check `strings.Count(s.Value, "}}") == 1` because it might appear in JSON string
-	//   if: ${{ env.foo == '{"foo": {"bar": true}}' }}
-	return strings.HasPrefix(v, "${{") &&
-		strings.HasSuffix(v, "}}") &&
-		strings.Count(v, "${{") == 1
+	if !strings.HasPrefix(s, "${{") || !strings.HasSuffix(s, "}}") {
+		return false
+	}
+	// Delimiters inside single-quoted strings are data. Doubled quotes toggle
+	// twice, keeping the scan inside the same string literal.
+	inString := false
+	for i := 3; i < len(s)-1; i++ {
+		if s[i] == '\'' {
+			inString = !inString
+		} else if !inString {
+			if strings.HasPrefix(s[i:], "}}") {
+				return i+2 == len(s)
+			}
+			if strings.HasPrefix(s[i:], "${{") {
+				return false
+			}
+		}
+	}
+	// Let the expression parser diagnose an unterminated string literal.
+	return inString
 }
 
 // IsExpressionAssigned returns whether a single expression is assigned to the string.
@@ -452,8 +466,10 @@ func (e *WorkflowCallEvent) EventName() string {
 }
 
 // ImageVersionEvent is image_version event configuration.
-// https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#image_version_ready
+// https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#image_version
 type ImageVersionEvent struct {
+	// Types filters image version activity to created, ready, or deleted events.
+	Types []*String
 	// Names is a list of names which match to the created image names.
 	Names []*String
 	// Versions is a list of names which match to the created image versions. Glob patterns are available.
@@ -491,6 +507,8 @@ type Permissions struct {
 // DefaultsRun is configuration that shell is how to be run.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#defaultsrun
 type DefaultsRun struct {
+	// Expression supplies the complete run defaults mapping.
+	Expression *String
 	// Shell is shell name to be run.
 	Shell *String
 	// WorkingDirectory is a default working directory path.
@@ -511,6 +529,8 @@ type Defaults struct {
 // Concurrency is a configuration of concurrency of the workflow.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#concurrency
 type Concurrency struct {
+	// Expression supplies a group string or complete concurrency mapping.
+	Expression *String
 	// Group is name of the concurrency group.
 	Group *String
 	// CancelInProgress is a flag that shows if canceling this workflow cancels other jobs in progress.
@@ -524,6 +544,8 @@ type Concurrency struct {
 // Environment is a configuration of environment.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idenvironment
 type Environment struct {
+	// Expression supplies an environment name or complete environment mapping.
+	Expression *String
 	// Name is a name of environment which the workflow uses.
 	Name *String
 	// URL is the URL mapped to 'environment_url' in the deployments API. Empty value means no value was specified.
@@ -594,6 +616,8 @@ type ExecAction struct {
 	Uses *String
 	// Inputs represents inputs to the action to execute in 'with' section. Keys are in lower case since they are case-insensitive.
 	Inputs map[string]*Input
+	// InputsExpression supplies the complete action inputs mapping.
+	InputsExpression *String
 	// Entrypoint represents optional 'entrypoint' field in 'with' section. Nil field means nothing specified
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepswithentrypoint
 	Entrypoint *String
@@ -929,6 +953,8 @@ type Matrix struct {
 // Strategy is strategy configuration of how the job is run.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategy
 type Strategy struct {
+	// Expression supplies the complete strategy mapping.
+	Expression *String
 	// Matrix is matrix of combinations of values. Each combination will run the job once.
 	Matrix *Matrix
 	// FailFast is flag to show if other jobs should stop when one job fails.
@@ -998,6 +1024,8 @@ type Credentials struct {
 // Container is configuration of how to run the container.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idcontainer
 type Container struct {
+	// Expression supplies an image string or complete container mapping.
+	Expression *String
 	// Image is specification of Docker image.
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idcontainerimage
 	Image *String
@@ -1009,9 +1037,13 @@ type Container struct {
 	// Ports is list of port number mappings of the container.
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idcontainerports
 	Ports []*String
+	// PortsExpression supplies the complete ports sequence.
+	PortsExpression *String
 	// Volumes are list of volumes to be mounted to the container.
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idcontainervolumes
 	Volumes []*String
+	// VolumesExpression supplies the complete volumes sequence.
+	VolumesExpression *String
 	// Options is options string to run the container.
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idcontaineroptions
 	Options *String
@@ -1059,6 +1091,8 @@ type Output struct {
 // Runner is struct for runner configuration.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idruns-on
 type Runner struct {
+	// Expression supplies labels or a complete runner selection mapping.
+	Expression *String
 	// Labels is list label names to select a runner to run a job. There are preset labels and user
 	// defined labels. Runner matching to the labels is selected.
 	Labels []*String
@@ -1106,6 +1140,8 @@ type WorkflowCall struct {
 // https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idsnapshot
 // https://docs.github.com/en/actions/how-tos/manage-runners/larger-runners/use-custom-images
 type Snapshot struct {
+	// Expression supplies an image name or complete snapshot mapping.
+	Expression *String
 	// ImageName is a name of the custom image.
 	ImageName *String
 	// Version is a version of the custom image.
@@ -1131,6 +1167,8 @@ type Job struct {
 	RunsOn *Runner
 	// Permissions is permission configuration for running the job.
 	Permissions *Permissions
+	// CacheMode overrides the workflow's cache access for this job. Nil means inherit.
+	CacheMode *CacheMode
 	// Environment is environment specification where the job runs.
 	Environment *Environment
 	// Concurrency is concurrency configuration on running the job.
@@ -1152,6 +1190,8 @@ type Job struct {
 	// TimeoutMinutes is timeout value of running the job in minutes.
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idtimeout-minutes
 	TimeoutMinutes *Float
+	// CancelTimeoutMinutes is the time allowed for cancellation cleanup in minutes.
+	CancelTimeoutMinutes *Float
 	// Strategy is strategy configuration of running the job.
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategy
 	Strategy *Strategy
@@ -1179,6 +1219,8 @@ type Workflow struct {
 	// Name is name of the workflow. This field can be nil when user didn't specify the name explicitly.
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#name
 	Name *String
+	// Description describes the workflow or reusable workflow.
+	Description *String
 	// RunName is the name of workflow runs. This field can be set dynamically using ${{ }}.
 	// https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#run-name
 	RunName *String
@@ -1187,6 +1229,8 @@ type Workflow struct {
 	On []Event
 	// Permissions is configuration of permissions of this workflow.
 	Permissions *Permissions
+	// CacheMode sets default cache access. Nil leaves the trigger-dependent default in effect.
+	CacheMode *CacheMode
 	// Env is a default set of environment variables while running this workflow.
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#env
 	Env *Env

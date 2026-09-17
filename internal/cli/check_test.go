@@ -108,6 +108,21 @@ func TestModernOutputDestinationsAndSummary(t *testing.T) {
 	}
 }
 
+func TestReportMayReplaceUnusedStdinFilename(t *testing.T) {
+	commandTestRepo(t)
+	for _, modern := range []bool{false, true} {
+		args := []string{"--stdin-filename", "report.json", "--output-file", "report.json", "--json", ".github/workflows/ci.yml"}
+		if modern {
+			args = append([]string{"check"}, args...)
+		}
+		got := testRunCommand("", args...)
+		data, err := os.ReadFile("report.json")
+		if got.Status != 1 || got.Stderr != "" || err != nil || !json.Valid(data) {
+			t.Fatalf("unused stdin filename prevented report output: %+v (%v)", got, err)
+		}
+	}
+}
+
 func TestModernRendererAndUsageErrors(t *testing.T) {
 	oldColor := color.NoColor
 	t.Cleanup(func() { color.NoColor = oldColor })

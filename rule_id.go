@@ -45,6 +45,12 @@ func (rule *RuleID) VisitStep(n *Step) error {
 	}
 
 	rule.validateConvention(n.ID, "step")
+	if strings.HasPrefix(n.ID.Value, "__") {
+		rule.Errorf(n.ID.Pos, "step ID %q must not start with reserved prefix __", n.ID.Value)
+	}
+	if len(n.ID.Value) >= 100 {
+		rule.Errorf(n.ID.Pos, "step ID %q must be shorter than 100 characters", n.ID.Value)
+	}
 
 	id := strings.ToLower(n.ID.Value)
 	if prev, ok := rule.seen[id]; ok {

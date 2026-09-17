@@ -19,7 +19,7 @@ type doctorTool struct {
 	Error     string   `json:"error,omitempty"`
 }
 
-func writeDoctor(out io.Writer, req checkInvocation, asJSON bool, mode hyperlinkMode) error {
+func writeDoctor(out io.Writer, req doctorRequest) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -53,11 +53,11 @@ func writeDoctor(out io.Writer, req checkInvocation, asJSON bool, mode hyperlink
 		}
 		report.Tools = append(report.Tools, tool)
 	}
-	if asJSON {
+	if req.JSON {
 		err = writeCommandJSON(out, report)
 	} else {
 		file, terminal := terminalFile(out)
-		links := mode.enabled(terminal, os.Getenv)
+		links := req.Hyperlinks.enabled(terminal, os.Getenv)
 		if links && terminal {
 			restore := enableTerminalVT(file)
 			defer restore()

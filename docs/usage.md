@@ -285,6 +285,13 @@ actionlint completion powershell | Out-String | Invoke-Expression
 
 ### Ignore some errors
 
+The three cache policies support [inline exceptions](config.md#inline-cache-policy-exceptions) with a rule name and
+a reason. Place the comment on the reported line, or use `actionlint:ignore-next-line` immediately before it:
+
+```yaml
+cache-mode: write # actionlint:ignore cache-write-untrusted -- this job runs reviewed default-branch code only
+```
+
 To ignore some errors, `-ignore` option offers to filter errors by messages
 using regular expression. The option is repeatable. The regular expression
 syntax is the same as [RE2][re2].
@@ -551,7 +558,7 @@ The binary-only path does not bundle ShellCheck or pyflakes; install them on the
 runner when those integrations are required.
 
 `v1` follows compatible v1 releases, and `v1.16` follows v1.16 patch releases. Each points to a commit immediately
-after the release that pins the published container image by digest. `v1.16.1` is a versioned release tag.
+after the release that pins the published container image by digest. `v1.17.0` is a versioned release tag.
 For an immutable action reference with a pinned image, use the full commit SHA resolved from a
 floating tag.
 
@@ -613,7 +620,7 @@ jobs:
         with: { persist-credentials: false }
       - name: Download actionlint
         id: get_actionlint
-        run: bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) 1.16.1
+        run: bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) 1.17.0
         shell: bash
       - name: Check workflow files
         env: { actionlint: "${{ steps.get_actionlint.outputs.executable }}" }
@@ -626,7 +633,7 @@ Or simply download the executable and run it in one step:
 ```yaml
 - name: Check workflow files
   run: |
-    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) 1.16.1
+    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) 1.17.0
     ./actionlint -color
   shell: bash
 ```
@@ -688,10 +695,10 @@ Available tags are:
   Moving alias for the latest stable version of actionlint. This image is recommended.
 - `ghcr.io/kjanat/actionlint:{version}`:\
   Release-specific actionlint image rather than a moving alias.\
-  (e.g. `ghcr.io/kjanat/actionlint:1.16.1`)
+  (e.g. `ghcr.io/kjanat/actionlint:1.17.0`)
 - `ghcr.io/kjanat/actionlint:action-{version}`:\
   Release-specific image used by `action.yml` rather than a moving alias.\
-  (e.g. `action-1.16.1`)
+  (e.g. `action-1.17.0`)
 - `ghcr.io/kjanat/actionlint:action-v1`:\
   Moving alias for the latest compatible v1 image available to Docker Action users.
 - `ghcr.io/kjanat/actionlint:action-latest`:\
@@ -799,7 +806,7 @@ in the step of your workflow.
 - name: Check workflow files
   run: |
     echo "::add-matcher::.github/actionlint-matcher.json"
-    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/HEAD/scripts/download-actionlint.bash) 1.16.1
+    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) 1.17.0
     ./actionlint -color
   shell: bash
 ```
@@ -849,7 +856,7 @@ Add this to your `.pre-commit-config.yaml` in your repository:
 ---
 repos:
   - repo: https://github.com/kjanat/actionlint
-    rev: v1.16.1
+    rev: v1.17.0
     hooks:
       - id: actionlint
 ```
@@ -877,7 +884,7 @@ plain hook:
 ---
 repos:
   - repo: https://github.com/kjanat/actionlint
-    rev: v1.16.1
+    rev: v1.17.0
     hooks:
       - id: actionlint
         additional_dependencies:
@@ -972,7 +979,7 @@ trunk check enable actionlint
 or if you'd like a specific version:
 
 ```bash
-trunk check enable actionlint@1.16.1
+trunk check enable actionlint@1.17.0
 ```
 
 or modify `.trunk/trunk.yaml` in your repository to contain:
@@ -980,7 +987,7 @@ or modify `.trunk/trunk.yaml` in your repository to contain:
 ```yaml
 lint:
   enabled:
-    - actionlint@1.16.1
+    - actionlint@1.17.0
 ```
 
 Then just run:

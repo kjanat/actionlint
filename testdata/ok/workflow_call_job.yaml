@@ -26,5 +26,5 @@ jobs:
     needs: ['call1']
     permissions: read-all
   call6:
-    # Edge case. Give up checking format.
-    uses: ${{ 'oooops' }}
+    # A literal expression resolves to a static workflow reference.
+    uses: ${{ 'org/repo/workflow.yml@v1' }}

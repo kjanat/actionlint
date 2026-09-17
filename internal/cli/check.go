@@ -13,7 +13,7 @@ import (
 	"github.com/mattn/go-colorable"
 )
 
-func executeCheck(ctx context.Context, streams Command, inv invocation) (status int, err error) {
+func executeCheck(ctx context.Context, streams Command, inv checkRequest) (status int, err error) {
 	c, r := inv.Check, inv.Render
 	r, err = resolveTemplate(r)
 	if err != nil {
@@ -101,7 +101,10 @@ func executeCheck(ctx context.Context, streams Command, inv invocation) (status 
 		}
 		return 0, err
 	}
-	inputs := append([]string{c.Config.Path, r.TemplateFile, c.StdinFilename}, result.Inputs...)
+	inputs := append([]string{c.Config.Path, r.TemplateFile}, result.Inputs...)
+	if len(c.Paths) == 1 && c.Paths[0] == "-" {
+		inputs = append(inputs, c.StdinFilename)
+	}
 	if r.OutputFile != "" && r.OutputFile != "-" {
 		for _, path := range inputs {
 			if path != "" && sameCommandFile(path, r.OutputFile) {

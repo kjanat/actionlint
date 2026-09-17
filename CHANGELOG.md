@@ -9,6 +9,33 @@
 - Enable color automatically in GitHub Actions logs when `GITHUB_ACTIONS=true`. Respect `NO_COLOR` and explicit color controls, and keep automatic styling out of report files, structured output and custom templates.
 - Add OSC 8 links to the project name and URLs in CLI help. `--hyperlinks=auto|always|never` follows the [no-hyperlinks convention](https://no-hyperlinks.org/spec), including `NO_HYPERLINKS` and `FORCE_HYPERLINKS`. Keep destination URLs visible and leave diagnostics and machine-readable output unchanged. (kjanat/actionlint#65)
 - Rebuild the CLI with a typed invocation model, a preserved Go flag parser for root calls, and Cobra commands for `check`, config inspection, rules, doctor, completion and version. Add JSON/JSONL/SARIF/GitHub output, template and output files, opt-in summaries, configuration origins and generated four-shell completion. Style terminal help while respecting color controls, add `-V` as a version alias, align doctor output, and keep concurrent verbose/debug log records intact. Preserve legacy options, templates, default diagnostics, version output, streams and exit codes. Test both grammars, command/file collisions and output side effects. Use the same input resolution, analysis results and renderers for commands and legacy `Lint*` methods. Preserve callbacks, working-directory handling and legacy write-error behavior. Protect all consumed local inputs from report replacement and retain configuration provenance through YAML merges. Move the frontend into `internal/cli` so library and Wasm builds do not import Cobra or pflag; Go callers can use the shared analysis APIs instead of the former root `Command` type.
+- Add a GitHub Actions expression reference with evaluated examples for numeric parsing, coercion and workflow conditions, backed by a reproducible 85-case probe and archived measurement results. (kjanat/actionlint#171)
+
+<a id="v1.17.0"></a>
+
+## [v1.17.0](https://github.com/kjanat/actionlint/releases/tag/v1.17.0) - 2026-09-13
+
+- Resolve Go dependency licenses from remote module sources when generating release SBOMs. Document remaining unknown SPDX fields. (kjanat/actionlint#167)
+
+- Document installation through aqua and mise's aqua backend, including registry availability, and pin download-script examples to a commit independently of the requested binary version. (kjanat/actionlint#168)
+
+- **Upgrade note:** the three new cache safety policies are enabled even without a configuration file and can make previously clean workflows exit with status 1. Disable individual checks with `policy.cache-write-untrusted: false`, `policy.cache-call-unrestricted: false`, or `policy.cache-operation: false`, or document a reviewed inline exception. Existing opt-in policies retain their defaults. (kjanat/actionlint#165)
+
+- Support current workflow schema fields and expression objects, including workflow descriptions, cancellation timeouts, image-version filters, stacked pull requests, empty choice options, disabled service images, and UTC timezone aliases.
+
+- Validate action manifests against generated runner schema constraints. Correct workflow expression contexts, matrix inference, function arity, expression depth, scalar decoding, required flags, schedule entries, and step ID checks.
+
+- Document the pinned workflow/action schema audit, complete definition coverage, regression evidence, and retained compatibility differences.
+
+- Enable cache safety policies by default: report explicit writes on low-trust triggers that can use default-branch caches, reusable calls without an explicit cache limit on those triggers, and official cache actions disabled by an explicit mode. Each policy can be disabled in configuration or suppressed on a specific line with a rule name and a reason.
+
+- Add `policy.disallow-suppressions` to prohibit inline cache exceptions for all or selected rules. Select `report: suppression`, `violation`, or `all` to report the prohibited comment, retain the original violation, or report both. (kjanat/actionlint#165)
+
+- Support workflow- and job-level `cache-mode` values, including jobs that call reusable workflows. Check explicit cache access limits through nested local workflow calls, preserving job overrides and the distinction between omitted settings and `none`. Report invalid values and types at their source locations. (kjanat/actionlint#163)
+
+- Report cache operations disabled by a caller's explicit limit through nested local reusable workflows, including parallel child steps. Preserve the original reusable-workflow reference in diagnostics and report lookup failures consistently regardless of file analysis order. (kjanat/actionlint#164; kjanat/actionlint#165)
+
+[Changes][v1.17.0]
 
 <a id="v1.16.1"></a>
 
@@ -2190,7 +2217,7 @@ docker run --rm -v $(pwd):/repo --workdir /repo rhysd/actionlint:latest -color
 
 - [Problem Matchers](https://github.com/actions/toolkit/blob/master/docs/problem-matchers.md) is now officially supported by actionlint, which annotates errors from actionlint on GitHub as follows. The matcher definition is maintained at [`.github/actionlint-matcher.json`](https://github.com/rhysd/actionlint/blob/main/.github/actionlint-matcher.json) by [script](https://github.com/rhysd/actionlint/tree/main/scripts/generate-actionlint-matcher). For the usage, see [the document](https://github.com/rhysd/actionlint/blob/main/docs/usage.md#problem-matchers).
 
-<img src="https://cdn.jsdelivr.net/gh/rhysd/ss@5530c2526b44ad28dc12f91a3d71bcd57940f008/actionlint/problem-matcher.png?raw=true" alt="annotation by Problem Matchers" width="715" height="221"/>
+<img src="https://cdn.jsdelivr.net/gh/rhysd/ss@5530c2526b44ad28dc12f91a3d71bcd57940f008/actionlint/problem-matcher.png?raw=true" alt="annotation by Problem Matchers" width="715" height="221" />
 
 - `runner_label` rule now checks conflicts in labels at `runs-on`. For example, there is no runner which meats both `ubuntu-latest` and `windows-latest`. This kind of misconfiguration sometimes happen when a beginner misunderstands the usage of `runs-on:`. To run a job on each runners, `matrix:` should be used. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-runner-labels) for more information.
 
@@ -2523,6 +2550,7 @@ See documentation for more details:
 
 [Changes][v1.0.0]
 
+[v1.17.0]: https://github.com/kjanat/actionlint/compare/v1.16.1...v1.17.0
 [v1.16.1]: https://github.com/kjanat/actionlint/compare/v1.16.0...v1.16.1
 [v1.16.0]: https://github.com/kjanat/actionlint/compare/v1.15.1...v1.16.0
 [v1.15.1]: https://github.com/kjanat/actionlint/compare/v1.15.0...v1.15.1

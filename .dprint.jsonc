@@ -24,7 +24,20 @@
     "spaceAfterSeparator": true
   },
   "dockerfile": { "associations": ["Dockerfile", "Dockerfile.*"] },
-  "markdown": { "textWrap": "maintain", "emphasisKind": "asterisks" },
+  "markdown": {
+    "textWrap": "maintain",
+    "emphasisKind": "asterisks",
+    "codeBlock.useTabs": false,
+    "codeBlock.preserveIndentation": true,
+    "html.useTabs": false,
+    "overrides": [
+      {
+        "files": ["**/AGENTS.md", "**/CLAUDE.md", "**/CHANGELOG.md", "**/.rules"],
+        "lineWidth": 9999,
+        "textWrap": "maintain"
+      }
+    ]
+  },
   "yaml": { "printWidth": 160 },
   "sortPackageJson": { "associations": ["package.json"] },
   "json": {

@@ -26,6 +26,10 @@ const schemaPath = "src/Runner.Worker/action_yaml.json"
 type definition struct {
 	Context []string `json:"context"`
 	OneOf   []string `json:"one-of"`
+	String  *struct {
+		NonEmpty bool `json:"require-non-empty"`
+	} `json:"string"`
+	Boolean json.RawMessage `json:"boolean"`
 	Mapping *struct {
 		Properties map[string]json.RawMessage `json:"properties"`
 		LooseValue string                     `json:"loose-value-type"`
@@ -197,7 +201,67 @@ func generate(data []byte, revision string) ([]byte, error) {
 	}
 	fmt.Fprintln(&out, "}")
 	fmt.Fprintf(&out, "var actionMetadataSpecialFunctions = %#v\n", t.Functions)
+	if err := generateSchema(&out, defs); err != nil {
+		return nil, err
+	}
 	return format.Source(out.Bytes())
+}
+
+func generateSchema(out *bytes.Buffer, defs map[string]definition) error {
+	fmt.Fprintln(out, "var actionMetadataSchema = map[string]actionSchemaDefinition{")
+	for _, name := range slices.Sorted(maps.Keys(defs)) {
+		d := defs[name]
+		fmt.Fprintf(out, "%q: {\n", name)
+		switch {
+		case d.Mapping != nil:
+			fmt.Fprintln(out, "kind: actionSchemaMapping,")
+			var required []string
+			if len(d.Mapping.Properties) > 0 {
+				fmt.Fprintln(out, "properties: map[string]string{")
+				for _, key := range slices.Sorted(maps.Keys(d.Mapping.Properties)) {
+					raw := d.Mapping.Properties[key]
+					var child string
+					if err := json.Unmarshal(raw, &child); err != nil {
+						var prop struct {
+							Type     string
+							Required bool
+						}
+						if err := json.Unmarshal(raw, &prop); err != nil || prop.Type == "" {
+							return fmt.Errorf("invalid property %q in %q", key, name)
+						}
+						child = prop.Type
+						if prop.Required {
+							required = append(required, key)
+						}
+					}
+					fmt.Fprintf(out, "%q: %q,\n", key, child)
+				}
+				fmt.Fprintln(out, "},")
+			}
+			if len(required) > 0 {
+				fmt.Fprintf(out, "required: []string{%s},\n", quoted(required))
+			}
+			if d.Mapping.LooseValue != "" {
+				fmt.Fprintf(out, "loose: %q,\n", d.Mapping.LooseValue)
+			}
+		case d.Sequence != nil:
+			fmt.Fprintf(out, "kind: actionSchemaSequence, item: %q,\n", d.Sequence.Item)
+		case len(d.OneOf) > 0:
+			fmt.Fprintf(out, "kind: actionSchemaUnion, variants: []string{%s},\n", quoted(d.OneOf))
+		case d.String != nil:
+			fmt.Fprintln(out, "kind: actionSchemaString,")
+			if d.String.NonEmpty {
+				fmt.Fprintln(out, "nonEmpty: true,")
+			}
+		case len(d.Boolean) > 0:
+			fmt.Fprintln(out, "kind: actionSchemaBoolean,")
+		default:
+			return fmt.Errorf("unsupported structure of schema definition %q", name)
+		}
+		fmt.Fprintln(out, "},")
+	}
+	fmt.Fprintln(out, "}")
+	return nil
 }
 
 func quoted(values []string) string {
