@@ -85,7 +85,7 @@ func testCheckCachedFlag(t *testing.T, want, have bool) {
 
 func TestLocalActionsFindMetadataOK(t *testing.T) {
 	testdir := filepath.Join("testdata", "action_metadata")
-	proj := &Project{testdir, nil}
+	proj := &Project{root: testdir}
 	c := NewLocalActionsCache(proj, nil)
 
 	want := testGetWantedActionMetadata()
@@ -203,7 +203,7 @@ func TestLocalActionsFindMetadataOK(t *testing.T) {
 
 func TestLocalActionsFindConcurrently(t *testing.T) {
 	n := 10
-	proj := &Project{filepath.Join("testdata", "action_metadata"), nil}
+	proj := &Project{root: filepath.Join("testdata", "action_metadata")}
 	c := NewLocalActionsCache(proj, nil)
 	ret := make(chan *ActionMetadata)
 	err := make(chan error)
@@ -256,12 +256,12 @@ func TestLocalActionsParsingSkipped(t *testing.T) {
 		},
 		{
 			what: "not a local action",
-			proj: &Project{"", nil},
+			proj: &Project{root: ""},
 			spec: "actions/checkout@v4",
 		},
 		{
 			what: "action does not exist (#25, #40)",
-			proj: &Project{filepath.Join("testdata", "action_metadata"), nil},
+			proj: &Project{root: filepath.Join("testdata", "action_metadata")},
 			spec: "./this-action-does-not-exist",
 		},
 	}
@@ -282,7 +282,7 @@ func TestLocalActionsParsingSkipped(t *testing.T) {
 }
 
 func TestLocalActionsIgnoreRemoteActions(t *testing.T) {
-	proj := &Project{filepath.Join("testdata", "action_metadata"), nil}
+	proj := &Project{root: filepath.Join("testdata", "action_metadata")}
 	c := NewLocalActionsCache(proj, nil)
 	for _, spec := range []string{"actions/checkout@v2", "docker://example.com/foo/bar"} {
 		m, cached, err := c.FindMetadata(spec)
@@ -299,7 +299,7 @@ func TestLocalActionsIgnoreRemoteActions(t *testing.T) {
 func TestLocalActionsLogCacheHit(t *testing.T) {
 	dbg := &bytes.Buffer{}
 	testdir := filepath.Join("testdata", "action_metadata")
-	proj := &Project{testdir, nil}
+	proj := &Project{root: testdir}
 	c := NewLocalActionsCache(proj, dbg)
 
 	want := testGetWantedActionMetadata()
@@ -349,7 +349,7 @@ func TestLocalActionsBrokenMetadata(t *testing.T) {
 		},
 	}
 
-	proj := &Project{filepath.Join("testdata", "action_metadata"), nil}
+	proj := &Project{root: filepath.Join("testdata", "action_metadata")}
 	c := NewLocalActionsCache(proj, nil)
 
 	for _, tc := range tests {
@@ -378,7 +378,7 @@ func TestLocalActionsBrokenMetadata(t *testing.T) {
 }
 
 func TestLocalActionsDuplicateInputsOutputs(t *testing.T) {
-	proj := &Project{filepath.Join("testdata", "action_metadata"), nil}
+	proj := &Project{root: filepath.Join("testdata", "action_metadata")}
 	c := NewLocalActionsCache(proj, nil)
 
 	for _, tc := range []struct {
@@ -410,7 +410,7 @@ func TestLocalActionsDuplicateInputsOutputs(t *testing.T) {
 
 func TestLocalActionsConcurrentFailures(t *testing.T) {
 	n := 10
-	proj := &Project{filepath.Join("testdata", "action_metadata"), nil}
+	proj := &Project{root: filepath.Join("testdata", "action_metadata")}
 	c := NewLocalActionsCache(proj, nil)
 	errC := make(chan error)
 
@@ -444,7 +444,7 @@ func TestLocalActionsConcurrentFailures(t *testing.T) {
 }
 
 func TestLocalActionsConcurrentMultipleMetadataAndFailures(t *testing.T) {
-	proj := &Project{filepath.Join("testdata", "action_metadata"), nil}
+	proj := &Project{root: filepath.Join("testdata", "action_metadata")}
 	c := NewLocalActionsCache(proj, nil)
 
 	inputs := []string{
@@ -807,10 +807,10 @@ func TestActionMetadataPreservesPartialDecode(t *testing.T) {
 
 func TestLocalActionsCacheFactory(t *testing.T) {
 	f := NewLocalActionsCacheFactory(io.Discard)
-	p1 := &Project{"path/to/project1", nil}
+	p1 := &Project{root: "path/to/project1"}
 	c1 := f.GetCache(p1)
 
-	p2 := &Project{"path/to/project2", nil}
+	p2 := &Project{root: "path/to/project2"}
 	c2 := f.GetCache(p2)
 	if c1 == c2 {
 		t.Errorf("different cache was not created: %v", c1)

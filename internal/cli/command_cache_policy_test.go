@@ -1,4 +1,4 @@
-package actionlint
+package cli
 
 import (
 	"bytes"
@@ -7,7 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"actionlint.kjanat.dev"
 )
+
+const cachePolicySteps = "    runs-on: ubuntu-latest\n    steps:\n      - run: echo hello\n"
 
 func TestCommandCachePolicyDefaults(t *testing.T) {
 	for _, policy := range []struct{ name, workflow string }{
@@ -57,9 +61,9 @@ func TestCommandCachePolicyDefaults(t *testing.T) {
 					var stdout, stderr bytes.Buffer
 					cmd := Command{Stdin: bytes.NewReader(nil), Stdout: &stdout, Stderr: &stderr}
 					status := cmd.Main(args)
-					wantStatus, wantCount := ExitStatusSuccessProblemFound, 1
+					wantStatus, wantCount := actionlint.ExitStatusSuccessProblemFound, 1
 					if config.disabled {
-						wantStatus, wantCount = ExitStatusSuccessNoProblem, 0
+						wantStatus, wantCount = actionlint.ExitStatusSuccessNoProblem, 0
 					}
 					if status != wantStatus || stderr.Len() != 0 {
 						t.Fatalf("exit=%d, want=%d; stderr=%s", status, wantStatus, stderr.String())

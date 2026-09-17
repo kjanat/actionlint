@@ -27,7 +27,7 @@ const (
 	workflow     = "demo-workflow.yaml"
 	config       = "actionlint.yaml"
 	forkTool     = "github:kjanat/actionlint"
-	upstreamTool = "actionlint"
+	upstreamTool = "github:rhysd/actionlint"
 )
 
 var (

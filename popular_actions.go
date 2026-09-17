@@ -2231,6 +2231,7 @@ var PopularActions = map[string]*ActionMetadata{
 			"special-characters-workaround": {"special-characters-workaround", false, false, ""},
 			"sts-endpoint":                  {"sts-endpoint", false, false, ""},
 			"transitive-tag-keys":           {"transitive-tag-keys", false, false, ""},
+			"translate-env-variables":       {"translate-env-variables", false, false, ""},
 			"unset-current-credentials":     {"unset-current-credentials", false, false, ""},
 			"use-existing-credentials":      {"use-existing-credentials", false, false, ""},
 			"web-identity-token-file":       {"web-identity-token-file", false, false, ""},
@@ -2468,6 +2469,7 @@ var PopularActions = map[string]*ActionMetadata{
 		Inputs: ActionMetadataInputs{
 			"base_sha":                   {"base_sha", false, false, ""},
 			"binary":                     {"binary", false, false, ""},
+			"cleanup":                    {"cleanup", false, false, ""},
 			"codecov_yml_path":           {"codecov_yml_path", false, false, ""},
 			"commit_parent":              {"commit_parent", false, false, ""},
 			"directory":                  {"directory", false, false, ""},

@@ -2,4 +2,8 @@
 ---
 name: "CodeQL config"
 paths-ignore: [testdata]
-threat-models: local
+threat-models: [local]
+query-filters:
+  # The CLI intentionally reads and inspects paths selected by its caller.
+  - exclude:
+      id: go/path-injection

@@ -16,10 +16,11 @@ import (
 )
 
 var (
-	bold   = color.New(color.Bold)
-	green  = color.New(color.FgGreen)
-	yellow = color.New(color.FgYellow)
-	gray   = color.New(color.FgHiBlack)
+	// Follow color.NoColor so command-line overrides also apply after initialization.
+	bold   = new(color.Color).Add(color.Bold)
+	green  = new(color.Color).Add(color.FgGreen)
+	yellow = new(color.Color).Add(color.FgYellow)
+	gray   = new(color.Color).Add(color.FgHiBlack)
 )
 
 // Error represents an error detected by actionlint rules
@@ -36,7 +37,8 @@ type Error struct {
 	Kind string
 	// endColumn is the inclusive column where the error range ends. A zero value lets the formatter
 	// infer the range from the source token at Column.
-	endColumn int
+	endColumn   int
+	endPosition *Pos
 	// source is the content of the file at Filepath when the error points at a file other than the
 	// linted workflow. It replaces the workflow source for rendering the snippet.
 	source []byte
@@ -294,10 +296,11 @@ func NewErrorFormatter(format string) (*ErrorFormatter, error) {
 		return nil, fmt.Errorf("template to format error messages must contain at least one {{ }} placeholder: %s", format)
 	}
 
-	r := map[string]*ruleTemplateFields{
-		"syntax-check":          {"syntax-check", "Checks for GitHub Actions workflow syntax"},
-		"inline-suppression":    {"inline-suppression", "Checks inline cache policy exception directives"},
-		"disallow-suppressions": {"disallow-suppressions", "Reports inline exceptions prohibited by configuration"},
+	r := map[string]*ruleTemplateFields{}
+	for _, descriptor := range builtinRuleDescriptors() {
+		if descriptor.build == nil {
+			r[descriptor.Name] = &ruleTemplateFields{descriptor.Name, descriptor.Description}
+		}
 	}
 
 	funcs := template.FuncMap(map[string]any{
@@ -313,7 +316,7 @@ func NewErrorFormatter(format string) (*ErrorFormatter, error) {
 			return strings.NewReplacer(oldnew...).Replace(s)
 		},
 		"toPascalCase": toPascalCase,
-		"getVersion":   getCommandVersion,
+		"getVersion":   Version,
 		"allKinds": func() []*ruleTemplateFields {
 			ret := make([]*ruleTemplateFields, 0, len(r))
 			for _, e := range r {

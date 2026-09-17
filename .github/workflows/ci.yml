@@ -30,7 +30,7 @@ jobs:
       - name: Install shells for completion tests on Linux
         if: ${{ runner.os == 'Linux' }}
         run: |
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends zsh fish
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends zsh fish bash-completion
           zsh --version; fish --version
       - run: go test -v ./...
       # Check build without CGO

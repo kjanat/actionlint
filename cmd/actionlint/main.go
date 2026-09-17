@@ -3,13 +3,13 @@ package main
 import (
 	"os"
 
-	"actionlint.kjanat.dev"
+	"actionlint.kjanat.dev/internal/cli"
 
 	_ "time/tzdata"
 )
 
 func main() {
-	cmd := actionlint.Command{
+	cmd := cli.Command{
 		Stdin:  os.Stdin,
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,

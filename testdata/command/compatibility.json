@@ -1,0 +1,147 @@
+{
+  "bad-regexp": {
+    "status": 3,
+    "stdout": "",
+    "stderr": "invalid regular expression for ignore pattern \"[\": error parsing regexp: missing closing ]: `[`\n"
+  },
+  "bad-template": {
+    "status": 3,
+    "stdout": "",
+    "stderr": "template to format error messages must contain at least one {{ }} placeholder: plain\n"
+  },
+  "boolean-false": {
+    "status": 1,
+    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~~~~~~~\n",
+    "stderr": ""
+  },
+  "boolean-numeric": {
+    "status": 1,
+    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n",
+    "stderr": ""
+  },
+  "boolean-repeat": {
+    "status": 1,
+    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~~~~~~~\n",
+    "stderr": ""
+  },
+  "color": {
+    "status": 1,
+    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~~~~~~~\n",
+    "stderr": ""
+  },
+  "custom-template": {
+    "status": 1,
+    "stdout": "expression:6:24\n",
+    "stderr": ""
+  },
+  "end-of-flags": {
+    "status": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "files": {
+    "status": 1,
+    "stdout": "bad.yml:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~~~~~~~\n",
+    "stderr": ""
+  },
+  "files-json-template": {
+    "status": 1,
+    "stdout": "[{\"message\":\"undefined variable \\\"missing\\\". available variables are \\\"env\\\", \\\"github\\\", \\\"inputs\\\", \\\"job\\\", \\\"matrix\\\", \\\"needs\\\", \\\"runner\\\", \\\"secrets\\\", \\\"steps\\\", \\\"strategy\\\", \\\"vars\\\"\",\"filepath\":\"bad.yml\",\"line\":6,\"column\":24,\"kind\":\"expression\",\"snippet\":\"      - run: echo \\\"${{ missing.value }}\\\"\\n                       ^~~~~~~~~~~~~\",\"end_column\":36}]\n",
+    "stderr": ""
+  },
+  "ignore-with-comma": {
+    "status": 1,
+    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~~~~~~~\n",
+    "stderr": ""
+  },
+  "ignored-diagnostic": {
+    "status": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "json-template": {
+    "status": 1,
+    "stdout": "[{\"message\":\"undefined variable \\\"missing\\\". available variables are \\\"env\\\", \\\"github\\\", \\\"inputs\\\", \\\"job\\\", \\\"matrix\\\", \\\"needs\\\", \\\"runner\\\", \\\"secrets\\\", \\\"steps\\\", \\\"strategy\\\", \\\"vars\\\"\",\"filepath\":\"\\u003cstdin\\u003e\",\"line\":6,\"column\":24,\"kind\":\"expression\",\"snippet\":\"      - run: echo \\\"${{ missing.value }}\\\"\\n                       ^~~~~~~~~~~~~\",\"end_column\":36}]\n",
+    "stderr": ""
+  },
+  "json-template-empty": {
+    "status": 0,
+    "stdout": "[]\n",
+    "stderr": ""
+  },
+  "jsonl-template": {
+    "status": 1,
+    "stdout": "{\"message\":\"undefined variable \\\"missing\\\". available variables are \\\"env\\\", \\\"github\\\", \\\"inputs\\\", \\\"job\\\", \\\"matrix\\\", \\\"needs\\\", \\\"runner\\\", \\\"secrets\\\", \\\"steps\\\", \\\"strategy\\\", \\\"vars\\\"\",\"filepath\":\"\\u003cstdin\\u003e\",\"line\":6,\"column\":24,\"kind\":\"expression\",\"snippet\":\"      - run: echo \\\"${{ missing.value }}\\\"\\n                       ^~~~~~~~~~~~~\",\"end_column\":36}\n",
+    "stderr": ""
+  },
+  "long-version": {
+    "status": 0,
+    "stdout": "actionlint.kjanat.dev 1.16.0\ncompatibility-test\nbuilt with GO_VERSION compiler for GO_PLATFORM\n",
+    "stderr": ""
+  },
+  "no-color-wins": {
+    "status": 1,
+    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~~~~~~~\n",
+    "stderr": ""
+  },
+  "repeat-ignore": {
+    "status": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "repository": {
+    "status": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "stdin-empty": {
+    "status": 1,
+    "stdout": "\u003cstdin\u003e:1:1: workflow is empty [syntax-check]\n",
+    "stderr": ""
+  },
+  "stdin-good": {
+    "status": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "stdin-label": {
+    "status": 1,
+    "stdout": "source with spaces.yml:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~~~~~~~\n",
+    "stderr": ""
+  },
+  "stdin-long-flags": {
+    "status": 1,
+    "stdout": "from-stdin.yml:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n",
+    "stderr": ""
+  },
+  "stdin-oneline": {
+    "status": 1,
+    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n",
+    "stderr": ""
+  },
+  "stdin-pretty": {
+    "status": 1,
+    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~~~~~~~\n",
+    "stderr": ""
+  },
+  "template-over-oneline": {
+    "status": 1,
+    "stdout": "[{\"message\":\"undefined variable \\\"missing\\\". available variables are \\\"env\\\", \\\"github\\\", \\\"inputs\\\", \\\"job\\\", \\\"matrix\\\", \\\"needs\\\", \\\"runner\\\", \\\"secrets\\\", \\\"steps\\\", \\\"strategy\\\", \\\"vars\\\"\",\"filepath\":\"\\u003cstdin\\u003e\",\"line\":6,\"column\":24,\"kind\":\"expression\",\"snippet\":\"      - run: echo \\\"${{ missing.value }}\\\"\\n                       ^~~~~~~~~~~~~\",\"end_column\":36}]\n",
+    "stderr": ""
+  },
+  "version": {
+    "status": 0,
+    "stdout": "actionlint.kjanat.dev 1.16.0\ncompatibility-test\nbuilt with GO_VERSION compiler for GO_PLATFORM\n",
+    "stderr": ""
+  },
+  "version-positionals": {
+    "status": 0,
+    "stdout": "actionlint.kjanat.dev 1.16.0\ncompatibility-test\nbuilt with GO_VERSION compiler for GO_PLATFORM\n",
+    "stderr": ""
+  },
+  "version-precedence": {
+    "status": 0,
+    "stdout": "actionlint.kjanat.dev 1.16.0\ncompatibility-test\nbuilt with GO_VERSION compiler for GO_PLATFORM\n",
+    "stderr": ""
+  }
+}

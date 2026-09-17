@@ -8,8 +8,9 @@ import (
 
 // Project represents one GitHub project. One Git repository corresponds to one project.
 type Project struct {
-	root   string
-	config *Config
+	root       string
+	config     *Config
+	configPath string
 }
 
 func absPath(path string) string {
@@ -19,13 +20,16 @@ func absPath(path string) string {
 	return path
 }
 
-// findProject creates new Project instance by finding a project which the given path belongs to.
+// findProjectConfig finds the project to which the given path belongs.
 // A project must be a Git repository and have ".github/workflows" directory.
-func findProject(path string) (*Project, error) {
+func findProjectConfig(path string, skipConfig bool) (*Project, error) {
 	d := absPath(path)
 	for {
 		if s, err := os.Stat(filepath.Join(d, ".github", "workflows")); err == nil && s.IsDir() {
 			if _, err := os.Stat(filepath.Join(d, ".git")); err == nil { // Note: .git may be a file
+				if skipConfig {
+					return &Project{root: d}, nil
+				}
 				return NewProject(d)
 			}
 		}
@@ -41,11 +45,11 @@ func findProject(path string) (*Project, error) {
 // NewProject creates a new instance with a file path to the root directory of the repository.
 // This function returns an error when failing to parse an actionlint config file in the repository.
 func NewProject(root string) (*Project, error) {
-	c, err := loadRepoConfig(root)
+	c, path, err := loadRepoConfig(root)
 	if err != nil {
 		return nil, err
 	}
-	return &Project{root, c}, nil
+	return &Project{root: root, config: c, configPath: path}, nil
 }
 
 // RootDir returns a root directory path of the GitHub project repository.
@@ -77,7 +81,8 @@ func (p *Project) Config() *Config {
 // Projects represents set of projects. It caches Project instances which was created previously
 // and reuses them.
 type Projects struct {
-	known []*Project
+	known      []*Project
+	skipConfig bool
 }
 
 // NewProjects creates new Projects instance.
@@ -94,7 +99,7 @@ func (ps *Projects) At(path string) (*Project, error) {
 		}
 	}
 
-	p, err := findProject(path)
+	p, err := findProjectConfig(path, ps.skipConfig)
 	if err != nil {
 		return nil, err
 	}
