@@ -1,0 +1,115 @@
+package githubaction
+
+import (
+	"maps"
+	"path/filepath"
+	"reflect"
+	"strconv"
+	"strings"
+	"testing"
+
+	"actionlint.kjanat.dev"
+	"github.com/mattn/go-shellwords"
+	"go.yaml.in/yaml/v4"
+)
+
+func TestMainConfigurationInputs(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		env  map[string]string
+		code int
+		text string
+	}{
+		{"yaml discovery wins over yml", nil, 1, ".github/actionlint.yaml (automatically discovered)"},
+		{"inline yaml", map[string]string{"INPUT_CONFIG": "self-hosted-runner: {labels: [unknown-runner]}"}, 0, "overrides: config"},
+		{"inline json", map[string]string{"INPUT_CONFIG": `{"self-hosted-runner":{"labels":["unknown-runner"]}}`}, 0, "overrides: config"},
+		{"section overrides inline", map[string]string{"INPUT_CONFIG": "self-hosted-runner: {labels: [other]}", "INPUT_SELF-HOSTED-RUNNER": "labels: [unknown-runner]"}, 0, "overrides: config, self-hosted-runner"},
+		{"explicit config file", map[string]string{"INPUT_CONFIG-FILE": ".github/actionlint.yml"}, 0, ".github/actionlint.yml (config-file input)"},
+		{"explicit file with cleared labels", map[string]string{"INPUT_CONFIG-FILE": ".github/actionlint.yml", "INPUT_SELF-HOSTED-RUNNER": "labels: []"}, 1, "overrides: self-hosted-runner"},
+		{"blank inherits", map[string]string{"INPUT_CONFIG": " \n", "INPUT_SELF-HOSTED-RUNNER": " "}, 1, ".github/actionlint.yaml (automatically discovered)"},
+		{"unknown key", map[string]string{"INPUT_CONFIG": "config-variable: [TYPO]"}, 2, "Invalid action input"},
+		{"invalid section", map[string]string{"INPUT_SELF-HOSTED-RUNNER": "[unknown-runner]"}, 2, "input self-hosted-runner"},
+		{"conflicting merged bounds", map[string]string{"INPUT_CONFIG": "policy: {require-job-timeout: {max-minutes: 10}}", "INPUT_POLICY": "require-job-timeout: {min-minutes: 20}"}, 2, "configuration after inputs config, policy"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			workspace := workspaceWith(t, map[string]string{
+				".git": "", ".github/workflows/test.yaml": brokenWorkflow,
+				".github/actionlint.yaml": "self-hosted-runner: {labels: [yaml-label]}",
+				".github/actionlint.yml":  "self-hosted-runner: {labels: [unknown-runner]}",
+			})
+			output := filepath.Join(t.TempDir(), "outputs")
+			env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": output, "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false"}
+			maps.Copy(env, tc.env)
+			var out strings.Builder
+			if code := Main(func(key string) string { return env[key] }, &out); code != tc.code {
+				t.Fatalf("want code %d, got %d: %s", tc.code, code, out.String())
+			}
+			if !strings.Contains(out.String(), tc.text) {
+				t.Errorf("want %q in %s", tc.text, out.String())
+			}
+			if tc.code < 2 {
+				outputs := parseOutputs(read(t, output))
+				if outputs["exit-code"] != strconv.Itoa(tc.code) {
+					t.Errorf("lint exit code must remain exposed: %#v", outputs)
+				}
+			}
+		})
+	}
+}
+
+func TestQuotedIgnoreHintPreservesDiagnostics(t *testing.T) {
+	for _, tc := range []struct {
+		pattern string
+		want    bool
+	}{
+		{`'label "ubuntu-24\.04-custom" is unknown\.'`, true},
+		{`"label "ubuntu-24\.04-custom" is unknown\."`, true},
+		{`label "ubuntu-24\.04-custom" is unknown\.`, false},
+		{`'different message'`, false},
+		{`'('`, false},
+	} {
+		errs := []*actionlint.Error{{Message: `label "ubuntu-24.04-custom" is unknown.`}}
+		hints := quotedIgnoreHints([]string{tc.pattern}, errs)
+		if (len(hints) == 1) != tc.want {
+			t.Errorf("%q: hints=%v", tc.pattern, hints)
+		}
+	}
+}
+
+func TestToolCommandsFromEnvironment(t *testing.T) {
+	python := `C:\tool cache\someone's python\python.exe`
+	script := `C:\tool cache\$pyflakes\launcher.py`
+	req := &lintRequest{shellcheck: "shellcheck", pyflakes: "pyflakes"}
+	env := map[string]string{"ACTIONLINT_SHELLCHECK_COMMAND": "/cache/shellcheck", "ACTIONLINT_PYTHON": python, "ACTIONLINT_PYFLAKES_SCRIPT": script}
+	if err := req.configureEnvironment(func(k string) string { return env[k] }); err != nil {
+		t.Fatal(err)
+	}
+	words, err := shellwords.Parse(req.pyflakes)
+	if err != nil || !reflect.DeepEqual(words, []string{python, "-I", script}) {
+		t.Errorf("paths must survive shellword parsing: %#v, %v", words, err)
+	}
+	if req.shellcheck != "/cache/shellcheck" {
+		t.Errorf("want provisioned shellcheck, got %q", req.shellcheck)
+	}
+	disabled := &lintRequest{}
+	if err := disabled.configureEnvironment(func(k string) string { return env[k] }); err != nil || disabled.shellcheck != "" || disabled.pyflakes != "" {
+		t.Errorf("disabled tools must stay disabled: %#v, %v", disabled, err)
+	}
+}
+
+func TestActionMetadataContainsEveryConfigInput(t *testing.T) {
+	var metadata struct {
+		Inputs map[string]struct {
+			Default string `yaml:"default"`
+		} `yaml:"inputs"`
+	}
+	if err := yaml.Unmarshal([]byte(read(t, filepath.Join("..", "..", "action.yml"))), &metadata); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range append([]string{"config"}, actionlint.ConfigKeys()...) {
+		input, ok := metadata.Inputs[key]
+		if !ok || input.Default != "" {
+			t.Errorf("%s must have a blank input default so file settings are inherited", key)
+		}
+	}
+}

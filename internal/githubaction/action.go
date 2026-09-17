@@ -1,28 +1,18 @@
-package main
+package githubaction
 
 import (
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"runtime/debug"
 	"strconv"
 	"time"
 
 	"actionlint.kjanat.dev"
 )
 
-var version = ""
-
 func actionVersion() string {
-	if version != "" {
-		return version
-	}
-	info, ok := debug.ReadBuildInfo()
-	if !ok || info.Main.Version == "" {
-		return "unknown"
-	}
-	return info.Main.Version
+	return actionlint.Version()
 }
 
 type action struct {
@@ -93,6 +83,9 @@ func (a *action) execute() (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	if err := req.configureEnvironment(a.env); err != nil {
+		return 0, err
+	}
 	lint := a.runLint(req)
 	outcome, count, rendered := renderOutcome(lint.lintOutcome, in.format)
 	a.emitStatus(outcome.code, count, lint.fileCount, lint.fileCountKnown, in)
@@ -116,6 +109,7 @@ func (a *action) execute() (int, error) {
 		return 0, err
 	}
 	a.emit(rendered, outcome.code, in.format)
+	a.emitConfiguration(lint, req.workingDir)
 
 	if outcome.code == actionlint.ExitStatusSuccessProblemFound && !in.failOnError {
 		return actionlint.ExitStatusSuccessNoProblem, nil

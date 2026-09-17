@@ -44,7 +44,16 @@
     "jsonTrailingCommaFiles": ["**/.vscode/*.json", "**/.zed/{settings,tasks,debug}.json", "**/tsconfig*.json"],
     "associations": ["package.json"]
   },
-  "typescript": { "quoteStyle": "preferSingle", "useTabs": true },
+  "typescript": {
+    "quoteStyle": "preferSingle",
+    "useTabs": true,
+    "module.sortImportDeclarations": "maintain",
+    "importDeclaration.sortNamedImports": "maintain",
+    "importDeclaration.sortTypeOnlyImports": "none",
+    "module.sortExportDeclarations": "maintain",
+    "exportDeclaration.sortNamedExports": "maintain",
+    "exportDeclaration.sortTypeOnlyExports": "none",
+  },
   "markup": {
     "printWidth": 999,
     "useTabs": true,

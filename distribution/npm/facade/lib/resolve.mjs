@@ -1,8 +1,9 @@
-import { cyan, link, red, yellow } from 'ansispeck';
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { arch, platform } from 'node:process';
+
+import { cyan, link, red, yellow } from 'ansispeck';
 
 const require = createRequire(import.meta.url);
 const { bugs, name: pkgName, optionalDependencies } = require('#pkg');

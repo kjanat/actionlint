@@ -95,6 +95,11 @@ func getCommandVersion() string {
 	return info.Main.Version
 }
 
+// Version returns the version embedded in this actionlint build.
+func Version() string {
+	return getCommandVersion()
+}
+
 // Command represents entire actionlint command. Given stdin/stdout/stderr are used for input/output.
 type Command struct {
 	// Stdin is a reader to read input from stdin

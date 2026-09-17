@@ -1,5 +1,5 @@
-import { FEED_URL, feedPageUrl, parseFeed } from './github-actions-feed.ts';
 import type { Feed, FeedItem } from './github-actions-feed.ts';
+import { FEED_URL, feedPageUrl, parseFeed } from './github-actions-feed.ts';
 
 interface CachedFeed {
 	complete?: boolean;

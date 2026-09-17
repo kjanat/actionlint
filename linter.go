@@ -77,6 +77,10 @@ type LinterOptions struct {
 	// ConfigFile is a path to config file. Empty string means no config file path is given. In
 	// the case, actionlint will try to read config from .github/actionlint.yaml.
 	ConfigFile string
+	// ConfigOverlays apply in order over each project's selected config file.
+	ConfigOverlays []ConfigOverlay
+	// OnConfigLoaded reports actual config sources. Calls are serialized.
+	OnConfigLoaded func(ConfigReport)
 	// Format is a custom template to format error messages. It must follow Go Template format and
 	// contain at least one {{ }} placeholder. https://pkg.go.dev/text/template
 	Format string
@@ -117,6 +121,7 @@ type Linter struct {
 	onRulesCreated  func([]Rule) []Rule
 	onFilesSelected func([]string)
 	ctx             context.Context
+	configState     *linterConfigState
 }
 
 // NewLinter creates a new Linter instance.
@@ -149,12 +154,13 @@ func NewLinter(out io.Writer, opts *LinterOptions) (*Linter, error) {
 	}
 
 	var cfg *Config
+	var source *loadedConfig
 	if opts.ConfigFile != "" {
-		c, err := ReadConfigFile(opts.ConfigFile)
+		c, err := readConfigSource(opts.ConfigFile)
 		if err != nil {
 			return nil, err
 		}
-		cfg = c
+		cfg, source = c.config, c
 	}
 
 	ignore := make([]*regexp.Regexp, 0, len(opts.IgnorePatterns))
@@ -193,21 +199,19 @@ func NewLinter(out io.Writer, opts *LinterOptions) (*Linter, error) {
 	}
 
 	l := &Linter{
-		NewProjects(),
-		out,
-		lout,
-		level,
-		opts.Oneline,
-		opts.Shellcheck,
-		opts.Pyflakes,
-		ignore,
-		stdin,
-		cfg,
-		formatter,
-		cwd,
-		opts.OnRulesCreated,
-		opts.OnFilesSelected,
-		ctx,
+		projects: NewProjects(), out: out, logOut: lout, logLevel: level,
+		oneline: opts.Oneline, shellcheck: opts.Shellcheck, pyflakes: opts.Pyflakes,
+		ignorePats: ignore, stdin: stdin, defaultConfig: cfg, errFmt: formatter,
+		cwd: cwd, onRulesCreated: opts.OnRulesCreated, onFilesSelected: opts.OnFilesSelected, ctx: ctx,
+	}
+	if len(opts.ConfigOverlays) > 0 || opts.OnConfigLoaded != nil {
+		for _, overlay := range opts.ConfigOverlays {
+			if overlay.node == nil {
+				return nil, errors.New("configuration overlays must be created with ParseConfigOverlay")
+			}
+		}
+		l.configState = &linterConfigState{source: source, overlays: slices.Clone(opts.ConfigOverlays),
+			onLoaded: opts.OnConfigLoaded, loaded: map[*Project]*Config{}}
 	}
 
 	l.debug("Create a Linter instance with option %#v", opts)
@@ -558,12 +562,9 @@ func (l *Linter) check(
 		l.log("Using project at", project.RootDir())
 	}
 
-	var cfg *Config
-	if l.defaultConfig != nil {
-		// `-config-file` option has higher priority than repository config file
-		cfg = l.defaultConfig
-	} else if project != nil {
-		cfg = project.Config()
+	cfg, err := l.configForProject(project)
+	if err != nil {
+		return nil, err
 	}
 	if cfg != nil {
 		l.debug("Config: %#v", cfg)

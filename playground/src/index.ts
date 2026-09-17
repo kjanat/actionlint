@@ -31,7 +31,7 @@ function toBase64(bytes: Uint8Array): string {
 	return btoa(s);
 }
 
-(async function() {
+(async () => {
 	function getElementById(id: string): HTMLElement {
 		const e = document.getElementById(id);
 		if (e === null) {
@@ -142,8 +142,7 @@ jobs:
 		successMessage.style.display = 'none';
 		invalidInputMessage.style.display = 'none';
 		editor.dispatch(setDiagnostics(editor.state, []));
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		window.runActionlint!(getSource());
+		window.runActionlint?.(getSource());
 	}
 
 	function onDocChanged(pasted: boolean): void {

@@ -142,7 +142,11 @@ See [the usage document][usage] for more details.
 
 ## GitHub Action
 
-This repository can be used directly as a Docker action. The prebuilt image includes actionlint, ShellCheck, and pyflakes, and reports problems as GitHub annotations by default. Docker container actions run only on Linux, and this action also needs a reachable Docker daemon. `ubuntu-slim` is not supported: its job runs in an unprivileged container with the Docker client but no daemon or Docker socket. Standard Ubuntu runners, including `ubuntu-24.04-arm` and `ubuntu-26.04-arm`, are supported by the published `linux/amd64` and `linux/arm64` image.
+The JavaScript action runs on Linux, macOS, and Windows without Docker. Every
+invocation downloads the matching actionlint binary and verifies its checksum.
+ShellCheck and pyflakes are enabled by default; missing copies of these tools are
+installed in the runner's tool cache. Python is required when pyflakes is enabled.
+Problems appear as GitHub annotations.
 
 ```yaml
 name: Lint GitHub Actions workflows
@@ -156,43 +160,52 @@ jobs:
       - uses: kjanat/actionlint@v1
 ```
 
-On a daemon-less runner such as `ubuntu-slim`, download and run the binary instead:
+Custom runner labels can be configured directly:
 
 ```yaml
-- uses: actions/checkout@v7
-  with: { persist-credentials: false }
-- name: Download and run actionlint
-  env: { GH_TOKEN: "${{ github.token }}", GH_REPO: "kjanat/actionlint" }
-  run: |
-    case "${RUNNER_ARCH}" in
-      X64) asset_arch=amd64 ;;
-      ARM64) asset_arch=arm64 ;;
-      ARM) asset_arch=armv6 ;;
-      X86) asset_arch=386 ;;
-      *) echo "Unsupported runner architecture: ${RUNNER_ARCH}" >&2; exit 1 ;;
-    esac
-    gh release download --pattern "actionlint_*_${RUNNER_OS,,}_${asset_arch}.tar.gz" --output - | tar -xzf - actionlint
-    ./actionlint -color
+- uses: kjanat/actionlint@v1
+  with:
+    self-hosted-runner: |
+      labels: [ubuntu-24.04-custom]
 ```
 
-The moving `v1` tag follows compatible v1 releases, and `v1.16` follows v1.16 patch releases. These tags point to a
-commit immediately after the release that pins the published container image by digest. `v1.17.0` is a versioned release tag.
-For an immutable action reference with a pinned image, use the full commit SHA resolved from a
-floating tag.
+The moving `v1` tag follows compatible v1 releases; minor tags follow patch releases.
+These tags point to release commits containing the JavaScript bundle. Pin the full
+release commit SHA or an `action-vX.Y.Z` tag for an immutable JavaScript action reference.
+`v1.17.0` is a versioned release tag for the CLI and source distribution.
+New source tags and source checkouts do not contain the JavaScript bundle and
+cannot be used directly as the action. Existing immutable release tags retain their
+original implementation. Generated bundles stay outside the source checkout.
+
+The action discovers `.github/actionlint.yaml` or `.github/actionlint.yml` and logs
+the selected file. All configuration sections also work as inputs; `config` accepts
+a complete YAML or JSON document, including `${{ toJSON(...) }}` expressions.
+Individual inputs override inline `config`, which overrides the config file.
+See [configuration examples and merge behavior](docs/usage.md#on-github-actions).
 
 <details><summary><h3>Inputs</h3></summary>
 
-| Input               | Default       | Description                                                                                  |
-| ------------------- | ------------- | -------------------------------------------------------------------------------------------- |
-| `files`             | all workflows | Newline-separated workflow paths. Empty checks every workflow in the repository.             |
-| `format`            | `github`      | Output format: `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, or `sarif`. |
-| `ignore`            | none          | Newline-separated regular expressions for actionlint errors to ignore.                       |
-| `config-file`       | automatic     | Configuration file path relative to `working-directory`.                                     |
-| `shellcheck`        | `true`        | Run ShellCheck for shell scripts in workflow steps.                                          |
-| `pyflakes`          | `true`        | Run pyflakes for Python scripts in workflow steps.                                           |
-| `working-directory` | `.`           | Directory to lint, relative to the repository workspace.                                     |
-| `output-file`       | none          | Repository-relative file to receive the selected output format.                              |
-| `fail-on-error`     | `true`        | Fail when problems are found. Invalid options and fatal errors always fail.                  |
+| Input                        | Default       | Description                                                                                  |
+| ---------------------------- | ------------- | -------------------------------------------------------------------------------------------- |
+| `files`                      | all workflows | Newline-separated workflow paths. Empty checks every workflow in the repository.             |
+| `format`                     | `github`      | Output format: `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, or `sarif`. |
+| `ignore`                     | none          | Newline-separated regular expressions for actionlint errors to ignore.                       |
+| `config-file`                | automatic     | Configuration file path relative to `working-directory`.                                     |
+| `config`                     | none          | Complete inline configuration as YAML or JSON.                                               |
+| `self-hosted-runner`         | inherited     | YAML/JSON mapping with a `labels` list.                                                      |
+| `config-variables`           | inherited     | YAML/JSON list of permitted variable names, or `null`.                                       |
+| `config-secrets`             | inherited     | YAML/JSON list of permitted secret names, or `null`.                                         |
+| `paths`                      | inherited     | YAML/JSON mapping of workflow globs to configuration.                                        |
+| `assume-default-permissions` | inherited     | `restricted` or `permissive`.                                                                |
+| `policy`                     | inherited     | YAML/JSON mapping of policy settings.                                                        |
+| `shellcheck`                 | `true`        | Run ShellCheck for shell scripts in workflow steps.                                          |
+| `pyflakes`                   | `true`        | Run pyflakes for Python scripts in workflow steps.                                           |
+| `add-actionlint-to-path`     | `true`        | Make actionlint available on PATH for subsequent job steps.                                  |
+| `add-shellcheck-to-path`     | `true`        | Make ShellCheck available on PATH when ShellCheck is enabled.                                |
+| `add-pyflakes-to-path`       | `true`        | Make pyflakes available on PATH when pyflakes is enabled.                                    |
+| `working-directory`          | `.`           | Directory to lint, relative to the repository workspace.                                     |
+| `output-file`                | none          | Repository-relative file to receive the selected output format.                              |
+| `fail-on-error`              | `true`        | Fail when problems are found. Invalid options and fatal errors always fail.                  |
 
 </details>
 <details><summary><h3>Outputs</h3></summary>

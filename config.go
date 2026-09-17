@@ -474,6 +474,14 @@ func ParseConfig(b []byte) (*Config, error) {
 
 // ReadConfigFile reads actionlint config file (actionlint.yaml) from the given file path.
 func ReadConfigFile(path string) (*Config, error) {
+	source, err := readConfigSource(path)
+	if err != nil {
+		return nil, err
+	}
+	return source.config, nil
+}
+
+func readConfigSource(path string) (*loadedConfig, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("could not read config file %q: %w", path, err)
@@ -482,15 +490,23 @@ func ReadConfigFile(path string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
-	return c, nil
+	var node yaml.Node
+	if err := yaml.Unmarshal(b, &node); err != nil {
+		return nil, err
+	}
+	var root *yaml.Node
+	if len(node.Content) > 0 {
+		root = node.Content[0]
+	}
+	return &loadedConfig{c, root, path}, nil
 }
 
 // loadRepoConfig reads config file from the repository's .github/actionlint.yml or
 // .github/actionlint.yaml.
-func loadRepoConfig(root string) (*Config, error) {
+func loadRepoConfig(root string) (*loadedConfig, error) {
 	for _, f := range []string{"actionlint.yaml", "actionlint.yml"} {
 		p := filepath.Join(root, ".github", f)
-		c, err := ReadConfigFile(p)
+		c, err := readConfigSource(p)
 		switch {
 		case errors.Is(err, os.ErrNotExist):
 			continue

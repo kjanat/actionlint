@@ -1,5 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
+
 import object from './object.mjs';
 
 /** @param {string[]} args */
@@ -14,7 +15,7 @@ async function main(args) {
 		if (!dest.startsWith(root + path.sep)) {
 			throw new Error(`output file path must stay within ${root}: ${target}`);
 		}
-		await writeFile(dest, json + '\n', 'utf8');
+		await writeFile(dest, `${json}\n`, 'utf8');
 		console.log(`Wrote to ${target}`);
 	}
 }

@@ -40,8 +40,9 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with: { name: manual, path: man/actionlint.1, if-no-files-found: error }
   binaries:
+    name: Publish binaries and Action bundle
     runs-on: ubuntu-latest
-    needs: [changelog, manual, nix]
+    needs: [changelog, manual, nix, action-bundle]
     permissions: { contents: write, id-token: write, attestations: write }
     steps:
       - uses: *ActionsCheckout
@@ -51,6 +52,8 @@ jobs:
             with: { name: manual, path: man }
           - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
             with: { name: release-notes, path: "${{ runner.temp }}" }
+          - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+            with: { name: javascript-action, path: "${{ runner.temp }}/actionlint-action" }
           - uses: *SetupGo
             with: *GoMod
       - name: Get version
@@ -70,6 +73,9 @@ jobs:
         }
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
         with: { subject-checksums: "./dist/actionlint_${{ env.VERSION }}_checksums.txt" }
+      - name: Attest the JavaScript Action bundle
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        with: { subject-path: "${{ runner.temp }}/actionlint-action/assets/*.mjs" }
       - name: Post-release download check
         run: bash ./scripts/download-actionlint.bash
   npm:
@@ -77,6 +83,42 @@ jobs:
     permissions: { contents: read, id-token: write }
     uses: $/.github/workflows/npm-release.yml
     with: { tag: "${{ github.ref_name }}" }
+  action-bundle:
+    name: Build JavaScript Action
+    runs-on: ubuntu-latest
+    needs: [changelog, nix]
+    timeout-minutes: 15
+    steps:
+      - uses: *ActionsCheckout
+        with: *NoCreds
+      - uses: &SetupNode actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: &Node24 { node-version: "24", package-manager-cache: false }
+      - name: Check the runtime and build outside the checkout
+        run: |
+          npm ci --ignore-scripts
+          npm run typecheck --workspace actionlint-action
+          npm test --workspace actionlint-action
+          node --test scripts/build-action-release.test.mjs
+          node scripts/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${GITHUB_REF_NAME#v}"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with: { name: javascript-action, path: "${{ runner.temp }}/actionlint-action", if-no-files-found: error }
+  action-smoke:
+    name: Check the published Action bundle
+    needs: binaries
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: *ActionsCheckout
+        with: *NoCreds
+      - uses: *SetupNode
+        with: *Node24
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with: { name: javascript-action, path: "${{ runner.temp }}/actionlint-action" }
+      - name: Prepare the bundled Action for the runner
+        run: cp -R "${RUNNER_TEMP}/actionlint-action/action" .actionlint-action-release
+      - name: Run the bundled Action against the published binary
+        uses: ./.actionlint-action-release
+        with: { files: testdata/ok/minimal.yaml, format: json, shellcheck: "false", pyflakes: "false" }
   docker:
     runs-on: ubuntu-latest
     needs: [changelog, nix]
@@ -84,7 +126,6 @@ jobs:
       is-latest: "${{ steps.tag.outputs.is-latest }}",
       is-major-latest: "${{ steps.tag.outputs.is-major-latest }}",
       is-minor-latest: "${{ steps.tag.outputs.is-minor-latest }}",
-      action-digest: "${{ steps.push-action.outputs.digest }}",
     }
     permissions: { contents: read, packages: write, id-token: write, attestations: write }
     steps:
@@ -187,54 +228,14 @@ jobs:
           labels: ${{ steps.meta-cli.outputs.labels }}
           annotations: ${{ steps.meta-cli.outputs.annotations }}
           tags: ${{ steps.meta-cli.outputs.tags }}
-      - parallel:
-          - name: Update Docker Hub description
-            uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
-            with:
-              username: ${{ github.repository_owner }}
-              password: ${{ secrets.DOCKERHUB_TOKEN }}
-              repository: ${{ github.repository }}
-              short-description: ${{ github.event.repository.description }}
-              enable-url-completion: true
-          - name: Tags for the GitHub Action image
-            id: meta-action
-            uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
-            with:
-              images: ghcr.io/${{ github.repository }}
-              tags: |
-                type=raw,value=action-${{ steps.tag.outputs.name }}
-                type=raw,value=action-v${{ steps.tag.outputs.minor }},enable=${{ steps.tag.outputs.is-minor-latest }}
-                type=raw,value=action-v${{ steps.tag.outputs.major }},enable=${{ steps.tag.outputs.is-major-latest }}
-                type=raw,value=action-latest,enable=${{ steps.tag.outputs.is-latest }}
-            env: { DOCKER_METADATA_ANNOTATIONS_LEVELS: "manifest,index" }
-      - name: Build GitHub Action image for the smoke test
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+      - name: Update Docker Hub description
+        uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
         with:
-          target: action
-          build-args: |
-            ACTIONLINT_VER=${{ steps.tag.outputs.name }}
-          load: true
-          cache-from: type=gha,scope=release-action
-          cache-to: type=gha,scope=release-action,mode=max
-          tags: actionlint-action:smoke
-      - name: Smoke-test the GitHub Action image
-        run: ./scripts/test-action.bash actionlint-action:smoke
-      - name: Build and push GitHub Action image
-        id: push-action
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          platforms: linux/amd64,linux/arm64
-          target: action
-          build-args: |
-            ACTIONLINT_VER=${{ steps.tag.outputs.name }}
-          push: true
-          sbom: true
-          provenance: mode=max
-          cache-from: type=gha,scope=release-action
-          cache-to: type=gha,scope=release-action,mode=max
-          labels: ${{ steps.meta-action.outputs.labels }}
-          annotations: ${{ steps.meta-action.outputs.annotations }}
-          tags: ${{ steps.meta-action.outputs.tags }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          short-description: ${{ github.event.repository.description }}
+          enable-url-completion: true
       - parallel:
           - name: Attest the CLI image
             uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
@@ -247,71 +248,71 @@ jobs:
             with:
               subject-name: docker.io/${{ github.repository }}
               subject-digest: ${{ steps.push-cli.outputs.digest }}
-          - name: Attest the GitHub Action image
-            uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
-            with:
-              subject-name: ghcr.io/${{ github.repository }}
-              subject-digest: ${{ steps.push-action.outputs.digest }}
-              push-to-registry: true
-  floating-tags:
-    name: Update floating action tags
-    needs: [binaries, docker]
-    if: needs.docker.outputs.is-major-latest == 'true' || needs.docker.outputs.is-minor-latest == 'true'
+  action-tags:
+    name: Publish Action references
+    needs: [binaries, docker, action-smoke]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions: { contents: write }
     steps:
       - uses: *ActionsCheckout
         with: { fetch-depth: 0 }
+      - uses: *SetupNode
+        with: *Node24
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with: { name: javascript-action, path: "${{ runner.temp }}/actionlint-action" }
       - name: Verify release commit signature
         env: { GH_TOKEN: "${{ github.token }}", COMMIT_API: "${{ format('repos/{0}/commits/{1}', github.repository, github.sha) }}" }
         run: |
           verified="$(gh api "${COMMIT_API}" --jq '.commit.verification.verified')"
           test "${verified}" = true
-      # The image does not exist yet when the release commit is made, so the digest can only be
-      # pinned afterwards. The pinned commit is reachable through floating tags alone and never
-      # lands on the default branch, where a stale digest would survive the next version bump.
-      - name: Pin the action image to the digest it was published as
+      # Generated bundles live only in a child of the signed source commit. The
+      # CLI source tag stays unchanged; action-vX.Y.Z identifies the bundled tree.
+      - name: Verify the published bundle matches the prepared action
         shell: bash
-        env: { DIGEST: "${{ needs.docker.outputs.action-digest }}" }
+        env: { GH_TOKEN: "${{ github.token }}" }
         run: |
           set -euo pipefail
-          case "${DIGEST}" in
-          sha256:*) ;;
-          *)
-            echo "::error::the docker job reported no digest for the action image"
-            exit 1
-            ;;
-          esac
           version="${GITHUB_REF_NAME#v}"
-          tagged="ghcr.io/${GITHUB_REPOSITORY}:action-${version}"
-          tagged_lines="$(grep -c "^  image: docker://${tagged}\$" action.yml)"
-          test "${tagged_lines}" -eq 1
-          sed -i "s|^  image: docker://.*\$|  image: docker://${tagged}@${DIGEST}|" action.yml
-          git --no-pager diff -- action.yml
-      - name: Commit the pin
+          gh release download "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" \
+            --pattern "actionlint-action_${version}.mjs" \
+            --pattern "actionlint-action_${version}_checksums.txt" \
+            --dir "${RUNNER_TEMP}/published-action"
+          cd "${RUNNER_TEMP}/published-action"
+          sha256sum --check "actionlint-action_${version}_checksums.txt"
+          cmp "actionlint-action_${version}.mjs" "${RUNNER_TEMP}/actionlint-action/action/dist/main.mjs"
+      - name: Create the isolated release commit
+        id: commit
         shell: bash
         env: { GIT_AUTHOR_NAME: "github-actions[bot]", GIT_AUTHOR_EMAIL: "41898282+github-actions[bot]@users.noreply.github.com" }
         run: |
           set -euo pipefail
           export GIT_COMMITTER_NAME="${GIT_AUTHOR_NAME}" GIT_COMMITTER_EMAIL="${GIT_AUTHOR_EMAIL}"
-          git add action.yml
-          git commit --no-gpg-sign --message "pin the action image of ${GITHUB_REF_NAME} to its digest"
-      - name: Move floating tags to the pinned commit
+          commit="$(node scripts/build-action-release.mjs --commit --out-dir "${RUNNER_TEMP}/actionlint-action" \
+            --version "${GITHUB_REF_NAME#v}" --parent "${GITHUB_SHA}")"
+          if existing="$(git rev-parse --verify --quiet "refs/tags/action-${GITHUB_REF_NAME}^{commit}")"; then
+            test "$(git rev-parse "${existing}^{tree}")" = "$(git rev-parse "${commit}^{tree}")"
+            test "$(git rev-parse "${existing}^")" = "${GITHUB_SHA}"
+            commit="${existing}"
+          fi
+          echo "sha=${commit}" >> "${GITHUB_OUTPUT}"
+      - name: Publish the immutable Action tag and update eligible floating tags
         shell: bash
         env: {
           MOVE_MAJOR: "${{ needs.docker.outputs.is-major-latest }}",
           MOVE_MINOR: "${{ needs.docker.outputs.is-minor-latest }}",
+          RELEASE_COMMIT: "${{ steps.commit.outputs.sha }}",
         }
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
           major="v${version%%.*}"
           minor="v${version%.*}"
-          refs=()
+          refs=("${RELEASE_COMMIT}:refs/tags/action-${GITHUB_REF_NAME}")
           if [[ "${MOVE_MAJOR}" == true ]]; then
-            refs+=("HEAD:refs/tags/${major}")
+            refs+=("+${RELEASE_COMMIT}:refs/tags/${major}")
           fi
           if [[ "${MOVE_MINOR}" == true ]]; then
-            refs+=("HEAD:refs/tags/${minor}")
+            refs+=("+${RELEASE_COMMIT}:refs/tags/${minor}")
           fi
-          git push --atomic --force origin "${refs[@]}"
+          git push --atomic origin "${refs[@]}"

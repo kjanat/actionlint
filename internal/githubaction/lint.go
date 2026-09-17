@@ -1,10 +1,12 @@
-package main
+package githubaction
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"actionlint.kjanat.dev"
@@ -15,6 +17,7 @@ const lintTimeout = 300 * time.Second
 type lintRequest struct {
 	workingDir string
 	configFile string
+	overlays   []actionlint.ConfigOverlay
 	ignore     []string
 	shellcheck string
 	pyflakes   string
@@ -32,6 +35,38 @@ type lintResult struct {
 	*lintOutcome
 	fileCount      int
 	fileCountKnown bool
+	configs        []actionlint.ConfigReport
+	hints          []string
+}
+
+func (req *lintRequest) configureEnvironment(env func(string) string) error {
+	for _, name := range append([]string{"config"}, actionlint.ConfigKeys()...) {
+		value := env("INPUT_" + strings.ToUpper(name))
+		if strings.TrimSpace(value) == "" {
+			continue
+		}
+		overlay, err := actionlint.ParseConfigOverlay(name, []byte(value))
+		if err != nil {
+			return inputErrorf("%s", err)
+		}
+		req.overlays = append(req.overlays, overlay)
+	}
+	if command := env("ACTIONLINT_SHELLCHECK_COMMAND"); req.shellcheck != "" && command != "" {
+		req.shellcheck = command
+	}
+	if command := env("ACTIONLINT_PYFLAKES_COMMAND"); req.pyflakes != "" && command != "" {
+		req.pyflakes = command
+	}
+	python, script := env("ACTIONLINT_PYTHON"), env("ACTIONLINT_PYFLAKES_SCRIPT")
+	if req.pyflakes != "" && python != "" && script != "" {
+		req.pyflakes = quoteCommandArgument(python) + " -I " + quoteCommandArgument(script)
+	}
+	return nil
+}
+
+// The external process resolver parses shell words without invoking a shell.
+func quoteCommandArgument(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
 }
 
 func buildRequest(in *inputs, workspaceDir, workingRel string) (*lintRequest, error) {
@@ -74,9 +109,13 @@ func runLinter(req *lintRequest) *lintResult {
 		Pyflakes:       req.pyflakes,
 		IgnorePatterns: req.ignore,
 		ConfigFile:     req.configFile,
+		ConfigOverlays: req.overlays,
 		Format:         req.format,
 		WorkingDir:     req.workingDir,
 		LogWriter:      &logs,
+		OnConfigLoaded: func(report actionlint.ConfigReport) {
+			result.configs = append(result.configs, report)
+		},
 		OnFilesSelected: func(files []string) {
 			result.fileCount = len(files)
 			result.fileCountKnown = true
@@ -96,10 +135,15 @@ func runLinter(req *lintRequest) *lintResult {
 		errs, err = l.LintFiles(req.files, nil)
 	}
 	if err != nil {
-		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
+		code := actionlint.ExitStatusFailure
+		if _, ok := errors.AsType[*actionlint.ConfigOverlayError](err); ok {
+			code = actionlint.ExitStatusInvalidCommandOption
+		}
+		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", code}
 		return result
 	}
 	if len(errs) > 0 {
+		result.hints = quotedIgnoreHints(req.ignore, errs)
 		result.lintOutcome = &lintOutcome{out.String(), logs.String(), actionlint.ExitStatusSuccessProblemFound}
 		return result
 	}

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+
 import { checksFor, corpus, quoteExpression } from './cases.ts';
 import {
 	collectPending,
@@ -42,7 +43,7 @@ test('generated cases contain no checkout, credential references or shell interp
 		const yaml = makeWorkflow(probe, 'test-session');
 		assert.match(yaml, /permissions: \{\}/);
 		assert.doesNotMatch(yaml, /secrets\.|github\.token|uses:|pull_request_target/);
-		const runs = [...yaml.matchAll(/        run: \|\n([\s\S]*?)(?=      - name:|$)/g)];
+		const runs = [...yaml.matchAll(/ {8}run: \|\n([\s\S]*?)(?= {6}- name:|$)/g)];
 		assert.equal(runs.length, 2);
 		for (const run of runs) assert.doesNotMatch(run[1] ?? '', /\$\{\{/);
 	}
