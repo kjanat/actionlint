@@ -2,6 +2,7 @@
 
 [tools]
 actionlint    = { version = "latest", minimum_release_age = "0s", depends = ["shellcheck"] }
+dprint        = { version = "latest", lazy = true }
 go            = { version = "latest" }
 golangci-lint = { version = "latest", lazy = true }
 shellcheck    = { version = "latest" }
@@ -29,3 +30,8 @@ description = "Build actionlint binary"
 run         = "go build -o actionlint ./cmd/actionlint"
 outputs     = ["./actionlint", "./actionlint.exe"]
 env         = { GOFLAGS = "-buildvcs=true" }
+
+[tasks.format]
+alias       = ["f", "fmt"]
+description = "Format code"
+run         = "dprint fmt"
