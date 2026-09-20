@@ -206,7 +206,7 @@ type ConfigReport struct {
 	Overrides []string
 }
 
-type linterConfigState struct {
+type analysisConfigState struct {
 	sync.Mutex
 	source   *loadedConfig
 	overlays []ConfigOverlay
@@ -214,7 +214,7 @@ type linterConfigState struct {
 	loaded   map[*Project]*Config
 }
 
-func (l *Linter) configForProject(project *Project) (*Config, error) {
+func (l *AnalysisSession) configForProject(project *Project) (*Config, error) {
 	var cfg *Config
 	var source *loadedConfig
 	if l.defaultConfig != nil {

@@ -12,10 +12,7 @@ type RuleIfCond struct {
 // NewRuleIfCond creates new RuleIfCond instance.
 func NewRuleIfCond() *RuleIfCond {
 	return &RuleIfCond{
-		RuleBase: RuleBase{
-			name: "if-cond",
-			desc: "Checks for if: conditions which are always true/false",
-		},
+		RuleBase: builtinRuleBase("if-cond"),
 	}
 }
 

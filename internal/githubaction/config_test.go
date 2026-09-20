@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev"
-	"github.com/mattn/go-shellwords"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -68,7 +67,7 @@ func TestQuotedIgnoreHintPreservesDiagnostics(t *testing.T) {
 		{`'different message'`, false},
 		{`'('`, false},
 	} {
-		errs := []*actionlint.Error{{Message: `label "ubuntu-24.04-custom" is unknown.`}}
+		errs := []actionlint.Diagnostic{{Message: `label "ubuntu-24.04-custom" is unknown.`}}
 		hints := quotedIgnoreHints([]string{tc.pattern}, errs)
 		if (len(hints) == 1) != tc.want {
 			t.Errorf("%q: hints=%v", tc.pattern, hints)
@@ -84,15 +83,14 @@ func TestToolCommandsFromEnvironment(t *testing.T) {
 	if err := req.configureEnvironment(func(k string) string { return env[k] }); err != nil {
 		t.Fatal(err)
 	}
-	words, err := shellwords.Parse(req.pyflakes)
-	if err != nil || !reflect.DeepEqual(words, []string{python, "-I", script}) {
-		t.Errorf("paths must survive shellword parsing: %#v, %v", words, err)
+	if req.pyflakesOptions == nil || req.pyflakesOptions.Executable == nil || *req.pyflakesOptions.Executable != python || !reflect.DeepEqual(req.pyflakesOptions.Arguments, []string{"-I", script}) {
+		t.Errorf("want literal Python executable and arguments, got %#v", req.pyflakesOptions)
 	}
-	if req.shellcheck != "/cache/shellcheck" {
-		t.Errorf("want provisioned shellcheck, got %q", req.shellcheck)
+	if req.shellcheckOptions == nil || req.shellcheckOptions.Executable == nil || *req.shellcheckOptions.Executable != "/cache/shellcheck" {
+		t.Errorf("want provisioned shellcheck, got %#v", req.shellcheckOptions)
 	}
 	disabled := &lintRequest{}
-	if err := disabled.configureEnvironment(func(k string) string { return env[k] }); err != nil || disabled.shellcheck != "" || disabled.pyflakes != "" {
+	if err := disabled.configureEnvironment(func(k string) string { return env[k] }); err != nil || disabled.shellcheck != "" || disabled.pyflakes != "" || disabled.shellcheckOptions != nil || disabled.pyflakesOptions != nil {
 		t.Errorf("disabled tools must stay disabled: %#v, %v", disabled, err)
 	}
 }

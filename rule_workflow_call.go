@@ -20,10 +20,7 @@ type RuleWorkflowCall struct {
 // the workflow which is relative to a project root directory or an absolute path.
 func NewRuleWorkflowCall(workflowPath string, cache *LocalReusableWorkflowCache) *RuleWorkflowCall {
 	return &RuleWorkflowCall{
-		RuleBase: RuleBase{
-			name: "workflow-call",
-			desc: "Checks for reusable workflow calls. Inputs and outputs of called reusable workflow are checked",
-		},
+		RuleBase:             builtinRuleBase("workflow-call"),
 		workflowCallEventPos: nil,
 		workflowPath:         workflowPath,
 		cache:                cache,

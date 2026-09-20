@@ -6,14 +6,15 @@ actionlint checks GitHub Actions workflow files and delegates embedded shell and
 
 The next phase separates analysis from reporting so one check can produce console output, annotations, a job summary, and optional pull-request suggestions. It builds on the existing CLI refactor rather than introducing a second analysis engine or diagnostic model.
 
-This document distinguishes two implementation baselines:
+## Implementation status
 
-| Baseline                                                                                                                                  | Status                                                                         | Relevant source                                                                                                                                                                                                                                                                                                                                                    |
-| ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| JavaScript Action migration, commit [`99f403e5`](https://github.com/kjanat/actionlint/commit/99f403e5)                                    | Launcher, config overlays, PATH exports, and release builder implemented       | [Action metadata](action.yml), [JavaScript package](packages/github-action), [Go adapter](internal/githubaction), [config overlays](config_overlay.go), [release builder](scripts/build-action-release.mjs)                                                                                                                                                        |
-| CLI refactor, commit [`9a32d8ba`](https://github.com/kjanat/actionlint/commit/9a32d8baacd58438dbd4fe08d01cdd6b4d5399a8) on `refactor/cli` | Shared analysis and rendering APIs implemented separately; integration pending | [Analysis API](https://github.com/kjanat/actionlint/blob/9a32d8baacd58438dbd4fe08d01cdd6b4d5399a8/analysis.go), [analysis session](https://github.com/kjanat/actionlint/blob/9a32d8baacd58438dbd4fe08d01cdd6b4d5399a8/analysis_application.go), [renderers](https://github.com/kjanat/actionlint/blob/9a32d8baacd58438dbd4fe08d01cdd6b4d5399a8/analysis_render.go) |
+The JavaScript launcher and release builder originate in [`99f403e5`](https://github.com/kjanat/actionlint/commit/99f403e5). The shared CLI analysis architecture was merged in [#155](https://github.com/kjanat/actionlint/pull/155) as [`6095acca`](https://github.com/kjanat/actionlint/commit/6095acca72b083a6f3e200fc89930ca39c922026). This branch integrates master through `811323ac`.
 
-Sections marked planned describe work to implement, not available Action inputs or released behavior. Implementation status does not imply publication or successful remote CI.
+The Action adapter now invokes `AnalysisSession` directly, then renders the result. Configuration overlays and source reporting belong to the shared session; the compatibility `Linter` forwards its options there. Configuration files retain the YAML document from the same parse used to resolve their values and origins. Tool paths and argument arrays use `ExternalCommandOptions`. The Action timeout cancels analysis and waits for it to finish before restoring the working directory.
+
+Existing Action output formats still use the compatibility renderer after analysis. The versioned persisted Action envelope, per-setting Action-input provenance, additional reporters, and mapped fixes remain pending.
+
+Local validation covers the Action adapter package, configuration/overlay and selected-input regressions, representative modern/legacy CLI paths, and JavaScript type checking. Cross-platform consumer execution and release distribution still require CI validation. Implementation does not imply publication.
 
 ## Compatibility contract
 
@@ -73,7 +74,7 @@ PATH export does not itself register problem matchers.
 
 Windows environment variable names are case-insensitive. Constructed child environments must contain only one spelling of PATH. PATH controls directory search; PATHEXT controls executable extensions for Windows command resolution. The current tool lookup supports only `.exe`; broader support also requires explicit handling of `.cmd`/`.bat` launchers, which cannot be spawned directly with `shell: false`.
 
-## Planned: integrate the CLI refactor
+## Shared analysis integration
 
 ### Shared APIs and ownership
 
@@ -97,15 +98,15 @@ flowchart LR
 | Shared Go analysis  | Discover sources, resolve configuration and overlays, invoke external linters, produce diagnostics and mapped fixes                      |
 | Shared Go renderers | Produce text, JSON/JSONL, SARIF, and supported legacy template output from one analysis result                                           |
 
-The normal Go binary remains the entry point for CLI and Action operation. Wire its CLI route to `internal/cli.Command` while retaining explicit Action dispatch. Keep one shared version API and release stamp.
+The normal Go binary remains the entry point for CLI and Action operation. Its CLI route uses `internal/cli.Command` and retains explicit Action dispatch. Keep one shared version API and release stamp.
 
 ### Integration work
 
-1. Integrate the refactor while preserving newer rules, cache policies, suppression behavior, and configuration fields on the Action branch. Extend the refactor's effective-config enumeration to include those fields.
-2. Move config overlays and config-source reporting from the current `Linter` implementation into shared configuration resolution before `AnalysisSession` constructs resolved sources. The refactor makes `Linter` a compatibility facade; Action-specific logic must not depend on its old internals.
-3. Extend the refactor's `ConfigInspection` and setting origins with Action-input provenance. Preserve both `.yaml`/`.yml` discovery and the refactor's explicit-file and `SkipProjectConfig` behavior.
-4. Change the Action adapter from `NewLinter` plus `{{json .}}` serialization to `AnalysisSession` and `AnalysisResult`. Feed a real cancellation context into analysis and external processes when an Action times out.
-5. Use the refactor's `ExternalCommandOptions` for literal executable paths, argument arrays, and child environment overrides. Replace quoted Python command construction with a literal Python executable and `-I`, launcher-path arguments.
+- Implemented: the merged CLI frontend and Action dispatch share the ordinary binary and version API.
+- Implemented: config overlays and selected-source callbacks run in `AnalysisSession`; `Linter` remains a compatibility facade. The canonical effective-config serializer includes configuration fields automatically.
+- Implemented: the Action adapter analyzes through `AnalysisSession`, passes its cancellation context through analysis, and renders afterward. Legacy Action JSON and SARIF representations remain compatible.
+- Implemented: provisioned tool paths and Python's `-I`/launcher arguments use `ExternalCommandOptions` without shell-word quoting.
+- Pending: extend `ConfigInspection` and setting origins with Action-input provenance. Keep `.yaml`/`.yml` discovery, explicit-file selection, and `SkipProjectConfig` behavior covered.
 
 The refactor's CLI already accepts tool settings through `ACTIONLINT_{SHELLCHECK,PYFLAKES}_{BIN,FLAGS,ENV}`. The Action should translate its inputs into the same typed options; it should not depend on parsing CLI help or duplicating CLI argument grammar.
 
@@ -146,7 +147,7 @@ Pyflakes has almost no configurable checking flags. An args input cannot add sup
 - The Go action adapter normally obtains diagnostics as JSON; SARIF currently has a special rendering path.
 - One selected format produces one rendered string. Console output, action `output`, and optional `output-file` receive that same representation.
 - `format: github` emits workflow annotation commands directly from Go. Other ordinary output formats do not independently emit per-diagnostic annotations.
-- The Action baseline uses the legacy linter API with one diagnostic writer and a separate log writer. The CLI refactor supplies the separate analysis/rendering APIs needed to replace that path.
+- The Action adapter uses the shared analysis session and renders the completed result through the compatibility renderer. Its public JSON array remains unchanged; the persisted Action envelope is a separate planned boundary.
 
 ### Reporter design
 
@@ -203,7 +204,7 @@ Review publication must be explicitly enabled and requires an appropriate token 
 
 ## Delivery order and acceptance criteria
 
-Each item below is pending. Validate the affected behavior with focused checks and run platform-specific integration checks in CI.
+The shared analysis, typed tool invocation, and cancellation portions of items 1–2 are implemented. Per-setting overlay provenance and the persisted protocol remain pending, as do items 3–8. Validate affected behavior with focused checks and run platform-specific integration checks in CI.
 
 1. **Integrate the shared analysis core.** CLI and Action use the same analysis implementation; existing rules and policy fields remain available. Overlay tests cover precedence, null/empty values, explicit config selection, and both config extensions. A timeout cancels outstanding external linter processes.
 2. **Adapt the Action protocol.** The adapter uses shared diagnostics and literal tool arguments. Existing output names, public formats, exit codes, and `fail-on-error` behavior remain compatible, including invalid-input and failure cases.

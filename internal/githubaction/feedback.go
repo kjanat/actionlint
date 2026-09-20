@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev"
 )
 
-func quotedIgnoreHints(patterns []string, problems []*actionlint.Error) []string {
+func quotedIgnoreHints(patterns []string, problems []actionlint.Diagnostic) []string {
 	var hints []string
 	for i, pattern := range patterns {
 		if len(pattern) < 2 || (pattern[0] != '\'' && pattern[0] != '"') || pattern[len(pattern)-1] != pattern[0] {

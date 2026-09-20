@@ -2,6 +2,7 @@ package githubaction
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -15,14 +16,17 @@ import (
 const lintTimeout = 300 * time.Second
 
 type lintRequest struct {
-	workingDir string
-	configFile string
-	overlays   []actionlint.ConfigOverlay
-	ignore     []string
-	shellcheck string
-	pyflakes   string
-	format     string
-	files      []string
+	ctx               context.Context
+	shellcheckOptions *actionlint.ExternalCommandOptions
+	pyflakesOptions   *actionlint.ExternalCommandOptions
+	workingDir        string
+	configFile        string
+	overlays          []actionlint.ConfigOverlay
+	ignore            []string
+	shellcheck        string
+	pyflakes          string
+	format            string
+	files             []string
 }
 
 type lintOutcome struct {
@@ -52,21 +56,16 @@ func (req *lintRequest) configureEnvironment(env func(string) string) error {
 		req.overlays = append(req.overlays, overlay)
 	}
 	if command := env("ACTIONLINT_SHELLCHECK_COMMAND"); req.shellcheck != "" && command != "" {
-		req.shellcheck = command
+		req.shellcheckOptions = &actionlint.ExternalCommandOptions{Executable: &command}
 	}
 	if command := env("ACTIONLINT_PYFLAKES_COMMAND"); req.pyflakes != "" && command != "" {
-		req.pyflakes = command
+		req.pyflakesOptions = &actionlint.ExternalCommandOptions{Executable: &command}
 	}
 	python, script := env("ACTIONLINT_PYTHON"), env("ACTIONLINT_PYFLAKES_SCRIPT")
 	if req.pyflakes != "" && python != "" && script != "" {
-		req.pyflakes = quoteCommandArgument(python) + " -I " + quoteCommandArgument(script)
+		req.pyflakesOptions = &actionlint.ExternalCommandOptions{Executable: &python, Arguments: []string{"-I", script}}
 	}
 	return nil
-}
-
-// The external process resolver parses shell words without invoking a shell.
-func quoteCommandArgument(value string) string {
-	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
 }
 
 func buildRequest(in *inputs, workspaceDir, workingRel string) (*lintRequest, error) {
@@ -103,16 +102,17 @@ func buildRequest(in *inputs, workspaceDir, workingRel string) (*lintRequest, er
 func runLinter(req *lintRequest) *lintResult {
 	var out, logs bytes.Buffer
 	result := &lintResult{}
-	opts := &actionlint.LinterOptions{
-		Color:          actionlint.ColorOptionKindNever,
-		Shellcheck:     req.shellcheck,
-		Pyflakes:       req.pyflakes,
-		IgnorePatterns: req.ignore,
-		ConfigFile:     req.configFile,
-		ConfigOverlays: req.overlays,
-		Format:         req.format,
-		WorkingDir:     req.workingDir,
-		LogWriter:      &logs,
+	opts := actionlint.AnalysisOptions{
+		Context:           req.ctx,
+		ShellcheckOptions: req.shellcheckOptions,
+		PyflakesOptions:   req.pyflakesOptions,
+		Shellcheck:        req.shellcheck,
+		Pyflakes:          req.pyflakes,
+		IgnorePatterns:    req.ignore,
+		ConfigFile:        req.configFile,
+		ConfigOverlays:    req.overlays,
+		WorkingDir:        req.workingDir,
+		LogWriter:         &logs,
 		OnConfigLoaded: func(report actionlint.ConfigReport) {
 			result.configs = append(result.configs, report)
 		},
@@ -122,17 +122,22 @@ func runLinter(req *lintRequest) *lintResult {
 		},
 	}
 
-	l, err := actionlint.NewLinter(&out, opts)
+	session, err := actionlint.NewAnalysisSession(opts)
 	if err != nil {
 		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
 		return result
 	}
 
-	var errs []*actionlint.Error
+	renderer, err := actionlint.NewAnalysisRenderer("", req.format, false)
+	if err != nil {
+		result.lintOutcome = &lintOutcome{"", err.Error() + "\n", actionlint.ExitStatusFailure}
+		return result
+	}
+	var analysis *actionlint.AnalysisResult
 	if len(req.files) == 0 {
-		errs, err = l.LintRepository(req.workingDir)
+		analysis, err = session.Repository(req.workingDir)
 	} else {
-		errs, err = l.LintFiles(req.files, nil)
+		analysis, err = session.Files(req.files, nil)
 	}
 	if err != nil {
 		code := actionlint.ExitStatusFailure
@@ -142,8 +147,13 @@ func runLinter(req *lintRequest) *lintResult {
 		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", code}
 		return result
 	}
-	if len(errs) > 0 {
-		result.hints = quotedIgnoreHints(req.ignore, errs)
+	if err := renderer.Render(&out, analysis); err != nil {
+		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
+		return result
+	}
+	session.Completed(analysis)
+	if len(analysis.Diagnostics) > 0 {
+		result.hints = quotedIgnoreHints(req.ignore, analysis.Diagnostics)
 		result.lintOutcome = &lintOutcome{out.String(), logs.String(), actionlint.ExitStatusSuccessProblemFound}
 		return result
 	}
@@ -169,15 +179,13 @@ func (a *action) runLint(req *lintRequest) *lintResult {
 	}
 	defer restore()
 
-	done := make(chan *lintResult, 1)
-	go func() {
-		done <- a.lint(req)
-	}()
-	select {
-	case o := <-done:
-		return o
-	case <-time.After(a.timeout):
+	ctx, cancel := context.WithTimeout(context.Background(), a.timeout)
+	defer cancel()
+	req.ctx = ctx
+	result := a.lint(req)
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		msg := fmt.Sprintf("actionlint timed out after %d seconds\n", int(a.timeout.Seconds()))
 		return &lintResult{lintOutcome: &lintOutcome{"", msg, actionlint.ExitStatusFailure}}
 	}
+	return result
 }

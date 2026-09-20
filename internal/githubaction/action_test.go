@@ -359,8 +359,6 @@ func TestActionTimesOut(t *testing.T) {
 	}
 
 	workspace := resolved(t, t.TempDir())
-	release := make(chan struct{})
-	t.Cleanup(func() { close(release) })
 
 	var out strings.Builder
 	outputPath := filepath.Join(t.TempDir(), "output")
@@ -369,8 +367,8 @@ func TestActionTimesOut(t *testing.T) {
 		args:   args("", "json", "", "", "true", "true", ".", "", "true"),
 		stdout: &out,
 		env:    func(name string) string { return env[name] },
-		lint: func(*lintRequest) *lintResult {
-			<-release
+		lint: func(req *lintRequest) *lintResult {
+			<-req.ctx.Done()
 			return knownFiles(&lintOutcome{"[]\n", "", actionlint.ExitStatusSuccessNoProblem}, 0)
 		},
 		newID:   fixedID("DELIM"),

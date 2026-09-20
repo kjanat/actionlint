@@ -219,11 +219,12 @@ func collectCacheOperations(operations []string, steps []*Step) []string {
 // indicated by 'proj' field. One LocalReusableWorkflowCache instance needs to be created per one
 // project.
 type LocalReusableWorkflowCache struct {
-	mu    sync.RWMutex
-	proj  *Project // maybe nil
-	cache map[string]reusableWorkflowMetadataResult
-	cwd   string
-	dbg   io.Writer
+	onRead func(string)
+	mu     sync.RWMutex
+	proj   *Project // maybe nil
+	cache  map[string]reusableWorkflowMetadataResult
+	cwd    string
+	dbg    io.Writer
 }
 
 type reusableWorkflowMetadataResult struct {
@@ -277,6 +278,9 @@ func (c *LocalReusableWorkflowCache) FindMetadata(spec string) (*ReusableWorkflo
 		return nil, err
 	}
 
+	if c.onRead != nil {
+		c.onRead(file)
+	}
 	m, err := parseReusableWorkflowMetadata(src)
 	if err != nil {
 		msg := strings.ReplaceAll(err.Error(), "\n", " ")

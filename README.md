@@ -8,7 +8,13 @@
 
 This is an actively maintained fork of [rhysd/actionlint][upstream]. It carries the upstream checks plus cache safety policies enabled by default, configurable opt-in [policy checks][config], composite action step validation, shell completion, and a first-party GitHub Action, and it ships attested binaries, a Docker image on [GHCR][ghcr] and [Docker Hub][dockerhub], and a Go module at `actionlint.kjanat.dev`. Report problems through [this fork's issue tracker][issue-form].
 
-Features:
+## Fork provenance and versioning
+
+This fork builds on upstream [v1.7.12](https://github.com/rhysd/actionlint/releases/tag/v1.7.12) ([commit `914e7df`](https://github.com/rhysd/actionlint/commit/914e7df21a07ef503a81201c76d2b11c789d3fca)). Its independent release series starts at v1.8.0. Tags published by `kjanat/actionlint` identify this fork's releases; a matching tag need not exist in `rhysd/actionlint`.
+
+The [changelog](CHANGELOG.md#upstream-history) separates fork releases from inherited upstream history. Releases follow [Semantic Versioning for the supported CLI and configuration contracts](CONTRIBUTING.md#release-versioning), with [CLI compatibility](CONTRIBUTING.md#cli-compatibility) maintained for existing integrations. New or corrected lint findings can affect CI results; the [Go library API remains unstable](CONTRIBUTING.md#go-library-api).
+
+## Features
 
 - **Syntax check for workflow files** to check unexpected or missing keys following [workflow syntax][syntax-doc]
 - **Strong type check for `${{ }}` expressions** to catch several semantic errors like access to not existing property,
@@ -272,6 +278,7 @@ See [the usage document][usage] for the pinned ShellCheck build and how to choos
 
 ## Documents
 
+- [AI usage and policy](CONTRIBUTING.md#ai-usage-and-policy) and [CLI compatibility](CONTRIBUTING.md#cli-compatibility): How this fork uses AI and approaches compatibility for existing workflows and CI integrations.
 - [Checks][checks]: Full list of all checks done by actionlint with example inputs, outputs, and playground links.
 - [Installation][install]: Install with npm, Homebrew, AUR, Scoop, aqua, mise, the community pip/uv wrapper, release archives, the download script, Docker, or Go. Includes the status of WinGet and upstream-only package names.
 - [Usage][usage]: How to use `actionlint` command locally or on GitHub Actions, the online playground, an official Docker image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit, VS Code.

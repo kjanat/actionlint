@@ -32,9 +32,8 @@
     "html.useTabs": false,
     "overrides": [
       {
-        "files": ["**/AGENTS.md", "**/CLAUDE.md", "**/CHANGELOG.md", "**/.rules"],
-        "lineWidth": 9999,
-        "textWrap": "maintain"
+        "files": ["**/AGENTS.md", "**/CLAUDE.md", "**/CHANGELOG.md", "**/CONTRIBUTING.md", "**/.rules"],
+        "textWrap": "never"
       }
     ]
   },

@@ -2,6 +2,13 @@
 
 # Unreleased
 
+- Link CLI help to documentation at the release tag or development build's commit, including Go pseudo-versions and Makefile builds.
+- Add documented `ACTIONLINT_*` defaults for configuration selection, output, filters, logging and presentation. Split external-linter environment settings into literal `BIN`, argument `FLAGS`, and child `ENV` values for both ShellCheck and Pyflakes. Explicit flags override environment defaults, including empty and false values.
+- Pretty-print JSON metadata and JSON/SARIF diagnostics with installed `jq` when stdout is a terminal. Respect color controls and provide `--json-pretty=false`. Keep redirected output, JSONL, templates and stderr records unchanged; fall back to the original JSON if jq is unavailable or fails.
+- Make directory, configuration and executable paths in `doctor` clickable with OSC 8 `file://` links. Follow the existing hyperlink controls and preserve JSON output. Encode special characters in link targets and support Windows drive and UNC paths.
+- Enable color automatically in GitHub Actions logs when `GITHUB_ACTIONS=true`. Respect `NO_COLOR` and explicit color controls, and keep automatic styling out of report files, structured output and custom templates.
+- Add OSC 8 links to the project name and URLs in CLI help. `--hyperlinks=auto|always|never` follows the [no-hyperlinks convention](https://no-hyperlinks.org/spec), including `NO_HYPERLINKS` and `FORCE_HYPERLINKS`. Keep destination URLs visible and leave diagnostics and machine-readable output unchanged. (kjanat/actionlint#65)
+- Rebuild the CLI with a typed invocation model, a preserved Go flag parser for root calls, and Cobra commands for `check`, config inspection, rules, doctor, completion and version. Add JSON/JSONL/SARIF/GitHub output, template and output files, opt-in summaries, configuration origins and generated four-shell completion. Style terminal help while respecting color controls, add `-V` as a version alias, align doctor output, and keep concurrent verbose/debug log records intact. Preserve legacy options, templates, default diagnostics, version output, streams and exit codes. Test both grammars, command/file collisions and output side effects. Use the same input resolution, analysis results and renderers for commands and legacy `Lint*` methods. Preserve callbacks, working-directory handling and legacy write-error behavior. Protect all consumed local inputs from report replacement and retain configuration provenance through YAML merges. Move the frontend into `internal/cli` so library and Wasm builds do not import Cobra or pflag; Go callers migrating from the former root `Command` type can use the shared analysis APIs.
 - Add a GitHub Actions expression reference with evaluated examples for numeric parsing, coercion and workflow conditions, backed by a reproducible 85-case probe and archived measurement results. (kjanat/actionlint#171)
 
 <a id="v1.17.0"></a>
@@ -1818,8 +1825,7 @@ This project was forked from [rhysd/actionlint](https://github.com/rhysd/actionl
 
 ## [v1.6.10](https://github.com/rhysd/actionlint/releases/tag/v1.6.10) - 2022-03-11
 
-- Support outputs in reusable workflow call. See [the official document](https://docs.github.com/en/actions/using-workflows/reusing-workflows#using-outputs-from-a-reusable-workflow) for the usage of the outputs syntax. ([#119](https://github.com/rhysd/actionlint/issues/119), [#121](https://github.com/rhysd/actionlint/issues/121))
-  Example of reusable workflow definition:
+- Support outputs in reusable workflow call. See [the official document](https://docs.github.com/en/actions/using-workflows/reusing-workflows#using-outputs-from-a-reusable-workflow) for the usage of the outputs syntax. ([#119](https://github.com/rhysd/actionlint/issues/119), [#121](https://github.com/rhysd/actionlint/issues/121)) Example of reusable workflow definition:
 
   ```yaml
   on:
@@ -1920,8 +1926,7 @@ This project was forked from [rhysd/actionlint](https://github.com/rhysd/actionl
 
 ## [v1.6.8](https://github.com/rhysd/actionlint/releases/tag/v1.6.8) - 2021-11-15
 
-- [Untrusted inputs](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions) detection can detect untrusted inputs in object filter syntax. For example, `github.event.*.body` filters `body` properties and it includes the untrusted input `github.event.comment.body`. actionlint detects such filters and causes an error. The error message includes all untrusted input names which are filtered by the object filter so that you can know what inputs are untrusted easily. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#untrusted-inputs) for more details.
-  Input example:
+- [Untrusted inputs](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions) detection can detect untrusted inputs in object filter syntax. For example, `github.event.*.body` filters `body` properties and it includes the untrusted input `github.event.comment.body`. actionlint detects such filters and causes an error. The error message includes all untrusted input names which are filtered by the object filter so that you can know what inputs are untrusted easily. See [the document](https://github.com/rhysd/actionlint/blob/main/docs/checks.md#untrusted-inputs) for more details. Input example:
 
   ```yaml
   - name: Get comments
