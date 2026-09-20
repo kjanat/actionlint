@@ -259,6 +259,7 @@ See [the usage document][usage] for the pinned ShellCheck build and how to choos
 
 ## Documents
 
+- [AI usage and policy](CONTRIBUTING.md#ai-usage-and-policy) and [CLI compatibility](CONTRIBUTING.md#cli-compatibility): How this fork uses AI and approaches compatibility for existing workflows and CI integrations.
 - [Checks][checks]: Full list of all checks done by actionlint with example inputs, outputs, and playground links.
 - [Installation][install]: Install with npm, Homebrew, AUR, Scoop, aqua, mise, the community pip/uv wrapper, release archives, the download script, Docker, or Go. Includes the status of WinGet and upstream-only package names.
 - [Usage][usage]: How to use `actionlint` command locally or on GitHub Actions, the online playground, an official Docker image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit, VS Code.
