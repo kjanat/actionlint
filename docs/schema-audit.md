@@ -1,6 +1,6 @@
 # GitHub Actions schema audit
 
-Audit date: 2026-09-13. The work started from detached commit `adeac5c560843988d9be9738a73a2b708513d921` in an isolated checkout. This report separates official schema coverage, additional runner conversion rules, and retained linter policy.
+Audit date: 2026-09-13. The work started from detached commit kjanat/actionlint@adeac5c560843988d9be9738a73a2b708513d921 in an isolated checkout. This report separates official schema coverage, additional runner conversion rules, and retained linter policy.
 
 ## Coverage and authorities
 

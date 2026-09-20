@@ -8,7 +8,7 @@ The next phase separates analysis from reporting so one check can produce consol
 
 ## Implementation status
 
-The JavaScript launcher and release builder originate in [`99f403e5`](https://github.com/kjanat/actionlint/commit/99f403e5). The shared CLI analysis architecture was merged in [#155](https://github.com/kjanat/actionlint/pull/155) as [`6095acca`](https://github.com/kjanat/actionlint/commit/6095acca72b083a6f3e200fc89930ca39c922026). This branch integrates master through `811323ac`.
+The JavaScript launcher and release builder originate in kjanat/actionlint@99f403e5. The shared CLI analysis architecture was merged in kjanat/actionlint#155 as kjanat/actionlint@6095acca72b083a6f3e200fc89930ca39c922026. This branch integrates master through kjanat/actionlint@811323ac.
 
 The Action adapter now invokes `AnalysisSession` directly, then renders the result. Configuration overlays and source reporting belong to the shared session; the compatibility `Linter` forwards its options there. Configuration files retain the YAML document from the same parse used to resolve their values and origins. Tool paths and argument arrays use `ExternalCommandOptions`. The Action timeout cancels analysis and waits for it to finish before restoring the working directory.
 

@@ -271,7 +271,7 @@ The `make CHANGELOG.md` target runs [changelog-from-release](https://github.com/
 
 GoReleaser generates SPDX SBOMs for release archives with Syft. The `sboms[].env` setting `SYFT_GOLANG_SEARCH_REMOTE_LICENSES=true` enables dependency license lookup from Go module sources, including on runners without a populated local module cache. This step requires network access to those sources.
 
-Check the generated package license fields when verifying release assets. License lookup improves coverage; it does not guarantee a license for every dependency. `NOASSERTION` means the scanner did not determine the field. Syft does not extract copyright text, and its Go SPDX download-location support is tracked in [anchore/syft#2087](https://github.com/anchore/syft/issues/2087). Preserve these unknowns rather than filling them with inferred values. See [#167](https://github.com/kjanat/actionlint/issues/167) and [GoReleaser's SBOM configuration](https://goreleaser.com/customization/sbom/).
+Check the generated package license fields when verifying release assets. License lookup improves coverage; it does not guarantee a license for every dependency. `NOASSERTION` means the scanner did not determine the field. Syft does not extract copyright text, and its Go SPDX download-location support is tracked in [anchore/syft#2087](https://github.com/anchore/syft/issues/2087). Preserve these unknowns rather than filling them with inferred values. See kjanat/actionlint#167 and [GoReleaser's SBOM configuration](https://goreleaser.com/customization/sbom/).
 
 ## How to generate the manual
 
