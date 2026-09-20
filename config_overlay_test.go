@@ -72,11 +72,104 @@ paths:
 		t.Fatal(err)
 	}
 	if len(reports) != 1 || reports[0].File != path || !reports[0].Explicit || len(reports[0].Overrides) != len(overlays) {
-		t.Errorf("report selected file and inputs once per project: %#v", reports)
+		t.Fatalf("report selected file and inputs once per project: %#v", reports)
+	}
+	inspection := reports[0].Inspection
+	for pointer, want := range map[string]ConfigOrigin{
+		"/self-hosted-runner/labels":              {Source: "input", Input: "self-hosted-runner", State: "value", Line: 1, Column: 9},
+		"/config-variables":                       {Source: "input", Input: "config-variables", State: "null", Line: 1, Column: 1},
+		"/assume-default-permissions":             {Source: "config", State: "value", Line: 4, Column: 29},
+		"/policy/cache-write-untrusted":           {Source: "input", Input: "policy", State: "null", Line: 1, Column: 24},
+		"/policy/require-job-timeout/min-minutes": {Source: "config", State: "value", Line: 8, Column: 38},
+		"/policy/cache-operation":                 {Source: "default", State: "missing"},
+	} {
+		if got := inspection.Origins[pointer]; got != want {
+			t.Errorf("%s: got %+v, want %+v", pointer, got, want)
+		}
+	}
+	if inspection.Path != path || inspection.Origins["/policy/require-job-timeout/max-minutes"].Input != "config" {
+		t.Errorf("lost file path or whole-config input: %+v", inspection)
+	}
+	serialized, err := effectiveConfig(cfg)
+	if err != nil || !reflect.DeepEqual(inspection.Config, serialized) {
+		t.Fatalf("inspection differs from analyzed configuration: %#v, %v", inspection.Config, err)
 	}
 	original, err := ReadConfigFile(path)
 	if err != nil || !original.RequiresCommitHash() || original.ConfigVariables[0] != "ORIGINAL" {
 		t.Errorf("overlays must leave the config file unchanged: %#v, %v", original, err)
+	}
+}
+
+func TestConfigOverlayResetOrigins(t *testing.T) {
+	for _, tc := range []struct {
+		input, value, source, state string
+	}{
+		{"config", "null", "input", "null"},
+		{"policy", "null", "input", "null"},
+		{"policy", "{}", "config", "value"},
+	} {
+		t.Run(tc.input+"/"+tc.value, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "config.yaml")
+			if err := os.WriteFile(path, []byte("policy: {require-commit-hash: true}"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			overlay, err := ParseConfigOverlay(tc.input, []byte(tc.value))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var report ConfigReport
+			session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: path, ConfigOverlays: []ConfigOverlay{overlay}, OnConfigLoaded: func(r ConfigReport) { report = r }})
+			if err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := session.configForProject(nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			origin := report.Inspection.Origins["/policy/require-commit-hash"]
+			if origin.Source != tc.source || origin.State != tc.state || (tc.source == "input" && origin.Input != tc.input) {
+				t.Fatalf("reset origin lost: %+v", origin)
+			}
+			if cfg.RequiresCommitHash() != (tc.value == "{}") {
+				t.Fatalf("reset changed analysis semantics: %+v", cfg.Policy)
+			}
+		})
+	}
+}
+
+func TestConfigOverlayPartialMappingAfterReset(t *testing.T) {
+	for _, reset := range []string{"null", "policy: null"} {
+		t.Run(reset, func(t *testing.T) {
+			var overlays []ConfigOverlay
+			for _, input := range []struct{ name, value string }{
+				{"config", reset},
+				{"policy", "cache-operation: false"},
+				{"policy", "required-actions: []"},
+			} {
+				overlay, err := ParseConfigOverlay(input.name, []byte(input.value))
+				if err != nil {
+					t.Fatal(err)
+				}
+				overlays = append(overlays, overlay)
+			}
+			var report ConfigReport
+			session, err := NewAnalysisSession(AnalysisOptions{ConfigOverlays: overlays, OnConfigLoaded: func(r ConfigReport) { report = r }})
+			if err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := session.configForProject(nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			origin := report.Inspection.Origins["/policy/require-commit-hash"]
+			if origin.Source != "input" || origin.Input != "config" || origin.State != "null" || cfg.RequiresCommitHash() {
+				t.Fatalf("lost reset after partial mapping: %+v", report.Inspection)
+			}
+			origin = report.Inspection.Origins["/policy/cache-operation"]
+			if origin.Source != "input" || origin.Input != "policy" || origin.State != "value" || cfg.cachePolicyEnabled("cache-operation") {
+				t.Fatalf("lost setting after reset: %+v", report.Inspection)
+			}
+		})
 	}
 }
 

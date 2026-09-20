@@ -132,3 +132,17 @@ test('enabled tool installation failures stop execution', async () => {
 	await assert.rejects(runAction({ INPUT_SHELLCHECK: 'false' }, setup.runtime), /missing Python/);
 	assert.deepEqual(setup.executions, []);
 });
+
+test('Windows input and tool override names are case-insensitive', { skip: process.platform !== 'win32' }, async () => {
+	const setup = fixture();
+	await runAction({
+		input_shellcheck: 'false',
+		input_pyflakes: 'false',
+		actionlint_shellcheck_command: 'stale ShellCheck',
+		actionlint_pyflakes_command: 'stale Pyflakes',
+		actionlint_python: 'stale Python',
+		actionlint_pyflakes_script: 'stale script',
+	}, setup.runtime);
+	assert.deepEqual(setup.calls, ['native']);
+	assert.deepEqual(setup.executions[0]?.environment, { INPUT_SHELLCHECK: 'false', INPUT_PYFLAKES: 'false' });
+});

@@ -1,6 +1,7 @@
 import { appendFile, chmod, copyFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
+import { normalizeEnvironment } from '#environment';
 import type { Environment, InstalledTools } from '#runtime';
 
 function shellQuote(value: string): string {
@@ -9,6 +10,7 @@ function shellQuote(value: string): string {
 
 // Published binaries are invocation-specific job artifacts, never a reusable cache.
 export async function publishTools(tools: InstalledTools, environment: Environment): Promise<void> {
+	environment = normalizeEnvironment(environment);
 	if (!tools.actionlint && !tools.shellcheck && !tools.pyflakes) return;
 	const root = environment.RUNNER_TEMP;
 	const pathFile = environment.GITHUB_PATH;

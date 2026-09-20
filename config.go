@@ -476,12 +476,20 @@ type resolvedConfig struct {
 
 func resolveConfigDocument(b []byte) (resolvedConfig, error) {
 	var document yaml.Node
-	var c Config
 	if err := yaml.Unmarshal(b, &document); err != nil {
 		return resolvedConfig{}, errors.New(strings.ReplaceAll(err.Error(), "\n", " "))
 	}
+	var root *yaml.Node
 	if len(document.Content) > 0 {
-		if err := document.Decode(&c); err != nil {
+		root = document.Content[0]
+	}
+	return resolveConfigNode(root, nil)
+}
+
+func resolveConfigNode(root *yaml.Node, inputs map[*yaml.Node]configInput) (resolvedConfig, error) {
+	var c Config
+	if root != nil {
+		if err := root.Decode(&c); err != nil {
 			return resolvedConfig{}, errors.New(strings.ReplaceAll(err.Error(), "\n", " "))
 		}
 	}
@@ -497,12 +505,8 @@ func resolveConfigDocument(b []byte) (resolvedConfig, error) {
 	}
 	origins := map[string]ConfigOrigin{}
 	configDefaultOrigins(values, "", origins)
-	if err := configOrigins(&document, "", origins); err != nil {
+	if err := configOrigins(root, "", origins, inputs); err != nil {
 		return resolvedConfig{}, err
-	}
-	var root *yaml.Node
-	if len(document.Content) > 0 {
-		root = document.Content[0]
 	}
 	return resolvedConfig{node: root, config: &c, values: values, origins: origins}, nil
 }
@@ -525,7 +529,7 @@ func readConfigSource(path string) (*loadedConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
-	return &loadedConfig{resolved.config, resolved.node, path}, nil
+	return &loadedConfig{resolved, path}, nil
 }
 
 // loadRepoConfig reads config file from the repository's .github/actionlint.yml or

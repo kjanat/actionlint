@@ -4,13 +4,20 @@ import { access, cp, mkdir, mkdtemp, rename, rm, stat, writeFile } from 'node:fs
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 
+import { normalizeEnvironment } from '#environment';
+
 export function capture(
 	executable: string,
 	args: string[],
 	env: NodeJS.ProcessEnv = process.env,
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
 	return new Promise((resolve, reject) => {
-		const child = spawn(executable, args, { env, shell: false, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+		const child = spawn(executable, args, {
+			env: normalizeEnvironment(env),
+			shell: false,
+			windowsHide: true,
+			stdio: ['ignore', 'pipe', 'pipe'],
+		});
 		let stdout = '';
 		let stderr = '';
 		child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
@@ -32,9 +39,9 @@ async function checked(executable: string, args: string[], env?: NodeJS.ProcessE
 	if (result.exitCode !== 0) throw new Error(`${executable} exited with ${result.exitCode}: ${result.stderr}`);
 }
 
-export async function which(name: string): Promise<string> {
+export async function which(name: string, environment: NodeJS.ProcessEnv = process.env): Promise<string> {
 	const extensions = process.platform === 'win32' ? ['.exe'] : [''];
-	for (const directory of (process.env.PATH ?? '').split(delimiter).filter(Boolean)) {
+	for (const directory of (normalizeEnvironment(environment).PATH ?? '').split(delimiter).filter(Boolean)) {
 		for (const extension of extensions) {
 			const path = join(directory.replace(/^"(.*)"$/, '$1'), name + extension);
 			try {
@@ -110,7 +117,7 @@ export async function extractArchive(archive: string, output: string, format: 'z
 			`$ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [System.IO.Compression.ZipFile]::ExtractToDirectory($env:ARCHIVE, $env:DESTINATION)`,
-		], { ...process.env, ARCHIVE: archive, DESTINATION: output });
+		], { ...normalizeEnvironment(process.env), ARCHIVE: archive, DESTINATION: output });
 	} else {
 		await checked('unzip', ['-q', archive, '-d', output]);
 	}

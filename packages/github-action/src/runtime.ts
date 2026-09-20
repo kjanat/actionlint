@@ -1,5 +1,7 @@
 import { isAbsolute } from 'node:path';
 
+import { normalizeEnvironment } from '#environment';
+
 export type Environment = Record<string, string>;
 
 export class InputError extends Error {}
@@ -32,6 +34,7 @@ export function toolEnabled(value: string | undefined): boolean | undefined {
 }
 
 export async function runAction(environment: Environment, runtime: Runtime): Promise<number> {
+	environment = normalizeEnvironment(environment);
 	const exportInput = (name: string): boolean => {
 		const value = toolEnabled(environment[`INPUT_${name.toUpperCase()}`]);
 		if (value === undefined) throw new InputError(`Input '${name}' must be 'true' or 'false'`);

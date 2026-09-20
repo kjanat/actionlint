@@ -75,7 +75,11 @@ func ParseConfigOverlay(input string, content []byte) (ConfigOverlay, error) {
 			{Kind: yaml.ScalarNode, Tag: "!!str", Value: input}, node,
 		}}
 	}
-	if _, err := decodeOverlayConfig(node, true); err != nil {
+	var config Config
+	if err := node.Load(&config, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
+		return ConfigOverlay{}, fmt.Errorf("input %s: %w", input, err)
+	}
+	if _, err := resolveConfigNode(node, nil); err != nil {
 		return ConfigOverlay{}, fmt.Errorf("input %s: %w", input, err)
 	}
 	node, err := expandConfigNode(node, make(map[*yaml.Node]bool))
@@ -145,25 +149,9 @@ func expandConfigNode(node *yaml.Node, visiting map[*yaml.Node]bool) (*yaml.Node
 	return &expandedNode, nil
 }
 
-func decodeOverlayConfig(node *yaml.Node, strict bool) (*Config, error) {
-	b, err := yaml.Marshal(node)
-	if err != nil {
-		return nil, err
-	}
-	if strict {
-		d := yaml.NewDecoder(bytes.NewReader(b))
-		d.KnownFields(true)
-		var c Config
-		if err := d.Decode(&c); err != nil {
-			return nil, err
-		}
-	}
-	return ParseConfig(b)
-}
-
 // mergeConfigNodes returns a fresh mapping, never mutating a loaded config or
 // an input. Lists/scalars replace; explicit null resets; empty maps inherit.
-func mergeConfigNodes(base, overlay *yaml.Node) *yaml.Node {
+func mergeConfigNodes(base, overlay *yaml.Node, inputs map[*yaml.Node]configInput) *yaml.Node {
 	for base != nil && base.Kind == yaml.AliasNode {
 		base = base.Alias
 	}
@@ -171,16 +159,23 @@ func mergeConfigNodes(base, overlay *yaml.Node) *yaml.Node {
 		overlay = overlay.Alias
 	}
 	if base == nil || base.Kind != yaml.MappingNode || overlay.Kind != yaml.MappingNode {
+		if base != nil && base.Tag == "!!null" && inputs[base].name != "" && overlay.Kind == yaml.MappingNode {
+			// A later partial mapping must retain the reset of its omitted fields.
+			replacement := *overlay
+			inputs[&replacement] = configInput{name: inputs[overlay].name, reset: base}
+			return &replacement
+		}
 		return overlay
 	}
 	merged := *base
+	inputs[&merged] = inputs[base]
 	merged.Content = append([]*yaml.Node{}, base.Content...)
 	for i := 0; i < len(overlay.Content); i += 2 {
 		key, value := overlay.Content[i], overlay.Content[i+1]
 		found := false
 		for j := 0; j < len(merged.Content); j += 2 {
 			if merged.Content[j].Value == key.Value {
-				merged.Content[j+1] = mergeConfigNodes(merged.Content[j+1], value)
+				merged.Content[j+1] = mergeConfigNodes(merged.Content[j+1], value, inputs)
 				found = true
 				break
 			}
@@ -193,17 +188,17 @@ func mergeConfigNodes(base, overlay *yaml.Node) *yaml.Node {
 }
 
 type loadedConfig struct {
-	config   *Config
-	node     *yaml.Node
+	resolvedConfig
 	filename string
 }
 
 // ConfigReport describes the configuration actually selected for one project.
 type ConfigReport struct {
-	Project   string
-	File      string
-	Explicit  bool
-	Overrides []string
+	Project    string
+	File       string
+	Explicit   bool
+	Overrides  []string
+	Inspection ConfigInspection
 }
 
 type analysisConfigState struct {
@@ -214,18 +209,18 @@ type analysisConfigState struct {
 	loaded   map[*Project]*Config
 }
 
-func (l *AnalysisSession) configForProject(project *Project) (*Config, error) {
+func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
 	var cfg *Config
 	var source *loadedConfig
-	if l.defaultConfig != nil {
-		cfg = l.defaultConfig
-		if l.configState != nil {
-			source = l.configState.source
+	if a.defaultConfig != nil {
+		cfg = a.defaultConfig
+		if a.configState != nil {
+			source = a.configState.source
 		}
 	} else if project != nil {
 		cfg, source = project.Config(), project.config
 	}
-	s := l.configState
+	s := a.configState
 	if s == nil {
 		return cfg, nil
 	}
@@ -234,14 +229,17 @@ func (l *AnalysisSession) configForProject(project *Project) (*Config, error) {
 	if loaded, ok := s.loaded[project]; ok {
 		return loaded, nil
 	}
-	report := ConfigReport{Explicit: l.defaultConfig != nil}
+	report := ConfigReport{Explicit: a.defaultConfig != nil}
 	var node *yaml.Node
+	var resolved resolvedConfig
 	if project != nil {
 		report.Project = project.RootDir()
 	}
 	if source != nil {
 		node, report.File = source.node, source.filename
+		resolved = source.resolvedConfig
 	}
+	inputs := make(map[*yaml.Node]configInput)
 	if len(s.overlays) > 0 {
 		expanded, err := expandConfigNode(node, make(map[*yaml.Node]bool))
 		if err != nil {
@@ -250,19 +248,40 @@ func (l *AnalysisSession) configForProject(project *Project) (*Config, error) {
 		node = expanded
 	}
 	for _, overlay := range s.overlays {
-		node = mergeConfigNodes(node, overlay.node)
+		markConfigInput(overlay.node, overlay.name, inputs)
+		node = mergeConfigNodes(node, overlay.node, inputs)
 		report.Overrides = append(report.Overrides, overlay.name)
 	}
 	if len(s.overlays) > 0 {
 		var err error
-		cfg, err = decodeOverlayConfig(node, false)
+		resolved, err = resolveConfigNode(node, inputs)
 		if err != nil {
 			return nil, &ConfigOverlayError{report.Overrides, err}
 		}
+		cfg = resolved.config
+	} else if source == nil {
+		var err error
+		resolved, err = resolveConfigNode(nil, nil)
+		if err != nil {
+			return nil, err
+		}
 	}
+	report.Inspection = ConfigInspection{Path: report.File, Config: resolved.values, Origins: resolved.origins}
 	s.loaded[project] = cfg
 	if s.onLoaded != nil {
 		s.onLoaded(report)
 	}
 	return cfg, nil
+}
+
+type configInput struct {
+	name  string
+	reset *yaml.Node
+}
+
+func markConfigInput(node *yaml.Node, input string, inputs map[*yaml.Node]configInput) {
+	inputs[node] = configInput{name: input}
+	for _, child := range node.Content {
+		markConfigInput(child, input, inputs)
+	}
 }

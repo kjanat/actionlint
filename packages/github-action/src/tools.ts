@@ -13,6 +13,7 @@ import {
 	shellcheckVersion,
 } from '#assets';
 import { download, downloadVerified } from '#download';
+import { normalizeEnvironment } from '#environment';
 import { cacheTool, capture, extractArchive, findTool, temporary, which } from '#native';
 import type { Environment, PyflakesCommand } from '#runtime';
 
@@ -125,7 +126,12 @@ export async function pyflakesCommand(platform: RunnerPlatform): Promise<Pyflake
 
 export function executeNative(executable: string, args: string[], environment: Environment): Promise<number> {
 	return new Promise((resolve, reject) => {
-		const child = spawn(executable, args, { env: environment, shell: false, windowsHide: true, stdio: 'inherit' });
+		const child = spawn(executable, args, {
+			env: normalizeEnvironment(environment),
+			shell: false,
+			windowsHide: true,
+			stdio: 'inherit',
+		});
 		child.once('error', reject);
 		child.once('close', (code, signal) => {
 			if (code === null) reject(new Error(`actionlint terminated by ${signal}`));

@@ -1,6 +1,7 @@
 import { arch, env, platform as pf } from 'node:process';
 
 import { runnerPlatform } from '#assets';
+import { normalizeEnvironment } from '#environment';
 import { temporary } from '#native';
 import { publishTools } from '#path';
 import { InputError, runAction } from '#runtime';
@@ -9,13 +10,12 @@ import { commandEscape, writeOutputs } from '#workflow';
 
 declare const __ACTIONLINT_VERSION__: string;
 
+const environment = normalizeEnvironment(env);
+
 async function main(): Promise<void> {
-	const token = env['INPUT_TOKEN']?.trim();
+	const token = environment['INPUT_TOKEN']?.trim();
 	if (token) console.log(`::add-mask::${commandEscape(token)}`);
 	const platform = runnerPlatform(pf, arch);
-	const environment = Object.fromEntries(
-		Object.entries(env).filter((entry): entry is [string, string] => entry[1] !== undefined),
-	);
 	process.exitCode = await temporary((directory) =>
 		runAction(environment, {
 			native: () => nativeBinary(__ACTIONLINT_VERSION__, platform, directory),
@@ -33,7 +33,7 @@ try {
 } catch (error) {
 	process.exitCode = error instanceof InputError ? 2 : 3;
 	try {
-		await writeOutputs(env['GITHUB_OUTPUT'], {
+		await writeOutputs(environment['GITHUB_OUTPUT'], {
 			'exit-code': String(process.exitCode),
 			'result': error instanceof InputError ? 'invalid-options' : 'failure',
 			'problems-found': 'false',

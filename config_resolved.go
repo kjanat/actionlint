@@ -7,7 +7,10 @@ import (
 )
 
 // configOrigins asks the YAML decoder to resolve each mapping, including merge precedence.
-func configOrigins(node *yaml.Node, prefix string, origins map[string]ConfigOrigin) error {
+func configOrigins(node *yaml.Node, prefix string, origins map[string]ConfigOrigin, inputs map[*yaml.Node]configInput) error {
+	if node == nil {
+		return nil
+	}
 	if node.Kind == yaml.DocumentNode {
 		if len(node.Content) == 0 {
 			return nil
@@ -17,28 +20,62 @@ func configOrigins(node *yaml.Node, prefix string, origins map[string]ConfigOrig
 	if node.Kind == yaml.AliasNode {
 		node = node.Alias
 	}
+	reset := inputs[node].reset
+	if node.Tag == "!!null" && inputs[node].name != "" {
+		reset = node
+	}
+	if reset != nil {
+		// An input reset also explains why its descendants now use defaults.
+		for pointer := range origins {
+			if strings.HasPrefix(pointer, prefix+"/") {
+				origins[pointer] = configNodeOrigin(reset, inputs)
+			}
+		}
+	}
 	if node.Kind != yaml.MappingNode {
 		return nil
 	}
-	var values map[string]yaml.Node
-	if err := node.Decode(&values); err != nil {
-		return err
+	values := map[string]*yaml.Node{}
+	if inputs != nil {
+		// Overlay resolution expands aliases and merges before attaching inputs.
+		for i := 0; i < len(node.Content); i += 2 {
+			values[node.Content[i].Value] = node.Content[i+1]
+		}
+	} else {
+		var decoded map[string]yaml.Node
+		if err := node.Decode(&decoded); err != nil {
+			return err
+		}
+		for key, value := range decoded {
+			values[key] = &value
+		}
 	}
 	for key, value := range values {
 		pointer := prefix + "/" + configPointerPart(key)
 		if _, ok := origins[pointer]; !ok {
 			continue
 		}
-		state := "value"
-		if value.Tag == "!!null" {
-			state = "null"
-		}
-		origins[pointer] = ConfigOrigin{Source: "config", State: state, Line: value.Line, Column: value.Column}
-		if err := configOrigins(&value, pointer, origins); err != nil {
+		origins[pointer] = configNodeOrigin(value, inputs)
+		if err := configOrigins(value, pointer, origins, inputs); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func configNodeOrigin(node *yaml.Node, inputs map[*yaml.Node]configInput) ConfigOrigin {
+	origin := ConfigOrigin{Source: "config", State: "null"}
+	if node == nil {
+		return origin
+	}
+	origin.Line, origin.Column = node.Line, node.Column
+	if node.Tag != "!!null" {
+		origin.State = "value"
+	}
+	if input := inputs[node].name; input != "" {
+		origin.Source, origin.Input = "input", input
+	}
+	return origin
 }
 
 func configPointerPart(s string) string { return strings.NewReplacer("~", "~0", "/", "~1").Replace(s) }

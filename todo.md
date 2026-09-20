@@ -12,13 +12,15 @@ The JavaScript launcher and release builder originate in kjanat/actionlint@99f40
 
 The Action adapter now invokes `AnalysisSession` directly, then renders the result. Configuration overlays and source reporting belong to the shared session; the compatibility `Linter` forwards its options there. Configuration files retain the YAML document from the same parse used to resolve their values and origins. Tool paths and argument arrays use `ExternalCommandOptions`. The Action timeout cancels analysis and waits for it to finish before restoring the working directory.
 
-Existing Action output formats still use the compatibility renderer after analysis. The versioned persisted Action envelope, per-setting Action-input provenance, additional reporters, and mapped fixes remain pending.
+Selected-configuration reports include a `ConfigInspection` with effective values and per-setting file/default/Action-input origins. Input origins retain the input name and line/column within its value. Explicit null resets remain attributable when a later input supplies only part of the reset mapping.
 
-Local validation covers the Action adapter package, configuration/overlay and selected-input regressions, representative modern/legacy CLI paths, and JavaScript type checking. Cross-platform consumer execution and release distribution still require CI validation. Implementation does not imply publication.
+Existing Action output formats still use the compatibility renderer after analysis. The versioned persisted Action envelope, additional reporters, and mapped fixes remain pending.
+
+Local validation covers the Action adapter package, configuration/overlay and selected-input regressions, representative modern/legacy CLI paths, JavaScript type checking, and Windows child-environment execution. Cross-platform consumer execution and release distribution still require CI validation. Implementation does not imply publication.
 
 ## Compatibility contract
 
-- Preserve existing Action inputs and the outputs `exit-code`, `result`, `has-problems`, `problem-count`, `output`, and `output-file`.
+- Preserve existing Action inputs and the outputs `exit-code`, `result`, `problems-found`, `problem-count`, `output`, and `output-file`.
 - Preserve the existing representations selected by `format`; a new internal diagnostic schema must not silently change the public JSON output.
 - Preserve exit codes: 0 for a clean check, 1 for findings, 2 for invalid inputs, and 3 for execution failure. `fail-on-error: false` permits findings without failing the step; invalid inputs and execution failures still fail.
 - Keep configuration precedence and empty-value behavior explicit. Changes to ShellCheck configuration discovery must account for existing workflows that currently run with discovery disabled.
@@ -72,7 +74,7 @@ Exported actionlint is copied into a fresh per-invocation RUNNER_TEMP directory 
 
 PATH export does not itself register problem matchers.
 
-Windows environment variable names are case-insensitive. Constructed child environments must contain only one spelling of PATH. PATH controls directory search; PATHEXT controls executable extensions for Windows command resolution. The current tool lookup supports only `.exe`; broader support also requires explicit handling of `.cmd`/`.bat` launchers, which cannot be spawned directly with `shell: false`.
+Windows environment variable names are case-insensitive. The launcher normalizes Windows environment keys before reading inputs, clearing inherited tool overrides, and constructing child environments; Unix keeps case-sensitive keys. Child environments contain one spelling of PATH. PATH controls directory search; PATHEXT controls executable extensions for Windows command resolution. The current tool lookup supports only `.exe`; broader support also requires explicit handling of `.cmd`/`.bat` launchers, which cannot be spawned directly with `shell: false`.
 
 ## Shared analysis integration
 
@@ -106,7 +108,7 @@ The normal Go binary remains the entry point for CLI and Action operation. Its C
 - Implemented: config overlays and selected-source callbacks run in `AnalysisSession`; `Linter` remains a compatibility facade. The canonical effective-config serializer includes configuration fields automatically.
 - Implemented: the Action adapter analyzes through `AnalysisSession`, passes its cancellation context through analysis, and renders afterward. Legacy Action JSON and SARIF representations remain compatible.
 - Implemented: provisioned tool paths and Python's `-I`/launcher arguments use `ExternalCommandOptions` without shell-word quoting.
-- Pending: extend `ConfigInspection` and setting origins with Action-input provenance. Keep `.yaml`/`.yml` discovery, explicit-file selection, and `SkipProjectConfig` behavior covered.
+- Implemented: selected-configuration reports expose `ConfigInspection` with per-setting Action-input provenance. File and overlay values resolve from retained YAML nodes, preserving original locations and null/empty semantics. `.yaml`/`.yml` discovery and explicit-file selection retain their existing regression coverage.
 
 The refactor's CLI already accepts tool settings through `ACTIONLINT_{SHELLCHECK,PYFLAKES}_{BIN,FLAGS,ENV}`. The Action should translate its inputs into the same typed options; it should not depend on parsing CLI help or duplicating CLI argument grammar.
 
@@ -204,7 +206,7 @@ Review publication must be explicitly enabled and requires an appropriate token 
 
 ## Delivery order and acceptance criteria
 
-The shared analysis, typed tool invocation, and cancellation portions of items 1–2 are implemented. Per-setting overlay provenance and the persisted protocol remain pending, as do items 3–8. Validate affected behavior with focused checks and run platform-specific integration checks in CI.
+The shared analysis, overlay provenance, typed tool invocation, and cancellation portions of items 1–2 are implemented. The persisted protocol and items 3–8 remain pending; item 7 has Windows environment normalization and execution coverage, but PATHEXT and batch launchers remain unfinished. Validate affected behavior with focused checks and run platform-specific integration checks in CI.
 
 1. **Integrate the shared analysis core.** CLI and Action use the same analysis implementation; existing rules and policy fields remain available. Overlay tests cover precedence, null/empty values, explicit config selection, and both config extensions. A timeout cancels outstanding external linter processes.
 2. **Adapt the Action protocol.** The adapter uses shared diagnostics and literal tool arguments. Existing output names, public formats, exit codes, and `fail-on-error` behavior remain compatible, including invalid-input and failure cases.
