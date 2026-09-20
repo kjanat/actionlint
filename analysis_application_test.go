@@ -238,6 +238,34 @@ func TestAnalysisSessionConfigInputs(t *testing.T) {
 	}
 }
 
+func TestAnalysisSessionExplicitConfigInput(t *testing.T) {
+	root := t.TempDir()
+	workflow := filepath.Join(root, "workflow.yml")
+	config := filepath.Join(root, "config.yml")
+	for path, content := range map[string]string{
+		workflow: commandGoodWorkflow,
+		config:   "{}\n",
+	} {
+		if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, ConfigFile: config})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := session.Files([]string{workflow}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	slices.Sort(result.Inputs)
+	want := []string{absPath(config), absPath(workflow)}
+	slices.Sort(want)
+	if diff := cmp.Diff(want, result.Inputs); diff != "" {
+		t.Fatalf("explicit config input mismatch (-want +got):\n%s", diff)
+	}
+}
+
 func TestLinterEmptySelection(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()

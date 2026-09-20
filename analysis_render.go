@@ -20,7 +20,9 @@ func NewAnalysisRenderer(format OutputFormat, template string, oneline bool) (*A
 	}
 	r := &AnalysisRenderer{format: format, oneline: oneline}
 	switch format {
-	case "", OutputFormatText, OutputFormatJSON, OutputFormatJSONL:
+	case "", OutputFormatJSON, OutputFormatJSONL:
+	case OutputFormatText:
+		r.oneline = false
 	case OutputFormatOneline:
 		r.oneline = true
 	case OutputFormatSARIF:

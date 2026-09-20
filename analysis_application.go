@@ -38,14 +38,15 @@ type AnalysisOptions struct {
 // It retains project discovery state for callers that reuse a Linter.
 type AnalysisSession struct {
 	analysisLogger
-	projects        *Projects
-	defaultConfig   *Config
-	request         AnalysisRequest
-	ctx             context.Context
-	cwd             string
-	stdin           string
-	onFilesSelected func([]string)
-	logSelection    bool
+	projects          *Projects
+	defaultConfig     *Config
+	defaultConfigPath string
+	request           AnalysisRequest
+	ctx               context.Context
+	cwd               string
+	stdin             string
+	onFilesSelected   func([]string)
+	logSelection      bool
 }
 
 type analysisLogger struct {
@@ -110,6 +111,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 		if err != nil {
 			return nil, err
 		}
+		a.defaultConfigPath = opts.ConfigFile
 	}
 	a.projects.skipConfig = opts.SkipProjectConfig
 	a.request.IgnorePatterns, err = CompileIgnorePatterns(opts.IgnorePatterns)
@@ -261,7 +263,16 @@ func (a *AnalysisSession) source(path string, content []byte, project *Project) 
 func (a *AnalysisSession) analyze(sources []SourceUnit) (*AnalysisResult, error) {
 	request := a.request
 	request.Sources = sources
-	return analyze(a.ctx, request, a.logOut, a.logLevel)
+	result, err := analyze(a.ctx, request, a.logOut, a.logLevel)
+	if err != nil {
+		return nil, err
+	}
+	if a.defaultConfigPath != "" {
+		result.Inputs = append(result.Inputs, absPath(a.defaultConfigPath))
+		slices.Sort(result.Inputs)
+		result.Inputs = slices.Compact(result.Inputs)
+	}
+	return result, nil
 }
 
 // Completed writes the selection summary after a caller has successfully rendered a result.

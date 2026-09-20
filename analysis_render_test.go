@@ -76,3 +76,35 @@ func TestStructuredRenderRanges(t *testing.T) {
 		})
 	}
 }
+
+func TestExplicitTextFormatDisablesOneline(t *testing.T) {
+	source := []byte("on: push\n")
+	finding := &Error{Filepath: "input.yml", Kind: "expression", Message: "bad text", Line: 1, Column: 1}
+	result := &AnalysisResult{Diagnostics: []Diagnostic{finding.diagnostic(source)}, files: []analyzedFile{{
+		source: SourceUnit{Path: "input.yml", Content: source}, errors: []*Error{finding},
+	}}}
+
+	textRenderer, err := NewAnalysisRenderer(OutputFormatText, "", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var text bytes.Buffer
+	if err := textRenderer.Render(&text, result); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(text.Bytes(), []byte("1 | on: push")) {
+		t.Fatalf("explicit text format omitted source snippet: %q", text.String())
+	}
+
+	onelineRenderer, err := NewAnalysisRenderer(OutputFormatOneline, "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var oneline bytes.Buffer
+	if err := onelineRenderer.Render(&oneline, result); err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(oneline.Bytes(), []byte("1 | on: push")) {
+		t.Fatalf("oneline format included source snippet: %q", oneline.String())
+	}
+}

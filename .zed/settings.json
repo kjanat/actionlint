@@ -5,6 +5,22 @@
   "formatter": [{ "external": { "command": "dprint", "arguments": ["fmt", "--stdin", "{buffer_path}"] } }],
   "prettier": { "allowed": false },
   "lsp": {
+    "gopls": {
+      "initialization_options": {
+        "buildFlags": ["-buildvcs=true"],
+        // "local": "actionlint.kjanat.dev",
+        "gofumpt": true,
+        "staticcheck": true,
+        "usePlaceholders": true,
+        "vulncheck": "Imports",
+        "hints": {
+          "ignoredError": true,
+          "parameterNames": true,
+          "constantValues": true,
+          "functionTypeParameters": true,
+        }
+      }
+    },
     "yaml-language-server": {
       "settings": {
         "yaml": {
