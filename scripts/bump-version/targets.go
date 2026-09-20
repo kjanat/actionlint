@@ -72,6 +72,9 @@ var targets = []*target{
 		unrelated: []string{
 			"sarif/v2.1.0/sarif-v2.1.0.html",
 			goShellcheckDependency,
+			"`reviewdog/action-actionlint` v1.76.0 installs this fork's v1.17.0",
+			"https://github.com/reviewdog/action-actionlint/blob/v1.76.0/",
+			"[v1.76.0 entrypoint]",
 		},
 	},
 	{
@@ -94,6 +97,10 @@ var targets = []*target{
 			mustRule("versioned release tag note", "`v(\\d+\\.\\d+\\.\\d+)` is a versioned release tag", 1),
 			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 4),
 			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
+		},
+		unrelated: []string{
+			"[v1.7.12](https://github.com/rhysd/actionlint/releases/tag/v1.7.12)",
+			"Its independent release series starts at v1.8.0.",
 		},
 		generated: []*regexp.Regexp{
 			regexp.MustCompile(`(?m)^\*\*(?:Upstream actionlint|This fork) \d+\.\d+\.\d+ reports`),
