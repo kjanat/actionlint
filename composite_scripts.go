@@ -55,11 +55,17 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 	for _, metadataStep := range meta.Runs.Steps {
 		step := compositeScriptStep(metadataStep, parser)
 		if _, action := step.Exec.(*ExecAction); action {
-			validation := NewRuleAction(v.actions)
-			if err := validation.VisitStep(step); err != nil {
-				return err
+			for _, pass := range v.passes {
+				if parent, enabled := pass.(*RuleAction); enabled {
+					validation := NewRuleAction(v.actions)
+					validation.SetConfig(parent.Config())
+					if err := validation.VisitStep(step); err != nil {
+						return err
+					}
+					v.compositeRules = append(v.compositeRules, compositeScriptRules{meta, []Rule{validation}})
+					break
+				}
 			}
-			v.compositeRules = append(v.compositeRules, compositeScriptRules{meta, []Rule{validation}})
 			if err := v.visitActionScripts(step, children, active); err != nil {
 				return err
 			}
@@ -116,7 +122,7 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
 }
 
 // Composite steps require their own shell and do not inherit defaults.run.
-// Their relative working-directory is based on github.workspace, not action_path.
+// Relative working-directory values resolve from github.workspace.
 // https://github.com/actions/runner/blob/main/src/Runner.Worker/Handlers/ScriptHandler.cs
 func compositeScriptStep(metadata *ActionCompositeStep, parser *parser) *Step {
 	pos := &Pos{Line: metadata.Line, Col: metadata.Column}
@@ -129,7 +135,7 @@ func compositeScriptStep(metadata *ActionCompositeStep, parser *parser) *Step {
 	}
 	// Reuse the step decoder for scalar coercion and source mapping. Metadata
 	// validation remains responsible for the composite-specific key grammar.
-	node, ok := compositeScriptNode(metadata.node, make(map[*yaml.Node]bool))
+	node, ok := compositeScriptNode(metadata.node, make(map[*yaml.Node]bool), make(map[*yaml.Node]*yaml.Node))
 	if !ok {
 		return opaque
 	}
@@ -148,21 +154,25 @@ func compositeScriptStep(metadata *ActionCompositeStep, parser *parser) *Step {
 
 // Alias expansion must not mutate the shared metadata cache. Keep original
 // scalar positions so script findings still point into the metadata source.
-func compositeScriptNode(node *yaml.Node, active map[*yaml.Node]bool) (*yaml.Node, bool) {
+func compositeScriptNode(node *yaml.Node, active map[*yaml.Node]bool, done map[*yaml.Node]*yaml.Node) (*yaml.Node, bool) {
 	node = actionSchemaNode(node)
 	if node == nil || node.Kind == yaml.AliasNode || active[node] {
 		return nil, false
+	}
+	if cloned, ok := done[node]; ok {
+		return cloned, true
 	}
 	active[node] = true
 	defer delete(active, node)
 	cloned := *node
 	cloned.Content = make([]*yaml.Node, len(node.Content))
 	for i, child := range node.Content {
-		resolved, ok := compositeScriptNode(child, active)
+		resolved, ok := compositeScriptNode(child, active, done)
 		if !ok {
 			return nil, false
 		}
 		cloned.Content[i] = resolved
 	}
+	done[node] = &cloned
 	return &cloned, true
 }
