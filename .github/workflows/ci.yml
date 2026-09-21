@@ -203,7 +203,8 @@ jobs:
           test "${RESULT}" = success
           test "${PROBLEM_COUNT}" = 0
           test "${OUTPUT}" = '[]'
-          [[ "$(command -v actionlint)" == */actionlint-bin-*/actionlint* ]]
+          actionlint_path="$(command -v actionlint)"
+          [[ "${actionlint_path}" == */actionlint-bin-*/actionlint* ]]
           actionlint -version
           shellcheck --version
           pyflakes --version

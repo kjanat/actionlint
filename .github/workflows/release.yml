@@ -291,8 +291,11 @@ jobs:
           commit="$(node scripts/build-action-release.mjs --commit --out-dir "${RUNNER_TEMP}/actionlint-action" \
             --version "${GITHUB_REF_NAME#v}" --parent "${GITHUB_SHA}")"
           if existing="$(git rev-parse --verify --quiet "refs/tags/action-${GITHUB_REF_NAME}^{commit}")"; then
-            test "$(git rev-parse "${existing}^{tree}")" = "$(git rev-parse "${commit}^{tree}")"
-            test "$(git rev-parse "${existing}^")" = "${GITHUB_SHA}"
+            existing_tree="$(git rev-parse "${existing}^{tree}")"
+            commit_tree="$(git rev-parse "${commit}^{tree}")"
+            existing_parent="$(git rev-parse "${existing}^")"
+            test "${existing_tree}" = "${commit_tree}"
+            test "${existing_parent}" = "${GITHUB_SHA}"
             commit="${existing}"
           fi
           echo "sha=${commit}" >> "${GITHUB_OUTPUT}"
