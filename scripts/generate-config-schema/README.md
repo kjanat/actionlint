@@ -6,8 +6,8 @@ of an rc path and inline directives. The inline ShellCheck directives use a `$re
 to `schemas/shellcheck/0.11.0.schema.json` through its GitHub raw URL.
 
 The version identifies the ShellCheck directive contract represented by the YAML
-mapping. This is an actionlint-maintained schema, not an upstream ShellCheck
-schema or a requirement that users install exactly that ShellCheck version.
+mapping. Actionlint maintains this schema. Users can select their installed
+ShellCheck version independently.
 Runtime configuration parsing does not download schemas. Tests register the local
 snapshot under its URL and disable external loading.
 

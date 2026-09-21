@@ -62,9 +62,9 @@ The workspace and repository root can differ, for example with a checkout in a
 subdirectory. A runner's `GITHUB_ACTION_PATH` is used only when it identifies the
 same analyzed action; an unrelated action's installation directory does not replace
 the local metadata directory. Unknown variables, malformed expressions and
-unavailable contexts produce configuration errors rather than guessed paths.
-This is path interpolation using GitHub's delimiters, not the full Actions
-expression language. Values are substituted once, without evaluating their contents.
+unavailable contexts produce configuration errors. Interpolation accepts only the
+variables listed above, using GitHub's expression delimiters. Values are
+substituted once, without evaluating their contents.
 
 In `actionlint.yaml`, actionlint performs the interpolation. When passing the same
 text through a workflow input, GitHub evaluates expressions first; use a literal
@@ -150,8 +150,8 @@ command-specific `source` directives inside the script. This integration checks
 workflow run steps; it does not yet run ShellCheck on composite action steps.
 
 Inline configuration works independently of rc-file discovery, which remains
-disabled by default. A config path explicitly selects an rc file. Output options
-such as `format` belong to actionlint reporting, not `tools.shellcheck.config`.
+disabled by default. A config path explicitly selects an rc file. Configure output
+formats through actionlint's reporting options.
 
 The mapping is tested with ShellCheck 0.11.0. Its native settings have a separate
 [versioned schema][shellcheck-schema], referenced by the main actionlint schema.

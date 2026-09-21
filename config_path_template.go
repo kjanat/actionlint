@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-// configPathContext names local paths, not arbitrary GitHub expression values.
-// actionPath belongs to the analyzed composite action, not the analyzer's action.
+// configPathContext contains the local directories available to path interpolation.
+// actionPath identifies the composite action being analyzed.
 type configPathContext struct {
 	configDir  string
 	gitDir     string
