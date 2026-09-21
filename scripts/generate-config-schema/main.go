@@ -15,18 +15,37 @@ import (
 )
 
 func reflector() *jsonschema.Reflector {
-	return &jsonschema.Reflector{
+	r := &jsonschema.Reflector{
 		FieldNameTag:               "yaml",
 		RequiredFromJSONSchemaTags: true,
 		DoNotReference:             true,
-		Mapper:                     mapYAMLType,
 	}
+	r.Mapper = func(t reflect.Type) *jsonschema.Schema {
+		return mapYAMLType(t, r.LookupComment)
+	}
+	return r
 }
 
 // mapYAMLType describes the wire format of types with custom UnmarshalYAML
 // methods. Ordinary fields, including future config settings, use reflection.
-func mapYAMLType(t reflect.Type) *jsonschema.Schema {
+func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string) *jsonschema.Schema {
+	reflectMapping := func(value any) *jsonschema.Schema {
+		r := reflector()
+		r.LookupComment = lookupComment
+		return r.Reflect(value)
+	}
 	switch t {
+	case reflect.TypeFor[actionlint.ShellcheckConfigSource]():
+		mapping := reflectMapping(actionlint.ShellcheckConfig{})
+		mapping.Version, mapping.ID = "", ""
+		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "string", MinLength: new(uint64(1))}, mapping}}
+	case reflect.TypeFor[actionlint.ShellcheckToolConfig]():
+		mapping := reflectMapping(struct {
+			Enabled *bool                              `yaml:"enabled" jsonschema:"nullable,default=true,description=Enable ShellCheck analysis. Omission or null keeps it enabled."`
+			Config  *actionlint.ShellcheckConfigSource `yaml:"config" jsonschema:"nullable,description=Inline directives or an rc file/directory. Relative paths and {configdir} use the directory containing actionlint.yaml or actionlint.yml; {gitdir} selects the repository root."`
+		}{})
+		mapping.Version, mapping.ID = "", ""
+		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "boolean"}, mapping}}
 	case reflect.TypeFor[actionlint.IgnorePatterns]():
 		// JSON Schema's regex format uses a different dialect from Go's regexp.
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string"}}
@@ -39,7 +58,7 @@ func mapYAMLType(t reflect.Type) *jsonschema.Schema {
 	case reflect.TypeFor[actionlint.JobTimeoutPolicy]():
 		// The runtime type stores private state and accepts either a boolean or
 		// this mapping. Keep this in sync with JobTimeoutPolicy.UnmarshalYAML.
-		mapping := reflector().Reflect(struct {
+		mapping := reflectMapping(struct {
 			MinMinutes float64 `yaml:"min-minutes" jsonschema:"exclusiveMinimum=0,description=Smallest allowed job timeout in minutes. Must not exceed max-minutes."`
 			MaxMinutes float64 `yaml:"max-minutes" jsonschema:"exclusiveMinimum=0,description=Largest allowed job timeout in minutes."`
 		}{})
@@ -47,14 +66,14 @@ func mapYAMLType(t reflect.Type) *jsonschema.Schema {
 		mapping.ID = ""
 		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "boolean"}, mapping}}
 	case reflect.TypeFor[actionlint.PermissionsPolicy]():
-		mapping := reflector().Reflect(struct {
+		mapping := reflectMapping(struct {
 			Scope string `yaml:"scope" jsonschema:"enum=workflow,enum=job,default=workflow,description=Require a workflow-level declaration or a declaration on every job."`
 		}{})
 		mapping.Version = ""
 		mapping.ID = ""
 		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "boolean"}, mapping}}
 	case reflect.TypeFor[actionlint.SuppressionsPolicy]():
-		mapping := reflector().Reflect(struct {
+		mapping := reflectMapping(struct {
 			Rules  []string `yaml:"rules" jsonschema:"minItems=1,description=Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules."`
 			Report string   `yaml:"report" jsonschema:"enum=suppression,enum=violation,enum=all,default=all,description=Report the prohibited directive or retain original violations or both."`
 		}{})

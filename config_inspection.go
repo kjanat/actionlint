@@ -13,9 +13,10 @@ type ConfigSelection struct {
 	Disabled bool
 }
 
-// ConfigOrigin identifies whether a setting came from a default or a YAML value.
+// ConfigOrigin identifies a default, configuration file value, or Action input.
 type ConfigOrigin struct {
 	Source string `json:"source" yaml:"source"`
+	Input  string `json:"input,omitempty" yaml:"input,omitempty"`
 	State  string `json:"state" yaml:"state"`
 	Line   int    `json:"line,omitempty" yaml:"line,omitempty"`
 	Column int    `json:"column,omitempty" yaml:"column,omitempty"`

@@ -9,7 +9,7 @@ import (
 // Project represents one GitHub project. One Git repository corresponds to one project.
 type Project struct {
 	root       string
-	config     *Config
+	config     *loadedConfig
 	configPath string
 }
 
@@ -75,7 +75,10 @@ func (p *Project) Knows(path string) bool {
 // When no config was found, this method returns nil.
 func (p *Project) Config() *Config {
 	// Note: Calling this method must be thread safe (#333)
-	return p.config
+	if p.config == nil {
+		return nil
+	}
+	return p.config.config
 }
 
 // Projects represents set of projects. It caches Project instances which was created previously

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync/atomic" // Note: atomic.Bool was added at Go 1.19
@@ -220,6 +221,34 @@ func TestProcessStdinHelper(t *testing.T) {
 		t.Fatal(err)
 	}
 	os.Exit(0)
+}
+
+func TestProcessRelativeExecutableWithWorkingDirectory(t *testing.T) {
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(filepath.Dir(exe))
+	t.Setenv("ACTIONLINT_TEST_STDIN_HELPER", "1")
+	relative := "." + string(filepath.Separator) + filepath.Base(exe)
+	proc := newConcurrentProcess(t.Context(), 1)
+	cmd, err := proc.configuredCommandRunner("", &ExternalCommandOptions{Executable: &relative}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd.runInDirectory([]string{"-test.run=^TestProcessStdinHelper$"}, "script stdin", t.TempDir(), func(output []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		if string(output) != "script stdin" {
+			return fmt.Errorf("unexpected helper output: %q", output)
+		}
+		return nil
+	})
+	if err := cmd.wait(); err != nil {
+		t.Fatal(err)
+	}
+	proc.wait()
 }
 
 // The Linux reproducer in rhysd/actionlint#651 filled a 64 KiB pipe with one script.

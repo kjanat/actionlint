@@ -199,7 +199,7 @@ jobs:
 				t.Fatal(err)
 			}
 		}
-		if got := shellcheck.getShellName(&ExecRun{}); got != id {
+		if got := shellcheck.resolveShell(&ExecRun{}).name; got != id {
 			t.Fatalf("job %s resolved shell %q", id, got)
 		}
 		if got := pyflakes.isPythonShell(&ExecRun{}); got != (id == "python") {

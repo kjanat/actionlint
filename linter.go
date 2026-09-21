@@ -68,6 +68,10 @@ type LinterOptions struct {
 	// ConfigFile is a path to config file. Empty string means no config file path is given. In
 	// the case, actionlint will try to read config from .github/actionlint.yaml.
 	ConfigFile string
+	// ConfigOverlays apply in order over each project's selected config file.
+	ConfigOverlays []ConfigOverlay
+	// OnConfigLoaded reports actual config sources. Calls are serialized.
+	OnConfigLoaded func(ConfigReport)
 	// Format is a custom template to format error messages. It must follow Go Template format and
 	// contain at least one {{ }} placeholder. https://pkg.go.dev/text/template
 	Format string
@@ -236,7 +240,7 @@ func LegacyAnalysisError(err error) error {
 func newLegacyAnalysisSession(opts *LinterOptions) (*AnalysisSession, error) {
 	return NewAnalysisSession(AnalysisOptions{
 		Context: opts.Context, WorkingDir: opts.WorkingDir, StdinFileName: opts.StdinFileName,
-		ConfigFile: opts.ConfigFile, Shellcheck: opts.Shellcheck, Pyflakes: opts.Pyflakes,
+		ConfigFile: opts.ConfigFile, ConfigOverlays: opts.ConfigOverlays, OnConfigLoaded: opts.OnConfigLoaded, Shellcheck: opts.Shellcheck, Pyflakes: opts.Pyflakes,
 		IgnorePatterns: opts.IgnorePatterns, Verbose: opts.Verbose, Debug: opts.Debug,
 		LogWriter: opts.LogWriter, OnRulesCreated: opts.OnRulesCreated, OnFilesSelected: opts.OnFilesSelected,
 	})

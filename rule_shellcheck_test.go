@@ -260,7 +260,7 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 			if tc.step != "" {
 				e.Shell = &String{Value: tc.step}
 			}
-			if s := r.getShellName(e); s != tc.want {
+			if s := r.resolveShell(e).name; s != tc.want {
 				t.Fatalf("detected shell %q but wanted %q", s, tc.want)
 			}
 		})
