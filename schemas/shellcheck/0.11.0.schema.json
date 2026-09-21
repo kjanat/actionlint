@@ -69,8 +69,8 @@
     },
     "shell": {
       "title": "shell",
-      "description": "Overrides the inferred dialect for shell scripts, not Python or PowerShell steps.",
-      "markdownDescription": "Overrides the inferred dialect for shell scripts, not Python or PowerShell steps.",
+      "description": "Overrides the inferred dialect of scripts selected for ShellCheck.",
+      "markdownDescription": "Overrides the inferred dialect of scripts selected for ShellCheck.",
       "oneOf": [
         {
           "type": "string",

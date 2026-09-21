@@ -317,8 +317,8 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 		rule.mu.Lock()
 		defer rule.mu.Unlock()
 		for _, err := range errs {
-			// Startup options are synthetic, not workflow source. A dialect override
-			// can make those options non-portable without creating a user-code finding.
+			// Dialect overrides can make generated startup options non-portable.
+			// Their warnings have no workflow source location; errors remain configuration failures.
 			line := script.originalLine(err.Line)
 			if line == 0 {
 				if err.Line != script.startupLine || err.Level == "error" {
