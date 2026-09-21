@@ -160,9 +160,10 @@ ShellCheck versions get separate snapshots; existing version files are retained.
 The schema version does not pin a locally installed binary or require the CLI to
 download schemas. New options require corresponding runtime support; optional
 check availability depends on the installed ShellCheck version.
-Editors may fetch or cache the referenced schema URL. The npm package also ships
-the versioned files under `schemas/shellcheck/`; offline validators can register
-those files under their `$id` URLs.
+The reference resolves relative to the main schema. Installed npm packages use
+their bundled `schemas/shellcheck/` files offline; versioned CDN and Git commit
+URLs select files from the same release or revision. The current branch can
+receive documentation and schema corrections for an existing ShellCheck version.
 See the [ShellCheck manual](https://github.com/koalaman/shellcheck/blob/master/shellcheck.1.md).
 
 ## Configuration file
