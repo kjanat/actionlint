@@ -22,8 +22,10 @@ type Pass interface {
 
 // Visitor visits syntax tree from root in depth-first order
 type Visitor struct {
-	passes []Pass
-	dbg    io.Writer
+	passes         []Pass
+	dbg            io.Writer
+	actions        *LocalActionsCache
+	compositeRules []compositeScriptRules
 }
 
 // NewVisitor creates Visitor instance
@@ -136,7 +138,28 @@ func (v *Visitor) visitStep(n *Step) error {
 	}
 
 	for _, p := range v.passes {
+		if _, script := p.(*RuleExecutableBit); script && v.actions != nil {
+			if _, action := n.Exec.(*ExecAction); action {
+				continue // Preserve checkout state while entering a local composite.
+			}
+		}
 		if err := p.VisitStep(n); err != nil {
+			return err
+		}
+	}
+	if _, action := n.Exec.(*ExecAction); action && v.actions != nil {
+		var scripts []Rule
+		for _, p := range v.passes {
+			switch rule := p.(type) {
+			case *RuleShellcheck:
+				scripts = append(scripts, rule)
+			case *RulePyflakes:
+				scripts = append(scripts, rule)
+			case *RuleExecutableBit:
+				scripts = append(scripts, rule)
+			}
+		}
+		if err := v.visitActionScripts(n, scripts, make(map[string]bool)); err != nil {
 			return err
 		}
 	}

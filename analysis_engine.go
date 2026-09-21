@@ -3,6 +3,7 @@ package actionlint
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"slices"
 	"time"
 )
@@ -94,6 +95,7 @@ func (l *analysisEngine) check(
 		}
 
 		v := NewVisitor()
+		v.actions = localActions
 		for _, rule := range rules {
 			v.AddPass(rule)
 		}
@@ -119,6 +121,17 @@ func (l *analysisEngine) check(
 			l.debug("%s found %d errors", rule.Name(), len(errs))
 			all = append(all, errs...)
 		}
+		for _, composite := range v.compositeRules {
+			for _, rule := range composite.rules {
+				for _, finding := range rule.Errs() {
+					if finding.Filepath == "" {
+						finding.Filepath = composite.meta.Path()
+						finding.source = composite.meta.src
+					}
+					all = append(all, finding)
+				}
+			}
+		}
 
 		*usedRules = rules
 	}
@@ -128,7 +141,22 @@ func (l *analysisEngine) check(
 		suppressionPolicy = cfg.Policy.DisallowSuppressions
 	}
 	all = filterInlineSuppressions(content, all, suppressionPolicy)
-	all = l.filterErrors(all, cfg.PathConfigs(path))
+	byPath := make(map[string][]*Error)
+	for _, finding := range all {
+		findingPath := finding.Filepath
+		if findingPath == "" {
+			findingPath = path
+		} else if project != nil && filepath.IsAbs(findingPath) {
+			if relative, err := filepath.Rel(project.RootDir(), findingPath); err == nil {
+				findingPath = relative
+			}
+		}
+		byPath[findingPath] = append(byPath[findingPath], finding)
+	}
+	all = nil
+	for findingPath, findings := range byPath {
+		all = append(all, l.filterErrors(findings, cfg.PathConfigs(findingPath))...)
+	}
 
 	for _, err := range all {
 		if err.Filepath == "" {
