@@ -20,29 +20,25 @@ func (rule *RuleShellcheck) prepareConfigPath() error {
 	if rule.paths.workspace == "" {
 		rule.paths.workspace = rule.paths.analysis
 	}
-	configdir := rule.paths.workspace
 	var selection ShellcheckConfigSelection
+	base := rule.pathContext().configDir
 	if rule.config != nil && rule.config.Config != nil {
 		selection = rule.config.Config
+		base = "" // Application paths retain their process-working-directory origin.
 	} else if config := rule.Config(); config != nil {
-		if config.filename != "" {
-			configdir = filepath.Dir(config.filename)
-		}
 		if path := config.Tools.Shellcheck.Config.path(); path != "" {
-			path, err := resolveShellcheckConfigPath(path, configdir, rule.paths.workspace)
-			if err != nil {
-				return err
-			}
 			selection = ShellcheckRCFile(path)
 		}
 	}
-	rule.rcArgs = []string{"--norc"}
+	rcArgs := []string{"--norc"}
 	var path string
 	switch selected := selection.(type) {
 	case nil:
+		rule.rcArgs = rcArgs
 		return nil
 	case ShellcheckRCMode:
 		if selected == ShellcheckRCDisabled {
+			rule.rcArgs = rcArgs
 			return nil
 		}
 		var err error
@@ -51,11 +47,15 @@ func (rule *RuleShellcheck) prepareConfigPath() error {
 			return err
 		}
 		if path == "" {
+			rule.rcArgs = rcArgs
 			return nil
 		}
 	case ShellcheckRCFile:
 		var err error
-		path, err = shellcheckRCFile(string(selected))
+		path, err = rule.pathContext().resolveFrom(string(selected), base)
+		if err == nil {
+			path, err = shellcheckRCFile(path)
+		}
 		if err != nil {
 			return fmt.Errorf("tools.shellcheck.config: %w", err)
 		}
@@ -67,23 +67,6 @@ func (rule *RuleShellcheck) prepareConfigPath() error {
 		rule.onInput(path)
 	}
 	return nil
-}
-
-func resolveShellcheckConfigPath(path, configdir, gitdir string) (string, error) {
-	base := configdir
-	for _, token := range []struct{ name, root string }{{"{configdir}", configdir}, {"{gitdir}", gitdir}} {
-		if path == token.name || strings.HasPrefix(path, token.name+"/") || strings.HasPrefix(path, token.name+`\`) {
-			base, path = token.root, strings.TrimLeft(strings.TrimPrefix(path, token.name), `/\`)
-			break
-		}
-	}
-	if strings.Contains(path, "{configdir}") || strings.Contains(path, "{gitdir}") || strings.HasPrefix(path, "{") {
-		return "", errors.New("tools.shellcheck.config: use {configdir} or {gitdir} at the start of the path")
-	}
-	if filepath.IsAbs(path) {
-		return filepath.Clean(path), nil
-	}
-	return filepath.Join(base, filepath.FromSlash(path)), nil
 }
 
 func shellcheckRCInDirectory(directory string) (string, error) {
