@@ -18,20 +18,25 @@ type AnalysisOptions struct {
 	WorkingDir    string
 	StdinFileName string
 	ConfigFile    string
+	// ConfigOverlays apply in order over the selected file.
+	ConfigOverlays []ConfigOverlay
+	// OnConfigLoaded reports selected files and overlays.
+	OnConfigLoaded func(ConfigReport)
 	// SkipProjectConfig disables per-project config reads; ConfigFile still applies.
 	SkipProjectConfig bool
 	// QuietSelection suppresses the legacy file-selection and completion log messages.
-	QuietSelection    bool
-	Shellcheck        string
-	Pyflakes          string
-	ShellcheckOptions *ExternalCommandOptions
-	PyflakesOptions   *ExternalCommandOptions
-	IgnorePatterns    []string
-	Verbose           bool
-	Debug             bool
-	LogWriter         io.Writer
-	OnRulesCreated    func([]Rule) []Rule
-	OnFilesSelected   func([]string)
+	QuietSelection     bool
+	Shellcheck         string
+	Pyflakes           string
+	ShellcheckOptions  *ExternalCommandOptions
+	ShellcheckSettings *ShellcheckSettings
+	PyflakesOptions    *ExternalCommandOptions
+	IgnorePatterns     []string
+	Verbose            bool
+	Debug              bool
+	LogWriter          io.Writer
+	OnRulesCreated     func([]Rule) []Rule
+	OnFilesSelected    func([]string)
 }
 
 // AnalysisSession resolves local inputs before handing them to Analyze.
@@ -41,6 +46,7 @@ type AnalysisSession struct {
 	projects          *Projects
 	defaultConfig     *Config
 	defaultConfigPath string
+	configState       *analysisConfigState
 	request           AnalysisRequest
 	ctx               context.Context
 	cwd               string
@@ -91,7 +97,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 		projects: NewProjects(), ctx: opts.Context, cwd: opts.WorkingDir,
 		stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected,
 		logSelection:   !opts.QuietSelection,
-		request:        AnalysisRequest{ShellCheck: opts.Shellcheck, Pyflakes: opts.Pyflakes, ShellcheckOptions: opts.ShellcheckOptions, PyflakesOptions: opts.PyflakesOptions, OnRulesCreated: opts.OnRulesCreated},
+		request:        AnalysisRequest{ShellCheck: opts.Shellcheck, Pyflakes: opts.Pyflakes, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, PyflakesOptions: opts.PyflakesOptions, OnRulesCreated: opts.OnRulesCreated},
 		analysisLogger: analysisLogger{logOut: opts.LogWriter},
 	}
 	if a.ctx == nil {
@@ -107,12 +113,21 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 	}
 	var err error
 	if opts.ConfigFile != "" {
-		a.defaultConfig, err = ReadConfigFile(opts.ConfigFile)
+		source, loadErr := readConfigSource(opts.ConfigFile)
+		err = loadErr
 		if err != nil {
 			return nil, err
 		}
+		a.defaultConfig = source.config
 		a.defaultConfigPath = opts.ConfigFile
+		a.configState = &analysisConfigState{source: source}
 	}
+	if a.configState == nil {
+		a.configState = &analysisConfigState{}
+	}
+	a.configState.overlays = slices.Clone(opts.ConfigOverlays)
+	a.configState.onLoaded = opts.OnConfigLoaded
+	a.configState.loaded = make(map[*Project]*Config)
 	a.projects.skipConfig = opts.SkipProjectConfig
 	a.request.IgnorePatterns, err = CompileIgnorePatterns(opts.IgnorePatterns)
 	if err != nil {
@@ -261,6 +276,13 @@ func (a *AnalysisSession) source(path string, content []byte, project *Project) 
 }
 
 func (a *AnalysisSession) analyze(sources []SourceUnit) (*AnalysisResult, error) {
+	for i := range sources {
+		cfg, err := a.configForProject(sources[i].Project)
+		if err != nil {
+			return nil, err
+		}
+		sources[i].Config = cfg
+	}
 	request := a.request
 	request.Sources = sources
 	result, err := analyze(a.ctx, request, a.logOut, a.logLevel)

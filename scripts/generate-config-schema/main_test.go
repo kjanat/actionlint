@@ -64,6 +64,22 @@ func TestSchemaValidation(t *testing.T) {
 		parserValid bool
 	}{
 		{"empty", `{}`, true, true},
+		{"ShellCheck disabled", `tools: {shellcheck: {enabled: false}}`, true, true},
+		{"ShellCheck shorthand enabled", `tools: {shellcheck: true}`, true, true},
+		{"ShellCheck shorthand disabled", `tools: {shellcheck: false}`, true, true},
+		{"ShellCheck rc path", `tools: {shellcheck: {config: ./.shellcheckrc}}`, true, true},
+		{"ShellCheck rc directory", `tools: {shellcheck: {config: '{gitdir}/.github/'}}`, true, true},
+		{"ShellCheck rc config directory", `tools: {shellcheck: {config: '{configdir}/.shellcheckrc'}}`, true, true},
+		{"ShellCheck empty rc path", `tools: {shellcheck: {config: ''}}`, false, false},
+		{"ShellCheck invalid rc type", `tools: {shellcheck: {config: false}}`, false, false},
+		{"ShellCheck nullable", `tools: {shellcheck: {enabled: null, config: null}}`, true, true},
+		{"ShellCheck directives", `tools: {shellcheck: {config: {disable: [SC2086, SC3000-SC4000, all], enable: [all], shell: bash, external-sources: false, extended-analysis: true, source-path: ['my scripts']}}}`, true, true},
+		{"ShellCheck flag misplaced", `tools: {shellcheck: {config: {format: json}}}`, false, false},
+		{"ShellCheck dialect", `tools: {shellcheck: {config: {shell: python}}}`, false, false},
+		{"ShellCheck number code", `tools: {shellcheck: {config: {disable: [2086]}}}`, false, false},
+		{"ShellCheck invalid code", `tools: {shellcheck: {config: {disable: [bad]}}}`, false, false},
+		{"ShellCheck invalid bool", `tools: {shellcheck: {config: {extended-analysis: yes}}}`, false, false},
+		{"ShellCheck unknown setting", `tools: {shellcheck: {config: {typo: []}}}`, false, false},
 		{"all settings", `
 self-hosted-runner:
   labels: [linux.2xlarge, custom-*]
