@@ -75,7 +75,7 @@ jobs:
         run: run make:man
       - name: Build and test playground
         run: run --dir playground -s make:build make:test
-      - name: Lint playground
+      - name: Lint JavaScript workspaces
         run: run lint
   release-snapshot:
     name: Release snapshot

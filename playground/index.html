@@ -13,10 +13,10 @@
 		<script type="module" src="/src/index.ts"></script>
 	</head>
 	<body>
-		<nav id="header-bar" class="navbar" role="navigation" aria-label="header navigation bar">
+		<nav id="header-bar" class="navbar" aria-label="header navigation bar">
 			<header class="header">
 				<h1 class="title">
-					<a id="logo" rel="noopener" href="https://github.com/kjanat/actionlint"><i class="devicon-github-original"></i></a>
+					<a id="logo" rel="noopener" href="https://github.com/kjanat/actionlint"><i class="devicon-github-original" aria-hidden="true"></i><span class="is-sr-only">actionlint on GitHub</span></a>
 					actionlint playground
 					<a rel="noopener" href="%ACTIONLINT_VERSION_URL%">
 						<span class="tag is-dark" id="version">%ACTIONLINT_VERSION%</span>
@@ -26,14 +26,14 @@
 			</header>
 			<div id="controls" class="navbar-end">
 				<div class="control"><a class="button" href="https://actionlint.kjanat.dev/github-changelog/">GitHub Actions changelog</a></div>
-				<div class="control"><a id="permalink-btn" class="button">Permalink</a></div>
+				<div class="control"><button id="permalink-btn" class="button" type="button">Permalink</button></div>
 				<div class="field">
 					<div id="url-input" class="field has-addons">
 						<div class="control">
 							<label class="is-sr-only" for="check-url-input">GitHub or Gist URL</label>
 							<input id="check-url-input" class="input" type="text" placeholder="GitHub or Gist URL">
 						</div>
-						<div class="control"><a id="check-url-btn" class="button">Check</a></div>
+						<div class="control"><button id="check-url-btn" class="button" type="button">Check</button></div>
 					</div>
 					<p id="invalid-input" class="help is-danger"></p>
 				</div>
