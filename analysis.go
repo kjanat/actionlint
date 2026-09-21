@@ -107,6 +107,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	}
 	workflows := NewLocalReusableWorkflowCacheFactory(cwd, engine.debugWriter())
 	engine.workingDir, engine.inputs = absPath(cwd), inputs
+	engine.gitModes = &gitModes{}
 	result := &AnalysisResult{Diagnostics: []Diagnostic{}, files: make([]analyzedFile, len(request.Sources))}
 	// Initialize shared caches before any analysis goroutines access them.
 	for _, source := range request.Sources {

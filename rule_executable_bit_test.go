@@ -1,0 +1,224 @@
+package actionlint
+
+import (
+	"os/exec"
+	"path/filepath"
+	"slices"
+	"strings"
+	"testing"
+)
+
+func executableFixture(t *testing.T) (string, func(...string)) {
+	t.Helper()
+	git, err := exec.LookPath("git")
+	if err != nil {
+		t.Skip("Git required")
+	}
+	root := t.TempDir()
+	command := func(args ...string) {
+		t.Helper()
+		if out, err := repositoryGit(t.Context(), git, root, args...).CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+	}
+	command("init", "--quiet")
+	command("config", "core.filemode", "false")
+	for _, name := range []string{"bad.sh", "good.sh", "scripts/bad.sh", "scripts/good.sh", "space dir/bad.sh", "{good,bad}.sh"} {
+		writeShellcheckFixture(t, root, name, "#!/bin/sh\necho script\n")
+		command("add", "--", name)
+		mode := "-x"
+		if strings.HasSuffix(name, "good.sh") {
+			mode = "+x"
+		}
+		command("update-index", "--chmod="+mode, "--", name)
+	}
+	writeShellcheckFixture(t, root, "untracked.sh", "#!/bin/sh\n")
+	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false}\n")
+	return root, command
+}
+
+func TestExecutableBitWorkflows(t *testing.T) {
+	root, _ := executableFixture(t)
+	for _, tc := range []struct {
+		name, runner, defaults, steps string
+		want                          string
+	}{
+		{"direct", "ubuntu-latest", "", "- run: ./bad.sh", "bad.sh"},
+		{"macOS", "macos-latest", "", "- run: ./bad.sh", "bad.sh"},
+		{"indexed executable", "ubuntu-latest", "", "- run: ./good.sh", ""},
+		{"interpreter", "ubuntu-latest", "", "- run: bash bad.sh", ""},
+		{"source", "ubuntu-latest", "", "- run: . ./bad.sh", ""},
+		{"untracked", "ubuntu-latest", "", "- run: ./untracked.sh", ""},
+		{"windows runner", "windows-latest", "", "- run: ./bad.sh\n  shell: bash", ""},
+		{"unknown runner", "self-hosted", "", "- run: ./bad.sh", ""},
+		{"job directory", "ubuntu-latest", "defaults:\n  run:\n    working-directory: scripts\n", "- run: ./bad.sh", "scripts/bad.sh"},
+		{"empty step directory", "ubuntu-latest", "defaults:\n  run:\n    working-directory: scripts\n", "- run: ./bad.sh\n  working-directory: ''", "bad.sh"},
+		{"step directory", "ubuntu-latest", "", "- run: ./bad.sh\n  working-directory: scripts", "scripts/bad.sh"},
+		{"quoted directory", "ubuntu-latest", "", "- run: cd 'space dir' && ./bad.sh", "space dir/bad.sh"},
+		{"cd resolves", "ubuntu-latest", "", "- run: cd scripts && ./bad.sh", "scripts/bad.sh"},
+		{"cd resets each step", "ubuntu-latest", "", "- run: cd scripts\n- run: ./bad.sh", "bad.sh"},
+		{"earlier chmod", "ubuntu-latest", "", "- run: chmod +x bad.sh\n- run: ./bad.sh", ""},
+		{"same step chmod", "ubuntu-latest", "", "- run: chmod +x bad.sh && ./bad.sh", ""},
+		{"later chmod", "ubuntu-latest", "", "- run: ./bad.sh\n- run: chmod +x bad.sh", "bad.sh"},
+		{"other file chmod", "ubuntu-latest", "", "- run: chmod +x good.sh\n- run: ./bad.sh", "bad.sh"},
+		{"dynamic chmod", "ubuntu-latest", "", "- run: chmod +x \"$SCRIPT\"\n- run: ./bad.sh", ""},
+		{"unknown action", "ubuntu-latest", "", "- uses: actions/setup-node@v6\n- run: ./bad.sh", ""},
+		{"opaque shell", "ubuntu-latest", "", "- run: bash -c 'chmod +x bad.sh'\n- run: ./bad.sh", ""},
+		{"CDPATH", "ubuntu-latest", "", "- run: cd scripts && ./bad.sh\n  env:\n    CDPATH: elsewhere", ""},
+		{"BASH_ENV", "ubuntu-latest", "", "- run: ./bad.sh\n  env:\n    BASH_ENV: setup.sh", ""},
+		{"printf assignment", "ubuntu-latest", "", "- run: printf -v CDPATH elsewhere; cd scripts; ./bad.sh", ""},
+		{"brace expansion", "ubuntu-latest", "", "- run: ./{good,bad}.sh", ""},
+		{"literal braces", "ubuntu-latest", "", "- run: \"'./{good,bad}.sh'\"", "{good,bad}.sh"},
+		{"literal text", "ubuntu-latest", "", "- run: echo './bad.sh'", ""},
+		{"Unicode before invocation", "ubuntu-latest", "", "- run: echo é; ./bad.sh", "bad.sh"},
+		{"executable guard", "ubuntu-latest", "", "- run: test -x ./bad.sh && ./bad.sh", ""},
+		{"bracket executable guard", "ubuntu-latest", "", "- run: '[ -x ./bad.sh ] && ./bad.sh'", ""},
+		{"false condition", "ubuntu-latest", "", "- run: 'false && ./bad.sh'", ""},
+		{"quoted script", "ubuntu-latest", "", "- run: \"'./space dir/bad.sh'\"", "space dir/bad.sh"},
+		{"heredoc", "ubuntu-latest", "", "- run: |\n    cat <<'EOF'\n    ./bad.sh\n    EOF", ""},
+		{"function declaration", "ubuntu-latest", "", "- run: 'f() { ./bad.sh; }'", ""},
+		{"shell conditional", "ubuntu-latest", "", "- run: 'if true; then chmod +x bad.sh; fi; ./bad.sh'", ""},
+		{"expression injection", "ubuntu-latest", "", "- run: '${{ github.event.inputs.script }}; ./bad.sh'", ""},
+		{"substitution", "ubuntu-latest", "", "- run: echo $(chmod +x bad.sh) && ./bad.sh", ""},
+		{"shell background", "ubuntu-latest", "", "- run: chmod +x bad.sh & ./bad.sh", ""},
+		{"background step", "ubuntu-latest", "", "- run: chmod +x bad.sh\n  background: true\n- run: ./bad.sh", ""},
+		{"parallel group", "ubuntu-latest", "", "- parallel:\n    - run: chmod +x bad.sh\n    - run: ./bad.sh\n- run: ./bad.sh", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			job := "on: push\njobs:\n  test:\n    runs-on: " + tc.runner + "\n"
+			if tc.defaults != "" {
+				job += "    " + strings.ReplaceAll(strings.TrimSuffix(tc.defaults, "\n"), "\n", "\n    ") + "\n"
+			}
+			job += "    steps:\n      - uses: actions/checkout@v6\n      " + strings.ReplaceAll(tc.steps, "\n", "\n      ") + "\n"
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", job)
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := session.Files([]string{workflow}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var findings []Diagnostic
+			for _, diagnostic := range result.Diagnostics {
+				if diagnostic.Rule == "executable-bit" {
+					findings = append(findings, diagnostic)
+				}
+			}
+			if tc.want == "" {
+				if len(findings) != 0 {
+					t.Fatalf("false positive: %+v", findings)
+				}
+			} else {
+				if len(findings) != 1 || !strings.Contains(findings[0].Message, `script "`+tc.want+`"`) {
+					t.Fatalf("expected non-executable %q: %+v", tc.want, result.Diagnostics)
+				}
+				line := strings.Split(job, "\n")[findings[0].Start.Line-1]
+				if !strings.Contains(line, filepath.Base(tc.want)) {
+					t.Fatalf("diagnostic mapped to wrong line: %+v", findings[0])
+				}
+				if tc.name == "direct" && findings[0].Start != (DiagnosticPosition{7, 14}) {
+					t.Fatalf("direct call location: %+v", findings[0].Start)
+				}
+				if tc.name == "Unicode before invocation" && findings[0].Start != (DiagnosticPosition{7, 22}) {
+					t.Fatalf("Unicode call location: %+v", findings[0].Start)
+				}
+				if !slices.Contains(result.Inputs, filepath.Join(root, ".git", "index")) {
+					t.Fatalf("Git index absent from inputs: %v", result.Inputs)
+				}
+			}
+		})
+	}
+}
+
+func TestExecutableBitIndexTraversal(t *testing.T) {
+	snapshot := &gitModeSnapshot{modes: map[string]string{"link": "120000", "submodule": "160000", "bad.sh": "100644", "scripts/bad.sh": "100644"}}
+	for _, tc := range []struct {
+		path, checkout string
+		want           bool
+	}{
+		{"./bad.sh", "", true},
+		{"scripts/../bad.sh", "", true},
+		{"link/../bad.sh", "", false},
+		{"submodule/../bad.sh", "", false},
+		{"source/link/../bad.sh", "source", false},
+		{".source/link/../bad.sh", ".source", false},
+		{"scripts/bad.sh/../bad.sh", "", false},
+		{"../bad.sh", "", false},
+	} {
+		if got := snapshot.ordinaryTraversal(tc.path, tc.checkout); got != tc.want {
+			t.Errorf("traversal %q under %q: got %v", tc.path, tc.checkout, got)
+		}
+	}
+}
+
+func TestExecutableBitCheckoutPrefixedInvocation(t *testing.T) {
+	root, _ := executableFixture(t)
+	workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n        with:\n          path: source\n      - run: ./source/bad.sh\n")
+	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := session.Files([]string{workflow}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" }) {
+		t.Fatalf("workspace invocation of checkout-prefixed script missed: %+v", result.Diagnostics)
+	}
+}
+
+func TestExecutableBitCheckoutAndFreshIndex(t *testing.T) {
+	root, git := executableFixture(t)
+	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, with, directory string
+		want                  bool
+	}{
+		{"self checkout subdirectory", "path: source", "source/scripts", true},
+		{"wrong checkout directory", "path: source", "scripts", false},
+		{"other repository", "repository: owner/other", "", false},
+		{"other ref", "ref: other-branch", "", false},
+		{"dynamic path", "path: ${{ github.event.inputs.path }}", "", false},
+		{"checkout outside workspace", "path: ../source", "../source", false},
+		{"working tree updated index", "", "", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n"
+			if tc.with != "" {
+				workflow += "        with:\n          " + tc.with + "\n"
+			}
+			workflow += "      - run: ./bad.sh\n"
+			if tc.directory != "" {
+				workflow += "        working-directory: " + tc.directory + "\n"
+			}
+			file := writeShellcheckFixture(t, root, ".github/workflows/test.yml", workflow)
+			result, err := session.Files([]string{file}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" })
+			if found != tc.want {
+				t.Fatalf("unexpected executable-bit result: %+v", result.Diagnostics)
+			}
+		})
+	}
+	git("update-index", "--chmod=+x", "bad.sh")
+	result, err := session.Files([]string{filepath.Join(root, ".github/workflows/test.yml")}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" }) {
+		t.Fatalf("session retained stale Git index: %+v", result.Diagnostics)
+	}
+}
+
+func TestGitIndexModes(t *testing.T) {
+	modes, err := parseGitModes("100644 abc 0\tspace name.sh\x00100755 def 0\tok.sh\x00120000 abc 0\tlink\x00100644 abc 1\tconflict.sh\x00100755 def 2\tconflict.sh\x00")
+	if err != nil || modes["space name.sh"] != "100644" || modes["ok.sh"] != "100755" || modes["link"] != "120000" || modes["conflict.sh"] != "unmerged" {
+		t.Fatalf("incorrect index modes: %v, %v", modes, err)
+	}
+}

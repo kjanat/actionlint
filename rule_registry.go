@@ -19,6 +19,7 @@ type ruleContext struct {
 	shellcheckSettings                 *ShellcheckSettings
 	workingDir, projectRoot            string
 	inputs                             *inputFiles
+	gitModes                           *gitModes
 }
 
 func builtinRuleDescriptors() []ruleDescriptor {
@@ -34,6 +35,9 @@ func builtinRuleDescriptors() []ruleDescriptor {
 		{Name: "job-needs", Description: "Checks for job IDs in \"needs:\". Undefined IDs and cyclic dependencies are checked", Category: "correctness", build: func(c ruleContext) (Rule, error) { return NewRuleJobNeeds(), nil }},
 		{Name: "parallel-steps", Description: "Checks \"wait\"/\"cancel\" references to background steps and steps forbidden inside a \"parallel\" group", Category: "correctness", build: func(c ruleContext) (Rule, error) { return NewRuleParallelSteps(), nil }},
 		{Name: "action", Description: "Checks for popular actions released on GitHub, local actions, and action calls at \"uses:\"", Category: "correctness", build: func(c ruleContext) (Rule, error) { return NewRuleAction(c.actions), nil }},
+		{Name: "executable-bit", Description: "Checks Git executable bits for directly invoked repository scripts", Category: "correctness", build: func(c ruleContext) (Rule, error) {
+			return newRuleExecutableBit(c), nil
+		}, enabled: func(c ruleContext) bool { return c.projectRoot != "" && c.gitModes != nil }},
 		{Name: "env-var", Description: "Checks for environment variables configuration at \"env:\"", Category: "correctness", build: func(c ruleContext) (Rule, error) { return NewRuleEnvVar(), nil }},
 		{Name: "id", Description: "Checks for duplication and naming convention of job/step IDs", Category: "correctness", build: func(c ruleContext) (Rule, error) { return NewRuleID(), nil }},
 		{Name: "glob", Description: "Checks for glob syntax used in branch names, tags, and paths", Category: "correctness", build: func(c ruleContext) (Rule, error) { return NewRuleGlob(), nil }},
@@ -56,7 +60,7 @@ func builtinRuleDescriptors() []ruleDescriptor {
 			if err != nil {
 				return nil, err
 			}
-			rule.paths = shellcheckPaths{workspace: c.projectRoot, analysis: c.workingDir}
+			rule.paths = runPaths{workspace: c.projectRoot, analysis: c.workingDir}
 			if c.inputs != nil {
 				rule.onInput = c.inputs.add
 			}

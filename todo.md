@@ -122,6 +122,14 @@ Define a versioned Action result envelope around the shared diagnostic model. It
 
 ## Implemented: external linter configuration
 
+The shared run-directory resolver also supports the independent `executable-bit`
+rule from kjanat/actionlint#68. It checks direct literal script calls against a
+per-analysis Git index snapshot, including on Windows hosts. Known self checkout
+paths and literal `cd` are resolved; earlier `chmod` invalidates affected modes.
+Opaque actions/commands, dynamic/control-flow cases and concurrent execution
+invalidate certainty. Git index paths are tracked as consumed inputs. This rule
+does not depend on ShellCheck and does not execute workflow scripts.
+
 Shared configuration exposes `tools.shellcheck.enabled` (default true), boolean
 `tools.shellcheck` shorthand, and `tools.shellcheck.config` as an inline mapping
 or rc file/directory path. Both CLI and Action apply it through the

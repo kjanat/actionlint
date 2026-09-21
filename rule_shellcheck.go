@@ -60,9 +60,9 @@ type RuleShellcheck struct {
 	workflowShell shellValue
 	jobShell      shellValue
 	runnerShell   shellValue
-	workflowDir   shellcheckDirectory
-	jobDir        shellcheckDirectory
-	paths         shellcheckPaths
+	workflowDir   runDirectory
+	jobDir        runDirectory
+	paths         runPaths
 	rcArgs        []string
 	onInput       func(string)
 	mu            sync.Mutex
@@ -99,7 +99,7 @@ func (rule *RuleShellcheck) VisitStep(n *Step) error {
 		return nil
 	}
 
-	return rule.runShellcheck(run.Run.Value, run.source, rule.resolveShell(run), rule.stepDirectory(run), run.RunPos)
+	return rule.runShellcheck(run.Run.Value, run.source, rule.resolveShell(run), rule.paths.resolve(effectiveRunDirectory(run, rule.jobDir, rule.workflowDir)), run.RunPos)
 }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
@@ -120,7 +120,7 @@ func (rule *RuleShellcheck) VisitJobPre(n *Job) error {
 // VisitJobPost is callback when visiting Job node after visiting its children.
 func (rule *RuleShellcheck) VisitJobPost(n *Job) error {
 	rule.jobShell = shellValue{}
-	rule.jobDir = shellcheckDirectory{}
+	rule.jobDir = runDirectory{}
 	rule.runnerShell = shellValue{}
 	return nil
 }
@@ -135,7 +135,7 @@ func (rule *RuleShellcheck) VisitWorkflowPre(n *Workflow) error {
 // VisitWorkflowPost is callback when visiting Workflow node after visiting its children.
 func (rule *RuleShellcheck) VisitWorkflowPost(n *Workflow) error {
 	rule.workflowShell = shellValue{}
-	rule.workflowDir = shellcheckDirectory{}
+	rule.workflowDir = runDirectory{}
 	return rule.cmd.wait() // Wait until all processes running for this rule
 }
 
@@ -180,7 +180,7 @@ func sanitizeExpressionsInScript(src string) string {
 	}
 }
 
-func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shell shellcheckShell, directory shellcheckDirectory, pos *Pos) error {
+func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shell shellcheckShell, directory runDirectory, pos *Pos) error {
 	dialect, setup := shell.analysis()
 	if dialect == "" {
 		return nil // Skip checking this shell script since shellcheck doesn't support it
