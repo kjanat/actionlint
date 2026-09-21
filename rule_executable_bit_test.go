@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
@@ -39,6 +40,10 @@ func executableFixture(t *testing.T) (string, func(...string)) {
 
 func TestExecutableBitWorkflows(t *testing.T) {
 	root, _ := executableFixture(t)
+	index, err := os.Stat(filepath.Join(root, ".git", "index"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, tc := range []struct {
 		name, runner, defaults, steps string
 		want                          string
@@ -123,7 +128,10 @@ func TestExecutableBitWorkflows(t *testing.T) {
 				if tc.name == "Unicode before invocation" && findings[0].Start != (DiagnosticPosition{7, 22}) {
 					t.Fatalf("Unicode call location: %+v", findings[0].Start)
 				}
-				if !slices.Contains(result.Inputs, filepath.Join(root, ".git", "index")) {
+				if !slices.ContainsFunc(result.Inputs, func(path string) bool {
+					info, err := os.Stat(path)
+					return err == nil && os.SameFile(index, info)
+				}) {
 					t.Fatalf("Git index absent from inputs: %v", result.Inputs)
 				}
 			}
