@@ -45,15 +45,26 @@ func TestConfigPathInterpolation(t *testing.T) {
 }
 
 func TestShellcheckActionPathRequiresComposite(t *testing.T) {
-	rule := newRuleShellcheck(&externalCommand{})
-	rule.paths.workspace, rule.paths.analysis = t.TempDir(), t.TempDir()
-	rule.config = &ShellcheckSettings{Config: ShellcheckRCFile("${{ github.action_path }}/.shellcheckrc")}
-	if err := rule.VisitWorkflowPre(&Workflow{}); err != nil {
-		t.Fatalf("resolved action context before visiting a composite: %v", err)
-	}
-	err := rule.runShellcheck("echo hello", nil, shellcheckShell{name: "bash"}, rule.stepDirectory(&ExecRun{}), &Pos{Line: 1, Col: 1})
-	if err == nil || !strings.Contains(err.Error(), "requires an analyzed composite action") {
-		t.Fatalf("ordinary workflow run accepted an action-only path: %v", err)
+	command := shellcheckForTest(t)
+	for _, tc := range []struct{ name, step string }{
+		{"uses only", "uses: actions/checkout@v6"},
+		{"python", "shell: python\n        run: print('hello')"},
+		{"powershell", "shell: pwsh\n        run: Write-Output hello"},
+		{"bash", "shell: bash\n        run: echo hello"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			config := writeShellcheckFixture(t, root, "actionlint.yaml", "tools:\n  shellcheck:\n    config: '${{ github.action_path }}/.shellcheckrc'\n")
+			workflow := writeShellcheckFixture(t, root, "workflow.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - "+tc.step+"\n")
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, ConfigFile: config, Shellcheck: command})
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = session.Files([]string{workflow}, nil)
+			if err == nil || !strings.Contains(err.Error(), "requires an analyzed composite action") {
+				t.Fatalf("ordinary workflow accepted an action-only path: %v", err)
+			}
+		})
 	}
 }
 
