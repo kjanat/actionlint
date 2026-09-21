@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"path/filepath"
 	"strings"
 
 	"go.yaml.in/yaml/v4"
@@ -41,7 +42,7 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 
 	children := make([]Rule, 0, len(parents))
 	for _, parent := range parents {
-		children = append(children, compositeScriptRule(parent, call))
+		children = append(children, compositeScriptRule(parent, call, filepath.Dir(meta.Path())))
 	}
 	v.compositeRules = append(v.compositeRules, compositeScriptRules{meta, children})
 	parser := &parser{sourceLines: splitSourceLines(meta.src)}
@@ -80,12 +81,15 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 	return nil
 }
 
-func compositeScriptRule(parent Rule, call *Step) Rule {
+func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
 	var child Rule
 	switch rule := parent.(type) {
 	case *RuleShellcheck:
 		scoped := newRuleShellcheck(rule.cmd)
-		scoped.config, scoped.paths, scoped.rcArgs, scoped.onInput = rule.config, rule.paths, rule.rcArgs, rule.onInput
+		scoped.config, scoped.paths, scoped.onInput = rule.config, rule.paths, rule.onInput
+		// Resolve configuration anew: nested actions have different action_path
+		// values even when they inherit the same configuration selection.
+		scoped.actionPath = actionPath
 		child = scoped
 	case *RulePyflakes:
 		child = newRulePyflakes(rule.cmd)
