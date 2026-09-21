@@ -62,9 +62,9 @@ The workspace and repository root can differ, for example with a checkout in a
 subdirectory. A runner's `GITHUB_ACTION_PATH` is used only when it identifies the
 same analyzed action; an unrelated action's installation directory does not replace
 the local metadata directory. Unknown variables, malformed expressions and
-unavailable contexts produce configuration errors rather than guessed paths.
-This is path interpolation using GitHub's delimiters, not the full Actions
-expression language. Values are substituted once, without evaluating their contents.
+unavailable contexts produce configuration errors. Interpolation accepts only the
+variables listed above, using GitHub's expression delimiters. Values are
+substituted once, without evaluating their contents.
 
 In `actionlint.yaml`, actionlint performs the interpolation. When passing the same
 text through a workflow input, GitHub evaluates expressions first; use a literal
@@ -150,8 +150,8 @@ command-specific `source` directives inside the script. This integration checks
 workflow run steps; it does not yet run ShellCheck on composite action steps.
 
 Inline configuration works independently of rc-file discovery, which remains
-disabled by default. A config path explicitly selects an rc file. Output options
-such as `format` belong to actionlint reporting, not `tools.shellcheck.config`.
+disabled by default. A config path explicitly selects an rc file. Configure output
+formats through actionlint's reporting options.
 
 The mapping is tested with ShellCheck 0.11.0. Its native settings have a separate
 [versioned schema][shellcheck-schema], referenced by the main actionlint schema.
@@ -160,9 +160,10 @@ ShellCheck versions get separate snapshots; existing version files are retained.
 The schema version does not pin a locally installed binary or require the CLI to
 download schemas. New options require corresponding runtime support; optional
 check availability depends on the installed ShellCheck version.
-Editors may fetch or cache the referenced schema URL. The npm package also ships
-the versioned files under `schemas/shellcheck/`; offline validators can register
-those files under their `$id` URLs.
+The reference resolves relative to the main schema. Installed npm packages use
+their bundled `schemas/shellcheck/` files offline; versioned CDN and Git commit
+URLs select files from the same release or revision. The current branch can
+receive documentation and schema corrections for an existing ShellCheck version.
 See the [ShellCheck manual](https://github.com/koalaman/shellcheck/blob/master/shellcheck.1.md).
 
 ## Configuration file

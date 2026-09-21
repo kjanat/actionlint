@@ -1,5 +1,4 @@
 {
-  "$id": "https://raw.githubusercontent.com/kjanat/actionlint/HEAD/actionlint.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "Generated from config.go by go generate -run generate-config-schema. DO NOT EDIT.",
   "title": "actionlint configuration",
@@ -365,10 +364,13 @@
                               "oneOf": [
                                 {
                                   "type": "string",
-                                  "minLength": 1
+                                  "minLength": 1,
+                                  "not": {
+                                    "pattern": "[\\x00\\r\\n]"
+                                  }
                                 },
                                 {
-                                  "$ref": "https://raw.githubusercontent.com/kjanat/actionlint/HEAD/schemas/shellcheck/0.11.0.schema.json"
+                                  "$ref": "schemas/shellcheck/0.11.0.schema.json"
                                 }
                               ]
                             },

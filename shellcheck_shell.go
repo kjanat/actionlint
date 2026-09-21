@@ -90,7 +90,7 @@ func shellcheckContainerShell(container *Container) shellValue {
 }
 
 func (shell shellcheckShell) analysis() (dialect, setup string) {
-	// Match the runner's first-space split, not a shell command evaluator.
+	// Split at the first space to match the runner's executable/argument boundary.
 	command, arguments, _ := strings.Cut(shell.name, " ")
 	dialect = strings.TrimSuffix(strings.ToLower(path.Base(strings.ReplaceAll(command, `\`, "/"))), ".exe")
 	switch dialect {
@@ -108,9 +108,8 @@ func (shell shellcheckShell) analysis() (dialect, setup string) {
 		}
 		return dialect, "set -e"
 	}
-	// The runner passes an argument template directly to the process, not a
-	// shell parser. Infer only plain options; quoted/escaped and dynamic templates
-	// require platform-specific argument parsing that cannot be assumed here.
+	// Infer plain options only; quoted, escaped and dynamic templates require
+	// platform-specific parsing of process arguments.
 	args := strings.Fields(arguments)
 	for _, arg := range args {
 		arg = strings.Trim(arg, "'\"")
@@ -166,8 +165,8 @@ func (shell shellcheckShell) analysis() (dialect, setup string) {
 	return dialect, ""
 }
 
-// ShellCheck's hasSetE/hasPipefail checks look for enabling commands anywhere,
-// rather than applying later +e/+o overrides. Emit only the final enabled state.
+// ShellCheck's hasSetE/hasPipefail checks retain enabling commands even after
+// later +e/+o overrides. Emit only the final enabled state.
 func shellcheckStartupOptions(options []string) string {
 	aliases := map[string]string{
 		"allexport": "a", "errexit": "e", "errtrace": "E", "functrace": "T",
