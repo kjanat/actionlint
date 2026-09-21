@@ -334,6 +334,168 @@
           "type": "null"
         }
       ]
+    },
+    "tools": {
+      "title": "tools",
+      "description": "Configures external linters for both the CLI and GitHub Action.",
+      "markdownDescription": "Configures external linters for both the CLI and GitHub Action.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "shellcheck": {
+              "title": "shellcheck",
+              "description": "Configures checking of embedded shell scripts.",
+              "markdownDescription": "Configures checking of embedded shell scripts.",
+              "oneOf": [
+                {
+                  "oneOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "config": {
+                          "title": "config",
+                          "description": "Inline directives or an rc file/directory. Relative paths and {configdir} use the directory containing actionlint.yaml or actionlint.yml; {gitdir} selects the repository root.",
+                          "markdownDescription": "Inline directives or an rc file/directory. Relative paths and {configdir} use the directory containing actionlint.yaml or actionlint.yml; {gitdir} selects the repository root.",
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "disable": {
+                                      "title": "disable",
+                                      "oneOf": [
+                                        {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "pattern": "^(all|(SC)?[0-9]+(-(SC)?[0-9]+)?)$"
+                                          }
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "enable": {
+                                      "title": "enable",
+                                      "oneOf": [
+                                        {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "pattern": "^[a-zA-Z-]+$"
+                                          }
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "extended-analysis": {
+                                      "title": "extended-analysis",
+                                      "oneOf": [
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "external-sources": {
+                                      "title": "external-sources",
+                                      "oneOf": [
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "shell": {
+                                      "title": "shell",
+                                      "oneOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "sh",
+                                            "bash",
+                                            "dash",
+                                            "ksh",
+                                            "busybox"
+                                          ]
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "source-path": {
+                                      "title": "source-path",
+                                      "oneOf": [
+                                        {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          }
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "enabled": {
+                          "title": "enabled",
+                          "description": "Enable ShellCheck analysis. Omission or null keeps it enabled.",
+                          "markdownDescription": "Enable ShellCheck analysis. Omission or null keeps it enabled.",
+                          "oneOf": [
+                            {
+                              "default": true,
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "additionalProperties": false

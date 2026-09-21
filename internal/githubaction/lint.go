@@ -16,17 +16,18 @@ import (
 const lintTimeout = 300 * time.Second
 
 type lintRequest struct {
-	ctx               context.Context
-	shellcheckOptions *actionlint.ExternalCommandOptions
-	pyflakesOptions   *actionlint.ExternalCommandOptions
-	workingDir        string
-	configFile        string
-	overlays          []actionlint.ConfigOverlay
-	ignore            []string
-	shellcheck        string
-	pyflakes          string
-	format            string
-	files             []string
+	ctx                context.Context
+	shellcheckOptions  *actionlint.ExternalCommandOptions
+	shellcheckSettings *actionlint.ShellcheckSettings
+	pyflakesOptions    *actionlint.ExternalCommandOptions
+	workingDir         string
+	configFile         string
+	overlays           []actionlint.ConfigOverlay
+	ignore             []string
+	shellcheck         string
+	pyflakes           string
+	format             string
+	files              []string
 }
 
 type lintOutcome struct {
@@ -103,16 +104,17 @@ func runLinter(req *lintRequest) *lintResult {
 	var out, logs bytes.Buffer
 	result := &lintResult{}
 	opts := actionlint.AnalysisOptions{
-		Context:           req.ctx,
-		ShellcheckOptions: req.shellcheckOptions,
-		PyflakesOptions:   req.pyflakesOptions,
-		Shellcheck:        req.shellcheck,
-		Pyflakes:          req.pyflakes,
-		IgnorePatterns:    req.ignore,
-		ConfigFile:        req.configFile,
-		ConfigOverlays:    req.overlays,
-		WorkingDir:        req.workingDir,
-		LogWriter:         &logs,
+		Context:            req.ctx,
+		ShellcheckOptions:  req.shellcheckOptions,
+		ShellcheckSettings: req.shellcheckSettings,
+		PyflakesOptions:    req.pyflakesOptions,
+		Shellcheck:         req.shellcheck,
+		Pyflakes:           req.pyflakes,
+		IgnorePatterns:     req.ignore,
+		ConfigFile:         req.configFile,
+		ConfigOverlays:     req.overlays,
+		WorkingDir:         req.workingDir,
+		LogWriter:          &logs,
 		OnConfigLoaded: func(report actionlint.ConfigReport) {
 			result.configs = append(result.configs, report)
 		},

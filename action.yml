@@ -70,6 +70,23 @@ inputs:
     description: Run ShellCheck for shell scripts in workflow steps.
     required: false
     default: "true"
+  tools:
+    description: External tool configuration as a YAML or JSON mapping, overriding the config file.
+    required: false
+    default: ""
+  shellcheck-config:
+    description: >-
+      ShellCheck config: true discovers from working-directory, false disables
+      discovery, or specify a configuration file relative to GITHUB_WORKSPACE.
+      Blank inherits config flags; discovery is otherwise disabled.
+    required: false
+    default: ""
+  shellcheck-args:
+    description: >-
+      ShellCheck options as a YAML/JSON array of strings, merged over inherited
+      flags and workflow defaults. Reporting uses the action's format input.
+    required: false
+    default: ""
   pyflakes:
     description: Run pyflakes for Python scripts in workflow steps.
     required: false

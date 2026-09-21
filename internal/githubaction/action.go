@@ -86,6 +86,9 @@ func (a *action) execute() (int, error) {
 	if err := req.configureEnvironment(a.env); err != nil {
 		return 0, err
 	}
+	if err := req.configureShellcheck(a.env, root, workspaceDir); err != nil {
+		return 0, err
+	}
 	lint := a.runLint(req)
 	outcome, count, rendered := renderOutcome(lint.lintOutcome, in.format)
 	a.emitStatus(outcome.code, count, lint.fileCount, lint.fileCountKnown, in)

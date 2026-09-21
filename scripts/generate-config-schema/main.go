@@ -27,6 +27,17 @@ func reflector() *jsonschema.Reflector {
 // methods. Ordinary fields, including future config settings, use reflection.
 func mapYAMLType(t reflect.Type) *jsonschema.Schema {
 	switch t {
+	case reflect.TypeFor[actionlint.ShellcheckConfigSource]():
+		mapping := reflector().Reflect(actionlint.ShellcheckConfig{})
+		mapping.Version, mapping.ID = "", ""
+		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "string", MinLength: new(uint64(1))}, mapping}}
+	case reflect.TypeFor[actionlint.ShellcheckToolConfig]():
+		mapping := reflector().Reflect(struct {
+			Enabled *bool                              `yaml:"enabled" jsonschema:"nullable,default=true,description=Enable ShellCheck analysis. Omission or null keeps it enabled."`
+			Config  *actionlint.ShellcheckConfigSource `yaml:"config" jsonschema:"nullable,description=Inline directives or an rc file/directory. Relative paths and {configdir} use the directory containing actionlint.yaml or actionlint.yml; {gitdir} selects the repository root."`
+		}{})
+		mapping.Version, mapping.ID = "", ""
+		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "boolean"}, mapping}}
 	case reflect.TypeFor[actionlint.IgnorePatterns]():
 		// JSON Schema's regex format uses a different dialect from Go's regexp.
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string"}}

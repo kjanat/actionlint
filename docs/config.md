@@ -6,6 +6,95 @@ The configuration file is optional. Every correctness check runs without it, so 
 that has no configuration file. The file is where a repository tells actionlint what exists in its own environment,
 and where it turns on the opt-in [policy checks](#policy-checks).
 
+## ShellCheck
+
+Configure ShellCheck in the same `.github/actionlint.yaml` or `.github/actionlint.yml`
+that actionlint already discovers. Both the CLI and GitHub Action apply it automatically:
+
+```yaml
+tools:
+  shellcheck:
+    enabled: true
+    config:
+      disable: [SC2086]
+      enable: [check-unassigned-uppercase]
+      extended-analysis: true
+      external-sources: true
+      source-path: [scripts]
+```
+
+`enabled` defaults to true. `tools: {shellcheck: false}` is shorthand for
+`tools: {shellcheck: {enabled: false}}`; `true` enables it. ShellCheck
+must still be available; this setting does not install it. An empty ShellCheck
+command or the Action's `shellcheck: false` input also disables the tool.
+
+`config` accepts an inline mapping, a file path, or a directory containing
+`.shellcheckrc` or `shellcheckrc` (searched in that order).
+
+```yaml
+tools:
+  shellcheck:
+    enabled: true
+    config: "{configdir}/.shellcheckrc" # Same as ./.shellcheckrc
+```
+
+`{configdir}` is the directory containing the selected **actionlint.yaml or
+actionlint.yml itself**, including a file selected with `--config`. It is also the
+base for ordinary relative config paths. For `.github/actionlint.yaml`, both
+`./.shellcheckrc` and `"{configdir}/.shellcheckrc"` mean `.github/.shellcheckrc`.
+`{gitdir}` names the workflow's repository root, so `"{gitdir}/.github/"` selects an
+rc file in that directory. Quote paths starting with `{` so YAML reads a string.
+With configuration supplied only through inputs, `{configdir}` falls back to the
+repository root. Without a detected project, the analysis working directory is
+the fallback root. Explicitly selected files must exist and be readable; a
+selected directory must contain one of the two rc filenames.
+
+The inline mapping accepts these native project-wide settings:
+
+| Key                 | Value                                                   |
+| ------------------- | ------------------------------------------------------- |
+| `disable`           | List of codes, ranges such as `SC3000-SC4000`, or `all` |
+| `enable`            | List of optional check names, or `all`                  |
+| `shell`             | `sh`, `bash`, `dash`, `ksh`, or `busybox`               |
+| `extended-analysis` | Boolean; omit to keep ShellCheck's default              |
+| `external-sources`  | Boolean; defaults to enabled in actionlint              |
+| `source-path`       | List of directories to search for sourced files         |
+
+These settings apply to each checked shell script. `shell` overrides its inferred
+dialect; it does not turn Python or PowerShell steps into shell scripts.
+
+Relative `source-path` entries and sourced filenames use the run step's effective
+working directory: step `working-directory`, then job `defaults.run`, then workflow
+`defaults.run`, then the repository root. Relative working directories resolve
+from that root, matching GitHub's workspace semantics. For `working-directory:
+app` and `source-path: [scripts]`, ShellCheck searches `app/scripts`; neither the
+config directory nor the workflow file's directory is the base.
+
+Known literal expressions are resolved. If the working directory is dynamic,
+runner-absolute, outside the repository, or does not exist locally, actionlint
+still checks the script but disables following sources. This avoids analyzing
+unrelated local files as if they were available to the runner. Embedded scripts
+arrive on stdin, so `SCRIPTDIR` does not refer to the YAML file's directory. Keep
+command-specific `source` directives inside the script. This integration checks
+workflow run steps; it does not yet run ShellCheck on composite action steps.
+
+The Action's explicit `shellcheck-args` override corresponding settings where
+ShellCheck supports that precedence; include/exclude/enable lists retain native
+ShellCheck semantics. The Action's `tools` input can overlay this mapping, with
+lists replacing previous lists. Boolean shorthand overlays change only `enabled`,
+preserving configuration. `null` resets a setting to its default.
+
+Inline configuration works independently of rc-file discovery, which remains
+disabled by default. A config path explicitly selects an rc file. The Action's
+`shellcheck-config` input overrides rc-file selection; `false` also disables a
+project-selected rc file, but does not disable an inline mapping. Output options such as `format`
+belong to actionlint reporting, not `tools.shellcheck.config`.
+
+The mapping is tested with ShellCheck 0.11.0. It does not pin a locally installed
+binary. New upstream options require updates to actionlint's types and editor
+schema; optional check availability depends on the installed ShellCheck version.
+See the [ShellCheck manual](https://github.com/koalaman/shellcheck/blob/master/shellcheck.1.md).
+
 ## Configuration file
 
 Configuration file `actionlint.yaml` or `actionlint.yml` can be put in `.github` directory.

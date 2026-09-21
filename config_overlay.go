@@ -86,7 +86,7 @@ func ParseConfigOverlay(input string, content []byte) (ConfigOverlay, error) {
 	if err != nil {
 		return ConfigOverlay{}, fmt.Errorf("input %s: %w", input, err)
 	}
-	return ConfigOverlay{input, node}, nil
+	return ConfigOverlay{input, normalizeToolSwitch(node)}, nil
 }
 
 // Resolve aliases and YAML merge keys before overlaying. Otherwise replacing an
@@ -245,7 +245,7 @@ func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
 		if err != nil {
 			return nil, fmt.Errorf("configuration %s: %w", report.File, err)
 		}
-		node = expanded
+		node = normalizeToolSwitch(expanded)
 	}
 	for _, overlay := range s.overlays {
 		markConfigInput(overlay.node, overlay.name, inputs)
@@ -259,6 +259,9 @@ func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
 			return nil, &ConfigOverlayError{report.Overrides, err}
 		}
 		cfg = resolved.config
+		if source != nil {
+			cfg.filename = absPath(source.filename)
+		}
 	} else if source == nil {
 		var err error
 		resolved, err = resolveConfigNode(nil, nil)

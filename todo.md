@@ -8,7 +8,7 @@ The next phase separates analysis from reporting so one check can produce consol
 
 ## Implementation status
 
-The JavaScript launcher and release builder originate in kjanat/actionlint@99f403e5. The shared CLI analysis architecture was merged in kjanat/actionlint#155 as kjanat/actionlint@6095acca72b083a6f3e200fc89930ca39c922026. This branch integrates master through kjanat/actionlint@811323ac.
+The JavaScript launcher and release builder originate in kjanat/actionlint@99f403e5. The shared CLI analysis architecture was merged in kjanat/actionlint#155 as kjanat/actionlint@6095acca72b083a6f3e200fc89930ca39c922026. This branch integrates master through kjanat/actionlint@010e812f.
 
 The Action adapter now invokes `AnalysisSession` directly, then renders the result. Configuration overlays and source reporting belong to the shared session; the compatibility `Linter` forwards its options there. Configuration files retain the YAML document from the same parse used to resolve their values and origins. Tool paths and argument arrays use `ExternalCommandOptions`. The Action timeout cancels analysis and waits for it to finish before restoring the working directory.
 
@@ -120,7 +120,24 @@ The refactor's JSON `CheckResult` is a starting schema, not a complete persisted
 
 Define a versioned Action result envelope around the shared diagnostic model. It must retain the outcome, configuration reports, hints, counts, and data needed by deferred reporters. Keep general-purpose rendering in Go. For deferred SARIF output, either persist the Go-rendered report alongside diagnostics or extend the persisted schema with the metadata its renderer needs; that storage choice remains open.
 
-## Planned: external linter configuration
+## Implemented: external linter configuration
+
+Shared configuration exposes `tools.shellcheck.enabled` (default true), boolean
+`tools.shellcheck` shorthand, and `tools.shellcheck.config` as an inline mapping
+or rc file/directory path. Both CLI and Action apply it through the
+shared engine. The `tools` Action input uses normal config overlays and provenance.
+Native directives are supplied to each script without temporary configuration
+files; diagnostic positions account for the added lines. Supported settings are
+disable, enable, shell, extended-analysis, external-sources and source-path.
+The contract is tested with ShellCheck 0.11.0; new upstream settings need schema
+and runtime support, while installed binaries remain selectable independently.
+
+Config paths default to the directory containing the selected actionlint config
+file (`{configdir}`); `{gitdir}` selects the workflow repository root. Directory
+selection checks `.shellcheckrc` before `shellcheckrc`. Relative source paths use
+each run step's effective working directory, with step/job/workflow precedence.
+Unresolved or locally unavailable working directories retain script checking but
+disable source following. Explicit rc files enter the consumed-input set.
 
 ### Input contract
 
@@ -130,15 +147,33 @@ Define a versioned Action result envelope around the shared diagnostic model. It
   - path: use that explicit workspace-relative configuration file.
 - `shellcheck-args`: a YAML/JSON array of argument strings, passed as argv without invoking a shell.
 
-Automatic discovery is the intended direction, with an explicit opt-out. The discovery starting directory and default remain open compatibility decisions.
+Discovery defaults to false to preserve existing Action behavior. When enabled,
+ShellCheck searches from `working-directory` (scripts arrive on stdin), including
+parent and user config locations. Explicit config paths resolve against
+GITHUB_WORKSPACE and must identify readable files within the workspace.
 
-### Current behavior to change
+### Invocation and precedence
 
-The Go ShellCheck integration currently appends `--norc -f json1 -x --shell ... -e ... -`, disabling configuration discovery. ShellCheck supports both `.shellcheckrc` and `shellcheckrc`.
+The shared analysis API accepts optional `ShellcheckSettings`: nil `Config` inherits
+project selection, `ShellcheckRCDisabled` disables rc loading,
+`ShellcheckRCDiscover` enables discovery, and `ShellcheckRCFile` selects `--rcfile`.
+Without a selection, `--norc` remains the default.
+ShellCheck supports both `.shellcheckrc` and `shellcheckrc`.
 
-The existing CLI accepts command lines through `-shellcheck` and `-pyflakes`; the CLI refactor additionally provides typed executable/argv/environment options. The Action baseline exposes only enable/disable inputs for these tools. SHELLCHECK_OPTS can already supply ShellCheck flags through the inherited environment.
+The CLI retains its existing command-line and typed executable/argv/environment
+options. The Action validates `shellcheck-args` and inherited SHELLCHECK_OPTS,
+merging inherited arguments before explicit input arguments. Child-only
+environment overrides clear SHELLCHECK_OPTS to avoid applying it twice.
 
-Keep the machine-output protocol and stdin handling under actionlint's control. User flags must not silently replace JSON1 output or redirect the checked input. Configuration discovery must account for the fact that embedded scripts are sent on stdin rather than as their original workflow files.
+Explicit single-value flags override inherited values; additive checking options
+accumulate with duplicates removed. An explicit shellcheck-config input overrides
+config flags. Output flags normalize to JSON1 for transport; early-exit flags and
+additional source files are rejected. Invalid inputs return exit status 2 before analysis.
+
+Shell resolution handles container defaults, known literal expressions and unknown
+overrides, preserving explicit step/job/workflow precedence. Startup options
+distinguish implicit Bash, explicit Bash and custom templates. The analyzer cannot
+discover which executables are installed on a remote runner.
 
 Pyflakes has almost no configurable checking flags. An args input cannot add support for rule selection, ignore configuration or autofixes. Replacing the Python backend remains a separate decision; no replacement has been selected.
 
@@ -206,7 +241,7 @@ Review publication must be explicitly enabled and requires an appropriate token 
 
 ## Delivery order and acceptance criteria
 
-The shared analysis, overlay provenance, typed tool invocation, and cancellation portions of items 1–2 are implemented. The persisted protocol and items 3–8 remain pending; item 7 has Windows environment normalization and execution coverage, but PATHEXT and batch launchers remain unfinished. Validate affected behavior with focused checks and run platform-specific integration checks in CI.
+The shared analysis, overlay provenance, typed tool invocation, and cancellation portions of items 1–2 and the ShellCheck inputs in item 3 are implemented. The persisted protocol and items 4–8 remain pending; item 7 has Windows environment normalization and execution coverage, but PATHEXT and batch launchers remain unfinished. Validate affected behavior with focused checks and run platform-specific integration checks in CI.
 
 1. **Integrate the shared analysis core.** CLI and Action use the same analysis implementation; existing rules and policy fields remain available. Overlay tests cover precedence, null/empty values, explicit config selection, and both config extensions. A timeout cancels outstanding external linter processes.
 2. **Adapt the Action protocol.** The adapter uses shared diagnostics and literal tool arguments. Existing output names, public formats, exit codes, and `fail-on-error` behavior remain compatible, including invalid-input and failure cases.
@@ -221,7 +256,6 @@ The existing focused checks in [the Action package](packages/github-action/tests
 
 ## Open decisions
 
-- ShellCheck discovery root and default; precedence between config files, `shellcheck-args`, inherited SHELLCHECK_OPTS, and actionlint's required flags.
 - Reporter-selection inputs and defaults; immediate reporting, end-of-job collection, or both.
 - Persisted result schema and versioning; pre-rendered SARIF versus sufficient metadata for deferred rendering.
 - Severity mapping and its effect on annotations and the existing failure contract.

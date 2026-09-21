@@ -95,6 +95,9 @@ func configDefaultOrigins(values map[string]any, prefix string, origins map[stri
 // public representation, so new config fields are included automatically.
 func effectiveConfig(cfg *Config) (map[string]any, error) {
 	resolved := *cfg
+	if resolved.Tools.Shellcheck.Enabled == nil {
+		resolved.Tools.Shellcheck.Enabled = new(true)
+	}
 	resolved.Policy.CacheCallUnrestricted = new(cfg.cachePolicyEnabled("cache-call-unrestricted"))
 	resolved.Policy.CacheOperation = new(cfg.cachePolicyEnabled("cache-operation"))
 	resolved.Policy.CacheWriteUntrusted = new(cfg.cachePolicyEnabled("cache-write-untrusted"))

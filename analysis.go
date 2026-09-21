@@ -25,13 +25,14 @@ type SourceUnit struct {
 
 // AnalysisRequest contains resolved sources and analysis settings.
 type AnalysisRequest struct {
-	Sources           []SourceUnit
-	ShellCheck        string
-	Pyflakes          string
-	ShellcheckOptions *ExternalCommandOptions
-	PyflakesOptions   *ExternalCommandOptions
-	IgnorePatterns    IgnorePatterns
-	OnRulesCreated    func([]Rule) []Rule
+	Sources            []SourceUnit
+	ShellCheck         string
+	Pyflakes           string
+	ShellcheckOptions  *ExternalCommandOptions
+	ShellcheckSettings *ShellcheckSettings
+	PyflakesOptions    *ExternalCommandOptions
+	IgnorePatterns     IgnorePatterns
+	OnRulesCreated     func([]Rule) []Rule
 	// WorkingDir resolves workflow paths in reusable-workflow caches. Empty uses os.Getwd.
 	WorkingDir string
 }
@@ -91,7 +92,8 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	}
 	engine := &analysisEngine{ctx: ctx, shellcheck: request.ShellCheck, pyflakes: request.Pyflakes,
 		shellcheckOptions: request.ShellcheckOptions, pyflakesOptions: request.PyflakesOptions,
-		ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: analysisLogger{log, level}}
+		shellcheckSettings: request.ShellcheckSettings,
+		ignorePats:         request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: analysisLogger{log, level}}
 	inputs := &inputFiles{}
 	proc := newConcurrentProcess(ctx, runtime.NumCPU())
 	actions := NewLocalActionsCacheFactory(engine.debugWriter())
@@ -104,6 +106,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		}
 	}
 	workflows := NewLocalReusableWorkflowCacheFactory(cwd, engine.debugWriter())
+	engine.workingDir, engine.inputs = absPath(cwd), inputs
 	result := &AnalysisResult{Diagnostics: []Diagnostic{}, files: make([]analyzedFile, len(request.Sources))}
 	// Initialize shared caches before any analysis goroutines access them.
 	for _, source := range request.Sources {

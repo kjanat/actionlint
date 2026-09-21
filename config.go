@@ -338,6 +338,9 @@ type SelfHostedRunnerConfig struct {
 // Save as `.github/actionlint.yaml` or `.github/actionlint.yml`, or select a file with `-config-file`.
 // Every setting is optional; normal workflow correctness checks run without a configuration file.
 type Config struct {
+	filename string
+	// Tools configures external linters for both the CLI and GitHub Action.
+	Tools ToolsConfig `yaml:"tools" jsonschema:"nullable"`
 	// SelfHostedRunner configures extra labels accepted for self-hosted runners.
 	//
 	// Add your labels under `labels`, for example `{labels: [linux.2xlarge]}`.
@@ -373,6 +376,57 @@ type Config struct {
 	// Cache policies default to true; other policies are opt-in. Set individual keys to override their
 	// defaults. Omit the mapping or use `{}` or `null` to keep defaults. Syntax checks always run.
 	Policy Policy `yaml:"policy" jsonschema:"nullable"`
+}
+
+// ToolsConfig contains configuration for external analysis tools.
+type ToolsConfig struct {
+	// Shellcheck configures checking of embedded shell scripts.
+	Shellcheck ShellcheckToolConfig `yaml:"shellcheck" jsonschema:"nullable"`
+}
+
+// ShellcheckToolConfig contains ShellCheck's native configuration directives.
+type ShellcheckToolConfig struct {
+	// Enabled turns ShellCheck analysis on or off. Omission or null keeps it enabled.
+	// An empty CLI command or shellcheck: false Action input still disables the tool.
+	Enabled *bool `yaml:"enabled" jsonschema:"nullable,default=true"`
+	// Config selects inline ShellCheck settings or an rc file/directory for each checked script.
+	// Relative paths and {configdir} use the directory containing actionlint.yaml; {gitdir} uses the repository root.
+	// Lists replace during actionlint config overlays. The Action's explicit shellcheck-args can override settings.
+	// Omission or null adds no directives. This does not enable rc-file discovery.
+	Config *ShellcheckConfigSource `yaml:"config" jsonschema:"nullable"`
+}
+
+// ShellcheckConfigSource selects inline directives or a configuration file/directory.
+// Relative paths use the actionlint configuration directory. {configdir} and
+// {gitdir} explicitly select that directory or the checked repository root.
+type ShellcheckConfigSource struct {
+	value shellcheckConfigValue
+}
+
+type shellcheckConfigValue interface{ shellcheckConfigValue() }
+type shellcheckConfigPath string
+
+func (shellcheckConfigPath) shellcheckConfigValue() {}
+
+type shellcheckInlineConfig struct{ ShellcheckConfig }
+
+func (shellcheckInlineConfig) shellcheckConfigValue() {}
+
+// ShellcheckConfig is a typed representation of project-wide ShellCheck directives.
+type ShellcheckConfig struct {
+	// Disable lists codes, code ranges or all, for example [SC2086, SC3000-SC4000].
+	Disable []string `yaml:"disable" jsonschema:"nullable,pattern=^(all|(SC)?[0-9]+(-(SC)?[0-9]+)?)$"`
+	// Enable lists optional check names, or all. ShellCheck validates available names.
+	Enable []string `yaml:"enable" jsonschema:"nullable,pattern=^[a-zA-Z-]+$"`
+	// Shell overrides the inferred dialect for shell scripts, not Python or PowerShell steps.
+	Shell *string `yaml:"shell" jsonschema:"nullable,enum=sh,enum=bash,enum=dash,enum=ksh,enum=busybox"`
+	// ExtendedAnalysis enables or disables ShellCheck dataflow analysis. Omission keeps its default.
+	ExtendedAnalysis *bool `yaml:"extended-analysis" jsonschema:"nullable"`
+	// ExternalSources controls following sourced files. Omission preserves actionlint's enabled default.
+	ExternalSources *bool `yaml:"external-sources" jsonschema:"nullable"`
+	// SourcePath lists directories searched for sourced files, relative to the run step's effective working directory.
+	// Scripts arrive on stdin, so SCRIPTDIR does not denote the workflow file's directory.
+	SourcePath []string `yaml:"source-path" jsonschema:"nullable,minLength=1"`
 }
 
 // DefaultPermissionsAssumption is an assumption about the repository's "Workflow permissions" setting,
@@ -487,6 +541,13 @@ func resolveConfigDocument(b []byte) (resolvedConfig, error) {
 }
 
 func resolveConfigNode(root *yaml.Node, inputs map[*yaml.Node]configInput) (resolvedConfig, error) {
+	if inputs == nil {
+		expanded, err := expandConfigNode(root, make(map[*yaml.Node]bool))
+		if err != nil {
+			return resolvedConfig{}, err
+		}
+		root = normalizeToolSwitch(expanded)
+	}
 	var c Config
 	if root != nil {
 		if err := root.Decode(&c); err != nil {
@@ -529,6 +590,7 @@ func readConfigSource(path string) (*loadedConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
+	resolved.config.filename = absPath(path)
 	return &loadedConfig{resolved, path}, nil
 }
 
