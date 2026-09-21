@@ -173,6 +173,86 @@ func TestShellcheckConfigDirectorySelection(t *testing.T) {
 	}
 }
 
+func TestShellcheckWorkingDirectorySymlinks(t *testing.T) {
+	root, outside, analyzer := t.TempDir(), t.TempDir(), t.TempDir()
+	inside := filepath.Join(root, "scripts")
+	if err := os.Mkdir(inside, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for _, link := range []struct{ name, target string }{
+		{"internal", inside},
+		{"external", outside},
+		{"chain", filepath.Join(root, "external")},
+		{"broken", filepath.Join(root, "missing")},
+	} {
+		if err := os.Symlink(link.target, filepath.Join(root, link.name)); err != nil {
+			t.Skipf("symlinks are unavailable: %v", err)
+		}
+	}
+	alias := filepath.Join(t.TempDir(), "workspace")
+	if err := os.Symlink(root, alias); err != nil {
+		t.Skipf("symlinks are unavailable: %v", err)
+	}
+	canonical, err := filepath.EvalSymlinks(inside)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, workspace := range []string{root, alias} {
+		for _, directory := range []string{"internal", "external", "chain", "broken"} {
+			t.Run(filepath.Base(workspace)+"/"+directory, func(t *testing.T) {
+				rule := newRuleShellcheck(&externalCommand{})
+				rule.paths.workspace, rule.paths.analysis = workspace, analyzer
+				got := rule.paths.resolve(runDirectory{directoryKnown, directory})
+				if directory == "internal" {
+					if got.kind != directoryKnown || got.path != canonical {
+						t.Fatalf("internal link should resolve within workspace: %+v", got)
+					}
+				} else if got.kind != directoryUnknown || got.path != analyzer {
+					t.Fatalf("unavailable local directory should use analysis fallback: %+v", got)
+				}
+			})
+		}
+	}
+}
+
+func TestShellcheckSymlinkDirectoryKeepsScriptAnalysis(t *testing.T) {
+	command := shellcheckForTest(t)
+	root, outside := t.TempDir(), t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	writeShellcheckFixture(t, root, "scripts/value.sh", "VALUE=42\n")
+	writeShellcheckFixture(t, outside, "value.sh", "VALUE=42\n")
+	for _, tc := range []struct {
+		name, target string
+		wantFinding  bool
+	}{
+		{"internal", filepath.Join(root, "scripts"), false},
+		{"external", outside, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.Symlink(tc.target, filepath.Join(root, tc.name)); err != nil {
+				t.Skipf("symlinks are unavailable: %v", err)
+			}
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - working-directory: "+tc.name+"\n        run: |\n          . ./value.sh\n          echo $VALUE\n")
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := session.Files([]string{workflow}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
+				return d.Rule == "shellcheck" && strings.Contains(d.Message, "SC2086")
+			})
+			if found != tc.wantFinding {
+				t.Fatalf("source following must depend on resolved containment; SC2086 = %v, diagnostics: %+v", found, result.Diagnostics)
+			}
+		})
+	}
+}
+
 func TestShellcheckSelectedConfigFailure(t *testing.T) {
 	command := shellcheckForTest(t)
 	for _, tc := range []struct {

@@ -88,6 +88,46 @@ func TestCompositeShellcheckActionPaths(t *testing.T) {
 	}
 }
 
+func TestCompositeShellcheckConfigValidation(t *testing.T) {
+	command := shellcheckForTest(t)
+	for _, tc := range []struct {
+		name, actionSteps, workflowSteps string
+		missingRC, wantError             bool
+	}{
+		{"python", "- shell: python\n  run: print('hello')", "- uses: ./local", false, false},
+		{"python missing rc", "- shell: python\n  run: print('hello')", "- uses: ./local", true, true},
+		{"powershell", "- shell: pwsh\n  run: Write-Output hello", "- uses: ./local", false, false},
+		{"powershell missing rc", "- shell: pwsh\n  run: Write-Output hello", "- uses: ./local", true, true},
+		{"uses only", "- uses: actions/checkout@v6", "- uses: ./local", false, false},
+		{"uses only missing rc", "- uses: actions/checkout@v6", "- uses: ./local", true, true},
+		{"no composite", "- uses: actions/checkout@v6", "- uses: actions/checkout@v6", false, true},
+		{"workflow python", "- uses: actions/checkout@v6", "- uses: ./local\n- shell: python\n  run: print('hello')", false, true},
+		{"workflow bash", "- uses: actions/checkout@v6", "- uses: ./local\n- shell: bash\n  run: echo hello", false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, _ := executableFixture(t)
+			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: {config: '${{ github.action_path }}/.shellcheckrc'}}\n")
+			writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    "+strings.ReplaceAll(tc.actionSteps, "\n", "\n    ")+"\n")
+			if !tc.missingRC {
+				writeShellcheckFixture(t, root, "local/.shellcheckrc", "disable=SC2086\n")
+			}
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      "+strings.ReplaceAll(tc.workflowSteps, "\n", "\n      ")+"\n")
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := session.Files([]string{workflow}, nil)
+			if tc.wantError {
+				if err == nil || !strings.Contains(err.Error(), "tools.shellcheck.config") {
+					t.Fatalf("expected config error, got %v", err)
+				}
+			} else if err != nil || len(result.Diagnostics) != 0 {
+				t.Fatalf("valid action context rejected: %v, %+v", err, result)
+			}
+		})
+	}
+}
+
 func TestCompositeSyntaxAndNestedActions(t *testing.T) {
 	command := shellcheckForTest(t)
 	python, err := exec.LookPath("pyflakes")

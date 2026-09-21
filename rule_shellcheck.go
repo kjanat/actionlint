@@ -2,7 +2,6 @@ package actionlint
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -102,6 +101,11 @@ func (rule *RuleShellcheck) VisitStep(n *Step) error {
 	if !ok || run.Run == nil {
 		return nil
 	}
+	if rule.rcArgs == nil {
+		if err := rule.prepareConfigPath(); err != nil {
+			return err
+		}
+	}
 
 	return rule.runShellcheck(run.Run.Value, run.source, rule.resolveShell(run), rule.paths.resolve(effectiveRunDirectory(run, rule.jobDir, rule.workflowDir)), run.RunPos)
 }
@@ -134,13 +138,7 @@ func (rule *RuleShellcheck) VisitWorkflowPre(n *Workflow) error {
 	rule.workflowShell = defaultsShellValue(n.Defaults)
 	rule.workflowDir = defaultsWorkingDirectory(n.Defaults)
 	rule.rcArgs = nil
-	err := rule.prepareConfigPath()
-	if errors.Is(err, errConfigActionPathUnavailable) {
-		// A composite invocation supplies its own action path. A workflow run
-		// using this selection still reports the missing context below.
-		return nil
-	}
-	return err
+	return rule.prepareConfigPath()
 }
 
 // VisitWorkflowPost is callback when visiting Workflow node after visiting its children.
@@ -317,8 +315,8 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 		rule.mu.Lock()
 		defer rule.mu.Unlock()
 		for _, err := range errs {
-			// Startup options are synthetic, not workflow source. A dialect override
-			// can make those options non-portable without creating a user-code finding.
+			// Dialect overrides can make generated startup options non-portable.
+			// Their warnings have no workflow source location; errors remain configuration failures.
 			line := script.originalLine(err.Line)
 			if line == 0 {
 				if err.Line != script.startupLine || err.Level == "error" {

@@ -17,7 +17,6 @@ import (
 
 const shellcheckSchemaVersion = "0.11.0"
 const shellcheckSchemaPath = "schemas/shellcheck/" + shellcheckSchemaVersion + ".schema.json"
-const shellcheckSchemaURL = "https://raw.githubusercontent.com/kjanat/actionlint/HEAD/" + shellcheckSchemaPath
 
 func reflector() *jsonschema.Reflector {
 	r := &jsonschema.Reflector{
@@ -42,8 +41,8 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 	switch t {
 	case reflect.TypeFor[actionlint.ShellcheckConfigSource]():
 		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{
-			{Type: "string", MinLength: new(uint64(1))},
-			{Ref: shellcheckSchemaURL},
+			{Type: "string", MinLength: new(uint64(1)), Not: &jsonschema.Schema{Pattern: `[\x00\r\n]`}},
+			{Ref: shellcheckSchemaPath},
 		}}
 	case reflect.TypeFor[actionlint.ShellcheckToolConfig]():
 		mapping := reflectMapping(struct {
@@ -174,7 +173,8 @@ func generate() ([]byte, error) {
 		return nil, err
 	}
 	s := r.Reflect(actionlint.Config{})
-	s.ID = "https://raw.githubusercontent.com/kjanat/actionlint/HEAD/actionlint.schema.json"
+	// Resolve tool schemas beside this document in Git checkouts and npm packages.
+	s.ID = ""
 	s.Title = "actionlint configuration"
 	s.Comments = "Generated from config.go by go generate -run generate-config-schema. DO NOT EDIT."
 	return encodeSchema(s)
@@ -186,7 +186,7 @@ func generateShellcheckSchema() ([]byte, error) {
 		return nil, err
 	}
 	s := r.Reflect(actionlint.ShellcheckConfig{})
-	s.ID = jsonschema.ID(shellcheckSchemaURL)
+	s.ID = ""
 	s.Title = "ShellCheck " + shellcheckSchemaVersion + " inline directives for actionlint"
 	s.Comments = "Versioned snapshot of actionlint's YAML representation of ShellCheck directives. Normal generation does not overwrite this file; see scripts/generate-config-schema/README.md."
 	return encodeSchema(s)

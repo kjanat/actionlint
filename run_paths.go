@@ -84,6 +84,18 @@ func (paths runPaths) resolve(directory runDirectory) runDirectory {
 	if !ok {
 		return unknown
 	}
+	workspace, err := filepath.EvalSymlinks(paths.workspace)
+	if err != nil {
+		return unknown
+	}
+	local, err = filepath.EvalSymlinks(local)
+	if err != nil {
+		return unknown
+	}
+	relative, err := filepath.Rel(workspace, local)
+	if err != nil || !filepath.IsLocal(relative) {
+		return unknown
+	}
 	info, err := os.Stat(local)
 	if err != nil || !info.IsDir() {
 		return unknown
