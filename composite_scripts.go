@@ -42,7 +42,13 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 
 	children := make([]Rule, 0, len(parents))
 	for _, parent := range parents {
-		children = append(children, compositeScriptRule(parent, call, filepath.Dir(meta.Path())))
+		child := compositeScriptRule(parent, call, filepath.Dir(meta.Path()))
+		if shellcheck, ok := child.(*RuleShellcheck); ok {
+			if err := shellcheck.prepareConfigPath(); err != nil {
+				return err
+			}
+		}
+		children = append(children, child)
 	}
 	v.compositeRules = append(v.compositeRules, compositeScriptRules{meta, children})
 	parser := &parser{sourceLines: splitSourceLines(meta.src)}

@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -55,8 +56,15 @@ func (v *Visitor) Visit(n *Workflow) error {
 		t = time.Now()
 	}
 
+	var actionPathErr error
+	compositeStart := len(v.compositeRules)
 	for _, p := range v.passes {
 		if err := p.VisitWorkflowPre(n); err != nil {
+			if _, shellcheck := p.(*RuleShellcheck); shellcheck && v.actions != nil && errors.Is(err, errConfigActionPathUnavailable) {
+				// Validate action-only configuration when entering the actual composite.
+				actionPathErr = err
+				continue
+			}
 			return err
 		}
 	}
@@ -69,6 +77,18 @@ func (v *Visitor) Visit(n *Workflow) error {
 	for _, j := range n.Jobs {
 		if err := v.visitJob(j); err != nil {
 			return err
+		}
+	}
+	if actionPathErr != nil {
+		for _, composite := range v.compositeRules[compositeStart:] {
+			for _, rule := range composite.rules {
+				if _, shellcheck := rule.(*RuleShellcheck); shellcheck {
+					actionPathErr = nil
+				}
+			}
+		}
+		if actionPathErr != nil {
+			return actionPathErr
 		}
 	}
 

@@ -3,13 +3,17 @@
 Run `go generate -run generate-config-schema` from the repository root to update
 `actionlint.schema.json`. Actionlint owns tool selection, enablement, and the union
 of an rc path and inline directives. The inline ShellCheck directives use a `$ref`
-to `schemas/shellcheck/0.11.0.schema.json` through its GitHub raw URL.
+to `schemas/shellcheck/0.11.0.schema.json`, relative to the main schema's location.
+Both schemas omit `$id` so their retrieval location determines reference resolution.
+An installed npm package uses its bundled schema; a versioned CDN URL or Git
+commit URL uses the schema from that same release or revision.
 
 The version identifies the ShellCheck directive contract represented by the YAML
-mapping. This is an actionlint-maintained schema, not an upstream ShellCheck
-schema or a requirement that users install exactly that ShellCheck version.
-Runtime configuration parsing does not download schemas. Tests register the local
-snapshot under its URL and disable external loading.
+mapping. Actionlint maintains this schema. Users can select their installed
+ShellCheck version independently.
+Runtime configuration parsing does not download schemas. Tests check relative
+resolution for local packages, CDN releases and Git revisions with external
+loading disabled.
 
 ## Updating ShellCheck support
 

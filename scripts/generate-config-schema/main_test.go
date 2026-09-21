@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -70,11 +71,46 @@ func TestShellcheckSchemaSnapshot(t *testing.T) {
 
 func TestShellcheckSchemaReference(t *testing.T) {
 	b := generatedSchema(t)
-	if !strings.Contains(string(b), `"$ref": "`+shellcheckSchemaURL+`"`) {
+	if !strings.Contains(string(b), `"$ref": "`+shellcheckSchemaPath+`"`) {
 		t.Fatal("root schema must reference the versioned ShellCheck schema")
 	}
 	if strings.Contains(string(b), `"source-path"`) {
 		t.Fatal("root schema must not inline ShellCheck directive properties")
+	}
+}
+
+func TestSchemaRelativeResolution(t *testing.T) {
+	root := generatedSchema(t)
+	tool, err := os.ReadFile(shellcheckSchemaPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, base := range []string{
+		"file:///offline/node_modules/@kjanat/actionlint/actionlint.schema.json",
+		"https://cdn.jsdelivr.net/npm/@kjanat/actionlint@1.17.0/actionlint.schema.json",
+		"https://raw.githubusercontent.com/kjanat/actionlint/b837c5abb3549967ff6f30c852ede599dabdb339/actionlint.schema.json",
+	} {
+		t.Run(base, func(t *testing.T) {
+			rootURL, err := url.Parse(base)
+			if err != nil {
+				t.Fatal(err)
+			}
+			toolURL := rootURL.ResolveReference(&url.URL{Path: shellcheckSchemaPath}).String()
+			c := validator.NewCompiler()
+			c.UseLoader(validator.SchemeURLLoader{})
+			for location, data := range map[string][]byte{base: root, toolURL: tool} {
+				var document any
+				if err := json.Unmarshal(data, &document); err != nil {
+					t.Fatal(err)
+				}
+				if err := c.AddResource(location, document); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := c.Compile(base); err != nil {
+				t.Fatalf("schema must resolve its tool reference beside the loaded root without remote fallback: %v", err)
+			}
+		})
 	}
 }
 
@@ -95,7 +131,7 @@ func TestSchemaValidation(t *testing.T) {
 	if err := json.Unmarshal(toolSchema, &toolDocument); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.AddResource(shellcheckSchemaURL, toolDocument); err != nil {
+	if err := c.AddResource("https://example.com/"+shellcheckSchemaPath, toolDocument); err != nil {
 		t.Fatal(err)
 	}
 	const url = "https://example.com/actionlint.schema.json"
@@ -123,6 +159,10 @@ func TestSchemaValidation(t *testing.T) {
 		{"ShellCheck rc workspace directory", `tools: {shellcheck: {config: '${{ github.workspace }}/.shellcheckrc'}}`, true, true},
 		{"ShellCheck rc action directory", `tools: {shellcheck: {config: '${{ github.action_path }}/.shellcheckrc'}}`, true, true},
 		{"ShellCheck empty rc path", `tools: {shellcheck: {config: ''}}`, false, false},
+		{"ShellCheck multiline rc path", `tools: {shellcheck: {config: "first\nsecond"}}`, false, false},
+		{"ShellCheck trailing newline rc path", `tools: {shellcheck: {config: "file\n"}}`, false, false},
+		{"ShellCheck carriage return rc path", `tools: {shellcheck: {config: "file\r"}}`, false, false},
+		{"ShellCheck NUL rc path", `tools: {shellcheck: {config: "file\0"}}`, false, false},
 		{"ShellCheck invalid rc type", `tools: {shellcheck: {config: false}}`, false, false},
 		{"ShellCheck nullable", `tools: {shellcheck: {enabled: null, config: null}}`, true, true},
 		{"ShellCheck directives", `tools: {shellcheck: {config: {disable: [SC2086, SC3000-SC4000, all], enable: [all], shell: bash, external-sources: false, extended-analysis: true, source-path: ['my scripts']}}}`, true, true},

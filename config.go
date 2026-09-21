@@ -419,7 +419,7 @@ type ShellcheckConfig struct {
 	Disable []string `yaml:"disable" jsonschema:"nullable,pattern=^(all|(SC)?[0-9]+(-(SC)?[0-9]+)?)$"`
 	// Enable lists optional check names, or all. ShellCheck validates available names.
 	Enable []string `yaml:"enable" jsonschema:"nullable,pattern=^[a-zA-Z-]+$"`
-	// Shell overrides the inferred dialect for shell scripts, not Python or PowerShell steps.
+	// Shell overrides the inferred dialect of scripts selected for ShellCheck.
 	Shell *string `yaml:"shell" jsonschema:"nullable,enum=sh,enum=bash,enum=dash,enum=ksh,enum=busybox"`
 	// ExtendedAnalysis enables or disables ShellCheck dataflow analysis. Omission keeps its default.
 	ExtendedAnalysis *bool `yaml:"extended-analysis" jsonschema:"nullable"`

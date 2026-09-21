@@ -1,5 +1,4 @@
 {
-  "$id": "https://raw.githubusercontent.com/kjanat/actionlint/HEAD/schemas/shellcheck/0.11.0.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "Versioned snapshot of actionlint's YAML representation of ShellCheck directives. Normal generation does not overwrite this file; see scripts/generate-config-schema/README.md.",
   "title": "ShellCheck 0.11.0 inline directives for actionlint",
@@ -69,8 +68,8 @@
     },
     "shell": {
       "title": "shell",
-      "description": "Overrides the inferred dialect for shell scripts, not Python or PowerShell steps.",
-      "markdownDescription": "Overrides the inferred dialect for shell scripts, not Python or PowerShell steps.",
+      "description": "Overrides the inferred dialect of scripts selected for ShellCheck.",
+      "markdownDescription": "Overrides the inferred dialect of scripts selected for ShellCheck.",
       "oneOf": [
         {
           "type": "string",
