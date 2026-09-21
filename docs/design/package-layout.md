@@ -11,7 +11,7 @@ Implementation update for kjanat/actionlint#155: the frontend now lives in `inte
 The root package exposes analysis sessions, result rendering and configuration inspection, and no longer imports Cobra or
 pflag. Build metadata remains in `version.go`, which also supplies the template's `getVersion` function. This removes the
 frontend/version dependency described below. The measurements and proposed broader package split remain the historical
-snapshot at kjanat/actionlint@2f85e20.
+snapshot at [`kjanat/actionlint@2f85e20`](https://github.com/kjanat/actionlint/commit/2f85e2025722e99b2149cb97f7acfa1a0ff35c85).
 
 ## How the graph was measured
 
@@ -21,7 +21,7 @@ attribute every `types.Object` in `TypesInfo.Uses` to the file holding the decla
 `_test.go` files, and split `error.go` at symbol level into the `Error` value object and the `ErrorFormatter` side.
 Without that split the `{ErrorFormatter, command, linter}` cycle is smeared across three apparent ones.
 
-Every figure below was measured at commit kjanat/actionlint@2f85e20. Section [Reproducing the measurements](#reproducing-the-measurements)
+Every figure below was measured at commit [`kjanat/actionlint@2f85e20`](https://github.com/kjanat/actionlint/commit/2f85e2025722e99b2149cb97f7acfa1a0ff35c85). Section [Reproducing the measurements](#reproducing-the-measurements)
 gives a command for each claim.
 
 ## What the root package holds today
@@ -491,7 +491,7 @@ with no open feature branch.
 | "27 commits touching root `.go` files in the last six months, across 10 unique files" | 14 commits over 10 unique root files. 27 is the count for any `.go` file in the module. The fetched `upstream/main` also stops at 2026-04-19, so the window holds about two months of upstream activity |
 | the five-package layout                                                               | contains three import cycles, none of them named in the issue                                                                                                                                           |
 
-65 of the 82 root files differ from `upstream/main` at rhysd/actionlint@011a6d15: 17 identical, 57 changed, 8 present only in the fork
+65 of the 82 root files differ from `upstream/main` at [`rhysd/actionlint@011a6d1`](https://github.com/rhysd/actionlint/commit/011a6d15e749bb3f2d771eed9c7aa0e7e3e10ee7): 17 identical, 57 changed, 8 present only in the fork
 (`rule_parallel_steps.go`, `rule_action_test.go`, `rule_shell_name_test.go`, the three policy-rule files and the two
 new policy test files).
 

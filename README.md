@@ -10,7 +10,7 @@ This is an actively maintained fork of [rhysd/actionlint][upstream]. It carries 
 
 ## Fork provenance and versioning
 
-This fork builds on upstream [v1.7.12](https://github.com/rhysd/actionlint/releases/tag/v1.7.12) (rhysd/actionlint@914e7df21a07ef503a81201c76d2b11c789d3fca). Its independent release series starts at v1.8.0. Tags published by `kjanat/actionlint` identify this fork's releases; a matching tag need not exist in `rhysd/actionlint`.
+This fork builds on upstream [v1.7.12](https://github.com/rhysd/actionlint/releases/tag/v1.7.12) ([`rhysd/actionlint@914e7df`](https://github.com/rhysd/actionlint/commit/914e7df21a07ef503a81201c76d2b11c789d3fca)). Its independent release series starts at v1.8.0. Tags published by `kjanat/actionlint` identify this fork's releases; a matching tag need not exist in `rhysd/actionlint`.
 
 The [changelog](CHANGELOG.md#upstream-history) separates fork releases from inherited upstream history. Releases follow [Semantic Versioning for the supported CLI and configuration contracts](CONTRIBUTING.md#release-versioning), with [CLI compatibility](CONTRIBUTING.md#cli-compatibility) maintained for existing integrations. New or corrected lint findings can affect CI results; the [Go library API remains unstable](CONTRIBUTING.md#go-library-api).
 
