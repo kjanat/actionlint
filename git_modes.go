@@ -11,7 +11,7 @@ import (
 	"golang.org/x/sys/execabs"
 )
 
-// Index snapshots live for one analysis, not for the lifetime of a session.
+// Each analysis gets fresh Git index snapshots.
 type gitModes struct {
 	mu      sync.Mutex
 	entries map[string]*gitModeSnapshot
@@ -62,8 +62,8 @@ func (cache *gitModes) load(ctx context.Context, root string) *gitModeSnapshot {
 
 func repositoryGit(ctx context.Context, git, root string, args ...string) *exec.Cmd {
 	command := exec.CommandContext(ctx, git, append([]string{"-C", root}, args...)...)
-	// Parent Git commands and hooks can export repository overrides. This query
-	// belongs to the workflow's project, not whichever repository invoked us.
+	// Clear repository overrides inherited from Git commands or hooks so the
+	// query uses the workflow's project.
 	for _, entry := range os.Environ() {
 		name, _, _ := strings.Cut(entry, "=")
 		switch strings.ToUpper(name) {
