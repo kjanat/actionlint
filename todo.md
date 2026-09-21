@@ -130,6 +130,12 @@ Opaque actions/commands, dynamic/control-flow cases and concurrent execution
 invalidate certainty. Git index paths are tracked as consumed inputs. This rule
 does not depend on ShellCheck and does not execute workflow scripts.
 
+Referenced local composite actions now feed their run steps into ShellCheck,
+Pyflakes and executable-bit checking, including nested local calls. Diagnostics
+retain metadata source locations and path-specific ignores. Composite scripts
+do not inherit workflow/job run defaults; checkout and permission state follow
+the caller. Cycles and unknown execution paths remain conservative.
+
 Shared configuration exposes `tools.shellcheck.enabled` (default true), boolean
 `tools.shellcheck` shorthand, and `tools.shellcheck.config` as an inline mapping
 or rc file/directory path. Both CLI and Action apply it through the

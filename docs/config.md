@@ -76,7 +76,10 @@ still checks the script but disables following sources. This avoids analyzing
 unrelated local files as if they were available to the runner. Embedded scripts
 arrive on stdin, so `SCRIPTDIR` does not refer to the YAML file's directory. Keep
 command-specific `source` directives inside the script. This integration checks
-workflow run steps; it does not yet run ShellCheck on composite action steps.
+workflow run steps and referenced local composite actions, including nested
+actions. Composite steps use their own shell and working directory; they do not
+inherit workflow/job `defaults.run`. Their default directory is the workspace,
+not the directory containing `action.yml` or `action.yaml`.
 
 The Action's explicit `shellcheck-args` override corresponding settings where
 ShellCheck supports that precedence; include/exclude/enable lists retain native

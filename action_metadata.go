@@ -171,6 +171,7 @@ type ActionCompositeStep struct {
 	withExpr        *ActionExprString
 	envExpr         *ActionExprString
 	id              *ActionExprString
+	node            *yaml.Node
 	// Uses is the value of "uses" key in the step. It is nil when the key is absent or its value
 	// is not a string.
 	Uses *string `json:"uses"`
@@ -183,6 +184,7 @@ func (s *ActionCompositeStep) UnmarshalYAML(n *yaml.Node) error {
 	}
 
 	s.Line, s.Column = n.Line, n.Column
+	s.node = n
 	if n.Kind != yaml.MappingNode {
 		return nil
 	}
