@@ -190,6 +190,7 @@ jobs:
           cp -R "${RUNNER_TEMP}/actionlint-action/action" .actionlint-action-test
       - name: Exercise the action through the real runner
         id: smoke
+        # ./ loads the release bundle generated in this job's workspace.
         uses: ./.actionlint-action-test
         with: { files: testdata/ok/minimal.yaml, format: json }
       - name: Check runner outputs and input compatibility
