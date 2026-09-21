@@ -1,15 +1,17 @@
-package main
+package githubaction
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"actionlint.kjanat.dev"
+	"go.yaml.in/yaml/v4"
 )
 
 const cleanWorkflow = `on: push
@@ -269,6 +271,60 @@ func TestActionLintsWorkflowEndToEnd(t *testing.T) {
 	)
 	if !strings.HasPrefix(out.String(), status+"::stop-commands::DELIM\n"+want) {
 		t.Errorf("wanted the status and output wrapped in stop commands but got %q", out.String())
+	}
+}
+
+func TestActionIgnoreAndAutomaticConfigEndToEnd(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		inputYAML  string
+		configName string
+		wantCode   int
+	}{
+		{"no ignore", "ignore: ''\n", "", 1},
+		{"quoted block pattern", "ignore: |\n  'label \"ubuntu-24.04-custom\" is unknown.'\n", "", 1},
+		{"block pattern", "ignore: |\n  label \"ubuntu-24.04-custom\" is unknown\\.\n", "", 0},
+		{"quoted scalar pattern", "ignore: 'label \"ubuntu-24.04-custom\" is unknown\\.'\n", "", 0},
+		{"automatic yaml config", "ignore: ''\n", "actionlint.yaml", 0},
+		{"automatic yml config", "ignore: ''\n", "actionlint.yml", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var in struct {
+				Ignore string `yaml:"ignore"`
+			}
+			if err := yaml.Unmarshal([]byte(tc.inputYAML), &in); err != nil {
+				t.Fatal(err)
+			}
+			files := map[string]string{
+				".git":                        "",
+				".github/workflows/test.yaml": strings.ReplaceAll(brokenWorkflow, "unknown-runner", "ubuntu-24.04-custom"),
+			}
+			if tc.configName != "" {
+				files[".github/"+tc.configName] = "self-hosted-runner:\n  labels:\n    - ubuntu-24.04-custom\n"
+			}
+			workspace := workspaceWith(t, files)
+			outputPath := filepath.Join(t.TempDir(), "output")
+			env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath}
+			var out strings.Builder
+			a := &action{
+				args:    args("", "github", in.Ignore, "", "false", "false", ".", "", "true"),
+				stdout:  &out,
+				env:     func(name string) string { return env[name] },
+				lint:    runLinter,
+				newID:   fixedID("DELIM"),
+				timeout: lintTimeout,
+			}
+			if code := a.run(); code != tc.wantCode {
+				t.Fatalf("wanted exit code %d but got %d: %s", tc.wantCode, code, out.String())
+			}
+			outputs := parseOutputs(read(t, outputPath))
+			if want := strconv.Itoa(tc.wantCode); outputs["problem-count"] != want {
+				t.Errorf("wanted %s problems but got %#v", want, outputs)
+			}
+			if tc.wantCode == 1 && !strings.Contains(outputs["output"], `label "ubuntu-24.04-custom" is unknown.`) {
+				t.Errorf("wanted the unknown runner diagnostic but got %q", outputs["output"])
+			}
+		})
 	}
 }
 

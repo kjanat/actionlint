@@ -513,9 +513,31 @@ string are automatically unescaped.
 
 ## Use actionlint on GitHub Actions
 
-The repository provides a Docker action backed by a prebuilt image containing
-actionlint, ShellCheck, and pyflakes. It reports each problem as a GitHub
-annotation by default, without compiling actionlint in the consumer's workflow.
+The JavaScript action runs the ordinary actionlint binary on Linux, macOS, and
+Windows, including runners without Docker. Every invocation downloads the matching
+actionlint binary and verifies its SHA-256 checksum. ShellCheck and pyflakes are
+enabled by default; missing copies of these tools are installed in the runner's
+tool cache. Python must be available when pyflakes is enabled. Problems appear as
+GitHub annotations.
+
+By default, `actionlint` and enabled `shellcheck`/`pyflakes` commands are available
+on PATH in subsequent steps. Each tool has an independent PATH override.
+For example, keep ShellCheck enabled for linting without adding it to PATH:
+
+```yaml
+- uses: kjanat/actionlint@v1
+  with:
+    add-shellcheck-to-path: false
+- run: actionlint -version
+```
+
+Set `add-actionlint-to-path`, `add-shellcheck-to-path`, and `add-pyflakes-to-path`
+to `false` to disable all PATH additions. Setting `shellcheck: false` or
+`pyflakes: false` skips both provisioning and exporting that tool.
+
+The exported actionlint binary stays in a fresh runner temporary directory until
+job cleanup. Each invocation still downloads and verifies its own binary;
+actionlint is never cached or reused from PATH.
 
 ```yaml
 name: Lint GitHub Actions workflows
@@ -531,55 +553,146 @@ jobs:
         uses: kjanat/actionlint@v1
 ```
 
-Docker container actions run only on Linux, and this action also needs a
-reachable Docker daemon. `ubuntu-slim` is not supported: it runs the job in an
-unprivileged container and provides the Docker client, but no daemon or Docker
-socket. Standard Ubuntu runners, including `ubuntu-24.04-arm` and
-`ubuntu-26.04-arm`, are supported by the published `linux/amd64` and
-`linux/arm64` image.
-
-On a daemon-less runner such as `ubuntu-slim`, download and run the binary
-instead. `uses: docker://ghcr.io/kjanat/actionlint:latest` is not an alternative
-there because it has the same Docker daemon requirement.
-
-```yaml
-- uses: actions/checkout@v7
-  with: { persist-credentials: false }
-- name: Download and run actionlint
-  env: { GH_TOKEN: "${{ github.token }}", GH_REPO: "kjanat/actionlint" }
-  run: |
-    case "${RUNNER_ARCH}" in
-      X64) asset_arch=amd64 ;;
-      ARM64) asset_arch=arm64 ;;
-      ARM) asset_arch=armv6 ;;
-      X86) asset_arch=386 ;;
-      *) echo "Unsupported runner architecture: ${RUNNER_ARCH}" >&2; exit 1 ;;
-    esac
-    gh release download --pattern "actionlint_*_${RUNNER_OS,,}_${asset_arch}.tar.gz" --output - | tar -xzf - actionlint
-    ./actionlint -color
-```
-
-The binary-only path does not bundle ShellCheck or pyflakes; install them on the
-runner when those integrations are required.
-
-`v1` follows compatible v1 releases, and `v1.16` follows v1.16 patch releases. Each points to a commit immediately
-after the release that pins the published container image by digest. `v1.17.0` is a versioned release tag.
-For an immutable action reference with a pinned image, use the full commit SHA resolved from a
-floating tag.
+`v1` follows compatible v1 releases, and minor tags follow patch releases. These
+tags point to a release commit containing the JavaScript bundle. Pin that full
+release commit SHA or an `action-vX.Y.Z` tag for an immutable JavaScript action reference.
+`v1.17.0` is a versioned release tag for the CLI and source distribution.
+New source tags and source checkouts do not contain generated JavaScript and
+cannot be used directly as the action. Existing immutable release tags retain their
+original implementation.
 
 The action accepts these inputs:
 
-| Input               | Default       | Description                                                                  |
-| ------------------- | ------------- | ---------------------------------------------------------------------------- |
-| `files`             | all workflows | Newline-separated workflow file paths                                        |
-| `format`            | `github`      | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, or `sarif` |
-| `ignore`            | none          | Newline-separated regular expressions for errors to ignore                   |
-| `config-file`       | automatic     | Configuration file relative to `working-directory`                           |
-| `shellcheck`        | `true`        | Enable ShellCheck integration                                                |
-| `pyflakes`          | `true`        | Enable pyflakes integration                                                  |
-| `working-directory` | `.`           | Directory to lint, relative to the repository workspace                      |
-| `output-file`       | none          | Repository-relative file to receive the selected output                      |
-| `fail-on-error`     | `true`        | Fail when problems are found; command failures always fail                   |
+| Input                        | Default       | Description                                                                   |
+| ---------------------------- | ------------- | ----------------------------------------------------------------------------- |
+| `files`                      | all workflows | Newline-separated workflow file paths                                         |
+| `format`                     | `github`      | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, or `sarif`  |
+| `ignore`                     | none          | Newline-separated regular expressions for errors to ignore                    |
+| `config-file`                | automatic     | Configuration file relative to `working-directory`                            |
+| `config`                     | none          | Complete inline configuration as YAML or JSON                                 |
+| `self-hosted-runner`         | inherited     | YAML/JSON mapping with a `labels` list                                        |
+| `config-variables`           | inherited     | YAML/JSON list of permitted variable names, or `null`                         |
+| `config-secrets`             | inherited     | YAML/JSON list of permitted secret names, or `null`                           |
+| `paths`                      | inherited     | YAML/JSON mapping of workflow globs to configuration                          |
+| `assume-default-permissions` | inherited     | `restricted` or `permissive`                                                  |
+| `policy`                     | inherited     | YAML/JSON mapping of policy settings                                          |
+| `shellcheck`                 | `true`        | Enable ShellCheck integration                                                 |
+| `shellcheck-config`          | `false`       | `true` for discovery, `false` to disable, or a workspace-relative config file |
+| `shellcheck-args`            | none          | Additional checking options as a YAML/JSON array of strings                   |
+| `pyflakes`                   | `true`        | Enable pyflakes integration                                                   |
+| `add-actionlint-to-path`     | `true`        | Make actionlint available on PATH for subsequent job steps                    |
+| `add-shellcheck-to-path`     | `true`        | Make ShellCheck available on PATH when ShellCheck is enabled                  |
+| `add-pyflakes-to-path`       | `true`        | Make pyflakes available on PATH when pyflakes is enabled                      |
+| `working-directory`          | `.`           | Directory to lint, relative to the repository workspace                       |
+| `output-file`                | none          | Repository-relative file to receive the selected output                       |
+| `fail-on-error`              | `true`        | Fail when problems are found; command failures always fail                    |
+
+When `config-file` is omitted, the action automatically loads
+`.github/actionlint.yaml` or `.github/actionlint.yml` from the checked-out repository.
+If both exist, `.yaml` wins. The log shows the selected file and any overriding
+inputs. No config file is required.
+
+ShellCheck configuration discovery is disabled by default, preserving existing
+Action behavior for external rc files. For inline settings or an explicit rc path,
+use [`tools.shellcheck.config` and `tools.shellcheck.enabled`](config.md#shellcheck)
+in actionlint.yaml, or the corresponding `tools` Action input.
+
+Set `shellcheck-config: true` to search for `.shellcheckrc` or `shellcheckrc`.
+Discovery starts at the Action's `working-directory`, searches its parents, then checks
+ShellCheck's user config locations. It does not start at each workflow file's
+directory. An explicit config path is always relative to `GITHUB_WORKSPACE`,
+even when `working-directory` points to a subdirectory; missing or unreadable
+files are invalid inputs. This input retains its workspace-relative semantics;
+paths inside `tools.shellcheck.config` instead default to the directory containing
+actionlint.yaml. Relative source paths use each workflow step's effective working
+directory; see [ShellCheck configuration](config.md#shellcheck).
+
+```yaml
+with:
+  shellcheck-config: .github/shellcheckrc
+  shellcheck-args: |
+    - --severity=warning
+    - --enable=check-unassigned-uppercase
+    - --source-path
+    - scripts with spaces
+```
+
+Arguments are passed literally, without shell expansion. Both `--option=value`
+and separate value arguments work. Inherited `SHELLCHECK_OPTS` supplies
+space-separated flags; `shellcheck-args` overrides single-value options such as
+shell and severity. Include/exclude/enable lists and source paths accumulate,
+with duplicate values removed. Use the array input for values containing spaces
+or quotes. ShellCheck still interprets the selected configuration file itself.
+
+`--rcfile` and `--norc` select configuration in argument order. An explicit
+`shellcheck-config` input takes precedence over both; a blank input retains the
+flag selection, then `tools.shellcheck.config`. Discovery stays disabled when none
+selects a configuration.
+Output flags are normalized to the internal JSON1 transport; use the Action's
+`format` input to choose the report format. Help/version/list-only flags and
+additional input files are rejected because they do not produce workflow
+diagnostics. `--check-sourced` is also unsupported until findings in additional
+files can be mapped to their own source locations. Both new inputs are ignored
+when `shellcheck: false`.
+
+Shell inference follows step, job and workflow defaults, then the runner:
+Windows uses PowerShell, container jobs use `sh`, and other jobs assume Bash.
+Known literal expressions are resolved; unresolved shell or container overrides
+do not fall back to a guessed dialect. A runner lacking Bash may fall back to
+`sh`; static analysis cannot detect its installed executables. Implicit Bash uses
+`-e`; explicit `shell: bash` also enables `pipefail`. Custom templates only add
+statically recognized startup options; quoted, escaped or dynamic arguments do
+not receive guessed defaults. `--shell` overrides the analysis dialect for supported
+shell scripts. See the [runner's shell handling](https://github.com/actions/runner/blob/main/src/Runner.Worker/Handlers/ScriptHandler.cs)
+and [ShellCheck options](https://github.com/koalaman/shellcheck/blob/master/shellcheck.1.md#options).
+
+All configuration inputs use the same names and types as the
+[configuration file](config.md). Individual inputs override `config`, which
+overrides the selected config file. Maps merge recursively; lists and scalars
+replace the corresponding value. A blank input inherits, `{}` retains existing
+map entries, `[]` clears a list, and `null` resets a value to its default.
+Existing inputs, outputs, and failure behavior are retained.
+
+For example, configure the custom runner directly:
+
+```yaml
+- uses: kjanat/actionlint@v1
+  with:
+    self-hosted-runner: |
+      labels: [ubuntu-24.04-custom]
+    policy: |
+      require-job-timeout: true
+```
+
+`config` accepts both inline YAML and JSON, including output from `toJSON`:
+
+```yaml
+- uses: kjanat/actionlint@v1
+  with:
+    config: ${{ toJSON(fromJSON(vars.ACTIONLINT_CONFIG)) }}
+```
+
+Here `vars.ACTIONLINT_CONFIG` contains a JSON object. If it already contains
+serialized YAML or JSON, `config: ${{ vars.ACTIONLINT_CONFIG }}` works directly.
+An expression producing an object must use `toJSON` because action inputs are strings.
+Unknown configuration keys and invalid input values produce an input error.
+
+For `ignore`, write one regular expression per line. Inside a YAML block scalar
+(`|`), quotes are literal characters, so do not wrap each pattern in quotes:
+
+```yaml
+- uses: kjanat/actionlint@v1
+  with:
+    ignore: |
+      label "ubuntu-24\.04-custom" is unknown\.
+```
+
+For a single pattern, YAML scalar quoting is also valid:
+`ignore: 'label "ubuntu-24\.04-custom" is unknown\.'`.
+The action passes patterns directly to the regular expression engine; it does
+not interpret shell quoting. `\.` matches a literal period; plain `.` matches
+any character. If removing surrounding quotes would match a remaining problem,
+the action adds a hint and keeps the original lint result.
 
 The `exit-code`, `result`, `problems-found`, `problem-count`, `output`, and
 `output-file` outputs can be used by later steps. For example, this writes JSON
@@ -605,8 +718,8 @@ found:
   run: echo "$RESULT ($PROBLEM_COUNT problems)"
 ```
 
-The download script remains useful on macOS, Windows, or when direct access to
-the executable is preferred. It sets an absolute file path of the downloaded
+The download script remains useful when direct access to the executable is
+preferred. It sets an absolute file path of the downloaded
 executable to the `executable` output for following steps.
 
 Here is an example of simple workflow to run actionlint on GitHub Actions.
@@ -701,18 +814,13 @@ Available tags are:
 - `ghcr.io/kjanat/actionlint:{version}`:\
   Release-specific actionlint image rather than a moving alias.\
   (e.g. `ghcr.io/kjanat/actionlint:1.17.0`)
-- `ghcr.io/kjanat/actionlint:action-{version}`:\
-  Release-specific image used by `action.yml` rather than a moving alias.\
-  (e.g. `action-1.17.0`)
-- `ghcr.io/kjanat/actionlint:action-v1`:\
-  Moving alias for the latest compatible v1 image available to Docker Action users.
-- `ghcr.io/kjanat/actionlint:action-latest`:\
-  Moving alias for the latest stable image available to Docker Action users.
 
 The CLI image is also published to Docker Hub as `kjanat/actionlint:latest` and
 `kjanat/actionlint:{version}`. Both registries carry the same manifest, so pick
-whichever your setup pulls from more easily. The `action-*` tags exist on
-`ghcr.io` only, since `action.yml` refers to them there.
+whichever your setup pulls from more easily. Previous `action-*` images remain
+available for older action refs; new releases use the JavaScript action.
+The ordinary binary also supports `-github-action` to run the action adapter
+with `INPUT_*`, `GITHUB_WORKSPACE`, and `GITHUB_OUTPUT` environment variables.
 
 For byte-for-byte reproducibility, use the image's manifest digest as
 `ghcr.io/kjanat/actionlint:{version}@sha256:<digest>`.

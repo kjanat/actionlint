@@ -2,13 +2,13 @@
 ---
 name: actionlint by @kjanat
 description: >-
-  Static-check GitHub Actions workflow files with actionlint, ShellCheck, and
-  pyflakes.
+  Static-check GitHub Actions workflow files with actionlint,
+  ShellCheck, and pyflakes.
 inputs:
   files:
     description: >-
-      Newline-separated workflow file paths. Empty checks every workflow in the
-      repository.
+      Newline-separated workflow file paths.
+      Empty checks every workflow in the repository.
     required: false
     default: ""
   format:
@@ -24,15 +24,83 @@ inputs:
     default: ""
   config-file:
     description: >-
-      Path to an actionlint configuration file, relative to working-directory.
+      Path to an actionlint configuration file,
+      relative to working-directory.
+    required: false
+    default: ""
+  config:
+    description: >-
+      Inline actionlint configuration as YAML or JSON,
+      merged over the config file.
+    required: false
+    default: ""
+  self-hosted-runner:
+    description: >-
+      Self-hosted runner configuration as YAML or JSON,
+      including custom labels.
+    required: false
+    default: ""
+  config-variables:
+    description: >-
+      Allowed configuration variable names as a YAML or JSON list.
+    required: false
+    default: ""
+  config-secrets:
+    description: >-
+      Allowed secret names as a YAML or JSON list.
+    required: false
+    default: ""
+  paths:
+    description: >-
+      Path-specific configuration as a YAML or JSON mapping.
+    required: false
+    default: ""
+  assume-default-permissions:
+    description: >-
+      Default permissions assumption as YAML or JSON,
+      overriding the config file.
+    required: false
+    default: ""
+  policy:
+    description: >-
+      Workflow policy configuration as a YAML or JSON mapping.
     required: false
     default: ""
   shellcheck:
     description: Run ShellCheck for shell scripts in workflow steps.
     required: false
     default: "true"
+  tools:
+    description: External tool configuration as a YAML or JSON mapping, overriding the config file.
+    required: false
+    default: ""
+  shellcheck-config:
+    description: >-
+      ShellCheck config: true discovers from working-directory, false disables
+      discovery, or specify a configuration file relative to GITHUB_WORKSPACE.
+      Blank inherits config flags; discovery is otherwise disabled.
+    required: false
+    default: ""
+  shellcheck-args:
+    description: >-
+      ShellCheck options as a YAML/JSON array of strings, merged over inherited
+      flags and workflow defaults. Reporting uses the action's format input.
+    required: false
+    default: ""
   pyflakes:
     description: Run pyflakes for Python scripts in workflow steps.
+    required: false
+    default: "true"
+  add-actionlint-to-path:
+    description: Make actionlint available on PATH for subsequent steps in this job.
+    required: false
+    default: "true"
+  add-shellcheck-to-path:
+    description: Make ShellCheck available on PATH for subsequent steps when shellcheck is enabled.
+    required: false
+    default: "true"
+  add-pyflakes-to-path:
+    description: Make pyflakes available on PATH for subsequent steps when pyflakes is enabled.
     required: false
     default: "true"
   working-directory:
@@ -46,15 +114,18 @@ inputs:
     default: ""
   fail-on-error:
     description: >-
-      Fail the step when actionlint finds problems. Invalid options and fatal
-      errors always fail.
+      Fail the step when actionlint finds problems.
+      Invalid options and fatal errors always fail.
     required: false
     default: "true"
 outputs:
   exit-code:
     description: >-
-      actionlint exit code: 0 for clean, 1 for problems, 2 for invalid options,
-      or 3 for failure.
+      actionlint exit code:
+      0 for clean,
+      1 for problems,
+      2 for invalid options, or
+      3 for failure.
   result:
     description: >-
       Result name: success, problems-found, invalid-options, or failure.
@@ -62,27 +133,13 @@ outputs:
     description: Whether actionlint found one or more problems.
   problem-count:
     description: >-
-      Number of problems found, or an empty string if actionlint could not
-      complete.
+      Number of problems found, or an empty string if
+      actionlint could not complete.
   output:
     description: Complete actionlint output in the selected format.
   output-file:
     description: >-
-      Repository-relative output file path, or an empty string when output-file
-      was not set.
-runs:
-  using: docker
-  image: docker://ghcr.io/kjanat/actionlint:action-1.17.0
-  args:
-    - ${{ inputs.files }}
-    - ${{ inputs.format }}
-    - ${{ inputs.ignore }}
-    - ${{ inputs.config-file }}
-    - ${{ inputs.shellcheck }}
-    - ${{ inputs.pyflakes }}
-    - ${{ inputs.working-directory }}
-    - ${{ inputs.output-file }}
-    - ${{ inputs.fail-on-error }}
-branding:
-  icon: check-circle
-  color: blue
+      Repository-relative output file path,
+      or an empty string when output-file was not set.
+runs: { using: node24, main: dist/main.mjs }
+branding: { icon: check-circle, color: blue }

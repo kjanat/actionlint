@@ -51,12 +51,6 @@ var targets = []*target{
 		},
 	},
 	{
-		path: "action.yml",
-		rules: []rule{
-			mustRule("action Docker image tag", `image: docker://ghcr\.io/kjanat/actionlint:action-(\d+\.\d+\.\d+)`, 1),
-		},
-	},
-	{
 		path: "scripts/download-actionlint.bash",
 		rules: []rule{
 			mustRule("default version of the download script", `(?m)^version="(\d+\.\d+\.\d+)"\r?$`, 1),
@@ -72,7 +66,6 @@ var targets = []*target{
 			mustRule("versioned release tag note", "`v(\\d+\\.\\d+\\.\\d+)` is a versioned release tag", 1),
 			mustRule("download script argument", `download-actionlint\.bash\) (\d+\.\d+\.\d+)`, 3),
 			mustRule("CLI image tag example", "`ghcr\\.io/kjanat/actionlint:(\\d+\\.\\d+\\.\\d+)`", 1),
-			mustRule("action image tag example", "`action-(\\d+\\.\\d+\\.\\d+)`", 1),
 			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 2),
 			mustRule("Trunk linter version", ` actionlint@(\d+\.\d+\.\d+)`, 2),
 		},

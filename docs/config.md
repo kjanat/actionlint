@@ -44,7 +44,7 @@ base for ordinary relative config paths. For `.github/actionlint.yaml`, both
 `./.shellcheckrc` and `"{configdir}/.shellcheckrc"` mean `.github/.shellcheckrc`.
 `{gitdir}` names the workflow's repository root, so `"{gitdir}/.github/"` selects an
 rc file in that directory. Quote paths starting with `{` so YAML reads a string.
-Without a selected configuration file, `{configdir}` falls back to the
+With configuration supplied only through inputs, `{configdir}` falls back to the
 repository root. Without a detected project, the analysis working directory is
 the fallback root. Explicitly selected files must exist and be readable; a
 selected directory must contain one of the two rc filenames.
@@ -81,9 +81,17 @@ actions. Composite steps use their own shell and working directory; they do not
 inherit workflow/job `defaults.run`. Their default directory is the workspace,
 not the directory containing `action.yml` or `action.yaml`.
 
+The Action's explicit `shellcheck-args` override corresponding settings where
+ShellCheck supports that precedence; include/exclude/enable lists retain native
+ShellCheck semantics. The Action's `tools` input can overlay this mapping, with
+lists replacing previous lists. Boolean shorthand overlays change only `enabled`,
+preserving configuration. `null` resets a setting to its default.
+
 Inline configuration works independently of rc-file discovery, which remains
-disabled by default. A config path explicitly selects an rc file. Output options
-such as `format` belong to actionlint reporting, not `tools.shellcheck.config`.
+disabled by default. A config path explicitly selects an rc file. The Action's
+`shellcheck-config` input overrides rc-file selection; `false` also disables a
+project-selected rc file, but does not disable an inline mapping. Output options such as `format`
+belong to actionlint reporting, not `tools.shellcheck.config`.
 
 The mapping is tested with ShellCheck 0.11.0. It does not pin a locally installed
 binary. New upstream options require updates to actionlint's types and editor

@@ -7,3 +7,4 @@
 /scripts/generate-popular-actions/testdata/** -text
 /scripts/generate-webhook-events/testdata/** -text
 /testdata/** -text
+/packages/github-action/tools/*.json linguist-generated=true

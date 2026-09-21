@@ -30,7 +30,9 @@
     "test:npm-facade": "node --test ./distribution/npm/facade/test/*.test.mjs",
     "test:shellcheck-versions": "node --test ./.github/actions/shellcheck-versions/shellcheck-version-lifecycle.test.mjs",
     "test:workspaces": "npm run test --workspaces",
-    "typecheck": "run -q @typescript/native --noEmit"
+    "typecheck": "run -q @typescript/native --noEmit",
+    "update:pyflakes": "npm run update:pyflakes --workspace actionlint-action",
+    "update:shellcheck": "npm run update:shellcheck --workspace actionlint-action"
   },
   "overrides": {
     "undici": ">=6.28.0"
