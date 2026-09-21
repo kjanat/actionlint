@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -13,6 +14,10 @@ import (
 	"actionlint.kjanat.dev"
 	"github.com/invopop/jsonschema"
 )
+
+const shellcheckSchemaVersion = "0.11.0"
+const shellcheckSchemaPath = "schemas/shellcheck/" + shellcheckSchemaVersion + ".schema.json"
+const shellcheckSchemaURL = "https://raw.githubusercontent.com/kjanat/actionlint/HEAD/" + shellcheckSchemaPath
 
 func reflector() *jsonschema.Reflector {
 	r := &jsonschema.Reflector{
@@ -36,15 +41,20 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 	}
 	switch t {
 	case reflect.TypeFor[actionlint.ShellcheckConfigSource]():
-		mapping := reflectMapping(actionlint.ShellcheckConfig{})
-		mapping.Version, mapping.ID = "", ""
-		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "string", MinLength: new(uint64(1))}, mapping}}
+		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{
+			{Type: "string", MinLength: new(uint64(1))},
+			{Ref: shellcheckSchemaURL},
+		}}
 	case reflect.TypeFor[actionlint.ShellcheckToolConfig]():
 		mapping := reflectMapping(struct {
 			Enabled *bool                              `yaml:"enabled" jsonschema:"nullable,default=true,description=Enable ShellCheck analysis. Omission or null keeps it enabled."`
-			Config  *actionlint.ShellcheckConfigSource `yaml:"config" jsonschema:"nullable,description=Inline directives or an rc file/directory. Relative paths and {configdir} use the directory containing actionlint.yaml or actionlint.yml; {gitdir} selects the repository root."`
+			Config  *actionlint.ShellcheckConfigSource `yaml:"config" jsonschema:"nullable"`
 		}{})
 		mapping.Version, mapping.ID = "", ""
+		config, _ := mapping.Properties.Get("config")
+		markdown := "Inline directives or an rc file/directory. \n\nRelative paths and `${{ configdir }}` use the actionlint configuration directory; `${{ gitdir }}` uses the checked repository root. \n\nActionlint also resolves `${{ github.workspace }}` and `${{ github.action_path }}` when their context is known."
+		config.Description = strings.ReplaceAll(markdown, "`", "")
+		config.Extras = map[string]any{"markdownDescription": markdown}
 		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "boolean"}, mapping}}
 	case reflect.TypeFor[actionlint.IgnorePatterns]():
 		// JSON Schema's regex format uses a different dialect from Go's regexp.
@@ -110,7 +120,9 @@ func documentFields(s *jsonschema.Schema) {
 		if s.Extras == nil {
 			s.Extras = make(map[string]any)
 		}
-		s.Extras["markdownDescription"] = s.Description
+		if _, exists := s.Extras["markdownDescription"]; !exists {
+			s.Extras["markdownDescription"] = s.Description
+		}
 	}
 	if s.Properties != nil {
 		for name, property := range s.Properties.FromOldest() {
@@ -125,8 +137,7 @@ func documentFields(s *jsonschema.Schema) {
 	documentFields(s.AdditionalProperties)
 }
 
-// generate runs from the repository root, as go generate does.
-func generate() ([]byte, error) {
+func documentedReflector() (*jsonschema.Reflector, error) {
 	r := reflector()
 	if err := r.AddGoComments("actionlint.kjanat.dev", "config.go", jsonschema.WithFullComment()); err != nil {
 		return nil, fmt.Errorf("read config comments: %w", err)
@@ -144,11 +155,11 @@ func generate() ([]byte, error) {
 		}
 		return string(text)
 	}
-	s := r.Reflect(actionlint.Config{})
+	return r, nil
+}
+
+func encodeSchema(s *jsonschema.Schema) ([]byte, error) {
 	documentFields(s)
-	s.ID = "https://raw.githubusercontent.com/kjanat/actionlint/HEAD/actionlint.schema.json"
-	s.Title = "actionlint configuration"
-	s.Comments = "Generated from config.go by go generate -run generate-config-schema. DO NOT EDIT."
 	b, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return nil, fmt.Errorf("encode schema: %w", err)
@@ -156,9 +167,61 @@ func generate() ([]byte, error) {
 	return append(b, '\n'), nil
 }
 
+// generate runs from the repository root, as go generate does.
+func generate() ([]byte, error) {
+	r, err := documentedReflector()
+	if err != nil {
+		return nil, err
+	}
+	s := r.Reflect(actionlint.Config{})
+	s.ID = "https://raw.githubusercontent.com/kjanat/actionlint/HEAD/actionlint.schema.json"
+	s.Title = "actionlint configuration"
+	s.Comments = "Generated from config.go by go generate -run generate-config-schema. DO NOT EDIT."
+	return encodeSchema(s)
+}
+
+func generateShellcheckSchema() ([]byte, error) {
+	r, err := documentedReflector()
+	if err != nil {
+		return nil, err
+	}
+	s := r.Reflect(actionlint.ShellcheckConfig{})
+	s.ID = jsonschema.ID(shellcheckSchemaURL)
+	s.Title = "ShellCheck " + shellcheckSchemaVersion + " inline directives for actionlint"
+	s.Comments = "Versioned snapshot of actionlint's YAML representation of ShellCheck directives. Normal generation does not overwrite this file; see scripts/generate-config-schema/README.md."
+	return encodeSchema(s)
+}
+
+func initializeShellcheckSchema() error {
+	b, err := generateShellcheckSchema()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(shellcheckSchemaPath), 0755); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(shellcheckSchemaPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(b)
+	closeErr := f.Close()
+	if err != nil {
+		return err
+	}
+	return closeErr
+}
+
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "-init-shellcheck-schema" {
+		if err := initializeShellcheckSchema(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) != 1 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./scripts/generate-config-schema")
+		fmt.Fprintln(os.Stderr, "usage: go run ./scripts/generate-config-schema [-init-shellcheck-schema]")
 		os.Exit(1)
 	}
 	b, err := generate()
