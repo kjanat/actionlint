@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { describe, it } from 'node:test';
+
 import object from './object.mjs';
 
 const pattern = object.problemMatcher[0].pattern[0];

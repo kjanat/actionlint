@@ -1,9 +1,9 @@
 * text=auto eol=lf
-/sarif_template.txt -text
-/testdata/** -text
 /actup.schema.json linguist-generated=true -diff
+/sarif_template.txt -text
 /scripts/bump-version/testdata/** -text
+/scripts/generate-actionlint-matcher/testdata/** -text
+/scripts/generate-availability/testdata/** -text
 /scripts/generate-popular-actions/testdata/** -text
 /scripts/generate-webhook-events/testdata/** -text
-/scripts/generate-availability/testdata/** -text
-/scripts/generate-actionlint-matcher/testdata/** -text
+/testdata/** -text

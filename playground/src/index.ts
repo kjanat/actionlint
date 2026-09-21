@@ -31,7 +31,7 @@ function toBase64(bytes: Uint8Array): string {
 	return btoa(s);
 }
 
-(async function() {
+(async () => {
 	function getElementById(id: string): HTMLElement {
 		const e = document.getElementById(id);
 		if (e === null) {
@@ -142,8 +142,7 @@ jobs:
 		successMessage.style.display = 'none';
 		invalidInputMessage.style.display = 'none';
 		editor.dispatch(setDiagnostics(editor.state, []));
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		window.runActionlint!(getSource());
+		window.runActionlint?.(getSource());
 	}
 
 	function onDocChanged(pasted: boolean): void {
@@ -338,7 +337,7 @@ jobs:
 	checkUrlButton.addEventListener('click', async e => {
 		e.preventDefault();
 		const input = checkUrlInput.value;
-		let src;
+		let src: string;
 		try {
 			src = await getRemoteSource(input);
 		} catch (err) {
@@ -375,7 +374,7 @@ jobs:
 
 	const go = new Go();
 
-	let result;
+	let result: WebAssembly.WebAssemblyInstantiatedSource;
 	// Note: WebAssembly.instantiateStreaming is not implemented on Safari yet
 	if (typeof WebAssembly.instantiateStreaming === 'function') {
 		result = await WebAssembly.instantiateStreaming(fetch('main.wasm'), go.importObject);

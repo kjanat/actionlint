@@ -1,0 +1,62 @@
+{
+  "$schema": "./node_modules/biome/configuration_schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true,
+    "defaultBranch": "master"
+  },
+  "files": {
+    "ignoreUnknown": false,
+    "includes": ["**", "!!**/testdata"]
+  },
+  "formatter": {
+    "enabled": false,
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "complexity": {
+        "useLiteralKeys": "off"
+      }
+    },
+    "domains": {
+      "project": "recommended",
+      "test": "recommended",
+      "types": "recommended"
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single"
+    }
+  },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": {
+          "level": "on",
+          "options": {
+            "groups": [
+              ["node:assert", "node:assert/strict", "node:test", "vitest"],
+              ":BLANK_LINE:",
+              ":NODE:",
+              ":BLANK_LINE:",
+              [":PACKAGE_WITH_PROTOCOL:", ":PACKAGE:", "!:STYLE:"],
+              ":BLANK_LINE:",
+              ["#pkg", "#tools/**"],
+              ":BLANK_LINE:",
+              ":ALIAS:",
+              ":BLANK_LINE:",
+              [":PATH:", "!:STYLE:"],
+              ":BLANK_LINE:",
+              ":STYLE:"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

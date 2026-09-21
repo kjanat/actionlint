@@ -2,9 +2,45 @@
 // see the documentation: https://zed.dev/docs/configuring-zed#settings-files
 // mkdir -p .zed; curl -fsSLo .zed/settings.json https://github.com/kjanat/kjanat/raw/HEAD/.zed/settings.json
 {
-  "formatter": [{ "external": { "command": "dprint", "arguments": ["fmt", "--stdin", "{buffer_path}"] } }],
-  "prettier": { "allowed": false },
+  "formatter": [
+    { "external": { "command": "dprint", "arguments": ["fmt", "--stdin", "{buffer_path}"] } }
+  ],
+  "prettier": {
+    "allowed": false
+  },
+  "languages": {
+    "JavaScript": {
+      "language_servers": [
+        "typescript", // https://github.com/kjanat/zed-typescript
+        "biome"
+      ],
+      "code_actions_on_format": {
+        "source.fixAll.biome": true,
+        "source.organizeImports.biome": true
+      }
+    },
+    "TypeScript": {
+      "language_servers": [
+        "typescript", // https://github.com/kjanat/zed-typescript
+        "biome"
+      ],
+      "code_actions_on_format": {
+        "source.fixAll.biome": true,
+        "source.organizeImports.biome": true
+      }
+    }
+  },
   "lsp": {
+    "biome": {
+      "binary": {
+        "path": "node",
+        "arguments": ["./node_modules/biome/bin/biome", "lsp-proxy"]
+      },
+      "settings": {
+        "config_path": "./biome.jsonc",
+        "require_config_file": true
+      }
+    },
     "gopls": {
       "initialization_options": {
         "buildFlags": ["-buildvcs=true"],

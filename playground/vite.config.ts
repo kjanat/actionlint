@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { copyFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+
 import { defineConfig } from 'vite';
 
 const here = import.meta.dirname;

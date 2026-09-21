@@ -1,7 +1,9 @@
-import { Text } from '@codemirror/state';
 import { strict as assert } from 'node:assert';
-import { promises as fs } from 'node:fs';
 import { beforeAll, describe, it } from 'vitest';
+
+import { promises as fs } from 'node:fs';
+
+import { Text } from '@codemirror/state';
 
 import { errorRange } from './range';
 
@@ -35,43 +37,41 @@ class CheckResults {
 	}
 }
 
-describe('errorRange', function() {
+describe('errorRange', () => {
 	function error(line: number, column: number, endColumn: number): ActionlintError {
 		return { kind: 'k', message: 'm', line, column, endColumn };
 	}
 
-	it('maps columns to document offsets', function() {
+	it('maps columns to document offsets', () => {
 		const doc = Text.of(['on: push', 'jobs: {}']);
 		assert.deepEqual(errorRange(doc, error(2, 1, 4)), { from: 9, to: 13 });
 	});
 
-	it('counts an astral character as two code units', function() {
+	it('counts an astral character as two code units', () => {
 		const doc = Text.of(['# 🚀🚀', 'on: foo']);
 		assert.deepEqual(errorRange(doc, error(1, 3, 4)), { from: 2, to: 6 });
 	});
 
-	it('clamps an end column past the line to the line end', function() {
+	it('clamps an end column past the line to the line end', () => {
 		const doc = Text.of(['on: foo', 'jobs: {}']);
 		assert.deepEqual(errorRange(doc, error(1, 5, 99)), { from: 4, to: 7 });
 	});
 });
 
-describe('main.wasm', function() {
+describe('main.wasm', () => {
 	const results = new CheckResults();
 
-	beforeAll(async function() {
-		window.dismissLoading = function() {
+	beforeAll(async () => {
+		window.dismissLoading = () => {
 			/*do nothing*/
 		};
-		window.getYamlSource = function() {
-			return `
+		window.getYamlSource = () => `
 on: push
 
 jobs:
   test:
     steps:
       - run: echo 'hi'`;
-		};
 		window.onCheckCompleted = results.onCheckCompleted.bind(results);
 
 		const go = new Go();
@@ -82,7 +82,7 @@ jobs:
 		void go.run(result.instance);
 	});
 
-	it('shows first result on loading', async function() {
+	it('shows first result on loading', async () => {
 		const errors = await results.waitCheckCompleted();
 
 		const json = JSON.stringify(errors);
@@ -96,7 +96,7 @@ jobs:
 		assert.equal(err.kind, 'syntax-check', `kind is unexpected: ${json}`);
 	});
 
-	it('reports some errors by running actionlint with runActionlint', async function() {
+	it('reports some errors by running actionlint with runActionlint', async () => {
 		assert.ok(window.runActionlint);
 		results.reset();
 
@@ -124,7 +124,7 @@ jobs:
 		assert.equal(err.kind, 'events', `kind is unexpected: ${json}`);
 	});
 
-	it('reports no error by running actionlint with runActionlint', async function() {
+	it('reports no error by running actionlint with runActionlint', async () => {
 		assert.ok(window.runActionlint);
 		results.reset();
 
