@@ -22,7 +22,7 @@ func ownerOf(t *testing.T, path string) (uint32, uint32) {
 	return stat.Uid, stat.Gid
 }
 
-func TestWriteResultFileInheritsWorkspaceOwner(t *testing.T) {
+func TestWriteResultFileKeepsCreatedOwnership(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
 	target := filepath.Join("a", "b", "results.json")
 	if _, err := writeResultFile(openRoot(t, workspace), target, "content"); err != nil {
@@ -38,9 +38,37 @@ func TestWriteResultFileInheritsWorkspaceOwner(t *testing.T) {
 	}
 }
 
-func TestInheritOwnerReportsMissingPaths(t *testing.T) {
-	workspace := resolved(t, t.TempDir())
-	if err := inheritOwner(openRoot(t, workspace), []string{"missing"}); err == nil {
-		t.Error("wanted an error for a missing path")
+func TestWriteResultFileWithDifferentWorkspaceOwner(t *testing.T) {
+	// Shared temporary directories let an ordinary user create files without
+	// owning the workspace. No elevated privileges or ownership changes are needed.
+	workspace := resolved(t, os.TempDir())
+	directory, err := os.MkdirTemp(workspace, "actionlint-output-owner-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(directory); err != nil {
+			t.Error(err)
+		}
+	})
+	workspaceUID, _ := ownerOf(t, workspace)
+	wantUID, wantGID := ownerOf(t, directory)
+	if workspaceUID == wantUID {
+		t.Skip("temporary workspace and creating user have the same owner")
+	}
+
+	target := filepath.Join(filepath.Base(directory), "a", "b", "results.json")
+	got, err := writeResultFile(openRoot(t, workspace), target, "content")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != filepath.ToSlash(target) || read(t, filepath.Join(workspace, target)) != "content" {
+		t.Fatalf("wanted the rendered result at %q, got %q", target, got)
+	}
+	for _, path := range []string{filepath.Join(directory, "a"), filepath.Join(directory, "a", "b"), filepath.Join(workspace, target)} {
+		uid, gid := ownerOf(t, path)
+		if uid != wantUID || gid != wantGID {
+			t.Errorf("%s: wanted creating owner %d:%d but got %d:%d", path, wantUID, wantGID, uid, gid)
+		}
 	}
 }

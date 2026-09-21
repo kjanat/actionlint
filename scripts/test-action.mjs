@@ -104,6 +104,12 @@ try {
 		pyflakes: 'false',
 	});
 	assert.equal(noShell.outputs.get('problem-count'), '0', noShell.log);
+	const configuredNoShell = await run({
+		files: 'testdata/err/shellcheck_default_shell_detection.yaml',
+		tools: 'shellcheck: {enabled: false}',
+		pyflakes: 'false',
+	});
+	assert.equal(configuredNoShell.outputs.get('problem-count'), '0', configuredNoShell.log);
 	const python = await run({
 		files: 'testdata/err/pyflakes_step_shell.yaml',
 		shellcheck: 'false',

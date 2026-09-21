@@ -328,37 +328,90 @@ func TestActionIgnoreAndAutomaticConfigEndToEnd(t *testing.T) {
 	}
 }
 
-func TestActionRunLintRestoresProcessDirectory(t *testing.T) {
-	dir := resolved(t, t.TempDir())
-	t.Chdir(dir)
-	sub := filepath.Join(dir, "sub")
-	if err := os.Mkdir(sub, 0o755); err != nil {
+func TestActionRunLintPreservesProcessDirectory(t *testing.T) {
+	dir, err := os.Getwd()
+	if err != nil {
 		t.Fatal(err)
 	}
+	workspace := workspaceWith(t, map[string]string{"sub/broken.yaml": brokenWorkflow})
+	sub := filepath.Join(workspace, "sub")
 
 	var seen string
 	a := &action{
 		timeout: time.Minute,
-		lint: func(*lintRequest) *lintResult {
+		lint: func(req *lintRequest) *lintResult {
 			wd, err := os.Getwd()
 			if err != nil {
 				t.Error(err)
 			}
 			seen = wd
-			return &lintResult{lintOutcome: &lintOutcome{"[]\n", "", actionlint.ExitStatusSuccessNoProblem}}
+			return runLinter(req)
 		},
 	}
-	a.runLint(&lintRequest{workingDir: sub})
+	got := a.runLint(&lintRequest{workingDir: sub, files: []string{"broken.yaml"}, format: "{{json .}}"})
 
-	if resolved(t, seen) != sub {
-		t.Errorf("wanted actionlint to run in %q but it ran in %q", sub, seen)
+	if resolved(t, seen) != resolved(t, dir) {
+		t.Errorf("wanted the process directory to remain %q while linting but got %q", dir, seen)
+	}
+	if got.code != actionlint.ExitStatusSuccessProblemFound {
+		t.Fatalf("wanted the workflow in the requested directory linted but got %d: %s%s", got.code, got.stderr, got.stdout)
+	}
+	var problems []*problem
+	if err := json.Unmarshal([]byte(got.stdout), &problems); err != nil {
+		t.Fatal(err)
+	}
+	if len(problems) != 1 || problems[0].Filepath != "broken.yaml" {
+		t.Errorf("wanted the diagnostic path relative to the requested directory but got %#v", problems)
 	}
 	after, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resolved(t, after) != dir {
-		t.Errorf("wanted the process directory restored to %q but got %q", dir, after)
+	if resolved(t, after) != resolved(t, dir) {
+		t.Errorf("wanted the process directory to remain %q after linting but got %q", dir, after)
+	}
+}
+
+func TestActionRunLintTimesOutNoncooperativeLinter(t *testing.T) {
+	directory := t.TempDir()
+	started := make(chan struct{})
+	release := make(chan struct{})
+	finished := make(chan struct{})
+	returned := make(chan *lintResult, 1)
+	done := make(chan struct{})
+	a := &action{
+		timeout: 10 * time.Millisecond,
+		lint: func(req *lintRequest) *lintResult {
+			defer close(finished)
+			close(started)
+			<-release
+			if req.ctx.Err() == nil {
+				t.Error("wanted the timed-out analysis context canceled")
+			}
+			return knownFiles(&lintOutcome{"late output", "late log", actionlint.ExitStatusSuccessNoProblem}, 1)
+		},
+	}
+	go func() {
+		defer close(done)
+		returned <- a.runLint(&lintRequest{workingDir: directory})
+	}()
+	<-started
+	defer func() {
+		close(release)
+		<-finished
+		<-done
+	}()
+
+	select {
+	case got := <-returned:
+		if got.code != actionlint.ExitStatusFailure || !strings.Contains(got.stderr, "actionlint timed out after") {
+			t.Errorf("wanted an independent timeout result but got %#v", got)
+		}
+		if got.stdout != "" || got.fileCountKnown {
+			t.Errorf("timeout result must not expose the unfinished analysis: %#v", got)
+		}
+	case <-time.After(time.Second):
+		t.Error("timeout waited for the noncooperative linter to return")
 	}
 }
 
@@ -367,8 +420,11 @@ func TestActionRunLintReportsUnusableWorkingDirectory(t *testing.T) {
 		t.Error("actionlint must not run when the working directory is unusable")
 		return nil
 	}}
-	got := a.runLint(&lintRequest{workingDir: filepath.Join(t.TempDir(), "missing")})
-	if got.code != actionlint.ExitStatusFailure || got.stderr == "" {
-		t.Errorf("wanted a failure but got %#v", got)
+	workspace := workspaceWith(t, map[string]string{"file": "not a directory"})
+	for _, path := range []string{"missing", "file"} {
+		got := a.runLint(&lintRequest{workingDir: filepath.Join(workspace, path)})
+		if got.code != actionlint.ExitStatusFailure || got.stderr == "" {
+			t.Errorf("wanted a failure for %q but got %#v", path, got)
+		}
 	}
 }

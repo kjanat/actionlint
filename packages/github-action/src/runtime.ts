@@ -16,9 +16,12 @@ export type InstalledTools = {
 	pyflakes?: PyflakesCommand;
 };
 
+export type ToolRequirements = { shellcheck: boolean; pyflakes: boolean };
+
 export type Runtime = {
 	native: () => Promise<string>;
 	checkExecutable: (path: string) => Promise<void>;
+	inspect: (executable: string, environment: Environment) => Promise<ToolRequirements>;
 	shellcheck: () => Promise<string>;
 	pyflakes: () => Promise<PyflakesCommand>;
 	publish: (tools: InstalledTools) => Promise<void>;
@@ -63,12 +66,13 @@ export async function runAction(environment: Environment, runtime: Runtime): Pro
 	const shellcheck = toolEnabled(environment.INPUT_SHELLCHECK);
 	const pyflakes = toolEnabled(environment.INPUT_PYFLAKES);
 	if (shellcheck !== undefined && pyflakes !== undefined) {
-		if (shellcheck) {
+		const needed = await runtime.inspect(executable, childEnvironment);
+		if (shellcheck && needed.shellcheck) {
 			const command = await runtime.shellcheck();
 			if (addShellcheck) tools.shellcheck = command;
 			childEnvironment.ACTIONLINT_SHELLCHECK_COMMAND = command;
 		}
-		if (pyflakes) {
+		if (pyflakes && needed.pyflakes) {
 			const command = await runtime.pyflakes();
 			if (addPyflakes) tools.pyflakes = command;
 			if (command.kind === 'command') {

@@ -19,6 +19,7 @@ function fixture(exitCode = 0) {
 		checkExecutable: async () => {
 			calls.push('check-executable');
 		},
+		inspect: async () => ({ shellcheck: true, pyflakes: true }),
 		shellcheck: async () => {
 			calls.push('shellcheck');
 			return join(tmpdir(), 'tools with spaces', 'shellcheck');
@@ -130,6 +131,37 @@ test('enabled tool installation failures stop execution', async () => {
 		throw new Error('missing Python');
 	};
 	await assert.rejects(runAction({ INPUT_SHELLCHECK: 'false' }, setup.runtime), /missing Python/);
+	assert.deepEqual(setup.executions, []);
+});
+
+test('effective configuration disables provisioning and PATH export before tool lookup', async () => {
+	const setup = fixture();
+	setup.runtime.inspect = async (_, environment) => {
+		assert.equal(environment.ACTIONLINT_SHELLCHECK_COMMAND, undefined);
+		assert.equal(environment.INPUT_TOOLS, 'shellcheck: {enabled: false}');
+		return { shellcheck: false, pyflakes: true };
+	};
+	setup.runtime.shellcheck = async () => {
+		assert.fail('disabled ShellCheck must never be located or downloaded');
+	};
+	await runAction({
+		INPUT_TOOLS: 'shellcheck: {enabled: false}',
+		ACTIONLINT_SHELLCHECK_COMMAND: 'stale override',
+	}, setup.runtime);
+	assert.deepEqual(setup.calls, ['native', 'pyflakes']);
+	assert.equal(setup.publications[0]?.shellcheck, undefined);
+	assert.equal(setup.executions[0]?.environment.ACTIONLINT_SHELLCHECK_COMMAND, undefined);
+	assert.equal(setup.executions[0]?.environment.INPUT_TOOLS, 'shellcheck: {enabled: false}');
+});
+
+test('invalid effective configuration stops before optional tool installation', async () => {
+	const setup = fixture();
+	setup.runtime.inspect = async () => {
+		throw new InputError('invalid tools input');
+	};
+	await assert.rejects(runAction({ INPUT_TOOLS: 'invalid' }, setup.runtime), InputError);
+	assert.deepEqual(setup.calls, ['native']);
+	assert.deepEqual(setup.publications, []);
 	assert.deepEqual(setup.executions, []);
 });
 

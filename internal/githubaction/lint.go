@@ -105,9 +105,9 @@ func runLinter(req *lintRequest) *lintResult {
 	result := &lintResult{}
 	opts := actionlint.AnalysisOptions{
 		Context:            req.ctx,
-		ShellcheckOptions:  req.shellcheckOptions,
+		ShellcheckOptions:  toolOptionsInDirectory(req.shellcheckOptions, req.workingDir),
 		ShellcheckSettings: req.shellcheckSettings,
-		PyflakesOptions:    req.pyflakesOptions,
+		PyflakesOptions:    toolOptionsInDirectory(req.pyflakesOptions, req.workingDir),
 		Shellcheck:         req.shellcheck,
 		Pyflakes:           req.pyflakes,
 		IgnorePatterns:     req.ignore,
@@ -136,10 +136,19 @@ func runLinter(req *lintRequest) *lintResult {
 		return result
 	}
 	var analysis *actionlint.AnalysisResult
+	inputNames := make(map[string]string, len(req.files))
 	if len(req.files) == 0 {
 		analysis, err = session.Repository(req.workingDir)
 	} else {
-		analysis, err = session.Files(req.files, nil)
+		paths := make([]string, len(req.files))
+		for i, path := range req.files {
+			if !filepath.IsAbs(path) {
+				inputNames[filepath.Clean(path)] = path
+				path = filepath.Join(req.workingDir, path)
+			}
+			paths[i] = path
+		}
+		analysis, err = session.Files(paths, nil)
 	}
 	if err != nil {
 		code := actionlint.ExitStatusFailure
@@ -148,6 +157,12 @@ func runLinter(req *lintRequest) *lintResult {
 		}
 		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", code}
 		return result
+	}
+	// Absolute reads must retain the caller's relative spelling in Action output.
+	for i := range analysis.Diagnostics {
+		if path, ok := inputNames[analysis.Diagnostics[i].Path]; ok {
+			analysis.Diagnostics[i].Path = path
+		}
 	}
 	if err := renderer.Render(&out, analysis); err != nil {
 		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
@@ -163,31 +178,41 @@ func runLinter(req *lintRequest) *lintResult {
 	return result
 }
 
-func chdir(dir string) (func(), error) {
-	prev, err := os.Getwd()
-	if err != nil {
-		return nil, err
+func toolOptionsInDirectory(options *actionlint.ExternalCommandOptions, directory string) *actionlint.ExternalCommandOptions {
+	configured := actionlint.ExternalCommandOptions{}
+	if options != nil {
+		configured = *options
 	}
-	if err := os.Chdir(dir); err != nil {
-		return nil, err
-	}
-	return func() { _ = os.Chdir(prev) }, nil
+	configured.WorkingDir = directory
+	return &configured
 }
 
 func (a *action) runLint(req *lintRequest) *lintResult {
-	restore, err := chdir(req.workingDir)
+	info, err := os.Stat(req.workingDir)
 	if err != nil {
 		return &lintResult{lintOutcome: &lintOutcome{"", err.Error() + "\n", actionlint.ExitStatusFailure}}
 	}
-	defer restore()
+	if !info.IsDir() {
+		msg := fmt.Sprintf("working directory %q is not a directory\n", req.workingDir)
+		return &lintResult{lintOutcome: &lintOutcome{"", msg, actionlint.ExitStatusFailure}}
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), a.timeout)
 	defer cancel()
-	req.ctx = ctx
-	result := a.lint(req)
-	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-		msg := fmt.Sprintf("actionlint timed out after %d seconds\n", int(a.timeout.Seconds()))
-		return &lintResult{lintOutcome: &lintOutcome{"", msg, actionlint.ExitStatusFailure}}
+	request := *req
+	request.ctx = ctx
+	completed := make(chan *lintResult, 1)
+	go func() {
+		completed <- a.lint(&request)
+	}()
+	select {
+	case result := <-completed:
+		if ctx.Err() == nil {
+			return result
+		}
+	case <-ctx.Done():
 	}
-	return result
+	// The analysis owns its buffers until it returns, even if it ignores cancellation.
+	msg := fmt.Sprintf("actionlint timed out after %d seconds\n", int(a.timeout.Seconds()))
+	return &lintResult{lintOutcome: &lintOutcome{"", msg, actionlint.ExitStatusFailure}}
 }

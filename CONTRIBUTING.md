@@ -247,6 +247,8 @@ Updating [kjanat/homebrew-tap] needs a `HOMEBREW_TAP_TOKEN` secret on this repos
 
 GoReleaser also uses `SCOOP_BUCKET_TOKEN`, `WINGET_TOKEN`, and `AUR_SSH_PRIVATE_KEY` for the other distribution updates. The npm reusable workflow runs after the binaries job and publishes the platform packages before the launcher package. WinGet submissions still require review in `microsoft/winget-pkgs`; a successful release does not mean the package is already available through WinGet.
 
+Local GoReleaser snapshots skip release publication and its `extra_files` glob. For a local publish, set `RUNNER_TEMP` to an absolute directory outside the checkout and first run `node scripts/build-action-release.mjs --version 1.2.3 --out-dir "$RUNNER_TEMP/actionlint-action"`. The output directory must be empty. Publication uploads the generated files from its `assets/` subdirectory; the release workflow prepares these automatically.
+
 WinGet uploads are paused with `winget[].skip_upload: true` in `.goreleaser.yaml` while microsoft/winget-pkgs#430563 awaits review. GoReleaser still generates the manifests in `dist/`. After the initial package is merged, restore `skip_upload: auto` to resume version submissions on stable releases.
 
 When releasing v1.2.3 as example:

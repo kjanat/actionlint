@@ -75,18 +75,8 @@ func (a *action) execute() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	workingRel, err := workingDirectory(root, workspaceDir, in.workingDirectory)
+	req, err := a.prepareRequest(in, root, workspaceDir)
 	if err != nil {
-		return 0, err
-	}
-	req, err := buildRequest(in, workspaceDir, workingRel)
-	if err != nil {
-		return 0, err
-	}
-	if err := req.configureEnvironment(a.env); err != nil {
-		return 0, err
-	}
-	if err := req.configureShellcheck(a.env, root, workspaceDir); err != nil {
 		return 0, err
 	}
 	lint := a.runLint(req)
@@ -118,4 +108,22 @@ func (a *action) execute() (int, error) {
 		return actionlint.ExitStatusSuccessNoProblem, nil
 	}
 	return outcome.code, nil
+}
+
+func (a *action) prepareRequest(in *inputs, root *os.Root, workspaceDir string) (*lintRequest, error) {
+	workingRel, err := workingDirectory(root, workspaceDir, in.workingDirectory)
+	if err != nil {
+		return nil, err
+	}
+	req, err := buildRequest(in, workspaceDir, workingRel)
+	if err != nil {
+		return nil, err
+	}
+	if err := req.configureEnvironment(a.env); err != nil {
+		return nil, err
+	}
+	if err := req.configureShellcheck(a.env, root, workspaceDir); err != nil {
+		return nil, err
+	}
+	return req, nil
 }

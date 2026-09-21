@@ -5,7 +5,7 @@ import { normalizeEnvironment } from '#environment';
 import { temporary } from '#native';
 import { publishTools } from '#path';
 import { InputError, runAction } from '#runtime';
-import { checkExecutable, executeNative, nativeBinary, pyflakesCommand, shellcheckBinary } from '#tools';
+import { checkExecutable, executeNative, inspectTools, nativeBinary, pyflakesCommand, shellcheckBinary } from '#tools';
 import { commandEscape, writeOutputs } from '#workflow';
 
 declare const __ACTIONLINT_VERSION__: string;
@@ -20,6 +20,7 @@ async function main(): Promise<void> {
 		runAction(environment, {
 			native: () => nativeBinary(__ACTIONLINT_VERSION__, platform, directory),
 			checkExecutable,
+			inspect: inspectTools,
 			shellcheck: () => shellcheckBinary(platform),
 			pyflakes: () => pyflakesCommand(platform),
 			publish: (tools) => publishTools(tools, environment),

@@ -4,13 +4,13 @@
 
 actionlint checks GitHub Actions workflow files and delegates embedded shell and Python scripts to ShellCheck and Pyflakes. Its GitHub Action previously ran inside a Docker container. This migration runs the Action as JavaScript on the runner, installs native tools, and uses the ordinary actionlint binary for analysis. The goals are cross-platform execution, visible configuration selection, configuration through Action inputs, and tools that remain available to subsequent workflow steps.
 
-The next phase separates analysis from reporting so one check can produce console output, annotations, a job summary, and optional pull-request suggestions. It builds on the existing CLI refactor rather than introducing a second analysis engine or diagnostic model.
+The next phase separates analysis from reporting so one check can produce console output, annotations, a job summary, and optional pull-request suggestions. It reuses the CLI's analysis engine and diagnostic model.
 
 ## Implementation status
 
 The JavaScript launcher and release builder originate in kjanat/actionlint@99f403e5. The shared CLI analysis architecture was merged in kjanat/actionlint#155 as kjanat/actionlint@6095acca72b083a6f3e200fc89930ca39c922026. This branch integrates master through kjanat/actionlint@010e812f.
 
-The Action adapter now invokes `AnalysisSession` directly, then renders the result. Configuration overlays and source reporting belong to the shared session; the compatibility `Linter` forwards its options there. Configuration files retain the YAML document from the same parse used to resolve their values and origins. Tool paths and argument arrays use `ExternalCommandOptions`. The Action timeout cancels analysis and waits for it to finish before restoring the working directory.
+The Action adapter now invokes `AnalysisSession` directly, then renders the result. Configuration overlays and source reporting belong to the shared session; the compatibility `Linter` forwards its options there. Configuration files retain the YAML document from the same parse used to resolve their values and origins. Tool paths, argument arrays, and child working directories use `ExternalCommandOptions`. The Action timeout returns at its deadline and cancels analysis, including external processes. Analysis owns its buffers and uses explicit paths, so a phase still completing after cancellation cannot change the process working directory or the returned result.
 
 Selected-configuration reports include a `ConfigInspection` with effective values and per-setting file/default/Action-input origins. Input origins retain the input name and line/column within its value. Explicit null resets remain attributable when a later input supplies only part of the reset mapping.
 
@@ -35,7 +35,7 @@ Repository-reference cleanup and JavaScript-tooling changes are separate mainten
 - Preserve the existing representations selected by `format`; a new internal diagnostic schema must not silently change the public JSON output.
 - Preserve exit codes: 0 for a clean check, 1 for findings, 2 for invalid inputs, and 3 for execution failure. `fail-on-error: false` permits findings without failing the step; invalid inputs and execution failures still fail.
 - Keep configuration precedence and empty-value behavior explicit. Changes to ShellCheck configuration discovery must account for existing workflows that currently run with discovery disabled.
-- The source checkout contains no generated `dist` directory. Published Action artifacts contain the bundle required by `action.yml`; consumers use artifact refs rather than an unbuilt source checkout.
+- The source checkout contains no generated `dist` directory. Consumers use published Action artifact refs, which contain the bundle required by `action.yml`.
 - Installing the Action never reuses a cached actionlint binary. Optional external-tool caching is separate from this constraint.
 
 ## Implemented JavaScript Action baseline
@@ -47,7 +47,7 @@ Repository-reference cleanup and JavaScript-tooling changes are separate mainten
 - Generated JavaScript release files stay outside the source checkout.
 - The private workspace package is named `actionlint-action`; it has no separately maintained release version.
 - The release/tag version passes through the release builder into tsdown's compile-time version stamp. Local builds fall back to `git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*'`, stripping the leading `v`.
-- Git is consulted at build time, not on the consumer runner. An explicit release version takes precedence over the fallback.
+- Git supplies the version fallback during the release build. An explicit release version takes precedence.
 - Release packaging uses source `vX.Y.Z` tags and separate `action-vX.Y.Z` artifact tags, plus moving action tags. Compatibility with the signed-release workflow remains an open decision.
 
 ### Dependencies and tools
@@ -59,6 +59,7 @@ Repository-reference cleanup and JavaScript-tooling changes are separate mainten
 - Python launcher source is a real `.py` file embedded by tsdown. The wheel launcher runs Python in isolated mode (`-I`).
 - The action and actionlint binary are never cached or reused between invocations. Each normal invocation downloads and verifies actionlint again.
 - Optional external tools can use existing installations or the runner tool cache.
+- Before installing tools, the launcher asks the Go adapter to resolve file configuration and Action overlays. `tools.shellcheck.enabled: false` skips ShellCheck provisioning and PATH export for inputs using that configuration.
 - ZIP extraction on Windows prefers `pwsh.exe`, falling back to `powershell.exe`. It uses .NET ZIP extraction with archive/destination in child-only environment variables. Unix ZIP uses unzip; tar.gz uses tar.
 
 ### Configuration UX
@@ -69,7 +70,7 @@ Repository-reference cleanup and JavaScript-tooling changes are separate mainten
 - Configuration sections are also action inputs: self-hosted-runner, config-variables, config-secrets, paths, assume-default-permissions, policy.
 - Precedence: section inputs > whole `config` input > selected config file > defaults.
 - Maps merge; lists and scalars replace. Blank inputs inherit, empty maps retain inherited entries, empty lists clear lists, and null resets the corresponding value.
-- Give a targeted hint when literal outer quotes in an ignore regex prevent a match that would otherwise succeed.
+- Warn when literal outer quotes in an ignore regex prevent it from matching a diagnostic.
 
 ### Commands in subsequent steps
 
@@ -127,7 +128,7 @@ Multiple `AnalysisRenderer` instances can consume one in-memory `AnalysisResult`
 
 ### Serialization boundary
 
-The refactor's JSON `CheckResult` is a starting schema, not a complete persisted analysis result. `AnalysisResult` also retains private source and rule metadata used by renderers, including SARIF. Deserializing `CheckResult` alone does not reconstruct that state.
+The refactor's JSON `CheckResult` is a starting schema. A persisted analysis result also needs the private source and rule metadata that `AnalysisResult` retains for renderers, including SARIF. Deserializing `CheckResult` alone does not reconstruct that state.
 
 Define a versioned Action result envelope around the shared diagnostic model. It must retain the outcome, configuration reports, hints, counts, and data needed by deferred reporters. Keep general-purpose rendering in Go. For deferred SARIF output, either persist the Go-rendered report alongside diagnostics or extend the persisted schema with the metadata its renderer needs; that storage choice remains open.
 
@@ -237,7 +238,7 @@ Preserve existing format/output/output-file semantics as the primary representat
 
 Recommended baseline: the JS main invocation reads the structured result immediately after the Go process exits, emits reports, and then completes with the appropriate status.
 
-A GitHub `runs.post` hook executes at the end of the job, not immediately after the action step. It is useful if results from later command invocations must be collected. That design additionally needs an explicit collection contract for those invocations, a persistent result file, a path passed through GITHUB_STATE, and cleanup after reporting. Exporting commands to PATH alone does not collect their diagnostics.
+A GitHub `runs.post` hook executes after the job's steps finish. It is useful if results from later command invocations must be collected. That design additionally needs an explicit collection contract for those invocations, a persistent result file, a path passed through GITHUB_STATE, and cleanup after reporting. Exporting commands to PATH alone does not collect their diagnostics.
 
 Final choice between immediate reporting and end-of-job collection remains open.
 
@@ -245,7 +246,7 @@ Final choice between immediate reporting and end-of-job collection remains open.
 
 - Annotations: title, severity, source location, and plain/multiline text. Do not rely on rich Markdown in annotation messages.
 - Job summaries: GitHub-flavored Markdown, including tables, links, code and diff blocks.
-- Suggestions users can apply: inline PR review comments containing suggestion blocks. A Markdown diff in a summary is only a display, not a fix users can apply through GitHub.
+- Suggestions users can apply: inline PR review comments containing suggestion blocks. Markdown diffs in summaries provide previews; GitHub's apply control requires an inline suggestion.
 
 ## Planned: structured fixes and PR reviews
 
@@ -253,11 +254,11 @@ Final choice between immediate reporting and end-of-job collection remains open.
 
 The Action baseline's error model has message, location, kind, snippet and end column. The CLI refactor adds a shared diagnostic model with explicit source ranges. Neither model currently carries structured fixes or diagnostic severity, and the SARIF template has no fixes.
 
-ShellCheck already supports unified diff output, and its JSON1 output already contains `fix.replacements` with ranges, replacement text, insertion ordering and precedence. The current ShellCheck decoder discards those fields. Consume JSON1 fixes directly rather than parsing a second diff-format invocation.
+ShellCheck's JSON1 output contains `fix.replacements` with ranges, replacement text, insertion ordering and precedence. The current decoder discards those fields. Retain them from the existing ShellCheck invocation.
 
 ### Required fix model and mapping
 
-Model fixes as a description plus one or more file/range/replacement edits. Preserve source and rule identity/severity instead of extracting them later from a flattened diagnostic message.
+Model fixes as a description plus one or more file/range/replacement edits. Retain source, rule identity, and severity as structured fields throughout analysis and reporting.
 
 Translate ShellCheck edits back to the original workflow source. Account for the injected shell setup line, sanitized GitHub expressions, YAML indentation, quoting and folded scalars. Do not suggest edits to placeholder text or to a range that cannot be mapped reliably. Combine compatible edits for the same source range; unresolved conflicts must not become suggestions users can blindly apply.
 
@@ -267,13 +268,13 @@ A reporter can derive before/after snippets, unified patches, SARIF fixes and PR
 
 Create one review with multiple inline comments. Each comment targets the correct file/range at the reviewed PR commit and can contain a suggestion block followed by the relevant ShellCheck codes and explanations. Group related diagnostics into a coherent replacement where appropriate.
 
-Use structured diagnostics/fixes directly, not already-rendered annotation text. Findings without a reliable fix remain explanatory diagnostics. Only locations supported by the PR diff can become inline suggestions; other findings remain available in annotations/summary.
+Feed structured diagnostics and fixes directly to the review reporter. Findings without a reliable fix remain explanatory diagnostics. Only locations supported by the PR diff can become inline suggestions; other findings remain available in annotations/summary.
 
 Review publication must be explicitly enabled and requires an appropriate token with pull-requests: write. Read-only/fork workflows must retain useful annotation/summary reporting. Rerun deduplication/update behavior still needs design.
 
 ## Delivery order and acceptance criteria
 
-The shared analysis, overlay provenance, typed tool invocation, and cancellation portions of items 1–2 and the ShellCheck inputs in item 3 are implemented. The persisted protocol and items 4–8 remain pending; item 7 has Windows environment normalization and execution coverage, but PATHEXT and batch launchers remain unfinished. Validate affected behavior with focused checks and run platform-specific integration checks in CI.
+Shared analysis, overlay provenance, typed tool invocation, cancellation, and ShellCheck inputs are implemented. The persisted protocol and reporting work in items 4 through 6 remain pending. Item 7 has Windows environment normalization and execution coverage; PATHEXT and batch launchers remain unfinished. Item 8 has a release builder and consumer tests, while artifact signing and moving-ref integration remain open. Validate affected behavior with focused checks and run platform-specific integration checks in CI.
 
 1. **Integrate the shared analysis core.** CLI and Action use the same analysis implementation; existing rules and policy fields remain available. Overlay tests cover precedence, null/empty values, explicit config selection, and both config extensions. A timeout cancels outstanding external linter processes.
 2. **Adapt the Action protocol.** The adapter uses shared diagnostics and literal tool arguments. Existing output names, public formats, exit codes, and `fail-on-error` behavior remain compatible, including invalid-input and failure cases.

@@ -1,8 +1,8 @@
 import { spawn } from 'node:child_process';
 import { constants } from 'node:fs';
-import { access, cp, mkdir, mkdtemp, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { access, cp, mkdir, mkdtemp, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { delimiter, dirname, join } from 'node:path';
+import { basename, delimiter, dirname, join, resolve } from 'node:path';
 
 import { normalizeEnvironment } from '#environment';
 
@@ -10,6 +10,7 @@ export function capture(
 	executable: string,
 	args: string[],
 	env: NodeJS.ProcessEnv = process.env,
+	timeoutMS?: number,
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
 	return new Promise((resolve, reject) => {
 		const child = spawn(executable, args, {
@@ -17,6 +18,8 @@ export function capture(
 			shell: false,
 			windowsHide: true,
 			stdio: ['ignore', 'pipe', 'pipe'],
+			timeout: timeoutMS,
+			killSignal: 'SIGKILL',
 		});
 		let stdout = '';
 		let stderr = '';
@@ -43,7 +46,7 @@ export async function which(name: string, environment: NodeJS.ProcessEnv = proce
 	const extensions = process.platform === 'win32' ? ['.exe'] : [''];
 	for (const directory of (normalizeEnvironment(environment).PATH ?? '').split(delimiter).filter(Boolean)) {
 		for (const extension of extensions) {
-			const path = join(directory.replace(/^"(.*)"$/, '$1'), name + extension);
+			const path = resolve(directory.replace(/^"(.*)"$/, '$1'), name + extension);
 			try {
 				if (!(await stat(path)).isFile()) continue;
 				await access(path, constants.X_OK);
@@ -76,31 +79,47 @@ function cachePath(name: string, version: string, arch: string): string {
 
 export async function findTool(name: string, version: string, arch: string): Promise<string> {
 	const path = cachePath(name, version, arch);
+	if (await completedTool(path)) return path;
+	let entries: string[];
 	try {
-		await access(`${path}.complete`);
-		return (await stat(path)).isDirectory() ? path : '';
+		entries = await readdir(dirname(path));
 	} catch (error) {
 		if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return '';
+		throw error;
+	}
+	for (const entry of entries.sort()) {
+		if (!entry.startsWith(`${basename(path)}-`) || entry.endsWith('.complete')) continue;
+		const candidate = join(dirname(path), entry);
+		if (await completedTool(candidate)) return candidate;
+	}
+	return '';
+}
+
+async function completedTool(path: string): Promise<boolean> {
+	try {
+		await access(`${path}.complete`);
+		return (await stat(path)).isDirectory();
+	} catch (error) {
+		if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return false;
 		throw error;
 	}
 }
 
 export async function cacheTool(source: string, name: string, version: string, arch: string): Promise<string> {
+	const existing = await findTool(name, version, arch);
+	if (existing) return existing;
 	const path = cachePath(name, version, arch);
 	await mkdir(dirname(path), { recursive: true });
-	const staging = await mkdtemp(`${path}-`);
+	const installation = await mkdtemp(`${path}-`);
 	try {
-		await cp(source, staging, { recursive: true });
-		try {
-			await rename(staging, path);
-		} catch (error) {
-			if (await findTool(name, version, arch)) return path;
-			throw error;
-		}
-		await writeFile(`${path}.complete`, '');
-		return path;
-	} finally {
-		await rm(staging, { recursive: true, force: true });
+		await cp(source, installation, { recursive: true });
+		// Publish an immutable generation: other installers may still be copying or using theirs.
+		await writeFile(`${installation}.complete`, '');
+		return installation;
+	} catch (error) {
+		await rm(installation, { recursive: true, force: true });
+		await rm(`${installation}.complete`, { force: true });
+		throw error;
 	}
 }
 

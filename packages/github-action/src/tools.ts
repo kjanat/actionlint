@@ -15,7 +15,8 @@ import {
 import { download, downloadVerified } from '#download';
 import { normalizeEnvironment } from '#environment';
 import { cacheTool, capture, extractArchive, findTool, temporary, which } from '#native';
-import type { Environment, PyflakesCommand } from '#runtime';
+import type { Environment, PyflakesCommand, ToolRequirements } from '#runtime';
+import { InputError } from '#runtime';
 
 declare const __PYFLAKES_LAUNCHER__: string;
 
@@ -138,4 +139,19 @@ export function executeNative(executable: string, args: string[], environment: E
 			else resolve(code);
 		});
 	});
+}
+
+export async function inspectTools(executable: string, environment: Environment): Promise<ToolRequirements> {
+	const result = await capture(executable, ['-github-action-tools'], environment, 300_000);
+	if (result.exitCode !== 0) {
+		const message = result.stderr.trim() || `actionlint configuration inspection exited with ${result.exitCode}`;
+		throw result.exitCode === 2 ? new InputError(message) : new Error(message);
+	}
+	const plan: unknown = JSON.parse(result.stdout);
+	if (
+		typeof plan !== 'object' || plan === null || !('schema_version' in plan) || plan.schema_version !== 1
+		|| !('shellcheck' in plan) || typeof plan.shellcheck !== 'boolean'
+		|| !('pyflakes' in plan) || typeof plan.pyflakes !== 'boolean'
+	) throw new Error('actionlint returned an unsupported tool plan');
+	return { shellcheck: plan.shellcheck, pyflakes: plan.pyflakes };
 }

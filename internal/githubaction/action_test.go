@@ -363,11 +363,13 @@ func TestActionTimesOut(t *testing.T) {
 	var out strings.Builder
 	outputPath := filepath.Join(t.TempDir(), "output")
 	env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath}
+	finished := make(chan struct{})
 	a := &action{
 		args:   args("", "json", "", "", "true", "true", ".", "", "true"),
 		stdout: &out,
 		env:    func(name string) string { return env[name] },
 		lint: func(req *lintRequest) *lintResult {
+			defer close(finished)
 			<-req.ctx.Done()
 			return knownFiles(&lintOutcome{"[]\n", "", actionlint.ExitStatusSuccessNoProblem}, 0)
 		},
@@ -378,6 +380,7 @@ func TestActionTimesOut(t *testing.T) {
 	if code := a.run(); code != 3 {
 		t.Errorf("wanted exit code 3 but got %d", code)
 	}
+	<-finished
 	if !strings.Contains(out.String(), "actionlint timed out after") {
 		t.Errorf("wanted a timeout annotation but got %q", out.String())
 	}

@@ -54,13 +54,6 @@ func writeResultFile(root *os.Root, target, content string) (string, error) {
 		return "", nil
 	}
 
-	missing := []string{}
-	for parent := filepath.Dir(target); parent != "."; parent = filepath.Dir(parent) {
-		if _, err := root.Stat(parent); err == nil {
-			break
-		}
-		missing = append(missing, parent)
-	}
 	if dir := filepath.Dir(target); dir != "." {
 		if err := root.MkdirAll(dir, 0o755); err != nil {
 			return "", err
@@ -78,10 +71,6 @@ func writeResultFile(root *os.Root, target, content string) (string, error) {
 		return "", err
 	}
 
-	slices.Reverse(missing)
-	if err := inheritOwner(root, append(missing, target)); err != nil {
-		return "", err
-	}
 	return filepath.ToSlash(target), nil
 }
 
