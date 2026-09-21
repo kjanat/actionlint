@@ -66,9 +66,11 @@ unavailable contexts produce configuration errors rather than guessed paths.
 This is path interpolation using GitHub's delimiters, not the full Actions
 expression language. Values are substituted once, without evaluating their contents.
 
-In `actionlint.yaml`, actionlint performs the interpolation. When passing the same
-text through a workflow input, GitHub evaluates expressions first; use a literal
+In `actionlint.yaml`, actionlint performs the interpolation. When passing configuration
+through the Action's `tools` input, GitHub evaluates expressions first; use a literal
 expression such as `${{ '${{ configdir }}/.shellcheckrc' }}` to pass it through.
+The dedicated `shellcheck-config` input continues to accept workspace-relative
+filenames, `true` or `false`; use `tools.shellcheck.config` for interpolation.
 
 The inline mapping accepts these native project-wide settings:
 

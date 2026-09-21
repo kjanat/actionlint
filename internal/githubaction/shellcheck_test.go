@@ -116,6 +116,9 @@ func TestActionShellcheckInputs(t *testing.T) {
 		{name: "shell override preserves user locations", shell: "bash", script: `[[ -n "$HOME" ]]`, args: `["--shell=sh"]`, code: 1, finding: "SC3010"},
 		{name: "missing config fails", config: "missing", code: 2},
 		{name: "project inline config", fileSettings: "config: {disable: [SC2086]}"},
+		{name: "project config directory interpolation", fileSettings: `config: "${{ configdir }}/.shellcheckrc"`},
+		{name: "project workspace interpolation", fileSettings: `config: "${{ github.workspace }}/config with spaces"`},
+		{name: "tools input path interpolation", tools: `shellcheck: {config: "${{ configdir }}/.shellcheckrc"}`},
 		{name: "project disables tool", fileSettings: "enabled: false"},
 		{name: "tools input re-enables tool", fileSettings: "enabled: false", tools: "shellcheck: {enabled: true}", code: 1},
 		{name: "tools input replaces list", fileSettings: "config: {disable: [SC2086]}", tools: "shellcheck: {config: {disable: []}}", code: 1},
@@ -137,11 +140,13 @@ func TestActionShellcheckInputs(t *testing.T) {
 			workspace := workspaceWith(t, map[string]string{
 				".git": "", "project/workflow.yml": source,
 				".github/actionlint.yaml":    "tools:\n  shellcheck:\n    " + tc.fileSettings + "\n",
+				".github/.shellcheckrc":      "disable=SC2086\n",
 				".github/workflows/.gitkeep": "",
 				"project/" + rcfile:          "disable=SC2086\n",
 				".shellcheckrc":              "disable=SC2016\n",
 				"config with spaces":         "disable=SC2086\n",
 			})
+			t.Setenv("GITHUB_WORKSPACE", workspace)
 			env := map[string]string{
 				"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "workflow.yml",
 				"INPUT_WORKING-DIRECTORY": "project", "INPUT_PYFLAKES": "false",
