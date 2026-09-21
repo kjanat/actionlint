@@ -44,7 +44,7 @@ See the [full list][checks] of checks done by actionlint.
 
 <details><summary><h3>Example of a broken workflow</h3></summary>
 
-The same files the animation above records, run through both linters. This section is generated from them by [`scripts/check-readme`], so it cannot drift.
+The same files the animation above records, run through both linters. This section is generated from them by [`scripts/check-readme`].
 
 <!-- BEGIN generated demo -->
 
