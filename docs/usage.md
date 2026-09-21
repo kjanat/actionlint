@@ -406,7 +406,7 @@ Output:
 <img src="https://cdn.jsdelivr.net/gh/rhysd/ss@5530c2526b44ad28dc12f91a3d71bcd57940f008/actionlint/ga-annotate.png" alt="annotations on GitHub Actions" width="731" height="522"/>
 
 To include newlines in the annotation body, it prints `%0A`. (ref
-[actions/toolkit#193](https://github.com/actions/toolkit/issues/193)). And it
+actions/toolkit#193). And it
 suppresses `SC2016` shellcheck rule error since it complains about the template
 argument.
 
@@ -838,7 +838,7 @@ super-linter in your repository automatically runs actionlint.
 To ignore some errors, please add `-ignore` option by using
 [`GITHUB_ACTIONS_COMMAND_ARGS` environment variable][super-linter-env-var].
 Please see
-[super-linter/super-linter#1852](https://github.com/super-linter/super-linter/issues/1852)
+super-linter/super-linter#1852
 for the discussion.
 
 ### pre-commit

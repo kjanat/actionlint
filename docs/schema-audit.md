@@ -1,16 +1,16 @@
 # GitHub Actions schema audit
 
-Audit date: 2026-09-13. The work started from detached commit [`kjanat/actionlint@adeac5c`](https://github.com/kjanat/actionlint/commit/adeac5c560843988d9be9738a73a2b708513d921) in an isolated checkout. This report separates official schema coverage, additional runner conversion rules, and retained linter policy.
+Audit date: 2026-09-13. The work started from detached commit [`kjanat/actionlint@adeac5c`] in an isolated checkout. This report separates official schema coverage, additional runner conversion rules, and retained linter policy.
 
 ## Coverage and authorities
 
-| Report                                                                 | Scope                                                                                                                                                                           |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Workflow structure and nested definitions](schema-audit-nested.md)    | All 324 named workflow definitions across runner and Language Services: roots/jobs, triggers and enums, nested mappings/sequences/unions, required properties and scalar types. |
-| [Expression contexts, functions and scalars](schema-audit-contexts.md) | Every context-bearing schema definition, 37 workflow availability keys, builtins/special functions, expression depth, scalar decoding, and whole-object expressions.            |
-| [Action metadata](schema-audit-actions.md)                             | All 25 manifest definitions and 41 explicit properties, runtime variants, composite steps, expression contexts and loader constraints.                                          |
+| Report                                       | Scope                                                                                                                                                                           |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Workflow structure and nested definitions]  | All 324 named workflow definitions across runner and Language Services: roots/jobs, triggers and enums, nested mappings/sequences/unions, required properties and scalar types. |
+| [Expression contexts, functions and scalars] | Every context-bearing schema definition, 37 workflow availability keys, builtins/special functions, expression depth, scalar decoding, and whole-object expressions.            |
+| [Action metadata]                            | All 25 manifest definitions and 41 explicit properties, runtime variants, composite steps, expression contexts and loader constraints.                                          |
 
-Workflow schema authorities are runner commit `759385a3510197a58b5c08dc1f373b74b9f4643b` and Language Services commit `4043eda158e16579cc5fb1b0b07a4bce2a76f0b5`. The reports link exact source files and additional merged upstream fixes. Source disagreements are recorded individually; schema acceptance alone does not establish that a runtime loader supports a form.
+Workflow schema authorities are [`actions/runner@759385a`] and [`actions/languageservices@4043eda`]. The reports link exact source files and additional merged upstream fixes. Source disagreements are recorded individually; schema acceptance alone does not establish that a runtime loader supports a form.
 
 ## Changes
 
@@ -20,9 +20,9 @@ Action metadata validation retains raw schema structure while checking Docker/Ja
 
 ## Retained differences
 
-The detailed reports distinguish unsupported legacy/internal event names, intentional nonempty/no-op checks, numeric/boolean type strictness, source-version disagreements and opaque runtime expression values. Known conformance differences remain reviewable in [the exact diagnostic baseline](../testdata/conformance/differences.json). Runtime expression evaluation, external action behavior and GitHub-hosted workflow execution were not tested by dispatching workflows.
+The detailed reports distinguish unsupported legacy/internal event names, intentional nonempty/no-op checks, numeric/boolean type strictness, source-version disagreements and opaque runtime expression values. Known conformance differences remain reviewable in [the exact diagnostic baseline]. Runtime expression evaluation, external action behavior and GitHub-hosted workflow execution were not tested by dispatching workflows.
 
-The conformance fixture archive is separately pinned by [sources.json](../internal/conformance/sources.json). Its runner revision is `602c0085328df8cb595fc2641d69f640a11377a4`; this is distinct from the newer runner schema audited above.
+The conformance fixture archive is separately pinned by [sources.json]. Its runner revision is [`actions/runner@602c008`]; this is distinct from the newer runner schema audited above.
 
 ## Validation
 
@@ -33,3 +33,16 @@ The conformance fixture archive is separately pinned by [sources.json](../intern
 - `scripts/check-checks`: all examples passed using a temporary copy that normalized one expected missing-file error to Windows path/error wording. The canonical document has no other regeneration differences. A Linux attempt could not run the shellcheck example because shellcheck/pyflakes are absent from WSL.
 
 These checks ran locally in the isolated checkout. No remote CI, workflow dispatch, commit or publication was performed. Investigation logs, the temporary platform-normalized document, and downloaded reference copies were removed after recording these results.
+
+[Action metadata]: schema-audit-actions.md
+[Expression contexts, functions and scalars]: schema-audit-contexts.md
+[Workflow structure and nested definitions]: schema-audit-nested.md
+[sources.json]: ../internal/conformance/sources.json
+[the exact diagnostic baseline]: ../testdata/conformance/differences.json
+
+<!-- specific commit refs -->
+
+[`actions/languageservices@4043eda`]: https://github.com/actions/languageservices/commit/4043eda158e16579cc5fb1b0b07a4bce2a76f0b5
+[`actions/runner@602c008`]: https://github.com/actions/runner/commit/602c0085328df8cb595fc2641d69f640a11377a4
+[`actions/runner@759385a`]: https://github.com/actions/runner/commit/759385a3510197a58b5c08dc1f373b74b9f4643b
+[`kjanat/actionlint@adeac5c`]: https://github.com/kjanat/actionlint/commit/adeac5c560843988d9be9738a73a2b708513d921

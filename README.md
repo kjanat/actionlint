@@ -10,9 +10,9 @@ This is an actively maintained fork of [rhysd/actionlint][upstream]. It carries 
 
 ## Fork provenance and versioning
 
-This fork builds on upstream [v1.7.12](https://github.com/rhysd/actionlint/releases/tag/v1.7.12) ([`rhysd/actionlint@914e7df`](https://github.com/rhysd/actionlint/commit/914e7df21a07ef503a81201c76d2b11c789d3fca)). Its independent release series starts at v1.8.0. Tags published by `kjanat/actionlint` identify this fork's releases; a matching tag need not exist in `rhysd/actionlint`.
+This fork builds on upstream [v1.7.12](https://github.com/rhysd/actionlint/releases/tag/v1.7.12) ([`rhysd/actionlint@914e7df`]). Its independent release series starts at v1.8.0. Tags published by `kjanat/actionlint` identify this fork's releases; a matching tag need not exist in `rhysd/actionlint`.
 
-The [changelog](CHANGELOG.md#upstream-history) separates fork releases from inherited upstream history. Releases follow [Semantic Versioning for the supported CLI and configuration contracts](CONTRIBUTING.md#release-versioning), with [CLI compatibility](CONTRIBUTING.md#cli-compatibility) maintained for existing integrations. New or corrected lint findings can affect CI results; the [Go library API remains unstable](CONTRIBUTING.md#go-library-api).
+The [changelog] separates fork releases from inherited upstream history. Releases follow [Semantic Versioning for the supported CLI and configuration contracts], with [CLI compatibility] maintained for existing integrations. New or corrected lint findings can affect CI results; the [Go library API remains unstable].
 
 ## Features
 
@@ -44,7 +44,7 @@ See the [full list][checks] of checks done by actionlint.
 
 <details><summary><h3>Example of a broken workflow</h3></summary>
 
-The same files the animation above records, run through both linters. This section is generated from them by [`scripts/check-readme`](scripts/check-readme), so it cannot drift.
+The same files the animation above records, run through both linters. This section is generated from them by [`scripts/check-readme`], so it cannot drift.
 
 <!-- BEGIN generated demo -->
 
@@ -120,8 +120,8 @@ demo-workflow.yaml:18:15: "api" is not the ID of a preceding background step. "w
 
 ## Quick start
 
-Install with [npm](docs/install.md#npm), [Homebrew](docs/install.md#homebrew), [AUR](docs/install.md#arch-linux),
-[Scoop](docs/install.md#scoop), or [mise](docs/install.md#mise), or download [a release archive][releases].
+Install with [npm], [Homebrew], [AUR],
+[Scoop], or [mise], or download [a release archive][releases].
 See [the installation document][install] for all options. To run it through npm:
 
 ```sh
@@ -265,14 +265,14 @@ See [the usage document][usage] for the pinned ShellCheck build and how to choos
 
 ## Documents
 
-- [AI usage and policy](CONTRIBUTING.md#ai-usage-and-policy) and [CLI compatibility](CONTRIBUTING.md#cli-compatibility): How this fork uses AI and approaches compatibility for existing workflows and CI integrations.
+- [AI usage and policy] and [CLI compatibility]: How this fork uses AI and approaches compatibility for existing workflows and CI integrations.
 - [Checks][checks]: Full list of all checks done by actionlint with example inputs, outputs, and playground links.
 - [Installation][install]: Install with npm, Homebrew, AUR, Scoop, aqua, mise, the community pip/uv wrapper, release archives, the download script, Docker, or Go. Includes the status of WinGet and upstream-only package names.
 - [Usage][usage]: How to use `actionlint` command locally or on GitHub Actions, the online playground, an official Docker image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit, VS Code.
 - [Configuration][config]: Runner labels, variables, secrets, default permissions, error filters, and opt-in policy checks, with YAML Language Server schema support.
 - [Go API][api]: How to use actionlint as Go library.
-- [Schema audit](docs/schema-audit.md): Pinned upstream definitions, compatibility fixes, validation evidence, and retained differences.
-- [Expression behavior](docs/expression-behavior.md): Reproduce GitHub's runtime behavior, understand parser differences, and avoid surprising workflow decisions.
+- [Schema audit]: Pinned upstream definitions, compatibility fixes, validation evidence, and retained differences.
+- [Expression behavior]: Reproduce GitHub's runtime behavior, understand parser differences, and avoid surprising workflow decisions.
 - [References][refs]: Links to resources.
 - [GitHub Actions changelog][github-changelog]: Browse and search the latest entries from GitHub's Actions changelog feed.
 
@@ -280,35 +280,57 @@ See [the usage document][usage] for the pinned ShellCheck build and how to choos
 
 When you see some bugs or false positives, it is helpful to [file a new issue][issue-form] with a minimal example of input. Feature requests and ideas for additional checks are welcome too.
 
-See the [contribution guide](./CONTRIBUTING.md) for more details.
+See the [contribution guide] for more details.
 
 ## License
 
-actionlint is distributed under [the MIT license](./LICENSE.txt).
+actionlint is distributed under [the MIT license].
 
-[ci-badge]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml/badge.svg
-[ci]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml
+[AI usage and policy]: CONTRIBUTING.md#ai-usage-and-policy
+[AUR]: docs/install.md#arch-linux
+[CLI compatibility]: CONTRIBUTING.md#cli-compatibility
+[Expression behavior]: docs/expression-behavior.md
+[Go library API remains unstable]: CONTRIBUTING.md#go-library-api
+[Homebrew]: docs/install.md#homebrew
+[Schema audit]: docs/schema-audit.md
+[Scoop]: docs/install.md#scoop
+[Semantic Versioning for the supported CLI and configuration contracts]: CONTRIBUTING.md#release-versioning
+[`scripts/check-readme`]: scripts/check-readme
 [apidoc-badge]: https://pkg.go.dev/badge/actionlint.kjanat.dev.svg
 [apidoc]: https://pkg.go.dev/actionlint.kjanat.dev
+[changelog]: CHANGELOG.md#upstream-history
+[ci-badge]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml/badge.svg
+[ci]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml
+[config]: docs/config.md
+[contribution guide]: ./CONTRIBUTING.md
+[dockerhub]: https://hub.docker.com/r/kjanat/actionlint
+[filter-pattern-doc]: https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
+[ghcr]: https://github.com/kjanat/actionlint/pkgs/container/actionlint
+[github-changelog]: https://actionlint.kjanat.dev/github-changelog/
+[issue-form]: https://github.com/kjanat/actionlint/issues/new
+[mise]: docs/install.md#mise
+[npm]: docs/install.md#npm
+[playground]: https://kjanat.github.io/actionlint/
+[pre-commit]: https://pre-commit.com
+[pyflakes]: https://github.com/PyCQA/pyflakes
+[releases]: https://github.com/kjanat/actionlint/releases
+[repo]: https://github.com/kjanat/actionlint
+[script-injection-doc]: https://docs.github.com/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks
+[shellcheck]: https://github.com/koalaman/shellcheck
 [sponsor-badge]: https://img.shields.io/badge/Sponsor-ea4aaa?logo=githubsponsors&logoColor=white
 [sponsor]: https://github.com/sponsors/kjanat
-[repo]: https://github.com/kjanat/actionlint
-[playground]: https://kjanat.github.io/actionlint/
-[github-changelog]: https://actionlint.kjanat.dev/github-changelog/
-[pre-commit]: https://pre-commit.com
-[upstream]: https://github.com/rhysd/actionlint
-[ghcr]: https://github.com/kjanat/actionlint/pkgs/container/actionlint
-[dockerhub]: https://hub.docker.com/r/kjanat/actionlint
-[shellcheck]: https://github.com/koalaman/shellcheck
-[pyflakes]: https://github.com/PyCQA/pyflakes
 [syntax-doc]: https://docs.github.com/actions/reference/workflow-syntax-for-github-actions
-[filter-pattern-doc]: https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
-[script-injection-doc]: https://docs.github.com/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks
-[releases]: https://github.com/kjanat/actionlint/releases
+[the MIT license]: ./LICENSE.txt
+[upstream]: https://github.com/rhysd/actionlint
+
+<!-- versioned links -->
+
+[api]: https://github.com/kjanat/actionlint/blob/v1.17.0/docs/api.md
 [checks]: https://github.com/kjanat/actionlint/blob/v1.17.0/docs/checks.md
 [install]: https://github.com/kjanat/actionlint/blob/master/docs/install.md
-[usage]: https://github.com/kjanat/actionlint/blob/v1.17.0/docs/usage.md
-[config]: docs/config.md
-[api]: https://github.com/kjanat/actionlint/blob/v1.17.0/docs/api.md
 [refs]: https://github.com/kjanat/actionlint/blob/v1.17.0/docs/reference.md
-[issue-form]: https://github.com/kjanat/actionlint/issues/new
+[usage]: https://github.com/kjanat/actionlint/blob/v1.17.0/docs/usage.md
+
+<!-- specific commit refs -->
+
+[`rhysd/actionlint@914e7df`]: https://github.com/rhysd/actionlint/commit/914e7df21a07ef503a81201c76d2b11c789d3fca

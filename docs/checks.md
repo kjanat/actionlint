@@ -1926,7 +1926,7 @@ Setup Job with an unhandled exception instead of a workflow annotation.
 
 Note that actionlint does not report any error when a directory for a local action does not exist in the repository because it is
 a common case where the action is managed in a separate repository and the action directory is cloned at running the workflow.
-(See [#25][issue-25] and [#40][issue-40] for more details).
+(See rhysd/actionlint#25 and rhysd/actionlint#40 for more details).
 
 <a id="check-local-action-inputs"></a>
 

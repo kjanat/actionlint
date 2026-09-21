@@ -186,7 +186,7 @@ The fork publishes CLI images as `ghcr.io/kjanat/actionlint` and `docker.io/kjan
 The [aqua registry entry][aqua-package]
 installs this fork's release binaries and specifies SHA-256 checksums and GitHub artifact attestations for verification.
 With [aqua](https://aquaproj.github.io/) installed and an initialized `aqua.yaml`, use a standard registry version
-containing [aquaproj/aqua-registry#60566](https://github.com/aquaproj/aqua-registry/pull/60566), then add and install the package:
+containing aquaproj/aqua-registry#60566, then add and install the package:
 
 ```sh
 aqua g -i kjanat/actionlint
@@ -328,7 +328,7 @@ the upstream project.
 
 [![WinGet Package Version][winget-badge]][winget-submission]
 
-The initial `kjanat.actionlint` submission, [microsoft/winget-pkgs#430563][winget-submission], is awaiting review.
+The initial `kjanat.actionlint` submission, microsoft/winget-pkgs#430563, is awaiting review.
 The later version submissions remain drafts. Until the package is available in the WinGet source, use [npm](#npm),
 [Scoop](#scoop), or a [release archive](#prebuilt-binaries). Once available, install it with:
 
@@ -344,7 +344,7 @@ The [`actionlint` definition in Nixpkgs][nixpkgs] currently builds the upstream 
 `nixpkgs#actionlint`, and the older `nix-env` commands. They do not install this fork.
 
 [@voidlily](https://github.com/voidlily) has proposed switching the package to this fork at v1.16.0 in
-[NixOS/nixpkgs#561437][nixpkgs-fork-pr]. The PR is open and awaiting review.
+NixOS/nixpkgs#561437. The PR is open and awaiting review.
 
 Use the [project's flake](#nix) to install this fork directly while the Nixpkgs proposal is pending.
 
@@ -355,7 +355,7 @@ Use the [project's flake](#nix) to install this fork directly while the Nixpkgs 
 ### [Chocolatey](https://chocolatey.org/)
 
 The [`actionlint` package][chocolatey] installs the upstream project. Packaging this fork is being discussed in
-[kai2nenobu/chocolatey-packages#40](https://github.com/kai2nenobu/chocolatey-packages/issues/40).
+kai2nenobu/chocolatey-packages#40.
 This fork does not currently publish a Chocolatey package. Use [Scoop](#scoop),
 [mise](#mise), or a [release archive](#prebuilt-binaries) on Windows.
 
@@ -368,43 +368,42 @@ plugin. Use mise's GitHub backend or a release archive instead.
 
 [Checks](checks.md) | [Usage](usage.md) | [Configuration](config.md) | [Go API](api.md) | [References](reference.md)
 
-[formula]: https://formulae.brew.sh/formula/actionlint
-[homebrew]: https://brew.sh/
-[releases]: https://github.com/kjanat/actionlint/releases
-[release-badge]: https://img.shields.io/github/v/release/kjanat/actionlint
-[gh]: https://docs.github.com/en/github-cli/github-cli/about-github-cli
-[attestations]: https://docs.github.com/en/actions/concepts/security/artifact-attestations
 [Go]: https://go.dev/
-[go-module]: https://pkg.go.dev/actionlint.kjanat.dev
-[go-module-badge]: https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fproxy.golang.org%2Factionlint.kjanat.dev%2F%40latest&query=%24.Version&label=Go%20module
+[actionlint-kjanat-bin]: https://aur.archlinux.org/packages/actionlint-kjanat-bin
+[actionlint-kjanat-git]: https://aur.archlinux.org/packages/actionlint-kjanat-git
+[actionlint-kjanat]: https://aur.archlinux.org/packages/actionlint-kjanat
+[aqua-badge]: https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2Faquaproj%2Faqua-registry%2Fmain%2Fpkgs%2Fkjanat%2Factionlint%2Fregistry.yaml&query=%24.packages%5B0%5D.repo_name&prefix=kjanat%2F&label=aqua%20registry&color=blue
+[aqua-package]: https://github.com/aquaproj/aqua-registry/tree/main/pkgs/kjanat/actionlint
 [asdf-plugin]: https://github.com/crazy-matt/asdf-actionlint
+[attestations]: https://docs.github.com/en/actions/concepts/security/artifact-attestations
+[aur-bin-badge]: https://img.shields.io/aur/version/actionlint-kjanat-bin?label=AUR%20%28binary%29
+[aur-git-badge]: https://img.shields.io/aur/version/actionlint-kjanat-git?label=AUR%20%28git%29
+[aur-source-badge]: https://img.shields.io/aur/version/actionlint-kjanat?label=AUR%20%28source%29
+[aur]: https://aur.archlinux.org/
 [chocolatey]: https://community.chocolatey.org/packages/actionlint
 [docker-badge]: https://img.shields.io/docker/v/kjanat/actionlint
 [dockerhub]: https://hub.docker.com/r/kjanat/actionlint
-[npm-package]: https://www.npmjs.com/package/@kjanat/actionlint
-[npm-badge]: https://img.shields.io/npm/v/%40kjanat%2Factionlint
-[pypi-package]: https://pypi.org/project/actionlint-py-kjanat/
-[pypi-badge]: https://img.shields.io/pypi/v/actionlint-py-kjanat?label=PyPI%20%28community%29
-[python-wrapper]: https://github.com/renefritze/actionlint-py-kjanat
-[python-wrapper-pr]: https://github.com/renefritze/actionlint-py-kjanat/pull/1
-[uv-tools]: https://docs.astral.sh/uv/guides/tools/
-[upstream]: https://github.com/rhysd/actionlint
-[scoop]: https://scoop.sh/#/apps?q=actionlint&s=0&d=1&o=true
-[scoop-bucket]: https://github.com/kjanat/scoop-bucket/blob/master/bucket/actionlint.json
-[scoop-badge]: https://img.shields.io/scoop/v/actionlint?bucket=https%3A%2F%2Fgithub.com%2Fkjanat%2Fscoop-bucket
-[winget]: https://github.com/microsoft/winget-pkgs/tree/master/manifests/r/rhysd/actionlint
-[winget-submission]: https://github.com/microsoft/winget-pkgs/pull/430563
-[winget-badge]: https://img.shields.io/winget/v/kjanat.actionlint
-[actionlint-kjanat-git]: https://aur.archlinux.org/packages/actionlint-kjanat-git
-[actionlint-kjanat-bin]: https://aur.archlinux.org/packages/actionlint-kjanat-bin
-[actionlint-kjanat]: https://aur.archlinux.org/packages/actionlint-kjanat
-[aur-git-badge]: https://img.shields.io/aur/version/actionlint-kjanat-git?label=AUR%20%28git%29
-[aur-bin-badge]: https://img.shields.io/aur/version/actionlint-kjanat-bin?label=AUR%20%28binary%29
-[aur-source-badge]: https://img.shields.io/aur/version/actionlint-kjanat?label=AUR%20%28source%29
-[aur]: https://aur.archlinux.org/
-[paru]: https://github.com/Morganamilo/paru
-[nixpkgs]: https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/ac/actionlint/package.nix
-[nixpkgs-fork-pr]: https://github.com/NixOS/nixpkgs/pull/561437
+[formula]: https://formulae.brew.sh/formula/actionlint
+[gh]: https://docs.github.com/en/github-cli/github-cli/about-github-cli
+[go-module-badge]: https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fproxy.golang.org%2Factionlint.kjanat.dev%2F%40latest&query=%24.Version&label=Go%20module
+[go-module]: https://pkg.go.dev/actionlint.kjanat.dev
+[homebrew]: https://brew.sh/
 [mise-github]: https://mise.jdx.dev/dev-tools/backends/github.html
-[aqua-package]: https://github.com/aquaproj/aqua-registry/tree/main/pkgs/kjanat/actionlint
-[aqua-badge]: https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2Faquaproj%2Faqua-registry%2Fmain%2Fpkgs%2Fkjanat%2Factionlint%2Fregistry.yaml&query=%24.packages%5B0%5D.repo_name&prefix=kjanat%2F&label=aqua%20registry&color=blue
+[nixpkgs]: https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/ac/actionlint/package.nix
+[npm-badge]: https://img.shields.io/npm/v/%40kjanat%2Factionlint
+[npm-package]: https://www.npmjs.com/package/@kjanat/actionlint
+[paru]: https://github.com/Morganamilo/paru
+[pypi-badge]: https://img.shields.io/pypi/v/actionlint-py-kjanat?label=PyPI%20%28community%29
+[pypi-package]: https://pypi.org/project/actionlint-py-kjanat/
+[python-wrapper-pr]: https://github.com/renefritze/actionlint-py-kjanat/pull/1
+[python-wrapper]: https://github.com/renefritze/actionlint-py-kjanat
+[release-badge]: https://img.shields.io/github/v/release/kjanat/actionlint
+[releases]: https://github.com/kjanat/actionlint/releases
+[scoop-badge]: https://img.shields.io/scoop/v/actionlint?bucket=https%3A%2F%2Fgithub.com%2Fkjanat%2Fscoop-bucket
+[scoop-bucket]: https://github.com/kjanat/scoop-bucket/blob/master/bucket/actionlint.json
+[scoop]: https://scoop.sh/#/apps?q=actionlint&s=0&d=1&o=true
+[upstream]: https://github.com/rhysd/actionlint
+[uv-tools]: https://docs.astral.sh/uv/guides/tools/
+[winget-badge]: https://img.shields.io/winget/v/kjanat.actionlint
+[winget-submission]: https://github.com/microsoft/winget-pkgs/pull/430563
+[winget]: https://github.com/microsoft/winget-pkgs/tree/master/manifests/r/rhysd/actionlint
