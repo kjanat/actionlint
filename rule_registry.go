@@ -16,6 +16,9 @@ type ruleContext struct {
 	process                            *concurrentProcess
 	shellcheck, pyflakes               string
 	shellcheckOptions, pyflakesOptions *ExternalCommandOptions
+	shellcheckSettings                 *ShellcheckSettings
+	workingDir, projectRoot            string
+	inputs                             *inputFiles
 }
 
 func builtinRuleDescriptors() []ruleDescriptor {
@@ -49,8 +52,19 @@ func builtinRuleDescriptors() []ruleDescriptor {
 		{Name: "cache-call-unrestricted", Description: "Checks cache access ceilings on low-trust reusable workflow calls", Category: "policy", build: func(c ruleContext) (Rule, error) { return NewRuleCacheCallUnrestricted(), nil }, enabled: func(c ruleContext) bool { return c.config.cachePolicyEnabled("cache-call-unrestricted") }},
 		{Name: "cache-operation", Description: "Checks cache actions disabled by explicit cache access modes", Category: "policy", build: func(c ruleContext) (Rule, error) { return newRuleCacheOperation(c.workflows), nil }, enabled: func(c ruleContext) bool { return c.config.cachePolicyEnabled("cache-operation") }},
 		{Name: "shellcheck", Description: "Checks for shell script sources in \"run:\" using shellcheck", Category: "external", build: func(c ruleContext) (Rule, error) {
-			return configuredShellcheck(c.shellcheck, c.shellcheckOptions, c.process)
-		}, enabled: func(c ruleContext) bool { return externalCommandEnabled(c.shellcheck, c.shellcheckOptions) }},
+			rule, err := configuredShellcheck(c.shellcheck, c.shellcheckOptions, c.shellcheckSettings, c.process)
+			if err != nil {
+				return nil, err
+			}
+			rule.paths = shellcheckPaths{workspace: c.projectRoot, analysis: c.workingDir}
+			if c.inputs != nil {
+				rule.onInput = c.inputs.add
+			}
+			return rule, nil
+		}, enabled: func(c ruleContext) bool {
+			return externalCommandEnabled(c.shellcheck, c.shellcheckOptions) &&
+				(c.config == nil || c.config.Tools.Shellcheck.Enabled == nil || *c.config.Tools.Shellcheck.Enabled)
+		}},
 		{Name: "pyflakes", Description: "Checks for Python script when \"shell: python\" is configured using Pyflakes", Category: "external", build: func(c ruleContext) (Rule, error) { return configuredPyflakes(c.pyflakes, c.pyflakesOptions, c.process) }, enabled: func(c ruleContext) bool { return externalCommandEnabled(c.pyflakes, c.pyflakesOptions) }},
 	}
 }
