@@ -63,6 +63,56 @@ The inline mapping accepts these native project-wide settings:
 These settings apply to each checked shell script. `shell` overrides its inferred
 dialect; it does not turn Python or PowerShell steps into shell scripts.
 
+### Script selection and directives
+
+ShellCheck recognizes `bash`, `sh`, `dash`, and `ksh` custom templates, including
+interpreter paths and `.exe` names. For example, `bash -euxo pipefail {0}` supplies
+its startup options to the analysis. Later template options override earlier ones,
+including `+e` and `+o pipefail`. Arguments after `{0}` belong to the script and do
+not change its startup options. Unrecognized options leave startup assumptions
+unset. Templates using `-c` or `-s`, and unknown wrappers, do not establish the
+run block's language.
+
+Select ShellCheck explicitly for an unknown wrapper with a leading native directive:
+
+```yaml
+- shell: custom-shell {0}
+  run: |
+    # shellcheck shell=bash
+    echo "$HOME"
+```
+
+This selects the analyzer and dialect; it does not change what GitHub executes.
+Without that directive, unknown wrappers are skipped by ShellCheck while other
+workflow checks continue. Debug logging explains skipped scripts and the selected
+dialect and startup assumptions. Selecting a dialect does not install ShellCheck
+or override a disabled tool.
+
+Leading [ShellCheck directives][shellcheck-directives] keep their native file-wide
+scope; directives later in the script keep their command scope. Shebangs, comments
+and script commands are passed through, with findings mapped back to the original
+YAML positions. The integration uses this dialect precedence:
+
+1. Explicit application settings, then inline `tools.shellcheck.config.shell`.
+2. ShellCheck command arguments, then `SHELLCHECK_OPTS`.
+3. A leading `# shellcheck shell=...` directive.
+4. The workflow's resolved shell.
+
+Global dialect overrides apply to recognized shell scripts and scripts explicitly
+selected by a directive; they do not opt every unknown or non-shell step into
+ShellCheck. An inferred dialect takes precedence over a shebang because GitHub
+invokes the selected interpreter directly. Explicit dialect changes and native
+shell directives discard inferred startup options to avoid importing options
+from another interpreter.
+
+Template flags are reduced to their final enabled state before being supplied to
+ShellCheck. ShellCheck 0.11.0 treats the presence of `set -e` or `set -o pipefail`
+as script-wide evidence even when a later option disables it. Normalization avoids
+introducing that error through our generated startup command. Commands inside the
+user's script remain unchanged and subject to ShellCheck's own analysis limits.
+
+### Source resolution
+
 Relative `source-path` entries and sourced filenames use the run step's effective
 working directory: step `working-directory`, then job `defaults.run`, then workflow
 `defaults.run`, then the repository root. Relative working directories resolve
@@ -493,3 +543,4 @@ vim .github/actionlint.yaml
 [vars]: https://docs.github.com/en/actions/learn-github-actions/variables
 [secrets]: https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions
 [doublestar]: https://github.com/bmatcuk/doublestar
+[shellcheck-directives]: https://www.shellcheck.net/wiki/Directive
