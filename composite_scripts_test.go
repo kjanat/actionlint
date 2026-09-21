@@ -47,6 +47,47 @@ func TestCompositeShellcheck(t *testing.T) {
 	}
 }
 
+func TestCompositeShellcheckActionPaths(t *testing.T) {
+	command := shellcheckForTest(t)
+	t.Setenv("GITHUB_WORKSPACE", "")
+	foreign := t.TempDir()
+	t.Setenv("GITHUB_ACTION_PATH", foreign)
+	writeShellcheckFixture(t, foreign, ".shellcheckrc", "disable=SC2086\n")
+	writeShellcheckFixture(t, foreign, "lib/value.sh", "VALUE=42\n")
+	for _, selection := range []string{
+		`"${{ github.action_path }}/.shellcheckrc"`,
+		`{source-path: ["${{ github.action_path }}/lib"]}`,
+	} {
+		t.Run(selection, func(t *testing.T) {
+			root, _ := executableFixture(t)
+			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: {config: "+selection+"}}\n")
+			outerRC := writeShellcheckFixture(t, root, "outer/.shellcheckrc", "disable=SC2086\n")
+			innerRC := writeShellcheckFixture(t, root, "inner/.shellcheckrc", "# Inner action keeps SC2086 enabled.\n")
+			writeShellcheckFixture(t, root, "outer/lib/value.sh", "VALUE=42\n")
+			writeShellcheckFixture(t, root, "inner/lib/value.sh", "VALUE='two words'\n")
+			writeShellcheckFixture(t, root, "outer/action.yml", "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: |\n        . value.sh\n        echo $VALUE\n    - uses: ./inner\n")
+			inner := writeShellcheckFixture(t, root, "inner/action.yaml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: |\n        . value.sh\n        echo $VALUE\n")
+			result := compositeAnalysis(t, root, "- uses: ./outer\n- uses: ./outer", AnalysisOptions{Shellcheck: command})
+			var findings []Diagnostic
+			for _, d := range result.Diagnostics {
+				if d.Rule == "shellcheck" {
+					findings = append(findings, d)
+				}
+			}
+			if len(findings) != 1 || findings[0].Path != inner || !strings.Contains(findings[0].Message, "SC2086") {
+				t.Fatalf("action configuration leaked between invocations: %+v", findings)
+			}
+			if strings.Contains(selection, ".shellcheckrc") {
+				for _, path := range []string{outerRC, innerRC} {
+					if !slices.Contains(result.Inputs, path) {
+						t.Errorf("action-specific rc file missing from inputs: %s", path)
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestCompositeSyntaxAndNestedActions(t *testing.T) {
 	command := shellcheckForTest(t)
 	python, err := exec.LookPath("pyflakes")

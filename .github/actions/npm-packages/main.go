@@ -427,6 +427,9 @@ func (c *config) buildFacade(tf *targetsFile) error {
 	if err := copyFile(filepath.Join(c.repoRoot, "actionlint.schema.json"), filepath.Join(dir, "actionlint.schema.json")); err != nil {
 		return err
 	}
+	if err := copyTree(filepath.Join(c.repoRoot, "schemas"), filepath.Join(dir, "schemas")); err != nil {
+		return err
+	}
 	if err := c.copyLegal(dir); err != nil {
 		return err
 	}

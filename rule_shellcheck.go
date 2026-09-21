@@ -2,6 +2,7 @@ package actionlint
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -35,6 +36,8 @@ type ShellcheckSettings struct {
 type ShellcheckConfigSelection interface{ shellcheckConfigSelection() }
 
 // ShellcheckRCFile selects an explicit rc file.
+// Relative application paths use the process working directory. Path
+// interpolations use the analyzed project's configuration and action context.
 type ShellcheckRCFile string
 
 func (ShellcheckRCFile) shellcheckConfigSelection() {}
@@ -64,6 +67,7 @@ type RuleShellcheck struct {
 	jobDir        runDirectory
 	paths         runPaths
 	rcArgs        []string
+	actionPath    string
 	onInput       func(string)
 	mu            sync.Mutex
 }
@@ -129,7 +133,14 @@ func (rule *RuleShellcheck) VisitJobPost(n *Job) error {
 func (rule *RuleShellcheck) VisitWorkflowPre(n *Workflow) error {
 	rule.workflowShell = defaultsShellValue(n.Defaults)
 	rule.workflowDir = defaultsWorkingDirectory(n.Defaults)
-	return rule.prepareConfigPath()
+	rule.rcArgs = nil
+	err := rule.prepareConfigPath()
+	if errors.Is(err, errConfigActionPathUnavailable) {
+		// A composite invocation supplies its own action path. A workflow run
+		// using this selection still reports the missing context below.
+		return nil
+	}
+	return err
 }
 
 // VisitWorkflowPost is callback when visiting Workflow node after visiting its children.
@@ -182,22 +193,56 @@ func sanitizeExpressionsInScript(src string) string {
 
 func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shell shellcheckShell, directory runDirectory, pos *Pos) error {
 	dialect, setup := shell.analysis()
-	if dialect == "" {
-		return nil // Skip checking this shell script since shellcheck doesn't support it
+	_, _, directiveShell := shellcheckHeader(src)
+	if dialect == "" && !directiveShell {
+		rule.Debug("%s: Skip ShellCheck: cannot infer a supported script dialect from shell %q; a leading # shellcheck shell=bash (or another supported dialect) selects it explicitly", pos, shell.name)
+		return nil
+	}
+	if rule.rcArgs == nil {
+		if err := rule.prepareConfigPath(); err != nil {
+			return err
+		}
+	}
+	inferred := dialect
+	// Explicit flags retain native precedence over script directives. Do not append
+	// an inferred --shell after them and silently change the requested analysis.
+	flagShell, explicitShell := rule.cmd.shellcheckDialect()
+	appendDialect := !explicitShell && !directiveShell
+	if explicitShell {
+		dialect = flagShell
+	} else if directiveShell {
+		dialect = "" // Let ShellCheck parse and validate the original directive.
 	}
 	var inline *ShellcheckConfig
 	if config := rule.Config(); config != nil {
 		inline = config.Tools.Shellcheck.Config.inline()
 	}
+	if inline != nil {
+		resolved := *inline
+		resolved.SourcePath = make([]string, len(inline.SourcePath))
+		for i, path := range inline.SourcePath {
+			var err error
+			resolved.SourcePath[i], err = rule.pathContext().expand(path)
+			if err != nil {
+				return fmt.Errorf("tools.shellcheck.config.source-path: %w", err)
+			}
+		}
+		inline = &resolved
+	}
 	if inline != nil && inline.Shell != nil {
 		dialect = *inline.Shell
+		appendDialect = true
 	}
 	if rule.config != nil && rule.config.Shell != "" {
 		dialect = rule.config.Shell
+		appendDialect = true
+	}
+	if dialect != inferred {
+		setup = "" // Runtime options may not exist in an explicitly selected dialect.
 	}
 
 	src = sanitizeExpressionsInScript(src)
-	rule.Debug("%s: Run shellcheck for %s script:\n%s", pos, dialect, src)
+	rule.Debug("%s: Run ShellCheck: shell=%q, dialect=%q, native shell directive=%t, startup=%q:\n%s", pos, shell.name, dialect, directiveShell, setup, src)
 
 	// Reasons to exclude the rules:
 	//
@@ -236,7 +281,11 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 	if externalSources {
 		args = append(args, "-x")
 	}
-	args = append(args, "-f", "json1", "--shell", dialect, "-e", strings.Join(excluded, ","), "-")
+	args = append(args, "-f", "json1")
+	if appendDialect && dialect != "" {
+		args = append(args, "--shell", dialect)
+	}
+	args = append(args, "-e", strings.Join(excluded, ","), "-")
 	rule.Debug("%s: Running %s command with %s", pos, rule.cmd.exe, args)
 
 	// Native file-wide directives also work with --norc and never need a temp file.
@@ -247,11 +296,9 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 	if !externalSources {
 		prefix += "# shellcheck external-sources=false\n"
 	}
-	prefix += setup + "\n"
-	prefixLines := strings.Count(prefix, "\n")
-	script := prefix + src + "\n"
+	script := prepareShellcheckScript(src, prefix, setup)
 
-	rule.cmd.runInDirectory(args, script, directory.path, func(stdout []byte, err error) error {
+	rule.cmd.runInDirectory(args, script.text, directory.path, func(stdout []byte, err error) error {
 		if err != nil {
 			rule.Debug("Command %s %s failed: %v", rule.cmd.exe, args, err)
 			return fmt.Errorf("`%s %s` did not run successfully while checking script at %s: %w", rule.cmd.exe, strings.Join(args, " "), pos, err)
@@ -272,17 +319,16 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 		for _, err := range errs {
 			// Startup options are synthetic, not workflow source. A dialect override
 			// can make those options non-portable without creating a user-code finding.
-			if err.Line < prefixLines || err.Line == prefixLines && err.Level == "error" {
-				return fmt.Errorf("tools.shellcheck.config: SC%d: %s", err.Code, err.Message)
-			}
-			if err.Line == prefixLines {
+			line := script.originalLine(err.Line)
+			if line == 0 {
+				if err.Line != script.startupLine || err.Level == "error" {
+					return fmt.Errorf("tools.shellcheck.config: SC%d: %s", err.Code, err.Message)
+				}
 				continue
 			}
-			// Consider the first line is setup for running shell which was implicitly added for better check
-			line := err.Line - prefixLines
 			msg := strings.TrimSuffix(err.Message, ".") // Trim period aligning style of error message
 			if start, ok := source.pos(line, err.Column); ok {
-				end, _ := source.endPos(err.EndLine-prefixLines, err.EndColumn)
+				end, _ := source.endPos(script.originalLine(err.EndLine), err.EndColumn)
 				rule.errorfRange(start, end, "shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", err.Code, err.Level, line, err.Column, msg)
 				continue
 			}
