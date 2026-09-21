@@ -35,19 +35,40 @@ command or the Action's `shellcheck: false` input also disables the tool.
 tools:
   shellcheck:
     enabled: true
-    config: "{configdir}/.shellcheckrc" # Same as ./.shellcheckrc
+    config: "${{ configdir }}/.shellcheckrc" # Same as ./.shellcheckrc
 ```
 
-`{configdir}` is the directory containing the selected **actionlint.yaml or
+`${{ configdir }}` is the directory containing the selected **actionlint.yaml or
 actionlint.yml itself**, including a file selected with `--config`. It is also the
 base for ordinary relative config paths. For `.github/actionlint.yaml`, both
-`./.shellcheckrc` and `"{configdir}/.shellcheckrc"` mean `.github/.shellcheckrc`.
-`{gitdir}` names the workflow's repository root, so `"{gitdir}/.github/"` selects an
-rc file in that directory. Quote paths starting with `{` so YAML reads a string.
-Without a selected configuration file, `{configdir}` falls back to the
+`./.shellcheckrc` and `"${{ configdir }}/.shellcheckrc"` mean `.github/.shellcheckrc`.
+`${{ gitdir }}` names the workflow's repository root, so `"${{ gitdir }}/.github/"` selects an
+rc file in that directory.
+Without a selected configuration file, `${{ configdir }}` falls back to the
 repository root. Without a detected project, the analysis working directory is
 the fallback root. Explicitly selected files must exist and be readable; a
 selected directory must contain one of the two rc filenames.
+
+Paths and inline `source-path` entries accept these interpolations:
+
+| Expression                  | Meaning                                                                                    |
+| --------------------------- | ------------------------------------------------------------------------------------------ |
+| `${{ configdir }}`          | Directory containing the selected actionlint configuration.                                |
+| `${{ gitdir }}`             | Root of the repository being analyzed.                                                     |
+| `${{ github.workspace }}`   | `GITHUB_WORKSPACE` when set; otherwise the local repository root.                          |
+| `${{ github.action_path }}` | Directory of the composite action being analyzed; unavailable for ordinary workflow steps. |
+
+The workspace and repository root can differ, for example with a checkout in a
+subdirectory. A runner's `GITHUB_ACTION_PATH` is used only when it identifies the
+same analyzed action; an unrelated action's installation directory does not replace
+the local metadata directory. Unknown variables, malformed expressions and
+unavailable contexts produce configuration errors rather than guessed paths.
+This is path interpolation using GitHub's delimiters, not the full Actions
+expression language. Values are substituted once, without evaluating their contents.
+
+In `actionlint.yaml`, actionlint performs the interpolation. When passing the same
+text through a workflow input, GitHub evaluates expressions first; use a literal
+expression such as `${{ '${{ configdir }}/.shellcheckrc' }}` to pass it through.
 
 The inline mapping accepts these native project-wide settings:
 
@@ -132,9 +153,16 @@ Inline configuration works independently of rc-file discovery, which remains
 disabled by default. A config path explicitly selects an rc file. Output options
 such as `format` belong to actionlint reporting, not `tools.shellcheck.config`.
 
-The mapping is tested with ShellCheck 0.11.0. It does not pin a locally installed
-binary. New upstream options require updates to actionlint's types and editor
-schema; optional check availability depends on the installed ShellCheck version.
+The mapping is tested with ShellCheck 0.11.0. Its native settings have a separate
+[versioned schema][shellcheck-schema], referenced by the main actionlint schema.
+The boolean switch and rc-file path remain part of actionlint's schema. Future
+ShellCheck versions get separate snapshots; existing version files are retained.
+The schema version does not pin a locally installed binary or require the CLI to
+download schemas. New options require corresponding runtime support; optional
+check availability depends on the installed ShellCheck version.
+Editors may fetch or cache the referenced schema URL. The npm package also ships
+the versioned files under `schemas/shellcheck/`; offline validators can register
+those files under their `$id` URLs.
 See the [ShellCheck manual](https://github.com/koalaman/shellcheck/blob/master/shellcheck.1.md).
 
 ## Configuration file
@@ -544,3 +572,4 @@ vim .github/actionlint.yaml
 [secrets]: https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions
 [doublestar]: https://github.com/bmatcuk/doublestar
 [shellcheck-directives]: https://www.shellcheck.net/wiki/Directive
+[shellcheck-schema]: ../schemas/shellcheck/0.11.0.schema.json

@@ -58,6 +58,11 @@ The package includes `actionlint.schema.json` for completion and validation in c
 # yaml-language-server: $schema=../node_modules/@kjanat/actionlint/actionlint.schema.json
 ```
 
+ShellCheck directives reference a separate versioned schema URL, which editors
+may fetch or cache even when the main schema is loaded locally. The package also
+includes `schemas/shellcheck/*.schema.json`. Offline validators can register these
+files under their `$id` URLs.
+
 <details>
 <summary>CDN URLs for the JSON schema</summary>
 

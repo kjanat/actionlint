@@ -358,8 +358,8 @@
                       "properties": {
                         "config": {
                           "title": "config",
-                          "description": "Inline directives or an rc file/directory. Relative paths and {configdir} use the directory containing actionlint.yaml or actionlint.yml; {gitdir} selects the repository root.",
-                          "markdownDescription": "Inline directives or an rc file/directory. Relative paths and {configdir} use the directory containing actionlint.yaml or actionlint.yml; {gitdir} selects the repository root.",
+                          "description": "Inline directives or an rc file/directory. \n\nRelative paths and ${{ configdir }} use the actionlint configuration directory; ${{ gitdir }} uses the checked repository root. \n\nActionlint also resolves ${{ github.workspace }} and ${{ github.action_path }} when their context is known.",
+                          "markdownDescription": "Inline directives or an rc file/directory. \n\nRelative paths and `${{ configdir }}` use the actionlint configuration directory; `${{ gitdir }}` uses the checked repository root. \n\nActionlint also resolves `${{ github.workspace }}` and `${{ github.action_path }}` when their context is known.",
                           "oneOf": [
                             {
                               "oneOf": [
@@ -368,109 +368,7 @@
                                   "minLength": 1
                                 },
                                 {
-                                  "description": "Is a typed representation of project-wide ShellCheck directives.",
-                                  "markdownDescription": "Is a typed representation of project-wide ShellCheck directives.",
-                                  "type": "object",
-                                  "properties": {
-                                    "disable": {
-                                      "title": "disable",
-                                      "description": "Lists codes, code ranges or all, for example [SC2086, SC3000-SC4000].",
-                                      "markdownDescription": "Lists codes, code ranges or all, for example [SC2086, SC3000-SC4000].",
-                                      "oneOf": [
-                                        {
-                                          "type": "array",
-                                          "items": {
-                                            "type": "string",
-                                            "pattern": "^(all|(SC)?[0-9]+(-(SC)?[0-9]+)?)$"
-                                          }
-                                        },
-                                        {
-                                          "type": "null"
-                                        }
-                                      ]
-                                    },
-                                    "enable": {
-                                      "title": "enable",
-                                      "description": "Lists optional check names, or all. ShellCheck validates available names.",
-                                      "markdownDescription": "Lists optional check names, or all. ShellCheck validates available names.",
-                                      "oneOf": [
-                                        {
-                                          "type": "array",
-                                          "items": {
-                                            "type": "string",
-                                            "pattern": "^[a-zA-Z-]+$"
-                                          }
-                                        },
-                                        {
-                                          "type": "null"
-                                        }
-                                      ]
-                                    },
-                                    "extended-analysis": {
-                                      "title": "extended-analysis",
-                                      "description": "Enables or disables ShellCheck dataflow analysis. Omission keeps its default.",
-                                      "markdownDescription": "Enables or disables ShellCheck dataflow analysis. Omission keeps its default.",
-                                      "oneOf": [
-                                        {
-                                          "type": "boolean"
-                                        },
-                                        {
-                                          "type": "null"
-                                        }
-                                      ]
-                                    },
-                                    "external-sources": {
-                                      "title": "external-sources",
-                                      "description": "Controls following sourced files. Omission preserves actionlint's enabled default.",
-                                      "markdownDescription": "Controls following sourced files. Omission preserves actionlint's enabled default.",
-                                      "oneOf": [
-                                        {
-                                          "type": "boolean"
-                                        },
-                                        {
-                                          "type": "null"
-                                        }
-                                      ]
-                                    },
-                                    "shell": {
-                                      "title": "shell",
-                                      "description": "Overrides the inferred dialect for shell scripts, not Python or PowerShell steps.",
-                                      "markdownDescription": "Overrides the inferred dialect for shell scripts, not Python or PowerShell steps.",
-                                      "oneOf": [
-                                        {
-                                          "type": "string",
-                                          "enum": [
-                                            "sh",
-                                            "bash",
-                                            "dash",
-                                            "ksh",
-                                            "busybox"
-                                          ]
-                                        },
-                                        {
-                                          "type": "null"
-                                        }
-                                      ]
-                                    },
-                                    "source-path": {
-                                      "title": "source-path",
-                                      "description": "Lists directories searched for sourced files, relative to the run step's effective working directory. Scripts arrive on stdin, so SCRIPTDIR does not denote the workflow file's directory.",
-                                      "markdownDescription": "Lists directories searched for sourced files, relative to the run step's effective working directory. Scripts arrive on stdin, so SCRIPTDIR does not denote the workflow file's directory.",
-                                      "oneOf": [
-                                        {
-                                          "type": "array",
-                                          "items": {
-                                            "type": "string",
-                                            "minLength": 1
-                                          }
-                                        },
-                                        {
-                                          "type": "null"
-                                        }
-                                      ]
-                                    }
-                                  },
-                                  "additionalProperties": false
+                                  "$ref": "https://raw.githubusercontent.com/kjanat/actionlint/HEAD/schemas/shellcheck/0.11.0.schema.json"
                                 }
                               ]
                             },

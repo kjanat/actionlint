@@ -390,15 +390,16 @@ type ShellcheckToolConfig struct {
 	// An empty CLI command or shellcheck: false Action input still disables the tool.
 	Enabled *bool `yaml:"enabled" jsonschema:"nullable,default=true"`
 	// Config selects inline ShellCheck settings or an rc file/directory for each checked script.
-	// Relative paths and {configdir} use the directory containing actionlint.yaml; {gitdir} uses the repository root.
+	// Relative paths and ${{ configdir }} use the directory containing actionlint.yaml; ${{ gitdir }} uses the repository root.
+	// ${{ github.workspace }} selects the runner workspace or local repository; ${{ github.action_path }} requires a composite action context.
 	// Lists replace during actionlint config overlays. The Action's explicit shellcheck-args can override settings.
 	// Omission or null adds no directives. This does not enable rc-file discovery.
 	Config *ShellcheckConfigSource `yaml:"config" jsonschema:"nullable"`
 }
 
 // ShellcheckConfigSource selects inline directives or a configuration file/directory.
-// Relative paths use the actionlint configuration directory. {configdir} and
-// {gitdir} explicitly select that directory or the checked repository root.
+// Relative paths use the actionlint configuration directory. ${{ configdir }} and
+// ${{ gitdir }} explicitly select that directory or the checked repository root.
 type ShellcheckConfigSource struct {
 	value shellcheckConfigValue
 }
