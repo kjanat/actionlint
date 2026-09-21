@@ -33,16 +33,18 @@ func shellcheckForTest(t *testing.T) string {
 
 func TestShellcheckConfigPaths(t *testing.T) {
 	command := shellcheckForTest(t)
+	t.Setenv("GITHUB_WORKSPACE", "")
 	for _, tc := range []struct {
 		name, selection, rcname string
 		explicit, overlay       bool
 	}{
 		{"relative", "./.shellcheckrc", ".shellcheckrc", false, false},
-		{"configdir", "{configdir}/.shellcheckrc", ".shellcheckrc", false, false},
-		{"gitdir", "{gitdir}/.github/.shellcheckrc", ".shellcheckrc", false, false},
-		{"directory", "{gitdir}/.github/", ".shellcheckrc", false, false},
+		{"configdir", "${{ configdir }}/.shellcheckrc", ".shellcheckrc", false, false},
+		{"gitdir", "${{ gitdir }}/.github/.shellcheckrc", ".shellcheckrc", false, false},
+		{"workspace", "${{ github.workspace }}/.github/.shellcheckrc", ".shellcheckrc", false, false},
+		{"directory", "${{gitdir}}/.github/", ".shellcheckrc", false, false},
 		{"directory without dotfile", "./", "shellcheckrc", false, false},
-		{"explicit config outside repo", "{configdir}/.shellcheckrc", ".shellcheckrc", true, false},
+		{"explicit config outside repo", "${{ configdir }}/.shellcheckrc", ".shellcheckrc", true, false},
 		{"overlay keeps configdir", "./.shellcheckrc", ".shellcheckrc", true, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

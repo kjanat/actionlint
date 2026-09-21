@@ -2,6 +2,7 @@ package actionlint
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -35,6 +36,8 @@ type ShellcheckSettings struct {
 type ShellcheckConfigSelection interface{ shellcheckConfigSelection() }
 
 // ShellcheckRCFile selects an explicit rc file.
+// Relative application paths use the process working directory. Path
+// interpolations use the analyzed project's configuration and action context.
 type ShellcheckRCFile string
 
 func (ShellcheckRCFile) shellcheckConfigSelection() {}
@@ -64,6 +67,7 @@ type RuleShellcheck struct {
 	jobDir        shellcheckDirectory
 	paths         shellcheckPaths
 	rcArgs        []string
+	actionPath    string
 	onInput       func(string)
 	mu            sync.Mutex
 }
@@ -129,7 +133,14 @@ func (rule *RuleShellcheck) VisitJobPost(n *Job) error {
 func (rule *RuleShellcheck) VisitWorkflowPre(n *Workflow) error {
 	rule.workflowShell = defaultsShellValue(n.Defaults)
 	rule.workflowDir = defaultsWorkingDirectory(n.Defaults)
-	return rule.prepareConfigPath()
+	rule.rcArgs = nil
+	err := rule.prepareConfigPath()
+	if errors.Is(err, errConfigActionPathUnavailable) {
+		// A composite invocation supplies its own action path. A workflow run
+		// using this selection still reports the missing context below.
+		return nil
+	}
+	return err
 }
 
 // VisitWorkflowPost is callback when visiting Workflow node after visiting its children.
@@ -187,6 +198,11 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 		rule.Debug("%s: Skip ShellCheck: cannot infer a supported script dialect from shell %q; a leading # shellcheck shell=bash (or another supported dialect) selects it explicitly", pos, shell.name)
 		return nil
 	}
+	if rule.rcArgs == nil {
+		if err := rule.prepareConfigPath(); err != nil {
+			return err
+		}
+	}
 	inferred := dialect
 	// Explicit flags retain native precedence over script directives. Do not append
 	// an inferred --shell after them and silently change the requested analysis.
@@ -200,6 +216,18 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 	var inline *ShellcheckConfig
 	if config := rule.Config(); config != nil {
 		inline = config.Tools.Shellcheck.Config.inline()
+	}
+	if inline != nil {
+		resolved := *inline
+		resolved.SourcePath = make([]string, len(inline.SourcePath))
+		for i, path := range inline.SourcePath {
+			var err error
+			resolved.SourcePath[i], err = rule.pathContext().expand(path)
+			if err != nil {
+				return fmt.Errorf("tools.shellcheck.config.source-path: %w", err)
+			}
+		}
+		inline = &resolved
 	}
 	if inline != nil && inline.Shell != nil {
 		dialect = *inline.Shell

@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
+	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev"
@@ -41,6 +43,41 @@ func TestGeneratedSchemaUpToDate(t *testing.T) {
 	}
 }
 
+func TestShellcheckSchemaSnapshot(t *testing.T) {
+	t.Chdir("../..")
+	generated, err := generateShellcheckSchema()
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := os.ReadFile(shellcheckSchemaPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got, want any
+	if err := json.Unmarshal(generated, &got); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(snapshot, &want); err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Fatalf("ShellCheck schema contract changed; add a versioned snapshot for new directives, or explicitly review corrections to the existing version. See README.md (-snapshot +current):\n%s", diff)
+	}
+	if err := initializeShellcheckSchema(); !errors.Is(err, os.ErrExist) {
+		t.Fatalf("initialization must refuse to overwrite an existing version, got %v", err)
+	}
+}
+
+func TestShellcheckSchemaReference(t *testing.T) {
+	b := generatedSchema(t)
+	if !strings.Contains(string(b), `"$ref": "`+shellcheckSchemaURL+`"`) {
+		t.Fatal("root schema must reference the versioned ShellCheck schema")
+	}
+	if strings.Contains(string(b), `"source-path"`) {
+		t.Fatal("root schema must not inline ShellCheck directive properties")
+	}
+}
+
 func TestSchemaValidation(t *testing.T) {
 	b := generatedSchema(t)
 	var document any
@@ -48,6 +85,19 @@ func TestSchemaValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := validator.NewCompiler()
+	// Resolve checked-in resources only. Schema tests must not access the network.
+	c.UseLoader(validator.SchemeURLLoader{})
+	toolSchema, err := os.ReadFile(shellcheckSchemaPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var toolDocument any
+	if err := json.Unmarshal(toolSchema, &toolDocument); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.AddResource(shellcheckSchemaURL, toolDocument); err != nil {
+		t.Fatal(err)
+	}
 	const url = "https://example.com/actionlint.schema.json"
 	if err := c.AddResource(url, document); err != nil {
 		t.Fatal(err)
@@ -68,8 +118,10 @@ func TestSchemaValidation(t *testing.T) {
 		{"ShellCheck shorthand enabled", `tools: {shellcheck: true}`, true, true},
 		{"ShellCheck shorthand disabled", `tools: {shellcheck: false}`, true, true},
 		{"ShellCheck rc path", `tools: {shellcheck: {config: ./.shellcheckrc}}`, true, true},
-		{"ShellCheck rc directory", `tools: {shellcheck: {config: '{gitdir}/.github/'}}`, true, true},
-		{"ShellCheck rc config directory", `tools: {shellcheck: {config: '{configdir}/.shellcheckrc'}}`, true, true},
+		{"ShellCheck rc directory", `tools: {shellcheck: {config: '${{ gitdir }}/.github/'}}`, true, true},
+		{"ShellCheck rc config directory", `tools: {shellcheck: {config: '${{ configdir }}/.shellcheckrc'}}`, true, true},
+		{"ShellCheck rc workspace directory", `tools: {shellcheck: {config: '${{ github.workspace }}/.shellcheckrc'}}`, true, true},
+		{"ShellCheck rc action directory", `tools: {shellcheck: {config: '${{ github.action_path }}/.shellcheckrc'}}`, true, true},
 		{"ShellCheck empty rc path", `tools: {shellcheck: {config: ''}}`, false, false},
 		{"ShellCheck invalid rc type", `tools: {shellcheck: {config: false}}`, false, false},
 		{"ShellCheck nullable", `tools: {shellcheck: {enabled: null, config: null}}`, true, true},
@@ -221,7 +273,8 @@ func TestSchemaDescriptions(t *testing.T) {
 						if description == "" {
 							t.Fatal("property has no description outside its type variants")
 						}
-						if property["markdownDescription"] != description {
+						markdown, _ := property["markdownDescription"].(string)
+						if strings.ReplaceAll(markdown, "`", "") != strings.ReplaceAll(description, "`", "") {
 							t.Error("hover is missing the Markdown version of the field documentation")
 						}
 					})
@@ -237,4 +290,13 @@ func TestSchemaDescriptions(t *testing.T) {
 		}
 	}
 	check(document, "config")
+	toolSchema, err := os.ReadFile(shellcheckSchemaPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var toolDocument map[string]any
+	if err := json.Unmarshal(toolSchema, &toolDocument); err != nil {
+		t.Fatal(err)
+	}
+	check(toolDocument, "shellcheck")
 }
