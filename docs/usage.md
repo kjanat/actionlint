@@ -318,10 +318,13 @@ An explicit tool flag overrides all three environment settings for that tool.
 See [External linter environment settings](env.md#external-linters) for quoting,
 Windows paths and examples.
 
-Your arguments are prepended to the ones actionlint appends itself, so do not
-pass `-f`/`--format` or file arguments. actionlint appends
-`--norc -f json1 -x --shell <dialect> -e SC1091,SC2194,SC2050,SC2153,SC2154,SC2157,SC2043 -`
-and parses the JSON1 output.
+Your arguments are prepended to actionlint's integration arguments. actionlint
+owns the JSON1 output format and stdin input, so do not pass `-f`/`--format` or
+file arguments. It supplies its default exclusions, rc-file selection and source
+following settings. An inferred `--shell <dialect>` is added only when no explicit
+ShellCheck flag or leading `shell` directive selects the dialect; an explicit
+actionlint configuration override still takes precedence. See
+[script selection and directives](config.md#script-selection-and-directives).
 
 By default, `--norc` disables rc discovery. Set
 [`tools.shellcheck.config`](config.md#shellcheck) to an inline mapping or an rc
