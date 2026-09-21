@@ -51,7 +51,9 @@ func TestShellcheckActionPathRequiresComposite(t *testing.T) {
 	if err := rule.VisitWorkflowPre(&Workflow{}); err != nil {
 		t.Fatalf("resolved action context before visiting a composite: %v", err)
 	}
-	err := rule.runShellcheck("echo hello", nil, shellcheckShell{name: "bash"}, rule.stepDirectory(&ExecRun{}), &Pos{Line: 1, Col: 1})
+	err := rule.VisitStep(&Step{Exec: &ExecRun{
+		Run: &String{Value: "echo hello"}, Shell: &String{Value: "bash"}, RunPos: &Pos{Line: 1, Col: 1},
+	}})
 	if err == nil || !strings.Contains(err.Error(), "requires an analyzed composite action") {
 		t.Fatalf("ordinary workflow run accepted an action-only path: %v", err)
 	}

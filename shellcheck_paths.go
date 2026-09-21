@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 )
 
 func (rule *RuleShellcheck) prepareConfigPath() error {
