@@ -1,17 +1,17 @@
 # Package layout
 
-Issue [#21](https://github.com/kjanat/actionlint/issues/21) asks whether the flat root package should be split into
+Issue kjanat/actionlint#21 asks whether the flat root package should be split into
 `ast`, `expr` and `rule`, and names one question as blocking the work: where `Pos` and `Error` end up. This document
 answers that question, records the measured dependency graph the answer rests on, gives a target layout that the same
 measurement shows is acyclic, and lists what each phase of the move has to do.
 
 Nothing here changes Go code. Phase 0 is this document.
 
-Implementation update for [#155](https://github.com/kjanat/actionlint/pull/155): the frontend now lives in `internal/cli`.
+Implementation update for kjanat/actionlint#155: the frontend now lives in `internal/cli`.
 The root package exposes analysis sessions, result rendering and configuration inspection, and no longer imports Cobra or
 pflag. Build metadata remains in `version.go`, which also supplies the template's `getVersion` function. This removes the
 frontend/version dependency described below. The measurements and proposed broader package split remain the historical
-snapshot at `2f85e20`.
+snapshot at kjanat/actionlint@2f85e20.
 
 ## How the graph was measured
 
@@ -21,7 +21,7 @@ attribute every `types.Object` in `TypesInfo.Uses` to the file holding the decla
 `_test.go` files, and split `error.go` at symbol level into the `Error` value object and the `ErrorFormatter` side.
 Without that split the `{ErrorFormatter, command, linter}` cycle is smeared across three apparent ones.
 
-Every figure below was measured at commit `2f85e20`. Section [Reproducing the measurements](#reproducing-the-measurements)
+Every figure below was measured at commit kjanat/actionlint@2f85e20. Section [Reproducing the measurements](#reproducing-the-measurements)
 gives a command for each claim.
 
 ## What the root package holds today
@@ -481,7 +481,7 @@ relocate or split 41 of the 46 production files and can rewrite imports througho
 files. Any open branch touching a root file becomes unmergeable without hand re-pathing, so those phases need a window
 with no open feature branch.
 
-## Corrections to issue #21
+## Corrections to issue kjanat/actionlint#21
 
 | the issue says                                                                        | measured                                                                                                                                                                                                |
 | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -491,7 +491,7 @@ with no open feature branch.
 | "27 commits touching root `.go` files in the last six months, across 10 unique files" | 14 commits over 10 unique root files. 27 is the count for any `.go` file in the module. The fetched `upstream/main` also stops at 2026-04-19, so the window holds about two months of upstream activity |
 | the five-package layout                                                               | contains three import cycles, none of them named in the issue                                                                                                                                           |
 
-65 of the 82 root files differ from `upstream/main` at `011a6d15`: 17 identical, 57 changed, 8 present only in the fork
+65 of the 82 root files differ from `upstream/main` at rhysd/actionlint@011a6d15: 17 identical, 57 changed, 8 present only in the fork
 (`rule_parallel_steps.go`, `rule_action_test.go`, `rule_shell_name_test.go`, the three policy-rule files and the two
 new policy test files).
 
