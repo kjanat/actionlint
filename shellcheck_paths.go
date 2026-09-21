@@ -87,6 +87,18 @@ func (rule *RuleShellcheck) stepDirectory(run *ExecRun) shellcheckDirectory {
 	if err != nil || !filepath.IsLocal(relative) {
 		return unknown
 	}
+	workspace, err := filepath.EvalSymlinks(rule.paths.workspace)
+	if err != nil {
+		return unknown
+	}
+	path, err = filepath.EvalSymlinks(path)
+	if err != nil {
+		return unknown
+	}
+	relative, err = filepath.Rel(workspace, path)
+	if err != nil || !filepath.IsLocal(relative) {
+		return unknown
+	}
 	info, err := os.Stat(path)
 	if err != nil || !info.IsDir() {
 		return unknown

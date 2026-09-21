@@ -2,7 +2,6 @@ package actionlint
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -134,13 +133,7 @@ func (rule *RuleShellcheck) VisitWorkflowPre(n *Workflow) error {
 	rule.workflowShell = defaultsShellValue(n.Defaults)
 	rule.workflowDir = defaultsWorkingDirectory(n.Defaults)
 	rule.rcArgs = nil
-	err := rule.prepareConfigPath()
-	if errors.Is(err, errConfigActionPathUnavailable) {
-		// A composite invocation supplies its own action path. A workflow run
-		// using this selection still reports the missing context below.
-		return nil
-	}
-	return err
+	return rule.prepareConfigPath()
 }
 
 // VisitWorkflowPost is callback when visiting Workflow node after visiting its children.
