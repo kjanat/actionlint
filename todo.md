@@ -156,13 +156,20 @@ files; diagnostic positions account for the added lines. Supported settings are
 disable, enable, shell, extended-analysis, external-sources and source-path.
 The contract is tested with ShellCheck 0.11.0; new upstream settings need schema
 and runtime support, while installed binaries remain selectable independently.
+The root schema references `schemas/shellcheck/0.11.0.schema.json`. Future versions
+get separate snapshots; normal generation preserves published versions. The npm
+package includes these files; editors may fetch the referenced URLs.
 
 Config paths default to the directory containing the selected actionlint config
-file (`{configdir}`); `{gitdir}` selects the workflow repository root. Directory
+file (`${{ configdir }}`); `${{ gitdir }}` selects the workflow repository root. Directory
 selection checks `.shellcheckrc` before `shellcheckrc`. Relative source paths use
 each run step's effective working directory, with step/job/workflow precedence.
 Unresolved or locally unavailable working directories retain script checking but
 disable source following. Explicit rc files enter the consumed-input set.
+`${{ github.workspace }}` uses the runtime workspace when available, otherwise
+the local repository root. `${{ github.action_path }}` resolves per analyzed
+composite action, including nested calls; an unrelated ambient action directory
+is ignored. These interpolations also work in inline `source-path` entries.
 
 ### Input contract
 
