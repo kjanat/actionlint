@@ -21,6 +21,7 @@ type lintRequest struct {
 	shellcheckSettings *actionlint.ShellcheckSettings
 	pyflakesOptions    *actionlint.ExternalCommandOptions
 	workingDir         string
+	workspaceDir       string
 	configFile         string
 	overlays           []actionlint.ConfigOverlay
 	ignore             []string
@@ -73,9 +74,10 @@ func (req *lintRequest) configureEnvironment(env func(string) string) error {
 
 func buildRequest(in *inputs, workspaceDir, workingRel string) (*lintRequest, error) {
 	req := &lintRequest{
-		workingDir: filepath.Join(workspaceDir, workingRel),
-		ignore:     in.ignore,
-		format:     in.format,
+		workingDir:   filepath.Join(workspaceDir, workingRel),
+		workspaceDir: workspaceDir,
+		ignore:       in.ignore,
+		format:       in.format,
 	}
 	if in.configFile != "" {
 		rel, err := workspaceRel(workspaceDir, filepath.Join(workingRel, in.configFile), "config-file")
@@ -106,6 +108,16 @@ func buildRequest(in *inputs, workspaceDir, workingRel string) (*lintRequest, er
 func runLinter(req *lintRequest) *lintResult {
 	var out, logs bytes.Buffer
 	result := &lintResult{}
+	workspace := req.workspaceDir
+	if workspace == "" {
+		workspace = req.workingDir
+	}
+	root, err := os.OpenRoot(workspace)
+	if err != nil {
+		result.lintOutcome = &lintOutcome{"", err.Error() + "\n", actionlint.ExitStatusFailure}
+		return result
+	}
+	defer root.Close()
 	opts := actionlint.AnalysisOptions{
 		Context:            req.ctx,
 		ShellcheckOptions:  toolOptionsInDirectory(req.shellcheckOptions, req.workingDir),
@@ -117,7 +129,14 @@ func runLinter(req *lintRequest) *lintResult {
 		ConfigFile:         req.configFile,
 		ConfigOverlays:     req.overlays,
 		WorkingDir:         req.workingDir,
-		LogWriter:          &logs,
+		ReadWorkflow: func(path string) ([]byte, error) {
+			rel, err := workspaceRel(workspace, path, "files")
+			if err != nil {
+				return nil, err
+			}
+			return root.ReadFile(rel)
+		},
+		LogWriter: &logs,
 		OnConfigLoaded: func(report actionlint.ConfigReport) {
 			result.configs = append(result.configs, report)
 		},

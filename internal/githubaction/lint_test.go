@@ -90,6 +90,53 @@ func TestBuildRequestFilePaths(t *testing.T) {
 	}
 }
 
+func TestRunLinterWorkflowSymlinks(t *testing.T) {
+	for _, mode := range []string{"discovery", "explicit", "subdirectory"} {
+		for _, contained := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s/contained=%t", mode, contained), func(t *testing.T) {
+				workspace := workspaceWith(t, map[string]string{
+					".git":                         "",
+					"fixtures/clean.yaml":          cleanWorkflow,
+					".github/workflows/readme.txt": "",
+					"sub/readme.txt":               "",
+				})
+				target := filepath.Join(workspace, "fixtures", "clean.yaml")
+				if !contained {
+					target = filepath.Join(workspaceWith(t, map[string]string{"clean.yaml": cleanWorkflow}), "clean.yaml")
+				}
+				link := filepath.Join(workspace, ".github", "workflows", "linked.yaml")
+				rel, err := filepath.Rel(filepath.Dir(link), target)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(rel, link); err != nil {
+					t.Skipf("symlinks unavailable: %v", err)
+				}
+				in := &inputs{format: formatJSON}
+				workingRel := "."
+				if mode == "explicit" {
+					in.files = []string{link}
+				} else if mode == "subdirectory" {
+					workingRel = "sub"
+					in.files = []string{"../.github/workflows/linked.yaml"}
+				}
+				req, err := buildRequest(in, workspace, workingRel)
+				if err != nil {
+					t.Fatal(err)
+				}
+				got := runLinter(req)
+				if contained {
+					if got.code != actionlint.ExitStatusSuccessNoProblem || got.fileCount != 1 {
+						t.Fatalf("contained workflow failed: %#v, %s", got, got.stderr)
+					}
+				} else if got.code != actionlint.ExitStatusFailure || !strings.Contains(got.stderr, "could not read") || got.stdout != "" {
+					t.Fatalf("expected rejected workflow read, got %#v, %s", got, got.stderr)
+				}
+			})
+		}
+	}
+}
+
 func TestRunLinterFindsNoProblem(t *testing.T) {
 	dir := workspaceWith(t, map[string]string{"clean.yaml": cleanWorkflow})
 	t.Chdir(dir)
