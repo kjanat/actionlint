@@ -10,21 +10,43 @@ on:
 
 permissions:
   contents: write
+  actions: read
+
+concurrency:
+  group: actionlint-release
+  cancel-in-progress: false
+  queue: max
 
 jobs:
   move:
     name: Move major tag
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { fetch-depth: 0 }
       - name: Validate and move major tag
-        env: { TAG: "${{ inputs.tag }}" }
+        env: { TAG: "${{ inputs.tag }}", GH_TOKEN: "${{ github.token }}" }
         run: |
           set -euo pipefail
-          [[ "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "${TAG}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
           git fetch --force --tags origin
           sha="$(git rev-parse "refs/tags/${TAG}^{commit}")"
+          object="$(git rev-parse "refs/tags/${TAG}")"
+          type="$(git cat-file -t "${object}")"
+          test "${type}" = tag
+          annotation="$(git cat-file -p "${object}")"
+          grep -q -- '-----BEGIN PGP SIGNATURE-----' <<< "${annotation}"
+          verified="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${object}" --jq '.verification.verified')"
+          test "${verified}" = true
+          release="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}")"
+          jq -e --arg tag "${TAG}" '.tag_name == $tag and .draft == false and .prerelease == false' <<< "${release}" >/dev/null
+          gh api --paginate --slurp \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/release.yml/runs?event=release&status=success&head_sha=${sha}&per_page=100" \
+            > "${RUNNER_TEMP}/release-runs.json"
+          jq -e --arg sha "${sha}" \
+            'any(.[] | .workflow_runs[]; .head_sha == $sha and .path == ".github/workflows/release.yml" and .event == "release" and .status == "completed" and .conclusion == "success")' \
+            "${RUNNER_TEMP}/release-runs.json" >/dev/null
           git cat-file -e "${sha}:action.mjs"
           git cat-file -e "${sha}:SHA256SUMS"
           major="${TAG%%.*}"

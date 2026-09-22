@@ -1,12 +1,11 @@
 name: npm release
-run-name: ${{ format('npm {0} {1}', case(inputs.dry-run, 'dry-run', 'publish'), case(github.event_name == 'release', github.event.release.tag_name, inputs.tag)) }}
+run-name: ${{ format('npm {0} {1}', case(inputs.dry-run, 'dry-run', 'publish'), inputs.tag) }}
 on:
   workflow_call:
     inputs:
       tag: { description: Release tag to publish, required: true, type: string }
       dist-tag: { description: npm dist-tag; auto selects next for prereleases and latest otherwise, default: auto, type: string }
       dry-run: { description: Build and smoke-test without publishing, default: false, type: boolean }
-  release: { types: [published] }
   workflow_dispatch:
     inputs:
       tag: { description: "Release tag to publish (e.g. v1.17.0)", required: true, type: string }
@@ -24,19 +23,20 @@ permissions: { contents: read }
 # Never cancel a publish in flight: a half-published set would leave the facade
 # pointing at platform packages that do not exist.
 concurrency:
-  group: "npm-release-${{ case(github.event_name == 'release', github.event.release.tag_name, inputs.tag) }}"
+  group: "npm-release-${{ inputs.tag }}"
   cancel-in-progress: false
 
 env:
   GO: "1.27"
   REGISTRY: https://registry.npmjs.org/
-  RELEASE_TAG: ${{ case(github.event_name == 'release', github.event.release.tag_name, inputs.tag) }}
+  RELEASE_TAG: ${{ inputs.tag }}
   DRY_RUN: ${{ inputs.dry-run || 'false' }}
 
 jobs:
   build:
     name: build and smoke-test
     runs-on: ubuntu-latest
+    permissions: { contents: read, actions: read }
     outputs:
       dist-tag: ${{ steps.dist.outputs.tag }}
       platforms: ${{ steps.pack.outputs.platforms }}
@@ -44,6 +44,26 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { ref: "${{ case(inputs.dry-run, github.sha, format('refs/tags/{0}', env.RELEASE_TAG)) }}", persist-credentials: false }
+      # Reusable publishing is gated by Release; direct manual publishing requires a completed Release run.
+      - name: Verify release before manual publishing
+        if: ${{ github.event_name == 'workflow_dispatch' && contains(github.workflow_ref, '/.github/workflows/npm-release.yml@') && !inputs.dry-run }}
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          set -euo pipefail
+          published="$(gh release view --repo "${GITHUB_REPOSITORY}" --json isDraft,publishedAt \
+            --jq '(.isDraft == false) and (.publishedAt != null)' -- "${RELEASE_TAG}")"
+          if [[ "${published}" != true ]]; then
+            echo '::error::Manual npm publishing requires a published GitHub release.'
+            exit 1
+          fi
+          commit="$(git rev-parse HEAD)"
+          verified="$(gh api --method GET "repos/${GITHUB_REPOSITORY}/actions/workflows/release.yml/runs" \
+            --field status=success --field "head_sha=${commit}" --field per_page=100 --paginate \
+            --jq '.workflow_runs[] | select(.conclusion == "success" and .head_branch == env.RELEASE_TAG) | .id')"
+          if [[ -z "${verified}" ]]; then
+            echo '::error::The selected tag and commit need a successful Release run before manual npm publishing.'
+            exit 1
+          fi
       - parallel:
           - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
             with: { go-version: "${{ env.GO }}", check-latest: true }

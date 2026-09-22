@@ -482,7 +482,7 @@ func TestPreflightRejectsRemoteOnlyTag(t *testing.T) {
 }
 
 func TestNixFailureProcess(t *testing.T) {
-	if os.Getenv("ACTIONLINT_TEST_NIX_FAILURE") != "1" {
+	if os.Getenv("ACTIONLINT_TEST_NIX_FAILURE") != "1" && os.Getenv("ACTIONLINT_TEST_NIX_SUCCESS") != "1" {
 		return
 	}
 	if got := strings.Join(os.Args[len(os.Args)-4:], " "); got != "flake check --no-update-lock-file --print-build-logs" {
@@ -498,11 +498,15 @@ func TestNixFailureProcess(t *testing.T) {
 		fmt.Fprintln(os.Stderr, "the Nix check did not receive the bumped source")
 		os.Exit(2)
 	}
+	if os.Getenv("ACTIONLINT_TEST_NIX_SUCCESS") == "1" {
+		os.Exit(0)
+	}
 	fmt.Fprintln(os.Stderr, "simulated Nix build failure")
 	os.Exit(7)
 }
 
-func TestReleaseStopsBeforeCommitAndTagWhenNixFails(t *testing.T) {
+func releaseRepo(t *testing.T) *repo {
+	t.Helper()
 	r := gitRepo(t)
 	for _, name := range paths(targets) {
 		content, err := os.ReadFile(filepath.Join("..", "..", name))
@@ -539,6 +543,11 @@ func TestReleaseStopsBeforeCommitAndTagWhenNixFails(t *testing.T) {
 	if err := r.run("commit", "-m", "release inputs"); err != nil {
 		t.Fatal(err)
 	}
+	return r
+}
+
+func TestReleaseStopsBeforeCommitAndTagWhenNixFails(t *testing.T) {
+	r := releaseRepo(t)
 	before, err := r.git("rev-parse", "HEAD")
 	if err != nil {
 		t.Fatal(err)
@@ -559,6 +568,35 @@ func TestReleaseStopsBeforeCommitAndTagWhenNixFails(t *testing.T) {
 	}
 	if tag, err := r.git("tag", "--list", "v9.9.9"); err != nil || tag != "" {
 		t.Fatalf("the failed check created a release tag: %q, %v", tag, err)
+	}
+}
+
+func TestReleaseCommitWaitsForCandidateBeforeTagging(t *testing.T) {
+	r := releaseRepo(t)
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ACTIONLINT_TEST_NIX_SUCCESS", "1")
+	command := fmt.Sprintf("'%s' -test.run=^TestNixFailureProcess$ --", exe)
+	var out bytes.Buffer
+	if err := Main(t.Context(), []string{"bump-version", "-root", r.root, "-nix-command", command, "-commit", "9.9.9"}, &out, &out); err != nil {
+		t.Fatalf("commit failed: %v\n%s", err, &out)
+	}
+	if err := Check(r.root, targets, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	if status, err := r.git("status", "--porcelain"); err != nil || status != "" {
+		t.Fatalf("version edits not committed: %q, %v", status, err)
+	}
+	if tags, err := r.git("tag", "--list"); err != nil || tags != "" {
+		t.Fatalf("created an untested release tag: %q, %v", tags, err)
+	}
+	if remote, err := r.git("ls-remote", "origin"); err != nil || remote != "" {
+		t.Fatalf("-commit published a ref: %q, %v", remote, err)
+	}
+	if !strings.Contains(out.String(), "gh workflow run release-prepare.yml") {
+		t.Fatalf("missing next step: %s", &out)
 	}
 }
 

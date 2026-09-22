@@ -1,5 +1,5 @@
 name: Release
-on: { push: { tags: ["v*.*.*"] } }
+on: { release: { types: [published] } }
 
 concurrency:
   group: actionlint-release
@@ -7,156 +7,69 @@ concurrency:
   queue: max
 
 permissions: { contents: read }
+defaults: { run: { shell: "bash --noprofile --norc -eo pipefail {0}" } }
+env: { TAG: "${{ github.event.release.tag_name }}" }
 
 jobs:
-  nix:
-    uses: $/.github/workflows/nix.yml
-    with: { tag: "${{ github.ref_name }}" }
-  changelog:
-    name: Check changelog
+  verify:
+    name: Verify published candidate
     runs-on: ubuntu-latest
-    steps:
-      - uses: &ActionsCheckout actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: &NoCreds { persist-credentials: false }
-      - name: Check pinned go-shellcheck version
-        uses: $/.github/actions/shellcheck-versions
-        with: { fail-on-outdated: true }
-      - uses: &SetupGo actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: &GoMod { go-version-file: go.mod }
-      - name: Resolve release notes
-        env: { TAG: "${{ github.ref_name }}" }
-        run: go run ./scripts/bump-version -notes "${TAG}" > "${RUNNER_TEMP}/release-notes.md"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with: { name: release-notes, path: "${{ runner.temp }}/release-notes.md", if-no-files-found: error }
-  manual:
-    name: Build command manual
-    runs-on: ubuntu-latest
-    steps:
-      - uses: *ActionsCheckout
-        with: *NoCreds
-      - uses: $/.github/actions/setup-pandoc
-      - uses: kjanat/runner@8baa9ee978cfed038b98741749673c788ff161d1 # v0.26.2
-      - run: run make:man/actionlint.1
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with: { name: manual, path: man/actionlint.1, if-no-files-found: error }
-  binaries:
-    name: Publish binaries and Action bundle
-    runs-on: ubuntu-latest
-    needs: [changelog, manual, nix, action-bundle]
-    permissions: { contents: write, id-token: write, attestations: write }
-    steps:
-      - uses: *ActionsCheckout
-        with: { fetch-depth: 0, persist-credentials: false }
-      - parallel:
-          - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-            with: { name: manual, path: man }
-          - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-            with: { name: release-notes, path: "${{ runner.temp }}" }
-          - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-            with: { name: javascript-action, path: "${{ runner.temp }}/actionlint-action" }
-          - uses: *SetupGo
-            with: *GoMod
-      - name: Get version
-        run: echo VERSION="${GITHUB_REF#refs/tags/v}" >> "${GITHUB_ENV}"
-      - name: Install syft for SBOM generation
-        uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
-      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
-        with: { version: v2.18.0, args: "release --clean --release-notes=${{ runner.temp }}/release-notes.md" }
-        env: {
-          GITHUB_TOKEN: "${{ github.token }}",
-          HOMEBREW_TAP_TOKEN: "${{ secrets.HOMEBREW_TAP_TOKEN }}",
-          SCOOP_BUCKET_TOKEN: "${{ secrets.SCOOP_BUCKET_TOKEN }}",
-          WINGET_TOKEN: "${{ secrets.WINGET_TOKEN }}",
-          AUR_SSH_PRIVATE_KEY: "${{ secrets.AUR_SSH_PRIVATE_KEY }}",
-          COMMIT_USER: "${{ vars.COMMIT_USER }}",
-          COMMIT_EMAIL: "${{ vars.COMMIT_EMAIL }}",
-        }
-      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
-        with: { subject-checksums: "./dist/actionlint_${{ env.VERSION }}_checksums.txt" }
-      - name: Attest the JavaScript Action bundle
-        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
-        with: { subject-path: "${{ runner.temp }}/actionlint-action/assets/*.mjs" }
-      - name: Post-release download check
-        run: bash ./scripts/download-actionlint.bash
-  npm:
-    needs: binaries
-    permissions: { contents: read, id-token: write }
-    uses: $/.github/workflows/npm-release.yml
-    with: { tag: "${{ github.ref_name }}" }
-  action-bundle:
-    name: Verify tagged JavaScript Action
-    runs-on: ubuntu-latest
-    needs: [changelog, nix]
     timeout-minutes: 15
+    permissions: { contents: read, actions: read, id-token: write, attestations: write }
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      candidate: ${{ steps.release.outputs.candidate }}
+      is-latest: ${{ steps.tags.outputs.is-latest }}
+      is-major-latest: ${{ steps.tags.outputs.is-major-latest }}
+      is-minor-latest: ${{ steps.tags.outputs.is-minor-latest }}
     steps:
-      - uses: *ActionsCheckout
+      - uses: &Checkout actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { fetch-depth: 0, persist-credentials: false }
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with: { node-version: "24", package-manager-cache: false }
-      - name: Verify annotated release tag signature
-        env: { GH_TOKEN: "${{ github.token }}", TAG: "${{ github.ref_name }}" }
+      - uses: &SetupNode actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: &Node24 { node-version: "24", package-manager-cache: false }
+      - name: Verify the signed normal version tag and every published asset
+        id: release
+        env: { GH_TOKEN: "${{ github.token }}" }
         run: |
-          set -euo pipefail
+          [[ "${TAG}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
           object="$(git rev-parse "refs/tags/${TAG}")"
-          verified="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${object}" --jq '.verification.verified')"
-          test "${verified}" = true
-          commit="$(git rev-parse "refs/tags/${TAG}^{commit}")"
-          test "${commit}" = "${GITHUB_SHA}"
-      - name: Check the runtime and stage the committed bundle
+          test "$(git cat-file -t "${object}")" = tag
+          git cat-file -p "${object}" | grep -q -- '-----BEGIN PGP SIGNATURE-----'
+          test "$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${object}" --jq '.verification.verified')" = true
+          test "$(git rev-parse "refs/tags/${TAG}^{commit}")" = "${GITHUB_SHA}"
+          gh release download "${TAG}" --repo "${GITHUB_REPOSITORY}" --dir "${RUNNER_TEMP}/release-assets"
+          node scripts/release-candidate.mjs verify --directory "${RUNNER_TEMP}/release-assets"
+          manifest="${RUNNER_TEMP}/release-assets/release-candidate.json"
+          test "$(jq -r .tag "${manifest}")" = "${TAG}"
+          test "$(jq -r .candidate "${manifest}")" = "${GITHUB_SHA}"
+          run_id="$(jq -r .run_id "${manifest}")"
+          attempt="$(jq -r .run_attempt "${manifest}")"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" > "${RUNNER_TEMP}/prepare-run.json"
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          import { join } from 'node:path';
+          import { parseManifest, verifyRun } from './scripts/release-candidate.mjs';
+          const read = async (name) => JSON.parse(await readFile(join(process.env.RUNNER_TEMP, name), 'utf8'));
+          const manifest = parseManifest(await read('release-assets/release-candidate.json'));
+          if (manifest.repository !== process.env.GITHUB_REPOSITORY) throw new Error('Candidate repository differs');
+          verifyRun(await read('prepare-run.json'), manifest);
+          NODE
+          gh run download "${run_id}" --repo "${GITHUB_REPOSITORY}" \
+            --name "release-candidate-${run_id}-${attempt}" --dir "${RUNNER_TEMP}/trusted-candidate"
+          cmp "${manifest}" "${RUNNER_TEMP}/trusted-candidate/release-candidate.json"
+          cmp "${RUNNER_TEMP}/release-assets/actionlint-action_${TAG#v}.mjs" action.mjs
+          {
+            echo "version=${TAG#v}"
+            echo "candidate=${GITHUB_SHA}"
+          } >> "${GITHUB_OUTPUT}"
+      - name: Select eligible moving references
+        id: tags
         run: |
-          npm ci --ignore-scripts
-          npm run typecheck --workspace actionlint-action
-          npm test --workspace actionlint-action
-          node --test scripts/build-action-release.test.mjs
-          node scripts/build-action-release.mjs --from-tag --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${GITHUB_REF_NAME#v}"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with: { name: javascript-action, path: "${{ runner.temp }}/actionlint-action", if-no-files-found: error }
-  action-smoke:
-    name: Check the published Action bundle
-    needs: binaries
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: *ActionsCheckout
-        with: *NoCreds
-      - name: Prepare the exact tagged tree for the runner
-        run: |
-          set -euo pipefail
-          mkdir .actionlint-action-release
-          git archive HEAD | tar -x -C .actionlint-action-release
-      - name: Run the tagged Action against the published binary
-        # ./ loads the tagged tree materialized in this job's workspace.
-        uses: ./.actionlint-action-release
-        with: { files: testdata/ok/minimal.yaml, format: json, shellcheck: "false", pyflakes: "false" }
-  docker:
-    runs-on: ubuntu-latest
-    needs: [changelog, nix, action-bundle]
-    outputs: {
-      is-latest: "${{ steps.tag.outputs.is-latest }}",
-      is-major-latest: "${{ steps.tag.outputs.is-major-latest }}",
-      is-minor-latest: "${{ steps.tag.outputs.is-minor-latest }}",
-    }
-    permissions: { contents: read, packages: write, id-token: write, attestations: write }
-    steps:
-      - uses: *ActionsCheckout
-        with: { fetch-depth: 0, persist-credentials: false }
-      - name: Get tag name
-        id: tag
-        run: |
-          set -euo pipefail
-          git fetch --force --tags origin
-          version="${GITHUB_REF_NAME#v}"
+          version="${TAG#v}"
           major="${version%%.*}"
           minor="${version%.*}"
-          {
-            echo "name=${version}"
-            echo "major=${major}"
-            echo "minor=${minor}"
-          } >> "${GITHUB_OUTPUT}"
-
           latest_stable_tag() {
-            local pattern="$1"
-            local candidate tags
+            local pattern="$1" candidate tags
             tags="$(git tag --list "${pattern}" --sort=-version:refname)"
             while IFS= read -r candidate; do
               if [[ "${candidate}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -165,79 +78,113 @@ jobs:
               fi
             done <<< "${tags}"
           }
-
-          latest="$(latest_stable_tag 'v*.*.*')"
-          major_latest="$(latest_stable_tag "v${major}.*.*")"
-          if [[ "${GITHUB_REF_NAME}" == "${latest}" ]]; then
-            echo "is-latest=true" >> "${GITHUB_OUTPUT}"
-          else
-            echo "is-latest=false" >> "${GITHUB_OUTPUT}"
-          fi
-          if [[ "${GITHUB_REF_NAME}" == "${major_latest}" ]]; then
-            echo "is-major-latest=true" >> "${GITHUB_OUTPUT}"
-          else
-            echo "is-major-latest=false" >> "${GITHUB_OUTPUT}"
-          fi
-          minor_latest="$(latest_stable_tag "v${minor}.*")"
-          if [[ "${GITHUB_REF_NAME}" == "${minor_latest}" ]]; then
-            echo "is-minor-latest=true" >> "${GITHUB_OUTPUT}"
-          else
-            echo "is-minor-latest=false" >> "${GITHUB_OUTPUT}"
-          fi
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
-      - parallel:
-          - name: Login to GitHub Container Registry
-            uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-            with: { registry: ghcr.io, username: "${{ github.repository_owner }}", password: "${{ secrets.GITHUB_TOKEN }}" }
-          - name: Login to Docker Hub
-            uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-            with: { username: "${{ github.repository_owner }}", password: "${{ secrets.DOCKERHUB_TOKEN }}", scope: "${{ github.repository }}@push" }
-      - name: Tags for the CLI image
-        id: meta-cli
-        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+          for scope in latest major-latest minor-latest; do
+            case "${scope}" in
+              latest) pattern='v*.*.*' ;;
+              major-latest) pattern="v${major}.*.*" ;;
+              minor-latest) pattern="v${minor}.*" ;;
+            esac
+            eligible=false
+            if [[ "${TAG}" == "$(latest_stable_tag "${pattern}")" ]]; then eligible=true; fi
+            echo "is-${scope}=${eligible}" >> "${GITHUB_OUTPUT}"
+          done
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        with: { subject-checksums: "${{ runner.temp }}/release-assets/actionlint_${{ steps.release.outputs.version }}_checksums.txt" }
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        with: { subject-path: "${{ runner.temp }}/release-assets/actionlint-action_${{ steps.release.outputs.version }}.mjs" }
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with: { name: verified-release, path: "${{ runner.temp }}/release-assets", if-no-files-found: error, compression-level: 0 }
+  npm:
+    name: Publish npm packages
+    needs: verify
+    permissions: { contents: read, actions: read, id-token: write }
+    uses: $/.github/workflows/npm-release.yml
+    with: { tag: "${{ github.event.release.tag_name }}" }
+  distributions:
+    name: Publish prepared package manifests
+    needs: verify
+    if: needs.verify.outputs.is-latest == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: { name: aur }
+    steps:
+      - uses: *Checkout
+        with: { persist-credentials: false }
+      - uses: *SetupNode
+        with: *Node24
+      - uses: &Download actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with: { name: verified-release, path: .release-assets }
+      - name: Publish the prepared Homebrew and Scoop manifests
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          SCOOP_BUCKET_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
+        run: node scripts/release-assets.mjs publish .release-assets "${VERSION}"
+      - name: Publish the prepared AUR binary package
+        uses: &DeployAUR KSXGitHub/github-actions-deploy-aur@084b0d9b15415bf9cdb65d44dad1efe37a354050 # v4.2.0
         with:
-          images: |
-            ghcr.io/${{ github.repository }}
-            docker.io/${{ github.repository }}
-          tags: |
-            type=raw,value=${{ steps.tag.outputs.name }}
-            type=raw,value=${{ steps.tag.outputs.minor }},enable=${{ steps.tag.outputs.is-minor-latest }}
-            type=raw,value=${{ steps.tag.outputs.major }},enable=${{ steps.tag.outputs.is-major-latest }}
-            type=raw,value=latest,enable=${{ steps.tag.outputs.is-latest }}
-        env: { DOCKER_METADATA_ANNOTATIONS_LEVELS: "manifest,index" }
-      - name: Build CLI image for the smoke test
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+          pkgname: actionlint-kjanat-bin
+          pkgbuild: .release-assets/actionlint-kjanat-bin.pkgbuild
+          updpkgsums: false
+          test: false
+          post_process: cp "${GITHUB_WORKSPACE}/.release-assets/actionlint-kjanat-bin.srcinfo" .SRCINFO
+          commit_username: ${{ vars.COMMIT_USER }}
+          commit_email: ${{ vars.COMMIT_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: Update to ${{ github.event.release.tag_name }}
+      - name: Publish the prepared AUR source package
+        uses: *DeployAUR
         with:
-          target: cli
-          build-args: |
-            ACTIONLINT_VER=${{ steps.tag.outputs.name }}
-          load: true
-          cache-from: type=gha,scope=release-cli
-          cache-to: type=gha,scope=release-cli,mode=max
-          tags: actionlint:smoke
-      - name: Smoke-test the CLI image
-        run: docker run --rm --mount type=bind,source="${PWD}",target=/w -- actionlint:smoke -color -verbose
-      - name: Build and push CLI image
-        id: push-cli
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          platforms: linux/amd64,linux/arm64
-          target: cli
-          build-args: |
-            ACTIONLINT_VER=${{ steps.tag.outputs.name }}
-          push: true
-          sbom: true
-          provenance: mode=max
-          cache-from: type=gha,scope=release-cli
-          cache-to: type=gha,scope=release-cli,mode=max
-          labels: ${{ steps.meta-cli.outputs.labels }}
-          annotations: ${{ steps.meta-cli.outputs.annotations }}
-          tags: ${{ steps.meta-cli.outputs.tags }}
+          pkgname: actionlint-kjanat
+          pkgbuild: .release-assets/actionlint-kjanat.pkgbuild
+          updpkgsums: false
+          test: false
+          post_process: cp "${GITHUB_WORKSPACE}/.release-assets/actionlint-kjanat.srcinfo" .SRCINFO
+          commit_username: ${{ vars.COMMIT_USER }}
+          commit_email: ${{ vars.COMMIT_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: Update to ${{ github.event.release.tag_name }}
+  docker:
+    name: Publish tested container bytes
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions: { contents: read, packages: write, id-token: write, attestations: write }
+    steps:
+      - uses: *Checkout
+        with: { persist-credentials: false }
+      - uses: *Download
+        with: { name: verified-release, path: "${{ runner.temp }}/release-assets" }
+      - name: Install the OCI image copier
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends skopeo
+      - uses: &DockerLogin docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with: { registry: ghcr.io, username: "${{ github.repository_owner }}", password: "${{ github.token }}" }
+      - uses: *DockerLogin
+        with: { username: "${{ github.repository_owner }}", password: "${{ secrets.DOCKERHUB_TOKEN }}", scope: "${{ github.repository }}@push" }
+      - name: Copy the exact tested multi-platform image
+        id: image
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+          MOVE_LATEST: ${{ needs.verify.outputs.is-latest }}
+          MOVE_MAJOR: ${{ needs.verify.outputs.is-major-latest }}
+          MOVE_MINOR: ${{ needs.verify.outputs.is-minor-latest }}
+        run: |
+          tags=("${VERSION}")
+          if [[ "${MOVE_LATEST}" == true ]]; then tags+=(latest); fi
+          if [[ "${MOVE_MAJOR}" == true ]]; then tags+=("${VERSION%%.*}"); fi
+          if [[ "${MOVE_MINOR}" == true ]]; then tags+=("${VERSION%.*}"); fi
+          for registry in ghcr.io docker.io; do
+            for tag in "${tags[@]}"; do
+              skopeo copy --all --preserve-digests --authfile "${HOME}/.docker/config.json" \
+                --digestfile "${RUNNER_TEMP}/${registry}.digest" \
+                "oci-archive:${RUNNER_TEMP}/release-assets/actionlint-container_${VERSION}.tar" \
+                "docker://${registry}/${GITHUB_REPOSITORY}:${tag}"
+            done
+          done
+          cmp "${RUNNER_TEMP}/ghcr.io.digest" "${RUNNER_TEMP}/docker.io.digest"
+          echo "digest=$(cat "${RUNNER_TEMP}/ghcr.io.digest")" >> "${GITHUB_OUTPUT}"
       - name: Update Docker Hub description
+        if: needs.verify.outputs.is-latest == 'true'
         uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
         with:
           username: ${{ github.repository_owner }}
@@ -245,59 +192,50 @@ jobs:
           repository: ${{ github.repository }}
           short-description: ${{ github.event.repository.description }}
           enable-url-completion: true
-      - parallel:
-          - name: Attest the CLI image
-            uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
-            with:
-              subject-name: ghcr.io/${{ github.repository }}
-              subject-digest: ${{ steps.push-cli.outputs.digest }}
-              push-to-registry: true
-          - name: Attest the CLI image on Docker Hub
-            uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
-            with:
-              subject-name: docker.io/${{ github.repository }}
-              subject-digest: ${{ steps.push-cli.outputs.digest }}
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        with: { subject-name: "ghcr.io/${{ github.repository }}", subject-digest: "${{ steps.image.outputs.digest }}", push-to-registry: true }
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        with: { subject-name: "docker.io/${{ github.repository }}", subject-digest: "${{ steps.image.outputs.digest }}" }
+  action-smoke:
+    name: Check ordinary published Action pins
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: *Checkout
+        with: { persist-credentials: false }
+      - name: Materialize the exact published tag
+        run: |
+          mkdir .actionlint-action-release
+          git archive HEAD | tar -x -C .actionlint-action-release
+      - name: Run the tagged Action using its published binary
+        id: smoke
+        # ./ loads the published tag tree materialized during this job.
+        uses: ./.actionlint-action-release
+        with: { files: testdata/ok/minimal.yaml, format: json, shellcheck: "false", pyflakes: "false" }
+      - name: Verify the published action completed
+        env: { EXIT_CODE: "${{ steps.smoke.outputs.exit-code }}", RESULT: "${{ steps.smoke.outputs.result }}" }
+        run: test "${EXIT_CODE}" = 0 && test "${RESULT}" = success
   action-tags:
     name: Update moving Action references
-    needs: [binaries, docker, action-smoke]
+    needs: [verify, npm, distributions, docker, action-smoke]
+    if: >-
+      always() && needs.verify.result == 'success' && needs.npm.result == 'success' && needs.docker.result == 'success' &&
+      needs.action-smoke.result == 'success' && contains(fromJSON('["success", "skipped"]'), needs.distributions.result)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions: { contents: write }
     steps:
-      - uses: *ActionsCheckout
+      - uses: *Checkout
         with: { fetch-depth: 0 }
-      - name: Verify the published bundle matches the release tag
-        shell: bash
-        env: { GH_TOKEN: "${{ github.token }}" }
-        run: |
-          set -euo pipefail
-          version="${GITHUB_REF_NAME#v}"
-          gh release download "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" \
-            --pattern "actionlint-action_${version}.mjs" \
-            --pattern "actionlint-action_${version}_checksums.txt" \
-            --dir "${RUNNER_TEMP}/published-action"
-          cd "${RUNNER_TEMP}/published-action"
-          sha256sum --check "actionlint-action_${version}_checksums.txt"
-          cmp "actionlint-action_${version}.mjs" "${GITHUB_WORKSPACE}/action.mjs"
       - name: Update eligible floating tags
-        shell: bash
-        env: {
-          MOVE_MAJOR: "${{ needs.docker.outputs.is-major-latest }}",
-          MOVE_MINOR: "${{ needs.docker.outputs.is-minor-latest }}",
-          RELEASE_COMMIT: "${{ github.sha }}",
-        }
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+          MOVE_MAJOR: ${{ needs.verify.outputs.is-major-latest }}
+          MOVE_MINOR: ${{ needs.verify.outputs.is-minor-latest }}
+          RELEASE_COMMIT: ${{ needs.verify.outputs.candidate }}
         run: |
-          set -euo pipefail
-          version="${GITHUB_REF_NAME#v}"
-          major="v${version%%.*}"
-          minor="v${version%.*}"
           refs=()
-          if [[ "${MOVE_MAJOR}" == true ]]; then
-            refs+=("+${RELEASE_COMMIT}:refs/tags/${major}")
-          fi
-          if [[ "${MOVE_MINOR}" == true ]]; then
-            refs+=("+${RELEASE_COMMIT}:refs/tags/${minor}")
-          fi
-          if [[ "${#refs[@]}" -gt 0 ]]; then
-            git push --atomic origin "${refs[@]}"
-          fi
+          if [[ "${MOVE_MAJOR}" == true ]]; then refs+=("+${RELEASE_COMMIT}:refs/tags/v${VERSION%%.*}"); fi
+          if [[ "${MOVE_MINOR}" == true ]]; then refs+=("+${RELEASE_COMMIT}:refs/tags/v${VERSION%.*}"); fi
+          if [[ "${#refs[@]}" -gt 0 ]]; then git push --atomic origin "${refs[@]}"; fi

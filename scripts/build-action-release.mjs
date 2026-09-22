@@ -136,37 +136,6 @@ export function recordRelease(root, tag, parent) {
 	execute('git', ['merge', '--no-ff', '--strategy=ours', '-m', `Record bundled release ${tag}`, tag], root);
 }
 
-/** @param {string} root @param {string} version */
-async function signRelease(root, version) {
-	assertVersion(version);
-	if (execute('git', ['status', '--porcelain', '--untracked-files=all'], root)) {
-		throw new Error('Commit the source changes before preparing the release tag');
-	}
-	const parent = execute('git', ['rev-parse', 'HEAD'], root);
-	const tempRoot = resolve(tmpdir());
-	const temporary = await mkdtemp(join(tempRoot, 'actionlint-release-tag-'));
-	try {
-		const directory = join(temporary, 'release');
-		await prepareRelease(root, directory, version);
-		execute(process.execPath, ['--check', join(directory, 'action/action.mjs')], root);
-		const commit = await createReleaseCommit(root, directory, version, parent);
-		const tag = `v${version}`;
-		execute('git', ['tag', '-s', '-m', tag, tag, commit], root);
-		try {
-			recordRelease(root, tag, parent);
-		} catch (error) {
-			const reason = error instanceof Error ? error.message : String(error);
-			throw new Error(
-				`Signed ${tag} at ${commit}, but could not record it in the source history: ${reason}\nNothing was pushed. Inspect git status and finish any pending merge; otherwise run: git merge --no-ff --strategy=ours -m "Record bundled release ${tag}" ${tag}`,
-				{ cause: error },
-			);
-		}
-		console.log(`Signed ${tag} at ${commit}; recorded its ancestry without adding generated files to the source tree`);
-	} finally {
-		if (dirname(temporary) === tempRoot) await rm(temporary, { recursive: true, force: true });
-	}
-}
-
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
 	try {
 		/** @type {Map<string, string>} */
@@ -198,10 +167,13 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
 		const directory = options.get('--out-dir');
 		const version = options.get('--version');
 		if (!version) throw new Error('--version is required');
-		if ([commit, fromTag, tag].filter(Boolean).length > 1) throw new Error('--tag, --commit and --from-tag cannot be combined');
+		if ([commit, fromTag, tag].filter(Boolean).length > 1) {
+			throw new Error('--tag, --commit and --from-tag cannot be combined');
+		}
 		if (tag) {
-			if (directory || options.has('--parent')) throw new Error('--tag selects its own output directory and source HEAD');
-			await signRelease(sourceRoot, version);
+			throw new Error(
+				`Prepare and validate a draft first, then run: node scripts/release-candidate.mjs promote --version ${version} --run RUN_ID`,
+			);
 		} else if (!directory) {
 			throw new Error('--out-dir is required');
 		} else if (commit) {

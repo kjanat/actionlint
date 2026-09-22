@@ -178,7 +178,16 @@ jobs:
           npm ci --ignore-scripts
           npm run typecheck --workspace actionlint-action
           npm test --workspace actionlint-action
-          node --test scripts/build-action-release.test.mjs
+          node --test scripts/build-action-release.test.mjs scripts/release-candidate.test.mjs scripts/release-assets.test.mjs
+      - name: Validate the staged release configuration
+        if: runner.os == 'Linux'
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with: { version: v2.18.0, args: check }
+      - name: Validate release workflows with this checkout
+        if: runner.os == 'Linux'
+        run: go run ./cmd/actionlint -shellcheck= -pyflakes=
+          .github/workflows/release.yml .github/workflows/release-prepare.yml
+          .github/workflows/npm-release.yml .github/workflows/major-tag.yml
       - name: Prepare the ordinary binary and release action
         env:
           BINARY_SUFFIX: ${{ runner.os == 'Windows' && '.exe' || '' }}
