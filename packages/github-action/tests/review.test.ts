@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { once } from 'node:events';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { createServer, type Server } from 'node:http';
+import { connect, type Socket } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import type { ActionResult, Diagnostic, Fix } from '#result';
 import { object } from '#result';
+import type { ReviewRuntime } from '#review';
 import { diffHunks, postReview, reviewComment, suggestion } from '#review';
 import type { Environment } from '#runtime';
 
@@ -105,7 +109,7 @@ function api(
 	const calls: string[] = [];
 	const writes: unknown[] = [];
 	let headReads = 0;
-	const request: typeof fetch = async (input, init) => {
+	const request: ReviewRuntime['request'] = async (input, init) => {
 		const url = String(input);
 		calls.push(url);
 		if (options.status) return new Response('', { status: options.status });
@@ -132,6 +136,83 @@ function api(
 	};
 	return { calls, writes, request, readSource: async () => source };
 }
+
+async function listen(server: Server): Promise<number> {
+	server.listen(0, '127.0.0.1');
+	await once(server, 'listening');
+	const address = server.address();
+	assert.ok(address && typeof address === 'object');
+	return address.port;
+}
+
+test('default review API uses the runner proxy and honors NO_PROXY', { timeout: 5_000 }, async (t) => {
+	const variables = ['HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'no_proxy'];
+	const original = new Map(variables.map((name) => [name, process.env[name]]));
+	const sockets = new Set<Socket>();
+	const requests: string[] = [];
+	const tunnels: string[] = [];
+	let status = 200;
+	const origin = createServer((request, response) => {
+		requests.push(request.url ?? '');
+		response.writeHead(status, { 'Content-Type': 'application/json' });
+		response.end(JSON.stringify(request.url?.endsWith('/pulls/5') ? { head: { sha } } : []));
+	});
+	const proxy = createServer();
+	for (const server of [origin, proxy]) {
+		server.on('connection', (socket) => {
+			sockets.add(socket);
+			socket.once('close', () => sockets.delete(socket));
+		});
+	}
+	t.after(async () => {
+		for (const [name, value] of original) {
+			if (value === undefined) delete process.env[name];
+			else process.env[name] = value;
+		}
+		for (const socket of sockets) socket.destroy();
+		await Promise.all([origin, proxy].map((server) =>
+			new Promise<void>((resolve, reject) => {
+				if (!server.listening) return resolve();
+				server.close((error) => error ? reject(error) : resolve());
+			})
+		));
+	});
+	const originPort = await listen(origin);
+	proxy.on('connect', (request, socket, head) => {
+		tunnels.push(request.url ?? '');
+		const upstream = connect(originPort, '127.0.0.1');
+		sockets.add(upstream);
+		upstream.once('close', () => sockets.delete(upstream));
+		upstream.once('error', () => socket.destroy());
+		socket.once('error', () => upstream.destroy());
+		upstream.once('connect', () => {
+			socket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+			if (head.length) upstream.write(head);
+			socket.pipe(upstream).pipe(socket);
+		});
+	});
+	const proxyPort = await listen(proxy);
+	for (const name of variables) delete process.env[name];
+	process.env.HTTP_PROXY = `http://127.0.0.1:${proxyPort}`;
+	await fixture(async (environment) => {
+		const proxied = { ...environment, GITHUB_API_URL: 'http://proxy-only.invalid' };
+		await postReview(result, proxied);
+		assert.deepEqual(requests, [
+			'/repos/owner/repo/pulls/5',
+			'/repos/owner/repo/pulls/5/files?per_page=100&page=1',
+			'/repos/owner/repo/pulls/5/comments?per_page=100&page=1',
+		]);
+		assert.ok(tunnels.length > 0);
+		assert.ok(tunnels.every((target) => target === 'proxy-only.invalid:80'));
+		status = 403;
+		await assert.rejects(postReview(result, proxied), /GitHub review API returned HTTP 403/);
+		status = 200;
+		const beforeBypass = tunnels.length;
+		process.env.NO_PROXY = '127.0.0.1';
+		await postReview(result, { ...environment, GITHUB_API_URL: `http://127.0.0.1:${originPort}` });
+		assert.equal(tunnels.length, beforeBypass);
+	});
+});
 
 test('review API targets event head and groups suggestions after paginated diff inspection', async () => {
 	await fixture(async (environment) => {

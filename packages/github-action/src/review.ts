@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import { readFile, realpath } from 'node:fs/promises';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 
+import { EnvHttpProxyAgent, fetch, type RequestInit, type Response } from 'undici';
+
 import type { ActionResult, Diagnostic, Edit, Fix, Position } from '#result';
 import { object } from '#result';
 import type { Environment } from '#runtime';
@@ -16,9 +18,10 @@ type ReviewComment = {
 	start_side?: 'RIGHT';
 };
 type ReviewContext = { repository: string; sourceRepository: string; number: number; sha: string };
+type ReviewRequest = (url: string, options: RequestInit) => Promise<Pick<Response, 'ok' | 'status' | 'json' | 'body'>>;
 
 export type ReviewRuntime = {
-	request: typeof fetch;
+	request: ReviewRequest;
 	readSource: (path: string) => Promise<string>;
 };
 
@@ -174,9 +177,9 @@ export function nonconflictingComments(candidates: CommentCandidate[]): ReviewCo
 class ReviewAPI {
 	private readonly base: string;
 	private readonly token: string;
-	private readonly request: typeof fetch;
+	private readonly request: ReviewRequest;
 	private readonly deadline = AbortSignal.timeout(60_000);
-	constructor(base: string, token: string, request: typeof fetch) {
+	constructor(base: string, token: string, request: ReviewRequest) {
 		this.base = base;
 		this.token = token;
 		this.request = request;
@@ -195,7 +198,10 @@ class ReviewAPI {
 		};
 		if (body !== undefined) init.body = JSON.stringify(body);
 		const response = await this.request(`${this.base}${path}`, init);
-		if (!response.ok) throw new Error(`GitHub review API returned HTTP ${response.status}`);
+		if (!response.ok) {
+			await response.body?.cancel();
+			throw new Error(`GitHub review API returned HTTP ${response.status}`);
+		}
 		return response.json();
 	}
 	async list(path: string): Promise<unknown[]> {
@@ -257,63 +263,68 @@ export async function postReview(
 	if (!environment.GITHUB_EVENT_PATH) throw new Error('GITHUB_EVENT_PATH is unavailable');
 	const ctx = context(JSON.parse(await readFile(environment.GITHUB_EVENT_PATH, 'utf8')), environment.GITHUB_REPOSITORY);
 	const workspace = await realpath(environment.GITHUB_WORKSPACE || '.');
-	const runtime: ReviewRuntime = supplied || {
-		request: fetch,
-		readSource: async (path) => {
-			const canonical = await realpath(path);
-			const local = relative(workspace, canonical);
-			if (local === '..' || local.startsWith(`..${sep}`) || isAbsolute(local)) {
-				throw new Error('source file resolves outside the workspace');
-			}
-			return readFile(canonical, 'utf8');
-		},
-	};
-	const api = new ReviewAPI(
-		(environment.GITHUB_API_URL || 'https://api.github.com').replace(/\/$/, ''),
-		token,
-		runtime.request,
-	);
-	const endpoint = `/repos/${ctx.repository}/pulls/${ctx.number}`;
-	const current = await api.call(endpoint);
-	if (!object(current) || !object(current.head) || current.head.sha !== ctx.sha) {
-		throw new Error('the PR head changed after this analysis started');
+	const dispatcher = new EnvHttpProxyAgent();
+	try {
+		const runtime: ReviewRuntime = supplied || {
+			request: (url, options) => fetch(url, { ...options, dispatcher }),
+			readSource: async (path) => {
+				const canonical = await realpath(path);
+				const local = relative(workspace, canonical);
+				if (local === '..' || local.startsWith(`..${sep}`) || isAbsolute(local)) {
+					throw new Error('source file resolves outside the workspace');
+				}
+				return readFile(canonical, 'utf8');
+			},
+		};
+		const api = new ReviewAPI(
+			(environment.GITHUB_API_URL || 'https://api.github.com').replace(/\/$/, ''),
+			token,
+			runtime.request,
+		);
+		const endpoint = `/repos/${ctx.repository}/pulls/${ctx.number}`;
+		const current = await api.call(endpoint);
+		if (!object(current) || !object(current.head) || current.head.sha !== ctx.sha) {
+			throw new Error('the PR head changed after this analysis started');
+		}
+		const files = await api.list(`${endpoint}/files`);
+		const previous = await api.list(`${endpoint}/comments`);
+		const bodies = previous.flatMap((value) => object(value) && typeof value.body === 'string' ? [value.body] : []);
+		const candidates: CommentCandidate[] = [];
+		const sources = new Map<string, string | undefined>();
+		for (const diagnostic of result.diagnostics) {
+			const path = workspacePath(environment, diagnostic.path);
+			const file = files.find((value) => object(value) && value.filename === path.relative);
+			if (!object(file) || typeof file.patch !== 'string') continue;
+			if (!sources.has(path.relative)) sources.set(path.relative, await sourceAtHead(api, ctx, path, runtime));
+			const source = sources.get(path.relative);
+			if (source === undefined) continue;
+			const normalized = normalizeFixPaths(diagnostic, environment);
+			const hunks = diffHunks(file.patch);
+			const suggested = reviewComment(normalized, path.relative, source, hunks, ctx.sha);
+			const plain = reviewComment(normalized, path.relative, source, hunks, ctx.sha, false);
+			if (suggested && plain) candidates.push({ suggested, plain });
+		}
+		const comments: ReviewComment[] = [];
+		for (const comment of nonconflictingComments(candidates)) {
+			const marker = comment.body.slice(comment.body.lastIndexOf('<!-- actionlint:'));
+			if (bodies.some((body) => body.includes(marker))) continue;
+			comments.push(comment);
+			bodies.push(comment.body);
+			if (comments.length === 50) break;
+		}
+		if (comments.length === 0) return;
+		const latest = await api.call(endpoint);
+		if (!object(latest) || !object(latest.head) || latest.head.sha !== ctx.sha) {
+			throw new Error('the PR head changed while preparing this review');
+		}
+		await api.call(`${endpoint}/reviews`, {
+			commit_id: ctx.sha,
+			event: 'COMMENT',
+			body:
+				`actionlint found ${result.diagnostics.length} problems. This review contains ${comments.length} new comments on changed lines; the complete results remain in the workflow outputs.`,
+			comments,
+		});
+	} finally {
+		await dispatcher.close();
 	}
-	const files = await api.list(`${endpoint}/files`);
-	const previous = await api.list(`${endpoint}/comments`);
-	const bodies = previous.flatMap((value) => object(value) && typeof value.body === 'string' ? [value.body] : []);
-	const candidates: CommentCandidate[] = [];
-	const sources = new Map<string, string | undefined>();
-	for (const diagnostic of result.diagnostics) {
-		const path = workspacePath(environment, diagnostic.path);
-		const file = files.find((value) => object(value) && value.filename === path.relative);
-		if (!object(file) || typeof file.patch !== 'string') continue;
-		if (!sources.has(path.relative)) sources.set(path.relative, await sourceAtHead(api, ctx, path, runtime));
-		const source = sources.get(path.relative);
-		if (source === undefined) continue;
-		const normalized = normalizeFixPaths(diagnostic, environment);
-		const hunks = diffHunks(file.patch);
-		const suggested = reviewComment(normalized, path.relative, source, hunks, ctx.sha);
-		const plain = reviewComment(normalized, path.relative, source, hunks, ctx.sha, false);
-		if (suggested && plain) candidates.push({ suggested, plain });
-	}
-	const comments: ReviewComment[] = [];
-	for (const comment of nonconflictingComments(candidates)) {
-		const marker = comment.body.slice(comment.body.lastIndexOf('<!-- actionlint:'));
-		if (bodies.some((body) => body.includes(marker))) continue;
-		comments.push(comment);
-		bodies.push(comment.body);
-		if (comments.length === 50) break;
-	}
-	if (comments.length === 0) return;
-	const latest = await api.call(endpoint);
-	if (!object(latest) || !object(latest.head) || latest.head.sha !== ctx.sha) {
-		throw new Error('the PR head changed while preparing this review');
-	}
-	await api.call(`${endpoint}/reviews`, {
-		commit_id: ctx.sha,
-		event: 'COMMENT',
-		body:
-			`actionlint found ${result.diagnostics.length} problems. This review contains ${comments.length} new comments on changed lines; the complete results remain in the workflow outputs.`,
-		comments,
-	});
 }
