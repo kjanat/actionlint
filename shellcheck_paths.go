@@ -117,6 +117,9 @@ func (rule *RuleShellcheck) prepareConfigPath() error {
 	if rule.paths.workspace == "" {
 		rule.paths.workspace = rule.paths.analysis
 	}
+	if err := rule.prepareInlineConfig(); err != nil {
+		return err
+	}
 	var selection ShellcheckConfigSelection
 	base := rule.pathContext().configDir
 	if rule.config != nil && rule.config.Config != nil {
@@ -163,6 +166,29 @@ func (rule *RuleShellcheck) prepareConfigPath() error {
 	if rule.onInput != nil {
 		rule.onInput(path)
 	}
+	return nil
+}
+
+func (rule *RuleShellcheck) prepareInlineConfig() error {
+	rule.inlineConfig = nil
+	config := rule.Config()
+	if config == nil {
+		return nil
+	}
+	inline := config.Tools.Shellcheck.Config.inline()
+	if inline == nil {
+		return nil
+	}
+	resolved := *inline
+	resolved.SourcePath = make([]string, len(inline.SourcePath))
+	for i, path := range inline.SourcePath {
+		var err error
+		resolved.SourcePath[i], err = rule.pathContext().expand(path)
+		if err != nil {
+			return fmt.Errorf("tools.shellcheck.config.source-path: %w", err)
+		}
+	}
+	rule.inlineConfig = &resolved
 	return nil
 }
 
