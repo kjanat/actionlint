@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { constants } from 'node:fs';
 import { access, cp, mkdir, mkdtemp, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { basename, delimiter, dirname, join, resolve } from 'node:path';
+import { basename, delimiter, dirname, extname, isAbsolute, join, resolve } from 'node:path';
 
 import { normalizeEnvironment } from '#environment';
 
@@ -10,7 +10,7 @@ export function capture(
 	executable: string,
 	args: string[],
 	env: NodeJS.ProcessEnv = process.env,
-	timeoutMS?: number,
+	options: { timeoutMS?: number; windowsVerbatimArguments?: boolean } = {},
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
 	return new Promise((resolve, reject) => {
 		const child = spawn(executable, args, {
@@ -18,7 +18,8 @@ export function capture(
 			shell: false,
 			windowsHide: true,
 			stdio: ['ignore', 'pipe', 'pipe'],
-			timeout: timeoutMS,
+			timeout: options.timeoutMS,
+			windowsVerbatimArguments: options.windowsVerbatimArguments,
 			killSignal: 'SIGKILL',
 		});
 		let stdout = '';
@@ -42,9 +43,30 @@ async function checked(executable: string, args: string[], env?: NodeJS.ProcessE
 	if (result.exitCode !== 0) throw new Error(`${executable} exited with ${result.exitCode}: ${result.stderr}`);
 }
 
-export async function which(name: string, environment: NodeJS.ProcessEnv = process.env): Promise<string> {
-	const extensions = process.platform === 'win32' ? ['.exe'] : [''];
-	for (const directory of (normalizeEnvironment(environment).PATH ?? '').split(delimiter).filter(Boolean)) {
+export async function which(
+	name: string,
+	environment: NodeJS.ProcessEnv = process.env,
+	launchers: 'all' | 'native' = 'all',
+): Promise<string> {
+	const normalized = normalizeEnvironment(environment);
+	let extensions = [''];
+	if (process.platform === 'win32') {
+		if (launchers === 'native' && /\.(?:cmd|bat)$/i.test(name)) return '';
+		const supported = launchers === 'native' ? ['.com', '.exe'] : ['.com', '.exe', '.bat', '.cmd'];
+		if (!supported.includes(extname(name).toLowerCase())) {
+			extensions = [
+				...new Set(
+					(normalized.PATHEXT || '.COM;.EXE;.BAT;.CMD').split(';')
+						.map((extension) => extension.trim().toLowerCase()),
+				),
+			].filter((extension) => supported.includes(extension));
+		}
+	}
+	const explicitPath = isAbsolute(name) || name.includes('/') || (process.platform === 'win32' && name.includes('\\'));
+	const directories = explicitPath
+		? ['']
+		: (normalized.PATH ?? '').split(delimiter).filter(Boolean);
+	for (const directory of directories) {
 		for (const extension of extensions) {
 			const path = resolve(directory.replace(/^"(.*)"$/, '$1'), name + extension);
 			try {
@@ -127,7 +149,7 @@ export async function extractArchive(archive: string, output: string, format: 'z
 	await mkdir(output, { recursive: true });
 	if (format === 'tar.gz') await checked('tar', ['-xzf', archive, '-C', output]);
 	else if (process.platform === 'win32') {
-		const powershell = await which('pwsh') || 'powershell.exe';
+		const powershell = await which('pwsh', process.env, 'native') || 'powershell.exe';
 		await checked(powershell, [
 			'-NoLogo',
 			'-NoProfile',

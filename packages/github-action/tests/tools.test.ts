@@ -1,12 +1,26 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { copyFile, link, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { copyFile, link, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { capture, temporary } from '#native';
-import { executeNative } from '#tools';
+import { pyflakesVersion, shellcheckVersion } from '#assets';
+import { capture, temporary, which } from '#native';
+import { executeNative, pyflakesCommand, shellcheckBinary } from '#tools';
+
+async function withEnvironment(values: Record<string, string>, run: () => Promise<void>): Promise<void> {
+	const previous = new Map(Object.keys(values).map((name) => [name, process.env[name]]));
+	try {
+		for (const [name, value] of Object.entries(values)) process.env[name] = value;
+		await run();
+	} finally {
+		for (const [name, value] of previous) {
+			if (value === undefined) delete process.env[name];
+			else process.env[name] = value;
+		}
+	}
+}
 
 test('native spawn preserves executable paths, arguments and exit status', async () => {
 	const directory = await mkdtemp(join(tmpdir(), 'actionlint exec-'));
@@ -53,5 +67,57 @@ test('action execution uses only the supplied child environment and preserves ex
 	} finally {
 		if (previous === undefined) delete process.env.ACTIONLINT_TEST_SENTINEL;
 		else process.env.ACTIONLINT_TEST_SENTINEL = previous;
+	}
+});
+
+test('Windows Python batch shims resolve to native Python before forwarding arbitrary arguments', {
+	skip: process.platform !== 'win32',
+}, async () => {
+	const installed = await which('python3', process.env, 'native') || await which('python', process.env, 'native');
+	assert.ok(installed, 'Python is required to verify shim discovery');
+	const probe = await capture(installed, ['-I', '-c', 'import sys; print(sys.executable)']);
+	assert.equal(probe.exitCode, 0, probe.stderr);
+	const python = probe.stdout.trim();
+	for (const launcher of ['python3.cmd', 'python.bat', 'py.cmd']) {
+		await temporary(async (directory) => {
+			const shims = join(directory, 'Python shims & %PATH% !bang! ^caret (test)');
+			await mkdir(shims);
+			const selectPython = launcher === 'py.cmd' ? 'if not "%~1"=="-3" exit /b 92\r\n' : '';
+			const shimArguments = launcher === 'py.cmd' ? '%2 %3 %4' : '%*';
+			await writeFile(
+				join(shims, launcher),
+				`@echo off\r\n${selectPython}"%ACTIONLINT_TEST_PYTHON%" ${shimArguments}\r\nexit /b %errorlevel%\r\n`,
+			);
+			for (const name of ['shellcheck.cmd', 'pyflakes.bat']) {
+				await writeFile(join(shims, name), '@exit /b 91\r\n');
+			}
+			const cache = join(directory, 'cache');
+			const pyflakes = join(cache, 'actionlint-pyflakes', pyflakesVersion, 'any');
+			const shellcheck = join(cache, 'actionlint-shellcheck-windows', shellcheckVersion, 'amd64');
+			await mkdir(pyflakes, { recursive: true });
+			await mkdir(shellcheck, { recursive: true });
+			await writeFile(`${pyflakes}.complete`, '');
+			await writeFile(`${shellcheck}.complete`, '');
+			await writeFile(join(shellcheck, 'shellcheck.exe'), 'cached native executable');
+			await writeFile(
+				join(pyflakes, 'actionlint-pyflakes.py'),
+				'import json, sys\nprint(json.dumps({"isolated": sys.flags.isolated, "args": sys.argv[1:]}))\n',
+			);
+			await withEnvironment({
+				PATH: shims,
+				PATHEXT: '.CMD;.BAT;.COM;.EXE',
+				RUNNER_TOOL_CACHE: cache,
+				ACTIONLINT_TEST_PYTHON: python,
+			}, async () => {
+				assert.equal(await shellcheckBinary({ os: 'windows', arch: 'amd64' }), join(shellcheck, 'shellcheck.exe'));
+				const command = await pyflakesCommand({ os: 'windows', arch: 'amd64' });
+				if (command.kind !== 'python') assert.fail('batch Pyflakes must use the isolated wheel fallback');
+				assert.equal(command.executable, python);
+				const args = ['a b', 'a"b', 'trailing\\', 'a&b', '%PATH%', '!VALUE!', '(x)|<y>', ''];
+				const result = await capture(command.executable, ['-I', command.script, ...args]);
+				assert.equal(result.exitCode, 0, result.stderr);
+				assert.deepEqual(JSON.parse(result.stdout), { isolated: 1, args });
+			});
+		});
 	}
 });

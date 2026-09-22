@@ -51,7 +51,7 @@ test('published actionlint stays runnable after step cleanup and each publicatio
 
 test('published pyflakes wrapper preserves spaced Python paths, arguments and isolated mode', async () => {
 	await temporary(async (job) => {
-		const command = await which('python3') || await which('python');
+		const command = await which('python3', process.env, 'native') || await which('python', process.env, 'native');
 		assert.ok(command, 'Python is required to verify the pyflakes wrapper');
 		const probe = await capture(command, ['-I', '-c', 'import sys; print(sys.executable)']);
 		assert.equal(probe.exitCode, 0, probe.stderr);
@@ -81,7 +81,22 @@ test('published pyflakes wrapper preserves spaced Python paths, arguments and is
 			assert.equal(result.exitCode, 7, result.stderr);
 			assert.deepEqual(JSON.parse(result.stdout), { isolated: 1, args: ['argument with spaces', 'second'] });
 			if (process.platform === 'win32') {
-				const git = await which('git');
+				const powershell = await which('pwsh', process.env, 'native')
+					|| await which('powershell', process.env, 'native');
+				assert.ok(powershell, 'PowerShell is required to verify next-step tool exports');
+				const powershellResult = await capture(powershell, [
+					'-NoLogo',
+					'-NoProfile',
+					'-NonInteractive',
+					'-Command',
+					'& pyflakes "argument with spaces" second; exit $LASTEXITCODE',
+				], environment);
+				assert.equal(powershellResult.exitCode, 7, powershellResult.stderr);
+				assert.deepEqual(JSON.parse(powershellResult.stdout), {
+					isolated: 1,
+					args: ['argument with spaces', 'second'],
+				});
+				const git = await which('git', process.env, 'native');
 				assert.ok(git, 'Git for Windows is required to verify the Bash wrapper');
 				const shell = await capture(git, ['var', 'GIT_SHELL_PATH']);
 				assert.equal(shell.exitCode, 0, shell.stderr);
@@ -92,6 +107,37 @@ test('published pyflakes wrapper preserves spaced Python paths, arguments and is
 			}
 		} finally {
 			await unlink(linkedDirectory);
+		}
+	});
+});
+
+test('exported ShellCheck preserves spaced paths and arguments in subsequent steps', async () => {
+	await temporary(async (job) => {
+		const directory = join(job, 'tools with spaces');
+		await mkdir(directory);
+		const shellcheck = join(directory, process.platform === 'win32' ? 'shellcheck.exe' : 'shellcheck');
+		await copyFile(process.execPath, shellcheck);
+		const pathFile = join(job, 'github-path');
+		await publishTools({ shellcheck }, { GITHUB_PATH: pathFile });
+		const environment = withPath((await readFile(pathFile, 'utf8')).trim().split('\n'));
+		const script = join(job, 'argument probe.cjs');
+		await writeFile(script, 'process.stdout.write(JSON.stringify(process.argv.slice(2))); process.exitCode = 7;');
+		const args = ['script with spaces.sh', 'second.sh'];
+		const result = await capture('shellcheck', [script, ...args], environment);
+		assert.equal(result.exitCode, 7, result.stderr);
+		assert.deepEqual(JSON.parse(result.stdout), args);
+		if (process.platform === 'win32') {
+			const powershell = await which('pwsh', process.env, 'native') || await which('powershell', process.env, 'native');
+			assert.ok(powershell, 'PowerShell is required to verify next-step tool exports');
+			const result = await capture(powershell, [
+				'-NoLogo',
+				'-NoProfile',
+				'-NonInteractive',
+				'-Command',
+				'& shellcheck $env:ACTIONLINT_TEST_SCRIPT "script with spaces.sh" second.sh; exit $LASTEXITCODE',
+			], { ...environment, ACTIONLINT_TEST_SCRIPT: script });
+			assert.equal(result.exitCode, 7, result.stderr);
+			assert.deepEqual(JSON.parse(result.stdout), args);
 		}
 	});
 });

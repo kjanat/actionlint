@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative } from 'node:path';
 
 import { cacheTool, capture, findTool, temporary, which } from '#native';
@@ -9,7 +9,7 @@ import { commandEscape, writeOutputs } from '#workflow';
 
 test('configuration preflight can terminate a noncooperative child at its deadline', async () => {
 	await assert.rejects(
-		capture(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], process.env, 50),
+		capture(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], process.env, { timeoutMS: 50 }),
 		/terminated by SIGKILL/,
 	);
 });
@@ -76,7 +76,9 @@ test('concurrent tool installers publish complete generations without replacing 
 				await writeFile(join(source, 'metadata'), String(index));
 				return source;
 			}));
-			const installations = await Promise.all(sources.map((source) => cacheTool(source, 'shellcheck', '1.2.3', 'amd64')));
+			const installations = await Promise.all(
+				sources.map((source) => cacheTool(source, 'shellcheck', '1.2.3', 'amd64')),
+			);
 			for (const installation of installations) {
 				const executable = await readFile(join(installation, 'executable'), 'utf8');
 				assert.match(executable, /^[0-3]$/);
@@ -125,6 +127,60 @@ test('PATH lookup resolves relative entries before the working directory can cha
 		const found = await which('probe', { PATH: `"${relative(process.cwd(), tools)}"` });
 		assert.equal(found, executable);
 		assert.ok(isAbsolute(found));
+	});
+});
+
+test('explicit relative executable paths bypass PATH lookup', async () => {
+	await temporary(async (directory) => {
+		const pathDirectory = join(directory, 'path tools');
+		await mkdir(pathDirectory);
+		const name = process.platform === 'win32' ? 'probe.exe' : 'probe';
+		for (const base of [directory, pathDirectory]) {
+			await writeFile(join(base, name), 'executable', { mode: 0o755 });
+		}
+		const previous = process.cwd();
+		try {
+			process.chdir(directory);
+			const environment = { PATH: pathDirectory };
+			assert.equal(await which(name, environment), join(pathDirectory, name));
+			assert.equal(await which(`./${name}`, environment), join(directory, name));
+			if (process.platform === 'win32') {
+				assert.equal(await which(`.\\${name}`, environment), join(directory, name));
+			} else {
+				const literalBackslash = 'probe\\name';
+				await writeFile(join(pathDirectory, literalBackslash), 'executable', { mode: 0o755 });
+				assert.equal(await which(literalBackslash, environment), join(pathDirectory, literalBackslash));
+			}
+		} finally {
+			process.chdir(previous);
+		}
+	});
+});
+
+test('Windows lookup follows PATH and PATHEXT order, with native-only selection past batch launchers', {
+	skip: process.platform !== 'win32',
+}, async () => {
+	await temporary(async (directory) => {
+		const first = join(directory, 'first tools');
+		const second = join(directory, 'second tools');
+		await mkdir(first);
+		await mkdir(second);
+		for (const path of [join(first, 'probe.cmd'), join(first, 'probe.cmd.com'), join(second, 'probe.exe')]) {
+			await writeFile(path, 'tool');
+		}
+		await copyFile(process.execPath, join(first, 'probe.com'));
+		const environment = { Path: `"${first}";${second}`, PathExt: '.CMD;.COM;.EXE' };
+		assert.equal(await which('probe', environment), join(first, 'probe.cmd'));
+		assert.equal(await which('probe', environment, 'native'), join(first, 'probe.com'));
+		assert.equal(await which('probe', { ...environment, PathExt: '.EXE;.CMD' }, 'native'), join(second, 'probe.exe'));
+		assert.equal(await which('probe.com', environment), join(first, 'probe.com'));
+		assert.equal(await which('probe.cmd', environment, 'native'), '');
+		assert.equal(await which('probe', { ...environment, PathExt: '.BAT' }), '');
+		assert.equal(await which('probe', { ...environment, PathExt: '.cOm;.cMd;.CoM' }), join(first, 'probe.com'));
+		const native = await which('probe', environment, 'native');
+		const result = await capture(native, ['-e', 'process.stdout.write(process.argv[1])', 'argument with spaces']);
+		assert.equal(result.exitCode, 0, result.stderr);
+		assert.equal(result.stdout, 'argument with spaces');
 	});
 });
 

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing release tag (vX.Y.Z) the major tag should follow"
+        description: "Source release tag (vX.Y.Z) whose bundled Action the major tag should follow"
         required: true
         type: string
 
@@ -24,7 +24,10 @@ jobs:
           set -euo pipefail
           [[ "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           git fetch --force --tags origin
-          sha="$(git rev-parse "refs/tags/${TAG}^{commit}")"
+          source="$(git rev-parse "refs/tags/${TAG}^{commit}")"
+          sha="$(git rev-parse "refs/tags/action-${TAG}^{commit}")"
+          test "$(git rev-parse "${sha}^")" = "${source}"
+          git cat-file -e "${sha}:dist/main.mjs"
           major="${TAG%%.*}"
           latest="$(git tag --list "${major}.*.*" --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)"
           test "${TAG}" = "${latest}"

@@ -188,6 +188,11 @@ jobs:
           tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*')"
           node scripts/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${tag#v}"
           cp -R "${RUNNER_TEMP}/actionlint-action/action" .actionlint-action-test
+      - name: Check Git-tag version fallback
+        working-directory: packages/github-action
+        run: |
+          env -u ACTIONLINT_VERSION node --run build -- --out-dir "${RUNNER_TEMP}/actionlint-action-fallback"
+          cmp "${RUNNER_TEMP}/actionlint-action-fallback/main.mjs" "${RUNNER_TEMP}/actionlint-action/action/dist/main.mjs"
       - name: Exercise the action through the real runner
         id: smoke
         # ./ loads the release bundle generated in this job's workspace.
@@ -210,6 +215,16 @@ jobs:
           shellcheck --version
           pyflakes --version
           node scripts/test-action.mjs "${RUNNER_TEMP}/actionlint-action/action" "${ACTIONLINT_ACTION_BINARY}"
+      - name: Check exported tools from PowerShell
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          actionlint -version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          shellcheck --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pyflakes --version
+          exit $LASTEXITCODE
   pre-commit-shellcheck:
     name: pre-commit ShellCheck integration
     runs-on: ubuntu-latest

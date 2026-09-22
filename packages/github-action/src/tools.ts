@@ -60,8 +60,8 @@ export async function nativeBinary(version: string, platform: RunnerPlatform, di
 }
 
 export async function shellcheckBinary(platform: RunnerPlatform): Promise<string> {
-	const existing = await which('shellcheck');
-	if (existing && (platform.os !== 'windows' || existing.toLowerCase().endsWith('.exe'))) return existing;
+	const existing = await which('shellcheck', process.env, 'native');
+	if (existing) return existing;
 
 	const binary = platform.os === 'windows' ? 'shellcheck.exe' : 'shellcheck';
 	const cacheName = `actionlint-shellcheck-${platform.os}`;
@@ -83,16 +83,35 @@ export async function shellcheckBinary(platform: RunnerPlatform): Promise<string
 }
 
 async function pythonBinary(): Promise<string> {
+	const probe = 'import sys; print(sys.executable); sys.exit(0 if sys.version_info >= (3, 9) else 1)';
 	for (const command of ['python3', 'python', 'py']) {
 		const path = await which(command);
 		if (!path) continue;
 		const args = command === 'py' ? ['-3'] : [];
-		args.push(
-			'-I',
-			'-c',
-			'import sys; print(sys.executable); sys.exit(0 if sys.version_info >= (3, 9) else 1)',
-		);
-		const result = await capture(path, args);
+		args.push('-I', '-c', probe);
+		let result: Awaited<ReturnType<typeof capture>>;
+		if (process.platform === 'win32' && /\.(?:cmd|bat)$/i.test(path)) {
+			// Only this fixed probe crosses cmd.exe. Transport the path and Python code
+			// in the child environment; arbitrary lint arguments use sys.executable later.
+			const environment = normalizeEnvironment(process.env);
+			environment.ACTIONLINT_PYTHON_SHIM = path;
+			environment.ACTIONLINT_PYTHON_PROBE = probe;
+			const prefix = command === 'py' ? '-3 ' : '';
+			result = await capture(
+				environment.COMSPEC || 'cmd.exe',
+				[
+					'/d',
+					'/v:off',
+					'/s',
+					'/c',
+					`""%ACTIONLINT_PYTHON_SHIM%" ${prefix}-I -c "import os;exec(os.environ['ACTIONLINT_PYTHON_PROBE'])""`,
+				],
+				environment,
+				{ windowsVerbatimArguments: true },
+			);
+		} else {
+			result = await capture(path, args);
+		}
 		const executable = result.stdout.trim();
 		if (result.exitCode === 0 && isAbsolute(executable)) {
 			await checkExecutable(executable);
@@ -103,8 +122,8 @@ async function pythonBinary(): Promise<string> {
 }
 
 export async function pyflakesCommand(platform: RunnerPlatform): Promise<PyflakesCommand> {
-	const existing = await which('pyflakes');
-	if (existing && (platform.os !== 'windows' || existing.toLowerCase().endsWith('.exe'))) {
+	const existing = await which('pyflakes', process.env, platform.os === 'windows' ? 'native' : 'all');
+	if (existing) {
 		return { kind: 'command', executable: existing };
 	}
 
@@ -142,7 +161,7 @@ export function executeNative(executable: string, args: string[], environment: E
 }
 
 export async function inspectTools(executable: string, environment: Environment): Promise<ToolRequirements> {
-	const result = await capture(executable, ['-github-action-tools'], environment, 300_000);
+	const result = await capture(executable, ['-github-action-tools'], environment, { timeoutMS: 300_000 });
 	if (result.exitCode !== 0) {
 		const message = result.stderr.trim() || `actionlint configuration inspection exited with ${result.exitCode}`;
 		throw result.exitCode === 2 ? new InputError(message) : new Error(message);
