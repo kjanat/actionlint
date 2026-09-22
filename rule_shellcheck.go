@@ -68,6 +68,7 @@ type RuleShellcheck struct {
 	jobDir        runDirectory
 	paths         runPaths
 	rcArgs        []string
+	inlineConfig  *ShellcheckConfig
 	actionPath    string
 	onInput       func(string)
 	mu            sync.Mutex
@@ -213,22 +214,7 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 	} else if directiveShell {
 		dialect = "" // Let ShellCheck parse and validate the original directive.
 	}
-	var inline *ShellcheckConfig
-	if config := rule.Config(); config != nil {
-		inline = config.Tools.Shellcheck.Config.inline()
-	}
-	if inline != nil {
-		resolved := *inline
-		resolved.SourcePath = make([]string, len(inline.SourcePath))
-		for i, path := range inline.SourcePath {
-			var err error
-			resolved.SourcePath[i], err = rule.pathContext().expand(path)
-			if err != nil {
-				return fmt.Errorf("tools.shellcheck.config.source-path: %w", err)
-			}
-		}
-		inline = &resolved
-	}
+	inline := rule.inlineConfig
 	if inline != nil && inline.Shell != nil {
 		dialect = *inline.Shell
 		appendDialect = true
