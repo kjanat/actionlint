@@ -70,7 +70,8 @@ type LinterOptions struct {
 	ConfigFile string
 	// ConfigOverlays apply in order over each project's selected config file.
 	ConfigOverlays []ConfigOverlay
-	// OnConfigLoaded reports actual config sources. Calls are serialized.
+	// OnConfigLoaded reports actual config sources once per project, outside the cache lock.
+	// Callbacks may reenter the session; concurrent callers must synchronize callback state.
 	OnConfigLoaded func(ConfigReport)
 	// Format is a custom template to format error messages. It must follow Go Template format and
 	// contain at least one {{ }} placeholder. https://pkg.go.dev/text/template

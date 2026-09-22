@@ -49,6 +49,15 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		want                          string
 	}{
 		{"direct", "ubuntu-latest", "", "- run: ./bad.sh", "bad.sh"},
+		{"literal prefix assignment", "ubuntu-latest", "", "- run: FOO=bar ./bad.sh", "bad.sh"},
+		{"quoted prefix assignment", "ubuntu-latest", "", "- run: FOO='two words' EMPTY= ./bad.sh", "bad.sh"},
+		{"numeric variable prefix", "ubuntu-latest", "", "- run: RANDOM=1+2 SECONDS=1+2 OPTIND=1+2 ./bad.sh", "bad.sh"},
+		{"dynamic prefix assignment", "ubuntu-latest", "", "- run: FOO=$(chmod +x bad.sh) ./bad.sh", ""},
+		{"prefix assignment cd", "ubuntu-latest", "", "- run: CDPATH=elsewhere cd scripts && ./bad.sh", ""},
+		{"assignment only", "ubuntu-latest", "", "- run: FOO=bar; ./bad.sh", ""},
+		{"missing invocation component", "ubuntu-latest", "", "- run: ./missing/../bad.sh", ""},
+		{"file invocation component", "ubuntu-latest", "", "- run: ./good.sh/../bad.sh", ""},
+		{"parent invocation component", "ubuntu-latest", "", "- run: ./scripts/../bad.sh", "bad.sh"},
 		{"macOS", "macos-latest", "", "- run: ./bad.sh", "bad.sh"},
 		{"indexed executable", "ubuntu-latest", "", "- run: ./good.sh", ""},
 		{"interpreter", "ubuntu-latest", "", "- run: bash bad.sh", ""},

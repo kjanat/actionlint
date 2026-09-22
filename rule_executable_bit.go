@@ -175,9 +175,21 @@ func (rule *RuleExecutableBit) statement(statement *syntax.Stmt, run *ExecRun, d
 }
 
 func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, directory *runDirectory) {
-	if len(command.Assigns) != 0 || len(command.Args) == 0 {
+	if len(command.Args) == 0 {
 		rule.pristine = false
 		return
+	}
+	for _, assignment := range command.Assigns {
+		if assignment.Append || assignment.Naked || assignment.Index != nil || assignment.Array != nil {
+			rule.pristine = false
+			return
+		}
+		if assignment.Value != nil {
+			if _, literal := literalShellWord(assignment.Value.Parts); !literal {
+				rule.pristine = false
+				return
+			}
+		}
 	}
 	args := make([]string, len(command.Args))
 	for i, word := range command.Args {
@@ -187,6 +199,14 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 			return
 		}
 		args[i] = value
+	}
+	if len(command.Assigns) != 0 {
+		if strings.Contains(args[0], "/") {
+			rule.checkInvocation(run, command.Args[0], *directory, args[0])
+		}
+		// Prefix assignments can alter builtin behavior and subsequent shell state.
+		rule.pristine = false
+		return
 	}
 	switch args[0] {
 	case "cd":

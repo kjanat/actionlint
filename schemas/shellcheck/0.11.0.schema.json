@@ -95,7 +95,27 @@
           "type": "array",
           "items": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "anyOf": [
+              {
+                "not": {
+                  "pattern": "\""
+                }
+              },
+              {
+                "not": {
+                  "pattern": "'"
+                }
+              },
+              {
+                "not": {
+                  "pattern": "[ \\t]|^['\"]"
+                }
+              }
+            ],
+            "not": {
+              "pattern": "[\\x00\\r\\n]"
+            }
           }
         },
         {

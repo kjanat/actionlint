@@ -6,8 +6,93 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 )
+
+func TestConfigLoadedCallbackCanReenterSession(t *testing.T) {
+	var session *AnalysisSession
+	var calls int
+	var reentered *AnalysisResult
+	var reentryErr error
+	session, err := NewAnalysisSession(AnalysisOptions{OnConfigLoaded: func(ConfigReport) {
+		calls++
+		if calls > 1 {
+			t.Error("reentry invoked the callback again")
+			return
+		}
+		// Fail without leaving a blocked reentrant call behind when the lock is held.
+		if !session.configState.TryLock() {
+			t.Error("OnConfigLoaded holds the configuration cache lock")
+			return
+		}
+		session.configState.Unlock()
+		reentered, reentryErr = session.ReadStdin(strings.NewReader("on: push\njobs: {}\n"), false)
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := session.ReadStdin(strings.NewReader("on: push\njobs: {}\n"), false)
+	if err != nil || result == nil || result.FileCount() != 1 {
+		t.Fatalf("outer analysis: %+v, %v", result, err)
+	}
+	if reentryErr != nil || reentered == nil || reentered.FileCount() != 1 {
+		t.Fatalf("reentrant analysis: %+v, %v", reentered, reentryErr)
+	}
+	if calls != 1 {
+		t.Fatalf("callback invoked %d times for the same project", calls)
+	}
+}
+
+func TestConfigLoadedCallbackOncePerConcurrentProject(t *testing.T) {
+	overlay, err := ParseConfigOverlay("config-variables", []byte("[ALLOWED]"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var calls atomic.Int32
+	session, err := NewAnalysisSession(AnalysisOptions{
+		ConfigOverlays: []ConfigOverlay{overlay},
+		OnConfigLoaded: func(ConfigReport) { calls.Add(1) },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	projects := []*Project{{root: "first"}, {root: "second"}}
+	type loaded struct {
+		project int
+		config  *Config
+		err     error
+	}
+	const requests = 16
+	results := make(chan loaded, requests)
+	start := make(chan struct{})
+	var group sync.WaitGroup
+	for i := range requests {
+		group.Go(func() {
+			<-start
+			project := i % len(projects)
+			config, err := session.configForProject(projects[project])
+			results <- loaded{project, config, err}
+		})
+	}
+	close(start)
+	group.Wait()
+	close(results)
+	configs := make(map[int]*Config)
+	for result := range results {
+		if result.err != nil || result.config == nil || !reflect.DeepEqual(result.config.ConfigVariables, []string{"ALLOWED"}) {
+			t.Fatalf("concurrent configuration: %+v", result)
+		}
+		if previous, ok := configs[result.project]; ok && previous != result.config {
+			t.Fatal("concurrent readers received different configurations for the same project")
+		}
+		configs[result.project] = result.config
+	}
+	if got := calls.Load(); got != int32(len(projects)) {
+		t.Fatalf("callback invoked %d times for %d projects", got, len(projects))
+	}
+}
 
 func TestConfigOverlaysPreserveFileSettings(t *testing.T) {
 	base := `self-hosted-runner: {labels: [original]}
