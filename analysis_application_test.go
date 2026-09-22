@@ -37,6 +37,28 @@ func (w *analysisRecordingLog) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+func TestAnalysisDiagnosticIdentity(t *testing.T) {
+	base := Error{Filepath: "action.yml", Kind: "shellcheck", Message: "finding", Line: 1, Column: 1, endColumn: 4, source: []byte("echo $VALUE\n")}
+	result := &AnalysisResult{}
+	for _, change := range []func(*Error){
+		func(*Error) {},
+		func(*Error) {},
+		func(e *Error) { e.endColumn = 5 },
+		func(e *Error) { e.source = []byte("echo $OTHER\n") },
+		func(e *Error) { e.Message = "another finding" },
+		func(e *Error) { e.Filepath = "another/action.yml" },
+		func(e *Error) { e.Kind = "another-rule" },
+	} {
+		finding := base
+		change(&finding)
+		result.files = append(result.files, analyzedFile{source: SourceUnit{Content: []byte("workflow")}, errors: []*Error{&finding}})
+	}
+	result.collectDiagnostics()
+	if len(result.Diagnostics) != 6 || len(result.legacyErrors()) != 6 || result.FileCount() != 7 {
+		t.Fatalf("only the identical diagnostic should be removed: %+v", result.Diagnostics)
+	}
+}
+
 func TestAnalysisConcurrentLogRecords(t *testing.T) {
 	for _, level := range []LogLevel{LogLevelVerbose, LogLevelDebug} {
 		t.Run(fmt.Sprint(level), func(t *testing.T) {

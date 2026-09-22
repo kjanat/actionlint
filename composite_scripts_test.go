@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"encoding/json"
 	"os/exec"
 
 	"slices"
@@ -107,6 +108,49 @@ func TestCompositeShellcheck(t *testing.T) {
 				t.Fatalf("metadata not tracked: %v", result.Inputs)
 			}
 		})
+	}
+}
+
+func TestCompositeShellcheckAcrossWorkflows(t *testing.T) {
+	root, _ := executableFixture(t)
+	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
+	metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: lint\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo $VALUE\n")
+	const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./local\n"
+	first := writeShellcheckFixture(t, root, ".github/workflows/a.yml", workflow)
+	second := writeShellcheckFixture(t, root, ".github/workflows/b.yml", workflow)
+	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: shellcheckForTest(t)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := session.Files([]string{first, second}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "shellcheck" || result.Diagnostics[0].Path != metadata {
+		t.Fatalf("expected one shared-action finding: %+v", result.Diagnostics)
+	}
+	if result.FileCount() != 2 || len(result.legacyErrors()) != 1 {
+		t.Fatalf("file and finding counts: %d, %d", result.FileCount(), len(result.legacyErrors()))
+	}
+	for _, path := range []string{first, second, metadata} {
+		if !slices.Contains(result.Inputs, path) {
+			t.Errorf("input missing: %s", path)
+		}
+	}
+	renderer, err := NewAnalysisRenderer("", "{{json .}}", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out strings.Builder
+	if err := renderer.Render(&out, result); err != nil {
+		t.Fatal(err)
+	}
+	var findings []ErrorTemplateFields
+	if err := json.Unmarshal([]byte(out.String()), &findings); err != nil {
+		t.Fatal(err)
+	}
+	if len(findings) != 1 || findings[0].Filepath != metadata || !strings.Contains(findings[0].Snippet, "echo $VALUE") {
+		t.Fatalf("legacy rendering lost the shared source: %+v", findings)
 	}
 }
 
