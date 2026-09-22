@@ -26,7 +26,7 @@ test('bundle builder refuses checkout descendants, including names beginning wit
 			encoding: 'utf8',
 		});
 		assert.equal(result.status, 1);
-		assert.match(result.stderr, /Refusing to create dist inside the source checkout/);
+		assert.match(result.stderr, /Refusing to create the bundle inside the source checkout/);
 		assert.equal(existsSync(output), false);
 	}
 });
