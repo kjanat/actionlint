@@ -761,37 +761,39 @@ Go APIs are available. See [the Go API document](api.md) for more details.
 
 ### reviewdog
 
-> [!NOTE]
-> [`reviewdog/action-actionlint` v1.76.0 installs this fork's v1.17.0](https://github.com/reviewdog/action-actionlint/blob/v1.76.0/scripts/install-actionlint.sh).
-> Check the installer at your pinned action revision to identify the distribution and version it runs.
+[reviewdog][reviewdog] turns actionlint findings into annotations on pull requests.
+The [`reviewdog/action-actionlint` action][reviewdog-actionlint] runs this fork
+with ShellCheck and Pyflakes enabled.
 
-<!-- separator -->
-
-> [!WARNING]
-> The [v1.76.0 entrypoint](https://github.com/reviewdog/action-actionlint/blob/v1.76.0/entrypoint.sh) does not preserve actionlint's exit status through its reporting pipeline.
-> An execution or configuration failure without parseable findings can therefore go unreported by reviewdog.
-> A successful reviewdog step alone does not establish that analysis completed successfully.
-> Tracked in reviewdog/action-actionlint#240.
-
-[reviewdog][reviewdog] is an automated review tool for various code hosting
-services. It officially [supports actionlint][reviewdog-actionlint]. You can
-check errors from actionlint easily with inline review comments at pull request
-review.
-
-The usage is easy. Run `reviewdog/action-actionlint` action in your workflow as
-follows.
+Add the following workflow to `.github/workflows/actionlint.yaml`:
 
 ```yaml
-name: reviewdog
+name: actionlint
 on: [pull_request]
 jobs:
   actionlint:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: read
     steps:
       - uses: actions/checkout@v7
         with: { persist-credentials: false }
       - uses: reviewdog/action-actionlint@v1
+        with:
+          reporter: github-pr-check
+          filter_mode: nofilter
+          fail_level: any
 ```
+
+This reports all findings as check annotations and fails the step when problems
+are found. Set `filter_mode: file` to report only findings in files changed by the
+pull request, or `fail_level: none` to report findings without failing the step.
+Invalid options and fatal errors always fail the step.
+
+Pass additional actionlint options through `actionlint_flags`. See the
+[action documentation][reviewdog-actionlint] for all inputs and available reporters.
 
 <a id="problem-matchers"></a>
 
