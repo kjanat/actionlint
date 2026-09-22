@@ -51,6 +51,21 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 	if !rule.unix || !rule.sequential {
 		return nil
 	}
+	conditionUnknown := false
+	if _, run := step.Exec.(*ExecRun); run && step.If != nil {
+		condition := *step.If
+		if !condition.ContainsExpression() {
+			condition.Value = "${{ " + condition.Value + " }}"
+		}
+		value, known := workflowExpressionLiteral(&condition)
+		if enabled, boolean := value.(bool); known && boolean {
+			if !enabled {
+				return nil
+			}
+		} else {
+			conditionUnknown = true
+		}
+	}
 	if step.Background != nil && (step.Background.Expression != nil || step.Background.Value) {
 		rule.sequential, rule.pristine = false, false
 		return nil
@@ -61,7 +76,7 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 	case *ExecAction:
 		rule.checkout(step, command)
 	case *ExecRun:
-		if rule.jobEnv || shellEnvironmentUnknown(step.Env) {
+		if conditionUnknown || rule.jobEnv || shellEnvironmentUnknown(step.Env) {
 			rule.pristine = false
 		}
 		if rule.pristine {
@@ -176,10 +191,14 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 	switch args[0] {
 	case "cd":
 		if len(args) == 2 && directory.kind == directoryKnown && localRunnerPath(args[1]) && !strings.HasPrefix(args[1], "-") {
-			directory.path = joinRunnerPath(directory.path, args[1])
-		} else {
-			*directory = runDirectory{kind: directoryUnknown}
+			candidate := joinRunnerPath(directory.path, args[1])
+			snapshot := rule.index()
+			if snapshot.err == nil && snapshot.ordinaryTraversal(candidate+"/", rule.paths.checkout) {
+				directory.path = candidate
+				return
+			}
 		}
+		*directory = runDirectory{kind: directoryUnknown}
 	case "chmod":
 		// Any literal chmod makes the Git-index mode obsolete for its operands.
 		if len(args) < 3 || strings.HasPrefix(args[1], "-") {
@@ -314,14 +333,32 @@ func (snapshot *gitModeSnapshot) ordinaryTraversal(runnerPath, checkout string) 
 			var within bool
 			name, within = strings.CutPrefix(location, checkout+"/")
 			if !within {
-				continue
+				if location == "." || location == checkout || strings.HasPrefix(checkout, location+"/") {
+					continue
+				}
+				return false
 			}
 		}
-		if i < len(parts)-1 && snapshot.modes[name] != "" {
+		if i < len(parts)-1 && !snapshot.directoryExists(name) {
 			return false
 		}
 	}
 	return true
+}
+
+func (snapshot *gitModeSnapshot) directoryExists(name string) bool {
+	if name == "" || name == "." {
+		return true
+	}
+	if snapshot.modes[name] != "" {
+		return false
+	}
+	for file := range snapshot.modes {
+		if strings.HasPrefix(file, name+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 func shellEnvironmentUnknown(env *Env) bool {
