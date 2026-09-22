@@ -34,7 +34,8 @@ jobs:
           test "${GITHUB_REF}" = refs/heads/master
           test -z "${EXPECTED_SOURCE}" || test "${EXPECTED_SOURCE}" = "${GITHUB_SHA}"
           [[ "${VERSION}" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
-          test -z "$(git tag --list "v${VERSION}")"
+          existing_tag="$(git tag --list "v${VERSION}")"
+          test -z "${existing_tag}"
       - parallel:
           - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
             with: { go-version-file: go.mod }
@@ -117,7 +118,8 @@ jobs:
           assets="${RUNNER_TEMP}/actionlint-action/assets"
           git bundle verify "${assets}/release-candidate.bundle"
           git fetch --no-tags "${assets}/release-candidate.bundle" "refs/actionlint/candidates/v${VERSION}:refs/tags/v${VERSION}"
-          test "$(git rev-parse "refs/tags/v${VERSION}^{commit}")" = "${CANDIDATE}"
+          tag_commit="$(git rev-parse "refs/tags/v${VERSION}^{commit}")"
+          test "${tag_commit}" = "${CANDIDATE}"
           mkdir .actionlint-action-candidate
           git archive "v${VERSION}" | tar -x -C .actionlint-action-candidate
           (cd .actionlint-action-candidate && sha256sum --check SHA256SUMS)
@@ -176,7 +178,8 @@ jobs:
         env: { CANDIDATE: "${{ needs.prepare.outputs.candidate }}" }
         run: |
           git fetch --no-tags "${RUNNER_TEMP}/actionlint-action/assets/release-candidate.bundle" "refs/actionlint/candidates/v${VERSION}"
-          test "$(git rev-parse FETCH_HEAD)" = "${CANDIDATE}"
+          fetched_commit="$(git rev-parse FETCH_HEAD)"
+          test "${fetched_commit}" = "${CANDIDATE}"
           git checkout --detach "${CANDIDATE}"
       - uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
@@ -251,10 +254,12 @@ jobs:
             echo '::error::A release or draft already exists. Inspect it before preparing another candidate.'
             exit 1
           fi
-          test -z "$(git ls-remote origin "refs/tags/v${VERSION}")"
+          remote_tag="$(git ls-remote origin "refs/tags/v${VERSION}")"
+          test -z "${remote_tag}"
           gh release create "v${VERSION}" --repo "${GITHUB_REPOSITORY}" --draft --target "${SOURCE}" \
             --title "v${VERSION}" --notes-file "${RUNNER_TEMP}/actionlint-action/release-notes.md"
           gh release upload "v${VERSION}" --repo "${GITHUB_REPOSITORY}" "${RUNNER_TEMP}/actionlint-action/assets/"*
-          test -z "$(git ls-remote origin "refs/tags/v${VERSION}")"
+          remote_tag="$(git ls-remote origin "refs/tags/v${VERSION}")"
+          test -z "${remote_tag}"
           printf 'Prepared **v%s**. Promote the validated draft with:\n\n    node scripts/release-candidate.mjs promote --version %s --run %s\n' \
             "${VERSION}" "${VERSION}" "${GITHUB_RUN_ID}" >> "${GITHUB_STEP_SUMMARY}"

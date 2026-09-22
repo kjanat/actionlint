@@ -33,15 +33,20 @@ jobs:
         run: |
           [[ "${TAG}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
           object="$(git rev-parse "refs/tags/${TAG}")"
-          test "$(git cat-file -t "${object}")" = tag
+          object_type="$(git cat-file -t "${object}")"
+          test "${object_type}" = tag
           git cat-file -p "${object}" | grep -q -- '-----BEGIN PGP SIGNATURE-----'
-          test "$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${object}" --jq '.verification.verified')" = true
-          test "$(git rev-parse "refs/tags/${TAG}^{commit}")" = "${GITHUB_SHA}"
+          verified="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${object}" --jq '.verification.verified')"
+          test "${verified}" = true
+          tag_commit="$(git rev-parse "refs/tags/${TAG}^{commit}")"
+          test "${tag_commit}" = "${GITHUB_SHA}"
           gh release download "${TAG}" --repo "${GITHUB_REPOSITORY}" --dir "${RUNNER_TEMP}/release-assets"
           node scripts/release-candidate.mjs verify --directory "${RUNNER_TEMP}/release-assets"
           manifest="${RUNNER_TEMP}/release-assets/release-candidate.json"
-          test "$(jq -r .tag "${manifest}")" = "${TAG}"
-          test "$(jq -r .candidate "${manifest}")" = "${GITHUB_SHA}"
+          candidate_tag="$(jq -r .tag "${manifest}")"
+          test "${candidate_tag}" = "${TAG}"
+          candidate_commit="$(jq -r .candidate "${manifest}")"
+          test "${candidate_commit}" = "${GITHUB_SHA}"
           run_id="$(jq -r .run_id "${manifest}")"
           attempt="$(jq -r .run_attempt "${manifest}")"
           gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" > "${RUNNER_TEMP}/prepare-run.json"
@@ -70,22 +75,25 @@ jobs:
           minor="${version%.*}"
           latest_stable_tag() {
             local pattern="$1" candidate tags
-            tags="$(git tag --list "${pattern}" --sort=-version:refname)"
+            tags="$(git tag --list "${pattern}" --sort=-version:refname)" || return
             while IFS= read -r candidate; do
               if [[ "${candidate}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
                 echo "${candidate}"
                 return
               fi
             done <<< "${tags}"
+            return 1
           }
           for scope in latest major-latest minor-latest; do
             case "${scope}" in
               latest) pattern='v*.*.*' ;;
               major-latest) pattern="v${major}.*.*" ;;
               minor-latest) pattern="v${minor}.*" ;;
+              *) exit 1 ;;
             esac
             eligible=false
-            if [[ "${TAG}" == "$(latest_stable_tag "${pattern}")" ]]; then eligible=true; fi
+            latest="$(latest_stable_tag "${pattern}")"
+            if [[ "${TAG}" == "${latest}" ]]; then eligible=true; fi
             echo "is-${scope}=${eligible}" >> "${GITHUB_OUTPUT}"
           done
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
@@ -182,7 +190,8 @@ jobs:
             done
           done
           cmp "${RUNNER_TEMP}/ghcr.io.digest" "${RUNNER_TEMP}/docker.io.digest"
-          echo "digest=$(cat "${RUNNER_TEMP}/ghcr.io.digest")" >> "${GITHUB_OUTPUT}"
+          digest="$(cat "${RUNNER_TEMP}/ghcr.io.digest")"
+          echo "digest=${digest}" >> "${GITHUB_OUTPUT}"
       - name: Update Docker Hub description
         if: needs.verify.outputs.is-latest == 'true'
         uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0

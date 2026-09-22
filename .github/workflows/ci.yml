@@ -173,6 +173,9 @@ jobs:
       - parallel:
           - *GoGomod
           - { uses: *SetupNode, with: { node-version: "24", package-manager-cache: false } }
+          - name: Install ShellCheck
+            if: runner.os == 'Linux'
+            uses: $/.github/actions/setup-shellcheck
       - name: Test the JavaScript runtime and release packaging
         run: |
           npm ci --ignore-scripts
@@ -185,7 +188,7 @@ jobs:
         with: { version: v2.18.0, args: check }
       - name: Validate release workflows with this checkout
         if: runner.os == 'Linux'
-        run: go run ./cmd/actionlint -shellcheck= -pyflakes=
+        run: go run ./cmd/actionlint -shellcheck 'shellcheck -o all' -pyflakes=
           .github/workflows/release.yml .github/workflows/release-prepare.yml
           .github/workflows/npm-release.yml .github/workflows/major-tag.yml
       - name: Prepare the ordinary binary and release action
