@@ -111,7 +111,7 @@ test('release commit keeps source HEAD, working files and staging index intact',
 		await mkdir(consumer);
 		const archive = join(temporary, 'release.tar');
 		git(['archive', '--format=tar', '--output', archive, 'v1.17.0']);
-		execFileSync('tar', ['-xf', archive, '-C', consumer]);
+		execFileSync('tar', ['-xf', '-'], { cwd: consumer, input: await readFile(archive) });
 		const metadata = await readFile(join(consumer, 'action.yml'), 'utf8');
 		const main = /^\s+main: (.+)$/m.exec(metadata)?.[1];
 		assert.ok(main, 'version tag must include JavaScript Action metadata');
