@@ -289,23 +289,42 @@ export async function postReview(
 		const files = await api.list(`${endpoint}/files`);
 		const previous = await api.list(`${endpoint}/comments`);
 		const bodies = previous.flatMap((value) => object(value) && typeof value.body === 'string' ? [value.body] : []);
-		const candidates: CommentCandidate[] = [];
-		const sources = new Map<string, string | undefined>();
+		const diagnosticsByPath = new Map<string, Diagnostic[]>();
+		for (const diagnostic of result.diagnostics) {
+			const path = workspacePath(environment, diagnostic.path).relative;
+			const diagnostics = diagnosticsByPath.get(path) ?? [];
+			diagnostics.push(diagnostic);
+			diagnosticsByPath.set(path, diagnostics);
+		}
+		const prepared = new Map<string, Map<Diagnostic, ReviewComment>>();
+		const comments: ReviewComment[] = [];
 		for (const diagnostic of result.diagnostics) {
 			const path = workspacePath(environment, diagnostic.path);
-			const file = files.find((value) => object(value) && value.filename === path.relative);
-			if (!object(file) || typeof file.patch !== 'string') continue;
-			if (!sources.has(path.relative)) sources.set(path.relative, await sourceAtHead(api, ctx, path, runtime));
-			const source = sources.get(path.relative);
-			if (source === undefined) continue;
-			const normalized = normalizeFixPaths(diagnostic, environment);
-			const hunks = diffHunks(file.patch);
-			const suggested = reviewComment(normalized, path.relative, source, hunks, ctx.sha);
-			const plain = reviewComment(normalized, path.relative, source, hunks, ctx.sha, false);
-			if (suggested && plain) candidates.push({ suggested, plain });
-		}
-		const comments: ReviewComment[] = [];
-		for (const comment of nonconflictingComments(candidates)) {
+			let resolved = prepared.get(path.relative);
+			if (!resolved) {
+				resolved = new Map();
+				prepared.set(path.relative, resolved);
+				const file = files.find((value) => object(value) && value.filename === path.relative);
+				if (!object(file) || typeof file.patch !== 'string') continue;
+				const source = await sourceAtHead(api, ctx, path, runtime);
+				if (source === undefined) continue;
+				const hunks = diffHunks(file.patch);
+				const candidates: (CommentCandidate & { diagnostic: Diagnostic })[] = [];
+				// Resolve every overlap in this file before counting comments toward the
+				// limit, including diagnostics that occur later in the original order.
+				for (const related of diagnosticsByPath.get(path.relative) ?? []) {
+					const normalized = normalizeFixPaths(related, environment);
+					const suggested = reviewComment(normalized, path.relative, source, hunks, ctx.sha);
+					const plain = reviewComment(normalized, path.relative, source, hunks, ctx.sha, false);
+					if (suggested && plain) candidates.push({ diagnostic: related, suggested, plain });
+				}
+				for (const [index, comment] of nonconflictingComments(candidates).entries()) {
+					const candidate = candidates[index];
+					if (candidate) resolved.set(candidate.diagnostic, comment);
+				}
+			}
+			const comment = resolved.get(diagnostic);
+			if (!comment) continue;
 			const marker = comment.body.slice(comment.body.lastIndexOf('<!-- actionlint:'));
 			if (bodies.some((body) => body.includes(marker))) continue;
 			comments.push(comment);

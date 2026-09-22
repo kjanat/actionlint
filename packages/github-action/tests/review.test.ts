@@ -104,10 +104,12 @@ function api(
 		changedHead?: string;
 		source?: string;
 		paginated?: boolean;
+		files?: string[];
 	} = {},
 ) {
 	const calls: string[] = [];
 	const writes: unknown[] = [];
+	const files = options.files ?? ['ci.yml'];
 	let headReads = 0;
 	const request: ReviewRuntime['request'] = async (input, init) => {
 		const url = String(input);
@@ -122,11 +124,11 @@ function api(
 		} else if (url.includes('/files?')) {
 			data = options.paginated && url.endsWith('page=1')
 				? Array.from({ length: 100 }, (_, index) => ({ filename: `unrelated-${index}.yml` }))
-				: [{ filename: 'ci.yml', patch }];
+				: files.map((filename) => ({ filename, patch }));
 		} else if (url.includes('/comments?')) {
 			data = (options.existing || []).map((body) => ({ body }));
 		} else if (url.includes('/contents/')) {
-			assert.ok(url.includes(`/repos/fork/repo/contents/ci.yml?ref=${sha}`));
+			assert.ok(files.some((path) => url.includes(`/repos/fork/repo/contents/${path}?ref=${sha}`)));
 			data = { encoding: 'base64', content: Buffer.from(options.source ?? source).toString('base64') };
 		} else {
 			assert.ok(url.endsWith('/pulls/5'));
@@ -276,5 +278,71 @@ test('overlapping suggestions from separate diagnostics remain explanatory comme
 			assert.ok(!comment.body.includes('```suggestion'));
 			assert.equal(comment.line, 3);
 		}
+	});
+});
+
+function diagnosticAt(path: string): Diagnostic {
+	return {
+		...diagnostic,
+		path,
+		fixes: (diagnostic.fixes ?? []).map((fix) => ({
+			...fix,
+			edits: fix.edits.map((edit) => ({ ...edit, path })),
+		})),
+	};
+}
+
+test('review stops source requests after 50 new eligible comments', async () => {
+	await fixture(async (environment) => {
+		const diagnostics = Array.from({ length: 75 }, (_, index) => ({ ...diagnosticAt(`ci-${index}.yml`), fixes: [] }));
+		const contextOnly: Diagnostic = {
+			...diagnosticAt('context.yml'),
+			start: { line: 2, column: 1 },
+			end: { line: 2, column: 5 },
+			fixes: [],
+		};
+		const existing = diagnostics.slice(0, 5).map((value) => {
+			const comment = reviewComment(value, value.path, source, diffHunks(patch), sha);
+			assert.ok(comment);
+			return comment.body;
+		});
+		const runtime = api({ files: [contextOnly.path, ...diagnostics.map((value) => value.path)], existing });
+		await postReview(
+			{ ...result, diagnostics: [contextOnly, ...diagnostics.flatMap((value) => [value, value])] },
+			environment,
+			runtime,
+		);
+		const review = runtime.writes[0];
+		assert.ok(object(review) && Array.isArray(review.comments));
+		assert.deepEqual(
+			review.comments.map((comment) => {
+				assert.ok(object(comment));
+				return comment.path;
+			}),
+			diagnostics.slice(5, 55).map((value) => value.path),
+		);
+		assert.equal(runtime.calls.filter((url) => url.includes('/contents/')).length, 56);
+	});
+});
+
+test('review accounts for late overlapping suggestions before the comment limit', async () => {
+	await fixture(async (environment) => {
+		const first = diagnosticAt('first.yml');
+		const later = { ...first, code: 'SC9999', message: 'Another fix for the same line' };
+		const diagnostics = Array.from({ length: 60 }, (_, index) => diagnosticAt(`ci-${index}.yml`));
+		const existing = reviewComment(first, first.path, source, diffHunks(patch), sha, false);
+		assert.ok(existing);
+		const runtime = api({ files: [first.path, ...diagnostics.map((value) => value.path)], existing: [existing.body] });
+		await postReview({ ...result, diagnostics: [first, ...diagnostics, later] }, environment, runtime);
+		const review = runtime.writes[0];
+		assert.ok(object(review) && Array.isArray(review.comments));
+		assert.deepEqual(
+			review.comments.map((comment) => {
+				assert.ok(object(comment));
+				return comment.path;
+			}),
+			diagnostics.slice(0, 50).map((value) => value.path),
+		);
+		assert.equal(runtime.calls.filter((url) => url.includes('/contents/')).length, 51);
 	});
 });
