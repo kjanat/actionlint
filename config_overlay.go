@@ -225,7 +225,13 @@ func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
 		return cfg, nil
 	}
 	s.Lock()
-	defer s.Unlock()
+	var notification *ConfigReport
+	defer func() {
+		s.Unlock()
+		if notification != nil && s.onLoaded != nil {
+			s.onLoaded(*notification)
+		}
+	}()
 	if loaded, ok := s.loaded[project]; ok {
 		return loaded, nil
 	}
@@ -271,9 +277,7 @@ func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
 	}
 	report.Inspection = ConfigInspection{Path: report.File, Config: resolved.values, Origins: resolved.origins}
 	s.loaded[project] = cfg
-	if s.onLoaded != nil {
-		s.onLoaded(report)
-	}
+	notification = &report
 	return cfg, nil
 }
 

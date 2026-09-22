@@ -186,6 +186,15 @@ func generateShellcheckSchema() ([]byte, error) {
 		return nil, err
 	}
 	s := r.Reflect(actionlint.ShellcheckConfig{})
+	sourcePath, _ := s.Properties.Get("source-path")
+	// Match shellcheckDirectivePath: a directive cannot contain line breaks or
+	// NUL. Both quote types require an unquoted path with no space/tab or leading quote.
+	sourcePath.OneOf[0].Items.Not = &jsonschema.Schema{Pattern: `[\x00\r\n]`}
+	sourcePath.OneOf[0].Items.AnyOf = []*jsonschema.Schema{
+		{Not: &jsonschema.Schema{Pattern: `"`}},
+		{Not: &jsonschema.Schema{Pattern: `'`}},
+		{Not: &jsonschema.Schema{Pattern: `[ \t]|^['"]`}},
+	}
 	s.ID = ""
 	s.Title = "ShellCheck " + shellcheckSchemaVersion + " inline directives for actionlint"
 	s.Comments = "Versioned snapshot of actionlint's YAML representation of ShellCheck directives. Normal generation does not overwrite this file; see scripts/generate-config-schema/README.md."

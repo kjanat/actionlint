@@ -79,7 +79,9 @@ func (rule *RuleShellcheck) stepDirectory(run *ExecRun) shellcheckDirectory {
 		return unknown
 	}
 	// Runner-absolute paths refer to the remote machine; they are not local source roots.
-	if filepath.IsAbs(directory.path) || strings.HasPrefix(directory.path, "/") || strings.Contains(directory.path, ":") {
+	windowsDrive := len(directory.path) >= 2 && directory.path[1] == ':' &&
+		(directory.path[0] >= 'A' && directory.path[0] <= 'Z' || directory.path[0] >= 'a' && directory.path[0] <= 'z')
+	if filepath.IsAbs(directory.path) || strings.HasPrefix(directory.path, "/") || windowsDrive {
 		return unknown
 	}
 	path := filepath.Join(rule.paths.workspace, filepath.FromSlash(directory.path))

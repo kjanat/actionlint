@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -104,8 +105,15 @@ func TestShellcheckSourceWorkingDirectory(t *testing.T) {
 		{"literal expression", "", "", "${{ 'step' }}", "step/scripts", false},
 		{"dynamic blocks fallback", "workflow", "job", "${{ github.event.inputs.directory }}", "job/scripts", true},
 		{"missing runtime directory", "", "", "created-at-runtime", "scripts", true},
+		{"colon in directory", "", "", "release:debug", "release:debug/scripts", false},
+		{"colon in nested directory", "", "", "nested/release:debug", "nested/release:debug/scripts", false},
+		{"Windows drive relative", "", "", "C:work", "C:work/scripts", true},
+		{"Windows drive absolute", "", "", "C:/work", "C:/work/scripts", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			if runtime.GOOS == "windows" && strings.Contains(tc.stepDir, ":") {
+				t.Skip("fixture requires Unix filenames containing colons")
+			}
 			root := t.TempDir()
 			for _, dir := range []string{".git", "step", "job", "workflow"} {
 				if err := os.Mkdir(filepath.Join(root, dir), 0o700); err != nil {
