@@ -45,7 +45,7 @@ export default defineConfig(async ({ outDir }): Promise<UserConfig> => {
 	}
 	const version = process.env.ACTIONLINT_VERSION || execFileSync(
 		'git',
-		['describe', '--tags', '--abbrev=0', '--match', 'v[0-9]*.[0-9]*.[0-9]*'],
+		['describe', '--tags', '--abbrev=0', '--match', 'v[0-9]*.[0-9]*.[0-9]*', '--exclude', '*-*'],
 		{ cwd: repositoryDirectory, encoding: 'utf8' },
 	).trim().replace(/^v/, '');
 	return {

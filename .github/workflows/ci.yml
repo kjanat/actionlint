@@ -92,7 +92,7 @@ jobs:
       - name: Build JavaScript Action release files outside the checkout
         run: |
           npm ci --ignore-scripts
-          tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*')"
+          tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude '*-*')"
           node scripts/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${tag#v}"
       - run: run make:man/actionlint.1
       - name: Install syft for SBOM generation
@@ -185,7 +185,7 @@ jobs:
           binary="${RUNNER_TEMP}/actionlint-test${BINARY_SUFFIX}"
           go build -o "${binary}" ./cmd/actionlint
           echo "ACTIONLINT_ACTION_BINARY=${binary}" >> "${GITHUB_ENV}"
-          tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*')"
+          tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude '*-*')"
           node scripts/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${tag#v}"
           cp -R "${RUNNER_TEMP}/actionlint-action/action" .actionlint-action-test
       - name: Check Git-tag version fallback

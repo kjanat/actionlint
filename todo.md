@@ -46,7 +46,7 @@ Repository-reference cleanup and JavaScript-tooling changes are separate mainten
 - The ordinary actionlint Go binary serves both the CLI and the action adapter (`-github-action`), including Docker use.
 - Generated JavaScript release files stay outside the source checkout.
 - The private workspace package is named `actionlint-action`; it has no separately maintained release version.
-- The release/tag version passes through the release builder into tsdown's compile-time version stamp. Local builds fall back to `git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*'`, stripping the leading `v`.
+- The release/tag version passes through the release builder into tsdown's compile-time version stamp. Local builds fall back to `git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude '*-*'`, stripping the leading `v`.
 - Git supplies the version fallback during the release build. An explicit release version takes precedence.
 - Release packaging uses source `vX.Y.Z` tags and separate `action-vX.Y.Z` artifact tags, plus moving action tags. Compatibility with the signed-release workflow remains an open decision.
 
