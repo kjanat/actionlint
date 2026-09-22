@@ -106,12 +106,27 @@ test('release commit keeps source HEAD, working files and staging index intact',
 		assert.equal(sourceGit(['rev-parse', 'HEAD^1']), parent);
 		assert.equal(sourceGit(['rev-parse', 'HEAD^2']), commit);
 		assert.equal(sourceGit(['status', '--porcelain']), '');
-		assert.equal(sourceGit(['describe', '--tags', '--abbrev=0', '--match', 'v[0-9]*.[0-9]*.[0-9]*', '--exclude', '*-*']), 'v1.17.0');
+		assert.equal(
+			sourceGit(['describe', '--tags', '--abbrev=0', '--match', 'v[0-9]*.[0-9]*.[0-9]*', '--exclude', '*-*']),
+			'v1.17.0',
+		);
 		await assert.rejects(stat(join(integration, 'action.mjs')), { code: 'ENOENT' });
 		assert.throws(() => recordRelease(integration, 'v1.17.0', parent), /HEAD changed/);
 
 		const checkout = join(temporary, 'tagged-checkout');
-		git(['-c', 'advice.detachedHead=false', 'clone', '--quiet', '--no-local', '--config', 'core.autocrlf=true', '--branch', 'v1.17.0', root, checkout]);
+		git([
+			'-c',
+			'advice.detachedHead=false',
+			'clone',
+			'--quiet',
+			'--no-local',
+			'--config',
+			'core.autocrlf=true',
+			'--branch',
+			'v1.17.0',
+			root,
+			checkout,
+		]);
 		assert.equal(await readFile(join(checkout, 'action.mjs'), 'utf8'), bundle);
 		assert.equal(await readFile(join(checkout, 'SHA256SUMS'), 'utf8'), `${digest}  action.mjs\n`);
 
