@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"regexp"
 	"runtime"
 	"slices"
@@ -145,13 +146,35 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	for _, file := range result.files {
-		for _, finding := range file.errors {
-			result.Diagnostics = append(result.Diagnostics, finding.diagnostic(file.source.Content))
-		}
-	}
+	result.collectDiagnostics()
 	result.Inputs = inputs.list()
 	return result, nil
+}
+
+func (r *AnalysisResult) collectDiagnostics() {
+	type location struct {
+		path, rule string
+		start      DiagnosticPosition
+	}
+	seen := make(map[location][]Diagnostic)
+	for i := range r.files {
+		file := &r.files[i]
+		unique := file.errors[:0]
+		for _, finding := range file.errors {
+			diagnostic := finding.diagnostic(file.source.Content)
+			key := location{diagnostic.Path, diagnostic.Rule, diagnostic.Start}
+			if slices.ContainsFunc(seen[key], func(previous Diagnostic) bool {
+				return reflect.DeepEqual(previous, diagnostic)
+			}) {
+				continue
+			}
+			seen[key] = append(seen[key], diagnostic)
+			r.Diagnostics = append(r.Diagnostics, diagnostic)
+			unique = append(unique, finding)
+		}
+		clear(file.errors[len(unique):])
+		file.errors = unique
+	}
 }
 
 type sourceAnalysisError struct {
