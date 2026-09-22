@@ -61,7 +61,8 @@ func (cache *gitModes) load(ctx context.Context, root string) *gitModeSnapshot {
 }
 
 func repositoryGit(ctx context.Context, git, root string, args ...string) *exec.Cmd {
-	command := exec.CommandContext(ctx, git, append([]string{"-C", root}, args...)...)
+	// Index inspection must not invoke repository-configured fsmonitor commands.
+	command := exec.CommandContext(ctx, git, append([]string{"-C", root, "-c", "core.fsmonitor=false"}, args...)...)
 	// Clear repository overrides inherited from Git commands or hooks so the
 	// query uses the workflow's project.
 	for _, entry := range os.Environ() {
