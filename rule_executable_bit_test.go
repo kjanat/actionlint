@@ -39,7 +39,13 @@ func executableFixture(t *testing.T) (string, func(...string)) {
 }
 
 func TestExecutableBitWorkflows(t *testing.T) {
-	root, _ := executableFixture(t)
+	root, git := executableFixture(t)
+	link := writeShellcheckFixture(t, root, "link", "bad.sh")
+	object, err := repositoryGit(t.Context(), "git", root, "hash-object", "-w", "--", link).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	git("update-index", "--add", "--cacheinfo", "120000", strings.TrimSpace(string(object)), "link")
 	index, err := os.Stat(filepath.Join(root, ".git", "index"))
 	if err != nil {
 		t.Fatal(err)
@@ -49,6 +55,13 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		want                          string
 	}{
 		{"direct", "ubuntu-latest", "", "- run: ./bad.sh", "bad.sh"},
+		{"parameter argument", "ubuntu-latest", "", "- run: ./bad.sh \"$GITHUB_SHA\"", "bad.sh"},
+		{"braced parameter argument", "ubuntu-latest", "", "- run: ./bad.sh \"${GITHUB_SHA}\"", "bad.sh"},
+		{"parameter prefix", "ubuntu-latest", "", "- run: FOO=$GITHUB_SHA ./bad.sh", "bad.sh"},
+		{"command substitution argument", "ubuntu-latest", "", "- run: ./bad.sh \"$(chmod +x bad.sh)\"", ""},
+		{"arithmetic argument", "ubuntu-latest", "", "- run: ./bad.sh \"$((COUNT++))\"", ""},
+		{"capitalized bash", "ubuntu-latest", "", "- run: ./bad.sh\n  shell: Bash", "bad.sh"},
+		{"uppercase sh default", "ubuntu-latest", "defaults:\n  run:\n    shell: SH\n", "- run: ./bad.sh", "bad.sh"},
 		{"literal prefix assignment", "ubuntu-latest", "", "- run: FOO=bar ./bad.sh", "bad.sh"},
 		{"quoted prefix assignment", "ubuntu-latest", "", "- run: FOO='two words' EMPTY= ./bad.sh", "bad.sh"},
 		{"numeric variable prefix", "ubuntu-latest", "", "- run: RANDOM=1+2 SECONDS=1+2 OPTIND=1+2 ./bad.sh", "bad.sh"},
@@ -75,6 +88,7 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"cd parent resolves", "ubuntu-latest", "", "- run: cd scripts/.. && ./bad.sh", "bad.sh"},
 		{"cd resets each step", "ubuntu-latest", "", "- run: cd scripts\n- run: ./bad.sh", "bad.sh"},
 		{"earlier chmod", "ubuntu-latest", "", "- run: chmod +x bad.sh\n- run: ./bad.sh", ""},
+		{"symlink chmod", "ubuntu-latest", "", "- run: chmod +x link\n- run: ./bad.sh", ""},
 		{"skipped chmod", "ubuntu-latest", "", "- run: chmod +x bad.sh\n  if: ${{ false }}\n- run: ./bad.sh", "bad.sh"},
 		{"bare skipped chmod", "ubuntu-latest", "", "- run: chmod +x bad.sh\n  if: false\n- run: ./bad.sh", "bad.sh"},
 		{"skipped opaque run", "ubuntu-latest", "", "- run: ./good.sh\n  if: false\n- run: ./bad.sh", "bad.sh"},

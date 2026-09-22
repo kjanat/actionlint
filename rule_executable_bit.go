@@ -20,6 +20,7 @@ type RuleExecutableBit struct {
 	unix, sequential, pristine bool
 	changed                    map[string]bool
 	workflowEnv, jobEnv        bool
+	skipFindings               bool
 }
 
 func newRuleExecutableBit(context ruleContext) *RuleExecutableBit {
@@ -126,7 +127,8 @@ func (rule *RuleExecutableBit) checkScript(run *ExecRun) {
 		return
 	}
 	shell := resolveRunShell(run, rule.jobShell, rule.workflowShell, shellValue{})
-	if shell.name != "bash" && shell.name != "sh" {
+	shellName := strings.ToLower(shell.name)
+	if shellName != "bash" && shellName != "sh" {
 		rule.pristine = false
 		return
 	}
@@ -136,7 +138,7 @@ func (rule *RuleExecutableBit) checkScript(run *ExecRun) {
 		return
 	}
 	variant := syntax.LangBash
-	if shell.name == "sh" {
+	if shellName == "sh" {
 		variant = syntax.LangPOSIX
 	}
 	file, err := syntax.NewParser(syntax.Variant(variant)).Parse(strings.NewReader(run.Run.Value), "")
@@ -185,11 +187,32 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 			return
 		}
 		if assignment.Value != nil {
-			if _, literal := literalShellWord(assignment.Value.Parts); !literal {
+			if !simpleShellArgument(assignment.Value.Parts) {
 				rule.pristine = false
 				return
 			}
 		}
+	}
+	name, literal := literalShellWord(command.Args[0].Parts)
+	if !literal {
+		rule.pristine = false
+		return
+	}
+	if strings.Contains(name, "/") {
+		for _, word := range command.Args[1:] {
+			if !simpleShellArgument(word.Parts) {
+				rule.pristine = false
+				return
+			}
+		}
+		rule.checkInvocation(run, command.Args[0], *directory, name)
+		rule.pristine = false
+		return
+	}
+	if len(command.Assigns) != 0 {
+		// Prefix assignments can alter builtin behavior and subsequent shell state.
+		rule.pristine = false
+		return
 	}
 	args := make([]string, len(command.Args))
 	for i, word := range command.Args {
@@ -199,14 +222,6 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 			return
 		}
 		args[i] = value
-	}
-	if len(command.Assigns) != 0 {
-		if strings.Contains(args[0], "/") {
-			rule.checkInvocation(run, command.Args[0], *directory, args[0])
-		}
-		// Prefix assignments can alter builtin behavior and subsequent shell state.
-		rule.pristine = false
-		return
 	}
 	switch args[0] {
 	case "cd":
@@ -227,7 +242,7 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 		}
 		for _, operand := range args[2:] {
 			name, ok := rule.scriptPath(*directory, operand)
-			if !ok {
+			if !ok || rule.index().modes[name] == "120000" {
 				rule.pristine = false
 				return
 			}
@@ -236,13 +251,30 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 	case "echo", ":", "true":
 		// Literal arguments and no redirects/substitutions cannot change files.
 	default:
-		if strings.Contains(args[0], "/") {
-			rule.checkInvocation(run, command.Args[0], *directory, args[0])
-		}
 		// Includes interpreter/source calls: no executable-bit requirement on the
 		// argument, but their execution may change subsequent filesystem state.
 		rule.pristine = false
 	}
+}
+
+// Accept simple parameter reads; substitutions and arithmetic may change files before execution.
+func simpleShellArgument(parts []syntax.WordPart) bool {
+	for _, part := range parts {
+		switch value := part.(type) {
+		case *syntax.Lit, *syntax.SglQuoted:
+		case *syntax.DblQuoted:
+			if value.Dollar || !simpleShellArgument(value.Parts) {
+				return false
+			}
+		case *syntax.ParamExp:
+			if value.Param == nil || value.Excl || value.Index != nil || value.Slice != nil || value.Repl != nil || value.Exp != nil {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func localRunnerPath(value string) bool {
@@ -270,6 +302,9 @@ func (rule *RuleExecutableBit) scriptPath(directory runDirectory, script string)
 }
 
 func (rule *RuleExecutableBit) checkInvocation(run *ExecRun, word *syntax.Word, directory runDirectory, script string) {
+	if rule.skipFindings {
+		return
+	}
 	name, ok := rule.scriptPath(directory, script)
 	if !ok || rule.changed[name] {
 		return

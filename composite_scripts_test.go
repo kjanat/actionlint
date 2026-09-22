@@ -220,6 +220,9 @@ func TestCompositeExecutableBit(t *testing.T) {
 		want        bool
 	}{
 		{"checkout", "- uses: actions/checkout@v6\n- uses: ./local", true},
+		{"skipped call", "- uses: actions/checkout@v6\n- uses: ./local\n  if: false", false},
+		{"skipped expression call", "- uses: actions/checkout@v6\n- uses: ./local\n  if: ${{ false }}", false},
+		{"conditional call", "- uses: actions/checkout@v6\n- uses: ./local\n  if: github.event_name == 'push'", false},
 		{"no checkout", "- uses: ./local", false},
 		{"earlier chmod", "- uses: actions/checkout@v6\n- run: chmod +x bad.sh\n  shell: bash\n  working-directory: ''\n- uses: ./local", false},
 		{"startup env", "- uses: actions/checkout@v6\n- uses: ./local\n  env:\n    BASH_ENV: setup.sh", false},
@@ -240,6 +243,23 @@ func TestCompositeExecutableBit(t *testing.T) {
 				t.Fatalf("executable-bit = %v, want %v: %+v", found, tc.want, result.Diagnostics)
 			}
 		})
+	}
+}
+
+func TestConditionalCompositeRetainsStaticChecks(t *testing.T) {
+	command := shellcheckForTest(t)
+	root, _ := executableFixture(t)
+	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
+	writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: ./inner\n")
+	inner := writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: |\n        ./bad.sh\n        echo $VALUE\n")
+	result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n- uses: ./local\n  if: false", AnalysisOptions{Shellcheck: command})
+	if slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" }) {
+		t.Fatalf("conditional nested invocation must not claim execution: %+v", result.Diagnostics)
+	}
+	if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
+		return d.Rule == "shellcheck" && d.Path == inner && strings.Contains(d.Message, "SC2086")
+	}) {
+		t.Fatalf("conditional nested script lost static checks: %+v", result.Diagnostics)
 	}
 }
 
@@ -295,6 +315,10 @@ func TestCompositeExecutionState(t *testing.T) {
 		{"numeric startup env", "- shell: bash\n  env: {BASH_ENV: 123}\n  run: ./bad.sh", "- uses: actions/checkout@v6\n- uses: ./local", false},
 		{"checkout clean false", "- uses: actions/checkout@v6\n  with: {clean: false}\n- shell: bash\n  run: ./bad.sh", "- uses: ./local", false},
 		{"conditional checkout", "- uses: actions/checkout@v6", "- uses: ./local\n  if: false\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", false},
+		{"conditional checkout and invocation", "- uses: actions/checkout@v6\n- shell: bash\n  run: ./bad.sh", "- uses: ./local\n  if: false", false},
+		{"checkout after conditional call", "- shell: bash\n  run: echo ok", "- uses: ./local\n  if: false\n- uses: actions/checkout@v6\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", true},
+		{"conditional background call", "- shell: bash\n  run: echo ok", "- uses: ./local\n  if: github.event_name == 'push'\n  background: true\n- uses: actions/checkout@v6\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", false},
+		{"conditional inner background", "- shell: bash\n  background: true\n  run: echo ok", "- uses: ./local\n  if: github.event_name == 'push'\n- uses: actions/checkout@v6\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", false},
 		{"inner chmod", "- shell: bash\n  run: chmod +x bad.sh", "- uses: actions/checkout@v6\n- uses: ./local\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", false},
 		{"read-only composite", "- shell: bash\n  run: echo ok", "- uses: actions/checkout@v6\n- uses: ./local\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", true},
 	} {
