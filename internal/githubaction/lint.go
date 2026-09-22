@@ -26,7 +26,7 @@ type lintRequest struct {
 	ignore             []string
 	shellcheck         string
 	pyflakes           string
-	format             string
+	format             outputFormat
 	files              []string
 }
 
@@ -75,10 +75,7 @@ func buildRequest(in *inputs, workspaceDir, workingRel string) (*lintRequest, er
 	req := &lintRequest{
 		workingDir: filepath.Join(workspaceDir, workingRel),
 		ignore:     in.ignore,
-		format:     "{{json .}}",
-	}
-	if in.format == formatSARIF {
-		req.format = actionlint.SARIFTemplate()
+		format:     in.format,
 	}
 	if in.configFile != "" {
 		rel, err := workspaceRel(workspaceDir, filepath.Join(workingRel, in.configFile), "config-file")
@@ -132,7 +129,11 @@ func runLinter(req *lintRequest) *lintResult {
 		return result
 	}
 
-	renderer, err := actionlint.NewAnalysisRenderer("", req.format, false)
+	format, template := actionlint.OutputFormat(""), "{{json .}}"
+	if req.format == formatSARIF {
+		format, template = actionlint.OutputFormatSARIF, ""
+	}
+	renderer, err := actionlint.NewAnalysisRenderer(format, template, false)
 	if err != nil {
 		result.lintOutcome = &lintOutcome{"", err.Error() + "\n", actionlint.ExitStatusFailure}
 		return result

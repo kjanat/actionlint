@@ -4,7 +4,7 @@ import { access, cp, mkdir, mkdtemp, readdir, rm, stat, writeFile } from 'node:f
 import { tmpdir } from 'node:os';
 import { basename, delimiter, dirname, extname, isAbsolute, join, resolve } from 'node:path';
 
-import { normalizeEnvironment } from '#environment';
+import { normalizeEnvironment, subprocessEnvironment } from '#environment';
 
 export function capture(
 	executable: string,
@@ -14,7 +14,7 @@ export function capture(
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
 	return new Promise((resolve, reject) => {
 		const child = spawn(executable, args, {
-			env: normalizeEnvironment(env),
+			env: subprocessEnvironment(env),
 			shell: false,
 			windowsHide: true,
 			stdio: ['ignore', 'pipe', 'pipe'],

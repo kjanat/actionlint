@@ -75,6 +75,23 @@ test('default enabled tools provision commands only in the native child environm
 	}]);
 });
 
+test('preflight and analysis exclude the review token while the reporter retains it', async () => {
+	for (const review of ['false', 'true']) {
+		const setup = fixture();
+		const environment = { INPUT_TOKEN: 'fixture-review-token', INPUT_REVIEW: review };
+		let inspected = false;
+		setup.runtime.inspect = async (_, child) => {
+			inspected = true;
+			assert.equal(child.INPUT_TOKEN, undefined);
+			return { shellcheck: false, pyflakes: false };
+		};
+		assert.equal(await runAction(environment, setup.runtime), 0);
+		assert.ok(inspected);
+		assert.equal(setup.executions[0]?.environment.INPUT_TOKEN, undefined);
+		assert.equal(environment.INPUT_TOKEN, 'fixture-review-token');
+	}
+});
+
 test('each PATH export can be disabled independently without disabling lint tools', async () => {
 	for (const disabled of ['actionlint', 'shellcheck', 'pyflakes']) {
 		const setup = fixture();
@@ -170,6 +187,7 @@ test('Windows input and tool override names are case-insensitive', { skip: proce
 	await runAction({
 		input_shellcheck: 'false',
 		input_pyflakes: 'false',
+		input_token: 'fixture-review-token',
 		actionlint_shellcheck_command: 'stale ShellCheck',
 		actionlint_pyflakes_command: 'stale Pyflakes',
 		actionlint_python: 'stale Python',

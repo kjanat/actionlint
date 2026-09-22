@@ -1,6 +1,6 @@
 import { isAbsolute } from 'node:path';
 
-import { normalizeEnvironment } from '#environment';
+import { normalizeEnvironment, subprocessEnvironment } from '#environment';
 
 export type Environment = Record<string, string>;
 
@@ -56,7 +56,7 @@ export async function runAction(environment: Environment, runtime: Runtime): Pro
 		executable = await runtime.native();
 	}
 
-	const childEnvironment = { ...environment };
+	const childEnvironment = subprocessEnvironment(environment);
 	const tools: InstalledTools = {};
 	if (addActionlint) tools.actionlint = executable;
 	delete childEnvironment.ACTIONLINT_SHELLCHECK_COMMAND;

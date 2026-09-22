@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
 import { access, chmod, readFile, stat, writeFile } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
@@ -13,12 +14,10 @@ import {
 	shellcheckVersion,
 } from '#assets';
 import { download, downloadVerified } from '#download';
-import { normalizeEnvironment } from '#environment';
+import { normalizeEnvironment, subprocessEnvironment } from '#environment';
 import { cacheTool, capture, extractArchive, findTool, temporary, which } from '#native';
 import type { Environment, PyflakesCommand, ToolRequirements } from '#runtime';
 import { InputError } from '#runtime';
-
-declare const __PYFLAKES_LAUNCHER__: string;
 
 export async function checkExecutable(path: string): Promise<void> {
 	if (!(await stat(path)).isFile()) throw new Error(`Expected an executable file: ${path}`);
@@ -121,14 +120,15 @@ async function pythonBinary(): Promise<string> {
 	throw new Error('pyflakes requires Python 3.9 or newer. Set up Python before this action, or set pyflakes: false.');
 }
 
-export async function pyflakesCommand(platform: RunnerPlatform): Promise<PyflakesCommand> {
+export async function pyflakesCommand(platform: RunnerPlatform, launcher: string): Promise<PyflakesCommand> {
 	const existing = await which('pyflakes', process.env, platform.os === 'windows' ? 'native' : 'all');
 	if (existing) {
 		return { kind: 'command', executable: existing };
 	}
 
 	const executable = await pythonBinary();
-	const cacheName = 'actionlint-pyflakes';
+	const digest = createHash('sha256').update(launcher).digest('hex');
+	const cacheName = `actionlint-pyflakes-${digest}`;
 	const cached = await findTool(cacheName, pyflakesVersion, 'any');
 	if (cached) {
 		const script = join(cached, 'actionlint-pyflakes.py');
@@ -138,7 +138,7 @@ export async function pyflakesCommand(platform: RunnerPlatform): Promise<Pyflake
 	console.log(`Installing pyflakes ${pyflakesVersion}`);
 	return temporary(async (directory) => {
 		const extracted = await extract(pyflakesAsset, directory);
-		await writeFile(join(extracted, 'actionlint-pyflakes.py'), __PYFLAKES_LAUNCHER__);
+		await writeFile(join(extracted, 'actionlint-pyflakes.py'), launcher);
 		const root = await cacheTool(extracted, cacheName, pyflakesVersion, 'any');
 		return { kind: 'python', executable, script: join(root, 'actionlint-pyflakes.py') };
 	});
@@ -147,7 +147,7 @@ export async function pyflakesCommand(platform: RunnerPlatform): Promise<Pyflake
 export function executeNative(executable: string, args: string[], environment: Environment): Promise<number> {
 	return new Promise((resolve, reject) => {
 		const child = spawn(executable, args, {
-			env: normalizeEnvironment(environment),
+			env: subprocessEnvironment(environment),
 			shell: false,
 			windowsHide: true,
 			stdio: 'inherit',

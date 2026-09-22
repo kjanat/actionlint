@@ -118,8 +118,8 @@ func TestActionReportsSuccess(t *testing.T) {
 	if recorder.req.shellcheck != "shellcheck" || recorder.req.pyflakes != "pyflakes" {
 		t.Errorf("wanted both external commands enabled but got %#v", recorder.req)
 	}
-	if recorder.req.format != "{{json .}}" {
-		t.Errorf("wanted the JSON format template but got %q", recorder.req.format)
+	if recorder.req.format != formatJSON {
+		t.Errorf("wanted the JSON format but got %q", recorder.req.format)
 	}
 }
 
@@ -326,8 +326,8 @@ func TestActionPassesInputsToLinter(t *testing.T) {
 	if req.shellcheck != "" || req.pyflakes != "" {
 		t.Errorf("wanted both external commands disabled but got %#v", req)
 	}
-	if req.format != actionlint.SARIFTemplate() {
-		t.Errorf("wanted the SARIF template but got %q", req.format)
+	if req.format != formatSARIF {
+		t.Errorf("wanted the SARIF format but got %q", req.format)
 	}
 }
 

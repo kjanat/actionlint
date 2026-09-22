@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { createHash } from 'node:crypto';
 import { copyFile, link, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -57,17 +58,31 @@ test('action execution uses only the supplied child environment and preserves ex
 				'-e',
 				'require("node:fs").writeFileSync(process.argv[1], JSON.stringify(process.env)); process.exitCode = 3;',
 				output,
-			], { ACTIONLINT_TEST_LITERAL: 'a "b" \\ c' });
+			], { ACTIONLINT_TEST_LITERAL: 'a "b" \\ c', INPUT_TOKEN: 'fixture-review-token' });
 			assert.equal(code, 3);
 			const environment = JSON.parse(await readFile(output, 'utf8'));
 			assert.equal(environment.ACTIONLINT_TEST_SENTINEL, undefined);
 			assert.equal(environment.ACTIONLINT_TEST_LITERAL, 'a "b" \\ c');
+			assert.equal(environment.INPUT_TOKEN, undefined);
 			assert.equal(process.env.ACTIONLINT_TEST_SENTINEL, 'parent-only');
 		});
 	} finally {
 		if (previous === undefined) delete process.env.ACTIONLINT_TEST_SENTINEL;
 		else process.env.ACTIONLINT_TEST_SENTINEL = previous;
 	}
+});
+
+test('tool probes exclude the review token from explicit and inherited environments', async () => {
+	await withEnvironment({ INPUT_TOKEN: 'fixture-review-token' }, async () => {
+		for (const environment of [undefined, { INPUT_TOKEN: 'fixture-review-token' }]) {
+			const result = await capture(process.execPath, [
+				'-e',
+				'process.stdout.write(process.env.INPUT_TOKEN === undefined ? "absent" : "present")',
+			], environment);
+			assert.equal(result.exitCode, 0, result.stderr);
+			assert.equal(result.stdout, 'absent');
+		}
+	});
 });
 
 test('Windows Python batch shims resolve to native Python before forwarding arbitrary arguments', {
@@ -92,17 +107,26 @@ test('Windows Python batch shims resolve to native Python before forwarding arbi
 				await writeFile(join(shims, name), '@exit /b 91\r\n');
 			}
 			const cache = join(directory, 'cache');
-			const pyflakes = join(cache, 'actionlint-pyflakes', pyflakesVersion, 'any');
+			const legacyPyflakes = join(cache, 'actionlint-pyflakes', pyflakesVersion, 'any');
 			const shellcheck = join(cache, 'actionlint-shellcheck-windows', shellcheckVersion, 'amd64');
-			await mkdir(pyflakes, { recursive: true });
+			await mkdir(legacyPyflakes, { recursive: true });
 			await mkdir(shellcheck, { recursive: true });
-			await writeFile(`${pyflakes}.complete`, '');
+			await writeFile(`${legacyPyflakes}.complete`, '');
+			await writeFile(join(legacyPyflakes, 'actionlint-pyflakes.py'), 'raise RuntimeError("stale launcher")\n');
 			await writeFile(`${shellcheck}.complete`, '');
 			await writeFile(join(shellcheck, 'shellcheck.exe'), 'cached native executable');
-			await writeFile(
-				join(pyflakes, 'actionlint-pyflakes.py'),
-				'import json, sys\nprint(json.dumps({"isolated": sys.flags.isolated, "args": sys.argv[1:]}))\n',
-			);
+			const launcherSource =
+				'import json, sys\nprint(json.dumps({"isolated": sys.flags.isolated, "args": sys.argv[1:]}))\n';
+			const launchers = new Map<string, string>();
+			for (const source of [launcherSource, `# Revised launcher\n${launcherSource}`]) {
+				const digest = createHash('sha256').update(source).digest('hex');
+				const pyflakes = join(cache, `actionlint-pyflakes-${digest}`, pyflakesVersion, 'any');
+				await mkdir(pyflakes, { recursive: true });
+				await writeFile(`${pyflakes}.complete`, '');
+				const script = join(pyflakes, 'actionlint-pyflakes.py');
+				await writeFile(script, source);
+				launchers.set(source, script);
+			}
 			await withEnvironment({
 				PATH: shims,
 				PATHEXT: '.CMD;.BAT;.COM;.EXE',
@@ -110,13 +134,16 @@ test('Windows Python batch shims resolve to native Python before forwarding arbi
 				ACTIONLINT_TEST_PYTHON: python,
 			}, async () => {
 				assert.equal(await shellcheckBinary({ os: 'windows', arch: 'amd64' }), join(shellcheck, 'shellcheck.exe'));
-				const command = await pyflakesCommand({ os: 'windows', arch: 'amd64' });
-				if (command.kind !== 'python') assert.fail('batch Pyflakes must use the isolated wheel fallback');
-				assert.equal(command.executable, python);
-				const args = ['a b', 'a"b', 'trailing\\', 'a&b', '%PATH%', '!VALUE!', '(x)|<y>', ''];
-				const result = await capture(command.executable, ['-I', command.script, ...args]);
-				assert.equal(result.exitCode, 0, result.stderr);
-				assert.deepEqual(JSON.parse(result.stdout), { isolated: 1, args });
+				for (const [source, script] of launchers) {
+					const command = await pyflakesCommand({ os: 'windows', arch: 'amd64' }, source);
+					if (command.kind !== 'python') assert.fail('batch Pyflakes must use the isolated wheel fallback');
+					assert.equal(command.executable, python);
+					assert.equal(command.script, script);
+					const args = ['a b', 'a"b', 'trailing\\', 'a&b', '%PATH%', '!VALUE!', '(x)|<y>', ''];
+					const result = await capture(command.executable, ['-I', command.script, ...args]);
+					assert.equal(result.exitCode, 0, result.stderr);
+					assert.deepEqual(JSON.parse(result.stdout), { isolated: 1, args });
+				}
 			});
 		});
 	}

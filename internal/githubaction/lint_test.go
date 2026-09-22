@@ -49,7 +49,7 @@ func TestRunLinterFindsNoProblem(t *testing.T) {
 	dir := workspaceWith(t, map[string]string{"clean.yaml": cleanWorkflow})
 	t.Chdir(dir)
 
-	got := runLinter(&lintRequest{workingDir: dir, format: "{{json .}}", files: []string{"clean.yaml"}})
+	got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, files: []string{"clean.yaml"}})
 	if got.code != actionlint.ExitStatusSuccessNoProblem {
 		t.Fatalf("wanted exit code 0 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
@@ -66,7 +66,7 @@ func TestRunLinterDistinguishesEmptyDiscovery(t *testing.T) {
 		".git":                         "",
 		".github/workflows/readme.txt": "not a workflow",
 	})
-	got := runLinter(&lintRequest{workingDir: dir, format: "{{json .}}"})
+	got := runLinter(&lintRequest{workingDir: dir, format: formatJSON})
 
 	if got.code != actionlint.ExitStatusFailure || !strings.Contains(got.stderr, "no YAML file was found") {
 		t.Fatalf("wanted empty discovery to fail linting but got %#v", got)
@@ -80,7 +80,7 @@ func TestRunLinterFindsProblems(t *testing.T) {
 	dir := workspaceWith(t, map[string]string{"broken.yaml": brokenWorkflow})
 	t.Chdir(dir)
 
-	got := runLinter(&lintRequest{workingDir: dir, format: "{{json .}}", files: []string{"broken.yaml"}})
+	got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, files: []string{"broken.yaml"}})
 	if got.code != actionlint.ExitStatusSuccessProblemFound {
 		t.Fatalf("wanted exit code 1 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
@@ -107,7 +107,7 @@ func TestRunLinterRendersSARIF(t *testing.T) {
 	dir := workspaceWith(t, map[string]string{"broken.yaml": brokenWorkflow})
 	t.Chdir(dir)
 
-	got := runLinter(&lintRequest{workingDir: dir, format: actionlint.SARIFTemplate(), files: []string{"broken.yaml"}})
+	got := runLinter(&lintRequest{workingDir: dir, format: formatSARIF, files: []string{"broken.yaml"}})
 	if got.code != actionlint.ExitStatusSuccessProblemFound {
 		t.Fatalf("wanted exit code 1 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
@@ -118,6 +118,9 @@ func TestRunLinterRendersSARIF(t *testing.T) {
 	if count != 1 {
 		t.Errorf("wanted one SARIF result but got %d", count)
 	}
+	if got.stdout != got.sarif {
+		t.Error("selected SARIF differs from the persisted native SARIF document")
+	}
 }
 
 func TestRunLinterAppliesIgnorePatterns(t *testing.T) {
@@ -126,7 +129,7 @@ func TestRunLinterAppliesIgnorePatterns(t *testing.T) {
 
 	got := runLinter(&lintRequest{
 		workingDir: dir,
-		format:     "{{json .}}",
+		format:     formatJSON,
 		files:      []string{"broken.yaml"},
 		ignore:     []string{`label "unknown-runner" is unknown`},
 	})
@@ -148,28 +151,28 @@ func TestRunLinterReportsFatalErrors(t *testing.T) {
 	}{
 		{
 			"missing file",
-			&lintRequest{workingDir: dir, format: "{{json .}}", files: []string{"missing.yaml"}},
+			&lintRequest{workingDir: dir, format: formatJSON, files: []string{"missing.yaml"}},
 			"could not read",
 			1,
 			true,
 		},
 		{
 			"invalid ignore pattern",
-			&lintRequest{workingDir: dir, format: "{{json .}}", files: []string{"clean.yaml"}, ignore: []string{"("}},
+			&lintRequest{workingDir: dir, format: formatJSON, files: []string{"clean.yaml"}, ignore: []string{"("}},
 			"invalid regular expression",
 			0,
 			false,
 		},
 		{
 			"missing config file",
-			&lintRequest{workingDir: dir, format: "{{json .}}", files: []string{"clean.yaml"}, configFile: filepath.Join(dir, "none.yaml")},
+			&lintRequest{workingDir: dir, format: formatJSON, files: []string{"clean.yaml"}, configFile: filepath.Join(dir, "none.yaml")},
 			"could not read config file",
 			0,
 			false,
 		},
 		{
 			"no repository",
-			&lintRequest{workingDir: dir, format: "{{json .}}"},
+			&lintRequest{workingDir: dir, format: formatJSON},
 			"no project was found",
 			0,
 			false,
@@ -196,7 +199,7 @@ func TestRunLinterLintsWholeRepository(t *testing.T) {
 	})
 	t.Chdir(dir)
 
-	got := runLinter(&lintRequest{workingDir: dir, format: "{{json .}}"})
+	got := runLinter(&lintRequest{workingDir: dir, format: formatJSON})
 	if got.code != actionlint.ExitStatusSuccessProblemFound {
 		t.Fatalf("wanted exit code 1 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
@@ -224,7 +227,7 @@ func TestRunLinterReadsConfigFile(t *testing.T) {
 
 	got := runLinter(&lintRequest{
 		workingDir: dir,
-		format:     "{{json .}}",
+		format:     formatJSON,
 		files:      []string{"broken.yaml"},
 		configFile: filepath.Join(dir, "conf.yaml"),
 	})
@@ -348,7 +351,7 @@ func TestActionRunLintPreservesProcessDirectory(t *testing.T) {
 			return runLinter(req)
 		},
 	}
-	got := a.runLint(&lintRequest{workingDir: sub, files: []string{"broken.yaml"}, format: "{{json .}}"})
+	got := a.runLint(&lintRequest{workingDir: sub, files: []string{"broken.yaml"}, format: formatJSON})
 
 	if resolved(t, seen) != resolved(t, dir) {
 		t.Errorf("wanted the process directory to remain %q while linting but got %q", dir, seen)

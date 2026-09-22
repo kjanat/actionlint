@@ -12,3 +12,9 @@ export function normalizeEnvironment(
 	}
 	return Object.fromEntries(result);
 }
+
+export function subprocessEnvironment(environment: NodeJS.ProcessEnv): Environment {
+	const child = normalizeEnvironment(environment);
+	delete child.INPUT_TOKEN;
+	return child;
+}

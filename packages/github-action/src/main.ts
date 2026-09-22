@@ -10,6 +10,7 @@ import { checkExecutable, executeNative, inspectTools, nativeBinary, pyflakesCom
 import { commandEscape, writeOutputs } from '#workflow';
 
 declare const __ACTIONLINT_VERSION__: string;
+declare const __PYFLAKES_LAUNCHER__: string;
 
 const environment = normalizeEnvironment(env);
 
@@ -26,7 +27,7 @@ async function main(): Promise<void> {
 					checkExecutable,
 					inspect: inspectTools,
 					shellcheck: () => shellcheckBinary(platform),
-					pyflakes: () => pyflakesCommand(platform),
+					pyflakes: () => pyflakesCommand(platform, __PYFLAKES_LAUNCHER__),
 					publish: (tools) => publishTools(tools, environment),
 					execute: executeNative,
 				})
