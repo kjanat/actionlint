@@ -79,9 +79,7 @@ var targets = []*target{
 		unrelated: []string{
 			"sarif/v2.1.0/sarif-v2.1.0.html",
 			goShellcheckDependency,
-			"`reviewdog/action-actionlint` v1.76.0 installs this fork's v1.17.0",
-			"https://github.com/reviewdog/action-actionlint/blob/v1.76.0/",
-			"[v1.76.0 entrypoint]",
+			"We recommend v1.76.2 or newer.",
 		},
 	},
 	{
