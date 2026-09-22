@@ -91,7 +91,11 @@ func buildRequest(in *inputs, workspaceDir, workingRel string) (*lintRequest, er
 		req.pyflakes = "pyflakes"
 	}
 	for _, f := range in.files {
-		if _, err := workspaceRel(workspaceDir, filepath.Join(workingRel, f), "files"); err != nil {
+		path := f
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(workingRel, path)
+		}
+		if _, err := workspaceRel(workspaceDir, path, "files"); err != nil {
 			return nil, err
 		}
 	}
