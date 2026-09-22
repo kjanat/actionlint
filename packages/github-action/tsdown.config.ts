@@ -65,7 +65,7 @@ export default defineConfig(async ({ outDir }): Promise<UserConfig> => {
 			__ACTIONLINT_VERSION__: JSON.stringify(version),
 			__PYFLAKES_LAUNCHER__: JSON.stringify(await readFile(new URL('./tools/pyflakes.py', import.meta.url), 'utf8')),
 		},
-		deps: { onlyImport: [] },
+		deps: { alwaysBundle: ['undici'], onlyImport: [] },
 		outputOptions: {
 			entryFileNames: '[name].mjs',
 			codeSplitting: false,

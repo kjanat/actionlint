@@ -4,26 +4,34 @@ import { rm } from 'node:fs/promises';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
-export type Download = (url: string, destination: string) => Promise<string>;
+import { EnvHttpProxyAgent, fetch, type RequestInit, type Response } from 'undici';
 
-export async function download(url: string, destination: string, request: typeof fetch = fetch): Promise<string> {
-	const response = await request(url, { signal: AbortSignal.timeout(120_000) });
-	if (!response.ok) {
-		await response.body?.cancel();
-		throw new Error(`Download failed: HTTP ${response.status} for ${new URL(url).pathname}`);
-	}
-	if (!response.body) throw new Error(`Download returned no body: ${new URL(url).pathname}`);
-	const output = createWriteStream(destination, { flags: 'wx' });
-	let created = false;
-	output.once('open', () => {
-		created = true;
-	});
+export type Download = (url: string, destination: string) => Promise<string>;
+type DownloadRequest = (url: string, options: RequestInit) => Promise<Pick<Response, 'ok' | 'status' | 'body'>>;
+
+export async function download(url: string, destination: string, request: DownloadRequest = fetch): Promise<string> {
+	const dispatcher = new EnvHttpProxyAgent();
 	try {
-		await pipeline(Readable.fromWeb(response.body), output);
-		return destination;
-	} catch (error) {
-		if (created) await rm(destination, { force: true });
-		throw error;
+		const response = await request(url, { dispatcher, signal: AbortSignal.timeout(120_000) });
+		if (!response.ok) {
+			await response.body?.cancel();
+			throw new Error(`Download failed: HTTP ${response.status} for ${new URL(url).pathname}`);
+		}
+		if (!response.body) throw new Error(`Download returned no body: ${new URL(url).pathname}`);
+		const output = createWriteStream(destination, { flags: 'wx' });
+		let created = false;
+		output.once('open', () => {
+			created = true;
+		});
+		try {
+			await pipeline(Readable.fromWeb(response.body), output);
+			return destination;
+		} catch (error) {
+			if (created) await rm(destination, { force: true });
+			throw error;
+		}
+	} finally {
+		await dispatcher.close();
 	}
 }
 

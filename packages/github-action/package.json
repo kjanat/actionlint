@@ -15,6 +15,9 @@
     "update:pyflakes": "curl -fsSL https://pypi.org/pypi/pyflakes/json | jq \"del(.releases)\" > tools/pyflakes.json",
     "update:shellcheck": "gh release view --repo koalaman/shellcheck --json apiUrl,assets,author,body,createdAt,databaseId,id,isDraft,isImmutable,isPrerelease,name,publishedAt,tagName,tarballUrl,targetCommitish,uploadUrl,url,zipballUrl --jq . > tools/shellcheck.json"
   },
+  "dependencies": {
+    "undici": "7.29.1"
+  },
   "devDependencies": {
     "@types/node": "^24",
     "tsdown": "0.23.0"
