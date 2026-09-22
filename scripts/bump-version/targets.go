@@ -79,6 +79,7 @@ var targets = []*target{
 		unrelated: []string{
 			"sarif/v2.1.0/sarif-v2.1.0.html",
 			goShellcheckDependency,
+			"[v1.76.2 or newer](https://github.com/reviewdog/action-actionlint/releases/tag/v1.76.2)",
 		},
 	},
 	{

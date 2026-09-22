@@ -765,6 +765,8 @@ Go APIs are available. See [the Go API document](api.md) for more details.
 lines, keeping feedback focused on the pull request.
 The [`reviewdog/action-actionlint` action][reviewdog-actionlint] runs this fork
 with ShellCheck and Pyflakes enabled.
+We recommend [v1.76.2 or newer](https://github.com/reviewdog/action-actionlint/releases/tag/v1.76.2),
+which preserves actionlint's invalid-option and fatal-error exit codes.
 
 Add the following workflow to `.github/workflows/reviewdog-actionlint.yaml`:
 
