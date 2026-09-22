@@ -761,36 +761,39 @@ Go APIs are available. See [the Go API document](api.md) for more details.
 
 ### reviewdog
 
-[reviewdog][reviewdog] turns actionlint findings into annotations on pull requests.
+[reviewdog][reviewdog] posts inline review comments and filters findings to changed
+lines, keeping feedback focused on the pull request.
 The [`reviewdog/action-actionlint` action][reviewdog-actionlint] runs this fork
 with ShellCheck and Pyflakes enabled.
 
-Add the following workflow to `.github/workflows/actionlint.yaml`:
+Add the following workflow to `.github/workflows/reviewdog-actionlint.yaml`:
 
 ```yaml
-name: actionlint
+name: reviewdog-actionlint
 on: [pull_request]
 jobs:
   actionlint:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      checks: write
-      pull-requests: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v7
         with: { persist-credentials: false }
       - uses: reviewdog/action-actionlint@v1
         with:
-          reporter: github-pr-check
-          filter_mode: nofilter
+          reporter: github-pr-review
+          filter_mode: added
           fail_level: any
 ```
 
-This reports all findings as check annotations and fails the step when problems
-are found. Set `filter_mode: file` to report only findings in files changed by the
-pull request, or `fail_level: none` to report findings without failing the step.
-Invalid options and fatal errors always fail the step.
+This posts review comments for findings on added or modified lines and fails the
+step when those lines have problems. Set `filter_mode: diff_context` to include
+the surrounding diff context, or `fail_level: none` to leave comments without
+failing the step. Invalid options and fatal errors always fail the step.
+
+For pull requests from forks, reviewdog falls back to GitHub annotations when the
+workflow token cannot post review comments.
 
 Pass additional actionlint options through `actionlint_flags`. See the
 [action documentation][reviewdog-actionlint] for all inputs and available reporters.
