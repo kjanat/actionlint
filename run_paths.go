@@ -106,7 +106,9 @@ func (paths runPaths) resolve(directory runDirectory) runDirectory {
 // Translate a workspace-relative runner path to the local self checkout.
 func (paths runPaths) local(relativePath string) (string, bool) {
 	// Runner-absolute paths refer to the remote machine; they are not local source roots.
-	if filepath.IsAbs(relativePath) || strings.HasPrefix(relativePath, "/") || strings.Contains(relativePath, ":") {
+	windowsDrive := len(relativePath) >= 2 && relativePath[1] == ':' &&
+		(relativePath[0] >= 'A' && relativePath[0] <= 'Z' || relativePath[0] >= 'a' && relativePath[0] <= 'z')
+	if filepath.IsAbs(relativePath) || strings.HasPrefix(relativePath, "/") || windowsDrive {
 		return "", false
 	}
 	relativePath = filepath.FromSlash(relativePath)
