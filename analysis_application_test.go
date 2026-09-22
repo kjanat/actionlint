@@ -59,6 +59,30 @@ func TestAnalysisDiagnosticIdentity(t *testing.T) {
 	}
 }
 
+func TestAnalysisDiagnosticMetadataIdentity(t *testing.T) {
+	base := Error{Filepath: "action.yml", Kind: "shellcheck", Message: "finding", Line: 1, Column: 1}
+	result := &AnalysisResult{}
+	for _, change := range []func(*Error){
+		func(*Error) {},
+		func(e *Error) { e.code = "SC2086" },
+		func(e *Error) { e.severity = "warning" },
+		func(e *Error) {
+			e.fixes = []DiagnosticFix{{Description: "quote", Edits: []DiagnosticEdit{{Path: "action.yml", Start: DiagnosticPosition{1, 1}, End: DiagnosticPosition{1, 2}, Replacement: "quoted"}}}}
+		},
+	} {
+		finding := base
+		change(&finding)
+		result.files = append(result.files,
+			analyzedFile{errors: []*Error{&finding}},
+			analyzedFile{errors: []*Error{&finding}},
+		)
+	}
+	result.collectDiagnostics()
+	if len(result.Diagnostics) != 4 || len(result.legacyErrors()) != 4 {
+		t.Fatalf("distinct analyzer metadata was lost: %+v", result.Diagnostics)
+	}
+}
+
 func TestAnalysisConcurrentLogRecords(t *testing.T) {
 	for _, level := range []LogLevel{LogLevelVerbose, LogLevelDebug} {
 		t.Run(fmt.Sprint(level), func(t *testing.T) {
