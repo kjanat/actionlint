@@ -1,6 +1,6 @@
 import { appendFile, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative, resolve, sep } from 'node:path';
 
 import type { ActionResult, Diagnostic } from '#result';
 import { failedResult, parseResult } from '#result';
@@ -94,7 +94,12 @@ export async function report(
 	}
 	await writeOutputs(environment.GITHUB_OUTPUT, values);
 	if (options.annotations && environment.INPUT_FORMAT && environment.INPUT_FORMAT !== 'github') {
-		for (const diagnostic of result.diagnostics) runtime.log(annotation(diagnostic));
+		const workspace = resolve(environment.GITHUB_WORKSPACE || '.');
+		const workingDirectory = resolve(workspace, environment['INPUT_WORKING-DIRECTORY'] || '.');
+		for (const diagnostic of result.diagnostics) {
+			const path = relative(workspace, resolve(workingDirectory, diagnostic.path)).split(sep).join('/');
+			runtime.log(annotation({ ...diagnostic, path }));
+		}
 	}
 	if (options.summary && environment.GITHUB_STEP_SUMMARY) {
 		await appendFile(environment.GITHUB_STEP_SUMMARY, summary(result));

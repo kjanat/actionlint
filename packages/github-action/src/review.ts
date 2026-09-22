@@ -116,8 +116,8 @@ export function suggestion(
 	if (end === undefined) return undefined;
 	let replacement = lines.join('\n').slice(start, end);
 	for (const edit of edits.toReversed()) {
-		// An edit ending at the next line includes its newline; retain that boundary
-		// outside GitHub's line-oriented suggestion instead of deleting a following line.
+		// This suggestion ends before the last line's newline. Reject edits that
+		// extend beyond that boundary.
 		if (edit.end > end) return undefined;
 		replacement = replacement.slice(0, edit.start - start) + edit.replacement + replacement.slice(edit.end - start);
 	}

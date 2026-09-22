@@ -65,7 +65,7 @@ export async function which(
 	const explicitPath = isAbsolute(name) || name.includes('/') || (process.platform === 'win32' && name.includes('\\'));
 	const directories = explicitPath
 		? ['']
-		: (normalized.PATH ?? '').split(delimiter).filter(Boolean);
+		: normalized.PATH?.split(delimiter) ?? [];
 	for (const directory of directories) {
 		for (const extension of extensions) {
 			const path = resolve(directory.replace(/^"(.*)"$/, '$1'), name + extension);

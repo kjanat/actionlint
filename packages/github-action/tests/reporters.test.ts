@@ -132,6 +132,44 @@ test('unique results survive for later steps and preserve fail-on-error false', 
 	}
 });
 
+test('annotations rebase working-directory paths to the workspace without changing persisted diagnostics', async () => {
+	const workspace = join(tmpdir(), 'actionlint-annotation-workspace');
+	for (
+		const example of [
+			{ directory: '.', path: 'a,b.yml', expected: 'a%2Cb.yml' },
+			{ directory: 'packages/service', path: 'a,b.yml', expected: 'packages/service/a%2Cb.yml' },
+			{ directory: 'packages/service', path: '../shared/ci.yml', expected: 'packages/shared/ci.yml' },
+			{ directory: 'packages/service', path: join(workspace, '.github', 'ci.yml'), expected: '.github/ci.yml' },
+		]
+	) {
+		const finding = { ...diagnostic, path: example.path };
+		const persisted: ActionResult = { ...result, diagnostics: [finding] };
+		const messages: string[] = [];
+		await report(
+			persisted,
+			'unused-result.json',
+			{
+				GITHUB_WORKSPACE: workspace,
+				'INPUT_WORKING-DIRECTORY': example.directory,
+				INPUT_FORMAT: 'json',
+			},
+			{ annotations: true, summary: false, json: false, sarif: false, review: false },
+			{
+				log: (text) => messages.push(text),
+				review: async () => {
+					assert.fail('review disabled');
+				},
+			},
+		);
+		assert.equal(messages.length, 1);
+		assert.ok(
+			messages[0]?.startsWith(`::warning file=${example.expected},line=2,endLine=2,col=3,endColumn=7,title=SC2086::`),
+			messages[0],
+		);
+		assert.equal(persisted.diagnostics[0]?.path, example.path);
+	}
+});
+
 test('missing or corrupt native results cannot become a clean analysis', async () => {
 	const directory = await mkdtemp(join(tmpdir(), 'actionlint-incomplete-test-'));
 	try {

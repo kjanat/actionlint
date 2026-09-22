@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, isAbsolute, join, relative } from 'node:path';
+import { delimiter, dirname, isAbsolute, join, relative } from 'node:path';
 
 import { cacheTool, capture, findTool, temporary, which } from '#native';
 import { commandEscape, writeOutputs } from '#workflow';
@@ -151,6 +151,29 @@ test('explicit relative executable paths bypass PATH lookup', async () => {
 				await writeFile(join(pathDirectory, literalBackslash), 'executable', { mode: 0o755 });
 				assert.equal(await which(literalBackslash, environment), join(pathDirectory, literalBackslash));
 			}
+		} finally {
+			process.chdir(previous);
+		}
+	});
+});
+
+test('empty PATH components preserve current-directory lookup and search order', async () => {
+	await temporary(async (directory) => {
+		const tools = join(directory, 'tools');
+		const missing = join(directory, 'missing');
+		await mkdir(tools);
+		const name = process.platform === 'win32' ? 'probe.exe' : 'probe';
+		for (const base of [directory, tools]) {
+			await writeFile(join(base, name), 'executable', { mode: 0o755 });
+		}
+		const previous = process.cwd();
+		try {
+			process.chdir(directory);
+			for (const entries of [['', tools], [missing, '', tools], [missing, ''], ['']]) {
+				assert.equal(await which(name, { PATH: entries.join(delimiter) }), join(directory, name));
+			}
+			assert.equal(await which(name, { PATH: [tools, ''].join(delimiter) }), join(tools, name));
+			assert.equal(await which(name, {}), '');
 		} finally {
 			process.chdir(previous);
 		}
