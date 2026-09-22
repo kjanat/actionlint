@@ -47,7 +47,9 @@ test('release commit keeps source HEAD, working files and staging index intact',
 		git(['config', 'user.email', 'release-test@example.invalid']);
 		git(['config', 'commit.gpgsign', 'false']);
 		git(['config', 'tag.gpgsign', 'false']);
+		git(['config', 'core.autocrlf', 'true']);
 		const sourceFiles = {
+			'.gitattributes': await readFile(new URL('../.gitattributes', import.meta.url), 'utf8'),
 			'action.yml': 'runs:\n  using: node24\n  main: action.mjs\n',
 			'README.md': '# Release fixture\n',
 			'LICENSE.txt': 'License fixture\n',
@@ -77,6 +79,7 @@ test('release commit keeps source HEAD, working files and staging index intact',
 		assert.equal(await readFile(join(root, 'source.txt'), 'utf8'), 'unstaged\n');
 		assert.deepEqual(await readFile(join(root, '.git', 'index')), index);
 		assert.deepEqual(git(['ls-tree', '-r', '--name-only', commit]).split('\n'), [
+			'.gitattributes',
 			'LICENSE.txt',
 			'README.md',
 			'SHA256SUMS',
@@ -106,6 +109,11 @@ test('release commit keeps source HEAD, working files and staging index intact',
 		assert.equal(sourceGit(['describe', '--tags', '--abbrev=0', '--match', 'v[0-9]*.[0-9]*.[0-9]*', '--exclude', '*-*']), 'v1.17.0');
 		await assert.rejects(stat(join(integration, 'action.mjs')), { code: 'ENOENT' });
 		assert.throws(() => recordRelease(integration, 'v1.17.0', parent), /HEAD changed/);
+
+		const checkout = join(temporary, 'tagged-checkout');
+		git(['-c', 'advice.detachedHead=false', 'clone', '--quiet', '--no-local', '--config', 'core.autocrlf=true', '--branch', 'v1.17.0', root, checkout]);
+		assert.equal(await readFile(join(checkout, 'action.mjs'), 'utf8'), bundle);
+		assert.equal(await readFile(join(checkout, 'SHA256SUMS'), 'utf8'), `${digest}  action.mjs\n`);
 
 		const consumer = join(temporary, 'consumer');
 		await mkdir(consumer);
