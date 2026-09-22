@@ -118,6 +118,26 @@ inputs:
       Invalid options and fatal errors always fail.
     required: false
     default: "true"
+  annotations:
+    description: Emit annotations in addition to the selected format. The github format already emits them.
+    required: false
+    default: "false"
+  summary:
+    description: Add an analysis summary and findings to the job summary.
+    required: false
+    default: "false"
+  report-formats:
+    description: Additional persisted reports, json and/or sarif, separated by commas or newlines.
+    required: false
+    default: ""
+  review:
+    description: Post PR review comments and supported fix suggestions on changed lines. Requires pull-requests write permission.
+    required: false
+    default: "false"
+  token:
+    description: GitHub token used only when review is enabled.
+    required: false
+    default: ${{ github.token }}
 outputs:
   exit-code:
     description: >-
@@ -141,5 +161,11 @@ outputs:
     description: >-
       Repository-relative output file path,
       or an empty string when output-file was not set.
+  analysis-result:
+    description: Absolute path to the versioned analysis result, retained for later steps even when analysis fails.
+  report-json:
+    description: Absolute path to the JSON report when requested through report-formats.
+  report-sarif:
+    description: Absolute path to the SARIF report when requested and analysis completed.
 runs: { using: node24, main: action.mjs }
 branding: { icon: check-circle, color: blue }

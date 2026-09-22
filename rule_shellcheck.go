@@ -9,13 +9,15 @@ import (
 )
 
 type shellcheckError struct {
-	Line      int    `json:"line"`
-	EndLine   int    `json:"endLine"`
-	Column    int    `json:"column"`
-	EndColumn int    `json:"endColumn"`
-	Level     string `json:"level"`
-	Code      int    `json:"code"`
-	Message   string `json:"message"`
+	File      string         `json:"file"`
+	Line      int            `json:"line"`
+	EndLine   int            `json:"endLine"`
+	Column    int            `json:"column"`
+	EndColumn int            `json:"endColumn"`
+	Level     string         `json:"level"`
+	Code      int            `json:"code"`
+	Message   string         `json:"message"`
+	Fix       *shellcheckFix `json:"fix"`
 }
 
 type shellcheckResult struct {
@@ -328,9 +330,15 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 			if start, ok := source.pos(line, err.Column); ok {
 				end, _ := source.endPos(script.originalLine(err.EndLine), err.EndColumn)
 				rule.errorfRange(start, end, "shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", err.Code, err.Level, line, err.Column, msg)
-				continue
+			} else {
+				rule.Errorf(pos, "shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", err.Code, err.Level, line, err.Column, msg)
 			}
-			rule.Errorf(pos, "shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", err.Code, err.Level, line, err.Column, msg)
+			finding := rule.errs[len(rule.errs)-1]
+			finding.code = fmt.Sprintf("SC%d", err.Code)
+			finding.severity = err.Level
+			if err.File == "-" || err.File == "" {
+				finding.fixes = shellcheckDiagnosticFixes(source, script, err.Fix, err.Message)
+			}
 		}
 
 		return nil

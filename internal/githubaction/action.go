@@ -22,6 +22,7 @@ type action struct {
 	lint    func(*lintRequest) *lintResult
 	newID   func() string
 	timeout time.Duration
+	result  *lintResult
 }
 
 var results = map[int]string{
@@ -33,15 +34,20 @@ var results = map[int]string{
 
 func (a *action) run() int {
 	code, err := a.execute()
-	if err == nil {
-		return code
+	if err != nil {
+		code = actionlint.ExitStatusFailure
+		if _, ok := errors.AsType[*inputError](err); ok {
+			_, _ = fmt.Fprintf(a.stdout, "::error title=Invalid action input::%s\n", commandEscape(err.Error()))
+			code = actionlint.ExitStatusInvalidCommandOption
+		} else {
+			_, _ = fmt.Fprintf(a.stdout, "::error title=actionlint action failed::%s\n", commandEscape(err.Error()))
+		}
 	}
-	if _, ok := errors.AsType[*inputError](err); ok {
-		_, _ = fmt.Fprintf(a.stdout, "::error title=Invalid action input::%s\n", commandEscape(err.Error()))
-		return actionlint.ExitStatusInvalidCommandOption
+	if persistErr := a.persistResult(code, err); persistErr != nil {
+		_, _ = fmt.Fprintf(a.stdout, "::error title=Could not save actionlint results::%s\n", commandEscape(persistErr.Error()))
+		return actionlint.ExitStatusFailure
 	}
-	_, _ = fmt.Fprintf(a.stdout, "::error title=actionlint action failed::%s\n", commandEscape(err.Error()))
-	return actionlint.ExitStatusFailure
+	return code
 }
 
 func (a *action) workspace() (string, error) {
@@ -81,6 +87,8 @@ func (a *action) execute() (int, error) {
 	}
 	lint := a.runLint(req)
 	outcome, count, rendered := renderOutcome(lint.lintOutcome, in.format)
+	lint.lintOutcome = outcome
+	a.result = lint
 	a.emitStatus(outcome.code, count, lint.fileCount, lint.fileCountKnown, in)
 	result, ok := results[outcome.code]
 	if !ok {

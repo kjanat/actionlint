@@ -38,7 +38,11 @@ func NewAnalysisRenderer(format OutputFormat, template string, oneline bool) (*A
 		}
 		r.formatter = formatter
 		if format == OutputFormatSARIF {
-			if _, err := formatter.temp.Parse(`{{define "sarifEndLine"}}"endLine": {{.EndLine}},{{end}}`); err != nil {
+			if _, err := formatter.temp.Parse(`{{define "sarifEndLine"}}"endLine": {{.EndLine}},{{end}}
+{{define "sarifColumnKind"}}"columnKind": "unicodeCodePoints",{{end}}
+{{define "sarifMetadata"}}"level": {{json .Level}},
+{{if .Code}}"properties": {"externalCode": {{json .Code}}},{{end}}
+{{if .Fixes}}"fixes": {{json .Fixes}},{{end}}{{end}}`); err != nil {
 				return nil, fmt.Errorf("could not parse SARIF range template: %w", err)
 			}
 		}

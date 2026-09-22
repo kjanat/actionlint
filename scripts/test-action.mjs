@@ -14,10 +14,12 @@ const entrypoint = resolve(actionDirectory, 'action.mjs');
 const tempRoot = resolve(tmpdir());
 const workspace = await mkdtemp(join(tempRoot, 'actionlint-action-test-'));
 const outputFile = join(workspace, 'github-output');
+const summaryFile = join(workspace, 'github-summary');
 
 /** @param {Record<string, string>} inputs @param {number} expected */
 async function run(inputs, expected = 0) {
 	await writeFile(outputFile, '');
+	await writeFile(summaryFile, '');
 	/** @type {NodeJS.ProcessEnv} */
 	const env = { ...process.env };
 	for (const key of Object.keys(env)) if (key.startsWith('INPUT_')) delete env[key];
@@ -38,6 +40,8 @@ async function run(inputs, expected = 0) {
 	env.ACTIONLINT_ACTION_BINARY = resolve(binary);
 	env.GITHUB_WORKSPACE = workspace;
 	env.GITHUB_OUTPUT = outputFile;
+	env.GITHUB_STEP_SUMMARY = summaryFile;
+	env.RUNNER_TEMP = workspace;
 	env.GITHUB_ACTIONS = 'true';
 	const result = spawnSync(process.execPath, [entrypoint], { cwd: workspace, env, encoding: 'utf8' });
 	if (result.error) throw result.error;
@@ -53,7 +57,15 @@ async function run(inputs, expected = 0) {
 		while (++i < lines.length && lines[i] !== match[2]) value.push(lines[i]);
 		outputs.set(match[1], value.join('\n'));
 	}
-	return { outputs, log };
+	const resultPath = outputs.get('analysis-result');
+	assert.ok(resultPath, `missing persisted result: ${log}`);
+	const analysis = JSON.parse(await readFile(resultPath, 'utf8'));
+	assert.equal(analysis.schema_version, 1);
+	if (outputs.has('result')) assert.equal(analysis.status, outputs.get('result'), log);
+	if (outputs.has('exit-code')) assert.equal(String(analysis.exit_code), outputs.get('exit-code'), log);
+	if (expected >= 2) assert.equal(analysis.exit_code, expected, log);
+	assert.equal(analysis.completed, analysis.exit_code < 2, log);
+	return { outputs, log, analysis };
 }
 
 try {
@@ -85,11 +97,29 @@ try {
 	}
 	assert.match(clean.log, /0 problems in 1 workflow file \(shellcheck, pyflakes\)/);
 	for (const format of ['github', 'default', 'oneline', 'json', 'json-lines', 'markdown', 'sarif']) {
-		const result = await run({ files: 'testdata/err/one_error.yaml', format, 'fail-on-error': 'false' });
+		const result = await run({
+			files: 'testdata/err/one_error.yaml',
+			format,
+			'fail-on-error': 'false',
+			annotations: 'true',
+			summary: 'true',
+			'report-formats': 'json,sarif',
+		});
 		assert.equal(result.outputs.get('exit-code'), '1', result.log);
 		assert.equal(result.outputs.get('result'), 'problems-found', result.log);
 		assert.equal(result.outputs.get('problems-found'), 'true', result.log);
 		assert.equal(result.outputs.get('problem-count'), '1', result.log);
+		assert.equal(result.analysis.diagnostics.length, 1);
+		assert.equal(
+			(result.log.match(/::error file=/g) || []).length,
+			1,
+			`duplicate or missing annotation: ${result.log}`,
+		);
+		assert.match(await readFile(summaryFile, 'utf8'), /1 finding in 1 workflow file/);
+		assert.equal(result.outputs.get('report-json'), result.outputs.get('analysis-result'));
+		const sarifPath = result.outputs.get('report-sarif');
+		assert.ok(sarifPath);
+		assert.equal(JSON.parse(await readFile(sarifPath, 'utf8')).runs[0].results.length, 1);
 	}
 	await run({ files: '' }, 3);
 	const shell = await run({
@@ -98,6 +128,24 @@ try {
 		'fail-on-error': 'false',
 	});
 	assert.equal(shell.outputs.get('problem-count'), '12', shell.log);
+	await writeFile(
+		join(workspace, 'shell-fix.yaml'),
+		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: |\n          value="$1"\n          echo $value\n',
+	);
+	const fixable = await run({ files: 'shell-fix.yaml', pyflakes: 'false', 'fail-on-error': 'false' });
+	const quote = fixable.analysis.diagnostics.find((diagnostic) => diagnostic.code === 'SC2086');
+	assert.ok(quote, fixable.log);
+	assert.equal(quote.severity, 'info');
+	assert.ok(quote.fixes.length > 0);
+	assert.ok(quote.fixes[0].edits.every((edit) => edit.path === 'shell-fix.yaml' && edit.start.line === 9));
+	const sarifQuote = fixable.analysis.sarif.runs[0].results.find((diagnostic) =>
+		diagnostic.properties?.externalCode === 'SC2086'
+	);
+	assert.ok(sarifQuote);
+	assert.equal(sarifQuote.level, 'note');
+	assert.equal(fixable.analysis.sarif.runs[0].columnKind, 'unicodeCodePoints');
+	assert.equal(sarifQuote.fixes[0].artifactChanges[0].artifactLocation.uri, 'shell-fix.yaml');
+	assert.equal(sarifQuote.fixes[0].artifactChanges[0].replacements.length, quote.fixes[0].edits.length);
 	const noShell = await run({
 		files: 'testdata/err/shellcheck_default_shell_detection.yaml',
 		shellcheck: 'false',
@@ -139,6 +187,8 @@ try {
 		{ 'output-file': '.' },
 		{ 'config-file': '../actionlint.yaml' },
 		{ files: '--help' },
+		{ annotations: 'invalid' },
+		{ 'report-formats': 'xml' },
 	];
 	for (const inputs of invalidInputs) await run(inputs, 2);
 	await writeFile(

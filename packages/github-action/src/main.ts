@@ -4,6 +4,7 @@ import { runnerPlatform } from '#assets';
 import { normalizeEnvironment } from '#environment';
 import { temporary } from '#native';
 import { publishTools } from '#path';
+import { withReporting } from '#reporters';
 import { InputError, runAction } from '#runtime';
 import { checkExecutable, executeNative, inspectTools, nativeBinary, pyflakesCommand, shellcheckBinary } from '#tools';
 import { commandEscape, writeOutputs } from '#workflow';
@@ -15,17 +16,22 @@ const environment = normalizeEnvironment(env);
 async function main(): Promise<void> {
 	const token = environment['INPUT_TOKEN']?.trim();
 	if (token) console.log(`::add-mask::${commandEscape(token)}`);
-	const platform = runnerPlatform(pf, arch);
-	process.exitCode = await temporary((directory) =>
-		runAction(environment, {
-			native: () => nativeBinary(__ACTIONLINT_VERSION__, platform, directory),
-			checkExecutable,
-			inspect: inspectTools,
-			shellcheck: () => shellcheckBinary(platform),
-			pyflakes: () => pyflakesCommand(platform),
-			publish: (tools) => publishTools(tools, environment),
-			execute: executeNative,
-		})
+	process.exitCode = await withReporting(
+		environment,
+		(childEnvironment) => {
+			const platform = runnerPlatform(pf, arch);
+			return temporary((directory) =>
+				runAction(childEnvironment, {
+					native: () => nativeBinary(__ACTIONLINT_VERSION__, platform, directory),
+					checkExecutable,
+					inspect: inspectTools,
+					shellcheck: () => shellcheckBinary(platform),
+					pyflakes: () => pyflakesCommand(platform),
+					publish: (tools) => publishTools(tools, environment),
+					execute: executeNative,
+				})
+			);
+		},
 	);
 }
 

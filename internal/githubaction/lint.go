@@ -38,6 +38,8 @@ type lintOutcome struct {
 
 type lintResult struct {
 	*lintOutcome
+	diagnostics    []actionlint.Diagnostic
+	sarif          string
 	fileCount      int
 	fileCountKnown bool
 	configs        []actionlint.ConfigReport
@@ -168,6 +170,17 @@ func runLinter(req *lintRequest) *lintResult {
 		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
 		return result
 	}
+	result.diagnostics = analysis.Diagnostics
+	var sarif bytes.Buffer
+	sarifRenderer, err := actionlint.NewAnalysisRenderer(actionlint.OutputFormatSARIF, "", false)
+	if err == nil {
+		err = sarifRenderer.Render(&sarif, analysis)
+	}
+	if err != nil {
+		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
+		return result
+	}
+	result.sarif = sarif.String()
 	session.Completed(analysis)
 	if len(analysis.Diagnostics) > 0 {
 		result.hints = quotedIgnoreHints(req.ignore, analysis.Diagnostics)

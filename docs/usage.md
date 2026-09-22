@@ -566,29 +566,34 @@ Existing immutable releases retain their original implementation.
 
 The action accepts these inputs:
 
-| Input                        | Default       | Description                                                                   |
-| ---------------------------- | ------------- | ----------------------------------------------------------------------------- |
-| `files`                      | all workflows | Newline-separated workflow file paths                                         |
-| `format`                     | `github`      | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, or `sarif`  |
-| `ignore`                     | none          | Newline-separated regular expressions for errors to ignore                    |
-| `config-file`                | automatic     | Configuration file relative to `working-directory`                            |
-| `config`                     | none          | Complete inline configuration as YAML or JSON                                 |
-| `self-hosted-runner`         | inherited     | YAML/JSON mapping with a `labels` list                                        |
-| `config-variables`           | inherited     | YAML/JSON list of permitted variable names, or `null`                         |
-| `config-secrets`             | inherited     | YAML/JSON list of permitted secret names, or `null`                           |
-| `paths`                      | inherited     | YAML/JSON mapping of workflow globs to configuration                          |
-| `assume-default-permissions` | inherited     | `restricted` or `permissive`                                                  |
-| `policy`                     | inherited     | YAML/JSON mapping of policy settings                                          |
-| `shellcheck`                 | `true`        | Enable ShellCheck integration                                                 |
-| `shellcheck-config`          | `false`       | `true` for discovery, `false` to disable, or a workspace-relative config file |
-| `shellcheck-args`            | none          | Additional checking options as a YAML/JSON array of strings                   |
-| `pyflakes`                   | `true`        | Enable pyflakes integration                                                   |
-| `add-actionlint-to-path`     | `true`        | Make actionlint available on PATH for subsequent job steps                    |
-| `add-shellcheck-to-path`     | `true`        | Make ShellCheck available on PATH when ShellCheck is enabled                  |
-| `add-pyflakes-to-path`       | `true`        | Make pyflakes available on PATH when pyflakes is enabled                      |
-| `working-directory`          | `.`           | Directory to lint, relative to the repository workspace                       |
-| `output-file`                | none          | Repository-relative file to receive the selected output                       |
-| `fail-on-error`              | `true`        | Fail when problems are found; command failures always fail                    |
+| Input                        | Default        | Description                                                                   |
+| ---------------------------- | -------------- | ----------------------------------------------------------------------------- |
+| `files`                      | all workflows  | Newline-separated workflow file paths                                         |
+| `format`                     | `github`       | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, or `sarif`  |
+| `ignore`                     | none           | Newline-separated regular expressions for errors to ignore                    |
+| `config-file`                | automatic      | Configuration file relative to `working-directory`                            |
+| `config`                     | none           | Complete inline configuration as YAML or JSON                                 |
+| `self-hosted-runner`         | inherited      | YAML/JSON mapping with a `labels` list                                        |
+| `config-variables`           | inherited      | YAML/JSON list of permitted variable names, or `null`                         |
+| `config-secrets`             | inherited      | YAML/JSON list of permitted secret names, or `null`                           |
+| `paths`                      | inherited      | YAML/JSON mapping of workflow globs to configuration                          |
+| `assume-default-permissions` | inherited      | `restricted` or `permissive`                                                  |
+| `policy`                     | inherited      | YAML/JSON mapping of policy settings                                          |
+| `shellcheck`                 | `true`         | Enable ShellCheck integration                                                 |
+| `shellcheck-config`          | `false`        | `true` for discovery, `false` to disable, or a workspace-relative config file |
+| `shellcheck-args`            | none           | Additional checking options as a YAML/JSON array of strings                   |
+| `pyflakes`                   | `true`         | Enable pyflakes integration                                                   |
+| `add-actionlint-to-path`     | `true`         | Make actionlint available on PATH for subsequent job steps                    |
+| `add-shellcheck-to-path`     | `true`         | Make ShellCheck available on PATH when ShellCheck is enabled                  |
+| `add-pyflakes-to-path`       | `true`         | Make pyflakes available on PATH when pyflakes is enabled                      |
+| `working-directory`          | `.`            | Directory to lint, relative to the repository workspace                       |
+| `output-file`                | none           | Repository-relative file to receive the selected output                       |
+| `fail-on-error`              | `true`         | Fail when problems are found; command failures always fail                    |
+| `annotations`                | `false`        | Emit annotations alongside another format; `github` already emits them        |
+| `summary`                    | `false`        | Add findings and completion status to the job summary                         |
+| `report-formats`             | none           | Additional JSON/SARIF files; comma- or newline-separated `json`, `sarif`      |
+| `review`                     | `false`        | Post PR review comments and supported suggestions on changed lines            |
+| `token`                      | `github.token` | Token for opt-in PR reviews; requires `pull-requests: write`                  |
 
 When `config-file` is omitted, the action automatically loads
 `.github/actionlint.yaml` or `.github/actionlint.yml` from the checked-out repository.
@@ -720,6 +725,51 @@ found:
     PROBLEM_COUNT: ${{ steps.actionlint.outputs.problem-count }}
   run: echo "$RESULT ($PROBLEM_COUNT problems)"
 ```
+
+Each invocation also writes a versioned result under `RUNNER_TEMP`. The
+`analysis-result` output is its absolute path and remains available to later
+steps. It records completion, the analysis exit code, workflow count, diagnostics,
+configuration origins, and hints. Diagnostics include severity and mapped fixes
+when the analyzer supplies them. Invalid inputs, provisioning failures, and
+incomplete analysis are recorded as failures, including when there are no
+diagnostics. `fail-on-error: false` changes the step outcome while retaining the
+analysis exit code in this result.
+
+`annotations`, `summary`, and `report-formats` run immediately after that one
+analysis. JSON uses the result envelope. SARIF retains analyzer severity and
+mapped replacements using [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/os/sarif-v2.1.0-os.html)
+Unicode columns. `report-json` and `report-sarif` expose absolute file paths for later
+steps, such as artifact uploads. An unavailable SARIF report has an empty output;
+an incomplete run never produces an empty success report. `format` continues to
+select the existing console and `output-file` representation. With `format:
+github`, enabling `annotations` does not duplicate findings.
+
+```yaml
+- uses: kjanat/actionlint@v1
+  id: actionlint
+  with:
+    format: json
+    annotations: true
+    summary: true
+    report-formats: json,sarif
+```
+
+Set `review: true` to post a grouped PR review, with `permissions:
+{ pull-requests: write, contents: read }` on the job. The review is advisory;
+`fail-on-error` still controls whether findings fail the step. Fork workflows
+often receive a read-only token. Missing permissions or other review API errors
+produce a warning and retain the logs, summary, and result files.
+
+Review comments target the PR head from the event, checked again before posting.
+Files must match that head's contents; generated/local changes and mismatched
+merge-checkout files are skipped. Comments use ranges containing added lines
+within a single diff hunk. A suggestion contains a complete, non-overlapping
+fix group for one file. Overlapping suggestions from different findings become
+explanatory comments. Unmappable fixes remain diagnostics without suggested
+edits. Existing markers prevent a successful rerun from posting the same finding
+again for that head. Each review includes at most 50 new comments; all findings
+remain in the persisted result. See the [GitHub review API](https://docs.github.com/en/rest/pulls/reviews#create-a-review-for-a-pull-request)
+for the required token permission and review behavior.
 
 The download script remains useful when direct access to the executable is
 preferred. It sets an absolute file path of the downloaded
