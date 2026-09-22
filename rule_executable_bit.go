@@ -20,6 +20,7 @@ type RuleExecutableBit struct {
 	unix, sequential, pristine bool
 	changed                    map[string]bool
 	workflowEnv, jobEnv        bool
+	skipFindings               bool
 }
 
 func newRuleExecutableBit(context ruleContext) *RuleExecutableBit {
@@ -301,6 +302,9 @@ func (rule *RuleExecutableBit) scriptPath(directory runDirectory, script string)
 }
 
 func (rule *RuleExecutableBit) checkInvocation(run *ExecRun, word *syntax.Word, directory runDirectory, script string) {
+	if rule.skipFindings {
+		return
+	}
 	name, ok := rule.scriptPath(directory, script)
 	if !ok || rule.changed[name] {
 		return

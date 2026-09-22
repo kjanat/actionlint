@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"maps"
 	"path/filepath"
 	"strings"
 
@@ -80,13 +81,15 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 	for i, parent := range parents {
 		if outer, ok := parent.(*RuleExecutableBit); ok {
 			if inner, ok := children[i].(*RuleExecutableBit); ok {
-				outer.pristine, outer.sequential = inner.pristine, inner.sequential
-				outer.paths, outer.changed = inner.paths, inner.changed
 				if call.If != nil {
 					// A conditional checkout may never have run. Do not promote
 					// one branch's filesystem assumptions to the caller.
 					outer.pristine = false
+					outer.sequential = inner.sequential
+					continue
 				}
+				outer.pristine, outer.sequential = inner.pristine, inner.sequential
+				outer.paths, outer.changed = inner.paths, inner.changed
 			}
 		}
 	}
@@ -109,6 +112,10 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
 		scoped := newRuleExecutableBit(rule.context)
 		scoped.unix, scoped.sequential, scoped.pristine = rule.unix, rule.sequential, rule.pristine
 		scoped.paths, scoped.changed = rule.paths, rule.changed
+		scoped.skipFindings = rule.skipFindings || call.If != nil
+		if call.If != nil {
+			scoped.changed = maps.Clone(rule.changed)
+		}
 		scoped.jobEnv = rule.jobEnv || shellEnvironmentUnknown(call.Env)
 		if call.Background != nil && (call.Background.Expression != nil || call.Background.Value) {
 			scoped.sequential, scoped.pristine = false, false
