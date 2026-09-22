@@ -53,7 +53,7 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 		return nil
 	}
 	conditionUnknown := false
-	if _, run := step.Exec.(*ExecRun); run && step.If != nil {
+	if step.If != nil {
 		condition := *step.If
 		if !condition.ContainsExpression() {
 			condition.Value = "${{ " + condition.Value + " }}"
@@ -67,15 +67,23 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 			conditionUnknown = true
 		}
 	}
-	if step.Background != nil && (step.Background.Expression != nil || step.Background.Value) {
-		rule.sequential, rule.pristine = false, false
-		return nil
+	if step.Background != nil {
+		background := step.Background.Value
+		if step.Background.Expression != nil {
+			value, known := workflowExpressionLiteral(step.Background.Expression)
+			enabled, boolean := value.(bool)
+			background = !known || !boolean || enabled
+		}
+		if background {
+			rule.sequential, rule.pristine = false, false
+			return nil
+		}
 	}
 	switch command := step.Exec.(type) {
 	case *ExecParallel:
 		rule.sequential, rule.pristine = false, false
 	case *ExecAction:
-		rule.checkout(step, command)
+		rule.checkout(command, conditionUnknown)
 	case *ExecRun:
 		if conditionUnknown || rule.jobEnv || shellEnvironmentUnknown(step.Env) {
 			rule.pristine = false
@@ -89,9 +97,9 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 
 // A known self checkout establishes which index is represented in the workspace.
 // Opaque actions may change permissions or replace files, so invalidate that state.
-func (rule *RuleExecutableBit) checkout(step *Step, action *ExecAction) {
+func (rule *RuleExecutableBit) checkout(action *ExecAction, conditionUnknown bool) {
 	rule.pristine = false
-	if action.Uses == nil || step.If != nil || action.InputsExpression != nil {
+	if action.Uses == nil || conditionUnknown || action.InputsExpression != nil {
 		return
 	}
 	name, _, versioned := strings.Cut(action.Uses.Value, "@")
@@ -186,6 +194,14 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 			rule.pristine = false
 			return
 		}
+		if assignment.Name != nil {
+			switch assignment.Name.Value {
+			case "UID", "EUID", "PPID", "BASHOPTS", "SHELLOPTS", "BASH_VERSINFO":
+				// Bash may also provide sh; readonly assignments can abort before invocation.
+				rule.pristine = false
+				return
+			}
+		}
 		if assignment.Value != nil {
 			if !simpleShellArgument(assignment.Value.Parts) {
 				rule.pristine = false
@@ -240,7 +256,16 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 			rule.pristine = false
 			return
 		}
+		options := true
 		for _, operand := range args[2:] {
+			if options && operand == "--" {
+				options = false
+				continue
+			}
+			if options && strings.HasPrefix(operand, "-") {
+				rule.pristine = false
+				return
+			}
 			name, ok := rule.scriptPath(*directory, operand)
 			if !ok || rule.index().modes[name] == "120000" {
 				rule.pristine = false
@@ -425,6 +450,8 @@ func shellEnvironmentUnknown(env *Env) bool {
 	}
 	for _, variable := range env.Vars {
 		switch variable.Name.Value {
+		case "PATH":
+			return true
 		case "BASH_ENV", "ENV", "CDPATH":
 			if variable.Value == nil || variable.Value.Value != "" {
 				return true
