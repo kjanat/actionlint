@@ -77,6 +77,10 @@ func (context configPathContext) expand(value string) (string, error) {
 		if path == "" {
 			return "", fmt.Errorf("path interpolation %q is unavailable in this analysis context", name)
 		}
+		path, err := filepath.Abs(path)
+		if err != nil {
+			return "", fmt.Errorf("path interpolation %q: %w", name, err)
+		}
 		out.WriteString(path)
 		value = after
 	}
