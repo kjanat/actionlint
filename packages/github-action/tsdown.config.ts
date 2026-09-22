@@ -23,15 +23,14 @@ async function resolvedDestination(path: string): Promise<string> {
 
 const writeReleaseChecksum: TsdownHooks['build:done'] = async ({ chunks, options }) => {
 	const [chunk] = chunks;
-	if (chunks.length !== 1 || !chunk || chunk.type !== 'chunk' || chunk.fileName !== 'main.mjs') {
-		throw new Error(`Expected only main.mjs; emitted: ${chunks.map((chunk) => chunk.fileName).join(', ')}`);
+	if (chunks.length !== 1 || !chunk || chunk.type !== 'chunk' || chunk.fileName !== 'action.mjs') {
+		throw new Error(`Expected only action.mjs; emitted: ${chunks.map((chunk) => chunk.fileName).join(', ')}`);
 	}
 	const external = [...chunk.imports, ...chunk.dynamicImports].filter((name) => !isBuiltin(name));
 	if (external.length > 0) throw new Error(`Unbundled runtime imports: ${external.join(', ')}`);
 	const bundle = join(options.outDir, chunk.fileName);
-	const path = relative(dirname(options.outDir), bundle).replaceAll('\\', '/');
 	const digest = createHash('sha256').update(await readFile(bundle)).digest('hex');
-	await writeFile(join(dirname(options.outDir), 'SHA256SUMS'), `${digest}  ${path}\n`);
+	await writeFile(join(options.outDir, 'SHA256SUMS'), `${digest}  action.mjs\n`);
 };
 
 export default defineConfig(async ({ outDir }): Promise<UserConfig> => {
@@ -41,7 +40,7 @@ export default defineConfig(async ({ outDir }): Promise<UserConfig> => {
 	const output = await resolvedDestination(outDir);
 	const path = relative(await realpath(repositoryDirectory), output);
 	if (path === '' || (path !== '..' && !path.startsWith(`..${sep}`) && !isAbsolute(path))) {
-		throw new Error('Refusing to create dist inside the source checkout; choose an external --out-dir');
+		throw new Error('Refusing to create the bundle inside the source checkout; choose an external --out-dir');
 	}
 	const version = process.env.ACTIONLINT_VERSION || execFileSync(
 		'git',
@@ -50,7 +49,7 @@ export default defineConfig(async ({ outDir }): Promise<UserConfig> => {
 	).trim().replace(/^v/, '');
 	return {
 		cwd: packageDirectory,
-		entry: { main: 'src/main.ts' },
+		entry: { action: 'src/main.ts' },
 		outDir: output,
 		format: 'esm',
 		platform: 'node',

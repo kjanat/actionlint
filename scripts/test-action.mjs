@@ -10,7 +10,7 @@ import { dirname, join, resolve } from 'node:path';
 const [actionDirectory, binary] = process.argv.slice(2);
 if (!actionDirectory || !binary) throw new Error('Usage: test-action.mjs ACTION_DIRECTORY ACTIONLINT_BINARY');
 const source = process.cwd();
-const entrypoint = resolve(actionDirectory, 'dist/main.mjs');
+const entrypoint = resolve(actionDirectory, 'action.mjs');
 const tempRoot = resolve(tmpdir());
 const workspace = await mkdtemp(join(tempRoot, 'actionlint-action-test-'));
 const outputFile = join(workspace, 'github-output');

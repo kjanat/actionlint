@@ -48,7 +48,7 @@ Repository-reference cleanup and JavaScript-tooling changes are separate mainten
 - The private workspace package is named `actionlint-action`; it has no separately maintained release version.
 - The release/tag version passes through the release builder into tsdown's compile-time version stamp. Local builds fall back to `git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude '*-*'`, stripping the leading `v`.
 - Git supplies the version fallback during the release build. An explicit release version takes precedence.
-- Release packaging uses source `vX.Y.Z` tags and separate `action-vX.Y.Z` artifact tags, plus moving action tags. Compatibility with the signed-release workflow remains an open decision.
+- Normal signed `vX.Y.Z` tags contain the complete source tree, root `action.mjs`, and its checksum. Moving major/minor tags target that same release commit. Dispatch-based draft preparation and validation before publication remain unfinished.
 
 ### Dependencies and tools
 
@@ -293,5 +293,5 @@ The existing focused checks in [the Action package](packages/github-action/tests
 - Persisted result schema and versioning; pre-rendered SARIF versus sufficient metadata for deferred rendering.
 - Severity mapping and its effect on annotations and the existing failure contract.
 - PR review deduplication/update behavior on reruns and new commits.
-- Final source/artifact tag names, moving refs, and signing strategy.
+- Dispatch-based draft preparation, validation before publication, and promotion of the tested assets.
 - Whether to replace the Python backend; no replacement is selected by this migration plan.

@@ -1,5 +1,5 @@
 // Prepare release files outside the checkout. --commit uses an isolated Git
-// index: it creates a child of the signed source commit without changing HEAD,
+// index: it adds the bundle to the source tree without changing HEAD,
 // the working tree, the user's index, or any tag.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -9,7 +9,7 @@ import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const sourceRoot = fileURLToPath(new URL('../', import.meta.url));
-const releaseFiles = ['action.yml', 'README.md', 'LICENSE.txt', 'dist/main.mjs', 'SHA256SUMS'];
+const generatedFiles = ['action.mjs', 'SHA256SUMS'];
 
 /** @param {string} command @param {string[]} args @param {string} cwd @param {NodeJS.ProcessEnv} [env] */
 function execute(command, args, cwd, env = process.env) {
@@ -50,8 +50,8 @@ function assertVersion(version) {
 	}
 }
 
-/** @param {string} root @param {string} directory @param {string} version */
-export async function prepareRelease(root, directory, version) {
+/** @param {string} root @param {string} directory @param {string} version @param {boolean} [fromTag] */
+export async function prepareRelease(root, directory, version, fromTag = false) {
 	assertVersion(version);
 	assertOutsideCheckout(root, directory);
 	assertOutsideCheckout(await realpath(root), await resolvedDestination(directory));
@@ -60,24 +60,38 @@ export async function prepareRelease(root, directory, version) {
 	const action = join(directory, 'action');
 	const assets = join(directory, 'assets');
 	await mkdir(assets);
-	execute(
-		process.execPath,
-		['--run', 'build', '--', '--out-dir', join(action, 'dist')],
-		join(root, 'packages/github-action'),
-		{ ...process.env, ACTIONLINT_VERSION: version },
-	);
+	if (fromTag) {
+		await verifyBundle(root);
+		await mkdir(action);
+		for (const name of generatedFiles) await copyFile(join(root, name), join(action, name));
+	} else {
+		execute(
+			process.execPath,
+			['--run', 'build', '--', '--out-dir', action],
+			join(root, 'packages/github-action'),
+			{ ...process.env, ACTIONLINT_VERSION: version },
+		);
+	}
 	const sourceMetadata = await readFile(join(root, 'action.yml'), 'utf8');
-	const main = /\bmain:\s+dist\/main\.mjs(?=\s*(?:[,}]|$))/gm;
+	const main = /\bmain:\s+action\.mjs(?=\s*(?:[,}]|$))/gm;
 	if ([...sourceMetadata.matchAll(main)].length !== 1) {
-		throw new Error('Expected the action metadata to run dist/main.mjs');
+		throw new Error('Expected the action metadata to run action.mjs');
 	}
 	await copyFile(join(root, 'action.yml'), join(action, 'action.yml'));
 	for (const name of ['README.md', 'LICENSE.txt']) await copyFile(join(root, name), join(action, name));
-	const bundle = await readFile(join(action, 'dist/main.mjs'));
+	const bundle = await readFile(join(action, 'action.mjs'));
 	const digest = createHash('sha256').update(bundle).digest('hex');
 	const asset = `actionlint-action_${version}.mjs`;
-	await copyFile(join(action, 'dist/main.mjs'), join(assets, asset));
+	await copyFile(join(action, 'action.mjs'), join(assets, asset));
 	await writeFile(join(assets, `actionlint-action_${version}_checksums.txt`), `${digest}  ${asset}\n`);
+}
+
+/** @param {string} directory */
+async function verifyBundle(directory) {
+	const digest = createHash('sha256').update(await readFile(join(directory, 'action.mjs'))).digest('hex');
+	if (await readFile(join(directory, 'SHA256SUMS'), 'utf8') !== `${digest}  action.mjs\n`) {
+		throw new Error('Release bundle checksum does not match');
+	}
 }
 
 /** @param {string} root @param {string} directory @param {string} version @param {string} parent */
@@ -88,16 +102,18 @@ export async function createReleaseCommit(root, directory, version, parent) {
 	if (parent.length !== 40 || !/^[a-f0-9]+$/.test(parent)) throw new Error('--parent must be a full source commit SHA');
 	execute('git', ['cat-file', '-e', `${parent}^{commit}`], root);
 	const action = join(directory, 'action');
-	const digest = createHash('sha256').update(await readFile(join(action, 'dist/main.mjs'))).digest('hex');
-	if (await readFile(join(action, 'SHA256SUMS'), 'utf8') !== `${digest}  dist/main.mjs\n`) {
-		throw new Error('Release bundle checksum does not match');
+	await verifyBundle(action);
+	for (const name of ['action.yml', 'README.md', 'LICENSE.txt']) {
+		const original = execute('git', ['show', `${parent}:${name}`], root).replaceAll('\r\n', '\n');
+		const prepared = (await readFile(join(action, name), 'utf8')).trim().replaceAll('\r\n', '\n');
+		if (original !== prepared) throw new Error(`Prepared ${name} differs from the source commit`);
 	}
 	const tempRoot = resolve(tmpdir());
 	const temporary = await mkdtemp(join(tempRoot, 'actionlint-release-index-'));
 	try {
 		const env = { ...process.env, GIT_INDEX_FILE: join(temporary, 'index') };
-		execute('git', ['read-tree', '--empty'], root, env);
-		for (const name of releaseFiles) {
+		execute('git', ['read-tree', parent], root, env);
+		for (const name of generatedFiles) {
 			const blob = execute('git', ['hash-object', '-w', '--no-filters', '--', join(action, name)], root, env);
 			execute('git', ['update-index', '--add', '--cacheinfo', `100644,${blob},${name}`], root, env);
 		}
@@ -108,33 +124,92 @@ export async function createReleaseCommit(root, directory, version, parent) {
 	}
 }
 
+/** @param {string} root @param {string} tag @param {string} parent */
+export function recordRelease(root, tag, parent) {
+	if (execute('git', ['rev-parse', 'HEAD'], root) !== parent) {
+		throw new Error('Source HEAD changed during release preparation');
+	}
+	if (execute('git', ['status', '--porcelain', '--untracked-files=all'], root)) {
+		throw new Error('Source checkout changed during release preparation');
+	}
+	// Retain the source tree while making the bundled tag visible to git describe.
+	execute('git', ['merge', '--no-ff', '--strategy=ours', '-m', `Record bundled release ${tag}`, tag], root);
+}
+
+/** @param {string} root @param {string} version */
+async function signRelease(root, version) {
+	assertVersion(version);
+	if (execute('git', ['status', '--porcelain', '--untracked-files=all'], root)) {
+		throw new Error('Commit the source changes before preparing the release tag');
+	}
+	const parent = execute('git', ['rev-parse', 'HEAD'], root);
+	const tempRoot = resolve(tmpdir());
+	const temporary = await mkdtemp(join(tempRoot, 'actionlint-release-tag-'));
+	try {
+		const directory = join(temporary, 'release');
+		await prepareRelease(root, directory, version);
+		execute(process.execPath, ['--check', join(directory, 'action/action.mjs')], root);
+		const commit = await createReleaseCommit(root, directory, version, parent);
+		const tag = `v${version}`;
+		execute('git', ['tag', '-s', '-m', tag, tag, commit], root);
+		try {
+			recordRelease(root, tag, parent);
+		} catch (error) {
+			const reason = error instanceof Error ? error.message : String(error);
+			throw new Error(
+				`Signed ${tag} at ${commit}, but could not record it in the source history: ${reason}\nNothing was pushed. Inspect git status and finish any pending merge; otherwise run: git merge --no-ff --strategy=ours -m "Record bundled release ${tag}" ${tag}`,
+				{ cause: error },
+			);
+		}
+		console.log(`Signed ${tag} at ${commit}; recorded its ancestry without adding generated files to the source tree`);
+	} finally {
+		if (dirname(temporary) === tempRoot) await rm(temporary, { recursive: true, force: true });
+	}
+}
+
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
 	try {
 		/** @type {Map<string, string>} */
 		const options = new Map();
 		let commit = false;
+		let fromTag = false;
+		let tag = false;
 		const args = process.argv.slice(2);
 		for (let i = 0; i < args.length; i++) {
 			if (args[i] === '--commit') {
 				commit = true;
 				continue;
 			}
+			if (args[i] === '--from-tag') {
+				fromTag = true;
+				continue;
+			}
+			if (args[i] === '--tag') {
+				tag = true;
+				continue;
+			}
 			if (!['--out-dir', '--version', '--parent'].includes(args[i]) || !args[i + 1]) {
 				throw new Error(
-					'Usage: build-action-release.mjs --out-dir ABSOLUTE_DIR --version VERSION [--commit --parent SHA]',
+					'Usage: build-action-release.mjs --version VERSION (--tag | --out-dir ABSOLUTE_DIR [--from-tag | --commit --parent SHA])',
 				);
 			}
 			options.set(args[i], args[++i]);
 		}
 		const directory = options.get('--out-dir');
 		const version = options.get('--version');
-		if (!directory || !version) throw new Error('--out-dir and --version are required');
-		if (commit) {
+		if (!version) throw new Error('--version is required');
+		if ([commit, fromTag, tag].filter(Boolean).length > 1) throw new Error('--tag, --commit and --from-tag cannot be combined');
+		if (tag) {
+			if (directory || options.has('--parent')) throw new Error('--tag selects its own output directory and source HEAD');
+			await signRelease(sourceRoot, version);
+		} else if (!directory) {
+			throw new Error('--out-dir is required');
+		} else if (commit) {
 			const parent = options.get('--parent');
 			if (!parent) throw new Error('--parent is required with --commit');
 			console.log(await createReleaseCommit(sourceRoot, directory, version, parent));
 		} else {
-			await prepareRelease(sourceRoot, directory, version);
+			await prepareRelease(sourceRoot, directory, version, fromTag);
 		}
 	} catch (error) {
 		console.error(error instanceof Error ? error.message : String(error));

@@ -176,12 +176,11 @@ Custom runner labels can be configured directly:
 ```
 
 The moving `v1` tag follows compatible v1 releases; minor tags follow patch releases.
-These tags point to release commits containing the JavaScript bundle. Pin the full
-release commit SHA or an `action-vX.Y.Z` tag for an immutable JavaScript action reference.
-`v1.17.0` is a versioned release tag for the CLI and source distribution.
-New source tags and source checkouts do not contain the JavaScript bundle and
-cannot be used directly as the action. Existing immutable release tags retain their
-original implementation. Generated bundles stay outside the source checkout.
+Pin a full release commit SHA or a normal `vX.Y.Z` tag for an immutable reference.
+`v1.17.0` is a versioned release tag for both the CLI and the GitHub Action.
+JavaScript Action releases contain the complete source tree plus `action.mjs` at
+the repository root. Existing immutable releases retain their original implementation.
+Generated bundles stay off `master`; build a release tree before using a source checkout as an Action.
 
 The action discovers `.github/actionlint.yaml` or `.github/actionlint.yml` and logs
 the selected file. All configuration sections also work as inputs; `config` accepts

@@ -557,12 +557,12 @@ jobs:
 ```
 
 `v1` follows compatible v1 releases, and minor tags follow patch releases. These
-tags point to a release commit containing the JavaScript bundle. Pin that full
-release commit SHA or an `action-vX.Y.Z` tag for an immutable JavaScript action reference.
-`v1.17.0` is a versioned release tag for the CLI and source distribution.
-New source tags and source checkouts do not contain generated JavaScript and
-cannot be used directly as the action. Existing immutable release tags retain their
-original implementation.
+tags point to the same release commit as the normal `vX.Y.Z` tag. Pin that version
+tag or its full commit SHA for an immutable reference.
+`v1.17.0` is a versioned release tag for both the CLI and the GitHub Action.
+JavaScript Action releases contain the complete source tree plus root `action.mjs`.
+Generated bundles stay off `master`; build a release tree before using a source checkout as an Action.
+Existing immutable releases retain their original implementation.
 
 The action accepts these inputs:
 

@@ -141,5 +141,5 @@ outputs:
     description: >-
       Repository-relative output file path,
       or an empty string when output-file was not set.
-runs: { using: node24, main: dist/main.mjs }
+runs: { using: node24, main: action.mjs }
 branding: { icon: check-circle, color: blue }

@@ -18,7 +18,7 @@ This script does:
 - rewrite every declared reference and verify the result on disk
 - move the `Unreleased` entries of `CHANGELOG.md` into a dated section for the new version
 - build and check the updated Nix package with the committed dependency lock, stopping on failure
-- optionally create the version bump commit, the version tag, and push them
+- optionally commit the source changes, build a complete release tree with root `action.mjs`, sign its version tag, and push
 
 Nothing is written unless every file passes validation, and no commit, tag, or push happens unless
 the rewritten repository is verified to reference the new version everywhere and the Nix checks pass.
@@ -27,6 +27,8 @@ the rewritten repository is verified to reference the new version everywhere and
 
 - Go
 - `git`
+- Node.js 24 or newer and installed JavaScript dependencies (`npm ci --ignore-scripts`) when creating a tag
+- Git configured for GPG signing when creating a tag
 - Nix with `nix-command` and `flakes` enabled, locally or in an installed WSL distribution
 
 ## Usage
@@ -47,7 +49,10 @@ Update all references to 1.2.3. This modifies the files and leaves the changes i
 go run ./scripts/bump-version 1.2.3
 ```
 
-Update all references, then create the bump commit and the `v1.2.3` tag locally.
+Update all references, then create the source commit and a child release commit containing
+the complete source tree, generated root `action.mjs`, and `SHA256SUMS`. Sign `v1.2.3`
+at the release commit, then record its ancestry with an `ours` merge so `git describe`
+finds the new release. The working tree and `master` tree retain only the source changes.
 
 ```sh
 go run ./scripts/bump-version -commit 1.2.3
@@ -69,6 +74,23 @@ Detection runs before any files change. The script then runs
 `nix flake check --no-update-lock-file --print-build-logs` after updating the version and changelog.
 On failure, it leaves those updates for inspection without committing or tagging. Fix the failure and rerun the Nix
 check before committing and tagging manually. A normal bump requires a clean checkout.
+
+After reviewing and committing version edits manually, prepare and sign the bundled tag with:
+
+```sh
+node scripts/build-action-release.mjs --tag --version 1.2.3
+```
+
+This also retries bundle preparation or signing after `-commit` fails at that stage. It
+does not push. Do not tag the source-only `HEAD`: the Action's required `action.mjs`
+exists in the child release commit. Normal `vX.Y.Z` tags serve both CLI and Action users.
+
+If signing succeeds but recording the ancestry fails, the tag already exists. Inspect
+`git status` and finish any pending merge. If no merge is pending, record the tag with:
+
+```sh
+git merge --no-ff --strategy=ours -m "Record bundled release v1.2.3" v1.2.3
+```
 
 The check does not refresh `flake.lock` or `vendorHash`. Update Nixpkgs deliberately with `nix flake update nixpkgs`,
 and update the Go dependency hash when dependencies change, as described in

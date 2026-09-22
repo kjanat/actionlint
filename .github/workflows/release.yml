@@ -84,22 +84,31 @@ jobs:
     uses: $/.github/workflows/npm-release.yml
     with: { tag: "${{ github.ref_name }}" }
   action-bundle:
-    name: Build JavaScript Action
+    name: Verify tagged JavaScript Action
     runs-on: ubuntu-latest
     needs: [changelog, nix]
     timeout-minutes: 15
     steps:
       - uses: *ActionsCheckout
-        with: *NoCreds
-      - uses: &SetupNode actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with: &Node24 { node-version: "24", package-manager-cache: false }
-      - name: Check the runtime and build outside the checkout
+        with: { fetch-depth: 0, persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: { node-version: "24", package-manager-cache: false }
+      - name: Verify annotated release tag signature
+        env: { GH_TOKEN: "${{ github.token }}", TAG: "${{ github.ref_name }}" }
+        run: |
+          set -euo pipefail
+          object="$(git rev-parse "refs/tags/${TAG}")"
+          verified="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${object}" --jq '.verification.verified')"
+          test "${verified}" = true
+          commit="$(git rev-parse "refs/tags/${TAG}^{commit}")"
+          test "${commit}" = "${GITHUB_SHA}"
+      - name: Check the runtime and stage the committed bundle
         run: |
           npm ci --ignore-scripts
           npm run typecheck --workspace actionlint-action
           npm test --workspace actionlint-action
           node --test scripts/build-action-release.test.mjs
-          node scripts/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${GITHUB_REF_NAME#v}"
+          node scripts/build-action-release.mjs --from-tag --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${GITHUB_REF_NAME#v}"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with: { name: javascript-action, path: "${{ runner.temp }}/actionlint-action", if-no-files-found: error }
   action-smoke:
@@ -110,18 +119,18 @@ jobs:
     steps:
       - uses: *ActionsCheckout
         with: *NoCreds
-      - uses: *SetupNode
-        with: *Node24
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-        with: { name: javascript-action, path: "${{ runner.temp }}/actionlint-action" }
-      - name: Prepare the bundled Action for the runner
-        run: cp -R "${RUNNER_TEMP}/actionlint-action/action" .actionlint-action-release
-      - name: Run the bundled Action against the published binary
+      - name: Prepare the exact tagged tree for the runner
+        run: |
+          set -euo pipefail
+          mkdir .actionlint-action-release
+          git archive HEAD | tar -x -C .actionlint-action-release
+      - name: Run the tagged Action against the published binary
+        # ./ loads the tagged tree materialized in this job's workspace.
         uses: ./.actionlint-action-release
         with: { files: testdata/ok/minimal.yaml, format: json, shellcheck: "false", pyflakes: "false" }
   docker:
     runs-on: ubuntu-latest
-    needs: [changelog, nix]
+    needs: [changelog, nix, action-bundle]
     outputs: {
       is-latest: "${{ steps.tag.outputs.is-latest }}",
       is-major-latest: "${{ steps.tag.outputs.is-major-latest }}",
@@ -249,7 +258,7 @@ jobs:
               subject-name: docker.io/${{ github.repository }}
               subject-digest: ${{ steps.push-cli.outputs.digest }}
   action-tags:
-    name: Publish Action references
+    name: Update moving Action references
     needs: [binaries, docker, action-smoke]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -257,18 +266,7 @@ jobs:
     steps:
       - uses: *ActionsCheckout
         with: { fetch-depth: 0 }
-      - uses: *SetupNode
-        with: *Node24
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-        with: { name: javascript-action, path: "${{ runner.temp }}/actionlint-action" }
-      - name: Verify release commit signature
-        env: { GH_TOKEN: "${{ github.token }}", COMMIT_API: "${{ format('repos/{0}/commits/{1}', github.repository, github.sha) }}" }
-        run: |
-          verified="$(gh api "${COMMIT_API}" --jq '.commit.verification.verified')"
-          test "${verified}" = true
-      # Generated bundles live only in a child of the signed source commit. The
-      # CLI source tag stays unchanged; action-vX.Y.Z identifies the bundled tree.
-      - name: Verify the published bundle matches the prepared action
+      - name: Verify the published bundle matches the release tag
         shell: bash
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
@@ -280,42 +278,26 @@ jobs:
             --dir "${RUNNER_TEMP}/published-action"
           cd "${RUNNER_TEMP}/published-action"
           sha256sum --check "actionlint-action_${version}_checksums.txt"
-          cmp "actionlint-action_${version}.mjs" "${RUNNER_TEMP}/actionlint-action/action/dist/main.mjs"
-      - name: Create the isolated release commit
-        id: commit
-        shell: bash
-        env: { GIT_AUTHOR_NAME: "github-actions[bot]", GIT_AUTHOR_EMAIL: "41898282+github-actions[bot]@users.noreply.github.com" }
-        run: |
-          set -euo pipefail
-          export GIT_COMMITTER_NAME="${GIT_AUTHOR_NAME}" GIT_COMMITTER_EMAIL="${GIT_AUTHOR_EMAIL}"
-          commit="$(node scripts/build-action-release.mjs --commit --out-dir "${RUNNER_TEMP}/actionlint-action" \
-            --version "${GITHUB_REF_NAME#v}" --parent "${GITHUB_SHA}")"
-          if existing="$(git rev-parse --verify --quiet "refs/tags/action-${GITHUB_REF_NAME}^{commit}")"; then
-            existing_tree="$(git rev-parse "${existing}^{tree}")"
-            commit_tree="$(git rev-parse "${commit}^{tree}")"
-            existing_parent="$(git rev-parse "${existing}^")"
-            test "${existing_tree}" = "${commit_tree}"
-            test "${existing_parent}" = "${GITHUB_SHA}"
-            commit="${existing}"
-          fi
-          echo "sha=${commit}" >> "${GITHUB_OUTPUT}"
-      - name: Publish the immutable Action tag and update eligible floating tags
+          cmp "actionlint-action_${version}.mjs" "${GITHUB_WORKSPACE}/action.mjs"
+      - name: Update eligible floating tags
         shell: bash
         env: {
           MOVE_MAJOR: "${{ needs.docker.outputs.is-major-latest }}",
           MOVE_MINOR: "${{ needs.docker.outputs.is-minor-latest }}",
-          RELEASE_COMMIT: "${{ steps.commit.outputs.sha }}",
+          RELEASE_COMMIT: "${{ github.sha }}",
         }
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
           major="v${version%%.*}"
           minor="v${version%.*}"
-          refs=("${RELEASE_COMMIT}:refs/tags/action-${GITHUB_REF_NAME}")
+          refs=()
           if [[ "${MOVE_MAJOR}" == true ]]; then
             refs+=("+${RELEASE_COMMIT}:refs/tags/${major}")
           fi
           if [[ "${MOVE_MINOR}" == true ]]; then
             refs+=("+${RELEASE_COMMIT}:refs/tags/${minor}")
           fi
-          git push --atomic origin "${refs[@]}"
+          if [[ "${#refs[@]}" -gt 0 ]]; then
+            git push --atomic origin "${refs[@]}"
+          fi

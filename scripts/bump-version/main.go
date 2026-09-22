@@ -199,7 +199,7 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		_, _ = fmt.Fprint(stdout, "\nAll version references were updated and verified. To release, run:\n\n")
 		_, _ = fmt.Fprintf(stdout, "  git add %s\n", strings.Join(append(paths(targets), changelogFile), " "))
 		_, _ = fmt.Fprintf(stdout, "  git commit -m 'bump up version to %s'\n", tag)
-		_, _ = fmt.Fprintf(stdout, "  git tag -s -m %s %s\n", tag, tag)
+		_, _ = fmt.Fprintf(stdout, "  node scripts/build-action-release.mjs --tag --version %s\n", v)
 		_, _ = fmt.Fprint(stdout, "  git push origin master\n")
 		_, _ = fmt.Fprintf(stdout, "  git push origin %s\n", tag)
 		return nil
@@ -211,9 +211,14 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	if err := r.run("commit", "-m", "bump up version to "+tag); err != nil {
 		return err
 	}
-	// A bare `git tag` picks up tag.gpgSign and then rejects the tag for having no message.
-	if err := r.run("tag", "-s", "-m", tag, tag); err != nil {
-		return err
+	// The version tag includes the runnable Action while master keeps only its source.
+	_, _ = fmt.Fprintf(stdout, "+ node scripts/build-action-release.mjs --tag --version %s\n", v)
+	cmd := exec.CommandContext(ctx, "node", "scripts/build-action-release.mjs", "--tag", "--version", v.String())
+	cmd.Dir = root
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("could not prepare and sign the bundled release; the source commit remains locally, and nothing was pushed: %w", err)
 	}
 
 	if !push {
@@ -223,7 +228,7 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		return nil
 	}
 
-	// docker/build-push-action resolves the tagged commit through the default branch, so master must be pushed first.
+	// Publish the source branch before its bundled release tag.
 	if err := r.run("push", "origin", "master"); err != nil {
 		return err
 	}
