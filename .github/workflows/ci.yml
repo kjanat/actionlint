@@ -225,6 +225,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pyflakes --version
           exit $LASTEXITCODE
+  action-result:
+    name: GitHub Action
+    needs: action
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Require all Action platforms to pass
+        env: { RESULT: "${{ needs.action.result }}" }
+        run: test "${RESULT}" = success
   pre-commit-shellcheck:
     name: pre-commit ShellCheck integration
     runs-on: ubuntu-latest
