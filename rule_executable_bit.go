@@ -104,6 +104,10 @@ func stepCondition(condition *String) (enabled, known bool) {
 	}
 	value, known := workflowExpressionLiteral(&expression)
 	if !known {
+		// Explicit success() has the same gate as an ordinary step.
+		if call, ok := parseAssignedExpression(expression.Value).(*FuncCallNode); ok && strings.EqualFold(call.Callee, "success") && len(call.Args) == 0 {
+			return true, true
+		}
 		return false, false
 	}
 	switch value := value.(type) {
@@ -237,7 +241,8 @@ func (rule *RuleExecutableBit) checkout(action *ExecAction, mayNotComplete bool)
 			}
 			clean = value
 		}
-		if clean != "true" {
+		clean = strings.TrimSpace(clean)
+		if clean != "" && !strings.EqualFold(clean, "true") {
 			return
 		}
 	}
