@@ -107,8 +107,8 @@ func TestShellcheckSourceWorkingDirectory(t *testing.T) {
 		{"missing runtime directory", "", "", "created-at-runtime", "scripts", true},
 		{"colon in directory", "", "", "release:debug", "release:debug/scripts", false},
 		{"colon in nested directory", "", "", "nested/release:debug", "nested/release:debug/scripts", false},
-		{"Windows drive relative", "", "", "C:work", "C:work/scripts", true},
-		{"Windows drive absolute", "", "", "C:/work", "C:/work/scripts", true},
+		{"Unix drive-like relative name", "", "", "C:work", "C:work/scripts", false},
+		{"Unix drive-like nested name", "", "", "C:/work", "C:/work/scripts", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if runtime.GOOS == "windows" && strings.Contains(tc.stepDir, ":") {
@@ -179,6 +179,11 @@ func TestShellcheckRunnerWorkingDirectory(t *testing.T) {
 		{"Windows workflow default", "windows-latest", `scripts\build`, "workflow", false, false},
 		{"Unix literal backslash", "ubuntu-latest", `scripts\build`, "step", true, runtime.GOOS == "windows"},
 		{"Unix slash", "ubuntu-latest", "scripts/build", "step", false, false},
+		{"Linux single-letter colon", "ubuntu-latest", "a:debug", "step", false, runtime.GOOS == "windows"},
+		{"macOS single-letter colon", "macos-latest", "a:debug", "step", false, runtime.GOOS == "windows"},
+		{"Windows drive relative", "windows-latest", "a:debug", "step", false, true},
+		{"Windows drive absolute", "windows-latest", "C:/work", "step", false, true},
+		{"unknown colon semantics", "self-hosted", "a:debug", "step", false, true},
 		{"unknown runner", "self-hosted", `scripts\build`, "step", true, true},
 		{"conflicting platforms", "[self-hosted, windows, linux]", `scripts\build`, "step", true, true},
 		{"Windows rooted", "windows-latest", `\scripts\build`, "step", false, true},
@@ -192,6 +197,8 @@ func TestShellcheckRunnerWorkingDirectory(t *testing.T) {
 			}
 			writeShellcheckFixture(t, root, "scripts/build/config.sh", "VALUE=42\n")
 			if runtime.GOOS != "windows" {
+				writeShellcheckFixture(t, root, "a:debug/config.sh", "VALUE=42\n")
+				writeShellcheckFixture(t, root, "C:/work/config.sh", "VALUE=42\n")
 				value := "VALUE='two words'\n"
 				if tc.literal {
 					value = "VALUE=42\n"
