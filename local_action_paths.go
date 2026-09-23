@@ -154,12 +154,12 @@ func (c *LocalActionsCache) observeCheckout(step *Step) {
 		checkout.kind = directoryUnknown
 	}
 	foreign := false
-	for _, key := range []string{"repository", "ref", "github-server-url"} {
+	for _, key := range []string{"repository", "ref", "sparse-checkout", "github-server-url"} {
 		value, inputKnown := checkoutInput(action, key)
 		if !inputKnown || value != "" {
 			checkout.kind = directoryUnknown
 		}
-		if certain && key != "ref" && inputKnown && value != "" {
+		if certain && (key == "repository" || key == "github-server-url") && inputKnown && value != "" {
 			foreign = true
 		}
 	}
