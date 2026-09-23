@@ -114,9 +114,10 @@ func TestRunLinterWorkflowSymlinks(t *testing.T) {
 				}
 				in := &inputs{format: formatJSON}
 				workingRel := "."
-				if mode == "explicit" {
+				switch mode {
+				case "explicit":
 					in.files = []string{link}
-				} else if mode == "subdirectory" {
+				case "subdirectory":
 					workingRel = "sub"
 					in.files = []string{"../.github/workflows/linked.yaml"}
 				}
