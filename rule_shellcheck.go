@@ -104,12 +104,7 @@ func (rule *RuleShellcheck) VisitStep(n *Step) error {
 		return nil
 	}
 
-	directory := effectiveRunDirectory(run, rule.jobDir, rule.workflowDir)
-	if normalized, known := runnerDirectoryPath(directory.path, rule.platform); known {
-		directory.path = normalized
-	} else {
-		directory.kind = directoryUnknown
-	}
+	directory := rule.paths.effectiveRunDirectory(run, rule.jobDir, rule.workflowDir)
 	return rule.runShellcheck(run.Run.Value, run.source, rule.resolveShell(run), rule.paths.resolve(directory), run.RunPos)
 }
 
@@ -119,6 +114,7 @@ func (rule *RuleShellcheck) VisitJobPre(n *Job) error {
 	rule.jobDir = defaultsWorkingDirectory(n.Defaults)
 	rule.runnerShell = shellValue{}
 	rule.platform = runnerPlatform(n.RunsOn)
+	rule.paths.platform = rule.platform
 	if rule.platform == platformKindWindows {
 		rule.runnerShell = shellValueFromString(&String{Value: "pwsh"})
 	}
