@@ -3,7 +3,7 @@ import { test } from 'node:test';
 
 import { spawnSync } from 'node:child_process';
 import { copyFile, mkdir, readdir, readFile, rm, symlink, unlink, writeFile } from 'node:fs/promises';
-import { basename, delimiter, dirname, join } from 'node:path';
+import { basename, delimiter, dirname, join, relative } from 'node:path';
 
 import { capture, temporary, which } from '#native';
 import { publishTools } from '#path';
@@ -283,6 +283,52 @@ test('Windows existing native tools retain executable-local resources while acti
 			const result = await capture(executable, args, environment);
 			assert.equal(result.exitCode, 7, result.stderr);
 			assert.equal(result.stdout, 'native resources');
+		}
+	});
+});
+
+test('existing tools found through relative PATH remain runnable from a later working directory', async () => {
+	await temporary(async (job) => {
+		const existing = join(job, 'existing tools');
+		const next = join(job, 'next working directory');
+		await mkdir(existing);
+		await mkdir(next);
+		const extension = process.platform === 'win32' ? '.exe' : '';
+		for (const name of ['shellcheck', 'pyflakes']) await copyFile(process.execPath, join(existing, name + extension));
+		await writeFile(join(existing, 'runtime-resource'), 'original sibling resource');
+		const probe = join(job, 'probe.cjs');
+		await writeFile(probe, 'process.stdout.write(require("node:fs").readFileSync(require("node:path").join(require("node:path").dirname(process.execPath), "runtime-resource")));');
+		const relativeDirectory = relative(process.cwd(), existing);
+		const originalEnvironment = withPath([relativeDirectory]);
+		const shellcheck = await which('shellcheck', originalEnvironment, 'native');
+		const pyflakes = await which('pyflakes', originalEnvironment, 'native');
+		assert.equal(shellcheck, join(existing, `shellcheck${extension}`));
+		assert.equal(pyflakes, join(existing, `pyflakes${extension}`));
+		const pathFile = join(job, 'github-path');
+		await writeFile(pathFile, '');
+		await publishTools({
+			shellcheck: { kind: 'existing', executable: shellcheck },
+			pyflakes: { kind: 'existing', executable: pyflakes },
+		}, { ...originalEnvironment, RUNNER_TEMP: job, GITHUB_PATH: pathFile });
+		const publicationNames = (await readdir(job)).filter((name) => name.startsWith('actionlint-bin-'));
+		assert.equal(publicationNames.length, 1);
+		const publications = publicationNames.map((name) => join(job, name));
+		assert.equal(await readFile(pathFile, 'utf8'), `${publications.join('\n')}\n`);
+		const environment = { ...withPath([...publications, relativeDirectory]), ACTIONLINT_TEST_SCRIPT: probe };
+		const shell = process.platform === 'win32'
+			? await which('pwsh', process.env, 'native') || await which('powershell', process.env, 'native')
+			: '/bin/sh';
+		assert.ok(shell);
+		for (const name of ['shellcheck', 'pyflakes']) {
+			const args = process.platform === 'win32'
+				? ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', `& ${name} $env:ACTIONLINT_TEST_SCRIPT; exit $LASTEXITCODE`]
+				: ['-c', `${name} "$ACTIONLINT_TEST_SCRIPT"`];
+			const result = spawnSync(shell, args, { cwd: next, env: environment, encoding: 'utf8', windowsHide: true });
+			assert.equal(result.status, 0, result.stderr || result.error?.message);
+			assert.equal(result.stdout, 'original sibling resource');
+		}
+		for (const directory of publications) {
+			assert.equal((await readdir(directory)).some((name) => name.endsWith('.exe')), false);
 		}
 	});
 });
