@@ -146,10 +146,11 @@ directory. Its arguments remain literal: pass absolute paths for wrapper-owned
 configuration files that live elsewhere. actionlint cannot infer which arbitrary
 wrapper arguments are paths.
 
-Known literal expressions are resolved. If the working directory is dynamic,
-runner-absolute, outside the repository, or does not exist locally, actionlint
-still checks the script but disables following sources. This avoids analyzing
-unrelated local files as if they were available to the runner. Embedded scripts
+Known literal expressions are resolved. Available directories outside the
+repository, including parent paths, symlinks and native absolute paths, can be
+used for source analysis. If the working directory is dynamic, uses incompatible
+runner path syntax, or does not exist locally, actionlint still checks the script
+but disables following sources because their relative base is unknown. Embedded scripts
 arrive on stdin, so `SCRIPTDIR` does not refer to the YAML file's directory. Keep
 command-specific `source` directives inside the script. This integration checks
 workflow run steps; it does not yet run ShellCheck on composite action steps.
