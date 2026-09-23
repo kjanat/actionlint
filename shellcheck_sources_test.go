@@ -61,6 +61,25 @@ func TestShellcheckSourcedDiagnostics(t *testing.T) {
 	}
 }
 
+func TestCompositeShellcheckSourcedDiagnostics(t *testing.T) {
+	command := shellcheckForTest(t)
+	root, _ := executableFixture(t)
+	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
+	path := writeShellcheckFixture(t, root, "app/lib/check.sh", "echo $VALUE\n")
+	writeShellcheckFixture(t, root, "local/action.yml", "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      working-directory: app\n      run: . ./lib/check.sh\n")
+	result := compositeAnalysis(t, root, "- uses: ./local", AnalysisOptions{
+		Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"-a"}},
+	})
+	if len(result.Diagnostics) != 1 {
+		t.Fatalf("want one sourced finding: %+v", result.Diagnostics)
+	}
+	finding := result.Diagnostics[0]
+	assertShellcheckSourceFile(t, finding.Path, path)
+	if finding.Start != (DiagnosticPosition{1, 6}) || finding.Snippet != "echo $VALUE" {
+		t.Fatalf("sourced finding attributed to composite: %+v", finding)
+	}
+}
+
 func TestShellcheckUnavailableSourcedDiagnostic(t *testing.T) {
 	rule := newRuleShellcheck(&externalCommand{})
 	finding := rule.sourcedDiagnostic(shellcheckError{File: "missing.sh", Line: 1, Column: 1, Code: 2086, Level: "info", Message: "finding"}, t.TempDir(), make(map[string][]byte))
