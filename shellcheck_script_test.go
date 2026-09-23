@@ -26,6 +26,7 @@ func TestShellcheckScriptSemantics(t *testing.T) {
 		{name: "bundled errexit", shell: "bash -euxo pipefail {0}", script: "cd missing\nrm file"},
 		{name: "matching native dialect retains errexit", shell: "bash -e {0}", script: "# shellcheck shell=bash\ncd missing\nrm file"},
 		{name: "quoted native dialect retains errexit", shell: "bash -e {0}", script: "# shellcheck disable=SC2086 shell='bash'\ncd missing\nrm file"},
+		{name: "quoted native dialect tab separator", shell: "bash -e {0}", script: "# shellcheck shell='bash'\tdisable=SC2086\ncd missing\nrm file"},
 		{name: "first native dialect retains errexit", shell: "bash -e {0}", script: "# shellcheck shell=bash shell=sh\ncd missing\nrm file"},
 		{name: "different native dialect clears startup", shell: "bash -e -o pipefail {0}", script: "# shellcheck shell=sh\ncd missing\nrm file", code: "SC2164", line: 2},
 		{name: "matching native dialect retains pipefail", shell: "bash -o pipefail {0}", script: "# shellcheck shell=\"bash\"\nfalse | true", args: []string{"--enable=check-extra-masked-returns"}},

@@ -223,6 +223,56 @@ func TestProcessStdinHelper(t *testing.T) {
 	os.Exit(0)
 }
 
+func TestProcessEnvironmentHelper(t *testing.T) {
+	if os.Getenv("ACTIONLINT_TEST_ENVIRONMENT_HELPER") != "1" {
+		return
+	}
+	fmt.Printf("%s\n%s", os.Getenv("PWD"), os.Getenv("LANG"))
+	os.Exit(0)
+}
+
+func TestProcessWorkingDirectoryEnvironment(t *testing.T) {
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	parent, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ACTIONLINT_TEST_ENVIRONMENT_HELPER", "1")
+	t.Setenv("PWD", parent)
+	t.Setenv("LANG", "inherited")
+	for _, tc := range []struct {
+		name, language, pwd string
+		env                 []string
+	}{
+		{name: "inherited", language: "inherited"},
+		{name: "unrelated override", language: "C", env: []string{"LANG=C"}},
+		{name: "explicit PWD override", language: "C", pwd: "explicit", env: []string{"LANG=C", "PWD=explicit"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			directory := t.TempDir()
+			pwd := tc.pwd
+			if pwd == "" {
+				pwd = directory
+				if runtime.GOOS == "windows" || runtime.GOOS == "plan9" {
+					pwd = parent
+				}
+			}
+			execution := cmdExecution{cmd: exe, args: []string{"-test.run=^TestProcessEnvironmentHelper$"}, dir: directory, env: tc.env}
+			output, err := execution.run(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := fmt.Sprintf("%s\n%s", pwd, tc.language)
+			if string(output) != want {
+				t.Fatalf("child directory/environment: got %q, want %q", output, want)
+			}
+		})
+	}
+}
+
 func TestProcessRelativeExecutableWithWorkingDirectory(t *testing.T) {
 	exe, err := os.Executable()
 	if err != nil {
