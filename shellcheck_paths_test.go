@@ -370,6 +370,18 @@ func TestShellcheckSiblingWorkingDirectory(t *testing.T) {
 	}
 }
 
+func TestShellcheckAbsoluteDirectoryPlatform(t *testing.T) {
+	directory := t.TempDir()
+	for _, platform := range []platformKind{platformKindAny, platformKindWindows, platformKindMacOrLinux} {
+		path, known := shellcheckDirectoryPath(directory, platform)
+		wantKnown := platform == platformKindAny ||
+			(platform == platformKindWindows) == (runtime.GOOS == "windows")
+		if known != wantKnown || known && path != filepath.Clean(directory) {
+			t.Fatalf("platform %v: got %q, known=%v; want known=%v", platform, path, known, wantKnown)
+		}
+	}
+}
+
 func TestShellcheckSelectedConfigFailure(t *testing.T) {
 	command := shellcheckForTest(t)
 	for _, tc := range []struct {
