@@ -141,6 +141,11 @@ from that root, matching GitHub's workspace semantics. For `working-directory:
 app` and `source-path: [scripts]`, ShellCheck searches `app/scripts`; neither the
 config directory nor the workflow file's directory is the base.
 
+The configured ShellCheck command, including a custom wrapper, runs in that
+directory. Its arguments remain literal: pass absolute paths for wrapper-owned
+configuration files that live elsewhere. actionlint cannot infer which arbitrary
+wrapper arguments are paths.
+
 Known literal expressions are resolved. If the working directory is dynamic,
 runner-absolute, outside the repository, or does not exist locally, actionlint
 still checks the script but disables following sources. This avoids analyzing
