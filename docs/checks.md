@@ -1000,8 +1000,12 @@ A self checkout establishes the repository location; a static checkout `path`
 is supported, including calls such as `./source/bad.sh` from the workspace root.
 
 Detection is deliberately conservative. It checks direct literal calls in plain
-Bash or sh steps on known Linux/macOS runners after a self checkout. Alternate
-checkout refs/repositories, containers, dynamic expressions, custom shells,
+Bash or sh steps on recognized GitHub-hosted Linux/macOS runners after a self checkout.
+Self-hosted and grouped runners may retain repository settings from previous jobs.
+Reusable workflows may check out a different caller repository, so their local
+index modes are not assumed to match the runner. Steps that can run after failure,
+such as `if: always()`, cannot assume checkout completed successfully.
+Alternate checkout refs/repositories, containers, dynamic expressions, custom shells,
 shell startup environment settings, parallel/background steps and unsupported
 shell control flow are skipped. Earlier opaque actions or commands may change
 permissions, replace files or change Git settings, so subsequent calls in that
