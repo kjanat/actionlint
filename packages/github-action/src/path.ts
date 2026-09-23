@@ -27,7 +27,7 @@ async function writeWrapper(directory: string, name: string, executable: string,
 async function publishCommand(directory: string, name: string, executable: string): Promise<void> {
 	const extension = extname(executable).toLowerCase();
 	if (process.platform === 'win32' && ['.exe', '.com'].includes(extension)) {
-		// Native callers (including actionlint) cannot execute a batch wrapper.
+		// Preserve direct executable spawning for native command consumers.
 		await copyFile(executable, join(directory, `${name}${extension}`));
 	} else {
 		await writeWrapper(directory, name, executable);
