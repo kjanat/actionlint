@@ -25,7 +25,9 @@ func (c *LocalActionsCache) localSpec(spec string) (string, bool) {
 	}
 	checkout := c.currentCheckout()
 	if checkout.kind == directoryUnknown {
-		return "", false
+		// Retain best-effort validation of literal local metadata. Script rules
+		// still receive the unknown placement and cannot assume its runtime paths.
+		return spec, true
 	}
 	if checkout.path == "" || checkout.path == "." {
 		return spec, true
