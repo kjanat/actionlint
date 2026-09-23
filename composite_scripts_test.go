@@ -268,7 +268,8 @@ func TestCompositeExecutableBit(t *testing.T) {
 		{"true expression call", "- uses: actions/checkout@v6\n- uses: ./local\n  if: ${{ true }}", true},
 		{"skipped call", "- uses: actions/checkout@v6\n- uses: ./local\n  if: false", false},
 		{"skipped expression call", "- uses: actions/checkout@v6\n- uses: ./local\n  if: ${{ false }}", false},
-		{"conditional call", "- uses: actions/checkout@v6\n- uses: ./local\n  if: github.event_name == 'push'", false},
+		{"conditional call", "- uses: actions/checkout@v6\n- uses: ./local\n  if: github.event_name == 'push'", true},
+		{"conditional repository call", "- uses: actions/checkout@v6\n- uses: ./local\n  if: github.event.repository.name", true},
 		{"no checkout", "- uses: ./local", false},
 		{"earlier chmod", "- uses: actions/checkout@v6\n- run: chmod +x bad.sh\n  shell: bash\n  working-directory: ''\n- uses: ./local", false},
 		{"startup env", "- uses: actions/checkout@v6\n- uses: ./local\n  env:\n    BASH_ENV: setup.sh", false},
@@ -358,16 +359,31 @@ func TestConditionalCompositeRetainsStaticChecks(t *testing.T) {
 	command := shellcheckForTest(t)
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
-	writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: ./inner\n")
 	inner := writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: |\n        ./bad.sh\n        echo $VALUE\n")
-	result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n- uses: ./local\n  if: false", AnalysisOptions{Shellcheck: command})
-	if slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" }) {
-		t.Fatalf("conditional nested invocation must not claim execution: %+v", result.Diagnostics)
-	}
-	if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
-		return d.Rule == "shellcheck" && d.Path == inner && strings.Contains(d.Message, "SC2086")
-	}) {
-		t.Fatalf("conditional nested script lost static checks: %+v", result.Diagnostics)
+	for _, tc := range []struct {
+		outer, inner string
+		finding      bool
+	}{
+		{"github.event.repository.name", "true", true},
+		{"true", "github.event.repository.name", true},
+		{"true", "true", true},
+		{"false", "true", false},
+		{"false", "github.event.repository.name", false},
+		{"github.event.repository.name", "false", false},
+	} {
+		t.Run(tc.outer+"/"+tc.inner, func(t *testing.T) {
+			writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: ./inner\n      if: "+tc.inner+"\n")
+			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n- uses: ./local\n  if: "+tc.outer, AnalysisOptions{Shellcheck: command})
+			finding := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" && d.Path == inner })
+			if finding != tc.finding {
+				t.Errorf("conditional finding=%v, want %v: %+v", finding, tc.finding, result.Diagnostics)
+			}
+			if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
+				return d.Rule == "shellcheck" && d.Path == inner && strings.Contains(d.Message, "SC2086")
+			}) {
+				t.Fatalf("conditional nested script lost static checks: %+v", result.Diagnostics)
+			}
+		})
 	}
 }
 
