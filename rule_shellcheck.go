@@ -215,13 +215,13 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 		dialect = "" // Let ShellCheck parse and validate the original directive.
 	}
 	inline := rule.inlineConfig
-	if inline != nil && inline.Shell != nil {
-		dialect = *inline.Shell
-		appendDialect = true
-	}
-	if rule.config != nil && rule.config.Shell != "" {
-		dialect = rule.config.Shell
-		appendDialect = true
+	if appendDialect {
+		if inline != nil && inline.Shell != nil {
+			dialect = *inline.Shell
+		}
+		if rule.config != nil && rule.config.Shell != "" {
+			dialect = rule.config.Shell
+		}
 	}
 	if dialect != inferred {
 		setup = "" // Runtime options may not exist in an explicitly selected dialect.

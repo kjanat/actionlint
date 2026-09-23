@@ -9,6 +9,7 @@ func TestShellcheckScriptSemantics(t *testing.T) {
 	command := shellcheckForTest(t)
 	for _, tc := range []struct {
 		name, shell, script, env, config string
+		settings                         string
 		args                             []string
 		code                             string
 		line                             int
@@ -32,7 +33,16 @@ func TestShellcheckScriptSemantics(t *testing.T) {
 		{name: "environment dialect", shell: "bash", script: "[[ -n \"$HOME\" ]]", env: "--shell=sh", code: "SC3010", line: 1},
 		{name: "arguments override environment", shell: "bash", script: "[[ -n \"$HOME\" ]]", env: "--shell=sh", args: []string{"--shell=bash"}},
 		{name: "flag overrides directive", shell: "sh", script: "# shellcheck shell=bash\n[[ -n \"$HOME\" ]]", args: []string{"--shell=sh"}, code: "SC3010", line: 2},
-		{name: "config overrides flag", shell: "bash", script: "[[ -n \"$HOME\" ]]", args: []string{"--shell=bash"}, config: "shell: sh", code: "SC3010", line: 1},
+		{name: "config overrides inferred dialect", shell: "bash", script: "[[ -n \"$HOME\" ]]", config: "shell: sh", code: "SC3010", line: 1},
+		{name: "directive overrides config", shell: "sh", script: "# shellcheck shell=bash\n[[ -n \"$HOME\" ]]", config: "shell: sh"},
+		{name: "directive preserves sh diagnostics", shell: "bash", script: "# shellcheck shell=sh\n[[ -n \"$HOME\" ]]", config: "shell: bash", code: "SC3010", line: 2},
+		{name: "flag overrides config", shell: "bash", script: "[[ -n \"$HOME\" ]]", args: []string{"--shell=bash"}, config: "shell: sh"},
+		{name: "environment overrides config", shell: "sh", script: "[[ -n \"$HOME\" ]]", env: "--shell=bash", config: "shell: sh"},
+		{name: "flag overrides environment and config", shell: "bash", script: "[[ -n \"$HOME\" ]]", env: "--shell=sh", args: []string{"--shell=bash"}, config: "shell: sh"},
+		{name: "settings override inferred and project dialect", shell: "sh", script: "[[ -n \"$HOME\" ]]", config: "shell: sh", settings: "bash"},
+		{name: "directive overrides settings", shell: "sh", script: "# shellcheck shell=bash\n[[ -n \"$HOME\" ]]", settings: "sh"},
+		{name: "flag overrides settings", shell: "sh", script: "[[ -n \"$HOME\" ]]", args: []string{"-s", "bash"}, settings: "sh"},
+		{name: "environment overrides settings", shell: "sh", script: "[[ -n \"$HOME\" ]]", env: "--shell=bash", settings: "sh"},
 		{name: "config and user header combine", shell: "bash", script: "#!/bin/bash\n# shellcheck disable=SC2086\necho $HOME\necho $HOME", config: "disable: [SC2016]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -43,6 +53,9 @@ func TestShellcheckScriptSemantics(t *testing.T) {
 			}
 			if tc.config != "" {
 				options.ConfigFile = writeShellcheckFixture(t, options.WorkingDir, "actionlint.yaml", "tools: {shellcheck: {config: {"+tc.config+"}}}\n")
+			}
+			if tc.settings != "" {
+				options.ShellcheckSettings = &ShellcheckSettings{Shell: tc.settings}
 			}
 			session, err := NewAnalysisSession(options)
 			if err != nil {
