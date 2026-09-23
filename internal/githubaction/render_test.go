@@ -231,7 +231,7 @@ func TestSARIFProblemCount(t *testing.T) {
 
 func TestRenderOutcomeCountsAndRenders(t *testing.T) {
 	serialized := `[{"message":"m","filepath":"w.yaml","line":1,"column":2,"kind":"k","end_column":2}]` + "\n"
-	o, count, rendered := renderOutcome(&lintOutcome{serialized, "", actionlint.ExitStatusSuccessProblemFound}, formatOneline)
+	o, count, rendered := renderOutcome(&lintOutcome{serialized, "", actionlint.ExitStatusSuccessProblemFound}, formatOneline, ".", ".")
 	if o.code != actionlint.ExitStatusSuccessProblemFound {
 		t.Errorf("wanted the exit code preserved but got %d", o.code)
 	}
@@ -245,7 +245,7 @@ func TestRenderOutcomeCountsAndRenders(t *testing.T) {
 
 func TestRenderOutcomeCountsSARIFResults(t *testing.T) {
 	serialized := `{"runs":[{"results":[{"ruleId":"a"}]}]}` + "\n"
-	o, count, rendered := renderOutcome(&lintOutcome{serialized, "", actionlint.ExitStatusSuccessProblemFound}, formatSARIF)
+	o, count, rendered := renderOutcome(&lintOutcome{serialized, "", actionlint.ExitStatusSuccessProblemFound}, formatSARIF, ".", ".")
 	if o.code != actionlint.ExitStatusSuccessProblemFound || count != "1" {
 		t.Errorf("wanted one SARIF result but got %q and code %d", count, o.code)
 	}
@@ -255,7 +255,7 @@ func TestRenderOutcomeCountsSARIFResults(t *testing.T) {
 }
 
 func TestRenderOutcomeReportsUnparsableOutput(t *testing.T) {
-	o, count, rendered := renderOutcome(&lintOutcome{"not json", "", actionlint.ExitStatusSuccessNoProblem}, formatJSON)
+	o, count, rendered := renderOutcome(&lintOutcome{"not json", "", actionlint.ExitStatusSuccessNoProblem}, formatJSON, ".", ".")
 	if o.code != actionlint.ExitStatusFailure {
 		t.Errorf("wanted a failure exit code but got %d", o.code)
 	}
@@ -268,7 +268,7 @@ func TestRenderOutcomeReportsUnparsableOutput(t *testing.T) {
 }
 
 func TestRenderOutcomeKeepsFailureOutput(t *testing.T) {
-	o, count, rendered := renderOutcome(&lintOutcome{"partial", "boom\n", actionlint.ExitStatusFailure}, formatJSON)
+	o, count, rendered := renderOutcome(&lintOutcome{"partial", "boom\n", actionlint.ExitStatusFailure}, formatJSON, ".", ".")
 	if o.code != actionlint.ExitStatusFailure || count != "" {
 		t.Errorf("wanted a failure with no count but got %d and %q", o.code, count)
 	}
@@ -276,7 +276,7 @@ func TestRenderOutcomeKeepsFailureOutput(t *testing.T) {
 		t.Errorf("wanted %q but got %q", want, rendered)
 	}
 
-	_, _, rendered = renderOutcome(&lintOutcome{"partial", "", actionlint.ExitStatusInvalidCommandOption}, formatJSON)
+	_, _, rendered = renderOutcome(&lintOutcome{"partial", "", actionlint.ExitStatusInvalidCommandOption}, formatJSON, ".", ".")
 	if rendered != "partial" {
 		t.Errorf("wanted %q but got %q", "partial", rendered)
 	}

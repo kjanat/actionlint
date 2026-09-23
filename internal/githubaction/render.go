@@ -3,6 +3,7 @@ package githubaction
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -143,7 +144,7 @@ func problemsFromJSON(serialized string) ([]*problem, error) {
 	return problems, nil
 }
 
-func renderOutcome(o *lintOutcome, format outputFormat) (*lintOutcome, string, string) {
+func renderOutcome(o *lintOutcome, format outputFormat, workingDir, workspaceDir string) (*lintOutcome, string, string) {
 	if o.code != actionlint.ExitStatusSuccessNoProblem && o.code != actionlint.ExitStatusSuccessProblemFound {
 		rendered := o.stdout
 		if o.stderr != "" {
@@ -152,7 +153,7 @@ func renderOutcome(o *lintOutcome, format outputFormat) (*lintOutcome, string, s
 		return o, "", rendered
 	}
 
-	count, rendered, err := countAndRender(o.stdout, format)
+	count, rendered, err := countAndRender(o.stdout, format, workingDir, workspaceDir)
 	if err != nil {
 		failed := &lintOutcome{o.stdout, fmt.Sprintf("could not parse actionlint output: %s\n", err), actionlint.ExitStatusFailure}
 		return failed, "", failed.stderr + failed.stdout
@@ -160,7 +161,7 @@ func renderOutcome(o *lintOutcome, format outputFormat) (*lintOutcome, string, s
 	return o, strconv.Itoa(count), rendered
 }
 
-func countAndRender(serialized string, format outputFormat) (int, string, error) {
+func countAndRender(serialized string, format outputFormat, workingDir, workspaceDir string) (int, string, error) {
 	if format == formatSARIF {
 		count, err := sarifProblemCount(serialized)
 		return count, serialized, err
@@ -168,6 +169,21 @@ func countAndRender(serialized string, format outputFormat) (int, string, error)
 	problems, err := problemsFromJSON(serialized)
 	if err != nil {
 		return 0, "", err
+	}
+	if format == formatGitHub {
+		// Workflow commands resolve files from GITHUB_WORKSPACE. Keep the serialized
+		// analysis paths unchanged for the other formats and TypeScript reporters.
+		for _, p := range problems {
+			path := p.Filepath
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(workingDir, path)
+			}
+			rel, err := filepath.Rel(workspaceDir, path)
+			if err != nil {
+				return 0, "", err
+			}
+			p.Filepath = filepath.ToSlash(rel)
+		}
 	}
 	out, err := render(format, problems, serialized)
 	if err != nil {

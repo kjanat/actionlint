@@ -370,6 +370,57 @@ func TestActionLintsWorkflowEndToEnd(t *testing.T) {
 	}
 }
 
+func TestActionGitHubAnnotationPaths(t *testing.T) {
+	for _, tc := range []struct {
+		name, file, workingDir, want string
+	}{
+		{"repository discovery", "", "sub", ".github/workflows/broken.yaml"},
+		{"relative file", "broken.yaml", "sub", "sub/broken.yaml"},
+		{"parent file", "../.github/workflows/broken.yaml", "sub", ".github/workflows/broken.yaml"},
+		{"workspace root", "sub/broken.yaml", ".", "sub/broken.yaml"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			workspace := workspaceWith(t, map[string]string{
+				".git": "", ".github/workflows/broken.yaml": brokenWorkflow, "sub/broken.yaml": brokenWorkflow,
+			})
+			outputPath := filepath.Join(t.TempDir(), "output")
+			resultPath := filepath.Join(t.TempDir(), "result.json")
+			env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "ACTIONLINT_ACTION_RESULT": resultPath}
+			var out strings.Builder
+			a := &action{
+				args:   args(tc.file, "github", "", "", "false", "false", tc.workingDir, "annotations.txt", "true"),
+				stdout: &out, env: func(name string) string { return env[name] },
+				lint: runLinter, newID: fixedID("DELIM"), timeout: lintTimeout,
+			}
+			if code := a.run(); code != 1 {
+				t.Fatalf("wanted findings but got %d: %s", code, out.String())
+			}
+			outputs := parseOutputs(read(t, outputPath))
+			for name, content := range map[string]string{
+				"stdout": out.String(), "output": outputs["output"], "output-file": read(t, filepath.Join(workspace, "annotations.txt")),
+			} {
+				if want := "::error file=" + tc.want + ","; !strings.Contains(content, want) {
+					t.Errorf("%s: wanted %q in %q", name, want, content)
+				}
+			}
+			var result persistedResult
+			if err := json.Unmarshal([]byte(read(t, resultPath)), &result); err != nil {
+				t.Fatal(err)
+			}
+			if len(result.Diagnostics) != 1 {
+				t.Fatalf("wanted one persisted diagnostic, got %d", len(result.Diagnostics))
+			}
+			want, err := filepath.Rel(filepath.Join(workspace, tc.workingDir), filepath.Join(workspace, tc.want))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := filepath.ToSlash(result.Diagnostics[0].Path); got != filepath.ToSlash(want) {
+				t.Errorf("persisted diagnostic must retain analysis-relative path: got %q, want %q", got, filepath.ToSlash(want))
+			}
+		})
+	}
+}
+
 func TestActionIgnoreAndAutomaticConfigEndToEnd(t *testing.T) {
 	for _, tc := range []struct {
 		name       string

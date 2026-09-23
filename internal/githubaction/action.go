@@ -86,7 +86,7 @@ func (a *action) execute() (int, error) {
 		return 0, err
 	}
 	lint := a.runLint(req)
-	outcome, count, rendered := renderOutcome(lint.lintOutcome, in.format)
+	outcome, count, rendered := renderOutcome(lint.lintOutcome, in.format, req.workingDir, workspaceDir)
 	lint.lintOutcome = outcome
 	a.result = lint
 	a.emitStatus(outcome.code, count, lint.fileCount, lint.fileCountKnown, in)
