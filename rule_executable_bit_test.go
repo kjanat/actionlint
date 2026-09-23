@@ -55,6 +55,30 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		want                          string
 	}{
 		{"direct", "ubuntu-latest", "", "- run: ./bad.sh", "bad.sh"},
+		{"redirect stderr null", "ubuntu-latest", "", "- run: ./bad.sh 2>/dev/null", "bad.sh"},
+		{"redirect stdout file", "ubuntu-latest", "", "- run: ./bad.sh >output.log", "bad.sh"},
+		{"redirect append file", "ubuntu-latest", "", "- run: ./bad.sh >>output.log", "bad.sh"},
+		{"redirect input file", "ubuntu-latest", "", "- run: ./bad.sh <good.sh", "bad.sh"},
+		{"redirect duplicate stderr", "ubuntu-latest", "", "- run: ./bad.sh 2>&1", "bad.sh"},
+		{"redirect wrapped call", "ubuntu-latest", "", "- run: command ./bad.sh &>/dev/null", "bad.sh"},
+		{"redirect missing input", "ubuntu-latest", "", "- run: ./bad.sh <missing.txt", ""},
+		{"redirect missing parent", "ubuntu-latest", "", "- run: ./bad.sh >missing/output.log", ""},
+		{"redirect directory", "ubuntu-latest", "", "- run: ./bad.sh >scripts", ""},
+		{"redirect unopened descriptor", "ubuntu-latest", "", "- run: ./bad.sh 2>&9", ""},
+		{"redirect oversized descriptor", "ubuntu-latest", "", "- run: ./bad.sh 999999999999999999999999999999>/dev/null", ""},
+		{"redirect changed input permissions", "ubuntu-latest", "", "- run: chmod 000 good.sh; ./bad.sh <good.sh", ""},
+		{"redirect changed output permissions", "ubuntu-latest", "", "- run: chmod a-w good.sh; ./bad.sh >good.sh", ""},
+		{"redirect command substitution", "ubuntu-latest", "", "- run: ./bad.sh >\"$(chmod +x bad.sh)\"", ""},
+		{"redirect process substitution", "ubuntu-latest", "", "- run: ./bad.sh > >(chmod +x bad.sh)", ""},
+		{"redirect builtin invalidates state", "ubuntu-latest", "", "- run: echo changed >output.log; ./bad.sh", ""},
+		{"direct step PATH", "ubuntu-latest", "", "- run: ./bad.sh\n  env: {PATH: /usr/bin}", "bad.sh"},
+		{"direct job PATH", "ubuntu-latest", "env: {PATH: /usr/bin}", "- run: ./bad.sh", "bad.sh"},
+		{"wrapped step PATH", "ubuntu-latest", "", "- run: command ./bad.sh\n  env: {PATH: /usr/bin}", "bad.sh"},
+		{"exec step PATH", "ubuntu-latest", "", "- run: exec ./bad.sh\n  env: {PATH: /usr/bin}", "bad.sh"},
+		{"redirect step PATH", "ubuntu-latest", "", "- run: ./bad.sh 2>/dev/null\n  env: {PATH: /usr/bin}", "bad.sh"},
+		{"cd step PATH", "ubuntu-latest", "", "- run: cd scripts && ./bad.sh\n  env: {PATH: /usr/bin}", "scripts/bad.sh"},
+		{"PATH and startup script", "ubuntu-latest", "", "- run: ./bad.sh\n  env: {PATH: /usr/bin, BASH_ENV: setup.sh}", ""},
+		{"PATH chmod then direct", "ubuntu-latest", "", "- run: chmod +x good.sh && ./bad.sh\n  env: {PATH: tools}", ""},
 		{"false job", "ubuntu-latest", "if: false", "- run: ./bad.sh", ""},
 		{"false expression job", "ubuntu-latest", "if: ${{ false }}", "- run: ./bad.sh", ""},
 		{"literal zero job", "ubuntu-latest", "if: 0", "- run: ./bad.sh", ""},
@@ -307,17 +331,28 @@ func TestExecutableBitReusableWorkflowRepository(t *testing.T) {
 
 func TestExecutableBitWorkflowShellOptions(t *testing.T) {
 	root, _ := executableFixture(t)
-	workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: push\nenv: {SHELLOPTS: nounset}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - run: ./bad.sh \"$UNSET\"\n")
 	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := session.Files([]string{workflow}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" }) {
-		t.Fatalf("shell startup options ignored: %+v", result.Diagnostics)
+	for _, tc := range []struct {
+		env  string
+		want bool
+	}{
+		{"SHELLOPTS: nounset", false},
+		{"PATH: /usr/bin", true},
+		{"PATH: /usr/bin, SHELLOPTS: nounset", false},
+	} {
+		t.Run(tc.env, func(t *testing.T) {
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: push\nenv: {"+tc.env+"}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - run: ./bad.sh \"$UNSET\"\n")
+			result, err := session.Files([]string{workflow}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" }); found != tc.want {
+				t.Fatalf("unexpected executable-bit result: %+v", result.Diagnostics)
+			}
+		})
 	}
 }
 
@@ -383,6 +418,16 @@ func TestExecutableBitCheckoutAndFreshIndex(t *testing.T) {
 		{"wrong checkout directory", "path: source", "scripts", false},
 		{"other repository", "repository: owner/other", "", false},
 		{"other ref", "ref: other-branch", "", false},
+		{"empty expression repository", "repository: ${{ '' }}", "", true},
+		{"empty expression ref", "ref: ${{ '' }}", "", true},
+		{"empty expression sparse checkout", "sparse-checkout: ${{ '' }}", "", true},
+		{"null expression ref", "ref: ${{ null }}", "", true},
+		{"whitespace expression ref", "ref: ${{ '  ' }}", "", true},
+		{"whitespace literal ref", "ref: '  '", "", true},
+		{"dynamic repository", "repository: ${{ inputs.repository }}", "", false},
+		{"dynamic ref", "ref: ${{ inputs.ref }}", "", false},
+		{"dynamic sparse checkout", "sparse-checkout: ${{ inputs.paths }}", "", false},
+		{"nonempty expression ref", "ref: ${{ 'other' }}", "", false},
 		{"dynamic path", "path: ${{ github.event.inputs.path }}", "", false},
 		{"checkout outside workspace", "path: ../source", "../source", false},
 		{"working tree updated index", "", "", true},
