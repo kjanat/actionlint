@@ -3,6 +3,7 @@ package actionlint
 import (
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 
@@ -60,7 +61,7 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 	if conditionKnown && !enabled {
 		return nil
 	}
-	if stepMayRunInBackground(step.Background) {
+	if boolMayBeTrue(step.Background) {
 		rule.sequential, rule.pristine = false, false
 		return nil
 	}
@@ -68,13 +69,17 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 	case *ExecParallel:
 		rule.sequential, rule.pristine = false, false
 	case *ExecAction:
-		rule.checkout(command, !conditionKnown)
+		rule.checkout(command, !conditionKnown || boolMayBeTrue(step.ContinueOnError))
 	case *ExecRun:
-		if !conditionKnown || rule.jobEnv || shellEnvironmentUnknown(step.Env) {
+		if rule.jobEnv || shellEnvironmentUnknown(step.Env) {
 			rule.pristine = false
 		}
 		if rule.pristine {
 			rule.checkScript(command)
+		}
+		if !conditionKnown {
+			// Its invocation sees the current state, but its effects may be skipped.
+			rule.pristine = false
 		}
 		if !rule.pristine {
 			rule.repositoryUnknown = true
@@ -96,28 +101,28 @@ func stepCondition(condition *String) (enabled, known bool) {
 	return enabled, known && boolean
 }
 
-func stepMayRunInBackground(background *Bool) bool {
-	if background == nil {
+func boolMayBeTrue(value *Bool) bool {
+	if value == nil {
 		return false
 	}
-	if background.Expression == nil {
-		return background.Value
+	if value.Expression == nil {
+		return value.Value
 	}
-	value, known := workflowExpressionLiteral(background.Expression)
-	enabled, boolean := value.(bool)
+	literal, known := workflowExpressionLiteral(value.Expression)
+	enabled, boolean := literal.(bool)
 	return !known || !boolean || enabled
 }
 
 // A known self checkout establishes which index is represented in the workspace.
 // Opaque actions may change permissions or replace files, so invalidate that state.
-func (rule *RuleExecutableBit) checkout(action *ExecAction, conditionUnknown bool) {
+func (rule *RuleExecutableBit) checkout(action *ExecAction, mayNotComplete bool) {
 	rule.pristine = false
 	if rule.repositoryUnknown {
 		return
 	}
 	// Opaque execution can change Git settings that preserve working-tree modes.
 	rule.repositoryUnknown = true
-	if action.Uses == nil || conditionUnknown || action.InputsExpression != nil {
+	if action.Uses == nil || mayNotComplete || action.InputsExpression != nil {
 		return
 	}
 	name, _, versioned := strings.Cut(action.Uses.Value, "@")
@@ -282,7 +287,7 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 		*directory = runDirectory{kind: directoryUnknown}
 	case "chmod":
 		// Any literal chmod makes the Git-index mode obsolete for its operands.
-		if len(args) < 3 || strings.HasPrefix(args[1], "-") {
+		if len(args) < 3 || !knownChmodMode.MatchString(args[1]) || strings.HasPrefix(args[1], "-") {
 			rule.pristine = false
 			return
 		}
@@ -472,6 +477,9 @@ func (snapshot *gitModeSnapshot) directoryExists(name string) bool {
 	return false
 }
 
+// Model common octal and symbolic modes; other syntax leaves execution unknown.
+var knownChmodMode = regexp.MustCompile(`^([0-7]{1,4}|[ugoa]*([+=-]([rwxXst]*|[ugo]))+(,[ugoa]*([+=-]([rwxXst]*|[ugo]))+)*)$`)
+
 func shellEnvironmentUnknown(env *Env) bool {
 	if env == nil {
 		return false
@@ -486,7 +494,7 @@ func shellEnvironmentUnknown(env *Env) bool {
 		switch variable.Name.Value {
 		case "PATH":
 			return true
-		case "BASH_ENV", "ENV", "CDPATH":
+		case "BASH_ENV", "ENV", "CDPATH", "SHELLOPTS", "BASHOPTS":
 			if variable.Value == nil || variable.Value.Value != "" {
 				return true
 			}
