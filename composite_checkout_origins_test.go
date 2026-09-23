@@ -282,6 +282,39 @@ func TestCompositeConditionalModeCheckoutReset(t *testing.T) {
 	}
 }
 
+func TestCompositeRunnerReadonlyAssignments(t *testing.T) {
+	root, _ := executableFixture(t)
+	writeShellcheckFixture(t, root, "outer/action.yml", "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: ./inner\n")
+	for _, tc := range []struct {
+		runner, shell string
+		want          bool
+	}{
+		{"ubuntu-latest", "sh", true},
+		{"ubuntu-latest", "bash", false},
+		{"macos-latest", "sh", false},
+	} {
+		t.Run(tc.runner+"/"+tc.shell, func(t *testing.T) {
+			metadata := writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: "+tc.shell+"\n      run: UID=0 ./bad.sh\n")
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/readonly.yml", "on: push\njobs:\n  test:\n    runs-on: "+tc.runner+"\n    steps:\n      - uses: actions/checkout@v6\n      - uses: ./outer\n")
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := session.Files([]string{workflow}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Contains(result.Inputs, metadata) {
+				t.Fatalf("nested action not inspected: %v", result.Inputs)
+			}
+			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" && d.Path == metadata })
+			if found != tc.want {
+				t.Fatalf("finding=%v, want %v: %+v", found, tc.want, result.Diagnostics)
+			}
+		})
+	}
+}
+
 func TestCompositeCheckoutPrefixCase(t *testing.T) {
 	command := shellcheckForTest(t)
 	root, _ := executableFixture(t)

@@ -171,6 +171,7 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
 		scoped := newRuleExecutableBit(rule.context)
 		scoped.unix, scoped.sequential, scoped.pristine = rule.unix, rule.sequential, rule.pristine
 		scoped.caseInsensitive = rule.caseInsensitive
+		scoped.shIsDash = rule.shIsDash
 		scoped.repositoryUnknown = rule.repositoryUnknown
 		scoped.actionPristine = rule.actionPristine
 		if stepCanRunAfterFailure(call.If) {
