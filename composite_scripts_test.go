@@ -272,6 +272,8 @@ func TestCompositeExecutableBit(t *testing.T) {
 		{"no checkout", "- uses: ./local", false},
 		{"earlier chmod", "- uses: actions/checkout@v6\n- run: chmod +x bad.sh\n  shell: bash\n  working-directory: ''\n- uses: ./local", false},
 		{"startup env", "- uses: actions/checkout@v6\n- uses: ./local\n  env:\n    BASH_ENV: setup.sh", false},
+		{"caller PATH", "- uses: actions/checkout@v6\n- uses: ./local\n  env: {PATH: /usr/bin}", true},
+		{"caller PATH and startup script", "- uses: actions/checkout@v6\n- uses: ./local\n  env: {PATH: /usr/bin, BASH_ENV: setup.sh}", false},
 		{"background", "- uses: actions/checkout@v6\n- uses: ./local\n  background: true", false},
 		{"background false", "- uses: actions/checkout@v6\n- uses: ./local\n  background: false", true},
 		{"background expression false", "- uses: actions/checkout@v6\n- uses: ./local\n  background: ${{ false }}", true},
@@ -381,6 +383,8 @@ func TestCompositeExecutionState(t *testing.T) {
 		want                             bool
 	}{
 		{"numeric startup env", "- shell: bash\n  env: {BASH_ENV: 123}\n  run: ./bad.sh", "- uses: actions/checkout@v6\n- uses: ./local", false},
+		{"caller PATH chmod uncertainty", "- shell: bash\n  run: chmod +x good.sh && ./bad.sh", "- uses: actions/checkout@v6\n- uses: ./local\n  env: {PATH: tools}", false},
+		{"caller PATH builtin", "- shell: bash\n  run: echo ok; ./bad.sh", "- uses: actions/checkout@v6\n- uses: ./local\n  env: {PATH: /usr/bin}", true},
 		{"checkout clean false", "- uses: actions/checkout@v6\n  with: {clean: false}\n- shell: bash\n  run: ./bad.sh", "- uses: ./local", false},
 		{"conditional checkout", "- uses: actions/checkout@v6", "- uses: ./local\n  if: false\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", false},
 		{"conditional checkout and invocation", "- uses: actions/checkout@v6\n- shell: bash\n  run: ./bad.sh", "- uses: ./local\n  if: false", false},
@@ -474,6 +478,27 @@ func TestCompositeCheckoutMetadataPaths(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestCompositeCheckoutEmptyExpressions(t *testing.T) {
+	root, _ := executableFixture(t)
+	metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: ./source/bad.sh\n")
+	for _, inputs := range []string{
+		"repository: \"${{ '' }}\"",
+		"ref: \"${{ '' }}\"",
+		"sparse-checkout: \"${{ '' }}\"",
+		"repository: \"${{ '' }}\", ref: \"${{ '' }}\", sparse-checkout: \"${{ '' }}\"",
+	} {
+		t.Run(inputs, func(t *testing.T) {
+			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {path: source, "+inputs+"}\n- uses: ./source/local", AnalysisOptions{})
+			if !slices.Contains(result.Inputs, metadata) {
+				t.Fatalf("checkout metadata not resolved: %v", result.Inputs)
+			}
+			if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" && d.Path == metadata }) {
+				t.Fatalf("missing composite script finding: %+v", result.Diagnostics)
+			}
+		})
 	}
 }
 
