@@ -22,8 +22,10 @@ type RuleExecutableBit struct {
 	unix, sequential, pristine          bool
 	changed                             map[string]bool
 	workflowEnv, jobEnv                 bool
+	workflowGitEnv, jobGitEnv           bool
 	workflowPathUnknown, jobPathUnknown bool
 	pathUnknown                         bool
+	caseInsensitive                     bool
 	repositoryUnknown                   bool
 	callerRepositoryUnknown             bool
 }
@@ -36,6 +38,7 @@ func (rule *RuleExecutableBit) VisitWorkflowPre(workflow *Workflow) error {
 	rule.workflowDir = defaultsWorkingDirectory(workflow.Defaults)
 	rule.workflowShell = defaultsShellValue(workflow.Defaults)
 	rule.workflowEnv = shellEnvironmentUnknown(workflow.Env)
+	rule.workflowGitEnv = checkoutEnvironmentUnknown(workflow.Env)
 	rule.workflowPathUnknown = shellPathUnknown(workflow.Env)
 	_, rule.callerRepositoryUnknown = workflow.FindWorkflowCallEvent()
 	return nil
@@ -44,8 +47,10 @@ func (rule *RuleExecutableBit) VisitWorkflowPre(workflow *Workflow) error {
 func (rule *RuleExecutableBit) VisitJobPre(job *Job) error {
 	rule.jobDir, rule.jobShell = defaultsWorkingDirectory(job.Defaults), defaultsShellValue(job.Defaults)
 	rule.jobEnv = rule.workflowEnv || shellEnvironmentUnknown(job.Env)
+	rule.jobGitEnv = rule.workflowGitEnv || checkoutEnvironmentUnknown(job.Env)
 	rule.jobPathUnknown = rule.workflowPathUnknown || shellPathUnknown(job.Env)
 	rule.unix = runnerPlatform(job.RunsOn) == platformKindMacOrLinux
+	rule.caseInsensitive = macOSRunner(job.RunsOn)
 	// Container mounts can replace the checked-out tree. Treat them as unknown.
 	if job.Container != nil {
 		rule.unix = false
@@ -64,7 +69,7 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 	if !rule.unix || !rule.sequential {
 		return nil
 	}
-	enabled, conditionKnown := stepCondition(step.If)
+	enabled, conditionKnown := invocationStepCondition(step.If)
 	if conditionKnown && !enabled {
 		return nil
 	}
@@ -79,6 +84,9 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 	case *ExecParallel:
 		rule.sequential, rule.pristine = false, false
 	case *ExecAction:
+		if rule.jobGitEnv || checkoutEnvironmentUnknown(step.Env) {
+			rule.repositoryUnknown = true
+		}
 		rule.checkout(command, !conditionKnown || boolMayBeTrue(step.ContinueOnError))
 	case *ExecRun:
 		rule.pathUnknown = rule.jobPathUnknown || shellPathUnknown(step.Env)
@@ -239,18 +247,15 @@ func (rule *RuleExecutableBit) checkout(action *ExecAction, mayNotComplete bool)
 	if clean, known := checkoutInput(action, "clean"); !known || clean != "" && !strings.EqualFold(clean, "true") {
 		return
 	}
-	checkout := ""
-	if input := action.Inputs["path"]; input != nil && input.Value != nil {
-		value := workingDirectoryValue(input.Value)
-		if value.kind != directoryKnown || value.path != "" && !localRunnerPath(value.path) {
-			return
-		}
-		if value.path != "" {
-			checkout = path.Clean(value.path)
-		}
-		if checkout == ".." || strings.HasPrefix(checkout, "../") {
-			return
-		}
+	checkout, known := checkoutInput(action, "path")
+	if !known || checkout != "" && !localRunnerPath(checkout) {
+		return
+	}
+	if checkout != "" {
+		checkout = path.Clean(checkout)
+	}
+	if checkout == ".." || strings.HasPrefix(checkout, "../") {
+		return
 	}
 	rule.paths.checkout = checkout
 	rule.pristine = true
@@ -411,7 +416,8 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 	if name == "exec" || name == "command" {
 		arguments = arguments[1:]
 		if len(arguments) > 0 {
-			if option, literal := literalShellWord(arguments[0].Parts); literal && option == "--" {
+			shell := resolveRunShell(run, rule.jobShell, rule.workflowShell, shellValue{})
+			if option, literal := literalShellWord(arguments[0].Parts); literal && option == "--" && (name != "exec" || strings.EqualFold(shell.name, "bash")) {
 				arguments = arguments[1:]
 			}
 		}
@@ -455,8 +461,7 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 	case "cd":
 		if len(args) == 2 && directory.kind == directoryKnown && localRunnerPath(args[1]) && !strings.HasPrefix(args[1], "-") {
 			candidate := joinRunnerPath(directory.path, args[1])
-			snapshot := rule.index()
-			if snapshot.err == nil && snapshot.ordinaryTraversal(candidate+"/", rule.paths.checkout) {
+			if _, known := rule.checkedRunnerPath(candidate + "/"); known {
 				directory.path = candidate
 				return
 			}
@@ -532,12 +537,12 @@ func (rule *RuleExecutableBit) scriptPath(directory runDirectory, script string)
 		return "", false
 	}
 	runnerPath := joinRunnerPath(directory.path, script)
-	file, ok := rule.paths.local(runnerPath)
+	runnerPath, ok := rule.checkedRunnerPath(runnerPath)
 	if !ok {
 		return "", false
 	}
-	snapshot := rule.index()
-	if snapshot.err != nil || !snapshot.ordinaryTraversal(runnerPath, rule.paths.checkout) {
+	file, ok := rule.paths.local(runnerPath)
+	if !ok {
 		return "", false
 	}
 	relative, err := filepath.Rel(rule.paths.workspace, file)
