@@ -37,8 +37,10 @@ type AnalysisOptions struct {
 	LogWriter          io.Writer
 	OnRulesCreated     func([]Rule) []Rule
 	OnFilesSelected    func([]string)
-	// ReadWorkflow reads selected workflow files; nil uses os.ReadFile.
-	ReadWorkflow func(string) ([]byte, error)
+	// ReadFile reads workflows, local action metadata, reusable workflows, and config.
+	// It must support concurrent calls. Nil uses os.ReadFile.
+	// This does not restrict filesystem access by external tools.
+	ReadFile func(string) ([]byte, error)
 }
 
 // AnalysisSession resolves local inputs before handing them to Analyze.
@@ -54,7 +56,7 @@ type AnalysisSession struct {
 	cwd               string
 	stdin             string
 	onFilesSelected   func([]string)
-	readWorkflow      func(string) ([]byte, error)
+	readFile          func(string) ([]byte, error)
 	logSelection      bool
 }
 
@@ -99,7 +101,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 	a := &AnalysisSession{
 		projects: NewProjects(), ctx: opts.Context, cwd: opts.WorkingDir,
 		stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected,
-		readWorkflow:   opts.ReadWorkflow,
+		readFile:       opts.ReadFile,
 		logSelection:   !opts.QuietSelection,
 		request:        AnalysisRequest{ShellCheck: opts.Shellcheck, Pyflakes: opts.Pyflakes, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, PyflakesOptions: opts.PyflakesOptions, OnRulesCreated: opts.OnRulesCreated},
 		analysisLogger: analysisLogger{logOut: opts.LogWriter},
@@ -107,9 +109,11 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 	if a.ctx == nil {
 		a.ctx = context.Background()
 	}
-	if a.readWorkflow == nil {
-		a.readWorkflow = os.ReadFile
+	if a.readFile == nil {
+		a.readFile = os.ReadFile
 	}
+	a.projects.readFile = a.readFile
+	a.request.ReadFile = a.readFile
 	if a.logOut == nil {
 		a.logOut = io.Discard
 	}
@@ -120,7 +124,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 	}
 	var err error
 	if opts.ConfigFile != "" {
-		source, loadErr := readConfigSource(opts.ConfigFile)
+		source, loadErr := readConfigSource(opts.ConfigFile, a.readFile)
 		err = loadErr
 		if err != nil {
 			return nil, err
@@ -227,7 +231,7 @@ func (a *AnalysisSession) readFiles(paths []string, project *Project) (*Analysis
 				return nil, err
 			}
 		}
-		content, err := a.readWorkflow(path)
+		content, err := a.readFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("could not read %q: %w", path, err)
 		}

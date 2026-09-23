@@ -498,19 +498,21 @@ func (md *ActionMetadata) Path() string {
 // This cache is not available across multiple repositories. One LocalActionsCache instance needs
 // to be created per one repository.
 type LocalActionsCache struct {
-	onRead func(string)
-	mu     sync.RWMutex
-	proj   *Project // might be nil
-	cache  map[string]*ActionMetadata
-	dbg    io.Writer
+	onRead   func(string)
+	readFile func(string) ([]byte, error)
+	mu       sync.RWMutex
+	proj     *Project // might be nil
+	cache    map[string]*ActionMetadata
+	dbg      io.Writer
 }
 
 // NewLocalActionsCache creates new LocalActionsCache instance for the given project.
 func NewLocalActionsCache(proj *Project, dbg io.Writer) *LocalActionsCache {
 	return &LocalActionsCache{
-		proj:  proj,
-		cache: map[string]*ActionMetadata{},
-		dbg:   dbg,
+		readFile: os.ReadFile,
+		proj:     proj,
+		cache:    map[string]*ActionMetadata{},
+		dbg:      dbg,
 	}
 }
 
@@ -557,8 +559,12 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 	}
 
 	dir := filepath.Join(c.proj.RootDir(), filepath.FromSlash(spec))
-	b, f, ok := c.readLocalActionMetadataFile(dir)
-	if !ok {
+	b, f, err := c.readLocalActionMetadataFile(dir)
+	if err != nil {
+		c.writeCache(spec, nil)
+		return nil, false, err
+	}
+	if f == "" {
 		c.debug("No action metadata found in %s", dir)
 		// Remember action was not found
 		c.writeCache(spec, nil)
@@ -600,18 +606,23 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 	return &meta, false, nil
 }
 
-func (c *LocalActionsCache) readLocalActionMetadataFile(dir string) ([]byte, string, bool) {
+func (c *LocalActionsCache) readLocalActionMetadataFile(dir string) ([]byte, string, error) {
 	for _, f := range []string{"action.yaml", "action.yml"} {
 		p := filepath.Join(dir, f)
-		if b, err := os.ReadFile(p); err == nil {
-			if c.onRead != nil {
-				c.onRead(p)
-			}
-			return b, f, true
+		b, err := c.readFile(p)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
 		}
+		if err != nil {
+			return nil, "", fmt.Errorf("could not read action metadata in %q: %w", dir, err)
+		}
+		if c.onRead != nil {
+			c.onRead(p)
+		}
+		return b, f, nil
 	}
 
-	return nil, "", false
+	return nil, "", nil
 }
 
 // LocalActionsCacheFactory is a factory to create LocalActionsCache instances. LocalActionsCache

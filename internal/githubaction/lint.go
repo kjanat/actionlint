@@ -129,14 +129,8 @@ func runLinter(req *lintRequest) *lintResult {
 		ConfigFile:         req.configFile,
 		ConfigOverlays:     req.overlays,
 		WorkingDir:         req.workingDir,
-		ReadWorkflow: func(path string) ([]byte, error) {
-			rel, err := workspaceRel(workspace, path, "files")
-			if err != nil {
-				return nil, err
-			}
-			return root.ReadFile(rel)
-		},
-		LogWriter: &logs,
+		ReadFile:           workspaceReader(root, workspace),
+		LogWriter:          &logs,
 		OnConfigLoaded: func(report actionlint.ConfigReport) {
 			result.configs = append(result.configs, report)
 		},
@@ -213,6 +207,16 @@ func runLinter(req *lintRequest) *lintResult {
 	}
 	result.lintOutcome = &lintOutcome{out.String(), logs.String(), actionlint.ExitStatusSuccessNoProblem}
 	return result
+}
+
+func workspaceReader(root *os.Root, workspace string) func(string) ([]byte, error) {
+	return func(path string) ([]byte, error) {
+		rel, err := workspaceRel(workspace, path, "files")
+		if err != nil {
+			return nil, err
+		}
+		return root.ReadFile(rel)
+	}
 }
 
 func toolOptionsInDirectory(options *actionlint.ExternalCommandOptions, directory string) *actionlint.ExternalCommandOptions {

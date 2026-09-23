@@ -55,6 +55,7 @@ func requiredTools(env func(string) string) (actionlint.ExternalToolRequirements
 	session, err := actionlint.NewAnalysisSession(actionlint.AnalysisOptions{
 		WorkingDir: req.workingDir, ConfigFile: req.configFile, ConfigOverlays: req.overlays,
 		Shellcheck: req.shellcheck, Pyflakes: req.pyflakes, IgnorePatterns: req.ignore,
+		ReadFile: workspaceReader(root, workspace),
 	})
 	if err != nil {
 		return none, err
