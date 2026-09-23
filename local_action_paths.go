@@ -64,7 +64,7 @@ func (c *LocalActionsCache) observeCheckout(step *Step) {
 		return
 	}
 	for _, key := range []string{"repository", "ref"} {
-		if input := action.Inputs[key]; input != nil && input.Value != nil && input.Value.Value != "" {
+		if value, known := checkoutInput(action, key); !known || value != "" {
 			return
 		}
 	}

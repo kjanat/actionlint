@@ -150,6 +150,7 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
 			scoped.changed = maps.Clone(rule.changed)
 		}
 		scoped.jobEnv = rule.jobEnv || shellEnvironmentUnknown(call.Env)
+		scoped.jobPathUnknown = rule.jobPathUnknown || shellPathUnknown(call.Env)
 		if conditionKnown && !enabled || boolMayBeTrue(call.Background) {
 			scoped.sequential, scoped.pristine = false, false
 		}

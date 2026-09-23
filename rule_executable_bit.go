@@ -15,16 +15,18 @@ import (
 // of host filesystem permissions and of ShellCheck availability.
 type RuleExecutableBit struct {
 	RuleBase
-	context                    ruleContext
-	workflowDir, jobDir        runDirectory
-	workflowShell, jobShell    shellValue
-	paths                      runPaths
-	unix, sequential, pristine bool
-	changed                    map[string]bool
-	workflowEnv, jobEnv        bool
-	skipFindings               bool
-	repositoryUnknown          bool
-	callerRepositoryUnknown    bool
+	context                             ruleContext
+	workflowDir, jobDir                 runDirectory
+	workflowShell, jobShell             shellValue
+	paths                               runPaths
+	unix, sequential, pristine          bool
+	changed                             map[string]bool
+	workflowEnv, jobEnv                 bool
+	workflowPathUnknown, jobPathUnknown bool
+	pathUnknown                         bool
+	skipFindings                        bool
+	repositoryUnknown                   bool
+	callerRepositoryUnknown             bool
 }
 
 func newRuleExecutableBit(context ruleContext) *RuleExecutableBit {
@@ -35,6 +37,7 @@ func (rule *RuleExecutableBit) VisitWorkflowPre(workflow *Workflow) error {
 	rule.workflowDir = defaultsWorkingDirectory(workflow.Defaults)
 	rule.workflowShell = defaultsShellValue(workflow.Defaults)
 	rule.workflowEnv = shellEnvironmentUnknown(workflow.Env)
+	rule.workflowPathUnknown = shellPathUnknown(workflow.Env)
 	_, rule.callerRepositoryUnknown = workflow.FindWorkflowCallEvent()
 	return nil
 }
@@ -42,6 +45,7 @@ func (rule *RuleExecutableBit) VisitWorkflowPre(workflow *Workflow) error {
 func (rule *RuleExecutableBit) VisitJobPre(job *Job) error {
 	rule.jobDir, rule.jobShell = defaultsWorkingDirectory(job.Defaults), defaultsShellValue(job.Defaults)
 	rule.jobEnv = rule.workflowEnv || shellEnvironmentUnknown(job.Env)
+	rule.jobPathUnknown = rule.workflowPathUnknown || shellPathUnknown(job.Env)
 	rule.unix = runnerPlatform(job.RunsOn) == platformKindMacOrLinux
 	// Container mounts can replace the checked-out tree. Treat them as unknown.
 	if job.Container != nil {
@@ -78,6 +82,7 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 	case *ExecAction:
 		rule.checkout(command, !conditionKnown || boolMayBeTrue(step.ContinueOnError))
 	case *ExecRun:
+		rule.pathUnknown = rule.jobPathUnknown || shellPathUnknown(step.Env)
 		if rule.jobEnv || shellEnvironmentUnknown(step.Env) {
 			rule.pristine = false
 		}
@@ -228,24 +233,12 @@ func (rule *RuleExecutableBit) checkout(action *ExecAction, mayNotComplete bool)
 		return
 	}
 	for _, input := range []string{"repository", "ref", "sparse-checkout"} {
-		if value := action.Inputs[input]; value != nil && value.Value != nil && value.Value.Value != "" {
+		if value, known := checkoutInput(action, input); !known || value != "" {
 			return
 		}
 	}
-	if input := action.Inputs["clean"]; input != nil && input.Value != nil {
-		clean := input.Value.Value
-		if input.Value.ContainsExpression() {
-			literal, known := workflowExpressionLiteral(input.Value)
-			value, scalar := workflowScalarString(literal)
-			if !known || !scalar {
-				return
-			}
-			clean = value
-		}
-		clean = strings.TrimSpace(clean)
-		if clean != "" && !strings.EqualFold(clean, "true") {
-			return
-		}
+	if clean, known := checkoutInput(action, "clean"); !known || clean != "" && !strings.EqualFold(clean, "true") {
+		return
 	}
 	checkout := ""
 	if input := action.Inputs["path"]; input != nil && input.Value != nil {
@@ -264,6 +257,23 @@ func (rule *RuleExecutableBit) checkout(action *ExecAction, mayNotComplete bool)
 	rule.pristine = true
 	rule.repositoryUnknown = false
 	clear(rule.changed)
+}
+
+func checkoutInput(action *ExecAction, name string) (string, bool) {
+	input := action.Inputs[name]
+	if input == nil || input.Value == nil {
+		return "", true
+	}
+	value := input.Value.Value
+	if input.Value.ContainsExpression() {
+		literal, known := workflowExpressionLiteral(input.Value)
+		text, scalar := workflowScalarString(literal)
+		if !known || !scalar {
+			return "", false
+		}
+		value = text
+	}
+	return strings.TrimSpace(value), true
 }
 
 func (rule *RuleExecutableBit) checkScript(run *ExecRun) {
@@ -300,9 +310,13 @@ func (rule *RuleExecutableBit) statement(statement *syntax.Stmt, run *ExecRun, d
 	if !rule.pristine {
 		return
 	}
-	if statement.Background || statement.Negated || len(statement.Redirs) != 0 {
+	if statement.Background || statement.Negated || !rule.redirectsKnown(statement.Redirs, *directory) {
 		rule.pristine = false
 		return
+	}
+	if len(statement.Redirs) != 0 {
+		// Even a literal redirect can overwrite files used by later commands.
+		defer func() { rule.pristine = false }()
 	}
 	switch command := statement.Cmd.(type) {
 	case *syntax.CallExpr:
@@ -318,6 +332,50 @@ func (rule *RuleExecutableBit) statement(statement *syntax.Stmt, run *ExecRun, d
 		// Functions, control flow and subshells need a separate execution model.
 		rule.pristine = false
 	}
+}
+
+func (rule *RuleExecutableBit) redirectsKnown(redirects []*syntax.Redirect, directory runDirectory) bool {
+	for _, redirect := range redirects {
+		if redirect.Word == nil || redirect.Hdoc != nil || redirect.N != nil && !standardShellDescriptor(redirect.N.Value) {
+			return false
+		}
+		target, literal := literalShellWord(redirect.Word.Parts)
+		if !literal {
+			return false
+		}
+		switch redirect.Op {
+		case syntax.DplIn, syntax.DplOut:
+			if !standardShellDescriptor(target) {
+				return false
+			}
+			continue
+		case syntax.RdrIn, syntax.RdrOut, syntax.AppOut, syntax.RdrInOut, syntax.RdrClob, syntax.RdrAll, syntax.AppAll:
+		default:
+			return false
+		}
+		if target == "/dev/null" {
+			continue
+		}
+		name, known := rule.scriptPath(directory, target)
+		if !known || rule.changed[name] {
+			return false
+		}
+		snapshot := rule.index()
+		switch snapshot.modes[name] {
+		case "100644", "100755":
+		case "":
+			if redirect.Op == syntax.RdrIn || snapshot.directoryExists(name) {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+func standardShellDescriptor(value string) bool {
+	return value == "0" || value == "1" || value == "2"
 }
 
 func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, directory *runDirectory) {
@@ -406,6 +464,10 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 		}
 		*directory = runDirectory{kind: directoryUnknown}
 	case "chmod":
+		if rule.pathUnknown {
+			rule.pristine = false
+			return
+		}
 		// Any literal chmod makes the Git-index mode obsolete for its operands.
 		if len(args) < 3 || !knownChmodMode.MatchString(args[1]) || strings.HasPrefix(args[1], "-") {
 			rule.pristine = false
@@ -616,10 +678,19 @@ func shellEnvironmentUnknown(env *Env) bool {
 			return true
 		}
 		switch variable.Name.Value {
-		case "PATH":
-			return true
 		case "BASH_ENV", "ENV", "CDPATH", "SHELLOPTS", "BASHOPTS":
 			if variable.Value == nil || variable.Value.Value != "" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func shellPathUnknown(env *Env) bool {
+	if env != nil {
+		for _, variable := range env.Vars {
+			if variable.Name.Value == "PATH" {
 				return true
 			}
 		}
