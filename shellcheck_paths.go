@@ -91,6 +91,17 @@ func runnerDirectoryPath(path string, platform platformKind) (string, bool) {
 	}
 }
 
+// Absolute paths can name available local directories when the path syntax
+// agrees with the analysis host. Cross-platform runner paths remain unknown.
+func shellcheckDirectoryPath(path string, platform platformKind) (string, bool) {
+	if filepath.IsAbs(path) && (platform == platformKindAny ||
+		platform == platformKindWindows && runtime.GOOS == "windows" ||
+		platform == platformKindMacOrLinux && runtime.GOOS != "windows") {
+		return filepath.Clean(path), true
+	}
+	return runnerDirectoryPath(path, platform)
+}
+
 func (rule *RuleShellcheck) stepDirectory(run *ExecRun) shellcheckDirectory {
 	directory := shellcheckDirectory{directoryKnown, ""}
 	for _, candidate := range []shellcheckDirectory{workingDirectoryValue(run.WorkingDirectory), rule.jobDir, rule.workflowDir} {
@@ -103,31 +114,18 @@ func (rule *RuleShellcheck) stepDirectory(run *ExecRun) shellcheckDirectory {
 	if directory.kind == directoryUnknown {
 		return unknown
 	}
-	path, known := runnerDirectoryPath(directory.path, rule.platform)
+	path, known := shellcheckDirectoryPath(directory.path, rule.platform)
 	if !known {
 		return unknown
 	}
-	// Runner-absolute paths refer to the remote machine; they are not local source roots.
-	windowsDrive := len(path) >= 2 && path[1] == ':' &&
-		(path[0] >= 'A' && path[0] <= 'Z' || path[0] >= 'a' && path[0] <= 'z')
-	if filepath.IsAbs(path) || strings.HasPrefix(path, "/") || windowsDrive {
-		return unknown
+	if !filepath.IsAbs(path) {
+		if strings.HasPrefix(path, "/") {
+			return unknown
+		}
+		path = filepath.Join(rule.paths.workspace, filepath.FromSlash(path))
 	}
-	path = filepath.Join(rule.paths.workspace, filepath.FromSlash(path))
-	relative, err := filepath.Rel(rule.paths.workspace, path)
-	if err != nil || !filepath.IsLocal(relative) {
-		return unknown
-	}
-	workspace, err := filepath.EvalSymlinks(rule.paths.workspace)
+	path, err := filepath.EvalSymlinks(path)
 	if err != nil {
-		return unknown
-	}
-	path, err = filepath.EvalSymlinks(path)
-	if err != nil {
-		return unknown
-	}
-	relative, err = filepath.Rel(workspace, path)
-	if err != nil || !filepath.IsLocal(relative) {
 		return unknown
 	}
 	info, err := os.Stat(path)
