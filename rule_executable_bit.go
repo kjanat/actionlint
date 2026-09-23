@@ -42,6 +42,9 @@ func (rule *RuleExecutableBit) VisitJobPre(job *Job) error {
 	if job.Container != nil {
 		rule.unix = false
 	}
+	if enabled, known := stepCondition(job.If); known && !enabled {
+		rule.unix = false
+	}
 	rule.sequential, rule.pristine = true, false
 	rule.repositoryUnknown = false
 	rule.changed = make(map[string]bool)
@@ -126,8 +129,19 @@ func (rule *RuleExecutableBit) checkout(action *ExecAction, conditionUnknown boo
 			return
 		}
 	}
-	if input := action.Inputs["clean"]; input != nil && input.Value != nil && input.Value.Value != "true" {
-		return
+	if input := action.Inputs["clean"]; input != nil && input.Value != nil {
+		clean := input.Value.Value
+		if input.Value.ContainsExpression() {
+			literal, known := workflowExpressionLiteral(input.Value)
+			value, scalar := workflowScalarString(literal)
+			if !known || !scalar {
+				return
+			}
+			clean = value
+		}
+		if clean != "true" {
+			return
+		}
 	}
 	checkout := ""
 	if input := action.Inputs["path"]; input != nil && input.Value != nil {
@@ -272,7 +286,7 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 			rule.pristine = false
 			return
 		}
-		options := true
+		options, hasOperand := true, false
 		for _, operand := range args[2:] {
 			if options && operand == "--" {
 				options = false
@@ -288,6 +302,10 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 				return
 			}
 			rule.changed[name] = true
+			hasOperand = true
+		}
+		if !hasOperand {
+			rule.pristine = false
 		}
 	case "echo", ":", "true":
 		// Literal arguments and no redirects/substitutions cannot change files.
