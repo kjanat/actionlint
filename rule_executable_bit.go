@@ -55,7 +55,7 @@ func (rule *RuleExecutableBit) VisitJobPre(job *Job) error {
 	rule.unix = runnerPlatform(job.RunsOn) == platformKindMacOrLinux
 	rule.caseInsensitive = macOSRunner(job.RunsOn)
 	// Container mounts can replace the checked-out tree. Treat them as unknown.
-	if job.Container != nil {
+	if job.Container != nil || servicesMayChangeWorkspace(job.Services) {
 		rule.unix = false
 	}
 	if enabled, known := invocationCondition(job.If); known && !enabled {
@@ -66,7 +66,7 @@ func (rule *RuleExecutableBit) VisitJobPre(job *Job) error {
 	rule.actionPristine = knownHostedRunner(job.RunsOn)
 	rule.changed = make(map[string]bool)
 	rule.actionChanged = make(map[string]bool)
-	rule.paths = runPaths{workspace: rule.context.projectRoot, analysis: rule.context.workingDir}
+	rule.paths = runPaths{workspace: rule.context.projectRoot, analysis: rule.context.workingDir, platform: runnerPlatform(job.RunsOn)}
 	return nil
 }
 
@@ -273,7 +273,8 @@ func (rule *RuleExecutableBit) checkout(action *ExecAction, mayNotComplete bool)
 		return
 	}
 	checkout, known := checkoutInput(action, "path")
-	if !known || checkout != "" && !localRunnerPath(checkout) {
+	checkout, representable := runnerRelativePath(checkout, rule.paths.platform)
+	if !known || !representable {
 		return
 	}
 	if checkout != "" {
@@ -493,9 +494,10 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 	}
 	switch args[0] {
 	case "cd":
-		if len(args) == 2 && (directory.kind == directoryKnown || directory.kind == directoryActionKnown) && localRunnerPath(args[1]) && !strings.HasPrefix(args[1], "-") {
-			candidate := joinRunnerPath(directory.path, args[1])
-			if _, known := rule.checkedRunnerPathFor(candidate+"/", rule.paths.directoryOrigin(*directory)); known {
+		if len(args) == 2 && (directory.kind == directoryKnown || directory.kind == directoryActionKnown) && args[1] != "" && !strings.HasPrefix(args[1], "-") {
+			destination, representable := runnerRelativePath(args[1], rule.paths.platform)
+			candidate := joinRunnerPath(directory.path, destination)
+			if _, known := rule.checkedRunnerPathFor(candidate+"/", rule.paths.directoryOrigin(*directory)); known && representable {
 				directory.path = candidate
 				return
 			}
@@ -566,12 +568,14 @@ func simpleShellArgument(parts []syntax.WordPart) bool {
 	return true
 }
 
-func localRunnerPath(value string) bool {
-	return value != "" && !strings.HasPrefix(value, "/") && !strings.ContainsAny(value, "\\:\x00")
-}
-
 func (rule *RuleExecutableBit) scriptPath(directory runDirectory, script string) (string, bool) {
-	if directory.kind != directoryKnown && directory.kind != directoryActionKnown || !localRunnerPath(script) || directory.path != "" && !localRunnerPath(directory.path) {
+	if directory.kind != directoryKnown && directory.kind != directoryActionKnown || script == "" {
+		return "", false
+	}
+	script, scriptKnown := runnerRelativePath(script, rule.paths.platform)
+	directoryPath, directoryKnown := runnerRelativePath(directory.path, rule.paths.platform)
+	directory.path = directoryPath
+	if !scriptKnown || !directoryKnown {
 		return "", false
 	}
 	runnerPath := joinRunnerPath(directory.path, script)
@@ -638,11 +642,16 @@ func literalShellWord(parts []syntax.WordPart) (string, bool) {
 			}
 			out.WriteString(value.Value)
 		case *syntax.DblQuoted:
-			text, ok := literalShellWord(value.Parts)
-			if !ok || value.Dollar {
+			if value.Dollar {
 				return "", false
 			}
-			out.WriteString(text)
+			for _, part := range value.Parts {
+				literal, ok := part.(*syntax.Lit)
+				if !ok || strings.ContainsRune(literal.Value, '\\') {
+					return "", false
+				}
+				out.WriteString(literal.Value)
+			}
 		default:
 			return "", false
 		}
@@ -721,6 +730,9 @@ func shellEnvironmentUnknown(env *Env) bool {
 		return true
 	}
 	for _, variable := range env.Vars {
+		if loaderEnvironmentUnknown(variable) {
+			return true
+		}
 		if strings.HasPrefix(variable.Name.Value, "BASH_FUNC_") && strings.HasSuffix(variable.Name.Value, "%%") {
 			return true
 		}

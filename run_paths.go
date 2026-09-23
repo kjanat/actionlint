@@ -21,6 +21,7 @@ type runDirectory struct {
 }
 
 type runPaths struct {
+	platform          platformKind
 	workspace         string
 	analysis          string
 	checkout          string
@@ -78,6 +79,11 @@ func (paths runPaths) effectiveRunDirectory(run *ExecRun, jobDir, workflowDir ru
 			break
 		}
 	}
+	if normalized, known := runnerDirectoryPath(directory.path, paths.platform); known {
+		directory.path = normalized
+	} else {
+		directory.kind = directoryUnknown
+	}
 	return directory
 }
 
@@ -91,7 +97,8 @@ func (paths runPaths) workingDirectory(value *String) runDirectory {
 		return directory
 	}
 	name, suffix, closed := strings.Cut(expression, "}}")
-	if !closed || strings.Contains(suffix, "${{") || suffix != "" && !strings.HasPrefix(suffix, "/") {
+	suffix, representable := runnerDirectoryPath(suffix, paths.platform)
+	if !closed || !representable || strings.Contains(suffix, "${{") || suffix != "" && !strings.HasPrefix(suffix, "/") {
 		return directory
 	}
 	base := "."
@@ -172,14 +179,12 @@ func (paths runPaths) checkoutFor(relativePath string) (string, bool) {
 
 // Translate a workspace-relative runner path to the local self checkout.
 func (paths runPaths) local(relativePath string) (string, bool) {
-	checkout, known := paths.checkoutFor(relativePath)
-	if !known {
+	relativePath, representable := runnerRelativePath(relativePath, paths.platform)
+	if !representable {
 		return "", false
 	}
-	// Runner-absolute paths refer to the remote machine; they are not local source roots.
-	windowsDrive := len(relativePath) >= 2 && relativePath[1] == ':' &&
-		(relativePath[0] >= 'A' && relativePath[0] <= 'Z' || relativePath[0] >= 'a' && relativePath[0] <= 'z')
-	if filepath.IsAbs(relativePath) || strings.HasPrefix(relativePath, "/") || windowsDrive {
+	checkout, known := paths.checkoutFor(relativePath)
+	if !known {
 		return "", false
 	}
 	relativePath = filepath.FromSlash(relativePath)
@@ -196,4 +201,10 @@ func (paths runPaths) local(relativePath string) (string, bool) {
 		return "", false
 	}
 	return path, true
+}
+
+func runnerRelativePath(value string, platform platformKind) (string, bool) {
+	value, known := runnerDirectoryPath(value, platform)
+	// Runner-absolute paths refer to the remote machine, not a local source root.
+	return value, known && !filepath.IsAbs(value) && !strings.HasPrefix(value, "/") && !strings.ContainsRune(value, '\x00')
 }

@@ -583,6 +583,49 @@ func TestCompositeCheckoutShellcheckWithoutExecutableBit(t *testing.T) {
 	}
 }
 
+func TestCompositeSparseCheckoutSources(t *testing.T) {
+	command := shellcheckForTest(t)
+	root, _ := executableFixture(t)
+	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
+	metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: . ./lib.sh\n    - shell: bash\n      run: echo $UNQUOTED\n")
+	writeShellcheckFixture(t, root, "lib.sh", "if then\n")
+	for _, tc := range []struct {
+		name, sparse string
+		complete     bool
+	}{
+		{"sparse", "local", false},
+		{"dynamic", "'${{ github.event.repository.name }}'", false},
+		{"empty", "''", true},
+		{"empty expression", "\"${{ '' }}\"", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {sparse-checkout: "+tc.sparse+"}\n- uses: ./local", AnalysisOptions{
+				Shellcheck: command,
+				OnRulesCreated: func(rules []Rule) []Rule {
+					return slices.DeleteFunc(rules, func(rule Rule) bool { return rule.Name() == "executable-bit" })
+				},
+			})
+			if !slices.Contains(result.Inputs, metadata) {
+				t.Fatalf("best-effort metadata validation lost: %v", result.Inputs)
+			}
+			inline, sourced := false, false
+			for _, diagnostic := range result.Diagnostics {
+				if diagnostic.Rule != "shellcheck" || diagnostic.Path != metadata {
+					continue
+				}
+				if strings.Contains(diagnostic.Message, "SC2086") {
+					inline = true
+				} else if strings.Contains(diagnostic.Message, "SC1094") {
+					sourced = true
+				}
+			}
+			if !inline || sourced != tc.complete {
+				t.Fatalf("inline=%v, sourced=%v, complete=%v: %+v", inline, sourced, tc.complete, result.Diagnostics)
+			}
+		})
+	}
+}
+
 func TestCompositeCheckoutServerPaths(t *testing.T) {
 	root, _ := executableFixture(t)
 	metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n")
