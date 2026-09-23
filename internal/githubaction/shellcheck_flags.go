@@ -32,6 +32,10 @@ func (f *shellcheckFlags) set(name, value string, accumulate bool) {
 func (f *shellcheckFlags) arguments() []string {
 	var args []string
 	for _, name := range f.order {
+		if name == "check-sourced" {
+			args = append(args, "--check-sourced")
+			continue
+		}
 		if name == "exclude" {
 			continue // Combined with actionlint's built-in exclusions by the rule.
 		}
@@ -113,8 +117,12 @@ func mergeShellcheckFlags(inherited, explicit []string) (*shellcheckFlags, error
 			return fmt.Errorf("--%s exits without checking the workflow", option.name)
 		})
 	}
-	flags.BoolFuncP("check-sourced", "a", "", func(string) error {
-		return errors.New("findings in sourced files cannot yet be mapped to workflow locations")
+	flags.BoolFuncP("check-sourced", "a", "", func(value string) error {
+		if value != "true" {
+			return errors.New("--check-sourced only supports enabling sourced-file findings")
+		}
+		merged.set("check-sourced", value, false)
+		return nil
 	})
 	flags.Func("files-from", "", func(string) error {
 		return errors.New("additional input files cannot be mapped to workflow locations")

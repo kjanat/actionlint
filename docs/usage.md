@@ -652,9 +652,10 @@ selects a configuration.
 Output flags are normalized to the internal JSON1 transport; use the Action's
 `format` input to choose the report format. Help/version/list-only flags and
 additional input files are rejected because they do not produce workflow
-diagnostics. `--check-sourced` is also unsupported until findings in additional
-files can be mapped to their own source locations. Both new inputs are ignored
-when `shellcheck: false`.
+diagnostics. `--check-sourced` (`-a`) reports findings from sourced scripts at
+their own file paths and positions, with source snippets. Automatic fixes remain
+available for supported YAML `run:` blocks. Both new inputs are ignored when
+`shellcheck: false`.
 
 Shell inference follows step, job and workflow defaults, then the runner:
 Windows uses PowerShell, container jobs use `sh`, and other jobs assume Bash.

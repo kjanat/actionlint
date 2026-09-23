@@ -307,7 +307,12 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 		// Synchronize rule.Errorf calls
 		rule.mu.Lock()
 		defer rule.mu.Unlock()
+		sources := make(map[string][]byte)
 		for _, err := range errs {
+			if err.File != "" && err.File != "-" {
+				rule.errs = append(rule.errs, rule.sourcedDiagnostic(err, directory.path, sources))
+				continue
+			}
 			// Dialect overrides can make generated startup options non-portable.
 			// Their warnings have no workflow source location; errors remain configuration failures.
 			line := script.originalLine(err.Line)
@@ -327,9 +332,7 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 			finding := rule.errs[len(rule.errs)-1]
 			finding.code = fmt.Sprintf("SC%d", err.Code)
 			finding.severity = err.Level
-			if err.File == "-" || err.File == "" {
-				finding.fixes = shellcheckDiagnosticFixes(source, script, err.Fix, err.Message)
-			}
+			finding.fixes = shellcheckDiagnosticFixes(source, script, err.Fix, err.Message)
 		}
 
 		return nil

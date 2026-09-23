@@ -1,6 +1,7 @@
 package githubaction
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,7 +16,7 @@ func TestShellcheckArguments(t *testing.T) {
 	for _, value := range []string{
 		`--exclude SC2086`, `[true]`, `[123]`, `null`, "[]\n---\n[]",
 		`["--files-from=-"]`, `["--", "other.sh"]`, `["other.sh"]`, `["--version"]`,
-		`["--list-optional"]`, `["--check-sourced"]`, `["-e"]`,
+		`["--list-optional"]`, `["--check-sourced=false"]`, `["-e"]`,
 		`["-e", "--format=json"]`, `["--severity=banana"]`, `["--extended-analysis=maybe"]`,
 		`["--source-path", "\u0000"]`,
 	} {
@@ -79,6 +80,51 @@ func TestMergeShellcheckFlags(t *testing.T) {
 	want := []string{"--severity", "warning", "--enable", "all", "--source-path", "with spaces"}
 	if args := flags.arguments(); !reflect.DeepEqual(args, want) {
 		t.Fatalf("effective arguments: %q; want %q", args, want)
+	}
+}
+
+func TestActionShellcheckSourcedDiagnostics(t *testing.T) {
+	command, err := exec.LookPath("shellcheck")
+	if err != nil {
+		t.Skipf("ShellCheck required: %s", err)
+	}
+	t.Setenv("SHELLCHECK_OPTS", "")
+	workspace := workspaceWith(t, map[string]string{
+		".git": "", ".github/workflows/.gitkeep": "",
+		"project/workflow.yml":     "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - working-directory: project/app\n        run: . ./lib/check.sh\n",
+		"project/app/lib/check.sh": "# library\necho $VALUE\n",
+	})
+	for _, tc := range []struct{ name, args, inherited string }{
+		{"long flag", `["--check-sourced"]`, ""},
+		{"short flag", `["-a"]`, ""},
+		{"inherited flag", `[]`, "--check-sourced"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resultPath := filepath.Join(t.TempDir(), "result.json")
+			env := map[string]string{
+				"GITHUB_WORKSPACE": workspace, "INPUT_WORKING-DIRECTORY": "project", "INPUT_FILES": "workflow.yml",
+				"ACTIONLINT_SHELLCHECK_COMMAND": command, "INPUT_PYFLAKES": "false", "INPUT_FORMAT": "github",
+				"INPUT_SHELLCHECK-ARGS": tc.args, "SHELLCHECK_OPTS": tc.inherited, "ACTIONLINT_ACTION_RESULT": resultPath,
+			}
+			var out strings.Builder
+			if code := Main(func(key string) string { return env[key] }, &out); code != 1 {
+				t.Fatalf("want findings, got exit %d: %s", code, out.String())
+			}
+			if !strings.Contains(out.String(), "::error file=project/app/lib/check.sh,line=2,col=6,") || !strings.Contains(out.String(), "echo $VALUE") {
+				t.Fatalf("wrong sourced annotation: %s", out.String())
+			}
+			var result persistedResult
+			if err := json.Unmarshal([]byte(read(t, resultPath)), &result); err != nil {
+				t.Fatal(err)
+			}
+			if len(result.Diagnostics) != 1 {
+				t.Fatalf("want one persisted finding: %+v", result.Diagnostics)
+			}
+			finding := result.Diagnostics[0]
+			if finding.Path != filepath.Join(workspace, "project/app/lib/check.sh") || finding.Start.Line != 2 || finding.Snippet != "echo $VALUE" {
+				t.Fatalf("wrong persisted sourced finding: %+v", finding)
+			}
+		})
 	}
 }
 
