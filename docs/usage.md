@@ -318,6 +318,16 @@ An explicit tool flag overrides all three environment settings for that tool.
 See [External linter environment settings](env.md#external-linters) for quoting,
 Windows paths and examples.
 
+ShellCheck runs for recognized shell interpreters or scripts selected by a leading
+native `shell` directive. Configured dialects and command flags alone do not select
+unknown or non-shell scripts.
+
+ShellCheck commands, including wrappers, run in the step's resolved working
+directory so sourced files resolve as they do on the runner. Arguments are passed
+literally; use absolute paths for wrapper-owned files. For ShellCheck rc files,
+use [`tools.shellcheck.config`](config.md#shellcheck), which resolves paths
+relative to the actionlint configuration file.
+
 Your arguments are prepended to actionlint's integration arguments. actionlint
 owns the JSON1 output format and stdin input, so do not pass `-f`/`--format` or
 file arguments. It supplies its default exclusions, rc-file selection and source
@@ -329,8 +339,8 @@ directive, actionlint's configured dialect and the workflow-derived dialect. See
 
 By default, `--norc` disables rc discovery. Set
 [`tools.shellcheck.config`](config.md#shellcheck) to an inline mapping or an rc
-file/directory; an rc path replaces `--norc` with `--rcfile`. The dialect follows
-the workflow's shell settings. Following sourced files (`-x`) can be disabled in
+file/directory; an rc path replaces `--norc` with `--rcfile`. Following sourced
+files (`-x`) can be disabled in
 configuration and is disabled when the step's working directory cannot be resolved
 locally. Additional options can use `-shellcheck '<command line>'` or the
 [`SHELLCHECK_OPTS` environment variable](checks.md#check-shellcheck-integ). pyflakes has no

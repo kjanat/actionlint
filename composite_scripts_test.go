@@ -583,6 +583,32 @@ func TestCompositeCheckoutShellcheckWithoutExecutableBit(t *testing.T) {
 	}
 }
 
+func TestCompositeCheckoutServerPaths(t *testing.T) {
+	root, _ := executableFixture(t)
+	metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n")
+	for _, tc := range []struct {
+		name, server, spec string
+		read               bool
+	}{
+		{"default server", "''", "./source/local", true},
+		{"literal empty server", "\"${{ '' }}\"", "./source/local", true},
+		{"alternate server", "https://git.example.com", "./source/local", false},
+		{"unknown server", "'${{ inputs.server }}'", "./source/local", false},
+		{"best effort metadata", "https://git.example.com", "./local", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {path: source, github-server-url: "+tc.server+"}\n- uses: "+tc.spec, AnalysisOptions{
+				OnRulesCreated: func(rules []Rule) []Rule {
+					return slices.DeleteFunc(rules, func(rule Rule) bool { return rule.Name() == "executable-bit" })
+				},
+			})
+			if read := slices.Contains(result.Inputs, metadata); read != tc.read {
+				t.Fatalf("metadata read = %v, want %v: %v", read, tc.read, result.Inputs)
+			}
+		})
+	}
+}
+
 func TestCompositeCheckoutActionOutputs(t *testing.T) {
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\noutputs:\n  answer:\n    description: test\n    value: '42'\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n")

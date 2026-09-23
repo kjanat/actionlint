@@ -39,7 +39,7 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 	defer delete(active, meta.Path())
 	checkout := v.actions.currentCheckout()
 	defer func() {
-		enabled, known := invocationStepCondition(call.If)
+		enabled, known := invocationCondition(call.If)
 		if known && !enabled {
 			v.actions.setCheckout(checkout)
 		} else if (!known || boolMayBeTrue(call.ContinueOnError) || boolMayBeTrue(call.Background)) && checkout != v.actions.currentCheckout() {
@@ -92,7 +92,7 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 			}
 		}
 	}
-	enabled, conditionKnown := invocationStepCondition(call.If)
+	enabled, conditionKnown := invocationCondition(call.If)
 	for i, parent := range parents {
 		if outer, ok := parent.(*RuleExecutableBit); ok {
 			if inner, ok := children[i].(*RuleExecutableBit); ok {
@@ -145,7 +145,7 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
 		}
 		scoped.paths, scoped.changed = rule.paths, rule.changed
 		scoped.paths.actionPath = actionPath
-		enabled, conditionKnown := invocationStepCondition(call.If)
+		enabled, conditionKnown := invocationCondition(call.If)
 		scoped.skipFindings = rule.skipFindings || !conditionKnown || !enabled
 		if !conditionKnown || !enabled {
 			scoped.changed = maps.Clone(rule.changed)

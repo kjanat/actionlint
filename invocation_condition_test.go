@@ -2,6 +2,28 @@ package actionlint
 
 import "testing"
 
+func TestInvocationCondition(t *testing.T) {
+	for _, tc := range []struct {
+		condition      string
+		enabled, known bool
+	}{
+		{"success() && failure()", false, true},
+		{"${{ success() && failure() }}", false, true},
+		{"true", true, true},
+		{"${{ false }}", false, true},
+		{"success()", true, true},
+		{"success() || failure()", false, false},
+		{"success() && github.event_name == 'push'", false, false},
+	} {
+		t.Run(tc.condition, func(t *testing.T) {
+			enabled, known := invocationCondition(&String{Value: tc.condition})
+			if enabled != tc.enabled || known != tc.known {
+				t.Fatalf("invocationCondition() = %v, %v; want %v, %v", enabled, known, tc.enabled, tc.known)
+			}
+		})
+	}
+}
+
 func TestConditionNeverRuns(t *testing.T) {
 	for _, tc := range []struct {
 		expression string

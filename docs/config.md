@@ -116,17 +116,17 @@ scope; directives later in the script keep their command scope. Shebangs, commen
 and script commands are passed through, with findings mapped back to the original
 YAML positions. The integration uses this dialect precedence:
 
-1. Explicit application settings, then inline `tools.shellcheck.config.shell`.
-2. ShellCheck command arguments, then `SHELLCHECK_OPTS`.
-3. A leading `# shellcheck shell=...` directive.
+1. ShellCheck command arguments, then `SHELLCHECK_OPTS`.
+2. A leading `# shellcheck shell=...` directive.
+3. Explicit application settings, then inline `tools.shellcheck.config.shell`.
 4. The workflow's resolved shell.
 
 Global dialect overrides apply to recognized shell scripts and scripts explicitly
 selected by a directive; they do not opt every unknown or non-shell step into
 ShellCheck. An inferred dialect takes precedence over a shebang because GitHub
-invokes the selected interpreter directly. Explicit dialect changes and native
-shell directives discard inferred startup options to avoid importing options
-from another interpreter.
+invokes the selected interpreter directly. Inferred startup options are retained
+when the selected dialect matches the workflow's interpreter; a different dialect
+discards those options.
 
 Template flags are reduced to their final enabled state before being supplied to
 ShellCheck. ShellCheck 0.11.0 treats the presence of `set -e` or `set -o pipefail`
@@ -142,6 +142,11 @@ working directory: step `working-directory`, then job `defaults.run`, then workf
 from that root, matching GitHub's workspace semantics. For `working-directory:
 app` and `source-path: [scripts]`, ShellCheck searches `app/scripts`; neither the
 config directory nor the workflow file's directory is the base.
+
+The configured ShellCheck command, including a custom wrapper, runs in that
+directory. Its arguments remain literal: pass absolute paths for wrapper-owned
+configuration files that live elsewhere. actionlint cannot infer which arbitrary
+wrapper arguments are paths.
 
 Known literal expressions are resolved. If the working directory is dynamic,
 runner-absolute, outside the repository, or does not exist locally, actionlint

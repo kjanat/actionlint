@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -31,7 +30,7 @@ func (e *cmdExecution) run(ctx context.Context) ([]byte, error) {
 	cmd.Dir = e.dir
 	cmd.Stderr = nil
 	if len(e.env) > 0 {
-		cmd.Env = append(os.Environ(), e.env...)
+		cmd.Env = append(cmd.Environ(), e.env...)
 	}
 	// Let os/exec start the reader before copying stdin. Writing the whole script
 	// before Start can fill the pipe and deadlock, even with a single worker.

@@ -2,7 +2,7 @@ package actionlint
 
 import "strings"
 
-func invocationStepCondition(condition *String) (enabled, known bool) {
+func invocationCondition(condition *String) (enabled, known bool) {
 	if condition != nil {
 		source := condition.Value
 		if !condition.ContainsExpression() {
@@ -23,10 +23,13 @@ const (
 	conditionTrue
 )
 
-// conditionNeverRuns proves a step condition false in every possible status.
-// success() and failure() inspect the same status, but cancelled() inspects the
-// job even inside a composite action, where the other two inspect action_status.
+// conditionNeverRuns proves a job or step condition false in every possible status.
+// For jobs, success requires a successful dependency chain, excluding failure in
+// that chain. For steps, success() and failure() inspect the same execution status.
+// cancelled() inspects the job even inside composites, whose other two status
+// functions inspect action_status instead.
 // Keep cancellation independent and leave unsupported expressions unknown.
+// https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idneeds
 func conditionNeverRuns(expression ExprNode) bool {
 	for _, status := range []string{"success", "failure", "other"} {
 		for _, cancelled := range []bool{false, true} {
