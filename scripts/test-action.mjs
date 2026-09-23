@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 
 const [actionDirectory, binary] = process.argv.slice(2);
 if (!actionDirectory || !binary) throw new Error('Usage: test-action.mjs ACTION_DIRECTORY ACTIONLINT_BINARY');
@@ -13,6 +13,7 @@ const source = process.cwd();
 const entrypoint = resolve(actionDirectory, 'action.mjs');
 const tempRoot = resolve(tmpdir());
 const workspace = await mkdtemp(join(tempRoot, 'actionlint-action-test-'));
+const shared = await mkdtemp(join(tempRoot, 'actionlint-shared-test-'));
 const outputFile = join(workspace, 'github-output');
 const summaryFile = join(workspace, 'github-summary');
 
@@ -179,18 +180,30 @@ try {
 	assert.equal(saved.outputs.get('output-file'), 'actionlint-results.jsonl', saved.log);
 	assert.match(await readFile(join(workspace, 'actionlint-results.jsonl'), 'utf8'), /"message"/);
 	await run({ files: 'testdata/err/one_error.yaml' }, 1);
+	await copyFile(join(source, 'testdata/ok/minimal.yaml'), join(shared, 'workflow.yml'));
+	await writeFile(join(shared, 'actionlint.yaml'), '{}\n');
+	/** @type {Record<string, string>[]} */
+	const externalInputs = [
+		{ files: join(shared, 'workflow.yml') },
+		{ files: relative(workspace, join(shared, 'workflow.yml')) },
+		{ 'working-directory': shared, files: 'workflow.yml' },
+		{ 'working-directory': relative(workspace, shared), files: 'workflow.yml' },
+		{ 'config-file': join(shared, 'actionlint.yaml') },
+		{ 'config-file': relative(workspace, join(shared, 'actionlint.yaml')) },
+	];
+	for (const inputs of externalInputs) await run(inputs);
 	/** @type {Record<string, string>[]} */
 	const invalidInputs = [
 		{ format: 'invalid' },
-		{ 'working-directory': '..' },
+		{ 'working-directory': 'missing-directory' },
 		{ 'output-file': '../escaped.json' },
 		{ 'output-file': '.' },
-		{ 'config-file': '../actionlint.yaml' },
 		{ files: '--help' },
 		{ annotations: 'invalid' },
 		{ 'report-formats': 'xml' },
 	];
 	for (const inputs of invalidInputs) await run(inputs, 2);
+	await run({ 'config-file': join(shared, 'missing.yaml') }, 3);
 	await writeFile(
 		join(workspace, '.github/workflows/custom-runner.yml'),
 		'name: Custom runner\non: push\njobs:\n  test:\n    runs-on: ubuntu-24.04-custom\n    steps:\n      - run: echo hello\n',
@@ -211,4 +224,5 @@ try {
 	console.log('GitHub Action entrypoint tests passed');
 } finally {
 	if (dirname(workspace) === tempRoot) await rm(workspace, { recursive: true, force: true });
+	if (dirname(shared) === tempRoot) await rm(shared, { recursive: true, force: true });
 }

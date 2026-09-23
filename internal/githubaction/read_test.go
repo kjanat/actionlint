@@ -76,7 +76,7 @@ func linkWorkspaceFile(t *testing.T, target, link string) {
 }
 
 func TestActionReportsExternalWorkflowFindings(t *testing.T) {
-	workspace := t.TempDir()
+	workspace := workspaceWith(t, nil)
 	outside := workspaceWith(t, map[string]string{"workflow.yml": brokenWorkflow})
 	file := filepath.Join(outside, "workflow.yml")
 	relative, err := filepath.Rel(workspace, file)

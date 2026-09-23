@@ -96,7 +96,7 @@ func TestActionShellcheckConfigPaths(t *testing.T) {
 }
 
 func TestActionShellcheckExternalConfigSymlink(t *testing.T) {
-	workspace := t.TempDir()
+	workspace := workspaceWith(t, nil)
 	outside := workspaceWith(t, map[string]string{"rc": "disable=SC2086"})
 	linkWorkspaceFile(t, filepath.Join(outside, "rc"), filepath.Join(workspace, "rc"))
 	if _, err := shellcheckConfigPath(workspace, "rc"); err != nil {
