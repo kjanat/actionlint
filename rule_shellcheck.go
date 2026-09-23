@@ -9,6 +9,7 @@ import (
 )
 
 type shellcheckError struct {
+	File      string `json:"file"`
 	Line      int    `json:"line"`
 	EndLine   int    `json:"endLine"`
 	Column    int    `json:"column"`
@@ -300,7 +301,12 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 		// Synchronize rule.Errorf calls
 		rule.mu.Lock()
 		defer rule.mu.Unlock()
+		sources := make(map[string][]byte)
 		for _, err := range errs {
+			if err.File != "" && err.File != "-" {
+				rule.errs = append(rule.errs, rule.sourcedDiagnostic(err, directory.path, sources))
+				continue
+			}
 			// Dialect overrides can make generated startup options non-portable.
 			// Their warnings have no workflow source location; errors remain configuration failures.
 			line := script.originalLine(err.Line)
