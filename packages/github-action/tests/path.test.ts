@@ -269,7 +269,12 @@ test('Windows existing native tools retain executable-local resources while acti
 			shellcheck: { kind: 'existing', executable: shellcheck },
 			pyflakes: { kind: 'existing', executable: pyflakes },
 		}, { RUNNER_TEMP: job, GITHUB_PATH: pathFile });
-		const directory = (await readFile(pathFile, 'utf8')).trim();
+		const publications = (await readdir(job)).filter((name) => name.startsWith('actionlint-bin-'));
+		assert.equal(publications.length, 1);
+		const [publication] = publications;
+		assert.ok(publication);
+		const directory = join(job, publication);
+		assert.equal((await readFile(pathFile, 'utf8')).trim(), directory);
 		assert.deepEqual(await readdir(directory), ['actionlint.exe']);
 		const environment = withPath([directory, existing]);
 		for (const name of ['shellcheck', 'pyflakes']) {
