@@ -88,6 +88,18 @@ func TestShellcheckUnavailableSourcedDiagnostic(t *testing.T) {
 	}
 }
 
+func TestCompositeShellcheckSiblingWorkingDirectory(t *testing.T) {
+	command := shellcheckForTest(t)
+	root, _ := executableFixture(t)
+	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
+	writeShellcheckFixture(t, filepath.Dir(root), "shared/value.sh", "VALUE=42\n")
+	writeShellcheckFixture(t, root, "local/action.yml", "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      working-directory: ../shared\n      run: |\n        . ./value.sh\n        echo $VALUE\n")
+	result := compositeAnalysis(t, root, "- uses: ./local", AnalysisOptions{Shellcheck: command})
+	if len(result.Diagnostics) != 0 {
+		t.Fatalf("composite did not analyze sibling source: %+v", result.Diagnostics)
+	}
+}
+
 func assertShellcheckSourceFile(t *testing.T, got, want string) {
 	t.Helper()
 	actual, err := os.Stat(got)

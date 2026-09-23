@@ -276,19 +276,23 @@ func TestShellcheckWorkingDirectorySymlinks(t *testing.T) {
 	if err := os.Symlink(root, alias); err != nil {
 		t.Skipf("symlinks are unavailable: %v", err)
 	}
-	canonical, err := filepath.EvalSymlinks(inside)
-	if err != nil {
-		t.Fatal(err)
-	}
 	for _, workspace := range []string{root, alias} {
 		for _, directory := range []string{"internal", "external", "chain", "broken"} {
 			t.Run(filepath.Base(workspace)+"/"+directory, func(t *testing.T) {
 				rule := newRuleShellcheck(&externalCommand{})
 				rule.paths.workspace, rule.paths.analysis = workspace, analyzer
 				got := rule.paths.resolve(runDirectory{directoryKnown, directory})
-				if directory == "internal" {
+				if directory != "broken" {
+					target := outside
+					if directory == "internal" {
+						target = inside
+					}
+					canonical, err := filepath.EvalSymlinks(target)
+					if err != nil {
+						t.Fatal(err)
+					}
 					if got.kind != directoryKnown || got.path != canonical {
-						t.Fatalf("internal link should resolve within workspace: %+v", got)
+						t.Fatalf("available linked directory should resolve: %+v", got)
 					}
 				} else if got.kind != directoryUnknown || got.path != analyzer {
 					t.Fatalf("unavailable local directory should use analysis fallback: %+v", got)
@@ -311,7 +315,7 @@ func TestShellcheckSymlinkDirectoryKeepsScriptAnalysis(t *testing.T) {
 		wantFinding  bool
 	}{
 		{"internal", filepath.Join(root, "scripts"), false},
-		{"external", outside, true},
+		{"external", outside, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if err := os.Symlink(tc.target, filepath.Join(root, tc.name)); err != nil {
@@ -330,7 +334,37 @@ func TestShellcheckSymlinkDirectoryKeepsScriptAnalysis(t *testing.T) {
 				return d.Rule == "shellcheck" && strings.Contains(d.Message, "SC2086")
 			})
 			if found != tc.wantFinding {
-				t.Fatalf("source following must depend on resolved containment; SC2086 = %v, diagnostics: %+v", found, result.Diagnostics)
+				t.Fatalf("available source must be analyzed; SC2086 = %v, diagnostics: %+v", found, result.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestShellcheckSiblingWorkingDirectory(t *testing.T) {
+	command := shellcheckForTest(t)
+	parent := t.TempDir()
+	root, shared := filepath.Join(parent, "project"), filepath.Join(parent, "shared")
+	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	writeShellcheckFixture(t, shared, "value.sh", "VALUE=42\n")
+	runner := "ubuntu-latest"
+	if runtime.GOOS == "windows" {
+		runner = "windows-latest"
+	}
+	for _, directory := range []string{"../shared", shared} {
+		t.Run(directory, func(t *testing.T) {
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: push\njobs:\n  test:\n    runs-on: "+runner+"\n    steps:\n      - shell: bash\n        working-directory: '"+directory+"'\n        run: |\n          . ./value.sh\n          echo $VALUE\n")
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := session.Files([]string{workflow}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(result.Diagnostics) != 0 {
+				t.Fatalf("available sibling source not analyzed: %+v", result.Diagnostics)
 			}
 		})
 	}
