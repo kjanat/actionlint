@@ -43,13 +43,14 @@ func TestShellcheckSourcedDiagnostics(t *testing.T) {
 				t.Fatalf("want one sourced finding, got %+v", result.Diagnostics)
 			}
 			finding := result.Diagnostics[0]
-			if finding.Path != path || finding.Start != (DiagnosticPosition{tc.line, 6}) || finding.End != (DiagnosticPosition{tc.line, 12}) {
+			assertShellcheckSourceFile(t, finding.Path, path)
+			if finding.Start != (DiagnosticPosition{tc.line, 6}) || finding.End != (DiagnosticPosition{tc.line, 12}) {
 				t.Fatalf("wrong sourced location: %+v", finding)
 			}
 			if finding.Code != "SC2086" || finding.Snippet != "echo $VALUE" || len(finding.Fixes) != 0 {
 				t.Fatalf("wrong sourced metadata: %+v", finding)
 			}
-			if !slices.Contains(result.Inputs, path) {
+			if !slices.Contains(result.Inputs, finding.Path) {
 				t.Fatalf("sourced diagnostic file missing from inputs: %v", result.Inputs)
 			}
 			legacy := result.legacyErrors()[0].GetTemplateFields([]byte("workflow text"))
@@ -73,7 +74,8 @@ func TestCompositeShellcheckSourcedDiagnostics(t *testing.T) {
 		t.Fatalf("want one sourced finding: %+v", result.Diagnostics)
 	}
 	finding := result.Diagnostics[0]
-	if finding.Path != path || finding.Start != (DiagnosticPosition{1, 6}) || finding.Snippet != "echo $VALUE" {
+	assertShellcheckSourceFile(t, finding.Path, path)
+	if finding.Start != (DiagnosticPosition{1, 6}) || finding.Snippet != "echo $VALUE" {
 		t.Fatalf("sourced finding attributed to composite: %+v", finding)
 	}
 }
@@ -83,5 +85,20 @@ func TestShellcheckUnavailableSourcedDiagnostic(t *testing.T) {
 	finding := rule.sourcedDiagnostic(shellcheckError{File: "missing.sh", Line: 1, Column: 1, Code: 2086, Level: "info", Message: "finding"}, t.TempDir(), make(map[string][]byte))
 	if got := finding.GetTemplateFields([]byte("workflow text")); got.Snippet != "" || !strings.HasSuffix(got.Filepath, "missing.sh") {
 		t.Fatalf("missing source borrowed workflow content: %+v", got)
+	}
+}
+
+func assertShellcheckSourceFile(t *testing.T, got, want string) {
+	t.Helper()
+	actual, err := os.Stat(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected, err := os.Stat(want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(actual, expected) {
+		t.Fatalf("wrong sourced file: got %q, want %q", got, want)
 	}
 }
