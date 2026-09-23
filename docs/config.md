@@ -1,0 +1,582 @@
+# Configuration
+
+This document describes how to configure [actionlint](..) behavior.
+
+The configuration file is optional. Every correctness check runs without it, so actionlint works fine in a repository
+that has no configuration file. The file is where a repository tells actionlint what exists in its own environment,
+and where it turns on the opt-in [policy checks](#policy-checks).
+
+## ShellCheck
+
+Configure ShellCheck in the same `.github/actionlint.yaml` or `.github/actionlint.yml`
+that actionlint already discovers. Both the CLI and GitHub Action apply it automatically:
+
+```yaml
+tools:
+  shellcheck:
+    enabled: true
+    config:
+      disable: [SC2086]
+      enable: [check-unassigned-uppercase]
+      extended-analysis: true
+      external-sources: true
+      source-path: [scripts]
+```
+
+`enabled` defaults to true. `tools: {shellcheck: false}` is shorthand for
+`tools: {shellcheck: {enabled: false}}`; `true` enables it. ShellCheck
+must still be available; this setting does not install it. An empty ShellCheck
+command or the Action's `shellcheck: false` input also disables the tool.
+
+`config` accepts an inline mapping, a file path, or a directory containing
+`.shellcheckrc` or `shellcheckrc` (searched in that order).
+
+```yaml
+tools:
+  shellcheck:
+    enabled: true
+    config: "${{ configdir }}/.shellcheckrc" # Same as ./.shellcheckrc
+```
+
+`${{ configdir }}` is the directory containing the selected **actionlint.yaml or
+actionlint.yml itself**, including a file selected with `--config`. It is also the
+base for ordinary relative config paths. For `.github/actionlint.yaml`, both
+`./.shellcheckrc` and `"${{ configdir }}/.shellcheckrc"` mean `.github/.shellcheckrc`.
+`${{ gitdir }}` names the workflow's repository root, so `"${{ gitdir }}/.github/"` selects an
+rc file in that directory.
+Without a selected configuration file, `${{ configdir }}` falls back to the
+repository root. Without a detected project, the analysis working directory is
+the fallback root. Explicitly selected files must exist and be readable; a
+selected directory must contain one of the two rc filenames.
+
+Paths and inline `source-path` entries accept these interpolations:
+
+| Expression                  | Meaning                                                                                    |
+| --------------------------- | ------------------------------------------------------------------------------------------ |
+| `${{ configdir }}`          | Directory containing the selected actionlint configuration.                                |
+| `${{ gitdir }}`             | Root of the repository being analyzed.                                                     |
+| `${{ github.workspace }}`   | `GITHUB_WORKSPACE` when set; otherwise the local repository root.                          |
+| `${{ github.action_path }}` | Directory of the composite action being analyzed; unavailable for ordinary workflow steps. |
+
+The workspace and repository root can differ, for example with a checkout in a
+subdirectory. A runner's `GITHUB_ACTION_PATH` is used only when it identifies the
+same analyzed action; an unrelated action's installation directory does not replace
+the local metadata directory. Unknown variables, malformed expressions and
+unavailable contexts produce configuration errors. Interpolation accepts only the
+variables listed above, using GitHub's expression delimiters. Values are
+substituted once, without evaluating their contents.
+
+In `actionlint.yaml`, actionlint performs the interpolation. When passing the same
+text through a workflow input, GitHub evaluates expressions first; use a literal
+expression such as `${{ '${{ configdir }}/.shellcheckrc' }}` to pass it through.
+
+The inline mapping accepts these native project-wide settings:
+
+| Key                 | Value                                                   |
+| ------------------- | ------------------------------------------------------- |
+| `disable`           | List of codes, ranges such as `SC3000-SC4000`, or `all` |
+| `enable`            | List of optional check names, or `all`                  |
+| `shell`             | `sh`, `bash`, `dash`, `ksh`, or `busybox`               |
+| `extended-analysis` | Boolean; omit to keep ShellCheck's default              |
+| `external-sources`  | Boolean; defaults to enabled in actionlint              |
+| `source-path`       | List of directories to search for sourced files         |
+
+These settings apply to each checked shell script. `shell` overrides its inferred
+dialect; it does not turn Python or PowerShell steps into shell scripts.
+
+### Script selection and directives
+
+ShellCheck recognizes `bash`, `sh`, `dash`, and `ksh` custom templates, including
+interpreter paths and `.exe` names. For example, `bash -euxo pipefail {0}` supplies
+its startup options to the analysis. Later template options override earlier ones,
+including `+e` and `+o pipefail`. Arguments after `{0}` belong to the script and do
+not change its startup options. Unrecognized options leave startup assumptions
+unset. Templates using `-c` or `-s`, and unknown wrappers, do not establish the
+run block's language.
+
+Select ShellCheck explicitly for an unknown wrapper with a leading native directive:
+
+```yaml
+- shell: custom-shell {0}
+  run: |
+    # shellcheck shell=bash
+    echo "$HOME"
+```
+
+This selects the analyzer and dialect; it does not change what GitHub executes.
+Without that directive, unknown wrappers are skipped by ShellCheck while other
+workflow checks continue. Debug logging explains skipped scripts and the selected
+dialect and startup assumptions. Selecting a dialect does not install ShellCheck
+or override a disabled tool.
+
+Leading [ShellCheck directives][shellcheck-directives] keep their native file-wide
+scope; directives later in the script keep their command scope. Shebangs, comments
+and script commands are passed through, with findings mapped back to the original
+YAML positions. The integration uses this dialect precedence:
+
+1. ShellCheck command arguments, then `SHELLCHECK_OPTS`.
+2. A leading `# shellcheck shell=...` directive.
+3. Explicit application settings, then inline `tools.shellcheck.config.shell`.
+4. The workflow's resolved shell.
+
+Global dialect overrides apply to recognized shell scripts and scripts explicitly
+selected by a directive; they do not opt every unknown or non-shell step into
+ShellCheck. An inferred dialect takes precedence over a shebang because GitHub
+invokes the selected interpreter directly. Inferred startup options are retained
+when the selected dialect matches the workflow's interpreter; a different dialect
+discards those options.
+
+Template flags are reduced to their final enabled state before being supplied to
+ShellCheck. ShellCheck 0.11.0 treats the presence of `set -e` or `set -o pipefail`
+as script-wide evidence even when a later option disables it. Normalization avoids
+introducing that error through our generated startup command. Commands inside the
+user's script remain unchanged and subject to ShellCheck's own analysis limits.
+
+### Source resolution
+
+Relative `source-path` entries and sourced filenames use the run step's effective
+working directory: step `working-directory`, then job `defaults.run`, then workflow
+`defaults.run`, then the repository root. Relative working directories resolve
+from that root, matching GitHub's workspace semantics. For `working-directory:
+app` and `source-path: [scripts]`, ShellCheck searches `app/scripts`; neither the
+config directory nor the workflow file's directory is the base.
+
+The configured ShellCheck command, including a custom wrapper, runs in that
+directory. Its arguments remain literal: pass absolute paths for wrapper-owned
+configuration files that live elsewhere. actionlint cannot infer which arbitrary
+wrapper arguments are paths.
+
+Known literal expressions are resolved. Available directories outside the
+repository, including parent paths, symlinks and native absolute paths, can be
+used for source analysis. If the working directory is dynamic, uses incompatible
+runner path syntax, or does not exist locally, actionlint still checks the script
+but disables following sources because their relative base is unknown. Embedded scripts
+arrive on stdin, so `SCRIPTDIR` does not refer to the YAML file's directory. Keep
+command-specific `source` directives inside the script. This integration checks
+workflow run steps; it does not yet run ShellCheck on composite action steps.
+
+Inline configuration works independently of rc-file discovery, which remains
+disabled by default. A config path explicitly selects an rc file. Configure output
+formats through actionlint's reporting options.
+
+The mapping is tested with ShellCheck 0.11.0. Its native settings have a separate
+[versioned schema][shellcheck-schema], referenced by the main actionlint schema.
+The boolean switch and rc-file path remain part of actionlint's schema. Future
+ShellCheck versions get separate snapshots; existing version files are retained.
+The schema version does not pin a locally installed binary or require the CLI to
+download schemas. New options require corresponding runtime support; optional
+check availability depends on the installed ShellCheck version.
+The reference resolves relative to the main schema. Installed npm packages use
+their bundled `schemas/shellcheck/` files offline; versioned CDN and Git commit
+URLs select files from the same release or revision. The current branch can
+receive documentation and schema corrections for an existing ShellCheck version.
+See the [ShellCheck manual](https://github.com/koalaman/shellcheck/blob/master/shellcheck.1.md).
+
+## Configuration file
+
+Configuration file `actionlint.yaml` or `actionlint.yml` can be put in `.github` directory.
+
+Note: If you're using [Super-Linter][Super-Linter], the file should be placed in a different directory. Please check the project's document.
+
+`actionlint -init-config` includes the YAML Language Server schema directive automatically. For completion, hover
+documentation, and validation in an existing config, add:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kjanat/actionlint/HEAD/actionlint.schema.json
+---
+```
+
+The [JSON Schema](../actionlint.schema.json) includes this fork's settings and is generated from the Go configuration
+types, YAML tags, and comments. Regenerate it with `go generate -run generate-config-schema` (or `go generate` for all
+generated files), then run `dprint fmt actionlint.schema.json` to apply the repository's schema formatting. CI checks
+that it stays up to date. Custom YAML types have explicit mappings in
+[`scripts/generate-config-schema`](../scripts/generate-config-schema/main.go); nullable values and field constraints
+use `jsonschema` struct tags.
+
+The `@kjanat/actionlint` npm package includes and exports the schema for its release. If the package is installed in
+your project, a config at `.github/actionlint.yaml` can use the local schema:
+
+```yaml
+# yaml-language-server: $schema=../node_modules/@kjanat/actionlint/actionlint.schema.json
+```
+
+The published schema is also available through a CDN for editor configuration:
+
+```yaml
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/@kjanat/actionlint/actionlint.schema.json
+```
+
+This URL follows the latest npm release and requires a release containing the schema. See the
+[npm package documentation](../distribution/npm/facade/README.md#configuration-schema) for other CDN URLs and version
+selection.
+
+The schema rejects unknown keys everywhere. Runtime parsing ignores unknown keys at the top level, inside
+`self-hosted-runner`, and inside each `paths` entry. For example, `config-secret` is silently ignored. Both validators
+reject unknown keys inside `policy`, `require-job-timeout`, and `require-permissions`. Go regular expression and glob syntax
+require additional validation by actionlint when it loads the configuration.
+
+```yaml
+# Configuration related to self-hosted runner.
+self-hosted-runner:
+  # Labels of self-hosted runner in array of strings.
+  labels:
+    - linux.2xlarge
+    - windows-latest-xl
+    - linux-multi-gpu
+
+# Configuration variables in array of strings defined in your repository or organization.
+config-variables:
+  - DEFAULT_RUNNER
+  - JOB_NAME
+  - ENVIRONMENT_STAGE
+
+# Secrets in array of strings defined in your repository or organization.
+config-secrets:
+  - DEPLOY_TOKEN
+  - API_KEY
+
+# Which repository "Workflow permissions" setting to assume for a workflow call whose caller
+# declares no permissions at all.
+assume-default-permissions: restricted
+
+# Path-specific configurations.
+paths:
+  # Glob pattern relative to the repository root for matching files. The path separator is always '/'.
+  # This example configures any YAML file under the '.github/workflows/' directory.
+  .github/workflows/**/*.{yml,yaml}:
+    # List of regular expressions to filter errors by the error messages.
+    ignore:
+      # Ignore the specific error from shellcheck
+      - "shellcheck reported issue in this script: SC2086:.+"
+  # This pattern only matches '.github/workflows/release.yml' file.
+  .github/workflows/release.yml:
+    ignore:
+      # Ignore errors from the old runner check. This may be useful for (outdated) self-hosted runner environment.
+      - 'the runtime or service used by ".+" action is retired on GitHub.com'
+```
+
+- `self-hosted-runner`: Configuration for your self-hosted runner environment.
+  - `labels`: Label names added to your self-hosted runners as list of pattern. Glob syntax supported by [`path.Match`][pat]
+    is available.
+- `config-variables`: [Configuration variables][vars]. When an array is set, actionlint will check `vars` properties strictly.
+  An empty array means no variable is allowed. The default value `null` disables the check.
+- `config-secrets`: [Secrets][secrets]. When an array is set, actionlint checks `secrets` properties against the list.
+  Names are compared case-insensitively. An empty array means no secret is allowed. The default value `null` disables
+  the check. The secrets GitHub always provides (`GITHUB_TOKEN`, `ACTIONS_STEP_DEBUG`, `ACTIONS_RUNNER_DEBUG`) are
+  always allowed. Secrets declared in `on.workflow_call.secrets` are also always allowed since a caller passes them.
+- `assume-default-permissions`: Which repository "Workflow permissions" setting actionlint assumes when checking the
+  permissions a [reusable workflow call](checks.md#check-permissions-of-workflow-call) passes on. It only applies to a
+  calling job that declares no `permissions:` and whose workflow declares none either. `restricted` assumes the setting
+  that grants read access to `contents` and `packages` and nothing else. `permissive` assumes the setting that grants
+  write access, which still leaves `id-token` at `none` because OIDC always needs an explicit `permissions:` entry.
+  Leaving the key out is the same as `restricted`. The setting lives in Settings > Actions > General > Workflow
+  permissions, and `gh api repos/{owner}/{repo}/actions/permissions/workflow --jq .default_workflow_permissions` prints
+  `read` for `restricted` and `write` for `permissive`.
+- `paths`: Configurations for specific file path patterns. This is a mapping from a glob pattern and the corresponding
+  configuration.
+  - `{glob}`: A file path glob pattern to apply the configuration. The path separator is always '/'. It is matched to the
+    relative path from the repository root. For example `.github/workflows/**/*.yaml` matches all the workflow files (with
+    `.yaml` file extension). For the glob syntax, please read the [doublestar][doublestar] library's documentation.
+    - `ignore`: The configuration to ignore (filter) the errors by the error messages. This is an array of regular
+      expressions. When one of the patterns matches the error message, the error will be ignored. It's similar to the
+      `-ignore` command line option.
+
+## Policy checks
+
+The keys under `policy` configure checks for cache safety and repository conventions. The three cache policies below
+are **enabled by default**, including when no configuration file exists. The remaining policies are opt-in.
+These checks can report workflows that GitHub accepts: accepting a write grant does not make it safe, and a disabled
+cache operation can silently do nothing.
+
+Each check owns one key. The key name is also the name of the rule, so it is the name in the `[...]` suffix of the
+error message and the value of `{{$err.Kind}}` in the `-format` option. Each one adds its own subsection here, in
+alphabetical order by key.
+
+Writing `false`, or an empty list for a list-valued key, turns that check off. Leaving the key out or writing `null`
+retains its default, so `policy: {}` does not disable cache policies. actionlint reads one configuration file:
+`-config-file` if given, otherwise the repository's.
+
+### cache-call-unrestricted
+
+Enabled by default. Requires an explicit `cache-mode` at a reusable call site, or inherited from its workflow, on
+the low-trust triggers listed under [cache-write-untrusted](#cache-write-untrusted). GitHub's default read-only mode
+does not cap a callee that explicitly asks for write access. Set `cache-mode: read` or `cache-mode: none` to establish
+that cap. This applies to local and remote reusable calls, even when a local callee currently uses only read access;
+the caller's restriction should survive a later callee change. Remote workflows are not downloaded.
+
+```yaml
+policy:
+  cache-call-unrestricted: false
+```
+
+An explicit write-capable mode satisfies the declaration check but is reported separately by
+`cache-write-untrusted`. Invalid declarations produce syntax diagnostics without an additional policy finding.
+
+### cache-operation
+
+Enabled by default. Reports official cache actions whose operation is disabled by the job's effective explicit mode:
+
+| Action                  | Modes reported       |
+| ----------------------- | -------------------- |
+| `actions/cache/save`    | `read`, `none`       |
+| `actions/cache/restore` | `write-only`, `none` |
+| `actions/cache`         | `none`               |
+
+Job declarations override workflow declarations. With `read`, the combined action can still restore; with `write-only`,
+it can still save, so neither produces a finding for the combined action. Omitted modes are not guessed from event
+payloads. Wrappers, custom cache actions and package-manager caching options are not inspected by this check.
+Only the three exact entry points above are recognized. Owner and repository names are case-insensitive, but
+the `save` and `restore` subpaths retain their case. Similarly named repositories and other subpaths are excluded.
+GitHub skips a forbidden operation without failing the job; this diagnostic helps catch ineffective steps.
+
+For local reusable workflows, the check follows nested calls and inherits each caller's explicit cache ceiling.
+When a callee omits its own mode, disabled operations are reported at the caller's `uses` value, including the
+callee reference and job ID. Put a reviewed `cache-operation` suppression on that call site, or disable the
+policy in the caller's configuration. An explicit callee mode is checked in the callee itself; an attempted
+increase beyond the caller's ceiling remains a `workflow-call` error. Remote workflow bodies are not inspected.
+
+```yaml
+policy:
+  cache-operation: false
+```
+
+### cache-write-untrusted
+
+Enabled by default. Reports explicit `write` and `write-only` grants on low-trust triggers that can use caches under
+the default branch. These grants override GitHub's read-only default. If untrusted code or input controls the saved
+contents, a later privileged workflow can consume a poisoned cache.
+
+The checked triggers are `branch_protection_rule`, `check_run`, `check_suite`, `deployment`, `deployment_status`,
+`discussion`, `discussion_comment`, `fork`, `gollum`, `image_version`, `issue_comment`, `issues`, `label`, `milestone`,
+`public`, `pull_request_target`, `status`, `watch`, and `workflow_run`. Deployment events are included because their
+target can be the default branch. A workflow with multiple triggers is checked if any listed trigger is present.
+
+This is a conservative declaration check. It does not prove that attacker-controlled code executes, interpret `if`
+guards, inspect cache keys, or establish the trust of downloaded artifacts. For a reviewed exception, use an
+[inline suppression](#inline-cache-policy-exceptions). Ordinary `pull_request`, review events and `merge_group` use
+their own refs and are not classified as this default-branch cache risk. Trusted write-default events, such as `push`,
+and a standalone `workflow_call` trigger do not produce this finding.
+
+Set `read` or `none` on the affected job. An inherited workflow declaration is reported once, and is not reported
+if every job overrides it with a safe mode. Omitting the mode on an ordinary job retains GitHub's safe trigger default;
+reusable calls are covered separately by `cache-call-unrestricted`.
+
+```yaml
+policy:
+  cache-write-untrusted: false
+```
+
+The event classification follows GitHub's [cache access defaults](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#cache-access-for-low-trust-workflow-triggers)
+and [event ref definitions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows).
+Tests require an explicit trust classification for every event in the generated webhook inventory. An unclassified
+event is conservatively treated as restricted; event syntax validation still runs separately.
+
+### Inline cache policy exceptions
+
+Prefer an exception next to the reviewed declaration over disabling a policy for the entire repository:
+
+```yaml
+on: pull_request_target
+cache-mode: write # actionlint:ignore cache-write-untrusted -- jobs use reviewed default-branch code only
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Report metadata without running pull request code"
+```
+
+Alternatively, put the directive on its own line immediately before the reported declaration:
+
+```yaml
+jobs:
+  report:
+    # actionlint:ignore-next-line cache-call-unrestricted -- reviewed callee manages its own cache limit
+    uses: example/repository/.github/workflows/report.yml@main
+```
+
+Both forms require an exact rule name and a nonempty reason after `--`. A comma-separated list selects multiple
+cache rules. Only `cache-call-unrestricted`, `cache-operation`, and `cache-write-untrusted` can be suppressed this way.
+A directive affects the reported line only, including multiple findings of the selected rule on that line; it does
+not affect other rules or later lines. Duplicate selectors have no additional effect; empty selectors are invalid.
+Scope follows physical lines: a comment after a one-line flow mapping can suppress matching
+findings from multiple entries on that line. Putting a directive above `jobs:` does not cover the jobs below it.
+The first `--` surrounded by spaces starts the reason, which may itself contain `--` or directive-like text.
+
+Only comments attached to a declaration are interpreted. A blank line, another comment or a document separator
+between a preceding directive and its target detaches it; orphan comments at the end of a document are also inert.
+For attached directives, unknown selectors, missing reasons, standalone `ignore` and trailing `ignore-next-line`
+report `inline-suppression` errors.
+
+Use trailing comments on the same physical line as the reported value, or standalone comments immediately before
+that line. For aliases, put the exception at the anchor declaration when the diagnostic points there. Text inside
+quoted YAML strings or `run: |` scripts is not an actionlint directive. General inline ignores for other rules are
+not supported; existing CLI and path-based ignore patterns remain available.
+
+Comments after multiline plain, quoted, tagged or anchored values are interpreted at the comment's physical line.
+If the diagnostic points at the value's opening line, an exception on its closing line does not suppress it.
+
+Inline exceptions are applied before CLI and path-based ignore patterns. Those patterns can filter remaining cache
+findings and `inline-suppression` errors. A valid exception remains valid when another ignore also covers its finding;
+there is no unused-suppression diagnostic. As with workflow parsing, only the first YAML document is inspected.
+
+These findings use normal diagnostic output and exit status 1. Suppression removes only the selected finding; it
+does not change cache access in GitHub Actions.
+
+### disallow-suppressions
+
+Prevent inline exceptions from hiding cache policy findings:
+
+```yaml
+policy:
+  disallow-suppressions: true
+```
+
+With `true` or `{}`, actionlint reports each prohibited directive as `disallow-suppressions` at the comment and
+retains the original violation at its source location. Both `actionlint:ignore` and `actionlint:ignore-next-line`
+are covered. An inline directive cannot exempt itself from this policy. Omission, `null`, or `false` permits
+inline exceptions as described above.
+
+To restrict only specific rules or choose which diagnostics appear:
+
+```yaml
+policy:
+  disallow-suppressions:
+    rules: [cache-call-unrestricted, cache-write-untrusted]
+    report: all
+```
+
+| `report`        | Prohibited directive | Original violation |
+| --------------- | -------------------- | ------------------ |
+| `all` (default) | Reported             | Retained           |
+| `suppression`   | Reported             | Suppressed         |
+| `violation`     | Not reported         | Retained           |
+
+Omitted `rules` selects all supported inline rule IDs. Explicit lists must be nonempty and contain only
+`cache-call-unrestricted`, `cache-operation`, or `cache-write-untrusted`; duplicate entries have no additional
+effect. A directive with multiple selectors can still suppress rules outside the prohibited set. Unknown fields,
+rule IDs, report values, and null mapping fields are configuration errors.
+
+In `all` and `suppression` modes, a valid prohibited directive is reported even when it hides no finding, including
+when the underlying rule is disabled. `violation` mode only retains actual findings; it does not enable disabled
+rules or invent a finding for an unused directive. Malformed directives still produce `inline-suppression` errors
+and suppress nothing. The comment attachment and physical-line scope described above remain unchanged.
+
+These controls follow the distinction between preventing local exceptions ([Rust's `forbid`](https://doc.rust-lang.org/stable/rustc/lints/levels.html#forbid))
+and configuring how the linter handles inline directives ([ESLint's linter options](https://eslint.org/docs/latest/use/configure/configuration-files#configure-linter-options)).
+Unused-directive reporting is a separate concern; enabling this policy does not add an unused-suppression check.
+
+CLI and configured path ignore patterns still run afterwards and can filter either diagnostic. This
+setting governs inline comments; it does not override those explicit filters or changes to the configuration itself.
+Remaining diagnostics use the usual output formats and exit status 1.
+
+Go callers can construct this policy with `DisallowSuppressions("all", "cache-operation")` and assign it to
+`Config.Policy.DisallowSuppressions`. Omit the rule arguments to cover all suppressible rules. Invalid report values
+and rule IDs return an error. `Enabled()`, `Report()` and `Rules()` expose the parsed settings; `Rules()` returns a copy
+of the explicit selection, or `nil` for all rules on an enabled policy. Nil and zero-value policies are disabled.
+
+### require-commit-hash
+
+This check reports a `uses:` which names something that can move. An action and a reusable workflow must give a ref of
+40 or 64 hexadecimal digits, so a tag or a branch name is reported. A `docker://` image must give a digest in the
+`{image}@{algorithm}:{hex}` form, so an image with a tag or with no tag at all is reported. A local reference
+(`./path` or `$/path`) carries no ref and a `uses:` built with `${{ }}` cannot be read, so the check passes over them.
+
+```yaml
+policy:
+  require-commit-hash: true
+```
+
+### require-job-timeout
+
+This check reports a job which sets no `timeout-minutes:`. Such a job is cancelled after GitHub's default of 360
+minutes. A job which calls a reusable workflow with `uses:` cannot set the key, so the check passes over it.
+
+```yaml
+policy:
+  require-job-timeout: true
+```
+
+The value can also be a mapping with `min-minutes` and `max-minutes`. Either bound can be omitted, and both are inclusive.
+Each configured bound must be finite and greater than zero. The minimum must not exceed the maximum; actionlint validates
+that relationship when reading configuration because JSON Schema cannot compare these two property values.
+A value written with `${{ }}` is not compared because actionlint cannot evaluate it statically.
+
+```yaml
+policy:
+  require-job-timeout:
+    min-minutes: 5
+    max-minutes: 60
+```
+
+This configuration accepts literal timeouts from 5 through 60 minutes. `{min-minutes: 5}` requires at least 5 minutes
+without an upper bound. `{}` requires the key without limiting its value.
+
+### require-permissions
+
+This check requires an explicit `permissions:` declaration. It is disabled by default because GitHub accepts workflows
+that inherit the repository's token permissions.
+
+```yaml
+policy:
+  require-permissions: true
+```
+
+`true`, `{}`, and `{scope: workflow}` require a workflow-level declaration. `permissions: {}` satisfies the policy and
+provides an empty baseline; grant the scopes each job needs on that job. A workflow with permissions declared only on
+its jobs still needs the workflow-level declaration under this policy.
+
+For a declaration on every job, use job scope:
+
+```yaml
+policy:
+  require-permissions: { scope: job }
+```
+
+In this mode, a workflow-level declaration does not satisfy the check. Jobs calling reusable workflows are included:
+GitHub permits `permissions:` on those calls, and the called workflow cannot elevate the permissions it receives.
+The existing [reusable workflow permission check](checks.md#check-permissions-of-workflow-call) checks known caller/callee grants.
+
+Either mode accepts an empty mapping, named scopes, `read-all`, or `write-all`. This policy checks whether the declaration
+exists; it does not determine least privilege or require an empty workflow baseline. `assume-default-permissions` does
+not disable the policy or change its diagnostics. Set `false` to disable it, or omit the key or use `null` to leave it unset.
+
+### required-actions
+
+This check reports a workflow which does not use an action this repository requires. An entry is written like a `uses:`
+value and both of its halves are glob patterns. `actions/checkout` accepts any ref, `actions/checkout@v5` accepts that
+ref only, and `actions/checkout@v7*` accepts `v4` and `v4.2.2`. `*` does not match `/`, so `github/codeql-action/*`
+matches every action in that repository. The name is matched case insensitively and the ref is matched case sensitively.
+
+One error per missing action is reported at the first job that runs its own steps. Only the steps written in the workflow file
+are searched, so the steps of a composite action and of a called reusable workflow are not. A workflow whose every job
+calls a reusable workflow runs no step of its own, so it is passed over. So is a workflow with a `uses:` built with
+`${{ }}`, because the action it names is not known before the workflow runs.
+
+```yaml
+policy:
+  required-actions:
+    - actions/checkout
+    - my-org/security-scan@v2*
+```
+
+## Generate the initial configuration
+
+You don't need to write the first configuration file by your hand. `actionlint` command can generate a default configuration
+with `-init-config` flag.
+
+```sh
+actionlint -init-config
+vim .github/actionlint.yaml
+```
+
+---
+
+[Checks](checks.md) | [Installation](install.md) | [Usage](usage.md) | [Go API](api.md) | [References](reference.md)
+
+[Super-Linter]: https://github.com/super-linter/super-linter
+[pat]: https://pkg.go.dev/path#Match
+[vars]: https://docs.github.com/en/actions/learn-github-actions/variables
+[secrets]: https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions
+[doublestar]: https://github.com/bmatcuk/doublestar
+[shellcheck-directives]: https://www.shellcheck.net/wiki/Directive
+[shellcheck-schema]: ../schemas/shellcheck/0.11.0.schema.json
