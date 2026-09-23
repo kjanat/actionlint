@@ -102,7 +102,19 @@ func TestGitIndexSeparateDirectory(t *testing.T) {
 		t.Fatalf("index file: %v: %s", err, output)
 	}
 	snapshot := (&gitModes{}).load(t.Context(), root)
-	if want := filepath.Join(metadata, "index"); snapshot.err != nil || snapshot.index != want {
-		t.Fatalf("separate index location = %q, %v; want %q", snapshot.index, snapshot.err, want)
+	if snapshot.err != nil {
+		t.Fatal(snapshot.err)
+	}
+	actual, err := os.Stat(snapshot.index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(metadata, "index")
+	expected, err := os.Stat(want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(actual, expected) {
+		t.Fatalf("separate index location %q does not identify %q", snapshot.index, want)
 	}
 }
