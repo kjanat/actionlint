@@ -11,10 +11,45 @@ func checkoutEnvironmentUnknown(env *Env) bool {
 		return true
 	}
 	for _, variable := range env.Vars {
+		if loaderEnvironmentUnknown(variable) {
+			return true
+		}
 		switch variable.Name.Value {
 		case "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR",
 			"GIT_CONFIG", "GIT_CONFIG_SYSTEM", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT",
 			"GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE":
+			return true
+		}
+	}
+	return false
+}
+
+// A loader can run code or substitute libraries before the shell or Git starts.
+func loaderEnvironmentUnknown(variable *EnvVar) bool {
+	switch variable.Name.Value {
+	case "LD_PRELOAD", "LD_AUDIT", "DYLD_INSERT_LIBRARIES", "DYLD_IMAGE_SUFFIX", "DYLD_ROOT_PATH":
+		return variable.Value == nil || variable.Value.Value != ""
+	case "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "DYLD_FRAMEWORK_PATH", "DYLD_FALLBACK_LIBRARY_PATH", "DYLD_FALLBACK_FRAMEWORK_PATH":
+		// Empty search-path components may select the current directory.
+		return true
+	default:
+		return false
+	}
+}
+
+// Services run concurrently with every step. Opaque mounts/options can expose
+// the workspace even when the job itself does not run in a container.
+func servicesMayChangeWorkspace(services *Services) bool {
+	if services == nil {
+		return false
+	}
+	if services.Expression != nil {
+		return true
+	}
+	for _, service := range services.Value {
+		container := service.Container
+		if container == nil || container.Expression != nil || container.VolumesExpression != nil || len(container.Volumes) != 0 ||
+			container.Options != nil && container.Options.Value != "" {
 			return true
 		}
 	}

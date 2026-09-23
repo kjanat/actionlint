@@ -55,7 +55,7 @@ func (rule *RuleExecutableBit) VisitJobPre(job *Job) error {
 	rule.unix = runnerPlatform(job.RunsOn) == platformKindMacOrLinux
 	rule.caseInsensitive = macOSRunner(job.RunsOn)
 	// Container mounts can replace the checked-out tree. Treat them as unknown.
-	if job.Container != nil {
+	if job.Container != nil || servicesMayChangeWorkspace(job.Services) {
 		rule.unix = false
 	}
 	if enabled, known := invocationCondition(job.If); known && !enabled {
@@ -642,11 +642,16 @@ func literalShellWord(parts []syntax.WordPart) (string, bool) {
 			}
 			out.WriteString(value.Value)
 		case *syntax.DblQuoted:
-			text, ok := literalShellWord(value.Parts)
-			if !ok || value.Dollar {
+			if value.Dollar {
 				return "", false
 			}
-			out.WriteString(text)
+			for _, part := range value.Parts {
+				literal, ok := part.(*syntax.Lit)
+				if !ok || strings.ContainsRune(literal.Value, '\\') {
+					return "", false
+				}
+				out.WriteString(literal.Value)
+			}
 		default:
 			return "", false
 		}
@@ -725,6 +730,9 @@ func shellEnvironmentUnknown(env *Env) bool {
 		return true
 	}
 	for _, variable := range env.Vars {
+		if loaderEnvironmentUnknown(variable) {
+			return true
+		}
 		if strings.HasPrefix(variable.Name.Value, "BASH_FUNC_") && strings.HasSuffix(variable.Name.Value, "%%") {
 			return true
 		}
