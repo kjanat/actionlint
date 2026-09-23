@@ -62,6 +62,7 @@ type RuleShellcheck struct {
 	workflowShell shellValue
 	jobShell      shellValue
 	runnerShell   shellValue
+	platform      platformKind
 	workflowDir   shellcheckDirectory
 	jobDir        shellcheckDirectory
 	paths         shellcheckPaths
@@ -111,7 +112,8 @@ func (rule *RuleShellcheck) VisitJobPre(n *Job) error {
 	rule.jobShell = defaultsShellValue(n.Defaults)
 	rule.jobDir = defaultsWorkingDirectory(n.Defaults)
 	rule.runnerShell = shellValue{}
-	if runnerPlatform(n.RunsOn) == platformKindWindows {
+	rule.platform = runnerPlatform(n.RunsOn)
+	if rule.platform == platformKindWindows {
 		rule.runnerShell = shellValueFromString(&String{Value: "pwsh"})
 	}
 	if container := shellcheckContainerShell(n.Container); container.kind != shellValueUnspecified {
@@ -126,6 +128,7 @@ func (rule *RuleShellcheck) VisitJobPost(n *Job) error {
 	rule.jobShell = shellValue{}
 	rule.jobDir = shellcheckDirectory{}
 	rule.runnerShell = shellValue{}
+	rule.platform = platformKindAny
 	return nil
 }
 

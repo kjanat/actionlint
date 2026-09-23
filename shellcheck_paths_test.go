@@ -168,6 +168,74 @@ func TestShellcheckSourceWorkingDirectory(t *testing.T) {
 	}
 }
 
+func TestShellcheckRunnerWorkingDirectory(t *testing.T) {
+	command := shellcheckForTest(t)
+	for _, tc := range []struct {
+		name, runner, directory, scope string
+		literal, unknown               bool
+	}{
+		{"Windows step", "windows-latest", `scripts\build`, "step", false, false},
+		{"Windows job default", "windows-latest", `scripts\build`, "job", false, false},
+		{"Windows workflow default", "windows-latest", `scripts\build`, "workflow", false, false},
+		{"Unix literal backslash", "ubuntu-latest", `scripts\build`, "step", true, runtime.GOOS == "windows"},
+		{"Unix slash", "ubuntu-latest", "scripts/build", "step", false, false},
+		{"unknown runner", "self-hosted", `scripts\build`, "step", true, true},
+		{"conflicting platforms", "[self-hosted, windows, linux]", `scripts\build`, "step", true, true},
+		{"Windows rooted", "windows-latest", `\scripts\build`, "step", false, true},
+		{"Windows UNC", "windows-latest", `\\server\share`, "step", false, true},
+		{"Windows escape", "windows-latest", `..\..\scripts\build`, "step", false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			writeShellcheckFixture(t, root, "scripts/build/config.sh", "VALUE=42\n")
+			if runtime.GOOS != "windows" {
+				value := "VALUE='two words'\n"
+				if tc.literal {
+					value = "VALUE=42\n"
+				}
+				writeShellcheckFixture(t, root, `scripts\build/config.sh`, value)
+			}
+			workflow := "on: push\n"
+			if tc.scope == "workflow" {
+				workflow += "defaults:\n  run:\n    working-directory: " + tc.directory + "\n"
+			}
+			workflow += "jobs:\n  test:\n    runs-on: " + tc.runner + "\n"
+			if tc.scope == "job" {
+				workflow += "    defaults:\n      run:\n        working-directory: " + tc.directory + "\n"
+			}
+			workflow += "    steps:\n      - shell: bash\n        run: |\n          . ./config.sh\n          echo $VALUE\n"
+			if tc.scope == "step" {
+				workflow += "        working-directory: " + tc.directory + "\n"
+			}
+			path := writeShellcheckFixture(t, root, ".github/workflows/test.yml", workflow)
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := session.Files([]string{path}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var findings []Diagnostic
+			for _, diagnostic := range result.Diagnostics {
+				if diagnostic.Rule == "shellcheck" {
+					findings = append(findings, diagnostic)
+				}
+			}
+			if tc.unknown {
+				if len(findings) != 1 || !strings.Contains(findings[0].Message, "SC2086") {
+					t.Fatalf("unknown runner path must disable source following: %+v", findings)
+				}
+			} else if len(findings) != 0 {
+				t.Fatalf("source not resolved with runner path semantics: %+v", findings)
+			}
+		})
+	}
+}
+
 func TestShellcheckConfigDirectorySelection(t *testing.T) {
 	root := t.TempDir()
 	if _, err := shellcheckRCFile(root); err == nil {

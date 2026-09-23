@@ -66,6 +66,21 @@ func defaultsWorkingDirectory(defaults *Defaults) shellcheckDirectory {
 	return shellcheckDirectory{}
 }
 
+// Backslashes separate Windows runner paths but name literal Unix characters.
+func runnerDirectoryPath(path string, platform platformKind) (string, bool) {
+	if !strings.Contains(path, `\`) {
+		return path, true
+	}
+	switch platform {
+	case platformKindWindows:
+		return strings.ReplaceAll(path, `\`, "/"), true
+	case platformKindMacOrLinux:
+		return path, runtime.GOOS != "windows"
+	default:
+		return "", false
+	}
+}
+
 func (rule *RuleShellcheck) stepDirectory(run *ExecRun) shellcheckDirectory {
 	directory := shellcheckDirectory{directoryKnown, ""}
 	for _, candidate := range []shellcheckDirectory{workingDirectoryValue(run.WorkingDirectory), rule.jobDir, rule.workflowDir} {
@@ -78,13 +93,17 @@ func (rule *RuleShellcheck) stepDirectory(run *ExecRun) shellcheckDirectory {
 	if directory.kind == directoryUnknown {
 		return unknown
 	}
-	// Runner-absolute paths refer to the remote machine; they are not local source roots.
-	windowsDrive := len(directory.path) >= 2 && directory.path[1] == ':' &&
-		(directory.path[0] >= 'A' && directory.path[0] <= 'Z' || directory.path[0] >= 'a' && directory.path[0] <= 'z')
-	if filepath.IsAbs(directory.path) || strings.HasPrefix(directory.path, "/") || windowsDrive {
+	path, known := runnerDirectoryPath(directory.path, rule.platform)
+	if !known {
 		return unknown
 	}
-	path := filepath.Join(rule.paths.workspace, filepath.FromSlash(directory.path))
+	// Runner-absolute paths refer to the remote machine; they are not local source roots.
+	windowsDrive := len(path) >= 2 && path[1] == ':' &&
+		(path[0] >= 'A' && path[0] <= 'Z' || path[0] >= 'a' && path[0] <= 'z')
+	if filepath.IsAbs(path) || strings.HasPrefix(path, "/") || windowsDrive {
+		return unknown
+	}
+	path = filepath.Join(rule.paths.workspace, filepath.FromSlash(path))
 	relative, err := filepath.Rel(rule.paths.workspace, path)
 	if err != nil || !filepath.IsLocal(relative) {
 		return unknown
