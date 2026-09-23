@@ -22,7 +22,7 @@ func (rule *RuleExecutableBit) checkedRunnerPath(runnerPath string) (string, boo
 }
 
 // Resolve components before collapsing '..', retaining ambiguous index names as
-// unknown. Limit folding to ASCII rather than guessing APFS Unicode normalization.
+// unknown. Only ASCII paths are resolved; APFS Unicode normalization stays unknown.
 func (snapshot *gitModeSnapshot) caseFoldedPath(runnerPath, checkout string) (string, bool) {
 	snapshot.prepareFoldedPaths()
 	parts := strings.Split(runnerPath, "/")
