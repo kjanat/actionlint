@@ -1069,16 +1069,19 @@ line 1, column 6 relative to the script of the `run:` section. When that script 
 source, actionlint reports and underlines the offending range there. This mapping is supported for plain scalars and literal
 blocks. Other scalar forms, such as folded blocks, fall back to reporting the `run:` key when an exact mapping is not safe.
 
-actionlint remembers the default shell and checks what OS the job runs on. Only when the shell is `bash` or `sh`, actionlint
-applies shellcheck to scripts.
+actionlint applies ShellCheck to recognized `bash`, `sh`, `dash`, and `ksh` interpreters, including executable paths and
+supported custom shell templates. A leading `# shellcheck shell=...` directive can select a supported dialect explicitly.
 
 By default, actionlint checks if `shellcheck` command exists in your system and uses it when it is found. The `-shellcheck`
 option on running `actionlint` command takes a command line: a command name, a file path, or a command with flags such as
 `-shellcheck 'shellcheck -e SC2086'`. Those arguments are prepended to the ones actionlint appends itself, so `-f`/`--format`
 and file arguments must not be passed. Setting empty string by `shellcheck=` disables shellcheck integration explicitly.
 
-actionlint runs shellcheck with `--norc`, so a repository `.shellcheckrc` is never read and changing it has no effect. Pass
-the options through `-shellcheck '<command line>'` or the `SHELLCHECK_OPTS` environment variable described below instead.
+By default, actionlint passes `--norc` to disable rc-file discovery. Set
+[`tools.shellcheck.config`](config.md#shellcheck) to inline settings, an rc-file path, or a directory containing
+`.shellcheckrc` or `shellcheckrc`. Selecting an rc file replaces `--norc` with `--rcfile`; relative config paths resolve from
+the selected actionlint configuration file's directory. Additional options can use `-shellcheck '<command line>'` or the
+`SHELLCHECK_OPTS` environment variable described below.
 
 Since both `${{ }}` expression syntax and ShellScript's variable access `$FOO` use `$`, the remaining `${{ }}` confuses
 shellcheck. To avoid it, actionlint replaces `${{ }}` with underscores. For example `echo '${{ matrix.os }}'` is replaced
@@ -1087,22 +1090,11 @@ with `echo '________________'`.
 Some shellcheck rules conflict with the `${{ }}` expression syntax. To avoid errors due to the syntax, [SC1091][SC1091], [SC2050][SC2050],
 [SC2194][SC2194], [SC2154][SC2154], [SC2157][SC2157], [SC2043][SC2043] are disabled.
 
-When what shell is used cannot be determined statically, actionlint assumes `shell: bash` optimistically. For example,
-
-```yaml
-strategy:
-  matrix:
-    os: [ubuntu-latest, macos-latest, windows-latest]
-runs-on: ${{ matrix.os }}
-steps:
-  - name: Show file content
-    run: Get-Content -Path xxx\yyy.txt
-    if: ${{ matrix.os == 'windows-latest' }}
-```
-
-The 'Show file content' script is only run by `pwsh` due to `matrix.os == 'windows-latest'` guard. However, actionlint does not
-know that. It checks the script with shellcheck and it'd probably cause a false-positive (due to file separator). This kind of
-false positives can be avoided by showing the shell name explicitly. It is also better in terms of maintenance of the workflow.
+When an explicit shell expression cannot be resolved, or a custom wrapper's script language cannot be inferred, actionlint
+skips ShellCheck unless a leading native `shell` directive selects a supported dialect. Global dialect settings and command
+flags alone do not select unknown or non-shell scripts. If no shell is configured and the runner platform is unknown,
+actionlint still assumes Bash. Set `shell:` explicitly to identify the interpreter, for example for a step guarded by a
+matrix value:
 
 ```yaml
 - name: Show file content
