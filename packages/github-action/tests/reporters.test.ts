@@ -162,9 +162,11 @@ test('annotations rebase working-directory paths to the workspace without changi
 			},
 		);
 		assert.equal(messages.length, 1);
+		const message = messages[0];
+		assert.ok(message);
 		assert.ok(
-			messages[0]?.startsWith(`::warning file=${example.expected},line=2,endLine=2,col=3,endColumn=7,title=SC2086::`),
-			messages[0],
+			message.startsWith(`::warning file=${example.expected},line=2,endLine=2,col=3,endColumn=7,title=SC2086::`),
+			message,
 		);
 		assert.equal(persisted.diagnostics[0]?.path, example.path);
 	}

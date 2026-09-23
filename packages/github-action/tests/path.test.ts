@@ -41,7 +41,7 @@ test('published actionlint stays runnable after step cleanup and each publicatio
 				['-e', 'process.stdout.write("next step");'],
 				{ cwd: job, env: withPath([...publication].reverse().concat(existing)), encoding: 'utf8', windowsHide: true },
 			);
-			assert.equal(result.status, 0, result.stderr || result.error?.message);
+			assert.equal(result.status, 0, result.stderr || result.error?.message || 'actionlint failed');
 			assert.equal(result.stdout, 'next step');
 		}
 	});
@@ -297,7 +297,10 @@ test('existing tools found through relative PATH remain runnable from a later wo
 		for (const name of ['shellcheck', 'pyflakes']) await copyFile(process.execPath, join(existing, name + extension));
 		await writeFile(join(existing, 'runtime-resource'), 'original sibling resource');
 		const probe = join(job, 'probe.cjs');
-		await writeFile(probe, 'process.stdout.write(require("node:fs").readFileSync(require("node:path").join(require("node:path").dirname(process.execPath), "runtime-resource")));');
+		await writeFile(
+			probe,
+			'process.stdout.write(require("node:fs").readFileSync(require("node:path").join(require("node:path").dirname(process.execPath), "runtime-resource")));',
+		);
 		const relativeDirectory = relative(process.cwd(), existing);
 		const originalEnvironment = withPath([relativeDirectory]);
 		const shellcheck = await which('shellcheck', originalEnvironment, 'native');
@@ -321,10 +324,16 @@ test('existing tools found through relative PATH remain runnable from a later wo
 		assert.ok(shell);
 		for (const name of ['shellcheck', 'pyflakes']) {
 			const args = process.platform === 'win32'
-				? ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', `& ${name} $env:ACTIONLINT_TEST_SCRIPT; exit $LASTEXITCODE`]
+				? [
+					'-NoLogo',
+					'-NoProfile',
+					'-NonInteractive',
+					'-Command',
+					`& ${name} $env:ACTIONLINT_TEST_SCRIPT; exit $LASTEXITCODE`,
+				]
 				: ['-c', `${name} "$ACTIONLINT_TEST_SCRIPT"`];
 			const result = spawnSync(shell, args, { cwd: next, env: environment, encoding: 'utf8', windowsHide: true });
-			assert.equal(result.status, 0, result.stderr || result.error?.message);
+			assert.equal(result.status, 0, result.stderr || result.error?.message || `${name} failed`);
 			assert.equal(result.stdout, 'original sibling resource');
 		}
 		for (const directory of publications) {
