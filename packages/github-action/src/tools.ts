@@ -16,7 +16,7 @@ import {
 import { download, downloadVerified } from '#download';
 import { normalizeEnvironment, subprocessEnvironment } from '#environment';
 import { cacheTool, capture, extractArchive, findTool, temporary, which } from '#native';
-import type { Environment, PyflakesCommand, ToolRequirements } from '#runtime';
+import type { Environment, PyflakesCommand, ShellcheckCommand, ToolRequirements } from '#runtime';
 import { InputError } from '#runtime';
 
 export async function checkExecutable(path: string): Promise<void> {
@@ -58,9 +58,9 @@ export async function nativeBinary(version: string, platform: RunnerPlatform, di
 	return path;
 }
 
-export async function shellcheckBinary(platform: RunnerPlatform): Promise<string> {
+export async function shellcheckBinary(platform: RunnerPlatform): Promise<ShellcheckCommand> {
 	const existing = await which('shellcheck', process.env, 'native');
-	if (existing) return existing;
+	if (existing) return { kind: 'existing', executable: existing };
 
 	const binary = platform.os === 'windows' ? 'shellcheck.exe' : 'shellcheck';
 	const cacheName = `actionlint-shellcheck-${platform.os}`;
@@ -68,7 +68,7 @@ export async function shellcheckBinary(platform: RunnerPlatform): Promise<string
 	if (cached) {
 		const path = join(cached, binary);
 		await checkExecutable(path);
-		return path;
+		return { kind: 'standalone', executable: path };
 	}
 	console.log(`Installing ShellCheck ${shellcheckVersion}`);
 	return temporary(async (directory) => {
@@ -77,7 +77,10 @@ export async function shellcheckBinary(platform: RunnerPlatform): Promise<string
 		const path = join(root, binary);
 		if (platform.os !== 'windows') await chmod(path, 0o755);
 		await checkExecutable(path);
-		return join(await cacheTool(root, cacheName, shellcheckVersion, platform.arch), binary);
+		return {
+			kind: 'standalone',
+			executable: join(await cacheTool(root, cacheName, shellcheckVersion, platform.arch), binary),
+		};
 	});
 }
 
@@ -123,7 +126,7 @@ async function pythonBinary(): Promise<string> {
 export async function pyflakesCommand(platform: RunnerPlatform, launcher: string): Promise<PyflakesCommand> {
 	const existing = await which('pyflakes', process.env, platform.os === 'windows' ? 'native' : 'all');
 	if (existing) {
-		return { kind: 'command', executable: existing };
+		return { kind: 'existing', executable: existing };
 	}
 
 	const executable = await pythonBinary();

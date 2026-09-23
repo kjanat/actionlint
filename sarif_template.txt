@@ -45,8 +45,8 @@
                             {
                                 "physicalLocation": {
                                     "artifactLocation": {
-                                        "uri": {{json $.Filepath}},
-                                        "uriBaseId": "%SRCROOT%"
+                                        "uri": {{json $.Filepath}}{{block "sarifURIBaseID" $}},
+                                        "uriBaseId": "%SRCROOT%"{{end}}
                                     },
                                     "region": {
                                         "startLine": {{$.Line}},

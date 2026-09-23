@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -180,11 +181,29 @@ func runLinter(req *lintRequest) *lintResult {
 	}
 	// Absolute reads must retain the caller's relative spelling in Action output.
 	for i := range analysis.Diagnostics {
-		if path, ok := inputNames[analysis.Diagnostics[i].Path]; ok {
-			analysis.Diagnostics[i].Path = path
+		diagnostic := &analysis.Diagnostics[i]
+		if path, ok := inputNames[diagnostic.Path]; ok {
+			for j := range diagnostic.Fixes {
+				for k := range diagnostic.Fixes[j].Edits {
+					edit := &diagnostic.Fixes[j].Edits[k]
+					if filepath.Clean(edit.Path) == filepath.Clean(diagnostic.Path) {
+						edit.Path = path
+					}
+				}
+			}
+			diagnostic.Path = path
 		}
 	}
-	if err := renderer.Render(&out, analysis); err != nil {
+	sarifAnalysis, err := workspaceSARIFAnalysis(analysis, req.workingDir, workspace)
+	if err != nil {
+		result.lintOutcome = &lintOutcome{"", err.Error() + "\n", actionlint.ExitStatusFailure}
+		return result
+	}
+	selected := analysis
+	if req.format == formatSARIF {
+		selected = sarifAnalysis
+	}
+	if err := renderer.Render(&out, selected); err != nil {
 		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
 		return result
 	}
@@ -192,7 +211,7 @@ func runLinter(req *lintRequest) *lintResult {
 	var sarif bytes.Buffer
 	sarifRenderer, err := actionlint.NewAnalysisRenderer(actionlint.OutputFormatSARIF, "", false)
 	if err == nil {
-		err = sarifRenderer.Render(&sarif, analysis)
+		err = sarifRenderer.Render(&sarif, sarifAnalysis)
 	}
 	if err != nil {
 		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
@@ -209,11 +228,45 @@ func runLinter(req *lintRequest) *lintResult {
 	return result
 }
 
+// Copy the complete result to retain renderer rule/source metadata while keeping
+// persisted diagnostics and non-SARIF formats relative to the analysis directory.
+func workspaceSARIFAnalysis(analysis *actionlint.AnalysisResult, workingDir, workspace string) (*actionlint.AnalysisResult, error) {
+	rebase := func(path string) (string, error) {
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(workingDir, path)
+		}
+		relative, err := filepath.Rel(workspace, path)
+		return filepath.ToSlash(relative), err
+	}
+	result := *analysis
+	result.Diagnostics = slices.Clone(analysis.Diagnostics)
+	for i := range result.Diagnostics {
+		diagnostic := &result.Diagnostics[i]
+		var err error
+		diagnostic.Path, err = rebase(diagnostic.Path)
+		if err != nil {
+			return nil, fmt.Errorf("rebase SARIF diagnostic path: %w", err)
+		}
+		diagnostic.Fixes = slices.Clone(diagnostic.Fixes)
+		for j := range diagnostic.Fixes {
+			fix := &diagnostic.Fixes[j]
+			fix.Edits = slices.Clone(fix.Edits)
+			for k := range fix.Edits {
+				fix.Edits[k].Path, err = rebase(fix.Edits[k].Path)
+				if err != nil {
+					return nil, fmt.Errorf("rebase SARIF fix path: %w", err)
+				}
+			}
+		}
+	}
+	return &result, nil
+}
+
 func workspaceReader(root *os.Root, workspace string) func(string) ([]byte, error) {
 	return func(path string) ([]byte, error) {
 		rel, err := workspaceRel(workspace, path, "files")
 		if err != nil {
-			return nil, err
+			return nil, &os.PathError{Op: "read", Path: path, Err: errors.New("path is outside the repository workspace")}
 		}
 		return root.ReadFile(rel)
 	}

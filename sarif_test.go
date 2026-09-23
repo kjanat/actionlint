@@ -3,6 +3,7 @@ package actionlint
 import (
 	"bytes"
 	"encoding/json"
+	"path/filepath"
 	"runtime"
 	"testing"
 )
@@ -41,13 +42,59 @@ func TestNativeSARIFUNCPaths(t *testing.T) {
 			}
 			result := document.Runs[0].Results[0]
 			const want = "file://server/share/my%20workflow.yml"
-			if got := result.Locations[0].PhysicalLocation.ArtifactLocation.URI; got != want {
-				t.Errorf("diagnostic URI = %q, want %q", got, want)
+			if got := result.Locations[0].PhysicalLocation.ArtifactLocation; got.URI != want || got.URIBaseID != "" {
+				t.Errorf("diagnostic artifact = %+v, want URI %q without base", got, want)
 			}
 			if got := result.Fixes[0].ArtifactChanges[0].ArtifactLocation; got.URI != want || got.URIBaseID != "" {
 				t.Errorf("fix artifact = %+v, want URI %q without base", got, want)
 			}
 		})
+	}
+}
+
+func TestNativeSARIFAbsoluteArtifactBase(t *testing.T) {
+	absolute := filepath.Join(t.TempDir(), "workflow.yml")
+	for _, native := range []bool{false, true} {
+		format, template := OutputFormat(""), SARIFTemplate()
+		if native {
+			format, template = OutputFormatSARIF, ""
+		}
+		renderer, err := NewAnalysisRenderer(format, template, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out bytes.Buffer
+		if native {
+			err = renderer.Render(&out, &AnalysisResult{Diagnostics: []Diagnostic{{Path: absolute, Rule: "test", Message: "test", Start: DiagnosticPosition{1, 1}, End: DiagnosticPosition{1, 2}}}})
+		} else {
+			err = renderer.formatter.Print(&out, []*ErrorTemplateFields{{Filepath: absolute, Kind: "test", Message: "test", Line: 1, Column: 1, EndColumn: 1}})
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		var document struct {
+			Runs []struct {
+				Results []struct {
+					Locations []struct {
+						PhysicalLocation struct{ ArtifactLocation sarifArtifactLocation }
+					}
+				}
+			}
+		}
+		if err := json.Unmarshal(out.Bytes(), &document); err != nil {
+			t.Fatal(err)
+		}
+		artifact := document.Runs[0].Results[0].Locations[0].PhysicalLocation.ArtifactLocation
+		wantBase := "%SRCROOT%"
+		if native {
+			wantBase = ""
+		}
+		if artifact.URIBaseID != wantBase {
+			t.Errorf("native=%v: absolute artifact base = %q, want %q", native, artifact.URIBaseID, wantBase)
+		}
+		if !native && artifact.URI != absolute {
+			t.Errorf("legacy template path changed: %q", artifact.URI)
+		}
 	}
 }
 

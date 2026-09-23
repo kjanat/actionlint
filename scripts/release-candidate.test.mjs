@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -313,3 +313,120 @@ test('another checkout can resume an already pushed ancestry commit', () => {
 	finalizePromotion(fixture.manifest, fixture.release(), fixture.operations);
 	assert.deepEqual(fixture.events, ['fast-forward', 'push', 'publish']);
 });
+
+// Execute the workflow's actual Bash gate. These functions replace both external
+// commands; jq evaluates the real selectors against mock paginated API responses.
+const manualNpmCommands = `
+git() { printf '%s\\n' "$MOCK_COMMIT"; }
+gh() {
+  if [[ "$1" == release ]]; then
+    printf '%s\\n' "$MOCK_PUBLISHED"
+    return
+  fi
+  local endpoint='' selector='' status='' event='' head='' paginate=false
+  shift
+  while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+      --method) shift 2 ;;
+      --paginate) paginate=true; shift ;;
+      --jq) selector="$2"; shift 2 ;;
+      --field)
+        case "$2" in
+          status=*) status="\${2#status=}" ;;
+          event=*) event="\${2#event=}" ;;
+          head_sha=*) head="\${2#head_sha=}" ;;
+          per_page=100|filter=latest) ;;
+          *) return 2 ;;
+        esac
+        shift 2 ;;
+      repos/*) endpoint="$1"; shift ;;
+      *) return 2 ;;
+    esac
+  done
+  [[ "$paginate" == true ]] || return 2
+  case "$endpoint" in
+    repos/kjanat/actionlint/actions/workflows/release.yml/runs)
+      jq -c --arg status "$status" --arg event "$event" --arg head "$head" '
+        .workflow_runs |= map(select(
+          ($status == "" or .status == $status or .conclusion == $status) and
+          ($event == "" or .event == $event) and ($head == "" or .head_sha == $head)
+        ))' <<< "$MOCK_RUN_PAGES" | jq -r "$selector"
+      ;;
+    repos/kjanat/actionlint/actions/runs/*/jobs)
+      [[ "$MOCK_JOBS_ERROR" == false ]] || return 1
+      local run_id="\${endpoint%/jobs}"
+      run_id="\${run_id##*/}"
+      jq -c --arg id "$run_id" '.[$id][]' <<< "$MOCK_JOB_PAGES" | jq -r "$selector"
+      ;;
+    *) return 2 ;;
+  esac
+}
+`;
+
+const verifiedReleaseRun = {
+	id: 101,
+	event: 'release',
+	head_branch: 'v1.17.1',
+	head_sha: '2'.repeat(40),
+	status: 'completed',
+	conclusion: 'failure', // npm failed after candidate verification succeeded.
+};
+const verifiedReleaseJob = { id: 201, name: 'Verify published candidate', status: 'completed', conclusion: 'success' };
+
+for (
+	const scenario of [
+		{ name: 'recovers after npm failed', accepted: true },
+		{ name: 'accepts a successful Release run', run: { conclusion: 'success' }, accepted: true },
+		{ name: 'rejects a running Release run', run: { status: 'in_progress' } },
+		{ name: 'rejects a different tag', run: { head_branch: 'v1.17.2' } },
+		{ name: 'rejects a different commit', run: { head_sha: '3'.repeat(40) } },
+		{ name: 'rejects a different event', run: { event: 'workflow_dispatch', conclusion: 'success' } },
+		{ name: 'rejects failed verification', run: { conclusion: 'success' }, job: { conclusion: 'failure' } },
+		{ name: 'rejects skipped verification', run: { conclusion: 'success' }, job: { conclusion: 'skipped' } },
+		{
+			name: 'rejects incomplete verification',
+			run: { conclusion: 'success' },
+			job: { status: 'in_progress', conclusion: null },
+		},
+		{ name: 'rejects another successful job', run: { conclusion: 'success' }, job: { name: 'Publish npm packages' } },
+		{ name: 'rejects a missing verification job', run: { conclusion: 'success' }, missingJob: true },
+		{ name: 'rejects missing Release runs', missingRun: true },
+		{ name: 'rejects an unpublished release', published: false },
+		{ name: 'rejects a jobs API failure', run: { conclusion: 'success' }, jobsError: true },
+	]
+) {
+	test(`manual npm publishing ${scenario.name}`, async () => {
+		const workflow = await readFile(new URL('../.github/workflows/npm-release.yml', import.meta.url), 'utf8');
+		const match = workflow.match(
+			/ {6}- name: Verify release before manual publishing\r?\n[\s\S]*? {8}run: \|\r?\n((?: {10}.*\r?\n)+)/,
+		);
+		assert.ok(match, 'manual publishing gate must remain covered');
+		const script = match[1].split(/\r?\n/).map((line) => line.slice(10)).join('\n');
+		// Empty first pages exercise gh's multi-page output for both endpoints.
+		const runPages = [{ workflow_runs: [] }, {
+			workflow_runs: scenario.missingRun ? [] : [{ ...verifiedReleaseRun, ...scenario.run }],
+		}];
+		const jobPages = {
+			101: [{ jobs: [] }, {
+				jobs: scenario.missingJob ? [] : [{ ...verifiedReleaseJob, ...scenario.job }],
+			}],
+		};
+		const result = spawnSync('bash', ['--noprofile', '--norc', '-s'], {
+			input: `${manualNpmCommands}\n${script}`,
+			encoding: 'utf8',
+			env: {
+				...process.env,
+				GITHUB_REPOSITORY: 'kjanat/actionlint',
+				RELEASE_TAG: 'v1.17.1',
+				MOCK_COMMIT: verifiedReleaseRun.head_sha,
+				MOCK_PUBLISHED: String(scenario.published !== false),
+				MOCK_RUN_PAGES: runPages.map((page) => JSON.stringify(page)).join('\n'),
+				MOCK_JOB_PAGES: JSON.stringify(jobPages),
+				MOCK_JOBS_ERROR: String(scenario.jobsError === true),
+			},
+		});
+		assert.ifError(result.error);
+		if (scenario.accepted) assert.equal(result.status, 0, result.stdout + result.stderr);
+		else assert.equal(result.status, 1, result.stdout + result.stderr);
+	});
+}

@@ -38,7 +38,7 @@ jobs:
           test -z "${existing_tag}"
       - parallel:
           - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-            with: { go-version-file: go.mod }
+            with: { go-version-file: go.mod, cache: false }
           - uses: &SetupNode actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
             with: &Node24 { node-version: "24", package-manager-cache: false }
           - uses: $/.github/actions/setup-shellcheck
@@ -193,8 +193,6 @@ jobs:
           outputs: type=oci,dest=${{ runner.temp }}/actionlint-container_${{ inputs.version }}.tar
           sbom: true
           provenance: mode=max
-          cache-from: type=gha,scope=release-cli
-          cache-to: type=gha,scope=release-cli,mode=max
           tags: actionlint:candidate
           labels: |
             org.opencontainers.image.version=${{ inputs.version }}

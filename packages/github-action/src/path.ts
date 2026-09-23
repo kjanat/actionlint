@@ -1,5 +1,5 @@
 import { appendFile, chmod, copyFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { extname, join } from 'node:path';
+import { join } from 'node:path';
 
 import { normalizeEnvironment } from '#environment';
 import type { Environment, InstalledTools } from '#runtime';
@@ -24,20 +24,18 @@ async function writeWrapper(directory: string, name: string, executable: string,
 	}
 }
 
-async function publishCommand(directory: string, name: string, executable: string): Promise<void> {
-	const extension = extname(executable).toLowerCase();
-	if (process.platform === 'win32' && ['.exe', '.com'].includes(extension)) {
-		// Preserve direct executable spawning for native command consumers.
-		await copyFile(executable, join(directory, `${name}${extension}`));
-	} else {
-		await writeWrapper(directory, name, executable);
-	}
+async function publishBinary(directory: string, name: string, source: string): Promise<void> {
+	const executable = join(directory, process.platform === 'win32' ? `${name}.exe` : name);
+	await copyFile(source, executable);
+	await chmod(executable, 0o755);
 }
 
 // Published binaries are invocation-specific job artifacts, never a reusable cache.
 export async function publishTools(tools: InstalledTools, environment: Environment): Promise<void> {
 	environment = normalizeEnvironment(environment);
-	if (!tools.actionlint && !tools.shellcheck && !tools.pyflakes) return;
+	// Existing tools were found under their command names on PATH. Keep their
+	// original locations and ordering: executables may need sibling resources.
+	if (!tools.actionlint && tools.shellcheck?.kind !== 'standalone' && tools.pyflakes?.kind !== 'python') return;
 	const root = environment.RUNNER_TEMP;
 	const pathFile = environment.GITHUB_PATH;
 	if (!pathFile) throw new Error('Publishing tools requires GITHUB_PATH');
@@ -46,16 +44,12 @@ export async function publishTools(tools: InstalledTools, environment: Environme
 	const directory = await mkdtemp(join(root, 'actionlint-bin-'));
 	try {
 		if (tools.actionlint) {
-			const executable = join(directory, process.platform === 'win32' ? 'actionlint.exe' : 'actionlint');
-			await copyFile(tools.actionlint, executable);
-			await chmod(executable, 0o755);
+			await publishBinary(directory, 'actionlint', tools.actionlint);
 		}
-		if (tools.shellcheck) {
-			await publishCommand(directory, 'shellcheck', tools.shellcheck);
+		if (tools.shellcheck?.kind === 'standalone') {
+			await publishBinary(directory, 'shellcheck', tools.shellcheck.executable);
 		}
-		if (pyflakes?.kind === 'command') {
-			await publishCommand(directory, 'pyflakes', pyflakes.executable);
-		} else if (pyflakes?.kind === 'python') {
+		if (pyflakes?.kind === 'python') {
 			await writeWrapper(
 				directory,
 				'pyflakes',

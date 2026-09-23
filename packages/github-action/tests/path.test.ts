@@ -116,7 +116,10 @@ test('exported ShellCheck preserves spaced paths and arguments in subsequent ste
 		const shellcheck = join(directory, process.platform === 'win32' ? 'shellcheck.exe' : 'shellcheck');
 		await copyFile(process.execPath, shellcheck);
 		const pathFile = join(job, 'github-path');
-		await publishTools({ shellcheck }, { RUNNER_TEMP: job, GITHUB_PATH: pathFile });
+		await publishTools({ shellcheck: { kind: 'standalone', executable: shellcheck } }, {
+			RUNNER_TEMP: job,
+			GITHUB_PATH: pathFile,
+		});
 		const environment = withPath((await readFile(pathFile, 'utf8')).trim().split('\n'));
 		const script = join(job, 'argument probe.cjs');
 		await writeFile(script, 'process.stdout.write(JSON.stringify(process.argv.slice(2))); process.exitCode = 7;');
@@ -164,15 +167,16 @@ test('publication isolates selected tools from conflicting siblings without chan
 		const pathFile = join(job, 'github-path');
 		await publishTools({
 			actionlint: process.execPath,
-			shellcheck,
-			pyflakes: { kind: 'command', executable: pyflakes },
+			shellcheck: { kind: 'standalone', executable: shellcheck },
+			pyflakes: { kind: 'existing', executable: pyflakes },
 		}, { RUNNER_TEMP: job, GITHUB_PATH: pathFile });
 		const paths = (await readFile(pathFile, 'utf8')).trim().split('\n');
 		assert.equal(paths.length, 1);
 		assert.notEqual(paths[0], shellcheckDirectory);
 		assert.notEqual(paths[0], pyflakesDirectory);
-		const environment = withPath([...paths, configured, shellcheckDirectory, pyflakesDirectory]);
+		const environment = withPath([...paths, configured, pyflakesDirectory, shellcheckDirectory]);
 		assert.equal(await which('unrelated', environment), unrelated);
+		assert.equal(await which('pyflakes', environment), pyflakes);
 		for (const name of ['actionlint', 'shellcheck', 'pyflakes', 'unrelated']) {
 			const result = await capture(
 				name,
@@ -185,7 +189,7 @@ test('publication isolates selected tools from conflicting siblings without chan
 	});
 });
 
-test('published command wrappers retain sibling dependencies, spaced paths, arguments and exit codes', async () => {
+test('existing command scripts retain their PATH location and sibling dependencies', async () => {
 	await temporary(async (job) => {
 		const directory = join(job, "selected 'tools' with spaces");
 		await mkdir(directory);
@@ -198,13 +202,13 @@ test('published command wrappers retain sibling dependencies, spaced paths, argu
 			: `#!/bin/sh\nexec '${process.execPath.replaceAll("'", "'\\''")}' "\${0%/*}/probe.cjs" "$@"\n`;
 		await writeFile(pyflakes, command, { mode: 0o755 });
 		const pathFile = join(job, 'github-path');
-		await publishTools({ pyflakes: { kind: 'command', executable: pyflakes } }, {
+		await publishTools({ pyflakes: { kind: 'existing', executable: pyflakes } }, {
 			RUNNER_TEMP: job,
 			GITHUB_PATH: pathFile,
 		});
-		const published = (await readFile(pathFile, 'utf8')).trim();
-		assert.notEqual(published, directory);
-		const environment = withPath([published]);
+		await assert.rejects(readFile(pathFile), { code: 'ENOENT' });
+		const environment = withPath([directory]);
+		assert.equal(await which('pyflakes', environment), pyflakes);
 		const args = ['argument with spaces', 'second'];
 		const nextStep = join(job, 'next-step.cmd');
 		if (process.platform === 'win32') {
@@ -218,25 +222,62 @@ test('published command wrappers retain sibling dependencies, spaced paths, argu
 	});
 });
 
-test('Windows publication preserves native command extensions and PATHEXT lookup', {
+test('Windows existing commands retain native extensions and PATHEXT lookup', {
 	skip: process.platform !== 'win32',
 }, async () => {
 	await temporary(async (job) => {
-		const command = join(job, 'selected.COM');
+		const command = join(job, 'shellcheck.COM');
 		await copyFile(process.execPath, command);
 		const pathFile = join(job, 'github-path');
-		await publishTools({ shellcheck: command, pyflakes: { kind: 'command', executable: command } }, {
+		await publishTools({ shellcheck: { kind: 'existing', executable: command } }, {
 			RUNNER_TEMP: job,
 			GITHUB_PATH: pathFile,
 		});
-		const published = (await readFile(pathFile, 'utf8')).trim();
-		const environment = { ...withPath([published]), PATHEXT: '.COM;.EXE' };
+		await assert.rejects(readFile(pathFile), { code: 'ENOENT' });
+		const environment = { ...withPath([job]), PATHEXT: '.COM;.EXE' };
+		const executable = await which('shellcheck', environment, 'native');
+		assert.equal(executable.toLowerCase(), command.toLowerCase());
+		const result = await capture(executable, ['-e', 'process.stdout.write("native");'], environment);
+		assert.equal(result.exitCode, 0, result.stderr);
+		assert.equal(result.stdout, 'native');
+	});
+});
+
+test('Windows existing native tools retain executable-local resources while actionlint is exported', {
+	skip: process.platform !== 'win32',
+}, async () => {
+	await temporary(async (job) => {
+		const existing = join(job, 'existing tools');
+		await mkdir(existing);
+		const shellcheck = join(existing, 'shellcheck.exe');
+		const pyflakes = join(existing, 'pyflakes.exe');
+		for (const executable of [shellcheck, pyflakes]) await copyFile(process.execPath, executable);
+		await writeFile(join(existing, 'runtime-resource'), 'native resources');
+		const args = [
+			'-e',
+			'process.stdout.write(require("node:fs").readFileSync(require("node:path").join(require("node:path").dirname(process.execPath), "runtime-resource"))); process.exitCode = 7;',
+		];
+		const originalEnvironment = withPath([existing]);
+		for (const name of ['shellcheck', 'pyflakes']) {
+			const original = await capture(name, args, originalEnvironment);
+			assert.equal(original.exitCode, 7, original.stderr);
+			assert.equal(original.stdout, 'native resources');
+		}
+		const pathFile = join(job, 'github-path');
+		await publishTools({
+			actionlint: process.execPath,
+			shellcheck: { kind: 'existing', executable: shellcheck },
+			pyflakes: { kind: 'existing', executable: pyflakes },
+		}, { RUNNER_TEMP: job, GITHUB_PATH: pathFile });
+		const directory = (await readFile(pathFile, 'utf8')).trim();
+		assert.deepEqual(await readdir(directory), ['actionlint.exe']);
+		const environment = withPath([directory, existing]);
 		for (const name of ['shellcheck', 'pyflakes']) {
 			const executable = await which(name, environment, 'native');
-			assert.equal(executable, join(published, `${name}.com`));
-			const result = await capture(executable, ['-e', 'process.stdout.write("native");'], environment);
-			assert.equal(result.exitCode, 0, result.stderr);
-			assert.equal(result.stdout, 'native');
+			assert.equal(executable, join(existing, `${name}.exe`));
+			const result = await capture(executable, args, environment);
+			assert.equal(result.exitCode, 7, result.stderr);
+			assert.equal(result.stdout, 'native resources');
 		}
 	});
 });
@@ -246,9 +287,12 @@ test('publishing no tools leaves PATH untouched and failed publication cleans it
 		const pathFile = join(job, 'github-path');
 		await publishTools({}, { RUNNER_TEMP: job, GITHUB_PATH: pathFile });
 		assert.deepEqual(await readdir(job), []);
-		await assert.rejects(publishTools({ shellcheck: process.execPath }, { GITHUB_PATH: pathFile }), /RUNNER_TEMP/);
 		await assert.rejects(
-			publishTools({ shellcheck: process.execPath }, {
+			publishTools({ shellcheck: { kind: 'standalone', executable: process.execPath } }, { GITHUB_PATH: pathFile }),
+			/RUNNER_TEMP/,
+		);
+		await assert.rejects(
+			publishTools({ shellcheck: { kind: 'standalone', executable: process.execPath } }, {
 				RUNNER_TEMP: job,
 				GITHUB_PATH: join(job, 'missing directory', 'github-path'),
 			}),

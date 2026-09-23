@@ -1,6 +1,7 @@
 package githubaction
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -8,6 +9,31 @@ import (
 
 	"actionlint.kjanat.dev"
 )
+
+func TestWorkspaceReaderClassifiesRepositoryPaths(t *testing.T) {
+	workspace := t.TempDir()
+	root, err := os.OpenRoot(workspace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	outside := filepath.Join(filepath.Dir(workspace), "outside.yml")
+	_, err = workspaceReader(root, workspace)(outside)
+	if err == nil {
+		t.Fatal("outside repository read accepted")
+	}
+	if _, ok := errors.AsType[*inputError](err); ok {
+		t.Fatalf("repository read incorrectly classified as caller input: %v", err)
+	}
+	if _, ok := errors.AsType[*os.PathError](err); !ok {
+		t.Fatalf("wanted repository path error: %v", err)
+	}
+	if _, err := buildRequest(&inputs{files: []string{outside}}, workspace, "."); err == nil {
+		t.Fatal("explicit outside file input accepted")
+	} else if _, ok := errors.AsType[*inputError](err); !ok {
+		t.Fatalf("caller preflight must remain an input error: %v", err)
+	}
+}
 
 func linkWorkspaceFile(t *testing.T, target, link string) {
 	t.Helper()

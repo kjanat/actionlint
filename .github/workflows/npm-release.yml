@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { ref: "${{ case(inputs.dry-run, github.sha, format('refs/tags/{0}', env.RELEASE_TAG)) }}", persist-credentials: false }
-      # Reusable publishing is gated by Release; direct manual publishing requires a completed Release run.
+      # Manual recovery requires verified release bytes even if a later publishing job failed.
       - name: Verify release before manual publishing
         if: ${{ github.event_name == 'workflow_dispatch' && contains(github.workflow_ref, '/.github/workflows/npm-release.yml@') && !inputs.dry-run }}
         env: { GH_TOKEN: "${{ github.token }}" }
@@ -57,11 +57,22 @@ jobs:
             exit 1
           fi
           commit="$(git rev-parse HEAD)"
-          verified="$(gh api --method GET "repos/${GITHUB_REPOSITORY}/actions/workflows/release.yml/runs" \
-            --field status=success --field "head_sha=${commit}" --field per_page=100 --paginate \
-            --jq '.workflow_runs[] | select(.conclusion == "success" and .head_branch == env.RELEASE_TAG) | .id')"
+          runs="$(gh api --method GET "repos/${GITHUB_REPOSITORY}/actions/workflows/release.yml/runs" \
+            --field event=release --field status=completed --field "head_sha=${commit}" --field per_page=100 --paginate \
+            --jq '.workflow_runs[] | select(.status == "completed" and .head_branch == env.RELEASE_TAG) | .id')"
+          verified=''
+          while IFS= read -r run_id; do
+            [[ -n "${run_id}" ]] || continue
+            jobs="$(gh api --method GET "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs" \
+              --field filter=latest --field per_page=100 --paginate \
+              --jq '.jobs[] | select(.name == "Verify published candidate" and .status == "completed" and .conclusion == "success") | .id')"
+            if [[ -n "${jobs}" ]]; then
+              verified="${run_id}"
+              break
+            fi
+          done <<< "${runs}"
           if [[ -z "${verified}" ]]; then
-            echo '::error::The selected tag and commit need a successful Release run before manual npm publishing.'
+            echo '::error::The selected tag and commit need a completed Release run with successful candidate verification before manual npm publishing.'
             exit 1
           fi
       - parallel:

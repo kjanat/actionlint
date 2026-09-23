@@ -6,7 +6,7 @@ import { copyFile, link, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { pyflakesVersion, shellcheckVersion } from '#assets';
+import { pyflakesVersion, runnerPlatform, shellcheckVersion } from '#assets';
 import { capture, temporary, which } from '#native';
 import { executeNative, pyflakesCommand, shellcheckBinary } from '#tools';
 
@@ -85,6 +85,20 @@ test('tool probes exclude the review token from explicit and inherited environme
 	});
 });
 
+test('native tools discovered on PATH retain existing-command provenance', async () => {
+	await temporary(async (directory) => {
+		const extension = process.platform === 'win32' ? '.exe' : '';
+		const shellcheck = join(directory, `shellcheck${extension}`);
+		const pyflakes = join(directory, `pyflakes${extension}`);
+		for (const executable of [shellcheck, pyflakes]) await copyFile(process.execPath, executable);
+		await withEnvironment({ PATH: directory, PATHEXT: '.EXE' }, async () => {
+			const platform = runnerPlatform(process.platform, process.arch);
+			assert.deepEqual(await shellcheckBinary(platform), { kind: 'existing', executable: shellcheck });
+			assert.deepEqual(await pyflakesCommand(platform, ''), { kind: 'existing', executable: pyflakes });
+		});
+	});
+});
+
 test('Windows Python batch shims resolve to native Python before forwarding arbitrary arguments', {
 	skip: process.platform !== 'win32',
 }, async () => {
@@ -133,7 +147,10 @@ test('Windows Python batch shims resolve to native Python before forwarding arbi
 				RUNNER_TOOL_CACHE: cache,
 				ACTIONLINT_TEST_PYTHON: python,
 			}, async () => {
-				assert.equal(await shellcheckBinary({ os: 'windows', arch: 'amd64' }), join(shellcheck, 'shellcheck.exe'));
+				assert.deepEqual(await shellcheckBinary({ os: 'windows', arch: 'amd64' }), {
+					kind: 'standalone',
+					executable: join(shellcheck, 'shellcheck.exe'),
+				});
 				for (const [source, script] of launchers) {
 					const command = await pyflakesCommand({ os: 'windows', arch: 'amd64' }, source);
 					if (command.kind !== 'python') assert.fail('batch Pyflakes must use the isolated wheel fallback');

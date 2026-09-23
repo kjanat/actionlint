@@ -6,13 +6,17 @@ export type Environment = Record<string, string>;
 
 export class InputError extends Error {}
 
+export type ExistingCommand = { kind: 'existing'; executable: string };
+
+export type ShellcheckCommand = ExistingCommand | { kind: 'standalone'; executable: string };
+
 export type PyflakesCommand =
-	| { kind: 'command'; executable: string }
+	| ExistingCommand
 	| { kind: 'python'; executable: string; script: string };
 
 export type InstalledTools = {
 	actionlint?: string;
-	shellcheck?: string;
+	shellcheck?: ShellcheckCommand;
 	pyflakes?: PyflakesCommand;
 };
 
@@ -22,7 +26,7 @@ export type Runtime = {
 	native: () => Promise<string>;
 	checkExecutable: (path: string) => Promise<void>;
 	inspect: (executable: string, environment: Environment) => Promise<ToolRequirements>;
-	shellcheck: () => Promise<string>;
+	shellcheck: () => Promise<ShellcheckCommand>;
 	pyflakes: () => Promise<PyflakesCommand>;
 	publish: (tools: InstalledTools) => Promise<void>;
 	execute: (executable: string, args: string[], environment: Environment) => Promise<number>;
@@ -70,12 +74,12 @@ export async function runAction(environment: Environment, runtime: Runtime): Pro
 		if (shellcheck && needed.shellcheck) {
 			const command = await runtime.shellcheck();
 			if (addShellcheck) tools.shellcheck = command;
-			childEnvironment.ACTIONLINT_SHELLCHECK_COMMAND = command;
+			childEnvironment.ACTIONLINT_SHELLCHECK_COMMAND = command.executable;
 		}
 		if (pyflakes && needed.pyflakes) {
 			const command = await runtime.pyflakes();
 			if (addPyflakes) tools.pyflakes = command;
-			if (command.kind === 'command') {
+			if (command.kind === 'existing') {
 				childEnvironment.ACTIONLINT_PYFLAKES_COMMAND = command.executable;
 			} else {
 				childEnvironment.ACTIONLINT_PYTHON = command.executable;

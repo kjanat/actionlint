@@ -22,7 +22,7 @@ function fixture(exitCode = 0) {
 		inspect: async () => ({ shellcheck: true, pyflakes: true }),
 		shellcheck: async () => {
 			calls.push('shellcheck');
-			return join(tmpdir(), 'tools with spaces', 'shellcheck');
+			return { kind: 'standalone', executable: join(tmpdir(), 'tools with spaces', 'shellcheck') };
 		},
 		pyflakes: async () => {
 			calls.push('pyflakes');
@@ -70,7 +70,7 @@ test('default enabled tools provision commands only in the native child environm
 	assert.deepEqual(environment, { INPUT_CONFIG: '{}' });
 	assert.deepEqual(setup.publications, [{
 		actionlint: join(tmpdir(), 'downloaded actionlint'),
-		shellcheck: join(tmpdir(), 'tools with spaces', 'shellcheck'),
+		shellcheck: { kind: 'standalone', executable: join(tmpdir(), 'tools with spaces', 'shellcheck') },
 		pyflakes: { kind: 'python', executable: join(tmpdir(), 'python'), script: join(tmpdir(), 'pyflakes.py') },
 	}]);
 });
@@ -120,7 +120,7 @@ test('each PATH export can be disabled independently without disabling lint tool
 
 test('existing pyflakes executable is passed directly', async () => {
 	const setup = fixture();
-	setup.runtime.pyflakes = async () => ({ kind: 'command', executable: join(tmpdir(), 'pyflakes.exe') });
+	setup.runtime.pyflakes = async () => ({ kind: 'existing', executable: join(tmpdir(), 'pyflakes.exe') });
 	await runAction({
 		INPUT_SHELLCHECK: 'false',
 		ACTIONLINT_PYTHON: 'stale Python override',

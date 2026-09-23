@@ -21,10 +21,11 @@ func SARIFTemplate() string {
 // retain their inclusive, single-line ErrorTemplateFields representation.
 type sarifTemplateFields struct {
 	ErrorTemplateFields
-	EndLine int
-	Level   string
-	Code    string
-	Fixes   []sarifFix
+	EndLine   int
+	Level     string
+	Code      string
+	Fixes     []sarifFix
+	URIBaseID string
 }
 
 type sarifText struct {
@@ -113,13 +114,15 @@ func sarifFixes(fixes []DiagnosticFix) []sarifFix {
 func (f *ErrorFormatter) printSARIF(out io.Writer, diagnostics []Diagnostic) error {
 	fields := make([]sarifTemplateFields, 0, len(diagnostics))
 	for _, diagnostic := range diagnostics {
+		artifact := sarifArtifact(diagnostic.Path)
 		fields = append(fields, sarifTemplateFields{
 			ErrorTemplateFields: ErrorTemplateFields{
-				Message: diagnostic.Message, Filepath: sarifArtifact(diagnostic.Path).URI, Kind: diagnostic.Rule,
+				Message: diagnostic.Message, Filepath: artifact.URI, Kind: diagnostic.Rule,
 				Line: diagnostic.Start.Line, Column: diagnostic.Start.Column,
 				EndColumn: diagnostic.End.Column, Snippet: diagnostic.Snippet,
 			},
 			EndLine: diagnostic.End.Line, Level: sarifLevel(diagnostic.Severity), Code: diagnostic.Code, Fixes: sarifFixes(diagnostic.Fixes),
+			URIBaseID: artifact.URIBaseID,
 		})
 	}
 	if err := f.temp.Execute(out, fields); err != nil {
