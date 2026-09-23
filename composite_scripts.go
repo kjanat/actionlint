@@ -23,9 +23,6 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 	var meta *ActionMetadata
 	if action.Uses != nil && !action.Uses.ContainsExpression() {
 		spec := action.Uses.Value
-		if strings.HasPrefix(spec, "$/") {
-			spec, _ = selfRepositoryUsesLocalSpec(spec)
-		}
 		// Metadata-load diagnostics belong to RuleAction. An unresolved action
 		// still invalidates executable-bit assumptions below.
 		meta, _, _ = v.actions.FindMetadata(spec)
@@ -40,11 +37,22 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 	}
 	active[meta.Path()] = true
 	defer delete(active, meta.Path())
+	checkout := v.actions.currentCheckout()
+	defer func() {
+		enabled, known := stepCondition(call.If)
+		if known && !enabled {
+			v.actions.setCheckout(checkout)
+		} else if (!known || boolMayBeTrue(call.ContinueOnError) || boolMayBeTrue(call.Background)) && checkout != v.actions.currentCheckout() {
+			v.actions.setCheckout(runDirectory{kind: directoryUnknown})
+		}
+	}()
 
 	children := make([]Rule, 0, len(parents))
 	for _, parent := range parents {
 		child := compositeScriptRule(parent, call, filepath.Dir(meta.Path()))
 		if shellcheck, ok := child.(*RuleShellcheck); ok {
+			shellcheck.paths.checkout = checkout.path
+			shellcheck.paths.checkoutUnknown = checkout.kind == directoryUnknown
 			if err := shellcheck.prepareConfigPath(); err != nil {
 				return err
 			}
@@ -55,6 +63,7 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 	parser := &parser{sourceLines: splitSourceLines(meta.src)}
 	for _, metadataStep := range meta.Runs.Steps {
 		step := compositeScriptStep(metadataStep, parser)
+		v.actions.observeCheckout(step)
 		if _, action := step.Exec.(*ExecAction); action {
 			for _, pass := range v.passes {
 				if parent, enabled := pass.(*RuleAction); enabled {
@@ -73,6 +82,11 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 			continue
 		}
 		for _, rule := range children {
+			if shellcheck, ok := rule.(*RuleShellcheck); ok {
+				checkout := v.actions.currentCheckout()
+				shellcheck.paths.checkout = checkout.path
+				shellcheck.paths.checkoutUnknown = checkout.kind == directoryUnknown
+			}
 			if err := rule.VisitStep(step); err != nil {
 				return err
 			}
@@ -86,6 +100,12 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 					continue
 				}
 				outer.repositoryUnknown = inner.repositoryUnknown
+				if boolMayBeTrue(call.ContinueOnError) {
+					// The caller may continue after a failed child checkout.
+					outer.pristine, outer.repositoryUnknown = false, true
+					outer.sequential = inner.sequential
+					continue
+				}
 				if !conditionKnown {
 					// A conditional checkout may never have run. Do not promote
 					// one branch's filesystem assumptions to the caller.

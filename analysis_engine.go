@@ -58,6 +58,7 @@ func (l *analysisEngine) check(
 
 	if w != nil {
 		dbg := l.debugWriter()
+		localActions = &LocalActionsCache{base: localActions}
 
 		rules := []Rule{}
 		c := ruleContext{path: path, config: cfg, actions: localActions, workflows: localReusableWorkflows, process: proc, shellcheck: l.shellcheck, pyflakes: l.pyflakes}

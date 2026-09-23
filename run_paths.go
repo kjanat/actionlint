@@ -20,10 +20,11 @@ type runDirectory struct {
 }
 
 type runPaths struct {
-	workspace  string
-	analysis   string
-	checkout   string
-	actionPath string
+	workspace       string
+	analysis        string
+	checkout        string
+	checkoutUnknown bool
+	actionPath      string
 }
 
 func workingDirectoryValue(value *String) runDirectory {
@@ -138,6 +139,9 @@ func (paths runPaths) resolve(directory runDirectory) runDirectory {
 
 // Translate a workspace-relative runner path to the local self checkout.
 func (paths runPaths) local(relativePath string) (string, bool) {
+	if paths.checkoutUnknown {
+		return "", false
+	}
 	// Runner-absolute paths refer to the remote machine; they are not local source roots.
 	windowsDrive := len(relativePath) >= 2 && relativePath[1] == ':' &&
 		(relativePath[0] >= 'A' && relativePath[0] <= 'Z' || relativePath[0] >= 'a' && relativePath[0] <= 'z')
