@@ -1004,8 +1004,9 @@ Bash or sh steps on known Linux/macOS runners after a self checkout. Alternate
 checkout refs/repositories, containers, dynamic expressions, custom shells,
 shell startup environment settings, parallel/background steps and unsupported
 shell control flow are skipped. Earlier opaque actions or commands may change
-permissions or replace files, so subsequent calls are skipped until another
-known self checkout. Interpreter and source calls do not require an executable
+permissions, replace files or change Git settings, so subsequent calls in that
+job are skipped. A later checkout cannot guarantee that working-tree modes match
+the index when `core.fileMode` has changed. Interpreter and source calls do not require an executable
 bit on their argument. Shell syntax is parsed without executing any script.
 
 [workflow-scripts-doc]: https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/add-scripts

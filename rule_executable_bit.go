@@ -20,6 +20,7 @@ type RuleExecutableBit struct {
 	unix, sequential, pristine bool
 	changed                    map[string]bool
 	workflowEnv, jobEnv        bool
+	repositoryUnknown          bool
 }
 
 func newRuleExecutableBit(context ruleContext) *RuleExecutableBit {
@@ -42,6 +43,7 @@ func (rule *RuleExecutableBit) VisitJobPre(job *Job) error {
 		rule.unix = false
 	}
 	rule.sequential, rule.pristine = true, false
+	rule.repositoryUnknown = false
 	rule.changed = make(map[string]bool)
 	rule.paths = runPaths{workspace: rule.context.projectRoot, analysis: rule.context.workingDir}
 	return nil
@@ -51,53 +53,67 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 	if !rule.unix || !rule.sequential {
 		return nil
 	}
-	conditionUnknown := false
-	if step.If != nil {
-		condition := *step.If
-		if !condition.ContainsExpression() {
-			condition.Value = "${{ " + condition.Value + " }}"
-		}
-		value, known := workflowExpressionLiteral(&condition)
-		if enabled, boolean := value.(bool); known && boolean {
-			if !enabled {
-				return nil
-			}
-		} else {
-			conditionUnknown = true
-		}
+	enabled, conditionKnown := stepCondition(step.If)
+	if conditionKnown && !enabled {
+		return nil
 	}
-	if step.Background != nil {
-		background := step.Background.Value
-		if step.Background.Expression != nil {
-			value, known := workflowExpressionLiteral(step.Background.Expression)
-			enabled, boolean := value.(bool)
-			background = !known || !boolean || enabled
-		}
-		if background {
-			rule.sequential, rule.pristine = false, false
-			return nil
-		}
+	if stepMayRunInBackground(step.Background) {
+		rule.sequential, rule.pristine = false, false
+		return nil
 	}
 	switch command := step.Exec.(type) {
 	case *ExecParallel:
 		rule.sequential, rule.pristine = false, false
 	case *ExecAction:
-		rule.checkout(command, conditionUnknown)
+		rule.checkout(command, !conditionKnown)
 	case *ExecRun:
-		if conditionUnknown || rule.jobEnv || shellEnvironmentUnknown(step.Env) {
+		if !conditionKnown || rule.jobEnv || shellEnvironmentUnknown(step.Env) {
 			rule.pristine = false
 		}
 		if rule.pristine {
 			rule.checkScript(command)
 		}
+		if !rule.pristine {
+			rule.repositoryUnknown = true
+		}
 	}
 	return nil
+}
+
+func stepCondition(condition *String) (enabled, known bool) {
+	if condition == nil {
+		return true, true
+	}
+	expression := *condition
+	if !expression.ContainsExpression() {
+		expression.Value = "${{ " + expression.Value + " }}"
+	}
+	value, known := workflowExpressionLiteral(&expression)
+	enabled, boolean := value.(bool)
+	return enabled, known && boolean
+}
+
+func stepMayRunInBackground(background *Bool) bool {
+	if background == nil {
+		return false
+	}
+	if background.Expression == nil {
+		return background.Value
+	}
+	value, known := workflowExpressionLiteral(background.Expression)
+	enabled, boolean := value.(bool)
+	return !known || !boolean || enabled
 }
 
 // A known self checkout establishes which index is represented in the workspace.
 // Opaque actions may change permissions or replace files, so invalidate that state.
 func (rule *RuleExecutableBit) checkout(action *ExecAction, conditionUnknown bool) {
 	rule.pristine = false
+	if rule.repositoryUnknown {
+		return
+	}
+	// Opaque execution can change Git settings that preserve working-tree modes.
+	rule.repositoryUnknown = true
 	if action.Uses == nil || conditionUnknown || action.InputsExpression != nil {
 		return
 	}
@@ -126,6 +142,7 @@ func (rule *RuleExecutableBit) checkout(action *ExecAction, conditionUnknown boo
 	}
 	rule.paths.checkout = checkout
 	rule.pristine = true
+	rule.repositoryUnknown = false
 	clear(rule.changed)
 }
 
@@ -266,7 +283,7 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 				return
 			}
 			name, ok := rule.scriptPath(*directory, operand)
-			if !ok || rule.index().modes[name] == "120000" {
+			if !ok || rule.index().modes[name] == "120000" || rule.index().directoryExists(name) {
 				rule.pristine = false
 				return
 			}
@@ -445,6 +462,9 @@ func shellEnvironmentUnknown(env *Env) bool {
 		return true
 	}
 	for _, variable := range env.Vars {
+		if strings.HasPrefix(variable.Name.Value, "BASH_FUNC_") && strings.HasSuffix(variable.Name.Value, "%%") {
+			return true
+		}
 		switch variable.Name.Value {
 		case "PATH":
 			return true
