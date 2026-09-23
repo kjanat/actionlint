@@ -264,6 +264,8 @@ func TestCompositeExecutableBit(t *testing.T) {
 		want        bool
 	}{
 		{"checkout", "- uses: actions/checkout@v6\n- uses: ./local", true},
+		{"true call", "- uses: actions/checkout@v6\n- uses: ./local\n  if: true", true},
+		{"true expression call", "- uses: actions/checkout@v6\n- uses: ./local\n  if: ${{ true }}", true},
 		{"skipped call", "- uses: actions/checkout@v6\n- uses: ./local\n  if: false", false},
 		{"skipped expression call", "- uses: actions/checkout@v6\n- uses: ./local\n  if: ${{ false }}", false},
 		{"conditional call", "- uses: actions/checkout@v6\n- uses: ./local\n  if: github.event_name == 'push'", false},
@@ -271,6 +273,10 @@ func TestCompositeExecutableBit(t *testing.T) {
 		{"earlier chmod", "- uses: actions/checkout@v6\n- run: chmod +x bad.sh\n  shell: bash\n  working-directory: ''\n- uses: ./local", false},
 		{"startup env", "- uses: actions/checkout@v6\n- uses: ./local\n  env:\n    BASH_ENV: setup.sh", false},
 		{"background", "- uses: actions/checkout@v6\n- uses: ./local\n  background: true", false},
+		{"background false", "- uses: actions/checkout@v6\n- uses: ./local\n  background: false", true},
+		{"background expression false", "- uses: actions/checkout@v6\n- uses: ./local\n  background: ${{ false }}", true},
+		{"background expression true", "- uses: actions/checkout@v6\n- uses: ./local\n  background: ${{ true }}", false},
+		{"background expression unknown", "- uses: actions/checkout@v6\n- uses: ./local\n  background: ${{ inputs.background }}", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			result := compositeAnalysis(t, root, tc.steps, AnalysisOptions{})
@@ -361,6 +367,12 @@ func TestCompositeExecutionState(t *testing.T) {
 		{"conditional checkout", "- uses: actions/checkout@v6", "- uses: ./local\n  if: false\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", false},
 		{"conditional checkout and invocation", "- uses: actions/checkout@v6\n- shell: bash\n  run: ./bad.sh", "- uses: ./local\n  if: false", false},
 		{"checkout after conditional call", "- shell: bash\n  run: echo ok", "- uses: ./local\n  if: false\n- uses: actions/checkout@v6\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", true},
+		{"skipped call preserves caller", "- shell: bash\n  run: chmod +x bad.sh", "- uses: actions/checkout@v6\n- uses: ./local\n  if: ${{ false }}\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", true},
+		{"skipped background preserves caller", "- shell: bash\n  run: echo ok", "- uses: actions/checkout@v6\n- uses: ./local\n  if: false\n  background: true\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", true},
+		{"false background preserves caller", "- shell: bash\n  run: echo ok", "- uses: actions/checkout@v6\n- uses: ./local\n  background: ${{ false }}\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", true},
+		{"true composite checkout", "- uses: actions/checkout@v6", "- uses: ./local\n  if: ${{ true }}\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", true},
+		{"opaque composite preserves uncertainty", "- run: git config core.fileMode false && chmod +x bad.sh\n  shell: bash", "- uses: actions/checkout@v6\n- uses: ./local\n- uses: actions/checkout@v6\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", false},
+		{"conditional opaque composite preserves uncertainty", "- run: git config core.fileMode false && chmod +x bad.sh\n  shell: bash", "- uses: actions/checkout@v6\n- uses: ./local\n  if: github.event_name == 'push'\n- uses: actions/checkout@v6\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", false},
 		{"conditional background call", "- shell: bash\n  run: echo ok", "- uses: ./local\n  if: github.event_name == 'push'\n  background: true\n- uses: actions/checkout@v6\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", false},
 		{"conditional inner background", "- shell: bash\n  background: true\n  run: echo ok", "- uses: ./local\n  if: github.event_name == 'push'\n- uses: actions/checkout@v6\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", false},
 		{"inner chmod", "- shell: bash\n  run: chmod +x bad.sh", "- uses: actions/checkout@v6\n- uses: ./local\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", false},

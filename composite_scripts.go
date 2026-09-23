@@ -78,10 +78,15 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 			}
 		}
 	}
+	enabled, conditionKnown := stepCondition(call.If)
 	for i, parent := range parents {
 		if outer, ok := parent.(*RuleExecutableBit); ok {
 			if inner, ok := children[i].(*RuleExecutableBit); ok {
-				if call.If != nil {
+				if conditionKnown && !enabled {
+					continue
+				}
+				outer.repositoryUnknown = inner.repositoryUnknown
+				if !conditionKnown {
 					// A conditional checkout may never have run. Do not promote
 					// one branch's filesystem assumptions to the caller.
 					outer.pristine = false
@@ -111,13 +116,15 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
 	case *RuleExecutableBit:
 		scoped := newRuleExecutableBit(rule.context)
 		scoped.unix, scoped.sequential, scoped.pristine = rule.unix, rule.sequential, rule.pristine
+		scoped.repositoryUnknown = rule.repositoryUnknown
 		scoped.paths, scoped.changed = rule.paths, rule.changed
-		scoped.skipFindings = rule.skipFindings || call.If != nil
-		if call.If != nil {
+		enabled, conditionKnown := stepCondition(call.If)
+		scoped.skipFindings = rule.skipFindings || !conditionKnown || !enabled
+		if !conditionKnown || !enabled {
 			scoped.changed = maps.Clone(rule.changed)
 		}
 		scoped.jobEnv = rule.jobEnv || shellEnvironmentUnknown(call.Env)
-		if call.Background != nil && (call.Background.Expression != nil || call.Background.Value) {
+		if conditionKnown && !enabled || stepMayRunInBackground(call.Background) {
 			scoped.sequential, scoped.pristine = false, false
 		}
 		child = scoped
