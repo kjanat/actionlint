@@ -37,9 +37,13 @@ func runnerDirectoryPath(path string, platform platformKind) (string, bool) {
 // Absolute paths can name available local directories when the path syntax
 // agrees with the analysis host. Cross-platform runner paths remain unknown.
 func shellcheckDirectoryPath(path string, platform platformKind) (string, bool) {
-	if filepath.IsAbs(path) && (platform == platformKindAny ||
-		platform == platformKindWindows && runtime.GOOS == "windows" ||
-		platform == platformKindMacOrLinux && runtime.GOOS != "windows") {
+	if filepath.IsAbs(path) {
+		compatible := platform == platformKindAny ||
+			platform == platformKindWindows && runtime.GOOS == "windows" ||
+			platform == platformKindMacOrLinux && runtime.GOOS != "windows"
+		if !compatible {
+			return "", false
+		}
 		return filepath.Clean(path), true
 	}
 	return runnerDirectoryPath(path, platform)
