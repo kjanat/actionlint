@@ -181,7 +181,7 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
 		scoped.paths, scoped.changed, scoped.actionChanged = rule.paths, rule.changed, rule.actionChanged
 		compositeActionOrigin(&scoped.paths, call, actionPath)
 		enabled, conditionKnown := invocationCondition(call.If)
-		scoped.skipFindings = rule.skipFindings || !conditionKnown || !enabled
+		scoped.skipFindings = rule.skipFindings || conditionKnown && !enabled
 		if !conditionKnown || !enabled {
 			scoped.changed = maps.Clone(rule.changed)
 			scoped.actionChanged = maps.Clone(rule.actionChanged)
