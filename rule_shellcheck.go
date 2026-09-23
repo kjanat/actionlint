@@ -62,6 +62,7 @@ type RuleShellcheck struct {
 	workflowShell shellValue
 	jobShell      shellValue
 	runnerShell   shellValue
+	platform      platformKind
 	workflowDir   runDirectory
 	jobDir        runDirectory
 	paths         runPaths
@@ -103,7 +104,13 @@ func (rule *RuleShellcheck) VisitStep(n *Step) error {
 		return nil
 	}
 
-	return rule.runShellcheck(run.Run.Value, run.source, rule.resolveShell(run), rule.paths.resolve(effectiveRunDirectory(run, rule.jobDir, rule.workflowDir)), run.RunPos)
+	directory := effectiveRunDirectory(run, rule.jobDir, rule.workflowDir)
+	if normalized, known := runnerDirectoryPath(directory.path, rule.platform); known {
+		directory.path = normalized
+	} else {
+		directory.kind = directoryUnknown
+	}
+	return rule.runShellcheck(run.Run.Value, run.source, rule.resolveShell(run), rule.paths.resolve(directory), run.RunPos)
 }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
@@ -111,7 +118,8 @@ func (rule *RuleShellcheck) VisitJobPre(n *Job) error {
 	rule.jobShell = defaultsShellValue(n.Defaults)
 	rule.jobDir = defaultsWorkingDirectory(n.Defaults)
 	rule.runnerShell = shellValue{}
-	if runnerPlatform(n.RunsOn) == platformKindWindows {
+	rule.platform = runnerPlatform(n.RunsOn)
+	if rule.platform == platformKindWindows {
 		rule.runnerShell = shellValueFromString(&String{Value: "pwsh"})
 	}
 	if container := shellcheckContainerShell(n.Container); container.kind != shellValueUnspecified {
@@ -126,6 +134,7 @@ func (rule *RuleShellcheck) VisitJobPost(n *Job) error {
 	rule.jobShell = shellValue{}
 	rule.jobDir = runDirectory{}
 	rule.runnerShell = shellValue{}
+	rule.platform = platformKindAny
 	return nil
 }
 
