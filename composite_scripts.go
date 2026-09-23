@@ -94,6 +94,7 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 					continue
 				}
 				outer.pristine, outer.sequential = inner.pristine, inner.sequential
+				inner.paths.actionPath = outer.paths.actionPath
 				outer.paths, outer.changed = inner.paths, inner.changed
 			}
 		}
@@ -110,6 +111,7 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
 		// Resolve configuration anew: nested actions have different action_path
 		// values even when they inherit the same configuration selection.
 		scoped.actionPath = actionPath
+		scoped.paths.actionPath = actionPath
 		child = scoped
 	case *RulePyflakes:
 		child = newRulePyflakes(rule.cmd)
@@ -118,6 +120,7 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
 		scoped.unix, scoped.sequential, scoped.pristine = rule.unix, rule.sequential, rule.pristine
 		scoped.repositoryUnknown = rule.repositoryUnknown
 		scoped.paths, scoped.changed = rule.paths, rule.changed
+		scoped.paths.actionPath = actionPath
 		enabled, conditionKnown := stepCondition(call.If)
 		scoped.skipFindings = rule.skipFindings || !conditionKnown || !enabled
 		if !conditionKnown || !enabled {

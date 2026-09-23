@@ -185,7 +185,7 @@ func (rule *RuleExecutableBit) checkScript(run *ExecRun) {
 		rule.pristine = false
 		return
 	}
-	directory := effectiveRunDirectory(run, rule.jobDir, rule.workflowDir)
+	directory := rule.paths.effectiveRunDirectory(run, rule.jobDir, rule.workflowDir)
 	for _, statement := range file.Stmts {
 		rule.statement(statement, run, &directory)
 	}

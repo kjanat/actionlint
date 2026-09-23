@@ -342,6 +342,24 @@ func TestCompositeShellcheckWorkingDirectory(t *testing.T) {
 	}
 }
 
+func TestCompositeActionPathWorkingDirectory(t *testing.T) {
+	command := shellcheckForTest(t)
+	root, _ := executableFixture(t)
+	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
+	writeShellcheckFixture(t, root, "lib.sh", "echo ok\n")
+	writeShellcheckFixture(t, root, "outer/lib.sh", "echo ok\n")
+	writeShellcheckFixture(t, root, "inner/lib.sh", "if then\n")
+	inner := writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      working-directory: ${{ github.action_path }}\n      run: . ./lib.sh\n")
+	outer := writeShellcheckFixture(t, root, "outer/action.yml", "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: ./inner\n    - shell: bash\n      working-directory: ${{ github.action_path }}\n      run: . ./lib.sh\n")
+	result := compositeAnalysis(t, root, "- uses: ./outer", AnalysisOptions{Shellcheck: command})
+	if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "shellcheck" && d.Path == inner }) {
+		t.Fatalf("missing sourced-file finding in nested action: %+v", result.Diagnostics)
+	}
+	if slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "shellcheck" && d.Path == outer }) {
+		t.Fatalf("nested action_path leaked into caller: %+v", result.Diagnostics)
+	}
+}
+
 func TestCompositeNestedMetadataErrors(t *testing.T) {
 	root, _ := executableFixture(t)
 	outer := writeShellcheckFixture(t, root, "outer/action.yml", "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: ./inner\n")

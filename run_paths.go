@@ -20,9 +20,10 @@ type runDirectory struct {
 }
 
 type runPaths struct {
-	workspace string
-	analysis  string
-	checkout  string
+	workspace  string
+	analysis   string
+	checkout   string
+	actionPath string
 }
 
 func workingDirectoryValue(value *String) runDirectory {
@@ -64,15 +65,47 @@ func defaultsWorkingDirectory(defaults *Defaults) runDirectory {
 	return runDirectory{}
 }
 
-func effectiveRunDirectory(run *ExecRun, jobDir, workflowDir runDirectory) runDirectory {
+func (paths runPaths) effectiveRunDirectory(run *ExecRun, jobDir, workflowDir runDirectory) runDirectory {
 	directory := runDirectory{directoryKnown, ""}
-	for _, candidate := range []runDirectory{workingDirectoryValue(run.WorkingDirectory), jobDir, workflowDir} {
+	for _, candidate := range []runDirectory{paths.workingDirectory(run.WorkingDirectory), jobDir, workflowDir} {
 		if candidate.kind != directoryUnspecified {
 			directory = candidate
 			break
 		}
 	}
 	return directory
+}
+
+func (paths runPaths) workingDirectory(value *String) runDirectory {
+	directory := workingDirectoryValue(value)
+	if directory.kind != directoryUnknown {
+		return directory
+	}
+	expression, ok := strings.CutPrefix(value.Value, "${{")
+	if !ok {
+		return directory
+	}
+	name, suffix, closed := strings.Cut(expression, "}}")
+	if !closed || strings.Contains(suffix, "${{") || suffix != "" && !strings.HasPrefix(suffix, "/") {
+		return directory
+	}
+	base := "."
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "github.workspace":
+	case "github.action_path":
+		if paths.actionPath == "" || paths.workspace == "" {
+			return directory
+		}
+		relative, err := filepath.Rel(paths.workspace, paths.actionPath)
+		if err != nil || !filepath.IsLocal(relative) {
+			return directory
+		}
+		base = joinRunnerPath(paths.checkout, filepath.ToSlash(relative))
+	default:
+		return directory
+	}
+	// Keep runner paths relative until local() translates the self checkout.
+	return runDirectory{directoryKnown, base + suffix}
 }
 
 func (paths runPaths) resolve(directory runDirectory) runDirectory {
