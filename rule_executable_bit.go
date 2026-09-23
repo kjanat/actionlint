@@ -4,6 +4,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -22,6 +23,7 @@ type RuleExecutableBit struct {
 	changed                    map[string]bool
 	workflowEnv, jobEnv        bool
 	repositoryUnknown          bool
+	callerRepositoryUnknown    bool
 }
 
 func newRuleExecutableBit(context ruleContext) *RuleExecutableBit {
@@ -32,6 +34,7 @@ func (rule *RuleExecutableBit) VisitWorkflowPre(workflow *Workflow) error {
 	rule.workflowDir = defaultsWorkingDirectory(workflow.Defaults)
 	rule.workflowShell = defaultsShellValue(workflow.Defaults)
 	rule.workflowEnv = shellEnvironmentUnknown(workflow.Env)
+	_, rule.callerRepositoryUnknown = workflow.FindWorkflowCallEvent()
 	return nil
 }
 
@@ -47,7 +50,7 @@ func (rule *RuleExecutableBit) VisitJobPre(job *Job) error {
 		rule.unix = false
 	}
 	rule.sequential, rule.pristine = true, false
-	rule.repositoryUnknown = false
+	rule.repositoryUnknown = rule.callerRepositoryUnknown || !knownHostedRunner(job.RunsOn)
 	rule.changed = make(map[string]bool)
 	rule.paths = runPaths{workspace: rule.context.projectRoot, analysis: rule.context.workingDir}
 	return nil
@@ -60,6 +63,9 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 	enabled, conditionKnown := stepCondition(step.If)
 	if conditionKnown && !enabled {
 		return nil
+	}
+	if stepCanRunAfterFailure(step.If) {
+		rule.pristine, rule.repositoryUnknown = false, true
 	}
 	if boolMayBeTrue(step.Background) {
 		rule.sequential, rule.pristine = false, false
@@ -99,6 +105,79 @@ func stepCondition(condition *String) (enabled, known bool) {
 	value, known := workflowExpressionLiteral(&expression)
 	enabled, boolean := value.(bool)
 	return enabled, known && boolean
+}
+
+func stepCanRunAfterFailure(condition *String) bool {
+	if condition == nil {
+		return false
+	}
+	source := condition.Value
+	if !condition.ContainsExpression() {
+		source = "${{ " + source + " }}"
+	}
+	expression := parseAssignedExpression(source)
+	if expression == nil {
+		return true
+	}
+	hasStatusFunction := false
+	VisitExprNode(expression, func(node, _ ExprNode, entering bool) {
+		if call, ok := node.(*FuncCallNode); entering && ok {
+			switch strings.ToLower(call.Callee) {
+			case "always", "cancelled", "failure", "success":
+				hasStatusFunction = true
+			}
+		}
+	})
+	// A status function removes the runner's implicit success() condition.
+	return hasStatusFunction && !expressionRequiresSuccess(expression)
+}
+
+func expressionRequiresSuccess(expression ExprNode) bool {
+	switch node := expression.(type) {
+	case *FuncCallNode:
+		return strings.EqualFold(node.Callee, "success") && len(node.Args) == 0
+	case *LogicalOpNode:
+		left, right := expressionRequiresSuccess(node.Left), expressionRequiresSuccess(node.Right)
+		switch node.Kind {
+		case LogicalOpNodeKindAnd:
+			return left || right
+		case LogicalOpNodeKindOr:
+			return left && right
+		default:
+			return false
+		}
+	default:
+		return false
+	}
+}
+
+func knownHostedRunner(runner *Runner) bool {
+	if runner == nil || runner.Group != nil {
+		return false
+	}
+	for _, expression := range []*String{runner.Expression, runner.LabelsExpr} {
+		if expression == nil {
+			continue
+		}
+		value, known := workflowExpressionLiteral(expression)
+		if !known {
+			return false
+		}
+		if selection, ok := value.(map[string]any); ok {
+			for key := range selection {
+				if !strings.EqualFold(key, "labels") {
+					return false
+				}
+			}
+		}
+	}
+	labels := runnerPlatformLabels(runner)
+	for _, label := range labels {
+		if !slices.Contains(allGitHubHostedRunnerLabels, strings.ToLower(label.Value)) {
+			return false
+		}
+	}
+	return len(labels) != 0
 }
 
 func boolMayBeTrue(value *Bool) bool {
