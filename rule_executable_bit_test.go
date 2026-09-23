@@ -55,6 +55,11 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		want                          string
 	}{
 		{"direct", "ubuntu-latest", "", "- run: ./bad.sh", "bad.sh"},
+		{"false job", "ubuntu-latest", "if: false", "- run: ./bad.sh", ""},
+		{"false expression job", "ubuntu-latest", "if: ${{ false }}", "- run: ./bad.sh", ""},
+		{"true job", "ubuntu-latest", "if: true", "- run: ./bad.sh", "bad.sh"},
+		{"true expression job", "ubuntu-latest", "if: ${{ true }}", "- run: ./bad.sh", "bad.sh"},
+		{"conditional job", "ubuntu-latest", "if: github.event_name == 'push'", "- run: ./bad.sh", "bad.sh"},
 		{"parameter argument", "ubuntu-latest", "", "- run: ./bad.sh \"$GITHUB_SHA\"", "bad.sh"},
 		{"braced parameter argument", "ubuntu-latest", "", "- run: ./bad.sh \"${GITHUB_SHA}\"", "bad.sh"},
 		{"parameter prefix", "ubuntu-latest", "", "- run: FOO=$GITHUB_SHA ./bad.sh", "bad.sh"},
@@ -108,6 +113,8 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"directory chmod before cd", "ubuntu-latest", "", "- run: chmod 000 scripts && cd scripts && ./bad.sh", ""},
 		{"directory chmod before invocation", "ubuntu-latest", "", "- run: chmod 000 scripts && ./scripts/bad.sh", ""},
 		{"chmod operand separator", "ubuntu-latest", "", "- run: chmod +x -- good.sh && ./bad.sh", "bad.sh"},
+		{"chmod missing operand", "ubuntu-latest", "", "- run: chmod +x && ./bad.sh", ""},
+		{"chmod missing operand after separator", "ubuntu-latest", "", "- run: chmod +x -- && ./bad.sh", ""},
 		{"later chmod", "ubuntu-latest", "", "- run: ./bad.sh\n- run: chmod +x bad.sh", "bad.sh"},
 		{"other file chmod", "ubuntu-latest", "", "- run: chmod +x good.sh\n- run: ./bad.sh", "bad.sh"},
 		{"dynamic chmod", "ubuntu-latest", "", "- run: chmod +x \"$SCRIPT\"\n- run: ./bad.sh", ""},
@@ -250,6 +257,12 @@ func TestExecutableBitCheckoutAndFreshIndex(t *testing.T) {
 		want                  bool
 	}{
 		{"self checkout subdirectory", "path: source", "source/scripts", true},
+		{"clean true", "clean: true", "", true},
+		{"clean expression true", "clean: ${{ true }}", "", true},
+		{"clean string expression true", "clean: ${{ 'true' }}", "", true},
+		{"clean false", "clean: false", "", false},
+		{"clean expression false", "clean: ${{ false }}", "", false},
+		{"clean unknown expression", "clean: ${{ inputs.clean }}", "", false},
 		{"wrong checkout directory", "path: source", "scripts", false},
 		{"other repository", "repository: owner/other", "", false},
 		{"other ref", "ref: other-branch", "", false},
