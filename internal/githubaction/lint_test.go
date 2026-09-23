@@ -55,34 +55,20 @@ func TestBuildRequestFilePaths(t *testing.T) {
 		name       string
 		workingRel string
 		file       string
-		wantError  bool
 	}{
-		{"relative from root", ".", "workflow.yaml", false},
-		{"relative from subdirectory", "sub", "workflow.yaml", false},
-		{"relative parent inside workspace", "sub", "../workflow.yaml", false},
-		{"absolute inside workspace", ".", filepath.Join(workspace, "workflow.yaml"), false},
-		{"absolute inside workspace from subdirectory", "sub", filepath.Join(workspace, "workflow.yaml"), false},
-		{"relative outside workspace", ".", "../outside.yaml", true},
-		{"relative outside workspace from subdirectory", "sub", "../../outside.yaml", true},
-		{"absolute outside workspace", ".", outside, true},
-		{"absolute outside workspace from subdirectory", "sub", outside, true},
-		{"absolute workspace prefix", "sub", workspace + "-other" + string(filepath.Separator) + "workflow.yaml", true},
+		{"relative from root", ".", "workflow.yaml"},
+		{"relative from subdirectory", "sub", "workflow.yaml"},
+		{"relative parent inside workspace", "sub", "../workflow.yaml"},
+		{"absolute inside workspace", ".", filepath.Join(workspace, "workflow.yaml")},
+		{"absolute inside workspace from subdirectory", "sub", filepath.Join(workspace, "workflow.yaml")},
+		{"relative outside workspace", ".", "../outside.yaml"},
+		{"relative outside workspace from subdirectory", "sub", "../../outside.yaml"},
+		{"absolute outside workspace", ".", outside},
+		{"absolute outside workspace from subdirectory", "sub", outside},
+		{"absolute workspace prefix", "sub", workspace + "-other" + string(filepath.Separator) + "workflow.yaml"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			req, err := buildRequest(&inputs{files: []string{tc.file}}, workspace, tc.workingRel)
-			if tc.wantError {
-				const want = "Input 'files' must stay within the repository workspace"
-				if err == nil || err.Error() != want {
-					t.Fatalf("wanted %q, got %v", want, err)
-				}
-				if req != nil {
-					t.Fatal("invalid paths must not produce a lint request")
-				}
-				return
-			}
-			if err != nil {
-				t.Fatal(err)
-			}
+			req := buildRequest(&inputs{files: []string{tc.file}}, workspace, tc.workingRel)
 			if len(req.files) != 1 || req.files[0] != tc.file {
 				t.Errorf("wanted the original file path %q, got %#v", tc.file, req.files)
 			}
@@ -121,17 +107,10 @@ func TestRunLinterWorkflowSymlinks(t *testing.T) {
 					workingRel = "sub"
 					in.files = []string{"../.github/workflows/linked.yaml"}
 				}
-				req, err := buildRequest(in, workspace, workingRel)
-				if err != nil {
-					t.Fatal(err)
-				}
+				req := buildRequest(in, workspace, workingRel)
 				got := runLinter(req)
-				if contained {
-					if got.code != actionlint.ExitStatusSuccessNoProblem || got.fileCount != 1 {
-						t.Fatalf("contained workflow failed: %#v, %s", got, got.stderr)
-					}
-				} else if got.code != actionlint.ExitStatusFailure || !strings.Contains(got.stderr, "could not read") || got.stdout != "" {
-					t.Fatalf("expected rejected workflow read, got %#v, %s", got, got.stderr)
+				if got.code != actionlint.ExitStatusSuccessNoProblem || got.fileCount != 1 {
+					t.Fatalf("linked workflow failed: %#v, %s", got, got.stderr)
 				}
 			})
 		}

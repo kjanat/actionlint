@@ -1,7 +1,7 @@
 package githubaction
 
 import (
-	"errors"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,28 +10,54 @@ import (
 	"actionlint.kjanat.dev"
 )
 
-func TestWorkspaceReaderClassifiesRepositoryPaths(t *testing.T) {
-	workspace := t.TempDir()
-	root, err := os.OpenRoot(workspace)
+func TestActionReadsPathsOutsideWorkspace(t *testing.T) {
+	workspace := workspaceWith(t, map[string]string{"ci.yml": brokenWorkflow})
+	other := workspaceWith(t, map[string]string{
+		"ci.yml":         brokenWorkflow,
+		"actionlint.yml": "self-hosted-runner: {labels: [unknown-runner]}\ntools: {shellcheck: false}\n",
+	})
+	relative, err := filepath.Rel(workspace, other)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer root.Close()
-	outside := filepath.Join(filepath.Dir(workspace), "outside.yml")
-	_, err = workspaceReader(root, workspace)(outside)
-	if err == nil {
-		t.Fatal("outside repository read accepted")
-	}
-	if _, ok := errors.AsType[*inputError](err); ok {
-		t.Fatalf("repository read incorrectly classified as caller input: %v", err)
-	}
-	if _, ok := errors.AsType[*os.PathError](err); !ok {
-		t.Fatalf("wanted repository path error: %v", err)
-	}
-	if _, err := buildRequest(&inputs{files: []string{outside}}, workspace, "."); err == nil {
-		t.Fatal("explicit outside file input accepted")
-	} else if _, ok := errors.AsType[*inputError](err); !ok {
-		t.Fatalf("caller preflight must remain an input error: %v", err)
+	for _, tc := range []struct{ name, directory, file, config string }{
+		{"relative file and config", ".", filepath.Join(relative, "ci.yml"), filepath.Join(relative, "actionlint.yml")},
+		{"absolute file and config", ".", filepath.Join(other, "ci.yml"), filepath.Join(other, "actionlint.yml")},
+		{"relative working directory", relative, "ci.yml", "actionlint.yml"},
+		{"absolute working directory", other, "ci.yml", "actionlint.yml"},
+		{"external config for local file", ".", "ci.yml", filepath.Join(other, "actionlint.yml")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			env := map[string]string{
+				"GITHUB_WORKSPACE": workspace, "INPUT_WORKING-DIRECTORY": tc.directory,
+				"INPUT_FILES": tc.file, "INPUT_CONFIG-FILE": tc.config,
+				"INPUT_PYFLAKES": "false",
+				"INPUT_FORMAT":   "json", "GITHUB_OUTPUT": filepath.Join(t.TempDir(), "outputs"),
+				"ACTIONLINT_ACTION_RESULT": filepath.Join(t.TempDir(), "result.json"),
+			}
+			getenv := func(name string) string { return env[name] }
+			var plan, errors, output strings.Builder
+			if code := ToolPlan(getenv, &plan, &errors); code != actionlint.ExitStatusSuccessNoProblem {
+				t.Fatalf("tool plan failed: %d %s", code, errors.String())
+			}
+			var tools actionlint.ExternalToolRequirements
+			if err := json.Unmarshal([]byte(plan.String()), &tools); err != nil {
+				t.Fatal(err)
+			}
+			if tools.Shellcheck || tools.Pyflakes {
+				t.Fatalf("tool plan ignored external config: %s", plan.String())
+			}
+			if code := Main(getenv, &output); code != actionlint.ExitStatusSuccessNoProblem {
+				t.Fatalf("analysis failed: %d %s", code, output.String())
+			}
+			var result persistedResult
+			if err := json.Unmarshal([]byte(read(t, env["ACTIONLINT_ACTION_RESULT"])), &result); err != nil {
+				t.Fatal(err)
+			}
+			if !result.Completed || len(result.Diagnostics) != 0 {
+				t.Fatalf("expected completed analysis honoring external config: %+v", result)
+			}
+		})
 	}
 }
 
@@ -46,6 +72,43 @@ func linkWorkspaceFile(t *testing.T, target, link string) {
 	}
 	if err := os.Symlink(rel, link); err != nil {
 		t.Skipf("symlinks unavailable: %v", err)
+	}
+}
+
+func TestActionReportsExternalWorkflowFindings(t *testing.T) {
+	workspace := t.TempDir()
+	outside := workspaceWith(t, map[string]string{"workflow.yml": brokenWorkflow})
+	file := filepath.Join(outside, "workflow.yml")
+	relative, err := filepath.Rel(workspace, file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, format := range []string{"github", "json", "sarif"} {
+		t.Run(format, func(t *testing.T) {
+			env := map[string]string{
+				"GITHUB_WORKSPACE": workspace, "INPUT_FILES": file, "INPUT_FORMAT": format,
+				"INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false",
+				"ACTIONLINT_ACTION_RESULT": filepath.Join(t.TempDir(), "result.json"),
+				"GITHUB_OUTPUT":            filepath.Join(t.TempDir(), "outputs"),
+			}
+			var output strings.Builder
+			if code := Main(func(name string) string { return env[name] }, &output); code != actionlint.ExitStatusSuccessProblemFound {
+				t.Fatalf("external workflow findings lost: %d %s", code, output.String())
+			}
+			var result persistedResult
+			if err := json.Unmarshal([]byte(read(t, env["ACTIONLINT_ACTION_RESULT"])), &result); err != nil {
+				t.Fatal(err)
+			}
+			if !result.Completed || len(result.Diagnostics) != 1 || result.Diagnostics[0].Path != relative {
+				t.Fatalf("external workflow diagnostic: %+v", result)
+			}
+			if !strings.Contains(string(result.SARIF), filepath.ToSlash(relative)) {
+				t.Fatalf("external path absent from SARIF: %s", result.SARIF)
+			}
+			if format == "github" && !strings.Contains(output.String(), "::error file="+filepath.ToSlash(relative)+",") {
+				t.Fatalf("external path absent from annotation: %s", output.String())
+			}
+		})
 	}
 }
 
@@ -64,28 +127,26 @@ jobs:
     uses: ./.github/workflows/called.yml
 `
 	for _, tc := range []struct {
-		name, link, content, caller, readError string
-		directory                              bool
+		name, link, content, caller string
+		directory                   bool
 	}{
-		{"action yaml", ".github/actions/local/action.yaml", metadata, actionWorkflow, "could not read action metadata", false},
-		{"action yml", ".github/actions/local/action.yml", metadata, actionWorkflow, "could not read action metadata", false},
-		{"action directory", ".github/actions/local", metadata, actionWorkflow, "could not read action metadata", true},
-		{"reusable workflow", ".github/workflows/called.yml", strings.Replace(cleanWorkflow, "on: push", "on: workflow_call", 1), reusableWorkflow, "could not read reusable workflow file", false},
+		{"action yaml", ".github/actions/local/action.yaml", metadata, actionWorkflow, false},
+		{"action yml", ".github/actions/local/action.yml", metadata, actionWorkflow, false},
+		{"action directory", ".github/actions/local", metadata, actionWorkflow, true},
+		{"reusable workflow", ".github/workflows/called.yml", strings.Replace(cleanWorkflow, "on: push", "on: workflow_call", 1), reusableWorkflow, false},
 	} {
 		for _, contained := range []bool{false, true} {
 			t.Run(tc.name+map[bool]string{false: "/outside", true: "/inside"}[contained], func(t *testing.T) {
 				workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/ci.yml": tc.caller})
 				targetDir := t.TempDir()
-				content := "read-confinement-marker: [\n"
 				if contained {
 					targetDir = filepath.Join(workspace, "fixtures")
-					content = tc.content
 				}
 				if err := os.MkdirAll(targetDir, 0o755); err != nil {
 					t.Fatal(err)
 				}
 				target := filepath.Join(targetDir, "action.yml")
-				if err := os.WriteFile(target, []byte(content), 0o644); err != nil {
+				if err := os.WriteFile(target, []byte(tc.content), 0o644); err != nil {
 					t.Fatal(err)
 				}
 				if tc.directory {
@@ -93,17 +154,8 @@ jobs:
 				}
 				linkWorkspaceFile(t, target, filepath.Join(workspace, filepath.FromSlash(tc.link)))
 				got := runLinter(&lintRequest{workingDir: workspace, files: []string{".github/workflows/ci.yml"}, format: formatJSON})
-				if contained {
-					if got.code != actionlint.ExitStatusSuccessNoProblem {
-						t.Fatalf("contained dependency failed: %s%s", got.stderr, got.stdout)
-					}
-					return
-				}
-				if got.code != actionlint.ExitStatusSuccessProblemFound || !strings.Contains(got.stdout, tc.readError) {
-					t.Fatalf("wanted dependency read rejection, got %d: %s%s", got.code, got.stderr, got.stdout)
-				}
-				if strings.Contains(got.stdout+got.stderr+got.sarif, "read-confinement-marker") {
-					t.Fatal("outside dependency contents reached diagnostics")
+				if got.code != actionlint.ExitStatusSuccessNoProblem {
+					t.Fatalf("linked dependency failed: %d %s%s", got.code, got.stderr, got.stdout)
 				}
 			})
 		}
@@ -116,10 +168,9 @@ func TestActionConfigSymlinks(t *testing.T) {
 			t.Run(name+map[bool]string{false: "/outside", true: "/inside"}[contained], func(t *testing.T) {
 				workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/ci.yml": brokenWorkflow})
 				targetDir := t.TempDir()
-				content := "read-confinement-marker: true\n"
+				content := "self-hosted-runner: {labels: [unknown-runner]}\ntools: {shellcheck: false}\n"
 				if contained {
 					targetDir = workspace
-					content = "self-hosted-runner: {labels: [unknown-runner]}\ntools: {shellcheck: false}\n"
 				}
 				target := filepath.Join(targetDir, "config-target.yml")
 				if err := os.WriteFile(target, []byte(content), 0o644); err != nil {
@@ -135,20 +186,11 @@ func TestActionConfigSymlinks(t *testing.T) {
 				got := runLinter(req)
 				var stdout, stderr strings.Builder
 				code := ToolPlan(func(key string) string { return env[key] }, &stdout, &stderr)
-				if contained {
-					if got.code != actionlint.ExitStatusSuccessNoProblem || code != actionlint.ExitStatusSuccessNoProblem {
-						t.Fatalf("contained config failed: lint=%d %s%s, preflight=%d %s", got.code, got.stderr, got.stdout, code, stderr.String())
-					}
-					if !strings.Contains(stdout.String(), `"shellcheck":false,"pyflakes":false`) {
-						t.Fatalf("preflight ignored contained config: %s", stdout.String())
-					}
-					return
+				if got.code != actionlint.ExitStatusSuccessNoProblem || code != actionlint.ExitStatusSuccessNoProblem {
+					t.Fatalf("linked config failed: lint=%d %s%s, preflight=%d %s", got.code, got.stderr, got.stdout, code, stderr.String())
 				}
-				if got.code != actionlint.ExitStatusFailure || code != actionlint.ExitStatusFailure || !strings.Contains(got.stderr, "could not read config file") || !strings.Contains(stderr.String(), "could not read config file") {
-					t.Fatalf("wanted config read rejection: lint=%d %s%s, preflight=%d %s", got.code, got.stderr, got.stdout, code, stderr.String())
-				}
-				if got.stdout != "" || stdout.Len() != 0 || strings.Contains(got.stderr+stderr.String(), "read-confinement-marker") {
-					t.Fatal("outside config contents reached diagnostics or tool selection")
+				if !strings.Contains(stdout.String(), `"shellcheck":false,"pyflakes":false`) {
+					t.Fatalf("preflight ignored linked config: %s", stdout.String())
 				}
 			})
 		}

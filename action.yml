@@ -25,7 +25,7 @@ inputs:
   config-file:
     description: >-
       Path to an actionlint configuration file,
-      relative to working-directory.
+      absolute or relative to working-directory.
     required: false
     default: ""
   config:
@@ -77,7 +77,7 @@ inputs:
   shellcheck-config:
     description: >-
       ShellCheck config: true discovers from working-directory, false disables
-      discovery, or specify a configuration file relative to GITHUB_WORKSPACE.
+      discovery, or specify an absolute file path or one relative to GITHUB_WORKSPACE.
       Blank inherits config flags; discovery is otherwise disabled.
     required: false
     default: ""
@@ -104,7 +104,7 @@ inputs:
     required: false
     default: "true"
   working-directory:
-    description: Directory to lint, relative to the repository workspace.
+    description: Directory to lint, absolute or relative to the repository workspace.
     required: false
     default: .
   output-file:

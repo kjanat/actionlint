@@ -81,7 +81,7 @@ func (a *action) execute() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	req, err := a.prepareRequest(in, root, workspaceDir)
+	req, err := a.prepareRequest(in, workspaceDir)
 	if err != nil {
 		return 0, err
 	}
@@ -118,19 +118,16 @@ func (a *action) execute() (int, error) {
 	return outcome.code, nil
 }
 
-func (a *action) prepareRequest(in *inputs, root *os.Root, workspaceDir string) (*lintRequest, error) {
-	workingRel, err := workingDirectory(root, workspaceDir, in.workingDirectory)
+func (a *action) prepareRequest(in *inputs, workspaceDir string) (*lintRequest, error) {
+	workingDir, err := workingDirectory(workspaceDir, in.workingDirectory)
 	if err != nil {
 		return nil, err
 	}
-	req, err := buildRequest(in, workspaceDir, workingRel)
-	if err != nil {
-		return nil, err
-	}
+	req := buildRequest(in, workspaceDir, workingDir)
 	if err := req.configureEnvironment(a.env); err != nil {
 		return nil, err
 	}
-	if err := req.configureShellcheck(a.env, root, workspaceDir); err != nil {
+	if err := req.configureShellcheck(a.env, workspaceDir); err != nil {
 		return nil, err
 	}
 	return req, nil

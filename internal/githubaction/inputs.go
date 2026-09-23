@@ -176,15 +176,19 @@ func workspaceRel(workspaceDir, value, name string) (string, error) {
 	return rel, nil
 }
 
-func workingDirectory(root *os.Root, workspaceDir, value string) (string, error) {
-	rel, err := workspaceRel(workspaceDir, value, "working-directory")
-	if err != nil {
-		return "", err
+func inputPath(directory, value string) string {
+	if filepath.IsAbs(value) {
+		return filepath.Clean(value)
 	}
-	if s, err := root.Stat(rel); err != nil || !s.IsDir() {
+	return filepath.Join(directory, value)
+}
+
+func workingDirectory(workspaceDir, value string) (string, error) {
+	path := inputPath(workspaceDir, value)
+	if s, err := os.Stat(path); err != nil || !s.IsDir() {
 		return "", inputErrorf("Input 'working-directory' must identify an existing directory")
 	}
-	return rel, nil
+	return path, nil
 }
 
 func resolveOutputFile(root *os.Root, workspaceDir, value string) (string, error) {

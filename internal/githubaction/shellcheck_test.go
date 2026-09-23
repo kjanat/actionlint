@@ -2,7 +2,6 @@ package githubaction
 
 import (
 	"encoding/json"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -43,23 +42,65 @@ func TestShellcheckArguments(t *testing.T) {
 }
 
 func TestActionShellcheckConfigPaths(t *testing.T) {
-	workspace := workspaceWith(t, map[string]string{"config with spaces": "disable=SC2086"})
-	root, err := os.OpenRoot(workspace)
+	workspace := workspaceWith(t, map[string]string{"config with spaces": "disable=SC2086", "rc": "disable=SC2086"})
+	outside := workspaceWith(t, map[string]string{"shared-rc": "disable=SC2086"})
+	relative, err := filepath.Rel(workspace, filepath.Join(outside, "shared-rc"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = root.Close() }()
-	for _, config := range []string{"../outside", filepath.Join(workspace, "config with spaces"), "missing", "."} {
+	for _, config := range []string{"rc", "config with spaces", filepath.Join(workspace, "config with spaces"), relative, filepath.Join(outside, "shared-rc")} {
+		for _, name := range []string{"INPUT_SHELLCHECK-CONFIG", "INPUT_SHELLCHECK-ARGS", "SHELLCHECK_OPTS"} {
+			t.Run(name+"/"+config, func(t *testing.T) {
+				if name == "SHELLCHECK_OPTS" && strings.Contains(config, " ") {
+					t.Skip("SHELLCHECK_OPTS splits spaces without quote expansion")
+				}
+				req := &lintRequest{shellcheck: "shellcheck"}
+				err := req.configureShellcheck(func(key string) string {
+					if key != name {
+						return ""
+					}
+					switch name {
+					case "INPUT_SHELLCHECK-ARGS":
+						value, err := json.Marshal([]string{"--rcfile", config})
+						if err != nil {
+							t.Fatal(err)
+						}
+						return string(value)
+					case "SHELLCHECK_OPTS":
+						return "--rcfile=" + config
+					default:
+						return config
+					}
+				}, workspace)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got, want := req.shellcheckSettings.Config, actionlint.ShellcheckRCFile(inputPath(workspace, config)); got != want {
+					t.Errorf("config = %q, want %q", got, want)
+				}
+			})
+		}
+	}
+	for _, config := range []string{"missing", "."} {
 		req := &lintRequest{shellcheck: "shellcheck"}
 		err := req.configureShellcheck(func(key string) string {
 			if key == "INPUT_SHELLCHECK-CONFIG" {
 				return config
 			}
 			return ""
-		}, root, workspace)
+		}, workspace)
 		if err == nil {
 			t.Errorf("accepted config path %q", config)
 		}
+	}
+}
+
+func TestActionShellcheckExternalConfigSymlink(t *testing.T) {
+	workspace := t.TempDir()
+	outside := workspaceWith(t, map[string]string{"rc": "disable=SC2086"})
+	linkWorkspaceFile(t, filepath.Join(outside, "rc"), filepath.Join(workspace, "rc"))
+	if _, err := shellcheckConfigPath(workspace, "rc"); err != nil {
+		t.Fatalf("read linked config: %v", err)
 	}
 }
 

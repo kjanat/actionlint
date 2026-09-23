@@ -3,7 +3,6 @@ package githubaction
 import (
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -174,15 +173,7 @@ func countAndRender(serialized string, format outputFormat, workingDir, workspac
 		// Workflow commands resolve files from GITHUB_WORKSPACE. Keep the serialized
 		// analysis paths unchanged for the other formats and TypeScript reporters.
 		for _, p := range problems {
-			path := p.Filepath
-			if !filepath.IsAbs(path) {
-				path = filepath.Join(workingDir, path)
-			}
-			rel, err := filepath.Rel(workspaceDir, path)
-			if err != nil {
-				return 0, "", err
-			}
-			p.Filepath = filepath.ToSlash(rel)
+			p.Filepath = reportPath(workingDir, workspaceDir, p.Filepath)
 		}
 	}
 	out, err := render(format, problems, serialized)

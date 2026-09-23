@@ -22,7 +22,7 @@ type ReviewRequest = (url: string, options: RequestInit) => Promise<Pick<Respons
 
 export type ReviewRuntime = {
 	request: ReviewRequest;
-	readSource: (path: string) => Promise<string>;
+	readSource: (path: string) => Promise<string | undefined>;
 };
 
 function repository(value: unknown): value is string {
@@ -230,13 +230,13 @@ class ReviewAPI {
 	}
 }
 
-function workspacePath(environment: Environment, path: string): { absolute: string; relative: string } {
+function workspacePath(environment: Environment, path: string): { absolute: string; relative: string } | undefined {
 	const workspace = environment.GITHUB_WORKSPACE;
 	if (!workspace) throw new Error('GITHUB_WORKSPACE is unavailable');
 	const absolute = resolve(workspace, environment['INPUT_WORKING-DIRECTORY'] || '.', path);
 	const local = relative(resolve(workspace), absolute);
 	if (!local || local === '..' || local.startsWith(`..${sep}`) || isAbsolute(local)) {
-		throw new Error('diagnostic path is outside the workspace');
+		return undefined;
 	}
 	return { absolute, relative: local.split(sep).join('/') };
 }
@@ -253,17 +253,26 @@ async function sourceAtHead(
 	const response = await api.call(url);
 	if (!object(response) || response.encoding !== 'base64' || typeof response.content !== 'string') return undefined;
 	const expected = Buffer.from(response.content, 'base64').toString('utf8').replaceAll('\r\n', '\n');
-	const actual = (await runtime.readSource(path.absolute)).replaceAll('\r\n', '\n');
+	const source = await runtime.readSource(path.absolute);
+	if (source === undefined) return undefined;
+	const actual = source.replaceAll('\r\n', '\n');
 	return actual === expected ? expected : undefined;
 }
 
-function normalizeFixPaths(diagnostic: Diagnostic, environment: Environment): Diagnostic {
-	if (!diagnostic.fixes) return diagnostic;
-	const fixes = diagnostic.fixes.map((fix) => ({
-		description: fix.description,
-		edits: fix.edits.map((edit): Edit => ({ ...edit, path: workspacePath(environment, edit.path).relative })),
-	}));
-	return { ...diagnostic, path: workspacePath(environment, diagnostic.path).relative, fixes };
+function normalizeFixPaths(diagnostic: Diagnostic, environment: Environment): Diagnostic | undefined {
+	const path = workspacePath(environment, diagnostic.path);
+	if (!path) return undefined;
+	if (!diagnostic.fixes) return { ...diagnostic, path: path.relative };
+	const fixes = diagnostic.fixes.flatMap((fix) => {
+		const edits: Edit[] = [];
+		for (const edit of fix.edits) {
+			const target = workspacePath(environment, edit.path);
+			if (!target) return [];
+			edits.push({ ...edit, path: target.relative });
+		}
+		return [{ description: fix.description, edits }];
+	});
+	return { ...diagnostic, path: path.relative, fixes };
 }
 
 export async function postReview(
@@ -285,7 +294,7 @@ export async function postReview(
 				const canonical = await realpath(path);
 				const local = relative(workspace, canonical);
 				if (local === '..' || local.startsWith(`..${sep}`) || isAbsolute(local)) {
-					throw new Error('source file resolves outside the workspace');
+					return undefined;
 				}
 				return readFile(canonical, 'utf8');
 			},
@@ -305,16 +314,18 @@ export async function postReview(
 		const bodies = previous.flatMap((value) => object(value) && typeof value.body === 'string' ? [value.body] : []);
 		const diagnosticsByPath = new Map<string, Diagnostic[]>();
 		for (const diagnostic of result.diagnostics) {
-			const path = workspacePath(environment, diagnostic.path).relative;
-			const diagnostics = diagnosticsByPath.get(path) ?? [];
+			const path = workspacePath(environment, diagnostic.path);
+			if (!path) continue;
+			const diagnostics = diagnosticsByPath.get(path.relative) ?? [];
 			diagnostics.push(diagnostic);
-			diagnosticsByPath.set(path, diagnostics);
+			diagnosticsByPath.set(path.relative, diagnostics);
 		}
 		const prepared = new Map<string, Map<Diagnostic, ReviewComment>>();
 		const comments: ReviewComment[] = [];
 		let sourceLookups = 0;
 		for (const diagnostic of result.diagnostics) {
 			const path = workspacePath(environment, diagnostic.path);
+			if (!path) continue;
 			let resolved = prepared.get(path.relative);
 			if (!resolved) {
 				resolved = new Map();
@@ -323,7 +334,10 @@ export async function postReview(
 				if (!object(file) || typeof file.patch !== 'string') continue;
 				const hunks = diffHunks(file.patch);
 				const eligible = (diagnosticsByPath.get(path.relative) ?? [])
-					.map((related) => ({ diagnostic: related, normalized: normalizeFixPaths(related, environment) }))
+					.flatMap((related) => {
+						const normalized = normalizeFixPaths(related, environment);
+						return normalized ? [{ diagnostic: related, normalized }] : [];
+					})
 					.filter(({ normalized }) => relevantToDiff(normalized, hunks));
 				if (eligible.length === 0 || sourceLookups === 100) continue;
 				sourceLookups++;

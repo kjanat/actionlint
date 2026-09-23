@@ -249,16 +249,13 @@ func TestActionWritesOutputFile(t *testing.T) {
 	}
 }
 
-func TestActionRejectsEscapingPaths(t *testing.T) {
+func TestActionRejectsEscapingOutputPath(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
 	for _, tc := range []struct {
 		name string
 		argv []string
 	}{
-		{"working-directory", []string{"", "json", "", "", "true", "true", "..", "", "true"}},
 		{"output-file", []string{"", "json", "", "", "true", "true", ".", "../escaped.json", "true"}},
-		{"config-file", []string{"", "json", "", "../actionlint.yaml", "true", "true", ".", "", "true"}},
-		{"files", []string{"../outside.yaml", "json", "", "", "true", "true", ".", "", "true"}},
 	} {
 		run, recorder := runAction(t, workspace, nil, tc.argv...)
 		if run.code != 2 {

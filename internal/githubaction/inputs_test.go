@@ -211,20 +211,21 @@ func TestWorkingDirectory(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(workspace, "file.txt"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	root := openRoot(t, workspace)
 
 	for _, tc := range []struct {
 		value string
 		want  string
 	}{
-		{"", "."},
-		{".", "."},
-		{"sub", "sub"},
-		{"sub/dir", filepath.Join("sub", "dir")},
-		{"./sub/../sub", "sub"},
-		{filepath.Join(workspace, "sub"), "sub"},
+		{"", workspace},
+		{".", workspace},
+		{"sub", filepath.Join(workspace, "sub")},
+		{"sub/dir", filepath.Join(workspace, "sub", "dir")},
+		{"./sub/../sub", filepath.Join(workspace, "sub")},
+		{filepath.Join(workspace, "sub"), filepath.Join(workspace, "sub")},
+		{"..", filepath.Dir(workspace)},
+		{filepath.Dir(workspace), filepath.Dir(workspace)},
 	} {
-		got, err := workingDirectory(root, workspace, tc.value)
+		got, err := workingDirectory(workspace, tc.value)
 		if err != nil {
 			t.Errorf("%q: %v", tc.value, err)
 		} else if got != tc.want {
@@ -232,16 +233,8 @@ func TestWorkingDirectory(t *testing.T) {
 		}
 	}
 
-	for _, value := range []string{"..", "../elsewhere", "sub/../../elsewhere"} {
-		_, err := workingDirectory(root, workspace, value)
-		want := "Input 'working-directory' must stay within the repository workspace"
-		if got := isInputError(t, err).Error(); got != want {
-			t.Errorf("%q: wanted %q but got %q", value, want, got)
-		}
-	}
-
 	for _, value := range []string{"missing", "file.txt"} {
-		_, err := workingDirectory(root, workspace, value)
+		_, err := workingDirectory(workspace, value)
 		want := "Input 'working-directory' must identify an existing directory"
 		if got := isInputError(t, err).Error(); got != want {
 			t.Errorf("%q: wanted %q but got %q", value, want, got)
@@ -249,16 +242,14 @@ func TestWorkingDirectory(t *testing.T) {
 	}
 }
 
-func TestWorkingDirectoryRejectsSymlinkEscape(t *testing.T) {
+func TestWorkingDirectoryAllowsExternalSymlink(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
 	outside := resolved(t, t.TempDir())
 	if err := os.Symlink(outside, filepath.Join(workspace, "escape")); err != nil {
 		t.Skipf("symlinks are unavailable: %v", err)
 	}
-	root := openRoot(t, workspace)
-
-	if _, err := workingDirectory(root, workspace, "escape"); err == nil {
-		t.Error("wanted a symlink leaving the workspace to be rejected")
+	if got, err := workingDirectory(workspace, "escape"); err != nil || got != filepath.Join(workspace, "escape") {
+		t.Errorf("wanted the linked working directory, got %q: %v", got, err)
 	}
 }
 

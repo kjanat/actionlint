@@ -298,6 +298,57 @@ function diagnosticAt(path: string): Diagnostic {
 	};
 }
 
+test('review skips external findings while retaining comments on repository files', async () => {
+	await fixture(async (environment) => {
+		const runtime = api();
+		const workspace = environment.GITHUB_WORKSPACE;
+		assert.ok(workspace);
+		const external = [diagnosticAt('../shared.yml'), diagnosticAt(join(workspace, '..', 'shared.yml'))];
+		await postReview({ ...result, diagnostics: [...external, diagnostic] }, environment, runtime);
+		assert.deepEqual(
+			runtime.calls.filter((url) => url.includes('/contents/')),
+			[`https://api.github.com/repos/fork/repo/contents/ci.yml?ref=${sha}`],
+		);
+		const review = runtime.writes[0];
+		assert.ok(object(review) && Array.isArray(review.comments));
+		assert.equal(review.comments.length, 1);
+		assert.ok(object(review.comments[0]));
+		assert.equal(review.comments[0].path, 'ci.yml');
+	});
+});
+
+test('review omits complete fix groups referencing external files', async () => {
+	await fixture(async (environment) => {
+		const runtime = api();
+		const external = diagnosticAt('../shared.yml');
+		const fix = diagnostic.fixes?.[0];
+		const externalFix = external.fixes?.[0];
+		assert.ok(fix && externalFix);
+		const mixed = { ...diagnostic, fixes: [{ ...fix, edits: [...fix.edits, ...externalFix.edits] }] };
+		await postReview({ ...result, diagnostics: [mixed] }, environment, runtime);
+		const review = runtime.writes[0];
+		assert.ok(object(review) && Array.isArray(review.comments));
+		assert.equal(review.comments.length, 1);
+		const comment = review.comments[0];
+		assert.ok(object(comment) && typeof comment.body === 'string');
+		assert.ok(!comment.body.includes('```suggestion'));
+		assert.equal(comment.path, 'ci.yml');
+	});
+});
+
+test('review skips unavailable source files and continues other comments', async () => {
+	await fixture(async (environment) => {
+		const runtime = api({ files: ['linked.yml', 'ci.yml'] });
+		runtime.readSource = async (path) => path.endsWith('linked.yml') ? undefined : source;
+		await postReview({ ...result, diagnostics: [diagnosticAt('linked.yml'), diagnostic] }, environment, runtime);
+		const review = runtime.writes[0];
+		assert.ok(object(review) && Array.isArray(review.comments));
+		assert.equal(review.comments.length, 1);
+		assert.ok(object(review.comments[0]));
+		assert.equal(review.comments[0].path, 'ci.yml');
+	});
+});
+
 test('review stops source requests after 50 new eligible comments', async () => {
 	await fixture(async (environment) => {
 		const diagnostics = Array.from({ length: 75 }, (_, index) => ({ ...diagnosticAt(`ci-${index}.yml`), fixes: [] }));

@@ -577,40 +577,44 @@ Existing immutable releases retain their original implementation.
 
 The action accepts these inputs:
 
-| Input                        | Default        | Description                                                                                                                |
-| ---------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `files`                      | all workflows  | Newline-separated workflow file paths                                                                                      |
-| `format`                     | `github`       | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, or `sarif`                                               |
-| `ignore`                     | none           | Newline-separated regular expressions for errors to ignore                                                                 |
-| `config-file`                | automatic      | Configuration file relative to `working-directory`                                                                         |
-| `config`                     | none           | Complete inline configuration as YAML or JSON                                                                              |
-| `self-hosted-runner`         | inherited      | YAML/JSON mapping with a `labels` list                                                                                     |
-| `config-variables`           | inherited      | YAML/JSON list of permitted variable names, or `null`                                                                      |
-| `config-secrets`             | inherited      | YAML/JSON list of permitted secret names, or `null`                                                                        |
-| `paths`                      | inherited      | YAML/JSON mapping of workflow globs to configuration                                                                       |
-| `assume-default-permissions` | inherited      | `restricted` or `permissive`                                                                                               |
-| `policy`                     | inherited      | YAML/JSON mapping of policy settings                                                                                       |
-| `tools`                      | inherited      | YAML/JSON mapping of external tool settings                                                                                |
-| `shellcheck`                 | `true`         | Enable ShellCheck integration                                                                                              |
-| `shellcheck-config`          | inherited      | Blank inherits config flags; `true` enables rc discovery, `false` disables rc loading, or supply a workspace-relative file |
-| `shellcheck-args`            | none           | Additional checking options as a YAML/JSON array of strings                                                                |
-| `pyflakes`                   | `true`         | Enable pyflakes integration                                                                                                |
-| `add-actionlint-to-path`     | `true`         | Make actionlint available on PATH for subsequent job steps                                                                 |
-| `add-shellcheck-to-path`     | `true`         | Make ShellCheck available on PATH when ShellCheck is enabled                                                               |
-| `add-pyflakes-to-path`       | `true`         | Make pyflakes available on PATH when pyflakes is enabled                                                                   |
-| `working-directory`          | `.`            | Directory to lint, relative to the repository workspace                                                                    |
-| `output-file`                | none           | Repository-relative file to receive the selected output                                                                    |
-| `fail-on-error`              | `true`         | Fail when problems are found; command failures always fail                                                                 |
-| `annotations`                | `false`        | Emit annotations alongside another format; `github` already emits them                                                     |
-| `summary`                    | `false`        | Add findings and completion status to the job summary                                                                      |
-| `report-formats`             | none           | Additional JSON/SARIF files; comma- or newline-separated `json`, `sarif`                                                   |
-| `review`                     | `false`        | Post PR review comments and supported suggestions on changed lines                                                         |
-| `token`                      | `github.token` | Token for opt-in PR reviews; requires `pull-requests: write`                                                               |
+| Input                        | Default        | Description                                                                                                   |
+| ---------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------- |
+| `files`                      | all workflows  | Newline-separated workflow file paths                                                                         |
+| `format`                     | `github`       | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, or `sarif`                                  |
+| `ignore`                     | none           | Newline-separated regular expressions for errors to ignore                                                    |
+| `config-file`                | automatic      | Configuration file, absolute or relative to `working-directory`                                               |
+| `config`                     | none           | Complete inline configuration as YAML or JSON                                                                 |
+| `self-hosted-runner`         | inherited      | YAML/JSON mapping with a `labels` list                                                                        |
+| `config-variables`           | inherited      | YAML/JSON list of permitted variable names, or `null`                                                         |
+| `config-secrets`             | inherited      | YAML/JSON list of permitted secret names, or `null`                                                           |
+| `paths`                      | inherited      | YAML/JSON mapping of workflow globs to configuration                                                          |
+| `assume-default-permissions` | inherited      | `restricted` or `permissive`                                                                                  |
+| `policy`                     | inherited      | YAML/JSON mapping of policy settings                                                                          |
+| `tools`                      | inherited      | YAML/JSON mapping of external tool settings                                                                   |
+| `shellcheck`                 | `true`         | Enable ShellCheck integration                                                                                 |
+| `shellcheck-config`          | inherited      | Blank inherits settings; `true` discovers rc, `false` disables it, or set an absolute/workspace-relative file |
+| `shellcheck-args`            | none           | Additional checking options as a YAML/JSON array of strings                                                   |
+| `pyflakes`                   | `true`         | Enable pyflakes integration                                                                                   |
+| `add-actionlint-to-path`     | `true`         | Make actionlint available on PATH for subsequent job steps                                                    |
+| `add-shellcheck-to-path`     | `true`         | Make ShellCheck available on PATH when ShellCheck is enabled                                                  |
+| `add-pyflakes-to-path`       | `true`         | Make pyflakes available on PATH when pyflakes is enabled                                                      |
+| `working-directory`          | `.`            | Directory to lint, absolute or relative to the repository workspace                                           |
+| `output-file`                | none           | Repository-relative file to receive the selected output                                                       |
+| `fail-on-error`              | `true`         | Fail when problems are found; command failures always fail                                                    |
+| `annotations`                | `false`        | Emit annotations alongside another format; `github` already emits them                                        |
+| `summary`                    | `false`        | Add findings and completion status to the job summary                                                         |
+| `report-formats`             | none           | Additional JSON/SARIF files; comma- or newline-separated `json`, `sarif`                                      |
+| `review`                     | `false`        | Post PR review comments and supported suggestions on changed lines                                            |
+| `token`                      | `github.token` | Token for opt-in PR reviews; requires `pull-requests: write`                                                  |
 
 When `config-file` is omitted, the action automatically loads
 `.github/actionlint.yaml` or `.github/actionlint.yml` from the checked-out repository.
 If both exist, `.yaml` wins. The log shows the selected file and any overriding
 inputs. No config file is required.
+
+Analysis accepts parent paths and symlinks to files and directories outside
+`GITHUB_WORKSPACE`. `output-file` must remain inside the workspace; PR review
+comments remain limited to repository files on changed lines.
 
 Omitting `shellcheck-config` inherits the project settings and command flags.
 Setting it to `false` explicitly disables rc loading, including project-selected files.
@@ -621,9 +625,9 @@ in actionlint.yaml, or the corresponding `tools` Action input.
 Set `shellcheck-config: true` to search for `.shellcheckrc` or `shellcheckrc`.
 Discovery starts at the Action's `working-directory`, searches its parents, then checks
 ShellCheck's user config locations. It does not start at each workflow file's
-directory. An explicit config path is always relative to `GITHUB_WORKSPACE`,
-even when `working-directory` points to a subdirectory; missing or unreadable
-files are invalid inputs. This input retains its workspace-relative semantics;
+directory. Relative config paths use `GITHUB_WORKSPACE`,
+even when `working-directory` points to a subdirectory; absolute paths are also
+accepted. Missing or unreadable files are invalid inputs;
 paths inside `tools.shellcheck.config` instead default to the directory containing
 actionlint.yaml. Relative source paths use each workflow step's effective working
 directory; see [ShellCheck configuration](config.md#shellcheck).

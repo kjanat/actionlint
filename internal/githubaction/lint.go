@@ -73,19 +73,15 @@ func (req *lintRequest) configureEnvironment(env func(string) string) error {
 	return nil
 }
 
-func buildRequest(in *inputs, workspaceDir, workingRel string) (*lintRequest, error) {
+func buildRequest(in *inputs, workspaceDir, workingDir string) *lintRequest {
 	req := &lintRequest{
-		workingDir:   filepath.Join(workspaceDir, workingRel),
+		workingDir:   inputPath(workspaceDir, workingDir),
 		workspaceDir: workspaceDir,
 		ignore:       in.ignore,
 		format:       in.format,
 	}
 	if in.configFile != "" {
-		rel, err := workspaceRel(workspaceDir, filepath.Join(workingRel, in.configFile), "config-file")
-		if err != nil {
-			return nil, err
-		}
-		req.configFile = filepath.Join(workspaceDir, rel)
+		req.configFile = inputPath(req.workingDir, in.configFile)
 	}
 	if in.shellcheck {
 		req.shellcheck = "shellcheck"
@@ -93,17 +89,8 @@ func buildRequest(in *inputs, workspaceDir, workingRel string) (*lintRequest, er
 	if in.pyflakes {
 		req.pyflakes = "pyflakes"
 	}
-	for _, f := range in.files {
-		path := f
-		if !filepath.IsAbs(path) {
-			path = filepath.Join(workingRel, path)
-		}
-		if _, err := workspaceRel(workspaceDir, path, "files"); err != nil {
-			return nil, err
-		}
-	}
 	req.files = in.files
-	return req, nil
+	return req
 }
 
 func runLinter(req *lintRequest) *lintResult {
@@ -113,12 +100,6 @@ func runLinter(req *lintRequest) *lintResult {
 	if workspace == "" {
 		workspace = req.workingDir
 	}
-	root, err := os.OpenRoot(workspace)
-	if err != nil {
-		result.lintOutcome = &lintOutcome{"", err.Error() + "\n", actionlint.ExitStatusFailure}
-		return result
-	}
-	defer root.Close()
 	opts := actionlint.AnalysisOptions{
 		Context:            req.ctx,
 		ShellcheckOptions:  toolOptionsInDirectory(req.shellcheckOptions, req.workingDir),
@@ -130,7 +111,6 @@ func runLinter(req *lintRequest) *lintResult {
 		ConfigFile:         req.configFile,
 		ConfigOverlays:     req.overlays,
 		WorkingDir:         req.workingDir,
-		ReadFile:           workspaceReader(root, workspace),
 		LogWriter:          &logs,
 		OnConfigLoaded: func(report actionlint.ConfigReport) {
 			result.configs = append(result.configs, report)
@@ -194,11 +174,7 @@ func runLinter(req *lintRequest) *lintResult {
 			diagnostic.Path = path
 		}
 	}
-	sarifAnalysis, err := workspaceSARIFAnalysis(analysis, req.workingDir, workspace)
-	if err != nil {
-		result.lintOutcome = &lintOutcome{"", err.Error() + "\n", actionlint.ExitStatusFailure}
-		return result
-	}
+	sarifAnalysis := workspaceSARIFAnalysis(analysis, req.workingDir, workspace)
 	selected := analysis
 	if req.format == formatSARIF {
 		selected = sarifAnalysis
@@ -230,46 +206,32 @@ func runLinter(req *lintRequest) *lintResult {
 
 // Copy the complete result to retain renderer rule/source metadata while keeping
 // persisted diagnostics and non-SARIF formats relative to the analysis directory.
-func workspaceSARIFAnalysis(analysis *actionlint.AnalysisResult, workingDir, workspace string) (*actionlint.AnalysisResult, error) {
-	rebase := func(path string) (string, error) {
-		if !filepath.IsAbs(path) {
-			path = filepath.Join(workingDir, path)
-		}
-		relative, err := filepath.Rel(workspace, path)
-		return filepath.ToSlash(relative), err
-	}
+func workspaceSARIFAnalysis(analysis *actionlint.AnalysisResult, workingDir, workspace string) *actionlint.AnalysisResult {
 	result := *analysis
 	result.Diagnostics = slices.Clone(analysis.Diagnostics)
 	for i := range result.Diagnostics {
 		diagnostic := &result.Diagnostics[i]
-		var err error
-		diagnostic.Path, err = rebase(diagnostic.Path)
-		if err != nil {
-			return nil, fmt.Errorf("rebase SARIF diagnostic path: %w", err)
-		}
+		diagnostic.Path = reportPath(workingDir, workspace, diagnostic.Path)
 		diagnostic.Fixes = slices.Clone(diagnostic.Fixes)
 		for j := range diagnostic.Fixes {
 			fix := &diagnostic.Fixes[j]
 			fix.Edits = slices.Clone(fix.Edits)
 			for k := range fix.Edits {
-				fix.Edits[k].Path, err = rebase(fix.Edits[k].Path)
-				if err != nil {
-					return nil, fmt.Errorf("rebase SARIF fix path: %w", err)
-				}
+				fix.Edits[k].Path = reportPath(workingDir, workspace, fix.Edits[k].Path)
 			}
 		}
 	}
-	return &result, nil
+	return &result
 }
 
-func workspaceReader(root *os.Root, workspace string) func(string) ([]byte, error) {
-	return func(path string) ([]byte, error) {
-		rel, err := workspaceRel(workspace, path, "files")
-		if err != nil {
-			return nil, &os.PathError{Op: "read", Path: path, Err: errors.New("path is outside the repository workspace")}
-		}
-		return root.ReadFile(rel)
+// Reports use workspace-relative paths where possible. Files on another Windows
+// volume retain their absolute path, which SARIF renders as a file URI.
+func reportPath(workingDir, workspace, path string) string {
+	absolute := inputPath(workingDir, path)
+	if relative, err := filepath.Rel(workspace, absolute); err == nil {
+		return filepath.ToSlash(relative)
 	}
+	return filepath.ToSlash(absolute)
 }
 
 func toolOptionsInDirectory(options *actionlint.ExternalCommandOptions, directory string) *actionlint.ExternalCommandOptions {

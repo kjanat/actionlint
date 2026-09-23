@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	"actionlint.kjanat.dev"
 )
@@ -43,19 +42,13 @@ func requiredTools(env func(string) string) (actionlint.ExternalToolRequirements
 	if err != nil {
 		return none, err
 	}
-	root, err := os.OpenRoot(workspace)
-	if err != nil {
-		return none, err
-	}
-	defer func() { _ = root.Close() }()
-	req, err := a.prepareRequest(in, root, workspace)
+	req, err := a.prepareRequest(in, workspace)
 	if err != nil {
 		return none, err
 	}
 	session, err := actionlint.NewAnalysisSession(actionlint.AnalysisOptions{
 		WorkingDir: req.workingDir, ConfigFile: req.configFile, ConfigOverlays: req.overlays,
 		Shellcheck: req.shellcheck, Pyflakes: req.pyflakes, IgnorePatterns: req.ignore,
-		ReadFile: workspaceReader(root, workspace),
 	})
 	if err != nil {
 		return none, err

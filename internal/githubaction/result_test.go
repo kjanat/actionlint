@@ -6,10 +6,50 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev"
 )
+
+func TestActionReportsFilesOnAnotherVolume(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("different Windows volumes have no relative path")
+	}
+	const workspace = `C:\workspace`
+	const file = `D:\shared\workflow.yml`
+	analysis := &actionlint.AnalysisResult{Diagnostics: []actionlint.Diagnostic{{
+		Rule: "shellcheck", Path: file, Message: "Quote variable",
+		Start: actionlint.DiagnosticPosition{Line: 1, Column: 6}, End: actionlint.DiagnosticPosition{Line: 1, Column: 8},
+		Fixes: []actionlint.DiagnosticFix{{Description: "Quote", Edits: []actionlint.DiagnosticEdit{{Path: file}}}},
+	}}}
+	renderer, err := actionlint.NewAnalysisRenderer(actionlint.OutputFormatSARIF, "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sarif bytes.Buffer
+	if err := renderer.Render(&sarif, workspaceSARIFAnalysis(analysis, workspace, workspace)); err != nil {
+		t.Fatal(err)
+	}
+	if got := sarif.String(); strings.Count(got, "file:///D:/shared/workflow.yml") != 2 || strings.Contains(got, "uriBaseId") {
+		t.Fatalf("expected absolute file URIs for location and fix: %s", got)
+	}
+	if analysis.Diagnostics[0].Path != file || analysis.Diagnostics[0].Fixes[0].Edits[0].Path != file {
+		t.Fatal("SARIF rendering changed persisted paths")
+	}
+	problem := sampleProblem()
+	problem.Filepath = file
+	serialized, err := json.Marshal([]*actionlint.ErrorTemplateFields{problem})
+	if err != nil {
+		t.Fatal(err)
+	}
+	count, annotation, err := countAndRender(string(serialized), formatGitHub, workspace, workspace)
+	if err != nil || count != 1 || !strings.Contains(annotation, "file=D%3A/shared/workflow.yml,") {
+		t.Fatalf("cross-volume annotation: %d %q %v", count, annotation, err)
+	}
+}
 
 func TestActionDiagnosticAndSARIFPaths(t *testing.T) {
 	shellcheck, err := exec.LookPath("shellcheck")

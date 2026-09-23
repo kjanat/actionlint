@@ -4,14 +4,13 @@ import (
 	"errors"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"actionlint.kjanat.dev"
 	"go.yaml.in/yaml/v4"
 )
 
-func (req *lintRequest) configureShellcheck(env func(string) string, root *os.Root, workspace string) error {
+func (req *lintRequest) configureShellcheck(env func(string) string, workspace string) error {
 	if req.shellcheck == "" {
 		return nil
 	}
@@ -40,7 +39,7 @@ func (req *lintRequest) configureShellcheck(env func(string) string, root *os.Ro
 		flags.settings.Config = actionlint.ShellcheckRCFile(config)
 	}
 	if config, ok := flags.settings.Config.(actionlint.ShellcheckRCFile); ok {
-		path, err := shellcheckConfigPath(root, workspace, string(config))
+		path, err := shellcheckConfigPath(workspace, string(config))
 		if err != nil {
 			return err
 		}
@@ -56,11 +55,9 @@ func (req *lintRequest) configureShellcheck(env func(string) string, root *os.Ro
 	return nil
 }
 
-func shellcheckConfigPath(root *os.Root, workspace, config string) (string, error) {
-	if !filepath.IsLocal(config) {
-		return "", inputErrorf("ShellCheck config must be a workspace-relative file path")
-	}
-	file, err := root.Open(config)
+func shellcheckConfigPath(workspace, config string) (string, error) {
+	path := inputPath(workspace, config)
+	file, err := os.Open(path)
 	if err != nil {
 		return "", inputErrorf("ShellCheck config: %s", err)
 	}
@@ -69,7 +66,7 @@ func shellcheckConfigPath(root *os.Root, workspace, config string) (string, erro
 	if err != nil || !info.Mode().IsRegular() {
 		return "", inputErrorf("ShellCheck config must identify a readable regular file")
 	}
-	return filepath.Join(workspace, config), nil
+	return path, nil
 }
 
 func shellcheckArguments(value string) ([]string, error) {
