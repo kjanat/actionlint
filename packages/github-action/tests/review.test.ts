@@ -122,9 +122,14 @@ function api(
 			if (typeof init.body === 'string') writes.push(JSON.parse(init.body));
 			data = { id: 1 };
 		} else if (url.includes('/files?')) {
-			data = options.paginated && url.endsWith('page=1')
-				? Array.from({ length: 100 }, (_, index) => ({ filename: `unrelated-${index}.yml` }))
-				: files.map((filename) => ({ filename, patch }));
+			const entries = [
+				...(options.paginated
+					? Array.from({ length: 100 }, (_, index) => ({ filename: `unrelated-${index}.yml` }))
+					: []),
+				...files.map((filename) => ({ filename, patch })),
+			];
+			const page = Number(new URL(url).searchParams.get('page'));
+			data = entries.slice((page - 1) * 100, page * 100);
 		} else if (url.includes('/comments?')) {
 			data = (options.existing || []).map((body) => ({ body }));
 		} else if (url.includes('/contents/')) {
@@ -136,7 +141,8 @@ function api(
 		}
 		return Response.json(data);
 	};
-	return { calls, writes, request, readSource: async () => source };
+	const readSource: ReviewRuntime['readSource'] = async () => source;
+	return { calls, writes, request, readSource };
 }
 
 async function listen(server: Server): Promise<number> {
@@ -321,7 +327,53 @@ test('review stops source requests after 50 new eligible comments', async () => 
 			}),
 			diagnostics.slice(5, 55).map((value) => value.path),
 		);
-		assert.equal(runtime.calls.filter((url) => url.includes('/contents/')).length, 56);
+		assert.equal(runtime.calls.filter((url) => url.includes('/contents/')).length, 55);
+	});
+});
+
+test('review skips source reads for unchanged context but retains fixes on changed lines', async () => {
+	await fixture(async (environment) => {
+		const contextOnly = Array.from({ length: 75 }, (_, index): Diagnostic => ({
+			...diagnosticAt(`context-${index}.yml`),
+			start: { line: 2, column: 1 },
+			end: { line: 2, column: 5 },
+			fixes: [],
+		}));
+		const changedFix: Diagnostic = {
+			...diagnosticAt('changed-fix.yml'),
+			start: { line: 2, column: 1 },
+			end: { line: 2, column: 5 },
+		};
+		const diagnostics = [...contextOnly, changedFix, diagnostic];
+		const runtime = api({ files: diagnostics.map((value) => value.path) });
+		await postReview({ ...result, diagnostics }, environment, runtime);
+		assert.deepEqual(
+			runtime.calls.filter((url) => url.includes('/contents/')),
+			['changed-fix.yml', 'ci.yml'].map((path) => `https://api.github.com/repos/fork/repo/contents/${path}?ref=${sha}`),
+		);
+		const review = runtime.writes[0];
+		assert.ok(object(review) && Array.isArray(review.comments));
+		assert.equal(review.comments.length, 2);
+		for (const comment of review.comments) {
+			assert.ok(object(comment) && typeof comment.body === 'string');
+			assert.ok(comment.body.includes('```suggestion'));
+			assert.equal(comment.line, 3);
+		}
+	});
+});
+
+test('review bounds source lookups even when remaining files do not produce comments', async () => {
+	await fixture(async (environment) => {
+		const diagnostics = Array.from({ length: 125 }, (_, index) => diagnosticAt(`ci-${index}.yml`));
+		const runtime = api({ files: diagnostics.map((value) => value.path) });
+		runtime.readSource = async (path: string) => path.endsWith('ci-0.yml') ? source : `${source}modified\n`;
+		await postReview({ ...result, diagnostics }, environment, runtime);
+		assert.equal(runtime.calls.filter((url) => url.includes('/contents/')).length, 100);
+		const review = runtime.writes[0];
+		assert.ok(object(review) && Array.isArray(review.comments));
+		assert.equal(review.comments.length, 1);
+		assert.ok(object(review.comments[0]));
+		assert.equal(review.comments[0].path, 'ci-0.yml');
 	});
 });
 

@@ -61,6 +61,10 @@ type sarifFix struct {
 func sarifArtifact(path string) sarifArtifactLocation {
 	slash := filepath.ToSlash(path)
 	if filepath.IsAbs(path) {
+		if filepath.Separator == '\\' && strings.HasPrefix(slash, "//") {
+			host, rest, _ := strings.Cut(slash[2:], "/")
+			return sarifArtifactLocation{URI: (&url.URL{Scheme: "file", Host: host, Path: "/" + rest}).String()}
+		}
 		if !strings.HasPrefix(slash, "/") {
 			slash = "/" + slash
 		}

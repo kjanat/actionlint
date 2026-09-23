@@ -68,6 +68,23 @@ function inDiff(hunks: Hunk[], start: number, end: number): boolean {
 	);
 }
 
+function endLine(start: Position, end: Position): number {
+	return end.line > start.line && end.column === 1 ? end.line - 1 : end.line;
+}
+
+function relevantToDiff(diagnostic: Diagnostic, hunks: Hunk[]): boolean {
+	if (inDiff(hunks, diagnostic.start.line, endLine(diagnostic.start, diagnostic.end))) return true;
+	const fix = diagnostic.fixes?.[0];
+	if (!fix || fix.edits.length === 0 || fix.edits.some((edit) => edit.path !== diagnostic.path)) return false;
+	let start = Number.MAX_SAFE_INTEGER;
+	let end = 0;
+	for (const edit of fix.edits) {
+		start = Math.min(start, edit.start.line);
+		end = Math.max(end, endLine(edit.start, edit.end));
+	}
+	return end - start <= 40 && inDiff(hunks, start, end);
+}
+
 function markdownCode(text: string, language = ''): string {
 	const lengths = [...text.matchAll(/`+/g)].map((match) => match[0].length);
 	const fence = '`'.repeat(Math.max(3, ...lengths.map((length) => length + 1)));
@@ -99,10 +116,7 @@ export function suggestion(
 		const end = offset(lines, edit.end);
 		if (start === undefined || end === undefined || start > end) return undefined;
 		firstLine = Math.min(firstLine, edit.start.line);
-		lastLine = Math.max(
-			lastLine,
-			edit.end.line > edit.start.line && edit.end.column === 1 ? edit.end.line - 1 : edit.end.line,
-		);
+		lastLine = Math.max(lastLine, endLine(edit.start, edit.end));
 		edits.push({ start, end, replacement: edit.replacement });
 	}
 	if (lastLine - firstLine > 40) return undefined;
@@ -137,7 +151,7 @@ export function reviewComment(
 	includeSuggestion = true,
 ): ReviewComment | undefined {
 	let start = diagnostic.start.line;
-	let end = diagnostic.end.line > start && diagnostic.end.column === 1 ? diagnostic.end.line - 1 : diagnostic.end.line;
+	let end = endLine(diagnostic.start, diagnostic.end);
 	let body = markdownCode(`${diagnostic.code || diagnostic.rule}: ${diagnostic.message}`);
 	const fix = diagnostic.fixes?.[0];
 	const replacement = fix && suggestion(fix, diagnostic.path, source);
@@ -298,6 +312,7 @@ export async function postReview(
 		}
 		const prepared = new Map<string, Map<Diagnostic, ReviewComment>>();
 		const comments: ReviewComment[] = [];
+		let sourceLookups = 0;
 		for (const diagnostic of result.diagnostics) {
 			const path = workspacePath(environment, diagnostic.path);
 			let resolved = prepared.get(path.relative);
@@ -306,14 +321,18 @@ export async function postReview(
 				prepared.set(path.relative, resolved);
 				const file = files.find((value) => object(value) && value.filename === path.relative);
 				if (!object(file) || typeof file.patch !== 'string') continue;
+				const hunks = diffHunks(file.patch);
+				const eligible = (diagnosticsByPath.get(path.relative) ?? [])
+					.map((related) => ({ diagnostic: related, normalized: normalizeFixPaths(related, environment) }))
+					.filter(({ normalized }) => relevantToDiff(normalized, hunks));
+				if (eligible.length === 0 || sourceLookups === 100) continue;
+				sourceLookups++;
 				const source = await sourceAtHead(api, ctx, path, runtime);
 				if (source === undefined) continue;
-				const hunks = diffHunks(file.patch);
 				const candidates: (CommentCandidate & { diagnostic: Diagnostic })[] = [];
 				// Resolve every overlap in this file before counting comments toward the
 				// limit, including diagnostics that occur later in the original order.
-				for (const related of diagnosticsByPath.get(path.relative) ?? []) {
-					const normalized = normalizeFixPaths(related, environment);
+				for (const { diagnostic: related, normalized } of eligible) {
 					const suggested = reviewComment(normalized, path.relative, source, hunks, ctx.sha);
 					const plain = reviewComment(normalized, path.relative, source, hunks, ctx.sha, false);
 					if (suggested && plain) candidates.push({ diagnostic: related, suggested, plain });

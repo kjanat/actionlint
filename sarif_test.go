@@ -3,8 +3,53 @@ package actionlint
 import (
 	"bytes"
 	"encoding/json"
+	"runtime"
 	"testing"
 )
+
+func TestNativeSARIFUNCPaths(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("UNC filesystem paths require Windows")
+	}
+	for _, path := range []string{`\\server\share\my workflow.yml`, `//server/share/my workflow.yml`} {
+		t.Run(path, func(t *testing.T) {
+			diagnostic := Diagnostic{Rule: "shellcheck", Message: "Quote", Path: path,
+				Start: DiagnosticPosition{1, 1}, End: DiagnosticPosition{1, 2},
+				Fixes: []DiagnosticFix{{Description: "Quote", Edits: []DiagnosticEdit{
+					{Path: path, Start: DiagnosticPosition{1, 1}, End: DiagnosticPosition{1, 2}, Replacement: `"$x"`},
+				}}}}
+			renderer, err := NewAnalysisRenderer(OutputFormatSARIF, "", false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var out bytes.Buffer
+			if err := renderer.Render(&out, &AnalysisResult{Diagnostics: []Diagnostic{diagnostic}}); err != nil {
+				t.Fatal(err)
+			}
+			var document struct {
+				Runs []struct {
+					Results []struct {
+						Fixes     []sarifFix
+						Locations []struct {
+							PhysicalLocation struct{ ArtifactLocation sarifArtifactLocation }
+						}
+					}
+				}
+			}
+			if err := json.Unmarshal(out.Bytes(), &document); err != nil {
+				t.Fatal(err)
+			}
+			result := document.Runs[0].Results[0]
+			const want = "file://server/share/my%20workflow.yml"
+			if got := result.Locations[0].PhysicalLocation.ArtifactLocation.URI; got != want {
+				t.Errorf("diagnostic URI = %q, want %q", got, want)
+			}
+			if got := result.Fixes[0].ArtifactChanges[0].ArtifactLocation; got.URI != want || got.URIBaseID != "" {
+				t.Errorf("fix artifact = %+v, want URI %q without base", got, want)
+			}
+		})
+	}
+}
 
 func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 	for _, tc := range []struct{ severity, level string }{
