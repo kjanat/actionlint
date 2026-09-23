@@ -55,7 +55,7 @@ func (rule *RuleExecutableBit) VisitJobPre(job *Job) error {
 	if job.Container != nil {
 		rule.unix = false
 	}
-	if enabled, known := stepCondition(job.If); known && !enabled {
+	if enabled, known := invocationCondition(job.If); known && !enabled {
 		rule.unix = false
 	}
 	rule.sequential, rule.pristine = true, false
@@ -69,7 +69,7 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 	if !rule.unix || !rule.sequential {
 		return nil
 	}
-	enabled, conditionKnown := invocationStepCondition(step.If)
+	enabled, conditionKnown := invocationCondition(step.If)
 	if conditionKnown && !enabled {
 		return nil
 	}
@@ -239,7 +239,7 @@ func (rule *RuleExecutableBit) checkout(action *ExecAction, mayNotComplete bool)
 	if !versioned || !strings.EqualFold(name, "actions/checkout") {
 		return
 	}
-	for _, input := range []string{"repository", "ref", "sparse-checkout"} {
+	for _, input := range []string{"repository", "ref", "sparse-checkout", "github-server-url"} {
 		if value, known := checkoutInput(action, input); !known || value != "" {
 			return
 		}
@@ -314,18 +314,23 @@ func (rule *RuleExecutableBit) statement(statement *syntax.Stmt, run *ExecRun, d
 	if !rule.pristine {
 		return
 	}
-	if statement.Background || statement.Negated || !rule.redirectsKnown(statement.Redirs, *directory) {
+	if statement.Background || !rule.redirectsKnown(statement.Redirs, *directory) {
 		rule.pristine = false
 		return
 	}
-	if len(statement.Redirs) != 0 {
-		// Even a literal redirect can overwrite files used by later commands.
+	if statement.Negated || len(statement.Redirs) != 0 {
+		// Negation changes continuation; redirects can overwrite later inputs.
 		defer func() { rule.pristine = false }()
 	}
 	switch command := statement.Cmd.(type) {
 	case *syntax.CallExpr:
 		rule.call(command, run, directory)
 	case *syntax.BinaryCmd:
+		if command.Op == syntax.OrStmt {
+			rule.statement(command.X, run, directory)
+			rule.pristine = false
+			return
+		}
 		if command.Op != syntax.AndStmt {
 			rule.pristine = false
 			return
