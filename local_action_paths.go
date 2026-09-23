@@ -43,7 +43,7 @@ func (c *LocalActionsCache) localSpec(spec string) (string, bool) {
 }
 
 func (c *LocalActionsCache) observeCheckout(step *Step) {
-	enabled, known := invocationStepCondition(step.If)
+	enabled, known := invocationCondition(step.If)
 	if known && !enabled {
 		return
 	}
@@ -63,7 +63,7 @@ func (c *LocalActionsCache) observeCheckout(step *Step) {
 	if !known || boolMayBeTrue(step.ContinueOnError) || boolMayBeTrue(step.Background) || action.InputsExpression != nil {
 		return
 	}
-	for _, key := range []string{"repository", "ref"} {
+	for _, key := range []string{"repository", "ref", "github-server-url"} {
 		if value, known := checkoutInput(action, key); !known || value != "" {
 			return
 		}
