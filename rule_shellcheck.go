@@ -110,7 +110,7 @@ func (rule *RuleShellcheck) VisitStep(n *Step) error {
 		}
 	}
 
-	return rule.runShellcheck(run.Run.Value, run.source, rule.resolveShell(run), rule.paths.resolve(effectiveRunDirectory(run, rule.jobDir, rule.workflowDir)), run.RunPos)
+	return rule.runShellcheck(run.Run.Value, run.source, rule.resolveShell(run), rule.paths.resolve(rule.paths.effectiveRunDirectory(run, rule.jobDir, rule.workflowDir)), run.RunPos)
 }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
