@@ -696,12 +696,9 @@ func (snapshot *gitModeSnapshot) directoryExists(name string) bool {
 	if snapshot.modes[name] != "" {
 		return false
 	}
-	for file := range snapshot.modes {
-		if strings.HasPrefix(file, name+"/") {
-			return true
-		}
-	}
-	return false
+	snapshot.prepareDirectories()
+	_, exists := snapshot.dirs[name]
+	return exists
 }
 
 // Model common octal and symbolic modes; other syntax leaves execution unknown.
