@@ -165,6 +165,9 @@ func (v *Visitor) visitStep(n *Step) error {
 	}
 
 	for _, p := range v.passes {
+		if shellcheck, ok := p.(*RuleShellcheck); ok && v.actions != nil {
+			compositeCheckoutPaths(shellcheck, v.actions)
+		}
 		if _, script := p.(*RuleExecutableBit); script && v.actions != nil {
 			if _, action := n.Exec.(*ExecAction); action {
 				continue // Preserve checkout state while entering a local composite.
