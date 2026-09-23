@@ -139,6 +139,9 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
 		scoped := newRuleExecutableBit(rule.context)
 		scoped.unix, scoped.sequential, scoped.pristine = rule.unix, rule.sequential, rule.pristine
 		scoped.repositoryUnknown = rule.repositoryUnknown
+		if stepCanRunAfterFailure(call.If) {
+			scoped.pristine, scoped.repositoryUnknown = false, true
+		}
 		scoped.paths, scoped.changed = rule.paths, rule.changed
 		scoped.paths.actionPath = actionPath
 		enabled, conditionKnown := stepCondition(call.If)
