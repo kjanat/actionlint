@@ -2,7 +2,6 @@ package actionlint
 
 import (
 	"path"
-	"runtime"
 	"strings"
 )
 
@@ -137,9 +136,8 @@ func (c *LocalActionsCache) observeCheckout(step *Step) {
 		return
 	}
 	checkoutPath, pathKnown := checkoutInput(action, "path")
-	checkoutPath, representable := runnerDirectoryPath(checkoutPath, c.platform)
-	invalidColon := strings.ContainsRune(checkoutPath, ':') && (c.platform != platformKindMacOrLinux || runtime.GOOS == "windows")
-	if !pathKnown || !representable || invalidColon || strings.HasPrefix(checkoutPath, "/") || strings.ContainsRune(checkoutPath, '\x00') {
+	checkoutPath, representable := runnerRelativePath(checkoutPath, c.platform)
+	if !pathKnown || !representable {
 		c.setCheckout(runDirectory{kind: directoryUnknown})
 		return
 	}
