@@ -505,7 +505,8 @@ type LocalActionsCache struct {
 	cache    map[string]*ActionMetadata
 	dbg      io.Writer
 	base     *LocalActionsCache
-	checkout runDirectory
+	checkout *checkoutPlacement
+	platform platformKind
 }
 
 // NewLocalActionsCache creates new LocalActionsCache instance for the given project.

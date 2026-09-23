@@ -335,9 +335,18 @@ Command strings are parsed into an executable and arguments, not executed by a s
 pipes and redirections are not supported in these flags. Your arguments precede actionlint's
 own arguments, so do not supply input filenames or override ShellCheck's output format.
 
-actionlint invokes ShellCheck with `--norc` and JSON1 output, so `.shellcheckrc` is not read.
-Use **--shellcheck** arguments or `SHELLCHECK_OPTS` for ShellCheck options. Filter pyflakes
-diagnostics with **--ignore** or the configuration's `paths` entries.
+actionlint uses JSON1 output and disables rc-file discovery with `--norc` by default.
+Set `tools.shellcheck.config` to inline settings, an rc-file path, or a directory containing
+`.shellcheckrc` or `shellcheckrc`. An rc path replaces `--norc` with `--rcfile`; relative
+config paths resolve from the selected actionlint configuration file's directory.
+Additional options can use **--shellcheck** arguments or `SHELLCHECK_OPTS`.
+
+ShellCheck runs for recognized `bash`, `sh`, `dash`, and `ksh` interpreters or a supported
+dialect selected by a leading `# shellcheck shell=...` directive. Unresolved explicit
+shell expressions, unknown wrappers, and non-shell scripts are otherwise skipped. Global
+dialect settings and command flags alone do not select them. If no shell is configured
+and the runner platform is unknown, actionlint assumes Bash. Filter pyflakes diagnostics
+with **--ignore** or the configuration's `paths` entries.
 
 # OUTPUT
 
