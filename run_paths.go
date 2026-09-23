@@ -12,6 +12,7 @@ const (
 	directoryUnspecified directoryKind = iota
 	directoryKnown
 	directoryUnknown
+	directoryActionKnown
 )
 
 type runDirectory struct {
@@ -20,11 +21,14 @@ type runDirectory struct {
 }
 
 type runPaths struct {
-	workspace       string
-	analysis        string
-	checkout        string
-	checkoutUnknown bool
-	actionPath      string
+	workspace         string
+	analysis          string
+	checkout          string
+	checkoutUnknown   bool
+	actionPath        string
+	actionRunnerPath  string
+	actionIndependent bool
+	placements        *checkoutPlacement
 }
 
 func workingDirectoryValue(value *String) runDirectory {
@@ -101,7 +105,13 @@ func (paths runPaths) workingDirectory(value *String) runDirectory {
 		if err != nil || !filepath.IsLocal(relative) {
 			return directory
 		}
+		if paths.actionIndependent {
+			return runDirectory{directoryActionKnown, filepath.ToSlash(relative) + suffix}
+		}
 		base = joinRunnerPath(paths.checkout, filepath.ToSlash(relative))
+		if paths.actionRunnerPath != "" {
+			base = paths.actionRunnerPath
+		}
 	default:
 		return directory
 	}
@@ -114,6 +124,7 @@ func (paths runPaths) resolve(directory runDirectory) runDirectory {
 	if directory.kind == directoryUnknown {
 		return unknown
 	}
+	paths = paths.directoryOrigin(directory)
 	local, ok := paths.local(directory.path)
 	if !ok {
 		return unknown
@@ -137,9 +148,28 @@ func (paths runPaths) resolve(directory runDirectory) runDirectory {
 	return runDirectory{directoryKnown, local}
 }
 
+func (paths runPaths) directoryOrigin(directory runDirectory) runPaths {
+	if directory.kind == directoryActionKnown {
+		paths.checkout, paths.checkoutUnknown, paths.placements = "", false, nil
+	}
+	return paths
+}
+
+func (paths runPaths) checkoutFor(relativePath string) (string, bool) {
+	if paths.placements != nil {
+		placement := paths.placements.matching(relativePath)
+		if placement == nil || placement.directory.kind != directoryKnown {
+			return "", false
+		}
+		return placement.directory.path, true
+	}
+	return paths.checkout, !paths.checkoutUnknown
+}
+
 // Translate a workspace-relative runner path to the local self checkout.
 func (paths runPaths) local(relativePath string) (string, bool) {
-	if paths.checkoutUnknown {
+	checkout, known := paths.checkoutFor(relativePath)
+	if !known {
 		return "", false
 	}
 	// Runner-absolute paths refer to the remote machine; they are not local source roots.
@@ -149,9 +179,9 @@ func (paths runPaths) local(relativePath string) (string, bool) {
 		return "", false
 	}
 	relativePath = filepath.FromSlash(relativePath)
-	if paths.checkout != "" {
+	if checkout != "" {
 		var err error
-		relativePath, err = filepath.Rel(filepath.FromSlash(paths.checkout), filepath.Clean(relativePath))
+		relativePath, err = filepath.Rel(filepath.FromSlash(checkout), filepath.Clean(relativePath))
 		if err != nil || !filepath.IsLocal(relativePath) {
 			return "", false
 		}

@@ -29,6 +29,7 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 	}
 	if meta == nil || !strings.EqualFold(meta.Runs.Using, "composite") || active[meta.Path()] || len(active) >= 10 {
 		for _, rule := range parents {
+			compositeCheckoutPaths(rule, v.actions)
 			if err := rule.VisitStep(call); err != nil {
 				return err
 			}
@@ -37,12 +38,12 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 	}
 	active[meta.Path()] = true
 	defer delete(active, meta.Path())
-	checkout := v.actions.currentCheckout()
+	checkout := v.actions.checkoutState()
 	defer func() {
 		enabled, known := invocationCondition(call.If)
 		if known && !enabled {
-			v.actions.setCheckout(checkout)
-		} else if (!known || boolMayBeTrue(call.ContinueOnError) || boolMayBeTrue(call.Background)) && checkout != v.actions.currentCheckout() {
+			v.actions.restoreCheckout(checkout)
+		} else if (!known || boolMayBeTrue(call.ContinueOnError) || boolMayBeTrue(call.Background)) && checkout != v.actions.checkoutState() {
 			v.actions.setCheckout(runDirectory{kind: directoryUnknown})
 		}
 	}()
@@ -50,9 +51,8 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 	children := make([]Rule, 0, len(parents))
 	for _, parent := range parents {
 		child := compositeScriptRule(parent, call, filepath.Dir(meta.Path()))
+		compositeCheckoutPaths(child, v.actions)
 		if shellcheck, ok := child.(*RuleShellcheck); ok {
-			shellcheck.paths.checkout = checkout.path
-			shellcheck.paths.checkoutUnknown = checkout.kind == directoryUnknown
 			if err := shellcheck.prepareConfigPath(); err != nil {
 				return err
 			}
@@ -82,11 +82,7 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 			continue
 		}
 		for _, rule := range children {
-			if shellcheck, ok := rule.(*RuleShellcheck); ok {
-				checkout := v.actions.currentCheckout()
-				shellcheck.paths.checkout = checkout.path
-				shellcheck.paths.checkoutUnknown = checkout.kind == directoryUnknown
-			}
+			compositeCheckoutPaths(rule, v.actions)
 			if err := rule.VisitStep(step); err != nil {
 				return err
 			}
@@ -99,6 +95,7 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 				if conditionKnown && !enabled {
 					continue
 				}
+				outer.actionPristine = outer.actionPristine && inner.actionPristine
 				outer.repositoryUnknown = inner.repositoryUnknown
 				if boolMayBeTrue(call.ContinueOnError) {
 					// The caller may continue after a failed child checkout.
@@ -115,11 +112,39 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 				}
 				outer.pristine, outer.sequential = inner.pristine, inner.sequential
 				inner.paths.actionPath = outer.paths.actionPath
+				inner.paths.actionRunnerPath = outer.paths.actionRunnerPath
+				inner.paths.actionIndependent = outer.paths.actionIndependent
 				outer.paths, outer.changed = inner.paths, inner.changed
 			}
 		}
 	}
 	return nil
+}
+
+func compositeCheckoutPaths(rule Rule, actions *LocalActionsCache) {
+	var paths *runPaths
+	switch rule := rule.(type) {
+	case *RuleShellcheck:
+		paths = &rule.paths
+	case *RuleExecutableBit:
+		paths = &rule.paths
+	default:
+		return
+	}
+	checkout := actions.currentCheckout()
+	paths.checkout, paths.checkoutUnknown = checkout.path, checkout.kind == directoryUnknown
+	paths.placements = actions.checkoutState()
+}
+
+func compositeActionOrigin(paths *runPaths, call *Step, actionPath string) {
+	paths.actionPath = actionPath
+	paths.actionRunnerPath, paths.actionIndependent = "", false
+	if action, ok := call.Exec.(*ExecAction); ok && action.Uses != nil {
+		_, paths.actionIndependent = selfRepositoryUsesLocalSpec(action.Uses.Value)
+		if !paths.actionIndependent {
+			paths.actionRunnerPath = strings.TrimPrefix(action.Uses.Value, "./")
+		}
+	}
 }
 
 func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
@@ -132,7 +157,7 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
 		// Resolve configuration anew: nested actions have different action_path
 		// values even when they inherit the same configuration selection.
 		scoped.actionPath = actionPath
-		scoped.paths.actionPath = actionPath
+		compositeActionOrigin(&scoped.paths, call, actionPath)
 		child = scoped
 	case *RulePyflakes:
 		child = newRulePyflakes(rule.cmd)
@@ -141,11 +166,13 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
 		scoped.unix, scoped.sequential, scoped.pristine = rule.unix, rule.sequential, rule.pristine
 		scoped.caseInsensitive = rule.caseInsensitive
 		scoped.repositoryUnknown = rule.repositoryUnknown
+		scoped.actionPristine = rule.actionPristine
 		if stepCanRunAfterFailure(call.If) {
 			scoped.pristine, scoped.repositoryUnknown = false, true
+			scoped.actionPristine = false
 		}
 		scoped.paths, scoped.changed = rule.paths, rule.changed
-		scoped.paths.actionPath = actionPath
+		compositeActionOrigin(&scoped.paths, call, actionPath)
 		enabled, conditionKnown := invocationCondition(call.If)
 		scoped.skipFindings = rule.skipFindings || !conditionKnown || !enabled
 		if !conditionKnown || !enabled {
@@ -156,6 +183,7 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
 		scoped.jobPathUnknown = rule.jobPathUnknown || shellPathUnknown(call.Env)
 		if conditionKnown && !enabled || boolMayBeTrue(call.Background) {
 			scoped.sequential, scoped.pristine = false, false
+			scoped.actionPristine = false
 		}
 		child = scoped
 	default:
