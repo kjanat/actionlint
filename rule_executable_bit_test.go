@@ -90,6 +90,14 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"untracked", "ubuntu-latest", "", "- run: ./untracked.sh", ""},
 		{"windows runner", "windows-latest", "", "- run: ./bad.sh\n  shell: bash", ""},
 		{"unknown runner", "self-hosted", "", "- run: ./bad.sh", ""},
+		{"self-hosted Unix", "[self-hosted, linux]", "", "- run: ./bad.sh", ""},
+		{"OS-only runner", "linux", "", "- run: ./bad.sh", ""},
+		{"self-hosted hosted label", "[self-hosted, ubuntu-latest]", "", "- run: ./bad.sh", ""},
+		{"custom Unix runner", "ubuntu-custom", "", "- run: ./bad.sh", ""},
+		{"grouped runner", "{group: build, labels: ubuntu-latest}", "", "- run: ./bad.sh", ""},
+		{"expression grouped runner", "${{ fromJSON('{\"group\":\"build\",\"labels\":\"ubuntu-latest\"}') }}", "", "- run: ./bad.sh", ""},
+		{"unresolved runner label", "[ubuntu-latest, '${{ matrix.label }}']", "", "- run: ./bad.sh", ""},
+		{"literal hosted expression", "${{ 'ubuntu-latest' }}", "", "- run: ./bad.sh", "bad.sh"},
 		{"job directory", "ubuntu-latest", "defaults:\n  run:\n    working-directory: scripts\n", "- run: ./bad.sh", "scripts/bad.sh"},
 		{"empty step directory", "ubuntu-latest", "defaults:\n  run:\n    working-directory: scripts\n", "- run: ./bad.sh\n  working-directory: ''", "bad.sh"},
 		{"step directory", "ubuntu-latest", "", "- run: ./bad.sh\n  working-directory: scripts", "scripts/bad.sh"},
@@ -106,6 +114,14 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"skipped opaque run", "ubuntu-latest", "", "- run: ./good.sh\n  if: false\n- run: ./bad.sh", "bad.sh"},
 		{"skipped invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: false", ""},
 		{"conditional invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: github.event_name == 'push'", "bad.sh"},
+		{"always invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: always()", ""},
+		{"failure invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: failure()", ""},
+		{"cancelled invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: cancelled()", ""},
+		{"negated success invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: ${{ !success() }}", ""},
+		{"success invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: success()", "bad.sh"},
+		{"success conjunction", "ubuntu-latest", "", "- run: ./bad.sh\n  if: success() && github.event_name == 'push'", "bad.sh"},
+		{"success disjunction", "ubuntu-latest", "", "- run: ./bad.sh\n  if: success() || failure()", ""},
+		{"quoted status function", "ubuntu-latest", "", "- run: ./bad.sh\n  if: contains(github.event_name, 'failure()')", "bad.sh"},
 		{"conditional invocation invalidates following", "ubuntu-latest", "", "- run: ./bad.sh\n  if: github.event_name == 'push'\n- run: ./bad.sh", "bad.sh"},
 		{"conditional run invalidates", "ubuntu-latest", "", "- run: echo hello\n  if: github.event_name == 'push'\n- run: ./bad.sh", ""},
 		{"constant true run", "ubuntu-latest", "", "- run: ./bad.sh\n  if: ${{ true }}", "bad.sh"},
@@ -215,6 +231,36 @@ func TestExecutableBitWorkflows(t *testing.T) {
 				}) {
 					t.Fatalf("Git index absent from inputs: %v", result.Inputs)
 				}
+			}
+		})
+	}
+}
+
+func TestExecutableBitReusableWorkflowRepository(t *testing.T) {
+	root, _ := executableFixture(t)
+	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		event string
+		want  bool
+	}{
+		{"workflow_call", false},
+		{"{workflow_call: {}}", false},
+		{"[push, workflow_call]", false},
+		{"push", true},
+		{"workflow_dispatch", true},
+	} {
+		t.Run(tc.event, func(t *testing.T) {
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: "+tc.event+"\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - run: ./bad.sh\n")
+			result, err := session.Files([]string{workflow}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" })
+			if found != tc.want {
+				t.Fatalf("checkout repository assumption for %s: %+v", tc.event, result.Diagnostics)
 			}
 		})
 	}

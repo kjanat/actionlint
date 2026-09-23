@@ -504,6 +504,8 @@ type LocalActionsCache struct {
 	proj     *Project // might be nil
 	cache    map[string]*ActionMetadata
 	dbg      io.Writer
+	base     *LocalActionsCache
+	checkout runDirectory
 }
 
 // NewLocalActionsCache creates new LocalActionsCache instance for the given project.
@@ -542,13 +544,26 @@ func (c *LocalActionsCache) writeCache(key string, val *ActionMetadata) {
 	c.mu.Unlock()
 }
 
-// FindMetadata finds metadata for given spec. The spec should indicate for local action hence it
-// should start with "./". The first return value can be nil even if error did not occur.
+// FindMetadata finds metadata for a local action, specified with "./" or "$/".
+// The first return value can be nil even if error did not occur.
 // LocalActionCache caches that the action was not found. At first search, it returns an error that
 // the action was not found. But at the second search, it does not return an error even if the result
 // is nil. This behavior prevents repeating to report the same error from multiple places.
 // Calling this method is thread-safe.
 func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, error) {
+	if local, ok := selfRepositoryUsesLocalSpec(spec); ok {
+		if c.base != nil {
+			return c.base.FindMetadata(local)
+		}
+		spec = local
+	}
+	if c.base != nil {
+		local, ok := c.localSpec(spec)
+		if !ok {
+			return nil, false, nil
+		}
+		return c.base.FindMetadata(local)
+	}
 	if c.proj == nil || !strings.HasPrefix(spec, "./") {
 		return nil, false, nil
 	}

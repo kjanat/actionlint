@@ -111,6 +111,9 @@ func (v *Visitor) Visit(n *Workflow) error {
 }
 
 func (v *Visitor) visitJob(n *Job) error {
+	if v.actions != nil {
+		v.actions.setCheckout(runDirectory{})
+	}
 	var t time.Time
 	if v.dbg != nil {
 		t = time.Now()
@@ -152,6 +155,9 @@ func (v *Visitor) visitJob(n *Job) error {
 }
 
 func (v *Visitor) visitStep(n *Step) error {
+	if v.actions != nil {
+		v.actions.observeCheckout(n)
+	}
 	var t time.Time
 	if v.dbg != nil {
 		t = time.Now()
@@ -188,9 +194,15 @@ func (v *Visitor) visitStep(n *Step) error {
 	// https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
 	if e, ok := n.Exec.(*ExecParallel); ok {
 		for _, s := range e.Steps {
+			if v.actions != nil {
+				v.actions.setCheckout(runDirectory{kind: directoryUnknown})
+			}
 			if err := v.visitStep(s); err != nil {
 				return err
 			}
+		}
+		if v.actions != nil {
+			v.actions.setCheckout(runDirectory{kind: directoryUnknown})
 		}
 	}
 
