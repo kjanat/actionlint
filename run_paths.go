@@ -73,7 +73,7 @@ func (paths runPaths) effectiveRunDirectory(run *ExecRun, jobDir, workflowDir ru
 			break
 		}
 	}
-	if normalized, known := runnerDirectoryPath(directory.path, paths.platform); known {
+	if normalized, known := shellcheckDirectoryPath(directory.path, paths.platform); known {
 		directory.path = normalized
 	} else {
 		directory.kind = directoryUnknown
@@ -86,20 +86,12 @@ func (paths runPaths) resolve(directory runDirectory) runDirectory {
 	if directory.kind == directoryUnknown {
 		return unknown
 	}
-	local, ok := paths.local(directory.path)
+	local, ok := paths.analysisPath(directory.path)
 	if !ok {
 		return unknown
 	}
-	workspace, err := filepath.EvalSymlinks(paths.workspace)
+	local, err := filepath.EvalSymlinks(local)
 	if err != nil {
-		return unknown
-	}
-	local, err = filepath.EvalSymlinks(local)
-	if err != nil {
-		return unknown
-	}
-	relative, err := filepath.Rel(workspace, local)
-	if err != nil || !filepath.IsLocal(relative) {
 		return unknown
 	}
 	info, err := os.Stat(local)
@@ -115,20 +107,35 @@ func (paths runPaths) local(relativePath string) (string, bool) {
 	if !representable {
 		return "", false
 	}
+	path, known := paths.analysisPath(relativePath)
+	if !known {
+		return "", false
+	}
+	relative, err := filepath.Rel(paths.workspace, path)
+	return path, err == nil && filepath.IsLocal(relative)
+}
+
+// Local analysis can follow available files outside the indexed repository.
+func (paths runPaths) analysisPath(value string) (string, bool) {
+	relativePath, known := shellcheckDirectoryPath(value, paths.platform)
+	if !known {
+		return "", false
+	}
+	if filepath.IsAbs(relativePath) {
+		return relativePath, true
+	}
+	if strings.HasPrefix(relativePath, "/") || strings.ContainsRune(relativePath, '\x00') {
+		return "", false
+	}
 	relativePath = filepath.FromSlash(relativePath)
 	if paths.checkout != "" {
 		var err error
 		relativePath, err = filepath.Rel(filepath.FromSlash(paths.checkout), filepath.Clean(relativePath))
-		if err != nil || !filepath.IsLocal(relativePath) {
+		if err != nil {
 			return "", false
 		}
 	}
-	path := filepath.Join(paths.workspace, relativePath)
-	relative, err := filepath.Rel(paths.workspace, path)
-	if err != nil || !filepath.IsLocal(relative) {
-		return "", false
-	}
-	return path, true
+	return filepath.Join(paths.workspace, relativePath), true
 }
 
 func runnerRelativePath(value string, platform platformKind) (string, bool) {
