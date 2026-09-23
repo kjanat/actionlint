@@ -990,8 +990,9 @@ files, unresolved merge entries, symlinks and submodules do not produce findings
 
 Either commit the executable bit with `git update-index --chmod=+x bad.sh`, run
 `bash bad.sh` instead, or set permissions in the workflow before invoking the
-script. A literal `chmod` in an earlier step or command invalidates the index
-mode for that path. See GitHub's [Adding scripts to your workflow][workflow-scripts-doc].
+script. A literal `chmod` of an indexed regular file in an earlier step or command
+invalidates the index mode for that path. Missing or untracked operands leave
+subsequent execution uncertain. See GitHub's [Adding scripts to your workflow][workflow-scripts-doc].
 
 The rule shares the [run-directory resolver](config.md#shellcheck). It follows
 step, job and workflow working-directory defaults, and recognizes a literal `cd`
@@ -1001,6 +1002,8 @@ is supported, including calls such as `./source/bad.sh` from the workspace root.
 
 Detection is deliberately conservative. It checks direct literal calls in plain
 Bash or sh steps on recognized GitHub-hosted Linux/macOS runners after a self checkout.
+Literal script operands to `exec` and `command` are also checked, with an optional
+`--` separator; other options and lookup-only forms such as `command -v` are skipped.
 Self-hosted and grouped runners may retain repository settings from previous jobs.
 Reusable workflows may check out a different caller repository, so their local
 index modes are not assumed to match the runner. Steps that can run after failure,

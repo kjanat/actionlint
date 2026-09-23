@@ -104,8 +104,22 @@ func stepCondition(condition *String) (enabled, known bool) {
 		expression.Value = "${{ " + expression.Value + " }}"
 	}
 	value, known := workflowExpressionLiteral(&expression)
-	enabled, boolean := value.(bool)
-	return enabled, known && boolean
+	if !known {
+		return false, false
+	}
+	switch value := value.(type) {
+	case nil:
+		return false, true
+	case bool:
+		return value, true
+	case float64:
+		return value != 0, true
+	case string:
+		return value != "", true
+	default:
+		// Known JSON arrays and objects are truthy, including empty ones.
+		return true, true
+	}
 }
 
 func stepCanRunAfterFailure(condition *String) bool {
@@ -231,10 +245,12 @@ func (rule *RuleExecutableBit) checkout(action *ExecAction, mayNotComplete bool)
 	checkout := ""
 	if input := action.Inputs["path"]; input != nil && input.Value != nil {
 		value := workingDirectoryValue(input.Value)
-		if value.kind != directoryKnown || !localRunnerPath(value.path) {
+		if value.kind != directoryKnown || value.path != "" && !localRunnerPath(value.path) {
 			return
 		}
-		checkout = path.Clean(value.path)
+		if value.path != "" {
+			checkout = path.Clean(value.path)
+		}
 		if checkout == ".." || strings.HasPrefix(checkout, "../") {
 			return
 		}
@@ -329,14 +345,33 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 		rule.pristine = false
 		return
 	}
+	arguments := command.Args
+	if name == "exec" || name == "command" {
+		arguments = arguments[1:]
+		if len(arguments) > 0 {
+			if option, literal := literalShellWord(arguments[0].Parts); literal && option == "--" {
+				arguments = arguments[1:]
+			}
+		}
+		if len(arguments) == 0 {
+			rule.pristine = false
+			return
+		}
+		name, literal = literalShellWord(arguments[0].Parts)
+		// Lookup-only flags and other options do not prove a script invocation.
+		if !literal || strings.HasPrefix(name, "-") || !strings.Contains(name, "/") {
+			rule.pristine = false
+			return
+		}
+	}
 	if strings.Contains(name, "/") {
-		for _, word := range command.Args[1:] {
+		for _, word := range arguments[1:] {
 			if !simpleShellArgument(word.Parts) {
 				rule.pristine = false
 				return
 			}
 		}
-		rule.checkInvocation(run, command.Args[0], *directory, name)
+		rule.checkInvocation(run, arguments[0], *directory, name)
 		rule.pristine = false
 		return
 	}
@@ -382,7 +417,8 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 				return
 			}
 			name, ok := rule.scriptPath(*directory, operand)
-			if !ok || rule.index().modes[name] == "120000" || rule.index().directoryExists(name) {
+			mode := rule.index().modes[name]
+			if !ok || mode != "100644" && mode != "100755" {
 				rule.pristine = false
 				return
 			}
