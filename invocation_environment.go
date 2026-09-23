@@ -15,6 +15,10 @@ func checkoutEnvironmentUnknown(env *Env) bool {
 			return true
 		}
 		switch variable.Name.Value {
+		case "NODE_OPTIONS":
+			if variable.Value == nil || variable.Value.Value != "" {
+				return true
+			}
 		case "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR",
 			"GIT_CONFIG", "GIT_CONFIG_SYSTEM", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT",
 			"GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE":
@@ -22,6 +26,18 @@ func checkoutEnvironmentUnknown(env *Env) bool {
 		}
 	}
 	return false
+}
+
+func ubuntuRunner(runner *Runner) bool {
+	if !knownHostedRunner(runner) {
+		return false
+	}
+	for _, label := range runnerPlatformLabels(runner) {
+		if !strings.HasPrefix(strings.ToLower(label.Value), "ubuntu-") {
+			return false
+		}
+	}
+	return true
 }
 
 // A loader can run code or substitute libraries before the shell or Git starts.

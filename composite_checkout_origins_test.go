@@ -191,6 +191,130 @@ func TestCompositeIndependentActionChangesSurviveCheckout(t *testing.T) {
 	}
 }
 
+func TestCompositeConditionalModeChanges(t *testing.T) {
+	root, git := executableFixture(t)
+	writeShellcheckFixture(t, root, "local/bad.sh", "#!/bin/sh\necho bad\n")
+	writeShellcheckFixture(t, root, "probe/action.yml", "name: probe\n")
+	git("add", "local/bad.sh", "probe/action.yml")
+	git("update-index", "--chmod=-x", "local/bad.sh")
+	for _, condition := range []string{"github.event.repository.name", "true", "false"} {
+		for _, independent := range []bool{false, true} {
+			for _, checkIndependent := range []bool{false, true} {
+				name := condition + "/workspace"
+				mutationSpec, mutationDir := "./source/local", "source/local"
+				if independent {
+					name, mutationSpec, mutationDir = condition+"/independent", "$/local", "${{ github.action_path }}"
+				}
+				checkSpec, checkDir := "./source/probe", "source/local"
+				if checkIndependent {
+					name, checkSpec, checkDir = name+"/check-independent", "$/probe", "${{ github.action_path }}/../local"
+				} else {
+					name += "/check-workspace"
+				}
+				t.Run(name, func(t *testing.T) {
+					writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      working-directory: '"+mutationDir+"'\n      run: chmod +x bad.sh\n")
+					metadata := writeShellcheckFixture(t, root, "probe/action.yml", "name: probe\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      working-directory: '"+checkDir+"'\n      run: ./bad.sh\n")
+					steps := "- uses: actions/checkout@v6\n  with: {path: source}\n- uses: " + mutationSpec + "\n  if: " + condition + "\n- uses: actions/checkout@v6\n  with: {path: mirror}\n- uses: " + checkSpec
+					var executable *RuleExecutableBit
+					result := compositeAnalysis(t, root, steps, AnalysisOptions{OnRulesCreated: func(rules []Rule) []Rule {
+						for _, rule := range rules {
+							if candidate, ok := rule.(*RuleExecutableBit); ok {
+								executable = candidate
+							}
+						}
+						return rules
+					}})
+					if executable == nil || !slices.Contains(result.Inputs, metadata) {
+						t.Fatalf("composite execution not inspected: %v", result.Inputs)
+					}
+					changed := executable.changed
+					if independent {
+						changed = executable.actionChanged
+					}
+					if changed["local/bad.sh"] != (condition != "false") {
+						t.Errorf("conditional mutation lost: workspace=%v, independent=%v", executable.changed, executable.actionChanged)
+					}
+					found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" && d.Path == metadata })
+					want := condition == "false" || independent != checkIndependent
+					if found != want {
+						t.Fatalf("finding=%v, want %v: %+v", found, want, result.Diagnostics)
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestCompositeConditionalModeCheckoutReset(t *testing.T) {
+	root, _ := executableFixture(t)
+	writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/checkout@v6\n      with: {path: source}\n    - shell: bash\n      run: chmod +x source/scripts/bad.sh\n")
+	for _, tc := range []struct {
+		condition string
+		continued bool
+	}{
+		{"github.event.repository.name", false},
+		{"github.event.repository.name", true},
+		{"true", false},
+		{"false", false},
+	} {
+		name, continuation := tc.condition, ""
+		if tc.continued {
+			name, continuation = name+"/continued", "\n  continue-on-error: true"
+		}
+		t.Run(name, func(t *testing.T) {
+			var executable *RuleExecutableBit
+			steps := "- uses: actions/checkout@v6\n  with: {path: source}\n- shell: bash\n  working-directory: .\n  run: chmod +x source/bad.sh\n- uses: ./source/local\n  if: " + tc.condition + continuation
+			compositeAnalysis(t, root, steps, AnalysisOptions{OnRulesCreated: func(rules []Rule) []Rule {
+				for _, rule := range rules {
+					if candidate, ok := rule.(*RuleExecutableBit); ok {
+						executable = candidate
+					}
+				}
+				return rules
+			}})
+			if executable == nil {
+				t.Fatal("executable-bit rule not inspected")
+			}
+			if executable.changed["bad.sh"] != (tc.condition != "true") || executable.changed["scripts/bad.sh"] != (tc.condition != "false") {
+				t.Fatalf("checkout branch modes not preserved: %v", executable.changed)
+			}
+		})
+	}
+}
+
+func TestCompositeRunnerReadonlyAssignments(t *testing.T) {
+	root, _ := executableFixture(t)
+	writeShellcheckFixture(t, root, "outer/action.yml", "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: ./inner\n")
+	for _, tc := range []struct {
+		runner, shell string
+		want          bool
+	}{
+		{"ubuntu-latest", "sh", true},
+		{"ubuntu-latest", "bash", false},
+		{"macos-latest", "sh", false},
+	} {
+		t.Run(tc.runner+"/"+tc.shell, func(t *testing.T) {
+			metadata := writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: "+tc.shell+"\n      run: UID=0 ./bad.sh\n")
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/readonly.yml", "on: push\njobs:\n  test:\n    runs-on: "+tc.runner+"\n    steps:\n      - uses: actions/checkout@v6\n      - uses: ./outer\n")
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := session.Files([]string{workflow}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Contains(result.Inputs, metadata) {
+				t.Fatalf("nested action not inspected: %v", result.Inputs)
+			}
+			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" && d.Path == metadata })
+			if found != tc.want {
+				t.Fatalf("finding=%v, want %v: %+v", found, tc.want, result.Diagnostics)
+			}
+		})
+	}
+}
+
 func TestCompositeCheckoutPrefixCase(t *testing.T) {
 	command := shellcheckForTest(t)
 	root, _ := executableFixture(t)

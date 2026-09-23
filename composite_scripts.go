@@ -95,6 +95,12 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 				if conditionKnown && !enabled {
 					continue
 				}
+				if !conditionKnown {
+					// Either branch can retain changed modes; a child checkout only
+					// resets them when that branch actually runs.
+					maps.Copy(outer.changed, inner.changed)
+					maps.Copy(outer.actionChanged, inner.actionChanged)
+				}
 				outer.actionPristine = outer.actionPristine && inner.actionPristine
 				outer.repositoryUnknown = inner.repositoryUnknown
 				if boolMayBeTrue(call.ContinueOnError) {
@@ -165,6 +171,7 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
 		scoped := newRuleExecutableBit(rule.context)
 		scoped.unix, scoped.sequential, scoped.pristine = rule.unix, rule.sequential, rule.pristine
 		scoped.caseInsensitive = rule.caseInsensitive
+		scoped.shIsDash = rule.shIsDash
 		scoped.repositoryUnknown = rule.repositoryUnknown
 		scoped.actionPristine = rule.actionPristine
 		if stepCanRunAfterFailure(call.If) {

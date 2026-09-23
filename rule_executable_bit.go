@@ -29,6 +29,7 @@ type RuleExecutableBit struct {
 	pathUnknown                         bool
 	skipFindings                        bool
 	caseInsensitive                     bool
+	shIsDash                            bool
 	repositoryUnknown                   bool
 	callerRepositoryUnknown             bool
 }
@@ -54,6 +55,7 @@ func (rule *RuleExecutableBit) VisitJobPre(job *Job) error {
 	rule.jobPathUnknown = rule.workflowPathUnknown || shellPathUnknown(job.Env)
 	rule.unix = runnerPlatform(job.RunsOn) == platformKindMacOrLinux
 	rule.caseInsensitive = macOSRunner(job.RunsOn)
+	rule.shIsDash = ubuntuRunner(job.RunsOn)
 	// Container mounts can replace the checked-out tree. Treat them as unknown.
 	if job.Container != nil || servicesMayChangeWorkspace(job.Services) {
 		rule.unix = false
@@ -356,6 +358,13 @@ func (rule *RuleExecutableBit) statement(statement *syntax.Stmt, run *ExecRun, d
 	case *syntax.CallExpr:
 		rule.call(command, run, directory)
 	case *syntax.BinaryCmd:
+		if command.Op == syntax.Pipe || command.Op == syntax.PipeAll {
+			if invocation, known := pipelineInvocation(statement); known && invocation != nil {
+				rule.statement(invocation, run, directory)
+			}
+			rule.pristine = false
+			return
+		}
 		if command.Op == syntax.OrStmt {
 			rule.statement(command.X, run, directory)
 			rule.pristine = false
@@ -370,6 +379,45 @@ func (rule *RuleExecutableBit) statement(statement *syntax.Stmt, run *ExecRun, d
 	default:
 		// Functions, control flow and subshells need a separate execution model.
 		rule.pristine = false
+	}
+}
+
+// A single invocation can be checked against incoming modes only when every
+// concurrent sibling is a literal, nonmutating builtin. Afterwards state is unknown.
+func pipelineInvocation(statement *syntax.Stmt) (*syntax.Stmt, bool) {
+	if statement.Background || len(statement.Redirs) != 0 {
+		return nil, false
+	}
+	switch command := statement.Cmd.(type) {
+	case *syntax.BinaryCmd:
+		if command.Op != syntax.Pipe && command.Op != syntax.PipeAll {
+			return nil, false
+		}
+		left, leftKnown := pipelineInvocation(command.X)
+		right, rightKnown := pipelineInvocation(command.Y)
+		if !leftKnown || !rightKnown || left != nil && right != nil {
+			return nil, false
+		}
+		if left != nil {
+			return left, true
+		}
+		return right, true
+	case *syntax.CallExpr:
+		if len(command.Args) == 0 {
+			return nil, false
+		}
+		name, known := literalShellWord(command.Args[0].Parts)
+		if known && len(command.Assigns) == 0 && (name == "true" || name == ":" || name == "echo") {
+			for _, word := range command.Args[1:] {
+				if _, literal := literalShellWord(word.Parts); !literal {
+					return nil, false
+				}
+			}
+			return nil, true
+		}
+		return statement, true
+	default:
+		return nil, false
 	}
 }
 
@@ -422,15 +470,17 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 		rule.pristine = false
 		return
 	}
+	shell := resolveRunShell(run, rule.jobShell, rule.workflowShell, shellValue{})
+	bashReadonly := !rule.shIsDash || !strings.EqualFold(shell.name, "sh")
 	for _, assignment := range command.Assigns {
 		if assignment.Append || assignment.Naked || assignment.Index != nil || assignment.Array != nil {
 			rule.pristine = false
 			return
 		}
-		if assignment.Name != nil {
+		if bashReadonly && assignment.Name != nil {
 			switch assignment.Name.Value {
 			case "UID", "EUID", "PPID", "BASHOPTS", "SHELLOPTS", "BASH_VERSINFO":
-				// Bash may also provide sh; readonly assignments can abort before invocation.
+				// Outside known Ubuntu sh, Bash may provide sh and abort on readonly names.
 				rule.pristine = false
 				return
 			}
@@ -451,7 +501,6 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 	if name == "exec" || name == "command" {
 		arguments = arguments[1:]
 		if len(arguments) > 0 {
-			shell := resolveRunShell(run, rule.jobShell, rule.workflowShell, shellValue{})
 			if option, literal := literalShellWord(arguments[0].Parts); literal && option == "--" && (name != "exec" || strings.EqualFold(shell.name, "bash")) {
 				arguments = arguments[1:]
 			}
