@@ -43,7 +43,7 @@ func (c *LocalActionsCache) localSpec(spec string) (string, bool) {
 }
 
 func (c *LocalActionsCache) observeCheckout(step *Step) {
-	enabled, known := stepCondition(step.If)
+	enabled, known := invocationStepCondition(step.If)
 	if known && !enabled {
 		return
 	}
@@ -68,12 +68,12 @@ func (c *LocalActionsCache) observeCheckout(step *Step) {
 			return
 		}
 	}
-	checkout := runDirectory{kind: directoryKnown}
-	if input := action.Inputs["path"]; input != nil && input.Value != nil {
-		checkout = workingDirectoryValue(input.Value)
-		if checkout.kind != directoryKnown || checkout.path != "" && !localRunnerPath(checkout.path) {
-			return
-		}
+	checkoutPath, known := checkoutInput(action, "path")
+	if !known || checkoutPath != "" && !localRunnerPath(checkoutPath) {
+		return
+	}
+	checkout := runDirectory{kind: directoryKnown, path: checkoutPath}
+	if checkout.path != "" {
 		checkout.path = path.Clean(checkout.path)
 		if checkout.path == ".." || strings.HasPrefix(checkout.path, "../") {
 			return

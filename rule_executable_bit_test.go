@@ -78,6 +78,7 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"redirect step PATH", "ubuntu-latest", "", "- run: ./bad.sh 2>/dev/null\n  env: {PATH: /usr/bin}", "bad.sh"},
 		{"cd step PATH", "ubuntu-latest", "", "- run: cd scripts && ./bad.sh\n  env: {PATH: /usr/bin}", "scripts/bad.sh"},
 		{"PATH and startup script", "ubuntu-latest", "", "- run: ./bad.sh\n  env: {PATH: /usr/bin, BASH_ENV: setup.sh}", ""},
+		{"run Git override cannot move checkout", "ubuntu-latest", "", "- run: ./bad.sh\n  env: {GIT_WORK_TREE: /tmp}", "bad.sh"},
 		{"PATH chmod then direct", "ubuntu-latest", "", "- run: chmod +x good.sh && ./bad.sh\n  env: {PATH: tools}", ""},
 		{"false job", "ubuntu-latest", "if: false", "- run: ./bad.sh", ""},
 		{"false expression job", "ubuntu-latest", "if: ${{ false }}", "- run: ./bad.sh", ""},
@@ -109,11 +110,27 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"file invocation component", "ubuntu-latest", "", "- run: ./good.sh/../bad.sh", ""},
 		{"parent invocation component", "ubuntu-latest", "", "- run: ./scripts/../bad.sh", "bad.sh"},
 		{"macOS", "macos-latest", "", "- run: ./bad.sh", "bad.sh"},
+		{"macOS case folded file", "macos-latest", "", "- run: ./BAD.SH", "bad.sh"},
+		{"macOS case folded directory", "macos-latest", "", "- run: ./SCRIPTS/BAD.SH", "scripts/bad.sh"},
+		{"macOS case folded cd", "macos-latest", "", "- run: cd SCRIPTS && ./BAD.SH", "scripts/bad.sh"},
+		{"macOS case folded default directory", "macos-latest", "defaults:\n  run:\n    working-directory: SCRIPTS\n", "- run: ./BAD.SH", "scripts/bad.sh"},
+		{"macOS case folded checkout", "macos-latest", "", "- uses: actions/checkout@v6\n  with: {path: source}\n- run: ./SOURCE/BAD.SH", "bad.sh"},
+		{"macOS checkout ancestor cd", "macos-latest", "", "- uses: actions/checkout@v6\n  with: {path: source}\n- run: cd SOURCE/.. && ./SOURCE/BAD.SH", "bad.sh"},
+		{"checkout ancestor cd", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: source}\n- run: cd source/.. && ./source/bad.sh", "bad.sh"},
+		{"checkout workspace cd", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: source}\n- run: cd . && ./source/bad.sh", "bad.sh"},
+		{"macOS case folded chmod", "macos-latest", "", "- run: chmod +x BAD.SH && ./bad.sh", ""},
+		{"macOS case folded redirect", "macos-latest", "", "- run: ./BAD.SH <GOOD.SH", "bad.sh"},
+		{"macOS case folded symlink", "macos-latest", "", "- run: ./LINK/../BAD.SH", ""},
+		{"Linux case sensitive file", "ubuntu-latest", "", "- run: ./BAD.SH", ""},
+		{"Linux case sensitive directory", "ubuntu-latest", "", "- run: ./SCRIPTS/bad.sh", ""},
 		{"indexed executable", "ubuntu-latest", "", "- run: ./good.sh", ""},
 		{"interpreter", "ubuntu-latest", "", "- run: bash bad.sh", ""},
 		{"exec wrapper", "ubuntu-latest", "", "- run: exec ./bad.sh", "bad.sh"},
 		{"command wrapper", "ubuntu-latest", "", "- run: command ./bad.sh", "bad.sh"},
 		{"exec separator", "ubuntu-latest", "", "- run: exec -- ./bad.sh", "bad.sh"},
+		{"sh exec separator", "ubuntu-latest", "", "- run: exec -- ./bad.sh\n  shell: sh", ""},
+		{"sh command separator", "ubuntu-latest", "", "- run: command -- ./bad.sh\n  shell: sh", "bad.sh"},
+		{"sh exec direct", "ubuntu-latest", "", "- run: exec ./bad.sh\n  shell: sh", "bad.sh"},
 		{"command separator", "ubuntu-latest", "", "- run: command -- ./bad.sh", "bad.sh"},
 		{"exec parameter argument", "ubuntu-latest", "", "- run: exec ./bad.sh \"$GITHUB_SHA\"", "bad.sh"},
 		{"command quoted path", "ubuntu-latest", "", "- run: command './space dir/bad.sh'", "space dir/bad.sh"},
@@ -169,6 +186,10 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"negated success invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: ${{ !success() }}", ""},
 		{"success invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: success()", "bad.sh"},
 		{"success conjunction", "ubuntu-latest", "", "- run: ./bad.sh\n  if: success() && github.event_name == 'push'", "bad.sh"},
+		{"contradictory invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: success() && failure()", ""},
+		{"contradictory opaque action", "ubuntu-latest", "", "- uses: actions/setup-node@v6\n  if: success() && failure()\n- run: ./bad.sh", "bad.sh"},
+		{"contradictory chmod", "ubuntu-latest", "", "- run: chmod +x bad.sh\n  if: failure() && success()\n- run: ./bad.sh", "bad.sh"},
+		{"negated contradictory status", "ubuntu-latest", "", "- run: ./bad.sh\n  if: success() && !success()", ""},
 		{"success disjunction", "ubuntu-latest", "", "- run: ./bad.sh\n  if: success() || failure()", ""},
 		{"quoted status function", "ubuntu-latest", "", "- run: ./bad.sh\n  if: contains(github.event_name, 'failure()')", "bad.sh"},
 		{"conditional invocation invalidates following", "ubuntu-latest", "", "- run: ./bad.sh\n  if: github.event_name == 'push'\n- run: ./bad.sh", "bad.sh"},
@@ -207,6 +228,14 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"expression uppercase clean", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {clean: \"${{ 'TRUE' }}\"}\n- run: ./bad.sh", "bad.sh"},
 		{"uppercase false clean", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {clean: 'FALSE'}\n- run: ./bad.sh", ""},
 		{"empty checkout path", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: ''}\n- run: ./bad.sh", "bad.sh"},
+		{"padded checkout path", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: ' source '}\n- run: ./source/bad.sh", "bad.sh"},
+		{"padded expression checkout path", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: \"${{ ' source ' }}\"}\n- run: ./source/bad.sh", "bad.sh"},
+		{"whitespace checkout path", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: '  '}\n- run: ./bad.sh", "bad.sh"},
+		{"checkout step Git worktree", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {GIT_WORK_TREE: /tmp}\n- run: ./bad.sh", ""},
+		{"checkout job Git directory", "ubuntu-latest", "env: {GIT_DIR: /tmp/git}", "- run: ./bad.sh", ""},
+		{"checkout job Git config", "ubuntu-latest", "env: {GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: core.worktree, GIT_CONFIG_VALUE_0: /tmp}", "- run: ./bad.sh", ""},
+		{"checkout dynamic environment", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: ${{ fromJSON(inputs.env) }}\n- run: ./bad.sh", ""},
+		{"checkout Git trace", "ubuntu-latest", "env: {GIT_TRACE: '1'}", "- run: ./bad.sh", "bad.sh"},
 		{"empty checkout path expression", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with:\n    path: ${{ '' }}\n- run: ./bad.sh", "bad.sh"},
 		{"tolerated checkout failure", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  continue-on-error: true\n- run: ./bad.sh", ""},
 		{"expression tolerated checkout failure", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  continue-on-error: ${{ true }}\n- run: ./bad.sh", ""},
@@ -279,7 +308,7 @@ func TestExecutableBitWorkflows(t *testing.T) {
 					t.Fatalf("expected non-executable %q: %+v", tc.want, result.Diagnostics)
 				}
 				line := strings.Split(job, "\n")[findings[0].Start.Line-1]
-				if !strings.Contains(line, filepath.Base(tc.want)) {
+				if !strings.Contains(strings.ToLower(line), strings.ToLower(filepath.Base(tc.want))) {
 					t.Fatalf("diagnostic mapped to wrong line: %+v", findings[0])
 				}
 				if tc.name == "direct" && findings[0].Start != (DiagnosticPosition{7, 14}) {
@@ -342,6 +371,9 @@ func TestExecutableBitWorkflowShellOptions(t *testing.T) {
 		{"SHELLOPTS: nounset", false},
 		{"PATH: /usr/bin", true},
 		{"PATH: /usr/bin, SHELLOPTS: nounset", false},
+		{"GIT_WORK_TREE: /tmp", false},
+		{"GIT_INDEX_FILE: /tmp/index", false},
+		{"GIT_TRACE: '1'", true},
 	} {
 		t.Run(tc.env, func(t *testing.T) {
 			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: push\nenv: {"+tc.env+"}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - run: ./bad.sh \"$UNSET\"\n")

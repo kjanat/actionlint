@@ -73,6 +73,9 @@ func (rule *RuleShellcheck) prepareConfigPath() error {
 
 func (rule *RuleShellcheck) prepareInlineConfig() error {
 	rule.inlineConfig = nil
+	if rule.config != nil && rule.config.Config != nil {
+		return nil
+	}
 	config := rule.Config()
 	if config == nil {
 		return nil

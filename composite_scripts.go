@@ -39,7 +39,7 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 	defer delete(active, meta.Path())
 	checkout := v.actions.currentCheckout()
 	defer func() {
-		enabled, known := stepCondition(call.If)
+		enabled, known := invocationStepCondition(call.If)
 		if known && !enabled {
 			v.actions.setCheckout(checkout)
 		} else if (!known || boolMayBeTrue(call.ContinueOnError) || boolMayBeTrue(call.Background)) && checkout != v.actions.currentCheckout() {
@@ -92,7 +92,7 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 			}
 		}
 	}
-	enabled, conditionKnown := stepCondition(call.If)
+	enabled, conditionKnown := invocationStepCondition(call.If)
 	for i, parent := range parents {
 		if outer, ok := parent.(*RuleExecutableBit); ok {
 			if inner, ok := children[i].(*RuleExecutableBit); ok {
@@ -138,18 +138,20 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
 	case *RuleExecutableBit:
 		scoped := newRuleExecutableBit(rule.context)
 		scoped.unix, scoped.sequential, scoped.pristine = rule.unix, rule.sequential, rule.pristine
+		scoped.caseInsensitive = rule.caseInsensitive
 		scoped.repositoryUnknown = rule.repositoryUnknown
 		if stepCanRunAfterFailure(call.If) {
 			scoped.pristine, scoped.repositoryUnknown = false, true
 		}
 		scoped.paths, scoped.changed = rule.paths, rule.changed
 		scoped.paths.actionPath = actionPath
-		enabled, conditionKnown := stepCondition(call.If)
+		enabled, conditionKnown := invocationStepCondition(call.If)
 		scoped.skipFindings = rule.skipFindings || !conditionKnown || !enabled
 		if !conditionKnown || !enabled {
 			scoped.changed = maps.Clone(rule.changed)
 		}
 		scoped.jobEnv = rule.jobEnv || shellEnvironmentUnknown(call.Env)
+		scoped.jobGitEnv = rule.jobGitEnv || checkoutEnvironmentUnknown(call.Env)
 		scoped.jobPathUnknown = rule.jobPathUnknown || shellPathUnknown(call.Env)
 		if conditionKnown && !enabled || boolMayBeTrue(call.Background) {
 			scoped.sequential, scoped.pristine = false, false
