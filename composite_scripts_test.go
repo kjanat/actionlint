@@ -298,6 +298,62 @@ func TestCompositeExecutableBit(t *testing.T) {
 	}
 }
 
+func TestCompositeMacOSExecutableBit(t *testing.T) {
+	root, _ := executableFixture(t)
+	writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: ./inner\n")
+	metadata := writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: ./SCRIPTS/BAD.SH\n")
+	workflow := writeShellcheckFixture(t, root, ".github/workflows/mac.yml", "on: push\njobs:\n  test:\n    runs-on: macos-latest\n    steps:\n      - uses: actions/checkout@v6\n      - uses: ./local\n")
+	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := session.Files([]string{workflow}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
+		return d.Rule == "executable-bit" && d.Path == metadata && strings.Contains(d.Message, `script "scripts/bad.sh"`)
+	}) {
+		t.Fatalf("nested action lost macOS path matching: %+v", result.Diagnostics)
+	}
+}
+
+func TestCompositeNestedCheckoutGitEnvironment(t *testing.T) {
+	root, _ := executableFixture(t)
+	writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: ./inner\n")
+	for _, tc := range []struct {
+		name, workflowEnv, jobEnv, callEnv, checkoutEnv string
+		want                                            bool
+	}{
+		{"workflow", "env: {GIT_WORK_TREE: /tmp}\n", "", "", "", false},
+		{"job", "", "    env: {GIT_WORK_TREE: /tmp}\n", "", "", false},
+		{"caller", "", "", "        env: {GIT_WORK_TREE: /tmp}\n", "", false},
+		{"checkout", "", "", "", "      env: {GIT_WORK_TREE: /tmp}\n", false},
+		{"caller config", "", "", "        env: {GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: core.worktree, GIT_CONFIG_VALUE_0: /tmp}\n", "", false},
+		{"caller trace", "", "", "        env: {GIT_TRACE: '1'}\n", "", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			metadata := writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/checkout@v6\n"+tc.checkoutEnv+"    - shell: bash\n      run: ./bad.sh\n")
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/env.yml", "on: push\n"+tc.workflowEnv+"jobs:\n  test:\n    runs-on: ubuntu-latest\n"+tc.jobEnv+"    steps:\n      - uses: ./local\n"+tc.callEnv)
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := session.Files([]string{workflow}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Contains(result.Inputs, metadata) {
+				t.Fatalf("nested metadata checks lost: %v", result.Inputs)
+			}
+			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" })
+			if found != tc.want {
+				t.Fatalf("executable-bit = %v, want %v: %+v", found, tc.want, result.Diagnostics)
+			}
+		})
+	}
+}
+
 func TestConditionalCompositeRetainsStaticChecks(t *testing.T) {
 	command := shellcheckForTest(t)
 	root, _ := executableFixture(t)
@@ -390,6 +446,7 @@ func TestCompositeExecutionState(t *testing.T) {
 		{"conditional checkout and invocation", "- uses: actions/checkout@v6\n- shell: bash\n  run: ./bad.sh", "- uses: ./local\n  if: false", false},
 		{"checkout after conditional call", "- shell: bash\n  run: echo ok", "- uses: ./local\n  if: false\n- uses: actions/checkout@v6\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", true},
 		{"skipped call preserves caller", "- shell: bash\n  run: chmod +x bad.sh", "- uses: actions/checkout@v6\n- uses: ./local\n  if: ${{ false }}\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", true},
+		{"contradictory call preserves caller", "- shell: bash\n  run: chmod +x bad.sh", "- uses: actions/checkout@v6\n- uses: ./local\n  if: success() && failure()\n- shell: bash\n  working-directory: .\n  run: ./bad.sh", true},
 		{"skipped background preserves caller", "- shell: bash\n  run: echo ok", "- uses: actions/checkout@v6\n- uses: ./local\n  if: false\n  background: true\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", true},
 		{"false background preserves caller", "- shell: bash\n  run: echo ok", "- uses: actions/checkout@v6\n- uses: ./local\n  background: ${{ false }}\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", true},
 		{"true composite checkout", "- uses: actions/checkout@v6", "- uses: ./local\n  if: ${{ true }}\n- shell: bash\n  working-directory: ''\n  run: ./bad.sh", true},
@@ -485,13 +542,19 @@ func TestCompositeCheckoutEmptyExpressions(t *testing.T) {
 	root, _ := executableFixture(t)
 	metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: ./source/bad.sh\n")
 	for _, inputs := range []string{
+		"path: ' source '",
+		"path: \"${{ ' source ' }}\"",
 		"repository: \"${{ '' }}\"",
 		"ref: \"${{ '' }}\"",
 		"sparse-checkout: \"${{ '' }}\"",
 		"repository: \"${{ '' }}\", ref: \"${{ '' }}\", sparse-checkout: \"${{ '' }}\"",
 	} {
 		t.Run(inputs, func(t *testing.T) {
-			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {path: source, "+inputs+"}\n- uses: ./source/local", AnalysisOptions{})
+			checkout := inputs
+			if !strings.HasPrefix(checkout, "path:") {
+				checkout = "path: source, " + checkout
+			}
+			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {"+checkout+"}\n- uses: ./source/local", AnalysisOptions{})
 			if !slices.Contains(result.Inputs, metadata) {
 				t.Fatalf("checkout metadata not resolved: %v", result.Inputs)
 			}
