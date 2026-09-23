@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -18,10 +20,14 @@ type gitModes struct {
 }
 
 type gitModeSnapshot struct {
-	once  sync.Once
-	modes map[string]string
-	index string
-	err   error
+	once     sync.Once
+	dirsOnce sync.Once
+	foldOnce sync.Once
+	modes    map[string]string
+	dirs     map[string]struct{}
+	folded   map[string]string
+	index    string
+	err      error
 }
 
 func (cache *gitModes) load(ctx context.Context, root string) *gitModeSnapshot {
@@ -50,14 +56,60 @@ func (cache *gitModes) load(ctx context.Context, root string) *gitModeSnapshot {
 		if snapshot.err != nil {
 			return
 		}
-		index, err := repositoryGit(ctx, git, root, "rev-parse", "--path-format=absolute", "--git-path", "index").Output()
+		index, err := repositoryGit(ctx, git, root, "rev-parse", "--git-path", "index").Output()
 		if err != nil {
 			snapshot.err = fmt.Errorf("locate Git index: %w", err)
 			return
 		}
-		snapshot.index = strings.TrimSuffix(strings.TrimSuffix(string(index), "\n"), "\r")
+		location := strings.TrimSuffix(strings.TrimSuffix(string(index), "\n"), "\r")
+		if location == "" || strings.ContainsAny(location, "\x00\r\n") {
+			snapshot.err = fmt.Errorf("unexpected Git index location %q", index)
+			return
+		}
+		if !filepath.IsAbs(location) {
+			location = filepath.Join(root, location)
+		}
+		snapshot.index, snapshot.err = filepath.Abs(location)
 	})
 	return snapshot
+}
+
+// Modes are immutable after loading. Share the derived directory and folding
+// indexes across all invocations, including those using different checkout paths.
+func (snapshot *gitModeSnapshot) prepareDirectories() {
+	snapshot.dirsOnce.Do(func() {
+		snapshot.dirs = make(map[string]struct{})
+		for name := range snapshot.modes {
+			for directory := path.Dir(name); directory != "."; directory = path.Dir(directory) {
+				if _, exists := snapshot.dirs[directory]; exists {
+					break // Its ancestors were added with the first descendant.
+				}
+				snapshot.dirs[directory] = struct{}{}
+			}
+		}
+	})
+}
+
+func (snapshot *gitModeSnapshot) prepareFoldedPaths() {
+	snapshot.foldOnce.Do(func() {
+		snapshot.prepareDirectories()
+		snapshot.folded = make(map[string]string)
+		add := func(prefix string) {
+			key := pathFoldKey(prefix)
+			canonical, exists := snapshot.folded[key]
+			if !asciiPath(prefix) || exists && canonical != prefix {
+				snapshot.folded[key] = "" // Ambiguous or unsupported normalization.
+			} else {
+				snapshot.folded[key] = prefix
+			}
+		}
+		for name := range snapshot.modes {
+			add(name)
+		}
+		for directory := range snapshot.dirs {
+			add(directory)
+		}
+	})
 }
 
 func repositoryGit(ctx context.Context, git, root string, args ...string) *exec.Cmd {
