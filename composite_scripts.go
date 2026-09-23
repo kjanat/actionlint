@@ -114,7 +114,7 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 				inner.paths.actionPath = outer.paths.actionPath
 				inner.paths.actionRunnerPath = outer.paths.actionRunnerPath
 				inner.paths.actionIndependent = outer.paths.actionIndependent
-				outer.paths, outer.changed = inner.paths, inner.changed
+				outer.paths, outer.changed, outer.actionChanged = inner.paths, inner.changed, inner.actionChanged
 			}
 		}
 	}
@@ -171,12 +171,13 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
 			scoped.pristine, scoped.repositoryUnknown = false, true
 			scoped.actionPristine = false
 		}
-		scoped.paths, scoped.changed = rule.paths, rule.changed
+		scoped.paths, scoped.changed, scoped.actionChanged = rule.paths, rule.changed, rule.actionChanged
 		compositeActionOrigin(&scoped.paths, call, actionPath)
 		enabled, conditionKnown := invocationCondition(call.If)
 		scoped.skipFindings = rule.skipFindings || !conditionKnown || !enabled
 		if !conditionKnown || !enabled {
 			scoped.changed = maps.Clone(rule.changed)
+			scoped.actionChanged = maps.Clone(rule.actionChanged)
 		}
 		scoped.jobEnv = rule.jobEnv || shellEnvironmentUnknown(call.Env)
 		scoped.jobGitEnv = rule.jobGitEnv || checkoutEnvironmentUnknown(call.Env)

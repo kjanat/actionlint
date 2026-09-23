@@ -690,6 +690,63 @@ func TestCompositeShellcheckRelocatedCheckout(t *testing.T) {
 	}
 }
 
+func TestCompositeShellcheckCallerCheckoutState(t *testing.T) {
+	command := shellcheckForTest(t)
+	root, _ := executableFixture(t)
+	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
+	writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/checkout@v6\n      with: {path: relocated}\n")
+	writeShellcheckFixture(t, root, "lib.sh", "VALUE=42\n")
+	run := "- shell: bash\n  working-directory: .\n  run: |\n    . ./lib.sh\n    echo $VALUE"
+	for _, tc := range []struct {
+		name, steps string
+		warnings    int
+	}{
+		{"relocated root", "- uses: ./local\n" + run, 1},
+		{"relocated directory", "- uses: ./local\n" + strings.Replace(run, "working-directory: .", "working-directory: relocated", 1), 0},
+		{"conditional call", "- uses: actions/checkout@v6\n- uses: ./local\n  if: inputs.checkout\n" + run, 1},
+		{"tolerated failure", "- uses: actions/checkout@v6\n- uses: ./local\n  continue-on-error: true\n" + run, 1},
+		{"skipped call", "- uses: actions/checkout@v6\n- uses: ./local\n  if: false\n" + run, 0},
+		{"retained root", "- uses: actions/checkout@v6\n- uses: ./local\n" + run, 0},
+		{"parallel children and following step", "- uses: actions/checkout@v6\n- parallel:\n    " + strings.ReplaceAll(run, "\n", "\n    ") + "\n" + run, 2},
+		{"checkout after parallel", "- uses: actions/checkout@v6\n- parallel:\n    - shell: bash\n      run: echo ok\n- uses: actions/checkout@v6\n" + run, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result := compositeAnalysis(t, root, tc.steps, AnalysisOptions{Shellcheck: command})
+			warnings := 0
+			for _, diagnostic := range result.Diagnostics {
+				if diagnostic.Rule == "shellcheck" && strings.Contains(diagnostic.Message, "SC2086") {
+					warnings++
+				}
+			}
+			if warnings != tc.warnings {
+				t.Fatalf("ShellCheck warnings=%d, want %d: %+v", warnings, tc.warnings, result.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestCompositeShellcheckCallerCheckoutAcrossJobs(t *testing.T) {
+	command := shellcheckForTest(t)
+	root, _ := executableFixture(t)
+	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
+	writeShellcheckFixture(t, root, "setup/action.yml", "name: setup\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/checkout@v6\n")
+	writeShellcheckFixture(t, root, "lib.sh", "VALUE=42\n")
+	// Either traversal order leaves an unknown checkout before the other job.
+	job := "    runs-on: ubuntu-latest\n    steps:\n      - uses: $/setup\n      - shell: bash\n        run: |\n          . ./lib.sh\n          echo $VALUE\n      - uses: actions/checkout@v6\n        with: {repository: other/repo}\n"
+	workflow := writeShellcheckFixture(t, root, ".github/workflows/jobs.yml", "on: push\njobs:\n  first:\n"+job+"  second:\n"+job)
+	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := session.Files([]string{workflow}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "shellcheck" }) {
+		t.Fatalf("previous job checkout leaked into caller: %+v", result.Diagnostics)
+	}
+}
+
 func TestCompositeCheckoutEmptyPath(t *testing.T) {
 	root, _ := executableFixture(t)
 	metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n")

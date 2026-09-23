@@ -190,3 +190,83 @@ func TestCompositeIndependentActionChangesSurviveCheckout(t *testing.T) {
 		t.Fatalf("workspace checkout restored independent action mode: %+v", result.Diagnostics)
 	}
 }
+
+func TestCompositeCheckoutPrefixCase(t *testing.T) {
+	command := shellcheckForTest(t)
+	root, _ := executableFixture(t)
+	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
+	metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      working-directory: source/local\n      run: |\n        . ./lib.sh\n        echo $VALUE\n")
+	writeShellcheckFixture(t, root, "local/lib.sh", "VALUE=42\n")
+	for _, runner := range []string{"windows-latest", "macos-latest", "ubuntu-latest", "self-hosted"} {
+		t.Run(runner, func(t *testing.T) {
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/case.yml", "on: push\njobs:\n  test:\n    runs-on: "+runner+"\n    steps:\n      - uses: actions/checkout@v6\n        with: {path: Source}\n      - uses: ./source/local\n")
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := session.Files([]string{workflow}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if slices.Contains(result.Inputs, metadata) != (runner == "windows-latest" || runner == "macos-latest") {
+				t.Fatalf("wrong checkout metadata selection: %v", result.Inputs)
+			}
+			if slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "shellcheck" && d.Path == metadata }) {
+				t.Fatalf("Windows checkout prefix lost source resolution: %+v", result.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestCompositeForeignCheckoutMetadata(t *testing.T) {
+	root, _ := executableFixture(t)
+	metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: missing shell\n")
+	for _, tc := range []struct {
+		name, input, spec, condition string
+		read                         bool
+	}{
+		{"foreign repository", "repository: other/repo", "./local", "", false},
+		{"foreign server", "github-server-url: https://git.example.com", "./local", "", false},
+		{"unknown repository", "repository: '${{ inputs.repository }}'", "./local", "", true},
+		{"conditional foreign repository", "repository: other/repo", "./local", "\n  if: inputs.checkout", true},
+		{"independent action", "repository: other/repo", "$/local", "", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {"+tc.input+"}"+tc.condition+"\n- uses: "+tc.spec, AnalysisOptions{})
+			if slices.Contains(result.Inputs, metadata) != tc.read {
+				t.Fatalf("wrong foreign metadata selection: %v", result.Inputs)
+			}
+		})
+	}
+}
+
+func TestCompositeIndependentModeChangesKeepWorkspaceFinding(t *testing.T) {
+	root, git := executableFixture(t)
+	writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      working-directory: ${{ github.action_path }}\n      run: chmod +x bad.sh\n")
+	writeShellcheckFixture(t, root, "local/bad.sh", "#!/bin/sh\necho bad\n")
+	git("add", "local/bad.sh")
+	git("update-index", "--chmod=-x", "local/bad.sh")
+	for _, spec := range []string{"$/local", "./local"} {
+		t.Run(spec, func(t *testing.T) {
+			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n- uses: "+spec+"\n- shell: bash\n  working-directory: .\n  run: ./local/bad.sh", AnalysisOptions{})
+			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
+				return d.Rule == "executable-bit" && strings.Contains(d.Message, `"local/bad.sh"`)
+			})
+			if found != strings.HasPrefix(spec, "$/") {
+				t.Fatalf("mode changes crossed repository origins: %+v", result.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestCompositeWorkspaceModeChangesKeepIndependentFinding(t *testing.T) {
+	root, git := executableFixture(t)
+	metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      working-directory: ${{ github.action_path }}\n      run: ./bad.sh\n")
+	writeShellcheckFixture(t, root, "local/bad.sh", "#!/bin/sh\necho bad\n")
+	git("add", "local/bad.sh")
+	git("update-index", "--chmod=-x", "local/bad.sh")
+	result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n- shell: bash\n  working-directory: .\n  run: chmod +x local/bad.sh\n- uses: $/local", AnalysisOptions{})
+	if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" && d.Path == metadata }) {
+		t.Fatalf("workspace mutation suppressed independent action finding: %+v", result.Diagnostics)
+	}
+}
