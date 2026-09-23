@@ -6,7 +6,23 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
+
+// Backslashes separate Windows runner paths but name literal Unix characters.
+func runnerDirectoryPath(path string, platform platformKind) (string, bool) {
+	if !strings.Contains(path, `\`) {
+		return path, true
+	}
+	switch platform {
+	case platformKindWindows:
+		return strings.ReplaceAll(path, `\`, "/"), true
+	case platformKindMacOrLinux:
+		return path, runtime.GOOS != "windows"
+	default:
+		return "", false
+	}
+}
 
 func (rule *RuleShellcheck) prepareConfigPath() error {
 	if rule.paths.analysis == "" {

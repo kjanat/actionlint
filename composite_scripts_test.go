@@ -609,6 +609,39 @@ func TestCompositeCheckoutServerPaths(t *testing.T) {
 	}
 }
 
+func TestCompositeShellcheckWindowsDirectory(t *testing.T) {
+	command := shellcheckForTest(t)
+	for _, checkout := range []string{"", "source"} {
+		t.Run(checkout, func(t *testing.T) {
+			root, _ := executableFixture(t)
+			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
+			prefix := ""
+			if checkout != "" {
+				prefix = checkout + "/"
+			}
+			writeShellcheckFixture(t, root, "outer/action.yml", "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: ./"+prefix+"inner\n")
+			directory := strings.ReplaceAll(prefix+"scripts/build", "/", `\`)
+			metadata := writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      working-directory: '"+directory+"'\n      run: |\n        . ./lib.sh\n        echo $VALUE\n")
+			writeShellcheckFixture(t, root, "scripts/build/lib.sh", "VALUE=42\n")
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/composite.yml", "on: push\njobs:\n  test:\n    runs-on: windows-latest\n    steps:\n      - uses: actions/checkout@v6\n        with: {path: '"+checkout+"'}\n      - uses: ./"+prefix+"outer\n")
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := session.Files([]string{workflow}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Contains(result.Inputs, metadata) {
+				t.Fatalf("nested metadata not analyzed: %v", result.Inputs)
+			}
+			if slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "shellcheck" }) {
+				t.Fatalf("Windows composite source not resolved: %+v", result.Diagnostics)
+			}
+		})
+	}
+}
+
 func TestCompositeCheckoutActionOutputs(t *testing.T) {
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\noutputs:\n  answer:\n    description: test\n    value: '42'\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n")
