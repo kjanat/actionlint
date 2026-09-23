@@ -297,3 +297,39 @@ func TestShellcheckSelectedConfigFailure(t *testing.T) {
 		})
 	}
 }
+
+func TestShellcheckApplicationSelectionReplacesInlineConfig(t *testing.T) {
+	command := shellcheckForTest(t)
+	for _, selection := range []string{"inherit", "file", "discover", "disabled"} {
+		t.Run(selection, func(t *testing.T) {
+			root := t.TempDir()
+			rc := writeShellcheckFixture(t, root, ".shellcheckrc", "disable=SC2016\n")
+			config := writeShellcheckFixture(t, root, "actionlint.yaml", "tools: {shellcheck: {config: {disable: [SC2086]}}}\n")
+			workflow := writeShellcheckFixture(t, root, "workflow.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $VALUE\n")
+			settings := &ShellcheckSettings{}
+			switch selection {
+			case "file":
+				settings.Config = ShellcheckRCFile(rc)
+			case "discover":
+				settings.Config = ShellcheckRCDiscover
+			case "disabled":
+				settings.Config = ShellcheckRCDisabled
+			}
+			session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: config, WorkingDir: root, Shellcheck: command, ShellcheckSettings: settings})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := session.Files([]string{workflow}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if selection == "inherit" {
+				if len(result.Diagnostics) != 0 {
+					t.Fatalf("nil selection must retain project inline settings: %+v", result.Diagnostics)
+				}
+			} else if len(result.Diagnostics) != 1 || !strings.Contains(result.Diagnostics[0].Message, "SC2086") {
+				t.Fatalf("application selection must replace project inline settings: %+v", result.Diagnostics)
+			}
+		})
+	}
+}

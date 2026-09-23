@@ -322,8 +322,9 @@ Your arguments are prepended to actionlint's integration arguments. actionlint
 owns the JSON1 output format and stdin input, so do not pass `-f`/`--format` or
 file arguments. It supplies its default exclusions, rc-file selection and source
 following settings. An inferred `--shell <dialect>` is added only when no explicit
-ShellCheck flag or leading `shell` directive selects the dialect; an explicit
-actionlint configuration override still takes precedence. See
+ShellCheck flag or leading `shell` directive selects the dialect. ShellCheck
+arguments take precedence over `SHELLCHECK_OPTS`, followed by a leading `shell`
+directive, actionlint's configured dialect and the workflow-derived dialect. See
 [script selection and directives](config.md#script-selection-and-directives).
 
 By default, `--norc` disables rc discovery. Set

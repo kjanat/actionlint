@@ -6,8 +6,28 @@ import (
 	"strings"
 )
 
-// Only detect selection here. ShellCheck validates the directive and its value.
-var shellcheckShellDirective = regexp.MustCompile(`^[\t ]*#[\t ]*shellcheck[\t ]+(?:[a-z-]+=(?:"[^"\r\n]*"|'[^'\r\n]*'|[^'"#\t \r\n][^#\t \r\n]*)[\t ]+)*shell=`)
+// ShellCheck remains responsible for validating the original directive and value.
+var shellcheckShellDirective = regexp.MustCompile(`^[\t ]*#[\t ]*shellcheck[\t ]+(?:[a-z-]+=(?:"[^"\r\n]*"|'[^'\r\n]*'|[^'"#\t \r\n][^#\t \r\n]*)[\t ]+)*?shell=`)
+
+func shellcheckHeaderDialect(header string) string {
+	for line := range strings.SplitSeq(header, "\n") {
+		selector := shellcheckShellDirective.FindString(line)
+		if selector == "" {
+			continue
+		}
+		value := strings.TrimSuffix(line[len(selector):], "\r")
+		if strings.HasPrefix(value, "'") || strings.HasPrefix(value, `"`) {
+			dialect, _, closed := strings.Cut(value[1:], value[:1])
+			if !closed {
+				return ""
+			}
+			return dialect
+		}
+		dialect, _, _ := strings.Cut(value, " ")
+		return dialect
+	}
+	return ""
+}
 
 func shellcheckHeader(src string) (header, body string, selectsShell bool) {
 	end := 0

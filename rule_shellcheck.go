@@ -187,7 +187,7 @@ func sanitizeExpressionsInScript(src string) string {
 
 func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shell shellcheckShell, directory runDirectory, pos *Pos) error {
 	dialect, setup := shell.analysis()
-	_, _, directiveShell := shellcheckHeader(src)
+	header, _, directiveShell := shellcheckHeader(src)
 	if dialect == "" && !directiveShell {
 		rule.Debug("%s: Skip ShellCheck: cannot infer a supported script dialect from shell %q; a leading # shellcheck shell=bash (or another supported dialect) selects it explicitly", pos, shell.name)
 		return nil
@@ -205,7 +205,7 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 	if explicitShell {
 		dialect = flagShell
 	} else if directiveShell {
-		dialect = "" // Let ShellCheck parse and validate the original directive.
+		dialect = shellcheckHeaderDialect(header)
 	}
 	inline := rule.inlineConfig
 	if appendDialect {
