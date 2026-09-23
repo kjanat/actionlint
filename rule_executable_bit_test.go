@@ -105,6 +105,8 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"bare skipped chmod", "ubuntu-latest", "", "- run: chmod +x bad.sh\n  if: false\n- run: ./bad.sh", "bad.sh"},
 		{"skipped opaque run", "ubuntu-latest", "", "- run: ./good.sh\n  if: false\n- run: ./bad.sh", "bad.sh"},
 		{"skipped invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: false", ""},
+		{"conditional invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: github.event_name == 'push'", "bad.sh"},
+		{"conditional invocation invalidates following", "ubuntu-latest", "", "- run: ./bad.sh\n  if: github.event_name == 'push'\n- run: ./bad.sh", "bad.sh"},
 		{"conditional run invalidates", "ubuntu-latest", "", "- run: echo hello\n  if: github.event_name == 'push'\n- run: ./bad.sh", ""},
 		{"constant true run", "ubuntu-latest", "", "- run: ./bad.sh\n  if: ${{ true }}", "bad.sh"},
 		{"same step chmod", "ubuntu-latest", "", "- run: chmod +x bad.sh && ./bad.sh", ""},
@@ -115,6 +117,11 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"chmod operand separator", "ubuntu-latest", "", "- run: chmod +x -- good.sh && ./bad.sh", "bad.sh"},
 		{"chmod missing operand", "ubuntu-latest", "", "- run: chmod +x && ./bad.sh", ""},
 		{"chmod missing operand after separator", "ubuntu-latest", "", "- run: chmod +x -- && ./bad.sh", ""},
+		{"invalid chmod mode", "ubuntu-latest", "", "- run: chmod nonsense good.sh && ./bad.sh", ""},
+		{"invalid chmod octal", "ubuntu-latest", "", "- run: chmod 888 good.sh && ./bad.sh", ""},
+		{"invalid chmod symbolic", "ubuntu-latest", "", "- run: chmod u+invalid good.sh && ./bad.sh", ""},
+		{"valid chmod octal", "ubuntu-latest", "", "- run: chmod 0644 good.sh && ./bad.sh", "bad.sh"},
+		{"valid chmod clauses", "ubuntu-latest", "", "- run: chmod u=rw,g=u,o-rwx good.sh && ./bad.sh", "bad.sh"},
 		{"later chmod", "ubuntu-latest", "", "- run: ./bad.sh\n- run: chmod +x bad.sh", "bad.sh"},
 		{"other file chmod", "ubuntu-latest", "", "- run: chmod +x good.sh\n- run: ./bad.sh", "bad.sh"},
 		{"dynamic chmod", "ubuntu-latest", "", "- run: chmod +x \"$SCRIPT\"\n- run: ./bad.sh", ""},
@@ -122,12 +129,21 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"skipped opaque action", "ubuntu-latest", "", "- uses: actions/setup-node@v6\n  if: false\n- run: ./bad.sh", "bad.sh"},
 		{"skipped checkout", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  if: ${{ false }}\n- run: ./bad.sh", "bad.sh"},
 		{"true checkout", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  if: ${{ true }}\n- run: ./bad.sh", "bad.sh"},
+		{"tolerated checkout failure", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  continue-on-error: true\n- run: ./bad.sh", ""},
+		{"expression tolerated checkout failure", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  continue-on-error: ${{ true }}\n- run: ./bad.sh", ""},
+		{"unknown tolerated checkout failure", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  continue-on-error: ${{ github.event_name == 'push' }}\n- run: ./bad.sh", ""},
+		{"checkout failure stops job", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  continue-on-error: false\n- run: ./bad.sh", "bad.sh"},
+		{"expression checkout failure stops job", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  continue-on-error: ${{ false }}\n- run: ./bad.sh", "bad.sh"},
 		{"checkout after unknown repository settings", "ubuntu-latest", "", "- run: git config core.fileMode false && chmod +x bad.sh\n- uses: actions/checkout@v6\n- run: ./bad.sh", ""},
 		{"checkout after opaque action", "ubuntu-latest", "", "- uses: actions/setup-node@v6\n- uses: actions/checkout@v6\n- run: ./bad.sh", ""},
 		{"unknown checkout condition", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  if: github.event_name == 'push'\n- run: ./bad.sh", ""},
 		{"opaque shell", "ubuntu-latest", "", "- run: bash -c 'chmod +x bad.sh'\n- run: ./bad.sh", ""},
 		{"CDPATH", "ubuntu-latest", "", "- run: cd scripts && ./bad.sh\n  env:\n    CDPATH: elsewhere", ""},
 		{"BASH_ENV", "ubuntu-latest", "", "- run: ./bad.sh\n  env:\n    BASH_ENV: setup.sh", ""},
+		{"step SHELLOPTS", "ubuntu-latest", "", "- run: ./bad.sh \"$UNSET\"\n  env: {SHELLOPTS: nounset}", ""},
+		{"job SHELLOPTS", "ubuntu-latest", "env: {SHELLOPTS: nounset}", "- run: ./bad.sh \"$UNSET\"", ""},
+		{"step BASHOPTS", "ubuntu-latest", "", "- run: ./bad.sh missing-*\n  env: {BASHOPTS: failglob}", ""},
+		{"empty SHELLOPTS", "ubuntu-latest", "", "- run: ./bad.sh\n  env: {SHELLOPTS: ''}", "bad.sh"},
 		{"step PATH", "ubuntu-latest", "", "- run: chmod +x good.sh\n  env: {PATH: tools}\n- run: ./bad.sh", ""},
 		{"empty step PATH", "ubuntu-latest", "", "- run: chmod +x good.sh\n  env: {PATH: ''}\n- run: ./bad.sh", ""},
 		{"job PATH", "ubuntu-latest", "env: {PATH: tools}", "- run: chmod +x good.sh\n- run: ./bad.sh", ""},
@@ -201,6 +217,22 @@ func TestExecutableBitWorkflows(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestExecutableBitWorkflowShellOptions(t *testing.T) {
+	root, _ := executableFixture(t)
+	workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: push\nenv: {SHELLOPTS: nounset}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - run: ./bad.sh \"$UNSET\"\n")
+	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := session.Files([]string{workflow}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" }) {
+		t.Fatalf("shell startup options ignored: %+v", result.Diagnostics)
 	}
 }
 
