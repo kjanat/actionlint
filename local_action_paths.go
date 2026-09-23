@@ -9,15 +9,36 @@ import (
 // Newer overlapping checkouts shadow older placements; unrelated copies survive.
 // Immutable links let conditional composite invocations restore the whole state.
 type checkoutPlacement struct {
-	directory runDirectory
-	previous  *checkoutPlacement
+	directory       runDirectory
+	previous        *checkoutPlacement
+	caseInsensitive bool
+	foreign         bool
+}
+
+func (placement *checkoutPlacement) relative(local string) (string, bool) {
+	local, prefix := path.Clean(local), path.Clean(placement.directory.path)
+	if prefix == "." {
+		return local, true
+	}
+	if len(local) < len(prefix) {
+		return "", false
+	}
+	match := local[:len(prefix)] == prefix
+	if !match && placement.caseInsensitive && asciiPath(prefix) && asciiPath(local[:len(prefix)]) {
+		match = strings.EqualFold(local[:len(prefix)], prefix)
+	}
+	if !match {
+		return "", false
+	}
+	if len(local) == len(prefix) {
+		return ".", true
+	}
+	return strings.CutPrefix(local[len(prefix):], "/")
 }
 
 func (placement *checkoutPlacement) matching(local string) *checkoutPlacement {
-	local = path.Clean(local)
 	for current := placement; current != nil; current = current.previous {
-		prefix := path.Clean(current.directory.path)
-		if prefix == "." || local == prefix || strings.HasPrefix(local, prefix+"/") {
+		if _, matches := current.relative(local); matches {
 			return current
 		}
 	}
@@ -77,6 +98,9 @@ func (c *LocalActionsCache) localSpec(spec string) (string, bool) {
 		return spec, state.directory.kind == directoryUnknown
 	}
 	checkout := placement.directory
+	if placement.foreign {
+		return "", false
+	}
 	if checkout.kind == directoryUnknown {
 		// Retain best-effort validation of literal local metadata. Script rules
 		// still receive the unknown placement and cannot assume its runtime paths.
@@ -85,11 +109,7 @@ func (c *LocalActionsCache) localSpec(spec string) (string, bool) {
 	if checkout.path == "" || checkout.path == "." {
 		return spec, true
 	}
-	local := path.Clean(spec)
-	if local == checkout.path {
-		return "./", true
-	}
-	if relative, ok := strings.CutPrefix(local, checkout.path+"/"); ok {
+	if relative, ok := placement.relative(spec); ok {
 		return "./" + relative, true
 	}
 	return "", false
@@ -131,13 +151,19 @@ func (c *LocalActionsCache) observeCheckout(step *Step) {
 			return
 		}
 	}
-	if !known || boolMayBeTrue(step.ContinueOnError) || boolMayBeTrue(step.Background) {
+	certain := known && !boolMayBeTrue(step.ContinueOnError) && !boolMayBeTrue(step.Background)
+	if !certain {
 		checkout.kind = directoryUnknown
 	}
+	foreign := false
 	for _, key := range []string{"repository", "ref", "github-server-url"} {
-		if value, known := checkoutInput(action, key); !known || value != "" {
+		value, inputKnown := checkoutInput(action, key)
+		if !inputKnown || value != "" {
 			checkout.kind = directoryUnknown
 		}
+		if certain && key != "ref" && inputKnown && value != "" {
+			foreign = true
+		}
 	}
-	c.restoreCheckout(&checkoutPlacement{directory: checkout, previous: c.checkoutState()})
+	c.restoreCheckout(&checkoutPlacement{directory: checkout, previous: c.checkoutState(), caseInsensitive: c.caseInsensitive, foreign: foreign})
 }

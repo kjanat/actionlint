@@ -114,6 +114,7 @@ func (v *Visitor) visitJob(n *Job) error {
 	if v.actions != nil {
 		v.actions.setCheckout(runDirectory{})
 		v.actions.platform = runnerPlatform(n.RunsOn)
+		v.actions.caseInsensitive = v.actions.platform == platformKindWindows || macOSRunner(n.RunsOn)
 	}
 	var t time.Time
 	if v.dbg != nil {

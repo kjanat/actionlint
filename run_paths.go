@@ -161,6 +161,10 @@ func (paths runPaths) checkoutFor(relativePath string) (string, bool) {
 		if placement == nil || placement.directory.kind != directoryKnown {
 			return "", false
 		}
+		if placement.caseInsensitive && placement.directory.path != "" && placement.directory.path != "." {
+			// Keep the caller's prefix spelling for host-side relative-path mapping.
+			return filepath.ToSlash(filepath.Clean(relativePath))[:len(placement.directory.path)], true
+		}
 		return placement.directory.path, true
 	}
 	return paths.checkout, !paths.checkoutUnknown

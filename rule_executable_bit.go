@@ -22,6 +22,7 @@ type RuleExecutableBit struct {
 	unix, sequential, pristine          bool
 	actionPristine                      bool
 	changed                             map[string]bool
+	actionChanged                       map[string]bool
 	workflowEnv, jobEnv                 bool
 	workflowGitEnv, jobGitEnv           bool
 	workflowPathUnknown, jobPathUnknown bool
@@ -64,6 +65,7 @@ func (rule *RuleExecutableBit) VisitJobPre(job *Job) error {
 	rule.repositoryUnknown = rule.callerRepositoryUnknown || !knownHostedRunner(job.RunsOn)
 	rule.actionPristine = knownHostedRunner(job.RunsOn)
 	rule.changed = make(map[string]bool)
+	rule.actionChanged = make(map[string]bool)
 	rule.paths = runPaths{workspace: rule.context.projectRoot, analysis: rule.context.workingDir}
 	return nil
 }
@@ -393,7 +395,7 @@ func (rule *RuleExecutableBit) redirectsKnown(redirects []*syntax.Redirect, dire
 			continue
 		}
 		name, known := rule.scriptPath(directory, target)
-		if !known || rule.changed[name] {
+		if !known || rule.modeChanges(directory)[name] {
 			return false
 		}
 		snapshot := rule.index()
@@ -525,7 +527,7 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 				rule.pristine = false
 				return
 			}
-			rule.changed[name] = true
+			rule.modeChanges(*directory)[name] = true
 			if directory.kind == directoryActionKnown {
 				// Workspace checkout cannot reset modes in the independent action copy.
 				rule.actionPristine = false
@@ -594,7 +596,7 @@ func (rule *RuleExecutableBit) checkInvocation(run *ExecRun, word *syntax.Word, 
 		return
 	}
 	name, ok := rule.scriptPath(directory, script)
-	if !ok || rule.changed[name] {
+	if !ok || rule.modeChanges(directory)[name] {
 		return
 	}
 	snapshot := rule.index()
@@ -612,6 +614,13 @@ func (rule *RuleExecutableBit) checkInvocation(run *ExecRun, word *syntax.Word, 
 		pos = mapped
 	}
 	rule.Errorf(pos, "script %q is executed directly but its Git index mode is 100644 (not executable); commit an executable bit with git update-index --chmod=+x, or invoke its interpreter explicitly", name)
+}
+
+func (rule *RuleExecutableBit) modeChanges(directory runDirectory) map[string]bool {
+	if directory.kind == directoryActionKnown {
+		return rule.actionChanged
+	}
+	return rule.changed
 }
 
 func literalShellWord(parts []syntax.WordPart) (string, bool) {
