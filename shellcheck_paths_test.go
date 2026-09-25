@@ -382,6 +382,22 @@ func TestShellcheckAbsoluteDirectoryPlatform(t *testing.T) {
 	}
 }
 
+func TestShellcheckWindowsRootedDirectory(t *testing.T) {
+	for _, path := range []string{`\scripts\build`, `\\server\share`, `\\?\C:\scripts`} {
+		if _, known := runnerDirectoryPath(path, platformKindWindows); known {
+			t.Errorf("rooted Windows path %q treated as relative", path)
+		}
+		if runtime.GOOS != "windows" {
+			if got, known := shellcheckDirectoryPath(path, platformKindWindows); known {
+				t.Errorf("Windows path %q mapped to Unix path %q", path, got)
+			}
+		}
+	}
+	if got, known := shellcheckDirectoryPath(`scripts\build`, platformKindWindows); !known || got != "scripts/build" {
+		t.Errorf("relative Windows path lost: %q, known=%v", got, known)
+	}
+}
+
 func TestShellcheckSelectedConfigFailure(t *testing.T) {
 	command := shellcheckForTest(t)
 	for _, tc := range []struct {
