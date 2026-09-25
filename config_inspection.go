@@ -24,9 +24,10 @@ type ConfigOrigin struct {
 
 // ConfigInspection contains effective settings and optional source locations.
 type ConfigInspection struct {
-	Path    string                  `json:"path" yaml:"path"`
-	Config  map[string]any          `json:"config" yaml:"config"`
-	Origins map[string]ConfigOrigin `json:"origins,omitempty" yaml:"origins,omitempty"`
+	Path     string                  `json:"path" yaml:"path"`
+	Config   map[string]any          `json:"config" yaml:"config"`
+	Origins  map[string]ConfigOrigin `json:"origins,omitempty" yaml:"origins,omitempty"`
+	Warnings []ConfigWarning         `json:"warnings,omitempty" yaml:"warnings,omitempty"`
 }
 
 // SelectedConfigPath finds the selected config without parsing its contents.
@@ -73,7 +74,7 @@ func InspectConfig(selection ConfigSelection, withOrigin bool) (ConfigInspection
 	if err != nil {
 		return ConfigInspection{Path: path}, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
-	result := ConfigInspection{Path: path, Config: resolved.values}
+	result := ConfigInspection{Path: path, Config: resolved.values, Warnings: resolved.warnings}
 	if withOrigin {
 		result.Origins = resolved.origins
 	}

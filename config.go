@@ -390,7 +390,8 @@ type ShellcheckToolConfig struct {
 	// An empty CLI command or shellcheck: false Action input still disables the tool.
 	Enabled *bool `yaml:"enabled" jsonschema:"nullable,default=true"`
 	// Config selects inline ShellCheck settings or an rc file/directory for each checked script.
-	// Relative paths and ${{ configdir }} use the directory containing actionlint.yaml; ${{ gitdir }} uses the repository root.
+	// File-relative paths use the directory containing actionlint.yaml; paths supplied by an overlay use the analysis working directory.
+	// ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} uses the repository root.
 	// ${{ github.workspace }} selects the runner workspace or local repository; ${{ github.action_path }} requires a composite action context.
 	// Lists replace during actionlint config overlays. The Action's explicit shellcheck-args can override settings.
 	// Omission or null adds no directives. This does not enable rc-file discovery.
@@ -398,10 +399,11 @@ type ShellcheckToolConfig struct {
 }
 
 // ShellcheckConfigSource selects inline directives or a configuration file/directory.
-// Relative paths use the actionlint configuration directory. ${{ configdir }} and
+// Relative paths use their config file or overlay working directory. ${{ configdir }} and
 // ${{ gitdir }} explicitly select that directory or the checked repository root.
 type ShellcheckConfigSource struct {
-	value shellcheckConfigValue
+	value     shellcheckConfigValue
+	fromInput bool
 }
 
 type shellcheckConfigValue interface{ shellcheckConfigValue() }
@@ -523,10 +525,11 @@ func ParseConfig(b []byte) (*Config, error) {
 
 // resolvedConfig keeps validated values and their provenance from the same document.
 type resolvedConfig struct {
-	node    *yaml.Node
-	config  *Config
-	values  map[string]any
-	origins map[string]ConfigOrigin
+	node     *yaml.Node
+	config   *Config
+	values   map[string]any
+	origins  map[string]ConfigOrigin
+	warnings []ConfigWarning
 }
 
 func resolveConfigDocument(b []byte) (resolvedConfig, error) {
@@ -570,7 +573,10 @@ func resolveConfigNode(root *yaml.Node, inputs map[*yaml.Node]configInput) (reso
 	if err := configOrigins(root, "", origins, inputs); err != nil {
 		return resolvedConfig{}, err
 	}
-	return resolvedConfig{node: root, config: &c, values: values, origins: origins}, nil
+	if c.Tools.Shellcheck.Config != nil {
+		c.Tools.Shellcheck.Config.fromInput = origins["/tools/shellcheck/config"].Source == "input"
+	}
+	return resolvedConfig{node: root, config: &c, values: values, origins: origins, warnings: configWarnings(root)}, nil
 }
 
 // ReadConfigFile reads actionlint config file (actionlint.yaml) from the given file path.
