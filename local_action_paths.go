@@ -22,7 +22,7 @@ func (c *LocalActionsCache) findRepositoryMetadata(spec string) (*ActionMetadata
 // Multiple case-equivalent entries cannot identify a unique runner action.
 func caseInsensitiveActionSpec(root, spec string) (string, bool) {
 	dir := root
-	for _, component := range strings.Split(strings.TrimPrefix(spec, "./"), "/") {
+	for component := range strings.SplitSeq(strings.TrimPrefix(spec, "./"), "/") {
 		if component == "" || component == "." || component == ".." {
 			dir = filepath.Join(dir, component)
 			continue
@@ -34,7 +34,7 @@ func caseInsensitiveActionSpec(root, spec string) (string, bool) {
 		match := ""
 		for _, entry := range entries {
 			name := entry.Name()
-			if name != component && !(asciiPath(name) && asciiPath(component) && strings.EqualFold(name, component)) {
+			if name != component && (!asciiPath(name) || !asciiPath(component) || !strings.EqualFold(name, component)) {
 				continue
 			}
 			if match != "" {
