@@ -71,6 +71,10 @@ tools:
 | `external-sources`  | Boolean; defaults to enabled in actionlint.              |
 | `source-path`       | List of directories searched for sourced files.          |
 
+Rc paths supplied by an inline configuration overlay use the analysis working
+directory (the Action's `working-directory`). Inherited paths keep their config
+file's directory; explicit `${{ configdir }}` always selects that directory.
+
 Config paths and inline `source-path` entries accept these substitutions:
 
 | Expression                  | Meaning                                                                                                                                                      |

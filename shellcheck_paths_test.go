@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -432,7 +433,7 @@ func TestShellcheckSelectedConfigFailure(t *testing.T) {
 	}
 }
 
-func TestShellcheckApplicationSelectionReplacesInlineConfig(t *testing.T) {
+func TestShellcheckApplicationSelectionPreservesInlineConfig(t *testing.T) {
 	command := shellcheckForTest(t)
 	for _, selection := range []string{"inherit", "file", "discover", "disabled"} {
 		t.Run(selection, func(t *testing.T) {
@@ -457,12 +458,42 @@ func TestShellcheckApplicationSelectionReplacesInlineConfig(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if selection == "inherit" {
-				if len(result.Diagnostics) != 0 {
-					t.Fatalf("nil selection must retain project inline settings: %+v", result.Diagnostics)
-				}
-			} else if len(result.Diagnostics) != 1 || !strings.Contains(result.Diagnostics[0].Message, "SC2086") {
-				t.Fatalf("application selection must replace project inline settings: %+v", result.Diagnostics)
+			if len(result.Diagnostics) != 0 {
+				t.Fatalf("rc selection must retain inline directives: %+v", result.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestShellcheckOverlayPathOrigin(t *testing.T) {
+	command := shellcheckForTest(t)
+	for _, explicitContext := range []bool{false, true} {
+		t.Run(fmt.Sprint(explicitContext), func(t *testing.T) {
+			root := t.TempDir()
+			config := writeShellcheckFixture(t, root, "settings/actionlint.yaml", "tools: {shellcheck: {config: missing.rc}}\n")
+			workingDir := filepath.Join(root, "project")
+			base := workingDir
+			selection := ".shellcheckrc"
+			if explicitContext {
+				base = filepath.Dir(config)
+				selection = "${{ configdir }}/.shellcheckrc"
+			}
+			rc := writeShellcheckFixture(t, base, ".shellcheckrc", "disable=SC2086\n")
+			workflow := writeShellcheckFixture(t, workingDir, "workflow.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $VALUE\n")
+			overlay, err := ParseConfigOverlay("config", []byte("tools: {shellcheck: {config: '"+selection+"'}}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: config, WorkingDir: workingDir, Shellcheck: command, ConfigOverlays: []ConfigOverlay{overlay}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := session.Files([]string{workflow}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(result.Diagnostics) != 0 || !slices.Contains(result.Inputs, rc) {
+				t.Fatalf("overlay rc origin lost: %+v", result)
 			}
 		})
 	}

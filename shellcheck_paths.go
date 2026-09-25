@@ -76,6 +76,9 @@ func (rule *RuleShellcheck) prepareConfigPath() error {
 	} else if config := rule.Config(); config != nil {
 		if path := config.Tools.Shellcheck.Config.path(); path != "" {
 			selection = ShellcheckRCFile(path)
+			if config.Tools.Shellcheck.Config.fromInput {
+				base = rule.paths.analysis
+			}
 		}
 	}
 	rcArgs := []string{"--norc"}
@@ -119,9 +122,6 @@ func (rule *RuleShellcheck) prepareConfigPath() error {
 
 func (rule *RuleShellcheck) prepareInlineConfig() error {
 	rule.inlineConfig = nil
-	if rule.config != nil && rule.config.Config != nil {
-		return nil
-	}
 	config := rule.Config()
 	if config == nil {
 		return nil
