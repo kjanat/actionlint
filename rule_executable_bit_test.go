@@ -55,10 +55,12 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		want                          string
 	}{
 		{"direct", "ubuntu-latest", "", "- run: ./bad.sh", "bad.sh"},
-		{"retired checkout v1", "ubuntu-latest", "", "- uses: actions/checkout@v1\n- run: ./bad.sh", ""},
-		{"retired checkout v2", "ubuntu-latest", "", "- uses: actions/checkout@v2\n- run: ./bad.sh", ""},
-		{"retired checkout v3", "ubuntu-latest", "", "- uses: actions/checkout@v3\n- run: ./bad.sh", ""},
-		{"retired checkout case", "ubuntu-latest", "", "- uses: Actions/Checkout@v3\n- run: ./bad.sh", ""},
+		{"legacy checkout v1", "ubuntu-latest", "", "- uses: actions/checkout@v1\n- run: ./bad.sh", "bad.sh"},
+		{"legacy checkout v2", "ubuntu-latest", "", "- uses: actions/checkout@v2\n- run: ./bad.sh", "bad.sh"},
+		{"legacy checkout v3", "ubuntu-latest", "", "- uses: actions/checkout@v3\n- run: ./bad.sh", "bad.sh"},
+		{"legacy checkout case", "ubuntu-latest", "", "- uses: Actions/Checkout@v3\n- run: ./bad.sh", "bad.sh"},
+		{"legacy checkout patch", "ubuntu-latest", "", "- uses: actions/checkout@v3.6.0\n- run: ./bad.sh", "bad.sh"},
+		{"legacy checkout SHA", "ubuntu-latest", "", "- uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744\n- run: ./bad.sh", "bad.sh"},
 		{"empty checkout ref", "ubuntu-latest", "", "- uses: actions/checkout@\n- run: ./bad.sh", ""},
 		{"supported checkout", "ubuntu-latest", "", "- uses: actions/checkout@v4\n- run: ./bad.sh", "bad.sh"},
 		{"negated direct Bash", "ubuntu-latest", "", "- run: '! ./bad.sh'", "bad.sh"},
