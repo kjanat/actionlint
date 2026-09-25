@@ -4,6 +4,14 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: $//
+      - uses: $/
         id: root
+        with:
+          message: hello
+      - run: echo '${{ steps.root.outputs.result }}'
       - run: echo '${{ steps.root.outputs.undefined_output }}'
+      - uses: $/
+        with:
+          undefined_input: hello
+      - uses: $//
+      - uses: $///
