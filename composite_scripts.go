@@ -50,8 +50,7 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 
 	children := make([]Rule, 0, len(parents))
 	for _, parent := range parents {
-		child := compositeScriptRule(parent, call, filepath.Dir(meta.Path()))
-		compositeCheckoutPaths(child, v.actions)
+		child := compositeScriptRule(parent, call, filepath.Dir(meta.Path()), v.actions)
 		if shellcheck, ok := child.(*RuleShellcheck); ok {
 			if err := shellcheck.prepareConfigPath(); err != nil {
 				return err
@@ -149,11 +148,18 @@ func compositeActionOrigin(paths *runPaths, call *Step, actionPath string) {
 		_, paths.actionIndependent = selfRepositoryUsesLocalSpec(action.Uses.Value)
 		if !paths.actionIndependent {
 			paths.actionRunnerPath = strings.TrimPrefix(action.Uses.Value, "./")
+			placement := paths.placements.matching(paths.actionRunnerPath)
+			if placement != nil && placement.caseInsensitive && placement.directory.kind == directoryKnown && !placement.foreign {
+				relative, err := filepath.Rel(paths.workspace, actionPath)
+				if err == nil && filepath.IsLocal(relative) {
+					paths.actionRunnerPath = joinRunnerPath(placement.directory.path, filepath.ToSlash(relative))
+				}
+			}
 		}
 	}
 }
 
-func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
+func compositeScriptRule(parent Rule, call *Step, actionPath string, actions *LocalActionsCache) Rule {
 	var child Rule
 	switch rule := parent.(type) {
 	case *RuleShellcheck:
@@ -163,6 +169,7 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
 		// Resolve configuration anew: nested actions have different action_path
 		// values even when they inherit the same configuration selection.
 		scoped.actionPath = actionPath
+		compositeCheckoutPaths(scoped, actions)
 		compositeActionOrigin(&scoped.paths, call, actionPath)
 		child = scoped
 	case *RulePyflakes:
@@ -179,6 +186,7 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string) Rule {
 			scoped.actionPristine = false
 		}
 		scoped.paths, scoped.changed, scoped.actionChanged = rule.paths, rule.changed, rule.actionChanged
+		compositeCheckoutPaths(scoped, actions)
 		compositeActionOrigin(&scoped.paths, call, actionPath)
 		enabled, conditionKnown := invocationCondition(call.If)
 		scoped.skipFindings = rule.skipFindings || conditionKnown && !enabled

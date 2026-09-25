@@ -34,3 +34,31 @@ func TestRunDirectoryContexts(t *testing.T) {
 		})
 	}
 }
+
+func TestCompositeActionPathCasing(t *testing.T) {
+	root := t.TempDir()
+	writeShellcheckFixture(t, root, "local/Nested/lib.sh", "VALUE=42\n")
+	wantDirectory, err := filepath.EvalSymlinks(filepath.Join(root, "local", "Nested"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ name, checkout, spec, want string }{
+		{"root", "", "./LOCAL/nested", "local/Nested"},
+		{"placed", "Source", "./source/LOCAL/nested", "Source/local/Nested"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			actions := &LocalActionsCache{caseInsensitive: true}
+			actions.restoreCheckout(&checkoutPlacement{directory: runDirectory{directoryKnown, tc.checkout}, caseInsensitive: true})
+			paths := runPaths{workspace: root, analysis: root, platform: platformKindWindows, placements: actions.checkoutState()}
+			call := &Step{Exec: &ExecAction{Uses: &String{Value: tc.spec}}}
+			compositeActionOrigin(&paths, call, filepath.Join(root, "local", "Nested"))
+			if paths.actionRunnerPath != tc.want {
+				t.Fatalf("runner action path=%q, want %q", paths.actionRunnerPath, tc.want)
+			}
+			directory := paths.resolve(paths.workingDirectory(&String{Value: "${{ github.action_path }}"}))
+			if directory.kind != directoryKnown || directory.path != wantDirectory {
+				t.Fatalf("action source directory unresolved: %+v", directory)
+			}
+		})
+	}
+}

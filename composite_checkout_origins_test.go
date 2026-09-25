@@ -375,6 +375,43 @@ func TestCompositeActionSubpathCase(t *testing.T) {
 	}
 }
 
+func TestCompositeActionPathCaseSources(t *testing.T) {
+	command := shellcheckForTest(t)
+	root, _ := executableFixture(t)
+	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
+	metadata := writeShellcheckFixture(t, root, "local/Nested/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      working-directory: ${{ github.action_path }}\n      run: |\n        . ./lib.sh\n        echo $VALUE\n    - shell: bash\n      run: echo $OTHER\n")
+	writeShellcheckFixture(t, root, "local/Nested/lib.sh", "VALUE=42\n")
+	for _, runner := range []string{"windows-latest", "macos-latest"} {
+		for _, tc := range []struct{ name, checkouts, spec string }{
+			{"root", "      - uses: actions/checkout@v6\n", "./LOCAL/nested"},
+			{"placed", "      - uses: actions/checkout@v6\n        with: {path: Source}\n", "./source/LOCAL/nested"},
+			{"retained", "      - uses: actions/checkout@v6\n        with: {path: Source}\n      - uses: actions/checkout@v6\n        with: {path: Mirror}\n", "./source/LOCAL/nested"},
+			{"independent", "", "$/LOCAL/nested"},
+		} {
+			t.Run(runner+"/"+tc.name, func(t *testing.T) {
+				workflow := writeShellcheckFixture(t, root, ".github/workflows/source-case.yml", "on: push\njobs:\n  test:\n    runs-on: "+runner+"\n    steps:\n"+tc.checkouts+"      - uses: "+tc.spec+"\n")
+				session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command})
+				if err != nil {
+					t.Fatal(err)
+				}
+				result, err := session.Files([]string{workflow}, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var findings []Diagnostic
+				for _, d := range result.Diagnostics {
+					if d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata {
+						findings = append(findings, d)
+					}
+				}
+				if len(findings) != 1 || findings[0].Start.Line != 12 || !strings.Contains(findings[0].Message, "SC2086") {
+					t.Fatalf("only unsourced variable should warn: %+v", result.Diagnostics)
+				}
+			})
+		}
+	}
+}
+
 func TestCompositeForeignCheckoutMetadata(t *testing.T) {
 	root, _ := executableFixture(t)
 	metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: missing shell\n")
