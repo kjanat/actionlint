@@ -157,3 +157,27 @@ func TestGitModesIntentToAdd(t *testing.T) {
 		t.Fatal("index inspection modified the index")
 	}
 }
+
+func TestGitModesIntentToAddAfterRemoval(t *testing.T) {
+	root, git := executableFixture(t)
+	git("config", "user.name", "Test")
+	git("config", "user.email", "test@example.com")
+	git("config", "core.hooksPath", t.TempDir())
+	writeShellcheckFixture(t, root, "empty.sh", "")
+	git("add", "empty.sh")
+	git("commit", "--no-gpg-sign", "-m", "baseline")
+	git("rm", "--cached", "bad.sh", "empty.sh")
+	git("add", "-N", "bad.sh", "empty.sh")
+	snapshot := (&gitModes{}).load(t.Context(), root)
+	if snapshot.err != nil {
+		t.Fatal(snapshot.err)
+	}
+	for _, name := range []string{"bad.sh", "empty.sh"} {
+		if mode := snapshot.modes[name]; mode != "" {
+			t.Errorf("removed HEAD path %q re-added with intent retained mode %s", name, mode)
+		}
+	}
+	if mode := snapshot.modes["good.sh"]; mode != "100755" {
+		t.Errorf("unchanged committed file lost mode: %q", mode)
+	}
+}

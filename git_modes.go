@@ -61,21 +61,31 @@ func (cache *gitModes) load(ctx context.Context, root string) *gitModeSnapshot {
 		// handled too, without writing a tree or parsing Git's debug format.
 		additions := make(map[string]struct{})
 		for _, visibility := range []string{"--ita-visible-in-index", "--ita-invisible-in-index"} {
-			output, err := repositoryGit(ctx, git, root, "diff", "--cached", "--name-only", "-z",
-				"--diff-filter=A", "--no-renames", "--no-ext-diff", "--no-textconv", "--no-color",
+			output, err := repositoryGit(ctx, git, root, "diff", "--cached", "--name-status", "-z",
+				"--diff-filter=AD", "--no-renames", "--no-ext-diff", "--no-textconv", "--no-color",
 				"--ignore-submodules=all", visibility, "--").Output()
 			if err != nil {
 				snapshot.err = fmt.Errorf("read Git index additions: %w", err)
 				return
 			}
-			for name := range strings.SplitSeq(string(output), "\x00") {
-				if name == "" {
-					continue
-				}
+			records := strings.Split(string(output), "\x00")
+			if len(records)%2 != 1 || records[len(records)-1] != "" {
+				snapshot.err = fmt.Errorf("unexpected Git index changes %q", output)
+				return
+			}
+			for i := 0; i+1 < len(records); i += 2 {
+				status, name := records[i], records[i+1]
 				if visibility == "--ita-visible-in-index" {
-					additions[name] = struct{}{}
+					if status == "A" {
+						additions[name] = struct{}{}
+					}
 				} else {
 					delete(additions, name)
+					if status == "D" {
+						// A HEAD path re-added with -N is absent from the tree,
+						// including when HEAD already contains an empty blob.
+						delete(snapshot.modes, name)
+					}
 				}
 			}
 		}
