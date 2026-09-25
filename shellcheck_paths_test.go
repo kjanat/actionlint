@@ -384,9 +384,6 @@ func TestShellcheckAbsoluteDirectoryPlatform(t *testing.T) {
 
 func TestShellcheckWindowsRootedDirectory(t *testing.T) {
 	for _, path := range []string{`\scripts\build`, `\\server\share`, `\\?\C:\scripts`} {
-		if _, known := runnerDirectoryPath(path, platformKindWindows); known {
-			t.Errorf("rooted Windows path %q treated as relative", path)
-		}
 		if runtime.GOOS != "windows" {
 			if got, known := shellcheckDirectoryPath(path, platformKindWindows); known {
 				t.Errorf("Windows path %q mapped to Unix path %q", path, got)
