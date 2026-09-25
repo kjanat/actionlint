@@ -15,7 +15,7 @@ func checkoutEnvironmentUnknown(env *Env) bool {
 			return true
 		}
 		switch variable.Name.Value {
-		case "NODE_OPTIONS":
+		case "NODE_OPTIONS", "GIT_SSH_COMMAND", "GIT_SSH":
 			if variable.Value == nil || variable.Value.Value != "" {
 				return true
 			}
