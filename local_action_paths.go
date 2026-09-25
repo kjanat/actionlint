@@ -1,9 +1,55 @@
 package actionlint
 
 import (
+	"os"
 	"path"
+	"path/filepath"
 	"strings"
 )
+
+func (c *LocalActionsCache) findRepositoryMetadata(spec string) (*ActionMetadata, bool, error) {
+	if c.caseInsensitive && c.base.proj != nil {
+		local, ok := caseInsensitiveActionSpec(c.base.proj.RootDir(), spec)
+		if !ok {
+			return nil, false, nil
+		}
+		spec = local
+	}
+	return c.base.FindMetadata(spec)
+}
+
+// Use on-disk spelling for cache keys and diagnostics, even on a Linux host.
+// Multiple case-equivalent entries cannot identify a unique runner action.
+func caseInsensitiveActionSpec(root, spec string) (string, bool) {
+	dir := root
+	for _, component := range strings.Split(strings.TrimPrefix(spec, "./"), "/") {
+		if component == "" || component == "." || component == ".." {
+			dir = filepath.Join(dir, component)
+			continue
+		}
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			return "", false
+		}
+		match := ""
+		for _, entry := range entries {
+			name := entry.Name()
+			if name != component && !(asciiPath(name) && asciiPath(component) && strings.EqualFold(name, component)) {
+				continue
+			}
+			if match != "" {
+				return "", false
+			}
+			match = name
+		}
+		if match == "" {
+			return "", false
+		}
+		dir = filepath.Join(dir, match)
+	}
+	local, err := filepath.Rel(root, dir)
+	return "./" + filepath.ToSlash(local), err == nil
+}
 
 // Newer overlapping checkouts shadow older placements; unrelated copies survive.
 // Immutable links let conditional composite invocations restore the whole state.
