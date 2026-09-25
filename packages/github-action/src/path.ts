@@ -1,5 +1,5 @@
 import { appendFile, chmod, copyFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { delimiter, dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { join } from 'node:path';
 
 import { normalizeEnvironment } from '#environment';
 import type { Environment, InstalledTools } from '#runtime';
@@ -30,27 +30,23 @@ async function publishBinary(directory: string, name: string, source: string): P
 	await chmod(executable, 0o755);
 }
 
-function foundThroughRelativePath(executable: string, environment: Environment): boolean {
-	return environment.PATH?.split(delimiter).some((entry) => {
-		const directory = entry.replace(/^"(.*)"$/, '$1');
-		return !isAbsolute(directory) && relative(resolve(directory), dirname(executable)) === '';
-	}) ?? false;
-}
-
 // Published binaries are invocation-specific job artifacts, never a reusable cache.
 export async function publishTools(tools: InstalledTools, environment: Environment): Promise<void> {
 	environment = normalizeEnvironment(environment);
-	// Absolute PATH entries survive working-directory changes. Relative entries
-	// need a wrapper that invokes the original executable beside its resources.
+	// Step-local PATH entries need not survive into later steps. Invoke selected
+	// tools at their original locations so sibling resources remain available.
 	const existing = [
 		{ name: 'shellcheck', tool: tools.shellcheck },
 		{ name: 'pyflakes', tool: tools.pyflakes },
 	].flatMap(({ name, tool }) =>
-		tool?.kind === 'existing' && foundThroughRelativePath(tool.executable, environment)
+		tool?.kind === 'existing'
 			? [{ name, executable: tool.executable }]
 			: []
 	);
-	if (!tools.actionlint && tools.shellcheck?.kind !== 'standalone' && tools.pyflakes?.kind !== 'python' && !existing.length) return;
+	if (
+		!tools.actionlint && tools.shellcheck?.kind !== 'standalone' && tools.pyflakes?.kind !== 'python'
+		&& !existing.length
+	) return;
 	const root = environment.RUNNER_TEMP;
 	const pathFile = environment.GITHUB_PATH;
 	if (!pathFile) throw new Error('Publishing tools requires GITHUB_PATH');
