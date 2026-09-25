@@ -56,6 +56,32 @@ func (cache *gitModes) load(ctx context.Context, root string) *gitModeSnapshot {
 		if snapshot.err != nil {
 			return
 		}
+		// Intent-to-add entries appear in ls-files, but are absent from the
+		// prospective tree. Compare cached views so deleted worktree files are
+		// handled too, without writing a tree or parsing Git's debug format.
+		additions := make(map[string]struct{})
+		for _, visibility := range []string{"--ita-visible-in-index", "--ita-invisible-in-index"} {
+			output, err := repositoryGit(ctx, git, root, "diff", "--cached", "--name-only", "-z",
+				"--diff-filter=A", "--no-renames", "--no-ext-diff", "--no-textconv", "--no-color",
+				"--ignore-submodules=all", visibility, "--").Output()
+			if err != nil {
+				snapshot.err = fmt.Errorf("read Git index additions: %w", err)
+				return
+			}
+			for name := range strings.SplitSeq(string(output), "\x00") {
+				if name == "" {
+					continue
+				}
+				if visibility == "--ita-visible-in-index" {
+					additions[name] = struct{}{}
+				} else {
+					delete(additions, name)
+				}
+			}
+		}
+		for name := range additions {
+			delete(snapshot.modes, name)
+		}
 		index, err := repositoryGit(ctx, git, root, "rev-parse", "--git-path", "index").Output()
 		if err != nil {
 			snapshot.err = fmt.Errorf("locate Git index: %w", err)

@@ -421,6 +421,10 @@ func (rule *RuleExecutableBit) redirectsKnown(redirects []*syntax.Redirect, dire
 		if !known || rule.changed[name] {
 			return false
 		}
+		// Checkout creates Git metadata outside the tracked index tree.
+		if directory.kind == directoryKnown && (name == ".git" || rule.caseInsensitive && strings.EqualFold(name, ".git")) {
+			return false
+		}
 		snapshot := rule.index()
 		switch snapshot.modes[name] {
 		case "100644", "100755":
