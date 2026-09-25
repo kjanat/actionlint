@@ -26,6 +26,11 @@ func runnerDirectoryPath(path string, platform platformKind) (string, bool) {
 	}
 	switch platform {
 	case platformKindWindows:
+		// Rooted Windows paths are not relative Unix paths after separator
+		// conversion. Native absolute paths were handled by the caller.
+		if strings.HasPrefix(path, `\`) {
+			return "", false
+		}
 		return strings.ReplaceAll(path, `\`, "/"), true
 	case platformKindMacOrLinux:
 		return path, runtime.GOOS != "windows"

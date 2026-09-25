@@ -148,7 +148,8 @@ wrapper arguments are paths.
 
 Known literal expressions are resolved. Available directories outside the
 repository, including parent paths, symlinks and native absolute paths, can be
-used for source analysis. If the working directory is dynamic, uses incompatible
+used for source analysis. Paths refer to actionlint's local filesystem; job
+containers and their mounts are not recreated. If the working directory is dynamic, uses incompatible
 runner path syntax, or does not exist locally, actionlint still checks the script
 but disables following sources because their relative base is unknown. Embedded scripts
 arrive on stdin, so `SCRIPTDIR` does not refer to the YAML file's directory. Keep
