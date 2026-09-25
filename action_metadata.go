@@ -553,7 +553,7 @@ func (c *LocalActionsCache) writeCache(key string, val *ActionMetadata) {
 func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, error) {
 	if local, ok := selfRepositoryUsesLocalSpec(spec); ok {
 		if c.base != nil {
-			return c.base.FindMetadata(local)
+			return c.findRepositoryMetadata(local)
 		}
 		spec = local
 	}
@@ -562,7 +562,7 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 		if !ok {
 			return nil, false, nil
 		}
-		return c.base.FindMetadata(local)
+		return c.findRepositoryMetadata(local)
 	}
 	if c.proj == nil || !strings.HasPrefix(spec, "./") {
 		return nil, false, nil

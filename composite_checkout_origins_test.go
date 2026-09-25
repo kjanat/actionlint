@@ -343,6 +343,38 @@ func TestCompositeCheckoutPrefixCase(t *testing.T) {
 	}
 }
 
+func TestCompositeActionSubpathCase(t *testing.T) {
+	root, _ := executableFixture(t)
+	metadata := writeShellcheckFixture(t, root, "local/Nested/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: missing shell\n")
+	for _, runner := range []string{"windows-latest", "macos-latest"} {
+		for _, tc := range []struct{ name, checkout, spec string }{
+			{"root", "", "./LOCAL/nested"},
+			{"placed", "        with: {path: Source}\n", "./source/LOCAL/nested"},
+			{"independent", "        with: {path: Source}\n", "$/LOCAL/nested"},
+		} {
+			t.Run(runner+"/"+tc.name, func(t *testing.T) {
+				workflow := writeShellcheckFixture(t, root, ".github/workflows/subpath-case.yml", "on: push\njobs:\n  test:\n    runs-on: "+runner+"\n    steps:\n      - uses: actions/checkout@v6\n"+tc.checkout+"      - uses: "+tc.spec+"\n")
+				session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
+				if err != nil {
+					t.Fatal(err)
+				}
+				result, err := session.Files([]string{workflow}, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !slices.Contains(result.Inputs, metadata) {
+					t.Fatalf("canonical metadata not inspected: %v", result.Inputs)
+				}
+				if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
+					return d.Rule == "action" && filepath.Join(root, d.Path) == metadata && strings.Contains(d.Message, "shell")
+				}) {
+					t.Fatalf("missing composite diagnostic: %+v", result.Diagnostics)
+				}
+			})
+		}
+	}
+}
+
 func TestCompositeForeignCheckoutMetadata(t *testing.T) {
 	root, _ := executableFixture(t)
 	metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: missing shell\n")
