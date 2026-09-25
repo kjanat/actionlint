@@ -3,7 +3,6 @@ package actionlint
 import (
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 )
@@ -11,15 +10,24 @@ import (
 func TestShellcheckSourcedDiagnostics(t *testing.T) {
 	command := shellcheckForTest(t)
 	for _, tc := range []struct {
-		name string
-		line int
-		rc   bool
+		name  string
+		line  int
+		rc    bool
+		alias bool
 	}{
-		{"configured first line", 1, true},
-		{"argument beyond run block", 20, false},
+		{"configured first line", 1, true, false},
+		{"argument beyond run block", 20, false, false},
+		{"symlinked checkout", 1, false, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
+			if tc.alias {
+				alias := filepath.Join(t.TempDir(), "checkout")
+				if err := os.Symlink(root, alias); err != nil {
+					t.Skipf("directory symlinks unavailable: %v", err)
+				}
+				root = alias
+			}
 			if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
 				t.Fatal(err)
 			}
@@ -53,7 +61,19 @@ func TestShellcheckSourcedDiagnostics(t *testing.T) {
 			if finding.Code != "SC2086" || finding.Snippet != "echo $VALUE" || len(finding.Fixes) != 0 {
 				t.Fatalf("wrong sourced metadata: %+v", finding)
 			}
-			if !slices.Contains(result.Inputs, absPath(path)) {
+			want, err := os.Stat(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			tracked := false
+			for _, input := range result.Inputs {
+				info, err := os.Stat(input)
+				if err == nil && filepath.IsAbs(input) && os.SameFile(info, want) {
+					tracked = true
+					break
+				}
+			}
+			if !tracked {
 				t.Fatalf("sourced diagnostic file missing from inputs: %v", result.Inputs)
 			}
 			legacy := result.legacyErrors()[0].GetTemplateFields([]byte("workflow text"))

@@ -1977,8 +1977,8 @@ Action needs to be specified in a format defined in [the document][action-uses-d
 
 actionlint checks values at `uses:` sections follow one of these formats.
 
-The `$/` form has extra constraints. Leading slashes after the prefix are stripped, so `$//path/to/my-action` and
-`$/path/to/my-action` name the same action, and a value consisting of `$/` followed by nothing but slashes is a format error.
+Leading slashes after the `$/` prefix are stripped, so `$//path/to/my-action` and `$/path/to/my-action` name the same action.
+For actions, `$/`, `$//`, and `$///` refer to the repository root. Reusable workflow calls still require a workflow file path.
 What the path is relative to depends on where the `uses:` is written: a step in a workflow resolves against the workflow's
 repository at the running commit, and a step in a composite action resolves against the repository and ref that action was
 loaded from. The runner also needs its `actions_self_repository` feature flag enabled; when it is off the job fails during

@@ -337,9 +337,6 @@ func selfRepositoryUsesLocalSpec(spec string) (string, bool) {
 		return "", false
 	}
 	p = strings.TrimLeft(p, "/")
-	if p == "" {
-		return "", false
-	}
 	return "./" + p, true
 }
 

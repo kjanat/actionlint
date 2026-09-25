@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
@@ -41,7 +42,7 @@ func TestCompositeContextDirectorySeparators(t *testing.T) {
 					t.Fatal(err)
 				}
 				warned := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
-					return d.Rule == "shellcheck" && d.Path == metadata && strings.Contains(d.Message, "SC2086")
+					return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata && strings.Contains(d.Message, "SC2086")
 				})
 				if warned == tc.known {
 					t.Fatalf("context directory resolution known=%v: %+v", tc.known, result.Diagnostics)
@@ -67,7 +68,7 @@ func TestCompositeExecutableUnixPaths(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      working-directory: '"+tc.directory+"'\n      run: "+tc.script+"\n")
 			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {path: '"+tc.checkout+"'}\n- uses: ./"+tc.checkout+"/local", AnalysisOptions{})
-			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" && d.Path == metadata })
+			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == metadata })
 			if found != (runtime.GOOS != "windows") {
 				t.Fatalf("wrong Unix checkout script result: %+v", result.Diagnostics)
 			}
