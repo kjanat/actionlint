@@ -205,6 +205,9 @@ func knownHostedRunner(runner *Runner) bool {
 		}
 	}
 	labels := runnerPlatformLabels(runner)
+	if len(labels) != 1 {
+		return false
+	}
 	for _, label := range labels {
 		if !slices.Contains(allGitHubHostedRunnerLabels, strings.ToLower(label.Value)) {
 			return false
@@ -237,8 +240,11 @@ func (rule *RuleExecutableBit) checkout(action *ExecAction, mayNotComplete bool)
 	if action.Uses == nil || mayNotComplete || action.InputsExpression != nil {
 		return
 	}
-	name, _, versioned := strings.Cut(action.Uses.Value, "@")
-	if !versioned || !strings.EqualFold(name, "actions/checkout") {
+	name, ref, versioned := strings.Cut(action.Uses.Value, "@")
+	if !versioned || ref == "" || !strings.EqualFold(name, "actions/checkout") {
+		return
+	}
+	if _, retired := OutdatedPopularActionSpecs["actions/checkout@"+ref]; retired {
 		return
 	}
 	for _, input := range []string{"repository", "ref", "sparse-checkout", "github-server-url"} {

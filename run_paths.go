@@ -140,6 +140,6 @@ func (paths runPaths) analysisPath(value string) (string, bool) {
 
 func runnerRelativePath(value string, platform platformKind) (string, bool) {
 	value, known := runnerDirectoryPath(value, platform)
-	// Runner-absolute paths refer to the remote machine, not a local source root.
+	// Resolve only paths relative to the checkout on the runner.
 	return value, known && !filepath.IsAbs(value) && !strings.HasPrefix(value, "/") && !strings.ContainsRune(value, '\x00')
 }
