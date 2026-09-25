@@ -3,6 +3,7 @@ package actionlint
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"slices"
 	"time"
 )
@@ -133,6 +134,10 @@ func (l *analysisEngine) check(
 	for _, err := range all {
 		if err.Filepath == "" {
 			err.Filepath = path // Populate filename in the error
+		} else if filepath.IsAbs(err.Filepath) {
+			if relative, e := filepath.Rel(l.workingDir, err.Filepath); e == nil {
+				err.Filepath = relative
+			}
 		}
 	}
 
