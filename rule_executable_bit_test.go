@@ -34,6 +34,8 @@ func executableFixture(t *testing.T) (string, func(...string)) {
 		command("update-index", "--chmod="+mode, "--", name)
 	}
 	writeShellcheckFixture(t, root, "untracked.sh", "#!/bin/sh\n")
+	writeShellcheckFixture(t, root, "intent.sh", "#!/bin/sh\n")
+	command("add", "-N", "intent.sh")
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false}\n")
 	return root, command
 }
@@ -55,6 +57,13 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		want                          string
 	}{
 		{"direct", "ubuntu-latest", "", "- run: ./bad.sh", "bad.sh"},
+		{"intent to add", "ubuntu-latest", "", "- run: ./intent.sh", ""},
+		{"redirect Git directory", "ubuntu-latest", "", "- run: ./bad.sh > .git", ""},
+		{"append Git directory", "ubuntu-latest", "", "- run: ./bad.sh >> .git", ""},
+		{"redirect nested checkout Git directory", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: source}\n- run: ./source/bad.sh > source/.git", ""},
+		{"redirect macOS Git directory", "macos-latest", "", "- run: ./bad.sh > .GIT", ""},
+		{"redirect ordinary dotgit file", "ubuntu-latest", "", "- run: ./bad.sh > scripts/.git", "bad.sh"},
+		{"checkout replaces tracked file", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: bad.sh}\n- run: ./bad.sh/bad.sh", "bad.sh"},
 		{"legacy checkout v1", "ubuntu-latest", "", "- uses: actions/checkout@v1\n- run: ./bad.sh", "bad.sh"},
 		{"legacy checkout v2", "ubuntu-latest", "", "- uses: actions/checkout@v2\n- run: ./bad.sh", "bad.sh"},
 		{"legacy checkout v3", "ubuntu-latest", "", "- uses: actions/checkout@v3\n- run: ./bad.sh", "bad.sh"},
