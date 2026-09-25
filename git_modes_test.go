@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -116,5 +117,43 @@ func TestGitIndexSeparateDirectory(t *testing.T) {
 	}
 	if !os.SameFile(actual, expected) {
 		t.Fatalf("separate index location %q does not identify %q", snapshot.index, want)
+	}
+}
+
+func TestGitModesIntentToAdd(t *testing.T) {
+	root, git := executableFixture(t)
+	writeShellcheckFixture(t, root, "staged-empty.sh", "")
+	git("add", "staged-empty.sh")
+	for _, name := range []string{"intent with spaces.sh", "deleted-intent.sh"} {
+		writeShellcheckFixture(t, root, name, "echo hello\n")
+		git("add", "-N", name)
+	}
+	if err := os.Remove(filepath.Join(root, "deleted-intent.sh")); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(filepath.Join(root, ".git", "index"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot := (&gitModes{}).load(t.Context(), root)
+	if snapshot.err != nil {
+		t.Fatal(snapshot.err)
+	}
+	for _, name := range []string{"intent.sh", "intent with spaces.sh", "deleted-intent.sh"} {
+		if mode := snapshot.modes[name]; mode != "" {
+			t.Errorf("intent-to-add %q retained mode %s", name, mode)
+		}
+	}
+	for _, name := range []string{"bad.sh", "staged-empty.sh"} {
+		if mode := snapshot.modes[name]; mode != "100644" {
+			t.Errorf("staged file %q lost mode: %q", name, mode)
+		}
+	}
+	after, err := os.ReadFile(snapshot.index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Fatal("index inspection modified the index")
 	}
 }
