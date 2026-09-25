@@ -11,6 +11,25 @@ import (
 	"actionlint.kjanat.dev"
 )
 
+func TestConfigValidationWarnings(t *testing.T) {
+	commandTestRepo(t)
+	if err := os.WriteFile(".github/actionlint.yaml", []byte("config-variable: [FOO]\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	text := testRunCommand("", "config", "validate")
+	if text.Status != 0 || !strings.Contains(text.Stdout, "unknown configuration key") || !strings.Contains(text.Stdout, ":1:1:") {
+		t.Fatal(text)
+	}
+	encoded := testRunCommand("", "config", "validate", "--json")
+	var result struct {
+		Valid    bool
+		Warnings []actionlint.ConfigWarning
+	}
+	if err := json.Unmarshal([]byte(encoded.Stdout), &result); err != nil || !result.Valid || len(result.Warnings) != 1 || encoded.Status != 0 {
+		t.Fatalf("%+v: %v", encoded, err)
+	}
+}
+
 func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
 	commandTestRepo(t)
 	for _, operation := range [][]string{{"-init-config"}, {"config", "init"}, {"version"}, {"rules"}} {

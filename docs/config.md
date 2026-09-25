@@ -42,6 +42,10 @@ tools:
 actionlint.yml itself**, including a file selected with `--config`. It is also the
 base for ordinary relative config paths. For `.github/actionlint.yaml`, both
 `./.shellcheckrc` and `"${{ configdir }}/.shellcheckrc"` mean `.github/.shellcheckrc`.
+An rc path supplied by an inline configuration overlay instead uses the analysis
+working directory (the Action's `working-directory`). An explicit `${{ configdir }}`
+still selects the configuration file's directory. Overriding a different setting
+does not change the origin of an inherited rc path.
 `${{ gitdir }}` names the workflow's repository root, so `"${{ gitdir }}/.github/"` selects an
 rc file in that directory.
 Without a selected configuration file, `${{ configdir }}` falls back to the
@@ -212,7 +216,9 @@ This URL follows the latest npm release and requires a release containing the sc
 selection.
 
 The schema rejects unknown keys everywhere. Runtime parsing ignores unknown keys at the top level, inside
-`self-hosted-runner`, and inside each `paths` entry. For example, `config-secret` is silently ignored. Both validators
+`self-hosted-runner`, and inside each `paths` entry, with a warning naming the key,
+its location, and accepted alternatives. For example, `config-secret` warns without
+rejecting an existing config. New inline overlays reject unknown keys. Both validators
 reject unknown keys inside `policy`, `require-job-timeout`, and `require-permissions`. Go regular expression and glob syntax
 require additional validation by actionlint when it loads the configuration.
 
