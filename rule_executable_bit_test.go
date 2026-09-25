@@ -55,6 +55,12 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		want                          string
 	}{
 		{"direct", "ubuntu-latest", "", "- run: ./bad.sh", "bad.sh"},
+		{"retired checkout v1", "ubuntu-latest", "", "- uses: actions/checkout@v1\n- run: ./bad.sh", ""},
+		{"retired checkout v2", "ubuntu-latest", "", "- uses: actions/checkout@v2\n- run: ./bad.sh", ""},
+		{"retired checkout v3", "ubuntu-latest", "", "- uses: actions/checkout@v3\n- run: ./bad.sh", ""},
+		{"retired checkout case", "ubuntu-latest", "", "- uses: Actions/Checkout@v3\n- run: ./bad.sh", ""},
+		{"empty checkout ref", "ubuntu-latest", "", "- uses: actions/checkout@\n- run: ./bad.sh", ""},
+		{"supported checkout", "ubuntu-latest", "", "- uses: actions/checkout@v4\n- run: ./bad.sh", "bad.sh"},
 		{"negated direct Bash", "ubuntu-latest", "", "- run: '! ./bad.sh'", "bad.sh"},
 		{"negated direct sh", "ubuntu-latest", "", "- run: '! ./bad.sh'\n  shell: sh", "bad.sh"},
 		{"negated builtin invalidates state", "ubuntu-latest", "", "- run: '! true && ./bad.sh'", ""},
@@ -179,6 +185,9 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"self-hosted Unix", "[self-hosted, linux]", "", "- run: ./bad.sh", ""},
 		{"OS-only runner", "linux", "", "- run: ./bad.sh", ""},
 		{"self-hosted hosted label", "[self-hosted, ubuntu-latest]", "", "- run: ./bad.sh", ""},
+		{"multiple hosted images", "[ubuntu-22.04, ubuntu-24.04]", "", "- run: ./bad.sh", ""},
+		{"expression multiple hosted images", "${{ fromJSON('[\"ubuntu-22.04\",\"ubuntu-24.04\"]') }}", "", "- run: ./bad.sh", ""},
+		{"single hosted image list", "[ubuntu-latest]", "", "- run: ./bad.sh", "bad.sh"},
 		{"custom Unix runner", "ubuntu-custom", "", "- run: ./bad.sh", ""},
 		{"grouped runner", "{group: build, labels: ubuntu-latest}", "", "- run: ./bad.sh", ""},
 		{"expression grouped runner", "${{ fromJSON('{\"group\":\"build\",\"labels\":\"ubuntu-latest\"}') }}", "", "- run: ./bad.sh", ""},

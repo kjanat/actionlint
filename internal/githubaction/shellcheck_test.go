@@ -162,7 +162,7 @@ func TestActionShellcheckSourcedDiagnostics(t *testing.T) {
 				t.Fatalf("want one persisted finding: %+v", result.Diagnostics)
 			}
 			finding := result.Diagnostics[0]
-			if finding.Path != filepath.Join(workspace, "project/app/lib/check.sh") || finding.Start.Line != 2 || finding.Snippet != "echo $VALUE" {
+			if finding.Path != filepath.Join("app", "lib", "check.sh") || finding.Start.Line != 2 || finding.Snippet != "echo $VALUE" {
 				t.Fatalf("wrong persisted sourced finding: %+v", finding)
 			}
 		})

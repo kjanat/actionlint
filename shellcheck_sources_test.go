@@ -43,14 +43,17 @@ func TestShellcheckSourcedDiagnostics(t *testing.T) {
 				t.Fatalf("want one sourced finding, got %+v", result.Diagnostics)
 			}
 			finding := result.Diagnostics[0]
-			assertShellcheckSourceFile(t, finding.Path, path)
+			if want := filepath.Join("app", "lib", "check.sh"); finding.Path != want {
+				t.Fatalf("want relative diagnostic path %q, got %q", want, finding.Path)
+			}
+			assertShellcheckSourceFile(t, filepath.Join(root, finding.Path), path)
 			if finding.Start != (DiagnosticPosition{tc.line, 6}) || finding.End != (DiagnosticPosition{tc.line, 12}) {
 				t.Fatalf("wrong sourced location: %+v", finding)
 			}
 			if finding.Code != "SC2086" || finding.Snippet != "echo $VALUE" || len(finding.Fixes) != 0 {
 				t.Fatalf("wrong sourced metadata: %+v", finding)
 			}
-			if !slices.Contains(result.Inputs, finding.Path) {
+			if !slices.Contains(result.Inputs, absPath(path)) {
 				t.Fatalf("sourced diagnostic file missing from inputs: %v", result.Inputs)
 			}
 			legacy := result.legacyErrors()[0].GetTemplateFields([]byte("workflow text"))
@@ -74,7 +77,10 @@ func TestCompositeShellcheckSourcedDiagnostics(t *testing.T) {
 		t.Fatalf("want one sourced finding: %+v", result.Diagnostics)
 	}
 	finding := result.Diagnostics[0]
-	assertShellcheckSourceFile(t, finding.Path, path)
+	if want := filepath.Join("app", "lib", "check.sh"); finding.Path != want {
+		t.Fatalf("want relative diagnostic path %q, got %q", want, finding.Path)
+	}
+	assertShellcheckSourceFile(t, filepath.Join(root, finding.Path), path)
 	if finding.Start != (DiagnosticPosition{1, 6}) || finding.Snippet != "echo $VALUE" {
 		t.Fatalf("sourced finding attributed to composite: %+v", finding)
 	}

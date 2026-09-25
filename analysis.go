@@ -161,16 +161,20 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 
 func (r *AnalysisResult) collectDiagnostics() {
 	type location struct {
-		path, rule string
-		start      DiagnosticPosition
+		project, path, rule string
+		start               DiagnosticPosition
 	}
 	seen := make(map[location][]Diagnostic)
 	for i := range r.files {
 		file := &r.files[i]
+		project := ""
+		if file.source.Project != nil {
+			project = absPath(file.source.Project.RootDir())
+		}
 		unique := file.errors[:0]
 		for _, finding := range file.errors {
 			diagnostic := finding.diagnostic(file.source.Content)
-			key := location{diagnostic.Path, diagnostic.Rule, diagnostic.Start}
+			key := location{project, diagnostic.Path, diagnostic.Rule, diagnostic.Start}
 			if slices.ContainsFunc(seen[key], func(previous Diagnostic) bool {
 				return reflect.DeepEqual(previous, diagnostic)
 			}) {
