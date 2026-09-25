@@ -269,9 +269,6 @@ func (rule *RuleExecutableBit) checkout(action *ExecAction, mayNotComplete bool)
 	if !versioned || ref == "" || !strings.EqualFold(name, "actions/checkout") {
 		return
 	}
-	if _, retired := OutdatedPopularActionSpecs["actions/checkout@"+ref]; retired {
-		return
-	}
 	for _, input := range []string{"repository", "ref", "sparse-checkout", "github-server-url"} {
 		if value, known := checkoutInput(action, input); !known || value != "" {
 			return
