@@ -103,9 +103,10 @@ or `-s` need a leading directive to identify the embedded script:
     echo "$HOME"
 ```
 
-The directive selects analysis, not GitHub's runtime interpreter. Other workflow
-checks still run when ShellCheck skips an unknown language. A global dialect
-override does not select Python, PowerShell or unknown wrappers for ShellCheck.
+The directive selects the analysis dialect. GitHub's runtime interpreter stays
+unchanged. Other workflow checks still run when ShellCheck skips an unknown
+language. A global dialect override does not select Python, PowerShell or unknown
+wrappers for ShellCheck.
 
 Dialect precedence, highest first:
 
@@ -174,7 +175,8 @@ Disable with `policy: {cache-operation: false}`.
 ### cache-write-untrusted
 
 Reports explicit `write` or `write-only` cache grants on low-trust triggers using
-default-branch caches. This checks declarations, not `if` guards or cache contents.
+default-branch caches. Only declarations are checked; `if` guards and cache
+contents are ignored.
 Use `read` or `none`, or document a reviewed [inline exception](#inline-cache-policy-exceptions).
 Ordinary `pull_request`, review events, `merge_group`, trusted write-default events
 such as `push`, and standalone `workflow_call` do not trigger this policy.
@@ -194,13 +196,14 @@ cache-mode: write # actionlint:ignore cache-write-untrusted -- reviewed default-
 Or place `# actionlint:ignore-next-line RULE -- reason` immediately before the
 reported line. A nonempty reason is required. Comma-separated selectors can name
 `cache-call-unrestricted`, `cache-operation` and `cache-write-untrusted` only.
-Exceptions affect that physical line, not a block's children. Blank lines or other
+Exceptions apply only to that physical line. Blank lines or other
 comments detach a preceding directive. For multiline values, use the diagnostic's
 line; for aliases, use the reported anchor location.
 
 Malformed attached directives report `inline-suppression`. Text inside strings or
 scripts is not a directive. CLI and path ignores apply afterwards. Suppression
-changes lint output, not GitHub's cache permissions; remaining findings exit with 1.
+changes lint output. GitHub's cache permissions stay unchanged; remaining findings
+exit with 1.
 
 ### disallow-suppressions
 
@@ -249,7 +252,8 @@ greater than maximum. `{}` requires the key only. Expression values are not comp
 `policy: {require-permissions: true}` requires workflow-level `permissions`, as do
 `{}` and `{scope: workflow}`. Use `{scope: job}` to require it on every job,
 including reusable calls. Empty mappings, named scopes, `read-all` and `write-all`
-all satisfy the check; this policy checks presence, not least privilege.
+all satisfy the check. This policy only requires a declaration; it does not assess
+least privilege.
 
 ### required-actions
 
@@ -259,8 +263,8 @@ policy:
 ```
 
 Patterns match action names case-insensitively and refs case-sensitively; `*` does
-not cross `/`. Omitting `@ref` accepts any ref. Only workflow steps are searched,
-not composite or reusable-workflow bodies. Workflows containing unresolved `uses`
+not cross `/`. Omitting `@ref` accepts any ref. Search is limited to steps declared
+directly in the workflow. Workflows containing unresolved `uses`
 expressions or only reusable-call jobs are skipped.
 
 ## Generate the initial configuration

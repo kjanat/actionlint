@@ -77,7 +77,10 @@ func TestCompositeShellcheckSourcedDiagnostics(t *testing.T) {
 		t.Fatalf("want one sourced finding: %+v", result.Diagnostics)
 	}
 	finding := result.Diagnostics[0]
-	assertShellcheckSourceFile(t, finding.Path, path)
+	if want := filepath.Join("app", "lib", "check.sh"); finding.Path != want {
+		t.Fatalf("want relative diagnostic path %q, got %q", want, finding.Path)
+	}
+	assertShellcheckSourceFile(t, filepath.Join(root, finding.Path), path)
 	if finding.Start != (DiagnosticPosition{1, 6}) || finding.Snippet != "echo $VALUE" {
 		t.Fatalf("sourced finding attributed to composite: %+v", finding)
 	}

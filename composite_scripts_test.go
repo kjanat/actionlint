@@ -3,6 +3,7 @@ package actionlint
 import (
 	"encoding/json"
 	"os/exec"
+	"path/filepath"
 
 	"slices"
 	"strings"
@@ -101,7 +102,7 @@ func TestCompositeShellcheck(t *testing.T) {
 					findings = append(findings, d)
 				}
 			}
-			if len(findings) != 1 || findings[0].Path != metadata || findings[0].Start != (DiagnosticPosition{8, 14}) || !strings.Contains(findings[0].Message, "SC2086") {
+			if len(findings) != 1 || filepath.Join(root, findings[0].Path) != metadata || findings[0].Start != (DiagnosticPosition{8, 14}) || !strings.Contains(findings[0].Message, "SC2086") {
 				t.Fatalf("metadata diagnostic: %+v", result.Diagnostics)
 			}
 			if !slices.Contains(result.Inputs, metadata) {
@@ -126,7 +127,7 @@ func TestCompositeShellcheckAcrossWorkflows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "shellcheck" || result.Diagnostics[0].Path != metadata {
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "shellcheck" || filepath.Join(root, result.Diagnostics[0].Path) != metadata {
 		t.Fatalf("expected one shared-action finding: %+v", result.Diagnostics)
 	}
 	if result.FileCount() != 2 || len(result.legacyErrors()) != 1 {
@@ -149,7 +150,7 @@ func TestCompositeShellcheckAcrossWorkflows(t *testing.T) {
 	if err := json.Unmarshal([]byte(out.String()), &findings); err != nil {
 		t.Fatal(err)
 	}
-	if len(findings) != 1 || findings[0].Filepath != metadata || !strings.Contains(findings[0].Snippet, "echo $VALUE") {
+	if len(findings) != 1 || filepath.Join(root, findings[0].Filepath) != metadata || !strings.Contains(findings[0].Snippet, "echo $VALUE") {
 		t.Fatalf("legacy rendering lost the shared source: %+v", findings)
 	}
 }
@@ -181,7 +182,7 @@ func TestCompositeShellcheckActionPaths(t *testing.T) {
 					findings = append(findings, d)
 				}
 			}
-			if len(findings) != 1 || findings[0].Path != inner || !strings.Contains(findings[0].Message, "SC2086") {
+			if len(findings) != 1 || filepath.Join(root, findings[0].Path) != inner || !strings.Contains(findings[0].Message, "SC2086") {
 				t.Fatalf("action configuration leaked between invocations: %+v", findings)
 			}
 			if strings.Contains(selection, ".shellcheckrc") {
@@ -247,7 +248,7 @@ func TestCompositeSyntaxAndNestedActions(t *testing.T) {
 	metadata := writeShellcheckFixture(t, root, "inner/action.yaml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: |\n        if then\n    - shell: python\n      run: |\n        print(\n    - uses: ./outer\n")
 	result := compositeAnalysis(t, root, "- uses: ./outer", AnalysisOptions{Shellcheck: command, Pyflakes: python})
 	for _, rule := range []string{"shellcheck", "pyflakes"} {
-		if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == rule && d.Path == metadata }) {
+		if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == rule && filepath.Join(root, d.Path) == metadata }) {
 			t.Errorf("missing %s syntax finding: %+v", rule, result.Diagnostics)
 		}
 	}
@@ -287,7 +288,7 @@ func TestCompositeExecutableBit(t *testing.T) {
 			for _, d := range result.Diagnostics {
 				if d.Rule == "executable-bit" {
 					found = true
-					if d.Path != metadata || !strings.Contains(d.Message, `script "bad.sh"`) {
+					if filepath.Join(root, d.Path) != metadata || !strings.Contains(d.Message, `script "bad.sh"`) {
 						t.Fatalf("caller defaults or source leaked: %+v", d)
 					}
 				}
@@ -313,7 +314,7 @@ func TestCompositeMacOSExecutableBit(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
-		return d.Rule == "executable-bit" && d.Path == metadata && strings.Contains(d.Message, `script "scripts/bad.sh"`)
+		return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == metadata && strings.Contains(d.Message, `script "scripts/bad.sh"`)
 	}) {
 		t.Fatalf("nested action lost macOS path matching: %+v", result.Diagnostics)
 	}
@@ -374,12 +375,12 @@ func TestConditionalCompositeRetainsStaticChecks(t *testing.T) {
 		t.Run(tc.outer+"/"+tc.inner, func(t *testing.T) {
 			writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: ./inner\n      if: "+tc.inner+"\n")
 			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n- uses: ./local\n  if: "+tc.outer, AnalysisOptions{Shellcheck: command})
-			finding := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" && d.Path == inner })
+			finding := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == inner })
 			if finding != tc.finding {
 				t.Errorf("conditional finding=%v, want %v: %+v", finding, tc.finding, result.Diagnostics)
 			}
 			if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
-				return d.Rule == "shellcheck" && d.Path == inner && strings.Contains(d.Message, "SC2086")
+				return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == inner && strings.Contains(d.Message, "SC2086")
 			}) {
 				t.Fatalf("conditional nested script lost static checks: %+v", result.Diagnostics)
 			}
@@ -409,7 +410,7 @@ func TestCompositeShellcheckWorkingDirectory(t *testing.T) {
 	for _, directory := range []string{"", "      working-directory: scripts\n"} {
 		file := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n"+directory+"      run: . ./lib.sh\n")
 		result := compositeAnalysis(t, root, "- uses: ./local", AnalysisOptions{Shellcheck: command})
-		found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "shellcheck" && d.Path == file })
+		found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == file })
 		if found != (directory != "") {
 			t.Fatalf("directory %q: %+v", directory, result.Diagnostics)
 		}
@@ -426,10 +427,10 @@ func TestCompositeActionPathWorkingDirectory(t *testing.T) {
 	inner := writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      working-directory: ${{ github.action_path }}\n      run: . ./lib.sh\n")
 	outer := writeShellcheckFixture(t, root, "outer/action.yml", "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: ./inner\n    - shell: bash\n      working-directory: ${{ github.action_path }}\n      run: . ./lib.sh\n")
 	result := compositeAnalysis(t, root, "- uses: ./outer", AnalysisOptions{Shellcheck: command})
-	if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "shellcheck" && d.Path == inner }) {
+	if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == inner }) {
 		t.Fatalf("missing sourced-file finding in nested action: %+v", result.Diagnostics)
 	}
-	if slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "shellcheck" && d.Path == outer }) {
+	if slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == outer }) {
 		t.Fatalf("nested action_path leaked into caller: %+v", result.Diagnostics)
 	}
 }
@@ -441,7 +442,7 @@ func TestCompositeNestedMetadataErrors(t *testing.T) {
 		inner := writeShellcheckFixture(t, root, "inner/action.yml", content)
 		result := compositeAnalysis(t, root, "- uses: ./outer\n- uses: ./inner", AnalysisOptions{})
 		if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
-			return d.Rule == "action" && (d.Path == outer && strings.Contains(d.Message, "could not parse") || d.Path == inner && strings.Contains(d.Message, "shell"))
+			return d.Rule == "action" && (filepath.Join(root, d.Path) == outer && strings.Contains(d.Message, "could not parse") || filepath.Join(root, d.Path) == inner && strings.Contains(d.Message, "shell"))
 		}) {
 			t.Fatalf("nested metadata error lost: %+v", result.Diagnostics)
 		}
@@ -495,7 +496,7 @@ func TestCompositeToleratedFailureState(t *testing.T) {
 				if finding.Rule != "executable-bit" {
 					continue
 				}
-				if finding.Path == metadata {
+				if filepath.Join(root, finding.Path) == metadata {
 					inner = true
 				} else {
 					outer = true
@@ -541,11 +542,11 @@ func TestCompositeCheckoutMetadataPaths(t *testing.T) {
 						t.Fatalf("wrong metadata validated: %+v", finding)
 					}
 				}
-				if removed != "executable-bit" && !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" && d.Path == outer }) {
+				if removed != "executable-bit" && !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == outer }) {
 					t.Fatalf("missing composite script finding: %+v", result.Diagnostics)
 				}
 				if removed != "action" && !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
-					return d.Rule == "action" && d.Path == inner && strings.Contains(d.Message, "shell")
+					return d.Rule == "action" && filepath.Join(root, d.Path) == inner && strings.Contains(d.Message, "shell")
 				}) {
 					t.Fatalf("nested metadata validation lost: %+v", result.Diagnostics)
 				}
@@ -574,7 +575,7 @@ func TestCompositeCheckoutEmptyExpressions(t *testing.T) {
 			if !slices.Contains(result.Inputs, metadata) {
 				t.Fatalf("checkout metadata not resolved: %v", result.Inputs)
 			}
-			if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" && d.Path == metadata }) {
+			if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == metadata }) {
 				t.Fatalf("missing composite script finding: %+v", result.Diagnostics)
 			}
 		})
@@ -594,7 +595,7 @@ func TestCompositeCheckoutShellcheckWithoutExecutableBit(t *testing.T) {
 			return slices.DeleteFunc(rules, func(rule Rule) bool { return rule.Name() == "executable-bit" })
 		},
 	})
-	if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "shellcheck" && d.Path == metadata }) {
+	if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata }) {
 		t.Fatalf("composite ShellCheck read wrong source: %+v", result.Diagnostics)
 	}
 }
@@ -626,7 +627,7 @@ func TestCompositeSparseCheckoutSources(t *testing.T) {
 			}
 			inline, sourced := false, false
 			for _, diagnostic := range result.Diagnostics {
-				if diagnostic.Rule != "shellcheck" || diagnostic.Path != metadata {
+				if diagnostic.Rule != "shellcheck" || filepath.Join(root, diagnostic.Path) != metadata {
 					continue
 				}
 				if strings.Contains(diagnostic.Message, "SC2086") {
@@ -744,7 +745,7 @@ func TestCompositeShellcheckRelocatedCheckout(t *testing.T) {
 	writeShellcheckFixture(t, root, "lib.sh", "if then\n")
 	writeShellcheckFixture(t, root, "relocated/lib.sh", "echo wrong file\n")
 	result := compositeAnalysis(t, root, "- uses: ./local", AnalysisOptions{Shellcheck: command})
-	if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "shellcheck" && d.Path == metadata }) {
+	if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata }) {
 		t.Fatalf("relocated checkout source was not checked: %+v", result.Diagnostics)
 	}
 }

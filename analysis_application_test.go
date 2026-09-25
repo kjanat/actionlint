@@ -59,6 +59,38 @@ func TestAnalysisDiagnosticIdentity(t *testing.T) {
 	}
 }
 
+func TestAnalysisDiagnosticProjects(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		roots []string
+		want  int
+	}{
+		{"different projects", []string{"first", "second"}, 2},
+		{"same project", []string{"first", "first"}, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			request := AnalysisRequest{WorkingDir: root}
+			for _, name := range tc.roots {
+				project, err := NewProject(filepath.Join(root, name))
+				if err != nil {
+					t.Fatal(err)
+				}
+				request.Sources = append(request.Sources, SourceUnit{
+					Path: ".github/workflows/ci.yml", Content: []byte(commandBadWorkflow), Project: project,
+				})
+			}
+			result, err := Analyze(t.Context(), request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(result.Diagnostics) != tc.want || len(result.legacyErrors()) != tc.want {
+				t.Fatalf("want %d findings, got %+v", tc.want, result.Diagnostics)
+			}
+		})
+	}
+}
+
 func TestAnalysisConcurrentLogRecords(t *testing.T) {
 	for _, level := range []LogLevel{LogLevelVerbose, LogLevelDebug} {
 		t.Run(fmt.Sprint(level), func(t *testing.T) {
