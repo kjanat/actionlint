@@ -13,7 +13,7 @@ import (
 )
 
 // ConfigKeys returns the supported top-level configuration keys in declaration order.
-// Action inputs use these same names and YAML types.
+// Overlay documents use these names and YAML types.
 func ConfigKeys() []string {
 	t := reflect.TypeFor[Config]()
 	keys := make([]string, 0, t.NumField())
@@ -275,7 +275,12 @@ func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
 			return nil, err
 		}
 	}
-	report.Inspection = ConfigInspection{Path: report.File, Config: resolved.values, Origins: resolved.origins}
+	report.Inspection = ConfigInspection{Path: report.File, Config: resolved.values, Origins: resolved.origins, Warnings: resolved.warnings}
+	if s.onLoaded == nil {
+		for _, warning := range resolved.warnings {
+			_, _ = fmt.Fprintf(a.logOut, "%s:%d:%d: warning: %s\n", report.File, warning.Line, warning.Column, warning.Message)
+		}
+	}
 	s.loaded[project] = cfg
 	notification = &report
 	return cfg, nil
