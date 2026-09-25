@@ -129,11 +129,19 @@ func (l *analysisEngine) check(
 	all = filterInlineSuppressions(content, all, suppressionPolicy)
 	all = l.filterErrors(all, cfg.PathConfigs(path))
 
+	diagnosticDir := l.workingDir
+	if resolved, err := filepath.EvalSymlinks(diagnosticDir); err == nil {
+		diagnosticDir = resolved
+	}
 	for _, err := range all {
 		if err.Filepath == "" {
 			err.Filepath = path // Populate filename in the error
 		} else if filepath.IsAbs(err.Filepath) {
-			if relative, e := filepath.Rel(l.workingDir, err.Filepath); e == nil {
+			sourcePath := err.Filepath
+			if resolved, e := filepath.EvalSymlinks(sourcePath); e == nil {
+				sourcePath = resolved
+			}
+			if relative, e := filepath.Rel(diagnosticDir, sourcePath); e == nil {
 				err.Filepath = relative
 			}
 		}
