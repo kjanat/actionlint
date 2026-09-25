@@ -135,7 +135,8 @@ Available parent directories, symlink targets and absolute paths with compatible
 host/runner syntax can be analyzed, including outside the repository. Dynamic,
 missing or unrepresentable working directories disable source following while
 retaining analysis of the embedded script. `SCRIPTDIR` does not mean the YAML
-directory: embedded scripts reach ShellCheck through stdin.
+directory: embedded scripts reach ShellCheck through stdin. Paths refer to
+actionlint's local filesystem; job containers and their mounts are not recreated.
 
 Referenced local composite actions, including nested ones, are checked too. Their
 steps use their own shell and working directory, without inheriting workflow/job
