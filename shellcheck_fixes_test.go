@@ -3,6 +3,7 @@ package actionlint
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -171,7 +172,7 @@ func TestShellcheckCompositeFixPath(t *testing.T) {
 	}
 	fix := result.Diagnostics[0].Fixes[0]
 	for _, edit := range fix.Edits {
-		if edit.Path != path {
+		if filepath.Join(root, edit.Path) != path {
 			t.Fatalf("fix targeted workflow instead of composite: %+v", edit)
 		}
 	}
