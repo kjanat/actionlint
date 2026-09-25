@@ -1,6 +1,10 @@
 name: 'Root action'
 description: 'Action metadata at the repository root'
 
+inputs:
+  message:
+    description: 'Message for the root action'
+
 outputs:
   result:
     description: 'Result of the root action'
