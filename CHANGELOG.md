@@ -2,6 +2,7 @@
 
 # Unreleased
 
+- Accept `uses: $/` and extra-slash variants for repository-root actions, including input and output validation. (kjanat/actionlint#199)
 - Link CLI help to documentation at the release tag or development build's commit, including Go pseudo-versions and Makefile builds.
 - Add documented `ACTIONLINT_*` defaults for configuration selection, output, filters, logging and presentation. Split external-linter environment settings into literal `BIN`, argument `FLAGS`, and child `ENV` values for both ShellCheck and Pyflakes. Explicit flags override environment defaults, including empty and false values.
 - Pretty-print JSON metadata and JSON/SARIF diagnostics with installed `jq` when stdout is a terminal. Respect color controls and provide `--json-pretty=false`. Keep redirected output, JSONL, templates and stderr records unchanged; fall back to the original JSON if jq is unavailable or fails.
