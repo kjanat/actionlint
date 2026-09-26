@@ -16,7 +16,7 @@ func checkoutEnvironmentUnknown(env *Env) bool {
 			return true
 		}
 		switch name {
-		case "NODE_OPTIONS", "GIT_SSH_COMMAND", "GIT_SSH", "GIT_PROXY_COMMAND", "GIT_TEMPLATE_DIR":
+		case "NODE_OPTIONS", "GIT_SSH_COMMAND", "GIT_SSH", "GIT_PROXY_COMMAND", "GIT_TEMPLATE_DIR", "GIT_EXEC_PATH":
 			if value, known := environmentLiteral(variable.Value); !known || value != "" {
 				return true
 			}
