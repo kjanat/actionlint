@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { spawnSync } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const script = fileURLToPath(new URL('./check-action-outputs.mjs', import.meta.url));
@@ -61,15 +63,30 @@ test('output checks reject failures, findings, and invalid reports', () => {
 	}
 });
 
-test('published smoke keeps both external refs and downloads their binaries', async () => {
-	const action = await readFile(new URL('./testdata/published-action/action.yml', import.meta.url), 'utf8');
+test('published smoke checks both external refs with inline Node', async (t) => {
+	const action = (await readFile(new URL('./testdata/published-action/action.yml', import.meta.url), 'utf8'))
+		.replaceAll('\r\n', '\n');
 	assert.match(action, /uses: OWNER\/REPO@RELEASE_TAG/);
 	assert.match(action, /uses: OWNER\/REPO@COMMIT_SHA/);
 	assert.equal(action.match(/ACTIONLINT_ACTION_BINARY: ""/g)?.length, 2);
-	assert.equal(action.match(/run: node scripts\/check-action-outputs\.mjs/g)?.length, 2);
-	for (const id of ['version', 'commit']) {
-		for (const output of ['exit-code', 'result', 'problem-count', 'output']) {
-			assert.ok(action.includes(`\${{ steps.${id}.outputs.${output} }}`));
-		}
+	assert.match(action, /uses: kjanat\/actions-shells@[a-f0-9]{40}/);
+	assert.match(action, /shell: actions-shell node \{0\}/);
+	assert.ok(action.includes('VERSION_OUTPUTS: ${{ toJSON(steps.version.outputs) }}'));
+	assert.ok(action.includes('COMMIT_OUTPUTS: ${{ toJSON(steps.commit.outputs) }}'));
+	const blocks = action.split('      run: |\n');
+	assert.equal(blocks.length, 2);
+	const directory = await mkdtemp(join(tmpdir(), 'actionlint inline node '));
+	t.after(() => rm(directory, { recursive: true, force: true }));
+	const inline = join(directory, 'runner-script');
+	await writeFile(inline, blocks[1].replace(/^ {8}/gm, ''));
+	const outputs = { 'exit-code': '0', result: 'success', 'problem-count': '0', output: JSON.stringify(clean) };
+	for (const failing of ['', 'VERSION_OUTPUTS', 'COMMIT_OUTPUTS']) {
+		/** @type {NodeJS.ProcessEnv} */
+		const env = { ...process.env, VERSION_OUTPUTS: JSON.stringify(outputs), COMMIT_OUTPUTS: JSON.stringify(outputs) };
+		if (failing) env[failing] = JSON.stringify({ ...outputs, output: JSON.stringify({ ...clean, diagnostics: [{}] }) });
+		const result = spawnSync(process.execPath, [inline], { encoding: 'utf8', timeout: 5_000, env });
+		assert.ifError(result.error);
+		if (failing) assert.notEqual(result.status, 0, failing);
+		else assert.equal(result.status, 0, result.stderr);
 	}
 });
