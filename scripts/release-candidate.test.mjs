@@ -7,6 +7,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
+import { createReleaseCommit, recordRelease } from './build-action-release.mjs';
 import {
 	bundleName,
 	containerAssets,
@@ -407,6 +408,164 @@ test('another checkout can resume an already pushed ancestry commit', () => {
 	fixture.state.failPublish = false;
 	finalizePromotion(fixture.manifest, fixture.release(), fixture.operations);
 	assert.deepEqual(fixture.events, ['fast-forward', 'push', 'publish']);
+});
+
+test('real signed promotion survives rejected pushes and lost responses without changing bytes', async (t) => {
+	const gpgconf = spawnSync('gpgconf', ['--list-components'], { encoding: 'utf8', timeout: 5_000 });
+	const component = gpgconf.stdout?.split(/\r?\n/).find((line) => line.startsWith('gpg:'))?.split(':')[2];
+	if (gpgconf.error || gpgconf.status !== 0 || !component) {
+		t.skip('GnuPG with Ed25519 and gpgconf required for isolated signing');
+		return;
+	}
+	// Git for Windows prepends its own tools to PATH; use the keyring's GnuPG executable.
+	const gpgProgram = decodeURIComponent(component).replaceAll('\\', '/');
+	const gpg = spawnSync(gpgProgram, ['--version'], { encoding: 'utf8', timeout: 5_000 });
+	if (gpg.error || gpg.status !== 0 || !gpg.stdout.includes('EDDSA')) {
+		t.skip('GnuPG lacks Ed25519 support');
+		return;
+	}
+	const temporary = await mkdtemp(join(tmpdir(), 'actionlint-real-promotion-'));
+	const keyring = join(temporary, 'keyring');
+	const root = join(temporary, 'source');
+	const remote = join(temporary, 'remote.git');
+	const env = { ...process.env, GNUPGHOME: keyring };
+	/** @param {string} cwd @param {string[]} args */
+	const git = (cwd, ...args) =>
+		execFileSync('git', args, { cwd, env, encoding: 'utf8', timeout: 10_000, stdio: 'pipe' }).trim();
+	try {
+		await mkdir(keyring, { mode: 0o700 });
+		await mkdir(root);
+		execFileSync(gpgProgram, [
+			'--batch',
+			'--pinentry-mode',
+			'loopback',
+			'--passphrase',
+			'',
+			'--quick-generate-key',
+			'Release fixture <release@example.invalid>',
+			'ed25519',
+			'sign',
+			'0',
+		], { env, timeout: 10_000, stdio: 'pipe' });
+		const keys = execFileSync(gpgProgram, ['--batch', '--with-colons', '--list-secret-keys'], {
+			env,
+			encoding: 'utf8',
+			timeout: 5_000,
+			stdio: 'pipe',
+		});
+		const fingerprint = keys.split(/\r?\n/).find((line) => line.startsWith('fpr:'))?.split(':')[9];
+		assert.ok(fingerprint, 'missing isolated signing key');
+		/** @param {string} cwd */
+		const configure = (cwd) => {
+			for (
+				const [name, value] of Object.entries({
+					'user.name': 'Release fixture',
+					'user.email': 'release@example.invalid',
+					'user.signingkey': fingerprint,
+					'gpg.program': gpgProgram,
+					'commit.gpgsign': 'false',
+					'core.autocrlf': 'false',
+					'core.hooksPath': join(temporary, 'empty-hooks'),
+				})
+			) git(cwd, 'config', name, value);
+		};
+		git(root, 'init', '--quiet', '--initial-branch=master');
+		configure(root);
+		const sourceFiles = {
+			'action.yml': 'runs: {using: node24, main: action.mjs}\n',
+			'README.md': '# Promotion fixture\n',
+			'LICENSE.txt': 'Fixture license\n',
+		};
+		for (const [name, content] of Object.entries(sourceFiles)) await writeFile(join(root, name), content);
+		git(root, 'add', '.');
+		git(root, 'commit', '--quiet', '-m', 'Prepared source');
+		const source = git(root, 'rev-parse', 'HEAD');
+		git(root, 'init', '--quiet', '--bare', '--initial-branch=master', remote);
+		git(root, 'remote', 'add', 'origin', remote);
+		git(root, 'push', '--quiet', 'origin', 'master');
+		const directory = join(temporary, 'prepared');
+		const action = join(directory, 'action');
+		await mkdir(action, { recursive: true });
+		const bundle = Buffer.from('console.log("candidate bytes: π");\n');
+		const checksum = Buffer.from(`${createHash('sha256').update(bundle).digest('hex')}  action.mjs\n`);
+		for (const [name, content] of Object.entries(sourceFiles)) await writeFile(join(action, name), content);
+		await writeFile(join(action, 'action.mjs'), bundle);
+		await writeFile(join(action, 'SHA256SUMS'), checksum);
+		const candidate = await createReleaseCommit(root, directory, '1.17.1', source);
+		const manifest = { ...exampleManifest(), source, candidate, tree: git(root, 'rev-parse', `${candidate}^{tree}`) };
+		const hook = join(remote, 'hooks', 'update');
+		// Reject only the tag: --atomic must also leave the otherwise accepted branch unchanged.
+		await writeFile(hook, '#!/bin/sh\ncase "$1" in refs/tags/*) exit 1 ;; *) exit 0 ;; esac\n', { mode: 0o755 });
+		git(remote, 'config', 'core.hooksPath', join(remote, 'hooks'));
+		let draft = true;
+		let losePushResponse = false;
+		let acceptPublication = false;
+		let signCount = 0;
+		let recordCount = 0;
+		let publishCount = 0;
+		/** @param {string} cwd @returns {import('./release-candidate.mjs').PromotionOperations} */
+		const operations = (cwd) => ({
+			git: (...args) => {
+				if (args.includes('-s') && args.includes('tag')) signCount++;
+				const result = git(cwd, ...args);
+				if (args.includes('push') && losePushResponse) {
+					losePushResponse = false;
+					throw new Error('Push response lost after acceptance');
+				}
+				return result;
+			},
+			record: (tag, parent) => {
+				recordCount++;
+				recordRelease(cwd, tag, parent);
+			},
+			publish: () => {
+				publishCount++;
+				if (acceptPublication) draft = false;
+				throw new Error('Publication response lost');
+			},
+		});
+		const release = () => ({ id: 789, draft, tag_name: manifest.tag, target_commitish: source });
+		assert.throws(() => finalizePromotion(manifest, release(), operations(root)), /verify or resume the atomic push/);
+		const tagObject = git(root, 'rev-parse', `refs/tags/${manifest.tag}`);
+		const recorded = git(root, 'rev-parse', 'HEAD');
+		assert.equal(git(remote, 'tag', '--list'), '');
+		assert.equal(git(remote, 'rev-parse', 'master'), source);
+		assert.equal(publishCount, 0);
+		await rm(hook);
+		losePushResponse = true;
+		assert.throws(() => finalizePromotion(manifest, release(), operations(root)), /verify or resume the atomic push/);
+		assert.equal(git(remote, 'rev-parse', 'master'), recorded);
+		assert.equal(git(remote, 'rev-parse', `refs/tags/${manifest.tag}`), tagObject);
+		assert.throws(() => finalizePromotion(manifest, release(), operations(root)), /resume draft publication/);
+		assert.equal(draft, true);
+		const resumed = join(temporary, 'resumed');
+		git(root, 'clone', '--quiet', remote, resumed);
+		configure(resumed);
+		acceptPublication = true;
+		assert.throws(() => finalizePromotion(manifest, release(), operations(resumed)), /resume draft publication/);
+		assert.equal(finalizePromotion(manifest, release(), operations(resumed)).alreadyPublished, true);
+		assert.equal(signCount, 1);
+		assert.equal(recordCount, 1);
+		assert.equal(publishCount, 2);
+		assert.equal(git(remote, 'rev-parse', `refs/tags/${manifest.tag}`), tagObject);
+		assert.equal(git(remote, 'rev-parse', `${manifest.tag}^{commit}`), candidate);
+		assert.equal(git(remote, 'rev-list', '--parents', '-n', '1', 'master'), `${recorded} ${source} ${candidate}`);
+		assert.equal(git(remote, 'rev-parse', 'master^{tree}'), git(root, 'rev-parse', `${source}^{tree}`));
+		git(resumed, 'verify-tag', manifest.tag);
+		for (const [name, bytes] of Object.entries({ 'action.mjs': bundle, SHA256SUMS: checksum })) {
+			assert.deepEqual(execFileSync('git', ['show', `${manifest.tag}:${name}`], { cwd: remote, env }), bytes);
+			assert.deepEqual(await readFile(join(action, name)), bytes);
+		}
+	} finally {
+		const stopped = spawnSync('gpgconf', ['--homedir', keyring, '--kill', 'gpg-agent'], {
+			env,
+			encoding: 'utf8',
+			timeout: 5_000,
+		});
+		await rm(temporary, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+		assert.ifError(stopped.error);
+		assert.equal(stopped.status, 0, stopped.stderr);
+	}
 });
 
 // Execute the workflow's actual Bash gate. These functions replace both external
