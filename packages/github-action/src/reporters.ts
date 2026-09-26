@@ -9,24 +9,28 @@ import type { Environment } from '#runtime';
 import { InputError } from '#runtime';
 import { commandEscape, writeOutputs } from '#workflow';
 
-export type ReportOptions = { annotations: boolean; summary: boolean; json: boolean; sarif: boolean; review: boolean };
+export type ReportOptions = {
+	annotations: 'auto' | 'true' | 'false';
+	summary: boolean;
+	sarif: boolean;
+	review: boolean;
+};
 
 export function reportOptions(environment: Environment): ReportOptions {
-	const enabled = (name: string): boolean => {
-		const value = environment[`INPUT_${name.toUpperCase()}`] || 'false';
+	const enabled = (name: string, fallback = 'false'): boolean => {
+		const value = environment[`INPUT_${name.toUpperCase()}`] || fallback;
 		if (value !== 'true' && value !== 'false') throw new InputError(`Input '${name}' must be 'true' or 'false'`);
 		return value === 'true';
 	};
-	const formats = (environment['INPUT_REPORT-FORMATS'] || '').split(/[\s,]+/).filter(Boolean);
-	if (formats.some((format) => format !== 'json' && format !== 'sarif')) {
-		throw new InputError("Input 'report-formats' accepts json and sarif, separated by commas or newlines");
+	const annotations = environment.INPUT_ANNOTATIONS || 'auto';
+	if (annotations !== 'auto' && annotations !== 'true' && annotations !== 'false') {
+		throw new InputError("Input 'annotations' must be 'auto', 'true' or 'false'");
 	}
 	return {
-		annotations: enabled('annotations'),
-		summary: enabled('summary'),
+		annotations,
+		summary: enabled('summary', 'true'),
 		review: enabled('review'),
-		json: formats.includes('json'),
-		sarif: formats.includes('sarif'),
+		sarif: enabled('sarif'),
 	};
 }
 
@@ -54,12 +58,18 @@ export function html(value: string): string {
 }
 
 export function summary(result: ActionResult): string {
-	let text = `### actionlint: ${result.status}\n\n`;
 	const findings = result.diagnostics.length === 1 ? 'finding' : 'findings';
-	const files = result.file_count === 1 ? 'workflow file' : 'workflow files';
-	text += result.completed
-		? `${result.diagnostics.length} ${findings} in ${result.file_count ?? 'an unknown number of'} ${files}.\n\n`
-		: `Analysis did not complete (exit ${result.exit_code}).\n\n`;
+	const files = result.file_count === 1 ? 'workflow' : 'workflows';
+	const count = `${result.file_count ?? 'an unknown number of'} ${files}`;
+	const heading = !result.completed
+		? 'Analysis incomplete'
+		: result.diagnostics.length > 0
+		? `${result.diagnostics.length} ${findings} in ${count}`
+		: result.file_count === 0
+		? 'No workflows selected'
+		: `No findings in ${count}`;
+	let text = `### actionlint: ${heading}\n\n`;
+	if (!result.completed) text += `Exit ${result.exit_code}; ${result.diagnostics.length} ${findings} collected.\n\n`;
 	if (result.error) text += `<pre>${html(result.error.slice(0, 2000))}</pre>\n\n`;
 	for (const diagnostic of result.diagnostics.slice(0, 50)) {
 		text += `<details><summary>${html(diagnostic.path)}:${diagnostic.start.line}:${diagnostic.start.column} (${
@@ -85,15 +95,31 @@ export async function report(
 	options: ReportOptions,
 	runtime: ReporterRuntime,
 ): Promise<void> {
-	const values: Record<string, string> = { 'analysis-result': path, 'report-json': '', 'report-sarif': '' };
-	if (options.json) values['report-json'] = path;
+	const attempt = async (destination: string, run: () => Promise<void>): Promise<void> => {
+		try {
+			await run();
+		} catch (error) {
+			runtime.log(
+				`::warning::${
+					commandEscape(
+						`${destination}: ${
+							error instanceof Error ? error.message : String(error)
+						}. Analysis results remain available at ${path}.`,
+					)
+				}`,
+			);
+		}
+	};
+	const values: Record<string, string> = { 'result-file': path, 'report-sarif': '' };
 	if (options.sarif && result.sarif) {
-		const sarifPath = `${path}.sarif`;
-		await writeFile(sarifPath, `${JSON.stringify(result.sarif)}\n`, { mode: 0o600 });
-		values['report-sarif'] = sarifPath;
+		await attempt('SARIF report unavailable', async () => {
+			const sarifPath = `${path}.sarif`;
+			await writeFile(sarifPath, `${JSON.stringify(result.sarif)}\n`, { mode: 0o600 });
+			values['report-sarif'] = sarifPath;
+		});
 	}
-	await writeOutputs(environment.GITHUB_OUTPUT, values);
-	if (options.annotations && environment.INPUT_FORMAT && environment.INPUT_FORMAT !== 'github') {
+	await attempt('Report outputs unavailable', () => writeOutputs(environment.GITHUB_OUTPUT, values));
+	if (options.annotations === 'true' && environment.INPUT_FORMAT && environment.INPUT_FORMAT !== 'github') {
 		const workspace = resolve(environment.GITHUB_WORKSPACE || '.');
 		const workingDirectory = resolve(workspace, environment['INPUT_WORKING-DIRECTORY'] || '.');
 		for (const diagnostic of result.diagnostics) {
@@ -101,23 +127,14 @@ export async function report(
 			runtime.log(annotation({ ...diagnostic, path }));
 		}
 	}
-	if (options.summary && environment.GITHUB_STEP_SUMMARY) {
-		await appendFile(environment.GITHUB_STEP_SUMMARY, summary(result));
+	const summaryPath = environment.GITHUB_STEP_SUMMARY;
+	if (options.summary && summaryPath) {
+		await attempt('Job summary unavailable', () => appendFile(summaryPath, summary(result)));
 	}
 	if (options.review) {
-		try {
-			await runtime.review(result, environment);
-		} catch (error) {
-			runtime.log(
-				`::warning::${
-					commandEscape(
-						`PR review skipped: ${
-							error instanceof Error ? error.message : String(error)
-						}. Analysis results remain available.`,
-					)
-				}`,
-			);
-		}
+		await attempt('PR review skipped', async () => {
+			runtime.log(commandEscape(await runtime.review(result, environment)));
+		});
 	}
 }
 
@@ -134,7 +151,12 @@ export async function withReporting(
 	await writeFile(path, `${JSON.stringify(result)}\n`, { mode: 0o600 });
 	let code = 3;
 	let failure: unknown;
-	let options: ReportOptions = { annotations: false, summary: false, json: false, sarif: false, review: false };
+	let options: ReportOptions = {
+		annotations: 'auto',
+		summary: environment.INPUT_SUMMARY !== 'false',
+		sarif: false,
+		review: false,
+	};
 	try {
 		options = reportOptions(environment);
 		code = await execute({ ...environment, ACTIONLINT_ACTION_RESULT: path });
@@ -146,7 +168,21 @@ export async function withReporting(
 		}
 	} catch (error) {
 		failure = error;
-		result = failedResult(error, error instanceof InputError);
+		// A process can fail after writing diagnostics. Recover them before recording
+		// the failure, and never turn a process/result disagreement into success.
+		try {
+			result = parseResult(JSON.parse(await readFile(path, 'utf8')));
+		} catch {
+			// The initialized failure result remains the fallback for missing/corrupt data.
+		}
+		result = {
+			...result,
+			...failedResult(error, error instanceof InputError),
+			file_count: result.file_count,
+			diagnostics: result.diagnostics,
+			configurations: result.configurations,
+			hints: result.hints,
+		};
 		code = result.exit_code;
 		await writeFile(path, `${JSON.stringify(result)}\n`, { mode: 0o600 });
 	}

@@ -18,6 +18,11 @@ import { normalizeEnvironment, subprocessEnvironment } from '#environment';
 import { cacheTool, capture, extractArchive, findTool, temporary, which } from '#native';
 import type { Environment, PyflakesCommand, ShellcheckCommand, ToolRequirements } from '#runtime';
 import { InputError } from '#runtime';
+import { commandEscape } from '#workflow';
+
+function selectedTool(name: string, origin: string, path: string, version?: string): void {
+	console.log(`::debug::${commandEscape(`${name}: ${origin}; version ${version ?? 'not probed'}; ${path}`)}`);
+}
 
 export async function checkExecutable(path: string): Promise<void> {
 	if (!(await stat(path)).isFile()) throw new Error(`Expected an executable file: ${path}`);
@@ -55,12 +60,16 @@ export async function nativeBinary(version: string, platform: RunnerPlatform, di
 	const path = join(extracted, binary);
 	if (platform.os !== 'windows') await chmod(path, 0o755);
 	await checkExecutable(path);
+	selectedTool('actionlint', 'downloaded fallback', path, version);
 	return path;
 }
 
 export async function shellcheckBinary(platform: RunnerPlatform): Promise<ShellcheckCommand> {
 	const existing = await which('shellcheck', process.env, 'native');
-	if (existing) return { kind: 'existing', executable: existing };
+	if (existing) {
+		selectedTool('ShellCheck', 'existing installation', existing);
+		return { kind: 'existing', executable: existing };
+	}
 
 	const binary = platform.os === 'windows' ? 'shellcheck.exe' : 'shellcheck';
 	const cacheName = `actionlint-shellcheck-${platform.os}`;
@@ -68,6 +77,7 @@ export async function shellcheckBinary(platform: RunnerPlatform): Promise<Shellc
 	if (cached) {
 		const path = join(cached, binary);
 		await checkExecutable(path);
+		selectedTool('ShellCheck', 'tool cache', path, shellcheckVersion);
 		return { kind: 'standalone', executable: path };
 	}
 	console.log(`Installing ShellCheck ${shellcheckVersion}`);
@@ -77,9 +87,11 @@ export async function shellcheckBinary(platform: RunnerPlatform): Promise<Shellc
 		const path = join(root, binary);
 		if (platform.os !== 'windows') await chmod(path, 0o755);
 		await checkExecutable(path);
+		const executable = join(await cacheTool(root, cacheName, shellcheckVersion, platform.arch), binary);
+		selectedTool('ShellCheck', 'downloaded fallback', executable, shellcheckVersion);
 		return {
 			kind: 'standalone',
-			executable: join(await cacheTool(root, cacheName, shellcheckVersion, platform.arch), binary),
+			executable,
 		};
 	});
 }
@@ -126,6 +138,7 @@ async function pythonBinary(): Promise<string> {
 export async function pyflakesCommand(platform: RunnerPlatform, launcher: string): Promise<PyflakesCommand> {
 	const existing = await which('pyflakes', process.env, platform.os === 'windows' ? 'native' : 'all');
 	if (existing) {
+		selectedTool('pyflakes', 'existing installation', existing);
 		return { kind: 'existing', executable: existing };
 	}
 
@@ -136,6 +149,7 @@ export async function pyflakesCommand(platform: RunnerPlatform, launcher: string
 	if (cached) {
 		const script = join(cached, 'actionlint-pyflakes.py');
 		await access(script, constants.R_OK);
+		selectedTool('pyflakes', 'tool cache', script, pyflakesVersion);
 		return { kind: 'python', executable, script };
 	}
 	console.log(`Installing pyflakes ${pyflakesVersion}`);
@@ -143,7 +157,9 @@ export async function pyflakesCommand(platform: RunnerPlatform, launcher: string
 		const extracted = await extract(pyflakesAsset, directory);
 		await writeFile(join(extracted, 'actionlint-pyflakes.py'), launcher);
 		const root = await cacheTool(extracted, cacheName, pyflakesVersion, 'any');
-		return { kind: 'python', executable, script: join(root, 'actionlint-pyflakes.py') };
+		const script = join(root, 'actionlint-pyflakes.py');
+		selectedTool('pyflakes', 'downloaded fallback', script, pyflakesVersion);
+		return { kind: 'python', executable, script };
 	});
 }
 

@@ -85,7 +85,9 @@ test('tool probes exclude the review token from explicit and inherited environme
 	});
 });
 
-test('native tools discovered on PATH retain existing-command provenance', async () => {
+test('native tools discovered on PATH retain existing-command provenance without version probes', async (t) => {
+	const messages: string[] = [];
+	t.mock.method(console, 'log', (message: string) => messages.push(message));
 	await temporary(async (directory) => {
 		const extension = process.platform === 'win32' ? '.exe' : '';
 		const shellcheck = join(directory, `shellcheck${extension}`);
@@ -95,13 +97,19 @@ test('native tools discovered on PATH retain existing-command provenance', async
 			const platform = runnerPlatform(process.platform, process.arch);
 			assert.deepEqual(await shellcheckBinary(platform), { kind: 'existing', executable: shellcheck });
 			assert.deepEqual(await pyflakesCommand(platform, ''), { kind: 'existing', executable: pyflakes });
+			assert.deepEqual(messages, [
+				`::debug::ShellCheck: existing installation; version not probed; ${shellcheck}`,
+				`::debug::pyflakes: existing installation; version not probed; ${pyflakes}`,
+			]);
 		});
 	});
 });
 
 test('Windows Python batch shims resolve to native Python before forwarding arbitrary arguments', {
 	skip: process.platform !== 'win32',
-}, async () => {
+}, async (t) => {
+	const messages: string[] = [];
+	t.mock.method(console, 'log', (message: string) => messages.push(message));
 	const installed = await which('python3', process.env, 'native') || await which('python', process.env, 'native');
 	assert.ok(installed, 'Python is required to verify shim discovery');
 	const probe = await capture(installed, ['-I', '-c', 'import sys; print(sys.executable)']);
@@ -164,4 +172,10 @@ test('Windows Python batch shims resolve to native Python before forwarding arbi
 			});
 		});
 	}
+	assert.ok(
+		messages.some((message) => message.startsWith(`::debug::ShellCheck: tool cache; version ${shellcheckVersion};`)),
+	);
+	assert.ok(
+		messages.some((message) => message.startsWith(`::debug::pyflakes: tool cache; version ${pyflakesVersion};`)),
+	);
 });
