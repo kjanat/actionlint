@@ -116,13 +116,25 @@ try {
 			1,
 			`duplicate or missing annotation: ${result.log}`,
 		);
-		assert.match(await readFile(summaryFile, 'utf8'), /1 finding in 1 workflow file/);
+		assert.match(await readFile(summaryFile, 'utf8'), /1 finding in 1 workflow/);
 		assert.ok(result.outputs.get('result-file'));
 		assert.equal(result.outputs.has('report-json'), false);
 		const sarifPath = result.outputs.get('report-sarif');
 		assert.ok(sarifPath);
 		assert.equal(JSON.parse(await readFile(sarifPath, 'utf8')).runs[0].results.length, 1);
 	}
+	const quietAnnotations = await run({
+		files: 'testdata/err/one_error.yaml',
+		format: 'github',
+		annotations: 'false',
+		'fail-on-error': 'false',
+	});
+	assert.doesNotMatch(quietAnnotations.log, /::(?:error|warning|notice) file=/);
+	assert.match(quietAnnotations.outputs.get('output') || '', /::error file=/);
+	await run({ summary: 'false' });
+	assert.equal(await readFile(summaryFile, 'utf8'), '');
+	await run({});
+	assert.match(await readFile(summaryFile, 'utf8'), /No findings in 1 workflow/);
 	await run({ files: '' }, 3);
 	const shell = await run({
 		files: 'testdata/err/shellcheck_default_shell_detection.yaml',

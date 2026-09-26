@@ -154,6 +154,10 @@ jobs:
         run: docker container run
           --mount type=bind,source="${PWD}",target=/w
           -- actionlint:test -color -verbose
+      - name: Build Docker Action compatibility image
+        run: docker build --target action -t actionlint:action-test .
+      - name: Check Docker Action compatibility
+        run: bash scripts/test-docker-action.bash actionlint:action-test
       - name: Lint Dockerfile with hadolint
         run: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 --strict-labels
           --require-label org.opencontainers.image.source:url
@@ -182,7 +186,7 @@ jobs:
           npm ci --ignore-scripts
           npm run typecheck --workspace actionlint-action
           npm test --workspace actionlint-action
-          node --test scripts/build-action-release.test.mjs scripts/release-candidate.test.mjs scripts/release-assets.test.mjs
+          node --test scripts/build-action-release.test.mjs scripts/release-candidate.test.mjs scripts/release-assets.test.mjs scripts/docker-action.test.mjs scripts/published-action.test.mjs
       - name: Validate the staged release configuration
         if: runner.os == 'Linux'
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
@@ -222,7 +226,43 @@ jobs:
         id: smoke
         # ./ loads the candidate release tree generated in this job's workspace.
         uses: ./.actionlint-action-test
-        with: { files: testdata/ok/minimal.yaml, format: json }
+        with: { files: testdata/ok/minimal.yaml, format: json, sarif: true }
+      - name: Exercise inline configuration
+        uses: ./.actionlint-action-test
+        with:
+          files: testdata/ok/minimal.yaml
+          config: "config-variables: []"
+          annotations: false
+          summary: false
+      - name: Exercise shared configuration
+        uses: ./.actionlint-action-test
+        with:
+          files: testdata/ok/minimal.yaml
+          config-file: .github/actionlint.yaml
+      - name: Exercise advisory review without a token
+        uses: ./.actionlint-action-test
+        with:
+          files: testdata/err/one_error.yaml
+          fail-on-error: false
+          annotations: false
+          review: true
+          token: ""
+      - name: Upload result files from the recipe
+        if: always() && steps.smoke.outputs.result-file != ''
+        uses: &UploadAction actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: actionlint-reports-${{ matrix.os }}
+          path: |
+            ${{ steps.smoke.outputs.result-file }}
+            ${{ steps.smoke.outputs.report-sarif }}
+      - name: Save Linux candidate for Dockerless runner
+        if: runner.os == 'Linux'
+        uses: *UploadAction
+        with:
+          name: actionlint-linux-candidate
+          path: |
+            ${{ runner.temp }}/actionlint-action/action/
+            ${{ runner.temp }}/actionlint-test
       - name: Check runner outputs and input compatibility
         env:
           EXIT_CODE: ${{ steps.smoke.outputs.exit-code }}
@@ -250,16 +290,35 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pyflakes --version
           exit $LASTEXITCODE
+  action-slim:
+    name: GitHub Action (ubuntu-slim)
+    needs: action
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    steps:
+      - *ActCheckNocred
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with: { name: actionlint-linux-candidate, path: .actionlint-slim-test }
+      - name: Restore executable permission
+        run: chmod +x .actionlint-slim-test/actionlint-test
+      - name: Lint on a Dockerless runner
+        id: slim
+        uses: ./.actionlint-slim-test/actionlint-action/action
+        env: { ACTIONLINT_ACTION_BINARY: "${{ github.workspace }}/.actionlint-slim-test/actionlint-test" }
+        with: { files: testdata/ok/minimal.yaml, pyflakes: false, shellcheck: false }
+      - name: Verify Dockerless result
+        env: { RESULT: "${{ steps.slim.outputs.result }}" }
+        run: test "$RESULT" = success
   action-result:
     name: GitHub Action
-    needs: action
+    needs: [action, action-slim]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
       - name: Require all Action platforms to pass
-        env: { RESULT: "${{ needs.action.result }}" }
-        run: test "${RESULT}" = success
+        env: { RESULT: "${{ needs.action.result }}", SLIM_RESULT: "${{ needs.action-slim.result }}" }
+        run: test "${RESULT}" = success && test "${SLIM_RESULT}" = success
   pre-commit-shellcheck:
     name: pre-commit ShellCheck integration
     runs-on: ubuntu-latest
