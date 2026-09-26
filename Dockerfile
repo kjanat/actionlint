@@ -19,6 +19,10 @@ RUN apk add --no-cache python3 py3-pyflakes
 COPY --from=builder /go/src/app/actionlint /usr/local/bin/
 COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
 
+FROM runtime AS action
+COPY --chmod=755 scripts/docker-action.sh /usr/local/bin/actionlint-action
+ENTRYPOINT ["/usr/local/bin/actionlint-action"]
+
 FROM runtime AS cli
 WORKDIR /w
 USER 405

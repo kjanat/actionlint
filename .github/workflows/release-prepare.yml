@@ -56,7 +56,7 @@ jobs:
           npm ci --ignore-scripts
           npm run typecheck --workspace actionlint-action
           npm test --workspace actionlint-action
-          node --test scripts/build-action-release.test.mjs scripts/release-candidate.test.mjs scripts/release-assets.test.mjs
+          node --test scripts/build-action-release.test.mjs scripts/release-candidate.test.mjs scripts/release-assets.test.mjs scripts/docker-action.test.mjs scripts/published-action.test.mjs
       - name: Build the complete candidate tree
         id: candidate
         env:
@@ -165,10 +165,17 @@ jobs:
           pyflakes --version
           exit $LASTEXITCODE
   container:
-    name: Build and test candidate container
+    name: Build and test candidate container (${{ matrix.target }})
     needs: prepare
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: cli, asset: actionlint-container }
+          - { target: action, asset: actionlint-action-container }
+    env: { CONTAINER_ASSET: "${{ matrix.asset }}", CONTAINER_TARGET: "${{ matrix.target }}" }
     steps:
       - uses: *Checkout
         with: { ref: "${{ needs.prepare.outputs.source }}", fetch-depth: 0, persist-credentials: false }
@@ -184,37 +191,50 @@ jobs:
       - uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
       - name: Build a portable multi-platform image
+        id: build
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          target: cli
+          target: ${{ matrix.target }}
           build-args: ACTIONLINT_VER=${{ inputs.version }}
-          outputs: type=oci,dest=${{ runner.temp }}/actionlint-container_${{ inputs.version }}.tar
+          outputs: type=oci,dest=${{ runner.temp }}/${{ matrix.asset }}_${{ inputs.version }}.tar
           sbom: true
           provenance: mode=max
-          tags: actionlint:candidate
+          tags: actionlint:candidate-${{ matrix.target }}
           labels: |
             org.opencontainers.image.version=${{ inputs.version }}
             org.opencontainers.image.revision=${{ needs.prepare.outputs.candidate }}
+      - name: Record the prepared image digest before immutable tagging
+        env: { DIGEST: "${{ steps.build.outputs.digest }}" }
+        run: |
+          [[ "${DIGEST}" =~ ^sha256:[a-f0-9]{64}$ ]]
+          printf '%s\n' "${DIGEST}" > "${RUNNER_TEMP}/${CONTAINER_ASSET}_${VERSION}.digest"
       - name: Test both platforms from the stored OCI archive
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends skopeo
           for arch in amd64 arm64; do
+            image="actionlint:candidate-${CONTAINER_TARGET}-${arch}"
             skopeo --override-os linux --override-arch "${arch}" copy \
-              "oci-archive:${RUNNER_TEMP}/actionlint-container_${VERSION}.tar" "docker-daemon:actionlint:candidate-${arch}"
-            docker run --rm --platform "linux/${arch}" --mount type=bind,source="${PWD}",target=/w \
-              "actionlint:candidate-${arch}" testdata/ok/minimal.yaml
-            status=0
-            docker run --rm --platform "linux/${arch}" --mount type=bind,source="${PWD}",target=/w \
-              "actionlint:candidate-${arch}" testdata/err/one_error.yaml || status=$?
-            test "${status}" = 1
+              "oci-archive:${RUNNER_TEMP}/${CONTAINER_ASSET}_${VERSION}.tar" "docker-daemon:${image}"
+            if [[ "${CONTAINER_TARGET}" == action ]]; then
+              bash scripts/test-docker-action.bash "${image}" "linux/${arch}"
+            else
+              docker run --rm --platform "linux/${arch}" --mount type=bind,source="${PWD}",target=/w \
+                "${image}" testdata/ok/minimal.yaml
+              status=0
+              docker run --rm --platform "linux/${arch}" --mount type=bind,source="${PWD}",target=/w \
+                "${image}" testdata/err/one_error.yaml || status=$?
+              test "${status}" = 1
+            fi
           done
       - uses: *Upload
         with:
-          name: prepared-container
-          path: ${{ runner.temp }}/actionlint-container_${{ inputs.version }}.tar
+          name: prepared-container-${{ matrix.target }}
+          path: |
+            ${{ runner.temp }}/${{ matrix.asset }}_${{ inputs.version }}.tar
+            ${{ runner.temp }}/${{ matrix.asset }}_${{ inputs.version }}.digest
           if-no-files-found: error
           compression-level: 0
   draft:
@@ -231,7 +251,7 @@ jobs:
       - uses: *Download
         with: { name: prepared-release, path: "${{ runner.temp }}/actionlint-action" }
       - uses: *Download
-        with: { name: prepared-container, path: "${{ runner.temp }}/actionlint-action/assets" }
+        with: { pattern: prepared-container-*, merge-multiple: true, path: "${{ runner.temp }}/actionlint-action/assets" }
       - name: Record every tested asset and candidate commit
         env: { SOURCE: "${{ needs.prepare.outputs.source }}", CANDIDATE: "${{ needs.prepare.outputs.candidate }}" }
         run: |
