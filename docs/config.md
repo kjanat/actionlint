@@ -6,6 +6,177 @@ The configuration file is optional. Every correctness check runs without it, so 
 that has no configuration file. The file is where a repository tells actionlint what exists in its own environment,
 and where it turns on the opt-in [policy checks](#policy-checks).
 
+## ShellCheck
+
+Configure ShellCheck in the same `.github/actionlint.yaml` or `.github/actionlint.yml`
+that actionlint already discovers. Both the CLI and GitHub Action apply it automatically:
+
+```yaml
+tools:
+  shellcheck:
+    enabled: true
+    config:
+      disable: [SC2086]
+      enable: [check-unassigned-uppercase]
+      extended-analysis: true
+      external-sources: true
+      source-path: [scripts]
+```
+
+`enabled` defaults to true. `tools: {shellcheck: false}` is shorthand for
+`tools: {shellcheck: {enabled: false}}`; `true` enables it. ShellCheck
+must still be available; this setting does not install it. An empty ShellCheck
+command or the Action's `shellcheck: false` input also disables the tool.
+
+`config` accepts an inline mapping, a file path, or a directory containing
+`.shellcheckrc` or `shellcheckrc` (searched in that order).
+
+```yaml
+tools:
+  shellcheck:
+    enabled: true
+    config: "${{ configdir }}/.shellcheckrc" # Same as ./.shellcheckrc
+```
+
+`${{ configdir }}` is the directory containing the selected **actionlint.yaml or
+actionlint.yml itself**, including a file selected with `--config`. It is also the
+base for ordinary relative config paths. For `.github/actionlint.yaml`, both
+`./.shellcheckrc` and `"${{ configdir }}/.shellcheckrc"` mean `.github/.shellcheckrc`.
+An rc path supplied by an inline configuration overlay instead uses the analysis
+working directory (the Action's `working-directory`). An explicit `${{ configdir }}`
+still selects the configuration file's directory. Overriding a different setting
+does not change the origin of an inherited rc path.
+`${{ gitdir }}` names the workflow's repository root, so `"${{ gitdir }}/.github/"` selects an
+rc file in that directory.
+Without a selected configuration file, `${{ configdir }}` falls back to the
+repository root. Without a detected project, the analysis working directory is
+the fallback root. Explicitly selected files must exist and be readable; a
+selected directory must contain one of the two rc filenames.
+
+Paths and inline `source-path` entries accept these interpolations:
+
+| Expression                  | Meaning                                                                                    |
+| --------------------------- | ------------------------------------------------------------------------------------------ |
+| `${{ configdir }}`          | Directory containing the selected actionlint configuration.                                |
+| `${{ gitdir }}`             | Root of the repository being analyzed.                                                     |
+| `${{ github.workspace }}`   | `GITHUB_WORKSPACE` when set; otherwise the local repository root.                          |
+| `${{ github.action_path }}` | Directory of the composite action being analyzed; unavailable for ordinary workflow steps. |
+
+The workspace and repository root can differ, for example with a checkout in a
+subdirectory. A runner's `GITHUB_ACTION_PATH` is used only when it identifies the
+same analyzed action; an unrelated action's installation directory does not replace
+the local metadata directory. Unknown variables, malformed expressions and
+unavailable contexts produce configuration errors. Interpolation accepts only the
+variables listed above, using GitHub's expression delimiters. Values are
+substituted once, without evaluating their contents.
+
+In `actionlint.yaml`, actionlint performs the interpolation. When passing the same
+text through a workflow input, GitHub evaluates expressions first; use a literal
+expression such as `${{ '${{ configdir }}/.shellcheckrc' }}` to pass it through.
+
+The inline mapping accepts these native project-wide settings:
+
+| Key                 | Value                                                   |
+| ------------------- | ------------------------------------------------------- |
+| `disable`           | List of codes, ranges such as `SC3000-SC4000`, or `all` |
+| `enable`            | List of optional check names, or `all`                  |
+| `shell`             | `sh`, `bash`, `dash`, `ksh`, or `busybox`               |
+| `extended-analysis` | Boolean; omit to keep ShellCheck's default              |
+| `external-sources`  | Boolean; defaults to enabled in actionlint              |
+| `source-path`       | List of directories to search for sourced files         |
+
+These settings apply to each checked shell script. `shell` overrides its inferred
+dialect; it does not turn Python or PowerShell steps into shell scripts.
+
+### Script selection and directives
+
+ShellCheck recognizes `bash`, `sh`, `dash`, and `ksh` custom templates, including
+interpreter paths and `.exe` names. For example, `bash -euxo pipefail {0}` supplies
+its startup options to the analysis. Later template options override earlier ones,
+including `+e` and `+o pipefail`. Arguments after `{0}` belong to the script and do
+not change its startup options. Unrecognized options leave startup assumptions
+unset. Templates using `-c` or `-s`, and unknown wrappers, do not establish the
+run block's language.
+
+Select ShellCheck explicitly for an unknown wrapper with a leading native directive:
+
+```yaml
+- shell: custom-shell {0}
+  run: |
+    # shellcheck shell=bash
+    echo "$HOME"
+```
+
+This selects the analyzer and dialect; it does not change what GitHub executes.
+Without that directive, unknown wrappers are skipped by ShellCheck while other
+workflow checks continue. Debug logging explains skipped scripts and the selected
+dialect and startup assumptions. Selecting a dialect does not install ShellCheck
+or override a disabled tool.
+
+Leading [ShellCheck directives][shellcheck-directives] keep their native file-wide
+scope; directives later in the script keep their command scope. Shebangs, comments
+and script commands are passed through, with findings mapped back to the original
+YAML positions. The integration uses this dialect precedence:
+
+1. ShellCheck command arguments, then `SHELLCHECK_OPTS`.
+2. A leading `# shellcheck shell=...` directive.
+3. Explicit application settings, then inline `tools.shellcheck.config.shell`.
+4. The workflow's resolved shell.
+
+Global dialect overrides apply to recognized shell scripts and scripts explicitly
+selected by a directive; they do not opt every unknown or non-shell step into
+ShellCheck. An inferred dialect takes precedence over a shebang because GitHub
+invokes the selected interpreter directly. Inferred startup options are retained
+when the selected dialect matches the workflow's interpreter; a different dialect
+discards those options.
+
+Template flags are reduced to their final enabled state before being supplied to
+ShellCheck. ShellCheck 0.11.0 treats the presence of `set -e` or `set -o pipefail`
+as script-wide evidence even when a later option disables it. Normalization avoids
+introducing that error through our generated startup command. Commands inside the
+user's script remain unchanged and subject to ShellCheck's own analysis limits.
+
+### Source resolution
+
+Relative `source-path` entries and sourced filenames use the run step's effective
+working directory: step `working-directory`, then job `defaults.run`, then workflow
+`defaults.run`, then the repository root. Relative working directories resolve
+from that root, matching GitHub's workspace semantics. For `working-directory:
+app` and `source-path: [scripts]`, ShellCheck searches `app/scripts`; neither the
+config directory nor the workflow file's directory is the base.
+
+The configured ShellCheck command, including a custom wrapper, runs in that
+directory. Its arguments remain literal: pass absolute paths for wrapper-owned
+configuration files that live elsewhere. actionlint cannot infer which arbitrary
+wrapper arguments are paths.
+
+Known literal expressions are resolved. Available directories outside the
+repository, including parent paths, symlinks and native absolute paths, can be
+used for source analysis. Paths refer to actionlint's local filesystem; job
+containers and their mounts are not recreated. If the working directory is dynamic, uses incompatible
+runner path syntax, or does not exist locally, actionlint still checks the script
+but disables following sources because their relative base is unknown. Embedded scripts
+arrive on stdin, so `SCRIPTDIR` does not refer to the YAML file's directory. Keep
+command-specific `source` directives inside the script. This integration checks
+workflow run steps; it does not yet run ShellCheck on composite action steps.
+
+Inline configuration works independently of rc-file discovery, which remains
+disabled by default. A config path explicitly selects an rc file. Configure output
+formats through actionlint's reporting options.
+
+The mapping is tested with ShellCheck 0.11.0. Its native settings have a separate
+[versioned schema][shellcheck-schema], referenced by the main actionlint schema.
+The boolean switch and rc-file path remain part of actionlint's schema. Future
+ShellCheck versions get separate snapshots; existing version files are retained.
+The schema version does not pin a locally installed binary or require the CLI to
+download schemas. New options require corresponding runtime support; optional
+check availability depends on the installed ShellCheck version.
+The reference resolves relative to the main schema. Installed npm packages use
+their bundled `schemas/shellcheck/` files offline; versioned CDN and Git commit
+URLs select files from the same release or revision. The current branch can
+receive documentation and schema corrections for an existing ShellCheck version.
+See the [ShellCheck manual](https://github.com/koalaman/shellcheck/blob/master/shellcheck.1.md).
+
 ## Configuration file
 
 Configuration file `actionlint.yaml` or `actionlint.yml` can be put in `.github` directory.
@@ -45,7 +216,9 @@ This URL follows the latest npm release and requires a release containing the sc
 selection.
 
 The schema rejects unknown keys everywhere. Runtime parsing ignores unknown keys at the top level, inside
-`self-hosted-runner`, and inside each `paths` entry. For example, `config-secret` is silently ignored. Both validators
+`self-hosted-runner`, and inside each `paths` entry, with a warning naming the key,
+its location, and accepted alternatives. For example, `config-secret` warns without
+rejecting an existing config. New inline overlays reject unknown keys. Both validators
 reject unknown keys inside `policy`, `require-job-timeout`, and `require-permissions`. Go regular expression and glob syntax
 require additional validation by actionlint when it loads the configuration.
 
@@ -412,3 +585,5 @@ vim .github/actionlint.yaml
 [vars]: https://docs.github.com/en/actions/learn-github-actions/variables
 [secrets]: https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions
 [doublestar]: https://github.com/bmatcuk/doublestar
+[shellcheck-directives]: https://www.shellcheck.net/wiki/Directive
+[shellcheck-schema]: ../schemas/shellcheck/0.11.0.schema.json

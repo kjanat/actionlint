@@ -2,7 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev"
@@ -41,6 +44,76 @@ func TestGeneratedSchemaUpToDate(t *testing.T) {
 	}
 }
 
+func TestShellcheckSchemaSnapshot(t *testing.T) {
+	t.Chdir("../..")
+	generated, err := generateShellcheckSchema()
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := os.ReadFile(shellcheckSchemaPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got, want any
+	if err := json.Unmarshal(generated, &got); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(snapshot, &want); err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Fatalf("ShellCheck schema contract changed; add a versioned snapshot for new directives, or explicitly review corrections to the existing version. See README.md (-snapshot +current):\n%s", diff)
+	}
+	if err := initializeShellcheckSchema(); !errors.Is(err, os.ErrExist) {
+		t.Fatalf("initialization must refuse to overwrite an existing version, got %v", err)
+	}
+}
+
+func TestShellcheckSchemaReference(t *testing.T) {
+	b := generatedSchema(t)
+	if !strings.Contains(string(b), `"$ref": "`+shellcheckSchemaPath+`"`) {
+		t.Fatal("root schema must reference the versioned ShellCheck schema")
+	}
+	if strings.Contains(string(b), `"source-path"`) {
+		t.Fatal("root schema must not inline ShellCheck directive properties")
+	}
+}
+
+func TestSchemaRelativeResolution(t *testing.T) {
+	root := generatedSchema(t)
+	tool, err := os.ReadFile(shellcheckSchemaPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, base := range []string{
+		"file:///offline/node_modules/@kjanat/actionlint/actionlint.schema.json",
+		"https://cdn.jsdelivr.net/npm/@kjanat/actionlint@1.17.0/actionlint.schema.json",
+		"https://raw.githubusercontent.com/kjanat/actionlint/b837c5abb3549967ff6f30c852ede599dabdb339/actionlint.schema.json",
+	} {
+		t.Run(base, func(t *testing.T) {
+			rootURL, err := url.Parse(base)
+			if err != nil {
+				t.Fatal(err)
+			}
+			toolURL := rootURL.ResolveReference(&url.URL{Path: shellcheckSchemaPath}).String()
+			c := validator.NewCompiler()
+			c.UseLoader(validator.SchemeURLLoader{})
+			for location, data := range map[string][]byte{base: root, toolURL: tool} {
+				var document any
+				if err := json.Unmarshal(data, &document); err != nil {
+					t.Fatal(err)
+				}
+				if err := c.AddResource(location, document); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := c.Compile(base); err != nil {
+				t.Fatalf("schema must resolve its tool reference beside the loaded root without remote fallback: %v", err)
+			}
+		})
+	}
+}
+
 func TestSchemaValidation(t *testing.T) {
 	b := generatedSchema(t)
 	var document any
@@ -48,6 +121,19 @@ func TestSchemaValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := validator.NewCompiler()
+	// Resolve checked-in resources only. Schema tests must not access the network.
+	c.UseLoader(validator.SchemeURLLoader{})
+	toolSchema, err := os.ReadFile(shellcheckSchemaPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var toolDocument any
+	if err := json.Unmarshal(toolSchema, &toolDocument); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.AddResource("https://example.com/"+shellcheckSchemaPath, toolDocument); err != nil {
+		t.Fatal(err)
+	}
 	const url = "https://example.com/actionlint.schema.json"
 	if err := c.AddResource(url, document); err != nil {
 		t.Fatal(err)
@@ -64,6 +150,45 @@ func TestSchemaValidation(t *testing.T) {
 		parserValid bool
 	}{
 		{"empty", `{}`, true, true},
+		{"ShellCheck disabled", `tools: {shellcheck: {enabled: false}}`, true, true},
+		{"ShellCheck shorthand enabled", `tools: {shellcheck: true}`, true, true},
+		{"ShellCheck shorthand disabled", `tools: {shellcheck: false}`, true, true},
+		{"ShellCheck shorthand null", `tools: {shellcheck: null}`, true, true},
+		{"ShellCheck empty mapping", `tools: {shellcheck: {}}`, true, true},
+		{"ShellCheck unknown option", `tools: {shellcheck: {typo: true}}`, false, false},
+		{"ShellCheck empty directive mapping", `tools: {shellcheck: {config: {}}}`, true, true},
+		{"ShellCheck rc path", `tools: {shellcheck: {config: ./.shellcheckrc}}`, true, true},
+		{"ShellCheck rc directory", `tools: {shellcheck: {config: '${{ gitdir }}/.github/'}}`, true, true},
+		{"ShellCheck rc config directory", `tools: {shellcheck: {config: '${{ configdir }}/.shellcheckrc'}}`, true, true},
+		{"ShellCheck rc workspace directory", `tools: {shellcheck: {config: '${{ github.workspace }}/.shellcheckrc'}}`, true, true},
+		{"ShellCheck rc action directory", `tools: {shellcheck: {config: '${{ github.action_path }}/.shellcheckrc'}}`, true, true},
+		{"ShellCheck empty rc path", `tools: {shellcheck: {config: ''}}`, false, false},
+		{"ShellCheck multiline rc path", `tools: {shellcheck: {config: "first\nsecond"}}`, false, false},
+		{"ShellCheck trailing newline rc path", `tools: {shellcheck: {config: "file\n"}}`, false, false},
+		{"ShellCheck carriage return rc path", `tools: {shellcheck: {config: "file\r"}}`, false, false},
+		{"ShellCheck NUL rc path", `tools: {shellcheck: {config: "file\0"}}`, false, false},
+		{"ShellCheck invalid rc type", `tools: {shellcheck: {config: false}}`, false, false},
+		{"ShellCheck nullable", `tools: {shellcheck: {enabled: null, config: null}}`, true, true},
+		{"ShellCheck directives", `tools: {shellcheck: {config: {disable: [SC2086, SC3000-SC4000, all], enable: [all], shell: bash, external-sources: false, extended-analysis: true, source-path: ['my scripts']}}}`, true, true},
+		{"ShellCheck empty source path", `tools: {shellcheck: {config: {source-path: [""]}}}`, false, false},
+		{"ShellCheck multiline source path", `tools: {shellcheck: {config: {source-path: ["first\nsecond"]}}}`, false, false},
+		{"ShellCheck trailing newline source path", `tools: {shellcheck: {config: {source-path: ["file\n"]}}}`, false, false},
+		{"ShellCheck carriage return source path", `tools: {shellcheck: {config: {source-path: ["file\r"]}}}`, false, false},
+		{"ShellCheck NUL source path", `tools: {shellcheck: {config: {source-path: ["file\0"]}}}`, false, false},
+		{"ShellCheck source path single quote", `tools: {shellcheck: {config: {source-path: ["user's scripts"]}}}`, true, true},
+		{"ShellCheck source path double quote", `tools: {shellcheck: {config: {source-path: ['user"s scripts']}}}`, true, true},
+		{"ShellCheck source path both quotes", `tools: {shellcheck: {config: {source-path: ["user's\"scripts"]}}}`, true, true},
+		{"ShellCheck source path both quotes and hash", `tools: {shellcheck: {config: {source-path: ["dir'\"#part"]}}}`, true, true},
+		{"ShellCheck source path both quotes and space", `tools: {shellcheck: {config: {source-path: ["user's\" scripts"]}}}`, false, false},
+		{"ShellCheck source path both quotes and tab", `tools: {shellcheck: {config: {source-path: ["user's\"\tscripts"]}}}`, false, false},
+		{"ShellCheck source path leading single quote", `tools: {shellcheck: {config: {source-path: ["'user\"scripts"]}}}`, false, false},
+		{"ShellCheck source path leading double quote", `tools: {shellcheck: {config: {source-path: ["\"user'scripts"]}}}`, false, false},
+		{"ShellCheck flag misplaced", `tools: {shellcheck: {config: {format: json}}}`, false, false},
+		{"ShellCheck dialect", `tools: {shellcheck: {config: {shell: python}}}`, false, false},
+		{"ShellCheck number code", `tools: {shellcheck: {config: {disable: [2086]}}}`, false, false},
+		{"ShellCheck invalid code", `tools: {shellcheck: {config: {disable: [bad]}}}`, false, false},
+		{"ShellCheck invalid bool", `tools: {shellcheck: {config: {extended-analysis: yes}}}`, false, false},
+		{"ShellCheck unknown setting", `tools: {shellcheck: {config: {typo: []}}}`, false, false},
 		{"all settings", `
 self-hosted-runner:
   labels: [linux.2xlarge, custom-*]
@@ -205,7 +330,8 @@ func TestSchemaDescriptions(t *testing.T) {
 						if description == "" {
 							t.Fatal("property has no description outside its type variants")
 						}
-						if property["markdownDescription"] != description {
+						markdown, _ := property["markdownDescription"].(string)
+						if strings.ReplaceAll(markdown, "`", "") != strings.ReplaceAll(description, "`", "") {
 							t.Error("hover is missing the Markdown version of the field documentation")
 						}
 					})
@@ -221,4 +347,13 @@ func TestSchemaDescriptions(t *testing.T) {
 		}
 	}
 	check(document, "config")
+	toolSchema, err := os.ReadFile(shellcheckSchemaPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var toolDocument map[string]any
+	if err := json.Unmarshal(toolSchema, &toolDocument); err != nil {
+		t.Fatal(err)
+	}
+	check(toolDocument, "shellcheck")
 }

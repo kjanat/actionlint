@@ -3,6 +3,7 @@ package actionlint
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"slices"
 	"time"
 )
@@ -12,6 +13,9 @@ type analysisEngine struct {
 	ctx                                context.Context
 	shellcheck, pyflakes               string
 	shellcheckOptions, pyflakesOptions *ExternalCommandOptions
+	shellcheckSettings                 *ShellcheckSettings
+	workingDir                         string
+	inputs                             *inputFiles
 	ignorePats                         IgnorePatterns
 	onRulesCreated                     func([]Rule) []Rule
 }
@@ -57,13 +61,22 @@ func (l *analysisEngine) check(
 		rules := []Rule{}
 		c := ruleContext{path: path, config: cfg, actions: localActions, workflows: localReusableWorkflows, process: proc, shellcheck: l.shellcheck, pyflakes: l.pyflakes}
 		c.shellcheckOptions, c.pyflakesOptions = l.shellcheckOptions, l.pyflakesOptions
+		c.shellcheckSettings = l.shellcheckSettings
+		c.workingDir, c.inputs = l.workingDir, l.inputs
+		if project != nil {
+			c.projectRoot = project.RootDir()
+		}
 		for _, descriptor := range builtinRuleDescriptors() {
 			if descriptor.build == nil {
 				continue
 			}
 			if descriptor.enabled != nil && !descriptor.enabled(c) {
 				if descriptor.Category == "external" {
-					l.log(fmt.Sprintf("Rule %q was disabled since %s command name was empty", descriptor.Name, descriptor.Name))
+					if descriptor.Name == "shellcheck" && c.config != nil && c.config.Tools.Shellcheck.Enabled != nil && !*c.config.Tools.Shellcheck.Enabled {
+						l.log(`Rule "shellcheck" was disabled by tools.shellcheck.enabled`)
+					} else {
+						l.log(fmt.Sprintf("Rule %q was disabled since %s command name was empty", descriptor.Name, descriptor.Name))
+					}
 				}
 				continue
 			}
@@ -116,9 +129,21 @@ func (l *analysisEngine) check(
 	all = filterInlineSuppressions(content, all, suppressionPolicy)
 	all = l.filterErrors(all, cfg.PathConfigs(path))
 
+	diagnosticDir := l.workingDir
+	if resolved, err := filepath.EvalSymlinks(diagnosticDir); err == nil {
+		diagnosticDir = resolved
+	}
 	for _, err := range all {
 		if err.Filepath == "" {
 			err.Filepath = path // Populate filename in the error
+		} else if filepath.IsAbs(err.Filepath) {
+			sourcePath := err.Filepath
+			if resolved, e := filepath.EvalSymlinks(sourcePath); e == nil {
+				sourcePath = resolved
+			}
+			if relative, e := filepath.Rel(diagnosticDir, sourcePath); e == nil {
+				err.Filepath = relative
+			}
 		}
 	}
 

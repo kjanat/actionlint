@@ -35,7 +35,8 @@
   },
   "exports": {
     "./package.json": "./package.json",
-    "./schema": "./actionlint.schema.json"
+    "./schema": "./actionlint.schema.json",
+    "./schemas/*": "./schemas/*"
   },
   "bin": {
     "actionlint": "bin/actionlint.mjs"
@@ -52,6 +53,7 @@
     "lib/",
     "man/",
     "actionlint.schema.json",
+    "schemas/",
     "README.md",
     "LICENSE.txt"
   ],
