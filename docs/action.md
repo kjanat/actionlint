@@ -146,7 +146,7 @@ Save reports even when findings fail the lint step:
       ${{ steps.lint.outputs.report-sarif }}
 ```
 
-`result-file` contains a [versioned result](../packages/github-action/result.schema.json):
+`result-file` contains a [versioned result](../schemas/results/v1.schema.json):
 
 ```json
 {
@@ -161,11 +161,11 @@ Save reports even when findings fail the lint step:
 }
 ```
 
-This differs from legacy Action `format: json` (a diagnostic array) and CLI
-`check --output-format=json` (a diagnostic envelope). Neither old format changes.
-The new result includes completion, counts, config origins, hints, and available
-source/fix information. Full workflow/job/step inventories are separate work
-(kjanat/actionlint#189).
+CLI `check --json`, Action `format: json`, and `result-file` share this contract.
+JSON Lines uses the same diagnostic objects with `schema_version` on each record.
+See [the result contract](results.md) for TypeScript types, schema evolution, and
+migration from the previous Action diagnostic array. Full workflow/job/step
+inventories remain separate work (kjanat/actionlint#189).
 
 Files use unique absolute paths and survive for later steps in the **same job**.
 Upload them for use elsewhere. A result is attempted for setup/input failures too;

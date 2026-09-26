@@ -43,9 +43,10 @@ type AnalysisRequest struct {
 
 // AnalysisResult contains findings, their sources, and every local input read during analysis.
 type AnalysisResult struct {
-	Diagnostics []Diagnostic
-	Inputs      []string
-	files       []analyzedFile
+	Configurations []ConfigReport
+	Diagnostics    []Diagnostic
+	Inputs         []string
+	files          []analyzedFile
 }
 
 type analyzedFile struct {

@@ -7,41 +7,28 @@ import (
 	"actionlint.kjanat.dev"
 )
 
-// persistedResult is the transport between the native analysis and Action reporters.
-// Its exit code records analysis status before fail-on-error changes the step status.
-type persistedResult struct {
-	SchemaVersion int                     `json:"schema_version"`
-	Status        string                  `json:"status"`
-	Completed     bool                    `json:"completed"`
-	ExitCode      int                     `json:"exit_code"`
-	FileCount     *int                    `json:"file_count"`
-	Diagnostics   []actionlint.Diagnostic `json:"diagnostics"`
-	Configs       []resultConfig          `json:"configurations"`
-	Hints         []string                `json:"hints"`
-	SARIF         json.RawMessage         `json:"sarif,omitempty"`
-	Error         string                  `json:"error,omitempty"`
-}
-
-type resultConfig struct {
-	File      string                             `json:"file"`
-	Project   string                             `json:"project"`
-	Overrides []string                           `json:"overrides"`
-	Origins   map[string]actionlint.ConfigOrigin `json:"origins,omitempty"`
-	Warnings  []actionlint.ConfigWarning         `json:"warnings,omitempty"`
-}
+// Internal aliases keep reporters on the public result contract.
+type persistedResult = actionlint.CheckResult
 
 func (a *action) persistResult(code int, failure error) error {
 	path := a.env("ACTIONLINT_ACTION_RESULT")
 	if path == "" {
 		return nil
 	}
-	r := persistedResult{SchemaVersion: 1, ExitCode: code, Diagnostics: []actionlint.Diagnostic{},
-		Configs: []resultConfig{}, Hints: []string{}}
+	data, err := json.Marshal(a.checkResult(code, failure))
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(data, '\n'), 0o600)
+}
+
+func (a *action) checkResult(code int, failure error) actionlint.CheckResult {
+	if a.result != nil && failure == nil {
+		code = a.result.code
+	}
+	r := actionlint.NewCheckResult(code)
 	if a.result != nil {
 		lint := a.result
-		if failure == nil {
-			r.ExitCode = lint.code
-		}
 		if lint.fileCountKnown {
 			r.FileCount = &lint.fileCount
 		}
@@ -49,7 +36,7 @@ func (a *action) persistResult(code int, failure error) error {
 			r.Diagnostics = lint.diagnostics
 		}
 		for _, config := range lint.configs {
-			r.Configs = append(r.Configs, resultConfig{config.File, config.Project, config.Overrides, config.Inspection.Origins, config.Inspection.Warnings})
+			r.AddConfiguration(config)
 		}
 		if lint.hints != nil {
 			r.Hints = lint.hints
@@ -64,15 +51,5 @@ func (a *action) persistResult(code int, failure error) error {
 	if failure != nil {
 		r.Error = failure.Error()
 	}
-	r.Status = results[r.ExitCode]
-	if r.Status == "" {
-		r.Status = "failure"
-		r.ExitCode = actionlint.ExitStatusFailure
-	}
-	r.Completed = r.ExitCode == actionlint.ExitStatusSuccessNoProblem || r.ExitCode == actionlint.ExitStatusSuccessProblemFound
-	data, err := json.Marshal(r)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, append(data, '\n'), 0o600)
+	return r
 }

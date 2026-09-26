@@ -1,0 +1,36 @@
+name: Check published Action pins
+description: Run the published version and commit through the runner and verify their outputs.
+runs:
+  using: composite
+  steps:
+    - id: version
+      uses: OWNER/REPO@RELEASE_TAG
+      env: { ACTIONLINT_ACTION_BINARY: "" }
+      with: { files: testdata/ok/minimal.yaml, format: json, shellcheck: "false", pyflakes: "false" }
+    - id: commit
+      uses: OWNER/REPO@COMMIT_SHA
+      env: { ACTIONLINT_ACTION_BINARY: "" }
+      with: { files: testdata/ok/minimal.yaml, format: json, shellcheck: "false", pyflakes: "false" }
+    - uses: kjanat/actions-shells@697bb547ef1ce427e202b4cbcdb19886aa587da7 # v0.1.0
+    - name: Verify version and commit outputs
+      shell: actions-shell node {0}
+      env:
+        VERSION_OUTPUTS: ${{ toJSON(steps.version.outputs) }}
+        COMMIT_OUTPUTS: ${{ toJSON(steps.commit.outputs) }}
+      run: |
+        const assert = require('node:assert/strict');
+        for (const name of ['VERSION_OUTPUTS', 'COMMIT_OUTPUTS']) {
+          const outputs = JSON.parse(process.env[name]);
+          assert.equal(outputs['exit-code'], '0', name);
+          assert.equal(outputs.result, 'success', name);
+          assert.equal(outputs['problem-count'], '0', name);
+          const result = JSON.parse(outputs.output);
+          assert.deepEqual(result.diagnostics, [], name);
+          assert.partialDeepStrictEqual(result, {
+            schema_version: 1,
+            status: 'success',
+            completed: true,
+            exit_code: 0,
+            file_count: 1,
+          }, name);
+        }

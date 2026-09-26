@@ -160,8 +160,29 @@ func TestManualNativeJSONContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := testRunCommand(commandGoodWorkflow, "check", "--json", "-")
-	if result.Status != 0 || !strings.Contains(string(data), strings.TrimSpace(result.Stdout)) {
-		t.Fatalf("manual lacks clean JSON example %s", result.Stdout)
+	if result.Status != 0 {
+		t.Fatalf("clean check failed: %+v", result)
+	}
+	examples := regexp.MustCompile("(?s)```json\\s+(.*?)\\s+```").FindAllSubmatch(data, -1)
+	if len(examples) != 1 {
+		t.Fatalf("want one manual JSON example, got %d", len(examples))
+	}
+	var example, actual map[string]json.RawMessage
+	if err := json.Unmarshal(examples[0][1], &example); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal([]byte(result.Stdout), &actual); err != nil {
+		t.Fatal(err)
+	}
+	// The manual shows the clean outcome fields; configuration origins vary.
+	for name, expected := range example {
+		var compact bytes.Buffer
+		if err := json.Compact(&compact, expected); err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(actual[name], compact.Bytes()) {
+			t.Errorf("manual field %s = %s; check emits %s", name, expected, actual[name])
+		}
 	}
 }
 

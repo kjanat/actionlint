@@ -97,7 +97,7 @@ func TestActionReportsSuccess(t *testing.T) {
 		"result":         "success",
 		"problems-found": "false",
 		"problem-count":  "0",
-		"output":         "[]",
+		"output":         `{"schema_version":1,"status":"success","completed":true,"exit_code":0,"file_count":0,"diagnostics":[],"configurations":[],"hints":[]}`,
 		"output-file":    "",
 	}
 	for name, value := range want {
@@ -108,7 +108,7 @@ func TestActionReportsSuccess(t *testing.T) {
 	wantLog := fmt.Sprintf(
 		"actionlint %s: 0 problems in 0 workflow files (requested tools: shellcheck, pyflakes)\n",
 		actionVersion(),
-	) + "::stop-commands::DELIM\n[]\n::DELIM::\n"
+	) + "::stop-commands::DELIM\n" + want["output"] + "\n::DELIM::\n"
 	if run.stdout != wantLog {
 		t.Errorf("wanted %q but got %q", wantLog, run.stdout)
 	}
@@ -234,7 +234,9 @@ func TestActionReportsInvalidInput(t *testing.T) {
 
 func TestActionWritesOutputFile(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
-	run, _ := runAction(t, workspace, knownFiles(&lintOutcome{problemJSON(), "", actionlint.ExitStatusSuccessProblemFound}, 1),
+	analysis := knownFiles(&lintOutcome{problemJSON(), "", actionlint.ExitStatusSuccessProblemFound}, 1)
+	analysis.diagnostics = []actionlint.Diagnostic{{Rule: "k", Message: "m", Path: "w.yaml", Start: actionlint.DiagnosticPosition{Line: 1, Column: 2}, End: actionlint.DiagnosticPosition{Line: 1, Column: 4}}}
+	run, _ := runAction(t, workspace, analysis,
 		"", "json-lines", "", "", "true", "true", ".", "results/out.jsonl", "false")
 
 	if run.code != 0 {
@@ -244,7 +246,7 @@ func TestActionWritesOutputFile(t *testing.T) {
 		t.Errorf("wanted the repository relative path but got %q", run.outputs["output-file"])
 	}
 	content := read(t, filepath.Join(workspace, "results", "out.jsonl"))
-	if !strings.HasPrefix(content, `{"message":"m"`) || !strings.HasSuffix(content, "\n") {
+	if !strings.HasPrefix(content, `{"schema_version":1,"rule":"k","message":"m"`) || !strings.HasSuffix(content, "\n") {
 		t.Errorf("wanted one JSON object per line but got %q", content)
 	}
 }

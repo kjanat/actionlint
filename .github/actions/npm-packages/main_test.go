@@ -259,7 +259,7 @@ func TestBuildsEveryTargetAndTheFacade(t *testing.T) {
 		}
 	}
 	// The launcher sources have to travel with the facade or its bin shim breaks.
-	for _, f := range []string{"bin/actionlint.mjs", "lib/resolve.mjs", "lib/launch.mjs", "README.md", "LICENSE.txt", "man/actionlint.1"} {
+	for _, f := range []string{"bin/actionlint.mjs", "lib/resolve.mjs", "lib/launch.mjs", "types/result.d.ts", "schemas/results/v1.schema.json", "README.md", "LICENSE.txt", "man/actionlint.1"} {
 		if _, err := os.Stat(filepath.Join(facadeDir, filepath.FromSlash(f))); err != nil {
 			t.Errorf("facade is missing %s", f)
 		}
@@ -311,11 +311,23 @@ func checkFacadeSchema(t *testing.T, cfg *config) {
 	if !ok {
 		t.Fatalf("facade exports is %T", manifest["exports"])
 	}
-	if len(exports) != 3 || exports["./package.json"] != "./package.json" || exports["./schemas/*"] != "./schemas/*" {
-		t.Errorf("facade exports are %v, want package.json, schema and versioned schemas", exports)
+	if len(exports) != 5 || exports["./package.json"] != "./package.json" || exports["./schemas/*"] != "./schemas/*" {
+		t.Errorf("facade exports are %v, want package.json, config/result schemas and result types", exports)
 	}
 	if exports["./schema"] != "./actionlint.schema.json" {
 		t.Errorf("facade schema alias is %v", exports["./schema"])
+	}
+	if exports["./result.schema.json"] != "./schemas/results/v1.schema.json" {
+		t.Errorf("result schema alias is %v", exports["./result.schema.json"])
+	}
+	types, ok := exports["./result"].(map[string]any)
+	if !ok || types["types"] != "./types/result.d.ts" {
+		t.Fatalf("result type export is %v", exports["./result"])
+	}
+	for _, entry := range []string{"schemas/results/v1.schema.json", "types/result.d.ts"} {
+		if _, err := os.Stat(filepath.Join(dir, entry)); err != nil {
+			t.Fatal(err)
+		}
 	}
 	const snapshot = "schemas/shellcheck/0.11.0.schema.json"
 	want, err = os.ReadFile(filepath.Join(cfg.repoRoot, snapshot))

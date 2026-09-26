@@ -55,10 +55,69 @@ type DiagnosticEdit struct {
 	Replacement string             `json:"replacement"`
 }
 
-// CheckResult is the versioned JSON document returned by a completed check.
+// CheckResult is the versioned JSON document shared by CLI and Action checks.
+// ExitCode describes analysis, even when a caller chooses not to fail on findings.
+// Consumers should tolerate unknown fields within a supported schema version.
 type CheckResult struct {
-	SchemaVersion int          `json:"schema_version"`
-	Diagnostics   []Diagnostic `json:"diagnostics"`
+	SchemaVersion int             `json:"schema_version"`
+	Status        string          `json:"status"`
+	Completed     bool            `json:"completed"`
+	ExitCode      int             `json:"exit_code"`
+	FileCount     *int            `json:"file_count"`
+	Diagnostics   []Diagnostic    `json:"diagnostics"`
+	Configs       []ResultConfig  `json:"configurations"`
+	Hints         []string        `json:"hints"`
+	SARIF         json.RawMessage `json:"sarif,omitempty"`
+	Error         string          `json:"error,omitempty"`
+}
+
+// ResultConfig identifies the configuration used for a project, including overlays.
+type ResultConfig struct {
+	File      string                  `json:"file"`
+	Project   string                  `json:"project"`
+	Overrides []string                `json:"overrides"`
+	Origins   map[string]ConfigOrigin `json:"origins,omitempty"`
+	Warnings  []ConfigWarning         `json:"warnings,omitempty"`
+}
+
+// NewCheckResult initializes a result with a consistent status and non-null lists.
+// FileCount remains null until input selection is known. Unknown exit codes mean failure.
+func NewCheckResult(code int) CheckResult {
+	r := CheckResult{SchemaVersion: 1, ExitCode: code, Diagnostics: []Diagnostic{}, Configs: []ResultConfig{}, Hints: []string{}}
+	switch code {
+	case ExitStatusSuccessNoProblem:
+		r.Status, r.Completed = "success", true
+	case ExitStatusSuccessProblemFound:
+		r.Status, r.Completed = "problems-found", true
+	case ExitStatusInvalidCommandOption:
+		r.Status = "invalid-options"
+	default:
+		r.Status, r.ExitCode = "failure", ExitStatusFailure
+	}
+	return r
+}
+
+// AddConfiguration preserves selection provenance without serializing internal config state.
+func (r *CheckResult) AddConfiguration(config ConfigReport) {
+	r.Configs = append(r.Configs, ResultConfig{config.File, config.Project, config.Overrides, config.Inspection.Origins, config.Inspection.Warnings})
+}
+
+// WriteJSON writes the complete result, or one versioned diagnostic per line.
+// JSONL is a findings stream; completion and failure status belong to the result document.
+func (r *CheckResult) WriteJSON(out io.Writer, lines bool) error {
+	enc := json.NewEncoder(out)
+	if !lines {
+		return enc.Encode(r)
+	}
+	for _, d := range r.Diagnostics {
+		if err := enc.Encode(struct {
+			SchemaVersion int `json:"schema_version"`
+			Diagnostic
+		}{r.SchemaVersion, d}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // CheckSummary counts the selected inputs and reported findings.
@@ -102,25 +161,6 @@ func (d Diagnostic) legacyError() *Error {
 		e.endColumn = d.End.Column - 1
 	}
 	return e
-}
-
-func writeDiagnostics(out io.Writer, diagnostics []Diagnostic, lines bool) error {
-	enc := json.NewEncoder(out)
-	if lines {
-		for _, d := range diagnostics {
-			if err := enc.Encode(struct {
-				SchemaVersion int `json:"schema_version"`
-				Diagnostic
-			}{1, d}); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-	if diagnostics == nil {
-		diagnostics = []Diagnostic{}
-	}
-	return enc.Encode(CheckResult{SchemaVersion: 1, Diagnostics: diagnostics})
 }
 
 func writeGitHubDiagnostics(out io.Writer, diagnostics []Diagnostic) error {

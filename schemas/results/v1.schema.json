@@ -195,8 +195,8 @@
       }
     }
   },
-  "title": "actionlint persisted Action result",
-  "description": "Version 1 of the JSON file exposed by the result-file output. Analysis status is independent of fail-on-error and optional reporting. Unknown properties are allowed for compatible additions. Diagnostic and edit end positions must not precede their starts; the runtime enforces this additional invariant.",
+  "title": "actionlint analysis result v1",
+  "description": "Shared version 1 result for CLI JSON, Action JSON, and the Action result-file. Analysis status is independent of fail-on-error and optional reporting. Unknown properties are allowed for compatible additions. Diagnostic and edit end positions must not precede their starts; the runtime enforces this additional invariant.",
   "type": "object",
   "required": [
     "completed",
@@ -251,7 +251,7 @@
       }
     },
     "sarif": {
-      "description": "Optional SARIF report generated when sarif is enabled.",
+      "description": "Optional SARIF report. Availability depends on the producer.",
       "type": "object",
       "required": [
         "runs",

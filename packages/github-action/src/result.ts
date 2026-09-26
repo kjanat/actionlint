@@ -1,45 +1,17 @@
-export type Position = { line: number; column: number };
-export type Edit = { path: string; start: Position; end: Position; replacement: string };
-export type Fix = { description: string; edits: Edit[] };
-export type Diagnostic = {
-	rule: string;
-	message: string;
-	path: string;
-	start: Position;
-	end: Position;
-	snippet?: string;
-	severity?: string;
-	code?: string;
-	fixes?: Fix[];
-};
-export type ConfigOrigin = { source: string; state: string; input?: string; line?: number; column?: number };
-export type ConfigWarning = { message: string; line: number; column: number };
-export type ResultConfig = {
-	file: string;
-	project: string;
-	overrides: string[] | null;
-	origins?: Record<string, ConfigOrigin>;
-	warnings?: ConfigWarning[];
-};
+import type {
+	CheckResult,
+	ConfigOrigin,
+	ConfigWarning,
+	Diagnostic,
+	Edit,
+	Fix,
+	Position,
+	ResultConfig,
+	ResultData,
+} from '../../../distribution/npm/facade/types/result.d.ts';
 
-type ResultData = {
-	schema_version: 1;
-	file_count: number | null;
-	diagnostics: Diagnostic[];
-	configurations: ResultConfig[];
-	hints: string[];
-	sarif?: Record<string, unknown>;
-	error?: string;
-};
-
-export type ActionResult =
-	& ResultData
-	& (
-		| { completed: true; status: 'success'; exit_code: 0 }
-		| { completed: true; status: 'problems-found'; exit_code: 1 }
-		| { completed: false; status: 'invalid-options'; exit_code: 2 }
-		| { completed: false; status: 'failure'; exit_code: 3 }
-	);
+export type { Diagnostic, Edit, Fix, Position } from '../../../distribution/npm/facade/types/result.d.ts';
+export type ActionResult = CheckResult;
 
 export function object(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);

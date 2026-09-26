@@ -301,10 +301,7 @@ jobs:
           PROBLEM_COUNT: ${{ steps.smoke.outputs.problem-count }}
           OUTPUT: ${{ steps.smoke.outputs.output }}
         run: |
-          test "${EXIT_CODE}" = 0
-          test "${RESULT}" = success
-          test "${PROBLEM_COUNT}" = 0
-          test "${OUTPUT}" = '[]'
+          node scripts/check-action-outputs.mjs
           actionlint_path="$(command -v actionlint)"
           [[ "${actionlint_path}" == */actionlint-bin-*/actionlint* ]]
           actionlint -version

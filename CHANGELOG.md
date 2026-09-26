@@ -2,6 +2,7 @@
 
 # Unreleased
 
+- Unify CLI and Action JSON results, including completion status and configuration provenance. Action JSON now wraps findings in `diagnostics`; JSONL uses the same diagnostic fields as the CLI. Ship the versioned schema and TypeScript types in `@kjanat/actionlint`. See the [migration notes](docs/results.md#migration).
 - Replace the Docker-only Action with a Node 24 launcher for the ordinary binary. Keep shipped inputs and output formats; add one inline configuration overlay, compact summaries, optional SARIF and PR reviews, and a versioned `result-file`. Normal release tags contain root `action.mjs`; retain the legacy Docker Action image tags. (kjanat/actionlint#185)
 - Add shared ShellCheck configuration with inline directives, rc selection and source resolution. Preserve inline directives when rc loading is disabled, resolve overlay paths from the analysis directory, and warn about ignored legacy config keys. (kjanat/actionlint#182)
 
