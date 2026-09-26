@@ -61,8 +61,8 @@ Or pass a repository variable containing YAML/JSON directly:
     config: ${{ vars.ACTIONLINT_CONFIG }}
 ```
 
-`toJSON(...)` is needed only when the source expression is an object, not already
-a YAML/JSON string. The real config file offers editor completion, hover and
+Use `toJSON(...)` for object-valued expressions. Pass YAML/JSON strings directly.
+The real config file offers editor completion, hover and
 validation; editors generally treat `with.config` as a string.
 
 ### Precedence and resets
@@ -113,8 +113,8 @@ writes under the workspace's `reports/`, outside `app`.
 
 Paths are literal; `files` is newline-separated and does not expand globs.
 `ignore` is newline-separated regex text: quotes inside `ignore: |` are literal.
-Config interpolation supports a [small set of path contexts](config.md#shellcheck),
-not arbitrary GitHub expressions. GitHub evaluates expressions in workflow inputs
+Config interpolation supports the [listed path contexts](config.md#shellcheck).
+GitHub evaluates expressions in workflow inputs
 first; a checked-in config file avoids escaping nested expressions.
 
 ## Reports
@@ -172,9 +172,8 @@ Upload them for use elsewhere. A result is attempted for setup/input failures to
 failure to create/write files can prevent that output. Missing output is never
 evidence of a clean run. Incomplete results retain known diagnostics; `file_count`
 may be null. SARIF is exposed only for completed analysis. `fail-on-error: false`
-changes the step status for findings, not the recorded analysis outcome.
-Diagnostic array positions are presentation order, not stable identifiers. Match
-findings by path, location and rule; do not persist their array indexes.
+allows a step with findings to pass while preserving the recorded analysis outcome.
+Match findings by path, location and rule; array indexes can change between runs.
 
 ### Optional PR review
 
@@ -195,9 +194,8 @@ jobs:
 Reviews group findings on changed lines and add applicable suggestions. Reruns
 deduplicate existing comments. Missing PR context, unchanged lines, mismatched
 source, limits and permission errors produce concise feedback; analysis files
-remain available. Fork PR tokens may lack write permission. Keep the ordinary
-`pull_request` event rather than running untrusted checkout code with a privileged
-`pull_request_target` token. Review failure is advisory, not a clean-analysis claim.
+remain available. Use the ordinary `pull_request` event; fork PR tokens may lack
+write permission. Review failure is advisory and leaves the analysis outcome intact.
 
 ## Tools and advanced ShellCheck
 

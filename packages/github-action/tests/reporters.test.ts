@@ -184,9 +184,7 @@ test('native process failures preserve collected diagnostics and configuration',
 test('real entrypoint rejects malformed native results and summarizes input failures', async () => {
 	const directory = await mkdtemp(join(tmpdir(), 'actionlint-main-failure-'));
 	try {
-		// Keep main, its catch handler, the runtime, reporters and output writer real.
-		// Replace only native inspection/execution to exercise a successful process
-		// that writes unusable result data without downloading an executable.
+		// A native-process stub returns unusable data to the real entrypoint and reporters.
 		const launcher = join(directory, 'main-fixture.mjs');
 		const toolsURL = new URL('../src/tools.ts', import.meta.url).href;
 		const workflowURL = new URL('../src/workflow.ts', import.meta.url).href;
