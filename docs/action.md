@@ -67,8 +67,9 @@ validation; editors generally treat `with.config` as a string.
 
 ### Precedence and resets
 
-The overlay merges over the selected file. Maps merge recursively; lists and
-scalars replace. These examples start with `config-variables: [DEPLOY_ENV]` and
+The overlay merges over the selected file. Maps merge recursively so changing one
+tool option preserves its neighbors; lists and scalars replace so removals are
+unambiguous. These examples start with `config-variables: [DEPLOY_ENV]` and
 `tools.shellcheck.config: {disable: [SC2086], enable: [all]}`:
 
 | Overlay                                                  | Effect                                                          |
@@ -172,6 +173,8 @@ failure to create/write files can prevent that output. Missing output is never
 evidence of a clean run. Incomplete results retain known diagnostics; `file_count`
 may be null. SARIF is exposed only for completed analysis. `fail-on-error: false`
 changes the step status for findings, not the recorded analysis outcome.
+Diagnostic array positions are presentation order, not stable identifiers. Match
+findings by path, location and rule; do not persist their array indexes.
 
 ### Optional PR review
 

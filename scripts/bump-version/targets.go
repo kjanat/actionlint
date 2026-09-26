@@ -63,7 +63,6 @@ var targets = []*target{
 	{
 		path: "docs/usage.md",
 		rules: []rule{
-			mustRule("versioned release tag note", "`v(\\d+\\.\\d+\\.\\d+)` is a versioned release tag", 1),
 			mustRule("download script argument", `download-actionlint\.bash\) (\d+\.\d+\.\d+)`, 3),
 			mustRule("CLI image tag example", "`ghcr\\.io/kjanat/actionlint:(\\d+\\.\\d+\\.\\d+)`", 1),
 			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 2),
@@ -71,7 +70,6 @@ var targets = []*target{
 		},
 		unrelated: []string{
 			"sarif/v2.1.0/sarif-v2.1.0.html",
-			"[SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/os/sarif-v2.1.0-os.html)",
 			goShellcheckDependency,
 			"We recommend v1.76.2 or newer.",
 		},
@@ -93,7 +91,6 @@ var targets = []*target{
 	{
 		path: "README.md",
 		rules: []rule{
-			mustRule("versioned release tag note", "`v(\\d+\\.\\d+\\.\\d+)` is a versioned release tag", 1),
 			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 4),
 			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
 		},
