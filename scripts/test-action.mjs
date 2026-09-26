@@ -95,7 +95,9 @@ try {
 	) {
 		assert.equal(clean.outputs.get(name), expected, clean.log);
 	}
-	assert.deepEqual(JSON.parse(clean.outputs.get('output')), clean.analysis);
+	const cleanOutput = clean.outputs.get('output');
+	assert.ok(cleanOutput);
+	assert.deepEqual(JSON.parse(cleanOutput), clean.analysis);
 	assert.match(clean.log, /0 problems in 1 workflow file \(requested tools: shellcheck, pyflakes\)/);
 	for (const format of ['github', 'default', 'oneline', 'json', 'json-lines', 'markdown', 'sarif']) {
 		const result = await run({
@@ -111,9 +113,11 @@ try {
 		assert.equal(result.outputs.get('problems-found'), 'true', result.log);
 		assert.equal(result.outputs.get('problem-count'), '1', result.log);
 		assert.equal(result.analysis.diagnostics.length, 1);
-		if (format === 'json') assert.deepEqual(JSON.parse(result.outputs.get('output')), result.analysis);
+		const output = result.outputs.get('output');
+		assert.ok(output);
+		if (format === 'json') assert.deepEqual(JSON.parse(output), result.analysis);
 		if (format === 'json-lines') {
-			assert.deepEqual(JSON.parse(result.outputs.get('output')), {
+			assert.deepEqual(JSON.parse(output), {
 				schema_version: 1,
 				...result.analysis.diagnostics[0],
 			});
@@ -154,13 +158,16 @@ try {
 		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: |\n          value="$1"\n          echo $value\n',
 	);
 	const fixable = await run({ files: 'shell-fix.yaml', pyflakes: 'false', 'fail-on-error': 'false' });
-	const quote = fixable.analysis.diagnostics.find((diagnostic) => diagnostic.code === 'SC2086');
+	/** @type {import('../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
+	const diagnostics = fixable.analysis.diagnostics;
+	const quote = diagnostics.find((diagnostic) => diagnostic.code === 'SC2086');
 	assert.ok(quote, fixable.log);
 	assert.equal(quote.severity, 'info');
-	assert.ok(quote.fixes.length > 0);
+	assert.ok(quote.fixes && quote.fixes.length > 0);
 	assert.ok(quote.fixes[0].edits.every((edit) => edit.path === 'shell-fix.yaml' && edit.start.line === 9));
-	const sarifQuote = fixable.analysis.sarif.runs[0].results.find((diagnostic) =>
-		diagnostic.properties?.externalCode === 'SC2086'
+	const sarifQuote = fixable.analysis.sarif.runs[0].results.find(
+		/** @param {{properties?: {externalCode?: string}}} diagnostic */
+		(diagnostic) => diagnostic.properties?.externalCode === 'SC2086',
 	);
 	assert.ok(sarifQuote);
 	assert.equal(sarifQuote.level, 'note');

@@ -47,6 +47,7 @@ test('published smoke uses both external pins and downloads their binary', () =>
 			hints: [],
 		};
 		for (const output of [clean, [], { ...clean, completed: false }, { ...clean, diagnostics: [{}] }]) {
+			/** @type {import('node:child_process').SpawnSyncReturns<string>} */
 			const result = spawnSync('bash', ['--noprofile', '--norc', '-e', '-c', step.run], {
 				encoding: 'utf8',
 				timeout: 5_000,
