@@ -147,19 +147,7 @@ jobs:
           PROBLEM_COUNT: ${{ steps.smoke.outputs.problem-count }}
           OUTPUT: ${{ steps.smoke.outputs.output }}
         run: |
-          test "${EXIT_CODE}" = 0
-          test "${RESULT}" = success
-          test "${PROBLEM_COUNT}" = 0
-          node --input-type=module <<'NODE'
-          import assert from 'node:assert/strict';
-          const result = JSON.parse(process.env.OUTPUT);
-          assert.equal(result.schema_version, 1);
-          assert.equal(result.status, 'success');
-          assert.equal(result.completed, true);
-          assert.equal(result.exit_code, 0);
-          assert.equal(result.file_count, 1);
-          assert.deepEqual(result.diagnostics, []);
-          NODE
+          node scripts/check-action-outputs.mjs
           actionlint -version
           shellcheck --version
           pyflakes --version

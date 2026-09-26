@@ -1,0 +1,29 @@
+name: Check published Action pins
+description: Run the published version and commit through the runner and verify their outputs.
+runs:
+  using: composite
+  steps:
+    - id: version
+      uses: OWNER/REPO@RELEASE_TAG
+      env: { ACTIONLINT_ACTION_BINARY: "" }
+      with: { files: testdata/ok/minimal.yaml, format: json, shellcheck: "false", pyflakes: "false" }
+    - name: Verify version outputs
+      shell: bash
+      env:
+        EXIT_CODE: ${{ steps.version.outputs.exit-code }}
+        RESULT: ${{ steps.version.outputs.result }}
+        PROBLEM_COUNT: ${{ steps.version.outputs.problem-count }}
+        OUTPUT: ${{ steps.version.outputs.output }}
+      run: node scripts/check-action-outputs.mjs
+    - id: commit
+      uses: OWNER/REPO@COMMIT_SHA
+      env: { ACTIONLINT_ACTION_BINARY: "" }
+      with: { files: testdata/ok/minimal.yaml, format: json, shellcheck: "false", pyflakes: "false" }
+    - name: Verify commit outputs
+      shell: bash
+      env:
+        EXIT_CODE: ${{ steps.commit.outputs.exit-code }}
+        RESULT: ${{ steps.commit.outputs.result }}
+        PROBLEM_COUNT: ${{ steps.commit.outputs.problem-count }}
+        OUTPUT: ${{ steps.commit.outputs.output }}
+      run: node scripts/check-action-outputs.mjs
