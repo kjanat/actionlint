@@ -42,8 +42,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 	case reflect.TypeFor[actionlint.ShellcheckConfigSource]():
 		markdown := "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known."
 		description := strings.ReplaceAll(markdown, "`", "")
-		// Select alternatives by type alone: editors can then report unknown
-		// mapping keys instead of falling back to an unrelated scalar error.
+		// Type-only alternatives keep unknown-key diagnostics attached to the mapping.
 		return &jsonschema.Schema{
 			Description: description,
 			Extras:      map[string]any{"markdownDescription": markdown},
