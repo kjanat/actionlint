@@ -346,57 +346,77 @@
               "title": "shellcheck",
               "description": "Configures checking of embedded shell scripts.",
               "markdownDescription": "Configures checking of embedded shell scripts.",
-              "oneOf": [
-                {
-                  "oneOf": [
+              "properties": {
+                "config": {
+                  "title": "config",
+                  "description": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
+                  "markdownDescription": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known.",
+                  "minLength": 1,
+                  "if": {
+                    "type": "object"
+                  },
+                  "then": {
+                    "allOf": [
+                      {
+                        "title": "config",
+                        "description": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
+                        "markdownDescription": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known."
+                      },
+                      {
+                        "$ref": "schemas/shellcheck/0.11.0.schema.json"
+                      }
+                    ]
+                  },
+                  "anyOf": [
                     {
-                      "type": "boolean"
+                      "type": "string",
+                      "defaultSnippets": [
+                        {
+                          "body": "${1:.shellcheckrc}",
+                          "label": "ShellCheck rc file or directory"
+                        }
+                      ]
                     },
                     {
                       "type": "object",
-                      "properties": {
-                        "config": {
-                          "title": "config",
-                          "description": "Inline directives or an rc file/directory. \n\nRelative paths and ${{ configdir }} use the actionlint configuration directory; ${{ gitdir }} uses the checked repository root. \n\nActionlint also resolves ${{ github.workspace }} and ${{ github.action_path }} when their context is known.",
-                          "markdownDescription": "Inline directives or an rc file/directory. \n\nRelative paths and `${{ configdir }}` use the actionlint configuration directory; `${{ gitdir }}` uses the checked repository root. \n\nActionlint also resolves `${{ github.workspace }}` and `${{ github.action_path }}` when their context is known.",
-                          "oneOf": [
-                            {
-                              "oneOf": [
-                                {
-                                  "type": "string",
-                                  "minLength": 1,
-                                  "not": {
-                                    "pattern": "[\\x00\\r\\n]"
-                                  }
-                                },
-                                {
-                                  "$ref": "schemas/shellcheck/0.11.0.schema.json"
-                                }
-                              ]
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
-                        },
-                        "enabled": {
-                          "title": "enabled",
-                          "description": "Enable ShellCheck analysis. Omission or null keeps it enabled.",
-                          "markdownDescription": "Enable ShellCheck analysis. Omission or null keeps it enabled.",
-                          "oneOf": [
-                            {
-                              "default": true,
-                              "type": "boolean"
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
+                      "defaultSnippets": [
+                        {
+                          "bodyText": "{}",
+                          "label": "Inline ShellCheck directives"
                         }
-                      },
-                      "additionalProperties": false
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "not": {
+                    "type": "string",
+                    "pattern": "[\\x00\\r\\n]"
+                  }
+                },
+                "enabled": {
+                  "title": "enabled",
+                  "description": "Enable ShellCheck analysis. Omission or null keeps it enabled.",
+                  "markdownDescription": "Enable ShellCheck analysis. Omission or null keeps it enabled.",
+                  "oneOf": [
+                    {
+                      "default": true,
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
                     }
                   ]
+                }
+              },
+              "additionalProperties": false,
+              "oneOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "object"
                 },
                 {
                   "type": "null"

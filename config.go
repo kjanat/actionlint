@@ -381,7 +381,7 @@ type Config struct {
 // ToolsConfig contains configuration for external analysis tools.
 type ToolsConfig struct {
 	// Shellcheck configures checking of embedded shell scripts.
-	Shellcheck ShellcheckToolConfig `yaml:"shellcheck" jsonschema:"nullable"`
+	Shellcheck ShellcheckToolConfig `yaml:"shellcheck"`
 }
 
 // ShellcheckToolConfig contains ShellCheck's native configuration directives.
@@ -395,7 +395,7 @@ type ShellcheckToolConfig struct {
 	// ${{ github.workspace }} selects the runner workspace or local repository; ${{ github.action_path }} requires a composite action context.
 	// Lists replace during actionlint config overlays. The Action's explicit shellcheck-args can override settings.
 	// Omission or null adds no directives. This does not enable rc-file discovery.
-	Config *ShellcheckConfigSource `yaml:"config" jsonschema:"nullable"`
+	Config *ShellcheckConfigSource `yaml:"config"`
 }
 
 // ShellcheckConfigSource selects inline directives or a configuration file/directory.
