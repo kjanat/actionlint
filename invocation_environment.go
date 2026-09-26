@@ -11,12 +11,13 @@ func checkoutEnvironmentUnknown(env *Env) bool {
 		return true
 	}
 	for _, variable := range env.Vars {
-		if loaderEnvironmentUnknown(variable) {
+		name, known := environmentLiteral(variable.Name)
+		if !known || loaderEnvironmentUnknown(name, variable.Value) {
 			return true
 		}
-		switch variable.Name.Value {
-		case "NODE_OPTIONS", "GIT_SSH_COMMAND", "GIT_SSH", "GIT_PROXY_COMMAND":
-			if variable.Value == nil || variable.Value.Value != "" {
+		switch name {
+		case "NODE_OPTIONS", "GIT_SSH_COMMAND", "GIT_SSH", "GIT_PROXY_COMMAND", "GIT_TEMPLATE_DIR":
+			if value, known := environmentLiteral(variable.Value); !known || value != "" {
 				return true
 			}
 		case "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR",
@@ -41,16 +42,32 @@ func ubuntuRunner(runner *Runner) bool {
 }
 
 // A loader can run code or substitute libraries before the shell or Git starts.
-func loaderEnvironmentUnknown(variable *EnvVar) bool {
-	switch variable.Name.Value {
+func loaderEnvironmentUnknown(name string, value *String) bool {
+	switch name {
 	case "LD_PRELOAD", "LD_AUDIT", "DYLD_INSERT_LIBRARIES", "DYLD_IMAGE_SUFFIX", "DYLD_ROOT_PATH":
-		return variable.Value == nil || variable.Value.Value != ""
+		value, known := environmentLiteral(value)
+		return !known || value != ""
 	case "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "DYLD_FRAMEWORK_PATH", "DYLD_FALLBACK_LIBRARY_PATH", "DYLD_FALLBACK_FRAMEWORK_PATH":
 		// Empty search-path components may select the current directory.
 		return true
 	default:
 		return false
 	}
+}
+
+// Expression results remain literal data.
+func environmentLiteral(value *String) (string, bool) {
+	if value == nil {
+		return "", false
+	}
+	if !value.ContainsExpression() {
+		return value.Value, true
+	}
+	literal, known := workflowExpressionLiteral(value)
+	if !known {
+		return "", false
+	}
+	return workflowScalarString(literal)
 }
 
 // Services run concurrently with every step. Opaque mounts/options can expose

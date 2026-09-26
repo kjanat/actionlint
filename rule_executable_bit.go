@@ -742,15 +742,16 @@ func shellEnvironmentUnknown(env *Env) bool {
 		return true
 	}
 	for _, variable := range env.Vars {
-		if loaderEnvironmentUnknown(variable) {
+		name, known := environmentLiteral(variable.Name)
+		if !known || loaderEnvironmentUnknown(name, variable.Value) {
 			return true
 		}
-		if strings.HasPrefix(variable.Name.Value, "BASH_FUNC_") && strings.HasSuffix(variable.Name.Value, "%%") {
+		if strings.HasPrefix(name, "BASH_FUNC_") && strings.HasSuffix(name, "%%") {
 			return true
 		}
-		switch variable.Name.Value {
+		switch name {
 		case "BASH_ENV", "ENV", "CDPATH", "SHELLOPTS", "BASHOPTS":
-			if variable.Value == nil || variable.Value.Value != "" {
+			if value, known := environmentLiteral(variable.Value); !known || value != "" {
 				return true
 			}
 		}
@@ -761,7 +762,7 @@ func shellEnvironmentUnknown(env *Env) bool {
 func shellPathUnknown(env *Env) bool {
 	if env != nil {
 		for _, variable := range env.Vars {
-			if variable.Name.Value == "PATH" {
+			if name, known := environmentLiteral(variable.Name); !known || name == "PATH" {
 				return true
 			}
 		}
