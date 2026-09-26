@@ -111,7 +111,7 @@ export async function report(
 		}
 	};
 	const values: Record<string, string> = { 'result-file': path, 'report-sarif': '' };
-	if (options.sarif && result.sarif) {
+	if (options.sarif && result.completed && result.sarif) {
 		await attempt('SARIF report unavailable', async () => {
 			const sarifPath = `${path}.sarif`;
 			await writeFile(sarifPath, `${JSON.stringify(result.sarif)}\n`, { mode: 0o600 });

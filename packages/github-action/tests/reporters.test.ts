@@ -5,6 +5,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { capture } from '#native';
 import { annotation, report, reportOptions, summary, withReporting } from '#reporters';
 import type { ActionResult, Diagnostic } from '#result';
 import { parseResult } from '#result';
@@ -153,19 +154,95 @@ test('native process failures preserve collected diagnostics and configuration',
 	try {
 		for (const reject of [false, true]) {
 			let resultPath = '';
-			await assert.rejects(withReporting({ RUNNER_TEMP: directory }, async (environment) => {
-				assert.ok(environment.ACTIONLINT_ACTION_RESULT);
-				resultPath = environment.ACTIONLINT_ACTION_RESULT;
-				await writeFile(resultPath, JSON.stringify(result));
-				if (reject) throw new Error('native process crashed');
-				return 3;
-			}));
+			const outputPath = join(directory, `outputs-${reject}`);
+			await assert.rejects(
+				withReporting(
+					{ RUNNER_TEMP: directory, GITHUB_OUTPUT: outputPath, INPUT_SARIF: 'true' },
+					async (environment) => {
+						assert.ok(environment.ACTIONLINT_ACTION_RESULT);
+						resultPath = environment.ACTIONLINT_ACTION_RESULT;
+						await writeFile(resultPath, JSON.stringify(result));
+						if (reject) throw new Error('native process crashed');
+						return 3;
+					},
+				),
+			);
 			const persisted = parseResult(JSON.parse(await readFile(resultPath, 'utf8')));
 			assert.equal(persisted.completed, false);
 			assert.equal(persisted.status, 'failure');
 			assert.deepEqual(persisted.diagnostics, result.diagnostics);
 			assert.equal(persisted.file_count, 2);
 			assert.deepEqual(persisted.sarif, result.sarif);
+			assert.match(await readFile(outputPath, 'utf8'), /report-sarif<<[^\n]+\n\n/);
+			await assert.rejects(readFile(`${resultPath}.sarif`), { code: 'ENOENT' });
+		}
+	} finally {
+		await rm(directory, { recursive: true });
+	}
+});
+
+test('real entrypoint rejects malformed native results and summarizes input failures', async () => {
+	const directory = await mkdtemp(join(tmpdir(), 'actionlint-main-failure-'));
+	try {
+		// Keep main, its catch handler, the runtime, reporters and output writer real.
+		// Replace only native inspection/execution to exercise a successful process
+		// that writes unusable result data without downloading an executable.
+		const launcher = join(directory, 'main-fixture.mjs');
+		const toolsURL = new URL('../src/tools.ts', import.meta.url).href;
+		const workflowURL = new URL('../src/workflow.ts', import.meta.url).href;
+		const mainURL = new URL('../src/main.ts', import.meta.url).href;
+		await writeFile(
+			launcher,
+			[
+				"import assert from 'node:assert/strict';",
+				"import { writeFile } from 'node:fs/promises';",
+				"import { mock } from 'node:test';",
+				`import * as tools from ${JSON.stringify(toolsURL)};`,
+				`import { writeOutputs } from ${JSON.stringify(workflowURL)};`,
+				`mock.module(${JSON.stringify(toolsURL)}, { namedExports: { ...tools,`,
+				'  inspectTools: async () => ({ shellcheck: false, pyflakes: false }),',
+				'  executeNative: async (_executable, _args, environment) => {',
+				'    assert.ok(environment.ACTIONLINT_ACTION_RESULT);',
+				'    assert.ok(environment.ACTIONLINT_TEST_RESULT);',
+				'    await writeFile(environment.ACTIONLINT_ACTION_RESULT, environment.ACTIONLINT_TEST_RESULT);',
+				"    await writeOutputs(environment.GITHUB_OUTPUT, { result: 'success', 'exit-code': '0' });",
+				'    return 0;',
+				'  },',
+				'} });',
+				`await import(${JSON.stringify(mainURL)});`,
+			].join('\n'),
+		);
+		const scenarios = [
+			{ name: 'invalid-json', data: '{"schema_version":', annotations: 'auto', code: 3, status: 'failure' },
+			{ name: 'invalid-schema', data: '{"schema_version":2}', annotations: 'auto', code: 3, status: 'failure' },
+			{ name: 'invalid-input', data: '{}', annotations: 'wrong', code: 2, status: 'invalid-options' },
+		];
+		for (const scenario of scenarios) {
+			const outputPath = join(directory, `${scenario.name}-outputs`);
+			const summaryPath = join(directory, `${scenario.name}-summary`);
+			const child = await capture(process.execPath, ['--experimental-test-module-mocks', launcher], {
+				RUNNER_TEMP: directory,
+				GITHUB_OUTPUT: outputPath,
+				GITHUB_STEP_SUMMARY: summaryPath,
+				ACTIONLINT_ACTION_BINARY: process.execPath,
+				ACTIONLINT_TEST_RESULT: scenario.data,
+				INPUT_ANNOTATIONS: scenario.annotations,
+				'INPUT_ADD-ACTIONLINT-TO-PATH': 'false',
+				'INPUT_ADD-SHELLCHECK-TO-PATH': 'false',
+				'INPUT_ADD-PYFLAKES-TO-PATH': 'false',
+			}, { timeoutMS: 5_000 });
+			assert.equal(child.exitCode, scenario.code, child.stderr);
+			assert.ok(child.stdout.includes('::error::'));
+			const outputs = await readFile(outputPath, 'utf8');
+			const statuses = [...outputs.matchAll(/^result<<[^\n]+\n([^\n]+)\n/gm)].map((match) => match[1]);
+			assert.deepEqual(statuses, scenario.code === 2 ? [scenario.status] : ['success', scenario.status]);
+			const resultPath = /^result-file<<[^\n]+\n([^\n]+)\n/m.exec(outputs)?.[1];
+			assert.ok(resultPath);
+			const persisted = parseResult(JSON.parse(await readFile(resultPath, 'utf8')));
+			assert.equal(persisted.completed, false);
+			assert.equal(persisted.status, scenario.status);
+			assert.equal(persisted.exit_code, scenario.code);
+			assert.ok((await readFile(summaryPath, 'utf8')).startsWith('### actionlint: Analysis incomplete'));
 		}
 	} finally {
 		await rm(directory, { recursive: true });
