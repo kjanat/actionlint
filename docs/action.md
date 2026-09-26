@@ -257,16 +257,16 @@ All inputs are optional. Booleans accept `true`/`false`.
 | `review`                                                                   | `false`        | Advisory PR review posting.                                                |
 | `token`                                                                    | `github.token` | Used only by the review reporter.                                          |
 
-| Output           | Meaning                                                                      |
-| ---------------- | ---------------------------------------------------------------------------- |
-| `exit-code`      | Analysis status: 0 clean, 1 findings, 2 invalid input, 3 incomplete/failure. |
-| `result`         | `success`, `problems-found`, `invalid-options`, `failure`.                   |
-| `problems-found` | Whether known diagnostics exist.                                             |
-| `problem-count`  | Count, or empty when analysis did not complete.                              |
-| `output`         | Complete legacy-format output; prefer files for large reports.               |
-| `output-file`    | Workspace-relative requested path, or empty.                                 |
-| `result-file`    | Absolute versioned JSON path, including failure results when writable.       |
-| `report-sarif`   | Absolute SARIF path, or empty when not requested/not completed.              |
+| Output           | Meaning                                                                             |
+| ---------------- | ----------------------------------------------------------------------------------- |
+| `exit-code`      | Analysis status: 0 clean, 1 findings, 2 invalid input, 3 incomplete/failure.        |
+| `result`         | `success`, `problems-found`, `invalid-options`, `failure`.                          |
+| `problems-found` | Whether analysis completed with findings. Partial findings remain in `result-file`. |
+| `problem-count`  | Count, or empty when analysis did not complete.                                     |
+| `output`         | Complete legacy-format output; prefer files for large reports.                      |
+| `output-file`    | Workspace-relative requested path, or empty.                                        |
+| `result-file`    | Absolute versioned JSON path, including failure results when writable.              |
+| `report-sarif`   | Absolute SARIF path, or empty when not requested/not completed.                     |
 
 ## Migration and troubleshooting
 
@@ -282,7 +282,7 @@ prepare, inspect and promote the same tested candidate.
 | -------------------------- | ---------------------------------------------------------------------------------------------------- |
 | No project/workflows found | Checkout first; check `.github/workflows` spelling and `working-directory`.                          |
 | Unexpected config          | Read the selected-file log; `.yaml` precedes `.yml`; inspect with `actionlint config show --origin`. |
-| Ignore does nothing        | Remove literal outer quotes inside `ignore:                                                          | `; use a config YAML list for quoted scalars. |
+| Ignore does nothing        | Remove literal outer quotes from multiline `ignore`; use a config YAML list for quoted scalars.      |
 | Missing Python             | Install Python before the Action or set `pyflakes: false`.                                           |
 | Missing report             | Use `if: always()` in later steps; inspect setup/file-write errors.                                  |
 | No review comments         | Read aggregate skip reasons; check event, changed lines and token permission.                        |
