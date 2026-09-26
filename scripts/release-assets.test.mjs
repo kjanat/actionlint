@@ -83,20 +83,24 @@ test('publication sends preserved bytes with a concurrency guard; identical reru
 	const root = await fixture(t);
 	await writeFile(join(root, 'actionlint-homebrew.rb'), 'cask\n');
 	await writeFile(join(root, 'actionlint-scoop.json'), '{"version":"1.2.3"}\n');
+	/** @type {{url: string, options: RequestInit}[]} */
 	const calls = [];
+	/** @type {typeof fetch} */
 	const request = async (url, options) => {
-		calls.push({ url, options });
+		assert.ok(options);
+		calls.push({ url: String(url), options });
 		if (options.method === 'PUT') return new Response('{}', { status: 200 });
 		return Response.json({
 			sha: 'previous',
 			encoding: 'base64',
-			content: Buffer.from(url.includes('scoop') ? '{"version":"1.2.3"}\n' : 'old').toString('base64'),
+			content: Buffer.from(String(url).includes('scoop') ? '{"version":"1.2.3"}\n' : 'old').toString('base64'),
 		});
 	};
 	await publishManifests(root, '1.2.3', { HOMEBREW_TAP_TOKEN: 'brew-test', SCOOP_BUCKET_TOKEN: 'scoop-test' }, request);
 	assert.equal(calls.length, 3);
 	const update = calls.find((call) => call.options.method === 'PUT');
 	assert.ok(update);
+	assert.ok(typeof update.options.body === 'string');
 	assert.deepEqual(JSON.parse(update.options.body), {
 		message: 'Update actionlint to v1.2.3',
 		branch: 'master',

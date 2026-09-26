@@ -1022,7 +1022,6 @@ shell and working directory. Findings point to `action.yml` or `action.yaml`.
 Remote action contents are not downloaded for these checks.
 
 [workflow-scripts-doc]: https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/add-scripts
-
 <a id="check-shellcheck-integ"></a>
 
 ## [shellcheck][shellcheck] integration for `run:`
