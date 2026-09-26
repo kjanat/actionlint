@@ -171,6 +171,7 @@ type ActionCompositeStep struct {
 	withExpr        *ActionExprString
 	envExpr         *ActionExprString
 	id              *ActionExprString
+	node            *yaml.Node
 	// Uses is the value of "uses" key in the step. It is nil when the key is absent or its value
 	// is not a string.
 	Uses *string `json:"uses"`
@@ -183,6 +184,7 @@ func (s *ActionCompositeStep) UnmarshalYAML(n *yaml.Node) error {
 	}
 
 	s.Line, s.Column = n.Line, n.Column
+	s.node = n
 	if n.Kind != yaml.MappingNode {
 		return nil
 	}
@@ -496,11 +498,15 @@ func (md *ActionMetadata) Path() string {
 // This cache is not available across multiple repositories. One LocalActionsCache instance needs
 // to be created per one repository.
 type LocalActionsCache struct {
-	onRead func(string)
-	mu     sync.RWMutex
-	proj   *Project // might be nil
-	cache  map[string]*ActionMetadata
-	dbg    io.Writer
+	onRead          func(string)
+	mu              sync.RWMutex
+	proj            *Project // might be nil
+	cache           map[string]*ActionMetadata
+	dbg             io.Writer
+	base            *LocalActionsCache
+	checkout        *checkoutPlacement
+	platform        platformKind
+	caseInsensitive bool
 }
 
 // NewLocalActionsCache creates new LocalActionsCache instance for the given project.
@@ -538,13 +544,26 @@ func (c *LocalActionsCache) writeCache(key string, val *ActionMetadata) {
 	c.mu.Unlock()
 }
 
-// FindMetadata finds metadata for given spec. The spec should indicate for local action hence it
-// should start with "./". The first return value can be nil even if error did not occur.
+// FindMetadata finds metadata for a local action, specified with "./" or "$/".
+// The first return value can be nil even if error did not occur.
 // LocalActionCache caches that the action was not found. At first search, it returns an error that
 // the action was not found. But at the second search, it does not return an error even if the result
 // is nil. This behavior prevents repeating to report the same error from multiple places.
 // Calling this method is thread-safe.
 func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, error) {
+	if local, ok := selfRepositoryUsesLocalSpec(spec); ok {
+		if c.base != nil {
+			return c.findRepositoryMetadata(local)
+		}
+		spec = local
+	}
+	if c.base != nil {
+		local, ok := c.localSpec(spec)
+		if !ok {
+			return nil, false, nil
+		}
+		return c.findRepositoryMetadata(local)
+	}
 	if c.proj == nil || !strings.HasPrefix(spec, "./") {
 		return nil, false, nil
 	}

@@ -281,6 +281,48 @@ func TestLocalActionsParsingSkipped(t *testing.T) {
 	}
 }
 
+func TestLocalActionsCaseScopedCache(t *testing.T) {
+	root := t.TempDir()
+	file := writeShellcheckFixture(t, root, "local/Nested/action.yml", "name: local\ndescription: test\nruns: {using: node24, main: index.js}\n")
+	base := NewLocalActionsCache(&Project{root: root}, nil)
+	folded := &LocalActionsCache{base: base, caseInsensitive: true}
+	exact := &LocalActionsCache{base: base}
+	for _, spec := range []string{"./LOCAL/nested", "$/LOCAL/nested", "./local/Nested"} {
+		metadata, _, err := folded.FindMetadata(spec)
+		if err != nil || metadata == nil {
+			t.Fatalf("%s: metadata=%v, error=%v", spec, metadata, err)
+		}
+		if metadata.Path() != file {
+			t.Fatalf("%s: path=%q, want %q", spec, metadata.Path(), file)
+		}
+	}
+	if _, cached := base.readCache("./LOCAL/nested"); cached {
+		t.Fatal("case-insensitive alias leaked into shared cache")
+	}
+	_, statErr := os.Stat(filepath.Join(root, "LOCAL", "nested", "action.yml"))
+	metadata, _, err := exact.FindMetadata("./LOCAL/nested")
+	if err != nil || (metadata != nil) != (statErr == nil) {
+		t.Fatalf("exact view changed host lookup behavior: metadata=%v, error=%v", metadata, err)
+	}
+}
+
+func TestLocalActionsCaseCollision(t *testing.T) {
+	root := t.TempDir()
+	writeShellcheckFixture(t, root, "local/action.yml", "name: lower\n")
+	if _, err := os.Stat(filepath.Join(root, "LOCAL")); err == nil {
+		t.Skip("case-sensitive filesystem required for colliding directories")
+	}
+	writeShellcheckFixture(t, root, "LOCAL/action.yml", "name: upper\n")
+	base := NewLocalActionsCache(&Project{root: root}, nil)
+	view := &LocalActionsCache{base: base, caseInsensitive: true}
+	for _, spec := range []string{"./local", "./LOCAL", "./Local", "$/LOCAL"} {
+		metadata, _, err := view.FindMetadata(spec)
+		if err != nil || metadata != nil {
+			t.Fatalf("ambiguous %s: metadata=%v, error=%v", spec, metadata, err)
+		}
+	}
+}
+
 func TestLocalActionsIgnoreRemoteActions(t *testing.T) {
 	proj := &Project{root: filepath.Join("testdata", "action_metadata")}
 	c := NewLocalActionsCache(proj, nil)

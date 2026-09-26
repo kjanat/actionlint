@@ -104,6 +104,11 @@ func (rule *RuleShellcheck) VisitStep(n *Step) error {
 	if !ok || run.Run == nil {
 		return nil
 	}
+	if rule.rcArgs == nil {
+		if err := rule.prepareConfigPath(); err != nil {
+			return err
+		}
+	}
 
 	directory := rule.paths.effectiveRunDirectory(run, rule.jobDir, rule.workflowDir)
 	return rule.runShellcheck(run.Run.Value, run.source, rule.resolveShell(run), rule.paths.resolve(directory), run.RunPos)

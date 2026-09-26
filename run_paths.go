@@ -12,6 +12,7 @@ const (
 	directoryUnspecified directoryKind = iota
 	directoryKnown
 	directoryUnknown
+	directoryActionKnown
 )
 
 type runDirectory struct {
@@ -20,10 +21,15 @@ type runDirectory struct {
 }
 
 type runPaths struct {
-	platform  platformKind
-	workspace string
-	analysis  string
-	checkout  string
+	platform          platformKind
+	workspace         string
+	analysis          string
+	checkout          string
+	checkoutUnknown   bool
+	actionPath        string
+	actionRunnerPath  string
+	actionIndependent bool
+	placements        *checkoutPlacement
 }
 
 func workingDirectoryValue(value *String) runDirectory {
@@ -67,7 +73,7 @@ func defaultsWorkingDirectory(defaults *Defaults) runDirectory {
 
 func (paths runPaths) effectiveRunDirectory(run *ExecRun, jobDir, workflowDir runDirectory) runDirectory {
 	directory := runDirectory{directoryKnown, ""}
-	for _, candidate := range []runDirectory{workingDirectoryValue(run.WorkingDirectory), jobDir, workflowDir} {
+	for _, candidate := range []runDirectory{paths.workingDirectory(run.WorkingDirectory), jobDir, workflowDir} {
 		if candidate.kind != directoryUnspecified {
 			directory = candidate
 			break
@@ -81,11 +87,51 @@ func (paths runPaths) effectiveRunDirectory(run *ExecRun, jobDir, workflowDir ru
 	return directory
 }
 
+func (paths runPaths) workingDirectory(value *String) runDirectory {
+	directory := workingDirectoryValue(value)
+	if directory.kind != directoryUnknown {
+		return directory
+	}
+	expression, ok := strings.CutPrefix(value.Value, "${{")
+	if !ok {
+		return directory
+	}
+	name, suffix, closed := strings.Cut(expression, "}}")
+	suffix, representable := runnerDirectoryPath(suffix, paths.platform)
+	if !closed || !representable || strings.Contains(suffix, "${{") || suffix != "" && !strings.HasPrefix(suffix, "/") {
+		return directory
+	}
+	base := "."
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "github.workspace":
+	case "github.action_path":
+		if paths.actionPath == "" || paths.workspace == "" {
+			return directory
+		}
+		relative, err := filepath.Rel(paths.workspace, paths.actionPath)
+		if err != nil || !filepath.IsLocal(relative) {
+			return directory
+		}
+		if paths.actionIndependent {
+			return runDirectory{directoryActionKnown, filepath.ToSlash(relative) + suffix}
+		}
+		base = joinRunnerPath(paths.checkout, filepath.ToSlash(relative))
+		if paths.actionRunnerPath != "" {
+			base = paths.actionRunnerPath
+		}
+	default:
+		return directory
+	}
+	// Keep runner paths relative until local() translates the self checkout.
+	return runDirectory{directoryKnown, base + suffix}
+}
+
 func (paths runPaths) resolve(directory runDirectory) runDirectory {
 	unknown := runDirectory{directoryUnknown, paths.analysis}
 	if directory.kind == directoryUnknown {
 		return unknown
 	}
+	paths = paths.directoryOrigin(directory)
 	local, ok := paths.analysisPath(directory.path)
 	if !ok {
 		return unknown
@@ -99,6 +145,28 @@ func (paths runPaths) resolve(directory runDirectory) runDirectory {
 		return unknown
 	}
 	return runDirectory{directoryKnown, local}
+}
+
+func (paths runPaths) directoryOrigin(directory runDirectory) runPaths {
+	if directory.kind == directoryActionKnown {
+		paths.checkout, paths.checkoutUnknown, paths.placements = "", false, nil
+	}
+	return paths
+}
+
+func (paths runPaths) checkoutFor(relativePath string) (string, bool) {
+	if paths.placements != nil {
+		placement := paths.placements.matching(relativePath)
+		if placement == nil || placement.directory.kind != directoryKnown {
+			return "", false
+		}
+		if placement.caseInsensitive && placement.directory.path != "" && placement.directory.path != "." {
+			// Keep the caller's prefix spelling for host-side relative-path mapping.
+			return filepath.ToSlash(filepath.Clean(relativePath))[:len(placement.directory.path)], true
+		}
+		return placement.directory.path, true
+	}
+	return paths.checkout, !paths.checkoutUnknown
 }
 
 // Translate a workspace-relative runner path to the local self checkout.
@@ -127,10 +195,14 @@ func (paths runPaths) analysisPath(value string) (string, bool) {
 	if strings.HasPrefix(relativePath, "/") || strings.ContainsRune(relativePath, '\x00') {
 		return "", false
 	}
+	checkout, known := paths.checkoutFor(relativePath)
+	if !known {
+		return "", false
+	}
 	relativePath = filepath.FromSlash(relativePath)
-	if paths.checkout != "" {
+	if checkout != "" {
 		var err error
-		relativePath, err = filepath.Rel(filepath.FromSlash(paths.checkout), filepath.Clean(relativePath))
+		relativePath, err = filepath.Rel(filepath.FromSlash(checkout), filepath.Clean(relativePath))
 		if err != nil {
 			return "", false
 		}

@@ -20,11 +20,14 @@ type RuleExecutableBit struct {
 	workflowShell, jobShell             shellValue
 	paths                               runPaths
 	unix, sequential, pristine          bool
+	actionPristine                      bool
 	changed                             map[string]bool
+	actionChanged                       map[string]bool
 	workflowEnv, jobEnv                 bool
 	workflowGitEnv, jobGitEnv           bool
 	workflowPathUnknown, jobPathUnknown bool
 	pathUnknown                         bool
+	skipFindings                        bool
 	caseInsensitive                     bool
 	shIsDash                            bool
 	repositoryUnknown                   bool
@@ -62,7 +65,9 @@ func (rule *RuleExecutableBit) VisitJobPre(job *Job) error {
 	}
 	rule.sequential, rule.pristine = true, false
 	rule.repositoryUnknown = rule.callerRepositoryUnknown || !knownHostedRunner(job.RunsOn)
+	rule.actionPristine = knownHostedRunner(job.RunsOn)
 	rule.changed = make(map[string]bool)
+	rule.actionChanged = make(map[string]bool)
 	rule.paths = runPaths{workspace: rule.context.projectRoot, analysis: rule.context.workingDir, platform: runnerPlatform(job.RunsOn)}
 	return nil
 }
@@ -77,20 +82,34 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 	}
 	if stepCanRunAfterFailure(step.If) {
 		rule.pristine, rule.repositoryUnknown = false, true
+		rule.actionPristine = false
 	}
 	if boolMayBeTrue(step.Background) {
 		rule.sequential, rule.pristine = false, false
+		rule.actionPristine = false
 		return nil
 	}
 	switch command := step.Exec.(type) {
 	case *ExecParallel:
 		rule.sequential, rule.pristine = false, false
+		rule.actionPristine = false
 	case *ExecAction:
 		if rule.jobGitEnv || checkoutEnvironmentUnknown(step.Env) {
 			rule.repositoryUnknown = true
+			rule.actionPristine = false
+		}
+		if command.Uses == nil {
+			rule.actionPristine = false
+		} else if name, _, versioned := strings.Cut(command.Uses.Value, "@"); !versioned || !strings.EqualFold(name, "actions/checkout") {
+			rule.actionPristine = false
 		}
 		rule.checkout(command, !conditionKnown || boolMayBeTrue(step.ContinueOnError))
 	case *ExecRun:
+		workspacePristine := rule.pristine
+		independent := rule.paths.effectiveRunDirectory(command, rule.jobDir, rule.workflowDir).kind == directoryActionKnown
+		if independent {
+			rule.pristine = rule.actionPristine
+		}
 		rule.pathUnknown = rule.jobPathUnknown || shellPathUnknown(step.Env)
 		if rule.jobEnv || shellEnvironmentUnknown(step.Env) {
 			rule.pristine = false
@@ -101,6 +120,12 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 		if !conditionKnown {
 			// Its invocation sees the current state, but its effects may be skipped.
 			rule.pristine = false
+		}
+		if !rule.pristine {
+			rule.actionPristine = false
+		}
+		if independent {
+			rule.pristine = workspacePristine && rule.pristine
 		}
 		if !rule.pristine {
 			rule.repositoryUnknown = true
@@ -266,7 +291,11 @@ func (rule *RuleExecutableBit) checkout(action *ExecAction, mayNotComplete bool)
 	rule.paths.checkout = checkout
 	rule.pristine = true
 	rule.repositoryUnknown = false
-	clear(rule.changed)
+	// A clean checkout only resets its own copy; earlier checkouts can retain
+	// changed modes. The shared changed set stays conservative across copies.
+	if !rule.paths.placements.retainsOtherCheckout(checkout) {
+		clear(rule.changed)
+	}
 }
 
 func checkoutInput(action *ExecAction, name string) (string, bool) {
@@ -418,7 +447,7 @@ func (rule *RuleExecutableBit) redirectsKnown(redirects []*syntax.Redirect, dire
 			continue
 		}
 		name, known := rule.scriptPath(directory, target)
-		if !known || rule.changed[name] {
+		if !known || rule.modeChanges(directory)[name] {
 			return false
 		}
 		// Checkout creates Git metadata outside the tracked index tree.
@@ -521,10 +550,10 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 	}
 	switch args[0] {
 	case "cd":
-		if len(args) == 2 && directory.kind == directoryKnown && args[1] != "" && !strings.HasPrefix(args[1], "-") {
+		if len(args) == 2 && (directory.kind == directoryKnown || directory.kind == directoryActionKnown) && args[1] != "" && !strings.HasPrefix(args[1], "-") {
 			destination, representable := runnerRelativePath(args[1], rule.paths.platform)
 			candidate := joinRunnerPath(directory.path, destination)
-			if _, known := rule.checkedRunnerPath(candidate + "/"); known && representable {
+			if _, known := rule.checkedRunnerPathFor(candidate+"/", rule.paths.directoryOrigin(*directory)); known && representable {
 				directory.path = candidate
 				return
 			}
@@ -556,7 +585,11 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 				rule.pristine = false
 				return
 			}
-			rule.changed[name] = true
+			rule.modeChanges(*directory)[name] = true
+			if directory.kind == directoryActionKnown {
+				// Workspace checkout cannot reset modes in the independent action copy.
+				rule.actionPristine = false
+			}
 			hasOperand = true
 		}
 		if !hasOperand {
@@ -592,7 +625,7 @@ func simpleShellArgument(parts []syntax.WordPart) bool {
 }
 
 func (rule *RuleExecutableBit) scriptPath(directory runDirectory, script string) (string, bool) {
-	if directory.kind != directoryKnown || script == "" {
+	if directory.kind != directoryKnown && directory.kind != directoryActionKnown || script == "" {
 		return "", false
 	}
 	script, scriptKnown := runnerRelativePath(script, rule.paths.platform)
@@ -602,11 +635,12 @@ func (rule *RuleExecutableBit) scriptPath(directory runDirectory, script string)
 		return "", false
 	}
 	runnerPath := joinRunnerPath(directory.path, script)
-	runnerPath, ok := rule.checkedRunnerPath(runnerPath)
+	paths := rule.paths.directoryOrigin(directory)
+	runnerPath, ok := rule.checkedRunnerPathFor(runnerPath, paths)
 	if !ok {
 		return "", false
 	}
-	file, ok := rule.paths.local(runnerPath)
+	file, ok := paths.local(runnerPath)
 	if !ok {
 		return "", false
 	}
@@ -618,8 +652,11 @@ func (rule *RuleExecutableBit) scriptPath(directory runDirectory, script string)
 }
 
 func (rule *RuleExecutableBit) checkInvocation(run *ExecRun, word *syntax.Word, directory runDirectory, script string) {
+	if rule.skipFindings {
+		return
+	}
 	name, ok := rule.scriptPath(directory, script)
-	if !ok || rule.changed[name] {
+	if !ok || rule.modeChanges(directory)[name] {
 		return
 	}
 	snapshot := rule.index()
@@ -637,6 +674,13 @@ func (rule *RuleExecutableBit) checkInvocation(run *ExecRun, word *syntax.Word, 
 		pos = mapped
 	}
 	rule.Errorf(pos, "script %q is executed directly but its Git index mode is 100644 (not executable); commit an executable bit with git update-index --chmod=+x, or invoke its interpreter explicitly", name)
+}
+
+func (rule *RuleExecutableBit) modeChanges(directory runDirectory) map[string]bool {
+	if directory.kind == directoryActionKnown {
+		return rule.actionChanged
+	}
+	return rule.changed
 }
 
 func literalShellWord(parts []syntax.WordPart) (string, bool) {
