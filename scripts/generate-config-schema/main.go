@@ -40,21 +40,42 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 	}
 	switch t {
 	case reflect.TypeFor[actionlint.ShellcheckConfigSource]():
-		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{
-			{Type: "string", MinLength: new(uint64(1)), Not: &jsonschema.Schema{Pattern: `[\x00\r\n]`}},
-			{Ref: shellcheckSchemaPath},
-		}}
+		markdown := "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known."
+		description := strings.ReplaceAll(markdown, "`", "")
+		// Select alternatives by type alone: editors can then report unknown
+		// mapping keys instead of falling back to an unrelated scalar error.
+		return &jsonschema.Schema{
+			Description: description,
+			Extras:      map[string]any{"markdownDescription": markdown},
+			AnyOf: []*jsonschema.Schema{
+				{Type: "string", Extras: map[string]any{"defaultSnippets": []any{map[string]string{
+					"label": "ShellCheck rc file or directory", "body": "${1:.shellcheckrc}",
+				}}}},
+				{Type: "object", Extras: map[string]any{"defaultSnippets": []any{map[string]string{
+					"label": "Inline ShellCheck directives", "bodyText": "{}",
+				}}}},
+				{Type: "null"},
+			},
+			MinLength: new(uint64(1)),
+			Not:       &jsonschema.Schema{Type: "string", Pattern: `[\x00\r\n]`},
+			If:        &jsonschema.Schema{Type: "object"},
+			Then: &jsonschema.Schema{AllOf: []*jsonschema.Schema{
+				// Keep the selecting property's hover ahead of the referenced title.
+				{Title: "config", Description: description, Extras: map[string]any{"markdownDescription": markdown}},
+				{Ref: shellcheckSchemaPath},
+			}},
+		}
 	case reflect.TypeFor[actionlint.ShellcheckToolConfig]():
 		mapping := reflectMapping(struct {
 			Enabled *bool                              `yaml:"enabled" jsonschema:"nullable,default=true,description=Enable ShellCheck analysis. Omission or null keeps it enabled."`
-			Config  *actionlint.ShellcheckConfigSource `yaml:"config" jsonschema:"nullable"`
+			Config  *actionlint.ShellcheckConfigSource `yaml:"config"`
 		}{})
 		mapping.Version, mapping.ID = "", ""
 		config, _ := mapping.Properties.Get("config")
-		markdown := "Inline directives or an rc file/directory. \n\nRelative paths and `${{ configdir }}` use the actionlint configuration directory; `${{ gitdir }}` uses the checked repository root. \n\nActionlint also resolves `${{ github.workspace }}` and `${{ github.action_path }}` when their context is known."
-		config.Description = strings.ReplaceAll(markdown, "`", "")
-		config.Extras = map[string]any{"markdownDescription": markdown}
-		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "boolean"}, mapping}}
+		config.Description = config.Then.AllOf[0].Description
+		mapping.Type = ""
+		mapping.OneOf = []*jsonschema.Schema{{Type: "boolean"}, {Type: "object"}, {Type: "null"}}
+		return mapping
 	case reflect.TypeFor[actionlint.IgnorePatterns]():
 		// JSON Schema's regex format uses a different dialect from Go's regexp.
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string"}}
@@ -132,6 +153,13 @@ func documentFields(s *jsonschema.Schema) {
 	for _, variant := range s.OneOf {
 		documentFields(variant)
 	}
+	for _, variant := range s.AnyOf {
+		documentFields(variant)
+	}
+	for _, variant := range s.AllOf {
+		documentFields(variant)
+	}
+	documentFields(s.Then)
 	documentFields(s.Items)
 	documentFields(s.AdditionalProperties)
 }
