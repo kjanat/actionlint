@@ -249,9 +249,35 @@ jobs:
         with:
           files: testdata/err/one_error.yaml
           fail-on-error: false
-          annotations: false
+          annotations: true
           review: true
           token: ""
+      - name: Exercise a setup failure summary
+        id: setup-failure
+        continue-on-error: true
+        uses: ./.actionlint-action-test
+        with:
+          files: testdata/ok/minimal.yaml
+          config-file: .github/actionlint-missing.yaml
+          sarif: true
+      - name: Verify the setup failure remains incomplete
+        env:
+          SETUP_OUTCOME: ${{ steps.setup-failure.outcome }}
+          EXIT_CODE: ${{ steps.setup-failure.outputs.exit-code }}
+          RESULT_FILE: ${{ steps.setup-failure.outputs.result-file }}
+          REPORT_SARIF: ${{ steps.setup-failure.outputs.report-sarif }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          assert.equal(process.env.SETUP_OUTCOME, 'failure');
+          assert.equal(process.env.EXIT_CODE, '3');
+          assert.equal(process.env.REPORT_SARIF, '');
+          assert.ok(process.env.RESULT_FILE);
+          const result = JSON.parse(readFileSync(process.env.RESULT_FILE, 'utf8'));
+          assert.equal(result.completed, false);
+          assert.equal(result.exit_code, 3);
+          NODE
       - name: Upload result files from the recipe
         if: always() && steps.smoke.outputs.result-file != ''
         uses: &UploadAction actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -313,7 +339,7 @@ jobs:
         with: { files: testdata/ok/minimal.yaml, pyflakes: false, shellcheck: false }
       - name: Verify Dockerless result
         env: { RESULT: "${{ steps.slim.outputs.result }}" }
-        run: test "$RESULT" = success
+        run: test "${RESULT}" = success
   action-result:
     name: GitHub Action
     needs: [action, action-slim]

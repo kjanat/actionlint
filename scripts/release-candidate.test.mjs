@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
@@ -424,7 +424,9 @@ test('real signed promotion survives rejected pushes and lost responses without 
 		t.skip('GnuPG lacks Ed25519 support');
 		return;
 	}
-	const temporary = await mkdtemp(join(tmpdir(), 'actionlint-real-promotion-'));
+	// macOS TMPDIR makes GnuPG's secondary socket names exceed sun_path[104].
+	const tempRoot = process.platform === 'win32' ? tmpdir() : await realpath('/tmp');
+	const temporary = await mkdtemp(join(tempRoot, 'actionlint-real-promotion-'));
 	const keyring = join(temporary, 'keyring');
 	const root = join(temporary, 'source');
 	const remote = join(temporary, 'remote.git');
