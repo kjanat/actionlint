@@ -29,11 +29,19 @@
       "types": "./dist/github-actions-reader.d.ts",
       "default": "./dist/github-actions-reader.js"
     },
-    "#rss": { "source": "./src/index.ts", "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "#rss": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
     "#pkg": "./package.json"
   },
   "exports": {
-    ".": { "source": "./src/index.ts", "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
     "./feed": {
       "source": "./src/github-actions-feed.ts",
       "types": "./dist/github-actions-feed.d.ts",
