@@ -36,8 +36,26 @@ test('published smoke uses both external pins and downloads their binary', () =>
 	assert.equal(checks[1].env.EXIT_CODE, `\${{ steps.commit.outputs.exit-code }}`);
 	for (const step of checks) {
 		assert.equal(step.shell, 'bash');
-		assert.match(step.run, /test "\$PROBLEM_COUNT" = 0/);
-		assert.match(step.run, /test "\$OUTPUT" = '\[\]'/);
+		const clean = {
+			schema_version: 1,
+			status: 'success',
+			completed: true,
+			exit_code: 0,
+			file_count: 1,
+			diagnostics: [],
+			configurations: [],
+			hints: [],
+		};
+		for (const output of [clean, [], { ...clean, completed: false }, { ...clean, diagnostics: [{}] }]) {
+			const result = spawnSync('bash', ['--noprofile', '--norc', '-e', '-c', step.run], {
+				encoding: 'utf8',
+				timeout: 5_000,
+				env: { ...process.env, EXIT_CODE: '0', RESULT: 'success', PROBLEM_COUNT: '0', OUTPUT: JSON.stringify(output) },
+			});
+			assert.ifError(result.error);
+			if (output === clean) assert.equal(result.status, 0, result.stderr);
+			else assert.notEqual(result.status, 0, JSON.stringify(output));
+		}
 	}
 });
 
