@@ -249,10 +249,12 @@ jobs:
         env:
           VERSION: ${{ needs.verify.outputs.version }}
           CANDIDATE: ${{ needs.verify.outputs.candidate }}
-        run: node scripts/published-action.mjs "${GITHUB_REPOSITORY}" "${VERSION}" "${CANDIDATE}" .published-action-smoke
+        run: |
+          mkdir .published-action-test
+          node scripts/published-action.mjs "${GITHUB_REPOSITORY}" "${VERSION}" "${CANDIDATE}" > .published-action-test/action.yml
       - name: Resolve both published references through the runner
         # The generated composite contains literal external uses references.
-        uses: ./.published-action-smoke
+        uses: ./.published-action-test
   action-tags:
     name: Update moving Action references
     needs: [verify, npm, distributions, docker, action-smoke]

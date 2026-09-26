@@ -1,5 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 /** Build a local composite whose literal external references exercise runner resolution.
@@ -41,12 +40,11 @@ export function publishedAction(repository, version, commit) {
 }
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
-	const [repository, version, commit, directory, ...extra] = process.argv.slice(2);
-	if (!repository || !version || !commit || !directory || extra.length) {
-		throw new Error('Usage: published-action.mjs REPOSITORY VERSION COMMIT DIRECTORY');
+	const [repository, version, commit, ...extra] = process.argv.slice(2);
+	if (!repository || !version || !commit || extra.length) {
+		throw new Error('Usage: published-action.mjs REPOSITORY VERSION COMMIT');
 	}
 	const action = publishedAction(repository, version, commit);
-	await mkdir(directory, { recursive: true });
 	// JSON is valid YAML and keeps values literal without hand-written escaping.
-	await writeFile(join(directory, 'action.yml'), `${JSON.stringify(action, null, 2)}\n`, { flag: 'wx' });
+	process.stdout.write(`${JSON.stringify(action, null, 2)}\n`);
 }

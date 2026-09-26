@@ -1,7 +1,27 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
 import { publishedAction } from './published-action.mjs';
+
+test('CLI emits the composite on stdout with exactly three arguments', () => {
+	const script = fileURLToPath(new URL('./published-action.mjs', import.meta.url));
+	const args = ['fixture/actionlint', '1.2.3', 'a'.repeat(40)];
+	const result = spawnSync(process.execPath, [script, ...args], { encoding: 'utf8', timeout: 5_000 });
+	assert.ifError(result.error);
+	assert.equal(result.status, 0, result.stderr);
+	assert.equal(result.stderr, '');
+	assert.deepEqual(JSON.parse(result.stdout), publishedAction(args[0], args[1], args[2]));
+	for (const invalid of [args.slice(0, 2), [...args, 'output-directory']]) {
+		const result = spawnSync(process.execPath, [script, ...invalid], { encoding: 'utf8', timeout: 5_000 });
+		assert.ifError(result.error);
+		assert.notEqual(result.status, 0);
+		assert.equal(result.stdout, '');
+		assert.match(result.stderr, /Usage: published-action\.mjs REPOSITORY VERSION COMMIT/);
+	}
+});
 
 test('published smoke uses both external pins and downloads their binary', () => {
 	const commit = 'a'.repeat(40);
