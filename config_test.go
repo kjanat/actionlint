@@ -348,6 +348,9 @@ func TestConfigReadFileParseError(t *testing.T) {
 }
 
 func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
+	previousVersion := version
+	version = "1.17.0"
+	t.Cleanup(func() { version = previousVersion })
 	f := filepath.Join(t.TempDir(), "default-config-for-test.yml")
 	if err := writeDefaultConfigFile(f); err != nil {
 		t.Fatal(err)
@@ -378,7 +381,7 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const schemaHeader = "# yaml-language-server: $schema=https://raw.githubusercontent.com/kjanat/actionlint/HEAD/actionlint.schema.json\n---\n"
+	const schemaHeader = "# yaml-language-server: $schema=https://raw.githubusercontent.com/kjanat/actionlint/v1.17.0/actionlint.schema.json\n---\n"
 	if !strings.HasPrefix(string(b), schemaHeader) {
 		t.Fatalf("generated config must start with the YAML Language Server schema directive, got %q", string(b))
 	}
