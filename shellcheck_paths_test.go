@@ -282,7 +282,7 @@ func TestShellcheckWorkingDirectorySymlinks(t *testing.T) {
 			t.Run(filepath.Base(workspace)+"/"+directory, func(t *testing.T) {
 				rule := newRuleShellcheck(&externalCommand{})
 				rule.paths.workspace, rule.paths.analysis = workspace, analyzer
-				got := rule.stepDirectory(&ExecRun{WorkingDirectory: &String{Value: directory}})
+				got := rule.paths.resolve(runDirectory{directoryKnown, directory})
 				if directory != "broken" {
 					target := outside
 					if directory == "internal" {

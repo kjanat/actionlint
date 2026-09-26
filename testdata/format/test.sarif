@@ -145,6 +145,21 @@
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
+              "id": "executable-bit",
+              "name": "ExecutableBit",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Checks Git executable bits for directly invoked repository scripts",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {
+                "text": "Checks Git executable bits for directly invoked repository scripts"
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
               "id": "expression",
               "name": "Expression",
               "defaultConfiguration": {

@@ -64,9 +64,9 @@ type RuleShellcheck struct {
 	jobShell      shellValue
 	runnerShell   shellValue
 	platform      platformKind
-	workflowDir   shellcheckDirectory
-	jobDir        shellcheckDirectory
-	paths         shellcheckPaths
+	workflowDir   runDirectory
+	jobDir        runDirectory
+	paths         runPaths
 	rcArgs        []string
 	inlineConfig  *ShellcheckConfig
 	actionPath    string
@@ -105,7 +105,8 @@ func (rule *RuleShellcheck) VisitStep(n *Step) error {
 		return nil
 	}
 
-	return rule.runShellcheck(run.Run.Value, run.source, rule.resolveShell(run), rule.stepDirectory(run), run.RunPos)
+	directory := rule.paths.effectiveRunDirectory(run, rule.jobDir, rule.workflowDir)
+	return rule.runShellcheck(run.Run.Value, run.source, rule.resolveShell(run), rule.paths.resolve(directory), run.RunPos)
 }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
@@ -114,6 +115,7 @@ func (rule *RuleShellcheck) VisitJobPre(n *Job) error {
 	rule.jobDir = defaultsWorkingDirectory(n.Defaults)
 	rule.runnerShell = shellValue{}
 	rule.platform = runnerPlatform(n.RunsOn)
+	rule.paths.platform = rule.platform
 	if rule.platform == platformKindWindows {
 		rule.runnerShell = shellValueFromString(&String{Value: "pwsh"})
 	}
@@ -127,7 +129,7 @@ func (rule *RuleShellcheck) VisitJobPre(n *Job) error {
 // VisitJobPost is callback when visiting Job node after visiting its children.
 func (rule *RuleShellcheck) VisitJobPost(n *Job) error {
 	rule.jobShell = shellValue{}
-	rule.jobDir = shellcheckDirectory{}
+	rule.jobDir = runDirectory{}
 	rule.runnerShell = shellValue{}
 	rule.platform = platformKindAny
 	return nil
@@ -144,7 +146,7 @@ func (rule *RuleShellcheck) VisitWorkflowPre(n *Workflow) error {
 // VisitWorkflowPost is callback when visiting Workflow node after visiting its children.
 func (rule *RuleShellcheck) VisitWorkflowPost(n *Workflow) error {
 	rule.workflowShell = shellValue{}
-	rule.workflowDir = shellcheckDirectory{}
+	rule.workflowDir = runDirectory{}
 	return rule.cmd.wait() // Wait until all processes running for this rule
 }
 
@@ -189,7 +191,7 @@ func sanitizeExpressionsInScript(src string) string {
 	}
 }
 
-func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shell shellcheckShell, directory shellcheckDirectory, pos *Pos) error {
+func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shell shellcheckShell, directory runDirectory, pos *Pos) error {
 	dialect, setup := shell.analysis()
 	header, _, directiveShell := shellcheckHeader(src)
 	if dialect == "" && !directiveShell {
