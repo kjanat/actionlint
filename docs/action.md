@@ -136,7 +136,7 @@ Save reports even when findings fail the lint step:
 - uses: kjanat/actionlint@v1
   id: lint
   with: { sarif: true }
-- uses: actions/upload-artifact@v6
+- uses: actions/upload-artifact@v7
   if: always() && steps.lint.outputs.result-file != ''
   with:
     name: actionlint-results

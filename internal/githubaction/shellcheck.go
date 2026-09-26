@@ -46,6 +46,7 @@ func (req *lintRequest) configureShellcheck(env func(string) string) error {
 		flags.settings.Config = actionlint.ShellcheckRCFile(path)
 	}
 	req.shellcheckSettings = &flags.settings
+	req.hints = append(req.hints, flags.hints...)
 	if req.shellcheckOptions == nil {
 		req.shellcheckOptions = &actionlint.ExternalCommandOptions{}
 	}

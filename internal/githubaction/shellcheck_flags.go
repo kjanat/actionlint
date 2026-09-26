@@ -16,6 +16,7 @@ type shellcheckFlags struct {
 	settings actionlint.ShellcheckSettings
 	order    []string
 	values   map[string][]string
+	hints    []string
 }
 
 func (f *shellcheckFlags) set(name, value string, accumulate bool) {
@@ -144,6 +145,15 @@ func mergeShellcheckFlags(inherited, explicit []string) (*shellcheckFlags, error
 		}
 	}
 	merged.settings.Exclude = merged.values["exclude"]
+	var transport []string
+	for _, name := range []string{"format", "color", "wiki-link-count"} {
+		if flags.Changed(name) {
+			transport = append(transport, "--"+name)
+		}
+	}
+	if len(transport) > 0 {
+		merged.hints = append(merged.hints, "ShellCheck "+strings.Join(transport, ", ")+" presentation options are ignored; use the Action's format input. Analysis options still apply.")
+	}
 	if flags.Changed("external-sources") {
 		merged.settings.ExternalSources = externalSources
 	}

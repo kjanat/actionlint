@@ -30,6 +30,7 @@ type lintRequest struct {
 	pyflakes           string
 	format             outputFormat
 	files              []string
+	hints              []string
 }
 
 type lintOutcome struct {
@@ -91,7 +92,7 @@ func buildRequest(in *inputs, workspaceDir, workingDir string) *lintRequest {
 
 func runLinter(req *lintRequest) *lintResult {
 	var out, logs bytes.Buffer
-	result := &lintResult{}
+	result := &lintResult{hints: slices.Clone(req.hints)}
 	workspace := req.workspaceDir
 	if workspace == "" {
 		workspace = req.workingDir
@@ -192,7 +193,7 @@ func runLinter(req *lintRequest) *lintResult {
 	result.sarif = sarif.String()
 	session.Completed(analysis)
 	if len(analysis.Diagnostics) > 0 {
-		result.hints = quotedIgnoreHints(req.ignore, analysis.Diagnostics)
+		result.hints = append(result.hints, quotedIgnoreHints(req.ignore, analysis.Diagnostics)...)
 		result.lintOutcome = &lintOutcome{out.String(), logs.String(), actionlint.ExitStatusSuccessProblemFound}
 		return result
 	}

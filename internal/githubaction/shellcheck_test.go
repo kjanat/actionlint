@@ -254,6 +254,9 @@ func TestActionShellcheckInputs(t *testing.T) {
 			if tc.code == 1 && !strings.Contains(out.String(), finding) {
 				t.Fatalf("expected ShellCheck finding: %s", out.String())
 			}
+			if strings.Contains(tc.name, "format normalized") && !strings.Contains(out.String(), "use the Action's format input") {
+				t.Fatalf("normalized presentation flag needs actionable feedback: %s", out.String())
+			}
 			if strings.Contains(out.String(), "SC3040") || strings.Contains(out.String(), ":0:") {
 				t.Fatalf("reported synthetic startup line: %s", out.String())
 			}

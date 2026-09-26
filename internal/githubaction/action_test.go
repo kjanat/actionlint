@@ -106,7 +106,7 @@ func TestActionReportsSuccess(t *testing.T) {
 		}
 	}
 	wantLog := fmt.Sprintf(
-		"actionlint %s: 0 problems in 0 workflow files (shellcheck, pyflakes)\n",
+		"actionlint %s: 0 problems in 0 workflow files (requested tools: shellcheck, pyflakes)\n",
 		actionVersion(),
 	) + "::stop-commands::DELIM\n[]\n::DELIM::\n"
 	if run.stdout != wantLog {
@@ -135,7 +135,7 @@ func TestActionReportsProblems(t *testing.T) {
 		t.Errorf("wanted a single problem but got %#v", run.outputs)
 	}
 	want := fmt.Sprintf(
-		"actionlint %s: 1 problem in 1 workflow file (shellcheck, pyflakes)\n",
+		"actionlint %s: 1 problem in 1 workflow file (requested tools: shellcheck, pyflakes)\n",
 		actionVersion(),
 	) + "::error file=w.yaml,line=1,col=2,endColumn=3,title=actionlint (k)::m%0A%0Aa%0A^\n"
 	if run.stdout != want {
@@ -168,7 +168,7 @@ func TestActionReportsFailure(t *testing.T) {
 		t.Errorf("wanted a failure without a problem count but got %#v", run.outputs)
 	}
 	want := fmt.Sprintf(
-		"actionlint %s: failed with unknown problems while checking 1 workflow file (shellcheck, pyflakes)\n",
+		"actionlint %s: failed with unknown problems while checking 1 workflow file (requested tools: shellcheck, pyflakes)\n",
 		actionVersion(),
 	) + "::error title=actionlint failed::could not read \"w.yaml\"%0A\n"
 	if run.stdout != want {
@@ -182,7 +182,7 @@ func TestActionReportsUnknownWorkflowFileCount(t *testing.T) {
 		"", "json", "", "", "true", "true", ".", "", "true")
 
 	want := fmt.Sprintf(
-		"actionlint %s: failed with unknown problems while checking unknown workflow files (shellcheck, pyflakes)\n",
+		"actionlint %s: failed with unknown problems while checking unknown workflow files (requested tools: shellcheck, pyflakes)\n",
 		actionVersion(),
 	)
 	if !strings.HasPrefix(run.stdout, want) {
@@ -205,7 +205,7 @@ func TestActionReportsStatusBeforeResultPersistenceFailure(t *testing.T) {
 		t.Errorf("wanted exit code %d but got %d", actionlint.ExitStatusFailure, run.code)
 	}
 	want := fmt.Sprintf(
-		"actionlint %s: 0 problems in 0 workflow files (shellcheck, pyflakes)\n",
+		"actionlint %s: 0 problems in 0 workflow files (requested tools: shellcheck, pyflakes)\n",
 		actionVersion(),
 	)
 	if !strings.HasPrefix(run.stdout, want) {

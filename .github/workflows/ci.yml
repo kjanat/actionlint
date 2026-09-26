@@ -235,6 +235,11 @@ jobs:
           annotations: false
           summary: false
       - name: Exercise shared configuration
+        shell: bash
+        run: |
+          mkdir -p .github
+          printf 'config-variables: []\n' > .github/actionlint.yaml
+      - name: Lint with shared configuration
         uses: ./.actionlint-action-test
         with:
           files: testdata/ok/minimal.yaml

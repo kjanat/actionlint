@@ -58,6 +58,6 @@ func (a *action) emitConfiguration(result *lintResult, workingDir string) {
 		}
 	}
 	for _, hint := range result.hints {
-		_, _ = fmt.Fprintf(a.stdout, "::warning title=Check ignore input::%s\n", commandEscape(hint))
+		_, _ = fmt.Fprintf(a.stdout, "::warning title=Check Action inputs::%s\n", commandEscape(hint))
 	}
 }

@@ -105,6 +105,8 @@ func (a *action) emitStatus(code int, problemCount string, fileCount int, fileCo
 	}
 	if len(integrations) == 0 {
 		integrations = append(integrations, "external linters disabled")
+	} else {
+		integrations[0] = "requested tools: " + integrations[0]
 	}
 
 	fileCountText := "unknown"
