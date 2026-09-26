@@ -252,9 +252,12 @@ test('annotation commands and Markdown summaries escape diagnostic content', () 
 		annotation(diagnostic),
 		'::warning file=a%2Cb.yml,line=2,endLine=2,col=3,endColumn=7,title=SC2086::Quote this & <value>%0A::warning::spoof',
 	);
-	const text = summary(result);
+	const text = summary({ ...result, error: 'Missing <config>\nTry another path', hints: ['Check & retry'] });
 	assert.ok(text.includes('&amp; &lt;value&gt;'));
 	assert.ok(text.includes('<p>Quote this &amp; &lt;value&gt;<br>::warning::spoof</p>'));
+	assert.ok(text.includes('<p>Missing &lt;config&gt;<br>Try another path</p>'));
+	assert.ok(text.includes('<p>Check &amp; retry</p>'));
+	assert.ok(text.includes('<pre>echo &quot;$foo&quot;</pre>'));
 	assert.ok(!text.includes('<value>'));
 	assert.ok(text.includes('1 finding in 2 workflows'));
 	const multiline = annotation({ ...diagnostic, end: { line: 4, column: 1 } });

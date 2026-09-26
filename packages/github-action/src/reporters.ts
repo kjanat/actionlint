@@ -57,6 +57,10 @@ export function html(value: string): string {
 	return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 }
 
+function paragraph(value: string): string {
+	return `<p>${html(value).replaceAll('\n', '<br>')}</p>\n\n`;
+}
+
 export function summary(result: ActionResult): string {
 	const findings = result.diagnostics.length === 1 ? 'finding' : 'findings';
 	const files = result.file_count === 1 ? 'workflow' : 'workflows';
@@ -70,19 +74,19 @@ export function summary(result: ActionResult): string {
 		: `No findings in ${count}`;
 	let text = `### actionlint: ${heading}\n\n`;
 	if (!result.completed) text += `Exit ${result.exit_code}; ${result.diagnostics.length} ${findings} collected.\n\n`;
-	if (result.error) text += `<pre>${html(result.error.slice(0, 2000))}</pre>\n\n`;
+	if (result.error) text += paragraph(result.error.slice(0, 2000));
 	for (const diagnostic of result.diagnostics.slice(0, 50)) {
 		text += `<details><summary>${html(diagnostic.path)}:${diagnostic.start.line}:${diagnostic.start.column} (${
 			html(diagnostic.code || diagnostic.rule)
 		})</summary>\n\n`;
-		text += `<p>${html(diagnostic.message.slice(0, 1000)).replaceAll('\n', '<br>')}</p>\n\n`;
+		text += paragraph(diagnostic.message.slice(0, 1000));
 		if (diagnostic.snippet) text += `<pre>${html(diagnostic.snippet.slice(0, 2000))}</pre>\n\n`;
 		text += '</details>\n\n';
 	}
 	if (result.diagnostics.length > 50) {
 		text += 'Showing the first 50 findings; the persisted result contains all findings.\n\n';
 	}
-	for (const hint of result.hints) text += `<pre>${html(hint.slice(0, 1000))}</pre>\n\n`;
+	for (const hint of result.hints) text += paragraph(hint.slice(0, 1000));
 	return text;
 }
 
