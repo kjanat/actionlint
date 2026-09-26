@@ -54,6 +54,16 @@ func writeResultFile(root *os.Root, target, content string) (string, error) {
 		return "", nil
 	}
 
+	var created []string
+	for dir := filepath.Dir(target); dir != "."; dir = filepath.Dir(dir) {
+		if _, err := root.Stat(dir); os.IsNotExist(err) {
+			created = append(created, dir)
+		} else if err != nil {
+			return "", err
+		} else {
+			break
+		}
+	}
 	if dir := filepath.Dir(target); dir != "." {
 		if err := root.MkdirAll(dir, 0o755); err != nil {
 			return "", err
@@ -68,6 +78,10 @@ func writeResultFile(root *os.Root, target, content string) (string, error) {
 		return "", err
 	}
 	if err := f.Close(); err != nil {
+		return "", err
+	}
+	slices.Reverse(created)
+	if err := inheritOwner(root, append(created, target)); err != nil {
 		return "", err
 	}
 
@@ -144,6 +158,9 @@ func (a *action) emit(rendered string, code int, format outputFormat) {
 		return
 	}
 	if format == formatGitHub {
+		if a.env("INPUT_ANNOTATIONS") == "false" {
+			return
+		}
 		_, _ = fmt.Fprint(a.stdout, rendered)
 		return
 	}

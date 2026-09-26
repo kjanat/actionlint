@@ -23,12 +23,11 @@ func TestToolPlanUsesEffectiveConfiguration(t *testing.T) {
 			".github/actionlint.yml":  "tools: {shellcheck: true}",
 		}, pyflakes: true},
 		{name: "whole config overlay", inputs: map[string]string{"INPUT_CONFIG": "tools: {shellcheck: false}"}, pyflakes: true},
-		{name: "section overlay", inputs: map[string]string{
-			"INPUT_CONFIG": "tools: {shellcheck: true}",
-			"INPUT_TOOLS":  "shellcheck: {enabled: false}",
+		{name: "expanded config overlay", inputs: map[string]string{
+			"INPUT_CONFIG": "tools: {shellcheck: {enabled: false}}",
 		}, pyflakes: true},
 		{name: "reset overlay", files: map[string]string{".github/actionlint.yaml": "tools: {shellcheck: false}"},
-			inputs: map[string]string{"INPUT_TOOLS": "null"}, shellcheck: true, pyflakes: true},
+			inputs: map[string]string{"INPUT_CONFIG": "tools: null"}, shellcheck: true, pyflakes: true},
 		{name: "explicit config and working directory", files: map[string]string{
 			".github/actionlint.yaml": "tools: {shellcheck: true}",
 			"sub/custom.yml":          "tools: {shellcheck: false}",
@@ -42,7 +41,7 @@ func TestToolPlanUsesEffectiveConfiguration(t *testing.T) {
 			"child/.github/workflows/clean.yml": cleanWorkflow,
 		}, inputs: map[string]string{"INPUT_FILES": "child/.github/workflows/missing.yml\n.github/workflows/clean.yml"}, shellcheck: true, pyflakes: true},
 		{name: "action input disables tools", inputs: map[string]string{
-			"INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_TOOLS": "shellcheck: true",
+			"INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_CONFIG": "tools: {shellcheck: true}",
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -80,7 +79,7 @@ func TestToolPlanRejectsInvalidConfiguration(t *testing.T) {
 		code   int
 	}{
 		{name: "input", inputs: map[string]string{"INPUT_SHELLCHECK": "yes"}, code: 2},
-		{name: "overlay", inputs: map[string]string{"INPUT_TOOLS": "shellcheck: {enabled: wrong}"}, code: 2},
+		{name: "overlay", inputs: map[string]string{"INPUT_CONFIG": "tools: {shellcheck: {enabled: wrong}}"}, code: 2},
 		{name: "file", config: "tools: {shellcheck: {enabled: wrong}}", code: 3},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

@@ -7,7 +7,7 @@ The CLI and GitHub Action use the same settings.
 ## Configuration file
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/kjanat/actionlint/HEAD/actionlint.schema.json
+# yaml-language-server: $schema=../node_modules/@kjanat/actionlint/actionlint.schema.json
 self-hosted-runner:
   labels: [linux.2xlarge, windows-latest-xl]
 config-variables: [DEFAULT_RUNNER, ENVIRONMENT_STAGE]
@@ -31,9 +31,14 @@ The [schema](../actionlint.schema.json) provides editor completion and validatio
 An installed npm package also supplies it at
 `../node_modules/@kjanat/actionlint/actionlint.schema.json` from a `.github/` config;
 see [schema distribution](../distribution/npm/facade/README.md#configuration-schema).
-The schema rejects unknown keys. Runtime parsing still ignores unknown keys at the
-top level, in `self-hosted-runner`, and in `paths` entries. Regex and glob validity
-is checked when actionlint loads the file.
+Without an installed package, select a matching published version from that guide.
+Use a source-commit schema when trying unreleased settings; `HEAD` changes with development.
+The full editor experience works in a real config file. YAML inside the Action
+`config` string is validated at runtime; editors generally see only a string.
+The schema rejects unknown keys. Runtime parsing warns about ignored keys at the
+top level, in `self-hosted-runner`, and in `paths` entries, with their locations
+and accepted alternatives. New inline overlays reject unknown keys. Regex and glob
+validity is checked when actionlint loads the file.
 
 ## ShellCheck
 
@@ -89,10 +94,10 @@ Unknown variables and unavailable contexts are configuration errors. Substitutio
 happens once. In workflow inputs, GitHub evaluates expressions first; pass a literal
 with `${{ '${{ configdir }}/.shellcheckrc' }}` when needed.
 
-The Action's `tools` input overlays these settings: lists replace, boolean shorthand
+The Action's `config` input overlays these settings: lists replace, boolean shorthand
 changes only `enabled`, and `null` restores defaults. `shellcheck-args` uses native
-ShellCheck precedence. The separate `shellcheck-config` input accepts `true`, `false`
-or an absolute/workspace-relative rc path, without interpolation. It overrides rc
+ShellCheck precedence. The separate `shellcheck-rc` input accepts `true`, `false`
+or an absolute/Action-working-directory-relative rc path, without interpolation. It overrides rc
 selection; `false` leaves inline settings active.
 
 Inline settings use a separate [ShellCheck 0.11.0 schema][shellcheck-schema].

@@ -49,12 +49,8 @@ type lintResult struct {
 }
 
 func (req *lintRequest) configureEnvironment(env func(string) string) error {
-	for _, name := range append([]string{"config"}, actionlint.ConfigKeys()...) {
-		value := env("INPUT_" + strings.ToUpper(name))
-		if strings.TrimSpace(value) == "" {
-			continue
-		}
-		overlay, err := actionlint.ParseConfigOverlay(name, []byte(value))
+	if value := env("INPUT_CONFIG"); strings.TrimSpace(value) != "" {
+		overlay, err := actionlint.ParseConfigOverlay("config", []byte(value))
 		if err != nil {
 			return inputErrorf("%s", err)
 		}

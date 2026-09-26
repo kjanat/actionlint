@@ -127,7 +127,7 @@ func (a *action) prepareRequest(in *inputs, workspaceDir string) (*lintRequest, 
 	if err := req.configureEnvironment(a.env); err != nil {
 		return nil, err
 	}
-	if err := req.configureShellcheck(a.env, workspaceDir); err != nil {
+	if err := req.configureShellcheck(a.env); err != nil {
 		return nil, err
 	}
 	return req, nil

@@ -10,7 +10,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-func (req *lintRequest) configureShellcheck(env func(string) string, workspace string) error {
+func (req *lintRequest) configureShellcheck(env func(string) string) error {
 	if req.shellcheck == "" {
 		return nil
 	}
@@ -29,7 +29,7 @@ func (req *lintRequest) configureShellcheck(env func(string) string, workspace s
 	if err != nil {
 		return err
 	}
-	switch config := strings.TrimSpace(env("INPUT_SHELLCHECK-CONFIG")); config {
+	switch config := strings.TrimSpace(env("INPUT_SHELLCHECK-RC")); config {
 	case "": // Retain flag selection, or inherit the project configuration.
 	case "false":
 		flags.settings.Config = actionlint.ShellcheckRCDisabled
@@ -39,7 +39,7 @@ func (req *lintRequest) configureShellcheck(env func(string) string, workspace s
 		flags.settings.Config = actionlint.ShellcheckRCFile(config)
 	}
 	if config, ok := flags.settings.Config.(actionlint.ShellcheckRCFile); ok {
-		path, err := shellcheckConfigPath(workspace, string(config))
+		path, err := shellcheckConfigPath(req.workingDir, string(config))
 		if err != nil {
 			return err
 		}
@@ -59,7 +59,7 @@ func shellcheckConfigPath(workspace, config string) (string, error) {
 	path := inputPath(workspace, config)
 	file, err := os.Open(path)
 	if err != nil {
-		return "", inputErrorf("ShellCheck config: %s", err)
+		return "", inputErrorf("Input 'shellcheck-rc' or --rcfile: could not read %q: %s", path, err)
 	}
 	info, err := file.Stat()
 	_ = file.Close()

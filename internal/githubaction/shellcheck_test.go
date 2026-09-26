@@ -49,12 +49,12 @@ func TestActionShellcheckConfigPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, config := range []string{"rc", "config with spaces", filepath.Join(workspace, "config with spaces"), relative, filepath.Join(outside, "shared-rc")} {
-		for _, name := range []string{"INPUT_SHELLCHECK-CONFIG", "INPUT_SHELLCHECK-ARGS", "SHELLCHECK_OPTS"} {
+		for _, name := range []string{"INPUT_SHELLCHECK-RC", "INPUT_SHELLCHECK-ARGS", "SHELLCHECK_OPTS"} {
 			t.Run(name+"/"+config, func(t *testing.T) {
 				if name == "SHELLCHECK_OPTS" && strings.Contains(config, " ") {
 					t.Skip("SHELLCHECK_OPTS splits spaces without quote expansion")
 				}
-				req := &lintRequest{shellcheck: "shellcheck"}
+				req := &lintRequest{shellcheck: "shellcheck", workingDir: workspace}
 				err := req.configureShellcheck(func(key string) string {
 					if key != name {
 						return ""
@@ -71,7 +71,7 @@ func TestActionShellcheckConfigPaths(t *testing.T) {
 					default:
 						return config
 					}
-				}, workspace)
+				})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -82,13 +82,13 @@ func TestActionShellcheckConfigPaths(t *testing.T) {
 		}
 	}
 	for _, config := range []string{"missing", "."} {
-		req := &lintRequest{shellcheck: "shellcheck"}
+		req := &lintRequest{shellcheck: "shellcheck", workingDir: workspace}
 		err := req.configureShellcheck(func(key string) string {
-			if key == "INPUT_SHELLCHECK-CONFIG" {
+			if key == "INPUT_SHELLCHECK-RC" {
 				return config
 			}
 			return ""
-		}, workspace)
+		})
 		if err == nil {
 			t.Errorf("accepted config path %q", config)
 		}
@@ -187,7 +187,7 @@ func TestActionShellcheckInputs(t *testing.T) {
 		{name: "explicit disabled", config: "false", code: 1},
 		{name: "discovery from working directory", config: "true"},
 		{name: "discovery without dot", config: "true", rcfile: "shellcheckrc"},
-		{name: "explicit file from workspace", config: "config with spaces"},
+		{name: "explicit file from working directory", config: "config with spaces"},
 		{name: "literal arguments", args: `["-e", "SC2086", "-P", "scripts with spaces"]`},
 		{name: "inherited arguments", inherited: "--exclude=SC2086"},
 		{name: "input severity overrides inherited", inherited: "--severity=error", args: `["--severity=style"]`, code: 1},
@@ -232,15 +232,16 @@ func TestActionShellcheckInputs(t *testing.T) {
 				"project/" + rcfile:          "disable=SC2086\n",
 				".shellcheckrc":              "disable=SC2016\n",
 				"config with spaces":         "disable=SC2086\n",
+				"project/config with spaces": "disable=SC2086\n",
 			})
 			t.Setenv("GITHUB_WORKSPACE", workspace)
 			env := map[string]string{
 				"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "workflow.yml",
 				"INPUT_WORKING-DIRECTORY": "project", "INPUT_PYFLAKES": "false",
 				"ACTIONLINT_SHELLCHECK_COMMAND": shellcheck,
-				"INPUT_SHELLCHECK-CONFIG":       tc.config, "INPUT_SHELLCHECK-ARGS": tc.args,
+				"INPUT_SHELLCHECK-RC":           tc.config, "INPUT_SHELLCHECK-ARGS": tc.args,
 				"SHELLCHECK_OPTS": tc.inherited,
-				"INPUT_TOOLS":     tc.tools,
+				"INPUT_CONFIG":    "tools: {" + tc.tools + "}",
 			}
 			var out strings.Builder
 			if code := Main(func(key string) string { return env[key] }, &out); code != tc.code {

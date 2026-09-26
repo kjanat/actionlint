@@ -52,6 +52,10 @@ func (a *action) emitConfiguration(result *lintResult, workingDir string) {
 			source += "; overrides: " + strings.Join(config.Overrides, ", ")
 		}
 		_, _ = fmt.Fprintf(a.stdout, "Configuration: %s\n", commandEscape(source))
+		for _, warning := range config.Inspection.Warnings {
+			text := fmt.Sprintf("%s:%d:%d: %s", config.File, warning.Line, warning.Column, warning.Message)
+			_, _ = fmt.Fprintf(a.stdout, "::warning title=Check configuration::%s\n", commandEscape(text))
+		}
 	}
 	for _, hint := range result.hints {
 		_, _ = fmt.Fprintf(a.stdout, "::warning title=Check ignore input::%s\n", commandEscape(hint))

@@ -61,7 +61,7 @@ func mergeShellcheckFlags(inherited, explicit []string) (*shellcheckFlags, error
 	})
 	flags.BoolFunc("norc", "", func(value string) error {
 		if value != "true" {
-			return errors.New("use shellcheck-config: true to enable discovery")
+			return errors.New("use shellcheck-rc: true to enable discovery")
 		}
 		merged.settings.Config = actionlint.ShellcheckRCDisabled
 		return nil

@@ -34,51 +34,15 @@ inputs:
       merged over the config file.
     required: false
     default: ""
-  self-hosted-runner:
-    description: >-
-      Self-hosted runner configuration as YAML or JSON,
-      including custom labels.
-    required: false
-    default: ""
-  config-variables:
-    description: >-
-      Allowed configuration variable names as a YAML or JSON list.
-    required: false
-    default: ""
-  config-secrets:
-    description: >-
-      Allowed secret names as a YAML or JSON list.
-    required: false
-    default: ""
-  paths:
-    description: >-
-      Path-specific configuration as a YAML or JSON mapping.
-    required: false
-    default: ""
-  assume-default-permissions:
-    description: >-
-      Default permissions assumption as YAML or JSON,
-      overriding the config file.
-    required: false
-    default: ""
-  policy:
-    description: >-
-      Workflow policy configuration as a YAML or JSON mapping.
-    required: false
-    default: ""
   shellcheck:
     description: Run ShellCheck for shell scripts in workflow steps.
     required: false
     default: "true"
-  tools:
-    description: External tool configuration as a YAML or JSON mapping, overriding the config file.
-    required: false
-    default: ""
-  shellcheck-config:
+  shellcheck-rc:
     description: >-
-      ShellCheck config: true discovers from working-directory, false disables
-      discovery, or specify an absolute file path or one relative to GITHUB_WORKSPACE.
-      Blank inherits config flags; discovery is otherwise disabled.
+      ShellCheck rc: true discovers from working-directory, false disables
+      discovery, or specify an absolute file path or one relative to working-directory.
+      Blank inherits rc selection; discovery is otherwise disabled. Inline directives remain active.
     required: false
     default: ""
   shellcheck-args:
@@ -119,17 +83,17 @@ inputs:
     required: false
     default: "true"
   annotations:
-    description: Emit annotations in addition to the selected format. The github format already emits them.
+    description: "Emit finding annotations: auto follows format; true enables them; false disables them."
     required: false
-    default: "false"
+    default: auto
   summary:
-    description: Add an analysis summary and findings to the job summary.
+    description: Add a compact analysis summary to the job summary.
+    required: false
+    default: "true"
+  sarif:
+    description: Save a SARIF file alongside the always-written JSON result.
     required: false
     default: "false"
-  report-formats:
-    description: Additional persisted reports, json and/or sarif, separated by commas or newlines.
-    required: false
-    default: ""
   review:
     description: Post PR review comments and supported fix suggestions on changed lines. Requires pull-requests write permission.
     required: false
@@ -161,10 +125,8 @@ outputs:
     description: >-
       Repository-relative output file path,
       or an empty string when output-file was not set.
-  analysis-result:
+  result-file:
     description: Absolute path to the versioned analysis result, retained for later steps even when analysis fails.
-  report-json:
-    description: Absolute path to the JSON report when requested through report-formats.
   report-sarif:
     description: Absolute path to the SARIF report when requested and analysis completed.
 runs: { using: node24, main: action.mjs }

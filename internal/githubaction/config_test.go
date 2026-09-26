@@ -22,13 +22,13 @@ func TestMainConfigurationInputs(t *testing.T) {
 		{"yaml discovery wins over yml", nil, 1, ".github/actionlint.yaml (automatically discovered)"},
 		{"inline yaml", map[string]string{"INPUT_CONFIG": "self-hosted-runner: {labels: [unknown-runner]}"}, 0, "overrides: config"},
 		{"inline json", map[string]string{"INPUT_CONFIG": `{"self-hosted-runner":{"labels":["unknown-runner"]}}`}, 0, "overrides: config"},
-		{"section overrides inline", map[string]string{"INPUT_CONFIG": "self-hosted-runner: {labels: [other]}", "INPUT_SELF-HOSTED-RUNNER": "labels: [unknown-runner]"}, 0, "overrides: config, self-hosted-runner"},
+
 		{"explicit config file", map[string]string{"INPUT_CONFIG-FILE": ".github/actionlint.yml"}, 0, ".github/actionlint.yml (config-file input)"},
-		{"explicit file with cleared labels", map[string]string{"INPUT_CONFIG-FILE": ".github/actionlint.yml", "INPUT_SELF-HOSTED-RUNNER": "labels: []"}, 1, "overrides: self-hosted-runner"},
-		{"blank inherits", map[string]string{"INPUT_CONFIG": " \n", "INPUT_SELF-HOSTED-RUNNER": " "}, 1, ".github/actionlint.yaml (automatically discovered)"},
+		{"explicit file with cleared labels", map[string]string{"INPUT_CONFIG-FILE": ".github/actionlint.yml", "INPUT_CONFIG": "self-hosted-runner: {labels: []}"}, 1, "overrides: config"},
+		{"blank inherits", map[string]string{"INPUT_CONFIG": " \n"}, 1, ".github/actionlint.yaml (automatically discovered)"},
 		{"unknown key", map[string]string{"INPUT_CONFIG": "config-variable: [TYPO]"}, 2, "Invalid action input"},
-		{"invalid section", map[string]string{"INPUT_SELF-HOSTED-RUNNER": "[unknown-runner]"}, 2, "input self-hosted-runner"},
-		{"conflicting merged bounds", map[string]string{"INPUT_CONFIG": "policy: {require-job-timeout: {max-minutes: 10}}", "INPUT_POLICY": "require-job-timeout: {min-minutes: 20}"}, 2, "configuration after inputs config, policy"},
+		{"invalid section", map[string]string{"INPUT_CONFIG": "self-hosted-runner: [unknown-runner]"}, 2, "input config"},
+		{"conflicting merged bounds", map[string]string{"INPUT_CONFIG": "policy: {require-job-timeout: {min-minutes: 20, max-minutes: 10}}"}, 2, "input config"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			workspace := workspaceWith(t, map[string]string{
@@ -95,7 +95,7 @@ func TestToolCommandsFromEnvironment(t *testing.T) {
 	}
 }
 
-func TestActionMetadataContainsEveryConfigInput(t *testing.T) {
+func TestActionMetadataHasOneConfigOverlay(t *testing.T) {
 	var metadata struct {
 		Inputs map[string]struct {
 			Default string `yaml:"default"`
@@ -104,10 +104,52 @@ func TestActionMetadataContainsEveryConfigInput(t *testing.T) {
 	if err := yaml.Unmarshal([]byte(read(t, filepath.Join("..", "..", "action.yml"))), &metadata); err != nil {
 		t.Fatal(err)
 	}
-	for _, key := range append([]string{"config"}, actionlint.ConfigKeys()...) {
+	for _, key := range []string{"config"} {
 		input, ok := metadata.Inputs[key]
 		if !ok || input.Default != "" {
 			t.Errorf("%s must have a blank input default so file settings are inherited", key)
 		}
+	}
+}
+
+func TestActionMetadataOmitsSectionMirrors(t *testing.T) {
+	var metadata struct {
+		Inputs map[string]any `yaml:"inputs"`
+	}
+	if err := yaml.Unmarshal([]byte(read(t, filepath.Join("..", "..", "action.yml"))), &metadata); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range actionlint.ConfigKeys() {
+		if _, exists := metadata.Inputs[key]; exists {
+			t.Errorf("config section %s must use config overlay", key)
+		}
+	}
+}
+
+func TestAnnotationsDisabledPreserveOutput(t *testing.T) {
+	workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/test.yaml": brokenWorkflow})
+	output := filepath.Join(t.TempDir(), "outputs")
+	env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": output, "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_ANNOTATIONS": "false"}
+	var out strings.Builder
+	if code := Main(func(key string) string { return env[key] }, &out); code != 1 {
+		t.Fatalf("exit %d: %s", code, &out)
+	}
+	if strings.Contains(out.String(), "::error file=") {
+		t.Fatalf("annotations not disabled: %s", &out)
+	}
+	if value := parseOutputs(read(t, output))["output"]; !strings.Contains(value, "::error file=") {
+		t.Fatalf("legacy output changed: %s", value)
+	}
+}
+
+func TestConfigWarningsVisibleInAction(t *testing.T) {
+	workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/test.yaml": cleanWorkflow, ".github/actionlint.yaml": "config-variable: [TYPO]\n"})
+	env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false"}
+	var out strings.Builder
+	if code := Main(func(key string) string { return env[key] }, &out); code != 0 {
+		t.Fatalf("exit %d: %s", code, &out)
+	}
+	if !strings.Contains(out.String(), "::warning title=Check configuration::") || !strings.Contains(out.String(), "config-variable") {
+		t.Fatal(out.String())
 	}
 }

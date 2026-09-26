@@ -58,7 +58,7 @@ async function run(inputs, expected = 0) {
 		while (++i < lines.length && lines[i] !== match[2]) value.push(lines[i]);
 		outputs.set(match[1], value.join('\n'));
 	}
-	const resultPath = outputs.get('analysis-result');
+	const resultPath = outputs.get('result-file');
 	assert.ok(resultPath, `missing persisted result: ${log}`);
 	const analysis = JSON.parse(await readFile(resultPath, 'utf8'));
 	assert.equal(analysis.schema_version, 1);
@@ -104,7 +104,7 @@ try {
 			'fail-on-error': 'false',
 			annotations: 'true',
 			summary: 'true',
-			'report-formats': 'json,sarif',
+			sarif: 'true',
 		});
 		assert.equal(result.outputs.get('exit-code'), '1', result.log);
 		assert.equal(result.outputs.get('result'), 'problems-found', result.log);
@@ -117,7 +117,8 @@ try {
 			`duplicate or missing annotation: ${result.log}`,
 		);
 		assert.match(await readFile(summaryFile, 'utf8'), /1 finding in 1 workflow file/);
-		assert.equal(result.outputs.get('report-json'), result.outputs.get('analysis-result'));
+		assert.ok(result.outputs.get('result-file'));
+		assert.equal(result.outputs.has('report-json'), false);
 		const sarifPath = result.outputs.get('report-sarif');
 		assert.ok(sarifPath);
 		assert.equal(JSON.parse(await readFile(sarifPath, 'utf8')).runs[0].results.length, 1);
@@ -155,7 +156,7 @@ try {
 	assert.equal(noShell.outputs.get('problem-count'), '0', noShell.log);
 	const configuredNoShell = await run({
 		files: 'testdata/err/shellcheck_default_shell_detection.yaml',
-		tools: 'shellcheck: {enabled: false}',
+		config: 'tools: {shellcheck: {enabled: false}}',
 		pyflakes: 'false',
 	});
 	assert.equal(configuredNoShell.outputs.get('problem-count'), '0', configuredNoShell.log);
@@ -200,7 +201,7 @@ try {
 		{ 'output-file': '.' },
 		{ files: '--help' },
 		{ annotations: 'invalid' },
-		{ 'report-formats': 'xml' },
+		{ sarif: 'invalid' },
 	];
 	for (const inputs of invalidInputs) await run(inputs, 2);
 	await run({ 'config-file': join(shared, 'missing.yaml') }, 3);
@@ -210,7 +211,7 @@ try {
 	);
 	const customRunner = { files: '', shellcheck: 'false', pyflakes: 'false' };
 	await run({ ...customRunner, config: JSON.stringify({ 'self-hosted-runner': { labels: ['ubuntu-24.04-custom'] } }) });
-	await run({ ...customRunner, 'self-hosted-runner': 'labels: [ubuntu-24.04-custom]' });
+	await run({ ...customRunner, config: 'self-hosted-runner: {labels: [ubuntu-24.04-custom]}' });
 	await run({ ...customRunner, ignore: 'label "ubuntu-24\\.04-custom" is unknown\\.' });
 	const quotedIgnore = await run({ ...customRunner, ignore: '\'label "ubuntu-24\\.04-custom" is unknown\\.\'' }, 1);
 	assert.match(quotedIgnore.log, /quotes|apostrophes/i);

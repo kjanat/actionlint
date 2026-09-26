@@ -148,114 +148,30 @@ See [the usage document][usage] for more details.
 
 ## GitHub Action
 
-The JavaScript action runs on Linux, macOS, and Windows without Docker. Every
-invocation downloads the matching actionlint binary and verifies its checksum.
-ShellCheck and pyflakes are enabled by default; missing copies of these tools are
-installed in the runner's tool cache. Python is required when pyflakes is enabled.
-Problems appear as GitHub annotations.
+Lint with annotations and a compact job summary:
 
 ```yaml
-name: Lint GitHub Actions workflows
+name: Lint workflows
 on: [push, pull_request]
-
+permissions: { contents: read }
 jobs:
-  actionlint:
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - { uses: actions/checkout@v7, with: { persist-credentials: false } }
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
       - uses: kjanat/actionlint@v1
 ```
 
-Custom runner labels can be configured directly:
+Project settings belong in [`.github/actionlint.yaml`](docs/config.md).
+Use the `config` input for a one-run override. No `with:` block is required.
 
-```yaml
-- uses: kjanat/actionlint@v1
-  with:
-    self-hosted-runner: |
-      labels: [ubuntu-24.04-custom]
-```
+The upcoming JavaScript Action runs on Linux, macOS and Windows without Docker.
+Existing immutable releases retain their Docker implementation. Pin a published
+release commit SHA or normal `vX.Y.Z` tag; `v1` and `v1.X` are moving pointers.
 
-The moving `v1` tag follows compatible v1 releases; minor tags follow patch releases.
-Pin a full release commit SHA or a normal `vX.Y.Z` tag for an immutable reference.
-`v1.17.0` is a versioned release tag for both the CLI and the GitHub Action.
-JavaScript Action releases contain the complete source tree plus `action.mjs` at
-the repository root. Existing immutable releases retain their original implementation.
-Generated bundles stay off `master`; build a release tree before using a source checkout as an Action.
-
-The action discovers `.github/actionlint.yaml` or `.github/actionlint.yml` and logs
-the selected file. All configuration sections also work as inputs; `config` accepts
-a complete YAML or JSON document, including `${{ toJSON(...) }}` expressions.
-Individual inputs override inline `config`, which overrides the config file.
-See [configuration examples and merge behavior](docs/usage.md#on-github-actions).
-
-<details><summary><h3>Inputs</h3></summary>
-
-| Input                        | Default        | Description                                                                                                    |
-| ---------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------- |
-| `files`                      | all workflows  | Newline-separated workflow paths. Empty checks every workflow in the repository.                               |
-| `format`                     | `github`       | Output format: `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, or `sarif`.                   |
-| `ignore`                     | none           | Newline-separated regular expressions for actionlint errors to ignore.                                         |
-| `config-file`                | automatic      | Configuration file, absolute or relative to `working-directory`.                                               |
-| `config`                     | none           | Complete inline configuration as YAML or JSON.                                                                 |
-| `self-hosted-runner`         | inherited      | YAML/JSON mapping with a `labels` list.                                                                        |
-| `config-variables`           | inherited      | YAML/JSON list of permitted variable names, or `null`.                                                         |
-| `config-secrets`             | inherited      | YAML/JSON list of permitted secret names, or `null`.                                                           |
-| `paths`                      | inherited      | YAML/JSON mapping of workflow globs to configuration.                                                          |
-| `assume-default-permissions` | inherited      | `restricted` or `permissive`.                                                                                  |
-| `policy`                     | inherited      | YAML/JSON mapping of policy settings.                                                                          |
-| `tools`                      | inherited      | YAML/JSON mapping of external tool settings.                                                                   |
-| `shellcheck`                 | `true`         | Run ShellCheck for shell scripts in workflow steps.                                                            |
-| `shellcheck-config`          | inherited      | Blank inherits settings; `true` discovers rc, `false` disables it, or set an absolute/workspace-relative file. |
-| `shellcheck-args`            | none           | Additional checking options as a YAML/JSON array of strings.                                                   |
-| `pyflakes`                   | `true`         | Run pyflakes for Python scripts in workflow steps.                                                             |
-| `add-actionlint-to-path`     | `true`         | Make actionlint available on PATH for subsequent job steps.                                                    |
-| `add-shellcheck-to-path`     | `true`         | Make ShellCheck available on PATH when ShellCheck is enabled.                                                  |
-| `add-pyflakes-to-path`       | `true`         | Make pyflakes available on PATH when pyflakes is enabled.                                                      |
-| `working-directory`          | `.`            | Directory to lint, absolute or relative to the repository workspace.                                           |
-| `output-file`                | none           | Repository-relative file to receive the selected output format.                                                |
-| `fail-on-error`              | `true`         | Fail when problems are found. Invalid options and fatal errors always fail.                                    |
-| `annotations`                | `false`        | Emit annotations alongside another format; `github` already emits them.                                        |
-| `summary`                    | `false`        | Add findings and completion status to the job summary.                                                         |
-| `report-formats`             | none           | Additional JSON/SARIF files; comma- or newline-separated `json`, `sarif`.                                      |
-| `review`                     | `false`        | Post PR review comments and supported suggestions on changed lines.                                            |
-| `token`                      | `github.token` | Token for opt-in PR reviews; requires `pull-requests: write`.                                                  |
-
-</details>
-<details><summary><h3>Outputs</h3></summary>
-
-| Output            | Description                                                                                         |
-| ----------------- | --------------------------------------------------------------------------------------------------- |
-| `exit-code`       | actionlint exit code: `0` for clean, `1` for problems, `2` for invalid options, or `3` for failure. |
-| `result`          | `success`, `problems-found`, `invalid-options`, or `failure`.                                       |
-| `problems-found`  | Whether actionlint found one or more problems.                                                      |
-| `problem-count`   | Number of problems, or an empty string if actionlint could not complete.                            |
-| `output`          | Complete actionlint output in the selected format.                                                  |
-| `output-file`     | Repository-relative output path, or an empty string when no file was requested.                     |
-| `analysis-result` | Absolute path to the versioned analysis result, retained even when analysis fails.                  |
-| `report-json`     | Absolute path to the JSON report when requested through `report-formats`.                           |
-| `report-sarif`    | Absolute path to the SARIF report when requested and analysis completed.                            |
-
-Give the step an `id` to consume its outputs. For example, this writes JSON Lines without failing the lint step:
-
-```yaml
-- name: Check workflows
-  id: actionlint
-  uses: kjanat/actionlint@v1
-  with:
-    format: json-lines
-    output-file: actionlint-results.jsonl
-    fail-on-error: false
-- name: Report result
-  if: always()
-  env:
-    RESULT: ${{ steps.actionlint.outputs.result }}
-    PROBLEM_COUNT: ${{ steps.actionlint.outputs.problem-count }}
-  run: echo "${RESULT} (${PROBLEM_COUNT} problems)"
-```
-
-</details>
-
-See [the usage document][usage] for additional examples and output behavior.
+See the [Action guide](docs/action.md) for configuration, saved reports,
+optional PR reviews, tool prerequisites, migration and the input/output reference.
 
 ## pre-commit
 

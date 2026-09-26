@@ -27,6 +27,7 @@ type resultConfig struct {
 	Project   string                             `json:"project"`
 	Overrides []string                           `json:"overrides"`
 	Origins   map[string]actionlint.ConfigOrigin `json:"origins,omitempty"`
+	Warnings  []actionlint.ConfigWarning         `json:"warnings,omitempty"`
 }
 
 func (a *action) persistResult(code int, failure error) error {
@@ -48,7 +49,7 @@ func (a *action) persistResult(code int, failure error) error {
 			r.Diagnostics = lint.diagnostics
 		}
 		for _, config := range lint.configs {
-			r.Configs = append(r.Configs, resultConfig{config.File, config.Project, config.Overrides, config.Inspection.Origins})
+			r.Configs = append(r.Configs, resultConfig{config.File, config.Project, config.Overrides, config.Inspection.Origins, config.Inspection.Warnings})
 		}
 		if lint.hints != nil {
 			r.Hints = lint.hints
