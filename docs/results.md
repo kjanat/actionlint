@@ -41,7 +41,8 @@ indexes as stable identities.
 
 Successful CLI results go to stdout or `--output-file`. Failed CLI checks emit
 the result on stderr and preserve an existing output file. Logs and opt-in
-summaries on stderr remain separate records. JSONL contains findings only: use
+summaries on stderr remain separate records. Argument errors before an operation
+is selected use the CLI error record (`error` and `exit_code`). JSONL contains findings only: use
 the process exit code or the Action `result-file` to distinguish completion from
 failure. Action `fail-on-error: false` lets a step with findings pass. The result
 retains the analysis exit code.

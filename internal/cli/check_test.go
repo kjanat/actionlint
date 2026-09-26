@@ -401,6 +401,8 @@ func TestCheckJSONFailureContract(t *testing.T) {
 	}{
 		{[]string{"check", "--json", "missing.yml"}, 3},
 		{[]string{"check", "--json", "--does-not-exist"}, 2},
+		{[]string{"--json", "--command=check", "--does-not-exist"}, 2},
+		{[]string{"--json", "missing.yml"}, 3},
 	} {
 		got := testRunCommand("", tc.args...)
 		var result actionlint.CheckResult
@@ -415,6 +417,29 @@ func TestCheckJSONFailureContract(t *testing.T) {
 		got := testRunCommand("", name, "--json", "--does-not-exist")
 		if got.Status != 2 || strings.Contains(got.Stderr, "schema_version") || !json.Valid([]byte(got.Stderr)) {
 			t.Fatalf("metadata error changed: %+v", got)
+		}
+	}
+}
+
+func TestJSONErrorsBeforeOperationSelection(t *testing.T) {
+	for _, args := range [][]string{
+		{"--version", "--json", "--does-not-exist"},
+		{"--json", "--does-not-exist", "--version"},
+		{"--init-config", "--json", "--does-not-exist"},
+		{"--completion=bash", "--json", "--does-not-exist"},
+		{"--json", "--completion=invalid"},
+		{"--json", "--command=unknown"},
+		{"--json", "--command="},
+		{"--json", "--command"},
+		{"--json", "--does-not-exist"},
+	} {
+		got := testRunCommand("", args...)
+		var record map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(got.Stderr), &record); err != nil {
+			t.Fatalf("%q: %v", args, err)
+		}
+		if got.Status != 2 || got.Stdout != "" || len(record) != 2 || string(record["exit_code"]) != "2" || len(record["error"]) <= 2 {
+			t.Errorf("%q: want invocation error, got %+v", args, got)
 		}
 	}
 }

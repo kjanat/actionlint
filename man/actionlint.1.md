@@ -397,6 +397,7 @@ for a clean check. The legacy `{{json .}}` template retains its array, field nam
 
 In JSON modes, incomplete checks emit the result on standard error with `completed: false`,
 an `error`, and a nonzero `exit_code`. An empty `diagnostics` array alone does not indicate success.
+Argument errors before operation selection contain only `error` and `exit_code`.
 Requested progress or debug logs are separate JSON Lines records with a `log` field on standard
 error. **--quiet** suppresses these log records. Standard output contains only the requested result.
 An early failure can leave standard output empty; always check the exit status.
