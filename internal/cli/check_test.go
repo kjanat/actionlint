@@ -180,14 +180,14 @@ func TestCommandNativeJSON(t *testing.T) {
 			if err := json.Unmarshal([]byte(got.Stdout), &have); err != nil {
 				t.Fatal(err)
 			}
-			expected := actionlint.CheckResult{SchemaVersion: 1, Diagnostics: []actionlint.Diagnostic{}}
+			expected := []actionlint.Diagnostic{}
 			for _, field := range want {
-				expected.Diagnostics = append(expected.Diagnostics, actionlint.Diagnostic{Rule: field.Kind, Message: field.Message, Path: field.Filepath, Start: actionlint.DiagnosticPosition{Line: field.Line, Column: field.Column}, End: actionlint.DiagnosticPosition{Line: field.Line, Column: field.EndColumn + 1}, Snippet: strings.Split(field.Snippet, "\n")[0]})
+				expected = append(expected, actionlint.Diagnostic{Rule: field.Kind, Message: field.Message, Path: field.Filepath, Start: actionlint.DiagnosticPosition{Line: field.Line, Column: field.Column}, End: actionlint.DiagnosticPosition{Line: field.Line, Column: field.EndColumn + 1}, Snippet: strings.Split(field.Snippet, "\n")[0]})
 			}
-			if diff := cmp.Diff(expected, have); diff != "" {
+			if diff := cmp.Diff(expected, have.Diagnostics); diff != "" {
 				t.Fatal(diff)
 			}
-			if len(have.Diagnostics) == 0 && got.Stdout != "{\"schema_version\":1,\"diagnostics\":[]}\n" {
+			if len(have.Diagnostics) == 0 && !cleanCheckJSON(got.Stdout) {
 				t.Fatalf("empty diagnostics: %q", got.Stdout)
 			}
 		}
@@ -383,5 +383,38 @@ func TestReportPreservesPermissions(t *testing.T) {
 	}
 	if info.Mode().Perm() != 0640 {
 		t.Fatal(info.Mode())
+	}
+}
+
+func cleanCheckJSON(data string) bool {
+	var result actionlint.CheckResult
+	return json.Unmarshal([]byte(data), &result) == nil && result.SchemaVersion == 1 &&
+		result.Completed && result.Status == "success" && result.ExitCode == 0 &&
+		result.FileCount != nil && *result.FileCount == 1 && result.Diagnostics != nil && len(result.Diagnostics) == 0
+}
+
+func TestCheckJSONFailureContract(t *testing.T) {
+	commandTestRepo(t)
+	for _, tc := range []struct {
+		args []string
+		code int
+	}{
+		{[]string{"check", "--json", "missing.yml"}, 3},
+		{[]string{"check", "--json", "--does-not-exist"}, 2},
+	} {
+		got := testRunCommand("", tc.args...)
+		var result actionlint.CheckResult
+		if err := json.Unmarshal([]byte(got.Stderr), &result); err != nil {
+			t.Fatal(err)
+		}
+		if got.Status != tc.code || result.ExitCode != tc.code || result.Completed || result.SchemaVersion != 1 || result.Error == "" {
+			t.Fatalf("invalid failure report: %+v", got)
+		}
+	}
+	for _, name := range []string{"config", "doctor", "rules", "version"} {
+		got := testRunCommand("", name, "--json", "--does-not-exist")
+		if got.Status != 2 || strings.Contains(got.Stderr, "schema_version") || !json.Valid([]byte(got.Stderr)) {
+			t.Fatalf("metadata error changed: %+v", got)
+		}
 	}
 }

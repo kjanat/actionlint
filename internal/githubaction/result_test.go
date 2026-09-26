@@ -273,7 +273,9 @@ func TestPersistedResultRetainsAnalysisStatus(t *testing.T) {
 
 func TestPersistedResultRecordsMissingInputFailure(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "result.json")
+	outputPath := filepath.Join(t.TempDir(), "outputs")
 	env := map[string]string{"GITHUB_WORKSPACE": t.TempDir(), "ACTIONLINT_ACTION_RESULT": path,
+		"GITHUB_OUTPUT": outputPath, "INPUT_FORMAT": "json",
 		"INPUT_FILES": "missing.yml", "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false"}
 	var output strings.Builder
 	if code := Main(func(key string) string { return env[key] }, &output); code != 3 {
@@ -289,5 +291,8 @@ func TestPersistedResultRecordsMissingInputFailure(t *testing.T) {
 	}
 	if result.Completed || result.Status != "failure" || result.Error == "" {
 		t.Fatalf("failure not retained: %s", data)
+	}
+	if rendered := parseOutputs(read(t, outputPath))["output"]; rendered != strings.TrimSuffix(string(data), "\n") {
+		t.Fatalf("failure differs between JSON output and persisted result: %s", rendered)
 	}
 }

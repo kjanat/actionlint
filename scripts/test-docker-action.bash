@@ -62,7 +62,7 @@ expect_output exit-code 0
 expect_output result success
 expect_output problems-found false
 expect_output problem-count 0
-expect_output output '[]'
+output output | jq -e '.schema_version == 1 and .completed and .status == "success" and .diagnostics == []' >/dev/null
 expect_output output-file ''
 
 for format in github default oneline json json-lines markdown sarif; do

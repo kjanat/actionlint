@@ -71,18 +71,6 @@ func renderOneline(problems []*problem) string {
 	return b.String()
 }
 
-func renderJSONLines(problems []*problem) (string, error) {
-	var b strings.Builder
-	enc := json.NewEncoder(&b)
-	enc.SetEscapeHTML(false)
-	for _, p := range problems {
-		if err := enc.Encode(p); err != nil {
-			return "", err
-		}
-	}
-	return b.String(), nil
-}
-
 func renderMarkdown(problems []*problem) string {
 	var b strings.Builder
 	for _, p := range problems {
@@ -98,7 +86,7 @@ func renderMarkdown(problems []*problem) string {
 	return b.String()
 }
 
-func render(format outputFormat, problems []*problem, serialized string) (string, error) {
+func render(format outputFormat, problems []*problem) (string, error) {
 	switch format {
 	case formatGitHub:
 		return renderGitHub(problems), nil
@@ -106,10 +94,6 @@ func render(format outputFormat, problems []*problem, serialized string) (string
 		return renderDefault(problems), nil
 	case formatOneline:
 		return renderOneline(problems), nil
-	case formatJSON:
-		return serialized, nil
-	case formatJSONLines:
-		return renderJSONLines(problems)
 	case formatMarkdown:
 		return renderMarkdown(problems), nil
 	default:
@@ -176,7 +160,7 @@ func countAndRender(serialized string, format outputFormat, workingDir, workspac
 			p.Filepath = reportPath(workingDir, workspaceDir, p.Filepath)
 		}
 	}
-	out, err := render(format, problems, serialized)
+	out, err := render(format, problems)
 	if err != nil {
 		return 0, "", err
 	}

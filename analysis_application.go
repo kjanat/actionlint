@@ -139,6 +139,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 	a.configState.overlays = slices.Clone(opts.ConfigOverlays)
 	a.configState.onLoaded = opts.OnConfigLoaded
 	a.configState.loaded = make(map[*Project]*Config)
+	a.configState.reports = make(map[*Project]ConfigReport)
 	a.projects.skipConfig = opts.SkipProjectConfig
 	a.request.IgnorePatterns, err = CompileIgnorePatterns(opts.IgnorePatterns)
 	if err != nil {
@@ -305,6 +306,17 @@ func (a *AnalysisSession) analyze(sources []SourceUnit) (*AnalysisResult, error)
 		slices.Sort(result.Inputs)
 		result.Inputs = slices.Compact(result.Inputs)
 	}
+	// Keep provenance on the analysis itself, including cached selections when
+	// a library caller reuses this session. Preserve input order across projects.
+	a.configState.Lock()
+	seen := make(map[*Project]bool)
+	for _, source := range sources {
+		if !seen[source.Project] {
+			seen[source.Project] = true
+			result.Configurations = append(result.Configurations, a.configState.reports[source.Project])
+		}
+	}
+	a.configState.Unlock()
 	return result, nil
 }
 

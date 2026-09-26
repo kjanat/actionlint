@@ -1,7 +1,6 @@
 package githubaction
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
@@ -119,41 +118,6 @@ func TestRenderOneline(t *testing.T) {
 	}
 }
 
-func TestRenderJSONLinesKeepsLiteralHTMLCharacters(t *testing.T) {
-	got, err := renderJSONLines([]*problem{sampleProblem(), sampleProblem()})
-	if err != nil {
-		t.Fatal(err)
-	}
-	lines := strings.Split(strings.TrimSuffix(got, "\n"), "\n")
-	if len(lines) != 2 {
-		t.Fatalf("wanted 2 lines but got %d: %q", len(lines), got)
-	}
-	if strings.Contains(got, `\u003c`) || !strings.Contains(got, `<`) {
-		t.Errorf("wanted literal HTML characters but got %q", got)
-	}
-	if !strings.Contains(lines[0], `"message":"label \"a<b>&c\" is unknown"`) {
-		t.Errorf("wanted a compact object with literal characters but got %q", lines[0])
-	}
-	var decoded problem
-	if err := json.Unmarshal([]byte(lines[0]), &decoded); err != nil {
-		t.Fatal(err)
-	}
-	if decoded.EndColumn != 21 || decoded.Kind != "runner-label" {
-		t.Errorf("wanted the problem to round trip but got %#v", decoded)
-	}
-}
-
-func TestRenderJSONLinesOmitsEmptyOptionalFields(t *testing.T) {
-	got, err := renderJSONLines([]*problem{{Message: "m", Line: 1, Column: 2, Kind: "k", EndColumn: 2}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := `{"message":"m","line":1,"column":2,"kind":"k","end_column":2}` + "\n"
-	if got != want {
-		t.Errorf("wanted %q but got %q", want, got)
-	}
-}
-
 func TestRenderMarkdown(t *testing.T) {
 	got := renderMarkdown([]*problem{sampleProblem()})
 	want := "### workflow.yaml:4:14 (runner-label)\n\nlabel \"a<b>&c\" is unknown\n\n" +
@@ -174,26 +138,15 @@ func TestRenderMarkdownWithoutSnippet(t *testing.T) {
 	}
 }
 
-func TestRenderJSONPassesSerializedDocumentThrough(t *testing.T) {
-	serialized := `[{"message":"m","line":1,"column":2,"kind":"k","end_column":2}]` + "\n"
-	got, err := render(formatJSON, []*problem{sampleProblem()}, serialized)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != serialized {
-		t.Errorf("wanted %q but got %q", serialized, got)
-	}
-}
-
 func TestRenderRejectsUnknownFormat(t *testing.T) {
-	if _, err := render(formatSARIF, nil, ""); err == nil {
+	if _, err := render(formatSARIF, nil); err == nil {
 		t.Error("wanted an error for a format without a renderer")
 	}
 }
 
 func TestRenderEmptyProblemList(t *testing.T) {
-	for _, f := range []outputFormat{formatGitHub, formatDefault, formatOneline, formatJSONLines, formatMarkdown} {
-		got, err := render(f, []*problem{}, "[]\n")
+	for _, f := range []outputFormat{formatGitHub, formatDefault, formatOneline, formatMarkdown} {
+		got, err := render(f, []*problem{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -255,7 +208,7 @@ func TestRenderOutcomeCountsSARIFResults(t *testing.T) {
 }
 
 func TestRenderOutcomeReportsUnparsableOutput(t *testing.T) {
-	o, count, rendered := renderOutcome(&lintOutcome{"not json", "", actionlint.ExitStatusSuccessNoProblem}, formatJSON, ".", ".")
+	o, count, rendered := renderOutcome(&lintOutcome{"not json", "", actionlint.ExitStatusSuccessNoProblem}, formatDefault, ".", ".")
 	if o.code != actionlint.ExitStatusFailure {
 		t.Errorf("wanted a failure exit code but got %d", o.code)
 	}
@@ -268,7 +221,7 @@ func TestRenderOutcomeReportsUnparsableOutput(t *testing.T) {
 }
 
 func TestRenderOutcomeKeepsFailureOutput(t *testing.T) {
-	o, count, rendered := renderOutcome(&lintOutcome{"partial", "boom\n", actionlint.ExitStatusFailure}, formatJSON, ".", ".")
+	o, count, rendered := renderOutcome(&lintOutcome{"partial", "boom\n", actionlint.ExitStatusFailure}, formatDefault, ".", ".")
 	if o.code != actionlint.ExitStatusFailure || count != "" {
 		t.Errorf("wanted a failure with no count but got %d and %q", o.code, count)
 	}
@@ -276,7 +229,7 @@ func TestRenderOutcomeKeepsFailureOutput(t *testing.T) {
 		t.Errorf("wanted %q but got %q", want, rendered)
 	}
 
-	_, _, rendered = renderOutcome(&lintOutcome{"partial", "", actionlint.ExitStatusInvalidCommandOption}, formatJSON, ".", ".")
+	_, _, rendered = renderOutcome(&lintOutcome{"partial", "", actionlint.ExitStatusInvalidCommandOption}, formatDefault, ".", ".")
 	if rendered != "partial" {
 		t.Errorf("wanted %q but got %q", "partial", rendered)
 	}

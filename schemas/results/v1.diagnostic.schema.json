@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "actionlint JSONL diagnostic v1",
+  "allOf": [
+    {
+      "$ref": "v1.schema.json#/definitions/diagnostic"
+    },
+    {
+      "required": [
+        "schema_version"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        }
+      }
+    }
+  ]
+}

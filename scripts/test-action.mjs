@@ -91,11 +91,11 @@ try {
 			result: 'success',
 			'problems-found': 'false',
 			'problem-count': '0',
-			output: '[]',
 		})
 	) {
 		assert.equal(clean.outputs.get(name), expected, clean.log);
 	}
+	assert.deepEqual(JSON.parse(clean.outputs.get('output')), clean.analysis);
 	assert.match(clean.log, /0 problems in 1 workflow file \(requested tools: shellcheck, pyflakes\)/);
 	for (const format of ['github', 'default', 'oneline', 'json', 'json-lines', 'markdown', 'sarif']) {
 		const result = await run({
@@ -111,6 +111,13 @@ try {
 		assert.equal(result.outputs.get('problems-found'), 'true', result.log);
 		assert.equal(result.outputs.get('problem-count'), '1', result.log);
 		assert.equal(result.analysis.diagnostics.length, 1);
+		if (format === 'json') assert.deepEqual(JSON.parse(result.outputs.get('output')), result.analysis);
+		if (format === 'json-lines') {
+			assert.deepEqual(JSON.parse(result.outputs.get('output')), {
+				schema_version: 1,
+				...result.analysis.diagnostics[0],
+			});
+		}
 		assert.equal(
 			(result.log.match(/::error file=/g) || []).length,
 			1,

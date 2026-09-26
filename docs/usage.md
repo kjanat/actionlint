@@ -147,6 +147,12 @@ columns, and the end position is exclusive. Ranges may span multiple lines. For 
 ```json
 {
   "schema_version": 1,
+  "status": "problems-found",
+  "completed": true,
+  "exit_code": 1,
+  "file_count": 1,
+  "configurations": [],
+  "hints": [],
   "diagnostics": [
     {
       "rule": "expression",
@@ -159,7 +165,8 @@ columns, and the end position is exclusive. Ranges may span multiple lines. For 
 }
 ```
 
-A clean JSON result has an empty `diagnostics` array. JSON Lines emits those
+CLI and Action share [one result contract](results.md), published as a JSON Schema
+and TypeScript types in the npm package. A clean JSON result has an empty `diagnostics` array. JSON Lines emits those
 individual diagnostic objects with `schema_version: 1` on every record, or nothing for a clean result. Legacy
 `-format '{{json .}}'` retains its original array and field names, including
 `kind`, `filepath` and `end_column`. SARIF uses the bundled renderer. `github`
@@ -175,7 +182,9 @@ color or terminal hyperlinks. A clean default text run stays silent.
 
 `--log-level=none|info|debug` controls logging. `--summary` adds an opt-in count on
 stderr. `--quiet` suppresses logs and summaries while preserving requested results
-and errors. In JSON modes, stderr errors have `error` and `exit_code` fields, log
+and errors. In JSON modes, check failures on stderr use the same result contract, with
+`completed: false`, `error`, and `exit_code`. Metadata commands keep their own
+error records. Log
 records have `log`, and the summary has `summary.files` and `summary.findings`.
 Check the exit status before interpreting empty stdout as success.
 

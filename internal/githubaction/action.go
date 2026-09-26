@@ -1,6 +1,7 @@
 package githubaction
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -86,9 +87,23 @@ func (a *action) execute() (int, error) {
 		return 0, err
 	}
 	lint := a.runLint(req)
-	outcome, count, rendered := renderOutcome(lint.lintOutcome, in.format, req.workingDir, workspaceDir)
-	lint.lintOutcome = outcome
 	a.result = lint
+	outcome, count := lint.lintOutcome, ""
+	var rendered string
+	if in.format == formatJSON || in.format == formatJSONLines {
+		var output bytes.Buffer
+		report := a.checkResult(outcome.code, nil)
+		if err := report.WriteJSON(&output, in.format == formatJSONLines); err != nil {
+			return 0, err
+		}
+		rendered = output.String()
+		if outcome.code == actionlint.ExitStatusSuccessNoProblem || outcome.code == actionlint.ExitStatusSuccessProblemFound {
+			count = strconv.Itoa(len(lint.diagnostics))
+		}
+	} else {
+		outcome, count, rendered = renderOutcome(lint.lintOutcome, in.format, req.workingDir, workspaceDir)
+	}
+	lint.lintOutcome = outcome
 	a.emitStatus(outcome.code, count, lint.fileCount, lint.fileCountKnown, in)
 	result, ok := results[outcome.code]
 	if !ok {
@@ -109,7 +124,11 @@ func (a *action) execute() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	a.emit(rendered, outcome.code, in.format)
+	if outcome.code >= actionlint.ExitStatusInvalidCommandOption && (in.format == formatJSON || in.format == formatJSONLines) {
+		a.emit(outcome.stderr, outcome.code, in.format)
+	} else {
+		a.emit(rendered, outcome.code, in.format)
+	}
 	a.emitConfiguration(lint, req.workingDir)
 
 	if outcome.code == actionlint.ExitStatusSuccessProblemFound && !in.failOnError {

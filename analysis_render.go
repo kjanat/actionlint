@@ -54,7 +54,8 @@ func NewAnalysisRenderer(format OutputFormat, template string, oneline bool) (*A
 // Render writes findings using their original sources and the selected output format.
 func (r *AnalysisRenderer) Render(out io.Writer, result *AnalysisResult) error {
 	if r.format == OutputFormatJSON || r.format == OutputFormatJSONL {
-		return writeDiagnostics(out, result.Diagnostics, r.format == OutputFormatJSONL)
+		report := result.CheckResult()
+		return report.WriteJSON(out, r.format == OutputFormatJSONL)
 	}
 	if r.format == OutputFormatGitHub {
 		return writeGitHubDiagnostics(out, result.Diagnostics)
@@ -90,4 +91,22 @@ func (r *AnalysisRenderer) Render(out io.Writer, result *AnalysisResult) error {
 		return r.formatter.Print(out, fields)
 	}
 	return nil
+}
+
+// CheckResult exports a completed analysis using the shared public result contract.
+func (r *AnalysisResult) CheckResult() CheckResult {
+	code := ExitStatusSuccessNoProblem
+	if len(r.Diagnostics) > 0 {
+		code = ExitStatusSuccessProblemFound
+	}
+	result := NewCheckResult(code)
+	count := r.FileCount()
+	result.FileCount = &count
+	if r.Diagnostics != nil {
+		result.Diagnostics = r.Diagnostics
+	}
+	for _, config := range r.Configurations {
+		result.AddConfiguration(config)
+	}
+	return result
 }
