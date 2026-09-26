@@ -75,7 +75,7 @@ export function summary(result: ActionResult): string {
 		text += `<details><summary>${html(diagnostic.path)}:${diagnostic.start.line}:${diagnostic.start.column} (${
 			html(diagnostic.code || diagnostic.rule)
 		})</summary>\n\n`;
-		text += `<pre>${html(diagnostic.message.slice(0, 1000))}</pre>\n\n`;
+		text += `<p>${html(diagnostic.message.slice(0, 1000)).replaceAll('\n', '<br>')}</p>\n\n`;
 		if (diagnostic.snippet) text += `<pre>${html(diagnostic.snippet.slice(0, 2000))}</pre>\n\n`;
 		text += '</details>\n\n';
 	}

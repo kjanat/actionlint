@@ -254,6 +254,7 @@ test('annotation commands and Markdown summaries escape diagnostic content', () 
 	);
 	const text = summary(result);
 	assert.ok(text.includes('&amp; &lt;value&gt;'));
+	assert.ok(text.includes('<p>Quote this &amp; &lt;value&gt;<br>::warning::spoof</p>'));
 	assert.ok(!text.includes('<value>'));
 	assert.ok(text.includes('1 finding in 2 workflows'));
 	const multiline = annotation({ ...diagnostic, end: { line: 4, column: 1 } });
