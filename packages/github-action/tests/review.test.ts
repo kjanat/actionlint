@@ -225,7 +225,7 @@ test('default review API uses the runner proxy and honors NO_PROXY', { timeout: 
 test('review API targets event head and groups suggestions after paginated diff inspection', async () => {
 	await fixture(async (environment) => {
 		const runtime = api({ paginated: true });
-		await postReview(result, environment, runtime);
+		assert.equal(await postReview(result, environment, runtime), 'PR review: 1 comment posted.');
 		assert.equal(runtime.writes.length, 1);
 		const review = runtime.writes[0];
 		assert.ok(object(review));
@@ -242,7 +242,7 @@ test('reruns deduplicate existing review comments without publishing again', asy
 		const existing = reviewComment(diagnostic, 'ci.yml', source, diffHunks(patch), sha);
 		assert.ok(existing);
 		const runtime = api({ existing: [existing.body] });
-		await postReview(result, environment, runtime);
+		assert.equal(await postReview(result, environment, runtime), 'PR review: 0 comments posted; 1 already reported.');
 		assert.equal(runtime.writes.length, 0);
 	});
 });
@@ -260,14 +260,39 @@ test('read-only fork tokens and stale event heads cannot post', async () => {
 test('source modified after checkout cannot generate suggestions for the PR head', async () => {
 	await fixture(async (environment) => {
 		const runtime = api({ source: source.replace('$x', '$different') });
-		await postReview(result, environment, runtime);
+		assert.equal(
+			await postReview(result, environment, runtime),
+			'PR review: 0 comments posted; 1 source unavailable or different from PR head.',
+		);
 		assert.equal(runtime.writes.length, 0);
 	});
 });
 
 test('incomplete analysis never initiates a review request', async () => {
 	const runtime = api();
-	await postReview({ ...result, completed: false, status: 'failure', exit_code: 3, error: 'incomplete' }, {}, runtime);
+	assert.equal(
+		await postReview(
+			{ ...result, completed: false, status: 'failure', exit_code: 3, error: 'incomplete' },
+			{},
+			runtime,
+		),
+		'PR review skipped: analysis incomplete.',
+	);
+	assert.equal(runtime.calls.length, 0);
+});
+
+test('review explains missing PR context and findings without accessing the API', async () => {
+	const runtime = api();
+	assert.equal(await postReview(result, {}, runtime), 'PR review skipped: no pull request context.');
+	assert.equal(
+		await postReview({ ...result, status: 'success', exit_code: 0, diagnostics: [] }, {}, runtime),
+		'PR review skipped: no findings.',
+	);
+	await fixture(async (environment) => {
+		assert.ok(environment.GITHUB_EVENT_PATH);
+		await writeFile(environment.GITHUB_EVENT_PATH, '{}');
+		assert.equal(await postReview(result, environment, runtime), 'PR review skipped: no pull request context.');
+	});
 	assert.equal(runtime.calls.length, 0);
 });
 
@@ -364,10 +389,14 @@ test('review stops source requests after 50 new eligible comments', async () => 
 			return comment.body;
 		});
 		const runtime = api({ files: [contextOnly.path, ...diagnostics.map((value) => value.path)], existing });
-		await postReview(
+		const feedback = await postReview(
 			{ ...result, diagnostics: [contextOnly, ...diagnostics.flatMap((value) => [value, value])] },
 			environment,
 			runtime,
+		);
+		assert.equal(
+			feedback,
+			'PR review: 50 comments posted; 1 without a changed-line match; 59 already reported; 41 not checked after comment limit.',
 		);
 		const review = runtime.writes[0];
 		assert.ok(object(review) && Array.isArray(review.comments));
@@ -418,7 +447,10 @@ test('review bounds source lookups even when remaining files do not produce comm
 		const diagnostics = Array.from({ length: 125 }, (_, index) => diagnosticAt(`ci-${index}.yml`));
 		const runtime = api({ files: diagnostics.map((value) => value.path) });
 		runtime.readSource = async (path: string) => path.endsWith('ci-0.yml') ? source : `${source}modified\n`;
-		await postReview({ ...result, diagnostics }, environment, runtime);
+		assert.equal(
+			await postReview({ ...result, diagnostics }, environment, runtime),
+			'PR review: 1 comment posted; 99 source unavailable or different from PR head; 25 not checked after source lookup limit.',
+		);
 		assert.equal(runtime.calls.filter((url) => url.includes('/contents/')).length, 100);
 		const review = runtime.writes[0];
 		assert.ok(object(review) && Array.isArray(review.comments));

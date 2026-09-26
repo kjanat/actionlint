@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -40,16 +40,136 @@ test('persisted results validate completion and preserve diagnostic severity and
 });
 
 test('report controls are independent and reject unsupported inputs', () => {
-	assert.deepEqual(reportOptions({}), { annotations: false, summary: false, json: false, sarif: false, review: false });
-	assert.deepEqual(reportOptions({ 'INPUT_REPORT-FORMATS': 'json, sarif\njson', INPUT_SUMMARY: 'true' }), {
-		annotations: false,
+	assert.deepEqual(reportOptions({}), { annotations: 'auto', summary: true, sarif: false, review: false });
+	assert.deepEqual(reportOptions({ INPUT_SARIF: 'true', INPUT_SUMMARY: 'true' }), {
+		annotations: 'auto',
 		summary: true,
-		json: true,
 		sarif: true,
 		review: false,
 	});
 	assert.throws(() => reportOptions({ INPUT_REVIEW: 'maybe' }));
-	assert.throws(() => reportOptions({ 'INPUT_REPORT-FORMATS': 'xml' }));
+	assert.throws(() => reportOptions({ INPUT_SARIF: 'xml' }));
+	assert.throws(() => reportOptions({ INPUT_ANNOTATIONS: 'maybe' }));
+	assert.equal(reportOptions({ INPUT_ANNOTATIONS: 'false', INPUT_SUMMARY: 'false' }).summary, false);
+});
+
+test('summaries distinguish clean analysis, no selection, and incomplete analysis', () => {
+	const clean: ActionResult = { ...result, status: 'success', exit_code: 0, diagnostics: [] };
+	assert.equal(summary(clean), '### actionlint: No findings in 2 workflows\n\n');
+	assert.equal(summary({ ...clean, file_count: 0 }), '### actionlint: No workflows selected\n\n');
+	const incomplete: ActionResult = { ...result, completed: false, status: 'failure', exit_code: 3 };
+	assert.ok(summary(incomplete).startsWith('### actionlint: Analysis incomplete\n\nExit 3; 1 finding collected.'));
+	assert.ok(
+		summary({ ...result, diagnostics: Array.from({ length: 51 }, () => diagnostic) }).includes('first 50 findings'),
+	);
+});
+
+test('configuration warnings and origins survive parsing without becoming required', () => {
+	const configuration = { file: '.github/actionlint.yaml', project: '.', overrides: null };
+	for (
+		const config of [configuration, {
+			...configuration,
+			overrides: ['config'],
+			origins: { tools: { source: 'file', state: 'set', line: 2, column: 1 } },
+			warnings: [{ message: 'unknown key', line: 1, column: 1 }],
+		}]
+	) {
+		assert.deepEqual(parseResult({ ...result, configurations: [config] }).configurations, [config]);
+	}
+	assert.throws(() => parseResult({ ...result, configurations: [{ ...configuration, warnings: ['wrong shape'] }] }));
+});
+
+test('annotation overrides add commands only for explicit true with a non-GitHub format', async () => {
+	for (const format of ['', 'github', 'json', 'oneline']) {
+		for (const annotations of ['auto', 'true', 'false']) {
+			const messages: string[] = [];
+			const environment = { INPUT_FORMAT: format, INPUT_ANNOTATIONS: annotations, INPUT_SUMMARY: 'false' };
+			await report(result, 'result.json', environment, reportOptions(environment), {
+				log: (message) => messages.push(message),
+				review: async () => assert.fail('review disabled'),
+			});
+			assert.equal(messages.length, annotations === 'true' && format !== '' && format !== 'github' ? 1 : 0);
+		}
+	}
+});
+
+test('reporter failures preserve native result and let other destinations finish', async () => {
+	const directory = await mkdtemp(join(tmpdir(), 'actionlint-report-failure-'));
+	try {
+		const output = join(directory, 'outputs');
+		const stepSummary = join(directory, 'summary');
+		const messages: string[] = [];
+		let resultPath = '';
+		let reviews = 0;
+		const code = await withReporting({
+			RUNNER_TEMP: directory,
+			GITHUB_OUTPUT: output,
+			GITHUB_STEP_SUMMARY: stepSummary,
+			INPUT_SARIF: 'true',
+			INPUT_REVIEW: 'true',
+		}, async (environment) => {
+			assert.ok(environment.ACTIONLINT_ACTION_RESULT);
+			resultPath = environment.ACTIONLINT_ACTION_RESULT;
+			await writeFile(resultPath, JSON.stringify(result));
+			await mkdir(`${resultPath}.sarif`);
+			return 1;
+		}, {
+			log: (text) => messages.push(text),
+			review: async () => {
+				reviews++;
+				return 'PR review: 1 comment posted.';
+			},
+		});
+		assert.equal(code, 1);
+		assert.deepEqual(parseResult(JSON.parse(await readFile(resultPath, 'utf8'))), result);
+		const outputs = await readFile(output, 'utf8');
+		assert.ok(outputs.includes(`\n${resultPath}\n`));
+		assert.ok(!outputs.includes('analysis-result') && !outputs.includes('report-json'));
+		assert.ok((await readFile(stepSummary, 'utf8')).includes('SC2086'));
+		assert.equal(reviews, 1);
+		assert.ok(messages.some((message) => message.startsWith('::warning::SARIF report unavailable:')));
+		await report(
+			result,
+			resultPath,
+			{ GITHUB_STEP_SUMMARY: directory, INPUT_REVIEW: 'true' },
+			reportOptions({ INPUT_REVIEW: 'true' }),
+			{
+				log: (text) => messages.push(text),
+				review: async () => {
+					reviews++;
+					return 'PR review skipped: no pull request context.';
+				},
+			},
+		);
+		assert.equal(reviews, 2);
+		assert.ok(messages.some((message) => message.startsWith('::warning::Job summary unavailable:')));
+	} finally {
+		await rm(directory, { recursive: true });
+	}
+});
+
+test('native process failures preserve collected diagnostics and configuration', async () => {
+	const directory = await mkdtemp(join(tmpdir(), 'actionlint-partial-test-'));
+	try {
+		for (const reject of [false, true]) {
+			let resultPath = '';
+			await assert.rejects(withReporting({ RUNNER_TEMP: directory }, async (environment) => {
+				assert.ok(environment.ACTIONLINT_ACTION_RESULT);
+				resultPath = environment.ACTIONLINT_ACTION_RESULT;
+				await writeFile(resultPath, JSON.stringify(result));
+				if (reject) throw new Error('native process crashed');
+				return 3;
+			}));
+			const persisted = parseResult(JSON.parse(await readFile(resultPath, 'utf8')));
+			assert.equal(persisted.completed, false);
+			assert.equal(persisted.status, 'failure');
+			assert.deepEqual(persisted.diagnostics, result.diagnostics);
+			assert.equal(persisted.file_count, 2);
+			assert.deepEqual(persisted.sarif, result.sarif);
+		}
+	} finally {
+		await rm(directory, { recursive: true });
+	}
 });
 
 test('annotation commands and Markdown summaries escape diagnostic content', () => {
@@ -60,7 +180,7 @@ test('annotation commands and Markdown summaries escape diagnostic content', () 
 	const text = summary(result);
 	assert.ok(text.includes('&amp; &lt;value&gt;'));
 	assert.ok(!text.includes('<value>'));
-	assert.ok(text.includes('1 finding in 2 workflow files'));
+	assert.ok(text.includes('1 finding in 2 workflows'));
 	const multiline = annotation({ ...diagnostic, end: { line: 4, column: 1 } });
 	assert.ok(multiline.includes('line=2,endLine=3,title='));
 	assert.ok(!multiline.includes(',col='));
@@ -78,7 +198,7 @@ test('one analysis feeds reports; github annotations are not emitted twice; revi
 			result,
 			path,
 			environment,
-			{ annotations: true, summary: true, json: true, sarif: true, review: true },
+			{ annotations: 'true', summary: true, sarif: true, review: true },
 			{
 				log: (text) => messages.push(text),
 				review: async () => {
@@ -90,11 +210,10 @@ test('one analysis feeds reports; github annotations are not emitted twice; revi
 		assert.ok(messages[0]?.startsWith('::warning::PR review skipped: HTTP 403'));
 		assert.deepEqual(JSON.parse(await readFile(`${path}.sarif`, 'utf8')), result.sarif);
 		assert.ok((await readFile(stepSummary, 'utf8')).includes('SC2086'));
-		assert.ok((await readFile(output, 'utf8')).includes('report-json<<'));
+		assert.ok((await readFile(output, 'utf8')).includes('result-file<<'));
 		await report(result, path, { INPUT_FORMAT: 'json' }, {
-			annotations: true,
+			annotations: 'true',
 			summary: false,
-			json: false,
 			sarif: false,
 			review: false,
 		}, {
@@ -153,7 +272,7 @@ test('annotations rebase working-directory paths to the workspace without changi
 				'INPUT_WORKING-DIRECTORY': example.directory,
 				INPUT_FORMAT: 'json',
 			},
-			{ annotations: true, summary: false, json: false, sarif: false, review: false },
+			{ annotations: 'true', summary: false, sarif: false, review: false },
 			{
 				log: (text) => messages.push(text),
 				review: async () => {
@@ -175,6 +294,17 @@ test('annotations rebase working-directory paths to the workspace without changi
 test('missing or corrupt native results cannot become a clean analysis', async () => {
 	const directory = await mkdtemp(join(tmpdir(), 'actionlint-incomplete-test-'));
 	try {
+		const disabledSummary = join(directory, 'disabled-summary');
+		await assert.rejects(
+			withReporting({
+				RUNNER_TEMP: directory,
+				INPUT_ANNOTATIONS: 'invalid',
+				INPUT_SUMMARY: 'false',
+				GITHUB_STEP_SUMMARY: disabledSummary,
+			}, async () => assert.fail('invalid inputs must stop before execution')),
+			/Input 'annotations'/,
+		);
+		await assert.rejects(readFile(disabledSummary), { code: 'ENOENT' });
 		await assert.rejects(withReporting({ RUNNER_TEMP: directory }, async () => 0), /did not write a completed result/);
 		await assert.rejects(withReporting({ RUNNER_TEMP: directory }, async (environment) => {
 			const path = environment.ACTIONLINT_ACTION_RESULT;
@@ -198,7 +328,7 @@ test('missing or corrupt native results cannot become a clean analysis', async (
 			}),
 			/download failed/,
 		);
-		assert.ok((await readFile(output, 'utf8')).includes('analysis-result<<'));
+		assert.ok((await readFile(output, 'utf8')).includes('result-file<<'));
 	} finally {
 		await rm(directory, { recursive: true });
 	}

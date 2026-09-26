@@ -12,12 +12,21 @@ export type Diagnostic = {
 	code?: string;
 	fixes?: Fix[];
 };
+export type ConfigOrigin = { source: string; state: string; input?: string; line?: number; column?: number };
+export type ConfigWarning = { message: string; line: number; column: number };
+export type ResultConfig = {
+	file: string;
+	project: string;
+	overrides: string[] | null;
+	origins?: Record<string, ConfigOrigin>;
+	warnings?: ConfigWarning[];
+};
 
 type ResultData = {
 	schema_version: 1;
 	file_count: number | null;
 	diagnostics: Diagnostic[];
-	configurations: unknown[];
+	configurations: ResultConfig[];
 	hints: string[];
 	sarif?: Record<string, unknown>;
 	error?: string;
@@ -71,12 +80,31 @@ function sarif(value: unknown): value is Record<string, unknown> {
 	return object(value) && value.version === '2.1.0' && Array.isArray(value.runs) && value.runs.every(object);
 }
 
+function configOrigin(value: unknown): value is ConfigOrigin {
+	return object(value) && typeof value.source === 'string' && typeof value.state === 'string'
+		&& (value.input === undefined || typeof value.input === 'string')
+		&& (value.line === undefined || integer(value.line, 0))
+		&& (value.column === undefined || integer(value.column, 0));
+}
+
+function configWarning(value: unknown): value is ConfigWarning {
+	return object(value) && typeof value.message === 'string' && integer(value.line, 0) && integer(value.column, 0);
+}
+
+function configuration(value: unknown): value is ResultConfig {
+	return object(value) && typeof value.file === 'string' && typeof value.project === 'string'
+		&& (value.overrides === null
+			|| (Array.isArray(value.overrides) && value.overrides.every((entry) => typeof entry === 'string')))
+		&& (value.origins === undefined || (object(value.origins) && Object.values(value.origins).every(configOrigin)))
+		&& (value.warnings === undefined || (Array.isArray(value.warnings) && value.warnings.every(configWarning)));
+}
+
 export function parseResult(value: unknown): ActionResult {
 	if (
 		!object(value) || value.schema_version !== 1
 		|| (value.file_count !== null && !integer(value.file_count, 0))
 		|| !Array.isArray(value.diagnostics) || !value.diagnostics.every(diagnostic)
-		|| !Array.isArray(value.configurations) || !Array.isArray(value.hints)
+		|| !Array.isArray(value.configurations) || !value.configurations.every(configuration) || !Array.isArray(value.hints)
 		|| !value.hints.every((hint) => typeof hint === 'string')
 		|| (value.sarif !== undefined && !sarif(value.sarif))
 		|| (value.error !== undefined && typeof value.error !== 'string')

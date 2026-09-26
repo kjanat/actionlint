@@ -214,7 +214,10 @@ class ReviewAPI {
 		const response = await this.request(`${this.base}${path}`, init);
 		if (!response.ok) {
 			await response.body?.cancel();
-			throw new Error(`GitHub review API returned HTTP ${response.status}`);
+			const recovery = response.status === 401 || response.status === 403
+				? '; check token access and pull-requests: write permission'
+				: '';
+			throw new Error(`GitHub review API returned HTTP ${response.status}${recovery}`);
 		}
 		return response.json();
 	}
@@ -279,12 +282,15 @@ export async function postReview(
 	result: ActionResult,
 	environment: Environment,
 	supplied?: ReviewRuntime,
-): Promise<void> {
-	if (!result.completed || result.diagnostics.length === 0) return;
+): Promise<string> {
+	if (!result.completed) return 'PR review skipped: analysis incomplete.';
+	if (result.diagnostics.length === 0) return 'PR review skipped: no findings.';
+	if (!environment.GITHUB_EVENT_PATH) return 'PR review skipped: no pull request context.';
+	const event: unknown = JSON.parse(await readFile(environment.GITHUB_EVENT_PATH, 'utf8'));
+	if (!object(event) || !object(event.pull_request)) return 'PR review skipped: no pull request context.';
 	const token = environment.INPUT_TOKEN?.trim();
 	if (!token) throw new Error('review requires a token with pull-requests: write');
-	if (!environment.GITHUB_EVENT_PATH) throw new Error('GITHUB_EVENT_PATH is unavailable');
-	const ctx = context(JSON.parse(await readFile(environment.GITHUB_EVENT_PATH, 'utf8')), environment.GITHUB_REPOSITORY);
+	const ctx = context(event, environment.GITHUB_REPOSITORY);
 	const workspace = await realpath(environment.GITHUB_WORKSPACE || '.');
 	const dispatcher = new EnvHttpProxyAgent();
 	try {
@@ -321,32 +327,55 @@ export async function postReview(
 			diagnosticsByPath.set(path.relative, diagnostics);
 		}
 		const prepared = new Map<string, Map<Diagnostic, ReviewComment>>();
+		const omitted = new Map<Diagnostic, string>();
+		const reasons = new Map<string, number>();
+		const skipped = (reason: string): void => {
+			reasons.set(reason, (reasons.get(reason) ?? 0) + 1);
+		};
+		const feedback = (posted: number): string => {
+			const details = [...reasons].map(([reason, count]) => `${count} ${reason}`).join('; ');
+			return `PR review: ${posted} ${posted === 1 ? 'comment' : 'comments'} posted${details ? `; ${details}` : ''}.`;
+		};
 		const comments: ReviewComment[] = [];
 		let sourceLookups = 0;
 		for (const diagnostic of result.diagnostics) {
+			if (comments.length === 50) {
+				skipped('not checked after comment limit');
+				continue;
+			}
 			const path = workspacePath(environment, diagnostic.path);
-			if (!path) continue;
+			if (!path) {
+				skipped('outside the repository');
+				continue;
+			}
 			let resolved = prepared.get(path.relative);
 			if (!resolved) {
 				resolved = new Map();
 				prepared.set(path.relative, resolved);
 				const file = files.find((value) => object(value) && value.filename === path.relative);
-				if (!object(file) || typeof file.patch !== 'string') continue;
-				const hunks = diffHunks(file.patch);
+				const hunks = object(file) && typeof file.patch === 'string' ? diffHunks(file.patch) : [];
 				const eligible = (diagnosticsByPath.get(path.relative) ?? [])
 					.flatMap((related) => {
 						const normalized = normalizeFixPaths(related, environment);
 						return normalized ? [{ diagnostic: related, normalized }] : [];
 					})
 					.filter(({ normalized }) => relevantToDiff(normalized, hunks));
-				if (eligible.length === 0 || sourceLookups === 100) continue;
-				sourceLookups++;
-				const source = await sourceAtHead(api, ctx, path, runtime);
-				if (source === undefined) continue;
+				const limited = sourceLookups === 100;
+				const source = eligible.length > 0 && !limited ? await sourceAtHead(api, ctx, path, runtime) : undefined;
+				if (eligible.length > 0 && !limited) sourceLookups++;
+				if (source === undefined) {
+					for (const { diagnostic: related } of eligible) {
+						omitted.set(
+							related,
+							limited ? 'not checked after source lookup limit' : 'source unavailable or different from PR head',
+						);
+					}
+				}
 				const candidates: (CommentCandidate & { diagnostic: Diagnostic })[] = [];
 				// Resolve every overlap in this file before counting comments toward the
 				// limit, including diagnostics that occur later in the original order.
 				for (const { diagnostic: related, normalized } of eligible) {
+					if (source === undefined) continue;
 					const suggested = reviewComment(normalized, path.relative, source, hunks, ctx.sha);
 					const plain = reviewComment(normalized, path.relative, source, hunks, ctx.sha, false);
 					if (suggested && plain) candidates.push({ diagnostic: related, suggested, plain });
@@ -357,14 +386,19 @@ export async function postReview(
 				}
 			}
 			const comment = resolved.get(diagnostic);
-			if (!comment) continue;
+			if (!comment) {
+				skipped(omitted.get(diagnostic) ?? 'without a changed-line match');
+				continue;
+			}
 			const marker = comment.body.slice(comment.body.lastIndexOf('<!-- actionlint:'));
-			if (bodies.some((body) => body.includes(marker))) continue;
+			if (bodies.some((body) => body.includes(marker))) {
+				skipped('already reported');
+				continue;
+			}
 			comments.push(comment);
 			bodies.push(comment.body);
-			if (comments.length === 50) break;
 		}
-		if (comments.length === 0) return;
+		if (comments.length === 0) return feedback(0);
 		const latest = await api.call(endpoint);
 		if (!object(latest) || !object(latest.head) || latest.head.sha !== ctx.sha) {
 			throw new Error('the PR head changed while preparing this review');
@@ -376,6 +410,7 @@ export async function postReview(
 				`actionlint found ${result.diagnostics.length} problems. This review contains ${comments.length} new comments on changed lines; the complete results remain in the workflow outputs.`,
 			comments,
 		});
+		return feedback(comments.length);
 	} finally {
 		await dispatcher.close();
 	}
