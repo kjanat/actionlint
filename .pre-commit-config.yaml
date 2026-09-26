@@ -1,0 +1,5 @@
+---
+repos:
+  - repo: https://github.com/kjanat/actionlint
+    rev: v1.17.0
+    hooks: [id: actionlint]

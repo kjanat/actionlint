@@ -369,6 +369,50 @@ func TestDeclaredTargetsMatchRepository(t *testing.T) {
 	}
 }
 
+func TestPreCommitVersionBumps(t *testing.T) {
+	for _, tc := range []struct{ path, prefix string }{
+		{".pre-commit-hooks.yaml", "ghcr.io/kjanat/actionlint:"},
+		{".pre-commit-config.yaml", "rev: v"},
+	} {
+		t.Run(tc.path, func(t *testing.T) {
+			tgt := targetNamed(t, targets, tc.path)
+			content, err := os.ReadFile(filepath.Join("..", "..", tc.path))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, newline := range []string{"\n", "\r\n"} {
+				t.Run(fmt.Sprintf("newline=%q", newline), func(t *testing.T) {
+					before := bytes.ReplaceAll(bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n")), []byte("\n"), []byte(newline))
+					occs, err := tgt.scan(before)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if len(occs) != 1 {
+						t.Fatalf("expected one release pin, got %d", len(occs))
+					}
+					next := mustParse(t, "999.0.0")
+					root := t.TempDir()
+					path := filepath.Join(root, tc.path)
+					if err := os.WriteFile(path, before, 0o644); err != nil {
+						t.Fatal(err)
+					}
+					if err := Bump(root, []*target{tgt}, next, io.Discard); err != nil {
+						t.Fatal(err)
+					}
+					got, err := os.ReadFile(path)
+					if err != nil {
+						t.Fatal(err)
+					}
+					want := bytes.Replace(before, []byte(tc.prefix+occs[0].version.String()), []byte(tc.prefix+next.String()), 1)
+					if !bytes.Equal(got, want) {
+						t.Fatalf("bump must change only the release pin:\ngot:\n%s\nwant:\n%s", got, want)
+					}
+				})
+			}
+		})
+	}
+}
+
 func TestDeclaredTargetsAcceptCRLF(t *testing.T) {
 	root := filepath.Join("..", "..")
 	for _, tgt := range targets {
