@@ -1,10 +1,17 @@
 {
   "name": "actionlint",
+  "version": "",
   "private": true,
   "description": "Static checker for GitHub Actions workflow files",
   "homepage": "https://actionlint.kjanat.dev",
-  "repository": "https://github.com/kjanat/actionlint",
-  "funding": { "type": "github", "url": "https://github.com/sponsors/kjanat" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kjanat/actionlint.git"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/kjanat"
+  },
   "license": "MIT",
   "type": "module",
   "workspaces": [
@@ -32,8 +39,14 @@
     "update:pyflakes": "npm run update:pyflakes --workspace actionlint-action",
     "update:shellcheck": "npm run update:shellcheck --workspace actionlint-action"
   },
-  "overrides": { "@actions/github-script": { "undici": ">=6.28.0" } },
-  "dependencies": { "feather-icons": "4.29.2" },
+  "overrides": {
+    "@actions/github-script": {
+      "undici": ">=6.28.0"
+    }
+  },
+  "dependencies": {
+    "feather-icons": "4.29.2"
+  },
   "devDependencies": {
     "@actions/github-script": "github:actions/github-script",
     "@types/node": "^26.4.0",
