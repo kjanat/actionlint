@@ -7,9 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/internal/buildinfo"
 	"github.com/bmatcuk/doublestar/v4"
 	"go.yaml.in/yaml/v4"
 )
@@ -620,7 +622,9 @@ func loadRepoConfig(root string, readFile func(string) ([]byte, error)) (*loaded
 }
 
 func writeDefaultConfigFile(path string) error {
-	b := []byte(`# yaml-language-server: $schema=https://raw.githubusercontent.com/kjanat/actionlint/HEAD/actionlint.schema.json
+	info, _ := debug.ReadBuildInfo()
+	ref := buildinfo.SourceRef(Version(), info)
+	b := []byte(`# yaml-language-server: $schema=https://raw.githubusercontent.com/kjanat/actionlint/` + ref + `/actionlint.schema.json
 ---
 self-hosted-runner:
   # Labels of self-hosted runner in array of strings.
