@@ -58,7 +58,7 @@ func TestShellcheckSourcedDiagnostics(t *testing.T) {
 			if finding.Start != (DiagnosticPosition{tc.line, 6}) || finding.End != (DiagnosticPosition{tc.line, 12}) {
 				t.Fatalf("wrong sourced location: %+v", finding)
 			}
-			if !strings.Contains(finding.Message, "SC2086") || finding.Snippet != "echo $VALUE" {
+			if finding.Code != "SC2086" || finding.Snippet != "echo $VALUE" || len(finding.Fixes) != 0 {
 				t.Fatalf("wrong sourced metadata: %+v", finding)
 			}
 			want, err := os.Stat(path)

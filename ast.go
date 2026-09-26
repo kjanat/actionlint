@@ -35,9 +35,10 @@ type scriptSourceSpan struct {
 // were synthesized while decoding YAML, such as whitespace between folded plain-scalar lines, are
 // intentionally left outside the mapped spans.
 type scriptSource struct {
-	value string
-	lines []scriptSourceLine
-	spans []scriptSourceSpan
+	value   string
+	lines   []scriptSourceLine
+	spans   []scriptSourceSpan
+	literal bool
 }
 
 func newScriptSource(value string) *scriptSource {

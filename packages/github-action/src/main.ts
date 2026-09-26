@@ -1,0 +1,56 @@
+import { arch, env, platform as pf } from 'node:process';
+
+import { runnerPlatform } from '#assets';
+import { normalizeEnvironment } from '#environment';
+import { temporary } from '#native';
+import { publishTools } from '#path';
+import { withReporting } from '#reporters';
+import { InputError, runAction } from '#runtime';
+import { checkExecutable, executeNative, inspectTools, nativeBinary, pyflakesCommand, shellcheckBinary } from '#tools';
+import { commandEscape, writeOutputs } from '#workflow';
+
+declare const __ACTIONLINT_VERSION__: string;
+declare const __PYFLAKES_LAUNCHER__: string;
+
+const environment = normalizeEnvironment(env);
+
+async function main(): Promise<void> {
+	const token = environment['INPUT_TOKEN']?.trim();
+	if (token) console.log(`::add-mask::${commandEscape(token)}`);
+	process.exitCode = await withReporting(
+		environment,
+		(childEnvironment) => {
+			const platform = runnerPlatform(pf, arch);
+			return temporary((directory) =>
+				runAction(childEnvironment, {
+					native: () => nativeBinary(__ACTIONLINT_VERSION__, platform, directory),
+					checkExecutable,
+					inspect: inspectTools,
+					shellcheck: () => shellcheckBinary(platform),
+					pyflakes: () => pyflakesCommand(platform, __PYFLAKES_LAUNCHER__),
+					publish: (tools) => publishTools(tools, environment),
+					execute: executeNative,
+				})
+			);
+		},
+	);
+}
+
+try {
+	await main();
+} catch (error) {
+	process.exitCode = error instanceof InputError ? 2 : 3;
+	try {
+		await writeOutputs(environment['GITHUB_OUTPUT'], {
+			'exit-code': String(process.exitCode),
+			'result': error instanceof InputError ? 'invalid-options' : 'failure',
+			'problems-found': 'false',
+			'problem-count': '',
+			'output': '',
+			'output-file': '',
+		});
+	} catch (outputError) {
+		console.log(`::error::${commandEscape(outputError instanceof Error ? outputError.message : String(outputError))}`);
+	}
+	console.log(`::error::${commandEscape(error instanceof Error ? error.message : String(error))}`);
+}

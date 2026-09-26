@@ -36,6 +36,9 @@ type AnalysisRequest struct {
 	OnRulesCreated     func([]Rule) []Rule
 	// WorkingDir resolves workflow paths in reusable-workflow caches. Empty uses os.Getwd.
 	WorkingDir string
+	// ReadFile reads local action metadata and reusable workflows. Nil uses os.ReadFile.
+	// It must support concurrent calls and does not restrict external tools.
+	ReadFile func(string) ([]byte, error)
 }
 
 // AnalysisResult contains findings, their sources, and every local input read during analysis.
@@ -110,10 +113,15 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	engine.workingDir, engine.inputs = absPath(cwd), inputs
 	engine.gitModes = &gitModes{}
 	result := &AnalysisResult{Diagnostics: []Diagnostic{}, files: make([]analyzedFile, len(request.Sources))}
+	readFile := request.ReadFile
+	if readFile == nil {
+		readFile = os.ReadFile
+	}
 	// Initialize shared caches before any analysis goroutines access them.
 	for _, source := range request.Sources {
 		ac, wc := actions.GetCache(source.Project), workflows.GetCache(source.Project)
 		ac.onRead, wc.onRead = inputs.add, inputs.add
+		ac.readFile, wc.readFile = readFile, readFile
 	}
 	group := errgroup.Group{}
 	group.SetLimit(runtime.NumCPU())

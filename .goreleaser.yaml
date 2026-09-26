@@ -3,8 +3,10 @@
 version: 2
 
 release:
-  draft: false
+  draft: true
   prerelease: "false"
+  extra_files:
+    - glob: "{{ .Env.RUNNER_TEMP }}/actionlint-action/assets/*"
 
 before:
   hooks:
@@ -83,7 +85,7 @@ homebrew_casks:
     commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"
     homepage: https://actionlint.kjanat.dev
     description: Static checker for GitHub Actions workflow files
-    skip_upload: auto
+    skip_upload: true
     # The binary is not notarized. Without this, Gatekeeper blocks it, and the
     # completion generation above runs it during install.
     hooks:
@@ -112,7 +114,7 @@ scoops:
     homepage: https://actionlint.kjanat.dev
     description: Static checker for GitHub Actions workflow files
     license: MIT
-    skip_upload: auto
+    skip_upload: true
     repository:
       owner: kjanat
       name: scoop-bucket
@@ -186,7 +188,7 @@ aurs:
     private_key: "{{ .Env.AUR_SSH_PRIVATE_KEY }}"
     git_url: ssh://aur@aur.archlinux.org/actionlint-kjanat-bin.git
     commit_msg_template: "Update to {{ .Tag }}"
-    skip_upload: auto
+    skip_upload: true
     provides: [actionlint, actionlint-kjanat]
     conflicts: [actionlint, actionlint-bin, actionlint-git, actionlint-kjanat]
     optdepends:
@@ -225,7 +227,7 @@ aur_sources:
     private_key: "{{ .Env.AUR_SSH_PRIVATE_KEY }}"
     git_url: ssh://aur@aur.archlinux.org/actionlint-kjanat.git
     commit_msg_template: "Update to {{ .Tag }}"
-    skip_upload: auto
+    skip_upload: true
     arches: [x86_64, aarch64, armv7h]
     provides: [actionlint]
     conflicts: [actionlint, actionlint-bin, actionlint-git, actionlint-kjanat-bin]

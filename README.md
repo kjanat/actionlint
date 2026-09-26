@@ -148,91 +148,30 @@ See [the usage document][usage] for more details.
 
 ## GitHub Action
 
-This repository can be used directly as a Docker action. The prebuilt image includes actionlint, ShellCheck, and pyflakes, and reports problems as GitHub annotations by default. Docker container actions run only on Linux, and this action also needs a reachable Docker daemon. `ubuntu-slim` is not supported: its job runs in an unprivileged container with the Docker client but no daemon or Docker socket. Standard Ubuntu runners, including `ubuntu-24.04-arm` and `ubuntu-26.04-arm`, are supported by the published `linux/amd64` and `linux/arm64` image.
+Lint with annotations and a compact job summary:
 
 ```yaml
-name: Lint GitHub Actions workflows
+name: Lint workflows
 on: [push, pull_request]
-
+permissions: { contents: read }
 jobs:
-  actionlint:
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - { uses: actions/checkout@v7, with: { persist-credentials: false } }
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
       - uses: kjanat/actionlint@v1
 ```
 
-On a daemon-less runner such as `ubuntu-slim`, download and run the binary instead:
+Project settings belong in [`.github/actionlint.yaml`](docs/config.md).
+Use the `config` input for a one-run override. No `with:` block is required.
 
-```yaml
-- uses: actions/checkout@v7
-  with: { persist-credentials: false }
-- name: Download and run actionlint
-  env: { GH_TOKEN: "${{ github.token }}", GH_REPO: "kjanat/actionlint" }
-  run: |
-    case "${RUNNER_ARCH}" in
-      X64) asset_arch=amd64 ;;
-      ARM64) asset_arch=arm64 ;;
-      ARM) asset_arch=armv6 ;;
-      X86) asset_arch=386 ;;
-      *) echo "Unsupported runner architecture: ${RUNNER_ARCH}" >&2; exit 1 ;;
-    esac
-    gh release download --pattern "actionlint_*_${RUNNER_OS,,}_${asset_arch}.tar.gz" --output - | tar -xzf - actionlint
-    ./actionlint -color
-```
+The upcoming JavaScript Action runs on Linux, macOS and Windows without Docker.
+Existing immutable releases retain their Docker implementation. Pin a published
+release commit SHA or normal `vX.Y.Z` tag; `v1` and `v1.X` are moving pointers.
 
-The moving `v1` tag follows compatible v1 releases, and `v1.16` follows v1.16 patch releases. These tags point to a
-commit immediately after the release that pins the published container image by digest. `v1.17.0` is a versioned release tag.
-For an immutable action reference with a pinned image, use the full commit SHA resolved from a
-floating tag.
-
-<details><summary><h3>Inputs</h3></summary>
-
-| Input               | Default       | Description                                                                                  |
-| ------------------- | ------------- | -------------------------------------------------------------------------------------------- |
-| `files`             | all workflows | Newline-separated workflow paths. Empty checks every workflow in the repository.             |
-| `format`            | `github`      | Output format: `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, or `sarif`. |
-| `ignore`            | none          | Newline-separated regular expressions for actionlint errors to ignore.                       |
-| `config-file`       | automatic     | Configuration file path relative to `working-directory`.                                     |
-| `shellcheck`        | `true`        | Run ShellCheck for shell scripts in workflow steps.                                          |
-| `pyflakes`          | `true`        | Run pyflakes for Python scripts in workflow steps.                                           |
-| `working-directory` | `.`           | Directory to lint, relative to the repository workspace.                                     |
-| `output-file`       | none          | Repository-relative file to receive the selected output format.                              |
-| `fail-on-error`     | `true`        | Fail when problems are found. Invalid options and fatal errors always fail.                  |
-
-</details>
-<details><summary><h3>Outputs</h3></summary>
-
-| Output           | Description                                                                                         |
-| ---------------- | --------------------------------------------------------------------------------------------------- |
-| `exit-code`      | actionlint exit code: `0` for clean, `1` for problems, `2` for invalid options, or `3` for failure. |
-| `result`         | `success`, `problems-found`, `invalid-options`, or `failure`.                                       |
-| `problems-found` | Whether actionlint found one or more problems.                                                      |
-| `problem-count`  | Number of problems, or an empty string if actionlint could not complete.                            |
-| `output`         | Complete actionlint output in the selected format.                                                  |
-| `output-file`    | Repository-relative output path, or an empty string when no file was requested.                     |
-
-Give the step an `id` to consume its outputs. For example, this writes JSON Lines without failing the lint step:
-
-```yaml
-- name: Check workflows
-  id: actionlint
-  uses: kjanat/actionlint@v1
-  with:
-    format: json-lines
-    output-file: actionlint-results.jsonl
-    fail-on-error: false
-- name: Report result
-  if: always()
-  env:
-    RESULT: ${{ steps.actionlint.outputs.result }}
-    PROBLEM_COUNT: ${{ steps.actionlint.outputs.problem-count }}
-  run: echo "${RESULT} (${PROBLEM_COUNT} problems)"
-```
-
-</details>
-
-See [the usage document][usage] for additional examples and output behavior.
+See the [Action guide](docs/action.md) for configuration, saved reports,
+optional PR reviews, tool prerequisites, migration and the input/output reference.
 
 ## pre-commit
 

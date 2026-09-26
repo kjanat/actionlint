@@ -136,6 +136,7 @@ func (proc *concurrentProcess) configuredCommandRunner(exe string, options *Exte
 	}
 	if options != nil {
 		cmd.env = append([]string(nil), options.Environment...)
+		cmd.dir = options.WorkingDir
 	}
 	return cmd, nil
 }
@@ -147,6 +148,9 @@ type ExternalCommandOptions struct {
 	Executable  *string
 	Arguments   []string
 	Environment []string
+	// WorkingDir sets the default child directory and resolves explicit relative
+	// executable paths. Bare command names retain PATH lookup.
+	WorkingDir string
 }
 
 func externalCommandEnabled(command string, options *ExternalCommandOptions) bool {
@@ -165,7 +169,11 @@ func ResolveExternalCommandOptions(command string, options *ExternalCommandOptio
 		return "", nil, nil
 	}
 	if options.Executable != nil {
-		path, err := execabs.LookPath(*options.Executable)
+		executable := *options.Executable
+		if options.WorkingDir != "" && !filepath.IsAbs(executable) && filepath.Base(executable) != executable {
+			executable = filepath.Join(options.WorkingDir, executable)
+		}
+		path, err := execabs.LookPath(executable)
 		return path, append([]string(nil), options.Arguments...), err
 	}
 	path, args, err := ResolveExternalCommand(command)
@@ -200,13 +208,14 @@ type externalCommand struct {
 	args          []string
 	combineOutput bool
 	env           []string
+	dir           string
 }
 
 // run runs the command with given arguments and stdin. The callback function is called after the
 // process runs. First argument is stdout and the second argument is an error while running the
 // process.
 func (cmd *externalCommand) run(args []string, stdin string, callback func([]byte, error) error) {
-	cmd.runInDirectory(args, stdin, "", callback)
+	cmd.runInDirectory(args, stdin, cmd.dir, callback)
 }
 
 func (cmd *externalCommand) runInDirectory(args []string, stdin, dir string, callback func([]byte, error) error) {

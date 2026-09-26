@@ -42,6 +42,10 @@ type Error struct {
 	// source is the content of the file at Filepath when the error points at a file other than the
 	// linted workflow. It replaces the workflow source for rendering the snippet.
 	source []byte
+	// External analyzer metadata is exposed through Diagnostic, leaving legacy output unchanged.
+	code     string
+	severity string
+	fixes    []DiagnosticFix
 }
 
 // Error returns summary of the error as string.

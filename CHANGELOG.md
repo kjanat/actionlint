@@ -2,6 +2,9 @@
 
 # Unreleased
 
+- Replace the Docker-only Action with a Node 24 launcher for the ordinary binary. Keep shipped inputs and output formats; add one inline configuration overlay, compact summaries, optional SARIF and PR reviews, and a versioned `result-file`. Normal release tags contain root `action.mjs`; retain the legacy Docker Action image tags. (kjanat/actionlint#185)
+- Add shared ShellCheck configuration with inline directives, rc selection and source resolution. Preserve inline directives when rc loading is disabled, resolve overlay paths from the analysis directory, and warn about ignored legacy config keys. (kjanat/actionlint#182)
+
 - Accept `uses: $/` and extra-slash variants for repository-root actions, including input and output validation. (kjanat/actionlint#199)
 - Link CLI help to documentation at the release tag or development build's commit, including Go pseudo-versions and Makefile builds.
 - Add documented `ACTIONLINT_*` defaults for configuration selection, output, filters, logging and presentation. Split external-linter environment settings into literal `BIN`, argument `FLAGS`, and child `ENV` values for both ShellCheck and Pyflakes. Explicit flags override environment defaults, including empty and false values.

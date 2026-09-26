@@ -133,6 +133,7 @@ func (p *parser) literalScriptSource(n *yaml.Node) *scriptSource {
 	}
 
 	source := newScriptSource(n.Value)
+	source.literal = true
 	offset := 0
 	for i, line := range decoded {
 		scriptOffset := offset

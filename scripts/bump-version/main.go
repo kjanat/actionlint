@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-const releaseJobURL = "https://github.com/kjanat/actionlint/actions/workflows/release.yml"
+const releaseJobURL = "https://github.com/kjanat/actionlint/actions/workflows/release-prepare.yml"
 
 const releaseTimeZone = "Europe/Amsterdam"
 
@@ -116,8 +116,8 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	flags := flag.NewFlagSet(args[0], flag.ContinueOnError)
 	flags.BoolVar(&check, "check", false, "verify the declared version references and exit without modifying anything")
 	flags.StringVar(&notes, "notes", "", "print the changelog section of the given version tag and exit")
-	flags.BoolVar(&commit, "commit", false, "create the version bump commit and the version tag after verification")
-	flags.BoolVar(&push, "push", false, "push the version bump commit and the version tag, implies -commit")
+	flags.BoolVar(&commit, "commit", false, "create the version bump commit after verification; no tag or publication")
+	flags.BoolVar(&push, "push", false, "push the source commit and dispatch draft release preparation, implies -commit")
 	flags.StringVar(&root, "root", ".", "repository root directory")
 	flags.StringVar(&nix, "nix-command", "", "override automatic Nix detection with an executable and optional launcher arguments")
 	flags.SetOutput(stderr)
@@ -196,12 +196,11 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	}
 
 	if !commit && !push {
-		_, _ = fmt.Fprint(stdout, "\nAll version references were updated and verified. To release, run:\n\n")
+		_, _ = fmt.Fprint(stdout, "\nAll version references were updated and verified. To prepare a release draft, run:\n\n")
 		_, _ = fmt.Fprintf(stdout, "  git add %s\n", strings.Join(append(paths(targets), changelogFile), " "))
 		_, _ = fmt.Fprintf(stdout, "  git commit -m 'bump up version to %s'\n", tag)
-		_, _ = fmt.Fprintf(stdout, "  git tag -s -m %s %s\n", tag, tag)
 		_, _ = fmt.Fprint(stdout, "  git push origin master\n")
-		_, _ = fmt.Fprintf(stdout, "  git push origin %s\n", tag)
+		_, _ = fmt.Fprintf(stdout, "  gh workflow run release-prepare.yml --ref master -f version=%s\n", v)
 		return nil
 	}
 
@@ -211,27 +210,29 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	if err := r.run("commit", "-m", "bump up version to "+tag); err != nil {
 		return err
 	}
-	// A bare `git tag` picks up tag.gpgSign and then rejects the tag for having no message.
-	if err := r.run("tag", "-s", "-m", tag, tag); err != nil {
-		return err
-	}
-
 	if !push {
-		_, _ = fmt.Fprintf(stdout, "\nThe bump commit and the tag %s were created locally. To release, run:\n\n", tag)
+		_, _ = fmt.Fprint(stdout, "\nThe source commit was created locally. No tag or release was created. To prepare the draft, run:\n\n")
 		_, _ = fmt.Fprint(stdout, "  git push origin master\n")
-		_, _ = fmt.Fprintf(stdout, "  git push origin %s\n", tag)
+		_, _ = fmt.Fprintf(stdout, "  gh workflow run release-prepare.yml --ref master -f version=%s\n", v)
 		return nil
 	}
 
-	// docker/build-push-action resolves the tagged commit through the default branch, so master must be pushed first.
 	if err := r.run("push", "origin", "master"); err != nil {
 		return err
 	}
-	if err := r.run("push", "origin", tag); err != nil {
+	source, err := r.git("rev-parse", "HEAD")
+	if err != nil {
 		return err
 	}
+	cmd := exec.CommandContext(ctx, "gh", "workflow", "run", "release-prepare.yml", "--ref", "master", "-f", "version="+v.String(), "-f", "source="+source)
+	cmd.Dir = root
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("source commit pushed, but draft preparation was not dispatched; retry gh workflow run release-prepare.yml --ref master -f version=%s -f source=%s: %w", v, source, err)
+	}
 
-	_, _ = fmt.Fprintf(stdout, "\nCheck the release progress at %s\n", releaseJobURL)
+	_, _ = fmt.Fprintf(stdout, "\nCheck draft preparation at %s\nAfter it succeeds, promote the tested candidate with: node scripts/release-candidate.mjs promote --version %s --run RUN_ID\n", releaseJobURL, v)
 	return nil
 }
 
