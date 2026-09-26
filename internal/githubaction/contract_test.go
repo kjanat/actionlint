@@ -5,12 +5,60 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev"
 	"actionlint.kjanat.dev/internal/cli"
 	"github.com/google/go-cmp/cmp"
 )
+
+func TestActionMultiProjectResultParity(t *testing.T) {
+	workspace := workspaceWith(t, map[string]string{
+		"z/.git":                       "",
+		"z/.github/workflows/test.yml": cleanWorkflow,
+		"z/.github/actionlint.yaml":    "config-variables: [Z]\n",
+		"a/.git":                       "",
+		"a/.github/workflows/test.yml": cleanWorkflow,
+		"a/.github/actionlint.yaml":    "config-variables: [A]\n",
+	})
+	resultPath := filepath.Join(workspace, "result.json")
+	outputPath := filepath.Join(workspace, "outputs")
+	env := map[string]string{
+		"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath,
+		"ACTIONLINT_ACTION_RESULT": resultPath,
+		"INPUT_FILES":              "z/.github/workflows/test.yml\na/.github/workflows/test.yml",
+		"INPUT_FORMAT":             "json", "INPUT_OUTPUT-FILE": "report.json",
+		"INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false",
+	}
+	var stdout bytes.Buffer
+	if code := Main(func(key string) string { return env[key] }, &stdout); code != 0 {
+		t.Fatalf("Action status %d: %s", code, &stdout)
+	}
+	rendered := parseOutputs(read(t, outputPath))["output"]
+	for _, path := range []string{resultPath, filepath.Join(workspace, "report.json")} {
+		if got := strings.TrimSpace(read(t, path)); got != strings.TrimSpace(rendered) {
+			t.Errorf("%s differs from Action JSON output", filepath.Base(path))
+		}
+	}
+	var result actionlint.CheckResult
+	if err := json.Unmarshal([]byte(rendered), &result); err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Configs) != 2 {
+		t.Fatalf("want two project configurations, got %d", len(result.Configs))
+	}
+	for i, name := range []string{"z", "a"} {
+		if got := result.Configs[i].Project; got != filepath.Join(workspace, name) {
+			t.Errorf("configuration %d project = %q", i, got)
+		}
+	}
+	first := strings.Index(stdout.String(), "Configuration: a/.github/actionlint.yaml")
+	second := strings.Index(stdout.String(), "Configuration: z/.github/actionlint.yaml")
+	if first < 0 || second <= first {
+		t.Fatalf("configuration feedback must remain sorted: %s", &stdout)
+	}
+}
 
 func TestCLIAndActionResultContract(t *testing.T) {
 	for _, tc := range []struct {
