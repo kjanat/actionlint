@@ -339,7 +339,7 @@ jobs:
         with: { files: testdata/ok/minimal.yaml, pyflakes: false, shellcheck: false }
       - name: Verify Dockerless result
         env: { RESULT: "${{ steps.slim.outputs.result }}" }
-        run: test "$RESULT" = success
+        run: test "${RESULT}" = success
   action-result:
     name: GitHub Action
     needs: [action, action-slim]
