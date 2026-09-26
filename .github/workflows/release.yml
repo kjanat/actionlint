@@ -187,11 +187,36 @@ jobs:
                 --digestfile "${RUNNER_TEMP}/${registry}.digest" \
                 "oci-archive:${RUNNER_TEMP}/release-assets/actionlint-container_${VERSION}.tar" \
                 "docker://${registry}/${GITHUB_REPOSITORY}:${tag}"
+              expected="$(cat "${RUNNER_TEMP}/release-assets/actionlint-container_${VERSION}.digest")"
+              actual="$(cat "${RUNNER_TEMP}/${registry}.digest")"
+              test "${actual}" = "${expected}"
             done
           done
           cmp "${RUNNER_TEMP}/ghcr.io.digest" "${RUNNER_TEMP}/docker.io.digest"
           digest="$(cat "${RUNNER_TEMP}/ghcr.io.digest")"
           echo "digest=${digest}" >> "${GITHUB_OUTPUT}"
+      - name: Publish the tested Docker Action compatibility image
+        id: action-image
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+          MOVE_LATEST: ${{ needs.verify.outputs.is-latest }}
+          MOVE_MAJOR: ${{ needs.verify.outputs.is-major-latest }}
+          MOVE_MINOR: ${{ needs.verify.outputs.is-minor-latest }}
+        run: |
+          tags=("action-${VERSION}")
+          if [[ "${MOVE_LATEST}" == true ]]; then tags+=(action-latest); fi
+          if [[ "${MOVE_MAJOR}" == true ]]; then tags+=("action-v${VERSION%%.*}"); fi
+          if [[ "${MOVE_MINOR}" == true ]]; then tags+=("action-v${VERSION%.*}"); fi
+          expected="$(cat "${RUNNER_TEMP}/release-assets/actionlint-action-container_${VERSION}.digest")"
+          for tag in "${tags[@]}"; do
+            skopeo copy --all --preserve-digests --authfile "${HOME}/.docker/config.json" \
+              --digestfile "${RUNNER_TEMP}/action-image.digest" \
+              "oci-archive:${RUNNER_TEMP}/release-assets/actionlint-action-container_${VERSION}.tar" \
+              "docker://ghcr.io/${GITHUB_REPOSITORY}:${tag}"
+            actual="$(cat "${RUNNER_TEMP}/action-image.digest")"
+            test "${actual}" = "${expected}"
+          done
+          echo "digest=${expected}" >> "${GITHUB_OUTPUT}"
       - name: Update Docker Hub description
         if: needs.verify.outputs.is-latest == 'true'
         uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
@@ -205,26 +230,29 @@ jobs:
         with: { subject-name: "ghcr.io/${{ github.repository }}", subject-digest: "${{ steps.image.outputs.digest }}", push-to-registry: true }
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
         with: { subject-name: "docker.io/${{ github.repository }}", subject-digest: "${{ steps.image.outputs.digest }}" }
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        with: { subject-name: "ghcr.io/${{ github.repository }}", subject-digest: "${{ steps.action-image.outputs.digest }}", push-to-registry: true }
   action-smoke:
-    name: Check ordinary published Action pins
+    name: Check published Action pins (${{ matrix.os }})
     needs: verify
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix: { os: [ubuntu-latest, macos-latest, windows-latest, ubuntu-slim] }
     steps:
       - uses: *Checkout
         with: { persist-credentials: false }
-      - name: Materialize the exact published tag
-        run: |
-          mkdir .actionlint-action-release
-          git archive HEAD | tar -x -C .actionlint-action-release
-      - name: Run the tagged Action using its published binary
-        id: smoke
-        # ./ loads the published tag tree materialized during this job.
-        uses: ./.actionlint-action-release
-        with: { files: testdata/ok/minimal.yaml, format: json, shellcheck: "false", pyflakes: "false" }
-      - name: Verify the published action completed
-        env: { EXIT_CODE: "${{ steps.smoke.outputs.exit-code }}", RESULT: "${{ steps.smoke.outputs.result }}" }
-        run: test "${EXIT_CODE}" = 0 && test "${RESULT}" = success
+      - uses: *SetupNode
+        with: *Node24
+      - name: Prepare literal published version and SHA references
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+          CANDIDATE: ${{ needs.verify.outputs.candidate }}
+        run: node scripts/published-action.mjs "${GITHUB_REPOSITORY}" "${VERSION}" "${CANDIDATE}" .published-action-smoke
+      - name: Resolve both published references through the runner
+        # The generated composite contains literal external uses references.
+        uses: ./.published-action-smoke
   action-tags:
     name: Update moving Action references
     needs: [verify, npm, distributions, docker, action-smoke]

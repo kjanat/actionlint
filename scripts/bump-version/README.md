@@ -84,7 +84,19 @@ gh workflow run release-prepare.yml --ref master -f version=1.2.3
 Preparation builds a child commit containing the complete source tree, root `action.mjs`, and
 `SHA256SUMS`. The candidate commit travels in a Git bundle; its version tag exists only inside the
 build job. The workflow builds archives and package manifests without publishing, tests the candidate
-on Linux, macOS and Windows, checks Nix, and tests the container before uploading the draft assets.
+on Linux, macOS and Windows, checks Nix, and tests both CLI and compatibility Action containers on
+Linux amd64 and arm64 before uploading the draft assets. Container tests load the stored OCI archives;
+the manifest includes both archives and their image digests.
+
+Publication copies those archives with digest preservation; it never rebuilds the images. The CLI
+image retains its ordinary version tags. The compatibility image wraps the same ordinary binary with
+the shipped nine positional inputs and retains the GHCR tags `action-X.Y.Z`, `action-vX.Y`, `action-vX`,
+and `action-latest`. Moving tags advance only when the release is latest for their scope.
+
+After publication, the runner resolves literal external `owner/repo@vX.Y.Z` and `owner/repo@COMMIT`
+references on Linux, macOS, Windows and `ubuntu-slim`, downloading the published binary for each run.
+These checks gate moving Action tags. Preparation's local archive smoke cannot prove external runner
+resolution or published downloads; a successful preparation alone does not establish those checks.
 
 After preparation succeeds, inspect its checks and draft assets, then promote that run from a clean
 `master` checkout at the prepared source commit:

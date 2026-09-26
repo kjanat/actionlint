@@ -9,6 +9,7 @@ import { dirname, join, resolve } from 'node:path';
 
 import {
 	bundleName,
+	containerAssets,
 	finalizePromotion,
 	findRelease,
 	manifestName,
@@ -59,7 +60,12 @@ function exampleManifest() {
 		candidate: '2'.repeat(40),
 		tree: '3'.repeat(40),
 		bundle: bundleName,
-		assets: [bundleName, 'actionlint-action_1.17.1.mjs', 'actionlint-action_1.17.1_checksums.txt'].map((name) => ({
+		assets: [
+			bundleName,
+			'actionlint-action_1.17.1.mjs',
+			'actionlint-action_1.17.1_checksums.txt',
+			...containerAssets('1.17.1').flatMap((name) => [`${name}.tar`, `${name}.digest`]),
+		].map((name) => ({
 			name,
 			size: 10,
 			sha256: '4'.repeat(64),
@@ -100,6 +106,16 @@ test('candidate provenance requires the successful exact workflow attempt and so
 		() => parseManifest({ ...manifest, assets: [{ name: '../escape', size: 0, sha256: '4'.repeat(64) }] }),
 		/filename/,
 	);
+});
+
+test('release candidates require both container archives and prepared digests', () => {
+	const manifest = exampleManifest();
+	for (const name of containerAssets(manifest.version).flatMap((name) => [`${name}.tar`, `${name}.digest`])) {
+		assert.throws(
+			() => parseManifest({ ...manifest, assets: manifest.assets.filter((asset) => asset.name !== name) }),
+			/Candidate is missing/,
+		);
+	}
 });
 
 test('manifest binds exact assets to the complete candidate tree', async () => {
@@ -155,6 +171,10 @@ await writeFile(join(directory, 'SHA256SUMS'), createHash('sha256').update(code)
 		assert.doesNotMatch(git('cat-file', '-p', `v${version}`), /BEGIN PGP SIGNATURE/);
 		const ref = `refs/actionlint/candidates/v${version}`;
 		assert.equal(git('for-each-ref', '--format=%(refname)', ref), '');
+		for (const name of containerAssets(version)) {
+			await writeFile(join(assets, `${name}.tar`), 'OCI archive fixture');
+			await writeFile(join(assets, `${name}.digest`), `sha256:${'a'.repeat(64)}\n`);
+		}
 		const manifest = await writeManifest(root, assets, { version, source, candidate }, {
 			GITHUB_REPOSITORY: 'kjanat/actionlint',
 			GITHUB_RUN_ID: '123',
@@ -162,6 +182,24 @@ await writeFile(join(directory, 'SHA256SUMS'), createHash('sha256').update(code)
 		});
 		assert.deepEqual(JSON.parse(await readFile(join(assets, manifestName), 'utf8')), manifest);
 		await verifyCandidate(root, assets, manifest);
+		for (const name of containerAssets(version)) {
+			const archive = join(assets, `${name}.tar`);
+			await writeFile(archive, 'changed OCI archive');
+			await assert.rejects(verifyAssets(assets, manifest), /Candidate asset changed/);
+			await writeFile(archive, 'OCI archive fixture');
+			const digestName = `${name}.digest`;
+			await writeFile(join(assets, digestName), 'not-an-image-digest');
+			const altered = {
+				...manifest,
+				assets: manifest.assets.map((asset) =>
+					asset.name === digestName
+						? { ...asset, size: 19, sha256: createHash('sha256').update('not-an-image-digest').digest('hex') }
+						: asset
+				),
+			};
+			await assert.rejects(verifyAssets(assets, altered), /Invalid prepared container digest/);
+			await writeFile(join(assets, digestName), `sha256:${'a'.repeat(64)}\n`);
+		}
 		await assert.rejects(verifyCandidate(root, assets, { ...manifest, source: 'f'.repeat(40) }), /source parent/);
 		await assert.rejects(verifyCandidate(root, assets, { ...manifest, tree: 'f'.repeat(40) }), /tree differs/);
 		await writeFile(join(assets, 'unexpected.txt'), 'extra');
@@ -205,6 +243,10 @@ function promotionFixture() {
 		draft: true,
 		failPublish: false,
 		publishAccepted: false,
+		failSign: false,
+		failRecord: false,
+		failPush: false,
+		pushAccepted: false,
 	};
 	/** @type {string[]} */
 	const events = [];
@@ -242,21 +284,26 @@ function promotionFixture() {
 				return '';
 			}
 			if (cmd === '-c' && args.includes('tag')) {
-				state.localTag = signedTag;
 				events.push('sign');
+				if (state.failSign) throw new Error('Signing interrupted');
+				state.localTag = signedTag;
 				return '';
 			}
 			if (cmd === '-c' && args.includes('push')) {
-				state.remoteTag = state.localTag;
-				state.remoteHead = state.head;
 				events.push('push');
+				if (state.pushAccepted || !state.failPush) {
+					state.remoteTag = state.localTag;
+					state.remoteHead = state.head;
+				}
+				if (state.failPush) throw new Error('Push interrupted');
 				return '';
 			}
 			throw new Error(`Unexpected fixture Git call: ${args.join(' ')}`);
 		},
 		record: () => {
-			state.head = merge;
 			events.push('record');
+			if (state.failRecord) throw new Error('Recording interrupted');
+			state.head = merge;
 		},
 		publish: (id) => {
 			events.push('publish');
@@ -268,6 +315,54 @@ function promotionFixture() {
 	const release = () => ({ id: 789, draft: state.draft, tag_name: manifest.tag, target_commitish: manifest.source });
 	return { manifest, state, events, operations, release };
 }
+
+test('promotion resumes a signing interruption before any remote writes', () => {
+	const fixture = promotionFixture();
+	fixture.state.failSign = true;
+	assert.throws(
+		() => finalizePromotion(fixture.manifest, fixture.release(), fixture.operations),
+		/Signing interrupted/,
+	);
+	assert.deepEqual(fixture.events, ['sign']);
+	assert.equal(fixture.state.remoteTag, '');
+	fixture.state.failSign = false;
+	fixture.events.length = 0;
+	finalizePromotion(fixture.manifest, fixture.release(), fixture.operations);
+	assert.deepEqual(fixture.events, ['sign', 'record', 'push', 'publish']);
+});
+
+test('promotion reuses a signed tag after recording failed', () => {
+	const fixture = promotionFixture();
+	fixture.state.failRecord = true;
+	assert.throws(
+		() => finalizePromotion(fixture.manifest, fixture.release(), fixture.operations),
+		/signed tag exists locally/,
+	);
+	assert.deepEqual(fixture.events, ['sign', 'record']);
+	assert.equal(fixture.state.remoteTag, '');
+	fixture.state.failRecord = false;
+	fixture.events.length = 0;
+	finalizePromotion(fixture.manifest, fixture.release(), fixture.operations);
+	assert.deepEqual(fixture.events, ['record', 'push', 'publish']);
+});
+
+test('promotion verifies and resumes an interrupted atomic push', () => {
+	for (const accepted of [false, true]) {
+		const fixture = promotionFixture();
+		fixture.state.failPush = true;
+		fixture.state.pushAccepted = accepted;
+		assert.throws(
+			() => finalizePromotion(fixture.manifest, fixture.release(), fixture.operations),
+			/verify or resume the atomic push/,
+		);
+		assert.deepEqual(fixture.events, ['sign', 'record', 'push']);
+		assert.equal(fixture.state.draft, true);
+		fixture.state.failPush = false;
+		fixture.events.length = 0;
+		finalizePromotion(fixture.manifest, fixture.release(), fixture.operations);
+		assert.deepEqual(fixture.events, ['push', 'publish']);
+	}
+});
 
 test('promotion resumes after push without signing or recording a second release', () => {
 	for (const accepted of [false, true]) {

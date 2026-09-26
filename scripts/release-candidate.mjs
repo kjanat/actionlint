@@ -86,6 +86,12 @@ function candidateRef(version) {
 	return `refs/actionlint/candidates/v${versionValue(version)}`;
 }
 
+/** @param {string} version */
+export function containerAssets(version) {
+	versionValue(version);
+	return [`actionlint-container_${version}`, `actionlint-action-container_${version}`];
+}
+
 /** @param {unknown} value @returns {CandidateManifest} */
 export function parseManifest(value) {
 	const data = object(value, 'candidate manifest');
@@ -105,7 +111,14 @@ export function parseManifest(value) {
 	});
 	const names = new Set(assets.map((asset) => asset.name));
 	if (names.size !== assets.length || names.has(manifestName)) throw new Error('Duplicate or recursive manifest asset');
-	for (const name of [bundleName, `actionlint-action_${version}.mjs`, `actionlint-action_${version}_checksums.txt`]) {
+	for (
+		const name of [
+			bundleName,
+			`actionlint-action_${version}.mjs`,
+			`actionlint-action_${version}_checksums.txt`,
+			...containerAssets(version).flatMap((name) => [`${name}.tar`, `${name}.digest`]),
+		]
+	) {
 		if (!names.has(name)) throw new Error(`Candidate is missing ${name}`);
 	}
 	return {
@@ -198,6 +211,10 @@ export async function verifyAssets(directory, manifest) {
 		if (actual.size !== asset.size || actual.sha256 !== asset.sha256) {
 			throw new Error(`Candidate asset changed: ${asset.name}`);
 		}
+	}
+	for (const name of containerAssets(manifest.version)) {
+		const digest = await readFile(join(directory, `${name}.digest`), 'utf8');
+		if (!/^sha256:[a-f0-9]{64}\n$/.test(digest)) throw new Error(`Invalid prepared container digest: ${name}`);
 	}
 }
 
@@ -369,7 +386,14 @@ export function finalizePromotion(manifest, release, operations) {
 			);
 		}
 	}
-	runGit('-c', 'push.followTags=false', 'push', '--atomic', 'origin', 'HEAD:refs/heads/master', `${ref}:${ref}`);
+	try {
+		runGit('-c', 'push.followTags=false', 'push', '--atomic', 'origin', 'HEAD:refs/heads/master', `${ref}:${ref}`);
+	} catch (error) {
+		throw new Error(
+			`The signed tag and ancestry commit are prepared. Rerun promotion with --version ${manifest.version} --run ${manifest.run_id} to verify or resume the atomic push.`,
+			{ cause: error },
+		);
+	}
 	try {
 		const published = object(operations.publish(releaseID), 'published release');
 		if (published.id !== releaseID || published.draft !== false || published.tag_name !== manifest.tag) {
