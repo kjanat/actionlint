@@ -7,23 +7,30 @@ runs:
       uses: OWNER/REPO@RELEASE_TAG
       env: { ACTIONLINT_ACTION_BINARY: "" }
       with: { files: testdata/ok/minimal.yaml, format: json, shellcheck: "false", pyflakes: "false" }
-    - name: Verify version outputs
-      shell: bash
-      env:
-        EXIT_CODE: ${{ steps.version.outputs.exit-code }}
-        RESULT: ${{ steps.version.outputs.result }}
-        PROBLEM_COUNT: ${{ steps.version.outputs.problem-count }}
-        OUTPUT: ${{ steps.version.outputs.output }}
-      run: node scripts/check-action-outputs.mjs
     - id: commit
       uses: OWNER/REPO@COMMIT_SHA
       env: { ACTIONLINT_ACTION_BINARY: "" }
       with: { files: testdata/ok/minimal.yaml, format: json, shellcheck: "false", pyflakes: "false" }
-    - name: Verify commit outputs
-      shell: bash
+    - uses: kjanat/actions-shells@697bb547ef1ce427e202b4cbcdb19886aa587da7 # v0.1.0
+    - name: Verify version and commit outputs
+      shell: actions-shell node {0}
       env:
-        EXIT_CODE: ${{ steps.commit.outputs.exit-code }}
-        RESULT: ${{ steps.commit.outputs.result }}
-        PROBLEM_COUNT: ${{ steps.commit.outputs.problem-count }}
-        OUTPUT: ${{ steps.commit.outputs.output }}
-      run: node scripts/check-action-outputs.mjs
+        VERSION_OUTPUTS: ${{ toJSON(steps.version.outputs) }}
+        COMMIT_OUTPUTS: ${{ toJSON(steps.commit.outputs) }}
+      run: |
+        const assert = require('node:assert/strict');
+        for (const name of ['VERSION_OUTPUTS', 'COMMIT_OUTPUTS']) {
+          const outputs = JSON.parse(process.env[name]);
+          assert.equal(outputs['exit-code'], '0', name);
+          assert.equal(outputs.result, 'success', name);
+          assert.equal(outputs['problem-count'], '0', name);
+          const result = JSON.parse(outputs.output);
+          assert.deepEqual(result.diagnostics, [], name);
+          assert.partialDeepStrictEqual(result, {
+            schema_version: 1,
+            status: 'success',
+            completed: true,
+            exit_code: 0,
+            file_count: 1,
+          }, name);
+        }
