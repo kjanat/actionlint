@@ -43,8 +43,8 @@ Successful CLI results go to stdout or `--output-file`. Failed CLI checks emit
 the result on stderr and preserve an existing output file. Logs and opt-in
 summaries on stderr remain separate records. JSONL contains findings only: use
 the process exit code or the Action `result-file` to distinguish completion from
-failure. Action `fail-on-error: false` changes the step outcome, not `exit_code`
-inside the result.
+failure. Action `fail-on-error: false` lets a step with findings pass. The result
+retains the analysis exit code.
 
 ## TypeScript and compatibility
 
@@ -76,11 +76,11 @@ when reproducibility matters.
 
 ## Migration
 
-Action `format: json` now returns the result object rather than an array; read
+Action `format: json` now returns the result object; read findings from
 `result.diagnostics`. Action JSONL now matches CLI JSONL. Diagnostic fields change
 from `kind` to `rule`, `filepath` to `path`, and `line`/`column` to `start`.
-`end_column` becomes `end.column`, **exclusive** rather than inclusive; ranges can
-span multiple lines. `snippet` is source text without a caret indicator.
+`end_column` becomes `end.column`. Ends are now **exclusive**: add one when converting
+an old inclusive end column. Ranges can span multiple lines. `snippet` contains source text.
 
 CLI JSON retains `schema_version` and `diagnostics`, adding status and context.
 The Action `result-file` retains its version 1 contract. User-selected Go
