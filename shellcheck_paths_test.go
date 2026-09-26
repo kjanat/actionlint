@@ -1,12 +1,12 @@
 package actionlint
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -468,7 +468,7 @@ func TestShellcheckApplicationSelectionPreservesInlineConfig(t *testing.T) {
 func TestShellcheckOverlayPathOrigin(t *testing.T) {
 	command := shellcheckForTest(t)
 	for _, explicitContext := range []bool{false, true} {
-		t.Run(fmt.Sprint(explicitContext), func(t *testing.T) {
+		t.Run(strconv.FormatBool(explicitContext), func(t *testing.T) {
 			root := t.TempDir()
 			config := writeShellcheckFixture(t, root, "settings/actionlint.yaml", "tools: {shellcheck: {config: missing.rc}}\n")
 			workingDir := filepath.Join(root, "project")
