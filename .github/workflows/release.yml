@@ -35,7 +35,7 @@ jobs:
       - uses: *ActionsCheckout
         with: *NoCreds
       - uses: $/.github/actions/setup-pandoc
-      - uses: kjanat/runner@8baa9ee978cfed038b98741749673c788ff161d1 # v0.26.2
+      - uses: kjanat/runner@29d1c0a0e16e99c30e86fa1b1d6873e89498c300 # v0.27.0
       - run: run make:man/actionlint.1
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with: { name: manual, path: man/actionlint.1, if-no-files-found: error }
@@ -135,10 +135,10 @@ jobs:
             echo "is-minor-latest=false" >> "${GITHUB_OUTPUT}"
           fi
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - parallel:
           - name: Login to GitHub Container Registry
             uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -160,7 +160,7 @@ jobs:
             type=raw,value=latest,enable=${{ steps.tag.outputs.is-latest }}
         env: { DOCKER_METADATA_ANNOTATIONS_LEVELS: "manifest,index" }
       - name: Build CLI image for the smoke test
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           target: cli
           build-args: |
@@ -173,7 +173,7 @@ jobs:
         run: docker run --rm --mount type=bind,source="${PWD}",target=/w -- actionlint:smoke -color -verbose
       - name: Build and push CLI image
         id: push-cli
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           platforms: linux/amd64,linux/arm64
           target: cli
@@ -208,7 +208,7 @@ jobs:
                 type=raw,value=action-latest,enable=${{ steps.tag.outputs.is-latest }}
             env: { DOCKER_METADATA_ANNOTATIONS_LEVELS: "manifest,index" }
       - name: Build GitHub Action image for the smoke test
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           target: action
           build-args: |
@@ -221,7 +221,7 @@ jobs:
         run: ./scripts/test-action.bash actionlint-action:smoke
       - name: Build and push GitHub Action image
         id: push-action
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           platforms: linux/amd64,linux/arm64
           target: action
