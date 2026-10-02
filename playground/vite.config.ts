@@ -60,7 +60,9 @@ export default defineConfig({
 				const reader = await this.resolve('@kjlint/changelog-rss', resolve(here, 'github-changelog/index.html'));
 				const expected = await realpath(resolve(oneUp, 'packages/changelog-feed/src/index.ts'));
 				if (!reader || reader.external || await realpath(reader.id) !== expected) {
-					this.error('The changelog reader must resolve to this checkout’s packages/changelog-feed/src/index.ts. Check the workspace dependency and source export condition.');
+					this.error(
+						'The changelog reader must resolve to this checkout’s packages/changelog-feed/src/index.ts. Check the workspace dependency and source export condition.',
+					);
 				}
 			},
 		},
