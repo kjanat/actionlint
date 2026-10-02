@@ -29,6 +29,7 @@ type lintRequest struct {
 	shellcheck         string
 	pyflakes           string
 	format             outputFormat
+	sarif              bool
 	files              []string
 	hints              []string
 }
@@ -50,6 +51,7 @@ type lintResult struct {
 }
 
 func (req *lintRequest) configureEnvironment(env func(string) string) error {
+	req.sarif = env("INPUT_SARIF") == "true"
 	if value := env("INPUT_CONFIG"); strings.TrimSpace(value) != "" {
 		overlay, err := actionlint.ParseConfigOverlay("config", []byte(value))
 		if err != nil {
@@ -171,7 +173,10 @@ func runLinter(req *lintRequest) *lintResult {
 			diagnostic.Path = path
 		}
 	}
-	sarifAnalysis := workspaceSARIFAnalysis(analysis, req.workingDir, workspace)
+	var sarifAnalysis *actionlint.AnalysisResult
+	if req.format == formatSARIF || req.sarif {
+		sarifAnalysis = workspaceSARIFAnalysis(analysis, req.workingDir, workspace)
+	}
 	selected := analysis
 	if req.format == formatSARIF {
 		selected = sarifAnalysis
@@ -181,16 +186,20 @@ func runLinter(req *lintRequest) *lintResult {
 		return result
 	}
 	result.diagnostics = analysis.Diagnostics
-	var sarif bytes.Buffer
-	sarifRenderer, err := actionlint.NewAnalysisRenderer(actionlint.OutputFormatSARIF, "", false)
-	if err == nil {
-		err = sarifRenderer.Render(&sarif, sarifAnalysis)
+	if req.format == formatSARIF {
+		result.sarif = out.String()
+	} else if req.sarif {
+		var sarif bytes.Buffer
+		sarifRenderer, err := actionlint.NewAnalysisRenderer(actionlint.OutputFormatSARIF, "", false)
+		if err == nil {
+			err = sarifRenderer.Render(&sarif, sarifAnalysis)
+		}
+		if err != nil {
+			result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
+			return result
+		}
+		result.sarif = sarif.String()
 	}
-	if err != nil {
-		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
-		return result
-	}
-	result.sarif = sarif.String()
 	session.Completed(analysis)
 	if len(analysis.Diagnostics) > 0 {
 		result.hints = append(result.hints, quotedIgnoreHints(req.ignore, analysis.Diagnostics)...)

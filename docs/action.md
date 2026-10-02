@@ -33,7 +33,7 @@ self-hosted-runner:
 tools:
   shellcheck:
     config:
-      enable: [check-unassigned-uppercase]
+      enable: [quote-safe-variables]
 ```
 
 The quick-start workflow needs no changes. `.yaml` wins over `.yml` if both
@@ -258,21 +258,27 @@ All inputs are optional. Booleans accept `true`/`false`.
 | `review`                                                                   | `false`        | Advisory PR review posting.                                                |
 | `token`                                                                    | `github.token` | Used only by the review reporter.                                          |
 
-| Output           | Meaning                                                                             |
-| ---------------- | ----------------------------------------------------------------------------------- |
-| `exit-code`      | Analysis status: 0 clean, 1 findings, 2 invalid input, 3 incomplete/failure.        |
-| `result`         | `success`, `problems-found`, `invalid-options`, `failure`.                          |
-| `problems-found` | Whether analysis completed with findings. Partial findings remain in `result-file`. |
-| `problem-count`  | Count, or empty when analysis did not complete.                                     |
-| `output`         | Complete legacy-format output; prefer files for large reports.                      |
-| `output-file`    | Workspace-relative requested path, or empty.                                        |
-| `result-file`    | Absolute versioned JSON path, including failure results when writable.              |
-| `report-sarif`   | Absolute SARIF path, or empty when not requested/not completed.                     |
+| Output           | Meaning                                                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `exit-code`      | Analysis status: 0 clean, 1 findings, 2 invalid input, 3 incomplete/failure.                                            |
+| `result`         | `success`, `problems-found`, `invalid-options`, `failure`.                                                              |
+| `problems-found` | Whether analysis completed with findings. Partial findings remain in `result-file`.                                     |
+| `problem-count`  | Count, or empty when analysis did not complete.                                                                         |
+| `output`         | Selected serialization; JSON uses the same result as `result-file`, including failures. Prefer files for large reports. |
+| `output-file`    | Workspace-relative requested path, or empty.                                                                            |
+| `result-file`    | Absolute versioned JSON path, including failure results when writable.                                                  |
+| `report-sarif`   | Absolute SARIF path, or empty when not requested/not completed.                                                         |
 
 ## Migration and troubleshooting
 
-The nine shipped inputs and six shipped outputs retain their contracts. New
-defaults add a compact summary and independent PATH exports; turn each off when
+Input and output names remain available, but **JSON and JSON Lines change shape**:
+JSON now returns the versioned result object instead of a diagnostic array; JSON
+Lines uses versioned canonical diagnostics. Update consumers using the
+[migration guide](results.md) before upgrading. The unified contract is
+the default; there is no separate legacy JSON mode. Coordinate affected consumers
+before promoting moving Action tags.
+
+New defaults add a compact summary and independent PATH exports; turn each off when
 unwanted. JavaScript removes Docker's Linux/daemon requirement. Existing immutable
 Docker releases and digest pins remain untouched. Compatibility images continue
 as `action-X.Y.Z`, `action-vX.Y`, `action-vX`, and `action-latest`, using a thin

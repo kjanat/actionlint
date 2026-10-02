@@ -101,8 +101,6 @@ func TestCLIAndActionResultContract(t *testing.T) {
 			if diff := cmp.Diff(persisted, rendered); diff != "" {
 				t.Fatalf("public and persisted JSON differ: %s", diff)
 			}
-			// The Action additionally supplies SARIF for its reporters.
-			persisted.SARIF = nil
 			if diff := cmp.Diff(cliResult, persisted); diff != "" {
 				t.Fatalf("CLI and Action differ: %s", diff)
 			}

@@ -31,6 +31,7 @@ none selected. Failed results can retain known findings, but an empty list on a
 failed run does **not** mean the inputs are clean. `error` explains failure.
 `configurations` records selected files, overrides, and available origins and
 warnings. `hints` contains advice. Producers may attach a `sarif` report.
+The Action includes SARIF only when `format: sarif` or `sarif: true` requests it.
 
 Diagnostics contain `rule`, `message`, `path`, `start`, and `end`. Optional `code`
 and `severity` preserve analyzer metadata; `snippet` contains source text. Optional

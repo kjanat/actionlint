@@ -92,6 +92,8 @@ func TestShellcheckInlineConfigAnalysis(t *testing.T) {
 		{"code disabled", "config: {disable: [SC2086]}", "echo $VALUE", ""},
 		{"range disabled", "config: {disable: [SC2000-SC3000]}", "echo $VALUE", ""},
 		{"dialect override", "config: {shell: sh}", `[[ -n "$HOME" ]]`, "SC3010"},
+		{"safe variable default", "enabled: true", "value=hello\necho $value", ""},
+		{"optional safe variable quoting", "config: {enable: [quote-safe-variables]}", "value=hello\necho $value", "SC2248"},
 		{"multiple prefix lines", "config: {disable: [SC2016], enable: [quote-safe-variables], extended-analysis: false}", "echo $VALUE", "SC2086"},
 		{"source path", `config: {source-path: ["lib's directory"], external-sources: true}`, ". config.sh\necho $VALUE", ""},
 		{"external sources disabled", `config: {source-path: ["lib's directory"], external-sources: false}`, ". config.sh\necho $VALUE", "SC2086"},
