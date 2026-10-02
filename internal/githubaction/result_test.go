@@ -30,7 +30,7 @@ func TestActionReportsFilesOnAnotherVolume(t *testing.T) {
 		t.Fatal(err)
 	}
 	var sarif bytes.Buffer
-	if err := renderer.Render(&sarif, workspaceSARIFAnalysis(analysis, workspace, workspace)); err != nil {
+	if err := renderer.Render(&sarif, workspaceReportAnalysis(analysis, workspace, workspace)); err != nil {
 		t.Fatal(err)
 	}
 	if got := sarif.String(); strings.Count(got, "file:///D:/shared/workflow.yml") != 2 || strings.Contains(got, "uriBaseId") {
@@ -39,15 +39,11 @@ func TestActionReportsFilesOnAnotherVolume(t *testing.T) {
 	if analysis.Diagnostics[0].Path != file || analysis.Diagnostics[0].Fixes[0].Edits[0].Path != file {
 		t.Fatal("SARIF rendering changed persisted paths")
 	}
-	problem := sampleProblem()
-	problem.Filepath = file
-	serialized, err := json.Marshal([]*actionlint.ErrorTemplateFields{problem})
-	if err != nil {
-		t.Fatal(err)
-	}
-	count, annotation, err := countAndRender(string(serialized), formatGitHub, workspace, workspace)
-	if err != nil || count != 1 || !strings.Contains(annotation, "file=D%3A/shared/workflow.yml,") {
-		t.Fatalf("cross-volume annotation: %d %q %v", count, annotation, err)
+	legacyAnalysis := analysisForRender(t, "")
+	legacyAnalysis.Diagnostics[0].Path = file
+	annotation, err := renderAnalysis(formatGitHub, legacyAnalysis, workspace, workspace)
+	if err != nil || !strings.Contains(annotation, "file=D%3A/shared/workflow.yml,") {
+		t.Fatalf("cross-volume annotation: %q %v", annotation, err)
 	}
 }
 

@@ -20,8 +20,22 @@ import type { Environment, PyflakesCommand, ShellcheckCommand, ToolRequirements 
 import { InputError } from '#runtime';
 import { commandEscape } from '#workflow';
 
-function selectedTool(name: string, origin: string, path: string, version?: string): void {
-	console.log(`::debug::${commandEscape(`${name}: ${origin}; version ${version ?? 'not probed'}; ${path}`)}`);
+function selectedTool(name: string, origin: string, path: string, version: string): void {
+	console.log(`::debug::${commandEscape(`${name}: ${origin}; version ${version}; ${path}`)}`);
+}
+
+async function installedVersion(executable: string): Promise<string> {
+	try {
+		const result = await capture(executable, ['--version'], process.env, { timeoutMS: 1_000 });
+		if (result.exitCode !== 0) return `unavailable (--version exited ${result.exitCode})`;
+		const output = `${result.stdout}\n${result.stderr}`.trim();
+		const version = /^(?:version:\s*)?(v?\d+\.\d+(?:\.\d+)?(?:[-+][^\s]+)?)(?:\s|$)/im.exec(output)?.[1];
+		return version ?? `unavailable (${output ? 'unrecognized' : 'empty'} --version output)`;
+	} catch (error) {
+		// Version discovery is advisory: an unsupported probe must not replace a working PATH tool.
+		const reason = error instanceof Error ? error.message : String(error);
+		return `unavailable (${reason.slice(0, 256)})`;
+	}
 }
 
 export async function checkExecutable(path: string): Promise<void> {
@@ -67,7 +81,7 @@ export async function nativeBinary(version: string, platform: RunnerPlatform, di
 export async function shellcheckBinary(platform: RunnerPlatform): Promise<ShellcheckCommand> {
 	const existing = await which('shellcheck', process.env, 'native');
 	if (existing) {
-		selectedTool('ShellCheck', 'existing installation', existing);
+		selectedTool('ShellCheck', 'existing installation', existing, await installedVersion(existing));
 		return { kind: 'existing', executable: existing };
 	}
 
@@ -138,7 +152,7 @@ async function pythonBinary(): Promise<string> {
 export async function pyflakesCommand(platform: RunnerPlatform, launcher: string): Promise<PyflakesCommand> {
 	const existing = await which('pyflakes', process.env, platform.os === 'windows' ? 'native' : 'all');
 	if (existing) {
-		selectedTool('pyflakes', 'existing installation', existing);
+		selectedTool('pyflakes', 'existing installation', existing, await installedVersion(existing));
 		return { kind: 'existing', executable: existing };
 	}
 

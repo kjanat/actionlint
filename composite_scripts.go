@@ -1,7 +1,6 @@
 package actionlint
 
 import (
-	"maps"
 	"path/filepath"
 	"strings"
 
@@ -15,7 +14,10 @@ type compositeScriptRules struct {
 	rules []Rule
 }
 
-func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[string]bool) error {
+func (analysis *compositeAnalyzer) visitActionScripts(call *Step, parents []Rule, active map[string]bool) error {
+	if err := analysis.cancelled(); err != nil {
+		return err
+	}
 	action, ok := call.Exec.(*ExecAction)
 	if !ok {
 		return nil
@@ -25,11 +27,11 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 		spec := action.Uses.Value
 		// Metadata-load diagnostics belong to RuleAction. An unresolved action
 		// still invalidates executable-bit assumptions below.
-		meta, _, _ = v.actions.FindMetadata(spec)
+		meta, _, _ = analysis.actions.FindMetadata(spec)
 	}
 	if meta == nil || !strings.EqualFold(meta.Runs.Using, "composite") || active[meta.Path()] || len(active) >= 10 {
 		for _, rule := range parents {
-			compositeCheckoutPaths(rule, v.actions)
+			compositeCheckoutPaths(rule, analysis.actions)
 			if err := rule.VisitStep(call); err != nil {
 				return err
 			}
@@ -38,19 +40,19 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 	}
 	active[meta.Path()] = true
 	defer delete(active, meta.Path())
-	checkout := v.actions.checkoutState()
+	checkout := analysis.actions.checkoutState()
 	defer func() {
 		enabled, known := invocationCondition(call.If)
 		if known && !enabled {
-			v.actions.restoreCheckout(checkout)
-		} else if (!known || boolMayBeTrue(call.ContinueOnError) || boolMayBeTrue(call.Background)) && checkout != v.actions.checkoutState() {
-			v.actions.setCheckout(runDirectory{kind: directoryUnknown})
+			analysis.actions.restoreCheckout(checkout)
+		} else if (!known || boolMayBeTrue(call.ContinueOnError) || boolMayBeTrue(call.Background)) && checkout != analysis.actions.checkoutState() {
+			analysis.actions.setCheckout(runDirectory{kind: directoryUnknown})
 		}
 	}()
 
 	children := make([]Rule, 0, len(parents))
 	for _, parent := range parents {
-		child := compositeScriptRule(parent, call, filepath.Dir(meta.Path()), v.actions)
+		child := compositeScriptRule(parent, call, filepath.Dir(meta.Path()), analysis.actions)
 		if shellcheck, ok := child.(*RuleShellcheck); ok {
 			if err := shellcheck.prepareConfigPath(); err != nil {
 				return err
@@ -58,68 +60,42 @@ func (v *Visitor) visitActionScripts(call *Step, parents []Rule, active map[stri
 		}
 		children = append(children, child)
 	}
-	v.compositeRules = append(v.compositeRules, compositeScriptRules{meta, children})
+	analysis.rules = append(analysis.rules, compositeScriptRules{meta, children})
 	parser := &parser{sourceLines: splitSourceLines(meta.src)}
 	for _, metadataStep := range meta.Runs.Steps {
+		if err := analysis.cancelled(); err != nil {
+			return err
+		}
 		step := compositeScriptStep(metadataStep, parser)
-		v.actions.observeCheckout(step)
+		analysis.actions.observeCheckout(step)
 		if _, action := step.Exec.(*ExecAction); action {
-			for _, pass := range v.passes {
+			for _, pass := range analysis.passes {
 				if parent, enabled := pass.(*RuleAction); enabled {
-					validation := NewRuleAction(v.actions)
+					validation := NewRuleAction(analysis.actions)
 					validation.SetConfig(parent.Config())
 					if err := validation.VisitStep(step); err != nil {
 						return err
 					}
-					v.compositeRules = append(v.compositeRules, compositeScriptRules{meta, []Rule{validation}})
+					analysis.rules = append(analysis.rules, compositeScriptRules{meta, []Rule{validation}})
 					break
 				}
 			}
-			if err := v.visitActionScripts(step, children, active); err != nil {
+			if err := analysis.visitActionScripts(step, children, active); err != nil {
 				return err
 			}
 			continue
 		}
 		for _, rule := range children {
-			compositeCheckoutPaths(rule, v.actions)
+			compositeCheckoutPaths(rule, analysis.actions)
 			if err := rule.VisitStep(step); err != nil {
 				return err
 			}
 		}
 	}
-	enabled, conditionKnown := invocationCondition(call.If)
 	for i, parent := range parents {
 		if outer, ok := parent.(*RuleExecutableBit); ok {
 			if inner, ok := children[i].(*RuleExecutableBit); ok {
-				if conditionKnown && !enabled {
-					continue
-				}
-				if !conditionKnown {
-					// Either branch can retain changed modes; a child checkout only
-					// resets them when that branch actually runs.
-					maps.Copy(outer.changed, inner.changed)
-					maps.Copy(outer.actionChanged, inner.actionChanged)
-				}
-				outer.actionPristine = outer.actionPristine && inner.actionPristine
-				outer.repositoryUnknown = inner.repositoryUnknown
-				if boolMayBeTrue(call.ContinueOnError) {
-					// The caller may continue after a failed child checkout.
-					outer.pristine, outer.repositoryUnknown = false, true
-					outer.sequential = inner.sequential
-					continue
-				}
-				if !conditionKnown {
-					// A conditional checkout may never have run. Do not promote
-					// one branch's filesystem assumptions to the caller.
-					outer.pristine = false
-					outer.sequential = inner.sequential
-					continue
-				}
-				outer.pristine, outer.sequential = inner.pristine, inner.sequential
-				inner.paths.actionPath = outer.paths.actionPath
-				inner.paths.actionRunnerPath = outer.paths.actionRunnerPath
-				inner.paths.actionIndependent = outer.paths.actionIndependent
-				outer.paths, outer.changed, outer.actionChanged = inner.paths, inner.changed, inner.actionChanged
+				outer.joinComposite(call, inner)
 			}
 		}
 	}
@@ -175,33 +151,7 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string, actions *Lo
 	case *RulePyflakes:
 		child = newRulePyflakes(rule.cmd)
 	case *RuleExecutableBit:
-		scoped := newRuleExecutableBit(rule.context)
-		scoped.unix, scoped.sequential, scoped.pristine = rule.unix, rule.sequential, rule.pristine
-		scoped.caseInsensitive = rule.caseInsensitive
-		scoped.shIsDash = rule.shIsDash
-		scoped.repositoryUnknown = rule.repositoryUnknown
-		scoped.actionPristine = rule.actionPristine
-		if stepCanRunAfterFailure(call.If) {
-			scoped.pristine, scoped.repositoryUnknown = false, true
-			scoped.actionPristine = false
-		}
-		scoped.paths, scoped.changed, scoped.actionChanged = rule.paths, rule.changed, rule.actionChanged
-		compositeCheckoutPaths(scoped, actions)
-		compositeActionOrigin(&scoped.paths, call, actionPath)
-		enabled, conditionKnown := invocationCondition(call.If)
-		scoped.skipFindings = rule.skipFindings || conditionKnown && !enabled
-		if !conditionKnown || !enabled {
-			scoped.changed = maps.Clone(rule.changed)
-			scoped.actionChanged = maps.Clone(rule.actionChanged)
-		}
-		scoped.jobEnv = rule.jobEnv || shellEnvironmentUnknown(call.Env)
-		scoped.jobGitEnv = rule.jobGitEnv || checkoutEnvironmentUnknown(call.Env)
-		scoped.jobPathUnknown = rule.jobPathUnknown || shellPathUnknown(call.Env)
-		if conditionKnown && !enabled || boolMayBeTrue(call.Background) {
-			scoped.sequential, scoped.pristine = false, false
-			scoped.actionPristine = false
-		}
-		child = scoped
+		child = rule.forkComposite(call, actionPath, actions)
 	default:
 		panic("unsupported composite script rule")
 	}

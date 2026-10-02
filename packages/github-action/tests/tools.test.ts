@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { createHash } from 'node:crypto';
-import { copyFile, link, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, copyFile, link, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -85,7 +85,7 @@ test('tool probes exclude the review token from explicit and inherited environme
 	});
 });
 
-test('native tools discovered on PATH retain existing-command provenance without version probes', async (t) => {
+test('native tools discovered on PATH report their version without changing selection', async (t) => {
 	const messages: string[] = [];
 	t.mock.method(console, 'log', (message: string) => messages.push(message));
 	await temporary(async (directory) => {
@@ -98,10 +98,89 @@ test('native tools discovered on PATH retain existing-command provenance without
 			assert.deepEqual(await shellcheckBinary(platform), { kind: 'existing', executable: shellcheck });
 			assert.deepEqual(await pyflakesCommand(platform, ''), { kind: 'existing', executable: pyflakes });
 			assert.deepEqual(messages, [
-				`::debug::ShellCheck: existing installation; version not probed; ${shellcheck}`,
-				`::debug::pyflakes: existing installation; version not probed; ${pyflakes}`,
+				`::debug::ShellCheck: existing installation; version ${process.version}; ${shellcheck}`,
+				`::debug::pyflakes: existing installation; version ${process.version}; ${pyflakes}`,
 			]);
 		});
+	});
+});
+
+test('failed version probes retain the selected PATH executable', async (t) => {
+	const messages: string[] = [];
+	t.mock.method(console, 'log', (message: string) => messages.push(message));
+	await temporary(async (directory) => {
+		const extension = process.platform === 'win32' ? '.exe' : '';
+		for (const name of ['shellcheck', 'pyflakes']) {
+			const executable = join(directory, name + extension);
+			await writeFile(executable, '#!/nonexistent/actionlint-test-interpreter\n');
+			await chmod(executable, 0o755);
+		}
+		await withEnvironment({ PATH: directory, PATHEXT: '.EXE' }, async () => {
+			const platform = runnerPlatform(process.platform, process.arch);
+			assert.deepEqual(await shellcheckBinary(platform), {
+				kind: 'existing',
+				executable: join(directory, `shellcheck${extension}`),
+			});
+			assert.deepEqual(await pyflakesCommand(platform, ''), {
+				kind: 'existing',
+				executable: join(directory, `pyflakes${extension}`),
+			});
+		});
+	});
+	assert.equal(messages.length, 2);
+	for (const message of messages) assert.match(message, /existing installation; version unavailable \(.+\);/);
+});
+
+test('PATH version probes read tool banners without exposing the review token', {
+	skip: process.platform === 'win32',
+}, async (t) => {
+	const messages: string[] = [];
+	t.mock.method(console, 'log', (message: string) => messages.push(message));
+	await temporary(async (directory) => {
+		const shellcheck = join(directory, 'shellcheck');
+		const pyflakes = join(directory, 'pyflakes');
+		const guard = '#!/bin/sh\n[ "$1" = "--version" ] || exit 90\n[ -z "$INPUT_TOKEN" ] || exit 91\n';
+		await writeFile(shellcheck, `${guard}printf 'ShellCheck - shell script analysis tool\\nversion: 0.11.0\\n'\n`);
+		await writeFile(pyflakes, `${guard}printf '3.4.0 Python 3.13.0 on Linux\\n' >&2\n`);
+		await chmod(shellcheck, 0o755);
+		await chmod(pyflakes, 0o755);
+		await withEnvironment({ PATH: directory, INPUT_TOKEN: 'fixture-review-token' }, async () => {
+			const platform = runnerPlatform(process.platform, process.arch);
+			await shellcheckBinary(platform);
+			await pyflakesCommand(platform, '');
+		});
+		assert.deepEqual(messages, [
+			`::debug::ShellCheck: existing installation; version 0.11.0; ${shellcheck}`,
+			`::debug::pyflakes: existing installation; version 3.4.0; ${pyflakes}`,
+		]);
+	});
+});
+
+test('unsupported and timed-out version probes remain advisory', {
+	skip: process.platform === 'win32',
+}, async (t) => {
+	const messages: string[] = [];
+	t.mock.method(console, 'log', (message: string) => messages.push(message));
+	await temporary(async (directory) => {
+		const executable = join(directory, 'shellcheck');
+		for (
+			const { script, reason } of [
+				{ script: 'exit 7', reason: '--version exited 7' },
+				{ script: 'exit 0', reason: 'empty --version output' },
+				{ script: "printf 'custom wrapper\\n'", reason: 'unrecognized --version output' },
+				{ script: 'while :; do :; done', reason: 'terminated by SIGKILL' },
+			]
+		) {
+			await writeFile(executable, `#!/bin/sh\n${script}\n`);
+			await chmod(executable, 0o755);
+			await withEnvironment({ PATH: directory }, async () => {
+				assert.deepEqual(await shellcheckBinary(runnerPlatform(process.platform, process.arch)), {
+					kind: 'existing',
+					executable,
+				});
+			});
+			assert.ok(messages.at(-1)?.includes(reason));
+		}
 	});
 });
 

@@ -54,7 +54,7 @@ func shellcheckDialectOption(args []string) (string, bool) {
 	return dialect, found
 }
 
-func (cmd *externalCommand) shellcheckDialect() (string, bool) {
+func (cmd *externalCommand) shellcheckEnvironmentOptions() string {
 	value := os.Getenv("SHELLCHECK_OPTS")
 	for _, entry := range cmd.env {
 		key, override, _ := strings.Cut(entry, "=")
@@ -62,9 +62,13 @@ func (cmd *externalCommand) shellcheckDialect() (string, bool) {
 			value = override
 		}
 	}
+	return value
+}
+
+func (cmd *externalCommand) shellcheckDialect() (string, bool) {
 	// ShellCheck splits this variable on spaces, without shell quoting or expansion.
 	var args []string
-	for arg := range strings.SplitSeq(value, " ") {
+	for arg := range strings.SplitSeq(cmd.shellcheckEnvironmentOptions(), " ") {
 		if arg != "" {
 			args = append(args, arg)
 		}

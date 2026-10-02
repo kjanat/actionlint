@@ -12,6 +12,48 @@ import (
 	"golang.org/x/sys/execabs"
 )
 
+func TestShellcheckInvocationDebugContext(t *testing.T) {
+	command := shellcheckForTest(t)
+	t.Setenv("SHELLCHECK_OPTS", "--shell=sh")
+	for _, kind := range []directoryKind{directoryKnown, directoryUnknown} {
+		t.Run(fmt.Sprint(kind), func(t *testing.T) {
+			proc := newConcurrentProcess(t.Context(), 1)
+			rule, err := NewRuleShellcheck(command, proc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var output bytes.Buffer
+			rule.EnableDebug(&output)
+			rule.rcArgs = []string{"--norc"}
+			rule.cmd.args = []string{"--severity=warning"}
+			rule.cmd.env = []string{"SHELLCHECK_OPTS=--shell=bash"}
+			rule.inlineConfig = &ShellcheckConfig{Enable: []string{"quote-safe-variables"}}
+			directory := runDirectory{kind, t.TempDir()}
+			if err := rule.runShellcheck("echo hello", nil, shellcheckShell{name: "sh"}, directory, &Pos{Line: 7, Col: 1}); err != nil {
+				t.Fatal(err)
+			}
+			if err := rule.cmd.wait(); err != nil {
+				t.Fatal(err)
+			}
+			for _, want := range []string{
+				`dialect="bash" (explicit flags)`,
+				`"--severity=warning" "--norc"`,
+				`Inherited SHELLCHECK_OPTS="--shell=bash"`,
+				`# shellcheck enable=quote-safe-variables`,
+				fmt.Sprintf("%q", directory.path),
+			} {
+				if !strings.Contains(output.String(), want) {
+					t.Errorf("missing %q in debug output:\n%s", want, output.String())
+				}
+			}
+			disabled := strings.Contains(output.String(), "Source following disabled: working directory cannot be resolved locally")
+			if disabled != (kind == directoryUnknown) {
+				t.Fatalf("wrong source-following context:\n%s", output.String())
+			}
+		})
+	}
+}
+
 func TestRuleShellcheckLargeRunBlock(t *testing.T) {
 	shellcheck, err := execabs.LookPath("shellcheck")
 	if err != nil {

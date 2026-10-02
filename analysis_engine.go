@@ -96,10 +96,10 @@ func (l *analysisEngine) check(
 		}
 
 		v := NewVisitor()
-		v.actions = localActions
 		for _, rule := range rules {
 			v.AddPass(rule)
 		}
+		v.composites = &compositeAnalyzer{ctx: l.ctx, actions: localActions, passes: v.passes}
 		if dbg != nil {
 			v.EnableDebug(dbg)
 			for _, r := range rules {
@@ -122,7 +122,7 @@ func (l *analysisEngine) check(
 			l.debug("%s found %d errors", rule.Name(), len(errs))
 			all = append(all, errs...)
 		}
-		for _, composite := range v.compositeRules {
+		for _, composite := range v.composites.rules {
 			for _, rule := range composite.rules {
 				for _, finding := range rule.Errs() {
 					if finding.Filepath == "" {

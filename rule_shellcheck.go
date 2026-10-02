@@ -210,22 +210,27 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 		}
 	}
 	inferred := dialect
+	dialectOrigin := "workflow shell"
 	// Explicit flags retain native precedence over script directives. Do not append
 	// an inferred --shell after them and silently change the requested analysis.
 	flagShell, explicitShell := rule.cmd.shellcheckDialect()
 	appendDialect := !explicitShell && !directiveShell
 	if explicitShell {
 		dialect = flagShell
+		dialectOrigin = "explicit flags"
 	} else if directiveShell {
 		dialect = shellcheckHeaderDialect(header)
+		dialectOrigin = "script directive"
 	}
 	inline := rule.inlineConfig
 	if appendDialect {
 		if inline != nil && inline.Shell != nil {
 			dialect = *inline.Shell
+			dialectOrigin = "inline configuration"
 		}
 		if rule.config != nil && rule.config.Shell != "" {
 			dialect = rule.config.Shell
+			dialectOrigin = "application settings"
 		}
 	}
 	if dialect != inferred {
@@ -233,7 +238,7 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 	}
 
 	src = sanitizeExpressionsInScript(src)
-	rule.Debug("%s: Run ShellCheck: shell=%q, dialect=%q, native shell directive=%t, startup=%q:\n%s", pos, shell.name, dialect, directiveShell, setup, src)
+	rule.Debug("%s: Run ShellCheck: shell=%q, dialect=%q (%s), native shell directive=%t, startup=%q:\n%s", pos, shell.name, dialect, dialectOrigin, directiveShell, setup, src)
 
 	// Reasons to exclude the rules:
 	//
@@ -268,6 +273,9 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 	}
 	if directory.kind == directoryUnknown {
 		externalSources = false
+		rule.Debug("%s: Source following disabled: working directory cannot be resolved locally; analysis directory=%q", pos, directory.path)
+	} else {
+		rule.Debug("%s: Working directory=%q; source following requested=%t", pos, directory.path, externalSources)
 	}
 	if externalSources {
 		args = append(args, "-x")
@@ -277,7 +285,10 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 		args = append(args, "--shell", dialect)
 	}
 	args = append(args, "-e", strings.Join(excluded, ","), "-")
-	rule.Debug("%s: Running %s command with %s", pos, rule.cmd.exe, args)
+	rule.Debug("%s: Running %q with arguments %q", pos, rule.cmd.exe, append(slices.Clone(rule.cmd.args), args...))
+	if options := rule.cmd.shellcheckEnvironmentOptions(); options != "" {
+		rule.Debug("%s: Inherited SHELLCHECK_OPTS=%q", pos, options)
+	}
 
 	// Native file-wide directives also work with --norc and never need a temp file.
 	prefix, err := inline.directives()
@@ -286,6 +297,9 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 	}
 	if !externalSources {
 		prefix += "# shellcheck external-sources=false\n"
+	}
+	if prefix != "" {
+		rule.Debug("%s: Applied inline ShellCheck directives:\n%s", pos, prefix)
 	}
 	script := prepareShellcheckScript(src, prefix, setup)
 

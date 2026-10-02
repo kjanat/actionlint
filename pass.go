@@ -1,7 +1,6 @@
 package actionlint
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -23,10 +22,9 @@ type Pass interface {
 
 // Visitor visits syntax tree from root in depth-first order
 type Visitor struct {
-	passes         []Pass
-	dbg            io.Writer
-	actions        *LocalActionsCache
-	compositeRules []compositeScriptRules
+	passes     []Pass
+	dbg        io.Writer
+	composites *compositeAnalyzer
 }
 
 // NewVisitor creates Visitor instance
@@ -56,13 +54,12 @@ func (v *Visitor) Visit(n *Workflow) error {
 		t = time.Now()
 	}
 
-	var actionPathErr error
-	compositeStart := len(v.compositeRules)
+	if v.composites != nil {
+		v.composites.beginWorkflow()
+	}
 	for _, p := range v.passes {
 		if err := p.VisitWorkflowPre(n); err != nil {
-			if _, shellcheck := p.(*RuleShellcheck); shellcheck && v.actions != nil && errors.Is(err, errConfigActionPathUnavailable) {
-				// Validate action-only configuration when entering the actual composite.
-				actionPathErr = err
+			if v.composites != nil && v.composites.deferWorkflowError(p, err) {
 				continue
 			}
 			return err
@@ -79,16 +76,9 @@ func (v *Visitor) Visit(n *Workflow) error {
 			return err
 		}
 	}
-	if actionPathErr != nil {
-		for _, composite := range v.compositeRules[compositeStart:] {
-			for _, rule := range composite.rules {
-				if _, shellcheck := rule.(*RuleShellcheck); shellcheck {
-					actionPathErr = nil
-				}
-			}
-		}
-		if actionPathErr != nil {
-			return actionPathErr
+	if v.composites != nil {
+		if err := v.composites.validateWorkflow(); err != nil {
+			return err
 		}
 	}
 
@@ -111,10 +101,8 @@ func (v *Visitor) Visit(n *Workflow) error {
 }
 
 func (v *Visitor) visitJob(n *Job) error {
-	if v.actions != nil {
-		v.actions.setCheckout(runDirectory{})
-		v.actions.platform = runnerPlatform(n.RunsOn)
-		v.actions.caseInsensitive = v.actions.platform == platformKindWindows || macOSRunner(n.RunsOn)
+	if v.composites != nil {
+		v.composites.beginJob(n)
 	}
 	var t time.Time
 	if v.dbg != nil {
@@ -157,41 +145,20 @@ func (v *Visitor) visitJob(n *Job) error {
 }
 
 func (v *Visitor) visitStep(n *Step) error {
-	if v.actions != nil {
-		v.actions.observeCheckout(n)
-	}
 	var t time.Time
 	if v.dbg != nil {
 		t = time.Now()
 	}
 
-	for _, p := range v.passes {
-		if shellcheck, ok := p.(*RuleShellcheck); ok && v.actions != nil {
-			compositeCheckoutPaths(shellcheck, v.actions)
-		}
-		if _, script := p.(*RuleExecutableBit); script && v.actions != nil {
-			if _, action := n.Exec.(*ExecAction); action {
-				continue // Preserve checkout state while entering a local composite.
-			}
-		}
-		if err := p.VisitStep(n); err != nil {
+	if v.composites != nil {
+		if err := v.composites.visitStep(n); err != nil {
 			return err
 		}
-	}
-	if _, action := n.Exec.(*ExecAction); action && v.actions != nil {
-		var scripts []Rule
+	} else {
 		for _, p := range v.passes {
-			switch rule := p.(type) {
-			case *RuleShellcheck:
-				scripts = append(scripts, rule)
-			case *RulePyflakes:
-				scripts = append(scripts, rule)
-			case *RuleExecutableBit:
-				scripts = append(scripts, rule)
+			if err := p.VisitStep(n); err != nil {
+				return err
 			}
-		}
-		if err := v.visitActionScripts(n, scripts, make(map[string]bool)); err != nil {
-			return err
 		}
 	}
 
@@ -199,15 +166,15 @@ func (v *Visitor) visitStep(n *Step) error {
 	// https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
 	if e, ok := n.Exec.(*ExecParallel); ok {
 		for _, s := range e.Steps {
-			if v.actions != nil {
-				v.actions.setCheckout(runDirectory{kind: directoryUnknown})
+			if v.composites != nil {
+				v.composites.invalidateCheckout()
 			}
 			if err := v.visitStep(s); err != nil {
 				return err
 			}
 		}
-		if v.actions != nil {
-			v.actions.setCheckout(runDirectory{kind: directoryUnknown})
+		if v.composites != nil {
+			v.composites.invalidateCheckout()
 		}
 	}
 

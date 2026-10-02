@@ -101,7 +101,7 @@ func (a *action) execute() (int, error) {
 			count = strconv.Itoa(len(lint.diagnostics))
 		}
 	} else {
-		outcome, count, rendered = renderOutcome(lint.lintOutcome, in.format, req.workingDir, workspaceDir)
+		outcome, count, rendered = renderOutcome(lint)
 	}
 	lint.lintOutcome = outcome
 	a.emitStatus(outcome.code, count, lint.fileCount, lint.fileCountKnown, in)

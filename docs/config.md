@@ -82,6 +82,10 @@ tools:
 workflow environment variables can be supplied externally. This applies equally
 to inline settings, rc files, script directives and command-line options.
 
+Use `actionlint --log-level debug` to inspect each script's selected dialect,
+working directory, rc arguments, inline directives and effective command options.
+The log explains when an unresolved working directory disables source following.
+
 Rc paths supplied by an inline configuration overlay use the analysis working
 directory (the Action's `working-directory`). Inherited paths keep their config
 file's directory; explicit `${{ configdir }}` always selects that directory.
