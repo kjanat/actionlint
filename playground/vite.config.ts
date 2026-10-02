@@ -1,7 +1,7 @@
 /// <reference types="vitest/config" />
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { copyFile } from 'node:fs/promises';
+import { copyFile, realpath } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
 import { defaultClientConditions, defineConfig } from 'vite';
@@ -36,7 +36,7 @@ function sitePages(): import('vite').Plugin {
 	return {
 		name: 'actionlint:site-pages',
 		apply: 'build',
-		async closeBundle() {
+		async writeBundle() {
 			await copyFile(resolve(outDir, 'index.html'), resolve(outDir, '404.html'));
 
 			if (!existsSync(manual)) {
@@ -53,6 +53,17 @@ function sitePages(): import('vite').Plugin {
 export default defineConfig({
 	base: './',
 	plugins: [
+		{
+			name: 'actionlint:workspace-reader',
+			apply: 'build',
+			async buildStart() {
+				const reader = await this.resolve('@kjlint/changelog-rss', resolve(here, 'github-changelog/index.html'));
+				const expected = await realpath(resolve(oneUp, 'packages/changelog-feed/src/index.ts'));
+				if (!reader || reader.external || await realpath(reader.id) !== expected) {
+					this.error('The changelog reader must resolve to this checkout’s packages/changelog-feed/src/index.ts. Check the workspace dependency and source export condition.');
+				}
+			},
+		},
 		{
 			name: 'actionlint:version',
 			transformIndexHtml: html =>

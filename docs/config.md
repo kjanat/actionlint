@@ -48,7 +48,7 @@ tools:
     enabled: true
     config:
       disable: [SC2086]
-      enable: [check-unassigned-uppercase]
+      enable: [quote-safe-variables]
       external-sources: true
       source-path: [scripts]
 ```
@@ -75,6 +75,12 @@ tools:
 | `extended-analysis` | Boolean; omission keeps ShellCheck's default.            |
 | `external-sources`  | Boolean; defaults to enabled in actionlint.              |
 | `source-path`       | List of directories searched for sourced files.          |
+
+`enable` selects optional checks; it does not override actionlint's
+[built-in diagnostic exclusions](checks.md#shellcheck-integration-for-run). For example,
+`check-unassigned-uppercase` produces SC2154, which actionlint suppresses because
+workflow environment variables can be supplied externally. This applies equally
+to inline settings, rc files, script directives and command-line options.
 
 Rc paths supplied by an inline configuration overlay use the analysis working
 directory (the Action's `working-directory`). Inherited paths keep their config

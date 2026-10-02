@@ -1,4 +1,4 @@
-import { appendFile, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { appendFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve, sep } from 'node:path';
 
@@ -7,7 +7,7 @@ import { failedResult, parseResult } from '#result';
 import { postReview } from '#review';
 import type { Environment } from '#runtime';
 import { InputError } from '#runtime';
-import { commandEscape, writeOutputs } from '#workflow';
+import { commandEscape, readOutputs, writeOutputs } from '#workflow';
 
 export type ReportOptions = {
 	annotations: 'auto' | 'true' | 'false';
@@ -98,6 +98,7 @@ export async function report(
 	environment: Environment,
 	options: ReportOptions,
 	runtime: ReporterRuntime,
+	outputs: Readonly<Record<string, string>> = {},
 ): Promise<void> {
 	const attempt = async (destination: string, run: () => Promise<void>): Promise<void> => {
 		try {
@@ -114,7 +115,7 @@ export async function report(
 			);
 		}
 	};
-	const values: Record<string, string> = { 'result-file': path, 'report-sarif': '' };
+	const values: Record<string, string> = { ...outputs, 'result-file': path, 'report-sarif': '' };
 	if (options.sarif && result.completed && result.sarif) {
 		await attempt('SARIF report unavailable', async () => {
 			const sarifPath = `${path}.sarif`;
@@ -122,8 +123,11 @@ export async function report(
 			values['report-sarif'] = sarifPath;
 		});
 	}
-	await attempt('Report outputs unavailable', () => writeOutputs(environment.GITHUB_OUTPUT, values));
-	if (options.annotations === 'true' && environment.INPUT_FORMAT && environment.INPUT_FORMAT !== 'github') {
+	await writeOutputs(environment.GITHUB_OUTPUT, values);
+	if (
+		options.annotations === 'true'
+		|| (options.annotations === 'auto' && (!environment.INPUT_FORMAT || environment.INPUT_FORMAT === 'github'))
+	) {
 		const workspace = resolve(environment.GITHUB_WORKSPACE || '.');
 		const workingDirectory = resolve(workspace, environment['INPUT_WORKING-DIRECTORY'] || '.');
 		for (const diagnostic of result.diagnostics) {
@@ -151,10 +155,13 @@ export async function withReporting(
 ): Promise<number> {
 	const directory = await mkdtemp(join(environment.RUNNER_TEMP || tmpdir(), 'actionlint-result-'));
 	const path = join(directory, 'result.json');
+	// Stage native serialization; publish runner outputs only after validating the result.
+	const outputPath = join(directory, 'native-outputs');
+	await writeFile(outputPath, '', { mode: 0o600 });
 	let result = failedResult('The native analysis did not write a completed result');
 	await writeFile(path, `${JSON.stringify(result)}\n`, { mode: 0o600 });
 	let code = 3;
-	let failure: unknown;
+	let outputs: Record<string, string> = {};
 	let options: ReportOptions = {
 		annotations: 'auto',
 		summary: environment.INPUT_SUMMARY !== 'false',
@@ -163,15 +170,20 @@ export async function withReporting(
 	};
 	try {
 		options = reportOptions(environment);
-		code = await execute({ ...environment, ACTIONLINT_ACTION_RESULT: path });
+		code = await execute({
+			...environment,
+			ACTIONLINT_ACTION_RESULT: path,
+			GITHUB_OUTPUT: outputPath,
+			INPUT_ANNOTATIONS: 'false',
+		});
 		result = parseResult(JSON.parse(await readFile(path, 'utf8')));
 		if (!result.completed && code < 2) throw new Error(result.error || 'Native analysis did not complete');
 		const acceptedFindings = code === 0 && result.exit_code === 1 && environment['INPUT_FAIL-ON-ERROR'] === 'false';
 		if (code !== result.exit_code && !acceptedFindings) {
 			throw new Error('Native process status disagrees with its persisted analysis result');
 		}
+		outputs = await readOutputs(outputPath);
 	} catch (error) {
-		failure = error;
 		// A process can fail after writing diagnostics. Recover them before recording
 		// the failure, and never turn a process/result disagreement into success.
 		try {
@@ -189,8 +201,35 @@ export async function withReporting(
 		};
 		code = result.exit_code;
 		await writeFile(path, `${JSON.stringify(result)}\n`, { mode: 0o600 });
+		runtime.log(`::error::${commandEscape(error instanceof Error ? error.message : String(error))}`);
 	}
-	await report(result, path, environment, options, runtime);
-	if (failure !== undefined) throw failure;
+	let rendered = outputs.output || '';
+	if (environment.INPUT_FORMAT === 'json') rendered = `${JSON.stringify(result)}\n`;
+	if (environment.INPUT_FORMAT === 'json-lines') {
+		rendered = result.diagnostics.map((diagnostic) =>
+			`${JSON.stringify({ schema_version: result.schema_version, ...diagnostic })}\n`
+		).join('');
+	}
+	await rm(outputPath);
+	try {
+		await report(result, path, environment, options, runtime, {
+			'exit-code': String(result.exit_code),
+			'result': result.status,
+			'problems-found': String(result.completed && result.diagnostics.length > 0),
+			'problem-count': result.completed ? String(result.diagnostics.length) : '',
+			'output': rendered,
+			'output-file': outputs['output-file'] || '',
+		});
+	} catch (error) {
+		result = {
+			...result,
+			completed: false,
+			status: 'failure',
+			exit_code: 3,
+			error: error instanceof Error ? error.message : String(error),
+		};
+		await writeFile(path, `${JSON.stringify(result)}\n`, { mode: 0o600 });
+		throw error;
+	}
 	return code;
 }

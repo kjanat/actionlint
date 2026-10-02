@@ -1091,8 +1091,10 @@ Since both `${{ }}` expression syntax and ShellScript's variable access `$FOO` u
 shellcheck. To avoid it, actionlint replaces `${{ }}` with underscores. For example `echo '${{ matrix.os }}'` is replaced
 with `echo '________________'`.
 
-Some shellcheck rules conflict with the `${{ }}` expression syntax. To avoid errors due to the syntax, [SC1091][SC1091], [SC2050][SC2050],
-[SC2194][SC2194], [SC2154][SC2154], [SC2157][SC2157], [SC2043][SC2043] are disabled.
+actionlint disables [SC2050][SC2050], [SC2194][SC2194], [SC2157][SC2157] and [SC2043][SC2043] because expression
+placeholders can trigger them. It also disables [SC1091][SC1091] because sourced files may exist only on the runner,
+and [SC2153][SC2153] and [SC2154][SC2154] because workflow environment variables can be supplied externally.
+These exclusions still apply when optional checks are enabled through configuration, directives or command-line options.
 
 When an explicit shell expression cannot be resolved, or a custom wrapper's script language cannot be inferred, actionlint
 skips ShellCheck unless a leading native `shell` directive selects a supported dialect. Global dialect settings and command
@@ -3648,6 +3650,7 @@ test.yaml:9:14: could not parse as YAML: unknown anchor 'credentials' referenced
 [SC2050]: https://github.com/koalaman/shellcheck/wiki/SC2050
 [SC2194]: https://github.com/koalaman/shellcheck/wiki/SC2194
 [SC2154]: https://github.com/koalaman/shellcheck/wiki/SC2154
+[SC2153]: https://github.com/koalaman/shellcheck/wiki/SC2153
 [SC2157]: https://github.com/koalaman/shellcheck/wiki/SC2157
 [SC2043]: https://github.com/koalaman/shellcheck/wiki/SC2043
 [shellcheck-env-var]: https://github.com/koalaman/shellcheck/wiki/Integration#environment-variables
