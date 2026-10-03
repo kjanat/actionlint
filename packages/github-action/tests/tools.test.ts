@@ -168,7 +168,7 @@ test('unsupported and timed-out version probes remain advisory', {
 				{ script: 'exit 7', reason: '--version exited 7' },
 				{ script: 'exit 0', reason: 'empty --version output' },
 				{ script: "printf 'custom wrapper\\n'", reason: 'unrecognized --version output' },
-				{ script: 'while :; do :; done', reason: 'terminated by SIGKILL' },
+				{ script: 'while :; do :; done', reason: 'timed out after 1000ms' },
 			]
 		) {
 			await writeFile(executable, `#!/bin/sh\n${script}\n`);

@@ -18,10 +18,18 @@ export function capture(
 			shell: false,
 			windowsHide: true,
 			stdio: ['ignore', 'pipe', 'pipe'],
-			timeout: options.timeoutMS,
 			windowsVerbatimArguments: options.windowsVerbatimArguments,
-			killSignal: 'SIGKILL',
 		});
+		const deadline = options.timeoutMS
+			? setTimeout(() => {
+				// Descendants can retain the pipes after the direct child exits, delaying 'close'.
+				reject(new Error(`${executable} timed out after ${options.timeoutMS}ms`));
+				child.kill('SIGKILL');
+				child.unref();
+				child.stdout.destroy();
+				child.stderr.destroy();
+			}, options.timeoutMS)
+			: undefined;
 		let stdout = '';
 		let stderr = '';
 		child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
@@ -30,8 +38,12 @@ export function capture(
 		child.stderr.setEncoding('utf8').on('data', (chunk: string) => {
 			stderr += chunk;
 		});
-		child.once('error', reject);
+		child.once('error', (error) => {
+			clearTimeout(deadline);
+			reject(error);
+		});
 		child.once('close', (code, signal) => {
+			clearTimeout(deadline);
 			if (code === null) reject(new Error(`${executable} terminated by ${signal}`));
 			else resolve({ exitCode: code, stdout, stderr });
 		});
