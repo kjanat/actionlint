@@ -1,8 +1,14 @@
 on: push
 jobs:
-  test:
+  composite:
     runs-on: ubuntu-latest
     steps:
       - uses: ./composite
+  javascript:
+    runs-on: ubuntu-latest
+    steps:
       - uses: ./javascript
+  docker:
+    runs-on: ubuntu-latest
+    steps:
       - uses: ./docker
