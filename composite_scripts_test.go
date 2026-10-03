@@ -763,8 +763,11 @@ func TestCompositeShellcheckCallerCheckoutState(t *testing.T) {
 	}{
 		{"relocated root", "- uses: ./local\n" + run, 1},
 		{"relocated directory", "- uses: ./local\n" + strings.Replace(run, "working-directory: .", "working-directory: relocated", 1), 0},
-		{"conditional call", "- uses: actions/checkout@v6\n- uses: ./local\n  if: inputs.checkout\n" + run, 1},
-		{"tolerated failure", "- uses: actions/checkout@v6\n- uses: ./local\n  continue-on-error: true\n" + run, 1},
+		// Uncertain checkout at relocated leaves the existing root source intact.
+		{"conditional call retains root", "- uses: actions/checkout@v6\n- uses: ./local\n  if: inputs.checkout\n" + run, 0},
+		{"tolerated failure retains root", "- uses: actions/checkout@v6\n- uses: ./local\n  continue-on-error: true\n" + run, 0},
+		{"conditional destination unknown", "- uses: actions/checkout@v6\n- uses: ./local\n  if: inputs.checkout\n" + strings.Replace(run, "working-directory: .", "working-directory: relocated", 1), 1},
+		{"failed destination unknown", "- uses: actions/checkout@v6\n- uses: ./local\n  continue-on-error: true\n" + strings.Replace(run, "working-directory: .", "working-directory: relocated", 1), 1},
 		{"skipped call", "- uses: actions/checkout@v6\n- uses: ./local\n  if: false\n" + run, 0},
 		{"retained root", "- uses: actions/checkout@v6\n- uses: ./local\n" + run, 0},
 		{"parallel children and following step", "- uses: actions/checkout@v6\n- parallel:\n    " + strings.ReplaceAll(run, "\n", "\n    ") + "\n" + run, 2},
