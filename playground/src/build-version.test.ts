@@ -8,7 +8,7 @@ import { join } from 'node:path';
 
 import { buildVersion, renderBuildVersion } from './build-version.ts';
 
-test('playground keeps source identity separate from the published release after promotion', async () => {
+await test('playground keeps source identity separate from the published release after promotion', async () => {
 	const directory = await mkdtemp(join(tmpdir(), 'actionlint-playground-version-'));
 	try {
 		const git = (...args: string[]) =>
@@ -66,7 +66,7 @@ test('playground keeps source identity separate from the published release after
 	}
 });
 
-test('playground retains development fallback and rejects malformed release metadata', async () => {
+await test('playground retains development fallback and rejects malformed release metadata', async () => {
 	const directory = await mkdtemp(join(tmpdir(), 'actionlint-playground-no-git-'));
 	try {
 		const identity = buildVersion(directory, 'v1.2.3');
