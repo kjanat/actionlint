@@ -63,9 +63,10 @@ func (analysis *compositeAnalyzer) beginJob(job *Job) {
 	analysis.actions.persistentEnvUnknown = false
 	analysis.actions.shellEnvUnknown = analysis.actions.shellEnvironmentUnknown(analysis.workflowEnv) || analysis.actions.shellEnvironmentUnknown(job.Env)
 	runnerShell := shellValue{kind: shellValueUnknown}
-	if analysis.actions.platform == platformKindWindows {
+	switch analysis.actions.platform {
+	case platformKindWindows:
 		runnerShell = shellValueFromString(&String{Value: "pwsh"})
-	} else if analysis.actions.platform == platformKindMacOrLinux {
+	case platformKindMacOrLinux:
 		runnerShell = shellValue{}
 	}
 	if container := shellcheckContainerShell(job.Container); container.kind != shellValueUnspecified {
