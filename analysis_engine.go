@@ -129,13 +129,25 @@ func (l *analysisEngine) check(
 		suppressionPolicy = cfg.Policy.DisallowSuppressions
 	}
 	all = filterInlineSuppressions(content, all, suppressionPolicy)
+	var projectDir string
+	if project != nil {
+		projectDir = project.RootDir()
+		if resolved, err := filepath.EvalSymlinks(projectDir); err == nil {
+			projectDir = resolved
+		}
+	}
 	byPath := make(map[string][]*Error)
 	for _, finding := range all {
 		findingPath := finding.Filepath
 		if findingPath == "" {
 			findingPath = path
 		} else if project != nil && filepath.IsAbs(findingPath) {
-			if relative, err := filepath.Rel(project.RootDir(), findingPath); err == nil {
+			// ShellCheck runs in the resolved working directory. Compare both
+			// paths physically so checkout aliases retain project-relative filters.
+			if resolved, err := filepath.EvalSymlinks(findingPath); err == nil {
+				findingPath = resolved
+			}
+			if relative, err := filepath.Rel(projectDir, findingPath); err == nil {
 				findingPath = relative
 			}
 		}
