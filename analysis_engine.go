@@ -50,6 +50,7 @@ func (l *analysisEngine) check(
 	}
 
 	w, all := Parse(content)
+	var analysisErr error
 
 	if l.logLevel >= LogLevelVerbose {
 		elapsed := time.Since(start)
@@ -112,9 +113,23 @@ func (l *analysisEngine) check(
 			}
 		}
 
-		if err := v.Visit(w); err != nil {
-			l.debug("Error occurred while visiting workflow syntax tree: %v", err)
-			return nil, err
+		analysisErr = v.Visit(w)
+		if analysisErr != nil {
+			l.debug("Error occurred while visiting workflow syntax tree: %v", analysisErr)
+		}
+		// A failed visit may skip WorkflowPost, leaving analyzer callbacks active.
+		// Drain every owned runner before reading findings; composite rules share them.
+		for _, rule := range rules {
+			var err error
+			switch rule := rule.(type) {
+			case *RuleShellcheck:
+				err = rule.cmd.wait()
+			case *RulePyflakes:
+				err = rule.cmd.wait()
+			}
+			if analysisErr == nil {
+				analysisErr = err
+			}
 		}
 
 		for _, rule := range rules {
@@ -197,7 +212,7 @@ func (l *analysisEngine) check(
 		l.log("Found total", len(all), "errors in", elapsed.Milliseconds(), "ms for", path)
 	}
 
-	return all, nil
+	return all, analysisErr
 }
 
 func (l *analysisEngine) filterErrors(errs []*Error, cfgs []PathConfig) []*Error {

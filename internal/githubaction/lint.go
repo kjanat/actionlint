@@ -141,6 +141,24 @@ func runLinter(req *lintRequest) *lintResult {
 		}
 		analysis, err = session.Files(paths, nil)
 	}
+	// Absolute reads must retain the caller's relative spelling in Action output.
+	if analysis != nil {
+		for i := range analysis.Diagnostics {
+			diagnostic := &analysis.Diagnostics[i]
+			if path, ok := inputNames[diagnostic.Path]; ok {
+				for j := range diagnostic.Fixes {
+					for k := range diagnostic.Fixes[j].Edits {
+						edit := &diagnostic.Fixes[j].Edits[k]
+						if filepath.Clean(edit.Path) == filepath.Clean(diagnostic.Path) {
+							edit.Path = path
+						}
+					}
+				}
+				diagnostic.Path = path
+			}
+		}
+		result.diagnostics = analysis.Diagnostics
+	}
 	if err != nil {
 		code := actionlint.ExitStatusFailure
 		if _, ok := errors.AsType[*actionlint.ConfigOverlayError](err); ok {
@@ -149,22 +167,6 @@ func runLinter(req *lintRequest) *lintResult {
 		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", code}
 		return result
 	}
-	// Absolute reads must retain the caller's relative spelling in Action output.
-	for i := range analysis.Diagnostics {
-		diagnostic := &analysis.Diagnostics[i]
-		if path, ok := inputNames[diagnostic.Path]; ok {
-			for j := range diagnostic.Fixes {
-				for k := range diagnostic.Fixes[j].Edits {
-					edit := &diagnostic.Fixes[j].Edits[k]
-					if filepath.Clean(edit.Path) == filepath.Clean(diagnostic.Path) {
-						edit.Path = path
-					}
-				}
-			}
-			diagnostic.Path = path
-		}
-	}
-	result.diagnostics = analysis.Diagnostics
 	if req.format == formatSARIF || req.sarif {
 		var sarif bytes.Buffer
 		sarifRenderer, err := actionlint.NewAnalysisRenderer(actionlint.OutputFormatSARIF, "", false)

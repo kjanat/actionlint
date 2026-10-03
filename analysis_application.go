@@ -298,7 +298,7 @@ func (a *AnalysisSession) analyze(sources []SourceUnit) (*AnalysisResult, error)
 	request := a.request
 	request.Sources = sources
 	result, err := analyze(a.ctx, request, a.logOut, a.logLevel)
-	if err != nil {
+	if result == nil {
 		return nil, err
 	}
 	if a.defaultConfigPath != "" {
@@ -317,7 +317,7 @@ func (a *AnalysisSession) analyze(sources []SourceUnit) (*AnalysisResult, error)
 		}
 	}
 	a.configState.Unlock()
-	return result, nil
+	return result, err
 }
 
 // Completed writes the selection summary after a caller has successfully rendered a result.
