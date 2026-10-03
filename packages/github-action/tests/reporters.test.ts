@@ -9,7 +9,7 @@ import { capture } from '#native';
 import { annotation, report, reportOptions, summary, withReporting } from '#reporters';
 import type { ActionResult, Diagnostic } from '#result';
 import { parseResult } from '#result';
-import { readOutputs } from '#workflow';
+import { readOutputs, writeOutputs } from '#workflow';
 
 const diagnostic: Diagnostic = {
 	rule: 'shellcheck',
@@ -32,6 +32,38 @@ const result: ActionResult = {
 	hints: [],
 	sarif: { version: '2.1.0', runs: [{ results: [{ message: { text: diagnostic.message } }] }] },
 };
+
+test('normalized JSON output also replaces the native report file', async () => {
+	const directory = await mkdtemp(join(tmpdir(), 'actionlint-report-json-'));
+	try {
+		for (const format of ['json', 'json-lines']) {
+			const output = join(directory, `${format}-outputs`);
+			const reportPath = join(directory, `${format}-report`);
+			const legacy = JSON.stringify([{ message: diagnostic.message }]);
+			await withReporting({
+				RUNNER_TEMP: directory,
+				GITHUB_WORKSPACE: directory,
+				GITHUB_OUTPUT: output,
+				INPUT_FORMAT: format,
+				INPUT_SUMMARY: 'false',
+			}, async (environment) => {
+				assert.ok(environment.ACTIONLINT_ACTION_RESULT);
+				await writeFile(environment.ACTIONLINT_ACTION_RESULT, JSON.stringify(result));
+				await writeFile(reportPath, legacy);
+				await writeOutputs(environment.GITHUB_OUTPUT, { output: legacy, 'output-file': `${format}-report` });
+				return 1;
+			});
+			const outputs = await readOutputs(output);
+			const expected: string = format === 'json'
+				? `${JSON.stringify(result)}\n`
+				: `${JSON.stringify({ schema_version: 1, ...diagnostic })}\n`;
+			assert.equal(outputs.output, expected);
+			assert.equal(await readFile(reportPath, 'utf8'), expected);
+		}
+	} finally {
+		await rm(directory, { recursive: true, force: true });
+	}
+});
 
 test('persisted results validate completion and preserve diagnostic severity and fixes', () => {
 	assert.deepEqual(parseResult(result), result);

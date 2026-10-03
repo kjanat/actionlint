@@ -28,11 +28,15 @@ func (state *executableState) afterConcurrentExecution() {
 	state.actionPristine = false
 }
 
-func (state *executableState) afterKnownCheckout(retainsOtherCheckout bool) {
+func (state *executableState) afterKnownCheckout(checkout string, caseInsensitive bool) {
 	state.pristine, state.repositoryUnknown = true, false
-	// Checkout only resets its own workspace copy, never an independent action.
-	if !retainsOtherCheckout {
-		clear(state.changed)
+	// Reset only paths replaced by this checkout; sibling and independent
+	// action copies keep their own mutation histories.
+	placement := checkoutPlacement{directory: runDirectory{path: checkout}, caseInsensitive: caseInsensitive}
+	for name := range state.changed {
+		if _, replaced := placement.relative(name); replaced {
+			delete(state.changed, name)
+		}
 	}
 }
 

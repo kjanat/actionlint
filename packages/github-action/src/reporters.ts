@@ -212,6 +212,9 @@ export async function withReporting(
 	}
 	await rm(outputPath);
 	try {
+		if (outputs['output-file'] && (environment.INPUT_FORMAT === 'json' || environment.INPUT_FORMAT === 'json-lines')) {
+			await writeFile(resolve(environment.GITHUB_WORKSPACE || '.', outputs['output-file']), rendered);
+		}
 		await report(result, path, environment, options, runtime, {
 			'exit-code': String(result.exit_code),
 			'result': result.status,
