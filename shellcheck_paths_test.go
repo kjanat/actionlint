@@ -33,6 +33,59 @@ func shellcheckForTest(t *testing.T) string {
 	return command
 }
 
+func TestShellcheckExternalSourcesPrecedence(t *testing.T) {
+	command := shellcheckForTest(t)
+	for _, tc := range []struct {
+		name, rc, environment string
+		args                  []string
+		unknown, follows      bool
+	}{
+		{name: "default", rc: "shell=bash\n", follows: true},
+		{name: "rc disables", rc: "external-sources=false\n"},
+		{name: "rc enables", rc: "external-sources=true\n", follows: true},
+		{name: "quoted rc setting", rc: "shell=bash external-sources='false' # disabled\n"},
+		{name: "native first setting wins", rc: "external-sources=false\nexternal-sources=true\n"},
+		{name: "comment is not setting", rc: "# external-sources=false\nshell=bash\n", follows: true},
+		{name: "quoted path is not setting", rc: "source-path='external-sources=false'\n", follows: true},
+		{name: "rc disables despite explicit argument", rc: "external-sources=false\n", args: []string{"-x"}},
+		{name: "rc disables despite environment", rc: "external-sources=false\n", environment: "--external-sources"},
+		{name: "unknown directory default", rc: "external-sources=true\n", unknown: true},
+		{name: "unknown directory explicit argument", rc: "external-sources=true\n", unknown: true, args: []string{"-x"}},
+		{name: "unknown directory environment", rc: "external-sources=true\n", unknown: true, environment: "-x"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("SHELLCHECK_OPTS", tc.environment)
+			root := t.TempDir()
+			if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			writeShellcheckFixture(t, root, "config.sh", "VALUE=42\n")
+			writeShellcheckFixture(t, root, ".github/.shellcheckrc", tc.rc)
+			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools:\n  shellcheck:\n    config: .shellcheckrc\n")
+			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          . ./config.sh\n          echo $VALUE\n"
+			if tc.unknown {
+				workflow += "        working-directory: ${{ github.event.inputs.directory }}\n"
+			}
+			path := writeShellcheckFixture(t, root, ".github/workflows/test.yml", workflow)
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: tc.args}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := session.Files([]string{path}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.follows {
+				if len(result.Diagnostics) != 0 {
+					t.Fatalf("source should establish VALUE as a number: %+v", result.Diagnostics)
+				}
+			} else if len(result.Diagnostics) != 1 || !strings.Contains(result.Diagnostics[0].Message, "SC2086") {
+				t.Fatalf("source should not change the script analysis: %+v", result.Diagnostics)
+			}
+		})
+	}
+}
+
 func TestShellcheckConfigPaths(t *testing.T) {
 	command := shellcheckForTest(t)
 	t.Setenv("GITHUB_WORKSPACE", "")
