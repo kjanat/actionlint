@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -48,8 +49,11 @@ func TestCompositeAnalysisCancellation(t *testing.T) {
 					return os.ReadFile(path)
 				},
 			})
-			if result != nil || !errors.Is(err, context.Canceled) {
+			if result == nil || !errors.Is(err, context.Canceled) {
 				t.Fatalf("wanted cancelled analysis, got result=%+v, error=%v", result, err)
+			}
+			if !slices.Contains(result.Inputs, outer) || slices.Contains(result.Inputs, inner) {
+				t.Fatalf("partial result does not match consumed inputs: %v", result.Inputs)
 			}
 			if outerReads != 1 || innerReads != 0 {
 				t.Fatalf("analysis continued after cancellation: outer reads=%d, inner reads=%d", outerReads, innerReads)
