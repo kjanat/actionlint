@@ -186,7 +186,7 @@ Save reports even when findings fail the lint step:
       ${{ steps.lint.outputs.report-sarif }}
 ```
 
-`result-file` contains a [versioned result](../packages/github-action/result.schema.json):
+`result-file` contains a [versioned result](../schemas/results/v1.schema.json):
 
 ```json
 {
@@ -201,11 +201,11 @@ Save reports even when findings fail the lint step:
 }
 ```
 
-This differs from legacy Action `format: json` (a diagnostic array) and CLI
-`check --output-format=json` (a diagnostic envelope). Neither old format changes.
-The new result includes completion, counts, config origins, hints, and available
-source/fix information. Full workflow/job/step inventories are separate work
-(kjanat/actionlint#189).
+CLI `check --json`, Action `format: json`, and `result-file` share this contract.
+JSON Lines uses the same diagnostic objects with `schema_version` on each record.
+See [the result contract](results.md) for TypeScript types, schema evolution, and
+migration from the previous Action diagnostic array. Full workflow/job/step
+inventories remain separate work (kjanat/actionlint#189).
 
 Files use unique absolute paths and survive for later steps in the **same job**.
 Upload them for use elsewhere. A result is attempted for setup/input failures too;
@@ -301,22 +301,28 @@ All inputs are optional. Booleans accept `true`/`false`.
 | `review`                                                                   | `false`        | Advisory PR review posting.                                                |
 | `token`                                                                    | `github.token` | Used only by the review reporter.                                          |
 
-| Output           | Meaning                                                                                 |
-| ---------------- | --------------------------------------------------------------------------------------- |
-| `version`        | Installed binary version, without the `v` prefix.                                       |
-| `exit-code`      | Exit status: 0 successful setup/clean analysis, 1 findings, 2 invalid input, 3 failure. |
-| `result`         | `success`, `problems-found`, `invalid-options`, `failure`.                              |
-| `problems-found` | Whether analysis completed with findings. Partial findings remain in `result-file`.     |
-| `problem-count`  | Count, or empty when analysis did not complete.                                         |
-| `output`         | Complete legacy-format output; prefer files for large reports.                          |
-| `output-file`    | Workspace-relative requested path, or empty.                                            |
-| `result-file`    | Absolute versioned JSON path, including failure results when writable.                  |
-| `report-sarif`   | Absolute SARIF path, or empty when not requested/not completed.                         |
+| Output           | Meaning                                                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `version`        | Installed binary version, without the `v` prefix.                                                                       |
+| `exit-code`      | Exit status: 0 successful setup/clean analysis, 1 findings, 2 invalid input, 3 failure.                                 |
+| `result`         | `success`, `problems-found`, `invalid-options`, `failure`.                                                              |
+| `problems-found` | Whether analysis completed with findings. Partial findings remain in `result-file`.                                     |
+| `problem-count`  | Count, or empty when analysis did not complete.                                                                         |
+| `output`         | Selected serialization; JSON uses the same result as `result-file`, including failures. Prefer files for large reports. |
+| `output-file`    | Workspace-relative requested path, or empty.                                                                            |
+| `result-file`    | Absolute versioned JSON path, including failure results when writable.                                                  |
+| `report-sarif`   | Absolute SARIF path, or empty when not requested/not completed.                                                         |
 
 ## Migration and troubleshooting
 
-The nine shipped inputs and six shipped outputs retain their contracts. New
-defaults add a compact summary and independent PATH exports; turn each off when
+Input and output names remain available, but **JSON and JSON Lines change shape**:
+JSON now returns the versioned result object instead of a diagnostic array; JSON
+Lines uses versioned canonical diagnostics. Update consumers using the
+[migration guide](results.md) before upgrading. The unified contract is
+the default; there is no separate legacy JSON mode. Coordinate affected consumers
+before promoting moving Action tags.
+
+New defaults add a compact summary and independent PATH exports; turn each off when
 unwanted. JavaScript removes Docker's Linux/daemon requirement. Existing immutable
 Docker releases and digest pins remain untouched. Compatibility images continue
 as `action-X.Y.Z`, `action-vX.Y`, `action-vX`, and `action-latest`, using a thin

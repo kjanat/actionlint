@@ -32,6 +32,7 @@ type lintRequest struct {
 	shellcheck         string
 	pyflakes           string
 	format             outputFormat
+	sarif              bool
 	files              []string
 	hints              []string
 }
@@ -53,6 +54,7 @@ type lintResult struct {
 }
 
 func (req *lintRequest) configureEnvironment(env func(string) string) error {
+	req.sarif = env("INPUT_SARIF") == "true"
 	if value := env("INPUT_CONFIG"); strings.TrimSpace(value) != "" {
 		overlay, err := actionlint.ParseConfigOverlay("config", []byte(value))
 		if err != nil {
@@ -127,15 +129,6 @@ func runLinter(req *lintRequest) *lintResult {
 		return result
 	}
 
-	format, template := actionlint.OutputFormat(""), "{{json .}}"
-	if req.format == formatSARIF {
-		format, template = actionlint.OutputFormatSARIF, ""
-	}
-	renderer, err := actionlint.NewAnalysisRenderer(format, template, false)
-	if err != nil {
-		result.lintOutcome = &lintOutcome{"", err.Error() + "\n", actionlint.ExitStatusFailure}
-		return result
-	}
 	var analysis *actionlint.AnalysisResult
 	inputNames := make(map[string]string, len(req.files))
 	if len(req.files) == 0 {
@@ -177,25 +170,28 @@ func runLinter(req *lintRequest) *lintResult {
 		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", code}
 		return result
 	}
-	sarifAnalysis := workspaceSARIFAnalysis(analysis, req.workingDir, workspace)
-	selected := analysis
+	if req.format == formatSARIF || req.sarif {
+		var sarif bytes.Buffer
+		sarifRenderer, err := actionlint.NewAnalysisRenderer(actionlint.OutputFormatSARIF, "", false)
+		if err == nil {
+			err = sarifRenderer.Render(&sarif, workspaceReportAnalysis(analysis, req.workingDir, workspace))
+		}
+		if err != nil {
+			result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
+			return result
+		}
+		result.sarif = sarif.String()
+	}
 	if req.format == formatSARIF {
-		selected = sarifAnalysis
+		out.WriteString(result.sarif)
+	} else if req.format != formatJSON && req.format != formatJSONLines {
+		rendered, err := renderAnalysis(req.format, analysis, req.workingDir, workspace)
+		if err != nil {
+			result.lintOutcome = &lintOutcome{"", err.Error() + "\n", actionlint.ExitStatusFailure}
+			return result
+		}
+		out.WriteString(rendered)
 	}
-	if err := renderer.Render(&out, selected); err != nil {
-		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
-		return result
-	}
-	var sarif bytes.Buffer
-	sarifRenderer, err := actionlint.NewAnalysisRenderer(actionlint.OutputFormatSARIF, "", false)
-	if err == nil {
-		err = sarifRenderer.Render(&sarif, sarifAnalysis)
-	}
-	if err != nil {
-		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
-		return result
-	}
-	result.sarif = sarif.String()
 	session.Completed(analysis)
 	if len(analysis.Diagnostics) > 0 {
 		result.hints = append(result.hints, quotedIgnoreHints(req.ignore, analysis.Diagnostics)...)
@@ -206,9 +202,9 @@ func runLinter(req *lintRequest) *lintResult {
 	return result
 }
 
-// Copy the complete result to retain renderer rule/source metadata while keeping
-// persisted diagnostics and non-SARIF formats relative to the analysis directory.
-func workspaceSARIFAnalysis(analysis *actionlint.AnalysisResult, workingDir, workspace string) *actionlint.AnalysisResult {
+// Rebase SARIF and GitHub reports without changing source metadata or the
+// analysis-relative paths used by persisted diagnostics and other formats.
+func workspaceReportAnalysis(analysis *actionlint.AnalysisResult, workingDir, workspace string) *actionlint.AnalysisResult {
 	result := *analysis
 	result.Diagnostics = slices.Clone(analysis.Diagnostics)
 	for i := range result.Diagnostics {

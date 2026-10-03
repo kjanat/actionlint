@@ -94,9 +94,9 @@ uses long options and short aliases. Run **--help-legacy** for old spellings.
 
 **--output-format**, **--output**, **-o** *MODE*
 : Select `text`, `oneline`, `json`, `jsonl`, `sarif`, or `github`. The default is
-`text`. **--output** is a supported alias. JSON emits a versioned document with
-`schema_version` and `diagnostics`; JSONL emits one diagnostic per line. GitHub
-annotations are emitted only when explicitly selected.
+`text`. **--output** is a supported alias. JSON emits a versioned analysis result
+with completion status, diagnostics, and configuration context. JSONL emits one diagnostic
+per line. GitHub annotations are emitted only when explicitly selected.
 
 **--json**
 : Select JSON output. With help, version, config, rules or doctor, emit JSON
@@ -379,15 +379,25 @@ SARIF uses the bundled template and needs no separate template file:
 The CLI's **--format** accepts template text. The GitHub Action's `format` input instead accepts
 names such as `json` and `sarif`. Changing output format does not change the lint exit status.
 
-Native JSON returns a versioned document with `schema_version` and `diagnostics`.
+Native JSON returns a versioned analysis result shared with the GitHub Action.
 Each diagnostic contains `rule`, `message`, `path`, `start`, `end`, and an optional source-line
 `snippet`. Positions use one-based Unicode character columns and exclusive end positions;
-a range may end on a later line. A clean check writes `{"schema_version":1,"diagnostics":[]}`.
+a range may end on a later line. A clean single-file check includes these fields:
+
+```json
+{"schema_version":1,"status":"success","completed":true,"exit_code":0,"file_count":1,"diagnostics":[],"hints":[]}
+```
+
+The result also includes `configurations` with selected settings and their origins.
+See [Analysis results](https://github.com/kjanat/actionlint/blob/HEAD/docs/results.md)
+for the schema, types, and compatibility rules.
 JSON Lines writes one diagnostic per line with `schema_version: 1` on every record, or nothing
 for a clean check. The legacy `{{json .}}` template retains its array, field names, and inclusive
 `end_column` contract.
 
-In JSON modes, fatal errors are JSON objects on standard error with `error` and `exit_code`.
+In JSON modes, incomplete checks emit the result on standard error with `completed: false`,
+an `error`, and a nonzero `exit_code`. An empty `diagnostics` array alone does not indicate success.
+Argument errors before operation selection contain only `error` and `exit_code`.
 Requested progress or debug logs are separate JSON Lines records with a `log` field on standard
 error. **--quiet** suppresses these log records. Standard output contains only the requested result.
 An early failure can leave standard output empty; always check the exit status.

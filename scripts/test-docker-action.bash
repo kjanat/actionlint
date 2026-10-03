@@ -62,7 +62,7 @@ expect_output exit-code 0
 expect_output result success
 expect_output problems-found false
 expect_output problem-count 0
-expect_output output '[]'
+output output | jq -e '.schema_version == 1 and .completed and .status == "success" and .diagnostics == []' >/dev/null
 expect_output output-file ''
 
 for format in github default oneline json json-lines markdown sarif; do
@@ -106,7 +106,8 @@ printf 'self-hosted-runner:\n  labels: [custom-runner]\n' >"${temporary}/workspa
 expect_status 0 '.github/workflows/check.yaml' json '' lint.yaml false false sub reports/result.json true
 expect_output output-file reports/result.json
 report="$(cat "${temporary}/workspace/reports/result.json")"
-test "${report}" = '[]'
+expect_output output "${report}"
+jq -e '.schema_version == 1 and .completed and .status == "success" and .exit_code == 0 and .file_count == 1 and .diagnostics == []' "${temporary}/workspace/reports/result.json" >/dev/null
 owner="$(stat -c '%u:%g' "${temporary}/workspace")"
 directory_owner="$(stat -c '%u:%g' "${temporary}/workspace/reports")"
 report_owner="$(stat -c '%u:%g' "${temporary}/workspace/reports/result.json")"

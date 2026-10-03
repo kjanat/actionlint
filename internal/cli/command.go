@@ -27,6 +27,8 @@ func (cmd *Command) Main(args []string) int {
 // Cancellation returns actionlint.ExitStatusFailure. Args includes the executable name.
 func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 	app := newCommandApp(cmd)
+	// Root parsing must select an operation before errors can describe a check.
+	app.inv.Operation = ""
 	if len(args) > 0 {
 		args = args[1:]
 	}
@@ -58,6 +60,9 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 			rest = append([]string{forced}, rest...)
 		}
 		app.errorJSON = app.errorJSON || requestsJSON(app.root.Flags(), rest[1:], true)
+		// Parsing can fail before a command's RunE records its full operation.
+		// Keep metadata-command errors out of the analysis-result contract.
+		app.inv.Operation = operation(rest[0])
 		app.root.SetArgs(rest)
 		app.prefixIgnore = slices.Clone(app.inv.Check.IgnoreRegex)
 		if err := app.root.ExecuteContext(ctx); err != nil {
@@ -75,6 +80,8 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 			app.inv.Operation, app.inv.Shell = "completion", string(app.opts.completion)
 		case app.opts.initConfig:
 			app.inv.Operation = "config init"
+		default:
+			app.inv.Operation = operationCheck
 		}
 	}
 	if app.helpShown {

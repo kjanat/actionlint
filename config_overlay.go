@@ -207,6 +207,7 @@ type analysisConfigState struct {
 	overlays []ConfigOverlay
 	onLoaded func(ConfigReport)
 	loaded   map[*Project]*Config
+	reports  map[*Project]ConfigReport
 }
 
 func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
@@ -282,6 +283,7 @@ func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
 		}
 	}
 	s.loaded[project] = cfg
+	s.reports[project] = report
 	notification = &report
 	return cfg, nil
 }

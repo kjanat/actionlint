@@ -87,6 +87,7 @@ func TestActionReportsExternalWorkflowFindings(t *testing.T) {
 		t.Run(format, func(t *testing.T) {
 			env := map[string]string{
 				"GITHUB_WORKSPACE": workspace, "INPUT_FILES": file, "INPUT_FORMAT": format,
+				"INPUT_SARIF":      "true",
 				"INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false",
 				"ACTIONLINT_ACTION_RESULT": filepath.Join(t.TempDir(), "result.json"),
 				"GITHUB_OUTPUT":            filepath.Join(t.TempDir(), "outputs"),

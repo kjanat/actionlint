@@ -82,6 +82,20 @@ func (a *commandApp) reportError(err error) int {
 		status = actionlint.ExitStatusInvalidCommandOption
 	}
 	if a.errorJSON || a.jsonOutput() {
+		if a.inv.Operation == "check" {
+			result := actionlint.NewCheckResult(status)
+			result.Error = err.Error()
+			if failure, ok := errors.AsType[*checkAnalysisError](err); ok {
+				result.Diagnostics = failure.result.Diagnostics
+				count := failure.result.FileCount()
+				result.FileCount = &count
+				for _, config := range failure.result.Configurations {
+					result.AddConfiguration(config)
+				}
+			}
+			_ = writeCommandJSON(a.streams.Stderr, result)
+			return status
+		}
 		_ = writeCommandJSON(a.streams.Stderr, struct {
 			Error    string `json:"error"`
 			ExitCode int    `json:"exit_code"`

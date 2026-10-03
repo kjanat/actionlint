@@ -171,7 +171,7 @@ func TestCommandConfigAndEmptyArgs(t *testing.T) {
 		t.Fatal(err)
 	}
 	got = testRunCommand(commandBadWorkflow, "--config-file", created.Path, "--json", "-")
-	if got.Status != 0 || got.Stdout != "{\"schema_version\":1,\"diagnostics\":[]}\n" || got.Stderr != "" {
+	if got.Status != 0 || !cleanCheckJSON(got.Stdout) || got.Stderr != "" {
 		t.Fatalf("explicit config not applied: %+v", got)
 	}
 }

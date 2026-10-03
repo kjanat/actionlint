@@ -251,9 +251,11 @@ jobs:
           CANDIDATE: ${{ needs.verify.outputs.candidate }}
         run: |
           mkdir .published-action-test
-          node scripts/published-action.mjs "${GITHUB_REPOSITORY}" "${VERSION}" "${CANDIDATE}" > .published-action-test/action.yml
+          sed -e "s|OWNER/REPO@RELEASE_TAG|${GITHUB_REPOSITORY}@v${VERSION}|g" \
+            -e "s|OWNER/REPO@COMMIT_SHA|${GITHUB_REPOSITORY}@${CANDIDATE}|g" \
+            scripts/testdata/published-action/action.yml > .published-action-test/action.yml
       - name: Resolve both published references through the runner
-        # The generated composite contains literal external uses references.
+        # The prepared composite contains literal external uses references.
         uses: ./.published-action-test
   action-tags:
     name: Update moving Action references

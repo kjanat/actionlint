@@ -9,6 +9,7 @@ import { capture } from '#native';
 import { annotation, report, reportOptions, summary, withReporting } from '#reporters';
 import type { ActionResult, Diagnostic } from '#result';
 import { parseResult } from '#result';
+import { readOutputs, writeOutputs } from '#workflow';
 
 const diagnostic: Diagnostic = {
 	rule: 'shellcheck',
@@ -31,6 +32,38 @@ const result: ActionResult = {
 	hints: [],
 	sarif: { version: '2.1.0', runs: [{ results: [{ message: { text: diagnostic.message } }] }] },
 };
+
+test('normalized JSON output also replaces the native report file', async () => {
+	const directory = await mkdtemp(join(tmpdir(), 'actionlint-report-json-'));
+	try {
+		for (const format of ['json', 'json-lines']) {
+			const output = join(directory, `${format}-outputs`);
+			const reportPath = join(directory, `${format}-report`);
+			const legacy = JSON.stringify([{ message: diagnostic.message }]);
+			await withReporting({
+				RUNNER_TEMP: directory,
+				GITHUB_WORKSPACE: directory,
+				GITHUB_OUTPUT: output,
+				INPUT_FORMAT: format,
+				INPUT_SUMMARY: 'false',
+			}, async (environment) => {
+				assert.ok(environment.ACTIONLINT_ACTION_RESULT);
+				await writeFile(environment.ACTIONLINT_ACTION_RESULT, JSON.stringify(result));
+				await writeFile(reportPath, legacy);
+				await writeOutputs(environment.GITHUB_OUTPUT, { output: legacy, 'output-file': `${format}-report` });
+				return 1;
+			});
+			const outputs = await readOutputs(output);
+			const expected: string = format === 'json'
+				? `${JSON.stringify(result)}\n`
+				: `${JSON.stringify({ schema_version: 1, ...diagnostic })}\n`;
+			assert.equal(outputs.output, expected);
+			assert.equal(await readFile(reportPath, 'utf8'), expected);
+		}
+	} finally {
+		await rm(directory, { recursive: true, force: true });
+	}
+});
 
 test('persisted results validate completion and preserve diagnostic severity and fixes', () => {
 	assert.deepEqual(parseResult(result), result);
@@ -80,7 +113,7 @@ test('configuration warnings and origins survive parsing without becoming requir
 	assert.throws(() => parseResult({ ...result, configurations: [{ ...configuration, warnings: ['wrong shape'] }] }));
 });
 
-test('annotation overrides add commands only for explicit true with a non-GitHub format', async () => {
+test('annotation policy is independent of serialization with auto enabled for GitHub format', async () => {
 	for (const format of ['', 'github', 'json', 'oneline']) {
 		for (const annotations of ['auto', 'true', 'false']) {
 			const messages: string[] = [];
@@ -89,7 +122,8 @@ test('annotation overrides add commands only for explicit true with a non-GitHub
 				log: (message) => messages.push(message),
 				review: async () => assert.fail('review disabled'),
 			});
-			assert.equal(messages.length, annotations === 'true' && format !== '' && format !== 'github' ? 1 : 0);
+			const enabled = annotations === 'true' || (annotations === 'auto' && (format === '' || format === 'github'));
+			assert.deepEqual(messages, enabled ? [annotation(diagnostic)] : []);
 		}
 	}
 });
@@ -149,14 +183,50 @@ test('reporter failures preserve native result and let other destinations finish
 	}
 });
 
+test('JSON output and recovered failures preserve additive top-level result fields', async (t) => {
+	const directory = await mkdtemp(join(tmpdir(), 'actionlint-additive-result-'));
+	t.after(() => rm(directory, { recursive: true }));
+	const extended = {
+		...result,
+		statistics: { elapsed_ms: 12, rules: ['shellcheck'] },
+		notices: ['compatible extension'],
+		source_digest: null,
+	};
+	for (const failed of [false, true]) {
+		const outputPath = join(directory, `outputs-${failed}`);
+		const code = await withReporting({
+			RUNNER_TEMP: directory,
+			GITHUB_OUTPUT: outputPath,
+			INPUT_FORMAT: 'json',
+		}, async (environment) => {
+			assert.ok(environment.ACTIONLINT_ACTION_RESULT);
+			await writeFile(environment.ACTIONLINT_ACTION_RESULT, JSON.stringify(extended));
+			if (failed) throw new Error('native process crashed');
+			return 1;
+		}, {
+			log: () => {},
+			review: async () => assert.fail('review disabled'),
+		});
+		assert.equal(code, failed ? 3 : 1);
+		const outputs = await readOutputs(outputPath);
+		assert.ok(outputs.output);
+		assert.ok(outputs['result-file']);
+		const expected = failed
+			? { ...extended, completed: false, status: 'failure', exit_code: 3, error: 'native process crashed' }
+			: extended;
+		assert.deepEqual(JSON.parse(outputs.output), expected);
+		assert.deepEqual(JSON.parse(await readFile(outputs['result-file'], 'utf8')), expected);
+	}
+});
+
 test('native process failures preserve collected diagnostics and configuration', async () => {
 	const directory = await mkdtemp(join(tmpdir(), 'actionlint-partial-test-'));
 	try {
 		for (const reject of [false, true]) {
 			let resultPath = '';
 			const outputPath = join(directory, `outputs-${reject}`);
-			await assert.rejects(
-				withReporting(
+			assert.equal(
+				await withReporting(
 					{ RUNNER_TEMP: directory, GITHUB_OUTPUT: outputPath, INPUT_SARIF: 'true' },
 					async (environment) => {
 						assert.ok(environment.ACTIONLINT_ACTION_RESULT);
@@ -166,6 +236,7 @@ test('native process failures preserve collected diagnostics and configuration',
 						return 3;
 					},
 				),
+				3,
 			);
 			const persisted = parseResult(JSON.parse(await readFile(resultPath, 'utf8')));
 			assert.equal(persisted.completed, false);
@@ -179,6 +250,23 @@ test('native process failures preserve collected diagnostics and configuration',
 	} finally {
 		await rm(directory, { recursive: true });
 	}
+});
+
+test('core output publication failure remains fatal and preserves analysis evidence', async (t) => {
+	const directory = await mkdtemp(join(tmpdir(), 'actionlint-output-failure-'));
+	t.after(() => rm(directory, { recursive: true }));
+	let resultPath = '';
+	await assert.rejects(withReporting({ RUNNER_TEMP: directory, GITHUB_OUTPUT: directory }, async (environment) => {
+		assert.ok(environment.ACTIONLINT_ACTION_RESULT);
+		resultPath = environment.ACTIONLINT_ACTION_RESULT;
+		await writeFile(resultPath, JSON.stringify(result));
+		return 1;
+	}));
+	const persisted = parseResult(JSON.parse(await readFile(resultPath, 'utf8')));
+	assert.equal(persisted.status, 'failure');
+	assert.equal(persisted.completed, false);
+	assert.equal(persisted.exit_code, 3);
+	assert.deepEqual(persisted.diagnostics, result.diagnostics);
 });
 
 test('real entrypoint rejects malformed native results and summarizes input failures', async () => {
@@ -233,7 +321,7 @@ test('real entrypoint rejects malformed native results and summarizes input fail
 			assert.ok(child.stdout.includes('::error::'));
 			const outputs = await readFile(outputPath, 'utf8');
 			const statuses = [...outputs.matchAll(/^result<<[^\n]+\n([^\n]+)\n/gm)].map((match) => match[1]);
-			assert.deepEqual(statuses, scenario.code === 2 ? [scenario.status] : ['success', scenario.status]);
+			assert.deepEqual(statuses, [scenario.status]);
 			const resultPath = /^result-file<<[^\n]+\n([^\n]+)\n/m.exec(outputs)?.[1];
 			assert.ok(resultPath);
 			const persisted = parseResult(JSON.parse(await readFile(resultPath, 'utf8')));
@@ -285,8 +373,8 @@ test('one analysis feeds reports; github annotations are not emitted twice; revi
 				},
 			},
 		);
-		assert.equal(messages.length, 1);
-		assert.ok(messages[0]?.startsWith('::warning::PR review skipped: HTTP 403'));
+		assert.equal(messages.length, 2);
+		assert.ok(messages[1]?.startsWith('::warning::PR review skipped: HTTP 403'));
 		assert.deepEqual(JSON.parse(await readFile(`${path}.sarif`, 'utf8')), result.sarif);
 		assert.ok((await readFile(stepSummary, 'utf8')).includes('SC2086'));
 		assert.ok((await readFile(output, 'utf8')).includes('result-file<<'));
@@ -301,7 +389,7 @@ test('one analysis feeds reports; github annotations are not emitted twice; revi
 				assert.fail('review disabled');
 			},
 		});
-		assert.equal(messages.filter((text) => text.startsWith('::warning file=')).length, 1);
+		assert.equal(messages.filter((text) => text.startsWith('::warning file=')).length, 2);
 	} finally {
 		await rm(directory, { recursive: true });
 	}
@@ -374,38 +462,41 @@ test('missing or corrupt native results cannot become a clean analysis', async (
 	const directory = await mkdtemp(join(tmpdir(), 'actionlint-incomplete-test-'));
 	try {
 		const disabledSummary = join(directory, 'disabled-summary');
-		await assert.rejects(
-			withReporting({
+		assert.equal(
+			await withReporting({
 				RUNNER_TEMP: directory,
 				INPUT_ANNOTATIONS: 'invalid',
 				INPUT_SUMMARY: 'false',
 				GITHUB_STEP_SUMMARY: disabledSummary,
 			}, async () => assert.fail('invalid inputs must stop before execution')),
-			/Input 'annotations'/,
+			2,
 		);
 		await assert.rejects(readFile(disabledSummary), { code: 'ENOENT' });
-		await assert.rejects(withReporting({ RUNNER_TEMP: directory }, async () => 0), /did not write a completed result/);
-		await assert.rejects(withReporting({ RUNNER_TEMP: directory }, async (environment) => {
-			const path = environment.ACTIONLINT_ACTION_RESULT;
-			assert.ok(path);
-			await writeFile(path, '{"schema_version":');
-			return 0;
-		}));
+		assert.equal(await withReporting({ RUNNER_TEMP: directory }, async () => 0), 3);
+		assert.equal(
+			await withReporting({ RUNNER_TEMP: directory }, async (environment) => {
+				const path = environment.ACTIONLINT_ACTION_RESULT;
+				assert.ok(path);
+				await writeFile(path, '{"schema_version":');
+				return 0;
+			}),
+			3,
+		);
 		const output = join(directory, 'outputs');
-		await assert.rejects(
-			withReporting({ RUNNER_TEMP: directory }, async (environment) => {
+		assert.equal(
+			await withReporting({ RUNNER_TEMP: directory }, async (environment) => {
 				const path = environment.ACTIONLINT_ACTION_RESULT;
 				assert.ok(path);
 				await writeFile(path, JSON.stringify(result));
 				return 3;
 			}),
-			/process status disagrees/,
+			3,
 		);
-		await assert.rejects(
-			withReporting({ RUNNER_TEMP: directory, GITHUB_OUTPUT: output }, async () => {
+		assert.equal(
+			await withReporting({ RUNNER_TEMP: directory, GITHUB_OUTPUT: output }, async () => {
 				throw new Error('download failed');
 			}),
-			/download failed/,
+			3,
 		);
 		assert.ok((await readFile(output, 'utf8')).includes('result-file<<'));
 	} finally {
