@@ -127,7 +127,22 @@ func (l *analysisEngine) check(
 		suppressionPolicy = cfg.Policy.DisallowSuppressions
 	}
 	all = filterInlineSuppressions(content, all, suppressionPolicy)
-	all = l.filterErrors(all, cfg.PathConfigs(path))
+	byPath := make(map[string][]*Error)
+	for _, finding := range all {
+		findingPath := finding.Filepath
+		if findingPath == "" {
+			findingPath = path
+		} else if project != nil && filepath.IsAbs(findingPath) {
+			if relative, err := filepath.Rel(project.RootDir(), findingPath); err == nil {
+				findingPath = relative
+			}
+		}
+		byPath[findingPath] = append(byPath[findingPath], finding)
+	}
+	all = nil
+	for findingPath, findings := range byPath {
+		all = append(all, l.filterErrors(findings, cfg.PathConfigs(findingPath))...)
+	}
 
 	diagnosticDir := l.workingDir
 	if resolved, err := filepath.EvalSymlinks(diagnosticDir); err == nil {
