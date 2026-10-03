@@ -110,6 +110,10 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"PATH chmod then direct", "ubuntu-latest", "", "- run: chmod +x good.sh && ./bad.sh\n  env: {PATH: tools}", ""},
 		{"false job", "ubuntu-latest", "if: false", "- run: ./bad.sh", ""},
 		{"false expression job", "ubuntu-latest", "if: ${{ false }}", "- run: ./bad.sh", ""},
+		{"root failure job", "ubuntu-latest", "if: failure()", "- run: ./bad.sh", ""},
+		{"root conditional failure job", "ubuntu-latest", "if: failure() && github.event_name == 'push'", "- run: ./bad.sh", ""},
+		{"root cancellation job", "ubuntu-latest", "if: cancelled()", "- run: ./bad.sh", "bad.sh"},
+		{"root nonsuccess job", "ubuntu-latest", "if: ${{ !success() }}", "- run: ./bad.sh", "bad.sh"},
 		{"contradictory status job", "ubuntu-latest", "if: success() && failure()", "- run: ./bad.sh", ""},
 		{"contradictory expression job", "ubuntu-latest", "if: ${{ failure() && success() }}", "- run: ./bad.sh", ""},
 		{"contradictory dynamic job", "ubuntu-latest", "if: github.event_name == 'push' && success() && failure()", "- run: ./bad.sh", ""},
@@ -284,6 +288,11 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"padded expression checkout path", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: \"${{ ' source ' }}\"}\n- run: ./source/bad.sh", "bad.sh"},
 		{"whitespace checkout path", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: '  '}\n- run: ./bad.sh", "bad.sh"},
 		{"checkout step Git worktree", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {GIT_WORK_TREE: /tmp}\n- run: ./bad.sh", ""},
+		{"checkout HOME config", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {HOME: '${{ github.workspace }}/config-home'}\n- run: ./bad.sh", ""},
+		{"checkout XDG config", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {XDG_CONFIG_HOME: '${{ github.workspace }}/config-home'}\n- run: ./bad.sh", ""},
+		{"checkout empty HOME", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {HOME: ''}\n- run: ./bad.sh", "bad.sh"},
+		{"checkout empty XDG config", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {XDG_CONFIG_HOME: ''}\n- run: ./bad.sh", "bad.sh"},
+		{"checkout lowercase unix environment", "ubuntu-latest", "env: {git_work_tree: /tmp, path: tools}", "- run: ./bad.sh", "bad.sh"},
 		{"checkout PATH wrapper", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: source}\n  env: {PATH: '${{ github.workspace }}/tools:/usr/bin'}\n- run: ./source/bad.sh", ""},
 		{"checkout literal PATH", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {PATH: tools:/usr/bin}\n- run: ./bad.sh", ""},
 		{"checkout unknown PATH", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {PATH: '${{ inputs.path }}'}\n- run: ./bad.sh", ""},
@@ -454,6 +463,8 @@ func TestExecutableBitWorkflowShellOptions(t *testing.T) {
 		{"SSH_ASKPASS: ./credentials.sh", false},
 		{"GIT_ALLOW_PROTOCOL: 'https:ext'", false},
 		{"GIT_TRACE: '1'", true},
+		{"HOME: config-home", false},
+		{"XDG_CONFIG_HOME: config-home", false},
 	} {
 		t.Run(tc.env, func(t *testing.T) {
 			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: push\nenv: {"+tc.env+"}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - run: ./bad.sh \"$UNSET\"\n")
