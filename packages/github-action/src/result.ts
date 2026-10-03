@@ -82,6 +82,8 @@ export function parseResult(value: unknown): ActionResult {
 		|| (value.error !== undefined && typeof value.error !== 'string')
 	) throw new Error('actionlint returned an invalid or unsupported persisted result');
 	const data: ResultData = {
+		// Schema v1 allows additive fields; retain them when reporters serialize the result.
+		...value,
 		schema_version: 1,
 		file_count: value.file_count,
 		diagnostics: value.diagnostics,
