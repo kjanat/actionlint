@@ -30,6 +30,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *Step, parents []Rule
 		meta, _, _ = analysis.actions.FindMetadata(spec)
 	}
 	if meta == nil || !strings.EqualFold(meta.Runs.Using, "composite") || active[meta.Path()] || len(active) >= 10 {
+		analysis.actions.observeOpaqueAction(call, action)
 		for _, rule := range parents {
 			compositeCheckoutPaths(rule, analysis.actions)
 			if err := rule.VisitStep(call); err != nil {
@@ -42,11 +43,17 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *Step, parents []Rule
 	defer delete(active, meta.Path())
 	checkout := analysis.actions.checkoutState()
 	checkoutEnv := analysis.actions.checkoutEnvUnknown
-	analysis.actions.checkoutEnvUnknown = checkoutEnv || checkoutEnvironmentUnknown(call.Env)
+	persistentEnv := analysis.actions.persistentEnvUnknown
+	shellEnv, checkoutShell := analysis.actions.shellEnvUnknown, analysis.actions.checkoutShell
+	analysis.actions.checkoutEnvUnknown = checkoutEnv || checkoutEnvironmentUnknown(call.Env, analysis.actions.platform)
+	analysis.actions.shellEnvUnknown = shellEnv || analysis.actions.shellEnvironmentUnknown(call.Env)
+	analysis.actions.checkoutShell = shellcheckShell{}
 	defer func() {
 		analysis.actions.checkoutEnvUnknown = checkoutEnv
+		analysis.actions.shellEnvUnknown, analysis.actions.checkoutShell = shellEnv, checkoutShell
 		enabled, known := invocationCondition(call.If)
 		if known && !enabled {
+			analysis.actions.persistentEnvUnknown = persistentEnv
 			analysis.actions.restoreCheckout(checkout)
 		} else if (!known || boolMayBeTrue(call.ContinueOnError) || boolMayBeTrue(call.Background)) && checkout != analysis.actions.checkoutState() {
 			mayFail := boolMayBeTrue(call.ContinueOnError) || boolMayBeTrue(call.Background)
@@ -71,6 +78,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *Step, parents []Rule
 			return err
 		}
 		step := compositeScriptStep(metadataStep, parser)
+		analysis.actions.observeExecution(step)
 		analysis.actions.observeCheckout(step)
 		if _, action := step.Exec.(*ExecAction); action {
 			for _, pass := range analysis.passes {

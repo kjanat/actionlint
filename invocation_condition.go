@@ -3,12 +3,24 @@ package actionlint
 import "strings"
 
 func invocationCondition(condition *String) (enabled, known bool) {
+	return invocationConditionInStatuses(condition, []string{"success", "failure", "other"})
+}
+
+func jobInvocationCondition(job *Job) (enabled, known bool) {
+	if len(job.Needs) == 0 {
+		// No ancestor can have failed. Cancellation still prevents assuming success.
+		return invocationConditionInStatuses(job.If, []string{"success", "other"})
+	}
+	return invocationCondition(job.If)
+}
+
+func invocationConditionInStatuses(condition *String, statuses []string) (enabled, known bool) {
 	if condition != nil {
 		source := condition.Value
 		if !condition.ContainsExpression() {
 			source = "${{ " + source + " }}"
 		}
-		if conditionNeverRuns(parseAssignedExpression(source)) {
+		if conditionNeverRunsInStatuses(parseAssignedExpression(source), statuses) {
 			return false, true
 		}
 	}
@@ -31,7 +43,11 @@ const (
 // Keep cancellation independent and leave unsupported expressions unknown.
 // https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idneeds
 func conditionNeverRuns(expression ExprNode) bool {
-	for _, status := range []string{"success", "failure", "other"} {
+	return conditionNeverRunsInStatuses(expression, []string{"success", "failure", "other"})
+}
+
+func conditionNeverRunsInStatuses(expression ExprNode, statuses []string) bool {
+	for _, status := range statuses {
 		for _, cancelled := range []bool{false, true} {
 			if conditionStatusTruth(expression, status, cancelled) != conditionFalse {
 				return false

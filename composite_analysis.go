@@ -8,13 +8,14 @@ import (
 // compositeAnalyzer owns script-analyzer policy and invocation-specific state,
 // leaving Visitor responsible for the workflow's ordinary pass lifecycle.
 type compositeAnalyzer struct {
-	ctx            context.Context
-	actions        *LocalActionsCache
-	passes         []Pass
-	rules          []compositeScriptRules
-	workflowStart  int
-	actionPathErr  error
-	workflowGitEnv bool
+	ctx           context.Context
+	actions       *LocalActionsCache
+	passes        []Pass
+	rules         []compositeScriptRules
+	workflowStart int
+	actionPathErr error
+	workflowEnv   *Env
+	workflowShell shellValue
 }
 
 func (analysis *compositeAnalyzer) cancelled() error {
@@ -27,7 +28,8 @@ func (analysis *compositeAnalyzer) cancelled() error {
 func (analysis *compositeAnalyzer) beginWorkflow(workflow *Workflow) {
 	analysis.workflowStart = len(analysis.rules)
 	analysis.actionPathErr = nil
-	analysis.workflowGitEnv = checkoutEnvironmentUnknown(workflow.Env)
+	analysis.workflowEnv = workflow.Env
+	analysis.workflowShell = defaultsShellValue(workflow.Defaults)
 }
 
 func (analysis *compositeAnalyzer) deferWorkflowError(pass Pass, err error) bool {
@@ -57,7 +59,19 @@ func (analysis *compositeAnalyzer) beginJob(job *Job) {
 	analysis.actions.setCheckout(runDirectory{})
 	analysis.actions.platform = runnerPlatform(job.RunsOn)
 	analysis.actions.caseInsensitive = analysis.actions.platform == platformKindWindows || macOSRunner(job.RunsOn)
-	analysis.actions.checkoutEnvUnknown = analysis.workflowGitEnv || checkoutEnvironmentUnknown(job.Env)
+	analysis.actions.checkoutEnvUnknown = checkoutEnvironmentUnknown(analysis.workflowEnv, analysis.actions.platform) || checkoutEnvironmentUnknown(job.Env, analysis.actions.platform)
+	analysis.actions.persistentEnvUnknown = false
+	analysis.actions.shellEnvUnknown = analysis.actions.shellEnvironmentUnknown(analysis.workflowEnv) || analysis.actions.shellEnvironmentUnknown(job.Env)
+	runnerShell := shellValue{kind: shellValueUnknown}
+	if analysis.actions.platform == platformKindWindows {
+		runnerShell = shellValueFromString(&String{Value: "pwsh"})
+	} else if analysis.actions.platform == platformKindMacOrLinux {
+		runnerShell = shellValue{}
+	}
+	if container := shellcheckContainerShell(job.Container); container.kind != shellValueUnspecified {
+		runnerShell = container
+	}
+	analysis.actions.checkoutShell = resolveRunShell(&ExecRun{}, defaultsShellValue(job.Defaults), analysis.workflowShell, runnerShell)
 }
 
 func (analysis *compositeAnalyzer) invalidateCheckout() {
@@ -68,6 +82,7 @@ func (analysis *compositeAnalyzer) visitStep(step *Step) error {
 	if err := analysis.cancelled(); err != nil {
 		return err
 	}
+	analysis.actions.observeExecution(step)
 	analysis.actions.observeCheckout(step)
 	for _, pass := range analysis.passes {
 		if shellcheck, ok := pass.(*RuleShellcheck); ok {

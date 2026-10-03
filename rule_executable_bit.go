@@ -22,7 +22,8 @@ type RuleExecutableBit struct {
 	paths                               runPaths
 	unix                                bool
 	workflowEnv, jobEnv                 bool
-	workflowGitEnv, jobGitEnv           bool
+	workflowGitEnv                      *Env
+	jobGitEnv                           bool
 	workflowPathUnknown, jobPathUnknown bool
 	pathUnknown                         bool
 	skipFindings                        bool
@@ -39,7 +40,7 @@ func (rule *RuleExecutableBit) VisitWorkflowPre(workflow *Workflow) error {
 	rule.workflowDir = defaultsWorkingDirectory(workflow.Defaults)
 	rule.workflowShell = defaultsShellValue(workflow.Defaults)
 	rule.workflowEnv = shellEnvironmentUnknown(workflow.Env)
-	rule.workflowGitEnv = checkoutEnvironmentUnknown(workflow.Env)
+	rule.workflowGitEnv = workflow.Env
 	rule.workflowPathUnknown = shellPathUnknown(workflow.Env)
 	_, rule.callerRepositoryUnknown = workflow.FindWorkflowCallEvent()
 	return nil
@@ -48,7 +49,8 @@ func (rule *RuleExecutableBit) VisitWorkflowPre(workflow *Workflow) error {
 func (rule *RuleExecutableBit) VisitJobPre(job *Job) error {
 	rule.jobDir, rule.jobShell = defaultsWorkingDirectory(job.Defaults), defaultsShellValue(job.Defaults)
 	rule.jobEnv = rule.workflowEnv || shellEnvironmentUnknown(job.Env)
-	rule.jobGitEnv = rule.workflowGitEnv || checkoutEnvironmentUnknown(job.Env)
+	platform := runnerPlatform(job.RunsOn)
+	rule.jobGitEnv = checkoutEnvironmentUnknown(rule.workflowGitEnv, platform) || checkoutEnvironmentUnknown(job.Env, platform)
 	rule.jobPathUnknown = rule.workflowPathUnknown || shellPathUnknown(job.Env)
 	rule.unix = runnerPlatform(job.RunsOn) == platformKindMacOrLinux
 	rule.caseInsensitive = macOSRunner(job.RunsOn)
@@ -57,7 +59,7 @@ func (rule *RuleExecutableBit) VisitJobPre(job *Job) error {
 	if job.Container != nil || servicesMayChangeWorkspace(job.Services) {
 		rule.unix = false
 	}
-	if enabled, known := invocationCondition(job.If); known && !enabled {
+	if enabled, known := jobInvocationCondition(job); known && !enabled {
 		rule.unix = false
 	}
 	rule.executableState = newExecutableState(knownHostedRunner(job.RunsOn), rule.callerRepositoryUnknown)
@@ -84,7 +86,7 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 	case *ExecParallel:
 		rule.afterConcurrentExecution()
 	case *ExecAction:
-		if rule.jobGitEnv || checkoutEnvironmentUnknown(step.Env) {
+		if rule.jobGitEnv || checkoutEnvironmentUnknown(step.Env, rule.paths.platform) {
 			rule.repositoryUnknown = true
 			rule.actionPristine = false
 		}
@@ -774,6 +776,10 @@ func (snapshot *gitModeSnapshot) directoryExists(name string) bool {
 var knownChmodMode = regexp.MustCompile(`^([0-7]{1,4}|[ugoa]*([+=-]([rwxXst]*|[ugo]))+(,[ugoa]*([+=-]([rwxXst]*|[ugo]))+)*)$`)
 
 func shellEnvironmentUnknown(env *Env) bool {
+	return shellEnvironmentUnknownForPlatform(env, platformKindMacOrLinux)
+}
+
+func shellEnvironmentUnknownForPlatform(env *Env, platform platformKind) bool {
 	if env == nil {
 		return false
 	}
@@ -782,6 +788,9 @@ func shellEnvironmentUnknown(env *Env) bool {
 	}
 	for _, variable := range env.Vars {
 		name, known := environmentLiteral(variable.Name)
+		if platform != platformKindMacOrLinux {
+			name = strings.ToUpper(name)
+		}
 		if !known || loaderEnvironmentUnknown(name, variable.Value) {
 			return true
 		}
@@ -799,9 +808,17 @@ func shellEnvironmentUnknown(env *Env) bool {
 }
 
 func shellPathUnknown(env *Env) bool {
+	return shellPathUnknownForPlatform(env, platformKindMacOrLinux)
+}
+
+func shellPathUnknownForPlatform(env *Env, platform platformKind) bool {
 	if env != nil {
 		for _, variable := range env.Vars {
-			if name, known := environmentLiteral(variable.Name); !known || name == "PATH" {
+			name, known := environmentLiteral(variable.Name)
+			if platform != platformKindMacOrLinux {
+				name = strings.ToUpper(name)
+			}
+			if !known || name == "PATH" {
 				return true
 			}
 		}
