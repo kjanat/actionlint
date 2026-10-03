@@ -16,6 +16,7 @@ type analysisEngine struct {
 	shellcheckSettings                 *ShellcheckSettings
 	workingDir                         string
 	inputs                             *inputFiles
+	gitModes                           *gitModes
 	ignorePats                         IgnorePatterns
 	onRulesCreated                     func([]Rule) []Rule
 }
@@ -63,6 +64,7 @@ func (l *analysisEngine) check(
 		c.shellcheckOptions, c.pyflakesOptions = l.shellcheckOptions, l.pyflakesOptions
 		c.shellcheckSettings = l.shellcheckSettings
 		c.workingDir, c.inputs = l.workingDir, l.inputs
+		c.gitModes = l.gitModes
 		if project != nil {
 			c.projectRoot = project.RootDir()
 		}

@@ -28,7 +28,7 @@ func TestShellcheckInvocationDebugContext(t *testing.T) {
 			rule.cmd.args = []string{"--severity=warning"}
 			rule.cmd.env = []string{"SHELLCHECK_OPTS=--shell=bash"}
 			rule.inlineConfig = &ShellcheckConfig{Enable: []string{"quote-safe-variables"}}
-			directory := shellcheckDirectory{kind, t.TempDir()}
+			directory := runDirectory{kind, t.TempDir()}
 			if err := rule.runShellcheck("echo hello", nil, shellcheckShell{name: "sh"}, directory, &Pos{Line: 7, Col: 1}); err != nil {
 				t.Fatal(err)
 			}

@@ -17,6 +17,7 @@ List of checks:
 - [Contextual typing for `needs` object](#check-contextual-needs-object)
 - [Strict type checks for comparison operators](#check-comparison-types)
 - [shellcheck integration for `run:`](#check-shellcheck-integ)
+- [Executable bits on repository scripts](#check-executable-bit)
 - [pyflakes integration for `run:`](#check-pyflakes-integ)
 - [Script injection by potentially untrusted inputs](#untrusted-inputs)
 - [Job dependencies validation](#check-job-deps)
@@ -954,6 +955,68 @@ There are some additional surprising behaviors, but actionlint allows them not t
 - `0 == null`, `'0' == null`, `false == null` are true since they are implicitly converted to `0 == 0`
 - `'0' == false` and `0 == false` are true due to the same reason as above
 - Objects and arrays are only considered equal when they are the same instance
+
+<a id="check-executable-bit"></a>
+
+## Executable bits on repository scripts
+
+Example input:
+
+```yaml
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: ./bad.sh # ERROR: tracked with Git mode 100644
+```
+
+Output:
+
+<!-- Skip update output -->
+
+```console
+test.yaml:7:14: script "bad.sh" is executed directly but its Git index mode is 100644 (not executable); commit an executable bit with git update-index --chmod=+x, or invoke its interpreter explicitly [executable-bit]
+```
+
+<!-- Skip playground link -->
+
+This example requires `bad.sh` in the repository's Git index with mode `100644`.
+The `executable-bit` rule reads index modes, so it also works when actionlint runs
+on Windows and checks workflows targeting Linux or macOS. It requires Git and a
+detected local repository, but does not require ShellCheck. Missing Git, untracked
+files, unresolved merge entries, symlinks and submodules do not produce findings.
+
+Either commit the executable bit with `git update-index --chmod=+x bad.sh`, run
+`bash bad.sh` instead, or set permissions in the workflow before invoking the
+script. A literal `chmod` of an indexed regular file in an earlier step or command
+invalidates the index mode for that path. Missing or untracked operands leave
+subsequent execution uncertain. See GitHub's [Adding scripts to your workflow][workflow-scripts-doc].
+
+The rule shares the [run-directory resolver](config.md#shellcheck). It follows
+step, job and workflow working-directory defaults, and recognizes a literal `cd`
+within a step. The next step starts from its own configured working directory.
+A self checkout establishes the repository location; a static checkout `path`
+is supported, including calls such as `./source/bad.sh` from the workspace root.
+
+Detection is deliberately conservative. It checks direct literal calls in plain
+Bash or sh steps on recognized GitHub-hosted Linux/macOS runners after a self checkout.
+Literal script operands to `exec` and `command` are also checked, with an optional
+`--` separator; other options and lookup-only forms such as `command -v` are skipped.
+Self-hosted and grouped runners may retain repository settings from previous jobs.
+Reusable workflows may check out a different caller repository, so their local
+index modes are not assumed to match the runner. Steps that can run after failure,
+such as `if: always()`, cannot assume checkout completed successfully.
+Alternate checkout refs/repositories, containers, dynamic expressions, custom shells,
+shell startup environment settings, parallel/background steps and unsupported
+shell control flow are skipped. Earlier opaque actions or commands may change
+permissions, replace files or change Git settings, so subsequent calls in that
+job are skipped. A later checkout cannot guarantee that working-tree modes match
+the index when `core.fileMode` has changed. Interpreter and source calls do not require an executable
+bit on their argument. Shell syntax is parsed without executing any script.
+
+[workflow-scripts-doc]: https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/add-scripts
 
 <a id="check-shellcheck-integ"></a>
 
