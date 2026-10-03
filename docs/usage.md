@@ -318,13 +318,32 @@ An explicit tool flag overrides all three environment settings for that tool.
 See [External linter environment settings](env.md#external-linters) for quoting,
 Windows paths and examples.
 
-Your arguments are prepended to the ones actionlint appends itself, so do not
-pass `-f`/`--format` or file arguments. actionlint appends
-`--norc -f json1 -x --shell <sh> -e SC1091,SC2194,SC2050,SC2153,SC2154,SC2157,SC2043 -`
-and parses the JSON1 output.
+ShellCheck runs for recognized shell interpreters or scripts selected by a leading
+native `shell` directive. Configured dialects and command flags alone do not select
+unknown or non-shell scripts.
 
-Because of that `--norc`, a repository `.shellcheckrc` is not read. Use
-`-shellcheck '<command line>'` or the [`SHELLCHECK_OPTS` environment variable](checks.md#check-shellcheck-integ) instead. pyflakes has no
+ShellCheck commands, including wrappers, run in the step's resolved working
+directory so sourced files resolve as they do on the runner. Arguments are passed
+literally; use absolute paths for wrapper-owned files. For ShellCheck rc files,
+use [`tools.shellcheck.config`](config.md#shellcheck), which resolves paths
+relative to the actionlint configuration file.
+
+Your arguments are prepended to actionlint's integration arguments. actionlint
+owns the JSON1 output format and stdin input, so do not pass `-f`/`--format` or
+file arguments. It supplies its default exclusions, rc-file selection and source
+following settings. An inferred `--shell <dialect>` is added only when no explicit
+ShellCheck flag or leading `shell` directive selects the dialect. ShellCheck
+arguments take precedence over `SHELLCHECK_OPTS`, followed by a leading `shell`
+directive, actionlint's configured dialect and the workflow-derived dialect. See
+[script selection and directives](config.md#script-selection-and-directives).
+
+By default, `--norc` disables rc discovery. Set
+[`tools.shellcheck.config`](config.md#shellcheck) to an inline mapping or an rc
+file/directory; an rc path replaces `--norc` with `--rcfile`. Following sourced
+files (`-x`) can be disabled in
+configuration and is disabled when the step's working directory cannot be resolved
+locally. Additional options can use `-shellcheck '<command line>'` or the
+[`SHELLCHECK_OPTS` environment variable](checks.md#check-shellcheck-integ). pyflakes has no
 configuration file and no `# noqa`, so suppress its findings with `-ignore` or
 the `paths:` section of the configuration file.
 

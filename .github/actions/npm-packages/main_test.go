@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -99,6 +100,9 @@ func fixture(t *testing.T, version string) *config {
 		if err := copyFile(filepath.Join(repoRoot, file), filepath.Join(work, file)); err != nil {
 			t.Fatalf("staging %s: %v", file, err)
 		}
+	}
+	if err := copyTree(filepath.Join(repoRoot, "schemas"), filepath.Join(work, "schemas")); err != nil {
+		t.Fatalf("staging schemas: %v", err)
 	}
 
 	tf, err := loadTargets(filepath.Join(npmDir, "targets.json"))
@@ -199,7 +203,7 @@ func TestBuildsEveryTargetAndTheFacade(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if info.Mode()&0o111 == 0 {
+		if runtime.GOOS != "windows" && info.Mode()&0o111 == 0 {
 			t.Errorf("%s: binary is not executable (%v)", target.Pkg, info.Mode())
 		}
 
@@ -262,7 +266,7 @@ func TestBuildsEveryTargetAndTheFacade(t *testing.T) {
 	}
 	// The bin shim is spawned by npm, so it must stay executable.
 	if info, err := os.Stat(filepath.Join(facadeDir, "bin", "actionlint.mjs")); err == nil {
-		if info.Mode()&0o111 == 0 {
+		if runtime.GOOS != "windows" && info.Mode()&0o111 == 0 {
 			t.Errorf("facade bin shim is not executable (%v)", info.Mode())
 		}
 	}
@@ -307,11 +311,20 @@ func checkFacadeSchema(t *testing.T, cfg *config) {
 	if !ok {
 		t.Fatalf("facade exports is %T", manifest["exports"])
 	}
-	if len(exports) != 2 || exports["./package.json"] != "./package.json" {
-		t.Errorf("facade exports are %v, want only package.json and schema", exports)
+	if len(exports) != 3 || exports["./package.json"] != "./package.json" || exports["./schemas/*"] != "./schemas/*" {
+		t.Errorf("facade exports are %v, want package.json, schema and versioned schemas", exports)
 	}
 	if exports["./schema"] != "./actionlint.schema.json" {
 		t.Errorf("facade schema alias is %v", exports["./schema"])
+	}
+	const snapshot = "schemas/shellcheck/0.11.0.schema.json"
+	want, err = os.ReadFile(filepath.Join(cfg.repoRoot, snapshot))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err = os.ReadFile(filepath.Join(dir, snapshot))
+	if err != nil || !bytes.Equal(got, want) {
+		t.Fatalf("facade schema snapshot differs or is missing: %v", err)
 	}
 }
 
