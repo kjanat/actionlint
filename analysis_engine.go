@@ -58,6 +58,7 @@ func (l *analysisEngine) check(
 
 	if w != nil {
 		dbg := l.debugWriter()
+		localActions = &LocalActionsCache{base: localActions}
 
 		rules := []Rule{}
 		c := ruleContext{path: path, config: cfg, actions: localActions, workflows: localReusableWorkflows, process: proc, shellcheck: l.shellcheck, pyflakes: l.pyflakes}
@@ -98,6 +99,7 @@ func (l *analysisEngine) check(
 		for _, rule := range rules {
 			v.AddPass(rule)
 		}
+		v.composites = &compositeAnalyzer{ctx: l.ctx, actions: localActions, passes: v.passes}
 		if dbg != nil {
 			v.EnableDebug(dbg)
 			for _, r := range rules {
@@ -119,6 +121,17 @@ func (l *analysisEngine) check(
 			errs := rule.Errs()
 			l.debug("%s found %d errors", rule.Name(), len(errs))
 			all = append(all, errs...)
+		}
+		for _, composite := range v.composites.rules {
+			for _, rule := range composite.rules {
+				for _, finding := range rule.Errs() {
+					if finding.Filepath == "" {
+						finding.Filepath = composite.meta.Path()
+						finding.source = composite.meta.src
+					}
+					all = append(all, finding)
+				}
+			}
 		}
 
 		*usedRules = rules

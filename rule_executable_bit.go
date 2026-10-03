@@ -26,6 +26,7 @@ type RuleExecutableBit struct {
 	jobGitEnv                           bool
 	workflowPathUnknown, jobPathUnknown bool
 	pathUnknown                         bool
+	skipFindings                        bool
 	caseInsensitive                     bool
 	shIsDash                            bool
 	callerRepositoryUnknown             bool
@@ -87,9 +88,20 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 	case *ExecAction:
 		if rule.jobGitEnv || checkoutEnvironmentUnknown(step.Env, rule.paths.platform) {
 			rule.repositoryUnknown = true
+			rule.actionPristine = false
+		}
+		if command.Uses == nil {
+			rule.actionPristine = false
+		} else if name, _, versioned := strings.Cut(command.Uses.Value, "@"); !versioned || !strings.EqualFold(name, "actions/checkout") {
+			rule.actionPristine = false
 		}
 		rule.checkout(command, !conditionKnown || boolMayBeTrue(step.ContinueOnError))
 	case *ExecRun:
+		workspacePristine := rule.pristine
+		independent := rule.paths.effectiveRunDirectory(command, rule.jobDir, rule.workflowDir).kind == directoryActionKnown
+		if independent {
+			rule.pristine = rule.actionPristine
+		}
 		rule.pathUnknown = rule.jobPathUnknown || shellPathUnknown(step.Env)
 		if rule.jobEnv || shellEnvironmentUnknown(step.Env) {
 			rule.pristine = false
@@ -100,6 +112,12 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 		if !conditionKnown {
 			// Its invocation sees the current state, but its effects may be skipped.
 			rule.pristine = false
+		}
+		if !rule.pristine {
+			rule.actionPristine = false
+		}
+		if independent {
+			rule.pristine = workspacePristine && rule.pristine
 		}
 		if !rule.pristine {
 			rule.repositoryUnknown = true
@@ -263,7 +281,7 @@ func (rule *RuleExecutableBit) checkout(action *ExecAction, mayNotComplete bool)
 		return
 	}
 	rule.paths.checkout = checkout
-	rule.afterKnownCheckout()
+	rule.afterKnownCheckout(checkout, rule.caseInsensitive)
 }
 
 func checkoutInput(action *ExecAction, name string) (string, bool) {
@@ -414,10 +432,11 @@ func (rule *RuleExecutableBit) redirectsKnown(redirects []*syntax.Redirect, dire
 		if target == "/dev/null" {
 			continue
 		}
-		name, known := rule.scriptPath(directory, target)
-		if !known || rule.changed[name] {
+		location, known := rule.scriptPath(directory, target)
+		if !known || rule.modeChanges(directory)[location.runner] {
 			return false
 		}
+		name := location.repository
 		// Checkout creates Git metadata outside the tracked index tree.
 		if directory.kind == directoryKnown && (name == ".git" || rule.caseInsensitive && strings.EqualFold(name, ".git")) {
 			return false
@@ -518,10 +537,10 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 	}
 	switch args[0] {
 	case "cd":
-		if len(args) == 2 && directory.kind == directoryKnown && args[1] != "" && !strings.HasPrefix(args[1], "-") {
+		if len(args) == 2 && (directory.kind == directoryKnown || directory.kind == directoryActionKnown) && args[1] != "" && !strings.HasPrefix(args[1], "-") {
 			destination, representable := runnerRelativePath(args[1], rule.paths.platform)
 			candidate := joinRunnerPath(directory.path, destination)
-			if _, known := rule.checkedRunnerPath(candidate + "/"); known && representable {
+			if _, known := rule.checkedRunnerPathFor(candidate+"/", rule.paths.directoryOrigin(*directory)); known && representable {
 				directory.path = candidate
 				return
 			}
@@ -547,13 +566,17 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 				rule.pristine = false
 				return
 			}
-			name, ok := rule.scriptPath(*directory, operand)
-			mode := rule.index().modes[name]
+			location, ok := rule.scriptPath(*directory, operand)
+			mode := rule.index().modes[location.repository]
 			if !ok || mode != "100644" && mode != "100755" {
 				rule.pristine = false
 				return
 			}
-			rule.changed[name] = true
+			rule.modeChanges(*directory)[location.runner] = true
+			if directory.kind == directoryActionKnown {
+				// Workspace checkout cannot reset modes in the independent action copy.
+				rule.actionPristine = false
+			}
 			hasOperand = true
 		}
 		if !hasOperand {
@@ -588,37 +611,51 @@ func simpleShellArgument(parts []syntax.WordPart) bool {
 	return true
 }
 
-func (rule *RuleExecutableBit) scriptPath(directory runDirectory, script string) (string, bool) {
-	if directory.kind != directoryKnown || script == "" {
-		return "", false
+// Repository paths identify indexed modes; runner paths distinguish copies.
+type executableLocation struct {
+	repository, runner string
+}
+
+func (rule *RuleExecutableBit) scriptPath(directory runDirectory, script string) (executableLocation, bool) {
+	if directory.kind != directoryKnown && directory.kind != directoryActionKnown || script == "" {
+		return executableLocation{}, false
 	}
 	script, scriptKnown := runnerRelativePath(script, rule.paths.platform)
 	directoryPath, directoryKnown := runnerRelativePath(directory.path, rule.paths.platform)
 	directory.path = directoryPath
 	if !scriptKnown || !directoryKnown {
-		return "", false
+		return executableLocation{}, false
 	}
 	runnerPath := joinRunnerPath(directory.path, script)
-	runnerPath, ok := rule.checkedRunnerPath(runnerPath)
+	paths := rule.paths.directoryOrigin(directory)
+	runnerPath, ok := rule.checkedRunnerPathFor(runnerPath, paths)
 	if !ok {
-		return "", false
+		return executableLocation{}, false
 	}
-	file, ok := rule.paths.local(runnerPath)
+	file, ok := paths.local(runnerPath)
 	if !ok {
-		return "", false
+		return executableLocation{}, false
 	}
 	relative, err := filepath.Rel(rule.paths.workspace, file)
 	if err != nil || !filepath.IsLocal(relative) {
-		return "", false
+		return executableLocation{}, false
 	}
-	return filepath.ToSlash(relative), true
+	runnerPath = path.Clean(runnerPath)
+	if rule.caseInsensitive {
+		runnerPath = strings.ToLower(runnerPath)
+	}
+	return executableLocation{repository: filepath.ToSlash(relative), runner: runnerPath}, true
 }
 
 func (rule *RuleExecutableBit) checkInvocation(run *ExecRun, word *syntax.Word, directory runDirectory, script string) {
-	name, ok := rule.scriptPath(directory, script)
-	if !ok || rule.changed[name] {
+	if rule.skipFindings {
 		return
 	}
+	location, ok := rule.scriptPath(directory, script)
+	if !ok || rule.modeChanges(directory)[location.runner] {
+		return
+	}
+	name := location.repository
 	snapshot := rule.index()
 	if snapshot.modes[name] != "100644" {
 		return
@@ -634,6 +671,13 @@ func (rule *RuleExecutableBit) checkInvocation(run *ExecRun, word *syntax.Word, 
 		pos = mapped
 	}
 	rule.Errorf(pos, "script %q is executed directly but its Git index mode is 100644 (not executable); commit an executable bit with git update-index --chmod=+x, or invoke its interpreter explicitly", name)
+}
+
+func (rule *RuleExecutableBit) modeChanges(directory runDirectory) map[string]bool {
+	if directory.kind == directoryActionKnown {
+		return rule.actionChanged
+	}
+	return rule.changed
 }
 
 func literalShellWord(parts []syntax.WordPart) (string, bool) {
@@ -732,6 +776,10 @@ func (snapshot *gitModeSnapshot) directoryExists(name string) bool {
 var knownChmodMode = regexp.MustCompile(`^([0-7]{1,4}|[ugoa]*([+=-]([rwxXst]*|[ugo]))+(,[ugoa]*([+=-]([rwxXst]*|[ugo]))+)*)$`)
 
 func shellEnvironmentUnknown(env *Env) bool {
+	return shellEnvironmentUnknownForPlatform(env, platformKindMacOrLinux)
+}
+
+func shellEnvironmentUnknownForPlatform(env *Env, platform platformKind) bool {
 	if env == nil {
 		return false
 	}
@@ -740,6 +788,9 @@ func shellEnvironmentUnknown(env *Env) bool {
 	}
 	for _, variable := range env.Vars {
 		name, known := environmentLiteral(variable.Name)
+		if platform != platformKindMacOrLinux {
+			name = strings.ToUpper(name)
+		}
 		if !known || loaderEnvironmentUnknown(name, variable.Value) {
 			return true
 		}
@@ -757,9 +808,17 @@ func shellEnvironmentUnknown(env *Env) bool {
 }
 
 func shellPathUnknown(env *Env) bool {
+	return shellPathUnknownForPlatform(env, platformKindMacOrLinux)
+}
+
+func shellPathUnknownForPlatform(env *Env, platform platformKind) bool {
 	if env != nil {
 		for _, variable := range env.Vars {
-			if name, known := environmentLiteral(variable.Name); !known || name == "PATH" {
+			name, known := environmentLiteral(variable.Name)
+			if platform != platformKindMacOrLinux {
+				name = strings.ToUpper(name)
+			}
+			if !known || name == "PATH" {
 				return true
 			}
 		}

@@ -22,8 +22,9 @@ type Pass interface {
 
 // Visitor visits syntax tree from root in depth-first order
 type Visitor struct {
-	passes []Pass
-	dbg    io.Writer
+	passes     []Pass
+	dbg        io.Writer
+	composites *compositeAnalyzer
 }
 
 // NewVisitor creates Visitor instance
@@ -53,8 +54,14 @@ func (v *Visitor) Visit(n *Workflow) error {
 		t = time.Now()
 	}
 
+	if v.composites != nil {
+		v.composites.beginWorkflow(n)
+	}
 	for _, p := range v.passes {
 		if err := p.VisitWorkflowPre(n); err != nil {
+			if v.composites != nil && v.composites.deferWorkflowError(p, err) {
+				continue
+			}
 			return err
 		}
 	}
@@ -66,6 +73,11 @@ func (v *Visitor) Visit(n *Workflow) error {
 
 	for _, j := range n.Jobs {
 		if err := v.visitJob(j); err != nil {
+			return err
+		}
+	}
+	if v.composites != nil {
+		if err := v.composites.validateWorkflow(); err != nil {
 			return err
 		}
 	}
@@ -89,6 +101,9 @@ func (v *Visitor) Visit(n *Workflow) error {
 }
 
 func (v *Visitor) visitJob(n *Job) error {
+	if v.composites != nil {
+		v.composites.beginJob(n)
+	}
 	var t time.Time
 	if v.dbg != nil {
 		t = time.Now()
@@ -135,9 +150,15 @@ func (v *Visitor) visitStep(n *Step) error {
 		t = time.Now()
 	}
 
-	for _, p := range v.passes {
-		if err := p.VisitStep(n); err != nil {
+	if v.composites != nil {
+		if err := v.composites.visitStep(n); err != nil {
 			return err
+		}
+	} else {
+		for _, p := range v.passes {
+			if err := p.VisitStep(n); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -145,9 +166,15 @@ func (v *Visitor) visitStep(n *Step) error {
 	// https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
 	if e, ok := n.Exec.(*ExecParallel); ok {
 		for _, s := range e.Steps {
+			if v.composites != nil {
+				v.composites.invalidateCheckout()
+			}
 			if err := v.visitStep(s); err != nil {
 				return err
 			}
+		}
+		if v.composites != nil {
+			v.composites.invalidateCheckout()
 		}
 	}
 

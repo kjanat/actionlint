@@ -6,19 +6,45 @@ import (
 	"unicode"
 )
 
-func (rule *RuleExecutableBit) checkedRunnerPath(runnerPath string) (string, bool) {
+func (rule *RuleExecutableBit) checkedRunnerPathFor(runnerPath string, paths runPaths) (string, bool) {
 	snapshot := rule.index()
 	if snapshot.err != nil {
 		return "", false
 	}
+	checkout, known := paths.checkoutFor(runnerPath)
+	if paths.placements != nil {
+		// Select before collapsing '..': traversal through a replaced copy must
+		// remain unknown even if the final path leaves that copy again.
+		checkout, known = rule.traversalCheckout(paths.placements, runnerPath)
+	}
+	if !known {
+		return "", false
+	}
 	if rule.caseInsensitive {
 		var known bool
-		runnerPath, known = snapshot.caseFoldedPath(runnerPath, rule.paths.checkout)
+		runnerPath, known = snapshot.caseFoldedPath(runnerPath, checkout)
 		if !known {
 			return "", false
 		}
 	}
-	return runnerPath, snapshot.ordinaryTraversal(runnerPath, rule.paths.checkout)
+	return runnerPath, snapshot.ordinaryTraversal(runnerPath, checkout)
+}
+
+func (rule *RuleExecutableBit) traversalCheckout(placement *checkoutPlacement, runnerPath string) (string, bool) {
+	for strings.HasPrefix(runnerPath, "./") {
+		runnerPath = strings.TrimPrefix(runnerPath, "./")
+	}
+	for current := placement; current != nil; current = current.previous {
+		prefix := path.Clean(current.directory.path)
+		candidate := runnerPath
+		if rule.caseInsensitive {
+			prefix, candidate = strings.ToLower(prefix), strings.ToLower(candidate)
+		}
+		if prefix == "." || candidate == prefix || strings.HasPrefix(candidate, prefix+"/") {
+			return current.directory.path, current.directory.kind == directoryKnown
+		}
+	}
+	return "", false
 }
 
 // Resolve components before collapsing '..', retaining ambiguous index names as

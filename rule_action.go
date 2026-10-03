@@ -818,6 +818,9 @@ func (rule *RuleAction) checkLocalActionMetadata(meta *ActionMetadata, action *E
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-action-in-the-same-repository-as-the-workflow
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
 func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *ExecAction) {
+	if strings.HasPrefix(displaySpec, "$/") {
+		localSpec = displaySpec
+	}
 	meta, cached, err := rule.cache.FindMetadata(localSpec)
 	if err != nil {
 		rule.Error(action.Uses.Pos, err.Error())

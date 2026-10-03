@@ -28,13 +28,16 @@ runs:
           s="${s//'%'/'%25'}"
           s="${s//$'\r'/'%0D'}"
           s="${s//$'\n'/'%0A'}"
-          printf '%s' "$s"
+          printf '%s' "${s}"
         }
         LATEST_RELEASE="$(retry gh release view --json name,tagName,url | tee /dev/stderr)"
         LATEST="$(echo "${LATEST_RELEASE}" | jq -r '.tagName')"
         URL="$(echo "${LATEST_RELEASE}" | jq -r '.url')"
         if [[ "${VERSION}" != "${LATEST}" ]]; then
-          echo "::warning::The requested pandoc version '$(encode "${VERSION}")' is not the latest release '$(encode "${LATEST}")'. See $(encode "${URL}") for details."
+          encoded_version="$(encode "${VERSION}")"
+          encoded_latest="$(encode "${LATEST}")"
+          encoded_url="$(encode "${URL}")"
+          echo "::warning::The requested pandoc version '${encoded_version}' is not the latest release '${encoded_latest}'. See ${encoded_url} for details."
         fi
     - name: Download, verify, and install Pandoc
       shell: bash
