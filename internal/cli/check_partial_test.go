@@ -94,6 +94,44 @@ func TestCheckJSONPartialFindings(t *testing.T) {
 	}
 }
 
+func TestCheckJSONEmptyPartialFindings(t *testing.T) {
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(t.TempDir())
+	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", executable)
+	t.Setenv("ACTIONLINT_SHELLCHECK_FLAGS", `["-test.run=^TestCheckPartialAnalyzerHelper$", "--"]`)
+	workflow := strings.ReplaceAll(commandGoodWorkflow, "echo ok", "FAIL_ANALYZER")
+	if err := os.WriteFile("failing.yml", []byte(workflow), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, modern := range []bool{false, true} {
+		t.Run(fmt.Sprintf("modern=%t", modern), func(t *testing.T) {
+			args := []string{"actionlint", "--no-config", "--pyflakes=", "--json"}
+			if modern {
+				args = append(args, "check")
+			}
+			var stdout, stderr bytes.Buffer
+			command := Command{Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &stderr}
+			status := command.Main(append(args, "failing.yml"))
+			var result actionlint.CheckResult
+			if err := json.Unmarshal(stderr.Bytes(), &result); err != nil {
+				t.Fatalf("invalid failure envelope: %v: %s", err, &stderr)
+			}
+			if status != 3 || result.ExitCode != 3 || result.Status != "failure" || result.Completed || !strings.Contains(result.Error, "exited with status 2") || stdout.Len() != 0 {
+				t.Fatalf("changed failure contract: status=%d, stdout=%s, stderr=%s", status, &stdout, &stderr)
+			}
+			if result.Diagnostics == nil || len(result.Diagnostics) != 0 {
+				t.Fatalf("wanted empty diagnostics array: %s", &stderr)
+			}
+			if result.FileCount == nil || *result.FileCount != 1 {
+				t.Fatalf("selected file count lost: %v", result.FileCount)
+			}
+		})
+	}
+}
+
 func TestCheckPartialAnalyzerHelper(t *testing.T) {
 	if !slices.Contains(os.Args, "--") {
 		return
