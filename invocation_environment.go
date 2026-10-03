@@ -3,7 +3,7 @@ package actionlint
 import "strings"
 
 // Checkout inherits these settings; its files need not represent the local index.
-func checkoutEnvironmentUnknown(env *Env) bool {
+func checkoutEnvironmentUnknown(env *Env, platform platformKind) bool {
 	if env == nil {
 		return false
 	}
@@ -12,6 +12,9 @@ func checkoutEnvironmentUnknown(env *Env) bool {
 	}
 	for _, variable := range env.Vars {
 		name, known := environmentLiteral(variable.Name)
+		if platform != platformKindMacOrLinux {
+			name = strings.ToUpper(name)
+		}
 		if !known || loaderEnvironmentUnknown(name, variable.Value) {
 			return true
 		}
@@ -19,7 +22,7 @@ func checkoutEnvironmentUnknown(env *Env) bool {
 		case "PATH":
 			// Checkout resolves Git through PATH, which may select a wrapper.
 			return true
-		case "NODE_OPTIONS", "GIT_SSH_COMMAND", "GIT_SSH", "GIT_ASKPASS", "SSH_ASKPASS",
+		case "HOME", "XDG_CONFIG_HOME", "NODE_OPTIONS", "GIT_SSH_COMMAND", "GIT_SSH", "GIT_ASKPASS", "SSH_ASKPASS",
 			"GIT_PROXY_COMMAND", "GIT_TEMPLATE_DIR", "GIT_EXEC_PATH", "GIT_ALLOW_PROTOCOL":
 			if value, known := environmentLiteral(variable.Value); !known || value != "" {
 				return true
