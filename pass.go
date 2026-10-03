@@ -55,7 +55,7 @@ func (v *Visitor) Visit(n *Workflow) error {
 	}
 
 	if v.composites != nil {
-		v.composites.beginWorkflow()
+		v.composites.beginWorkflow(n)
 	}
 	for _, p := range v.passes {
 		if err := p.VisitWorkflowPre(n); err != nil {

@@ -498,15 +498,16 @@ func (md *ActionMetadata) Path() string {
 // This cache is not available across multiple repositories. One LocalActionsCache instance needs
 // to be created per one repository.
 type LocalActionsCache struct {
-	onRead          func(string)
-	mu              sync.RWMutex
-	proj            *Project // might be nil
-	cache           map[string]*ActionMetadata
-	dbg             io.Writer
-	base            *LocalActionsCache
-	checkout        *checkoutPlacement
-	platform        platformKind
-	caseInsensitive bool
+	onRead             func(string)
+	mu                 sync.RWMutex
+	proj               *Project // might be nil
+	cache              map[string]*ActionMetadata
+	dbg                io.Writer
+	base               *LocalActionsCache
+	checkout           *checkoutPlacement
+	platform           platformKind
+	caseInsensitive    bool
+	checkoutEnvUnknown bool
 }
 
 // NewLocalActionsCache creates new LocalActionsCache instance for the given project.
