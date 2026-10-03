@@ -9,6 +9,7 @@ import { capture } from '#native';
 import { annotation, report, reportOptions, summary, withReporting } from '#reporters';
 import type { ActionResult, Diagnostic } from '#result';
 import { parseResult } from '#result';
+import { readOutputs } from '#workflow';
 
 const diagnostic: Diagnostic = {
 	rule: 'shellcheck',
@@ -147,6 +148,42 @@ test('reporter failures preserve native result and let other destinations finish
 		assert.ok(messages.some((message) => message.startsWith('::warning::Job summary unavailable:')));
 	} finally {
 		await rm(directory, { recursive: true });
+	}
+});
+
+test('JSON output and recovered failures preserve additive top-level result fields', async (t) => {
+	const directory = await mkdtemp(join(tmpdir(), 'actionlint-additive-result-'));
+	t.after(() => rm(directory, { recursive: true }));
+	const extended = {
+		...result,
+		statistics: { elapsed_ms: 12, rules: ['shellcheck'] },
+		notices: ['compatible extension'],
+		source_digest: null,
+	};
+	for (const failed of [false, true]) {
+		const outputPath = join(directory, `outputs-${failed}`);
+		const code = await withReporting({
+			RUNNER_TEMP: directory,
+			GITHUB_OUTPUT: outputPath,
+			INPUT_FORMAT: 'json',
+		}, async (environment) => {
+			assert.ok(environment.ACTIONLINT_ACTION_RESULT);
+			await writeFile(environment.ACTIONLINT_ACTION_RESULT, JSON.stringify(extended));
+			if (failed) throw new Error('native process crashed');
+			return 1;
+		}, {
+			log: () => {},
+			review: async () => assert.fail('review disabled'),
+		});
+		assert.equal(code, failed ? 3 : 1);
+		const outputs = await readOutputs(outputPath);
+		assert.ok(outputs.output);
+		assert.ok(outputs['result-file']);
+		const expected = failed
+			? { ...extended, completed: false, status: 'failure', exit_code: 3, error: 'native process crashed' }
+			: extended;
+		assert.deepEqual(JSON.parse(outputs.output), expected);
+		assert.deepEqual(JSON.parse(await readFile(outputs['result-file'], 'utf8')), expected);
 	}
 });
 

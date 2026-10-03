@@ -22,6 +22,112 @@ import {
 	workflowPath,
 	writeManifest,
 } from './release-candidate.mjs';
+import { verifyTagRecovery } from './release-tag-recovery.mjs';
+
+test('tag recovery accepts the final push failing after the publication gate', () => {
+	const commit = 'a'.repeat(40);
+	for (const conclusion of ['success', 'failure']) {
+		const run = {
+			id: 123,
+			run_attempt: 2,
+			head_sha: commit,
+			head_branch: 'v1.2.3',
+			path: '.github/workflows/release.yml',
+			event: 'release',
+			status: 'completed',
+			conclusion,
+		};
+		const job = {
+			run_id: 123,
+			head_sha: commit,
+			name: 'Update moving Action references',
+			status: 'completed',
+			conclusion,
+			steps: [{ name: 'Update eligible floating tags', status: 'completed', conclusion }],
+		};
+		/** @type {string[][]} */
+		const calls = [];
+		verifyTagRecovery('fixture/actionlint', 'v1.2.3', commit, (args) => {
+			calls.push(args);
+			return JSON.stringify(
+				calls.length === 1
+					? [{ workflow_runs: [] }, { workflow_runs: [run] }]
+					: [{ jobs: [] }, { jobs: [job] }],
+			);
+		});
+		assert.deepEqual(calls, [
+			[
+				'api',
+				'--paginate',
+				'--slurp',
+				`repos/fixture/actionlint/actions/workflows/release.yml/runs?event=release&status=completed&head_sha=${commit}&per_page=100`,
+			],
+			['api', '--paginate', '--slurp', 'repos/fixture/actionlint/actions/runs/123/attempts/2/jobs?per_page=100'],
+		]);
+	}
+});
+
+test('tag recovery rejects mismatched releases and jobs that never reached the gated push', () => {
+	const commit = 'a'.repeat(40);
+	const run = {
+		id: 123,
+		run_attempt: 2,
+		head_sha: commit,
+		head_branch: 'v1.2.3',
+		path: '.github/workflows/release.yml',
+		event: 'release',
+		status: 'completed',
+		conclusion: 'failure',
+	};
+	const step = { name: 'Update eligible floating tags', status: 'completed', conclusion: 'failure' };
+	const job = {
+		run_id: 123,
+		head_sha: commit,
+		name: 'Update moving Action references',
+		status: 'completed',
+		conclusion: 'failure',
+		steps: [step],
+	};
+	for (
+		const override of [
+			{ head_sha: 'b'.repeat(40) },
+			{ head_branch: 'v1.2.4' },
+			{ path: '.github/workflows/other.yml' },
+			{ event: 'workflow_dispatch' },
+			{ status: 'in_progress' },
+			{ conclusion: 'cancelled' },
+			{ run_attempt: 0 },
+		]
+	) {
+		assert.throws(() =>
+			verifyTagRecovery('fixture/actionlint', 'v1.2.3', commit, (args) => {
+				assert.ok(args.at(-1)?.includes('/workflows/release.yml/runs?'));
+				return JSON.stringify([{ workflow_runs: [{ ...run, ...override }] }]);
+			}), /need a completed Release attempt/);
+	}
+	for (
+		const jobs of [
+			[],
+			[job, job],
+			[{ ...job, run_id: 124 }],
+			[{ ...job, head_sha: 'b'.repeat(40) }],
+			[{ ...job, name: 'Verify published candidate', conclusion: 'success' }],
+			[{ ...job, status: 'in_progress' }],
+			[{ ...job, conclusion: 'skipped', steps: [] }],
+			[{ ...job, conclusion: 'cancelled' }],
+			[{ ...job, steps: [] }],
+			...['skipped', 'cancelled'].map((conclusion) => [{ ...job, steps: [{ ...step, conclusion }] }]),
+			[{ ...job, steps: [{ ...step, status: 'in_progress' }] }],
+		]
+	) {
+		assert.throws(() =>
+			verifyTagRecovery('fixture/actionlint', 'v1.2.3', commit, (args) => {
+				if (args.at(-1)?.includes('/workflows/release.yml/runs?')) return JSON.stringify([{ workflow_runs: [run] }]);
+				assert.ok(args.at(-1)?.includes('/attempts/2/jobs?'));
+				return JSON.stringify([{ jobs }]);
+			}), /need a completed Release attempt/);
+	}
+});
 
 test('pending draft tags resolve through gh before fetching the release by ID', () => {
 	const release = { id: 77, tag_name: 'v1.17.1', draft: true };
