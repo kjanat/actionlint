@@ -527,100 +527,13 @@ string are automatically unescaped.
 
 ## Use actionlint on GitHub Actions
 
-The repository provides a Docker action backed by a prebuilt image containing
-actionlint, ShellCheck, and pyflakes. It reports each problem as a GitHub
-annotation by default, without compiling actionlint in the consumer's workflow.
+Start with the [Action guide](action.md): quick start, configuration, saved reports,
+optional PR reviews, tools and the complete input/output reference.
 
-```yaml
-name: Lint GitHub Actions workflows
-on: [push, pull_request]
+### Manual installation
 
-jobs:
-  actionlint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with: { persist-credentials: false }
-      - name: Check workflow files
-        uses: kjanat/actionlint@v1
-```
-
-Docker container actions run only on Linux, and this action also needs a
-reachable Docker daemon. `ubuntu-slim` is not supported: it runs the job in an
-unprivileged container and provides the Docker client, but no daemon or Docker
-socket. Standard Ubuntu runners, including `ubuntu-24.04-arm` and
-`ubuntu-26.04-arm`, are supported by the published `linux/amd64` and
-`linux/arm64` image.
-
-On a daemon-less runner such as `ubuntu-slim`, download and run the binary
-instead. `uses: docker://ghcr.io/kjanat/actionlint:latest` is not an alternative
-there because it has the same Docker daemon requirement.
-
-```yaml
-- uses: actions/checkout@v7
-  with: { persist-credentials: false }
-- name: Download and run actionlint
-  env: { GH_TOKEN: "${{ github.token }}", GH_REPO: "kjanat/actionlint" }
-  run: |
-    case "${RUNNER_ARCH}" in
-      X64) asset_arch=amd64 ;;
-      ARM64) asset_arch=arm64 ;;
-      ARM) asset_arch=armv6 ;;
-      X86) asset_arch=386 ;;
-      *) echo "Unsupported runner architecture: ${RUNNER_ARCH}" >&2; exit 1 ;;
-    esac
-    gh release download --pattern "actionlint_*_${RUNNER_OS,,}_${asset_arch}.tar.gz" --output - | tar -xzf - actionlint
-    ./actionlint -color
-```
-
-The binary-only path does not bundle ShellCheck or pyflakes; install them on the
-runner when those integrations are required.
-
-`v1` follows compatible v1 releases, and `v1.16` follows v1.16 patch releases. Each points to a commit immediately
-after the release that pins the published container image by digest. `v1.17.0` is a versioned release tag.
-For an immutable action reference with a pinned image, use the full commit SHA resolved from a
-floating tag.
-
-The action accepts these inputs:
-
-| Input               | Default       | Description                                                                  |
-| ------------------- | ------------- | ---------------------------------------------------------------------------- |
-| `files`             | all workflows | Newline-separated workflow file paths                                        |
-| `format`            | `github`      | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, or `sarif` |
-| `ignore`            | none          | Newline-separated regular expressions for errors to ignore                   |
-| `config-file`       | automatic     | Configuration file relative to `working-directory`                           |
-| `shellcheck`        | `true`        | Enable ShellCheck integration                                                |
-| `pyflakes`          | `true`        | Enable pyflakes integration                                                  |
-| `working-directory` | `.`           | Directory to lint, relative to the repository workspace                      |
-| `output-file`       | none          | Repository-relative file to receive the selected output                      |
-| `fail-on-error`     | `true`        | Fail when problems are found; command failures always fail                   |
-
-The `exit-code`, `result`, `problems-found`, `problem-count`, `output`, and
-`output-file` outputs can be used by later steps. For example, this writes JSON
-Lines without failing the lint step, while still exposing whether problems were
-found:
-
-```yaml
-- name: Check selected workflows
-  id: actionlint
-  uses: kjanat/actionlint@v1
-  with:
-    files: |
-      .github/workflows/ci.yml
-      .github/workflows/release.yml
-    format: json-lines
-    output-file: actionlint-results.jsonl
-    fail-on-error: false
-- name: Report result
-  if: always()
-  env:
-    RESULT: ${{ steps.actionlint.outputs.result }}
-    PROBLEM_COUNT: ${{ steps.actionlint.outputs.problem-count }}
-  run: echo "$RESULT ($PROBLEM_COUNT problems)"
-```
-
-The download script remains useful on macOS, Windows, or when direct access to
-the executable is preferred. It sets an absolute file path of the downloaded
+The download script remains useful when direct access to the executable is
+preferred. It sets an absolute file path of the downloaded
 executable to the `executable` output for following steps.
 
 Here is an example of simple workflow to run actionlint on GitHub Actions.
@@ -715,18 +628,13 @@ Available tags are:
 - `ghcr.io/kjanat/actionlint:{version}`:\
   Release-specific actionlint image rather than a moving alias.\
   (e.g. `ghcr.io/kjanat/actionlint:1.17.0`)
-- `ghcr.io/kjanat/actionlint:action-{version}`:\
-  Release-specific image used by `action.yml` rather than a moving alias.\
-  (e.g. `action-1.17.0`)
-- `ghcr.io/kjanat/actionlint:action-v1`:\
-  Moving alias for the latest compatible v1 image available to Docker Action users.
-- `ghcr.io/kjanat/actionlint:action-latest`:\
-  Moving alias for the latest stable image available to Docker Action users.
 
 The CLI image is also published to Docker Hub as `kjanat/actionlint:latest` and
 `kjanat/actionlint:{version}`. Both registries carry the same manifest, so pick
-whichever your setup pulls from more easily. The `action-*` tags exist on
-`ghcr.io` only, since `action.yml` refers to them there.
+whichever your setup pulls from more easily. Previous `action-*` images remain
+available for older action refs; new releases use the JavaScript action.
+The ordinary binary also supports `-github-action` to run the action adapter
+with `INPUT_*`, `GITHUB_WORKSPACE`, and `GITHUB_OUTPUT` environment variables.
 
 For byte-for-byte reproducibility, use the image's manifest digest as
 `ghcr.io/kjanat/actionlint:{version}@sha256:<digest>`.

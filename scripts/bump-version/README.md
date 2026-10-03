@@ -18,7 +18,7 @@ This script does:
 - rewrite every declared reference and verify the result on disk
 - move the `Unreleased` entries of `CHANGELOG.md` into a dated section for the new version
 - build and check the updated Nix package with the committed dependency lock, stopping on failure
-- optionally create the version bump commit, the version tag, and push them
+- optionally commit and push the source changes, then dispatch draft release preparation
 
 Nothing is written unless every file passes validation, and no commit, tag, or push happens unless
 the rewritten repository is verified to reference the new version everywhere and the Nix checks pass.
@@ -27,6 +27,8 @@ the rewritten repository is verified to reference the new version everywhere and
 
 - Go
 - `git`
+- GitHub CLI authenticated to this repository when dispatching preparation
+- Node.js 24 or newer and Git configured for GPG signing when promoting a tested draft
 - Nix with `nix-command` and `flakes` enabled, locally or in an installed WSL distribution
 
 ## Usage
@@ -47,14 +49,16 @@ Update all references to 1.2.3. This modifies the files and leaves the changes i
 go run ./scripts/bump-version 1.2.3
 ```
 
-Update all references, then create the bump commit and the `v1.2.3` tag locally.
+Update all references and commit the source changes. This creates no release tag.
 
 ```sh
 go run ./scripts/bump-version -commit 1.2.3
 ```
 
-Update all references, create the bump commit and the tag, and push both to `origin`. Pushing the
-tag starts [the release workflow](../../.github/workflows/release.yml).
+Update all references, commit and push `master`, then dispatch
+[release preparation](../../.github/workflows/release-prepare.yml) for that source commit.
+This builds the release candidate and tests it before creating a draft. It does not publish a release
+or push a version tag.
 
 ```sh
 go run ./scripts/bump-version -push 1.2.3
@@ -68,7 +72,52 @@ Use `-nix-command` only to override that automatic selection.
 Detection runs before any files change. The script then runs
 `nix flake check --no-update-lock-file --print-build-logs` after updating the version and changelog.
 On failure, it leaves those updates for inspection without committing or tagging. Fix the failure and rerun the Nix
-check before committing and tagging manually. A normal bump requires a clean checkout.
+check before committing and dispatching preparation manually. A normal bump requires a clean checkout.
+
+After reviewing and committing version edits manually, push the source commit and start preparation:
+
+```sh
+git push origin master
+gh workflow run release-prepare.yml --ref master -f version=1.2.3
+```
+
+Preparation builds a child commit containing the complete source tree, root `action.mjs`, and
+`SHA256SUMS`. The candidate commit travels in a Git bundle; its version tag exists only inside the
+build job. The workflow builds archives and package manifests without publishing, tests the candidate
+on Linux, macOS and Windows, checks Nix, and tests both CLI and compatibility Action containers on
+Linux amd64 and arm64 before uploading the draft assets. Container tests load the stored OCI archives;
+the manifest includes both archives and their image digests.
+
+Publication copies those archives with digest preservation; it never rebuilds the images. The CLI
+image retains its ordinary version tags. The compatibility image wraps the same ordinary binary with
+the shipped nine positional inputs and retains the GHCR tags `action-X.Y.Z`, `action-vX.Y`, `action-vX`,
+and `action-latest`. Moving tags advance only when the release is latest for their scope.
+
+After publication, the runner resolves literal external `owner/repo@vX.Y.Z` and `owner/repo@COMMIT`
+references on Linux, macOS, Windows and `ubuntu-slim`, downloading the published binary for each run.
+These checks gate moving Action tags. Preparation's local archive smoke cannot prove external runner
+resolution or published downloads; a successful preparation alone does not establish those checks.
+
+After preparation succeeds, inspect its checks and draft assets, then promote that run from a clean
+`master` checkout at the prepared source commit:
+
+```sh
+node scripts/release-candidate.mjs promote --version 1.2.3 --run RUN_ID
+```
+
+Promotion checks the successful run, its immutable manifest artifact, every draft asset checksum,
+and the candidate's relationship to the source commit. It signs the normal `v1.2.3` tag at that
+exact candidate, records its ancestry with an `ours` merge, atomically pushes `master` and the tag,
+then publishes the existing draft. It does not rebuild assets. The merge preserves the source tree
+while making the version tag reachable by `git describe`.
+
+Do not manually tag the source-only `HEAD`: it has no generated `action.mjs`. Normal `vX.Y.Z` tags
+serve both CLI and Action users; eligible moving `v1` and `v1.2` tags advance after distribution checks.
+No GPG private key is uploaded to CI. If publication fails after signing or pushing, rerun the same
+promotion command; it accepts the matching signed tag and recorded merge. If preparation fails, fix
+the source and dispatch again. An existing draft is not silently replaced; inspect and remove the
+failed draft before preparing that version again. Keep the successful run's manifest artifact until
+promotion; an expired artifact requires new preparation.
 
 The check does not refresh `flake.lock` or `vendorHash`. Update Nixpkgs deliberately with `nix flake update nixpkgs`,
 and update the Go dependency hash when dependencies change, as described in

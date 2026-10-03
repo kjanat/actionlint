@@ -9,3 +9,5 @@
 !cmd/**
 !internal
 !internal/**
+!scripts
+!scripts/docker-action.sh

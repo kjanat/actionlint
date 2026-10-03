@@ -28,12 +28,31 @@ type DiagnosticPosition struct {
 
 // Diagnostic is the structured CLI representation, separate from legacy template fields.
 type Diagnostic struct {
-	Rule    string             `json:"rule"`
-	Message string             `json:"message"`
-	Path    string             `json:"path"`
-	Start   DiagnosticPosition `json:"start"`
-	End     DiagnosticPosition `json:"end"`
-	Snippet string             `json:"snippet,omitempty"`
+	Rule string `json:"rule"`
+	// Code and Severity retain an external analyzer's identifier and native level.
+	// Empty values mean the rule did not supply this metadata.
+	Code     string             `json:"code,omitempty"`
+	Severity string             `json:"severity,omitempty"`
+	Message  string             `json:"message"`
+	Path     string             `json:"path"`
+	Start    DiagnosticPosition `json:"start"`
+	End      DiagnosticPosition `json:"end"`
+	Snippet  string             `json:"snippet,omitempty"`
+	Fixes    []DiagnosticFix    `json:"fixes,omitempty"`
+}
+
+// DiagnosticFix is one complete suggested change. Apply all edits together.
+type DiagnosticFix struct {
+	Description string           `json:"description"`
+	Edits       []DiagnosticEdit `json:"edits"`
+}
+
+// DiagnosticEdit replaces a half-open Unicode range in the original source file.
+type DiagnosticEdit struct {
+	Path        string             `json:"path"`
+	Start       DiagnosticPosition `json:"start"`
+	End         DiagnosticPosition `json:"end"`
+	Replacement string             `json:"replacement"`
 }
 
 // CheckResult is the versioned JSON document returned by a completed check.
@@ -58,14 +77,27 @@ func (e *Error) diagnostic(source []byte) Diagnostic {
 	if e.endPosition != nil {
 		end = DiagnosticPosition{e.endPosition.Line, e.endPosition.Col}
 	}
-	return Diagnostic{Rule: e.Kind, Message: e.Message, Path: e.Filepath,
-		Start: DiagnosticPosition{e.Line, e.Column}, End: end, Snippet: snippet}
+	var fixes []DiagnosticFix
+	if len(e.fixes) > 0 {
+		fixes = make([]DiagnosticFix, len(e.fixes))
+	}
+	for i, fix := range e.fixes {
+		fixes[i] = DiagnosticFix{Description: fix.Description, Edits: make([]DiagnosticEdit, len(fix.Edits))}
+		for j, edit := range fix.Edits {
+			if edit.Path == "" {
+				edit.Path = e.Filepath
+			}
+			fixes[i].Edits[j] = edit
+		}
+	}
+	return Diagnostic{Rule: e.Kind, Code: e.code, Severity: e.severity, Message: e.Message, Path: e.Filepath,
+		Start: DiagnosticPosition{e.Line, e.Column}, End: end, Snippet: snippet, Fixes: fixes}
 }
 
 // legacyError adapts a canonical half-open span to the legacy renderer's inclusive columns.
 func (d Diagnostic) legacyError() *Error {
 	e := &Error{Kind: d.Rule, Message: d.Message, Filepath: d.Path, Line: d.Start.Line, Column: d.Start.Column,
-		endPosition: &Pos{Line: d.End.Line, Col: d.End.Column}}
+		endPosition: &Pos{Line: d.End.Line, Col: d.End.Column}, code: d.Code, severity: d.Severity, fixes: d.Fixes}
 	if d.End.Line == d.Start.Line && d.End.Column > d.Start.Column {
 		e.endColumn = d.End.Column - 1
 	}

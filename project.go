@@ -22,7 +22,7 @@ func absPath(path string) string {
 
 // findProjectConfig finds the project to which the given path belongs.
 // A project must be a Git repository and have ".github/workflows" directory.
-func findProjectConfig(path string, skipConfig bool) (*Project, error) {
+func findProjectConfig(path string, skipConfig bool, readFile func(string) ([]byte, error)) (*Project, error) {
 	d := absPath(path)
 	for {
 		if s, err := os.Stat(filepath.Join(d, ".github", "workflows")); err == nil && s.IsDir() {
@@ -30,7 +30,7 @@ func findProjectConfig(path string, skipConfig bool) (*Project, error) {
 				if skipConfig {
 					return &Project{root: d}, nil
 				}
-				return NewProject(d)
+				return newProject(d, readFile)
 			}
 		}
 
@@ -45,7 +45,11 @@ func findProjectConfig(path string, skipConfig bool) (*Project, error) {
 // NewProject creates a new instance with a file path to the root directory of the repository.
 // This function returns an error when failing to parse an actionlint config file in the repository.
 func NewProject(root string) (*Project, error) {
-	c, path, err := loadRepoConfig(root)
+	return newProject(root, os.ReadFile)
+}
+
+func newProject(root string, readFile func(string) ([]byte, error)) (*Project, error) {
+	c, path, err := loadRepoConfig(root, readFile)
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +90,7 @@ func (p *Project) Config() *Config {
 type Projects struct {
 	known      []*Project
 	skipConfig bool
+	readFile   func(string) ([]byte, error)
 }
 
 // NewProjects creates new Projects instance.
@@ -102,7 +107,11 @@ func (ps *Projects) At(path string) (*Project, error) {
 		}
 	}
 
-	p, err := findProjectConfig(path, ps.skipConfig)
+	readFile := ps.readFile
+	if readFile == nil {
+		readFile = os.ReadFile
+	}
+	p, err := findProjectConfig(path, ps.skipConfig, readFile)
 	if err != nil {
 		return nil, err
 	}

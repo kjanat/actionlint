@@ -42,7 +42,7 @@ func SelectedConfigPath(selection ConfigSelection) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	project, err := findProjectConfig(cwd, true)
+	project, err := findProjectConfig(cwd, true, os.ReadFile)
 	if err != nil || project == nil {
 		return "", err
 	}
