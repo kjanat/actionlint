@@ -97,13 +97,24 @@ func TestShellcheckSourcedDiagnosticPathFilters(t *testing.T) {
 	for _, tc := range []struct {
 		name, pattern string
 		wantPath      string
+		alias         bool
 	}{
-		{"workflow filter keeps library finding", ".github/workflows/**", "scripts/lib.sh"},
-		{"library filter keeps workflow finding", "scripts/**", ".github/workflows/test.yml"},
-		{"combined filter removes both", "**", ""},
+		{"workflow filter keeps library finding", ".github/workflows/**", "scripts/lib.sh", false},
+		{"library filter keeps workflow finding", "scripts/**", ".github/workflows/test.yml", false},
+		{"combined filter removes both", "**", "", false},
+		{"symlinked workflow filter keeps library finding", ".github/workflows/**", "scripts/lib.sh", true},
+		{"symlinked library filter keeps workflow finding", "scripts/**", ".github/workflows/test.yml", true},
+		{"symlinked combined filter removes both", "**", "", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
+			if tc.alias {
+				alias := filepath.Join(t.TempDir(), "checkout")
+				if err := os.Symlink(root, alias); err != nil {
+					t.Skipf("directory symlinks unavailable: %v", err)
+				}
+				root = alias
+			}
 			if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
 				t.Fatal(err)
 			}
