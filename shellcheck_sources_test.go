@@ -126,6 +126,45 @@ func TestCompositeShellcheckSiblingWorkingDirectory(t *testing.T) {
 	}
 }
 
+func TestShellcheckSourcedDiagnosticPathFilters(t *testing.T) {
+	command := shellcheckForTest(t)
+	for _, tc := range []struct {
+		name, pattern string
+		wantPath      string
+	}{
+		{"workflow filter keeps library finding", ".github/workflows/**", "scripts/lib.sh"},
+		{"library filter keeps workflow finding", "scripts/**", ".github/workflows/test.yml"},
+		{"combined filter removes both", "**", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			writeShellcheckFixture(t, root, "scripts/lib.sh", "echo $LIBRARY\n")
+			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "paths:\n  '"+tc.pattern+"':\n    ignore: ['SC2086']\n")
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo $INLINE\n          . ./scripts/lib.sh\n")
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := session.Files([]string{workflow}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.wantPath == "" {
+				if len(result.Diagnostics) != 0 {
+					t.Fatalf("want no findings, got %+v", result.Diagnostics)
+				}
+				return
+			}
+			if len(result.Diagnostics) != 1 || filepath.ToSlash(result.Diagnostics[0].Path) != tc.wantPath {
+				t.Fatalf("want finding in %s, got %+v", tc.wantPath, result.Diagnostics)
+			}
+		})
+	}
+}
+
 func assertShellcheckSourceFile(t *testing.T, got, want string) {
 	t.Helper()
 	actual, err := os.Stat(got)

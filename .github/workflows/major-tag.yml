@@ -41,12 +41,7 @@ jobs:
           test "${verified}" = true
           release="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}")"
           jq -e --arg tag "${TAG}" '.tag_name == $tag and .draft == false and .prerelease == false' <<< "${release}" >/dev/null
-          gh api --paginate --slurp \
-            "repos/${GITHUB_REPOSITORY}/actions/workflows/release.yml/runs?event=release&status=success&head_sha=${sha}&per_page=100" \
-            > "${RUNNER_TEMP}/release-runs.json"
-          jq -e --arg sha "${sha}" \
-            'any(.[] | .workflow_runs[]; .head_sha == $sha and .path == ".github/workflows/release.yml" and .event == "release" and .status == "completed" and .conclusion == "success")' \
-            "${RUNNER_TEMP}/release-runs.json" >/dev/null
+          node scripts/release-tag-recovery.mjs "${GITHUB_REPOSITORY}" "${TAG}" "${sha}"
           git cat-file -e "${sha}:action.mjs"
           git cat-file -e "${sha}:SHA256SUMS"
           major="${TAG%%.*}"
