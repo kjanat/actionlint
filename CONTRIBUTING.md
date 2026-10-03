@@ -291,7 +291,7 @@ The [Pages workflow] deploys on pushes to `master` and after successful Release 
 
 Only the separate deployment job receives Pages write and OIDC permissions.
 
-To check a build locally before pushing:
+Install the tools in `.mise.toml` with `mise install` and activate mise in your shell. This makes the configured runner's `run` command available. Then check a build locally:
 
 ```sh
 run playground:make:build
