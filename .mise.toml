@@ -5,6 +5,7 @@ actionlint    = { version = "latest", minimum_release_age = "0s", depends = ["sh
 dprint        = { version = "latest", lazy = true }
 go            = { version = "latest" }
 golangci-lint = { version = "latest", lazy = true }
+runner-run    = "latest"
 shellcheck    = { version = "latest" }
 tombi         = { version = "latest", lazy = true }
 
@@ -12,6 +13,7 @@ tombi         = { version = "latest", lazy = true }
 "actionlint"        = "github:kjanat/actionlint"
 "actionlint-kjanat" = "github:kjanat/actionlint"
 "actionlint-rhysd"  = "github:rhysd/actionlint"
+"runner-run"        = "github:kjanat/runner"
 
 [settings]
 minimum_release_age_excludes = [
