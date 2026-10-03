@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -77,6 +78,14 @@ func TestActionPreservesNativePartialFindings(t *testing.T) {
 			}
 			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Path != tc.path || result.Diagnostics[0].Rule != tc.rule {
 				t.Fatalf("lost partial finding: %+v", result.Diagnostics)
+			}
+			var emitted persistedResult
+			outputs := parseOutputs(read(t, env["GITHUB_OUTPUT"]))
+			if err := json.Unmarshal([]byte(outputs["output"]), &emitted); err != nil {
+				t.Fatalf("invalid JSON output: %v", err)
+			}
+			if !reflect.DeepEqual(result, emitted) {
+				t.Fatalf("JSON output differs from persisted failure: %+v != %+v", emitted, result)
 			}
 		})
 	}

@@ -85,6 +85,14 @@ func (a *commandApp) reportError(err error) int {
 		if a.inv.Operation == "check" {
 			result := actionlint.NewCheckResult(status)
 			result.Error = err.Error()
+			if failure, ok := errors.AsType[*checkAnalysisError](err); ok {
+				result.Diagnostics = failure.result.Diagnostics
+				count := failure.result.FileCount()
+				result.FileCount = &count
+				for _, config := range failure.result.Configurations {
+					result.AddConfiguration(config)
+				}
+			}
 			_ = writeCommandJSON(a.streams.Stderr, result)
 			return status
 		}
