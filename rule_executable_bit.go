@@ -279,7 +279,7 @@ func (rule *RuleExecutableBit) checkout(action *ExecAction, mayNotComplete bool)
 		return
 	}
 	rule.paths.checkout = checkout
-	rule.afterKnownCheckout(rule.paths.placements.retainsOtherCheckout(checkout))
+	rule.afterKnownCheckout(checkout, rule.caseInsensitive)
 }
 
 func checkoutInput(action *ExecAction, name string) (string, bool) {
@@ -430,10 +430,11 @@ func (rule *RuleExecutableBit) redirectsKnown(redirects []*syntax.Redirect, dire
 		if target == "/dev/null" {
 			continue
 		}
-		name, known := rule.scriptPath(directory, target)
-		if !known || rule.modeChanges(directory)[name] {
+		location, known := rule.scriptPath(directory, target)
+		if !known || rule.modeChanges(directory)[location.runner] {
 			return false
 		}
+		name := location.repository
 		// Checkout creates Git metadata outside the tracked index tree.
 		if directory.kind == directoryKnown && (name == ".git" || rule.caseInsensitive && strings.EqualFold(name, ".git")) {
 			return false
@@ -563,13 +564,13 @@ func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, dire
 				rule.pristine = false
 				return
 			}
-			name, ok := rule.scriptPath(*directory, operand)
-			mode := rule.index().modes[name]
+			location, ok := rule.scriptPath(*directory, operand)
+			mode := rule.index().modes[location.repository]
 			if !ok || mode != "100644" && mode != "100755" {
 				rule.pristine = false
 				return
 			}
-			rule.modeChanges(*directory)[name] = true
+			rule.modeChanges(*directory)[location.runner] = true
 			if directory.kind == directoryActionKnown {
 				// Workspace checkout cannot reset modes in the independent action copy.
 				rule.actionPristine = false
@@ -608,41 +609,51 @@ func simpleShellArgument(parts []syntax.WordPart) bool {
 	return true
 }
 
-func (rule *RuleExecutableBit) scriptPath(directory runDirectory, script string) (string, bool) {
+// Repository paths identify indexed modes; runner paths distinguish copies.
+type executableLocation struct {
+	repository, runner string
+}
+
+func (rule *RuleExecutableBit) scriptPath(directory runDirectory, script string) (executableLocation, bool) {
 	if directory.kind != directoryKnown && directory.kind != directoryActionKnown || script == "" {
-		return "", false
+		return executableLocation{}, false
 	}
 	script, scriptKnown := runnerRelativePath(script, rule.paths.platform)
 	directoryPath, directoryKnown := runnerRelativePath(directory.path, rule.paths.platform)
 	directory.path = directoryPath
 	if !scriptKnown || !directoryKnown {
-		return "", false
+		return executableLocation{}, false
 	}
 	runnerPath := joinRunnerPath(directory.path, script)
 	paths := rule.paths.directoryOrigin(directory)
 	runnerPath, ok := rule.checkedRunnerPathFor(runnerPath, paths)
 	if !ok {
-		return "", false
+		return executableLocation{}, false
 	}
 	file, ok := paths.local(runnerPath)
 	if !ok {
-		return "", false
+		return executableLocation{}, false
 	}
 	relative, err := filepath.Rel(rule.paths.workspace, file)
 	if err != nil || !filepath.IsLocal(relative) {
-		return "", false
+		return executableLocation{}, false
 	}
-	return filepath.ToSlash(relative), true
+	runnerPath = path.Clean(runnerPath)
+	if rule.caseInsensitive {
+		runnerPath = strings.ToLower(runnerPath)
+	}
+	return executableLocation{repository: filepath.ToSlash(relative), runner: runnerPath}, true
 }
 
 func (rule *RuleExecutableBit) checkInvocation(run *ExecRun, word *syntax.Word, directory runDirectory, script string) {
 	if rule.skipFindings {
 		return
 	}
-	name, ok := rule.scriptPath(directory, script)
-	if !ok || rule.modeChanges(directory)[name] {
+	location, ok := rule.scriptPath(directory, script)
+	if !ok || rule.modeChanges(directory)[location.runner] {
 		return
 	}
+	name := location.repository
 	snapshot := rule.index()
 	if snapshot.modes[name] != "100644" {
 		return

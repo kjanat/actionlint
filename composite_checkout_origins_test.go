@@ -229,10 +229,12 @@ func TestCompositeConditionalModeChanges(t *testing.T) {
 						t.Fatalf("composite execution not inspected: %v", result.Inputs)
 					}
 					changed := executable.changed
+					changedPath := "source/local/bad.sh"
 					if independent {
 						changed = executable.actionChanged
+						changedPath = "local/bad.sh"
 					}
-					if changed["local/bad.sh"] != (condition != "false") {
+					if changed[changedPath] != (condition != "false") {
 						t.Errorf("conditional mutation lost: workspace=%v, independent=%v", executable.changed, executable.actionChanged)
 					}
 					found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == metadata })
@@ -276,7 +278,7 @@ func TestCompositeConditionalModeCheckoutReset(t *testing.T) {
 			if executable == nil {
 				t.Fatal("executable-bit rule not inspected")
 			}
-			if executable.changed["bad.sh"] != (tc.condition != "true") || executable.changed["scripts/bad.sh"] != (tc.condition != "false") {
+			if executable.changed["source/bad.sh"] != (tc.condition != "true") || executable.changed["source/scripts/bad.sh"] != (tc.condition != "false") {
 				t.Fatalf("checkout branch modes not preserved: %v", executable.changed)
 			}
 		})
