@@ -141,3 +141,52 @@ func TestCompositeWorkingDirectorySuffixSources(t *testing.T) {
 		}
 	}
 }
+
+func TestCompositeCheckoutAlternateRefMetadata(t *testing.T) {
+	command := shellcheckForTest(t)
+	root, _ := executableFixture(t)
+	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
+	metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo $VALUE\n")
+	decoy := writeShellcheckFixture(t, root, "source/local/action.yml", "name: decoy\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo $DECOY\n")
+	for _, destination := range []string{".", "source"} {
+		for _, tc := range []struct {
+			name, ref string
+			read      bool
+		}{
+			{"default", "", true},
+			{"empty expression", "${{ '' }}", true},
+			{"literal tag", "v1", false},
+			{"literal expression", "${{ 'v1' }}", false},
+			{"literal SHA", "0123456789012345678901234567890123456789", false},
+			{"dynamic ref", "${{ inputs.ref }}", true},
+		} {
+			t.Run(destination+"/"+tc.name, func(t *testing.T) {
+				inputs := "path: " + destination
+				if tc.ref != "" {
+					inputs += ", ref: \"" + tc.ref + "\""
+				}
+				steps := "- uses: actions/checkout@v6\n  with: {" + inputs + "}\n- uses: ./" + filepath.ToSlash(filepath.Join(destination, "local"))
+				result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command})
+				read := slices.Contains(result.Inputs, metadata) || slices.Contains(result.Inputs, decoy)
+				if read != tc.read {
+					t.Fatalf("metadata read=%v, want %v: %v", read, tc.read, result.Inputs)
+				}
+				wantMetadata := metadata
+				if destination == "source" && tc.name == "dynamic ref" {
+					// Unknown refs intentionally retain literal, untranslated fallback.
+					wantMetadata = decoy
+				}
+				found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
+					return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == wantMetadata && strings.Contains(d.Message, "SC2086")
+				})
+				if found != tc.read {
+					t.Fatalf("current-tree script checked=%v, want %v: %+v", found, tc.read, result.Diagnostics)
+				}
+			})
+		}
+	}
+	result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {ref: v1}\n- uses: $/local", AnalysisOptions{Shellcheck: command})
+	if !slices.Contains(result.Inputs, metadata) {
+		t.Fatalf("independent action metadata lost after alternate checkout: %v", result.Inputs)
+	}
+}

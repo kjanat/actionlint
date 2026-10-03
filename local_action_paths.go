@@ -226,7 +226,9 @@ func (c *LocalActionsCache) observeCheckout(step *Step) {
 			checkout.kind = directoryUnknown
 			self = false
 		}
-		if certain && (key == "repository" || key == "github-server-url") && inputKnown && value != "" {
+		if certain && (key == "repository" || key == "github-server-url" || key == "ref") && inputKnown && value != "" {
+			// A specified revision need not contain the analyzed working-tree
+			// metadata. No revision identity is available to prove equivalence.
 			foreign = true
 		}
 	}
