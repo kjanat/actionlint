@@ -38,7 +38,12 @@ jobs:
           - name: Build command manual
             run: run make:man
       - name: Build and test playground
-        run: run -s playground:make:build playground:make:test
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          if latest_release="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq '.tag_name')"; then
+            export ACTIONLINT_LATEST_RELEASE="${latest_release}"
+          fi
+          run -s playground:make:build playground:make:test
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with: { path: playground/dist }
 

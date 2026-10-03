@@ -26,7 +26,7 @@
     "lint:eslint": "eslint .",
     "preview": "vite preview --port 1234",
     "start": "run -q dev",
-    "test": "vitest run",
+    "test": "node --test src/build-version.test.ts && vitest run",
     "typecheck": "run -q tsc7 --noEmit"
   },
   "overrides": {

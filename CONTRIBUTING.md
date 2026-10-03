@@ -287,7 +287,7 @@ Visit [`playground/README.md`].
 
 ## How to deploy playground
 
-The [Pages workflow] deploys on pushes to `master` and after successful Release runs triggered by published releases within this repository. Release-triggered builds check out that release's commit. The build job has read-only repository access and builds the bundle with `run playground:make:build`, packages `playground/dist` together with the manual, and uploads it through `actions/upload-pages-artifact`.
+The [Pages workflow] deploys on pushes to `master` and after successful Release runs triggered by published releases within this repository. Release-triggered builds check out the current default branch. The source badge and documentation links identify the built revision; a separate latest-release badge links to the published release. The build job has read-only repository access and builds the bundle with `run playground:make:build`, packages `playground/dist` together with the manual, and uploads it through `actions/upload-pages-artifact`.
 
 Only the separate deployment job receives Pages write and OIDC permissions.
 
