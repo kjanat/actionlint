@@ -295,6 +295,14 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"checkout empty Git askpass", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {GIT_ASKPASS: ''}\n- run: ./bad.sh", "bad.sh"},
 		{"checkout expression empty Git askpass", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {GIT_ASKPASS: \"${{ '' }}\"}\n- run: ./bad.sh", "bad.sh"},
 		{"run Git askpass preserves checkout", "ubuntu-latest", "", "- run: ./bad.sh\n  env: {GIT_ASKPASS: ./credentials.sh}", "bad.sh"},
+		{"checkout SSH askpass", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {submodules: true}\n  env: {SSH_ASKPASS: ./credentials.sh}\n- run: ./bad.sh", ""},
+		{"checkout unknown SSH askpass", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {SSH_ASKPASS: '${{ inputs.askpass }}'}\n- run: ./bad.sh", ""},
+		{"checkout empty SSH askpass", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {SSH_ASKPASS: ''}\n- run: ./bad.sh", "bad.sh"},
+		{"run SSH askpass preserves checkout", "ubuntu-latest", "", "- run: ./bad.sh\n  env: {SSH_ASKPASS: ./credentials.sh}", "bad.sh"},
+		{"checkout Git protocol helper", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {submodules: true}\n  env: {GIT_ALLOW_PROTOCOL: 'https:ext'}\n- run: ./bad.sh", ""},
+		{"checkout unknown Git protocol", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {GIT_ALLOW_PROTOCOL: '${{ inputs.protocols }}'}\n- run: ./bad.sh", ""},
+		{"checkout empty Git protocol", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {GIT_ALLOW_PROTOCOL: ''}\n- run: ./bad.sh", "bad.sh"},
+		{"run Git protocol preserves checkout", "ubuntu-latest", "", "- run: ./bad.sh\n  env: {GIT_ALLOW_PROTOCOL: 'https:ext'}", "bad.sh"},
 		{"checkout job Git directory", "ubuntu-latest", "env: {GIT_DIR: /tmp/git}", "- run: ./bad.sh", ""},
 		{"checkout job Git config", "ubuntu-latest", "env: {GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: core.worktree, GIT_CONFIG_VALUE_0: /tmp}", "- run: ./bad.sh", ""},
 		{"checkout dynamic environment", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: ${{ fromJSON(inputs.env) }}\n- run: ./bad.sh", ""},
@@ -443,6 +451,8 @@ func TestExecutableBitWorkflowShellOptions(t *testing.T) {
 		{"GIT_INDEX_FILE: /tmp/index", false},
 		{"GIT_ASKPASS: ./credentials.sh", false},
 		{"GIT_ASKPASS: ''", true},
+		{"SSH_ASKPASS: ./credentials.sh", false},
+		{"GIT_ALLOW_PROTOCOL: 'https:ext'", false},
 		{"GIT_TRACE: '1'", true},
 	} {
 		t.Run(tc.env, func(t *testing.T) {
