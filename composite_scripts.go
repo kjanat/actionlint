@@ -41,12 +41,16 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *Step, parents []Rule
 	active[meta.Path()] = true
 	defer delete(active, meta.Path())
 	checkout := analysis.actions.checkoutState()
+	checkoutEnv := analysis.actions.checkoutEnvUnknown
+	analysis.actions.checkoutEnvUnknown = checkoutEnv || checkoutEnvironmentUnknown(call.Env)
 	defer func() {
+		analysis.actions.checkoutEnvUnknown = checkoutEnv
 		enabled, known := invocationCondition(call.If)
 		if known && !enabled {
 			analysis.actions.restoreCheckout(checkout)
 		} else if (!known || boolMayBeTrue(call.ContinueOnError) || boolMayBeTrue(call.Background)) && checkout != analysis.actions.checkoutState() {
-			analysis.actions.setCheckout(runDirectory{kind: directoryUnknown})
+			mayFail := boolMayBeTrue(call.ContinueOnError) || boolMayBeTrue(call.Background)
+			analysis.actions.restoreCheckout(mergeCheckoutBranches(checkout, analysis.actions.checkoutState(), mayFail))
 		}
 	}()
 
@@ -115,6 +119,7 @@ func compositeCheckoutPaths(rule Rule, actions *LocalActionsCache) {
 	checkout := actions.currentCheckout()
 	paths.checkout, paths.checkoutUnknown = checkout.path, checkout.kind == directoryUnknown
 	paths.placements = actions.checkoutState()
+	paths.caseInsensitive = actions.caseInsensitive
 }
 
 func compositeActionOrigin(paths *runPaths, call *Step, actionPath string) {
