@@ -16,6 +16,9 @@ func checkoutEnvironmentUnknown(env *Env) bool {
 			return true
 		}
 		switch name {
+		case "PATH":
+			// Checkout resolves Git through PATH, which may select a wrapper.
+			return true
 		case "NODE_OPTIONS", "GIT_SSH_COMMAND", "GIT_SSH", "GIT_ASKPASS", "GIT_PROXY_COMMAND", "GIT_TEMPLATE_DIR", "GIT_EXEC_PATH":
 			if value, known := environmentLiteral(variable.Value); !known || value != "" {
 				return true

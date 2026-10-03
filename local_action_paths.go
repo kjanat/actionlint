@@ -90,17 +90,6 @@ func (placement *checkoutPlacement) matching(local string) *checkoutPlacement {
 	return nil
 }
 
-func (placement *checkoutPlacement) retainsOtherCheckout(checkout string) bool {
-	checkout = path.Clean(checkout)
-	for current := placement; current != nil; current = current.previous {
-		prefix := path.Clean(current.directory.path)
-		if current.directory.kind == directoryKnown && prefix != checkout && placement.matching(prefix) == current {
-			return true
-		}
-	}
-	return false
-}
-
 // The workflow-scoped view translates runner workspace paths before consulting
 // the shared repository cache. Its placement never leaks between jobs or files.
 func (c *LocalActionsCache) currentCheckout() runDirectory {
@@ -199,15 +188,26 @@ func (c *LocalActionsCache) observeCheckout(step *Step) {
 	if !certain {
 		checkout.kind = directoryUnknown
 	}
-	foreign := false
+	foreign, self := false, true
 	for _, key := range []string{"repository", "ref", "sparse-checkout", "github-server-url"} {
 		value, inputKnown := checkoutInput(action, key)
 		if !inputKnown || value != "" {
 			checkout.kind = directoryUnknown
+			self = false
 		}
 		if certain && (key == "repository" || key == "github-server-url") && inputKnown && value != "" {
 			foreign = true
 		}
 	}
-	c.restoreCheckout(&checkoutPlacement{directory: checkout, previous: c.checkoutState(), caseInsensitive: c.caseInsensitive, foreign: foreign})
+	previous := c.checkoutState()
+	if self && !known && !boolMayBeTrue(step.ContinueOnError) && !boolMayBeTrue(step.Background) && !stepCanRunAfterFailure(step.If) {
+		// Skipping or successfully refreshing the same self checkout both
+		// preserve its placement. A failed refresh cannot reach ordinary steps.
+		if prior := previous.matching(checkout.path); prior != nil && prior.directory.kind == directoryKnown && !prior.foreign {
+			if relative, matches := prior.relative(checkout.path); matches && relative == "." {
+				checkout.kind = directoryKnown
+			}
+		}
+	}
+	c.restoreCheckout(&checkoutPlacement{directory: checkout, previous: previous, caseInsensitive: c.caseInsensitive, foreign: foreign})
 }
