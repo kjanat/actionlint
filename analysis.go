@@ -83,6 +83,7 @@ func (f *inputFiles) list() []string {
 }
 
 // Analyze checks resolved workflows and returns data without rendering diagnostics.
+// On analysis failure, a non-nil result retains findings collected before the failure.
 func Analyze(ctx context.Context, request AnalysisRequest) (*AnalysisResult, error) {
 	return analyze(ctx, request, io.Discard, LogLevelNone)
 }
@@ -148,15 +149,12 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	}
 	err := group.Wait()
 	proc.wait()
-	if err != nil {
-		return nil, err
-	}
-	if err := ctx.Err(); err != nil {
-		return nil, err
+	if err == nil {
+		err = ctx.Err()
 	}
 	result.collectDiagnostics()
 	result.Inputs = inputs.list()
-	return result, nil
+	return result, err
 }
 
 func (r *AnalysisResult) collectDiagnostics() {
