@@ -30,6 +30,7 @@ type runPaths struct {
 	actionRunnerPath  string
 	actionIndependent bool
 	placements        *checkoutPlacement
+	caseInsensitive   bool
 }
 
 func workingDirectoryValue(value *String) runDirectory {
@@ -199,6 +200,10 @@ func (paths runPaths) analysisPath(value string) (string, bool) {
 	if !known {
 		return "", false
 	}
+	caseInsensitive := paths.caseInsensitive
+	if placement := paths.placements.matching(relativePath); placement != nil {
+		caseInsensitive = placement.caseInsensitive
+	}
 	relativePath = filepath.FromSlash(relativePath)
 	if checkout != "" {
 		var err error
@@ -206,6 +211,13 @@ func (paths runPaths) analysisPath(value string) (string, bool) {
 		if err != nil {
 			return "", false
 		}
+	}
+	if caseInsensitive && filepath.IsLocal(relativePath) {
+		canonical, known := caseInsensitiveRepositoryPath(paths.workspace, filepath.ToSlash(relativePath))
+		if !known {
+			return "", false
+		}
+		relativePath = filepath.FromSlash(canonical)
 	}
 	return filepath.Join(paths.workspace, relativePath), true
 }

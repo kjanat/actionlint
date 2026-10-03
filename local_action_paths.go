@@ -9,7 +9,7 @@ import (
 
 func (c *LocalActionsCache) findRepositoryMetadata(spec string) (*ActionMetadata, bool, error) {
 	if c.caseInsensitive && c.base.proj != nil {
-		local, ok := caseInsensitiveActionSpec(c.base.proj.RootDir(), spec)
+		local, ok := caseInsensitiveRepositoryPath(c.base.proj.RootDir(), spec)
 		if !ok {
 			return nil, false, nil
 		}
@@ -20,7 +20,7 @@ func (c *LocalActionsCache) findRepositoryMetadata(spec string) (*ActionMetadata
 
 // Use on-disk spelling for cache keys and diagnostics, even on a Linux host.
 // Multiple case-equivalent entries cannot identify a unique runner action.
-func caseInsensitiveActionSpec(root, spec string) (string, bool) {
+func caseInsensitiveRepositoryPath(root, spec string) (string, bool) {
 	dir := root
 	for component := range strings.SplitSeq(strings.TrimPrefix(spec, "./"), "/") {
 		if component == "" || component == "." || component == ".." {
@@ -58,6 +58,7 @@ type checkoutPlacement struct {
 	previous        *checkoutPlacement
 	caseInsensitive bool
 	foreign         bool
+	redirected      bool
 }
 
 func (placement *checkoutPlacement) relative(local string) (string, bool) {
@@ -88,6 +89,30 @@ func (placement *checkoutPlacement) matching(local string) *checkoutPlacement {
 		}
 	}
 	return nil
+}
+
+// A conditional child may replace only some paths. Keep its shadowing ranges,
+// but retain the caller's unaffected checkouts when joining the two branches.
+func mergeCheckoutBranches(before, after *checkoutPlacement, mayFail bool) *checkoutPlacement {
+	if after == before || after == nil {
+		return before
+	}
+	merged := *after
+	merged.previous = mergeCheckoutBranches(before, after.previous, mayFail)
+	if mayFail || merged.directory.kind != directoryKnown || merged.foreign || !merged.previous.sameSelfCheckout(merged.directory.path) {
+		merged.directory.kind = directoryUnknown
+		merged.foreign = false
+	}
+	return &merged
+}
+
+func (placement *checkoutPlacement) sameSelfCheckout(destination string) bool {
+	prior := placement.matching(destination)
+	if prior == nil || prior.directory.kind != directoryKnown || prior.foreign || prior.redirected {
+		return false
+	}
+	relative, matches := prior.relative(destination)
+	return matches && relative == "."
 }
 
 // The workflow-scoped view translates runner workspace paths before consulting
@@ -132,7 +157,7 @@ func (c *LocalActionsCache) localSpec(spec string) (string, bool) {
 		return spec, state.directory.kind == directoryUnknown
 	}
 	checkout := placement.directory
-	if placement.foreign {
+	if placement.foreign || placement.redirected {
 		return "", false
 	}
 	if checkout.kind == directoryUnknown {
@@ -164,6 +189,12 @@ func (c *LocalActionsCache) observeCheckout(step *Step) {
 	}
 	name, _, versioned := strings.Cut(action.Uses.Value, "@")
 	if !versioned || !strings.EqualFold(name, "actions/checkout") {
+		return
+	}
+	if c.checkoutEnvUnknown || checkoutEnvironmentUnknown(step.Env) {
+		// Git may write outside the requested path or execute a wrapper. Literal
+		// metadata fallback is not evidence of the resulting repository contents.
+		c.restoreCheckout(&checkoutPlacement{directory: runDirectory{kind: directoryUnknown}, redirected: true})
 		return
 	}
 	if action.InputsExpression != nil {
@@ -203,10 +234,8 @@ func (c *LocalActionsCache) observeCheckout(step *Step) {
 	if self && !known && !boolMayBeTrue(step.ContinueOnError) && !boolMayBeTrue(step.Background) && !stepCanRunAfterFailure(step.If) {
 		// Skipping or successfully refreshing the same self checkout both
 		// preserve its placement. A failed refresh cannot reach ordinary steps.
-		if prior := previous.matching(checkout.path); prior != nil && prior.directory.kind == directoryKnown && !prior.foreign {
-			if relative, matches := prior.relative(checkout.path); matches && relative == "." {
-				checkout.kind = directoryKnown
-			}
+		if previous.sameSelfCheckout(checkout.path) {
+			checkout.kind = directoryKnown
 		}
 	}
 	c.restoreCheckout(&checkoutPlacement{directory: checkout, previous: previous, caseInsensitive: c.caseInsensitive, foreign: foreign})
