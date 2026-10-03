@@ -8,12 +8,13 @@ import (
 // compositeAnalyzer owns script-analyzer policy and invocation-specific state,
 // leaving Visitor responsible for the workflow's ordinary pass lifecycle.
 type compositeAnalyzer struct {
-	ctx           context.Context
-	actions       *LocalActionsCache
-	passes        []Pass
-	rules         []compositeScriptRules
-	workflowStart int
-	actionPathErr error
+	ctx            context.Context
+	actions        *LocalActionsCache
+	passes         []Pass
+	rules          []compositeScriptRules
+	workflowStart  int
+	actionPathErr  error
+	workflowGitEnv bool
 }
 
 func (analysis *compositeAnalyzer) cancelled() error {
@@ -23,9 +24,10 @@ func (analysis *compositeAnalyzer) cancelled() error {
 	return analysis.ctx.Err()
 }
 
-func (analysis *compositeAnalyzer) beginWorkflow() {
+func (analysis *compositeAnalyzer) beginWorkflow(workflow *Workflow) {
 	analysis.workflowStart = len(analysis.rules)
 	analysis.actionPathErr = nil
+	analysis.workflowGitEnv = checkoutEnvironmentUnknown(workflow.Env)
 }
 
 func (analysis *compositeAnalyzer) deferWorkflowError(pass Pass, err error) bool {
@@ -55,6 +57,7 @@ func (analysis *compositeAnalyzer) beginJob(job *Job) {
 	analysis.actions.setCheckout(runDirectory{})
 	analysis.actions.platform = runnerPlatform(job.RunsOn)
 	analysis.actions.caseInsensitive = analysis.actions.platform == platformKindWindows || macOSRunner(job.RunsOn)
+	analysis.actions.checkoutEnvUnknown = analysis.workflowGitEnv || checkoutEnvironmentUnknown(job.Env)
 }
 
 func (analysis *compositeAnalyzer) invalidateCheckout() {
