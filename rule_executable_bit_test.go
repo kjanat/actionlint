@@ -284,6 +284,12 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"padded expression checkout path", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: \"${{ ' source ' }}\"}\n- run: ./source/bad.sh", "bad.sh"},
 		{"whitespace checkout path", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: '  '}\n- run: ./bad.sh", "bad.sh"},
 		{"checkout step Git worktree", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {GIT_WORK_TREE: /tmp}\n- run: ./bad.sh", ""},
+		{"checkout step Git askpass", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {submodules: true}\n  env: {GIT_ASKPASS: ./credentials.sh}\n- run: ./bad.sh", ""},
+		{"checkout job Git askpass", "ubuntu-latest", "env: {GIT_ASKPASS: ./credentials.sh}", "- run: ./bad.sh", ""},
+		{"checkout unknown Git askpass", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {GIT_ASKPASS: '${{ inputs.askpass }}'}\n- run: ./bad.sh", ""},
+		{"checkout empty Git askpass", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {GIT_ASKPASS: ''}\n- run: ./bad.sh", "bad.sh"},
+		{"checkout expression empty Git askpass", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {GIT_ASKPASS: \"${{ '' }}\"}\n- run: ./bad.sh", "bad.sh"},
+		{"run Git askpass preserves checkout", "ubuntu-latest", "", "- run: ./bad.sh\n  env: {GIT_ASKPASS: ./credentials.sh}", "bad.sh"},
 		{"checkout job Git directory", "ubuntu-latest", "env: {GIT_DIR: /tmp/git}", "- run: ./bad.sh", ""},
 		{"checkout job Git config", "ubuntu-latest", "env: {GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: core.worktree, GIT_CONFIG_VALUE_0: /tmp}", "- run: ./bad.sh", ""},
 		{"checkout dynamic environment", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: ${{ fromJSON(inputs.env) }}\n- run: ./bad.sh", ""},
@@ -429,6 +435,8 @@ func TestExecutableBitWorkflowShellOptions(t *testing.T) {
 		{"PATH: /usr/bin, SHELLOPTS: nounset", false},
 		{"GIT_WORK_TREE: /tmp", false},
 		{"GIT_INDEX_FILE: /tmp/index", false},
+		{"GIT_ASKPASS: ./credentials.sh", false},
+		{"GIT_ASKPASS: ''", true},
 		{"GIT_TRACE: '1'", true},
 	} {
 		t.Run(tc.env, func(t *testing.T) {
