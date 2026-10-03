@@ -191,7 +191,7 @@ func (c *LocalActionsCache) observeCheckout(step *Step) {
 	if !versioned || !strings.EqualFold(name, "actions/checkout") {
 		return
 	}
-	if c.checkoutEnvUnknown || checkoutEnvironmentUnknown(step.Env) {
+	if c.checkoutEnvUnknown || c.persistentEnvUnknown || checkoutEnvironmentUnknown(step.Env, c.platform) {
 		// Git may write outside the requested path or execute a wrapper. Literal
 		// metadata fallback is not evidence of the resulting repository contents.
 		c.restoreCheckout(&checkoutPlacement{directory: runDirectory{kind: directoryUnknown}, redirected: true})

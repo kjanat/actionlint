@@ -24,6 +24,34 @@ func TestInvocationCondition(t *testing.T) {
 	}
 }
 
+func TestJobInvocationCondition(t *testing.T) {
+	for _, tc := range []struct {
+		condition      string
+		dependencies   bool
+		enabled, known bool
+	}{
+		{"failure()", false, false, true},
+		{"failure() && github.event_name == 'push'", false, false, true},
+		{"failure()", true, false, false},
+		{"failure() && cancelled()", true, false, false},
+		{"cancelled()", false, false, false},
+		{"!success()", false, false, false},
+		{"failure() || cancelled()", false, false, false},
+		{"success()", false, true, true},
+	} {
+		t.Run(tc.condition, func(t *testing.T) {
+			job := &Job{If: &String{Value: tc.condition}}
+			if tc.dependencies {
+				job.Needs = []*String{{Value: "build"}}
+			}
+			enabled, known := jobInvocationCondition(job)
+			if enabled != tc.enabled || known != tc.known {
+				t.Fatalf("jobInvocationCondition() = %v, %v; want %v, %v", enabled, known, tc.enabled, tc.known)
+			}
+		})
+	}
+}
+
 func TestConditionNeverRuns(t *testing.T) {
 	for _, tc := range []struct {
 		expression string
