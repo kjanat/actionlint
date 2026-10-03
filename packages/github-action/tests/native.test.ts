@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { execFile } from 'node:child_process';
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { delimiter, dirname, isAbsolute, join, relative } from 'node:path';
+import { promisify } from 'node:util';
 
 import { cacheTool, capture, findTool, temporary, which } from '#native';
 import { commandEscape, writeOutputs } from '#workflow';
@@ -10,9 +12,57 @@ import { commandEscape, writeOutputs } from '#workflow';
 test('configuration preflight can terminate a noncooperative child at its deadline', async () => {
 	await assert.rejects(
 		capture(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], process.env, { timeoutMS: 50 }),
-		/terminated by SIGKILL/,
+		/timed out after 50ms/,
 	);
 });
+
+for (const wrapperExits of [false, true]) {
+	test(`capture deadline releases inherited pipes and the caller can exit (wrapper exits: ${wrapperExits})`, {
+		// Windows does not keep these inherited anonymous pipes open after the wrapper exits.
+		skip: process.platform === 'win32',
+	}, async () => {
+		await temporary(async (directory) => {
+			const pidFile = join(directory, 'descendant.pid');
+			const stopDescendant = async () => {
+				const pid = Number(await readFile(pidFile, 'utf8'));
+				assert.ok(Number.isSafeInteger(pid) && pid > 0);
+				try {
+					process.kill(pid, 'SIGKILL');
+				} catch (error) {
+					if (!(error instanceof Error) || !('code' in error) || error.code !== 'ESRCH') throw error;
+				}
+			};
+			const wrapper = `
+const { spawn } = require('node:child_process');
+const { writeFileSync } = require('node:fs');
+const descendant = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 5000)'], {
+	stdio: ['ignore', 'inherit', 'inherit'], windowsHide: true,
+});
+writeFileSync(${JSON.stringify(pidFile)}, String(descendant.pid));
+${wrapperExits ? 'descendant.unref();' : 'setInterval(() => {}, 1000);'}
+`;
+			const caller = `
+import { capture } from ${JSON.stringify(import.meta.resolve('#native'))};
+try {
+	await capture(process.execPath, ['-e', ${JSON.stringify(wrapper)}], process.env, { timeoutMS: 500 });
+	process.exitCode = 1;
+} catch (error) {
+	console.log(error.message);
+}
+`;
+			try {
+				const result = await promisify(execFile)(process.execPath, ['--input-type=module', '-e', caller], {
+					timeout: 2_000,
+					killSignal: 'SIGKILL',
+					windowsHide: true,
+				});
+				assert.match(result.stdout, /timed out after 500ms/);
+			} finally {
+				await stopDescendant();
+			}
+		});
+	});
+}
 
 test('external tool cache reuses copied files and ignores directories without completion markers', async () => {
 	await temporary(async (directory) => {
