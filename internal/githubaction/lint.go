@@ -16,6 +16,9 @@ import (
 
 const lintTimeout = 300 * time.Second
 
+// Allow canceled analysis to drain callbacks and hand back its partial result.
+const lintCancellationGrace = time.Second
+
 type lintRequest struct {
 	ctx                context.Context
 	shellcheckOptions  *actionlint.ExternalCommandOptions
@@ -256,14 +259,25 @@ func (a *action) runLint(req *lintRequest) *lintResult {
 	go func() {
 		completed <- a.lint(&request)
 	}()
+	var result *lintResult
 	select {
-	case result := <-completed:
+	case result = <-completed:
 		if ctx.Err() == nil {
 			return result
 		}
 	case <-ctx.Done():
+		timer := time.NewTimer(lintCancellationGrace)
+		defer timer.Stop()
+		select {
+		case result = <-completed:
+		case <-timer.C:
+		}
 	}
 	// The analysis owns its buffers until it returns, even if it ignores cancellation.
+	if result == nil {
+		result = &lintResult{}
+	}
 	msg := fmt.Sprintf("actionlint timed out after %d seconds\n", int(a.timeout.Seconds()))
-	return &lintResult{lintOutcome: &lintOutcome{"", msg, actionlint.ExitStatusFailure}}
+	result.lintOutcome = &lintOutcome{"", msg, actionlint.ExitStatusFailure}
+	return result
 }

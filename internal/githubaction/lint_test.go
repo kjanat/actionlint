@@ -529,7 +529,7 @@ func TestActionRunLintTimesOutNoncooperativeLinter(t *testing.T) {
 		if got.stdout != "" || got.fileCountKnown {
 			t.Errorf("timeout result must not expose the unfinished analysis: %#v", got)
 		}
-	case <-time.After(time.Second):
+	case <-time.After(lintCancellationGrace + time.Second):
 		t.Error("timeout waited for the noncooperative linter to return")
 	}
 }

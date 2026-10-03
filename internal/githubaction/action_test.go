@@ -398,8 +398,8 @@ func TestActionTimesOut(t *testing.T) {
 	if !strings.Contains(out.String(), "actionlint timed out after") {
 		t.Errorf("wanted a timeout annotation but got %q", out.String())
 	}
-	if !strings.Contains(out.String(), "while checking unknown workflow files") {
-		t.Errorf("wanted timeout status to keep the file count unknown but got %q", out.String())
+	if !strings.Contains(out.String(), "while checking 0 workflow files") {
+		t.Errorf("wanted timeout status to retain the returned file count but got %q", out.String())
 	}
 	outputs := parseOutputs(read(t, outputPath))
 	if outputs["result"] != "failure" || outputs["exit-code"] != "3" {
