@@ -58,7 +58,7 @@ func (rule *RuleExecutableBit) forkComposite(call *Step, actionPath string, acti
 		scoped.actionChanged = maps.Clone(rule.actionChanged)
 	}
 	scoped.jobEnv = rule.jobEnv || shellEnvironmentUnknown(call.Env)
-	scoped.jobGitEnv = rule.jobGitEnv || checkoutEnvironmentUnknown(call.Env)
+	scoped.jobGitEnv = rule.jobGitEnv || checkoutEnvironmentUnknown(call.Env, scoped.paths.platform)
 	scoped.jobPathUnknown = rule.jobPathUnknown || shellPathUnknown(call.Env)
 	if conditionKnown && !enabled || boolMayBeTrue(call.Background) {
 		scoped.afterConcurrentExecution()

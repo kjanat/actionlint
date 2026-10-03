@@ -170,8 +170,9 @@ func TestCompositeRetainedCheckoutChanges(t *testing.T) {
 		t.Run(mutation, func(t *testing.T) {
 			steps := "- uses: actions/checkout@v6\n  with: {path: source}\n- shell: bash\n  working-directory: .\n  run: " + mutation + "\n- uses: actions/checkout@v6\n  with: {path: mirror}\n- uses: actions/checkout@v6\n  with: {path: mirror}\n- uses: ./source/local"
 			result := compositeAnalysis(t, root, steps, AnalysisOptions{})
-			if !slices.Contains(result.Inputs, metadata) {
-				t.Fatalf("earlier checkout metadata was lost: %v", result.Inputs)
+			// Opaque commands may persist Git settings and redirect later checkouts.
+			if slices.Contains(result.Inputs, metadata) != (mutation != "unknown-command") {
+				t.Fatalf("wrong earlier checkout certainty after %q: %v", mutation, result.Inputs)
 			}
 			if slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" }) {
 				t.Fatalf("new checkout restored modified earlier copy: %+v", result.Diagnostics)
