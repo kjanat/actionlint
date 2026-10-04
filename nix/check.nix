@@ -31,6 +31,20 @@ runCommand "actionlint-nix-integration"
       test -s "${actionlint}/$file"
     done
 
+    while IFS= read -r -d "" schema; do
+      jq -e . "$schema" > /dev/null
+      while IFS= read -r reference; do
+        case "$reference" in
+          \#* | *:*) continue ;;
+        esac
+        target="$(dirname "$schema")/''${reference%%#*}"
+        if ! test -s "$target"; then
+          echo "Missing schema reference in $schema: $reference" >&2
+          exit 1
+        fi
+      done < <(jq -r '.. | objects | ."$ref"? // empty' "$schema")
+    done < <(find "${actionlint}/share/actionlint" -type f -name '*.json' -print0)
+
     git init --quiet project
     mkdir -p project/.github/workflows
     cp ${./integration.yml} project/.github/workflows/check.yml

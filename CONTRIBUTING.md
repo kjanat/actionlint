@@ -124,7 +124,7 @@ For Pandoc 3.7, which lacks `--syntax-highlighting=none`, override the command u
 make man/actionlint.1 PANDOC='pandoc --standalone --from=markdown-smart --no-highlight'
 ```
 
-Shell completions come from the built binary's `-completion bash`, `-completion zsh`, and `-completion fish` commands. Install `actionlint.schema.json` alongside the package if users need a local configuration schema.
+Shell completions come from the built binary's `-completion bash`, `-completion zsh`, and `-completion fish` commands. For local configuration validation, install `actionlint.schema.json` and the `schemas/` tree together, preserving their relative paths so references such as `schemas/shellcheck/0.11.0.schema.json` resolve.
 
 Run `go test ./...` from the source root, including when only `cmd/actionlint` is built. That command directory has no tests; engine tests live in the root package and frontend tests in `internal/cli`. Put Git, Bash, ShellCheck, and Pyflakes on `PATH` for the tests. Ordinary builds use the checked-in generated sources; dependency fetching can happen before an offline build, as with Nix's `buildGoModule`.
 

@@ -8,6 +8,7 @@ on:
       - go.sum
       - config.go
       - actionlint.schema.json
+      - schemas/shellcheck/*.schema.json
       - action_metadata.go
       - action_metadata_availability.go
       - action_runtime.go
@@ -39,6 +40,8 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
       - uses: kjanat/install-dprint@fc7e4f62965bab609a936c9e58ad4893bb9da961 # v2
+      - run: go test ./scripts/generate-config-schema
+      - run: dprint check 'schemas/shellcheck/*.schema.json'
       - run: go generate
         env: { GH_TOKEN: "${{ github.token }}" }
       - run: dprint fmt actionlint.schema.json

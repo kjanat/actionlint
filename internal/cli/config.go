@@ -31,9 +31,15 @@ func writeConfigValidation(out io.Writer, req configValidateRequest) error {
 	}
 	if req.JSON {
 		return writeCommandJSON(out, struct {
-			Path  string `json:"path"`
-			Valid bool   `json:"valid"`
-		}{inspection.Path, true})
+			Path     string                     `json:"path"`
+			Valid    bool                       `json:"valid"`
+			Warnings []actionlint.ConfigWarning `json:"warnings,omitempty"`
+		}{inspection.Path, true, inspection.Warnings})
+	}
+	for _, warning := range inspection.Warnings {
+		if _, err := fmt.Fprintf(out, "%s:%d:%d: warning: %s\n", inspection.Path, warning.Line, warning.Column, warning.Message); err != nil {
+			return err
+		}
 	}
 	if inspection.Path == "" {
 		_, err = fmt.Fprintln(out, "No configuration file selected; defaults are valid.")

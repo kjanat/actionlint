@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -22,13 +22,15 @@ type cmdExecution struct {
 	stdin         string
 	combineOutput bool
 	env           []string
+	dir           string
 }
 
 func (e *cmdExecution) run(ctx context.Context) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, e.cmd, e.args...)
+	cmd.Dir = e.dir
 	cmd.Stderr = nil
 	if len(e.env) > 0 {
-		cmd.Env = append(os.Environ(), e.env...)
+		cmd.Env = append(cmd.Environ(), e.env...)
 	}
 	// Let os/exec start the reader before copying stdin. Writing the whole script
 	// before Start can fill the pipe and deadlock, even with a single worker.
@@ -119,6 +121,13 @@ func (proc *concurrentProcess) configuredCommandRunner(exe string, options *Exte
 	if err != nil {
 		return nil, err
 	}
+	// Resolve before per-script working directories change relative executable paths.
+	if p != "" {
+		p, err = filepath.Abs(p)
+		if err != nil {
+			return nil, err
+		}
+	}
 	cmd := &externalCommand{
 		proc:          proc,
 		exe:           p,
@@ -197,13 +206,17 @@ type externalCommand struct {
 // process runs. First argument is stdout and the second argument is an error while running the
 // process.
 func (cmd *externalCommand) run(args []string, stdin string, callback func([]byte, error) error) {
+	cmd.runInDirectory(args, stdin, "", callback)
+}
+
+func (cmd *externalCommand) runInDirectory(args []string, stdin, dir string, callback func([]byte, error) error) {
 	if len(cmd.args) > 0 {
 		allArgs := make([]string, 0, len(cmd.args)+len(args))
 		allArgs = append(allArgs, cmd.args...)
 		allArgs = append(allArgs, args...)
 		args = allArgs
 	}
-	exec := &cmdExecution{cmd: cmd.exe, args: args, stdin: stdin, combineOutput: cmd.combineOutput, env: cmd.env}
+	exec := &cmdExecution{cmd: cmd.exe, args: args, stdin: stdin, combineOutput: cmd.combineOutput, env: cmd.env, dir: dir}
 	cmd.proc.run(&cmd.eg, exec, callback)
 }
 

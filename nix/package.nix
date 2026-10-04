@@ -62,6 +62,7 @@ buildGoModule {
       --zsh <("$out/bin/actionlint" -completion zsh) \
       --fish <("$out/bin/actionlint" -completion fish)
     install -Dm644 actionlint.schema.json "$out/share/actionlint/actionlint.schema.json"
+    cp -r schemas "$out/share/actionlint/"
     wrapProgram "$out/bin/actionlint" --prefix PATH : ${
       lib.makeBinPath [
         shellcheck
