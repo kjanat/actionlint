@@ -22,7 +22,7 @@ func TestModernCommandDispatch(t *testing.T) {
 		{"check", "good.yml", "--output-format=json"},
 	} {
 		got := testRunCommand("", args...)
-		if got.Status != 0 || got.Stdout != "{\"schema_version\":1,\"diagnostics\":[]}\n" || got.Stderr != "" {
+		if got.Status != 0 || !cleanCheckJSON(got.Stdout) || got.Stderr != "" {
 			t.Fatalf("%q: %+v", args, got)
 		}
 	}
@@ -57,7 +57,7 @@ func TestModernCommandDispatch(t *testing.T) {
 		t.Fatalf("command escape: %+v (%v)", forced, err)
 	}
 	for _, args := range [][]string{{"--command", "check", "--color=never", "-ojson", "good.yml"}, {"--command=check", "--json", "good.yml"}} {
-		if got := testRunCommand("", args...); got.Status != 0 || got.Stdout != "{\"schema_version\":1,\"diagnostics\":[]}\n" || got.Stderr != "" {
+		if got := testRunCommand("", args...); got.Status != 0 || !cleanCheckJSON(got.Stdout) || got.Stderr != "" {
 			t.Fatalf("command escape used legacy grammar: %q: %+v", args, got)
 		}
 	}

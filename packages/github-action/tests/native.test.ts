@@ -7,7 +7,7 @@ import { delimiter, dirname, isAbsolute, join, relative } from 'node:path';
 import { promisify } from 'node:util';
 
 import { cacheTool, capture, findTool, temporary, which } from '#native';
-import { commandEscape, writeOutputs } from '#workflow';
+import { commandEscape, readOutputs, writeOutputs } from '#workflow';
 
 test('configuration preflight can terminate a noncooperative child at its deadline', async () => {
 	await assert.rejects(
@@ -269,5 +269,12 @@ test('workflow outputs frame multiline values and commands escape control charac
 			['result', ''],
 		]);
 		assert.equal(commandEscape('a%\r\n::error::b'), 'a%25%0D%0A::error::b');
+		assert.deepEqual(await readOutputs(output), {
+			'exit-code': '3',
+			output: 'first\n::error::literal\nlast',
+			result: '',
+		});
+		await writeFile(output, 'output<<missing\npartial\n');
+		await assert.rejects(readOutputs(output), /Unterminated/);
 	});
 });

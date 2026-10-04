@@ -125,8 +125,8 @@ func TestRunLinterFindsNoProblem(t *testing.T) {
 	if got.code != actionlint.ExitStatusSuccessNoProblem {
 		t.Fatalf("wanted exit code 0 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
-	if got.stdout != "[]\n" {
-		t.Errorf("wanted an empty JSON array but got %q", got.stdout)
+	if len(got.diagnostics) != 0 || got.stdout != "" {
+		t.Errorf("wanted empty typed diagnostics without intermediate JSON: %#v", got)
 	}
 	if !got.fileCountKnown || got.fileCount != 1 {
 		t.Errorf("wanted the selected file count to be 1 but got %#v", got)
@@ -157,20 +157,17 @@ func TestRunLinterFindsProblems(t *testing.T) {
 		t.Fatalf("wanted exit code 1 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
 
-	var problems []*problem
-	if err := json.Unmarshal([]byte(got.stdout), &problems); err != nil {
-		t.Fatal(err)
-	}
+	problems := got.diagnostics
 	if len(problems) != 1 {
 		t.Fatalf("wanted one problem but got %#v", problems)
 	}
-	if problems[0].Filepath != "broken.yaml" {
-		t.Errorf("wanted a path relative to the working directory but got %q", problems[0].Filepath)
+	if problems[0].Path != "broken.yaml" {
+		t.Errorf("wanted a path relative to the working directory but got %q", problems[0].Path)
 	}
-	if problems[0].Kind != "runner-label" || problems[0].Line != 4 {
+	if problems[0].Rule != "runner-label" || problems[0].Start.Line != 4 {
 		t.Errorf("wanted the unknown runner label reported at line 4 but got %#v", problems[0])
 	}
-	if problems[0].Snippet == "" || problems[0].EndColumn == 0 {
+	if problems[0].Snippet == "" || problems[0].End.Column == 0 {
 		t.Errorf("wanted a snippet and an end column but got %#v", problems[0])
 	}
 }
@@ -183,12 +180,14 @@ func TestRunLinterRendersSARIF(t *testing.T) {
 	if got.code != actionlint.ExitStatusSuccessProblemFound {
 		t.Fatalf("wanted exit code 1 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
-	count, err := sarifProblemCount(got.stdout)
-	if err != nil {
-		t.Fatalf("%v: %s", err, got.stdout)
+	var document struct {
+		Runs []struct{ Results []json.RawMessage }
 	}
-	if count != 1 {
-		t.Errorf("wanted one SARIF result but got %d", count)
+	if err := json.Unmarshal([]byte(got.stdout), &document); err != nil {
+		t.Fatal(err)
+	}
+	if len(document.Runs) != 1 || len(document.Runs[0].Results) != 1 {
+		t.Errorf("wanted one SARIF result: %s", got.stdout)
 	}
 	if got.stdout != got.sarif {
 		t.Error("selected SARIF differs from the persisted native SARIF document")
@@ -275,18 +274,15 @@ func TestRunLinterLintsWholeRepository(t *testing.T) {
 	if got.code != actionlint.ExitStatusSuccessProblemFound {
 		t.Fatalf("wanted exit code 1 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
-	var problems []*problem
-	if err := json.Unmarshal([]byte(got.stdout), &problems); err != nil {
-		t.Fatal(err)
-	}
+	problems := got.diagnostics
 	if len(problems) != 1 {
 		t.Fatalf("wanted one problem but got %#v", problems)
 	}
 	if !got.fileCountKnown || got.fileCount != 2 {
 		t.Errorf("wanted the two linted repository files counted but got %#v", got)
 	}
-	if want := filepath.Join(".github", "workflows", "broken.yaml"); problems[0].Filepath != want {
-		t.Errorf("wanted %q but got %q", want, problems[0].Filepath)
+	if want := filepath.Join(".github", "workflows", "broken.yaml"); problems[0].Path != want {
+		t.Errorf("wanted %q but got %q", want, problems[0].Path)
 	}
 }
 
@@ -482,11 +478,8 @@ func TestActionRunLintPreservesProcessDirectory(t *testing.T) {
 	if got.code != actionlint.ExitStatusSuccessProblemFound {
 		t.Fatalf("wanted the workflow in the requested directory linted but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
-	var problems []*problem
-	if err := json.Unmarshal([]byte(got.stdout), &problems); err != nil {
-		t.Fatal(err)
-	}
-	if len(problems) != 1 || problems[0].Filepath != "broken.yaml" {
+	problems := got.diagnostics
+	if len(problems) != 1 || problems[0].Path != "broken.yaml" {
 		t.Errorf("wanted the diagnostic path relative to the requested directory but got %#v", problems)
 	}
 	after, err := os.Getwd()

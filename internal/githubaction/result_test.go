@@ -30,7 +30,7 @@ func TestActionReportsFilesOnAnotherVolume(t *testing.T) {
 		t.Fatal(err)
 	}
 	var sarif bytes.Buffer
-	if err := renderer.Render(&sarif, workspaceSARIFAnalysis(analysis, workspace, workspace)); err != nil {
+	if err := renderer.Render(&sarif, workspaceReportAnalysis(analysis, workspace, workspace)); err != nil {
 		t.Fatal(err)
 	}
 	if got := sarif.String(); strings.Count(got, "file:///D:/shared/workflow.yml") != 2 || strings.Contains(got, "uriBaseId") {
@@ -39,15 +39,11 @@ func TestActionReportsFilesOnAnotherVolume(t *testing.T) {
 	if analysis.Diagnostics[0].Path != file || analysis.Diagnostics[0].Fixes[0].Edits[0].Path != file {
 		t.Fatal("SARIF rendering changed persisted paths")
 	}
-	problem := sampleProblem()
-	problem.Filepath = file
-	serialized, err := json.Marshal([]*actionlint.ErrorTemplateFields{problem})
-	if err != nil {
-		t.Fatal(err)
-	}
-	count, annotation, err := countAndRender(string(serialized), formatGitHub, workspace, workspace)
-	if err != nil || count != 1 || !strings.Contains(annotation, "file=D%3A/shared/workflow.yml,") {
-		t.Fatalf("cross-volume annotation: %d %q %v", count, annotation, err)
+	legacyAnalysis := analysisForRender(t, "")
+	legacyAnalysis.Diagnostics[0].Path = file
+	annotation, err := renderAnalysis(formatGitHub, legacyAnalysis, workspace, workspace)
+	if err != nil || !strings.Contains(annotation, "file=D%3A/shared/workflow.yml,") {
+		t.Fatalf("cross-volume annotation: %q %v", annotation, err)
 	}
 }
 
@@ -75,6 +71,7 @@ func TestActionDiagnosticAndSARIFPaths(t *testing.T) {
 					"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "ACTIONLINT_ACTION_RESULT": resultPath,
 					"ACTIONLINT_SHELLCHECK_COMMAND": shellcheck, "INPUT_PYFLAKES": "false", "INPUT_WORKING-DIRECTORY": "work",
 					"INPUT_FILES": tc.file, "INPUT_FORMAT": format, "INPUT_OUTPUT-FILE": "report.txt",
+					"INPUT_SARIF": "true",
 				}
 				var output strings.Builder
 				if code := Main(func(key string) string { return env[key] }, &output); code != 1 {
@@ -258,8 +255,11 @@ func TestPersistedResultRetainsAnalysisStatus(t *testing.T) {
 				t.Fatalf("unexpected status: %+v", result)
 			}
 			if tc.completed {
-				if result.FileCount == nil || *result.FileCount != 1 || !json.Valid(result.SARIF) {
-					t.Fatalf("missing counts or SARIF: %s", data)
+				if result.FileCount == nil || *result.FileCount != 1 {
+					t.Fatalf("missing file count: %s", data)
+				}
+				if (tc.format == "sarif") != json.Valid(result.SARIF) {
+					t.Fatalf("unexpected SARIF presence: %s", data)
 				}
 				if len(result.Diagnostics) != tc.analysisCode {
 					t.Fatalf("unexpected diagnostics: %+v", result.Diagnostics)
@@ -273,7 +273,9 @@ func TestPersistedResultRetainsAnalysisStatus(t *testing.T) {
 
 func TestPersistedResultRecordsMissingInputFailure(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "result.json")
+	outputPath := filepath.Join(t.TempDir(), "outputs")
 	env := map[string]string{"GITHUB_WORKSPACE": t.TempDir(), "ACTIONLINT_ACTION_RESULT": path,
+		"GITHUB_OUTPUT": outputPath, "INPUT_FORMAT": "json",
 		"INPUT_FILES": "missing.yml", "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false"}
 	var output strings.Builder
 	if code := Main(func(key string) string { return env[key] }, &output); code != 3 {
@@ -289,5 +291,57 @@ func TestPersistedResultRecordsMissingInputFailure(t *testing.T) {
 	}
 	if result.Completed || result.Status != "failure" || result.Error == "" {
 		t.Fatalf("failure not retained: %s", data)
+	}
+	if rendered := parseOutputs(read(t, outputPath))["output"]; rendered != strings.TrimSuffix(string(data), "\n") {
+		t.Fatalf("failure differs between JSON output and persisted result: %s", rendered)
+	}
+}
+
+func TestActionSARIFGeneratedOnlyWhenRequested(t *testing.T) {
+	for _, tc := range []struct {
+		name, format, sarif string
+		wantSARIF           bool
+	}{
+		{"default JSON", "json", "", false},
+		{"disabled", "json", "false", false},
+		{"exact true required", "json", "TRUE", false},
+		{"separate report", "json", "true", true},
+		{"console report", "sarif", "false", true},
+		{"both reports", "sarif", "true", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			workspace := workspaceWith(t, map[string]string{"ci.yml": cleanWorkflow})
+			resultPath := filepath.Join(t.TempDir(), "result.json")
+			outputPath := filepath.Join(t.TempDir(), "outputs")
+			env := map[string]string{
+				"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath,
+				"ACTIONLINT_ACTION_RESULT": resultPath,
+				"INPUT_FILES":              "ci.yml", "INPUT_FORMAT": tc.format, "INPUT_SARIF": tc.sarif,
+				"INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false",
+			}
+			var stdout strings.Builder
+			if code := Main(func(key string) string { return env[key] }, &stdout); code != 0 {
+				t.Fatalf("code %d: %s", code, &stdout)
+			}
+			data := read(t, resultPath)
+			var result actionlint.CheckResult
+			if err := json.Unmarshal([]byte(data), &result); err != nil {
+				t.Fatal(err)
+			}
+			if tc.wantSARIF != json.Valid(result.SARIF) || !tc.wantSARIF && result.SARIF != nil {
+				t.Fatalf("unexpected SARIF presence: %s", data)
+			}
+			selected := parseOutputs(read(t, outputPath))["output"]
+			if tc.format == "json" {
+				if selected != strings.TrimSpace(data) {
+					t.Fatal("JSON output differs from persisted result")
+				}
+			} else {
+				compacted, err := json.Marshal(json.RawMessage(selected))
+				if err != nil || !bytes.Equal(compacted, result.SARIF) {
+					t.Fatalf("console SARIF differs from embedded SARIF: %v", err)
+				}
+			}
+		})
 	}
 }

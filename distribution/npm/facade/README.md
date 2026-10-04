@@ -138,6 +138,22 @@ Reinstall without `--no-optional` or `--omit=optional`.
 Using Bun with `minimumReleaseAge`? Add `@kjanat-actionlint/*` to `minimumReleaseAgeExcludes` alongside
 `@kjanat/actionlint`. A fresh release otherwise installs the facade while its binaries are still age-gated.
 
+## Analysis results
+
+CLI `check --json` and the GitHub Action emit the same versioned result contract.
+This package ships the schema and types supported by its matching binary:
+
+```typescript
+import type { CheckResult, DiagnosticRecord } from '@kjanat/actionlint/result';
+```
+
+`@kjanat/actionlint/result.schema.json` exports the result schema;
+`@kjanat/actionlint/schemas/results/v1.schema.json` selects its contract version.
+`CheckResult` describes a complete result, including failed analysis;
+`DiagnosticRecord` describes one JSONL record. Types do not validate untrusted JSON.
+See [the result contract](https://github.com/kjanat/actionlint/blob/master/docs/results.md)
+for compatibility and migration details.
+
 ## Other ways to install
 
 Homebrew, Arch (AUR), Scoop, Docker, a download script, and `go install` are all covered in

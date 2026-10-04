@@ -99,6 +99,9 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		if inv.Legacy {
 			err = actionlint.LegacyAnalysisError(err)
 		}
+		if result != nil {
+			err = &checkAnalysisError{result: result, err: err}
+		}
 		return 0, err
 	}
 	inputs := append([]string{c.Config.Path, r.TemplateFile}, result.Inputs...)
@@ -162,6 +165,15 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	}
 	return status, err
 }
+
+// checkAnalysisError carries collected findings to the existing failure report.
+type checkAnalysisError struct {
+	result *actionlint.AnalysisResult
+	err    error
+}
+
+func (e *checkAnalysisError) Error() string { return e.err.Error() }
+func (e *checkAnalysisError) Unwrap() error { return e.err }
 
 func analyzeCommand(app *actionlint.AnalysisSession, stdin io.Reader, paths []string, normalizeStdin bool) (*actionlint.AnalysisResult, error) {
 	switch {

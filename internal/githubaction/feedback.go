@@ -32,10 +32,11 @@ func quotedIgnoreHints(patterns []string, problems []actionlint.Diagnostic) []st
 }
 
 func (a *action) emitConfiguration(result *lintResult, workingDir string) {
-	slices.SortFunc(result.configs, func(a, b actionlint.ConfigReport) int {
+	configs := slices.Clone(result.configs)
+	slices.SortFunc(configs, func(a, b actionlint.ConfigReport) int {
 		return strings.Compare(a.Project, b.Project)
 	})
-	for _, config := range result.configs {
+	for _, config := range configs {
 		source := "defaults (no config file found)"
 		if config.File != "" {
 			source = config.File

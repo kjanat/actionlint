@@ -66,6 +66,7 @@ async function run(inputs, expected = 0) {
 	if (outputs.has('exit-code')) assert.equal(String(analysis.exit_code), outputs.get('exit-code'), log);
 	if (expected >= 2) assert.equal(analysis.exit_code, expected, log);
 	assert.equal(analysis.completed, analysis.exit_code < 2, log);
+	if (env.INPUT_FORMAT === 'json') assert.deepEqual(JSON.parse(outputs.get('output') || ''), analysis, log);
 	return { outputs, log, analysis };
 }
 
@@ -85,17 +86,18 @@ try {
 		await copyFile(join(source, 'testdata', name), destination);
 	}
 	const clean = await run({});
+	assert.equal(clean.analysis.sarif, undefined);
 	for (
 		const [name, expected] of Object.entries({
 			'exit-code': '0',
 			result: 'success',
 			'problems-found': 'false',
 			'problem-count': '0',
-			output: '[]',
 		})
 	) {
 		assert.equal(clean.outputs.get(name), expected, clean.log);
 	}
+	assert.deepEqual(JSON.parse(clean.outputs.get('output')), clean.analysis);
 	assert.match(clean.log, /0 problems in 1 workflow file \(requested tools: shellcheck, pyflakes\)/);
 	for (const format of ['github', 'default', 'oneline', 'json', 'json-lines', 'markdown', 'sarif']) {
 		const result = await run({
@@ -111,6 +113,13 @@ try {
 		assert.equal(result.outputs.get('problems-found'), 'true', result.log);
 		assert.equal(result.outputs.get('problem-count'), '1', result.log);
 		assert.equal(result.analysis.diagnostics.length, 1);
+		if (format === 'json') assert.deepEqual(JSON.parse(result.outputs.get('output')), result.analysis);
+		if (format === 'json-lines') {
+			assert.deepEqual(JSON.parse(result.outputs.get('output')), {
+				schema_version: 1,
+				...result.analysis.diagnostics[0],
+			});
+		}
 		assert.equal(
 			(result.log.match(/::error file=/g) || []).length,
 			1,
@@ -146,7 +155,27 @@ try {
 		join(workspace, 'shell-fix.yaml'),
 		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: |\n          value="$1"\n          echo $value\n',
 	);
-	const fixable = await run({ files: 'shell-fix.yaml', pyflakes: 'false', 'fail-on-error': 'false' });
+	const fixable = await run({
+		files: 'shell-fix.yaml',
+		pyflakes: 'false',
+		'fail-on-error': 'false',
+		annotations: 'true',
+		sarif: 'true',
+	});
+	const githubFixable = await run({
+		files: 'shell-fix.yaml',
+		pyflakes: 'false',
+		'fail-on-error': 'false',
+		annotations: 'true',
+		format: 'github',
+	});
+	const jsonAnnotations = fixable.log.match(/^::(?:error|warning|notice) file=.*$/gm) || [];
+	const githubAnnotations = githubFixable.log.match(/^::(?:error|warning|notice) file=.*$/gm) || [];
+	assert.ok(
+		jsonAnnotations.some((line) => line.startsWith('::notice ') && line.includes('title=SC2086::')),
+		fixable.log,
+	);
+	assert.deepEqual(githubAnnotations, jsonAnnotations);
 	const quote = fixable.analysis.diagnostics.find((diagnostic) => diagnostic.code === 'SC2086');
 	assert.ok(quote, fixable.log);
 	assert.equal(quote.severity, 'info');
@@ -214,8 +243,11 @@ try {
 		{ files: '--help' },
 		{ annotations: 'invalid' },
 		{ sarif: 'invalid' },
+		{ summary: 'bad' },
+		{ config: 'tools: {shellchek: false}' },
 	];
 	for (const inputs of invalidInputs) await run(inputs, 2);
+	await run({ files: 'missing.yml', shellcheck: 'false', pyflakes: 'false' }, 3);
 	await run({ 'config-file': join(shared, 'missing.yaml') }, 3);
 	await writeFile(
 		join(workspace, '.github/workflows/custom-runner.yml'),

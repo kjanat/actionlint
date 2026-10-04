@@ -416,7 +416,7 @@ func (c *config) buildFacade(tf *targetsFile) error {
 		return err
 	}
 	src := filepath.Join(c.npmDir, "facade")
-	for _, sub := range []string{"bin", "lib"} {
+	for _, sub := range []string{"bin", "lib", "types"} {
 		if err := copyTree(filepath.Join(src, sub), filepath.Join(dir, sub)); err != nil {
 			return err
 		}
