@@ -9,71 +9,14 @@ import (
 	"strings"
 )
 
-type directoryKind uint8
-
-const (
-	directoryUnspecified directoryKind = iota
-	directoryKnown
-	directoryUnknown
-)
-
-type shellcheckDirectory struct {
-	kind directoryKind
-	path string
-}
-
-type shellcheckPaths struct {
-	workspace string
-	analysis  string
-}
-
-func workingDirectoryValue(value *String) shellcheckDirectory {
-	if value == nil {
-		return shellcheckDirectory{}
-	}
-	if !value.ContainsExpression() {
-		return shellcheckDirectory{directoryKnown, value.Value}
-	}
-	if literal, known := workflowExpressionLiteral(value); known {
-		if text, ok := workflowScalarString(literal); ok {
-			return shellcheckDirectory{directoryKnown, text}
-		}
-	}
-	return shellcheckDirectory{kind: directoryUnknown}
-}
-
-func defaultsWorkingDirectory(defaults *Defaults) shellcheckDirectory {
-	if defaults == nil || defaults.Run == nil {
-		return shellcheckDirectory{}
-	}
-	if defaults.Run.Expression == nil {
-		return workingDirectoryValue(defaults.Run.WorkingDirectory)
-	}
-	value, known := workflowExpressionLiteral(defaults.Run.Expression)
-	if !known || len(workflowExpressionLiteralErrors(workflowDefaultsRun, value, "defaults.run")) != 0 {
-		return shellcheckDirectory{kind: directoryUnknown}
-	}
-	if object, ok := value.(map[string]any); ok {
-		for key, field := range object {
-			if strings.EqualFold(key, "working-directory") {
-				if text, ok := workflowScalarString(field); ok {
-					return shellcheckDirectory{directoryKnown, text}
-				}
-				return shellcheckDirectory{kind: directoryUnknown}
-			}
-		}
-	}
-	return shellcheckDirectory{}
-}
-
 // Interpret runner path syntax before applying local filesystem operations.
 func runnerDirectoryPath(path string, platform platformKind) (string, bool) {
+	if strings.ContainsRune(path, ':') && (platform != platformKindMacOrLinux || runtime.GOOS == "windows") {
+		return "", false
+	}
 	drivePrefix := len(path) >= 2 && path[1] == ':' &&
 		(path[0] >= 'A' && path[0] <= 'Z' || path[0] >= 'a' && path[0] <= 'z')
 	if drivePrefix {
-		if platform != platformKindMacOrLinux || runtime.GOOS == "windows" {
-			return "", false
-		}
 		// On Unix, a:debug names a relative directory. Preserve that meaning for
 		// downstream checks that reject remote Windows drive paths.
 		path = "./" + path
@@ -109,39 +52,6 @@ func shellcheckDirectoryPath(path string, platform platformKind) (string, bool) 
 		return "", false
 	}
 	return runnerDirectoryPath(path, platform)
-}
-
-func (rule *RuleShellcheck) stepDirectory(run *ExecRun) shellcheckDirectory {
-	directory := shellcheckDirectory{directoryKnown, ""}
-	for _, candidate := range []shellcheckDirectory{workingDirectoryValue(run.WorkingDirectory), rule.jobDir, rule.workflowDir} {
-		if candidate.kind != directoryUnspecified {
-			directory = candidate
-			break
-		}
-	}
-	unknown := shellcheckDirectory{directoryUnknown, rule.paths.analysis}
-	if directory.kind == directoryUnknown {
-		return unknown
-	}
-	path, known := shellcheckDirectoryPath(directory.path, rule.platform)
-	if !known {
-		return unknown
-	}
-	if !filepath.IsAbs(path) {
-		if strings.HasPrefix(path, "/") {
-			return unknown
-		}
-		path = filepath.Join(rule.paths.workspace, filepath.FromSlash(path))
-	}
-	path, err := filepath.EvalSymlinks(path)
-	if err != nil {
-		return unknown
-	}
-	info, err := os.Stat(path)
-	if err != nil || !info.IsDir() {
-		return unknown
-	}
-	return shellcheckDirectory{directoryKnown, path}
 }
 
 func (rule *RuleShellcheck) prepareConfigPath() error {

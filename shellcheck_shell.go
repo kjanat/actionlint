@@ -13,7 +13,11 @@ type shellcheckShell struct {
 }
 
 func (rule *RuleShellcheck) resolveShell(exec *ExecRun) shellcheckShell {
-	for _, candidate := range []shellValue{shellValueFromString(exec.Shell), rule.jobShell, rule.workflowShell} {
+	return resolveRunShell(exec, rule.jobShell, rule.workflowShell, rule.runnerShell)
+}
+
+func resolveRunShell(exec *ExecRun, jobShell, workflowShell, runnerShell shellValue) shellcheckShell {
+	for _, candidate := range []shellValue{shellValueFromString(exec.Shell), jobShell, workflowShell} {
 		candidate = shellcheckLiteral(candidate)
 		switch candidate.kind {
 		case shellValueSource, shellValueEvaluated:
@@ -26,11 +30,11 @@ func (rule *RuleShellcheck) resolveShell(exec *ExecRun) shellcheckShell {
 			continue
 		}
 	}
-	if rule.runnerShell.kind == shellValueUnknown {
+	if runnerShell.kind == shellValueUnknown {
 		return shellcheckShell{}
 	}
-	if rule.runnerShell.value != nil {
-		return shellcheckShell{name: rule.runnerShell.value.Value, implicit: true}
+	if runnerShell.value != nil {
+		return shellcheckShell{name: runnerShell.value.Value, implicit: true}
 	}
 	// Static analysis cannot discover whether a remote runner lacks Bash.
 	return shellcheckShell{name: "bash", implicit: true}
