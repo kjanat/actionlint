@@ -125,6 +125,53 @@ func TestAnalysisActionDocuments(t *testing.T) {
 	}
 }
 
+func TestAnalysisActionOutlineValidationDiagnostics(t *testing.T) {
+	for _, tc := range []struct {
+		name, manifest string
+		messages       []string
+	}{
+		{"missing identity", "runs: {using: composite, steps: []}", []string{"name is required", "description is required"}},
+		{"conflicting runtime", "name: Test\ndescription: Test\nruns: {using: node24, main: main.mjs, image: docker://alpine:3}", []string{`"image" is not allowed in "runs" section`}},
+		{"conflicting step", "name: Test\ndescription: Test\nruns: {using: composite, steps: [{run: echo hi, uses: actions/checkout@v7, shell: bash}]}", []string{`cannot have both "run" and "uses" keys`}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, "action.yml"), []byte(tc.manifest), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if tc.name == "conflicting runtime" {
+				if err := os.WriteFile(filepath.Join(dir, "main.mjs"), nil, 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			const source = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/\n"
+			analysis, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Project: &Project{root: dir}}}, WorkingDir: dir})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(analysis.Documents) != 2 {
+				t.Fatalf("missing action inventory: %+v", analysis.Documents)
+			}
+			action, ok := analysis.Documents[1].(ActionOutline)
+			if !ok || action.ParseStatus != "complete" {
+				t.Fatalf("analysis validation changed decoding status: %+v", analysis.Documents[1])
+			}
+			for _, message := range tc.messages {
+				found := false
+				for _, diagnostic := range analysis.Diagnostics {
+					if strings.Contains(diagnostic.Message, message) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Fatalf("missing validation diagnostic containing %q: %+v", message, analysis.Diagnostics)
+				}
+			}
+		})
+	}
+}
+
 func requireWorkflowOutline(t *testing.T, document DocumentOutline) WorkflowOutline {
 	t.Helper()
 	workflow, ok := document.(WorkflowOutline)

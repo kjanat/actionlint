@@ -6,9 +6,9 @@ import (
 	"slices"
 )
 
-// WorkflowOutline describes parsed workflow declarations.
+// WorkflowOutline describes selected workflow declarations recovered by Parse.
 // ParseStatus is complete, partial (a tree with parser errors), or failed (no tree).
-// Parsing can complete even when analysis fails or is canceled.
+// A complete parse can still produce validity findings or an analysis failure.
 type WorkflowOutline struct {
 	Path        string       `json:"path"`
 	Name        string       `json:"name,omitempty"`

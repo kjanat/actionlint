@@ -5,8 +5,9 @@ import (
 	"fmt"
 )
 
-// DocumentOutline is a parsed workflow or action manifest. Its concrete type
-// determines the JSON kind; callers cannot assign a contradictory discriminator.
+// DocumentOutline is a lossy report projection of observed workflow or action
+// declarations. Its concrete type determines the JSON kind. Diagnostics carry
+// validity findings; outlines describe only selected declarations.
 type DocumentOutline interface {
 	documentOutline()
 	DocumentPath() string

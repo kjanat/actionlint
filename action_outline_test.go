@@ -110,15 +110,6 @@ func TestParseActionOutlinePartial(t *testing.T) {
 		{"invalid YAML", "runs: [", "failed"},
 		{"empty", "", "failed"},
 		{"invalid inputs", "name: Keep\ninputs: [wrong]\nruns: {using: node24, main: main.mjs}\n", "partial"},
-		{"invalid runs key", "name: Keep\nruns: {using: node24, main: main.mjs, unexpected: value}\n", "partial"},
-		{"missing runtime", "name: Keep\nruns: {main: main.mjs}\n", "partial"},
-		{"unknown runtime", "name: Keep\nruns: {using: future-runtime}\n", "partial"},
-		{"missing JavaScript entrypoint", "name: Keep\nruns: {using: node24}\n", "partial"},
-		{"empty JavaScript entrypoint", "name: Keep\nruns: {using: node24, main: ''}\n", "partial"},
-		{"missing Docker image", "name: Keep\nruns: {using: docker}\n", "partial"},
-		{"empty Docker image", "name: Keep\nruns: {using: docker, image: ''}\n", "partial"},
-		{"missing composite steps", "name: Keep\nruns: {using: composite}\n", "partial"},
-		{"null composite steps", "name: Keep\nruns: {using: composite, steps: null}\n", "partial"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			outline, err := ParseActionOutline("action.yml", []byte(tc.source))
@@ -135,6 +126,43 @@ func TestParseActionOutlinePartial(t *testing.T) {
 			}
 			if outline.Inputs == nil || outline.Outputs == nil || outline.Runs == nil {
 				t.Fatalf("incomplete action has nil collections/runtime: %+v", outline)
+			}
+		})
+	}
+}
+
+func TestActionOutlineParseStatusDoesNotValidate(t *testing.T) {
+	for _, tc := range []struct {
+		name, source string
+	}{
+		{"missing identity", "runs: {using: node24, main: main.mjs}"},
+		{"unexpected runs key", "runs: {using: node24, main: main.mjs, unexpected: value}"},
+		{"missing runtime", "runs: {main: main.mjs}"},
+		{"unknown runtime", "runs: {using: future-runtime}"},
+		{"missing JavaScript entrypoint", "runs: {using: node24}"},
+		{"empty JavaScript entrypoint", "runs: {using: node24, main: ''}"},
+		{"missing Docker image", "runs: {using: docker}"},
+		{"empty Docker image", "runs: {using: docker, image: ''}"},
+		{"missing composite steps", "runs: {using: composite}"},
+		{"null composite steps", "runs: {using: composite, steps: null}"},
+		{"conflicting runtime", "runs: {using: node24, main: main.mjs, image: docker://alpine:3}"},
+		{"conflicting step", "runs: {using: composite, steps: [{run: echo hi, uses: actions/checkout@v7, shell: bash}]}"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			outline, err := ParseActionOutline("action.yml", []byte(tc.source))
+			if err != nil || outline.ParseStatus != "complete" {
+				t.Fatalf("decoded declarations treated as validation failure: status=%q error=%v", outline.ParseStatus, err)
+			}
+			if tc.name == "unknown runtime" {
+				if runtime, ok := outline.Runs.(UnknownRuns); !ok || runtime.Using != "future-runtime" {
+					t.Fatalf("unknown classification lost declaration: %+v", outline.Runs)
+				}
+			}
+			if tc.name == "conflicting step" {
+				runtime, ok := outline.Runs.(CompositeRuns)
+				if !ok || len(runtime.Steps) != 1 || runtime.Steps[0].Kind != "unknown" || runtime.Steps[0].Uses != "actions/checkout@v7" || runtime.Steps[0].Reference == nil {
+					t.Fatalf("conflicting step lost declarations or invented execution: %+v", outline.Runs)
+				}
 			}
 		})
 	}

@@ -3,14 +3,14 @@ package actionlint
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"path/filepath"
 	"strings"
 
 	"go.yaml.in/yaml/v4"
 )
 
-// ActionOutline describes an action manifest without exposing its parser state.
+// ActionOutline is a lossy projection of selected action declarations.
+// ParseStatus describes the metadata decoder's outcome; diagnostics report validity.
 type ActionOutline struct {
 	Path        string                `json:"path"`
 	Name        string                `json:"name,omitempty"`
@@ -80,8 +80,8 @@ func (a *ActionOutline) UnmarshalJSON(data []byte) error {
 }
 
 // ParseActionOutline parses a standalone action manifest without reading files
-// or running analyzers. Parse errors accompany any recovered declarations.
-// A complete parse does not imply the action's referenced files exist or run.
+// or running analyzers. Decoder errors accompany any recovered declarations.
+// Complete means decoding succeeded. Validity and executability need separate checks.
 func ParseActionOutline(path string, content []byte) (ActionOutline, error) {
 	var metadata ActionMetadata
 	err := yaml.Unmarshal(content, &metadata)
@@ -109,46 +109,11 @@ func parsedActionOutline(path string, metadata *ActionMetadata, parseErr error) 
 	outline.Outputs = actionOutputOutlines(fields["outputs"])
 	outline.Runs = actionRunsOutline(fields["runs"])
 
-	// Schema validation needs the runtime even if an earlier decoding error
-	// stopped populating ActionMetadata.Runs. The original YAML remains intact.
-	validated := *metadata
-	runs := actionOutlineFields(fields["runs"])
-	validated.Runs.Using = actionOutlineString(runs["using"])
-	validated.Runs.Plugin = actionOutlineString(runs["plugin"])
-	rule := NewRuleAction(nil)
-	rule.checkActionMetadataSchema(&validated)
-	issues := []error{parseErr}
-	for _, err := range rule.Errs() {
-		issues = append(issues, err)
-	}
-	// Required execution declarations are checked separately from the schema
-	// by RuleAction. Keep their structural checks here, without checking files.
-	switch runtime := outline.Runs.(type) {
-	case JavaScriptRuns:
-		if runtime.Main == "" {
-			issues = append(issues, errors.New("JavaScript action requires runs.main"))
-		}
-	case DockerRuns:
-		if runtime.Image == "" {
-			issues = append(issues, errors.New("action using docker requires runs.image"))
-		}
-	case CompositeRuns:
-		if steps := actionSchemaNode(runs["steps"]); steps == nil || steps.Tag == "!!null" {
-			issues = append(issues, errors.New("composite action requires runs.steps"))
-		}
-	case UnknownRuns:
-		if validated.Runs.Using == "" {
-			issues = append(issues, errors.New("action metadata requires runs.using or runs.plugin"))
-		} else {
-			issues = append(issues, fmt.Errorf("unknown action runtime %q", validated.Runs.Using))
-		}
-	}
-	err := errors.Join(issues...)
 	outline.ParseStatus = "complete"
-	if err != nil {
+	if parseErr != nil {
 		outline.ParseStatus = "partial"
 	}
-	return outline, err
+	return outline, parseErr
 }
 
 func actionOutlineFields(node *yaml.Node) map[string]*yaml.Node {

@@ -23,11 +23,12 @@ export type ResultConfig = {
 	warnings?: ConfigWarning[];
 };
 
-/** Parsed workflow declarations and source positions. */
+/** Selected declarations observed by the workflow parser. */
 export type WorkflowOutline = {
 	kind: 'workflow';
 	path: string;
 	name?: string;
+	/** Parser outcome and recovery; validity is reported separately in diagnostics. */
 	parse_status: 'complete' | 'partial' | 'failed';
 	triggers: string[];
 	jobs: JobOutline[];
@@ -36,11 +37,13 @@ export type WorkflowOutline = {
 	outputs?: never;
 	runs?: never;
 };
+/** Selected declarations observed by the action metadata decoder. */
 export type ActionOutline = {
 	kind: 'action';
 	path: string;
 	name?: string;
 	description?: string;
+	/** Decoder outcome and recovery; complete does not guarantee valid or executable metadata. */
 	parse_status: 'complete' | 'partial' | 'failed';
 	inputs: ActionInputOutline[];
 	outputs: ActionOutputOutline[];
@@ -48,6 +51,7 @@ export type ActionOutline = {
 	triggers?: never;
 	jobs?: never;
 };
+/** Lossy report projection; parser checks differ between workflow and action documents. */
 export type DocumentOutline = WorkflowOutline | ActionOutline;
 export type ActionInputOutline = {
 	id: string;
@@ -57,6 +61,7 @@ export type ActionInputOutline = {
 	start?: Position;
 };
 export type ActionOutputOutline = { id: string; description?: string; value?: string; start?: Position };
+/** Observed runtime declarations, with no guarantee of runner support or executability. */
 export type ActionRunsOutline =
 	| { kind: 'composite'; steps: StepOutline[] }
 	| { kind: 'javascript'; using: string; main?: string; pre?: string; post?: string; pre_if?: string; post_if?: string }
@@ -70,6 +75,7 @@ export type ActionRunsOutline =
 	}
 	| { kind: 'plugin'; plugin: string }
 	| { kind: 'unknown'; using?: string };
+/** Syntactic classification; host resolution, dialect support and provider identity remain separate. */
 export type UsesReference =
 	| {
 		kind: 'repository';

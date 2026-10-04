@@ -50,8 +50,9 @@ retains the analysis exit code.
 
 ## Document outlines
 
-The optional `documents` array exposes parsed workflow and action declarations
-with source positions. `kind` distinguishes the two document shapes. For example:
+The optional `documents` array is a lossy report projection of observed workflow
+and action declarations, with available source positions. `kind` distinguishes
+the two document shapes. For example:
 
 ```json
 {
@@ -115,8 +116,9 @@ steps follow declaration order. Positions use the same convention as diagnostics
 and are omitted when unavailable. Paths match diagnostic paths.
 
 Action documents include their description, declared inputs and outputs, and
-runtime. Runtime shapes distinguish composite steps, JavaScript entrypoints and
-conditions, Docker images/entrypoints/arguments, plugins, and unknown runtimes.
+`runs` declarations. Runtime labels group observed composite steps, JavaScript
+entrypoints and conditions, Docker images/entrypoints/arguments, plugins, and
+unknown declarations. They carry no guarantee of runner support or executability.
 Inputs and outputs retain available descriptions and source positions; inputs
 also expose `required` and `default`, and outputs expose declared `value`.
 
@@ -130,11 +132,16 @@ unknown. Repository references separate owner, repository, subpath, and ref.
 `host_source` records default, explicit, or self context; a bare `owner/repo@ref`
 does not imply a provider or invent a host. Explicit URLs retain their host and
 scheme when available. Dependency resolution is outside this model.
+Reference classification establishes neither dialect support nor an authoritative
+runtime or provider identity.
 
-`parse_status` is `complete`, `partial`, or `failed`, independently of the report's
-`completed`: a parsed workflow can still have lint findings or an analyzer failure.
-Partial outlines contain whatever the parser recovered; diagnostics explain parse
-problems. Lists are always arrays, including when empty. Older producers may omit
+`parse_status` records the existing parser or decoder's outcome: `complete` means
+it returned a document tree without errors, `partial` means a document tree
+survived errors, and `failed` means no tree was retained. Workflow and action parsers perform
+different grammar checks. A `complete` outline can omit declarations, describe
+invalid input, or reference files that cannot execute. Validity findings remain
+in `diagnostics`; the report's `completed` tracks analysis completion separately.
+Lists are always arrays, including when empty. Older producers may omit
 `documents` entirely.
 
 Known step kinds are `run`, `uses`, `wait`, `cancel`, `parallel`, and `unknown`;
@@ -143,8 +150,9 @@ bodies, expression trees, and resolved relationships are not included. Composite
 action declarations have their own documents; steps are not expanded into each
 caller. The npm package exports `DocumentOutline`, `WorkflowOutline`,
 `ActionOutline`, runtime/input/output types, `UsesReference`, `JobOutline`, and
-`StepOutline` alongside `CheckResult`. The model covers declarations and source
-locations.
+`StepOutline` alongside `CheckResult`. These report types cover selected
+declarations and source locations. A canonical AST or plugin execution model
+would require a separate contract.
 
 ## TypeScript and compatibility
 
