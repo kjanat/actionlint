@@ -1,0 +1,417 @@
+import { createHash } from 'node:crypto';
+import { readFile, realpath } from 'node:fs/promises';
+import { isAbsolute, relative, resolve, sep } from 'node:path';
+
+import { EnvHttpProxyAgent, fetch, type RequestInit, type Response } from 'undici';
+
+import type { ActionResult, Diagnostic, Edit, Fix, Position } from '#result';
+import { object } from '#result';
+import type { Environment } from '#runtime';
+
+type Hunk = { start: number; end: number; added: Set<number> };
+type ReviewComment = {
+	path: string;
+	line: number;
+	side: 'RIGHT';
+	body: string;
+	start_line?: number;
+	start_side?: 'RIGHT';
+};
+type ReviewContext = { repository: string; sourceRepository: string; number: number; sha: string };
+type ReviewRequest = (url: string, options: RequestInit) => Promise<Pick<Response, 'ok' | 'status' | 'json' | 'body'>>;
+
+export type ReviewRuntime = {
+	request: ReviewRequest;
+	readSource: (path: string) => Promise<string | undefined>;
+};
+
+function repository(value: unknown): value is string {
+	return typeof value === 'string' && /^[\w.-]+\/[\w.-]+$/.test(value);
+}
+
+function context(value: unknown, target: string | undefined): ReviewContext {
+	if (!object(value) || !object(value.pull_request) || !object(value.pull_request.head)) {
+		throw new Error('this event does not identify a pull request');
+	}
+	const { head } = value.pull_request;
+	if (
+		!repository(target) || !object(head.repo) || !repository(head.repo.full_name)
+		|| typeof head.sha !== 'string' || !/^[a-f0-9]{40}$/.test(head.sha)
+		|| typeof value.number !== 'number' || !Number.isSafeInteger(value.number) || value.number < 1
+	) throw new Error('the pull request event has no valid repository, number or head SHA');
+	return { repository: target, sourceRepository: head.repo.full_name, sha: head.sha, number: value.number };
+}
+
+export function diffHunks(patch: string): Hunk[] {
+	const hunks: Hunk[] = [];
+	let current: Hunk | undefined;
+	let line = 0;
+	for (const text of patch.split('\n')) {
+		const header = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.exec(text);
+		if (header) {
+			line = Number(header[1]);
+			const count = header[2] === undefined ? 1 : Number(header[2]);
+			current = { start: line, end: line + count - 1, added: new Set() };
+			hunks.push(current);
+		} else if (current && text.startsWith('+')) {
+			current.added.add(line++);
+		} else if (current && text.startsWith(' ')) {
+			line++;
+		}
+	}
+	return hunks;
+}
+
+function inDiff(hunks: Hunk[], start: number, end: number): boolean {
+	return hunks.some((hunk) =>
+		hunk.start <= start && end <= hunk.end && [...hunk.added].some((line) => line >= start && line <= end)
+	);
+}
+
+function endLine(start: Position, end: Position): number {
+	return end.line > start.line && end.column === 1 ? end.line - 1 : end.line;
+}
+
+function relevantToDiff(diagnostic: Diagnostic, hunks: Hunk[]): boolean {
+	if (inDiff(hunks, diagnostic.start.line, endLine(diagnostic.start, diagnostic.end))) return true;
+	const fix = diagnostic.fixes?.[0];
+	if (!fix || fix.edits.length === 0 || fix.edits.some((edit) => edit.path !== diagnostic.path)) return false;
+	let start = Number.MAX_SAFE_INTEGER;
+	let end = 0;
+	for (const edit of fix.edits) {
+		start = Math.min(start, edit.start.line);
+		end = Math.max(end, endLine(edit.start, edit.end));
+	}
+	return end - start <= 40 && inDiff(hunks, start, end);
+}
+
+function markdownCode(text: string, language = ''): string {
+	const lengths = [...text.matchAll(/`+/g)].map((match) => match[0].length);
+	const fence = '`'.repeat(Math.max(3, ...lengths.map((length) => length + 1)));
+	return `${fence}${language}\n${text}\n${fence}`;
+}
+
+function offset(lines: string[], position: Position): number | undefined {
+	const line = lines[position.line - 1];
+	if (line === undefined || position.column < 1) return undefined;
+	const characters = [...line];
+	if (position.column > characters.length + 1) return undefined;
+	return lines.slice(0, position.line - 1).reduce((length, previous) => length + previous.length + 1, 0)
+		+ characters.slice(0, position.column - 1).join('').length;
+}
+
+// A single suggestion applies the entire fix. Partial or overlapping fix groups are omitted.
+export function suggestion(
+	fix: Fix,
+	path: string,
+	source: string,
+): { start: number; end: number; replacement: string } | undefined {
+	if (fix.edits.length === 0 || fix.edits.some((edit) => edit.path !== path)) return undefined;
+	const lines = source.replaceAll('\r\n', '\n').split('\n');
+	const edits: { start: number; end: number; replacement: string }[] = [];
+	let firstLine = Number.MAX_SAFE_INTEGER;
+	let lastLine = 0;
+	for (const edit of fix.edits) {
+		const start = offset(lines, edit.start);
+		const end = offset(lines, edit.end);
+		if (start === undefined || end === undefined || start > end) return undefined;
+		firstLine = Math.min(firstLine, edit.start.line);
+		lastLine = Math.max(lastLine, endLine(edit.start, edit.end));
+		edits.push({ start, end, replacement: edit.replacement });
+	}
+	if (lastLine - firstLine > 40) return undefined;
+	edits.sort((left, right) => left.start - right.start || left.end - right.end);
+	for (let index = 1; index < edits.length; index++) {
+		const previous = edits[index - 1];
+		const next = edits[index];
+		if (!previous || !next || previous.end > next.start || previous.start === next.start) return undefined;
+	}
+	const start = offset(lines, { line: firstLine, column: 1 });
+	const last = lines[lastLine - 1];
+	if (start === undefined || last === undefined) return undefined;
+	const end = offset(lines, { line: lastLine, column: [...last].length + 1 });
+	if (end === undefined) return undefined;
+	let replacement = lines.join('\n').slice(start, end);
+	for (const edit of edits.toReversed()) {
+		// This suggestion ends before the last line's newline. Reject edits that
+		// extend beyond that boundary.
+		if (edit.end > end) return undefined;
+		replacement = replacement.slice(0, edit.start - start) + edit.replacement + replacement.slice(edit.end - start);
+	}
+	if (replacement.length > 10_000) return undefined;
+	return { start: firstLine, end: lastLine, replacement };
+}
+
+export function reviewComment(
+	diagnostic: Diagnostic,
+	path: string,
+	source: string,
+	hunks: Hunk[],
+	sha: string,
+	includeSuggestion = true,
+): ReviewComment | undefined {
+	let start = diagnostic.start.line;
+	let end = endLine(diagnostic.start, diagnostic.end);
+	let body = markdownCode(`${diagnostic.code || diagnostic.rule}: ${diagnostic.message}`);
+	const fix = diagnostic.fixes?.[0];
+	const replacement = fix && suggestion(fix, diagnostic.path, source);
+	if (replacement && inDiff(hunks, replacement.start, replacement.end)) {
+		start = replacement.start;
+		end = replacement.end;
+		if (includeSuggestion) body += `\n\n${markdownCode(replacement.replacement, 'suggestion')}`;
+	} else if (!inDiff(hunks, start, end)) {
+		return undefined;
+	}
+	const digest = createHash('sha256').update(JSON.stringify({ sha, path, start, end, body })).digest('hex');
+	body += `\n\n<!-- actionlint:${sha}:${digest} -->`;
+	const comment: ReviewComment = { path, line: end, side: 'RIGHT', body };
+	if (start !== end) {
+		comment.start_line = start;
+		comment.start_side = 'RIGHT';
+	}
+	return comment;
+}
+
+type CommentCandidate = { suggested: ReviewComment; plain: ReviewComment };
+
+export function nonconflictingComments(candidates: CommentCandidate[]): ReviewComment[] {
+	return candidates.map((candidate, index) => {
+		if (candidate.suggested.body === candidate.plain.body) return candidate.plain;
+		const start = candidate.suggested.start_line ?? candidate.suggested.line;
+		const end = candidate.suggested.line;
+		const conflict = candidates.some((other, otherIndex) =>
+			otherIndex !== index
+			&& other.suggested.path === candidate.suggested.path && other.suggested.body !== other.plain.body
+			&& (other.suggested.start_line ?? other.suggested.line) <= end && other.suggested.line >= start
+		);
+		return conflict ? candidate.plain : candidate.suggested;
+	});
+}
+
+class ReviewAPI {
+	private readonly base: string;
+	private readonly token: string;
+	private readonly request: ReviewRequest;
+	private readonly deadline = AbortSignal.timeout(60_000);
+	constructor(base: string, token: string, request: ReviewRequest) {
+		this.base = base;
+		this.token = token;
+		this.request = request;
+	}
+	async call(path: string, body?: unknown): Promise<unknown> {
+		const init: RequestInit = {
+			method: body === undefined ? 'GET' : 'POST',
+			headers: {
+				Accept: 'application/vnd.github+json',
+				Authorization: `Bearer ${this.token}`,
+				'Content-Type': 'application/json',
+				'X-GitHub-Api-Version': '2026-03-10',
+			},
+			redirect: 'error',
+			signal: AbortSignal.any([this.deadline, AbortSignal.timeout(30_000)]),
+		};
+		if (body !== undefined) init.body = JSON.stringify(body);
+		const response = await this.request(`${this.base}${path}`, init);
+		if (!response.ok) {
+			await response.body?.cancel();
+			const recovery = response.status === 401 || response.status === 403
+				? '; check token access and pull-requests: write permission'
+				: '';
+			throw new Error(`GitHub review API returned HTTP ${response.status}${recovery}`);
+		}
+		return response.json();
+	}
+	async list(path: string): Promise<unknown[]> {
+		const values: unknown[] = [];
+		for (let page = 1; page <= 30; page++) {
+			const response = await this.call(`${path}?per_page=100&page=${page}`);
+			if (!Array.isArray(response)) throw new Error('GitHub returned an invalid review listing');
+			values.push(...response);
+			if (response.length < 100) return values;
+		}
+		throw new Error('PR review exceeds the 3000-item listing limit');
+	}
+}
+
+function workspacePath(environment: Environment, path: string): { absolute: string; relative: string } | undefined {
+	const workspace = environment.GITHUB_WORKSPACE;
+	if (!workspace) throw new Error('GITHUB_WORKSPACE is unavailable');
+	const absolute = resolve(workspace, environment['INPUT_WORKING-DIRECTORY'] || '.', path);
+	const local = relative(resolve(workspace), absolute);
+	if (!local || local === '..' || local.startsWith(`..${sep}`) || isAbsolute(local)) {
+		return undefined;
+	}
+	return { absolute, relative: local.split(sep).join('/') };
+}
+
+async function sourceAtHead(
+	api: ReviewAPI,
+	ctx: ReviewContext,
+	path: { absolute: string; relative: string },
+	runtime: ReviewRuntime,
+): Promise<string | undefined> {
+	const url = `/repos/${ctx.sourceRepository}/contents/${
+		path.relative.split('/').map(encodeURIComponent).join('/')
+	}?ref=${ctx.sha}`;
+	const response = await api.call(url);
+	if (!object(response) || response.encoding !== 'base64' || typeof response.content !== 'string') return undefined;
+	const expected = Buffer.from(response.content, 'base64').toString('utf8').replaceAll('\r\n', '\n');
+	const source = await runtime.readSource(path.absolute);
+	if (source === undefined) return undefined;
+	const actual = source.replaceAll('\r\n', '\n');
+	return actual === expected ? expected : undefined;
+}
+
+function normalizeFixPaths(diagnostic: Diagnostic, environment: Environment): Diagnostic | undefined {
+	const path = workspacePath(environment, diagnostic.path);
+	if (!path) return undefined;
+	if (!diagnostic.fixes) return { ...diagnostic, path: path.relative };
+	const fixes = diagnostic.fixes.flatMap((fix) => {
+		const edits: Edit[] = [];
+		for (const edit of fix.edits) {
+			const target = workspacePath(environment, edit.path);
+			if (!target) return [];
+			edits.push({ ...edit, path: target.relative });
+		}
+		return [{ description: fix.description, edits }];
+	});
+	return { ...diagnostic, path: path.relative, fixes };
+}
+
+export async function postReview(
+	result: ActionResult,
+	environment: Environment,
+	supplied?: ReviewRuntime,
+): Promise<string> {
+	if (!result.completed) return 'PR review skipped: analysis incomplete.';
+	if (result.diagnostics.length === 0) return 'PR review skipped: no findings.';
+	if (!environment.GITHUB_EVENT_PATH) return 'PR review skipped: no pull request context.';
+	const event: unknown = JSON.parse(await readFile(environment.GITHUB_EVENT_PATH, 'utf8'));
+	if (!object(event) || !object(event.pull_request)) return 'PR review skipped: no pull request context.';
+	const token = environment.INPUT_TOKEN?.trim();
+	if (!token) throw new Error('review requires a token with pull-requests: write');
+	const ctx = context(event, environment.GITHUB_REPOSITORY);
+	const workspace = await realpath(environment.GITHUB_WORKSPACE || '.');
+	const dispatcher = new EnvHttpProxyAgent();
+	try {
+		const runtime: ReviewRuntime = supplied || {
+			request: (url, options) => fetch(url, { ...options, dispatcher }),
+			readSource: async (path) => {
+				const canonical = await realpath(path);
+				const local = relative(workspace, canonical);
+				if (local === '..' || local.startsWith(`..${sep}`) || isAbsolute(local)) {
+					return undefined;
+				}
+				return readFile(canonical, 'utf8');
+			},
+		};
+		const api = new ReviewAPI(
+			(environment.GITHUB_API_URL || 'https://api.github.com').replace(/\/$/, ''),
+			token,
+			runtime.request,
+		);
+		const endpoint = `/repos/${ctx.repository}/pulls/${ctx.number}`;
+		const current = await api.call(endpoint);
+		if (!object(current) || !object(current.head) || current.head.sha !== ctx.sha) {
+			throw new Error('the PR head changed after this analysis started');
+		}
+		const files = await api.list(`${endpoint}/files`);
+		const previous = await api.list(`${endpoint}/comments`);
+		const bodies = previous.flatMap((value) => object(value) && typeof value.body === 'string' ? [value.body] : []);
+		const diagnosticsByPath = new Map<string, Diagnostic[]>();
+		for (const diagnostic of result.diagnostics) {
+			const path = workspacePath(environment, diagnostic.path);
+			if (!path) continue;
+			const diagnostics = diagnosticsByPath.get(path.relative) ?? [];
+			diagnostics.push(diagnostic);
+			diagnosticsByPath.set(path.relative, diagnostics);
+		}
+		const prepared = new Map<string, Map<Diagnostic, ReviewComment>>();
+		const omitted = new Map<Diagnostic, string>();
+		const reasons = new Map<string, number>();
+		const skipped = (reason: string): void => {
+			reasons.set(reason, (reasons.get(reason) ?? 0) + 1);
+		};
+		const feedback = (posted: number): string => {
+			const details = [...reasons].map(([reason, count]) => `${count} ${reason}`).join('; ');
+			return `PR review: ${posted} ${posted === 1 ? 'comment' : 'comments'} posted${details ? `; ${details}` : ''}.`;
+		};
+		const comments: ReviewComment[] = [];
+		let sourceLookups = 0;
+		for (const diagnostic of result.diagnostics) {
+			if (comments.length === 50) {
+				skipped('not checked after comment limit');
+				continue;
+			}
+			const path = workspacePath(environment, diagnostic.path);
+			if (!path) {
+				skipped('outside the repository');
+				continue;
+			}
+			let resolved = prepared.get(path.relative);
+			if (!resolved) {
+				resolved = new Map();
+				prepared.set(path.relative, resolved);
+				const file = files.find((value) => object(value) && value.filename === path.relative);
+				const hunks = object(file) && typeof file.patch === 'string' ? diffHunks(file.patch) : [];
+				const eligible = (diagnosticsByPath.get(path.relative) ?? [])
+					.flatMap((related) => {
+						const normalized = normalizeFixPaths(related, environment);
+						return normalized ? [{ diagnostic: related, normalized }] : [];
+					})
+					.filter(({ normalized }) => relevantToDiff(normalized, hunks));
+				const limited = sourceLookups === 100;
+				const source = eligible.length > 0 && !limited ? await sourceAtHead(api, ctx, path, runtime) : undefined;
+				if (eligible.length > 0 && !limited) sourceLookups++;
+				if (source === undefined) {
+					for (const { diagnostic: related } of eligible) {
+						omitted.set(
+							related,
+							limited ? 'not checked after source lookup limit' : 'source unavailable or different from PR head',
+						);
+					}
+				}
+				const candidates: (CommentCandidate & { diagnostic: Diagnostic })[] = [];
+				// Resolve every overlap in this file before counting comments toward the
+				// limit, including diagnostics that occur later in the original order.
+				for (const { diagnostic: related, normalized } of eligible) {
+					if (source === undefined) continue;
+					const suggested = reviewComment(normalized, path.relative, source, hunks, ctx.sha);
+					const plain = reviewComment(normalized, path.relative, source, hunks, ctx.sha, false);
+					if (suggested && plain) candidates.push({ diagnostic: related, suggested, plain });
+				}
+				for (const [index, comment] of nonconflictingComments(candidates).entries()) {
+					const candidate = candidates[index];
+					if (candidate) resolved.set(candidate.diagnostic, comment);
+				}
+			}
+			const comment = resolved.get(diagnostic);
+			if (!comment) {
+				skipped(omitted.get(diagnostic) ?? 'without a changed-line match');
+				continue;
+			}
+			const marker = comment.body.slice(comment.body.lastIndexOf('<!-- actionlint:'));
+			if (bodies.some((body) => body.includes(marker))) {
+				skipped('already reported');
+				continue;
+			}
+			comments.push(comment);
+			bodies.push(comment.body);
+		}
+		if (comments.length === 0) return feedback(0);
+		const latest = await api.call(endpoint);
+		if (!object(latest) || !object(latest.head) || latest.head.sha !== ctx.sha) {
+			throw new Error('the PR head changed while preparing this review');
+		}
+		await api.call(`${endpoint}/reviews`, {
+			commit_id: ctx.sha,
+			event: 'COMMENT',
+			body:
+				`actionlint found ${result.diagnostics.length} problems. This review contains ${comments.length} new comments on changed lines; the complete results remain in the workflow outputs.`,
+			comments,
+		});
+		return feedback(comments.length);
+	} finally {
+		await dispatcher.close();
+	}
+}

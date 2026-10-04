@@ -30,7 +30,7 @@ func (rule *RuleShellcheck) sourcedDiagnostic(comment shellcheckError, directory
 	finding := &Error{
 		Filepath: path, Line: comment.Line, Column: comment.Column, Kind: rule.Name(),
 		Message: fmt.Sprintf("shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", comment.Code, comment.Level, comment.Line, comment.Column, strings.TrimSuffix(comment.Message, ".")),
-		source:  content,
+		source:  content, code: fmt.Sprintf("SC%d", comment.Code), severity: comment.Level,
 	}
 	if comment.EndLine >= comment.Line && comment.EndColumn > 0 {
 		finding.endPosition = &Pos{Line: comment.EndLine, Col: comment.EndColumn}

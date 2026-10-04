@@ -28,7 +28,12 @@
         "source.fixAll.biome": true,
         "source.organizeImports.biome": true
       }
-    }
+    },
+    "Markdown": {}
+  },
+  "markdown_preview": { // available in per-project config since https://github.com/kjanat/zed-editor v1.4.10
+    "limit_content_width": false,
+    "open_markdown_files_in_preview": false
   },
   "lsp": {
     "biome": {

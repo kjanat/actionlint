@@ -1,0 +1,283 @@
+name: Prepare release
+run-name: Prepare actionlint v${{ inputs.version }}
+on:
+  workflow_dispatch:
+    inputs:
+      version: { description: "Stable version (MAJOR.MINOR.PATCH)", required: true, type: string }
+      source: { description: Expected master commit; empty uses the selected master revision, required: false, type: string }
+
+concurrency:
+  group: actionlint-release
+  cancel-in-progress: false
+  queue: max
+
+permissions: { contents: read }
+defaults: { run: { shell: "bash --noprofile --norc -eo pipefail {0}" } }
+env: { VERSION: "${{ inputs.version }}" }
+
+jobs:
+  prepare:
+    name: Build release candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    outputs:
+      source: ${{ steps.candidate.outputs.source }}
+      candidate: ${{ steps.candidate.outputs.candidate }}
+      tree: ${{ steps.candidate.outputs.tree }}
+      version: ${{ steps.candidate.outputs.version }}
+    steps:
+      - uses: &Checkout actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { fetch-depth: 0, persist-credentials: false }
+      - name: Check requested source and version
+        env: { EXPECTED_SOURCE: "${{ inputs.source }}" }
+        run: |
+          test "${GITHUB_REF}" = refs/heads/master
+          test -z "${EXPECTED_SOURCE}" || test "${EXPECTED_SOURCE}" = "${GITHUB_SHA}"
+          [[ "${VERSION}" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          existing_tag="$(git tag --list "v${VERSION}")"
+          test -z "${existing_tag}"
+      - parallel:
+          - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+            with: { go-version-file: go.mod, cache: false }
+          - uses: &SetupNode actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+            with: &Node24 { node-version: "24", package-manager-cache: false }
+          - uses: $/.github/actions/setup-shellcheck
+          - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+            with: { enable-cache: false }
+      - name: Check pinned go-shellcheck version
+        uses: $/.github/actions/shellcheck-versions
+        with: { fail-on-outdated: true }
+      - name: Validate source and release helpers
+        run: |
+          go run ./scripts/bump-version -check
+          go run ./scripts/bump-version -notes "v${VERSION}" > "${RUNNER_TEMP}/release-notes.md"
+          uv tool install pyflakes
+          go test ./...
+          npm ci --ignore-scripts
+          npm run typecheck --workspace actionlint-action
+          npm test --workspace actionlint-action
+          node --test scripts/build-action-release.test.mjs scripts/release-candidate.test.mjs scripts/release-assets.test.mjs scripts/docker-action.test.mjs scripts/published-action.test.mjs
+      - name: Build the complete candidate tree
+        id: candidate
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: node scripts/release-candidate.mjs prepare --version "${VERSION}" --out-dir "${RUNNER_TEMP}/actionlint-action"
+      - name: Select the candidate for packaging
+        env: { CANDIDATE: "${{ steps.candidate.outputs.candidate }}" }
+        run: git checkout --detach "${CANDIDATE}"
+      - uses: $/.github/actions/setup-pandoc
+      - uses: kjanat/runner@8baa9ee978cfed038b98741749673c788ff161d1 # v0.26.2
+      - run: run make:man/actionlint.1
+      - name: Install syft for SBOM generation
+        uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+      - name: Build archives and distribution manifests without publishing
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with: { version: v2.18.0, args: "release --clean --skip=publish --release-notes=${{ runner.temp }}/release-notes.md" }
+        env:
+          COMMIT_USER: ${{ vars.COMMIT_USER }}
+          COMMIT_EMAIL: ${{ vars.COMMIT_EMAIL }}
+      - name: Preserve the exact release assets
+        run: |
+          node scripts/release-assets.mjs collect "${RUNNER_TEMP}/actionlint-action/assets"
+          cp "${RUNNER_TEMP}/release-notes.md" "${RUNNER_TEMP}/actionlint-action/release-notes.md"
+      - uses: &Upload actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with: { name: prepared-release, path: "${{ runner.temp }}/actionlint-action", if-no-files-found: error }
+  nix:
+    needs: prepare
+    uses: $/.github/workflows/nix.yml
+    with: { tag: "v${{ inputs.version }}" }
+  action:
+    name: Candidate Action (${{ matrix.os }})
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, platform: linux_amd64, extension: tar.gz, suffix: "" }
+          - { os: macos-latest, platform: darwin_arm64, extension: tar.gz, suffix: "" }
+          - { os: windows-latest, platform: windows_amd64, extension: zip, suffix: .exe }
+    steps:
+      - uses: *Checkout
+        with: { ref: "${{ needs.prepare.outputs.source }}", fetch-depth: 0, persist-credentials: false }
+      - uses: *SetupNode
+        with: *Node24
+      - uses: &Download actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with: { name: prepared-release, path: "${{ runner.temp }}/actionlint-action" }
+      - name: Materialize the normal version tag and verified binary
+        env:
+          CANDIDATE: ${{ needs.prepare.outputs.candidate }}
+          PLATFORM: ${{ matrix.platform }}
+          EXTENSION: ${{ matrix.extension }}
+          BINARY_SUFFIX: ${{ matrix.suffix }}
+        run: |
+          assets="${RUNNER_TEMP}/actionlint-action/assets"
+          git bundle verify "${assets}/release-candidate.bundle"
+          git fetch --no-tags "${assets}/release-candidate.bundle" "refs/actionlint/candidates/v${VERSION}:refs/tags/v${VERSION}"
+          tag_commit="$(git rev-parse "refs/tags/v${VERSION}^{commit}")"
+          test "${tag_commit}" = "${CANDIDATE}"
+          mkdir .actionlint-action-candidate
+          git archive "v${VERSION}" | tar -x -C .actionlint-action-candidate
+          (cd .actionlint-action-candidate && sha256sum --check SHA256SUMS)
+          (cd "${assets}" && sha256sum --check "actionlint_${VERSION}_checksums.txt")
+          archive="${assets}/actionlint_${VERSION}_${PLATFORM}.${EXTENSION}"
+          binary_dir="${RUNNER_TEMP}/candidate-binary"
+          mkdir "${binary_dir}"
+          if [[ "${EXTENSION}" == zip ]]; then
+            unzip -q "${archive}" -d "${binary_dir}"
+          else
+            tar -xz -C "${binary_dir}" < "${archive}"
+          fi
+          echo "ACTIONLINT_ACTION_BINARY=${binary_dir}/actionlint${BINARY_SUFFIX}" >> "${GITHUB_ENV}"
+      - name: Test the packaged entrypoint and CLI compatibility
+        run: node scripts/test-action.mjs .actionlint-action-candidate "${ACTIONLINT_ACTION_BINARY}"
+      - name: Exercise the candidate through the real runner
+        id: smoke
+        # ./ loads the candidate tree generated during this job.
+        uses: ./.actionlint-action-candidate
+        with: { files: testdata/ok/minimal.yaml, format: json }
+      - name: Verify runner outputs and exported tools
+        env:
+          EXIT_CODE: ${{ steps.smoke.outputs.exit-code }}
+          RESULT: ${{ steps.smoke.outputs.result }}
+          PROBLEM_COUNT: ${{ steps.smoke.outputs.problem-count }}
+          OUTPUT: ${{ steps.smoke.outputs.output }}
+        run: |
+          test "${EXIT_CODE}" = 0
+          test "${RESULT}" = success
+          test "${PROBLEM_COUNT}" = 0
+          test "${OUTPUT}" = '[]'
+          actionlint -version
+          shellcheck --version
+          pyflakes --version
+      - name: Verify Windows command resolution
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          actionlint -version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          shellcheck --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pyflakes --version
+          exit $LASTEXITCODE
+  container:
+    name: Build and test candidate container (${{ matrix.target }})
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: cli, asset: actionlint-container }
+          - { target: action, asset: actionlint-action-container }
+    env: { CONTAINER_ASSET: "${{ matrix.asset }}", CONTAINER_TARGET: "${{ matrix.target }}" }
+    steps:
+      - uses: *Checkout
+        with: { ref: "${{ needs.prepare.outputs.source }}", fetch-depth: 0, persist-credentials: false }
+      - uses: *Download
+        with: { name: prepared-release, path: "${{ runner.temp }}/actionlint-action" }
+      - name: Select the exact candidate tree
+        env: { CANDIDATE: "${{ needs.prepare.outputs.candidate }}" }
+        run: |
+          git fetch --no-tags "${RUNNER_TEMP}/actionlint-action/assets/release-candidate.bundle" "refs/actionlint/candidates/v${VERSION}"
+          fetched_commit="$(git rev-parse FETCH_HEAD)"
+          test "${fetched_commit}" = "${CANDIDATE}"
+          git checkout --detach "${CANDIDATE}"
+      - uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - name: Build a portable multi-platform image
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          target: ${{ matrix.target }}
+          build-args: ACTIONLINT_VER=${{ inputs.version }}
+          outputs: type=oci,dest=${{ runner.temp }}/${{ matrix.asset }}_${{ inputs.version }}.tar
+          sbom: true
+          provenance: mode=max
+          tags: actionlint:candidate-${{ matrix.target }}
+          labels: |
+            org.opencontainers.image.version=${{ inputs.version }}
+            org.opencontainers.image.revision=${{ needs.prepare.outputs.candidate }}
+      - name: Record the prepared image digest before immutable tagging
+        env: { DIGEST: "${{ steps.build.outputs.digest }}" }
+        run: |
+          [[ "${DIGEST}" =~ ^sha256:[a-f0-9]{64}$ ]]
+          printf '%s\n' "${DIGEST}" > "${RUNNER_TEMP}/${CONTAINER_ASSET}_${VERSION}.digest"
+      - name: Test both platforms from the stored OCI archive
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends skopeo
+          for arch in amd64 arm64; do
+            image="actionlint:candidate-${CONTAINER_TARGET}-${arch}"
+            skopeo --override-os linux --override-arch "${arch}" copy \
+              "oci-archive:${RUNNER_TEMP}/${CONTAINER_ASSET}_${VERSION}.tar" "docker-daemon:${image}"
+            if [[ "${CONTAINER_TARGET}" == action ]]; then
+              bash scripts/test-docker-action.bash "${image}" "linux/${arch}"
+            else
+              docker run --rm --platform "linux/${arch}" --mount type=bind,source="${PWD}",target=/w \
+                "${image}" testdata/ok/minimal.yaml
+              status=0
+              docker run --rm --platform "linux/${arch}" --mount type=bind,source="${PWD}",target=/w \
+                "${image}" testdata/err/one_error.yaml || status=$?
+              test "${status}" = 1
+            fi
+          done
+      - uses: *Upload
+        with:
+          name: prepared-container-${{ matrix.target }}
+          path: |
+            ${{ runner.temp }}/${{ matrix.asset }}_${{ inputs.version }}.tar
+            ${{ runner.temp }}/${{ matrix.asset }}_${{ inputs.version }}.digest
+          if-no-files-found: error
+          compression-level: 0
+  draft:
+    name: Store the validated release draft
+    needs: [prepare, nix, action, container]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions: { contents: write }
+    steps:
+      - uses: *Checkout
+        with: { ref: "${{ needs.prepare.outputs.source }}", fetch-depth: 0, persist-credentials: false }
+      - uses: *SetupNode
+        with: *Node24
+      - uses: *Download
+        with: { name: prepared-release, path: "${{ runner.temp }}/actionlint-action" }
+      - uses: *Download
+        with: { pattern: prepared-container-*, merge-multiple: true, path: "${{ runner.temp }}/actionlint-action/assets" }
+      - name: Record every tested asset and candidate commit
+        env: { SOURCE: "${{ needs.prepare.outputs.source }}", CANDIDATE: "${{ needs.prepare.outputs.candidate }}" }
+        run: |
+          assets="${RUNNER_TEMP}/actionlint-action/assets"
+          git fetch --no-tags "${assets}/release-candidate.bundle" "refs/actionlint/candidates/v${VERSION}"
+          node scripts/release-candidate.mjs manifest --version "${VERSION}" --directory "${assets}" --source "${SOURCE}" --candidate "${CANDIDATE}"
+      - name: Preserve the manifest independently of the editable draft
+        uses: *Upload
+        with:
+          name: release-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/actionlint-action/assets/release-candidate.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Create the draft without publishing a version tag
+        env: { GH_TOKEN: "${{ github.token }}", SOURCE: "${{ needs.prepare.outputs.source }}" }
+        run: |
+          if gh release view "v${VERSION}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo '::error::A release or draft already exists. Inspect it before preparing another candidate.'
+            exit 1
+          fi
+          remote_tag="$(git ls-remote origin "refs/tags/v${VERSION}")"
+          test -z "${remote_tag}"
+          gh release create "v${VERSION}" --repo "${GITHUB_REPOSITORY}" --draft --target "${SOURCE}" \
+            --title "v${VERSION}" --notes-file "${RUNNER_TEMP}/actionlint-action/release-notes.md"
+          gh release upload "v${VERSION}" --repo "${GITHUB_REPOSITORY}" "${RUNNER_TEMP}/actionlint-action/assets/"*
+          remote_tag="$(git ls-remote origin "refs/tags/v${VERSION}")"
+          test -z "${remote_tag}"
+          printf 'Prepared **v%s**. Promote the validated draft with:\n\n    node scripts/release-candidate.mjs promote --version %s --run %s\n' \
+            "${VERSION}" "${VERSION}" "${GITHUB_RUN_ID}" >> "${GITHUB_STEP_SUMMARY}"

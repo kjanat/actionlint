@@ -8,7 +8,7 @@ COPY cmd cmd/
 COPY internal internal/
 ENV CGO_ENABLED=0
 ARG ACTIONLINT_VER=
-RUN go build -v -ldflags "-s -w -X actionlint.kjanat.dev.version=${ACTIONLINT_VER} -X main.version=${ACTIONLINT_VER} -X 'actionlint.kjanat.dev.installedFrom=official Docker image'" -o . ./cmd/actionlint ./cmd/actionlint-action
+RUN go build -v -ldflags "-s -w -X actionlint.kjanat.dev.version=${ACTIONLINT_VER} -X 'actionlint.kjanat.dev.installedFrom=official Docker image'" -o . ./cmd/actionlint
 
 FROM koalaman/shellcheck-alpine:stable AS shellcheck
 
@@ -20,7 +20,7 @@ COPY --from=builder /go/src/app/actionlint /usr/local/bin/
 COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
 
 FROM runtime AS action
-COPY --from=builder /go/src/app/actionlint-action /usr/local/bin/
+COPY --chmod=755 scripts/docker-action.sh /usr/local/bin/actionlint-action
 ENTRYPOINT ["/usr/local/bin/actionlint-action"]
 
 FROM runtime AS cli
