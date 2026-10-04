@@ -78,6 +78,7 @@ func TestParseActionOutlineRuntimes(t *testing.T) {
 		{"javascript", "using: node24\n  main: main.mjs\n  pre: pre.mjs\n  pre-if: always()\n  post: post.mjs\n  post-if: success()", JavaScriptRuns{Using: "node24", Main: "main.mjs", Pre: "pre.mjs", PreIf: "always()", Post: "post.mjs", PostIf: "success()"}},
 		{"docker", "using: docker\n  image: docker://alpine:3\n  entrypoint: /entry.sh\n  pre-entrypoint: /pre.sh\n  post-entrypoint: /post.sh\n  args: [test, 42]", DockerRuns{Image: "docker://alpine:3", Entrypoint: "/entry.sh", PreEntrypoint: "/pre.sh", PostEntrypoint: "/post.sh", Args: []string{"test", "42"}}},
 		{"plugin", "plugin: GitHub.Runner.Plugins.Repository.CheckoutAction", PluginRuns{Plugin: "GitHub.Runner.Plugins.Repository.CheckoutAction"}},
+		{"empty composite", "using: composite\n  steps: []", CompositeRuns{Steps: []StepOutline{}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			outline, err := ParseActionOutline("action.yaml", []byte("name: Test\ndescription: Test action\nruns:\n  "+tc.runs+"\n"))
@@ -112,6 +113,12 @@ func TestParseActionOutlinePartial(t *testing.T) {
 		{"invalid runs key", "name: Keep\nruns: {using: node24, main: main.mjs, unexpected: value}\n", "partial"},
 		{"missing runtime", "name: Keep\nruns: {main: main.mjs}\n", "partial"},
 		{"unknown runtime", "name: Keep\nruns: {using: future-runtime}\n", "partial"},
+		{"missing JavaScript entrypoint", "name: Keep\nruns: {using: node24}\n", "partial"},
+		{"empty JavaScript entrypoint", "name: Keep\nruns: {using: node24, main: ''}\n", "partial"},
+		{"missing Docker image", "name: Keep\nruns: {using: docker}\n", "partial"},
+		{"empty Docker image", "name: Keep\nruns: {using: docker, image: ''}\n", "partial"},
+		{"missing composite steps", "name: Keep\nruns: {using: composite}\n", "partial"},
+		{"null composite steps", "name: Keep\nruns: {using: composite, steps: null}\n", "partial"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			outline, err := ParseActionOutline("action.yml", []byte(tc.source))

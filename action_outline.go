@@ -121,7 +121,22 @@ func parsedActionOutline(path string, metadata *ActionMetadata, parseErr error) 
 	for _, err := range rule.Errs() {
 		issues = append(issues, err)
 	}
-	if _, unknown := outline.Runs.(UnknownRuns); unknown {
+	// Required execution declarations are checked separately from the schema
+	// by RuleAction. Keep their structural checks here, without checking files.
+	switch runtime := outline.Runs.(type) {
+	case JavaScriptRuns:
+		if runtime.Main == "" {
+			issues = append(issues, errors.New("JavaScript action requires runs.main"))
+		}
+	case DockerRuns:
+		if runtime.Image == "" {
+			issues = append(issues, errors.New("action using docker requires runs.image"))
+		}
+	case CompositeRuns:
+		if steps := actionSchemaNode(runs["steps"]); steps == nil || steps.Tag == "!!null" {
+			issues = append(issues, errors.New("composite action requires runs.steps"))
+		}
+	case UnknownRuns:
 		if validated.Runs.Using == "" {
 			issues = append(issues, errors.New("action metadata requires runs.using or runs.plugin"))
 		} else {

@@ -167,6 +167,32 @@ func TestAnalysisPartialWorkflowCall(t *testing.T) {
 	}
 }
 
+func TestAnalysisPartialStepUses(t *testing.T) {
+	for _, tc := range []struct {
+		name, step, kind string
+	}{
+		{"uses before run", "uses: actions/checkout@v7\n        run: echo hi", "run"},
+		{"uses after run", "run: echo hi\n        uses: actions/checkout@v7", "uses"},
+		{"literal uses before run", "uses: ${{ 'actions/checkout@v7' }}\n        run: echo hi", "run"},
+		{"uses before wait", "uses: actions/checkout@v7\n        wait: child", "wait"},
+		{"uses before cancel", "uses: actions/checkout@v7\n        cancel: child", "cancel"},
+		{"uses before parallel", "uses: actions/checkout@v7\n        parallel:\n          - run: echo hi", "parallel"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - " + tc.step + "\n"
+			workflow, errs := Parse([]byte(source))
+			if len(errs) == 0 {
+				t.Fatal("fixture must contain conflicting execution keys")
+			}
+			outline := workflowOutline("ci.yml", workflow, true)
+			step := outline.Jobs[0].Steps[0]
+			if outline.ParseStatus != "partial" || step.Kind != tc.kind || step.Uses != "actions/checkout@v7" || step.Reference == nil {
+				t.Fatalf("partial uses declaration lost: %+v", step)
+			}
+		})
+	}
+}
+
 func TestAnalysisParallelOutline(t *testing.T) {
 	const source = `on: push
 jobs:

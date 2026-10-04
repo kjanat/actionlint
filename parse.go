@@ -1656,6 +1656,7 @@ func (p *parser) parseStep(n *yaml.Node) *Step {
 	)
 
 	kind := isUnknown
+	var declaredUses *String
 	entries := slices.Collect(p.parseMappingAt("element of \"steps\" section", n, false, true))
 	for _, e := range entries {
 		switch e.id {
@@ -1678,6 +1679,10 @@ func (p *parser) parseStep(n *yaml.Node) *Step {
 			if literal := literalExpressionValue(uses); literal != nil {
 				uses = *literal
 			}
+			if e.val.Kind == yaml.ScalarNode {
+				declaredUses = newString(e.val)
+				declaredUses.Value = uses
+			}
 			if strings.HasPrefix(uses, "docker://") {
 				kind = isDocker
 			} else {
@@ -1696,6 +1701,9 @@ func (p *parser) parseStep(n *yaml.Node) *Step {
 		}
 	}
 
+	if kind != isAction && kind != isDocker {
+		ret.declaredUses = declaredUses
+	}
 	switch kind {
 	case isAction, isDocker:
 		ret.Exec = p.parseStepExecAction(entries, kind == isDocker)

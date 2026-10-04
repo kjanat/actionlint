@@ -95,14 +95,13 @@ func stepOutlines(steps []*Step) []StepOutline {
 	for _, step := range steps {
 		record := StepOutline{
 			ID: outlineString(step.ID), Name: outlineString(step.Name),
-			Start: outlinePosition(step.Pos), Kind: "unknown",
+			Start: outlinePosition(step.Pos), Kind: "unknown", Uses: outlineString(step.declaredUses),
 		}
 		switch exec := step.Exec.(type) {
 		case *ExecRun:
 			record.Kind = "run"
 		case *ExecAction:
 			record.Kind, record.Uses = "uses", outlineString(exec.Uses)
-			record.Reference = ParseUsesReference(record.Uses)
 		case *ExecWait:
 			record.Kind = "wait"
 		case *ExecCancel:
@@ -110,6 +109,7 @@ func stepOutlines(steps []*Step) []StepOutline {
 		case *ExecParallel:
 			record.Kind, record.Steps = "parallel", stepOutlines(exec.Steps)
 		}
+		record.Reference = ParseUsesReference(record.Uses)
 		records = append(records, record)
 	}
 	return records
