@@ -23,7 +23,7 @@ export type ResultConfig = {
 	warnings?: ConfigWarning[];
 };
 
-/** Parsed workflow structure, not a full syntax tree or execution plan. */
+/** Parsed workflow declarations and source positions. */
 export type WorkflowOutline = {
 	path: string;
 	name?: string;

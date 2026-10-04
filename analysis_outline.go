@@ -5,7 +5,7 @@ import (
 	"slices"
 )
 
-// WorkflowOutline describes declared workflow structure, not runtime execution.
+// WorkflowOutline describes parsed workflow declarations.
 // ParseStatus is complete, partial (a tree with parser errors), or failed (no tree).
 // Parsing can complete even when analysis fails or is canceled.
 type WorkflowOutline struct {
@@ -66,16 +66,17 @@ func workflowOutline(path string, workflow *Workflow, parseErrors bool) Workflow
 		outline.Jobs = append(outline.Jobs, record)
 	}
 	slices.SortFunc(outline.Jobs, func(a, b JobOutline) int {
-		if a.Start != nil && b.Start != nil {
+		switch {
+		case a.Start != nil && b.Start != nil:
 			if order := cmp.Compare(a.Start.Line, b.Start.Line); order != 0 {
 				return order
 			}
 			if order := cmp.Compare(a.Start.Column, b.Start.Column); order != 0 {
 				return order
 			}
-		} else if a.Start != nil {
+		case a.Start != nil:
 			return -1
-		} else if b.Start != nil {
+		case b.Start != nil:
 			return 1
 		}
 		return cmp.Compare(a.ID, b.ID)

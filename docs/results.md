@@ -50,8 +50,8 @@ retains the analysis exit code.
 
 ## Workflow outlines
 
-The optional `workflows` array exposes parsed workflow structure, not a full AST
-or execution plan. For example, a report can include:
+The optional `workflows` array exposes parsed workflow declarations and source
+positions. For example, a report can include:
 
 ```json
 {
