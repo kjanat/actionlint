@@ -46,6 +46,7 @@ type lintOutcome struct {
 type lintResult struct {
 	*lintOutcome
 	diagnostics    []actionlint.Diagnostic
+	workflows      []actionlint.WorkflowOutline
 	sarif          string
 	fileCount      int
 	fileCountKnown bool
@@ -146,6 +147,12 @@ func runLinter(req *lintRequest) *lintResult {
 	}
 	// Absolute reads must retain the caller's relative spelling in Action output.
 	if analysis != nil {
+		for i := range analysis.Workflows {
+			if path, ok := inputNames[analysis.Workflows[i].Path]; ok {
+				analysis.Workflows[i].Path = path
+			}
+		}
+		result.workflows = analysis.Workflows
 		for i := range analysis.Diagnostics {
 			diagnostic := &analysis.Diagnostics[i]
 			if path, ok := inputNames[diagnostic.Path]; ok {

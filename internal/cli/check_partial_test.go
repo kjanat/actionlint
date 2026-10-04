@@ -125,6 +125,9 @@ func TestCheckJSONEmptyPartialFindings(t *testing.T) {
 			if result.Diagnostics == nil || len(result.Diagnostics) != 0 {
 				t.Fatalf("wanted empty diagnostics array: %s", &stderr)
 			}
+			if len(result.Workflows) != 1 || result.Workflows[0].Path != "failing.yml" || result.Workflows[0].ParseStatus != "complete" || len(result.Workflows[0].Jobs) != 1 {
+				t.Fatalf("analysis failure discarded parsed outline: %+v", result.Workflows)
+			}
 			if result.FileCount == nil || *result.FileCount != 1 {
 				t.Fatalf("selected file count lost: %v", result.FileCount)
 			}

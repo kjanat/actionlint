@@ -30,7 +30,7 @@ func (l *analysisEngine) check(
 	localActions *LocalActionsCache,
 	localReusableWorkflows *LocalReusableWorkflowCache,
 	usedRules *[]Rule,
-) ([]*Error, error) {
+) ([]*Error, WorkflowOutline, error) {
 	// Each call owns its rules; caches and process scheduling are shared across files.
 
 	var start time.Time
@@ -50,6 +50,7 @@ func (l *analysisEngine) check(
 	}
 
 	w, all := Parse(content)
+	outline := workflowOutline(path, w, len(all) != 0)
 	var analysisErr error
 
 	if l.logLevel >= LogLevelVerbose {
@@ -212,7 +213,7 @@ func (l *analysisEngine) check(
 		l.log("Found total", len(all), "errors in", elapsed.Milliseconds(), "ms for", path)
 	}
 
-	return all, analysisErr
+	return all, outline, analysisErr
 }
 
 func (l *analysisEngine) filterErrors(errs []*Error, cfgs []PathConfig) []*Error {

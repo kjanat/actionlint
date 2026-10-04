@@ -123,6 +123,40 @@
         }
       }
     },
+    "job": {
+      "type": "object",
+      "required": [
+        "id",
+        "needs",
+        "steps"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "needs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "start": {
+          "$ref": "#/definitions/position"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/step"
+          }
+        },
+        "uses": {
+          "type": "string"
+        }
+      }
+    },
     "origin": {
       "type": "object",
       "required": [
@@ -171,6 +205,37 @@
         }
       }
     },
+    "step": {
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "description": "Known kinds: run, uses, wait, cancel, parallel, unknown. New kinds may be added.",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "start": {
+          "$ref": "#/definitions/position"
+        },
+        "steps": {
+          "description": "Children of a parallel step, in declaration order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/step"
+          }
+        },
+        "uses": {
+          "type": "string"
+        }
+      }
+    },
     "warning": {
       "type": "object",
       "required": [
@@ -191,6 +256,43 @@
         },
         "message": {
           "type": "string"
+        }
+      }
+    },
+    "workflow": {
+      "description": "Parsed workflow outline, not a full syntax tree. Parse status is independent of analysis completion.",
+      "type": "object",
+      "required": [
+        "jobs",
+        "parse_status",
+        "path",
+        "triggers"
+      ],
+      "properties": {
+        "jobs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/job"
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "parse_status": {
+          "enum": [
+            "complete",
+            "partial",
+            "failed"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "triggers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     }
@@ -279,6 +381,13 @@
         "invalid-options",
         "failure"
       ]
+    },
+    "workflows": {
+      "description": "Available parsed workflow outlines. Older producers may omit this field.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/workflow"
+      }
     }
   },
   "oneOf": [

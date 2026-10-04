@@ -23,12 +23,40 @@ export type ResultConfig = {
 	warnings?: ConfigWarning[];
 };
 
+/** Parsed workflow structure, not a full syntax tree or execution plan. */
+export type WorkflowOutline = {
+	path: string;
+	name?: string;
+	parse_status: 'complete' | 'partial' | 'failed';
+	triggers: string[];
+	jobs: JobOutline[];
+};
+export type JobOutline = {
+	id: string;
+	name?: string;
+	start?: Position;
+	needs: string[];
+	uses?: string;
+	steps: StepOutline[];
+};
+export type StepOutline = {
+	id?: string;
+	name?: string;
+	start?: Position;
+	/** Known kinds: run, uses, wait, cancel, parallel, unknown. */
+	kind: string;
+	uses?: string;
+	/** Children of a parallel step, in declaration order. */
+	steps?: StepOutline[];
+};
+
 export type ResultData = {
 	schema_version: 1;
 	file_count: number | null;
 	diagnostics: Diagnostic[];
 	configurations: ResultConfig[];
 	hints: string[];
+	workflows?: WorkflowOutline[];
 	sarif?: Record<string, unknown>;
 	error?: string;
 };

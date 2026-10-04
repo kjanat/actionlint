@@ -48,6 +48,49 @@ the process exit code or the Action `result-file` to distinguish completion from
 failure. Action `fail-on-error: false` lets a step with findings pass. The result
 retains the analysis exit code.
 
+## Workflow outlines
+
+The optional `workflows` array exposes parsed workflow structure, not a full AST
+or execution plan. For example, a report can include:
+
+```json
+{
+  "workflows": [{
+    "path": ".github/workflows/test.yml",
+    "name": "Test",
+    "parse_status": "complete",
+    "triggers": ["push"],
+    "jobs": [{
+      "id": "build",
+      "start": { "line": 5, "column": 3 },
+      "needs": [],
+      "steps": [
+        { "kind": "uses", "uses": "actions/checkout@v6" },
+        { "kind": "run", "name": "Test" }
+      ]
+    }]
+  }]
+}
+```
+
+Jobs include their IDs, dependencies, available names and source positions, and
+reusable-workflow `uses` references. Steps include available IDs, names, positions,
+and action `uses` references. Jobs follow source order (ID breaks position ties);
+steps follow declaration order. Positions use the same convention as diagnostics
+and are omitted when unavailable. Paths match diagnostic paths.
+
+`parse_status` is `complete`, `partial`, or `failed`, independently of the report's
+`completed`: a parsed workflow can still have lint findings or an analyzer failure.
+Partial outlines contain whatever the parser recovered; diagnostics explain parse
+problems. Lists are always arrays, including when empty. Older producers may omit
+`workflows` entirely.
+
+Known step kinds are `run`, `uses`, `wait`, `cancel`, `parallel`, and `unknown`;
+consumers must tolerate new kinds. Parallel steps contain nested `steps`. Script
+bodies, expression trees, resolved relationships, and expanded composite actions
+are not included. The npm types export `WorkflowOutline`, `JobOutline`, and
+`StepOutline` alongside `CheckResult`.
+
 ## TypeScript and compatibility
 
 ```typescript

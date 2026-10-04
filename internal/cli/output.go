@@ -87,6 +87,7 @@ func (a *commandApp) reportError(err error) int {
 			result.Error = err.Error()
 			if failure, ok := errors.AsType[*checkAnalysisError](err); ok {
 				result.Diagnostics = failure.result.Diagnostics
+				result.Workflows = failure.result.Workflows
 				count := failure.result.FileCount()
 				result.FileCount = &count
 				for _, config := range failure.result.Configurations {

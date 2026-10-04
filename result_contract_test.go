@@ -60,6 +60,11 @@ func TestCheckResultSchema(t *testing.T) {
 		Fixes: []DiagnosticFix{{Description: "Quote", Edits: []DiagnosticEdit{{Path: "ci.yml", Start: DiagnosticPosition{2, 3}, End: DiagnosticPosition{3, 4}, Replacement: "\"$value\""}}}}}
 	for _, code := range []int{0, 1, 2, 3, 99} {
 		result := NewCheckResult(code)
+		workflow, parseErrors := Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"))
+		if len(parseErrors) != 0 {
+			t.Fatal(parseErrors)
+		}
+		result.Workflows = []WorkflowOutline{workflowOutline("ci.yml", workflow, false)}
 		if code == 1 || code == 3 {
 			result.Diagnostics = []Diagnostic{diagnostic}
 		}

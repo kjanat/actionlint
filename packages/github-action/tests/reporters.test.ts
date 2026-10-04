@@ -73,6 +73,69 @@ test('persisted results validate completion and preserve diagnostic severity and
 	assert.throws(() => parseResult({ ...result, status: 'success', exit_code: 0 }));
 });
 
+test('workflow outlines preserve parse states, nested steps and compatible additions', () => {
+	for (const parseStatus of ['complete', 'partial', 'failed']) {
+		const workflows = [{
+			path: '.github/workflows/test.yml',
+			name: 'Test',
+			parse_status: parseStatus,
+			triggers: ['push', 'workflow_dispatch'],
+			jobs: [{
+				id: 'build',
+				name: 'Build',
+				start: { line: 4, column: 3 },
+				needs: ['prepare'],
+				steps: [
+					{ id: 'checkout', kind: 'uses', uses: 'actions/checkout@v6' },
+					{ kind: 'parallel', steps: [{ name: 'Compile', kind: 'run', start: { line: 8, column: 9 } }] },
+					{ kind: 'future-kind', future_metadata: { enabled: true } },
+				],
+			}, { id: 'call', needs: [], uses: './.github/workflows/reusable.yml', steps: [] }],
+		}];
+		for (const completed of [true, false]) {
+			const source: unknown = completed
+				? { ...result, workflows }
+				: { ...result, workflows, completed: false, status: 'failure', exit_code: 3 };
+			assert.deepEqual(JSON.parse(JSON.stringify(parseResult(source))), source);
+		}
+	}
+	assert.equal(parseResult(result).workflows, undefined);
+	assert.deepEqual(parseResult({ ...result, workflows: [] }).workflows, []);
+});
+
+test('workflow outlines reject malformed known fields', () => {
+	const workflow = { path: 'test.yml', parse_status: 'complete', triggers: [], jobs: [] };
+	const job = { id: 'build', needs: [], steps: [] };
+	for (
+		const workflows of [
+			null,
+			{},
+			[{ ...workflow, path: null }],
+			[{ ...workflow, name: 1 }],
+			[{ ...workflow, parse_status: 'success' }],
+			[{ ...workflow, triggers: null }],
+			[{ ...workflow, triggers: [1] }],
+			[{ ...workflow, jobs: null }],
+			...[{ ...job, id: null }, { ...job, needs: null }, { ...job, needs: [1] }, { ...job, steps: null }, {
+				...job,
+				uses: false,
+			}, { ...job, start: { line: 0, column: 1 } }].map((invalidJob) => [{ ...workflow, jobs: [invalidJob] }]),
+			...[
+				{},
+				{ kind: 1 },
+				{ kind: 'uses', uses: 1 },
+				{ kind: 'run', id: false },
+				{ kind: 'run', name: null },
+				{ kind: 'run', start: { line: 1, column: -1 } },
+				{ kind: 'parallel', steps: null },
+				{ kind: 'parallel', steps: [{ kind: 'run', start: null }] },
+			].map((step) => [{ ...workflow, jobs: [{ ...job, steps: [step] }] }]),
+		]
+	) {
+		assert.throws(() => parseResult({ ...result, workflows }), /invalid or unsupported persisted result/);
+	}
+});
+
 test('report controls are independent and reject unsupported inputs', () => {
 	assert.deepEqual(reportOptions({}), { annotations: 'auto', summary: true, sarif: false, review: false });
 	assert.deepEqual(reportOptions({ INPUT_SARIF: 'true', INPUT_SUMMARY: 'true' }), {

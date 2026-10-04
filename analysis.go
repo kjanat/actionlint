@@ -45,14 +45,16 @@ type AnalysisRequest struct {
 type AnalysisResult struct {
 	Configurations []ConfigReport
 	Diagnostics    []Diagnostic
+	Workflows      []WorkflowOutline
 	Inputs         []string
 	files          []analyzedFile
 }
 
 type analyzedFile struct {
-	source SourceUnit
-	errors []*Error
-	rules  []Rule
+	source  SourceUnit
+	errors  []*Error
+	rules   []Rule
+	outline WorkflowOutline
 }
 
 type inputFiles struct {
@@ -141,7 +143,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 			file := &result.files[i]
 			file.source = source
 			var err error
-			file.errors, err = engine.check(source.Path, source.Content, source.Project, source.Config, proc, ac, wc, &file.rules)
+			file.errors, file.outline, err = engine.check(source.Path, source.Content, source.Project, source.Config, proc, ac, wc, &file.rules)
 			if err != nil {
 				return &sourceAnalysisError{path: source.Path, err: err, batch: len(request.Sources) > 1}
 			}
@@ -154,6 +156,10 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		err = ctx.Err()
 	}
 	result.collectDiagnostics()
+	result.Workflows = make([]WorkflowOutline, 0, len(result.files))
+	for _, file := range result.files {
+		result.Workflows = append(result.Workflows, file.outline)
+	}
 	result.Inputs = inputs.list()
 	return result, err
 }

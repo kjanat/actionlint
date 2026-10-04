@@ -19,5 +19,6 @@ func (l *Linter) check(path string, content []byte, project *Project, proc *conc
 		ignorePats: l.request.IgnorePatterns, onRulesCreated: l.request.OnRulesCreated,
 	}
 	var rules []Rule
-	return engine.check(path, content, project, l.source(path, content, project).Config, proc, actions, workflows, &rules)
+	errs, _, err := engine.check(path, content, project, l.source(path, content, project).Config, proc, actions, workflows, &rules)
+	return errs, err
 }

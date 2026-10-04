@@ -5,9 +5,12 @@ import type {
 	Diagnostic,
 	Edit,
 	Fix,
+	JobOutline,
 	Position,
 	ResultConfig,
 	ResultData,
+	StepOutline,
+	WorkflowOutline,
 } from '../../../distribution/npm/facade/types/result.d.ts';
 
 export type { Diagnostic, Edit, Fix, Position } from '../../../distribution/npm/facade/types/result.d.ts';
@@ -71,6 +74,34 @@ function configuration(value: unknown): value is ResultConfig {
 		&& (value.warnings === undefined || (Array.isArray(value.warnings) && value.warnings.every(configWarning)));
 }
 
+function strings(value: unknown): value is string[] {
+	return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+}
+
+function stepOutline(value: unknown): value is StepOutline {
+	return object(value) && typeof value.kind === 'string'
+		&& (value.id === undefined || typeof value.id === 'string')
+		&& (value.name === undefined || typeof value.name === 'string')
+		&& (value.start === undefined || position(value.start))
+		&& (value.uses === undefined || typeof value.uses === 'string')
+		&& (value.steps === undefined || (Array.isArray(value.steps) && value.steps.every(stepOutline)));
+}
+
+function jobOutline(value: unknown): value is JobOutline {
+	return object(value) && typeof value.id === 'string' && strings(value.needs)
+		&& (value.name === undefined || typeof value.name === 'string')
+		&& (value.start === undefined || position(value.start))
+		&& (value.uses === undefined || typeof value.uses === 'string')
+		&& Array.isArray(value.steps) && value.steps.every(stepOutline);
+}
+
+function workflowOutline(value: unknown): value is WorkflowOutline {
+	return object(value) && typeof value.path === 'string'
+		&& (value.name === undefined || typeof value.name === 'string')
+		&& (value.parse_status === 'complete' || value.parse_status === 'partial' || value.parse_status === 'failed')
+		&& strings(value.triggers) && Array.isArray(value.jobs) && value.jobs.every(jobOutline);
+}
+
 export function parseResult(value: unknown): ActionResult {
 	if (
 		!object(value) || value.schema_version !== 1
@@ -80,6 +111,7 @@ export function parseResult(value: unknown): ActionResult {
 		|| !value.hints.every((hint) => typeof hint === 'string')
 		|| (value.sarif !== undefined && !sarif(value.sarif))
 		|| (value.error !== undefined && typeof value.error !== 'string')
+		|| (value.workflows !== undefined && (!Array.isArray(value.workflows) || !value.workflows.every(workflowOutline)))
 	) throw new Error('actionlint returned an invalid or unsupported persisted result');
 	const data: ResultData = {
 		// Schema v1 allows additive fields; retain them when reporters serialize the result.
@@ -92,6 +124,7 @@ export function parseResult(value: unknown): ActionResult {
 	};
 	if (value.sarif !== undefined) data.sarif = value.sarif;
 	if (value.error !== undefined) data.error = value.error;
+	if (value.workflows !== undefined) data.workflows = value.workflows;
 	if (
 		value.completed === true && value.status === 'success' && value.exit_code === 0 && value.diagnostics.length === 0
 	) {
