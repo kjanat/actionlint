@@ -1016,6 +1016,11 @@ job are skipped. A later checkout cannot guarantee that working-tree modes match
 the index when `core.fileMode` has changed. Interpreter and source calls do not require an executable
 bit on their argument. Shell syntax is parsed without executing any script.
 
+Referenced local composite actions are checked too, including nested calls.
+Their scripts use the caller's checkout and permission state, but their own
+shell and working directory. Findings point to `action.yml` or `action.yaml`.
+Remote action contents are not downloaded for these checks.
+
 [workflow-scripts-doc]: https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/add-scripts
 
 <a id="check-shellcheck-integ"></a>
