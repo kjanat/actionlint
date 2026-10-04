@@ -38,7 +38,9 @@ make clean
 
 Vite derives the version badge and links from Git when it starts. A clean release tag links to its release; development
 builds show `git describe` and link to their commit. Documentation links use that same commit. Without tags, the badge
-shows the commit; without Git metadata, it shows `development`. No release version is maintained in `index.html`.
+shows the commit; without Git metadata, it shows `development`. Pages also reads the latest published release and displays
+a separate release link when the release API is available. Local builds can supply that tag through `ACTIONLINT_LATEST_RELEASE`; without it, only the source
+badge appears. The release label does not identify the built WASM. No release version is maintained in `index.html`.
 
 ## Lint
 
@@ -54,6 +56,6 @@ Formatting is handled from the repository root by [dprint](https://dprint.dev/).
 ## Deployment
 
 The [Pages workflow](../.github/workflows/pages.yml) builds the WASM and site from the same checkout and deploys `dist/`
-on pushes to `master` and after successful Release runs. The release-triggered build checks out the release commit with
-its tags, so the badge updates once the release exists. See
+on pushes to `master` and after successful Release runs. Release-triggered builds use the current default branch with
+its tags. The source revision and latest published release remain separately labeled. See
 [CONTRIBUTING.md](../CONTRIBUTING.md) for more details.
