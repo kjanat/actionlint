@@ -2,7 +2,7 @@
 
 # Unreleased
 
-- Include workflow, job and step outlines in JSON results, with source positions, declared references and partial parse status. Export matching schema and npm types. (kjanat/actionlint#189)
+- Include typed workflow and action documents in JSON results, with source positions, inputs, outputs, execution variants and structured `uses` references. Preserve partial parses and ship matching schema and npm types. (kjanat/actionlint#189)
 
 - Select an exact Action binary with `version` or `version-file`, including `.tool-versions`; use `install-only` to put it and enabled optional tools on PATH without running analysis. (kjanat/actionlint#185)
 

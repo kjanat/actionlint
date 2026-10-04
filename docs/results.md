@@ -48,28 +48,63 @@ the process exit code or the Action `result-file` to distinguish completion from
 failure. Action `fail-on-error: false` lets a step with findings pass. The result
 retains the analysis exit code.
 
-## Workflow outlines
+## Document outlines
 
-The optional `workflows` array exposes parsed workflow declarations and source
-positions. For example, a report can include:
+The optional `documents` array exposes parsed workflow and action declarations
+with source positions. `kind` distinguishes the two document shapes. For example:
 
 ```json
 {
-  "workflows": [{
-    "path": ".github/workflows/test.yml",
-    "name": "Test",
-    "parse_status": "complete",
-    "triggers": ["push"],
-    "jobs": [{
-      "id": "build",
-      "start": { "line": 5, "column": 3 },
-      "needs": [],
-      "steps": [
-        { "kind": "uses", "uses": "actions/checkout@v6" },
-        { "kind": "run", "name": "Test" }
+  "documents": [
+    {
+      "kind": "workflow",
+      "path": ".github/workflows/test.yml",
+      "name": "Test",
+      "parse_status": "complete",
+      "triggers": [
+        "push"
+      ],
+      "jobs": [
+        {
+          "id": "build",
+          "start": {
+            "line": 5,
+            "column": 3
+          },
+          "needs": [],
+          "steps": [
+            {
+              "kind": "uses",
+              "uses": "actions/checkout@v6"
+            },
+            {
+              "kind": "run",
+              "name": "Test"
+            }
+          ]
+        }
       ]
-    }]
-  }]
+    },
+    {
+      "kind": "action",
+      "path": "action.yml",
+      "name": "Check",
+      "parse_status": "complete",
+      "inputs": [
+        {
+          "id": "target",
+          "default": ".",
+          "required": false
+        }
+      ],
+      "outputs": [],
+      "runs": {
+        "kind": "javascript",
+        "using": "node24",
+        "main": "action.mjs"
+      }
+    }
+  ]
 }
 ```
 
@@ -79,17 +114,37 @@ and action `uses` references. Jobs follow source order (ID breaks position ties)
 steps follow declaration order. Positions use the same convention as diagnostics
 and are omitted when unavailable. Paths match diagnostic paths.
 
+Action documents include their description, declared inputs and outputs, and
+runtime. Runtime shapes distinguish composite steps, JavaScript entrypoints and
+conditions, Docker images/entrypoints/arguments, plugins, and unknown runtimes.
+Inputs and outputs retain available descriptions and source positions; inputs
+also expose `required` and `default`, and outputs expose declared `value`.
+
+Actions appear when analysis reads their metadata. The CLI still selects
+workflows; it does not scan every `action.yml` in a repository. Go callers can use
+`ParseActionOutline` to parse an action manifest directly.
+
+Jobs and steps retain the parsed `uses` string and may include a structured
+`reference`: repository, workspace, self-repository, container, builtin, or
+unknown. Repository references separate owner, repository, subpath, and ref.
+`host_source` records default, explicit, or self context; a bare `owner/repo@ref`
+does not imply a provider or invent a host. Explicit URLs retain their host and
+scheme when available. Dependency resolution is outside this model.
+
 `parse_status` is `complete`, `partial`, or `failed`, independently of the report's
 `completed`: a parsed workflow can still have lint findings or an analyzer failure.
 Partial outlines contain whatever the parser recovered; diagnostics explain parse
 problems. Lists are always arrays, including when empty. Older producers may omit
-`workflows` entirely.
+`documents` entirely.
 
 Known step kinds are `run`, `uses`, `wait`, `cancel`, `parallel`, and `unknown`;
 consumers must tolerate new kinds. Parallel steps contain nested `steps`. Script
-bodies, expression trees, resolved relationships, and expanded composite actions
-are not included. The npm types export `WorkflowOutline`, `JobOutline`, and
-`StepOutline` alongside `CheckResult`.
+bodies, expression trees, and resolved relationships are not included. Composite
+action declarations have their own documents; steps are not expanded into each
+caller. The npm package exports `DocumentOutline`, `WorkflowOutline`,
+`ActionOutline`, runtime/input/output types, `UsesReference`, `JobOutline`, and
+`StepOutline` alongside `CheckResult`. The model covers declarations and source
+locations.
 
 ## TypeScript and compatibility
 

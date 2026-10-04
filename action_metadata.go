@@ -499,6 +499,7 @@ func (md *ActionMetadata) Path() string {
 // to be created per one repository.
 type LocalActionsCache struct {
 	onRead               func(string)
+	onDocument           func(ActionOutline)
 	readFile             func(string) ([]byte, error)
 	mu                   sync.RWMutex
 	proj                 *Project // might be nil
@@ -596,7 +597,12 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 	}
 
 	var meta ActionMetadata
-	if err := yaml.Unmarshal(b, &meta); err != nil {
+	parseErr := yaml.Unmarshal(b, &meta)
+	meta.file, meta.dir, meta.src = f, dir, b
+	if c.onDocument != nil {
+		c.onDocument(actionOutline(filepath.Join(dir, f), &meta, parseErr))
+	}
+	if err := parseErr; err != nil {
 		c.writeCache(spec, nil) // Remember action was invalid
 
 		// Unwrap load errors when a single error occurs to simplify the error message
@@ -618,10 +624,6 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 
 		return nil, false, fmt.Errorf("could not parse action metadata in %q: %s", dir, m)
 	}
-	meta.file = f
-	meta.dir = dir
-	meta.src = b
-
 	c.debug("New metadata parsed from action %s: %v", dir, &meta)
 	c.writeCache(spec, &meta)
 	return &meta, false, nil

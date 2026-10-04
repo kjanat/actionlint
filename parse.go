@@ -1924,6 +1924,7 @@ func (p *parser) parseJob(id *String, n *yaml.Node) *Job {
 
 	if call.Uses != nil {
 		if stepsOnlyKey != nil {
+			ret.declaredUses = call.Uses
 			p.errorfAt(
 				stepsOnlyKey.Pos,
 				"when a reusable workflow is called with \"uses\", %q is not available. only following keys are allowed: \"name\", \"uses\", \"with\", \"secrets\", \"needs\", \"if\", \"permissions\", \"cache-mode\", \"strategy\", and \"concurrency\" in job %q",

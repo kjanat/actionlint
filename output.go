@@ -59,17 +59,17 @@ type DiagnosticEdit struct {
 // ExitCode describes analysis, even when a caller chooses not to fail on findings.
 // Consumers should tolerate unknown fields within a supported schema version.
 type CheckResult struct {
-	SchemaVersion int               `json:"schema_version"`
-	Status        string            `json:"status"`
-	Completed     bool              `json:"completed"`
-	ExitCode      int               `json:"exit_code"`
-	FileCount     *int              `json:"file_count"`
-	Diagnostics   []Diagnostic      `json:"diagnostics"`
-	Workflows     []WorkflowOutline `json:"workflows,omitempty"`
-	Configs       []ResultConfig    `json:"configurations"`
-	Hints         []string          `json:"hints"`
-	SARIF         json.RawMessage   `json:"sarif,omitempty"`
-	Error         string            `json:"error,omitempty"`
+	SchemaVersion int              `json:"schema_version"`
+	Status        string           `json:"status"`
+	Completed     bool             `json:"completed"`
+	ExitCode      int              `json:"exit_code"`
+	FileCount     *int             `json:"file_count"`
+	Diagnostics   []Diagnostic     `json:"diagnostics"`
+	Documents     DocumentOutlines `json:"documents"`
+	Configs       []ResultConfig   `json:"configurations"`
+	Hints         []string         `json:"hints"`
+	SARIF         json.RawMessage  `json:"sarif,omitempty"`
+	Error         string           `json:"error,omitempty"`
 }
 
 // ResultConfig identifies the configuration used for a project, including overlays.

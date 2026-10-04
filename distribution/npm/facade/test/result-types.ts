@@ -1,10 +1,13 @@
 // Compile against the package export, as an npm consumer would.
 import type {
+	ActionRunsOutline,
 	CheckResult,
 	CheckResultV1,
 	DiagnosticRecord,
+	DocumentOutline,
 	JobOutline,
 	StepOutline,
+	UsesReference,
 	WorkflowOutline,
 } from '@kjanat/actionlint/result';
 
@@ -30,6 +33,14 @@ export function jobSteps(job: JobOutline): StepOutline[] {
 	return job.steps;
 }
 
-export function workflowOutlines(result: CheckResult): WorkflowOutline[] {
-	return result.workflows ?? [];
+export function documentOutlines(result: CheckResult): DocumentOutline[] {
+	return result.documents ?? [];
+}
+
+export function runtimeSteps(runs: ActionRunsOutline): StepOutline[] {
+	return runs.kind === 'composite' ? runs.steps : [];
+}
+
+export function referenceHost(reference: UsesReference): string | undefined {
+	return reference.kind === 'repository' ? reference.host : undefined;
 }

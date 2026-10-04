@@ -55,6 +55,50 @@ func TestCheckResultSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	for _, runtime := range []string{
+		"using: composite\n  steps:\n    - uses: actions/checkout@v7",
+		"using: node24\n  main: action.mjs\n  pre: pre.mjs",
+		"using: docker\n  image: Dockerfile\n  args: [hello]",
+		"plugin: internal/check",
+		"using: future-runtime",
+	} {
+		action, _ := ParseActionOutline("action.yml", []byte("name: Test\ndescription: Test action\nruns:\n  "+runtime+"\n"))
+		result := NewCheckResult(0)
+		result.Documents = DocumentOutlines{action}
+		data, err := json.Marshal(result)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var value map[string]any
+		if err := json.Unmarshal(data, &value); err != nil {
+			t.Fatal(err)
+		}
+		if err := schema.Validate(value); err != nil {
+			t.Fatalf("runtime %q: %v\n%s", runtime, err, data)
+		}
+	}
+	for _, invalid := range []string{
+		`{"kind":"workflow","path":"ci.yml","parse_status":"complete","triggers":[],"jobs":[],"runs":{"kind":"composite","steps":[]}}`,
+		`{"kind":"action","path":"action.yml","parse_status":"complete","inputs":[],"outputs":[],"jobs":[],"runs":{"kind":"composite","steps":[]}}`,
+		`{"kind":"action","path":"action.yml","parse_status":"complete","inputs":[],"outputs":[],"runs":{"kind":"javascript","using":"node24","steps":[]}}`,
+	} {
+		data, err := json.Marshal(NewCheckResult(0))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var value map[string]any
+		if err := json.Unmarshal(data, &value); err != nil {
+			t.Fatal(err)
+		}
+		var document any
+		if err := json.Unmarshal([]byte(invalid), &document); err != nil {
+			t.Fatal(err)
+		}
+		value["documents"] = []any{document}
+		if err := schema.Validate(value); err == nil {
+			t.Fatalf("schema accepted mixed document/runtime: %s", invalid)
+		}
+	}
 	diagnostic := Diagnostic{Rule: "shellcheck", Code: "SC2086", Severity: "warning", Message: "Quote variable", Path: "ci.yml",
 		Start: DiagnosticPosition{2, 3}, End: DiagnosticPosition{3, 4}, Snippet: "echo $value",
 		Fixes: []DiagnosticFix{{Description: "Quote", Edits: []DiagnosticEdit{{Path: "ci.yml", Start: DiagnosticPosition{2, 3}, End: DiagnosticPosition{3, 4}, Replacement: "\"$value\""}}}}}
@@ -64,7 +108,7 @@ func TestCheckResultSchema(t *testing.T) {
 		if len(parseErrors) != 0 {
 			t.Fatal(parseErrors)
 		}
-		result.Workflows = []WorkflowOutline{workflowOutline("ci.yml", workflow, false)}
+		result.Documents = DocumentOutlines{workflowOutline("ci.yml", workflow, false)}
 		if code == 1 || code == 3 {
 			result.Diagnostics = []Diagnostic{diagnostic}
 		}

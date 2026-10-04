@@ -187,21 +187,11 @@ func (l *analysisEngine) check(
 		all = append(all, l.filterErrors(findings, cfg.PathConfigs(findingPath))...)
 	}
 
-	diagnosticDir := l.workingDir
-	if resolved, err := filepath.EvalSymlinks(diagnosticDir); err == nil {
-		diagnosticDir = resolved
-	}
 	for _, err := range all {
 		if err.Filepath == "" {
 			err.Filepath = path // Populate filename in the error
-		} else if filepath.IsAbs(err.Filepath) {
-			sourcePath := err.Filepath
-			if resolved, e := filepath.EvalSymlinks(sourcePath); e == nil {
-				sourcePath = resolved
-			}
-			if relative, e := filepath.Rel(diagnosticDir, sourcePath); e == nil {
-				err.Filepath = relative
-			}
+		} else {
+			err.Filepath = relativeAnalysisPath(l.workingDir, err.Filepath)
 		}
 	}
 
@@ -214,6 +204,22 @@ func (l *analysisEngine) check(
 	}
 
 	return all, outline, analysisErr
+}
+
+func relativeAnalysisPath(directory, source string) string {
+	if !filepath.IsAbs(source) {
+		return source
+	}
+	if resolved, err := filepath.EvalSymlinks(directory); err == nil {
+		directory = resolved
+	}
+	if resolved, err := filepath.EvalSymlinks(source); err == nil {
+		source = resolved
+	}
+	if relative, err := filepath.Rel(directory, source); err == nil {
+		return relative
+	}
+	return source
 }
 
 func (l *analysisEngine) filterErrors(errs []*Error, cfgs []PathConfig) []*Error {

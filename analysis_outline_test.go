@@ -3,6 +3,8 @@ package actionlint
 import (
 	"bytes"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -31,10 +33,12 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(analysis.Workflows) != 3 {
-		t.Fatalf("lost input inventory: %+v", analysis.Workflows)
+	if len(analysis.Documents) != 3 {
+		t.Fatalf("lost input inventory: %+v", analysis.Documents)
 	}
-	clean, partial, broken := analysis.Workflows[0], analysis.Workflows[1], analysis.Workflows[2]
+	clean := requireWorkflowOutline(t, analysis.Documents[0])
+	partial := requireWorkflowOutline(t, analysis.Documents[1])
+	broken := requireWorkflowOutline(t, analysis.Documents[2])
 	if clean.Path != "clean.yml" || clean.Name != "Build" || clean.ParseStatus != "complete" || !reflect.DeepEqual(clean.Triggers, []string{"push", "workflow_dispatch"}) {
 		t.Fatalf("wrong workflow: %+v", clean)
 	}
@@ -72,11 +76,94 @@ jobs:
 	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(report.Workflows, analysis.Workflows) {
+	if !reflect.DeepEqual(report.Documents, analysis.Documents) {
 		t.Fatalf("JSON lost outlines: %s", &output)
 	}
 	if strings.Contains(output.String(), "echo hi") {
 		t.Fatal("outline unexpectedly includes script bodies")
+	}
+}
+
+func TestAnalysisActionDocuments(t *testing.T) {
+	dir := t.TempDir()
+	const manifest = "name: Local\ndescription: Local test action\ninputs:\n  Token:\n    description: A token\n    required: true\n    default: ''\nruns:\n  using: composite\n  steps:\n    - id: child\n      uses: actions/checkout@v7\n"
+	for name, content := range map[string]string{"action.yml": manifest, "broken/action.yml": "runs: ["} {
+		path := filepath.Join(dir, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const source = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/\n      - uses: $/\n      - uses: $/broken\n      - uses: $/missing\n"
+	analysis, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Project: &Project{root: dir}}}, WorkingDir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(analysis.Documents) != 3 {
+		t.Fatalf("wanted workflow and two read manifests: %+v", analysis.Documents)
+	}
+	action, ok := analysis.Documents[1].(ActionOutline)
+	if !ok || action.Path != "action.yml" || action.ParseStatus != "complete" {
+		t.Fatalf("wrong action document: %+v", analysis.Documents[1])
+	}
+	broken, ok := analysis.Documents[2].(ActionOutline)
+	if !ok || broken.ParseStatus != "failed" {
+		t.Fatalf("missing failed parse document: %+v", analysis.Documents[2])
+	}
+	data, err := json.Marshal(analysis.CheckResult())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result CheckResult
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(result.Documents, analysis.Documents) {
+		t.Fatalf("document roundtrip lost data: %s", data)
+	}
+}
+
+func requireWorkflowOutline(t *testing.T, document DocumentOutline) WorkflowOutline {
+	t.Helper()
+	workflow, ok := document.(WorkflowOutline)
+	if !ok {
+		t.Fatalf("expected workflow, got %T", document)
+	}
+	return workflow
+}
+
+func TestAnalysisEmptyDocuments(t *testing.T) {
+	result, err := Analyze(t.Context(), AnalysisRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, result := range []CheckResult{result.CheckResult(), (&AnalysisResult{}).CheckResult(), NewCheckResult(3)} {
+		data, err := json.Marshal(result)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var object map[string]json.RawMessage
+		if err := json.Unmarshal(data, &object); err != nil {
+			t.Fatal(err)
+		}
+		if string(object["documents"]) != "[]" {
+			t.Fatalf("empty inventory omitted or null: %s", data)
+		}
+	}
+}
+
+func TestAnalysisPartialWorkflowCall(t *testing.T) {
+	const source = "on: push\njobs:\n  call:\n    uses: owner/repo/.github/workflows/build.yml@main\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n"
+	workflow, errs := Parse([]byte(source))
+	if len(errs) == 0 || workflow.Jobs["call"].WorkflowCall != nil {
+		t.Fatal("fixture must contain rejected workflow call")
+	}
+	outline := workflowOutline("ci.yml", workflow, true)
+	job := outline.Jobs[0]
+	if outline.ParseStatus != "partial" || job.Uses != "owner/repo/.github/workflows/build.yml@main" || job.Reference == nil || len(job.Steps) != 1 {
+		t.Fatalf("partial call declaration lost: %+v", outline)
 	}
 }
 

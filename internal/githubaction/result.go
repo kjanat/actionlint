@@ -29,7 +29,7 @@ func (a *action) checkResult(code int, failure error) actionlint.CheckResult {
 	r := actionlint.NewCheckResult(code)
 	if a.result != nil {
 		lint := a.result
-		r.Workflows = lint.workflows
+		r.Documents = lint.documents
 		if lint.fileCountKnown {
 			r.FileCount = &lint.fileCount
 		}

@@ -25,18 +25,73 @@ export type ResultConfig = {
 
 /** Parsed workflow declarations and source positions. */
 export type WorkflowOutline = {
+	kind: 'workflow';
 	path: string;
 	name?: string;
 	parse_status: 'complete' | 'partial' | 'failed';
 	triggers: string[];
 	jobs: JobOutline[];
+	description?: never;
+	inputs?: never;
+	outputs?: never;
+	runs?: never;
 };
+export type ActionOutline = {
+	kind: 'action';
+	path: string;
+	name?: string;
+	description?: string;
+	parse_status: 'complete' | 'partial' | 'failed';
+	inputs: ActionInputOutline[];
+	outputs: ActionOutputOutline[];
+	runs: ActionRunsOutline;
+	triggers?: never;
+	jobs?: never;
+};
+export type DocumentOutline = WorkflowOutline | ActionOutline;
+export type ActionInputOutline = {
+	id: string;
+	description?: string;
+	required?: boolean;
+	default?: string;
+	start?: Position;
+};
+export type ActionOutputOutline = { id: string; description?: string; value?: string; start?: Position };
+export type ActionRunsOutline =
+	| { kind: 'composite'; steps: StepOutline[] }
+	| { kind: 'javascript'; using: string; main?: string; pre?: string; post?: string; pre_if?: string; post_if?: string }
+	| {
+		kind: 'docker';
+		image?: string;
+		entrypoint?: string;
+		pre_entrypoint?: string;
+		post_entrypoint?: string;
+		args: string[];
+	}
+	| { kind: 'plugin'; plugin: string }
+	| { kind: 'unknown'; using?: string };
+export type UsesReference =
+	| {
+		kind: 'repository';
+		owner: string;
+		repo: string;
+		subpath: string;
+		ref: string;
+		host?: string;
+		scheme?: string;
+		host_source: 'default' | 'explicit' | 'self';
+	}
+	| { kind: 'workspace' | 'self-repository'; path: string }
+	| { kind: 'container'; image: string }
+	| { kind: 'builtin'; name: string }
+	| { kind: 'unknown' };
 export type JobOutline = {
 	id: string;
 	name?: string;
 	start?: Position;
 	needs: string[];
 	uses?: string;
+	reference?: UsesReference;
 	steps: StepOutline[];
 };
 export type StepOutline = {
@@ -46,6 +101,7 @@ export type StepOutline = {
 	/** Known kinds: run, uses, wait, cancel, parallel, unknown. */
 	kind: string;
 	uses?: string;
+	reference?: UsesReference;
 	/** Children of a parallel step, in declaration order. */
 	steps?: StepOutline[];
 };
@@ -56,7 +112,7 @@ export type ResultData = {
 	diagnostics: Diagnostic[];
 	configurations: ResultConfig[];
 	hints: string[];
-	workflows?: WorkflowOutline[];
+	documents?: DocumentOutline[];
 	sarif?: Record<string, unknown>;
 	error?: string;
 };

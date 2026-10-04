@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"runtime"
@@ -45,7 +46,7 @@ type AnalysisRequest struct {
 type AnalysisResult struct {
 	Configurations []ConfigReport
 	Diagnostics    []Diagnostic
-	Workflows      []WorkflowOutline
+	Documents      DocumentOutlines
 	Inputs         []string
 	files          []analyzedFile
 }
@@ -103,6 +104,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		shellcheckSettings: request.ShellcheckSettings,
 		ignorePats:         request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: analysisLogger{log, level}}
 	inputs := &inputFiles{}
+	documents := &actionDocuments{byPath: map[string]ActionOutline{}}
 	proc := newConcurrentProcess(ctx, runtime.NumCPU())
 	actions := NewLocalActionsCacheFactory(engine.debugWriter())
 	cwd := request.WorkingDir
@@ -125,6 +127,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	for _, source := range request.Sources {
 		ac, wc := actions.GetCache(source.Project), workflows.GetCache(source.Project)
 		ac.onRead, wc.onRead = inputs.add, inputs.add
+		ac.onDocument = documents.add
 		ac.readFile, wc.readFile = readFile, readFile
 	}
 	group := errgroup.Group{}
@@ -156,12 +159,45 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		err = ctx.Err()
 	}
 	result.collectDiagnostics()
-	result.Workflows = make([]WorkflowOutline, 0, len(result.files))
+	result.Documents = make(DocumentOutlines, 0, len(result.files))
 	for _, file := range result.files {
-		result.Workflows = append(result.Workflows, file.outline)
+		result.Documents = append(result.Documents, file.outline)
+	}
+	for _, document := range documents.list() {
+		result.Documents = append(result.Documents, document.WithPath(relativeAnalysisPath(engine.workingDir, document.DocumentPath())))
 	}
 	result.Inputs = inputs.list()
 	return result, err
+}
+
+type actionDocuments struct {
+	mu     sync.Mutex
+	byPath map[string]ActionOutline
+}
+
+func (d *actionDocuments) add(document ActionOutline) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	path := absPath(document.Path)
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		path = resolved
+	}
+	d.byPath[path] = document
+}
+
+func (d *actionDocuments) list() DocumentOutlines {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	paths := make([]string, 0, len(d.byPath))
+	for path := range d.byPath {
+		paths = append(paths, path)
+	}
+	slices.Sort(paths)
+	documents := make(DocumentOutlines, 0, len(paths))
+	for _, path := range paths {
+		documents = append(documents, d.byPath[path])
+	}
+	return documents
 }
 
 func (r *AnalysisResult) collectDiagnostics() {

@@ -2,6 +2,7 @@ package actionlint
 
 import (
 	"cmp"
+	"encoding/json"
 	"slices"
 )
 
@@ -19,24 +20,26 @@ type WorkflowOutline struct {
 // JobOutline retains declared IDs and references, including unresolved expressions.
 // Jobs appear in source order. Start points to the job key, when available.
 type JobOutline struct {
-	ID    string              `json:"id"`
-	Name  string              `json:"name,omitempty"`
-	Start *DiagnosticPosition `json:"start,omitempty"`
-	Needs []string            `json:"needs"`
-	Uses  string              `json:"uses,omitempty"`
-	Steps []StepOutline       `json:"steps"`
+	ID        string              `json:"id"`
+	Name      string              `json:"name,omitempty"`
+	Start     *DiagnosticPosition `json:"start,omitempty"`
+	Needs     []string            `json:"needs"`
+	Uses      string              `json:"uses,omitempty"`
+	Reference UsesReference       `json:"reference,omitempty"`
+	Steps     []StepOutline       `json:"steps"`
 }
 
 // StepOutline identifies a declared step without exporting scripts or parser internals.
 // Kind is run, uses, wait, cancel, parallel, or unknown; consumers must allow new kinds.
 // Steps contains the children of a parallel group, in declaration order.
 type StepOutline struct {
-	ID    string              `json:"id,omitempty"`
-	Name  string              `json:"name,omitempty"`
-	Start *DiagnosticPosition `json:"start,omitempty"`
-	Kind  string              `json:"kind"`
-	Uses  string              `json:"uses,omitempty"`
-	Steps []StepOutline       `json:"steps,omitempty"`
+	ID        string              `json:"id,omitempty"`
+	Name      string              `json:"name,omitempty"`
+	Start     *DiagnosticPosition `json:"start,omitempty"`
+	Kind      string              `json:"kind"`
+	Uses      string              `json:"uses,omitempty"`
+	Reference UsesReference       `json:"reference,omitempty"`
+	Steps     []StepOutline       `json:"steps,omitempty"`
 }
 
 func workflowOutline(path string, workflow *Workflow, parseErrors bool) WorkflowOutline {
@@ -62,7 +65,10 @@ func workflowOutline(path string, workflow *Workflow, parseErrors bool) Workflow
 		}
 		if job.WorkflowCall != nil {
 			record.Uses = outlineString(job.WorkflowCall.Uses)
+		} else {
+			record.Uses = outlineString(job.declaredUses)
 		}
+		record.Reference = ParseUsesReference(record.Uses)
 		outline.Jobs = append(outline.Jobs, record)
 	}
 	slices.SortFunc(outline.Jobs, func(a, b JobOutline) int {
@@ -96,6 +102,7 @@ func stepOutlines(steps []*Step) []StepOutline {
 			record.Kind = "run"
 		case *ExecAction:
 			record.Kind, record.Uses = "uses", outlineString(exec.Uses)
+			record.Reference = ParseUsesReference(record.Uses)
 		case *ExecWait:
 			record.Kind = "wait"
 		case *ExecCancel:
@@ -106,6 +113,46 @@ func stepOutlines(steps []*Step) []StepOutline {
 		records = append(records, record)
 	}
 	return records
+}
+
+// UnmarshalJSON restores the typed reference without exposing parser internals.
+func (j *JobOutline) UnmarshalJSON(data []byte) error {
+	type plain JobOutline
+	var value plain
+	wire := struct {
+		*plain
+		Reference json.RawMessage `json:"reference"`
+	}{plain: &value}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	reference, err := decodeUsesReference(wire.Reference)
+	if err != nil {
+		return err
+	}
+	value.Reference = reference
+	*j = JobOutline(value)
+	return nil
+}
+
+// UnmarshalJSON restores typed references and nested parallel steps.
+func (s *StepOutline) UnmarshalJSON(data []byte) error {
+	type plain StepOutline
+	var value plain
+	wire := struct {
+		*plain
+		Reference json.RawMessage `json:"reference"`
+	}{plain: &value}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	reference, err := decodeUsesReference(wire.Reference)
+	if err != nil {
+		return err
+	}
+	value.Reference = reference
+	*s = StepOutline(value)
+	return nil
 }
 
 func outlineString(value *String) string {

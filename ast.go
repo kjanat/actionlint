@@ -1207,6 +1207,8 @@ type Job struct {
 	// WorkflowCall is a workflow call by 'uses:'.
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_iduses
 	WorkflowCall *WorkflowCall
+	// declaredUses retains a call rejected because it also declares step-only keys.
+	declaredUses *String
 	// Snapshot is a custom image snapshot.
 	// https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idsnapshot
 	Snapshot *Snapshot
