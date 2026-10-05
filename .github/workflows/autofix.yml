@@ -17,11 +17,13 @@ jobs:
       - { uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e, with: { go-version-file: go.mod } } # v7
       - name: x/tools/go/analysis modernize
         run: go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...
+      - name: Regenerate the configuration schema
+        run: go generate -run generate-config-schema
       - name: format the code
         # autofix-ci will fail if the .github directory is touched
         run: dprint fmt --allow-no-files --diff --excludes .github
       - uses: autofix-ci/action@c5b2d67aa2274e7b5a18224e8171550871fc7e4a # v1
         with:
-          comment: Applied automated formatting and modernization fixes. Please review the generated commit.
-          commit-message: Apply automated formatting and modernization fixes
+          comment: Applied schema, formatting and modernization fixes. Please review the generated commit.
+          commit-message: Apply schema, formatting and modernization fixes
           fail-fast: ${{ github.event_name == 'pull_request' }}

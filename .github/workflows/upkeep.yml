@@ -44,7 +44,8 @@ jobs:
           elif [[ "${status}" -ne 0 ]]; then
             exit "${status}"
           fi
-      - run: go generate
+      - name: Refresh upstream action and workflow metadata
+        run: go generate -skip generate-config-schema
         env: { GH_TOKEN: "${{ github.token }}" }
       - name: Warn when the pull request will carry no CI
         env: { UPKEEP_TOKEN: "${{ secrets.UPKEEP_TOKEN }}" }
