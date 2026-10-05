@@ -11,19 +11,40 @@ jobs:
     if: github.event.pull_request.stack == null
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Test autofix change tracking
+        run: bash scripts/test-autofix-step.bash
       # Without this action, dprint has to recompile the wasm plugins each time the action runs,
       # which is often, and wastes time, energy, and sanity.
       - uses: kjanat/install-dprint@c2cdca92154b44b2a2c15222d25d91d1cddfca1b # v2.2.0
       - { uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e, with: { go-version-file: go.mod } } # v7
       - name: x/tools/go/analysis modernize
-        run: go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...
+        id: modernize
+        run: bash scripts/autofix-step.bash go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...
       - name: Regenerate the configuration schema
-        run: go generate -run generate-config-schema
+        id: schema
+        run: bash scripts/autofix-step.bash go generate -run generate-config-schema
       - name: format the code
+        id: format
         # autofix-ci will fail if the .github directory is touched
-        run: dprint fmt --allow-no-files --diff --excludes .github
+        run: bash scripts/autofix-step.bash dprint fmt --allow-no-files --diff --excludes .github
+      - name: Describe applied fixes
+        id: fixes
+        env:
+          MODERNIZE_CHANGED: ${{ steps.modernize.outputs.changed }}
+          SCHEMA_CHANGED: ${{ steps.schema.outputs.changed }}
+          FORMAT_CHANGED: ${{ steps.format.outputs.changed }}
+        run: |
+          changes=()
+          if [[ "$MODERNIZE_CHANGED" == true ]]; then changes+=('modernize Go'); fi
+          if [[ "$SCHEMA_CHANGED" == true ]]; then changes+=('regenerate configuration schema'); fi
+          if [[ "$FORMAT_CHANGED" == true ]]; then changes+=('format code'); fi
+          if (( ${#changes[@]} )); then
+            printf -v description '%s, ' "${changes[@]}"
+            printf 'description=%s\n' "${description%, }" >> "$GITHUB_OUTPUT"
+          fi
       - uses: autofix-ci/action@c5b2d67aa2274e7b5a18224e8171550871fc7e4a # v1
+        if: steps.fixes.outputs.description != ''
         with:
-          comment: Applied schema, formatting and modernization fixes. Please review the generated commit.
-          commit-message: Apply schema, formatting and modernization fixes
+          comment: "Applied fixes: ${{ steps.fixes.outputs.description }}. Please review the generated commit."
+          commit-message: "chore: ${{ steps.fixes.outputs.description }}"
           fail-fast: ${{ github.event_name == 'pull_request' }}
