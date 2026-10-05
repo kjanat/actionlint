@@ -2,6 +2,7 @@
 set -euo pipefail
 
 script=$(cd "$(dirname "$0")" && pwd)/autofix-step.bash
+inputs_script=$(cd "$(dirname "$0")" && pwd)/autofix-inputs.bash
 temp_root=$(cd "${TMPDIR:-/tmp}" && pwd -P)
 temporary=$(mktemp -d "${temp_root}/actionlint-autofix-test.XXXXXX")
 cleanup() {
@@ -63,6 +64,51 @@ bash "${script}" bash -c 'echo partial > tracked; exit 7' || status=$?
 [[ ! -s "${GITHUB_OUTPUT}" ]]
 leftover=$(find "${TMPDIR}" -mindepth 1 -print -quit)
 [[ -z "${leftover}" ]]
+
+# Exercise selection against real Git trees, including added and removed inputs.
+expect_inputs() {
+	local base=$1 head=$2 tables=$3 readme=$4
+	local output
+	: >"${GITHUB_OUTPUT}"
+	bash "${inputs_script}" "${base}" "${head}"
+	output=$(cat "${GITHUB_OUTPUT}")
+	[[ "${output}" == "$(printf 'tables=%s\nreadme=%s' "${tables}" "${readme}")" ]]
+}
+
+check_input() {
+	local path=$1 tables=$2 readme=$3
+	local base head directory
+	base=$(git write-tree)
+	directory=$(dirname "${path}")
+	mkdir -p "${directory}"
+	echo fixture >"${path}"
+	git add --all
+	head=$(git write-tree)
+	expect_inputs "${base}" "${head}" "${tables}" "${readme}"
+	expect_inputs "${head}" "${base}" "${tables}" "${readme}"
+}
+
+check_input docs/unrelated.md false false
+check_input scripts/generate-popular-actions/popular_actions.json true false
+check_input scripts/generate-action-metadata/main.go true false
+check_input scripts/generate-webhook-events/main.go true false
+check_input scripts/generate-availability/main.go true false
+check_input popular_actions.go true false
+check_input docs/screenshots/demo-workflow.yaml false true
+check_input docs/screenshots/actionlint.yaml false true
+check_input scripts/check-readme/main.go false true
+check_input README.md false true
+check_input go.mod true true
+check_input .github/workflows/autofix.yml true true
+check_input scripts/autofix-inputs.bash true true
+tree=$(git write-tree)
+expect_inputs "${tree}" "${tree}" false false
+
+# An unavailable comparison must fail the job.
+status=0
+bash "${inputs_script}" missing-ref HEAD 2>"${temporary}/error" || status=$?
+[[ "${status}" != 0 ]]
+: >"${GITHUB_OUTPUT}"
 
 # A snapshot failure must stop before running the tool.
 git symbolic-ref HEAD refs/heads/unborn
