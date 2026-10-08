@@ -10,6 +10,91 @@ The [14 September 2026 measurements](expression-results/2026-09-14.md) contain t
 
 ## What to watch for
 
+### Condition source is different from a computed string
+
+A YAML null (`if: null`, `if: ~`, or an empty value), an empty string, and a
+whitespace-only string become `success()`. A sole expression string literal is
+folded before the resulting condition text is parsed:
+
+| Condition source                    | Meaning                           |
+| ----------------------------------- | --------------------------------- |
+| `${{ '' }}` or `${{ ' ' }}`         | `success()`                       |
+| `${{ 'false' }}`                    | Boolean `false`; skips            |
+| `${{ '1 == 2' }}`                   | False comparison; skips           |
+| `${{ 'failure()' }}`                | Status function                   |
+| `${{ 'nope' }}`                     | Invalid variable reference        |
+| `${{ format('') }}`                 | Computed empty string; falsy      |
+| `${{ format('false') }}`            | Computed non-empty string; truthy |
+| `${{ env.FLAG }}` with `FLAG=false` | String data; truthy               |
+
+Quoted YAML `"null"` is expression source and evaluates to null, unlike YAML
+null itself. Literal folding is specific to the condition conversion; text from
+`env`, outputs, or function calls is not parsed a second time.
+
+The [template reader][condition-reader] and [condition converter][condition-converter]
+at runner revision `80bb1fb827fa44d489263061e71ef4adba7ad8cd` define these stages.
+Local step-schema evaluation covers both expression engines with loose JSON and
+anchors rejected. The Go regression tests cover step, job, and snapshot parsing.
+These are source and local SDK checks, not a new hosted capture.
+
+### String flags can disagree with boolean comparisons
+
+The output string `'0'` is truthy, but also compares equal to boolean `false`.
+Consequently, `if: steps.check.outputs.flag` can run while
+`if: steps.check.outputs.flag == true` skips. Mixed-kind equality is not
+transitive: `'' == 0` and `0 == '0'` are true, but `'' == '0'` is false.
+
+Use an explicit string contract such as `flag == 'true'`, remembering that Actions
+string equality ignores case. Use `fromJSON(flag)` only when the producer supplies
+a validated JSON boolean. The opt-in [condition policies](config.md#expression-and-matrix-conditions)
+flag bare string gates and comparisons with numeric or boolean literals.
+
+### JSON member collisions depend on parsing mode
+
+Object lookup ignores case. Literal `fromJSON('{"approved":false,"APPROVED":true}')`
+has two spellings of the same member. In local SDK comparisons, loose parsing keeps
+the last member and strict parsing keeps the first. Actionlint reports such
+collisions recursively, retaining repeated occurrences and JSON offsets, and avoids
+inferring a selected value. Composite action output declarations already reject
+case-colliding names. Outputs created by scripts remain outside that static check.
+
+The comparison uses revision `80bb1fb827fa44d489263061e71ef4adba7ad8cd`, the next
+engine's `FromJson` entrypoint, and changes only `StrictJsonParsing`. Anchors do not
+apply to this entrypoint. It establishes a JSON-mode difference, not an engine
+difference or evidence that github.com enables strict mode.
+
+### Matrix expression arrays insert one level
+
+In local strategy evaluation, an expression returning an array inside a sequence
+inserts its elements into that sequence. `[before, ${{ fromJSON('["one","two"]') }}, after]`
+produces four axis values. A literal nested `[one, two]` remains one value, producing
+three. An expression returning `[]` inserts nothing; one returning `[[1,2],[3,4]]`
+inserts two arrays. Array-producing entries in `include` and `exclude` follow the
+same sequence rule.
+
+The local `EvalStrategy` measurement uses revision
+`80bb1fb827fa44d489263061e71ef4adba7ad8cd`, the next engine, loose JSON, and anchors
+rejected. Matrix type inference has regression coverage for insertion, nested
+literal arrays, empty arrays, and include entries. Hosted behavior for this exact
+reproduction has not been measured.
+
+### Serialization is not a portable constant fold
+
+Negative-zero text differs across the legacy and next engines, and strict versus
+loose `fromJSON('-0')` can preserve or discard its sign. Strict parsing can also
+reject non-finite text emitted by `toJSON()`, so `fromJSON(toJSON(x))` is not always
+an identity. The local expression comparisons use runner revision
+`80bb1fb827fa44d489263061e71ef4adba7ad8cd`: engine comparisons keep JSON loose;
+JSON-mode comparisons keep the next engine fixed. Anchors do not apply.
+
+Actionlint's condition evaluator leaves serialization and ambiguous JSON values
+unknown. Its tests require this conservative behavior rather than assigning one
+runtime mode's result to every workflow. The existing hosted negative-zero result
+is linked in [Read the evidence](#read-the-evidence).
+
+[condition-reader]: https://github.com/actions/runner/blob/80bb1fb827fa44d489263061e71ef4adba7ad8cd/src/Sdk/DTObjectTemplating/ObjectTemplating/TemplateReader.cs
+[condition-converter]: https://github.com/actions/runner/blob/80bb1fb827fa44d489263061e71ef4adba7ad8cd/src/Sdk/DTPipelines/Pipelines/ObjectTemplating/PipelineTemplateConverter.cs
+
 ### The same digits can mean different numbers
 
 The string `017` compares equal to decimal `17` through implicit expression coercion. Passing that string through `fromJSON()` produces `15`. JavaScript's `JSON.parse()` rejects it as invalid JSON.

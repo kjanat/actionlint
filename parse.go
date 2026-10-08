@@ -384,6 +384,18 @@ func (p *parser) parseString(n *yaml.Node, allowEmpty bool) *String {
 	return newString(n)
 }
 
+// parseCondition preserves the distinction between YAML null and the string "null".
+func (p *parser) parseCondition(n *yaml.Node) *String {
+	s := p.parseString(n, true)
+	if n.Tag == "!!null" {
+		s.Value = ""
+	}
+	if strings.TrimSpace(s.Value) == "" {
+		s.Value = "success()"
+	}
+	return s
+}
+
 // parseStaticString folds a sole literal expression before downstream validation.
 func (p *parser) parseStaticString(n *yaml.Node) *String {
 	if value := literalExpressionValue(n.Value); value != nil {
@@ -1662,7 +1674,7 @@ func (p *parser) parseStep(n *yaml.Node) *Step {
 		case "id":
 			ret.ID = p.parseStaticString(e.val)
 		case "if":
-			ret.If = p.parseString(e.val, false)
+			ret.If = p.parseCondition(e.val)
 		case "name":
 			ret.Name = p.parseString(e.val, true)
 		case "env":
@@ -1777,7 +1789,7 @@ func (p *parser) parseSnapshot(pos *Pos, n *yaml.Node) *Snapshot {
 			case "version":
 				ret.Version = p.parseString(e.val, false)
 			case "if":
-				ret.If = p.parseString(e.val, false)
+				ret.If = p.parseCondition(e.val)
 			default:
 				p.unexpectedKey(e.key, "snapshot", []string{"image-name", "version", "if"})
 			}
@@ -1846,7 +1858,7 @@ func (p *parser) parseJob(id *String, n *yaml.Node) *Job {
 		case "defaults":
 			ret.Defaults = p.parseDefaults(k.Pos, v)
 		case "if":
-			ret.If = p.parseString(v, false)
+			ret.If = p.parseCondition(v)
 		case "steps":
 			ret.Steps = p.parseSteps(v)
 		case "timeout-minutes":

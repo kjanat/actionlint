@@ -130,14 +130,11 @@ func stepCondition(condition *String) (enabled, known bool) {
 	if condition == nil {
 		return true, true
 	}
-	expression := *condition
-	if !expression.ContainsExpression() {
-		expression.Value = "${{ " + expression.Value + " }}"
-	}
-	value, known := workflowExpressionLiteral(&expression)
+	expression, _, _ := parseConditionExpression(condition.Value)
+	value, known := conditionConstantValue(expression)
 	if !known {
 		// Explicit success() has the same gate as an ordinary step.
-		if call, ok := parseAssignedExpression(expression.Value).(*FuncCallNode); ok && strings.EqualFold(call.Callee, "success") && len(call.Args) == 0 {
+		if call, ok := expression.(*FuncCallNode); ok && strings.EqualFold(call.Callee, "success") && len(call.Args) == 0 {
 			return true, true
 		}
 		return false, false

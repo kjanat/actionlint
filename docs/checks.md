@@ -3227,7 +3227,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:9:13: constant expression "false" in condition. remove the if: section [if-cond]
+test.yaml:9:13: constant expression "false" in condition is always falsy. this step or job will be skipped [if-cond]
   |
 9 |         if: false
   |             ^~~~~
@@ -3247,9 +3247,12 @@ test.yaml:29:13: if: condition "${{ github.event_name == 'push' }} && ${{ github
 
 [Playground](https://kjanat.github.io/actionlint/#eNq0zz1OxDAQBeA+p3hYyK7CASxtw484ATVyYEKM1vZqZ0yz+O7Iy18iohBAVFH03nwzTtFil3lomsfUsW0AIZb6BfY5clsLuctRcrt1NTtGLLTj1xbQ1qYF3Q0J6vLq/Ob6BKeHAx68DLk7oyeKchtdIJSi3mYA31v0bss0o5iLFIIXeD4eR/dmMjaPbzYwtW1Qys/N548/LNl/g//jcPU9CrWGhSQE5+OUX5K1fo/31H+GY+QXG1e8R+tx6+tylPISAAD//9rl1qA=)
 
-actionlint reports constant conditions at `if:` like `if: true` as error because they are usually leftover debug code like
-`#if 0` in C. `if: true` should be removed because it doesn't affect the workflow behavior. `if: false` should be replaced with
-commenting out because it is more obvious (or simply remove the step or job if not needed).
+actionlint reports conditions whose outcome is provably constant. Removing `if: true`
+preserves the default success gate. An always-false condition skips the guarded work;
+removing it would enable that work. The diagnostic therefore does not suggest removal
+for false conditions. Blank and YAML-null conditions use `success()`. A sole string
+literal expression is folded and parsed as condition source; computed strings remain
+values. See [expression behavior](expression-behavior.md#condition-source-is-different-from-a-computed-string).
 
 In addition, evaluation of `${{ }}` at `if:` condition is tricky. When the expression in `${{ }}` is evaluated to boolean value
 and there is no extra characters around the `${{ }}`, the condition is evaluated to the boolean value. Otherwise the condition is

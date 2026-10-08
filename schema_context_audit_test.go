@@ -170,7 +170,7 @@ func TestSchemaAuditExpressionVisitorCoverage(t *testing.T) {
 		{"strategy include scalar", `strategy: ${{ fromJSON('{"matrix":{"include":[1]}}') }}`, "run: echo test", "strategy.matrix.include[] must be object"},
 		{"strategy exclude scalar", `strategy: ${{ fromJSON('{"matrix":{"exclude":[true]}}') }}`, "run: echo test", "strategy.matrix.exclude[] must be object"},
 		{"strategy heterogeneous include", `strategy: ${{ fromJSON('{"matrix":{"include":[{},1]}}') }}`, "run: echo test", "strategy.matrix.include[1] must be object"},
-		{"strategy duplicate matrix", `strategy: ${{ fromJSON('{"matrix":{},"Matrix":{}}') }}`, "run: echo test", `duplicate property "matrix"`},
+		{"strategy duplicate matrix", `strategy: ${{ fromJSON('{"matrix":{},"Matrix":{}}') }}`, "run: echo test", `collide under case-insensitive lookup`},
 		{"strategy boolean property", `strategy: ${{ fromJSON('{"fail-fast":1}') }}`, "run: echo test", "strategy.fail-fast must be bool"},
 		{"strategy zero parallelism", `strategy: ${{ fromJSON('{"max-parallel":0}') }}`, "run: echo test", "must be greater than zero"},
 		{"strategy negative parallelism", `strategy: ${{ fromJSON('{"Max-Parallel":-2}') }}`, "run: echo test", "must be greater than zero"},

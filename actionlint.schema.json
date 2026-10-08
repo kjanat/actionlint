@@ -143,6 +143,19 @@
                 }
               ]
             },
+            "case-insensitive-conditions": {
+              "title": "case-insensitive-conditions",
+              "description": "Reports identity-like string comparisons in conditions. Disabled by default.",
+              "markdownDescription": "Reports identity-like string comparisons in conditions. Disabled by default.",
+              "oneOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "disallow-suppressions": {
               "title": "disallow-suppressions",
               "description": "Restricts inline cache policy exceptions. `true` or `{}` reports each prohibited directive and retains its original violations. Omission, null, or false permits exceptions. Both ignore and ignore-next-line are covered equally.\n\nUse `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs. Omitted rules selects all suppressible rules; an explicit list must be nonempty. Report accepts suppression (directive only), violation (original findings only), or all (both kinds of diagnostic).",
@@ -187,6 +200,32 @@
                       "additionalProperties": false
                     }
                   ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "mixed-type-comparisons": {
+              "title": "mixed-type-comparisons",
+              "description": "Reports string gates compared to numeric or boolean literals. Disabled by default.",
+              "markdownDescription": "Reports string gates compared to numeric or boolean literals. Disabled by default.",
+              "oneOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "mixed-type-matrix-filters": {
+              "title": "mixed-type-matrix-filters",
+              "description": "Reports matrix filters which rely on loose type coercion. Disabled by default.",
+              "markdownDescription": "Reports matrix filters which rely on loose type coercion. Disabled by default.",
+              "oneOf": [
+                {
+                  "type": "boolean"
                 },
                 {
                   "type": "null"
@@ -288,6 +327,19 @@
                     "type": "string",
                     "minLength": 1
                   }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "string-conditions": {
+              "title": "string-conditions",
+              "description": "Reports bare string-valued gates. Disabled by default.",
+              "markdownDescription": "Reports bare string-valued gates. Disabled by default.",
+              "oneOf": [
+                {
+                  "type": "boolean"
                 },
                 {
                   "type": "null"

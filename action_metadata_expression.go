@@ -24,8 +24,8 @@ func actionExpressionViolations(s string, bare bool, field string) []actionExpre
 	if !ok {
 		return nil
 	}
-	if bare && !strings.Contains(s, "${{") {
-		s = "${{" + s + "}}"
+	if bare && (!strings.Contains(s, "${{") || literalExpressionValue(s) != nil) {
+		s = "${{" + conditionSource(s) + "}}"
 	}
 	seen := map[actionExpressionViolation]bool{}
 	var out []actionExpressionViolation
@@ -55,6 +55,17 @@ func actionExpressionViolations(s string, bare bool, field string) []actionExpre
 				}
 			case *FuncCallNode:
 				name := strings.ToLower(n.Callee)
+				if name == "fromjson" && len(n.Args) == 1 {
+					if literal, ok := n.Args[0].(*StringNode); ok {
+						for _, collision := range jsonMemberCollisions(literal.Value) {
+							v := actionExpressionViolation{message: fmt.Sprintf("fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", collision.first, collision.second, collision.offset)}
+							if !seen[v] {
+								seen[v] = true
+								out = append(out, v)
+							}
+						}
+					}
+				}
 				if !slices.Contains(actionMetadataSpecialFunctions, name) {
 					signatures, ok := BuiltinFuncSignatures[name]
 					if !ok {

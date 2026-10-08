@@ -64,6 +64,14 @@ type PathConfig struct {
 // Cache policies are enabled by default; the remaining checks are opt-in.
 // An omitted or null setting retains the check's default.
 type Policy struct {
+	// StringConditions reports bare string-valued gates. Disabled by default.
+	StringConditions *bool `yaml:"string-conditions" jsonschema:"nullable"`
+	// MixedTypeComparisons reports string gates compared to numeric or boolean literals. Disabled by default.
+	MixedTypeComparisons *bool `yaml:"mixed-type-comparisons" jsonschema:"nullable"`
+	// CaseInsensitiveConditions reports identity-like string comparisons in conditions. Disabled by default.
+	CaseInsensitiveConditions *bool `yaml:"case-insensitive-conditions" jsonschema:"nullable"`
+	// MixedTypeMatrixFilters reports matrix filters which rely on loose type coercion. Disabled by default.
+	MixedTypeMatrixFilters *bool `yaml:"mixed-type-matrix-filters" jsonschema:"nullable"`
 	// CacheCallUnrestricted requires explicit cache ceilings on low-trust reusable calls.
 	// Enabled by default. Set false to disable it; null or omission keeps the default.
 	CacheCallUnrestricted *bool `yaml:"cache-call-unrestricted" jsonschema:"nullable,default=true"`
@@ -151,6 +159,14 @@ func (p *Policy) UnmarshalYAML(n *yaml.Node) error {
 		k, v := n.Content[i], n.Content[i+1]
 		var err error
 		switch k.Value {
+		case "string-conditions":
+			err = v.Decode(&p.StringConditions)
+		case "mixed-type-comparisons":
+			err = v.Decode(&p.MixedTypeComparisons)
+		case "case-insensitive-conditions":
+			err = v.Decode(&p.CaseInsensitiveConditions)
+		case "mixed-type-matrix-filters":
+			err = v.Decode(&p.MixedTypeMatrixFilters)
 		case "cache-write-untrusted":
 			err = v.Decode(&p.CacheWriteUntrusted)
 		case "cache-call-unrestricted":
