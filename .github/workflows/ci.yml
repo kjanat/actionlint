@@ -77,7 +77,7 @@ jobs:
       - name: Build and test playground
         run: run --source make -s playground:make:build playground:make:test
       - name: Lint JavaScript workspaces
-        run: run lint
+        run: run package.json:lint
   javascript:
     name: JavaScript
     runs-on: ubuntu-latest
