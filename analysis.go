@@ -96,6 +96,28 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	if request.WorkingDir == "" {
+		var err error
+		request.WorkingDir, err = os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+	}
+	selected := make([]SourceUnit, 0, len(request.Sources))
+	for _, source := range request.Sources {
+		root := request.WorkingDir
+		if source.Project != nil {
+			root = source.Project.RootDir()
+		}
+		path := source.inputPath
+		if path == "" {
+			path = source.Path
+		}
+		if source.Config.includesFile(path, root) {
+			selected = append(selected, source)
+		}
+	}
+	request.Sources = selected
 	if level != LogLevelNone {
 		log = &analysisLogWriter{out: log}
 	}
@@ -137,6 +159,11 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 			path = source.Path
 		}
 		inputs.add(path)
+		if source.Config != nil {
+			for _, configFile := range source.Config.configFiles {
+				inputs.add(configFile)
+			}
+		}
 		if source.Project != nil {
 			inputs.add(source.Project.configPath)
 		}

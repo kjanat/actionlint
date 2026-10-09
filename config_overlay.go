@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"actionlint.kjanat.dev/internal/configtree"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -79,112 +80,17 @@ func ParseConfigOverlay(input string, content []byte) (ConfigOverlay, error) {
 	if err := node.Load(&config, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
 		return ConfigOverlay{}, fmt.Errorf("input %s: %w", input, err)
 	}
+	if len(config.Extends) > 0 {
+		return ConfigOverlay{}, fmt.Errorf("input %s: extends requires a config file origin", input)
+	}
 	if _, err := resolveConfigNode(node, nil); err != nil {
 		return ConfigOverlay{}, fmt.Errorf("input %s: %w", input, err)
 	}
-	node, err := expandConfigNode(node, make(map[*yaml.Node]bool))
+	node, err := configtree.Expand(node, make(map[*yaml.Node]bool))
 	if err != nil {
 		return ConfigOverlay{}, fmt.Errorf("input %s: %w", input, err)
 	}
 	return ConfigOverlay{input, normalizeToolSwitch(node)}, nil
-}
-
-// Resolve aliases and YAML merge keys before overlaying. Otherwise replacing an
-// anchor's value can invalidate aliases elsewhere in an unchanged section.
-func expandConfigNode(node *yaml.Node, visiting map[*yaml.Node]bool) (*yaml.Node, error) {
-	if node == nil {
-		return nil, nil
-	}
-	if visiting[node] {
-		return nil, fmt.Errorf("cyclic YAML alias at line %d", node.Line)
-	}
-	visiting[node] = true
-	defer delete(visiting, node)
-	if node.Kind == yaml.AliasNode {
-		return expandConfigNode(node.Alias, visiting)
-	}
-	expandedNode := *node
-	expandedNode.Anchor = ""
-	expandedNode.Content = make([]*yaml.Node, len(node.Content))
-	for i, child := range node.Content {
-		expanded, err := expandConfigNode(child, visiting)
-		if err != nil {
-			return nil, err
-		}
-		expandedNode.Content[i] = expanded
-	}
-	if expandedNode.Kind != yaml.MappingNode {
-		return &expandedNode, nil
-	}
-	entries := make([]*yaml.Node, 0, len(expandedNode.Content))
-	keys := make(map[string]bool)
-	var inherited []*yaml.Node
-	for i := 0; i < len(expandedNode.Content); i += 2 {
-		key, value := expandedNode.Content[i], expandedNode.Content[i+1]
-		if key.ShortTag() != "!!merge" {
-			entries = append(entries, key, value)
-			keys[key.Value] = true
-			continue
-		}
-		if value.Kind == yaml.SequenceNode {
-			inherited = append(inherited, value.Content...)
-		} else {
-			inherited = append(inherited, value)
-		}
-	}
-	// Explicit keys win; in a merge sequence, the first mapping wins.
-	for _, mapping := range inherited {
-		if mapping.Kind != yaml.MappingNode {
-			return nil, fmt.Errorf("YAML merge must contain mappings at line %d", mapping.Line)
-		}
-		for i := 0; i < len(mapping.Content); i += 2 {
-			key, value := mapping.Content[i], mapping.Content[i+1]
-			if !keys[key.Value] {
-				entries = append(entries, key, value)
-				keys[key.Value] = true
-			}
-		}
-	}
-	expandedNode.Content = entries
-	return &expandedNode, nil
-}
-
-// mergeConfigNodes returns a fresh mapping, never mutating a loaded config or
-// an input. Lists/scalars replace; explicit null resets; empty maps inherit.
-func mergeConfigNodes(base, overlay *yaml.Node, inputs map[*yaml.Node]configInput) *yaml.Node {
-	for base != nil && base.Kind == yaml.AliasNode {
-		base = base.Alias
-	}
-	for overlay.Kind == yaml.AliasNode {
-		overlay = overlay.Alias
-	}
-	if base == nil || base.Kind != yaml.MappingNode || overlay.Kind != yaml.MappingNode {
-		if base != nil && base.Tag == "!!null" && inputs[base].name != "" && overlay.Kind == yaml.MappingNode {
-			// A later partial mapping must retain the reset of its omitted fields.
-			replacement := *overlay
-			inputs[&replacement] = configInput{name: inputs[overlay].name, reset: base}
-			return &replacement
-		}
-		return overlay
-	}
-	merged := *base
-	inputs[&merged] = inputs[base]
-	merged.Content = append([]*yaml.Node{}, base.Content...)
-	for i := 0; i < len(overlay.Content); i += 2 {
-		key, value := overlay.Content[i], overlay.Content[i+1]
-		found := false
-		for j := 0; j < len(merged.Content); j += 2 {
-			if merged.Content[j].Value == key.Value {
-				merged.Content[j+1] = mergeConfigNodes(merged.Content[j+1], value, inputs)
-				found = true
-				break
-			}
-		}
-		if !found {
-			merged.Content = append(merged.Content, key, value)
-		}
-	}
-	return &merged
 }
 
 type loadedConfig struct {
@@ -248,7 +154,7 @@ func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
 	}
 	inputs := make(map[*yaml.Node]configInput)
 	if len(s.overlays) > 0 {
-		expanded, err := expandConfigNode(node, make(map[*yaml.Node]bool))
+		expanded, err := configtree.Expand(node, make(map[*yaml.Node]bool))
 		if err != nil {
 			return nil, fmt.Errorf("configuration %s: %w", report.File, err)
 		}
@@ -256,7 +162,7 @@ func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
 	}
 	for _, overlay := range s.overlays {
 		markConfigInput(overlay.node, overlay.name, inputs)
-		node = mergeConfigNodes(node, overlay.node, inputs)
+		node = configtree.Merge(node, overlay.node, inputs)
 		report.Overrides = append(report.Overrides, overlay.name)
 	}
 	if len(s.overlays) > 0 {
@@ -268,6 +174,7 @@ func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
 		cfg = resolved.config
 		if source != nil {
 			cfg.filename = absPath(source.filename)
+			cfg.configFiles = source.config.configFiles
 		}
 	} else if source == nil {
 		var err error
@@ -288,13 +195,10 @@ func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
 	return cfg, nil
 }
 
-type configInput struct {
-	name  string
-	reset *yaml.Node
-}
+type configInput = configtree.Input
 
 func markConfigInput(node *yaml.Node, input string, inputs map[*yaml.Node]configInput) {
-	inputs[node] = configInput{name: input}
+	inputs[node] = configInput{Name: input}
 	for _, child := range node.Content {
 		markConfigInput(child, input, inputs)
 	}

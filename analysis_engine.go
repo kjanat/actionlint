@@ -33,6 +33,20 @@ func (l *analysisEngine) check(
 	usedRules *[]Rule,
 ) ([]*Error, error) {
 	// Each call owns its rules; caches and process scheduling are shared across files.
+	projectConfig := cfg
+	root := l.workingDir
+	if project != nil {
+		root = project.RootDir()
+	}
+	var configErr error
+	configPath := path
+	if !filepath.IsAbs(configPath) {
+		configPath = filepath.Join(l.workingDir, configPath)
+	}
+	cfg, configErr = configForFile(cfg, configPath, root)
+	if configErr != nil {
+		return nil, configErr
+	}
 	cfg = l.rulePresets.apply(cfg)
 
 	var start time.Time
@@ -78,7 +92,7 @@ func (l *analysisEngine) check(
 			}
 			// Shared analysis passes can emit independently configured diagnostics;
 			// keep them running. Disabled external tools need not be launched.
-			if descriptor.Category == "external" && cfg.diagnosticLevel(descriptor.Name) == "off" {
+			if descriptor.Category == "external" && cfg.diagnosticLevel(descriptor.Name) == "off" && (projectConfig == nil || len(projectConfig.Overrides) == 0) {
 				continue
 			}
 			if descriptor.enabled != nil && !descriptor.enabled(c) {
@@ -187,7 +201,15 @@ func (l *analysisEngine) check(
 	}
 	all = nil
 	for findingPath, findings := range byPath {
-		findingConfig := cfg
+		findingConfigPath := findingPath
+		if findingPath == path {
+			findingConfigPath = configPath
+		}
+		findingConfig, err := configForFile(projectConfig, findingConfigPath, root)
+		if err != nil {
+			return nil, err
+		}
+		findingConfig = l.rulePresets.apply(findingConfig)
 		findings = slices.DeleteFunc(findings, func(e *Error) bool {
 			switch findingConfig.diagnosticLevel(e.Kind) {
 			case "off":

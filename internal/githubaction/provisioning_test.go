@@ -15,6 +15,9 @@ func TestToolPlanUsesEffectiveConfiguration(t *testing.T) {
 		shellcheck bool
 	}{
 		{name: "defaults", shellcheck: true},
+		{name: "discovered includes", files: map[string]string{".github/actionlint.yaml": "files: {includes: ['.github/workflows/*.yml']}"}, shellcheck: true},
+		{name: "discovered excludes", files: map[string]string{".github/actionlint.yaml": "files: {excludes: ['.github/workflows/*.yml']}"}},
+		{name: "discovered override", files: map[string]string{".github/actionlint.yaml": "overrides: [{includes: ['**/*.yml'], lint: {rules: {external: {shellcheck: off}}}}]"}},
 		{name: "yaml", files: map[string]string{".github/actionlint.yaml": "tools:\n  shellcheck: false\n"}},
 		{name: "yml", files: map[string]string{".github/actionlint.yml": "tools:\n  shellcheck:\n    enabled: false\n"}},
 		{name: "yaml precedence", files: map[string]string{

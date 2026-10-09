@@ -41,6 +41,13 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		return schema
 	}
 	switch t {
+	case reflect.TypeFor[actionlint.FilesConfig]():
+		mapping := reflectMapping(struct {
+			Includes []string `yaml:"includes" jsonschema:"nullable,description=Repository-relative doublestar globs. Omitted or null selects all files; an empty array selects none. A leading ! excludes a match."`
+			Excludes []string `yaml:"excludes" jsonschema:"nullable,description=Repository-relative exclusions. Exclusions always win over includes."`
+		}{})
+		mapping.Version, mapping.ID = "", ""
+		return mapping
 	case reflect.TypeFor[actionlint.RuleLevel]():
 		return &jsonschema.Schema{
 			Description: "Diagnostic level: default, off, on, info, warn, or error.",
@@ -220,7 +227,7 @@ func documentFields(s *jsonschema.Schema) {
 
 func documentedReflector() (*jsonschema.Reflector, error) {
 	r := reflector()
-	for _, file := range []string{"config.go", "config_lint.go", "config_rule_settings.go", "rule_options.go"} {
+	for _, file := range []string{"config.go", "config_lint.go", "config_rule_settings.go", "rule_options.go", "config_file_overrides.go"} {
 		if err := r.AddGoComments("actionlint.kjanat.dev", file, jsonschema.WithFullComment()); err != nil {
 			return nil, fmt.Errorf("read config comments: %w", err)
 		}

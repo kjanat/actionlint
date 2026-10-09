@@ -40,12 +40,66 @@ top level, in `self-hosted-runner`, and in `paths` entries, with their locations
 and accepted alternatives. New inline overlays reject unknown keys. Regex and glob
 validity is checked when actionlint loads the file.
 
+## Extending configuration
+
+Use `extends` to share local configuration files:
+
+```yaml
+extends: [../config/actionlint-base.yml, ../config/team.yml]
+files:
+  includes: [".github/workflows/**/*.{yml,yaml}"]
+  excludes: [".github/workflows/generated/**"]
+```
+
+Each path resolves relative to the file declaring it. Bases are applied in order,
+then the declaring file wins. Maps merge recursively; arrays and scalar values
+replace earlier values. `null` resets the selected setting. Inherited ShellCheck
+rc paths retain the directory of their declaring configuration.
+
+Only local files are supported: no remote downloads, package resolution, or
+commands. Missing bases, cycles, invalid base settings, and chains deeper than
+32 levels are errors. `ReadConfigFile` and file-based CLI configuration resolve
+inheritance. In-memory `ParseConfig` and inline Action overlays cannot resolve
+`extends`; select a configuration file instead.
+
+## File selection
+
+Top-level `files` controls which input files are analyzed, independently of lint
+rule settings. Patterns are repository-relative doublestar globs using `/`; when
+there is no repository, they are relative to the working directory. They filter
+selected inputs and do not discover additional files.
+
+Omitted or `null` `includes` selects every input; `includes: []` selects none.
+`excludes` and include patterns starting with `!` exclude matches regardless of
+order. A negative-only include list selects nothing. Excluded input files are
+not read or linted, even when explicitly passed on the command line. Referenced
+actions, reusable workflows, and shell sources can still be read as dependencies
+of included workflows; this is input selection, not a filesystem access boundary.
+
+Use `overrides` to change settings for selected files without excluding them:
+
+```yaml
+overrides:
+  - includes: [".github/workflows/release*.yml"]
+    excludes: [".github/workflows/release-preview.yml"]
+    lint:
+      rules:
+        policy:
+          require-commit-hash: error
+```
+
+Matching overrides merge in order, with later settings winning. Each entry needs
+at least one positive include pattern; exclusions affect that entry only.
+
 ## Lint rules
 
 The `lint` section owns analysis settings. Rules are grouped by concern:
 `correctness`, `suspicious`, `security`, `policy`, and `external`. The separate
 `nursery` group is reserved for rules under development. Optional stable rules
-belong to their concern groups. Formatting and LSP options are not implemented yet.
+belong to their concern groups. The shared
+configuration resolver is used by analysis frontends. Top-level `overrides` provide
+file scopes that can also host future formatter settings. Formatting and LSP
+options are not implemented yet; do not add placeholder keys for them.
 
 ```yaml
 lint:
@@ -80,7 +134,7 @@ suppresses all lint diagnostics. Configuration, I/O and other operational errors
 
 Resolution order is: existing defaults/legacy policy settings, global preset,
 CLI presets, group preset/level, individual rule settings, then explicit exclusion
-lists. `--experimental=false`
+lists. File overrides are merged before that resolution. `--experimental=false`
 is an explicit exclusion of nursery rules only. `--strict` selects all stable
 rules but respects group and individual exceptions. Existing top-level `policy`
 settings remain supported; `lint.rules` settings take precedence. The cache safety
@@ -131,6 +185,33 @@ selects it. `--experimental=false` disables only nursery rules, never stable
 rules. There are currently no nursery rules, so the flag currently adds none.
 The former unreleased `lint.rules.experimental` section is rejected; configure
 the four stable checks under `suspicious` instead.
+
+### Per-file overrides
+
+```yaml
+overrides:
+  - includes: [".github/workflows/**/*.{yml,yaml}", "!.github/workflows/release.yml"]
+    lint:
+      rules:
+        suspicious:
+          mixed-type-matrix-filters: warn
+  - includes: [".github/workflows/legacy.yml"]
+    lint:
+      rules:
+        correctness:
+          deprecated-commands: off
+        suspicious: off
+```
+
+Patterns use repository-relative paths with `/` and [doublestar globs][doublestar].
+Without a repository, paths are relative to the analysis working directory.
+An entry needs at least one positive pattern. Any matching `!` exclusion wins
+within that entry, independent of order. Absolute paths and parent traversal are rejected.
+All matching entries apply in order; later values win. Mappings merge, lists
+replace, omitted fields inherit, and `null` resets a section to its defaults.
+Group and rule level shorthands retain their level when overlaid by a partial
+mapping. Rule object settings require `level`; omitted option keys inherit.
+Each file gets its own effective configuration, without changing other files.
 
 ## ShellCheck
 
