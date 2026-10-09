@@ -918,8 +918,8 @@
                             },
                             "inline-suppression": {
                               "title": "inline-suppression",
-                              "description": "Checks inline cache policy exception directives",
-                              "markdownDescription": "Checks inline cache policy exception directives",
+                              "description": "Checks inline diagnostic suppression directives",
+                              "markdownDescription": "Checks inline diagnostic suppression directives",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -2044,9 +2044,38 @@
                                                   "items": {
                                                     "type": "string",
                                                     "enum": [
+                                                      "action",
                                                       "cache-call-unrestricted",
                                                       "cache-operation",
-                                                      "cache-write-untrusted"
+                                                      "cache-write-untrusted",
+                                                      "case-insensitive-conditions",
+                                                      "credentials",
+                                                      "deprecated-commands",
+                                                      "disallow-suppressions",
+                                                      "env-var",
+                                                      "events",
+                                                      "executable-bit",
+                                                      "expression",
+                                                      "glob",
+                                                      "id",
+                                                      "if-cond",
+                                                      "inline-suppression",
+                                                      "job-needs",
+                                                      "matrix",
+                                                      "mixed-type-comparisons",
+                                                      "mixed-type-matrix-filters",
+                                                      "parallel-steps",
+                                                      "permissions",
+                                                      "require-commit-hash",
+                                                      "require-job-timeout",
+                                                      "require-permissions",
+                                                      "required-actions",
+                                                      "runner-label",
+                                                      "shell-name",
+                                                      "shellcheck",
+                                                      "string-conditions",
+                                                      "syntax-check",
+                                                      "workflow-call"
                                                     ]
                                                   }
                                                 }
@@ -4039,8 +4068,8 @@
                                       },
                                       "inline-suppression": {
                                         "title": "inline-suppression",
-                                        "description": "Checks inline cache policy exception directives",
-                                        "markdownDescription": "Checks inline cache policy exception directives",
+                                        "description": "Checks inline diagnostic suppression directives",
+                                        "markdownDescription": "Checks inline diagnostic suppression directives",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -5165,9 +5194,38 @@
                                                             "items": {
                                                               "type": "string",
                                                               "enum": [
+                                                                "action",
                                                                 "cache-call-unrestricted",
                                                                 "cache-operation",
-                                                                "cache-write-untrusted"
+                                                                "cache-write-untrusted",
+                                                                "case-insensitive-conditions",
+                                                                "credentials",
+                                                                "deprecated-commands",
+                                                                "disallow-suppressions",
+                                                                "env-var",
+                                                                "events",
+                                                                "executable-bit",
+                                                                "expression",
+                                                                "glob",
+                                                                "id",
+                                                                "if-cond",
+                                                                "inline-suppression",
+                                                                "job-needs",
+                                                                "matrix",
+                                                                "mixed-type-comparisons",
+                                                                "mixed-type-matrix-filters",
+                                                                "parallel-steps",
+                                                                "permissions",
+                                                                "require-commit-hash",
+                                                                "require-job-timeout",
+                                                                "require-permissions",
+                                                                "required-actions",
+                                                                "runner-label",
+                                                                "shell-name",
+                                                                "shellcheck",
+                                                                "string-conditions",
+                                                                "syntax-check",
+                                                                "workflow-call"
                                                               ]
                                                             }
                                                           }
@@ -6516,8 +6574,8 @@
             },
             "disallow-suppressions": {
               "title": "disallow-suppressions",
-              "description": "Restricts inline cache policy exceptions. `true` or `{}` reports each prohibited directive and retains its original violations. Omission, null, or false permits exceptions. Both ignore and ignore-next-line are covered equally.\n\nUse `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs. Omitted rules selects all suppressible rules; an explicit list must be nonempty. Report accepts suppression (directive only), violation (original findings only), or all (both kinds of diagnostic).",
-              "markdownDescription": "Restricts inline cache policy exceptions. `true` or `{}` reports each prohibited directive and retains its original violations. Omission, null, or false permits exceptions. Both ignore and ignore-next-line are covered equally.\n\nUse `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs. Omitted rules selects all suppressible rules; an explicit list must be nonempty. Report accepts suppression (directive only), violation (original findings only), or all (both kinds of diagnostic).",
+              "description": "Restricts inline diagnostic exceptions. `true` or `{}` reports each prohibited directive and retains its original violations. Omission, null, or false permits exceptions. Both ignore and ignore-next-line are covered equally.\n\nUse `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs. Omitted rules selects all suppressible rules; an explicit list must be nonempty. Report accepts suppression (directive only), violation (original findings only), or all (both kinds of diagnostic).",
+              "markdownDescription": "Restricts inline diagnostic exceptions. `true` or `{}` reports each prohibited directive and retains its original violations. Omission, null, or false permits exceptions. Both ignore and ignore-next-line are covered equally.\n\nUse `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs. Omitted rules selects all suppressible rules; an explicit list must be nonempty. Report accepts suppression (directive only), violation (original findings only), or all (both kinds of diagnostic).",
               "oneOf": [
                 {
                   "oneOf": [
@@ -6548,9 +6606,38 @@
                           "items": {
                             "type": "string",
                             "enum": [
+                              "action",
                               "cache-call-unrestricted",
                               "cache-operation",
-                              "cache-write-untrusted"
+                              "cache-write-untrusted",
+                              "case-insensitive-conditions",
+                              "credentials",
+                              "deprecated-commands",
+                              "disallow-suppressions",
+                              "env-var",
+                              "events",
+                              "executable-bit",
+                              "expression",
+                              "glob",
+                              "id",
+                              "if-cond",
+                              "inline-suppression",
+                              "job-needs",
+                              "matrix",
+                              "mixed-type-comparisons",
+                              "mixed-type-matrix-filters",
+                              "parallel-steps",
+                              "permissions",
+                              "require-commit-hash",
+                              "require-job-timeout",
+                              "require-permissions",
+                              "required-actions",
+                              "runner-label",
+                              "shell-name",
+                              "shellcheck",
+                              "string-conditions",
+                              "syntax-check",
+                              "workflow-call"
                             ]
                           }
                         }

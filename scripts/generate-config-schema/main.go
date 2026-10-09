@@ -65,8 +65,8 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			Disable []string              `yaml:"disable" jsonschema:"description=Suppress these diagnostic rule IDs at every severity. Omission or an empty list suppresses none."`
 		}{})
 		disable, _ := mapping.Properties.Get("disable")
-		for _, rule := range actionlint.BuiltinRules() {
-			disable.Items.Enum = append(disable.Items.Enum, rule.Name)
+		for _, name := range actionlint.InlineSuppressibleRules() {
+			disable.Items.Enum = append(disable.Items.Enum, name)
 		}
 		disable.Type = ""
 		disable.OneOf = []*jsonschema.Schema{{Type: "array"}, {Type: "null"}}

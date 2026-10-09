@@ -19,7 +19,7 @@ func TestInlineSuppressionMultilinePlainComments(t *testing.T) {
 			for _, tc := range []struct {
 				name, rule, config, kind string
 			}{
-				{"unsupported", "expression", "", "inline-suppression"},
+				{"unsupported", "unknown-rule", "", "inline-suppression"},
 				{"prohibited", "cache-operation", "policy: {disallow-suppressions: true}", "disallow-suppressions"},
 			} {
 				t.Run(value+"/"+ending+"/"+tc.name, func(t *testing.T) {
@@ -69,7 +69,7 @@ func TestInlineSuppressionStages(t *testing.T) {
 }
 
 func TestInlineSuppressionScalarPrefixes(t *testing.T) {
-	const invalid = "# actionlint:ignore expression -- reviewed"
+	const invalid = "# actionlint:ignore unknown-rule -- reviewed"
 	const allowed = "# actionlint:ignore cache-operation -- reviewed"
 	for _, tc := range []struct {
 		name, value string
@@ -81,7 +81,7 @@ func TestInlineSuppressionScalarPrefixes(t *testing.T) {
 		{"property only", "name: !!str " + invalid + "\n  title\n", 2},
 		{"property and value", "name: !!str " + invalid + "\n  title " + allowed + "\n", 2},
 		{"property and block header", "name: !!str " + allowed + "\n  | " + invalid + "\n    title\n", 3},
-		{"standalone before scalar", "name: !!str\n  # actionlint:ignore-next-line expression -- reviewed\n  title\n", 3},
+		{"standalone before scalar", "name: !!str\n  # actionlint:ignore-next-line unknown-rule -- reviewed\n  title\n", 3},
 		{"block body is text", "name: !!str\n  | " + invalid + "\n    title " + allowed + "\n", 3},
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {

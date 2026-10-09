@@ -9,7 +9,12 @@ import (
 // InlineSuppressibleRules returns the rule IDs accepted by inline directives and
 // disallow-suppressions configuration. The returned slice is owned by the caller.
 func InlineSuppressibleRules() []string {
-	return []string{"cache-write-untrusted", "cache-call-unrestricted", "cache-operation"}
+	rules := builtinRuleDescriptors()
+	names := make([]string, 0, len(rules))
+	for _, rule := range rules {
+		names = append(names, rule.Name)
+	}
+	return names
 }
 
 func isInlineSuppressibleRule(name string) bool {
@@ -80,8 +85,23 @@ func filterInlineSuppressions(source []byte, errors []*Error, policy *Suppressio
 			directives = append(directives, directive)
 		}
 	}
-	filtered := applyInlineSuppressions(errors, directives, policy)
-	return append(filtered, directiveErrors...)
+	return applyInlineSuppressions(append(errors, directiveErrors...), directives, policy)
+}
+
+// Scope directives to the diagnostic's own YAML source, never its caller.
+func filterForeignInlineSuppressions(source []byte, findings []*Error, policy *SuppressionsPolicy) []*Error {
+	path := findings[0].Filepath
+	local := make([]*Error, len(findings))
+	for i, finding := range findings {
+		scoped := *finding
+		scoped.source = nil
+		local[i] = &scoped
+	}
+	local = filterInlineSuppressions(source, local, policy)
+	for _, finding := range local {
+		finding.source, finding.Filepath = source, path
+	}
+	return local
 }
 
 // applyInlineSuppressions enforces restrictions independently of YAML layout.

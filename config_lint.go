@@ -53,7 +53,7 @@ func (c *LintRulesConfig) UnmarshalYAML(n *yaml.Node) error {
 		return err
 	}
 	for _, name := range next.Disable {
-		if _, ok := findRuleDescriptor(name); !ok {
+		if !isInlineSuppressibleRule(name) {
 			return fmt.Errorf("yaml: unknown diagnostic rule %q in lint.rules.disable", name)
 		}
 	}

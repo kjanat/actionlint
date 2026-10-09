@@ -200,6 +200,13 @@ func (l *analysisEngine) check(
 	}
 	all = nil
 	for findingPath, findings := range byPath {
+		if findingPath != path && len(findings) > 0 && findings[0].source != nil && (filepath.Ext(findingPath) == ".yml" || filepath.Ext(findingPath) == ".yaml") {
+			var policy *SuppressionsPolicy
+			if cfg != nil {
+				policy = cfg.Policy.DisallowSuppressions
+			}
+			findings = filterForeignInlineSuppressions(findings[0].source, findings, policy)
+		}
 		findings = slices.DeleteFunc(findings, func(e *Error) bool {
 			// Dependency findings belong to this workflow's configured analysis.
 			switch cfg.diagnosticLevel(e.Kind) {

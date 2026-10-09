@@ -241,11 +241,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks inline cache policy exception directives",
+                "description": "Checks inline diagnostic suppression directives",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks inline cache policy exception directives"
+                "text": "Checks inline diagnostic suppression directives"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
