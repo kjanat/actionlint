@@ -2,7 +2,6 @@ package actionlint
 
 import (
 	"encoding/json"
-	"os/exec"
 	"path/filepath"
 
 	"slices"
@@ -238,16 +237,12 @@ func TestCompositeShellcheckConfigValidation(t *testing.T) {
 
 func TestCompositeSyntaxAndNestedActions(t *testing.T) {
 	command := shellcheckForTest(t)
-	python, err := exec.LookPath("pyflakes")
-	if err != nil {
-		t.Skip("Pyflakes required")
-	}
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	writeShellcheckFixture(t, root, "outer/action.yml", "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: ./inner\n")
 	metadata := writeShellcheckFixture(t, root, "inner/action.yaml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: |\n        if then\n    - shell: python\n      run: |\n        print(\n    - uses: ./outer\n")
-	result := compositeAnalysis(t, root, "- uses: ./outer", AnalysisOptions{Shellcheck: command, Pyflakes: python})
-	for _, rule := range []string{"shellcheck", "pyflakes"} {
+	result := compositeAnalysis(t, root, "- uses: ./outer", AnalysisOptions{Shellcheck: command})
+	for _, rule := range []string{"shellcheck"} {
 		if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == rule && filepath.Join(root, d.Path) == metadata }) {
 			t.Errorf("missing %s syntax finding: %+v", rule, result.Diagnostics)
 		}

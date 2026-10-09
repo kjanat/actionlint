@@ -3,7 +3,6 @@ package githubaction
 import (
 	"maps"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -76,21 +75,16 @@ func TestQuotedIgnoreHintPreservesDiagnostics(t *testing.T) {
 }
 
 func TestToolCommandsFromEnvironment(t *testing.T) {
-	python := `C:\tool cache\someone's python\python.exe`
-	script := `C:\tool cache\$pyflakes\launcher.py`
-	req := &lintRequest{shellcheck: "shellcheck", pyflakes: "pyflakes"}
-	env := map[string]string{"ACTIONLINT_SHELLCHECK_COMMAND": "/cache/shellcheck", "ACTIONLINT_PYTHON": python, "ACTIONLINT_PYFLAKES_SCRIPT": script}
+	req := &lintRequest{shellcheck: "shellcheck"}
+	env := map[string]string{"ACTIONLINT_SHELLCHECK_COMMAND": "/cache/shellcheck"}
 	if err := req.configureEnvironment(func(k string) string { return env[k] }); err != nil {
 		t.Fatal(err)
-	}
-	if req.pyflakesOptions == nil || req.pyflakesOptions.Executable == nil || *req.pyflakesOptions.Executable != python || !reflect.DeepEqual(req.pyflakesOptions.Arguments, []string{"-I", script}) {
-		t.Errorf("want literal Python executable and arguments, got %#v", req.pyflakesOptions)
 	}
 	if req.shellcheckOptions == nil || req.shellcheckOptions.Executable == nil || *req.shellcheckOptions.Executable != "/cache/shellcheck" {
 		t.Errorf("want provisioned shellcheck, got %#v", req.shellcheckOptions)
 	}
 	disabled := &lintRequest{}
-	if err := disabled.configureEnvironment(func(k string) string { return env[k] }); err != nil || disabled.shellcheck != "" || disabled.pyflakes != "" || disabled.shellcheckOptions != nil || disabled.pyflakesOptions != nil {
+	if err := disabled.configureEnvironment(func(k string) string { return env[k] }); err != nil || disabled.shellcheck != "" || disabled.shellcheckOptions != nil {
 		t.Errorf("disabled tools must stay disabled: %#v, %v", disabled, err)
 	}
 }
@@ -120,6 +114,10 @@ func TestActionMetadataOmitsSectionMirrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, key := range actionlint.ConfigKeys() {
+		// The released files input selects workflow paths, not a config section.
+		if key == "files" {
+			continue
+		}
 		if _, exists := metadata.Inputs[key]; exists {
 			t.Errorf("config section %s must use config overlay", key)
 		}

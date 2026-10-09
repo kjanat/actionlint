@@ -63,7 +63,6 @@ export default defineConfig(async ({ outDir }): Promise<UserConfig> => {
 		env: { NODE_ENV: 'production' },
 		define: {
 			__ACTIONLINT_VERSION__: JSON.stringify(version),
-			__PYFLAKES_LAUNCHER__: JSON.stringify(await readFile(new URL('./tools/pyflakes.py', import.meta.url), 'utf8')),
 		},
 		deps: { alwaysBundle: ['undici'], onlyImport: [] },
 		outputOptions: {

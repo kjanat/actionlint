@@ -24,8 +24,6 @@ jobs:
             with: &GoMod { go-version-file: go.mod }
           - uses: &SetupUv astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
             with: &NoCache { enable-cache: false }
-      - name: Install pyflakes
-        run: &InstallPyflakes uv tool install pyflakes; pyflakes --version
       - &InstallShellCheck { name: Install ShellCheck, uses: $/.github/actions/setup-shellcheck }
       - name: Install shells for completion tests on Linux
         if: ${{ runner.os == 'Linux' }}
@@ -45,7 +43,6 @@ jobs:
       - &GoGomod { uses: *SetupGo, with: *GoMod }
       - *InstallShellCheck
       - &Uv { uses: *SetupUv, with: *NoCache }
-      - &PyFlakes { name: Install pyflakes, run: *InstallPyflakes }
 
       - run: go test -v -race -coverprofile coverage.txt -covermode=atomic ./...
       - run: go tool cover -func ./coverage.txt
@@ -143,7 +140,6 @@ jobs:
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with: { version-file: .tool-versions, install-only: true, problem-matchers: true }
-      - *PyFlakes
       - run: go mod tidy -diff
       - name: Build through Makefile
         run: run make:build
@@ -204,7 +200,7 @@ jobs:
         with: { version: v2.18.0, args: check }
       - name: Validate release workflows with this checkout
         if: runner.os == 'Linux'
-        run: go run ./cmd/actionlint -shellcheck 'shellcheck -o all' -pyflakes=
+        run: go run ./cmd/actionlint -shellcheck 'shellcheck -o all'
           .github/workflows/release.yml .github/workflows/release-prepare.yml
           .github/workflows/npm-release.yml .github/workflows/major-tag.yml
       - name: Prepare the ordinary binary and release action
@@ -242,7 +238,6 @@ jobs:
           version-file: missing-actionlint-version
           install-only: true
           shellcheck: false
-          pyflakes: false
       - name: Check the installed version and prepare a version file
         run: |
           actionlint --version | grep -Fx 'actionlint.kjanat.dev 1.17.0'
@@ -256,7 +251,6 @@ jobs:
           version-file: .tool-versions
           install-only: true
           shellcheck: false
-          pyflakes: false
       - name: Check setup outputs and the surviving binary
         env:
           VERSION_OUTPUTS: ${{ toJSON(steps.setup-version.outputs) }}
@@ -363,7 +357,6 @@ jobs:
           [[ "${actionlint_path}" == */actionlint-bin-*/actionlint* ]]
           actionlint -version
           shellcheck --version
-          pyflakes --version
           node scripts/test-action.mjs "${RUNNER_TEMP}/actionlint-action/action" "${ACTIONLINT_ACTION_BINARY}"
       - name: Check exported tools from PowerShell
         if: runner.os == 'Windows'
@@ -373,7 +366,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           shellcheck --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          pyflakes --version
           exit $LASTEXITCODE
   action-slim:
     name: GitHub Action (ubuntu-slim)
@@ -390,7 +382,7 @@ jobs:
         id: slim
         uses: ./.actionlint-slim-test/actionlint-action/action
         env: { ACTIONLINT_ACTION_BINARY: "${{ github.workspace }}/.actionlint-slim-test/actionlint-test" }
-        with: { files: testdata/ok/minimal.yaml, pyflakes: false, shellcheck: false }
+        with: { files: testdata/ok/minimal.yaml, shellcheck: false }
       - name: Verify Dockerless result
         env: { RESULT: "${{ steps.slim.outputs.result }}" }
         run: test "${RESULT}" = success

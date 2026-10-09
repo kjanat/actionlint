@@ -93,20 +93,20 @@ With mise activated in your shell, run `runner install` from the repository root
 
 The task source is explicit in `runner.toml`, so adding another task with the same name does not change these defaults:
 
-| Command                              | Runs                                                     |
-| ------------------------------------ | -------------------------------------------------------- |
-| `runner build`                       | Go binary via Make, using checked-in generated sources   |
-| `runner test`                        | Go tests via Make, including its default race checks     |
-| `runner lint`                        | Go lint, vulnerability scan, and WebAssembly lint        |
-| `runner lint-docs`                   | Documentation examples; requires ShellCheck and Pyflakes |
-| `runner package.json:lint`           | Biome and playground ESLint/type checking                |
-| `runner package.json:test`           | Root JavaScript/TypeScript test tasks                    |
-| `runner actionlint-playground:build` | Playground Vite build                                    |
-| `runner actionlint-playground:test`  | Playground JavaScript tests                              |
+| Command                              | Runs                                                   |
+| ------------------------------------ | ------------------------------------------------------ |
+| `runner build`                       | Go binary via Make, using checked-in generated sources |
+| `runner test`                        | Go tests via Make, including its default race checks   |
+| `runner lint`                        | Go lint, vulnerability scan, and WebAssembly lint      |
+| `runner lint-docs`                   | Documentation examples; requires ShellCheck            |
+| `runner package.json:lint`           | Biome and playground ESLint/type checking              |
+| `runner package.json:test`           | Root JavaScript/TypeScript test tasks                  |
+| `runner actionlint-playground:build` | Playground Vite build                                  |
+| `runner actionlint-playground:test`  | Playground JavaScript tests                            |
 
 Source-qualified commands such as `runner make:lint` and `runner package.json:lint` remain available. `runner why lint` shows the selected command without executing it. To regenerate sources during a Go build, use `runner build SKIP_GO_GENERATE=`. When mise is not activated, use `mise exec -- runner lint` to expose its tools.
 
-Pyflakes is optional for ordinary development. To check the Python documentation examples without installing it globally, use `mise exec pipx:pyflakes@4.0.3 -- runner lint-docs`. CI runs both lint targets.
+Python linting is not part of actionlint. Documentation examples require ShellCheck; CI runs both lint targets.
 
 ## Building
 
@@ -147,7 +147,7 @@ make man/actionlint.1 PANDOC='pandoc --standalone --from=markdown-smart --no-hig
 
 Shell completions come from the built binary's `-completion bash`, `-completion zsh`, and `-completion fish` commands. For local configuration validation, install `actionlint.schema.json` and the `schemas/` tree together, preserving their relative paths so references such as `schemas/shellcheck/0.11.0.schema.json` resolve.
 
-Run `go test ./...` from the source root, including when only `cmd/actionlint` is built. That command directory has no tests; engine tests live in the root package and frontend tests in `internal/cli`. Put Git, Bash, ShellCheck, and Pyflakes on `PATH` for the tests. Ordinary builds use the checked-in generated sources; dependency fetching can happen before an offline build, as with Nix's `buildGoModule`.
+Run `go test ./...` from the source root, including when only `cmd/actionlint` is built. That command directory has no tests; engine tests live in the root package and frontend tests in `internal/cli`. Put Git, Bash, and ShellCheck on `PATH` for the tests. Ordinary builds use the checked-in generated sources; dependency fetching can happen before an offline build, as with Nix's `buildGoModule`.
 
 ### Nix development
 
@@ -160,7 +160,7 @@ nix flake check
 nix develop
 ```
 
-The default package runs `go test ./...` with the external linters and completion shells available. The flake's integration check verifies the installed version, help, configuration generation, package files, and ShellCheck and Pyflakes diagnostics. `nix develop` provides Go, Git, Make, Pandoc, the linters, Bash, Zsh, Fish, and `nixfmt`. It sets `GOTOOLCHAIN=local` so Go uses the compiler selected by Nix. Format the Nix files with `nix fmt`.
+The default package runs `go test ./...` with the external linters and completion shells available. The flake's integration check verifies the installed version, help, configuration generation, package files, and ShellCheck diagnostics. `nix develop` provides Go, Git, Make, Pandoc, the linters, Bash, Zsh, Fish, and `nixfmt`. It sets `GOTOOLCHAIN=local` so Go uses the compiler selected by Nix. Format the Nix files with `nix fmt`.
 
 The bump script updates the version in `flake.nix` together with the other release references and runs `nix flake check --no-update-lock-file` before creating a commit or tag. CI checks the package on every supported platform. Publishing binaries and images also requires those checks, including a match between the Nix version and the release tag. Update the package set with `nix flake update nixpkgs`, then run the checks. When Go dependencies change, update `vendorHash` in [nix/package.nix]: temporarily set it to `lib.fakeHash`, run `nix build`, and replace it with the hash reported by Nix.
 
@@ -227,7 +227,7 @@ These lints can be run with other checks by the following command.
 
 ```sh
 make lint
-make lint-docs # Requires ShellCheck and Pyflakes for the examples
+make lint-docs # Requires ShellCheck for the examples
 ```
 
 ## Fuzzing

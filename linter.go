@@ -58,9 +58,7 @@ type LinterOptions struct {
 	// "shellcheck" or file path like "/path/to/shellcheck", "path/to/shellcheck". When this value
 	// is empty, shellcheck won't run to check scripts in workflow file.
 	Shellcheck string
-	// Pyflakes is executable for running pyflakes external command. It can be command name like "pyflakes"
-	// or file path like "/path/to/pyflakes", "path/to/pyflakes". When this value is empty, pyflakes
-	// won't run to check scripts in workflow file.
+	// Deprecated: Pyflakes integration was removed. This field is ignored.
 	Pyflakes string
 	// IgnorePatterns is list of regular expression to filter errors. The pattern is applied to error
 	// messages. When an error is matched, the error is ignored.
@@ -93,7 +91,7 @@ type LinterOptions struct {
 	// OnFilesSelected is called with the exact file set passed to LintFiles. The callback receives
 	// a copy so modifying it does not affect linting.
 	OnFilesSelected func([]string)
-	// Context bounds the lifetime of the linting. Cancelling it kills the shellcheck and pyflakes
+	// Context bounds the lifetime of the linting. Cancelling it kills the ShellCheck
 	// child processes which are running. When this value is nil, context.Background() is used.
 	Context context.Context
 	// More options will come here
@@ -241,7 +239,7 @@ func LegacyAnalysisError(err error) error {
 func newLegacyAnalysisSession(opts *LinterOptions) (*AnalysisSession, error) {
 	return NewAnalysisSession(AnalysisOptions{
 		Context: opts.Context, WorkingDir: opts.WorkingDir, StdinFileName: opts.StdinFileName,
-		ConfigFile: opts.ConfigFile, ConfigOverlays: opts.ConfigOverlays, OnConfigLoaded: opts.OnConfigLoaded, Shellcheck: opts.Shellcheck, Pyflakes: opts.Pyflakes,
+		ConfigFile: opts.ConfigFile, ConfigOverlays: opts.ConfigOverlays, OnConfigLoaded: opts.OnConfigLoaded, Shellcheck: opts.Shellcheck,
 		IgnorePatterns: opts.IgnorePatterns, Verbose: opts.Verbose, Debug: opts.Debug,
 		LogWriter: opts.LogWriter, OnRulesCreated: opts.OnRulesCreated, OnFilesSelected: opts.OnFilesSelected,
 	})

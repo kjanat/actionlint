@@ -21,7 +21,7 @@ The [changelog] separates fork releases from inherited upstream history. Release
   type mismatches, ...
 - **Actions usage check** to check that inputs at `with:` and outputs in `steps.{id}.outputs` are correct
 - **Reusable workflow check** to check inputs/outputs/secrets of reusable workflows and workflow calls
-- **[shellcheck][shellcheck] and [pyflakes][pyflakes] integrations** for scripts at `run:`
+- **[shellcheck][shellcheck] integration** for scripts at `run:`
 - **Security checks**; [script injection][script-injection-doc] by untrusted inputs, hard-coded credentials
 - **Other several useful checks**; [glob syntax][filter-pattern-doc] validation, dependencies check for `needs:`, runner label validation, cron syntax validation, ...
 
@@ -251,7 +251,6 @@ actionlint is distributed under [the MIT license].
 [npm]: docs/install.md#npm
 [playground]: https://kjanat.github.io/actionlint/
 [pre-commit]: https://pre-commit.com
-[pyflakes]: https://github.com/PyCQA/pyflakes
 [releases]: https://github.com/kjanat/actionlint/releases
 [repo]: https://github.com/kjanat/actionlint
 [script-injection-doc]: https://docs.github.com/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks

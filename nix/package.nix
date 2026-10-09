@@ -41,7 +41,6 @@ buildGoModule {
     zsh
     fish
     shellcheck
-    python3Packages.pyflakes
   ];
 
   checkPhase = ''
@@ -66,7 +65,6 @@ buildGoModule {
     wrapProgram "$out/bin/actionlint" --prefix PATH : ${
       lib.makeBinPath [
         shellcheck
-        python3Packages.pyflakes
       ]
     }
   '';

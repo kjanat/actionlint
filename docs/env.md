@@ -116,9 +116,6 @@ the same color selection. `JQ_COLORS` is interpreted by `jq` itself.
 | `ACTIONLINT_SHELLCHECK_BIN`   | Literal ShellCheck executable name or path. Default: `shellcheck`. Empty disables it. |
 | `ACTIONLINT_SHELLCHECK_FLAGS` | Additional ShellCheck arguments.                                                      |
 | `ACTIONLINT_SHELLCHECK_ENV`   | Child environment overrides or forwarded variable names for ShellCheck.               |
-| `ACTIONLINT_PYFLAKES_BIN`     | Literal Pyflakes executable name or path. Default: `pyflakes`. Empty disables it.     |
-| `ACTIONLINT_PYFLAKES_FLAGS`   | Additional Pyflakes arguments, for example `-m pyflakes` when the binary is Python.   |
-| `ACTIONLINT_PYFLAKES_ENV`     | Child environment overrides or forwarded variable names for Pyflakes.                 |
 
 `_BIN` is a literal executable, so Windows paths containing spaces need no embedded
 quotes. `_FLAGS` accepts a JSON string array or a shell-style quoted argument list.
@@ -128,12 +125,10 @@ shell execution, environment expansion, command substitution, piping or redirect
 ```powershell
 $env:ACTIONLINT_SHELLCHECK_BIN = 'C:\Program Files\ShellCheck\shellcheck.exe'
 $env:ACTIONLINT_SHELLCHECK_FLAGS = '["-e", "SC2086"]'
-$env:ACTIONLINT_PYFLAKES_BIN = 'python3'
-$env:ACTIONLINT_PYFLAKES_FLAGS = '-m pyflakes'
 actionlint check workflow.yml
 ```
 
-An explicit `--shellcheck` or `--pyflakes` replaces **all three** environment
+An explicit `--shellcheck` replaces **all three** environment
 settings for that tool. The flags retain their existing command-line syntax;
 `--shellcheck=` disables ShellCheck even when its environment settings are present.
 An empty `_BIN` also disables its tool without parsing its `_FLAGS` or `_ENV`.

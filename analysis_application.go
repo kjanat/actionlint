@@ -27,10 +27,8 @@ type AnalysisOptions struct {
 	// QuietSelection suppresses the legacy file-selection and completion log messages.
 	QuietSelection     bool
 	Shellcheck         string
-	Pyflakes           string
 	ShellcheckOptions  *ExternalCommandOptions
 	ShellcheckSettings *ShellcheckSettings
-	PyflakesOptions    *ExternalCommandOptions
 	IgnorePatterns     []string
 	Verbose            bool
 	Debug              bool
@@ -103,7 +101,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 		stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected,
 		readFile:       opts.ReadFile,
 		logSelection:   !opts.QuietSelection,
-		request:        AnalysisRequest{ShellCheck: opts.Shellcheck, Pyflakes: opts.Pyflakes, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, PyflakesOptions: opts.PyflakesOptions, OnRulesCreated: opts.OnRulesCreated},
+		request:        AnalysisRequest{ShellCheck: opts.Shellcheck, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, OnRulesCreated: opts.OnRulesCreated},
 		analysisLogger: analysisLogger{logOut: opts.LogWriter},
 	}
 	if a.ctx == nil {

@@ -28,7 +28,6 @@ type checkInvocation struct {
 	ShellCheck        string
 	Pyflakes          string
 	ShellcheckOptions *actionlint.ExternalCommandOptions
-	PyflakesOptions   *actionlint.ExternalCommandOptions
 	Verbose           bool
 	Debug             bool
 }
@@ -51,7 +50,7 @@ func defaultInvocation() invocation {
 	return invocation{
 		Operation: "check",
 		Render:    renderOptions{PrettyJSON: true},
-		Check:     checkInvocation{StdinFilename: "<stdin>", ShellCheck: "shellcheck", Pyflakes: "pyflakes"},
+		Check:     checkInvocation{StdinFilename: "<stdin>", ShellCheck: "shellcheck"},
 	}
 }
 
@@ -146,9 +145,9 @@ func (inv invocation) request() (commandRequest, error) {
 	case operationRules:
 		return rulesRequest{Name: inv.Rule, JSON: inv.JSON}, nil
 	case operationDoctor:
-		return doctorRequest{Config: inv.Check.Config, ShellCheck: inv.Check.ShellCheck, Pyflakes: inv.Check.Pyflakes,
-			ShellcheckOptions: inv.Check.ShellcheckOptions, PyflakesOptions: inv.Check.PyflakesOptions,
-			JSON: inv.JSON, Hyperlinks: inv.Render.Hyperlinks}, nil
+		return doctorRequest{Config: inv.Check.Config, ShellCheck: inv.Check.ShellCheck,
+			ShellcheckOptions: inv.Check.ShellcheckOptions,
+			JSON:              inv.JSON, Hyperlinks: inv.Render.Hyperlinks}, nil
 	case operationConfigPath:
 		return configPathRequest{Config: inv.Check.Config, JSON: inv.JSON}, nil
 	case operationConfigShow:

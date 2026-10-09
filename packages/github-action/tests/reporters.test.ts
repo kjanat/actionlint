@@ -286,7 +286,7 @@ test('real entrypoint rejects malformed native results and summarizes input fail
 				`import * as tools from ${JSON.stringify(toolsURL)};`,
 				`import { writeOutputs } from ${JSON.stringify(workflowURL)};`,
 				`mock.module(${JSON.stringify(toolsURL)}, { namedExports: { ...tools,`,
-				'  inspectTools: async () => ({ shellcheck: false, pyflakes: false }),',
+				'  inspectTools: async () => ({ shellcheck: false }),',
 				'  executeNative: async (_executable, _args, environment) => {',
 				'    assert.ok(environment.ACTIONLINT_ACTION_RESULT);',
 				'    assert.ok(environment.ACTIONLINT_TEST_RESULT);',
@@ -315,7 +315,6 @@ test('real entrypoint rejects malformed native results and summarizes input fail
 				INPUT_ANNOTATIONS: scenario.annotations,
 				'INPUT_ADD-ACTIONLINT-TO-PATH': 'false',
 				'INPUT_ADD-SHELLCHECK-TO-PATH': 'false',
-				'INPUT_ADD-PYFLAKES-TO-PATH': 'false',
 			}, { timeoutMS: 5_000 });
 			assert.equal(child.exitCode, scenario.code, child.stderr);
 			assert.ok(child.stdout.includes('::error::'));

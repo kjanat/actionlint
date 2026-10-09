@@ -58,9 +58,12 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	if inv.JSON {
 		log = &commandJSONLogWriter{out: log}
 	}
+	if c.Pyflakes != "" {
+		fmt.Fprintln(log, "warning: --pyflakes is deprecated and ignored; Python script linting has been removed")
+	}
 	options := actionlint.LinterOptions{
 		Context: ctx, LogWriter: log, Color: r.Color, Oneline: r.Oneline,
-		Shellcheck: c.ShellCheck, Pyflakes: c.Pyflakes, ConfigFile: c.Config.Path,
+		Shellcheck: c.ShellCheck, ConfigFile: c.Config.Path,
 		IgnorePatterns: c.IgnoreRegex, StdinFileName: c.StdinFilename,
 		Format: r.Template, OutputFormat: r.Format,
 		Verbose: c.Verbose && !r.Quiet, Debug: c.Debug && !r.Quiet,
@@ -75,9 +78,9 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	}
 	app, err := actionlint.NewAnalysisSession(actionlint.AnalysisOptions{
 		Context: ctx, WorkingDir: options.WorkingDir, StdinFileName: options.StdinFileName,
-		ConfigFile: options.ConfigFile, Shellcheck: options.Shellcheck, Pyflakes: options.Pyflakes,
-		ShellcheckOptions: c.ShellcheckOptions, PyflakesOptions: c.PyflakesOptions,
-		IgnorePatterns: options.IgnorePatterns, Verbose: options.Verbose, Debug: options.Debug, LogWriter: log,
+		ConfigFile: options.ConfigFile, Shellcheck: options.Shellcheck,
+		ShellcheckOptions: c.ShellcheckOptions,
+		IgnorePatterns:    options.IgnorePatterns, Verbose: options.Verbose, Debug: options.Debug, LogWriter: log,
 		SkipProjectConfig: c.Config.Disabled || (!inv.Legacy && c.Config.Path != ""), QuietSelection: !inv.Legacy,
 	})
 	if err != nil {

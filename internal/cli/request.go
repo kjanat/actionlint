@@ -40,11 +40,11 @@ func (r rulesRequest) run(_ context.Context, streams Command) (int, error) {
 }
 
 type doctorRequest struct {
-	Config                             actionlint.ConfigSelection
-	ShellCheck, Pyflakes               string
-	ShellcheckOptions, PyflakesOptions *actionlint.ExternalCommandOptions
-	JSON                               bool
-	Hyperlinks                         hyperlinkMode
+	Config            actionlint.ConfigSelection
+	ShellCheck        string
+	ShellcheckOptions *actionlint.ExternalCommandOptions
+	JSON              bool
+	Hyperlinks        hyperlinkMode
 }
 
 func (r doctorRequest) run(_ context.Context, streams Command) (int, error) {

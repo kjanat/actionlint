@@ -309,20 +309,20 @@ syntax is the same as [RE2][re2].
 actionlint -ignore 'label ".+" is unknown' -ignore '".+" is potentially untrusted'
 ```
 
-`-shellcheck` and `-pyflakes` take a command line, not only a path. A command
-name, a file path, or a command with flags all work. Setting an empty string
-disables the `shellcheck` and `pyflakes` rules. As a bonus, disabling them makes
-actionlint much faster. These external linter integrations spawn many processes.
+The `-shellcheck` option accepts a command name, path, or command line with arguments.
+An empty value disables ShellCheck.
 
 ```sh
-actionlint -shellcheck= -pyflakes=
+actionlint -shellcheck=
 actionlint -shellcheck 'shellcheck -e SC2086'
-actionlint -pyflakes 'python3 -m pyflakes'
 ```
+
+Pyflakes integration has been removed. The released `-pyflakes` option is accepted
+as a deprecated no-op; Python scripts are not linted by actionlint.
 
 To configure executables, arguments and child environments separately, use
 `ACTIONLINT_SHELLCHECK_BIN`, `ACTIONLINT_SHELLCHECK_FLAGS`, and
-`ACTIONLINT_SHELLCHECK_ENV`, or their `ACTIONLINT_PYFLAKES_*` equivalents.
+`ACTIONLINT_SHELLCHECK_ENV`.
 An explicit tool flag overrides all three environment settings for that tool.
 See [External linter environment settings](env.md#external-linters) for quoting,
 Windows paths and examples.
@@ -352,9 +352,7 @@ file/directory; an rc path replaces `--norc` with `--rcfile`. Following sourced
 files (`-x`) can be disabled in
 configuration and is disabled when the step's working directory cannot be resolved
 locally. Additional options can use `-shellcheck '<command line>'` or the
-[`SHELLCHECK_OPTS` environment variable](checks.md#check-shellcheck-integ). pyflakes has no
-configuration file and no `# noqa`, so suppress its findings with `-ignore` or
-the `paths:` section of the configuration file.
+[`SHELLCHECK_OPTS` environment variable](checks.md#check-shellcheck-integ).
 
 <a id="format"></a>
 
@@ -628,7 +626,7 @@ results table moves a cursor to position of the error in the code editor.
 [![Docker Image Version][docker-badge]][dockerhub]
 
 [Docker image][docker-image] is available. The image contains `actionlint`
-executable and all dependencies (shellcheck and pyflakes).
+executable and all dependencies (ShellCheck).
 
 Available tags are:
 
@@ -682,8 +680,7 @@ docker run --rm -v "$(git rev-parse --show-toplevel):/w" \
   -e SHELLCHECK_OPTS='-e SC2086' ghcr.io/kjanat/actionlint:latest -color
 ```
 
-The `action-*` images are the exception. Their `shellcheck` and `pyflakes`
-inputs are booleans that only switch the integrations on or off, so
+The `action-*` images are the exception. Their `shellcheck` input is a boolean that switches the integration on or off, so
 `SHELLCHECK_OPTS` in the step's `env:` is the only way to configure shellcheck
 there.
 
@@ -700,7 +697,7 @@ Go APIs are available. See [the Go API document](api.md) for more details.
 [reviewdog][reviewdog] posts inline review comments and filters findings to changed
 lines, keeping feedback focused on the pull request.
 The [`reviewdog/action-actionlint` action][reviewdog-actionlint] runs this fork
-with ShellCheck and Pyflakes enabled.
+with ShellCheck enabled.
 We recommend v1.76.2 or newer.
 
 Add the following workflow to `.github/workflows/reviewdog-actionlint.yaml`:

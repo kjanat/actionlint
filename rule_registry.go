@@ -9,17 +9,17 @@ type ruleDescriptor struct {
 	enabled     func(ruleContext) bool
 }
 type ruleContext struct {
-	path                               string
-	config                             *Config
-	actions                            *LocalActionsCache
-	workflows                          *LocalReusableWorkflowCache
-	process                            *concurrentProcess
-	shellcheck, pyflakes               string
-	shellcheckOptions, pyflakesOptions *ExternalCommandOptions
-	shellcheckSettings                 *ShellcheckSettings
-	workingDir, projectRoot            string
-	inputs                             *inputFiles
-	gitModes                           *gitModes
+	path                    string
+	config                  *Config
+	actions                 *LocalActionsCache
+	workflows               *LocalReusableWorkflowCache
+	process                 *concurrentProcess
+	shellcheck              string
+	shellcheckOptions       *ExternalCommandOptions
+	shellcheckSettings      *ShellcheckSettings
+	workingDir, projectRoot string
+	inputs                  *inputFiles
+	gitModes                *gitModes
 }
 
 func builtinRuleDescriptors() []ruleDescriptor {
@@ -69,7 +69,6 @@ func builtinRuleDescriptors() []ruleDescriptor {
 			return externalCommandEnabled(c.shellcheck, c.shellcheckOptions) &&
 				(c.config == nil || c.config.Tools.Shellcheck.Enabled == nil || *c.config.Tools.Shellcheck.Enabled)
 		}},
-		{Name: "pyflakes", Description: "Checks for Python script when \"shell: python\" is configured using Pyflakes", Category: "external", build: func(c ruleContext) (Rule, error) { return configuredPyflakes(c.pyflakes, c.pyflakesOptions, c.process) }, enabled: func(c ruleContext) bool { return externalCommandEnabled(c.pyflakes, c.pyflakesOptions) }},
 	}
 }
 func builtinRuleBase(name string) RuleBase {

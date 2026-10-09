@@ -157,7 +157,7 @@ func TestModernRendererAndUsageErrors(t *testing.T) {
 		t.Fatal(got)
 	}
 	rules := commandRules()
-	for _, name := range []string{"syntax-check", "expression", "shellcheck", "pyflakes", "require-commit-hash"} {
+	for _, name := range []string{"syntax-check", "expression", "shellcheck", "require-commit-hash"} {
 		if !slices.ContainsFunc(rules, func(r actionlint.RuleInfo) bool { return r.Name == name && r.Description != "" }) {
 			t.Errorf("missing rule %q", name)
 		}

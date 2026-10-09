@@ -13,7 +13,6 @@ depends=('glibc')
 makedepends=('git' 'go' 'pandoc-cli')
 optdepends=(
 	'shellcheck: check shell scripts in run steps'
-	'python-pyflakes: check Python scripts in run steps'
 )
 provides=("actionlint=$pkgver")
 conflicts=('actionlint' 'actionlint-bin' 'actionlint-git' 'actionlint-kjanat' 'actionlint-kjanat-bin')
@@ -52,7 +51,7 @@ build() {
 
 check() {
 	cd actionlint
-	# The ./scripts/... tests reach the network; the shellcheck and pyflakes
+	# The ./scripts/... tests reach the network; the shellcheck
 	# integration tests self-skip when those tools are absent.
 	go test . ./cmd/...
 }

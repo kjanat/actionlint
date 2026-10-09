@@ -29,10 +29,9 @@ async function run(inputs, expected = 0) {
 			files: 'testdata/ok/minimal.yaml',
 			format: 'json',
 			shellcheck: 'true',
-			pyflakes: 'true',
+			pyflakes: 'false',
 			'add-actionlint-to-path': 'false',
 			'add-shellcheck-to-path': 'false',
-			'add-pyflakes-to-path': 'false',
 			'working-directory': '.',
 			'fail-on-error': 'true',
 			...inputs,
@@ -78,7 +77,6 @@ try {
 			'ok/minimal.yaml',
 			'err/one_error.yaml',
 			'err/shellcheck_default_shell_detection.yaml',
-			'err/pyflakes_step_shell.yaml',
 		]
 	) {
 		const destination = join(workspace, 'testdata', name);
@@ -100,7 +98,7 @@ try {
 	const cleanOutput = clean.outputs.get('output');
 	assert.ok(cleanOutput);
 	assert.deepEqual(JSON.parse(cleanOutput), clean.analysis);
-	assert.match(clean.log, /0 problems in 1 workflow file \(requested tools: shellcheck, pyflakes\)/);
+	assert.match(clean.log, /0 problems in 1 workflow file \(requested tools: shellcheck\)/);
 	for (const format of ['github', 'default', 'oneline', 'json', 'json-lines', 'markdown', 'sarif']) {
 		const result = await run({
 			files: 'testdata/err/one_error.yaml',
@@ -208,18 +206,6 @@ try {
 		pyflakes: 'false',
 	});
 	assert.equal(configuredNoShell.outputs.get('problem-count'), '0', configuredNoShell.log);
-	const python = await run({
-		files: 'testdata/err/pyflakes_step_shell.yaml',
-		shellcheck: 'false',
-		'fail-on-error': 'false',
-	});
-	assert.equal(python.outputs.get('problem-count'), '3', python.log);
-	const noPython = await run({
-		files: 'testdata/err/pyflakes_step_shell.yaml',
-		shellcheck: 'false',
-		pyflakes: 'false',
-	});
-	assert.equal(noPython.outputs.get('problem-count'), '0', noPython.log);
 	const saved = await run({
 		files: 'testdata/err/one_error.yaml',
 		format: 'json-lines',

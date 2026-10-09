@@ -79,26 +79,11 @@ expect_output problem-count 1
 expect_status 0 testdata/err/one_error.yaml json '.*' '' false false . '' true
 expect_output problem-count 0
 
-for tool in shellcheck pyflakes; do
-	case "${tool}" in
-		shellcheck)
-			fixture=testdata/err/shellcheck_default_shell_detection.yaml
-			shellcheck=true
-			pyflakes=false
-			;;
-		pyflakes)
-			fixture=testdata/err/pyflakes_step_shell.yaml
-			shellcheck=false
-			pyflakes=true
-			;;
-		*) exit 1 ;;
-	esac
-	expect_status 0 "${fixture}" json '' '' "${shellcheck}" "${pyflakes}" . '' false
-	problem_count="$(output problem-count)"
-	[[ "${problem_count}" -gt 0 ]]
-	expect_status 0 "${fixture}" json '' '' false false . '' true
-	expect_output problem-count 0
-done
+expect_status 0 testdata/err/shellcheck_default_shell_detection.yaml json '' '' true false . '' false
+problem_count="$(output problem-count)"
+[[ "${problem_count}" -gt 0 ]]
+expect_status 0 testdata/err/shellcheck_default_shell_detection.yaml json '' '' false false . '' true
+expect_output problem-count 0
 
 mkdir -p "${temporary}/workspace/sub/.github/workflows"
 cp testdata/ok/minimal.yaml "${temporary}/workspace/sub/.github/workflows/check.yaml"

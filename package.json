@@ -37,7 +37,6 @@
     "test:toolchain": "node --test ./scripts/update-go-toolchain.test.mjs",
     "test:workspaces": "npm run test --workspaces",
     "typecheck": "run -q @typescript/native --noEmit",
-    "update:pyflakes": "npm run update:pyflakes --workspace actionlint-action",
     "update:shellcheck": "npm run update:shellcheck --workspace actionlint-action"
   },
   "overrides": {

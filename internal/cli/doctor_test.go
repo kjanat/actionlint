@@ -38,7 +38,7 @@ func TestDoctorToolPresentation(t *testing.T) {
 			column = start
 		}
 	}
-	if filepath.Clean(values["shellcheck"]) != filepath.Clean(executable) || values["pyflakes"] != "disabled" {
+	if filepath.Clean(values["shellcheck"]) != filepath.Clean(executable) {
 		t.Fatalf("unexpected tool display:\n%s", &text)
 	}
 	request.JSON = true
@@ -51,7 +51,7 @@ func TestDoctorToolPresentation(t *testing.T) {
 	if err := json.Unmarshal(data.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
-	if len(report.Tools) != 2 || report.Tools[0].Status != "available" || report.Tools[0].Path == "" || report.Tools[1].Status != "disabled" {
+	if len(report.Tools) != 1 || report.Tools[0].Status != "available" || report.Tools[0].Path == "" {
 		t.Fatalf("JSON lost tool status: %s", &data)
 	}
 }
