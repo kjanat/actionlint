@@ -35,7 +35,8 @@ The [template reader][condition-reader] and [condition converter][condition-conv
 at runner revision `80bb1fb827fa44d489263061e71ef4adba7ad8cd` define these stages.
 Local step-schema evaluation covers both expression engines with loose JSON and
 anchors rejected. The Go regression tests cover step, job, and snapshot parsing.
-These are source and local SDK checks, not a new hosted capture.
+This evidence comes from source inspection and local SDK checks. Hosted behavior
+for these cases remains unmeasured.
 
 ### String flags can disagree with boolean comparisons
 
@@ -60,8 +61,8 @@ case-colliding names. Outputs created by scripts remain outside that static chec
 
 The comparison uses revision `80bb1fb827fa44d489263061e71ef4adba7ad8cd`, the next
 engine's `FromJson` entrypoint, and changes only `StrictJsonParsing`. Anchors do not
-apply to this entrypoint. It establishes a JSON-mode difference, not an engine
-difference or evidence that github.com enables strict mode.
+apply to this entrypoint. These results isolate the effect of JSON parsing mode
+within that engine. The comparison leaves github.com's parsing mode unverified.
 
 ### Matrix expression arrays insert one level
 
@@ -88,8 +89,8 @@ an identity. The local expression comparisons use runner revision
 JSON-mode comparisons keep the next engine fixed. Anchors do not apply.
 
 Actionlint's condition evaluator leaves serialization and ambiguous JSON values
-unknown. Its tests require this conservative behavior rather than assigning one
-runtime mode's result to every workflow. The existing hosted negative-zero result
+unknown. Regression tests require these values to remain unknown because the
+result depends on the runtime mode. The existing hosted negative-zero result
 is linked in [Read the evidence](#read-the-evidence).
 
 [condition-reader]: https://github.com/actions/runner/blob/80bb1fb827fa44d489263061e71ef4adba7ad8cd/src/Sdk/DTObjectTemplating/ObjectTemplating/TemplateReader.cs
