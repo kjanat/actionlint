@@ -233,6 +233,7 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 		Params: []ExprType{
 			StringType{},
 		},
+		IsConstFunc: true,
 	}},
 	"hashfiles": {{
 		Name: "hashFiles",

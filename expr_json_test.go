@@ -39,3 +39,24 @@ func TestJSONMemberCollisions(t *testing.T) {
 		})
 	}
 }
+
+func TestJSONCollisionsDoNotMaskInvalidJSON(t *testing.T) {
+	for _, input := range []string{
+		`{"a":1,"A":2} trailing`, `{"a":1,"A":2} {}`, `{"a":1,"A":2} null`,
+		`{"a":1,"A":2`, `[{"a":1,"A":2}] false`,
+	} {
+		t.Run(input, func(t *testing.T) {
+			if got := jsonMemberCollisions(input); len(got) != 0 {
+				t.Fatal(got)
+			}
+			expr := parseAssignedExpression("${{ fromJSON('" + input + "') }}")
+			_, errs := NewExprSemanticsChecker(false, nil).Check(expr)
+			if len(errs) != 1 || !strings.Contains(errs[0].Message, "broken JSON string") {
+				t.Fatal(errs)
+			}
+		})
+	}
+	if got := jsonMemberCollisions("{\"a\":1,\"A\":2} \n\t"); len(got) != 1 {
+		t.Fatal(got)
+	}
+}

@@ -2139,6 +2139,8 @@ func TestExprIsConstant(t *testing.T) {
 		{"format('{0}{1}', startsWith('foo', 'f'), 1.0 == !null)", true},
 		{"toJSON(true)", true},
 		{"toJSON(foo)", false},
+		{"fromJSON('false')", true},
+		{"fromJSON(foo)", false},
 		{"success()", false},
 		{"failure()", false},
 		{"hashFiles('foo', 'bar')", false},

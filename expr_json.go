@@ -3,6 +3,7 @@ package actionlint
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"strings"
 	"unicode"
 )
@@ -73,6 +74,9 @@ func jsonMemberCollisions(source string) []jsonMemberCollision {
 	}
 	if walk(0) != nil {
 		return nil // The JSON syntax check owns malformed input diagnostics.
+	}
+	if _, err := dec.Token(); err != io.EOF {
+		return nil // Reject trailing garbage and additional JSON values as well.
 	}
 	return collisions
 }

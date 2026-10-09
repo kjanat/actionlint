@@ -107,9 +107,20 @@ func matrixFilterTypeMismatch(value, filter RawYAMLValue, valueExpressions, filt
 			}
 			return false
 		}
-		_, actualString := actual.scalarValue().(string)
-		_, filterString := f.scalarValue().(string)
-		return actualString != filterString
+		return matrixScalarKind(actual.scalarValue()) != matrixScalarKind(f.scalarValue())
 	}
 	return false
+}
+
+func matrixScalarKind(value any) string {
+	switch value.(type) {
+	case nil:
+		return "null"
+	case bool:
+		return "boolean"
+	case float64:
+		return "number"
+	default:
+		return "string"
+	}
 }

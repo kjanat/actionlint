@@ -82,6 +82,36 @@ func conditionConstantValue(expr ExprNode) (any, bool) {
 			}
 		}
 		switch strings.ToLower(n.Callee) {
+		case "join":
+			if len(args) < 1 || len(args) > 2 {
+				return nil, false
+			}
+			items, array := args[0].([]any)
+			if !array {
+				return constantJoinString(args[0])
+			}
+			separator := ","
+			if len(args) == 2 && len(items) > 1 {
+				switch args[1].(type) {
+				case []any, map[string]any:
+					// Non-primitive separators leave the default comma unchanged.
+				default:
+					var ok bool
+					separator, ok = constantJoinString(args[1])
+					if !ok {
+						return nil, false
+					}
+				}
+			}
+			parts := make([]string, len(items))
+			for i, item := range items {
+				var ok bool
+				parts[i], ok = constantJoinString(item)
+				if !ok {
+					return nil, false
+				}
+			}
+			return strings.Join(parts, separator), true
 		case "fromjson":
 			if len(args) == 1 {
 				if s, ok := args[0].(string); ok && len(jsonMemberCollisions(s)) == 0 {
@@ -116,6 +146,22 @@ func conditionConstantValue(expr ExprNode) (any, bool) {
 		}
 	}
 	return nil, false
+}
+
+func constantJoinString(value any) (string, bool) {
+	switch value := value.(type) {
+	case string:
+		return value, true
+	case nil:
+		return "", true
+	case bool:
+		return strconv.FormatBool(value), true
+	case []any, map[string]any:
+		return "", true
+	default:
+		// Do not assume an engine's numeric serialization, including signed zero.
+		return "", false
+	}
 }
 
 func compareConditionNumbers(kind CompareOpNodeKind, a, b float64) bool {
