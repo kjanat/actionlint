@@ -69,7 +69,8 @@ jobs:
         env: { CANDIDATE: "${{ steps.candidate.outputs.candidate }}" }
         run: git checkout --detach "${CANDIDATE}"
       - uses: $/.github/actions/setup-pandoc
-      - uses: kjanat/runner@8baa9ee978cfed038b98741749673c788ff161d1 # v0.26.2
+      - uses: kjanat/runner@ad30f34c7352d89884b6d03febd9b16b4807ed56 # v0.27.1
+        with: { version: latest }
       - run: run make:man/actionlint.1
       - name: Install syft for SBOM generation
         uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
