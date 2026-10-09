@@ -16,7 +16,8 @@ tombi         = { version = "latest", lazy = true }
 "runner-run"        = "github:kjanat/runner"
 
 [settings]
-minimum_release_age_excludes = [
+idiomatic_version_file_enable_tools = ["go"]
+minimum_release_age_excludes        = [
   "actionlint",
   "github:kjanat/actionlint",
   "github:rhysd/actionlint",
