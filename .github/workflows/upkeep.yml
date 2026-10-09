@@ -140,6 +140,8 @@ jobs:
             exit 1
           fi
           go mod edit -toolchain="${version}"
+          sed -i -E "s/^(ARG GOLANG_VER=)[0-9]+\.[0-9]+\.[0-9]+$/\1${version#go}/" Dockerfile
+          sed -i -E "s/(--build-arg GOLANG_VER=)[0-9]+\.[0-9]+\.[0-9]+/\1${version#go}/g" CONTRIBUTING.md
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
       - name: Warn when the pull request will carry no CI
         env: { UPKEEP_TOKEN: "${{ secrets.UPKEEP_TOKEN }}" }
@@ -152,11 +154,14 @@ jobs:
           token: ${{ secrets.UPKEEP_TOKEN || github.token }}
           branch: ci/go-toolchain-version
           delete-branch: true
-          add-paths: go.mod
+          add-paths: |
+            go.mod
+            Dockerfile
+            CONTRIBUTING.md
           commit-message: "Bump Go toolchain to ${{ steps.version.outputs.version }}"
           title: "Bump Go toolchain to ${{ steps.version.outputs.version }}"
           body: |
-            Updates the preferred Go toolchain in `go.mod` to `${{ steps.version.outputs.version }}`. The minimum supported Go version remains unchanged.
+            Updates the preferred Go toolchain in `go.mod`, the Docker builder default, and the example in `CONTRIBUTING.md` to `${{ steps.version.outputs.version }}`. The minimum supported Go version remains unchanged.
 
             Created by [this Upkeep run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
           labels: |
