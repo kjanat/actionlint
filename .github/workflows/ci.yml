@@ -142,7 +142,7 @@ jobs:
       # Sibling actions can rewrite the event payload this action reads at startup.
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
-        with: { version: v2.14.0, install-only: true }
+        with: { version-file: .tool-versions, install-only: true, problem-matchers: true }
       - *PyFlakes
       - run: go mod tidy -diff
       - name: Build through Makefile

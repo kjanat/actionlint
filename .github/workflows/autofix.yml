@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       # Without this action, dprint has to recompile the wasm plugins each time the action runs,
       # which is often, and wastes time, energy, and sanity.
-      - uses: kjanat/install-dprint@fc7e4f62965bab609a936c9e58ad4893bb9da961 # v2
+      - uses: kjanat/install-dprint@c2cdca92154b44b2a2c15222d25d91d1cddfca1b # v2.2.0
       - { uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e, with: { go-version-file: go.mod } } # v7
       - name: x/tools/go/analysis modernize
         run: go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...

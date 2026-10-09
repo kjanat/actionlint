@@ -1,13 +1,17 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 
 [tools]
-actionlint    = { version = "latest", minimum_release_age = "0s", depends = ["shellcheck"] }
-dprint        = { version = "latest", lazy = true }
-go            = { version = "latest" }
-golangci-lint = { version = "latest", lazy = true }
-runner-run    = "latest"
-shellcheck    = { version = "latest" }
-tombi         = { version = "latest", lazy = true }
+actionlint                = { version = "latest", minimum_release_age = "0s", depends = ["shellcheck"] }
+go                        = { version = "latest" }
+runner-run                = "latest"
+shellcheck                = { version = "latest" }
+"github:tombi-toml/tombi" = "latest"
+
+[tools."github:kjanat/dprint"]
+prerelease          = true
+version             = "latest"
+minimum_release_age = "0s"
+depends             = ["github:tombi-toml/tombi", "go"]
 
 [tool_alias]
 "actionlint"        = "github:kjanat/actionlint"
