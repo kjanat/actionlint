@@ -2,9 +2,10 @@
 
 [tools]
 actionlint                = { version = "latest", minimum_release_age = "0s", depends = ["shellcheck"] }
-go                        = { version = "latest" }
+go                        = "latest"
 runner-run                = "latest"
-shellcheck                = { version = "latest" }
+node                      = "latest"
+shellcheck                = "latest"
 "github:tombi-toml/tombi" = "latest"
 
 [tools."github:kjanat/dprint"]
@@ -20,7 +21,7 @@ depends             = ["github:tombi-toml/tombi", "go"]
 "runner-run"        = "github:kjanat/runner"
 
 [settings]
-idiomatic_version_file_enable_tools = ["go"]
+idiomatic_version_file_enable_tools = ["go", "node"]
 minimum_release_age_excludes        = [
   "actionlint",
   "github:kjanat/actionlint",
