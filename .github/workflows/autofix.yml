@@ -65,14 +65,14 @@ jobs:
           FORMAT_CHANGED: ${{ steps.format.outputs.changed }}
         run: |
           changes=()
-          if [[ "$MODERNIZE_CHANGED" == true ]]; then changes+=('modernize Go'); fi
-          if [[ "$SCHEMA_CHANGED" == true ]]; then changes+=('regenerate configuration schema'); fi
-          if [[ "$TABLES_CHANGED" == true ]]; then changes+=('regenerate Go tables'); fi
-          if [[ "$README_CHANGED" == true ]]; then changes+=('refresh README demo'); fi
-          if [[ "$FORMAT_CHANGED" == true ]]; then changes+=('format code'); fi
+          if [[ "${MODERNIZE_CHANGED}" == true ]]; then changes+=('modernize Go'); fi
+          if [[ "${SCHEMA_CHANGED}" == true ]]; then changes+=('regenerate configuration schema'); fi
+          if [[ "${TABLES_CHANGED}" == true ]]; then changes+=('regenerate Go tables'); fi
+          if [[ "${README_CHANGED}" == true ]]; then changes+=('refresh README demo'); fi
+          if [[ "${FORMAT_CHANGED}" == true ]]; then changes+=('format code'); fi
           if (( ${#changes[@]} )); then
             printf -v description '%s, ' "${changes[@]}"
-            printf 'description=%s\n' "${description%, }" >> "$GITHUB_OUTPUT"
+            printf 'description=%s\n' "${description%, }" >> "${GITHUB_OUTPUT}"
           fi
       - name: Check fixes for stacked pull requests
         if: github.event.pull_request.stack != null
