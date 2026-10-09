@@ -2,6 +2,42 @@ package actionlint
 
 import "testing"
 
+func TestStepCanRunAfterFailure(t *testing.T) {
+	if stepCanRunAfterFailure(nil) {
+		t.Fatal("missing condition must require success")
+	}
+	for _, tc := range []struct {
+		condition string
+		want      bool
+	}{
+		{"", false},
+		{"   ", false},
+		{"${{ '' }}", false},
+		{"${{ null }}", false},
+		{"failure()", true},
+		{"${{ failure() }}", true},
+		{"${{ 'failure()' }}", true},
+		{"${{ 'always()' }}", true},
+		{"${{ 'cancelled()' }}", true},
+		{"${{ '!success()' }}", true},
+		{"${{ 'FAILURE()' }}", true},
+		{"${{ 'success() || failure()' }}", true},
+		{"${{ 'success()' }}", false},
+		{"${{ 'success() && always()' }}", false},
+		{"${{ contains(github.event_name, 'failure()') }}", false},
+		{"${{ format('failure()') }}", false},
+		{"${{ 'failure(' }}", true},
+		{"${{ failure( }}", true},
+		{"before ${{ failure() }}", true},
+	} {
+		t.Run(tc.condition, func(t *testing.T) {
+			if got := stepCanRunAfterFailure(&String{Value: tc.condition}); got != tc.want {
+				t.Fatalf("stepCanRunAfterFailure() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestInvocationCondition(t *testing.T) {
 	for _, tc := range []struct {
 		condition      string

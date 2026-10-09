@@ -1068,8 +1068,19 @@ func (rule *RuleExpression) checkMatrixCombinationExpression(s *String, section 
 	ty := rule.checkOneExpression(s, "matrix combination at element of "+section+" section", "jobs.<job_id>.strategy")
 	if array, ok := ty.(*ArrayType); ok {
 		if value, known := workflowExpressionLiteral(s); known {
-			if values, ok := value.([]any); ok && len(values) == 0 {
-				return nil
+			if values, ok := value.([]any); ok {
+				// Merging object and scalar element types produces AnyType, so
+				// validate each known value before using the inferred element type.
+				invalid := false
+				for i, value := range values {
+					if _, ok := value.(map[string]any); !ok {
+						rule.Errorf(s.Pos, "matrix combination in %s at inserted array index %d must be an object but got %s", section, i, typeOfJSONValue(value))
+						invalid = true
+					}
+				}
+				if invalid || len(values) == 0 {
+					return nil
+				}
 			}
 		}
 		ty = array.Elem

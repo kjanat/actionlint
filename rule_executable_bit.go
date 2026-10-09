@@ -158,12 +158,8 @@ func stepCanRunAfterFailure(condition *String) bool {
 	if condition == nil {
 		return false
 	}
-	source := condition.Value
-	if !condition.ContainsExpression() {
-		source = "${{ " + source + " }}"
-	}
-	expression := parseAssignedExpression(source)
-	if expression == nil {
+	expression, err, _ := parseConditionExpression(condition.Value)
+	if err != nil || expression == nil {
 		return true
 	}
 	hasStatusFunction := false
