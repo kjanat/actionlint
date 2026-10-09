@@ -51,6 +51,9 @@ The checks in this document run by default, including the configurable cache saf
 are opt-in, as described in [the configuration document](config.md#policy-checks). For
 general code style checks, please consider using a general YAML checker like [yamllint][yamllint].
 
+Additional [suspicious rules](config.md#stable-suspicious-rules) inspect condition
+coercion and matrix filter types. They are disabled by default and are not policies.
+
 <a id="check-unexpected-keys"></a>
 
 ## Unexpected keys

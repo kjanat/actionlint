@@ -42,6 +42,8 @@ func (a *commandApp) parseLegacy(args []string) (rest []string, forced string, t
 	boolean(&r.Summary, "summary")
 	boolean(&c.Verbose, "verbose", "v")
 	boolean(&c.Debug, "debug")
+	boolean(&c.Strict, "strict")
+	boolean(&c.Experimental, "experimental")
 	boolean(&o.color, "color")
 	boolean(&o.noColor, "no-color")
 	boolean(&o.version, "version", "V")

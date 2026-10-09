@@ -70,6 +70,21 @@
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
+              "id": "case-insensitive-conditions",
+              "name": "CaseInsensitiveConditions",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Checks identity comparisons using case-insensitive matching",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {
+                "text": "Checks identity comparisons using case-insensitive matching"
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
               "id": "credentials",
               "name": "Credentials",
               "defaultConfiguration": {
@@ -265,6 +280,36 @@
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
+              "id": "mixed-type-comparisons",
+              "name": "MixedTypeComparisons",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Checks condition comparisons using implicit scalar coercion",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {
+                "text": "Checks condition comparisons using implicit scalar coercion"
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
+              "id": "mixed-type-matrix-filters",
+              "name": "MixedTypeMatrixFilters",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Checks matrix filters comparing different scalar types",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {
+                "text": "Checks matrix filters comparing different scalar types"
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
               "id": "parallel-steps",
               "name": "ParallelSteps",
               "defaultConfiguration": {
@@ -321,6 +366,21 @@
               },
               "fullDescription": {
                 "text": "Checks for shell names used for scripts in \"run:\""
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
+              "id": "string-conditions",
+              "name": "StringConditions",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Checks bare string conditions for unexpected truthiness",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {
+                "text": "Checks bare string conditions for unexpected truthiness"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },

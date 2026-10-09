@@ -173,6 +173,16 @@ supported legacy name.
 : Suppress progress, debug logs and summaries. Requested results and operational
 errors remain visible. Also available on information and config commands.
 
+**--strict**
+: Select all stable rules, preserving explicit group/rule exceptions, bounds, scopes
+  and rule-ID/path suppressions. Includes stable suspicious checks. Does not enable nursery rules or invent
+  required actions. Environment default: `ACTIONLINT_STRICT`.
+
+**--experimental**
+: Enable nursery rules, retaining individual exclusions. Explicit false
+  clears nursery selections without affecting stable suspicious rules. Environment default:
+  `ACTIONLINT_EXPERIMENTAL`. May be combined with **--strict**.
+
 **--summary**
 : Print selected workflow and finding counts on stderr after checking. In JSON
 modes this is a JSON record with a `summary` field. A normal clean run stays silent.

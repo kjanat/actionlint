@@ -76,8 +76,13 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 			return 0, err
 		}
 	}
+	presets := actionlint.RulePresets{Strict: c.Strict}
+	if c.ExperimentalSet {
+		presets.Experimental = &c.Experimental
+	}
 	app, err := actionlint.NewAnalysisSession(actionlint.AnalysisOptions{
-		Context: ctx, WorkingDir: options.WorkingDir, StdinFileName: options.StdinFileName,
+		RulePresets: presets,
+		Context:     ctx, WorkingDir: options.WorkingDir, StdinFileName: options.StdinFileName,
 		ConfigFile: options.ConfigFile, Shellcheck: options.Shellcheck,
 		ShellcheckOptions: c.ShellcheckOptions,
 		IgnorePatterns:    options.IgnorePatterns, Verbose: options.Verbose, Debug: options.Debug, LogWriter: log,

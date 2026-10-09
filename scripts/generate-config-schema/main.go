@@ -36,9 +36,64 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 	reflectMapping := func(value any) *jsonschema.Schema {
 		r := reflector()
 		r.LookupComment = lookupComment
-		return r.Reflect(value)
+		schema := r.Reflect(value)
+		schema.Version, schema.ID = "", ""
+		return schema
 	}
 	switch t {
+	case reflect.TypeFor[actionlint.RuleLevel]():
+		return &jsonschema.Schema{
+			Description: "Diagnostic level: default, off, on, info, warn, or error.",
+			AnyOf: []*jsonschema.Schema{
+				{Type: "string", Enum: []any{"default", "off", "on", "info", "warn", "error"}},
+				{Type: "boolean", Not: &jsonschema.Schema{Const: true}, Extras: map[string]any{"doNotSuggest": true}},
+				{Type: "null", Extras: map[string]any{"doNotSuggest": true}},
+			},
+		}
+	case reflect.TypeFor[actionlint.RulePreset]():
+		return &jsonschema.Schema{Description: "Baseline rule selection: recommended, all stable rules, or none.", Type: "string", Enum: []any{"recommended", "all", "none"}}
+	case reflect.TypeFor[actionlint.LintRulesConfig]():
+		mapping := reflectMapping(struct {
+			Preset  actionlint.RulePreset `yaml:"preset" jsonschema:"description=Baseline selection: recommended, all stable rules, or none. Explicit rules override presets."`
+			Disable []string              `yaml:"disable" jsonschema:"description=Suppress these diagnostic rule IDs at every severity. Omission or an empty list suppresses none."`
+		}{})
+		disable, _ := mapping.Properties.Get("disable")
+		for _, rule := range actionlint.BuiltinRules() {
+			disable.Items.Enum = append(disable.Items.Enum, rule.Name)
+		}
+		disable.Type = ""
+		disable.OneOf = []*jsonschema.Schema{{Type: "array"}, {Type: "null"}}
+		for _, category := range []string{"correctness", "suspicious", "security", "policy", "external", "nursery"} {
+			group := reflectMapping(struct {
+				Preset actionlint.RulePreset `yaml:"preset" jsonschema:"description=Baseline selection within this group: recommended, all, or none."`
+				Level  actionlint.RuleLevel  `yaml:"level" jsonschema:"description=Default diagnostic level for rules in this group."`
+			}{})
+			group.Version, group.ID = "", ""
+			for _, rule := range actionlint.BuiltinRules() {
+				if rule.Category != category {
+					continue
+				}
+				setting := reflectMapping(struct {
+					Level actionlint.RuleLevel `yaml:"level" jsonschema:"required,description=Diagnostic level for this rule: default, off, on, info, warn, or error."`
+				}{})
+				setting.Version, setting.ID = "", ""
+				if options := actionlint.BuiltinRuleOptions(rule.Name); options != nil {
+					optionsSchema := reflectMapping(options)
+					optionsSchema.Version, optionsSchema.ID = "", ""
+					setting.Properties.Set("options", &jsonschema.Schema{Description: "Validated options specific to this rule.", AllOf: []*jsonschema.Schema{{Type: "object"}, optionsSchema}})
+				}
+				description := rule.Description
+				if rule.Maturity == "nursery" {
+					description += ". Nursery; disabled by default and excluded from stable presets."
+				} else if !rule.Recommended {
+					description += ". Stable; not enabled by the recommended preset."
+				}
+				group.Properties.Set(rule.Name, &jsonschema.Schema{Description: description, OneOf: []*jsonschema.Schema{reflectMapping(actionlint.RuleLevel("")), setting}})
+			}
+			mapping.Properties.Set(category, &jsonschema.Schema{Description: "Rules concerning " + category + ". Individual rule settings override group levels and presets.", OneOf: []*jsonschema.Schema{reflectMapping(actionlint.RuleLevel("")), group}})
+		}
+		mapping.Version, mapping.ID = "", ""
+		return mapping
 	case reflect.TypeFor[actionlint.ShellcheckConfigSource]():
 		markdown := "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known."
 		description := strings.ReplaceAll(markdown, "`", "")
@@ -165,8 +220,10 @@ func documentFields(s *jsonschema.Schema) {
 
 func documentedReflector() (*jsonschema.Reflector, error) {
 	r := reflector()
-	if err := r.AddGoComments("actionlint.kjanat.dev", "config.go", jsonschema.WithFullComment()); err != nil {
-		return nil, fmt.Errorf("read config comments: %w", err)
+	for _, file := range []string{"config.go", "config_lint.go", "config_rule_settings.go", "rule_options.go"} {
+		if err := r.AddGoComments("actionlint.kjanat.dev", file, jsonschema.WithFullComment()); err != nil {
+			return nil, fmt.Errorf("read config comments: %w", err)
+		}
 	}
 	r.LookupComment = func(t reflect.Type, field string) string {
 		key := t.PkgPath() + "." + t.Name()

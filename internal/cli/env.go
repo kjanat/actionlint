@@ -127,6 +127,14 @@ func (a *commandApp) presentationEnvironment() error {
 
 func (a *commandApp) checkEnvironment() error {
 	i := &a.inv
+	if err := a.envBool("ACTIONLINT_STRICT", &i.Check.Strict, "strict"); err != nil {
+		return err
+	}
+	if err := a.envBool("ACTIONLINT_EXPERIMENTAL", &i.Check.Experimental, "experimental"); err != nil {
+		return err
+	}
+	_, experimentalEnv := os.LookupEnv("ACTIONLINT_EXPERIMENTAL")
+	i.Check.ExperimentalSet = a.set["experimental"] || experimentalEnv
 	if !a.anySet("output-format", "output", "o", "json", "template", "format", "f", "template-file", "oneline") {
 		if value := os.Getenv("ACTIONLINT_OUTPUT_FORMAT"); value != "" {
 			a.opts.output, a.set["output-format"] = value, true

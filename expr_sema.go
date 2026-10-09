@@ -417,7 +417,7 @@ type ExprSemanticsChecker struct {
 	configVars            []string
 	configSecrets         []string
 	condition             bool
-	policy                Policy
+	ruleConfig            *Config
 }
 
 // NewExprSemanticsChecker creates new ExprSemanticsChecker instance. When checkUntrustedInput is
@@ -431,7 +431,7 @@ func NewExprSemanticsChecker(checkUntrustedInput bool, cfg *Config) *ExprSemanti
 		githubVarCopied: false,
 	}
 	if cfg != nil {
-		c.policy = cfg.Policy
+		c.ruleConfig = cfg
 		c.configVars = cfg.ConfigVariables
 		c.configSecrets = cfg.ConfigSecrets
 	}
@@ -951,7 +951,7 @@ func checkFuncSignature(n *FuncCallNode, sig *FuncSignature, args []ExprType) *E
 
 func (sema *ExprSemanticsChecker) checkBuiltinFuncCall(n *FuncCallNode, sig *FuncSignature) ExprType {
 	sema.checkSpecialFunctionAvailability(n)
-	if sema.condition && enabledPolicy(sema.policy.CaseInsensitiveConditions) && len(n.Args) == 2 {
+	if sema.condition && sema.ruleConfig.diagnosticLevel("case-insensitive-conditions") != "off" && len(n.Args) == 2 {
 		switch strings.ToLower(n.Callee) {
 		case "contains", "startswith", "endswith":
 			sema.checkIdentityComparison(n, n.Args[0], n.Args[1])
@@ -1223,8 +1223,8 @@ func (sema *ExprSemanticsChecker) Check(expr ExprNode) (ExprType, []*ExprError) 
 		sema.untrusted.Init()
 	}
 	ty := sema.check(expr)
-	if sema.condition && enabledPolicy(sema.policy.StringConditions) && conditionStringReference(expr, ty) {
-		sema.errorf(expr, "bare string condition is truthy for every non-empty value, including 'false' and '0'; use an explicit string comparison or fromJSON() for a boolean contract (policy: string-conditions)")
+	if sema.condition && sema.ruleConfig.diagnosticLevel("string-conditions") != "off" && conditionStringReference(expr, ty) {
+		sema.ruleError(expr, "string-conditions", "bare string condition is truthy for every non-empty value, including 'false' and '0'; use an explicit string comparison or fromJSON() for a boolean contract")
 	}
 	errs := sema.errs
 	if sema.untrusted != nil {

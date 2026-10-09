@@ -31,6 +31,10 @@ func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirement
 		if err != nil {
 			return needed, err
 		}
+		config = a.request.RulePresets.apply(config)
+		if config.diagnosticLevel("shellcheck") == "off" {
+			continue
+		}
 		c := ruleContext{
 			config: config, shellcheck: a.request.ShellCheck,
 			shellcheckOptions: a.request.ShellcheckOptions,

@@ -61,7 +61,7 @@ func (rule *RuleMatrix) VisitJobPre(n *Job) error {
 	//       sh: pwsh
 
 	rule.checkExclude(m, !evaluated)
-	if rule.config != nil && enabledPolicy(rule.config.Policy.MixedTypeMatrixFilters) {
+	if rule.config.diagnosticLevel("mixed-type-matrix-filters") != "off" {
 		rule.checkFilterTypes(m, !evaluated)
 	}
 	return nil

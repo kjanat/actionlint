@@ -16,6 +16,13 @@ Invalid configuration file contents still produce an operational error (exit 3).
 
 ## Configuration and input
 
+`ACTIONLINT_STRICT` (`--strict`) selects all stable rules, including opt-in policies,
+while preserving explicit group/rule exceptions.
+`ACTIONLINT_EXPERIMENTAL` (`--experimental`) enables nursery rules while
+honoring individual exclusions; false clears nursery selections without affecting stable suspicious rules.
+Both accept booleans and are off unless requested. They apply only to checks.
+See [rule presets](usage.md) for scope and precedence.
+
 | Variable                    | Equivalent flag               | Value                                                                                                       |
 | --------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `ACTIONLINT_CONFIG`         | `--config` / `--config-file`  | A configuration file path. Empty restores repository discovery.                                             |

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/url"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -22,6 +23,24 @@ func generatedSchema(t *testing.T) []byte {
 		t.Fatal(err)
 	}
 	return b
+}
+
+func TestRuleLevelSuggestions(t *testing.T) {
+	schema := mapYAMLType(reflect.TypeFor[actionlint.RuleLevel](), nil)
+	if len(schema.AnyOf) != 3 {
+		t.Fatal("expected named levels and two hidden compatibility branches")
+	}
+	if diff := cmp.Diff([]any{"default", "off", "on", "info", "warn", "error"}, schema.AnyOf[0].Enum); diff != "" {
+		t.Fatalf("suggest only named levels (-want +got):\n%s", diff)
+	}
+	for _, branch := range schema.AnyOf[1:] {
+		if branch.Extras["doNotSuggest"] != true || len(branch.Enum) != 0 || branch.Description != "" {
+			t.Fatal("compatibility values must not be suggested or advertised")
+		}
+	}
+	if strings.Contains(schema.Description, "false") || strings.Contains(schema.Description, "null") {
+		t.Fatal("describe only named levels")
+	}
 }
 
 func TestGeneratedSchemaUpToDate(t *testing.T) {
@@ -150,6 +169,51 @@ func TestSchemaValidation(t *testing.T) {
 		parserValid bool
 	}{
 		{"empty", `{}`, true, true},
+		{"nursery group", `lint: {rules: {nursery: {preset: all}}}`, true, true},
+		{"nursery level", `lint: {rules: {nursery: warn}}`, true, true},
+		{"nursery null", `lint: {rules: {nursery: null}}`, true, true},
+		{"stable rule not nursery", `lint: {rules: {nursery: {case-insensitive-conditions: on}}}`, false, false},
+		{"old experimental group", `lint: {rules: {experimental: true}}`, false, false},
+		{"rule level", `lint: {rules: {correctness: {expression: warn}}}`, true, true},
+		{"group level", `lint: {rules: {correctness: info}}`, true, true},
+		{"group baseline", `lint: {rules: {correctness: {level: warn, expression: off}}}`, true, true},
+		{"global preset", `lint: {rules: {preset: all}}`, true, true},
+		{"group preset", `lint: {rules: {policy: {preset: all}}}`, true, true},
+		{"group null", `lint: {rules: {policy: null}}`, true, true},
+		{"rule options", `lint: {rules: {policy: {require-job-timeout: {level: error, options: {max-minutes: 30}}}}}`, true, true},
+		{"rule actions", `lint: {rules: {policy: {required-actions: {level: warn, options: {actions: ['actions/checkout']}}}}}`, true, true},
+		{"invalid group", `lint: {rules: {securty: {}}}`, false, false},
+		{"invalid rule group", `lint: {rules: {policy: {case-insensitive-conditions: on}}}`, false, false},
+		{"invalid rule name", `lint: {rules: {correctness: {typo: off}}}`, false, false},
+		{"invalid rule level", `lint: {rules: {correctness: {expression: warning}}}`, false, false},
+		{"invalid group level", `lint: {rules: {correctness: {level: warning}}}`, false, false},
+		{"rule default", `lint: {rules: {correctness: {expression: null}}}`, true, true},
+		{"named rule default", `lint: {rules: {correctness: {expression: default}}}`, true, true},
+		{"named group default", `lint: {rules: {correctness: default}}`, true, true},
+		{"named rule level default", `lint: {rules: {correctness: {expression: {level: default}}}}`, true, true},
+		{"named group level default", `lint: {rules: {correctness: {level: default}}}`, true, true},
+		{"rule disabled alias", `lint: {rules: {correctness: {expression: false}}}`, true, true},
+		{"rule level disabled alias", `lint: {rules: {correctness: {expression: {level: false}}}}`, true, true},
+		{"rule level default", `lint: {rules: {correctness: {expression: {level: null}}}}`, true, true},
+		{"group disabled alias", `lint: {rules: {correctness: false}}`, true, true},
+		{"group level disabled alias", `lint: {rules: {correctness: {level: false}}}`, true, true},
+		{"group level default", `lint: {rules: {correctness: {level: null}}}`, true, true},
+		{"invalid empty rule", `lint: {rules: {correctness: {expression: ''}}}`, false, false},
+		{"invalid empty group", `lint: {rules: {correctness: ''}}`, false, false},
+		{"invalid empty rule level", `lint: {rules: {correctness: {expression: {level: ''}}}}`, false, false},
+		{"invalid empty group level", `lint: {rules: {correctness: {level: ''}}}`, false, false},
+		{"invalid rule options", `lint: {rules: {correctness: {expression: {level: on, options: {}}}}}`, false, false},
+		{"invalid options key", `lint: {rules: {policy: {require-job-timeout: {level: on, options: {minutes: 30}}}}}`, false, false},
+		{"invalid options type", `lint: {rules: {policy: {require-job-timeout: {level: on, options: true}}}}`, false, false},
+		{"missing rule level", `lint: {rules: {policy: {require-job-timeout: {options: {max-minutes: 30}}}}}`, false, false},
+		{"experimental typo", `lint: {rules: {experimental: {enable: [typo]}}}`, false, false},
+		{"experimental unknown option", `lint: {rules: {experimental: {typo: true}}}`, false, false},
+		{"experimental string boolean", `lint: {rules: {experimental: {enabled: 'true'}}}`, false, false},
+		{"not policy", `policy: {mixed-type-matrix-filters: true}`, false, false},
+		{"lint suppression", `lint: {rules: {disable: [expression, shellcheck]}}`, true, true},
+		{"lint null suppression", `lint: {rules: {disable: null}}`, true, true},
+		{"lint unknown rule", `lint: {rules: {disable: [typo]}}`, false, false},
+		{"lint unknown key", `lint: {rules: {typo: true}}`, false, false},
 		{"ShellCheck disabled", `tools: {shellcheck: {enabled: false}}`, true, true},
 		{"ShellCheck shorthand enabled", `tools: {shellcheck: true}`, true, true},
 		{"ShellCheck shorthand disabled", `tools: {shellcheck: false}`, true, true},
