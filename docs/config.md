@@ -404,20 +404,27 @@ Or place `# actionlint:ignore-next-line RULE -- reason` immediately before the
 reported line. A nonempty reason is required. Comma-separated selectors accept
 any diagnostic rule ID listed by `actionlint rules`, including `expression`,
 `syntax-check`, `shellcheck`, `if-cond` and the suspicious rules.
-Exceptions apply only to that physical line. Blank lines or other
-comments detach a preceding directive. For multiline values, use the diagnostic's
-line; for aliases, use the reported anchor location.
+Exceptions apply to the reported physical line. A directive on a YAML block scalar
+header (`run: |` or `run: >`) covers its body as well. A preceding
+`actionlint:ignore-next-line` directive can also target that header. Blank lines or
+other comments detach a preceding directive. For aliases, use the reported anchor
+location.
 
-Malformed attached directives report `inline-suppression`. Text inside strings or
-scripts is not a directive. Directives in local composite YAML apply to that file,
-not the calling workflow. CLI, rule-ID and path ignores apply afterwards. Suppression
+```yaml
+- run: | # actionlint:ignore expression,shellcheck -- reviewed script inputs
+    echo '${{ github.event.issue.title }}'
+```
+
+Malformed attached directives report `inline-suppression`. Only attached YAML
+comments create directives. Directives in local composite YAML are scoped to that
+file. CLI, rule-ID and path ignores apply afterwards. Suppression
 changes lint output. GitHub's cache permissions stay unchanged; remaining findings
 exit with 1.
 
 Suppressions apply to errors and warnings alike. To suppress a rule for a whole
 file, use `lint.rules.disable` in an [override](#per-file-overrides). This also works
 for malformed YAML where parsing cannot attach inline comments. Configuration,
-I/O and tool-launch failures are operational errors, not suppressible lint findings.
+I/O and tool-launch failures remain operational errors and cannot be suppressed.
 
 ### disallow-suppressions
 

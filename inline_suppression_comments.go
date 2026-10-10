@@ -14,6 +14,7 @@ type inlineSuppressionComment struct {
 	pos        Pos
 	text       string
 	standalone bool
+	endLine    int
 }
 
 // collectInlineSuppressionComments isolates YAML attachment and source recovery
@@ -42,6 +43,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 		}
 	}
 	var comments []inlineSuppressionComment
+	blockEnds := map[int]int{}
 	seen := map[int]bool{}
 	readComment := func(line int, comment string, standalone bool) {
 		text := strings.TrimSpace(strings.TrimPrefix(comment, "#"))
@@ -71,7 +73,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	visit = func(node *yaml.Node, endLine int) {
 		if node.Line > 0 && node.Line <= len(lines) {
 			if node.Style&yaml.FlowStyle != 0 || node.Kind == yaml.ScalarNode {
-				readYAMLNodePrefixComments(node, lines, endLine, readComment)
+				readYAMLNodePrefixComments(node, lines, endLine, readComment, blockEnds)
 			}
 			commentEnd := endLine
 			// YAML can combine property and value comments into one string.
@@ -111,6 +113,13 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 		}
 	}
 	visit(&root, documentEnd)
+	for i := range comments {
+		target := comments[i].pos.Line
+		if comments[i].standalone {
+			target++
+		}
+		comments[i].endLine = blockEnds[target]
+	}
 	return comments
 }
 
@@ -138,7 +147,7 @@ func yamlClosingCommentLine(node *yaml.Node, comment string, lines []string, end
 // readYAMLNodePrefixComments reads comments on tags, anchors, flow openers and
 // block scalar headers. Stop at value content, which can contain comment-like text.
 // YAML may overwrite these prefix comments with the final value comment.
-func readYAMLNodePrefixComments(node *yaml.Node, lines []string, endLine int, read func(int, string, bool)) {
+func readYAMLNodePrefixComments(node *yaml.Node, lines []string, endLine int, read func(int, string, bool), blockEnds map[int]int) {
 	line := node.Line
 	text := string([]rune(lines[line-1])[node.Column-1:])
 	declaration := true
@@ -179,6 +188,16 @@ func readYAMLNodePrefixComments(node *yaml.Node, lines []string, endLine int, re
 			}
 			return
 		case strings.HasPrefix(text, "|"), strings.HasPrefix(text, ">"):
+			indent := len(lines[line-1]) - len(strings.TrimLeft(lines[line-1], " "))
+			last := line
+			for next := line; next < endLine; next++ {
+				body := lines[next]
+				if strings.TrimSpace(body) != "" && len(body)-len(strings.TrimLeft(body, " ")) <= indent {
+					break
+				}
+				last = next + 1
+			}
+			blockEnds[line] = last
 			if end := strings.IndexAny(text, " \t"); end >= 0 {
 				if comment := strings.TrimLeft(text[end:], " \t"); strings.HasPrefix(comment, "#") {
 					read(line, comment, false)

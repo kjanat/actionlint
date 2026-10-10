@@ -66,6 +66,7 @@ func (l *analysisEngine) check(
 
 	w, all := Parse(content)
 	var analysisErr error
+	compositeSources := map[string][]byte{}
 
 	if l.logLevel >= LogLevelVerbose {
 		elapsed := time.Since(start)
@@ -155,6 +156,7 @@ func (l *analysisEngine) check(
 			all = append(all, errs...)
 		}
 		for _, composite := range v.composites.rules {
+			compositeSources[composite.meta.Path()] = composite.meta.src
 			for _, rule := range composite.rules {
 				for _, finding := range rule.Errs() {
 					if finding.Filepath == "" {
@@ -182,8 +184,7 @@ func (l *analysisEngine) check(
 		}
 	}
 	byPath := make(map[string][]*Error)
-	for _, finding := range all {
-		findingPath := finding.Filepath
+	findingKey := func(findingPath string) string {
 		if findingPath == "" {
 			findingPath = path
 		} else if project != nil && filepath.IsAbs(findingPath) {
@@ -196,16 +197,33 @@ func (l *analysisEngine) check(
 				findingPath = relative
 			}
 		}
-		byPath[findingPath] = append(byPath[findingPath], finding)
+		return findingPath
+	}
+	for _, finding := range all {
+		key := findingKey(finding.Filepath)
+		byPath[key] = append(byPath[key], finding)
+	}
+	foreignSources := map[string]string{}
+	for sourcePath := range compositeSources {
+		key := findingKey(sourcePath)
+		foreignSources[key] = sourcePath
+		if _, exists := byPath[key]; !exists {
+			byPath[key] = nil
+		}
 	}
 	all = nil
 	for findingPath, findings := range byPath {
-		if findingPath != path && len(findings) > 0 && findings[0].source != nil && (filepath.Ext(findingPath) == ".yml" || filepath.Ext(findingPath) == ".yaml") {
+		sourcePath := foreignSources[findingPath]
+		source := compositeSources[sourcePath]
+		if source == nil && len(findings) > 0 {
+			sourcePath, source = findings[0].Filepath, findings[0].source
+		}
+		if findingPath != path && source != nil && (filepath.Ext(findingPath) == ".yml" || filepath.Ext(findingPath) == ".yaml") {
 			var policy *SuppressionsPolicy
 			if cfg != nil {
 				policy = cfg.Policy.DisallowSuppressions
 			}
-			findings = filterForeignInlineSuppressions(findings[0].source, findings, policy)
+			findings = filterForeignInlineSuppressions(sourcePath, source, findings, policy)
 		}
 		findings = slices.DeleteFunc(findings, func(e *Error) bool {
 			// Dependency findings belong to this workflow's configured analysis.

@@ -128,3 +128,51 @@ func TestInlineSuppressionRegistry(t *testing.T) {
 		})
 	}
 }
+
+func TestInlineSuppressionBlockBody(t *testing.T) {
+	for _, header := range []string{
+		"run: | # actionlint:ignore expression,shellcheck -- reviewed",
+		"run: >- # actionlint:ignore expression,shellcheck -- reviewed",
+		"run: |2+ # actionlint:ignore expression,shellcheck -- reviewed",
+		"# actionlint:ignore-next-line expression,shellcheck -- reviewed\nrun: |",
+		"run: &script | # actionlint:ignore expression,shellcheck -- reviewed",
+		"run: !!str\n  | # actionlint:ignore expression,shellcheck -- reviewed",
+	} {
+		for _, ending := range []string{"\n", "\r\n"} {
+			t.Run(header+ending, func(t *testing.T) {
+				start := strings.Count(header, "\n") + 1
+				source := strings.ReplaceAll(header+"\n    echo first\n    echo second\nnext: value\n", "\n", ending)
+				findings := []*Error{
+					{Line: start + 1, Kind: "expression"},
+					{Line: start + 2, Kind: "shellcheck"},
+					{Line: start + 2, Kind: "action"},
+					{Line: start + 3, Kind: "expression"},
+				}
+				got := filterInlineSuppressions([]byte(source), findings, nil)
+				if diff := cmp.Diff(findings[2:], got, cmp.AllowUnexported(Error{})); diff != "" {
+					t.Fatal(diff)
+				}
+			})
+		}
+	}
+}
+
+func TestInlineSuppressionScriptTextIsNotDirective(t *testing.T) {
+	source := []byte("run: |\n  text = '''\n  # actionlint:ignore-next-line expression -- sample text\n  ${{ github.event.issue.title }}\n  '''\n")
+	finding := &Error{Line: 4, Kind: "expression"}
+	got := filterInlineSuppressions(source, []*Error{finding}, nil)
+	if len(got) != 1 || got[0] != finding {
+		t.Fatalf("script text changed findings: %+v", got)
+	}
+}
+
+func TestInlineSuppressionBlockExpression(t *testing.T) {
+	source := "on: issues\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: | # actionlint:ignore expression -- reviewed input\n          echo '${{ github.event.issue.title }}'\n"
+	if got := lintCachePolicy(t, source, ""); len(got) != 0 {
+		t.Fatal(got)
+	}
+	got := lintCachePolicy(t, source, "policy: {disallow-suppressions: true}")
+	if len(got) != 2 || got[0].Kind != "disallow-suppressions" || got[1].Kind != "expression" {
+		t.Fatalf("prohibited block suppression: %+v", got)
+	}
+}

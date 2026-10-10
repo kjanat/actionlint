@@ -42,7 +42,7 @@ func TestForeignInlineSuppressionSource(t *testing.T) {
 	if got := filterInlineSuppressions(source, []*Error{finding}, nil); len(got) != 1 {
 		t.Fatal("caller suppressed foreign finding")
 	}
-	if got := filterForeignInlineSuppressions(source, []*Error{finding}, nil); len(got) != 0 {
+	if got := filterForeignInlineSuppressions(finding.Filepath, source, []*Error{finding}, nil); len(got) != 0 {
 		t.Fatal(got)
 	}
 	if finding.source == nil {
