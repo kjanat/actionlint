@@ -39,6 +39,7 @@ func (l *analysisEngine) check(
 		root = project.RootDir()
 	}
 	var configErr error
+	projectConfig := cfg
 	configPath := path
 	if !filepath.IsAbs(configPath) {
 		configPath = filepath.Join(l.workingDir, configPath)
@@ -202,29 +203,44 @@ func (l *analysisEngine) check(
 	}
 	for _, finding := range all {
 		key := findingKey(finding.Filepath)
+		if _, isMetadata := metadataSources[finding.Filepath]; isMetadata {
+			key = finding.Filepath
+		}
 		byPath[key] = append(byPath[key], finding)
 	}
 	foreignSources := map[string]string{}
 	for sourcePath := range metadataSources {
-		key := findingKey(sourcePath)
+		key := sourcePath
 		foreignSources[key] = sourcePath
 		if _, exists := byPath[key]; !exists {
 			byPath[key] = nil
 		}
 	}
 	all = nil
-	for findingPath, findings := range byPath {
-		sourcePath, isMetadata := foreignSources[findingPath]
+	for scopePath, findings := range byPath {
+		findingPath := findingKey(scopePath)
+		sourcePath, isMetadata := foreignSources[scopePath]
 		source := metadataSources[sourcePath]
+		findingConfig := cfg
 		if findingPath != path && isMetadata && source != nil {
+			var err error
+			findingConfig, err = suppressionConfigForFile(projectConfig, sourcePath, root)
+			if err != nil {
+				return nil, err
+			}
+			findingConfig = l.rulePresets.apply(findingConfig)
 			var policy *SuppressionsPolicy
-			if cfg != nil {
-				policy = cfg.Policy.DisallowSuppressions
+			if findingConfig != nil {
+				policy = findingConfig.Policy.DisallowSuppressions
 			}
 			findings = filterForeignInlineSuppressions(sourcePath, source, findings, policy)
 		}
 		findings = slices.DeleteFunc(findings, func(e *Error) bool {
-			switch cfg.diagnosticLevel(e.Kind) {
+			levelConfig := cfg
+			if (e.Kind == "inline-suppression" || e.Kind == "disallow-suppressions") && (cfg == nil || cfg.Lint.Enabled == nil || *cfg.Lint.Enabled) {
+				levelConfig = findingConfig
+			}
+			switch levelConfig.diagnosticLevel(e.Kind) {
 			case "off":
 				return true
 			case "warn":

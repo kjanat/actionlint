@@ -212,7 +212,12 @@ func compareErrors(lhs, rhs *Error) int {
 	if lhs.Column != rhs.Column {
 		return lhs.Column - rhs.Column
 	}
-	return strings.Compare(lhs.Message, rhs.Message)
+	for _, pair := range [][2]string{{lhs.Message, rhs.Message}, {lhs.Kind, rhs.Kind}, {lhs.code, rhs.code}, {lhs.severity, rhs.severity}} {
+		if c := strings.Compare(pair[0], pair[1]); c != 0 {
+			return c
+		}
+	}
+	return lhs.endColumn - rhs.endColumn
 }
 
 func equalsErrors(lhs, rhs *Error) bool {
@@ -220,7 +225,10 @@ func equalsErrors(lhs, rhs *Error) bool {
 		lhs.Line == rhs.Line &&
 		lhs.Column == rhs.Column &&
 		lhs.endColumn == rhs.endColumn &&
-		lhs.Message == rhs.Message
+		lhs.Message == rhs.Message &&
+		lhs.Kind == rhs.Kind &&
+		lhs.code == rhs.code &&
+		lhs.severity == rhs.severity
 }
 
 // ErrorTemplateFields holds all fields to format one error message.
