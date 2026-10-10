@@ -180,7 +180,7 @@ func TestMatrixExpressionFilterCombinations(t *testing.T) {
 				if len(parseErrors) != 0 {
 					t.Fatal(parseErrors)
 				}
-				cfg, err := ParseConfig([]byte("policy: {mixed-type-matrix-filters: true}"))
+				cfg, err := ParseConfig([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -191,7 +191,7 @@ func TestMatrixExpressionFilterCombinations(t *testing.T) {
 				}
 				count, siblings := 0, 0
 				for _, finding := range rule.Errs() {
-					if strings.Contains(finding.Message, "policy: mixed-type-matrix-filters") {
+					if finding.Kind == "mixed-type-matrix-filters" {
 						if finding.Line == 10 {
 							siblings++
 							continue
@@ -256,7 +256,7 @@ func TestKnownMatrixExpressionFilterTypes(t *testing.T) {
 				}
 				job := workflow.Jobs["test"]
 				originalMatrix := job.Strategy.Matrix
-				cfg, err := ParseConfig([]byte("policy: {mixed-type-matrix-filters: true}"))
+				cfg, err := ParseConfig([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -270,7 +270,7 @@ func TestKnownMatrixExpressionFilterTypes(t *testing.T) {
 				}
 				count := 0
 				for _, finding := range rule.Errs() {
-					if strings.Contains(finding.Message, "policy: mixed-type-matrix-filters") {
+					if finding.Kind == "mixed-type-matrix-filters" {
 						count++
 						if finding.Line != line || finding.Column != column {
 							t.Fatalf("wrong matrix position: %+v", finding)
