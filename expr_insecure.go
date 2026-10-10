@@ -159,10 +159,14 @@ var BuiltinUntrustedInputs = UntrustedInputSearchRoots{
 				NewUntrustedInputMap("title"),
 				NewUntrustedInputMap("body"),
 			),
-			// A workflow_run can describe a run from a fork. Branch names and
-			// Git commit identities/messages are contributor-controlled text.
+			// A workflow_run can describe a run from a fork. Repository metadata,
+			// branch names and Git commit identities/messages can be contributor-controlled.
 			NewUntrustedInputMap("workflow_run",
-				NewUntrustedInputMap("head_repository", NewUntrustedInputMap("default_branch")),
+				NewUntrustedInputMap("head_repository",
+					NewUntrustedInputMap("default_branch"),
+					NewUntrustedInputMap("description"),
+					NewUntrustedInputMap("homepage"),
+				),
 				NewUntrustedInputMap("head_branch"),
 				NewUntrustedInputMap("display_title"),
 				NewUntrustedInputMap("head_commit",
