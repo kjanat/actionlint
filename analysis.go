@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"runtime"
@@ -86,6 +87,17 @@ func (f *inputFiles) list() []string {
 	return paths
 }
 
+func (f *inputFiles) addConfig(config *Config, project *Project) {
+	if config != nil {
+		for _, path := range config.configFiles {
+			f.add(path)
+		}
+	}
+	if project != nil {
+		f.add(project.configPath)
+	}
+}
+
 // Analyze checks resolved workflows and returns data without rendering diagnostics.
 // On analysis failure, a non-nil result retains findings collected before the failure.
 func Analyze(ctx context.Context, request AnalysisRequest) (*AnalysisResult, error) {
@@ -96,6 +108,40 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	if request.WorkingDir == "" {
+		var err error
+		request.WorkingDir, err = os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+	}
+	var err error
+	request.WorkingDir, err = filepath.Abs(request.WorkingDir)
+	if err != nil {
+		return nil, err
+	}
+	inputs := &inputFiles{}
+	selected := make([]SourceUnit, 0, len(request.Sources))
+	for _, source := range request.Sources {
+		// Selection itself consumes configuration, even when no source survives.
+		inputs.addConfig(source.Config, source.Project)
+		root := request.WorkingDir
+		if source.Project != nil {
+			root = source.Project.RootDir()
+		}
+		path := source.inputPath
+		if path == "" {
+			path = source.Path
+		}
+		if path != "<stdin>" && !filepath.IsAbs(path) {
+			path = filepath.Join(request.WorkingDir, path)
+		}
+		source.inputPath = path
+		if source.Config.includesFile(path, root) {
+			selected = append(selected, source)
+		}
+	}
+	request.Sources = selected
 	if level != LogLevelNone {
 		log = &analysisLogWriter{out: log}
 	}
@@ -104,7 +150,6 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		shellcheckOptions:  request.ShellcheckOptions,
 		shellcheckSettings: request.ShellcheckSettings,
 		ignorePats:         request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: analysisLogger{log, level}}
-	inputs := &inputFiles{}
 	proc := newConcurrentProcess(ctx, runtime.NumCPU())
 	actions := NewLocalActionsCacheFactory(engine.debugWriter())
 	cwd := request.WorkingDir
@@ -137,9 +182,6 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 			path = source.Path
 		}
 		inputs.add(path)
-		if source.Project != nil {
-			inputs.add(source.Project.configPath)
-		}
 		ac, wc := actions.GetCache(source.Project), workflows.GetCache(source.Project)
 		group.Go(func() error {
 			file := &result.files[i]
@@ -152,7 +194,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 			return err
 		})
 	}
-	err := group.Wait()
+	err = group.Wait()
 	proc.wait()
 	if err == nil {
 		err = ctx.Err()

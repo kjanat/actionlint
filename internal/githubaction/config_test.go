@@ -151,3 +151,24 @@ func TestConfigWarningsVisibleInAction(t *testing.T) {
 		t.Fatal(out.String())
 	}
 }
+
+func TestInheritedConfigWarningsVisibleInAction(t *testing.T) {
+	for _, overlay := range []string{"", "policy: {require-commit-hash: false}"} {
+		t.Run(overlay, func(t *testing.T) {
+			workspace := workspaceWith(t, map[string]string{
+				".git": "", ".github/workflows/test.yaml": cleanWorkflow,
+				".github/actionlint.yaml": "extends: ['../base.yml']\n",
+				"base.yml":                "# inherited settings\nconfig-variable: [TYPO]\n",
+			})
+			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_CONFIG": overlay}
+			var out strings.Builder
+			if code := Main(func(key string) string { return env[key] }, &out); code != 0 {
+				t.Fatalf("exit %d: %s", code, &out)
+			}
+			want := commandEscape(filepath.Join(workspace, "base.yml") + ":2:1:")
+			if !strings.Contains(out.String(), "::warning title=Check configuration::"+want) {
+				t.Fatalf("warning attributed to leaf config: %s", &out)
+			}
+		})
+	}
+}

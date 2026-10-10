@@ -20,8 +20,8 @@ func configOrigins(node *yaml.Node, prefix string, origins map[string]ConfigOrig
 	if node.Kind == yaml.AliasNode {
 		node = node.Alias
 	}
-	reset := inputs[node].reset
-	if node.Tag == "!!null" && inputs[node].name != "" {
+	reset := inputs[node].Reset
+	if node.Tag == "!!null" && inputs[node].Name != "" {
 		reset = node
 	}
 	if reset != nil {
@@ -64,7 +64,7 @@ func configOrigins(node *yaml.Node, prefix string, origins map[string]ConfigOrig
 }
 
 func configNodeOrigin(node *yaml.Node, inputs map[*yaml.Node]configInput) ConfigOrigin {
-	origin := ConfigOrigin{Source: "config", State: "null"}
+	origin := ConfigOrigin{Source: "config", State: "null", File: inputs[node].File}
 	if node == nil {
 		return origin
 	}
@@ -72,7 +72,7 @@ func configNodeOrigin(node *yaml.Node, inputs map[*yaml.Node]configInput) Config
 	if node.Tag != "!!null" {
 		origin.State = "value"
 	}
-	if input := inputs[node].name; input != "" {
+	if input := inputs[node].Name; input != "" {
 		origin.Source, origin.Input = "input", input
 	}
 	return origin

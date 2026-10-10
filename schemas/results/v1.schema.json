@@ -135,6 +135,9 @@
           "minimum": 0,
           "maximum": 9007199254740991
         },
+        "file": {
+          "type": "string"
+        },
         "input": {
           "type": "string"
         },
@@ -183,6 +186,9 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 9007199254740991
+        },
+        "file": {
+          "type": "string"
         },
         "line": {
           "type": "integer",

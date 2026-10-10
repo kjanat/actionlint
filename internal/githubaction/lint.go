@@ -132,6 +132,8 @@ func runLinter(req *lintRequest) *lintResult {
 	}
 	// Absolute reads must retain the caller's relative spelling in Action output.
 	if analysis != nil {
+		result.fileCount = analysis.FileCount()
+		result.fileCountKnown = true
 		for i := range analysis.Diagnostics {
 			diagnostic := &analysis.Diagnostics[i]
 			if path, ok := inputNames[diagnostic.Path]; ok {

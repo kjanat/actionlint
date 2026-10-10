@@ -33,6 +33,19 @@ func (l *analysisEngine) check(
 	usedRules *[]Rule,
 ) ([]*Error, error) {
 	// Each call owns its rules; caches and process scheduling are shared across files.
+	root := l.workingDir
+	if project != nil {
+		root = project.RootDir()
+	}
+	var configErr error
+	configPath := path
+	if !filepath.IsAbs(configPath) {
+		configPath = filepath.Join(l.workingDir, configPath)
+	}
+	cfg, configErr = configForFile(cfg, configPath, root)
+	if configErr != nil {
+		return nil, configErr
+	}
 	cfg = l.rulePresets.apply(cfg)
 
 	var start time.Time
@@ -187,9 +200,9 @@ func (l *analysisEngine) check(
 	}
 	all = nil
 	for findingPath, findings := range byPath {
-		findingConfig := cfg
 		findings = slices.DeleteFunc(findings, func(e *Error) bool {
-			switch findingConfig.diagnosticLevel(e.Kind) {
+			// Dependency findings belong to this workflow's configured analysis.
+			switch cfg.diagnosticLevel(e.Kind) {
 			case "off":
 				return true
 			case "warn":
@@ -201,7 +214,7 @@ func (l *analysisEngine) check(
 			}
 			return false
 		})
-		all = append(all, l.filterErrors(findings, findingConfig.PathConfigs(findingPath))...)
+		all = append(all, l.filterErrors(findings, cfg.PathConfigs(findingPath))...)
 	}
 
 	diagnosticDir := l.workingDir

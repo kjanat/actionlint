@@ -13,8 +13,15 @@ export type Diagnostic = {
 	code?: string;
 	fixes?: Fix[];
 };
-export type ConfigOrigin = { source: string; state: string; input?: string; line?: number; column?: number };
-export type ConfigWarning = { message: string; line: number; column: number };
+export type ConfigOrigin = {
+	source: string;
+	state: string;
+	file?: string;
+	input?: string;
+	line?: number;
+	column?: number;
+};
+export type ConfigWarning = { message: string; line: number; column: number; file?: string };
 export type ResultConfig = {
 	file: string;
 	project: string;

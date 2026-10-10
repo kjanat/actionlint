@@ -1,4 +1,4 @@
-LIBSRCS := $(filter-out ../%_test.go, $(wildcard ../*.go)) ../go.mod ../go.sum
+LIBSRCS := $(filter-out %_test.go, $(wildcard ../*.go ../internal/*/*.go)) ../go.mod ../go.sum
 NODE_MODULES := ../node_modules
 SRCS := $(wildcard src/*.ts src/*.css) index.html vite.config.ts tsconfig.json
 # wasm_exec.js is part of the Go toolchain and must match the compiler that built main.wasm.

@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/internal/buildinfo"
+	"actionlint.kjanat.dev/internal/configtree"
 	"github.com/bmatcuk/doublestar/v4"
 	"go.yaml.in/yaml/v4"
 )
@@ -340,9 +341,18 @@ type SelfHostedRunnerConfig struct {
 // Save as `.github/actionlint.yaml` or `.github/actionlint.yml`, or select a file with `-config-file`.
 // Every setting is optional; normal workflow correctness checks run without a configuration file.
 type Config struct {
-	filename string
+	filename    string
+	configFiles []string
+	// Extends loads local YAML/JSON files, relative to this config, in order.
+	// Later bases override earlier bases; this file wins over all bases. No URLs.
+	Extends []string `yaml:"extends,omitempty" jsonschema:"nullable"`
+	// Files selects repository-relative inputs shared by analysis features.
+	Files FilesConfig `yaml:"files,omitempty" jsonschema:"nullable"`
 	// Lint configures rule selection separately from repository policy.
 	Lint LintConfig `yaml:"lint" jsonschema:"nullable"`
+	// Overrides applies per-file lint settings in declaration order. Later matching
+	// settings win; mappings merge and arrays replace. Paths are repository-relative.
+	Overrides []ConfigOverride `yaml:"overrides" jsonschema:"nullable"`
 	// Tools configures external linters for both the CLI and GitHub Action.
 	Tools ToolsConfig `yaml:"tools" jsonschema:"nullable"`
 	// SelfHostedRunner configures extra labels accepted for self-hosted runners.
@@ -524,12 +534,16 @@ func ParseConfig(b []byte) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(resolved.config.Extends) > 0 {
+		return nil, errors.New("extends requires a file origin; use ReadConfigFile")
+	}
 	return resolved.config, nil
 }
 
 // resolvedConfig keeps validated values and their provenance from the same document.
 type resolvedConfig struct {
 	node     *yaml.Node
+	inputs   map[*yaml.Node]configInput
 	config   *Config
 	values   map[string]any
 	origins  map[string]ConfigOrigin
@@ -550,7 +564,7 @@ func resolveConfigDocument(b []byte) (resolvedConfig, error) {
 
 func resolveConfigNode(root *yaml.Node, inputs map[*yaml.Node]configInput) (resolvedConfig, error) {
 	if inputs == nil {
-		expanded, err := expandConfigNode(root, make(map[*yaml.Node]bool))
+		expanded, err := configtree.Expand(root, make(map[*yaml.Node]bool))
 		if err != nil {
 			return resolvedConfig{}, err
 		}
@@ -580,7 +594,13 @@ func resolveConfigNode(root *yaml.Node, inputs map[*yaml.Node]configInput) (reso
 	if c.Tools.Shellcheck.Config != nil {
 		c.Tools.Shellcheck.Config.fromInput = origins["/tools/shellcheck/config"].Source == "input"
 	}
-	return resolvedConfig{node: root, config: &c, values: values, origins: origins, warnings: configWarnings(root)}, nil
+	for i := range c.Overrides {
+		tools := c.Overrides[i].Tools
+		if tools != nil && tools.Shellcheck.Config != nil {
+			tools.Shellcheck.Config.fromInput = origins["/overrides"].Source == "input"
+		}
+	}
+	return resolvedConfig{node: root, inputs: inputs, config: &c, values: values, origins: origins, warnings: configWarnings(root, inputs)}, nil
 }
 
 // ReadConfigFile reads actionlint config file (actionlint.yaml) from the given file path.
@@ -593,15 +613,34 @@ func ReadConfigFile(path string) (*Config, error) {
 }
 
 func readConfigSource(path string, readFile func(string) ([]byte, error)) (*loadedConfig, error) {
-	b, err := readFile(path)
+	warningsByFile := map[string][]ConfigWarning{}
+	loaded, err := configtree.Load(path, readFile, func(origin string, node *yaml.Node) (*yaml.Node, error) {
+		normalized, warnings, err := normalizeExtendedConfig(origin, node, absPath(path) != origin)
+		warningsByFile[origin] = warnings
+		return normalized, err
+	})
 	if err != nil {
-		return nil, fmt.Errorf("could not read config file %q: %w", path, err)
+		if _, ok := errors.AsType[*os.PathError](err); ok {
+			return nil, fmt.Errorf("could not read config file %q: %w", path, err)
+		}
+		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
-	resolved, err := resolveConfigDocument(b)
+	inputs := map[*yaml.Node]configInput{}
+	if len(loaded.Files) > 1 {
+		for node, file := range loaded.Origins {
+			inputs[node] = configInput{File: file}
+		}
+	}
+	resolved, err := resolveConfigNode(loaded.Node, inputs)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
 	resolved.config.filename = absPath(path)
+	resolved.config.configFiles = loaded.Files
+	resolved.warnings = nil
+	for _, file := range loaded.Files {
+		resolved.warnings = mergeConfigWarnings(resolved.warnings, warningsByFile[file])
+	}
 	return &loadedConfig{resolved, path}, nil
 }
 
