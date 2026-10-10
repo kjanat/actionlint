@@ -208,17 +208,24 @@ func isPythonShell(shell string) bool {
 	if isPythonCommand(command) {
 		return true
 	}
+	return pythonAdapterArguments(shell, command) != nil
+}
+
+func pythonAdapterArguments(shell, command string) []string {
 	name := strings.ToLower(command[strings.LastIndexAny(command, `/\`)+1:])
 	name = strings.TrimSuffix(name, ".cmd")
 	if name != "actions-shell" && name != "actions-shells" {
-		return false
+		return nil
 	}
 	// The documented Python adapters take the runtime first and script last.
 	parser := shellwords.NewParser()
 	parser.ParseEnv, parser.ParseBacktick = false, false
 	args, err := parser.Parse(shell[len(command):])
-	return err == nil && parser.Position < 0 && len(args) >= 2 &&
-		(args[0] == "python" || args[0] == "py") && args[len(args)-1] == "{0}"
+	if err != nil || parser.Position >= 0 || len(args) < 2 ||
+		(args[0] != "python" && args[0] != "py") || args[len(args)-1] != "{0}" {
+		return nil
+	}
+	return args
 }
 
 func isPythonCommand(command string) bool {
@@ -240,7 +247,14 @@ func isPythonCommand(command string) bool {
 }
 
 func pythonShellTarget(shell string) string {
+	shell = strings.TrimSpace(shell)
 	words := strings.Fields(shell)
+	if len(words) == 0 {
+		return ""
+	}
+	if args := pythonAdapterArguments(shell, words[0]); args != nil {
+		words = args
+	}
 	command := words[0]
 	command = command[strings.LastIndexAny(command, `/\`)+1:]
 	command = strings.TrimSuffix(strings.ToLower(command), ".exe")

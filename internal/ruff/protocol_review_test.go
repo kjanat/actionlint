@@ -177,6 +177,22 @@ func TestVersionedShellTarget(t *testing.T) {
 		{"py -c 'print(\"-3.9\")' {0}", "", "py314"},
 		{"py -3.9", "", "py314"},
 		{"actions-shell python {0}", "", "py314"},
+		{"actions-shells py -3.9 {0}", "", "py39"},
+		{"actions-shell py -3.10 -u {0}", "", "py310"},
+		{`C:\tools\ACTIONS-SHELLS.CMD py -V:PythonCore/3.9-64 {0}`, "", "py39"},
+		{`/usr/bin/actions-shells 'py' '-V:pYtHoNcOrE/3.13-arm64' -W "ignore::DeprecationWarning" '{0}'`, "", "py313"},
+		{" \tactions-shell\tpy\t-3.9\t{0} ", "", "py39"},
+		{"actions-shells py -3.9 {0}", "py310", "py310"},
+		{"actions-shells py -3.10 {0}", "py39", "py39"},
+		{"actions-shells python -3.9 {0}", "", "py314"},
+		{"actions-shells py -u -3.9 {0}", "", "py314"},
+		{"actions-shells py -W '-3.9' {0}", "", "py314"},
+		{"actions-shells py -V:OtherCompany/3.9 {0}", "", "py314"},
+		{"actions-shells py -3.99 {0}", "", "py314"},
+		{"actions-shells py -3 {0}", "", "py314"},
+		{"actions-shells py -V:3.9.1 {0}", "", "py314"},
+		{"actions-shells py -v:3.9 {0}", "", "py314"},
+		{"actions-shells py '-3.9 unrelated' {0}", "", "py314"},
 	} {
 		t.Run(tc.shell+tc.explicit, func(t *testing.T) {
 			calls := 0
@@ -189,6 +205,22 @@ func TestVersionedShellTarget(t *testing.T) {
 			checker.WorkflowShell(&tc.shell)
 			if err := checker.Check("print(1)", nil, "test", Config{TargetVersion: tc.explicit}, func(Diagnostic) {}); err != nil || calls != 1 {
 				t.Fatalf("calls=%d, error=%v", calls, err)
+			}
+		})
+	}
+}
+
+func TestAdapterTargetRequiresSupportedShell(t *testing.T) {
+	for _, shell := range []string{
+		"", "actions-shells py -3.9", "actions-shells py -3.9 {0} later.py",
+		"actions-shells python3 -3.9 {0}", "actions-shells PY -3.9 {0}",
+		"actions-shells -- py -3.9 {0}", "wrapper py -3.9 {0}",
+		"actions-shells py -3.9 {0}; echo other", "actions-shells py '-3.9 {0}",
+		"actions-shells $RUNTIME -3.9 {0}",
+	} {
+		t.Run(shell, func(t *testing.T) {
+			if isPythonShell(shell) || pythonShellTarget(shell) != "" {
+				t.Fatalf("unsupported adapter inferred a Python target: %q", shell)
 			}
 		})
 	}
