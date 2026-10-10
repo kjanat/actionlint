@@ -159,6 +159,10 @@ var BuiltinUntrustedInputs = UntrustedInputSearchRoots{
 				NewUntrustedInputMap("title"),
 				NewUntrustedInputMap("body"),
 			),
+			NewUntrustedInputMap("workflow",
+				NewUntrustedInputMap("name"),
+				NewUntrustedInputMap("path"),
+			),
 			// A workflow_run can describe a run from a fork. Repository metadata,
 			// branch names and Git commit identities/messages can be contributor-controlled.
 			NewUntrustedInputMap("workflow_run",
