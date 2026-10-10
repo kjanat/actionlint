@@ -22,7 +22,7 @@ jobs:
       - parallel:
           - uses: &SetupGo actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
             with: &GoMod { go-version-file: go.mod }
-          - uses: &SetupUv astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+          - uses: &SetupUv astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.1.0
             with: &NoCache { enable-cache: false }
       - &InstallShellCheck { name: Install ShellCheck, uses: $/.github/actions/setup-shellcheck }
       - name: Install shells for completion tests on Linux
@@ -54,7 +54,7 @@ jobs:
         # actionlint passes --norc to shellcheck, ignoring .shellcheckrc.
         run: echo "::add-matcher::.github/actionlint-matcher.json"; ./actionlint -color -shellcheck 'shellcheck -o all'
 
-      - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with: { use_oidc: true }
   wasm:
     name: Wasm
@@ -62,7 +62,7 @@ jobs:
     steps:
       - *ActCheckNocred
       - name: Install project tools
-        uses: &SetupMise jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        uses: &SetupMise jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v4.3.0
         with:
           cache: false
           install_args: go node npm github:kjanat/runner github:jgm/pandoc github:biomejs/biome
@@ -97,8 +97,8 @@ jobs:
           - { name: Install Pandoc, uses: $/.github/actions/setup-pandoc }
           - &Runner { uses: kjanat/runner@ad30f34c7352d89884b6d03febd9b16b4807ed56, with: { version: latest } } # v0.27.1
           - name: Install syft for SBOM generation
-            uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
-          - uses: &SetupNode actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+            uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+          - uses: &SetupNode actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
             with: { node-version: "24", package-manager-cache: false }
       - name: Build JavaScript Action release files outside the checkout
         run: |
@@ -156,7 +156,7 @@ jobs:
     steps:
       - *ActCheckNocred
       - name: Build image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with: { load: true, push: false, tags: actionlint:test }
       - name: Test Docker image
         run: docker container run
@@ -333,7 +333,7 @@ jobs:
           NODE
       - name: Upload result files from the recipe
         if: always() && steps.smoke.outputs.result-file != ''
-        uses: &UploadAction actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: &UploadAction actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: actionlint-reports-${{ matrix.os }}
           path: |
@@ -376,7 +376,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - *ActCheckNocred
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with: { name: actionlint-linux-candidate, path: .actionlint-slim-test }
       - name: Restore executable permission
         run: chmod +x .actionlint-slim-test/actionlint-test

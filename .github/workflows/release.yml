@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: &Checkout actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { fetch-depth: 0, persist-credentials: false }
-      - uses: &SetupNode actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+      - uses: &SetupNode actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with: &Node24 { node-version: "24", package-manager-cache: false }
       - name: Verify the signed normal version tag and every published asset
         id: release
@@ -100,7 +100,7 @@ jobs:
         with: { subject-checksums: "${{ runner.temp }}/release-assets/actionlint_${{ steps.release.outputs.version }}_checksums.txt" }
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
         with: { subject-path: "${{ runner.temp }}/release-assets/actionlint-action_${{ steps.release.outputs.version }}.mjs" }
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with: { name: verified-release, path: "${{ runner.temp }}/release-assets", if-no-files-found: error, compression-level: 0 }
   npm:
     name: Publish npm packages
@@ -120,7 +120,7 @@ jobs:
         with: { persist-credentials: false }
       - uses: *SetupNode
         with: *Node24
-      - uses: &Download actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      - uses: &Download actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with: { name: verified-release, path: .release-assets }
       - name: Publish the prepared Homebrew and Scoop manifests
         env:
