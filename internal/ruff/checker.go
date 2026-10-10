@@ -240,9 +240,36 @@ func isPythonCommand(command string) bool {
 }
 
 func pythonShellTarget(shell string) string {
-	command := strings.Fields(shell)[0]
+	words := strings.Fields(shell)
+	command := words[0]
 	command = command[strings.LastIndexAny(command, `/\`)+1:]
 	command = strings.TrimSuffix(strings.ToLower(command), ".exe")
+	if command == "py" && len(words) >= 3 && slices.ContainsFunc(words[2:], func(word string) bool {
+		return word == "{0}" || word == `"{0}"` || word == "'{0}'"
+	}) {
+		selector := words[1]
+		if len(selector) >= 2 && (selector[0] == '"' || selector[0] == '\'') && selector[len(selector)-1] == selector[0] {
+			selector = selector[1 : len(selector)-1]
+		}
+		version, ok := strings.CutPrefix(selector, "-V:")
+		if !ok {
+			version, ok = strings.CutPrefix(selector, "-")
+		}
+		if !ok {
+			return ""
+		}
+		if company, tag, hasCompany := strings.Cut(version, "/"); hasCompany {
+			if !strings.HasPrefix(selector, "-V:") || !strings.EqualFold(company, "PythonCore") {
+				return ""
+			}
+			version = tag
+		}
+		version, architecture, hasArchitecture := strings.Cut(version, "-")
+		if hasArchitecture && architecture != "32" && architecture != "64" && architecture != "arm64" {
+			return ""
+		}
+		command = "python" + version
+	}
 	if minor, ok := strings.CutPrefix(command, "python3."); ok {
 		if target := "py3" + minor; slices.Contains(SupportedTargetVersions(), target) {
 			return target
