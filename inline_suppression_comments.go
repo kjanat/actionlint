@@ -69,11 +69,11 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 			}
 		}
 	}
-	var visit func(*yaml.Node, int)
-	visit = func(node *yaml.Node, endLine int) {
+	var visit func(*yaml.Node, int, int)
+	visit = func(node *yaml.Node, endLine, parentIndent int) {
 		if node.Line > 0 && node.Line <= len(lines) {
 			if node.Style&yaml.FlowStyle != 0 || node.Kind == yaml.ScalarNode {
-				readYAMLNodePrefixComments(node, lines, endLine, readComment, blockEnds)
+				readYAMLNodePrefixComments(node, lines, endLine, parentIndent, readComment, blockEnds)
 			}
 			commentEnd := endLine
 			// YAML can combine property and value comments into one string.
@@ -96,6 +96,37 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 			}
 			readPreceding(node.Line, node.HeadComment)
 		}
+		if node.Kind == yaml.MappingNode || node.Kind == yaml.SequenceNode {
+			parentIndent = node.Column - 1
+			if len(node.Content) > 0 {
+				first := node.Content[0]
+				if node.Kind == yaml.MappingNode {
+					if node.Anchor != "" || node.Style&yaml.TaggedStyle != 0 {
+						parentIndent = first.Column - 1
+						if len(node.Content) > 1 && node.Content[1].Line > first.Line {
+							declaration := lines[node.Content[1].Line-1]
+							prefix := strings.TrimLeft(declaration, " ")
+							if prefix == ":" || strings.HasPrefix(prefix, ": ") || strings.HasPrefix(prefix, ":\t") {
+								parentIndent = len(declaration) - len(prefix)
+							}
+						}
+					}
+				} else if first.Line != node.Line {
+					for line := node.Line; line <= first.Line; line++ {
+						declaration := []rune(lines[line-1])
+						start := 0
+						if line == node.Line {
+							start = node.Column - 1
+						}
+						prefix := strings.TrimLeft(string(declaration[start:]), " ")
+						if prefix == "-" || strings.HasPrefix(prefix, "- ") || strings.HasPrefix(prefix, "-\t") {
+							parentIndent = len(declaration) - utf8.RuneCountInString(prefix)
+							break
+						}
+					}
+				}
+			}
+		}
 		for i, child := range node.Content {
 			// The YAML parser can attach a standalone comment to the preceding
 			// entry, including when CRLF changes comment attachment.
@@ -109,10 +140,10 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 			if i+1 < len(node.Content) {
 				childEnd = min(childEnd, node.Content[i+1].Line-1)
 			}
-			visit(child, max(child.Line, childEnd))
+			visit(child, max(child.Line, childEnd), parentIndent)
 		}
 	}
-	visit(&root, documentEnd)
+	visit(&root, documentEnd, -1)
 	for i := range comments {
 		target := comments[i].pos.Line
 		if comments[i].standalone {
@@ -147,7 +178,7 @@ func yamlClosingCommentLine(node *yaml.Node, comment string, lines []string, end
 // readYAMLNodePrefixComments reads comments on tags, anchors, flow openers and
 // block scalar headers. Stop at value content, which can contain comment-like text.
 // YAML may overwrite these prefix comments with the final value comment.
-func readYAMLNodePrefixComments(node *yaml.Node, lines []string, endLine int, read func(int, string, bool), blockEnds map[int]int) {
+func readYAMLNodePrefixComments(node *yaml.Node, lines []string, endLine, parentIndent int, read func(int, string, bool), blockEnds map[int]int) {
 	line := node.Line
 	text := string([]rune(lines[line-1])[node.Column-1:])
 	declaration := true
@@ -188,12 +219,25 @@ func readYAMLNodePrefixComments(node *yaml.Node, lines []string, endLine int, re
 			}
 			return
 		case strings.HasPrefix(text, "|"), strings.HasPrefix(text, ">"):
-			indent := len(lines[line-1]) - len(strings.TrimLeft(lines[line-1], " "))
+			// Explicit indentation uses the containing mapping or sequence;
+			// otherwise the first nonblank body line establishes indentation.
+			indent := -1
+			for _, indicator := range strings.Fields(text)[0][1:] {
+				if indicator >= '1' && indicator <= '9' {
+					indent = max(parentIndent, 0) + int(indicator-'0')
+				}
+			}
 			last := line
 			for next := line; next < endLine; next++ {
 				body := lines[next]
-				if strings.TrimSpace(body) != "" && len(body)-len(strings.TrimLeft(body, " ")) <= indent {
-					break
+				if strings.TrimSpace(body) != "" {
+					bodyIndent := len(body) - len(strings.TrimLeft(body, " "))
+					if indent < 0 {
+						indent = max(parentIndent+1, bodyIndent)
+					}
+					if bodyIndent < indent {
+						break
+					}
 				}
 				last = next + 1
 			}
