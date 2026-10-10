@@ -212,6 +212,9 @@ func TestRuffRequiredToolsCompositeOverrides(t *testing.T) {
 		{"tool explicitly disabled", "tools: {ruff: false}", "tools: {ruff: false}", false},
 		{"rule remains disabled", "lint: {rules: {external: {ruff: off}}}", "lint: {rules: {external: {ruff: off}}}", false},
 		{"rule blocked by tool", "tools: {ruff: false}\nlint: {rules: {external: {ruff: off}}}", "lint: {rules: {external: {ruff: on}}}", false},
+		{"split tool and rule", "tools: {ruff: true}\nlint: {rules: {external: {ruff: off}}}", "tools: {ruff: false}\n    lint: {rules: {external: {ruff: on}}}", false},
+		{"split rule and tool", "tools: {ruff: false}\nlint: {rules: {external: {ruff: on}}}", "tools: {ruff: true}\n    lint: {rules: {external: {ruff: off}}}", false},
+		{"both reenabled", "tools: {ruff: false}\nlint: {rules: {external: {ruff: off}}}", "tools: {ruff: true}\n    lint: {rules: {external: {ruff: on}}}", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -225,6 +228,58 @@ func TestRuffRequiredToolsCompositeOverrides(t *testing.T) {
 				if err != nil || tools.Ruff != (tc.want && executable != "") {
 					t.Fatalf("tools=%+v, error=%v", tools, err)
 				}
+			}
+		})
+	}
+}
+
+func TestRuffRequiredToolsOverlappingOverrides(t *testing.T) {
+	for _, tc := range []struct {
+		name, config string
+		want         bool
+	}{
+		{"separate gates", "tools: {ruff: false}\nlint: {rules: {external: {ruff: off}}}\noverrides:\n  - includes: ['python-action/**']\n    tools: {ruff: true}\n  - includes: ['**/action.yml']\n    lint: {rules: {external: {ruff: on}}}\n", true},
+		{"explicit rule survives group", "lint: {rules: {external: off}}\noverrides:\n  - includes: ['python-action/**']\n    lint: {rules: {external: {ruff: on}}}\n  - includes: ['**']\n    lint: {rules: {external: {level: off}}}\n", true},
+		{"explicit off survives group", "lint: {rules: {external: {ruff: off}}}\noverrides:\n  - includes: ['python-action/**']\n    lint: {rules: {external: {level: on}}}\n", false},
+		{"default restores group", "lint: {rules: {external: {ruff: off}}}\noverrides:\n  - includes: ['python-action/**']\n    lint: {rules: {external: {level: on}}}\n  - includes: ['**/action.yml']\n    lint: {rules: {external: {ruff: default}}}\n", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			config := writeShellcheckFixture(t, root, "actionlint.yml", tc.config)
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, ConfigFile: config, Ruff: "ruff"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			needed, err := session.RequiredTools([]string{"ci.yml"})
+			if err != nil || needed.Ruff != tc.want {
+				t.Fatalf("needed=%+v, error=%v, want=%v", needed, err, tc.want)
+			}
+		})
+	}
+}
+
+func TestRuffRequiredToolsManyOverrides(t *testing.T) {
+	unrelated := strings.Repeat("  - includes: ['**/action.yml']\n    lint: {rules: {correctness: {expression: warn}}}\n", 8)
+	for _, tc := range []struct {
+		name, base, final string
+		want              bool
+	}{
+		{"disabled remains disabled", "tools: {ruff: false}\n", "", false},
+		{"universal tool disable", "", "  - includes: ['**']\n    tools: {ruff: false}\n", false},
+		{"universal rule disable", "", "  - includes: ['**']\n    lint: {rules: {external: {ruff: off}}}\n", false},
+		{"possible enable", "tools: {ruff: false}\n", "  - includes: ['python-action/**']\n    tools: {ruff: true}\n", true},
+		{"overlapping separate enables", "tools: {ruff: false}\nlint: {rules: {external: {ruff: off}}}\n", "  - includes: ['python-action/**']\n    tools: {ruff: true}\n  - includes: ['**/action.yml']\n    lint: {rules: {external: {ruff: on}}}\n", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			config := writeShellcheckFixture(t, root, "actionlint.yml", tc.base+"overrides:\n"+unrelated+tc.final)
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, ConfigFile: config, Ruff: "ruff"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			needed, err := session.RequiredTools([]string{"ci.yml"})
+			if err != nil || needed.Ruff != tc.want {
+				t.Fatalf("needed=%+v, error=%v, want=%v", needed, err, tc.want)
 			}
 		})
 	}

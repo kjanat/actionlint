@@ -67,6 +67,12 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 	if !isPythonShell(*shell) {
 		return nil
 	}
+	for _, flag := range c.flags {
+		if flag == "--output-file" || strings.HasPrefix(flag, "--output-file=") ||
+			strings.HasPrefix(flag, "-") && !strings.HasPrefix(flag, "--") && strings.ContainsRune(flag[1:], 'o') {
+			return fmt.Errorf("ruff output redirection is not supported for script at %s: %q", location, flag)
+		}
+	}
 	source, valid, err := Sanitize(script, c.expressionEnd)
 	if err != nil {
 		return fmt.Errorf("ruff could not check Python script at %s: %w", location, err)
@@ -177,6 +183,10 @@ func Sanitize(src string, expressionEnd ExpressionEnd) (string, bool, error) {
 	for {
 		start := strings.Index(src, "${{")
 		if start < 0 {
+			state.consume(src)
+			if state.patternCapture {
+				return "", false, nil
+			}
 			out.WriteString(src)
 			return out.String(), true, nil
 		}
@@ -187,8 +197,14 @@ func Sanitize(src string, expressionEnd ExpressionEnd) (string, bool, error) {
 		end := start + 3 + length
 		out.WriteString(src[:start])
 		state.consume(src[:start])
+		if state.patternCapture {
+			return "", false, nil
+		}
 		if state.quote == 0 && !state.comment && (templateTouchesPythonToken(src, start, end) || state.subscriptDepth == 0 && (state.nameRequired || templateIsAssignmentTarget(src[:start], src[end:], state.depth))) {
 			return "", false, nil
+		}
+		if state.quote == 0 && !state.comment && state.casePattern && state.lastToken == "*" {
+			state.pendingCapture = true
 		}
 		runes := []rune(src[start:end])
 		for i, r := range runes {
@@ -292,6 +308,9 @@ type pythonLexicalState struct {
 	nameListDepth  int
 	functionName   bool
 	parameterDepth int
+	casePattern    bool
+	pendingCapture bool
+	patternCapture bool
 }
 
 // consumeCode tracks name-only positions without interpreting Python values.
@@ -303,10 +322,18 @@ func (s *pythonLexicalState) consumeCode(c byte) {
 		}
 		return
 	}
+	previous := s.lastToken
 	if s.word != "" {
 		s.lastToken = s.word
 	}
 	switch s.word {
+	case "case":
+		s.casePattern = s.depth == 0 && (previous == "" || previous == "\n")
+	case "if":
+		if s.casePattern && s.depth == 0 {
+			s.patternCapture = s.patternCapture || s.pendingCapture
+			s.casePattern, s.pendingCapture = false, false
+		}
 	case "import", "from", "global", "nonlocal", "del", "for", "lambda":
 		s.nameRequired, s.nameList = true, true
 		s.nameListDepth = s.depth
@@ -351,7 +378,14 @@ func (s *pythonLexicalState) consumeCode(c byte) {
 		}
 	case '=':
 		s.nameRequired = false
+		if s.depth == 0 {
+			s.casePattern, s.pendingCapture = false, false
+		}
 	case ':', ';':
+		if s.depth == 0 {
+			s.patternCapture = s.patternCapture || c == ':' && s.casePattern && s.pendingCapture
+			s.casePattern, s.pendingCapture = false, false
+		}
 		s.nameRequired = false
 		if c != ':' || s.parameterDepth == 0 {
 			s.nameList = false
@@ -359,6 +393,7 @@ func (s *pythonLexicalState) consumeCode(c byte) {
 		s.className = false
 	case '\n':
 		if s.depth == 0 {
+			s.casePattern, s.pendingCapture = false, false
 			s.nameRequired, s.nameList = false, false
 			s.className = false
 		}

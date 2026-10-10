@@ -49,6 +49,10 @@ func TestSanitizeNameRequiredTemplates(t *testing.T) {
 		"values = [item for ${{ inputs.name }} in []]",
 		"(${{ inputs.name }} := 1)",
 		"func(${{ inputs.keyword }}=1)",
+		"match value:\n    case {\"x\": x, **${{ inputs.rest }}}: pass",
+		"match value:\n    case [*${{ inputs.rest }}]: pass",
+		"match value:\n    case [first, *${{ inputs.rest }}] if first: pass",
+		"match value:\n    case [\n        *${{ inputs.rest }}\n    ]: pass",
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			script := strings.ReplaceAll(script, "\n", ending)
@@ -93,6 +97,13 @@ func TestSanitizeNameRequiredTemplates(t *testing.T) {
 		"mapping = {${{ inputs.key }}: 1}",
 		"lambda item: ${{ inputs.value }}",
 		"print(${{ inputs.value }} == 1)",
+		"func(*${{ inputs.values }})",
+		"mapping = {**${{ inputs.values }}}",
+		"values = [*${{ inputs.values }}]",
+		"case = [*${{ inputs.values }}]",
+		"case(*${{ inputs.values }})",
+		"match value:\n    case [*rest] if ${{ inputs.enabled }}: pass",
+		"match value:\n    case {\"${{ inputs.key }}\": value}: pass",
 	} {
 		t.Run(script, func(t *testing.T) {
 			if _, valid, err := Sanitize(script, end); err != nil || !valid {

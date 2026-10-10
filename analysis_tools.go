@@ -116,12 +116,10 @@ func ruffConfigMayEnable(config *Config) (bool, error) {
 		}) &&
 			!slices.ContainsFunc(override.Includes, func(pattern string) bool { return strings.HasPrefix(pattern, "!") })
 		override.Includes, override.Excludes = []string{"**"}, nil
-		if !universal {
-			candidates = append(candidates, candidates[0])
-		}
 		start := 0
 		if !universal {
-			start = len(candidates) - 1
+			start = len(candidates)
+			candidates = append(candidates, candidates...)
 		}
 		for i := start; i < len(candidates); i++ {
 			candidate := *candidates[i]
@@ -132,11 +130,43 @@ func ruffConfigMayEnable(config *Config) (bool, error) {
 			}
 			candidates[i] = resolved
 		}
+		// Retain precedence-bearing gate states while collapsing unrelated options.
+		seen := make(map[ruffGateState]bool, len(candidates))
+		unique := candidates[:0]
+		for _, candidate := range candidates {
+			key := ruffGateConfig(candidate)
+			if !seen[key] {
+				seen[key] = true
+				unique = append(unique, candidate)
+			}
+		}
+		candidates = unique
 	}
-	ruleEnabled, toolEnabled := false, false
 	for _, candidate := range candidates {
-		ruleEnabled = ruleEnabled || candidate.diagnosticLevel("ruff") != "off"
-		toolEnabled = toolEnabled || candidate.Tools.Ruff.Enabled == nil || *candidate.Tools.Ruff.Enabled
+		if candidate.diagnosticLevel("ruff") != "off" && (candidate.Tools.Ruff.Enabled == nil || *candidate.Tools.Ruff.Enabled) {
+			return true, nil
+		}
 	}
-	return ruleEnabled && toolEnabled, nil
+	return false, nil
+}
+
+type ruffGateState struct {
+	tool, lint, disabled, explicit, resolved bool
+	toolSet, lintSet                         bool
+	preset, groupPreset                      RulePreset
+	group, rule, resolution                  RuleLevel
+}
+
+func ruffGateConfig(config *Config) ruffGateState {
+	rules := config.Lint.Rules
+	rule, explicit := rules.External.Rules["ruff"]
+	resolution, resolved := rules.resolved["ruff"]
+	return ruffGateState{
+		tool:    config.Tools.Ruff.Enabled == nil || *config.Tools.Ruff.Enabled,
+		lint:    config.Lint.Enabled == nil || *config.Lint.Enabled,
+		toolSet: config.Tools.Ruff.Enabled != nil, lintSet: config.Lint.Enabled != nil,
+		disabled: slices.Contains(rules.Disable, "ruff"), explicit: explicit, resolved: resolved,
+		preset: rules.Preset, groupPreset: rules.External.Preset,
+		group: rules.External.Level, rule: rule.Level, resolution: resolution,
+	}
 }

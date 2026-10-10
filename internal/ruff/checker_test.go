@@ -194,6 +194,23 @@ func TestConfiguredFlagsFollowCheck(t *testing.T) {
 	}
 }
 
+func TestOutputRedirectionFlagsRejected(t *testing.T) {
+	for _, flags := range [][]string{
+		{"--output-file", "out.json"}, {"--output-file=out.json"},
+		{"-o", "out.json"}, {"-oout.json"}, {"-o=out.json"}, {"-qoout.json"},
+	} {
+		t.Run(strings.Join(flags, " "), func(t *testing.T) {
+			checker := New(func([]string, string, func([]byte, error) error) {
+				t.Error("scheduled Ruff with output redirection")
+			}, func() error { return nil }, nil, flags...)
+			python := "python"
+			if err := checker.Check("print(missing)", &python, "test", Config{}, func(Diagnostic) {}); err == nil || !strings.Contains(err.Error(), "output redirection") {
+				t.Fatalf("output redirection was not rejected: %v", err)
+			}
+		})
+	}
+}
+
 func TestVersionedPythonShells(t *testing.T) {
 	for _, tc := range []struct {
 		shell string
