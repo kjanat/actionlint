@@ -3,6 +3,7 @@ package actionlint_test
 import (
 	"context"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -45,7 +46,38 @@ func TestAnalysisDeprecatedPyflakesCompatibility(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			required, err := session.RequiredTools(nil)
+			if err != nil || required.Pyflakes {
+				t.Fatalf("retired checker was required: %+v, %v", required, err)
+			}
 			assertResult(session.ReadStdin(strings.NewReader(workflow), false))
 		})
+	}
+}
+
+func TestAnalysisDeprecatedPyflakesFieldOrder(t *testing.T) {
+	for _, tc := range []struct {
+		typeOf            reflect.Type
+		first, shellcheck string
+	}{
+		{reflect.TypeFor[actionlint.AnalysisOptions](), "Context", "Shellcheck"},
+		{reflect.TypeFor[actionlint.AnalysisRequest](), "Sources", "ShellCheck"},
+	} {
+		t.Run(tc.typeOf.Name(), func(t *testing.T) {
+			if got := tc.typeOf.Field(0).Name; got != tc.first {
+				t.Fatalf("first field = %s, want %s", got, tc.first)
+			}
+			for _, pair := range [][2]string{{tc.shellcheck, "Pyflakes"}, {"ShellcheckSettings", "PyflakesOptions"}} {
+				previous, ok := tc.typeOf.FieldByName(pair[0])
+				if !ok || previous.Index[0]+1 >= tc.typeOf.NumField() || tc.typeOf.Field(previous.Index[0]+1).Name != pair[1] {
+					t.Fatalf("%s must follow %s", pair[1], pair[0])
+				}
+			}
+		})
+	}
+	typeOf := reflect.TypeFor[actionlint.ExternalToolRequirements]()
+	field, ok := typeOf.FieldByName("Pyflakes")
+	if !ok || field.Index[0] != 1 || field.Type.Kind() != reflect.Bool || field.Tag.Get("json") != "pyflakes" {
+		t.Fatalf("retired tool requirement contract changed: %+v", field)
 	}
 }

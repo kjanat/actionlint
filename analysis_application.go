@@ -14,14 +14,10 @@ import (
 
 // AnalysisOptions controls source discovery and analysis without selecting an output format.
 type AnalysisOptions struct {
-	// Deprecated: Pyflakes integration was removed. This field is ignored.
-	Pyflakes string
-	// Deprecated: Pyflakes integration was removed. This field is ignored.
-	PyflakesOptions *ExternalCommandOptions
-	Context         context.Context
-	WorkingDir      string
-	StdinFileName   string
-	ConfigFile      string
+	Context       context.Context
+	WorkingDir    string
+	StdinFileName string
+	ConfigFile    string
 	// ConfigOverlays apply in order over the selected file.
 	ConfigOverlays []ConfigOverlay
 	// OnConfigLoaded reports selected files and overlays.
@@ -29,16 +25,20 @@ type AnalysisOptions struct {
 	// SkipProjectConfig disables per-project config reads; ConfigFile still applies.
 	SkipProjectConfig bool
 	// QuietSelection suppresses the legacy file-selection and completion log messages.
-	QuietSelection     bool
-	Shellcheck         string
+	QuietSelection bool
+	Shellcheck     string
+	// Deprecated: Pyflakes integration was removed. This field is ignored.
+	Pyflakes           string
 	ShellcheckOptions  *ExternalCommandOptions
 	ShellcheckSettings *ShellcheckSettings
-	IgnorePatterns     []string
-	Verbose            bool
-	Debug              bool
-	LogWriter          io.Writer
-	OnRulesCreated     func([]Rule) []Rule
-	OnFilesSelected    func([]string)
+	// Deprecated: Pyflakes integration was removed. This field is ignored.
+	PyflakesOptions *ExternalCommandOptions
+	IgnorePatterns  []string
+	Verbose         bool
+	Debug           bool
+	LogWriter       io.Writer
+	OnRulesCreated  func([]Rule) []Rule
+	OnFilesSelected func([]string)
 	// ReadFile reads workflows, local action metadata, reusable workflows, and config.
 	// It must support concurrent calls. Nil uses os.ReadFile.
 	// This does not restrict filesystem access by external tools.

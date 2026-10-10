@@ -5,6 +5,8 @@ import "path/filepath"
 // ExternalToolRequirements identifies tools enabled by the selected configurations.
 type ExternalToolRequirements struct {
 	Shellcheck bool `json:"shellcheck"`
+	// Deprecated: Pyflakes integration was removed. This field is always false.
+	Pyflakes bool `json:"pyflakes"`
 }
 
 // RequiredTools resolves configuration for each input without reading workflows or

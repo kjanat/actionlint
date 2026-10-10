@@ -26,16 +26,16 @@ type SourceUnit struct {
 
 // AnalysisRequest contains resolved sources and analysis settings.
 type AnalysisRequest struct {
+	Sources    []SourceUnit
+	ShellCheck string
 	// Deprecated: Pyflakes integration was removed. This field is ignored.
-	Pyflakes string
-	// Deprecated: Pyflakes integration was removed. This field is ignored.
-	PyflakesOptions    *ExternalCommandOptions
-	Sources            []SourceUnit
-	ShellCheck         string
+	Pyflakes           string
 	ShellcheckOptions  *ExternalCommandOptions
 	ShellcheckSettings *ShellcheckSettings
-	IgnorePatterns     IgnorePatterns
-	OnRulesCreated     func([]Rule) []Rule
+	// Deprecated: Pyflakes integration was removed. This field is ignored.
+	PyflakesOptions *ExternalCommandOptions
+	IgnorePatterns  IgnorePatterns
+	OnRulesCreated  func([]Rule) []Rule
 	// WorkingDir resolves workflow paths in reusable-workflow caches. Empty uses os.Getwd.
 	WorkingDir string
 	// ReadFile reads local action metadata and reusable workflows. Nil uses os.ReadFile.
