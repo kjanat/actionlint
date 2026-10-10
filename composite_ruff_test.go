@@ -1,10 +1,39 @@
 package actionlint
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestRuffCompositeAliasConfiguration(t *testing.T) {
+	command := ruffForTest(t)
+	root := t.TempDir()
+	writeShellcheckFixture(t, root, "python-action/action.yml", "name: Python\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: python\n      run: |\n        import os\n        print(missing)\n")
+	if err := os.Symlink(filepath.Join(root, "python-action"), filepath.Join(root, "python-alias")); err != nil {
+		t.Skipf("directory symlinks unavailable: %v", err)
+	}
+	config, err := ParseConfig([]byte("overrides:\n  - includes: ['python-action/action.yml']\n    tools: {ruff: {select: [F401]}}\n    lint: {rules: {external: {ruff: warn}}}\n  - includes: ['python-alias/action.yml']\n    tools: {ruff: {select: [F821]}}\n    lint: {rules: {external: {ruff: info}}}\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/python-action\n      - uses: $/python-alias\n"
+	result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: &Project{root: root}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{"F401": "warning", "F821": "info"}
+	if len(result.Diagnostics) != len(want) {
+		t.Fatalf("findings=%+v", result.Diagnostics)
+	}
+	for _, diagnostic := range result.Diagnostics {
+		if severity, ok := want[diagnostic.Code]; !ok || diagnostic.Severity != severity {
+			t.Errorf("alias lost its configuration: %+v", diagnostic)
+		}
+		delete(want, diagnostic.Code)
+	}
+}
 
 func TestRuffCompositeFileConfiguration(t *testing.T) {
 	command := ruffForTest(t)
