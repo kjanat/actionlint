@@ -49,6 +49,14 @@ func samePathOnFilesystem(left, right string, windows bool, stat func(string) (o
 	if leftErr == nil && rightErr == nil && leftInfo.IsDir() && rightInfo.IsDir() {
 		return os.SameFile(leftInfo, rightInfo)
 	}
+	if errors.Is(leftErr, os.ErrNotExist) && errors.Is(rightErr, os.ErrNotExist) {
+		leftParent, leftSuffix := existingPathAncestor(left, stat)
+		rightParent, rightSuffix := existingPathAncestor(right, stat)
+		if leftParent != nil && rightParent != nil && os.SameFile(leftParent, rightParent) &&
+			(leftSuffix == rightSuffix || windows && strings.EqualFold(leftSuffix, rightSuffix)) {
+			return true
+		}
+	}
 	if !strings.EqualFold(left, right) {
 		if !strings.EqualFold(filepath.Base(left), filepath.Base(right)) {
 			return false
@@ -80,6 +88,25 @@ func samePathOnFilesystem(left, right string, windows bool, stat func(string) (o
 		return !leftExists || !rightExists
 	}
 	return windows
+}
+
+func existingPathAncestor(path string, stat func(string) (os.FileInfo, error)) (os.FileInfo, string) {
+	suffix := filepath.Base(path)
+	for parent := filepath.Dir(path); parent != path; parent = filepath.Dir(path) {
+		info, err := stat(parent)
+		if err == nil {
+			if info.IsDir() {
+				return info, suffix
+			}
+			return nil, ""
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, ""
+		}
+		suffix = filepath.Join(filepath.Base(parent), suffix)
+		path = parent
+	}
+	return nil, ""
 }
 
 func workflowPaths(dir string, candidates []string, windows bool) []string {
