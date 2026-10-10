@@ -26,7 +26,9 @@ func (s Selection) IsZero() bool { return s.Includes == nil && s.Excludes == nil
 // ValidPattern rejects ambiguous or escaping file patterns, not config paths.
 func ValidPattern(pattern string) bool {
 	p := strings.TrimPrefix(pattern, "!")
-	return p != "" && !strings.ContainsAny(p, "\\:") && !filepath.IsAbs(p) && !strings.Contains("/"+p+"/", "/../") && doublestar.ValidatePattern(p)
+	// Globs always use repository-relative slash paths, independent of the host.
+	// filepath.IsAbs("/tmp/*") is false on Windows, where a volume is required.
+	return p != "" && !strings.ContainsAny(p, "\\:") && !strings.HasPrefix(p, "/") && !strings.Contains("/"+p+"/", "/../") && doublestar.ValidatePattern(p)
 }
 
 // UnmarshalYAML validates the whole scope and rejects unknown keys.
