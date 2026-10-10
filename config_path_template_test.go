@@ -61,8 +61,15 @@ func TestShellcheckWorkflowPathValidation(t *testing.T) {
 			} {
 				t.Run(tc.name, func(t *testing.T) {
 					root := t.TempDir()
-					config := writeShellcheckFixture(t, root, "actionlint.yaml", "tools:\n  shellcheck:\n    config: "+selection.config+"\n")
-					workflow := writeShellcheckFixture(t, root, "workflow.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - "+tc.step+"\n")
+					config := writeShellcheckFixture(t, root, "actionlint.yaml", `tools:
+  shellcheck:
+    config: `+selection.config+"\n")
+					workflow := writeShellcheckFixture(t, root, "workflow.yml", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - `+tc.step+"\n")
 					session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, ConfigFile: config, Shellcheck: command})
 					if err != nil {
 						t.Fatal(err)
@@ -84,7 +91,13 @@ func TestShellcheckRelativeProjectPaths(t *testing.T) {
 	t.Setenv("GITHUB_WORKSPACE", "")
 	rc := writeShellcheckFixture(t, root, ".shellcheckrc", "disable=SC2086\n")
 	writeShellcheckFixture(t, root, ".github/.shellcheckrc", "enable=all\n")
-	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $VALUE\n")
+	content := []byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo $VALUE
+`)
 	for _, selection := range []string{
 		"${{ gitdir }}/.shellcheckrc",
 		"${{ github.workspace }}/.shellcheckrc",
@@ -165,7 +178,15 @@ func TestShellcheckInterpolatedPaths(t *testing.T) {
 	t.Setenv("GITHUB_WORKSPACE", workspace)
 	writeShellcheckFixture(t, workspace, "shared/env.sh", "VALUE=42\n")
 	rc := writeShellcheckFixture(t, workspace, "rc/.shellcheckrc", "disable=SC2086\n")
-	workflow := writeShellcheckFixture(t, repository, ".github/workflows/test.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          . env.sh\n          echo $VALUE\n")
+	workflow := writeShellcheckFixture(t, repository, ".github/workflows/test.yml", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          . env.sh
+          echo $VALUE
+`)
 	for _, selection := range []string{
 		`"${{ github.workspace }}/rc/.shellcheckrc"`,
 		`{source-path: ["${{ github.workspace }}/shared"]}`,

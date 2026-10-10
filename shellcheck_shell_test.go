@@ -87,17 +87,28 @@ func TestShellcheckResolvedDiagnostics(t *testing.T) {
 		{"custom sh", "", "sh {0}", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n"
+			source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+`
 			if tc.container != "" {
 				source += "    container: " + tc.container + "\n"
 			}
-			source += "    steps:\n      - run: |\n          [[ -n \"$HOME\" ]]\n"
+			source += `    steps:
+      - run: |
+          [[ -n "$HOME" ]]
+`
 			line := strings.Count(source, "\n")
 			if tc.shell != "" {
 				source += "        shell: " + tc.shell + "\n"
 			}
 			// A following host job must not inherit container or step shell state.
-			source += "  next:\n    runs-on: ubuntu-latest\n    steps:\n      - run: '[[ -n \"$HOME\" ]]'\n"
+			source += `  next:
+    runs-on: ubuntu-latest
+    steps:
+      - run: '[[ -n "$HOME" ]]'
+`
 			linter, err := NewLinter(io.Discard, &LinterOptions{Shellcheck: command, WorkingDir: t.TempDir()})
 			if err != nil {
 				t.Fatal(err)

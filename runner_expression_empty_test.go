@@ -27,7 +27,13 @@ func TestRunnerExpressionNonemptyLabels(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			source := "on: push\njobs:\n  build:\n    runs-on: " + tc.value + "\n    steps:\n      - run: echo ok\n"
+			source := `on: push
+jobs:
+  build:
+    runs-on: ` + tc.value + `
+    steps:
+      - run: echo ok
+`
 			errs, err := linter.Lint("workflow.yml", []byte(source), nil)
 			if err != nil {
 				t.Fatal(err)

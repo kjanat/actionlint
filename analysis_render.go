@@ -102,6 +102,7 @@ func (r *AnalysisResult) CheckResult() CheckResult {
 	result := NewCheckResult(code)
 	count := r.FileCount()
 	result.FileCount = &count
+	result.Documents = r.Documents
 	if r.Diagnostics != nil {
 		result.Diagnostics = r.Diagnostics
 	}

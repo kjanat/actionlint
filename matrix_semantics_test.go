@@ -31,7 +31,15 @@ func TestMatrixCombinationInsertionValidation(t *testing.T) {
 		} {
 			t.Run(section+"/"+tc.name, func(t *testing.T) {
 				matrix := "item: [one], " + section + ": [" + strconv.Quote("${{ "+tc.expression+" }}") + "]"
-				workflow, errs := Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: {" + matrix + "}\n    steps:\n      - run: echo ok\n"))
+				workflow, errs := Parse([]byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: {` + matrix + `}
+    steps:
+      - run: echo ok
+`))
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
@@ -63,7 +71,15 @@ func TestMatrixSequenceInsertion(t *testing.T) {
 		{"empty include insertion", `item: [before], include: ["${{ fromJSON('[]') }}"]`, "string"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			workflow, errs := Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: {" + tc.matrix + "}\n    steps:\n      - run: echo ok\n"))
+			workflow, errs := Parse([]byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: {` + tc.matrix + `}
+    steps:
+      - run: echo ok
+`))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
@@ -109,7 +125,15 @@ func TestSuspiciousMatrixFilterSelection(t *testing.T) {
 	} {
 		for _, config := range []string{"", "policy: {}", "policy: null", "lint: {rules: {suspicious: off}}", "lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"} {
 			t.Run(tc.matrix+"/"+config, func(t *testing.T) {
-				workflow, errs := Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: {" + tc.matrix + "}\n    steps:\n      - run: echo ok\n"))
+				workflow, errs := Parse([]byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: {` + tc.matrix + `}
+    steps:
+      - run: echo ok
+`))
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}

@@ -113,7 +113,7 @@ func TestActionReportsSuccess(t *testing.T) {
 		"result":         "success",
 		"problems-found": "false",
 		"problem-count":  "0",
-		"output":         `{"schema_version":1,"status":"success","completed":true,"exit_code":0,"file_count":0,"diagnostics":[],"configurations":[],"hints":[]}`,
+		"output":         `{"schema_version":1,"status":"success","completed":true,"exit_code":0,"file_count":0,"diagnostics":[],"documents":[],"configurations":[],"hints":[]}`,
 		"output-file":    "",
 	}
 	for name, value := range want {

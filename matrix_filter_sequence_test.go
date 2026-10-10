@@ -36,7 +36,17 @@ func TestMatrixExcludeSequenceInsertions(t *testing.T) {
 		{"known object index before insertion", `[false, "${{ inputs.value }}"]`, `{'0': true, '2': true}`, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			source := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        value: [{nested: %s}]\n        exclude: [{value: {nested: %s}}]\n    steps:\n      - run: echo ok\n", tc.axis, tc.filter)
+			source := fmt.Sprintf(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        value: [{nested: %s}]
+        exclude: [{value: {nested: %s}}]
+    steps:
+      - run: echo ok
+`, tc.axis, tc.filter)
 			workflow, parseErrors := Parse([]byte(source))
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)

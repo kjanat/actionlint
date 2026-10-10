@@ -7,7 +7,13 @@ import (
 )
 
 func TestConfigUnknownKeysWarnWithoutRejecting(t *testing.T) {
-	path := writeShellcheckFixture(t, t.TempDir(), "actionlint.yaml", "config-variable: [FOO]\nself-hosted-runner:\n  label: [custom]\npaths:\n  '**':\n    ignores: [something]\n")
+	path := writeShellcheckFixture(t, t.TempDir(), "actionlint.yaml", `config-variable: [FOO]
+self-hosted-runner:
+  label: [custom]
+paths:
+  '**':
+    ignores: [something]
+`)
 	inspection, err := InspectConfig(ConfigSelection{Path: path}, true)
 	if err != nil {
 		t.Fatal(err)

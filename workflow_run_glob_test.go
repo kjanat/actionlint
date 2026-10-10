@@ -29,7 +29,15 @@ func TestWorkflowRunGlobDiagnostics(t *testing.T) {
 		t.Run(tc.pattern, func(t *testing.T) {
 			root := t.TempDir()
 			producer := writeShellcheckFixture(t, root, ".github/workflows/build.yml", "name: '"+tc.producer+"'\n"+commandGoodWorkflow)
-			workflow := "on:\n  workflow_run:\n    workflows: ['" + tc.pattern + "']\n    types: [completed]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
+			workflow := `on:
+  workflow_run:
+    workflows: ['` + tc.pattern + `']
+    types: [completed]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps: [{run: echo ok}]
+`
 			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: ".github/workflows/consumer.yml", Content: []byte(workflow), Project: &Project{root: root}}}})
 			if err != nil {
 				t.Fatal(err)
@@ -54,7 +62,9 @@ func TestWorkflowRunGlobWithoutProject(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		source := "on: {workflow_run: {workflows: ['?Build'], types: [completed]}}\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"
+		source := `on: {workflow_run: {workflows: ['?Build'], types: [completed]}}
+jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
+`
 		result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: filepath.Join("outside", "workflow.yml"), Content: []byte(source), Config: cfg}}})
 		if err != nil {
 			t.Fatal(err)
@@ -95,7 +105,12 @@ func TestWorkflowRunGlobRequiresPositivePattern(t *testing.T) {
 			for _, pattern := range tc.patterns {
 				patterns = append(patterns, strconv.Quote(pattern))
 			}
-			source := "on:\n  workflow_run:\n    workflows: [" + strings.Join(patterns, ", ") + "]\n    types: [completed]\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"
+			source := `on:
+  workflow_run:
+    workflows: [` + strings.Join(patterns, ", ") + `]
+    types: [completed]
+jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
+`
 			workflow, errs := Parse([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)

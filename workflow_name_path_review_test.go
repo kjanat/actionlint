@@ -21,7 +21,12 @@ func TestWorkflowRunSymlinkCheckout(t *testing.T) {
 		for _, name := range []string{"New", "Missing"} {
 			t.Run(roots[0]+name, func(t *testing.T) {
 				project := &Project{root: roots[1]}
-				consumer := "on: {workflow_run: {workflows: [" + name + "], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
+				consumer := "on: {workflow_run: {workflows: [" + name + `], types: [completed]}}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps: [{run: echo ok}]
+`
 				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: roots[0], Sources: []SourceUnit{
 					{Path: ".github/workflows/build.yml", Content: []byte("name: New\n" + commandGoodWorkflow), Project: project},
 					{Path: ".github/workflows/consumer.yml", Content: []byte(consumer), Project: project},
@@ -46,7 +51,15 @@ func TestWorkflowRunPatternLineBreaks(t *testing.T) {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(strconv.Quote(pattern)+strconv.Quote(ending), func(t *testing.T) {
 				root := t.TempDir()
-				source := "on:\n  workflow_run:\n    workflows: [" + strconv.Quote(pattern) + "]\n    types: [completed]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
+				source := `on:
+  workflow_run:
+    workflows: [` + strconv.Quote(pattern) + `]
+    types: [completed]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps: [{run: echo ok}]
+`
 				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: ".github/workflows/consumer.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Project: &Project{root: root}}}})
 				if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "glob" || result.Diagnostics[0].Start.Line != 3 {
 					t.Fatalf("expected glob finding on line 3: %+v, %v", result.Diagnostics, err)
@@ -71,7 +84,16 @@ func TestWorkflowRunPatternScalarLineBreaks(t *testing.T) {
 			t.Run(tc.name+strconv.Quote(ending), func(t *testing.T) {
 				root := t.TempDir()
 				project := &Project{root: root}
-				source := "on:\n  workflow_run:\n    workflows:\n      - " + tc.scalar + "\n    types: [completed]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
+				source := `on:
+  workflow_run:
+    workflows:
+      - ` + tc.scalar + `
+    types: [completed]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps: [{run: echo ok}]
+`
 				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{
 					{Path: ".github/workflows/consumer.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Project: project},
 					{Path: ".github/workflows/build.yml", Content: []byte("name: Build CI\n" + commandGoodWorkflow), Project: project},

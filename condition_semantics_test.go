@@ -49,13 +49,26 @@ func TestConditionNormalization(t *testing.T) {
 				body := "    runs-on: ubuntu-latest\n"
 				switch location {
 				case "job":
-					body += "    if: " + tc.source + "\n    steps:\n      - run: echo ok\n"
+					body += "    if: " + tc.source + `
+    steps:
+      - run: echo ok
+`
 				case "snapshot":
-					body += "    snapshot:\n      image-name: test\n      if: " + tc.source + "\n    steps:\n      - run: echo ok\n"
+					body += `    snapshot:
+      image-name: test
+      if: ` + tc.source + `
+    steps:
+      - run: echo ok
+`
 				case "step":
-					body += "    steps:\n      - run: echo ok\n        if: " + tc.source + "\n"
+					body += `    steps:
+      - run: echo ok
+        if: ` + tc.source + "\n"
 				}
-				errs := lintCachePolicy(t, "on: push\njobs:\n  test:\n"+body, "")
+				errs := lintCachePolicy(t, `on: push
+jobs:
+  test:
+`+body, "")
 				if tc.want == "" {
 					if len(errs) != 0 {
 						t.Fatal(errs)
@@ -72,7 +85,17 @@ func TestConditionNormalization(t *testing.T) {
 }
 
 func TestConditionComputedValuesStayData(t *testing.T) {
-	source := "on: push\nenv: {X: 'false'}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n        name: ${{ 'nope' }}\n        env: {Y: \"${{ 'nope' }}\"}\n        if: ${{ env.X }}\n"
+	source := `on: push
+env: {X: 'false'}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+        name: ${{ 'nope' }}
+        env: {Y: "${{ 'nope' }}"}
+        if: ${{ env.X }}
+`
 	if errs := lintCachePolicy(t, source, ""); len(errs) != 0 {
 		t.Fatal(errs)
 	}
@@ -213,7 +236,20 @@ func TestConditionSerializationRemainsUnknown(t *testing.T) {
 }
 
 func TestSuspiciousConditionRuleSelection(t *testing.T) {
-	const header = "on:\n  workflow_dispatch:\n    inputs:\n      text: {type: string}\n      flag: {type: boolean}\n      count: {type: number}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - id: producer\n        run: echo ok\n      - run: echo ok\n        if: "
+	const header = `on:
+  workflow_dispatch:
+    inputs:
+      text: {type: string}
+      flag: {type: boolean}
+      count: {type: number}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - id: producer
+        run: echo ok
+      - run: echo ok
+        if: `
 	for _, tc := range []struct {
 		check, expression string
 		warn              bool

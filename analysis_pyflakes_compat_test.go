@@ -13,7 +13,14 @@ import (
 func TestAnalysisDeprecatedPyflakesCompatibility(t *testing.T) {
 	root := t.TempDir()
 	missing := filepath.Join(root, "missing-pyflakes")
-	const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(undefined_name)\n"
+	const workflow = `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(undefined_name)
+`
 	for _, tc := range []struct {
 		name, command string
 		options       *actionlint.ExternalCommandOptions

@@ -85,6 +85,13 @@ func TestActionPreservesNativeTimeoutFindings(t *testing.T) {
 	if result.FileCount == nil || *result.FileCount != 1 {
 		t.Fatalf("lost selected file count: %+v", result.FileCount)
 	}
+	if len(result.Documents) != 1 {
+		t.Fatalf("timeout discarded parsed outline: %+v", result.Documents)
+	}
+	workflow, ok := result.Documents[0].(actionlint.WorkflowOutline)
+	if !ok || workflow.Path != "./timeout.yaml" || workflow.ParseStatus != "complete" || len(workflow.Jobs) != 1 {
+		t.Fatalf("timeout corrupted workflow document: %+v", result.Documents)
+	}
 	var emitted persistedResult
 	outputs := parseOutputs(read(t, env["GITHUB_OUTPUT"]))
 	if err := json.Unmarshal([]byte(outputs["output"]), &emitted); err != nil {

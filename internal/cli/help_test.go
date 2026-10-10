@@ -92,7 +92,10 @@ func TestHelpColorFlags(t *testing.T) {
 				t.Fatal(code)
 			}
 			if plain := ansi.ReplaceAllString(styled, ""); plain != stderr.String() {
-				t.Fatalf("styling changed layout:\n%s\nplain:\n%s", plain, &stderr)
+				t.Fatalf(`styling changed layout:
+%s
+plain:
+%s`, plain, &stderr)
 			}
 			if color.NoColor != previous {
 				t.Fatal("help changed process-wide diagnostic color settings")

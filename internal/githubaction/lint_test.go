@@ -308,7 +308,10 @@ func TestRunLinterLintsWholeRepository(t *testing.T) {
 func TestRunLinterReadsConfigFile(t *testing.T) {
 	dir := workspaceWith(t, map[string]string{
 		"broken.yaml": brokenWorkflow,
-		"conf.yaml":   "self-hosted-runner:\n  labels:\n    - unknown-runner\n",
+		"conf.yaml": `self-hosted-runner:
+  labels:
+    - unknown-runner
+`,
 	})
 	t.Chdir(dir)
 
@@ -423,8 +426,12 @@ func TestActionIgnoreAndAutomaticConfigEndToEnd(t *testing.T) {
 		wantCode   int
 	}{
 		{"no ignore", "ignore: ''\n", "", 1},
-		{"quoted block pattern", "ignore: |\n  'label \"ubuntu-24.04-custom\" is unknown.'\n", "", 1},
-		{"block pattern", "ignore: |\n  label \"ubuntu-24.04-custom\" is unknown\\.\n", "", 0},
+		{"quoted block pattern", `ignore: |
+  'label "ubuntu-24.04-custom" is unknown.'
+`, "", 1},
+		{"block pattern", `ignore: |
+  label "ubuntu-24.04-custom" is unknown\.
+`, "", 0},
 		{"quoted scalar pattern", "ignore: 'label \"ubuntu-24.04-custom\" is unknown\\.'\n", "", 0},
 		{"automatic yaml config", "ignore: ''\n", "actionlint.yaml", 0},
 		{"automatic yml config", "ignore: ''\n", "actionlint.yml", 0},
@@ -441,7 +448,10 @@ func TestActionIgnoreAndAutomaticConfigEndToEnd(t *testing.T) {
 				".github/workflows/test.yaml": strings.ReplaceAll(brokenWorkflow, "unknown-runner", "ubuntu-24.04-custom"),
 			}
 			if tc.configName != "" {
-				files[".github/"+tc.configName] = "self-hosted-runner:\n  labels:\n    - ubuntu-24.04-custom\n"
+				files[".github/"+tc.configName] = `self-hosted-runner:
+  labels:
+    - ubuntu-24.04-custom
+`
 			}
 			workspace := workspaceWith(t, files)
 			outputPath := filepath.Join(t.TempDir(), "output")

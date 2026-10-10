@@ -19,7 +19,14 @@ func TestRuffLauncherArguments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(1)\n"
+	source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(1)
+`
 	for _, tc := range []struct {
 		name, executable string
 		prefix, invalid  []string

@@ -15,7 +15,16 @@ func TestWorkflowLiteralUsesDiagnostics(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(root, "action"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	manifest := "name: test\ndescription: test\ninputs:\n  token:\n    description: token\n    required: true\nruns:\n  using: composite\n  steps: [{run: echo ok, shell: bash}]\n"
+	manifest := `name: test
+description: test
+inputs:
+  token:
+    description: token
+    required: true
+runs:
+  using: composite
+  steps: [{run: echo ok, shell: bash}]
+`
 	if err := os.WriteFile(filepath.Join(root, "action", "action.yml"), []byte(manifest), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +45,13 @@ func TestWorkflowLiteralUsesDiagnostics(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var plain []*Error
 			for _, uses := range []string{tc.uses, "${{ '" + tc.uses + "' }}"} {
-				source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - id: action\n        uses: " + uses + tc.extra + "\n"
+				source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - id: action
+        uses: ` + uses + tc.extra + "\n"
 				linter, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root, Shellcheck: "", Pyflakes: ""})
 				if err != nil {
 					t.Fatal(err)
@@ -59,7 +74,17 @@ func TestWorkflowLiteralUsesDiagnostics(t *testing.T) {
 }
 
 func TestWorkflowLiteralStaticValues(t *testing.T) {
-	source := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - id: ${{ 'build' }}\n        run: echo ok\n        shell: ${{ 'bash' }}\n      - uses: ${{ 'docker://alpine:3' }}\n        with: {entrypoint: sh, args: -c}\n")
+	source := []byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - id: ${{ 'build' }}
+        run: echo ok
+        shell: ${{ 'bash' }}
+      - uses: ${{ 'docker://alpine:3' }}
+        with: {entrypoint: sh, args: -c}
+`)
 	w, errs := Parse(source)
 	if len(errs) != 0 {
 		t.Fatal(errs)
@@ -75,7 +100,11 @@ func TestWorkflowLiteralStaticValues(t *testing.T) {
 }
 
 func TestWorkflowLiteralCallMetadata(t *testing.T) {
-	source := []byte("on: workflow_call\njobs:\n  call:\n    uses: ${{ '$/leaf.yaml' }}\n")
+	source := []byte(`on: workflow_call
+jobs:
+  call:
+    uses: ${{ '$/leaf.yaml' }}
+`)
 	w, errs := Parse(source)
 	if len(errs) != 0 {
 		t.Fatal(errs)
@@ -103,7 +132,10 @@ func TestWorkflowLiteralCallInvalidSpec(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		errs, err := linter.Lint("workflow.yml", []byte("on: push\njobs:\n  call:\n    uses: "+uses+"\n"), nil)
+		errs, err := linter.Lint("workflow.yml", []byte(`on: push
+jobs:
+  call:
+    uses: `+uses+"\n"), nil)
 		if err != nil {
 			t.Fatal(err)
 		}

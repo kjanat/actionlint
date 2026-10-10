@@ -33,7 +33,9 @@ func TestConfigValidationWarnings(t *testing.T) {
 func TestConfigInheritedWarningLocation(t *testing.T) {
 	commandTestRepo(t)
 	base := filepath.Join(t.TempDir(), "base.yml")
-	if err := os.WriteFile(base, []byte("# inherited settings\nconfig-variable: [TYPO]\n"), 0600); err != nil {
+	if err := os.WriteFile(base, []byte(`# inherited settings
+config-variable: [TYPO]
+`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	leaf := filepath.Join(".github", "actionlint.yaml")
@@ -78,7 +80,10 @@ func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
 	if got := testRunCommand("", "config", "show"); got.Status != 0 || !strings.Contains(got.Stdout, "config-variables: null") {
 		t.Fatal(got)
 	}
-	config := "defaults: &defaults {config-variables: []}\n<<: *defaults\nconfig-secrets: null\n"
+	config := `defaults: &defaults {config-variables: []}
+<<: *defaults
+config-secrets: null
+`
 	if err := os.WriteFile(result["path"], []byte(config), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +102,13 @@ func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
 
 func TestModernConfigSelectionAndOrigins(t *testing.T) {
 	commandTestRepo(t)
-	config := "config-variables: []\nconfig-secrets: null\npolicy:\n  require-commit-hash: false\n  required-actions: []\n  require-job-timeout: {min-minutes: 2, max-minutes: 10}\n"
+	config := `config-variables: []
+config-secrets: null
+policy:
+  require-commit-hash: false
+  required-actions: []
+  require-job-timeout: {min-minutes: 2, max-minutes: 10}
+`
 	if err := os.WriteFile(".github/actionlint.yml", []byte(config), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +203,10 @@ func TestCommandConfigAndEmptyArgs(t *testing.T) {
 	if refused.Status != 3 || !strings.Contains(refused.Stderr, "already exists") {
 		t.Fatalf("%+v", refused)
 	}
-	if err := os.WriteFile(created.Path, []byte("paths:\n  '**':\n    ignore: ['undefined variable']\n"), 0o600); err != nil {
+	if err := os.WriteFile(created.Path, []byte(`paths:
+  '**':
+    ignore: ['undefined variable']
+`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	got = testRunCommand(commandBadWorkflow, "--config-file", created.Path, "--json", "-")
@@ -204,7 +218,11 @@ func TestCommandConfigAndEmptyArgs(t *testing.T) {
 func TestConfigOriginNestedReplacement(t *testing.T) {
 	t.Chdir(t.TempDir())
 	for _, replacement := range []string{"{}", "null", "{required-actions: [actions/checkout]}"} {
-		source := "defaults: &defaults\n  policy:\n    require-commit-hash: true\n<<: *defaults\npolicy: " + replacement + "\n"
+		source := `defaults: &defaults
+  policy:
+    require-commit-hash: true
+<<: *defaults
+policy: ` + replacement + "\n"
 		if err := os.WriteFile("config.yml", []byte(source), 0600); err != nil {
 			t.Fatal(err)
 		}

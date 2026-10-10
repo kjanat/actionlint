@@ -137,10 +137,14 @@ func checkErrors(t *testing.T, outfile string, errs []*Error) {
 		if strings.HasPrefix(want, "/") && strings.HasSuffix(want, "/") {
 			want := regexp.MustCompile(want[1 : len(want)-1])
 			if !want.MatchString(have) {
-				t.Errorf("error message mismatch at %dth error does not match to regular expression\n  want: /%s/\n  have: %q", i+1, want, have)
+				t.Errorf(`error message mismatch at %dth error does not match to regular expression
+  want: /%s/
+  have: %q`, i+1, want, have)
 			}
 		} else if want != have {
-			t.Errorf("error message mismatch at %dth error does not match exactly\n  want: %q\n  have: %q", i+1, want, have)
+			t.Errorf(`error message mismatch at %dth error does not match exactly
+  want: %q
+  have: %q`, i+1, want, have)
 		}
 	}
 }

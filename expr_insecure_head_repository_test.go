@@ -14,7 +14,12 @@ func TestExprInsecureHeadRepositoryMetadata(t *testing.T) {
 			"format('{0}', github.event.workflow_run.head_repository." + property + ")",
 		} {
 			t.Run(expression, func(t *testing.T) {
-				workflow := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo \"${{ " + expression + " }}\"\n"
+				workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ ` + expression + " }}\"\n"
 				result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
 				if err != nil {
 					t.Fatal(err)
@@ -38,14 +43,28 @@ func TestExprInsecureHeadRepositorySafeControls(t *testing.T) {
 		"contains(github.event.workflow_run.head_repository.description, 'release')",
 	} {
 		t.Run(expression, func(t *testing.T) {
-			workflow := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo \"${{ " + expression + " }}\"\n"
+			workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ ` + expression + " }}\"\n"
 			result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
 			if err != nil || len(result.Diagnostics) != 0 {
 				t.Fatalf("safe expression rejected: %v, %+v", err, result)
 			}
 		})
 	}
-	workflow := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n      - env:\n          DESCRIPTION: ${{ github.event.workflow_run.head_repository.description }}\n          HOMEPAGE: ${{ github.event.workflow_run.head_repository.homepage }}\n        run: printf '%s\\n' \"$DESCRIPTION\" \"$HOMEPAGE\"\n"
+	workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          DESCRIPTION: ${{ github.event.workflow_run.head_repository.description }}
+          HOMEPAGE: ${{ github.event.workflow_run.head_repository.homepage }}
+        run: printf '%s\n' "$DESCRIPTION" "$HOMEPAGE"
+`
 	result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("environment binding rejected: %v, %+v", err, result)
@@ -73,7 +92,16 @@ func TestWorkflowRunUserProfileInjection(t *testing.T) {
 		} {
 			t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, false) })
 		}
-		workflow := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    if: github.event.workflow_run." + path + " == 'trusted'\n    steps:\n      - env:\n          PROFILE: ${{ github.event.workflow_run." + path + " }}\n        run: printf '%s\\n' \"$PROFILE\"\n"
+		workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.` + path + ` == 'trusted'
+    steps:
+      - env:
+          PROFILE: ${{ github.event.workflow_run.` + path + ` }}
+        run: printf '%s\n' "$PROFILE"
+`
 		result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
 		if err != nil || len(result.Diagnostics) != 0 {
 			t.Fatalf("safe condition and environment binding for %s rejected: %v, %+v", path, err, result)
@@ -117,10 +145,18 @@ func TestWorkflowRunUserProfileScriptLocations(t *testing.T) {
 			line int
 		}{
 			{"      - run: |\n          echo '${{ github.event.workflow_run." + path + " }}'\n", 6},
-			{"      - uses: actions/github-script@v8\n        with:\n          script: |\n            console.log('${{ github.event.workflow_run." + path + " }}')\n", 8},
+			{`      - uses: actions/github-script@v8
+        with:
+          script: |
+            console.log('${{ github.event.workflow_run.` + path + " }}')\n", 8},
 		} {
 			for _, ending := range []string{"\n", "\r\n"} {
-				workflow := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n" + script.step
+				workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+` + script.step
 				result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(strings.ReplaceAll(workflow, "\n", ending))}}})
 				if err != nil {
 					t.Fatal(err)

@@ -23,7 +23,13 @@ func TestKnownExpressionActionInputs(t *testing.T) {
 		{"invalid shape handled by expression rule", `fromJSON('[]')`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			workflow, errs := Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/action@v1\n        with: ${{ " + tc.expression + " }}\n"))
+			workflow, errs := Parse([]byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: example/action@v1
+        with: ${{ ` + tc.expression + " }}\n"))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
@@ -60,7 +66,13 @@ func TestKnownExpressionRunnerLabels(t *testing.T) {
 		{"labels expression", `{labels: "${{ fromJSON('[\"ubuntu-lates\"]') }}"}`, `label "ubuntu-lates" is unknown`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			workflow, errs := Parse([]byte("on: push\njobs:\n  test:\n    runs-on: " + tc.runsOn + "\n    steps:\n      - run: echo ok\n"))
+			workflow, errs := Parse([]byte(`on: push
+jobs:
+  test:
+    runs-on: ` + tc.runsOn + `
+    steps:
+      - run: echo ok
+`))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}

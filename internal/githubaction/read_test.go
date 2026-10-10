@@ -13,8 +13,10 @@ import (
 func TestActionReadsPathsOutsideWorkspace(t *testing.T) {
 	workspace := workspaceWith(t, map[string]string{"ci.yml": brokenWorkflow})
 	other := workspaceWith(t, map[string]string{
-		"ci.yml":         brokenWorkflow,
-		"actionlint.yml": "self-hosted-runner: {labels: [unknown-runner]}\ntools: {shellcheck: false}\n",
+		"ci.yml": brokenWorkflow,
+		"actionlint.yml": `self-hosted-runner: {labels: [unknown-runner]}
+tools: {shellcheck: false}
+`,
 	})
 	relative, err := filepath.Rel(workspace, other)
 	if err != nil {
@@ -114,7 +116,10 @@ func TestActionReportsExternalWorkflowFindings(t *testing.T) {
 }
 
 func TestRunLinterDependentSymlinks(t *testing.T) {
-	const metadata = "name: local\ndescription: local\nruns: {using: composite, steps: [{run: 'echo hi', shell: bash}]}\n"
+	const metadata = `name: local
+description: local
+runs: {using: composite, steps: [{run: 'echo hi', shell: bash}]}
+`
 	const actionWorkflow = `on: push
 jobs:
   test:
@@ -169,7 +174,9 @@ func TestActionConfigSymlinks(t *testing.T) {
 			t.Run(name+map[bool]string{false: "/outside", true: "/inside"}[contained], func(t *testing.T) {
 				workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/ci.yml": brokenWorkflow})
 				targetDir := t.TempDir()
-				content := "self-hosted-runner: {labels: [unknown-runner]}\ntools: {shellcheck: false}\n"
+				content := `self-hosted-runner: {labels: [unknown-runner]}
+tools: {shellcheck: false}
+`
 				if contained {
 					targetDir = workspace
 				}

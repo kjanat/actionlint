@@ -53,7 +53,14 @@ func TestActionDiagnosticAndSARIFPaths(t *testing.T) {
 		t.Skipf("ShellCheck required: %s", err)
 	}
 	t.Setenv("SHELLCHECK_OPTS", "")
-	const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo $VALUE\n"
+	const workflow = `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo $VALUE
+`
 	workspace := workspaceWith(t, map[string]string{
 		".git": "", "my workflow.yml": workflow, "work/my workflow.yml": workflow, ".github/workflows/my workflow.yml": workflow,
 	})
@@ -155,7 +162,14 @@ func TestActionSARIFOutputRetainsStructuredDiagnostics(t *testing.T) {
 	}
 	t.Setenv("SHELLCHECK_OPTS", "")
 	workspace := workspaceWith(t, map[string]string{
-		"my workflow.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo é 🐚 $VALUE\n",
+		"my workflow.yml": `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo é 🐚 $VALUE
+`,
 	})
 	resultPath := filepath.Join(t.TempDir(), "result.json")
 	outputPath := filepath.Join(t.TempDir(), "output")
@@ -227,8 +241,20 @@ func TestPersistedResultRetainsAnalysisStatus(t *testing.T) {
 		code, analysisCode    int
 		completed             bool
 	}{
-		{"clean", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n", "json", 0, 0, true},
-		{"findings without step failure", "on: push\njobs:\n  test:\n    runs-on: invalid-runner\n    steps:\n      - run: echo ok\n", "sarif", 0, 1, true},
+		{"clean", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`, "json", 0, 0, true},
+		{"findings without step failure", `on: push
+jobs:
+  test:
+    runs-on: invalid-runner
+    steps:
+      - run: echo ok
+`, "sarif", 0, 1, true},
 		{"invalid format", "", "invalid", 2, 2, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

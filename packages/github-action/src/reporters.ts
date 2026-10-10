@@ -195,6 +195,7 @@ export async function withReporting(
 			...result,
 			...failedResult(error, error instanceof InputError),
 			file_count: result.file_count,
+			documents: result.documents ?? [],
 			diagnostics: result.diagnostics,
 			configurations: result.configurations,
 			hints: result.hints,

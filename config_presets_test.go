@@ -8,7 +8,13 @@ import (
 )
 
 func TestRulePresetsPreserveAbsentConfiguration(t *testing.T) {
-	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hello\n")
+	content := []byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello
+`)
 	for _, tc := range []struct {
 		name    string
 		config  *Config

@@ -14,10 +14,19 @@ func TestCredentialsKnownMappingExpressions(t *testing.T) {
 		container, services bool
 	}{
 		{"container", "    container: %s\n", `"container" section`, 5, 16, true, false},
-		{"service container", "    services:\n      registry: %s\n", `"registry" service`, 6, 17, true, false},
+		{"service container", `    services:
+      registry: %s
+`, `"registry" service`, 6, 17, true, false},
 		{"services", "    services: %s\n", `"registry" service`, 5, 15, true, true},
-		{"credentials", "    container:\n      image: node:22\n      credentials: %s\n", `"container" section`, 7, 20, false, false},
-		{"service credentials", "    services:\n      registry:\n        image: node:22\n        credentials: %s\n", `"registry" service`, 8, 22, false, false},
+		{"credentials", `    container:
+      image: node:22
+      credentials: %s
+`, `"container" section`, 7, 20, false, false},
+		{"service credentials", `    services:
+      registry:
+        image: node:22
+        credentials: %s
+`, `"registry" service`, 8, 22, false, false},
 	} {
 		for _, tc := range []struct{ name, credentials, kind string }{
 			{"password", `{"username":"user","password":"plain"}`, "credentials"},
@@ -52,7 +61,13 @@ func TestCredentialsKnownMappingExpressions(t *testing.T) {
 						expression = "${{ fromJSON(secrets.CREDENTIALS) }}"
 					}
 				}
-				source := "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n" + fmt.Sprintf(scope.field, expression) + "    steps:\n      - run: echo ok\n"
+				source := `on: push
+jobs:
+  check:
+    runs-on: ubuntu-latest
+` + fmt.Sprintf(scope.field, expression) + `    steps:
+      - run: echo ok
+`
 				errs := lintCredentialsExpressionTest(t, source)
 				if tc.kind == "" {
 					if len(errs) != 0 {
@@ -89,7 +104,18 @@ func TestCredentialsKnownPasswordExpressions(t *testing.T) {
 		{"malformed expression", "${{ fromJSON( }}", "expression"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			source := "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    container:\n      image: node:22\n      credentials:\n        username: user\n        password: " + tc.value + "\n    steps:\n      - run: echo ok\n"
+			source := `on: push
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    container:
+      image: node:22
+      credentials:
+        username: user
+        password: ` + tc.value + `
+    steps:
+      - run: echo ok
+`
 			errs := lintCredentialsExpressionTest(t, source)
 			if tc.kind == "" {
 				if len(errs) != 0 {
@@ -117,7 +143,14 @@ func TestContainerExpressionImageContract(t *testing.T) {
 		{"missing image property", `${{ fromJSON('{}') }}`, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			source := "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    container: " + tc.value + "\n    steps:\n      - run: echo ok\n"
+			source := `on: push
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    container: ` + tc.value + `
+    steps:
+      - run: echo ok
+`
 			errs := lintCredentialsExpressionTest(t, source)
 			if !tc.missing {
 				if len(errs) != 0 {

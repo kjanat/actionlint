@@ -73,6 +73,178 @@ test('persisted results validate completion and preserve diagnostic severity and
 	assert.throws(() => parseResult({ ...result, status: 'success', exit_code: 0 }));
 });
 
+test('document outlines preserve parse states, nested steps and compatible additions', () => {
+	for (const parseStatus of ['complete', 'partial', 'failed']) {
+		const documents = [{
+			kind: 'workflow',
+			path: '.github/workflows/test.yml',
+			name: 'Test',
+			parse_status: parseStatus,
+			triggers: ['push', 'workflow_dispatch'],
+			jobs: [{
+				id: 'build',
+				name: 'Build',
+				start: { line: 4, column: 3 },
+				needs: ['prepare'],
+				steps: [
+					{ id: 'checkout', kind: 'uses', uses: 'actions/checkout@v6' },
+					{ kind: 'parallel', steps: [{ name: 'Compile', kind: 'run', start: { line: 8, column: 9 } }] },
+					{ kind: 'future-kind', future_metadata: { enabled: true } },
+				],
+			}, { id: 'call', needs: [], uses: './.github/workflows/reusable.yml', steps: [] }],
+		}];
+		for (const completed of [true, false]) {
+			const source: unknown = completed
+				? { ...result, documents }
+				: { ...result, documents, completed: false, status: 'failure', exit_code: 3 };
+			assert.deepEqual(JSON.parse(JSON.stringify(parseResult(source))), source);
+		}
+	}
+	assert.equal(parseResult(result).documents, undefined);
+	assert.deepEqual(parseResult({ ...result, documents: [] }).documents, []);
+});
+
+test('document outlines reject malformed known fields', () => {
+	const workflow = { kind: 'workflow', path: 'test.yml', parse_status: 'complete', triggers: [], jobs: [] };
+	const job = { id: 'build', needs: [], steps: [] };
+	for (
+		const documents of [
+			null,
+			{},
+			[{ ...workflow, path: null }],
+			[{ ...workflow, name: 1 }],
+			[{ ...workflow, parse_status: 'success' }],
+			[{ ...workflow, triggers: null }],
+			[{ ...workflow, triggers: [1] }],
+			[{ ...workflow, jobs: null }],
+			...[{ ...job, id: null }, { ...job, needs: null }, { ...job, needs: [1] }, { ...job, steps: null }, {
+				...job,
+				uses: false,
+			}, { ...job, start: { line: 0, column: 1 } }].map((invalidJob) => [{ ...workflow, jobs: [invalidJob] }]),
+			...[
+				{},
+				{ kind: 1 },
+				{ kind: 'uses', uses: 1 },
+				{ kind: 'run', id: false },
+				{ kind: 'run', name: null },
+				{ kind: 'run', start: { line: 1, column: -1 } },
+				{ kind: 'parallel', steps: null },
+				{ kind: 'parallel', steps: [{ kind: 'run', start: null }] },
+			].map((step) => [{ ...workflow, jobs: [{ ...job, steps: [step] }] }]),
+		]
+	) {
+		assert.throws(() => parseResult({ ...result, documents }), /invalid or unsupported persisted result/);
+	}
+});
+
+test('action outlines retain supported runtimes and their declarations', () => {
+	for (
+		const runs of [
+			{ kind: 'composite', steps: [{ kind: 'run', name: 'Build' }] },
+			{ kind: 'javascript', using: 'node24', main: 'action.mjs', pre: 'pre.mjs', post_if: 'always()' },
+			{ kind: 'docker', image: 'Dockerfile', entrypoint: 'entry.sh', args: ['--check'] },
+			{ kind: 'plugin', plugin: 'GitHub.Runner.Plugins.Checkout.CheckoutTask' },
+			{ kind: 'unknown', using: 'future-runtime' },
+		]
+	) {
+		const documents = [{
+			kind: 'action',
+			path: 'action.yml',
+			name: 'Test',
+			description: 'An action',
+			parse_status: 'partial',
+			inputs: [{ id: 'target', required: true, default: '.', description: 'Target', start: { line: 4, column: 3 } }],
+			outputs: [{ id: 'result', value: `\${{ steps.check.outputs.result }}`, description: 'Result' }],
+			runs,
+			future_metadata: { enabled: true },
+		}];
+		assert.deepEqual(parseResult({ ...result, documents }).documents, documents);
+	}
+});
+
+test('document and runtime variants reject mixed shapes while allowing future fields', () => {
+	const action = {
+		kind: 'action',
+		path: 'action.yml',
+		parse_status: 'complete',
+		inputs: [],
+		outputs: [],
+		runs: { kind: 'unknown' },
+	};
+	const workflow = { kind: 'workflow', path: 'test.yml', parse_status: 'complete', triggers: [], jobs: [] };
+	for (
+		const document of [
+			{ ...action, jobs: [] },
+			{ ...action, triggers: [] },
+			{ ...workflow, inputs: [] },
+			{ ...workflow, outputs: [] },
+			{ ...workflow, runs: { kind: 'unknown' } },
+			{ ...workflow, description: 'Action-only field' },
+			{ ...action, inputs: null },
+			{ ...action, outputs: null },
+			{ ...action, inputs: [{ id: 'input', required: 'true' }] },
+			{ ...action, outputs: [{ id: 'result', value: 1 }] },
+			...[
+				{ kind: 'composite', steps: [], image: 'Dockerfile' },
+				{ kind: 'javascript', using: 'node24', steps: [] },
+				{ kind: 'javascript', using: 24 },
+				{ kind: 'docker', args: [], main: 'action.mjs' },
+				{ kind: 'docker', args: null },
+				{ kind: 'plugin', plugin: 'plugin', using: 'node24' },
+				{ kind: 'unknown', main: 'action.mjs' },
+				{ kind: 'unknown', using: 1 },
+			].map((runs) => ({ ...action, runs })),
+		]
+	) assert.throws(() => parseResult({ ...result, documents: [document] }));
+});
+
+test('uses references preserve parsed identity without inferring a provider', () => {
+	const references = [
+		{ kind: 'repository', owner: 'actions', repo: 'checkout', subpath: '', ref: 'v6', host_source: 'default' },
+		{
+			kind: 'repository',
+			owner: 'owner',
+			repo: 'repo',
+			subpath: 'action',
+			ref: 'main',
+			host: 'git.example.com',
+			scheme: 'https',
+			host_source: 'explicit',
+		},
+		{ kind: 'repository', owner: 'owner', repo: 'repo', subpath: '', ref: 'main', host_source: 'self' },
+		{ kind: 'workspace', path: './action' },
+		{ kind: 'self-repository', path: '' },
+		{ kind: 'container', image: 'alpine:latest' },
+		{ kind: 'builtin', name: 'actions/checkout' },
+		{ kind: 'unknown' },
+	];
+	const withReference = (reference: unknown) => ({
+		...result,
+		documents: [{
+			kind: 'workflow',
+			path: 'test.yml',
+			parse_status: 'complete',
+			triggers: [],
+			jobs: [{ id: 'build', needs: [], reference, steps: [{ kind: 'uses', uses: 'original text', reference }] }],
+		}],
+	});
+	for (const reference of references) {
+		const source = withReference(reference);
+		assert.deepEqual(parseResult(source).documents, source.documents);
+	}
+	for (
+		const reference of [
+			{ kind: 'repository', owner: 'owner', repo: 'repo', subpath: '', ref: 'main' },
+			{ kind: 'repository', owner: 'owner', repo: 'repo', subpath: '', ref: 'main', host_source: 'guessed' },
+			{ kind: 'workspace', path: 1 },
+			{ kind: 'workspace', path: '.', host: 'github.com' },
+			{ kind: 'container', image: 'alpine', ref: 'main' },
+			{ kind: 'builtin', name: null },
+			{ kind: 'unknown', path: '.' },
+		]
+	) assert.throws(() => parseResult(withReference(reference)));
+});
+
 test('report controls are independent and reject unsupported inputs', () => {
 	assert.deepEqual(reportOptions({}), { annotations: 'auto', summary: true, sarif: false, review: false });
 	assert.deepEqual(reportOptions({ INPUT_SARIF: 'true', INPUT_SUMMARY: 'true' }), {
@@ -204,6 +376,7 @@ test('JSON output and recovered failures preserve additive top-level result fiel
 	t.after(() => rm(directory, { recursive: true }));
 	const extended = {
 		...result,
+		documents: [{ kind: 'workflow', path: 'ci.yml', parse_status: 'complete', triggers: ['push'], jobs: [] }],
 		statistics: { elapsed_ms: 12, rules: ['shellcheck'] },
 		notices: ['compatible extension'],
 		source_digest: null,

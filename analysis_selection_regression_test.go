@@ -81,7 +81,9 @@ func TestCallerRelativeSelection(t *testing.T) {
 func TestPhysicalProjectAliasSelection(t *testing.T) {
 	parent := t.TempDir()
 	root := filepath.Join(parent, "physical")
-	content := "on: push\njobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}\n"
+	content := `on: push
+jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
+`
 	writeShellcheckFixture(t, root, ".github/workflows/ci.yml", content)
 	alias := filepath.Join(parent, "alias")
 	if err := os.Symlink(root, alias); err != nil {
@@ -188,9 +190,13 @@ func TestRelativeWorkingDirectorySelectionAndOverrides(t *testing.T) {
 	parent := t.TempDir()
 	t.Chdir(parent)
 	root := filepath.Join(parent, "repo")
-	config := "files: {includes: ['.github/workflows/**']}\noverrides: [{includes: ['.github/workflows/**'], lint: {rules: {correctness: {if-cond: warn}}}}]\n"
+	config := `files: {includes: ['.github/workflows/**']}
+overrides: [{includes: ['.github/workflows/**'], lint: {rules: {correctness: {if-cond: warn}}}}]
+`
 	writeShellcheckFixture(t, root, "actionlint.yml", config)
-	workflow := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", "on: push\njobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}\n")
+	workflow := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", `on: push
+jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
+`)
 	cfg, err := ParseConfig([]byte(config))
 	if err != nil {
 		t.Fatal(err)

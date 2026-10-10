@@ -90,6 +90,10 @@
       }
     },
     "yaml-language-server": {
+      "binary": {
+        "path": "mise",
+        "arguments": ["exec", "npm:yaml-language-server", "--", "yaml-language-server", "--stdio"]
+      },
       "settings": {
         "yaml": {
           "schemas": {

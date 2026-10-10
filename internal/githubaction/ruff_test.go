@@ -11,7 +11,14 @@ func TestRuffActionInput(t *testing.T) {
 	if err != nil {
 		t.Skip("Ruff is not installed")
 	}
-	workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/python.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"})
+	workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/python.yml": `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(missing)
+`})
 	for _, tc := range []struct {
 		input, config string
 		code          int

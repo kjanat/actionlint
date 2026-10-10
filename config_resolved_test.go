@@ -10,8 +10,15 @@ import (
 func TestResolvedConfigRoundTrip(t *testing.T) {
 	for _, source := range []string{
 		"",
-		"config-variables: []\nconfig-secrets: null\npolicy: {cache-operation: false, disallow-suppressions: true}\n",
-		"config-variables: null\nconfig-secrets: []\npolicy: {cache-write-untrusted: null, require-job-timeout: {min-minutes: 5, max-minutes: 60}, require-permissions: {scope: job}, disallow-suppressions: {rules: [cache-operation], report: violation}}\npaths: {'**': {ignore: ['a.*b']}}\n",
+		`config-variables: []
+config-secrets: null
+policy: {cache-operation: false, disallow-suppressions: true}
+`,
+		`config-variables: null
+config-secrets: []
+policy: {cache-write-untrusted: null, require-job-timeout: {min-minutes: 5, max-minutes: 60}, require-permissions: {scope: job}, disallow-suppressions: {rules: [cache-operation], report: violation}}
+paths: {'**': {ignore: ['a.*b']}}
+`,
 	} {
 		t.Run(source, func(t *testing.T) {
 			resolved, err := resolveConfigDocument([]byte(source))

@@ -41,7 +41,14 @@ func TestRulePyflakesCompatibility(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			const workflow = "on: push\ndefaults: {run: {shell: python}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(undefined_name)\n"
+			const workflow = `on: push
+defaults: {run: {shell: python}}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: print(undefined_name)
+`
 			findings, err := linter.Lint("workflow.yaml", []byte(workflow), nil)
 			if err != nil || len(findings) != 0 || len(rule.Errs()) != 0 || !seen {
 				t.Fatalf("retired rule changed analysis: seen=%v, findings=%v, error=%v", seen, findings, err)

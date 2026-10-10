@@ -2,8 +2,21 @@ package actionlint
 
 import "errors"
 
-const commandGoodWorkflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
-const commandBadWorkflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo '${{ missing.value }}'\n"
+const commandGoodWorkflow = `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
+
+const commandBadWorkflow = `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo '${{ missing.value }}'
+`
 
 type commandFailingIO struct{}
 
@@ -19,5 +32,6 @@ func (l *Linter) check(path string, content []byte, project *Project, proc *conc
 		ignorePats:        l.request.IgnorePatterns, onRulesCreated: l.request.OnRulesCreated,
 	}
 	var rules []Rule
-	return engine.check(path, content, project, l.source(path, content, project).Config, proc, actions, workflows, &rules)
+	errs, _, err := engine.check(path, content, project, l.source(path, content, project).Config, proc, actions, workflows, &rules)
+	return errs, err
 }

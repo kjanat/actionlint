@@ -149,7 +149,10 @@ func TestBumpUpdatesEveryReference(t *testing.T) {
 		}
 		want := readFixture(t, "want", name)
 		if !bytes.Equal(got, want) {
-			t.Errorf("%s after the bump is:\n%s\nwant:\n%s", name, got, want)
+			t.Errorf(`%s after the bump is:
+%s
+want:
+%s`, name, got, want)
 		}
 	}
 
@@ -175,7 +178,10 @@ func TestBumpToSameVersionIsIdempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 	if want := readFixture(t, "want", "docs.md"); !bytes.Equal(got, want) {
-		t.Errorf("docs.md is:\n%s\nwant:\n%s", got, want)
+		t.Errorf(`docs.md is:
+%s
+want:
+%s`, got, want)
 	}
 }
 
@@ -196,7 +202,9 @@ func TestScanRejectsMissingOccurrence(t *testing.T) {
 func TestScanRejectsExtraOccurrence(t *testing.T) {
 	ts := fixtureTargets()
 	tgt := targetNamed(t, ts, "docs.md")
-	content := append(readFixture(t, "repo", "docs.md"), "\n- uses: example/tool@v1.2.0\n"...)
+	content := append(readFixture(t, "repo", "docs.md"), `
+- uses: example/tool@v1.2.0
+`...)
 
 	_, err := tgt.scan(content)
 	if err == nil {

@@ -7,7 +7,14 @@ import (
 )
 
 func TestRulePresetFlags(t *testing.T) {
-	const source = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    if: github.ref == 'refs/heads/main'\n    steps:\n      - uses: actions/checkout@v6\n"
+	const source = `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v6
+`
 	for _, modern := range []bool{false, true} {
 		for _, tc := range []struct {
 			flags  []string

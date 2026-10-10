@@ -238,8 +238,22 @@ func TestFileOverrideAnalysisIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := t.TempDir()
-	workflow := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    if: github.ref == 'refs/heads/main'\n    steps:\n      - run: echo ok\n")
-	bad := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    if: true\n    steps:\n      - run: echo '${{ typo.value }}'\n")
+	workflow := []byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - run: echo ok
+`)
+	bad := []byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    if: true
+    steps:
+      - run: echo '${{ typo.value }}'
+`)
 	request := AnalysisRequest{WorkingDir: root}
 	for _, name := range []string{"normal", "suspicious", "suppressed"} {
 		content := workflow

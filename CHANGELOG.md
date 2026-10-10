@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Include typed workflow and action documents in JSON results, with source positions, inputs, outputs, execution variants and structured `uses` references. Preserve partial parses and ship matching schema and npm types. (kjanat/actionlint#189)
+
 - Select an exact Action binary with `version` or `version-file`, including `.tool-versions`; use `install-only` to put it and enabled optional tools on PATH without running analysis. (kjanat/actionlint#185)
 
 - Unify CLI and Action JSON results, including completion status and configuration provenance. Action JSON now wraps findings in `diagnostics`; JSONL uses the same diagnostic fields as the CLI. Ship the versioned schema and TypeScript types in `@kjanat/actionlint`. See the [migration notes](docs/results.md#migration).

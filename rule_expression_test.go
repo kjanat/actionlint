@@ -104,7 +104,9 @@ func TestRuleExpressionCheckRawYAMLStringTag(t *testing.T) {
 			rule := NewRuleExpression(nil, nil)
 			have := rule.checkRawYAMLString(&RawYAMLString{Value: tc.value, Tag: tc.tag, pos: &Pos{}})
 			if diff := cmp.Diff(tc.want, have); diff != "" {
-				t.Fatalf("wanted %s but got %s\ndiff:\n%s", tc.want.String(), have.String(), diff)
+				t.Fatalf(`wanted %s but got %s
+diff:
+%s`, tc.want.String(), have.String(), diff)
 			}
 			if errs := rule.Errs(); len(errs) > 0 {
 				t.Fatalf("%d error(s) occurred: %v", len(errs), errs)

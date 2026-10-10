@@ -102,7 +102,11 @@ func TestRuffPythonScripts(t *testing.T) {
 			if runner == "" {
 				runner = "ubuntu-latest"
 			}
-			src := "on: push\n" + tc.defaults + "jobs:\n  test:\n    runs-on: " + runner + "\n" + tc.job + "    steps:\n      - run: |\n          " + strings.ReplaceAll(tc.script, "\n", "\n          ") + "\n"
+			src := "on: push\n" + tc.defaults + `jobs:
+  test:
+    runs-on: ` + runner + "\n" + tc.job + `    steps:
+      - run: |
+          ` + strings.ReplaceAll(tc.script, "\n", "\n          ") + "\n"
 			if tc.shell != "" {
 				src += "        shell: " + tc.shell + "\n"
 			}
@@ -131,7 +135,13 @@ func TestRuffSourceMappingAndIsolation(t *testing.T) {
 	root := t.TempDir()
 	writeShellcheckFixture(t, root, "ruff.toml", "[lint]\nignore = ['F821']\n")
 	for _, script := range []string{"|\n          print('é', missing)", "print('é', missing)", `"print('é', missing)"`, "'print(''é'', missing)'"} {
-		src := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: " + script + "\n"
+		src := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: ` + script + "\n"
 		result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: root, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
 		if err != nil {
 			t.Fatal(err)
@@ -210,7 +220,14 @@ func TestRuffCancellation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
 	defer cancel()
 	options := &ExternalCommandOptions{Executable: &exe, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_WAIT=1"}}
-	src := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print('ok')\n"
+	src := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print('ok')
+`
 	start := time.Now()
 	_, err = Analyze(ctx, AnalysisRequest{RuffOptions: options, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
 	if err == nil || time.Since(start) > 3*time.Second {
@@ -239,7 +256,14 @@ func TestRuffMissingExecutable(t *testing.T) {
 			_, err = Analyze(t.Context(), AnalysisRequest{
 				RuffOptions: &ExternalCommandOptions{Executable: &missing, Optional: tc.optional},
 				WorkingDir:  t.TempDir(),
-				Sources:     []SourceUnit{{Path: "ci.yml", Config: config, Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n")}},
+				Sources: []SourceUnit{{Path: "ci.yml", Config: config, Content: []byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: print(missing)
+        shell: python
+`)}},
 			})
 			if (err != nil) != tc.wantError {
 				t.Fatalf("error = %v, wantError %v", err, tc.wantError)
@@ -250,7 +274,14 @@ func TestRuffMissingExecutable(t *testing.T) {
 
 func TestRuffSuppressionAndOverride(t *testing.T) {
 	command := ruffForTest(t)
-	src := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing) # actionlint:ignore ruff -- intentional undefined-name fixture\n"
+	src := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(missing) # actionlint:ignore ruff -- intentional undefined-name fixture
+`
 	result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("%+v %v", result, err)
@@ -269,7 +300,16 @@ func TestRuffSuppressionAndOverride(t *testing.T) {
 func TestRuffInterpolatedTokenSkipsOnlyItsScript(t *testing.T) {
 	for _, script := range []string{"value = ${{ github.run_number }}.0", "import ${{ 'json' }}", "from json import ${{ 'loads' }}", `print(f"{lhs ${{ '==' }} rhs}")`, `print(f"{item_${{ 'suffix' }}}")`} {
 		t.Run(script, func(t *testing.T) {
-			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: value = ${{ github.run_number }}.0\n      - shell: python\n        run: print(missing)\n"
+			source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: value = ${{ github.run_number }}.0
+      - shell: python
+        run: print(missing)
+`
 			source = strings.Replace(source, "value = ${{ github.run_number }}.0", script, 1)
 			result, err := Analyze(t.Context(), AnalysisRequest{
 				Ruff: ruffForTest(t), WorkingDir: t.TempDir(),
@@ -288,7 +328,17 @@ func TestRuffInterpolatedTokenSkipsOnlyItsScript(t *testing.T) {
 func TestRuffQuotedEmptyLineSkipsOnlyItsScript(t *testing.T) {
 	for _, quote := range []string{"'", "\""} {
 		for _, ending := range []string{"\n", "\r\n"} {
-			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: |\n          print(" + quote + "${{\n\n            github.sha\n          }}" + quote + ")\n      - shell: python3.12 {0}\n        run: print(missing)\n"
+			source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: |
+          print(` + quote + "${{\n\n            github.sha\n          }}" + quote + `)
+      - shell: python3.12 {0}
+        run: print(missing)
+`
 			source = strings.ReplaceAll(source, "\n", ending)
 			result, err := Analyze(t.Context(), AnalysisRequest{
 				Ruff: ruffForTest(t), WorkingDir: t.TempDir(),
@@ -343,7 +393,14 @@ func TestRuffProcessFailures(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			options := &ExternalCommandOptions{Executable: &exe, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=" + tc.output, "ACTIONLINT_TEST_RUFF_EXIT=" + strconv.Itoa(tc.code)}}
-			src := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+			src := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(missing)
+`
 			_, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: options, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
 			if (err != nil) != tc.failed {
 				t.Fatalf("error=%v, want failed=%v", err, tc.failed)
@@ -370,7 +427,14 @@ func TestRuffConfiguredFlagsAndEnvironment(t *testing.T) {
 				command = strconv.Quote(executable) + " --preview --exclude vendor/**"
 				options.Executable, options.Arguments = nil, nil
 			}
-			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print('ok')\n"
+			source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print('ok')
+`
 			_, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, RuffOptions: options, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
 			if err != nil {
 				t.Fatal(err)
@@ -384,7 +448,14 @@ func TestRuffPreviewAndAmbientOutputFile(t *testing.T) {
 	root := t.TempDir()
 	output := writeShellcheckFixture(t, root, "output.json", "keep this content")
 	t.Setenv("RUFF_OUTPUT_FILE", output)
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: 'if:'\n"
+	source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: 'if:'
+`
 	result, err := Analyze(t.Context(), AnalysisRequest{
 		RuffOptions: &ExternalCommandOptions{Executable: &command, Arguments: []string{"--preview"}},
 		WorkingDir:  root, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},
@@ -407,7 +478,14 @@ func TestRuffPreviewAndAmbientOutputFile(t *testing.T) {
 
 func TestRuffInlineConfigCannotChangeSourceType(t *testing.T) {
 	command := ruffForTest(t)
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+	source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(missing)
+`
 	for _, language := range []string{"ipynb", "pyi"} {
 		options := &ExternalCommandOptions{Executable: &command, Arguments: []string{"--config", "extension = { py = " + strconv.Quote(language) + " }"}}
 		result, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: options, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
@@ -424,8 +502,21 @@ func TestRuffComposite(t *testing.T) {
 	command := ruffForTest(t)
 	root := t.TempDir()
 	writeShellcheckFixture(t, root, ".github/workflows/ci.yml", commandGoodWorkflow)
-	writeShellcheckFixture(t, root, "python-action/action.yml", "name: Python\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: python\n      run: print(missing)\n")
-	src := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/python-action\n"
+	writeShellcheckFixture(t, root, "python-action/action.yml", `name: Python
+description: test
+runs:
+  using: composite
+  steps:
+    - shell: python
+      run: print(missing)
+`)
+	src := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: $/python-action
+`
 	result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(src), Project: &Project{root: root}}}})
 	if err != nil {
 		t.Fatal(err)

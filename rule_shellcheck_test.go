@@ -72,7 +72,13 @@ func TestRuleShellcheckLargeRunBlock(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          " + comment
+			workflow := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          ` + comment
 			if findings {
 				workflow += "          echo $ACTIONLINT_STDIN_REGRESSION\n"
 			}
@@ -175,7 +181,9 @@ func TestRuleShellcheckSanitizeExpressionsInScript(t *testing.T) {
 		t.Run(fmt.Sprintf("%d_%s", i, tc.input), func(t *testing.T) {
 			have := sanitizeExpressionsInScript(tc.input)
 			if tc.want != have {
-				t.Fatalf("sanitized result is unexpected.\nwant: %q\nhave: %q", tc.want, have)
+				t.Fatalf(`sanitized result is unexpected.
+want: %q
+have: %q`, tc.want, have)
 			}
 		})
 	}

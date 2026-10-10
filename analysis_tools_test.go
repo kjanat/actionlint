@@ -8,7 +8,11 @@ import (
 
 func TestRequiredToolsFileSelection(t *testing.T) {
 	root := t.TempDir()
-	config := writeShellcheckFixture(t, root, "actionlint.yml", "files: {excludes: ['skip.yml']}\noverrides:\n  - includes: [disabled.yml]\n    lint: {rules: {external: {shellcheck: off}}}\n")
+	config := writeShellcheckFixture(t, root, "actionlint.yml", `files: {excludes: ['skip.yml']}
+overrides:
+  - includes: [disabled.yml]
+    lint: {rules: {external: {shellcheck: off}}}
+`)
 	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, ConfigFile: config, Shellcheck: "shellcheck"})
 	if err != nil {
 		t.Fatal(err)
@@ -34,7 +38,14 @@ func TestDeprecatedPyflakesOption(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	workflow := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(undefined_name)\n")
+	workflow := []byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(undefined_name)
+`)
 	findings, err := linter.Lint("ci.yml", workflow, nil)
 	if err != nil || len(findings) != 0 {
 		t.Fatalf("deprecated option invoked Python linting: %v, %v", findings, err)

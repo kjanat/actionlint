@@ -15,13 +15,25 @@ func TestWorkflowRunPathsUntrusted(t *testing.T) {
 		"GITHUB.EVENT.WORKFLOW_RUN.PATH",
 		"format('{0}', github.event.workflow_run.path)",
 	} {
-		source := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo \"${{ " + expression + " }}\"\n"
+		source := `on: {workflow_run: {workflows: [Build], types: [completed]}}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ ` + expression + " }}\"\n"
 		result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
 		if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "expression" || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
 			t.Fatalf("path interpolation %q: error=%v diagnostics=%+v", expression, err, result.Diagnostics)
 		}
 	}
-	source := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n      - env: {WORKFLOW_PATH: '${{ github.event.workflow_run.path }}'}\n        run: printf '%s\\n' \"$WORKFLOW_PATH\"\n"
+	source := `on: {workflow_run: {workflows: [Build], types: [completed]}}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - env: {WORKFLOW_PATH: '${{ github.event.workflow_run.path }}'}
+        run: printf '%s\n' "$WORKFLOW_PATH"
+`
 	result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("path environment binding: error=%v result=%+v", err, result)
@@ -36,12 +48,24 @@ func TestWorkflowRunNamesUntrusted(t *testing.T) {
 		"format('{0}', github.event.workflow_run.name)",
 	} {
 		t.Run(expression, func(t *testing.T) {
-			source := "on: {workflow_run: {workflows: ['Build*'], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo \"${{ " + expression + " }}\"\n"
+			source := `on: {workflow_run: {workflows: ['Build*'], types: [completed]}}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ ` + expression + " }}\"\n"
 			result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
 			if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "expression" || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
 				t.Fatalf("name interpolation: error=%v diagnostics=%+v", err, result.Diagnostics)
 			}
-			source = "on: {workflow_run: {workflows: ['Build*'], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n      - env: {WORKFLOW_NAME: " + strconv.Quote("${{ "+expression+" }}") + "}\n        run: printf '%s\\n' \"$WORKFLOW_NAME\"\n"
+			source = `on: {workflow_run: {workflows: ['Build*'], types: [completed]}}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - env: {WORKFLOW_NAME: ` + strconv.Quote("${{ "+expression+" }}") + `}
+        run: printf '%s\n' "$WORKFLOW_NAME"
+`
 			result, err = Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
 			if err != nil || len(result.Diagnostics) != 0 {
 				t.Fatalf("name environment binding: error=%v diagnostics=%+v", err, result.Diagnostics)
@@ -53,7 +77,9 @@ func TestWorkflowRunNamesUntrusted(t *testing.T) {
 func TestWorkflowRunEmptyPatternValidation(t *testing.T) {
 	for _, reference := range []string{"", "${{ '' }}"} {
 		t.Run(reference, func(t *testing.T) {
-			source := "on: {workflow_run: {workflows: [" + strconv.Quote(reference) + "], types: [completed]}}\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"
+			source := "on: {workflow_run: {workflows: [" + strconv.Quote(reference) + `], types: [completed]}}
+jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
+`
 			workflow, errs := Parse([]byte(source))
 			if workflow == nil || reference != "" && len(errs) != 0 {
 				t.Fatalf("parse: %v", errs)
@@ -80,7 +106,9 @@ func TestWorkflowRunLiteralPatternValidation(t *testing.T) {
 		if strings.HasPrefix(pattern, "${{") {
 			reference = pattern
 		}
-		workflow, errs := Parse([]byte("on: {workflow_run: {workflows: [" + strconv.Quote(reference) + "]}}\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"))
+		workflow, errs := Parse([]byte("on: {workflow_run: {workflows: [" + strconv.Quote(reference) + `]}}
+jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
+`))
 		if workflow == nil || len(errs) != 0 {
 			t.Fatalf("parse %q: %v", reference, errs)
 		}
@@ -104,7 +132,13 @@ func TestWorkflowRunLiteralPatternValidation(t *testing.T) {
 func TestWorkflowRunDiscoveryInput(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, ".github", "workflows")
-	consumer := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+	consumer := `on: {workflow_run: {workflows: [Build], types: [completed]}}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 	request := AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(dir, "consumer.yml"), Content: []byte(consumer), Project: &Project{root: root}}}}
 	for _, present := range []bool{false, true} {
 		if present {
@@ -132,7 +166,12 @@ func TestWorkflowRunPullRequestHeadRefs(t *testing.T) {
 		"format('{0}', github.event.workflow_run.pull_requests[0].head.ref)",
 	} {
 		t.Run(expression, func(t *testing.T) {
-			source := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo \"${{ " + expression + " }}\"\n"
+			source := `on: {workflow_run: {workflows: [Build], types: [completed]}}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ ` + expression + " }}\"\n"
 			result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
 			if err != nil {
 				t.Fatal(err)
@@ -148,13 +187,26 @@ func TestWorkflowRunPullRequestHeadRefs(t *testing.T) {
 		"github.event.workflow_run.pull_requests[0].number",
 		"contains(github.event.workflow_run.pull_requests[0].head.ref, 'release')",
 	} {
-		source := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo \"${{ " + expression + " }}\"\n"
+		source := `on: {workflow_run: {workflows: [Build], types: [completed]}}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ ` + expression + " }}\"\n"
 		result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
 		if err != nil || len(result.Diagnostics) != 0 {
 			t.Fatalf("safe expression %q: %v, %+v", expression, err, result)
 		}
 	}
-	source := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n      - env:\n          HEAD_REF: ${{ github.event.workflow_run.pull_requests[0].head.ref }}\n        run: printf '%s\\n' \"$HEAD_REF\"\n"
+	source := `on: {workflow_run: {workflows: [Build], types: [completed]}}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          HEAD_REF: ${{ github.event.workflow_run.pull_requests[0].head.ref }}
+        run: printf '%s\n' "$HEAD_REF"
+`
 	result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("environment binding rejected: %v, %+v", err, result)
@@ -181,7 +233,13 @@ func TestWorkflowRunLiteralReferences(t *testing.T) {
 			root := t.TempDir()
 			producer := "name: " + strconv.Quote(tc.producer) + "\n" + commandGoodWorkflow
 			writeShellcheckFixture(t, root, ".github/workflows/build.yml", producer)
-			consumer := "on: {workflow_run: {workflows: [" + strconv.Quote(tc.reference) + "], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			consumer := "on: {workflow_run: {workflows: [" + strconv.Quote(tc.reference) + `], types: [completed]}}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: &Project{root: root}}}})
 			if err != nil {
 				t.Fatal(err)

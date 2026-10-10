@@ -995,6 +995,8 @@ type Step struct {
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsname
 	Name *String
 	Exec Exec
+	// declaredUses retains a reference rejected by a conflicting execution key.
+	declaredUses *String
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsenv
 	Env *Env
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepscontinue-on-error
@@ -1207,6 +1209,8 @@ type Job struct {
 	// WorkflowCall is a workflow call by 'uses:'.
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_iduses
 	WorkflowCall *WorkflowCall
+	// declaredUses retains a call rejected because it also declares step-only keys.
+	declaredUses *String
 	// Snapshot is a custom image snapshot.
 	// https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idsnapshot
 	Snapshot *Snapshot

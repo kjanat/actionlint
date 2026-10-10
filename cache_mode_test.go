@@ -53,14 +53,19 @@ func TestParseCacheMode(t *testing.T) {
 					src += "cache-mode: " + tt.value + "\n"
 					wantPos = Pos{Line: 2, Col: 13}
 				}
-				src += "jobs:\n  test:\n"
+				src += `jobs:
+  test:
+`
 				if placement != "workflow" {
 					src += "    cache-mode: " + tt.value + "\n"
 				}
 				if placement == "call" {
 					src += "    uses: owner/repo/.github/workflows/reusable.yml@main\n"
 				} else {
-					src += "    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+					src += `    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 				}
 				w, errs := Parse([]byte(src))
 				wantErrors := 0
@@ -95,11 +100,16 @@ func TestParseCacheMode(t *testing.T) {
 
 func TestParseCacheModeOmittedAndAliased(t *testing.T) {
 	for _, declaration := range []string{"", "cache-mode: &mode read\n"} {
-		src := "on: pull_request_target\n" + declaration + "jobs:\n  test:\n    runs-on: ubuntu-latest\n"
+		src := "on: pull_request_target\n" + declaration + `jobs:
+  test:
+    runs-on: ubuntu-latest
+`
 		if declaration != "" {
 			src += "    cache-mode: *mode\n"
 		}
-		src += "    steps:\n      - run: echo ok\n"
+		src += `    steps:
+      - run: echo ok
+`
 		w, errs := Parse([]byte(src))
 		if len(errs) != 0 {
 			t.Fatal(errs)
@@ -117,7 +127,14 @@ func TestParseCacheModeOmittedAndAliased(t *testing.T) {
 func TestParseCacheModeLowTrustWrites(t *testing.T) {
 	for _, event := range []string{"pull_request_target", "issue_comment", "workflow_run"} {
 		for _, mode := range []string{"write", "write-only"} {
-			src := fmt.Sprintf("on: %s\ncache-mode: %s\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n", event, mode)
+			src := fmt.Sprintf(`on: %s
+cache-mode: %s
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`, event, mode)
 			if _, errs := Parse([]byte(src)); len(errs) != 0 {
 				t.Fatalf("explicit %s mode on %s is valid: %v", mode, event, errs)
 			}

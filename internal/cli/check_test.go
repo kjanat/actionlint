@@ -289,12 +289,28 @@ func TestReportCannotReplaceConsumedFile(t *testing.T) {
 				switch kind {
 				case "action", "hardlink", "symlink":
 					target = "local/action.yml"
-					content = "name: local\nruns:\n  using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n"
-					workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./local\n"
+					content = `name: local
+runs:
+  using: composite
+  steps:
+    - run: echo ok
+      shell: bash
+`
+					workflow = `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./local
+`
 				case "reusable":
 					target = ".github/workflows/called.yml"
 					content = strings.Replace(commandGoodWorkflow, "on: push", "on: workflow_call", 1)
-					workflow = "on: push\njobs:\n  test:\n    uses: ./.github/workflows/called.yml\n"
+					workflow = `on: push
+jobs:
+  test:
+    uses: ./.github/workflows/called.yml
+`
 				}
 				if err := os.WriteFile(target, []byte(content), 0644); err != nil {
 					t.Fatal(err)

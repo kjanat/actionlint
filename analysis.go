@@ -52,15 +52,17 @@ type AnalysisRequest struct {
 type AnalysisResult struct {
 	Configurations []ConfigReport
 	Diagnostics    []Diagnostic
+	Documents      DocumentOutlines
 	// Inputs includes discovery directories so watchers can detect added files.
 	Inputs []string
 	files  []analyzedFile
 }
 
 type analyzedFile struct {
-	source SourceUnit
-	errors []*Error
-	rules  []Rule
+	source  SourceUnit
+	errors  []*Error
+	rules   []Rule
+	outline WorkflowOutline
 }
 
 type inputFiles struct {
@@ -156,6 +158,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		shellcheckOptions:  request.ShellcheckOptions,
 		shellcheckSettings: request.ShellcheckSettings,
 		ignorePats:         request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: analysisLogger{log, level}}
+	documents := &actionDocuments{byPath: map[string]ActionOutline{}}
 	proc := newConcurrentProcess(ctx, runtime.NumCPU())
 	actions := NewLocalActionsCacheFactory(engine.debugWriter())
 	cwd := request.WorkingDir
@@ -216,6 +219,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	for _, source := range request.Sources {
 		ac, wc := actions.GetCache(source.Project), workflows.GetCache(source.Project)
 		ac.onRead, wc.onRead = inputs.add, inputs.add
+		ac.onDocument = documents.add
 		ac.readFile, wc.readFile = readFile, readFile
 	}
 	group := errgroup.Group{}
@@ -231,7 +235,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 			file := &result.files[i]
 			file.source = source
 			var err error
-			file.errors, err = engine.check(source.Path, source.Content, source.Project, source.Config, proc, ac, wc, &file.rules)
+			file.errors, file.outline, err = engine.check(source.Path, source.Content, source.Project, source.Config, proc, ac, wc, &file.rules)
 			if err != nil {
 				return &sourceAnalysisError{path: source.Path, err: err, batch: len(request.Sources) > 1}
 			}
@@ -244,8 +248,45 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		err = ctx.Err()
 	}
 	result.collectDiagnostics()
+	result.Documents = make(DocumentOutlines, 0, len(result.files))
+	for _, file := range result.files {
+		result.Documents = append(result.Documents, file.outline)
+	}
+	for _, document := range documents.list() {
+		result.Documents = append(result.Documents, document.WithPath(relativeAnalysisPath(engine.workingDir, document.DocumentPath())))
+	}
 	result.Inputs = inputs.list()
 	return result, err
+}
+
+type actionDocuments struct {
+	mu     sync.Mutex
+	byPath map[string]ActionOutline
+}
+
+func (d *actionDocuments) add(document ActionOutline) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	path := absPath(document.Path)
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		path = resolved
+	}
+	d.byPath[path] = document
+}
+
+func (d *actionDocuments) list() DocumentOutlines {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	paths := make([]string, 0, len(d.byPath))
+	for path := range d.byPath {
+		paths = append(paths, path)
+	}
+	slices.Sort(paths)
+	documents := make(DocumentOutlines, 0, len(paths))
+	for _, path := range paths {
+		documents = append(documents, d.byPath[path])
+	}
+	return documents
 }
 
 func (r *AnalysisResult) collectDiagnostics() {

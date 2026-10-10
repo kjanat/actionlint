@@ -39,7 +39,7 @@ func (l *analysisEngine) check(
 	localActions *LocalActionsCache,
 	localReusableWorkflows *LocalReusableWorkflowCache,
 	usedRules *[]Rule,
-) ([]*Error, error) {
+) ([]*Error, WorkflowOutline, error) {
 	// Each call owns its rules; caches and process scheduling are shared across files.
 	root := l.workingDir
 	if project != nil {
@@ -53,7 +53,8 @@ func (l *analysisEngine) check(
 	}
 	cfg, configErr = configForFile(cfg, configPath, root)
 	if configErr != nil {
-		return nil, configErr
+		w, all := Parse(content)
+		return nil, workflowOutline(path, w, len(all) != 0), configErr
 	}
 	cfg = l.rulePresets.apply(cfg)
 
@@ -74,6 +75,7 @@ func (l *analysisEngine) check(
 	}
 
 	w, all := Parse(content)
+	outline := workflowOutline(path, w, len(all) != 0)
 	var analysisErr error
 	metadataSources := map[string][]byte{}
 	compositeConfigs := map[string]*Config{}
@@ -127,7 +129,7 @@ func (l *analysisEngine) check(
 			r, err := descriptor.build(c)
 			if err != nil {
 				if descriptor.Name == "ruff" && (c.ruffOptions == nil || !c.ruffOptions.Optional) {
-					return nil, fmt.Errorf("could not initialize Ruff: %w", err)
+					return nil, outline, fmt.Errorf("could not initialize Ruff: %w", err)
 				}
 				l.log(fmt.Sprintf("Rule %q was disabled:", descriptor.Name), err)
 				continue
@@ -263,7 +265,7 @@ func (l *analysisEngine) check(
 			var err error
 			findingConfig, err = suppressionConfigForFile(projectConfig, sourcePath, root)
 			if err != nil {
-				return nil, err
+				return nil, outline, err
 			}
 			findingConfig = l.rulePresets.apply(findingConfig)
 			var policy *SuppressionsPolicy
@@ -301,21 +303,11 @@ func (l *analysisEngine) check(
 		}
 	}
 
-	diagnosticDir := l.workingDir
-	if resolved, err := filepath.EvalSymlinks(diagnosticDir); err == nil {
-		diagnosticDir = resolved
-	}
 	for _, err := range all {
 		if err.Filepath == "" {
 			err.Filepath = path // Populate filename in the error
-		} else if filepath.IsAbs(err.Filepath) {
-			sourcePath := err.Filepath
-			if resolved, e := filepath.EvalSymlinks(sourcePath); e == nil {
-				sourcePath = resolved
-			}
-			if relative, e := filepath.Rel(diagnosticDir, sourcePath); e == nil {
-				err.Filepath = relative
-			}
+		} else {
+			err.Filepath = relativeAnalysisPath(l.workingDir, err.Filepath)
 		}
 	}
 
@@ -327,7 +319,23 @@ func (l *analysisEngine) check(
 		l.log("Found total", len(all), "errors in", elapsed.Milliseconds(), "ms for", path)
 	}
 
-	return all, analysisErr
+	return all, outline, analysisErr
+}
+
+func relativeAnalysisPath(directory, source string) string {
+	if !filepath.IsAbs(source) {
+		return source
+	}
+	if resolved, err := filepath.EvalSymlinks(directory); err == nil {
+		directory = resolved
+	}
+	if resolved, err := filepath.EvalSymlinks(source); err == nil {
+		source = resolved
+	}
+	if relative, err := filepath.Rel(directory, source); err == nil {
+		return relative
+	}
+	return source
 }
 
 func (l *analysisEngine) filterErrors(errs []*Error, cfgs []PathConfig) []*Error {
