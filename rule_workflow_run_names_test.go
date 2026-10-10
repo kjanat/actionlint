@@ -163,7 +163,7 @@ func TestWorkflowRunNamesPatterns(t *testing.T) {
 	}{
 		{"Build CI", "'Build*'", 0},
 		{"Build CI", "'Missing*'", 1},
-		{"Build CI", "'Build*', '!Build CI'", 0},
+		{"Build CI", "'Build*', '!Build CI'", 1},
 		{"Build CI", "'Build*', '!Missing*'", 0},
 		{"Build CI", "'Build*', '!Build*', 'Build CI'", 0},
 		{"Build C++", `'Build C\+\+'`, 0},

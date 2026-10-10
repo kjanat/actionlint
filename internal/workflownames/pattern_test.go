@@ -73,3 +73,38 @@ func TestCompilePatternInvalidRanges(t *testing.T) {
 		})
 	}
 }
+
+func TestExcludesAllPatterns(t *testing.T) {
+	for _, tc := range []struct {
+		patterns []string
+		names    []string
+		want     bool
+	}{
+		{[]string{"Build*", "!Build docs"}, []string{"Build docs"}, true},
+		{[]string{"Build*", "!Build docs"}, []string{"Build docs", "Build CI"}, false},
+		{[]string{"Build*", "!Build docs", "!Build CI"}, []string{"Build docs", "Build CI"}, true},
+		{[]string{"Build*", "!Build docs", "Build docs"}, []string{"Build docs"}, false},
+		{[]string{"!Build docs", "Build*"}, []string{"Build docs"}, false},
+		{[]string{`\!Build*`, `!\!Build docs`}, []string{"!Build docs"}, true},
+		{[]string{"Build**", "!Build/**"}, []string{"Build/docs"}, true},
+		{[]string{"Build*", "!build docs"}, []string{"Build docs"}, false},
+		{[]string{"Build*", "!Build docs", "Build ["}, []string{"Build docs"}, false},
+		{[]string{"Build*", "!Build docs", ""}, []string{"Build docs"}, false},
+		{[]string{"!Build docs"}, []string{"Build docs"}, false},
+		{[]string{"Missing*", "!Build docs"}, []string{"Build docs"}, false},
+		{nil, []string{"Build docs"}, false},
+		{[]string{"Build*", "!Build docs"}, nil, false},
+	} {
+		names := Names{Complete: true, Values: map[string]bool{}}
+		for _, name := range tc.names {
+			names.Values[name] = true
+		}
+		if got := names.ExcludesAll(tc.patterns); got != tc.want {
+			t.Errorf("%v against %v: got %v, want %v", tc.patterns, tc.names, got, tc.want)
+		}
+		names.Complete = false
+		if names.ExcludesAll(tc.patterns) {
+			t.Errorf("incomplete inventory reported exclusions: %v", tc.patterns)
+		}
+	}
+}

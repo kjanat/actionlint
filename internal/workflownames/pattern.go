@@ -29,6 +29,35 @@ func (n Names) Missing(pattern string) bool {
 	return true
 }
 
+// ExcludesAll reports when an ordered filter list removes all its positive matches.
+// Incomplete inventories and invalid patterns leave the result uncertain.
+func (n Names) ExcludesAll(patterns []string) bool {
+	if !n.Complete {
+		return false
+	}
+	selected := make(map[string]bool)
+	matched := false
+	for _, pattern := range patterns {
+		pattern, negative := strings.CutPrefix(pattern, "!")
+		rx, valid := compilePattern(pattern)
+		if !valid {
+			return false
+		}
+		for name := range n.Values {
+			if !rx.MatchString(name) {
+				continue
+			}
+			if negative {
+				delete(selected, name)
+			} else {
+				selected[name] = true
+				matched = true
+			}
+		}
+	}
+	return matched && len(selected) == 0
+}
+
 // compilePattern follows GitHub's workflow-name filter syntax:
 // https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#filter-pattern-cheat-sheet
 func compilePattern(pattern string) (*regexp.Regexp, bool) {
