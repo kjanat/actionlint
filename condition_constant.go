@@ -111,11 +111,11 @@ func conditionConstantValue(expr ExprNode) (any, bool) {
 				if items, ok := args[0].([]any); ok && strings.EqualFold(n.Callee, "contains") {
 					known := true
 					for _, item := range items {
-						equal, comparable := compareConditionValues(CompareOpNodeKindEq, item, args[1])
-						if comparable && equal {
+						equal, comparisonKnown := compareConditionValues(CompareOpNodeKindEq, item, args[1])
+						if comparisonKnown && equal {
 							return true, true
 						}
-						known = known && comparable
+						known = known && comparisonKnown
 					}
 					return false, known
 				}
