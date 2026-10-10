@@ -3,11 +3,11 @@ package actionlint
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -67,7 +67,7 @@ func TestWorkflowRunNamesLiteralNames(t *testing.T) {
 		{"${{ format('Build') }}", "Typo", 0},
 	} {
 		for _, inMemory := range []bool{false, true} {
-			t.Run(tc.name+tc.reference+fmt.Sprint(inMemory), func(t *testing.T) {
+			t.Run(tc.name+tc.reference+strconv.FormatBool(inMemory), func(t *testing.T) {
 				root := t.TempDir()
 				project := &Project{root: root}
 				producer := "name: " + tc.name + "\n" + commandGoodWorkflow
@@ -128,7 +128,6 @@ func TestWorkflowRunNamesWindowsPathCasing(t *testing.T) {
 			})
 		}
 	}
-
 }
 
 func TestWorkflowRunNamesRelativeProject(t *testing.T) {
