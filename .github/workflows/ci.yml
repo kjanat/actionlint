@@ -148,7 +148,7 @@ jobs:
       - name: Build through Makefile
         run: run make:build
         env: &SkipGoGen { SKIP_GO_GENERATE: "true" }
-      - run: run make:lint
+      - run: run -s make:lint make:lint-docs
         env: *SkipGoGen
       - name: Lint bash scripts
         run: shellcheck ./scripts/*.bash

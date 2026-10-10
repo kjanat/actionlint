@@ -718,28 +718,21 @@ func (rule *RuleExpression) checkIfCondition(str *String, workflowKey string) {
 	//   if: true && false
 
 	var condTy ExprType
-	if str.ContainsExpression() {
-		ts := rule.checkString(str, workflowKey)
-
-		if len(ts) == 1 {
-			if str.IsExpressionAssigned() {
-				condTy = ts[0].ty
-			}
-		}
-	} else {
-		src := str.Value + "}}" // }} is necessary since lexer lexes it as end of tokens
-		line, col := str.Pos.Line, str.Pos.Col
-
-		p := NewExprParser()
-		expr, err := p.Parse(NewExprLexer(src))
-		if err != nil {
-			rule.exprError(err, line, col)
-			return
-		}
-
-		if ty, ok := rule.checkSemanticsOfExprNode(expr, line, col, false, workflowKey); ok {
-			condTy = ty
-		}
+	expr, err, offset := parseConditionExpression(str.Value)
+	line, col := str.Pos.Line, str.Pos.Col+offset
+	if offset != 0 && str.Quoted {
+		col++
+	}
+	if err != nil {
+		rule.exprError(err, line, col)
+		return
+	}
+	if expr == nil {
+		rule.checkString(str, workflowKey)
+		return
+	}
+	if ty, ok := rule.checkSemanticsOfExprNode(expr, line, col, false, workflowKey); ok {
+		condTy = ty
 	}
 
 	if condTy != nil && !(BoolType{}).Assignable(condTy) {
@@ -987,7 +980,7 @@ func (rule *RuleExpression) checkMatrix(m *Matrix) *ObjectType {
 		} else {
 			for _, combi := range m.Exclude.Combinations {
 				if combi.Expression != nil {
-					rule.checkObjectExpression(combi.Expression, "exclude", "jobs.<job_id>.strategy")
+					rule.checkMatrixCombinationExpression(combi.Expression, "exclude")
 					continue
 				}
 				for _, a := range combi.Assigns {
@@ -1018,7 +1011,7 @@ func (rule *RuleExpression) checkMatrix(m *Matrix) *ObjectType {
 
 	for _, combi := range m.Include.Combinations {
 		if combi.Expression != nil {
-			ty := rule.checkObjectExpression(combi.Expression, "matrix combination at element of include section", "jobs.<job_id>.strategy")
+			ty := rule.checkMatrixCombinationExpression(combi.Expression, "include")
 			if ty == nil {
 				continue
 			}
@@ -1053,7 +1046,10 @@ func (rule *RuleExpression) checkMatrixRow(r *MatrixRow) ExprType {
 
 	var ty ExprType
 	for _, v := range r.Values {
-		t := rule.checkRawYAMLValue(v)
+		t := rule.checkMatrixSequenceItem(v)
+		if t == nil {
+			continue
+		}
 		if ty == nil {
 			ty = t
 		} else {
@@ -1065,6 +1061,51 @@ func (rule *RuleExpression) checkMatrixRow(r *MatrixRow) ExprType {
 		return AnyType{} // No element
 	}
 
+	return ty
+}
+
+func (rule *RuleExpression) checkMatrixCombinationExpression(s *String, section string) ExprType {
+	ty := rule.checkOneExpression(s, "matrix combination at element of "+section+" section", "jobs.<job_id>.strategy")
+	if array, ok := ty.(*ArrayType); ok {
+		if value, known := workflowExpressionLiteral(s); known {
+			if values, ok := value.([]any); ok {
+				// Merging object and scalar element types produces AnyType, so
+				// validate each known value before using the inferred element type.
+				invalid := false
+				for i, value := range values {
+					if _, ok := value.(map[string]any); !ok {
+						rule.Errorf(s.Pos, "matrix combination in %s at inserted array index %d must be an object but got %s", section, i, typeOfJSONValue(value))
+						invalid = true
+					}
+				}
+				if invalid || len(values) == 0 {
+					return nil
+				}
+			}
+		}
+		ty = array.Elem
+	}
+	switch ty.(type) {
+	case nil, AnyType, *ObjectType:
+		return ty
+	default:
+		rule.Errorf(s.Pos, "matrix combination in %s must be an object or an array of objects but got %s", section, ty)
+		return nil
+	}
+}
+
+func (rule *RuleExpression) checkMatrixSequenceItem(value RawYAMLValue) ExprType {
+	ty := rule.checkRawYAMLValue(value)
+	if scalar, ok := value.(*RawYAMLString); ok && parseAssignedExpression(scalar.Value) != nil {
+		if array, ok := ty.(*ArrayType); ok {
+			if literal, known := workflowExpressionLiteral(&String{Value: scalar.Value}); known {
+				if values, ok := literal.([]any); ok && len(values) == 0 {
+					return nil
+				}
+			}
+			return array.Elem // Template expansion inserts one level only.
+		}
+	}
 	return ty
 }
 
@@ -1107,12 +1148,18 @@ func (rule *RuleExpression) checkRawYAMLValue(v RawYAMLValue) ExprType {
 		}
 		return NewStrictObjectType(m)
 	case *RawYAMLArray:
-		if len(v.Elems) == 0 {
-			return &ArrayType{AnyType{}, false}
+		var elem ExprType
+		for _, value := range v.Elems {
+			if ty := rule.checkMatrixSequenceItem(value); ty != nil {
+				if elem == nil {
+					elem = ty
+				} else {
+					elem = elem.Merge(ty)
+				}
+			}
 		}
-		elem := rule.checkRawYAMLValue(v.Elems[0])
-		for _, v := range v.Elems[1:] {
-			elem = elem.Merge(rule.checkRawYAMLValue(v))
+		if elem == nil {
+			elem = AnyType{}
 		}
 		return &ArrayType{elem, false}
 	case *RawYAMLString:

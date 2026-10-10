@@ -25,7 +25,6 @@ func TestActionMetadataKnownExpressions(t *testing.T) {
 		{"env nested array", "env", `${{ fromJSON('{"VALUE":[]}') }}`, "expected a scalar string", "env.*"},
 		{"with nested mapping", "with", `${{ fromJSON('{"value":{"nested":"value"}}') }}`, "expected a scalar string", "with.*"},
 		{"env empty key", "env", `${{ fromJSON('{"":"value"}') }}`, "expected a non-empty scalar key", "env"},
-		{"env duplicate folded keys", "env", `${{ fromJSON('{"VALUE":"a","value":"b"}') }}`, `duplicate key "value"`, "env"},
 		{"continue boolean", "continue-on-error", `${{ true }}`, "", ""},
 		{"continue JSON boolean", "continue-on-error", `${{ fromJSON('false') }}`, "", ""},
 		{"continue string", "continue-on-error", `${{ 'true' }}`, "expected a boolean or expression", "continue-on-error"},
@@ -89,5 +88,12 @@ func TestActionMetadataKnownExpressions(t *testing.T) {
 				t.Fatalf("diagnostic lost expression source position: %v", got)
 			}
 		})
+	}
+}
+
+func TestActionJSONMemberCollisions(t *testing.T) {
+	violations := actionExpressionViolations(`${{ fromJSON('{"VALUE":"a","value":"b"}') }}`, false, "runs.steps.*.env")
+	if len(violations) != 1 || !strings.Contains(violations[0].message, "collide under case-insensitive lookup") {
+		t.Fatal(violations)
 	}
 }

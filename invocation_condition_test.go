@@ -2,6 +2,42 @@ package actionlint
 
 import "testing"
 
+func TestStepCanRunAfterFailure(t *testing.T) {
+	if stepCanRunAfterFailure(nil) {
+		t.Fatal("missing condition must require success")
+	}
+	for _, tc := range []struct {
+		condition string
+		want      bool
+	}{
+		{"", false},
+		{"   ", false},
+		{"${{ '' }}", false},
+		{"${{ null }}", false},
+		{"failure()", true},
+		{"${{ failure() }}", true},
+		{"${{ 'failure()' }}", true},
+		{"${{ 'always()' }}", true},
+		{"${{ 'cancelled()' }}", true},
+		{"${{ '!success()' }}", true},
+		{"${{ 'FAILURE()' }}", true},
+		{"${{ 'success() || failure()' }}", true},
+		{"${{ 'success()' }}", false},
+		{"${{ 'success() && always()' }}", false},
+		{"${{ contains(github.event_name, 'failure()') }}", false},
+		{"${{ format('failure()') }}", false},
+		{"${{ 'failure(' }}", true},
+		{"${{ failure( }}", true},
+		{"before ${{ failure() }}", true},
+	} {
+		t.Run(tc.condition, func(t *testing.T) {
+			if got := stepCanRunAfterFailure(&String{Value: tc.condition}); got != tc.want {
+				t.Fatalf("stepCanRunAfterFailure() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestInvocationCondition(t *testing.T) {
 	for _, tc := range []struct {
 		condition      string
@@ -11,6 +47,20 @@ func TestInvocationCondition(t *testing.T) {
 		{"${{ success() && failure() }}", false, true},
 		{"true", true, true},
 		{"${{ false }}", false, true},
+		{"toJSON(false)", true, true},
+		{"toJSON(null)", true, true},
+		{"toJSON('')", true, true},
+		{`toJSON(false) == 'false'`, true, true},
+		{`contains(toJSON('hello'), 'hell')`, true, true},
+		{`join(fromJSON('[{}, ""]'), '')`, true, true},
+		{`join(fromJSON('[[], ""]'), '')`, true, true},
+		{`join(fromJSON('{}'))`, false, true},
+		{"case(true, false, true)", false, true},
+		{"case(false, false, true)", true, true},
+		{"case(false, true, true, false, true)", false, true},
+		{"case(false, true, false, true, false)", false, true},
+		{"case(true, false, inputs.enabled)", false, true},
+		{"case(inputs.enabled, false, true)", false, false},
 		{"success()", true, true},
 		{"success() || failure()", false, false},
 		{"success() && github.event_name == 'push'", false, false},
@@ -38,6 +88,9 @@ func TestJobInvocationCondition(t *testing.T) {
 		{"!success()", false, false, false},
 		{"failure() || cancelled()", false, false, false},
 		{"success()", false, true, true},
+		{"case(true, false, true)", false, false, true},
+		{"case(true, false, true)", true, false, true},
+		{"case(false, false, true)", true, true, true},
 	} {
 		t.Run(tc.condition, func(t *testing.T) {
 			job := &Job{If: &String{Value: tc.condition}}

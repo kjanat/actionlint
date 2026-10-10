@@ -18,6 +18,12 @@ func TestCompositeStatusConditionCheckout(t *testing.T) {
 		{"!success()", false},
 		{"success()", true},
 		{"success() && always()", true},
+		{"'always()'", false},
+		{"'failure()'", false},
+		{"'cancelled()'", false},
+		{"'!success()'", false},
+		{"'success()'", true},
+		{"'success() && always()'", true},
 	} {
 		t.Run(tc.condition, func(t *testing.T) {
 			result := compositeAnalysis(t, root, "- uses: ./local\n  if: ${{ "+tc.condition+" }}\n- uses: actions/checkout@v6\n- shell: bash\n  working-directory: .\n  run: ./bad.sh", AnalysisOptions{})

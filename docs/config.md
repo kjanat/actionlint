@@ -254,6 +254,50 @@ Omission, `null` or `false` permits exceptions. The policy cannot exempt itself,
 enable a disabled rule or override CLI/path ignores. `all` and `suppression` report
 prohibited directives even when no underlying finding exists.
 
+### Expression and matrix conditions
+
+These checks are disabled by default. Each key accepts `true`, `false`, or `null`;
+omission and `null` leave it unset. Enable the checks individually:
+
+```yaml
+policy:
+  string-conditions: true
+  mixed-type-comparisons: true
+  case-insensitive-conditions: true
+  mixed-type-matrix-filters: true
+```
+
+`string-conditions` reports a bare string reference in a job, step, or snapshot
+condition. It covers declared string inputs, step outputs, and known event text
+fields such as `github.event.comment.body`. Every non-empty string is truthy,
+including `'false'` and `'0'`. Compare the string explicitly, or use `fromJSON()`
+when the producer guarantees a JSON boolean. Boolean inputs and explicit
+comparisons are not reported.
+
+`mixed-type-comparisons` reports string references compared with numeric or
+boolean literals in conditions, including comparisons inside larger expressions.
+Actions applies numeric coercion across these types: `'' == 0` and `'0x0' == false`
+are both true. Same-type comparisons and explicit `fromJSON()` conversions are
+not reported. Parsing alone does not validate the resulting type or range.
+
+`case-insensitive-conditions` reports `==`, `!=`, `startsWith`, `endsWith`, or
+string `contains` against a literal when the other operand is a known ref,
+actor, label name, or deployment environment. Case variants also match. This
+check does not establish an authorization vulnerability or infer the workflow's
+trust boundary. Array membership and unrelated text comparisons are not reported.
+
+`mixed-type-matrix-filters` reports differently typed scalar axis/filter values,
+or an unknown axis value filtered with a boolean or number, in literal `include`
+and `exclude` entries. It inspects nested filter properties and known literal
+`fromJSON()` axes. Dynamic filter entries and wholly dynamic matrices are outside
+its scope. Matrix filtering uses Actions loose equality, including case-insensitive
+string comparison; it does not require structural identity.
+
+Condition policy findings use the `expression` rule ID and matrix policy findings
+use `matrix`; each message names its policy key. Existing correctness diagnostics
+remain active regardless of these settings. See [expression behavior](expression-behavior.md)
+for examples and evidence limitations.
+
 ### require-commit-hash
 
 `policy: {require-commit-hash: true}` requires 40- or 64-digit hexadecimal refs for

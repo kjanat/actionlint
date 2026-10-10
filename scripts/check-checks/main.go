@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"slices"
 	"strings"
 
@@ -52,6 +53,15 @@ func Actionlint(src []byte) ([]byte, error) {
 		return nil, err
 	}
 	if len(errs) == 0 {
+		var missing []string
+		for _, tool := range []string{"shellcheck", "pyflakes"} {
+			if _, err := exec.LookPath(tool); err != nil {
+				missing = append(missing, tool)
+			}
+		}
+		if len(missing) != 0 {
+			return nil, fmt.Errorf("the input example caused no error, but required documentation linters are missing from PATH: %s; install the missing tools or use mise exec pipx:pyflakes@4.0.3 -- runner lint-docs with ShellCheck available", strings.Join(missing, ", "))
+		}
 		return nil, errors.New("the input example caused no error")
 	}
 

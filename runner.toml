@@ -1,0 +1,56 @@
+#:schema https://kjanat.github.io/runner/schemas/runner.toml.schema.json
+
+[chain]
+on_fail = "wait"
+
+[install]
+tools  = true
+frozen = true
+
+[output]
+warnings = true
+errors   = true
+summary  = true
+progress = true
+groups   = true
+timing   = true
+
+# Short names refer to the Go project. Use package.json:lint/test/build for JS.
+[tasks.build]
+source = "make"
+env    = { SKIP_GO_GENERATE = "1" }
+
+[tasks.test]
+source = "make"
+
+[tasks.lint]
+source = "make"
+
+[tasks.lint-docs]
+source = "make"
+
+[tasks.comment-cop]
+source = "package.json"
+
+# Keep source-qualified names usable alongside the short-name overrides.
+[tasks."package.json:build"]
+source = "package.json"
+
+[tasks."package.json:test"]
+source = "package.json"
+
+[tasks."package.json:lint"]
+source = "package.json"
+
+[tasks."make:comment-cop"]
+source = "make"
+
+# Explicit playground names refer to its JavaScript application.
+[tasks."actionlint-playground:build"]
+source = "package.json"
+
+[tasks."actionlint-playground:test"]
+source = "package.json"
+
+[tasks."actionlint-playground:lint"]
+source = "package.json"

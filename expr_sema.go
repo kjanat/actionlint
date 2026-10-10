@@ -233,6 +233,7 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 		Params: []ExprType{
 			StringType{},
 		},
+		IsConstFunc: true,
 	}},
 	"hashfiles": {{
 		Name: "hashFiles",
@@ -415,6 +416,8 @@ type ExprSemanticsChecker struct {
 	jobCondition          bool
 	configVars            []string
 	configSecrets         []string
+	condition             bool
+	policy                Policy
 }
 
 // NewExprSemanticsChecker creates new ExprSemanticsChecker instance. When checkUntrustedInput is
@@ -428,6 +431,7 @@ func NewExprSemanticsChecker(checkUntrustedInput bool, cfg *Config) *ExprSemanti
 		githubVarCopied: false,
 	}
 	if cfg != nil {
+		c.policy = cfg.Policy
 		c.configVars = cfg.ConfigVariables
 		c.configSecrets = cfg.ConfigSecrets
 	}
@@ -603,6 +607,7 @@ func (sema *ExprSemanticsChecker) SetSpecialFunctionAvailability(avail []string)
 // position-specific signatures. Job conditions allow job arguments to success
 // and failure; step and snapshot conditions require zero arguments.
 func (sema *ExprSemanticsChecker) SetWorkflowKeyAvailability(key string) {
+	sema.condition = strings.HasSuffix(key, ".if")
 	contexts, functions := WorkflowKeyAvailability(key)
 	sema.SetContextAvailability(contexts)
 	sema.SetSpecialFunctionAvailability(functions)
@@ -946,6 +951,12 @@ func checkFuncSignature(n *FuncCallNode, sig *FuncSignature, args []ExprType) *E
 
 func (sema *ExprSemanticsChecker) checkBuiltinFuncCall(n *FuncCallNode, sig *FuncSignature) ExprType {
 	sema.checkSpecialFunctionAvailability(n)
+	if sema.condition && enabledPolicy(sema.policy.CaseInsensitiveConditions) && len(n.Args) == 2 {
+		switch strings.ToLower(n.Callee) {
+		case "contains", "startswith", "endswith":
+			sema.checkIdentityComparison(n, n.Args[0], n.Args[1])
+		}
+	}
 
 	// Special checks for specific built-in functions
 	switch strings.ToLower(n.Callee) {
@@ -972,6 +983,13 @@ func (sema *ExprSemanticsChecker) checkBuiltinFuncCall(n *FuncCallNode, sig *Fun
 	case "fromjson":
 		lit, ok := n.Args[0].(*StringNode)
 		if !ok {
+			return sig.Ret
+		}
+		collisions := jsonMemberCollisions(lit.Value)
+		for _, collision := range collisions {
+			sema.errorf(lit, "fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", collision.first, collision.second, collision.offset)
+		}
+		if len(collisions) > 0 {
 			return sig.Ret
 		}
 		var v any
@@ -1105,6 +1123,7 @@ func validateCompareOpOperands(op CompareOpNodeKind, l, r ExprType) bool {
 func (sema *ExprSemanticsChecker) checkCompareOp(n *CompareOpNode) ExprType {
 	l := sema.check(n.Left)
 	r := sema.check(n.Right)
+	sema.checkConditionComparison(n, l, r)
 
 	if !validateCompareOpOperands(n.Kind, l, r) {
 		sema.errorf(n, "%q value cannot be compared to %q value with %q operator", l.String(), r.String(), n.Kind.String())
@@ -1204,6 +1223,9 @@ func (sema *ExprSemanticsChecker) Check(expr ExprNode) (ExprType, []*ExprError) 
 		sema.untrusted.Init()
 	}
 	ty := sema.check(expr)
+	if sema.condition && enabledPolicy(sema.policy.StringConditions) && conditionStringReference(expr, ty) {
+		sema.errorf(expr, "bare string condition is truthy for every non-empty value, including 'false' and '0'; use an explicit string comparison or fromJSON() for a boolean contract (policy: string-conditions)")
+	}
 	errs := sema.errs
 	if sema.untrusted != nil {
 		sema.untrusted.OnVisitEnd()
