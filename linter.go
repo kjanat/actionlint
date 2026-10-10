@@ -58,8 +58,6 @@ type LinterOptions struct {
 	// "shellcheck" or file path like "/path/to/shellcheck", "path/to/shellcheck". When this value
 	// is empty, shellcheck won't run to check scripts in workflow file.
 	Shellcheck string
-	// Ruff selects the executable for Python run scripts. Empty disables it.
-	Ruff string
 	// Deprecated: Pyflakes integration was removed. This field is ignored.
 	Pyflakes string
 	// IgnorePatterns is list of regular expression to filter errors. The pattern is applied to error
@@ -96,6 +94,8 @@ type LinterOptions struct {
 	// Context bounds the lifetime of the linting. Cancelling it kills the external
 	// child processes which are running. When this value is nil, context.Background() is used.
 	Context context.Context
+	// Ruff selects the executable for Python run scripts. Empty disables it.
+	Ruff string
 	// More options will come here
 }
 
