@@ -31,7 +31,15 @@ func (rule *RuleMatrix) VisitJobPre(n *Job) error {
 	if evaluated {
 		m = knownStrategyMatrix(n.Strategy.Expression)
 	}
-	if m == nil || m.Expression != nil {
+	if m != nil && m.Expression != nil {
+		value, known := workflowExpressionLiteral(m.Expression)
+		if !known {
+			return nil
+		}
+		m = knownLiteralMatrix(value, m.Expression.Pos)
+		evaluated = true
+	}
+	if m == nil {
 		return nil
 	}
 
@@ -65,7 +73,11 @@ func knownStrategyMatrix(expression *String) *Matrix {
 	if !ok {
 		return nil
 	}
-	matrix, ok := workflowObjectProperty(strategy, "matrix").(map[string]any)
+	return knownLiteralMatrix(workflowObjectProperty(strategy, "matrix"), expression.Pos)
+}
+
+func knownLiteralMatrix(value any, position *Pos) *Matrix {
+	matrix, ok := value.(map[string]any)
 	if !ok || len(workflowExpressionLiteralErrors(workflowStrategy.props["matrix"], matrix, "matrix")) != 0 {
 		return nil
 	}
@@ -75,13 +87,13 @@ func knownStrategyMatrix(expression *String) *Matrix {
 	}
 	var setPosition func(*yaml.Node)
 	setPosition = func(n *yaml.Node) {
-		n.Line, n.Column = expression.Pos.Line, expression.Pos.Col
+		n.Line, n.Column = position.Line, position.Col
 		for _, child := range n.Content {
 			setPosition(child)
 		}
 	}
 	setPosition(&node)
-	return (&parser{}).parseMatrix(expression.Pos, &node)
+	return (&parser{}).parseMatrix(position, &node)
 }
 
 func (rule *RuleMatrix) checkDuplicateInRow(row *MatrixRow) {
@@ -112,26 +124,39 @@ func (rule *RuleMatrix) checkDuplicateInRow(row *MatrixRow) {
 
 // Matrix filters compare selected properties and indices with expression equality.
 func isYAMLValueSubset(value, filter RawYAMLValue, expressions bool) bool {
+	return isYAMLValueSubsetWithExpressions(value, filter, expressions, expressions)
+}
+
+func isYAMLValueSubsetWithExpressions(value, filter RawYAMLValue, valueExpressions, filterExpressions bool) bool {
 	// Dynamic values or filter leaves cannot establish a mismatch. Evaluated
 	// expression results use expressions=false so embedded syntax remains data.
-	if expressions {
-		for _, item := range []RawYAMLValue{value, filter} {
-			if scalar, ok := item.(*RawYAMLString); ok && ContainsExpression(scalar.Value) {
-				return true
-			}
+	for _, item := range []matrixFilterElement{{value, valueExpressions}, {filter, filterExpressions}} {
+		if scalar, ok := item.value.(*RawYAMLString); item.expressions && ok && ContainsExpression(scalar.Value) {
+			return true
 		}
 	}
 	switch filter := filter.(type) {
 	case *RawYAMLObject:
+		lookup := newMatrixFilterLookup(value, valueExpressions)
 		for key, item := range filter.Props {
-			if !isYAMLValueSubset(matrixFilterValueAt(value, key), item, expressions) {
+			actual, actualExpressions, uncertain := lookup.at(key)
+			if uncertain {
+				continue
+			}
+			if !isYAMLValueSubsetWithExpressions(actual, item, actualExpressions, filterExpressions) {
 				return false
 			}
 		}
 		return true
 	case *RawYAMLArray:
-		for i, item := range filter.Elems {
-			if !isYAMLValueSubset(matrixFilterValueAt(value, strconv.Itoa(i)), item, expressions) {
+		filters, _ := matrixFilterElements(filter, filterExpressions)
+		lookup := newMatrixFilterLookup(value, valueExpressions)
+		for i, item := range filters {
+			actual, actualExpressions, uncertain := lookup.at(strconv.Itoa(i))
+			if uncertain {
+				return true
+			}
+			if !isYAMLValueSubsetWithExpressions(actual, item.value, actualExpressions, item.expressions) {
 				return false
 			}
 		}
