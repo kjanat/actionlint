@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go/format"
 	"io"
@@ -40,14 +41,14 @@ func selectors(schema, redirects []byte) ([]string, error) {
 		}
 	}
 	if !available["ALL"] || !available["F821"] {
-		return nil, fmt.Errorf("upstream schema has no supported RuleSelector definition")
+		return nil, errors.New("upstream schema has no supported RuleSelector definition")
 	}
 	aliases := map[string]string{}
 	for _, match := range redirectPattern.FindAllSubmatch(redirects, -1) {
 		aliases[string(match[1])] = string(match[2])
 	}
 	if aliases["C9"] != "C90" {
-		return nil, fmt.Errorf("upstream selector redirects were not recognized")
+		return nil, errors.New("upstream selector redirects were not recognized")
 	}
 	result := make([]string, 0, len(available)+len(aliases))
 	for selector := range available {
