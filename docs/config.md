@@ -410,6 +410,11 @@ header (`run: |` or `run: >`) covers its body as well. A preceding
 other comments detach a preceding directive. For aliases, use the reported anchor
 location.
 
+For ShellCheck findings in sourced scripts, place a reason-bearing directive on
+the originating `run` declaration or its YAML block header. This suppresses findings
+from that invocation while keeping their reported script locations. Comments inside
+sourced scripts do not create actionlint suppression directives.
+
 ```yaml
 - run: | # actionlint:ignore expression,shellcheck -- reviewed script inputs
     echo '${{ github.event.issue.title }}'

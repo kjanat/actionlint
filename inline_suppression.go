@@ -32,6 +32,11 @@ type inlineSuppressionDirective struct {
 	reason     string
 }
 
+type suppressionOrigin struct {
+	path        string
+	first, last int
+}
+
 func parseInlineSuppression(comment inlineSuppressionComment) (inlineSuppressionDirective, *Error) {
 	invalid := func(message string) *Error {
 		return errorAt(&comment.pos, "inline-suppression", message)
@@ -51,6 +56,9 @@ func parseInlineSuppression(comment inlineSuppressionComment) (inlineSuppression
 		target++
 	default:
 		return inlineSuppressionDirective{}, invalid("unknown inline suppression directive. use \"actionlint:ignore RULE -- reason\" or \"actionlint:ignore-next-line RULE -- reason\"")
+	}
+	if comment.startLine > 0 {
+		target = min(target, comment.startLine)
 	}
 	if !hasReason || strings.TrimSpace(reason) == "" {
 		return inlineSuppressionDirective{}, invalid("inline suppression requires a reason after \" -- \"")
@@ -73,6 +81,10 @@ func parseInlineSuppression(comment inlineSuppressionComment) (inlineSuppression
 }
 
 func filterInlineSuppressions(source []byte, errors []*Error, policy *SuppressionsPolicy) []*Error {
+	return filterInlineSuppressionsAt(source, errors, policy, "")
+}
+
+func filterInlineSuppressionsAt(source []byte, errors []*Error, policy *SuppressionsPolicy, scope string) []*Error {
 	comments := collectInlineSuppressionComments(source)
 	if len(comments) == 0 {
 		return errors
@@ -87,20 +99,24 @@ func filterInlineSuppressions(source []byte, errors []*Error, policy *Suppressio
 			directives = append(directives, directive)
 		}
 	}
-	return applyInlineSuppressions(append(errors, directiveErrors...), directives, policy)
+	return applyInlineSuppressionsAt(append(errors, directiveErrors...), directives, policy, scope)
 }
 
-// Scope directives to the diagnostic's own YAML source, never its caller.
+// Scope directives to their owning YAML while retaining diagnostic sources.
 func filterForeignInlineSuppressions(path string, source []byte, findings []*Error, policy *SuppressionsPolicy) []*Error {
 	local := make([]*Error, len(findings))
 	for i, finding := range findings {
 		scoped := *finding
-		scoped.source = nil
+		if scoped.suppressionOrigin == nil {
+			scoped.source = nil
+		}
 		local[i] = &scoped
 	}
-	local = filterInlineSuppressions(source, local, policy)
+	local = filterInlineSuppressionsAt(source, local, policy, path)
 	for _, finding := range local {
-		finding.source = source
+		if finding.suppressionOrigin == nil {
+			finding.source = source
+		}
 		if finding.Filepath == "" {
 			finding.Filepath = path
 		}
@@ -111,6 +127,10 @@ func filterForeignInlineSuppressions(path string, source []byte, findings []*Err
 // applyInlineSuppressions enforces restrictions independently of YAML layout.
 // Invalid directives never enter this stage. CLI and path filters run afterwards.
 func applyInlineSuppressions(errors []*Error, directives []inlineSuppressionDirective, policy *SuppressionsPolicy) []*Error {
+	return applyInlineSuppressionsAt(errors, directives, policy, "")
+}
+
+func applyInlineSuppressionsAt(errors []*Error, directives []inlineSuppressionDirective, policy *SuppressionsPolicy, scope string) []*Error {
 	type lineRange struct {
 		start, end int
 	}
@@ -133,7 +153,11 @@ func applyInlineSuppressions(errors []*Error, directives []inlineSuppressionDire
 	}
 	filtered := make([]*Error, 0, len(errors)+len(policyErrors))
 	for _, err := range errors {
-		if err.source == nil && slices.ContainsFunc(suppressed[err.Kind], func(lines lineRange) bool { return err.Line >= lines.start && err.Line <= lines.end }) {
+		first, last, applies := err.Line, err.Line, err.source == nil
+		if origin := err.suppressionOrigin; origin != nil {
+			first, last, applies = origin.first, origin.last, origin.path == scope
+		}
+		if applies && slices.ContainsFunc(suppressed[err.Kind], func(lines lineRange) bool { return first <= lines.end && last >= lines.start }) {
 			continue
 		}
 		filtered = append(filtered, err)

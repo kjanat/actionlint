@@ -42,6 +42,9 @@ type Error struct {
 	// source is the content of the file at Filepath when the error points at a file other than the
 	// linted workflow. It replaces the workflow source for rendering the snippet.
 	source []byte
+	// suppressionOrigin identifies the YAML run declaration which caused a
+	// sourced diagnostic, independently of its displayed script location.
+	suppressionOrigin *suppressionOrigin
 	// External analyzer metadata is exposed through Diagnostic, leaving legacy output unchanged.
 	code     string
 	severity string

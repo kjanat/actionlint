@@ -14,6 +14,7 @@ type inlineSuppressionComment struct {
 	pos        Pos
 	text       string
 	standalone bool
+	startLine  int
 	endLine    int
 }
 
@@ -144,12 +145,19 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 		}
 	}
 	visit(&root, documentEnd, -1)
+	blockStarts := map[int]int{}
+	for first, last := range blockEnds {
+		if start, exists := blockStarts[last]; !exists || first < start {
+			blockStarts[last] = first
+		}
+	}
 	for i := range comments {
 		target := comments[i].pos.Line
 		if comments[i].standalone {
 			target++
 		}
 		comments[i].endLine = blockEnds[target]
+		comments[i].startLine = blockStarts[comments[i].endLine]
 	}
 	return comments
 }

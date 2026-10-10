@@ -112,7 +112,7 @@ func (rule *RuleShellcheck) VisitStep(n *Step) error {
 	}
 
 	directory := rule.paths.effectiveRunDirectory(run, rule.jobDir, rule.workflowDir)
-	return rule.runShellcheck(run.Run.Value, run.source, rule.resolveShell(run), rule.paths.resolve(directory), run.RunPos)
+	return rule.runShellcheck(run.Run.Value, run.source, rule.resolveShell(run), rule.paths.resolve(directory), run.RunPos, run.Run.Pos)
 }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
@@ -197,7 +197,7 @@ func sanitizeExpressionsInScript(src string) string {
 	}
 }
 
-func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shell shellcheckShell, directory runDirectory, pos *Pos) error {
+func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shell shellcheckShell, directory runDirectory, pos, valuePos *Pos) error {
 	dialect, setup := shell.analysis()
 	header, _, directiveShell := shellcheckHeader(src)
 	if dialect == "" && !directiveShell {
@@ -302,6 +302,15 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 		rule.Debug("%s: Applied inline ShellCheck directives:\n%s", pos, prefix)
 	}
 	script := prepareShellcheckScript(src, prefix, setup)
+	origin := &suppressionOrigin{first: pos.Line, last: pos.Line}
+	if valuePos != nil {
+		origin.last = max(origin.last, valuePos.Line)
+	}
+	if source != nil {
+		for _, span := range source.spans {
+			origin.last = max(origin.last, span.yamlLine)
+		}
+	}
 
 	rule.cmd.runInDirectory(args, script.text, directory.path, func(stdout []byte, err error) error {
 		if err != nil {
@@ -324,7 +333,9 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 		sources := make(map[string][]byte)
 		for _, err := range errs {
 			if err.File != "" && err.File != "-" {
-				rule.errs = append(rule.errs, rule.sourcedDiagnostic(err, directory.path, sources))
+				finding := rule.sourcedDiagnostic(err, directory.path, sources)
+				finding.suppressionOrigin = origin
+				rule.errs = append(rule.errs, finding)
 				continue
 			}
 			// Dialect overrides can make generated startup options non-portable.

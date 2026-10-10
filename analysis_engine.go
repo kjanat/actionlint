@@ -160,6 +160,9 @@ func (l *analysisEngine) check(
 		for _, composite := range v.composites.rules {
 			for _, rule := range composite.rules {
 				for _, finding := range rule.Errs() {
+					if origin := finding.suppressionOrigin; origin != nil && origin.path == "" {
+						origin.path = composite.meta.Path()
+					}
 					if finding.Filepath == "" {
 						finding.Filepath = composite.meta.Path()
 						finding.source = composite.meta.src
@@ -203,7 +206,9 @@ func (l *analysisEngine) check(
 	}
 	for _, finding := range all {
 		key := findingKey(finding.Filepath)
-		if _, isMetadata := metadataSources[finding.Filepath]; isMetadata {
+		if origin := finding.suppressionOrigin; origin != nil && origin.path != "" {
+			key = origin.path
+		} else if _, isMetadata := metadataSources[finding.Filepath]; isMetadata {
 			key = finding.Filepath
 		}
 		byPath[key] = append(byPath[key], finding)
@@ -252,7 +257,9 @@ func (l *analysisEngine) check(
 			}
 			return false
 		})
-		all = append(all, l.filterErrors(findings, cfg.PathConfigs(findingPath))...)
+		for _, finding := range findings {
+			all = append(all, l.filterErrors([]*Error{finding}, cfg.PathConfigs(findingKey(finding.Filepath)))...)
+		}
 	}
 
 	diagnosticDir := l.workingDir
