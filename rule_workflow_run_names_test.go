@@ -3,8 +3,10 @@ package actionlint
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -48,6 +50,85 @@ func TestWorkflowRunNames(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestWorkflowRunNamesLiteralNames(t *testing.T) {
+	for _, tc := range []struct {
+		name, reference string
+		want            int
+	}{
+		{"${{ 'Build' }}", "Build", 0},
+		{"${{ 'Build' }}", "Typo", 1},
+		{"${{ 'Build''s CI' }}", "Build''s CI", 0},
+		{"${{ 'Build''s CI' }}", "Typo", 1},
+		{"${{ '' }}", ".github/workflows/build.yml", 0},
+		{"${{ '' }}", "Typo", 1},
+		{"${{ github.ref }}", "Typo", 0},
+		{"${{ format('Build') }}", "Typo", 0},
+	} {
+		for _, inMemory := range []bool{false, true} {
+			t.Run(tc.name+tc.reference+fmt.Sprint(inMemory), func(t *testing.T) {
+				root := t.TempDir()
+				project := &Project{root: root}
+				producer := "name: " + tc.name + "\n" + commandGoodWorkflow
+				consumer := "on: {workflow_run: {workflows: ['" + tc.reference + "'], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+				sources := []SourceUnit{{Path: ".github/workflows/consumer.yml", Content: []byte(consumer), Project: project}}
+				if inMemory {
+					cfg, err := ParseConfig([]byte("files: {excludes: ['**/build.yml']}"))
+					if err != nil {
+						t.Fatal(err)
+					}
+					sources = append(sources, SourceUnit{Path: ".github/workflows/build.yml", Content: []byte(producer), Project: project, Config: cfg})
+				} else {
+					writeShellcheckFixture(t, root, ".github/workflows/build.yml", producer)
+				}
+				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: sources})
+				if err != nil || len(result.Diagnostics) != tc.want {
+					t.Fatalf("got %+v, %v; want %d findings", result, err, tc.want)
+				}
+				if tc.want > 0 && result.Diagnostics[0].Rule != "workflow-run-names" {
+					t.Fatal(result.Diagnostics)
+				}
+			})
+		}
+	}
+}
+
+func TestWorkflowRunNamesWindowsPathCasing(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("requires Windows path identity")
+	}
+	for _, disk := range []string{"name: Old\n" + commandGoodWorkflow, "name: [\n"} {
+		for _, reference := range []string{"New", "Old", "Typo"} {
+			t.Run(disk+reference, func(t *testing.T) {
+				root := t.TempDir()
+				producer := writeShellcheckFixture(t, root, ".github/workflows/build.yml", disk)
+				project := &Project{root: strings.ToUpper(root)}
+				consumer := "on: {workflow_run: {workflows: [" + reference + "], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, ReadFile: func(path string) ([]byte, error) {
+					if strings.EqualFold(path, producer) {
+						t.Errorf("read stale on-disk producer %q", path)
+						return nil, os.ErrPermission
+					}
+					return os.ReadFile(path)
+				}, Sources: []SourceUnit{
+					{Path: strings.ToLower(producer), Content: []byte("name: New\n" + commandGoodWorkflow), Project: project},
+					{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: project},
+				}})
+				want := 1
+				if reference == "New" {
+					want = 0
+				}
+				if err != nil || len(result.Diagnostics) != want {
+					t.Fatalf("got %+v, %v; want %d findings", result, err, want)
+				}
+				if !slices.Contains(result.Inputs, strings.ToLower(producer)) {
+					t.Fatalf("in-memory producer path missing from inputs: %v", result.Inputs)
+				}
+			})
+		}
+	}
+
 }
 
 func TestWorkflowRunNamesRelativeProject(t *testing.T) {

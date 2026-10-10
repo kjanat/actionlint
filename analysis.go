@@ -174,6 +174,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		readFile = os.ReadFile
 	}
 	sourceContents := map[string][]byte{}
+	sourcePaths := make([]string, 0, len(allSources))
 	for _, source := range allSources {
 		path := source.inputPath
 		if path == "" {
@@ -182,14 +183,15 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(engine.workingDir, path)
 		}
-		sourceContents[filepath.Clean(path)] = source.Content
+		sourceContents[workflownames.PathKey(path)] = source.Content
+		sourcePaths = append(sourcePaths, filepath.Clean(path))
 	}
-	engine.workflowNames = &workflownames.Index{Load: func(path string) (string, bool, error) {
+	engine.workflowNames = &workflownames.Index{Paths: sourcePaths, Load: func(path string) (string, bool, error) {
 		if err := ctx.Err(); err != nil {
 			return "", false, err
 		}
 		inputs.add(path)
-		content, ok := sourceContents[path]
+		content, ok := sourceContents[workflownames.PathKey(path)]
 		if !ok {
 			var err error
 			content, err = readFile(path)
@@ -204,11 +206,11 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		if workflow.Name == nil {
 			return "", true, nil
 		}
+		if literal := literalExpressionValue(workflow.Name.Value); literal != nil {
+			return *literal, true, nil
+		}
 		return workflow.Name.Value, !workflow.Name.ContainsExpression(), nil
 	}}
-	for path := range sourceContents {
-		engine.workflowNames.Paths = append(engine.workflowNames.Paths, path)
-	}
 	// Initialize shared caches before any analysis goroutines access them.
 	for _, source := range request.Sources {
 		ac, wc := actions.GetCache(source.Project), workflows.GetCache(source.Project)
