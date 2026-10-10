@@ -44,8 +44,14 @@ func (r *workflowRunNamesRule) VisitWorkflowPre(w *Workflow) error {
 		return nil
 	}
 	for _, ref := range references {
-		if !ref.ContainsExpression() && names.Missing(ref.Value) {
-			r.Errorf(ref.Pos, "workflow_run references workflow pattern %q, but no workflow name matches it in this repository", ref.Value)
+		value := ref.Value
+		if literal := literalExpressionValue(value); literal != nil {
+			value = *literal
+		} else if ref.ContainsExpression() {
+			continue
+		}
+		if names.Missing(value) {
+			r.Errorf(ref.Pos, "workflow_run references workflow pattern %q, but no workflow name matches it in this repository", value)
 		}
 	}
 	return nil
