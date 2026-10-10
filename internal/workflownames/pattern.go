@@ -5,6 +5,12 @@ import (
 	"strings"
 )
 
+// ValidPattern checks the workflow-name grammar, including exclusion filters.
+func ValidPattern(pattern string) bool {
+	_, ok := compilePattern(strings.TrimPrefix(pattern, "!"))
+	return ok
+}
+
 // Missing reports positive workflow filters that match no known producer.
 // Invalid patterns and exclusion filters cannot establish a missing producer.
 func (n Names) Missing(pattern string) bool {

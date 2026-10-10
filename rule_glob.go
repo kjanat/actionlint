@@ -1,5 +1,7 @@
 package actionlint
 
+import "actionlint.kjanat.dev/internal/workflownames"
+
 // RuleGlob is a rule to check glob syntax.
 // https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
 type RuleGlob struct {
@@ -24,6 +26,7 @@ func (rule *RuleGlob) VisitWorkflowPre(n *Workflow) error {
 			rule.checkGitRefGlobs(e.TagsIgnore)
 			rule.checkFilePathGlobs(e.Paths)
 			rule.checkFilePathGlobs(e.PathsIgnore)
+			rule.checkWorkflowNameGlobs(e.Workflows)
 		case *ImageVersionEvent:
 			for _, v := range e.Versions {
 				rule.checkRefGlob(v)
@@ -31,6 +34,19 @@ func (rule *RuleGlob) VisitWorkflowPre(n *Workflow) error {
 		}
 	}
 	return nil
+}
+
+func (rule *RuleGlob) checkWorkflowNameGlobs(names []*String) {
+	for _, name := range names {
+		if name == nil || name.Value == "" || name.ContainsExpression() || workflownames.ValidPattern(name.Value) {
+			continue
+		}
+		errs := validateGlob(name.Value, false)
+		if len(errs) == 0 {
+			errs = []InvalidGlobPatternError{{Message: "invalid workflow-name filter pattern"}}
+		}
+		rule.globErrors(errs, name.Pos, name.Quoted)
+	}
 }
 
 func (rule *RuleGlob) VisitJobPre(n *Job) error {
