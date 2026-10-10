@@ -178,8 +178,11 @@ func environmentToolHelper() int {
 	if err := os.WriteFile(os.Getenv("ACTIONLINT_TEST_REPORT"), data, 0o600); err != nil {
 		return 1
 	}
-	if report.Value == "shell" {
+	switch report.Value {
+	case "shell":
 		fmt.Print(`{"comments":[]}`)
+	case "python":
+		fmt.Print(`[]`)
 	}
 	return 0
 }
@@ -202,8 +205,11 @@ func TestEnvironmentExternalTools(t *testing.T) {
 	}
 	t.Setenv("ACTIONLINT_TEST_CHILD", "parent")
 	reports := map[string]string{}
-	for _, toolName := range []string{"SHELLCHECK"} {
+	for _, toolName := range []string{"SHELLCHECK", "RUFF"} {
 		kind := "shell"
+		if toolName == "RUFF" {
+			kind = "python"
+		}
 		path := filepath.Join(t.TempDir(), "report.json")
 		reports[kind] = path
 		env, err := json.Marshal(map[string]string{"ACTIONLINT_TEST_TOOL_PROCESS": "1", "ACTIONLINT_TEST_REPORT": path, "ACTIONLINT_TEST_CHILD": kind})

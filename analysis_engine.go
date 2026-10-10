@@ -10,6 +10,8 @@ import (
 )
 
 type analysisEngine struct {
+	ruff        string
+	ruffOptions *ExternalCommandOptions
 	analysisLogger
 	ctx                context.Context
 	shellcheck         string
@@ -81,6 +83,7 @@ func (l *analysisEngine) check(
 
 		rules := []Rule{}
 		c := ruleContext{path: path, config: cfg, actions: localActions, workflows: localReusableWorkflows, process: proc, shellcheck: l.shellcheck}
+		c.ruff, c.ruffOptions = l.ruff, l.ruffOptions
 		c.shellcheckOptions = l.shellcheckOptions
 		c.shellcheckSettings = l.shellcheckSettings
 		c.workingDir, c.inputs = l.workingDir, l.inputs
@@ -146,6 +149,9 @@ func (l *analysisEngine) check(
 			var err error
 			if rule, ok := rule.(*RuleShellcheck); ok {
 				err = rule.cmd.wait()
+			}
+			if rule, ok := rule.(*ruffRule); ok {
+				err = rule.checker.Wait()
 			}
 			if analysisErr == nil {
 				analysisErr = err

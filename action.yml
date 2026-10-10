@@ -63,8 +63,12 @@ inputs:
       flags and workflow defaults. Reporting uses the action's format input.
     required: false
     default: ""
+  ruff:
+    description: Check Python run steps with Ruff when installed on PATH. Install it first with setup-ruff or mise; this action does not download Ruff.
+    required: false
+    default: "true"
   pyflakes:
-    description: "Deprecated and ignored: Python script linting has been removed."
+    description: "Deprecated and ignored: use the ruff input for Python script linting."
     required: false
     default: "false"
   add-actionlint-to-path:

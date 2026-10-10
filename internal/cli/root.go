@@ -155,6 +155,8 @@ func (a *commandApp) configFlags(f *pflag.FlagSet) {
 }
 
 func (a *commandApp) toolFlags(f *pflag.FlagSet) {
+	f.StringVar(&a.inv.Check.Ruff, "ruff", "ruff", "Ruff command or command line for Python scripts; empty disables it")
+	annotateFlag(f, "ruff", "External linters")
 	f.StringVar(&a.inv.Check.ShellCheck, "shellcheck", "shellcheck", "ShellCheck command or command line; empty disables it")
 	f.StringVar(&a.inv.Check.Pyflakes, "pyflakes", "", "Deprecated: Pyflakes integration was removed; ignored")
 	annotateFlag(f, "shellcheck", "External linters")

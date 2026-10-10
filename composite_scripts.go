@@ -151,6 +151,8 @@ func compositeActionOrigin(paths *runPaths, call *Step, actionPath string) {
 func compositeScriptRule(parent Rule, call *Step, actionPath string, actions *LocalActionsCache) Rule {
 	var child Rule
 	switch rule := parent.(type) {
+	case *ruffRule:
+		child = &ruffRule{RuleBase: builtinRuleBase("ruff"), checker: rule.checker.Fork()}
 	case *RuleShellcheck:
 		scoped := newRuleShellcheck(rule.cmd)
 		scoped.config, scoped.paths, scoped.onInput = rule.config, rule.paths, rule.onInput

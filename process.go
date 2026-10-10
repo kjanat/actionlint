@@ -17,6 +17,7 @@ import (
 
 // cmdExecution represents a single command line execution.
 type cmdExecution struct {
+	maxExitCode   int
 	cmd           string
 	args          []string
 	stdin         string
@@ -55,6 +56,9 @@ func (e *cmdExecution) run(ctx context.Context) ([]byte, error) {
 
 			if code < 0 {
 				return nil, fmt.Errorf("%s was terminated. stderr: %q", e.cmd, stderr)
+			}
+			if e.maxExitCode > 0 && code > e.maxExitCode {
+				return nil, fmt.Errorf("%s exited with status %d. stderr: %q", e.cmd, code, stderr)
 			}
 
 			if len(stdout) == 0 {
@@ -202,6 +206,7 @@ func ResolveExternalCommand(exe string) (string, []string, error) {
 // by using errgroup.Group. The wait() method must be called at the end for checking if some fatal
 // error occurred.
 type externalCommand struct {
+	maxExitCode   int
 	proc          *concurrentProcess
 	eg            errgroup.Group
 	exe           string
@@ -225,7 +230,7 @@ func (cmd *externalCommand) runInDirectory(args []string, stdin, dir string, cal
 		allArgs = append(allArgs, args...)
 		args = allArgs
 	}
-	exec := &cmdExecution{cmd: cmd.exe, args: args, stdin: stdin, combineOutput: cmd.combineOutput, env: cmd.env, dir: dir}
+	exec := &cmdExecution{cmd: cmd.exe, args: args, stdin: stdin, combineOutput: cmd.combineOutput, env: cmd.env, dir: dir, maxExitCode: cmd.maxExitCode}
 	cmd.proc.run(&cmd.eg, exec, callback)
 }
 

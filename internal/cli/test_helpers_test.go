@@ -34,7 +34,7 @@ const commandBadWorkflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest
 func testRunCommand(input string, args ...string) commandTranscript {
 	var out, errout bytes.Buffer
 	cmd := Command{Stdin: strings.NewReader(input), Stdout: &out, Stderr: &errout}
-	status := cmd.Main(append([]string{"actionlint", "--shellcheck=", "--pyflakes=", "--no-color"}, args...))
+	status := cmd.Main(append([]string{"actionlint", "--shellcheck=", "--ruff=", "--pyflakes=", "--no-color"}, args...))
 	return commandTranscript{status, out.String(), errout.String()}
 }
 

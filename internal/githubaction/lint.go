@@ -20,6 +20,8 @@ const lintTimeout = 300 * time.Second
 const lintCancellationGrace = time.Second
 
 type lintRequest struct {
+	ruff               string
+	ruffOptions        *actionlint.ExternalCommandOptions
 	ctx                context.Context
 	shellcheckOptions  *actionlint.ExternalCommandOptions
 	shellcheckSettings *actionlint.ShellcheckSettings
@@ -52,6 +54,21 @@ type lintResult struct {
 }
 
 func (req *lintRequest) configureEnvironment(env func(string) string) error {
+	// Ruff is optional and discovered on PATH; this does not install Python or
+	// download tools. Existing users can install it with setup-ruff or mise.
+	ruff := env("INPUT_RUFF")
+	if ruff != "" {
+		enabled, err := parseBool("ruff", ruff)
+		if err != nil {
+			return err
+		}
+		if enabled {
+			req.ruff = "ruff"
+		}
+	}
+	if command := env("ACTIONLINT_RUFF_COMMAND"); req.ruff != "" && command != "" {
+		req.ruffOptions = &actionlint.ExternalCommandOptions{Executable: &command}
+	}
 	req.sarif = env("INPUT_SARIF") == "true"
 	if value := env("INPUT_CONFIG"); strings.TrimSpace(value) != "" {
 		overlay, err := actionlint.ParseConfigOverlay("config", []byte(value))
@@ -91,6 +108,7 @@ func runLinter(req *lintRequest) *lintResult {
 		workspace = req.workingDir
 	}
 	opts := actionlint.AnalysisOptions{
+		Ruff: req.ruff, RuffOptions: toolOptionsInDirectory(req.ruffOptions, req.workingDir),
 		Context:            req.ctx,
 		ShellcheckOptions:  toolOptionsInDirectory(req.shellcheckOptions, req.workingDir),
 		ShellcheckSettings: req.shellcheckSettings,

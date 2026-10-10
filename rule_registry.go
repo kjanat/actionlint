@@ -12,6 +12,8 @@ type ruleDescriptor struct {
 	enabled     func(ruleContext) bool
 }
 type ruleContext struct {
+	ruff                    string
+	ruffOptions             *ExternalCommandOptions
 	path                    string
 	config                  *Config
 	actions                 *LocalActionsCache
@@ -27,6 +29,9 @@ type ruleContext struct {
 
 func builtinRuleDescriptors() []ruleDescriptor {
 	rules := []ruleDescriptor{
+		{Name: "ruff", Description: "Checks embedded Python scripts with Ruff", Category: "external", Recommended: true, build: func(c ruleContext) (Rule, error) { return newRuffRule(c) }, enabled: func(c ruleContext) bool {
+			return externalCommandEnabled(c.ruff, c.ruffOptions) && (c.config == nil || c.config.Tools.Ruff.Enabled == nil || *c.config.Tools.Ruff.Enabled)
+		}},
 		{Name: "syntax-check", Description: "Checks for GitHub Actions workflow syntax", Category: "correctness", Recommended: true},
 		{Name: "inline-suppression", Description: "Checks inline diagnostic suppression directives", Category: "correctness", Recommended: true},
 		{Name: "string-conditions", Description: "Checks bare string conditions for unexpected truthiness", Category: "suspicious"},

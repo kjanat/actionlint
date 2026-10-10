@@ -79,6 +79,12 @@ func (a *commandApp) applyEnvironment() error {
 		return nil
 	}
 	var err error
+	if !a.set["ruff"] {
+		i.Check.RuffOptions, err = externalToolEnvironment("RUFF")
+		if err != nil {
+			return err
+		}
+	}
 	if !a.set["shellcheck"] {
 		i.Check.ShellcheckOptions, err = externalToolEnvironment("SHELLCHECK")
 		if err != nil {

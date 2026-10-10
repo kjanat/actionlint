@@ -123,6 +123,9 @@ the same color selection. `JQ_COLORS` is interpreted by `jq` itself.
 | `ACTIONLINT_SHELLCHECK_BIN`   | Literal ShellCheck executable name or path. Default: `shellcheck`. Empty disables it. |
 | `ACTIONLINT_SHELLCHECK_FLAGS` | Additional ShellCheck arguments.                                                      |
 | `ACTIONLINT_SHELLCHECK_ENV`   | Child environment overrides or forwarded variable names for ShellCheck.               |
+| `ACTIONLINT_RUFF_BIN`         | Literal Ruff executable name or path. Default: `ruff`. Empty disables it.             |
+| `ACTIONLINT_RUFF_FLAGS`       | Additional Ruff command arguments.                                                    |
+| `ACTIONLINT_RUFF_ENV`         | Child environment overrides or forwarded variable names for Ruff.                     |
 
 `_BIN` is a literal executable, so Windows paths containing spaces need no embedded
 quotes. `_FLAGS` accepts a JSON string array or a shell-style quoted argument list.
@@ -135,13 +138,13 @@ $env:ACTIONLINT_SHELLCHECK_FLAGS = '["-e", "SC2086"]'
 actionlint check workflow.yml
 ```
 
-An explicit `--shellcheck` replaces **all three** environment
+An explicit `--shellcheck` or `--ruff` replaces **all three** environment
 settings for that tool. The flags retain their existing command-line syntax;
 `--shellcheck=` disables ShellCheck even when its environment settings are present.
 An empty `_BIN` also disables its tool without parsing its `_FLAGS` or `_ENV`.
 
 Extra arguments precede actionlint's required arguments. Do not supply input files
-or override the output protocol: ShellCheck must return JSON1. Existing
+or override the output protocol: ShellCheck must return JSON1 and Ruff must return JSON. Existing
 `SHELLCHECK_OPTS` behavior remains available; ShellCheck interprets that variable.
 
 `_ENV` accepts a JSON object with string values, or a quoted list of `NAME=value`

@@ -51,7 +51,7 @@ func TestDoctorToolPresentation(t *testing.T) {
 	if err := json.Unmarshal(data.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
-	if len(report.Tools) != 1 || report.Tools[0].Status != "available" || report.Tools[0].Path == "" {
+	if len(report.Tools) != 2 || report.Tools[0].Status != "available" || report.Tools[0].Path == "" || report.Tools[1].Status != "disabled" {
 		t.Fatalf("JSON lost tool status: %s", &data)
 	}
 }

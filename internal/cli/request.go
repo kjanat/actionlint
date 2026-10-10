@@ -40,6 +40,8 @@ func (r rulesRequest) run(_ context.Context, streams Command) (int, error) {
 }
 
 type doctorRequest struct {
+	Ruff              string
+	RuffOptions       *actionlint.ExternalCommandOptions
 	Config            actionlint.ConfigSelection
 	ShellCheck        string
 	ShellcheckOptions *actionlint.ExternalCommandOptions

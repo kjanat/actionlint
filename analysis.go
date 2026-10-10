@@ -43,6 +43,8 @@ type AnalysisRequest struct {
 	// It must support concurrent calls and does not restrict external tools.
 	ReadFile    func(string) ([]byte, error)
 	RulePresets RulePresets
+	Ruff        string
+	RuffOptions *ExternalCommandOptions
 }
 
 // AnalysisResult contains findings, their sources, and every local input read during analysis.
@@ -146,6 +148,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		log = &analysisLogWriter{out: log}
 	}
 	engine := &analysisEngine{ctx: ctx, shellcheck: request.ShellCheck,
+		ruff: request.Ruff, ruffOptions: request.RuffOptions,
 		rulePresets:        request.RulePresets,
 		shellcheckOptions:  request.ShellcheckOptions,
 		shellcheckSettings: request.ShellcheckSettings,

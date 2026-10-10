@@ -7,6 +7,7 @@ type ExternalToolRequirements struct {
 	Shellcheck bool `json:"shellcheck"`
 	// Deprecated: Pyflakes integration was removed. This field is always false.
 	Pyflakes bool `json:"pyflakes"`
+	Ruff     bool `json:"ruff"`
 }
 
 // RequiredTools resolves configuration for each input without reading workflows or
@@ -54,16 +55,20 @@ func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirement
 			return needed, err
 		}
 		config = a.request.RulePresets.apply(config)
-		if config.diagnosticLevel("shellcheck") == "off" {
-			continue
-		}
 		c := ruleContext{
 			config: config, shellcheck: a.request.ShellCheck,
 			shellcheckOptions: a.request.ShellcheckOptions,
+			ruff:              a.request.Ruff, ruffOptions: a.request.RuffOptions,
 		}
 		for _, rule := range builtinRuleDescriptors() {
+			if config.diagnosticLevel(rule.Name) == "off" {
+				continue
+			}
 			if rule.Name == "shellcheck" {
 				needed.Shellcheck = needed.Shellcheck || rule.enabled(c)
+			}
+			if rule.Name == "ruff" {
+				needed.Ruff = needed.Ruff || rule.enabled(c)
 			}
 		}
 	}

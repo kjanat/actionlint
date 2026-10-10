@@ -104,6 +104,8 @@ func (analysis *compositeAnalyzer) visitStep(step *Step) error {
 	var scripts []Rule
 	for _, pass := range analysis.passes {
 		switch rule := pass.(type) {
+		case *ruffRule:
+			scripts = append(scripts, rule)
 		case *RuleShellcheck:
 			scripts = append(scripts, rule)
 		case *RuleExecutableBit:

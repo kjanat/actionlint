@@ -59,7 +59,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		log = &commandJSONLogWriter{out: log}
 	}
 	if c.Pyflakes != "" {
-		fmt.Fprintln(log, "warning: --pyflakes is deprecated and ignored; Python script linting has been removed")
+		fmt.Fprintln(log, "warning: --pyflakes is deprecated and ignored; use Ruff for Python script linting")
 	}
 	options := actionlint.LinterOptions{
 		Context: ctx, LogWriter: log, Color: r.Color, Oneline: r.Oneline,
@@ -85,7 +85,8 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		Context:     ctx, WorkingDir: options.WorkingDir, StdinFileName: options.StdinFileName,
 		ConfigFile: options.ConfigFile, Shellcheck: options.Shellcheck,
 		ShellcheckOptions: c.ShellcheckOptions,
-		IgnorePatterns:    options.IgnorePatterns, Verbose: options.Verbose, Debug: options.Debug, LogWriter: log,
+		Ruff:              c.Ruff, RuffOptions: c.RuffOptions,
+		IgnorePatterns: options.IgnorePatterns, Verbose: options.Verbose, Debug: options.Debug, LogWriter: log,
 		SkipProjectConfig: c.Config.Disabled || (!inv.Legacy && c.Config.Path != ""), QuietSelection: !inv.Legacy,
 	})
 	if err != nil {

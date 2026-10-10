@@ -95,6 +95,15 @@ func configDefaultOrigins(values map[string]any, prefix string, origins map[stri
 // public representation, so new config fields are included automatically.
 func effectiveConfig(cfg *Config) (map[string]any, error) {
 	resolved := *cfg
+	if resolved.Tools.Ruff.Enabled == nil {
+		resolved.Tools.Ruff.Enabled = new(true)
+	}
+	if resolved.Tools.Ruff.TargetVersion == "" {
+		resolved.Tools.Ruff.TargetVersion = "py314"
+	}
+	if resolved.Tools.Ruff.Select == nil {
+		resolved.Tools.Ruff.Select = []string{"F"}
+	}
 	if resolved.Tools.Shellcheck.Enabled == nil {
 		resolved.Tools.Shellcheck.Enabled = new(true)
 	}

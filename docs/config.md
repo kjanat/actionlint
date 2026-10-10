@@ -221,6 +221,48 @@ Group and rule level shorthands retain their level when overlaid by a partial
 mapping. Rule object settings require `level`; omitted option keys inherit.
 Each file gets its own effective configuration, without changing other files.
 
+## Ruff
+
+Ruff checks Python scripts selected by `shell: python`, `shell: python3`, or a
+custom command beginning with either interpreter, including workflow/job shell
+defaults and local composite actions. The CLI discovers Ruff on `PATH` and skips
+it when unavailable. `--ruff=` disables it; `--ruff /path/to/ruff` selects a binary.
+It never installs tools or executes Python scripts.
+
+```yaml
+tools:
+  ruff:
+    enabled: true
+    target-version: py314
+    select: [F]
+    ignore: []
+lint:
+  rules:
+    external:
+      ruff: error
+```
+
+The default selection is Ruff's `F` correctness checks. `select` and `ignore`
+accept Ruff codes or prefixes; lists replace inherited lists. `select: []` selects
+no lint rules (Python syntax errors can still be reported). `target-version`
+defaults to `py314`; choose a target supported by the installed Ruff version.
+
+Following [Astral's actionlint integration](https://github.com/astral-sh/actionlint/blob/0141e7822652fbee3a1b878c3d83d9c1dce87d67/rule_ruff.go),
+Ruff runs in isolated, read-only mode: no repository Ruff configuration, cache,
+automatic fixes, or `noqa` exemptions. Use actionlint rule levels, per-file
+overrides, and reason-bearing YAML suppressions for exceptions. Ruff codes such
+as `F821` are retained in structured output. Literal/plain scripts use the shared
+YAML source map; unsupported scalar mappings fall back to the `run:` declaration.
+Inline YAML suppressions target the diagnostic's reported line, not an entire
+multiline script. Ruff invocation/configuration failures fail analysis.
+
+The Go APIs opt in with `AnalysisOptions.Ruff`, `AnalysisRequest.Ruff`, or
+`LinterOptions.Ruff`; an empty command disables the tool. The analysis APIs also
+accept `RuffOptions` for literal executable paths, arguments, and child environment.
+The GitHub Action's `ruff` input defaults to `true`, using an existing PATH install.
+Install Ruff in a preceding step (for example with `astral-sh/setup-ruff` or mise).
+The Action does not download Ruff. The browser playground cannot run external tools.
+
 ## ShellCheck
 
 Use `actionlint --log-level debug` to inspect each script's selected dialect,

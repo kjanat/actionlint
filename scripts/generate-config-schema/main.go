@@ -137,6 +137,26 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		mapping.Type = ""
 		mapping.OneOf = []*jsonschema.Schema{{Type: "boolean"}, {Type: "object"}, {Type: "null"}}
 		return mapping
+	case reflect.TypeFor[actionlint.RuffToolConfig]():
+		type plain actionlint.RuffToolConfig
+		mapping := reflectMapping(plain{})
+		mapping.Version, mapping.ID = "", ""
+		mapping.Type = ""
+		mapping.OneOf = []*jsonschema.Schema{{Type: "boolean"}, {Type: "object"}, {Type: "null"}}
+		for _, name := range []string{"select", "ignore"} {
+			property, _ := mapping.Properties.Get(name)
+			property.Items = &jsonschema.Schema{Type: "string", Pattern: `^[A-Z]+[0-9]*$`}
+		}
+		for name, description := range map[string]string{
+			"enabled":        "Enable Ruff analysis when the executable is available.",
+			"target-version": "Ruff Python target version; omission uses py314.",
+			"select":         "Ruff rule codes or prefixes to select; omission selects F.",
+			"ignore":         "Ruff rule codes or prefixes to exclude.",
+		} {
+			property, _ := mapping.Properties.Get(name)
+			property.Description = description
+		}
+		return mapping
 	case reflect.TypeFor[actionlint.IgnorePatterns]():
 		// JSON Schema's regex format uses a different dialect from Go's regexp.
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string"}}

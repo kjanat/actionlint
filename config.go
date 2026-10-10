@@ -13,6 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/internal/buildinfo"
 	"actionlint.kjanat.dev/internal/configtree"
+	"actionlint.kjanat.dev/internal/ruff"
 	"github.com/bmatcuk/doublestar/v4"
 	"go.yaml.in/yaml/v4"
 )
@@ -394,9 +395,16 @@ type Config struct {
 
 // ToolsConfig contains configuration for external analysis tools.
 type ToolsConfig struct {
+	// Ruff configures checking of embedded Python scripts.
+	Ruff RuffToolConfig `yaml:"ruff"`
 	// Shellcheck configures checking of embedded shell scripts.
 	Shellcheck ShellcheckToolConfig `yaml:"shellcheck"`
 }
+
+// RuffToolConfig selects isolated, read-only Ruff checks for Python run steps.
+// Repository Ruff configuration and noqa comments are not loaded; use actionlint
+// rule settings and reason-bearing suppressions for workflow exceptions.
+type RuffToolConfig = ruff.Config
 
 // ShellcheckToolConfig contains ShellCheck's native configuration directives.
 type ShellcheckToolConfig struct {

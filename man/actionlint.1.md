@@ -202,7 +202,13 @@ flags are true. An explicit **--log-level** selects the requested new log level.
 to `shellcheck`; an empty value disables it. Also available on **doctor**.
 
 **--pyflakes** *COMMAND*
-: Deprecated compatibility option; ignored. Python linting has been removed.
+: Deprecated compatibility option; ignored. Use Ruff for Python scripts.
+
+**--ruff** *COMMAND*
+: Ruff command or command line for Python `run:` scripts. Defaults to `ruff`;
+an empty value disables it. Ruff must already be installed. Also available on
+**doctor**. Uses isolated, read-only checks with the F rules by default;
+`tools.ruff` configures rule selection and the Python target version.
 
 **--init-config**
 : Root-only alias for **config init**, retaining existing initialization behavior.

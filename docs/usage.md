@@ -338,12 +338,18 @@ actionlint -shellcheck=
 actionlint -shellcheck 'shellcheck -e SC2086'
 ```
 
-Pyflakes integration has been removed. The released `-pyflakes` option is accepted
-as a deprecated no-op; Python scripts are not linted by actionlint.
+Ruff checks Python `run:` steps when `ruff` is installed on `PATH`. Use `--ruff`
+to select another executable or command line; `--ruff=` disables it. No Python
+interpreter or Pyflakes installation is needed. See [Ruff configuration](config.md#ruff).
+
+Pyflakes integration has been removed. The released `-pyflakes` option remains
+a deprecated no-op; use Ruff for Python analysis.
 
 To configure executables, arguments and child environments separately, use
 `ACTIONLINT_SHELLCHECK_BIN`, `ACTIONLINT_SHELLCHECK_FLAGS`, and
 `ACTIONLINT_SHELLCHECK_ENV`.
+Ruff has matching `ACTIONLINT_RUFF_BIN`, `ACTIONLINT_RUFF_FLAGS`, and
+`ACTIONLINT_RUFF_ENV` settings.
 An explicit tool flag overrides all three environment settings for that tool.
 See [External linter environment settings](env.md#external-linters) for quoting,
 Windows paths and examples.

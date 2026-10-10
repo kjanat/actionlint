@@ -240,7 +240,10 @@ write permission. Review failure is advisory and leaves the analysis outcome int
 
 Each invocation downloads the **selected ordinary binary**, verifies its
 checksum and executes it. It does not reuse a cached actionlint binary. ShellCheck uses a suitable PATH installation, then the tool cache, then a pinned
-download. No Python tooling is installed or invoked.
+download. Python tooling is never installed. With `ruff: true` (the default),
+an existing Ruff executable on `PATH` checks Python steps. Install Ruff in an
+earlier step using setup-ruff or mise, or set `ruff: false` to disable it. The
+`tools.ruff` configuration controls Python target version and selected Ruff checks.
 Tool source/version details appear in debug logs; enable runner step debugging.
 
 Each `add-*-to-path` switch independently exports that selected tool to subsequent
@@ -276,28 +279,29 @@ remain available, including readable files outside the repository.
 
 All inputs are optional. Booleans accept `true`/`false`.
 
-| Input                                              | Default        | Meaning                                                                    |
-| -------------------------------------------------- | -------------- | -------------------------------------------------------------------------- |
-| `version`                                          | Action release | Exact binary release; overrides `version-file`.                            |
-| `version-file`                                     | empty          | Exact version file or `.tool-versions`, relative to `working-directory`.   |
-| `install-only`                                     | `false`        | Install tools on PATH without analysis or reporting.                       |
-| `files`                                            | discover       | Literal newline-separated workflow paths.                                  |
-| `format`                                           | `github`       | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, `sarif`. |
-| `ignore`                                           | empty          | Newline-separated regular expressions.                                     |
-| `config-file`                                      | discover       | Explicit config file.                                                      |
-| `config`                                           | inherit        | Inline YAML/JSON overlay.                                                  |
-| `working-directory`                                | `.`            | Analysis directory.                                                        |
-| `shellcheck`                                       | `true`         | Permit external analysis.                                                  |
-| `shellcheck-rc`                                    | inherit        | Rc selection: `true`, `false`, or path.                                    |
-| `shellcheck-args`                                  | `[]`           | Literal argument array.                                                    |
-| `add-actionlint-to-path`, `add-shellcheck-to-path` | `true`         | Independent exports for later steps.                                       |
-| `output-file`                                      | empty          | Workspace-relative legacy-format report.                                   |
-| `fail-on-error`                                    | `true`         | Fail for findings; invalid options/failures always fail.                   |
-| `annotations`                                      | `auto`         | Finding annotation control.                                                |
-| `summary`                                          | `true`         | Compact job summary.                                                       |
-| `sarif`                                            | `false`        | Write additional SARIF file.                                               |
-| `review`                                           | `false`        | Advisory PR review posting.                                                |
-| `token`                                            | `github.token` | Used only by the review reporter.                                          |
+| Input                                              | Default        | Meaning                                                                         |
+| -------------------------------------------------- | -------------- | ------------------------------------------------------------------------------- |
+| `version`                                          | Action release | Exact binary release; overrides `version-file`.                                 |
+| `version-file`                                     | empty          | Exact version file or `.tool-versions`, relative to `working-directory`.        |
+| `install-only`                                     | `false`        | Install tools on PATH without analysis or reporting.                            |
+| `files`                                            | discover       | Literal newline-separated workflow paths.                                       |
+| `format`                                           | `github`       | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, `sarif`.      |
+| `ignore`                                           | empty          | Newline-separated regular expressions.                                          |
+| `config-file`                                      | discover       | Explicit config file.                                                           |
+| `config`                                           | inherit        | Inline YAML/JSON overlay.                                                       |
+| `working-directory`                                | `.`            | Analysis directory.                                                             |
+| `shellcheck`                                       | `true`         | Permit external analysis.                                                       |
+| `ruff`                                             | `true`         | Check Python scripts with an existing Ruff installation; no automatic download. |
+| `shellcheck-rc`                                    | inherit        | Rc selection: `true`, `false`, or path.                                         |
+| `shellcheck-args`                                  | `[]`           | Literal argument array.                                                         |
+| `add-actionlint-to-path`, `add-shellcheck-to-path` | `true`         | Independent exports for later steps.                                            |
+| `output-file`                                      | empty          | Workspace-relative legacy-format report.                                        |
+| `fail-on-error`                                    | `true`         | Fail for findings; invalid options/failures always fail.                        |
+| `annotations`                                      | `auto`         | Finding annotation control.                                                     |
+| `summary`                                          | `true`         | Compact job summary.                                                            |
+| `sarif`                                            | `false`        | Write additional SARIF file.                                                    |
+| `review`                                           | `false`        | Advisory PR review posting.                                                     |
+| `token`                                            | `github.token` | Used only by the review reporter.                                               |
 
 | Output           | Meaning                                                                                                                 |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |

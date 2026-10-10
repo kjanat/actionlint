@@ -87,7 +87,7 @@ func TestModernInformationCommandsDoNotRunAnalysis(t *testing.T) {
 	if err := json.Unmarshal([]byte(got.Stdout), &report); err != nil || got.Status != 0 {
 		t.Fatalf("%+v (%v)", got, err)
 	}
-	if len(report.Tools) != 1 || report.Tools[0].Status != "unavailable" {
+	if len(report.Tools) != 2 || report.Tools[0].Status != "unavailable" || report.Tools[1].Status != "disabled" {
 		t.Fatal(report.Tools)
 	}
 	if got := testRunCommand("", "doctor", "--json"); got.Status != 3 || !json.Valid([]byte(got.Stdout)) {
