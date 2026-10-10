@@ -70,6 +70,36 @@ func TestRuffTargetVersionConfiguration(t *testing.T) {
 	}
 }
 
+func TestRuffSelectorConfiguration(t *testing.T) {
+	for _, tc := range []struct {
+		selector string
+		valid    bool
+	}{
+		{"F", true}, {"F8", true}, {"F82", true}, {"F821", true},
+		{"ALL", true}, {"C", true}, {"T", true}, {"C9", true},
+		{"SIM111", true}, {"U004", true}, {"TCH", true},
+		{"E111", true}, {"PLR0904", true},
+		{"XYZ", false}, {"F9999", false}, {"F999", false},
+		{"P", false}, {"RUF940", false}, {"PREVIEW", false},
+		{"undefined-name", false}, {"correctness", false}, {"", false},
+	} {
+		t.Run(tc.selector, func(t *testing.T) {
+			for _, key := range []string{"select", "ignore"} {
+				setting := "ruff: {" + key + ": ['" + tc.selector + "']}"
+				for _, text := range []string{"tools: {" + setting + "}", "overrides: [{includes: ['**'], tools: {" + setting + "}}]"} {
+					_, err := ParseConfig([]byte(text))
+					if (err == nil) != tc.valid || (err != nil && !strings.Contains(err.Error(), "invalid rule selector")) {
+						t.Fatalf("ParseConfig(%q): %v; valid=%v", text, err, tc.valid)
+					}
+				}
+				if _, err := ParseConfigOverlay("tools", []byte(setting)); (err == nil) != tc.valid {
+					t.Fatalf("ParseConfigOverlay(%q): %v; valid=%v", setting, err, tc.valid)
+				}
+			}
+		})
+	}
+}
+
 func TestRuffTargetVersionEmptyAndReset(t *testing.T) {
 	for _, tc := range []struct {
 		value string

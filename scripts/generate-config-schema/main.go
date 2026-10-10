@@ -153,7 +153,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		target.OneOf = []*jsonschema.Schema{choices, {Type: "null", Extras: map[string]any{"doNotSuggest": true}}}
 		for _, name := range []string{"select", "ignore"} {
 			property, _ := mapping.Properties.Get(name)
-			property.Items = &jsonschema.Schema{Type: "string", Pattern: `^[A-Z]+[0-9]*$`}
+			property.Items = &jsonschema.Schema{Ref: "#/$defs/RuffRuleSelector"}
 		}
 		for name, description := range map[string]string{
 			"enabled":        "Enable Ruff analysis when the executable is available.",
@@ -292,6 +292,14 @@ func generate() ([]byte, error) {
 		return nil, err
 	}
 	s := r.Reflect(actionlint.Config{})
+	selectors := &jsonschema.Schema{Type: "string"}
+	for _, selector := range ruff.SupportedRuleSelectors() {
+		selectors.Enum = append(selectors.Enum, selector)
+	}
+	if s.Definitions == nil {
+		s.Definitions = jsonschema.Definitions{}
+	}
+	s.Definitions["RuffRuleSelector"] = selectors
 	// Resolve tool schemas beside this document in Git checkouts and npm packages.
 	s.ID = ""
 	s.Title = "actionlint configuration"

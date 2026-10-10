@@ -10,7 +10,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev"
+	"actionlint.kjanat.dev/internal/ruff"
 	"github.com/google/go-cmp/cmp"
+	"github.com/invopop/jsonschema"
 	validator "github.com/santhosh-tekuri/jsonschema/v6"
 	"go.yaml.in/yaml/v4"
 )
@@ -55,6 +57,38 @@ func TestRuffTargetVersionSuggestions(t *testing.T) {
 	}
 	if diff := cmp.Diff(want, target.OneOf[0].Enum); diff != "" {
 		t.Fatalf("Ruff target choices (-want +got):\n%s", diff)
+	}
+}
+
+func TestRuffSelectorSuggestions(t *testing.T) {
+	schema := mapYAMLType(reflect.TypeFor[actionlint.RuffToolConfig](), nil)
+	var root jsonschema.Schema
+	generated := generatedSchema(t)
+	if strings.Count(string(generated), `"#/$defs/RuffRuleSelector"`) != 4 {
+		t.Fatal("base and override selections must share the selector definition")
+	}
+	if err := json.Unmarshal(generated, &root); err != nil {
+		t.Fatal(err)
+	}
+	var want []any
+	for _, selector := range ruff.SupportedRuleSelectors() {
+		want = append(want, selector)
+	}
+	for _, key := range []string{"select", "ignore"} {
+		property, ok := schema.Properties.Get(key)
+		if !ok || property.Items == nil {
+			t.Fatalf("missing Ruff %s schema", key)
+		}
+		if property.Items.Ref != "#/$defs/RuffRuleSelector" {
+			t.Fatalf("Ruff %s must reference the shared selector definition", key)
+		}
+		definition := root.Definitions[strings.TrimPrefix(property.Items.Ref, "#/$defs/")]
+		if definition == nil || definition.Type != "string" {
+			t.Fatal("missing shared Ruff selector definition")
+		}
+		if diff := cmp.Diff(want, definition.Enum); diff != "" {
+			t.Fatalf("Ruff %s selectors (-want +got):\n%s", key, diff)
+		}
 	}
 }
 
@@ -185,6 +219,14 @@ func TestSchemaValidation(t *testing.T) {
 	}{
 		{"empty", `{}`, true, true},
 		{"ruff oldest target", `tools: {ruff: {target-version: py37}}`, true, true},
+		{"ruff selector prefix", `tools: {ruff: {select: [F82]}}`, true, true},
+		{"ruff selector alias", `tools: {ruff: {select: [C9, U004, SIM111]}}`, true, true},
+		{"ruff preview rule codes", `tools: {ruff: {select: [E111, PLR0904]}}`, true, true},
+		{"ruff unknown selector", `tools: {ruff: {select: [XYZ]}}`, false, false},
+		{"ruff unknown ignored selector", `tools: {ruff: {ignore: [F9999]}}`, false, false},
+		{"ruff invalid selector override", `overrides: [{includes: ['**'], tools: {ruff: {select: [XYZ]}}}]`, false, false},
+		{"ruff selection reset", `tools: {ruff: {select: null, ignore: null}}`, true, true},
+		{"ruff empty selection", `tools: {ruff: {select: [], ignore: []}}`, true, true},
 		{"ruff newest target", `tools: {ruff: {target-version: py315}}`, true, true},
 		{"ruff omitted target", `tools: {ruff: {}}`, true, true},
 		{"ruff target reset", `tools: {ruff: {target-version: null}}`, true, true},

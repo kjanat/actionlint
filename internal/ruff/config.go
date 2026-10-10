@@ -2,14 +2,11 @@ package ruff
 
 import (
 	"fmt"
-	"regexp"
 	"slices"
 	"strings"
 
 	"go.yaml.in/yaml/v4"
 )
-
-var ruffRuleSelector = regexp.MustCompile(`^[A-Z]+[0-9]*$`)
 
 // SupportedTargetVersions lists the Python targets accepted by Ruff.
 func SupportedTargetVersions() []string {
@@ -83,7 +80,7 @@ func (c *Config) UnmarshalYAML(node *yaml.Node) error {
 	}
 	for _, selectors := range [][]string{next.Select, next.Ignore} {
 		for _, selector := range selectors {
-			if !ruffRuleSelector.MatchString(selector) {
+			if _, ok := slices.BinarySearch(supportedRuleSelectors, selector); !ok {
 				return fmt.Errorf("tools.ruff: invalid rule selector %q", selector)
 			}
 		}
