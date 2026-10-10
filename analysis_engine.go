@@ -228,8 +228,11 @@ func (l *analysisEngine) check(
 			findings = filterForeignInlineSuppressions(sourcePath, source, findings, policy)
 		}
 		findings = slices.DeleteFunc(findings, func(e *Error) bool {
-			// Dependency findings belong to this workflow's configured analysis.
-			switch cfg.diagnosticLevel(e.Kind) {
+			levelConfig := cfg
+			if e.Kind == "inline-suppression" || e.Kind == "disallow-suppressions" {
+				levelConfig = findingConfig
+			}
+			switch levelConfig.diagnosticLevel(e.Kind) {
 			case "off":
 				return true
 			case "warn":

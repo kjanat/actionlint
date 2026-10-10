@@ -1,10 +1,55 @@
 package actionlint
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+func TestLocalActionSuppressionDiagnosticLevels(t *testing.T) {
+	for _, runtime := range []struct{ name, runs string }{
+		{"javascript", "using: node24\n  main: index.js"},
+		{"docker", "using: docker\n  image: docker://alpine:3.22"},
+		{"composite", "using: composite\n  steps:\n    - shell: bash\n      run: echo ok"},
+	} {
+		for _, tc := range []struct {
+			name, rule, group, directive, caller, action string
+			wantCaller, wantAction                       string
+		}{
+			{"malformed-action-off", "inline-suppression", "correctness", "# actionlint:ignore action", "error", "off", "error", ""},
+			{"malformed-caller-off", "inline-suppression", "correctness", "# actionlint:ignore action", "off", "error", "", "error"},
+			{"malformed-severities", "inline-suppression", "correctness", "# actionlint:ignore action", "info", "warn", "info", "warning"},
+			{"policy-action-only", "disallow-suppressions", "policy", "# actionlint:ignore action -- reviewed", "off", "error", "", "error"},
+			{"policy-caller-only", "disallow-suppressions", "policy", "# actionlint:ignore action -- reviewed", "error", "off", "error", ""},
+			{"policy-severities", "disallow-suppressions", "policy", "# actionlint:ignore action -- reviewed", "info", "warn", "info", "warning"},
+		} {
+			t.Run(runtime.name+"/"+tc.name, func(t *testing.T) {
+				root, _ := executableFixture(t)
+				config := fmt.Sprintf("lint: {rules: {%s: {%s: %s}}}\noverrides:\n  - includes: ['inner/action.yml']\n    lint: {rules: {%s: {%s: %s}}}\n", tc.group, tc.rule, tc.caller, tc.group, tc.rule, tc.action)
+				writeShellcheckFixture(t, root, ".github/actionlint.yaml", config)
+				writeShellcheckFixture(t, root, "inner/index.js", "console.log('ok');\n")
+				writeShellcheckFixture(t, root, "inner/action.yml", "name: inner "+tc.directive+"\ndescription: test\nruns:\n  "+runtime.runs+"\n")
+				result := compositeAnalysis(t, root, "- uses: ./inner "+tc.directive, AnalysisOptions{})
+				want := make(map[string]string)
+				if tc.wantCaller != "" {
+					want[filepath.Join(".github", "workflows", "composite.yml")] = tc.wantCaller
+				}
+				if tc.wantAction != "" {
+					want[filepath.Join("inner", "action.yml")] = tc.wantAction
+				}
+				if len(result.Diagnostics) != len(want) {
+					t.Fatalf("want %v, got %+v", want, result.Diagnostics)
+				}
+				for _, diagnostic := range result.Diagnostics {
+					if severity, exists := want[diagnostic.Path]; !exists || diagnostic.Rule != tc.rule || string(diagnostic.Severity) != severity {
+						t.Fatalf("want %v for %s, got %+v", want, tc.rule, diagnostic)
+					}
+				}
+			})
+		}
+	}
+}
 
 func TestCleanCompositeSuppressionDirectives(t *testing.T) {
 	for _, tc := range []struct {
