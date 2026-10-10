@@ -397,7 +397,7 @@ jobs:
   action-result:
     name: GitHub Action
     needs: [action, action-slim]
-    if: ${{ always() }}
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
