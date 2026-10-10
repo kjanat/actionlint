@@ -88,7 +88,7 @@ func TestWorkflowRunLiteralPatternValidation(t *testing.T) {
 		if err := rule.VisitWorkflowPre(workflow); err != nil {
 			t.Fatal(err)
 		}
-		want := pattern == "Build [" || pattern == "?Build"
+		want := pattern == "Build [" || pattern == "?Build" || pattern == "!Build*"
 		if (len(rule.Errs()) != 0) != want {
 			t.Fatalf("literal pattern %q: %v", pattern, rule.Errs())
 		}

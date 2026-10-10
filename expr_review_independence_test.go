@@ -35,6 +35,32 @@ func TestReferencedWorkflowInjectionSources(t *testing.T) {
 	}
 }
 
+func TestWorkflowRunActorDisplayNameInjection(t *testing.T) {
+	checkReferencedWorkflowExpression(t, "github.event.issue.title", true)
+	checkReferencedWorkflowExpression(t, "github.event['ISSUE']['TITLE']", true)
+	for _, actor := range []string{"actor", "triggering_actor"} {
+		for _, expression := range []string{
+			"github.event.workflow_run." + actor + ".name",
+			"github['event']['workflow_run']['" + actor + "']['name']",
+			"github.event.workflow_run['" + strings.ToUpper(actor) + "']['NAME']",
+			strings.ToUpper("github.event.workflow_run." + actor + ".name"),
+			"format('{0}', github.event.workflow_run." + actor + ".name)",
+		} {
+			t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, true) })
+		}
+		for _, field := range []string{"login", "id", "type"} {
+			checkReferencedWorkflowExpression(t, "github.event.workflow_run."+actor+"."+field, false)
+			checkReferencedWorkflowExpression(t, "github.event.workflow_run['"+strings.ToUpper(actor)+"']['"+strings.ToUpper(field)+"']", false)
+		}
+		checkReferencedWorkflowExpression(t, "contains(github.event.workflow_run."+actor+".name, 'trusted')", false)
+		workflow := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n      - env:\n          ACTOR_NAME: ${{ github.event.workflow_run." + actor + ".name }}\n        run: printf '%s\\n' \"$ACTOR_NAME\"\n"
+		result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
+		if err != nil || len(result.Diagnostics) != 0 {
+			t.Fatalf("safe actor environment binding rejected: %v, %+v", err, result)
+		}
+	}
+}
+
 func checkReferencedWorkflowExpression(t *testing.T, expression string, untrusted bool) {
 	t.Helper()
 	workflow := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo \"${{ " + expression + " }}\"\n"

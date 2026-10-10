@@ -162,6 +162,8 @@ var BuiltinUntrustedInputs = UntrustedInputSearchRoots{
 			// A workflow_run can describe a run from a fork. Repository metadata,
 			// branch names and Git commit identities/messages can be contributor-controlled.
 			NewUntrustedInputMap("workflow_run",
+				NewUntrustedInputMap("actor", NewUntrustedInputMap("name")),
+				NewUntrustedInputMap("triggering_actor", NewUntrustedInputMap("name")),
 				NewUntrustedInputMap("head_repository",
 					NewUntrustedInputMap("default_branch"),
 					NewUntrustedInputMap("description"),
@@ -377,7 +379,7 @@ func (u *UntrustedInputChecker) OnVisitNodeLeave(n ExprNode) {
 	case *IndexAccessNode:
 		if lit, ok := n.Index.(*StringNode); ok {
 			// Special case like github['event']['issue']['title']
-			u.onPropAccess(lit.Value)
+			u.onPropAccess(strings.ToLower(lit.Value))
 			break
 		}
 		u.onIndexAccess()
