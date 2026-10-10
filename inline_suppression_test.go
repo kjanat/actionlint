@@ -105,7 +105,7 @@ func TestInlineSuppressionScalarPrefixes(t *testing.T) {
 func TestInlineSuppressionRegistry(t *testing.T) {
 	for _, name := range InlineSuppressibleRules() {
 		t.Run(name, func(t *testing.T) {
-			cfg, err := ParseConfig([]byte(fmt.Sprintf("policy: {disallow-suppressions: {rules: [%s]}}", name)))
+			cfg, err := ParseConfig(fmt.Appendf(nil, "policy: {disallow-suppressions: {rules: [%s]}}", name))
 			if err != nil {
 				t.Fatal(err)
 			}

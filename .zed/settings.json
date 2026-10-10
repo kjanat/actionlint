@@ -3,7 +3,8 @@
 // mkdir -p .zed; curl -fsSLo .zed/settings.json https://github.com/kjanat/kjanat/raw/HEAD/.zed/settings.json
 {
   "formatter": [
-    { "external": { "command": "dprint", "arguments": ["fmt", "--stdin", "{buffer_path}"] } }
+    { "language_server": { "name": "dprint" } },
+    // { "external": { "command": "dprint", "arguments": ["fmt", "--stdin", "{buffer_path}"] } }
   ],
   "prettier": {
     "allowed": false
@@ -12,7 +13,8 @@
     "JavaScript": {
       "language_servers": [
         "typescript", // https://github.com/kjanat/zed-typescript
-        "biome"
+        "biome",
+        "dprint"
       ],
       "code_actions_on_format": {
         "source.fixAll.biome": true,
@@ -22,7 +24,8 @@
     "TypeScript": {
       "language_servers": [
         "typescript", // https://github.com/kjanat/zed-typescript
-        "biome"
+        "biome",
+        "dprint"
       ],
       "code_actions_on_format": {
         "source.fixAll.biome": true,
@@ -36,10 +39,27 @@
     "open_markdown_files_in_preview": false
   },
   "lsp": {
+    "golangci-lint": {
+      "initialization_options": {
+        "command": [
+          "mise",
+          "exec",
+          "golangci-lint",
+          "--",
+          "golangci-lint",
+          "run",
+          "--output.json.path",
+          "stdout",
+          "--show-stats=false",
+          "--output.text.path=",
+          "--issues-exit-code=1"
+        ]
+      }
+    },
     "biome": {
       "binary": {
-        "path": "node",
-        "arguments": ["./node_modules/biome/bin/biome", "lsp-proxy"]
+        "path": "mise",
+        "arguments": ["exec", "github:biomejs/biome", "--", "biome", "lsp-proxy"]
       },
       "settings": {
         "config_path": "./biome.jsonc",
@@ -62,6 +82,13 @@
         }
       }
     },
+    "tombi": {
+      "binary": {
+        "path": "mise",
+        "arguments": ["exec", "github:tombi-toml/tombi", "--", "tombi", "lsp", "-vv"],
+        "env": { "NO_COLOR": "true" },
+      }
+    },
     "yaml-language-server": {
       "settings": {
         "yaml": {
@@ -75,6 +102,12 @@
             ]
           }
         }
+      }
+    },
+    "dprint": {
+      "binary": {
+        "path": "mise",
+        "arguments": ["exec", "github:kjanat/dprint", "--", "dprint", "lsp"]
       }
     }
   }

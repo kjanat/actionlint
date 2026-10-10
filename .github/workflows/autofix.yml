@@ -43,9 +43,9 @@ jobs:
         if: steps.inputs.outputs.tables == 'true'
         run: bash scripts/autofix-step.bash go generate -skip generate-config-schema
         env: { GH_TOKEN: "${{ github.token }}" }
-      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         if: steps.inputs.outputs.readme == 'true'
-        with: { cache: false }
+        with: { cache: true, auto_update: true }
       - name: Refresh the affected README demo
         id: readme
         if: steps.inputs.outputs.readme == 'true'

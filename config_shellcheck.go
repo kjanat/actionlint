@@ -222,7 +222,11 @@ func (config *ShellcheckConfig) directives() (string, error) {
 	}
 	var out strings.Builder
 	write := func(key, value string) {
-		out.WriteString("# shellcheck " + key + "=" + value + "\n")
+		out.WriteString("# shellcheck ")
+		out.WriteString(key)
+		out.WriteByte('=')
+		out.WriteString(value)
+		out.WriteByte('\n')
 	}
 	if len(config.Disable) > 0 {
 		write("disable", strings.Join(config.Disable, ","))

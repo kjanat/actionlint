@@ -25,14 +25,12 @@ jobs:
           fetch-depth: 0,
           ref: "${{ github.event_name == 'workflow_run' && github.event.repository.default_branch || github.sha }}",
         }
-      - parallel:
-          - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-            with: { go-version-file: go.mod }
-          - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-            with: { node-version-file: .node-version, package-manager-cache: false }
-          - uses: $/.github/actions/setup-pandoc
-          - uses: kjanat/runner@ad30f34c7352d89884b6d03febd9b16b4807ed56 # v0.27.1
-            with: { version: latest }
+      - name: Install project tools
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          cache: true
+          auto_update: true
+          install_args: go node npm github:kjanat/runner github:jgm/pandoc
       - parallel:
           - name: Install JavaScript dependencies
             run: runner install --pm npm --no-tools --frozen
@@ -44,7 +42,7 @@ jobs:
           if latest_release="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq '.tag_name')"; then
             export ACTIONLINT_LATEST_RELEASE="${latest_release}"
           fi
-          run -s playground:make:build playground:make:test
+          run --source make -s playground:make:build playground:make:test
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with: { path: playground/dist }
 

@@ -105,7 +105,8 @@ func expandInheritedConfigDirectory(value, directory string) string {
 		}
 		name, after, closed := strings.Cut(expression, "}}")
 		if !closed {
-			out.WriteString("${{" + expression)
+			out.WriteString("${{")
+			out.WriteString(expression)
 			return out.String()
 		}
 		token := "${{" + name + "}}"

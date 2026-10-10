@@ -69,7 +69,11 @@ type generator struct {
 
 // lint reports what the latest released fork makes of the fixture, and the version that made it.
 func (g *generator) lint() (string, string, error) {
-	v, err := g.mise(false, "exec", forkTool+"@latest", "--", "actionlint", "-version")
+	binary, err := g.releasedCommand(forkTool)
+	if err != nil {
+		return "", "", err
+	}
+	v, err := g.miseExec(false, forkTool+"@latest", "--", binary, "-version")
 	if err != nil {
 		return "", "", err
 	}
@@ -80,7 +84,7 @@ func (g *generator) lint() (string, string, error) {
 	}
 
 	g.log.Println("linting", workflow, "with", version)
-	out, err := g.mise(true, "exec", forkTool+"@latest", "--", "actionlint", "-no-color",
+	out, err := g.miseExec(true, forkTool+"@latest", "--", binary, "-no-color",
 		"-config-file", filepath.Join(fixtureDir, config),
 		filepath.Join(fixtureDir, workflow))
 	if err != nil {
@@ -165,13 +169,33 @@ func (g *generator) command(allowExitOne bool, name string, args ...string) ([]b
 	return out, nil
 }
 
-func (g *generator) mise(allowExitOne bool, args ...string) ([]byte, error) {
-	return g.command(allowExitOne, "mise", args...)
+func (g *generator) miseExec(allowExitOne bool, args ...string) ([]byte, error) {
+	return g.command(allowExitOne, "mise", append([]string{"exec", "--no-deps"}, args...)...)
+}
+
+func (g *generator) releasedCommand(tool string) (string, error) {
+	requested := tool + "@latest"
+	if _, err := g.command(false, "mise", "install", requested); err != nil {
+		return "", err
+	}
+	output, err := g.command(false, "mise", "which", "actionlint", "--tool", requested)
+	if err != nil {
+		return "", err
+	}
+	binary := strings.TrimSpace(string(output))
+	if !filepath.IsAbs(binary) || strings.ContainsAny(binary, "\r\n") {
+		return "", fmt.Errorf("mise returned an invalid executable path for %s: %q", requested, binary)
+	}
+	return binary, nil
 }
 
 // measureUpstream reports what the latest upstream command makes of the fixture.
 func (g *generator) measureUpstream() (string, string, error) {
-	v, err := g.mise(false, "exec", upstreamTool+"@latest", "--", "actionlint", "-version")
+	binary, err := g.releasedCommand(upstreamTool)
+	if err != nil {
+		return "", "", err
+	}
+	v, err := g.miseExec(false, upstreamTool+"@latest", "--", binary, "-version")
 	if err != nil {
 		return "", "", err
 	}
@@ -181,7 +205,7 @@ func (g *generator) measureUpstream() (string, string, error) {
 	}
 	g.log.Println("measuring upstream", version)
 
-	out, err := g.mise(true, "exec", upstreamTool+"@latest", "--", "actionlint", "-no-color",
+	out, err := g.miseExec(true, upstreamTool+"@latest", "--", binary, "-no-color",
 		filepath.Join(fixtureDir, workflow))
 	if err != nil {
 		return "", "", err

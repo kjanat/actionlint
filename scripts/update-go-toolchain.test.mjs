@@ -121,11 +121,29 @@ for (
 	});
 }
 
-test('mise lets the repository version files select Go and Node', () => {
+test('mise Go and Node release constraints include the repository versions', () => {
 	const config = readFileSync(new URL('../.mise.toml', import.meta.url), 'utf8');
 	assert.match(config, /idiomatic_version_file_enable_tools\s*=\s*\["go", "node"\]/);
 	const tools = config.split('[tools]\n')[1].split('\n[')[0];
-	assert.doesNotMatch(tools, /^\s*(?:go|node)\s*=/m);
+	const go = readFileSync(new URL('../go.mod', import.meta.url), 'utf8').match(/^toolchain go(\d+\.\d+\.\d+)$/m)?.[1];
+	const node = readFileSync(new URL('../.node-version', import.meta.url), 'utf8').trim().replace(/^v/, '');
+	for (const [tool, version] of [['go', go], ['node', node]]) {
+		const prefix = tools.match(new RegExp(`^${tool}\\s*=\\s*\\{\\s*prefix\\s*=\\s*"(\\d+(?:\\.\\d+)*)"\\s*\\}`, 'm'))
+			?.[1];
+		assert.ok(prefix, `mise ${tool} must retain its release-family constraint`);
+		assert.ok(
+			version === prefix || version?.startsWith(`${prefix}.`),
+			`mise ${tool} prefix ${prefix} excludes ${version}`,
+		);
+	}
+});
+
+test('mise enables the configured automatic dependency providers', () => {
+	const config = readFileSync(new URL('../.mise.toml', import.meta.url), 'utf8');
+	const settings = config.split('[settings]\n')[1].split('\n[')[0];
+	assert.match(settings, /^experimental\s*=\s*true$/m);
+	assert.match(config, /\[deps\.npm\]\nauto\s*=\s*true/);
+	assert.match(config, /\[deps\.go\]\nauto\s*=\s*true/);
 });
 
 test('a partial replacement write restores all files', t => {
