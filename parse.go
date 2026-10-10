@@ -1992,6 +1992,9 @@ func (p *parser) parse(n *yaml.Node) *Workflow {
 		p.error(n, "workflow is empty")
 		return w
 	}
+	if root := n.Content[0]; root.Kind == yaml.MappingNode && len(root.Content) != 0 {
+		w.Pos = posAt(root.Content[0])
+	}
 
 	for e := range p.parseSectionMapping("workflow", n.Content[0], false, true) {
 		k, v := e.key, e.val

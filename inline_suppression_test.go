@@ -183,6 +183,9 @@ func TestInlineSuppressionMalformedYAML(t *testing.T) {
 	for _, source := range []string{
 		"jobs: [ # actionlint:ignore syntax-check -- intentional",
 		"# actionlint:ignore-next-line syntax-check -- intentional\njobs: [",
+		"run: # actionlint:ignore syntax-check -- intentional\n  !!str\n  | bad\n    echo ok",
+		"run:\n  !!str # actionlint:ignore syntax-check -- intentional\n  &script\n  | bad\n    echo ok",
+		"# actionlint:ignore-next-line syntax-check -- intentional\nrun:\n  &script\n  !!str\n  > bad\n    echo ok",
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			source := []byte(strings.ReplaceAll(source, "\n", ending))
@@ -245,6 +248,42 @@ func TestInlineSuppressionScriptTextIsNotDirective(t *testing.T) {
 	got := filterInlineSuppressions(source, []*Error{finding}, nil)
 	if len(got) != 1 || got[0] != finding {
 		t.Fatalf("script text changed findings: %+v", got)
+	}
+}
+
+func TestRecoveredSplitPrefixSuppressionBoundaries(t *testing.T) {
+	for _, ending := range []string{"\n", "\r\n"} {
+		for _, prefix := range []string{
+			"name: # actionlint:ignore syntax-check -- unrelated\nrun:\n  !!str\n  | bad\n    echo ok",
+			"name: # actionlint:ignore syntax-check -- unrelated\n!!str run:\n  !!str\n  | bad\n    echo ok",
+			"name: # actionlint:ignore syntax-check -- unrelated\n&key run:\n  !!str\n  | bad\n    echo ok",
+			"name: '# actionlint:ignore syntax-check -- quoted'\nrun:\n  !!str\n  | bad\n    echo ok",
+			"run:\n  !!str\n  |\n    # actionlint:ignore syntax-check -- script\n    echo ok\njobs: [",
+		} {
+			source := []byte(strings.ReplaceAll(prefix, "\n", ending))
+			_, findings := Parse(source)
+			if len(findings) != 1 || findings[0].Kind != "syntax-check" {
+				t.Fatalf("invalid boundary fixture: %+v", findings)
+			}
+			if got := filterInlineSuppressions(source, findings, nil); len(got) != 1 || got[0] != findings[0] {
+				t.Fatalf("unrelated comment suppressed malformed header: %+v", got)
+			}
+		}
+		for _, reason := range []string{"", " -- intentional"} {
+			source := []byte(strings.ReplaceAll("run: # actionlint:ignore syntax-check"+reason+"\n  !!str\n  | bad\n    echo ok", "\n", ending))
+			_, findings := Parse(source)
+			cfg, err := ParseConfig([]byte("policy: {disallow-suppressions: true}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := "disallow-suppressions"
+			if reason == "" {
+				want = "inline-suppression"
+			}
+			if got := filterInlineSuppressions(source, findings, cfg.Policy.DisallowSuppressions); len(got) != 2 || got[1].Kind != want {
+				t.Fatalf("recovered prefix bypassed reason or policy: %+v", got)
+			}
+		}
 	}
 }
 

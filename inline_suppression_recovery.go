@@ -17,6 +17,7 @@ func recoverInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	blockEnds := map[int]int{}
 	parentIndent, blockEnd := 0, 0
 	prefixPending := false
+	prefixStart := 0
 	for i, line := range lines {
 		lineNumber := i + 1
 		if lineNumber <= blockEnd {
@@ -30,6 +31,7 @@ func recoverInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 		}
 		if !prefixPending || !commentOrEmpty && !strings.ContainsRune("|>!&", rune(trimmed[0])) {
 			parentIndent = len(line) - len(trimmed)
+			prefixStart = 0
 		}
 		keyIndent := parentIndent
 		plain := false
@@ -76,6 +78,9 @@ func recoverInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 			case c == ':' && (nextSeparated || len(flow) > 0):
 				plain = false
 				parentIndent = keyIndent
+				if len(flow) == 0 {
+					prefixStart = lineNumber
+				}
 			case !plain && (c == '-' || c == '?') && nextSeparated:
 				parentIndent = col
 				keyIndent = col + 2
@@ -96,6 +101,11 @@ func recoverInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 				node := &yaml.Node{Line: lineNumber, Column: utf8.RuneCountInString(line[:col]) + 1}
 				readYAMLNodePrefixComments(node, lines, len(lines), parentIndent, func(int, string, bool) {}, blockEnds)
 				blockEnd = blockEnds[lineNumber]
+				if prefixStart != 0 {
+					for prefix := prefixStart; prefix < lineNumber; prefix++ {
+						blockEnds[prefix] = blockEnd
+					}
+				}
 				plain = true
 			default:
 				plain = true
@@ -103,6 +113,9 @@ func recoverInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 		}
 		if !commentOrEmpty {
 			prefixPending = !plain && quote == 0 && len(flow) == 0
+			if prefixPending && prefixStart == 0 {
+				prefixStart = lineNumber
+			}
 		}
 	}
 	for _, opening := range flow {
