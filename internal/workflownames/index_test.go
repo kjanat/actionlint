@@ -137,17 +137,18 @@ func TestWorkflowPathsPlatformIdentity(t *testing.T) {
 	candidates := []string{disk, other, overlay,
 		filepath.Join(dir, "nested", "ignored.yml"), filepath.Join(dir, "README.md")}
 	for _, windows := range []bool{false, true} {
+		same := missingPathIdentity(windows)
 		want := []string{disk, other}
 		if windows {
 			want = []string{overlay, other}
 		}
 		slices.Sort(want)
-		if got := workflowPaths(dir, candidates, windows); !slices.Equal(got, want) {
+		if got := workflowPathsByIdentity(dir, candidates, same); !slices.Equal(got, want) {
 			t.Fatalf("windows=%v: paths=%v, want %v", windows, got, want)
 		}
-	}
-	if got := SamePath(overlay, disk); got != (runtime.GOOS == "windows") {
-		t.Fatalf("host path equality = %v on %s", got, runtime.GOOS)
+		if same(overlay, disk) != windows || same(disk, overlay) != windows {
+			t.Fatalf("missing-path fallback differs for windows=%v", windows)
+		}
 	}
 }
 
@@ -156,13 +157,50 @@ func TestWorkflowPathsLastOverlayWins(t *testing.T) {
 	disk := filepath.Join(dir, "build.yml")
 	first := filepath.Join(dir, "BUILD.yml")
 	last := filepath.Join(dir, "Build.yml")
-	if got := workflowPaths(dir, []string{disk, first, last}, true); !slices.Equal(got, []string{last}) {
+	if got := workflowPathsByIdentity(dir, []string{disk, first, last}, missingPathIdentity(true)); !slices.Equal(got, []string{last}) {
 		t.Fatalf("last in-memory spelling must win: %v", got)
 	}
 	want := []string{disk, first, last}
 	slices.Sort(want)
-	if got := workflowPaths(dir, []string{disk, first, last}, false); !slices.Equal(got, want) {
+	if got := workflowPathsByIdentity(dir, []string{disk, first, last}, missingPathIdentity(false)); !slices.Equal(got, want) {
 		t.Fatalf("case-sensitive paths must remain distinct: %v", got)
+	}
+}
+
+// Model the platform fallback without evidence from the host filesystem.
+func missingPathIdentity(windows bool) func(string, string) bool {
+	stat := func(string) (os.FileInfo, error) { return nil, os.ErrNotExist }
+	readDir := func(string) ([]os.DirEntry, error) { return nil, os.ErrNotExist }
+	return func(left, right string) bool {
+		return samePathWithCaseSensitivity(left, right, windows, stat, readDir, func(string) bool { return false })
+	}
+}
+
+func TestWorkflowPathsHostFilesystemIdentity(t *testing.T) {
+	dir := t.TempDir()
+	disk := filepath.Join(dir, "build.yml")
+	overlay := filepath.Join(dir, "BUILD.yml")
+	if err := os.WriteFile(disk, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	diskInfo, err := os.Stat(disk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	overlayInfo, overlayErr := os.Stat(overlay)
+	filesystemAlias := overlayErr == nil && os.SameFile(diskInfo, overlayInfo)
+	for _, windows := range []bool{false, true} {
+		want := []string{disk, overlay}
+		if filesystemAlias || windows {
+			want = []string{overlay}
+		}
+		slices.Sort(want)
+		if got := workflowPaths(dir, []string{disk, overlay}, windows); !slices.Equal(got, want) {
+			t.Fatalf("filesystemAlias=%v windows=%v: got %v, want %v", filesystemAlias, windows, got, want)
+		}
+	}
+	if got := SamePath(disk, overlay); got != (filesystemAlias || runtime.GOOS == "windows") {
+		t.Fatalf("host equality=%v, filesystemAlias=%v on %s", got, filesystemAlias, runtime.GOOS)
 	}
 }
 
