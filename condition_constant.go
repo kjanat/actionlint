@@ -65,11 +65,10 @@ func conditionConstantValue(expr ExprNode) (any, bool) {
 			}
 			for i := 0; i < len(n.Args)-1; i += 2 {
 				value, known := conditionConstantValue(n.Args[i])
-				predicate, boolean := value.(bool)
-				if !known || !boolean {
+				if !known {
 					return nil, false
 				}
-				if predicate {
+				if expressionTruthy(value) {
 					return conditionConstantValue(n.Args[i+1])
 				}
 			}

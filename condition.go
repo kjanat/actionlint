@@ -20,7 +20,13 @@ func conditionSource(source string) string {
 // A nil expression and error indicate a template with surrounding text.
 func parseConditionExpression(source string) (ExprNode, *ExprError, int) {
 	if literalExpressionValue(source) != nil || !ContainsExpression(source) {
-		expr, err := NewExprParser().Parse(NewExprLexer(conditionSource(source) + "}}"))
+		folded := conditionSource(source) + "}}"
+		lex := NewExprLexer(folded)
+		expr, err := NewExprParser().Parse(lex)
+		if err == nil && lex.Offset() != len(folded) {
+			lex.error("unexpected trailing text in condition")
+			return nil, lex.Err(), 0
+		}
 		return expr, err, 0
 	}
 	if !strings.HasPrefix(source, "${{") {

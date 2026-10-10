@@ -121,29 +121,17 @@ func isYAMLValueSubset(value, filter RawYAMLValue, expressions bool) bool {
 			}
 		}
 	}
-	lookup := func(key string) RawYAMLValue {
-		switch value := value.(type) {
-		case *RawYAMLObject:
-			return value.Props[key]
-		case *RawYAMLArray:
-			index := matrixFilterNumber(key)
-			if index >= 0 && index < float64(len(value.Elems)) && index <= math.MaxInt32 {
-				return value.Elems[int(index)]
-			}
-		}
-		return nil
-	}
 	switch filter := filter.(type) {
 	case *RawYAMLObject:
 		for key, item := range filter.Props {
-			if !isYAMLValueSubset(lookup(key), item, expressions) {
+			if !isYAMLValueSubset(matrixFilterValueAt(value, key), item, expressions) {
 				return false
 			}
 		}
 		return true
 	case *RawYAMLArray:
 		for i, item := range filter.Elems {
-			if !isYAMLValueSubset(lookup(strconv.Itoa(i)), item, expressions) {
+			if !isYAMLValueSubset(matrixFilterValueAt(value, strconv.Itoa(i)), item, expressions) {
 				return false
 			}
 		}
@@ -165,6 +153,19 @@ func isYAMLValueSubset(value, filter RawYAMLValue, expressions bool) bool {
 	default:
 		return false
 	}
+}
+
+func matrixFilterValueAt(value RawYAMLValue, key string) RawYAMLValue {
+	switch value := value.(type) {
+	case *RawYAMLObject:
+		return value.Props[key]
+	case *RawYAMLArray:
+		index := matrixFilterNumber(key)
+		if index >= 0 && index < float64(len(value.Elems)) && index <= math.MaxInt32 {
+			return value.Elems[int(index)]
+		}
+	}
+	return nil
 }
 
 func matrixFilterNumber(value any) float64 {

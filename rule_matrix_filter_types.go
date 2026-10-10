@@ -1,6 +1,10 @@
 package actionlint
 
-import "go.yaml.in/yaml/v4"
+import (
+	"strconv"
+
+	"go.yaml.in/yaml/v4"
+)
 
 func (rule *RuleMatrix) checkFilterTypes(matrix *Matrix, expressions bool) {
 	for _, filters := range []*MatrixCombinations{matrix.Include, matrix.Exclude} {
@@ -66,32 +70,28 @@ func matrixLiteralValue(value any) RawYAMLValue {
 }
 
 func matrixFilterTypeMismatch(value, filter RawYAMLValue, valueExpressions, filterExpressions bool) bool {
+	return matrixFilterTypeMismatchKnown(value, filter, valueExpressions, filterExpressions, false)
+}
+
+func matrixFilterTypeMismatchKnown(value, filter RawYAMLValue, valueExpressions, filterExpressions, unknown bool) bool {
 	if scalar, ok := value.(*RawYAMLString); valueExpressions && ok && ContainsExpression(scalar.Value) {
 		if literal, known := workflowExpressionLiteral(&String{Value: scalar.Value}); known {
 			return matrixFilterTypeMismatch(matrixLiteralValue(literal), filter, false, filterExpressions)
 		}
-		value = nil // Unknown dynamic values matter for numeric and boolean filters.
+		value, unknown = nil, true
 	}
 	switch f := filter.(type) {
 	case *RawYAMLObject:
-		object, _ := value.(*RawYAMLObject)
 		for key, leaf := range f.Props {
-			var actual RawYAMLValue
-			if object != nil {
-				actual = object.Props[key]
-			}
-			if matrixFilterTypeMismatch(actual, leaf, valueExpressions, filterExpressions) {
+			actual := matrixFilterValueAt(value, key)
+			if matrixFilterTypeMismatchKnown(actual, leaf, valueExpressions, filterExpressions, unknown) {
 				return true
 			}
 		}
 	case *RawYAMLArray:
-		array, _ := value.(*RawYAMLArray)
 		for i, leaf := range f.Elems {
-			var actual RawYAMLValue
-			if array != nil && i < len(array.Elems) {
-				actual = array.Elems[i]
-			}
-			if matrixFilterTypeMismatch(actual, leaf, valueExpressions, filterExpressions) {
+			actual := matrixFilterValueAt(value, strconv.Itoa(i))
+			if matrixFilterTypeMismatchKnown(actual, leaf, valueExpressions, filterExpressions, unknown) {
 				return true
 			}
 		}
@@ -101,6 +101,9 @@ func matrixFilterTypeMismatch(value, filter RawYAMLValue, valueExpressions, filt
 		}
 		actual, ok := value.(*RawYAMLString)
 		if !ok {
+			if value == nil && !unknown {
+				return matrixScalarKind(f.scalarValue()) != "null"
+			}
 			switch f.scalarValue().(type) {
 			case bool, float64:
 				return value == nil
