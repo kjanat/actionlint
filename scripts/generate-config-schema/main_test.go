@@ -150,9 +150,20 @@ func editorModulePaths(server string) []string {
 }
 
 func TestEditorModulePaths(t *testing.T) {
-	for _, layout := range []string{"package-bin", "npm-wrapper", "global-wrapper", "unrelated-package"} {
+	for _, layout := range []string{"package-bin", "npm-wrapper", "global-wrapper", "symlink-root", "unrelated-package"} {
 		t.Run(layout, func(t *testing.T) {
 			root := t.TempDir()
+			if layout == "symlink-root" {
+				physical := filepath.Join(root, "physical")
+				if err := os.Mkdir(physical, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				alias := filepath.Join(root, "alias")
+				if err := os.Symlink(physical, alias); err != nil {
+					t.Skipf("directory symlinks are unavailable: %v", err)
+				}
+				root = alias
+			}
 			packageDir := filepath.Join(root, "node_modules", "yaml-language-server")
 			if layout == "global-wrapper" {
 				packageDir = filepath.Join(root, "lib", "node_modules", "yaml-language-server")
@@ -183,7 +194,11 @@ func TestEditorModulePaths(t *testing.T) {
 				}
 				return
 			}
-			want := []string{filepath.Dir(packageDir), filepath.Join(packageDir, "node_modules")}
+			canonicalPackageDir, err := filepath.EvalSymlinks(packageDir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := []string{filepath.Dir(canonicalPackageDir), filepath.Join(canonicalPackageDir, "node_modules")}
 			if !slices.Equal(got, want) {
 				t.Fatalf("module paths = %v, want %v", got, want)
 			}
