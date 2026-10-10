@@ -74,7 +74,7 @@ func TestMissingAncestorIdentity(t *testing.T) {
 			{".github/workflows/build.yml", ".github/workflows/build.yml", true},
 			{".github/workflows/build.yml", ".github/workflows/other.yml", false},
 			{".github/workflows/build.yml", ".other/workflows/build.yml", false},
-			{".github/workflows/build.yml", ".github/workflows/BUILD.yml", windows},
+			{".github/workflows/build.yml", ".github/workflows/BUILD.yml", windows || directoryCaseInsensitive(root, os.Stat, os.ReadDir)},
 			{".github/workflows/build.yml", ".github/workflows/missing/build.yml", false},
 		} {
 			left, right := filepath.Join(root, tc.left), filepath.Join(alias, tc.right)
@@ -113,5 +113,33 @@ func TestMissingAncestorOverlayWork(t *testing.T) {
 	}
 	if calls > 2*len(candidates) || stats > 12*len(candidates) {
 		t.Fatalf("unbounded alias identity work: %d comparisons, %d stats", calls, stats)
+	}
+}
+
+func TestMissingAncestorCaseSensitivity(t *testing.T) {
+	root := t.TempDir()
+	for _, insensitive := range []bool{false, true} {
+		for _, suffix := range []string{".github/workflows", ".GITHUB/WORKFLOWS", ".other/workflows", ".github/workflows/extra"} {
+			calls := 0
+			caseInsensitive := func(path string) bool {
+				calls++
+				if path != root {
+					t.Fatalf("queried %q instead of shared ancestor %q", path, root)
+				}
+				return insensitive
+			}
+			left, right := filepath.Join(root, ".github/workflows"), filepath.Join(root, suffix)
+			got := samePathWithCaseSensitivity(left, right, false, os.Stat, os.ReadDir, caseInsensitive)
+			want := suffix == ".github/workflows" || insensitive && suffix == ".GITHUB/WORKFLOWS"
+			if got != want || calls > 1 {
+				t.Fatalf("insensitive=%t suffix=%s: got %t, want %t (%d queries)", insensitive, suffix, got, want, calls)
+			}
+		}
+	}
+	if samePathWithCaseSensitivity(filepath.Join(root, ".github/workflows"), filepath.Join(t.TempDir(), ".GITHUB/WORKFLOWS"), false, os.Stat, os.ReadDir, func(string) bool {
+		t.Fatal("queried case sensitivity for different ancestors")
+		return true
+	}) {
+		t.Fatal("different ancestors collapsed")
 	}
 }
