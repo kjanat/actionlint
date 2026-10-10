@@ -34,6 +34,9 @@ func conditionConstantValue(expr ExprNode) (any, bool) {
 	case *BoolNode:
 		return n.Value, true
 	case *IntNode:
+		if n.Value == 0 && n.tok != nil && strings.HasPrefix(n.tok.Value, "-") {
+			return math.Copysign(0, -1), true
+		}
 		return float64(n.Value), true
 	case *FloatNode:
 		return n.Value, true
@@ -154,8 +157,8 @@ func conditionConstantValue(expr ExprNode) (any, bool) {
 					}
 					return false, known
 				}
-				left, lok := args[0].(string)
-				right, rok := args[1].(string)
+				left, lok := constantPredicateString(args[0])
+				right, rok := constantPredicateString(args[1])
 				if lok && rok {
 					left, right = ordinalIgnoreCaseKey(left), ordinalIgnoreCaseKey(right)
 					switch strings.ToLower(n.Callee) {
@@ -177,6 +180,24 @@ func conditionConstantValue(expr ExprNode) (any, bool) {
 		}
 	}
 	return nil, false
+}
+
+func constantPredicateString(value any) (string, bool) {
+	switch value := value.(type) {
+	case string:
+		return value, true
+	case nil:
+		return "", true
+	case bool:
+		return strconv.FormatBool(value), true
+	case float64:
+		// These integers have the same decimal representation under the
+		// runner's invariant G15 format and round-trip number formatting.
+		if math.Abs(value) < 1e15 && math.Trunc(value) == value && (value != 0 || !math.Signbit(value)) {
+			return strconv.FormatFloat(value, 'f', 0, 64), true
+		}
+	}
+	return "", false
 }
 
 func compareConditionValues(kind CompareOpNodeKind, left, right any) (bool, bool) {

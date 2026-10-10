@@ -11,6 +11,17 @@ func (rule *RuleMatrix) checkFilterTypes(matrix *Matrix, expressions bool) {
 		if filters == nil {
 			continue
 		}
+		filterExpressions := expressions
+		if filters.Expression != nil {
+			if !expressions {
+				continue
+			}
+			filters = knownMatrixFilters(filters.Expression)
+			if filters == nil {
+				continue
+			}
+			filterExpressions = false
+		}
 		for _, filter := range filters.Combinations {
 			for key, assign := range filter.Assigns {
 				row := matrix.Rows[key]
@@ -49,7 +60,7 @@ func (rule *RuleMatrix) checkFilterTypes(matrix *Matrix, expressions bool) {
 					}
 					mismatch := false
 					for _, candidate := range candidates {
-						mismatch = mismatch || matrixFilterTypeMismatch(candidate, assign.Value, candidateExpressions, expressions)
+						mismatch = mismatch || matrixFilterTypeMismatch(candidate, assign.Value, candidateExpressions, filterExpressions)
 					}
 					if mismatch {
 						rule.Errorf(assign.Value.Pos(), "matrix filter for %q compares different or unknown scalar types using Actions loose equality; validate axis types before filtering (policy: mixed-type-matrix-filters)", key)
@@ -59,6 +70,35 @@ func (rule *RuleMatrix) checkFilterTypes(matrix *Matrix, expressions bool) {
 			}
 		}
 	}
+}
+
+func knownMatrixFilters(expression *String) *MatrixCombinations {
+	value, known := workflowExpressionLiteral(expression)
+	if !known {
+		return nil
+	}
+	combinations, ok := value.([]any)
+	if !ok {
+		return nil
+	}
+	for _, combination := range combinations {
+		if _, ok := combination.(map[string]any); !ok {
+			return nil
+		}
+	}
+	var node yaml.Node
+	if err := node.Encode(combinations); err != nil {
+		return nil
+	}
+	var setPosition func(*yaml.Node)
+	setPosition = func(node *yaml.Node) {
+		node.Line, node.Column = expression.Pos.Line, expression.Pos.Col
+		for _, child := range node.Content {
+			setPosition(child)
+		}
+	}
+	setPosition(&node)
+	return (&parser{}).parseMatrixCombinations("matrix filters", &node)
 }
 
 func matrixLiteralValue(value any) RawYAMLValue {
