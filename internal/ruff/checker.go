@@ -137,6 +137,18 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		case "--isolated", "--ignore-noqa", "--no-fix", "--no-cache", "--target-version", "--stdin-filename", "--output-format":
 			return fmt.Errorf("ruff integration-owned option %q must be removed from extra arguments for script at %s", option, location)
 		}
+		if option == "--config" {
+			_, value, attached := strings.Cut(flag, "=")
+			if !attached && i+1 < len(c.flags) {
+				value = c.flags[i+1]
+			}
+			if strings.TrimSpace(value) == "" {
+				return fmt.Errorf("ruff option %q requires a value for script at %s", option, location)
+			}
+			if value != "" && !strings.HasPrefix(value, "-") && !ruffInlineConfig(value, c.workingDirectory) {
+				return fmt.Errorf("ruff configuration files cannot be used in isolated mode for script at %s; use inline --config KEY=VALUE overrides", location)
+			}
+		}
 		if ruffOptionTakesValue(option) && !strings.Contains(flag, "=") {
 			if i+1 == len(c.flags) || strings.HasPrefix(c.flags[i+1], "-") {
 				return fmt.Errorf("ruff option %q requires a value for script at %s", option, location)
@@ -201,7 +213,7 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 			if len(placeholders.identifiers) > 0 && requiresCompleteReferences(d.Code) {
 				continue
 			}
-			if (d.Code == "F822" || d.Code == "F541") && placeholders.dynamicQuotedValue(d) {
+			if placeholders.dynamicQuotedValue(d) {
 				continue
 			}
 			// A mask can manufacture undefined-name and useless-expression
@@ -367,10 +379,12 @@ func Sanitize(src string, expressionEnd ExpressionEnd) (string, bool, error) {
 }
 
 type templateMasks struct {
-	identifiers map[Position]int
-	parentheses map[Position]Position
-	quoted      map[Position]string
-	lines       map[int]bool
+	identifiers        map[Position]int
+	parentheses        map[Position]Position
+	quoted             map[Position]string
+	lines              map[int]bool
+	sourceLines        []string
+	percentConversions map[Position]bool
 }
 
 func requiresCompleteReferences(code string) bool {
@@ -383,12 +397,98 @@ func requiresCompleteReferences(code string) bool {
 }
 
 func (m *templateMasks) dynamicQuotedValue(d Diagnostic) bool {
+	// Filter content-dependent findings only when their range contains a quoted mask.
+	contents := dynamicStringContentsRule(d.Code)
+	summary := d.Code == "D400" || d.Code == "D415"
+	conversion := d.Code == "F509" && strings.HasSuffix(d.Message, "`(`")
+	incompleteConversion := d.Code == "F501"
+	if !contents && !summary && !conversion && !incompleteConversion && d.Code != "F822" {
+		return false
+	}
 	for start, name := range m.quoted {
 		end := Position{Row: start.Row, Column: start.Column + len(name)}
 		if (d.Location.Row < start.Row || d.Location.Row == start.Row && d.Location.Column <= start.Column) &&
 			(d.EndLocation.Row > end.Row || d.EndLocation.Row == end.Row && d.EndLocation.Column >= end.Column) &&
-			(d.Code == "F541" || strings.Contains(d.Message, name)) {
+			(contents || summary && m.inFirstParagraph(d.Location.Row, start.Row) || (conversion || incompleteConversion) && m.percentConversions[start] || d.Code == "F822" && strings.Contains(d.Message, name)) {
 			return true
+		}
+	}
+	return false
+}
+
+// Format-field parsing and argument consistency depend on the complete string.
+// Percent conversion characters and docstring layout are handled separately
+// so static mistakes surrounding a template remain visible.
+func dynamicStringContentsRule(code string) bool {
+	switch code {
+	case "F502", "F503", "F504", "F505", "F506", "F507", "F508", "F521", "F522", "F523", "F524", "F525", "F541":
+		return true
+	default:
+		return false
+	}
+}
+
+func (m *templateMasks) inFirstParagraph(first, line int) bool {
+	for row := first + 1; row < line; row++ {
+		if row <= len(m.sourceLines) && strings.TrimSpace(m.sourceLines[row-1]) == "" {
+			return false
+		}
+	}
+	return true
+}
+
+func templateProvidesPercentConversion(prefix string) bool {
+	index := strings.LastIndexByte(prefix, '%')
+	if index < 0 {
+		return false
+	}
+	count := 1
+	for offset := index - 1; offset >= 0 && prefix[offset] == '%'; offset-- {
+		count++
+	}
+	if count%2 == 0 {
+		return false
+	}
+	for _, char := range prefix[index+1:] {
+		if !strings.ContainsRune("#0- +.123456789*hlL", char) {
+			return false
+		}
+	}
+	return true
+}
+
+// Ruff accepts either a file path or an inline TOML assignment for --config.
+// Existing files take precedence, even when their names contain an equals sign.
+// Ruff itself validates the assignment's key and value after this boundary check.
+func ruffInlineConfig(value, directory string) bool {
+	path := value
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(directory, path)
+	}
+	if _, err := os.Stat(path); err == nil {
+		return false
+	}
+	var quote rune
+	escaped := false
+	for _, char := range value {
+		if quote != 0 {
+			switch {
+			case escaped:
+				escaped = false
+			case char == '\\' && quote == '"':
+				escaped = true
+			case char == quote:
+				quote = 0
+			}
+			continue
+		}
+		switch char {
+		case '\'', '"':
+			quote = char
+		case '=':
+			return true
+		case '#', '\n', '\r':
+			return false
 		}
 	}
 	return false
@@ -399,6 +499,10 @@ func sanitize(src string, expressionEnd ExpressionEnd, placeholders *templateMas
 	var state pythonLexicalState
 	// Python normalizes identifiers, so Unicode aliases also reserve names.
 	original := norm.NFKC.String(src)
+	if placeholders != nil {
+		placeholders.sourceLines = strings.Split(src, "\n")
+		placeholders.percentConversions = make(map[Position]bool)
+	}
 	nextName := uint64(0)
 	position := Position{Row: 1, Column: 1}
 	for {
@@ -439,7 +543,7 @@ func sanitize(src string, expressionEnd ExpressionEnd, placeholders *templateMas
 		if state.inFieldExpression() && templateDebugFieldSuffix(src[end:]) {
 			assignment = false
 		}
-		if inCode && (templateTouchesPythonToken(src, start, end) || templateFollowsPythonValue(code.lastToken) || code.subscriptDepth == 0 && (code.nameRequired || assignment)) {
+		if inCode && (code.asyncKeyword || templateTouchesPythonToken(src, start, end) || templateFollowsPythonValue(code.lastToken) || code.subscriptDepth == 0 && (code.nameRequired || assignment)) {
 			return "", false, nil
 		}
 		if state.quote == 0 && !state.comment && state.casePattern {
@@ -520,6 +624,7 @@ func sanitize(src string, expressionEnd ExpressionEnd, placeholders *templateMas
 				placeholders.identifiers[identifierStart] = len(name)
 				if state.quote != 0 {
 					placeholders.quoted[identifierStart] = name
+					placeholders.percentConversions[identifierStart] = templateProvidesPercentConversion(src[:start])
 				}
 				finish := position
 				advancePosition(&finish, src[start:end])
@@ -560,7 +665,7 @@ func templateFollowsPythonValue(token string) bool {
 	// A template after a complete operand supplies syntax. Statement keywords
 	// can introduce a value expression.
 	switch token {
-	case "raise", "except", "with", "async", "elif", "match", "case":
+	case "raise", "except", "with", "elif", "match", "case":
 		return false
 	}
 	return pythonTokenCanBeSubscripted(token)
@@ -692,6 +797,7 @@ type pythonLexicalState struct {
 	nameList        bool
 	className       bool
 	lastToken       string
+	asyncKeyword    bool
 	subscriptDepth  int
 	nameListDepth   int
 	functionName    bool
@@ -714,6 +820,7 @@ func (s *pythonLexicalState) consumeCode(c byte) {
 	previous := s.lastToken
 	if s.word != "" {
 		s.lastToken = s.word
+		s.asyncKeyword = s.word == "async"
 	}
 	switch s.word {
 	case "case":
@@ -751,6 +858,9 @@ func (s *pythonLexicalState) consumeCode(c byte) {
 		s.nameRequired, s.nameList = false, false
 	}
 	s.word = ""
+	if c != ' ' && c != '\t' && c != '\r' && c != '\\' {
+		s.asyncKeyword = false
+	}
 	switch c {
 	case '(', '[', '{':
 		s.depth++
