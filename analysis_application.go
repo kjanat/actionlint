@@ -199,7 +199,20 @@ func (a *AnalysisSession) directory(dir string, project *Project) (*AnalysisResu
 		return nil, fmt.Errorf("no YAML file was found in %q", dir)
 	}
 	a.selectionLog("Collected", len(paths), "YAML files")
-	return a.Files(paths, project)
+	result, err := a.Files(paths, project)
+	if result != nil {
+		// Discovery candidates remain protected from report replacement even
+		// when configuration excludes them from reading and analysis.
+		inputs := &inputFiles{}
+		for _, path := range result.Inputs {
+			inputs.add(path)
+		}
+		for _, path := range paths {
+			inputs.add(path)
+		}
+		result.Inputs = inputs.list()
+	}
+	return result, err
 }
 
 func workflowPaths(dir string) ([]string, error) {
