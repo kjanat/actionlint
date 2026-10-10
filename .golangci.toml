@@ -1,4 +1,5 @@
-#:schema https://golangci-lint.run/jsonschema/golangci.v2.jsonschema.json
+#:schema https://www.schemastore.org/golangci-lint.json
+# https://golangci-lint.run/jsonschema/golangci.v2.jsonschema.json
 
 version = "2"
 

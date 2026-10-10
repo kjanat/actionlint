@@ -20,8 +20,8 @@ func configOrigins(node *yaml.Node, prefix string, origins map[string]ConfigOrig
 	if node.Kind == yaml.AliasNode {
 		node = node.Alias
 	}
-	reset := inputs[node].reset
-	if node.Tag == "!!null" && inputs[node].name != "" {
+	reset := inputs[node].Reset
+	if node.Tag == "!!null" && inputs[node].Name != "" {
 		reset = node
 	}
 	if reset != nil {
@@ -64,7 +64,7 @@ func configOrigins(node *yaml.Node, prefix string, origins map[string]ConfigOrig
 }
 
 func configNodeOrigin(node *yaml.Node, inputs map[*yaml.Node]configInput) ConfigOrigin {
-	origin := ConfigOrigin{Source: "config", State: "null"}
+	origin := ConfigOrigin{Source: "config", State: "null", File: inputs[node].File}
 	if node == nil {
 		return origin
 	}
@@ -72,7 +72,7 @@ func configNodeOrigin(node *yaml.Node, inputs map[*yaml.Node]configInput) Config
 	if node.Tag != "!!null" {
 		origin.State = "value"
 	}
-	if input := inputs[node].name; input != "" {
+	if input := inputs[node].Name; input != "" {
 		origin.Source, origin.Input = "input", input
 	}
 	return origin
@@ -95,6 +95,15 @@ func configDefaultOrigins(values map[string]any, prefix string, origins map[stri
 // public representation, so new config fields are included automatically.
 func effectiveConfig(cfg *Config) (map[string]any, error) {
 	resolved := *cfg
+	if resolved.Tools.Ruff.Enabled == nil {
+		resolved.Tools.Ruff.Enabled = new(true)
+	}
+	if resolved.Tools.Ruff.TargetVersion == "" {
+		resolved.Tools.Ruff.TargetVersion = "py314"
+	}
+	if resolved.Tools.Ruff.Select == nil {
+		resolved.Tools.Ruff.Select = []string{"F"}
+	}
 	if resolved.Tools.Shellcheck.Enabled == nil {
 		resolved.Tools.Shellcheck.Enabled = new(true)
 	}

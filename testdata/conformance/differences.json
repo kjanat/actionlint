@@ -623,10 +623,10 @@
     "reason": "Extra lint checks: constant conditions and a reference to an undeclared step are accepted by this reader fixture.",
     "cases": {
       "languageservices/workflow-parser/testdata/reader/step-if.yml": [
-        "<stdin>:12:13: constant expression \"123\" in condition. remove the if: section [if-cond]",
-        "<stdin>:14:13: constant expression \"0 || 1\" in condition. remove the if: section [if-cond]",
-        "<stdin>:18:13: constant expression \"0 || 1\" in condition. remove the if: section [if-cond]",
-        "<stdin>:28:13: constant expression \"true || 'success()'\" in condition. remove the if: section [if-cond]",
+        "<stdin>:12:13: constant expression \"123\" in condition is always truthy. remove the if: section [if-cond]",
+        "<stdin>:14:13: constant expression \"0 || 1\" in condition is always truthy. remove the if: section [if-cond]",
+        "<stdin>:18:13: constant expression \"0 || 1\" in condition is always truthy. remove the if: section [if-cond]",
+        "<stdin>:28:13: constant expression \"true || 'success()'\" in condition is always truthy. remove the if: section [if-cond]",
         "<stdin>:37:18: property \"build\" is not defined in object type {} [expression]"
       ]
     }
@@ -648,7 +648,7 @@
         "<stdin>:6:9: if: condition \"false || ${{ true && true }}\" is always evaluated to true because extra characters are around ${{ }} [if-cond]",
         "<stdin>:7:28: label \"linux\" conflicts with label \"macos-latest\" defined at line:7,col:15. note: to run your job on each workers, use matrix [runner-label]",
         "<stdin>:7:47: label \"<\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
-        "<stdin>:11:9: constant expression \"false\" in condition. remove the if: section [if-cond]"
+        "<stdin>:11:9: constant expression \"false\" in condition is always falsy. this step or job will be skipped [if-cond]"
       ]
     }
   },
@@ -893,16 +893,13 @@
     }
   },
   {
-    "reason": "Reader versus lint checks: empty and constant conditions and unknown context properties produce diagnostics.",
+    "reason": "Reader versus lint checks: constant conditions and unknown context properties produce diagnostics. Empty and YAML-null conditions normalize to success() and agree with the reader.",
     "cases": {
       "languageservices/workflow-parser/testdata/reader/job-if.yml": [
-        "<stdin>:6:9: constant expression \"true\" in condition. remove the if: section [if-cond]",
-        "<stdin>:11:9: string should not be empty [syntax-check]",
-        "<stdin>:11:9: unexpected end of input while parsing variable access, function call, null, bool, int, float or string. expecting \"IDENT\", \"(\", \"INTEGER\", \"FLOAT\", \"STRING\" [expression]",
+        "<stdin>:6:9: constant expression \"true\" in condition is always truthy. remove the if: section [if-cond]",
         "<stdin>:16:13: property \"foo\" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; artifacts: string; artifacts_list: string; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: string; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression]",
         "<stdin>:29:9: property \"foo\" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; artifacts: string; artifacts_list: string; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: string; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression]",
-        "<stdin>:34:9: constant expression \"null\" in condition. remove the if: section [if-cond]",
-        "<stdin>:44:9: constant expression \"false || (true && true)\" in condition. remove the if: section [if-cond]"
+        "<stdin>:44:9: constant expression \"false || (true && true)\" in condition is always truthy. remove the if: section [if-cond]"
       ]
     }
   },
@@ -1045,15 +1042,15 @@
     "reason": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, if-cond). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
     "cases": {
       "schemastore/src/test/github-workflow/conditions.yaml": [
-        "<stdin>:8:9: constant expression \"false\" in condition. remove the if: section [if-cond]",
+        "<stdin>:8:9: constant expression \"false\" in condition is always falsy. this step or job will be skipped [if-cond]",
         "<stdin>:10:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-        "<stdin>:11:13: constant expression \"false\" in condition. remove the if: section [if-cond]",
-        "<stdin>:14:9: constant expression \"0\" in condition. remove the if: section [if-cond]",
+        "<stdin>:11:13: constant expression \"false\" in condition is always falsy. this step or job will be skipped [if-cond]",
+        "<stdin>:14:9: constant expression \"0\" in condition is always falsy. this step or job will be skipped [if-cond]",
         "<stdin>:16:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-        "<stdin>:17:13: constant expression \"0\" in condition. remove the if: section [if-cond]",
+        "<stdin>:17:13: constant expression \"0\" in condition is always falsy. this step or job will be skipped [if-cond]",
         "<stdin>:22:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-        "<stdin>:26:9: constant expression \"false\" in condition. remove the if: section [if-cond]",
-        "<stdin>:29:9: constant expression \"0\" in condition. remove the if: section [if-cond]"
+        "<stdin>:26:9: constant expression \"false\" in condition is always falsy. this step or job will be skipped [if-cond]",
+        "<stdin>:29:9: constant expression \"0\" in condition is always falsy. this step or job will be skipped [if-cond]"
       ]
     }
   },

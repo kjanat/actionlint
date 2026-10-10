@@ -25,22 +25,27 @@ type AnalysisOptions struct {
 	// SkipProjectConfig disables per-project config reads; ConfigFile still applies.
 	SkipProjectConfig bool
 	// QuietSelection suppresses the legacy file-selection and completion log messages.
-	QuietSelection     bool
-	Shellcheck         string
+	QuietSelection bool
+	Shellcheck     string
+	// Deprecated: Pyflakes integration was removed. This field is ignored.
 	Pyflakes           string
 	ShellcheckOptions  *ExternalCommandOptions
 	ShellcheckSettings *ShellcheckSettings
-	PyflakesOptions    *ExternalCommandOptions
-	IgnorePatterns     []string
-	Verbose            bool
-	Debug              bool
-	LogWriter          io.Writer
-	OnRulesCreated     func([]Rule) []Rule
-	OnFilesSelected    func([]string)
+	// Deprecated: Pyflakes integration was removed. This field is ignored.
+	PyflakesOptions *ExternalCommandOptions
+	IgnorePatterns  []string
+	Verbose         bool
+	Debug           bool
+	LogWriter       io.Writer
+	OnRulesCreated  func([]Rule) []Rule
+	OnFilesSelected func([]string)
 	// ReadFile reads workflows, local action metadata, reusable workflows, and config.
 	// It must support concurrent calls. Nil uses os.ReadFile.
 	// This does not restrict filesystem access by external tools.
-	ReadFile func(string) ([]byte, error)
+	ReadFile    func(string) ([]byte, error)
+	RulePresets RulePresets
+	Ruff        string
+	RuffOptions *ExternalCommandOptions
 }
 
 // AnalysisSession resolves local inputs before handing them to Analyze.
@@ -103,7 +108,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 		stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected,
 		readFile:       opts.ReadFile,
 		logSelection:   !opts.QuietSelection,
-		request:        AnalysisRequest{ShellCheck: opts.Shellcheck, Pyflakes: opts.Pyflakes, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, PyflakesOptions: opts.PyflakesOptions, OnRulesCreated: opts.OnRulesCreated},
+		request:        AnalysisRequest{Ruff: opts.Ruff, RuffOptions: opts.RuffOptions, ShellCheck: opts.Shellcheck, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, OnRulesCreated: opts.OnRulesCreated},
 		analysisLogger: analysisLogger{logOut: opts.LogWriter},
 	}
 	if a.ctx == nil {
@@ -114,6 +119,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 	}
 	a.projects.readFile = a.readFile
 	a.request.ReadFile = a.readFile
+	a.request.RulePresets = opts.RulePresets
 	if a.logOut == nil {
 		a.logOut = io.Discard
 	}
@@ -151,6 +157,10 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 			a.cwd = "."
 		}
 	}
+	a.cwd, err = filepath.Abs(a.cwd)
+	if err != nil {
+		return nil, err
+	}
 	if a.stdin == "" {
 		a.stdin = "<stdin>"
 	}
@@ -182,6 +192,32 @@ func (a *AnalysisSession) Repository(dir string) (*AnalysisResult, error) {
 }
 
 func (a *AnalysisSession) directory(dir string, project *Project) (*AnalysisResult, error) {
+	paths, err := workflowPaths(dir)
+	if err != nil {
+		return nil, err
+	}
+	if len(paths) == 0 {
+		a.filesSelected(paths)
+		return nil, fmt.Errorf("no YAML file was found in %q", dir)
+	}
+	a.selectionLog("Collected", len(paths), "YAML files")
+	result, err := a.Files(paths, project)
+	if result != nil {
+		// Discovery candidates remain protected from report replacement even
+		// when configuration excludes them from reading and analysis.
+		inputs := &inputFiles{}
+		for _, path := range result.Inputs {
+			inputs.add(path)
+		}
+		for _, path := range paths {
+			inputs.add(path)
+		}
+		result.Inputs = inputs.list()
+	}
+	return result, err
+}
+
+func workflowPaths(dir string) ([]string, error) {
 	paths := []string{}
 	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -195,12 +231,7 @@ func (a *AnalysisSession) directory(dir string, project *Project) (*AnalysisResu
 		return nil, fmt.Errorf("could not read files in %q: %w", dir, err)
 	}
 	slices.Sort(paths)
-	if len(paths) == 0 {
-		a.filesSelected(paths)
-		return nil, fmt.Errorf("no YAML file was found in %q", dir)
-	}
-	a.selectionLog("Collected", len(paths), "YAML files")
-	return a.Files(paths, project)
+	return paths, nil
 }
 
 func (a *AnalysisSession) filesSelected(paths []string) {
@@ -223,6 +254,7 @@ func (a *AnalysisSession) Files(paths []string, project *Project) (*AnalysisResu
 
 func (a *AnalysisSession) readFiles(paths []string, project *Project) (*AnalysisResult, error) {
 	sources := make([]SourceUnit, 0, len(paths))
+	configProjects := make([]*Project, 0, len(paths))
 	for _, path := range paths {
 		proj := project
 		if proj == nil {
@@ -232,15 +264,32 @@ func (a *AnalysisSession) readFiles(paths []string, project *Project) (*Analysis
 				return nil, err
 			}
 		}
+		cfg, err := a.configForProject(proj)
+		if err != nil {
+			return nil, err
+		}
+		configProjects = append(configProjects, proj)
+		root := a.cwd
+		if proj != nil {
+			root = absPath(proj.RootDir())
+		}
+		fullPath := absPath(path)
+		if !cfg.includesFile(fullPath, root) {
+			continue
+		}
 		content, err := a.readFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("could not read %q: %w", path, err)
 		}
-		source := a.source(a.relativePath(path), content, proj)
-		source.inputPath = path
+		displayPath := a.relativePath(fullPath)
+		if !filepath.IsAbs(path) && filepath.Clean(path) == displayPath {
+			displayPath = path
+		}
+		source := a.source(displayPath, content, proj)
+		source.inputPath = fullPath
 		sources = append(sources, source)
 	}
-	return a.analyze(sources)
+	return a.analyze(sources, configProjects...)
 }
 
 func (a *AnalysisSession) relativePath(path string) string {
@@ -287,7 +336,7 @@ func (a *AnalysisSession) source(path string, content []byte, project *Project) 
 	return SourceUnit{Path: path, Content: content, Config: cfg, Project: project}
 }
 
-func (a *AnalysisSession) analyze(sources []SourceUnit) (*AnalysisResult, error) {
+func (a *AnalysisSession) analyze(sources []SourceUnit, configProjects ...*Project) (*AnalysisResult, error) {
 	for i := range sources {
 		cfg, err := a.configForProject(sources[i].Project)
 		if err != nil {
@@ -295,28 +344,37 @@ func (a *AnalysisSession) analyze(sources []SourceUnit) (*AnalysisResult, error)
 		}
 		sources[i].Config = cfg
 	}
+	// Include the projects used during selection, without retaining unrelated
+	// configurations cached by an earlier invocation of this session.
+	projects := make([]*Project, 0, len(sources)+len(configProjects))
+	projects = append(projects, configProjects...)
+	for _, source := range sources {
+		projects = append(projects, source.Project)
+	}
 	request := a.request
 	request.Sources = sources
 	result, err := analyze(a.ctx, request, a.logOut, a.logLevel)
 	if result == nil {
 		return nil, err
 	}
-	if a.defaultConfigPath != "" {
-		result.Inputs = append(result.Inputs, absPath(a.defaultConfigPath))
-		slices.Sort(result.Inputs)
-		result.Inputs = slices.Compact(result.Inputs)
+	inputs := &inputFiles{}
+	for _, path := range result.Inputs {
+		inputs.add(path)
 	}
+	inputs.add(a.defaultConfigPath)
 	// Keep provenance on the analysis itself, including cached selections when
 	// a library caller reuses this session. Preserve input order across projects.
 	a.configState.Lock()
 	seen := make(map[*Project]bool)
-	for _, source := range sources {
-		if !seen[source.Project] {
-			seen[source.Project] = true
-			result.Configurations = append(result.Configurations, a.configState.reports[source.Project])
+	for _, project := range projects {
+		if !seen[project] {
+			seen[project] = true
+			inputs.addConfig(a.configState.loaded[project], project)
+			result.Configurations = append(result.Configurations, a.configState.reports[project])
 		}
 	}
 	a.configState.Unlock()
+	result.Inputs = inputs.list()
 	return result, err
 }
 

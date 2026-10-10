@@ -22,11 +22,10 @@ jobs:
       - parallel:
           - uses: &SetupGo actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
             with: &GoMod { go-version-file: go.mod }
-          - uses: &SetupUv astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+          - uses: &SetupUv astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
             with: &NoCache { enable-cache: false }
-      - name: Install pyflakes
-        run: &InstallPyflakes uv tool install pyflakes; pyflakes --version
       - &InstallShellCheck { name: Install ShellCheck, uses: $/.github/actions/setup-shellcheck }
+      - &InstallRuff { name: Install Ruff for integration tests, run: uv tool install ruff==0.17.0 }
       - name: Install shells for completion tests on Linux
         if: ${{ runner.os == 'Linux' }}
         run: |
@@ -45,7 +44,7 @@ jobs:
       - &GoGomod { uses: *SetupGo, with: *GoMod }
       - *InstallShellCheck
       - &Uv { uses: *SetupUv, with: *NoCache }
-      - &PyFlakes { name: Install pyflakes, run: *InstallPyflakes }
+      - *InstallRuff
 
       - run: go test -v -race -coverprofile coverage.txt -covermode=atomic ./...
       - run: go tool cover -func ./coverage.txt
@@ -57,36 +56,40 @@ jobs:
         # actionlint passes --norc to shellcheck, ignoring .shellcheckrc.
         run: echo "::add-matcher::.github/actionlint-matcher.json"; ./actionlint -color -shellcheck 'shellcheck -o all'
 
-      - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with: { use_oidc: true }
   wasm:
     name: Wasm
     runs-on: ubuntu-latest
     steps:
       - *ActCheckNocred
-      - *GoGomod
-      - &NodeTooling
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with: { node-version-file: .node-version, package-manager-cache: false }
-      - &Runner { uses: kjanat/runner@8baa9ee978cfed038b98741749673c788ff161d1 } # v0.26.2
-      - &Pandoc { name: Install Pandoc, uses: $/.github/actions/setup-pandoc }
+      - name: Install project tools
+        uses: &SetupMise jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          cache: true
+          auto_update: true
+          install_args: go node npm github:kjanat/runner github:jgm/pandoc github:biomejs/biome
       - name: Install JavaScript dependencies
-        run: runner install --frozen
+        run: runner install --pm npm --no-tools --frozen
       - name: Build command manual
         run: run make:man
       - name: Build and test playground
-        run: run -s playground:make:build playground:make:test
+        run: run --source make -s playground:make:build playground:make:test
       - name: Lint JavaScript workspaces
-        run: run lint
+        run: run package.json:lint
   javascript:
     name: JavaScript
     runs-on: ubuntu-latest
     steps:
       - *ActCheckNocred
-      - *NodeTooling
-      - *Runner
+      - name: Install project tools
+        uses: *SetupMise
+        with:
+          cache: true
+          auto_update: true
+          install_args: node npm github:kjanat/runner
       - name: Install dependencies and test JavaScript tooling
-        run: runner install --frozen test:js
+        run: runner install --pm npm --no-tools --frozen test:js
   release-snapshot:
     name: Release snapshot
     runs-on: ubuntu-latest
@@ -95,11 +98,11 @@ jobs:
         with: { fetch-depth: 0, persist-credentials: false }
       - parallel:
           - &Go { uses: *SetupGo, with: *GoMod }
-          - *Pandoc
-          - *Runner
+          - { name: Install Pandoc, uses: $/.github/actions/setup-pandoc }
+          - &Runner { uses: kjanat/runner@ad30f34c7352d89884b6d03febd9b16b4807ed56, with: { version: latest } } # v0.27.1
           - name: Install syft for SBOM generation
-            uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
-          - uses: &SetupNode actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+            uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+          - uses: &SetupNode actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
             with: { node-version: "24", package-manager-cache: false }
       - name: Build JavaScript Action release files outside the checkout
         run: |
@@ -142,13 +145,12 @@ jobs:
       # Sibling actions can rewrite the event payload this action reads at startup.
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
-        with: { version: v2.13.1, install-only: true }
-      - *PyFlakes
+        with: { version-file: .tool-versions, install-only: true, problem-matchers: true }
       - run: go mod tidy -diff
       - name: Build through Makefile
         run: run make:build
         env: &SkipGoGen { SKIP_GO_GENERATE: "true" }
-      - run: run make:lint
+      - run: run -s make:lint make:lint-docs
         env: *SkipGoGen
       - name: Lint bash scripts
         run: shellcheck ./scripts/*.bash
@@ -158,8 +160,10 @@ jobs:
     steps:
       - *ActCheckNocred
       - name: Build image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with: { load: true, push: false, tags: actionlint:test }
+      - name: Check bundled Ruff
+        run: bash scripts/test-docker-ruff.bash actionlint:test
       - name: Test Docker image
         run: docker container run
           --mount type=bind,source="${PWD}",target=/w
@@ -204,7 +208,7 @@ jobs:
         with: { version: v2.18.0, args: check }
       - name: Validate release workflows with this checkout
         if: runner.os == 'Linux'
-        run: go run ./cmd/actionlint -shellcheck 'shellcheck -o all' -pyflakes=
+        run: go run ./cmd/actionlint -shellcheck 'shellcheck -o all'
           .github/workflows/release.yml .github/workflows/release-prepare.yml
           .github/workflows/npm-release.yml .github/workflows/major-tag.yml
       - name: Prepare the ordinary binary and release action
@@ -242,7 +246,6 @@ jobs:
           version-file: missing-actionlint-version
           install-only: true
           shellcheck: false
-          pyflakes: false
       - name: Check the installed version and prepare a version file
         run: |
           actionlint --version | grep -Fx 'actionlint.kjanat.dev 1.17.0'
@@ -256,7 +259,6 @@ jobs:
           version-file: .tool-versions
           install-only: true
           shellcheck: false
-          pyflakes: false
       - name: Check setup outputs and the surviving binary
         env:
           VERSION_OUTPUTS: ${{ toJSON(steps.setup-version.outputs) }}
@@ -337,7 +339,7 @@ jobs:
           NODE
       - name: Upload result files from the recipe
         if: always() && steps.smoke.outputs.result-file != ''
-        uses: &UploadAction actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: &UploadAction actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: actionlint-reports-${{ matrix.os }}
           path: |
@@ -363,7 +365,6 @@ jobs:
           [[ "${actionlint_path}" == */actionlint-bin-*/actionlint* ]]
           actionlint -version
           shellcheck --version
-          pyflakes --version
           node scripts/test-action.mjs "${RUNNER_TEMP}/actionlint-action/action" "${ACTIONLINT_ACTION_BINARY}"
       - name: Check exported tools from PowerShell
         if: runner.os == 'Windows'
@@ -373,7 +374,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           shellcheck --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          pyflakes --version
           exit $LASTEXITCODE
   action-slim:
     name: GitHub Action (ubuntu-slim)
@@ -382,7 +382,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - *ActCheckNocred
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with: { name: actionlint-linux-candidate, path: .actionlint-slim-test }
       - name: Restore executable permission
         run: chmod +x .actionlint-slim-test/actionlint-test
@@ -390,14 +390,14 @@ jobs:
         id: slim
         uses: ./.actionlint-slim-test/actionlint-action/action
         env: { ACTIONLINT_ACTION_BINARY: "${{ github.workspace }}/.actionlint-slim-test/actionlint-test" }
-        with: { files: testdata/ok/minimal.yaml, pyflakes: false, shellcheck: false }
+        with: { files: testdata/ok/minimal.yaml, shellcheck: false }
       - name: Verify Dockerless result
         env: { RESULT: "${{ steps.slim.outputs.result }}" }
         run: test "${RESULT}" = success
   action-result:
     name: GitHub Action
     needs: [action, action-slim]
-    if: ${{ always() }}
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:

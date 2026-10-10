@@ -18,7 +18,6 @@ List of checks:
 - [Strict type checks for comparison operators](#check-comparison-types)
 - [shellcheck integration for `run:`](#check-shellcheck-integ)
 - [Executable bits on repository scripts](#check-executable-bit)
-- [pyflakes integration for `run:`](#check-pyflakes-integ)
 - [Script injection by potentially untrusted inputs](#untrusted-inputs)
 - [Job dependencies validation](#check-job-deps)
 - [Parallel steps](#check-parallel-step-refs)
@@ -51,6 +50,9 @@ List of checks:
 The checks in this document run by default, including the configurable cache safety policies. Other policy checks
 are opt-in, as described in [the configuration document](config.md#policy-checks). For
 general code style checks, please consider using a general YAML checker like [yamllint][yamllint].
+
+Additional [suspicious rules](config.md#stable-suspicious-rules) inspect condition
+coercion and matrix filter types. They are disabled by default and are not policies.
 
 <a id="check-unexpected-keys"></a>
 
@@ -1128,80 +1130,6 @@ On GitHub Actions:
   env:
     SHELLCHECK_OPTS: --exclude=SC2129
 ```
-
-<a id="check-pyflakes-integ"></a>
-
-## [pyflakes][pyflakes] integration for `run:`
-
-Example input:
-
-```yaml
-on: push
-jobs:
-  linux:
-    runs-on: ubuntu-latest
-    steps:
-      # Yay! No error
-      - run: print('${{ runner.os }}')
-        shell: python
-      # ERROR: Undefined variable
-      - run: print(hello)
-        shell: python
-  linux2:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        # Run script with Python by default
-        shell: python
-    steps:
-      - run: |
-          import sys
-          for sys in ['system1', 'system2']:
-            print(sys)
-      - run: |
-          from time import sleep
-          print(100)
-```
-
-Output:
-
-```console
-test.yaml:10:9: pyflakes reported issue in this script: 1:7: undefined name 'hello' [pyflakes]
-   |
-10 |       - run: print(hello)
-   |         ^~~~
-test.yaml:19:9: pyflakes reported issue in this script: 2:5: import 'sys' from line 1 shadowed by loop variable [pyflakes]
-   |
-19 |       - run: |
-   |         ^~~~
-test.yaml:23:9: pyflakes reported issue in this script: 1:1: 'time.sleep' imported but unused [pyflakes]
-   |
-23 |       - run: |
-   |         ^~~~
-```
-
-<!-- Skip playground link -->
-
-Python script can be written in `run:` when `shell: python` is configured.
-
-[pyflakes][pyflakes] is a famous linter for Python. It is suitable for linting small code like scripts at `run:` since it focuses
-on finding mistakes (not a code style issue) and tries to make false positives as minimal as possible. Install pyflakes
-by `pip install pyflakes`.
-
-actionlint runs pyflakes for scripts at `run:` steps in a workflow and reports errors found by pyflakes. actionlint detects
-Python scripts in a workflow by checking `shell: python` at each step and `defaults:` configurations at workflows and jobs.
-
-By default, actionlint checks if `pyflakes` command exists in your system and uses it when found. The `-pyflakes` option
-of `actionlint` command takes a command line: a command name, a file path, or a command with flags such as
-`-pyflakes 'python3 -m pyflakes'`. Setting empty string by `pyflakes=` disables pyflakes integration explicitly.
-
-pyflakes has no configuration file, no exclusion flag, and no `# noqa` support, so there is no pyflakes-side way to silence
-a single finding. Suppress it on the actionlint side with the `-ignore` option or the `ignore:` list under `paths:` in
-[the configuration file](config.md).
-
-Since both `${{ }}` expression syntax is invalid as Python, remaining `${{ }}` might confuse pyflakes. To avoid it,
-actionlint replaces `${{ }}` with underscores. For example `print('${{ matrix.os }}')` is replaced with
-`print('________________')`.
 
 <a id="untrusted-inputs"></a>
 
@@ -3227,7 +3155,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:9:13: constant expression "false" in condition. remove the if: section [if-cond]
+test.yaml:9:13: constant expression "false" in condition is always falsy. this step or job will be skipped [if-cond]
   |
 9 |         if: false
   |             ^~~~~
@@ -3247,9 +3175,12 @@ test.yaml:29:13: if: condition "${{ github.event_name == 'push' }} && ${{ github
 
 [Playground](https://kjanat.github.io/actionlint/#eNq0zz1OxDAQBeA+p3hYyK7CASxtw484ATVyYEKM1vZqZ0yz+O7Iy18iohBAVFH03nwzTtFil3lomsfUsW0AIZb6BfY5clsLuctRcrt1NTtGLLTj1xbQ1qYF3Q0J6vLq/Ob6BKeHAx68DLk7oyeKchtdIJSi3mYA31v0bss0o5iLFIIXeD4eR/dmMjaPbzYwtW1Qys/N548/LNl/g//jcPU9CrWGhSQE5+OUX5K1fo/31H+GY+QXG1e8R+tx6+tylPISAAD//9rl1qA=)
 
-actionlint reports constant conditions at `if:` like `if: true` as error because they are usually leftover debug code like
-`#if 0` in C. `if: true` should be removed because it doesn't affect the workflow behavior. `if: false` should be replaced with
-commenting out because it is more obvious (or simply remove the step or job if not needed).
+actionlint reports conditions whose outcome is provably constant. Removing `if: true`
+preserves the default success gate. An always-false condition skips the guarded work;
+removing it would enable that work. The diagnostic therefore does not suggest removal
+for false conditions. Blank and YAML-null conditions use `success()`. A sole string
+literal expression is folded and parsed as condition source; computed strings remain
+values. See [expression behavior](expression-behavior.md#condition-source-is-different-from-a-computed-string).
 
 In addition, evaluation of `${{ }}` at `if:` condition is tricky. When the expression in `${{ }}` is evaluated to boolean value
 and there is no extra characters around the `${{ }}`, the condition is evaluated to the boolean value. Otherwise the condition is
@@ -3654,7 +3585,6 @@ test.yaml:9:14: could not parse as YAML: unknown anchor 'credentials' referenced
 [SC2157]: https://github.com/koalaman/shellcheck/wiki/SC2157
 [SC2043]: https://github.com/koalaman/shellcheck/wiki/SC2043
 [shellcheck-env-var]: https://github.com/koalaman/shellcheck/wiki/Integration#environment-variables
-[pyflakes]: https://github.com/PyCQA/pyflakes
 [expr-doc]: https://docs.github.com/en/actions/learn-github-actions/expressions
 [contexts-doc]: https://docs.github.com/en/actions/learn-github-actions/contexts
 [funcs-doc]: https://docs.github.com/en/actions/learn-github-actions/expressions#functions

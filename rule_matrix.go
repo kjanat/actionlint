@@ -31,12 +31,23 @@ func (rule *RuleMatrix) VisitJobPre(n *Job) error {
 	if evaluated {
 		m = knownStrategyMatrix(n.Strategy.Expression)
 	}
-	if m == nil || m.Expression != nil {
+	if m != nil && m.Expression != nil {
+		value, known := workflowExpressionLiteral(m.Expression)
+		if !known {
+			return nil
+		}
+		m = knownLiteralMatrix(value, m.Expression.Pos)
+		evaluated = true
+	}
+	if m == nil {
 		return nil
 	}
 
-	for _, row := range m.Rows {
-		rule.checkDuplicateInRow(row)
+	for name, row := range m.Rows {
+		if row.Name != nil {
+			name = row.Name.Value
+		}
+		rule.checkDuplicateInRow(name, row, !evaluated)
 	}
 
 	// Note:
@@ -50,6 +61,9 @@ func (rule *RuleMatrix) VisitJobPre(n *Job) error {
 	//       sh: pwsh
 
 	rule.checkExclude(m, !evaluated)
+	if rule.config.diagnosticLevel("mixed-type-matrix-filters") != "off" {
+		rule.checkFilterTypes(m, !evaluated)
+	}
 	return nil
 }
 
@@ -62,7 +76,11 @@ func knownStrategyMatrix(expression *String) *Matrix {
 	if !ok {
 		return nil
 	}
-	matrix, ok := workflowObjectProperty(strategy, "matrix").(map[string]any)
+	return knownLiteralMatrix(workflowObjectProperty(strategy, "matrix"), expression.Pos)
+}
+
+func knownLiteralMatrix(value any, position *Pos) *Matrix {
+	matrix, ok := value.(map[string]any)
 	if !ok || len(workflowExpressionLiteralErrors(workflowStrategy.props["matrix"], matrix, "matrix")) != 0 {
 		return nil
 	}
@@ -72,75 +90,79 @@ func knownStrategyMatrix(expression *String) *Matrix {
 	}
 	var setPosition func(*yaml.Node)
 	setPosition = func(n *yaml.Node) {
-		n.Line, n.Column = expression.Pos.Line, expression.Pos.Col
+		n.Line, n.Column = position.Line, position.Col
 		for _, child := range n.Content {
 			setPosition(child)
 		}
 	}
 	setPosition(&node)
-	return (&parser{}).parseMatrix(expression.Pos, &node)
+	return (&parser{}).parseMatrix(position, &node)
 }
 
-func (rule *RuleMatrix) checkDuplicateInRow(row *MatrixRow) {
-	if row.Values == nil {
-		return // Give up when ${{ }} is specified
-	}
-	seen := make([]RawYAMLValue, 0, len(row.Values))
-	for _, v := range row.Values {
+func (rule *RuleMatrix) checkDuplicateInRow(name string, row *MatrixRow, expressions bool) {
+	elements, _ := matrixRowElements(row, expressions)
+	seen := make([]matrixFilterElement, 0, len(elements))
+	for _, element := range elements {
+		v := element.value
+		dynamic := element.expressions && matrixValueContainsExpression(v)
 		ok := true
 		for _, p := range seen {
-			if p.Equals(v) {
+			if dynamic != (p.expressions && matrixValueContainsExpression(p.value)) {
+				continue
+			}
+			if p.value.Equals(v) {
 				rule.Errorf(
 					v.Pos(),
 					"duplicate value %s is found in matrix %q. the same value is at %s",
 					v.String(),
-					row.Name.Value,
-					p.Pos().String(),
+					name,
+					p.value.Pos().String(),
 				)
 				ok = false
 				break
 			}
 		}
 		if ok {
-			seen = append(seen, v)
+			seen = append(seen, element)
 		}
 	}
 }
 
 // Matrix filters compare selected properties and indices with expression equality.
 func isYAMLValueSubset(value, filter RawYAMLValue, expressions bool) bool {
+	return isYAMLValueSubsetWithExpressions(value, filter, expressions, expressions)
+}
+
+func isYAMLValueSubsetWithExpressions(value, filter RawYAMLValue, valueExpressions, filterExpressions bool) bool {
 	// Dynamic values or filter leaves cannot establish a mismatch. Evaluated
 	// expression results use expressions=false so embedded syntax remains data.
-	if expressions {
-		for _, item := range []RawYAMLValue{value, filter} {
-			if scalar, ok := item.(*RawYAMLString); ok && ContainsExpression(scalar.Value) {
-				return true
-			}
+	for _, item := range []matrixFilterElement{{value, valueExpressions}, {filter, filterExpressions}} {
+		if scalar, ok := item.value.(*RawYAMLString); item.expressions && ok && ContainsExpression(scalar.Value) {
+			return true
 		}
-	}
-	lookup := func(key string) RawYAMLValue {
-		switch value := value.(type) {
-		case *RawYAMLObject:
-			return value.Props[key]
-		case *RawYAMLArray:
-			index := matrixFilterNumber(key)
-			if index >= 0 && index < float64(len(value.Elems)) && index <= math.MaxInt32 {
-				return value.Elems[int(index)]
-			}
-		}
-		return nil
 	}
 	switch filter := filter.(type) {
 	case *RawYAMLObject:
+		lookup := newMatrixFilterLookup(value, valueExpressions)
 		for key, item := range filter.Props {
-			if !isYAMLValueSubset(lookup(key), item, expressions) {
+			actual, actualExpressions, uncertain := lookup.at(key)
+			if uncertain {
+				continue
+			}
+			if !isYAMLValueSubsetWithExpressions(actual, item, actualExpressions, filterExpressions) {
 				return false
 			}
 		}
 		return true
 	case *RawYAMLArray:
-		for i, item := range filter.Elems {
-			if !isYAMLValueSubset(lookup(strconv.Itoa(i)), item, expressions) {
+		filters, _ := matrixFilterElements(filter, filterExpressions)
+		lookup := newMatrixFilterLookup(value, valueExpressions)
+		for i, item := range filters {
+			actual, actualExpressions, uncertain := lookup.at(strconv.Itoa(i))
+			if uncertain {
+				return true
+			}
+			if !isYAMLValueSubsetWithExpressions(actual, item.value, actualExpressions, item.expressions) {
 				return false
 			}
 		}
@@ -162,6 +184,19 @@ func isYAMLValueSubset(value, filter RawYAMLValue, expressions bool) bool {
 	default:
 		return false
 	}
+}
+
+func matrixFilterValueAt(value RawYAMLValue, key string) RawYAMLValue {
+	switch value := value.(type) {
+	case *RawYAMLObject:
+		return value.Props[key]
+	case *RawYAMLArray:
+		index := matrixFilterNumber(key)
+		if index >= 0 && index < float64(len(value.Elems)) && index <= math.MaxInt32 {
+			return value.Elems[int(index)]
+		}
+	}
+	return nil
 }
 
 func matrixFilterNumber(value any) float64 {
@@ -203,7 +238,8 @@ func matrixFilterNumber(value any) float64 {
 }
 
 func (rule *RuleMatrix) checkExclude(m *Matrix, expressions bool) {
-	if m.Exclude == nil || len(m.Exclude.Combinations) == 0 {
+	combinations := matrixExcludeCombinations(m.Exclude, expressions)
+	if len(combinations) == 0 {
 		return
 	}
 
@@ -212,20 +248,20 @@ func (rule *RuleMatrix) checkExclude(m *Matrix, expressions bool) {
 		return
 	}
 
-	rows := make(map[string][]RawYAMLValue, len(m.Rows))
+	rows := make(map[string][]matrixFilterElement, len(m.Rows))
 	ignored := map[string]struct{}{}
 
 	for n, r := range m.Rows {
-		if r.Expression != nil {
+		values, complete := matrixRowElements(r, expressions)
+		if !complete {
 			ignored[n] = struct{}{}
-			continue
 		}
-		rows[n] = r.Values
+		rows[n] = values
 	}
 
-	for _, c := range m.Exclude.Combinations {
+	for _, c := range combinations {
 	Exclude:
-		for k, a := range c.Assigns {
+		for k, a := range c.combination.Assigns {
 			if _, ok := ignored[k]; ok {
 				continue
 			}
@@ -245,14 +281,14 @@ func (rule *RuleMatrix) checkExclude(m *Matrix, expressions bool) {
 			}
 
 			for _, v := range row {
-				if isYAMLValueSubset(v, a.Value, expressions) {
+				if isYAMLValueSubsetWithExpressions(v.value, a.Value, v.expressions, c.expressions) {
 					continue Exclude
 				}
 			}
 
 			ss := make([]string, 0, len(row))
 			for _, v := range row {
-				ss = append(ss, v.String())
+				ss = append(ss, v.value.String())
 			}
 			rule.Errorf(
 				a.Value.Pos(),

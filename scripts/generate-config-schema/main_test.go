@@ -1,15 +1,23 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/url"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"actionlint.kjanat.dev"
+	"actionlint.kjanat.dev/internal/ruff"
 	"github.com/google/go-cmp/cmp"
+	"github.com/invopop/jsonschema"
 	validator "github.com/santhosh-tekuri/jsonschema/v6"
 	"go.yaml.in/yaml/v4"
 )
@@ -22,6 +30,272 @@ func generatedSchema(t *testing.T) []byte {
 		t.Fatal(err)
 	}
 	return b
+}
+
+func TestRuleLevelSuggestions(t *testing.T) {
+	schema := mapYAMLType(reflect.TypeFor[actionlint.RuleLevel](), nil)
+	if len(schema.AnyOf) != 3 {
+		t.Fatal("expected named levels and two hidden compatibility branches")
+	}
+	if diff := cmp.Diff([]any{"default", "off", "on", "info", "warn", "error"}, schema.AnyOf[0].Enum); diff != "" {
+		t.Fatalf("suggest only named levels (-want +got):\n%s", diff)
+	}
+	for _, branch := range schema.AnyOf[1:] {
+		if branch.Extras["doNotSuggest"] != true || len(branch.Enum) != 0 || branch.Description != "" {
+			t.Fatal("compatibility values must not be suggested or advertised")
+		}
+	}
+	if strings.Contains(schema.Description, "false") || strings.Contains(schema.Description, "null") {
+		t.Fatal("describe only named levels")
+	}
+}
+
+func TestRuffTargetVersionSuggestions(t *testing.T) {
+	schema := mapYAMLType(reflect.TypeFor[actionlint.RuffToolConfig](), nil)
+	target, ok := schema.Properties.Get("target-version")
+	if !ok {
+		t.Fatal("missing Ruff target-version schema")
+	}
+	if len(target.OneOf) != 2 || target.OneOf[1].Type != "null" || target.OneOf[1].Extras["doNotSuggest"] != true {
+		t.Fatal("expected version choices and a hidden reset branch")
+	}
+	if target.OneOf[0].Ref != ruff.SchemaPath+"#/definitions/PythonVersion" || len(target.OneOf[0].Enum) != 0 {
+		t.Fatal("Ruff target choices must reference the unchanged upstream definition")
+	}
+}
+
+func TestRuffSelectorSuggestions(t *testing.T) {
+	schema := mapYAMLType(reflect.TypeFor[actionlint.RuffToolConfig](), nil)
+	var root jsonschema.Schema
+	generated := generatedSchema(t)
+	if strings.Count(string(generated), `"`+ruff.SelectorSchemaPath+`"`) != 4 {
+		t.Fatal("base and override selections must share the selector definition")
+	}
+	if err := json.Unmarshal(generated, &root); err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := root.Definitions["RuffRuleSelector"]; exists {
+		t.Fatal("root schema must not copy the upstream selector catalogue")
+	}
+	for _, key := range []string{"select", "ignore"} {
+		property, ok := schema.Properties.Get(key)
+		if !ok || property.Items == nil {
+			t.Fatalf("missing Ruff %s schema", key)
+		}
+		if property.Items.Ref != "" || len(property.Items.Enum) != 0 || !reflect.DeepEqual(property.Items.Examples, []any{"F", "F821"}) {
+			t.Fatalf("Ruff %s completion must use small safe examples, not an upstream or copied catalogue", key)
+		}
+		guard := property.Not
+		if guard == nil || guard.Type != "array" || guard.Contains == nil || guard.Contains.Not == nil || guard.Contains.Not.Ref != ruff.SelectorSchemaPath {
+			t.Fatalf("Ruff %s must reject arrays containing an unsupported selector through the shared wrapper", key)
+		}
+	}
+}
+
+func TestRuffEditorCompletions(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("Node.js is not installed")
+	}
+	server, err := exec.LookPath("yaml-language-server")
+	if err != nil {
+		t.Skip("optional yaml-language-server is not installed")
+	}
+	modules := editorModulePaths(server)
+	if len(modules) == 0 {
+		t.Skip("installed YAML language server package could not be located")
+	}
+	if existing := os.Getenv("NODE_PATH"); existing != "" {
+		modules = append(modules, existing)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, node, "editor-completions.mjs")
+	command.Env = append(os.Environ(), "NODE_PATH="+strings.Join(modules, string(os.PathListSeparator)))
+	command.WaitDelay = time.Second
+	output, err := command.CombinedOutput()
+	var exit *exec.ExitError
+	if errors.As(err, &exit) && exit.ExitCode() == 77 {
+		t.Skip(string(output))
+	}
+	if err != nil {
+		t.Fatalf("YAML language service regression: %v\n%s", err, output)
+	}
+	t.Log(string(output))
+}
+
+// editorModulePaths locates the named package beside a resolved CLI installation.
+func editorModulePaths(server string) []string {
+	resolved, err := filepath.EvalSymlinks(server)
+	if err != nil {
+		return nil
+	}
+	for directory := filepath.Dir(resolved); ; directory = filepath.Dir(directory) {
+		for _, candidate := range []string{directory, filepath.Join(directory, "node_modules", "yaml-language-server"), filepath.Join(directory, "lib", "node_modules", "yaml-language-server")} {
+			data, err := os.ReadFile(filepath.Join(candidate, "package.json"))
+			if err != nil {
+				continue
+			}
+			var manifest struct {
+				Name string `json:"name"`
+			}
+			if json.Unmarshal(data, &manifest) == nil && manifest.Name == "yaml-language-server" {
+				return []string{filepath.Dir(candidate), filepath.Join(candidate, "node_modules")}
+			}
+		}
+		if directory == filepath.Dir(directory) {
+			return nil
+		}
+	}
+}
+
+func TestEditorModulePaths(t *testing.T) {
+	for _, layout := range []string{"package-bin", "npm-wrapper", "global-wrapper", "symlink-root", "unrelated-package"} {
+		t.Run(layout, func(t *testing.T) {
+			root := t.TempDir()
+			if layout == "symlink-root" {
+				physical := filepath.Join(root, "physical")
+				if err := os.Mkdir(physical, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				alias := filepath.Join(root, "alias")
+				if err := os.Symlink(physical, alias); err != nil {
+					t.Skipf("directory symlinks are unavailable: %v", err)
+				}
+				root = alias
+			}
+			packageDir := filepath.Join(root, "node_modules", "yaml-language-server")
+			if layout == "global-wrapper" {
+				packageDir = filepath.Join(root, "lib", "node_modules", "yaml-language-server")
+			}
+			server := filepath.Join(root, "bin", "yaml-language-server")
+			if layout == "package-bin" || layout == "unrelated-package" {
+				server = filepath.Join(packageDir, "bin", "yaml-language-server")
+			}
+			for _, directory := range []string{packageDir, filepath.Dir(server)} {
+				if err := os.MkdirAll(directory, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			manifest := `{"name":"yaml-language-server"}`
+			if layout == "unrelated-package" {
+				manifest = `{"name":"unrelated-package"}`
+			}
+			if err := os.WriteFile(filepath.Join(packageDir, "package.json"), []byte(manifest), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(server, nil, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			got := editorModulePaths(server)
+			if layout == "unrelated-package" {
+				if len(got) != 0 {
+					t.Fatalf("unrelated package must not be added to NODE_PATH: %v", got)
+				}
+				return
+			}
+			canonicalPackageDir, err := filepath.EvalSymlinks(packageDir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := []string{filepath.Dir(canonicalPackageDir), filepath.Join(canonicalPackageDir, "node_modules")}
+			if !slices.Equal(got, want) {
+				t.Fatalf("module paths = %v, want %v", got, want)
+			}
+		})
+	}
+}
+
+func addToolSchemas(t *testing.T, compiler *validator.Compiler, base string) {
+	t.Helper()
+	rootURL, err := url.Parse(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, filename := range []string{shellcheckSchemaPath, ruff.SchemaPath, ruff.SelectorSchemaPath} {
+		data, err := os.ReadFile(filename)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var document any
+		if err := json.Unmarshal(data, &document); err != nil {
+			t.Fatal(err)
+		}
+		location := rootURL.ResolveReference(&url.URL{Path: filename}).String()
+		if err := compiler.AddResource(location, document); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestRuffUpstreamSchemaParity(t *testing.T) {
+	root := generatedSchema(t)
+	var document any
+	if err := json.Unmarshal(root, &document); err != nil {
+		t.Fatal(err)
+	}
+	const base = "file:///offline/actionlint.schema.json"
+	c := validator.NewCompiler()
+	c.UseLoader(validator.SchemeURLLoader{})
+	addToolSchemas(t, c, base)
+	if err := c.AddResource(base, document); err != nil {
+		t.Fatal(err)
+	}
+	schema, err := c.Compile(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	upstream, err := os.ReadFile(ruff.SchemaPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var raw struct {
+		Definitions map[string]struct {
+			Enum []string `json:"enum"`
+		} `json:"definitions"`
+	}
+	if err := json.Unmarshal(upstream, &raw); err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff(raw.Definitions["PythonVersion"].Enum, ruff.SupportedTargetVersions()); diff != "" {
+		t.Fatalf("runtime targets differ from upstream (-upstream +runtime):\n%s", diff)
+	}
+	supported := ruff.SupportedRuleSelectors()
+	targets := ruff.SupportedTargetVersions()
+	selectors := append(slices.Clone(raw.Definitions["RuleSelector"].Enum), supported...)
+	selectors = append(selectors, "XYZ", "F9999", "", "f821")
+	slices.Sort(selectors)
+	selectors = slices.Compact(selectors)
+	for _, key := range []string{"select", "ignore", "target-version"} {
+		values := selectors
+		if key == "target-version" {
+			values = append(slices.Clone(targets), "py36", "py316", "")
+		}
+		for _, value := range values {
+			for _, override := range []bool{false, true} {
+				var property any = []any{value}
+				want := slices.Contains(supported, value)
+				if key == "target-version" {
+					property = value
+					want = slices.Contains(targets, value)
+				}
+				input := map[string]any{"tools": map[string]any{"ruff": map[string]any{key: property}}}
+				if override {
+					input["includes"] = []any{"**"}
+					input = map[string]any{"overrides": []any{input}}
+				}
+				data, err := json.Marshal(input)
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, parseErr := actionlint.ParseConfig(data)
+				schemaErr := schema.Validate(input)
+				if (parseErr == nil) != want || (schemaErr == nil) != want {
+					t.Fatalf("%s=%q override=%v want valid=%v: parser=%v schema=%v", key, value, override, want, parseErr, schemaErr)
+				}
+			}
+		}
+	}
 }
 
 func TestGeneratedSchemaUpToDate(t *testing.T) {
@@ -81,31 +355,21 @@ func TestShellcheckSchemaReference(t *testing.T) {
 
 func TestSchemaRelativeResolution(t *testing.T) {
 	root := generatedSchema(t)
-	tool, err := os.ReadFile(shellcheckSchemaPath)
-	if err != nil {
-		t.Fatal(err)
-	}
 	for _, base := range []string{
 		"file:///offline/node_modules/@kjanat/actionlint/actionlint.schema.json",
 		"https://cdn.jsdelivr.net/npm/@kjanat/actionlint@1.17.0/actionlint.schema.json",
 		"https://raw.githubusercontent.com/kjanat/actionlint/b837c5abb3549967ff6f30c852ede599dabdb339/actionlint.schema.json",
 	} {
 		t.Run(base, func(t *testing.T) {
-			rootURL, err := url.Parse(base)
-			if err != nil {
-				t.Fatal(err)
-			}
-			toolURL := rootURL.ResolveReference(&url.URL{Path: shellcheckSchemaPath}).String()
 			c := validator.NewCompiler()
 			c.UseLoader(validator.SchemeURLLoader{})
-			for location, data := range map[string][]byte{base: root, toolURL: tool} {
-				var document any
-				if err := json.Unmarshal(data, &document); err != nil {
-					t.Fatal(err)
-				}
-				if err := c.AddResource(location, document); err != nil {
-					t.Fatal(err)
-				}
+			addToolSchemas(t, c, base)
+			var document any
+			if err := json.Unmarshal(root, &document); err != nil {
+				t.Fatal(err)
+			}
+			if err := c.AddResource(base, document); err != nil {
+				t.Fatal(err)
 			}
 			if _, err := c.Compile(base); err != nil {
 				t.Fatalf("schema must resolve its tool reference beside the loaded root without remote fallback: %v", err)
@@ -123,18 +387,8 @@ func TestSchemaValidation(t *testing.T) {
 	c := validator.NewCompiler()
 	// Resolve checked-in resources only. Schema tests must not access the network.
 	c.UseLoader(validator.SchemeURLLoader{})
-	toolSchema, err := os.ReadFile(shellcheckSchemaPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var toolDocument any
-	if err := json.Unmarshal(toolSchema, &toolDocument); err != nil {
-		t.Fatal(err)
-	}
-	if err := c.AddResource("https://example.com/"+shellcheckSchemaPath, toolDocument); err != nil {
-		t.Fatal(err)
-	}
 	const url = "https://example.com/actionlint.schema.json"
+	addToolSchemas(t, c, url)
 	if err := c.AddResource(url, document); err != nil {
 		t.Fatal(err)
 	}
@@ -150,6 +404,101 @@ func TestSchemaValidation(t *testing.T) {
 		parserValid bool
 	}{
 		{"empty", `{}`, true, true},
+		{"ruff oldest target", `tools: {ruff: {target-version: py37}}`, true, true},
+		{"ruff selector prefix", `tools: {ruff: {select: [F82]}}`, true, true},
+		{"ruff selector alias", `tools: {ruff: {select: [C9, U004, SIM111]}}`, true, true},
+		{"ruff preview rule codes", `tools: {ruff: {select: [E111, RUF055]}}`, false, false},
+		{"ruff stable copyright rule", `tools: {ruff: {select: [CPY001]}}`, true, true},
+		{"ruff removed rules", `tools: {ruff: {select: [ANN101, ANN102, S320]}}`, false, false},
+		{"ruff redirected removed names", `tools: {ruff: {select: [PGH001, RUF035]}}`, true, true},
+		{"ruff unknown selector", `tools: {ruff: {select: [XYZ]}}`, false, false},
+		{"ruff unknown ignored selector", `tools: {ruff: {ignore: [F9999]}}`, false, false},
+		{"ruff invalid selector override", `overrides: [{includes: ['**'], tools: {ruff: {select: [XYZ]}}}]`, false, false},
+		{"ruff selection reset", `tools: {ruff: {select: null, ignore: null}}`, true, true},
+		{"ruff empty selection", `tools: {ruff: {select: [], ignore: []}}`, true, true},
+		{"ruff newest target", `tools: {ruff: {target-version: py315}}`, true, true},
+		{"ruff omitted target", `tools: {ruff: {}}`, true, true},
+		{"ruff target reset", `tools: {ruff: {target-version: null}}`, true, true},
+		{"ruff empty single-quoted target", `tools: {ruff: {target-version: ''}}`, false, false},
+		{"ruff empty double-quoted target", `tools: {ruff: {target-version: ""}}`, false, false},
+		{"ruff unsupported old target", `tools: {ruff: {target-version: py30}}`, false, false},
+		{"ruff unsupported future target", `tools: {ruff: {target-version: py316}}`, false, false},
+		{"ruff override target", `overrides: [{includes: ['**'], tools: {ruff: {target-version: py315}}}]`, true, true},
+		{"ruff unsupported override target", `overrides: [{includes: ['**'], tools: {ruff: {target-version: py36}}}]`, false, false},
+		{"nursery group", `lint: {rules: {nursery: {preset: all}}}`, true, true},
+		{"nursery level", `lint: {rules: {nursery: warn}}`, true, true},
+		{"nursery null", `lint: {rules: {nursery: null}}`, true, true},
+		{"stable rule not nursery", `lint: {rules: {nursery: {case-insensitive-conditions: on}}}`, false, false},
+		{"old experimental group", `lint: {rules: {experimental: true}}`, false, false},
+		{"extends file", `extends: [../shared.yml]`, true, false},
+		{"extends empty", `extends: []`, true, true},
+		{"extends invalid", `extends: base.yml`, false, false},
+		{"file selection", `files: {includes: ['**/*.yml'], excludes: ['**/generated/**']}`, true, true},
+		{"file selection empty", `files: {includes: []}`, true, true},
+		{"file selection null", `files: {includes: null}`, true, true},
+		{"file selection invalid", `files: {includes: [1]}`, false, false},
+		{"file selection unknown", `files: {exclude: ['**']}`, false, false},
+		{"file override exclusions", `overrides: [{includes: ['**'], excludes: ['**/generated/**']}]`, true, true},
+		{"rule level", `lint: {rules: {correctness: {expression: warn}}}`, true, true},
+		{"group level", `lint: {rules: {correctness: info}}`, true, true},
+		{"group baseline", `lint: {rules: {correctness: {level: warn, expression: off}}}`, true, true},
+		{"global preset", `lint: {rules: {preset: all}}`, true, true},
+		{"group preset", `lint: {rules: {policy: {preset: all}}}`, true, true},
+		{"group null", `lint: {rules: {policy: null}}`, true, true},
+		{"rule options", `lint: {rules: {policy: {require-job-timeout: {level: error, options: {max-minutes: 30}}}}}`, true, true},
+		{"rule actions", `lint: {rules: {policy: {required-actions: {level: warn, options: {actions: ['actions/checkout']}}}}}`, true, true},
+		{"rule empty actions", `lint: {rules: {policy: {required-actions: {level: on, options: {actions: []}}}}}`, true, true},
+		{"rule null actions", `lint: {rules: {policy: {required-actions: {level: on, options: {actions: null}}}}}`, false, false},
+		{"rule omitted actions", `lint: {rules: {policy: {required-actions: {level: on, options: {}}}}}`, false, false},
+		{"rule null options", `lint: {rules: {policy: {required-actions: {level: on, options: null}}}}`, false, false},
+		{"rule null timeout bound", `lint: {rules: {policy: {require-job-timeout: {level: on, options: {max-minutes: null}}}}}`, false, false},
+		{"rule null minimum bound", `lint: {rules: {policy: {require-job-timeout: {level: on, options: {min-minutes: null}}}}}`, false, false},
+		{"rule null permissions scope", `lint: {rules: {policy: {require-permissions: {level: on, options: {scope: null}}}}}`, false, false},
+		{"rule null suppression rules", `lint: {rules: {policy: {disallow-suppressions: {level: on, options: {rules: null}}}}}`, false, false},
+		{"rule null suppression report", `lint: {rules: {policy: {disallow-suppressions: {level: on, options: {report: null}}}}}`, false, false},
+		{"invalid group", `lint: {rules: {securty: {}}}`, false, false},
+		{"invalid rule group", `lint: {rules: {policy: {case-insensitive-conditions: on}}}`, false, false},
+		{"invalid rule name", `lint: {rules: {correctness: {typo: off}}}`, false, false},
+		{"invalid rule level", `lint: {rules: {correctness: {expression: warning}}}`, false, false},
+		{"invalid group level", `lint: {rules: {correctness: {level: warning}}}`, false, false},
+		{"rule default", `lint: {rules: {correctness: {expression: null}}}`, true, true},
+		{"named rule default", `lint: {rules: {correctness: {expression: default}}}`, true, true},
+		{"named group default", `lint: {rules: {correctness: default}}`, true, true},
+		{"named rule level default", `lint: {rules: {correctness: {expression: {level: default}}}}`, true, true},
+		{"named group level default", `lint: {rules: {correctness: {level: default}}}`, true, true},
+		{"rule disabled alias", `lint: {rules: {correctness: {expression: false}}}`, true, true},
+		{"rule level disabled alias", `lint: {rules: {correctness: {expression: {level: false}}}}`, true, true},
+		{"rule level default", `lint: {rules: {correctness: {expression: {level: null}}}}`, true, true},
+		{"group disabled alias", `lint: {rules: {correctness: false}}`, true, true},
+		{"group level disabled alias", `lint: {rules: {correctness: {level: false}}}`, true, true},
+		{"group level default", `lint: {rules: {correctness: {level: null}}}`, true, true},
+		{"invalid empty rule", `lint: {rules: {correctness: {expression: ''}}}`, false, false},
+		{"invalid empty group", `lint: {rules: {correctness: ''}}`, false, false},
+		{"invalid empty rule level", `lint: {rules: {correctness: {expression: {level: ''}}}}`, false, false},
+		{"invalid empty group level", `lint: {rules: {correctness: {level: ''}}}`, false, false},
+		{"invalid rule options", `lint: {rules: {correctness: {expression: {level: on, options: {}}}}}`, false, false},
+		{"invalid options key", `lint: {rules: {policy: {require-job-timeout: {level: on, options: {minutes: 30}}}}}`, false, false},
+		{"invalid options type", `lint: {rules: {policy: {require-job-timeout: {level: on, options: true}}}}`, false, false},
+		{"missing rule level", `lint: {rules: {policy: {require-job-timeout: {options: {max-minutes: 30}}}}}`, false, false},
+		{"experimental typo", `lint: {rules: {experimental: {enable: [typo]}}}`, false, false},
+		{"experimental unknown option", `lint: {rules: {experimental: {typo: true}}}`, false, false},
+		{"experimental string boolean", `lint: {rules: {experimental: {enabled: 'true'}}}`, false, false},
+		{"not policy", `policy: {mixed-type-matrix-filters: true}`, false, false},
+		{"lint suppression", `lint: {rules: {disable: [expression, shellcheck]}}`, true, true},
+		{"lint null suppression", `lint: {rules: {disable: null}}`, true, true},
+		{"lint unknown rule", `lint: {rules: {disable: [typo]}}`, false, false},
+		{"lint unknown key", `lint: {rules: {typo: true}}`, false, false},
+		{"file override", `overrides: [{includes: ['.github/workflows/**'], lint: {rules: {suspicious: on}}}]`, true, true},
+		{"file override null lint", `overrides: [{includes: ['**'], lint: null}]`, true, true},
+		{"file override tools", `overrides: [{includes: ['**'], tools: {shellcheck: {config: {disable: [SC2086]}}}}]`, true, true},
+		{"file override tool shorthand", `overrides: [{includes: ['**'], tools: {shellcheck: false}}]`, true, true},
+		{"file override null tools", `overrides: [{includes: ['**'], tools: null}]`, true, true},
+		{"file override unknown tool", `overrides: [{includes: ['**'], tools: {typo: true}}]`, false, false},
+		{"file override missing includes", `overrides: [{lint: {rules: {suspicious: on}}}]`, false, false},
+		{"file override empty includes", `overrides: [{includes: []}]`, false, false},
+		{"file override numeric include", `overrides: [{includes: [1]}]`, false, false},
+		{"file override unknown key", `overrides: [{includes: ['**'], typo: true}]`, false, false},
+		{"file override invalid glob", `overrides: [{includes: ['[']}]`, true, false},
 		{"ShellCheck disabled", `tools: {shellcheck: {enabled: false}}`, true, true},
 		{"ShellCheck shorthand enabled", `tools: {shellcheck: true}`, true, true},
 		{"ShellCheck shorthand disabled", `tools: {shellcheck: false}`, true, true},

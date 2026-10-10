@@ -35,17 +35,11 @@ func (rule *RuleIfCond) checkIfCond(n *String) {
 	if n == nil {
 		return
 	}
-	s, e := strings.Index(n.Value, "${{"), strings.Index(n.Value, "}}")
-	if s >= 0 && e >= 0 {
-		rule.checkPlaceholder(n, s, e)
-	} else {
-		rule.checkExpression(n.Pos, n.Value)
+	expr, err, _ := parseConditionExpression(n.Value)
+	if err != nil {
+		return // The expression rule reports parse errors.
 	}
-}
-
-func (rule *RuleIfCond) checkPlaceholder(n *String, start, end int) {
-	// Check number of ${{ }} for conditions like `${{ false }} || ${{ true }}` which are always evaluated to true
-	if start > 0 || end+len("}}") < len(n.Value) || strings.Count(n.Value, "${{") > 1 {
+	if expr == nil {
 		rule.Errorf(
 			n.Pos,
 			"if: condition %q is always evaluated to true because extra characters are around ${{ }}",
@@ -53,15 +47,22 @@ func (rule *RuleIfCond) checkPlaceholder(n *String, start, end int) {
 		)
 		return
 	}
-	rule.checkExpression(n.Pos, n.Value[start+len("${{"):end])
-}
-
-func (rule *RuleIfCond) checkExpression(pos *Pos, input string) {
-	i := strings.TrimSpace(input)
-	l := NewExprLexer(i + "}}")
-	if e, err := NewExprParser().Parse(l); err == nil {
-		if NewExprSemanticsChecker(false, nil).IsConstant(e) {
-			rule.Errorf(pos, "constant expression %q in condition. remove the if: section", i)
+	checker := NewExprSemanticsChecker(false, nil)
+	if !checker.IsConstant(expr) {
+		return
+	}
+	if _, errs := checker.Check(expr); len(errs) != 0 {
+		return
+	}
+	if value, known := conditionConstantValue(expr); known {
+		i := strings.TrimSpace(conditionSource(n.Value))
+		if strings.HasPrefix(i, "${{") {
+			i = strings.TrimSpace(i[3 : len(i)-2])
+		}
+		if expressionTruthy(value) {
+			rule.Errorf(n.Pos, "constant expression %q in condition is always truthy. remove the if: section", i)
+		} else {
+			rule.Errorf(n.Pos, "constant expression %q in condition is always falsy. this step or job will be skipped", i)
 		}
 	}
 }

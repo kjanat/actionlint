@@ -3,7 +3,7 @@
 name: actionlint by @kjanat
 description: >-
   Static-check GitHub Actions workflow files with actionlint,
-  ShellCheck, and pyflakes.
+  and ShellCheck.
 inputs:
   version:
     description: Exact actionlint release version, optionally prefixed with v. Defaults to this Action's version; overrides version-file.
@@ -63,10 +63,14 @@ inputs:
       flags and workflow defaults. Reporting uses the action's format input.
     required: false
     default: ""
-  pyflakes:
-    description: Run pyflakes for Python scripts in workflow steps.
+  ruff:
+    description: Check Python run steps with Ruff, using PATH or a verified download when required by the effective configuration.
     required: false
     default: "true"
+  pyflakes:
+    description: "Deprecated and ignored: use the ruff input for Python script linting."
+    required: false
+    default: "false"
   add-actionlint-to-path:
     description: Make actionlint available on PATH for subsequent steps in this job.
     required: false
@@ -76,7 +80,11 @@ inputs:
     required: false
     default: "true"
   add-pyflakes-to-path:
-    description: Make pyflakes available on PATH for subsequent steps when pyflakes is enabled.
+    description: "Deprecated and ignored: Pyflakes is no longer installed."
+    required: false
+    default: "false"
+  add-ruff-to-path:
+    description: Make Ruff available on PATH for subsequent steps when Ruff is enabled and required.
     required: false
     default: "true"
   working-directory:

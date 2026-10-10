@@ -278,11 +278,27 @@ test('configuration warnings and origins survive parsing without becoming requir
 			overrides: ['config'],
 			origins: { tools: { source: 'file', state: 'set', line: 2, column: 1 } },
 			warnings: [{ message: 'unknown key', line: 1, column: 1 }],
+		}, {
+			...configuration,
+			origins: { tools: { source: 'config', state: 'value', file: 'base.yml', line: 2, column: 1 } },
+			warnings: [{ message: 'unknown key', file: 'base.yml', line: 3, column: 1 }],
 		}]
 	) {
 		assert.deepEqual(parseResult({ ...result, configurations: [config] }).configurations, [config]);
 	}
 	assert.throws(() => parseResult({ ...result, configurations: [{ ...configuration, warnings: ['wrong shape'] }] }));
+	assert.throws(() =>
+		parseResult({
+			...result,
+			configurations: [{ ...configuration, warnings: [{ message: 'unknown key', file: 42, line: 1, column: 1 }] }],
+		})
+	);
+	assert.throws(() =>
+		parseResult({
+			...result,
+			configurations: [{ ...configuration, origins: { tools: { source: 'config', state: 'value', file: 42 } } }],
+		})
+	);
 });
 
 test('annotation policy is independent of serialization with auto enabled for GitHub format', async () => {
@@ -459,7 +475,7 @@ test('real entrypoint rejects malformed native results and summarizes input fail
 				`import * as tools from ${JSON.stringify(toolsURL)};`,
 				`import { writeOutputs } from ${JSON.stringify(workflowURL)};`,
 				`mock.module(${JSON.stringify(toolsURL)}, { namedExports: { ...tools,`,
-				'  inspectTools: async () => ({ shellcheck: false, pyflakes: false }),',
+				'  inspectTools: async () => ({ shellcheck: false }),',
 				'  executeNative: async (_executable, _args, environment) => {',
 				'    assert.ok(environment.ACTIONLINT_ACTION_RESULT);',
 				'    assert.ok(environment.ACTIONLINT_TEST_RESULT);',
@@ -488,7 +504,6 @@ test('real entrypoint rejects malformed native results and summarizes input fail
 				INPUT_ANNOTATIONS: scenario.annotations,
 				'INPUT_ADD-ACTIONLINT-TO-PATH': 'false',
 				'INPUT_ADD-SHELLCHECK-TO-PATH': 'false',
-				'INPUT_ADD-PYFLAKES-TO-PATH': 'false',
 			}, { timeoutMS: 5_000 });
 			assert.equal(child.exitCode, scenario.code, child.stderr);
 			assert.ok(child.stdout.includes('::error::'));

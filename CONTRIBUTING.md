@@ -87,6 +87,27 @@ The PR must explain the motivation, scope, compatibility impact, and validation 
 
 `make` (3.81 or later) is useful to run each tasks and reduce redundant builds/tests.
 
+### Project task defaults
+
+With mise activated in your shell, run `runner install` from the repository root. It installs the declared tools (including ShellCheck), installs npm workspace dependencies from the lockfile, and downloads Go modules. Installs are frozen by default; use `runner install --no-frozen` when intentionally updating dependencies. Use `runner config init` only to create a configuration in a new project; this repository already provides `runner.toml`.
+
+The task source is explicit in `runner.toml`, so adding another task with the same name does not change these defaults:
+
+| Command                              | Runs                                                   |
+| ------------------------------------ | ------------------------------------------------------ |
+| `runner build`                       | Go binary via Make, using checked-in generated sources |
+| `runner test`                        | Go tests via Make, including its default race checks   |
+| `runner lint`                        | Go lint, vulnerability scan, and WebAssembly lint      |
+| `runner lint-docs`                   | Documentation examples; requires ShellCheck            |
+| `runner package.json:lint`           | Biome and playground ESLint/type checking              |
+| `runner package.json:test`           | Root JavaScript/TypeScript test tasks                  |
+| `runner actionlint-playground:build` | Playground Vite build                                  |
+| `runner actionlint-playground:test`  | Playground JavaScript tests                            |
+
+Source-qualified commands such as `runner make:lint` and `runner package.json:lint` remain available. `runner why lint` shows the selected command without executing it. To regenerate sources during a Go build, use `runner build SKIP_GO_GENERATE=`. When mise is not activated, use `mise exec -- runner lint` to expose its tools.
+
+Python linting is not part of actionlint. Documentation examples require ShellCheck; CI runs both lint targets.
+
 ## Building
 
 ```sh
@@ -126,7 +147,7 @@ make man/actionlint.1 PANDOC='pandoc --standalone --from=markdown-smart --no-hig
 
 Shell completions come from the built binary's `-completion bash`, `-completion zsh`, and `-completion fish` commands. For local configuration validation, install `actionlint.schema.json` and the `schemas/` tree together, preserving their relative paths so references such as `schemas/shellcheck/0.11.0.schema.json` resolve.
 
-Run `go test ./...` from the source root, including when only `cmd/actionlint` is built. That command directory has no tests; engine tests live in the root package and frontend tests in `internal/cli`. Put Git, Bash, ShellCheck, and Pyflakes on `PATH` for the tests. Ordinary builds use the checked-in generated sources; dependency fetching can happen before an offline build, as with Nix's `buildGoModule`.
+Run `go test ./...` from the source root, including when only `cmd/actionlint` is built. That command directory has no tests; engine tests live in the root package and frontend tests in `internal/cli`. Put Git, Bash, and ShellCheck on `PATH` for the tests. Ordinary builds use the checked-in generated sources; dependency fetching can happen before an offline build, as with Nix's `buildGoModule`.
 
 ### Nix development
 
@@ -139,7 +160,7 @@ nix flake check
 nix develop
 ```
 
-The default package runs `go test ./...` with the external linters and completion shells available. The flake's integration check verifies the installed version, help, configuration generation, package files, and ShellCheck and Pyflakes diagnostics. `nix develop` provides Go, Git, Make, Pandoc, the linters, Bash, Zsh, Fish, and `nixfmt`. It sets `GOTOOLCHAIN=local` so Go uses the compiler selected by Nix. Format the Nix files with `nix fmt`.
+The default package runs `go test ./...` with the external linters and completion shells available. The flake's integration check verifies the installed version, help, configuration generation, package files, and ShellCheck diagnostics. `nix develop` provides Go, Git, Make, Pandoc, the linters, Bash, Zsh, Fish, and `nixfmt`. It sets `GOTOOLCHAIN=local` so Go uses the compiler selected by Nix. Format the Nix files with `nix fmt`.
 
 The bump script updates the version in `flake.nix` together with the other release references and runs `nix flake check --no-update-lock-file` before creating a commit or tag. CI checks the package on every supported platform. Publishing binaries and images also requires those checks, including a match between the Nix version and the release tag. Update the package set with `nix flake update nixpkgs`, then run the checks. When Go dependencies change, update `vendorHash` in [nix/package.nix]: temporarily set it to `lib.fakeHash`, run `nix build`, and replace it with the hash reported by Nix.
 
@@ -206,6 +227,7 @@ These lints can be run with other checks by the following command.
 
 ```sh
 make lint
+make lint-docs # Requires ShellCheck for the examples
 ```
 
 ## Fuzzing
@@ -231,13 +253,13 @@ Running `make fuzz` without `FUZZ_FUNC` fails with a list of the available targe
 [`Dockerfile`] selects its base images with the `GOLANG_VER` and `ALPINE_VER` build arguments. Both default to explicit version tags and both can be overridden:
 
 ```sh
-docker build --build-arg GOLANG_VER=1.27.0 --build-arg ALPINE_VER=3.24 -t actionlint .
+docker build --build-arg GOLANG_VER=1.27.2 --build-arg ALPINE_VER=3.24 -t actionlint .
 ```
 
 To move the defaults to newer base images:
 
-1. Pick the new tags from Docker Hub ([golang], [alpine]). `GOLANG_VER` tracks the Go version used by CI (`GO` in [`ci.yml`]). `ALPINE_VER` tracks the Alpine release that `golang:<GOLANG_VER>-alpine` is built on.
-2. Update the `ARG` defaults in `Dockerfile` together with the `GOLANG_VER` build arguments in [`ci.yml`] and [`release.yml`].
+1. Pick the new tags from Docker Hub ([golang], [alpine]). `GOLANG_VER` tracks the preferred `toolchain` in `go.mod`, which CI reads through `go-version-file`. `ALPINE_VER` selects the final runtime image independently of the Go builder.
+2. For Go, run `node scripts/update-go-toolchain.mjs go<major>.<minor>.<patch>` with Node, `gh`, and Nix available. It verifies matching Nix compilers, then updates `go.mod`, the Docker builder default, this example, and the Nix pin and lock together. If no matching Nix compiler is available, it leaves the files unchanged. Update the Alpine `ARG` separately. CI and release builds use the Dockerfile defaults unless explicitly overridden.
 3. Verify with `droast Dockerfile` and `docker build -t actionlint .`.
 4. Send the upgrade as its own pull request.
 

@@ -58,3 +58,82 @@ func TestRuleRequirePermissions(t *testing.T) {
 		}
 	}
 }
+
+func TestWorkflowPermissionsSuppressionLocation(t *testing.T) {
+	for _, prefix := range []string{"# license\n", "\n\n", "# license\n\n---\n"} {
+		for _, ending := range []string{"\n", "\r\n"} {
+			for _, declaration := range []string{
+				"on: push # actionlint:ignore require-permissions -- reviewed",
+				"# actionlint:ignore-next-line require-permissions -- reviewed\non: push",
+				"name: # actionlint:ignore require-permissions -- reviewed\n  !!str\n  |\n    CI\non: push",
+			} {
+				source := strings.ReplaceAll(prefix+declaration+"\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n", "\n", ending)
+				if got := lintCachePolicy(t, source, "policy: {require-permissions: true}"); len(got) != 0 {
+					t.Fatalf("workflow permission finding cannot be suppressed in %q: %+v", source, got)
+				}
+			}
+		}
+	}
+}
+
+func TestWorkflowPermissionsDeclarationPosition(t *testing.T) {
+	policy, err := RequirePermissions("workflow")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		prefix string
+		line   int
+	}{
+		{"", 1},
+		{"# license\n\n", 3},
+		{"# license\n---\n", 3},
+	} {
+		for _, declaration := range []string{"on: push", "name:\n  !!str\n  |\n    CI\non: push", "name: &title CI\nrun-name: *title\non: push"} {
+			for _, ending := range []string{"\n", "\r\n"} {
+				source := strings.ReplaceAll(tc.prefix+declaration+"\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n", "\n", ending)
+				workflow, findings := Parse([]byte(source))
+				if len(findings) != 0 || workflow == nil || workflow.Pos == nil || *workflow.Pos != (Pos{Line: tc.line, Col: 1}) {
+					t.Fatalf("missing workflow declaration position: %+v, %+v", workflow, findings)
+				}
+				rule := NewRuleRequirePermissions(policy)
+				if err := rule.VisitWorkflowPre(workflow); err != nil {
+					t.Fatal(err)
+				}
+				if findings := rule.Errs(); len(findings) != 1 || findings[0].Line != tc.line || findings[0].Column != 1 {
+					t.Fatalf("permission finding lost declaration position: %+v", findings)
+				}
+			}
+		}
+	}
+	rule := NewRuleRequirePermissions(policy)
+	if err := rule.VisitWorkflowPre(&Workflow{}); err != nil {
+		t.Fatal(err)
+	}
+	if findings := rule.Errs(); len(findings) != 1 || findings[0].Line != 1 || findings[0].Column != 1 {
+		t.Fatalf("manual AST fallback changed: %+v", findings)
+	}
+}
+
+func TestWorkflowPermissionsSuppressionBoundaries(t *testing.T) {
+	for _, tc := range []struct {
+		header, declaration, policy string
+		want                        []string
+	}{
+		{"# actionlint:ignore require-permissions -- detached\n# license\n", "on: push", "require-permissions: true", []string{"require-permissions"}},
+		{"# license\n", "on: push # actionlint:ignore require-permissions", "require-permissions: true", []string{"require-permissions", "inline-suppression"}},
+		{"# license\n", "on: push # actionlint:ignore require-permissions -- reviewed", "require-permissions: true, disallow-suppressions: true", []string{"require-permissions", "disallow-suppressions"}},
+		{"# license\n", "on: push # actionlint:ignore require-permissions -- workflow only", "require-permissions: {scope: job}", []string{"require-permissions"}},
+	} {
+		source := tc.header + tc.declaration + "\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"
+		findings := lintCachePolicy(t, source, "policy: {"+tc.policy+"}")
+		if len(findings) != len(tc.want) {
+			t.Fatalf("permission suppression scope changed: %+v", findings)
+		}
+		for i, kind := range tc.want {
+			if findings[i].Kind != kind {
+				t.Fatalf("want %v, got %+v", tc.want, findings)
+			}
+		}
+	}
+}

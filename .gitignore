@@ -1,13 +1,15 @@
+.zed-save-backup-*
+/.cache/
 /.github/actionlint.yaml
 /.github/actionlint.yml
-/.cache/
 /.idea
+/.mise.local.toml
 /.playwright-mcp/
 /.worktrees/
+/action.mjs
 /actionlint
 /actionlint-workflow-ast
 /actionlint.exe
-/action.mjs
 /actionlint_fuzz-fuzz.zip
 /bump-version
 /corpus
@@ -25,4 +27,3 @@
 /result-*
 /vendor/
 node_modules/
-.zed-save-backup-*

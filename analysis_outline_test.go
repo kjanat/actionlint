@@ -267,3 +267,40 @@ jobs:
 		t.Fatalf("parallel children lost: %+v", children)
 	}
 }
+
+func TestAnalysisFailureKeepsOutline(t *testing.T) {
+	root := t.TempDir()
+	writeShellcheckFixture(t, root, "local/index.js", "console.log('ok');\n")
+	writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: node24\n  main: index.js\n")
+	source := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./local\n")
+	bogus := func(include string) *Config {
+		lint := &LintConfig{Rules: LintRulesConfig{Correctness: RuleGroupConfig{Rules: map[string]RuleSetting{"inline-suppression": {Level: "bogus"}}}}}
+		return &Config{Overrides: []ConfigOverride{{Includes: []string{include}, Lint: lint}}}
+	}
+	for _, tc := range []struct {
+		name   string
+		config *Config
+		ruff   string
+	}{
+		{"workflow config", bogus("**"), ""},
+		{"ruff", nil, filepath.Join(root, "missing-ruff")},
+		{"metadata config", bogus("local/action.yml"), ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			analysis, err := Analyze(t.Context(), AnalysisRequest{
+				Sources:    []SourceUnit{{Path: "ci.yml", Content: source, Project: &Project{root: root}, Config: tc.config}},
+				WorkingDir: root, Ruff: tc.ruff,
+			})
+			if err == nil {
+				t.Fatal("fixture must fail analysis")
+			}
+			if analysis == nil || len(analysis.Documents) == 0 {
+				t.Fatalf("analysis failure discarded outline: %v", err)
+			}
+			workflow := requireWorkflowOutline(t, analysis.Documents[0])
+			if workflow.Path != "ci.yml" || workflow.ParseStatus != "complete" || len(workflow.Jobs) != 1 {
+				t.Fatalf("analysis failure corrupted outline: %+v (%v)", workflow, err)
+			}
+		})
+	}
+}

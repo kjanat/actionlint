@@ -8,20 +8,80 @@ permissions: { contents: read }
 jobs:
   autofix:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.stack == null
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { fetch-depth: 0 }
+      - name: Test autofix change tracking
+        run: bash scripts/test-autofix-step.bash
+      - name: Select generators affected by this change
+        id: inputs
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [[ "${EVENT_NAME}" == pull_request ]]; then
+            base=$(git merge-base "${BASE_SHA}" "${HEAD_SHA}")
+          elif [[ "${BASE_SHA}" == 0000000000000000000000000000000000000000 ]]; then
+            base=$(git hash-object -w -t tree /dev/null)
+          else
+            base=${BASE_SHA}
+          fi
+          bash scripts/autofix-inputs.bash "${base}" "${HEAD_SHA}"
       # Without this action, dprint has to recompile the wasm plugins each time the action runs,
       # which is often, and wastes time, energy, and sanity.
-      - uses: kjanat/install-dprint@fc7e4f62965bab609a936c9e58ad4893bb9da961 # v2
+      - uses: kjanat/install-dprint@c2cdca92154b44b2a2c15222d25d91d1cddfca1b # v2.2.0
       - { uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e, with: { go-version-file: go.mod } } # v7
       - name: x/tools/go/analysis modernize
-        run: go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...
+        id: modernize
+        run: bash scripts/autofix-step.bash go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...
+      - name: Regenerate the configuration schema
+        id: schema
+        run: bash scripts/autofix-step.bash go generate -run generate-config-schema
+      - name: Regenerate affected Go tables
+        id: tables
+        if: steps.inputs.outputs.tables == 'true'
+        run: bash scripts/autofix-step.bash go generate -skip generate-config-schema
+        env: { GH_TOKEN: "${{ github.token }}" }
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        if: steps.inputs.outputs.readme == 'true'
+        with: { cache: true, auto_update: true }
+      - name: Refresh the affected README demo
+        id: readme
+        if: steps.inputs.outputs.readme == 'true'
+        run: bash scripts/autofix-step.bash go run ./scripts/check-readme -fix ./README.md
+        env: { GITHUB_TOKEN: "${{ github.token }}" }
       - name: format the code
+        id: format
         # autofix-ci will fail if the .github directory is touched
-        run: dprint fmt --allow-no-files --diff --excludes .github
+        run: bash scripts/autofix-step.bash dprint fmt --allow-no-files --diff --excludes .github
+      - name: Describe applied fixes
+        id: fixes
+        env:
+          MODERNIZE_CHANGED: ${{ steps.modernize.outputs.changed }}
+          SCHEMA_CHANGED: ${{ steps.schema.outputs.changed }}
+          TABLES_CHANGED: ${{ steps.tables.outputs.changed }}
+          README_CHANGED: ${{ steps.readme.outputs.changed }}
+          FORMAT_CHANGED: ${{ steps.format.outputs.changed }}
+        run: |
+          changes=()
+          if [[ "${MODERNIZE_CHANGED}" == true ]]; then changes+=('modernize Go'); fi
+          if [[ "${SCHEMA_CHANGED}" == true ]]; then changes+=('regenerate configuration schema'); fi
+          if [[ "${TABLES_CHANGED}" == true ]]; then changes+=('regenerate Go tables'); fi
+          if [[ "${README_CHANGED}" == true ]]; then changes+=('refresh README demo'); fi
+          if [[ "${FORMAT_CHANGED}" == true ]]; then changes+=('format code'); fi
+          if (( ${#changes[@]} )); then
+            printf -v description '%s, ' "${changes[@]}"
+            printf 'description=%s\n' "${description%, }" >> "${GITHUB_OUTPUT}"
+          fi
+      - name: Check fixes for stacked pull requests
+        if: github.event.pull_request.stack != null
+        run: |
+          git -c core.fileMode=false add --all
+          git diff --cached --exit-code
       - uses: autofix-ci/action@c5b2d67aa2274e7b5a18224e8171550871fc7e4a # v1
+        if: github.event.pull_request.stack == null && steps.fixes.outputs.description != ''
         with:
-          comment: Applied automated formatting and modernization fixes. Please review the generated commit.
-          commit-message: Apply automated formatting and modernization fixes
+          comment: "Applied fixes: ${{ steps.fixes.outputs.description }}. Please review the generated commit."
+          commit-message: "chore: ${{ steps.fixes.outputs.description }}"
           fail-fast: ${{ github.event_name == 'pull_request' }}

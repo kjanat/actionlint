@@ -333,7 +333,7 @@ func isImageOnDockerRegistry(image string) bool {
 
 func selfRepositoryUsesLocalSpec(spec string) (string, bool) {
 	p, ok := strings.CutPrefix(spec, "$/")
-	if !ok {
+	if !ok || strings.ContainsRune(p, '@') {
 		return "", false
 	}
 	p = strings.TrimLeft(p, "/")
@@ -381,7 +381,7 @@ func (rule *RuleAction) VisitStep(n *Step) error {
 		// Normalize it to the existing local path form so metadata and output validation still work.
 		local, ok := selfRepositoryUsesLocalSpec(spec)
 		if !ok {
-			rule.invalidActionFormat(e.Uses.Pos, spec, "path is missing")
+			rule.invalidActionFormat(e.Uses.Pos, spec, "self-repository references do not support an '@ref' suffix")
 			return nil
 		}
 		rule.checkLocalAction(local, spec, e)
@@ -624,6 +624,8 @@ func (rule *RuleAction) checkCompositeActionStep(meta *ActionMetadata, s *Action
 			rule.compositeStepErrorf(meta, s, idx, `must have a string value at "uses" key`)
 		} else if *s.Uses == "" {
 			rule.compositeStepErrorf(meta, s, idx, `has empty "uses" value`)
+		} else if strings.HasPrefix(*s.Uses, "$/") && strings.ContainsRune(*s.Uses, '@') {
+			rule.compositeStepErrorf(meta, s, idx, `self-repository references do not support an '@ref' suffix at "uses" key`)
 		} else if u, _, _ := strings.Cut(*s.Uses, "@"); strings.HasSuffix(u, ".yml") || strings.HasSuffix(u, ".yaml") {
 			rule.compositeStepErrorf(meta, s, idx, `cannot call reusable workflow %q at "uses" key`, *s.Uses)
 		}

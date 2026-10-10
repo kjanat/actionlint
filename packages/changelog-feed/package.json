@@ -93,8 +93,5 @@
   "devDependencies": {
     "@actions/github-script": "github:actions/github-script",
     "typescript": ">=7"
-  },
-  "volta": {
-    "extends": "../../package.json"
   }
 }

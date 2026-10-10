@@ -1,4 +1,4 @@
-import pyflakes from '#tools/pyflakes' with { type: 'json' };
+import ruff from '#tools/ruff' with { type: 'json' };
 import shellcheck from '#tools/shellcheck' with { type: 'json' };
 
 export type RunnerPlatform = {
@@ -40,6 +40,19 @@ export function checksumForAsset(checksums: string, filename: string): string {
 }
 
 export const shellcheckVersion = shellcheck.tagName.replace(/^v/, '');
+export const ruffVersion = ruff.tagName;
+
+export function ruffAsset(platform: RunnerPlatform, release: ShellcheckRelease = ruff): ReleaseAsset {
+	const arch = platform.arch === 'amd64' ? 'x86_64' : 'aarch64';
+	const target = { linux: 'unknown-linux-gnu', darwin: 'apple-darwin', windows: 'pc-windows-msvc' }[platform.os];
+	const archive = platform.os === 'windows' ? 'zip' : 'tar.gz';
+	const name = `ruff-${arch}-${target}.${archive}`;
+	const asset = release.assets.find((candidate) => candidate.name === name);
+	if (!asset) throw new Error(`Missing Ruff release asset: ${name}`);
+	const sha256 = /^sha256:([a-fA-F0-9]{64})$/.exec(asset.digest ?? '')?.[1];
+	if (!sha256) throw new Error(`Missing or invalid SHA-256 digest for Ruff asset: ${name}`);
+	return { name, url: asset.url, sha256: sha256.toLowerCase(), archive };
+}
 
 type ShellcheckRelease = {
 	tagName: string;
@@ -62,15 +75,3 @@ export function shellcheckAsset(platform: RunnerPlatform, release: ShellcheckRel
 		archive: platform.os === 'windows' ? 'zip' : 'tar.gz',
 	};
 }
-
-export const pyflakesVersion = pyflakes.info.version;
-const wheel = pyflakes.urls.find((asset) =>
-	asset.packagetype === 'bdist_wheel' && asset.filename.endsWith('-none-any.whl')
-);
-if (!wheel) throw new Error(`Missing universal pyflakes wheel for ${pyflakesVersion}`);
-export const pyflakesAsset: ReleaseAsset = {
-	name: wheel.filename,
-	url: wheel.url,
-	sha256: wheel.digests.sha256,
-	archive: 'zip',
-};

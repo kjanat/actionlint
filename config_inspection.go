@@ -15,6 +15,7 @@ type ConfigSelection struct {
 
 // ConfigOrigin identifies a default, configuration file value, or Action input.
 type ConfigOrigin struct {
+	File   string `json:"file,omitempty" yaml:"file,omitempty"`
 	Source string `json:"source" yaml:"source"`
 	Input  string `json:"input,omitempty" yaml:"input,omitempty"`
 	State  string `json:"state" yaml:"state"`
@@ -63,14 +64,17 @@ func InspectConfig(selection ConfigSelection, withOrigin bool) (ConfigInspection
 	if err != nil {
 		return ConfigInspection{}, err
 	}
-	var data []byte
+	var resolved resolvedConfig
 	if path != "" {
-		data, err = os.ReadFile(path)
+		var source *loadedConfig
+		source, err = readConfigSource(path, os.ReadFile)
 		if err != nil {
-			return ConfigInspection{Path: path}, fmt.Errorf("could not read config file %q: %w", path, err)
+			return ConfigInspection{Path: path}, err
 		}
+		resolved = source.resolvedConfig
+	} else {
+		resolved, err = resolveConfigDocument(nil)
 	}
-	resolved, err := resolveConfigDocument(data)
 	if err != nil {
 		return ConfigInspection{Path: path}, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}

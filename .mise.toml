@@ -1,29 +1,49 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 
+[wrappers.actionlint]
+command = "go"
+args    = ["run", "./cmd/actionlint"]
+env     = { GOFLAGS = "-buildvcs=true" }
+
 [tools]
-actionlint    = { version = "latest", minimum_release_age = "0s", depends = ["shellcheck"] }
-dprint        = { version = "latest", lazy = true }
-go            = { version = "latest" }
-golangci-lint = { version = "latest", lazy = true }
-runner-run    = "latest"
-shellcheck    = { version = "latest" }
-tombi         = { version = "latest", lazy = true }
+go                            = { prefix = "1.27" }
+node                          = { prefix = "26" }
+npm                           = "12.0.2"
+"golangci-lint"               = { prefix = "2", depends = ["go"] }
+"github:biomejs/biome"        = { prefix = "2.5", version_prefix = "@biomejs/biome@" }
+"github:jgm/pandoc"           = { prefix = "3" }
+"github:kjanat/actionlint"    = { version = "latest", depends = ["shellcheck"] }
+"github:kjanat/runner"        = { prefix = "0.27" }
+"github:koalaman/shellcheck"  = { prefix = "0.11" }
+"github:microsoft/TypeScript" = { prefix = "7" }
+"github:rhysd/actionlint"     = { version = "latest", depends = ["shellcheck"] }
+"github:tombi-toml/tombi"     = { prefix = "1.8" }
+
+[tools."github:kjanat/dprint"]
+version = "0.59.0-kjanat"
+depends = ["tombi", "go"]
 
 [tool_alias]
-"actionlint"        = "github:kjanat/actionlint"
-"actionlint-kjanat" = "github:kjanat/actionlint"
-"actionlint-rhysd"  = "github:rhysd/actionlint"
-"runner-run"        = "github:kjanat/runner"
+tombi      = "github:tombi-toml/tombi"
+shellcheck = "github:koalaman/shellcheck"
 
 [settings]
-minimum_release_age_excludes = [
-  "actionlint",
-  "github:kjanat/actionlint",
-  "github:rhysd/actionlint",
-]
+experimental                        = true
+idiomatic_version_file_enable_tools = ["go", "node"]
+minimum_release_age                 = "0s"
 
 [env]
-GOFLAGS = "-buildvcs=true"
+GOFLAGS      = "-buildvcs=true"
+VOLTA_BYPASS = 1
+
+[deps]
+[deps.npm]
+auto = true
+run  = "npm i --no-fund --no-audit --ignore-scripts"
+
+[deps.go]
+auto = true
+run  = "go mod tidy -diff"
 
 [tasks]
 [tasks.build]
@@ -37,3 +57,4 @@ env         = { GOFLAGS = "-buildvcs=true" }
 alias       = ["f", "fmt"]
 description = "Format code"
 run         = "dprint fmt"
+tools       = { tombi = { prefix = "1.8" } }

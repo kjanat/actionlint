@@ -14,9 +14,9 @@ func (commandFailingIO) Write([]byte) (int, error) { return 0, errors.New("write
 func (l *Linter) check(path string, content []byte, project *Project, proc *concurrentProcess, actions *LocalActionsCache, workflows *LocalReusableWorkflowCache) ([]*Error, error) {
 	engine := analysisEngine{
 		analysisLogger: l.analysisLogger, ctx: l.ctx,
-		shellcheck: l.request.ShellCheck, pyflakes: l.request.Pyflakes,
-		shellcheckOptions: l.request.ShellcheckOptions, pyflakesOptions: l.request.PyflakesOptions,
-		ignorePats: l.request.IgnorePatterns, onRulesCreated: l.request.OnRulesCreated,
+		shellcheck:        l.request.ShellCheck,
+		shellcheckOptions: l.request.ShellcheckOptions,
+		ignorePats:        l.request.IgnorePatterns, onRulesCreated: l.request.OnRulesCreated,
 	}
 	var rules []Rule
 	errs, _, err := engine.check(path, content, project, l.source(path, content, project).Config, proc, actions, workflows, &rules)

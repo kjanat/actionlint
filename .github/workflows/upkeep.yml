@@ -25,9 +25,12 @@ jobs:
       - name: Check new release on GitHub
         run: |
           set -euo pipefail
-          # The detector exits 2 when a tracked action has a new major.
+          detector="$(mktemp)"
+          trap 'rm -f "${detector}"' EXIT
+          go build -o "${detector}" ./scripts/generate-popular-actions
+          # Run directly: go run turns the detector's exit 2 into exit 1.
           status=0
-          releases="$(go run ./scripts/generate-popular-actions -d)" || status=$?
+          releases="$("${detector}" -d)" || status=$?
           if [[ -n "${releases}" ]]; then
             printf '%s\n' "${releases}"
           fi
@@ -44,7 +47,8 @@ jobs:
           elif [[ "${status}" -ne 0 ]]; then
             exit "${status}"
           fi
-      - run: go generate
+      - name: Refresh upstream action and workflow metadata
+        run: go generate -skip generate-config-schema
         env: { GH_TOKEN: "${{ github.token }}" }
       - name: Warn when the pull request will carry no CI
         env: { UPKEEP_TOKEN: "${{ secrets.UPKEEP_TOKEN }}" }
@@ -83,8 +87,8 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
-      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
-        with: { cache: false }
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with: { cache: true, auto_update: true }
       - run: go run ./scripts/check-readme -fix ./README.md
         env: { GITHUB_TOKEN: "${{ github.token }}" }
       - name: Read the versions the section now describes
@@ -130,8 +134,14 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version-file: .node-version, package-manager-cache: false }
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+      - name: Test synchronized toolchain updates
+        run: node --test scripts/update-go-toolchain.test.mjs
       - name: Check the latest stable Go toolchain
         id: version
+        env: { GH_TOKEN: "${{ github.token }}" }
         run: |
           set -euo pipefail
           version="$(curl --fail --silent --show-error --location 'https://go.dev/VERSION?m=text' | sed -n '1p')"
@@ -139,7 +149,7 @@ jobs:
             echo "::error title=Invalid Go version::go.dev returned '${version}'"
             exit 1
           fi
-          go mod edit -toolchain="${version}"
+          node scripts/update-go-toolchain.mjs "${version}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
       - name: Warn when the pull request will carry no CI
         env: { UPKEEP_TOKEN: "${{ secrets.UPKEEP_TOKEN }}" }
@@ -152,11 +162,16 @@ jobs:
           token: ${{ secrets.UPKEEP_TOKEN || github.token }}
           branch: ci/go-toolchain-version
           delete-branch: true
-          add-paths: go.mod
+          add-paths: |
+            go.mod
+            Dockerfile
+            CONTRIBUTING.md
+            flake.nix
+            flake.lock
           commit-message: "Bump Go toolchain to ${{ steps.version.outputs.version }}"
           title: "Bump Go toolchain to ${{ steps.version.outputs.version }}"
           body: |
-            Updates the preferred Go toolchain in `go.mod` to `${{ steps.version.outputs.version }}`. The minimum supported Go version remains unchanged.
+            Updates the preferred Go toolchain, Docker builder, contributor example, and verified Nix compiler pin to `${{ steps.version.outputs.version }}`. The minimum supported Go version remains unchanged.
 
             Created by [this Upkeep run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
           labels: |

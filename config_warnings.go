@@ -10,14 +10,29 @@ import (
 
 // ConfigWarning identifies an ignored setting without rejecting legacy config files.
 type ConfigWarning struct {
+	File    string `json:"file,omitempty" yaml:"file,omitempty"`
 	Message string `json:"message" yaml:"message"`
 	Line    int    `json:"line" yaml:"line"`
 	Column  int    `json:"column" yaml:"column"`
 }
 
+func mergeConfigWarnings(groups ...[]ConfigWarning) []ConfigWarning {
+	var result []ConfigWarning
+	seen := map[ConfigWarning]bool{}
+	for _, group := range groups {
+		for _, warning := range group {
+			if !seen[warning] {
+				seen[warning] = true
+				result = append(result, warning)
+			}
+		}
+	}
+	return result
+}
+
 // Only these legacy mappings permit unknown fields. New tool and policy settings
 // already reject unknown keys in their decoders.
-func configWarnings(root *yaml.Node) []ConfigWarning {
+func configWarnings(root *yaml.Node, inputs map[*yaml.Node]configInput) []ConfigWarning {
 	var warnings []ConfigWarning
 	var check func(*yaml.Node, string, []string)
 	check = func(node *yaml.Node, prefix string, allowed []string) {
@@ -28,7 +43,10 @@ func configWarnings(root *yaml.Node) []ConfigWarning {
 			key, value := node.Content[i], node.Content[i+1]
 			name := prefix + key.Value
 			if !slices.Contains(allowed, key.Value) {
-				warnings = append(warnings, ConfigWarning{fmt.Sprintf("unknown configuration key %q; ignored. Expected one of: %s", name, strings.Join(allowed, ", ")), key.Line, key.Column})
+				warnings = append(warnings, ConfigWarning{
+					File: inputs[key].File, Line: key.Line, Column: key.Column,
+					Message: fmt.Sprintf("unknown configuration key %q; ignored. Expected one of: %s", name, strings.Join(allowed, ", ")),
+				})
 				continue
 			}
 			if prefix != "" {

@@ -12,6 +12,7 @@ import (
 	"slices"
 	"sync"
 
+	"actionlint.kjanat.dev/internal/workflownames"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -27,19 +28,24 @@ type SourceUnit struct {
 
 // AnalysisRequest contains resolved sources and analysis settings.
 type AnalysisRequest struct {
-	Sources            []SourceUnit
-	ShellCheck         string
+	Sources    []SourceUnit
+	ShellCheck string
+	// Deprecated: Pyflakes integration was removed. This field is ignored.
 	Pyflakes           string
 	ShellcheckOptions  *ExternalCommandOptions
 	ShellcheckSettings *ShellcheckSettings
-	PyflakesOptions    *ExternalCommandOptions
-	IgnorePatterns     IgnorePatterns
-	OnRulesCreated     func([]Rule) []Rule
+	// Deprecated: Pyflakes integration was removed. This field is ignored.
+	PyflakesOptions *ExternalCommandOptions
+	IgnorePatterns  IgnorePatterns
+	OnRulesCreated  func([]Rule) []Rule
 	// WorkingDir resolves workflow paths in reusable-workflow caches. Empty uses os.Getwd.
 	WorkingDir string
 	// ReadFile reads local action metadata and reusable workflows. Nil uses os.ReadFile.
 	// It must support concurrent calls and does not restrict external tools.
-	ReadFile func(string) ([]byte, error)
+	ReadFile    func(string) ([]byte, error)
+	RulePresets RulePresets
+	Ruff        string
+	RuffOptions *ExternalCommandOptions
 }
 
 // AnalysisResult contains findings, their sources, and every local input read during analysis.
@@ -47,8 +53,9 @@ type AnalysisResult struct {
 	Configurations []ConfigReport
 	Diagnostics    []Diagnostic
 	Documents      DocumentOutlines
-	Inputs         []string
-	files          []analyzedFile
+	// Inputs includes discovery directories so watchers can detect added files.
+	Inputs []string
+	files  []analyzedFile
 }
 
 type analyzedFile struct {
@@ -86,6 +93,17 @@ func (f *inputFiles) list() []string {
 	return paths
 }
 
+func (f *inputFiles) addConfig(config *Config, project *Project) {
+	if config != nil {
+		for _, path := range config.configFiles {
+			f.add(path)
+		}
+	}
+	if project != nil {
+		f.add(project.configPath)
+	}
+}
+
 // Analyze checks resolved workflows and returns data without rendering diagnostics.
 // On analysis failure, a non-nil result retains findings collected before the failure.
 func Analyze(ctx context.Context, request AnalysisRequest) (*AnalysisResult, error) {
@@ -96,14 +114,50 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	if request.WorkingDir == "" {
+		var err error
+		request.WorkingDir, err = os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+	}
+	var err error
+	request.WorkingDir, err = filepath.Abs(request.WorkingDir)
+	if err != nil {
+		return nil, err
+	}
+	inputs := &inputFiles{}
+	allSources := request.Sources
+	selected := make([]SourceUnit, 0, len(request.Sources))
+	for _, source := range request.Sources {
+		// Selection itself consumes configuration, even when no source survives.
+		inputs.addConfig(source.Config, source.Project)
+		root := request.WorkingDir
+		if source.Project != nil {
+			root = source.Project.RootDir()
+		}
+		path := source.inputPath
+		if path == "" {
+			path = source.Path
+		}
+		if path != "<stdin>" && !filepath.IsAbs(path) {
+			path = filepath.Join(request.WorkingDir, path)
+		}
+		source.inputPath = path
+		if source.Config.includesFile(path, root) {
+			selected = append(selected, source)
+		}
+	}
+	request.Sources = selected
 	if level != LogLevelNone {
 		log = &analysisLogWriter{out: log}
 	}
-	engine := &analysisEngine{ctx: ctx, shellcheck: request.ShellCheck, pyflakes: request.Pyflakes,
-		shellcheckOptions: request.ShellcheckOptions, pyflakesOptions: request.PyflakesOptions,
+	engine := &analysisEngine{ctx: ctx, shellcheck: request.ShellCheck,
+		ruff: request.Ruff, ruffOptions: request.RuffOptions,
+		rulePresets:        request.RulePresets,
+		shellcheckOptions:  request.ShellcheckOptions,
 		shellcheckSettings: request.ShellcheckSettings,
 		ignorePats:         request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: analysisLogger{log, level}}
-	inputs := &inputFiles{}
 	documents := &actionDocuments{byPath: map[string]ActionOutline{}}
 	proc := newConcurrentProcess(ctx, runtime.NumCPU())
 	actions := NewLocalActionsCacheFactory(engine.debugWriter())
@@ -123,6 +177,44 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	if readFile == nil {
 		readFile = os.ReadFile
 	}
+	sourceContents := map[string][]byte{}
+	sourcePaths := make([]string, 0, len(allSources))
+	for _, source := range allSources {
+		path := source.inputPath
+		if path == "" {
+			path = source.Path
+		}
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(engine.workingDir, path)
+		}
+		sourceContents[filepath.Clean(path)] = source.Content
+		sourcePaths = append(sourcePaths, filepath.Clean(path))
+	}
+	engine.workflowNames = &workflownames.Index{Paths: sourcePaths, OnDirectory: inputs.add, Load: func(path string) (string, bool, error) {
+		if err := ctx.Err(); err != nil {
+			return "", false, err
+		}
+		inputs.add(path)
+		content, ok := sourceContents[filepath.Clean(path)]
+		if !ok {
+			var err error
+			content, err = readFile(path)
+			if err != nil {
+				return "", false, err
+			}
+		}
+		workflow, errs := Parse(content)
+		if workflow == nil || len(errs) > 0 {
+			return "", false, nil
+		}
+		if workflow.Name == nil {
+			return "", true, nil
+		}
+		if literal := literalExpressionValue(workflow.Name.Value); literal != nil {
+			return *literal, true, nil
+		}
+		return workflow.Name.Value, !workflow.Name.ContainsExpression(), nil
+	}}
 	// Initialize shared caches before any analysis goroutines access them.
 	for _, source := range request.Sources {
 		ac, wc := actions.GetCache(source.Project), workflows.GetCache(source.Project)
@@ -138,9 +230,6 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 			path = source.Path
 		}
 		inputs.add(path)
-		if source.Project != nil {
-			inputs.add(source.Project.configPath)
-		}
 		ac, wc := actions.GetCache(source.Project), workflows.GetCache(source.Project)
 		group.Go(func() error {
 			file := &result.files[i]
@@ -153,7 +242,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 			return err
 		})
 	}
-	err := group.Wait()
+	err = group.Wait()
 	proc.wait()
 	if err == nil {
 		err = ctx.Err()

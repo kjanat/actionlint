@@ -46,7 +46,7 @@ func normalizeToolSwitch(node *yaml.Node) *yaml.Node {
 		}
 		return &normalized
 	}
-	return rewrite(node, []string{"tools", "shellcheck"})
+	return rewrite(rewrite(node, []string{"tools", "shellcheck"}), []string{"tools", "ruff"})
 }
 
 func validateShellcheckBooleans(node *yaml.Node, keys ...string) error {
@@ -222,7 +222,11 @@ func (config *ShellcheckConfig) directives() (string, error) {
 	}
 	var out strings.Builder
 	write := func(key, value string) {
-		out.WriteString("# shellcheck " + key + "=" + value + "\n")
+		out.WriteString("# shellcheck ")
+		out.WriteString(key)
+		out.WriteByte('=')
+		out.WriteString(value)
+		out.WriteByte('\n')
 	}
 	if len(config.Disable) > 0 {
 		write("disable", strings.Join(config.Disable, ","))

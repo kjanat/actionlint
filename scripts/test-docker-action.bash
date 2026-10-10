@@ -13,6 +13,7 @@ workspace="$(pwd)"
 temporary="$(mktemp -d)"
 trap 'rm -rf "${temporary}"' EXIT
 mkdir -p "${temporary}/workspace/.git" "${temporary}/commands"
+ruff_environment=()
 
 output() {
 	awk -v name="$1" '
@@ -49,6 +50,7 @@ expect_status() {
 		--workdir /github/workspace \
 		-e GITHUB_ACTIONS=true -e GITHUB_WORKSPACE=/github/workspace \
 		-e GITHUB_OUTPUT=/github/file_commands/output \
+		"${ruff_environment[@]}" \
 		"${image}" "$@" >"${temporary}/action.log" 2>&1 || status=$?
 	if [[ "${status}" != "${expected}" ]]; then
 		printf 'Expected exit %s, got %s\n' "${expected}" "${status}" >&2
@@ -79,26 +81,20 @@ expect_output problem-count 1
 expect_status 0 testdata/err/one_error.yaml json '.*' '' false false . '' true
 expect_output problem-count 0
 
-for tool in shellcheck pyflakes; do
-	case "${tool}" in
-		shellcheck)
-			fixture=testdata/err/shellcheck_default_shell_detection.yaml
-			shellcheck=true
-			pyflakes=false
-			;;
-		pyflakes)
-			fixture=testdata/err/pyflakes_step_shell.yaml
-			shellcheck=false
-			pyflakes=true
-			;;
-		*) exit 1 ;;
-	esac
-	expect_status 0 "${fixture}" json '' '' "${shellcheck}" "${pyflakes}" . '' false
-	problem_count="$(output problem-count)"
-	[[ "${problem_count}" -gt 0 ]]
-	expect_status 0 "${fixture}" json '' '' false false . '' true
-	expect_output problem-count 0
-done
+expect_status 0 testdata/err/shellcheck_default_shell_detection.yaml json '' '' true false . '' false
+problem_count="$(output problem-count)"
+[[ "${problem_count}" -gt 0 ]]
+expect_status 0 testdata/err/shellcheck_default_shell_detection.yaml json '' '' false false . '' true
+expect_output problem-count 0
+
+cp nix/integration.yml "${temporary}/workspace/python.yml"
+expect_status 1 python.yml json '' '' false false . '' true
+expect_output problem-count 1
+output output | jq -e 'any(.diagnostics[]; .rule == "ruff" and .code == "F821")' >/dev/null
+ruff_environment=(-e INPUT_RUFF=false)
+expect_status 0 python.yml json '' '' false false . '' true
+expect_output problem-count 0
+ruff_environment=()
 
 mkdir -p "${temporary}/workspace/sub/.github/workflows"
 cp testdata/ok/minimal.yaml "${temporary}/workspace/sub/.github/workflows/check.yaml"

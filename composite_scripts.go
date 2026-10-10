@@ -64,6 +64,13 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *Step, parents []Rule
 	children := make([]Rule, 0, len(parents))
 	for _, parent := range parents {
 		child := compositeScriptRule(parent, call, filepath.Dir(meta.Path()), analysis.actions)
+		if _, ok := child.(*ruffRule); ok && analysis.configForFile != nil {
+			config, err := analysis.configForFile(meta.Path())
+			if err != nil {
+				return err
+			}
+			child.SetConfig(config)
+		}
 		if shellcheck, ok := child.(*RuleShellcheck); ok {
 			if err := shellcheck.prepareConfigPath(); err != nil {
 				return err
@@ -151,6 +158,8 @@ func compositeActionOrigin(paths *runPaths, call *Step, actionPath string) {
 func compositeScriptRule(parent Rule, call *Step, actionPath string, actions *LocalActionsCache) Rule {
 	var child Rule
 	switch rule := parent.(type) {
+	case *ruffRule:
+		child = &ruffRule{RuleBase: builtinRuleBase("ruff"), checker: rule.checker.Fork()}
 	case *RuleShellcheck:
 		scoped := newRuleShellcheck(rule.cmd)
 		scoped.config, scoped.paths, scoped.onInput = rule.config, rule.paths, rule.onInput
@@ -161,8 +170,6 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string, actions *Lo
 		compositeCheckoutPaths(scoped, actions)
 		compositeActionOrigin(&scoped.paths, call, actionPath)
 		child = scoped
-	case *RulePyflakes:
-		child = newRulePyflakes(rule.cmd)
 	case *RuleExecutableBit:
 		child = rule.forkComposite(call, actionPath, actions)
 	default:

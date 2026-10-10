@@ -17,6 +17,9 @@ runCommand "actionlint-nix-integration"
   ''
     bash ${../scripts/check-packaged-cli.bash} ${actionlint}/bin/actionlint
     ${actionlint}/bin/actionlint -version | grep -Fx 'actionlint.kjanat.dev ${actionlint.version}'
+    expectedToolchain="$(sed -n 's/^toolchain //p' ${actionlint.src}/go.mod)"
+    test -n "$expectedToolchain"
+    ${actionlint}/bin/actionlint -version | grep -F "built with $expectedToolchain compiler for "
     ${actionlint}/bin/actionlint -help > help.txt 2>&1
     grep -Fx 'Usage:' help.txt
     grep -F 'actionlint [flags] [files...] [-]' help.txt
@@ -56,9 +59,12 @@ runCommand "actionlint-nix-integration"
     PATH= ${actionlint}/bin/actionlint -no-color -oneline > diagnostics.txt 2>&1
     status=$?
     set -e
-    test "$status" -eq 1
-    grep -F 'SC2086' diagnostics.txt
-    grep -F "undefined name 'undefined_name'" diagnostics.txt
+    if ! test "$status" -eq 1 ||
+      ! grep -F 'SC2086' diagnostics.txt ||
+      ! grep -F 'F821' diagnostics.txt; then
+      cat diagnostics.txt >&2
+      exit 1
+    fi
 
     touch "$out"
   ''

@@ -180,6 +180,26 @@ preserves any previous report. An output file cannot replace a consumed workflow
 Logs and operational errors go to stderr. Structured output never includes ANSI
 color or terminal hyperlinks. A clean default text run stays silent.
 
+Try additional checks without changing a configuration file:
+
+```sh
+actionlint --strict
+actionlint --experimental
+actionlint check --strict --experimental
+```
+
+`--strict` selects all stable catalog rules, including non-recommended suspicious checks
+and opt-in repository policies. Explicit group and individual rule exceptions remain in effect, as do
+configured timeout bounds, permission scopes, suppression report modes and
+rule-ID/path ignores. It does not invent a
+`required-actions` list or install missing external linters. `--experimental`
+enables nursery rules while retaining individual exclusions. Strict
+mode alone does not enable nursery rules. Both switches apply after file
+overrides; `--experimental=false` clears only nursery selections. No current rules are in nursery.
+`--strict=false` removes the strict preset. Policies enabled in configuration remain active.
+Use `ACTIONLINT_STRICT=true` and `ACTIONLINT_EXPERIMENTAL=true` for equivalent
+environment defaults; explicit flags, including `false`, take precedence.
+
 `--log-level=none|info|debug` controls logging. `--summary` adds an opt-in count on
 stderr. `--quiet` suppresses logs and summaries while preserving requested results
 and errors. In JSON modes, check failures on stderr use the same result contract, with
@@ -294,8 +314,9 @@ actionlint completion powershell | Out-String | Invoke-Expression
 
 ### Ignore some errors
 
-The three cache policies support [inline exceptions](config.md#inline-cache-policy-exceptions) with a rule name and
-a reason. Place the comment on the reported line, or use `actionlint:ignore-next-line` immediately before it:
+Every registered diagnostic rule supports [inline exceptions](config.md#inline-diagnostic-suppressions)
+with a rule name and a reason. Place the comment on the reported line, or use
+`actionlint:ignore-next-line` immediately before it. A directive on a YAML block scalar header covers its body.
 
 ```yaml
 cache-mode: write # actionlint:ignore cache-write-untrusted -- this job runs reviewed default-branch code only
@@ -309,20 +330,26 @@ syntax is the same as [RE2][re2].
 actionlint -ignore 'label ".+" is unknown' -ignore '".+" is potentially untrusted'
 ```
 
-`-shellcheck` and `-pyflakes` take a command line, not only a path. A command
-name, a file path, or a command with flags all work. Setting an empty string
-disables the `shellcheck` and `pyflakes` rules. As a bonus, disabling them makes
-actionlint much faster. These external linter integrations spawn many processes.
+The `-shellcheck` option accepts a command name, path, or command line with arguments.
+An empty value disables ShellCheck.
 
 ```sh
-actionlint -shellcheck= -pyflakes=
+actionlint -shellcheck=
 actionlint -shellcheck 'shellcheck -e SC2086'
-actionlint -pyflakes 'python3 -m pyflakes'
 ```
+
+Ruff checks Python `run:` steps when `ruff` is installed on `PATH`. Use `--ruff`
+to select another executable or command line; `--ruff=false` or `--ruff=` disables it. No Python
+interpreter or Pyflakes installation is needed. See [Ruff configuration](config.md#ruff).
+
+Pyflakes integration has been removed. The released `-pyflakes` option remains
+a deprecated no-op; use Ruff for Python analysis.
 
 To configure executables, arguments and child environments separately, use
 `ACTIONLINT_SHELLCHECK_BIN`, `ACTIONLINT_SHELLCHECK_FLAGS`, and
-`ACTIONLINT_SHELLCHECK_ENV`, or their `ACTIONLINT_PYFLAKES_*` equivalents.
+`ACTIONLINT_SHELLCHECK_ENV`.
+Ruff has matching `ACTIONLINT_RUFF_BIN`, `ACTIONLINT_RUFF_FLAGS`, and
+`ACTIONLINT_RUFF_ENV` settings.
 An explicit tool flag overrides all three environment settings for that tool.
 See [External linter environment settings](env.md#external-linters) for quoting,
 Windows paths and examples.
@@ -352,9 +379,7 @@ file/directory; an rc path replaces `--norc` with `--rcfile`. Following sourced
 files (`-x`) can be disabled in
 configuration and is disabled when the step's working directory cannot be resolved
 locally. Additional options can use `-shellcheck '<command line>'` or the
-[`SHELLCHECK_OPTS` environment variable](checks.md#check-shellcheck-integ). pyflakes has no
-configuration file and no `# noqa`, so suppress its findings with `-ignore` or
-the `paths:` section of the configuration file.
+[`SHELLCHECK_OPTS` environment variable](checks.md#check-shellcheck-integ).
 
 <a id="format"></a>
 
@@ -627,8 +652,10 @@ results table moves a cursor to position of the error in the code editor.
 
 [![Docker Image Version][docker-badge]][dockerhub]
 
-[Docker image][docker-image] is available. The image contains `actionlint`
-executable and all dependencies (shellcheck and pyflakes).
+[Docker image][docker-image] is available. Images built from this revision contain `actionlint`,
+ShellCheck, and the native Ruff executable. No Python interpreter is required.
+Ruff's official release archive is pinned by version and SHA-256 for both Linux amd64 and arm64.
+Previously published images are unchanged; Ruff will be included in the next release image.
 
 Available tags are:
 
@@ -682,8 +709,7 @@ docker run --rm -v "$(git rev-parse --show-toplevel):/w" \
   -e SHELLCHECK_OPTS='-e SC2086' ghcr.io/kjanat/actionlint:latest -color
 ```
 
-The `action-*` images are the exception. Their `shellcheck` and `pyflakes`
-inputs are booleans that only switch the integrations on or off, so
+The `action-*` images are the exception. Their `shellcheck` input is a boolean that switches the integration on or off, so
 `SHELLCHECK_OPTS` in the step's `env:` is the only way to configure shellcheck
 there.
 
@@ -700,7 +726,7 @@ Go APIs are available. See [the Go API document](api.md) for more details.
 [reviewdog][reviewdog] posts inline review comments and filters findings to changed
 lines, keeping feedback focused on the pull request.
 The [`reviewdog/action-actionlint` action][reviewdog-actionlint] runs this fork
-with ShellCheck and Pyflakes enabled.
+with ShellCheck enabled.
 We recommend v1.76.2 or newer.
 
 Add the following workflow to `.github/workflows/reviewdog-actionlint.yaml`:
@@ -790,6 +816,7 @@ for the discussion.
 > `actionlint` hook builds this fork, `actionlint-docker` pulls this fork's
 > image, and `actionlint-system` runs the `actionlint` executable on `PATH`.
 > `actionlint-shellcheck` builds this fork and installs ShellCheck next to it.
+> `actionlint-bundled` builds the selected source revision's Docker image with both ShellCheck and Ruff.
 
 [pre-commit][pre-commit] is a framework for managing and maintaining
 multi-language Git pre-commit hooks. actionlint is available as a pre-commit
@@ -807,17 +834,21 @@ repos:
 ```
 
 As alternatives to `actionlint` hook, `actionlint-docker`, `actionlint-system`,
-or `actionlint-shellcheck` hooks are available.
+`actionlint-shellcheck`, or `actionlint-bundled` hooks are available.
 
 | Hook ID                 | Explanation                                                                                                                                                                                                                         |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `actionlint`            | Automatically installs `actionlint` command in isolated `$GOPATH` directory using [Go toolchain][go-install].                                                                                                                       |
 | `actionlint-docker`     | Automatically pulls [the actionlint Docker image](#docker).                                                                                                                                                                         |
+| `actionlint-bundled`    | Builds this revision's Dockerfile, bundling ShellCheck and Ruff. Requires Docker; no host Go, Python, ShellCheck, or Ruff installation is needed.                                                                                   |
 | `actionlint-system`     | Uses system-installed `actionlint` command. The command is necessary to be [installed manually](install.md).                                                                                                                        |
 | `actionlint-shellcheck` | Same as `actionlint`, and additionally installs a Go build of ShellCheck ([`wasilibs/go-shellcheck`][go-shellcheck]) so [the shellcheck integration](checks.md#check-shellcheck-integ) works without a host-installed `shellcheck`. |
 
-The `actionlint` hook installs into an isolated `$GOPATH`, so it only finds a
-`shellcheck` executable that is already on `PATH`.
+The `actionlint` hook installs into an isolated `$GOPATH`, so ShellCheck and Ruff must already be on `PATH`.
+The `actionlint-shellcheck` hook installs ShellCheck but not Ruff. Go `additional_dependencies` cannot install
+Ruff's Python package, and a separate `ruff-pre-commit` hook does not share its environment with actionlint.
+Use `actionlint-bundled` to install both automatically: select a commit or release containing this hook and set
+`id: actionlint-bundled`. It builds the bundled image from that revision.
 
 `actionlint-shellcheck` pins go-shellcheck so each actionlint revision builds a
 reproducible pre-commit environment. The scheduled [Upkeep workflow](../.github/workflows/upkeep.yml) checks both go-shellcheck

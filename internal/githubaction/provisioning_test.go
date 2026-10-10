@@ -13,33 +13,35 @@ func TestToolPlanUsesEffectiveConfiguration(t *testing.T) {
 		files      map[string]string
 		inputs     map[string]string
 		shellcheck bool
-		pyflakes   bool
 	}{
-		{name: "defaults", shellcheck: true, pyflakes: true},
-		{name: "yaml", files: map[string]string{".github/actionlint.yaml": "tools:\n  shellcheck: false\n"}, pyflakes: true},
-		{name: "yml", files: map[string]string{".github/actionlint.yml": "tools:\n  shellcheck:\n    enabled: false\n"}, pyflakes: true},
+		{name: "defaults", shellcheck: true},
+		{name: "discovered includes", files: map[string]string{".github/actionlint.yaml": "files: {includes: ['.github/workflows/*.yml']}"}, shellcheck: true},
+		{name: "discovered excludes", files: map[string]string{".github/actionlint.yaml": "files: {excludes: ['.github/workflows/*.yml']}"}},
+		{name: "discovered override", files: map[string]string{".github/actionlint.yaml": "overrides: [{includes: ['**/*.yml'], lint: {rules: {external: {shellcheck: off}}}}]"}},
+		{name: "yaml", files: map[string]string{".github/actionlint.yaml": "tools:\n  shellcheck: false\n"}},
+		{name: "yml", files: map[string]string{".github/actionlint.yml": "tools:\n  shellcheck:\n    enabled: false\n"}},
 		{name: "yaml precedence", files: map[string]string{
 			".github/actionlint.yaml": "tools: {shellcheck: false}",
 			".github/actionlint.yml":  "tools: {shellcheck: true}",
-		}, pyflakes: true},
-		{name: "whole config overlay", inputs: map[string]string{"INPUT_CONFIG": "tools: {shellcheck: false}"}, pyflakes: true},
+		}},
+		{name: "whole config overlay", inputs: map[string]string{"INPUT_CONFIG": "tools: {shellcheck: false}"}},
 		{name: "expanded config overlay", inputs: map[string]string{
 			"INPUT_CONFIG": "tools: {shellcheck: {enabled: false}}",
-		}, pyflakes: true},
+		}},
 		{name: "reset overlay", files: map[string]string{".github/actionlint.yaml": "tools: {shellcheck: false}"},
-			inputs: map[string]string{"INPUT_CONFIG": "tools: null"}, shellcheck: true, pyflakes: true},
+			inputs: map[string]string{"INPUT_CONFIG": "tools: null"}, shellcheck: true},
 		{name: "explicit config and working directory", files: map[string]string{
 			".github/actionlint.yaml": "tools: {shellcheck: true}",
 			"sub/custom.yml":          "tools: {shellcheck: false}",
-		}, inputs: map[string]string{"INPUT_WORKING-DIRECTORY": "sub", "INPUT_CONFIG-FILE": "custom.yml"}, pyflakes: true},
+		}, inputs: map[string]string{"INPUT_WORKING-DIRECTORY": "sub", "INPUT_CONFIG-FILE": "custom.yml"}},
 		{name: "selected project", files: map[string]string{
 			"child/.git": "", "child/.github/actionlint.yaml": "tools: {shellcheck: false}",
 			"child/.github/workflows/clean.yml": cleanWorkflow,
-		}, inputs: map[string]string{"INPUT_FILES": "child/.github/workflows/missing.yml"}, pyflakes: true},
+		}, inputs: map[string]string{"INPUT_FILES": "child/.github/workflows/missing.yml"}},
 		{name: "multiple projects", files: map[string]string{
 			"child/.git": "", "child/.github/actionlint.yaml": "tools: {shellcheck: false}",
 			"child/.github/workflows/clean.yml": cleanWorkflow,
-		}, inputs: map[string]string{"INPUT_FILES": "child/.github/workflows/missing.yml\n.github/workflows/clean.yml"}, shellcheck: true, pyflakes: true},
+		}, inputs: map[string]string{"INPUT_FILES": "child/.github/workflows/missing.yml\n.github/workflows/clean.yml"}, shellcheck: true},
 		{name: "action input disables tools", inputs: map[string]string{
 			"INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_CONFIG": "tools: {shellcheck: true}",
 		}},
@@ -54,15 +56,18 @@ func TestToolPlanUsesEffectiveConfiguration(t *testing.T) {
 				t.Fatalf("preflight failed with %d: %s", code, &stderr)
 			}
 			var got struct {
-				SchemaVersion int  `json:"schema_version"`
-				Shellcheck    bool `json:"shellcheck"`
-				Pyflakes      bool `json:"pyflakes"`
+				SchemaVersion int   `json:"schema_version"`
+				Shellcheck    bool  `json:"shellcheck"`
+				Pyflakes      *bool `json:"pyflakes"`
 			}
 			if err := json.Unmarshal([]byte(stdout.String()), &got); err != nil {
 				t.Fatal(err)
 			}
-			if got.SchemaVersion != 1 || got.Shellcheck != tc.shellcheck || got.Pyflakes != tc.pyflakes {
-				t.Fatalf("got %+v; want shellcheck=%v pyflakes=%v", got, tc.shellcheck, tc.pyflakes)
+			if got.SchemaVersion != 1 || got.Shellcheck != tc.shellcheck {
+				t.Fatalf("got %+v; want shellcheck=%v", got, tc.shellcheck)
+			}
+			if got.Pyflakes == nil || *got.Pyflakes {
+				t.Fatalf("v1 tool plan must retain pyflakes:false: %s", &stdout)
 			}
 			if stderr.Len() != 0 {
 				t.Fatalf("unexpected stderr: %s", &stderr)

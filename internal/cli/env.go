@@ -79,14 +79,22 @@ func (a *commandApp) applyEnvironment() error {
 		return nil
 	}
 	var err error
-	if !a.set["shellcheck"] {
-		i.Check.ShellcheckOptions, err = externalToolEnvironment("SHELLCHECK")
+	for name, command := range map[string]*string{"ruff": &i.Check.Ruff, "shellcheck": &i.Check.ShellCheck} {
+		if a.set[name] && strings.EqualFold(*command, "false") {
+			*command = ""
+		}
+	}
+	if !a.set["ruff"] {
+		i.Check.RuffOptions, err = externalToolEnvironment("RUFF")
 		if err != nil {
 			return err
 		}
+		if i.Check.RuffOptions == nil {
+			i.Check.RuffOptions = &actionlint.ExternalCommandOptions{Optional: true}
+		}
 	}
-	if !a.set["pyflakes"] {
-		i.Check.PyflakesOptions, err = externalToolEnvironment("PYFLAKES")
+	if !a.set["shellcheck"] {
+		i.Check.ShellcheckOptions, err = externalToolEnvironment("SHELLCHECK")
 		if err != nil {
 			return err
 		}
@@ -133,6 +141,14 @@ func (a *commandApp) presentationEnvironment() error {
 
 func (a *commandApp) checkEnvironment() error {
 	i := &a.inv
+	if err := a.envBool("ACTIONLINT_STRICT", &i.Check.Strict, "strict"); err != nil {
+		return err
+	}
+	if err := a.envBool("ACTIONLINT_EXPERIMENTAL", &i.Check.Experimental, "experimental"); err != nil {
+		return err
+	}
+	_, experimentalEnv := os.LookupEnv("ACTIONLINT_EXPERIMENTAL")
+	i.Check.ExperimentalSet = a.set["experimental"] || experimentalEnv
 	if !a.anySet("output-format", "output", "o", "json", "template", "format", "f", "template-file", "oneline") {
 		if value := os.Getenv("ACTIONLINT_OUTPUT_FORMAT"); value != "" {
 			a.opts.output, a.set["output-format"] = value, true

@@ -16,6 +16,13 @@ Invalid configuration file contents still produce an operational error (exit 3).
 
 ## Configuration and input
 
+`ACTIONLINT_STRICT` (`--strict`) selects all stable rules, including opt-in policies,
+while preserving explicit group/rule exceptions.
+`ACTIONLINT_EXPERIMENTAL` (`--experimental`) enables nursery rules while
+honoring individual exclusions; false clears nursery selections without affecting stable suspicious rules.
+Both accept booleans and are off unless requested. They apply only to checks.
+See [rule presets](usage.md) for scope and precedence.
+
 | Variable                    | Equivalent flag               | Value                                                                                                       |
 | --------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `ACTIONLINT_CONFIG`         | `--config` / `--config-file`  | A configuration file path. Empty restores repository discovery.                                             |
@@ -116,9 +123,9 @@ the same color selection. `JQ_COLORS` is interpreted by `jq` itself.
 | `ACTIONLINT_SHELLCHECK_BIN`   | Literal ShellCheck executable name or path. Default: `shellcheck`. Empty disables it. |
 | `ACTIONLINT_SHELLCHECK_FLAGS` | Additional ShellCheck arguments.                                                      |
 | `ACTIONLINT_SHELLCHECK_ENV`   | Child environment overrides or forwarded variable names for ShellCheck.               |
-| `ACTIONLINT_PYFLAKES_BIN`     | Literal Pyflakes executable name or path. Default: `pyflakes`. Empty disables it.     |
-| `ACTIONLINT_PYFLAKES_FLAGS`   | Additional Pyflakes arguments, for example `-m pyflakes` when the binary is Python.   |
-| `ACTIONLINT_PYFLAKES_ENV`     | Child environment overrides or forwarded variable names for Pyflakes.                 |
+| `ACTIONLINT_RUFF_BIN`         | Literal Ruff executable name or path. Default: `ruff`. Empty disables it.             |
+| `ACTIONLINT_RUFF_FLAGS`       | Additional Ruff command arguments.                                                    |
+| `ACTIONLINT_RUFF_ENV`         | Child environment overrides or forwarded variable names for Ruff.                     |
 
 `_BIN` is a literal executable, so Windows paths containing spaces need no embedded
 quotes. `_FLAGS` accepts a JSON string array or a shell-style quoted argument list.
@@ -128,18 +135,16 @@ shell execution, environment expansion, command substitution, piping or redirect
 ```powershell
 $env:ACTIONLINT_SHELLCHECK_BIN = 'C:\Program Files\ShellCheck\shellcheck.exe'
 $env:ACTIONLINT_SHELLCHECK_FLAGS = '["-e", "SC2086"]'
-$env:ACTIONLINT_PYFLAKES_BIN = 'python3'
-$env:ACTIONLINT_PYFLAKES_FLAGS = '-m pyflakes'
 actionlint check workflow.yml
 ```
 
-An explicit `--shellcheck` or `--pyflakes` replaces **all three** environment
+An explicit `--shellcheck` or `--ruff` replaces **all three** environment
 settings for that tool. The flags retain their existing command-line syntax;
 `--shellcheck=` disables ShellCheck even when its environment settings are present.
 An empty `_BIN` also disables its tool without parsing its `_FLAGS` or `_ENV`.
 
 Extra arguments precede actionlint's required arguments. Do not supply input files
-or override the output protocol: ShellCheck must return JSON1. Existing
+or override the output protocol: ShellCheck must return JSON1 and Ruff must return JSON. Existing
 `SHELLCHECK_OPTS` behavior remains available; ShellCheck interprets that variable.
 
 `_ENV` accepts a JSON object with string values, or a quoted list of `NAME=value`

@@ -1,22 +1,14 @@
 import { spawn } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
-import { access, chmod, readFile, stat, writeFile } from 'node:fs/promises';
-import { isAbsolute, join } from 'node:path';
+import { access, chmod, readFile, stat } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import type { ReleaseAsset, RunnerPlatform } from '#assets';
-import {
-	checksumForAsset,
-	nativeAssetName,
-	pyflakesAsset,
-	pyflakesVersion,
-	shellcheckAsset,
-	shellcheckVersion,
-} from '#assets';
+import { checksumForAsset, nativeAssetName, ruffAsset, ruffVersion, shellcheckAsset, shellcheckVersion } from '#assets';
 import { download, downloadVerified } from '#download';
-import { normalizeEnvironment, subprocessEnvironment } from '#environment';
+import { subprocessEnvironment } from '#environment';
 import { cacheTool, capture, extractArchive, findTool, temporary, which } from '#native';
-import type { Environment, PyflakesCommand, ShellcheckCommand, ToolRequirements } from '#runtime';
+import type { Environment, ShellcheckCommand, ToolRequirements } from '#runtime';
 import { InputError } from '#runtime';
 import { commandEscape } from '#workflow';
 
@@ -24,15 +16,18 @@ function selectedTool(name: string, origin: string, path: string, version: strin
 	console.log(`::debug::${commandEscape(`${name}: ${origin}; version ${version}; ${path}`)}`);
 }
 
-async function installedVersion(executable: string): Promise<string> {
+async function installedVersion(executable: string, tool?: 'ruff'): Promise<string> {
 	try {
 		const result = await capture(executable, ['--version'], process.env, { timeoutMS: 1_000 });
 		if (result.exitCode !== 0) return `unavailable (--version exited ${result.exitCode})`;
 		const output = `${result.stdout}\n${result.stderr}`.trim();
-		const version = /^(?:version:\s*)?(v?\d+\.\d+(?:\.\d+)?(?:[-+][^\s]+)?)(?:\s|$)/im.exec(output)?.[1];
+		const pattern = tool === 'ruff'
+			? /^ruff\s+(\d+\.\d+\.\d+(?:[-+][^\s]+)?)(?:\s|$)/im
+			: /^(?:version:\s*|ruff\s+)?(v?\d+\.\d+(?:\.\d+)?(?:[-+][^\s]+)?)(?:\s|$)/im;
+		const version = pattern.exec(output)?.[1];
 		return version ?? `unavailable (${output ? 'unrecognized' : 'empty'} --version output)`;
 	} catch (error) {
-		// Version discovery is advisory: an unsupported probe must not replace a working PATH tool.
+		// Preserve probe failures for caller-specific compatibility handling.
 		const reason = error instanceof Error ? error.message : String(error);
 		return `unavailable (${reason.slice(0, 256)})`;
 	}
@@ -44,7 +39,7 @@ export async function checkExecutable(path: string): Promise<void> {
 }
 
 async function extract(asset: ReleaseAsset, directory: string): Promise<string> {
-	// extractZip on Windows requires a .zip filename, including for Python wheels.
+	// extractZip on Windows requires a .zip filename.
 	const archive = await downloadVerified(
 		download,
 		asset.url,
@@ -110,71 +105,54 @@ export async function shellcheckBinary(platform: RunnerPlatform): Promise<Shellc
 	});
 }
 
-async function pythonBinary(): Promise<string> {
-	const probe = 'import sys; print(sys.executable); sys.exit(0 if sys.version_info >= (3, 9) else 1)';
-	for (const command of ['python3', 'python', 'py']) {
-		const path = await which(command);
-		if (!path) continue;
-		const args = command === 'py' ? ['-3'] : [];
-		args.push('-I', '-c', probe);
-		let result: Awaited<ReturnType<typeof capture>>;
-		if (process.platform === 'win32' && /\.(?:cmd|bat)$/i.test(path)) {
-			// Only this fixed probe crosses cmd.exe. Transport the path and Python code
-			// in the child environment; arbitrary lint arguments use sys.executable later.
-			const environment = normalizeEnvironment(process.env);
-			environment.ACTIONLINT_PYTHON_SHIM = path;
-			environment.ACTIONLINT_PYTHON_PROBE = probe;
-			const prefix = command === 'py' ? '-3 ' : '';
-			result = await capture(
-				environment.COMSPEC || 'cmd.exe',
-				[
-					'/d',
-					'/v:off',
-					'/s',
-					'/c',
-					`""%ACTIONLINT_PYTHON_SHIM%" ${prefix}-I -c "import os;exec(os.environ['ACTIONLINT_PYTHON_PROBE'])""`,
-				],
-				environment,
-				{ windowsVerbatimArguments: true },
-			);
-		} else {
-			result = await capture(path, args);
+export async function ruffBinary(platform: RunnerPlatform): Promise<ShellcheckCommand> {
+	const existing = await which('ruff', process.env, 'native');
+	if (existing) {
+		const version = await installedVersion(existing, 'ruff');
+		if (compatibleRuffVersion(version)) {
+			selectedTool('Ruff', 'existing installation', existing, version);
+			return { kind: 'existing', executable: existing };
 		}
-		const executable = result.stdout.trim();
-		if (result.exitCode === 0 && isAbsolute(executable)) {
-			await checkExecutable(executable);
-			return executable;
-		}
+		console.log(
+			`::debug::${
+				commandEscape(`Ruff: ignoring PATH installation ${existing} (${version}); requires ${ruffVersion} or newer`)
+			}`,
+		);
 	}
-	throw new Error('pyflakes requires Python 3.9 or newer. Set up Python before this action, or set pyflakes: false.');
+	const binary = platform.os === 'windows' ? 'ruff.exe' : 'ruff';
+	const cacheName = `actionlint-ruff-${platform.os}`;
+	const cached = await findTool(cacheName, ruffVersion, platform.arch);
+	if (cached) {
+		const path = join(cached, binary);
+		await checkExecutable(path);
+		selectedTool('Ruff', 'tool cache', path, ruffVersion);
+		return { kind: 'standalone', executable: path };
+	}
+	console.log(`Installing Ruff ${ruffVersion}`);
+	return temporary(async (directory) => {
+		const asset = ruffAsset(platform);
+		const extracted = await extract(asset, directory);
+		const root = platform.os === 'windows' ? extracted : join(extracted, asset.name.replace(/\.tar\.gz$/, ''));
+		const path = join(root, binary);
+		if (platform.os !== 'windows') await chmod(path, 0o755);
+		await checkExecutable(path);
+		const executable = join(await cacheTool(root, cacheName, ruffVersion, platform.arch), binary);
+		selectedTool('Ruff', 'downloaded fallback', executable, ruffVersion);
+		return { kind: 'standalone', executable };
+	});
 }
 
-export async function pyflakesCommand(platform: RunnerPlatform, launcher: string): Promise<PyflakesCommand> {
-	const existing = await which('pyflakes', process.env, platform.os === 'windows' ? 'native' : 'all');
-	if (existing) {
-		selectedTool('pyflakes', 'existing installation', existing, await installedVersion(existing));
-		return { kind: 'existing', executable: existing };
+function compatibleRuffVersion(version: string): boolean {
+	const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/.exec(version);
+	if (!match) return false;
+	const minimum = ruffVersion.split('.').map(Number);
+	for (let index = 0; index < 3; index++) {
+		const current = Number(match[index + 1]);
+		const required = minimum[index];
+		if (!Number.isSafeInteger(current) || required === undefined) return false;
+		if (current !== required) return current > required;
 	}
-
-	const executable = await pythonBinary();
-	const digest = createHash('sha256').update(launcher).digest('hex');
-	const cacheName = `actionlint-pyflakes-${digest}`;
-	const cached = await findTool(cacheName, pyflakesVersion, 'any');
-	if (cached) {
-		const script = join(cached, 'actionlint-pyflakes.py');
-		await access(script, constants.R_OK);
-		selectedTool('pyflakes', 'tool cache', script, pyflakesVersion);
-		return { kind: 'python', executable, script };
-	}
-	console.log(`Installing pyflakes ${pyflakesVersion}`);
-	return temporary(async (directory) => {
-		const extracted = await extract(pyflakesAsset, directory);
-		await writeFile(join(extracted, 'actionlint-pyflakes.py'), launcher);
-		const root = await cacheTool(extracted, cacheName, pyflakesVersion, 'any');
-		const script = join(root, 'actionlint-pyflakes.py');
-		selectedTool('pyflakes', 'downloaded fallback', script, pyflakesVersion);
-		return { kind: 'python', executable, script };
-	});
+	return match[4] === undefined;
 }
 
 export function executeNative(executable: string, args: string[], environment: Environment): Promise<number> {
@@ -208,7 +186,8 @@ export async function inspectTools(executable: string, environment: Environment)
 	if (
 		typeof plan !== 'object' || plan === null || !('schema_version' in plan) || plan.schema_version !== 1
 		|| !('shellcheck' in plan) || typeof plan.shellcheck !== 'boolean'
-		|| !('pyflakes' in plan) || typeof plan.pyflakes !== 'boolean'
+		|| ('ruff' in plan && typeof plan.ruff !== 'boolean')
 	) throw new Error('actionlint returned an unsupported tool plan');
-	return { shellcheck: plan.shellcheck, pyflakes: plan.pyflakes };
+	// Older native Action releases do not know Ruff and omit it from the plan.
+	return { shellcheck: plan.shellcheck, ruff: 'ruff' in plan && plan.ruff === true };
 }

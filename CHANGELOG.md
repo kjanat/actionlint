@@ -12,7 +12,8 @@
 
 - Accept `uses: $/` and extra-slash variants for repository-root actions, including input and output validation. (kjanat/actionlint#199)
 - Link CLI help to documentation at the release tag or development build's commit, including Go pseudo-versions and Makefile builds.
-- Add documented `ACTIONLINT_*` defaults for configuration selection, output, filters, logging and presentation. Split external-linter environment settings into literal `BIN`, argument `FLAGS`, and child `ENV` values for both ShellCheck and Pyflakes. Explicit flags override environment defaults, including empty and false values.
+- Add documented `ACTIONLINT_*` defaults for configuration selection, output, filters, logging and presentation. Split ShellCheck environment settings into literal `BIN`, argument `FLAGS`, and child `ENV` values. Explicit flags override environment defaults, including empty and false values.
+- Remove built-in Pyflakes execution and its environment-variable settings. Retain deprecated Pyflakes CLI flags, the Action input and Go options as ignored compatibility settings.
 - Pretty-print JSON metadata and JSON/SARIF diagnostics with installed `jq` when stdout is a terminal. Respect color controls and provide `--json-pretty=false`. Keep redirected output, JSONL, templates and stderr records unchanged; fall back to the original JSON if jq is unavailable or fails.
 - Make directory, configuration and executable paths in `doctor` clickable with OSC 8 `file://` links. Follow the existing hyperlink controls and preserve JSON output. Encode special characters in link targets and support Windows drive and UNC paths.
 - Enable color automatically in GitHub Actions logs when `GITHUB_ACTIONS=true`. Respect `NO_COLOR` and explicit color controls, and keep automatic styling out of report files, structured output and custom templates.

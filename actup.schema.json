@@ -6,18 +6,6 @@
       "description": "## Example\n```toml\n# .actup.toml - Per-action overrides\n[actions.\"actions/checkout\"]\nupdate_policy = \"major\"\n\n[actions.\"actions/cache\"]\nignore = true\n\n[actions.\"internal/action\"]\nref_style = \"sha\"\n```\n\n## Result in workflow:\n```console\n# actions/checkout@v3 -> actions/checkout@v4 (major allowed)\n# actions/cache@v3 -> unchanged (ignored)\n# internal/action@v1 -> internal/action@abc123... # v1.2.0 (pinned to SHA)\n```",
       "type": "object",
       "properties": {
-        "branch_policy": {
-          "description": "Override branch-ref handling for this action.\n\nSame values as the global `branch_policy`: `ignore` leaves branch refs\nuntouched, `warn` flags them as floating, `update` pins them to the\nbranch's current HEAD SHA.\n\n```toml\nbranch_policy = \"ignore\"           # quiet everywhere by default\n\n[actions.\"kjanat/runner\"]\nbranch_policy = \"update\"           # but pin this one to its master SHA\n```",
-          "default": null,
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Branch"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
         "ignore": {
           "description": "Whether to completely ignore this action",
           "default": false,
@@ -53,12 +41,12 @@
       "description": "API mode for fetching versions",
       "oneOf": [
         {
-          "description": "One batched GraphQL query for all repos. Fast, but needs an auth token.\n\n```toml\n[fetch]\napi_mode = \"graphql\"\n```",
+          "description": "Use GraphQL API for batched requests (requires auth token)",
           "type": "string",
           "const": "graphql"
         },
         {
-          "description": "Parallel REST requests, one per repo. Works without a token.\n\n```toml\n[fetch]\napi_mode = \"rest\"\n```",
+          "description": "Use REST API with parallel requests",
           "type": "string",
           "const": "rest"
         }
@@ -111,16 +99,16 @@
       }
     },
     "FetchSettings": {
-      "description": "Global fetch settings applied to all providers unless overridden per-host.\n\nVersions come from the git wire protocol, which needs no API and lists every\ntag. These settings govern the HTTP API fallback used when a host refuses a\ngit connection. Per-host overrides in `HostConfig` take precedence.",
+      "description": "Global fetch settings applied to all providers unless overridden per-host.\n\nControls how actup communicates with provider APIs. Per-host overrides\nin `HostConfig` take precedence over these values.",
       "type": "object",
       "properties": {
         "api_mode": {
           "$ref": "#/$defs/ApiMode",
-          "description": "API fallback mode: `\"graphql\"` (batched, requires auth) or `\"rest\"` (parallel)",
+          "description": "API mode: `\"graphql\"` (batched, requires auth) or `\"rest\"` (parallel)",
           "default": "graphql"
         },
         "max_tags_per_repo": {
-          "description": "Maximum tags the API fallback fetches per repository (1–255).",
+          "description": "Maximum tags to fetch per repository (1–255).\nStops early when a stable release satisfying policy is found.",
           "default": 10,
           "type": "integer",
           "minimum": 1,
@@ -254,7 +242,7 @@
   "type": "object",
   "properties": {
     "actions": {
-      "description": "Per-action policy overrides, keyed by `owner/repo`.\n\nEach entry can override `update_policy`, `ref_style`, `branch_policy`,\nor `ignore` for just that action.\n\n```toml\n[actions.\"actions/checkout\"]\nupdate_policy = \"patch\"    # only patch-bump this one\n```",
+      "description": "Per-action policy overrides (keyed by \"owner/repo\")",
       "default": {},
       "type": "object",
       "additionalProperties": {
@@ -262,18 +250,18 @@
       }
     },
     "allow_prerelease": {
-      "description": "Consider prerelease tags (e.g. `v2.0.0-rc.1`) when picking a target.\n\n```toml\nallow_prerelease = false   # skip -rc/-beta tags unless already on one\n```",
+      "description": "Whether to consider prerelease versions",
       "default": false,
       "type": "boolean"
     },
     "branch_policy": {
       "$ref": "#/$defs/Branch",
-      "description": "How to handle floating branch refs like `@main` or `@v2`.\n\n`ignore` leaves them untouched (default), `warn` flags them as\nfloating, `update` pins the branch to its current HEAD SHA.\n\n```toml\nbranch_policy = \"warn\"   # @main -> flagged, pin to a tag or SHA\n```",
+      "description": "How to handle branch references",
       "default": "ignore"
     },
     "cache": {
       "$ref": "#/$defs/Cache",
-      "description": "Version-cache settings (TTL, location, on/off).\n\n```toml\n[cache]\nttl = 86400        # re-check a repo at most once a day\nenabled = true\n```",
+      "description": "Cache configuration",
       "default": {
         "enabled": true,
         "path": null,
@@ -281,7 +269,7 @@
       }
     },
     "default_host": {
-      "description": "Host used for bare `owner/repo` refs that carry no host prefix.\n\nAbsent resolves to `github.com` via the built-in preset.\n\n```toml\ndefault_host = \"github.com\"\n```",
+      "description": "Default host for bare `owner/repo` refs.\nIf `None`, resolves via provider preset for `\"github.com\"` when present, else errors.",
       "default": null,
       "type": [
         "null",
@@ -298,14 +286,14 @@
     },
     "fetch": {
       "$ref": "#/$defs/FetchSettings",
-      "description": "API fallback settings, used only when the git protocol can't list a repo.\n\n```toml\n[fetch]\napi_mode = \"graphql\"       # or \"rest\"\nmax_tags_per_repo = 10\n```",
+      "description": "Fetch settings (`api_mode`, `max_tags_per_repo`)",
       "default": {
         "api_mode": "graphql",
         "max_tags_per_repo": 10
       }
     },
     "hosts": {
-      "description": "Per-host provider config, keyed by lowercase hostname.\n\nUsed for GitHub Enterprise, self-hosted GitLab/Gitea, and custom tokens.\n\n```toml\n[hosts.\"ghe.corp.internal\"]\nkind = \"github\"\napi_base = \"https://ghe.corp.internal/api/v3\"\ntoken_env = \"GHE_TOKEN\"\n```",
+      "description": "Per-host configuration (keyed by lowercase hostname)",
       "default": {},
       "type": "object",
       "additionalProperties": {
@@ -322,12 +310,12 @@
     },
     "ref_style": {
       "$ref": "#/$defs/Style",
-      "description": "How a ref is written when updating.\n\n`preserve` keeps the current style (tag stays a tag, SHA stays a SHA),\n`tag` rewrites to the version tag, `sha` pins to the commit SHA with a\n`# vX.Y.Z` comment.\n\n```toml\nref_style = \"sha\"   # actions/checkout@v4 -> @<sha> # v4.2.0\n```",
+      "description": "How to format refs when updating",
       "default": "preserve"
     },
     "update_policy": {
       "$ref": "#/$defs/Update",
-      "description": "How far to bump outdated version refs.\n\n`patch` stays on `major.minor`, `minor` stays on `major`, `major`\nallows a new major, `latest` takes the newest stable overall.\n\n```toml\nupdate_policy = \"minor\"   # v1.2.3 -> v1.5.0, never v2\n```",
+      "description": "Global update policy",
       "default": "latest"
     }
   }

@@ -37,6 +37,74 @@ func TestEnvironmentDefaults(t *testing.T) {
 	}
 }
 
+func TestExplicitRuffMissingExecutable(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("PATH", t.TempDir())
+	run := func(input string, args ...string) commandTranscript {
+		var out, stderr bytes.Buffer
+		command := Command{Stdin: strings.NewReader(input), Stdout: &out, Stderr: &stderr}
+		status := command.Main(append([]string{"actionlint", "--no-color"}, args...))
+		return commandTranscript{status, out.String(), stderr.String()}
+	}
+	for _, prefix := range [][]string{nil, {"check"}} {
+		args := append(append([]string{}, prefix...), "--shellcheck=", "-")
+		if got := run(commandGoodWorkflow, args...); got.Status != 0 {
+			t.Fatalf("automatic discovery: %+v", got)
+		}
+		args = append(append([]string{}, prefix...), "--shellcheck=", "--ruff=missing-ruff", "-")
+		if got := testRunCommand(commandGoodWorkflow, args...); got.Status == 0 || !strings.Contains(got.Stderr, "could not initialize Ruff") {
+			t.Fatalf("explicit checker silently skipped: %+v", got)
+		}
+		for _, disabled := range []string{"", "false", "FALSE"} {
+			args = append(append([]string{}, prefix...), "--shellcheck=", "--ruff="+disabled, "-")
+			if got := testRunCommand(commandGoodWorkflow, args...); got.Status != 0 {
+				t.Fatalf("disable %q: %+v", disabled, got)
+			}
+		}
+	}
+	t.Setenv("ACTIONLINT_RUFF_BIN", "missing-ruff")
+	if got := run(commandGoodWorkflow, "--shellcheck=", "-"); got.Status == 0 {
+		t.Fatalf("environment checker silently skipped: %+v", got)
+	}
+	if got := testRunCommand(commandGoodWorkflow, "--shellcheck=", "--ruff=", "-"); got.Status != 0 {
+		t.Fatalf("explicit disable: %+v", got)
+	}
+	got := testRunCommand("", "doctor", "--no-config", "--ruff=false", "--shellcheck=false", "--json")
+	if got.Status != 0 {
+		t.Fatalf("doctor: %+v", got)
+	}
+	var report struct {
+		Tools []struct {
+			Name   string `json:"name"`
+			Status string `json:"status"`
+		} `json:"tools"`
+	}
+	if err := json.Unmarshal([]byte(got.Stdout), &report); err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Tools) != 2 {
+		t.Fatalf("missing tool rows: %+v", report)
+	}
+	for _, tool := range report.Tools {
+		if tool.Status != "disabled" {
+			t.Fatalf("checker not disabled: %+v", tool)
+		}
+	}
+}
+
+func TestFalseDisablesExternalCheckers(t *testing.T) {
+	t.Chdir(t.TempDir())
+	for _, prefix := range [][]string{nil, {"check"}} {
+		for _, disabled := range []string{"", "false", "FALSE"} {
+			args := append(append([]string{}, prefix...), "--shellcheck="+disabled, "--ruff="+disabled, "-")
+			got := testRunCommand("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $VALUE\n        shell: bash\n      - run: print(missing)\n        shell: python\n", args...)
+			if got.Status != 0 || got.Stdout != "" || got.Stderr != "" {
+				t.Fatalf("disable %q %v: %+v", disabled, prefix, got)
+			}
+		}
+	}
+}
+
 func TestEnvironmentConfigSelection(t *testing.T) {
 	t.Chdir(t.TempDir())
 	if err := os.WriteFile("env.yaml", []byte("policy:\n  require-job-timeout: true\n"), 0o600); err != nil {
@@ -147,14 +215,14 @@ func TestEnvironmentRejectsNullFilters(t *testing.T) {
 }
 
 func TestEnvironmentDisabledTools(t *testing.T) {
-	for _, tool := range []string{"SHELLCHECK", "PYFLAKES"} {
+	for _, tool := range []string{"SHELLCHECK"} {
 		t.Setenv("ACTIONLINT_"+tool+"_BIN", "")
 		t.Setenv("ACTIONLINT_"+tool+"_FLAGS", `"unterminated`)
 		t.Setenv("ACTIONLINT_"+tool+"_ENV", `{"INVALID":123}`)
 	}
 	var out, stderr bytes.Buffer
 	cmd := Command{Stdout: &out, Stderr: &stderr}
-	if status := cmd.Main([]string{"actionlint", "doctor", "--json", "--no-config"}); status != 0 || strings.Count(out.String(), `"status":"disabled"`) != 2 {
+	if status := cmd.Main([]string{"actionlint", "doctor", "--json", "--no-config"}); status != 0 || strings.Count(out.String(), `"status":"disabled"`) != 1 {
 		t.Fatalf("empty executable must disable the tool without parsing its settings: exit %d: %s %s", status, &out, &stderr)
 	}
 }
@@ -178,8 +246,11 @@ func environmentToolHelper() int {
 	if err := os.WriteFile(os.Getenv("ACTIONLINT_TEST_REPORT"), data, 0o600); err != nil {
 		return 1
 	}
-	if report.Value == "shell" {
+	switch report.Value {
+	case "shell":
 		fmt.Print(`{"comments":[]}`)
+	case "python":
+		fmt.Print(`[]`)
 	}
 	return 0
 }
@@ -202,9 +273,10 @@ func TestEnvironmentExternalTools(t *testing.T) {
 	}
 	t.Setenv("ACTIONLINT_TEST_CHILD", "parent")
 	reports := map[string]string{}
-	for _, toolName := range []string{"SHELLCHECK", "PYFLAKES"} {
+	ruffArguments := []string{"--exclude", "argument with spaces", "--ignore", "", "--extend-exclude", "$LITERAL"}
+	for _, toolName := range []string{"SHELLCHECK", "RUFF"} {
 		kind := "shell"
-		if toolName == "PYFLAKES" {
+		if toolName == "RUFF" {
 			kind = "python"
 		}
 		path := filepath.Join(t.TempDir(), "report.json")
@@ -215,6 +287,13 @@ func TestEnvironmentExternalTools(t *testing.T) {
 		}
 		t.Setenv("ACTIONLINT_"+toolName+"_BIN", tool)
 		t.Setenv("ACTIONLINT_"+toolName+"_FLAGS", `["argument with spaces", "", "$LITERAL"]`)
+		if toolName == "RUFF" {
+			flags, err := json.Marshal(ruffArguments)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("ACTIONLINT_RUFF_FLAGS", string(flags))
+		}
 		t.Setenv("ACTIONLINT_"+toolName+"_ENV", string(env))
 	}
 	input := commandGoodWorkflow + "      - shell: python\n        run: print('ok')\n"
@@ -234,7 +313,11 @@ func TestEnvironmentExternalTools(t *testing.T) {
 			if err := json.Unmarshal(data, &report); err != nil {
 				t.Fatal(err)
 			}
-			if report.Value != kind || report.Input == "" || len(report.Args) < 3 || !reflect.DeepEqual(report.Args[:3], []string{"argument with spaces", "", "$LITERAL"}) {
+			wantArgs := []string{"argument with spaces", "", "$LITERAL"}
+			if kind == "python" {
+				wantArgs = append([]string{"check"}, ruffArguments...)
+			}
+			if report.Value != kind || report.Input == "" || len(report.Args) < len(wantArgs) || !reflect.DeepEqual(report.Args[:len(wantArgs)], wantArgs) {
 				t.Fatalf("%s did not receive its settings: %+v", kind, report)
 			}
 			if err := os.Remove(path); err != nil {
@@ -257,7 +340,11 @@ func TestEnvironmentExternalTools(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tool := range doctor.Tools {
-		if tool.Status != "available" || !reflect.DeepEqual(tool.Arguments, []string{"argument with spaces", "", "$LITERAL"}) {
+		wantArgs := []string{"argument with spaces", "", "$LITERAL"}
+		if tool.Name == "ruff" {
+			wantArgs = ruffArguments
+		}
+		if tool.Status != "available" || !reflect.DeepEqual(tool.Arguments, wantArgs) {
 			t.Fatalf("doctor does not describe configured tool: %+v", tool)
 		}
 	}

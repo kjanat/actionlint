@@ -3,22 +3,31 @@ package actionlint
 import (
 	"context"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"slices"
 	"time"
+
+	"actionlint.kjanat.dev/internal/ruff"
+	"actionlint.kjanat.dev/internal/workflownames"
 )
 
 type analysisEngine struct {
+	workflowNames     *workflownames.Index
+	ruff              string
+	ruffOptions       *ExternalCommandOptions
+	ruffCompatibility ruff.Compatibility
 	analysisLogger
-	ctx                                context.Context
-	shellcheck, pyflakes               string
-	shellcheckOptions, pyflakesOptions *ExternalCommandOptions
-	shellcheckSettings                 *ShellcheckSettings
-	workingDir                         string
-	inputs                             *inputFiles
-	gitModes                           *gitModes
-	ignorePats                         IgnorePatterns
-	onRulesCreated                     func([]Rule) []Rule
+	ctx                context.Context
+	shellcheck         string
+	shellcheckOptions  *ExternalCommandOptions
+	shellcheckSettings *ShellcheckSettings
+	workingDir         string
+	inputs             *inputFiles
+	gitModes           *gitModes
+	ignorePats         IgnorePatterns
+	onRulesCreated     func([]Rule) []Rule
+	rulePresets        RulePresets
 }
 
 func (l *analysisEngine) check(
@@ -32,6 +41,22 @@ func (l *analysisEngine) check(
 	usedRules *[]Rule,
 ) ([]*Error, WorkflowOutline, error) {
 	// Each call owns its rules; caches and process scheduling are shared across files.
+	root := l.workingDir
+	if project != nil {
+		root = project.RootDir()
+	}
+	var configErr error
+	projectConfig := cfg
+	configPath := path
+	if !filepath.IsAbs(configPath) {
+		configPath = filepath.Join(l.workingDir, configPath)
+	}
+	cfg, configErr = configForFile(cfg, configPath, root)
+	if configErr != nil {
+		w, all := Parse(content)
+		return nil, workflowOutline(path, w, len(all) != 0), configErr
+	}
+	cfg = l.rulePresets.apply(cfg)
 
 	var start time.Time
 	if l.logLevel >= LogLevelVerbose {
@@ -52,6 +77,8 @@ func (l *analysisEngine) check(
 	w, all := Parse(content)
 	outline := workflowOutline(path, w, len(all) != 0)
 	var analysisErr error
+	metadataSources := map[string][]byte{}
+	compositeConfigs := map[string]*Config{}
 
 	if l.logLevel >= LogLevelVerbose {
 		elapsed := time.Since(start)
@@ -60,11 +87,20 @@ func (l *analysisEngine) check(
 
 	if w != nil {
 		dbg := l.debugWriter()
-		localActions = &LocalActionsCache{base: localActions}
+		localActions = &LocalActionsCache{base: localActions, usedSources: make(map[string][]byte)}
 
 		rules := []Rule{}
-		c := ruleContext{path: path, config: cfg, actions: localActions, workflows: localReusableWorkflows, process: proc, shellcheck: l.shellcheck, pyflakes: l.pyflakes}
-		c.shellcheckOptions, c.pyflakesOptions = l.shellcheckOptions, l.pyflakesOptions
+		c := ruleContext{path: path, config: cfg, actions: localActions, workflows: localReusableWorkflows, process: proc, shellcheck: l.shellcheck}
+		c.projectConfig = projectConfig
+		c.ruff, c.ruffOptions = l.ruff, l.ruffOptions
+		c.ruffCompatibility = &l.ruffCompatibility
+		c.ruffWarning = func(err error) {
+			if l.logOut != nil {
+				_, _ = fmt.Fprintln(l.logOut, "warning: skipping automatically discovered Ruff:", err)
+			}
+		}
+		c.workflowNames = l.workflowNames
+		c.shellcheckOptions = l.shellcheckOptions
 		c.shellcheckSettings = l.shellcheckSettings
 		c.workingDir, c.inputs = l.workingDir, l.inputs
 		c.gitModes = l.gitModes
@@ -73,6 +109,11 @@ func (l *analysisEngine) check(
 		}
 		for _, descriptor := range builtinRuleDescriptors() {
 			if descriptor.build == nil {
+				continue
+			}
+			// Shared passes and Ruff composite analysis can emit diagnostics enabled
+			// by other rules or files; skip only disabled external checkers.
+			if descriptor.Category == "external" && descriptor.Name != "ruff" && cfg.diagnosticLevel(descriptor.Name) == "off" {
 				continue
 			}
 			if descriptor.enabled != nil && !descriptor.enabled(c) {
@@ -87,6 +128,9 @@ func (l *analysisEngine) check(
 			}
 			r, err := descriptor.build(c)
 			if err != nil {
+				if descriptor.Name == "ruff" && (c.ruffOptions == nil || !c.ruffOptions.Optional) {
+					return nil, outline, fmt.Errorf("could not initialize Ruff: %w", err)
+				}
 				l.log(fmt.Sprintf("Rule %q was disabled:", descriptor.Name), err)
 				continue
 			}
@@ -102,6 +146,15 @@ func (l *analysisEngine) check(
 			v.AddPass(rule)
 		}
 		v.composites = &compositeAnalyzer{ctx: l.ctx, actions: localActions, passes: v.passes}
+		v.composites.configForFile = func(path string) (*Config, error) {
+			config, err := configForFile(projectConfig, path, root)
+			if err != nil {
+				return nil, err
+			}
+			config = l.rulePresets.apply(config)
+			compositeConfigs[path] = config
+			return config, nil
+		}
 		if dbg != nil {
 			v.EnableDebug(dbg)
 			for _, r := range rules {
@@ -122,11 +175,11 @@ func (l *analysisEngine) check(
 		// Drain every owned runner before reading findings; composite rules share them.
 		for _, rule := range rules {
 			var err error
-			switch rule := rule.(type) {
-			case *RuleShellcheck:
+			if rule, ok := rule.(*RuleShellcheck); ok {
 				err = rule.cmd.wait()
-			case *RulePyflakes:
-				err = rule.cmd.wait()
+			}
+			if rule, ok := rule.(*ruffRule); ok {
+				err = rule.checker.Wait()
 			}
 			if analysisErr == nil {
 				analysisErr = err
@@ -141,6 +194,9 @@ func (l *analysisEngine) check(
 		for _, composite := range v.composites.rules {
 			for _, rule := range composite.rules {
 				for _, finding := range rule.Errs() {
+					if origin := finding.suppressionOrigin; origin != nil && origin.path == "" {
+						origin.path = composite.meta.Path()
+					}
 					if finding.Filepath == "" {
 						finding.Filepath = composite.meta.Path()
 						finding.source = composite.meta.src
@@ -149,6 +205,7 @@ func (l *analysisEngine) check(
 				}
 			}
 		}
+		maps.Copy(metadataSources, localActions.usedSources)
 
 		*usedRules = rules
 	}
@@ -166,8 +223,7 @@ func (l *analysisEngine) check(
 		}
 	}
 	byPath := make(map[string][]*Error)
-	for _, finding := range all {
-		findingPath := finding.Filepath
+	findingKey := func(findingPath string) string {
 		if findingPath == "" {
 			findingPath = path
 		} else if project != nil && filepath.IsAbs(findingPath) {
@@ -180,11 +236,71 @@ func (l *analysisEngine) check(
 				findingPath = relative
 			}
 		}
-		byPath[findingPath] = append(byPath[findingPath], finding)
+		return findingPath
+	}
+	for _, finding := range all {
+		key := findingKey(finding.Filepath)
+		if origin := finding.suppressionOrigin; origin != nil && origin.path != "" {
+			key = origin.path
+		} else if _, isMetadata := metadataSources[finding.Filepath]; isMetadata {
+			key = finding.Filepath
+		}
+		byPath[key] = append(byPath[key], finding)
+	}
+	foreignSources := map[string]string{}
+	for sourcePath := range metadataSources {
+		key := sourcePath
+		foreignSources[key] = sourcePath
+		if _, exists := byPath[key]; !exists {
+			byPath[key] = nil
+		}
 	}
 	all = nil
-	for findingPath, findings := range byPath {
-		all = append(all, l.filterErrors(findings, cfg.PathConfigs(findingPath))...)
+	for scopePath, findings := range byPath {
+		findingPath := findingKey(scopePath)
+		sourcePath, isMetadata := foreignSources[scopePath]
+		source := metadataSources[sourcePath]
+		findingConfig := cfg
+		if findingPath != path && isMetadata && source != nil {
+			var err error
+			findingConfig, err = suppressionConfigForFile(projectConfig, sourcePath, root)
+			if err != nil {
+				return nil, outline, err
+			}
+			findingConfig = l.rulePresets.apply(findingConfig)
+			var policy *SuppressionsPolicy
+			if findingConfig != nil {
+				policy = findingConfig.Policy.DisallowSuppressions
+			}
+			findings = filterForeignInlineSuppressions(sourcePath, source, findings, policy)
+		}
+		findings = slices.DeleteFunc(findings, func(e *Error) bool {
+			levelConfig := cfg
+			if (e.Kind == "inline-suppression" || e.Kind == "disallow-suppressions") && (cfg == nil || cfg.Lint.Enabled == nil || *cfg.Lint.Enabled) {
+				levelConfig = findingConfig
+			}
+			// Ruff explicitly supports per-composite settings, but cannot override
+			// the caller's switch disabling the entire lint analysis.
+			if e.Kind == "ruff" && (cfg == nil || cfg.Lint.Enabled == nil || *cfg.Lint.Enabled) {
+				if compositeConfig, ok := compositeConfigs[sourcePath]; ok {
+					levelConfig = compositeConfig
+				}
+			}
+			switch levelConfig.diagnosticLevel(e.Kind) {
+			case "off":
+				return true
+			case "warn":
+				e.severity = "warning"
+			case "info":
+				e.severity = "info"
+			case "error":
+				e.severity = "error"
+			}
+			return false
+		})
+		for _, finding := range findings {
+			all = append(all, l.filterErrors([]*Error{finding}, cfg.PathConfigs(findingKey(finding.Filepath)))...)
+		}
 	}
 
 	for _, err := range all {

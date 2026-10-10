@@ -42,6 +42,9 @@ type Error struct {
 	// source is the content of the file at Filepath when the error points at a file other than the
 	// linted workflow. It replaces the workflow source for rendering the snippet.
 	source []byte
+	// suppressionOrigin identifies the YAML run declaration which caused a
+	// sourced diagnostic, independently of its displayed script location.
+	suppressionOrigin *suppressionOrigin
 	// External analyzer metadata is exposed through Diagnostic, leaving legacy output unchanged.
 	code     string
 	severity string
@@ -212,7 +215,13 @@ func compareErrors(lhs, rhs *Error) int {
 	if lhs.Column != rhs.Column {
 		return lhs.Column - rhs.Column
 	}
-	return strings.Compare(lhs.Message, rhs.Message)
+	if c := strings.Compare(lhs.Message, rhs.Message); c != 0 {
+		return c
+	}
+	if lhs.endColumn != rhs.endColumn {
+		return lhs.endColumn - rhs.endColumn
+	}
+	return strings.Compare(lhs.severity, rhs.severity)
 }
 
 func equalsErrors(lhs, rhs *Error) bool {
@@ -220,7 +229,8 @@ func equalsErrors(lhs, rhs *Error) bool {
 		lhs.Line == rhs.Line &&
 		lhs.Column == rhs.Column &&
 		lhs.endColumn == rhs.endColumn &&
-		lhs.Message == rhs.Message
+		lhs.Message == rhs.Message &&
+		lhs.severity == rhs.severity
 }
 
 // ErrorTemplateFields holds all fields to format one error message.

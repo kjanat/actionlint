@@ -44,7 +44,7 @@ func TestActionReadsPathsOutsideWorkspace(t *testing.T) {
 			if err := json.Unmarshal([]byte(plan.String()), &tools); err != nil {
 				t.Fatal(err)
 			}
-			if tools.Shellcheck || tools.Pyflakes {
+			if tools.Shellcheck {
 				t.Fatalf("tool plan ignored external config: %s", plan.String())
 			}
 			if code := Main(getenv, &output); code != actionlint.ExitStatusSuccessNoProblem {
@@ -190,7 +190,7 @@ func TestActionConfigSymlinks(t *testing.T) {
 				if got.code != actionlint.ExitStatusSuccessNoProblem || code != actionlint.ExitStatusSuccessNoProblem {
 					t.Fatalf("linked config failed: lint=%d %s%s, preflight=%d %s", got.code, got.stderr, got.stdout, code, stderr.String())
 				}
-				if !strings.Contains(stdout.String(), `"shellcheck":false,"pyflakes":false`) {
+				if !strings.Contains(stdout.String(), `"shellcheck":false`) {
 					t.Fatalf("preflight ignored linked config: %s", stdout.String())
 				}
 			})

@@ -101,7 +101,9 @@ export async function temporary<T>(task: (directory: string) => Promise<T>): Pro
 	try {
 		return await task(directory);
 	} finally {
-		await rm(directory, { recursive: true, force: true });
+		// Windows can retain a just-exited executable briefly (including during
+		// antivirus scanning). Retry transient locks, but still report failure.
+		await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 	}
 }
 

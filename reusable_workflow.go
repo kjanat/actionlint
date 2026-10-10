@@ -318,7 +318,10 @@ func (c *LocalReusableWorkflowCache) convWorkflowPathToSpec(p string) (string, b
 	if !filepath.IsAbs(p) {
 		p = filepath.Join(c.cwd, p)
 	}
-	r := c.proj.RootDir()
+	// Compare canonical identities without changing caller-owned project or
+	// source spellings used by readers and diagnostics.
+	p = absPath(p)
+	r := absPath(c.proj.RootDir())
 	if !strings.HasPrefix(p, r) {
 		return "", false
 	}

@@ -27,7 +27,8 @@ func (a *commandApp) parseLegacy(args []string) (rest []string, forced string, t
 	}
 	c, r, o := &a.inv.Check, &a.inv.Render, &a.opts
 	text(&c.ShellCheck, "shellcheck", "shellcheck")
-	text(&c.Pyflakes, "pyflakes", "pyflakes")
+	text(&c.Ruff, "ruff", "ruff")
+	text(&c.Pyflakes, "", "pyflakes")
 	text(&c.Config.Path, "", "config-file", "config")
 	text(&c.StdinFilename, "<stdin>", "stdin-filename")
 	text(&r.Template, "", "format", "template", "f")
@@ -42,6 +43,8 @@ func (a *commandApp) parseLegacy(args []string) (rest []string, forced string, t
 	boolean(&r.Summary, "summary")
 	boolean(&c.Verbose, "verbose", "v")
 	boolean(&c.Debug, "debug")
+	boolean(&c.Strict, "strict")
+	boolean(&c.Experimental, "experimental")
 	boolean(&o.color, "color")
 	boolean(&o.noColor, "no-color")
 	boolean(&o.version, "version", "V")

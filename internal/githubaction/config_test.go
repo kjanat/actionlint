@@ -3,7 +3,6 @@ package githubaction
 import (
 	"maps"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -76,21 +75,16 @@ func TestQuotedIgnoreHintPreservesDiagnostics(t *testing.T) {
 }
 
 func TestToolCommandsFromEnvironment(t *testing.T) {
-	python := `C:\tool cache\someone's python\python.exe`
-	script := `C:\tool cache\$pyflakes\launcher.py`
-	req := &lintRequest{shellcheck: "shellcheck", pyflakes: "pyflakes"}
-	env := map[string]string{"ACTIONLINT_SHELLCHECK_COMMAND": "/cache/shellcheck", "ACTIONLINT_PYTHON": python, "ACTIONLINT_PYFLAKES_SCRIPT": script}
+	req := &lintRequest{shellcheck: "shellcheck"}
+	env := map[string]string{"ACTIONLINT_SHELLCHECK_COMMAND": "/cache/shellcheck"}
 	if err := req.configureEnvironment(func(k string) string { return env[k] }); err != nil {
 		t.Fatal(err)
-	}
-	if req.pyflakesOptions == nil || req.pyflakesOptions.Executable == nil || *req.pyflakesOptions.Executable != python || !reflect.DeepEqual(req.pyflakesOptions.Arguments, []string{"-I", script}) {
-		t.Errorf("want literal Python executable and arguments, got %#v", req.pyflakesOptions)
 	}
 	if req.shellcheckOptions == nil || req.shellcheckOptions.Executable == nil || *req.shellcheckOptions.Executable != "/cache/shellcheck" {
 		t.Errorf("want provisioned shellcheck, got %#v", req.shellcheckOptions)
 	}
 	disabled := &lintRequest{}
-	if err := disabled.configureEnvironment(func(k string) string { return env[k] }); err != nil || disabled.shellcheck != "" || disabled.pyflakes != "" || disabled.shellcheckOptions != nil || disabled.pyflakesOptions != nil {
+	if err := disabled.configureEnvironment(func(k string) string { return env[k] }); err != nil || disabled.shellcheck != "" || disabled.shellcheckOptions != nil {
 		t.Errorf("disabled tools must stay disabled: %#v, %v", disabled, err)
 	}
 }
@@ -120,6 +114,10 @@ func TestActionMetadataOmitsSectionMirrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, key := range actionlint.ConfigKeys() {
+		// The released files input selects workflow paths.
+		if key == "files" {
+			continue
+		}
 		if _, exists := metadata.Inputs[key]; exists {
 			t.Errorf("config section %s must use config overlay", key)
 		}
@@ -151,5 +149,26 @@ func TestConfigWarningsVisibleInAction(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "::warning title=Check configuration::") || !strings.Contains(out.String(), "config-variable") {
 		t.Fatal(out.String())
+	}
+}
+
+func TestInheritedConfigWarningsVisibleInAction(t *testing.T) {
+	for _, overlay := range []string{"", "policy: {require-commit-hash: false}"} {
+		t.Run(overlay, func(t *testing.T) {
+			workspace := workspaceWith(t, map[string]string{
+				".git": "", ".github/workflows/test.yaml": cleanWorkflow,
+				".github/actionlint.yaml": "extends: ['../base.yml']\n",
+				"base.yml":                "# inherited settings\nconfig-variable: [TYPO]\n",
+			})
+			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_CONFIG": overlay}
+			var out strings.Builder
+			if code := Main(func(key string) string { return env[key] }, &out); code != 0 {
+				t.Fatalf("exit %d: %s", code, &out)
+			}
+			want := commandEscape(filepath.Join(workspace, "base.yml") + ":2:1:")
+			if !strings.Contains(out.String(), "::warning title=Check configuration::"+want) {
+				t.Fatalf("warning attributed to leaf config: %s", &out)
+			}
+		})
 	}
 }

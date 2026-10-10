@@ -34,7 +34,7 @@ func TestResolvedConfigRoundTrip(t *testing.T) {
 				t.Fatal("serialization changed whether variable or secret checking is enabled")
 			}
 			if source == "" {
-				for _, rule := range InlineSuppressibleRules() {
+				for _, rule := range []string{"cache-call-unrestricted", "cache-operation", "cache-write-untrusted"} {
 					if !roundTrip.config.cachePolicyEnabled(rule) || resolved.origins["/policy/"+rule].Source != "default" {
 						t.Fatalf("lost cache policy default or origin: %s", rule)
 					}

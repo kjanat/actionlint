@@ -46,20 +46,15 @@ func TestLinterLintOK(t *testing.T) {
 
 	proj := &Project{root: dir}
 	shellcheck, _ := execabs.LookPath("shellcheck")
-	pyflakes, _ := execabs.LookPath("pyflakes")
 
 	for _, f := range fs {
 		t.Run(filepath.Base(f), func(t *testing.T) {
 			if strings.Contains(f, "shellcheck") && shellcheck == "" {
 				t.Skip("skipping", f, "because \"shellcheck\" command does not exist in system")
 			}
-			if strings.Contains(f, "pyflakes") && pyflakes == "" {
-				t.Skip("skipping", f, "because \"pyflakes\" command does not exist in system")
-			}
 
 			opts := LinterOptions{
 				Shellcheck: shellcheck,
-				Pyflakes:   pyflakes,
 			}
 
 			linter, err := NewLinter(io.Discard, &opts)
@@ -164,11 +159,6 @@ func TestLinterLintError(t *testing.T) {
 			shellcheck = p
 		}
 
-		pyflakes := ""
-		if p, err := execabs.LookPath("pyflakes"); err == nil {
-			pyflakes = p
-		}
-
 		for _, infile := range infiles {
 			base := strings.TrimSuffix(infile, filepath.Ext(infile))
 			testName := filepath.Base(base)
@@ -186,13 +176,6 @@ func TestLinterLintError(t *testing.T) {
 						t.Skip("skipped because \"shellcheck\" command does not exist in system")
 					}
 					o.Shellcheck = shellcheck
-				}
-
-				if strings.Contains(testName, "pyflakes") {
-					if pyflakes == "" {
-						t.Skip("skipped because \"pyflakes\" command does not exist in system")
-					}
-					o.Pyflakes = pyflakes
 				}
 
 				l, err := NewLinter(io.Discard, &o)
@@ -219,11 +202,6 @@ func TestLinterLintAllErrorWorkflowsAtOnce(t *testing.T) {
 		t.Skipf("shellcheck is not found: %s", err)
 	}
 
-	pyflakes, err := execabs.LookPath("pyflakes")
-	if err != nil {
-		t.Skipf("pyflakes is not found: %s", err)
-	}
-
 	dir, files, err := testFindAllWorkflowsInDir("examples")
 	if err != nil {
 		panic(err)
@@ -240,7 +218,6 @@ func TestLinterLintAllErrorWorkflowsAtOnce(t *testing.T) {
 
 	o := LinterOptions{
 		Shellcheck: shellcheck,
-		Pyflakes:   pyflakes,
 	}
 
 	l, err := NewLinter(io.Discard, &o)
@@ -895,15 +872,10 @@ func BenchmarkExamplesLintFiles(b *testing.B) {
 	if err != nil {
 		b.Skipf("shellcheck is not found: %s", err)
 	}
-	pyflakes, err := execabs.LookPath("pyflakes")
-	if err != nil {
-		b.Skipf("pyflakes is not found: %s", err)
-	}
 
 	for b.Loop() {
 		opts := LinterOptions{
 			Shellcheck: shellcheck,
-			Pyflakes:   pyflakes,
 		}
 
 		l, err := NewLinter(io.Discard, &opts)

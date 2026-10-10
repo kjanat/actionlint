@@ -83,7 +83,8 @@ func prepareShellcheckScript(src, directives, setup string) shellcheckScript {
 	}
 	writeSource(header)
 	if setup != "" {
-		out.WriteString(setup + "\n")
+		out.WriteString(setup)
+		out.WriteByte('\n')
 		script.sourceLines = append(script.sourceLines, 0)
 		script.startupLine = len(script.sourceLines)
 	}

@@ -13,6 +13,22 @@ import (
 	"github.com/spf13/pflag"
 )
 
+func TestRedirectedHelpWidth(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+	t.Setenv("NO_HYPERLINKS", "1")
+	for _, args := range [][]string{{"--help"}, {"check", "--help"}, {"doctor", "--help"}, {"--help-legacy"}} {
+		got := testRunCommand("", args...)
+		if got.Status != 0 {
+			t.Fatalf("%v: %+v", args, got)
+		}
+		for line := range strings.SplitSeq(got.Stderr, "\n") {
+			if width := len([]rune(line)); width > 80 {
+				t.Errorf("%v: help line is %d columns: %s", args, width, line)
+			}
+		}
+	}
+}
+
 func TestHelpColorFlags(t *testing.T) {
 	t.Setenv("GITHUB_ACTIONS", "")
 	t.Setenv("NO_COLOR", "")

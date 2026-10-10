@@ -1246,6 +1246,9 @@ type Workflow struct {
 	Concurrency *Concurrency
 	// Jobs is mappings from job ID to the job object. Keys are in lower case since they are case-insensitive.
 	Jobs map[string]*Job
+	// Pos is the first workflow mapping key's position. It may be nil for
+	// workflows constructed directly by API callers.
+	Pos *Pos
 }
 
 // FindWorkflowCallEvent returns workflow_call event node if exists

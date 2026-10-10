@@ -7,12 +7,11 @@ import { publishTools } from '#path';
 import { withReporting } from '#reporters';
 import type { Environment } from '#runtime';
 import { InputError, runAction } from '#runtime';
-import { checkExecutable, executeNative, inspectTools, nativeBinary, pyflakesCommand, shellcheckBinary } from '#tools';
+import { checkExecutable, executeNative, inspectTools, nativeBinary, ruffBinary, shellcheckBinary } from '#tools';
 import { selectedVersion } from '#version';
 import { commandEscape, writeOutputs } from '#workflow';
 
 declare const __ACTIONLINT_VERSION__: string;
-declare const __PYFLAKES_LAUNCHER__: string;
 
 const environment = normalizeEnvironment(env);
 
@@ -32,7 +31,7 @@ async function main(): Promise<void> {
 				checkExecutable,
 				inspect: inspectTools,
 				shellcheck: () => shellcheckBinary(platform),
-				pyflakes: () => pyflakesCommand(platform, __PYFLAKES_LAUNCHER__),
+				ruff: () => ruffBinary(platform),
 				publish: (tools) => publishTools(tools, environment),
 				execute: executeNative,
 			})

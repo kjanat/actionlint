@@ -58,9 +58,10 @@ The package includes `actionlint.schema.json` for completion and validation in c
 # yaml-language-server: $schema=../node_modules/@kjanat/actionlint/actionlint.schema.json
 ```
 
-ShellCheck directives reference `schemas/shellcheck/0.11.0.schema.json` relative
-to the main schema. The package includes that file, so local schema validation
-can run offline. A versioned CDN URL uses the schema from the same npm release.
+ShellCheck directives and Ruff options reference their versioned definitions in
+`schemas/shellcheck/` and `schemas/ruff/` relative to the main schema. The package
+includes these files, so local schema validation can run offline. A versioned CDN
+URL uses the schemas from the same npm release.
 
 <details>
 <summary>CDN URLs for the JSON schema</summary>
@@ -96,11 +97,10 @@ a specific release that includes it.
 
 </details>
 
-### ShellCheck and Pyflakes
+### ShellCheck
 
-`actionlint` also checks the shell scripts inside `run:` steps with [ShellCheck][shellcheck], and Python scripts with
-[Pyflakes][pyflakes], when those are on your `PATH`. Neither is bundled here; install them separately to enable those
-checks.
+`actionlint` checks shell scripts inside `run:` steps with [ShellCheck][shellcheck]
+when it is on your `PATH`. ShellCheck is not bundled here; install it separately to enable these checks.
 
 ## How this package is put together
 
@@ -163,6 +163,5 @@ Homebrew, Arch (AUR), Scoop, Docker, a download script, and `go install` are all
 
 MIT. See [LICENSE.txt](./LICENSE.txt).
 
-[pyflakes]: https://pypi.org/project/pyflakes/
 [releases]: https://github.com/kjanat/actionlint/releases
 [shellcheck]: https://www.shellcheck.net/

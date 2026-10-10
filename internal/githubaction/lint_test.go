@@ -148,6 +148,25 @@ func TestRunLinterDistinguishesEmptyDiscovery(t *testing.T) {
 	}
 }
 
+func TestRunLinterCountsIncludedFiles(t *testing.T) {
+	for _, tc := range []struct {
+		excluded string
+		count    int
+	}{{"skip.yaml", 1}, {"*.yaml", 0}} {
+		t.Run(tc.excluded, func(t *testing.T) {
+			dir := workspaceWith(t, map[string]string{
+				"skip.yaml":  brokenWorkflow,
+				"keep.yaml":  cleanWorkflow,
+				"config.yml": "files: {excludes: ['" + tc.excluded + "']}\n",
+			})
+			got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, files: []string{"skip.yaml", "keep.yaml"}, configFile: filepath.Join(dir, "config.yml")})
+			if got.code != actionlint.ExitStatusSuccessNoProblem || !got.fileCountKnown || got.fileCount != tc.count || len(got.diagnostics) != 0 {
+				t.Fatalf("included-file count=%d known=%v exit=%d diagnostics=%+v stderr=%s", got.fileCount, got.fileCountKnown, got.code, got.diagnostics, got.stderr)
+			}
+		})
+	}
+}
+
 func TestRunLinterFindsProblems(t *testing.T) {
 	dir := workspaceWith(t, map[string]string{"broken.yaml": brokenWorkflow})
 	t.Chdir(dir)

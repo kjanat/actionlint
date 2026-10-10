@@ -107,9 +107,11 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 	}
 	out, colored, restore := a.helpOutput(c)
 	defer restore()
-	width := 0
+	width := 80
 	if file, ok := a.streams.Stderr.(*os.File); ok {
-		width = terminalWidth(file)
+		if columns := terminalWidth(file); columns > 0 {
+			width = min(width, columns)
+		}
 	}
 	links := a.helpHyperlinks()
 	heading := helpStyle(colored, color.Bold, color.FgCyan)
@@ -166,8 +168,9 @@ func (a *commandApp) legacyHelp(c *cobra.Command) {
   -version                version (the old flag keeps its original output)
   -verbose / -debug       --log-level=info / --log-level=debug
   -color / -no-color      boolean options on the root; no-color wins
-  -shellcheck COMMAND     unchanged; an empty value disables ShellCheck
-  -pyflakes COMMAND       unchanged; an empty value disables Pyflakes
+  -shellcheck COMMAND     false or an empty value disables ShellCheck
+  -ruff COMMAND           false or an empty value disables Ruff
+  -pyflakes COMMAND       deprecated and ignored; use Ruff instead
   -stdin-filename PATH    unchanged
 
 Root parsing stops at the first filename. -- ends option parsing.
@@ -181,7 +184,11 @@ func writeHelpDestinations(out io.Writer, heading *color.Color, links bool) {
 	info, _ := debug.ReadBuildInfo()
 	ref := documentationRef(actionlint.Version(), info)
 	documentation := projectURL + "/tree/" + ref + "/docs/usage.md"
-	_, _ = fmt.Fprintf(out, "\n%s\n  %s\n\n%s\n  %s\n", heading.Sprint("Project:"), terminalLink(links, projectURL, projectURL), heading.Sprint("Documentation:"), terminalLink(links, documentation, documentation))
+	display := documentation
+	if len(ref) == 40 && !strings.ContainsAny(ref, "/.-") {
+		display = projectURL + "/tree/" + ref[:12] + "/docs/usage.md"
+	}
+	_, _ = fmt.Fprintf(out, "\n%s\n  %s\n\n%s\n  %s\n", heading.Sprint("Project:"), terminalLink(links, projectURL, projectURL), heading.Sprint("Documentation:"), terminalLink(links, display, documentation))
 }
 
 type commandFlagDescription struct {

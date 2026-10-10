@@ -1,13 +1,20 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
+	"runtime"
+	"slices"
+	"strings"
 	"text/tabwriter"
+	"time"
 
 	"actionlint.kjanat.dev"
+	"actionlint.kjanat.dev/internal/ruff"
 )
 
 type doctorTool struct {
@@ -19,7 +26,7 @@ type doctorTool struct {
 	Error     string   `json:"error,omitempty"`
 }
 
-func writeDoctor(out io.Writer, req doctorRequest) error {
+func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -39,7 +46,7 @@ func writeDoctor(out io.Writer, req doctorRequest) error {
 	for _, item := range []struct {
 		name, command string
 		options       *actionlint.ExternalCommandOptions
-	}{{"shellcheck", req.ShellCheck, req.ShellcheckOptions}, {"pyflakes", req.Pyflakes, req.PyflakesOptions}} {
+	}{{"shellcheck", req.ShellCheck, req.ShellcheckOptions}, {"ruff", req.Ruff, req.RuffOptions}} {
 		if item.options != nil && item.options.Executable != nil {
 			item.command = *item.options.Executable
 		}
@@ -47,6 +54,12 @@ func writeDoctor(out io.Writer, req doctorRequest) error {
 		if item.command != "" {
 			tool.Path, tool.Arguments, err = actionlint.ResolveExternalCommandOptions(item.command, item.options)
 			tool.Status = "available"
+			if err == nil && item.name == "ruff" && item.options != nil && item.options.Optional {
+				err = probeDoctorRuff(ctx, tool.Path, item.options)
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
+			}
 			if err != nil {
 				tool.Status, tool.Error = "unavailable", err.Error()
 			}
@@ -75,6 +88,9 @@ func writeDoctor(out io.Writer, req doctorRequest) error {
 			if value == "" {
 				value = tool.Status
 			}
+			if tool.Error != "" {
+				value = fmt.Sprintf("%s (%s: %s)", value, tool.Status, tool.Error)
+			}
 			_, err = fmt.Fprintf(w, "%s:\t%s\n", tool.Name, value)
 		}
 		err = errors.Join(err, w.Flush())
@@ -83,4 +99,26 @@ func writeDoctor(out io.Writer, req doctorRequest) error {
 		return err
 	}
 	return configErr
+}
+
+func probeDoctorRuff(ctx context.Context, executable string, options *actionlint.ExternalCommandOptions) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	var result error
+	run := func(args []string, stdin string, callback func([]byte, error) error) {
+		cmd := exec.CommandContext(ctx, executable, args...)
+		cmd.WaitDelay = time.Second
+		cmd.Dir = options.WorkingDir
+		cmd.Stdin = strings.NewReader(stdin)
+		cmd.Env = append(cmd.Environ(), options.Environment...)
+		cmd.Env = slices.DeleteFunc(cmd.Env, func(entry string) bool {
+			name, _, _ := strings.Cut(entry, "=")
+			return slices.ContainsFunc(ruff.UnsetEnvironment(), func(unset string) bool {
+				return name == unset || runtime.GOOS == "windows" && strings.EqualFold(name, unset)
+			})
+		})
+		output, err := cmd.Output()
+		result = callback(output, err)
+	}
+	return ruff.CheckCompatibility(ctx, run, func() error { return result })
 }

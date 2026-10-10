@@ -19,14 +19,14 @@ function fixture(exitCode = 0) {
 		checkExecutable: async () => {
 			calls.push('check-executable');
 		},
-		inspect: async () => ({ shellcheck: true, pyflakes: true }),
+		inspect: async () => ({ shellcheck: true, ruff: false }),
 		shellcheck: async () => {
 			calls.push('shellcheck');
 			return { kind: 'standalone', executable: join(tmpdir(), 'tools with spaces', 'shellcheck') };
 		},
-		pyflakes: async () => {
-			calls.push('pyflakes');
-			return { kind: 'python', executable: join(tmpdir(), 'python'), script: join(tmpdir(), 'pyflakes.py') };
+		ruff: async () => {
+			calls.push('ruff');
+			return { kind: 'standalone', executable: join(tmpdir(), 'tools with spaces', 'ruff') };
 		},
 		publish: async (tools) => {
 			publications.push(tools);
@@ -39,20 +39,66 @@ function fixture(exitCode = 0) {
 	return { calls, executions, publications, runtime };
 }
 
+test('deprecated Python input warns and cannot enable Pyflakes in a selected older binary', async (t) => {
+	const messages: string[] = [];
+	t.mock.method(console, 'log', (message: string) => messages.push(message));
+	const setup = fixture();
+	assert.equal(await runAction({ INPUT_PYFLAKES: 'true', INPUT_SHELLCHECK: 'false' }, setup.runtime), 0);
+	assert.deepEqual(setup.calls, ['native']);
+	assert.equal(setup.executions[0]?.environment.INPUT_PYFLAKES, 'false');
+	assert.deepEqual(Object.keys(setup.publications[0] ?? {}), ['actionlint']);
+	assert.ok(
+		messages.some((message) => message.startsWith('::warning::') && message.includes('pyflakes input is ignored')),
+	);
+});
+
+test('retired Pyflakes PATH requests warn once without enabling installation', async (t) => {
+	const messages: string[] = [];
+	t.mock.method(console, 'log', (message: string) => messages.push(message));
+	for (const setupOnly of [false, true]) {
+		for (const value of [undefined, '', 'false', 'true']) {
+			for (const pyflakes of ['false', 'true']) {
+				messages.length = 0;
+				const setup = fixture();
+				const environment: Environment = {
+					'INPUT_INSTALL-ONLY': String(setupOnly),
+					INPUT_SHELLCHECK: 'false',
+					INPUT_RUFF: 'false',
+					INPUT_PYFLAKES: pyflakes,
+				};
+				if (value !== undefined) environment['INPUT_ADD-PYFLAKES-TO-PATH'] = value;
+				assert.equal(await runAction(environment, setup.runtime), 0);
+				const warnings = messages.filter((message) => message.startsWith('::warning::'));
+				assert.equal(warnings.length, Number(value === 'true') + Number(pyflakes === 'true'));
+				assert.equal(warnings.some((message) => message.includes('add-pyflakes-to-path')), value === 'true');
+				assert.deepEqual(setup.calls, ['native']);
+				assert.equal(environment['INPUT_ADD-PYFLAKES-TO-PATH'], value);
+				if (!setupOnly) {
+					assert.equal(setup.executions[0]?.environment.INPUT_PYFLAKES, 'false');
+					assert.equal(
+						setup.executions[0]?.environment['INPUT_ADD-PYFLAKES-TO-PATH'],
+						value === 'true' ? 'false' : value,
+					);
+				}
+			}
+		}
+	}
+});
+
 test('install-only publishes tools without inspecting or executing the selected binary', async () => {
 	const setup = fixture();
 	setup.runtime.inspect = async () => assert.fail('setup must not inspect workflows or require the Action protocol');
 	setup.runtime.execute = async () => assert.fail('setup must not analyze');
 	assert.equal(await runAction({ 'INPUT_INSTALL-ONLY': 'true', INPUT_CONFIG: 'not linted' }, setup.runtime), 0);
-	assert.deepEqual(setup.calls, ['native', 'shellcheck', 'pyflakes']);
-	assert.deepEqual(Object.keys(setup.publications[0] ?? {}).sort(), ['actionlint', 'pyflakes', 'shellcheck']);
+	assert.deepEqual(setup.calls, ['native', 'shellcheck', 'ruff']);
+	assert.deepEqual(Object.keys(setup.publications[0] ?? {}).sort(), ['actionlint', 'ruff', 'shellcheck']);
 });
 
 test('install-only respects optional-tool selection and validates setup inputs before downloading', async () => {
 	const setup = fixture();
 	assert.equal(
 		await runAction(
-			{ 'INPUT_INSTALL-ONLY': 'true', INPUT_SHELLCHECK: 'false', INPUT_PYFLAKES: 'false' },
+			{ 'INPUT_INSTALL-ONLY': 'true', INPUT_SHELLCHECK: 'false', INPUT_RUFF: 'false', INPUT_PYFLAKES: 'false' },
 			setup.runtime,
 		),
 		0,
@@ -63,6 +109,7 @@ test('install-only respects optional-tool selection and validates setup inputs b
 		const environment of [
 			{ 'INPUT_INSTALL-ONLY': 'yes' },
 			{ 'INPUT_INSTALL-ONLY': 'true', INPUT_SHELLCHECK: 'yes' },
+			{ 'INPUT_INSTALL-ONLY': 'true', INPUT_RUFF: 'yes' },
 			{ 'INPUT_INSTALL-ONLY': 'true', 'INPUT_ADD-ACTIONLINT-TO-PATH': 'false' },
 		]
 	) {
@@ -88,7 +135,7 @@ test('ordinary binary receives explicit action mode, untouched inputs, and its e
 	assert.deepEqual(setup.executions, [{
 		executable: join(tmpdir(), 'downloaded actionlint'),
 		args: ['-github-action'],
-		environment,
+		environment: { ...environment, INPUT_RUFF: 'true' },
 	}]);
 });
 
@@ -97,14 +144,11 @@ test('default enabled tools provision commands only in the native child environm
 	const environment = { INPUT_CONFIG: '{}' };
 	await runAction(environment, setup.runtime);
 	const child = setup.executions[0]?.environment;
-	assert.equal(child?.ACTIONLINT_PYTHON, join(tmpdir(), 'python'));
-	assert.equal(child?.ACTIONLINT_PYFLAKES_SCRIPT, join(tmpdir(), 'pyflakes.py'));
 	assert.equal(child?.ACTIONLINT_SHELLCHECK_COMMAND, join(tmpdir(), 'tools with spaces', 'shellcheck'));
 	assert.deepEqual(environment, { INPUT_CONFIG: '{}' });
 	assert.deepEqual(setup.publications, [{
 		actionlint: join(tmpdir(), 'downloaded actionlint'),
 		shellcheck: { kind: 'standalone', executable: join(tmpdir(), 'tools with spaces', 'shellcheck') },
-		pyflakes: { kind: 'python', executable: join(tmpdir(), 'python'), script: join(tmpdir(), 'pyflakes.py') },
 	}]);
 });
 
@@ -116,7 +160,7 @@ test('preflight and analysis exclude the review token while the reporter retains
 		setup.runtime.inspect = async (_, child) => {
 			inspected = true;
 			assert.equal(child.INPUT_TOKEN, undefined);
-			return { shellcheck: false, pyflakes: false };
+			return { shellcheck: false, ruff: false };
 		};
 		assert.equal(await runAction(environment, setup.runtime), 0);
 		assert.ok(inspected);
@@ -126,42 +170,26 @@ test('preflight and analysis exclude the review token while the reporter retains
 });
 
 test('each PATH export can be disabled independently without disabling lint tools', async () => {
-	for (const disabled of ['actionlint', 'shellcheck', 'pyflakes']) {
+	for (const disabled of ['actionlint', 'shellcheck']) {
 		const setup = fixture();
 		await runAction({ [`INPUT_ADD-${disabled.toUpperCase()}-TO-PATH`]: 'false' }, setup.runtime);
-		const expected = ['actionlint', 'shellcheck', 'pyflakes'].filter((tool) => tool !== disabled);
+		const expected = ['actionlint', 'shellcheck'].filter((tool) => tool !== disabled);
 		assert.deepEqual(Object.keys(setup.publications[0] ?? {}).sort(), expected.sort());
 		const child = setup.executions[0]?.environment;
 		assert.equal(child?.ACTIONLINT_SHELLCHECK_COMMAND, join(tmpdir(), 'tools with spaces', 'shellcheck'));
-		assert.equal(child?.ACTIONLINT_PYTHON, join(tmpdir(), 'python'));
 	}
 	const setup = fixture();
 	await runAction({
 		'INPUT_ADD-ACTIONLINT-TO-PATH': 'false',
 		'INPUT_ADD-SHELLCHECK-TO-PATH': 'false',
-		'INPUT_ADD-PYFLAKES-TO-PATH': 'false',
 	}, setup.runtime);
 	assert.deepEqual(setup.publications, []);
 	assert.equal(setup.executions.length, 1);
-	assert.equal(setup.executions[0]?.environment.ACTIONLINT_PYTHON, join(tmpdir(), 'python'));
 	assert.equal(
 		setup.executions[0]?.environment.ACTIONLINT_SHELLCHECK_COMMAND,
 		join(tmpdir(), 'tools with spaces', 'shellcheck'),
 	);
-	await assert.rejects(runAction({ 'INPUT_ADD-PYFLAKES-TO-PATH': 'yes' }, setup.runtime), InputError);
-});
-
-test('existing pyflakes executable is passed directly', async () => {
-	const setup = fixture();
-	setup.runtime.pyflakes = async () => ({ kind: 'existing', executable: join(tmpdir(), 'pyflakes.exe') });
-	await runAction({
-		INPUT_SHELLCHECK: 'false',
-		ACTIONLINT_PYTHON: 'stale Python override',
-		ACTIONLINT_PYFLAKES_SCRIPT: 'stale script override',
-	}, setup.runtime);
-	assert.equal(setup.executions[0]?.environment.ACTIONLINT_PYFLAKES_COMMAND, join(tmpdir(), 'pyflakes.exe'));
-	assert.equal(setup.executions[0]?.environment.ACTIONLINT_PYTHON, undefined);
-	assert.equal(setup.executions[0]?.environment.ACTIONLINT_PYFLAKES_SCRIPT, undefined);
+	await assert.rejects(runAction({ 'INPUT_ADD-SHELLCHECK-TO-PATH': 'yes' }, setup.runtime), InputError);
 });
 
 test('invalid booleans are forwarded without provisioning optional tools', async () => {
@@ -177,10 +205,10 @@ test('invalid booleans are forwarded without provisioning optional tools', async
 
 test('enabled tool installation failures stop execution', async () => {
 	const setup = fixture();
-	setup.runtime.pyflakes = async () => {
-		throw new Error('missing Python');
+	setup.runtime.shellcheck = async () => {
+		throw new Error('missing ShellCheck');
 	};
-	await assert.rejects(runAction({ INPUT_SHELLCHECK: 'false' }, setup.runtime), /missing Python/);
+	await assert.rejects(runAction({}, setup.runtime), /missing ShellCheck/);
 	assert.deepEqual(setup.executions, []);
 });
 
@@ -189,7 +217,7 @@ test('effective configuration disables provisioning and PATH export before tool 
 	setup.runtime.inspect = async (_, environment) => {
 		assert.equal(environment.ACTIONLINT_SHELLCHECK_COMMAND, undefined);
 		assert.equal(environment.INPUT_CONFIG, 'tools: {shellcheck: {enabled: false}}');
-		return { shellcheck: false, pyflakes: true };
+		return { shellcheck: false, ruff: false };
 	};
 	setup.runtime.shellcheck = async () => {
 		assert.fail('disabled ShellCheck must never be located or downloaded');
@@ -198,7 +226,7 @@ test('effective configuration disables provisioning and PATH export before tool 
 		INPUT_CONFIG: 'tools: {shellcheck: {enabled: false}}',
 		ACTIONLINT_SHELLCHECK_COMMAND: 'stale override',
 	}, setup.runtime);
-	assert.deepEqual(setup.calls, ['native', 'pyflakes']);
+	assert.deepEqual(setup.calls, ['native']);
 	assert.equal(setup.publications[0]?.shellcheck, undefined);
 	assert.equal(setup.executions[0]?.environment.ACTIONLINT_SHELLCHECK_COMMAND, undefined);
 	assert.equal(setup.executions[0]?.environment.INPUT_CONFIG, 'tools: {shellcheck: {enabled: false}}');
@@ -222,10 +250,52 @@ test('Windows input and tool override names are case-insensitive', { skip: proce
 		input_pyflakes: 'false',
 		input_token: 'fixture-review-token',
 		actionlint_shellcheck_command: 'stale ShellCheck',
-		actionlint_pyflakes_command: 'stale Pyflakes',
-		actionlint_python: 'stale Python',
-		actionlint_pyflakes_script: 'stale script',
 	}, setup.runtime);
 	assert.deepEqual(setup.calls, ['native']);
-	assert.deepEqual(setup.executions[0]?.environment, { INPUT_SHELLCHECK: 'false', INPUT_PYFLAKES: 'false' });
+	assert.deepEqual(setup.executions[0]?.environment, {
+		INPUT_SHELLCHECK: 'false',
+		INPUT_PYFLAKES: 'false',
+		INPUT_RUFF: 'true',
+	});
+});
+
+test('Ruff provisions independently of ShellCheck and honors its independent PATH switch', async () => {
+	for (const publish of [true, false]) {
+		const setup = fixture();
+		setup.runtime.inspect = async () => ({ shellcheck: false, ruff: true });
+		await runAction({ INPUT_SHELLCHECK: 'false', 'INPUT_ADD-RUFF-TO-PATH': String(publish) }, setup.runtime);
+		assert.deepEqual(setup.calls, ['native', 'ruff']);
+		assert.equal(setup.executions[0]?.environment.ACTIONLINT_RUFF_COMMAND, join(tmpdir(), 'tools with spaces', 'ruff'));
+		assert.equal(Boolean(setup.publications[0]?.ruff), publish);
+	}
+});
+
+test('Ruff disabled by input or effective per-file configuration is never provisioned', async () => {
+	for (const input of ['true', 'false']) {
+		const setup = fixture();
+		setup.runtime.inspect = async (_, environment) => {
+			assert.equal(environment.ACTIONLINT_RUFF_COMMAND, undefined);
+			return { shellcheck: false, ruff: input === 'false' };
+		};
+		setup.runtime.ruff = async () => assert.fail('disabled Ruff must not be located, downloaded or cached');
+		await runAction({ INPUT_RUFF: input, ACTIONLINT_RUFF_COMMAND: 'stale Ruff' }, setup.runtime);
+		assert.deepEqual(setup.calls, ['native']);
+		assert.equal(setup.publications[0]?.ruff, undefined);
+		assert.equal(setup.executions[0]?.environment.ACTIONLINT_RUFF_COMMAND, undefined);
+	}
+});
+
+test('Ruff provisioning errors stop analysis and invalid input skips all optional installation', async () => {
+	const setup = fixture();
+	setup.runtime.inspect = async () => ({ shellcheck: false, ruff: true });
+	setup.runtime.ruff = async () => {
+		throw new Error('Ruff SHA-256 checksum mismatch');
+	};
+	await assert.rejects(runAction({}, setup.runtime), /Ruff SHA-256 checksum mismatch/);
+	assert.deepEqual(setup.executions, []);
+	const invalid = fixture(2);
+	invalid.runtime.inspect = async () => assert.fail('invalid input must not inspect or provision');
+	assert.equal(await runAction({ INPUT_RUFF: 'yes' }, invalid.runtime), 2);
+	assert.deepEqual(invalid.calls, ['native']);
+	assert.equal(invalid.executions[0]?.environment.INPUT_RUFF, 'yes');
 });

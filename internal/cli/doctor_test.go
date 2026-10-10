@@ -19,7 +19,7 @@ func TestDoctorToolPresentation(t *testing.T) {
 	}
 	request := doctorRequest{Config: actionlint.ConfigSelection{Disabled: true}, ShellCheck: `"` + filepath.ToSlash(executable) + `"`, Hyperlinks: "never"}
 	var text, data bytes.Buffer
-	if err := writeDoctor(&text, request); err != nil {
+	if err := writeDoctor(t.Context(), &text, request); err != nil {
 		t.Fatal(err)
 	}
 	values := map[string]string{}
@@ -38,11 +38,11 @@ func TestDoctorToolPresentation(t *testing.T) {
 			column = start
 		}
 	}
-	if filepath.Clean(values["shellcheck"]) != filepath.Clean(executable) || values["pyflakes"] != "disabled" {
+	if filepath.Clean(values["shellcheck"]) != filepath.Clean(executable) {
 		t.Fatalf("unexpected tool display:\n%s", &text)
 	}
 	request.JSON = true
-	if err := writeDoctor(&data, request); err != nil {
+	if err := writeDoctor(t.Context(), &data, request); err != nil {
 		t.Fatal(err)
 	}
 	var report struct {

@@ -46,7 +46,7 @@ func newCommandApp(streams *Command) *commandApp {
 	a.root = &cobra.Command{
 		Use:   "actionlint [flags] [files...] [-]",
 		Short: "Check GitHub Actions workflows",
-		Long:  "Check workflow syntax, expressions, actions and embedded scripts.\nWith no files, discover workflows in the current repository. Pass - alone to read stdin.",
+		Long:  "Check workflow syntax, expressions, actions and embedded scripts.\nWith no files, discover workflows in the current repository.\nPass - alone to read stdin.",
 		Example: strings.Join([]string{
 			"  actionlint",
 			"  actionlint check --output-format=json workflow.yml",
@@ -155,8 +155,10 @@ func (a *commandApp) configFlags(f *pflag.FlagSet) {
 }
 
 func (a *commandApp) toolFlags(f *pflag.FlagSet) {
-	f.StringVar(&a.inv.Check.ShellCheck, "shellcheck", "shellcheck", "ShellCheck command or command line; empty disables it")
-	f.StringVar(&a.inv.Check.Pyflakes, "pyflakes", "pyflakes", "Pyflakes command or command line; empty disables it")
+	f.StringVar(&a.inv.Check.Ruff, "ruff", "ruff", "Ruff command; false disables")
+	annotateFlag(f, "ruff", "External linters")
+	f.StringVar(&a.inv.Check.ShellCheck, "shellcheck", "shellcheck", "ShellCheck command; false disables")
+	f.StringVar(&a.inv.Check.Pyflakes, "pyflakes", "", "Deprecated: Pyflakes integration was removed; ignored")
 	annotateFlag(f, "shellcheck", "External linters")
 	annotateFlag(f, "pyflakes", "External linters")
 }
@@ -166,6 +168,10 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	a.commonFlags(c, f)
 	a.configFlags(f)
 	a.toolFlags(f)
+	f.BoolVar(&a.inv.Check.Strict, "strict", false, "Select all stable rules, preserving explicit rule exceptions")
+	f.BoolVar(&a.inv.Check.Experimental, "experimental", false, "Enable nursery rules; false disables only nursery rules")
+	annotateFlag(f, "strict", "Input")
+	annotateFlag(f, "experimental", "Input")
 	f.StringVar(&a.inv.Check.StdinFilename, "stdin-filename", "<stdin>", "Use this filename for stdin diagnostics and project detection")
 	f.StringArrayVar(&a.inv.Check.IgnoreRegex, "ignore-regex", nil, "Ignore findings whose messages match this regexp; repeat as needed")
 	f.Var(f.Lookup("ignore-regex").Value, "ignore", "Alias for --ignore-regex")

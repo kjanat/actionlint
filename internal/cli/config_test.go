@@ -30,6 +30,31 @@ func TestConfigValidationWarnings(t *testing.T) {
 	}
 }
 
+func TestConfigInheritedWarningLocation(t *testing.T) {
+	commandTestRepo(t)
+	base := filepath.Join(t.TempDir(), "base.yml")
+	if err := os.WriteFile(base, []byte("# inherited settings\nconfig-variable: [TYPO]\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	leaf := filepath.Join(".github", "actionlint.yaml")
+	encodedBase, err := json.Marshal(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(leaf, []byte("extends: ["+string(encodedBase)+"]\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	got := testRunCommand("", "config", "validate")
+	if got.Status != 0 || !strings.Contains(got.Stdout, base+":2:1: warning:") {
+		t.Fatalf("wrong inherited warning location: %+v", got)
+	}
+	got = testRunCommand("", "config", "validate", "--json")
+	var result struct{ Warnings []actionlint.ConfigWarning }
+	if err := json.Unmarshal([]byte(got.Stdout), &result); err != nil || got.Status != 0 || len(result.Warnings) != 1 || result.Warnings[0].File != base {
+		t.Fatalf("inherited warning JSON=%+v, %v", got, err)
+	}
+}
+
 func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
 	commandTestRepo(t)
 	for _, operation := range [][]string{{"-init-config"}, {"config", "init"}, {"version"}, {"rules"}} {

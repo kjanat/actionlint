@@ -20,17 +20,17 @@ const lintTimeout = 300 * time.Second
 const lintCancellationGrace = time.Second
 
 type lintRequest struct {
+	ruff               string
+	ruffOptions        *actionlint.ExternalCommandOptions
 	ctx                context.Context
 	shellcheckOptions  *actionlint.ExternalCommandOptions
 	shellcheckSettings *actionlint.ShellcheckSettings
-	pyflakesOptions    *actionlint.ExternalCommandOptions
 	workingDir         string
 	workspaceDir       string
 	configFile         string
 	overlays           []actionlint.ConfigOverlay
 	ignore             []string
 	shellcheck         string
-	pyflakes           string
 	format             outputFormat
 	sarif              bool
 	files              []string
@@ -55,6 +55,20 @@ type lintResult struct {
 }
 
 func (req *lintRequest) configureEnvironment(env func(string) string) error {
+	// The launcher provisions enabled Ruff before invoking this native entrypoint.
+	ruff := env("INPUT_RUFF")
+	if ruff != "" {
+		enabled, err := parseBool("ruff", ruff)
+		if err != nil {
+			return err
+		}
+		if enabled {
+			req.ruff = "ruff"
+		}
+	}
+	if command := env("ACTIONLINT_RUFF_COMMAND"); req.ruff != "" && command != "" {
+		req.ruffOptions = &actionlint.ExternalCommandOptions{Executable: &command}
+	}
 	req.sarif = env("INPUT_SARIF") == "true"
 	if value := env("INPUT_CONFIG"); strings.TrimSpace(value) != "" {
 		overlay, err := actionlint.ParseConfigOverlay("config", []byte(value))
@@ -65,13 +79,6 @@ func (req *lintRequest) configureEnvironment(env func(string) string) error {
 	}
 	if command := env("ACTIONLINT_SHELLCHECK_COMMAND"); req.shellcheck != "" && command != "" {
 		req.shellcheckOptions = &actionlint.ExternalCommandOptions{Executable: &command}
-	}
-	if command := env("ACTIONLINT_PYFLAKES_COMMAND"); req.pyflakes != "" && command != "" {
-		req.pyflakesOptions = &actionlint.ExternalCommandOptions{Executable: &command}
-	}
-	python, script := env("ACTIONLINT_PYTHON"), env("ACTIONLINT_PYFLAKES_SCRIPT")
-	if req.pyflakes != "" && python != "" && script != "" {
-		req.pyflakesOptions = &actionlint.ExternalCommandOptions{Executable: &python, Arguments: []string{"-I", script}}
 	}
 	return nil
 }
@@ -89,9 +96,6 @@ func buildRequest(in *inputs, workspaceDir, workingDir string) *lintRequest {
 	if in.shellcheck {
 		req.shellcheck = "shellcheck"
 	}
-	if in.pyflakes {
-		req.pyflakes = "pyflakes"
-	}
 	req.files = in.files
 	return req
 }
@@ -104,12 +108,11 @@ func runLinter(req *lintRequest) *lintResult {
 		workspace = req.workingDir
 	}
 	opts := actionlint.AnalysisOptions{
+		Ruff: req.ruff, RuffOptions: toolOptionsInDirectory(req.ruffOptions, req.workingDir),
 		Context:            req.ctx,
 		ShellcheckOptions:  toolOptionsInDirectory(req.shellcheckOptions, req.workingDir),
 		ShellcheckSettings: req.shellcheckSettings,
-		PyflakesOptions:    toolOptionsInDirectory(req.pyflakesOptions, req.workingDir),
 		Shellcheck:         req.shellcheck,
-		Pyflakes:           req.pyflakes,
 		IgnorePatterns:     req.ignore,
 		ConfigFile:         req.configFile,
 		ConfigOverlays:     req.overlays,
@@ -153,6 +156,8 @@ func runLinter(req *lintRequest) *lintResult {
 			}
 		}
 		result.documents = analysis.Documents
+		result.fileCount = analysis.FileCount()
+		result.fileCountKnown = true
 		for i := range analysis.Diagnostics {
 			diagnostic := &analysis.Diagnostics[i]
 			if path, ok := inputNames[diagnostic.Path]; ok {

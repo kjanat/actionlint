@@ -61,13 +61,15 @@ function sarif(value: unknown): value is Record<string, unknown> {
 
 function configOrigin(value: unknown): value is ConfigOrigin {
 	return object(value) && typeof value.source === 'string' && typeof value.state === 'string'
+		&& (value.file === undefined || typeof value.file === 'string')
 		&& (value.input === undefined || typeof value.input === 'string')
 		&& (value.line === undefined || integer(value.line, 0))
 		&& (value.column === undefined || integer(value.column, 0));
 }
 
 function configWarning(value: unknown): value is ConfigWarning {
-	return object(value) && typeof value.message === 'string' && integer(value.line, 0) && integer(value.column, 0);
+	return object(value) && typeof value.message === 'string' && integer(value.line, 0) && integer(value.column, 0)
+		&& (value.file === undefined || typeof value.file === 'string');
 }
 
 function configuration(value: unknown): value is ResultConfig {

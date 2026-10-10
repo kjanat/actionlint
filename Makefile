@@ -73,8 +73,12 @@ l lint:
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 ifneq ($(OS),Windows_NT)
 	GOOS=js GOARCH=wasm golangci-lint run ./playground
-	go run ./scripts/check-checks -quiet ./docs/checks.md
 endif
+
+# Documentation examples also require Pyflakes; keep that dependency explicit.
+.PHONY: lint-docs
+lint-docs:
+	go run ./scripts/check-checks -quiet ./docs/checks.md
 
 popular_actions.go all_webhooks.go availability.go action_metadata_availability.go action_runtimes.go: $(GO_GEN_SRCS)
 ifdef SKIP_GO_GENERATE

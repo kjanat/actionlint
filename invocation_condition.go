@@ -16,11 +16,8 @@ func jobInvocationCondition(job *Job) (enabled, known bool) {
 
 func invocationConditionInStatuses(condition *String, statuses []string) (enabled, known bool) {
 	if condition != nil {
-		source := condition.Value
-		if !condition.ContainsExpression() {
-			source = "${{ " + source + " }}"
-		}
-		if conditionNeverRunsInStatuses(parseAssignedExpression(source), statuses) {
+		expr, _, _ := parseConditionExpression(condition.Value)
+		if conditionNeverRunsInStatuses(expr, statuses) {
 			return false, true
 		}
 	}
