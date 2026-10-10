@@ -99,6 +99,41 @@ func TestConfiguredFlagsFollowCheck(t *testing.T) {
 	}
 }
 
+func TestVersionedPythonShells(t *testing.T) {
+	for _, tc := range []struct {
+		shell string
+		want  bool
+	}{
+		{"python", true},
+		{"python3 -u {0}", true},
+		{"python3.12 {0}", true},
+		{"python3.9 -u {0}", true},
+		{"/usr/local/bin/python3.13 {0}", true},
+		{`C:\Python\python3.12.exe {0}`, true},
+		{"python.exe {0}", true},
+		{"", false},
+		{"python2.7 {0}", false},
+		{"python3. {0}", false},
+		{"python3.12-config {0}", false},
+		{"python3.12x {0}", false},
+		{"/python3.12/bash {0}", false},
+		{"${{ inputs.shell }} {0}", false},
+	} {
+		t.Run(tc.shell, func(t *testing.T) {
+			called := false
+			checker := New(func([]string, string, func([]byte, error) error) {
+				called = true
+			}, func() error { return nil }, nil)
+			if err := checker.Check("print(1)", &tc.shell, "test", Config{}, func(Diagnostic) {}); err != nil {
+				t.Fatal(err)
+			}
+			if called != tc.want {
+				t.Fatalf("checker called=%v, want %v", called, tc.want)
+			}
+		})
+	}
+}
+
 func TestCheckFailureAndAtomicDiagnostics(t *testing.T) {
 	for _, tc := range []struct {
 		output     string
@@ -172,7 +207,7 @@ func TestSanitizeTemplateContexts(t *testing.T) {
 	}
 }
 
-func TestQuotedEmptyTemplateLineFailsExplicitly(t *testing.T) {
+func TestQuotedEmptyTemplateLineSkipsScript(t *testing.T) {
 	for _, quote := range []string{"'", "\""} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(quote+ending, func(t *testing.T) {
@@ -184,8 +219,8 @@ func TestQuotedEmptyTemplateLineFailsExplicitly(t *testing.T) {
 				python := "python"
 				script := strings.ReplaceAll("print("+quote+"${{\n\n value\n}}"+quote+")\nprint(missing)", "\n", ending)
 				err := c.Check(script, &python, "workflow:12", Config{}, func(Diagnostic) { t.Fatal("unexpected diagnostic") })
-				if err == nil || !strings.Contains(err.Error(), "workflow:12") || !strings.Contains(err.Error(), "empty expression line") {
-					t.Fatalf("got %v, want a located operational error", err)
+				if err != nil {
+					t.Fatalf("unsupported interpolation aborted analysis: %v", err)
 				}
 			})
 		}

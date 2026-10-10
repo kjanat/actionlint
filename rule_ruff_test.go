@@ -35,6 +35,8 @@ func TestRuffPythonScripts(t *testing.T) {
 		{name: "syntax", shell: "python", script: "if:", count: 2},
 		{name: "empty selection", shell: "python", script: "print(missing)", config: "tools: {ruff: {select: []}}"},
 		{name: "custom python", shell: "python -u {0}", script: "print(missing)", count: 1},
+		{name: "versioned python", shell: "python3.12 {0}", script: "print(missing)", count: 1},
+		{name: "versioned python path", shell: "/usr/bin/python3.13 -u {0}", script: "print(missing)", count: 1},
 		{name: "workflow default", defaults: "defaults: {run: {shell: python}}\n", script: "print(missing)", count: 1},
 		{name: "job default", job: "    defaults: {run: {shell: python}}\n", script: "print(missing)", count: 1},
 		{name: "step overrides job", job: "    defaults: {run: {shell: python}}\n", shell: "bash", script: "echo missing"},
@@ -53,6 +55,8 @@ func TestRuffPythonScripts(t *testing.T) {
 		{name: "comment token fragments", shell: "python", script: "# item_${{ github.run_number }}.0\nprint(missing)", count: 1},
 		{name: "quoted template", shell: "python", script: "print('${{ github.sha }}')"},
 		{name: "quoted multiline template", shell: "python", script: "print('${{\n github.sha\n}}')\nprint(missing)", count: 1},
+		{name: "quoted empty template line", shell: "python", script: "print('${{\n\n github.sha\n}}')"},
+		{name: "double quoted empty template line", shell: "python", script: "print(\"${{\n\n github.sha\n}}\")"},
 		{name: "double quoted multiline template", shell: "python", script: "print(\"${{\n github.sha\n}}\")"},
 		{name: "raw multiline template", shell: "python", script: "print(r'${{\n github.sha\n}}')"},
 		{name: "comment multiline template", shell: "python", script: "# ${{\n github.sha\n}}\nprint(missing)", count: 1},
@@ -219,6 +223,25 @@ func TestRuffInterpolatedTokenSkipsOnlyItsScript(t *testing.T) {
 	}
 	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "ruff" || result.Diagnostics[0].Code != "F821" || result.Diagnostics[0].Start.Line != 9 {
 		t.Fatalf("unexpected findings: %+v", result.Diagnostics)
+	}
+}
+
+func TestRuffQuotedEmptyLineSkipsOnlyItsScript(t *testing.T) {
+	for _, quote := range []string{"'", "\""} {
+		for _, ending := range []string{"\n", "\r\n"} {
+			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: |\n          print(" + quote + "${{\n\n            github.sha\n          }}" + quote + ")\n      - shell: python3.12 {0}\n        run: print(missing)\n"
+			source = strings.ReplaceAll(source, "\n", ending)
+			result, err := Analyze(t.Context(), AnalysisRequest{
+				Ruff: ruffForTest(t), WorkingDir: t.TempDir(),
+				Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "ruff" || result.Diagnostics[0].Code != "F821" || result.Diagnostics[0].Start.Line != 13 {
+				t.Fatalf("unexpected findings: %+v", result.Diagnostics)
+			}
+		}
 	}
 }
 

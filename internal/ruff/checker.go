@@ -1,7 +1,6 @@
 package ruff
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -63,7 +62,7 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		return nil
 	}
 	words := strings.Fields(*shell)
-	if len(words) == 0 || (words[0] != "python" && words[0] != "python3") {
+	if len(words) == 0 || !isPythonCommand(words[0]) {
 		return nil
 	}
 	source, valid, err := Sanitize(script, c.expressionEnd)
@@ -96,6 +95,24 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 	return nil
 }
 
+func isPythonCommand(command string) bool {
+	command = command[strings.LastIndexAny(command, `/\`)+1:]
+	command = strings.TrimSuffix(strings.ToLower(command), ".exe")
+	if command == "python" || command == "python3" {
+		return true
+	}
+	minor, ok := strings.CutPrefix(command, "python3.")
+	if !ok || minor == "" {
+		return false
+	}
+	for _, digit := range minor {
+		if digit < '0' || digit > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 func arguments(config Config) []string {
 	target := config.TargetVersion
 	if target == "" {
@@ -119,7 +136,7 @@ func arguments(config Config) []string {
 
 // Sanitize masks templates with a neutral Python value, preserving Unicode
 // columns and line breaks without introducing undefined Python identifiers.
-// Scripts with malformed templates or interpolated token fragments are skipped.
+// Scripts whose templates cannot preserve Python syntax and positions are skipped.
 func Sanitize(src string, expressionEnd ExpressionEnd) (string, bool, error) {
 	var out strings.Builder
 	var state pythonLexicalState
@@ -169,7 +186,7 @@ func Sanitize(src string, expressionEnd ExpressionEnd) (string, bool, error) {
 						previous--
 					}
 					if previous < 0 || runes[previous] == '\n' {
-						return "", true, errors.New("cannot preserve source positions for an empty expression line inside an ordinary quoted Python string")
+						return "", false, nil
 					}
 					runes[previous] = '\\'
 				}
