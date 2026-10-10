@@ -180,7 +180,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 			path = source.Path
 		}
 		if !filepath.IsAbs(path) {
-			path = filepath.Join(cwd, path)
+			path = filepath.Join(engine.workingDir, path)
 		}
 		sourceContents[filepath.Clean(path)] = source.Content
 	}

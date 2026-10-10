@@ -76,6 +76,41 @@ func TestWorkflowRunNamesRelativeProject(t *testing.T) {
 	}
 }
 
+func TestWorkflowRunNamesPatterns(t *testing.T) {
+	for _, tc := range []struct {
+		name, filters string
+		want          int
+	}{
+		{"Build CI", "'Build*'", 0},
+		{"Build CI", "'Missing*'", 1},
+		{"Build CI", "'Build*', '!Build CI'", 0},
+		{"Build CI", "'Build*', '!Missing*'", 0},
+		{"Build CI", "'Build*', '!Build*', 'Build CI'", 0},
+		{"Build C++", `'Build C\+\+'`, 0},
+		{"[Build]", `'\[Build\]'`, 0},
+		{"!Build", `'\!Build'`, 0},
+		{"Build 123", "'Build [0-9]+'", 0},
+		{"Build/CI", "'Build*'", 1},
+		{"Build/CI", "'Build**'", 0},
+	} {
+		t.Run(tc.name+tc.filters, func(t *testing.T) {
+			root := t.TempDir()
+			project := &Project{root: root}
+			consumer := "on: {workflow_run: {workflows: [" + tc.filters + "], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{
+				{Path: ".github/workflows/build.yml", Content: []byte("name: '" + tc.name + "'\n" + commandGoodWorkflow), Project: project},
+				{Path: ".github/workflows/consumer.yml", Content: []byte(consumer), Project: project},
+			}})
+			if err != nil || len(result.Diagnostics) != tc.want {
+				t.Fatalf("%+v %v; want %d findings", result, err, tc.want)
+			}
+			if tc.want > 0 && result.Diagnostics[0].Rule != "workflow-run-names" {
+				t.Fatal(result.Diagnostics)
+			}
+		})
+	}
+}
+
 func TestWorkflowRunNamesExcludedInMemory(t *testing.T) {
 	for _, onDisk := range []bool{false, true} {
 		name := "memory only"
@@ -84,6 +119,7 @@ func TestWorkflowRunNamesExcludedInMemory(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
+			t.Chdir(root)
 			producer := filepath.Join(root, ".github/workflows/build.yml")
 			if onDisk {
 				writeShellcheckFixture(t, root, ".github/workflows/build.yml", "name: Old\n"+commandGoodWorkflow)
@@ -96,9 +132,9 @@ func TestWorkflowRunNamesExcludedInMemory(t *testing.T) {
 			// The excluded source also contains a lint finding that must remain excluded.
 			producerContent := "name: New\nenv: {VALUE: '${{ nonexistent }}'}\n" + commandGoodWorkflow
 			consumer := "on: {workflow_run: {workflows: [New], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
-			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{
-				{Path: producer, Content: []byte(producerContent), Project: project, Config: cfg},
-				{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: project, Config: cfg},
+			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: ".", Sources: []SourceUnit{
+				{Path: ".github/workflows/build.yml", Content: []byte(producerContent), Project: project, Config: cfg},
+				{Path: ".github/workflows/consumer.yml", Content: []byte(consumer), Project: project, Config: cfg},
 			}})
 			if err != nil || len(result.Diagnostics) != 0 {
 				t.Fatalf("%+v %v", result, err)

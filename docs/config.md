@@ -284,6 +284,8 @@ workflow values, including `if:` conditions.
 
 `correctness.workflow-run-names` checks `workflow_run.workflows` against the names
 of workflows directly inside the repository's `.github/workflows` directory.
+It accepts GitHub's workflow-name filter patterns and escaped special characters.
+Negative patterns exclude names and do not require a matching producer.
 Unnamed workflows use their repository-relative file path. Producer workflows
 remain available for name resolution even when excluded from lint inputs. The
 check needs repository context and skips name matching if a workflow cannot be
