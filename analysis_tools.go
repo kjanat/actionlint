@@ -106,9 +106,8 @@ func ruffConfigMayEnable(config *Config) (bool, error) {
 	if config == nil {
 		return true, nil
 	}
-	// Keep a baseline plus each potentially matching overlay. A catch-all
-	// applies to every candidate in order, including earlier re-enabling rules.
-	// Other globs remain conservative; this is not a separate file discovery pass.
+	// Keep baseline and possible overlay configurations without discovering files.
+	// Apply catch-all overrides to every candidate in order.
 	candidates := []*Config{config}
 	for _, override := range config.Overrides {
 		universal := len(override.Excludes) == 0 && slices.ContainsFunc(override.Includes, func(pattern string) bool {

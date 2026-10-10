@@ -848,7 +848,7 @@ The `actionlint` hook installs into an isolated `$GOPATH`, so ShellCheck and Ruf
 The `actionlint-shellcheck` hook installs ShellCheck but not Ruff. Go `additional_dependencies` cannot install
 Ruff's Python package, and a separate `ruff-pre-commit` hook does not share its environment with actionlint.
 Use `actionlint-bundled` to install both automatically: select a commit or release containing this hook and set
-`id: actionlint-bundled`. It builds from that revision rather than pulling the previously published image.
+`id: actionlint-bundled`. It builds the bundled image from that revision.
 
 `actionlint-shellcheck` pins go-shellcheck so each actionlint revision builds a
 reproducible pre-commit environment. The scheduled [Upkeep workflow](../.github/workflows/upkeep.yml) checks both go-shellcheck

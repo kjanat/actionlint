@@ -23,7 +23,13 @@ test('Ruff publishes a standalone executable for later steps without sibling too
 			RUNNER_TEMP: job,
 			GITHUB_PATH: pathFile,
 		});
-		const directory = (await readFile(pathFile, 'utf8')).trim();
+		const directories = (await readdir(job, { withFileTypes: true })).filter(entry => entry.isDirectory());
+		assert.equal(directories.length, 1);
+		const [publication] = directories;
+		assert.ok(publication);
+		assert.ok(publication.name.startsWith('actionlint-bin-'));
+		const directory = join(job, publication.name);
+		assert.equal(await readFile(pathFile, 'utf8'), `${directory}\n`);
 		assert.deepEqual(await readdir(directory), [process.platform === 'win32' ? 'ruff.exe' : 'ruff']);
 		const result = await capture('ruff', ['--version'], withPath([directory]));
 		assert.equal(result.exitCode, 0, result.stderr);
