@@ -1,13 +1,43 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { execFile } from 'node:child_process';
-import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { execFile, spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { access, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { delimiter, dirname, isAbsolute, join, relative } from 'node:path';
 import { promisify } from 'node:util';
 
 import { cacheTool, capture, findTool, temporary, which } from '#native';
 import { commandEscape, readOutputs, writeOutputs } from '#workflow';
+
+test('temporary cleanup retries a running Windows executable until it closes', {
+	skip: process.platform !== 'win32',
+}, async () => {
+	let directory = '';
+	let closed: Promise<unknown> | undefined;
+	try {
+		await temporary(async (path) => {
+			directory = path;
+			const executable = join(path, 'locked executable.exe');
+			await copyFile(process.execPath, executable);
+			const child = spawn(executable, ['-e', 'process.stdout.write("ready"); setTimeout(() => {}, 250)'], {
+				stdio: ['ignore', 'pipe', 'ignore'],
+				windowsHide: true,
+			});
+			closed = once(child, 'close');
+			await Promise.race([
+				once(child.stdout, 'data'),
+				closed.then(() => {
+					throw new Error('Executable exited before acquiring its cleanup lock');
+				}),
+			]);
+			// Enter cleanup while Windows still holds the executable open.
+		});
+		await assert.rejects(access(directory), { code: 'ENOENT' });
+	} finally {
+		await closed;
+	}
+});
 
 test('configuration preflight can terminate a noncooperative child at its deadline', async () => {
 	await assert.rejects(
