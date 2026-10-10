@@ -7,9 +7,9 @@ const systems = ['x86_64-linux', 'aarch64-linux', 'aarch64-darwin'];
 
 /**
  * @param {string} version
- * @param {{root?: string, run?: (command: string, args: string[]) => string}} options
+ * @param {{root?: string, run?: (command: string, args: string[]) => string, write?: (path: string, content: string) => void}} options
  */
-export function updateToolchain(version, { root = process.cwd(), run } = {}) {
+export function updateToolchain(version, { root = process.cwd(), run, write = writeFileSync } = {}) {
 	const match = /^go(\d+)\.(\d+)\.(\d+)$/.exec(version);
 	if (!match) throw new Error(`Invalid Go toolchain: ${version}`);
 	const expected = version.slice(2);
@@ -17,7 +17,8 @@ export function updateToolchain(version, { root = process.cwd(), run } = {}) {
 	const compilerPath = `pkgs/development/compilers/go/${match[1]}.${match[2]}.nix`;
 	run ??= (command, args) => execFileSync(command, args, { cwd: root, encoding: 'utf8' }).trim();
 	const read = (/** @type {string} */ name) => readFileSync(resolve(root, name), 'utf8');
-	const lock = JSON.parse(read('flake.lock'));
+	const originalLock = read('flake.lock');
+	const lock = JSON.parse(originalLock);
 	const current = lock.nodes.nixpkgs.locked.rev;
 	const revisions = [current];
 	let revision;
@@ -74,21 +75,43 @@ export function updateToolchain(version, { root = process.cwd(), run } = {}) {
 	])).map(([name, pattern, replacement]) => {
 		const before = read(name);
 		if (!pattern.test(before)) throw new Error(`Missing toolchain setting in ${name}`);
-		return [name, before.replace(pattern, replacement)];
+		return { name, before, after: before.replace(pattern, replacement) };
 	});
-	for (const [name, content] of replacements) writeFileSync(resolve(root, name), content);
-	run('nix', ['flake', 'lock']);
-	const updated = JSON.parse(read('flake.lock'));
-	if (updated.nodes.nixpkgs.locked.rev !== revision) throw new Error('Nix locked an unexpected compiler revision');
-	run('nix', ['flake', 'check', '--all-systems', '--no-build', '--no-update-lock-file']);
+	try {
+		for (const { name, after } of replacements) write(resolve(root, name), after);
+		run('nix', ['flake', 'lock']);
+		const updated = JSON.parse(read('flake.lock'));
+		if (updated.nodes.nixpkgs.locked.rev !== revision) throw new Error('Nix locked an unexpected compiler revision');
+		run('nix', ['flake', 'check', '--all-systems', '--no-build', '--no-update-lock-file']);
+	} catch (error) {
+		const failures = [error];
+		for (const { name, before } of [...replacements, { name: 'flake.lock', before: originalLock }]) {
+			try {
+				write(resolve(root, name), before);
+			} catch (restoreError) {
+				const detail = restoreError instanceof Error ? restoreError.message : String(restoreError);
+				failures.push(new Error(`Could not restore ${name}: ${detail}`));
+			}
+		}
+		if (failures.length > 1) throw new AggregateError(failures, 'Toolchain update failed and rollback was incomplete');
+		throw error;
+	}
 	return revision;
+}
+
+/** @param {unknown} error */
+export function reportFailure(error) {
+	console.error(error instanceof Error ? error.message : String(error));
+	if (error instanceof AggregateError) {
+		for (const cause of error.errors) reportFailure(cause);
+	}
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	try {
 		updateToolchain(process.argv[2] ?? '');
 	} catch (error) {
-		console.error(error instanceof Error ? error.message : String(error));
+		reportFailure(error);
 		process.exitCode = 1;
 	}
 }

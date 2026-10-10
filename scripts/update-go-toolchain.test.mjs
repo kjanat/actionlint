@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -12,7 +13,7 @@ const newRevision = 'b'.repeat(40);
 
 /**
  * @param {import('node:test').TestContext} t
- * @param {{available?: boolean, mismatch?: boolean, checkFails?: boolean, currentMatches?: boolean, missingFamily?: boolean, missingAttribute?: boolean}} options
+ * @param {{available?: boolean, mismatch?: boolean, checkFails?: boolean, lockFails?: boolean, invalidLock?: boolean, wrongRevision?: boolean, currentMatches?: boolean, missingFamily?: boolean, missingAttribute?: boolean}} options
  */
 function fixture(
 	t,
@@ -20,6 +21,9 @@ function fixture(
 		available = true,
 		mismatch = false,
 		checkFails = false,
+		lockFails = false,
+		invalidLock = false,
+		wrongRevision = false,
 		currentMatches = false,
 		missingFamily = false,
 		missingAttribute = false,
@@ -51,7 +55,9 @@ function fixture(
 		if (args[0] === 'eval') return mismatch && args[2].includes('aarch64-darwin') ? '1.99.2' : '1.99.3';
 		if (args[1] === 'lock') {
 			const lock = { nodes: { nixpkgs: { locked: { rev: currentMatches ? oldRevision : newRevision } } } };
-			writeFileSync(join(root, 'flake.lock'), JSON.stringify(lock));
+			if (wrongRevision) lock.nodes.nixpkgs.locked.rev = 'c'.repeat(40);
+			writeFileSync(join(root, 'flake.lock'), invalidLock ? '{partial' : JSON.stringify(lock));
+			if (lockFails) throw new Error('flake lock fetch failed');
 		}
 		if (args[1] === 'check' && checkFails) throw new Error('flake validation failed');
 		return '';
@@ -94,8 +100,94 @@ test('keeps a matching pin without querying new commits', t => {
 	assert.equal(f.calls.some(call => call[2]?.includes('/commits?')), false);
 });
 
-test('failed final flake validation fails the update', t => {
-	assert.throws(() => updateToolchain('go1.99.3', fixture(t, { checkFails: true })), /flake validation failed/);
+for (
+	const [name, options, message]
+		of /** @type {[string, {checkFails?: boolean, lockFails?: boolean, invalidLock?: boolean, wrongRevision?: boolean}, RegExp][]} */ ([
+			['lock command failure', { lockFails: true }, /flake lock fetch failed/],
+			['invalid lock JSON', { invalidLock: true }, /JSON|property name/],
+			['unexpected locked revision', { wrongRevision: true }, /Nix locked an unexpected compiler revision/],
+			['final flake validation failure', { checkFails: true }, /flake validation failed/],
+		])
+) {
+	test(`${name} restores every original file`, t => {
+		const f = fixture(t, options);
+		f.files['CONTRIBUTING.md'] += '\r\nKeep the contributor’s uncommitted notes.\r\n';
+		writeFileSync(join(f.root, 'CONTRIBUTING.md'), f.files['CONTRIBUTING.md']);
+		assert.throws(() => updateToolchain('go1.99.3', f), message);
+		assert.ok(f.calls.some(call => call[0] === 'nix' && call[2] === 'lock'));
+		for (const [path, before] of Object.entries(f.files)) {
+			assert.deepEqual(readFileSync(join(f.root, path)), Buffer.from(before), `${path} was not restored`);
+		}
+	});
+}
+
+test('mise lets the repository version files select Go and Node', () => {
+	const config = readFileSync(new URL('../.mise.toml', import.meta.url), 'utf8');
+	assert.match(config, /idiomatic_version_file_enable_tools\s*=\s*\["go", "node"\]/);
+	const tools = config.split('[tools]\n')[1].split('\n[')[0];
+	assert.doesNotMatch(tools, /^\s*(?:go|node)\s*=/m);
+});
+
+test('a partial replacement write restores all files', t => {
+	const f = fixture(t);
+	const write = (/** @type {string} */ path, /** @type {string} */ content) => {
+		if (path === join(f.root, 'Dockerfile') && content.includes('1.99.3')) {
+			writeFileSync(path, 'partial write');
+			throw new Error('replacement write failed');
+		}
+		writeFileSync(path, content);
+	};
+	assert.throws(() => updateToolchain('go1.99.3', { ...f, write }), /replacement write failed/);
+	for (const [path, before] of Object.entries(f.files)) {
+		assert.deepEqual(readFileSync(join(f.root, path)), Buffer.from(before));
+	}
+	assert.equal(f.calls.some(call => call[1] === 'flake'), false);
+});
+
+test('incomplete rollback identifies every failed restoration and keeps restoring other files', t => {
+	const f = fixture(t, { checkFails: true });
+	const write = (/** @type {string} */ path, /** @type {string} */ content) => {
+		for (const name of ['Dockerfile', 'flake.nix']) {
+			if (path === join(f.root, name) && content === f.files[name]) throw new Error('write denied');
+		}
+		writeFileSync(path, content);
+	};
+	assert.throws(() => updateToolchain('go1.99.3', { ...f, write }), error => {
+		assert.ok(error instanceof AggregateError);
+		assert.match(error.message, /rollback was incomplete/);
+		assert.equal(error.errors.length, 3);
+		assert.equal(error.errors[0].message, 'flake validation failed');
+		assert.match(error.errors[1].message, /Could not restore Dockerfile: write denied/);
+		assert.match(error.errors[2].message, /Could not restore flake.nix: write denied/);
+		return true;
+	});
+	for (const name of ['go.mod', 'CONTRIBUTING.md', 'flake.lock']) {
+		assert.deepEqual(readFileSync(join(f.root, name)), Buffer.from(f.files[name]));
+	}
+});
+
+test('CLI failure reporting writes the original and all rollback errors to stderr', () => {
+	const script = `
+import { reportFailure } from ${JSON.stringify(import.meta.resolve('./update-go-toolchain.mjs'))};
+reportFailure(new AggregateError([
+  new Error('flake validation failed'),
+  new Error('Could not restore Dockerfile: write denied'),
+  new Error('Could not restore flake.lock: resource busy'),
+], 'Toolchain update failed and rollback was incomplete'));
+`;
+	const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], { encoding: 'utf8' });
+	assert.equal(result.status, 0, result.stderr);
+	assert.equal(result.stdout, '');
+	assert.equal(
+		result.stderr.replaceAll('\r\n', '\n'),
+		[
+			'Toolchain update failed and rollback was incomplete',
+			'flake validation failed',
+			'Could not restore Dockerfile: write denied',
+			'Could not restore flake.lock: resource busy',
+			'',
+		].join('\n'),
+	);
 });
 
 test('a family absent from the old pin can resolve from a new compiler commit', t => {
