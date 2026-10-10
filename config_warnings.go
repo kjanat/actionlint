@@ -16,6 +16,20 @@ type ConfigWarning struct {
 	Column  int    `json:"column" yaml:"column"`
 }
 
+func mergeConfigWarnings(groups ...[]ConfigWarning) []ConfigWarning {
+	var result []ConfigWarning
+	seen := map[ConfigWarning]bool{}
+	for _, group := range groups {
+		for _, warning := range group {
+			if !seen[warning] {
+				seen[warning] = true
+				result = append(result, warning)
+			}
+		}
+	}
+	return result
+}
+
 // Only these legacy mappings permit unknown fields. New tool and policy settings
 // already reject unknown keys in their decoders.
 func configWarnings(root *yaml.Node, inputs map[*yaml.Node]configInput) []ConfigWarning {

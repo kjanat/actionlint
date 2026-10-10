@@ -174,6 +174,12 @@ func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
 		if source != nil {
 			cfg.filename = absPath(source.filename)
 			cfg.configFiles = source.config.configFiles
+			for i := range resolved.warnings {
+				if resolved.warnings[i].File == "" {
+					resolved.warnings[i].File = cfg.filename
+				}
+			}
+			resolved.warnings = mergeConfigWarnings(source.warnings, resolved.warnings)
 		}
 	} else if source == nil {
 		var err error

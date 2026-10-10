@@ -3,9 +3,106 @@ package actionlint
 import (
 	"bytes"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
+
+func TestDependencyPathsDoNotResolveWorkflowOverrides(t *testing.T) {
+	for _, dependency := range []string{"local/action.yml", "scripts/lib.sh"} {
+		for _, ignore := range []bool{false, true} {
+			t.Run(dependency+"/"+strconv.FormatBool(ignore), func(t *testing.T) {
+				root := t.TempDir()
+				text := "lint:\n  rules:\n    policy:\n      require-job-timeout: {level: on, options: {min-minutes: 5}}\noverrides:\n  - includes: [local/**, scripts/**]\n    lint:\n      rules:\n        policy:\n          require-job-timeout: {level: on, options: {max-minutes: 3}}\n"
+				if ignore {
+					text += "paths: {'**': {ignore: ['dependency finding']}}\n"
+				}
+				cfg, err := ParseConfig([]byte(text))
+				if err != nil {
+					t.Fatal(err)
+				}
+				result, err := Analyze(t.Context(), AnalysisRequest{
+					WorkingDir: root,
+					Sources:    []SourceUnit{{Path: ".github/workflows/ci.yml", Content: []byte(commandGoodWorkflow), Config: cfg, Project: &Project{root: root}}},
+					OnRulesCreated: func([]Rule) []Rule {
+						rule := NewRuleBase("expression", "dependency finding")
+						rule.Error(&Pos{Line: 1, Col: 1}, "dependency finding")
+						rule.errs[0].Filepath = filepath.Join(root, dependency)
+						rule.errs[0].source = []byte("dependency content")
+						return []Rule{&rule}
+					},
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				want := 1
+				if ignore {
+					want = 0
+				}
+				if len(result.Diagnostics) != want {
+					t.Fatalf("got findings %+v, want %d", result.Diagnostics, want)
+				}
+			})
+		}
+	}
+}
+
+func TestInheritedWarningsSurviveReplacement(t *testing.T) {
+	for _, replacement := range []string{"self-hosted-runner: null", "self-hosted-runner: {typo: replacement}"} {
+		t.Run(replacement, func(t *testing.T) {
+			root := t.TempDir()
+			base := writeShellcheckFixture(t, root, "base.yml", "self-hosted-runner:\n  typo: value\n")
+			writeShellcheckFixture(t, root, "left.yml", "extends: [base.yml]\n")
+			writeShellcheckFixture(t, root, "right.yml", "extends: [base.yml]\n")
+			leaf := writeShellcheckFixture(t, root, "leaf.yml", "extends: [left.yml, right.yml]\n"+replacement+"\n")
+			inspection, err := InspectConfig(ConfigSelection{Path: leaf}, true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := 1
+			if strings.Contains(replacement, "replacement") {
+				want = 2
+			}
+			if len(inspection.Warnings) != want || inspection.Warnings[0].File != base || inspection.Warnings[0].Line != 2 || inspection.Warnings[0].Column != 3 {
+				t.Fatalf("source warning lost or duplicated: %+v", inspection.Warnings)
+			}
+			if want == 2 && inspection.Warnings[1].File != leaf {
+				t.Fatalf("leaf warning attribution: %+v", inspection.Warnings)
+			}
+			for _, text := range []string{"self-hosted-runner: null", "config-variables: [SAFE]"} {
+				overlay, err := ParseConfigOverlay("config", []byte(text))
+				if err != nil {
+					t.Fatal(err)
+				}
+				var report ConfigReport
+				session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: leaf, ConfigOverlays: []ConfigOverlay{overlay}, OnConfigLoaded: func(r ConfigReport) { report = r }})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := session.configForProject(nil); err != nil {
+					t.Fatal(err)
+				}
+				if !slices.Equal(report.Inspection.Warnings, inspection.Warnings) {
+					t.Fatalf("overlay changed source warnings: %+v, want %+v", report.Inspection.Warnings, inspection.Warnings)
+				}
+				var log bytes.Buffer
+				session, err = NewAnalysisSession(AnalysisOptions{ConfigFile: leaf, ConfigOverlays: []ConfigOverlay{overlay}, LogWriter: &log})
+				if err != nil {
+					t.Fatal(err)
+				}
+				for range 2 {
+					if _, err := session.configForProject(nil); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if strings.Count(log.String(), "warning:") != want || !strings.Contains(log.String(), base+":2:3: warning:") {
+					t.Fatalf("incorrect warning log: %s", &log)
+				}
+			}
+		})
+	}
+}
 
 func TestConfigInheritedOverlayProvenance(t *testing.T) {
 	root := t.TempDir()

@@ -23,10 +23,14 @@ func (cfg *Config) includesFile(path, root string) bool {
 	return cfg.Files.Match(path)
 }
 
-func normalizeExtendedConfig(path string, node *yaml.Node, inherited bool) (*yaml.Node, error) {
+func normalizeExtendedConfig(path string, node *yaml.Node, inherited bool) (*yaml.Node, []ConfigWarning, error) {
 	// Validate each source independently, so overridden bad settings still fail.
-	if _, err := resolveConfigNode(node, nil); err != nil {
-		return nil, err
+	resolved, err := resolveConfigNode(node, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	for i := range resolved.warnings {
+		resolved.warnings[i].File = path
 	}
 	// Preserve the declaring origin of inherited relative ShellCheck rc paths.
 	var visit func(*yaml.Node, []string)
@@ -68,7 +72,7 @@ func normalizeExtendedConfig(path string, node *yaml.Node, inherited bool) (*yam
 			}
 		}
 	}
-	return normalizeToolSwitch(node), nil
+	return normalizeToolSwitch(node), resolved.warnings, nil
 }
 
 func expandInheritedConfigDirectory(value, directory string) string {

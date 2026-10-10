@@ -613,8 +613,11 @@ func ReadConfigFile(path string) (*Config, error) {
 }
 
 func readConfigSource(path string, readFile func(string) ([]byte, error)) (*loadedConfig, error) {
+	warningsByFile := map[string][]ConfigWarning{}
 	loaded, err := configtree.Load(path, readFile, func(origin string, node *yaml.Node) (*yaml.Node, error) {
-		return normalizeExtendedConfig(origin, node, absPath(path) != origin)
+		normalized, warnings, err := normalizeExtendedConfig(origin, node, absPath(path) != origin)
+		warningsByFile[origin] = warnings
+		return normalized, err
 	})
 	if err != nil {
 		if _, ok := errors.AsType[*os.PathError](err); ok {
@@ -634,6 +637,10 @@ func readConfigSource(path string, readFile func(string) ([]byte, error)) (*load
 	}
 	resolved.config.filename = absPath(path)
 	resolved.config.configFiles = loaded.Files
+	resolved.warnings = nil
+	for _, file := range loaded.Files {
+		resolved.warnings = mergeConfigWarnings(resolved.warnings, warningsByFile[file])
+	}
 	return &loadedConfig{resolved, path}, nil
 }
 
