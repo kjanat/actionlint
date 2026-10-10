@@ -92,26 +92,37 @@ jobs:
 func TestOutlineLocalReferenceScope(t *testing.T) {
 	const source = `on: push
 jobs:
-  call:
+  local:
     uses: ./.github/workflows/deploy.yml
+  self:
+    uses: $/.github/workflows/deploy.yml
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: ./local
+      - uses: ./.github/actions/setup
+      - uses: $/.github/actions/setup
 `
 	workflow, errs := Parse([]byte(source))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
 	outline := workflowOutline("ci.yml", workflow, false)
-	if len(outline.Jobs) != 2 || len(outline.Jobs[1].Steps) != 1 {
-		t.Fatalf("wrong outline: %+v", outline)
+	got := map[string]UsesReference{}
+	for _, job := range outline.Jobs {
+		got[job.ID] = job.Reference
+		for _, step := range job.Steps {
+			got[step.Uses] = step.Reference
+		}
 	}
-	if got := outline.Jobs[0].Reference; !reflect.DeepEqual(got, SelfRepositoryReference{Path: ".github/workflows/deploy.yml"}) {
-		t.Fatalf("job call: %#v", got)
+	want := map[string]UsesReference{
+		"local":                   SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
+		"self":                    SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
+		"build":                   nil,
+		"./.github/actions/setup": WorkspaceReference{Path: ".github/actions/setup"},
+		"$/.github/actions/setup": SelfRepositoryReference{Path: ".github/actions/setup"},
 	}
-	if got := outline.Jobs[1].Steps[0].Reference; !reflect.DeepEqual(got, WorkspaceReference{Path: "local"}) {
-		t.Fatalf("step action: %#v", got)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("references by scope:\ngot  %#v\nwant %#v", got, want)
 	}
 }
 
