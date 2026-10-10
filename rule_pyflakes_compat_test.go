@@ -31,8 +31,7 @@ func TestRulePyflakesCompatibility(t *testing.T) {
 				OnRulesCreated: func(rules []actionlint.Rule) []actionlint.Rule {
 					rules = append(rules, rule)
 					for _, candidate := range rules {
-						switch candidate.(type) {
-						case *actionlint.RulePyflakes:
+						if _, ok := candidate.(*actionlint.RulePyflakes); ok {
 							seen = true
 						}
 					}
