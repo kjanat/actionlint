@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"unicode"
+	"unicode/utf8"
 )
 
 // Run schedules a command through the host's bounded, cancellable process pool.
@@ -70,7 +72,7 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 	}
 	if !valid {
 		return nil
-	} // Malformed templates belong to the expression checker.
+	}
 	defaults := arguments(config)
 	args := make([]string, 1, len(defaults)+len(c.flags))
 	args[0] = "check"
@@ -117,6 +119,7 @@ func arguments(config Config) []string {
 
 // Sanitize masks templates with a neutral Python value, preserving Unicode
 // columns and line breaks without introducing undefined Python identifiers.
+// Scripts with malformed templates or interpolated token fragments are skipped.
 func Sanitize(src string, expressionEnd ExpressionEnd) (string, bool, error) {
 	var out strings.Builder
 	var state pythonLexicalState
@@ -133,6 +136,9 @@ func Sanitize(src string, expressionEnd ExpressionEnd) (string, bool, error) {
 		end := start + 3 + length
 		out.WriteString(src[:start])
 		state.consume(src[:start])
+		if state.quote == 0 && !state.comment && templateTouchesPythonToken(src, start, end) {
+			return "", false, nil
+		}
 		runes := []rune(src[start:end])
 		for i, r := range runes {
 			if r != '\n' && r != '\r' {
@@ -174,6 +180,15 @@ func Sanitize(src string, expressionEnd ExpressionEnd) (string, bool, error) {
 		out.WriteString(string(runes))
 		src = src[end:]
 	}
+}
+
+func templateTouchesPythonToken(source string, start, end int) bool {
+	left, _ := utf8.DecodeLastRuneInString(source[:start])
+	right, _ := utf8.DecodeRuneInString(source[end:])
+	isTokenPart := func(r rune) bool {
+		return r == '_' || r == '.' || r == '\'' || r == '"' || unicode.IsLetter(r) || unicode.IsNumber(r) || unicode.IsMark(r)
+	}
+	return isTokenPart(left) || isTokenPart(right) || strings.HasPrefix(source[end:], "${{")
 }
 
 // pythonLexicalState distinguishes comment and string template placement while

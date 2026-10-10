@@ -256,6 +256,10 @@ as `F821` are retained in structured output. Literal/plain scripts use the share
 YAML source map; unsupported scalar mappings fall back to the `run:` declaration.
 Inline YAML suppressions target the diagnostic's reported line. A directive on
 the YAML block header covers the script body.
+Ruff skips a script when an unquoted Actions expression forms part of a Python
+token, such as `item_${{ matrix.os }}` or `${{ inputs.major }}.0`. Other steps and
+actionlint's workflow checks still run. Templates inside strings and comments
+continue to be sanitized while preserving source positions.
 Explicitly requested Ruff executables and Ruff invocation/configuration failures fail analysis.
 
 The Go APIs opt in with `AnalysisOptions.Ruff`, `AnalysisRequest.Ruff`, or

@@ -191,3 +191,68 @@ func TestQuotedEmptyTemplateLineFailsExplicitly(t *testing.T) {
 		}
 	}
 }
+
+func TestSanitizeAdjacentPythonTokens(t *testing.T) {
+	end := func(source string) (int, bool) {
+		index := strings.Index(source, "}}")
+		return index + 2, index >= 0
+	}
+	for _, source := range []string{
+		"value = ${{ major }}.0",
+		"value = 3.${{ minor }}",
+		"value = 0x${{ hex }}",
+		"value = ${{ number }}e2",
+		"item_${{ os }} = 1",
+		"${{ prefix }}_item = 1",
+		"é${{ suffix }} = 1",
+		"a\u0301${{ suffix }} = 1",
+		"value = ${{ prefix }}'literal'",
+		"value = ${{ first }}${{ second }}",
+		"value = ${{\n major\n}}.0",
+		"item_${{\n os\n}} = 1",
+	} {
+		for _, ending := range []string{"\n", "\r\n"} {
+			source := strings.ReplaceAll(source, "\n", ending)
+			t.Run(source, func(t *testing.T) {
+				if got, valid, err := Sanitize(source, end); err != nil || valid || got != "" {
+					t.Fatalf("got %q, valid %v, error %v", got, valid, err)
+				}
+				checker := New(func([]string, string, func([]byte, error) error) {
+					t.Fatal("dispatched a script with an interpolated token fragment")
+				}, func() error { return nil }, end)
+				python := "python"
+				if err := checker.Check(source, &python, "workflow:12", Config{}, func(Diagnostic) {
+					t.Fatal("reported a finding from a skipped script")
+				}); err != nil {
+					t.Fatal(err)
+				}
+			})
+		}
+	}
+}
+
+func TestSanitizeAdjacentPythonDelimiters(t *testing.T) {
+	end := func(source string) (int, bool) { return strings.Index(source, "}}") + 2, true }
+	for _, source := range []string{
+		"value=${{ number }}+1",
+		"value=[${{ number }},2]",
+		"value={${{ number }}:2}",
+		"value=(${{ number }})",
+		"value=${{\n number\n}}+1",
+		"value='item_${{ name }}.0'",
+		"value=\"item_${{ name }}.0\"",
+		"# item_${{ name }}.0\nvalue=1",
+	} {
+		t.Run(source, func(t *testing.T) {
+			got, valid, err := Sanitize(source, end)
+			if err != nil || !valid || len([]rune(got)) != len([]rune(source)) {
+				t.Fatalf("got %q, valid %v, error %v", got, valid, err)
+			}
+			for i, r := range []rune(source) {
+				if (r == '\n' || r == '\r') && []rune(got)[i] != r {
+					t.Fatal("line ending moved")
+				}
+			}
+		})
+	}
+}

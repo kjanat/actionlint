@@ -43,6 +43,14 @@ func TestRuffPythonScripts(t *testing.T) {
 		{name: "no shell", script: "echo missing"},
 		{name: "noqa ignored", shell: "python", script: "print(missing) # noqa: F821", count: 1},
 		{name: "template", shell: "python", script: "print(${{ github.run_number }})"},
+		{name: "numeric template fragment", shell: "python", script: "value = ${{ github.run_number }}.0"},
+		{name: "numeric suffix fragment", shell: "python", script: "value = 3.${{ github.run_number }}"},
+		{name: "identifier template fragment", shell: "python", script: "item_${{ github.run_number }} = 1"},
+		{name: "multiline identifier fragment", shell: "python", script: "item_${{\n github.run_number\n}} = 1"},
+		{name: "template punctuation", shell: "python", script: "value=[${{ github.run_number }}+1, 2]\nprint(missing)", count: 1},
+		{name: "multiline template punctuation", shell: "python", script: "value={${{\n github.run_number\n}}:2}\nprint(missing)", count: 1},
+		{name: "quoted token fragments", shell: "python", script: "value='item_${{ github.run_number }}.0'\nprint(missing)", count: 1},
+		{name: "comment token fragments", shell: "python", script: "# item_${{ github.run_number }}.0\nprint(missing)", count: 1},
 		{name: "quoted template", shell: "python", script: "print('${{ github.sha }}')"},
 		{name: "quoted multiline template", shell: "python", script: "print('${{\n github.sha\n}}')\nprint(missing)", count: 1},
 		{name: "double quoted multiline template", shell: "python", script: "print(\"${{\n github.sha\n}}\")"},
@@ -197,6 +205,20 @@ func TestRuffSuppressionAndOverride(t *testing.T) {
 	result, err = Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src), Config: cfg}}})
 	if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Severity != "warning" {
 		t.Fatalf("%+v %v", result, err)
+	}
+}
+
+func TestRuffInterpolatedTokenSkipsOnlyItsScript(t *testing.T) {
+	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: value = ${{ github.run_number }}.0\n      - shell: python\n        run: print(missing)\n"
+	result, err := Analyze(t.Context(), AnalysisRequest{
+		Ruff: ruffForTest(t), WorkingDir: t.TempDir(),
+		Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "ruff" || result.Diagnostics[0].Code != "F821" || result.Diagnostics[0].Start.Line != 9 {
+		t.Fatalf("unexpected findings: %+v", result.Diagnostics)
 	}
 }
 
