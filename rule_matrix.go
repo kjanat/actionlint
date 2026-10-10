@@ -43,8 +43,11 @@ func (rule *RuleMatrix) VisitJobPre(n *Job) error {
 		return nil
 	}
 
-	for _, row := range m.Rows {
-		rule.checkDuplicateInRow(row)
+	for name, row := range m.Rows {
+		if row.Name != nil {
+			name = row.Name.Value
+		}
+		rule.checkDuplicateInRow(name, row, !evaluated)
 	}
 
 	// Note:
@@ -96,28 +99,31 @@ func knownLiteralMatrix(value any, position *Pos) *Matrix {
 	return (&parser{}).parseMatrix(position, &node)
 }
 
-func (rule *RuleMatrix) checkDuplicateInRow(row *MatrixRow) {
-	if row.Values == nil {
-		return // Give up when ${{ }} is specified
-	}
-	seen := make([]RawYAMLValue, 0, len(row.Values))
-	for _, v := range row.Values {
+func (rule *RuleMatrix) checkDuplicateInRow(name string, row *MatrixRow, expressions bool) {
+	elements, _ := matrixRowElements(row, expressions)
+	seen := make([]matrixFilterElement, 0, len(elements))
+	for _, element := range elements {
+		v := element.value
+		dynamic := element.expressions && matrixValueContainsExpression(v)
 		ok := true
 		for _, p := range seen {
-			if p.Equals(v) {
+			if dynamic != (p.expressions && matrixValueContainsExpression(p.value)) {
+				continue
+			}
+			if p.value.Equals(v) {
 				rule.Errorf(
 					v.Pos(),
 					"duplicate value %s is found in matrix %q. the same value is at %s",
 					v.String(),
-					row.Name.Value,
-					p.Pos().String(),
+					name,
+					p.value.Pos().String(),
 				)
 				ok = false
 				break
 			}
 		}
 		if ok {
-			seen = append(seen, v)
+			seen = append(seen, element)
 		}
 	}
 }
@@ -232,7 +238,8 @@ func matrixFilterNumber(value any) float64 {
 }
 
 func (rule *RuleMatrix) checkExclude(m *Matrix, expressions bool) {
-	if m.Exclude == nil || len(m.Exclude.Combinations) == 0 {
+	combinations := matrixExcludeCombinations(m.Exclude, expressions)
+	if len(combinations) == 0 {
 		return
 	}
 
@@ -241,20 +248,20 @@ func (rule *RuleMatrix) checkExclude(m *Matrix, expressions bool) {
 		return
 	}
 
-	rows := make(map[string][]RawYAMLValue, len(m.Rows))
+	rows := make(map[string][]matrixFilterElement, len(m.Rows))
 	ignored := map[string]struct{}{}
 
 	for n, r := range m.Rows {
-		if r.Expression != nil {
+		values, complete := matrixRowElements(r, expressions)
+		if !complete {
 			ignored[n] = struct{}{}
-			continue
 		}
-		rows[n] = r.Values
+		rows[n] = values
 	}
 
-	for _, c := range m.Exclude.Combinations {
+	for _, c := range combinations {
 	Exclude:
-		for k, a := range c.Assigns {
+		for k, a := range c.combination.Assigns {
 			if _, ok := ignored[k]; ok {
 				continue
 			}
@@ -274,14 +281,14 @@ func (rule *RuleMatrix) checkExclude(m *Matrix, expressions bool) {
 			}
 
 			for _, v := range row {
-				if isYAMLValueSubset(v, a.Value, expressions) {
+				if isYAMLValueSubsetWithExpressions(v.value, a.Value, v.expressions, c.expressions) {
 					continue Exclude
 				}
 			}
 
 			ss := make([]string, 0, len(row))
 			for _, v := range row {
-				ss = append(ss, v.String())
+				ss = append(ss, v.value.String())
 			}
 			rule.Errorf(
 				a.Value.Pos(),
