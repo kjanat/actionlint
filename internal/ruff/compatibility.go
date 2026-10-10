@@ -15,6 +15,18 @@ type Compatibility struct {
 	err  error
 }
 
+// CheckCompatibility reports the same version-probe failure used by optional
+// discovery, without converting it into a skipped check and warning.
+func CheckCompatibility(ctx context.Context, run Run, wait func() error) error {
+	var check Compatibility
+	var failure error
+	_, err := check.available(ctx, run, wait, func(err error) { failure = err })
+	if err != nil {
+		return err
+	}
+	return failure
+}
+
 func (c *Compatibility) available(ctx context.Context, run Run, wait func() error, warning func(error)) (bool, error) {
 	c.once.Do(func() {
 		run([]string{"--version"}, "", func(output []byte, err error) error {

@@ -49,8 +49,8 @@ type doctorRequest struct {
 	Hyperlinks        hyperlinkMode
 }
 
-func (r doctorRequest) run(_ context.Context, streams Command) (int, error) {
-	return 0, writeDoctor(streams.Stdout, r)
+func (r doctorRequest) run(ctx context.Context, streams Command) (int, error) {
+	return 0, writeDoctor(ctx, streams.Stdout, r)
 }
 
 type configPathRequest struct {

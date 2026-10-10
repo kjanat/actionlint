@@ -121,7 +121,7 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 			return fmt.Errorf("ruff integration-owned option %q must be removed from extra arguments for script at %s", option, location)
 		}
 	}
-	placeholders := &templateMasks{identifiers: make(map[Position]int), parentheses: make(map[Position]Position)}
+	placeholders := &templateMasks{identifiers: make(map[Position]int), parentheses: make(map[Position]Position), quoted: make(map[Position]string)}
 	source, valid, err := sanitize(script, c.expressionEnd, placeholders)
 	if err != nil {
 		return fmt.Errorf("ruff could not check Python script at %s: %w", location, err)
@@ -172,6 +172,9 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		c.mu.Lock()
 		defer c.mu.Unlock()
 		for _, d := range diagnostics {
+			if d.Code == "F822" && placeholders.dynamicExport(d) {
+				continue
+			}
 			// A mask can manufacture undefined-name and useless-expression
 			// findings. Only its exact identifier range is excluded.
 			if width, ok := placeholders.identifiers[d.Location]; ok && (d.Code == "F821" || d.Code == "B018") &&
@@ -274,6 +277,19 @@ func Sanitize(src string, expressionEnd ExpressionEnd) (string, bool, error) {
 type templateMasks struct {
 	identifiers map[Position]int
 	parentheses map[Position]Position
+	quoted      map[Position]string
+}
+
+func (m *templateMasks) dynamicExport(d Diagnostic) bool {
+	for start, name := range m.quoted {
+		end := Position{Row: start.Row, Column: start.Column + len(name)}
+		if (d.Location.Row < start.Row || d.Location.Row == start.Row && d.Location.Column <= start.Column) &&
+			(d.EndLocation.Row > end.Row || d.EndLocation.Row == end.Row && d.EndLocation.Column >= end.Column) &&
+			strings.Contains(d.Message, name) {
+			return true
+		}
+	}
+	return false
 }
 
 func sanitize(src string, expressionEnd ExpressionEnd, placeholders *templateMasks) (string, bool, error) {
@@ -377,6 +393,9 @@ func sanitize(src string, expressionEnd ExpressionEnd, placeholders *templateMas
 				identifierStart := position
 				advancePosition(&identifierStart, string(runes[:slot]))
 				placeholders.identifiers[identifierStart] = len(name)
+				if state.quote != 0 {
+					placeholders.quoted[identifierStart] = name
+				}
 				finish := position
 				advancePosition(&finish, src[start:end])
 				placeholders.parentheses[position] = finish

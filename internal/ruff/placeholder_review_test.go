@@ -49,6 +49,12 @@ func TestIndependentTemplateValues(t *testing.T) {
 		{"d = {${{0}}: 1, ${{1}}: 2}", nil},
 		{"def f(value: '${{ inputs.type }}'): pass", nil},
 		{"def f(value: ${{ inputs.type }}): pass", nil},
+		{`foo = 1; __all__ = ["${{ inputs.export }}"]`, nil},
+		{`foo = 1; __all__ = ["${{ inputs.export }}", "missing_export"]`, []string{"F822"}},
+		{`é = 1; __all__ = ['prefix_${{ inputs.export }}_suffix', 'missing_export']`, []string{"F822"}},
+		{"__all__ = [\"\"\"${{\n inputs.export\n}}\"\"\", 'missing_export']", []string{"F822"}},
+		{`__all__ = ['${{ inputs.first }}${{ inputs.second }}', 'missing_export']`, []string{"F822"}},
+		{`__all__ = ['${{ inputs.first }}' 'suffix', 'missing_export']`, []string{"F822"}},
 		{`print("!${{ inputs.value }}")`, nil},
 		{`print(f"{1} literal!${{ inputs.value }}")`, nil},
 		{`print(f"{1} {{literal!${{ inputs.value }}}}")`, nil},
@@ -108,6 +114,18 @@ func TestIndependentTemplateValues(t *testing.T) {
 				var codes []string
 				for _, diagnostic := range diagnostics {
 					codes = append(codes, diagnostic.Code)
+					if diagnostic.Code == "F822" {
+						index := strings.Index(script, "missing_export")
+						if index < 1 || !strings.Contains(diagnostic.Message, "missing_export") {
+							t.Fatalf("synthetic export finding survived: %+v", diagnostic)
+						}
+						start := Position{Row: 1, Column: 1}
+						advancePosition(&start, script[:index-1])
+						end := Position{Row: start.Row, Column: start.Column + len("'missing_export'")}
+						if diagnostic.Location != start || diagnostic.EndLocation != end {
+							t.Fatalf("real export finding moved: %+v, want %v-%v", diagnostic, start, end)
+						}
+					}
 				}
 				if !slices.Equal(codes, append(slices.Clone(tc.extra), "F821")) {
 					t.Fatalf("template masking changed findings: %+v", diagnostics)
