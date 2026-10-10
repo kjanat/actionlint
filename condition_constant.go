@@ -57,22 +57,7 @@ func conditionConstantValue(expr ExprNode) (any, bool) {
 		if !lok || !rok {
 			return nil, false
 		}
-		var a, b float64
-		if l, ok := left.(string); ok {
-			if r, ok := right.(string); ok {
-				a = float64(slices.Compare(utf16.Encode([]rune(ordinalIgnoreCaseKey(l))), utf16.Encode([]rune(ordinalIgnoreCaseKey(r)))))
-				return compareConditionNumbers(n.Kind, a, 0), true
-			}
-		}
-		a, b = matrixFilterNumber(left), matrixFilterNumber(right)
-		// Object equality is by identity, which this evaluator does not model.
-		for _, v := range []any{left, right} {
-			switch v.(type) {
-			case map[string]any, []any:
-				return nil, false
-			}
-		}
-		return compareConditionNumbers(n.Kind, a, b), true
+		return compareConditionValues(n.Kind, left, right)
 	case *FuncCallNode:
 		args := make([]any, len(n.Args))
 		for i, arg := range n.Args {
@@ -123,6 +108,17 @@ func conditionConstantValue(expr ExprNode) (any, bool) {
 			}
 		case "contains", "startswith", "endswith":
 			if len(args) == 2 {
+				if items, ok := args[0].([]any); ok && strings.EqualFold(n.Callee, "contains") {
+					known := true
+					for _, item := range items {
+						equal, comparable := compareConditionValues(CompareOpNodeKindEq, item, args[1])
+						if comparable && equal {
+							return true, true
+						}
+						known = known && comparable
+					}
+					return false, known
+				}
 				left, lok := args[0].(string)
 				right, rok := args[1].(string)
 				if lok && rok {
@@ -146,6 +142,29 @@ func conditionConstantValue(expr ExprNode) (any, bool) {
 		}
 	}
 	return nil, false
+}
+
+func compareConditionValues(kind CompareOpNodeKind, left, right any) (bool, bool) {
+	if l, ok := left.(string); ok {
+		if r, ok := right.(string); ok {
+			order := slices.Compare(utf16.Encode([]rune(ordinalIgnoreCaseKey(l))), utf16.Encode([]rune(ordinalIgnoreCaseKey(r))))
+			return compareConditionNumbers(kind, float64(order), 0), true
+		}
+	}
+	composite := func(value any) bool {
+		switch value.(type) {
+		case map[string]any, []any:
+			return true
+		default:
+			return false
+		}
+	}
+	// Two composite values can require identity tracking. Against a primitive,
+	// their numeric coercion is NaN and the comparison has a known result.
+	if composite(left) && composite(right) {
+		return false, false
+	}
+	return compareConditionNumbers(kind, matrixFilterNumber(left), matrixFilterNumber(right)), true
 }
 
 func constantJoinString(value any) (string, bool) {

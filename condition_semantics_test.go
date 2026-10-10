@@ -16,6 +16,10 @@ func TestConditionNormalization(t *testing.T) {
 		{"${{ fromJSON('false') }}", "always falsy"},
 		{"${{ 'fromJSON(''false'')' }}", "always falsy"},
 		{"${{ fromJSON('true') }}", "always truthy"},
+		{`${{ contains(fromJSON('["x"]'), 'X') }}`, "always truthy"},
+		{`${{ contains(fromJSON('["x"]'), 'y') }}`, "always falsy"},
+		{`${{ fromJSON('{}') == null }}`, "always falsy"},
+		{`${{ null != fromJSON('[]') }}`, "always truthy"},
 		{"${{ join('') }}", "always falsy"}, {"${{ join('x') }}", "always truthy"},
 		{"${{ join('x', ':') }}", "always truthy"},
 		{`${{ join(fromJSON('[]')) }}`, "always falsy"},
@@ -75,6 +79,17 @@ func TestConditionConstantOutcomes(t *testing.T) {
 		{"format('')", false}, {"format('false')", true},
 		{"contains(format('{0} {1}', 'foo', 'bar'), 'O B')", true},
 		{"fromJSON('false')", false}, {"fromJSON('[]')", true},
+		{`contains(fromJSON('["x"]'), 'X')`, true},
+		{`contains(fromJSON('["x"]'), 'y')`, false},
+		{`contains(fromJSON('[]'), null)`, false},
+		{`contains(fromJSON('[false]'), 0)`, true},
+		{`contains(fromJSON('[null]'), '')`, true},
+		{`contains(fromJSON('[{}, null]'), null)`, true},
+		{`contains(fromJSON('[{}]'), null)`, false},
+		{`fromJSON('{}') == null`, false},
+		{`null == fromJSON('[]')`, false},
+		{`fromJSON('[]') != null`, true},
+		{`null != fromJSON('{}')`, true},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			expr, err := NewExprParser().Parse(NewExprLexer(tc.expression + "}}"))
@@ -95,6 +110,8 @@ func TestConditionSerializationRemainsUnknown(t *testing.T) {
 	for _, expression := range []string{
 		"toJSON(-0)", "format('{0}', -0)", "fromJSON(toJSON(fromJSON('1e309')))",
 		`fromJSON('{"approved":false,"APPROVED":true}')`,
+		`fromJSON('{}') == fromJSON('{}')`,
+		`contains(fromJSON('[{}]'), fromJSON('{}'))`,
 	} {
 		expr := parseAssignedExpression("${{ " + expression + " }}")
 		if expr == nil {
