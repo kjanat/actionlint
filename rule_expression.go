@@ -904,7 +904,7 @@ func (rule *RuleExpression) checkSemanticsOfExprNode(expr ExprNode, line, col in
 	for _, err := range errs {
 		rule.exprError(err, line, col)
 	}
-	if len(errs) == 0 && rule.config.diagnosticLevel("unsound-ternary") != "off" {
+	if rule.config.diagnosticLevel("unsound-ternary") != "off" {
 		rule.checkUnsoundTernaries(expr, line, col)
 	}
 	if workflowKey == "" && len(errs) == 0 {
