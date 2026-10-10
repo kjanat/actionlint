@@ -124,33 +124,15 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 	if directory == "" {
 		directory = "."
 	}
-	// Resolve link traversal before Abs cleans parent components.
-	directory, err = filepath.EvalSymlinks(directory)
+	directoryInfo, err := os.Stat(directory)
 	if err != nil {
 		return fmt.Errorf("ruff stdin directory for script at %s: %w", location, err)
 	}
-	if !filepath.IsAbs(directory) && filepath.VolumeName(directory) == "" && !os.IsPathSeparator(directory[0]) {
-		// Getwd can honor a logical PWD alias; relative parents use physical cwd.
-		cwd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("ruff stdin directory for script at %s: %w", location, err)
-		}
-		cwd, err = filepath.EvalSymlinks(cwd)
-		if err != nil {
-			return fmt.Errorf("ruff stdin directory for script at %s: %w", location, err)
-		}
-		directory = filepath.Join(cwd, directory)
+	if !directoryInfo.IsDir() {
+		return fmt.Errorf("ruff stdin directory for script at %s is not a directory: %q", location, directory)
 	}
-	directory, err = filepath.Abs(directory)
-	if err != nil {
-		return fmt.Errorf("ruff stdin directory for script at %s: %w", location, err)
-	}
-	// Ruff compares package paths with the child's physical working directory.
-	directory, err = filepath.EvalSymlinks(directory)
-	if err != nil {
-		return fmt.Errorf("ruff stdin directory for script at %s: %w", location, err)
-	}
-	filename := filepath.Join(directory, "actionlint.py")
+	// Let Ruff resolve its own cwd spelling, including Windows short paths.
+	const filename = "actionlint.py"
 	if config.TargetVersion == "" {
 		config.TargetVersion = pythonShellTarget(*shell)
 	}
@@ -168,8 +150,9 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 			return fmt.Errorf("ruff output for script at %s: %w", location, err)
 		}
 		for _, diagnostic := range diagnostics {
-			if filepath.Clean(diagnostic.Filename) != filename {
-				return fmt.Errorf("ruff output for script at %s refers to unexpected file %q; expected %q", location, diagnostic.Filename, filename)
+			parent, err := os.Stat(filepath.Dir(diagnostic.Filename))
+			if !filepath.IsAbs(diagnostic.Filename) || filepath.Base(diagnostic.Filename) != filename || err != nil || !os.SameFile(directoryInfo, parent) {
+				return fmt.Errorf("ruff output for script at %s refers to unexpected file %q; expected %q in %q", location, diagnostic.Filename, filename, directory)
 			}
 		}
 		c.mu.Lock()

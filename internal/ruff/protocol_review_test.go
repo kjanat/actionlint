@@ -1,6 +1,7 @@
 package ruff
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -64,16 +65,18 @@ func TestFStringConversionTemplates(t *testing.T) {
 
 func TestWorkingDirectorySurvivesFork(t *testing.T) {
 	directory := t.TempDir()
-	physical, err := filepath.EvalSymlinks(directory)
-	if err != nil {
-		t.Fatal(err)
-	}
-	filename := filepath.Join(physical, "actionlint.py")
 	calls := 0
-	checker := New(func(args []string, _ string, _ func([]byte, error) error) {
+	checker := New(func(args []string, _ string, callback func([]byte, error) error) {
 		calls++
-		if index := slices.Index(args, "--stdin-filename"); index < 0 || args[index+1] != filename {
-			t.Fatalf("stdin filename does not use child directory: %v", args)
+		if index := slices.Index(args, "--stdin-filename"); index < 0 || args[index+1] != "actionlint.py" {
+			t.Fatalf("stdin filename is not child-relative: %v", args)
+		}
+		output, err := json.Marshal([]Diagnostic{{Filename: filepath.Join(directory, "actionlint.py"), Code: "F821", Message: "undefined", Location: Position{Row: 1, Column: 1}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := callback(output, nil); err != nil {
+			t.Fatal(err)
 		}
 	}, func() error { return nil }, nil)
 	checker.WorkingDirectory(directory)

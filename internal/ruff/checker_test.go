@@ -49,6 +49,7 @@ func TestArguments(t *testing.T) {
 }
 
 func TestCheckDiagnosticFilename(t *testing.T) {
+	foreignDirectory := t.TempDir()
 	for _, tc := range []struct {
 		name      string
 		filename  func(string) string
@@ -60,13 +61,19 @@ func TestCheckDiagnosticFilename(t *testing.T) {
 		}, false},
 		{"different file", func(path string) string { return filepath.Join(filepath.Dir(path), "other.py") }, true},
 		{"same basename elsewhere", func(path string) string { return filepath.Join(filepath.Dir(path), "other", filepath.Base(path)) }, true},
+		{"existing foreign directory", func(string) string { return filepath.Join(foreignDirectory, "actionlint.py") }, true},
 		{"missing filename", func(string) string { return "" }, true},
+		{"relative filename", func(string) string { return "actionlint.py" }, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var result error
 			var reported int
 			checker := New(func(args []string, _ string, callback func([]byte, error) error) {
 				filename := args[slices.Index(args, "--stdin-filename")+1]
+				filename, err := filepath.Abs(filename)
+				if err != nil {
+					t.Fatal(err)
+				}
 				diagnostic := Diagnostic{Filename: filename, Code: "F821", Message: "undefined", Location: Position{Row: 1, Column: 1}}
 				diagnostics := []Diagnostic{diagnostic}
 				diagnostic.Filename = tc.filename(filename)
@@ -92,6 +99,32 @@ func TestCheckDiagnosticFilename(t *testing.T) {
 				t.Fatalf("reported %d diagnostics, want 2", reported)
 			}
 		})
+	}
+}
+
+func TestCheckDiagnosticDirectoryAlias(t *testing.T) {
+	directory := t.TempDir()
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(directory, alias); err != nil {
+		t.Skipf("directory symlink is unavailable: %v", err)
+	}
+	var result error
+	checker := New(func(_ []string, _ string, callback func([]byte, error) error) {
+		diagnostic := Diagnostic{Filename: filepath.Join(alias, "actionlint.py"), Code: "F821", Message: "undefined", Location: Position{Row: 1, Column: 1}}
+		output, err := json.Marshal([]Diagnostic{diagnostic})
+		if err != nil {
+			t.Fatal(err)
+		}
+		result = callback(output, nil)
+	}, func() error { return result }, nil)
+	checker.WorkingDirectory(directory)
+	python := "python"
+	reported := 0
+	if err := checker.Check("print(missing)", &python, "test", Config{}, func(Diagnostic) { reported++ }); err != nil {
+		t.Fatal(err)
+	}
+	if err := checker.Wait(); err != nil || reported != 1 {
+		t.Fatalf("physical directory alias was rejected: reported=%d, error=%v", reported, err)
 	}
 }
 
