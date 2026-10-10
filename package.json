@@ -49,6 +49,7 @@
   },
   "devDependencies": {
     "@actions/github-script": "github:actions/github-script",
+    "@octokit/webhooks-types": "^7.6.1",
     "@types/node": "^26.4.0",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2"
@@ -61,11 +62,13 @@
         "onFail": "warn"
       }
     ],
-    "runtime": [{
-      "name": "node",
-      "version": ">=26",
-      "onFail": "ignore"
-    }]
+    "runtime": [
+      {
+        "name": "node",
+        "version": ">=26",
+        "onFail": "ignore"
+      }
+    ]
   },
   "allowScripts": {
     "core-js": false

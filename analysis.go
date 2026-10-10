@@ -12,6 +12,7 @@ import (
 	"slices"
 	"sync"
 
+	"actionlint.kjanat.dev/internal/workflownames"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -51,8 +52,9 @@ type AnalysisRequest struct {
 type AnalysisResult struct {
 	Configurations []ConfigReport
 	Diagnostics    []Diagnostic
-	Inputs         []string
-	files          []analyzedFile
+	// Inputs includes discovery directories so watchers can detect added files.
+	Inputs []string
+	files  []analyzedFile
 }
 
 type analyzedFile struct {
@@ -123,6 +125,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		return nil, err
 	}
 	inputs := &inputFiles{}
+	allSources := request.Sources
 	selected := make([]SourceUnit, 0, len(request.Sources))
 	for _, source := range request.Sources {
 		// Selection itself consumes configuration, even when no source survives.
@@ -171,6 +174,44 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	if readFile == nil {
 		readFile = os.ReadFile
 	}
+	sourceContents := map[string][]byte{}
+	sourcePaths := make([]string, 0, len(allSources))
+	for _, source := range allSources {
+		path := source.inputPath
+		if path == "" {
+			path = source.Path
+		}
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(engine.workingDir, path)
+		}
+		sourceContents[filepath.Clean(path)] = source.Content
+		sourcePaths = append(sourcePaths, filepath.Clean(path))
+	}
+	engine.workflowNames = &workflownames.Index{Paths: sourcePaths, OnDirectory: inputs.add, Load: func(path string) (string, bool, error) {
+		if err := ctx.Err(); err != nil {
+			return "", false, err
+		}
+		inputs.add(path)
+		content, ok := sourceContents[filepath.Clean(path)]
+		if !ok {
+			var err error
+			content, err = readFile(path)
+			if err != nil {
+				return "", false, err
+			}
+		}
+		workflow, errs := Parse(content)
+		if workflow == nil || len(errs) > 0 {
+			return "", false, nil
+		}
+		if workflow.Name == nil {
+			return "", true, nil
+		}
+		if literal := literalExpressionValue(workflow.Name.Value); literal != nil {
+			return *literal, true, nil
+		}
+		return workflow.Name.Value, !workflow.Name.ContainsExpression(), nil
+	}}
 	// Initialize shared caches before any analysis goroutines access them.
 	for _, source := range request.Sources {
 		ac, wc := actions.GetCache(source.Project), workflows.GetCache(source.Project)

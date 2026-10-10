@@ -1,5 +1,11 @@
 package actionlint
 
+import (
+	"strings"
+
+	"actionlint.kjanat.dev/internal/workflownames"
+)
+
 // RuleGlob is a rule to check glob syntax.
 // https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
 type RuleGlob struct {
@@ -24,6 +30,7 @@ func (rule *RuleGlob) VisitWorkflowPre(n *Workflow) error {
 			rule.checkGitRefGlobs(e.TagsIgnore)
 			rule.checkFilePathGlobs(e.Paths)
 			rule.checkFilePathGlobs(e.PathsIgnore)
+			rule.checkWorkflowNameGlobs(e.Workflows)
 		case *ImageVersionEvent:
 			for _, v := range e.Versions {
 				rule.checkRefGlob(v)
@@ -31,6 +38,44 @@ func (rule *RuleGlob) VisitWorkflowPre(n *Workflow) error {
 		}
 	}
 	return nil
+}
+
+func (rule *RuleGlob) checkWorkflowNameGlobs(names []*String) {
+	allValid, positive := len(names) != 0, false
+	for _, name := range names {
+		if name == nil {
+			allValid = false
+			continue
+		}
+		value, evaluated := name.Value, false
+		if literal := literalExpressionValue(value); literal != nil {
+			value, evaluated = *literal, true
+		} else if name.ContainsExpression() {
+			allValid = false
+			continue
+		}
+		if workflownames.ValidPattern(value) {
+			positive = positive || !strings.HasPrefix(value, "!")
+			continue
+		}
+		allValid = false
+		if value == "" && !evaluated {
+			continue
+		}
+		errs := validateGlob(value, false)
+		if len(errs) == 0 {
+			errs = []InvalidGlobPatternError{{Message: "invalid workflow-name filter pattern"}}
+		}
+		if evaluated {
+			for i := range errs {
+				errs[i].Column = 0
+			}
+		}
+		rule.globErrors(errs, name.Pos, name.Quoted && !evaluated)
+	}
+	if allValid && !positive {
+		rule.Error(names[0].Pos, "workflow_run.workflows requires at least one positive workflow-name pattern")
+	}
 }
 
 func (rule *RuleGlob) VisitJobPre(n *Job) error {

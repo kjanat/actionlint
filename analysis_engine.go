@@ -9,9 +9,11 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/internal/ruff"
+	"actionlint.kjanat.dev/internal/workflownames"
 )
 
 type analysisEngine struct {
+	workflowNames     *workflownames.Index
 	ruff              string
 	ruffOptions       *ExternalCommandOptions
 	ruffCompatibility ruff.Compatibility
@@ -95,6 +97,7 @@ func (l *analysisEngine) check(
 				_, _ = fmt.Fprintln(l.logOut, "warning: skipping automatically discovered Ruff:", err)
 			}
 		}
+		c.workflowNames = l.workflowNames
 		c.shellcheckOptions = l.shellcheckOptions
 		c.shellcheckSettings = l.shellcheckSettings
 		c.workingDir, c.inputs = l.workingDir, l.inputs

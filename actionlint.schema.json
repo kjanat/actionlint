@@ -1540,10 +1540,156 @@
                                 }
                               ]
                             },
+                            "unsound-ternary": {
+                              "title": "unsound-ternary",
+                              "description": "Checks conditional expressions whose falsy middle operand always selects the fallback",
+                              "markdownDescription": "Checks conditional expressions whose falsy middle operand always selects the fallback",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
                             "workflow-call": {
                               "title": "workflow-call",
                               "description": "Checks for reusable workflow calls. Inputs and outputs of called reusable workflow are checked",
                               "markdownDescription": "Checks for reusable workflow calls. Inputs and outputs of called reusable workflow are checked",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "workflow-run-names": {
+                              "title": "workflow-run-names",
+                              "description": "Checks workflow_run names against repository workflows",
+                              "markdownDescription": "Checks workflow_run names against repository workflows",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -1625,6 +1771,8 @@
                       "items": {
                         "type": "string",
                         "enum": [
+                          "workflow-run-names",
+                          "unsound-ternary",
                           "ruff",
                           "syntax-check",
                           "inline-suppression",
@@ -2150,7 +2298,9 @@
                                                       "shellcheck",
                                                       "string-conditions",
                                                       "syntax-check",
-                                                      "workflow-call"
+                                                      "unsound-ternary",
+                                                      "workflow-call",
+                                                      "workflow-run-names"
                                                     ]
                                                   }
                                                 }
@@ -4765,10 +4915,156 @@
                                           }
                                         ]
                                       },
+                                      "unsound-ternary": {
+                                        "title": "unsound-ternary",
+                                        "description": "Checks conditional expressions whose falsy middle operand always selects the fallback",
+                                        "markdownDescription": "Checks conditional expressions whose falsy middle operand always selects the fallback",
+                                        "oneOf": [
+                                          {
+                                            "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                            "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean",
+                                                "not": {
+                                                  "const": true
+                                                },
+                                                "doNotSuggest": true
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean",
+                                                    "not": {
+                                                      "const": true
+                                                    },
+                                                    "doNotSuggest": true
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
                                       "workflow-call": {
                                         "title": "workflow-call",
                                         "description": "Checks for reusable workflow calls. Inputs and outputs of called reusable workflow are checked",
                                         "markdownDescription": "Checks for reusable workflow calls. Inputs and outputs of called reusable workflow are checked",
+                                        "oneOf": [
+                                          {
+                                            "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                            "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean",
+                                                "not": {
+                                                  "const": true
+                                                },
+                                                "doNotSuggest": true
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean",
+                                                    "not": {
+                                                      "const": true
+                                                    },
+                                                    "doNotSuggest": true
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
+                                      "workflow-run-names": {
+                                        "title": "workflow-run-names",
+                                        "description": "Checks workflow_run names against repository workflows",
+                                        "markdownDescription": "Checks workflow_run names against repository workflows",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -4850,6 +5146,8 @@
                                 "items": {
                                   "type": "string",
                                   "enum": [
+                                    "workflow-run-names",
+                                    "unsound-ternary",
                                     "ruff",
                                     "syntax-check",
                                     "inline-suppression",
@@ -5375,7 +5673,9 @@
                                                                 "shellcheck",
                                                                 "string-conditions",
                                                                 "syntax-check",
-                                                                "workflow-call"
+                                                                "unsound-ternary",
+                                                                "workflow-call",
+                                                                "workflow-run-names"
                                                               ]
                                                             }
                                                           }
@@ -6897,7 +7197,9 @@
                               "shellcheck",
                               "string-conditions",
                               "syntax-check",
-                              "workflow-call"
+                              "unsound-ternary",
+                              "workflow-call",
+                              "workflow-run-names"
                             ]
                           }
                         }
