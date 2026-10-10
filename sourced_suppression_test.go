@@ -31,6 +31,10 @@ func TestSourcedShellcheckDeclarationSuppression(t *testing.T) {
 					root, _ := executableFixture(t)
 					writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n"+tc.config)
 					script := writeShellcheckFixture(t, root, "scripts/check.sh", "echo $VALUE\n")
+					script, err := filepath.EvalSymlinks(script)
+					if err != nil {
+						t.Fatal(err)
+					}
 					declaration := strings.ReplaceAll(tc.declaration, "\n", ending)
 					steps := "- shell: bash\n  working-directory: .\n  " + strings.ReplaceAll(declaration, "\n", "\n  ")
 					origin := ".github/workflows/composite.yml"
