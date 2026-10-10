@@ -29,7 +29,7 @@ type Index struct {
 	cache map[string]func() (Names, error)
 }
 
-// SamePath compares casing aliases using the filesystem when both paths exist.
+// SamePath compares checkout aliases while preserving distinct workflow filenames.
 func SamePath(left, right string) bool {
 	return samePath(left, right, runtime.GOOS == "windows")
 }
@@ -43,11 +43,22 @@ func samePathOnFilesystem(left, right string, windows bool, stat func(string) (o
 	if left == right {
 		return true
 	}
-	if !strings.EqualFold(left, right) {
-		return false
-	}
 	leftInfo, leftErr := stat(left)
 	rightInfo, rightErr := stat(right)
+	if leftErr == nil && rightErr == nil && leftInfo.IsDir() && rightInfo.IsDir() {
+		return os.SameFile(leftInfo, rightInfo)
+	}
+	if !strings.EqualFold(left, right) {
+		if !strings.EqualFold(filepath.Base(left), filepath.Base(right)) {
+			return false
+		}
+		leftDir, leftDirErr := stat(filepath.Dir(left))
+		rightDir, rightDirErr := stat(filepath.Dir(right))
+		if leftDirErr != nil || rightDirErr != nil || !leftDir.IsDir() || !rightDir.IsDir() || !os.SameFile(leftDir, rightDir) {
+			return false
+		}
+		return samePathOnFilesystem(left, filepath.Join(filepath.Dir(left), filepath.Base(right)), windows, stat, readDir)
+	}
 	if leftErr == nil && rightErr == nil {
 		if !os.SameFile(leftInfo, rightInfo) {
 			return false

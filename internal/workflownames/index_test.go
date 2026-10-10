@@ -9,6 +9,49 @@ import (
 	"testing"
 )
 
+func TestIndexSymlinkCheckout(t *testing.T) {
+	base := t.TempDir()
+	root := filepath.Join(base, "checkout")
+	dir := filepath.Join(root, ".github", "workflows")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(base, "linked-checkout")
+	if err := os.Symlink(root, alias); err != nil {
+		t.Skipf("directory symlinks unavailable: %v", err)
+	}
+	disk := filepath.Join(dir, "build.yml")
+	if err := os.WriteFile(disk, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	overlay := filepath.Join(alias, ".github", "workflows", "build.yml")
+	missing := filepath.Join(alias, ".github", "workflows", "new.yml")
+	for _, path := range []string{disk, filepath.Join(dir, "new.yml")} {
+		other := filepath.Join(alias, ".github", "workflows", filepath.Base(path))
+		if !SamePath(path, other) || !SamePath(other, path) {
+			t.Fatalf("checkout alias not recognized: %q, %q", path, other)
+		}
+	}
+	loads := 0
+	index := &Index{Paths: []string{overlay, missing}, Load: func(path string) (string, bool, error) {
+		loads++
+		if path != overlay && path != missing {
+			t.Errorf("did not retain overlay spelling: %q", path)
+		}
+		return "", true, nil
+	}}
+	names, err := index.ForRoot(root)
+	if err != nil || !names.Complete || len(names.Values) != 2 || !names.Values[".github/workflows/build.yml"] || !names.Values[".github/workflows/new.yml"] || loads != 2 {
+		t.Fatalf("names=%+v err=%v loads=%d", names, err, loads)
+	}
+	if _, err := index.ForRoot(alias); err != nil || loads != 2 {
+		t.Fatalf("aliased root missed inventory cache: loads=%d err=%v", loads, err)
+	}
+	if got := workflowPaths(dir, []string{disk, overlay, disk}, false); !slices.Equal(got, []string{disk}) {
+		t.Fatalf("last overlay did not win: %v", got)
+	}
+}
+
 func TestIndexUnnamedOverlaySpelling(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, ".github", "workflows")

@@ -2,6 +2,18 @@ package workflownames
 
 import "testing"
 
+func TestPatternLineBreaks(t *testing.T) {
+	for _, pattern := range []string{"Build\nCI", "Build\rCI", "Build\r\nCI", "!Build\nCI", "Build\\\nCI"} {
+		if ValidPattern(pattern) {
+			t.Errorf("accepted line break in %q", pattern)
+		}
+		names := Names{Values: map[string]bool{"Build": true}, Complete: true}
+		if names.Missing(pattern) || names.ExcludesAll([]string{"Build", "!Build", pattern}) {
+			t.Errorf("invalid pattern produced a name finding: %q", pattern)
+		}
+	}
+}
+
 func TestMissingPattern(t *testing.T) {
 	for _, tc := range []struct {
 		pattern, name string

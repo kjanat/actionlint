@@ -61,7 +61,7 @@ func (n Names) ExcludesAll(patterns []string) bool {
 // compilePattern follows GitHub's workflow-name filter syntax:
 // https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#filter-pattern-cheat-sheet
 func compilePattern(pattern string) (*regexp.Regexp, bool) {
-	if pattern == "" {
+	if pattern == "" || strings.ContainsAny(pattern, "\r\n") {
 		return nil, false
 	}
 	var out strings.Builder
