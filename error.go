@@ -212,12 +212,13 @@ func compareErrors(lhs, rhs *Error) int {
 	if lhs.Column != rhs.Column {
 		return lhs.Column - rhs.Column
 	}
-	for _, pair := range [][2]string{{lhs.Message, rhs.Message}, {lhs.Kind, rhs.Kind}, {lhs.code, rhs.code}, {lhs.severity, rhs.severity}} {
-		if c := strings.Compare(pair[0], pair[1]); c != 0 {
-			return c
-		}
+	if c := strings.Compare(lhs.Message, rhs.Message); c != 0 {
+		return c
 	}
-	return lhs.endColumn - rhs.endColumn
+	if lhs.endColumn != rhs.endColumn {
+		return lhs.endColumn - rhs.endColumn
+	}
+	return strings.Compare(lhs.severity, rhs.severity)
 }
 
 func equalsErrors(lhs, rhs *Error) bool {
@@ -226,8 +227,6 @@ func equalsErrors(lhs, rhs *Error) bool {
 		lhs.Column == rhs.Column &&
 		lhs.endColumn == rhs.endColumn &&
 		lhs.Message == rhs.Message &&
-		lhs.Kind == rhs.Kind &&
-		lhs.code == rhs.code &&
 		lhs.severity == rhs.severity
 }
 
