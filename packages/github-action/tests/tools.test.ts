@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { chmod, copyFile, link, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { chmod, copyFile, link, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { runnerPlatform } from '#assets';
@@ -23,9 +22,8 @@ async function withEnvironment(values: Record<string, string>, run: () => Promis
 }
 
 test('native spawn preserves executable paths, arguments and exit status', async () => {
-	const directory = await mkdtemp(join(tmpdir(), 'actionlint exec-'));
-	try {
-		const name = process.platform === 'win32' ? 'node.exe' : 'node \\ " executable';
+	await temporary(async (directory) => {
+		const name = process.platform === 'win32' ? 'node executable.exe' : 'node \\ " executable';
 		const executable = join(directory, name);
 		try {
 			await link(process.execPath, executable);
@@ -42,9 +40,7 @@ test('native spawn preserves executable paths, arguments and exit status', async
 		assert.equal(result.exitCode, 7);
 		assert.deepEqual(JSON.parse(result.stdout), args);
 		assert.equal(result.stderr, '');
-	} finally {
-		await rm(directory, { recursive: true, force: true });
-	}
+	});
 });
 
 test('action execution uses only the supplied child environment and preserves exit codes', async () => {
