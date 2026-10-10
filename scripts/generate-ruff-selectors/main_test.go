@@ -5,6 +5,9 @@ import (
 	"os"
 	"slices"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/ruff"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestReleaseMatchesActionManifest(t *testing.T) {
@@ -20,6 +23,87 @@ func TestReleaseMatchesActionManifest(t *testing.T) {
 	}
 	if manifest.TagName != release {
 		t.Fatalf("Ruff selector metadata uses %s, Action uses %s; update the pinned metadata and regenerate", release, manifest.TagName)
+	}
+}
+
+func TestVendoredSchema(t *testing.T) {
+	t.Chdir("../..")
+	if ruff.SchemaPath != schemaPath || ruff.SelectorSchemaPath != selectorSchemaPath {
+		t.Fatal("generated schema paths are stale")
+	}
+	schema, err := os.ReadFile(schemaPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	versions, err := targetVersions(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(versions, ruff.SupportedTargetVersions()) {
+		t.Fatal("generated Python versions differ from the upstream schema")
+	}
+	wrapper, err := selectorSchema(schema, ruff.SupportedRuleSelectors())
+	if err != nil {
+		t.Fatal(err)
+	}
+	origin, err := provenance(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for filename, generated := range map[string][]byte{selectorSchemaPath: wrapper, provenancePath: origin} {
+		stored, err := os.ReadFile(filename)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got, want any
+		if err := json.Unmarshal(stored, &got); err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(generated, &want); err != nil {
+			t.Fatal(err)
+		}
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Fatalf("%s is stale or upstream bytes changed (-generated +stored):\n%s", filename, diff)
+		}
+	}
+}
+
+func TestTargetVersions(t *testing.T) {
+	for _, input := range []string{`{`, `{}`, `{"definitions":{"PythonVersion":{"enum":["py37"]}}}`} {
+		if _, err := targetVersions([]byte(input)); err == nil {
+			t.Fatalf("changed PythonVersion shape must fail generation: %s", input)
+		}
+	}
+}
+
+func TestSelectorSchemaDelta(t *testing.T) {
+	input := []byte(`{"definitions":{"RuleSelector":{"enum":["ALL","F821","E111","undefined-name"]}}}`)
+	got, err := selectorSchema(input, []string{"ALL", "F821", "PGH001"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document struct {
+		AnyOf []struct {
+			AllOf []struct {
+				Ref     string `json:"$ref"`
+				Pattern string `json:"pattern"`
+				Not     struct {
+					Enum []string `json:"enum"`
+				} `json:"not"`
+			} `json:"allOf"`
+			Enum []string `json:"enum"`
+		} `json:"anyOf"`
+	}
+	if err := json.Unmarshal(got, &document); err != nil {
+		t.Fatal(err)
+	}
+	if len(document.AnyOf) != 2 || len(document.AnyOf[0].AllOf) != 3 {
+		t.Fatal("expected upstream constraints and a separate compatibility branch")
+	}
+	constraints := document.AnyOf[0].AllOf
+	if constraints[0].Ref != release+".schema.json#/definitions/RuleSelector" || constraints[1].Pattern != codePattern.String() ||
+		!slices.Equal(constraints[2].Not.Enum, []string{"E111"}) || !slices.Equal(document.AnyOf[1].Enum, []string{"PGH001"}) {
+		t.Fatalf("wrapper must contain only exclusions and missing aliases: %s", got)
 	}
 }
 

@@ -145,15 +145,14 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		mapping.Type = ""
 		mapping.OneOf = []*jsonschema.Schema{{Type: "boolean"}, {Type: "object"}, {Type: "null"}}
 		target, _ := mapping.Properties.Get("target-version")
-		choices := &jsonschema.Schema{Type: "string"}
-		for _, version := range ruff.SupportedTargetVersions() {
-			choices.Enum = append(choices.Enum, version)
-		}
 		target.Type = ""
-		target.OneOf = []*jsonschema.Schema{choices, {Type: "null", Extras: map[string]any{"doNotSuggest": true}}}
+		target.OneOf = []*jsonschema.Schema{{Ref: ruff.SchemaPath + "#/definitions/PythonVersion"}, {Type: "null", Extras: map[string]any{"doNotSuggest": true}}}
 		for _, name := range []string{"select", "ignore"} {
 			property, _ := mapping.Properties.Get(name)
-			property.Items = &jsonschema.Schema{Ref: "#/$defs/RuffRuleSelector"}
+			// Item-level references make editors suggest excluded upstream values.
+			// Validate every item through the array, separately from completion examples.
+			property.Items = &jsonschema.Schema{Type: "string", Examples: []any{"F", "F821"}}
+			property.Not = &jsonschema.Schema{Type: "array", Contains: &jsonschema.Schema{Not: &jsonschema.Schema{Ref: ruff.SelectorSchemaPath}}}
 		}
 		for name, description := range map[string]string{
 			"enabled":        "Enable Ruff analysis when the executable is available.",
@@ -292,14 +291,6 @@ func generate() ([]byte, error) {
 		return nil, err
 	}
 	s := r.Reflect(actionlint.Config{})
-	selectors := &jsonschema.Schema{Type: "string"}
-	for _, selector := range ruff.SupportedRuleSelectors() {
-		selectors.Enum = append(selectors.Enum, selector)
-	}
-	if s.Definitions == nil {
-		s.Definitions = jsonschema.Definitions{}
-	}
-	s.Definitions["RuffRuleSelector"] = selectors
 	// Resolve tool schemas beside this document in Git checkouts and npm packages.
 	s.ID = ""
 	s.Title = "actionlint configuration"

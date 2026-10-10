@@ -3,6 +3,24 @@
 
 package ruff
 
+// SchemaPath is the unmodified upstream schema bundled for offline references.
+const SchemaPath = "schemas/ruff/0.17.0.schema.json"
+
+// SelectorSchemaPath is the generated compatibility wrapper for upstream selectors.
+const SelectorSchemaPath = "schemas/ruff/0.17.0-selectors.schema.json"
+
+var supportedTargetVersions = []string{
+	"py37",
+	"py38",
+	"py39",
+	"py310",
+	"py311",
+	"py312",
+	"py313",
+	"py314",
+	"py315",
+}
+
 var supportedRuleSelectors = []string{
 	"A",
 	"A0",

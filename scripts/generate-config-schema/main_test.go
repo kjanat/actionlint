@@ -1,13 +1,17 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/url"
 	"os"
+	"os/exec"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"actionlint.kjanat.dev"
 	"actionlint.kjanat.dev/internal/ruff"
@@ -51,12 +55,11 @@ func TestRuffTargetVersionSuggestions(t *testing.T) {
 	if !ok {
 		t.Fatal("missing Ruff target-version schema")
 	}
-	want := []any{"py37", "py38", "py39", "py310", "py311", "py312", "py313", "py314", "py315"}
 	if len(target.OneOf) != 2 || target.OneOf[1].Type != "null" || target.OneOf[1].Extras["doNotSuggest"] != true {
 		t.Fatal("expected version choices and a hidden reset branch")
 	}
-	if diff := cmp.Diff(want, target.OneOf[0].Enum); diff != "" {
-		t.Fatalf("Ruff target choices (-want +got):\n%s", diff)
+	if target.OneOf[0].Ref != ruff.SchemaPath+"#/definitions/PythonVersion" || len(target.OneOf[0].Enum) != 0 {
+		t.Fatal("Ruff target choices must reference the unchanged upstream definition")
 	}
 }
 
@@ -64,30 +67,142 @@ func TestRuffSelectorSuggestions(t *testing.T) {
 	schema := mapYAMLType(reflect.TypeFor[actionlint.RuffToolConfig](), nil)
 	var root jsonschema.Schema
 	generated := generatedSchema(t)
-	if strings.Count(string(generated), `"#/$defs/RuffRuleSelector"`) != 4 {
+	if strings.Count(string(generated), `"`+ruff.SelectorSchemaPath+`"`) != 4 {
 		t.Fatal("base and override selections must share the selector definition")
 	}
 	if err := json.Unmarshal(generated, &root); err != nil {
 		t.Fatal(err)
 	}
-	var want []any
-	for _, selector := range ruff.SupportedRuleSelectors() {
-		want = append(want, selector)
+	if _, exists := root.Definitions["RuffRuleSelector"]; exists {
+		t.Fatal("root schema must not copy the upstream selector catalogue")
 	}
 	for _, key := range []string{"select", "ignore"} {
 		property, ok := schema.Properties.Get(key)
 		if !ok || property.Items == nil {
 			t.Fatalf("missing Ruff %s schema", key)
 		}
-		if property.Items.Ref != "#/$defs/RuffRuleSelector" {
-			t.Fatalf("Ruff %s must reference the shared selector definition", key)
+		if property.Items.Ref != "" || len(property.Items.Enum) != 0 || !reflect.DeepEqual(property.Items.Examples, []any{"F", "F821"}) {
+			t.Fatalf("Ruff %s completion must use small safe examples, not an upstream or copied catalogue", key)
 		}
-		definition := root.Definitions[strings.TrimPrefix(property.Items.Ref, "#/$defs/")]
-		if definition == nil || definition.Type != "string" {
-			t.Fatal("missing shared Ruff selector definition")
+		guard := property.Not
+		if guard == nil || guard.Type != "array" || guard.Contains == nil || guard.Contains.Not == nil || guard.Contains.Not.Ref != ruff.SelectorSchemaPath {
+			t.Fatalf("Ruff %s must reject arrays containing an unsupported selector through the shared wrapper", key)
 		}
-		if diff := cmp.Diff(want, definition.Enum); diff != "" {
-			t.Fatalf("Ruff %s selectors (-want +got):\n%s", key, diff)
+	}
+}
+
+func TestRuffEditorCompletions(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("Node.js is not installed")
+	}
+	server, err := exec.LookPath("yaml-language-server")
+	if err != nil {
+		t.Skip("optional yaml-language-server is not installed")
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, node, "editor-completions.mjs", server)
+	command.WaitDelay = time.Second
+	output, err := command.CombinedOutput()
+	var exit *exec.ExitError
+	if errors.As(err, &exit) && exit.ExitCode() == 77 {
+		t.Skip(string(output))
+	}
+	if err != nil {
+		t.Fatalf("YAML language service regression: %v\n%s", err, output)
+	}
+	t.Log(string(output))
+}
+
+func addToolSchemas(t *testing.T, compiler *validator.Compiler, base string) {
+	t.Helper()
+	rootURL, err := url.Parse(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, filename := range []string{shellcheckSchemaPath, ruff.SchemaPath, ruff.SelectorSchemaPath} {
+		data, err := os.ReadFile(filename)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var document any
+		if err := json.Unmarshal(data, &document); err != nil {
+			t.Fatal(err)
+		}
+		location := rootURL.ResolveReference(&url.URL{Path: filename}).String()
+		if err := compiler.AddResource(location, document); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestRuffUpstreamSchemaParity(t *testing.T) {
+	root := generatedSchema(t)
+	var document any
+	if err := json.Unmarshal(root, &document); err != nil {
+		t.Fatal(err)
+	}
+	const base = "file:///offline/actionlint.schema.json"
+	c := validator.NewCompiler()
+	c.UseLoader(validator.SchemeURLLoader{})
+	addToolSchemas(t, c, base)
+	if err := c.AddResource(base, document); err != nil {
+		t.Fatal(err)
+	}
+	schema, err := c.Compile(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	upstream, err := os.ReadFile(ruff.SchemaPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var raw struct {
+		Definitions map[string]struct {
+			Enum []string `json:"enum"`
+		} `json:"definitions"`
+	}
+	if err := json.Unmarshal(upstream, &raw); err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff(raw.Definitions["PythonVersion"].Enum, ruff.SupportedTargetVersions()); diff != "" {
+		t.Fatalf("runtime targets differ from upstream (-upstream +runtime):\n%s", diff)
+	}
+	supported := ruff.SupportedRuleSelectors()
+	targets := ruff.SupportedTargetVersions()
+	selectors := append(slices.Clone(raw.Definitions["RuleSelector"].Enum), supported...)
+	selectors = append(selectors, "XYZ", "F9999", "", "f821")
+	slices.Sort(selectors)
+	selectors = slices.Compact(selectors)
+	for _, key := range []string{"select", "ignore", "target-version"} {
+		values := selectors
+		if key == "target-version" {
+			values = append(slices.Clone(targets), "py36", "py316", "")
+		}
+		for _, value := range values {
+			for _, override := range []bool{false, true} {
+				var property any = []any{value}
+				want := slices.Contains(supported, value)
+				if key == "target-version" {
+					property = value
+					want = slices.Contains(targets, value)
+				}
+				input := map[string]any{"tools": map[string]any{"ruff": map[string]any{key: property}}}
+				if override {
+					input["includes"] = []any{"**"}
+					input = map[string]any{"overrides": []any{input}}
+				}
+				data, err := json.Marshal(input)
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, parseErr := actionlint.ParseConfig(data)
+				schemaErr := schema.Validate(input)
+				if (parseErr == nil) != want || (schemaErr == nil) != want {
+					t.Fatalf("%s=%q override=%v want valid=%v: parser=%v schema=%v", key, value, override, want, parseErr, schemaErr)
+				}
+			}
 		}
 	}
 }
@@ -149,31 +264,21 @@ func TestShellcheckSchemaReference(t *testing.T) {
 
 func TestSchemaRelativeResolution(t *testing.T) {
 	root := generatedSchema(t)
-	tool, err := os.ReadFile(shellcheckSchemaPath)
-	if err != nil {
-		t.Fatal(err)
-	}
 	for _, base := range []string{
 		"file:///offline/node_modules/@kjanat/actionlint/actionlint.schema.json",
 		"https://cdn.jsdelivr.net/npm/@kjanat/actionlint@1.17.0/actionlint.schema.json",
 		"https://raw.githubusercontent.com/kjanat/actionlint/b837c5abb3549967ff6f30c852ede599dabdb339/actionlint.schema.json",
 	} {
 		t.Run(base, func(t *testing.T) {
-			rootURL, err := url.Parse(base)
-			if err != nil {
-				t.Fatal(err)
-			}
-			toolURL := rootURL.ResolveReference(&url.URL{Path: shellcheckSchemaPath}).String()
 			c := validator.NewCompiler()
 			c.UseLoader(validator.SchemeURLLoader{})
-			for location, data := range map[string][]byte{base: root, toolURL: tool} {
-				var document any
-				if err := json.Unmarshal(data, &document); err != nil {
-					t.Fatal(err)
-				}
-				if err := c.AddResource(location, document); err != nil {
-					t.Fatal(err)
-				}
+			addToolSchemas(t, c, base)
+			var document any
+			if err := json.Unmarshal(root, &document); err != nil {
+				t.Fatal(err)
+			}
+			if err := c.AddResource(base, document); err != nil {
+				t.Fatal(err)
 			}
 			if _, err := c.Compile(base); err != nil {
 				t.Fatalf("schema must resolve its tool reference beside the loaded root without remote fallback: %v", err)
@@ -191,18 +296,8 @@ func TestSchemaValidation(t *testing.T) {
 	c := validator.NewCompiler()
 	// Resolve checked-in resources only. Schema tests must not access the network.
 	c.UseLoader(validator.SchemeURLLoader{})
-	toolSchema, err := os.ReadFile(shellcheckSchemaPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var toolDocument any
-	if err := json.Unmarshal(toolSchema, &toolDocument); err != nil {
-		t.Fatal(err)
-	}
-	if err := c.AddResource("https://example.com/"+shellcheckSchemaPath, toolDocument); err != nil {
-		t.Fatal(err)
-	}
 	const url = "https://example.com/actionlint.schema.json"
+	addToolSchemas(t, c, url)
 	if err := c.AddResource(url, document); err != nil {
 		t.Fatal(err)
 	}

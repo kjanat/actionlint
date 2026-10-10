@@ -10,7 +10,7 @@ import (
 
 // SupportedTargetVersions lists the Python targets accepted by Ruff.
 func SupportedTargetVersions() []string {
-	return []string{"py37", "py38", "py39", "py310", "py311", "py312", "py313", "py314", "py315"}
+	return slices.Clone(supportedTargetVersions)
 }
 
 // Config controls isolated analysis of embedded Python scripts.
