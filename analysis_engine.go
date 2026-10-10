@@ -106,10 +106,8 @@ func (l *analysisEngine) check(
 			if descriptor.build == nil {
 				continue
 			}
-			// Shared analysis passes can emit independently configured diagnostics;
-			// keep them running. Disabled external tools need not be launched.
-			// Ruff also checks composite files with their own effective configuration.
-			// Its descriptor decides whether any such file can enable the checker.
+			// Shared passes and Ruff composite analysis can emit diagnostics enabled
+			// by other rules or files; skip only disabled external checkers.
 			if descriptor.Category == "external" && descriptor.Name != "ruff" && cfg.diagnosticLevel(descriptor.Name) == "off" {
 				continue
 			}
