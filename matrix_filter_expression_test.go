@@ -3,7 +3,6 @@ package actionlint
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"testing"
 )
 
@@ -29,7 +28,7 @@ func TestMatrixExpressionFilterTypes(t *testing.T) {
 		{"returned template stays data", `[false]`, `fromJSON('[{"value":"${{ false }}"}]')`, true},
 	} {
 		for _, section := range []string{"include", "exclude"} {
-			for _, enabled := range []string{"true", "false"} {
+			for _, enabled := range []string{"on", "off"} {
 				t.Run(tc.name+"/"+section+"/"+enabled, func(t *testing.T) {
 					expression := strconv.Quote("${{ " + tc.expression + " }}")
 					source := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        value: %s\n        %s: %s\n    steps:\n      - run: echo ok\n", tc.axis, section, expression)
@@ -37,7 +36,7 @@ func TestMatrixExpressionFilterTypes(t *testing.T) {
 					if len(parseErrors) != 0 {
 						t.Fatal(parseErrors)
 					}
-					cfg, err := ParseConfig([]byte("policy: {mixed-type-matrix-filters: " + enabled + "}"))
+					cfg, err := ParseConfig([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: " + enabled + "}}}"))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -48,7 +47,7 @@ func TestMatrixExpressionFilterTypes(t *testing.T) {
 					}
 					count := 0
 					for _, finding := range rule.Errs() {
-						if strings.Contains(finding.Message, "policy: mixed-type-matrix-filters") {
+						if finding.Kind == "mixed-type-matrix-filters" {
 							count++
 							if finding.Line != 8 || finding.Column <= 8 {
 								t.Fatalf("wrong expression position: %+v", finding)
@@ -56,7 +55,7 @@ func TestMatrixExpressionFilterTypes(t *testing.T) {
 						}
 					}
 					want := 0
-					if tc.warn && enabled == "true" {
+					if tc.warn && enabled == "on" {
 						want = 1
 					}
 					if count != want {
