@@ -282,16 +282,11 @@ func constantConditionFormat(format string, args []any) (any, bool) {
 		if err != nil || index < 0 || index >= len(args) {
 			return nil, false
 		}
-		switch v := args[index].(type) {
-		case string:
-			out.WriteString(v)
-		case nil:
-		case bool:
-			out.WriteString(strconv.FormatBool(v))
-		default:
-			// Numeric formatting differs across engines, including negative zero.
+		value, known := constantPredicateString(args[index])
+		if !known {
 			return nil, false
 		}
+		out.WriteString(value)
 		i += end + 1
 	}
 	return out.String(), true
