@@ -51,6 +51,37 @@ func TestLocalActionSuppressionDiagnosticLevels(t *testing.T) {
 	}
 }
 
+func TestLocalActionSuppressionsRespectCallerLintSwitch(t *testing.T) {
+	for _, runtime := range []struct{ name, runs string }{
+		{"javascript", "using: node24\n  main: index.js"},
+		{"docker", "using: docker\n  image: docker://alpine:3.22"},
+		{"composite", "using: composite\n  steps:\n    - shell: bash\n      run: echo ok"},
+	} {
+		for _, tc := range []struct{ name, directive, config, rule string }{
+			{"malformed", "# actionlint:ignore action", "", "inline-suppression"},
+			{"prohibited", "# actionlint:ignore action -- reviewed", "policy: {disallow-suppressions: true}\n", "disallow-suppressions"},
+		} {
+			for _, enabled := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%s/%s/enabled=%t", runtime.name, tc.name, enabled), func(t *testing.T) {
+					root, _ := executableFixture(t)
+					config := tc.config + fmt.Sprintf("overrides:\n  - includes: ['.github/workflows/**']\n    lint: {enabled: %t}\n", enabled)
+					writeShellcheckFixture(t, root, ".github/actionlint.yaml", config)
+					writeShellcheckFixture(t, root, "inner/index.js", "console.log('ok');\n")
+					writeShellcheckFixture(t, root, "inner/action.yml", "name: inner "+tc.directive+"\ndescription: test\nruns:\n  "+runtime.runs+"\n")
+					result := compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
+					if !enabled {
+						if len(result.Diagnostics) != 0 {
+							t.Fatalf("disabled caller emitted diagnostics: %+v", result.Diagnostics)
+						}
+					} else if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != tc.rule || filepath.ToSlash(result.Diagnostics[0].Path) != "inner/action.yml" {
+						t.Fatalf("enabled caller lost %s in local action: %+v", tc.rule, result.Diagnostics)
+					}
+				})
+			}
+		}
+	}
+}
+
 func TestCleanCompositeSuppressionDirectives(t *testing.T) {
 	for _, tc := range []struct {
 		name, directive, config, want string

@@ -229,7 +229,7 @@ func (l *analysisEngine) check(
 		}
 		findings = slices.DeleteFunc(findings, func(e *Error) bool {
 			levelConfig := cfg
-			if e.Kind == "inline-suppression" || e.Kind == "disallow-suppressions" {
+			if (e.Kind == "inline-suppression" || e.Kind == "disallow-suppressions") && (cfg == nil || cfg.Lint.Enabled == nil || *cfg.Lint.Enabled) {
 				levelConfig = findingConfig
 			}
 			switch levelConfig.diagnosticLevel(e.Kind) {
