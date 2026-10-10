@@ -172,6 +172,11 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		c.mu.Lock()
 		defer c.mu.Unlock()
 		for _, d := range diagnostics {
+			// Opaque values, quoted annotations and exports may hide references.
+			// Comment-only templates add no masks; unrelated checks still apply.
+			if len(placeholders.identifiers) > 0 && requiresCompleteReferences(d.Code) {
+				continue
+			}
 			if d.Code == "F822" && placeholders.dynamicExport(d) {
 				continue
 			}
@@ -278,6 +283,15 @@ type templateMasks struct {
 	identifiers map[Position]int
 	parentheses map[Position]Position
 	quoted      map[Position]string
+}
+
+func requiresCompleteReferences(code string) bool {
+	switch code {
+	case "F401", "F811", "F841", "F842", "ARG001", "ARG002", "ARG003", "ARG004", "ARG005", "B007":
+		return true
+	default:
+		return false
+	}
 }
 
 func (m *templateMasks) dynamicExport(d Diagnostic) bool {
