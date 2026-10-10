@@ -71,6 +71,7 @@ func (l *analysisEngine) check(
 	w, all := Parse(content)
 	var analysisErr error
 	metadataSources := map[string][]byte{}
+	compositeConfigs := map[string]*Config{}
 
 	if l.logLevel >= LogLevelVerbose {
 		elapsed := time.Since(start)
@@ -138,7 +139,9 @@ func (l *analysisEngine) check(
 			if err != nil {
 				return nil, err
 			}
-			return l.rulePresets.apply(config), nil
+			config = l.rulePresets.apply(config)
+			compositeConfigs[path] = config
+			return config, nil
 		}
 		if dbg != nil {
 			v.EnableDebug(dbg)
@@ -263,6 +266,13 @@ func (l *analysisEngine) check(
 			levelConfig := cfg
 			if (e.Kind == "inline-suppression" || e.Kind == "disallow-suppressions") && (cfg == nil || cfg.Lint.Enabled == nil || *cfg.Lint.Enabled) {
 				levelConfig = findingConfig
+			}
+			// Ruff explicitly supports per-composite settings, but cannot override
+			// the caller's switch disabling the entire lint analysis.
+			if e.Kind == "ruff" && (cfg == nil || cfg.Lint.Enabled == nil || *cfg.Lint.Enabled) {
+				if compositeConfig, ok := compositeConfigs[sourcePath]; ok {
+					levelConfig = compositeConfig
+				}
 			}
 			switch levelConfig.diagnosticLevel(e.Kind) {
 			case "off":

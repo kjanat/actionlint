@@ -21,7 +21,7 @@ func TestRedirectedHelpWidth(t *testing.T) {
 		if got.Status != 0 {
 			t.Fatalf("%v: %+v", args, got)
 		}
-		for _, line := range strings.Split(got.Stderr, "\n") {
+		for line := range strings.SplitSeq(got.Stderr, "\n") {
 			if width := len([]rune(line)); width > 80 {
 				t.Errorf("%v: help line is %d columns: %s", args, width, line)
 			}

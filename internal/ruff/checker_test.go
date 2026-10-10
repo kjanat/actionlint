@@ -53,7 +53,9 @@ func TestShellSelectionAndFork(t *testing.T) {
 	}, func() error { return nil }, nil)
 	check := func(c *Checker, shell *string, config Config, want int) {
 		t.Helper()
-		c.Check("print(1)", shell, "test", config, func(Diagnostic) { t.Fatal("unexpected diagnostic") })
+		if err := c.Check("print(1)", shell, "test", config, func(Diagnostic) { t.Fatal("unexpected diagnostic") }); err != nil {
+			t.Fatal(err)
+		}
 		if calls != want {
 			t.Fatalf("got %d calls, want %d", calls, want)
 		}
@@ -111,7 +113,9 @@ func TestCheckFailureAndAtomicDiagnostics(t *testing.T) {
 			result = callback([]byte(tc.output), tc.processErr)
 		}, func() error { return result }, nil)
 		python := "python"
-		c.Check("print(1)", &python, "workflow:12", Config{}, func(Diagnostic) { t.Fatal("partially emitted invalid response") })
+		if err := c.Check("print(1)", &python, "workflow:12", Config{}, func(Diagnostic) { t.Fatal("partially emitted invalid response") }); err != nil {
+			t.Fatal(err)
+		}
 		if err := c.Wait(); err == nil || !strings.Contains(err.Error(), "workflow:12") {
 			t.Fatalf("unexpected error: %v", err)
 		}

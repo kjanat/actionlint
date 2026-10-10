@@ -163,6 +163,11 @@ func TestRuffProjectCatchAllOverrides(t *testing.T) {
 	}{
 		{"all tools disabled", "[{includes: ['**'], tools: {ruff: false}}]", false},
 		{"all rules disabled", "[{includes: ['**'], lint: {rules: {external: {ruff: off}}}}]", false},
+		{"relative catch-all tools disabled", "[{includes: ['./**'], tools: {ruff: false}}]", false},
+		{"file catch-all tools disabled", "[{includes: ['**/*'], tools: {ruff: false}}]", false},
+		{"relative file catch-all rules disabled", "[{includes: ['./**/*'], lint: {rules: {external: {ruff: off}}}}]", false},
+		{"caller lint disabled", "[{includes: ['.github/workflows/**'], lint: {enabled: false}}]", false},
+		{"caller lint disabled despite composite enabled", "[{includes: ['.github/workflows/**'], lint: {enabled: false}}, {includes: ['python-action/**'], lint: {enabled: true}}]", false},
 		{"later tool reenabled", "[{includes: ['**'], tools: {ruff: false}}, {includes: ['python-action/action.yml'], tools: {ruff: true}}]", true},
 		{"later rule reenabled", "[{includes: ['**'], lint: {rules: {external: {ruff: off}}}}, {includes: ['python-action/action.yml'], lint: {rules: {external: {ruff: on}}}}]", true},
 		{"later catch-all disables tool", "[{includes: ['python-action/action.yml'], tools: {ruff: true}}, {includes: ['**'], tools: {ruff: false}}]", false},

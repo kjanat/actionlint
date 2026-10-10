@@ -20,6 +20,9 @@ func TestRuffCompositeFileConfiguration(t *testing.T) {
 		{"workflow disabled composite enabled", "tools: {ruff: false}\n", "tools: {ruff: true}", "print(missing)", "F821"},
 		{"workflow rule disabled composite enabled", "lint: {rules: {external: {ruff: off}}}\n", "lint: {rules: {external: {ruff: on}}}", "print(missing)", "F821"},
 		{"workflow only override retains composite defaults", "overrides:\n  - includes: ['.github/workflows/**']\n    tools: {ruff: false}\n", "", "print(missing)", "F821"},
+		{"caller lint disabled", "overrides:\n  - includes: ['.github/workflows/**']\n    lint: {enabled: false}\n", "", "print(missing)", ""},
+		{"caller lint disabled despite composite enabled", "lint: {enabled: false}\n", "lint: {enabled: true, rules: {external: {ruff: on}}}", "print(missing)", ""},
+		{"composite warning", "", "lint: {rules: {external: {ruff: warn}}}", "print(missing)", "F821"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -52,6 +55,9 @@ func TestRuffCompositeFileConfiguration(t *testing.T) {
 			}
 			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != tc.code {
 				t.Fatalf("findings = %+v, want %s", result.Diagnostics, tc.code)
+			}
+			if tc.name == "composite warning" && result.Diagnostics[0].Severity != "warning" {
+				t.Fatalf("composite severity = %s, want warning", result.Diagnostics[0].Severity)
 			}
 		})
 	}

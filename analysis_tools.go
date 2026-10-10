@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -86,6 +87,9 @@ func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirement
 }
 
 func ruffProjectConfigMayEnable(config, projectConfig *Config, project bool) (bool, error) {
+	if config != nil && config.Lint.Enabled != nil && !*config.Lint.Enabled {
+		return false, nil
+	}
 	possible, err := ruffConfigMayEnable(config)
 	if possible || err != nil || !project || projectConfig == nil || len(projectConfig.Overrides) == 0 {
 		return possible, err
@@ -107,7 +111,10 @@ func ruffConfigMayEnable(config *Config) (bool, error) {
 	// Other globs remain conservative; this is not a separate file discovery pass.
 	candidates := []*Config{config}
 	for _, override := range config.Overrides {
-		universal := len(override.Excludes) == 0 && slices.Contains(override.Includes, "**") &&
+		universal := len(override.Excludes) == 0 && slices.ContainsFunc(override.Includes, func(pattern string) bool {
+			pattern = path.Clean(pattern)
+			return pattern == "**" || pattern == "**/*"
+		}) &&
 			!slices.ContainsFunc(override.Includes, func(pattern string) bool { return strings.HasPrefix(pattern, "!") })
 		override.Includes, override.Excludes = []string{"**"}, nil
 		if !universal {

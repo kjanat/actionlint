@@ -71,9 +71,11 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 	if !valid {
 		return nil
 	} // Malformed templates belong to the expression checker.
-	args := []string{"check"}
+	defaults := arguments(config)
+	args := make([]string, 1, len(defaults)+len(c.flags))
+	args[0] = "check"
 	args = append(args, c.flags...)
-	args = append(args, arguments(config)[1:]...)
+	args = append(args, defaults[1:]...)
 	c.run(args, source, func(stdout []byte, err error) error {
 		if err != nil {
 			return fmt.Errorf("ruff failed while checking Python script at %s: %w", location, err)
