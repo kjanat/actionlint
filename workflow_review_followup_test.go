@@ -28,6 +28,52 @@ func TestWorkflowRunPathsUntrusted(t *testing.T) {
 	}
 }
 
+func TestWorkflowRunNamesUntrusted(t *testing.T) {
+	for _, expression := range []string{
+		"github.event.workflow_run.name",
+		"github['event']['workflow_run']['name']",
+		"GITHUB.EVENT.WORKFLOW_RUN.NAME",
+		"format('{0}', github.event.workflow_run.name)",
+	} {
+		t.Run(expression, func(t *testing.T) {
+			source := "on: {workflow_run: {workflows: ['Build*'], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo \"${{ " + expression + " }}\"\n"
+			result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
+			if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "expression" || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
+				t.Fatalf("name interpolation: error=%v diagnostics=%+v", err, result.Diagnostics)
+			}
+			source = "on: {workflow_run: {workflows: ['Build*'], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n      - env: {WORKFLOW_NAME: " + strconv.Quote("${{ "+expression+" }}") + "}\n        run: printf '%s\\n' \"$WORKFLOW_NAME\"\n"
+			result, err = Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
+			if err != nil || len(result.Diagnostics) != 0 {
+				t.Fatalf("name environment binding: error=%v diagnostics=%+v", err, result.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestWorkflowRunEmptyPatternValidation(t *testing.T) {
+	for _, reference := range []string{"", "${{ '' }}"} {
+		t.Run(reference, func(t *testing.T) {
+			source := "on: {workflow_run: {workflows: [" + strconv.Quote(reference) + "], types: [completed]}}\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"
+			workflow, errs := Parse([]byte(source))
+			if workflow == nil || reference != "" && len(errs) != 0 {
+				t.Fatalf("parse: %v", errs)
+			}
+			pos := *workflow.On[0].(*WebhookEvent).Workflows[0].Pos
+			wantRule, wantMessage := "glob", "glob pattern cannot be empty"
+			if reference == "" {
+				wantRule, wantMessage = "syntax-check", "string should not be empty"
+			}
+			result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
+			if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != wantRule || !strings.Contains(result.Diagnostics[0].Message, wantMessage) {
+				t.Fatalf("empty pattern: error=%v diagnostics=%+v", err, result.Diagnostics)
+			}
+			if result.Diagnostics[0].Start.Line != pos.Line || result.Diagnostics[0].Start.Column != pos.Col {
+				t.Fatalf("empty pattern position: got %+v, want %+v", result.Diagnostics[0].Start, pos)
+			}
+		})
+	}
+}
+
 func TestWorkflowRunLiteralPatternValidation(t *testing.T) {
 	for _, pattern := range []string{"Build [", "?Build", "Build*", "!Build*", "Build's CI", "${{ vars.WORKFLOW }}"} {
 		reference := "${{ '" + strings.ReplaceAll(pattern, "'", "''") + "' }}"

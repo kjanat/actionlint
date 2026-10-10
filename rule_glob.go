@@ -47,7 +47,7 @@ func (rule *RuleGlob) checkWorkflowNameGlobs(names []*String) {
 		} else if name.ContainsExpression() {
 			continue
 		}
-		if value == "" || workflownames.ValidPattern(value) {
+		if value == "" && !evaluated || workflownames.ValidPattern(value) {
 			continue
 		}
 		errs := validateGlob(value, false)
