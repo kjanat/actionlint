@@ -936,11 +936,6 @@ editing actions.
 
 ### trunk
 
-> [!WARNING]
-> trunk's actionlint plugin downloads releases from `rhysd/actionlint` using
-> hard-coded upstream URLs. The `trunk check enable actionlint` commands below
-> install upstream, not this fork.
-
 [trunk][trunk-io] is an extendable superlinter with a builtin language server
 and preexisting issue detection. Actionlint is integrated in [trunk-io/plugins].
 
