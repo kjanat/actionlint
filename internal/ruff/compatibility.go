@@ -57,5 +57,5 @@ func checkVersion(output string) error {
 			}
 		}
 	}
-	return fmt.Errorf("Ruff %q is incompatible; requires 0.17.0 or newer", fields[1])
+	return fmt.Errorf("ruff %q is incompatible; requires 0.17.0 or newer", fields[1])
 }

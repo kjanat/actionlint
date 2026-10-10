@@ -81,9 +81,10 @@ func TestRuffAutomaticVersionCompatibility(t *testing.T) {
 				calls := filepath.Join(t.TempDir(), "calls")
 				t.Setenv("ACTIONLINT_TEST_RUFF_CALLS", calls)
 				t.Setenv("ACTIONLINT_TEST_RUFF_VERSION", tc.version)
-				if tc.environment == "BIN" {
+				switch tc.environment {
+				case "BIN":
 					t.Setenv("ACTIONLINT_RUFF_BIN", tool)
-				} else if tc.environment == "FLAGS" {
+				case "FLAGS":
 					t.Setenv("ACTIONLINT_RUFF_FLAGS", `["--select", "F"]`)
 				}
 				args := append([]string{"actionlint", "--no-color", "--shellcheck="}, prefix...)
