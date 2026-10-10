@@ -121,11 +121,52 @@ for (
 	});
 }
 
-test('mise lets the repository version files select Go and Node', () => {
+test('mise Go and Node release constraints include the repository versions', () => {
 	const config = readFileSync(new URL('../.mise.toml', import.meta.url), 'utf8');
 	assert.match(config, /idiomatic_version_file_enable_tools\s*=\s*\["go", "node"\]/);
 	const tools = config.split('[tools]\n')[1].split('\n[')[0];
-	assert.doesNotMatch(tools, /^\s*(?:go|node)\s*=/m);
+	const go = readFileSync(new URL('../go.mod', import.meta.url), 'utf8').match(/^toolchain go(\d+\.\d+\.\d+)$/m)?.[1];
+	const node = readFileSync(new URL('../.node-version', import.meta.url), 'utf8').trim().replace(/^v/, '');
+	for (const [tool, version] of [['go', go], ['node', node]]) {
+		const prefix = tools.match(new RegExp(`^${tool}\\s*=\\s*\\{\\s*prefix\\s*=\\s*"(\\d+(?:\\.\\d+)*)"\\s*\\}`, 'm'))
+			?.[1];
+		assert.ok(prefix, `mise ${tool} must retain its release-family constraint`);
+		assert.ok(
+			version === prefix || version?.startsWith(`${prefix}.`),
+			`mise ${tool} prefix ${prefix} excludes ${version}`,
+		);
+	}
+});
+
+test('mise enables the configured automatic dependency providers', () => {
+	const config = readFileSync(new URL('../.mise.toml', import.meta.url), 'utf8');
+	const settings = config.split('[settings]\n')[1].split('\n[')[0];
+	assert.match(settings, /^experimental\s*=\s*true$/m);
+	assert.match(config, /\[deps\.npm\]\nauto\s*=\s*true/);
+	assert.match(config, /\[deps\.go\]\nauto\s*=\s*true/);
+});
+
+test('JavaScript CI provisions the configured tools before frozen dependency installs', () => {
+	const workflow = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
+	const wasm = workflow.split('  wasm:\n')[1].split('  javascript:\n')[0];
+	assert.match(wasm, /uses: &SetupMise jdx\/mise-action@/);
+	assert.match(wasm, /install_args: go node npm github:kjanat\/runner github:jgm\/pandoc github:biomejs\/biome/);
+	assert.ok(wasm.indexOf('Install project tools') < wasm.indexOf('runner install --pm npm --no-tools --frozen'));
+	assert.match(wasm, /run: run --source make -s playground:make:build playground:make:test/);
+	assert.match(wasm, /run: run package\.json:lint/);
+	const javascript = workflow.split('  javascript:\n')[1].split('  release-snapshot:\n')[0];
+	assert.match(javascript, /uses: \*SetupMise/);
+	assert.match(javascript, /install_args: node npm github:kjanat\/runner/);
+	assert.match(javascript, /runner install --pm npm --no-tools --frozen test:js/);
+});
+
+test('Pages provisions project tools and selects Make for playground tasks', () => {
+	const workflow = readFileSync(new URL('../.github/workflows/pages.yml', import.meta.url), 'utf8');
+	const build = workflow.split('  build:\n')[1].split('  deploy:\n')[0];
+	assert.match(build, /uses: jdx\/mise-action@/);
+	assert.match(build, /install_args: go node npm github:kjanat\/runner github:jgm\/pandoc/);
+	assert.ok(build.indexOf('Install project tools') < build.indexOf('runner install --pm npm --no-tools --frozen'));
+	assert.match(build, /run --source make -s playground:make:build playground:make:test/);
 });
 
 test('a partial replacement write restores all files', t => {

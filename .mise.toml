@@ -28,6 +28,7 @@ tombi      = "github:tombi-toml/tombi"
 shellcheck = "github:koalaman/shellcheck"
 
 [settings]
+experimental                        = true
 idiomatic_version_file_enable_tools = ["go", "node"]
 minimum_release_age                 = "0s"
 

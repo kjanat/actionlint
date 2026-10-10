@@ -61,12 +61,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - *ActCheckNocred
-      - *GoGomod
-      - &NodeTooling
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with: { node-version-file: .node-version, package-manager-cache: false }
-      - &Runner { uses: kjanat/runner@ad30f34c7352d89884b6d03febd9b16b4807ed56, with: { version: latest } } # v0.27.1
-      - &Pandoc { name: Install Pandoc, uses: $/.github/actions/setup-pandoc }
+      - name: Install project tools
+        uses: &SetupMise jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          cache: false
+          install_args: go node npm github:kjanat/runner github:jgm/pandoc github:biomejs/biome
       - name: Install JavaScript dependencies
         run: runner install --pm npm --no-tools --frozen
       - name: Build command manual
@@ -80,8 +79,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - *ActCheckNocred
-      - *NodeTooling
-      - *Runner
+      - name: Install project tools
+        uses: *SetupMise
+        with:
+          cache: false
+          install_args: node npm github:kjanat/runner
       - name: Install dependencies and test JavaScript tooling
         run: runner install --pm npm --no-tools --frozen test:js
   release-snapshot:
@@ -92,8 +94,8 @@ jobs:
         with: { fetch-depth: 0, persist-credentials: false }
       - parallel:
           - &Go { uses: *SetupGo, with: *GoMod }
-          - *Pandoc
-          - *Runner
+          - { name: Install Pandoc, uses: $/.github/actions/setup-pandoc }
+          - &Runner { uses: kjanat/runner@ad30f34c7352d89884b6d03febd9b16b4807ed56, with: { version: latest } } # v0.27.1
           - name: Install syft for SBOM generation
             uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
           - uses: &SetupNode actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
