@@ -70,6 +70,56 @@ func TestRuffTargetVersionConfiguration(t *testing.T) {
 	}
 }
 
+func TestRuffTargetVersionEmptyAndReset(t *testing.T) {
+	for _, tc := range []struct {
+		value string
+		valid bool
+	}{
+		{"''", false},
+		{`""`, false},
+		{"null", true},
+	} {
+		t.Run(tc.value, func(t *testing.T) {
+			setting := "ruff: {target-version: " + tc.value + "}"
+			for _, text := range []string{"tools: {" + setting + "}", "overrides: [{includes: ['**'], tools: {" + setting + "}}]"} {
+				_, err := ParseConfig([]byte(text))
+				if (err == nil) != tc.valid || (err != nil && !strings.Contains(err.Error(), "tools.ruff.target-version")) {
+					t.Fatalf("ParseConfig(%q): %v; valid=%v", text, err, tc.valid)
+				}
+			}
+			if _, err := ParseConfigOverlay("tools", []byte(setting)); (err == nil) != tc.valid {
+				t.Fatalf("ParseConfigOverlay(%q): %v; valid=%v", setting, err, tc.valid)
+			}
+		})
+	}
+	for _, overlayText := range []string{"ruff: {}", "ruff: {target-version: null}"} {
+		path := writeShellcheckFixture(t, t.TempDir(), "actionlint.yml", "tools: {ruff: {target-version: py312}}")
+		overlay, err := ParseConfigOverlay("tools", []byte(overlayText))
+		if err != nil {
+			t.Fatal(err)
+		}
+		session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: path, ConfigOverlays: []ConfigOverlay{overlay}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		cfg, err := session.configForProject(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resolved, err := effectiveConfig(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := "py312"
+		if strings.Contains(overlayText, "null") {
+			want = "py314"
+		}
+		if got := resolved["tools"].(map[string]any)["ruff"].(map[string]any)["target-version"]; got != want {
+			t.Fatalf("overlay %q resolved to %v, want %s", overlayText, got, want)
+		}
+	}
+}
+
 func TestRuffShorthandOverlay(t *testing.T) {
 	for _, tc := range []struct {
 		name, base, overlay string

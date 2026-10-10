@@ -6600,17 +6600,25 @@
                             "title": "target-version",
                             "description": "Ruff Python target version; omission uses py314.",
                             "markdownDescription": "Ruff Python target version; omission uses py314.",
-                            "type": "string",
-                            "enum": [
-                              "py37",
-                              "py38",
-                              "py39",
-                              "py310",
-                              "py311",
-                              "py312",
-                              "py313",
-                              "py314",
-                              "py315"
+                            "oneOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "py37",
+                                  "py38",
+                                  "py39",
+                                  "py310",
+                                  "py311",
+                                  "py312",
+                                  "py313",
+                                  "py314",
+                                  "py315"
+                                ]
+                              },
+                              {
+                                "type": "null",
+                                "doNotSuggest": true
+                              }
                             ]
                           }
                         },
@@ -7104,17 +7112,25 @@
                   "title": "target-version",
                   "description": "Ruff Python target version; omission uses py314.",
                   "markdownDescription": "Ruff Python target version; omission uses py314.",
-                  "type": "string",
-                  "enum": [
-                    "py37",
-                    "py38",
-                    "py39",
-                    "py310",
-                    "py311",
-                    "py312",
-                    "py313",
-                    "py314",
-                    "py315"
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "py37",
+                        "py38",
+                        "py39",
+                        "py310",
+                        "py311",
+                        "py312",
+                        "py313",
+                        "py314",
+                        "py315"
+                      ]
+                    },
+                    {
+                      "type": "null",
+                      "doNotSuggest": true
+                    }
                   ]
                 }
               },

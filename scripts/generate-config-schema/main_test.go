@@ -50,7 +50,10 @@ func TestRuffTargetVersionSuggestions(t *testing.T) {
 		t.Fatal("missing Ruff target-version schema")
 	}
 	want := []any{"py37", "py38", "py39", "py310", "py311", "py312", "py313", "py314", "py315"}
-	if diff := cmp.Diff(want, target.Enum); diff != "" {
+	if len(target.OneOf) != 2 || target.OneOf[1].Type != "null" || target.OneOf[1].Extras["doNotSuggest"] != true {
+		t.Fatal("expected version choices and a hidden reset branch")
+	}
+	if diff := cmp.Diff(want, target.OneOf[0].Enum); diff != "" {
 		t.Fatalf("Ruff target choices (-want +got):\n%s", diff)
 	}
 }
@@ -183,6 +186,10 @@ func TestSchemaValidation(t *testing.T) {
 		{"empty", `{}`, true, true},
 		{"ruff oldest target", `tools: {ruff: {target-version: py37}}`, true, true},
 		{"ruff newest target", `tools: {ruff: {target-version: py315}}`, true, true},
+		{"ruff omitted target", `tools: {ruff: {}}`, true, true},
+		{"ruff target reset", `tools: {ruff: {target-version: null}}`, true, true},
+		{"ruff empty single-quoted target", `tools: {ruff: {target-version: ''}}`, false, false},
+		{"ruff empty double-quoted target", `tools: {ruff: {target-version: ""}}`, false, false},
 		{"ruff unsupported old target", `tools: {ruff: {target-version: py30}}`, false, false},
 		{"ruff unsupported future target", `tools: {ruff: {target-version: py316}}`, false, false},
 		{"ruff override target", `overrides: [{includes: ['**'], tools: {ruff: {target-version: py315}}}]`, true, true},

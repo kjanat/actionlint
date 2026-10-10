@@ -62,6 +62,15 @@ func (c *Config) UnmarshalYAML(node *yaml.Node) error {
 		return err
 	}
 	for i := 0; i+1 < len(node.Content); i += 2 {
+		if node.Content[i].Value == "target-version" {
+			var target *string
+			if err := node.Content[i+1].Decode(&target); err != nil {
+				return err
+			}
+			if target != nil && *target == "" {
+				return fmt.Errorf("tools.ruff.target-version must not be empty at line %d", node.Content[i+1].Line)
+			}
+		}
 		if node.Content[i].Value == "enabled" {
 			value := node.Content[i+1]
 			if value.Tag != "!!bool" && value.Tag != "!!null" {

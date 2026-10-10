@@ -145,9 +145,12 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		mapping.Type = ""
 		mapping.OneOf = []*jsonschema.Schema{{Type: "boolean"}, {Type: "object"}, {Type: "null"}}
 		target, _ := mapping.Properties.Get("target-version")
+		choices := &jsonschema.Schema{Type: "string"}
 		for _, version := range ruff.SupportedTargetVersions() {
-			target.Enum = append(target.Enum, version)
+			choices.Enum = append(choices.Enum, version)
 		}
+		target.Type = ""
+		target.OneOf = []*jsonschema.Schema{choices, {Type: "null", Extras: map[string]any{"doNotSuggest": true}}}
 		for _, name := range []string{"select", "ignore"} {
 			property, _ := mapping.Properties.Get(name)
 			property.Items = &jsonschema.Schema{Type: "string", Pattern: `^[A-Z]+[0-9]*$`}
