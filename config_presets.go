@@ -13,6 +13,9 @@ type RulePresets struct {
 }
 
 func (p RulePresets) apply(config *Config) *Config {
+	if config == nil && !p.Strict && p.Experimental == nil {
+		return nil
+	}
 	next := Config{}
 	if config != nil {
 		next = *config

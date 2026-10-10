@@ -1,6 +1,71 @@
 package actionlint
 
-import "testing"
+import (
+	"context"
+	"io"
+	"path/filepath"
+	"testing"
+)
+
+func TestRulePresetsPreserveAbsentConfiguration(t *testing.T) {
+	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hello\n")
+	for _, tc := range []struct {
+		name    string
+		config  *Config
+		presets RulePresets
+		wantNil bool
+	}{
+		{"default", nil, RulePresets{}, true},
+		{"explicit configuration", &Config{}, RulePresets{}, false},
+		{"strict", nil, RulePresets{Strict: true}, false},
+		{"experimental enabled", nil, RulePresets{Experimental: new(true)}, false},
+		{"experimental disabled", nil, RulePresets{Experimental: new(false)}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rule := NewRuleBase("custom-config", "")
+			called := false
+			_, err := Analyze(context.Background(), AnalysisRequest{
+				Sources:     []SourceUnit{{Path: "test.yml", Content: content, Config: tc.config}},
+				WorkingDir:  t.TempDir(),
+				RulePresets: tc.presets,
+				OnRulesCreated: func(rules []Rule) []Rule {
+					called = true
+					return append(rules, &rule)
+				},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !called || (rule.Config() == nil) != tc.wantNil {
+				t.Fatalf("custom rule config = %#v, want nil=%v; hook called=%v", rule.Config(), tc.wantNil, called)
+			}
+			if tc.presets.Strict && !rule.Config().RequiresCommitHash() {
+				t.Fatal("strict preset was not applied")
+			}
+		})
+	}
+	t.Run("legacy linter", func(t *testing.T) {
+		root := t.TempDir()
+		rule := NewRuleBase("custom-config", "")
+		called := false
+		linter, err := NewLinter(io.Discard, &LinterOptions{
+			WorkingDir: root,
+			OnRulesCreated: func(rules []Rule) []Rule {
+				called = true
+				return append(rules, &rule)
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := linter.Lint(filepath.Join(root, "test.yml"), content, nil); err != nil {
+			t.Fatal(err)
+		}
+		if !called || rule.Config() != nil {
+			t.Fatalf("custom rule config = %#v, want nil; hook called=%v", rule.Config(), called)
+		}
+	})
+}
 
 func TestNurserySelectionIsIndependent(t *testing.T) {
 	// Exercise the lifecycle without misclassifying a shipping rule as nursery.
