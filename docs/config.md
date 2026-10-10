@@ -44,7 +44,8 @@ validity is checked when actionlint loads the file.
 
 The `lint` section owns analysis settings. Rules are grouped by concern:
 `correctness`, `suspicious`, `security`, `policy`, and `external`. The separate
-`nursery` group is reserved for rules under development, not optional stable rules. Formatting and LSP options are not implemented yet.
+`nursery` group is reserved for rules under development. Optional stable rules
+belong to their concern groups. Formatting and LSP options are not implemented yet.
 
 ```yaml
 lint:
@@ -74,8 +75,8 @@ Global and group `preset` values are `recommended`, `all` (all stable rules), an
 `none`. A group also accepts a level shorthand, e.g. `correctness: warn`, or
 `{level: warn, if-cond: error}`. Stable non-recommended rules are included
 by `all` or their group level, but not by `recommended`. Nursery rules need
-an explicit nursery group/rule selection or `--experimental`. `lint.enabled: false` suppresses all lint diagnostics, not configuration,
-I/O or other operational errors.
+an explicit nursery group/rule selection or `--experimental`. `lint.enabled: false`
+suppresses all lint diagnostics. Configuration, I/O and other operational errors remain fatal.
 
 Resolution order is: existing defaults/legacy policy settings, global preset,
 CLI presets, group preset/level, individual rule settings, then explicit exclusion
@@ -83,8 +84,8 @@ lists. `--experimental=false`
 is an explicit exclusion of nursery rules only. `--strict` selects all stable
 rules but respects group and individual exceptions. Existing top-level `policy`
 settings remain supported; `lint.rules` settings take precedence. The cache safety
-checks are classified under security (and cache-operation under correctness),
-not under policy; their legacy configuration paths remain compatible.
+checks are classified under security (and cache-operation under correctness);
+their legacy configuration paths remain compatible.
 
 Severity is carried through JSON, SARIF and GitHub annotations. As before, the CLI
 exits nonzero for any reported finding, including warnings and informational

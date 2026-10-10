@@ -53,7 +53,7 @@ func (l Level) Valid() bool {
 // Preset selects a baseline. All intentionally excludes nursery rules.
 type Preset string
 
-// UnmarshalYAML validates preset names rather than silently ignoring typos.
+// UnmarshalYAML rejects unknown preset names.
 func (p *Preset) UnmarshalYAML(n *yaml.Node) error {
 	if n.ShortTag() != "!!str" || !slices.Contains([]string{"recommended", "all", "none"}, n.Value) {
 		return errors.New("yaml: rule preset must be recommended, all, or none")

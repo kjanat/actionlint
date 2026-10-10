@@ -196,7 +196,7 @@ rule-ID/path ignores. It does not invent a
 enables nursery rules while retaining individual exclusions. Strict
 mode alone does not enable nursery rules. Both switches apply after file
 overrides; `--experimental=false` clears only nursery selections. No current rules are in nursery.
-`--strict=false` removes the strict preset, not policies enabled in configuration.
+`--strict=false` removes the strict preset. Policies enabled in configuration remain active.
 Use `ACTIONLINT_STRICT=true` and `ACTIONLINT_EXPERIMENTAL=true` for equivalent
 environment defaults; explicit flags, including `false`, take precedence.
 

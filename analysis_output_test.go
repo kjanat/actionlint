@@ -42,8 +42,7 @@ func TestEffectiveConfigFieldCoverage(t *testing.T) {
 			keys[key] = true
 			value, ok := values[key]
 			if !ok {
-				// Optional unset selections are omitted rather than serialized as an
-				// invalid empty preset/level, which would alter inheritance.
+				// Omit optional unset selections to preserve inheritance.
 				if strings.Contains(options, "omitempty") {
 					continue
 				}
