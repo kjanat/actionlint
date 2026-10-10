@@ -24,7 +24,7 @@ func TestDisallowSuppressionsInteractions(t *testing.T) {
 		{"unused", "cache-mode: read # actionlint:ignore cache-write-untrusted -- reviewed", "true", []string{"disallow-suppressions"}},
 		{"unused violation only", "cache-mode: read # actionlint:ignore cache-write-untrusted -- reviewed", "{report: violation}", nil},
 		{"missing reason", "cache-mode: write # actionlint:ignore cache-write-untrusted", "true", []string{"cache-write-untrusted", "inline-suppression"}},
-		{"cannot exempt restriction", "cache-mode: write # actionlint:ignore disallow-suppressions, cache-write-untrusted -- reviewed", "true", []string{"cache-write-untrusted", "inline-suppression"}},
+		{"cannot exempt restriction", "cache-mode: write # actionlint:ignore disallow-suppressions, cache-write-untrusted -- reviewed", "true", []string{"cache-write-untrusted", "disallow-suppressions"}},
 		{"duplicates", "cache-mode: write # actionlint:ignore cache-write-untrusted, cache-write-untrusted -- reviewed", "true", []string{"cache-write-untrusted", "disallow-suppressions"}},
 		{"unselected still suppressed", "cache-mode: write # actionlint:ignore cache-write-untrusted, cache-operation -- reviewed", "{rules: [cache-operation]}", []string{"disallow-suppressions"}},
 		{"selected restored", "cache-mode: write # actionlint:ignore cache-write-untrusted, cache-operation -- reviewed", "{rules: [cache-write-untrusted]}", []string{"cache-write-untrusted", "disallow-suppressions"}},

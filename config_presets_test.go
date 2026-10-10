@@ -103,7 +103,7 @@ func TestStrictPreservesConfiguredPolicyOptions(t *testing.T) {
 	cfg, err := ParseConfig([]byte(`policy:
   require-job-timeout: {min-minutes: 5, max-minutes: 30}
   require-permissions: {scope: job}
-  disallow-suppressions: {rules: [cache-operation], report: violation}
+  disallow-suppressions: {rules: [if-cond], report: violation}
 lint: {rules: {disable: [require-commit-hash], suspicious: {case-insensitive-conditions: off}}}
 `))
 	if err != nil {

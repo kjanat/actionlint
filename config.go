@@ -74,7 +74,7 @@ type Policy struct {
 	// CacheWriteUntrusted reports write-capable cache modes on low-trust triggers.
 	// Enabled by default. Set false to disable it; null or omission keeps the default.
 	CacheWriteUntrusted *bool `yaml:"cache-write-untrusted" jsonschema:"nullable,default=true"`
-	// DisallowSuppressions restricts inline cache policy exceptions. `true` or `{}` reports
+	// DisallowSuppressions restricts inline diagnostic exceptions. `true` or `{}` reports
 	// each prohibited directive and retains its original violations. Omission, null, or false
 	// permits exceptions. Both ignore and ignore-next-line are covered equally.
 	//

@@ -384,7 +384,7 @@ Disable with `policy: {cache-operation: false}`.
 Reports explicit `write` or `write-only` cache grants on low-trust triggers using
 default-branch caches. Only declarations are checked; `if` guards and cache
 contents are ignored.
-Use `read` or `none`, or document a reviewed [inline exception](#inline-cache-policy-exceptions).
+Use `read` or `none`, or document a reviewed [inline exception](#inline-diagnostic-suppressions).
 Ordinary `pull_request`, review events, `merge_group`, trusted write-default events
 such as `push`, and standalone `workflow_call` do not trigger this policy.
 Checked triggers: `branch_protection_rule`, `check_run`, `check_suite`, `deployment`,
@@ -394,23 +394,42 @@ Checked triggers: `branch_protection_rule`, `check_run`, `check_suite`, `deploym
 See [cache checks](checks.md#cache-safety-policies) for diagnostic examples.
 Disable with `policy: {cache-write-untrusted: false}`.
 
-### Inline cache policy exceptions
+### Inline diagnostic suppressions
 
 ```yaml
 cache-mode: write # actionlint:ignore cache-write-untrusted -- reviewed default-branch code only
 ```
 
 Or place `# actionlint:ignore-next-line RULE -- reason` immediately before the
-reported line. A nonempty reason is required. Comma-separated selectors can name
-`cache-call-unrestricted`, `cache-operation` and `cache-write-untrusted` only.
-Exceptions apply only to that physical line. Blank lines or other
-comments detach a preceding directive. For multiline values, use the diagnostic's
-line; for aliases, use the reported anchor location.
+reported line. A nonempty reason is required. Comma-separated selectors accept
+any diagnostic rule ID listed by `actionlint rules`, including `expression`,
+`syntax-check`, `shellcheck`, `if-cond` and the suspicious rules.
+Exceptions apply to the reported physical line. A directive on a YAML block scalar
+header (`run: |` or `run: >`) covers its body as well. A preceding
+`actionlint:ignore-next-line` directive can also target that header. Blank lines or
+other comments detach a preceding directive. For aliases, use the reported anchor
+location.
 
-Malformed attached directives report `inline-suppression`. Text inside strings or
-scripts is not a directive. CLI and path ignores apply afterwards. Suppression
+For ShellCheck findings in sourced scripts, place a reason-bearing directive on
+the originating `run` declaration or its YAML block header. This suppresses findings
+from that invocation while keeping their reported script locations. Comments inside
+sourced scripts do not create actionlint suppression directives.
+
+```yaml
+- run: | # actionlint:ignore expression,shellcheck -- reviewed script inputs
+    echo '${{ github.event.issue.title }}'
+```
+
+Malformed attached directives report `inline-suppression`. Only attached YAML
+comments create directives. Directives in local composite YAML are scoped to that
+file. CLI, rule-ID and path ignores apply afterwards. Suppression
 changes lint output. GitHub's cache permissions stay unchanged; remaining findings
 exit with 1.
+
+Suppressions apply to errors and warnings alike. To suppress a rule for a whole
+file, use `lint.rules.disable` in an [override](#per-file-overrides). This also works
+for malformed YAML where parsing cannot attach inline comments. Configuration,
+I/O and tool-launch failures remain operational errors and cannot be suppressed.
 
 ### disallow-suppressions
 
@@ -430,7 +449,7 @@ policy:
 | `suppression`   | Reported             | Suppressed       |
 | `violation`     | Not reported         | Retained         |
 
-`true` or `{}` selects all supported cache rules; explicit `rules` must be nonempty.
+`true` or `{}` selects all supported diagnostic rules; explicit `rules` must be nonempty.
 Omission, `null` or `false` permits exceptions. The policy cannot exempt itself,
 enable a disabled rule or override CLI/path ignores. `all` and `suppression` report
 prohibited directives even when no underlying finding exists.

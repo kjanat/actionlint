@@ -17,7 +17,11 @@ func NewRuleRequirePermissions(policy *PermissionsPolicy) *RuleRequirePermission
 // VisitWorkflowPre checks the workflow declaration when workflow scope is enabled.
 func (rule *RuleRequirePermissions) VisitWorkflowPre(n *Workflow) error {
 	if rule.policy.Scope() == "workflow" && n.Permissions == nil {
-		rule.Errorf(&Pos{Line: 1, Col: 1}, "workflow-level \"permissions\" is required by the \"require-permissions\" policy. set \"permissions: {}\" and grant the scopes your jobs need")
+		pos := n.Pos
+		if pos == nil {
+			pos = &Pos{Line: 1, Col: 1}
+		}
+		rule.Errorf(pos, "workflow-level \"permissions\" is required by the \"require-permissions\" policy. set \"permissions: {}\" and grant the scopes your jobs need")
 	}
 	return nil
 }

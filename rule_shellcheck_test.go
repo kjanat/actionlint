@@ -29,7 +29,7 @@ func TestShellcheckInvocationDebugContext(t *testing.T) {
 			rule.cmd.env = []string{"SHELLCHECK_OPTS=--shell=bash"}
 			rule.inlineConfig = &ShellcheckConfig{Enable: []string{"quote-safe-variables"}}
 			directory := runDirectory{kind, t.TempDir()}
-			if err := rule.runShellcheck("echo hello", nil, shellcheckShell{name: "sh"}, directory, &Pos{Line: 7, Col: 1}); err != nil {
+			if err := rule.runShellcheck("echo hello", nil, shellcheckShell{name: "sh"}, directory, &Pos{Line: 7, Col: 1}, nil); err != nil {
 				t.Fatal(err)
 			}
 			if err := rule.cmd.wait(); err != nil {

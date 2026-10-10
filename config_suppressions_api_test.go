@@ -70,7 +70,7 @@ func TestSuppressionsPolicyConstruction(t *testing.T) {
 		rules  []string
 	}{
 		{"", nil}, {"both", nil}, {"ALL", nil},
-		{"all", []string{""}}, {"all", []string{"expression"}},
+		{"all", []string{""}}, {"all", []string{"unknown-rule"}},
 		{"all", []string{"cache-operation", "typo"}},
 	} {
 		if p, err := actionlint.DisallowSuppressions(tc.report, tc.rules...); err == nil || p != nil {

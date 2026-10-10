@@ -28,7 +28,7 @@ type ruleContext struct {
 func builtinRuleDescriptors() []ruleDescriptor {
 	rules := []ruleDescriptor{
 		{Name: "syntax-check", Description: "Checks for GitHub Actions workflow syntax", Category: "correctness", Recommended: true},
-		{Name: "inline-suppression", Description: "Checks inline cache policy exception directives", Category: "correctness", Recommended: true},
+		{Name: "inline-suppression", Description: "Checks inline diagnostic suppression directives", Category: "correctness", Recommended: true},
 		{Name: "string-conditions", Description: "Checks bare string conditions for unexpected truthiness", Category: "suspicious"},
 		{Name: "mixed-type-comparisons", Description: "Checks condition comparisons using implicit scalar coercion", Category: "suspicious"},
 		{Name: "case-insensitive-conditions", Description: "Checks identity comparisons using case-insensitive matching", Category: "suspicious"},

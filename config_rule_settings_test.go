@@ -203,7 +203,7 @@ func TestRuleSettingsOptionsAndRoundTrip(t *testing.T) {
       require-job-timeout: {level: error, options: {min-minutes: 5, max-minutes: 30}}
       require-permissions: {level: warn, options: {scope: job}}
       required-actions: {level: error, options: {actions: ['actions/checkout@v*']}}
-      disallow-suppressions: {level: error, options: {rules: [cache-operation], report: violation}}
+      disallow-suppressions: {level: error, options: {rules: [expression], report: violation}}
 `))
 	if err != nil {
 		t.Fatal(err)

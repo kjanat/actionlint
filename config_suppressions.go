@@ -29,7 +29,7 @@ func parseSuppressionReport(value string) (suppressionReport, bool) {
 	}
 }
 
-// SuppressionsPolicy controls whether inline exceptions may hide cache policy
+// SuppressionsPolicy controls whether inline exceptions may hide diagnostic
 // findings. Its YAML representation is a boolean or a rules/report mapping.
 // A nil pointer or zero value permits inline suppressions. Use DisallowSuppressions
 // to construct an enabled policy.

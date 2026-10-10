@@ -3,6 +3,7 @@ package actionlint
 import (
 	"context"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"slices"
 	"time"
@@ -38,6 +39,7 @@ func (l *analysisEngine) check(
 		root = project.RootDir()
 	}
 	var configErr error
+	projectConfig := cfg
 	configPath := path
 	if !filepath.IsAbs(configPath) {
 		configPath = filepath.Join(l.workingDir, configPath)
@@ -66,6 +68,7 @@ func (l *analysisEngine) check(
 
 	w, all := Parse(content)
 	var analysisErr error
+	metadataSources := map[string][]byte{}
 
 	if l.logLevel >= LogLevelVerbose {
 		elapsed := time.Since(start)
@@ -74,7 +77,7 @@ func (l *analysisEngine) check(
 
 	if w != nil {
 		dbg := l.debugWriter()
-		localActions = &LocalActionsCache{base: localActions}
+		localActions = &LocalActionsCache{base: localActions, usedSources: make(map[string][]byte)}
 
 		rules := []Rule{}
 		c := ruleContext{path: path, config: cfg, actions: localActions, workflows: localReusableWorkflows, process: proc, shellcheck: l.shellcheck}
@@ -157,6 +160,9 @@ func (l *analysisEngine) check(
 		for _, composite := range v.composites.rules {
 			for _, rule := range composite.rules {
 				for _, finding := range rule.Errs() {
+					if origin := finding.suppressionOrigin; origin != nil && origin.path == "" {
+						origin.path = composite.meta.Path()
+					}
 					if finding.Filepath == "" {
 						finding.Filepath = composite.meta.Path()
 						finding.source = composite.meta.src
@@ -165,6 +171,7 @@ func (l *analysisEngine) check(
 				}
 			}
 		}
+		maps.Copy(metadataSources, localActions.usedSources)
 
 		*usedRules = rules
 	}
@@ -182,8 +189,7 @@ func (l *analysisEngine) check(
 		}
 	}
 	byPath := make(map[string][]*Error)
-	for _, finding := range all {
-		findingPath := finding.Filepath
+	findingKey := func(findingPath string) string {
 		if findingPath == "" {
 			findingPath = path
 		} else if project != nil && filepath.IsAbs(findingPath) {
@@ -196,13 +202,50 @@ func (l *analysisEngine) check(
 				findingPath = relative
 			}
 		}
-		byPath[findingPath] = append(byPath[findingPath], finding)
+		return findingPath
+	}
+	for _, finding := range all {
+		key := findingKey(finding.Filepath)
+		if origin := finding.suppressionOrigin; origin != nil && origin.path != "" {
+			key = origin.path
+		} else if _, isMetadata := metadataSources[finding.Filepath]; isMetadata {
+			key = finding.Filepath
+		}
+		byPath[key] = append(byPath[key], finding)
+	}
+	foreignSources := map[string]string{}
+	for sourcePath := range metadataSources {
+		key := sourcePath
+		foreignSources[key] = sourcePath
+		if _, exists := byPath[key]; !exists {
+			byPath[key] = nil
+		}
 	}
 	all = nil
-	for findingPath, findings := range byPath {
+	for scopePath, findings := range byPath {
+		findingPath := findingKey(scopePath)
+		sourcePath, isMetadata := foreignSources[scopePath]
+		source := metadataSources[sourcePath]
+		findingConfig := cfg
+		if findingPath != path && isMetadata && source != nil {
+			var err error
+			findingConfig, err = suppressionConfigForFile(projectConfig, sourcePath, root)
+			if err != nil {
+				return nil, err
+			}
+			findingConfig = l.rulePresets.apply(findingConfig)
+			var policy *SuppressionsPolicy
+			if findingConfig != nil {
+				policy = findingConfig.Policy.DisallowSuppressions
+			}
+			findings = filterForeignInlineSuppressions(sourcePath, source, findings, policy)
+		}
 		findings = slices.DeleteFunc(findings, func(e *Error) bool {
-			// Dependency findings belong to this workflow's configured analysis.
-			switch cfg.diagnosticLevel(e.Kind) {
+			levelConfig := cfg
+			if (e.Kind == "inline-suppression" || e.Kind == "disallow-suppressions") && (cfg == nil || cfg.Lint.Enabled == nil || *cfg.Lint.Enabled) {
+				levelConfig = findingConfig
+			}
+			switch levelConfig.diagnosticLevel(e.Kind) {
 			case "off":
 				return true
 			case "warn":
@@ -214,7 +257,9 @@ func (l *analysisEngine) check(
 			}
 			return false
 		})
-		all = append(all, l.filterErrors(findings, cfg.PathConfigs(findingPath))...)
+		for _, finding := range findings {
+			all = append(all, l.filterErrors([]*Error{finding}, cfg.PathConfigs(findingKey(finding.Filepath)))...)
+		}
 	}
 
 	diagnosticDir := l.workingDir

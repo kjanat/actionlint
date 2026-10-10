@@ -21,7 +21,7 @@ func TestCachePolicyInlineSuppression(t *testing.T) {
 		{"empty reason", "cache-mode: write # actionlint:ignore cache-write-untrusted -- \n", []string{"cache-write-untrusted", "inline-suppression"}},
 		{"misspelled selector", "cache-mode: write # actionlint:ignore cache-write-untrustd -- only reviewed code runs\n", []string{"cache-write-untrusted", "inline-suppression"}},
 		{"wildcard rejected", "cache-mode: write # actionlint:ignore * -- only reviewed code runs\n", []string{"cache-write-untrusted", "inline-suppression"}},
-		{"unrelated rule rejected", "cache-mode: write # actionlint:ignore expression -- only reviewed code runs\n", []string{"cache-write-untrusted", "inline-suppression"}},
+		{"unrelated rule does not suppress cache", "cache-mode: write # actionlint:ignore expression -- only reviewed code runs\n", []string{"cache-write-untrusted"}},
 		{"wrong directive", "cache-mode: write # actionlint:disable cache-write-untrusted -- only reviewed code runs\n", []string{"cache-write-untrusted", "inline-suppression"}},
 		{"standalone ignore", "# actionlint:ignore cache-write-untrusted -- only reviewed code runs\ncache-mode: write\n", []string{"inline-suppression", "cache-write-untrusted"}},
 		{"trailing next-line", "cache-mode: write # actionlint:ignore-next-line cache-write-untrusted -- only reviewed code runs\n", []string{"cache-write-untrusted", "inline-suppression"}},
@@ -156,7 +156,7 @@ func TestCachePolicySuppressionGrammar(t *testing.T) {
 		name, suffix string
 		invalid      bool
 	}{
-		{"unsupported rule", "expression -- reviewed", true},
+		{"unsupported rule", "unknown-rule -- reviewed", true},
 		{"duplicate selector", "cache-write-untrusted,cache-write-untrusted -- reviewed", false},
 		{"leading empty selector", ",cache-write-untrusted -- reviewed", true},
 		{"trailing empty selector", "cache-write-untrusted, -- reviewed", true},
@@ -194,7 +194,7 @@ func TestCachePolicySuppressionGrammar(t *testing.T) {
 func TestCachePolicyUnsupportedSuppressionPlacements(t *testing.T) {
 	const header = "on: pull_request_target\n"
 	const body = "jobs:\n  test:\n" + cachePolicySteps
-	const directive = "# actionlint:ignore expression -- reviewed"
+	const directive = "# actionlint:ignore unknown-rule -- reviewed"
 	for _, tc := range []struct {
 		name, source string
 		line         int
@@ -209,7 +209,7 @@ func TestCachePolicyUnsupportedSuppressionPlacements(t *testing.T) {
 		{"flow sequence closing", "on: push\njobs: {test: {runs-on: ubuntu-latest, cache-mode: read, steps: [\n {uses: actions/cache/save@v5, with: {path: .cache, key: test}}]}} " + directive + "\n", 3, "cache-operation"},
 		{"mapping key", header + "cache-mode: " + directive + "\n  write\n" + body, 2, "cache-write-untrusted"},
 		{"mapping value", header + "cache-mode:\n  write " + directive + "\n" + body, 3, "cache-write-untrusted"},
-		{"anchor head", header + "env:\n  # actionlint:ignore-next-line expression -- reviewed\n  MODE: &mode write\ncache-mode: *mode\n" + body, 3, "cache-write-untrusted"},
+		{"anchor head", header + "env:\n  # actionlint:ignore-next-line unknown-rule -- reviewed\n  MODE: &mode write\ncache-mode: *mode\n" + body, 3, "cache-write-untrusted"},
 		{"quoted closing", header + "cache-mode: \"wr\\\n  ite\" " + directive + "\n" + body, 3, "cache-write-untrusted"},
 		{"block scalar header", header + "name: | " + directive + "\n  " + directive + "\ncache-mode: write\n" + body, 2, "cache-write-untrusted"},
 	} {
