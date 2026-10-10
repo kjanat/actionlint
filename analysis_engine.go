@@ -214,12 +214,9 @@ func (l *analysisEngine) check(
 	}
 	all = nil
 	for findingPath, findings := range byPath {
-		sourcePath := foreignSources[findingPath]
+		sourcePath, isMetadata := foreignSources[findingPath]
 		source := metadataSources[sourcePath]
-		if source == nil && len(findings) > 0 {
-			sourcePath, source = findings[0].Filepath, findings[0].source
-		}
-		if findingPath != path && source != nil && (filepath.Ext(findingPath) == ".yml" || filepath.Ext(findingPath) == ".yaml") {
+		if findingPath != path && isMetadata && source != nil {
 			var policy *SuppressionsPolicy
 			if cfg != nil {
 				policy = cfg.Policy.DisallowSuppressions
@@ -227,11 +224,7 @@ func (l *analysisEngine) check(
 			findings = filterForeignInlineSuppressions(sourcePath, source, findings, policy)
 		}
 		findings = slices.DeleteFunc(findings, func(e *Error) bool {
-			levelConfig := cfg
-			if (e.Kind == "inline-suppression" || e.Kind == "disallow-suppressions") && (cfg == nil || cfg.Lint.Enabled == nil || *cfg.Lint.Enabled) {
-				levelConfig = findingConfig
-			}
-			switch levelConfig.diagnosticLevel(e.Kind) {
+			switch cfg.diagnosticLevel(e.Kind) {
 			case "off":
 				return true
 			case "warn":
