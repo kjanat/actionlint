@@ -16,7 +16,7 @@
     "update:shellcheck": "gh release view --repo koalaman/shellcheck --json apiUrl,assets,author,body,createdAt,databaseId,id,isDraft,isImmutable,isPrerelease,name,publishedAt,tagName,tarballUrl,targetCommitish,uploadUrl,url,zipballUrl --jq . > tools/shellcheck.json"
   },
   "dependencies": {
-    "undici": "7.29.1"
+    "undici": "8.11.2"
   },
   "devDependencies": {
     "@types/node": ">=24",

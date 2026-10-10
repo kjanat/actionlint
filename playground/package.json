@@ -52,11 +52,11 @@
     "@types/node": "^26.4.0",
     "eslint": "^10.9.1",
     "jsdom": "^30.0.1",
-    "runner-run": "latest",
+    "runner-run": "*",
     "tsc7": "npm:typescript@^7",
-    "typescript": "^6",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.68.0",
     "vite": "^8.2.2",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.3"
   }
 }
