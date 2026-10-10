@@ -62,12 +62,9 @@ func TestRuffStdinUsesCommandDirectory(t *testing.T) {
 			root := t.TempDir()
 			working := directory
 			if directory == "." {
-				cwd, err := os.Getwd()
-				if err != nil {
-					t.Fatal(err)
-				}
-				working, err = filepath.Rel(cwd, root)
-				if err != nil {
+				t.Chdir(root)
+				working = "python"
+				if err := os.Mkdir(filepath.Join(root, working), 0o755); err != nil {
 					t.Fatal(err)
 				}
 			}
