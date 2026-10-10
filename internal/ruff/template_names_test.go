@@ -137,7 +137,7 @@ func TestRuffImportTemplateReplacement(t *testing.T) {
 		{"import json\nprint(json)\n", false},
 		{"import (0)\n", true},
 	} {
-		cmd := exec.CommandContext(t.Context(), binary, arguments(Config{}, "actionlint.py")...)
+		cmd := exec.CommandContext(t.Context(), binary, arguments(Config{})...)
 		cmd.Stdin = strings.NewReader(tc.source)
 		var stderr bytes.Buffer
 		cmd.Stderr = &stderr

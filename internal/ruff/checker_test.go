@@ -23,7 +23,7 @@ func TestArguments(t *testing.T) {
 		{"empty selection", Config{Select: []string{}}, "ALL", "ALL", "py314"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			args := arguments(tc.config, "actionlint.py")
+			args := arguments(tc.config)
 			for flag, want := range map[string]string{"--select": tc.selectRules, "--ignore": tc.ignore, "--target-version": tc.target} {
 				i := slices.Index(args, flag)
 				if want == "" {
@@ -140,7 +140,7 @@ func TestRuffStdinIgnoresPositionalInputs(t *testing.T) {
 	}
 	for _, input := range []string{external, directory} {
 		t.Run(filepath.Base(input), func(t *testing.T) {
-			args := append([]string{"check", input}, arguments(Config{}, "actionlint.py")[1:]...)
+			args := append([]string{"check", input}, arguments(Config{})[1:]...)
 			cmd := exec.CommandContext(t.Context(), binary, args...)
 			cmd.Stdin = strings.NewReader("print(workflow_only)")
 			var stderr bytes.Buffer

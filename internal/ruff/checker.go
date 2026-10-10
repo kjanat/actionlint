@@ -16,6 +16,9 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
+// Let Ruff resolve its own cwd spelling, including Windows short paths.
+const stdinFilename = "actionlint.py"
+
 // Run schedules a command through the host's bounded, cancellable process pool.
 type Run func(args []string, stdin string, callback func([]byte, error) error)
 
@@ -165,12 +168,10 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 	if !directoryInfo.IsDir() {
 		return fmt.Errorf("ruff stdin directory for script at %s is not a directory: %q", location, directory)
 	}
-	// Let Ruff resolve its own cwd spelling, including Windows short paths.
-	const filename = "actionlint.py"
 	if config.TargetVersion == "" {
 		config.TargetVersion = pythonShellTarget(*shell)
 	}
-	defaults := arguments(config, filename)
+	defaults := arguments(config)
 	args := make([]string, 1, len(defaults)+len(c.flags))
 	args[0] = "check"
 	args = append(args, c.flags...)
@@ -185,8 +186,8 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		}
 		for _, diagnostic := range diagnostics {
 			parent, err := os.Stat(filepath.Dir(diagnostic.Filename))
-			if !filepath.IsAbs(diagnostic.Filename) || filepath.Base(diagnostic.Filename) != filename || err != nil || !os.SameFile(directoryInfo, parent) {
-				return fmt.Errorf("ruff output for script at %s refers to unexpected file %q; expected %q in %q", location, diagnostic.Filename, filename, directory)
+			if !filepath.IsAbs(diagnostic.Filename) || filepath.Base(diagnostic.Filename) != stdinFilename || err != nil || !os.SameFile(directoryInfo, parent) {
+				return fmt.Errorf("ruff output for script at %s refers to unexpected file %q; expected %q in %q", location, diagnostic.Filename, stdinFilename, directory)
 			}
 		}
 		c.mu.Lock()
@@ -334,7 +335,7 @@ func pythonShellTarget(shell string) string {
 	return ""
 }
 
-func arguments(config Config, filename string) []string {
+func arguments(config Config) []string {
 	target := config.TargetVersion
 	if target == "" {
 		target = "py314"
@@ -348,7 +349,7 @@ func arguments(config Config, filename string) []string {
 	if selectRules == nil {
 		selectRules = []string{"F"}
 	}
-	args := []string{"check", "--isolated", "--target-version", target, "--select", strings.Join(selectRules, ","), "--ignore-noqa", "--no-fix", "--no-cache", "--output-format", "json", "--stdin-filename", filename, "--extension", "py:python"}
+	args := []string{"check", "--isolated", "--target-version", target, "--select", strings.Join(selectRules, ","), "--ignore-noqa", "--no-fix", "--no-cache", "--output-format", "json", "--stdin-filename", stdinFilename, "--extension", "py:python"}
 	if len(ignoreRules) > 0 {
 		args = append(args, "--ignore", strings.Join(ignoreRules, ","))
 	}
