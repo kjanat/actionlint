@@ -3,6 +3,7 @@ package actionlint
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"go.yaml.in/yaml/v4"
@@ -48,6 +49,24 @@ func TestRuffConfiguration(t *testing.T) {
 		if _, err := ParseConfig([]byte(text)); err == nil {
 			t.Fatalf("accepted %s", text)
 		}
+	}
+}
+
+func TestRuffTargetVersionConfiguration(t *testing.T) {
+	for _, version := range []string{"py37", "py38", "py39", "py310", "py311", "py312", "py313", "py314", "py315", "py27", "py30", "py36", "py316", "py399", "py0314", "3.14", "PY314"} {
+		t.Run(version, func(t *testing.T) {
+			valid := version == "py37" || version == "py38" || version == "py39" || version == "py310" || version == "py311" || version == "py312" || version == "py313" || version == "py314" || version == "py315"
+			setting := "ruff: {target-version: '" + version + "'}"
+			for _, text := range []string{"tools: {" + setting + "}", "overrides: [{includes: ['**'], tools: {" + setting + "}}]"} {
+				_, err := ParseConfig([]byte(text))
+				if (err == nil) != valid || (err != nil && !strings.Contains(err.Error(), "tools.ruff.target-version")) {
+					t.Fatalf("ParseConfig(%q): %v; valid=%v", text, err, valid)
+				}
+			}
+			if _, err := ParseConfigOverlay("tools", []byte(setting)); (err == nil) != valid || (err != nil && !strings.Contains(err.Error(), "tools.ruff.target-version")) {
+				t.Fatalf("ParseConfigOverlay(%q): %v; valid=%v", setting, err, valid)
+			}
+		})
 	}
 }
 

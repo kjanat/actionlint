@@ -1,21 +1,26 @@
 package ruff
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
+	"slices"
+	"strings"
 
 	"go.yaml.in/yaml/v4"
 )
 
-var ruffTargetVersion = regexp.MustCompile(`^py3[0-9]+$`)
 var ruffRuleSelector = regexp.MustCompile(`^[A-Z]+[0-9]*$`)
+
+// SupportedTargetVersions lists the Python targets accepted by Ruff.
+func SupportedTargetVersions() []string {
+	return []string{"py37", "py38", "py39", "py310", "py311", "py312", "py313", "py314", "py315"}
+}
 
 // Config controls isolated analysis of embedded Python scripts.
 type Config struct {
 	Enabled *bool `yaml:"enabled" jsonschema:"nullable,default=true"`
 	// TargetVersion is Ruff's Python target; omission uses py314.
-	TargetVersion string `yaml:"target-version,omitempty" jsonschema:"pattern=^py3[0-9]+$"`
+	TargetVersion string `yaml:"target-version,omitempty"`
 	// Select chooses rule codes or prefixes. Omission selects F.
 	Select []string `yaml:"select,omitempty" jsonschema:"nullable"`
 	// Ignore excludes rule codes or prefixes from the selection.
@@ -64,8 +69,8 @@ func (c *Config) UnmarshalYAML(node *yaml.Node) error {
 			}
 		}
 	}
-	if next.TargetVersion != "" && !ruffTargetVersion.MatchString(next.TargetVersion) {
-		return errors.New("tools.ruff.target-version must be a Ruff Python target such as py314")
+	if next.TargetVersion != "" && !slices.Contains(SupportedTargetVersions(), next.TargetVersion) {
+		return fmt.Errorf("tools.ruff.target-version must be one of %s; got %q", strings.Join(SupportedTargetVersions(), ", "), next.TargetVersion)
 	}
 	for _, selectors := range [][]string{next.Select, next.Ignore} {
 		for _, selector := range selectors {

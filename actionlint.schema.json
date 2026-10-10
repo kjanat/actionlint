@@ -6601,7 +6601,17 @@
                             "description": "Ruff Python target version; omission uses py314.",
                             "markdownDescription": "Ruff Python target version; omission uses py314.",
                             "type": "string",
-                            "pattern": "^py3[0-9]+$"
+                            "enum": [
+                              "py37",
+                              "py38",
+                              "py39",
+                              "py310",
+                              "py311",
+                              "py312",
+                              "py313",
+                              "py314",
+                              "py315"
+                            ]
                           }
                         },
                         "additionalProperties": false,
@@ -7095,7 +7105,17 @@
                   "description": "Ruff Python target version; omission uses py314.",
                   "markdownDescription": "Ruff Python target version; omission uses py314.",
                   "type": "string",
-                  "pattern": "^py3[0-9]+$"
+                  "enum": [
+                    "py37",
+                    "py38",
+                    "py39",
+                    "py310",
+                    "py311",
+                    "py312",
+                    "py313",
+                    "py314",
+                    "py315"
+                  ]
                 }
               },
               "additionalProperties": false,

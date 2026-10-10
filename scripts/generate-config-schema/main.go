@@ -12,6 +12,7 @@ import (
 	"unicode"
 
 	"actionlint.kjanat.dev"
+	"actionlint.kjanat.dev/internal/ruff"
 	"github.com/invopop/jsonschema"
 )
 
@@ -143,6 +144,10 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		mapping.Version, mapping.ID = "", ""
 		mapping.Type = ""
 		mapping.OneOf = []*jsonschema.Schema{{Type: "boolean"}, {Type: "object"}, {Type: "null"}}
+		target, _ := mapping.Properties.Get("target-version")
+		for _, version := range ruff.SupportedTargetVersions() {
+			target.Enum = append(target.Enum, version)
+		}
 		for _, name := range []string{"select", "ignore"} {
 			property, _ := mapping.Properties.Get(name)
 			property.Items = &jsonschema.Schema{Type: "string", Pattern: `^[A-Z]+[0-9]*$`}

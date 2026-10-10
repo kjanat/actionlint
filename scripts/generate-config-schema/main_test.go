@@ -43,6 +43,18 @@ func TestRuleLevelSuggestions(t *testing.T) {
 	}
 }
 
+func TestRuffTargetVersionSuggestions(t *testing.T) {
+	schema := mapYAMLType(reflect.TypeFor[actionlint.RuffToolConfig](), nil)
+	target, ok := schema.Properties.Get("target-version")
+	if !ok {
+		t.Fatal("missing Ruff target-version schema")
+	}
+	want := []any{"py37", "py38", "py39", "py310", "py311", "py312", "py313", "py314", "py315"}
+	if diff := cmp.Diff(want, target.Enum); diff != "" {
+		t.Fatalf("Ruff target choices (-want +got):\n%s", diff)
+	}
+}
+
 func TestGeneratedSchemaUpToDate(t *testing.T) {
 	got := generatedSchema(t)
 	want, err := os.ReadFile("actionlint.schema.json")
@@ -169,6 +181,12 @@ func TestSchemaValidation(t *testing.T) {
 		parserValid bool
 	}{
 		{"empty", `{}`, true, true},
+		{"ruff oldest target", `tools: {ruff: {target-version: py37}}`, true, true},
+		{"ruff newest target", `tools: {ruff: {target-version: py315}}`, true, true},
+		{"ruff unsupported old target", `tools: {ruff: {target-version: py30}}`, false, false},
+		{"ruff unsupported future target", `tools: {ruff: {target-version: py316}}`, false, false},
+		{"ruff override target", `overrides: [{includes: ['**'], tools: {ruff: {target-version: py315}}}]`, true, true},
+		{"ruff unsupported override target", `overrides: [{includes: ['**'], tools: {ruff: {target-version: py36}}}]`, false, false},
 		{"nursery group", `lint: {rules: {nursery: {preset: all}}}`, true, true},
 		{"nursery level", `lint: {rules: {nursery: warn}}`, true, true},
 		{"nursery null", `lint: {rules: {nursery: null}}`, true, true},
