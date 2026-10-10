@@ -60,6 +60,9 @@ jobs:
 	if !reflect.DeepEqual(deploy.Needs, []string{"ZBuild"}) || deploy.Uses != "./.github/workflows/deploy.yml" || deploy.Steps == nil || len(deploy.Steps) != 0 {
 		t.Fatalf("reusable call lost: %+v", deploy)
 	}
+	if !reflect.DeepEqual(deploy.Reference, SelfRepositoryReference{Path: ".github/workflows/deploy.yml"}) {
+		t.Fatalf("local workflow call is not a self-repository reference: %#v", deploy.Reference)
+	}
 	if partial.Path != "partial.yml" || partial.ParseStatus != "partial" || len(partial.Jobs) != 2 || partial.Jobs[0].Steps[1].Kind != "unknown" {
 		t.Fatalf("partial tree lost: %+v", partial)
 	}
@@ -83,6 +86,32 @@ jobs:
 	}
 	if strings.Contains(output.String(), "echo hi") {
 		t.Fatal("outline unexpectedly includes script bodies")
+	}
+}
+
+func TestOutlineLocalReferenceScope(t *testing.T) {
+	const source = `on: push
+jobs:
+  call:
+    uses: ./.github/workflows/deploy.yml
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./local
+`
+	workflow, errs := Parse([]byte(source))
+	if len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	outline := workflowOutline("ci.yml", workflow, false)
+	if len(outline.Jobs) != 2 || len(outline.Jobs[1].Steps) != 1 {
+		t.Fatalf("wrong outline: %+v", outline)
+	}
+	if got := outline.Jobs[0].Reference; !reflect.DeepEqual(got, SelfRepositoryReference{Path: ".github/workflows/deploy.yml"}) {
+		t.Fatalf("job call: %#v", got)
+	}
+	if got := outline.Jobs[1].Steps[0].Reference; !reflect.DeepEqual(got, WorkspaceReference{Path: "local"}) {
+		t.Fatalf("step action: %#v", got)
 	}
 }
 

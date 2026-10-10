@@ -128,7 +128,9 @@ workflows; it does not scan every `action.yml` in a repository. Go callers can u
 
 Jobs and steps retain the parsed `uses` string and may include a structured
 `reference`: repository, workspace, self-repository, container, builtin, or
-unknown. Repository references separate owner, repository, subpath, and ref.
+unknown. A step's `./` action is a workspace reference. A job's `./` workflow
+call is a self-repository reference, like `$/`, because GitHub resolves it from
+the caller's commit. Repository references separate owner, repository, subpath, and ref.
 `host_source` records default, explicit, or self context; a bare `owner/repo@ref`
 does not imply a provider or invent a host. Explicit URLs retain their host and
 scheme when available. Dependency resolution is outside this model.

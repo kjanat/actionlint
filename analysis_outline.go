@@ -68,7 +68,7 @@ func workflowOutline(path string, workflow *Workflow, parseErrors bool) Workflow
 		} else {
 			record.Uses = outlineString(job.declaredUses)
 		}
-		record.Reference = ParseUsesReference(record.Uses)
+		record.Reference = ParseWorkflowCallReference(record.Uses)
 		outline.Jobs = append(outline.Jobs, record)
 	}
 	slices.SortFunc(outline.Jobs, func(a, b JobOutline) int {

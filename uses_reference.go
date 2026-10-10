@@ -150,6 +150,15 @@ func ParseUsesReference(raw string) UsesReference {
 	return r
 }
 
+// ParseWorkflowCallReference classifies a job-level uses declaration.
+// GitHub resolves a local reusable workflow from the caller's commit, so ./ and $/ calls are both self-repository references.
+func ParseWorkflowCallReference(raw string) UsesReference {
+	if path, local := strings.CutPrefix(raw, "./"); local {
+		return ParseUsesReference("$/" + path)
+	}
+	return ParseUsesReference(raw)
+}
+
 func decodeUsesReference(data json.RawMessage) (UsesReference, error) {
 	if len(data) == 0 || string(data) == "null" {
 		return nil, nil

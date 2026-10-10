@@ -48,3 +48,24 @@ func TestUsesReference(t *testing.T) {
 		})
 	}
 }
+
+func TestWorkflowCallReference(t *testing.T) {
+	for _, tc := range []struct {
+		raw  string
+		want UsesReference
+	}{
+		{"./.github/workflows/deploy.yml", SelfRepositoryReference{Path: ".github/workflows/deploy.yml"}},
+		{"$/.github/workflows/deploy.yml", SelfRepositoryReference{Path: ".github/workflows/deploy.yml"}},
+		{".//.github/workflows/deploy.yml", SelfRepositoryReference{Path: ".github/workflows/deploy.yml"}},
+		{"./.github/workflows/deploy.yml@main", UnknownReference{}},
+		{"owner/repo/.github/workflows/deploy.yml@v1", RepositoryReference{Owner: "owner", Repo: "repo", Subpath: ".github/workflows/deploy.yml", Ref: "v1", HostSource: "default"}},
+		{"${{ inputs.workflow }}", UnknownReference{}},
+		{"", nil},
+	} {
+		t.Run(tc.raw, func(t *testing.T) {
+			if got := ParseWorkflowCallReference(tc.raw); !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("got %+v (%T), want %+v", got, got, tc.want)
+			}
+		})
+	}
+}
