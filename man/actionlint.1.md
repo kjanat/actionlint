@@ -199,14 +199,14 @@ flags are true. An explicit **--log-level** selects the requested new log level.
 
 **--shellcheck** *COMMAND*
 : ShellCheck command, executable path or command line with arguments. Defaults
-to `shellcheck`; an empty value disables it. Also available on **doctor**.
+to `shellcheck`; `false` or an empty value disables it. Also available on **doctor**.
 
 **--pyflakes** *COMMAND*
 : Deprecated compatibility option; ignored. Use Ruff for Python scripts.
 
 **--ruff** *COMMAND*
 : Ruff command or command line for Python `run:` scripts. Defaults to `ruff`;
-an empty value disables it. Ruff must already be installed. Also available on
+`false` or an empty value disables it. Ruff must already be installed. Also available on
 **doctor**. Uses isolated, read-only checks with the F rules by default;
 `tools.ruff` configures rule selection and the Python target version.
 

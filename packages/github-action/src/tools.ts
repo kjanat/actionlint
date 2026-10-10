@@ -4,7 +4,7 @@ import { access, chmod, readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import type { ReleaseAsset, RunnerPlatform } from '#assets';
-import { checksumForAsset, nativeAssetName, shellcheckAsset, shellcheckVersion } from '#assets';
+import { checksumForAsset, nativeAssetName, ruffAsset, ruffVersion, shellcheckAsset, shellcheckVersion } from '#assets';
 import { download, downloadVerified } from '#download';
 import { subprocessEnvironment } from '#environment';
 import { cacheTool, capture, extractArchive, findTool, temporary, which } from '#native';
@@ -21,7 +21,7 @@ async function installedVersion(executable: string): Promise<string> {
 		const result = await capture(executable, ['--version'], process.env, { timeoutMS: 1_000 });
 		if (result.exitCode !== 0) return `unavailable (--version exited ${result.exitCode})`;
 		const output = `${result.stdout}\n${result.stderr}`.trim();
-		const version = /^(?:version:\s*)?(v?\d+\.\d+(?:\.\d+)?(?:[-+][^\s]+)?)(?:\s|$)/im.exec(output)?.[1];
+		const version = /^(?:version:\s*|ruff\s+)?(v?\d+\.\d+(?:\.\d+)?(?:[-+][^\s]+)?)(?:\s|$)/im.exec(output)?.[1];
 		return version ?? `unavailable (${output ? 'unrecognized' : 'empty'} --version output)`;
 	} catch (error) {
 		// Version discovery is advisory: an unsupported probe must not replace a working PATH tool.
@@ -102,6 +102,35 @@ export async function shellcheckBinary(platform: RunnerPlatform): Promise<Shellc
 	});
 }
 
+export async function ruffBinary(platform: RunnerPlatform): Promise<ShellcheckCommand> {
+	const existing = await which('ruff', process.env, 'native');
+	if (existing) {
+		selectedTool('Ruff', 'existing installation', existing, await installedVersion(existing));
+		return { kind: 'existing', executable: existing };
+	}
+	const binary = platform.os === 'windows' ? 'ruff.exe' : 'ruff';
+	const cacheName = `actionlint-ruff-${platform.os}`;
+	const cached = await findTool(cacheName, ruffVersion, platform.arch);
+	if (cached) {
+		const path = join(cached, binary);
+		await checkExecutable(path);
+		selectedTool('Ruff', 'tool cache', path, ruffVersion);
+		return { kind: 'standalone', executable: path };
+	}
+	console.log(`Installing Ruff ${ruffVersion}`);
+	return temporary(async (directory) => {
+		const asset = ruffAsset(platform);
+		const extracted = await extract(asset, directory);
+		const root = platform.os === 'windows' ? extracted : join(extracted, asset.name.replace(/\.tar\.gz$/, ''));
+		const path = join(root, binary);
+		if (platform.os !== 'windows') await chmod(path, 0o755);
+		await checkExecutable(path);
+		const executable = join(await cacheTool(root, cacheName, ruffVersion, platform.arch), binary);
+		selectedTool('Ruff', 'downloaded fallback', executable, ruffVersion);
+		return { kind: 'standalone', executable };
+	});
+}
+
 export function executeNative(executable: string, args: string[], environment: Environment): Promise<number> {
 	return new Promise((resolve, reject) => {
 		const child = spawn(executable, args, {
@@ -133,6 +162,8 @@ export async function inspectTools(executable: string, environment: Environment)
 	if (
 		typeof plan !== 'object' || plan === null || !('schema_version' in plan) || plan.schema_version !== 1
 		|| !('shellcheck' in plan) || typeof plan.shellcheck !== 'boolean'
+		|| ('ruff' in plan && typeof plan.ruff !== 'boolean')
 	) throw new Error('actionlint returned an unsupported tool plan');
-	return { shellcheck: plan.shellcheck };
+	// Older native Action releases do not know Ruff and omit it from the plan.
+	return { shellcheck: plan.shellcheck, ruff: 'ruff' in plan && plan.ruff === true };
 }

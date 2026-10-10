@@ -54,8 +54,7 @@ type lintResult struct {
 }
 
 func (req *lintRequest) configureEnvironment(env func(string) string) error {
-	// Ruff is optional and discovered on PATH; this does not install Python or
-	// download tools. Existing users can install it with setup-ruff or mise.
+	// The launcher provisions enabled Ruff before invoking this native entrypoint.
 	ruff := env("INPUT_RUFF")
 	if ruff != "" {
 		enabled, err := parseBool("ruff", ruff)

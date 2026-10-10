@@ -14,7 +14,10 @@ func newRuffRule(c ruleContext) (*ruffRule, error) {
 		return nil, err
 	}
 	cmd.maxExitCode = 1
-	return &ruffRule{RuleBase: builtinRuleBase("ruff"), checker: ruff.New(cmd.run, cmd.wait, ruffExpressionEnd)}, nil
+	flags := cmd.args
+	cmd.args = nil
+	cmd.unsetEnv = ruff.UnsetEnvironment()
+	return &ruffRule{RuleBase: builtinRuleBase("ruff"), checker: ruff.New(cmd.run, cmd.wait, ruffExpressionEnd, flags...)}, nil
 }
 
 func ruffExpressionEnd(src string) (int, bool) {
@@ -62,7 +65,7 @@ func (r *ruffRule) VisitStep(step *Step) error {
 	if r.config != nil {
 		config = r.config.Tools.Ruff
 	}
-	r.checker.Check(run.Run.Value, ruffShellValue(run.Shell), run.RunPos.String(), config, func(d ruff.Diagnostic) {
+	return r.checker.Check(run.Run.Value, ruffShellValue(run.Shell), run.RunPos.String(), config, func(d ruff.Diagnostic) {
 		pos, mapped := run.source.pos(d.Location.Row, d.Location.Column)
 		if !mapped {
 			pos = run.RunPos
@@ -75,5 +78,4 @@ func (r *ruffRule) VisitStep(step *Step) error {
 		r.errs[len(r.errs)-1].code = d.Code
 		r.errs[len(r.errs)-1].severity = "error"
 	})
-	return nil
 }

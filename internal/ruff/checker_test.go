@@ -73,6 +73,30 @@ func TestShellSelectionAndFork(t *testing.T) {
 	check(c.Fork(), &python, Config{}, 4)
 }
 
+func TestConfiguredFlagsFollowCheck(t *testing.T) {
+	flags := []string{"--preview", "--exclude", "vendor/**"}
+	calls := 0
+	c := New(func(args []string, _ string, callback func([]byte, error) error) {
+		calls++
+		if !slices.Equal(args[:4], []string{"check", "--preview", "--exclude", "vendor/**"}) || args[4] != "--isolated" {
+			t.Fatalf("configured flags outside check subcommand: %v", args)
+		}
+		if err := callback([]byte("[]"), nil); err != nil {
+			t.Fatal(err)
+		}
+	}, func() error { return nil }, nil, flags...)
+	flags[0] = "--mutated"
+	python := "python"
+	for _, checker := range []*Checker{c, c.Fork()} {
+		if err := checker.Check("print(1)", &python, "test", Config{}, func(Diagnostic) { t.Fatal("unexpected diagnostic") }); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if calls != 2 {
+		t.Fatalf("calls=%d", calls)
+	}
+}
+
 func TestCheckFailureAndAtomicDiagnostics(t *testing.T) {
 	for _, tc := range []struct {
 		output     string
@@ -96,8 +120,8 @@ func TestCheckFailureAndAtomicDiagnostics(t *testing.T) {
 
 func TestSanitize(t *testing.T) {
 	source := "print(${{\n 'é'\n}}, missing)"
-	got, valid := Sanitize(source, func(string) (int, bool) { return len("\n 'é'\n}}"), true })
-	if !valid || len([]rune(got)) != len([]rune(source)) || strings.Contains(got, "${{") {
+	got, valid, err := Sanitize(source, func(string) (int, bool) { return len("\n 'é'\n}}"), true })
+	if err != nil || !valid || len([]rune(got)) != len([]rune(source)) || strings.Contains(got, "${{") {
 		t.Fatalf("%q %v", got, valid)
 	}
 	for i, r := range []rune(source) {
@@ -106,8 +130,60 @@ func TestSanitize(t *testing.T) {
 		}
 	}
 	for _, end := range []int{-1, 0, 1, len(source) + 1} {
-		if _, valid := Sanitize(source, func(string) (int, bool) { return end, true }); valid {
+		if _, valid, _ := Sanitize(source, func(string) (int, bool) { return end, true }); valid {
 			t.Fatalf("accepted end %d", end)
+		}
+	}
+}
+
+func TestSanitizeTemplateContexts(t *testing.T) {
+	end := func(source string) (int, bool) {
+		index := strings.Index(source, "}}")
+		return index + 2, index >= 0
+	}
+	for _, source := range []string{
+		"# ${{\n\n value\n}} trailing\nprint(missing)",
+		"print(${{\n\n value\n}})\nprint(missing)",
+		"print('''${{\n\n value\n}}''')\nprint(missing)",
+		"print(\"# ${{\n value\n}}\")\nprint(missing)",
+		"print('${{ value }}') # ${{\n value\n}}\nprint(missing)",
+	} {
+		for _, ending := range []string{"\n", "\r\n"} {
+			source := strings.ReplaceAll(source, "\n", ending)
+			t.Run(source, func(t *testing.T) {
+				got, valid, err := Sanitize(source, end)
+				if err != nil || !valid || len([]rune(got)) != len([]rune(source)) {
+					t.Fatalf("got %q, valid %v, error %v", got, valid, err)
+				}
+				for i, r := range []rune(source) {
+					if (r == '\n' || r == '\r') && []rune(got)[i] != r {
+						t.Fatal("line ending moved")
+					}
+				}
+				if !strings.HasSuffix(got, "print(missing)") {
+					t.Fatal("unrelated code changed")
+				}
+			})
+		}
+	}
+}
+
+func TestQuotedEmptyTemplateLineFailsExplicitly(t *testing.T) {
+	for _, quote := range []string{"'", "\""} {
+		for _, ending := range []string{"\n", "\r\n"} {
+			t.Run(quote+ending, func(t *testing.T) {
+				c := New(func([]string, string, func([]byte, error) error) {
+					t.Fatal("sent an invalid sanitized script to Ruff")
+				}, func() error { return nil }, func(source string) (int, bool) {
+					return strings.Index(source, "}}") + 2, true
+				})
+				python := "python"
+				script := strings.ReplaceAll("print("+quote+"${{\n\n value\n}}"+quote+")\nprint(missing)", "\n", ending)
+				err := c.Check(script, &python, "workflow:12", Config{}, func(Diagnostic) { t.Fatal("unexpected diagnostic") })
+				if err == nil || !strings.Contains(err.Error(), "workflow:12") || !strings.Contains(err.Error(), "empty expression line") {
+					t.Fatalf("got %v, want a located operational error", err)
+				}
+			})
 		}
 	}
 }

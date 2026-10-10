@@ -21,6 +21,13 @@
   types: [yaml]
   files: ^\.github/workflows/
   entry: actionlint
+- id: actionlint-bundled
+  name: Lint GitHub Actions workflow files (with ShellCheck and Ruff)
+  description: Builds this revision's Docker image, including ShellCheck and Ruff
+  language: docker
+  types: [yaml]
+  files: ^\.github/workflows/
+  entry: /usr/local/bin/actionlint
 - id: actionlint-shellcheck
   name: Lint GitHub Actions workflow files (with ShellCheck)
   description: Runs actionlint with the ShellCheck integration enabled via a Go build of ShellCheck

@@ -64,6 +64,13 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *Step, parents []Rule
 	children := make([]Rule, 0, len(parents))
 	for _, parent := range parents {
 		child := compositeScriptRule(parent, call, filepath.Dir(meta.Path()), analysis.actions)
+		if _, ok := child.(*ruffRule); ok && analysis.configForFile != nil {
+			config, err := analysis.configForFile(meta.Path())
+			if err != nil {
+				return err
+			}
+			child.SetConfig(config)
+		}
 		if shellcheck, ok := child.(*RuleShellcheck); ok {
 			if err := shellcheck.prepareConfigPath(); err != nil {
 				return err

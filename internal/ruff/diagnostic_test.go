@@ -14,3 +14,13 @@ func TestDecode(t *testing.T) {
 		}
 	}
 }
+
+func TestDecodePreviewSyntax(t *testing.T) {
+	diagnostics, err := Decode([]byte(`[{"code":null,"name":"invalid-syntax","severity":"error","message":"Expected an expression","location":{"row":1,"column":3}}]`))
+	if err != nil || len(diagnostics) != 1 || diagnostics[0].Code != "invalid-syntax" {
+		t.Fatalf("preview syntax diagnostic: %+v, %v", diagnostics, err)
+	}
+	if _, err := Decode([]byte(`[{"code":null,"name":"","message":"Expected an expression","location":{"row":1,"column":3}}]`)); err == nil {
+		t.Fatal("accepted diagnostic with neither code nor name")
+	}
+}

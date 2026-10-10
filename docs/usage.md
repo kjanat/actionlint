@@ -339,7 +339,7 @@ actionlint -shellcheck 'shellcheck -e SC2086'
 ```
 
 Ruff checks Python `run:` steps when `ruff` is installed on `PATH`. Use `--ruff`
-to select another executable or command line; `--ruff=` disables it. No Python
+to select another executable or command line; `--ruff=false` or `--ruff=` disables it. No Python
 interpreter or Pyflakes installation is needed. See [Ruff configuration](config.md#ruff).
 
 Pyflakes integration has been removed. The released `-pyflakes` option remains
@@ -652,8 +652,10 @@ results table moves a cursor to position of the error in the code editor.
 
 [![Docker Image Version][docker-badge]][dockerhub]
 
-[Docker image][docker-image] is available. The image contains `actionlint`
-executable and all dependencies (ShellCheck).
+[Docker image][docker-image] is available. Images built from this revision contain `actionlint`,
+ShellCheck, and the native Ruff executable. No Python interpreter is required.
+Ruff's official release archive is pinned by version and SHA-256 for both Linux amd64 and arm64.
+Previously published images are unchanged; Ruff will be included in the next release image.
 
 Available tags are:
 
@@ -814,6 +816,7 @@ for the discussion.
 > `actionlint` hook builds this fork, `actionlint-docker` pulls this fork's
 > image, and `actionlint-system` runs the `actionlint` executable on `PATH`.
 > `actionlint-shellcheck` builds this fork and installs ShellCheck next to it.
+> `actionlint-bundled` builds the selected source revision's Docker image with both ShellCheck and Ruff.
 
 [pre-commit][pre-commit] is a framework for managing and maintaining
 multi-language Git pre-commit hooks. actionlint is available as a pre-commit
@@ -831,17 +834,21 @@ repos:
 ```
 
 As alternatives to `actionlint` hook, `actionlint-docker`, `actionlint-system`,
-or `actionlint-shellcheck` hooks are available.
+`actionlint-shellcheck`, or `actionlint-bundled` hooks are available.
 
 | Hook ID                 | Explanation                                                                                                                                                                                                                         |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `actionlint`            | Automatically installs `actionlint` command in isolated `$GOPATH` directory using [Go toolchain][go-install].                                                                                                                       |
 | `actionlint-docker`     | Automatically pulls [the actionlint Docker image](#docker).                                                                                                                                                                         |
+| `actionlint-bundled`    | Builds this revision's Dockerfile, bundling ShellCheck and Ruff. Requires Docker; no host Go, Python, ShellCheck, or Ruff installation is needed.                                                                                   |
 | `actionlint-system`     | Uses system-installed `actionlint` command. The command is necessary to be [installed manually](install.md).                                                                                                                        |
 | `actionlint-shellcheck` | Same as `actionlint`, and additionally installs a Go build of ShellCheck ([`wasilibs/go-shellcheck`][go-shellcheck]) so [the shellcheck integration](checks.md#check-shellcheck-integ) works without a host-installed `shellcheck`. |
 
-The `actionlint` hook installs into an isolated `$GOPATH`, so it only finds a
-`shellcheck` executable that is already on `PATH`.
+The `actionlint` hook installs into an isolated `$GOPATH`, so ShellCheck and Ruff must already be on `PATH`.
+The `actionlint-shellcheck` hook installs ShellCheck but not Ruff. Go `additional_dependencies` cannot install
+Ruff's Python package, and a separate `ruff-pre-commit` hook does not share its environment with actionlint.
+Use `actionlint-bundled` to install both automatically: select a commit or release containing this hook and set
+`id: actionlint-bundled`. It builds from that revision rather than pulling the previously published image.
 
 `actionlint-shellcheck` pins go-shellcheck so each actionlint revision builds a
 reproducible pre-commit environment. The scheduled [Upkeep workflow](../.github/workflows/upkeep.yml) checks both go-shellcheck

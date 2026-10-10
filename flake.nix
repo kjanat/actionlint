@@ -64,6 +64,7 @@
             gnumake
             pandoc
             shellcheck
+            ruff
             nixfmt
           ];
           GOTOOLCHAIN = "local";

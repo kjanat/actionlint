@@ -83,6 +83,7 @@ func (l *analysisEngine) check(
 
 		rules := []Rule{}
 		c := ruleContext{path: path, config: cfg, actions: localActions, workflows: localReusableWorkflows, process: proc, shellcheck: l.shellcheck}
+		c.projectConfig = projectConfig
 		c.ruff, c.ruffOptions = l.ruff, l.ruffOptions
 		c.shellcheckOptions = l.shellcheckOptions
 		c.shellcheckSettings = l.shellcheckSettings
@@ -97,7 +98,9 @@ func (l *analysisEngine) check(
 			}
 			// Shared analysis passes can emit independently configured diagnostics;
 			// keep them running. Disabled external tools need not be launched.
-			if descriptor.Category == "external" && cfg.diagnosticLevel(descriptor.Name) == "off" {
+			// Ruff also checks composite files with their own effective configuration.
+			// Its descriptor decides whether any such file can enable the checker.
+			if descriptor.Category == "external" && descriptor.Name != "ruff" && cfg.diagnosticLevel(descriptor.Name) == "off" {
 				continue
 			}
 			if descriptor.enabled != nil && !descriptor.enabled(c) {
@@ -112,6 +115,9 @@ func (l *analysisEngine) check(
 			}
 			r, err := descriptor.build(c)
 			if err != nil {
+				if descriptor.Name == "ruff" && (c.ruffOptions == nil || !c.ruffOptions.Optional) {
+					return nil, fmt.Errorf("could not initialize Ruff: %w", err)
+				}
 				l.log(fmt.Sprintf("Rule %q was disabled:", descriptor.Name), err)
 				continue
 			}
@@ -127,6 +133,13 @@ func (l *analysisEngine) check(
 			v.AddPass(rule)
 		}
 		v.composites = &compositeAnalyzer{ctx: l.ctx, actions: localActions, passes: v.passes}
+		v.composites.configForFile = func(path string) (*Config, error) {
+			config, err := configForFile(projectConfig, path, root)
+			if err != nil {
+				return nil, err
+			}
+			return l.rulePresets.apply(config), nil
+		}
 		if dbg != nil {
 			v.EnableDebug(dbg)
 			for _, r := range rules {

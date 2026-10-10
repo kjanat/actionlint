@@ -17,6 +17,7 @@ type Position struct {
 // Diagnostic is the read-only subset of Ruff's JSON diagnostic contract.
 type Diagnostic struct {
 	Code        string   `json:"code"`
+	Name        string   `json:"name"`
 	Message     string   `json:"message"`
 	Location    Position `json:"location"`
 	EndLocation Position `json:"end_location"`
@@ -31,7 +32,12 @@ func Decode(data []byte) ([]Diagnostic, error) {
 	if err := json.Unmarshal(data, &diagnostics); err != nil {
 		return nil, fmt.Errorf("invalid Ruff JSON: %w", err)
 	}
-	for _, d := range diagnostics {
+	for i := range diagnostics {
+		d := &diagnostics[i]
+		// Preview diagnostics such as invalid-syntax have a null code.
+		if d.Code == "" {
+			d.Code = d.Name
+		}
 		if d.Code == "" || d.Message == "" || d.Location.Row < 1 || d.Location.Column < 1 {
 			return nil, fmt.Errorf("invalid Ruff diagnostic: %+v", d)
 		}

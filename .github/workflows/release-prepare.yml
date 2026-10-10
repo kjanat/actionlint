@@ -213,6 +213,7 @@ jobs:
             if [[ "${CONTAINER_TARGET}" == action ]]; then
               bash scripts/test-docker-action.bash "${image}" "linux/${arch}"
             else
+              bash scripts/test-docker-ruff.bash "${image}" "linux/${arch}"
               docker run --rm --platform "linux/${arch}" --mount type=bind,source="${PWD}",target=/w \
                 "${image}" testdata/ok/minimal.yaml
               status=0

@@ -10,7 +10,7 @@
   fish,
   pandoc,
   shellcheck,
-  python3Packages,
+  ruff,
   src,
   version,
 }:
@@ -41,6 +41,7 @@ buildGoModule {
     zsh
     fish
     shellcheck
+    ruff
   ];
 
   checkPhase = ''
@@ -65,6 +66,7 @@ buildGoModule {
     wrapProgram "$out/bin/actionlint" --prefix PATH : ${
       lib.makeBinPath [
         shellcheck
+        ruff
       ]
     }
   '';

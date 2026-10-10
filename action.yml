@@ -64,7 +64,7 @@ inputs:
     required: false
     default: ""
   ruff:
-    description: Check Python run steps with Ruff when installed on PATH. Install it first with setup-ruff or mise; this action does not download Ruff.
+    description: Check Python run steps with Ruff, using PATH or a verified download when required by the effective configuration.
     required: false
     default: "true"
   pyflakes:
@@ -83,6 +83,10 @@ inputs:
     description: "Deprecated and ignored: Pyflakes is no longer installed."
     required: false
     default: "false"
+  add-ruff-to-path:
+    description: Make Ruff available on PATH for subsequent steps when Ruff is enabled and required.
+    required: false
+    default: "true"
   working-directory:
     description: Directory to lint, absolute or relative to the repository workspace.
     required: false

@@ -46,7 +46,7 @@ func newCommandApp(streams *Command) *commandApp {
 	a.root = &cobra.Command{
 		Use:   "actionlint [flags] [files...] [-]",
 		Short: "Check GitHub Actions workflows",
-		Long:  "Check workflow syntax, expressions, actions and embedded scripts.\nWith no files, discover workflows in the current repository. Pass - alone to read stdin.",
+		Long:  "Check workflow syntax, expressions, actions and embedded scripts.\nWith no files, discover workflows in the current repository.\nPass - alone to read stdin.",
 		Example: strings.Join([]string{
 			"  actionlint",
 			"  actionlint check --output-format=json workflow.yml",
@@ -155,9 +155,9 @@ func (a *commandApp) configFlags(f *pflag.FlagSet) {
 }
 
 func (a *commandApp) toolFlags(f *pflag.FlagSet) {
-	f.StringVar(&a.inv.Check.Ruff, "ruff", "ruff", "Ruff command or command line for Python scripts; empty disables it")
+	f.StringVar(&a.inv.Check.Ruff, "ruff", "ruff", "Ruff command; false disables")
 	annotateFlag(f, "ruff", "External linters")
-	f.StringVar(&a.inv.Check.ShellCheck, "shellcheck", "shellcheck", "ShellCheck command or command line; empty disables it")
+	f.StringVar(&a.inv.Check.ShellCheck, "shellcheck", "shellcheck", "ShellCheck command; false disables")
 	f.StringVar(&a.inv.Check.Pyflakes, "pyflakes", "", "Deprecated: Pyflakes integration was removed; ignored")
 	annotateFlag(f, "shellcheck", "External linters")
 	annotateFlag(f, "pyflakes", "External linters")

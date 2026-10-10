@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strings"
 	"sync"
 
@@ -23,6 +25,7 @@ type cmdExecution struct {
 	stdin         string
 	combineOutput bool
 	env           []string
+	unsetEnv      []string
 	dir           string
 }
 
@@ -30,8 +33,14 @@ func (e *cmdExecution) run(ctx context.Context) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, e.cmd, e.args...)
 	cmd.Dir = e.dir
 	cmd.Stderr = nil
-	if len(e.env) > 0 {
+	if len(e.env) > 0 || len(e.unsetEnv) > 0 {
 		cmd.Env = append(cmd.Environ(), e.env...)
+		cmd.Env = slices.DeleteFunc(cmd.Env, func(entry string) bool {
+			name, _, _ := strings.Cut(entry, "=")
+			return slices.ContainsFunc(e.unsetEnv, func(unset string) bool {
+				return name == unset || runtime.GOOS == "windows" && strings.EqualFold(name, unset)
+			})
+		})
 	}
 	// Let os/exec start the reader before copying stdin. Writing the whole script
 	// before Start can fill the pipe and deadlock, even with a single worker.
@@ -149,6 +158,9 @@ func (proc *concurrentProcess) configuredCommandRunner(exe string, options *Exte
 // A non-nil Executable replaces the command line with a literal executable path;
 // an empty executable disables the tool. Nil retains the existing command parser.
 type ExternalCommandOptions struct {
+	// Optional permits automatic Ruff discovery to skip an unavailable executable.
+	// Explicitly configured checkers should leave this false.
+	Optional    bool
 	Executable  *string
 	Arguments   []string
 	Environment []string
@@ -213,6 +225,7 @@ type externalCommand struct {
 	args          []string
 	combineOutput bool
 	env           []string
+	unsetEnv      []string
 	dir           string
 }
 
@@ -230,7 +243,7 @@ func (cmd *externalCommand) runInDirectory(args []string, stdin, dir string, cal
 		allArgs = append(allArgs, args...)
 		args = allArgs
 	}
-	exec := &cmdExecution{cmd: cmd.exe, args: args, stdin: stdin, combineOutput: cmd.combineOutput, env: cmd.env, dir: dir, maxExitCode: cmd.maxExitCode}
+	exec := &cmdExecution{cmd: cmd.exe, args: args, stdin: stdin, combineOutput: cmd.combineOutput, env: cmd.env, unsetEnv: cmd.unsetEnv, dir: dir, maxExitCode: cmd.maxExitCode}
 	cmd.proc.run(&cmd.eg, exec, callback)
 }
 

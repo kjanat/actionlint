@@ -9,19 +9,22 @@ export class InputError extends Error {}
 export type ExistingCommand = { kind: 'existing'; executable: string };
 
 export type ShellcheckCommand = ExistingCommand | { kind: 'standalone'; executable: string };
+export type RuffCommand = ShellcheckCommand;
 
 export type InstalledTools = {
 	actionlint?: string;
 	shellcheck?: ShellcheckCommand;
+	ruff?: RuffCommand;
 };
 
-export type ToolRequirements = { shellcheck: boolean };
+export type ToolRequirements = { shellcheck: boolean; ruff: boolean };
 
 export type Runtime = {
 	native: () => Promise<string>;
 	checkExecutable: (path: string) => Promise<void>;
 	inspect: (executable: string, environment: Environment) => Promise<ToolRequirements>;
 	shellcheck: () => Promise<ShellcheckCommand>;
+	ruff: () => Promise<RuffCommand>;
 	publish: (tools: InstalledTools) => Promise<void>;
 	execute: (executable: string, args: string[], environment: Environment) => Promise<number>;
 };
@@ -50,13 +53,16 @@ export async function runAction(environment: Environment, runtime: Runtime): Pro
 	};
 	const addActionlint = exportInput('add-actionlint-to-path');
 	const addShellcheck = exportInput('add-shellcheck-to-path');
+	const addRuff = exportInput('add-ruff-to-path');
 	if (setupOnly && !addActionlint) {
 		throw new InputError("Input 'install-only: true' requires 'add-actionlint-to-path: true'");
 	}
 	const shellcheck = toolEnabled(environment.INPUT_SHELLCHECK);
+	const ruff = toolEnabled(environment.INPUT_RUFF);
 	if (setupOnly && (shellcheck === undefined)) {
 		throw new InputError("Input 'shellcheck' must be 'true' or 'false'");
 	}
+	if (setupOnly && ruff === undefined) throw new InputError("Input 'ruff' must be 'true' or 'false'");
 	const override = environment.ACTIONLINT_ACTION_BINARY;
 	let executable: string;
 	if (override) {
@@ -68,6 +74,8 @@ export async function runAction(environment: Environment, runtime: Runtime): Pro
 	}
 
 	const childEnvironment = subprocessEnvironment(environment);
+	// Match action.yml defaults even when the launcher is invoked directly.
+	if (!childEnvironment.INPUT_RUFF) childEnvironment.INPUT_RUFF = 'true';
 	if (environment.INPUT_PYFLAKES === 'true') {
 		console.log('::warning::Pyflakes integration has been removed; the deprecated pyflakes input is ignored.');
 	}
@@ -81,12 +89,18 @@ export async function runAction(environment: Environment, runtime: Runtime): Pro
 	const tools: InstalledTools = {};
 	if (addActionlint) tools.actionlint = executable;
 	delete childEnvironment.ACTIONLINT_SHELLCHECK_COMMAND;
-	if (shellcheck !== undefined) {
-		const needed = setupOnly ? { shellcheck } : await runtime.inspect(executable, childEnvironment);
+	delete childEnvironment.ACTIONLINT_RUFF_COMMAND;
+	if (shellcheck !== undefined && ruff !== undefined) {
+		const needed = setupOnly ? { shellcheck, ruff } : await runtime.inspect(executable, childEnvironment);
 		if (shellcheck && needed.shellcheck) {
 			const command = await runtime.shellcheck();
 			if (addShellcheck) tools.shellcheck = command;
 			childEnvironment.ACTIONLINT_SHELLCHECK_COMMAND = command.executable;
+		}
+		if (ruff && needed.ruff) {
+			const command = await runtime.ruff();
+			if (addRuff) tools.ruff = command;
+			childEnvironment.ACTIONLINT_RUFF_COMMAND = command.executable;
 		}
 		if (Object.keys(tools).length > 0) await runtime.publish(tools);
 	}

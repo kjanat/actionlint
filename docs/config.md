@@ -226,7 +226,8 @@ Each file gets its own effective configuration, without changing other files.
 Ruff checks Python scripts selected by `shell: python`, `shell: python3`, or a
 custom command beginning with either interpreter, including workflow/job shell
 defaults and local composite actions. The CLI discovers Ruff on `PATH` and skips
-it when unavailable. `--ruff=` disables it; `--ruff /path/to/ruff` selects a binary.
+it when unavailable. `--ruff=false` or `--ruff=` disables it;
+`--ruff /path/to/ruff` selects a binary.
 It never installs tools or executes Python scripts.
 
 ```yaml
@@ -253,15 +254,17 @@ automatic fixes, or `noqa` exemptions. Use actionlint rule levels, per-file
 overrides, and reason-bearing YAML suppressions for exceptions. Ruff codes such
 as `F821` are retained in structured output. Literal/plain scripts use the shared
 YAML source map; unsupported scalar mappings fall back to the `run:` declaration.
-Inline YAML suppressions target the diagnostic's reported line, not an entire
-multiline script. Ruff invocation/configuration failures fail analysis.
+Inline YAML suppressions target the diagnostic's reported line. A directive on
+the YAML block header covers the script body.
+Explicitly requested Ruff executables and Ruff invocation/configuration failures fail analysis.
 
 The Go APIs opt in with `AnalysisOptions.Ruff`, `AnalysisRequest.Ruff`, or
 `LinterOptions.Ruff`; an empty command disables the tool. The analysis APIs also
 accept `RuffOptions` for literal executable paths, arguments, and child environment.
-The GitHub Action's `ruff` input defaults to `true`, using an existing PATH install.
-Install Ruff in a preceding step (for example with `astral-sh/setup-ruff` or mise).
-The Action does not download Ruff. The browser playground cannot run external tools.
+The GitHub Action's `ruff` input defaults to `true`.
+The Action installs Ruff when enabled and required by the effective configuration.
+It reuses a binary on `PATH`, then its cache, then a checksum-verified release download.
+The browser playground cannot run external tools.
 
 ## ShellCheck
 

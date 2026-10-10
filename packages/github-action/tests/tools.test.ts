@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { chmod, copyFile, link, readFile, writeFile } from 'node:fs/promises';
+import { chmod, copyFile, link, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { runnerPlatform } from '#assets';
+import { ruffVersion, runnerPlatform } from '#assets';
 import { capture, temporary } from '#native';
-import { executeNative, shellcheckBinary } from '#tools';
+import { executeNative, inspectTools, ruffBinary, shellcheckBinary } from '#tools';
 
 async function withEnvironment(values: Record<string, string>, run: () => Promise<void>): Promise<void> {
 	const previous = new Map(Object.keys(values).map((name) => [name, process.env[name]]));
@@ -163,6 +163,45 @@ test('unsupported and timed-out version probes remain advisory', {
 				});
 			});
 			assert.ok(messages.at(-1)?.includes(reason));
+		}
+	});
+});
+
+test('Ruff prefers PATH and validates a cached executable before use', async () => {
+	await temporary(async (directory) => {
+		const platform = runnerPlatform(process.platform, process.arch);
+		const binary = process.platform === 'win32' ? 'ruff.exe' : 'ruff';
+		const pathTool = join(directory, binary);
+		await copyFile(process.execPath, pathTool);
+		await withEnvironment({ PATH: directory, PATHEXT: '.EXE' }, async () => {
+			assert.deepEqual(await ruffBinary(platform), { kind: 'existing', executable: pathTool });
+		});
+		const cache = join(directory, 'cache');
+		const root = join(cache, `actionlint-ruff-${platform.os}`, ruffVersion, platform.arch);
+		await mkdir(root, { recursive: true });
+		await writeFile(`${root}.complete`, '');
+		const executable = join(root, binary);
+		await withEnvironment({ PATH: join(directory, 'missing'), RUNNER_TOOL_CACHE: cache }, async () => {
+			await assert.rejects(ruffBinary(platform), { code: 'ENOENT' });
+			await copyFile(process.execPath, executable);
+			assert.deepEqual(await ruffBinary(platform), { kind: 'standalone', executable });
+		});
+	});
+});
+
+test('native tool plans support Ruff and safely tolerate older plans without it', {
+	skip: process.platform === 'win32',
+}, async () => {
+	await temporary(async (directory) => {
+		const executable = join(directory, 'native-plan');
+		for (const value of [true, false, undefined, 'invalid']) {
+			const plan = JSON.stringify({ schema_version: 1, shellcheck: false, ruff: value });
+			await writeFile(executable, `#!/bin/sh\nprintf '%s' '${plan}'\n`, { mode: 0o755 });
+			if (value === 'invalid') {
+				await assert.rejects(inspectTools(executable, {}), /unsupported tool plan/);
+			} else {
+				assert.deepEqual(await inspectTools(executable, {}), { shellcheck: false, ruff: value === true });
+			}
 		}
 	});
 });

@@ -15,7 +15,7 @@ func TestRuffActionInput(t *testing.T) {
 	for _, tc := range []struct {
 		input, config string
 		code          int
-	}{{"true", "", 1}, {"false", "", 0}, {"true", "lint: {rules: {external: {ruff: off}}}", 0}, {"invalid", "", 2}} {
+	}{{"true", "", 1}, {"false", "", 0}, {"true", "tools: {ruff: false}", 0}, {"true", "lint: {rules: {external: {ruff: off}}}", 0}, {"invalid", "", 2}} {
 		env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_SHELLCHECK": "false", "INPUT_RUFF": tc.input, "ACTIONLINT_RUFF_COMMAND": command, "INPUT_CONFIG": tc.config}
 		var out strings.Builder
 		if code := Main(func(k string) string { return env[k] }, &out); code != tc.code {

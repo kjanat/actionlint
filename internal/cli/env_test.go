@@ -37,6 +37,74 @@ func TestEnvironmentDefaults(t *testing.T) {
 	}
 }
 
+func TestExplicitRuffMissingExecutable(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("PATH", t.TempDir())
+	run := func(input string, args ...string) commandTranscript {
+		var out, stderr bytes.Buffer
+		command := Command{Stdin: strings.NewReader(input), Stdout: &out, Stderr: &stderr}
+		status := command.Main(append([]string{"actionlint", "--no-color"}, args...))
+		return commandTranscript{status, out.String(), stderr.String()}
+	}
+	for _, prefix := range [][]string{nil, {"check"}} {
+		args := append(append([]string{}, prefix...), "--shellcheck=", "-")
+		if got := run(commandGoodWorkflow, args...); got.Status != 0 {
+			t.Fatalf("automatic discovery: %+v", got)
+		}
+		args = append(append([]string{}, prefix...), "--shellcheck=", "--ruff=missing-ruff", "-")
+		if got := testRunCommand(commandGoodWorkflow, args...); got.Status == 0 || !strings.Contains(got.Stderr, "could not initialize Ruff") {
+			t.Fatalf("explicit checker silently skipped: %+v", got)
+		}
+		for _, disabled := range []string{"", "false", "FALSE"} {
+			args = append(append([]string{}, prefix...), "--shellcheck=", "--ruff="+disabled, "-")
+			if got := testRunCommand(commandGoodWorkflow, args...); got.Status != 0 {
+				t.Fatalf("disable %q: %+v", disabled, got)
+			}
+		}
+	}
+	t.Setenv("ACTIONLINT_RUFF_BIN", "missing-ruff")
+	if got := run(commandGoodWorkflow, "--shellcheck=", "-"); got.Status == 0 {
+		t.Fatalf("environment checker silently skipped: %+v", got)
+	}
+	if got := testRunCommand(commandGoodWorkflow, "--shellcheck=", "--ruff=", "-"); got.Status != 0 {
+		t.Fatalf("explicit disable: %+v", got)
+	}
+	got := testRunCommand("", "doctor", "--no-config", "--ruff=false", "--shellcheck=false", "--json")
+	if got.Status != 0 {
+		t.Fatalf("doctor: %+v", got)
+	}
+	var report struct {
+		Tools []struct {
+			Name   string `json:"name"`
+			Status string `json:"status"`
+		} `json:"tools"`
+	}
+	if err := json.Unmarshal([]byte(got.Stdout), &report); err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Tools) != 2 {
+		t.Fatalf("missing tool rows: %+v", report)
+	}
+	for _, tool := range report.Tools {
+		if tool.Status != "disabled" {
+			t.Fatalf("checker not disabled: %+v", tool)
+		}
+	}
+}
+
+func TestFalseDisablesExternalCheckers(t *testing.T) {
+	t.Chdir(t.TempDir())
+	for _, prefix := range [][]string{nil, {"check"}} {
+		for _, disabled := range []string{"", "false", "FALSE"} {
+			args := append(append([]string{}, prefix...), "--shellcheck="+disabled, "--ruff="+disabled, "-")
+			got := testRunCommand("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $VALUE\n        shell: bash\n      - run: print(missing)\n        shell: python\n", args...)
+			if got.Status != 0 || got.Stdout != "" || got.Stderr != "" {
+				t.Fatalf("disable %q %v: %+v", disabled, prefix, got)
+			}
+		}
+	}
+}
+
 func TestEnvironmentConfigSelection(t *testing.T) {
 	t.Chdir(t.TempDir())
 	if err := os.WriteFile("env.yaml", []byte("policy:\n  require-job-timeout: true\n"), 0o600); err != nil {
@@ -237,7 +305,11 @@ func TestEnvironmentExternalTools(t *testing.T) {
 			if err := json.Unmarshal(data, &report); err != nil {
 				t.Fatal(err)
 			}
-			if report.Value != kind || report.Input == "" || len(report.Args) < 3 || !reflect.DeepEqual(report.Args[:3], []string{"argument with spaces", "", "$LITERAL"}) {
+			wantArgs := []string{"argument with spaces", "", "$LITERAL"}
+			if kind == "python" {
+				wantArgs = append([]string{"check"}, wantArgs...)
+			}
+			if report.Value != kind || report.Input == "" || len(report.Args) < len(wantArgs) || !reflect.DeepEqual(report.Args[:len(wantArgs)], wantArgs) {
 				t.Fatalf("%s did not receive its settings: %+v", kind, report)
 			}
 			if err := os.Remove(path); err != nil {

@@ -48,12 +48,49 @@ test('Docker wrapper preserves nine literal arguments and native exit status', a
 		], {
 			encoding: 'utf8',
 			timeout: 5_000,
+			env: { ...process.env, INPUT_RUFF: '' },
 		});
 		assert.ifError(result.error);
 		assert.equal(result.status, 1, result.stdout + result.stderr);
 		assert.ok(result.stdout.endsWith('actionlint\n-github-action\n'), result.stdout);
+		assert.ok(result.stdout.includes('INPUT_RUFF=true\n'), result.stdout);
 		for (const [index, name] of inputs.entries()) {
 			assert.ok(result.stdout.includes(`INPUT_${name}=${values[index]}\n`), name);
+		}
+	} finally {
+		await rm(temporary, { recursive: true, force: true });
+	}
+});
+
+test('Docker wrapper defaults Ruff and preserves explicit input for native validation', async () => {
+	const temporary = await mkdtemp(join(tmpdir(), 'actionlint-docker-ruff-'));
+	try {
+		await writeFile(join(temporary, 'env'), '#!/bin/sh\nprintf "%s\\n" "$@"\n', { mode: 0o755 });
+		for (const value of [undefined, '', 'true', 'false', 'invalid']) {
+			const environment = { ...process.env };
+			if (value === undefined) delete environment.INPUT_RUFF;
+			else environment.INPUT_RUFF = value;
+			const result = spawnSync('bash', [
+				'--noprofile',
+				'--norc',
+				'-c',
+				'directory="$1"; if command -v cygpath >/dev/null; then directory="$(cygpath -u "$directory")"; fi; PATH="$directory:$PATH"; export PATH; shift; exec sh "$@"',
+				'docker-wrapper-test',
+				temporary,
+				wrapper,
+				'',
+				'json',
+				'',
+				'',
+				'false',
+				'false',
+				'.',
+				'',
+				'true',
+			], { encoding: 'utf8', timeout: 5_000, env: environment });
+			assert.ifError(result.error);
+			assert.equal(result.status, 0, result.stdout + result.stderr);
+			assert.ok(result.stdout.includes(`INPUT_RUFF=${value || 'true'}\n`), result.stdout);
 		}
 	} finally {
 		await rm(temporary, { recursive: true, force: true });

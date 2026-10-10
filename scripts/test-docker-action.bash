@@ -13,6 +13,7 @@ workspace="$(pwd)"
 temporary="$(mktemp -d)"
 trap 'rm -rf "${temporary}"' EXIT
 mkdir -p "${temporary}/workspace/.git" "${temporary}/commands"
+ruff_environment=()
 
 output() {
 	awk -v name="$1" '
@@ -49,6 +50,7 @@ expect_status() {
 		--workdir /github/workspace \
 		-e GITHUB_ACTIONS=true -e GITHUB_WORKSPACE=/github/workspace \
 		-e GITHUB_OUTPUT=/github/file_commands/output \
+		"${ruff_environment[@]}" \
 		"${image}" "$@" >"${temporary}/action.log" 2>&1 || status=$?
 	if [[ "${status}" != "${expected}" ]]; then
 		printf 'Expected exit %s, got %s\n' "${expected}" "${status}" >&2
@@ -84,6 +86,15 @@ problem_count="$(output problem-count)"
 [[ "${problem_count}" -gt 0 ]]
 expect_status 0 testdata/err/shellcheck_default_shell_detection.yaml json '' '' false false . '' true
 expect_output problem-count 0
+
+cp nix/integration.yml "${temporary}/workspace/python.yml"
+expect_status 1 python.yml json '' '' false false . '' true
+expect_output problem-count 1
+output output | jq -e 'any(.diagnostics[]; .rule == "ruff" and .code == "F821")' >/dev/null
+ruff_environment=(-e INPUT_RUFF=false)
+expect_status 0 python.yml json '' '' false false . '' true
+expect_output problem-count 0
+ruff_environment=()
 
 mkdir -p "${temporary}/workspace/sub/.github/workflows"
 cp testdata/ok/minimal.yaml "${temporary}/workspace/sub/.github/workflows/check.yaml"

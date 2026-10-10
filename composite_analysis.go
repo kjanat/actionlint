@@ -16,6 +16,7 @@ type compositeAnalyzer struct {
 	actionPathErr error
 	workflowEnv   *Env
 	workflowShell shellValue
+	configForFile func(string) (*Config, error)
 }
 
 func (analysis *compositeAnalyzer) cancelled() error {

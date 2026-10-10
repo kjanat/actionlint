@@ -44,12 +44,20 @@ func TestRuffPythonScripts(t *testing.T) {
 		{name: "noqa ignored", shell: "python", script: "print(missing) # noqa: F821", count: 1},
 		{name: "template", shell: "python", script: "print(${{ github.run_number }})"},
 		{name: "quoted template", shell: "python", script: "print('${{ github.sha }}')"},
+		{name: "quoted multiline template", shell: "python", script: "print('${{\n github.sha\n}}')\nprint(missing)", count: 1},
+		{name: "double quoted multiline template", shell: "python", script: "print(\"${{\n github.sha\n}}\")"},
+		{name: "raw multiline template", shell: "python", script: "print(r'${{\n github.sha\n}}')"},
+		{name: "comment multiline template", shell: "python", script: "# ${{\n github.sha\n}}\nprint(missing)", count: 1},
+		{name: "comment empty template line", shell: "python", script: "# ${{\n\n github.sha\n}} trailing comment\nprint(missing)", count: 1},
+		{name: "unquoted empty template line", shell: "python", script: "print(${{\n\n github.run_number\n}})\nprint(missing)", count: 1},
+		{name: "triple quoted empty template line", shell: "python", script: "print('''${{\n\n github.sha\n}}''')\nprint(missing)", count: 1},
+		{name: "quoted hash before template", shell: "python", script: "print('# ${{\n github.sha\n}}')\nprint(missing)", count: 1},
 		{name: "explicit ignore", shell: "python", script: "print(missing)", config: "tools: {ruff: {ignore: [F821]}}"},
 		{name: "disabled tool", shell: "python", script: "print(missing)", config: "tools: {ruff: {enabled: false}}"},
 		{name: "disabled rule", shell: "python", script: "print(missing)", config: "lint: {rules: {external: {ruff: off}}}"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			src := "on: push\n" + tc.defaults + "jobs:\n  test:\n    runs-on: ubuntu-latest\n" + tc.job + "    steps:\n      - run: |\n          " + tc.script + "\n"
+			src := "on: push\n" + tc.defaults + "jobs:\n  test:\n    runs-on: ubuntu-latest\n" + tc.job + "    steps:\n      - run: |\n          " + strings.ReplaceAll(tc.script, "\n", "\n          ") + "\n"
 			if tc.shell != "" {
 				src += "        shell: " + tc.shell + "\n"
 			}
@@ -89,8 +97,7 @@ func TestRuffSourceMappingAndIsolation(t *testing.T) {
 		finding := result.files[0].errors[0]
 		lines := strings.Split(src, "\n")
 		wantColumn := len([]rune(strings.Split(lines[finding.Line-1], "missing")[0])) + 1
-		// Quoted/folded scalar mappings are not yet available to script analyzers;
-		// retain the run key rather than manufacture a character position.
+		// Quoted/folded scalar mappings fall back to the run key position.
 		if strings.HasPrefix(script, "\"") || strings.HasPrefix(script, "'") {
 			wantColumn = 9
 		}
@@ -100,16 +107,28 @@ func TestRuffSourceMappingAndIsolation(t *testing.T) {
 	}
 }
 
-// The portable fake process exercises failures even when Ruff is not installed.
-func TestRuffHelperProcess(t *testing.T) {
-	if os.Getenv("ACTIONLINT_TEST_RUFF") != "1" {
+// Dispatch before Go's test flag parsing so this executable accepts Ruff argv.
+func TestMain(m *testing.M) {
+	if os.Getenv("ACTIONLINT_TEST_RUFF") == "1" {
+		runRuffHelperProcess()
 		return
 	}
+	os.Exit(m.Run())
+}
+
+// The portable fake process exercises failures even when Ruff is not installed.
+func runRuffHelperProcess() {
 	_, _ = io.Copy(io.Discard, os.Stdin)
 	if os.Getenv("ACTIONLINT_TEST_RUFF_WAIT") == "1" {
 		time.Sleep(10 * time.Second)
 	}
-	if !slices.Contains(os.Args, "--isolated") || !slices.Contains(os.Args, "--no-fix") {
+	if len(os.Args) < 2 || os.Args[1] != "check" || !slices.Contains(os.Args, "--isolated") || !slices.Contains(os.Args, "--no-fix") {
+		os.Exit(3)
+	}
+	if _, present := os.LookupEnv("RUFF_OUTPUT_FILE"); present {
+		os.Exit(3)
+	}
+	if os.Getenv("ACTIONLINT_TEST_RUFF_FLAGS") == "1" && !slices.Equal(os.Args[2:5], []string{"--preview", "--exclude", "vendor/**"}) {
 		os.Exit(3)
 	}
 	fmt.Print(os.Getenv("ACTIONLINT_TEST_RUFF_OUTPUT"))
@@ -124,12 +143,42 @@ func TestRuffCancellation(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
 	defer cancel()
-	options := &ExternalCommandOptions{Executable: &exe, Arguments: []string{"-test.run=^TestRuffHelperProcess$"}, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_WAIT=1"}}
+	options := &ExternalCommandOptions{Executable: &exe, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_WAIT=1"}}
 	src := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print('ok')\n"
 	start := time.Now()
 	_, err = Analyze(ctx, AnalysisRequest{RuffOptions: options, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
 	if err == nil || time.Since(start) > 3*time.Second {
 		t.Fatalf("cancellation did not stop Ruff promptly: %v", err)
+	}
+}
+
+func TestRuffMissingExecutable(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		optional  bool
+		config    string
+		wantError bool
+	}{
+		{"explicit", false, "", true},
+		{"automatic discovery", true, "", false},
+		{"disabled tool", false, "tools: {ruff: false}", false},
+		{"disabled rule", false, "lint: {rules: {external: {ruff: off}}}", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			config, err := ParseConfig([]byte(tc.config))
+			if err != nil {
+				t.Fatal(err)
+			}
+			missing := filepath.Join(t.TempDir(), "missing-ruff")
+			_, err = Analyze(t.Context(), AnalysisRequest{
+				RuffOptions: &ExternalCommandOptions{Executable: &missing, Optional: tc.optional},
+				WorkingDir:  t.TempDir(),
+				Sources:     []SourceUnit{{Path: "ci.yml", Config: config, Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n")}},
+			})
+			if (err != nil) != tc.wantError {
+				t.Fatalf("error = %v, wantError %v", err, tc.wantError)
+			}
+		})
 	}
 }
 
@@ -153,7 +202,10 @@ func TestRuffSuppressionAndOverride(t *testing.T) {
 
 func TestSanitizePythonScript(t *testing.T) {
 	for _, source := range []string{"print(${{ github.sha }})", "print('${{ '}}' }}')", "print(${{\n github.sha\n}})", "print(${{ 'é' }}, missing)"} {
-		got, valid := ruff.Sanitize(source, ruffExpressionEnd)
+		got, valid, err := ruff.Sanitize(source, ruffExpressionEnd)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if !valid || strings.Contains(got, "${{") || len([]rune(got)) != len([]rune(source)) {
 			t.Fatalf("%q -> %q, %v", source, got, valid)
 		}
@@ -163,7 +215,7 @@ func TestSanitizePythonScript(t *testing.T) {
 			}
 		}
 	}
-	if _, valid := ruff.Sanitize("print(${{ missing)", ruffExpressionEnd); valid {
+	if _, valid, _ := ruff.Sanitize("print(${{ missing)", ruffExpressionEnd); valid {
 		t.Fatal("accepted malformed template")
 	}
 }
@@ -186,13 +238,66 @@ func TestRuffProcessFailures(t *testing.T) {
 		{"invalid diagnostic", `[{"code":"F821"}]`, 1, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			options := &ExternalCommandOptions{Executable: &exe, Arguments: []string{"-test.run=^TestRuffHelperProcess$"}, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=" + tc.output, "ACTIONLINT_TEST_RUFF_EXIT=" + strconv.Itoa(tc.code)}}
+			options := &ExternalCommandOptions{Executable: &exe, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=" + tc.output, "ACTIONLINT_TEST_RUFF_EXIT=" + strconv.Itoa(tc.code)}}
 			src := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
 			_, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: options, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
 			if (err != nil) != tc.failed {
 				t.Fatalf("error=%v, want failed=%v", err, tc.failed)
 			}
 		})
+	}
+}
+
+func TestRuffConfiguredFlagsAndEnvironment(t *testing.T) {
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("RUFF_OUTPUT_FILE", filepath.Join(t.TempDir(), "must-not-write.json"))
+	for _, legacy := range []bool{false, true} {
+		t.Run(strconv.FormatBool(legacy), func(t *testing.T) {
+			options := &ExternalCommandOptions{
+				Executable:  &executable,
+				Arguments:   []string{"--preview", "--exclude", "vendor/**"},
+				Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_FLAGS=1", "ACTIONLINT_TEST_RUFF_OUTPUT=[]", "RUFF_OUTPUT_FILE=explicit-output.json"},
+			}
+			command := ""
+			if legacy {
+				command = strconv.Quote(executable) + " --preview --exclude vendor/**"
+				options.Executable, options.Arguments = nil, nil
+			}
+			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print('ok')\n"
+			_, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, RuffOptions: options, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestRuffPreviewAndAmbientOutputFile(t *testing.T) {
+	command := ruffForTest(t)
+	root := t.TempDir()
+	output := writeShellcheckFixture(t, root, "output.json", "keep this content")
+	t.Setenv("RUFF_OUTPUT_FILE", output)
+	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: 'if:'\n"
+	result, err := Analyze(t.Context(), AnalysisRequest{
+		RuffOptions: &ExternalCommandOptions{Executable: &command, Arguments: []string{"--preview"}},
+		WorkingDir:  root, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Diagnostics) == 0 {
+		t.Fatal("missing syntax diagnostics")
+	}
+	for _, diagnostic := range result.Diagnostics {
+		if diagnostic.Rule != "ruff" || diagnostic.Code != "invalid-syntax" {
+			t.Fatalf("invalid preview diagnostic: %+v", diagnostic)
+		}
+	}
+	if content, err := os.ReadFile(output); err != nil || string(content) != "keep this content" {
+		t.Fatalf("ambient output file modified: %q, %v", content, err)
 	}
 }
 
