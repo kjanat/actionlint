@@ -16,7 +16,7 @@ func SupportedTargetVersions() []string {
 // Config controls isolated analysis of embedded Python scripts.
 type Config struct {
 	Enabled *bool `yaml:"enabled" jsonschema:"nullable,default=true"`
-	// TargetVersion is Ruff's Python target; omission uses py314.
+	// TargetVersion overrides the versioned Python shell target, or py314 fallback.
 	TargetVersion string `yaml:"target-version,omitempty"`
 	// Select chooses rule codes or prefixes. Omission selects F.
 	Select []string `yaml:"select,omitempty" jsonschema:"nullable"`

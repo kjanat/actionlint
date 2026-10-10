@@ -32,6 +32,59 @@ func TestRuffStatisticsRejected(t *testing.T) {
 	}
 }
 
+func TestRuffSilentRejected(t *testing.T) {
+	command := ruffForTest(t)
+	for _, flag := range []string{"--silent", "-s", "-qs"} {
+		source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+		_, err := Analyze(t.Context(), AnalysisRequest{
+			RuffOptions: &ExternalCommandOptions{Executable: &command, Arguments: []string{flag}},
+			WorkingDir:  t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},
+		})
+		if err == nil || !strings.Contains(err.Error(), "silent output is not supported") {
+			t.Fatalf("silent mode not rejected before invocation: %v", err)
+		}
+	}
+}
+
+func TestRuffOperatorTemplateSkipsOnlyItsScript(t *testing.T) {
+	command := ruffForTest(t)
+	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: |\n          if lhs ${{ '==' }} rhs: pass\n      - shell: python\n        run: print(missing)\n"
+	result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "F821" || result.Diagnostics[0].Start.Line != 10 {
+		t.Fatalf("operator template changed independent diagnostics: %+v", result.Diagnostics)
+	}
+}
+
+func TestRuffVersionedShellGrammar(t *testing.T) {
+	command := ruffForTest(t)
+	for _, tc := range []struct {
+		config     string
+		wantSyntax bool
+	}{
+		{"", true}, {"tools: {ruff: {target-version: py314}}", false},
+	} {
+		config, err := ParseConfig([]byte(tc.config))
+		if err != nil {
+			t.Fatal(err)
+		}
+		source := "on: push\ndefaults:\n  run:\n    shell: python3.9 {0}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          match 1:\n            case 1: pass\n"
+		result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Config: config}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		hasSyntax := false
+		for _, finding := range result.Diagnostics {
+			hasSyntax = hasSyntax || finding.Code == "invalid-syntax"
+		}
+		if hasSyntax != tc.wantSyntax {
+			t.Fatalf("syntax=%v, want %v; findings=%+v", hasSyntax, tc.wantSyntax, result.Diagnostics)
+		}
+	}
+}
+
 func TestRuffOutputRedirectionDoesNotWrite(t *testing.T) {
 	command := ruffForTest(t)
 	for _, option := range []string{"--output-file", "--output-file=", "-o", "-o=", "-oattached", "-qoattached"} {

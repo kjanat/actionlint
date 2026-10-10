@@ -157,7 +157,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		}
 		for name, description := range map[string]string{
 			"enabled":        "Enable Ruff analysis when the executable is available.",
-			"target-version": "Ruff Python target version; omission uses py314.",
+			"target-version": "Ruff Python target version; omission uses a supported versioned Python shell target, otherwise py314.",
 			"select":         "Ruff rule codes or prefixes to select; omission selects F.",
 			"ignore":         "Ruff rule codes or prefixes to exclude.",
 		} {

@@ -7958,8 +7958,8 @@
                           },
                           "target-version": {
                             "title": "target-version",
-                            "description": "Ruff Python target version; omission uses py314.",
-                            "markdownDescription": "Ruff Python target version; omission uses py314.",
+                            "description": "Ruff Python target version; omission uses a supported versioned Python shell target, otherwise py314.",
+                            "markdownDescription": "Ruff Python target version; omission uses a supported versioned Python shell target, otherwise py314.",
                             "oneOf": [
                               {
                                 "type": "string",
@@ -8468,8 +8468,8 @@
                 },
                 "target-version": {
                   "title": "target-version",
-                  "description": "Ruff Python target version; omission uses py314.",
-                  "markdownDescription": "Ruff Python target version; omission uses py314.",
+                  "description": "Ruff Python target version; omission uses a supported versioned Python shell target, otherwise py314.",
+                  "markdownDescription": "Ruff Python target version; omission uses a supported versioned Python shell target, otherwise py314.",
                   "oneOf": [
                     {
                       "type": "string",

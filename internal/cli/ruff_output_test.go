@@ -58,3 +58,24 @@ func TestRuffEnvironmentStatistics(t *testing.T) {
 		}
 	}
 }
+
+func TestRuffEnvironmentSilent(t *testing.T) {
+	ruff, err := exec.LookPath("ruff")
+	if err != nil {
+		t.Skip("Ruff is not installed")
+	}
+	t.Setenv("ACTIONLINT_RUFF_BIN", ruff)
+	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", "")
+	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+	for _, flags := range []string{`["--silent"]`, `["-s"]`, `["-qs"]`} {
+		t.Setenv("ACTIONLINT_RUFF_FLAGS", flags)
+		for _, args := range [][]string{{"--no-config", "-"}, {"check", "--no-config", "-"}} {
+			var stdout, stderr bytes.Buffer
+			command := Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
+			status := command.Main(append([]string{"actionlint", "--no-color"}, args...))
+			if status == 0 || !strings.Contains(stdout.String()+stderr.String(), "silent output is not supported") {
+				t.Errorf("silent mode not rejected: status=%d, stdout=%s, stderr=%s", status, &stdout, &stderr)
+			}
+		}
+	}
+}

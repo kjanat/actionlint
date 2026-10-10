@@ -3,6 +3,7 @@ package ruff
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"unicode"
@@ -75,6 +76,9 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 			strings.HasPrefix(flag, "-") && !strings.HasPrefix(flag, "--") && strings.ContainsRune(flag[1:], 'o') {
 			return fmt.Errorf("ruff output redirection is not supported for script at %s: %q", location, flag)
 		}
+		if flag == "--silent" || strings.HasPrefix(flag, "-") && !strings.HasPrefix(flag, "--") && strings.ContainsRune(flag[1:], 's') {
+			return fmt.Errorf("ruff silent output is not supported for script at %s", location)
+		}
 	}
 	source, valid, err := Sanitize(script, c.expressionEnd)
 	if err != nil {
@@ -86,6 +90,9 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 	filename, err := filepath.Abs("actionlint.py")
 	if err != nil {
 		return fmt.Errorf("ruff stdin filename for script at %s: %w", location, err)
+	}
+	if config.TargetVersion == "" {
+		config.TargetVersion = pythonShellTarget(*shell)
 	}
 	defaults := arguments(config, filename)
 	args := make([]string, 1, len(defaults)+len(c.flags))
@@ -156,6 +163,18 @@ func isPythonCommand(command string) bool {
 	return true
 }
 
+func pythonShellTarget(shell string) string {
+	command := strings.Fields(shell)[0]
+	command = command[strings.LastIndexAny(command, `/\`)+1:]
+	command = strings.TrimSuffix(strings.ToLower(command), ".exe")
+	if minor, ok := strings.CutPrefix(command, "python3."); ok {
+		if target := "py3" + minor; slices.Contains(SupportedTargetVersions(), target) {
+			return target
+		}
+	}
+	return ""
+}
+
 func arguments(config Config, filename string) []string {
 	target := config.TargetVersion
 	if target == "" {
@@ -203,7 +222,7 @@ func Sanitize(src string, expressionEnd ExpressionEnd) (string, bool, error) {
 		if state.patternCapture {
 			return "", false, nil
 		}
-		if state.quote == 0 && !state.comment && (templateTouchesPythonToken(src, start, end) || state.subscriptDepth == 0 && (state.nameRequired || templateIsAssignmentTarget(src[:start], src[end:], state.depth))) {
+		if state.quote == 0 && !state.comment && (templateTouchesPythonToken(src, start, end) || templateFollowsPythonValue(state.lastToken) || state.subscriptDepth == 0 && (state.nameRequired || templateIsAssignmentTarget(src[:start], src[end:], state.depth))) {
 			return "", false, nil
 		}
 		if state.quote == 0 && !state.comment && state.casePattern && (state.lastToken == "*" || strings.HasPrefix(strings.TrimLeft(src[end:], " \t\r\n\f"), "(")) {
@@ -247,9 +266,22 @@ func Sanitize(src string, expressionEnd ExpressionEnd) (string, bool, error) {
 			runes[0], runes[len(runes)-2], runes[len(runes)-1] = '(', '0', ')'
 		}
 		state.escaped = false
+		if state.quote == 0 && !state.comment {
+			state.lastToken = ")"
+		}
 		out.WriteString(string(runes))
 		src = src[end:]
 	}
+}
+
+func templateFollowsPythonValue(token string) bool {
+	// A template after a complete operand supplies syntax. Statement keywords
+	// can introduce a value expression.
+	switch token {
+	case "raise", "except", "with", "async", "elif", "match", "case":
+		return false
+	}
+	return pythonTokenCanBeSubscripted(token)
 }
 
 func templateTouchesPythonToken(source string, start, end int) bool {
@@ -403,7 +435,7 @@ func (s *pythonLexicalState) consumeCode(c byte) {
 			s.className = false
 		}
 	}
-	if c != ' ' && c != '\t' && c != '\r' {
+	if c != ' ' && c != '\t' && c != '\r' && !(c == '\n' && s.depth > 0) {
 		s.lastToken = string(c)
 	}
 }

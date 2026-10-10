@@ -247,7 +247,8 @@ The default selection is Ruff's `F` correctness checks. `select` and `ignore`
 accept Ruff codes or prefixes matching stable rules; preview-only selectors are
 rejected. Lists replace inherited lists. `select: []` selects
 no lint rules (Python syntax errors can still be reported). `target-version`
-defaults to `py314`; choose a target supported by the installed Ruff version.
+defaults to the version in an explicit interpreter such as `python3.9`, when
+supported by Ruff, and otherwise to `py314`. An explicit setting takes precedence.
 
 Following [Astral's actionlint integration](https://github.com/astral-sh/actionlint/blob/0141e7822652fbee3a1b878c3d83d9c1dce87d67/rule_ruff.go),
 Ruff runs in isolated, read-only mode: no repository Ruff configuration, cache,
