@@ -78,6 +78,45 @@ func TestCallerRelativeSelection(t *testing.T) {
 	}
 }
 
+func TestCallerRelativeDisplaySpelling(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(root)
+	workflow := writeShellcheckFixture(t, root, "ci.yml", commandBadWorkflow)
+	for _, path := range []string{"ci.yml", "./ci.yml", workflow} {
+		t.Run(path, func(t *testing.T) {
+			readPath := ""
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, ReadFile: func(name string) ([]byte, error) {
+				if absPath(name) == workflow {
+					readPath = name
+				}
+				return os.ReadFile(name)
+			}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := session.Files([]string{path}, nil)
+			if err != nil || result == nil || len(result.Diagnostics) == 0 {
+				t.Fatalf("missing diagnostics: %+v, %v", result, err)
+			}
+			if readPath != path {
+				t.Fatalf("reader received %q, want caller spelling %q", readPath, path)
+			}
+			want := path
+			if filepath.IsAbs(path) {
+				want = "ci.yml"
+			}
+			for _, diagnostic := range result.Diagnostics {
+				if diagnostic.Path != want {
+					t.Fatalf("diagnostic path %q, want %q", diagnostic.Path, want)
+				}
+			}
+			if !slices.Contains(result.Inputs, workflow) {
+				t.Fatalf("absolute workflow input missing: %v", result.Inputs)
+			}
+		})
+	}
+}
+
 func TestRelativeWorkingDirectorySelectionAndOverrides(t *testing.T) {
 	parent := t.TempDir()
 	t.Chdir(parent)
@@ -101,7 +140,7 @@ func TestRelativeWorkingDirectorySelectionAndOverrides(t *testing.T) {
 			t.Fatalf("workflow input did not resolve to working directory: %+v", result.Inputs)
 		}
 		for _, diagnostic := range result.Diagnostics {
-			if diagnostic.Path != filepath.Join(".github", "workflows", "ci.yml") {
+			if filepath.ToSlash(diagnostic.Path) != ".github/workflows/ci.yml" {
 				t.Fatalf("diagnostic path is not repository-relative: %+v", diagnostic)
 			}
 		}

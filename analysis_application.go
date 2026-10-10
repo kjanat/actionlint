@@ -271,7 +271,11 @@ func (a *AnalysisSession) readFiles(paths []string, project *Project, notify ...
 		if err != nil {
 			return nil, fmt.Errorf("could not read %q: %w", path, err)
 		}
-		source := a.source(a.relativePath(fullPath), content, proj)
+		displayPath := a.relativePath(fullPath)
+		if !filepath.IsAbs(path) && filepath.Clean(path) == displayPath {
+			displayPath = path
+		}
+		source := a.source(displayPath, content, proj)
 		source.inputPath = fullPath
 		sources = append(sources, source)
 	}
