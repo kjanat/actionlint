@@ -137,6 +137,9 @@ func matrixFilterTypeMismatchKnown(value, filter RawYAMLValue, valueExpressions,
 		}
 	case *RawYAMLString:
 		if filterExpressions && ContainsExpression(f.Value) {
+			if literal, known := workflowExpressionLiteral(&String{Value: f.Value}); known {
+				return matrixFilterTypeMismatchKnown(value, matrixLiteralValue(literal), valueExpressions, false, unknown)
+			}
 			return false
 		}
 		actual, ok := value.(*RawYAMLString)
