@@ -59,6 +59,22 @@ func conditionConstantValue(expr ExprNode) (any, bool) {
 		}
 		return compareConditionValues(n.Kind, left, right)
 	case *FuncCallNode:
+		if strings.EqualFold(n.Callee, "case") {
+			if len(n.Args) < 3 || len(n.Args)%2 == 0 {
+				return nil, false
+			}
+			for i := 0; i < len(n.Args)-1; i += 2 {
+				value, known := conditionConstantValue(n.Args[i])
+				predicate, boolean := value.(bool)
+				if !known || !boolean {
+					return nil, false
+				}
+				if predicate {
+					return conditionConstantValue(n.Args[i+1])
+				}
+			}
+			return conditionConstantValue(n.Args[len(n.Args)-1])
+		}
 		args := make([]any, len(n.Args))
 		for i, arg := range n.Args {
 			var ok bool

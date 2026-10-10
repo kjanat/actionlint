@@ -16,6 +16,11 @@ func TestConditionNormalization(t *testing.T) {
 		{"${{ fromJSON('false') }}", "always falsy"},
 		{"${{ 'fromJSON(''false'')' }}", "always falsy"},
 		{"${{ fromJSON('true') }}", "always truthy"},
+		{"${{ case(true, false, true) }}", "always falsy"},
+		{"${{ case(false, false, true) }}", "always truthy"},
+		{"${{ case(false, true, true, false, true) }}", "always falsy"},
+		{"${{ case(false, true, false, true, false) }}", "always falsy"},
+		{"${{ case(true, true, fromJSON('broken')) }}", "broken JSON"},
 		{`${{ contains(fromJSON('["x"]'), 'X') }}`, "always truthy"},
 		{`${{ contains(fromJSON('["x"]'), 'y') }}`, "always falsy"},
 		{`${{ fromJSON('{}') == null }}`, "always falsy"},
@@ -99,6 +104,50 @@ func TestConditionConstantOutcomes(t *testing.T) {
 			value, known := conditionConstantValue(expr)
 			if !known || expressionTruthy(value) != tc.truthy {
 				t.Fatalf("value=%v known=%v", value, known)
+			}
+		})
+	}
+}
+
+func TestConditionConstantCase(t *testing.T) {
+	for _, tc := range []struct {
+		expression string
+		value      any
+		known      bool
+	}{
+		{"case(true, false, true)", false, true},
+		{"case(false, false, true)", true, true},
+		{"case(false, 'first', true, 'second', 'fallback')", "second", true},
+		{"case(false, 'first', false, 'second', 'fallback')", "fallback", true},
+		{"case(true, 'first', true, 'second', 'fallback')", "first", true},
+		{"CASE(true, null, 1)", nil, true},
+		{"case(true, 0, 1)", float64(0), true},
+		{"case(true, '', 'fallback')", "", true},
+		{"case(true, false, inputs.fallback)", false, true},
+		{"case(false, inputs.skipped, true)", true, true},
+		{"case(true, false, inputs.predicate, inputs.value, inputs.fallback)", false, true},
+		{"case(false, fromJSON('broken'), true)", true, true},
+		{"case(true, case(false, false, true), false)", true, true},
+		{"case(inputs.predicate, false, true)", nil, false},
+		{"case(true, inputs.value, false)", nil, false},
+		{"case(false, true, inputs.fallback)", nil, false},
+		{"case(1, true, false)", nil, false},
+		{"case('false', true, false)", nil, false},
+		{"case(null, true, false)", nil, false},
+		{"case(false, true, 1, false, true)", nil, false},
+		{"case()", nil, false},
+		{"case(true)", nil, false},
+		{"case(true, false)", nil, false},
+		{"case(true, false, true, false)", nil, false},
+	} {
+		t.Run(tc.expression, func(t *testing.T) {
+			expr := parseAssignedExpression("${{ " + tc.expression + " }}")
+			if expr == nil {
+				t.Fatal("invalid fixture")
+			}
+			value, known := conditionConstantValue(expr)
+			if known != tc.known || value != tc.value {
+				t.Fatalf("value=%v known=%v, want value=%v known=%v", value, known, tc.value, tc.known)
 			}
 		})
 	}

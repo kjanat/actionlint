@@ -47,6 +47,12 @@ func TestInvocationCondition(t *testing.T) {
 		{"${{ success() && failure() }}", false, true},
 		{"true", true, true},
 		{"${{ false }}", false, true},
+		{"case(true, false, true)", false, true},
+		{"case(false, false, true)", true, true},
+		{"case(false, true, true, false, true)", false, true},
+		{"case(false, true, false, true, false)", false, true},
+		{"case(true, false, inputs.enabled)", false, true},
+		{"case(inputs.enabled, false, true)", false, false},
 		{"success()", true, true},
 		{"success() || failure()", false, false},
 		{"success() && github.event_name == 'push'", false, false},
@@ -74,6 +80,9 @@ func TestJobInvocationCondition(t *testing.T) {
 		{"!success()", false, false, false},
 		{"failure() || cancelled()", false, false, false},
 		{"success()", false, true, true},
+		{"case(true, false, true)", false, false, true},
+		{"case(true, false, true)", true, false, true},
+		{"case(false, false, true)", true, true, true},
 	} {
 		t.Run(tc.condition, func(t *testing.T) {
 			job := &Job{If: &String{Value: tc.condition}}
