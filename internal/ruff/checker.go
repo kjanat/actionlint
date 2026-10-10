@@ -6,6 +6,8 @@ import (
 	"sync"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/mattn/go-shellwords"
 )
 
 // Run schedules a command through the host's bounded, cancellable process pool.
@@ -61,8 +63,7 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 	if shell == nil || strings.Contains(*shell, "${{") {
 		return nil
 	}
-	words := strings.Fields(*shell)
-	if len(words) == 0 || !isPythonCommand(words[0]) {
+	if !isPythonShell(*shell) {
 		return nil
 	}
 	source, valid, err := Sanitize(script, c.expressionEnd)
@@ -93,6 +94,29 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		return nil
 	})
 	return nil
+}
+
+func isPythonShell(shell string) bool {
+	shell = strings.TrimSpace(shell)
+	words := strings.Fields(shell)
+	if len(words) == 0 {
+		return false
+	}
+	command := words[0]
+	if isPythonCommand(command) {
+		return true
+	}
+	name := strings.ToLower(command[strings.LastIndexAny(command, `/\`)+1:])
+	name = strings.TrimSuffix(name, ".cmd")
+	if name != "actions-shell" && name != "actions-shells" {
+		return false
+	}
+	// The documented Python adapters take the runtime first and script last.
+	parser := shellwords.NewParser()
+	parser.ParseEnv, parser.ParseBacktick = false, false
+	args, err := parser.Parse(shell[len(command):])
+	return err == nil && parser.Position < 0 && len(args) >= 2 &&
+		(args[0] == "python" || args[0] == "py") && args[len(args)-1] == "{0}"
 }
 
 func isPythonCommand(command string) bool {

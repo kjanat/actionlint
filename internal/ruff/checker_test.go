@@ -134,6 +134,51 @@ func TestVersionedPythonShells(t *testing.T) {
 	}
 }
 
+func TestActionsShellPythonModes(t *testing.T) {
+	for _, tc := range []struct {
+		shell string
+		want  bool
+	}{
+		{"actions-shell python {0}", true},
+		{"actions-shell py {0}", true},
+		{"actions-shells python {0}", true},
+		{"actions-shells py -u {0}", true},
+		{"actions-shell.cmd python {0}", true},
+		{"actions-shells.cmd py {0}", true},
+		{"/usr/local/bin/actions-shell python {0}", true},
+		{`C:\tools\actions-shells.cmd py {0}`, true},
+		{`actions-shell "python" -W "ignore::DeprecationWarning" "{0}"`, true},
+		{"\tactions-shell\t'py' -- '{0}'", true},
+		{"actions-shell rust {0}", false},
+		{"actions-shells node {0}", false},
+		{"actions-shell python3 {0}", false},
+		{"actions-shell describe python {0}", false},
+		{"actions-shell -- python {0}", false},
+		{"actions-shell python", false},
+		{"actions-shell python {0} unrelated.py", false},
+		{"other-wrapper python {0}", false},
+		{"actions-shell-helper python {0}", false},
+		{"actions-shell $RUNTIME {0}", false},
+		{"actions-shell `echo python` {0}", false},
+		{"actions-shell python {0}; echo ignored", false},
+		{"actions-shell 'python {0}", false},
+		{"actions-shell ${{ inputs.runtime }} {0}", false},
+	} {
+		t.Run(tc.shell, func(t *testing.T) {
+			called := false
+			checker := New(func([]string, string, func([]byte, error) error) {
+				called = true
+			}, func() error { return nil }, nil)
+			if err := checker.Check("print(missing)", &tc.shell, "test", Config{}, func(Diagnostic) {}); err != nil {
+				t.Fatal(err)
+			}
+			if called != tc.want {
+				t.Fatalf("checker called=%v, want %v", called, tc.want)
+			}
+		})
+	}
+}
+
 func TestCheckFailureAndAtomicDiagnostics(t *testing.T) {
 	for _, tc := range []struct {
 		output     string
