@@ -130,8 +130,14 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: { node-version-file: .node-version, package-manager-cache: false }
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+      - name: Test synchronized toolchain updates
+        run: node --test scripts/update-go-toolchain.test.mjs
       - name: Check the latest stable Go toolchain
         id: version
+        env: { GH_TOKEN: "${{ github.token }}" }
         run: |
           set -euo pipefail
           version="$(curl --fail --silent --show-error --location 'https://go.dev/VERSION?m=text' | sed -n '1p')"
@@ -139,9 +145,7 @@ jobs:
             echo "::error title=Invalid Go version::go.dev returned '${version}'"
             exit 1
           fi
-          go mod edit -toolchain="${version}"
-          sed -i -E "s/^(ARG GOLANG_VER=)[0-9]+\.[0-9]+\.[0-9]+$/\1${version#go}/" Dockerfile
-          sed -i -E "s/(--build-arg GOLANG_VER=)[0-9]+\.[0-9]+\.[0-9]+/\1${version#go}/g" CONTRIBUTING.md
+          node scripts/update-go-toolchain.mjs "${version}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
       - name: Warn when the pull request will carry no CI
         env: { UPKEEP_TOKEN: "${{ secrets.UPKEEP_TOKEN }}" }
@@ -158,10 +162,12 @@ jobs:
             go.mod
             Dockerfile
             CONTRIBUTING.md
+            flake.nix
+            flake.lock
           commit-message: "Bump Go toolchain to ${{ steps.version.outputs.version }}"
           title: "Bump Go toolchain to ${{ steps.version.outputs.version }}"
           body: |
-            Updates the preferred Go toolchain in `go.mod`, the Docker builder default, and the example in `CONTRIBUTING.md` to `${{ steps.version.outputs.version }}`. The minimum supported Go version remains unchanged.
+            Updates the preferred Go toolchain, Docker builder, contributor example, and verified Nix compiler pin to `${{ steps.version.outputs.version }}`. The minimum supported Go version remains unchanged.
 
             Created by [this Upkeep run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
           labels: |

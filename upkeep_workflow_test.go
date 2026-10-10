@@ -4,7 +4,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -15,9 +14,6 @@ import (
 func TestUpkeepGoToolchain(t *testing.T) {
 	if _, err := exec.LookPath("bash"); err != nil {
 		t.Skip("bash is required for the Ubuntu upkeep workflow")
-	}
-	if output, err := exec.CommandContext(t.Context(), "sed", "--version").Output(); err != nil || !strings.Contains(string(output), "GNU sed") {
-		t.Skip("GNU sed is required for the Ubuntu upkeep workflow")
 	}
 	data, err := os.ReadFile(".github/workflows/upkeep.yml")
 	if err != nil {
@@ -47,7 +43,7 @@ func TestUpkeepGoToolchain(t *testing.T) {
 			paths = strings.Fields(step.With.AddPaths)
 		}
 	}
-	if script == "" || !slices.Equal(paths, []string{"go.mod", "Dockerfile", "CONTRIBUTING.md"}) {
+	if script == "" || !slices.Equal(paths, []string{"go.mod", "Dockerfile", "CONTRIBUTING.md", "flake.nix", "flake.lock"}) {
 		t.Fatalf("missing update step or incomplete PR paths: %v", paths)
 	}
 	original := make(map[string]string, len(paths))
@@ -58,7 +54,6 @@ func TestUpkeepGoToolchain(t *testing.T) {
 		}
 		original[name] = string(data)
 	}
-	minimumGo := regexp.MustCompile(`(?m)^go .+$`).FindString(original["go.mod"])
 	for _, version := range []string{"go1.27.2", "go1.27.3", "go1.28.0", "go1.28rc1", "invalid"} {
 		t.Run(version, func(t *testing.T) {
 			dir := t.TempDir()
@@ -67,7 +62,15 @@ func TestUpkeepGoToolchain(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			cmd := exec.CommandContext(t.Context(), "bash", "-c", "curl() { printf '%s\\n' \"$UPKEEP_TEST_VERSION\"; }\n"+script)
+			// The Node suite exercises synchronized edits and Nix validation.
+			// Here, verify the workflow validates releases and delegates correctly.
+			stubs := `curl() { printf '%s\n' "$UPKEEP_TEST_VERSION"; }
+node() {
+  [[ "$1" == scripts/update-go-toolchain.mjs && "$2" == "$UPKEEP_TEST_VERSION" ]] || return 1
+  printf 'updater:%s\n' "$2"
+}
+`
+			cmd := exec.CommandContext(t.Context(), "bash", "-c", stubs+script)
 			cmd.Dir = dir
 			cmd.Env = append(os.Environ(), "GOTOOLCHAIN=local", "UPKEEP_TEST_VERSION="+version, "GITHUB_OUTPUT="+filepath.Join(dir, "output"))
 			output, err := cmd.CombinedOutput()
@@ -75,28 +78,16 @@ func TestUpkeepGoToolchain(t *testing.T) {
 			if (err != nil) != invalid {
 				t.Fatalf("update failed: %v\n%s", err, output)
 			}
+			if strings.Contains(string(output), "updater:"+version) == invalid {
+				t.Fatalf("unexpected updater invocation: %s", output)
+			}
 			for _, name := range paths {
 				data, err := os.ReadFile(filepath.Join(dir, name))
 				if err != nil {
 					t.Fatal(err)
 				}
-				text := string(data)
-				if invalid {
-					if text != original[name] {
-						t.Errorf("invalid version changed %s", name)
-					}
-					continue
-				}
-				want := map[string]string{
-					"go.mod":          "toolchain " + version + "\n",
-					"Dockerfile":      "ARG GOLANG_VER=" + strings.TrimPrefix(version, "go") + "\n",
-					"CONTRIBUTING.md": "--build-arg GOLANG_VER=" + strings.TrimPrefix(version, "go") + " ",
-				}[name]
-				if !strings.Contains(text, want) {
-					t.Errorf("%s is missing %q", name, want)
-				}
-				if name == "go.mod" && regexp.MustCompile(`(?m)^go .+$`).FindString(text) != minimumGo {
-					t.Error("minimum Go version changed")
+				if string(data) != original[name] {
+					t.Errorf("workflow changed %s outside the verified updater", name)
 				}
 			}
 		})

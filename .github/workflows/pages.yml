@@ -35,7 +35,7 @@ jobs:
             with: { version: latest }
       - parallel:
           - name: Install JavaScript dependencies
-            run: runner install --frozen
+            run: runner install --pm npm --no-tools --frozen
           - name: Build command manual
             run: run make:man
       - name: Build and test playground

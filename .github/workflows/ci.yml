@@ -71,7 +71,7 @@ jobs:
       - &Runner { uses: kjanat/runner@ad30f34c7352d89884b6d03febd9b16b4807ed56, with: { version: latest } } # v0.27.1
       - &Pandoc { name: Install Pandoc, uses: $/.github/actions/setup-pandoc }
       - name: Install JavaScript dependencies
-        run: runner install --frozen
+        run: runner install --pm npm --no-tools --frozen
       - name: Build command manual
         run: run make:man
       - name: Build and test playground
@@ -86,7 +86,7 @@ jobs:
       - *NodeTooling
       - *Runner
       - name: Install dependencies and test JavaScript tooling
-        run: runner install --frozen test:js
+        run: runner install --pm npm --no-tools --frozen test:js
   release-snapshot:
     name: Release snapshot
     runs-on: ubuntu-latest

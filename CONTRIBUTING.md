@@ -237,7 +237,7 @@ docker build --build-arg GOLANG_VER=1.27.2 --build-arg ALPINE_VER=3.24 -t action
 To move the defaults to newer base images:
 
 1. Pick the new tags from Docker Hub ([golang], [alpine]). `GOLANG_VER` tracks the preferred `toolchain` in `go.mod`, which CI reads through `go-version-file`. `ALPINE_VER` selects the final runtime image independently of the Go builder.
-2. Update the `ARG` defaults in `Dockerfile`, the `toolchain` in `go.mod`, and the example above together. CI and release builds use the Dockerfile defaults unless explicitly overridden.
+2. For Go, run `node scripts/update-go-toolchain.mjs go<major>.<minor>.<patch>` with Node, `gh`, and Nix available. It verifies matching Nix compilers, then updates `go.mod`, the Docker builder default, this example, and the Nix pin and lock together. If no matching Nix compiler is available, it leaves the files unchanged. Update the Alpine `ARG` separately. CI and release builds use the Dockerfile defaults unless explicitly overridden.
 3. Verify with `droast Dockerfile` and `docker build -t actionlint .`.
 4. Send the upgrade as its own pull request.
 
