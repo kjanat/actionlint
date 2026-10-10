@@ -844,7 +844,9 @@ func (rule *RuleExpression) checkExprsIn(s string, pos *Pos, quoted, checkUntrus
 		col := col + offset
 
 		ty, offsetAfter, ok := rule.checkSemantics(s, line, col, checkUntrusted, workflowKey)
-		if !ok && (!checkUntrusted || ty == nil) {
+		// Parsed expressions have a complete boundary even when semantic checks fail.
+		// Scan later interpolations for independent rules, but retain aggregate invalidity.
+		if !ok && ty == nil {
 			return nil, false
 		}
 		valid = valid && ok
