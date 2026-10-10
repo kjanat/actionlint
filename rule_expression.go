@@ -860,6 +860,10 @@ func (rule *RuleExpression) checkExprsIn(s string, pos *Pos, quoted, checkUntrus
 
 func (rule *RuleExpression) exprError(err *ExprError, lineBase, colBase int) {
 	pos := convertExprLineColToPos(err.Line, err.Column, lineBase, colBase)
+	if err.rule != "" {
+		rule.errs = append(rule.errs, errorAt(pos, err.rule, err.Message))
+		return
+	}
 	rule.Error(pos, err.Message)
 }
 

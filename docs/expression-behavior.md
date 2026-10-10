@@ -47,7 +47,7 @@ transitive: `'' == 0` and `0 == '0'` are true, but `'' == '0'` is false.
 
 Use an explicit string contract such as `flag == 'true'`, remembering that Actions
 string equality ignores case. Use `fromJSON(flag)` only when the producer supplies
-a validated JSON boolean. The opt-in [condition policies](config.md#expression-and-matrix-conditions)
+a validated JSON boolean. The opt-in [suspicious checks](config.md#stable-suspicious-rules)
 flag bare string gates and comparisons with numeric or boolean literals.
 
 ### JSON member collisions depend on parsing mode

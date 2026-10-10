@@ -1,7 +1,6 @@
 package actionlint
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 )
@@ -213,11 +212,11 @@ func TestConditionSerializationRemainsUnknown(t *testing.T) {
 	}
 }
 
-func TestConditionPolicies(t *testing.T) {
+func TestSuspiciousConditionRuleSelection(t *testing.T) {
 	const header = "on:\n  workflow_dispatch:\n    inputs:\n      text: {type: string}\n      flag: {type: boolean}\n      count: {type: number}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - id: producer\n        run: echo ok\n      - run: echo ok\n        if: "
 	for _, tc := range []struct {
-		policy, expression string
-		warn               bool
+		check, expression string
+		warn              bool
 	}{
 		{"string-conditions", "inputs.text", true},
 		{"string-conditions", "steps.producer.outputs.flag", true},
@@ -232,6 +231,7 @@ func TestConditionPolicies(t *testing.T) {
 		{"mixed-type-comparisons", "inputs.count <= 100", false},
 		{"mixed-type-comparisons", "inputs.flag == false", false},
 		{"mixed-type-comparisons", "inputs.text == 'false'", false},
+		{"case-insensitive-conditions", "github.ref == 'refs/heads/main'", true},
 		{"case-insensitive-conditions", "github.head_ref == 'release'", true},
 		{"case-insensitive-conditions", "'admin' != github.actor", true},
 		{"case-insensitive-conditions", "startsWith(github.ref, 'refs/heads/release')", true},
@@ -240,16 +240,16 @@ func TestConditionPolicies(t *testing.T) {
 		{"case-insensitive-conditions", "github.event.comment.body == 'hello'", false},
 		{"case-insensitive-conditions", "contains(fromJSON('[\"a\",\"b\"]'), github.actor)", false},
 	} {
-		for _, value := range []string{"true", "false", "null", "omitted"} {
-			t.Run(tc.policy+"/"+tc.expression+"/"+value, func(t *testing.T) {
-				config := ""
-				if value != "omitted" {
-					config = fmt.Sprintf("policy: {%s: %s}", tc.policy, value)
-				}
+		for _, config := range []string{"", "policy: {}", "policy: null", "lint: {rules: {suspicious: off}}", "lint: {rules: {suspicious: {" + tc.check + ": on}}}"} {
+			t.Run(tc.check+"/"+tc.expression+"/"+config, func(t *testing.T) {
 				errs := lintCachePolicy(t, header+"${{ "+tc.expression+" }}\n", config)
-				want := tc.warn && value == "true"
-				if want {
-					if len(errs) != 1 || !strings.Contains(errs[0].Message, "policy: "+tc.policy) {
+				if tc.warn && strings.Contains(config, ": on") {
+					want := map[string]string{
+						"string-conditions":           "bare string condition",
+						"mixed-type-comparisons":      "condition compares a string",
+						"case-insensitive-conditions": "ignores case",
+					}[tc.check]
+					if len(errs) != 1 || errs[0].Kind != tc.check || !strings.Contains(errs[0].Message, want) || strings.Contains(errs[0].Message, "policy") {
 						t.Fatal(errs)
 					}
 				} else if len(errs) != 0 {

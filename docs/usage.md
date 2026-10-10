@@ -180,6 +180,26 @@ preserves any previous report. An output file cannot replace a consumed workflow
 Logs and operational errors go to stderr. Structured output never includes ANSI
 color or terminal hyperlinks. A clean default text run stays silent.
 
+Try additional checks without changing a configuration file:
+
+```sh
+actionlint --strict
+actionlint --experimental
+actionlint check --strict --experimental
+```
+
+`--strict` selects all stable catalog rules, including non-recommended suspicious checks
+and opt-in repository policies. Explicit group and individual rule exceptions remain in effect, as do
+configured timeout bounds, permission scopes, suppression report modes and
+rule-ID/path ignores. It does not invent a
+`required-actions` list or install missing external linters. `--experimental`
+enables nursery rules while retaining individual exclusions. Strict
+mode alone does not enable nursery rules. Both switches apply after file
+overrides; `--experimental=false` clears only nursery selections. No current rules are in nursery.
+`--strict=false` removes the strict preset. Policies enabled in configuration remain active.
+Use `ACTIONLINT_STRICT=true` and `ACTIONLINT_EXPERIMENTAL=true` for equivalent
+environment defaults; explicit flags, including `false`, take precedence.
+
 `--log-level=none|info|debug` controls logging. `--summary` adds an opt-in count on
 stderr. `--quiet` suppresses logs and summaries while preserving requested results
 and errors. In JSON modes, check failures on stderr use the same result contract, with
@@ -294,8 +314,9 @@ actionlint completion powershell | Out-String | Invoke-Expression
 
 ### Ignore some errors
 
-The three cache policies support [inline exceptions](config.md#inline-cache-policy-exceptions) with a rule name and
-a reason. Place the comment on the reported line, or use `actionlint:ignore-next-line` immediately before it:
+The `cache-write-untrusted`, `cache-call-unrestricted`, and `cache-operation` rules support
+[inline exceptions](config.md#inline-cache-policy-exceptions) with a rule name and a reason.
+Place the comment on the reported line, or use `actionlint:ignore-next-line` immediately before it:
 
 ```yaml
 cache-mode: write # actionlint:ignore cache-write-untrusted -- this job runs reviewed default-branch code only

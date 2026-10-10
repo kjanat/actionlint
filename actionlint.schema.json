@@ -56,6 +56,3086 @@
         }
       ]
     },
+    "lint": {
+      "title": "lint",
+      "description": "Configures rule selection separately from repository policy.",
+      "markdownDescription": "Configures rule selection separately from repository policy.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "title": "enabled",
+              "description": "Controls lint diagnostics only, leaving other features independent.",
+              "markdownDescription": "Controls lint diagnostics only, leaving other features independent.",
+              "oneOf": [
+                {
+                  "default": true,
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "rules": {
+              "title": "rules",
+              "description": "Selects diagnostic groups, individual levels and options.",
+              "markdownDescription": "Selects diagnostic groups, individual levels and options.",
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "correctness": {
+                      "title": "correctness",
+                      "description": "Rules concerning correctness. Individual rule settings override group levels and presets.",
+                      "markdownDescription": "Rules concerning correctness. Individual rule settings override group levels and presets.",
+                      "oneOf": [
+                        {
+                          "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                          "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "default",
+                                "off",
+                                "on",
+                                "info",
+                                "warn",
+                                "error"
+                              ]
+                            },
+                            {
+                              "type": "boolean",
+                              "not": {
+                                "const": true
+                              },
+                              "doNotSuggest": true
+                            },
+                            {
+                              "type": "null",
+                              "doNotSuggest": true
+                            }
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "action": {
+                              "title": "action",
+                              "description": "Checks for popular actions released on GitHub, local actions, and action calls at \"uses:\"",
+                              "markdownDescription": "Checks for popular actions released on GitHub, local actions, and action calls at \"uses:\"",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "cache-operation": {
+                              "title": "cache-operation",
+                              "description": "Checks cache actions disabled by explicit cache access modes",
+                              "markdownDescription": "Checks cache actions disabled by explicit cache access modes",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "deprecated-commands": {
+                              "title": "deprecated-commands",
+                              "description": "Checks for deprecated \"set-output\", \"save-state\", \"set-env\", and \"add-path\" commands at \"run:\"",
+                              "markdownDescription": "Checks for deprecated \"set-output\", \"save-state\", \"set-env\", and \"add-path\" commands at \"run:\"",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "env-var": {
+                              "title": "env-var",
+                              "description": "Checks for environment variables configuration at \"env:\"",
+                              "markdownDescription": "Checks for environment variables configuration at \"env:\"",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "events": {
+                              "title": "events",
+                              "description": "Checks for workflow trigger events at \"on:\"",
+                              "markdownDescription": "Checks for workflow trigger events at \"on:\"",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "executable-bit": {
+                              "title": "executable-bit",
+                              "description": "Checks Git executable bits for directly invoked repository scripts",
+                              "markdownDescription": "Checks Git executable bits for directly invoked repository scripts",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "expression": {
+                              "title": "expression",
+                              "description": "Syntax and semantics checks for expressions embedded with ${{ }} syntax",
+                              "markdownDescription": "Syntax and semantics checks for expressions embedded with ${{ }} syntax",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "glob": {
+                              "title": "glob",
+                              "description": "Checks for glob syntax used in branch names, tags, and paths",
+                              "markdownDescription": "Checks for glob syntax used in branch names, tags, and paths",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "id": {
+                              "title": "id",
+                              "description": "Checks for duplication and naming convention of job/step IDs",
+                              "markdownDescription": "Checks for duplication and naming convention of job/step IDs",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "if-cond": {
+                              "title": "if-cond",
+                              "description": "Checks for if: conditions which are always true/false",
+                              "markdownDescription": "Checks for if: conditions which are always true/false",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "inline-suppression": {
+                              "title": "inline-suppression",
+                              "description": "Checks inline cache policy exception directives",
+                              "markdownDescription": "Checks inline cache policy exception directives",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "job-needs": {
+                              "title": "job-needs",
+                              "description": "Checks for job IDs in \"needs:\". Undefined IDs and cyclic dependencies are checked",
+                              "markdownDescription": "Checks for job IDs in \"needs:\". Undefined IDs and cyclic dependencies are checked",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "level": {
+                              "title": "level",
+                              "description": "Default diagnostic level for rules in this group.",
+                              "markdownDescription": "Default diagnostic level for rules in this group.",
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "default",
+                                    "off",
+                                    "on",
+                                    "info",
+                                    "warn",
+                                    "error"
+                                  ]
+                                },
+                                {
+                                  "type": "boolean",
+                                  "not": {
+                                    "const": true
+                                  },
+                                  "doNotSuggest": true
+                                },
+                                {
+                                  "type": "null",
+                                  "doNotSuggest": true
+                                }
+                              ]
+                            },
+                            "matrix": {
+                              "title": "matrix",
+                              "description": "Checks for matrix combinations in \"matrix:\"",
+                              "markdownDescription": "Checks for matrix combinations in \"matrix:\"",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "parallel-steps": {
+                              "title": "parallel-steps",
+                              "description": "Checks \"wait\"/\"cancel\" references to background steps and steps forbidden inside a \"parallel\" group",
+                              "markdownDescription": "Checks \"wait\"/\"cancel\" references to background steps and steps forbidden inside a \"parallel\" group",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "permissions": {
+                              "title": "permissions",
+                              "description": "Checks for permissions configuration in \"permissions:\". Permission names and permission scopes are checked",
+                              "markdownDescription": "Checks for permissions configuration in \"permissions:\". Permission names and permission scopes are checked",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "preset": {
+                              "title": "preset",
+                              "description": "Baseline selection within this group: recommended",
+                              "markdownDescription": "Baseline selection within this group: recommended",
+                              "type": "string",
+                              "enum": [
+                                "recommended",
+                                "all",
+                                "none"
+                              ]
+                            },
+                            "runner-label": {
+                              "title": "runner-label",
+                              "description": "Checks for GitHub-hosted and preset self-hosted runner labels in \"runs-on:\"",
+                              "markdownDescription": "Checks for GitHub-hosted and preset self-hosted runner labels in \"runs-on:\"",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "shell-name": {
+                              "title": "shell-name",
+                              "description": "Checks for shell names used for scripts in \"run:\"",
+                              "markdownDescription": "Checks for shell names used for scripts in \"run:\"",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "syntax-check": {
+                              "title": "syntax-check",
+                              "description": "Checks for GitHub Actions workflow syntax",
+                              "markdownDescription": "Checks for GitHub Actions workflow syntax",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "workflow-call": {
+                              "title": "workflow-call",
+                              "description": "Checks for reusable workflow calls. Inputs and outputs of called reusable workflow are checked",
+                              "markdownDescription": "Checks for reusable workflow calls. Inputs and outputs of called reusable workflow are checked",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "disable": {
+                      "title": "disable",
+                      "description": "Suppress these diagnostic rule IDs at every severity. Omission or an empty list suppresses none.",
+                      "markdownDescription": "Suppress these diagnostic rule IDs at every severity. Omission or an empty list suppresses none.",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "syntax-check",
+                          "inline-suppression",
+                          "string-conditions",
+                          "mixed-type-comparisons",
+                          "case-insensitive-conditions",
+                          "mixed-type-matrix-filters",
+                          "disallow-suppressions",
+                          "matrix",
+                          "credentials",
+                          "shell-name",
+                          "runner-label",
+                          "events",
+                          "job-needs",
+                          "parallel-steps",
+                          "action",
+                          "executable-bit",
+                          "env-var",
+                          "id",
+                          "glob",
+                          "permissions",
+                          "workflow-call",
+                          "expression",
+                          "deprecated-commands",
+                          "if-cond",
+                          "require-commit-hash",
+                          "require-job-timeout",
+                          "require-permissions",
+                          "required-actions",
+                          "cache-write-untrusted",
+                          "cache-call-unrestricted",
+                          "cache-operation",
+                          "shellcheck"
+                        ]
+                      },
+                      "oneOf": [
+                        {
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "external": {
+                      "title": "external",
+                      "description": "Rules concerning external. Individual rule settings override group levels and presets.",
+                      "markdownDescription": "Rules concerning external. Individual rule settings override group levels and presets.",
+                      "oneOf": [
+                        {
+                          "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                          "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "default",
+                                "off",
+                                "on",
+                                "info",
+                                "warn",
+                                "error"
+                              ]
+                            },
+                            {
+                              "type": "boolean",
+                              "not": {
+                                "const": true
+                              },
+                              "doNotSuggest": true
+                            },
+                            {
+                              "type": "null",
+                              "doNotSuggest": true
+                            }
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "level": {
+                              "title": "level",
+                              "description": "Default diagnostic level for rules in this group.",
+                              "markdownDescription": "Default diagnostic level for rules in this group.",
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "default",
+                                    "off",
+                                    "on",
+                                    "info",
+                                    "warn",
+                                    "error"
+                                  ]
+                                },
+                                {
+                                  "type": "boolean",
+                                  "not": {
+                                    "const": true
+                                  },
+                                  "doNotSuggest": true
+                                },
+                                {
+                                  "type": "null",
+                                  "doNotSuggest": true
+                                }
+                              ]
+                            },
+                            "preset": {
+                              "title": "preset",
+                              "description": "Baseline selection within this group: recommended",
+                              "markdownDescription": "Baseline selection within this group: recommended",
+                              "type": "string",
+                              "enum": [
+                                "recommended",
+                                "all",
+                                "none"
+                              ]
+                            },
+                            "shellcheck": {
+                              "title": "shellcheck",
+                              "description": "Checks for shell script sources in \"run:\" using shellcheck",
+                              "markdownDescription": "Checks for shell script sources in \"run:\" using shellcheck",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "nursery": {
+                      "title": "nursery",
+                      "description": "Rules concerning nursery. Individual rule settings override group levels and presets.",
+                      "markdownDescription": "Rules concerning nursery. Individual rule settings override group levels and presets.",
+                      "oneOf": [
+                        {
+                          "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                          "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "default",
+                                "off",
+                                "on",
+                                "info",
+                                "warn",
+                                "error"
+                              ]
+                            },
+                            {
+                              "type": "boolean",
+                              "not": {
+                                "const": true
+                              },
+                              "doNotSuggest": true
+                            },
+                            {
+                              "type": "null",
+                              "doNotSuggest": true
+                            }
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "level": {
+                              "title": "level",
+                              "description": "Default diagnostic level for rules in this group.",
+                              "markdownDescription": "Default diagnostic level for rules in this group.",
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "default",
+                                    "off",
+                                    "on",
+                                    "info",
+                                    "warn",
+                                    "error"
+                                  ]
+                                },
+                                {
+                                  "type": "boolean",
+                                  "not": {
+                                    "const": true
+                                  },
+                                  "doNotSuggest": true
+                                },
+                                {
+                                  "type": "null",
+                                  "doNotSuggest": true
+                                }
+                              ]
+                            },
+                            "preset": {
+                              "title": "preset",
+                              "description": "Baseline selection within this group: recommended",
+                              "markdownDescription": "Baseline selection within this group: recommended",
+                              "type": "string",
+                              "enum": [
+                                "recommended",
+                                "all",
+                                "none"
+                              ]
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "policy": {
+                      "title": "policy",
+                      "description": "Rules concerning policy. Individual rule settings override group levels and presets.",
+                      "markdownDescription": "Rules concerning policy. Individual rule settings override group levels and presets.",
+                      "oneOf": [
+                        {
+                          "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                          "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "default",
+                                "off",
+                                "on",
+                                "info",
+                                "warn",
+                                "error"
+                              ]
+                            },
+                            {
+                              "type": "boolean",
+                              "not": {
+                                "const": true
+                              },
+                              "doNotSuggest": true
+                            },
+                            {
+                              "type": "null",
+                              "doNotSuggest": true
+                            }
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "disallow-suppressions": {
+                              "title": "disallow-suppressions",
+                              "description": "Reports inline exceptions prohibited by configuration. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Reports inline exceptions prohibited by configuration. Stable; not enabled by the recommended preset.",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Validated options specific to this rule.",
+                                      "markdownDescription": "Validated options specific to this rule.",
+                                      "allOf": [
+                                        {
+                                          "type": "object"
+                                        },
+                                        {
+                                          "oneOf": [
+                                            {
+                                              "type": "boolean"
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "report": {
+                                                  "title": "report",
+                                                  "description": "Report the prohibited directive or retain original violations or both.",
+                                                  "markdownDescription": "Report the prohibited directive or retain original violations or both.",
+                                                  "default": "all",
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "suppression",
+                                                    "violation",
+                                                    "all"
+                                                  ]
+                                                },
+                                                "rules": {
+                                                  "title": "rules",
+                                                  "description": "Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules.",
+                                                  "markdownDescription": "Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules.",
+                                                  "type": "array",
+                                                  "minItems": 1,
+                                                  "items": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "cache-call-unrestricted",
+                                                      "cache-operation",
+                                                      "cache-write-untrusted"
+                                                    ]
+                                                  }
+                                                }
+                                              },
+                                              "additionalProperties": false
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "level": {
+                              "title": "level",
+                              "description": "Default diagnostic level for rules in this group.",
+                              "markdownDescription": "Default diagnostic level for rules in this group.",
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "default",
+                                    "off",
+                                    "on",
+                                    "info",
+                                    "warn",
+                                    "error"
+                                  ]
+                                },
+                                {
+                                  "type": "boolean",
+                                  "not": {
+                                    "const": true
+                                  },
+                                  "doNotSuggest": true
+                                },
+                                {
+                                  "type": "null",
+                                  "doNotSuggest": true
+                                }
+                              ]
+                            },
+                            "preset": {
+                              "title": "preset",
+                              "description": "Baseline selection within this group: recommended",
+                              "markdownDescription": "Baseline selection within this group: recommended",
+                              "type": "string",
+                              "enum": [
+                                "recommended",
+                                "all",
+                                "none"
+                              ]
+                            },
+                            "require-commit-hash": {
+                              "title": "require-commit-hash",
+                              "description": "Checks that every \"uses:\" is pinned to a full-length commit SHA or an image digest. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Checks that every \"uses:\" is pinned to a full-length commit SHA or an image digest. Stable; not enabled by the recommended preset.",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "require-job-timeout": {
+                              "title": "require-job-timeout",
+                              "description": "Checks that every job sets \"timeout-minutes:\" within the configured bounds. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Checks that every job sets \"timeout-minutes:\" within the configured bounds. Stable; not enabled by the recommended preset.",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Validated options specific to this rule.",
+                                      "markdownDescription": "Validated options specific to this rule.",
+                                      "allOf": [
+                                        {
+                                          "type": "object"
+                                        },
+                                        {
+                                          "oneOf": [
+                                            {
+                                              "type": "boolean"
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "max-minutes": {
+                                                  "title": "max-minutes",
+                                                  "description": "Largest allowed job timeout in minutes.",
+                                                  "markdownDescription": "Largest allowed job timeout in minutes.",
+                                                  "type": "number",
+                                                  "exclusiveMinimum": 0
+                                                },
+                                                "min-minutes": {
+                                                  "title": "min-minutes",
+                                                  "description": "Smallest allowed job timeout in minutes. Must not exceed max-minutes.",
+                                                  "markdownDescription": "Smallest allowed job timeout in minutes. Must not exceed max-minutes.",
+                                                  "type": "number",
+                                                  "exclusiveMinimum": 0
+                                                }
+                                              },
+                                              "additionalProperties": false
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "require-permissions": {
+                              "title": "require-permissions",
+                              "description": "Checks for an explicit permissions declaration at workflow or job scope. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Checks for an explicit permissions declaration at workflow or job scope. Stable; not enabled by the recommended preset.",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Validated options specific to this rule.",
+                                      "markdownDescription": "Validated options specific to this rule.",
+                                      "allOf": [
+                                        {
+                                          "type": "object"
+                                        },
+                                        {
+                                          "oneOf": [
+                                            {
+                                              "type": "boolean"
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "scope": {
+                                                  "title": "scope",
+                                                  "description": "Require a workflow-level declaration or a declaration on every job.",
+                                                  "markdownDescription": "Require a workflow-level declaration or a declaration on every job.",
+                                                  "default": "workflow",
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "workflow",
+                                                    "job"
+                                                  ]
+                                                }
+                                              },
+                                              "additionalProperties": false
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "required-actions": {
+                              "title": "required-actions",
+                              "description": "Checks that the actions listed in the \"required-actions\" policy in actionlint.yaml are used. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Checks that the actions listed in the \"required-actions\" policy in actionlint.yaml are used. Stable; not enabled by the recommended preset.",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Validated options specific to this rule.",
+                                      "markdownDescription": "Validated options specific to this rule.",
+                                      "allOf": [
+                                        {
+                                          "type": "object"
+                                        },
+                                        {
+                                          "description": "Configures exact actions or action/ref glob patterns. An empty selection requires nothing; presets never invent an action list.",
+                                          "markdownDescription": "Configures exact actions or action/ref glob patterns. An empty selection requires nothing; presets never invent an action list.",
+                                          "type": "object",
+                                          "required": [
+                                            "actions"
+                                          ],
+                                          "properties": {
+                                            "actions": {
+                                              "title": "actions",
+                                              "description": "Contains action names or action/ref glob patterns required by this repository.",
+                                              "markdownDescription": "Contains action names or action/ref glob patterns required by this repository.",
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              }
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "preset": {
+                      "title": "preset",
+                      "description": "Baseline selection: recommended",
+                      "markdownDescription": "Baseline selection: recommended",
+                      "type": "string",
+                      "enum": [
+                        "recommended",
+                        "all",
+                        "none"
+                      ]
+                    },
+                    "security": {
+                      "title": "security",
+                      "description": "Rules concerning security. Individual rule settings override group levels and presets.",
+                      "markdownDescription": "Rules concerning security. Individual rule settings override group levels and presets.",
+                      "oneOf": [
+                        {
+                          "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                          "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "default",
+                                "off",
+                                "on",
+                                "info",
+                                "warn",
+                                "error"
+                              ]
+                            },
+                            {
+                              "type": "boolean",
+                              "not": {
+                                "const": true
+                              },
+                              "doNotSuggest": true
+                            },
+                            {
+                              "type": "null",
+                              "doNotSuggest": true
+                            }
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "cache-call-unrestricted": {
+                              "title": "cache-call-unrestricted",
+                              "description": "Checks cache access ceilings on low-trust reusable workflow calls",
+                              "markdownDescription": "Checks cache access ceilings on low-trust reusable workflow calls",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "cache-write-untrusted": {
+                              "title": "cache-write-untrusted",
+                              "description": "Checks cache write grants on low-trust triggers",
+                              "markdownDescription": "Checks cache write grants on low-trust triggers",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "credentials": {
+                              "title": "credentials",
+                              "description": "Checks for credentials in \"services:\" configuration",
+                              "markdownDescription": "Checks for credentials in \"services:\" configuration",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "level": {
+                              "title": "level",
+                              "description": "Default diagnostic level for rules in this group.",
+                              "markdownDescription": "Default diagnostic level for rules in this group.",
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "default",
+                                    "off",
+                                    "on",
+                                    "info",
+                                    "warn",
+                                    "error"
+                                  ]
+                                },
+                                {
+                                  "type": "boolean",
+                                  "not": {
+                                    "const": true
+                                  },
+                                  "doNotSuggest": true
+                                },
+                                {
+                                  "type": "null",
+                                  "doNotSuggest": true
+                                }
+                              ]
+                            },
+                            "preset": {
+                              "title": "preset",
+                              "description": "Baseline selection within this group: recommended",
+                              "markdownDescription": "Baseline selection within this group: recommended",
+                              "type": "string",
+                              "enum": [
+                                "recommended",
+                                "all",
+                                "none"
+                              ]
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "suspicious": {
+                      "title": "suspicious",
+                      "description": "Rules concerning suspicious. Individual rule settings override group levels and presets.",
+                      "markdownDescription": "Rules concerning suspicious. Individual rule settings override group levels and presets.",
+                      "oneOf": [
+                        {
+                          "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                          "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "default",
+                                "off",
+                                "on",
+                                "info",
+                                "warn",
+                                "error"
+                              ]
+                            },
+                            {
+                              "type": "boolean",
+                              "not": {
+                                "const": true
+                              },
+                              "doNotSuggest": true
+                            },
+                            {
+                              "type": "null",
+                              "doNotSuggest": true
+                            }
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "case-insensitive-conditions": {
+                              "title": "case-insensitive-conditions",
+                              "description": "Checks identity comparisons using case-insensitive matching. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Checks identity comparisons using case-insensitive matching. Stable; not enabled by the recommended preset.",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "level": {
+                              "title": "level",
+                              "description": "Default diagnostic level for rules in this group.",
+                              "markdownDescription": "Default diagnostic level for rules in this group.",
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "default",
+                                    "off",
+                                    "on",
+                                    "info",
+                                    "warn",
+                                    "error"
+                                  ]
+                                },
+                                {
+                                  "type": "boolean",
+                                  "not": {
+                                    "const": true
+                                  },
+                                  "doNotSuggest": true
+                                },
+                                {
+                                  "type": "null",
+                                  "doNotSuggest": true
+                                }
+                              ]
+                            },
+                            "mixed-type-comparisons": {
+                              "title": "mixed-type-comparisons",
+                              "description": "Checks condition comparisons using implicit scalar coercion. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Checks condition comparisons using implicit scalar coercion. Stable; not enabled by the recommended preset.",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "mixed-type-matrix-filters": {
+                              "title": "mixed-type-matrix-filters",
+                              "description": "Checks matrix filters comparing different scalar types. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Checks matrix filters comparing different scalar types. Stable; not enabled by the recommended preset.",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "preset": {
+                              "title": "preset",
+                              "description": "Baseline selection within this group: recommended",
+                              "markdownDescription": "Baseline selection within this group: recommended",
+                              "type": "string",
+                              "enum": [
+                                "recommended",
+                                "all",
+                                "none"
+                              ]
+                            },
+                            "string-conditions": {
+                              "title": "string-conditions",
+                              "description": "Checks bare string conditions for unexpected truthiness. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Checks bare string conditions for unexpected truthiness. Stable; not enabled by the recommended preset.",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "paths": {
       "title": "paths",
       "description": "Applies configuration to workflow files matching a glob pattern.\n\nKeys are paths relative to the repository root, using `/` separators and doublestar glob syntax, for example `.github/workflows/**/*.yaml`. All matching entries apply. Each entry can set `ignore`.",
@@ -143,19 +3223,6 @@
                 }
               ]
             },
-            "case-insensitive-conditions": {
-              "title": "case-insensitive-conditions",
-              "description": "Reports identity-like string comparisons in conditions. Disabled by default.",
-              "markdownDescription": "Reports identity-like string comparisons in conditions. Disabled by default.",
-              "oneOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
             "disallow-suppressions": {
               "title": "disallow-suppressions",
               "description": "Restricts inline cache policy exceptions. `true` or `{}` reports each prohibited directive and retains its original violations. Omission, null, or false permits exceptions. Both ignore and ignore-next-line are covered equally.\n\nUse `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs. Omitted rules selects all suppressible rules; an explicit list must be nonempty. Report accepts suppression (directive only), violation (original findings only), or all (both kinds of diagnostic).",
@@ -200,32 +3267,6 @@
                       "additionalProperties": false
                     }
                   ]
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "mixed-type-comparisons": {
-              "title": "mixed-type-comparisons",
-              "description": "Reports string gates compared to numeric or boolean literals. Disabled by default.",
-              "markdownDescription": "Reports string gates compared to numeric or boolean literals. Disabled by default.",
-              "oneOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "mixed-type-matrix-filters": {
-              "title": "mixed-type-matrix-filters",
-              "description": "Reports matrix filters which rely on loose type coercion. Disabled by default.",
-              "markdownDescription": "Reports matrix filters which rely on loose type coercion. Disabled by default.",
-              "oneOf": [
-                {
-                  "type": "boolean"
                 },
                 {
                   "type": "null"
@@ -327,19 +3368,6 @@
                     "type": "string",
                     "minLength": 1
                   }
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "string-conditions": {
-              "title": "string-conditions",
-              "description": "Reports bare string-valued gates. Disabled by default.",
-              "markdownDescription": "Reports bare string-valued gates. Disabled by default.",
-              "oneOf": [
-                {
-                  "type": "boolean"
                 },
                 {
                   "type": "null"

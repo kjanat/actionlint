@@ -74,7 +74,7 @@ func (rule *RuleMatrix) checkFilterSectionTypes(matrix *Matrix, filters *MatrixC
 					mismatch = mismatch || matrixFilterTypeMismatch(candidate, assign.Value, candidateExpressions, filterExpressions)
 				}
 				if mismatch {
-					rule.Errorf(assign.Value.Pos(), "matrix filter for %q compares different or unknown scalar types using Actions loose equality; validate axis types before filtering (policy: mixed-type-matrix-filters)", key)
+					rule.errs = append(rule.errs, errorfAt(assign.Value.Pos(), "mixed-type-matrix-filters", "matrix filter for %q compares different or unknown scalar types using Actions loose equality; validate axis types before filtering", key))
 					break
 				}
 			}

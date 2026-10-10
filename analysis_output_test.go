@@ -35,13 +35,17 @@ func TestEffectiveConfigFieldCoverage(t *testing.T) {
 			if !field.IsExported() {
 				continue
 			}
-			key, _, _ := strings.Cut(field.Tag.Get("yaml"), ",")
+			key, options, _ := strings.Cut(field.Tag.Get("yaml"), ",")
 			if key == "-" {
 				continue
 			}
 			keys[key] = true
 			value, ok := values[key]
 			if !ok {
+				// Omit optional unset selections to preserve inheritance.
+				if strings.Contains(options, "omitempty") {
+					continue
+				}
 				t.Errorf("%s.%s missing from resolved configuration", typ, field.Name)
 				continue
 			}
@@ -67,5 +71,17 @@ func TestGitHubAnnotationEscaping(t *testing.T) {
 	want := "::error file=a%25%2C%3A%0D%0Ab.yml,line=2,endLine=2,col=3,endColumn=4,title=expression::bad%25%0D%0A::notice::text\n"
 	if out.String() != want {
 		t.Fatalf("annotation escaping: %q", out.String())
+	}
+}
+
+func TestGitHubAnnotationLevels(t *testing.T) {
+	for _, tc := range []struct{ severity, annotation string }{{"", "error"}, {"error", "error"}, {"warning", "warning"}, {"info", "notice"}, {"style", "notice"}} {
+		var out bytes.Buffer
+		if err := writeGitHubDiagnostics(&out, []Diagnostic{{Severity: tc.severity, Start: DiagnosticPosition{1, 1}, End: DiagnosticPosition{1, 2}}}); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.HasPrefix(out.String(), "::"+tc.annotation+" ") {
+			t.Fatal(out.String())
+		}
 	}
 }

@@ -40,7 +40,8 @@ type AnalysisRequest struct {
 	WorkingDir string
 	// ReadFile reads local action metadata and reusable workflows. Nil uses os.ReadFile.
 	// It must support concurrent calls and does not restrict external tools.
-	ReadFile func(string) ([]byte, error)
+	ReadFile    func(string) ([]byte, error)
+	RulePresets RulePresets
 }
 
 // AnalysisResult contains findings, their sources, and every local input read during analysis.
@@ -99,6 +100,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		log = &analysisLogWriter{out: log}
 	}
 	engine := &analysisEngine{ctx: ctx, shellcheck: request.ShellCheck,
+		rulePresets:        request.RulePresets,
 		shellcheckOptions:  request.ShellcheckOptions,
 		shellcheckSettings: request.ShellcheckSettings,
 		ignorePats:         request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: analysisLogger{log, level}}

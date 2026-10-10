@@ -2,8 +2,6 @@ package actionlint
 
 import "strings"
 
-func enabledPolicy(value *bool) bool { return value != nil && *value }
-
 // conditionReference accepts static dot and bracket access without guessing dynamic keys.
 func conditionReference(expr ExprNode) string {
 	switch n := expr.(type) {
@@ -52,8 +50,7 @@ func numericOrBooleanLiteral(expr ExprNode) bool {
 }
 
 func identityConditionReference(expr ExprNode) bool {
-	path := conditionReference(expr)
-	switch path {
+	switch conditionReference(expr) {
 	case "github.ref", "github.ref_name", "github.head_ref", "github.base_ref",
 		"github.actor", "github.triggering_actor", "github.event.sender.login",
 		"github.event.deployment.environment", "github.event.label.name",
@@ -67,12 +64,12 @@ func (sema *ExprSemanticsChecker) checkConditionComparison(n *CompareOpNode, lef
 	if !sema.condition {
 		return
 	}
-	if enabledPolicy(sema.policy.MixedTypeComparisons) &&
+	if sema.ruleConfig.diagnosticLevel("mixed-type-comparisons") != "off" &&
 		(conditionStringReference(n.Left, left) && numericOrBooleanLiteral(n.Right) ||
 			conditionStringReference(n.Right, right) && numericOrBooleanLiteral(n.Left)) {
-		sema.errorf(n, "condition compares a string to a number or boolean using Actions numeric coercion; compare strings explicitly or parse and validate the value with fromJSON() (policy: mixed-type-comparisons)")
+		sema.ruleError(n, "mixed-type-comparisons", "condition compares a string to a number or boolean using Actions numeric coercion; compare strings explicitly or parse and validate the value with fromJSON()")
 	}
-	if enabledPolicy(sema.policy.CaseInsensitiveConditions) && n.Kind.IsEqualityOp() {
+	if sema.ruleConfig.diagnosticLevel("case-insensitive-conditions") != "off" && n.Kind.IsEqualityOp() {
 		sema.checkIdentityComparison(n, n.Left, n.Right)
 	}
 }
@@ -81,6 +78,12 @@ func (sema *ExprSemanticsChecker) checkIdentityComparison(node, left, right Expr
 	_, leftLiteral := left.(*StringNode)
 	_, rightLiteral := right.(*StringNode)
 	if identityConditionReference(left) && rightLiteral || identityConditionReference(right) && leftLiteral {
-		sema.errorf(node, "string operation in condition ignores case; case variants of this ref, identity, label or environment also match. validate case-sensitive identities before using the result as a gate (policy: case-insensitive-conditions)")
+		sema.ruleError(node, "case-insensitive-conditions", "string operation in condition ignores case; case variants of this ref, identity, label or environment also match")
 	}
+}
+
+func (sema *ExprSemanticsChecker) ruleError(node ExprNode, name, message string) {
+	err := errorAtExpr(node, message)
+	err.rule = name
+	sema.errs = append(sema.errs, err)
 }

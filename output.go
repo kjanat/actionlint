@@ -176,7 +176,14 @@ func writeGitHubDiagnostics(out io.Writer, diagnostics []Diagnostic) error {
 		if diagnostic.Start.Line == diagnostic.End.Line {
 			position += fmt.Sprintf(",col=%d,endColumn=%d", diagnostic.Start.Column, max(diagnostic.Start.Column, diagnostic.End.Column-1))
 		}
-		if _, err := fmt.Fprintf(out, "::error file=%s,%s,title=%s::%s\n", property.Replace(diagnostic.Path), position, property.Replace(diagnostic.Rule), data.Replace(diagnostic.Message)); err != nil {
+		level := "error"
+		switch diagnostic.Severity {
+		case "warning":
+			level = "warning"
+		case "info", "style", "note":
+			level = "notice"
+		}
+		if _, err := fmt.Fprintf(out, "::%s file=%s,%s,title=%s::%s\n", level, property.Replace(diagnostic.Path), position, property.Replace(diagnostic.Rule), data.Replace(diagnostic.Message)); err != nil {
 			return err
 		}
 	}

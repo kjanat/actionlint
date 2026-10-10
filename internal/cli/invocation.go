@@ -30,6 +30,9 @@ type checkInvocation struct {
 	ShellcheckOptions *actionlint.ExternalCommandOptions
 	Verbose           bool
 	Debug             bool
+	Strict            bool
+	Experimental      bool
+	ExperimentalSet   bool
 }
 
 // renderOptions controls result presentation without changing analysis.

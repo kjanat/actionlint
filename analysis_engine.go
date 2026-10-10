@@ -19,6 +19,7 @@ type analysisEngine struct {
 	gitModes           *gitModes
 	ignorePats         IgnorePatterns
 	onRulesCreated     func([]Rule) []Rule
+	rulePresets        RulePresets
 }
 
 func (l *analysisEngine) check(
@@ -32,6 +33,7 @@ func (l *analysisEngine) check(
 	usedRules *[]Rule,
 ) ([]*Error, error) {
 	// Each call owns its rules; caches and process scheduling are shared across files.
+	cfg = l.rulePresets.apply(cfg)
 
 	var start time.Time
 	if l.logLevel >= LogLevelVerbose {
@@ -72,6 +74,11 @@ func (l *analysisEngine) check(
 		}
 		for _, descriptor := range builtinRuleDescriptors() {
 			if descriptor.build == nil {
+				continue
+			}
+			// Shared analysis passes can emit independently configured diagnostics;
+			// keep them running. Disabled external tools need not be launched.
+			if descriptor.Category == "external" && cfg.diagnosticLevel(descriptor.Name) == "off" {
 				continue
 			}
 			if descriptor.enabled != nil && !descriptor.enabled(c) {
@@ -180,7 +187,21 @@ func (l *analysisEngine) check(
 	}
 	all = nil
 	for findingPath, findings := range byPath {
-		all = append(all, l.filterErrors(findings, cfg.PathConfigs(findingPath))...)
+		findingConfig := cfg
+		findings = slices.DeleteFunc(findings, func(e *Error) bool {
+			switch findingConfig.diagnosticLevel(e.Kind) {
+			case "off":
+				return true
+			case "warn":
+				e.severity = "warning"
+			case "info":
+				e.severity = "info"
+			case "error":
+				e.severity = "error"
+			}
+			return false
+		})
+		all = append(all, l.filterErrors(findings, findingConfig.PathConfigs(findingPath))...)
 	}
 
 	diagnosticDir := l.workingDir

@@ -79,7 +79,7 @@ func TestMatrixSequenceInsertion(t *testing.T) {
 	}
 }
 
-func TestMatrixFilterTypePolicy(t *testing.T) {
+func TestSuspiciousMatrixFilterSelection(t *testing.T) {
 	for _, tc := range []struct {
 		matrix string
 		warn   bool
@@ -107,28 +107,33 @@ func TestMatrixFilterTypePolicy(t *testing.T) {
 		{`value: "${{ fromJSON(vars.AXIS) }}", exclude: [{value: linux}]`, false},
 		{`value: [linux], include: [{extra: false}]`, false},
 	} {
-		for _, enabled := range []string{"true", "false", "null"} {
-			t.Run(tc.matrix+"/"+enabled, func(t *testing.T) {
+		for _, config := range []string{"", "policy: {}", "policy: null", "lint: {rules: {suspicious: off}}", "lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"} {
+			t.Run(tc.matrix+"/"+config, func(t *testing.T) {
 				workflow, errs := Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: {" + tc.matrix + "}\n    steps:\n      - run: echo ok\n"))
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
-				cfg, err := ParseConfig([]byte("policy: {mixed-type-matrix-filters: " + enabled + "}"))
-				if err != nil {
-					t.Fatal(err)
-				}
 				rule := NewRuleMatrix()
-				rule.SetConfig(cfg)
+				if config != "" {
+					cfg, err := ParseConfig([]byte(config))
+					if err != nil {
+						t.Fatal(err)
+					}
+					rule.SetConfig(cfg)
+				}
 				if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
 					t.Fatal(err)
 				}
 				count := 0
 				for _, err := range rule.Errs() {
-					if strings.Contains(err.Message, "policy: mixed-type-matrix-filters") {
+					if strings.Contains(err.Message, "using Actions loose equality") {
+						if err.Kind != "mixed-type-matrix-filters" || strings.Contains(err.Message, "policy") {
+							t.Fatal(err)
+						}
 						count++
 					}
 				}
-				if (count == 1) != (tc.warn && enabled == "true") {
+				if (count == 1) != (tc.warn && strings.Contains(config, ": on")) {
 					t.Fatal(rule.Errs())
 				}
 			})

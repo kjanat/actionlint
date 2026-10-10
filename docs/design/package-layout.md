@@ -542,3 +542,8 @@ the top of the table carry the proof, and each is one `rg` away.
 [`rhysd/actionlint@011a6d1`]: https://github.com/rhysd/actionlint/commit/011a6d15e749bb3f2d771eed9c7aa0e7e3e10ee7
 [latest-commit]: https://proxy.golang.org/actionlint.kjanat.dev/@latest
 [latest-version]: https://proxy.golang.org/actionlint.kjanat.dev/@latest
+
+## Rule configuration internals
+
+`internal/lintconfig` owns rule levels, presets, groups, and typed-option decoding.
+The root package retains public aliases and adapters for the rule catalog and analysis engine.

@@ -40,6 +40,98 @@ top level, in `self-hosted-runner`, and in `paths` entries, with their locations
 and accepted alternatives. New inline overlays reject unknown keys. Regex and glob
 validity is checked when actionlint loads the file.
 
+## Lint rules
+
+The `lint` section owns analysis settings. Rules are grouped by concern:
+`correctness`, `suspicious`, `security`, `policy`, and `external`. The separate
+`nursery` group is reserved for rules under development. Optional stable rules
+belong to their concern groups. Formatting and LSP options are not implemented yet.
+
+```yaml
+lint:
+  enabled: true
+  rules:
+    preset: recommended
+    correctness:
+      deprecated-commands: warn
+    suspicious:
+      case-insensitive-conditions: off
+    policy:
+      require-job-timeout:
+        level: error
+        options: { max-minutes: 30 }
+```
+
+Every catalog rule accepts `off`, `on` (retain its native severity), `info`, `warn`,
+or `error`. Use `default` to reset a rule or group override to the applicable
+preset/group baseline. Empty strings are invalid. The object form requires `level` and accepts typed `options` only where
+the rule supports them. Unknown groups, rules, levels and option keys are rejected.
+For example, `require-permissions` accepts `{scope: job}`; `require-job-timeout`
+accepts timeout bounds. The generated schema describes each rule's own options.
+`actionlint rules --json` exposes each rule's concern, recommended status and
+maturity (`stable` or `nursery`) from the same catalog.
+
+Global and group `preset` values are `recommended`, `all` (all stable rules), and
+`none`. A group also accepts a level shorthand, e.g. `correctness: warn`, or
+`{level: warn, if-cond: error}`. Stable non-recommended rules are included
+by `all` or their group level, but not by `recommended`. Nursery rules need
+an explicit nursery group/rule selection or `--experimental`. `lint.enabled: false`
+suppresses all lint diagnostics. Configuration, I/O and other operational errors remain fatal.
+
+Resolution order is: existing defaults/legacy policy settings, global preset,
+CLI presets, group preset/level, individual rule settings, then explicit exclusion
+lists. `--experimental=false`
+is an explicit exclusion of nursery rules only. `--strict` selects all stable
+rules but respects group and individual exceptions. Existing top-level `policy`
+settings remain supported; `lint.rules` settings take precedence. The cache safety
+checks are classified under security (and cache-operation under correctness);
+their legacy configuration paths remain compatible.
+
+Severity is carried through JSON, SARIF and GitHub annotations. As before, the CLI
+exits nonzero for any reported finding, including warnings and informational
+findings. This change does not silently change CI exit-code behavior.
+
+The compatibility shortcut `disable` accepts any rule ID listed by `actionlint rules`. It suppresses
+that rule's errors and warnings without skipping analysis needed by other checks.
+Omission, `null` or `[]` suppresses nothing. Unknown rule IDs are rejected.
+
+### Stable suspicious rules
+
+These four rules belong to `lint.rules.suspicious`. They are stable but not
+recommended defaults. Enable them individually, set `suspicious: warn` for the
+group, select `preset: all`, or use `--strict`. Explicit `off` still wins.
+
+```yaml
+lint:
+  rules:
+    suspicious:
+      string-conditions: warn
+      mixed-type-comparisons: error
+      case-insensitive-conditions: off
+      mixed-type-matrix-filters: warn
+```
+
+| Rule                          | What it examines                                                                                                                                                                 |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `string-conditions`           | Bare known string references in job, step and snapshot conditions. Nonempty `'false'` is truthy.                                                                                 |
+| `mixed-type-comparisons`      | Known string references compared with numeric or boolean literals using loose equality/coercion.                                                                                 |
+| `case-insensitive-conditions` | Identity, branch, label and environment comparisons that ignore case.                                                                                                            |
+| `mixed-type-matrix-filters`   | Different scalar kinds in literal matrix include/exclude filters, including nested values. Boolean, number, null and string are distinct; all YAML numeric forms share one kind. |
+
+Unknown dynamic axes with boolean/numeric filters are also examined. Dynamic
+filter entries and wholly dynamic matrices remain outside that check's scope.
+See [expression behavior](expression-behavior.md) for evidence and limitations.
+
+### Nursery
+
+`lint.rules.nursery` is reserved for rules under development. It uses the same
+levels, presets and individual settings as other groups. Global `preset: all`
+and `--strict` exclude it; `nursery: {preset: all}` or `--experimental`
+selects it. `--experimental=false` disables only nursery rules, never stable
+rules. There are currently no nursery rules, so the flag currently adds none.
+The former unreleased `lint.rules.experimental` section is rejected; configure
+the four stable checks under `suspicious` instead.
+
 ## ShellCheck
 
 Use `actionlint --log-level debug` to inspect each script's selected dialect,
@@ -253,50 +345,6 @@ policy:
 Omission, `null` or `false` permits exceptions. The policy cannot exempt itself,
 enable a disabled rule or override CLI/path ignores. `all` and `suppression` report
 prohibited directives even when no underlying finding exists.
-
-### Expression and matrix conditions
-
-These checks are disabled by default. Each key accepts `true`, `false`, or `null`;
-omission and `null` leave it unset. Enable the checks individually:
-
-```yaml
-policy:
-  string-conditions: true
-  mixed-type-comparisons: true
-  case-insensitive-conditions: true
-  mixed-type-matrix-filters: true
-```
-
-`string-conditions` reports a bare string reference in a job, step, or snapshot
-condition. It covers declared string inputs, step outputs, and known event text
-fields such as `github.event.comment.body`. Every non-empty string is truthy,
-including `'false'` and `'0'`. Compare the string explicitly, or use `fromJSON()`
-when the producer guarantees a JSON boolean. Boolean inputs and explicit
-comparisons are not reported.
-
-`mixed-type-comparisons` reports string references compared with numeric or
-boolean literals in conditions, including comparisons inside larger expressions.
-Actions applies numeric coercion across these types: `'' == 0` and `'0x0' == false`
-are both true. Same-type comparisons and explicit `fromJSON()` conversions are
-not reported. Parsing alone does not validate the resulting type or range.
-
-`case-insensitive-conditions` reports `==`, `!=`, `startsWith`, `endsWith`, or
-string `contains` against a literal when the other operand is a known ref,
-actor, label name, or deployment environment. Case variants also match. This
-check does not establish an authorization vulnerability or infer the workflow's
-trust boundary. Array membership and unrelated text comparisons are not reported.
-
-`mixed-type-matrix-filters` reports differently typed scalar axis/filter values,
-or an unknown axis value filtered with a boolean or number, in literal `include`
-and `exclude` entries. It inspects nested filter properties and known literal
-`fromJSON()` axes. Dynamic filter entries and wholly dynamic matrices are outside
-its scope. Matrix filtering uses Actions loose equality, including case-insensitive
-string comparison; it does not require structural identity.
-
-Condition policy findings use the `expression` rule ID and matrix policy findings
-use `matrix`; each message names its policy key. Existing correctness diagnostics
-remain active regardless of these settings. See [expression behavior](expression-behavior.md)
-for examples and evidence limitations.
 
 ### require-commit-hash
 
