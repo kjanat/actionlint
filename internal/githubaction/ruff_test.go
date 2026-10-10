@@ -24,5 +24,11 @@ func TestRuffActionInput(t *testing.T) {
 		if tc.code == 1 && !strings.Contains(out.String(), "F821") {
 			t.Fatal(&out)
 		}
+		if tc.input == "true" && !strings.Contains(out.String(), "(requested tools: ruff)") {
+			t.Fatalf("missing requested Ruff status: %s", &out)
+		}
+		if tc.input == "false" && !strings.Contains(out.String(), "(external linters disabled)") {
+			t.Fatalf("incorrect disabled-tool status: %s", &out)
+		}
 	}
 }
