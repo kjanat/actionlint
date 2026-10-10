@@ -18,6 +18,7 @@ npm                           = "12.0.2"
 "github:microsoft/TypeScript" = { prefix = "7" }
 "github:rhysd/actionlint"     = { version = "latest", depends = ["shellcheck"] }
 "github:tombi-toml/tombi"     = { prefix = "1.8" }
+"npm:yaml-language-server"    = { prefix = "1.25" }
 
 [tools."github:kjanat/dprint"]
 version = "0.59.0-kjanat"
