@@ -146,8 +146,8 @@ winget:
     release_notes: "{{ .Changelog }}"
     release_notes_url: "https://github.com/kjanat/actionlint/releases/tag/{{ .Tag }}"
     installation_notes: >-
-      ShellCheck and pyflakes are optional; when installed, actionlint can use them
-      to check shell and Python scripts in workflow run steps.
+      ShellCheck is optional; when installed, actionlint can use it
+      to check shell scripts in workflow run steps.
     tags: [actionlint, github-actions, workflow, linter, static-analysis, yaml, ci]
     ids: [windows]
     goamd64: v1
@@ -193,7 +193,6 @@ aurs:
     conflicts: [actionlint, actionlint-bin, actionlint-git, actionlint-kjanat]
     optdepends:
       - "shellcheck: check shell scripts in run steps"
-      - "python-pyflakes: check Python scripts in run steps"
     package: |-
       install -Dm0755 actionlint "${pkgdir}/usr/bin/actionlint"
       install -Dm0644 LICENSE.txt "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.txt"
@@ -237,7 +236,6 @@ aur_sources:
     makedepends: [go, git]
     optdepends:
       - "shellcheck: check shell scripts in run steps"
-      - "python-pyflakes: check Python scripts in run steps"
     prepare: |-
       cd "actionlint-${pkgver}"
       go mod download

@@ -7,6 +7,21 @@ import { dirname, join, resolve } from 'node:path';
 
 import { collectAssets, publishManifests } from './release-assets.mjs';
 
+test('release preparation verifies supported external tools without installing retired checkers', async () => {
+	const workflow = await readFile(new URL('../.github/workflows/release-prepare.yml', import.meta.url), 'utf8');
+	assert.doesNotMatch(workflow, /pyflakes/i);
+	assert.doesNotMatch(workflow, /setup-uv@/);
+	assert.match(workflow, /uses: \$\/\.github\/actions\/setup-shellcheck/);
+	assert.equal([...workflow.matchAll(/^\s+shellcheck --version$/gm)].length, 2);
+});
+
+test('generated package sources recommend the supported shell checker', async () => {
+	const config = await readFile(new URL('../.goreleaser.yaml', import.meta.url), 'utf8');
+	assert.doesNotMatch(config, /pyflakes/i);
+	assert.match(config, /ShellCheck\b/);
+	assert.equal([...config.matchAll(/shellcheck: check shell scripts in run steps/g)].length, 2);
+});
+
 /** @param {import('node:test').TestContext} t */
 async function fixture(t) {
 	const tempRoot = resolve(tmpdir());
