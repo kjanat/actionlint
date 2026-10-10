@@ -28,13 +28,19 @@ func ruffForTest(t *testing.T) string {
 func TestRuffPythonScripts(t *testing.T) {
 	command := ruffForTest(t)
 	for _, tc := range []struct {
-		name, defaults, job, shell, script, config string
-		count                                      int
+		name, defaults, job, shell, script, config, runner string
+		count                                              int
 	}{
 		{name: "undefined", shell: "python", script: "print(missing)", count: 1},
 		{name: "syntax", shell: "python", script: "if:", count: 2},
 		{name: "empty selection", shell: "python", script: "print(missing)", config: "tools: {ruff: {select: []}}"},
 		{name: "custom python", shell: "python -u {0}", script: "print(missing)", count: 1},
+		{name: "Windows py launcher", runner: "windows-latest", shell: "py {0}", script: "print(missing)", count: 1},
+		{name: "Windows py launcher flags", runner: "windows-latest", shell: "py -3 -u {0}", script: "print(missing)", count: 1},
+		{name: "Windows py executable", runner: "windows-latest", shell: "py.exe {0}", script: "print(missing)", count: 1},
+		{name: "Windows py executable path", runner: "windows-latest", shell: `C:\Windows\py.exe {0}`, script: "print(missing)", count: 1},
+		{name: "Windows py workflow default", runner: "windows-latest", defaults: "defaults: {run: {shell: 'py {0}'}}\n", script: "print(missing)", count: 1},
+		{name: "Windows py job default", runner: "windows-latest", job: "    defaults: {run: {shell: 'py {0}'}}\n", script: "print(missing)", count: 1},
 		{name: "versioned python", shell: "python3.12 {0}", script: "print(missing)", count: 1},
 		{name: "versioned python path", shell: "/usr/bin/python3.13 -u {0}", script: "print(missing)", count: 1},
 		{name: "actions shell python", shell: "actions-shell python {0}", script: "print(missing)", count: 1},
@@ -77,7 +83,11 @@ func TestRuffPythonScripts(t *testing.T) {
 		{name: "disabled rule", shell: "python", script: "print(missing)", config: "lint: {rules: {external: {ruff: off}}}"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			src := "on: push\n" + tc.defaults + "jobs:\n  test:\n    runs-on: ubuntu-latest\n" + tc.job + "    steps:\n      - run: |\n          " + strings.ReplaceAll(tc.script, "\n", "\n          ") + "\n"
+			runner := tc.runner
+			if runner == "" {
+				runner = "ubuntu-latest"
+			}
+			src := "on: push\n" + tc.defaults + "jobs:\n  test:\n    runs-on: " + runner + "\n" + tc.job + "    steps:\n      - run: |\n          " + strings.ReplaceAll(tc.script, "\n", "\n          ") + "\n"
 			if tc.shell != "" {
 				src += "        shell: " + tc.shell + "\n"
 			}

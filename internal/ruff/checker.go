@@ -219,7 +219,7 @@ func isPythonShell(shell string) bool {
 func isPythonCommand(command string) bool {
 	command = command[strings.LastIndexAny(command, `/\`)+1:]
 	command = strings.TrimSuffix(strings.ToLower(command), ".exe")
-	if command == "python" || command == "python3" {
+	if command == "python" || command == "python3" || command == "py" {
 		return true
 	}
 	minor, ok := strings.CutPrefix(command, "python3.")
