@@ -1,5 +1,7 @@
 package actionlint
 
+import "actionlint.kjanat.dev/internal/ruff"
+
 // ruleDescriptor supplies metadata to both rule instances and frontend discovery.
 type ruleDescriptor struct {
 	Name        string `json:"name"`
@@ -14,6 +16,8 @@ type ruleDescriptor struct {
 type ruleContext struct {
 	ruff                    string
 	ruffOptions             *ExternalCommandOptions
+	ruffCompatibility       *ruff.Compatibility
+	ruffWarning             func(error)
 	path                    string
 	config                  *Config
 	projectConfig           *Config

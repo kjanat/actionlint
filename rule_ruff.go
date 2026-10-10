@@ -19,6 +19,13 @@ func newRuffRule(c ruleContext) (*ruffRule, error) {
 	cmd.unsetEnv = ruff.UnsetEnvironment()
 	checker := ruff.New(cmd.run, cmd.wait, ruffExpressionEnd, flags...)
 	checker.WorkingDirectory(cmd.dir)
+	if c.ruffOptions != nil && c.ruffOptions.Optional {
+		compatibility := c.ruffCompatibility
+		if compatibility == nil {
+			compatibility = &ruff.Compatibility{}
+		}
+		checker.OptionalVersion(compatibility, c.process.ctx, c.ruffWarning)
+	}
 	return &ruffRule{RuleBase: builtinRuleBase("ruff"), checker: checker}, nil
 }
 

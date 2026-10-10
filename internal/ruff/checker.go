@@ -1,6 +1,7 @@
 package ruff
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -30,6 +31,7 @@ type Checker struct {
 	expressionEnd           ExpressionEnd
 	flags                   []string
 	workingDirectory        string
+	beforeCheck             func() (bool, error)
 	workflowShell, jobShell *string
 	mu                      sync.Mutex
 }
@@ -43,11 +45,18 @@ func New(run Run, wait func() error, expressionEnd ExpressionEnd, flags ...strin
 func (c *Checker) Fork() *Checker {
 	child := New(c.run, c.wait, c.expressionEnd, c.flags...)
 	child.workingDirectory = c.workingDirectory
+	child.beforeCheck = c.beforeCheck
 	return child
 }
 
 // WorkingDirectory sets the child process directory used for its stdin filename.
 func (c *Checker) WorkingDirectory(directory string) { c.workingDirectory = directory }
+
+// OptionalVersion skips incompatible automatically discovered executables.
+// Explicit commands retain their configured invocation contract.
+func (c *Checker) OptionalVersion(check *Compatibility, ctx context.Context, warning func(error)) {
+	c.beforeCheck = func() (bool, error) { return check.available(ctx, c.run, c.wait, warning) }
+}
 
 // UnsetEnvironment identifies ambient settings that bypass the stdout protocol.
 // They must be removed after applying explicit child environment overrides too.
@@ -119,6 +128,11 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 	}
 	if !valid {
 		return nil
+	}
+	if c.beforeCheck != nil {
+		if available, err := c.beforeCheck(); err != nil || !available {
+			return err
+		}
 	}
 	directory := c.workingDirectory
 	if directory == "" {

@@ -7,11 +7,14 @@ import (
 	"path/filepath"
 	"slices"
 	"time"
+
+	"actionlint.kjanat.dev/internal/ruff"
 )
 
 type analysisEngine struct {
-	ruff        string
-	ruffOptions *ExternalCommandOptions
+	ruff              string
+	ruffOptions       *ExternalCommandOptions
+	ruffCompatibility ruff.Compatibility
 	analysisLogger
 	ctx                context.Context
 	shellcheck         string
@@ -86,6 +89,12 @@ func (l *analysisEngine) check(
 		c := ruleContext{path: path, config: cfg, actions: localActions, workflows: localReusableWorkflows, process: proc, shellcheck: l.shellcheck}
 		c.projectConfig = projectConfig
 		c.ruff, c.ruffOptions = l.ruff, l.ruffOptions
+		c.ruffCompatibility = &l.ruffCompatibility
+		c.ruffWarning = func(err error) {
+			if l.logOut != nil {
+				_, _ = fmt.Fprintln(l.logOut, "warning: skipping automatically discovered Ruff:", err)
+			}
+		}
 		c.shellcheckOptions = l.shellcheckOptions
 		c.shellcheckSettings = l.shellcheckSettings
 		c.workingDir, c.inputs = l.workingDir, l.inputs
