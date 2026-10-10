@@ -28,12 +28,13 @@ func TestRuffLauncherArguments(t *testing.T) {
 		if err := os.WriteFile(tool, data, 0o700); err != nil {
 			t.Fatal(err)
 		}
-		prefix := []string{"ruff"}
-		if launcher == "env" {
+		var prefix []string
+		switch launcher {
+		case "env":
 			prefix = []string{"NAME=--silent", "ruff"}
-		} else if launcher == "uvx-pinned" {
+		case "uvx-pinned":
 			prefix = []string{"ruff@0.17.0"}
-		} else {
+		default:
 			prefix = []string{"--from", "ruff", "--no-cache", "ruff"}
 		}
 		encoded, err := json.Marshal(prefix)
@@ -50,9 +51,10 @@ func TestRuffLauncherArguments(t *testing.T) {
 				options := &ExternalCommandOptions{Executable: &tool, Optional: optional, Arguments: args, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_PREFIX=" + string(encoded), "ACTIONLINT_TEST_RUFF_CALLS=" + calls}}
 				input := source
 				var config *Config
-				if disabled == "shell" {
+				switch disabled {
+				case "shell":
 					input = strings.Replace(source, "shell: python", "shell: bash", 1)
-				} else if disabled == "config" {
+				case "config":
 					config, err = ParseConfig([]byte("tools: {ruff: false}"))
 					if err != nil {
 						t.Fatal(err)
@@ -79,9 +81,11 @@ func TestRuffLauncherArguments(t *testing.T) {
 						options.Executable = &tool
 						options.Arguments = append(append([]string(nil), prefix...), flags...)
 					} else {
+						words := []string{command}
 						for _, arg := range prefix {
-							command += " " + strconv.Quote(arg)
+							words = append(words, strconv.Quote(arg))
 						}
+						command = strings.Join(words, " ")
 						options.Arguments = flags
 					}
 					options.Optional = true
