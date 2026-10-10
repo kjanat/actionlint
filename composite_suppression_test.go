@@ -42,7 +42,7 @@ func TestLocalActionSuppressionDiagnosticLevels(t *testing.T) {
 					t.Fatalf("want %v, got %+v", want, result.Diagnostics)
 				}
 				for _, diagnostic := range result.Diagnostics {
-					if severity, exists := want[diagnostic.Path]; !exists || diagnostic.Rule != tc.rule || string(diagnostic.Severity) != severity {
+					if severity, exists := want[diagnostic.Path]; !exists || diagnostic.Rule != tc.rule || diagnostic.Severity != severity {
 						t.Fatalf("want %v for %s, got %+v", want, tc.rule, diagnostic)
 					}
 				}
