@@ -100,9 +100,6 @@ func (a *action) emitStatus(code int, problemCount string, fileCount int, fileCo
 	if in.shellcheck {
 		integrations = append(integrations, "shellcheck")
 	}
-	if in.pyflakes {
-		integrations = append(integrations, "pyflakes")
-	}
 	if len(integrations) == 0 {
 		integrations = append(integrations, "external linters disabled")
 	} else {

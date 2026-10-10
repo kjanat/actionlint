@@ -61,7 +61,6 @@ runCommand "actionlint-nix-integration"
     set -e
     test "$status" -eq 1
     grep -F 'SC2086' diagnostics.txt
-    grep -F "undefined name 'undefined_name'" diagnostics.txt
 
     touch "$out"
   ''

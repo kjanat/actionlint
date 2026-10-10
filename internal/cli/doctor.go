@@ -39,7 +39,7 @@ func writeDoctor(out io.Writer, req doctorRequest) error {
 	for _, item := range []struct {
 		name, command string
 		options       *actionlint.ExternalCommandOptions
-	}{{"shellcheck", req.ShellCheck, req.ShellcheckOptions}, {"pyflakes", req.Pyflakes, req.PyflakesOptions}} {
+	}{{"shellcheck", req.ShellCheck, req.ShellcheckOptions}} {
 		if item.options != nil && item.options.Executable != nil {
 			item.command = *item.options.Executable
 		}

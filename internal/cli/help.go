@@ -167,7 +167,7 @@ func (a *commandApp) legacyHelp(c *cobra.Command) {
   -verbose / -debug       --log-level=info / --log-level=debug
   -color / -no-color      boolean options on the root; no-color wins
   -shellcheck COMMAND     unchanged; an empty value disables ShellCheck
-  -pyflakes COMMAND       unchanged; an empty value disables Pyflakes
+  -pyflakes COMMAND       deprecated and ignored; Python linting was removed
   -stdin-filename PATH    unchanged
 
 Root parsing stops at the first filename. -- ends option parsing.

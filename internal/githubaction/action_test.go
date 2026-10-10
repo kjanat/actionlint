@@ -122,7 +122,7 @@ func TestActionReportsSuccess(t *testing.T) {
 		}
 	}
 	wantLog := fmt.Sprintf(
-		"actionlint %s: 0 problems in 0 workflow files (requested tools: shellcheck, pyflakes)\n",
+		"actionlint %s: 0 problems in 0 workflow files (requested tools: shellcheck)\n",
 		actionVersion(),
 	) + "::stop-commands::DELIM\n" + want["output"] + "\n::DELIM::\n"
 	if run.stdout != wantLog {
@@ -131,8 +131,8 @@ func TestActionReportsSuccess(t *testing.T) {
 	if recorder.req.workingDir != workspace {
 		t.Errorf("wanted the workspace as the working directory but got %q", recorder.req.workingDir)
 	}
-	if recorder.req.shellcheck != "shellcheck" || recorder.req.pyflakes != "pyflakes" {
-		t.Errorf("wanted both external commands enabled but got %#v", recorder.req)
+	if recorder.req.shellcheck != "shellcheck" {
+		t.Errorf("wanted ShellCheck enabled but got %#v", recorder.req)
 	}
 	if recorder.req.format != formatJSON {
 		t.Errorf("wanted the JSON format but got %q", recorder.req.format)
@@ -151,7 +151,7 @@ func TestActionReportsProblems(t *testing.T) {
 		t.Errorf("wanted a single problem but got %#v", run.outputs)
 	}
 	want := fmt.Sprintf(
-		"actionlint %s: 1 problem in 1 workflow file (requested tools: shellcheck, pyflakes)\n",
+		"actionlint %s: 1 problem in 1 workflow file (requested tools: shellcheck)\n",
 		actionVersion(),
 	) + "::error file=w.yaml,line=4,col=14,endColumn=21,title=actionlint (k)::m%0A%0A    runs-on: \"a<b>&c\"%0A             ^~~~~~~~\n"
 	if run.stdout != want {
@@ -184,7 +184,7 @@ func TestActionReportsFailure(t *testing.T) {
 		t.Errorf("wanted a failure without a problem count but got %#v", run.outputs)
 	}
 	want := fmt.Sprintf(
-		"actionlint %s: failed with unknown problems while checking 1 workflow file (requested tools: shellcheck, pyflakes)\n",
+		"actionlint %s: failed with unknown problems while checking 1 workflow file (requested tools: shellcheck)\n",
 		actionVersion(),
 	) + "::error title=actionlint failed::could not read \"w.yaml\"%0A\n"
 	if run.stdout != want {
@@ -198,7 +198,7 @@ func TestActionReportsUnknownWorkflowFileCount(t *testing.T) {
 		"", "json", "", "", "true", "true", ".", "", "true")
 
 	want := fmt.Sprintf(
-		"actionlint %s: failed with unknown problems while checking unknown workflow files (requested tools: shellcheck, pyflakes)\n",
+		"actionlint %s: failed with unknown problems while checking unknown workflow files (requested tools: shellcheck)\n",
 		actionVersion(),
 	)
 	if !strings.HasPrefix(run.stdout, want) {
@@ -221,7 +221,7 @@ func TestActionReportsStatusBeforeResultPersistenceFailure(t *testing.T) {
 		t.Errorf("wanted exit code %d but got %d", actionlint.ExitStatusFailure, run.code)
 	}
 	want := fmt.Sprintf(
-		"actionlint %s: 0 problems in 0 workflow files (requested tools: shellcheck, pyflakes)\n",
+		"actionlint %s: 0 problems in 0 workflow files (requested tools: shellcheck)\n",
 		actionVersion(),
 	)
 	if !strings.HasPrefix(run.stdout, want) {
@@ -337,8 +337,8 @@ func TestActionPassesInputsToLinter(t *testing.T) {
 	if strings.Join(req.ignore, "|") != "first|second" {
 		t.Errorf("wanted both ignore patterns but got %#v", req.ignore)
 	}
-	if req.shellcheck != "" || req.pyflakes != "" {
-		t.Errorf("wanted both external commands disabled but got %#v", req)
+	if req.shellcheck != "" {
+		t.Errorf("wanted ShellCheck disabled but got %#v", req)
 	}
 	if req.format != formatSARIF {
 		t.Errorf("wanted the SARIF format but got %q", req.format)

@@ -26,14 +26,16 @@ type SourceUnit struct {
 
 // AnalysisRequest contains resolved sources and analysis settings.
 type AnalysisRequest struct {
-	Sources            []SourceUnit
-	ShellCheck         string
+	Sources    []SourceUnit
+	ShellCheck string
+	// Deprecated: Pyflakes integration was removed. This field is ignored.
 	Pyflakes           string
 	ShellcheckOptions  *ExternalCommandOptions
 	ShellcheckSettings *ShellcheckSettings
-	PyflakesOptions    *ExternalCommandOptions
-	IgnorePatterns     IgnorePatterns
-	OnRulesCreated     func([]Rule) []Rule
+	// Deprecated: Pyflakes integration was removed. This field is ignored.
+	PyflakesOptions *ExternalCommandOptions
+	IgnorePatterns  IgnorePatterns
+	OnRulesCreated  func([]Rule) []Rule
 	// WorkingDir resolves workflow paths in reusable-workflow caches. Empty uses os.Getwd.
 	WorkingDir string
 	// ReadFile reads local action metadata and reusable workflows. Nil uses os.ReadFile.
@@ -96,8 +98,8 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	if level != LogLevelNone {
 		log = &analysisLogWriter{out: log}
 	}
-	engine := &analysisEngine{ctx: ctx, shellcheck: request.ShellCheck, pyflakes: request.Pyflakes,
-		shellcheckOptions: request.ShellcheckOptions, pyflakesOptions: request.PyflakesOptions,
+	engine := &analysisEngine{ctx: ctx, shellcheck: request.ShellCheck,
+		shellcheckOptions:  request.ShellcheckOptions,
 		shellcheckSettings: request.ShellcheckSettings,
 		ignorePats:         request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: analysisLogger{log, level}}
 	inputs := &inputFiles{}

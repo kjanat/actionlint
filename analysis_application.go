@@ -25,18 +25,20 @@ type AnalysisOptions struct {
 	// SkipProjectConfig disables per-project config reads; ConfigFile still applies.
 	SkipProjectConfig bool
 	// QuietSelection suppresses the legacy file-selection and completion log messages.
-	QuietSelection     bool
-	Shellcheck         string
+	QuietSelection bool
+	Shellcheck     string
+	// Deprecated: Pyflakes integration was removed. This field is ignored.
 	Pyflakes           string
 	ShellcheckOptions  *ExternalCommandOptions
 	ShellcheckSettings *ShellcheckSettings
-	PyflakesOptions    *ExternalCommandOptions
-	IgnorePatterns     []string
-	Verbose            bool
-	Debug              bool
-	LogWriter          io.Writer
-	OnRulesCreated     func([]Rule) []Rule
-	OnFilesSelected    func([]string)
+	// Deprecated: Pyflakes integration was removed. This field is ignored.
+	PyflakesOptions *ExternalCommandOptions
+	IgnorePatterns  []string
+	Verbose         bool
+	Debug           bool
+	LogWriter       io.Writer
+	OnRulesCreated  func([]Rule) []Rule
+	OnFilesSelected func([]string)
 	// ReadFile reads workflows, local action metadata, reusable workflows, and config.
 	// It must support concurrent calls. Nil uses os.ReadFile.
 	// This does not restrict filesystem access by external tools.
@@ -103,7 +105,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 		stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected,
 		readFile:       opts.ReadFile,
 		logSelection:   !opts.QuietSelection,
-		request:        AnalysisRequest{ShellCheck: opts.Shellcheck, Pyflakes: opts.Pyflakes, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, PyflakesOptions: opts.PyflakesOptions, OnRulesCreated: opts.OnRulesCreated},
+		request:        AnalysisRequest{ShellCheck: opts.Shellcheck, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, OnRulesCreated: opts.OnRulesCreated},
 		analysisLogger: analysisLogger{logOut: opts.LogWriter},
 	}
 	if a.ctx == nil {

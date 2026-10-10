@@ -161,8 +161,6 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string, actions *Lo
 		compositeCheckoutPaths(scoped, actions)
 		compositeActionOrigin(&scoped.paths, call, actionPath)
 		child = scoped
-	case *RulePyflakes:
-		child = newRulePyflakes(rule.cmd)
 	case *RuleExecutableBit:
 		child = rule.forkComposite(call, actionPath, actions)
 	default:

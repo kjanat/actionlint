@@ -3,7 +3,7 @@
 name: actionlint by @kjanat
 description: >-
   Static-check GitHub Actions workflow files with actionlint,
-  ShellCheck, and pyflakes.
+  and ShellCheck.
 inputs:
   version:
     description: Exact actionlint release version, optionally prefixed with v. Defaults to this Action's version; overrides version-file.
@@ -64,9 +64,9 @@ inputs:
     required: false
     default: ""
   pyflakes:
-    description: Run pyflakes for Python scripts in workflow steps.
+    description: "Deprecated and ignored: Python script linting has been removed."
     required: false
-    default: "true"
+    default: "false"
   add-actionlint-to-path:
     description: Make actionlint available on PATH for subsequent steps in this job.
     required: false
@@ -76,9 +76,9 @@ inputs:
     required: false
     default: "true"
   add-pyflakes-to-path:
-    description: Make pyflakes available on PATH for subsequent steps when pyflakes is enabled.
+    description: "Deprecated and ignored: Pyflakes is no longer installed."
     required: false
-    default: "true"
+    default: "false"
   working-directory:
     description: Directory to lint, absolute or relative to the repository workspace.
     required: false

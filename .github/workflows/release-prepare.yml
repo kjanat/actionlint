@@ -42,8 +42,6 @@ jobs:
           - uses: &SetupNode actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
             with: &Node24 { node-version: "24", package-manager-cache: false }
           - uses: $/.github/actions/setup-shellcheck
-          - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-            with: { enable-cache: false }
       - name: Check pinned go-shellcheck version
         uses: $/.github/actions/shellcheck-versions
         with: { fail-on-outdated: true }
@@ -51,7 +49,6 @@ jobs:
         run: |
           go run ./scripts/bump-version -check
           go run ./scripts/bump-version -notes "v${VERSION}" > "${RUNNER_TEMP}/release-notes.md"
-          uv tool install pyflakes
           go test ./...
           npm ci --ignore-scripts
           npm run typecheck --workspace actionlint-action
@@ -151,7 +148,6 @@ jobs:
           node scripts/check-action-outputs.mjs
           actionlint -version
           shellcheck --version
-          pyflakes --version
       - name: Verify Windows command resolution
         if: runner.os == 'Windows'
         shell: pwsh
@@ -159,8 +155,6 @@ jobs:
           actionlint -version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           shellcheck --version
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          pyflakes --version
           exit $LASTEXITCODE
   container:
     name: Build and test candidate container (${{ matrix.target }})

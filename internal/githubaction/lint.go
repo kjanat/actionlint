@@ -23,14 +23,12 @@ type lintRequest struct {
 	ctx                context.Context
 	shellcheckOptions  *actionlint.ExternalCommandOptions
 	shellcheckSettings *actionlint.ShellcheckSettings
-	pyflakesOptions    *actionlint.ExternalCommandOptions
 	workingDir         string
 	workspaceDir       string
 	configFile         string
 	overlays           []actionlint.ConfigOverlay
 	ignore             []string
 	shellcheck         string
-	pyflakes           string
 	format             outputFormat
 	sarif              bool
 	files              []string
@@ -65,13 +63,6 @@ func (req *lintRequest) configureEnvironment(env func(string) string) error {
 	if command := env("ACTIONLINT_SHELLCHECK_COMMAND"); req.shellcheck != "" && command != "" {
 		req.shellcheckOptions = &actionlint.ExternalCommandOptions{Executable: &command}
 	}
-	if command := env("ACTIONLINT_PYFLAKES_COMMAND"); req.pyflakes != "" && command != "" {
-		req.pyflakesOptions = &actionlint.ExternalCommandOptions{Executable: &command}
-	}
-	python, script := env("ACTIONLINT_PYTHON"), env("ACTIONLINT_PYFLAKES_SCRIPT")
-	if req.pyflakes != "" && python != "" && script != "" {
-		req.pyflakesOptions = &actionlint.ExternalCommandOptions{Executable: &python, Arguments: []string{"-I", script}}
-	}
 	return nil
 }
 
@@ -88,9 +79,6 @@ func buildRequest(in *inputs, workspaceDir, workingDir string) *lintRequest {
 	if in.shellcheck {
 		req.shellcheck = "shellcheck"
 	}
-	if in.pyflakes {
-		req.pyflakes = "pyflakes"
-	}
 	req.files = in.files
 	return req
 }
@@ -106,9 +94,7 @@ func runLinter(req *lintRequest) *lintResult {
 		Context:            req.ctx,
 		ShellcheckOptions:  toolOptionsInDirectory(req.shellcheckOptions, req.workingDir),
 		ShellcheckSettings: req.shellcheckSettings,
-		PyflakesOptions:    toolOptionsInDirectory(req.pyflakesOptions, req.workingDir),
 		Shellcheck:         req.shellcheck,
-		Pyflakes:           req.pyflakes,
 		IgnorePatterns:     req.ignore,
 		ConfigFile:         req.configFile,
 		ConfigOverlays:     req.overlays,

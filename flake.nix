@@ -64,7 +64,6 @@
             gnumake
             pandoc
             shellcheck
-            python3Packages.pyflakes
             nixfmt
           ];
           GOTOOLCHAIN = "local";

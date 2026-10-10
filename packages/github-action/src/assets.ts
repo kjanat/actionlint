@@ -1,4 +1,3 @@
-import pyflakes from '#tools/pyflakes' with { type: 'json' };
 import shellcheck from '#tools/shellcheck' with { type: 'json' };
 
 export type RunnerPlatform = {
@@ -62,15 +61,3 @@ export function shellcheckAsset(platform: RunnerPlatform, release: ShellcheckRel
 		archive: platform.os === 'windows' ? 'zip' : 'tar.gz',
 	};
 }
-
-export const pyflakesVersion = pyflakes.info.version;
-const wheel = pyflakes.urls.find((asset) =>
-	asset.packagetype === 'bdist_wheel' && asset.filename.endsWith('-none-any.whl')
-);
-if (!wheel) throw new Error(`Missing universal pyflakes wheel for ${pyflakesVersion}`);
-export const pyflakesAsset: ReleaseAsset = {
-	name: wheel.filename,
-	url: wheel.url,
-	sha256: wheel.digests.sha256,
-	archive: 'zip',
-};

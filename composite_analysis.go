@@ -106,8 +106,6 @@ func (analysis *compositeAnalyzer) visitStep(step *Step) error {
 		switch rule := pass.(type) {
 		case *RuleShellcheck:
 			scripts = append(scripts, rule)
-		case *RulePyflakes:
-			scripts = append(scripts, rule)
 		case *RuleExecutableBit:
 			scripts = append(scripts, rule)
 		}

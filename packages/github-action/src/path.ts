@@ -37,21 +37,19 @@ export async function publishTools(tools: InstalledTools, environment: Environme
 	// tools at their original locations so sibling resources remain available.
 	const existing = [
 		{ name: 'shellcheck', tool: tools.shellcheck },
-		{ name: 'pyflakes', tool: tools.pyflakes },
 	].flatMap(({ name, tool }) =>
 		tool?.kind === 'existing'
 			? [{ name, executable: tool.executable }]
 			: []
 	);
 	if (
-		!tools.actionlint && tools.shellcheck?.kind !== 'standalone' && tools.pyflakes?.kind !== 'python'
+		!tools.actionlint && tools.shellcheck?.kind !== 'standalone'
 		&& !existing.length
 	) return;
 	const root = environment.RUNNER_TEMP;
 	const pathFile = environment.GITHUB_PATH;
 	if (!pathFile) throw new Error('Publishing tools requires GITHUB_PATH');
 	if (!root) throw new Error('Publishing tools requires RUNNER_TEMP');
-	const pyflakes = tools.pyflakes;
 	const directory = await mkdtemp(join(root, 'actionlint-bin-'));
 	try {
 		for (const tool of existing) await writeWrapper(directory, tool.name, tool.executable);
@@ -60,14 +58,6 @@ export async function publishTools(tools: InstalledTools, environment: Environme
 		}
 		if (tools.shellcheck?.kind === 'standalone') {
 			await publishBinary(directory, 'shellcheck', tools.shellcheck.executable);
-		}
-		if (pyflakes?.kind === 'python') {
-			await writeWrapper(
-				directory,
-				'pyflakes',
-				pyflakes.executable,
-				['-I', pyflakes.script],
-			);
 		}
 		// Export selected tools only; their siblings must not reorder other toolchains.
 		await appendFile(pathFile, `${directory}\n`);

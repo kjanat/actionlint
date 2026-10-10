@@ -147,14 +147,14 @@ func TestEnvironmentRejectsNullFilters(t *testing.T) {
 }
 
 func TestEnvironmentDisabledTools(t *testing.T) {
-	for _, tool := range []string{"SHELLCHECK", "PYFLAKES"} {
+	for _, tool := range []string{"SHELLCHECK"} {
 		t.Setenv("ACTIONLINT_"+tool+"_BIN", "")
 		t.Setenv("ACTIONLINT_"+tool+"_FLAGS", `"unterminated`)
 		t.Setenv("ACTIONLINT_"+tool+"_ENV", `{"INVALID":123}`)
 	}
 	var out, stderr bytes.Buffer
 	cmd := Command{Stdout: &out, Stderr: &stderr}
-	if status := cmd.Main([]string{"actionlint", "doctor", "--json", "--no-config"}); status != 0 || strings.Count(out.String(), `"status":"disabled"`) != 2 {
+	if status := cmd.Main([]string{"actionlint", "doctor", "--json", "--no-config"}); status != 0 || strings.Count(out.String(), `"status":"disabled"`) != 1 {
 		t.Fatalf("empty executable must disable the tool without parsing its settings: exit %d: %s %s", status, &out, &stderr)
 	}
 }
@@ -202,11 +202,8 @@ func TestEnvironmentExternalTools(t *testing.T) {
 	}
 	t.Setenv("ACTIONLINT_TEST_CHILD", "parent")
 	reports := map[string]string{}
-	for _, toolName := range []string{"SHELLCHECK", "PYFLAKES"} {
+	for _, toolName := range []string{"SHELLCHECK"} {
 		kind := "shell"
-		if toolName == "PYFLAKES" {
-			kind = "python"
-		}
 		path := filepath.Join(t.TempDir(), "report.json")
 		reports[kind] = path
 		env, err := json.Marshal(map[string]string{"ACTIONLINT_TEST_TOOL_PROCESS": "1", "ACTIONLINT_TEST_REPORT": path, "ACTIONLINT_TEST_CHILD": kind})

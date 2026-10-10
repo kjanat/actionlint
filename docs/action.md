@@ -32,14 +32,13 @@ normal `vX.Y.Z` tag for immutable consumption; major/minor tags move.
     install-only: true
     version: 1.17.0
     shellcheck: false
-    pyflakes: false
 - run: actionlint --version
 - run: actionlint .github/workflows/ci.yml
 ```
 
 `install-only` exports the selected binary for later steps without reading workflows
-or lint configuration. Enabled ShellCheck/Pyflakes integrations are also installed;
-disable them as above to install just actionlint. Keep `add-actionlint-to-path: true`
+or lint configuration. Enabled ShellCheck integration is also installed;
+disable it as above to install just actionlint. Keep `add-actionlint-to-path: true`
 (the default). Analysis and reporting inputs do not apply in this mode.
 
 Use `version-file: .tool-versions` instead of `version` to read a checked-in pin:
@@ -128,7 +127,7 @@ An empty map inherits **a map**. Switching between an rc string and an inline
 mapping replaces the old form; `{}` after an rc string selects an empty mapping.
 Unknown inline keys fail with their location. Historically ignored file keys warn.
 
-`shellcheck: false` and `pyflakes: false` disable those integrations. The default
+`shellcheck: false` disables ShellCheck. The deprecated `pyflakes` input is ignored. The default
 `shellcheck: true` permits the tool; it does not override `tools.shellcheck: false`.
 For ShellCheck flags, explicit `shellcheck-args` overrides `SHELLCHECK_OPTS`.
 Scalar options use the last value; list options accumulate without duplicates.
@@ -240,9 +239,8 @@ write permission. Review failure is advisory and leaves the analysis outcome int
 ## Tools and advanced ShellCheck
 
 Each invocation downloads the **selected ordinary binary**, verifies its
-checksum and executes it. It does not reuse a cached actionlint binary. ShellCheck
-and Pyflakes use a suitable PATH installation, then the tool cache, then a pinned
-download. Pyflakes needs Python 3.9 or newer; the Action does not install Python.
+checksum and executes it. It does not reuse a cached actionlint binary. ShellCheck uses a suitable PATH installation, then the tool cache, then a pinned
+download. No Python tooling is installed or invoked.
 Tool source/version details appear in debug logs; enable runner step debugging.
 
 Each `add-*-to-path` switch independently exports that selected tool to subsequent
@@ -278,28 +276,28 @@ remain available, including readable files outside the repository.
 
 All inputs are optional. Booleans accept `true`/`false`.
 
-| Input                                                                      | Default        | Meaning                                                                    |
-| -------------------------------------------------------------------------- | -------------- | -------------------------------------------------------------------------- |
-| `version`                                                                  | Action release | Exact binary release; overrides `version-file`.                            |
-| `version-file`                                                             | empty          | Exact version file or `.tool-versions`, relative to `working-directory`.   |
-| `install-only`                                                             | `false`        | Install tools on PATH without analysis or reporting.                       |
-| `files`                                                                    | discover       | Literal newline-separated workflow paths.                                  |
-| `format`                                                                   | `github`       | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, `sarif`. |
-| `ignore`                                                                   | empty          | Newline-separated regular expressions.                                     |
-| `config-file`                                                              | discover       | Explicit config file.                                                      |
-| `config`                                                                   | inherit        | Inline YAML/JSON overlay.                                                  |
-| `working-directory`                                                        | `.`            | Analysis directory.                                                        |
-| `shellcheck`, `pyflakes`                                                   | `true`         | Permit external analysis.                                                  |
-| `shellcheck-rc`                                                            | inherit        | Rc selection: `true`, `false`, or path.                                    |
-| `shellcheck-args`                                                          | `[]`           | Literal argument array.                                                    |
-| `add-actionlint-to-path`, `add-shellcheck-to-path`, `add-pyflakes-to-path` | `true`         | Independent exports for later steps.                                       |
-| `output-file`                                                              | empty          | Workspace-relative legacy-format report.                                   |
-| `fail-on-error`                                                            | `true`         | Fail for findings; invalid options/failures always fail.                   |
-| `annotations`                                                              | `auto`         | Finding annotation control.                                                |
-| `summary`                                                                  | `true`         | Compact job summary.                                                       |
-| `sarif`                                                                    | `false`        | Write additional SARIF file.                                               |
-| `review`                                                                   | `false`        | Advisory PR review posting.                                                |
-| `token`                                                                    | `github.token` | Used only by the review reporter.                                          |
+| Input                                              | Default        | Meaning                                                                    |
+| -------------------------------------------------- | -------------- | -------------------------------------------------------------------------- |
+| `version`                                          | Action release | Exact binary release; overrides `version-file`.                            |
+| `version-file`                                     | empty          | Exact version file or `.tool-versions`, relative to `working-directory`.   |
+| `install-only`                                     | `false`        | Install tools on PATH without analysis or reporting.                       |
+| `files`                                            | discover       | Literal newline-separated workflow paths.                                  |
+| `format`                                           | `github`       | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, `sarif`. |
+| `ignore`                                           | empty          | Newline-separated regular expressions.                                     |
+| `config-file`                                      | discover       | Explicit config file.                                                      |
+| `config`                                           | inherit        | Inline YAML/JSON overlay.                                                  |
+| `working-directory`                                | `.`            | Analysis directory.                                                        |
+| `shellcheck`                                       | `true`         | Permit external analysis.                                                  |
+| `shellcheck-rc`                                    | inherit        | Rc selection: `true`, `false`, or path.                                    |
+| `shellcheck-args`                                  | `[]`           | Literal argument array.                                                    |
+| `add-actionlint-to-path`, `add-shellcheck-to-path` | `true`         | Independent exports for later steps.                                       |
+| `output-file`                                      | empty          | Workspace-relative legacy-format report.                                   |
+| `fail-on-error`                                    | `true`         | Fail for findings; invalid options/failures always fail.                   |
+| `annotations`                                      | `auto`         | Finding annotation control.                                                |
+| `summary`                                          | `true`         | Compact job summary.                                                       |
+| `sarif`                                            | `false`        | Write additional SARIF file.                                               |
+| `review`                                           | `false`        | Advisory PR review posting.                                                |
+| `token`                                            | `github.token` | Used only by the review reporter.                                          |
 
 | Output           | Meaning                                                                                                                 |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -334,7 +332,6 @@ prepare, inspect and promote the same tested candidate.
 | No project/workflows found | Checkout first; check `.github/workflows` spelling and `working-directory`.                          |
 | Unexpected config          | Read the selected-file log; `.yaml` precedes `.yml`; inspect with `actionlint config show --origin`. |
 | Ignore does nothing        | Remove literal outer quotes from multiline `ignore`; use a config YAML list for quoted scalars.      |
-| Missing Python             | Install Python before the Action or set `pyflakes: false`.                                           |
 | Missing report             | Use `if: always()` in later steps; inspect setup/file-write errors.                                  |
 | No review comments         | Read aggregate skip reasons; check event, changed lines and token permission.                        |
 

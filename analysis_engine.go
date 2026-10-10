@@ -10,15 +10,15 @@ import (
 
 type analysisEngine struct {
 	analysisLogger
-	ctx                                context.Context
-	shellcheck, pyflakes               string
-	shellcheckOptions, pyflakesOptions *ExternalCommandOptions
-	shellcheckSettings                 *ShellcheckSettings
-	workingDir                         string
-	inputs                             *inputFiles
-	gitModes                           *gitModes
-	ignorePats                         IgnorePatterns
-	onRulesCreated                     func([]Rule) []Rule
+	ctx                context.Context
+	shellcheck         string
+	shellcheckOptions  *ExternalCommandOptions
+	shellcheckSettings *ShellcheckSettings
+	workingDir         string
+	inputs             *inputFiles
+	gitModes           *gitModes
+	ignorePats         IgnorePatterns
+	onRulesCreated     func([]Rule) []Rule
 }
 
 func (l *analysisEngine) check(
@@ -62,8 +62,8 @@ func (l *analysisEngine) check(
 		localActions = &LocalActionsCache{base: localActions}
 
 		rules := []Rule{}
-		c := ruleContext{path: path, config: cfg, actions: localActions, workflows: localReusableWorkflows, process: proc, shellcheck: l.shellcheck, pyflakes: l.pyflakes}
-		c.shellcheckOptions, c.pyflakesOptions = l.shellcheckOptions, l.pyflakesOptions
+		c := ruleContext{path: path, config: cfg, actions: localActions, workflows: localReusableWorkflows, process: proc, shellcheck: l.shellcheck}
+		c.shellcheckOptions = l.shellcheckOptions
 		c.shellcheckSettings = l.shellcheckSettings
 		c.workingDir, c.inputs = l.workingDir, l.inputs
 		c.gitModes = l.gitModes
@@ -121,10 +121,7 @@ func (l *analysisEngine) check(
 		// Drain every owned runner before reading findings; composite rules share them.
 		for _, rule := range rules {
 			var err error
-			switch rule := rule.(type) {
-			case *RuleShellcheck:
-				err = rule.cmd.wait()
-			case *RulePyflakes:
+			if rule, ok := rule.(*RuleShellcheck); ok {
 				err = rule.cmd.wait()
 			}
 			if analysisErr == nil {

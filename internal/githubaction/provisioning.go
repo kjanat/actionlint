@@ -15,8 +15,10 @@ func ToolPlan(env func(string) string, stdout, stderr io.Writer) int {
 	if err == nil {
 		err = json.NewEncoder(stdout).Encode(struct {
 			SchemaVersion int `json:"schema_version"`
+			// Released v1 launchers require this compatibility field.
+			Pyflakes bool `json:"pyflakes"`
 			actionlint.ExternalToolRequirements
-		}{1, needed})
+		}{1, false, needed})
 	}
 	if err == nil {
 		return actionlint.ExitStatusSuccessNoProblem
@@ -48,7 +50,7 @@ func requiredTools(env func(string) string) (actionlint.ExternalToolRequirements
 	}
 	session, err := actionlint.NewAnalysisSession(actionlint.AnalysisOptions{
 		WorkingDir: req.workingDir, ConfigFile: req.configFile, ConfigOverlays: req.overlays,
-		Shellcheck: req.shellcheck, Pyflakes: req.pyflakes, IgnorePatterns: req.ignore,
+		Shellcheck: req.shellcheck, IgnorePatterns: req.ignore,
 	})
 	if err != nil {
 		return none, err

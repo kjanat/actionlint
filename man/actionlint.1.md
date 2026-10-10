@@ -24,7 +24,7 @@ Checks include workflow syntax, expression types and context availability, actio
 outputs, local action metadata and composite steps, reusable workflow inputs and permissions,
 job dependencies, parallel steps, runner labels, event filters, schedules, and YAML anchors.
 Security checks report potentially unsafe expression interpolation in scripts and hard-coded
-credentials. Optional ShellCheck and pyflakes integrations check scripts in `run:` steps.
+credentials. Optional ShellCheck integration check scripts in `run:` steps.
 
 Repository policy checks can require immutable action references, job timeouts, and particular
 actions. These checks are enabled explicitly in the configuration file. Cache safety policies
@@ -192,8 +192,7 @@ flags are true. An explicit **--log-level** selects the requested new log level.
 to `shellcheck`; an empty value disables it. Also available on **doctor**.
 
 **--pyflakes** *COMMAND*
-: Pyflakes command, executable path or command line with arguments. Defaults to
-`pyflakes`; an empty value disables it. Also available on **doctor**.
+: Deprecated compatibility option; ignored. Python linting has been removed.
 
 **--init-config**
 : Root-only alias for **config init**, retaining existing initialization behavior.
@@ -323,13 +322,12 @@ configuration document below for the schema URL and full matching rules.
 
 # EXTERNAL LINTERS
 
-ShellCheck checks supported shell scripts in `run:` steps; pyflakes checks Python scripts.
+ShellCheck checks supported shell scripts in `run:` steps.
 The executables must be available through `PATH` or the corresponding command flag. If a
 command cannot be resolved, its integration is skipped; **--verbose** explains why.
 
-    $ actionlint --shellcheck= --pyflakes=
+    $ actionlint --shellcheck=
     $ actionlint --shellcheck 'shellcheck -e SC2086'
-    $ actionlint --pyflakes 'python3 -m pyflakes'
 
 Command strings are parsed into an executable and arguments, not executed by a shell. Shell
 pipes and redirections are not supported in these flags. Your arguments precede actionlint's
@@ -345,8 +343,7 @@ ShellCheck runs for recognized `bash`, `sh`, `dash`, and `ksh` interpreters or a
 dialect selected by a leading `# shellcheck shell=...` directive. Unresolved explicit
 shell expressions, unknown wrappers, and non-shell scripts are otherwise skipped. Global
 dialect settings and command flags alone do not select them. If no shell is configured
-and the runner platform is unknown, actionlint assumes Bash. Filter pyflakes diagnostics
-with **--ignore** or the configuration's `paths` entries.
+and the runner platform is unknown, actionlint assumes Bash.
 
 # OUTPUT
 
@@ -471,14 +468,14 @@ to the original JSON.
 : Presentation defaults: auto, always or never. NO_COLOR and NO_HYPERLINKS
 override these defaults; explicit CLI controls take precedence over the environment.
 
-**ACTIONLINT_SHELLCHECK_BIN**, **ACTIONLINT_PYFLAKES_BIN**
+**ACTIONLINT_SHELLCHECK_BIN**
 : Literal external-linter executable names or paths. Empty disables the tool.
 
-**ACTIONLINT_SHELLCHECK_FLAGS**, **ACTIONLINT_PYFLAKES_FLAGS**
+**ACTIONLINT_SHELLCHECK_FLAGS**
 : Additional arguments as a JSON string array or a quoted argument list. No shell
 execution or variable expansion is performed.
 
-**ACTIONLINT_SHELLCHECK_ENV**, **ACTIONLINT_PYFLAKES_ENV**
+**ACTIONLINT_SHELLCHECK_ENV**
 : Child environment overrides, as a JSON object or quoted NAME=value entries and
 variable names. JSON null or bare names forward inherited values; strings set values.
 An explicit tool command flag overrides its BIN, FLAGS and ENV settings together.
@@ -486,7 +483,7 @@ An explicit tool command flag overrides its BIN, FLAGS and ENV settings together
 See [Environment variables](../docs/env.md) for precedence, defaults and examples.
 
 **PATH**
-: Used to find ShellCheck and pyflakes, including the executable selected by their command flags.
+: Used to find ShellCheck, including the executable selected by their command flags.
 
 **NO_COLOR**
 : Any nonempty value, including `0` or `false`, disables automatic color; an empty
@@ -562,7 +559,7 @@ Links to resources.
 
 # USAGE ON GITHUB ACTIONS
 
-The repository provides a GitHub Action with actionlint, ShellCheck, and pyflakes in a prebuilt
+The repository provides a GitHub Action with actionlint, and ShellCheck in a prebuilt
 Docker image. It reports GitHub annotations by default and fails when problems are found:
 
 ```yaml
@@ -610,7 +607,7 @@ current directory and, on GitHub Actions, exposes its path as the
 # PLAYGROUND
 
 The WebAssembly playground runs actionlint in your browser. Workflow linting happens locally in
-the browser; it does not execute workflows or run the external ShellCheck and pyflakes programs.
+the browser; it does not execute workflows or run the external ShellCheck programs.
 
 https://kjanat.github.io/actionlint/
 

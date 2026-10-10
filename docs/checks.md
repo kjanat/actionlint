@@ -18,7 +18,6 @@ List of checks:
 - [Strict type checks for comparison operators](#check-comparison-types)
 - [shellcheck integration for `run:`](#check-shellcheck-integ)
 - [Executable bits on repository scripts](#check-executable-bit)
-- [pyflakes integration for `run:`](#check-pyflakes-integ)
 - [Script injection by potentially untrusted inputs](#untrusted-inputs)
 - [Job dependencies validation](#check-job-deps)
 - [Parallel steps](#check-parallel-step-refs)
@@ -1128,80 +1127,6 @@ On GitHub Actions:
   env:
     SHELLCHECK_OPTS: --exclude=SC2129
 ```
-
-<a id="check-pyflakes-integ"></a>
-
-## [pyflakes][pyflakes] integration for `run:`
-
-Example input:
-
-```yaml
-on: push
-jobs:
-  linux:
-    runs-on: ubuntu-latest
-    steps:
-      # Yay! No error
-      - run: print('${{ runner.os }}')
-        shell: python
-      # ERROR: Undefined variable
-      - run: print(hello)
-        shell: python
-  linux2:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        # Run script with Python by default
-        shell: python
-    steps:
-      - run: |
-          import sys
-          for sys in ['system1', 'system2']:
-            print(sys)
-      - run: |
-          from time import sleep
-          print(100)
-```
-
-Output:
-
-```console
-test.yaml:10:9: pyflakes reported issue in this script: 1:7: undefined name 'hello' [pyflakes]
-   |
-10 |       - run: print(hello)
-   |         ^~~~
-test.yaml:19:9: pyflakes reported issue in this script: 2:5: import 'sys' from line 1 shadowed by loop variable [pyflakes]
-   |
-19 |       - run: |
-   |         ^~~~
-test.yaml:23:9: pyflakes reported issue in this script: 1:1: 'time.sleep' imported but unused [pyflakes]
-   |
-23 |       - run: |
-   |         ^~~~
-```
-
-<!-- Skip playground link -->
-
-Python script can be written in `run:` when `shell: python` is configured.
-
-[pyflakes][pyflakes] is a famous linter for Python. It is suitable for linting small code like scripts at `run:` since it focuses
-on finding mistakes (not a code style issue) and tries to make false positives as minimal as possible. Install pyflakes
-by `pip install pyflakes`.
-
-actionlint runs pyflakes for scripts at `run:` steps in a workflow and reports errors found by pyflakes. actionlint detects
-Python scripts in a workflow by checking `shell: python` at each step and `defaults:` configurations at workflows and jobs.
-
-By default, actionlint checks if `pyflakes` command exists in your system and uses it when found. The `-pyflakes` option
-of `actionlint` command takes a command line: a command name, a file path, or a command with flags such as
-`-pyflakes 'python3 -m pyflakes'`. Setting empty string by `pyflakes=` disables pyflakes integration explicitly.
-
-pyflakes has no configuration file, no exclusion flag, and no `# noqa` support, so there is no pyflakes-side way to silence
-a single finding. Suppress it on the actionlint side with the `-ignore` option or the `ignore:` list under `paths:` in
-[the configuration file](config.md).
-
-Since both `${{ }}` expression syntax is invalid as Python, remaining `${{ }}` might confuse pyflakes. To avoid it,
-actionlint replaces `${{ }}` with underscores. For example `print('${{ matrix.os }}')` is replaced with
-`print('________________')`.
 
 <a id="untrusted-inputs"></a>
 
@@ -3657,7 +3582,6 @@ test.yaml:9:14: could not parse as YAML: unknown anchor 'credentials' referenced
 [SC2157]: https://github.com/koalaman/shellcheck/wiki/SC2157
 [SC2043]: https://github.com/koalaman/shellcheck/wiki/SC2043
 [shellcheck-env-var]: https://github.com/koalaman/shellcheck/wiki/Integration#environment-variables
-[pyflakes]: https://github.com/PyCQA/pyflakes
 [expr-doc]: https://docs.github.com/en/actions/learn-github-actions/expressions
 [contexts-doc]: https://docs.github.com/en/actions/learn-github-actions/contexts
 [funcs-doc]: https://docs.github.com/en/actions/learn-github-actions/expressions#functions

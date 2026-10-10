@@ -85,12 +85,6 @@ func (a *commandApp) applyEnvironment() error {
 			return err
 		}
 	}
-	if !a.set["pyflakes"] {
-		i.Check.PyflakesOptions, err = externalToolEnvironment("PYFLAKES")
-		if err != nil {
-			return err
-		}
-	}
 	if i.Operation == operationDoctor {
 		return nil
 	}

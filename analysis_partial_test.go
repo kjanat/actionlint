@@ -43,7 +43,6 @@ func TestAnalysisPartialFindingsOnCancellation(t *testing.T) {
 	result, err := Analyze(ctx, AnalysisRequest{
 		Sources:           []SourceUnit{{Path: "cancelled.yml", Content: []byte(commandBadWorkflow + "        shell: bash\n      - run: print(1)\n        shell: python\n")}},
 		ShellcheckOptions: &ExternalCommandOptions{Executable: &executable, Arguments: []string{"-test.run=^TestAnalysisPartialAnalyzerHelper$", "--", "shellcheck"}},
-		PyflakesOptions:   &ExternalCommandOptions{Executable: &executable, Arguments: []string{"-test.run=^TestAnalysisPartialAnalyzerHelper$", "--", "pyflakes"}},
 		OnRulesCreated: func(rules []Rule) []Rule {
 			for _, rule := range rules {
 				if shellcheck, ok := rule.(*RuleShellcheck); ok {
@@ -82,8 +81,6 @@ jobs:
         shell: bash
       - run: echo keep_shellcheck_finding
         shell: bash
-      - run: print("keep_pyflakes_finding")
-        shell: python
 `
 	successful := commandBadWorkflow + "        shell: pwsh\n"
 	for name, content := range map[string]string{"failing.yml": failing, "successful.yml": successful} {
@@ -109,12 +106,12 @@ jobs:
 				if adapter == "analyze" {
 					result, analysisErr = Analyze(t.Context(), AnalysisRequest{
 						Sources: sources, WorkingDir: root,
-						ShellcheckOptions: options("shellcheck"), PyflakesOptions: options("pyflakes"),
+						ShellcheckOptions: options("shellcheck"),
 					})
 				} else {
 					session, err := NewAnalysisSession(AnalysisOptions{
 						Context: t.Context(), WorkingDir: root, ConfigFile: configPath,
-						ShellcheckOptions: options("shellcheck"), PyflakesOptions: options("pyflakes"),
+						ShellcheckOptions: options("shellcheck"),
 					})
 					if err != nil {
 						t.Fatal(err)
@@ -132,7 +129,7 @@ jobs:
 				for _, diagnostic := range result.Diagnostics {
 					findings = append(findings, diagnostic.Path+":"+diagnostic.Rule)
 				}
-				want := []string{"successful.yml:expression", "failing.yml:expression", "failing.yml:shellcheck", "failing.yml:pyflakes"}
+				want := []string{"successful.yml:expression", "failing.yml:expression", "failing.yml:shellcheck"}
 				if failingFirst {
 					want = append(want[1:], want[0])
 				}
@@ -165,8 +162,6 @@ func TestAnalysisPartialAnalyzerHelper(t *testing.T) {
 	switch os.Args[separator+1] {
 	case "shellcheck":
 		fmt.Fprintln(os.Stdout, `{"comments":[{"line":2,"endLine":2,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"retained ShellCheck finding"}]}`)
-	case "pyflakes":
-		fmt.Fprintln(os.Stdout, "<stdin>:1:1: retained Pyflakes finding")
 	default:
 		t.Fatalf("unexpected analyzer %q", os.Args[separator+1])
 	}

@@ -5,7 +5,8 @@ import "path/filepath"
 // ExternalToolRequirements identifies tools enabled by the selected configurations.
 type ExternalToolRequirements struct {
 	Shellcheck bool `json:"shellcheck"`
-	Pyflakes   bool `json:"pyflakes"`
+	// Deprecated: Pyflakes integration was removed. This field is always false.
+	Pyflakes bool `json:"pyflakes"`
 }
 
 // RequiredTools resolves configuration for each input without reading workflows or
@@ -31,15 +32,12 @@ func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirement
 			return needed, err
 		}
 		c := ruleContext{
-			config: config, shellcheck: a.request.ShellCheck, pyflakes: a.request.Pyflakes,
-			shellcheckOptions: a.request.ShellcheckOptions, pyflakesOptions: a.request.PyflakesOptions,
+			config: config, shellcheck: a.request.ShellCheck,
+			shellcheckOptions: a.request.ShellcheckOptions,
 		}
 		for _, rule := range builtinRuleDescriptors() {
-			switch rule.Name {
-			case "shellcheck":
+			if rule.Name == "shellcheck" {
 				needed.Shellcheck = needed.Shellcheck || rule.enabled(c)
-			case "pyflakes":
-				needed.Pyflakes = needed.Pyflakes || rule.enabled(c)
 			}
 		}
 	}
