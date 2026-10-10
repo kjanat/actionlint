@@ -33,7 +33,7 @@ func normalizeExtendedConfig(path string, node *yaml.Node, inherited bool) (*yam
 	visit = func(n *yaml.Node, keys []string) {
 		if len(keys) == 0 {
 			if n.Kind == yaml.ScalarNode && n.ShortTag() == "!!str" {
-				value := strings.ReplaceAll(n.Value, "${{ configdir }}", filepath.Dir(path))
+				value := expandInheritedConfigDirectory(n.Value, filepath.Dir(path))
 				if !filepath.IsAbs(value) && !strings.Contains(value, "${{") {
 					value = filepath.Join(filepath.Dir(path), value)
 				}
@@ -69,4 +69,29 @@ func normalizeExtendedConfig(path string, node *yaml.Node, inherited bool) (*yam
 		}
 	}
 	return normalizeToolSwitch(node), nil
+}
+
+func expandInheritedConfigDirectory(value, directory string) string {
+	context := configPathContext{configDir: directory}
+	var out strings.Builder
+	for {
+		before, expression, found := strings.Cut(value, "${{")
+		out.WriteString(before)
+		if !found {
+			return out.String()
+		}
+		name, after, closed := strings.Cut(expression, "}}")
+		if !closed {
+			out.WriteString("${{" + expression)
+			return out.String()
+		}
+		token := "${{" + name + "}}"
+		// Use runtime name normalization, leaving analysis-context paths late-bound.
+		if expanded, err := context.expand(token); err == nil {
+			out.WriteString(expanded)
+		} else {
+			out.WriteString(token)
+		}
+		value = after
+	}
 }
