@@ -22,6 +22,7 @@ require (
 	golang.org/x/net v0.58.0
 	golang.org/x/sync v0.22.0
 	golang.org/x/sys v0.47.0
+	golang.org/x/text v0.41.0
 	mvdan.cc/sh/v3 v3.14.1
 )
 
@@ -31,5 +32,4 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.1 // indirect
-	golang.org/x/text v0.41.0 // indirect
 )

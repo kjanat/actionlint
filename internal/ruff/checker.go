@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/mattn/go-shellwords"
+	"golang.org/x/text/unicode/norm"
 )
 
 // Run schedules a command through the host's bounded, cancellable process pool.
@@ -69,6 +71,12 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		return nil
 	}
 	for _, flag := range c.flags {
+		if strings.HasPrefix(flag, "@") {
+			return fmt.Errorf("ruff argument files are not supported for script at %s: %q", location, flag)
+		}
+		if flag == "--show-files" || flag == "--show-settings" {
+			return fmt.Errorf("ruff inspection output is not supported for script at %s: %q", location, flag)
+		}
 		if flag == "--statistics" {
 			return fmt.Errorf("ruff statistics output is not supported for script at %s", location)
 		}
@@ -80,7 +88,8 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 			return fmt.Errorf("ruff silent output is not supported for script at %s", location)
 		}
 	}
-	source, valid, err := Sanitize(script, c.expressionEnd)
+	placeholders := make(map[Position]int)
+	source, valid, err := sanitize(script, c.expressionEnd, placeholders)
 	if err != nil {
 		return fmt.Errorf("ruff could not check Python script at %s: %w", location, err)
 	}
@@ -115,6 +124,12 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		c.mu.Lock()
 		defer c.mu.Unlock()
 		for _, d := range diagnostics {
+			// Only the synthetic identifier's exact undefined-name range is
+			// excluded. Other findings and real Python names remain visible.
+			if width, ok := placeholders[d.Location]; ok && d.Code == "F821" &&
+				d.EndLocation == (Position{Row: d.Location.Row, Column: d.Location.Column + width}) {
+				continue
+			}
 			report(d)
 		}
 		return nil
@@ -196,12 +211,20 @@ func arguments(config Config, filename string) []string {
 	return append(args, "-")
 }
 
-// Sanitize masks templates with a neutral Python value, preserving Unicode
-// columns and line breaks without introducing undefined Python identifiers.
+// Sanitize masks templates with independent opaque values, preserving Unicode
+// columns and line breaks. Check filters undefined-name findings for the masks.
 // Scripts whose templates cannot preserve Python syntax and positions are skipped.
 func Sanitize(src string, expressionEnd ExpressionEnd) (string, bool, error) {
+	return sanitize(src, expressionEnd, nil)
+}
+
+func sanitize(src string, expressionEnd ExpressionEnd, placeholders map[Position]int) (string, bool, error) {
 	var out strings.Builder
 	var state pythonLexicalState
+	// Python normalizes identifiers, so Unicode aliases also reserve names.
+	original := norm.NFKC.String(src)
+	nextName := uint64(0)
+	position := Position{Row: 1, Column: 1}
 	for {
 		start := strings.Index(src, "${{")
 		if start < 0 {
@@ -218,6 +241,7 @@ func Sanitize(src string, expressionEnd ExpressionEnd) (string, bool, error) {
 		}
 		end := start + 3 + length
 		out.WriteString(src[:start])
+		advancePosition(&position, src[:start])
 		state.consume(src[:start])
 		if state.patternCapture {
 			return "", false, nil
@@ -225,7 +249,7 @@ func Sanitize(src string, expressionEnd ExpressionEnd) (string, bool, error) {
 		if state.quote == 0 && !state.comment && (templateTouchesPythonToken(src, start, end) || templateFollowsPythonValue(state.lastToken) || state.subscriptDepth == 0 && (state.nameRequired || templateIsAssignmentTarget(src[:start], src[end:], state.depth))) {
 			return "", false, nil
 		}
-		if state.quote == 0 && !state.comment && state.casePattern && (state.lastToken == "*" || strings.HasPrefix(strings.TrimLeft(src[end:], " \t\r\n\f"), "(")) {
+		if state.quote == 0 && !state.comment && state.casePattern {
 			state.pendingCapture = true
 		}
 		runes := []rune(src[start:end])
@@ -263,14 +287,55 @@ func Sanitize(src string, expressionEnd ExpressionEnd) (string, bool, error) {
 					runes[previous] = '\\'
 				}
 			}
-			runes[0], runes[len(runes)-2], runes[len(runes)-1] = '(', '0', ')'
+			runes[0], runes[len(runes)-1] = '(', ')'
+			var name string
+			for {
+				name = "_" + strconv.FormatUint(nextName, 36)
+				nextName++
+				if !strings.Contains(original, name) {
+					break
+				}
+			}
+			slot, width := -1, 0
+			for i, r := range runes {
+				if r == ' ' {
+					width++
+					if width == len(name) {
+						slot = i - width + 1
+						break
+					}
+				} else {
+					width = 0
+				}
+			}
+			if slot < 0 {
+				return "", false, nil
+			}
+			copy(runes[slot:], []rune(name))
+			if placeholders != nil {
+				start := position
+				advancePosition(&start, string(runes[:slot]))
+				placeholders[start] = len(name)
+			}
 		}
 		state.escaped = false
 		if state.quote == 0 && !state.comment {
 			state.lastToken = ")"
 		}
 		out.WriteString(string(runes))
+		advancePosition(&position, src[start:end])
 		src = src[end:]
+	}
+}
+
+func advancePosition(position *Position, text string) {
+	for _, r := range text {
+		if r == '\n' {
+			position.Row++
+			position.Column = 1
+		} else {
+			position.Column++
+		}
 	}
 }
 
