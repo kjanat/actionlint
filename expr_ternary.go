@@ -1,8 +1,7 @@
 package actionlint
 
-// checkUnsoundTernaries uses the shared Actions evaluator, not Go truthiness.
-// Unknown middle operands are deliberately left alone: they can be intentional
-// fallbacks rather than attempts to emulate a conditional operator.
+// checkUnsoundTernaries uses the shared Actions evaluator to identify falsy middle
+// operands. Unknown middle operands are left alone to allow conditional fallbacks.
 func (rule *RuleExpression) checkUnsoundTernaries(expr ExprNode, line, col int) {
 	VisitExprNode(expr, func(node, _ ExprNode, entering bool) {
 		if !entering {

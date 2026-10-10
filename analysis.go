@@ -124,6 +124,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		return nil, err
 	}
 	inputs := &inputFiles{}
+	allSources := request.Sources
 	selected := make([]SourceUnit, 0, len(request.Sources))
 	for _, source := range request.Sources {
 		// Selection itself consumes configuration, even when no source survives.
@@ -173,7 +174,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		readFile = os.ReadFile
 	}
 	sourceContents := map[string][]byte{}
-	for _, source := range request.Sources {
+	for _, source := range allSources {
 		path := source.inputPath
 		if path == "" {
 			path = source.Path

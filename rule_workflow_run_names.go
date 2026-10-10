@@ -14,7 +14,7 @@ func workflowRunNamesAvailable(c ruleContext) bool {
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(c.workingDir, path)
 	}
-	return filepath.Dir(path) == filepath.Join(c.projectRoot, ".github", "workflows")
+	return filepath.Dir(path) == filepath.Join(absPath(c.projectRoot), ".github", "workflows")
 }
 
 type workflowRunNamesRule struct {

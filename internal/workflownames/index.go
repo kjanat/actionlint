@@ -2,6 +2,8 @@
 package workflownames
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -37,8 +39,8 @@ func (i *Index) ForRoot(root string) (Names, error) {
 			names := Names{Values: map[string]bool{}, Complete: true}
 			dir := filepath.Join(root, ".github", "workflows")
 			entries, err := os.ReadDir(dir)
-			if err != nil {
-				return names, err
+			if err != nil && !errors.Is(err, os.ErrNotExist) {
+				names.Complete = false
 			}
 			paths := map[string]bool{}
 			for _, entry := range entries {
@@ -59,7 +61,11 @@ func (i *Index) ForRoot(root string) (Names, error) {
 			for _, path := range ordered {
 				name, known, err := i.Load(path)
 				if err != nil {
-					return names, err
+					if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+						return names, err
+					}
+					names.Complete = false
+					continue
 				}
 				if !known {
 					names.Complete = false

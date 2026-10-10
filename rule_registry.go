@@ -39,7 +39,7 @@ type ruleContext struct {
 func builtinRuleDescriptors() []ruleDescriptor {
 	rules := []ruleDescriptor{
 		{Name: "workflow-run-names", Description: "Checks workflow_run names against repository workflows", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) {
-			return &workflowRunNamesRule{RuleBase: builtinRuleBase("workflow-run-names"), root: c.projectRoot, index: c.workflowNames}, nil
+			return &workflowRunNamesRule{RuleBase: builtinRuleBase("workflow-run-names"), root: absPath(c.projectRoot), index: c.workflowNames}, nil
 		}, enabled: workflowRunNamesAvailable},
 		{Name: "unsound-ternary", Description: "Checks conditional expressions whose falsy middle operand always selects the fallback", Category: "correctness", Recommended: true},
 		{Name: "ruff", Description: "Checks embedded Python scripts with Ruff", Category: "external", Recommended: true, build: func(c ruleContext) (Rule, error) { return newRuffRule(c) }, enabled: func(c ruleContext) bool {

@@ -1,6 +1,9 @@
 package actionlint
 
 import (
+	"context"
+	"errors"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -17,6 +20,7 @@ func TestWorkflowRunNames(t *testing.T) {
 		want         int
 	}{
 		{"Build", "", 0},
+		{"build", "", 1},
 		{"Typo", "", 1},
 		{"Nested", "", 1},
 		{".github/workflows/unnamed.yaml", "", 0},
@@ -41,6 +45,94 @@ func TestWorkflowRunNames(t *testing.T) {
 			}
 			if !strings.Contains(tc.config, "off") && !slices.Contains(result.Inputs, producer) {
 				t.Fatalf("producer not tracked: %v", result.Inputs)
+			}
+		})
+	}
+}
+
+func TestWorkflowRunNamesRelativeProject(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(root)
+	writeShellcheckFixture(t, root, ".github/workflows/build.yml", "name: Build\n"+commandGoodWorkflow)
+	project, err := NewProject(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"Build", "Missing"} {
+		t.Run(name, func(t *testing.T) {
+			src := "on: {workflow_run: {workflows: [" + name + "], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: ".github/workflows/consumer.yml", Content: []byte(src), Project: project}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := 0
+			if name == "Missing" {
+				want = 1
+			}
+			if len(result.Diagnostics) != want || (want == 1 && result.Diagnostics[0].Rule != "workflow-run-names") {
+				t.Fatalf("got %+v, want %d workflow-run-names findings", result.Diagnostics, want)
+			}
+		})
+	}
+}
+
+func TestWorkflowRunNamesExcludedInMemory(t *testing.T) {
+	for _, onDisk := range []bool{false, true} {
+		name := "memory only"
+		if onDisk {
+			name = "newer than disk"
+		}
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			producer := filepath.Join(root, ".github/workflows/build.yml")
+			if onDisk {
+				writeShellcheckFixture(t, root, ".github/workflows/build.yml", "name: Old\n"+commandGoodWorkflow)
+			}
+			cfg, err := ParseConfig([]byte("files: {excludes: ['**/build.yml']}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			project := &Project{root: root}
+			// The excluded source also contains a lint finding that must remain excluded.
+			producerContent := "name: New\nenv: {VALUE: '${{ nonexistent }}'}\n" + commandGoodWorkflow
+			consumer := "on: {workflow_run: {workflows: [New], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{
+				{Path: producer, Content: []byte(producerContent), Project: project, Config: cfg},
+				{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: project, Config: cfg},
+			}})
+			if err != nil || len(result.Diagnostics) != 0 {
+				t.Fatalf("%+v %v", result, err)
+			}
+			if !slices.Contains(result.Inputs, producer) {
+				t.Fatalf("excluded producer not tracked: %v", result.Inputs)
+			}
+		})
+	}
+}
+
+func TestWorkflowRunNamesUnreadableSibling(t *testing.T) {
+	for _, readErr := range []error{os.ErrPermission, os.ErrNotExist, context.Canceled, context.DeadlineExceeded} {
+		t.Run(readErr.Error(), func(t *testing.T) {
+			root := t.TempDir()
+			producer := writeShellcheckFixture(t, root, ".github/workflows/build.yml", "name: Build\n"+commandGoodWorkflow)
+			consumer := "on: {workflow_run: {workflows: [Missing], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			read := false
+			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, ReadFile: func(path string) ([]byte, error) {
+				if path == producer {
+					read = true
+					return nil, readErr
+				}
+				return os.ReadFile(path)
+			}, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: &Project{root: root}}}})
+			if !read {
+				t.Fatal("sibling was not read")
+			}
+			if errors.Is(readErr, context.Canceled) || errors.Is(readErr, context.DeadlineExceeded) {
+				if !errors.Is(err, readErr) {
+					t.Fatalf("got %v, want %v", err, readErr)
+				}
+			} else if err != nil || len(result.Diagnostics) != 0 {
+				t.Fatalf("%+v %v", result, err)
 			}
 		})
 	}
