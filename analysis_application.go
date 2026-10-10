@@ -14,10 +14,14 @@ import (
 
 // AnalysisOptions controls source discovery and analysis without selecting an output format.
 type AnalysisOptions struct {
-	Context       context.Context
-	WorkingDir    string
-	StdinFileName string
-	ConfigFile    string
+	// Deprecated: Pyflakes integration was removed. This field is ignored.
+	Pyflakes string
+	// Deprecated: Pyflakes integration was removed. This field is ignored.
+	PyflakesOptions *ExternalCommandOptions
+	Context         context.Context
+	WorkingDir      string
+	StdinFileName   string
+	ConfigFile      string
 	// ConfigOverlays apply in order over the selected file.
 	ConfigOverlays []ConfigOverlay
 	// OnConfigLoaded reports selected files and overlays.

@@ -26,6 +26,10 @@ type SourceUnit struct {
 
 // AnalysisRequest contains resolved sources and analysis settings.
 type AnalysisRequest struct {
+	// Deprecated: Pyflakes integration was removed. This field is ignored.
+	Pyflakes string
+	// Deprecated: Pyflakes integration was removed. This field is ignored.
+	PyflakesOptions    *ExternalCommandOptions
 	Sources            []SourceUnit
 	ShellCheck         string
 	ShellcheckOptions  *ExternalCommandOptions
