@@ -120,7 +120,7 @@ func TestMatrixExpressionFilterLeafTypes(t *testing.T) {
 				if len(parseErrors) != 0 {
 					t.Fatal(parseErrors)
 				}
-				cfg, err := ParseConfig([]byte("policy: {mixed-type-matrix-filters: true}"))
+				cfg, err := ParseConfig([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -131,7 +131,7 @@ func TestMatrixExpressionFilterLeafTypes(t *testing.T) {
 				}
 				count := 0
 				for _, finding := range rule.Errs() {
-					if strings.Contains(finding.Message, "policy: mixed-type-matrix-filters") {
+					if finding.Kind == "mixed-type-matrix-filters" {
 						count++
 						if finding.Line != 8 {
 							t.Fatalf("wrong filter position: %+v", finding)
