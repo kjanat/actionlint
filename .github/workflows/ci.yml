@@ -25,6 +25,7 @@ jobs:
           - uses: &SetupUv astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
             with: &NoCache { enable-cache: false }
       - &InstallShellCheck { name: Install ShellCheck, uses: $/.github/actions/setup-shellcheck }
+      - &InstallRuff { name: Install Ruff for integration tests, run: uv tool install ruff==0.17.0 }
       - name: Install shells for completion tests on Linux
         if: ${{ runner.os == 'Linux' }}
         run: |
@@ -43,6 +44,7 @@ jobs:
       - &GoGomod { uses: *SetupGo, with: *GoMod }
       - *InstallShellCheck
       - &Uv { uses: *SetupUv, with: *NoCache }
+      - *InstallRuff
 
       - run: go test -v -race -coverprofile coverage.txt -covermode=atomic ./...
       - run: go tool cover -func ./coverage.txt
@@ -160,6 +162,8 @@ jobs:
       - name: Build image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with: { load: true, push: false, tags: actionlint:test }
+      - name: Check bundled Ruff
+        run: bash scripts/test-docker-ruff.bash actionlint:test
       - name: Test Docker image
         run: docker container run
           --mount type=bind,source="${PWD}",target=/w

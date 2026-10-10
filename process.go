@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strings"
 	"sync"
 
@@ -17,11 +19,13 @@ import (
 
 // cmdExecution represents a single command line execution.
 type cmdExecution struct {
+	maxExitCode   int
 	cmd           string
 	args          []string
 	stdin         string
 	combineOutput bool
 	env           []string
+	unsetEnv      []string
 	dir           string
 }
 
@@ -29,8 +33,14 @@ func (e *cmdExecution) run(ctx context.Context) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, e.cmd, e.args...)
 	cmd.Dir = e.dir
 	cmd.Stderr = nil
-	if len(e.env) > 0 {
+	if len(e.env) > 0 || len(e.unsetEnv) > 0 {
 		cmd.Env = append(cmd.Environ(), e.env...)
+		cmd.Env = slices.DeleteFunc(cmd.Env, func(entry string) bool {
+			name, _, _ := strings.Cut(entry, "=")
+			return slices.ContainsFunc(e.unsetEnv, func(unset string) bool {
+				return name == unset || runtime.GOOS == "windows" && strings.EqualFold(name, unset)
+			})
+		})
 	}
 	// Let os/exec start the reader before copying stdin. Writing the whole script
 	// before Start can fill the pipe and deadlock, even with a single worker.
@@ -55,6 +65,9 @@ func (e *cmdExecution) run(ctx context.Context) ([]byte, error) {
 
 			if code < 0 {
 				return nil, fmt.Errorf("%s was terminated. stderr: %q", e.cmd, stderr)
+			}
+			if e.maxExitCode > 0 && code > e.maxExitCode {
+				return nil, fmt.Errorf("%s exited with status %d. stderr: %q", e.cmd, code, stderr)
 			}
 
 			if len(stdout) == 0 {
@@ -145,6 +158,9 @@ func (proc *concurrentProcess) configuredCommandRunner(exe string, options *Exte
 // A non-nil Executable replaces the command line with a literal executable path;
 // an empty executable disables the tool. Nil retains the existing command parser.
 type ExternalCommandOptions struct {
+	// Optional permits automatic Ruff discovery to skip an unavailable executable.
+	// Explicitly configured checkers should leave this false.
+	Optional    bool
 	Executable  *string
 	Arguments   []string
 	Environment []string
@@ -202,12 +218,14 @@ func ResolveExternalCommand(exe string) (string, []string, error) {
 // by using errgroup.Group. The wait() method must be called at the end for checking if some fatal
 // error occurred.
 type externalCommand struct {
+	maxExitCode   int
 	proc          *concurrentProcess
 	eg            errgroup.Group
 	exe           string
 	args          []string
 	combineOutput bool
 	env           []string
+	unsetEnv      []string
 	dir           string
 }
 
@@ -225,7 +243,7 @@ func (cmd *externalCommand) runInDirectory(args []string, stdin, dir string, cal
 		allArgs = append(allArgs, args...)
 		args = allArgs
 	}
-	exec := &cmdExecution{cmd: cmd.exe, args: args, stdin: stdin, combineOutput: cmd.combineOutput, env: cmd.env, dir: dir}
+	exec := &cmdExecution{cmd: cmd.exe, args: args, stdin: stdin, combineOutput: cmd.combineOutput, env: cmd.env, unsetEnv: cmd.unsetEnv, dir: dir, maxExitCode: cmd.maxExitCode}
 	cmd.proc.run(&cmd.eg, exec, callback)
 }
 

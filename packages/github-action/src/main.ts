@@ -7,7 +7,7 @@ import { publishTools } from '#path';
 import { withReporting } from '#reporters';
 import type { Environment } from '#runtime';
 import { InputError, runAction } from '#runtime';
-import { checkExecutable, executeNative, inspectTools, nativeBinary, shellcheckBinary } from '#tools';
+import { checkExecutable, executeNative, inspectTools, nativeBinary, ruffBinary, shellcheckBinary } from '#tools';
 import { selectedVersion } from '#version';
 import { commandEscape, writeOutputs } from '#workflow';
 
@@ -31,6 +31,7 @@ async function main(): Promise<void> {
 				checkExecutable,
 				inspect: inspectTools,
 				shellcheck: () => shellcheckBinary(platform),
+				ruff: () => ruffBinary(platform),
 				publish: (tools) => publishTools(tools, environment),
 				execute: executeNative,
 			})

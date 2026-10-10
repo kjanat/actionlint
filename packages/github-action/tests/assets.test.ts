@@ -3,7 +3,7 @@ import { test } from 'node:test';
 
 import shellcheck from '#tools/shellcheck' with { type: 'json' };
 
-import { checksumForAsset, nativeAssetName, runnerPlatform, shellcheckAsset } from '#assets';
+import { checksumForAsset, nativeAssetName, ruffAsset, ruffVersion, runnerPlatform, shellcheckAsset } from '#assets';
 
 test('native release selection supports each JavaScript runner platform', () => {
 	for (
@@ -61,4 +61,26 @@ test('checksum lookup matches the exact archive and rejects ambiguous manifests'
 	assert.throws(() => checksumForAsset(`${digest}  prefix-${filename}\n`, filename), /Missing/);
 	assert.throws(() => checksumForAsset(`invalid  ${filename}\n`, filename), /Missing/);
 	assert.throws(() => checksumForAsset(`${digest}  ${filename}\n${other}  ${filename}\n`, filename), /Duplicate/);
+});
+
+test('Ruff has checksum-pinned native assets for all six runner platforms', () => {
+	for (const os of ['linux', 'darwin', 'win32']) {
+		for (const arch of ['x64', 'arm64']) {
+			const platform = runnerPlatform(os, arch);
+			const selected = ruffAsset(platform);
+			assert.equal(selected.archive, os === 'win32' ? 'zip' : 'tar.gz');
+			assert.match(selected.sha256, /^[a-f0-9]{64}$/);
+			assert.ok(selected.name.includes(arch === 'x64' ? 'x86_64' : 'aarch64'));
+			assert.equal(selected.url, `https://github.com/astral-sh/ruff/releases/download/${ruffVersion}/${selected.name}`);
+		}
+	}
+	const platform = runnerPlatform('linux', 'x64');
+	const asset = ruffAsset(platform);
+	assert.throws(() => ruffAsset(platform, { tagName: ruffVersion, assets: [] }), /Missing Ruff release asset/);
+	for (const digest of [null, '', 'sha256:bad', `sha512:${'a'.repeat(64)}`]) {
+		assert.throws(
+			() => ruffAsset(platform, { tagName: ruffVersion, assets: [{ ...asset, digest }] }),
+			/SHA-256 digest/,
+		);
+	}
 });

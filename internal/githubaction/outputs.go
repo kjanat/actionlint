@@ -95,10 +95,13 @@ func plural(count int, singular, plural string) string {
 	return plural
 }
 
-func (a *action) emitStatus(code int, problemCount string, fileCount int, fileCountKnown bool, in *inputs) {
+func (a *action) emitStatus(code int, problemCount string, fileCount int, fileCountKnown bool, req *lintRequest) {
 	integrations := []string{}
-	if in.shellcheck {
+	if req.shellcheck != "" {
 		integrations = append(integrations, "shellcheck")
+	}
+	if req.ruff != "" {
+		integrations = append(integrations, "ruff")
 	}
 	if len(integrations) == 0 {
 		integrations = append(integrations, "external linters disabled")

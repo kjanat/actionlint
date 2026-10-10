@@ -79,6 +79,20 @@ func (a *commandApp) applyEnvironment() error {
 		return nil
 	}
 	var err error
+	for name, command := range map[string]*string{"ruff": &i.Check.Ruff, "shellcheck": &i.Check.ShellCheck} {
+		if a.set[name] && strings.EqualFold(*command, "false") {
+			*command = ""
+		}
+	}
+	if !a.set["ruff"] {
+		i.Check.RuffOptions, err = externalToolEnvironment("RUFF")
+		if err != nil {
+			return err
+		}
+		if i.Check.RuffOptions == nil {
+			i.Check.RuffOptions = &actionlint.ExternalCommandOptions{Optional: true}
+		}
+	}
 	if !a.set["shellcheck"] {
 		i.Check.ShellcheckOptions, err = externalToolEnvironment("SHELLCHECK")
 		if err != nil {

@@ -19,7 +19,7 @@ func TestDoctorToolPresentation(t *testing.T) {
 	}
 	request := doctorRequest{Config: actionlint.ConfigSelection{Disabled: true}, ShellCheck: `"` + filepath.ToSlash(executable) + `"`, Hyperlinks: "never"}
 	var text, data bytes.Buffer
-	if err := writeDoctor(&text, request); err != nil {
+	if err := writeDoctor(t.Context(), &text, request); err != nil {
 		t.Fatal(err)
 	}
 	values := map[string]string{}
@@ -42,7 +42,7 @@ func TestDoctorToolPresentation(t *testing.T) {
 		t.Fatalf("unexpected tool display:\n%s", &text)
 	}
 	request.JSON = true
-	if err := writeDoctor(&data, request); err != nil {
+	if err := writeDoctor(t.Context(), &data, request); err != nil {
 		t.Fatal(err)
 	}
 	var report struct {
@@ -51,7 +51,7 @@ func TestDoctorToolPresentation(t *testing.T) {
 	if err := json.Unmarshal(data.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
-	if len(report.Tools) != 1 || report.Tools[0].Status != "available" || report.Tools[0].Path == "" {
+	if len(report.Tools) != 2 || report.Tools[0].Status != "available" || report.Tools[0].Path == "" || report.Tools[1].Status != "disabled" {
 		t.Fatalf("JSON lost tool status: %s", &data)
 	}
 }

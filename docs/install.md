@@ -5,8 +5,14 @@
 This document describes how to install the [kjanat/actionlint fork](../README.md). Package names matter: several
 registries also provide [rhysd/actionlint][upstream] under the unqualified name `actionlint`.
 
-ShellCheck is an optional external linter. The standalone actionlint binary uses it when available on
-`PATH`; see [external linter configuration](usage.md#ignore-some-errors).
+ShellCheck and Ruff are optional external linters. Standalone archives, Go installs, and npm packages contain
+actionlint only; install `shellcheck` and `ruff` separately on `PATH` to check shell and Python scripts.
+See [external linter configuration](usage.md#ignore-some-errors).
+
+Images built from this revision bundle both native executables, without requiring Python. The Nix package
+also provides both through its wrapper. The [`actionlint-bundled` pre-commit hook](usage.md#pre-commit)
+builds the Docker image from its selected source revision and includes both tools.
+Previously published releases are unchanged and do not include Ruff.
 
 ## Project-maintained distributions
 

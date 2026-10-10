@@ -98,7 +98,7 @@ try {
 	const cleanOutput = clean.outputs.get('output');
 	assert.ok(cleanOutput);
 	assert.deepEqual(JSON.parse(cleanOutput), clean.analysis);
-	assert.match(clean.log, /0 problems in 1 workflow file \(requested tools: shellcheck\)/);
+	assert.match(clean.log, /0 problems in 1 workflow file \(requested tools: shellcheck, ruff\)/);
 	for (const format of ['github', 'default', 'oneline', 'json', 'json-lines', 'markdown', 'sarif']) {
 		const result = await run({
 			files: 'testdata/err/one_error.yaml',

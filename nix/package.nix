@@ -10,7 +10,7 @@
   fish,
   pandoc,
   shellcheck,
-  python3Packages,
+  ruff,
   src,
   version,
 }:
@@ -18,7 +18,7 @@
 buildGoModule {
   pname = "actionlint";
   inherit src version;
-  vendorHash = "sha256-tNlK6swYDSHQEzLwte5vJSzBVt5dC9U7xPn+uwOGjvo=";
+  vendorHash = "sha256-hEJdtWdi7EV9xXexeYFHX85/5NufdUJJ7M/BfHpf0gg=";
   subPackages = [ "cmd/actionlint" ];
 
   env.CGO_ENABLED = 0;
@@ -41,6 +41,7 @@ buildGoModule {
     zsh
     fish
     shellcheck
+    ruff
   ];
 
   checkPhase = ''
@@ -65,6 +66,7 @@ buildGoModule {
     wrapProgram "$out/bin/actionlint" --prefix PATH : ${
       lib.makeBinPath [
         shellcheck
+        ruff
       ]
     }
   '';

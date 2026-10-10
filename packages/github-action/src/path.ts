@@ -37,13 +37,14 @@ export async function publishTools(tools: InstalledTools, environment: Environme
 	// tools at their original locations so sibling resources remain available.
 	const existing = [
 		{ name: 'shellcheck', tool: tools.shellcheck },
+		{ name: 'ruff', tool: tools.ruff },
 	].flatMap(({ name, tool }) =>
 		tool?.kind === 'existing'
 			? [{ name, executable: tool.executable }]
 			: []
 	);
 	if (
-		!tools.actionlint && tools.shellcheck?.kind !== 'standalone'
+		!tools.actionlint && tools.shellcheck?.kind !== 'standalone' && tools.ruff?.kind !== 'standalone'
 		&& !existing.length
 	) return;
 	const root = environment.RUNNER_TEMP;
@@ -59,6 +60,7 @@ export async function publishTools(tools: InstalledTools, environment: Environme
 		if (tools.shellcheck?.kind === 'standalone') {
 			await publishBinary(directory, 'shellcheck', tools.shellcheck.executable);
 		}
+		if (tools.ruff?.kind === 'standalone') await publishBinary(directory, 'ruff', tools.ruff.executable);
 		// Export selected tools only; their siblings must not reorder other toolchains.
 		await appendFile(pathFile, `${directory}\n`);
 	} catch (error) {

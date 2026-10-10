@@ -1625,6 +1625,7 @@
                       "items": {
                         "type": "string",
                         "enum": [
+                          "ruff",
                           "syntax-check",
                           "inline-suppression",
                           "string-conditions",
@@ -1742,6 +1743,79 @@
                                 "recommended",
                                 "all",
                                 "none"
+                              ]
+                            },
+                            "ruff": {
+                              "title": "ruff",
+                              "description": "Checks embedded Python scripts with Ruff",
+                              "markdownDescription": "Checks embedded Python scripts with Ruff",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
                               ]
                             },
                             "shellcheck": {
@@ -2070,6 +2144,7 @@
                                                       "require-job-timeout",
                                                       "require-permissions",
                                                       "required-actions",
+                                                      "ruff",
                                                       "runner-label",
                                                       "shell-name",
                                                       "shellcheck",
@@ -4775,6 +4850,7 @@
                                 "items": {
                                   "type": "string",
                                   "enum": [
+                                    "ruff",
                                     "syntax-check",
                                     "inline-suppression",
                                     "string-conditions",
@@ -4892,6 +4968,79 @@
                                           "recommended",
                                           "all",
                                           "none"
+                                        ]
+                                      },
+                                      "ruff": {
+                                        "title": "ruff",
+                                        "description": "Checks embedded Python scripts with Ruff",
+                                        "markdownDescription": "Checks embedded Python scripts with Ruff",
+                                        "oneOf": [
+                                          {
+                                            "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                            "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean",
+                                                "not": {
+                                                  "const": true
+                                                },
+                                                "doNotSuggest": true
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean",
+                                                    "not": {
+                                                      "const": true
+                                                    },
+                                                    "doNotSuggest": true
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
                                         ]
                                       },
                                       "shellcheck": {
@@ -5220,6 +5369,7 @@
                                                                 "require-job-timeout",
                                                                 "require-permissions",
                                                                 "required-actions",
+                                                                "ruff",
                                                                 "runner-label",
                                                                 "shell-name",
                                                                 "shellcheck",
@@ -6387,6 +6537,115 @@
                   {
                     "type": "object",
                     "properties": {
+                      "ruff": {
+                        "title": "ruff",
+                        "description": "Configures checking of embedded Python scripts.",
+                        "markdownDescription": "Configures checking of embedded Python scripts.",
+                        "properties": {
+                          "enabled": {
+                            "title": "enabled",
+                            "description": "Enable Ruff analysis when the executable is available.",
+                            "markdownDescription": "Enable Ruff analysis when the executable is available.",
+                            "oneOf": [
+                              {
+                                "default": true,
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "ignore": {
+                            "title": "ignore",
+                            "description": "Ruff rule codes or prefixes to exclude.",
+                            "markdownDescription": "Ruff rule codes or prefixes to exclude.",
+                            "items": {
+                              "examples": [
+                                "F",
+                                "F821"
+                              ],
+                              "type": "string"
+                            },
+                            "oneOf": [
+                              {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "not": {
+                              "type": "array",
+                              "contains": {
+                                "not": {
+                                  "$ref": "schemas/ruff/0.17.0-selectors.schema.json"
+                                }
+                              }
+                            }
+                          },
+                          "select": {
+                            "title": "select",
+                            "description": "Ruff rule codes or prefixes to select; omission selects F.",
+                            "markdownDescription": "Ruff rule codes or prefixes to select; omission selects F.",
+                            "items": {
+                              "examples": [
+                                "F",
+                                "F821"
+                              ],
+                              "type": "string"
+                            },
+                            "oneOf": [
+                              {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "not": {
+                              "type": "array",
+                              "contains": {
+                                "not": {
+                                  "$ref": "schemas/ruff/0.17.0-selectors.schema.json"
+                                }
+                              }
+                            }
+                          },
+                          "target-version": {
+                            "title": "target-version",
+                            "description": "Ruff Python target version; omission uses a supported versioned Python shell target, otherwise py314.",
+                            "markdownDescription": "Ruff Python target version; omission uses a supported versioned Python shell target, otherwise py314.",
+                            "oneOf": [
+                              {
+                                "$ref": "schemas/ruff/0.17.0.schema.json#/definitions/PythonVersion"
+                              },
+                              {
+                                "type": "null",
+                                "doNotSuggest": true
+                              }
+                            ]
+                          }
+                        },
+                        "additionalProperties": false,
+                        "oneOf": [
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
                       "shellcheck": {
                         "title": "shellcheck",
                         "description": "Configures checking of embedded shell scripts.",
@@ -6632,6 +6891,7 @@
                               "require-job-timeout",
                               "require-permissions",
                               "required-actions",
+                              "ruff",
                               "runner-label",
                               "shell-name",
                               "shellcheck",
@@ -6800,6 +7060,115 @@
         {
           "type": "object",
           "properties": {
+            "ruff": {
+              "title": "ruff",
+              "description": "Configures checking of embedded Python scripts.",
+              "markdownDescription": "Configures checking of embedded Python scripts.",
+              "properties": {
+                "enabled": {
+                  "title": "enabled",
+                  "description": "Enable Ruff analysis when the executable is available.",
+                  "markdownDescription": "Enable Ruff analysis when the executable is available.",
+                  "oneOf": [
+                    {
+                      "default": true,
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ignore": {
+                  "title": "ignore",
+                  "description": "Ruff rule codes or prefixes to exclude.",
+                  "markdownDescription": "Ruff rule codes or prefixes to exclude.",
+                  "items": {
+                    "examples": [
+                      "F",
+                      "F821"
+                    ],
+                    "type": "string"
+                  },
+                  "oneOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "not": {
+                    "type": "array",
+                    "contains": {
+                      "not": {
+                        "$ref": "schemas/ruff/0.17.0-selectors.schema.json"
+                      }
+                    }
+                  }
+                },
+                "select": {
+                  "title": "select",
+                  "description": "Ruff rule codes or prefixes to select; omission selects F.",
+                  "markdownDescription": "Ruff rule codes or prefixes to select; omission selects F.",
+                  "items": {
+                    "examples": [
+                      "F",
+                      "F821"
+                    ],
+                    "type": "string"
+                  },
+                  "oneOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "not": {
+                    "type": "array",
+                    "contains": {
+                      "not": {
+                        "$ref": "schemas/ruff/0.17.0-selectors.schema.json"
+                      }
+                    }
+                  }
+                },
+                "target-version": {
+                  "title": "target-version",
+                  "description": "Ruff Python target version; omission uses a supported versioned Python shell target, otherwise py314.",
+                  "markdownDescription": "Ruff Python target version; omission uses a supported versioned Python shell target, otherwise py314.",
+                  "oneOf": [
+                    {
+                      "$ref": "schemas/ruff/0.17.0.schema.json#/definitions/PythonVersion"
+                    },
+                    {
+                      "type": "null",
+                      "doNotSuggest": true
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false,
+              "oneOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "shellcheck": {
               "title": "shellcheck",
               "description": "Configures checking of embedded shell scripts.",

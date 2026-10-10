@@ -44,6 +44,8 @@ type AnalysisOptions struct {
 	// This does not restrict filesystem access by external tools.
 	ReadFile    func(string) ([]byte, error)
 	RulePresets RulePresets
+	Ruff        string
+	RuffOptions *ExternalCommandOptions
 }
 
 // AnalysisSession resolves local inputs before handing them to Analyze.
@@ -106,7 +108,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 		stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected,
 		readFile:       opts.ReadFile,
 		logSelection:   !opts.QuietSelection,
-		request:        AnalysisRequest{ShellCheck: opts.Shellcheck, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, OnRulesCreated: opts.OnRulesCreated},
+		request:        AnalysisRequest{Ruff: opts.Ruff, RuffOptions: opts.RuffOptions, ShellCheck: opts.Shellcheck, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, OnRulesCreated: opts.OnRulesCreated},
 		analysisLogger: analysisLogger{logOut: opts.LogWriter},
 	}
 	if a.ctx == nil {

@@ -1,5 +1,7 @@
 package actionlint
 
+import "actionlint.kjanat.dev/internal/ruff"
+
 // ruleDescriptor supplies metadata to both rule instances and frontend discovery.
 type ruleDescriptor struct {
 	Name        string `json:"name"`
@@ -12,8 +14,13 @@ type ruleDescriptor struct {
 	enabled     func(ruleContext) bool
 }
 type ruleContext struct {
+	ruff                    string
+	ruffOptions             *ExternalCommandOptions
+	ruffCompatibility       *ruff.Compatibility
+	ruffWarning             func(error)
 	path                    string
 	config                  *Config
+	projectConfig           *Config
 	actions                 *LocalActionsCache
 	workflows               *LocalReusableWorkflowCache
 	process                 *concurrentProcess
@@ -27,6 +34,12 @@ type ruleContext struct {
 
 func builtinRuleDescriptors() []ruleDescriptor {
 	rules := []ruleDescriptor{
+		{Name: "ruff", Description: "Checks embedded Python scripts with Ruff", Category: "external", Recommended: true, build: func(c ruleContext) (Rule, error) { return newRuffRule(c) }, enabled: func(c ruleContext) bool {
+			possible, err := ruffProjectConfigMayEnable(c.config, c.projectConfig, c.projectRoot != "")
+			// Validated config should merge successfully; analysis resolves the
+			// actual metadata path and reports any remaining composition error.
+			return externalCommandEnabled(c.ruff, c.ruffOptions) && (possible || err != nil)
+		}},
 		{Name: "syntax-check", Description: "Checks for GitHub Actions workflow syntax", Category: "correctness", Recommended: true},
 		{Name: "inline-suppression", Description: "Checks inline diagnostic suppression directives", Category: "correctness", Recommended: true},
 		{Name: "string-conditions", Description: "Checks bare string conditions for unexpected truthiness", Category: "suspicious"},

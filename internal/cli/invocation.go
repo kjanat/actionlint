@@ -26,6 +26,8 @@ type checkInvocation struct {
 	StdinFilename     string
 	IgnoreRegex       []string
 	ShellCheck        string
+	Ruff              string
+	RuffOptions       *actionlint.ExternalCommandOptions
 	Pyflakes          string
 	ShellcheckOptions *actionlint.ExternalCommandOptions
 	Verbose           bool
@@ -53,7 +55,7 @@ func defaultInvocation() invocation {
 	return invocation{
 		Operation: "check",
 		Render:    renderOptions{PrettyJSON: true},
-		Check:     checkInvocation{StdinFilename: "<stdin>", ShellCheck: "shellcheck"},
+		Check:     checkInvocation{StdinFilename: "<stdin>", ShellCheck: "shellcheck", Ruff: "ruff"},
 	}
 }
 
@@ -149,6 +151,7 @@ func (inv invocation) request() (commandRequest, error) {
 		return rulesRequest{Name: inv.Rule, JSON: inv.JSON}, nil
 	case operationDoctor:
 		return doctorRequest{Config: inv.Check.Config, ShellCheck: inv.Check.ShellCheck,
+			Ruff: inv.Check.Ruff, RuffOptions: inv.Check.RuffOptions,
 			ShellcheckOptions: inv.Check.ShellcheckOptions,
 			JSON:              inv.JSON, Hyperlinks: inv.Render.Hyperlinks}, nil
 	case operationConfigPath:

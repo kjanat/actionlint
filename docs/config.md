@@ -221,6 +221,60 @@ Group and rule level shorthands retain their level when overlaid by a partial
 mapping. Rule object settings require `level`; omitted option keys inherit.
 Each file gets its own effective configuration, without changing other files.
 
+## Ruff
+
+Ruff checks Python scripts selected by `shell: python`, `shell: python3`, or a
+custom command beginning with either interpreter, including workflow/job shell
+defaults and local composite actions. The CLI discovers Ruff on `PATH` and skips
+it when unavailable. `--ruff=false` or `--ruff=` disables it;
+`--ruff /path/to/ruff` selects a binary.
+`--ruff 'python -m ruff'` runs Ruff through a Python module launcher.
+It never installs tools or executes Python scripts.
+
+```yaml
+tools:
+  ruff:
+    enabled: true
+    target-version: py314
+    select: [F]
+    ignore: []
+lint:
+  rules:
+    external:
+      ruff: error
+```
+
+The default selection is Ruff's `F` correctness checks. `select` and `ignore`
+accept Ruff codes or prefixes matching stable rules; preview-only selectors are
+rejected. Lists replace inherited lists. `select: []` selects
+no lint rules (Python syntax errors can still be reported). `target-version`
+defaults to the version in an explicit interpreter such as `python3.9`, when
+supported by Ruff, and otherwise to `py314`. An explicit setting takes precedence.
+
+Following [Astral's actionlint integration](https://github.com/astral-sh/actionlint/blob/0141e7822652fbee3a1b878c3d83d9c1dce87d67/rule_ruff.go),
+Ruff runs in isolated, read-only mode: no repository Ruff configuration, cache,
+automatic fixes, or `noqa` exemptions. Use actionlint rule levels, per-file
+overrides, and reason-bearing YAML suppressions for exceptions. Ruff codes such
+as `F821` are retained in structured output. Literal/plain scripts use the shared
+YAML source map; unsupported scalar mappings fall back to the `run:` declaration.
+Inline YAML suppressions target the diagnostic's reported line. A directive on
+the YAML block header covers the script body.
+Ruff skips a script when an unquoted Actions expression forms part of a Python
+token, such as `item_${{ matrix.os }}` or `${{ inputs.major }}.0`, or supplies a
+name in statements such as `import ${{ inputs.module }}`, or supplies a whole
+statement that may define names used later in the script. Other steps and
+actionlint's workflow checks still run. Templates inside strings and comments
+continue to be sanitized while preserving source positions.
+Explicitly requested Ruff executables and Ruff invocation/configuration failures fail analysis.
+
+The Go APIs opt in with `AnalysisOptions.Ruff`, `AnalysisRequest.Ruff`, or
+`LinterOptions.Ruff`; an empty command disables the tool. The analysis APIs also
+accept `RuffOptions` for literal executable paths, arguments, and child environment.
+The GitHub Action's `ruff` input defaults to `true`.
+The Action installs Ruff when enabled and required by the effective configuration.
+It reuses a binary on `PATH`, then its cache, then a checksum-verified release download.
+The browser playground cannot run external tools.
+
 ## ShellCheck
 
 Use `actionlint --log-level debug` to inspect each script's selected dialect,

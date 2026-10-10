@@ -12,6 +12,7 @@ import (
 	"unicode"
 
 	"actionlint.kjanat.dev"
+	"actionlint.kjanat.dev/internal/ruff"
 	"github.com/invopop/jsonschema"
 )
 
@@ -136,6 +137,32 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		config.Description = config.Then.AllOf[0].Description
 		mapping.Type = ""
 		mapping.OneOf = []*jsonschema.Schema{{Type: "boolean"}, {Type: "object"}, {Type: "null"}}
+		return mapping
+	case reflect.TypeFor[actionlint.RuffToolConfig]():
+		type plain actionlint.RuffToolConfig
+		mapping := reflectMapping(plain{})
+		mapping.Version, mapping.ID = "", ""
+		mapping.Type = ""
+		mapping.OneOf = []*jsonschema.Schema{{Type: "boolean"}, {Type: "object"}, {Type: "null"}}
+		target, _ := mapping.Properties.Get("target-version")
+		target.Type = ""
+		target.OneOf = []*jsonschema.Schema{{Ref: ruff.SchemaPath + "#/definitions/PythonVersion"}, {Type: "null", Extras: map[string]any{"doNotSuggest": true}}}
+		for _, name := range []string{"select", "ignore"} {
+			property, _ := mapping.Properties.Get(name)
+			// Item-level references make editors suggest excluded upstream values.
+			// Validate every item through the array, separately from completion examples.
+			property.Items = &jsonschema.Schema{Type: "string", Examples: []any{"F", "F821"}}
+			property.Not = &jsonschema.Schema{Type: "array", Contains: &jsonschema.Schema{Not: &jsonschema.Schema{Ref: ruff.SelectorSchemaPath}}}
+		}
+		for name, description := range map[string]string{
+			"enabled":        "Enable Ruff analysis when the executable is available.",
+			"target-version": "Ruff Python target version; omission uses a supported versioned Python shell target, otherwise py314.",
+			"select":         "Ruff rule codes or prefixes to select; omission selects F.",
+			"ignore":         "Ruff rule codes or prefixes to exclude.",
+		} {
+			property, _ := mapping.Properties.Get(name)
+			property.Description = description
+		}
 		return mapping
 	case reflect.TypeFor[actionlint.IgnorePatterns]():
 		// JSON Schema's regex format uses a different dialect from Go's regexp.

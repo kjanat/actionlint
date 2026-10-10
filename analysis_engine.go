@@ -7,9 +7,14 @@ import (
 	"path/filepath"
 	"slices"
 	"time"
+
+	"actionlint.kjanat.dev/internal/ruff"
 )
 
 type analysisEngine struct {
+	ruff              string
+	ruffOptions       *ExternalCommandOptions
+	ruffCompatibility ruff.Compatibility
 	analysisLogger
 	ctx                context.Context
 	shellcheck         string
@@ -69,6 +74,7 @@ func (l *analysisEngine) check(
 	w, all := Parse(content)
 	var analysisErr error
 	metadataSources := map[string][]byte{}
+	compositeConfigs := map[string]*Config{}
 
 	if l.logLevel >= LogLevelVerbose {
 		elapsed := time.Since(start)
@@ -81,6 +87,14 @@ func (l *analysisEngine) check(
 
 		rules := []Rule{}
 		c := ruleContext{path: path, config: cfg, actions: localActions, workflows: localReusableWorkflows, process: proc, shellcheck: l.shellcheck}
+		c.projectConfig = projectConfig
+		c.ruff, c.ruffOptions = l.ruff, l.ruffOptions
+		c.ruffCompatibility = &l.ruffCompatibility
+		c.ruffWarning = func(err error) {
+			if l.logOut != nil {
+				_, _ = fmt.Fprintln(l.logOut, "warning: skipping automatically discovered Ruff:", err)
+			}
+		}
 		c.shellcheckOptions = l.shellcheckOptions
 		c.shellcheckSettings = l.shellcheckSettings
 		c.workingDir, c.inputs = l.workingDir, l.inputs
@@ -92,9 +106,9 @@ func (l *analysisEngine) check(
 			if descriptor.build == nil {
 				continue
 			}
-			// Shared analysis passes can emit independently configured diagnostics;
-			// keep them running. Disabled external tools need not be launched.
-			if descriptor.Category == "external" && cfg.diagnosticLevel(descriptor.Name) == "off" {
+			// Shared passes and Ruff composite analysis can emit diagnostics enabled
+			// by other rules or files; skip only disabled external checkers.
+			if descriptor.Category == "external" && descriptor.Name != "ruff" && cfg.diagnosticLevel(descriptor.Name) == "off" {
 				continue
 			}
 			if descriptor.enabled != nil && !descriptor.enabled(c) {
@@ -109,6 +123,9 @@ func (l *analysisEngine) check(
 			}
 			r, err := descriptor.build(c)
 			if err != nil {
+				if descriptor.Name == "ruff" && (c.ruffOptions == nil || !c.ruffOptions.Optional) {
+					return nil, fmt.Errorf("could not initialize Ruff: %w", err)
+				}
 				l.log(fmt.Sprintf("Rule %q was disabled:", descriptor.Name), err)
 				continue
 			}
@@ -124,6 +141,15 @@ func (l *analysisEngine) check(
 			v.AddPass(rule)
 		}
 		v.composites = &compositeAnalyzer{ctx: l.ctx, actions: localActions, passes: v.passes}
+		v.composites.configForFile = func(path string) (*Config, error) {
+			config, err := configForFile(projectConfig, path, root)
+			if err != nil {
+				return nil, err
+			}
+			config = l.rulePresets.apply(config)
+			compositeConfigs[path] = config
+			return config, nil
+		}
 		if dbg != nil {
 			v.EnableDebug(dbg)
 			for _, r := range rules {
@@ -146,6 +172,9 @@ func (l *analysisEngine) check(
 			var err error
 			if rule, ok := rule.(*RuleShellcheck); ok {
 				err = rule.cmd.wait()
+			}
+			if rule, ok := rule.(*ruffRule); ok {
+				err = rule.checker.Wait()
 			}
 			if analysisErr == nil {
 				analysisErr = err
@@ -244,6 +273,13 @@ func (l *analysisEngine) check(
 			levelConfig := cfg
 			if (e.Kind == "inline-suppression" || e.Kind == "disallow-suppressions") && (cfg == nil || cfg.Lint.Enabled == nil || *cfg.Lint.Enabled) {
 				levelConfig = findingConfig
+			}
+			// Ruff explicitly supports per-composite settings, but cannot override
+			// the caller's switch disabling the entire lint analysis.
+			if e.Kind == "ruff" && (cfg == nil || cfg.Lint.Enabled == nil || *cfg.Lint.Enabled) {
+				if compositeConfig, ok := compositeConfigs[sourcePath]; ok {
+					levelConfig = compositeConfig
+				}
 			}
 			switch levelConfig.diagnosticLevel(e.Kind) {
 			case "off":

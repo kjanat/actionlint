@@ -91,9 +91,11 @@ type LinterOptions struct {
 	// OnFilesSelected is called with the exact file set passed to LintFiles. The callback receives
 	// a copy so modifying it does not affect linting.
 	OnFilesSelected func([]string)
-	// Context bounds the lifetime of the linting. Cancelling it kills the ShellCheck
+	// Context bounds the lifetime of the linting. Cancelling it kills the external
 	// child processes which are running. When this value is nil, context.Background() is used.
 	Context context.Context
+	// Ruff selects the executable for Python run scripts. Empty disables it.
+	Ruff string
 	// More options will come here
 }
 
@@ -240,6 +242,7 @@ func newLegacyAnalysisSession(opts *LinterOptions) (*AnalysisSession, error) {
 	return NewAnalysisSession(AnalysisOptions{
 		Context: opts.Context, WorkingDir: opts.WorkingDir, StdinFileName: opts.StdinFileName,
 		ConfigFile: opts.ConfigFile, ConfigOverlays: opts.ConfigOverlays, OnConfigLoaded: opts.OnConfigLoaded, Shellcheck: opts.Shellcheck,
+		Ruff:           opts.Ruff,
 		IgnorePatterns: opts.IgnorePatterns, Verbose: opts.Verbose, Debug: opts.Debug,
 		LogWriter: opts.LogWriter, OnRulesCreated: opts.OnRulesCreated, OnFilesSelected: opts.OnFilesSelected,
 	})

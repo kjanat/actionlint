@@ -329,14 +329,21 @@ func checkFacadeSchema(t *testing.T, cfg *config) {
 			t.Fatal(err)
 		}
 	}
-	const snapshot = "schemas/shellcheck/0.11.0.schema.json"
-	want, err = os.ReadFile(filepath.Join(cfg.repoRoot, snapshot))
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err = os.ReadFile(filepath.Join(dir, snapshot))
-	if err != nil || !bytes.Equal(got, want) {
-		t.Fatalf("facade schema snapshot differs or is missing: %v", err)
+	for _, snapshot := range []string{
+		"schemas/shellcheck/0.11.0.schema.json",
+		"schemas/ruff/0.17.0.schema.json",
+		"schemas/ruff/0.17.0-selectors.schema.json",
+		"schemas/ruff/0.17.0.provenance.json",
+		"schemas/ruff/0.17.0.LICENSE.txt",
+	} {
+		want, err = os.ReadFile(filepath.Join(cfg.repoRoot, snapshot))
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err = os.ReadFile(filepath.Join(dir, snapshot))
+		if err != nil || !bytes.Equal(got, want) {
+			t.Fatalf("facade schema snapshot %s differs or is missing: %v", snapshot, err)
+		}
 	}
 }
 

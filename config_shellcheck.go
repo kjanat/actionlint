@@ -46,7 +46,7 @@ func normalizeToolSwitch(node *yaml.Node) *yaml.Node {
 		}
 		return &normalized
 	}
-	return rewrite(node, []string{"tools", "shellcheck"})
+	return rewrite(rewrite(node, []string{"tools", "shellcheck"}), []string{"tools", "ruff"})
 }
 
 func validateShellcheckBooleans(node *yaml.Node, keys ...string) error {
