@@ -155,6 +155,10 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 			a.cwd = "."
 		}
 	}
+	a.cwd, err = filepath.Abs(a.cwd)
+	if err != nil {
+		return nil, err
+	}
 	if a.stdin == "" {
 		a.stdin = "<stdin>"
 	}

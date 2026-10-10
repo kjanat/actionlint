@@ -8,7 +8,7 @@ import (
 
 func TestReportCannotReplaceExcludedSelectionConfig(t *testing.T) {
 	for _, modern := range []bool{false, true} {
-		for _, target := range []string{".github/actionlint.yaml", "base.yml"} {
+		for _, target := range []string{".github/actionlint.yaml", "base.yml", ".github/workflows/ci.yml"} {
 			t.Run(fmtTestName(modern, target), func(t *testing.T) {
 				t.Chdir(t.TempDir())
 				for _, dir := range []string{".git", ".github/workflows"} {
@@ -27,6 +27,9 @@ func TestReportCannotReplaceExcludedSelectionConfig(t *testing.T) {
 					}
 				}
 				args := []string{"--output-file", target}
+				if target == ".github/workflows/ci.yml" {
+					args = append(args, target)
+				}
 				if modern {
 					args = append([]string{"check"}, args...)
 				}

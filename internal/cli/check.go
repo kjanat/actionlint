@@ -113,6 +113,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		return 0, err
 	}
 	inputs := append([]string{c.Config.Path, r.TemplateFile}, result.Inputs...)
+	inputs = append(inputs, c.Paths...)
 	if len(c.Paths) == 1 && c.Paths[0] == "-" {
 		inputs = append(inputs, c.StdinFilename)
 	}

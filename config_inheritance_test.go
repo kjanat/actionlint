@@ -2,6 +2,7 @@ package actionlint
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -48,6 +49,47 @@ func TestConfigExtends(t *testing.T) {
 	}
 	if !strings.Contains(string(encoded), filepath.Join(root, "base", ".shellcheckrc")) {
 		t.Fatal(string(encoded))
+	}
+}
+
+func TestRelativeConfigCallbackPath(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(root)
+	for _, initial := range []string{"config.yml", "./config.yml"} {
+		for _, inherited := range []bool{false, true} {
+			t.Run(initial+fmt.Sprint(inherited), func(t *testing.T) {
+				base := filepath.Join(root, "base.yml")
+				content := "lint: {rules: {correctness: {if-cond: warn}}}\n"
+				if inherited {
+					content = "extends: [base.yml]\n"
+				}
+				var reads []string
+				session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: initial, ReadFile: func(path string) ([]byte, error) {
+					reads = append(reads, path)
+					switch path {
+					case initial:
+						return []byte(content), nil
+					case base:
+						return []byte("lint: {rules: {correctness: {if-cond: warn}}}\n"), nil
+					default:
+						return nil, os.ErrNotExist
+					}
+				}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				want := []string{initial}
+				if inherited {
+					want = append(want, base)
+				}
+				if !slices.Equal(reads, want) || session.defaultConfig.diagnosticLevel("if-cond") != "warn" {
+					t.Fatalf("callback paths=%v, want=%v", reads, want)
+				}
+				if !slices.Contains(session.defaultConfig.configFiles, filepath.Join(root, "config.yml")) {
+					t.Fatalf("config origin did not remain absolute: %v", session.defaultConfig.configFiles)
+				}
+			})
+		}
 	}
 }
 

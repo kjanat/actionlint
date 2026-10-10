@@ -27,6 +27,7 @@ func Load(path string, read func(string) ([]byte, error), normalize func(string,
 	cache := map[string]*yaml.Node{}
 	var load func(string, int) (*yaml.Node, error)
 	load = func(path string, depth int) (*yaml.Node, error) {
+		readPath := path
 		path, err := filepath.Abs(path)
 		if err != nil {
 			return nil, err
@@ -48,7 +49,7 @@ func Load(path string, read func(string) ([]byte, error), normalize func(string,
 		}
 		active[identity] = true
 		defer delete(active, identity)
-		data, err := read(path)
+		data, err := read(readPath)
 		if err != nil {
 			return nil, fmt.Errorf("read config %q: %w", path, err)
 		}

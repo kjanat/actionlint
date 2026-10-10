@@ -77,6 +77,41 @@ func TestCallerRelativeSelection(t *testing.T) {
 	}
 }
 
+func TestRelativeWorkingDirectorySelectionAndOverrides(t *testing.T) {
+	parent := t.TempDir()
+	t.Chdir(parent)
+	root := filepath.Join(parent, "repo")
+	config := "files: {includes: ['.github/workflows/**']}\noverrides: [{includes: ['.github/workflows/**'], lint: {rules: {correctness: {if-cond: warn}}}}]\n"
+	writeShellcheckFixture(t, root, "actionlint.yml", config)
+	workflow := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", "on: push\njobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}\n")
+	cfg, err := ParseConfig([]byte(config))
+	if err != nil {
+		t.Fatal(err)
+	}
+	check := func(result *AnalysisResult, err error) {
+		t.Helper()
+		if err != nil || result == nil || result.FileCount() != 1 {
+			t.Fatalf("relative working directory dropped workflow: %+v, %v", result, err)
+		}
+		if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "if-cond" && d.Severity == "warning" }) {
+			t.Fatalf("relative working directory missed override: %+v", result.Diagnostics)
+		}
+		if !slices.Contains(result.Inputs, workflow) {
+			t.Fatalf("workflow input did not resolve to working directory: %+v", result.Inputs)
+		}
+	}
+	content, err := os.ReadFile(workflow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check(Analyze(t.Context(), AnalysisRequest{WorkingDir: "repo", Sources: []SourceUnit{{Path: ".github/workflows/ci.yml", Content: content, Config: cfg}}}))
+	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: "repo", ConfigFile: "repo/actionlint.yml"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	check(session.Files([]string{workflow}, nil))
+}
+
 func TestExternalOverridePlanMatchesExecution(t *testing.T) {
 	executable, err := os.Executable()
 	if err != nil {

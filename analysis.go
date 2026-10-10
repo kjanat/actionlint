@@ -115,6 +115,11 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 			return nil, err
 		}
 	}
+	var err error
+	request.WorkingDir, err = filepath.Abs(request.WorkingDir)
+	if err != nil {
+		return nil, err
+	}
 	inputs := &inputFiles{}
 	selected := make([]SourceUnit, 0, len(request.Sources))
 	for _, source := range request.Sources {
@@ -189,7 +194,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 			return err
 		})
 	}
-	err := group.Wait()
+	err = group.Wait()
 	proc.wait()
 	if err == nil {
 		err = ctx.Err()
