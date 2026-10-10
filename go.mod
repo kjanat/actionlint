@@ -2,7 +2,7 @@ module actionlint.kjanat.dev
 
 go 1.26.0
 
-toolchain go1.27.1
+toolchain go1.27.2
 
 require (
 	github.com/bmatcuk/doublestar/v4 v4.10.0

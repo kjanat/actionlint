@@ -39,7 +39,7 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
-      - uses: kjanat/install-dprint@fc7e4f62965bab609a936c9e58ad4893bb9da961 # v2
+      - uses: kjanat/install-dprint@c2cdca92154b44b2a2c15222d25d91d1cddfca1b # v2.2.0
       - run: go test ./scripts/generate-config-schema
       - run: dprint check 'schemas/shellcheck/*.schema.json'
       - run: go generate

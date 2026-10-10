@@ -1,7 +1,8 @@
 {
   description = "GitHub Actions workflow linter";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+  # Pin the required Go toolchain update until it reaches nixpkgs-unstable.
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/4b4931b2f5d285574aa1fbdbbf58e6aab595d31c";
 
   outputs =
     { self, nixpkgs }:
@@ -12,12 +13,33 @@
         "aarch64-darwin"
       ];
       forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
+      toolchain = builtins.head (
+        builtins.filter (line: nixpkgs.lib.hasPrefix "toolchain go" line) (
+          nixpkgs.lib.splitString "\n" (builtins.readFile ./go.mod)
+        )
+      );
+      goVersion = nixpkgs.lib.removePrefix "toolchain go" (nixpkgs.lib.removeSuffix "\r" toolchain);
+      goParts = nixpkgs.lib.splitString "." goVersion;
+      goMajor = builtins.elemAt goParts 0;
+      goMinor = builtins.elemAt goParts 1;
+      goFor =
+        pkgs:
+        let
+          go = pkgs.${"go_${goMajor}_${goMinor}"};
+        in
+        assert go.version == goVersion;
+        go;
+      goBuilderFor =
+        pkgs:
+        assert (goFor pkgs).version == goVersion;
+        pkgs.${"buildGo${goMajor}${goMinor}Module"};
       version = "1.17.0";
     in
     {
       packages = forAllSystems (pkgs: rec {
         actionlint = pkgs.callPackage ./nix/package.nix {
           src = self;
+          buildGoModule = goBuilderFor pkgs;
           inherit version;
         };
         default = actionlint;
@@ -33,7 +55,7 @@
       devShells = forAllSystems (pkgs: {
         default = pkgs.mkShell {
           packages = with pkgs; [
-            go
+            (goFor pkgs)
             git
             bash
             bash-completion
