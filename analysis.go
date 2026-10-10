@@ -12,6 +12,7 @@ import (
 	"slices"
 	"sync"
 
+	"actionlint.kjanat.dev/internal/workflownames"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -170,6 +171,42 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	readFile := request.ReadFile
 	if readFile == nil {
 		readFile = os.ReadFile
+	}
+	sourceContents := map[string][]byte{}
+	for _, source := range request.Sources {
+		path := source.inputPath
+		if path == "" {
+			path = source.Path
+		}
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(cwd, path)
+		}
+		sourceContents[filepath.Clean(path)] = source.Content
+	}
+	engine.workflowNames = &workflownames.Index{Load: func(path string) (string, bool, error) {
+		if err := ctx.Err(); err != nil {
+			return "", false, err
+		}
+		inputs.add(path)
+		content, ok := sourceContents[path]
+		if !ok {
+			var err error
+			content, err = readFile(path)
+			if err != nil {
+				return "", false, err
+			}
+		}
+		workflow, errs := Parse(content)
+		if workflow == nil || len(errs) > 0 {
+			return "", false, nil
+		}
+		if workflow.Name == nil {
+			return "", true, nil
+		}
+		return workflow.Name.Value, !workflow.Name.ContainsExpression(), nil
+	}}
+	for path := range sourceContents {
+		engine.workflowNames.Paths = append(engine.workflowNames.Paths, path)
 	}
 	// Initialize shared caches before any analysis goroutines access them.
 	for _, source := range request.Sources {

@@ -1,6 +1,9 @@
 package actionlint
 
-import "actionlint.kjanat.dev/internal/ruff"
+import (
+	"actionlint.kjanat.dev/internal/ruff"
+	"actionlint.kjanat.dev/internal/workflownames"
+)
 
 // ruleDescriptor supplies metadata to both rule instances and frontend discovery.
 type ruleDescriptor struct {
@@ -14,6 +17,7 @@ type ruleDescriptor struct {
 	enabled     func(ruleContext) bool
 }
 type ruleContext struct {
+	workflowNames           *workflownames.Index
 	ruff                    string
 	ruffOptions             *ExternalCommandOptions
 	ruffCompatibility       *ruff.Compatibility
@@ -34,6 +38,10 @@ type ruleContext struct {
 
 func builtinRuleDescriptors() []ruleDescriptor {
 	rules := []ruleDescriptor{
+		{Name: "workflow-run-names", Description: "Checks workflow_run names against repository workflows", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) {
+			return &workflowRunNamesRule{RuleBase: builtinRuleBase("workflow-run-names"), root: c.projectRoot, index: c.workflowNames}, nil
+		}, enabled: workflowRunNamesAvailable},
+		{Name: "unsound-ternary", Description: "Checks conditional expressions whose falsy middle operand always selects the fallback", Category: "correctness", Recommended: true},
 		{Name: "ruff", Description: "Checks embedded Python scripts with Ruff", Category: "external", Recommended: true, build: func(c ruleContext) (Rule, error) { return newRuffRule(c) }, enabled: func(c ruleContext) bool {
 			possible, err := ruffProjectConfigMayEnable(c.config, c.projectConfig, c.projectRoot != "")
 			// Validated config should merge successfully; analysis resolves the

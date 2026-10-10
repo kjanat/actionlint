@@ -400,6 +400,17 @@
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
+              "id": "unsound-ternary",
+              "name": "UnsoundTernary",
+              "defaultConfiguration": {"level": "error"},
+              "properties": {
+                "description": "Checks conditional expressions whose falsy middle operand always selects the fallback",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {"text": "Checks conditional expressions whose falsy middle operand always selects the fallback"},
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
               "id": "workflow-call",
               "name": "WorkflowCall",
               "defaultConfiguration": {

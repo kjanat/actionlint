@@ -275,6 +275,23 @@ The Action installs Ruff when enabled and required by the effective configuratio
 It reuses a binary on `PATH`, then its cache, then a checksum-verified release download.
 The browser playground cannot run external tools.
 
+## Additional correctness checks
+
+`correctness.unsound-ternary` reports `a && b || c` when the shared expression
+evaluator can determine that `b` is falsy, including literal `fromJSON()` calls.
+Unknown middle operands are left alone. The check applies to expressions in
+workflow values, not just `if:` conditions.
+
+`correctness.workflow-run-names` checks `workflow_run.workflows` against the names
+of workflows directly inside the repository's `.github/workflows` directory.
+Unnamed workflows use their repository-relative file path. Producer workflows
+remain available for name resolution even when excluded from lint inputs. The
+check needs repository context and skips name matching if a workflow cannot be
+parsed reliably. It does not query GitHub or inspect other branches.
+
+Both rules are enabled by default and support rule levels, overrides, and inline
+suppression like other registered rules.
+
 ## ShellCheck
 
 Use `actionlint --log-level debug` to inspect each script's selected dialect,

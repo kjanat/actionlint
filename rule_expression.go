@@ -831,6 +831,7 @@ func (rule *RuleExpression) checkExprsIn(s string, pos *Pos, quoted, checkUntrus
 	}
 	offset := 0
 	ts := []typedExpr{}
+	valid := true
 	for {
 		idx := strings.Index(s, "${{")
 		if idx == -1 {
@@ -843,9 +844,10 @@ func (rule *RuleExpression) checkExprsIn(s string, pos *Pos, quoted, checkUntrus
 		col := col + offset
 
 		ty, offsetAfter, ok := rule.checkSemantics(s, line, col, checkUntrusted, workflowKey)
-		if !ok {
+		if !ok && (!checkUntrusted || ty == nil) {
 			return nil, false
 		}
+		valid = valid && ok
 		if ty == nil || offsetAfter == 0 {
 			return nil, true
 		}
@@ -855,7 +857,7 @@ func (rule *RuleExpression) checkExprsIn(s string, pos *Pos, quoted, checkUntrus
 		offset += offsetAfter
 	}
 
-	return ts, true
+	return ts, valid
 }
 
 func (rule *RuleExpression) exprError(err *ExprError, lineBase, colBase int) {
@@ -901,6 +903,9 @@ func (rule *RuleExpression) checkSemanticsOfExprNode(expr ExprNode, line, col in
 	ty, errs := c.Check(expr)
 	for _, err := range errs {
 		rule.exprError(err, line, col)
+	}
+	if len(errs) == 0 && rule.config.diagnosticLevel("unsound-ternary") != "off" {
+		rule.checkUnsoundTernaries(expr, line, col)
 	}
 	if workflowKey == "" && len(errs) == 0 {
 		if _, literal := expr.(*StringNode); !literal {
