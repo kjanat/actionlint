@@ -25,9 +25,12 @@ jobs:
       - name: Check new release on GitHub
         run: |
           set -euo pipefail
-          # The detector exits 2 when a tracked action has a new major.
+          detector="$(mktemp)"
+          trap 'rm -f "${detector}"' EXIT
+          go build -o "${detector}" ./scripts/generate-popular-actions
+          # Run directly: go run turns the detector's exit 2 into exit 1.
           status=0
-          releases="$(go run ./scripts/generate-popular-actions -d)" || status=$?
+          releases="$("${detector}" -d)" || status=$?
           if [[ -n "${releases}" ]]; then
             printf '%s\n' "${releases}"
           fi
@@ -44,7 +47,8 @@ jobs:
           elif [[ "${status}" -ne 0 ]]; then
             exit "${status}"
           fi
-      - run: go generate
+      - name: Refresh upstream action and workflow metadata
+        run: go generate -skip generate-config-schema
         env: { GH_TOKEN: "${{ github.token }}" }
       - name: Warn when the pull request will carry no CI
         env: { UPKEEP_TOKEN: "${{ secrets.UPKEEP_TOKEN }}" }
