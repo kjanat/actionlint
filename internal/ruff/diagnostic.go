@@ -16,6 +16,7 @@ type Position struct {
 
 // Diagnostic is the read-only subset of Ruff's JSON diagnostic contract.
 type Diagnostic struct {
+	Filename    string   `json:"filename"`
 	Code        string   `json:"code"`
 	Name        string   `json:"name"`
 	Message     string   `json:"message"`

@@ -2,6 +2,7 @@ package ruff
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
 	"unicode"
@@ -73,7 +74,11 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 	if !valid {
 		return nil
 	}
-	defaults := arguments(config)
+	filename, err := filepath.Abs("actionlint.py")
+	if err != nil {
+		return fmt.Errorf("ruff stdin filename for script at %s: %w", location, err)
+	}
+	defaults := arguments(config, filename)
 	args := make([]string, 1, len(defaults)+len(c.flags))
 	args[0] = "check"
 	args = append(args, c.flags...)
@@ -85,6 +90,11 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		diagnostics, err := Decode(stdout)
 		if err != nil {
 			return fmt.Errorf("ruff output for script at %s: %w", location, err)
+		}
+		for _, diagnostic := range diagnostics {
+			if filepath.Clean(diagnostic.Filename) != filename {
+				return fmt.Errorf("ruff output for script at %s refers to unexpected file %q; expected %q", location, diagnostic.Filename, filename)
+			}
 		}
 		c.mu.Lock()
 		defer c.mu.Unlock()
@@ -137,7 +147,7 @@ func isPythonCommand(command string) bool {
 	return true
 }
 
-func arguments(config Config) []string {
+func arguments(config Config, filename string) []string {
 	target := config.TargetVersion
 	if target == "" {
 		target = "py314"
@@ -151,7 +161,7 @@ func arguments(config Config) []string {
 	if selectRules == nil {
 		selectRules = []string{"F"}
 	}
-	args := []string{"check", "--isolated", "--target-version", target, "--select", strings.Join(selectRules, ","), "--ignore-noqa", "--no-fix", "--no-cache", "--output-format", "json", "--stdin-filename", "actionlint.py"}
+	args := []string{"check", "--isolated", "--target-version", target, "--select", strings.Join(selectRules, ","), "--ignore-noqa", "--no-fix", "--no-cache", "--output-format", "json", "--stdin-filename", filename}
 	if len(ignoreRules) > 0 {
 		args = append(args, "--ignore", strings.Join(ignoreRules, ","))
 	}

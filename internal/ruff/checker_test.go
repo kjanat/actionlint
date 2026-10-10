@@ -1,7 +1,12 @@
 package ruff
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -18,7 +23,7 @@ func TestArguments(t *testing.T) {
 		{"empty selection", Config{Select: []string{}}, "ALL", "ALL", "py314"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			args := arguments(tc.config)
+			args := arguments(tc.config, "actionlint.py")
 			for flag, want := range map[string]string{"--select": tc.selectRules, "--ignore": tc.ignore, "--target-version": tc.target} {
 				i := slices.Index(args, flag)
 				if want == "" {
@@ -38,6 +43,96 @@ func TestArguments(t *testing.T) {
 			}
 			if args[len(args)-1] != "-" {
 				t.Fatal("not reading stdin")
+			}
+		})
+	}
+}
+
+func TestCheckDiagnosticFilename(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		filename  func(string) string
+		wantError bool
+	}{
+		{"stdin", func(path string) string { return path }, false},
+		{"normalized stdin", func(path string) string {
+			return filepath.Dir(path) + string(filepath.Separator) + "nested" + string(filepath.Separator) + ".." + string(filepath.Separator) + filepath.Base(path)
+		}, false},
+		{"different file", func(path string) string { return filepath.Join(filepath.Dir(path), "other.py") }, true},
+		{"same basename elsewhere", func(path string) string { return filepath.Join(filepath.Dir(path), "other", filepath.Base(path)) }, true},
+		{"missing filename", func(string) string { return "" }, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var result error
+			var reported int
+			checker := New(func(args []string, _ string, callback func([]byte, error) error) {
+				filename := args[slices.Index(args, "--stdin-filename")+1]
+				diagnostic := Diagnostic{Filename: filename, Code: "F821", Message: "undefined", Location: Position{Row: 1, Column: 1}}
+				diagnostics := []Diagnostic{diagnostic}
+				diagnostic.Filename = tc.filename(filename)
+				diagnostics = append(diagnostics, diagnostic)
+				output, err := json.Marshal(diagnostics)
+				if err != nil {
+					t.Fatal(err)
+				}
+				result = callback(output, nil)
+			}, func() error { return result }, nil)
+			python := "python"
+			if err := checker.Check("print(missing)", &python, "test", Config{}, func(Diagnostic) { reported++ }); err != nil {
+				t.Fatal(err)
+			}
+			err := checker.Wait()
+			if (err != nil) != tc.wantError {
+				t.Fatalf("error = %v, wantError = %v", err, tc.wantError)
+			}
+			if tc.wantError && reported != 0 {
+				t.Fatalf("reported %d diagnostics before rejecting foreign input", reported)
+			}
+			if !tc.wantError && reported != 2 {
+				t.Fatalf("reported %d diagnostics, want 2", reported)
+			}
+		})
+	}
+}
+
+func TestCheckStdinIgnoresPositionalInputs(t *testing.T) {
+	binary, err := exec.LookPath("ruff")
+	if err != nil {
+		t.Skip("Ruff is not installed")
+	}
+	directory := t.TempDir()
+	external := filepath.Join(directory, "external.py")
+	if err := os.WriteFile(external, []byte("print(external_file_only)\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, input := range []string{external, directory} {
+		t.Run(filepath.Base(input), func(t *testing.T) {
+			var result error
+			var diagnostics []Diagnostic
+			checker := New(func(args []string, source string, callback func([]byte, error) error) {
+				cmd := exec.CommandContext(t.Context(), binary, args...)
+				cmd.Stdin = strings.NewReader(source)
+				var stderr bytes.Buffer
+				cmd.Stderr = &stderr
+				output, runErr := cmd.Output()
+				var exitErr *exec.ExitError
+				if errors.As(runErr, &exitErr) && exitErr.ExitCode() == 1 {
+					runErr = nil
+				}
+				if !strings.Contains(stderr.String(), "in favor of standard input") {
+					t.Fatalf("missing Ruff input warning: %s", stderr.String())
+				}
+				result = callback(output, runErr)
+			}, func() error { return result }, nil, input)
+			python := "python"
+			if err := checker.Check("print(workflow_only)", &python, "test", Config{}, func(d Diagnostic) { diagnostics = append(diagnostics, d) }); err != nil {
+				t.Fatal(err)
+			}
+			if err := checker.Wait(); err != nil {
+				t.Fatal(err)
+			}
+			if len(diagnostics) != 1 || !strings.Contains(diagnostics[0].Message, "workflow_only") {
+				t.Fatalf("unexpected stdin diagnostics: %+v", diagnostics)
 			}
 		})
 	}

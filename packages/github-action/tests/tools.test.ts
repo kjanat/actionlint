@@ -168,25 +168,34 @@ test('unsupported and timed-out version probes remain advisory', {
 	});
 });
 
-test('Ruff prefers PATH and validates a cached executable before use', async () => {
+test('Ruff rejects unrelated PATH executables and validates its cached fallback', async () => {
 	await temporary(async (directory) => {
 		const platform = runnerPlatform(process.platform, process.arch);
 		const binary = process.platform === 'win32' ? 'ruff.exe' : 'ruff';
 		const pathTool = join(directory, binary);
 		await copyFile(process.execPath, pathTool);
-		await withEnvironment({ PATH: directory, PATHEXT: '.EXE' }, async () => {
-			assert.deepEqual(await ruffBinary(platform), { kind: 'existing', executable: pathTool });
-		});
 		const cache = join(directory, 'cache');
 		const root = join(cache, `actionlint-ruff-${platform.os}`, ruffVersion, platform.arch);
 		await mkdir(root, { recursive: true });
 		await writeFile(`${root}.complete`, '');
 		const executable = join(root, binary);
-		await withEnvironment({ PATH: join(directory, 'missing'), RUNNER_TOOL_CACHE: cache }, async () => {
+		await withEnvironment({ PATH: directory, PATHEXT: '.EXE', RUNNER_TOOL_CACHE: cache }, async () => {
 			await assert.rejects(ruffBinary(platform), { code: 'ENOENT' });
 			await copyFile(process.execPath, executable);
 			assert.deepEqual(await ruffBinary(platform), { kind: 'standalone', executable });
 		});
+	});
+});
+
+test('Ruff PATH reuse requires a compatible stable baseline', async () => {
+	await temporary(async (directory) => {
+		const fixture = fileURLToPath(new URL('./fixtures/ruff-path-compatibility.ts', import.meta.url));
+		const result = await capture(process.execPath, ['--experimental-test-module-mocks', fixture], {
+			...process.env,
+			RUNNER_TEMP: directory,
+			RUNNER_TOOL_CACHE: join(directory, 'cache'),
+		}, { timeoutMS: 30_000 });
+		assert.equal(result.exitCode, 0, `${result.stdout}\n${result.stderr}`);
 	});
 });
 
