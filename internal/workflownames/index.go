@@ -29,34 +29,66 @@ type Index struct {
 	cache map[string]func() (Names, error)
 }
 
-// PathKey identifies inventory paths while retaining platform case semantics.
-func PathKey(path string) string {
-	return pathKey(path, runtime.GOOS == "windows")
+// SamePath compares casing aliases using the filesystem when both paths exist.
+func SamePath(left, right string) bool {
+	return samePath(left, right, runtime.GOOS == "windows")
 }
 
-func pathKey(path string, windows bool) string {
-	path = filepath.Clean(path)
-	if windows {
-		path = strings.ToLower(path)
+func samePath(left, right string, windows bool) bool {
+	return samePathOnFilesystem(left, right, windows, os.Stat, os.ReadDir)
+}
+
+func samePathOnFilesystem(left, right string, windows bool, stat func(string) (os.FileInfo, error), readDir func(string) ([]os.DirEntry, error)) bool {
+	left, right = filepath.Clean(left), filepath.Clean(right)
+	if left == right {
+		return true
 	}
-	return path
+	if !strings.EqualFold(left, right) {
+		return false
+	}
+	leftInfo, leftErr := stat(left)
+	rightInfo, rightErr := stat(right)
+	if leftErr == nil && rightErr == nil {
+		if !os.SameFile(leftInfo, rightInfo) {
+			return false
+		}
+		leftName, rightName := filepath.Base(left), filepath.Base(right)
+		if leftName == rightName {
+			return true
+		}
+		entries, err := readDir(filepath.Dir(left))
+		if err != nil {
+			return false
+		}
+		leftExists, rightExists := false, false
+		for _, entry := range entries {
+			leftExists = leftExists || entry.Name() == leftName
+			rightExists = rightExists || entry.Name() == rightName
+		}
+		return !leftExists || !rightExists
+	}
+	return windows
 }
 
 func workflowPaths(dir string, candidates []string, windows bool) []string {
-	dir = pathKey(dir, windows)
-	paths := map[string]string{}
+	return workflowPathsByIdentity(dir, candidates, func(left, right string) bool { return samePath(left, right, windows) })
+}
+
+func workflowPathsByIdentity(dir string, candidates []string, same func(string, string) bool) []string {
+	var paths []string
 	for _, path := range candidates {
-		key := pathKey(path, windows)
-		if filepath.Dir(key) == dir && (strings.HasSuffix(path, ".yml") || strings.HasSuffix(path, ".yaml")) {
-			paths[key] = path
+		if !same(filepath.Dir(path), dir) || (!strings.HasSuffix(path, ".yml") && !strings.HasSuffix(path, ".yaml")) {
+			continue
+		}
+		index := slices.IndexFunc(paths, func(existing string) bool { return same(existing, path) })
+		if index >= 0 {
+			paths[index] = path
+		} else {
+			paths = append(paths, path)
 		}
 	}
-	ordered := make([]string, 0, len(paths))
-	for _, path := range paths {
-		ordered = append(ordered, path)
-	}
-	slices.Sort(ordered)
-	return ordered
+	slices.Sort(paths)
+	return paths
 }
 
 // ForRoot includes only workflow files directly under .github/workflows.
@@ -66,8 +98,16 @@ func (i *Index) ForRoot(root string) (Names, error) {
 	if i.cache == nil {
 		i.cache = map[string]func() (Names, error){}
 	}
-	key := PathKey(root)
+	key := filepath.Clean(root)
 	load, exists := i.cache[key]
+	if !exists {
+		for cached, entry := range i.cache {
+			if SamePath(cached, root) {
+				load, exists = entry, true
+				break
+			}
+		}
+	}
 	if !exists {
 		load = sync.OnceValues(func() (Names, error) {
 			names := Names{Values: map[string]bool{}, Complete: true}
@@ -80,14 +120,13 @@ func (i *Index) ForRoot(root string) (Names, error) {
 				names.Complete = false
 			}
 			var candidates []string
-			diskNames := map[string]string{}
 			for _, entry := range entries {
 				if !entry.IsDir() {
 					path := filepath.Join(dir, entry.Name())
 					candidates = append(candidates, path)
-					diskNames[PathKey(path)] = entry.Name()
 				}
 			}
+			diskPaths := slices.Clone(candidates)
 			candidates = append(candidates, i.Paths...)
 			for _, path := range workflowPaths(dir, candidates, runtime.GOOS == "windows") {
 				name, known, err := i.Load(path)
@@ -103,9 +142,12 @@ func (i *Index) ForRoot(root string) (Names, error) {
 					continue
 				}
 				if name == "" {
-					filename, exists := diskNames[PathKey(path)]
-					if !exists {
-						filename = filepath.Base(path)
+					filename := filepath.Base(path)
+					for _, disk := range diskPaths {
+						if SamePath(disk, path) {
+							filename = filepath.Base(disk)
+							break
+						}
 					}
 					name = ".github/workflows/" + filename
 				}

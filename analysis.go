@@ -184,7 +184,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(engine.workingDir, path)
 		}
-		sourceContents[workflownames.PathKey(path)] = source.Content
+		sourceContents[filepath.Clean(path)] = source.Content
 		sourcePaths = append(sourcePaths, filepath.Clean(path))
 	}
 	engine.workflowNames = &workflownames.Index{Paths: sourcePaths, OnDirectory: inputs.add, Load: func(path string) (string, bool, error) {
@@ -192,7 +192,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 			return "", false, err
 		}
 		inputs.add(path)
-		content, ok := sourceContents[workflownames.PathKey(path)]
+		content, ok := sourceContents[filepath.Clean(path)]
 		if !ok {
 			var err error
 			content, err = readFile(path)

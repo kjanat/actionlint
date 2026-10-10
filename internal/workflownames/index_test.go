@@ -59,7 +59,7 @@ func TestWorkflowPathsPlatformIdentity(t *testing.T) {
 			t.Fatalf("windows=%v: paths=%v, want %v", windows, got, want)
 		}
 	}
-	if got := PathKey(overlay) == PathKey(disk); got != (runtime.GOOS == "windows") {
+	if got := SamePath(overlay, disk); got != (runtime.GOOS == "windows") {
 		t.Fatalf("host path equality = %v on %s", got, runtime.GOOS)
 	}
 }
@@ -87,5 +87,109 @@ func TestWorkflowPathsUppercaseExtensionIgnored(t *testing.T) {
 		if got := workflowPaths(dir, candidates, windows); !slices.Equal(got, []string{valid}) {
 			t.Fatalf("windows=%v: uppercase extension was indexed: %v", windows, got)
 		}
+	}
+}
+
+func TestIndexFilesystemCaseAlias(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, ".github", "workflows")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	disk := filepath.Join(dir, "build.yml")
+	if err := os.WriteFile(disk, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	overlay := filepath.Join(dir, "BUILD.yml")
+	if _, err := os.Stat(overlay); err != nil {
+		t.Skip("requires a case-insensitive filesystem")
+	}
+	for _, name := range []string{"New name", ""} {
+		loads := 0
+		index := &Index{Paths: []string{overlay}, Load: func(path string) (string, bool, error) {
+			loads++
+			if path != overlay {
+				t.Errorf("loaded stale disk spelling %q", path)
+				return "", false, nil
+			}
+			return name, true, nil
+		}}
+		got, err := index.ForRoot(root)
+		if err != nil || !got.Complete || loads != 1 || len(got.Values) != 1 {
+			t.Fatalf("case alias inventory=%+v err=%v loads=%d", got, err, loads)
+		}
+		if name != "" && !got.Values[name] {
+			t.Fatalf("missing overlay name: %+v", got)
+		}
+		if name == "" && !got.Values[".github/workflows/build.yml"] {
+			t.Fatalf("disk basename changed through overlay: %+v", got)
+		}
+		if _, err := index.ForRoot(strings.ToUpper(root)); err != nil || loads != 1 {
+			t.Fatalf("root casing alias reloaded inventory: loads=%d err=%v", loads, err)
+		}
+	}
+}
+
+func TestWorkflowPathsDistinctFiles(t *testing.T) {
+	dir := t.TempDir()
+	first := filepath.Join(dir, "build.yml")
+	other := filepath.Join(dir, "other.yml")
+	if err := os.WriteFile(first, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Link(first, other); err != nil {
+		t.Skipf("hard links unavailable: %v", err)
+	}
+	want := []string{first, other}
+	if got := workflowPaths(dir, want, false); !slices.Equal(got, want) {
+		t.Fatalf("distinct hardlink producer names collapsed: %v", got)
+	}
+	upper := filepath.Join(dir, "BUILD.yml")
+	if _, err := os.Stat(upper); err == nil {
+		return
+	}
+	if err := os.Link(first, upper); err != nil {
+		t.Fatal(err)
+	}
+	want = append(want, upper)
+	slices.Sort(want)
+	if got := workflowPaths(dir, want, false); !slices.Equal(got, want) {
+		t.Fatalf("case-sensitive hardlink producers collapsed: %v", got)
+	}
+	if err := os.Remove(upper); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(upper, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := workflowPaths(dir, want, false); !slices.Equal(got, want) {
+		t.Fatalf("case-sensitive separate producers collapsed: %v", got)
+	}
+}
+
+func TestSamePathFilesystemIdentity(t *testing.T) {
+	dir := t.TempDir()
+	lower, upper := filepath.Join(dir, "build.yml"), filepath.Join(dir, "BUILD.yml")
+	if err := os.WriteFile(lower, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(lower)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stat := func(string) (os.FileInfo, error) { return info, nil }
+	if !samePathOnFilesystem(lower, upper, false, stat, os.ReadDir) {
+		t.Fatal("filesystem case alias treated as a separate path")
+	}
+	identity := func(left, right string) bool { return samePathOnFilesystem(left, right, false, stat, os.ReadDir) }
+	if got := workflowPathsByIdentity(dir, []string{lower, upper}, identity); !slices.Equal(got, []string{upper}) {
+		t.Fatalf("last overlay did not replace disk alias: %v", got)
+	}
+	if samePathOnFilesystem(lower, filepath.Join(dir, "other.yml"), false, stat, os.ReadDir) {
+		t.Fatal("unrelated hardlink spelling collapsed")
+	}
+	missing := func(string) (os.FileInfo, error) { return nil, os.ErrNotExist }
+	if samePathOnFilesystem(lower, upper, false, missing, os.ReadDir) {
+		t.Fatal("missing overlay spelling treated as a case alias")
 	}
 }

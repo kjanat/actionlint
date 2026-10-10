@@ -5,7 +5,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -94,15 +93,15 @@ func TestWorkflowRunNamesLiteralNames(t *testing.T) {
 	}
 }
 
-func TestWorkflowRunNamesWindowsPathCasing(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Skip("requires Windows path identity")
-	}
+func TestWorkflowRunNamesFilesystemPathCasing(t *testing.T) {
 	for _, disk := range []string{"name: Old\n" + commandGoodWorkflow, "name: [\n"} {
 		for _, reference := range []string{"New", "Old", "Typo"} {
 			t.Run(disk+reference, func(t *testing.T) {
 				root := t.TempDir()
 				producer := writeShellcheckFixture(t, root, ".github/workflows/build.yml", disk)
+				if _, err := os.Stat(strings.ToUpper(root)); err != nil {
+					t.Skip("requires a case-insensitive filesystem")
+				}
 				project := &Project{root: strings.ToUpper(root)}
 				consumer := "on: {workflow_run: {workflows: [" + reference + "], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
 				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, ReadFile: func(path string) ([]byte, error) {

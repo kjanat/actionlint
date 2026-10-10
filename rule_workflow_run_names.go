@@ -14,7 +14,7 @@ func workflowRunNamesAvailable(c ruleContext) bool {
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(c.workingDir, path)
 	}
-	return workflownames.PathKey(filepath.Dir(path)) == workflownames.PathKey(filepath.Join(absPath(c.projectRoot), ".github", "workflows"))
+	return workflownames.SamePath(filepath.Dir(path), filepath.Join(absPath(c.projectRoot), ".github", "workflows"))
 }
 
 type workflowRunNamesRule struct {
