@@ -1,6 +1,6 @@
 {
   "name": "actionlint",
-  "version": "",
+  "version": "0.0.0",
   "private": true,
   "description": "Static checker for GitHub Actions workflow files",
   "homepage": "https://actionlint.kjanat.dev",
@@ -41,7 +41,7 @@
   },
   "overrides": {
     "@actions/github-script": {
-      "undici": ">=6.28.0"
+      "undici": ">=8.11.2"
     }
   },
   "dependencies": {
@@ -51,11 +51,8 @@
     "@actions/github-script": "github:actions/github-script",
     "@types/node": "^26.4.0",
     "@typescript/native": "npm:typescript@^7.0.2",
-    "biome": "npm:@biomejs/biome@^2.5.14",
-    "runner-run": "latest",
     "typescript": "npm:@typescript/typescript6@^6.0.2"
   },
-  "packageManager": "npm@12.0.2",
   "devEngines": {
     "packageManager": [
       {
@@ -63,11 +60,12 @@
         "version": "12.0.2",
         "onFail": "warn"
       }
-    ]
-  },
-  "volta": {
-    "node": "26.9.0",
-    "npm": "12.0.2"
+    ],
+    "runtime": [{
+      "name": "node",
+      "version": ">=26",
+      "onFail": "ignore"
+    }]
   },
   "allowScripts": {
     "core-js": false
