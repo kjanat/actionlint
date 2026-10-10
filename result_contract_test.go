@@ -18,7 +18,13 @@ func TestCheckResultRetainsCachedConfiguration(t *testing.T) {
 	if err := os.WriteFile(config, []byte("config-variables: [MY_VAR]\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(workflow, []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"), 0600); err != nil {
+	if err := os.WriteFile(workflow, []byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: dir, ConfigFile: config})
@@ -56,13 +62,22 @@ func TestCheckResultSchema(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, runtime := range []string{
-		"using: composite\n  steps:\n    - uses: actions/checkout@v7",
-		"using: node24\n  main: action.mjs\n  pre: pre.mjs",
-		"using: docker\n  image: Dockerfile\n  args: [hello]",
+		`using: composite
+  steps:
+    - uses: actions/checkout@v7`,
+		`using: node24
+  main: action.mjs
+  pre: pre.mjs`,
+		`using: docker
+  image: Dockerfile
+  args: [hello]`,
 		"plugin: internal/check",
 		"using: future-runtime",
 	} {
-		action, _ := ParseActionOutline("action.yml", []byte("name: Test\ndescription: Test action\nruns:\n  "+runtime+"\n"))
+		action, _ := ParseActionOutline("action.yml", []byte(`name: Test
+description: Test action
+runs:
+  `+runtime+"\n"))
 		result := NewCheckResult(0)
 		result.Documents = DocumentOutlines{action}
 		data, err := json.Marshal(result)
@@ -104,7 +119,13 @@ func TestCheckResultSchema(t *testing.T) {
 		Fixes: []DiagnosticFix{{Description: "Quote", Edits: []DiagnosticEdit{{Path: "ci.yml", Start: DiagnosticPosition{2, 3}, End: DiagnosticPosition{3, 4}, Replacement: "\"$value\""}}}}}
 	for _, code := range []int{0, 1, 2, 3, 99} {
 		result := NewCheckResult(code)
-		workflow, parseErrors := Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"))
+		workflow, parseErrors := Parse([]byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`))
 		if len(parseErrors) != 0 {
 			t.Fatal(parseErrors)
 		}

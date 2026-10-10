@@ -7,11 +7,20 @@ import (
 )
 
 func TestDocumentOutlinesRoundTrip(t *testing.T) {
-	workflow, errs := Parse([]byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v7\n"))
+	workflow, errs := Parse([]byte(`on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+`))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	action, err := ParseActionOutline("action.yml", []byte("name: Test\ndescription: Test action\nruns: {using: docker, image: 'docker://alpine:3'}\n"))
+	action, err := ParseActionOutline("action.yml", []byte(`name: Test
+description: Test action
+runs: {using: docker, image: 'docker://alpine:3'}
+`))
 	if err != nil {
 		t.Fatal(err)
 	}

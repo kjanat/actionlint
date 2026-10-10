@@ -75,13 +75,27 @@ func TestParseActionOutlineRuntimes(t *testing.T) {
 		name, runs string
 		want       ActionRuns
 	}{
-		{"javascript", "using: node24\n  main: main.mjs\n  pre: pre.mjs\n  pre-if: always()\n  post: post.mjs\n  post-if: success()", JavaScriptRuns{Using: "node24", Main: "main.mjs", Pre: "pre.mjs", PreIf: "always()", Post: "post.mjs", PostIf: "success()"}},
-		{"docker", "using: docker\n  image: docker://alpine:3\n  entrypoint: /entry.sh\n  pre-entrypoint: /pre.sh\n  post-entrypoint: /post.sh\n  args: [test, 42]", DockerRuns{Image: "docker://alpine:3", Entrypoint: "/entry.sh", PreEntrypoint: "/pre.sh", PostEntrypoint: "/post.sh", Args: []string{"test", "42"}}},
+		{"javascript", `using: node24
+  main: main.mjs
+  pre: pre.mjs
+  pre-if: always()
+  post: post.mjs
+  post-if: success()`, JavaScriptRuns{Using: "node24", Main: "main.mjs", Pre: "pre.mjs", PreIf: "always()", Post: "post.mjs", PostIf: "success()"}},
+		{"docker", `using: docker
+  image: docker://alpine:3
+  entrypoint: /entry.sh
+  pre-entrypoint: /pre.sh
+  post-entrypoint: /post.sh
+  args: [test, 42]`, DockerRuns{Image: "docker://alpine:3", Entrypoint: "/entry.sh", PreEntrypoint: "/pre.sh", PostEntrypoint: "/post.sh", Args: []string{"test", "42"}}},
 		{"plugin", "plugin: GitHub.Runner.Plugins.Repository.CheckoutAction", PluginRuns{Plugin: "GitHub.Runner.Plugins.Repository.CheckoutAction"}},
-		{"empty composite", "using: composite\n  steps: []", CompositeRuns{Steps: []StepOutline{}}},
+		{"empty composite", `using: composite
+  steps: []`, CompositeRuns{Steps: []StepOutline{}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			outline, err := ParseActionOutline("action.yaml", []byte("name: Test\ndescription: Test action\nruns:\n  "+tc.runs+"\n"))
+			outline, err := ParseActionOutline("action.yaml", []byte(`name: Test
+description: Test action
+runs:
+  `+tc.runs+"\n"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -109,7 +123,10 @@ func TestParseActionOutlinePartial(t *testing.T) {
 	}{
 		{"invalid YAML", "runs: [", "failed"},
 		{"empty", "", "failed"},
-		{"invalid inputs", "name: Keep\ninputs: [wrong]\nruns: {using: node24, main: main.mjs}\n", "partial"},
+		{"invalid inputs", `name: Keep
+inputs: [wrong]
+runs: {using: node24, main: main.mjs}
+`, "partial"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			outline, err := ParseActionOutline("action.yml", []byte(tc.source))
@@ -176,7 +193,16 @@ func TestParseActionOutlineRequiredBooleans(t *testing.T) {
 		{"true", true}, {"false", false}, {"yes", true}, {"No", false}, {"on", true}, {"OFF", false},
 	} {
 		t.Run(tc.literal, func(t *testing.T) {
-			source := "name: Test\ndescription: Test action\ninputs:\n  First:\n    required: &required " + tc.literal + "\n    default: ''\n  Second:\n    required: *required\nruns: {using: node24, main: main.mjs}\n"
+			source := `name: Test
+description: Test action
+inputs:
+  First:
+    required: &required ` + tc.literal + `
+    default: ''
+  Second:
+    required: *required
+runs: {using: node24, main: main.mjs}
+`
 			outline, err := ParseActionOutline("action.yml", []byte(source))
 			if err != nil {
 				t.Fatal(err)

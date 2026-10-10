@@ -128,7 +128,19 @@ jobs:
 
 func TestAnalysisActionDocuments(t *testing.T) {
 	dir := t.TempDir()
-	const manifest = "name: Local\ndescription: Local test action\ninputs:\n  Token:\n    description: A token\n    required: true\n    default: ''\nruns:\n  using: composite\n  steps:\n    - id: child\n      uses: actions/checkout@v7\n"
+	const manifest = `name: Local
+description: Local test action
+inputs:
+  Token:
+    description: A token
+    required: true
+    default: ''
+runs:
+  using: composite
+  steps:
+    - id: child
+      uses: actions/checkout@v7
+`
 	for name, content := range map[string]string{"action.yml": manifest, "broken/action.yml": "runs: ["} {
 		path := filepath.Join(dir, name)
 		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
@@ -138,7 +150,16 @@ func TestAnalysisActionDocuments(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	const source = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/\n      - uses: $/\n      - uses: $/broken\n      - uses: $/missing\n"
+	const source = `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: $/
+      - uses: $/
+      - uses: $/broken
+      - uses: $/missing
+`
 	analysis, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Project: &Project{root: dir}}}, WorkingDir: dir})
 	if err != nil {
 		t.Fatal(err)
@@ -186,7 +207,13 @@ func TestAnalysisActionOutlineValidationDiagnostics(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			const source = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/\n"
+			const source = `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: $/
+`
 			analysis, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Project: &Project{root: dir}}}, WorkingDir: dir})
 			if err != nil {
 				t.Fatal(err)
@@ -244,7 +271,14 @@ func TestAnalysisEmptyDocuments(t *testing.T) {
 }
 
 func TestAnalysisPartialWorkflowCall(t *testing.T) {
-	const source = "on: push\njobs:\n  call:\n    uses: owner/repo/.github/workflows/build.yml@main\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n"
+	const source = `on: push
+jobs:
+  call:
+    uses: owner/repo/.github/workflows/build.yml@main
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+`
 	workflow, errs := Parse([]byte(source))
 	if len(errs) == 0 || workflow.Jobs["call"].WorkflowCall != nil {
 		t.Fatal("fixture must contain rejected workflow call")
@@ -268,7 +302,12 @@ func TestAnalysisPartialStepUses(t *testing.T) {
 		{"uses before parallel", "uses: actions/checkout@v7\n        parallel:\n          - run: echo hi", "parallel"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - " + tc.step + "\n"
+			source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - ` + tc.step + "\n"
 			workflow, errs := Parse([]byte(source))
 			if len(errs) == 0 {
 				t.Fatal("fixture must contain conflicting execution keys")
@@ -313,8 +352,19 @@ jobs:
 func TestAnalysisFailureKeepsOutline(t *testing.T) {
 	root := t.TempDir()
 	writeShellcheckFixture(t, root, "local/index.js", "console.log('ok');\n")
-	writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: node24\n  main: index.js\n")
-	const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./local\n"
+	writeShellcheckFixture(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: node24
+  main: index.js
+`)
+	const workflow = `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./local
+`
 	bogus := func(include string) *Config {
 		lint := &LintConfig{Rules: LintRulesConfig{Correctness: RuleGroupConfig{Rules: map[string]RuleSetting{"inline-suppression": {Level: "bogus"}}}}}
 		return &Config{Overrides: []ConfigOverride{{Includes: []string{include}, Lint: lint}}}
