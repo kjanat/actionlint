@@ -9,7 +9,18 @@ import (
 func TestRuffPatternCaptureSkipsOnlyItsScript(t *testing.T) {
 	command := ruffForTest(t)
 	for _, pattern := range []string{`{"x": x, **${{ 'rest' }}}`, `[*${{ 'rest' }}]`, `${{ 'Widget' }}()`, `Outer(${{ 'Widget' }}())`} {
-		source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: |\n          match {}:\n            case " + pattern + ": pass\n      - shell: python\n        run: print(missing)\n"
+		source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: |
+          match {}:
+            case ` + pattern + `: pass
+      - shell: python
+        run: print(missing)
+`
 		result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
 		if err != nil {
 			t.Fatal(err)
@@ -22,7 +33,14 @@ func TestRuffPatternCaptureSkipsOnlyItsScript(t *testing.T) {
 
 func TestRuffStatisticsRejected(t *testing.T) {
 	command := ruffForTest(t)
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+	source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(missing)
+`
 	_, err := Analyze(t.Context(), AnalysisRequest{
 		RuffOptions: &ExternalCommandOptions{Executable: &command, Arguments: []string{"--statistics"}},
 		WorkingDir:  t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},
@@ -44,7 +62,14 @@ func TestRuffFromTemplatePreservesFindings(t *testing.T) {
 		} {
 			for _, ending := range []string{"\n", "\r\n"} {
 				t.Run(script+tc.code+ending, func(t *testing.T) {
-					source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: |\n          " + strings.ReplaceAll(script+"\n"+tc.suffix, "\n", "\n          ") + "\n"
+					source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: |
+          ` + strings.ReplaceAll(script+"\n"+tc.suffix, "\n", "\n          ") + "\n"
 					source = strings.ReplaceAll(source, "\n", ending)
 					result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
 					if err != nil {
@@ -67,7 +92,14 @@ func TestRuffFromTemplatePreservesFindings(t *testing.T) {
 func TestRuffSilentRejected(t *testing.T) {
 	command := ruffForTest(t)
 	for _, flag := range []string{"--silent", "-s", "-qs"} {
-		source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+		source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(missing)
+`
 		_, err := Analyze(t.Context(), AnalysisRequest{
 			RuffOptions: &ExternalCommandOptions{Executable: &command, Arguments: []string{flag}},
 			WorkingDir:  t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},
@@ -80,7 +112,17 @@ func TestRuffSilentRejected(t *testing.T) {
 
 func TestRuffOperatorTemplateSkipsOnlyItsScript(t *testing.T) {
 	command := ruffForTest(t)
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: |\n          if lhs ${{ '==' }} rhs: pass\n      - shell: python\n        run: print(missing)\n"
+	source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: |
+          if lhs ${{ '==' }} rhs: pass
+      - shell: python
+        run: print(missing)
+`
 	result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
 	if err != nil {
 		t.Fatal(err)
@@ -102,7 +144,18 @@ func TestRuffVersionedShellGrammar(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		source := "on: push\ndefaults:\n  run:\n    shell: python3.9 {0}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          match 1:\n            case 1: pass\n"
+		source := `on: push
+defaults:
+  run:
+    shell: python3.9 {0}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          match 1:
+            case 1: pass
+`
 		result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Config: config}}})
 		if err != nil {
 			t.Fatal(err)
@@ -129,7 +182,14 @@ func TestRuffOutputRedirectionDoesNotWrite(t *testing.T) {
 			} else if before, ok := strings.CutSuffix(option, "attached"); ok {
 				flags = []string{before + output}
 			}
-			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+			source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(missing)
+`
 			_, err := Analyze(t.Context(), AnalysisRequest{
 				RuffOptions: &ExternalCommandOptions{Executable: &command, Arguments: flags},
 				WorkingDir:  root, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},

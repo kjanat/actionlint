@@ -20,8 +20,18 @@ func TestCacheOperationCallerCeilings(t *testing.T) {
 					if mode != "" {
 						grant = "    cache-mode: " + mode + "\n"
 					}
-					caller := "on: push\njobs:\n  call:\n" + grant + "    uses: " + prefix + "callee.yaml\n"
-					callee := "on: workflow_call\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: " + action + "@v5\n        with: {key: test, path: cache}\n"
+					caller := `on: push
+jobs:
+  call:
+` + grant + "    uses: " + prefix + "callee.yaml\n"
+					callee := `on: workflow_call
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ` + action + `@v5
+        with: {key: test, path: cache}
+`
 					want := mode == "none" || mode == "read" && action == "actions/cache/save" || mode == "write-only" && action == "actions/cache/restore"
 					checkCacheOperationCalls(t, map[string]string{"caller.yaml": caller, "callee.yaml": callee}, "", func(t *testing.T, diagnostics []*Error) {
 						if !want {
@@ -45,8 +55,19 @@ func TestCacheOperationCallerCeilings(t *testing.T) {
 }
 
 func TestCacheOperationCallerBoundaries(t *testing.T) {
-	const save = "on: workflow_call\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/cache/save@v5\n        with: {key: test, path: cache}\n"
-	const caller = "on: push\ncache-mode: read\njobs:\n  call:\n    uses: $/callee.yaml"
+	const save = `on: workflow_call
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache/save@v5
+        with: {key: test, path: cache}
+`
+	const caller = `on: push
+cache-mode: read
+jobs:
+  call:
+    uses: $/callee.yaml`
 	for _, tc := range []struct {
 		name, caller, callee, leaf, config string
 		kind, file, fragment               string
@@ -55,9 +76,26 @@ func TestCacheOperationCallerBoundaries(t *testing.T) {
 		{name: "disabled policy", caller: caller, callee: save, config: "policy: {cache-operation: false}"},
 		{name: "explicit callee mode owns diagnostic", caller: caller, callee: "cache-mode: read\n" + save, kind: "cache-operation", file: "callee.yaml", fragment: "effective cache-mode"},
 		{name: "escalation owns diagnostic", caller: caller, callee: "cache-mode: write\n" + save, kind: "workflow-call", file: "caller.yaml", fragment: "requests cache-mode"},
-		{name: "nested inherited mode", caller: caller, callee: "on: workflow_call\njobs:\n  nested:\n    uses: $/leaf.yaml\n", leaf: save, kind: "cache-operation", file: "caller.yaml", fragment: `of "$/leaf.yaml"`},
-		{name: "nested explicit ceiling stays at callee", caller: "on: push\njobs:\n  call:\n    uses: $/callee.yaml\n", callee: "on: workflow_call\njobs:\n  nested:\n    cache-mode: read\n    uses: $/leaf.yaml\n", leaf: save},
-		{name: "cycle", caller: caller, callee: "on: workflow_call\njobs:\n  recurse:\n    uses: $/callee.yaml\n"},
+		{name: "nested inherited mode", caller: caller, callee: `on: workflow_call
+jobs:
+  nested:
+    uses: $/leaf.yaml
+`, leaf: save, kind: "cache-operation", file: "caller.yaml", fragment: `of "$/leaf.yaml"`},
+		{name: "nested explicit ceiling stays at callee", caller: `on: push
+jobs:
+  call:
+    uses: $/callee.yaml
+`, callee: `on: workflow_call
+jobs:
+  nested:
+    cache-mode: read
+    uses: $/leaf.yaml
+`, leaf: save},
+		{name: "cycle", caller: caller, callee: `on: workflow_call
+jobs:
+  recurse:
+    uses: $/callee.yaml
+`},
 		{name: "remote", caller: strings.ReplaceAll(caller, "$/callee.yaml", "owner/repo/.github/workflows/callee.yaml@main")},
 		{name: "missing", caller: caller, kind: "workflow-call", file: "caller.yaml", fragment: "could not read reusable workflow"},
 		{name: "malformed", caller: caller, callee: "on: [", kind: "workflow-call", file: "caller.yaml", fragment: "error while parsing reusable workflow"},
@@ -99,11 +137,29 @@ func TestCacheOperationCallerBoundaries(t *testing.T) {
 
 func TestCacheOperationDistinctCallerCeilings(t *testing.T) {
 	root := t.TempDir()
-	callee := "on: workflow_call\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - parallel:\n          - uses: actions/cache/save@v5\n            with: {key: test, path: cache}\n"
+	callee := `on: workflow_call
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - parallel:
+          - uses: actions/cache/save@v5
+            with: {key: test, path: cache}
+`
 	files := map[string]string{
 		"callee.yaml": callee,
-		"read.yaml":   "on: push\ncache-mode: read\njobs:\n  call:\n    uses: $/callee.yaml\n",
-		"write.yaml":  "on: push\ncache-mode: write\njobs:\n  call:\n    uses: $/callee.yaml\n",
+		"read.yaml": `on: push
+cache-mode: read
+jobs:
+  call:
+    uses: $/callee.yaml
+`,
+		"write.yaml": `on: push
+cache-mode: write
+jobs:
+  call:
+    uses: $/callee.yaml
+`,
 	}
 	for name, source := range files {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {
@@ -164,12 +220,16 @@ func TestCacheOperationIntermediateCeilingOwnership(t *testing.T) {
 				if tc.ancestor != "" {
 					caller += "cache-mode: " + tc.ancestor + "\n"
 				}
-				caller += "jobs:\n  call:\n    uses: $/callee.yaml"
+				caller += `jobs:
+  call:
+    uses: $/callee.yaml`
 				callee := "on: workflow_call\n"
 				if tc.workflow {
 					callee += "cache-mode: " + tc.intermediate + "\n"
 				}
-				callee += "jobs:\n  nested:\n"
+				callee += `jobs:
+  nested:
+`
 				if tc.intermediate != "" && !tc.workflow {
 					callee += "    cache-mode: " + tc.intermediate + "\n"
 				}
@@ -177,7 +237,14 @@ func TestCacheOperationIntermediateCeilingOwnership(t *testing.T) {
 				files := map[string]string{
 					"caller.yaml": caller,
 					"callee.yaml": callee,
-					"leaf.yaml":   "on: workflow_call\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/cache/save@v5\n        with: {key: test, path: cache}\n",
+					"leaf.yaml": `on: workflow_call
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache/save@v5
+        with: {key: test, path: cache}
+`,
 				}
 				if suppressed != "" {
 					files[suppressed] += " # actionlint:ignore cache-operation -- reviewed skipped save\n"
@@ -241,11 +308,23 @@ func TestCacheOperationParallelCallerCeilings(t *testing.T) {
 		for _, action := range []string{"actions/cache", "actions/cache/save", "actions/cache/restore"} {
 			for _, suppressed := range []bool{false, true} {
 				t.Run(mode+"/"+action+"/suppressed="+strconv.FormatBool(suppressed), func(t *testing.T) {
-					caller := "on: push\ncache-mode: " + mode + "\njobs:\n  call:\n    uses: $/callee.yaml"
+					caller := "on: push\ncache-mode: " + mode + `
+jobs:
+  call:
+    uses: $/callee.yaml`
 					if suppressed {
 						caller += " # actionlint:ignore cache-operation -- reviewed skipped operation"
 					}
-					callee := "on: workflow_call\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - parallel:\n          - run: echo ok\n          - uses: ${{ '" + action + "@v5' }}\n            with: {key: test, path: cache}\n"
+					callee := `on: workflow_call
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - parallel:
+          - run: echo ok
+          - uses: ${{ '` + action + `@v5' }}
+            with: {key: test, path: cache}
+`
 					want := !suppressed && (mode == "none" || mode == "read" && action == "actions/cache/save" || mode == "write-only" && action == "actions/cache/restore")
 					checkCacheOperationCalls(t, map[string]string{"caller.yaml": caller, "callee.yaml": callee}, "", func(t *testing.T, diagnostics []*Error) {
 						if !want {

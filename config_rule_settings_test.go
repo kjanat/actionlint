@@ -231,7 +231,14 @@ func TestRuleSettingsOptionsAndRoundTrip(t *testing.T) {
 }
 
 func TestRuleSettingsAnalysis(t *testing.T) {
-	const source = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    if: true\n    steps:\n      - run: echo ok\n"
+	const source = `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    if: true
+    steps:
+      - run: echo ok
+`
 	for _, level := range []string{"off", "on", "info", "warn", "error"} {
 		t.Run(level, func(t *testing.T) {
 			findings := lintCachePolicy(t, source, "lint: {rules: {correctness: {if-cond: "+level+"}}}")

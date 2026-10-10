@@ -61,8 +61,19 @@ func TestShellcheckExternalSourcesPrecedence(t *testing.T) {
 			}
 			writeShellcheckFixture(t, root, "config.sh", "VALUE=42\n")
 			writeShellcheckFixture(t, root, ".github/.shellcheckrc", tc.rc)
-			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools:\n  shellcheck:\n    config: .shellcheckrc\n")
-			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          . ./config.sh\n          echo $VALUE\n"
+			writeShellcheckFixture(t, root, ".github/actionlint.yaml", `tools:
+  shellcheck:
+    config: .shellcheckrc
+`)
+			workflow := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          . ./config.sh
+          echo $VALUE
+`
 			if tc.unknown {
 				workflow += "        working-directory: ${{ github.event.inputs.directory }}\n"
 			}
@@ -114,8 +125,16 @@ func TestShellcheckConfigPaths(t *testing.T) {
 			rc := writeShellcheckFixture(t, configdir, tc.rcname, "disable=SC2086\n")
 			// A root-level decoy must not replace the config file's own directory.
 			writeShellcheckFixture(t, root, tc.rcname, "enable=all\n")
-			config := writeShellcheckFixture(t, configdir, "actionlint.yaml", "tools:\n  shellcheck:\n    config: '"+tc.selection+"'\n")
-			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $VALUE\n")
+			config := writeShellcheckFixture(t, configdir, "actionlint.yaml", `tools:
+  shellcheck:
+    config: '`+tc.selection+"'\n")
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo $VALUE
+`)
 			options := AnalysisOptions{WorkingDir: root, Shellcheck: command}
 			if tc.explicit {
 				options.ConfigFile = config
@@ -174,7 +193,12 @@ func TestShellcheckSourceWorkingDirectory(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools:\n  shellcheck:\n    config:\n      source-path: [scripts]\n      external-sources: true\n")
+			writeShellcheckFixture(t, root, ".github/actionlint.yaml", `tools:
+  shellcheck:
+    config:
+      source-path: [scripts]
+      external-sources: true
+`)
 			writeShellcheckFixture(t, root, tc.sourceDir+"/config.sh", "VALUE=42\n")
 			// The analyzer runs elsewhere, where a different source value would warn.
 			analyzer := t.TempDir()
@@ -186,13 +210,24 @@ func TestShellcheckSourceWorkingDirectory(t *testing.T) {
 			t.Chdir(analyzer)
 			workflow := "on: push\n"
 			if tc.workflowDefaults != "" {
-				workflow += "defaults:\n  run:\n    working-directory: " + tc.workflowDefaults + "\n"
+				workflow += `defaults:
+  run:
+    working-directory: ` + tc.workflowDefaults + "\n"
 			}
-			workflow += "jobs:\n  test:\n    runs-on: ubuntu-latest\n"
+			workflow += `jobs:
+  test:
+    runs-on: ubuntu-latest
+`
 			if tc.jobDefaults != "" {
-				workflow += "    defaults:\n      run:\n        working-directory: " + tc.jobDefaults + "\n"
+				workflow += `    defaults:
+      run:
+        working-directory: ` + tc.jobDefaults + "\n"
 			}
-			workflow += "    steps:\n      - run: |\n          . config.sh\n          echo $VALUE\n"
+			workflow += `    steps:
+      - run: |
+          . config.sh
+          echo $VALUE
+`
 			if tc.stepDir != "" {
 				workflow += "        working-directory: " + tc.stepDir + "\n"
 			}
@@ -261,13 +296,24 @@ func TestShellcheckRunnerWorkingDirectory(t *testing.T) {
 			}
 			workflow := "on: push\n"
 			if tc.scope == "workflow" {
-				workflow += "defaults:\n  run:\n    working-directory: " + tc.directory + "\n"
+				workflow += `defaults:
+  run:
+    working-directory: ` + tc.directory + "\n"
 			}
-			workflow += "jobs:\n  test:\n    runs-on: " + tc.runner + "\n"
+			workflow += `jobs:
+  test:
+    runs-on: ` + tc.runner + "\n"
 			if tc.scope == "job" {
-				workflow += "    defaults:\n      run:\n        working-directory: " + tc.directory + "\n"
+				workflow += `    defaults:
+      run:
+        working-directory: ` + tc.directory + "\n"
 			}
-			workflow += "    steps:\n      - shell: bash\n        run: |\n          . ./config.sh\n          echo $VALUE\n"
+			workflow += `    steps:
+      - shell: bash
+        run: |
+          . ./config.sh
+          echo $VALUE
+`
 			if tc.scope == "step" {
 				workflow += "        working-directory: " + tc.directory + "\n"
 			}
@@ -375,7 +421,16 @@ func TestShellcheckSymlinkDirectoryKeepsScriptAnalysis(t *testing.T) {
 			if err := os.Symlink(tc.target, filepath.Join(root, tc.name)); err != nil {
 				t.Skipf("symlinks are unavailable: %v", err)
 			}
-			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - working-directory: "+tc.name+"\n        run: |\n          . ./value.sh\n          echo $VALUE\n")
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - working-directory: `+tc.name+`
+        run: |
+          . ./value.sh
+          echo $VALUE
+`)
 			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command})
 			if err != nil {
 				t.Fatal(err)
@@ -408,7 +463,17 @@ func TestShellcheckSiblingWorkingDirectory(t *testing.T) {
 	}
 	for _, directory := range []string{"../shared", shared} {
 		t.Run(directory, func(t *testing.T) {
-			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: push\njobs:\n  test:\n    runs-on: "+runner+"\n    steps:\n      - shell: bash\n        working-directory: '"+directory+"'\n        run: |\n          . ./value.sh\n          echo $VALUE\n")
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", `on: push
+jobs:
+  test:
+    runs-on: `+runner+`
+    steps:
+      - shell: bash
+        working-directory: '`+directory+`'
+        run: |
+          . ./value.sh
+          echo $VALUE
+`)
 			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command})
 			if err != nil {
 				t.Fatal(err)
@@ -465,7 +530,13 @@ func TestShellcheckSelectedConfigFailure(t *testing.T) {
 				writeShellcheckFixture(t, root, tc.config, tc.content)
 			}
 			config := writeShellcheckFixture(t, root, "actionlint.yaml", "tools: {shellcheck: {config: "+tc.config+"}}\n")
-			workflow := writeShellcheckFixture(t, root, "workflow.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $VALUE\n")
+			workflow := writeShellcheckFixture(t, root, "workflow.yml", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo $VALUE
+`)
 			options := AnalysisOptions{ConfigFile: config, WorkingDir: root, Shellcheck: command}
 			if tc.disabled {
 				options.ShellcheckSettings = &ShellcheckSettings{Config: ShellcheckRCDisabled}
@@ -493,7 +564,13 @@ func TestShellcheckApplicationSelectionPreservesInlineConfig(t *testing.T) {
 			root := t.TempDir()
 			rc := writeShellcheckFixture(t, root, ".shellcheckrc", "disable=SC2016\n")
 			config := writeShellcheckFixture(t, root, "actionlint.yaml", "tools: {shellcheck: {config: {disable: [SC2086]}}}\n")
-			workflow := writeShellcheckFixture(t, root, "workflow.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $VALUE\n")
+			workflow := writeShellcheckFixture(t, root, "workflow.yml", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo $VALUE
+`)
 			settings := &ShellcheckSettings{}
 			switch selection {
 			case "file":
@@ -532,7 +609,13 @@ func TestShellcheckOverlayPathOrigin(t *testing.T) {
 				selection = "${{ configdir }}/.shellcheckrc"
 			}
 			rc := writeShellcheckFixture(t, base, ".shellcheckrc", "disable=SC2086\n")
-			workflow := writeShellcheckFixture(t, workingDir, "workflow.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $VALUE\n")
+			workflow := writeShellcheckFixture(t, workingDir, "workflow.yml", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo $VALUE
+`)
 			overlay, err := ParseConfigOverlay("config", []byte("tools: {shellcheck: {config: '"+selection+"'}}"))
 			if err != nil {
 				t.Fatal(err)

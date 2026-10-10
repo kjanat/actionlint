@@ -221,7 +221,11 @@ func TestErrorPrettyPrint(t *testing.T) {
 			out := buf.String()
 			want := tc.expected + "\n"
 			if out != want {
-				t.Fatalf("wanted:\n%q\n\nhave:\n%q", want, out)
+				t.Fatalf(`wanted:
+%q
+
+have:
+%q`, want, out)
 			}
 		})
 	}

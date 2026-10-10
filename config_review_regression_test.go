@@ -14,7 +14,17 @@ func TestDependencyPathsDoNotResolveWorkflowOverrides(t *testing.T) {
 		for _, ignore := range []bool{false, true} {
 			t.Run(dependency+"/"+strconv.FormatBool(ignore), func(t *testing.T) {
 				root := t.TempDir()
-				text := "lint:\n  rules:\n    policy:\n      require-job-timeout: {level: on, options: {min-minutes: 5}}\noverrides:\n  - includes: [local/**, scripts/**]\n    lint:\n      rules:\n        policy:\n          require-job-timeout: {level: on, options: {max-minutes: 3}}\n"
+				text := `lint:
+  rules:
+    policy:
+      require-job-timeout: {level: on, options: {min-minutes: 5}}
+overrides:
+  - includes: [local/**, scripts/**]
+    lint:
+      rules:
+        policy:
+          require-job-timeout: {level: on, options: {max-minutes: 3}}
+`
 				if ignore {
 					text += "paths: {'**': {ignore: ['dependency finding']}}\n"
 				}
@@ -52,7 +62,9 @@ func TestInheritedWarningsSurviveReplacement(t *testing.T) {
 	for _, replacement := range []string{"self-hosted-runner: null", "self-hosted-runner: {typo: replacement}"} {
 		t.Run(replacement, func(t *testing.T) {
 			root := t.TempDir()
-			base := writeShellcheckFixture(t, root, "base.yml", "self-hosted-runner:\n  typo: value\n")
+			base := writeShellcheckFixture(t, root, "base.yml", `self-hosted-runner:
+  typo: value
+`)
 			writeShellcheckFixture(t, root, "left.yml", "extends: [base.yml]\n")
 			writeShellcheckFixture(t, root, "right.yml", "extends: [base.yml]\n")
 			leaf := writeShellcheckFixture(t, root, "leaf.yml", "extends: [left.yml, right.yml]\n"+replacement+"\n")
@@ -106,8 +118,13 @@ func TestInheritedWarningsSurviveReplacement(t *testing.T) {
 
 func TestConfigInheritedOverlayProvenance(t *testing.T) {
 	root := t.TempDir()
-	base := writeShellcheckFixture(t, root, "base.yml", "# base settings\nconfig-variables: [BASE]\nconfig-variable: [TYPO]\n")
-	leaf := writeShellcheckFixture(t, root, "leaf.yml", "extends: [base.yml]\nconfig-secrets: [SECRET]\n")
+	base := writeShellcheckFixture(t, root, "base.yml", `# base settings
+config-variables: [BASE]
+config-variable: [TYPO]
+`)
+	leaf := writeShellcheckFixture(t, root, "leaf.yml", `extends: [base.yml]
+config-secrets: [SECRET]
+`)
 	for _, overlayText := range []string{"", "policy: {require-commit-hash: false}", "config-variables: [OVERLAY]"} {
 		t.Run(overlayText, func(t *testing.T) {
 			var overlays []ConfigOverlay
@@ -203,14 +220,28 @@ func TestWorkflowOverrideControlsCompositeFindings(t *testing.T) {
 	} {
 		t.Run(tc.lint, func(t *testing.T) {
 			root := t.TempDir()
-			writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/checkout@v5\n      with:\n        nonexistent-input: value\n")
+			writeShellcheckFixture(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v5
+      with:
+        nonexistent-input: value
+`)
 			cfg, err := ParseConfig([]byte("overrides: [{includes: ['.github/workflows/**'], lint: {" + tc.lint + "}}]"))
 			if err != nil {
 				t.Fatal(err)
 			}
 			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{
 				Path: ".github/workflows/ci.yml", Config: cfg, Project: &Project{root: root},
-				Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/local\n"),
+				Content: []byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: $/local
+`),
 			}}})
 			if err != nil {
 				t.Fatal(err)

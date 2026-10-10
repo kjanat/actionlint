@@ -41,7 +41,10 @@ func TestAnalysisPartialFindingsOnCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	result, err := Analyze(ctx, AnalysisRequest{
-		Sources:           []SourceUnit{{Path: "cancelled.yml", Content: []byte(commandBadWorkflow + "        shell: bash\n      - run: print(1)\n        shell: python\n")}},
+		Sources: []SourceUnit{{Path: "cancelled.yml", Content: []byte(commandBadWorkflow + `        shell: bash
+      - run: print(1)
+        shell: python
+`)}},
 		ShellcheckOptions: &ExternalCommandOptions{Executable: &executable, Arguments: []string{"-test.run=^TestAnalysisPartialAnalyzerHelper$", "--", "shellcheck"}},
 		OnRulesCreated: func(rules []Rule) []Rule {
 			for _, rule := range rules {

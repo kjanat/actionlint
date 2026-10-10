@@ -28,7 +28,16 @@ func TestReferencedWorkflowInjectionSources(t *testing.T) {
 			checkReferencedWorkflowExpression(t, expression, false)
 		})
 	}
-	workflow := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n      - env:\n          REF: ${{ github.event.workflow_run.referenced_workflows[0].ref }}\n          PATH_VALUE: ${{ github.event.workflow_run.referenced_workflows[0].path }}\n        run: printf '%s\\n' \"$REF\" \"$PATH_VALUE\"\n"
+	workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          REF: ${{ github.event.workflow_run.referenced_workflows[0].ref }}
+          PATH_VALUE: ${{ github.event.workflow_run.referenced_workflows[0].path }}
+        run: printf '%s\n' "$REF" "$PATH_VALUE"
+`
 	result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("safe environment binding rejected: %v, %+v", err, result)
@@ -53,7 +62,15 @@ func TestWorkflowRunActorDisplayNameInjection(t *testing.T) {
 			checkReferencedWorkflowExpression(t, "github.event.workflow_run['"+strings.ToUpper(actor)+"']['"+strings.ToUpper(field)+"']", false)
 		}
 		checkReferencedWorkflowExpression(t, "contains(github.event.workflow_run."+actor+".name, 'trusted')", false)
-		workflow := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n      - env:\n          ACTOR_NAME: ${{ github.event.workflow_run." + actor + ".name }}\n        run: printf '%s\\n' \"$ACTOR_NAME\"\n"
+		workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          ACTOR_NAME: ${{ github.event.workflow_run.` + actor + `.name }}
+        run: printf '%s\n' "$ACTOR_NAME"
+`
 		result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
 		if err != nil || len(result.Diagnostics) != 0 {
 			t.Fatalf("safe actor environment binding rejected: %v, %+v", err, result)
@@ -63,7 +80,12 @@ func TestWorkflowRunActorDisplayNameInjection(t *testing.T) {
 
 func checkReferencedWorkflowExpression(t *testing.T, expression string, untrusted bool) {
 	t.Helper()
-	workflow := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo \"${{ " + expression + " }}\"\n"
+	workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ ` + expression + " }}\"\n"
 	result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
 	if err != nil {
 		t.Fatal(err)
@@ -98,9 +120,20 @@ func TestUnsoundTernaryIndependentExpressionErrors(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				workflow := "on: push\nrun-name: ${{ " + expression + " }}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+				workflow := "on: push\nrun-name: ${{ " + expression + ` }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 				if strings.Contains(expression, "issue.title") {
-					workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo \"${{ " + expression + " }}\"\n"
+					workflow = `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ ` + expression + " }}\"\n"
 				}
 				result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}}})
 				if err != nil {

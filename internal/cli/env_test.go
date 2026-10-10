@@ -97,7 +97,16 @@ func TestFalseDisablesExternalCheckers(t *testing.T) {
 	for _, prefix := range [][]string{nil, {"check"}} {
 		for _, disabled := range []string{"", "false", "FALSE"} {
 			args := append(append([]string{}, prefix...), "--shellcheck="+disabled, "--ruff="+disabled, "-")
-			got := testRunCommand("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $VALUE\n        shell: bash\n      - run: print(missing)\n        shell: python\n", args...)
+			got := testRunCommand(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo $VALUE
+        shell: bash
+      - run: print(missing)
+        shell: python
+`, args...)
 			if got.Status != 0 || got.Stdout != "" || got.Stderr != "" {
 				t.Fatalf("disable %q %v: %+v", disabled, prefix, got)
 			}
@@ -107,7 +116,9 @@ func TestFalseDisablesExternalCheckers(t *testing.T) {
 
 func TestEnvironmentConfigSelection(t *testing.T) {
 	t.Chdir(t.TempDir())
-	if err := os.WriteFile("env.yaml", []byte("policy:\n  require-job-timeout: true\n"), 0o600); err != nil {
+	if err := os.WriteFile("env.yaml", []byte(`policy:
+  require-job-timeout: true
+`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile("explicit.yaml", []byte("{}\n"), 0o600); err != nil {
@@ -296,7 +307,9 @@ func TestEnvironmentExternalTools(t *testing.T) {
 		}
 		t.Setenv("ACTIONLINT_"+toolName+"_ENV", string(env))
 	}
-	input := commandGoodWorkflow + "      - shell: python\n        run: print('ok')\n"
+	input := commandGoodWorkflow + `      - shell: python
+        run: print('ok')
+`
 	for _, args := range [][]string{{"-"}, {"check", "-"}} {
 		var out, stderr bytes.Buffer
 		cmd := Command{Stdin: strings.NewReader(input), Stdout: &out, Stderr: &stderr}

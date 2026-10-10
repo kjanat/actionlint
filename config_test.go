@@ -500,7 +500,9 @@ func TestConfigParsePolicyEmpty(t *testing.T) {
 }
 
 func TestConfigParsePolicyUnknownKey(t *testing.T) {
-	_, err := ParseConfig([]byte("policy:\n  require-commit-hashes: true\n"))
+	_, err := ParseConfig([]byte(`policy:
+  require-commit-hashes: true
+`))
 	if err == nil {
 		t.Fatal("no error occurred")
 	}
@@ -533,19 +535,25 @@ func TestConfigParsePolicyTriState(t *testing.T) {
 			want:  nil,
 		},
 		{
-			what:  "key is null",
-			input: "policy:\n  require-commit-hash:\n",
-			want:  nil,
+			what: "key is null",
+			input: `policy:
+  require-commit-hash:
+`,
+			want: nil,
 		},
 		{
-			what:  "key is false",
-			input: "policy:\n  require-commit-hash: false\n",
-			want:  new(false),
+			what: "key is false",
+			input: `policy:
+  require-commit-hash: false
+`,
+			want: new(false),
 		},
 		{
-			what:  "key is true",
-			input: "policy:\n  require-commit-hash: true\n",
-			want:  new(true),
+			what: "key is true",
+			input: `policy:
+  require-commit-hash: true
+`,
+			want: new(true),
 		},
 	}
 
@@ -587,29 +595,43 @@ func TestConfigParseRequiredActionsOK(t *testing.T) {
 			want:  nil,
 		},
 		{
-			what:  "key is null",
-			input: "policy:\n  required-actions:\n",
-			want:  nil,
+			what: "key is null",
+			input: `policy:
+  required-actions:
+`,
+			want: nil,
 		},
 		{
-			what:  "key is an empty sequence",
-			input: "policy:\n  required-actions: []\n",
-			want:  []string{},
+			what: "key is an empty sequence",
+			input: `policy:
+  required-actions: []
+`,
+			want: []string{},
 		},
 		{
-			what:  "one action without a ref",
-			input: "policy:\n  required-actions:\n    - actions/checkout\n",
-			want:  []string{"actions/checkout"},
+			what: "one action without a ref",
+			input: `policy:
+  required-actions:
+    - actions/checkout
+`,
+			want: []string{"actions/checkout"},
 		},
 		{
-			what:  "one action with a ref",
-			input: "policy:\n  required-actions:\n    - my-org/scan@v2\n",
-			want:  []string{"my-org/scan@v2"},
+			what: "one action with a ref",
+			input: `policy:
+  required-actions:
+    - my-org/scan@v2
+`,
+			want: []string{"my-org/scan@v2"},
 		},
 		{
-			what:  "glob patterns",
-			input: "policy:\n  required-actions:\n    - github/codeql-action/*\n    - actions/checkout@v4*\n",
-			want:  []string{"github/codeql-action/*", "actions/checkout@v4*"},
+			what: "glob patterns",
+			input: `policy:
+  required-actions:
+    - github/codeql-action/*
+    - actions/checkout@v4*
+`,
+			want: []string{"github/codeql-action/*", "actions/checkout@v4*"},
 		},
 	}
 
@@ -644,47 +666,63 @@ func TestConfigParseRequireJobTimeout(t *testing.T) {
 			wantSet: false,
 		},
 		{
-			what:    "key is null",
-			input:   "policy:\n  require-job-timeout:\n",
+			what: "key is null",
+			input: `policy:
+  require-job-timeout:
+`,
 			wantSet: false,
 		},
 		{
-			what:        "key is false",
-			input:       "policy:\n  require-job-timeout: false\n",
+			what: "key is false",
+			input: `policy:
+  require-job-timeout: false
+`,
 			wantSet:     true,
 			wantEnabled: false,
 		},
 		{
-			what:        "key is true",
-			input:       "policy:\n  require-job-timeout: true\n",
+			what: "key is true",
+			input: `policy:
+  require-job-timeout: true
+`,
 			wantSet:     true,
 			wantEnabled: true,
 		},
 		{
-			what:        "key is an empty mapping",
-			input:       "policy:\n  require-job-timeout: {}\n",
+			what: "key is an empty mapping",
+			input: `policy:
+  require-job-timeout: {}
+`,
 			wantSet:     true,
 			wantEnabled: true,
 		},
 		{
-			what:        "mapping sets max-minutes",
-			input:       "policy:\n  require-job-timeout:\n    max-minutes: 60\n",
+			what: "mapping sets max-minutes",
+			input: `policy:
+  require-job-timeout:
+    max-minutes: 60
+`,
 			wantSet:     true,
 			wantEnabled: true,
 			wantMax:     60,
 			wantHasMax:  true,
 		},
 		{
-			what:        "max-minutes is a fraction",
-			input:       "policy:\n  require-job-timeout: {max-minutes: 30.5}\n",
+			what: "max-minutes is a fraction",
+			input: `policy:
+  require-job-timeout: {max-minutes: 30.5}
+`,
 			wantSet:     true,
 			wantEnabled: true,
 			wantMax:     30.5,
 			wantHasMax:  true,
 		},
 		{
-			what:        "max-minutes has a leading zero",
-			input:       "policy:\n  require-job-timeout:\n    max-minutes: 017\n",
+			what: "max-minutes has a leading zero",
+			input: `policy:
+  require-job-timeout:
+    max-minutes: 017
+`,
 			wantSet:     true,
 			wantEnabled: true,
 			wantMax:     17,
@@ -723,44 +761,67 @@ func TestConfigParseRequireJobTimeoutError(t *testing.T) {
 		want  string
 	}{
 		{
-			what:  "value is a number",
-			input: "policy:\n  require-job-timeout: 60\n",
-			want:  `"require-job-timeout" must be a boolean or a mapping at line:2,col:24`,
+			what: "value is a number",
+			input: `policy:
+  require-job-timeout: 60
+`,
+			want: `"require-job-timeout" must be a boolean or a mapping at line:2,col:24`,
 		},
 		{
-			what:  "value is a string",
-			input: "policy:\n  require-job-timeout: hello\n",
-			want:  `"require-job-timeout" must be a boolean or a mapping at line:2,col:24`,
+			what: "value is a string",
+			input: `policy:
+  require-job-timeout: hello
+`,
+			want: `"require-job-timeout" must be a boolean or a mapping at line:2,col:24`,
 		},
 		{
-			what:  "value is a sequence",
-			input: "policy:\n  require-job-timeout:\n    - 60\n",
-			want:  `"require-job-timeout" must be a boolean or a mapping at line:3,col:5`,
+			what: "value is a sequence",
+			input: `policy:
+  require-job-timeout:
+    - 60
+`,
+			want: `"require-job-timeout" must be a boolean or a mapping at line:3,col:5`,
 		},
 		{
-			what:  "unknown key in the mapping",
-			input: "policy:\n  require-job-timeout:\n    max_minutes: 60\n",
-			want:  `unknown key "max_minutes" in "require-job-timeout" at line:3,col:5`,
+			what: "unknown key in the mapping",
+			input: `policy:
+  require-job-timeout:
+    max_minutes: 60
+`,
+			want: `unknown key "max_minutes" in "require-job-timeout" at line:3,col:5`,
 		},
 		{
-			what:  "max-minutes is zero",
-			input: "policy:\n  require-job-timeout:\n    max-minutes: 0\n",
-			want:  `"max-minutes" in "require-job-timeout" must be greater than zero but got 0 at line:3,col:18`,
+			what: "max-minutes is zero",
+			input: `policy:
+  require-job-timeout:
+    max-minutes: 0
+`,
+			want: `"max-minutes" in "require-job-timeout" must be greater than zero but got 0 at line:3,col:18`,
 		},
 		{
-			what:  "max-minutes is negative",
-			input: "policy:\n  require-job-timeout:\n    max-minutes: -5\n",
-			want:  `"max-minutes" in "require-job-timeout" must be greater than zero but got -5 at line:3,col:18`,
+			what: "max-minutes is negative",
+			input: `policy:
+  require-job-timeout:
+    max-minutes: -5
+`,
+			want: `"max-minutes" in "require-job-timeout" must be greater than zero but got -5 at line:3,col:18`,
 		},
 		{
-			what:  "max-minutes is not a number",
-			input: "policy:\n  require-job-timeout:\n    max-minutes: hello\n",
-			want:  `"max-minutes" in "require-job-timeout" must be a number but got "hello" at line:3,col:18`,
+			what: "max-minutes is not a number",
+			input: `policy:
+  require-job-timeout:
+    max-minutes: hello
+`,
+			want: `"max-minutes" in "require-job-timeout" must be a number but got "hello" at line:3,col:18`,
 		},
 		{
-			what:  "max-minutes is a mapping",
-			input: "policy:\n  require-job-timeout:\n    max-minutes:\n      a: 1\n",
-			want:  `"max-minutes" in "require-job-timeout" must be a number but got "" at line:4,col:7`,
+			what: "max-minutes is a mapping",
+			input: `policy:
+  require-job-timeout:
+    max-minutes:
+      a: 1
+`,
+			want: `"max-minutes" in "require-job-timeout" must be a number but got "" at line:4,col:7`,
 		},
 	}
 

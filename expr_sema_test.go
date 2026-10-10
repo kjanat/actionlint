@@ -926,7 +926,10 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			}
 
 			if diff := cmp.Diff(tc.expected, ty); diff != "" {
-				t.Fatalf("wanted: %s\nbut got:%s\ndiff:\n%s", tc.expected.String(), ty.String(), diff)
+				t.Fatalf(`wanted: %s
+but got:%s
+diff:
+%s`, tc.expected.String(), ty.String(), diff)
 			}
 		})
 	}

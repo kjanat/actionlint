@@ -26,8 +26,12 @@ func TestInlineSuppressionCompactScalarBoundary(t *testing.T) {
 		{"anchored mapping", "- &step\n    run: |2" + header + "      body_marker\n    " + outside + "    uses: sibling\n"},
 		{"tagged mapping", "- !!map\n    run: |2" + header + "      body_marker\n    " + outside + "    uses: sibling\n"},
 		{"anchored sequence", "scripts: &scripts\n  - |2" + header + "    body_marker\n  " + outside + "  - uses: sibling\n"},
-		{"separate sequence header", "scripts:\n  -\n    |2" + header + "    body_marker\n  " + outside + "  - uses: sibling\n"},
-		{"anchored separate sequence header", "scripts: &scripts\n  -\n    |2" + header + "    body_marker\n  " + outside + "  - uses: sibling\n"},
+		{"separate sequence header", `scripts:
+  -
+    |2` + header + "    body_marker\n  " + outside + "  - uses: sibling\n"},
+		{"anchored separate sequence header", `scripts: &scripts
+  -
+    |2` + header + "    body_marker\n  " + outside + "  - uses: sibling\n"},
 		{"explicit mapping key", "- ? run\n  : |2" + header + "    body_marker\n  " + outside + "  uses: sibling\n"},
 		{"anchored explicit mapping key", "- &step\n  ? run\n  : |2" + header + "    body_marker\n  " + outside + "  uses: sibling\n"},
 	} {
@@ -77,7 +81,11 @@ func TestInlineSuppressionCompactScalarBoundary(t *testing.T) {
 
 func TestInlineSuppressionDedentedCommentBeforeScalarBody(t *testing.T) {
 	for _, indicator := range []string{"|", "|2-", ">+"} {
-		source := "- run: " + indicator + " # actionlint:ignore expression -- reviewed\n  # outside scalar\n    body_marker\n  uses: sibling\n"
+		source := "- run: " + indicator + ` # actionlint:ignore expression -- reviewed
+  # outside scalar
+    body_marker
+  uses: sibling
+`
 		var document yaml.Node
 		if err := yaml.Unmarshal([]byte(source), &document); err == nil {
 			t.Fatalf("dedented comment unexpectedly allowed before scalar body: %s", source)

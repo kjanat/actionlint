@@ -10,7 +10,12 @@ import (
 
 func analysisForRender(t *testing.T, prefix string) *actionlint.AnalysisResult {
 	t.Helper()
-	source := prefix + "on: push\njobs:\n  test:\n    runs-on: \"a<b>&c\"\n    steps: [{run: 'echo ok'}]\n"
+	source := prefix + `on: push
+jobs:
+  test:
+    runs-on: "a<b>&c"
+    steps: [{run: 'echo ok'}]
+`
 	return analysisForRenderSource(t, source)
 }
 
@@ -40,7 +45,12 @@ func TestRenderAnalysisPreservesUnicodeAndLegacyRanges(t *testing.T) {
 		{"multiple lines", actionlint.DiagnosticPosition{Line: 5, Column: 2}, "17", "^~~~~"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			analysis := analysisForRenderSource(t, "on: push\njobs:\n  test:\n    runs-on: \"é🐚\"\n    steps: [{run: 'echo ok'}]\n")
+			analysis := analysisForRenderSource(t, `on: push
+jobs:
+  test:
+    runs-on: "é🐚"
+    steps: [{run: 'echo ok'}]
+`)
 			analysis.Diagnostics[0].End = tc.end
 			for _, format := range []outputFormat{formatDefault, formatGitHub, formatMarkdown} {
 				got, err := renderAnalysis(format, analysis, ".", ".")
@@ -78,7 +88,14 @@ func TestRenderAnalysisCompatibility(t *testing.T) {
 		{formatDefault, "workflow.yaml:4:14: label \"a<b>&c\" is unknown [runner-label]\n  |\n4 |     runs-on: \"a<b>&c\"\n  |              ^~~~~~~~\n"},
 		{formatOneline, "workflow.yaml:4:14: label \"a<b>&c\" is unknown [runner-label]\n"},
 		{formatGitHub, "::error file=workflow.yaml,line=4,col=14,endColumn=21,title=actionlint (runner-label)::label \"a<b>&c\" is unknown%0A%0A    runs-on: \"a<b>&c\"%0A             ^~~~~~~~\n"},
-		{formatMarkdown, "### workflow.yaml:4:14 (runner-label)\n\nlabel \"a<b>&c\" is unknown\n\n        runs-on: \"a<b>&c\"\n                 ^~~~~~~~\n\n"},
+		{formatMarkdown, `### workflow.yaml:4:14 (runner-label)
+
+label "a<b>&c" is unknown
+
+        runs-on: "a<b>&c"
+                 ^~~~~~~~
+
+`},
 	} {
 		t.Run(string(tc.format), func(t *testing.T) {
 			got, err := renderAnalysis(tc.format, analysis, ".", ".")

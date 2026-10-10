@@ -16,8 +16,17 @@ func TestWorkflowCallCacheModeNestedMetadataErrors(t *testing.T) {
 	for _, malformed := range []bool{false, true} {
 		t.Run(fmt.Sprintf("malformed=%v", malformed), func(t *testing.T) {
 			root := t.TempDir()
-			caller := []byte("on: push\ncache-mode: read\njobs:\n  call:\n    uses: $/middle.yaml\n")
-			middle := []byte("on: workflow_call\njobs:\n  nested:\n    uses: $/leaf.yaml\n")
+			caller := []byte(`on: push
+cache-mode: read
+jobs:
+  call:
+    uses: $/middle.yaml
+`)
+			middle := []byte(`on: workflow_call
+jobs:
+  nested:
+    uses: $/leaf.yaml
+`)
 			if err := os.WriteFile(filepath.Join(root, "caller.yaml"), caller, 0o600); err != nil {
 				t.Fatal(err)
 			}
@@ -132,8 +141,17 @@ func TestWorkflowCallCacheModeCapabilities(t *testing.T) {
 					if callerMode != "" {
 						caller += "cache-mode: " + callerMode + "\n"
 					}
-					caller += "jobs:\n  call:\n    uses: ./callee.yaml\n"
-					callee := "on: workflow_call\ncache-mode: " + calleeMode + "\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+					caller += `jobs:
+  call:
+    uses: ./callee.yaml
+`
+					callee := "on: workflow_call\ncache-mode: " + calleeMode + `
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 					errs := checkCacheModeCall(t, caller, map[string]string{"callee.yaml": callee}, fromAST)
 					wantError := true
 					for _, mode := range allowed[callerMode] {
@@ -173,7 +191,11 @@ func TestWorkflowCallCacheModeInheritance(t *testing.T) {
 	for _, tt := range tests {
 		for _, fromAST := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/AST=%v", tt.name, fromAST), func(t *testing.T) {
-				caller := "on: push\ncache-mode: " + tt.workflowMode + "\njobs:\n  call:\n    uses: $/callee.yaml\n"
+				caller := "on: push\ncache-mode: " + tt.workflowMode + `
+jobs:
+  call:
+    uses: $/callee.yaml
+`
 				if tt.jobMode != "" {
 					caller += "    cache-mode: " + tt.jobMode + "\n"
 				}
@@ -181,11 +203,16 @@ func TestWorkflowCallCacheModeInheritance(t *testing.T) {
 				if tt.calleeMode != "" {
 					callee += "cache-mode: " + tt.calleeMode + "\n"
 				}
-				callee += "jobs:\n  build:\n    runs-on: ubuntu-latest\n"
+				callee += `jobs:
+  build:
+    runs-on: ubuntu-latest
+`
 				if tt.calleeJobMode != "" {
 					callee += "    cache-mode: " + tt.calleeJobMode + "\n"
 				}
-				callee += "    steps:\n      - run: echo ok\n"
+				callee += `    steps:
+      - run: echo ok
+`
 				errs := checkCacheModeCall(t, caller, map[string]string{"callee.yaml": callee}, fromAST)
 				if (len(errs) != 0) != tt.wantError {
 					t.Fatalf("wantError=%v, got %v", tt.wantError, errs)
@@ -218,13 +245,25 @@ func TestWorkflowCallCacheModeNested(t *testing.T) {
 				if tt.callerMode != "" {
 					caller += "cache-mode: " + tt.callerMode + "\n"
 				}
-				caller += "jobs:\n  call:\n    uses: ./middle.yaml\n"
+				caller += `jobs:
+  call:
+    uses: ./middle.yaml
+`
 				middle := "on: workflow_call\n"
 				if tt.middleMode != "" {
 					middle += "cache-mode: " + tt.middleMode + "\n"
 				}
-				middle += "jobs:\n  nested:\n    uses: $/leaf.yaml\n"
-				leaf := "on: workflow_call\ncache-mode: " + tt.leafMode + "\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+				middle += `jobs:
+  nested:
+    uses: $/leaf.yaml
+`
+				leaf := "on: workflow_call\ncache-mode: " + tt.leafMode + `
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 				errs := checkCacheModeCall(t, caller, map[string]string{"middle.yaml": middle, "leaf.yaml": leaf}, fromAST)
 				if (len(errs) != 0) != tt.wantError {
 					t.Fatalf("wantError=%v, got %v", tt.wantError, errs)
@@ -238,9 +277,17 @@ func TestWorkflowCallCacheModeNested(t *testing.T) {
 }
 
 func TestWorkflowCallCacheModeCycleAndUnknownCallee(t *testing.T) {
-	caller := "on: push\ncache-mode: read\njobs:\n  call:\n    uses: ./middle.yaml\n"
+	caller := `on: push
+cache-mode: read
+jobs:
+  call:
+    uses: ./middle.yaml
+`
 	for _, uses := range []string{"./middle.yaml", "$/middle.yaml", "$//middle.yaml", "owner/repo/.github/workflows/remote.yaml@main"} {
-		middle := "on: workflow_call\njobs:\n  nested:\n    uses: " + uses + "\n"
+		middle := `on: workflow_call
+jobs:
+  nested:
+    uses: ` + uses + "\n"
 		if errs := checkCacheModeCall(t, caller, map[string]string{"middle.yaml": middle}, false); len(errs) != 0 {
 			t.Fatal(errs)
 		}
@@ -248,9 +295,32 @@ func TestWorkflowCallCacheModeCycleAndUnknownCallee(t *testing.T) {
 }
 
 func TestWorkflowCallCacheModeSharedCallee(t *testing.T) {
-	caller := "on: push\ncache-mode: write\njobs:\n  call:\n    uses: ./middle.yaml\n"
-	middle := "on: workflow_call\njobs:\n  allowed:\n    cache-mode: write\n    uses: ./leaf.yaml\n  denied:\n    cache-mode: read\n    uses: ./leaf.yaml\n  duplicate:\n    cache-mode: read\n    uses: $/leaf.yaml\n"
-	leaf := "on: workflow_call\ncache-mode: write\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+	caller := `on: push
+cache-mode: write
+jobs:
+  call:
+    uses: ./middle.yaml
+`
+	middle := `on: workflow_call
+jobs:
+  allowed:
+    cache-mode: write
+    uses: ./leaf.yaml
+  denied:
+    cache-mode: read
+    uses: ./leaf.yaml
+  duplicate:
+    cache-mode: read
+    uses: $/leaf.yaml
+`
+	leaf := `on: workflow_call
+cache-mode: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 	errs := checkCacheModeCall(t, caller, map[string]string{"middle.yaml": middle, "leaf.yaml": leaf}, false)
 	if len(errs) != 1 || !strings.Contains(errs[0].Message, `calling job allows "read"`) {
 		t.Fatalf("wanted one rejection of read-only access, got %v", errs)
@@ -258,7 +328,27 @@ func TestWorkflowCallCacheModeSharedCallee(t *testing.T) {
 }
 
 func TestReusableWorkflowCacheModeMetadataParity(t *testing.T) {
-	src := []byte("on: workflow_call\ncache-mode: &mode read\njobs:\n  base: &job\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n  alias: *job\n  save:\n    cache-mode: write-only\n    uses: $/next.yaml\n  none:\n    cache-mode: none\n    uses: ./next.yaml\n  invalid:\n    cache-mode: null\n    uses: ./next.yaml\n  scalar-alias:\n    cache-mode: *mode\n    uses: ./next.yaml\n")
+	src := []byte(`on: workflow_call
+cache-mode: &mode read
+jobs:
+  base: &job
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+  alias: *job
+  save:
+    cache-mode: write-only
+    uses: $/next.yaml
+  none:
+    cache-mode: none
+    uses: ./next.yaml
+  invalid:
+    cache-mode: null
+    uses: ./next.yaml
+  scalar-alias:
+    cache-mode: *mode
+    uses: ./next.yaml
+`)
 	fromFile, err := parseReusableWorkflowMetadata(src)
 	if err != nil {
 		t.Fatal(err)

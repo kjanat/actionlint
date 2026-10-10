@@ -76,7 +76,15 @@ func TestUnsoundTernary(t *testing.T) {
 }
 
 func TestUnsoundTernaryConfigurationAndSuppression(t *testing.T) {
-	src := "on: push\nenv:\n  VALUE: ${{ github.ref && '' || 'fallback' }}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+	src := `on: push
+env:
+  VALUE: ${{ github.ref && '' || 'fallback' }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 	for _, config := range []string{"", "lint: {rules: {correctness: {unsound-ternary: off}}}", "lint: {rules: {correctness: {unsound-ternary: warn}}}"} {
 		cfg, err := ParseConfig([]byte(config))
 		if err != nil {

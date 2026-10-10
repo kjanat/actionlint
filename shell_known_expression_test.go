@@ -32,11 +32,16 @@ func TestKnownShellExpressions(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			source := "on: push\njobs:\n  test:\n    runs-on: " + tc.runner + "\n"
+			source := `on: push
+jobs:
+  test:
+    runs-on: ` + tc.runner + "\n"
 			if tc.defaults != "" {
 				source += "    defaults:\n      run: " + tc.defaults + "\n"
 			}
-			source += "    steps:\n      - run: echo test\n"
+			source += `    steps:
+      - run: echo test
+`
 			if tc.step != "" {
 				source += "        shell: " + tc.step + "\n"
 			}
@@ -108,13 +113,19 @@ func TestKnownShellExternalLinters(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			source := "on: push\n"
 			if tc.workflowShell != "" {
-				source += "defaults:\n  run:\n    shell: " + tc.workflowShell + "\n"
+				source += `defaults:
+  run:
+    shell: ` + tc.workflowShell + "\n"
 			}
-			source += "jobs:\n  test:\n    runs-on: " + tc.runner + "\n"
+			source += `jobs:
+  test:
+    runs-on: ` + tc.runner + "\n"
 			if tc.defaults != "" {
 				source += "    defaults:\n      run: " + tc.defaults + "\n"
 			}
-			source += "    steps:\n      - run: echo test\n"
+			source += `    steps:
+      - run: echo test
+`
 			if tc.stepShell != "" {
 				source += "        shell: " + tc.stepShell + "\n"
 			}

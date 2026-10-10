@@ -68,14 +68,28 @@ func TestSuspiciousConditionChecks(t *testing.T) {
 		for _, location := range []string{"job", "step", "snapshot"} {
 			for _, config := range []string{"", "lint: {rules: {suspicious: off}}", "lint: {rules: {suspicious: {case-insensitive-conditions: on}}}"} {
 				t.Run(expression+"/"+location+"/"+config, func(t *testing.T) {
-					body := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n"
+					body := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+`
 					switch location {
 					case "job":
-						body += "    if: " + expression + "\n    steps:\n      - run: echo ok\n"
+						body += "    if: " + expression + `
+    steps:
+      - run: echo ok
+`
 					case "step":
-						body += "    steps:\n      - run: echo ok\n        if: " + expression + "\n"
+						body += `    steps:
+      - run: echo ok
+        if: ` + expression + "\n"
 					case "snapshot":
-						body += "    snapshot:\n      image-name: test\n      if: " + expression + "\n    steps:\n      - run: echo ok\n"
+						body += `    snapshot:
+      image-name: test
+      if: ` + expression + `
+    steps:
+      - run: echo ok
+`
 					}
 					errs := lintCachePolicy(t, body, config)
 					if strings.Contains(config, ": on") {

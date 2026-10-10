@@ -184,7 +184,12 @@ func TestRuffShorthandOverlay(t *testing.T) {
 
 func TestRuffRequiredToolsOverrides(t *testing.T) {
 	root := t.TempDir()
-	path := writeShellcheckFixture(t, root, "actionlint.yml", "tools: {shellcheck: false}\nfiles: {excludes: [skip.yml]}\noverrides:\n  - includes: [disabled.yml]\n    lint: {rules: {external: {ruff: off}}}\n")
+	path := writeShellcheckFixture(t, root, "actionlint.yml", `tools: {shellcheck: false}
+files: {excludes: [skip.yml]}
+overrides:
+  - includes: [disabled.yml]
+    lint: {rules: {external: {ruff: off}}}
+`)
 	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, ConfigFile: path, Ruff: "ruff", Shellcheck: "shellcheck"})
 	if err != nil {
 		t.Fatal(err)
@@ -218,7 +223,10 @@ func TestRuffRequiredToolsCompositeOverrides(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
-			path := writeShellcheckFixture(t, root, "actionlint.yml", tc.base+"\noverrides:\n  - includes: [action.yml]\n    "+tc.override+"\n")
+			path := writeShellcheckFixture(t, root, "actionlint.yml", tc.base+`
+overrides:
+  - includes: [action.yml]
+    `+tc.override+"\n")
 			for _, executable := range []string{"ruff", ""} {
 				session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, ConfigFile: path, Ruff: executable})
 				if err != nil {
@@ -238,10 +246,33 @@ func TestRuffRequiredToolsOverlappingOverrides(t *testing.T) {
 		name, config string
 		want         bool
 	}{
-		{"separate gates", "tools: {ruff: false}\nlint: {rules: {external: {ruff: off}}}\noverrides:\n  - includes: ['python-action/**']\n    tools: {ruff: true}\n  - includes: ['**/action.yml']\n    lint: {rules: {external: {ruff: on}}}\n", true},
-		{"explicit rule survives group", "lint: {rules: {external: off}}\noverrides:\n  - includes: ['python-action/**']\n    lint: {rules: {external: {ruff: on}}}\n  - includes: ['**']\n    lint: {rules: {external: {level: off}}}\n", true},
-		{"explicit off survives group", "lint: {rules: {external: {ruff: off}}}\noverrides:\n  - includes: ['python-action/**']\n    lint: {rules: {external: {level: on}}}\n", false},
-		{"default restores group", "lint: {rules: {external: {ruff: off}}}\noverrides:\n  - includes: ['python-action/**']\n    lint: {rules: {external: {level: on}}}\n  - includes: ['**/action.yml']\n    lint: {rules: {external: {ruff: default}}}\n", true},
+		{"separate gates", `tools: {ruff: false}
+lint: {rules: {external: {ruff: off}}}
+overrides:
+  - includes: ['python-action/**']
+    tools: {ruff: true}
+  - includes: ['**/action.yml']
+    lint: {rules: {external: {ruff: on}}}
+`, true},
+		{"explicit rule survives group", `lint: {rules: {external: off}}
+overrides:
+  - includes: ['python-action/**']
+    lint: {rules: {external: {ruff: on}}}
+  - includes: ['**']
+    lint: {rules: {external: {level: off}}}
+`, true},
+		{"explicit off survives group", `lint: {rules: {external: {ruff: off}}}
+overrides:
+  - includes: ['python-action/**']
+    lint: {rules: {external: {level: on}}}
+`, false},
+		{"default restores group", `lint: {rules: {external: {ruff: off}}}
+overrides:
+  - includes: ['python-action/**']
+    lint: {rules: {external: {level: on}}}
+  - includes: ['**/action.yml']
+    lint: {rules: {external: {ruff: default}}}
+`, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -259,16 +290,30 @@ func TestRuffRequiredToolsOverlappingOverrides(t *testing.T) {
 }
 
 func TestRuffRequiredToolsManyOverrides(t *testing.T) {
-	unrelated := strings.Repeat("  - includes: ['**/action.yml']\n    lint: {rules: {correctness: {expression: warn}}}\n", 8)
+	unrelated := strings.Repeat(`  - includes: ['**/action.yml']
+    lint: {rules: {correctness: {expression: warn}}}
+`, 8)
 	for _, tc := range []struct {
 		name, base, final string
 		want              bool
 	}{
 		{"disabled remains disabled", "tools: {ruff: false}\n", "", false},
-		{"universal tool disable", "", "  - includes: ['**']\n    tools: {ruff: false}\n", false},
-		{"universal rule disable", "", "  - includes: ['**']\n    lint: {rules: {external: {ruff: off}}}\n", false},
-		{"possible enable", "tools: {ruff: false}\n", "  - includes: ['python-action/**']\n    tools: {ruff: true}\n", true},
-		{"overlapping separate enables", "tools: {ruff: false}\nlint: {rules: {external: {ruff: off}}}\n", "  - includes: ['python-action/**']\n    tools: {ruff: true}\n  - includes: ['**/action.yml']\n    lint: {rules: {external: {ruff: on}}}\n", true},
+		{"universal tool disable", "", `  - includes: ['**']
+    tools: {ruff: false}
+`, false},
+		{"universal rule disable", "", `  - includes: ['**']
+    lint: {rules: {external: {ruff: off}}}
+`, false},
+		{"possible enable", "tools: {ruff: false}\n", `  - includes: ['python-action/**']
+    tools: {ruff: true}
+`, true},
+		{"overlapping separate enables", `tools: {ruff: false}
+lint: {rules: {external: {ruff: off}}}
+`, `  - includes: ['python-action/**']
+    tools: {ruff: true}
+  - includes: ['**/action.yml']
+    lint: {rules: {external: {ruff: on}}}
+`, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -289,13 +334,29 @@ func TestRuffRequiredToolsProjectCompositeBaseline(t *testing.T) {
 	for _, enabled := range []bool{true, false} {
 		root := t.TempDir()
 		writeShellcheckFixture(t, root, ".git", "")
-		workflow := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/python-action\n")
-		writeShellcheckFixture(t, root, "python-action/action.yml", "name: Python\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: python\n      run: print(missing)\n")
+		workflow := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: $/python-action
+`)
+		writeShellcheckFixture(t, root, "python-action/action.yml", `name: Python
+description: test
+runs:
+  using: composite
+  steps:
+    - shell: python
+      run: print(missing)
+`)
 		base := ""
 		if !enabled {
 			base = "tools: {ruff: false}\n"
 		}
-		path := writeShellcheckFixture(t, root, "actionlint.yml", base+"overrides:\n  - includes: ['.github/workflows/**']\n    tools: {ruff: false}\n")
+		path := writeShellcheckFixture(t, root, "actionlint.yml", base+`overrides:
+  - includes: ['.github/workflows/**']
+    tools: {ruff: false}
+`)
 		session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, ConfigFile: path, Ruff: "ruff"})
 		if err != nil {
 			t.Fatal(err)
@@ -334,8 +395,21 @@ func TestRuffProjectCatchAllOverrides(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
 			writeShellcheckFixture(t, root, ".git", "")
-			workflow := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/python-action\n")
-			writeShellcheckFixture(t, root, "python-action/action.yml", "name: Python\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: python\n      run: print(missing)\n")
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: $/python-action
+`)
+			writeShellcheckFixture(t, root, "python-action/action.yml", `name: Python
+description: test
+runs:
+  using: composite
+  steps:
+    - shell: python
+      run: print(missing)
+`)
 			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "overrides: "+tc.overrides+"\n")
 			command := executable
 			if !tc.enabled {

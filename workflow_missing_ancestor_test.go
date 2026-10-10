@@ -24,7 +24,12 @@ func TestWorkflowRunMissingAncestorAlias(t *testing.T) {
 					t.Run(roots[0]+name, func(t *testing.T) {
 						project := &Project{root: roots[1]}
 						producer := filepath.Join(roots[0], ".github/workflows/build.yml")
-						consumer := "on: {workflow_run: {workflows: [" + name + "], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
+						consumer := "on: {workflow_run: {workflows: [" + name + `], types: [completed]}}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps: [{run: echo ok}]
+`
 						result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: roots[0], Sources: []SourceUnit{
 							{Path: filepath.Join(roots[1], ".github/workflows/build.yml"), Content: []byte("name: Old\n" + commandGoodWorkflow), Project: project},
 							{Path: producer, Content: []byte("name: New\n" + commandGoodWorkflow), Project: project},

@@ -611,7 +611,15 @@ func TestParseExpressionSyntaxOK(t *testing.T) {
 			}
 
 			if diff := cmp.Diff(tc.expected, n, opts...); diff != "" {
-				t.Fatalf("wanted:\n%#v\n\nbut got:\n%#v\n\ndiff:\n%s\n", tc.expected, n, diff)
+				t.Fatalf(`wanted:
+%#v
+
+but got:
+%#v
+
+diff:
+%s
+`, tc.expected, n, diff)
 			}
 		})
 	}

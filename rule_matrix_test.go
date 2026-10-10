@@ -46,7 +46,15 @@ func TestRuleMatrixScalarValues(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			src := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps:\n      - run: echo test\n"
+			src := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ` + tc.matrix + `
+    steps:
+      - run: echo test
+`
 			w, errs := Parse([]byte(src))
 			if len(errs) != 0 {
 				t.Fatal(errs)

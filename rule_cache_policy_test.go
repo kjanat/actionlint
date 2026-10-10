@@ -8,7 +8,10 @@ import (
 	"testing"
 )
 
-const cachePolicySteps = "    runs-on: ubuntu-latest\n    steps:\n      - run: echo hello\n"
+const cachePolicySteps = `    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello
+`
 
 func lintCachePolicy(t *testing.T, source, config string) []*Error {
 	t.Helper()
@@ -91,7 +94,9 @@ func TestCachePolicyEffectiveWrite(t *testing.T) {
 		{"job disables inherited writes", "cache-mode: write\n", "    cache-mode: none\n", 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			src := "on: [pull_request_target, push]\n" + tc.workflow + "jobs:\n  test:\n" + tc.job + cachePolicySteps
+			src := "on: [pull_request_target, push]\n" + tc.workflow + `jobs:
+  test:
+` + tc.job + cachePolicySteps
 			errs := lintCachePolicy(t, src, "")
 			if tc.line == 0 {
 				if len(errs) != 0 {
@@ -103,13 +108,21 @@ func TestCachePolicyEffectiveWrite(t *testing.T) {
 		})
 	}
 	t.Run("inherited declaration reported once", func(t *testing.T) {
-		src := "on: pull_request_target\ncache-mode: write\njobs:\n  a:\n" + cachePolicySteps + "  b:\n" + cachePolicySteps
+		src := `on: pull_request_target
+cache-mode: write
+jobs:
+  a:
+` + cachePolicySteps + "  b:\n" + cachePolicySteps
 		if errs := lintCachePolicy(t, src, ""); len(errs) != 1 || errs[0].Line != 2 {
 			t.Fatal(errs)
 		}
 	})
 	t.Run("invalid mode has no policy cascade", func(t *testing.T) {
-		if errs := lintCachePolicy(t, "on: pull_request_target\ncache-mode: invalid\njobs:\n  a:\n"+cachePolicySteps, ""); len(errs) != 1 || errs[0].Kind != "syntax-check" {
+		if errs := lintCachePolicy(t, `on: pull_request_target
+cache-mode: invalid
+jobs:
+  a:
+`+cachePolicySteps, ""); len(errs) != 1 || errs[0].Kind != "syntax-check" {
 			t.Fatal(errs)
 		}
 	})
@@ -120,17 +133,50 @@ func TestCachePolicyWorkflowGrantUsage(t *testing.T) {
 		name, jobs string
 		lines      []int
 	}{
-		{"all read", "  a:\n    cache-mode: read\n" + cachePolicySteps + "  b:\n    cache-mode: read\n" + cachePolicySteps, nil},
-		{"all none", "  a:\n    cache-mode: none\n" + cachePolicySteps + "  b:\n    cache-mode: none\n" + cachePolicySteps, nil},
-		{"mixed safe overrides", "  a:\n    cache-mode: read\n" + cachePolicySteps + "  b:\n    cache-mode: none\n" + cachePolicySteps, nil},
-		{"one inheritor", "  a:\n    cache-mode: read\n" + cachePolicySteps + "  b:\n" + cachePolicySteps, []int{2}},
-		{"unsafe job override", "  a:\n    cache-mode: read\n" + cachePolicySteps + "  b:\n    cache-mode: write-only\n" + cachePolicySteps, []int{10}},
-		{"inherited and job grants", "  a:\n" + cachePolicySteps + "  b:\n    cache-mode: write-only\n" + cachePolicySteps, []int{2, 9}},
-		{"only reusable inheritors", "  a:\n    uses: example/repo/.github/workflows/a.yaml@main\n  b:\n    uses: example/repo/.github/workflows/b.yaml@main\n", []int{2}},
-		{"only reusable safe overrides", "  a:\n    cache-mode: read\n    uses: example/repo/.github/workflows/a.yaml@main\n  b:\n    cache-mode: none\n    uses: example/repo/.github/workflows/b.yaml@main\n", nil},
+		{"all read", `  a:
+    cache-mode: read
+` + cachePolicySteps + `  b:
+    cache-mode: read
+` + cachePolicySteps, nil},
+		{"all none", `  a:
+    cache-mode: none
+` + cachePolicySteps + `  b:
+    cache-mode: none
+` + cachePolicySteps, nil},
+		{"mixed safe overrides", `  a:
+    cache-mode: read
+` + cachePolicySteps + `  b:
+    cache-mode: none
+` + cachePolicySteps, nil},
+		{"one inheritor", `  a:
+    cache-mode: read
+` + cachePolicySteps + "  b:\n" + cachePolicySteps, []int{2}},
+		{"unsafe job override", `  a:
+    cache-mode: read
+` + cachePolicySteps + `  b:
+    cache-mode: write-only
+` + cachePolicySteps, []int{10}},
+		{"inherited and job grants", "  a:\n" + cachePolicySteps + `  b:
+    cache-mode: write-only
+` + cachePolicySteps, []int{2, 9}},
+		{"only reusable inheritors", `  a:
+    uses: example/repo/.github/workflows/a.yaml@main
+  b:
+    uses: example/repo/.github/workflows/b.yaml@main
+`, []int{2}},
+		{"only reusable safe overrides", `  a:
+    cache-mode: read
+    uses: example/repo/.github/workflows/a.yaml@main
+  b:
+    cache-mode: none
+    uses: example/repo/.github/workflows/b.yaml@main
+`, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			source := "on: pull_request_target\ncache-mode: write\njobs:\n" + tc.jobs
+			source := `on: pull_request_target
+cache-mode: write
+jobs:
+` + tc.jobs
 			var lines []int
 			for _, err := range lintCachePolicy(t, source, "") {
 				column := 17
@@ -148,7 +194,10 @@ func TestCachePolicyWorkflowGrantUsage(t *testing.T) {
 		})
 	}
 	t.Run("zero jobs has no effective grant", func(t *testing.T) {
-		errs := lintCachePolicy(t, "on: pull_request_target\ncache-mode: write\njobs: {}\n", "")
+		errs := lintCachePolicy(t, `on: pull_request_target
+cache-mode: write
+jobs: {}
+`, "")
 		if len(errs) != 1 || errs[0].Kind != "syntax-check" {
 			t.Fatalf("expected only the empty jobs syntax diagnostic, got %v", errs)
 		}
@@ -168,7 +217,9 @@ func TestCachePolicyReusableCalls(t *testing.T) {
 							job = "    cache-mode: " + mode + "\n"
 						}
 					}
-					src := "on: pull_request_target\n" + workflow + "jobs:\n  call:\n" + job + "    uses: " + target + "\n"
+					src := "on: pull_request_target\n" + workflow + `jobs:
+  call:
+` + job + "    uses: " + target + "\n"
 					errs := lintCachePolicy(t, src, "")
 					want := ""
 					switch mode {
@@ -191,7 +242,11 @@ func TestCachePolicyReusableCalls(t *testing.T) {
 		}
 	}
 	for _, event := range []string{"push", "pull_request", "workflow_call"} {
-		src := "on: " + event + "\njobs:\n  call:\n    uses: example/repo/.github/workflows/build.yaml@main\n"
+		src := "on: " + event + `
+jobs:
+  call:
+    uses: example/repo/.github/workflows/build.yaml@main
+`
 		if errs := lintCachePolicy(t, src, ""); len(errs) != 0 {
 			t.Fatalf("%s: %v", event, errs)
 		}
@@ -216,7 +271,10 @@ func TestCachePolicyRemoteCallBoundaries(t *testing.T) {
 		{"path expression", "example/repo/.github/workflows/${{ 'build' }}.yaml@main", "", "", []string{"expression"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			source := "on: pull_request_target\njobs:\n  call:\n" + tc.before + "    uses: " + tc.uses + "\n"
+			source := `on: pull_request_target
+jobs:
+  call:
+` + tc.before + "    uses: " + tc.uses + "\n"
 			var kinds []string
 			for _, err := range lintCachePolicy(t, source, tc.config) {
 				kinds = append(kinds, err.Kind)
@@ -255,7 +313,13 @@ func TestCachePolicyOperations(t *testing.T) {
 					if op != "both" {
 						action += "/" + op
 					}
-					src := "on: push\n" + mode + "jobs:\n  test:\n" + job + "    runs-on: ubuntu-latest\n    steps:\n      - uses: " + action + "@v5\n        with: {path: .cache, key: test}\n"
+					src := "on: push\n" + mode + `jobs:
+  test:
+` + job + `    runs-on: ubuntu-latest
+    steps:
+      - uses: ` + action + `@v5
+        with: {path: .cache, key: test}
+`
 					errs := lintCachePolicy(t, src, "")
 					if slices.Contains(tc.bad, op) {
 						if len(errs) != 1 || errs[0].Kind != "cache-operation" || !strings.Contains(errs[0].Message, "GitHub skips the operation") {
@@ -316,9 +380,25 @@ func TestCachePolicyOperationReferences(t *testing.T) {
 
 func TestCachePolicyConfig(t *testing.T) {
 	for _, tc := range []struct{ name, source string }{
-		{"cache-write-untrusted", "on: pull_request_target\ncache-mode: write\njobs:\n  test:\n" + cachePolicySteps},
-		{"cache-call-unrestricted", "on: pull_request_target\njobs:\n  call:\n    uses: example/repo/.github/workflows/build.yaml@main\n"},
-		{"cache-operation", "on: push\ncache-mode: none\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/cache@v5\n        with: {path: .cache, key: test}\n"},
+		{"cache-write-untrusted", `on: pull_request_target
+cache-mode: write
+jobs:
+  test:
+` + cachePolicySteps},
+		{"cache-call-unrestricted", `on: pull_request_target
+jobs:
+  call:
+    uses: example/repo/.github/workflows/build.yaml@main
+`},
+		{"cache-operation", `on: push
+cache-mode: none
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache@v5
+        with: {path: .cache, key: test}
+`},
 	} {
 		for _, value := range []string{"true", "false", "null"} {
 			t.Run(tc.name+"/"+value, func(t *testing.T) {

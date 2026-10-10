@@ -162,7 +162,13 @@ func TestMainPrintHelp(t *testing.T) {
 
 func TestActionlintMissingLinters(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
-	_, err := Actionlint([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hello\n"))
+	_, err := Actionlint([]byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello
+`))
 	testErr(t, err, "missing from PATH: shellcheck", "runner lint-docs")
 }
 

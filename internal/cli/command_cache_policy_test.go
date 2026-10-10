@@ -11,13 +11,32 @@ import (
 	"actionlint.kjanat.dev"
 )
 
-const cachePolicySteps = "    runs-on: ubuntu-latest\n    steps:\n      - run: echo hello\n"
+const cachePolicySteps = `    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello
+`
 
 func TestCommandCachePolicyDefaults(t *testing.T) {
 	for _, policy := range []struct{ name, workflow string }{
-		{"cache-write-untrusted", "on: pull_request_target\ncache-mode: write\njobs:\n  build:\n" + cachePolicySteps},
-		{"cache-call-unrestricted", "on: pull_request_target\njobs:\n  call:\n    uses: example/repo/.github/workflows/build.yaml@main\n"},
-		{"cache-operation", "on: push\ncache-mode: none\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/cache@v5\n        with: {path: .cache, key: test}\n"},
+		{"cache-write-untrusted", `on: pull_request_target
+cache-mode: write
+jobs:
+  build:
+` + cachePolicySteps},
+		{"cache-call-unrestricted", `on: pull_request_target
+jobs:
+  call:
+    uses: example/repo/.github/workflows/build.yaml@main
+`},
+		{"cache-operation", `on: push
+cache-mode: none
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache@v5
+        with: {path: .cache, key: test}
+`},
 	} {
 		for _, config := range []struct {
 			name, content string

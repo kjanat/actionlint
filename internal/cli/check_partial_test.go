@@ -27,7 +27,10 @@ func TestCheckJSONPartialFindings(t *testing.T) {
 		"config.yml":     "{}\n",
 		"successful.yml": commandBadWorkflow + "        shell: pwsh\n",
 		"failing.yml": commandBadWorkflow +
-			"        shell: bash\n      - run: FAIL_ANALYZER\n        shell: bash\n",
+			`        shell: bash
+      - run: FAIL_ANALYZER
+        shell: bash
+`,
 	} {
 		if err := os.WriteFile(name, []byte(content), 0600); err != nil {
 			t.Fatal(err)

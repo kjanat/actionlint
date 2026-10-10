@@ -132,7 +132,14 @@ func TestActionShellcheckSourcedDiagnostics(t *testing.T) {
 	t.Setenv("SHELLCHECK_OPTS", "")
 	workspace := workspaceWith(t, map[string]string{
 		".git": "", ".github/workflows/.gitkeep": "",
-		"project/workflow.yml":     "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - working-directory: project/app\n        run: . ./lib/check.sh\n",
+		"project/workflow.yml": `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - working-directory: project/app
+        run: . ./lib/check.sh
+`,
 		"project/app/lib/check.sh": "# library\necho $VALUE\n",
 	})
 	for _, tc := range []struct{ name, args, inherited string }{
@@ -175,7 +182,13 @@ func TestActionShellcheckInputs(t *testing.T) {
 		t.Skipf("ShellCheck required: %s", err)
 	}
 	t.Setenv("SHELLCHECK_OPTS", "")
-	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $VALUE\n"
+	workflow := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo $VALUE
+`
 	for _, tc := range []struct {
 		name, config, args, inherited string
 		fileSettings, tools           string
@@ -226,7 +239,9 @@ func TestActionShellcheckInputs(t *testing.T) {
 			}
 			workspace := workspaceWith(t, map[string]string{
 				".git": "", "project/workflow.yml": source,
-				".github/actionlint.yaml":    "tools:\n  shellcheck:\n    " + tc.fileSettings + "\n",
+				".github/actionlint.yaml": `tools:
+  shellcheck:
+    ` + tc.fileSettings + "\n",
 				".github/.shellcheckrc":      "disable=SC2086\n",
 				".github/workflows/.gitkeep": "",
 				"project/" + rcfile:          "disable=SC2086\n",

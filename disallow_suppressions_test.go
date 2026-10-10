@@ -16,7 +16,10 @@ func kindCounts(kinds []string) map[string]int {
 }
 
 func TestDisallowSuppressionsInteractions(t *testing.T) {
-	const body = "\njobs:\n  test:\n" + cachePolicySteps
+	const body = `
+jobs:
+  test:
+` + cachePolicySteps
 	for _, tc := range []struct {
 		name, declaration, config string
 		kinds                     []string
@@ -28,7 +31,9 @@ func TestDisallowSuppressionsInteractions(t *testing.T) {
 		{"duplicates", "cache-mode: write # actionlint:ignore cache-write-untrusted, cache-write-untrusted -- reviewed", "true", []string{"cache-write-untrusted", "disallow-suppressions"}},
 		{"unselected still suppressed", "cache-mode: write # actionlint:ignore cache-write-untrusted, cache-operation -- reviewed", "{rules: [cache-operation]}", []string{"disallow-suppressions"}},
 		{"selected restored", "cache-mode: write # actionlint:ignore cache-write-untrusted, cache-operation -- reviewed", "{rules: [cache-write-untrusted]}", []string{"cache-write-untrusted", "disallow-suppressions"}},
-		{"detached", "# actionlint:ignore-next-line cache-write-untrusted -- reviewed\n\ncache-mode: write", "true", []string{"cache-write-untrusted"}},
+		{"detached", `# actionlint:ignore-next-line cache-write-untrusted -- reviewed
+
+cache-mode: write`, "true", []string{"cache-write-untrusted"}},
 		{"quoted", "name: '# actionlint:ignore cache-write-untrusted -- text'\ncache-mode: write", "true", []string{"cache-write-untrusted"}},
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {

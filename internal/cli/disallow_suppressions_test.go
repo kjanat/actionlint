@@ -54,7 +54,9 @@ func TestDisallowSuppressionsCommand(t *testing.T) {
 						body = "  # actionlint:ignore-next-line cache-call-unrestricted -- reviewed callee\n" + job + "\n"
 					}
 					var stdout, stderr strings.Builder
-					source := "on: pull_request_target\njobs:\n" + body
+					source := `on: pull_request_target
+jobs:
+` + body
 					cmd := Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
 					args := []string{"actionlint", "-shellcheck=", "-pyflakes=", "-no-color", "-format", "{{json .}}"}
 					input := "-"
@@ -104,7 +106,11 @@ func TestDisallowSuppressionsCommand(t *testing.T) {
 
 func TestDisallowSuppressionsOutputAndFilters(t *testing.T) {
 	t.Chdir(t.TempDir())
-	const source = "on: pull_request_target\ncache-mode: write # actionlint:ignore cache-write-untrusted -- reviewed\njobs:\n  test:\n" + cachePolicySteps
+	const source = `on: pull_request_target
+cache-mode: write # actionlint:ignore cache-write-untrusted -- reviewed
+jobs:
+  test:
+` + cachePolicySteps
 	const forbidden = "disallowed by policy"
 	const violation = "poison caches"
 	for _, tc := range []struct {

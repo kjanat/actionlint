@@ -19,7 +19,21 @@ func TestCacheModeLiteralExpressionMetadata(t *testing.T) {
 				if aliased {
 					workflowMode, jobMode = "&mode "+expression, "*mode"
 				}
-				source := "on: workflow_call\ncache-mode: " + workflowMode + "\njobs:\n  inherited:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n  explicit:\n    cache-mode: " + jobMode + "\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n  call:\n    cache-mode: " + jobMode + "\n    uses: $/leaf.yaml\n"
+				source := "on: workflow_call\ncache-mode: " + workflowMode + `
+jobs:
+  inherited:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+  explicit:
+    cache-mode: ` + jobMode + `
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+  call:
+    cache-mode: ` + jobMode + `
+    uses: $/leaf.yaml
+`
 				workflow, diagnostics := Parse([]byte(source))
 				if len(diagnostics) != 0 {
 					t.Fatal(diagnostics)
@@ -66,8 +80,21 @@ func TestWorkflowCallCacheModeLiteralExpressions(t *testing.T) {
 	for _, kind := range []CacheModeKind{CacheModeRead, CacheModeWrite, CacheModeWriteOnly, CacheModeNone} {
 		for _, fromAST := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/AST=%v", kind, fromAST), func(t *testing.T) {
-				caller := "on: push\ncache-mode: ${{ 'none' }}\njobs:\n  call:\n    cache-mode: ${{ '" + kind.String() + "' }}\n    uses: $/callee.yaml\n"
-				callee := "on: workflow_call\ncache-mode: ${{ 'write' }}\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+				caller := `on: push
+cache-mode: ${{ 'none' }}
+jobs:
+  call:
+    cache-mode: ${{ '` + kind.String() + `' }}
+    uses: $/callee.yaml
+`
+				callee := `on: workflow_call
+cache-mode: ${{ 'write' }}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 				diagnostics := checkCacheModeCall(t, caller, map[string]string{"callee.yaml": callee}, fromAST)
 				if kind == CacheModeWrite {
 					if len(diagnostics) != 0 {

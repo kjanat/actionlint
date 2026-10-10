@@ -23,12 +23,27 @@ func TestWorkflowCallMixedJobMetadataOrder(t *testing.T) {
 	} {
 		for _, leaf := range []struct{ name, source string }{
 			{"missing", ""}, {"malformed", "on: ["},
-			{"cache mismatch", "on: workflow_call\ncache-mode: write\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"},
+			{"cache mismatch", `on: workflow_call
+cache-mode: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps: [{run: echo ok}]
+`},
 		} {
 			t.Run(field.key+"/"+leaf.name, func(t *testing.T) {
 				root := t.TempDir()
-				caller := []byte("on: push\ncache-mode: read\njobs:\n  call:\n    uses: $/callee.yaml\n")
-				callee := []byte("on: workflow_call\njobs:\n  mixed:\n    uses: $/leaf.yaml\n    " + field.key + ": " + field.value + "\n")
+				caller := []byte(`on: push
+cache-mode: read
+jobs:
+  call:
+    uses: $/callee.yaml
+`)
+				callee := []byte(`on: workflow_call
+jobs:
+  mixed:
+    uses: $/leaf.yaml
+    ` + field.key + ": " + field.value + "\n")
 				for name, source := range map[string][]byte{"caller.yaml": caller, "callee.yaml": callee} {
 					if err := os.WriteFile(filepath.Join(root, name), source, 0600); err != nil {
 						t.Fatal(err)

@@ -998,9 +998,17 @@ func TestReusableWorkflowMetadataJobKeyCase(t *testing.T) {
 				key = strings.ToUpper(key)
 			}
 			t.Run(key, func(t *testing.T) {
-				source := []byte("on: workflow_call\ncache-mode: read\npermissions: {contents: read}\njobs:\n  build:\n    " + key + ": " + field.value + "\n")
+				source := []byte(`on: workflow_call
+cache-mode: read
+permissions: {contents: read}
+jobs:
+  build:
+    ` + key + ": " + field.value + "\n")
 				if key != "uses" {
-					source = append(source, []byte("    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n")...)
+					source = append(source, []byte(`    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`)...)
 				}
 				workflow, diagnostics := Parse(source)
 				if exact && len(diagnostics) != 0 {
@@ -1045,7 +1053,14 @@ func TestReusableWorkflowMetadataJobKeyCase(t *testing.T) {
 }
 
 func TestReusableWorkflowMetadataInvalidAnchorName(t *testing.T) {
-	src := []byte("on: workflow_call\njobs:\n  first: &build+job\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n  second: *build+job\n")
+	src := []byte(`on: workflow_call
+jobs:
+  first: &build+job
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo test
+  second: *build+job
+`)
 	_, err := parseReusableWorkflowMetadata(src)
 	if err == nil || !strings.Contains(err.Error(), `line:3, column:10: anchor name "build+job"`) {
 		t.Fatalf("wanted the invalid anchor diagnostic, got %v", err)

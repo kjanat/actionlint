@@ -194,8 +194,12 @@ func TestAnalysisActionOutlineValidationDiagnostics(t *testing.T) {
 		messages       []string
 	}{
 		{"missing identity", "runs: {using: composite, steps: []}", []string{"name is required", "description is required"}},
-		{"conflicting runtime", "name: Test\ndescription: Test\nruns: {using: node24, main: main.mjs, image: docker://alpine:3}", []string{`"image" is not allowed in "runs" section`}},
-		{"conflicting step", "name: Test\ndescription: Test\nruns: {using: composite, steps: [{run: echo hi, uses: actions/checkout@v7, shell: bash}]}", []string{`cannot have both "run" and "uses" keys`}},
+		{"conflicting runtime", `name: Test
+description: Test
+runs: {using: node24, main: main.mjs, image: docker://alpine:3}`, []string{`"image" is not allowed in "runs" section`}},
+		{"conflicting step", `name: Test
+description: Test
+runs: {using: composite, steps: [{run: echo hi, uses: actions/checkout@v7, shell: bash}]}`, []string{`cannot have both "run" and "uses" keys`}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -299,7 +303,9 @@ func TestAnalysisPartialStepUses(t *testing.T) {
 		{"literal uses before run", "uses: ${{ 'actions/checkout@v7' }}\n        run: echo hi", "run"},
 		{"uses before wait", "uses: actions/checkout@v7\n        wait: child", "wait"},
 		{"uses before cancel", "uses: actions/checkout@v7\n        cancel: child", "cancel"},
-		{"uses before parallel", "uses: actions/checkout@v7\n        parallel:\n          - run: echo hi", "parallel"},
+		{"uses before parallel", `uses: actions/checkout@v7
+        parallel:
+          - run: echo hi`, "parallel"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := `on: push
