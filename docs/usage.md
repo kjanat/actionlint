@@ -314,9 +314,9 @@ actionlint completion powershell | Out-String | Invoke-Expression
 
 ### Ignore some errors
 
-The `cache-write-untrusted`, `cache-call-unrestricted`, and `cache-operation` rules support
-[inline exceptions](config.md#inline-cache-policy-exceptions) with a rule name and a reason.
-Place the comment on the reported line, or use `actionlint:ignore-next-line` immediately before it:
+Every registered diagnostic rule supports [inline exceptions](config.md#inline-diagnostic-suppressions)
+with a rule name and a reason. Place the comment on the reported line, or use
+`actionlint:ignore-next-line` immediately before it. A directive on a YAML block scalar header covers its body.
 
 ```yaml
 cache-mode: write # actionlint:ignore cache-write-untrusted -- this job runs reviewed default-branch code only

@@ -503,6 +503,7 @@ type LocalActionsCache struct {
 	mu                   sync.RWMutex
 	proj                 *Project // might be nil
 	cache                map[string]*ActionMetadata
+	usedMetadata         map[string]*ActionMetadata
 	dbg                  io.Writer
 	base                 *LocalActionsCache
 	checkout             *checkoutPlacement

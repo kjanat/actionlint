@@ -66,7 +66,7 @@ func (l *analysisEngine) check(
 
 	w, all := Parse(content)
 	var analysisErr error
-	compositeSources := map[string][]byte{}
+	metadataSources := map[string][]byte{}
 
 	if l.logLevel >= LogLevelVerbose {
 		elapsed := time.Since(start)
@@ -75,7 +75,7 @@ func (l *analysisEngine) check(
 
 	if w != nil {
 		dbg := l.debugWriter()
-		localActions = &LocalActionsCache{base: localActions}
+		localActions = &LocalActionsCache{base: localActions, usedMetadata: make(map[string]*ActionMetadata)}
 
 		rules := []Rule{}
 		c := ruleContext{path: path, config: cfg, actions: localActions, workflows: localReusableWorkflows, process: proc, shellcheck: l.shellcheck}
@@ -156,7 +156,6 @@ func (l *analysisEngine) check(
 			all = append(all, errs...)
 		}
 		for _, composite := range v.composites.rules {
-			compositeSources[composite.meta.Path()] = composite.meta.src
 			for _, rule := range composite.rules {
 				for _, finding := range rule.Errs() {
 					if finding.Filepath == "" {
@@ -166,6 +165,9 @@ func (l *analysisEngine) check(
 					all = append(all, finding)
 				}
 			}
+		}
+		for sourcePath, metadata := range localActions.usedMetadata {
+			metadataSources[sourcePath] = metadata.src
 		}
 
 		*usedRules = rules
@@ -204,7 +206,7 @@ func (l *analysisEngine) check(
 		byPath[key] = append(byPath[key], finding)
 	}
 	foreignSources := map[string]string{}
-	for sourcePath := range compositeSources {
+	for sourcePath := range metadataSources {
 		key := findingKey(sourcePath)
 		foreignSources[key] = sourcePath
 		if _, exists := byPath[key]; !exists {
@@ -214,7 +216,7 @@ func (l *analysisEngine) check(
 	all = nil
 	for findingPath, findings := range byPath {
 		sourcePath := foreignSources[findingPath]
-		source := compositeSources[sourcePath]
+		source := metadataSources[sourcePath]
 		if source == nil && len(findings) > 0 {
 			sourcePath, source = findings[0].Filepath, findings[0].source
 		}

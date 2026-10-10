@@ -15,7 +15,13 @@ func (c *LocalActionsCache) findRepositoryMetadata(spec string) (*ActionMetadata
 		}
 		spec = local
 	}
-	return c.base.FindMetadata(spec)
+	metadata, cached, err := c.base.FindMetadata(spec)
+	if metadata != nil && c.usedMetadata != nil {
+		c.mu.Lock()
+		c.usedMetadata[metadata.Path()] = metadata
+		c.mu.Unlock()
+	}
+	return metadata, cached, err
 }
 
 // Use on-disk spelling for cache keys and diagnostics, even on a Linux host.
