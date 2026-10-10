@@ -23,6 +23,9 @@ type ConfigOverride struct {
 	// Lint overlays only explicitly supplied lint fields. Null resets lint defaults.
 	Lint     *LintConfig `yaml:"lint" jsonschema:"nullable"`
 	lintNode *yaml.Node
+	// Tools overlays external checker settings for the selected files.
+	Tools     *ToolsConfig `yaml:"tools" jsonschema:"nullable"`
+	toolsNode *yaml.Node
 }
 
 // UnmarshalYAML validates paths and retains omitted/null fields for merging.
@@ -56,6 +59,9 @@ func (o *ConfigOverride) UnmarshalYAML(n *yaml.Node) error {
 		if n.Content[i].Value == "lint" {
 			next.lintNode = n.Content[i+1]
 		}
+		if n.Content[i].Value == "tools" {
+			next.toolsNode = n.Content[i+1]
+		}
 		if n.Content[i].Value == "includes" || n.Content[i].Value == "excludes" {
 			for _, pattern := range n.Content[i+1].Content {
 				if pattern.Kind != yaml.ScalarNode || pattern.ShortTag() != "!!str" {
@@ -78,6 +84,11 @@ func (o ConfigOverride) MarshalYAML() (any, error) {
 		value["lint"] = o.lintNode
 	} else if o.Lint != nil {
 		value["lint"] = o.Lint
+	}
+	if o.toolsNode != nil {
+		value["tools"] = o.toolsNode
+	} else if o.Tools != nil {
+		value["tools"] = o.Tools
 	}
 	return value, nil
 }
@@ -113,9 +124,16 @@ func configForFile(config *Config, path, root string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	tools := config.Tools
 	for _, override := range config.Overrides {
 		if !override.matches(path) {
 			continue
+		}
+		if override.toolsNode != nil || override.Tools != nil {
+			tools, err = mergeToolsOverride(tools, override)
+			if err != nil {
+				return nil, err
+			}
 		}
 		overlay := override.lintNode
 		if overlay == nil {
@@ -130,6 +148,7 @@ func configForFile(config *Config, path, root string) (*Config, error) {
 		node = configtree.Merge(expandLintShorthands(node), overlay, map[*yaml.Node]configInput{})
 	}
 	next := *config
+	next.Tools = tools
 	next.Lint = LintConfig{}
 	content, err := yaml.Marshal(node)
 	if err != nil {
@@ -139,6 +158,37 @@ func configForFile(config *Config, path, root string) (*Config, error) {
 		return nil, err
 	}
 	return &next, nil
+}
+
+func mergeToolsOverride(base ToolsConfig, override ConfigOverride) (ToolsConfig, error) {
+	var node, overlay yaml.Node
+	if err := node.Encode(map[string]any{"tools": base}); err != nil {
+		return ToolsConfig{}, err
+	}
+	value := any(override.Tools)
+	if override.toolsNode != nil {
+		value = override.toolsNode
+	}
+	if err := overlay.Encode(map[string]any{"tools": value}); err != nil {
+		return ToolsConfig{}, err
+	}
+	merged := configtree.Merge(normalizeToolSwitch(&node), normalizeToolSwitch(&overlay), map[*yaml.Node]configInput{})
+	var decoded struct {
+		Tools ToolsConfig `yaml:"tools"`
+	}
+	if err := merged.Decode(&decoded); err != nil {
+		return ToolsConfig{}, err
+	}
+	if decoded.Tools.Shellcheck.Config != nil {
+		source := base.Shellcheck.Config
+		if override.Tools != nil && override.Tools.Shellcheck.Config != nil {
+			source = override.Tools.Shellcheck.Config
+		}
+		if source != nil {
+			decoded.Tools.Shellcheck.Config.fromInput = source.fromInput
+		}
+	}
+	return decoded.Tools, nil
 }
 
 // Expand shorthand before partial mappings overlay it, retaining inherited

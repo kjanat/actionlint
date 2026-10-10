@@ -74,7 +74,7 @@ Omitted or `null` `includes` selects every input; `includes: []` selects none.
 order. A negative-only include list selects nothing. Excluded input files are
 not read or linted, even when explicitly passed on the command line. Referenced
 actions, reusable workflows, and shell sources can still be read as dependencies
-of included workflows; this is input selection, not a filesystem access boundary.
+of included workflows. File selection does not restrict dependency reads.
 
 Use `overrides` to change settings for selected files without excluding them:
 
@@ -86,10 +86,18 @@ overrides:
       rules:
         policy:
           require-commit-hash: error
+  - includes: [".github/workflows/legacy*.yml"]
+    tools:
+      shellcheck:
+        config:
+          disable: [SC2086]
 ```
 
 Matching overrides merge in order, with later settings winning. Each entry needs
 at least one positive include pattern; exclusions affect that entry only.
+Each entry can overlay `lint` and `tools`. Tool settings merge independently of
+rule settings, retaining inherited options that the override leaves unspecified.
+External tool provisioning uses each selected file's effective settings.
 
 ## Lint rules
 

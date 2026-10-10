@@ -51,6 +51,15 @@ func normalizeExtendedConfig(path string, node *yaml.Node, inherited bool) (*yam
 	}
 	if inherited {
 		visit(node, []string{"tools", "shellcheck", "config"})
+		if node.Kind == yaml.MappingNode {
+			for i := 0; i < len(node.Content); i += 2 {
+				if node.Content[i].Value == "overrides" {
+					for _, override := range node.Content[i+1].Content {
+						visit(override, []string{"tools", "shellcheck", "config"})
+					}
+				}
+			}
+		}
 	}
 	if node.Kind == yaml.MappingNode {
 		for i := 0; i < len(node.Content); i += 2 {

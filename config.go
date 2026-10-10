@@ -593,6 +593,12 @@ func resolveConfigNode(root *yaml.Node, inputs map[*yaml.Node]configInput) (reso
 	if c.Tools.Shellcheck.Config != nil {
 		c.Tools.Shellcheck.Config.fromInput = origins["/tools/shellcheck/config"].Source == "input"
 	}
+	for i := range c.Overrides {
+		tools := c.Overrides[i].Tools
+		if tools != nil && tools.Shellcheck.Config != nil {
+			tools.Shellcheck.Config.fromInput = origins["/overrides"].Source == "input"
+		}
+	}
 	return resolvedConfig{node: root, config: &c, values: values, origins: origins, warnings: configWarnings(root)}, nil
 }
 

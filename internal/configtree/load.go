@@ -100,7 +100,7 @@ func Load(path string, read func(string) ([]byte, error), normalize func(string,
 			}
 			n, err := load(name, depth+1)
 			if err != nil {
-				// A missing base is a broken config, not an absent optional root config.
+				// A missing base makes the configuration invalid.
 				return nil, fmt.Errorf("extends in %q: %v", path, err) //nolint:errorlint // Do not propagate os.ErrNotExist from inherited files.
 			}
 			base = Merge(base, n, inputs)

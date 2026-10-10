@@ -23,7 +23,7 @@ type Selection struct {
 // IsZero distinguishes no selection from an explicitly empty includes list.
 func (s Selection) IsZero() bool { return s.Includes == nil && s.Excludes == nil }
 
-// ValidPattern rejects ambiguous or escaping file patterns, not config paths.
+// ValidPattern rejects ambiguous or escaping file patterns.
 func ValidPattern(pattern string) bool {
 	p := strings.TrimPrefix(pattern, "!")
 	// Globs always use repository-relative slash paths, independent of the host.
