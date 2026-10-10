@@ -106,11 +106,27 @@ test('configuration warnings and origins survive parsing without becoming requir
 			overrides: ['config'],
 			origins: { tools: { source: 'file', state: 'set', line: 2, column: 1 } },
 			warnings: [{ message: 'unknown key', line: 1, column: 1 }],
+		}, {
+			...configuration,
+			origins: { tools: { source: 'config', state: 'value', file: 'base.yml', line: 2, column: 1 } },
+			warnings: [{ message: 'unknown key', file: 'base.yml', line: 3, column: 1 }],
 		}]
 	) {
 		assert.deepEqual(parseResult({ ...result, configurations: [config] }).configurations, [config]);
 	}
 	assert.throws(() => parseResult({ ...result, configurations: [{ ...configuration, warnings: ['wrong shape'] }] }));
+	assert.throws(() =>
+		parseResult({
+			...result,
+			configurations: [{ ...configuration, warnings: [{ message: 'unknown key', file: 42, line: 1, column: 1 }] }],
+		})
+	);
+	assert.throws(() =>
+		parseResult({
+			...result,
+			configurations: [{ ...configuration, origins: { tools: { source: 'config', state: 'value', file: 42 } } }],
+		})
+	);
 });
 
 test('annotation policy is independent of serialization with auto enabled for GitHub format', async () => {

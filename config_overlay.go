@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"reflect"
 	"strings"
 	"sync"
@@ -152,13 +153,11 @@ func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
 		node, report.File = source.node, source.filename
 		resolved = source.resolvedConfig
 	}
-	inputs := make(map[*yaml.Node]configInput)
-	if len(s.overlays) > 0 {
-		expanded, err := configtree.Expand(node, make(map[*yaml.Node]bool))
-		if err != nil {
-			return nil, fmt.Errorf("configuration %s: %w", report.File, err)
-		}
-		node = normalizeToolSwitch(expanded)
+	// Loaded sources and parsed overlays already contain expanded immutable
+	// nodes. Keep their identities so inherited file origins survive merging.
+	inputs := maps.Clone(resolved.inputs)
+	if inputs == nil {
+		inputs = make(map[*yaml.Node]configInput)
 	}
 	for _, overlay := range s.overlays {
 		markConfigInput(overlay.node, overlay.name, inputs)
@@ -186,7 +185,11 @@ func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
 	report.Inspection = ConfigInspection{Path: report.File, Config: resolved.values, Origins: resolved.origins, Warnings: resolved.warnings}
 	if s.onLoaded == nil {
 		for _, warning := range resolved.warnings {
-			_, _ = fmt.Fprintf(a.logOut, "%s:%d:%d: warning: %s\n", report.File, warning.Line, warning.Column, warning.Message)
+			file := warning.File
+			if file == "" {
+				file = report.File
+			}
+			_, _ = fmt.Fprintf(a.logOut, "%s:%d:%d: warning: %s\n", file, warning.Line, warning.Column, warning.Message)
 		}
 	}
 	s.loaded[project] = cfg

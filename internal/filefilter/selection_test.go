@@ -14,3 +14,32 @@ func TestValidPatternPortablePaths(t *testing.T) {
 		}
 	}
 }
+
+func TestMatchNormalizesPatterns(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		selection Selection
+		want      bool
+	}{
+		{"include", Selection{Includes: []string{"./local/*"}}, true},
+		{"exclude", Selection{Excludes: []string{"./local/*"}}, false},
+		{"negative include", Selection{Includes: []string{"**", "!./local/*"}}, false},
+		{"negative exclusion", Selection{Excludes: []string{"!./local/*"}}, false},
+		{"repeated dot prefix", Selection{Includes: []string{"././local/*"}}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, file := range []string{"local/file.yml", "./local/file.yml"} {
+				if got := tc.selection.Match(file); got != tc.want {
+					t.Fatalf("Match(%q)=%v, want %v", file, got, tc.want)
+				}
+			}
+		})
+	}
+	for _, pattern := range []string{"**", "**/*", "./**", "./**/*"} {
+		for _, file := range []string{"action.yml", "local/action.yml", ".github/workflows/ci.yml"} {
+			if !(Selection{Includes: []string{pattern}}).Match(file) {
+				t.Errorf("catch-all %q missed %q", pattern, file)
+			}
+		}
+	}
+}

@@ -543,6 +543,7 @@ func ParseConfig(b []byte) (*Config, error) {
 // resolvedConfig keeps validated values and their provenance from the same document.
 type resolvedConfig struct {
 	node     *yaml.Node
+	inputs   map[*yaml.Node]configInput
 	config   *Config
 	values   map[string]any
 	origins  map[string]ConfigOrigin
@@ -599,7 +600,7 @@ func resolveConfigNode(root *yaml.Node, inputs map[*yaml.Node]configInput) (reso
 			tools.Shellcheck.Config.fromInput = origins["/overrides"].Source == "input"
 		}
 	}
-	return resolvedConfig{node: root, config: &c, values: values, origins: origins, warnings: configWarnings(root)}, nil
+	return resolvedConfig{node: root, inputs: inputs, config: &c, values: values, origins: origins, warnings: configWarnings(root, inputs)}, nil
 }
 
 // ReadConfigFile reads actionlint config file (actionlint.yaml) from the given file path.

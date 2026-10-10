@@ -37,7 +37,11 @@ func writeConfigValidation(out io.Writer, req configValidateRequest) error {
 		}{inspection.Path, true, inspection.Warnings})
 	}
 	for _, warning := range inspection.Warnings {
-		if _, err := fmt.Fprintf(out, "%s:%d:%d: warning: %s\n", inspection.Path, warning.Line, warning.Column, warning.Message); err != nil {
+		file := warning.File
+		if file == "" {
+			file = inspection.Path
+		}
+		if _, err := fmt.Fprintf(out, "%s:%d:%d: warning: %s\n", file, warning.Line, warning.Column, warning.Message); err != nil {
 			return err
 		}
 	}

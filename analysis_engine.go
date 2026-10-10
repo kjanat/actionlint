@@ -211,7 +211,8 @@ func (l *analysisEngine) check(
 		}
 		findingConfig = l.rulePresets.apply(findingConfig)
 		findings = slices.DeleteFunc(findings, func(e *Error) bool {
-			switch findingConfig.diagnosticLevel(e.Kind) {
+			// Dependency findings belong to this workflow's configured analysis.
+			switch cfg.diagnosticLevel(e.Kind) {
 			case "off":
 				return true
 			case "warn":

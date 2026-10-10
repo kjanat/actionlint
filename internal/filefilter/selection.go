@@ -4,6 +4,7 @@ package filefilter
 import (
 	"errors"
 	"fmt"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -73,16 +74,20 @@ func (s Selection) Match(path string) bool {
 	path = strings.TrimPrefix(filepath.ToSlash(filepath.Clean(path)), "./")
 	match := s.Includes == nil
 	for _, pattern := range s.Includes {
-		found, _ := doublestar.Match(strings.TrimPrefix(pattern, "!"), path)
+		found, _ := doublestar.Match(normalizePattern(pattern), path)
 		if found && strings.HasPrefix(pattern, "!") {
 			return false
 		}
 		match = match || found
 	}
 	for _, pattern := range s.Excludes {
-		if found, _ := doublestar.Match(strings.TrimPrefix(pattern, "!"), path); found {
+		if found, _ := doublestar.Match(normalizePattern(pattern), path); found {
 			return false
 		}
 	}
 	return match
+}
+
+func normalizePattern(pattern string) string {
+	return path.Clean(strings.TrimPrefix(pattern, "!"))
 }
