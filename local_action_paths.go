@@ -16,10 +16,15 @@ func (c *LocalActionsCache) findRepositoryMetadata(spec string) (*ActionMetadata
 		spec = local
 	}
 	metadata, cached, err := c.base.FindMetadata(spec)
-	if metadata != nil && c.usedMetadata != nil {
-		c.mu.Lock()
-		c.usedMetadata[metadata.Path()] = metadata
-		c.mu.Unlock()
+	if c.usedSources != nil {
+		c.base.mu.RLock()
+		source, exists := c.base.sources[spec]
+		c.base.mu.RUnlock()
+		if exists {
+			c.mu.Lock()
+			c.usedSources[source.path] = source.content
+			c.mu.Unlock()
+		}
 	}
 	return metadata, cached, err
 }

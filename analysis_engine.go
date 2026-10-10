@@ -75,7 +75,7 @@ func (l *analysisEngine) check(
 
 	if w != nil {
 		dbg := l.debugWriter()
-		localActions = &LocalActionsCache{base: localActions, usedMetadata: make(map[string]*ActionMetadata)}
+		localActions = &LocalActionsCache{base: localActions, usedSources: make(map[string][]byte)}
 
 		rules := []Rule{}
 		c := ruleContext{path: path, config: cfg, actions: localActions, workflows: localReusableWorkflows, process: proc, shellcheck: l.shellcheck}
@@ -166,8 +166,8 @@ func (l *analysisEngine) check(
 				}
 			}
 		}
-		for sourcePath, metadata := range localActions.usedMetadata {
-			metadataSources[sourcePath] = metadata.src
+		for sourcePath, source := range localActions.usedSources {
+			metadataSources[sourcePath] = source
 		}
 
 		*usedRules = rules

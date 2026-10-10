@@ -4,8 +4,85 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestInvalidLocalActionSuppressionDirectives(t *testing.T) {
+	for _, metadata := range []struct {
+		name, source string
+		validYAML    bool
+	}{
+		{"steps-mapping", "name: inner %s\nruns: {using: composite, steps: {}}\n", true},
+		{"false-inputs", "name: inner %s\ninputs: false\nruns: {using: node24, main: index.js}\n", true},
+		{"false-runs", "name: inner %s\nruns: false\n", true},
+		{"false-document", "false %s\n", true},
+		{"invalid-yaml", "name: [ %s\n", false},
+	} {
+		for _, nested := range []bool{false, true} {
+			for _, tc := range []struct{ name, directive, config, want string }{
+				{"malformed", "# actionlint:ignore action", "", "inline-suppression"},
+				{"prohibited", "# actionlint:ignore action -- reviewed", "policy: {disallow-suppressions: true}\n", "disallow-suppressions"},
+				{"allowed", "# actionlint:ignore action -- reviewed", "", ""},
+			} {
+				t.Run(fmt.Sprintf("%s/nested=%t/%s", metadata.name, nested, tc.name), func(t *testing.T) {
+					root, _ := executableFixture(t)
+					writeShellcheckFixture(t, root, ".github/actionlint.yaml", tc.config)
+					writeShellcheckFixture(t, root, "inner/action.yml", fmt.Sprintf(metadata.source, tc.directive))
+					steps := "- uses: ./inner\n- uses: ./inner"
+					if nested {
+						writeShellcheckFixture(t, root, "outer/action.yml", "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: ./inner\n")
+						steps = "- uses: ./outer\n- uses: ./outer"
+					}
+					result := compositeAnalysis(t, root, steps, AnalysisOptions{})
+					var syntaxCount, directiveCount int
+					for _, diagnostic := range result.Diagnostics {
+						if diagnostic.Rule == "action" && strings.Contains(diagnostic.Message, "could not parse action metadata") {
+							syntaxCount++
+						} else if metadata.validYAML && tc.want != "" && diagnostic.Rule == tc.want && filepath.ToSlash(diagnostic.Path) == "inner/action.yml" && diagnostic.Start.Line == 1 {
+							directiveCount++
+						} else {
+							t.Fatalf("unexpected diagnostic: %+v", diagnostic)
+						}
+					}
+					wantDirective := 0
+					if metadata.validYAML && tc.want != "" {
+						wantDirective = 1
+					}
+					if syntaxCount != 1 || directiveCount != wantDirective {
+						t.Fatalf("want one metadata error and %d directive errors, got %+v", wantDirective, result.Diagnostics)
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestInvalidLocalActionSuppressionSourceCache(t *testing.T) {
+	root, _ := executableFixture(t)
+	source := "false # actionlint:ignore action\n"
+	path := writeShellcheckFixture(t, root, "inner/action.yml", source)
+	for _, spec := range []string{"./inner", "$/inner", "./INNER", "$/INNER"} {
+		t.Run(spec, func(t *testing.T) {
+			base := NewLocalActionsCache(&Project{root: root}, nil)
+			var inputs []string
+			base.onRead = func(path string) { inputs = append(inputs, path) }
+			for attempt := range 2 {
+				view := &LocalActionsCache{base: base, usedSources: make(map[string][]byte), caseInsensitive: strings.Contains(spec, "INNER")}
+				metadata, cached, err := view.FindMetadata(spec)
+				if metadata != nil || cached != (attempt > 0) || (err != nil) != (attempt == 0) {
+					t.Fatalf("attempt %d changed failed metadata lookup: metadata=%v cached=%t err=%v", attempt, metadata, cached, err)
+				}
+				if len(view.usedSources) != 1 || string(view.usedSources[path]) != source {
+					t.Fatalf("attempt %d lost raw metadata source: %v", attempt, view.usedSources)
+				}
+			}
+			if len(inputs) != 1 || inputs[0] != path {
+				t.Fatalf("metadata inputs changed on cached lookup: %v", inputs)
+			}
+		})
+	}
+}
 
 func TestLocalActionSuppressionDiagnosticLevels(t *testing.T) {
 	for _, runtime := range []struct{ name, runs string }{

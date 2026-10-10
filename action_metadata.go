@@ -493,6 +493,11 @@ func (md *ActionMetadata) Path() string {
 	return filepath.Join(md.dir, md.file)
 }
 
+type localActionMetadataSource struct {
+	path    string
+	content []byte
+}
+
 // LocalActionsCache is cache for local actions' metadata. It avoids repeating to find/read/parse
 // local action's metadata file (action.yml).
 // This cache is not available across multiple repositories. One LocalActionsCache instance needs
@@ -503,7 +508,8 @@ type LocalActionsCache struct {
 	mu                   sync.RWMutex
 	proj                 *Project // might be nil
 	cache                map[string]*ActionMetadata
-	usedMetadata         map[string]*ActionMetadata
+	sources              map[string]localActionMetadataSource
+	usedSources          map[string][]byte
 	dbg                  io.Writer
 	base                 *LocalActionsCache
 	checkout             *checkoutPlacement
@@ -521,6 +527,7 @@ func NewLocalActionsCache(proj *Project, dbg io.Writer) *LocalActionsCache {
 		readFile: os.ReadFile,
 		proj:     proj,
 		cache:    map[string]*ActionMetadata{},
+		sources:  map[string]localActionMetadataSource{},
 		dbg:      dbg,
 	}
 }
@@ -595,6 +602,9 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 		// (e.g. Git submodule) and it is cloned at running workflow (due to a private repository).
 		return nil, false, nil
 	}
+	c.mu.Lock()
+	c.sources[spec] = localActionMetadataSource{path: filepath.Join(dir, f), content: b}
+	c.mu.Unlock()
 
 	var meta ActionMetadata
 	if err := yaml.Unmarshal(b, &meta); err != nil {
