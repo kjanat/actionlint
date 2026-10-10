@@ -1,10 +1,52 @@
 package ruff
 
 import (
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 )
+
+func TestWorkingDirectorySurvivesFork(t *testing.T) {
+	directory := t.TempDir()
+	filename, err := filepath.Abs(filepath.Join(directory, "actionlint.py"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	checker := New(func(args []string, _ string, _ func([]byte, error) error) {
+		calls++
+		if index := slices.Index(args, "--stdin-filename"); index < 0 || args[index+1] != filename {
+			t.Fatalf("stdin filename does not use child directory: %v", args)
+		}
+	}, func() error { return nil }, nil)
+	checker.WorkingDirectory(directory)
+	python := "python"
+	for _, c := range []*Checker{checker, checker.Fork()} {
+		if err := c.Check("print(1)", &python, "test", Config{}, func(Diagnostic) {}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if calls != 2 {
+		t.Fatalf("got %d invocations, want 2", calls)
+	}
+}
+
+func TestIntegrationFlagsRejected(t *testing.T) {
+	for _, flag := range []string{"--isolated", "--ignore-noqa", "--no-fix", "--no-cache", "-n", "-qn", "--target-version", "--stdin-filename", "--output-format"} {
+		for _, argument := range []string{flag, flag + "=value"} {
+			t.Run(argument, func(t *testing.T) {
+				checker := New(func([]string, string, func([]byte, error) error) {
+					t.Fatal("integration-owned flag reached Ruff")
+				}, func() error { return nil }, nil, argument)
+				python := "python"
+				if err := checker.Check("print(missing)", &python, "workflow:12", Config{}, func(Diagnostic) {}); err == nil || !strings.Contains(err.Error(), "integration-owned option") || !strings.Contains(err.Error(), "workflow:12") {
+					t.Fatalf("integration flag not rejected: %v", err)
+				}
+			})
+		}
+	}
+}
 
 func TestSilentFlagsRejected(t *testing.T) {
 	for _, flag := range []string{"--silent", "-s", "-qs"} {

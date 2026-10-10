@@ -28,6 +28,7 @@ type Checker struct {
 	wait                    func() error
 	expressionEnd           ExpressionEnd
 	flags                   []string
+	workingDirectory        string
 	workflowShell, jobShell *string
 	mu                      sync.Mutex
 }
@@ -38,7 +39,14 @@ func New(run Run, wait func() error, expressionEnd ExpressionEnd, flags ...strin
 }
 
 // Fork shares command scheduling but not workflow defaults or diagnostic state.
-func (c *Checker) Fork() *Checker { return New(c.run, c.wait, c.expressionEnd, c.flags...) }
+func (c *Checker) Fork() *Checker {
+	child := New(c.run, c.wait, c.expressionEnd, c.flags...)
+	child.workingDirectory = c.workingDirectory
+	return child
+}
+
+// WorkingDirectory sets the child process directory used for its stdin filename.
+func (c *Checker) WorkingDirectory(directory string) { c.workingDirectory = directory }
 
 // UnsetEnvironment identifies ambient settings that bypass the stdout protocol.
 // They must be removed after applying explicit child environment overrides too.
@@ -90,8 +98,16 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		if flag == "--silent" || strings.HasPrefix(flag, "-") && !strings.HasPrefix(flag, "--") && strings.ContainsRune(flag[1:], 's') {
 			return fmt.Errorf("ruff silent output is not supported for script at %s", location)
 		}
+		option, _, _ := strings.Cut(flag, "=")
+		if strings.HasPrefix(option, "-") && !strings.HasPrefix(option, "--") && strings.ContainsRune(option[1:], 'n') {
+			option = "--no-cache"
+		}
+		switch option {
+		case "--isolated", "--ignore-noqa", "--no-fix", "--no-cache", "--target-version", "--stdin-filename", "--output-format":
+			return fmt.Errorf("ruff integration-owned option %q must be removed from extra arguments for script at %s", option, location)
+		}
 	}
-	placeholders := make(map[Position]int)
+	placeholders := &templateMasks{identifiers: make(map[Position]int), parentheses: make(map[Position]Position)}
 	source, valid, err := sanitize(script, c.expressionEnd, placeholders)
 	if err != nil {
 		return fmt.Errorf("ruff could not check Python script at %s: %w", location, err)
@@ -99,7 +115,7 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 	if !valid {
 		return nil
 	}
-	filename, err := filepath.Abs("actionlint.py")
+	filename, err := filepath.Abs(filepath.Join(c.workingDirectory, "actionlint.py"))
 	if err != nil {
 		return fmt.Errorf("ruff stdin filename for script at %s: %w", location, err)
 	}
@@ -129,8 +145,13 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		for _, d := range diagnostics {
 			// Only the synthetic identifier's exact undefined-name range is
 			// excluded. Other findings and real Python names remain visible.
-			if width, ok := placeholders[d.Location]; ok && d.Code == "F821" &&
+			if width, ok := placeholders.identifiers[d.Location]; ok && d.Code == "F821" &&
 				d.EndLocation == (Position{Row: d.Location.Row, Column: d.Location.Column + width}) {
+				continue
+			}
+			// UP034 can identify the wrapper added around an opaque value.
+			// Source parentheses extend outside this exact generated range.
+			if end, ok := placeholders.parentheses[d.Location]; ok && d.Code == "UP034" && d.EndLocation == end {
 				continue
 			}
 			report(d)
@@ -221,7 +242,12 @@ func Sanitize(src string, expressionEnd ExpressionEnd) (string, bool, error) {
 	return sanitize(src, expressionEnd, nil)
 }
 
-func sanitize(src string, expressionEnd ExpressionEnd, placeholders map[Position]int) (string, bool, error) {
+type templateMasks struct {
+	identifiers map[Position]int
+	parentheses map[Position]Position
+}
+
+func sanitize(src string, expressionEnd ExpressionEnd, placeholders *templateMasks) (string, bool, error) {
 	var out strings.Builder
 	var state pythonLexicalState
 	// Python normalizes identifiers, so Unicode aliases also reserve names.
@@ -316,9 +342,12 @@ func sanitize(src string, expressionEnd ExpressionEnd, placeholders map[Position
 			}
 			copy(runes[slot:], []rune(name))
 			if placeholders != nil {
-				start := position
-				advancePosition(&start, string(runes[:slot]))
-				placeholders[start] = len(name)
+				identifierStart := position
+				advancePosition(&identifierStart, string(runes[:slot]))
+				placeholders.identifiers[identifierStart] = len(name)
+				finish := position
+				advancePosition(&finish, src[start:end])
+				placeholders.parentheses[position] = finish
 			}
 		}
 		state.escaped = false

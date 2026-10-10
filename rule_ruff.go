@@ -17,7 +17,9 @@ func newRuffRule(c ruleContext) (*ruffRule, error) {
 	flags := cmd.args
 	cmd.args = nil
 	cmd.unsetEnv = ruff.UnsetEnvironment()
-	return &ruffRule{RuleBase: builtinRuleBase("ruff"), checker: ruff.New(cmd.run, cmd.wait, ruffExpressionEnd, flags...)}, nil
+	checker := ruff.New(cmd.run, cmd.wait, ruffExpressionEnd, flags...)
+	checker.WorkingDirectory(cmd.dir)
+	return &ruffRule{RuleBase: builtinRuleBase("ruff"), checker: checker}, nil
 }
 
 func ruffExpressionEnd(src string) (int, bool) {
