@@ -33,6 +33,7 @@
         pkgs:
         assert (goFor pkgs).version == goVersion;
         pkgs.${"buildGo${goMajor}${goMinor}Module"};
+      ruffFor = pkgs: pkgs.callPackage ./nix/ruff.nix { };
       version = "1.17.0";
     in
     {
@@ -40,6 +41,7 @@
         actionlint = pkgs.callPackage ./nix/package.nix {
           src = self;
           buildGoModule = goBuilderFor pkgs;
+          ruff = ruffFor pkgs;
           inherit version;
         };
         default = actionlint;
@@ -64,7 +66,7 @@
             gnumake
             pandoc
             shellcheck
-            ruff
+            (ruffFor pkgs)
             nixfmt
           ];
           GOTOOLCHAIN = "local";

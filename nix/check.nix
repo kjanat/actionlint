@@ -59,9 +59,12 @@ runCommand "actionlint-nix-integration"
     PATH= ${actionlint}/bin/actionlint -no-color -oneline > diagnostics.txt 2>&1
     status=$?
     set -e
-    test "$status" -eq 1
-    grep -F 'SC2086' diagnostics.txt
-    grep -F 'F821' diagnostics.txt
+    if ! test "$status" -eq 1 ||
+      ! grep -F 'SC2086' diagnostics.txt ||
+      ! grep -F 'F821' diagnostics.txt; then
+      cat diagnostics.txt >&2
+      exit 1
+    fi
 
     touch "$out"
   ''
