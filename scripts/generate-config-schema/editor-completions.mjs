@@ -1,25 +1,42 @@
 import assert from 'node:assert/strict';
-import { readFile, realpath } from 'node:fs/promises';
+
+import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 
 // Use an installed language server without adding an editor dependency to builds.
-const require = createRequire(await realpath(process.argv[2]));
+const require = createRequire(import.meta.url);
 let getLanguageService, TextDocument;
 try {
 	({ getLanguageService } = require('yaml-language-server/lib/umd/languageservice/yamlLanguageService.js'));
 	({ TextDocument } = require('vscode-languageserver-textdocument'));
 } catch (error) {
-	if (error.code !== 'MODULE_NOT_FOUND') throw error;
+	if (!(error instanceof Error) || !('code' in error) || error.code !== 'MODULE_NOT_FOUND') throw error;
 	console.log('Installed YAML language server does not expose its language service');
 	process.exit(77);
 }
 
 const schemaURI = new URL('../../actionlint.schema.json', import.meta.url).href;
+const schemas = new Map(
+	await Promise.all([
+		'../../actionlint.schema.json',
+		'../../schemas/shellcheck/0.11.0.schema.json',
+		'../../schemas/ruff/0.17.0.schema.json',
+		'../../schemas/ruff/0.17.0-selectors.schema.json',
+	].map(async (relative) => {
+		const url = new URL(relative, import.meta.url);
+		return /** @type {const} */ ([url.href, await readFile(url, 'utf8')]);
+	})),
+);
 const service = getLanguageService({
-	workspaceContext: { resolveRelativePath: (relative, resource) => new URL(relative, resource).href },
+	workspaceContext: {
+		/** @param {string} relative @param {string} resource */
+		resolveRelativePath: (relative, resource) => new URL(relative, resource).href,
+	},
+	/** @param {string} uri */
 	schemaRequestService: async (uri) => {
-		assert.equal(new URL(uri).protocol, 'file:', `Unexpected network schema request: ${uri}`);
-		return readFile(new URL(uri), 'utf8');
+		const source = schemas.get(uri);
+		assert.ok(source !== undefined, `Unexpected schema request: ${uri}`);
+		return source;
 	},
 });
 service.configure({
@@ -29,7 +46,9 @@ service.configure({
 	schemas: [{ uri: schemaURI, fileMatch: ['*'] }],
 });
 let serial = 0;
+/** @param {string} text */
 const document = (text) => TextDocument.create(`file:///review/ruff-${serial++}.yaml`, 'yaml', 1, text);
+/** @param {string} key @param {string[] | null} value @param {boolean} override */
 const config = (key, value, override) => {
 	const entry = { tools: { ruff: { [key]: value } } };
 	return override ? { overrides: [{ includes: ['**'], ...entry }] } : entry;
@@ -42,12 +61,17 @@ for (const override of [false, true]) {
 		const tail = key === 'target-version' ? `${indent}${key}: ` : `${indent}${key}:\n${indent}  - `;
 		const text = prefix + tail;
 		const lines = text.split('\n');
-		const result = await service.doComplete(document(text + '\n'), {
+		const lastLine = lines.at(-1);
+		assert.ok(lastLine !== undefined);
+		/** @type {{ items: { label: string }[] } | null} */
+		const result = await service.doComplete(document(`${text}\n`), {
 			line: lines.length - 1,
-			character: lines.at(-1).length,
+			character: lastLine.length,
 		}, false);
+		assert.ok(result);
 		const labels = result.items.map((item) => item.label);
 		if (key === 'target-version') {
+			/** @type {{ definitions: { PythonVersion: { enum: string[] } } }} */
 			const upstream = JSON.parse(
 				await readFile(new URL('../../schemas/ruff/0.17.0.schema.json', import.meta.url), 'utf8'),
 			);

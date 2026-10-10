@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -100,9 +101,17 @@ func TestRuffEditorCompletions(t *testing.T) {
 	if err != nil {
 		t.Skip("optional yaml-language-server is not installed")
 	}
+	modules := editorModulePaths(server)
+	if len(modules) == 0 {
+		t.Skip("installed YAML language server package could not be located")
+	}
+	if existing := os.Getenv("NODE_PATH"); existing != "" {
+		modules = append(modules, existing)
+	}
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
-	command := exec.CommandContext(ctx, node, "editor-completions.mjs", server)
+	command := exec.CommandContext(ctx, node, "editor-completions.mjs")
+	command.Env = append(os.Environ(), "NODE_PATH="+strings.Join(modules, string(os.PathListSeparator)))
 	command.WaitDelay = time.Second
 	output, err := command.CombinedOutput()
 	var exit *exec.ExitError
@@ -113,6 +122,73 @@ func TestRuffEditorCompletions(t *testing.T) {
 		t.Fatalf("YAML language service regression: %v\n%s", err, output)
 	}
 	t.Log(string(output))
+}
+
+// editorModulePaths locates the named package beside a resolved CLI installation.
+func editorModulePaths(server string) []string {
+	resolved, err := filepath.EvalSymlinks(server)
+	if err != nil {
+		return nil
+	}
+	for directory := filepath.Dir(resolved); ; directory = filepath.Dir(directory) {
+		for _, candidate := range []string{directory, filepath.Join(directory, "node_modules", "yaml-language-server"), filepath.Join(directory, "lib", "node_modules", "yaml-language-server")} {
+			data, err := os.ReadFile(filepath.Join(candidate, "package.json"))
+			if err != nil {
+				continue
+			}
+			var manifest struct {
+				Name string `json:"name"`
+			}
+			if json.Unmarshal(data, &manifest) == nil && manifest.Name == "yaml-language-server" {
+				return []string{filepath.Dir(candidate), filepath.Join(candidate, "node_modules")}
+			}
+		}
+		if directory == filepath.Dir(directory) {
+			return nil
+		}
+	}
+}
+
+func TestEditorModulePaths(t *testing.T) {
+	for _, layout := range []string{"package-bin", "npm-wrapper", "global-wrapper", "unrelated-package"} {
+		t.Run(layout, func(t *testing.T) {
+			root := t.TempDir()
+			packageDir := filepath.Join(root, "node_modules", "yaml-language-server")
+			if layout == "global-wrapper" {
+				packageDir = filepath.Join(root, "lib", "node_modules", "yaml-language-server")
+			}
+			server := filepath.Join(root, "bin", "yaml-language-server")
+			if layout == "package-bin" || layout == "unrelated-package" {
+				server = filepath.Join(packageDir, "bin", "yaml-language-server")
+			}
+			for _, directory := range []string{packageDir, filepath.Dir(server)} {
+				if err := os.MkdirAll(directory, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			manifest := `{"name":"yaml-language-server"}`
+			if layout == "unrelated-package" {
+				manifest = `{"name":"unrelated-package"}`
+			}
+			if err := os.WriteFile(filepath.Join(packageDir, "package.json"), []byte(manifest), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(server, nil, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			got := editorModulePaths(server)
+			if layout == "unrelated-package" {
+				if len(got) != 0 {
+					t.Fatalf("unrelated package must not be added to NODE_PATH: %v", got)
+				}
+				return
+			}
+			want := []string{filepath.Dir(packageDir), filepath.Join(packageDir, "node_modules")}
+			if !slices.Equal(got, want) {
+				t.Fatalf("module paths = %v, want %v", got, want)
+			}
+		})
+	}
 }
 
 func addToolSchemas(t *testing.T, compiler *validator.Compiler, base string) {
