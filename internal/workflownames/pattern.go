@@ -71,7 +71,7 @@ func compilePattern(pattern string) (*regexp.Regexp, bool) {
 						return nil, false
 					}
 				}
-				if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-') {
+				if !sameRangeFamily(c, c) && c != '-' {
 					return nil, false
 				}
 			}
