@@ -193,6 +193,9 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		c.mu.Lock()
 		defer c.mu.Unlock()
 		for _, d := range diagnostics {
+			if d.Code == "E501" && placeholders.lines[d.Location.Row] {
+				continue
+			}
 			// Opaque values, quoted annotations and exports may hide references.
 			// Comment-only templates add no masks; unrelated checks still apply.
 			if len(placeholders.identifiers) > 0 && requiresCompleteReferences(d.Code) {
@@ -367,6 +370,7 @@ type templateMasks struct {
 	identifiers map[Position]int
 	parentheses map[Position]Position
 	quoted      map[Position]string
+	lines       map[int]bool
 }
 
 func requiresCompleteReferences(code string) bool {
@@ -415,6 +419,10 @@ func sanitize(src string, expressionEnd ExpressionEnd, placeholders *templateMas
 		out.WriteString(src[:start])
 		advancePosition(&position, src[:start])
 		state.consume(src[:start])
+		if state.quote != 0 && !state.raw && !state.inFieldExpression() &&
+			(state.escaped || state.escapeDigits > 0 || state.escapeName || state.escapeBrace) {
+			return "", false, nil
+		}
 		if state.inFieldExpression() && !state.fieldComment && state.quotePrevious == '!' {
 			return "", false, nil
 		}
@@ -436,6 +444,15 @@ func sanitize(src string, expressionEnd ExpressionEnd, placeholders *templateMas
 		}
 		if state.quote == 0 && !state.comment && state.casePattern {
 			state.pendingCapture = true
+		}
+		if placeholders != nil {
+			if placeholders.lines == nil {
+				placeholders.lines = make(map[int]bool)
+			}
+			lastLine := position.Row + strings.Count(src[start:end], "\n")
+			for line := position.Row; line <= lastLine; line++ {
+				placeholders.lines[line] = true
+			}
 		}
 		runes := []rune(src[start:end])
 		for i, r := range runes {
@@ -595,6 +612,11 @@ func templateIsAssignmentTarget(prefix, suffix string, depth int) bool {
 type pythonStringState struct {
 	quote         byte
 	triple        bool
+	raw           bool
+	bytes         bool
+	escapeDigits  int
+	escapeName    bool
+	escapeBrace   bool
 	formatted     bool
 	fields        []pythonFormatField
 	quotePrevious byte
@@ -615,6 +637,15 @@ func (s *pythonStringState) inFieldExpression() bool {
 func pythonFormattedPrefix(prefix string) bool {
 	switch prefix {
 	case "f", "rf", "fr", "t", "rt", "tr":
+		return true
+	default:
+		return false
+	}
+}
+
+func pythonRawPrefix(prefix string) bool {
+	switch prefix {
+	case "r", "rf", "fr", "rb", "br", "rt", "tr":
 		return true
 	default:
 		return false
@@ -810,10 +841,52 @@ func (s *pythonLexicalState) consume(text string) {
 		}
 		if s.escaped {
 			s.escaped = false
+			if s.quote != 0 && !s.raw && !s.inFieldExpression() {
+				switch c {
+				case 'x':
+					s.escapeDigits = 2
+				case 'u':
+					if !s.bytes {
+						s.escapeDigits = 4
+					}
+				case 'U':
+					if !s.bytes {
+						s.escapeDigits = 8
+					}
+				case 'N':
+					if !s.bytes {
+						s.escapeBrace = true
+					}
+				}
+			}
 			if c == '\r' && i+1 < len(text) && text[i+1] == '\n' {
 				i++
 			}
 			continue
+		}
+		if s.escapeDigits > 0 {
+			if c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F' {
+				s.escapeDigits--
+				continue
+			}
+			s.escapeDigits = 0
+		}
+		if s.escapeBrace {
+			s.escapeBrace = false
+			if c == '{' {
+				s.escapeName = true
+				continue
+			}
+		}
+		if s.escapeName {
+			if c == '}' {
+				s.escapeName = false
+				continue
+			}
+			if c != s.quote && c != '\n' && c != '\r' {
+				continue
+			}
+			s.escapeName = false
 		}
 		if c == '\\' {
 			if s.quote == 0 {
@@ -832,7 +905,7 @@ func (s *pythonLexicalState) consume(text string) {
 				prefix := strings.ToLower(s.fieldWord)
 				s.fieldWord = ""
 				s.stringParents = append(s.stringParents, s.pythonStringState)
-				s.pythonStringState = pythonStringState{quote: c, formatted: pythonFormattedPrefix(prefix)}
+				s.pythonStringState = pythonStringState{quote: c, formatted: pythonFormattedPrefix(prefix), raw: pythonRawPrefix(prefix), bytes: prefix == "b" || prefix == "br" || prefix == "rb"}
 				s.triple = i+2 < len(text) && text[i+1] == c && text[i+2] == c
 				if s.triple {
 					i += 2
@@ -879,6 +952,8 @@ func (s *pythonLexicalState) consume(text string) {
 			s.comment = true
 		case '\'', '"':
 			s.quote = c
+			s.raw = pythonRawPrefix(prefix)
+			s.bytes = prefix == "b" || prefix == "br" || prefix == "rb"
 			s.formatted = pythonFormattedPrefix(prefix)
 			s.fields, s.quotePrevious = nil, 0
 			s.triple = i+2 < len(text) && text[i+1] == c && text[i+2] == c
