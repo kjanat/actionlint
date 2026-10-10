@@ -57,7 +57,7 @@ func TestRuffStdinUsesCommandDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, directory := range []string{t.TempDir(), "."} {
+	for _, directory := range []string{t.TempDir(), ".", "symlink", "symlink-parent", "logical-pwd-parent"} {
 		t.Run(directory, func(t *testing.T) {
 			root := t.TempDir()
 			working := directory
@@ -66,6 +66,27 @@ func TestRuffStdinUsesCommandDirectory(t *testing.T) {
 				working = "python"
 				if err := os.Mkdir(filepath.Join(root, working), 0o755); err != nil {
 					t.Fatal(err)
+				}
+			}
+			if strings.HasPrefix(directory, "symlink") || directory == "logical-pwd-parent" {
+				working = filepath.Join(t.TempDir(), "alias")
+				target := root
+				if directory != "symlink" {
+					target = filepath.Join(root, "nested")
+					if err := os.Mkdir(target, 0o755); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if err := os.Symlink(target, working); err != nil {
+					t.Skipf("directory symlink is unavailable: %v", err)
+				}
+				if directory == "symlink-parent" {
+					working += string(filepath.Separator) + ".."
+				}
+				if directory == "logical-pwd-parent" {
+					t.Chdir(target)
+					t.Setenv("PWD", working)
+					working = ".."
 				}
 			}
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"

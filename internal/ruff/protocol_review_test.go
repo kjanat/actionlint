@@ -7,12 +7,68 @@ import (
 	"testing"
 )
 
+func TestNonDiagnosticModesRejected(t *testing.T) {
+	for _, flag := range []string{"--help", "-h", "-qh", "--watch", "-w", "-qw", "--add-noqa", "--add-noqa=reviewed", "--add-ignore", "--add-ignore=reviewed"} {
+		t.Run(flag, func(t *testing.T) {
+			checker := New(func([]string, string, func([]byte, error) error) { t.Fatal("non-diagnostic mode reached Ruff") }, func() error { return nil }, nil, flag)
+			python := "python"
+			if err := checker.Check("print(missing)", &python, "workflow:12", Config{}, func(Diagnostic) {}); err == nil || !strings.Contains(err.Error(), "non-diagnostic mode") {
+				t.Fatalf("non-diagnostic mode not rejected: %v", err)
+			}
+		})
+	}
+}
+
+func TestFStringConversionTemplates(t *testing.T) {
+	end := func(source string) (int, bool) { index := strings.Index(source, "}}"); return index + 2, index >= 0 }
+	for _, source := range []string{
+		`print(f"{1:'>5} {2!${{ 'r' }}}")`,
+		`print(f"{1:{2!${{ 'r' }}}}")`,
+		`print(f"{ {'key': 1} !${{ 'r' }}}")`,
+		`print(f"{(lambda: 1)()!${{ 'r' }}}")`,
+		"print(f\"\"\"{1 # ' comment\n!${{ 'r' }}}\"\"\")",
+		`print(f"{value!${{ inputs.conversion }}}")`,
+		`print(F'{value!${{ inputs.conversion }}}')`,
+		`print(rf"{value!${{ inputs.conversion }}}")`,
+		`print(t"{value!${{ inputs.conversion }}}")`,
+		`print(rt"{value!${{ inputs.conversion }}}")`,
+		`print(tr"{value!${{ inputs.conversion }}}")`,
+		`print(f"{"value"!${{ inputs.conversion }}}")`,
+		`print(f"{r"value"!${{ inputs.conversion }}}")`,
+		`print(f"""{"""value"""!${{ inputs.conversion }}}""")`,
+		`print(f"{f"{value!${{ inputs.conversion }}}"}")`,
+		"print(f\"\"\"{value!${{\n inputs.conversion\n}}}\"\"\")",
+	} {
+		for _, ending := range []string{"\n", "\r\n"} {
+			source := strings.ReplaceAll(source, "\n", ending)
+			if got, valid, err := Sanitize(source, end); err != nil || valid || got != "" {
+				t.Fatalf("conversion template accepted: %q, %v, %v", got, valid, err)
+			}
+		}
+	}
+	for _, source := range []string{
+		`print("!${{ inputs.value }}")`,
+		`print(f"literal!${{ inputs.value }}")`,
+		`print(f"{{literal!${{ inputs.value }}}}")`,
+		`print(f"{value != ${{ inputs.value }}}")`,
+		`print(f"{${{ inputs.value }}!r}")`,
+		`print(f"{'!${{ inputs.value }}'}")`,
+		`print(f"{"!${{ inputs.value }}"}")`,
+		`# f"{value!${{ inputs.conversion }}}"`,
+	} {
+		if _, valid, err := Sanitize(source, end); err != nil || !valid {
+			t.Fatalf("value template skipped: %q, %v, %v", source, valid, err)
+		}
+	}
+}
+
 func TestWorkingDirectorySurvivesFork(t *testing.T) {
 	directory := t.TempDir()
-	filename, err := filepath.Abs(filepath.Join(directory, "actionlint.py"))
+	physical, err := filepath.EvalSymlinks(directory)
 	if err != nil {
 		t.Fatal(err)
 	}
+	filename := filepath.Join(physical, "actionlint.py")
 	calls := 0
 	checker := New(func(args []string, _ string, _ func([]byte, error) error) {
 		calls++
@@ -29,6 +85,17 @@ func TestWorkingDirectorySurvivesFork(t *testing.T) {
 	}
 	if calls != 2 {
 		t.Fatalf("got %d invocations, want 2", calls)
+	}
+}
+
+func TestMissingWorkingDirectoryFailsBeforeScheduling(t *testing.T) {
+	checker := New(func([]string, string, func([]byte, error) error) {
+		t.Fatal("missing working directory reached Ruff")
+	}, func() error { return nil }, nil)
+	checker.WorkingDirectory(filepath.Join(t.TempDir(), "missing"))
+	python := "python"
+	if err := checker.Check("print(missing)", &python, "workflow:12", Config{}, func(Diagnostic) {}); err == nil || !strings.Contains(err.Error(), "ruff stdin directory for script at workflow:12") {
+		t.Fatalf("missing working directory not reported: %v", err)
 	}
 }
 

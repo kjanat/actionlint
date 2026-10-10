@@ -1,0 +1,79 @@
+package actionlint
+
+import (
+	"slices"
+	"strings"
+	"testing"
+)
+
+func TestRuffStatementTemplatesPreserveFindings(t *testing.T) {
+	command := ruffForTest(t)
+	config, err := ParseConfig([]byte("tools: {ruff: {select: [F, B018]}}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, statement := range []string{"print(1)", "${{ 'print(1)' }}", "(${{ 'print(1)' }})", "((${{ 'print(1)' }}))", "${{\n 'print(1)'\n}}"} {
+		for _, ending := range []string{"\n", "\r\n"} {
+			t.Run(statement+ending, func(t *testing.T) {
+				script := statement + "\n42\nprint(missing)"
+				source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: |\n          " + strings.ReplaceAll(script, "\n", "\n          ") + "\n"
+				result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				var codes []string
+				for _, diagnostic := range result.Diagnostics {
+					codes = append(codes, diagnostic.Code)
+				}
+				if !slices.Equal(codes, []string{"B018", "F821"}) || result.Diagnostics[0].Start.Line != 9+strings.Count(statement, "\n") || result.Diagnostics[1].Start.Line != 10+strings.Count(statement, "\n") {
+					t.Fatalf("statement template changed independent findings: %+v", result.Diagnostics)
+				}
+			})
+		}
+	}
+}
+
+func TestRuffConversionTemplateSkipsOnlyItsScript(t *testing.T) {
+	command := ruffForTest(t)
+	config, err := ParseConfig([]byte("tools: {ruff: {target-version: py314}}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, script := range []string{
+		`print(t"{1!${{ 'r' }}}")`,
+		`print(rt"{1!${{ 'r' }}}")`,
+		`print(tr"{1!${{ 'r' }}}")`,
+		`print(f"{1:'>5} {2!${{ 'r' }}}")`,
+		`print(f"{1:{2!${{ 'r' }}}}")`,
+		`print(f"{ {'key': 1} !${{ 'r' }}}")`,
+		`print(f"{(lambda: 1)()!${{ 'r' }}}")`,
+		"print(f\"\"\"{1 # ' comment\n!${{ 'r' }}}\"\"\")",
+		`print(f"{value!${{ 'r' }}}")`,
+		`print(f"{"value"!${{ 'r' }}}")`,
+		`print(f"{f"{value}"!${{ 'r' }}}")`,
+		`print(f"{r"value"!${{ 'r' }}}")`,
+		`print(f"{"""value"""!${{ 'r' }}}")`,
+	} {
+		for _, ending := range []string{"\n", "\r\n"} {
+			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: |\n          " + strings.ReplaceAll(script, "\n", "\n          ") + "\n      - shell: python\n        run: print(missing)\n"
+			result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "F821" || result.Diagnostics[0].Start.Line != 10+strings.Count(script, "\n") {
+				t.Fatalf("conversion template %q changed independent script findings: %+v", script, result.Diagnostics)
+			}
+		}
+	}
+}
+
+func TestRuffAPINonDiagnosticModes(t *testing.T) {
+	command := ruffForTest(t)
+	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+	for _, flag := range []string{"--help", "-h", "--watch", "-w", "--add-noqa", "--add-noqa=reviewed", "--add-ignore", "--add-ignore=reviewed"} {
+		_, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: &ExternalCommandOptions{Executable: &command, Arguments: []string{flag}}, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
+		if err == nil || !strings.Contains(err.Error(), "non-diagnostic mode") {
+			t.Fatalf("mode not rejected: flag=%s error=%v", flag, err)
+		}
+	}
+}

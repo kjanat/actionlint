@@ -2,6 +2,7 @@ package ruff
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -99,6 +100,10 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 			return fmt.Errorf("ruff silent output is not supported for script at %s", location)
 		}
 		option, _, _ := strings.Cut(flag, "=")
+		if option == "--help" || option == "--watch" || option == "--add-noqa" || option == "--add-ignore" ||
+			strings.HasPrefix(option, "-") && !strings.HasPrefix(option, "--") && strings.ContainsAny(option[1:], "hw") {
+			return fmt.Errorf("ruff non-diagnostic mode %q is not supported for script at %s", option, location)
+		}
 		if strings.HasPrefix(option, "-") && !strings.HasPrefix(option, "--") && strings.ContainsRune(option[1:], 'n') {
 			option = "--no-cache"
 		}
@@ -115,10 +120,37 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 	if !valid {
 		return nil
 	}
-	filename, err := filepath.Abs(filepath.Join(c.workingDirectory, "actionlint.py"))
-	if err != nil {
-		return fmt.Errorf("ruff stdin filename for script at %s: %w", location, err)
+	directory := c.workingDirectory
+	if directory == "" {
+		directory = "."
 	}
+	// Resolve link traversal before Abs cleans parent components.
+	directory, err = filepath.EvalSymlinks(directory)
+	if err != nil {
+		return fmt.Errorf("ruff stdin directory for script at %s: %w", location, err)
+	}
+	if !filepath.IsAbs(directory) && filepath.VolumeName(directory) == "" && !os.IsPathSeparator(directory[0]) {
+		// Getwd can honor a logical PWD alias; relative parents use physical cwd.
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("ruff stdin directory for script at %s: %w", location, err)
+		}
+		cwd, err = filepath.EvalSymlinks(cwd)
+		if err != nil {
+			return fmt.Errorf("ruff stdin directory for script at %s: %w", location, err)
+		}
+		directory = filepath.Join(cwd, directory)
+	}
+	directory, err = filepath.Abs(directory)
+	if err != nil {
+		return fmt.Errorf("ruff stdin directory for script at %s: %w", location, err)
+	}
+	// Ruff compares package paths with the child's physical working directory.
+	directory, err = filepath.EvalSymlinks(directory)
+	if err != nil {
+		return fmt.Errorf("ruff stdin directory for script at %s: %w", location, err)
+	}
+	filename := filepath.Join(directory, "actionlint.py")
 	if config.TargetVersion == "" {
 		config.TargetVersion = pythonShellTarget(*shell)
 	}
@@ -143,9 +175,9 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		c.mu.Lock()
 		defer c.mu.Unlock()
 		for _, d := range diagnostics {
-			// Only the synthetic identifier's exact undefined-name range is
-			// excluded. Other findings and real Python names remain visible.
-			if width, ok := placeholders.identifiers[d.Location]; ok && d.Code == "F821" &&
+			// A mask can manufacture undefined-name and useless-expression
+			// findings. Only its exact identifier range is excluded.
+			if width, ok := placeholders.identifiers[d.Location]; ok && (d.Code == "F821" || d.Code == "B018") &&
 				d.EndLocation == (Position{Row: d.Location.Row, Column: d.Location.Column + width}) {
 				continue
 			}
@@ -272,6 +304,9 @@ func sanitize(src string, expressionEnd ExpressionEnd, placeholders *templateMas
 		out.WriteString(src[:start])
 		advancePosition(&position, src[:start])
 		state.consume(src[:start])
+		if state.inFieldExpression() && !state.fieldComment && state.quotePrevious == '!' {
+			return "", false, nil
+		}
 		if state.patternCapture {
 			return "", false, nil
 		}
@@ -287,7 +322,7 @@ func sanitize(src string, expressionEnd ExpressionEnd, placeholders *templateMas
 				runes[i] = ' '
 			}
 		}
-		if state.comment {
+		if state.comment || state.fieldComment {
 			// Each physical line remains comment text, including the suffix
 			// after the template. Empty lines can remain empty.
 			first := true
@@ -423,11 +458,66 @@ func templateIsAssignmentTarget(prefix, suffix string, depth int) bool {
 	return false
 }
 
+// pythonStringState tracks one quoted string and its formatted replacement fields.
+type pythonStringState struct {
+	quote         byte
+	triple        bool
+	formatted     bool
+	fields        []pythonFormatField
+	quotePrevious byte
+	fieldWord     string
+	fieldComment  bool
+}
+
+type pythonFormatField struct {
+	brackets int
+	format   bool
+}
+
+func (s *pythonStringState) inFieldExpression() bool {
+	return s.formatted && len(s.fields) > 0 && !s.fields[len(s.fields)-1].format
+}
+
+func pythonFormattedPrefix(prefix string) bool {
+	switch prefix {
+	case "f", "rf", "fr", "t", "rt", "tr":
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *pythonStringState) consumeField(c byte) {
+	if len(s.fields) == 0 || s.fields[len(s.fields)-1].format {
+		if c == '{' {
+			s.fields = append(s.fields, pythonFormatField{})
+		} else if c == '}' && len(s.fields) > 0 {
+			s.fields = s.fields[:len(s.fields)-1]
+		}
+		return
+	}
+	field := &s.fields[len(s.fields)-1]
+	switch c {
+	case '(', '[', '{':
+		field.brackets++
+	case ')', ']', '}':
+		if field.brackets > 0 {
+			field.brackets--
+		} else if c == '}' {
+			s.fields = s.fields[:len(s.fields)-1]
+		}
+	case ':':
+		if field.brackets == 0 {
+			field.format = true
+		}
+	}
+}
+
 // pythonLexicalState distinguishes comment and string template placement while
 // leaving Python syntax validation to Ruff.
 type pythonLexicalState struct {
-	quote           byte
-	triple          bool
+	pythonStringState
+	stringParents   []pythonStringState
 	comment         bool
 	escaped         bool
 	word            string
@@ -570,6 +660,12 @@ func pythonTokenCanBeSubscripted(token string) bool {
 func (s *pythonLexicalState) consume(text string) {
 	for i := 0; i < len(text); i++ {
 		c := text[i]
+		if s.fieldComment {
+			if c == '\n' {
+				s.fieldComment = false
+			}
+			continue
+		}
 		if s.comment {
 			if c == '\n' {
 				s.comment = false
@@ -592,6 +688,36 @@ func (s *pythonLexicalState) consume(text string) {
 			continue
 		}
 		if s.quote != 0 {
+			if s.inFieldExpression() && c == '#' {
+				s.fieldComment = true
+				continue
+			}
+			if s.inFieldExpression() && (c == '\'' || c == '"') {
+				prefix := strings.ToLower(s.fieldWord)
+				s.fieldWord = ""
+				s.stringParents = append(s.stringParents, s.pythonStringState)
+				s.pythonStringState = pythonStringState{quote: c, formatted: pythonFormattedPrefix(prefix)}
+				s.triple = i+2 < len(text) && text[i+1] == c && text[i+2] == c
+				if s.triple {
+					i += 2
+				}
+				continue
+			}
+			if s.formatted {
+				if s.inFieldExpression() && (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z') {
+					if len(s.fieldWord) < 3 {
+						s.fieldWord += string(c)
+					}
+				} else {
+					s.fieldWord = ""
+				}
+				s.quotePrevious = c
+				if (c == '{' || c == '}') && len(s.fields) == 0 && i+1 < len(text) && text[i+1] == c {
+					i++
+					continue
+				}
+				s.consumeField(c)
+			}
 			if c == s.quote {
 				if !s.triple {
 					s.quote = 0
@@ -599,15 +725,26 @@ func (s *pythonLexicalState) consume(text string) {
 					s.quote, s.triple = 0, false
 					i += 2
 				}
+				if s.quote == 0 {
+					s.pythonStringState = pythonStringState{}
+					if n := len(s.stringParents); n > 0 {
+						s.pythonStringState = s.stringParents[n-1]
+						s.stringParents = s.stringParents[:n-1]
+						s.quotePrevious = c
+					}
+				}
 			}
 			continue
 		}
+		prefix := strings.ToLower(s.word)
 		s.consumeCode(c)
 		switch c {
 		case '#':
 			s.comment = true
 		case '\'', '"':
 			s.quote = c
+			s.formatted = pythonFormattedPrefix(prefix)
+			s.fields, s.quotePrevious = nil, 0
 			s.triple = i+2 < len(text) && text[i+1] == c && text[i+2] == c
 			if s.triple {
 				i += 2
