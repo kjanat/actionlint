@@ -128,12 +128,12 @@ func TestIndependentTemplateValues(t *testing.T) {
 				for _, diagnostic := range diagnostics {
 					codes = append(codes, diagnostic.Code)
 					if diagnostic.Code == "F541" {
-						index := strings.Index(script, `f"unused"`)
-						if index < 0 {
+						before, _, found := strings.Cut(script, `f"unused"`)
+						if !found {
 							t.Fatalf("synthetic formatted-string finding survived: %+v", diagnostic)
 						}
 						start := Position{Row: 1, Column: 1}
-						advancePosition(&start, script[:index])
+						advancePosition(&start, before)
 						end := Position{Row: start.Row, Column: start.Column + len(`f"unused"`)}
 						if diagnostic.Location != start || diagnostic.EndLocation != end {
 							t.Fatalf("real formatted-string finding moved: %+v, want %v-%v", diagnostic, start, end)
