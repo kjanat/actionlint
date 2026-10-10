@@ -177,7 +177,7 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 			if len(placeholders.identifiers) > 0 && requiresCompleteReferences(d.Code) {
 				continue
 			}
-			if d.Code == "F822" && placeholders.dynamicExport(d) {
+			if (d.Code == "F822" || d.Code == "F541") && placeholders.dynamicQuotedValue(d) {
 				continue
 			}
 			// A mask can manufacture undefined-name and useless-expression
@@ -294,12 +294,12 @@ func requiresCompleteReferences(code string) bool {
 	}
 }
 
-func (m *templateMasks) dynamicExport(d Diagnostic) bool {
+func (m *templateMasks) dynamicQuotedValue(d Diagnostic) bool {
 	for start, name := range m.quoted {
 		end := Position{Row: start.Row, Column: start.Column + len(name)}
 		if (d.Location.Row < start.Row || d.Location.Row == start.Row && d.Location.Column <= start.Column) &&
 			(d.EndLocation.Row > end.Row || d.EndLocation.Row == end.Row && d.EndLocation.Column >= end.Column) &&
-			strings.Contains(d.Message, name) {
+			(d.Code == "F541" || strings.Contains(d.Message, name)) {
 			return true
 		}
 	}

@@ -55,6 +55,19 @@ func TestIndependentTemplateValues(t *testing.T) {
 		{"__all__ = [\"\"\"${{\n inputs.export\n}}\"\"\", 'missing_export']", []string{"F822"}},
 		{`__all__ = ['${{ inputs.first }}${{ inputs.second }}', 'missing_export']`, []string{"F822"}},
 		{`__all__ = ['${{ inputs.first }}' 'suffix', 'missing_export']`, []string{"F822"}},
+		{`value = 1; print(f"${{ inputs.fragment }}")`, nil},
+		{`é = 1; print(F'prefix_${{ inputs.fragment }}_suffix')`, nil},
+		{`print(rf"${{ inputs.fragment }}")`, nil},
+		{`print(fr"${{ inputs.fragment }}")`, nil},
+		{"print(f\"\"\"prefix\n${{\n inputs.fragment\n}}\nsuffix\"\"\")", nil},
+		{`print(f"${{ inputs.first }}${{ inputs.second }}")`, nil},
+		{`print(f"${{ inputs.first }}", f"${{ inputs.second }}")`, nil},
+		{`print(f"${{ inputs.fragment }}" f"unused")`, []string{"F541"}},
+		{`print(f"unused" f"${{ inputs.fragment }}")`, []string{"F541"}},
+		{`print(f"unused" "${{ inputs.fragment }}")`, []string{"F541"}},
+		{`print(f"${{ inputs.fragment }}"); print(f"unused")`, []string{"F541"}},
+		{`print(f"unused")`, []string{"F541"}},
+		{"# ${{ inputs.fragment }}\nprint(f\"unused\")", []string{"F541"}},
 		{`print("!${{ inputs.value }}")`, nil},
 		{`print(f"{1} literal!${{ inputs.value }}")`, nil},
 		{`print(f"{1} {{literal!${{ inputs.value }}}}")`, nil},
@@ -114,6 +127,18 @@ func TestIndependentTemplateValues(t *testing.T) {
 				var codes []string
 				for _, diagnostic := range diagnostics {
 					codes = append(codes, diagnostic.Code)
+					if diagnostic.Code == "F541" {
+						index := strings.Index(script, `f"unused"`)
+						if index < 0 {
+							t.Fatalf("synthetic formatted-string finding survived: %+v", diagnostic)
+						}
+						start := Position{Row: 1, Column: 1}
+						advancePosition(&start, script[:index])
+						end := Position{Row: start.Row, Column: start.Column + len(`f"unused"`)}
+						if diagnostic.Location != start || diagnostic.EndLocation != end {
+							t.Fatalf("real formatted-string finding moved: %+v, want %v-%v", diagnostic, start, end)
+						}
+					}
 					if diagnostic.Code == "F822" {
 						index := strings.Index(script, "missing_export")
 						if index < 1 || !strings.Contains(diagnostic.Message, "missing_export") {
