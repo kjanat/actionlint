@@ -53,6 +53,13 @@ func TestSanitizeNameRequiredTemplates(t *testing.T) {
 		"match value:\n    case [*${{ inputs.rest }}]: pass",
 		"match value:\n    case [first, *${{ inputs.rest }}] if first: pass",
 		"match value:\n    case [\n        *${{ inputs.rest }}\n    ]: pass",
+		"match value:\n    case ${{ inputs.type }}(): pass",
+		"match value:\n    case ${{ inputs.type }} (item): pass",
+		"match value:\n    case [${{ inputs.type }}()]: pass",
+		"match value:\n    case {\"key\": ${{ inputs.type }}()}: pass",
+		"match value:\n    case Outer(${{ inputs.type }}()) if enabled: pass",
+		"match value:\n    case case(${{ inputs.type }}()): pass",
+		"match value:\n    case (\n        ${{ inputs.type }}\n        ()\n    ): pass",
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			script := strings.ReplaceAll(script, "\n", ending)
@@ -104,6 +111,11 @@ func TestSanitizeNameRequiredTemplates(t *testing.T) {
 		"case(*${{ inputs.values }})",
 		"match value:\n    case [*rest] if ${{ inputs.enabled }}: pass",
 		"match value:\n    case {\"${{ inputs.key }}\": value}: pass",
+		"${{ inputs.callable }}()",
+		"case(${{ inputs.callable }}())",
+		"case = ${{ inputs.callable }}()",
+		"match value:\n    case Widget() if ${{ inputs.callable }}(): pass",
+		"match value:\n    case {\"${{ inputs.type }}()\": value}: pass",
 	} {
 		t.Run(script, func(t *testing.T) {
 			if _, valid, err := Sanitize(script, end); err != nil || !valid {

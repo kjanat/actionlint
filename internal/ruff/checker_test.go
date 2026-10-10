@@ -194,6 +194,16 @@ func TestConfiguredFlagsFollowCheck(t *testing.T) {
 	}
 }
 
+func TestStatisticsFlagRejected(t *testing.T) {
+	checker := New(func([]string, string, func([]byte, error) error) {
+		t.Fatal("statistics mode reached Ruff")
+	}, func() error { return nil }, nil, "--statistics")
+	python := "python"
+	if err := checker.Check("print(missing)", &python, "test", Config{}, func(Diagnostic) {}); err == nil || !strings.Contains(err.Error(), "statistics output is not supported") {
+		t.Fatalf("statistics mode not rejected: %v", err)
+	}
+}
+
 func TestOutputRedirectionFlagsRejected(t *testing.T) {
 	for _, flags := range [][]string{
 		{"--output-file", "out.json"}, {"--output-file=out.json"},

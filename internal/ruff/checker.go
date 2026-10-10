@@ -68,6 +68,9 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		return nil
 	}
 	for _, flag := range c.flags {
+		if flag == "--statistics" {
+			return fmt.Errorf("ruff statistics output is not supported for script at %s", location)
+		}
 		if flag == "--output-file" || strings.HasPrefix(flag, "--output-file=") ||
 			strings.HasPrefix(flag, "-") && !strings.HasPrefix(flag, "--") && strings.ContainsRune(flag[1:], 'o') {
 			return fmt.Errorf("ruff output redirection is not supported for script at %s: %q", location, flag)
@@ -203,7 +206,7 @@ func Sanitize(src string, expressionEnd ExpressionEnd) (string, bool, error) {
 		if state.quote == 0 && !state.comment && (templateTouchesPythonToken(src, start, end) || state.subscriptDepth == 0 && (state.nameRequired || templateIsAssignmentTarget(src[:start], src[end:], state.depth))) {
 			return "", false, nil
 		}
-		if state.quote == 0 && !state.comment && state.casePattern && state.lastToken == "*" {
+		if state.quote == 0 && !state.comment && state.casePattern && (state.lastToken == "*" || strings.HasPrefix(strings.TrimLeft(src[end:], " \t\r\n\f"), "(")) {
 			state.pendingCapture = true
 		}
 		runes := []rune(src[start:end])
@@ -328,7 +331,9 @@ func (s *pythonLexicalState) consumeCode(c byte) {
 	}
 	switch s.word {
 	case "case":
-		s.casePattern = s.depth == 0 && (previous == "" || previous == "\n")
+		if s.depth == 0 && (previous == "" || previous == "\n") {
+			s.casePattern = true
+		}
 	case "if":
 		if s.casePattern && s.depth == 0 {
 			s.patternCapture = s.patternCapture || s.pendingCapture
