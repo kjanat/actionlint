@@ -1,5 +1,5 @@
-import shellcheck from '#tools/shellcheck' with { type: 'json' };
 import ruff from '#tools/ruff' with { type: 'json' };
+import shellcheck from '#tools/shellcheck' with { type: 'json' };
 
 export type RunnerPlatform = {
 	os: 'linux' | 'darwin' | 'windows';
