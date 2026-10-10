@@ -92,7 +92,7 @@ func (l *analysisEngine) check(
 			}
 			// Shared analysis passes can emit independently configured diagnostics;
 			// keep them running. Disabled external tools need not be launched.
-			if descriptor.Category == "external" && cfg.diagnosticLevel(descriptor.Name) == "off" && (projectConfig == nil || len(projectConfig.Overrides) == 0) {
+			if descriptor.Category == "external" && cfg.diagnosticLevel(descriptor.Name) == "off" {
 				continue
 			}
 			if descriptor.enabled != nil && !descriptor.enabled(c) {

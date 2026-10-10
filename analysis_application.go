@@ -235,6 +235,7 @@ func (a *AnalysisSession) Files(paths []string, project *Project) (*AnalysisResu
 
 func (a *AnalysisSession) readFiles(paths []string, project *Project, notify ...bool) (*AnalysisResult, error) {
 	sources := make([]SourceUnit, 0, len(paths))
+	configProjects := make([]*Project, 0, len(paths))
 	selected := make([]string, 0, len(paths))
 	if len(notify) > 0 && notify[0] {
 		defer func() { a.filesSelected(selected) }()
@@ -252,6 +253,7 @@ func (a *AnalysisSession) readFiles(paths []string, project *Project, notify ...
 		if err != nil {
 			return nil, err
 		}
+		configProjects = append(configProjects, proj)
 		root := a.cwd
 		if proj != nil {
 			root = proj.RootDir()
@@ -272,7 +274,7 @@ func (a *AnalysisSession) readFiles(paths []string, project *Project, notify ...
 		source.inputPath = path
 		sources = append(sources, source)
 	}
-	return a.analyze(sources)
+	return a.analyze(sources, configProjects...)
 }
 
 func (a *AnalysisSession) relativePath(path string) string {
@@ -319,7 +321,7 @@ func (a *AnalysisSession) source(path string, content []byte, project *Project) 
 	return SourceUnit{Path: path, Content: content, Config: cfg, Project: project}
 }
 
-func (a *AnalysisSession) analyze(sources []SourceUnit) (*AnalysisResult, error) {
+func (a *AnalysisSession) analyze(sources []SourceUnit, configProjects ...*Project) (*AnalysisResult, error) {
 	for i := range sources {
 		cfg, err := a.configForProject(sources[i].Project)
 		if err != nil {
@@ -327,28 +329,37 @@ func (a *AnalysisSession) analyze(sources []SourceUnit) (*AnalysisResult, error)
 		}
 		sources[i].Config = cfg
 	}
+	// Include the projects used during selection, without retaining unrelated
+	// configurations cached by an earlier invocation of this session.
+	projects := make([]*Project, 0, len(sources)+len(configProjects))
+	projects = append(projects, configProjects...)
+	for _, source := range sources {
+		projects = append(projects, source.Project)
+	}
 	request := a.request
 	request.Sources = sources
 	result, err := analyze(a.ctx, request, a.logOut, a.logLevel)
 	if result == nil {
 		return nil, err
 	}
-	if a.defaultConfigPath != "" {
-		result.Inputs = append(result.Inputs, absPath(a.defaultConfigPath))
-		slices.Sort(result.Inputs)
-		result.Inputs = slices.Compact(result.Inputs)
+	inputs := &inputFiles{}
+	for _, path := range result.Inputs {
+		inputs.add(path)
 	}
+	inputs.add(a.defaultConfigPath)
 	// Keep provenance on the analysis itself, including cached selections when
 	// a library caller reuses this session. Preserve input order across projects.
 	a.configState.Lock()
 	seen := make(map[*Project]bool)
-	for _, source := range sources {
-		if !seen[source.Project] {
-			seen[source.Project] = true
-			result.Configurations = append(result.Configurations, a.configState.reports[source.Project])
+	for _, project := range projects {
+		if !seen[project] {
+			seen[project] = true
+			inputs.addConfig(a.configState.loaded[project], project)
+			result.Configurations = append(result.Configurations, a.configState.reports[project])
 		}
 	}
 	a.configState.Unlock()
+	result.Inputs = inputs.list()
 	return result, err
 }
 
