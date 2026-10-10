@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import { chmod, copyFile, link, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { ruffVersion, runnerPlatform } from '#assets';
 import { capture, temporary } from '#native';
@@ -186,6 +187,18 @@ test('Ruff prefers PATH and validates a cached executable before use', async () 
 			await copyFile(process.execPath, executable);
 			assert.deepEqual(await ruffBinary(platform), { kind: 'standalone', executable });
 		});
+	});
+});
+
+test('Ruff downloads root-level Windows ZIP executables and reuses both architecture caches', async () => {
+	await temporary(async (directory) => {
+		const fixture = fileURLToPath(new URL('./fixtures/ruff-windows-download.ts', import.meta.url));
+		const result = await capture(process.execPath, ['--experimental-test-module-mocks', fixture], {
+			...process.env,
+			RUNNER_TEMP: directory,
+			RUNNER_TOOL_CACHE: join(directory, 'cache'),
+		}, { timeoutMS: 30_000 });
+		assert.equal(result.exitCode, 0, `${result.stdout}\n${result.stderr}`);
 	});
 });
 
