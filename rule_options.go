@@ -1,6 +1,10 @@
 package actionlint
 
-import "go.yaml.in/yaml/v4"
+import (
+	"fmt"
+
+	"go.yaml.in/yaml/v4"
+)
 
 // RequiredActionsOptions configures exact actions or action/ref glob patterns.
 // An empty selection requires nothing; presets never invent an action list.
@@ -16,6 +20,9 @@ func (o *RequiredActionsOptions) UnmarshalYAML(n *yaml.Node) error {
 	}
 	if err := n.Load(&wire, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
 		return err
+	}
+	if wire.Actions.Kind != yaml.SequenceNode {
+		return fmt.Errorf("yaml: required-actions options.actions must be a sequence at line:%d,col:%d", wire.Actions.Line, wire.Actions.Column)
 	}
 	return decodeRequiredActions(&wire.Actions, &o.Actions)
 }

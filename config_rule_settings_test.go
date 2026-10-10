@@ -82,6 +82,46 @@ func TestRuleSettingsInvalid(t *testing.T) {
 	}
 }
 
+func TestTypedRuleOptionsNull(t *testing.T) {
+	for rule, fields := range map[string][]string{
+		"required-actions":      {"actions"},
+		"require-job-timeout":   {"min-minutes", "max-minutes"},
+		"require-permissions":   {"scope"},
+		"disallow-suppressions": {"rules", "report"},
+	} {
+		t.Run(rule, func(t *testing.T) {
+			options := []string{"null"}
+			for _, field := range fields {
+				options = append(options, "{"+field+": null}")
+			}
+			for _, option := range options {
+				text := fmt.Sprintf("lint: {rules: {policy: {%s: {level: on, options: %s}}}}", rule, option)
+				if _, err := ParseConfig([]byte(text)); err == nil {
+					t.Fatalf("accepted invalid typed options: %s", text)
+				}
+			}
+			for _, level := range []string{"null", "false", "default", "off"} {
+				text := fmt.Sprintf("lint: {rules: {policy: {%s: %s}}}", rule, level)
+				if _, err := ParseConfig([]byte(text)); err != nil {
+					t.Fatalf("level %s rejected: %v", level, err)
+				}
+			}
+		})
+	}
+	for _, text := range []string{
+		"policy: {required-actions: null}",
+		"lint: {rules: {policy: {required-actions: {level: on, options: {actions: []}}}}}",
+	} {
+		cfg, err := ParseConfig([]byte(text))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := (RulePresets{}).apply(cfg).RequiredActions(); len(got) != 0 {
+			t.Fatalf("empty selection invented required actions: %v", got)
+		}
+	}
+}
+
 func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 	for _, tc := range []struct {
 		rules string
