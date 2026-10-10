@@ -168,6 +168,7 @@ var BuiltinUntrustedInputs = UntrustedInputSearchRoots{
 					NewUntrustedInputMap("homepage"),
 				),
 				NewUntrustedInputMap("head_branch"),
+				NewUntrustedInputMap("path"),
 				NewUntrustedInputMap("pull_requests",
 					NewUntrustedInputMap("*",
 						NewUntrustedInputMap("head", NewUntrustedInputMap("ref")),

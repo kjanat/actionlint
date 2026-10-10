@@ -38,14 +38,28 @@ func (rule *RuleGlob) VisitWorkflowPre(n *Workflow) error {
 
 func (rule *RuleGlob) checkWorkflowNameGlobs(names []*String) {
 	for _, name := range names {
-		if name == nil || name.Value == "" || name.ContainsExpression() || workflownames.ValidPattern(name.Value) {
+		if name == nil {
 			continue
 		}
-		errs := validateGlob(name.Value, false)
+		value, evaluated := name.Value, false
+		if literal := literalExpressionValue(value); literal != nil {
+			value, evaluated = *literal, true
+		} else if name.ContainsExpression() {
+			continue
+		}
+		if value == "" || workflownames.ValidPattern(value) {
+			continue
+		}
+		errs := validateGlob(value, false)
 		if len(errs) == 0 {
 			errs = []InvalidGlobPatternError{{Message: "invalid workflow-name filter pattern"}}
 		}
-		rule.globErrors(errs, name.Pos, name.Quoted)
+		if evaluated {
+			for i := range errs {
+				errs[i].Column = 0
+			}
+		}
+		rule.globErrors(errs, name.Pos, name.Quoted && !evaluated)
 	}
 }
 

@@ -21,6 +21,8 @@ type Names struct {
 // Index shares immutable inventories across concurrent workflow checks.
 type Index struct {
 	Load func(string) (name string, known bool, err error)
+	// OnDirectory records directory discovery as an incremental dependency.
+	OnDirectory func(string)
 	// Paths includes in-memory source files which may not exist on disk yet.
 	Paths []string
 	mu    sync.Mutex
@@ -45,7 +47,7 @@ func workflowPaths(dir string, candidates []string, windows bool) []string {
 	paths := map[string]string{}
 	for _, path := range candidates {
 		key := pathKey(path, windows)
-		if filepath.Dir(key) == dir && (strings.HasSuffix(key, ".yml") || strings.HasSuffix(key, ".yaml")) {
+		if filepath.Dir(key) == dir && (strings.HasSuffix(path, ".yml") || strings.HasSuffix(path, ".yaml")) {
 			paths[key] = path
 		}
 	}
@@ -70,6 +72,9 @@ func (i *Index) ForRoot(root string) (Names, error) {
 		load = sync.OnceValues(func() (Names, error) {
 			names := Names{Values: map[string]bool{}, Complete: true}
 			dir := filepath.Join(root, ".github", "workflows")
+			if i.OnDirectory != nil {
+				i.OnDirectory(dir)
+			}
 			entries, err := os.ReadDir(dir)
 			if err != nil && !errors.Is(err, os.ErrNotExist) {
 				names.Complete = false

@@ -2,10 +2,80 @@ package actionlint
 
 import (
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
 )
+
+func TestWorkflowRunPathsUntrusted(t *testing.T) {
+	for _, expression := range []string{
+		"github.event.workflow_run.path",
+		"github['event']['workflow_run']['path']",
+		"GITHUB.EVENT.WORKFLOW_RUN.PATH",
+		"format('{0}', github.event.workflow_run.path)",
+	} {
+		source := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo \"${{ " + expression + " }}\"\n"
+		result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
+		if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "expression" || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
+			t.Fatalf("path interpolation %q: error=%v diagnostics=%+v", expression, err, result.Diagnostics)
+		}
+	}
+	source := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n      - env: {WORKFLOW_PATH: '${{ github.event.workflow_run.path }}'}\n        run: printf '%s\\n' \"$WORKFLOW_PATH\"\n"
+	result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
+	if err != nil || len(result.Diagnostics) != 0 {
+		t.Fatalf("path environment binding: error=%v result=%+v", err, result)
+	}
+}
+
+func TestWorkflowRunLiteralPatternValidation(t *testing.T) {
+	for _, pattern := range []string{"Build [", "?Build", "Build*", "!Build*", "Build's CI", "${{ vars.WORKFLOW }}"} {
+		reference := "${{ '" + strings.ReplaceAll(pattern, "'", "''") + "' }}"
+		if strings.HasPrefix(pattern, "${{") {
+			reference = pattern
+		}
+		workflow, errs := Parse([]byte("on: {workflow_run: {workflows: [" + strconv.Quote(reference) + "]}}\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"))
+		if workflow == nil || len(errs) != 0 {
+			t.Fatalf("parse %q: %v", reference, errs)
+		}
+		rule := NewRuleGlob()
+		if err := rule.VisitWorkflowPre(workflow); err != nil {
+			t.Fatal(err)
+		}
+		want := pattern == "Build [" || pattern == "?Build"
+		if (len(rule.Errs()) != 0) != want {
+			t.Fatalf("literal pattern %q: %v", pattern, rule.Errs())
+		}
+		if want {
+			pos := workflow.On[0].(*WebhookEvent).Workflows[0].Pos
+			if rule.Errs()[0].Line != pos.Line || rule.Errs()[0].Column != pos.Col {
+				t.Fatalf("evaluated pattern finding should retain expression position: %v", rule.Errs()[0])
+			}
+		}
+	}
+}
+
+func TestWorkflowRunDiscoveryInput(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, ".github", "workflows")
+	consumer := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+	request := AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(dir, "consumer.yml"), Content: []byte(consumer), Project: &Project{root: root}}}}
+	for _, present := range []bool{false, true} {
+		if present {
+			writeShellcheckFixture(t, root, ".github/workflows/build.yml", "name: Build\n"+commandGoodWorkflow)
+		}
+		result, err := Analyze(t.Context(), request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !slices.Contains(result.Inputs, dir) {
+			t.Fatalf("directory discovery missing from inputs: %v", result.Inputs)
+		}
+		if (len(result.Diagnostics) == 0) != present {
+			t.Fatalf("producer present=%v diagnostics=%+v", present, result.Diagnostics)
+		}
+	}
+}
 
 func TestWorkflowRunPullRequestHeadRefs(t *testing.T) {
 	for _, expression := range []string{

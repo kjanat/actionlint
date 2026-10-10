@@ -52,8 +52,9 @@ type AnalysisRequest struct {
 type AnalysisResult struct {
 	Configurations []ConfigReport
 	Diagnostics    []Diagnostic
-	Inputs         []string
-	files          []analyzedFile
+	// Inputs includes discovery directories so watchers can detect added files.
+	Inputs []string
+	files  []analyzedFile
 }
 
 type analyzedFile struct {
@@ -186,7 +187,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		sourceContents[workflownames.PathKey(path)] = source.Content
 		sourcePaths = append(sourcePaths, filepath.Clean(path))
 	}
-	engine.workflowNames = &workflownames.Index{Paths: sourcePaths, Load: func(path string) (string, bool, error) {
+	engine.workflowNames = &workflownames.Index{Paths: sourcePaths, OnDirectory: inputs.add, Load: func(path string) (string, bool, error) {
 		if err := ctx.Err(); err != nil {
 			return "", false, err
 		}

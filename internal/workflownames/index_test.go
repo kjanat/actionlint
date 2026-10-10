@@ -19,7 +19,7 @@ func TestIndexUnnamedOverlaySpelling(t *testing.T) {
 	if err := os.WriteFile(disk, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	overlay := filepath.Join(dir, "BUILD.YML")
+	overlay := filepath.Join(dir, "BUILD.yml")
 	if runtime.GOOS != "windows" {
 		overlay = disk
 	}
@@ -45,7 +45,7 @@ func TestIndexUnnamedOverlaySpelling(t *testing.T) {
 func TestWorkflowPathsPlatformIdentity(t *testing.T) {
 	dir := filepath.Join("repo", ".github", "workflows")
 	disk := filepath.Join(dir, "build.yml")
-	overlay := filepath.Join("REPO", ".GITHUB", "WORKFLOWS", "BUILD.YML")
+	overlay := filepath.Join("REPO", ".GITHUB", "WORKFLOWS", "BUILD.yml")
 	other := filepath.Join(dir, "other.yaml")
 	candidates := []string{disk, other, overlay,
 		filepath.Join(dir, "nested", "ignored.yml"), filepath.Join(dir, "README.md")}
@@ -76,5 +76,16 @@ func TestWorkflowPathsLastOverlayWins(t *testing.T) {
 	slices.Sort(want)
 	if got := workflowPaths(dir, []string{disk, first, last}, false); !slices.Equal(got, want) {
 		t.Fatalf("case-sensitive paths must remain distinct: %v", got)
+	}
+}
+
+func TestWorkflowPathsUppercaseExtensionIgnored(t *testing.T) {
+	dir := filepath.Join("repo", ".github", "workflows")
+	valid := filepath.Join(dir, "build.yml")
+	for _, windows := range []bool{false, true} {
+		candidates := []string{valid, filepath.Join(dir, "producer.YML"), filepath.Join(dir, "other.YAML"), filepath.Join(dir, "mixed.yMl")}
+		if got := workflowPaths(dir, candidates, windows); !slices.Equal(got, []string{valid}) {
+			t.Fatalf("windows=%v: uppercase extension was indexed: %v", windows, got)
+		}
 	}
 }
