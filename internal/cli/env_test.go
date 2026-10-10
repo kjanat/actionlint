@@ -273,6 +273,7 @@ func TestEnvironmentExternalTools(t *testing.T) {
 	}
 	t.Setenv("ACTIONLINT_TEST_CHILD", "parent")
 	reports := map[string]string{}
+	ruffArguments := []string{"--exclude", "argument with spaces", "--ignore", "", "--extend-exclude", "$LITERAL"}
 	for _, toolName := range []string{"SHELLCHECK", "RUFF"} {
 		kind := "shell"
 		if toolName == "RUFF" {
@@ -286,6 +287,13 @@ func TestEnvironmentExternalTools(t *testing.T) {
 		}
 		t.Setenv("ACTIONLINT_"+toolName+"_BIN", tool)
 		t.Setenv("ACTIONLINT_"+toolName+"_FLAGS", `["argument with spaces", "", "$LITERAL"]`)
+		if toolName == "RUFF" {
+			flags, err := json.Marshal(ruffArguments)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("ACTIONLINT_RUFF_FLAGS", string(flags))
+		}
 		t.Setenv("ACTIONLINT_"+toolName+"_ENV", string(env))
 	}
 	input := commandGoodWorkflow + "      - shell: python\n        run: print('ok')\n"
@@ -307,7 +315,7 @@ func TestEnvironmentExternalTools(t *testing.T) {
 			}
 			wantArgs := []string{"argument with spaces", "", "$LITERAL"}
 			if kind == "python" {
-				wantArgs = append([]string{"check"}, wantArgs...)
+				wantArgs = append([]string{"check"}, ruffArguments...)
 			}
 			if report.Value != kind || report.Input == "" || len(report.Args) < len(wantArgs) || !reflect.DeepEqual(report.Args[:len(wantArgs)], wantArgs) {
 				t.Fatalf("%s did not receive its settings: %+v", kind, report)
@@ -332,7 +340,11 @@ func TestEnvironmentExternalTools(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tool := range doctor.Tools {
-		if tool.Status != "available" || !reflect.DeepEqual(tool.Arguments, []string{"argument with spaces", "", "$LITERAL"}) {
+		wantArgs := []string{"argument with spaces", "", "$LITERAL"}
+		if tool.Name == "ruff" {
+			wantArgs = ruffArguments
+		}
+		if tool.Status != "available" || !reflect.DeepEqual(tool.Arguments, wantArgs) {
 			t.Fatalf("doctor does not describe configured tool: %+v", tool)
 		}
 	}

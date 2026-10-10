@@ -41,6 +41,28 @@ func TestRuffEnvironmentOutputRedirection(t *testing.T) {
 	}
 }
 
+func TestRuffEnvironmentFileOperands(t *testing.T) {
+	ruff, err := exec.LookPath("ruff")
+	if err != nil {
+		t.Skip("Ruff is not installed")
+	}
+	t.Setenv("ACTIONLINT_RUFF_BIN", ruff)
+	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", "")
+	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+	for _, flags := range []string{`["other.py"]`, `["--select", "F", "."]`, `["--", "other.py"]`, `["-"]`} {
+		t.Setenv("ACTIONLINT_RUFF_FLAGS", flags)
+		for _, prefix := range [][]string{nil, {"check"}} {
+			var stdout, stderr bytes.Buffer
+			command := Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
+			args := append([]string{"actionlint"}, prefix...)
+			status := command.Main(append(args, "--no-config", "-"))
+			if status != 3 || !strings.Contains(stdout.String()+stderr.String(), "file operands") {
+				t.Errorf("flags %s: status=%d, stdout=%s, stderr=%s", flags, status, &stdout, &stderr)
+			}
+		}
+	}
+}
+
 func TestRuffEnvironmentStatistics(t *testing.T) {
 	ruff, err := exec.LookPath("ruff")
 	if err != nil {

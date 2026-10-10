@@ -5,6 +5,17 @@ import (
 	"strings"
 )
 
+func ruffOptionTakesValue(option string) bool {
+	switch option {
+	case "--select", "--ignore", "--extend-select", "--extend-ignore", "--per-file-ignores", "--extend-per-file-ignores",
+		"--fixable", "--unfixable", "--extend-fixable", "--extend-unfixable", "--exclude", "--extend-exclude",
+		"--cache-dir", "--config", "--color", "--line-length":
+		return true
+	default:
+		return false
+	}
+}
+
 // CommandArguments preserves launcher operands and validates checker arguments
 // when an eligible Python script is checked.
 func (c *Checker) CommandArguments(executable string, args []string) []string {

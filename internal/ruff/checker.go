@@ -97,6 +97,12 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		if strings.HasPrefix(flag, "@") {
 			return fmt.Errorf("ruff argument files are not supported for script at %s: %q", location, flag)
 		}
+	}
+	for i := 0; i < len(c.flags); i++ {
+		flag := c.flags[i]
+		if !strings.HasPrefix(flag, "-") || flag == "-" || flag == "--" {
+			return fmt.Errorf("ruff extra file operands are not supported for script at %s: %q", location, flag)
+		}
 		if flag == "--show-files" || flag == "--show-settings" {
 			return fmt.Errorf("ruff inspection output is not supported for script at %s: %q", location, flag)
 		}
@@ -127,6 +133,12 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		switch option {
 		case "--isolated", "--ignore-noqa", "--no-fix", "--no-cache", "--target-version", "--stdin-filename", "--output-format":
 			return fmt.Errorf("ruff integration-owned option %q must be removed from extra arguments for script at %s", option, location)
+		}
+		if ruffOptionTakesValue(option) && !strings.Contains(flag, "=") {
+			if i+1 == len(c.flags) || strings.HasPrefix(c.flags[i+1], "-") {
+				return fmt.Errorf("ruff option %q requires a value for script at %s", option, location)
+			}
+			i++
 		}
 	}
 	placeholders := &templateMasks{identifiers: make(map[Position]int), parentheses: make(map[Position]Position), quoted: make(map[Position]string)}
@@ -207,19 +219,41 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 }
 
 func isPythonShell(shell string) bool {
-	shell = strings.TrimSpace(shell)
-	words := strings.Fields(shell)
-	if len(words) == 0 {
+	command, args := pythonShellCommand(shell)
+	if command == "" {
 		return false
 	}
-	command := words[0]
 	if isPythonCommand(command) {
 		return true
 	}
-	return pythonAdapterArguments(shell, command) != nil
+	return pythonAdapterArguments(args, command) != nil
 }
 
-func pythonAdapterArguments(shell, command string) []string {
+// Parse the executable separately to preserve Windows path backslashes.
+func pythonShellCommand(shell string) (command, args string) {
+	shell = strings.TrimSpace(shell)
+	if shell == "" {
+		return "", ""
+	}
+	if quote := shell[0]; quote == '"' || quote == '\'' {
+		end := strings.IndexByte(shell[1:], quote)
+		if end < 0 {
+			return "", ""
+		}
+		end++
+		if end+1 < len(shell) && !unicode.IsSpace(rune(shell[end+1])) {
+			return "", ""
+		}
+		return shell[1:end], shell[end+1:]
+	}
+	end := strings.IndexFunc(shell, unicode.IsSpace)
+	if end < 0 {
+		return shell, ""
+	}
+	return shell[:end], shell[end:]
+}
+
+func pythonAdapterArguments(arguments, command string) []string {
 	name := strings.ToLower(command[strings.LastIndexAny(command, `/\`)+1:])
 	name = strings.TrimSuffix(name, ".cmd")
 	if name != "actions-shell" && name != "actions-shells" {
@@ -228,7 +262,7 @@ func pythonAdapterArguments(shell, command string) []string {
 	// The documented Python adapters take the runtime first and script last.
 	parser := shellwords.NewParser()
 	parser.ParseEnv, parser.ParseBacktick = false, false
-	args, err := parser.Parse(shell[len(command):])
+	args, err := parser.Parse(arguments)
 	if err != nil || parser.Position >= 0 || len(args) < 2 ||
 		(args[0] != "python" && args[0] != "py") || args[len(args)-1] != "{0}" {
 		return nil
@@ -255,12 +289,12 @@ func isPythonCommand(command string) bool {
 }
 
 func pythonShellTarget(shell string) string {
-	shell = strings.TrimSpace(shell)
-	words := strings.Fields(shell)
-	if len(words) == 0 {
+	executable, arguments := pythonShellCommand(shell)
+	if executable == "" {
 		return ""
 	}
-	if args := pythonAdapterArguments(shell, words[0]); args != nil {
+	words := append([]string{executable}, strings.Fields(arguments)...)
+	if args := pythonAdapterArguments(arguments, executable); args != nil {
 		words = args
 	}
 	command := words[0]

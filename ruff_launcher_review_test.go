@@ -72,7 +72,7 @@ func TestRuffLauncherArguments(t *testing.T) {
 			}
 		}
 		for _, literal := range []bool{false, true} {
-			for _, flags := range [][]string{{"--preview"}, {"--silent"}, {"--extension=py:ipynb"}, {"--output-file", "output.json"}, {"--isolated"}} {
+			for _, flags := range [][]string{{"--preview"}, {"other.py"}, {"--select", "F", "other.py"}, {"--silent"}, {"--extension=py:ipynb"}, {"--output-file", "output.json"}, {"--isolated"}} {
 				t.Run(launcher+strconv.FormatBool(literal)+strings.Join(flags, " "), func(t *testing.T) {
 					calls := filepath.Join(t.TempDir(), "calls")
 					options := &ExternalCommandOptions{Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=[]", "ACTIONLINT_TEST_RUFF_PREFIX=" + string(encoded), "ACTIONLINT_TEST_RUFF_CALLS=" + calls}}

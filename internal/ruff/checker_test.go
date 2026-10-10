@@ -128,7 +128,7 @@ func TestCheckDiagnosticDirectoryAlias(t *testing.T) {
 	}
 }
 
-func TestCheckStdinIgnoresPositionalInputs(t *testing.T) {
+func TestRuffStdinIgnoresPositionalInputs(t *testing.T) {
 	binary, err := exec.LookPath("ruff")
 	if err != nil {
 		t.Skip("Ruff is not installed")
@@ -140,28 +140,24 @@ func TestCheckStdinIgnoresPositionalInputs(t *testing.T) {
 	}
 	for _, input := range []string{external, directory} {
 		t.Run(filepath.Base(input), func(t *testing.T) {
-			var result error
-			var diagnostics []Diagnostic
-			checker := New(func(args []string, source string, callback func([]byte, error) error) {
-				cmd := exec.CommandContext(t.Context(), binary, args...)
-				cmd.Stdin = strings.NewReader(source)
-				var stderr bytes.Buffer
-				cmd.Stderr = &stderr
-				output, runErr := cmd.Output()
-				var exitErr *exec.ExitError
-				if errors.As(runErr, &exitErr) && exitErr.ExitCode() == 1 {
-					runErr = nil
-				}
-				if !strings.Contains(stderr.String(), "in favor of standard input") {
-					t.Fatalf("missing Ruff input warning: %s", stderr.String())
-				}
-				result = callback(output, runErr)
-			}, func() error { return result }, nil, input)
-			python := "python"
-			if err := checker.Check("print(workflow_only)", &python, "test", Config{}, func(d Diagnostic) { diagnostics = append(diagnostics, d) }); err != nil {
-				t.Fatal(err)
+			args := append([]string{"check", input}, arguments(Config{}, "actionlint.py")[1:]...)
+			cmd := exec.CommandContext(t.Context(), binary, args...)
+			cmd.Stdin = strings.NewReader("print(workflow_only)")
+			var stderr bytes.Buffer
+			cmd.Stderr = &stderr
+			output, runErr := cmd.Output()
+			var exitErr *exec.ExitError
+			if errors.As(runErr, &exitErr) && exitErr.ExitCode() == 1 {
+				runErr = nil
 			}
-			if err := checker.Wait(); err != nil {
+			if !strings.Contains(stderr.String(), "in favor of standard input") {
+				t.Fatalf("missing Ruff input warning: %s", stderr.String())
+			}
+			if runErr != nil {
+				t.Fatal(runErr)
+			}
+			diagnostics, err := Decode(output)
+			if err != nil {
 				t.Fatal(err)
 			}
 			if len(diagnostics) != 1 || !strings.Contains(diagnostics[0].Message, "workflow_only") {
