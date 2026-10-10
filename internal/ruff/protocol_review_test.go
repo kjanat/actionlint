@@ -20,6 +20,16 @@ func TestNonDiagnosticModesRejected(t *testing.T) {
 	}
 }
 
+func TestSourceTypeOverridesRejected(t *testing.T) {
+	for _, flags := range [][]string{{"--extension", "py:ipynb"}, {"--extension=py:pyi"}} {
+		checker := New(func([]string, string, func([]byte, error) error) { t.Fatal("source remapping reached Ruff") }, func() error { return nil }, nil, flags...)
+		python := "python"
+		if err := checker.Check("print(1)", &python, "workflow:12", Config{}, func(Diagnostic) {}); err == nil || !strings.Contains(err.Error(), "source-type overrides") {
+			t.Fatalf("source remapping not rejected: %v", err)
+		}
+	}
+}
+
 func TestFStringConversionTemplates(t *testing.T) {
 	end := func(source string) (int, bool) { index := strings.Index(source, "}}"); return index + 2, index >= 0 }
 	for _, source := range []string{

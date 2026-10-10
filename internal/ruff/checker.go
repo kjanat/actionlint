@@ -30,6 +30,7 @@ type Checker struct {
 	wait                    func() error
 	expressionEnd           ExpressionEnd
 	flags                   []string
+	commandError            error
 	workingDirectory        string
 	beforeCheck             func() (bool, error)
 	workflowShell, jobShell *string
@@ -46,6 +47,7 @@ func (c *Checker) Fork() *Checker {
 	child := New(c.run, c.wait, c.expressionEnd, c.flags...)
 	child.workingDirectory = c.workingDirectory
 	child.beforeCheck = c.beforeCheck
+	child.commandError = c.commandError
 	return child
 }
 
@@ -88,6 +90,9 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 	if !isPythonShell(*shell) {
 		return nil
 	}
+	if c.commandError != nil {
+		return c.commandError
+	}
 	for _, flag := range c.flags {
 		if strings.HasPrefix(flag, "@") {
 			return fmt.Errorf("ruff argument files are not supported for script at %s: %q", location, flag)
@@ -109,6 +114,9 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 			return fmt.Errorf("ruff silent output is not supported for script at %s", location)
 		}
 		option, _, _ := strings.Cut(flag, "=")
+		if option == "--extension" {
+			return fmt.Errorf("ruff source-type overrides are not supported for script at %s", location)
+		}
 		if option == "--help" || option == "--watch" || option == "--add-noqa" || option == "--add-ignore" ||
 			strings.HasPrefix(option, "-") && !strings.HasPrefix(option, "--") && strings.ContainsAny(option[1:], "hw") {
 			return fmt.Errorf("ruff non-diagnostic mode %q is not supported for script at %s", option, location)
@@ -306,7 +314,7 @@ func arguments(config Config, filename string) []string {
 	if selectRules == nil {
 		selectRules = []string{"F"}
 	}
-	args := []string{"check", "--isolated", "--target-version", target, "--select", strings.Join(selectRules, ","), "--ignore-noqa", "--no-fix", "--no-cache", "--output-format", "json", "--stdin-filename", filename}
+	args := []string{"check", "--isolated", "--target-version", target, "--select", strings.Join(selectRules, ","), "--ignore-noqa", "--no-fix", "--no-cache", "--output-format", "json", "--stdin-filename", filename, "--extension", "py:python"}
 	if len(ignoreRules) > 0 {
 		args = append(args, "--ignore", strings.Join(ignoreRules, ","))
 	}
@@ -378,7 +386,17 @@ func sanitize(src string, expressionEnd ExpressionEnd, placeholders *templateMas
 		if state.patternCapture {
 			return "", false, nil
 		}
-		if state.quote == 0 && !state.comment && (templateTouchesPythonToken(src, start, end) || templateFollowsPythonValue(state.lastToken) || state.subscriptDepth == 0 && (state.nameRequired || templateIsAssignmentTarget(src[:start], src[end:], state.depth))) {
+		code := &state
+		if state.inFieldExpression() {
+			code = state.fields[len(state.fields)-1].code
+			code.consumeCode(' ')
+		}
+		inCode := (state.quote == 0 || state.inFieldExpression()) && !state.comment && !state.fieldComment
+		assignment := templateIsAssignmentTarget(src[:start], src[end:], code.depth)
+		if state.inFieldExpression() && templateDebugFieldSuffix(src[end:]) {
+			assignment = false
+		}
+		if inCode && (templateTouchesPythonToken(src, start, end) || templateFollowsPythonValue(code.lastToken) || code.subscriptDepth == 0 && (code.nameRequired || assignment)) {
 			return "", false, nil
 		}
 		if state.quote == 0 && !state.comment && state.casePattern {
@@ -457,13 +475,22 @@ func sanitize(src string, expressionEnd ExpressionEnd, placeholders *templateMas
 			}
 		}
 		state.escaped = false
-		if state.quote == 0 && !state.comment {
-			state.lastToken = ")"
+		if inCode {
+			code.lastToken = ")"
 		}
 		out.WriteString(string(runes))
 		advancePosition(&position, src[start:end])
 		src = src[end:]
 	}
+}
+
+func templateDebugFieldSuffix(suffix string) bool {
+	rest, ok := strings.CutPrefix(strings.TrimSpace(suffix), "=")
+	if !ok {
+		return false
+	}
+	rest = strings.TrimSpace(rest)
+	return rest != "" && strings.ContainsRune("}!:", rune(rest[0]))
 }
 
 func advancePosition(position *Position, text string) {
@@ -543,6 +570,7 @@ type pythonStringState struct {
 type pythonFormatField struct {
 	brackets int
 	format   bool
+	code     *pythonLexicalState
 }
 
 func (s *pythonStringState) inFieldExpression() bool {
@@ -561,13 +589,14 @@ func pythonFormattedPrefix(prefix string) bool {
 func (s *pythonStringState) consumeField(c byte) {
 	if len(s.fields) == 0 || s.fields[len(s.fields)-1].format {
 		if c == '{' {
-			s.fields = append(s.fields, pythonFormatField{})
+			s.fields = append(s.fields, pythonFormatField{code: &pythonLexicalState{depth: 1}})
 		} else if c == '}' && len(s.fields) > 0 {
 			s.fields = s.fields[:len(s.fields)-1]
 		}
 		return
 	}
 	field := &s.fields[len(s.fields)-1]
+	field.code.consumeCode(c)
 	switch c {
 	case '(', '[', '{':
 		field.brackets++
@@ -764,6 +793,7 @@ func (s *pythonLexicalState) consume(text string) {
 				continue
 			}
 			if s.inFieldExpression() && (c == '\'' || c == '"') {
+				s.fields[len(s.fields)-1].code.consumeCode(c)
 				prefix := strings.ToLower(s.fieldWord)
 				s.fieldWord = ""
 				s.stringParents = append(s.stringParents, s.pythonStringState)

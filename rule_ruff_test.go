@@ -2,6 +2,7 @@ package actionlint
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -158,6 +159,27 @@ func TestMain(m *testing.M) {
 
 // The portable fake process exercises failures even when Ruff is not installed.
 func runRuffHelperProcess() {
+	if prefix := os.Getenv("ACTIONLINT_TEST_RUFF_PREFIX"); prefix != "" {
+		var expected []string
+		if err := json.Unmarshal([]byte(prefix), &expected); err != nil || len(os.Args) <= len(expected) || !slices.Equal(os.Args[1:len(expected)+1], expected) {
+			os.Exit(3)
+		}
+		file, err := os.OpenFile(os.Getenv("ACTIONLINT_TEST_RUFF_CALLS"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+		if err != nil {
+			os.Exit(3)
+		}
+		if _, err := fmt.Fprintln(file, strings.Join(os.Args[1:], " ")); err != nil {
+			os.Exit(3)
+		}
+		if err := file.Close(); err != nil {
+			os.Exit(3)
+		}
+		os.Args = append(os.Args[:1], os.Args[len(expected)+1:]...)
+		if len(os.Args) == 2 && os.Args[1] == "--version" {
+			fmt.Println("ruff 0.17.0")
+			os.Exit(0)
+		}
+	}
 	_, _ = io.Copy(io.Discard, os.Stdin)
 	if os.Getenv("ACTIONLINT_TEST_RUFF_WAIT") == "1" {
 		time.Sleep(10 * time.Second)
@@ -241,7 +263,7 @@ func TestRuffSuppressionAndOverride(t *testing.T) {
 }
 
 func TestRuffInterpolatedTokenSkipsOnlyItsScript(t *testing.T) {
-	for _, script := range []string{"value = ${{ github.run_number }}.0", "import ${{ 'json' }}", "from json import ${{ 'loads' }}"} {
+	for _, script := range []string{"value = ${{ github.run_number }}.0", "import ${{ 'json' }}", "from json import ${{ 'loads' }}", `print(f"{lhs ${{ '==' }} rhs}")`, `print(f"{item_${{ 'suffix' }}}")`} {
 		t.Run(script, func(t *testing.T) {
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: value = ${{ github.run_number }}.0\n      - shell: python\n        run: print(missing)\n"
 			source = strings.Replace(source, "value = ${{ github.run_number }}.0", script, 1)
@@ -376,6 +398,21 @@ func TestRuffPreviewAndAmbientOutputFile(t *testing.T) {
 	}
 	if content, err := os.ReadFile(output); err != nil || string(content) != "keep this content" {
 		t.Fatalf("ambient output file modified: %q, %v", content, err)
+	}
+}
+
+func TestRuffInlineConfigCannotChangeSourceType(t *testing.T) {
+	command := ruffForTest(t)
+	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+	for _, language := range []string{"ipynb", "pyi"} {
+		options := &ExternalCommandOptions{Executable: &command, Arguments: []string{"--config", "extension = { py = " + strconv.Quote(language) + " }"}}
+		result, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: options, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "F821" || result.Diagnostics[0].Start.Line != 7 || result.Diagnostics[0].Start.Column != 20 {
+			t.Fatalf("inline config changed Python source type or positions: %+v", result.Diagnostics)
+		}
 	}
 }
 

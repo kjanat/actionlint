@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -75,6 +76,54 @@ func TestRuffEnvironmentSilent(t *testing.T) {
 			status := command.Main(append([]string{"actionlint", "--no-color"}, args...))
 			if status == 0 || !strings.Contains(stdout.String()+stderr.String(), "silent output is not supported") {
 				t.Errorf("silent mode not rejected: status=%d, stdout=%s, stderr=%s", status, &stdout, &stderr)
+			}
+		}
+	}
+}
+
+func TestRuffEnvironmentSourceRemapping(t *testing.T) {
+	ruff, err := exec.LookPath("ruff")
+	if err != nil {
+		t.Skip("Ruff is not installed")
+	}
+	t.Setenv("ACTIONLINT_RUFF_BIN", ruff)
+	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", "")
+	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+	for _, flags := range []string{`["--extension", "py:ipynb"]`, `["--extension=py:pyi"]`} {
+		t.Setenv("ACTIONLINT_RUFF_FLAGS", flags)
+		for _, prefix := range [][]string{nil, {"check"}} {
+			var stdout, stderr bytes.Buffer
+			command := Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
+			args := append([]string{"actionlint", "--no-color"}, prefix...)
+			status := command.Main(append(args, "--no-config", "-"))
+			if status != 3 || !strings.Contains(stdout.String()+stderr.String(), "source-type overrides") {
+				t.Fatalf("source type changed: status=%d stdout=%s stderr=%s", status, &stdout, &stderr)
+			}
+		}
+	}
+}
+
+func TestRuffEnvironmentLauncher(t *testing.T) {
+	if _, err := exec.LookPath("ruff"); err != nil {
+		t.Skip("Ruff is not installed")
+	}
+	env, err := exec.LookPath("env")
+	if err != nil {
+		t.Skip("env is not installed")
+	}
+	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+	for _, suffix := range []string{"ruff", "NAME=reviewed ruff", "--unknown ruff", "ruff --extension py:ipynb"} {
+		for _, prefix := range [][]string{nil, {"check"}} {
+			var stdout, stderr bytes.Buffer
+			command := Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
+			args := append([]string{"actionlint", "--no-color", "--shellcheck="}, prefix...)
+			status := command.Main(append(args, "--ruff="+strconv.Quote(env)+" "+suffix, "--no-config", "-"))
+			if strings.Contains(suffix, "--") {
+				if status != 3 {
+					t.Fatalf("invalid launcher appeared clean: %d, %s, %s", status, &stdout, &stderr)
+				}
+			} else if status != 1 || !strings.Contains(stdout.String(), "F821") {
+				t.Fatalf("launcher did not produce Ruff finding: %d, %s, %s", status, &stdout, &stderr)
 			}
 		}
 	}

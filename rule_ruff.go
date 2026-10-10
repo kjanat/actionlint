@@ -14,10 +14,9 @@ func newRuffRule(c ruleContext) (*ruffRule, error) {
 		return nil, err
 	}
 	cmd.maxExitCode = 1
-	flags := cmd.args
-	cmd.args = nil
 	cmd.unsetEnv = ruff.UnsetEnvironment()
-	checker := ruff.New(cmd.run, cmd.wait, ruffExpressionEnd, flags...)
+	checker := ruff.New(cmd.run, cmd.wait, ruffExpressionEnd)
+	cmd.args = checker.CommandArguments(cmd.exe, cmd.args)
 	checker.WorkingDirectory(cmd.dir)
 	if c.ruffOptions != nil && c.ruffOptions.Optional {
 		compatibility := c.ruffCompatibility
