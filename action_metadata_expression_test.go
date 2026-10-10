@@ -42,3 +42,30 @@ func TestActionExpressionFunctions(t *testing.T) {
 		})
 	}
 }
+
+func TestActionConditionCompleteConsumption(t *testing.T) {
+	for _, tc := range []struct {
+		source  string
+		invalid bool
+	}{
+		{"${{ 'github.ref }} ignored' }}", true},
+		{"github.ref }} ignored", true},
+		{"${{ 'github.ref }}' }}", true},
+		{"${{ 'contains(github.ref, ''}}'')' }}", false},
+		{"contains(github.ref, '}}')", false},
+		{"${{ contains(github.ref, '}}') }}", false},
+		{"${{ github.ref }} text ${{ github.actor }}", false},
+		{"${{ '' }}", false},
+	} {
+		t.Run(tc.source, func(t *testing.T) {
+			violations := actionExpressionViolations(tc.source, true, "runs.steps.*.if")
+			if tc.invalid {
+				if len(violations) != 1 || !strings.Contains(violations[0].message, "unexpected trailing text in condition") {
+					t.Fatalf("want trailing-text error, got %#v", violations)
+				}
+			} else if len(violations) != 0 {
+				t.Fatalf("unexpected violations: %#v", violations)
+			}
+		})
+	}
+}

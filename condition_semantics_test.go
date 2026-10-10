@@ -16,6 +16,9 @@ func TestConditionNormalization(t *testing.T) {
 		{"${{ fromJSON('false') }}", "always falsy"},
 		{"${{ 'fromJSON(''false'')' }}", "always falsy"},
 		{"${{ fromJSON('true') }}", "always truthy"},
+		{"${{ toJSON(false) }}", "always truthy"},
+		{"${{ toJSON(null) }}", "always truthy"},
+		{"${{ toJSON('') }}", "always truthy"},
 		{"${{ case(true, false, true) }}", "always falsy"},
 		{"${{ case(false, false, true) }}", "always truthy"},
 		{"${{ case(1, false, true) }}", "always falsy"},
@@ -33,6 +36,8 @@ func TestConditionNormalization(t *testing.T) {
 		{`${{ join(fromJSON('["", ""]'), '') }}`, "always falsy"},
 		{`${{ join(fromJSON('["", ""]')) }}`, "always truthy"},
 		{`${{ join(fromJSON('["a", "b"]'), '-') }}`, "always truthy"},
+		{`${{ join(fromJSON('[{}, ""]'), '') }}`, "always truthy"},
+		{`${{ join(fromJSON('[[], ""]'), '') }}`, "always truthy"},
 		{"false", "always falsy"}, {"true", "always truthy"},
 		{"${{ 'nope' }}", "undefined variable"},
 		{"${{ '${{ false }}' }}", "unexpected"},
@@ -159,11 +164,41 @@ func TestConditionConstantCase(t *testing.T) {
 	}
 }
 
+func TestConditionConstantSerialization(t *testing.T) {
+	for _, tc := range []struct{ expression, want string }{
+		{"toJSON(null)", "null"},
+		{"toJSON(false)", "false"},
+		{"toJSON(true)", "true"},
+		{"toJSON('')", `""`},
+		{"toJSON('hello world')", `"hello world"`},
+		{"TOJSON('false')", `"false"`},
+		{`join(fromJSON('[{}, ""]'), '')`, "Object"},
+		{`join(fromJSON('[[], ""]'), '')`, "Array"},
+		{`join(fromJSON('[{}, []]'))`, "Object,Array"},
+		{`join(fromJSON('[{}, []]'), fromJSON('{}'))`, "Object,Array"},
+		{`join(fromJSON('[{}, []]'), fromJSON('[]'))`, "Object,Array"},
+		{`join(fromJSON('{}'))`, ""},
+		{`join(fromJSON('[]'))`, ""},
+		{`join(fromJSON('[null, false, true]'), '-')`, "-false-true"},
+	} {
+		t.Run(tc.expression, func(t *testing.T) {
+			expr := parseAssignedExpression("${{ " + tc.expression + " }}")
+			value, known := conditionConstantValue(expr)
+			if !known || value != tc.want {
+				t.Fatalf("value=%v known=%v, want %q", value, known, tc.want)
+			}
+		})
+	}
+}
+
 func TestConditionSerializationRemainsUnknown(t *testing.T) {
 	// The engines disagree on signed-zero serialization; strict JSON rejects
 	// non-finite round trips. Do not invent a single folded outcome.
 	for _, expression := range []string{
 		"toJSON(-0)", "format('{0}', -0)", "fromJSON(toJSON(fromJSON('1e309')))",
+		"toJSON(1)", "toJSON(fromJSON('{}'))", "toJSON(fromJSON('[]'))",
+		"toJSON('<html>')", "toJSON('é')", `toJSON('"')`, `toJSON('\')`,
+		"toJSON('''')", "toJSON('+')", "toJSON('`')", "toJSON('\n')",
 		`fromJSON('{"approved":false,"APPROVED":true}')`,
 		`fromJSON('{}') == fromJSON('{}')`,
 		`contains(fromJSON('[{}]'), fromJSON('{}'))`,

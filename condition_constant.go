@@ -82,12 +82,32 @@ func conditionConstantValue(expr ExprNode) (any, bool) {
 			}
 		}
 		switch strings.ToLower(n.Callee) {
+		case "tojson":
+			if len(args) == 1 {
+				switch value := args[0].(type) {
+				case nil:
+					return "null", true
+				case bool:
+					return strconv.FormatBool(value), true
+				case string:
+					// Only fold strings that need no escaping in either JSON engine.
+					for _, r := range value {
+						if r < ' ' || r > '~' || strings.ContainsRune("\"\\<>&'+`", r) {
+							return nil, false
+						}
+					}
+					return `"` + value + `"`, true
+				}
+			}
 		case "join":
 			if len(args) < 1 || len(args) > 2 {
 				return nil, false
 			}
 			items, array := args[0].([]any)
 			if !array {
+				if _, object := args[0].(map[string]any); object {
+					return "", true
+				}
 				return constantJoinString(args[0])
 			}
 			separator := ","
@@ -190,8 +210,10 @@ func constantJoinString(value any) (string, bool) {
 		return "", true
 	case bool:
 		return strconv.FormatBool(value), true
-	case []any, map[string]any:
-		return "", true
+	case []any:
+		return "Array", true
+	case map[string]any:
+		return "Object", true
 	default:
 		// Do not assume an engine's numeric serialization, including signed zero.
 		return "", false

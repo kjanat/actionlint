@@ -25,6 +25,9 @@ func actionExpressionViolations(s string, bare bool, field string) []actionExpre
 		return nil
 	}
 	if bare && (!strings.Contains(s, "${{") || literalExpressionValue(s) != nil) {
+		if _, err, _ := parseConditionExpression(s); err != nil {
+			return []actionExpressionViolation{{message: fmt.Sprintf("has an invalid expression: %v", err)}}
+		}
 		s = "${{" + conditionSource(s) + "}}"
 	}
 	seen := map[actionExpressionViolation]bool{}
