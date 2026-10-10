@@ -49,6 +49,9 @@ func TestIndependentTemplateValues(t *testing.T) {
 		{"d = {${{0}}: 1, ${{1}}: 2}", nil},
 		{"def f(value: '${{ inputs.type }}'): pass", nil},
 		{"def f(value: ${{ inputs.type }}): pass", nil},
+		{"sentinel = object(); sentinel is ${{ inputs.expected }}", nil},
+		{"sentinel = object(); sentinel is not ${{ inputs.expected }}", nil},
+		{"sentinel = object(); sentinel is 0; print(${{ inputs.expected }})", []string{"F632"}},
 		{"d = {0: 1, 0: 2}; print(${{ inputs.first }})", []string{"F601"}},
 		{"print(_0); print(${{ inputs.first }})", []string{"F821"}},
 	} {
