@@ -27,7 +27,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	// Normalizing line endings keeps YAML comment attachment consistent while
 	// preserving every source line and column used by diagnostics.
 	if err := yaml.Unmarshal(bytes.ReplaceAll(source, []byte("\r\n"), []byte("\n")), &root); err != nil {
-		return nil
+		return recoverInlineSuppressionComments(source)
 	}
 	lines := splitSourceLines(source)
 	documentEnd := len(lines)
@@ -242,6 +242,7 @@ func readYAMLNodePrefixComments(node *yaml.Node, lines []string, endLine, parent
 				last = next + 1
 			}
 			blockEnds[line] = last
+			blockEnds[node.Line] = last
 			if end := strings.IndexAny(text, " \t"); end >= 0 {
 				if comment := strings.TrimLeft(text[end:], " \t"); strings.HasPrefix(comment, "#") {
 					read(line, comment, false)

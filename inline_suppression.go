@@ -100,7 +100,10 @@ func filterForeignInlineSuppressions(path string, source []byte, findings []*Err
 	}
 	local = filterInlineSuppressions(source, local, policy)
 	for _, finding := range local {
-		finding.source, finding.Filepath = source, path
+		finding.source = source
+		if finding.Filepath == "" {
+			finding.Filepath = path
+		}
 	}
 	return local
 }

@@ -6,6 +6,18 @@ import (
 	"testing"
 )
 
+func TestForeignSuppressionPreservesDiagnosticPath(t *testing.T) {
+	source := []byte("name: test # actionlint:ignore action\n")
+	finding := &Error{Filepath: "./local/action.yml", Line: 2, Kind: "expression", source: source}
+	got := filterForeignInlineSuppressions("/repo/local/action.yml", source, []*Error{finding}, nil)
+	if len(got) != 2 || got[0].Filepath != finding.Filepath || got[1].Filepath != "/repo/local/action.yml" || got[1].Kind != "inline-suppression" {
+		t.Fatalf("foreign filtering changed diagnostic identity: %+v", got)
+	}
+	if got[0] == finding || string(got[0].source) != string(source) || finding.Filepath != "./local/action.yml" {
+		t.Fatalf("foreign filtering mutated the original finding: %+v", finding)
+	}
+}
+
 func TestSourcedScriptsAreNotSuppressionMetadata(t *testing.T) {
 	command := shellcheckForTest(t)
 	for _, suffix := range []string{".sh", ".yml", ".yaml"} {

@@ -137,6 +137,9 @@ func TestInlineSuppressionBlockBody(t *testing.T) {
 		"# actionlint:ignore-next-line expression,shellcheck -- reviewed\nrun: |",
 		"run: &script | # actionlint:ignore expression,shellcheck -- reviewed",
 		"run: !!str\n  | # actionlint:ignore expression,shellcheck -- reviewed",
+		"# actionlint:ignore-next-line expression,shellcheck -- reviewed\nrun: !!str\n  |",
+		"# actionlint:ignore-next-line expression,shellcheck -- reviewed\nrun: &script\n  |2-",
+		"# actionlint:ignore-next-line expression,shellcheck -- reviewed\nrun: &script !!str\n  >-",
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(header+ending, func(t *testing.T) {
@@ -154,6 +157,66 @@ func TestInlineSuppressionBlockBody(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestInlineSuppressionMalformedYAML(t *testing.T) {
+	for _, source := range []string{
+		"jobs: [ # actionlint:ignore syntax-check -- intentional",
+		"# actionlint:ignore-next-line syntax-check -- intentional\njobs: [",
+	} {
+		for _, ending := range []string{"\n", "\r\n"} {
+			source := []byte(strings.ReplaceAll(source, "\n", ending))
+			_, findings := Parse(source)
+			if len(findings) != 1 || findings[0].Kind != "syntax-check" {
+				t.Fatalf("malformed fixture findings: %+v", findings)
+			}
+			if got := filterInlineSuppressions(source, findings, nil); len(got) != 0 {
+				t.Fatalf("syntax finding was not suppressed: %+v", got)
+			}
+		}
+	}
+	for _, source := range []string{
+		"name: '# actionlint:ignore syntax-check -- text'\njobs: [",
+		"name: \"# actionlint:ignore syntax-check -- text\"\njobs: [",
+		"name: \"first\n  # actionlint:ignore syntax-check -- text\n  last\"\njobs: [",
+		"name: 'first\n  # actionlint:ignore syntax-check -- text\n  last'\njobs: [",
+		"name: 'it''s\n  # actionlint:ignore syntax-check -- text\n  last'\njobs: [",
+		"name: \"escaped \\\"\n  # actionlint:ignore syntax-check -- text\n  last\"\njobs: [",
+		"run: |\n  # actionlint:ignore syntax-check -- script\njobs: [",
+		"run: >-\n  print('''\n  # actionlint:ignore syntax-check -- script\n  ''')\njobs: [",
+		"run: !!str\n  |\n    # actionlint:ignore syntax-check -- script\njobs: [",
+		"run: !!str\n\n  |2\n  # actionlint:ignore syntax-check -- script\njobs: [",
+		"run: !!str\n# header comment\n  |2\n  # actionlint:ignore syntax-check -- script\njobs: [",
+		"steps:\n  - run: &script |2\n      # actionlint:ignore syntax-check -- script\njobs: [",
+		"jobs: [\n# actionlint:ignore-next-line syntax-check -- no declaration",
+		"jobs: [\n# actionlint:ignore-next-line syntax-check -- no declaration\n",
+		"jobs: [\n# actionlint:ignore-next-line syntax-check -- blank\n\n  value",
+		"jobs: [\n# actionlint:ignore-next-line syntax-check -- comment\n# another comment\n  value",
+	} {
+		if got := collectInlineSuppressionComments([]byte(source)); len(got) != 0 {
+			t.Fatalf("scalar content became a directive in %q: %+v", source, got)
+		}
+	}
+	source := []byte("jobs: [ # actionlint:ignore syntax-check")
+	_, findings := Parse(source)
+	got := filterInlineSuppressions(source, findings, nil)
+	if len(got) != 2 || got[1].Kind != "inline-suppression" || !strings.Contains(got[1].Message, "reason") {
+		t.Fatalf("missing reason was accepted: %+v", got)
+	}
+	cfg, err := ParseConfig([]byte("policy: {disallow-suppressions: true}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source = []byte("jobs: [ # actionlint:ignore syntax-check -- reviewed")
+	_, findings = Parse(source)
+	if got := filterInlineSuppressions(source, findings, cfg.Policy.DisallowSuppressions); len(got) != 2 || got[1].Kind != "disallow-suppressions" {
+		t.Fatalf("malformed YAML bypassed suppression policy: %+v", got)
+	}
+	source = []byte("name: test # actionlint:ignore syntax-check -- reviewed\njobs: [")
+	_, findings = Parse(source)
+	if got := filterInlineSuppressions(source, findings, nil); len(got) != 1 || got[0] != findings[0] {
+		t.Fatalf("unrelated declaration suppressed syntax error: %+v", got)
 	}
 }
 

@@ -11,13 +11,12 @@ import (
 func TestInvalidLocalActionSuppressionDirectives(t *testing.T) {
 	for _, metadata := range []struct {
 		name, source string
-		validYAML    bool
 	}{
-		{"steps-mapping", "name: inner %s\nruns: {using: composite, steps: {}}\n", true},
-		{"false-inputs", "name: inner %s\ninputs: false\nruns: {using: node24, main: index.js}\n", true},
-		{"false-runs", "name: inner %s\nruns: false\n", true},
-		{"false-document", "false %s\n", true},
-		{"invalid-yaml", "name: [ %s\n", false},
+		{"steps-mapping", "name: inner %s\nruns: {using: composite, steps: {}}\n"},
+		{"false-inputs", "name: inner %s\ninputs: false\nruns: {using: node24, main: index.js}\n"},
+		{"false-runs", "name: inner %s\nruns: false\n"},
+		{"false-document", "false %s\n"},
+		{"invalid-yaml", "name: [ %s\n"},
 	} {
 		for _, nested := range []bool{false, true} {
 			for _, tc := range []struct{ name, directive, config, want string }{
@@ -40,14 +39,14 @@ func TestInvalidLocalActionSuppressionDirectives(t *testing.T) {
 						switch {
 						case diagnostic.Rule == "action" && strings.Contains(diagnostic.Message, "could not parse action metadata"):
 							syntaxCount++
-						case metadata.validYAML && tc.want != "" && diagnostic.Rule == tc.want && filepath.ToSlash(diagnostic.Path) == "inner/action.yml" && diagnostic.Start.Line == 1:
+						case tc.want != "" && diagnostic.Rule == tc.want && filepath.ToSlash(diagnostic.Path) == "inner/action.yml" && diagnostic.Start.Line == 1:
 							directiveCount++
 						default:
 							t.Fatalf("unexpected diagnostic: %+v", diagnostic)
 						}
 					}
 					wantDirective := 0
-					if metadata.validYAML && tc.want != "" {
+					if tc.want != "" {
 						wantDirective = 1
 					}
 					if syntaxCount != 1 || directiveCount != wantDirective {

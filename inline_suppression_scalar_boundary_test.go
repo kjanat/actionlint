@@ -64,6 +64,12 @@ func TestInlineSuppressionCompactScalarBoundary(t *testing.T) {
 				if len(got) != 2 || got[0] != sibling || got[1].Kind != "inline-suppression" || got[1].Line != outsideLine {
 					t.Fatalf("block suppression crossed its scalar boundary: %+v", got)
 				}
+				// A later parse error must preserve the same comment boundaries.
+				source = append(source, []byte("invalid: [")...)
+				got = filterInlineSuppressions(source, findings, nil)
+				if len(got) != 2 || got[0] != sibling || got[1].Kind != "inline-suppression" || got[1].Line != outsideLine {
+					t.Fatalf("recovery crossed its scalar boundary: %+v", got)
+				}
 			})
 		}
 	}
