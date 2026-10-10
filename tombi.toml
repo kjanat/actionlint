@@ -96,3 +96,8 @@ include = ["**/zed-*/extension.toml", "**/*-zed/extension.toml"]
 [[schemas]]  # Documentation: https://developers.openai.com/codex/
 path    = "https://gist.githubusercontent.com/kjanat/5153798b521fbbc686932463327669c8/raw/codex-config.schema.json"
 include = [".codex/config.toml", "**/.codex/config.toml"]
+
+# Mise
+[[schemas]]
+path    = "https://mise.jdx.dev/schema/mise.json"
+include = ["mise.toml", ".mise.toml"]

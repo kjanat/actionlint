@@ -5,10 +5,9 @@
     "cwd": "${configDir}",
     "commands": [
       {
-        "command": "tombi format - --stdin-filename {{file_path}}",
+        "command": "mise exec github:tombi-toml/tombi -- tombi format - --stdin-filename {{file_path}}",
         "exts": ["toml"],
-        "cacheKeyFiles": ["tombi.toml"],
-        "setupCommand": "npm i -g tombi"
+        "cacheKeyFiles": ["tombi.toml"]
       },
       { "command": "gofmt -s", "exts": ["go"] }
     ]
