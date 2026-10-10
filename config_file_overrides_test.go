@@ -62,6 +62,50 @@ overrides:
 	}
 }
 
+func TestProgrammaticLintOverridePreservesUnsetFields(t *testing.T) {
+	for _, tc := range []struct {
+		name, yaml string
+		lint       *LintConfig
+		want       RuleLevel
+	}{
+		{"enabled", "{enabled: true}", &LintConfig{Enabled: new(true)}, "off"},
+		{"empty", "{}", &LintConfig{}, "off"},
+		{"clear", "{rules: {disable: []}}", &LintConfig{Rules: LintRulesConfig{Disable: []string{}}}, "on"},
+		{"null-disable", "{rules: {disable: null}}", nil, "on"},
+		{"null-rules", "{rules: null}", nil, "on"},
+		{"null-lint", "null", nil, "on"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, programmatic := range []bool{false, true} {
+				if programmatic && tc.lint == nil {
+					continue
+				}
+				cfg, err := ParseConfig([]byte("lint: {rules: {disable: [expression]}}\noverrides: [{includes: ['**'], lint: " + tc.yaml + "}]"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if programmatic {
+					cfg.Overrides = []ConfigOverride{{Includes: []string{"**"}, Lint: tc.lint}}
+				}
+				for range 2 {
+					effective, err := configForFile(cfg, "ci.yml", "")
+					if err != nil || effective.diagnosticLevel("expression") != tc.want {
+						t.Fatalf("programmatic=%t: want %s, got %+v, %v", programmatic, tc.want, effective, err)
+					}
+					encoded, err := yaml.Marshal(cfg)
+					if err != nil {
+						t.Fatal(err)
+					}
+					cfg, err = ParseConfig(encoded)
+					if err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestRuleLevelAliasOverrides(t *testing.T) {
 	for _, tc := range []struct {
 		base, overlay string

@@ -15,12 +15,31 @@ func (cfg *Config) includesFile(path, root string) bool {
 	if cfg == nil {
 		return true
 	}
-	if filepath.IsAbs(path) && root != "" {
-		if relative, err := filepath.Rel(absPath(root), path); err == nil {
-			path = relative
+	return cfg.Files.Match(repositoryRelativeConfigPath(path, root))
+}
+
+func repositoryRelativeConfigPath(path, root string) string {
+	if !filepath.IsAbs(path) || root == "" {
+		return path
+	}
+	root = absPath(root)
+	relative, err := filepath.Rel(root, path)
+	if err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return relative
+	}
+	// Preserve in-repository alias scopes. Resolve checkout aliases only when
+	// lexical matching would place the supplied file outside the project.
+	physicalRoot, rootErr := filepath.EvalSymlinks(root)
+	physicalPath, pathErr := filepath.EvalSymlinks(path)
+	if rootErr == nil && pathErr == nil {
+		if physicalRelative, err := filepath.Rel(physicalRoot, physicalPath); err == nil {
+			return physicalRelative
 		}
 	}
-	return cfg.Files.Match(path)
+	if err == nil {
+		return relative
+	}
+	return path
 }
 
 func normalizeExtendedConfig(path string, node *yaml.Node, inherited bool) (*yaml.Node, []ConfigWarning, error) {

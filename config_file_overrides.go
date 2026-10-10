@@ -3,7 +3,6 @@ package actionlint
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"actionlint.kjanat.dev/internal/configtree"
@@ -83,7 +82,11 @@ func (o ConfigOverride) MarshalYAML() (any, error) {
 	if o.lintNode != nil {
 		value["lint"] = o.lintNode
 	} else if o.Lint != nil {
-		value["lint"] = o.Lint
+		node, err := lintConfigNode(*o.Lint)
+		if err != nil {
+			return nil, err
+		}
+		value["lint"] = node
 	}
 	if o.toolsNode != nil {
 		value["tools"] = o.toolsNode
@@ -105,8 +108,27 @@ func lintConfigNode(config LintConfig) (*yaml.Node, error) {
 	if config.source != nil {
 		return configtree.Expand(config.source, make(map[*yaml.Node]bool))
 	}
+	var rules yaml.Node
+	if err := rules.Encode(config.Rules); err != nil {
+		return nil, err
+	}
+	if config.Rules.Disable == nil {
+		for i := 0; i < len(rules.Content); i += 2 {
+			if rules.Content[i].Value == "disable" {
+				rules.Content = append(rules.Content[:i], rules.Content[i+2:]...)
+				break
+			}
+		}
+	}
+	value := map[string]any{}
+	if config.Enabled != nil {
+		value["enabled"] = config.Enabled
+	}
+	if len(rules.Content) != 0 {
+		value["rules"] = &rules
+	}
 	var node yaml.Node
-	if err := node.Encode(config); err != nil {
+	if err := node.Encode(value); err != nil {
 		return nil, err
 	}
 	return &node, nil
@@ -118,12 +140,7 @@ func configForFile(config *Config, path, root string) (*Config, error) {
 	if config == nil || len(config.Overrides) == 0 {
 		return config, nil
 	}
-	if filepath.IsAbs(path) && root != "" {
-		if relative, err := filepath.Rel(absPath(root), path); err == nil {
-			path = relative
-		}
-	}
-	path = strings.TrimPrefix(filepath.ToSlash(filepath.Clean(path)), "./")
+	path = repositoryRelativeConfigPath(path, root)
 	node, err := lintConfigNode(config.Lint)
 	if err != nil {
 		return nil, err

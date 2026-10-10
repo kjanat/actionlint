@@ -78,6 +78,73 @@ func TestCallerRelativeSelection(t *testing.T) {
 	}
 }
 
+func TestPhysicalProjectAliasSelection(t *testing.T) {
+	parent := t.TempDir()
+	root := filepath.Join(parent, "physical")
+	content := "on: push\njobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}\n"
+	writeShellcheckFixture(t, root, ".github/workflows/ci.yml", content)
+	alias := filepath.Join(parent, "alias")
+	if err := os.Symlink(root, alias); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	for _, filtered := range []bool{false, true} {
+		config := "overrides: [{includes: ['.github/workflows/**'], lint: {rules: {correctness: {if-cond: warn}}}}]\n"
+		if filtered {
+			config += "files: {includes: ['.github/workflows/**']}\n"
+		}
+		cfg, err := ParseConfig([]byte(config))
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeShellcheckFixture(t, root, ".github/actionlint.yaml", config)
+		for _, roots := range [][2]string{{root, alias}, {alias, root}} {
+			project, err := NewProject(roots[0])
+			if err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(roots[1], ".github", "workflows", "ci.yml")
+			check := func(result *AnalysisResult, err error) {
+				t.Helper()
+				if err != nil || result == nil || result.FileCount() != 1 || !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "if-cond" && d.Severity == "warning" }) {
+					t.Fatalf("filtered=%t: alias selection/override lost: %+v, %v", filtered, result, err)
+				}
+			}
+			check(Analyze(t.Context(), AnalysisRequest{WorkingDir: parent, Sources: []SourceUnit{{Path: path, Content: []byte(content), Project: project, Config: cfg}}}))
+			var reads []string
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: parent, ReadFile: func(name string) ([]byte, error) {
+				reads = append(reads, name)
+				return os.ReadFile(name)
+			}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			check(session.Files([]string{path}, project))
+			if !slices.Contains(reads, path) {
+				t.Fatalf("reader lost caller path %q: %v", path, reads)
+			}
+		}
+	}
+}
+
+func TestRepositoryRelativeConfigAliasBoundaries(t *testing.T) {
+	root := t.TempDir()
+	physical := writeShellcheckFixture(t, root, "physical/ci.yml", commandGoodWorkflow)
+	alias := filepath.Join(root, "alias")
+	if err := os.Symlink(filepath.Dir(physical), alias); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	for _, tc := range []struct{ path, want string }{
+		{filepath.Join(alias, "ci.yml"), filepath.Join("alias", "ci.yml")},
+		{filepath.Join(root, "virtual", "ci.yml"), filepath.Join("virtual", "ci.yml")},
+		{filepath.Join(root, "..", "missing", "ci.yml"), filepath.Join("..", "missing", "ci.yml")},
+		{"./ci.yml", "./ci.yml"},
+	} {
+		if got := repositoryRelativeConfigPath(tc.path, root); got != tc.want {
+			t.Fatalf("path %q: got %q, want %q", tc.path, got, tc.want)
+		}
+	}
+}
+
 func TestCallerRelativeDisplaySpelling(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
