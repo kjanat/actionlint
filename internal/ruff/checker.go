@@ -435,7 +435,7 @@ func (s *pythonLexicalState) consumeCode(c byte) {
 			s.className = false
 		}
 	}
-	if c != ' ' && c != '\t' && c != '\r' && !(c == '\n' && s.depth > 0) {
+	if c != ' ' && c != '\t' && c != '\r' && (c != '\n' || s.depth <= 0) {
 		s.lastToken = string(c)
 	}
 }
