@@ -169,7 +169,7 @@ func mergeToolsOverride(base ToolsConfig, override ConfigOverride) (ToolsConfig,
 	if err := node.Encode(map[string]any{"tools": base}); err != nil {
 		return ToolsConfig{}, err
 	}
-	value := any(override.Tools)
+	var value any
 	if override.toolsNode != nil {
 		value = override.toolsNode
 	} else {
