@@ -1,7 +1,8 @@
 {
   description = "GitHub Actions workflow linter";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+  # Pin the Go 1.27.2 update until it reaches nixpkgs-unstable.
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/4b4931b2f5d285574aa1fbdbbf58e6aab595d31c";
 
   outputs =
     { self, nixpkgs }:
@@ -18,6 +19,7 @@
       packages = forAllSystems (pkgs: rec {
         actionlint = pkgs.callPackage ./nix/package.nix {
           src = self;
+          buildGoModule = pkgs.buildGo127Module;
           inherit version;
         };
         default = actionlint;
@@ -33,7 +35,7 @@
       devShells = forAllSystems (pkgs: {
         default = pkgs.mkShell {
           packages = with pkgs; [
-            go
+            go_1_27
             git
             bash
             bash-completion

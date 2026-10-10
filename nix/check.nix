@@ -17,6 +17,9 @@ runCommand "actionlint-nix-integration"
   ''
     bash ${../scripts/check-packaged-cli.bash} ${actionlint}/bin/actionlint
     ${actionlint}/bin/actionlint -version | grep -Fx 'actionlint.kjanat.dev ${actionlint.version}'
+    expectedToolchain="$(sed -n 's/^toolchain //p' ${actionlint.src}/go.mod)"
+    test -n "$expectedToolchain"
+    ${actionlint}/bin/actionlint -version | grep -F "built with $expectedToolchain compiler for "
     ${actionlint}/bin/actionlint -help > help.txt 2>&1
     grep -Fx 'Usage:' help.txt
     grep -F 'actionlint [flags] [files...] [-]' help.txt
