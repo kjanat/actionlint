@@ -11,6 +11,9 @@ func Main(env func(string) string, stdout io.Writer) int {
 	if env("INPUT_PYFLAKES") == "true" {
 		_, _ = io.WriteString(stdout, "::warning::The pyflakes input is deprecated and ignored; Python script linting has been removed.\n")
 	}
+	if env("INPUT_ADD-PYFLAKES-TO-PATH") == "true" {
+		_, _ = io.WriteString(stdout, "::warning::The add-pyflakes-to-path input is deprecated and ignored; Pyflakes is no longer installed or added to PATH.\n")
+	}
 	a := &action{
 		args:    environmentArgs(env),
 		stdout:  stdout,

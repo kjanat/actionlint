@@ -43,6 +43,38 @@ test('deprecated Python input cannot enable Python linting in a selected older b
 	assert.deepEqual(Object.keys(setup.publications[0] ?? {}), ['actionlint']);
 });
 
+test('retired Pyflakes PATH requests warn once without enabling installation', async (t) => {
+	const messages: string[] = [];
+	t.mock.method(console, 'log', (message: string) => messages.push(message));
+	for (const setupOnly of [false, true]) {
+		for (const value of [undefined, '', 'false', 'true']) {
+			for (const pyflakes of ['false', 'true']) {
+				messages.length = 0;
+				const setup = fixture();
+				const environment: Environment = {
+					'INPUT_INSTALL-ONLY': String(setupOnly),
+					INPUT_SHELLCHECK: 'false',
+					INPUT_PYFLAKES: pyflakes,
+				};
+				if (value !== undefined) environment['INPUT_ADD-PYFLAKES-TO-PATH'] = value;
+				assert.equal(await runAction(environment, setup.runtime), 0);
+				const warnings = messages.filter((message) => message.startsWith('::warning::'));
+				assert.equal(warnings.length, Number(value === 'true') + Number(pyflakes === 'true'));
+				assert.equal(warnings.some((message) => message.includes('add-pyflakes-to-path')), value === 'true');
+				assert.deepEqual(setup.calls, ['native']);
+				assert.equal(environment['INPUT_ADD-PYFLAKES-TO-PATH'], value);
+				if (!setupOnly) {
+					assert.equal(setup.executions[0]?.environment.INPUT_PYFLAKES, 'false');
+					assert.equal(
+						setup.executions[0]?.environment['INPUT_ADD-PYFLAKES-TO-PATH'],
+						value === 'true' ? 'false' : value,
+					);
+				}
+			}
+		}
+	}
+});
+
 test('install-only publishes tools without inspecting or executing the selected binary', async () => {
 	const setup = fixture();
 	setup.runtime.inspect = async () => assert.fail('setup must not inspect workflows or require the Action protocol');

@@ -72,6 +72,12 @@ export async function runAction(environment: Environment, runtime: Runtime): Pro
 		console.log('::warning::Pyflakes integration has been removed; the deprecated pyflakes input is ignored.');
 	}
 	childEnvironment.INPUT_PYFLAKES = 'false';
+	if (environment['INPUT_ADD-PYFLAKES-TO-PATH'] === 'true') {
+		console.log(
+			'::warning::The add-pyflakes-to-path input is deprecated and ignored; Pyflakes is no longer installed or added to PATH.',
+		);
+		childEnvironment['INPUT_ADD-PYFLAKES-TO-PATH'] = 'false';
+	}
 	const tools: InstalledTools = {};
 	if (addActionlint) tools.actionlint = executable;
 	delete childEnvironment.ACTIONLINT_SHELLCHECK_COMMAND;
