@@ -12,11 +12,24 @@ func TestRuffStatementTemplatesPreserveFindings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, statement := range []string{"print(1)", "${{ 'print(1)' }}", "(${{ 'print(1)' }})", "((${{ 'print(1)' }}))", "${{\n 'print(1)'\n}}"} {
+	for _, tc := range []struct {
+		name, statement string
+		opaqueStatement bool
+	}{
+		{"static statement", "print(1)", false},
+		{"opaque statement", "${{ 'print(1)' }}", true},
+		{"parenthesized value", "(${{ 'print(1)' }})", false},
+		{"nested parenthesized value", "((${{ 'print(1)' }}))", false},
+		{"multiline opaque statement", "${{\n 'print(1)'\n}}", true},
+	} {
 		for _, ending := range []string{"\n", "\r\n"} {
-			t.Run(statement+ending, func(t *testing.T) {
-				script := statement + "\n42\nprint(missing)"
+			t.Run(tc.name+ending, func(t *testing.T) {
+				script := tc.statement + "\n42\nprint(missing)"
 				source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: |\n          " + strings.ReplaceAll(script, "\n", "\n          ") + "\n"
+				if tc.opaqueStatement {
+					// An opaque statement skips only its containing script.
+					source += "      - shell: python\n        run: print(second_missing)\n"
+				}
 				result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}}})
 				if err != nil {
 					t.Fatal(err)
@@ -25,7 +38,20 @@ func TestRuffStatementTemplatesPreserveFindings(t *testing.T) {
 				for _, diagnostic := range result.Diagnostics {
 					codes = append(codes, diagnostic.Code)
 				}
-				if !slices.Equal(codes, []string{"B018", "F821"}) || result.Diagnostics[0].Start.Line != 9+strings.Count(statement, "\n") || result.Diagnostics[1].Start.Line != 10+strings.Count(statement, "\n") {
+				offset := strings.Count(tc.statement, "\n")
+				if tc.opaqueStatement {
+					if !slices.Equal(codes, []string{"F821"}) {
+						t.Fatalf("opaque statement affected other steps: %+v", result.Diagnostics)
+					}
+					finding := result.Diagnostics[0]
+					if finding.Start != (DiagnosticPosition{Line: 12 + offset, Column: 20}) || finding.End != (DiagnosticPosition{Line: 12 + offset, Column: 34}) || !strings.Contains(finding.Message, "second_missing") {
+						t.Fatalf("independent step finding moved: %+v", finding)
+					}
+					return
+				}
+				if !slices.Equal(codes, []string{"B018", "F821"}) ||
+					result.Diagnostics[0].Start != (DiagnosticPosition{Line: 9 + offset, Column: 11}) || result.Diagnostics[0].End != (DiagnosticPosition{Line: 9 + offset, Column: 13}) ||
+					result.Diagnostics[1].Start != (DiagnosticPosition{Line: 10 + offset, Column: 17}) || result.Diagnostics[1].End != (DiagnosticPosition{Line: 10 + offset, Column: 24}) {
 					t.Fatalf("statement template changed independent findings: %+v", result.Diagnostics)
 				}
 			})

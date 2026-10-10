@@ -539,6 +539,11 @@ func sanitize(src string, expressionEnd ExpressionEnd, placeholders *templateMas
 			code.consumeCode(' ')
 		}
 		inCode := (state.quote == 0 || state.inFieldExpression()) && !state.comment && !state.fieldComment
+		// Whole-statement templates can declare names that later code uses.
+		// A value mask would lose those bindings, so skip the script.
+		if inCode && !state.inFieldExpression() && code.depth == 0 && templateIsPythonStatement(src[:start], src[end:], code) {
+			return "", false, nil
+		}
 		assignment := templateIsAssignmentTarget(src[:start], src[end:], code.depth)
 		if state.inFieldExpression() && templateDebugFieldSuffix(src[end:]) {
 			assignment = false
@@ -671,6 +676,23 @@ func templateFollowsPythonValue(token string) bool {
 	return pythonTokenCanBeSubscripted(token)
 }
 
+func templateIsPythonStatement(prefix, suffix string, state *pythonLexicalState) bool {
+	rest := strings.TrimLeft(suffix, " \t\r")
+	if rest != "" && !strings.ContainsRune("\n;#", rune(rest[0])) {
+		return false
+	}
+	// Explicit continuations keep the same statement boundary.
+	prefix = strings.ReplaceAll(strings.ReplaceAll(prefix, "\\\r\n", ""), "\\\n", "")
+	part := strings.TrimSpace(prefix[strings.LastIndexAny(prefix, "\n;")+1:])
+	switch state.lastToken {
+	case "", "\n", ";", "\\":
+		return part == ""
+	case ":":
+		return state.suiteColon
+	}
+	return false
+}
+
 func templateTouchesPythonToken(source string, start, end int) bool {
 	left, _ := utf8.DecodeLastRuneInString(source[:start])
 	right, _ := utf8.DecodeRuneInString(source[end:])
@@ -798,6 +820,8 @@ type pythonLexicalState struct {
 	className       bool
 	lastToken       string
 	asyncKeyword    bool
+	suiteColon      bool
+	statementHead   string
 	subscriptDepth  int
 	nameListDepth   int
 	functionName    bool
@@ -819,6 +843,9 @@ func (s *pythonLexicalState) consumeCode(c byte) {
 	}
 	previous := s.lastToken
 	if s.word != "" {
+		if s.statementHead == "" && s.depth == 0 {
+			s.statementHead = s.word
+		}
 		s.lastToken = s.word
 		s.asyncKeyword = s.word == "async"
 	}
@@ -900,6 +927,14 @@ func (s *pythonLexicalState) consumeCode(c byte) {
 		}
 	case ':', ';':
 		if s.depth == 0 {
+			s.suiteColon = false
+			if c == ':' {
+				switch s.statementHead {
+				case "if", "elif", "else", "while", "for", "with", "try", "except", "finally", "match", "case", "def", "class", "async":
+					s.suiteColon = true
+				}
+			}
+			s.statementHead = ""
 			s.patternCapture = s.patternCapture || c == ':' && s.casePattern && s.pendingCapture
 			s.casePattern, s.pendingCapture = false, false
 			s.valueFromDepths = s.valueFromDepths[:0]
@@ -911,6 +946,7 @@ func (s *pythonLexicalState) consumeCode(c byte) {
 		s.className = false
 	case '\n':
 		if s.depth == 0 {
+			s.statementHead = ""
 			s.casePattern, s.pendingCapture = false, false
 			s.nameRequired, s.nameList = false, false
 			s.className = false

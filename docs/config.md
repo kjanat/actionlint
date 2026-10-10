@@ -228,6 +228,7 @@ custom command beginning with either interpreter, including workflow/job shell
 defaults and local composite actions. The CLI discovers Ruff on `PATH` and skips
 it when unavailable. `--ruff=false` or `--ruff=` disables it;
 `--ruff /path/to/ruff` selects a binary.
+`--ruff 'python -m ruff'` runs Ruff through a Python module launcher.
 It never installs tools or executes Python scripts.
 
 ```yaml
@@ -260,7 +261,8 @@ Inline YAML suppressions target the diagnostic's reported line. A directive on
 the YAML block header covers the script body.
 Ruff skips a script when an unquoted Actions expression forms part of a Python
 token, such as `item_${{ matrix.os }}` or `${{ inputs.major }}.0`, or supplies a
-name in statements such as `import ${{ inputs.module }}`. Other steps and
+name in statements such as `import ${{ inputs.module }}`, or supplies a whole
+statement that may define names used later in the script. Other steps and
 actionlint's workflow checks still run. Templates inside strings and comments
 continue to be sanitized while preserving source positions.
 Explicitly requested Ruff executables and Ruff invocation/configuration failures fail analysis.

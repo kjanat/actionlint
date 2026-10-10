@@ -20,22 +20,26 @@ func TestRuffLauncherArguments(t *testing.T) {
 		t.Fatal(err)
 	}
 	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(1)\n"
-	for _, launcher := range []string{"env", "uvx", "uvx-pinned"} {
-		tool := filepath.Join(t.TempDir(), strings.TrimSuffix(launcher, "-pinned"))
-		if runtime.GOOS == "windows" {
+	for _, tc := range []struct {
+		name, executable string
+		prefix, invalid  []string
+	}{
+		{"env", "env", []string{"NAME=--silent", "ruff"}, nil},
+		{"uvx", "uvx", []string{"--from", "ruff", "--no-cache", "ruff"}, nil},
+		{"uvx-pinned", "uvx", []string{"ruff@0.17.0"}, nil},
+		{"python", "python", []string{"-m", "ruff"}, []string{"-c", "import ruff"}},
+		{"python3", "python3", []string{"-mruff"}, []string{"ruff.py"}},
+		{"python3.12", "python3.12", []string{"-IuB", "-W", "error", "-Xutf8", "-m", "ruff"}, []string{"-m", "other"}},
+		{"python-exe", "PYTHON3.13.EXE", []string{"-Em", "ruff"}, []string{"-W", "-m", "ruff"}},
+		{"py-exe", "PY.EXE", []string{"-V:PythonCore/3.12", "-u", "-m", "ruff"}, []string{"-V:Other/3.12", "-m", "ruff"}},
+	} {
+		launcher, prefix := tc.name, tc.prefix
+		tool := filepath.Join(t.TempDir(), tc.executable)
+		if runtime.GOOS == "windows" && !strings.HasSuffix(strings.ToLower(tool), ".exe") {
 			tool += ".exe"
 		}
 		if err := os.WriteFile(tool, data, 0o700); err != nil {
 			t.Fatal(err)
-		}
-		var prefix []string
-		switch launcher {
-		case "env":
-			prefix = []string{"NAME=--silent", "ruff"}
-		case "uvx-pinned":
-			prefix = []string{"ruff@0.17.0"}
-		default:
-			prefix = []string{"--from", "ruff", "--no-cache", "ruff"}
 		}
 		encoded, err := json.Marshal(prefix)
 		if err != nil {
@@ -45,6 +49,9 @@ func TestRuffLauncherArguments(t *testing.T) {
 			for _, disabled := range []string{"", "shell", "config"} {
 				calls, output := filepath.Join(t.TempDir(), "calls"), filepath.Join(t.TempDir(), "output.json")
 				args := []string{"--from", "ruff"}
+				if tc.invalid != nil {
+					args = tc.invalid
+				}
 				if launcher == "env" {
 					args = []string{"RUFF_OUTPUT_FILE=" + output, "ruff"}
 				}
