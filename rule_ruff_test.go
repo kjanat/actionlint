@@ -206,7 +206,7 @@ func TestRuffComposite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Diagnostics) != 1 || !strings.HasSuffix(result.files[0].errors[0].Filepath, "python-action/action.yml") {
+	if len(result.Diagnostics) != 1 || !strings.HasSuffix(filepath.ToSlash(result.files[0].errors[0].Filepath), "python-action/action.yml") {
 		t.Fatalf("got %+v", result.Diagnostics)
 	}
 }
