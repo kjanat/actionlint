@@ -75,6 +75,10 @@ inputs:
     description: Make ShellCheck available on PATH for subsequent steps when shellcheck is enabled.
     required: false
     default: "true"
+  add-pyflakes-to-path:
+    description: "Deprecated and ignored: Pyflakes is no longer installed."
+    required: false
+    default: "false"
   working-directory:
     description: Directory to lint, absolute or relative to the repository workspace.
     required: false

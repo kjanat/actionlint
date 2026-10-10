@@ -53,14 +53,18 @@ func TestToolPlanUsesEffectiveConfiguration(t *testing.T) {
 				t.Fatalf("preflight failed with %d: %s", code, &stderr)
 			}
 			var got struct {
-				SchemaVersion int  `json:"schema_version"`
-				Shellcheck    bool `json:"shellcheck"`
+				SchemaVersion int   `json:"schema_version"`
+				Shellcheck    bool  `json:"shellcheck"`
+				Pyflakes      *bool `json:"pyflakes"`
 			}
 			if err := json.Unmarshal([]byte(stdout.String()), &got); err != nil {
 				t.Fatal(err)
 			}
 			if got.SchemaVersion != 1 || got.Shellcheck != tc.shellcheck {
 				t.Fatalf("got %+v; want shellcheck=%v", got, tc.shellcheck)
+			}
+			if got.Pyflakes == nil || *got.Pyflakes {
+				t.Fatalf("v1 tool plan must retain pyflakes:false: %s", &stdout)
 			}
 			if stderr.Len() != 0 {
 				t.Fatalf("unexpected stderr: %s", &stderr)

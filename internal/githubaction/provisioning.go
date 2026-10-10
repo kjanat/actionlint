@@ -15,8 +15,10 @@ func ToolPlan(env func(string) string, stdout, stderr io.Writer) int {
 	if err == nil {
 		err = json.NewEncoder(stdout).Encode(struct {
 			SchemaVersion int `json:"schema_version"`
+			// Released v1 launchers require this compatibility field.
+			Pyflakes bool `json:"pyflakes"`
 			actionlint.ExternalToolRequirements
-		}{1, needed})
+		}{1, false, needed})
 	}
 	if err == nil {
 		return actionlint.ExitStatusSuccessNoProblem

@@ -114,7 +114,7 @@ func TestActionMetadataOmitsSectionMirrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, key := range actionlint.ConfigKeys() {
-		// The released files input selects workflow paths, not a config section.
+		// The released files input selects workflow paths.
 		if key == "files" {
 			continue
 		}
