@@ -1,15 +1,13 @@
 package actionlint
 
+import "slices"
+
 func matrixValueContainsExpression(value RawYAMLValue) bool {
 	switch value := value.(type) {
 	case *RawYAMLString:
 		return ContainsExpression(value.Value)
 	case *RawYAMLArray:
-		for _, item := range value.Elems {
-			if matrixValueContainsExpression(item) {
-				return true
-			}
-		}
+		return slices.ContainsFunc(value.Elems, matrixValueContainsExpression)
 	case *RawYAMLObject:
 		for _, item := range value.Props {
 			if matrixValueContainsExpression(item) {
