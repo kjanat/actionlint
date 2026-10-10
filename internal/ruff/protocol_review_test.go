@@ -85,3 +85,25 @@ func TestSanitizeOperatorTemplates(t *testing.T) {
 		})
 	}
 }
+
+func TestImportFromTemplatesRemainUnsupported(t *testing.T) {
+	end := func(source string) (int, bool) { index := strings.Index(source, "}}"); return index + 2, index >= 0 }
+	for _, source := range []string{
+		"from ${{ inputs.module }} import name",
+		"from module import ${{ inputs.name }}",
+		"raise ValueError()\nfrom ${{ inputs.module }} import name",
+		"raise ValueError(); from ${{ inputs.module }} import name",
+		"def generate():\n    yield 1\n    from ${{ inputs.module }} import name",
+		"def generate():\n    yield 1; from ${{ inputs.module }} import name",
+		"if True: from ${{ inputs.module }} import name",
+	} {
+		for _, ending := range []string{"\n", "\r\n"} {
+			source := strings.ReplaceAll(source, "\n", ending)
+			t.Run(source, func(t *testing.T) {
+				if got, valid, err := Sanitize(source, end); err != nil || valid || got != "" {
+					t.Fatalf("import template accepted: %q, %v, %v", got, valid, err)
+				}
+			})
+		}
+	}
+}

@@ -77,6 +77,9 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		if flag == "--show-files" || flag == "--show-settings" {
 			return fmt.Errorf("ruff inspection output is not supported for script at %s: %q", location, flag)
 		}
+		if flag == "--diff" || flag == "--fix-only" {
+			return fmt.Errorf("ruff editing output is not supported for script at %s: %q", location, flag)
+		}
 		if flag == "--statistics" {
 			return fmt.Errorf("ruff statistics output is not supported for script at %s", location)
 		}
@@ -394,23 +397,24 @@ func templateIsAssignmentTarget(prefix, suffix string, depth int) bool {
 // pythonLexicalState distinguishes comment and string template placement while
 // leaving Python syntax validation to Ruff.
 type pythonLexicalState struct {
-	quote          byte
-	triple         bool
-	comment        bool
-	escaped        bool
-	word           string
-	depth          int
-	nameRequired   bool
-	nameList       bool
-	className      bool
-	lastToken      string
-	subscriptDepth int
-	nameListDepth  int
-	functionName   bool
-	parameterDepth int
-	casePattern    bool
-	pendingCapture bool
-	patternCapture bool
+	quote           byte
+	triple          bool
+	comment         bool
+	escaped         bool
+	word            string
+	depth           int
+	nameRequired    bool
+	nameList        bool
+	className       bool
+	lastToken       string
+	subscriptDepth  int
+	nameListDepth   int
+	functionName    bool
+	parameterDepth  int
+	casePattern     bool
+	pendingCapture  bool
+	patternCapture  bool
+	valueFromDepths []int
 }
 
 // consumeCode tracks name-only positions without interpreting Python values.
@@ -436,7 +440,20 @@ func (s *pythonLexicalState) consumeCode(c byte) {
 			s.patternCapture = s.patternCapture || s.pendingCapture
 			s.casePattern, s.pendingCapture = false, false
 		}
-	case "import", "from", "global", "nonlocal", "del", "for", "lambda":
+	case "yield", "raise":
+		if n := len(s.valueFromDepths); n == 0 || s.valueFromDepths[n-1] != s.depth {
+			s.valueFromDepths = append(s.valueFromDepths, s.depth)
+		}
+	case "from":
+		// Yield delegation and exception causes introduce value expressions.
+		n := len(s.valueFromDepths)
+		valueFrom := n > 0 && s.valueFromDepths[n-1] == s.depth
+		s.nameRequired, s.nameList = !valueFrom, !valueFrom
+		s.nameListDepth = s.depth
+		if valueFrom {
+			s.valueFromDepths = s.valueFromDepths[:n-1]
+		}
+	case "import", "global", "nonlocal", "del", "for", "lambda":
 		s.nameRequired, s.nameList = true, true
 		s.nameListDepth = s.depth
 	case "def":
@@ -465,6 +482,9 @@ func (s *pythonLexicalState) consumeCode(c byte) {
 			s.nameRequired, s.className = false, false
 		}
 	case ')', ']', '}':
+		if n := len(s.valueFromDepths); n > 0 && s.valueFromDepths[n-1] == s.depth {
+			s.valueFromDepths = s.valueFromDepths[:n-1]
+		}
 		if s.depth == s.subscriptDepth {
 			s.subscriptDepth = 0
 		}
@@ -487,6 +507,7 @@ func (s *pythonLexicalState) consumeCode(c byte) {
 		if s.depth == 0 {
 			s.patternCapture = s.patternCapture || c == ':' && s.casePattern && s.pendingCapture
 			s.casePattern, s.pendingCapture = false, false
+			s.valueFromDepths = s.valueFromDepths[:0]
 		}
 		s.nameRequired = false
 		if c != ':' || s.parameterDepth == 0 {
@@ -498,6 +519,7 @@ func (s *pythonLexicalState) consumeCode(c byte) {
 			s.casePattern, s.pendingCapture = false, false
 			s.nameRequired, s.nameList = false, false
 			s.className = false
+			s.valueFromDepths = s.valueFromDepths[:0]
 		}
 	}
 	if c != ' ' && c != '\t' && c != '\r' && (c != '\n' || s.depth <= 0) {

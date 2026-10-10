@@ -32,6 +32,38 @@ func TestRuffStatisticsRejected(t *testing.T) {
 	}
 }
 
+func TestRuffFromTemplatePreservesFindings(t *testing.T) {
+	command := ruffForTest(t)
+	for _, script := range []string{
+		"def generate():\n    yield from ${{ '[]' }}",
+		"def generate():\n    raise (yield from ${{ '[]' }}) from ${{ 'None' }}",
+		"raise ValueError() from ${{ 'None' }}",
+	} {
+		for _, tc := range []struct{ suffix, code string }{
+			{"print(missing)", "F821"}, {"if True print(1)", "invalid-syntax"},
+		} {
+			for _, ending := range []string{"\n", "\r\n"} {
+				t.Run(script+tc.code+ending, func(t *testing.T) {
+					source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: |\n          " + strings.ReplaceAll(script+"\n"+tc.suffix, "\n", "\n          ") + "\n"
+					source = strings.ReplaceAll(source, "\n", ending)
+					result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
+					if err != nil {
+						t.Fatal(err)
+					}
+					if len(result.Diagnostics) == 0 {
+						t.Fatal("from clause caused script checking to be skipped")
+					}
+					for _, finding := range result.Diagnostics {
+						if finding.Rule != "ruff" || finding.Code != tc.code || finding.Start.Line != 9+strings.Count(script, "\n") {
+							t.Fatalf("from clause changed independent findings: %+v", result.Diagnostics)
+						}
+					}
+				})
+			}
+		}
+	}
+}
+
 func TestRuffSilentRejected(t *testing.T) {
 	command := ruffForTest(t)
 	for _, flag := range []string{"--silent", "-s", "-qs"} {

@@ -16,7 +16,7 @@ func TestInspectionAndArgumentFilesRejected(t *testing.T) {
 	if err := os.WriteFile(argfile, []byte("--silent\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	for _, flag := range []string{"--show-files", "--show-settings", "@" + argfile, "@missing.txt"} {
+	for _, flag := range []string{"--show-files", "--show-settings", "--diff", "--fix-only", "@" + argfile, "@missing.txt"} {
 		t.Run(flag, func(t *testing.T) {
 			called := false
 			checker := New(func([]string, string, func([]byte, error) error) { called = true }, func() error { return nil }, nil, flag)
@@ -49,6 +49,14 @@ func TestIndependentTemplateValues(t *testing.T) {
 		{"d = {${{0}}: 1, ${{1}}: 2}", nil},
 		{"def f(value: '${{ inputs.type }}'): pass", nil},
 		{"def f(value: ${{ inputs.type }}): pass", nil},
+		{"def generate():\n    yield from ${{ inputs.values }}", nil},
+		{"def generate():\n    raise (yield from ${{ inputs.errors }}) from ${{ inputs.cause }}", nil},
+		{"def generate():\n    result = (yield from ${{ inputs.values }})\n    return result", nil},
+		{"def generate():\n    yield \\\n        from ${{ inputs.values }}", nil},
+		{"raise ValueError() from ${{ inputs.cause }}", nil},
+		{"raise ${{ inputs.error }} from ${{ inputs.cause }}", nil},
+		{"raise ValueError() \\\n    from ${{ inputs.cause }}", nil},
+		{"if False: raise ValueError() from ${{ inputs.cause }}", nil},
 		{"sentinel = object(); sentinel is ${{ inputs.expected }}", nil},
 		{"sentinel = object(); sentinel is not ${{ inputs.expected }}", nil},
 		{"sentinel = object(); sentinel is 0; print(${{ inputs.expected }})", []string{"F632"}},
