@@ -244,7 +244,8 @@ lint:
 ```
 
 The default selection is Ruff's `F` correctness checks. `select` and `ignore`
-accept Ruff codes or prefixes; lists replace inherited lists. `select: []` selects
+accept Ruff codes or prefixes matching stable rules; preview-only selectors are
+rejected. Lists replace inherited lists. `select: []` selects
 no lint rules (Python syntax errors can still be reported). `target-version`
 defaults to `py314`; choose a target supported by the installed Ruff version.
 
@@ -257,7 +258,8 @@ YAML source map; unsupported scalar mappings fall back to the `run:` declaration
 Inline YAML suppressions target the diagnostic's reported line. A directive on
 the YAML block header covers the script body.
 Ruff skips a script when an unquoted Actions expression forms part of a Python
-token, such as `item_${{ matrix.os }}` or `${{ inputs.major }}.0`. Other steps and
+token, such as `item_${{ matrix.os }}` or `${{ inputs.major }}.0`, or supplies a
+name in statements such as `import ${{ inputs.module }}`. Other steps and
 actionlint's workflow checks still run. Templates inside strings and comments
 continue to be sanitized while preserving source positions.
 Explicitly requested Ruff executables and Ruff invocation/configuration failures fail analysis.

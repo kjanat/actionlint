@@ -7,13 +7,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"go/format"
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"regexp"
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -24,7 +27,31 @@ const upstream = "https://raw.githubusercontent.com/astral-sh/ruff/" + revision 
 var codePattern = regexp.MustCompile(`^[A-Z]+[0-9]*$`)
 var redirectPattern = regexp.MustCompile(`\("([A-Z]+[0-9]*)", "([A-Z]+[0-9]*)"\)`)
 
-func selectors(schema, redirects []byte) ([]string, error) {
+func selectors(schema, redirects, rules []byte) ([]string, error) {
+	var metadata []struct {
+		Code    string                     `json:"code"`
+		Preview *bool                      `json:"preview"`
+		Status  map[string]json.RawMessage `json:"status"`
+	}
+	if err := json.Unmarshal(rules, &metadata); err != nil {
+		return nil, err
+	}
+	stable := map[string]bool{"ALL": true}
+	for _, rule := range metadata {
+		if rule.Preview == nil {
+			return nil, errors.New("ruff rule metadata has no preview status")
+		}
+		_, removed := rule.Status["Removed"]
+		if *rule.Preview || removed || !codePattern.MatchString(rule.Code) {
+			continue
+		}
+		for length := 1; length <= len(rule.Code); length++ {
+			stable[rule.Code[:length]] = true
+		}
+	}
+	if !stable["F821"] {
+		return nil, errors.New("ruff rule metadata has no stable F821 rule")
+	}
 	var document struct {
 		Definitions map[string]struct {
 			Enum []string `json:"enum"`
@@ -36,7 +63,7 @@ func selectors(schema, redirects []byte) ([]string, error) {
 	available := map[string]bool{}
 	for _, selector := range document.Definitions["RuleSelector"].Enum {
 		// Human-readable names and categories require Ruff's preview mode.
-		if codePattern.MatchString(selector) {
+		if codePattern.MatchString(selector) && stable[selector] {
 			available[selector] = true
 		}
 	}
@@ -81,7 +108,18 @@ func fetch(path string) ([]byte, error) {
 	return io.ReadAll(io.LimitReader(response.Body, 4<<20))
 }
 
-func run() error {
+func run(binary string) error {
+	version, err := exec.CommandContext(context.Background(), binary, "--version").Output()
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(string(version)) != "ruff "+release {
+		return fmt.Errorf("selector generation requires Ruff %s; got %q", release, strings.TrimSpace(string(version)))
+	}
+	rules, err := exec.CommandContext(context.Background(), binary, "rule", "--all", "--output-format", "json").Output()
+	if err != nil {
+		return err
+	}
 	schema, err := fetch("ruff.schema.json")
 	if err != nil {
 		return err
@@ -90,7 +128,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	values, err := selectors(schema, redirects)
+	values, err := selectors(schema, redirects, rules)
 	if err != nil {
 		return err
 	}
@@ -110,7 +148,9 @@ func run() error {
 }
 
 func main() {
-	if err := run(); err != nil {
+	binary := flag.String("ruff", "ruff", "path to the pinned Ruff release")
+	flag.Parse()
+	if err := run(*binary); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

@@ -24,22 +24,26 @@ func TestReleaseMatchesActionManifest(t *testing.T) {
 }
 
 func TestSelectors(t *testing.T) {
-	schema := []byte(`{"definitions":{"RuleSelector":{"enum":["ALL","C90","C901","F","F821","E111","undefined-name","correctness"]}}}`)
-	redirects := []byte(`("C9", "C90"), ("OLD", "F821"), ("REMOVED", "F999"), ("RUF940", "RUF950")`)
-	got, err := selectors(schema, redirects)
+	schema := []byte(`{"definitions":{"RuleSelector":{"enum":["ALL","ANN101","C90","C901","CPY","CPY001","F","F821","E","E111","E501","RUF","RUF001","RUF055","undefined-name","correctness"]}}}`)
+	redirects := []byte(`("C9", "C90"), ("OLD", "F821"), ("PGH001", "F821"), ("PREVIEW", "RUF055"), ("REMOVED", "ANN101"), ("RUF940", "RUF950")`)
+	rules := []byte(`[{"code":"C901","preview":false},{"code":"CPY001","preview":false},{"code":"F821","preview":false},{"code":"E111","preview":true},{"code":"E501","preview":false},{"code":"RUF001","preview":false},{"code":"RUF055","preview":true},{"code":"ANN101","preview":false,"status":{"Removed":{}}},{"code":"PGH001","preview":false,"status":{"Removed":{}}}]`)
+	got, err := selectors(schema, redirects, rules)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"ALL", "C9", "C90", "C901", "E111", "F", "F821", "OLD"}
+	want := []string{"ALL", "C9", "C90", "C901", "CPY", "CPY001", "E", "E501", "F", "F821", "OLD", "PGH001", "RUF", "RUF001"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("selectors = %v, want %v", got, want)
 	}
-	for _, tc := range []struct{ schema, redirects []byte }{
-		{[]byte(`{`), redirects},
-		{[]byte(`{}`), redirects},
-		{schema, []byte(`unrecognized source`)},
+	for _, tc := range []struct{ schema, redirects, rules []byte }{
+		{[]byte(`{`), redirects, rules},
+		{[]byte(`{}`), redirects, rules},
+		{schema, []byte(`unrecognized source`), rules},
+		{schema, redirects, []byte(`{`)},
+		{schema, redirects, []byte(`[]`)},
+		{schema, redirects, []byte(`[{"code":"F821"}]`)},
 	} {
-		if _, err := selectors(tc.schema, tc.redirects); err == nil {
+		if _, err := selectors(tc.schema, tc.redirects, tc.rules); err == nil {
 			t.Fatal("changed metadata shape must fail generation")
 		}
 	}

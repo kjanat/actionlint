@@ -221,16 +221,21 @@ func TestRuffSuppressionAndOverride(t *testing.T) {
 }
 
 func TestRuffInterpolatedTokenSkipsOnlyItsScript(t *testing.T) {
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: value = ${{ github.run_number }}.0\n      - shell: python\n        run: print(missing)\n"
-	result, err := Analyze(t.Context(), AnalysisRequest{
-		Ruff: ruffForTest(t), WorkingDir: t.TempDir(),
-		Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "ruff" || result.Diagnostics[0].Code != "F821" || result.Diagnostics[0].Start.Line != 9 {
-		t.Fatalf("unexpected findings: %+v", result.Diagnostics)
+	for _, script := range []string{"value = ${{ github.run_number }}.0", "import ${{ 'json' }}", "from json import ${{ 'loads' }}"} {
+		t.Run(script, func(t *testing.T) {
+			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: value = ${{ github.run_number }}.0\n      - shell: python\n        run: print(missing)\n"
+			source = strings.Replace(source, "value = ${{ github.run_number }}.0", script, 1)
+			result, err := Analyze(t.Context(), AnalysisRequest{
+				Ruff: ruffForTest(t), WorkingDir: t.TempDir(),
+				Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "ruff" || result.Diagnostics[0].Code != "F821" || result.Diagnostics[0].Start.Line != 9 {
+				t.Fatalf("unexpected findings: %+v", result.Diagnostics)
+			}
+		})
 	}
 }
 

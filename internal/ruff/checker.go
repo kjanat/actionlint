@@ -187,7 +187,7 @@ func Sanitize(src string, expressionEnd ExpressionEnd) (string, bool, error) {
 		end := start + 3 + length
 		out.WriteString(src[:start])
 		state.consume(src[:start])
-		if state.quote == 0 && !state.comment && templateTouchesPythonToken(src, start, end) {
+		if state.quote == 0 && !state.comment && (templateTouchesPythonToken(src, start, end) || state.subscriptDepth == 0 && (state.nameRequired || templateIsAssignmentTarget(src[:start], src[end:], state.depth))) {
 			return "", false, nil
 		}
 		runes := []rune(src[start:end])
@@ -242,13 +242,141 @@ func templateTouchesPythonToken(source string, start, end int) bool {
 	return isTokenPart(left) || isTokenPart(right) || strings.HasPrefix(source[end:], "${{")
 }
 
+func templateIsAssignmentTarget(prefix, suffix string, depth int) bool {
+	suffix = strings.TrimLeft(suffix, " \t")
+	if depth == 0 && strings.HasPrefix(suffix, ":") && strings.TrimSpace(prefix[strings.LastIndexAny(prefix, "\n;")+1:]) == "" {
+		return true
+	}
+	if strings.HasPrefix(suffix, "=") && !strings.HasPrefix(suffix, "==") {
+		return true
+	}
+	for _, operator := range []string{":=", "+=", "-=", "*=", "/=", "//=", "%=", "**=", "&=", "|=", "^=", ">>=", "<<=", "@="} {
+		if strings.HasPrefix(suffix, operator) {
+			return true
+		}
+	}
+	if strings.HasPrefix(suffix, ",") || strings.HasPrefix(suffix, ")") || strings.HasPrefix(suffix, "]") {
+		for offset, token := range suffix {
+			switch {
+			case token == '=':
+				return depth == 0 && !strings.HasPrefix(suffix[offset:], "==")
+			case token == '(' || token == '[':
+				depth++
+			case (token == ')' || token == ']') && depth > 0:
+				depth--
+			case token == '\n' && depth == 0:
+				return false
+			case unicode.IsSpace(token), unicode.IsLetter(token), unicode.IsNumber(token), token == '_', token == ',', token == '.', token == '*':
+			default:
+				return false
+			}
+		}
+	}
+	return false
+}
+
 // pythonLexicalState distinguishes comment and string template placement while
 // leaving Python syntax validation to Ruff.
 type pythonLexicalState struct {
-	quote   byte
-	triple  bool
-	comment bool
-	escaped bool
+	quote          byte
+	triple         bool
+	comment        bool
+	escaped        bool
+	word           string
+	depth          int
+	nameRequired   bool
+	nameList       bool
+	className      bool
+	lastToken      string
+	subscriptDepth int
+	nameListDepth  int
+	functionName   bool
+	parameterDepth int
+}
+
+// consumeCode tracks name-only positions without interpreting Python values.
+// Names in strings and comments never reach this method.
+func (s *pythonLexicalState) consumeCode(c byte) {
+	if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_' || c >= '0' && c <= '9' || c >= utf8.RuneSelf {
+		if len(s.word) < 9 {
+			s.word += string(c)
+		}
+		return
+	}
+	if s.word != "" {
+		s.lastToken = s.word
+	}
+	switch s.word {
+	case "import", "from", "global", "nonlocal", "del", "for", "lambda":
+		s.nameRequired, s.nameList = true, true
+		s.nameListDepth = s.depth
+	case "def":
+		s.nameRequired, s.nameList, s.functionName = true, true, true
+	case "class":
+		s.nameRequired, s.className = true, true
+	case "as":
+		s.nameRequired = true
+	case "in":
+		s.nameRequired, s.nameList = false, false
+	}
+	s.word = ""
+	switch c {
+	case '(', '[', '{':
+		s.depth++
+		if c == '[' && s.subscriptDepth == 0 && !s.className && !s.functionName && pythonTokenCanBeSubscripted(s.lastToken) {
+			s.subscriptDepth = s.depth
+		}
+		if c == '(' && s.functionName {
+			s.parameterDepth, s.functionName = s.depth, false
+		}
+		if s.nameRequired && s.nameList {
+			s.nameListDepth = s.depth
+		}
+		if c == '(' && s.className {
+			s.nameRequired, s.className = false, false
+		}
+	case ')', ']', '}':
+		if s.depth == s.subscriptDepth {
+			s.subscriptDepth = 0
+		}
+		if s.depth == s.parameterDepth {
+			s.parameterDepth = 0
+			s.nameRequired, s.nameList = false, false
+		}
+		s.depth--
+		s.nameListDepth = min(s.nameListDepth, s.depth)
+	case ',':
+		if s.depth == s.nameListDepth {
+			s.nameRequired = s.nameList
+		}
+	case '=':
+		s.nameRequired = false
+	case ':', ';':
+		s.nameRequired = false
+		if c != ':' || s.parameterDepth == 0 {
+			s.nameList = false
+		}
+		s.className = false
+	case '\n':
+		if s.depth == 0 {
+			s.nameRequired, s.nameList = false, false
+			s.className = false
+		}
+	}
+	if c != ' ' && c != '\t' && c != '\r' {
+		s.lastToken = string(c)
+	}
+}
+
+func pythonTokenCanBeSubscripted(token string) bool {
+	switch token {
+	case "", "import", "from", "global", "nonlocal", "def", "class", "del", "for", "in", "lambda", "return", "yield", "assert", "await", "if", "else", "while", "not", "and", "or", "is":
+		return false
+	case ")", "]", "}", "'", "\"":
+		return true
+	}
+	first, _ := utf8.DecodeRuneInString(token)
+	return first == '_' || unicode.IsLetter(first) || unicode.IsNumber(first)
 }
 
 func (s *pythonLexicalState) consume(text string) {
@@ -257,14 +385,21 @@ func (s *pythonLexicalState) consume(text string) {
 		if s.comment {
 			if c == '\n' {
 				s.comment = false
+				s.consumeCode(c)
 			}
 			continue
 		}
 		if s.escaped {
 			s.escaped = false
+			if c == '\r' && i+1 < len(text) && text[i+1] == '\n' {
+				i++
+			}
 			continue
 		}
 		if c == '\\' {
+			if s.quote == 0 {
+				s.consumeCode(c)
+			}
 			s.escaped = true
 			continue
 		}
@@ -279,6 +414,7 @@ func (s *pythonLexicalState) consume(text string) {
 			}
 			continue
 		}
+		s.consumeCode(c)
 		switch c {
 		case '#':
 			s.comment = true
