@@ -69,7 +69,7 @@ func InspectConfig(selection ConfigSelection, withOrigin bool) (ConfigInspection
 		var source *loadedConfig
 		source, err = readConfigSource(path, os.ReadFile)
 		if err != nil {
-			return ConfigInspection{Path: path}, fmt.Errorf("could not read config file %q: %w", path, err)
+			return ConfigInspection{Path: path}, err
 		}
 		resolved = source.resolvedConfig
 	} else {

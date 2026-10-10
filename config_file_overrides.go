@@ -88,7 +88,11 @@ func (o ConfigOverride) MarshalYAML() (any, error) {
 	if o.toolsNode != nil {
 		value["tools"] = o.toolsNode
 	} else if o.Tools != nil {
-		value["tools"] = o.Tools
+		node, err := programmaticToolsNode(o.Tools)
+		if err != nil {
+			return nil, err
+		}
+		value["tools"] = node
 	}
 	return value, nil
 }
@@ -168,6 +172,12 @@ func mergeToolsOverride(base ToolsConfig, override ConfigOverride) (ToolsConfig,
 	value := any(override.Tools)
 	if override.toolsNode != nil {
 		value = override.toolsNode
+	} else {
+		var err error
+		value, err = programmaticToolsNode(override.Tools)
+		if err != nil {
+			return ToolsConfig{}, err
+		}
 	}
 	if err := overlay.Encode(map[string]any{"tools": value}); err != nil {
 		return ToolsConfig{}, err
@@ -189,6 +199,34 @@ func mergeToolsOverride(base ToolsConfig, override ConfigOverride) (ToolsConfig,
 		}
 	}
 	return decoded.Tools, nil
+}
+
+// Programmatic nil fields omit settings; parsed nodes retain explicit resets.
+func programmaticToolsNode(tools *ToolsConfig) (*yaml.Node, error) {
+	var node yaml.Node
+	if err := node.Encode(tools); err != nil {
+		return nil, err
+	}
+	var prune func(*yaml.Node)
+	prune = func(node *yaml.Node) {
+		if node.Kind == yaml.MappingNode {
+			entries := node.Content[:0]
+			for i := 0; i < len(node.Content); i += 2 {
+				key, value := node.Content[i], node.Content[i+1]
+				if value.ShortTag() != "!!null" {
+					prune(value)
+					entries = append(entries, key, value)
+				}
+			}
+			node.Content = entries
+		} else {
+			for _, child := range node.Content {
+				prune(child)
+			}
+		}
+	}
+	prune(&node)
+	return &node, nil
 }
 
 // Expand shorthand before partial mappings overlay it, retaining inherited

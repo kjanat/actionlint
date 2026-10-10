@@ -240,23 +240,19 @@ func (a *AnalysisSession) filesSelected(paths []string) {
 
 // Files analyzes paths in order, discovering each file's project when project is nil.
 func (a *AnalysisSession) Files(paths []string, project *Project) (*AnalysisResult, error) {
+	a.filesSelected(paths)
 	if len(paths) == 0 {
-		a.filesSelected(paths)
 		return &AnalysisResult{Diagnostics: []Diagnostic{}}, nil
 	}
 	if len(paths) > 1 {
 		a.selectionLog("Linting", len(paths), "files")
 	}
-	return a.readFiles(paths, project, true)
+	return a.readFiles(paths, project)
 }
 
-func (a *AnalysisSession) readFiles(paths []string, project *Project, notify ...bool) (*AnalysisResult, error) {
+func (a *AnalysisSession) readFiles(paths []string, project *Project) (*AnalysisResult, error) {
 	sources := make([]SourceUnit, 0, len(paths))
 	configProjects := make([]*Project, 0, len(paths))
-	selected := make([]string, 0, len(paths))
-	if len(notify) > 0 && notify[0] {
-		defer func() { a.filesSelected(selected) }()
-	}
 	for _, path := range paths {
 		proj := project
 		if proj == nil {
@@ -279,7 +275,6 @@ func (a *AnalysisSession) readFiles(paths []string, project *Project, notify ...
 		if !cfg.includesFile(fullPath, root) {
 			continue
 		}
-		selected = append(selected, path)
 		content, err := a.readFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("could not read %q: %w", path, err)

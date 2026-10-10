@@ -32,8 +32,8 @@ func TestRepositoryRetainsExcludedCandidates(t *testing.T) {
 	if !slices.Contains(result.Inputs, excluded) || !slices.Contains(result.Inputs, selected) {
 		t.Fatalf("discovered candidates missing from protected inputs: %v", result.Inputs)
 	}
-	if len(notified) != 1 || notified[0] != selected {
-		t.Fatalf("excluded workflow reported as selected: %v", notified)
+	if !slices.Equal(notified, []string{selected, excluded}) {
+		t.Fatalf("discovery callback lost candidate paths: %v", notified)
 	}
 }
 
