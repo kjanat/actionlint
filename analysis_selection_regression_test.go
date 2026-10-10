@@ -122,9 +122,11 @@ func TestRelativeWorkingDirectorySelectionAndOverrides(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	needed, err := planning.RequiredTools([]string{filepath.Join("repo", ".github", "workflows", "ci.yml")})
-	if err != nil || !needed.Shellcheck {
-		t.Fatalf("tool planning disagrees with selected file: %+v, %v", needed, err)
+	for _, path := range []string{workflow, filepath.Join(".github", "workflows", "ci.yml")} {
+		needed, err := planning.RequiredTools([]string{path})
+		if err != nil || !needed.Shellcheck {
+			t.Fatalf("tool planning for %q disagrees with selected file: %+v, %v", path, needed, err)
+		}
 	}
 }
 

@@ -1,5 +1,7 @@
 package actionlint
 
+import "path/filepath"
+
 // ExternalToolRequirements identifies tools enabled by the selected configurations.
 type ExternalToolRequirements struct {
 	Shellcheck bool `json:"shellcheck"`
@@ -9,6 +11,7 @@ type ExternalToolRequirements struct {
 
 // RequiredTools resolves configuration for each input without reading workflows or
 // starting analyzers. Empty paths discovers the working directory's workflows.
+// Relative paths resolve against the session's WorkingDir; absolute paths are unchanged.
 func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirements, error) {
 	var needed ExternalToolRequirements
 	if len(paths) == 0 {
@@ -28,7 +31,9 @@ func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirement
 		if err := a.ctx.Err(); err != nil {
 			return needed, err
 		}
-		path = absPath(path)
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(a.cwd, path)
+		}
 		project, err := a.projects.At(path)
 		if err != nil {
 			return needed, err
