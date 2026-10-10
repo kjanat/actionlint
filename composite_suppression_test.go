@@ -37,11 +37,12 @@ func TestInvalidLocalActionSuppressionDirectives(t *testing.T) {
 					result := compositeAnalysis(t, root, steps, AnalysisOptions{})
 					var syntaxCount, directiveCount int
 					for _, diagnostic := range result.Diagnostics {
-						if diagnostic.Rule == "action" && strings.Contains(diagnostic.Message, "could not parse action metadata") {
+						switch {
+						case diagnostic.Rule == "action" && strings.Contains(diagnostic.Message, "could not parse action metadata"):
 							syntaxCount++
-						} else if metadata.validYAML && tc.want != "" && diagnostic.Rule == tc.want && filepath.ToSlash(diagnostic.Path) == "inner/action.yml" && diagnostic.Start.Line == 1 {
+						case metadata.validYAML && tc.want != "" && diagnostic.Rule == tc.want && filepath.ToSlash(diagnostic.Path) == "inner/action.yml" && diagnostic.Start.Line == 1:
 							directiveCount++
-						} else {
+						default:
 							t.Fatalf("unexpected diagnostic: %+v", diagnostic)
 						}
 					}

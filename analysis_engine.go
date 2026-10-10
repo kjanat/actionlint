@@ -3,6 +3,7 @@ package actionlint
 import (
 	"context"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"slices"
 	"time"
@@ -166,9 +167,7 @@ func (l *analysisEngine) check(
 				}
 			}
 		}
-		for sourcePath, source := range localActions.usedSources {
-			metadataSources[sourcePath] = source
-		}
+		maps.Copy(metadataSources, localActions.usedSources)
 
 		*usedRules = rules
 	}
