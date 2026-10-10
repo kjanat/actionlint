@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -99,17 +100,62 @@ func TestRelativeWorkingDirectorySelectionAndOverrides(t *testing.T) {
 		if !slices.Contains(result.Inputs, workflow) {
 			t.Fatalf("workflow input did not resolve to working directory: %+v", result.Inputs)
 		}
+		for _, diagnostic := range result.Diagnostics {
+			if diagnostic.Path != filepath.Join(".github", "workflows", "ci.yml") {
+				t.Fatalf("diagnostic path is not repository-relative: %+v", diagnostic)
+			}
+		}
 	}
 	content, err := os.ReadFile(workflow)
 	if err != nil {
 		t.Fatal(err)
 	}
 	check(Analyze(t.Context(), AnalysisRequest{WorkingDir: "repo", Sources: []SourceUnit{{Path: ".github/workflows/ci.yml", Content: content, Config: cfg}}}))
+	check(Analyze(t.Context(), AnalysisRequest{WorkingDir: "repo", Sources: []SourceUnit{{Path: ".github/workflows/ci.yml", Content: content, Config: cfg, Project: &Project{root: "repo"}}}}))
 	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: "repo", ConfigFile: "repo/actionlint.yml"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	check(session.Files([]string{workflow}, nil))
+	check(session.Files([]string{filepath.Join("repo", ".github", "workflows", "ci.yml")}, nil))
+	planning, err := NewAnalysisSession(AnalysisOptions{WorkingDir: "repo", ConfigFile: "repo/actionlint.yml", Shellcheck: "shellcheck"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	needed, err := planning.RequiredTools([]string{filepath.Join("repo", ".github", "workflows", "ci.yml")})
+	if err != nil || !needed.Shellcheck {
+		t.Fatalf("tool planning disagrees with selected file: %+v, %v", needed, err)
+	}
+}
+
+func TestRelativeWorkingDirectoryStdinPaths(t *testing.T) {
+	parent := t.TempDir()
+	t.Chdir(parent)
+	if err := os.Mkdir("repo", 0700); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"", "ci.yml"} {
+		session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: "repo", StdinFileName: name})
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, err := session.ReadStdin(strings.NewReader(commandBadWorkflow), true)
+		if err != nil || len(result.Diagnostics) == 0 {
+			t.Fatalf("stdin analysis: %+v, %v", result, err)
+		}
+		want := name
+		if want == "" {
+			want = "<stdin>"
+		}
+		for _, diagnostic := range result.Diagnostics {
+			if diagnostic.Path != want {
+				t.Fatalf("stdin path changed: %+v", diagnostic)
+			}
+		}
+		if name != "" && !slices.Contains(result.Inputs, filepath.Join(parent, "repo", name)) {
+			t.Fatalf("virtual input does not match working directory: %v", result.Inputs)
+		}
+	}
 }
 
 func TestExternalOverridePlanMatchesExecution(t *testing.T) {

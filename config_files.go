@@ -16,7 +16,7 @@ func (cfg *Config) includesFile(path, root string) bool {
 		return true
 	}
 	if filepath.IsAbs(path) && root != "" {
-		if relative, err := filepath.Rel(root, path); err == nil {
+		if relative, err := filepath.Rel(absPath(root), path); err == nil {
 			path = relative
 		}
 	}

@@ -2,10 +2,10 @@ package actionlint
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -57,7 +57,7 @@ func TestRelativeConfigCallbackPath(t *testing.T) {
 	t.Chdir(root)
 	for _, initial := range []string{"config.yml", "./config.yml"} {
 		for _, inherited := range []bool{false, true} {
-			t.Run(initial+fmt.Sprint(inherited), func(t *testing.T) {
+			t.Run(initial+strconv.FormatBool(inherited), func(t *testing.T) {
 				base := filepath.Join(root, "base.yml")
 				content := "lint: {rules: {correctness: {if-cond: warn}}}\n"
 				if inherited {

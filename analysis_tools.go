@@ -1,7 +1,5 @@
 package actionlint
 
-import "path/filepath"
-
 // ExternalToolRequirements identifies tools enabled by the selected configurations.
 type ExternalToolRequirements struct {
 	Shellcheck bool `json:"shellcheck"`
@@ -30,9 +28,7 @@ func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirement
 		if err := a.ctx.Err(); err != nil {
 			return needed, err
 		}
-		if !filepath.IsAbs(path) {
-			path = filepath.Join(a.cwd, path)
-		}
+		path = absPath(path)
 		project, err := a.projects.At(path)
 		if err != nil {
 			return needed, err

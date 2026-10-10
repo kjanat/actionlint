@@ -260,12 +260,9 @@ func (a *AnalysisSession) readFiles(paths []string, project *Project, notify ...
 		configProjects = append(configProjects, proj)
 		root := a.cwd
 		if proj != nil {
-			root = proj.RootDir()
+			root = absPath(proj.RootDir())
 		}
-		fullPath := path
-		if !filepath.IsAbs(path) {
-			fullPath = filepath.Join(a.cwd, path)
-		}
+		fullPath := absPath(path)
 		if !cfg.includesFile(fullPath, root) {
 			continue
 		}
@@ -274,8 +271,8 @@ func (a *AnalysisSession) readFiles(paths []string, project *Project, notify ...
 		if err != nil {
 			return nil, fmt.Errorf("could not read %q: %w", path, err)
 		}
-		source := a.source(a.relativePath(path), content, proj)
-		source.inputPath = path
+		source := a.source(a.relativePath(fullPath), content, proj)
+		source.inputPath = fullPath
 		sources = append(sources, source)
 	}
 	return a.analyze(sources, configProjects...)
