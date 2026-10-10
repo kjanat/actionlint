@@ -1,6 +1,7 @@
 package workflownames
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -8,6 +9,49 @@ import (
 	"strings"
 	"testing"
 )
+
+func TestWorkflowPathsLinearIdentityChecks(t *testing.T) {
+	dir := t.TempDir()
+	candidates := make([]string, 1000)
+	for i := range candidates {
+		candidates[i] = filepath.Join(dir, fmt.Sprintf("workflow-%04d.yml", i))
+	}
+	calls, stats := 0, 0
+	stat := func(path string) (os.FileInfo, error) { stats++; return os.Stat(path) }
+	same := func(left, right string) bool {
+		calls++
+		return samePathOnFilesystem(left, right, false, stat, os.ReadDir)
+	}
+	if got := workflowPathsByIdentity(dir, candidates, same); !slices.Equal(got, candidates) {
+		t.Fatal("workflow inventory changed")
+	}
+	if calls > 2*len(candidates) || stats > 4*len(candidates) {
+		t.Fatalf("quadratic identity work: %d comparisons, %d stats for %d paths", calls, stats, len(candidates))
+	}
+}
+
+func TestWorkflowFilenameFoldKeys(t *testing.T) {
+	for _, names := range [][2]string{{"build.yml", "BUILD.yml"}, {"s.yml", "ſ.yml"}, {"K.yml", "K.yml"}, {"Σ.yml", "ς.yml"}, {"ß.yml", "ẞ.yml"}} {
+		if !strings.EqualFold(names[0], names[1]) || filenameKey(names[0]) != filenameKey(names[1]) {
+			t.Fatalf("case-fold bucket differs for %q", names)
+		}
+		if got := workflowPaths("repo", []string{filepath.Join("repo", names[0]), filepath.Join("repo", names[1])}, true); len(got) != 1 || got[0] != filepath.Join("repo", names[1]) {
+			t.Fatalf("case-fold alias did not select last overlay: %v", got)
+		}
+	}
+}
+
+func BenchmarkWorkflowPathsDistinct(b *testing.B) {
+	dir := b.TempDir()
+	candidates := make([]string, 1000)
+	for i := range candidates {
+		candidates[i] = filepath.Join(dir, fmt.Sprintf("workflow-%04d.yml", i))
+	}
+	b.ResetTimer()
+	for b.Loop() {
+		workflowPaths(dir, candidates, false)
+	}
+}
 
 func TestIndexSymlinkCheckout(t *testing.T) {
 	base := t.TempDir()

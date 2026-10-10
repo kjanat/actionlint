@@ -210,6 +210,13 @@ type UntrustedInputChecker struct {
 	start           ExprNode
 	errs            []*ExprError
 	safeCalls       int
+	booleanContexts int
+	visits          []untrustedInputVisit
+}
+
+type untrustedInputVisit struct {
+	node    ExprNode
+	boolean bool
 }
 
 // NewUntrustedInputChecker creates a new UntrustedInputChecker instance. The roots argument is a
@@ -324,19 +331,27 @@ func (u *UntrustedInputChecker) onObjectFilter() {
 }
 
 func (u *UntrustedInputChecker) end() {
+	u.endInput(false)
+}
+
+func (u *UntrustedInputChecker) endInput(serialized bool) {
 	var inputs []string
 	for _, cur := range u.cur {
-		if cur.Children != nil {
+		if cur.Children != nil && !serialized {
 			continue // When `Children` is nil, the node is a leaf
 		}
 		var b strings.Builder
 		cur.buildPath(&b)
 		inputs = append(inputs, b.String())
 	}
+	u.reportInputs(u.start, inputs)
+	u.reset()
+}
 
+func (u *UntrustedInputChecker) reportInputs(start ExprNode, inputs []string) {
 	if len(inputs) == 1 {
 		err := errorfAtExpr(
-			u.start,
+			start,
 			"%q is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details",
 			inputs[0],
 		)
@@ -345,17 +360,110 @@ func (u *UntrustedInputChecker) end() {
 		// When multiple untrusted inputs are detected, it means the expression extracts multiple properties with object
 		// filter syntax. Show all properties in error message.
 		err := errorfAtExpr(
-			u.start,
+			start,
 			"object filter extracts potentially untrusted properties %s. avoid using the value directly in inline scripts. instead, pass the value through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details",
 			sortedQuotes(inputs),
 		)
 		u.errs = append(u.errs, err)
 	}
+}
 
-	u.reset()
+// serializedContainers follows values selected for JSON serialization. Boolean
+// operands and function predicates do not contribute container contents.
+func (u *UntrustedInputChecker) serializedContainers(expr ExprNode) {
+	switch n := expr.(type) {
+	case *LogicalOpNode:
+		if value, known := conditionConstantValue(n.Left); known {
+			if expressionTruthy(value) != (n.Kind == LogicalOpNodeKindOr) {
+				u.serializedContainers(n.Right)
+			}
+			return
+		}
+		if n.Kind == LogicalOpNodeKindOr {
+			u.serializedContainers(n.Left)
+		}
+		u.serializedContainers(n.Right)
+	case *FuncCallNode:
+		if !strings.EqualFold(n.Callee, "case") || len(n.Args) < 3 || len(n.Args)%2 != 1 {
+			return
+		}
+		for i := 0; i < len(n.Args)-1; i += 2 {
+			if value, known := conditionConstantValue(n.Args[i]); known {
+				if !expressionTruthy(value) {
+					continue
+				}
+				u.serializedContainers(n.Args[i+1])
+				return
+			}
+			u.serializedContainers(n.Args[i+1])
+		}
+		u.serializedContainers(n.Args[len(n.Args)-1])
+	default:
+		access := &UntrustedInputChecker{roots: u.roots}
+		if !access.followAccess(expr) {
+			return
+		}
+		var inputs []string
+		for _, cur := range access.cur {
+			if cur.Children != nil {
+				inputs = append(inputs, cur.String())
+			}
+		}
+		u.reportInputs(access.start, inputs)
+	}
+}
+
+func (u *UntrustedInputChecker) followAccess(expr ExprNode) bool {
+	switch n := expr.(type) {
+	case *VariableNode:
+		u.onVar(n)
+	case *ObjectDerefNode:
+		if !u.followAccess(n.Receiver) {
+			return false
+		}
+		u.onPropAccess(n.Property)
+	case *ArrayDerefNode:
+		if !u.followAccess(n.Receiver) {
+			return false
+		}
+		u.onObjectFilter()
+	case *IndexAccessNode:
+		if !u.followAccess(n.Operand) {
+			return false
+		}
+		if key, ok := n.Index.(*StringNode); ok {
+			u.onPropAccess(strings.ToLower(key.Value))
+		} else {
+			u.onIndexAccess()
+		}
+	default:
+		return false
+	}
+	return true
 }
 
 func (u *UntrustedInputChecker) OnVisitNodeEnter(n ExprNode) {
+	boolean := false
+	switch n.(type) {
+	case *CompareOpNode, *NotOpNode:
+		boolean = true
+	}
+	if len(u.visits) > 0 {
+		switch parent := u.visits[len(u.visits)-1].node.(type) {
+		case *LogicalOpNode:
+			boolean = boolean || parent.Kind == LogicalOpNodeKindAnd && parent.Left == n
+		case *FuncCallNode:
+			if strings.EqualFold(parent.Callee, "case") {
+				for i := 0; i < len(parent.Args)-1; i += 2 {
+					boolean = boolean || parent.Args[i] == n
+				}
+			}
+		}
+	}
+	u.visits = append(u.visits, untrustedInputVisit{node: n, boolean: boolean})
+	if boolean {
+		u.booleanContexts++
+	}
 	if f, ok := n.(*FuncCallNode); ok && isSafeFuncCall(f) {
 		u.safeCalls++
 	}
@@ -363,6 +471,15 @@ func (u *UntrustedInputChecker) OnVisitNodeEnter(n ExprNode) {
 
 // OnVisitNodeLeave is a callback which should be called on visiting node after visiting its children.
 func (u *UntrustedInputChecker) OnVisitNodeLeave(n ExprNode) {
+	defer func() {
+		if len(u.visits) > 0 {
+			visit := u.visits[len(u.visits)-1]
+			u.visits = u.visits[:len(u.visits)-1]
+			if visit.boolean {
+				u.booleanContexts--
+			}
+		}
+	}()
 	// Skip unsafe checks if we are inside of safe function call expression
 	if u.safeCalls > 0 {
 		if f, ok := n.(*FuncCallNode); ok && isSafeFuncCall(f) {
@@ -386,6 +503,17 @@ func (u *UntrustedInputChecker) OnVisitNodeLeave(n ExprNode) {
 		u.onIndexAccess()
 	case *ArrayDerefNode:
 		u.onObjectFilter()
+	case *FuncCallNode:
+		if u.booleanContexts == 0 && strings.EqualFold(n.Callee, "toJSON") && len(n.Args) == 1 {
+			switch n.Args[0].(type) {
+			case *VariableNode, *ObjectDerefNode, *ArrayDerefNode, *IndexAccessNode:
+				u.endInput(true)
+				return
+			default:
+				u.serializedContainers(n.Args[0])
+			}
+		}
+		u.end()
 	default:
 		u.end()
 	}
@@ -407,5 +535,7 @@ func (u *UntrustedInputChecker) Errs() []*ExprError {
 func (u *UntrustedInputChecker) Init() {
 	u.errs = u.errs[:0]
 	u.safeCalls = 0
+	u.booleanContexts = 0
+	u.visits = u.visits[:0]
 	u.reset()
 }

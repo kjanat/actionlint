@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"unicode"
 )
 
 // Names is a complete inventory only when every workflow name could be read.
@@ -87,19 +88,51 @@ func workflowPaths(dir string, candidates []string, windows bool) []string {
 
 func workflowPathsByIdentity(dir string, candidates []string, same func(string, string) bool) []string {
 	var paths []string
+	buckets := map[string][]int{}
+	directories := map[string]bool{}
 	for _, path := range candidates {
-		if !same(filepath.Dir(path), dir) || (!strings.HasSuffix(path, ".yml") && !strings.HasSuffix(path, ".yaml")) {
+		if !strings.HasSuffix(path, ".yml") && !strings.HasSuffix(path, ".yaml") {
 			continue
 		}
-		index := slices.IndexFunc(paths, func(existing string) bool { return same(existing, path) })
+		parent := filepath.Dir(path)
+		member, cached := directories[parent]
+		if !cached {
+			member = same(parent, dir)
+			directories[parent] = member
+		}
+		if !member {
+			continue
+		}
+		key := filenameKey(path)
+		index := -1
+		for _, candidate := range buckets[key] {
+			if same(paths[candidate], path) {
+				index = candidate
+				break
+			}
+		}
 		if index >= 0 {
 			paths[index] = path
 		} else {
+			buckets[key] = append(buckets[key], len(paths))
 			paths = append(paths, path)
 		}
 	}
 	slices.Sort(paths)
 	return paths
+}
+
+// filenameKey groups only names that can compare equal under strings.EqualFold.
+func filenameKey(path string) string {
+	return strings.Map(func(r rune) rune {
+		minimum := r
+		for next := unicode.SimpleFold(r); next != r; next = unicode.SimpleFold(next) {
+			if next < minimum {
+				minimum = next
+			}
+		}
+		return minimum
+	}, filepath.Base(path))
 }
 
 // ForRoot includes only workflow files directly under .github/workflows.
@@ -137,7 +170,11 @@ func (i *Index) ForRoot(root string) (Names, error) {
 					candidates = append(candidates, path)
 				}
 			}
-			diskPaths := slices.Clone(candidates)
+			diskPaths := map[string][]string{}
+			for _, path := range candidates {
+				key := filenameKey(path)
+				diskPaths[key] = append(diskPaths[key], path)
+			}
 			candidates = append(candidates, i.Paths...)
 			for _, path := range workflowPaths(dir, candidates, runtime.GOOS == "windows") {
 				name, known, err := i.Load(path)
@@ -154,7 +191,7 @@ func (i *Index) ForRoot(root string) (Names, error) {
 				}
 				if name == "" {
 					filename := filepath.Base(path)
-					for _, disk := range diskPaths {
+					for _, disk := range diskPaths[filenameKey(path)] {
 						if SamePath(disk, path) {
 							filename = filepath.Base(disk)
 							break
