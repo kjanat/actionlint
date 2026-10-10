@@ -140,6 +140,9 @@ func TestInlineSuppressionBlockBody(t *testing.T) {
 		"# actionlint:ignore-next-line expression,shellcheck -- reviewed\nrun: !!str\n  |",
 		"# actionlint:ignore-next-line expression,shellcheck -- reviewed\nrun: &script\n  |2-",
 		"# actionlint:ignore-next-line expression,shellcheck -- reviewed\nrun: &script !!str\n  >-",
+		"run: # actionlint:ignore expression,shellcheck -- reviewed\n  !!str\n  |",
+		"run:\n  !!str\n  &script # actionlint:ignore expression,shellcheck -- reviewed\n  |",
+		"# actionlint:ignore-next-line expression,shellcheck -- reviewed\nrun:\n  &script\n  !!str\n  >-",
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(header+ending, func(t *testing.T) {
@@ -156,6 +159,22 @@ func TestInlineSuppressionBlockBody(t *testing.T) {
 					t.Fatal(diff)
 				}
 			})
+		}
+	}
+}
+
+func TestInlineSuppressionSplitPrefixIsolation(t *testing.T) {
+	for _, header := range []string{
+		"env: {SAFE: value} # actionlint:ignore expression,shellcheck -- unrelated\nrun:\n  !!str\n  |",
+		"run:\n  !!str\n  |\n    # actionlint:ignore expression,shellcheck -- script text",
+	} {
+		for _, ending := range []string{"\n", "\r\n"} {
+			source := strings.ReplaceAll(header+"\n    echo body\n", "\n", ending)
+			line := strings.Count(header, "\n") + 2
+			findings := []*Error{{Line: line, Kind: "expression"}, {Line: line, Kind: "shellcheck"}}
+			if got := filterInlineSuppressions([]byte(source), findings, nil); len(got) != 2 {
+				t.Fatalf("unrelated prefix suppressed body: %q: %+v", source, got)
+			}
 		}
 	}
 }

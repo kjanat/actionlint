@@ -142,6 +142,13 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 				childEnd = min(childEnd, node.Content[i+1].Line-1)
 			}
 			visit(child, max(child.Line, childEnd), parentIndent)
+			if node.Kind == yaml.MappingNode && i%2 == 1 && child.Kind == yaml.ScalarNode && child.Style&(yaml.LiteralStyle|yaml.FoldedStyle) != 0 {
+				if last, exists := blockEnds[child.Line]; exists {
+					for line := node.Content[i-1].Line; line < child.Line; line++ {
+						blockEnds[line] = last
+					}
+				}
+			}
 		}
 	}
 	visit(&root, documentEnd, -1)
@@ -249,8 +256,9 @@ func readYAMLNodePrefixComments(node *yaml.Node, lines []string, endLine, parent
 				}
 				last = next + 1
 			}
-			blockEnds[line] = last
-			blockEnds[node.Line] = last
+			for prefix := node.Line; prefix <= line; prefix++ {
+				blockEnds[prefix] = last
+			}
 			if end := strings.IndexAny(text, " \t"); end >= 0 {
 				if comment := strings.TrimLeft(text[end:], " \t"); strings.HasPrefix(comment, "#") {
 					read(line, comment, false)

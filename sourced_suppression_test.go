@@ -20,6 +20,8 @@ func TestSourcedShellcheckDeclarationSuppression(t *testing.T) {
 			{"block", "run: | # actionlint:ignore shellcheck -- reviewed\n  . ./scripts/check.sh", "", "", false},
 			{"next-line", "# actionlint:ignore-next-line shellcheck -- reviewed\nrun: . ./scripts/check.sh", "", "", false},
 			{"split-header", "run: !!str\n  | # actionlint:ignore shellcheck -- reviewed\n  . ./scripts/check.sh", "", "", false},
+			{"split-key", "run: # actionlint:ignore shellcheck -- reviewed\n  !!str\n  |\n  . ./scripts/check.sh", "", "", false},
+			{"split-anchor", "run:\n  !!str\n  &script # actionlint:ignore shellcheck -- reviewed\n  |\n  . ./scripts/check.sh\nname: *script", "", "", false},
 			{"missing-reason", "run: . ./scripts/check.sh # actionlint:ignore shellcheck", "", "inline-suppression", true},
 			{"forbidden", "run: . ./scripts/check.sh # actionlint:ignore shellcheck -- reviewed", "policy: {disallow-suppressions: true}\n", "disallow-suppressions", true},
 			{"report-suppression", "run: . ./scripts/check.sh # actionlint:ignore shellcheck -- reviewed", "policy: {disallow-suppressions: {report: suppression}}\n", "disallow-suppressions", false},
