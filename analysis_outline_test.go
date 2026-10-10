@@ -3,9 +3,11 @@ package actionlint
 import (
 	"bytes"
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -272,34 +274,52 @@ func TestAnalysisFailureKeepsOutline(t *testing.T) {
 	root := t.TempDir()
 	writeShellcheckFixture(t, root, "local/index.js", "console.log('ok');\n")
 	writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: node24\n  main: index.js\n")
-	source := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./local\n")
+	const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./local\n"
 	bogus := func(include string) *Config {
 		lint := &LintConfig{Rules: LintRulesConfig{Correctness: RuleGroupConfig{Rules: map[string]RuleSetting{"inline-suppression": {Level: "bogus"}}}}}
 		return &Config{Overrides: []ConfigOverride{{Includes: []string{include}, Lint: lint}}}
 	}
+	action := filepath.FromSlash("local/action.yml") + ":complete"
 	for _, tc := range []struct {
-		name   string
-		config *Config
-		ruff   string
+		name    string
+		config  *Config
+		ruff    string
+		sources map[string]string
+		wantErr string
+		want    []string
 	}{
-		{"workflow config", bogus("**"), ""},
-		{"ruff", nil, filepath.Join(root, "missing-ruff")},
-		{"metadata config", bogus("local/action.yml"), ""},
+		{"workflow config", bogus("**"), "", map[string]string{"ci.yml": workflow}, "rule level", []string{"ci.yml:complete"}},
+		{"workflow config with partial parse", bogus("**"), "", map[string]string{"ci.yml": strings.Replace(workflow, "    steps:", "    unknown: x\n    steps:", 1)}, "rule level", []string{"ci.yml:partial"}},
+		{"workflow config with failed parse", bogus("**"), "", map[string]string{"ci.yml": "on: [\n"}, "rule level", []string{"ci.yml:failed"}},
+		{"ruff", nil, filepath.Join(root, "missing-ruff"), map[string]string{"ci.yml": workflow}, "could not initialize Ruff", []string{"ci.yml:complete"}},
+		{"metadata config", bogus("local/action.yml"), "", map[string]string{"ci.yml": workflow}, "rule level", []string{"ci.yml:complete", action}},
+		{"one of several sources", bogus("bad.yml"), "", map[string]string{"bad.yml": workflow, "ok.yml": workflow}, "rule level", []string{"bad.yml:complete", "ok.yml:complete", action}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			analysis, err := Analyze(t.Context(), AnalysisRequest{
-				Sources:    []SourceUnit{{Path: "ci.yml", Content: source, Project: &Project{root: root}, Config: tc.config}},
-				WorkingDir: root, Ruff: tc.ruff,
-			})
-			if err == nil {
-				t.Fatal("fixture must fail analysis")
+			var sources []SourceUnit
+			for _, path := range slices.Sorted(maps.Keys(tc.sources)) {
+				sources = append(sources, SourceUnit{Path: path, Content: []byte(tc.sources[path]), Project: &Project{root: root}, Config: tc.config})
 			}
-			if analysis == nil || len(analysis.Documents) == 0 {
-				t.Fatalf("analysis failure discarded outline: %v", err)
+			analysis, err := Analyze(t.Context(), AnalysisRequest{Sources: sources, WorkingDir: root, Ruff: tc.ruff})
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("fixture must fail with %q: %v", tc.wantErr, err)
 			}
-			workflow := requireWorkflowOutline(t, analysis.Documents[0])
-			if workflow.Path != "ci.yml" || workflow.ParseStatus != "complete" || len(workflow.Jobs) != 1 {
-				t.Fatalf("analysis failure corrupted outline: %+v (%v)", workflow, err)
+			if analysis == nil {
+				t.Fatalf("analysis failure discarded result: %v", err)
+			}
+			got := make([]string, 0, len(analysis.Documents))
+			for _, document := range analysis.Documents {
+				switch document := document.(type) {
+				case WorkflowOutline:
+					got = append(got, document.Path+":"+document.ParseStatus)
+				case ActionOutline:
+					got = append(got, document.Path+":"+document.ParseStatus)
+				default:
+					t.Fatalf("unexpected document %T", document)
+				}
+			}
+			if !slices.Equal(got, tc.want) {
+				t.Fatalf("analysis failure changed documents: got %v, want %v (%v)", got, tc.want, err)
 			}
 		})
 	}
