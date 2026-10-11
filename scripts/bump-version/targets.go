@@ -91,7 +91,6 @@ var targets = []*target{
 	{
 		path: "README.md",
 		rules: []rule{
-			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 4),
 			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
 		},
 		unrelated: []string{

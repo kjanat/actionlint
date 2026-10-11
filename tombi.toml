@@ -54,8 +54,8 @@ enabled = true
 strict  = true
 catalog = {
   paths = [
-    "tombi://www.schemastore.org/api/json/catalog.json",
     "https://www.schemastore.org/api/json/catalog.json",
+    "tombi://www.schemastore.org/api/json/catalog.json",
   ],
 }
 
@@ -99,5 +99,13 @@ include = [".codex/config.toml", "**/.codex/config.toml"]
 
 # Mise
 [[schemas]]
-path    = "https://mise.jdx.dev/schema/mise.json"
-include = ["mise.toml", ".mise.toml"]
+path         = "https://mise.jdx.dev/schema/mise.json"
+include      = ["mise.toml", ".mise.toml"]
+format.rules = {
+  array-values-order.enabled = true,
+  table-keys-order.enabled   = true,
+}
+
+[[schemas]]
+path    = "https://golangci-lint.run/jsonschema/golangci.v2.jsonschema.json"
+include = [".golangci.toml"]

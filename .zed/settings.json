@@ -39,6 +39,12 @@
     "open_markdown_files_in_preview": false
   },
   "lsp": {
+    "actup-lsp": {
+      "binary": { // currently private project.
+        "path": "mise",
+        "arguments": ["exec", "actup-lsp", "--", "actup-lsp"]
+      },
+    },
     "golangci-lint": {
       "initialization_options": {
         "command": [

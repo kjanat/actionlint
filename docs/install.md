@@ -18,9 +18,18 @@ Previously published releases are unchanged and do not include Ruff.
 
 These methods install packages, binaries, or source published by this project.
 
+[Scoop](#scoop) · [WinGet](#winget) · [AUR](#arch-linux) · [Homebrew](#homebrew) · [npm](#npm) · [Archives](#prebuilt-binaries) ·
+[Download script](#download-script) · [Docker](#docker-image) · [aqua](#aqua) · [mise](#mise) · [Nix](#nix) · [Go](#build-from-source)
+· [pre-commit](#pre-commit) · [GitHub Action](#github-action)
+
+[Community-maintained](#community-maintained-integrations): [Python (pip and uv)](#python-pip-and-uv).
+
+[Pending](#pending-packages): [Nixpkgs](#nixpkgs).
+[Not yet available for this fork](#not-yet-implemented): [Chocolatey](#chocolatey) · [asdf](#asdf) · [Trunk](#trunk).
+
 ### Windows
 
-#### [Scoop](https://scoop.sh/)
+#### [Scoop](https://scoop.sh/ "scoop.sh homepage")
 
 [![Scoop Version][scoop-badge]][scoop-bucket]
 
@@ -33,9 +42,21 @@ scoop install kjanat/actionlint
 
 The [`actionlint` package in Scoop's main bucket][scoop] installs the upstream project.
 
+#### [WinGet](https://learn.microsoft.com/en-us/windows/package-manager/ "winget homepage")
+
+[![WinGet Package Version][winget-badge]][winget-package]
+
+Install this fork with:
+
+```powershell
+winget install --id kjanat.actionlint --exact --source winget
+```
+
+The existing [`rhysd.actionlint` package][winget] installs the upstream project.
+
 ### Linux
 
-#### [Arch Linux](https://archlinux.org/)
+#### [Arch Linux](https://archlinux.org/ "arch linux homepage")
 
 [![AUR Version (git)][aur-git-badge]][actionlint-kjanat-git]
 [![AUR Version (binary)][aur-bin-badge]][actionlint-kjanat-bin]
@@ -73,8 +94,8 @@ The unqualified [`actionlint` formula][formula] in Homebrew core installs the up
 The per-project `kjanat/actionlint` tap redirects to `kjanat/tap` through Homebrew's tap migration metadata, so existing
 `kjanat/actionlint/actionlint` installations keep upgrading. Releases publish only to `kjanat/tap`.
 
-The cask has no package dependencies. [ShellCheck integration](checks.md#check-shellcheck-integ) is optional and uses
-`shellcheck` when it is available on `PATH`; installing actionlint does not install ShellCheck. To add it separately,
+The cask has no package dependencies. ShellCheck and Ruff are optional and must be installed separately on `PATH`.
+For [ShellCheck integration](checks.md#check-shellcheck-integ),
 the `kjanat/tap/shellcheck` cask provides the upstream static binary and shell completions with no dependencies.
 Uninstall the homebrew-core formula first if it already owns the `shellcheck` binary:
 
@@ -82,11 +103,17 @@ Uninstall the homebrew-core formula first if it already owns the `shellcheck` bi
 brew install --cask kjanat/tap/shellcheck
 ```
 
+For [Ruff integration](config.md#ruff), install [Ruff's Homebrew package](https://docs.astral.sh/ruff/installation/):
+
+```sh
+brew install ruff
+```
+
 > [!WARNING]
 > The macOS executable is not notarized. If Gatekeeper blocks a downloaded copy, review and allow it in
 > **System Settings → Privacy & Security**.
 
-### [npm](https://www.npmjs.com/)
+### [npm](https://www.npmjs.com/ "npmjs.com homepage")
 
 [![NPM Version][npm-badge]][npm-package]
 
@@ -166,8 +193,8 @@ the downloaded binary to some other directory, please give the directory path to
 example installs the latest version to `~/.local/bin`. The destination must already exist and be on your `PATH`:
 
 ```sh
-mkdir -p "$HOME/.local/bin"
-bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) latest "$HOME/.local/bin"
+mkdir -p "${HOME}/.local/bin"
+bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) latest "${HOME}/.local/bin"
 ```
 
 The script verifies the archive's attestation when an authenticated `gh` command is available; otherwise it reports
@@ -255,10 +282,10 @@ registry_floating = true
 "aqua:kjanat/actionlint" = "latest"
 ```
 
-This [setting](https://mise.jdx.dev/configuration/settings.html#registry_floating) floats both mise and aqua registries.
+This [setting](https://mise.jdx.dev/configuration/settings.html#registry_floating "registry_floating") floats both mise and aqua registries.
 The GitHub backend examples above work independently of the bundled registry.
 
-### [Nix](https://nix.dev/)
+### [Nix](https://nix.dev/ "nix.dev homepage")
 
 The project's flake builds this fork from source. With Nix's `nix-command` and `flakes` features enabled, run it
 without installing it into your profile:
@@ -273,7 +300,7 @@ Or install it into your profile:
 nix profile add github:kjanat/actionlint
 ```
 
-The package includes ShellCheck, the manpage, Bash/Zsh/Fish completions, and the configuration schema
+The package includes ShellCheck and Ruff, the manpage, Bash/Zsh/Fish completions, and the configuration schema
 at `share/actionlint/actionlint.schema.json`. The package version is updated by the release bump script.
 The unversioned commands above build the default branch. Use a release tag or commit in the flake reference to
 select a specific checkout, or keep this flake as a locked input in your own project. Release tags created before
@@ -297,6 +324,63 @@ go install actionlint.kjanat.dev/cmd/actionlint@latest
 # Install the head of the master branch
 go install actionlint.kjanat.dev/cmd/actionlint@master
 ```
+
+### pre-commit
+
+Install [pre-commit](https://pre-commit.com/#installation), then add this to `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: https://github.com/kjanat/actionlint
+    rev: v1.17.0
+    hooks:
+      - id: actionlint
+```
+
+Install the Git hook and check all workflow files:
+
+```sh
+pre-commit install
+pre-commit run actionlint --all-files
+```
+
+This project's [hook manifest](../.pre-commit-hooks.yaml) provides five installation options:
+
+- `actionlint`: builds actionlint with Go. ShellCheck and Ruff are separate installations on `PATH`.
+- `actionlint-shellcheck`: builds actionlint and ShellCheck with Go. Ruff is a separate installation.
+- `actionlint-docker`: pulls the project's published container image; requires Docker.
+- `actionlint-bundled`: builds the selected revision's container image with ShellCheck and Ruff; requires Docker.
+- `actionlint-system`: runs your existing `actionlint` installation on `PATH`.
+
+Choose a release or commit containing the hook you want. `actionlint-bundled` is new and is not available in
+v1.17.0. See [the pre-commit guide](usage.md#pre-commit) for hook selection and
+[updating pinned revisions](usage.md#updating-pre-commit-hooks).
+
+### GitHub Action
+
+The project's [`kjanat/actionlint` Action](action.md) installs actionlint and runs it in GitHub Actions:
+
+```yaml
+- uses: actions/checkout@v7
+  with: { persist-credentials: false }
+- uses: kjanat/actionlint@v1
+```
+
+The upcoming Node-based Action also supports installation for later steps in the same job:
+
+```yaml
+- uses: kjanat/actionlint@v1
+  with:
+    install-only: true
+    shellcheck: false
+    ruff: false
+- run: actionlint --version
+```
+
+Install-only requires an Action release containing that feature. Existing immutable releases retain their
+original implementation. Pin a published release commit SHA or a specific release tag for reproducible setup.
+Enable the `shellcheck` and `ruff` inputs to install those tools too. See the
+[Action installation guide](action.md#install-without-running-analysis) for version selection and prerequisites.
 
 ## Community-maintained integrations
 
@@ -330,20 +414,6 @@ the upstream project.
 
 ## Pending packages
 
-### [Winget](https://learn.microsoft.com/en-us/windows/package-manager/)
-
-[![WinGet Package Version][winget-badge]][winget-submission]
-
-The initial `kjanat.actionlint` submission, microsoft/winget-pkgs#430563, is awaiting review.
-The later version submissions remain drafts. Until the package is available in the WinGet source, use [npm](#npm),
-[Scoop](#scoop), or a [release archive](#prebuilt-binaries). Once available, install it with:
-
-```powershell
-winget install --id kjanat.actionlint --exact --source winget
-```
-
-The existing [`rhysd.actionlint` package][winget] installs the upstream project.
-
 ### Nixpkgs
 
 The [`actionlint` definition in Nixpkgs][nixpkgs] currently builds the upstream project. This applies to `pkgs.actionlint`,
@@ -358,7 +428,7 @@ Use the [project's flake](#nix) to install this fork directly while the Nixpkgs 
 
 ## Not yet implemented
 
-### [Chocolatey](https://chocolatey.org/)
+### [Chocolatey](https://chocolatey.org/ "chocolatey.org homepage")
 
 The [`actionlint` package][chocolatey] installs the upstream project. Packaging this fork is being discussed in
 kai2nenobu/chocolatey-packages#40.
@@ -367,49 +437,59 @@ This fork does not currently publish a Chocolatey package. Use [Scoop](#scoop),
 
 ### asdf
 
-The [asdf-actionlint plugin][asdf-plugin] downloads upstream releases. This fork does not currently provide an asdf
-plugin. Use mise's GitHub backend or a release archive instead.
+The [asdf-actionlint plugin][asdf-plugin] currently downloads upstream releases.
+[crazy-matt/asdf-actionlint#18][asdf-proposal] proposes switching it to `kjanat/actionlint`; the PR is open.
+Until it is merged, use [mise's GitHub backend](#mise) or a [release archive](#prebuilt-binaries) to install this fork.
+
+### Trunk
+
+The [Trunk actionlint plugin][trunk-plugin] currently installs upstream releases.
+[trunk-io/plugins#1181][trunk-proposal] proposes switching it to `kjanat/actionlint`; the PR is open.
+Until it is merged, use one of the [project-maintained distributions](#project-maintained-distributions) to install this fork.
 
 ---
 
 [Checks](checks.md) | [Usage](usage.md) | [Configuration](config.md) | [Go API](api.md) | [References](reference.md)
 
 [Go]: https://go.dev/
-[actionlint-kjanat-bin]: https://aur.archlinux.org/packages/actionlint-kjanat-bin
-[actionlint-kjanat-git]: https://aur.archlinux.org/packages/actionlint-kjanat-git
-[actionlint-kjanat]: https://aur.archlinux.org/packages/actionlint-kjanat
+[actionlint-kjanat-bin]: https://aur.archlinux.org/packages/actionlint-kjanat-bin "AUR package for kjanat/actionlint (binary)"
+[actionlint-kjanat-git]: https://aur.archlinux.org/packages/actionlint-kjanat-git "AUR package for kjanat/actionlint (git)"
+[actionlint-kjanat]: https://aur.archlinux.org/packages/actionlint-kjanat "AUR package for kjanat/actionlint"
 [aqua-badge]: https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2Faquaproj%2Faqua-registry%2Fmain%2Fpkgs%2Fkjanat%2Factionlint%2Fregistry.yaml&query=%24.packages%5B0%5D.repo_name&prefix=kjanat%2F&label=aqua%20registry&color=blue
-[aqua-package]: https://github.com/aquaproj/aqua-registry/tree/main/pkgs/kjanat/actionlint
-[asdf-plugin]: https://github.com/crazy-matt/asdf-actionlint
-[attestations]: https://docs.github.com/en/actions/concepts/security/artifact-attestations
-[aur-bin-badge]: https://img.shields.io/aur/version/actionlint-kjanat-bin?label=AUR%20%28binary%29
-[aur-git-badge]: https://img.shields.io/aur/version/actionlint-kjanat-git?label=AUR%20%28git%29
-[aur-source-badge]: https://img.shields.io/aur/version/actionlint-kjanat?label=AUR%20%28source%29
-[aur]: https://aur.archlinux.org/
-[chocolatey]: https://community.chocolatey.org/packages/actionlint
-[docker-badge]: https://img.shields.io/docker/v/kjanat/actionlint
-[dockerhub]: https://hub.docker.com/r/kjanat/actionlint
-[formula]: https://formulae.brew.sh/formula/actionlint
-[gh]: https://docs.github.com/en/github-cli/github-cli/about-github-cli
-[go-module-badge]: https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fproxy.golang.org%2Factionlint.kjanat.dev%2F%40latest&query=%24.Version&label=Go%20module
-[go-module]: https://pkg.go.dev/actionlint.kjanat.dev
-[homebrew]: https://brew.sh/
-[mise-github]: https://mise.jdx.dev/dev-tools/backends/github.html
-[nixpkgs]: https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/ac/actionlint/package.nix
-[npm-badge]: https://img.shields.io/npm/v/%40kjanat%2Factionlint
-[npm-package]: https://www.npmjs.com/package/@kjanat/actionlint
-[paru]: https://github.com/Morganamilo/paru
-[pypi-badge]: https://img.shields.io/pypi/v/actionlint-py-kjanat?label=PyPI%20%28community%29
-[pypi-package]: https://pypi.org/project/actionlint-py-kjanat/
-[python-wrapper-pr]: https://github.com/renefritze/actionlint-py-kjanat/pull/1
-[python-wrapper]: https://github.com/renefritze/actionlint-py-kjanat
-[release-badge]: https://img.shields.io/github/v/release/kjanat/actionlint
-[releases]: https://github.com/kjanat/actionlint/releases
-[scoop-badge]: https://img.shields.io/scoop/v/actionlint?bucket=https%3A%2F%2Fgithub.com%2Fkjanat%2Fscoop-bucket
-[scoop-bucket]: https://github.com/kjanat/scoop-bucket/blob/master/bucket/actionlint.json
-[scoop]: https://scoop.sh/#/apps?q=actionlint&s=0&d=1&o=true
-[upstream]: https://github.com/rhysd/actionlint
-[uv-tools]: https://docs.astral.sh/uv/guides/tools/
-[winget-badge]: https://img.shields.io/winget/v/kjanat.actionlint
-[winget-submission]: https://github.com/microsoft/winget-pkgs/pull/430563
-[winget]: https://github.com/microsoft/winget-pkgs/tree/master/manifests/r/rhysd/actionlint
+[aqua-package]: https://github.com/aquaproj/aqua-registry/tree/main/pkgs/kjanat/actionlint "aqua registry entry for kjanat/actionlint"
+[asdf-plugin]: https://github.com/crazy-matt/asdf-actionlint "asdf-actionlint plugin for asdf version manager"
+[asdf-proposal]: https://github.com/crazy-matt/asdf-actionlint/pull/18 "asdf-actionlint PR proposing to switch to kjanat/actionlint"
+[attestations]: https://docs.github.com/en/actions/concepts/security/artifact-attestations "GitHub artifact attestations documentation"
+[aur-bin-badge]: https://img.shields.io/aur/version/actionlint-kjanat-bin?logo=archlinux&logoColor=white&label=AUR%20%28binary%29&labelColor=1793D1&color=black
+[aur-git-badge]: https://img.shields.io/aur/version/actionlint-kjanat-git?logo=archlinux&logoColor=white&label=AUR%20%28git%29&labelColor=1793D1&color=black
+[aur-source-badge]: https://img.shields.io/aur/version/actionlint-kjanat?logo=archlinux&logoColor=white&label=AUR%20%28source%29&labelColor=1793D1&color=black
+[aur]: https://aur.archlinux.org/ "Arch User Repository homepage"
+[chocolatey]: https://community.chocolatey.org/packages/actionlint "Chocolatey package"
+[docker-badge]: https://img.shields.io/docker/v/kjanat/actionlint?logo=docker&logoColor=white&label=Docker&labelColor=2496ED&color=black
+[dockerhub]: https://hub.docker.com/r/kjanat/actionlint "Docker Hub"
+[formula]: https://formulae.brew.sh/formula/actionlint "brew formula"
+[gh]: https://docs.github.com/en/github-cli/github-cli/about-github-cli "gh"
+[go-module-badge]: https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fproxy.golang.org%2Factionlint.kjanat.dev%2F%40latest&query=%24.Version&logo=go&logoColor=white&label=Go%20module&labelColor=00ADD8&color=black
+[go-module]: https://pkg.go.dev/actionlint.kjanat.dev "Go module documentation"
+[homebrew]: https://brew.sh/ "homebrew homepage"
+[mise-github]: https://mise.jdx.dev/dev-tools/backends/github.html "mise GitHub backend"
+[nixpkgs]: https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/ac/actionlint/package.nix "nixpkgs package definition for actionlint"
+[npm-badge]: https://img.shields.io/npm/v/@kjanat/actionlint?logo=npm&labelColor=CB3837&color=black
+[npm-package]: https://npm.im/@kjanat/actionlint "npm package for kjanat/actionlint"
+[paru]: https://github.com/Morganamilo/paru "paru AUR helper"
+[pypi-badge]: https://img.shields.io/pypi/v/actionlint-py-kjanat?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMS42OTYgMzAuMDI0Ij48ZyBzdHJva2U9IiNjY2MiIHN0cm9rZS1saW5lam9pbj0iYmV2ZWwiIHN0cm9rZS13aWR0aD0iLjM1NSI%2BPHBhdGggZmlsbD0iI2Y3ZjdmNCIgZD0ibS4xNzggNS45MTIgMTUuNTU1IDUuNjYyTDMxLjUxOSA1LjgzIDE1Ljk2My4xNjd6Ii8%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTE1LjczMyAxMS41NzR2MTguMjgzbDE1Ljc4Ni01Ljc0NlY1LjgzeiIvPjxwYXRoIGZpbGw9IiNlZmVlZWEiIGQ9Im0uMTc4IDUuOTEyIDE1LjU1NSA1LjY2MnYxOC4yODNMLjE3OCAyNC4xOTV6Ii8%2BPC9nPjwvc3ZnPg%3D%3D&color=3775A9
+[pypi-package]: https://pypi.org/project/actionlint-py-kjanat/ "PyPI package for kjanat/actionlint Python wrapper"
+[python-wrapper-pr]: https://github.com/renefritze/actionlint-py-kjanat/pull/1 "PR switching the Python wrapper to kjanat/actionlint"
+[python-wrapper]: https://github.com/renefritze/actionlint-py-kjanat "René Fritze's GitHub repository for the Python wrapper"
+[release-badge]: https://img.shields.io/github/v/release/kjanat/actionlint?logo=github&logoColor=white&label=release&labelColor=181717&color=black
+[releases]: https://github.com/kjanat/actionlint/releases "GitHub releases for kjanat/actionlint"
+[scoop-badge]: https://img.shields.io/scoop/v/actionlint?bucket=https%3A%2F%2Fgithub.com%2Fkjanat%2Fscoop-bucket&label=Scoop&labelColor=E83F5B&color=black
+[scoop-bucket]: https://github.com/kjanat/scoop-bucket/blob/master/bucket/actionlint.json "Scoop bucket for kjanat/actionlint"
+[scoop]: https://scoop.sh/#/apps?q=actionlint&s=0&d=1&o=true "Search Scoop for actionlint"
+[trunk-plugin]: https://github.com/trunk-io/plugins/tree/main/linters/actionlint "Trunk actionlint plugin"
+[trunk-proposal]: https://github.com/trunk-io/plugins/pull/1181 "Trunk actionlint plugin PR proposing to switch to kjanat/actionlint"
+[upstream]: https://github.com/rhysd/actionlint "Upstream actionlint project"
+[uv-tools]: https://docs.astral.sh/uv/guides/tools/ "uv tools documentation"
+[winget-badge]: https://img.shields.io/winget/v/kjanat.actionlint?label=WinGet&labelColor=0078D4&color=black&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMTIuNSAxODAgMTUwIj4KICA8cmVjdCB4PSI0MS44MTciIHk9IjIxLjM5NCIgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiByeD0iOCIgZmlsbD0iIzljNjQwYSIvPgogIDxyZWN0IHg9IjMzLjgxNyIgeT0iMzcuNSIgd2lkdGg9IjExMiIgaGVpZ2h0PSI5NiIgcng9IjgiIGZpbGw9IiNiYzgyMmEiLz4KICA8cmVjdCB4PSIyNS44MTciIHk9IjUzLjQxOSIgd2lkdGg9IjEyOCIgaGVpZ2h0PSI5NiIgcng9IjgiIGZpbGw9IiNkY2IzNzQiLz4KICA8cGF0aCBkPSJNOTAgNzd2NDguNU03MCAxMDUuNWwyMCAyMCAyMC0yMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjE2IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc%2BCg%3D%3D&logoSize=auto
+[winget-package]: https://github.com/microsoft/winget-pkgs/tree/master/manifests/k/kjanat/actionlint "WinGet package for kjanat/actionlint"
+[winget]: https://github.com/microsoft/winget-pkgs/tree/master/manifests/r/rhysd/actionlint "WinGet package for rhysd/actionlint"

@@ -1,6 +1,9 @@
 # actionlint
 
 [![CI Status][ci-badge]][ci]
+[![Latest release][release-badge]][releases]
+[![NPM Version][npm-badge]][npm-package]
+[![Docker image version][docker-badge]][dockerhub]
 [![API Document][apidoc-badge]][apidoc]
 [![Sponsor this project][sponsor-badge]][sponsor]
 
@@ -122,7 +125,7 @@ demo-workflow.yaml:18:15: "api" is not the ID of a preceding background step. "w
 ## Quick start
 
 Install with [npm], [Homebrew], [AUR],
-[Scoop], or [mise], or download [a release archive][releases].
+[Scoop], [WinGet], or [mise], or download [a release archive][releases].
 See [the installation document][install] for all options. To run it through npm:
 
 ```sh
@@ -176,6 +179,8 @@ optional PR reviews, tool prerequisites, migration and the input/output referenc
 
 ## pre-commit
 
+[![Latest release][release-badge]][releases]
+
 Workflow files can be checked on every commit with [pre-commit][pre-commit]. Add this to `.pre-commit-config.yaml`:
 
 ```yaml
@@ -207,7 +212,7 @@ See [the usage document][usage] for the pinned ShellCheck build and how to choos
 
 - [AI usage and policy] and [CLI compatibility]: How this fork uses AI and approaches compatibility for existing workflows and CI integrations.
 - [Checks][checks]: Full list of all checks done by actionlint with example inputs, outputs, and playground links.
-- [Installation][install]: Install with npm, Homebrew, AUR, Scoop, aqua, mise, the community pip/uv wrapper, release archives, the download script, Docker, or Go. Includes the status of WinGet and upstream-only package names.
+- [Installation][install]: Install with npm, Homebrew, AUR, Scoop, WinGet, aqua, mise, the community pip/uv wrapper, release archives, the download script, Docker, or Go. Includes upstream-only package names.
 - [Usage][usage]: How to use `actionlint` command locally or on GitHub Actions, the online playground, an official Docker image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit, VS Code.
 - [Configuration][config]: Runner labels, variables, secrets, default permissions, error filters, and opt-in policy checks, with YAML Language Server schema support.
 - [Go API][api]: How to use actionlint as Go library.
@@ -234,6 +239,7 @@ actionlint is distributed under [the MIT license].
 [Homebrew]: docs/install.md#homebrew
 [Schema audit]: docs/schema-audit.md
 [Scoop]: docs/install.md#scoop
+[WinGet]: docs/install.md#winget
 [Semantic Versioning for the supported CLI and configuration contracts]: CONTRIBUTING.md#release-versioning
 [`scripts/check-readme`]: scripts/check-readme
 [apidoc-badge]: https://pkg.go.dev/badge/actionlint.kjanat.dev.svg
@@ -243,6 +249,7 @@ actionlint is distributed under [the MIT license].
 [ci]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml
 [config]: docs/config.md
 [contribution guide]: ./CONTRIBUTING.md
+[docker-badge]: https://img.shields.io/docker/v/kjanat/actionlint?logo=docker&logoColor=white&label=Docker&labelColor=2496ED&color=black
 [dockerhub]: https://hub.docker.com/r/kjanat/actionlint
 [filter-pattern-doc]: https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
 [ghcr]: https://github.com/kjanat/actionlint/pkgs/container/actionlint
@@ -250,8 +257,11 @@ actionlint is distributed under [the MIT license].
 [issue-form]: https://github.com/kjanat/actionlint/issues/new
 [mise]: docs/install.md#mise
 [npm]: docs/install.md#npm
+[npm-badge]: https://img.shields.io/npm/v/@kjanat/actionlint?logo=npm&labelColor=CB3837&color=black
+[npm-package]: https://npm.im/@kjanat/actionlint
 [playground]: https://kjanat.github.io/actionlint/
 [pre-commit]: https://pre-commit.com
+[release-badge]: https://img.shields.io/github/v/release/kjanat/actionlint?logo=github&logoColor=white&label=release&labelColor=181717&color=black
 [releases]: https://github.com/kjanat/actionlint/releases
 [repo]: https://github.com/kjanat/actionlint
 [script-injection-doc]: https://docs.github.com/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks
@@ -262,13 +272,13 @@ actionlint is distributed under [the MIT license].
 [the MIT license]: ./LICENSE.txt
 [upstream]: https://github.com/rhysd/actionlint
 
-<!-- versioned links -->
+<!-- documentation in this checkout -->
 
-[api]: https://github.com/kjanat/actionlint/blob/v1.17.0/docs/api.md
-[checks]: https://github.com/kjanat/actionlint/blob/v1.17.0/docs/checks.md
-[install]: https://github.com/kjanat/actionlint/blob/master/docs/install.md
-[refs]: https://github.com/kjanat/actionlint/blob/v1.17.0/docs/reference.md
-[usage]: https://github.com/kjanat/actionlint/blob/v1.17.0/docs/usage.md
+[api]: docs/api.md
+[checks]: docs/checks.md
+[install]: docs/install.md
+[refs]: docs/reference.md
+[usage]: docs/usage.md
 
 <!-- specific commit refs -->
 
