@@ -60,10 +60,14 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"intent to add", "ubuntu-latest", "", "- run: ./intent.sh", ""},
 		{"redirect Git directory", "ubuntu-latest", "", "- run: ./bad.sh > .git", ""},
 		{"append Git directory", "ubuntu-latest", "", "- run: ./bad.sh >> .git", ""},
-		{"redirect nested checkout Git directory", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: source}\n- run: ./source/bad.sh > source/.git", ""},
+		{"redirect nested checkout Git directory", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {path: source}
+- run: ./source/bad.sh > source/.git`, ""},
 		{"redirect macOS Git directory", "macos-latest", "", "- run: ./bad.sh > .GIT", ""},
 		{"redirect ordinary dotgit file", "ubuntu-latest", "", "- run: ./bad.sh > scripts/.git", "bad.sh"},
-		{"checkout replaces tracked file", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: bad.sh}\n- run: ./bad.sh/bad.sh", "bad.sh"},
+		{"checkout replaces tracked file", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {path: bad.sh}
+- run: ./bad.sh/bad.sh`, "bad.sh"},
 		{"legacy checkout v1", "ubuntu-latest", "", "- uses: actions/checkout@v1\n- run: ./bad.sh", "bad.sh"},
 		{"legacy checkout v2", "ubuntu-latest", "", "- uses: actions/checkout@v2\n- run: ./bad.sh", "bad.sh"},
 		{"legacy checkout v3", "ubuntu-latest", "", "- uses: actions/checkout@v3\n- run: ./bad.sh", "bad.sh"},
@@ -129,7 +133,10 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"command substitution argument", "ubuntu-latest", "", "- run: ./bad.sh \"$(chmod +x bad.sh)\"", ""},
 		{"arithmetic argument", "ubuntu-latest", "", "- run: ./bad.sh \"$((COUNT++))\"", ""},
 		{"capitalized bash", "ubuntu-latest", "", "- run: ./bad.sh\n  shell: Bash", "bad.sh"},
-		{"uppercase sh default", "ubuntu-latest", "defaults:\n  run:\n    shell: SH\n", "- run: ./bad.sh", "bad.sh"},
+		{"uppercase sh default", "ubuntu-latest", `defaults:
+  run:
+    shell: SH
+`, "- run: ./bad.sh", "bad.sh"},
 		{"literal prefix assignment", "ubuntu-latest", "", "- run: FOO=bar ./bad.sh", "bad.sh"},
 		{"quoted prefix assignment", "ubuntu-latest", "", "- run: FOO='two words' EMPTY= ./bad.sh", "bad.sh"},
 		{"numeric variable prefix", "ubuntu-latest", "", "- run: RANDOM=1+2 SECONDS=1+2 OPTIND=1+2 ./bad.sh", "bad.sh"},
@@ -166,11 +173,22 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"macOS case folded file", "macos-latest", "", "- run: ./BAD.SH", "bad.sh"},
 		{"macOS case folded directory", "macos-latest", "", "- run: ./SCRIPTS/BAD.SH", "scripts/bad.sh"},
 		{"macOS case folded cd", "macos-latest", "", "- run: cd SCRIPTS && ./BAD.SH", "scripts/bad.sh"},
-		{"macOS case folded default directory", "macos-latest", "defaults:\n  run:\n    working-directory: SCRIPTS\n", "- run: ./BAD.SH", "scripts/bad.sh"},
-		{"macOS case folded checkout", "macos-latest", "", "- uses: actions/checkout@v6\n  with: {path: source}\n- run: ./SOURCE/BAD.SH", "bad.sh"},
-		{"macOS checkout ancestor cd", "macos-latest", "", "- uses: actions/checkout@v6\n  with: {path: source}\n- run: cd SOURCE/.. && ./SOURCE/BAD.SH", "bad.sh"},
-		{"checkout ancestor cd", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: source}\n- run: cd source/.. && ./source/bad.sh", "bad.sh"},
-		{"checkout workspace cd", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: source}\n- run: cd . && ./source/bad.sh", "bad.sh"},
+		{"macOS case folded default directory", "macos-latest", `defaults:
+  run:
+    working-directory: SCRIPTS
+`, "- run: ./BAD.SH", "scripts/bad.sh"},
+		{"macOS case folded checkout", "macos-latest", "", `- uses: actions/checkout@v6
+  with: {path: source}
+- run: ./SOURCE/BAD.SH`, "bad.sh"},
+		{"macOS checkout ancestor cd", "macos-latest", "", `- uses: actions/checkout@v6
+  with: {path: source}
+- run: cd SOURCE/.. && ./SOURCE/BAD.SH`, "bad.sh"},
+		{"checkout ancestor cd", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {path: source}
+- run: cd source/.. && ./source/bad.sh`, "bad.sh"},
+		{"checkout workspace cd", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {path: source}
+- run: cd . && ./source/bad.sh`, "bad.sh"},
 		{"macOS case folded chmod", "macos-latest", "", "- run: chmod +x BAD.SH && ./bad.sh", ""},
 		{"macOS case folded redirect", "macos-latest", "", "- run: ./BAD.SH <GOOD.SH", "bad.sh"},
 		{"macOS case folded symlink", "macos-latest", "", "- run: ./LINK/../BAD.SH", ""},
@@ -211,8 +229,14 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"expression grouped runner", "${{ fromJSON('{\"group\":\"build\",\"labels\":\"ubuntu-latest\"}') }}", "", "- run: ./bad.sh", ""},
 		{"unresolved runner label", "[ubuntu-latest, '${{ matrix.label }}']", "", "- run: ./bad.sh", ""},
 		{"literal hosted expression", "${{ 'ubuntu-latest' }}", "", "- run: ./bad.sh", "bad.sh"},
-		{"job directory", "ubuntu-latest", "defaults:\n  run:\n    working-directory: scripts\n", "- run: ./bad.sh", "scripts/bad.sh"},
-		{"empty step directory", "ubuntu-latest", "defaults:\n  run:\n    working-directory: scripts\n", "- run: ./bad.sh\n  working-directory: ''", "bad.sh"},
+		{"job directory", "ubuntu-latest", `defaults:
+  run:
+    working-directory: scripts
+`, "- run: ./bad.sh", "scripts/bad.sh"},
+		{"empty step directory", "ubuntu-latest", `defaults:
+  run:
+    working-directory: scripts
+`, "- run: ./bad.sh\n  working-directory: ''", "bad.sh"},
 		{"step directory", "ubuntu-latest", "", "- run: ./bad.sh\n  working-directory: scripts", "scripts/bad.sh"},
 		{"quoted directory", "ubuntu-latest", "", "- run: cd 'space dir' && ./bad.sh", "space dir/bad.sh"},
 		{"cd resolves", "ubuntu-latest", "", "- run: cd scripts && ./bad.sh", "scripts/bad.sh"},
@@ -222,9 +246,15 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"cd resets each step", "ubuntu-latest", "", "- run: cd scripts\n- run: ./bad.sh", "bad.sh"},
 		{"earlier chmod", "ubuntu-latest", "", "- run: chmod +x bad.sh\n- run: ./bad.sh", ""},
 		{"symlink chmod", "ubuntu-latest", "", "- run: chmod +x link\n- run: ./bad.sh", ""},
-		{"skipped chmod", "ubuntu-latest", "", "- run: chmod +x bad.sh\n  if: ${{ false }}\n- run: ./bad.sh", "bad.sh"},
-		{"bare skipped chmod", "ubuntu-latest", "", "- run: chmod +x bad.sh\n  if: false\n- run: ./bad.sh", "bad.sh"},
-		{"skipped opaque run", "ubuntu-latest", "", "- run: ./good.sh\n  if: false\n- run: ./bad.sh", "bad.sh"},
+		{"skipped chmod", "ubuntu-latest", "", `- run: chmod +x bad.sh
+  if: ${{ false }}
+- run: ./bad.sh`, "bad.sh"},
+		{"bare skipped chmod", "ubuntu-latest", "", `- run: chmod +x bad.sh
+  if: false
+- run: ./bad.sh`, "bad.sh"},
+		{"skipped opaque run", "ubuntu-latest", "", `- run: ./good.sh
+  if: false
+- run: ./bad.sh`, "bad.sh"},
 		{"skipped invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: false", ""},
 		{"literal zero invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: 0", ""},
 		{"literal negative zero invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: ${{ -0 }}", ""},
@@ -232,11 +262,21 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"literal empty string invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: ${{ '' }}", "bad.sh"},
 		{"computed empty string invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: ${{ format('') }}", ""},
 		{"folded false invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: ${{ 'false' }}", ""},
-		{"literal skipped chmod", "ubuntu-latest", "", "- run: chmod +x bad.sh\n  if: 0\n- run: ./bad.sh", "bad.sh"},
-		{"literal nonzero condition", "ubuntu-latest", "", "- run: echo ok\n  if: ${{ -1 }}\n- run: ./bad.sh", "bad.sh"},
-		{"literal nonempty condition", "ubuntu-latest", "", "- run: echo ok\n  if: ${{ 'false' }}\n- run: ./bad.sh", "bad.sh"},
-		{"literal array condition", "ubuntu-latest", "", "- run: echo ok\n  if: ${{ fromJSON('[]') }}\n- run: ./bad.sh", "bad.sh"},
-		{"literal object condition", "ubuntu-latest", "", "- run: echo ok\n  if: ${{ fromJSON('{}') }}\n- run: ./bad.sh", "bad.sh"},
+		{"literal skipped chmod", "ubuntu-latest", "", `- run: chmod +x bad.sh
+  if: 0
+- run: ./bad.sh`, "bad.sh"},
+		{"literal nonzero condition", "ubuntu-latest", "", `- run: echo ok
+  if: ${{ -1 }}
+- run: ./bad.sh`, "bad.sh"},
+		{"literal nonempty condition", "ubuntu-latest", "", `- run: echo ok
+  if: ${{ 'false' }}
+- run: ./bad.sh`, "bad.sh"},
+		{"literal array condition", "ubuntu-latest", "", `- run: echo ok
+  if: ${{ fromJSON('[]') }}
+- run: ./bad.sh`, "bad.sh"},
+		{"literal object condition", "ubuntu-latest", "", `- run: echo ok
+  if: ${{ fromJSON('{}') }}
+- run: ./bad.sh`, "bad.sh"},
 		{"conditional invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: github.event_name == 'push'", "bad.sh"},
 		{"always invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: always()", ""},
 		{"failure invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: failure()", ""},
@@ -250,13 +290,21 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"success invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: success()", "bad.sh"},
 		{"success conjunction", "ubuntu-latest", "", "- run: ./bad.sh\n  if: success() && github.event_name == 'push'", "bad.sh"},
 		{"contradictory invocation", "ubuntu-latest", "", "- run: ./bad.sh\n  if: success() && failure()", ""},
-		{"contradictory opaque action", "ubuntu-latest", "", "- uses: actions/setup-node@v6\n  if: success() && failure()\n- run: ./bad.sh", "bad.sh"},
-		{"contradictory chmod", "ubuntu-latest", "", "- run: chmod +x bad.sh\n  if: failure() && success()\n- run: ./bad.sh", "bad.sh"},
+		{"contradictory opaque action", "ubuntu-latest", "", `- uses: actions/setup-node@v6
+  if: success() && failure()
+- run: ./bad.sh`, "bad.sh"},
+		{"contradictory chmod", "ubuntu-latest", "", `- run: chmod +x bad.sh
+  if: failure() && success()
+- run: ./bad.sh`, "bad.sh"},
 		{"negated contradictory status", "ubuntu-latest", "", "- run: ./bad.sh\n  if: success() && !success()", ""},
 		{"success disjunction", "ubuntu-latest", "", "- run: ./bad.sh\n  if: success() || failure()", ""},
 		{"quoted status function", "ubuntu-latest", "", "- run: ./bad.sh\n  if: contains(github.event_name, 'failure()')", "bad.sh"},
-		{"conditional invocation invalidates following", "ubuntu-latest", "", "- run: ./bad.sh\n  if: github.event_name == 'push'\n- run: ./bad.sh", "bad.sh"},
-		{"conditional run invalidates", "ubuntu-latest", "", "- run: echo hello\n  if: github.event_name == 'push'\n- run: ./bad.sh", ""},
+		{"conditional invocation invalidates following", "ubuntu-latest", "", `- run: ./bad.sh
+  if: github.event_name == 'push'
+- run: ./bad.sh`, "bad.sh"},
+		{"conditional run invalidates", "ubuntu-latest", "", `- run: echo hello
+  if: github.event_name == 'push'
+- run: ./bad.sh`, ""},
 		{"constant true run", "ubuntu-latest", "", "- run: ./bad.sh\n  if: ${{ true }}", "bad.sh"},
 		{"same step chmod", "ubuntu-latest", "", "- run: chmod +x bad.sh && ./bad.sh", ""},
 		{"recursive chmod after mode", "ubuntu-latest", "", "- run: chmod +x -R scripts && ./scripts/bad.sh", ""},
@@ -278,75 +326,192 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"other file chmod", "ubuntu-latest", "", "- run: chmod +x good.sh\n- run: ./bad.sh", "bad.sh"},
 		{"dynamic chmod", "ubuntu-latest", "", "- run: chmod +x \"$SCRIPT\"\n- run: ./bad.sh", ""},
 		{"unknown action", "ubuntu-latest", "", "- uses: actions/setup-node@v6\n- run: ./bad.sh", ""},
-		{"skipped opaque action", "ubuntu-latest", "", "- uses: actions/setup-node@v6\n  if: false\n- run: ./bad.sh", "bad.sh"},
-		{"skipped checkout", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  if: ${{ false }}\n- run: ./bad.sh", "bad.sh"},
-		{"true checkout", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  if: ${{ true }}\n- run: ./bad.sh", "bad.sh"},
-		{"success checkout", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  if: success()\n- run: ./bad.sh", "bad.sh"},
-		{"success expression checkout", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  if: ${{ success() }}\n- run: ./bad.sh", "bad.sh"},
-		{"conditional success checkout", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  if: success() && github.event_name == 'push'\n- run: ./bad.sh", ""},
-		{"title case clean", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {clean: 'True'}\n- run: ./bad.sh", "bad.sh"},
-		{"uppercase clean", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {clean: 'TRUE'}\n- run: ./bad.sh", "bad.sh"},
-		{"padded clean", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {clean: ' true '}\n- run: ./bad.sh", "bad.sh"},
-		{"empty clean", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {clean: ''}\n- run: ./bad.sh", "bad.sh"},
-		{"expression uppercase clean", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {clean: \"${{ 'TRUE' }}\"}\n- run: ./bad.sh", "bad.sh"},
-		{"uppercase false clean", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {clean: 'FALSE'}\n- run: ./bad.sh", ""},
-		{"empty checkout path", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: ''}\n- run: ./bad.sh", "bad.sh"},
-		{"padded checkout path", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: ' source '}\n- run: ./source/bad.sh", "bad.sh"},
-		{"padded expression checkout path", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: \"${{ ' source ' }}\"}\n- run: ./source/bad.sh", "bad.sh"},
-		{"whitespace checkout path", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: '  '}\n- run: ./bad.sh", "bad.sh"},
-		{"checkout step Git worktree", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {GIT_WORK_TREE: /tmp}\n- run: ./bad.sh", ""},
-		{"checkout HOME config", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {HOME: '${{ github.workspace }}/config-home'}\n- run: ./bad.sh", ""},
-		{"checkout XDG config", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {XDG_CONFIG_HOME: '${{ github.workspace }}/config-home'}\n- run: ./bad.sh", ""},
-		{"checkout empty HOME", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {HOME: ''}\n- run: ./bad.sh", "bad.sh"},
-		{"checkout empty XDG config", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {XDG_CONFIG_HOME: ''}\n- run: ./bad.sh", "bad.sh"},
+		{"skipped opaque action", "ubuntu-latest", "", `- uses: actions/setup-node@v6
+  if: false
+- run: ./bad.sh`, "bad.sh"},
+		{"skipped checkout", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  if: ${{ false }}
+- run: ./bad.sh`, "bad.sh"},
+		{"true checkout", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  if: ${{ true }}
+- run: ./bad.sh`, "bad.sh"},
+		{"success checkout", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  if: success()
+- run: ./bad.sh`, "bad.sh"},
+		{"success expression checkout", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  if: ${{ success() }}
+- run: ./bad.sh`, "bad.sh"},
+		{"conditional success checkout", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  if: success() && github.event_name == 'push'
+- run: ./bad.sh`, ""},
+		{"title case clean", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {clean: 'True'}
+- run: ./bad.sh`, "bad.sh"},
+		{"uppercase clean", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {clean: 'TRUE'}
+- run: ./bad.sh`, "bad.sh"},
+		{"padded clean", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {clean: ' true '}
+- run: ./bad.sh`, "bad.sh"},
+		{"empty clean", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {clean: ''}
+- run: ./bad.sh`, "bad.sh"},
+		{"expression uppercase clean", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {clean: "${{ 'TRUE' }}"}
+- run: ./bad.sh`, "bad.sh"},
+		{"uppercase false clean", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {clean: 'FALSE'}
+- run: ./bad.sh`, ""},
+		{"empty checkout path", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {path: ''}
+- run: ./bad.sh`, "bad.sh"},
+		{"padded checkout path", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {path: ' source '}
+- run: ./source/bad.sh`, "bad.sh"},
+		{"padded expression checkout path", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {path: "${{ ' source ' }}"}
+- run: ./source/bad.sh`, "bad.sh"},
+		{"whitespace checkout path", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {path: '  '}
+- run: ./bad.sh`, "bad.sh"},
+		{"checkout step Git worktree", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  env: {GIT_WORK_TREE: /tmp}
+- run: ./bad.sh`, ""},
+		{"checkout HOME config", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  env: {HOME: '${{ github.workspace }}/config-home'}
+- run: ./bad.sh`, ""},
+		{"checkout XDG config", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  env: {XDG_CONFIG_HOME: '${{ github.workspace }}/config-home'}
+- run: ./bad.sh`, ""},
+		{"checkout empty HOME", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  env: {HOME: ''}
+- run: ./bad.sh`, "bad.sh"},
+		{"checkout empty XDG config", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  env: {XDG_CONFIG_HOME: ''}
+- run: ./bad.sh`, "bad.sh"},
 		{"checkout lowercase unix environment", "ubuntu-latest", "env: {git_work_tree: /tmp, path: tools}", "- run: ./bad.sh", "bad.sh"},
-		{"checkout PATH wrapper", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: source}\n  env: {PATH: '${{ github.workspace }}/tools:/usr/bin'}\n- run: ./source/bad.sh", ""},
-		{"checkout literal PATH", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {PATH: tools:/usr/bin}\n- run: ./bad.sh", ""},
-		{"checkout unknown PATH", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {PATH: '${{ inputs.path }}'}\n- run: ./bad.sh", ""},
-		{"checkout empty PATH", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {PATH: ''}\n- run: ./bad.sh", ""},
-		{"skipped checkout PATH", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  if: false\n  env: {PATH: tools:/usr/bin}\n- run: ./bad.sh", "bad.sh"},
-		{"checkout step Git askpass", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {submodules: true}\n  env: {GIT_ASKPASS: ./credentials.sh}\n- run: ./bad.sh", ""},
+		{"checkout PATH wrapper", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {path: source}
+  env: {PATH: '${{ github.workspace }}/tools:/usr/bin'}
+- run: ./source/bad.sh`, ""},
+		{"checkout literal PATH", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  env: {PATH: tools:/usr/bin}
+- run: ./bad.sh`, ""},
+		{"checkout unknown PATH", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  env: {PATH: '${{ inputs.path }}'}
+- run: ./bad.sh`, ""},
+		{"checkout empty PATH", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  env: {PATH: ''}
+- run: ./bad.sh`, ""},
+		{"skipped checkout PATH", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  if: false
+  env: {PATH: tools:/usr/bin}
+- run: ./bad.sh`, "bad.sh"},
+		{"checkout step Git askpass", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {submodules: true}
+  env: {GIT_ASKPASS: ./credentials.sh}
+- run: ./bad.sh`, ""},
 		{"checkout job Git askpass", "ubuntu-latest", "env: {GIT_ASKPASS: ./credentials.sh}", "- run: ./bad.sh", ""},
-		{"checkout unknown Git askpass", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {GIT_ASKPASS: '${{ inputs.askpass }}'}\n- run: ./bad.sh", ""},
-		{"checkout empty Git askpass", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {GIT_ASKPASS: ''}\n- run: ./bad.sh", "bad.sh"},
-		{"checkout expression empty Git askpass", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {GIT_ASKPASS: \"${{ '' }}\"}\n- run: ./bad.sh", "bad.sh"},
+		{"checkout unknown Git askpass", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  env: {GIT_ASKPASS: '${{ inputs.askpass }}'}
+- run: ./bad.sh`, ""},
+		{"checkout empty Git askpass", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  env: {GIT_ASKPASS: ''}
+- run: ./bad.sh`, "bad.sh"},
+		{"checkout expression empty Git askpass", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  env: {GIT_ASKPASS: "${{ '' }}"}
+- run: ./bad.sh`, "bad.sh"},
 		{"run Git askpass preserves checkout", "ubuntu-latest", "", "- run: ./bad.sh\n  env: {GIT_ASKPASS: ./credentials.sh}", "bad.sh"},
-		{"checkout SSH askpass", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {submodules: true}\n  env: {SSH_ASKPASS: ./credentials.sh}\n- run: ./bad.sh", ""},
-		{"checkout unknown SSH askpass", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {SSH_ASKPASS: '${{ inputs.askpass }}'}\n- run: ./bad.sh", ""},
-		{"checkout empty SSH askpass", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {SSH_ASKPASS: ''}\n- run: ./bad.sh", "bad.sh"},
+		{"checkout SSH askpass", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {submodules: true}
+  env: {SSH_ASKPASS: ./credentials.sh}
+- run: ./bad.sh`, ""},
+		{"checkout unknown SSH askpass", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  env: {SSH_ASKPASS: '${{ inputs.askpass }}'}
+- run: ./bad.sh`, ""},
+		{"checkout empty SSH askpass", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  env: {SSH_ASKPASS: ''}
+- run: ./bad.sh`, "bad.sh"},
 		{"run SSH askpass preserves checkout", "ubuntu-latest", "", "- run: ./bad.sh\n  env: {SSH_ASKPASS: ./credentials.sh}", "bad.sh"},
-		{"checkout Git protocol helper", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {submodules: true}\n  env: {GIT_ALLOW_PROTOCOL: 'https:ext'}\n- run: ./bad.sh", ""},
-		{"checkout unknown Git protocol", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {GIT_ALLOW_PROTOCOL: '${{ inputs.protocols }}'}\n- run: ./bad.sh", ""},
-		{"checkout empty Git protocol", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: {GIT_ALLOW_PROTOCOL: ''}\n- run: ./bad.sh", "bad.sh"},
+		{"checkout Git protocol helper", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {submodules: true}
+  env: {GIT_ALLOW_PROTOCOL: 'https:ext'}
+- run: ./bad.sh`, ""},
+		{"checkout unknown Git protocol", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  env: {GIT_ALLOW_PROTOCOL: '${{ inputs.protocols }}'}
+- run: ./bad.sh`, ""},
+		{"checkout empty Git protocol", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  env: {GIT_ALLOW_PROTOCOL: ''}
+- run: ./bad.sh`, "bad.sh"},
 		{"run Git protocol preserves checkout", "ubuntu-latest", "", "- run: ./bad.sh\n  env: {GIT_ALLOW_PROTOCOL: 'https:ext'}", "bad.sh"},
 		{"checkout job Git directory", "ubuntu-latest", "env: {GIT_DIR: /tmp/git}", "- run: ./bad.sh", ""},
 		{"checkout job Git config", "ubuntu-latest", "env: {GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: core.worktree, GIT_CONFIG_VALUE_0: /tmp}", "- run: ./bad.sh", ""},
-		{"checkout dynamic environment", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  env: ${{ fromJSON(inputs.env) }}\n- run: ./bad.sh", ""},
-		{"second checkout Git templates", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {path: source}\n  env: {GIT_TEMPLATE_DIR: '${{ github.workspace }}/templates'}\n- run: ./source/bad.sh", ""},
+		{"checkout dynamic environment", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  env: ${{ fromJSON(inputs.env) }}
+- run: ./bad.sh`, ""},
+		{"second checkout Git templates", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {path: source}
+  env: {GIT_TEMPLATE_DIR: '${{ github.workspace }}/templates'}
+- run: ./source/bad.sh`, ""},
 		{"checkout Git trace", "ubuntu-latest", "env: {GIT_TRACE: '1'}", "- run: ./bad.sh", "bad.sh"},
-		{"checkout alternate server", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {github-server-url: 'https://git.example.com'}\n- run: ./bad.sh", ""},
-		{"checkout unknown server", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {github-server-url: '${{ inputs.server }}'}\n- run: ./bad.sh", ""},
-		{"checkout empty server", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with: {github-server-url: ''}\n- run: ./bad.sh", "bad.sh"},
-		{"empty checkout path expression", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  with:\n    path: ${{ '' }}\n- run: ./bad.sh", "bad.sh"},
-		{"tolerated checkout failure", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  continue-on-error: true\n- run: ./bad.sh", ""},
-		{"expression tolerated checkout failure", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  continue-on-error: ${{ true }}\n- run: ./bad.sh", ""},
-		{"unknown tolerated checkout failure", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  continue-on-error: ${{ github.event_name == 'push' }}\n- run: ./bad.sh", ""},
-		{"checkout failure stops job", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  continue-on-error: false\n- run: ./bad.sh", "bad.sh"},
-		{"expression checkout failure stops job", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  continue-on-error: ${{ false }}\n- run: ./bad.sh", "bad.sh"},
-		{"checkout after unknown repository settings", "ubuntu-latest", "", "- run: git config core.fileMode false && chmod +x bad.sh\n- uses: actions/checkout@v6\n- run: ./bad.sh", ""},
-		{"checkout after opaque action", "ubuntu-latest", "", "- uses: actions/setup-node@v6\n- uses: actions/checkout@v6\n- run: ./bad.sh", ""},
-		{"unknown checkout condition", "ubuntu-latest", "", "- uses: actions/checkout@v6\n  if: github.event_name == 'push'\n- run: ./bad.sh", ""},
+		{"checkout alternate server", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {github-server-url: 'https://git.example.com'}
+- run: ./bad.sh`, ""},
+		{"checkout unknown server", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {github-server-url: '${{ inputs.server }}'}
+- run: ./bad.sh`, ""},
+		{"checkout empty server", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with: {github-server-url: ''}
+- run: ./bad.sh`, "bad.sh"},
+		{"empty checkout path expression", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  with:
+    path: ${{ '' }}
+- run: ./bad.sh`, "bad.sh"},
+		{"tolerated checkout failure", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  continue-on-error: true
+- run: ./bad.sh`, ""},
+		{"expression tolerated checkout failure", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  continue-on-error: ${{ true }}
+- run: ./bad.sh`, ""},
+		{"unknown tolerated checkout failure", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  continue-on-error: ${{ github.event_name == 'push' }}
+- run: ./bad.sh`, ""},
+		{"checkout failure stops job", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  continue-on-error: false
+- run: ./bad.sh`, "bad.sh"},
+		{"expression checkout failure stops job", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  continue-on-error: ${{ false }}
+- run: ./bad.sh`, "bad.sh"},
+		{"checkout after unknown repository settings", "ubuntu-latest", "", `- run: git config core.fileMode false && chmod +x bad.sh
+- uses: actions/checkout@v6
+- run: ./bad.sh`, ""},
+		{"checkout after opaque action", "ubuntu-latest", "", `- uses: actions/setup-node@v6
+- uses: actions/checkout@v6
+- run: ./bad.sh`, ""},
+		{"unknown checkout condition", "ubuntu-latest", "", `- uses: actions/checkout@v6
+  if: github.event_name == 'push'
+- run: ./bad.sh`, ""},
 		{"opaque shell", "ubuntu-latest", "", "- run: bash -c 'chmod +x bad.sh'\n- run: ./bad.sh", ""},
-		{"CDPATH", "ubuntu-latest", "", "- run: cd scripts && ./bad.sh\n  env:\n    CDPATH: elsewhere", ""},
-		{"BASH_ENV", "ubuntu-latest", "", "- run: ./bad.sh\n  env:\n    BASH_ENV: setup.sh", ""},
+		{"CDPATH", "ubuntu-latest", "", `- run: cd scripts && ./bad.sh
+  env:
+    CDPATH: elsewhere`, ""},
+		{"BASH_ENV", "ubuntu-latest", "", `- run: ./bad.sh
+  env:
+    BASH_ENV: setup.sh`, ""},
 		{"step SHELLOPTS", "ubuntu-latest", "", "- run: ./bad.sh \"$UNSET\"\n  env: {SHELLOPTS: nounset}", ""},
 		{"job SHELLOPTS", "ubuntu-latest", "env: {SHELLOPTS: nounset}", "- run: ./bad.sh \"$UNSET\"", ""},
 		{"step BASHOPTS", "ubuntu-latest", "", "- run: ./bad.sh missing-*\n  env: {BASHOPTS: failglob}", ""},
 		{"empty SHELLOPTS", "ubuntu-latest", "", "- run: ./bad.sh\n  env: {SHELLOPTS: ''}", "bad.sh"},
-		{"step PATH", "ubuntu-latest", "", "- run: chmod +x good.sh\n  env: {PATH: tools}\n- run: ./bad.sh", ""},
-		{"empty step PATH", "ubuntu-latest", "", "- run: chmod +x good.sh\n  env: {PATH: ''}\n- run: ./bad.sh", ""},
+		{"step PATH", "ubuntu-latest", "", `- run: chmod +x good.sh
+  env: {PATH: tools}
+- run: ./bad.sh`, ""},
+		{"empty step PATH", "ubuntu-latest", "", `- run: chmod +x good.sh
+  env: {PATH: ''}
+- run: ./bad.sh`, ""},
 		{"job PATH", "ubuntu-latest", "env: {PATH: tools}", "- run: chmod +x good.sh\n- run: ./bad.sh", ""},
-		{"exported Bash function", "ubuntu-latest", "", "- run: chmod +x good.sh\n  env: {'BASH_FUNC_chmod%%': '() { return 0; }'}\n- run: ./bad.sh", ""},
+		{"exported Bash function", "ubuntu-latest", "", `- run: chmod +x good.sh
+  env: {'BASH_FUNC_chmod%%': '() { return 0; }'}
+- run: ./bad.sh`, ""},
 		{"job exported Bash function", "ubuntu-latest", "env: {'BASH_FUNC_chmod%%': '() { return 0; }'}", "- run: chmod +x good.sh\n- run: ./bad.sh", ""},
 		{"printf assignment", "ubuntu-latest", "", "- run: printf -v CDPATH elsewhere; cd scripts; ./bad.sh", ""},
 		{"brace expansion", "ubuntu-latest", "", "- run: ./{good,bad}.sh", ""},
@@ -357,24 +522,37 @@ func TestExecutableBitWorkflows(t *testing.T) {
 		{"bracket executable guard", "ubuntu-latest", "", "- run: '[ -x ./bad.sh ] && ./bad.sh'", ""},
 		{"false condition", "ubuntu-latest", "", "- run: 'false && ./bad.sh'", ""},
 		{"quoted script", "ubuntu-latest", "", "- run: \"'./space dir/bad.sh'\"", "space dir/bad.sh"},
-		{"heredoc", "ubuntu-latest", "", "- run: |\n    cat <<'EOF'\n    ./bad.sh\n    EOF", ""},
+		{"heredoc", "ubuntu-latest", "", `- run: |
+    cat <<'EOF'
+    ./bad.sh
+    EOF`, ""},
 		{"function declaration", "ubuntu-latest", "", "- run: 'f() { ./bad.sh; }'", ""},
 		{"shell conditional", "ubuntu-latest", "", "- run: 'if true; then chmod +x bad.sh; fi; ./bad.sh'", ""},
 		{"expression injection", "ubuntu-latest", "", "- run: '${{ github.event.inputs.script }}; ./bad.sh'", ""},
 		{"substitution", "ubuntu-latest", "", "- run: echo $(chmod +x bad.sh) && ./bad.sh", ""},
 		{"shell background", "ubuntu-latest", "", "- run: chmod +x bad.sh & ./bad.sh", ""},
-		{"background step", "ubuntu-latest", "", "- run: chmod +x bad.sh\n  background: true\n- run: ./bad.sh", ""},
+		{"background step", "ubuntu-latest", "", `- run: chmod +x bad.sh
+  background: true
+- run: ./bad.sh`, ""},
 		{"expression false background", "ubuntu-latest", "", "- run: ./bad.sh\n  background: ${{ false }}", "bad.sh"},
 		{"expression true background", "ubuntu-latest", "", "- run: ./bad.sh\n  background: ${{ true }}", ""},
 		{"unknown background", "ubuntu-latest", "", "- run: ./bad.sh\n  background: ${{ github.event_name == 'push' }}", ""},
-		{"parallel group", "ubuntu-latest", "", "- parallel:\n    - run: chmod +x bad.sh\n    - run: ./bad.sh\n- run: ./bad.sh", ""},
+		{"parallel group", "ubuntu-latest", "", `- parallel:
+    - run: chmod +x bad.sh
+    - run: ./bad.sh
+- run: ./bad.sh`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			job := "on: push\njobs:\n  test:\n    runs-on: " + tc.runner + "\n"
+			job := `on: push
+jobs:
+  test:
+    runs-on: ` + tc.runner + "\n"
 			if tc.defaults != "" {
 				job += "    " + strings.ReplaceAll(strings.TrimSuffix(tc.defaults, "\n"), "\n", "\n    ") + "\n"
 			}
-			job += "    steps:\n      - uses: actions/checkout@v6\n      " + strings.ReplaceAll(tc.steps, "\n", "\n      ") + "\n"
+			job += `    steps:
+      - uses: actions/checkout@v6
+      ` + strings.ReplaceAll(tc.steps, "\n", "\n      ") + "\n"
 			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", job)
 			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
 			if err != nil {
@@ -436,7 +614,14 @@ func TestExecutableBitReusableWorkflowRepository(t *testing.T) {
 		{"workflow_dispatch", true},
 	} {
 		t.Run(tc.event, func(t *testing.T) {
-			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: "+tc.event+"\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - run: ./bad.sh\n")
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: "+tc.event+`
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: ./bad.sh
+`)
 			result, err := session.Files([]string{workflow}, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -474,7 +659,14 @@ func TestExecutableBitWorkflowShellOptions(t *testing.T) {
 		{"XDG_CONFIG_HOME: config-home", false},
 	} {
 		t.Run(tc.env, func(t *testing.T) {
-			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: push\nenv: {"+tc.env+"}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - run: ./bad.sh \"$UNSET\"\n")
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: push\nenv: {"+tc.env+`}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: ./bad.sh "$UNSET"
+`)
 			result, err := session.Files([]string{workflow}, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -514,7 +706,16 @@ func TestExecutableBitIndexTraversal(t *testing.T) {
 
 func TestExecutableBitCheckoutPrefixedInvocation(t *testing.T) {
 	root, _ := executableFixture(t)
-	workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n        with:\n          path: source\n      - run: ./source/bad.sh\n")
+	workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: source
+      - run: ./source/bad.sh
+`)
 	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
 	if err != nil {
 		t.Fatal(err)
@@ -563,7 +764,13 @@ func TestExecutableBitCheckoutAndFreshIndex(t *testing.T) {
 		{"working tree updated index", "", "", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n"
+			workflow := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+`
 			if tc.with != "" {
 				workflow += "        with:\n          " + tc.with + "\n"
 			}

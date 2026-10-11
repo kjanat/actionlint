@@ -9,7 +9,13 @@ import (
 )
 
 func TestActionMetadataKnownExpressions(t *testing.T) {
-	const base = "name: audit\ndescription: audit\nruns:\n  using: composite\n  steps:\n    - uses: actions/checkout@v6\n"
+	const base = `name: audit
+description: audit
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v6
+`
 	for _, tc := range []struct {
 		name, field, value, message, path string
 	}{

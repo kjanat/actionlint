@@ -65,7 +65,7 @@
     "biome": {
       "binary": {
         "path": "mise",
-        "arguments": ["exec", "github:biomejs/biome", "--", "biome", "lsp-proxy"]
+        "arguments": ["exec", "--", "biome", "lsp-proxy"]
       },
       "settings": {
         "config_path": "./biome.jsonc",
@@ -96,6 +96,10 @@
       }
     },
     "yaml-language-server": {
+      "binary": {
+        "path": "mise",
+        "arguments": ["exec", "npm:yaml-language-server", "--", "yaml-language-server", "--stdio"]
+      },
       "settings": {
         "yaml": {
           "schemas": {

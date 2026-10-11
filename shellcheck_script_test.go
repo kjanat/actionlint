@@ -68,7 +68,13 @@ func TestShellcheckScriptSemantics(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          " + strings.ReplaceAll(tc.script, "\n", "\n          ") + "\n        shell: " + tc.shell + "\n"
+			workflow := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          ` + strings.ReplaceAll(tc.script, "\n", "\n          ") + "\n        shell: " + tc.shell + "\n"
 			result, err := session.ReadStdin(strings.NewReader(workflow), false)
 			if err != nil {
 				t.Fatal(err)

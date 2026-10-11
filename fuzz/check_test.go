@@ -14,8 +14,20 @@ func parseWorkflowPanicFree(data []byte) *actionlint.Workflow {
 }
 
 func FuzzCheck(f *testing.F) {
-	f.Add([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n"))
-	f.Add([]byte("on: [push]\njobs:\n  t:\n    runs-on: ${{ matrix.os }}\n    steps:\n      - uses: actions/checkout@v4\n"))
+	f.Add([]byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+`))
+	f.Add([]byte(`on: [push]
+jobs:
+  t:
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+`))
 
 	f.Fuzz(func(_ *testing.T, data []byte) {
 		w := parseWorkflowPanicFree(data)

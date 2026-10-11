@@ -31,7 +31,17 @@ func TestMatrixExpressionFilterTypes(t *testing.T) {
 			for _, enabled := range []string{"on", "off"} {
 				t.Run(tc.name+"/"+section+"/"+enabled, func(t *testing.T) {
 					expression := strconv.Quote("${{ " + tc.expression + " }}")
-					source := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        value: %s\n        %s: %s\n    steps:\n      - run: echo ok\n", tc.axis, section, expression)
+					source := fmt.Sprintf(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        value: %s
+        %s: %s
+    steps:
+      - run: echo ok
+`, tc.axis, section, expression)
 					workflow, parseErrors := Parse([]byte(source))
 					if len(parseErrors) != 0 {
 						t.Fatal(parseErrors)
@@ -115,7 +125,17 @@ func TestMatrixExpressionFilterLeafTypes(t *testing.T) {
 	} {
 		for _, section := range []string{"include", "exclude"} {
 			t.Run(tc.name+"/"+section, func(t *testing.T) {
-				source := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        value: %s\n        %s: [{value: %s}]\n    steps:\n      - run: echo ok\n", tc.axis, section, tc.filter)
+				source := fmt.Sprintf(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        value: %s
+        %s: [{value: %s}]
+    steps:
+      - run: echo ok
+`, tc.axis, section, tc.filter)
 				workflow, parseErrors := Parse([]byte(source))
 				if len(parseErrors) != 0 {
 					t.Fatal(parseErrors)
@@ -175,7 +195,19 @@ func TestMatrixExpressionFilterCombinations(t *testing.T) {
 		for _, section := range []string{"include", "exclude"} {
 			t.Run(tc.name+"/"+section, func(t *testing.T) {
 				expression := strconv.Quote("${{ " + tc.expression + " }}")
-				source := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        value: %s\n        %s:\n          - %s\n          - {value: \"${{ false }}\"}\n    steps:\n      - run: echo ok\n", tc.axis, section, expression)
+				source := fmt.Sprintf(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        value: %s
+        %s:
+          - %s
+          - {value: "${{ false }}"}
+    steps:
+      - run: echo ok
+`, tc.axis, section, expression)
 				workflow, parseErrors := Parse([]byte(source))
 				if len(parseErrors) != 0 {
 					t.Fatal(parseErrors)
@@ -249,7 +281,14 @@ func TestKnownMatrixExpressionFilterTypes(t *testing.T) {
 					strategy = "    strategy:\n      matrix: " + strconv.Quote(expression)
 					line, column = 6, 15
 				}
-				source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n" + strategy + "\n    steps:\n      - run: echo ok\n"
+				source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+` + strategy + `
+    steps:
+      - run: echo ok
+`
 				workflow, parseErrors := Parse([]byte(source))
 				if len(parseErrors) != 0 {
 					t.Fatal(parseErrors)

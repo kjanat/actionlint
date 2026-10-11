@@ -83,7 +83,11 @@ func TestShellcheckFixLiteralMapping(t *testing.T) {
 }
 
 func TestShellcheckFixRejectsAmbiguousChanges(t *testing.T) {
-	input := "run: |\n  echo $VALUE\n  echo $OTHER\n\n"
+	input := `run: |
+  echo $VALUE
+  echo $OTHER
+
+`
 	for _, tc := range []struct {
 		name         string
 		input        string
@@ -105,8 +109,12 @@ func TestShellcheckFixRejectsAmbiguousChanges(t *testing.T) {
 		{"empty line", input, []shellcheckReplacement{{Line: 5, EndLine: 5, Column: 1, EndColumn: 1, Replacement: "echo"}}},
 		{"plain", "run: echo $VALUE\n", []shellcheckReplacement{{Line: 3, EndLine: 3, Column: 6, EndColumn: 6, Replacement: `"`}}},
 		{"quoted", "run: 'echo $VALUE'\n", []shellcheckReplacement{{Line: 3, EndLine: 3, Column: 6, EndColumn: 6, Replacement: `"`}}},
-		{"folded", "run: >\n  echo $VALUE\n", []shellcheckReplacement{{Line: 3, EndLine: 3, Column: 6, EndColumn: 6, Replacement: `"`}}},
-		{"expression", "run: |\n  echo ${{ env.VALUE }} $OTHER\n", []shellcheckReplacement{{Line: 3, EndLine: 3, Column: 6, EndColumn: 6, Replacement: `"`}}},
+		{"folded", `run: >
+  echo $VALUE
+`, []shellcheckReplacement{{Line: 3, EndLine: 3, Column: 6, EndColumn: 6, Replacement: `"`}}},
+		{"expression", `run: |
+  echo ${{ env.VALUE }} $OTHER
+`, []shellcheckReplacement{{Line: 3, EndLine: 3, Column: 6, EndColumn: 6, Replacement: `"`}}},
 		{"partial fix", input, []shellcheckReplacement{{Line: 3, EndLine: 3, Column: 6, EndColumn: 6, Replacement: `"`}, {Line: 1, EndLine: 1, Column: 1, EndColumn: 1, Replacement: "#"}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -164,7 +172,15 @@ func TestShellcheckCompositeFixPath(t *testing.T) {
 	command := shellcheckForTest(t)
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
-	input := "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: |\n        echo $VALUE\n"
+	input := `name: test
+description: test
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        echo $VALUE
+`
 	path := writeShellcheckFixture(t, root, "local/action.yml", input)
 	result := compositeAnalysis(t, root, "- uses: ./local", AnalysisOptions{Shellcheck: command})
 	if len(result.Diagnostics) != 1 || len(result.Diagnostics[0].Fixes) != 1 {

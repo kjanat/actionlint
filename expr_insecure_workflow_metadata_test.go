@@ -23,7 +23,10 @@ func TestWorkflowRunSiblingWorkflowMetadataInjection(t *testing.T) {
 				line int
 			}{
 				{"      - run: |\n          echo '${{ " + expression + " }}'\n", 6},
-				{"      - uses: actions/github-script@v8\n        with:\n          script: |\n            console.log('${{ " + expression + " }}')\n", 8},
+				{`      - uses: actions/github-script@v8
+        with:
+          script: |
+            console.log('${{ ` + expression + " }}')\n", 8},
 			} {
 				for _, ending := range []string{"\n", "\r\n"} {
 					findings := lintSiblingWorkflowMetadata(t, strings.ReplaceAll(script.step, "\n", ending), ending)
@@ -74,7 +77,12 @@ func lintSiblingWorkflowMetadata(t *testing.T, step, ending string) []*Error {
 	if err != nil {
 		t.Fatal(err)
 	}
-	source := strings.ReplaceAll("on: {workflow_run: {workflows: ['Build*'], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n", "\n", ending) + step
+	source := strings.ReplaceAll(`on: {workflow_run: {workflows: ['Build*'], types: [completed]}}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+`, "\n", ending) + step
 	findings, err := linter.Lint("consumer.yaml", []byte(source), nil)
 	if err != nil {
 		t.Fatal(err)

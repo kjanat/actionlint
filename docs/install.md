@@ -352,8 +352,8 @@ This project's [hook manifest](../.pre-commit-hooks.yaml) provides five installa
 - `actionlint-bundled`: builds the selected revision's container image with ShellCheck and Ruff; requires Docker.
 - `actionlint-system`: runs your existing `actionlint` installation on `PATH`.
 
-Choose a release or commit containing the hook you want. `actionlint-bundled` is new and is not available in
-v1.17.0. See [the pre-commit guide](usage.md#pre-commit) for hook selection and
+Choose a release or commit containing the hook you want. `actionlint-bundled` was added after v1.17.0.
+See [the pre-commit guide](usage.md#pre-commit) for hook selection and
 [updating pinned revisions](usage.md#updating-pre-commit-hooks).
 
 ### GitHub Action

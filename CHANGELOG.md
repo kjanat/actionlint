@@ -5,6 +5,7 @@
 - Correct the v1.5.2 changelog entry: `0x01` and `1e0123` are valid in GitHub Actions, although that release rejected them. (kjanat/actionlint#176)
 - Suggest the missing parentheses when an expression uses a function name, such as `always`, without calling it. (kjanat/actionlint#226)
 - Resume WinGet update PRs for stable releases of `kjanat.actionlint`. (kjanat/actionlint#236)
+- Include typed workflow and action documents in JSON results, with source positions, inputs, outputs, execution variants and structured `uses` references. Preserve partial parses and ship matching schema and npm types. (kjanat/actionlint#189)
 
 - Select an exact Action binary with `version` or `version-file`, including `.tool-versions`; use `install-only` to put it and enabled optional tools on PATH without running analysis. (kjanat/actionlint#185)
 

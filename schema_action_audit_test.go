@@ -44,18 +44,43 @@ func TestSchemaActionEveryProperty(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "main.js"), []byte("// test\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	const header = "name: audit\ndescription: audit\n"
-	const composite = "runs:\n  using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n"
+	const header = `name: audit
+description: audit
+`
+	const composite = `runs:
+  using: composite
+  steps:
+    - run: echo ok
+      shell: bash
+`
 	fixtures := map[string]struct{ source, indent string }{
-		"action-root":       {header + composite, ""},
-		"input":             {header + composite + "inputs:\n  value:\n    description: input\n", "    "},
-		"output-definition": {header + composite + "outputs:\n  value:\n    description: output\n", "    "},
-		"container-runs":    {header + "runs:\n  using: docker\n  image: docker://alpine:3\n", "  "},
-		"node-runs":         {header + "runs:\n  using: node24\n  main: main.js\n", "  "},
-		"plugin-runs":       {header + "runs:\n  plugin: Runner.Plugins.Example\n", "  "},
-		"composite-runs":    {header + composite, "  "},
-		"run-step":          {header + composite, "      "},
-		"uses-step":         {header + "runs:\n  using: composite\n  steps:\n    - uses: actions/checkout@v6\n", "      "},
+		"action-root": {header + composite, ""},
+		"input": {header + composite + `inputs:
+  value:
+    description: input
+`, "    "},
+		"output-definition": {header + composite + `outputs:
+  value:
+    description: output
+`, "    "},
+		"container-runs": {header + `runs:
+  using: docker
+  image: docker://alpine:3
+`, "  "},
+		"node-runs": {header + `runs:
+  using: node24
+  main: main.js
+`, "  "},
+		"plugin-runs": {header + `runs:
+  plugin: Runner.Plugins.Example
+`, "  "},
+		"composite-runs": {header + composite, "  "},
+		"run-step":       {header + composite, "      "},
+		"uses-step": {header + `runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v6
+`, "      "},
 	}
 	for definition, fixture := range fixtures {
 		for property, child := range actionMetadataSchema[definition].properties {
@@ -103,8 +128,20 @@ func TestSchemaActionEveryProperty(t *testing.T) {
 
 // Cases follow actions/runner action_yaml.json at 759385a3510197a58b5c08dc1f373b74b9f4643b.
 func TestSchemaActionAudit(t *testing.T) {
-	const composite = "name: audit\ndescription: audit\nruns:\n  using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n"
-	const docker = "name: audit\ndescription: audit\nruns:\n  using: docker\n  image: docker://alpine:3\n"
+	const composite = `name: audit
+description: audit
+runs:
+  using: composite
+  steps:
+    - run: echo ok
+      shell: bash
+`
+	const docker = `name: audit
+description: audit
+runs:
+  using: docker
+  image: docker://alpine:3
+`
 	tests := []struct {
 		name, source string
 		valid        bool
@@ -115,20 +152,50 @@ func TestSchemaActionAudit(t *testing.T) {
 		{"metadata quoted numeric tag", strings.Replace(composite, "name: audit", "name: !!float '1.5'", 1), false},
 		{"metadata custom scalar tag", strings.Replace(composite, "name: audit", "name: !custom value", 1), false},
 		{"metadata custom extension scalar tag", composite + "x-extension: !custom value\n", false},
-		{"docker hooks", docker + "  pre-if: always()\n  post-if: always()\n", true},
-		{"docker boolean hook conditions", docker + "  pre-if: true\n  post-if: false\n", true},
-		{"docker image entrypoints", docker + "  pre-entrypoint: /usr/local/bin/setup\n  entrypoint: /usr/local/bin/run\n  post-entrypoint: /usr/local/bin/cleanup\n", true},
-		{"output context", composite + "outputs:\n  result:\n    value: ${{ secrets.TOKEN }}\n", false},
-		{"output mapping", composite + "outputs:\n  result: []\n", false},
-		{"output unknown key", composite + "outputs:\n  result:\n    typo: nope\n", false},
-		{"output value shape", composite + "outputs:\n  result:\n    value: []\n", false},
-		{"output key empty", composite + "outputs:\n  '': {}\n", false},
-		{"output value valid", composite + "outputs:\n  result:\n    description: example\n    value: ${{ inputs.value }}\n", true},
+		{"docker hooks", docker + `  pre-if: always()
+  post-if: always()
+`, true},
+		{"docker boolean hook conditions", docker + `  pre-if: true
+  post-if: false
+`, true},
+		{"docker image entrypoints", docker + `  pre-entrypoint: /usr/local/bin/setup
+  entrypoint: /usr/local/bin/run
+  post-entrypoint: /usr/local/bin/cleanup
+`, true},
+		{"output context", composite + `outputs:
+  result:
+    value: ${{ secrets.TOKEN }}
+`, false},
+		{"output mapping", composite + `outputs:
+  result: []
+`, false},
+		{"output unknown key", composite + `outputs:
+  result:
+    typo: nope
+`, false},
+		{"output value shape", composite + `outputs:
+  result:
+    value: []
+`, false},
+		{"output key empty", composite + `outputs:
+  '': {}
+`, false},
+		{"output value valid", composite + `outputs:
+  result:
+    description: example
+    value: ${{ inputs.value }}
+`, true},
 		{"docker args context", docker + "  args: ['${{ github.token }}']\n", false},
 		{"docker args shape", docker + "  args: [[invalid]]\n", false},
-		{"docker env context", docker + "  env:\n    TOKEN: ${{ secrets.TOKEN }}\n", false},
-		{"docker env value shape", docker + "  env:\n    VALUE: []\n", false},
-		{"docker env key empty", docker + "  env:\n    '': nope\n", false},
+		{"docker env context", docker + `  env:
+    TOKEN: ${{ secrets.TOKEN }}
+`, false},
+		{"docker env value shape", docker + `  env:
+    VALUE: []
+`, false},
+		{"docker env key empty", docker + `  env:
+    '': nope
+`, false},
 		{"runs unknown key", docker + "  typo: true\n", false},
 		{"runs empty optional string", docker + "  entrypoint: ''\n", false},
 		{"runs forbidden empty field", docker + "  steps: []\n", false},
@@ -139,17 +206,31 @@ func TestSchemaActionAudit(t *testing.T) {
 		{"composite id reserved", composite + "      id: __internal\n", false},
 		{"composite id maximum", composite + "      id: " + strings.Repeat("a", 100) + "\n", false},
 		{"composite id length boundary", composite + "      id: " + strings.Repeat("a", 99) + "\n", true},
-		{"composite duplicate id", composite + "      id: build\n    - run: echo next\n      shell: bash\n      id: BUILD\n", false},
+		{"composite duplicate id", composite + `      id: build
+    - run: echo next
+      shell: bash
+      id: BUILD
+`, false},
 		{"composite literal id", composite + "      id: ${{ 'build' }}\n", true},
 		{"composite if shape", composite + "      if: []\n", false},
 		{"composite env shape", composite + "      env: []\n", false},
 		{"composite env nested shape", composite + "      env: {TOKEN: []}\n", false},
 		{"composite env expression", composite + "      env: ${{ fromJSON(inputs.env) }}\n", true},
-		{"composite env expression key", composite + "      env:\n        '${{ inputs.key }}': value\n", true},
-		{"composite env unavailable key context", composite + "      env:\n        '${{ secrets.TOKEN }}': value\n", false},
-		{"composite env insert", composite + "      env:\n        '${{ insert }}': {VALUE: text}\n", true},
-		{"composite env insert shape", composite + "      env:\n        '${{ insert }}': []\n", false},
-		{"composite recursive insertion", composite + "      env: &recursive\n        '${{ insert }}': *recursive\n", false},
+		{"composite env expression key", composite + `      env:
+        '${{ inputs.key }}': value
+`, true},
+		{"composite env unavailable key context", composite + `      env:
+        '${{ secrets.TOKEN }}': value
+`, false},
+		{"composite env insert", composite + `      env:
+        '${{ insert }}': {VALUE: text}
+`, true},
+		{"composite env insert shape", composite + `      env:
+        '${{ insert }}': []
+`, false},
+		{"composite recursive insertion", composite + `      env: &recursive
+        '${{ insert }}': *recursive
+`, false},
 		{"composite continue literal", composite + "      continue-on-error: nonsense\n", false},
 		{"composite continue boolean", composite + "      continue-on-error: true\n", true},
 		{"composite explicit non-core boolean", composite + "      continue-on-error: !!bool on\n", false},
@@ -167,11 +248,24 @@ func TestSchemaActionAudit(t *testing.T) {
 		{"composite format single argument", strings.Replace(composite, "run: echo ok", "run: echo ${{ format('yes') }}", 1), true},
 		{"composite unterminated expression", strings.Replace(composite, "run: echo ok", "run: echo ${{ inputs.value", 1), false},
 		{"composite uses expression", strings.Replace(composite, "run: echo ok\n      shell: bash", "uses: ${{ inputs.action }}", 1), false},
-		{"input null mapping", composite + "inputs:\n  value:\n", false},
-		{"input empty key", composite + "inputs:\n  '': {}\n", false},
+		{"input null mapping", composite + `inputs:
+  value:
+`, false},
+		{"input empty key", composite + `inputs:
+  '': {}
+`, false},
 		{"literal runtime", strings.Replace(docker, "using: docker", "using: ${{ 'docker' }}", 1), true},
-		{"internal plugin runtime", "name: audit\ndescription: audit\nruns:\n  plugin: Runner.Plugins.Example\n", true},
-		{"plugin closed properties", "name: audit\ndescription: audit\nruns:\n  plugin: Runner.Plugins.Example\n  main: main.js\n", false},
+		{"internal plugin runtime", `name: audit
+description: audit
+runs:
+  plugin: Runner.Plugins.Example
+`, true},
+		{"plugin closed properties", `name: audit
+description: audit
+runs:
+  plugin: Runner.Plugins.Example
+  main: main.js
+`, false},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

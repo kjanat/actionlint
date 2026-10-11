@@ -20,24 +20,11 @@
     "playground"
   ],
   "scripts": {
-    "build": "npm run build --workspace playground",
-    "comment-cop": "node .github/actions/comment-cop/comment-cop.mjs",
-    "dev": "npm run dev --workspace playground",
-    "lint": "npm run lint:biome && npm run lint --workspace playground",
     "lint:biome": "biome check . --error-on-warnings",
-    "matcher:generate": "node ./scripts/generate-actionlint-matcher/main.mjs .github/actionlint-matcher.json",
-    "preview": "npm run preview --workspace playground",
-    "test": "run test:js",
-    "test:comment-cop": "node --test ./.github/actions/comment-cop/comment-cop.test.mjs",
-    "test:feed": "run -s @kjlint/changelog-rss:typecheck @kjlint/changelog-rss:test",
-    "test:js": "run -p test:comment-cop test:feed test:matcher test:npm-facade test:shellcheck-versions test:toolchain typecheck",
-    "test:matcher": "node --test ./scripts/generate-actionlint-matcher/test.mjs",
-    "test:npm-facade": "node --test ./distribution/npm/facade/test/*.test.mjs",
-    "test:shellcheck-versions": "node --test ./.github/actions/shellcheck-versions/shellcheck-version-lifecycle.test.mjs",
-    "test:toolchain": "node --test ./scripts/update-go-toolchain.test.mjs",
-    "test:workspaces": "npm run test --workspaces",
-    "typecheck": "run -q @typescript/native --noEmit",
-    "update:shellcheck": "npm run update:shellcheck --workspace actionlint-action"
+    "lint:workspaces": "npm run lint --workspaces --if-present",
+    "test:js": "run -p //.github/actions/comment-cop:test //scripts/generate-actionlint-matcher:test //.github/actions/shellcheck-versions:test //scripts:test typecheck @kjanat/actionlint:test @kjlint/changelog-rss:typecheck @kjlint/changelog-rss:test",
+    "test:workspaces": "npm run test --workspaces --if-present",
+    "typecheck": "run -q @typescript/native --noEmit"
   },
   "overrides": {
     "@actions/github-script": {
@@ -52,13 +39,16 @@
     "@octokit/webhooks-types": "^7.6.1",
     "@types/node": "^26.4.0",
     "@typescript/native": "npm:typescript@^7.0.2",
+    "biome": "npm:@biomejs/biome@^2.5",
+    "runner-run": "^0.28",
+    "tsc-rs": "^0.3.0",
     "typescript": "npm:@typescript/typescript6@^6.0.2"
   },
   "devEngines": {
     "packageManager": [
       {
         "name": "npm",
-        "version": "12.0.2",
+        "version": ">=12",
         "onFail": "warn"
       }
     ],
@@ -71,6 +61,7 @@
     ]
   },
   "allowScripts": {
-    "core-js": false
+    "core-js": false,
+    "tsc-rs@0.3.0": true
   }
 }

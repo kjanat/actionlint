@@ -814,7 +814,9 @@ func TestExprTypeMergeComplicated(t *testing.T) {
 			ty := tc.with.Merge(tc.ty)
 			if diff := cmp.Diff(tc.want, ty, opt); diff != "" {
 				t.Fatalf(
-					"%s was merged with %s as %s while expecting %s\ndiff:\n%s",
+					`%s was merged with %s as %s while expecting %s
+diff:
+%s`,
 					tc.ty.String(),
 					tc.with.String(),
 					ty.String(),

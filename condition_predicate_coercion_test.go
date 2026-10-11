@@ -42,7 +42,13 @@ func TestConstantPredicateNumericCoercion(t *testing.T) {
 			if tc.want {
 				want = "always truthy"
 			}
-			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n        if: ${{ " + tc.expression + " }}\n"
+			source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+        if: ${{ ` + tc.expression + " }}\n"
 			findings := lintCachePolicy(t, source, "")
 			if len(findings) != 1 || !strings.Contains(findings[0].Message, want) {
 				t.Fatalf("want %q, got %v", want, findings)

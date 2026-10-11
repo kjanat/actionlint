@@ -26,7 +26,14 @@ func TestExpressionRefinementReview(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    " + tc.field + "\n    steps:\n      - run: echo ok\n"
+			source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    ` + tc.field + `
+    steps:
+      - run: echo ok
+`
 			errs, err := lint.Lint("test.yaml", []byte(source), nil)
 			if err != nil {
 				t.Fatal(err)
@@ -58,16 +65,25 @@ func TestConcurrencyExpressionConflictReview(t *testing.T) {
 			{"max", "${{ github.ref == 'refs/heads/main' }}", false},
 		} {
 			t.Run(scope+"/"+tc.queue+"/"+tc.cancel, func(t *testing.T) {
-				field := fmt.Sprintf("concurrency:\n  group: build\n  queue: %s\n  cancel-in-progress: %s\n", tc.queue, tc.cancel)
+				field := fmt.Sprintf(`concurrency:
+  group: build
+  queue: %s
+  cancel-in-progress: %s
+`, tc.queue, tc.cancel)
 				source := "on: push\n"
 				if scope == "workflow" {
 					source += field
 				}
-				source += "jobs:\n  test:\n    runs-on: ubuntu-latest\n"
+				source += `jobs:
+  test:
+    runs-on: ubuntu-latest
+`
 				if scope == "job" {
 					source += "    " + strings.ReplaceAll(strings.TrimSuffix(field, "\n"), "\n", "\n    ") + "\n"
 				}
-				source += "    steps:\n      - run: echo ok\n"
+				source += `    steps:
+      - run: echo ok
+`
 				lint, err := NewLinter(io.Discard, &LinterOptions{Shellcheck: "", Pyflakes: ""})
 				if err != nil {
 					t.Fatal(err)
@@ -93,7 +109,16 @@ func TestActionMappingInterpolationReview(t *testing.T) {
 		for _, value := range []string{"prefix-${{ inputs.value }}", "${{ inputs.value }}-suffix", "${{ inputs.value }}tail}}", "${{ inputs.value }}${{ inputs.value }}", "${{ fromJSON(inputs.value) }}", `${{ fromJSON('{"key":"${{"}') }}`} {
 			t.Run(field+"/"+value, func(t *testing.T) {
 				var meta ActionMetadata
-				source := "name: test\ndescription: test\ninputs:\n  value:\n    description: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/checkout@v6\n      " + field + ": " + value + "\n"
+				source := `name: test
+description: test
+inputs:
+  value:
+    description: test
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v6
+      ` + field + ": " + value + "\n"
 				if err := yaml.Unmarshal([]byte(source), &meta); err != nil {
 					t.Fatal(err)
 				}

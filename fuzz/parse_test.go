@@ -20,8 +20,18 @@ func canParseByGoYAML(data []byte) (ret bool) {
 }
 
 func FuzzParse(f *testing.F) {
-	f.Add([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n"))
-	f.Add([]byte("on:\n  schedule:\n    - cron: '0 0 * * *'\njobs: {}\n"))
+	f.Add([]byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+`))
+	f.Add([]byte(`on:
+  schedule:
+    - cron: '0 0 * * *'
+jobs: {}
+`))
 
 	f.Fuzz(func(_ *testing.T, data []byte) {
 		if !canParseByGoYAML(data) {

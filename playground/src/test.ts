@@ -8,7 +8,7 @@ import { Text } from '@codemirror/state';
 import { errorRange } from './range';
 
 // The Go wasm runtime installs `globalThis.Go` as a side effect.
-import '../public/wasm_exec.js';
+import 'wasm_exec.js';
 
 class CheckResults {
 	errors: ActionlintError[] | null = null;

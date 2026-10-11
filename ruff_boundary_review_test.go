@@ -30,7 +30,14 @@ func TestRuffTemplateParenthesisFindings(t *testing.T) {
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.script+ending, func(t *testing.T) {
-				source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: |\n          " + strings.ReplaceAll(tc.script+"\nprint(missing)", "\n", "\n          ") + "\n"
+				source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: |
+          ` + strings.ReplaceAll(tc.script+"\nprint(missing)", "\n", "\n          ") + "\n"
 				result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}}})
 				if err != nil {
 					t.Fatal(err)
@@ -89,7 +96,14 @@ func TestRuffStdinUsesCommandDirectory(t *testing.T) {
 					working = ".."
 				}
 			}
-			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+			source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(missing)
+`
 			result, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: &ExternalCommandOptions{Executable: &command, WorkingDir: working}, WorkingDir: root, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Config: config}}})
 			if err != nil {
 				t.Fatal(err)
@@ -103,7 +117,14 @@ func TestRuffStdinUsesCommandDirectory(t *testing.T) {
 
 func TestRuffAPIIntegrationFlags(t *testing.T) {
 	command := ruffForTest(t)
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+	source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(missing)
+`
 	for _, flags := range [][]string{{"--no-cache"}, {"--isolated"}, {"--ignore-noqa"}, {"--no-fix"}, {"--target-version", "py314"}, {"--target-version=py314"}, {"--stdin-filename", "actionlint.py"}, {"--stdin-filename=actionlint.py"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
 			_, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: &ExternalCommandOptions{Executable: &command, Arguments: flags}, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
@@ -120,7 +141,14 @@ func TestRuffRepeatableSelectionFlags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: import os; print(missing)\n"
+	source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: import os; print(missing)
+`
 	for _, flags := range [][]string{{"--select", "F"}, {"--ignore", "F401"}, {"--select=F", "--ignore=F401"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
 			result, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: &ExternalCommandOptions{Executable: &command, Arguments: flags}, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Config: config}}})

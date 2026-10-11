@@ -1,6 +1,263 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
+    "action": {
+      "description": "Selected declarations observed by the action metadata decoder. Fields can be omitted or recovered from invalid metadata.",
+      "type": "object",
+      "required": [
+        "inputs",
+        "kind",
+        "outputs",
+        "parse_status",
+        "path",
+        "runs"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/actionInput"
+          }
+        },
+        "jobs": false,
+        "kind": {
+          "const": "action"
+        },
+        "name": {
+          "type": "string"
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/actionOutput"
+          }
+        },
+        "parse_status": {
+          "description": "Existing parser or decoder outcome and recovery. Complete means no reported parse error; it does not guarantee validity, exhaustive representation or executability.",
+          "enum": [
+            "complete",
+            "partial",
+            "failed"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "runs": {
+          "$ref": "#/definitions/actionRuns"
+        },
+        "triggers": false
+      }
+    },
+    "actionInput": {
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "default": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "start": {
+          "$ref": "#/definitions/position"
+        }
+      }
+    },
+    "actionOutput": {
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "start": {
+          "$ref": "#/definitions/position"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "actionRuns": {
+      "description": "Observed runtime declarations. Classification does not establish runner support or executability.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "steps"
+          ],
+          "properties": {
+            "args": false,
+            "entrypoint": false,
+            "image": false,
+            "kind": {
+              "const": "composite"
+            },
+            "main": false,
+            "plugin": false,
+            "post": false,
+            "post_entrypoint": false,
+            "post_if": false,
+            "pre": false,
+            "pre_entrypoint": false,
+            "pre_if": false,
+            "steps": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/step"
+              }
+            },
+            "using": false
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "using"
+          ],
+          "properties": {
+            "args": false,
+            "entrypoint": false,
+            "image": false,
+            "kind": {
+              "const": "javascript"
+            },
+            "main": {
+              "type": "string"
+            },
+            "plugin": false,
+            "post": {
+              "type": "string"
+            },
+            "post_entrypoint": false,
+            "post_if": {
+              "type": "string"
+            },
+            "pre": {
+              "type": "string"
+            },
+            "pre_entrypoint": false,
+            "pre_if": {
+              "type": "string"
+            },
+            "steps": false,
+            "using": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "args",
+            "kind"
+          ],
+          "properties": {
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "entrypoint": {
+              "type": "string"
+            },
+            "image": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "docker"
+            },
+            "main": false,
+            "plugin": false,
+            "post": false,
+            "post_entrypoint": {
+              "type": "string"
+            },
+            "post_if": false,
+            "pre": false,
+            "pre_entrypoint": {
+              "type": "string"
+            },
+            "pre_if": false,
+            "steps": false,
+            "using": false
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "plugin"
+          ],
+          "properties": {
+            "args": false,
+            "entrypoint": false,
+            "image": false,
+            "kind": {
+              "const": "plugin"
+            },
+            "main": false,
+            "plugin": {
+              "type": "string"
+            },
+            "post": false,
+            "post_entrypoint": false,
+            "post_if": false,
+            "pre": false,
+            "pre_entrypoint": false,
+            "pre_if": false,
+            "steps": false,
+            "using": false
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "args": false,
+            "entrypoint": false,
+            "image": false,
+            "kind": {
+              "const": "unknown"
+            },
+            "main": false,
+            "plugin": false,
+            "post": false,
+            "post_entrypoint": false,
+            "post_if": false,
+            "pre": false,
+            "pre_entrypoint": false,
+            "pre_if": false,
+            "steps": false,
+            "using": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
     "configuration": {
       "type": "object",
       "required": [
@@ -81,6 +338,17 @@
         }
       }
     },
+    "document": {
+      "description": "Lossy report projection of observed workflow or action declarations. Parser checks differ between document kinds.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/workflow"
+        },
+        {
+          "$ref": "#/definitions/action"
+        }
+      ]
+    },
     "edit": {
       "type": "object",
       "required": [
@@ -120,6 +388,43 @@
           "items": {
             "$ref": "#/definitions/edit"
           }
+        }
+      }
+    },
+    "job": {
+      "type": "object",
+      "required": [
+        "id",
+        "needs",
+        "steps"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "needs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reference": {
+          "$ref": "#/definitions/reference"
+        },
+        "start": {
+          "$ref": "#/definitions/position"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/step"
+          }
+        },
+        "uses": {
+          "type": "string"
         }
       }
     },
@@ -174,6 +479,206 @@
         }
       }
     },
+    "reference": {
+      "description": "Syntactic classification of a uses declaration. Resolution, dialect support and authoritative provider identity remain separate.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "host_source",
+            "kind",
+            "owner",
+            "ref",
+            "repo",
+            "subpath"
+          ],
+          "properties": {
+            "host": {
+              "type": "string"
+            },
+            "host_source": {
+              "enum": [
+                "default",
+                "explicit",
+                "self"
+              ]
+            },
+            "image": false,
+            "kind": {
+              "const": "repository"
+            },
+            "name": false,
+            "owner": {
+              "type": "string"
+            },
+            "path": false,
+            "ref": {
+              "type": "string"
+            },
+            "repo": {
+              "type": "string"
+            },
+            "scheme": {
+              "type": "string"
+            },
+            "subpath": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "path"
+          ],
+          "properties": {
+            "host": false,
+            "host_source": false,
+            "image": false,
+            "kind": {
+              "const": "workspace"
+            },
+            "name": false,
+            "owner": false,
+            "path": {
+              "type": "string"
+            },
+            "ref": false,
+            "repo": false,
+            "scheme": false,
+            "subpath": false
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "path"
+          ],
+          "properties": {
+            "host": false,
+            "host_source": false,
+            "image": false,
+            "kind": {
+              "const": "self-repository"
+            },
+            "name": false,
+            "owner": false,
+            "path": {
+              "type": "string"
+            },
+            "ref": false,
+            "repo": false,
+            "scheme": false,
+            "subpath": false
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "image",
+            "kind"
+          ],
+          "properties": {
+            "host": false,
+            "host_source": false,
+            "image": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "container"
+            },
+            "name": false,
+            "owner": false,
+            "path": false,
+            "ref": false,
+            "repo": false,
+            "scheme": false,
+            "subpath": false
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "name"
+          ],
+          "properties": {
+            "host": false,
+            "host_source": false,
+            "image": false,
+            "kind": {
+              "const": "builtin"
+            },
+            "name": {
+              "type": "string"
+            },
+            "owner": false,
+            "path": false,
+            "ref": false,
+            "repo": false,
+            "scheme": false,
+            "subpath": false
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "host": false,
+            "host_source": false,
+            "image": false,
+            "kind": {
+              "const": "unknown"
+            },
+            "name": false,
+            "owner": false,
+            "path": false,
+            "ref": false,
+            "repo": false,
+            "scheme": false,
+            "subpath": false
+          }
+        }
+      ]
+    },
+    "step": {
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "description": "Known kinds: run, uses, wait, cancel, parallel, unknown. New kinds may be added.",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "reference": {
+          "$ref": "#/definitions/reference"
+        },
+        "start": {
+          "$ref": "#/definitions/position"
+        },
+        "steps": {
+          "description": "Children of a parallel step, in declaration order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/step"
+          }
+        },
+        "uses": {
+          "type": "string"
+        }
+      }
+    },
     "warning": {
       "type": "object",
       "required": [
@@ -197,6 +702,52 @@
         },
         "message": {
           "type": "string"
+        }
+      }
+    },
+    "workflow": {
+      "description": "Selected declarations observed by the workflow parser. Validity findings are reported separately in diagnostics.",
+      "type": "object",
+      "required": [
+        "jobs",
+        "kind",
+        "parse_status",
+        "path",
+        "triggers"
+      ],
+      "properties": {
+        "description": false,
+        "inputs": false,
+        "jobs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/job"
+          }
+        },
+        "kind": {
+          "const": "workflow"
+        },
+        "name": {
+          "type": "string"
+        },
+        "outputs": false,
+        "parse_status": {
+          "description": "Existing parser or decoder outcome and recovery. Complete means no reported parse error; it does not guarantee validity, exhaustive representation or executability.",
+          "enum": [
+            "complete",
+            "partial",
+            "failed"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "runs": false,
+        "triggers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     }
@@ -228,6 +779,13 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/diagnostic"
+      }
+    },
+    "documents": {
+      "description": "Available lossy projections of observed workflow and action declarations. Older producers may omit this field.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/document"
       }
     },
     "error": {

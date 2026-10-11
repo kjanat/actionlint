@@ -68,7 +68,7 @@ The launcher's resolution logic, including every failure path, is covered
 without needing any platform package installed:
 
 ```bash
-npm run test:npm-facade
+npm test --workspace @kjanat/actionlint
 ```
 
 The builder has its own tests, which assemble synthetic release archives, run

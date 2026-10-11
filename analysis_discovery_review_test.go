@@ -44,7 +44,11 @@ func TestRelativeProjectKeepsInMemoryWorkflowMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	content := []byte("on: workflow_call\njobs:\n  recurse:\n    uses: ./.github/workflows/memory.yml\n")
+	content := []byte(`on: workflow_call
+jobs:
+  recurse:
+    uses: ./.github/workflows/memory.yml
+`)
 	for _, cwd := range []string{".", root} {
 		result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: cwd, Sources: []SourceUnit{{Path: ".github/workflows/memory.yml", Content: content, Project: project}}, ReadFile: func(path string) ([]byte, error) {
 			t.Errorf("in-memory workflow metadata was read from disk: %s", path)

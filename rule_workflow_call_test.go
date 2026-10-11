@@ -30,7 +30,17 @@ func TestWorkflowCallMetadataFailureSpelling(t *testing.T) {
 					t.Fatal(err)
 				}
 				uses := prefix + "broken.yaml"
-				source := []byte("on: push\njobs:\n  call:\n    uses: " + uses + "\n    with: {arg: '${{ github.ref }}'}\n  consumer:\n    needs: call\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo '${{ needs.call.outputs.result }}'\n")
+				source := []byte(`on: push
+jobs:
+  call:
+    uses: ` + uses + `
+    with: {arg: '${{ github.ref }}'}
+  consumer:
+    needs: call
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo '${{ needs.call.outputs.result }}'
+`)
 				for _, pass := range []string{"cold cache", "warm cache"} {
 					errs, err := l.check("caller.yaml", source, proj, nil, nil, cache)
 					if err != nil {
@@ -71,8 +81,21 @@ func TestWorkflowCallInvalidJobKeyDiagnostics(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
-			caller := []byte("on: push\ncache-mode: read\npermissions: {contents: read}\njobs:\n  call:\n    uses: ./callee.yaml\n")
-			callee := []byte("on: workflow_call\njobs:\n  build:\n    " + tc.key + ": " + tc.value + "\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n")
+			caller := []byte(`on: push
+cache-mode: read
+permissions: {contents: read}
+jobs:
+  call:
+    uses: ./callee.yaml
+`)
+			callee := []byte(`on: workflow_call
+jobs:
+  build:
+    ` + tc.key + ": " + tc.value + `
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`)
 			for name, source := range map[string][]byte{"caller.yaml": caller, "callee.yaml": callee} {
 				if err := os.WriteFile(filepath.Join(root, name), source, 0o600); err != nil {
 					t.Fatal(err)
@@ -511,7 +534,13 @@ func testParseWorkflowPermissions(t *testing.T, src string) *Permissions {
 	if src == "" {
 		return nil
 	}
-	b := []byte("on: push\n" + src + "\njobs:\n  j:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo\n")
+	b := []byte("on: push\n" + src + `
+jobs:
+  j:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+`)
 	w, errs := Parse(b)
 	if w == nil {
 		t.Fatal("workflow was not parsed:", errs)

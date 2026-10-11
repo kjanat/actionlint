@@ -36,11 +36,21 @@ func TestWorkflowRunOrderedFilters(t *testing.T) {
 					t.Fatal(err)
 				}
 				var source strings.Builder
-				source.WriteString("on:\n  workflow_run:\n    workflows:\n")
+				source.WriteString(`on:
+  workflow_run:
+    workflows:
+`)
 				for _, pattern := range tc.patterns {
-					source.WriteString("      - " + strconv.Quote(pattern) + "\n")
+					source.WriteString("      - ")
+					source.WriteString(strconv.Quote(pattern))
+					source.WriteString("\n")
 				}
-				source.WriteString("    types: [completed]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n")
+				source.WriteString(`    types: [completed]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps: [{run: echo ok}]
+`)
 				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(strings.ReplaceAll(source.String(), "\n", ending)), Project: &Project{root: root}, Config: config}}})
 				if err != nil {
 					t.Fatal(err)

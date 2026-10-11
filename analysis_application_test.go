@@ -449,7 +449,9 @@ func TestLegacyTextWriteErrors(t *testing.T) {
 	if _, err := l.LintStdin(strings.NewReader(commandGoodWorkflow)); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(log.String(), "verbose: Reading the input from stdin\nverbose: Linting <stdin>\n") {
+	if !strings.HasPrefix(log.String(), `verbose: Reading the input from stdin
+verbose: Linting <stdin>
+`) {
 		t.Fatal("legacy log ordering changed:", &log)
 	}
 }

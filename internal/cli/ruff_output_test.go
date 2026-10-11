@@ -27,7 +27,14 @@ func TestRuffEnvironmentOutputRedirection(t *testing.T) {
 	t.Setenv("ACTIONLINT_RUFF_BIN", ruff)
 	t.Setenv("ACTIONLINT_RUFF_FLAGS", string(flags))
 	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", "")
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+	source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(missing)
+`
 	for _, args := range [][]string{{"--no-config", "-"}, {"check", "--no-config", "-"}} {
 		var stdout, stderr bytes.Buffer
 		command := Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
@@ -48,7 +55,14 @@ func TestRuffEnvironmentFileOperands(t *testing.T) {
 	}
 	t.Setenv("ACTIONLINT_RUFF_BIN", ruff)
 	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", "")
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+	source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(missing)
+`
 	for _, flags := range []string{`["other.py"]`, `["--select", "F", "."]`, `["--", "other.py"]`, `["-"]`} {
 		t.Setenv("ACTIONLINT_RUFF_FLAGS", flags)
 		for _, prefix := range [][]string{nil, {"check"}} {
@@ -71,7 +85,14 @@ func TestRuffEnvironmentStatistics(t *testing.T) {
 	t.Setenv("ACTIONLINT_RUFF_BIN", ruff)
 	t.Setenv("ACTIONLINT_RUFF_FLAGS", `["--statistics"]`)
 	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", "")
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+	source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(missing)
+`
 	for _, args := range [][]string{{"--no-config", "-"}, {"check", "--no-config", "-"}} {
 		var stdout, stderr bytes.Buffer
 		command := Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
@@ -89,7 +110,14 @@ func TestRuffEnvironmentSilent(t *testing.T) {
 	}
 	t.Setenv("ACTIONLINT_RUFF_BIN", ruff)
 	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", "")
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+	source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(missing)
+`
 	for _, flags := range []string{`["--silent"]`, `["-s"]`, `["-qs"]`} {
 		t.Setenv("ACTIONLINT_RUFF_FLAGS", flags)
 		for _, args := range [][]string{{"--no-config", "-"}, {"check", "--no-config", "-"}} {
@@ -110,7 +138,14 @@ func TestRuffEnvironmentSourceRemapping(t *testing.T) {
 	}
 	t.Setenv("ACTIONLINT_RUFF_BIN", ruff)
 	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", "")
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+	source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(missing)
+`
 	for _, flags := range []string{`["--extension", "py:ipynb"]`, `["--extension=py:pyi"]`} {
 		t.Setenv("ACTIONLINT_RUFF_FLAGS", flags)
 		for _, prefix := range [][]string{nil, {"check"}} {
@@ -133,7 +168,14 @@ func TestRuffEnvironmentLauncher(t *testing.T) {
 	if err != nil {
 		t.Skip("env is not installed")
 	}
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+	source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(missing)
+`
 	for _, suffix := range []string{"ruff", "NAME=reviewed ruff", "--unknown ruff", "ruff --extension py:ipynb"} {
 		for _, prefix := range [][]string{nil, {"check"}} {
 			var stdout, stderr bytes.Buffer
@@ -158,7 +200,14 @@ func TestRuffEnvironmentIntegrationFlags(t *testing.T) {
 	}
 	t.Setenv("ACTIONLINT_RUFF_BIN", ruff)
 	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", "")
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+	source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(missing)
+`
 	for _, flags := range []string{`["--no-cache"]`, `["--isolated"]`, `["--ignore-noqa"]`, `["--no-fix"]`, `["--target-version", "py314"]`, `["--target-version=py314"]`, `["--stdin-filename", "actionlint.py"]`, `["--stdin-filename=actionlint.py"]`} {
 		t.Setenv("ACTIONLINT_RUFF_FLAGS", flags)
 		for _, args := range [][]string{{"--no-config", "-"}, {"check", "--no-config", "-"}} {
@@ -179,7 +228,14 @@ func TestRuffEnvironmentNonDiagnosticModes(t *testing.T) {
 	}
 	t.Setenv("ACTIONLINT_RUFF_BIN", ruff)
 	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", "")
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+	source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(missing)
+`
 	for _, flag := range []string{"--help", "-h", "--watch", "-w", "--add-noqa", "--add-noqa=reviewed", "--add-ignore", "--add-ignore=reviewed"} {
 		flags, err := json.Marshal([]string{flag})
 		if err != nil {

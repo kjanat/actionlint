@@ -10,12 +10,60 @@ func TestInterpolationChecksContinueAfterSemanticErrors(t *testing.T) {
 	for _, field := range []struct {
 		name, workflow string
 	}{
-		{"workflow env", "on: push\nenv:\n  VALUE: " + value + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"},
-		{"job env", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env:\n      VALUE: " + value + "\n    steps:\n      - run: echo ok\n"},
-		{"step env", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - env:\n          VALUE: " + value + "\n        run: echo ok\n"},
-		{"step name", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - name: " + value + "\n        run: echo ok\n"},
-		{"action input", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n        with:\n          path: " + value + "\n"},
-		{"matrix string", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        value:\n          - " + value + "\n    steps:\n      - run: echo ok\n"},
+		{"workflow env", `on: push
+env:
+  VALUE: ` + value + `
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`},
+		{"job env", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      VALUE: ` + value + `
+    steps:
+      - run: echo ok
+`},
+		{"step env", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          VALUE: ` + value + `
+        run: echo ok
+`},
+		{"step name", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ` + value + `
+        run: echo ok
+`},
+		{"action input", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: ` + value + "\n"},
+		{"matrix string", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        value:
+          - ` + value + `
+    steps:
+      - run: echo ok
+`},
 	} {
 		for _, levels := range []struct {
 			expression, ternary string

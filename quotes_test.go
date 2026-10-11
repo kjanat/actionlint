@@ -42,7 +42,9 @@ func TestQuotesSortedQuotesDoesNotSortItsArgument(t *testing.T) {
 	}
 
 	if !slices.Equal(ss, want) {
-		t.Errorf("argument was reordered\nwant: %v\nhave: %v", want, ss)
+		t.Errorf(`argument was reordered
+want: %v
+have: %v`, want, ss)
 	}
 }
 

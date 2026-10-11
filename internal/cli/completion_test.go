@@ -213,10 +213,16 @@ func testCheckShellSyntax(t *testing.T, shell completionShell, script string) {
 
 	out, err := exec.CommandContext(t.Context(), bin, args...).CombinedOutput()
 	if err != nil {
-		t.Fatalf("%s reported a syntax error in the generated script: %v\n%s\nscript:\n%s", bin, err, out, script)
+		t.Fatalf(`%s reported a syntax error in the generated script: %v
+%s
+script:
+%s`, bin, err, out, script)
 	}
 	if len(out) > 0 {
-		t.Fatalf("%s wrote unexpected output while checking the generated script:\n%s\nscript:\n%s", bin, out, script)
+		t.Fatalf(`%s wrote unexpected output while checking the generated script:
+%s
+script:
+%s`, bin, out, script)
 	}
 }
 

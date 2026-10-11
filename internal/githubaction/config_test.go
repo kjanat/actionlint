@@ -158,7 +158,9 @@ func TestInheritedConfigWarningsVisibleInAction(t *testing.T) {
 			workspace := workspaceWith(t, map[string]string{
 				".git": "", ".github/workflows/test.yaml": cleanWorkflow,
 				".github/actionlint.yaml": "extends: ['../base.yml']\n",
-				"base.yml":                "# inherited settings\nconfig-variable: [TYPO]\n",
+				"base.yml": `# inherited settings
+config-variable: [TYPO]
+`,
 			})
 			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_CONFIG": overlay}
 			var out strings.Builder

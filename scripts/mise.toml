@@ -1,0 +1,3 @@
+[tasks.test]
+description = "Test the release and toolchain scripts"
+run         = 'node --test "*.test.mjs"'

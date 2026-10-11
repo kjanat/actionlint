@@ -27,7 +27,9 @@ func TestInlineSuppressionMultilinePlainComments(t *testing.T) {
 					if strings.Contains(value, "&title") {
 						source += "run-name: *title\n"
 					}
-					source += "jobs:\n  test:\n" + cachePolicySteps
+					source += `jobs:
+  test:
+` + cachePolicySteps
 					errs := lintCachePolicy(t, strings.ReplaceAll(source, "\n", ending), tc.config)
 					if len(errs) != 1 || errs[0].Kind != tc.kind || errs[0].Line != 3 {
 						t.Fatalf("want one %s on line 3; got %v", tc.kind, errs)
@@ -39,7 +41,11 @@ func TestInlineSuppressionMultilinePlainComments(t *testing.T) {
 }
 
 func TestInlineSuppressionStages(t *testing.T) {
-	const source = "name: one\n  two # actionlint:ignore cache-operation, cache-operation -- reviewed -- intentionally unused\nrun-name: |\n  two # actionlint:ignore cache-operation, cache-operation -- reviewed -- intentionally unused\n"
+	const source = `name: one
+  two # actionlint:ignore cache-operation, cache-operation -- reviewed -- intentionally unused
+run-name: |
+  two # actionlint:ignore cache-operation, cache-operation -- reviewed -- intentionally unused
+`
 	comments := collectInlineSuppressionComments([]byte(source))
 	if len(comments) != 1 || comments[0].pos != (Pos{Line: 2, Col: 7}) || comments[0].standalone {
 		t.Fatalf("want only the real closing comment at 2:7, got %+v", comments)
@@ -81,12 +87,17 @@ func TestInlineSuppressionScalarPrefixes(t *testing.T) {
 		{"property only", "name: !!str " + invalid + "\n  title\n", 2},
 		{"property and value", "name: !!str " + invalid + "\n  title " + allowed + "\n", 2},
 		{"property and block header", "name: !!str " + allowed + "\n  | " + invalid + "\n    title\n", 3},
-		{"standalone before scalar", "name: !!str\n  # actionlint:ignore-next-line unknown-rule -- reviewed\n  title\n", 3},
+		{"standalone before scalar", `name: !!str
+  # actionlint:ignore-next-line unknown-rule -- reviewed
+  title
+`, 3},
 		{"block body is text", "name: !!str\n  | " + invalid + "\n    title " + allowed + "\n", 3},
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+"/"+ending, func(t *testing.T) {
-				source := "on: push\n" + tc.value + "jobs:\n  test:\n" + cachePolicySteps
+				source := "on: push\n" + tc.value + `jobs:
+  test:
+` + cachePolicySteps
 				errs := lintCachePolicy(t, strings.ReplaceAll(source, "\n", ending), "")
 				if len(errs) != 1 || errs[0].Kind != "inline-suppression" || errs[0].Line != tc.line {
 					t.Fatalf("want one inline-suppression at %d, got %v", tc.line, errs)
@@ -95,7 +106,10 @@ func TestInlineSuppressionScalarPrefixes(t *testing.T) {
 		}
 	}
 	// Identical comments on the property and value are separate directives.
-	source := "on: push\nname: !!str " + allowed + "\n  title " + allowed + "\njobs:\n  test:\n" + cachePolicySteps
+	source := "on: push\nname: !!str " + allowed + "\n  title " + allowed + `
+jobs:
+  test:
+` + cachePolicySteps
 	errs := lintCachePolicy(t, source, "policy: {disallow-suppressions: true}")
 	if len(errs) != 2 || errs[0].Kind != "disallow-suppressions" || errs[1].Kind != "disallow-suppressions" || errs[0].Line != 2 || errs[1].Line != 3 {
 		t.Fatalf("want separate prohibited directives on lines 2 and 3, got %v", errs)
@@ -137,17 +151,36 @@ func TestInlineSuppressionBlockBody(t *testing.T) {
 		"# actionlint:ignore-next-line expression,shellcheck -- reviewed\nrun: |",
 		"run: &script | # actionlint:ignore expression,shellcheck -- reviewed",
 		"run: !!str\n  | # actionlint:ignore expression,shellcheck -- reviewed",
-		"# actionlint:ignore-next-line expression,shellcheck -- reviewed\nrun: !!str\n  |",
-		"# actionlint:ignore-next-line expression,shellcheck -- reviewed\nrun: &script\n  |2-",
-		"# actionlint:ignore-next-line expression,shellcheck -- reviewed\nrun: &script !!str\n  >-",
-		"run: # actionlint:ignore expression,shellcheck -- reviewed\n  !!str\n  |",
-		"run:\n  !!str\n  &script # actionlint:ignore expression,shellcheck -- reviewed\n  |",
-		"# actionlint:ignore-next-line expression,shellcheck -- reviewed\nrun:\n  &script\n  !!str\n  >-",
+		`# actionlint:ignore-next-line expression,shellcheck -- reviewed
+run: !!str
+  |`,
+		`# actionlint:ignore-next-line expression,shellcheck -- reviewed
+run: &script
+  |2-`,
+		`# actionlint:ignore-next-line expression,shellcheck -- reviewed
+run: &script !!str
+  >-`,
+		`run: # actionlint:ignore expression,shellcheck -- reviewed
+  !!str
+  |`,
+		`run:
+  !!str
+  &script # actionlint:ignore expression,shellcheck -- reviewed
+  |`,
+		`# actionlint:ignore-next-line expression,shellcheck -- reviewed
+run:
+  &script
+  !!str
+  >-`,
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(header+ending, func(t *testing.T) {
 				start := strings.Count(header, "\n") + 1
-				source := strings.ReplaceAll(header+"\n    echo first\n    echo second\nnext: value\n", "\n", ending)
+				source := strings.ReplaceAll(header+`
+    echo first
+    echo second
+next: value
+`, "\n", ending)
 				findings := []*Error{
 					{Line: start + 1, Kind: "expression"},
 					{Line: start + 2, Kind: "shellcheck"},
@@ -165,8 +198,14 @@ func TestInlineSuppressionBlockBody(t *testing.T) {
 
 func TestInlineSuppressionSplitPrefixIsolation(t *testing.T) {
 	for _, header := range []string{
-		"env: {SAFE: value} # actionlint:ignore expression,shellcheck -- unrelated\nrun:\n  !!str\n  |",
-		"run:\n  !!str\n  |\n    # actionlint:ignore expression,shellcheck -- script text",
+		`env: {SAFE: value} # actionlint:ignore expression,shellcheck -- unrelated
+run:
+  !!str
+  |`,
+		`run:
+  !!str
+  |
+    # actionlint:ignore expression,shellcheck -- script text`,
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			source := strings.ReplaceAll(header+"\n    echo body\n", "\n", ending)
@@ -183,9 +222,21 @@ func TestInlineSuppressionMalformedYAML(t *testing.T) {
 	for _, source := range []string{
 		"jobs: [ # actionlint:ignore syntax-check -- intentional",
 		"# actionlint:ignore-next-line syntax-check -- intentional\njobs: [",
-		"run: # actionlint:ignore syntax-check -- intentional\n  !!str\n  | bad\n    echo ok",
-		"run:\n  !!str # actionlint:ignore syntax-check -- intentional\n  &script\n  | bad\n    echo ok",
-		"# actionlint:ignore-next-line syntax-check -- intentional\nrun:\n  &script\n  !!str\n  > bad\n    echo ok",
+		`run: # actionlint:ignore syntax-check -- intentional
+  !!str
+  | bad
+    echo ok`,
+		`run:
+  !!str # actionlint:ignore syntax-check -- intentional
+  &script
+  | bad
+    echo ok`,
+		`# actionlint:ignore-next-line syntax-check -- intentional
+run:
+  &script
+  !!str
+  > bad
+    echo ok`,
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			source := []byte(strings.ReplaceAll(source, "\n", ending))
@@ -201,20 +252,60 @@ func TestInlineSuppressionMalformedYAML(t *testing.T) {
 	for _, source := range []string{
 		"name: '# actionlint:ignore syntax-check -- text'\njobs: [",
 		"name: \"# actionlint:ignore syntax-check -- text\"\njobs: [",
-		"name: \"first\n  # actionlint:ignore syntax-check -- text\n  last\"\njobs: [",
-		"name: 'first\n  # actionlint:ignore syntax-check -- text\n  last'\njobs: [",
-		"name: 'it''s\n  # actionlint:ignore syntax-check -- text\n  last'\njobs: [",
-		"name: \"escaped \\\"\n  # actionlint:ignore syntax-check -- text\n  last\"\njobs: [",
-		"run: |\n  # actionlint:ignore syntax-check -- script\njobs: [",
-		"run: >-\n  print('''\n  # actionlint:ignore syntax-check -- script\n  ''')\njobs: [",
-		"run: !!str\n  |\n    # actionlint:ignore syntax-check -- script\njobs: [",
-		"run: !!str\n\n  |2\n  # actionlint:ignore syntax-check -- script\njobs: [",
-		"run: !!str\n# header comment\n  |2\n  # actionlint:ignore syntax-check -- script\njobs: [",
-		"steps:\n  - run: &script |2\n      # actionlint:ignore syntax-check -- script\njobs: [",
+		`name: "first
+  # actionlint:ignore syntax-check -- text
+  last"
+jobs: [`,
+		`name: 'first
+  # actionlint:ignore syntax-check -- text
+  last'
+jobs: [`,
+		`name: 'it''s
+  # actionlint:ignore syntax-check -- text
+  last'
+jobs: [`,
+		`name: "escaped \"
+  # actionlint:ignore syntax-check -- text
+  last"
+jobs: [`,
+		`run: |
+  # actionlint:ignore syntax-check -- script
+jobs: [`,
+		`run: >-
+  print('''
+  # actionlint:ignore syntax-check -- script
+  ''')
+jobs: [`,
+		`run: !!str
+  |
+    # actionlint:ignore syntax-check -- script
+jobs: [`,
+		`run: !!str
+
+  |2
+  # actionlint:ignore syntax-check -- script
+jobs: [`,
+		`run: !!str
+# header comment
+  |2
+  # actionlint:ignore syntax-check -- script
+jobs: [`,
+		`steps:
+  - run: &script |2
+      # actionlint:ignore syntax-check -- script
+jobs: [`,
 		"jobs: [\n# actionlint:ignore-next-line syntax-check -- no declaration",
-		"jobs: [\n# actionlint:ignore-next-line syntax-check -- no declaration\n",
-		"jobs: [\n# actionlint:ignore-next-line syntax-check -- blank\n\n  value",
-		"jobs: [\n# actionlint:ignore-next-line syntax-check -- comment\n# another comment\n  value",
+		`jobs: [
+# actionlint:ignore-next-line syntax-check -- no declaration
+`,
+		`jobs: [
+# actionlint:ignore-next-line syntax-check -- blank
+
+  value`,
+		`jobs: [
+# actionlint:ignore-next-line syntax-check -- comment
+# another comment
+  value`,
 	} {
 		if got := collectInlineSuppressionComments([]byte(source)); len(got) != 0 {
 			t.Fatalf("scalar content became a directive in %q: %+v", source, got)
@@ -243,7 +334,12 @@ func TestInlineSuppressionMalformedYAML(t *testing.T) {
 }
 
 func TestInlineSuppressionScriptTextIsNotDirective(t *testing.T) {
-	source := []byte("run: |\n  text = '''\n  # actionlint:ignore-next-line expression -- sample text\n  ${{ github.event.issue.title }}\n  '''\n")
+	source := []byte(`run: |
+  text = '''
+  # actionlint:ignore-next-line expression -- sample text
+  ${{ github.event.issue.title }}
+  '''
+`)
 	finding := &Error{Line: 4, Kind: "expression"}
 	got := filterInlineSuppressions(source, []*Error{finding}, nil)
 	if len(got) != 1 || got[0] != finding {
@@ -254,11 +350,32 @@ func TestInlineSuppressionScriptTextIsNotDirective(t *testing.T) {
 func TestRecoveredSplitPrefixSuppressionBoundaries(t *testing.T) {
 	for _, ending := range []string{"\n", "\r\n"} {
 		for _, prefix := range []string{
-			"name: # actionlint:ignore syntax-check -- unrelated\nrun:\n  !!str\n  | bad\n    echo ok",
-			"name: # actionlint:ignore syntax-check -- unrelated\n!!str run:\n  !!str\n  | bad\n    echo ok",
-			"name: # actionlint:ignore syntax-check -- unrelated\n&key run:\n  !!str\n  | bad\n    echo ok",
-			"name: '# actionlint:ignore syntax-check -- quoted'\nrun:\n  !!str\n  | bad\n    echo ok",
-			"run:\n  !!str\n  |\n    # actionlint:ignore syntax-check -- script\n    echo ok\njobs: [",
+			`name: # actionlint:ignore syntax-check -- unrelated
+run:
+  !!str
+  | bad
+    echo ok`,
+			`name: # actionlint:ignore syntax-check -- unrelated
+!!str run:
+  !!str
+  | bad
+    echo ok`,
+			`name: # actionlint:ignore syntax-check -- unrelated
+&key run:
+  !!str
+  | bad
+    echo ok`,
+			`name: '# actionlint:ignore syntax-check -- quoted'
+run:
+  !!str
+  | bad
+    echo ok`,
+			`run:
+  !!str
+  |
+    # actionlint:ignore syntax-check -- script
+    echo ok
+jobs: [`,
 		} {
 			source := []byte(strings.ReplaceAll(prefix, "\n", ending))
 			_, findings := Parse(source)
@@ -288,7 +405,14 @@ func TestRecoveredSplitPrefixSuppressionBoundaries(t *testing.T) {
 }
 
 func TestInlineSuppressionBlockExpression(t *testing.T) {
-	source := "on: issues\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: | # actionlint:ignore expression -- reviewed input\n          echo '${{ github.event.issue.title }}'\n"
+	source := `on: issues
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: | # actionlint:ignore expression -- reviewed input
+          echo '${{ github.event.issue.title }}'
+`
 	if got := lintCachePolicy(t, source, ""); len(got) != 0 {
 		t.Fatal(got)
 	}
