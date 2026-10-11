@@ -18,6 +18,9 @@
     }
   ],
   "type": "module",
+  "imports": {
+    "#pkg": "./package.json"
+  },
   "main": "main.js",
   "scripts": {
     "build": "vite build",
@@ -25,8 +28,9 @@
     "lint": "run -qs lint:eslint typecheck",
     "lint:eslint": "eslint .",
     "preview": "vite preview --port 1234",
-    "start": "run -q dev",
-    "test": "node --test src/build-version.test.ts && vitest run",
+    "test": "run -s test:version test:vitest",
+    "test:version": "node --test src/*.test.ts",
+    "test:vitest": "vitest run",
     "typecheck": "run -q tsc7 --noEmit"
   },
   "overrides": {
@@ -50,6 +54,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.4.0",
+    "dreamcli": "npm:@kjanat/dreamcli@^4",
     "eslint": "^10.9.1",
     "jsdom": "^30.0.1",
     "runner-run": "latest",

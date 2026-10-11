@@ -22,7 +22,9 @@
     "composite": true,
     "tsBuildInfoFile": "../node_modules/.cache/typescript/playground.tsbuildinfo",
     "emitDeclarationOnly": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "resolveJsonModule": true
   },
-  "exclude": ["dist", "node_modules"]
+  "exclude": ["dist", "node_modules"],
+  "include": ["./**/*", "./package.json"]
 }

@@ -3,38 +3,32 @@
 This is a development directory for [actionlint playground](https://kjanat.github.io/actionlint/).
 
 The playground is built with HTML/CSS/TypeScript/Wasm and bundled by [Vite](https://vite.dev/). All dependencies are
-defined in `package.json` and managed by `npm`. Tasks for development are defined in [`Makefile`](./Makefile).
+defined in `package.json` and managed by `npm`, which also defines the development tasks.
 
 ## Layout
 
-| Path             | Contents                                                          |
-| ---------------- | ----------------------------------------------------------------- |
-| `index.html`     | Vite entry point                                                  |
-| `src/`           | TypeScript sources, ambient types and the stylesheet              |
-| `public/`        | `main.wasm` and the Go toolchain's `wasm_exec.js`, both generated |
-| `dist/`          | Bundle produced by `vite build`                                   |
-| `vite.config.ts` | Build and test configuration                                      |
+| Path             | Contents                                             |
+| ---------------- | ---------------------------------------------------- |
+| `index.html`     | Vite entry point                                     |
+| `src/`           | TypeScript sources, ambient types and the stylesheet |
+| `public/`        | `main.wasm`, built by Vite from `main.go`            |
+| `dist/`          | Bundle produced by `vite build`                      |
+| `vite.config.ts` | Build and test configuration                         |
 
 ## Tasks
 
 ```sh
-# Install dependencies, build the wasm binary and the bundle, then serve it at localhost:1234
-make serve
+# Build the wasm binary and the bundle
+npm run build
 
-# Install dependencies, build the wasm binary and the bundle
-make build
+# Serve the built bundle at localhost:1234
+npm run preview
 
-# Install dependencies
-make dep
-
-# Run tests
-make test
-
-# Clean all built files
-make clean
+# Build the wasm binary, then run tests
+npm test
 ```
 
-`npm run dev` starts the Vite dev server with hot reloading against an already built `public/main.wasm`.
+`npm run dev` builds `public/main.wasm` and starts the Vite dev server with hot reloading.
 
 Vite derives the version badge and links from Git when it starts. A clean release tag links to its release; development
 builds show `git describe` and link to their commit. Documentation links use that same commit. Without tags, the badge

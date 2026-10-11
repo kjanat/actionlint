@@ -1,3 +1,4 @@
+import 'wasm_exec.js';
 import 'bulma/css/bulma.min.css';
 import 'devicon/devicon.min.css';
 import './style.css';
