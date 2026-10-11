@@ -507,6 +507,7 @@ type LocalActionsCache struct {
 	onRead               func(string)
 	onDocument           func(ActionOutline)
 	readFile             func(string) ([]byte, error)
+	customReader         bool
 	mu                   sync.RWMutex
 	proj                 *Project // might be nil
 	cache                map[string]*ActionMetadata

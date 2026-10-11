@@ -43,6 +43,7 @@ type AnalysisOptions struct {
 	OnFilesSelected func([]string)
 	// ReadFile reads workflows, local action metadata, reusable workflows, and config.
 	// It must support concurrent calls. Nil uses os.ReadFile.
+	// Custom readers own path resolution and filesystem boundary enforcement.
 	// This does not restrict filesystem access by external tools.
 	ReadFile    func(string) ([]byte, error)
 	RulePresets RulePresets
@@ -120,7 +121,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 		a.readFile = os.ReadFile
 	}
 	a.projects.readFile = a.readFile
-	a.request.ReadFile = a.readFile
+	a.request.ReadFile = opts.ReadFile
 	a.request.RulePresets = opts.RulePresets
 	if a.logOut == nil {
 		a.logOut = io.Discard

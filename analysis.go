@@ -41,6 +41,7 @@ type AnalysisRequest struct {
 	// WorkingDir resolves workflow paths in reusable-workflow caches. Empty uses os.Getwd.
 	WorkingDir string
 	// ReadFile reads local action metadata and reusable workflows. Nil uses os.ReadFile.
+	// Custom readers own path resolution and filesystem boundary enforcement.
 	// It must support concurrent calls and does not restrict external tools.
 	ReadFile    func(string) ([]byte, error)
 	RulePresets RulePresets
@@ -221,6 +222,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		ac.onRead, wc.onRead = inputs.add, inputs.add
 		ac.onDocument = documents.add
 		ac.readFile, wc.readFile = readFile, readFile
+		ac.customReader = request.ReadFile != nil
 	}
 	group := errgroup.Group{}
 	group.SetLimit(runtime.NumCPU())

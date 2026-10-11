@@ -151,3 +151,69 @@ func TestLocalActionSourceCaseInsensitive(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 }
+
+func TestLocalActionSourceCustomReader(t *testing.T) {
+	for _, runner := range []string{"ubuntu-latest", "windows-latest"} {
+		t.Run(runner, func(t *testing.T) {
+			root, _ := executableFixture(t)
+			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "local-actions: {'./generated': './virtual'}\n")
+			manifest := filepath.Join(root, "virtual", "action.yml")
+			reader := func(path string) ([]byte, error) {
+				if path == manifest {
+					return []byte("name: Virtual\ndescription: Virtual\noutputs:\n  result:\n    description: Result\nruns:\n  using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n"), nil
+				}
+				return os.ReadFile(path)
+			}
+			content := []byte("on: push\njobs:\n  test:\n    runs-on: " + runner + "\n    steps:\n      - uses: ./generated\n        id: generated\n      - run: echo '${{ steps.generated.outputs.result }}'\n        shell: bash\n")
+			config, err := ParseConfig([]byte("local-actions: {'./generated': './virtual'}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, ReadFile: reader, Sources: []SourceUnit{{Path: ".github/workflows/test.yml", Content: content, Config: config, Project: &Project{root: root}}}})
+			if err != nil || len(result.Diagnostics) != 0 || !slices.Contains(result.Inputs, manifest) {
+				t.Fatalf("direct analysis: %+v, %v", result, err)
+			}
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", string(content))
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, ReadFile: reader})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err = session.Files([]string{workflow}, nil)
+			if err != nil || len(result.Diagnostics) != 0 || !slices.Contains(result.Inputs, manifest) {
+				t.Fatalf("session analysis: %+v, %v", result, err)
+			}
+		})
+	}
+}
+
+func TestLocalActionSourceFailureReportedOncePerReference(t *testing.T) {
+	for _, failure := range []string{"missing", "directory-symlink", "manifest-symlink"} {
+		t.Run(failure, func(t *testing.T) {
+			root, _ := executableFixture(t)
+			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "local-actions: {'./generated': './source'}\n")
+			if failure != "missing" {
+				outside := t.TempDir()
+				manifest := writeShellcheckFixture(t, outside, "action.yml", "name: Outside\n")
+				target, link := outside, filepath.Join(root, "source")
+				if failure == "manifest-symlink" {
+					if err := os.Mkdir(link, 0o755); err != nil {
+						t.Fatal(err)
+					}
+					target, link = manifest, filepath.Join(link, "action.yml")
+				}
+				if err := os.Symlink(target, link); err != nil {
+					t.Skip(err)
+				}
+			}
+			result := compositeAnalysis(t, root, "- uses: ./generated\n  id: first\n- uses: ./generated\n- uses: ./generated\n  id: third", AnalysisOptions{})
+			if len(result.Diagnostics) != 3 {
+				t.Fatalf("want one failure per reference: %+v", result.Diagnostics)
+			}
+			for _, diagnostic := range result.Diagnostics {
+				if diagnostic.Rule != "action" || !strings.Contains(diagnostic.Message, "source mapping") {
+					t.Fatalf("unexpected diagnostic: %+v", diagnostic)
+				}
+			}
+		})
+	}
+}

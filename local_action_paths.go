@@ -14,6 +14,11 @@ type unresolvedLocalActionError string
 
 func (e unresolvedLocalActionError) Error() string { return string(e) }
 
+type localActionMappingError struct{ err error }
+
+func (e localActionMappingError) Error() string { return e.err.Error() }
+func (e localActionMappingError) Unwrap() error { return e.err }
+
 func missingLocalActionMetadata(spec string) error {
 	return unresolvedLocalActionError(fmt.Sprintf("local action %q has no action.yml or action.yaml; check the path and ensure the action is available when linting", spec))
 }
@@ -34,20 +39,20 @@ func (c *LocalActionsCache) findRepositoryMetadata(spec string) (*ActionMetadata
 				}
 			}
 			if matches > 1 {
-				return nil, false, fmt.Errorf("source mapping for local action %q is ambiguous under case-insensitive lookup", original)
+				return nil, false, localActionMappingError{fmt.Errorf("source mapping for local action %q is ambiguous under case-insensitive lookup", original)}
 			}
 		}
 	}
-	if c.caseInsensitive && c.base.proj != nil {
+	if c.caseInsensitive && c.base.proj != nil && !c.base.customReader {
 		local, ok := caseInsensitiveRepositoryPath(c.base.proj.RootDir(), spec)
 		if !ok {
 			return nil, false, unresolvedLocalActionError(fmt.Sprintf("cannot resolve local action %q: its path is missing or ambiguous under case-insensitive lookup", spec))
 		}
 		spec = local
 	}
-	if mapped && c.base.proj != nil {
+	if mapped && c.base.proj != nil && !c.base.customReader {
 		if err := localaction.CheckSource(c.base.proj.RootDir(), spec); err != nil {
-			return nil, false, fmt.Errorf("source mapping for local action %q: %w", original, err)
+			return nil, false, localActionMappingError{fmt.Errorf("source mapping for local action %q: %w", original, err)}
 		}
 	}
 	metadata, cached, err := c.base.FindMetadata(spec)

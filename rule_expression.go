@@ -370,8 +370,10 @@ func (rule *RuleExpression) getActionOutputsType(spec *String) *ObjectType {
 	if strings.HasPrefix(localSpec, "./") {
 		meta, _, err := rule.localActions.FindMetadata(spec.Value)
 		if err != nil {
-			// The action rule reports unresolved paths at every uses reference.
-			if _, unresolved := errors.AsType[unresolvedLocalActionError](err); !unresolved {
+			// The action rule reports path and mapping failures at every uses reference.
+			_, unresolved := errors.AsType[unresolvedLocalActionError](err)
+			_, mapping := errors.AsType[localActionMappingError](err)
+			if !unresolved && !mapping {
 				rule.Error(spec.Pos, err.Error())
 			}
 			return NewMapObjectType(StringType{})
