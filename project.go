@@ -34,11 +34,30 @@ func findProjectConfig(path string, skipConfig bool, readFile func(string) ([]by
 }
 
 func findProjectRoot(path string) string {
+	return cachedProjectRoot(path, nil, os.Stat)
+}
+
+// Cache only paths actually visited: an unvisited descendant may be a nested
+// repository even when its ancestor already has a cached project.
+func cachedProjectRoot(path string, roots map[string]string, stat func(string) (os.FileInfo, error)) string {
 	d := absPath(path)
+	var visited []string
+	remember := func(root string) string {
+		for _, path := range visited {
+			roots[path] = root
+		}
+		return root
+	}
 	for {
-		if s, err := os.Stat(filepath.Join(d, ".github", "workflows")); err == nil && s.IsDir() {
-			if _, err := os.Stat(filepath.Join(d, ".git")); err == nil { // Note: .git may be a file
-				return d
+		if root, ok := roots[d]; ok {
+			return remember(root)
+		}
+		if roots != nil {
+			visited = append(visited, d)
+		}
+		if s, err := stat(filepath.Join(d, ".github", "workflows")); err == nil && s.IsDir() {
+			if _, err := stat(filepath.Join(d, ".git")); err == nil { // Note: .git may be a file
+				return remember(d)
 			}
 		}
 
@@ -95,8 +114,10 @@ func (p *Project) Config() *Config {
 
 // Projects represents set of projects. It caches Project instances which was created previously
 // and reuses them.
+// Create a new instance after changing repository boundaries or loaded configuration.
 type Projects struct {
 	known      []*Project
+	roots      map[string]string
 	skipConfig bool
 	readFile   func(string) ([]byte, error)
 }
@@ -111,7 +132,10 @@ func NewProjects() *Projects {
 func (ps *Projects) At(path string) (*Project, error) {
 	// Discover the nearest repository before consulting cached configurations.
 	// A cached ancestor must not hide a nested repository or Git worktree.
-	root := findProjectRoot(path)
+	if ps.roots == nil {
+		ps.roots = make(map[string]string)
+	}
+	root := cachedProjectRoot(path, ps.roots, os.Stat)
 	if root == "" {
 		return nil, nil
 	}
