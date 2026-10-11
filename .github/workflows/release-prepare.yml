@@ -55,7 +55,7 @@ jobs:
           go run ./scripts/bump-version -check
           go run ./scripts/bump-version -notes "v${VERSION}" > "${RUNNER_TEMP}/release-notes.md"
           go test ./...
-          runner i -fs actionlint-action:typecheck actionlint-action:test //scripts:test
+          runner i --no-tools -fs actionlint-action:typecheck actionlint-action:test //scripts:test
       - name: Build the complete candidate tree
         id: candidate
         env:
