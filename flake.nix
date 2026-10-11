@@ -52,6 +52,9 @@
         integration = pkgs.callPackage ./nix/check.nix {
           actionlint = self.packages.${pkgs.stdenv.hostPlatform.system}.actionlint;
         };
+        completion = pkgs.callPackage ./nix/completion.nix {
+          actionlint = self.packages.${pkgs.stdenv.hostPlatform.system}.actionlint;
+        };
       });
 
       devShells = forAllSystems (pkgs: {

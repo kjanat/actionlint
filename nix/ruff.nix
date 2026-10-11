@@ -13,9 +13,9 @@ let
     aarch64-darwin = "aarch64-apple-darwin";
   };
   target = targets.${stdenv.hostPlatform.system};
-  asset = lib.findFirst (asset: asset.name == "ruff-${target}.tar.gz") (
-    throw "Missing Ruff release asset for ${stdenv.hostPlatform.system}"
-  ) release.assets;
+  asset = lib.findFirst (
+    asset: asset.name == "ruff-${target}.tar.gz"
+  ) (throw "Missing Ruff release asset for ${stdenv.hostPlatform.system}") release.assets;
 in
 stdenv.mkDerivation {
   pname = "ruff";

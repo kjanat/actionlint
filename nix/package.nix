@@ -3,11 +3,8 @@
   buildGoModule,
   installShellFiles,
   makeWrapper,
-  git,
+  gitMinimal,
   bash,
-  bash-completion,
-  zsh,
-  fish,
   pandoc,
   shellcheck,
   ruff,
@@ -15,6 +12,9 @@
   version,
 }:
 
+let
+  completionTests = "TestCompletionShellBehaviour|TestCompletionScriptSyntax";
+in
 buildGoModule {
   pname = "actionlint";
   inherit src version;
@@ -35,11 +35,8 @@ buildGoModule {
     pandoc
   ];
   nativeCheckInputs = [
-    git
+    gitMinimal
     bash
-    bash-completion
-    zsh
-    fish
     shellcheck
     ruff
   ];
@@ -47,8 +44,7 @@ buildGoModule {
   checkPhase = ''
     runHook preCheck
     export GOFLAGS=''${GOFLAGS//-trimpath/}
-    export BASH_COMPLETION_FILE=${bash-completion}/share/bash-completion/bash_completion
-    go test ./...
+    go test -skip '^(${completionTests})$' . ./cmd/... ./fuzz ./internal/...
     runHook postCheck
   '';
 
@@ -70,6 +66,8 @@ buildGoModule {
       ]
     }
   '';
+
+  passthru = { inherit completionTests; };
 
   meta = {
     description = "Static checker for GitHub Actions workflow files";
