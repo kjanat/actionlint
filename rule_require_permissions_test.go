@@ -142,7 +142,7 @@ func TestWorkflowPermissionsSuppressionBoundaries(t *testing.T) {
 		want                        []string
 	}{
 		{"# actionlint:ignore require-permissions -- detached\n# license\n", "on: push", "require-permissions: true", []string{"require-permissions"}},
-		{"# license\n", "on: push # actionlint:ignore require-permissions", "require-permissions: true", []string{"require-permissions", "inline-suppression"}},
+		{"# license\n", "on: push # actionlint:ignore require-permissions", "require-permissions: true", nil},
 		{"# license\n", "on: push # actionlint:ignore require-permissions -- reviewed", "require-permissions: true, disallow-suppressions: true", []string{"require-permissions", "disallow-suppressions"}},
 		{"# license\n", "on: push # actionlint:ignore require-permissions -- workflow only", "require-permissions: {scope: job}", []string{"require-permissions"}},
 	} {

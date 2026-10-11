@@ -10,6 +10,8 @@ import (
 	"slices"
 	"strings"
 	"sync"
+
+	"actionlint.kjanat.dev/internal/projectpath"
 )
 
 // AnalysisOptions controls source discovery and analysis without selecting an output format.
@@ -185,6 +187,9 @@ func (a *AnalysisSession) Repository(dir string) (*AnalysisResult, error) {
 		return nil, err
 	}
 	if project == nil {
+		if found, expected := projectpath.WorkflowTypo(dir); found != "" {
+			return nil, fmt.Errorf("no workflows directory was found: %q looks misspelled; rename it to %q", found, expected)
+		}
 		return nil, fmt.Errorf("no project was found in any parent directories of %q. check workflows directory is put correctly in your Git repository", dir)
 	}
 	a.selectionLog("Detected project:", project.RootDir())

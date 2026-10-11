@@ -2,6 +2,13 @@
 
 # Unreleased
 
+- Report missing local action manifests by default, including repeated references, under the independently configurable `missing-local-action` rule. (kjanat/actionlint#196; kjanat/actionlint#159)
+- Accept short inline ignores without a reason and reusable configuration ignores matched by rule, file, job, step or action reference.
+- Map generated local action paths to checked-in source directories for metadata, input and output validation.
+- Suggest valid dotted expressions such as `github.repository` and `job.workflow_sha` when a context/property separator was written as an underscore. (kjanat/actionlint#224; kjanat/actionlint#206)
+- Point out likely `.github/workflows` directory typos when repository discovery fails. (kjanat/actionlint#191)
+- Keep sibling directories such as `repo-other` from inheriting the cached project configuration for `repo`.
+- List Ruff as an optional dependency in all three AUR packages for checking Python scripts.
 - Correct the v1.5.2 changelog entry: `0x01` and `1e0123` are valid in GitHub Actions, although that release rejected them. (kjanat/actionlint#176)
 - Suggest the missing parentheses when an expression uses a function name, such as `always`, without calling it. (kjanat/actionlint#226)
 - Resume WinGet update PRs for stable releases of `kjanat.actionlint`. (kjanat/actionlint#236)

@@ -315,12 +315,23 @@ actionlint completion powershell | Out-String | Invoke-Expression
 ### Ignore some errors
 
 Every registered diagnostic rule supports [inline exceptions](config.md#inline-diagnostic-suppressions)
-with a rule name and a reason. Place the comment on the reported line, or use
+with a rule name and an optional reason. Place the comment on the reported line, or use
 `actionlint:ignore-next-line` immediately before it. A directive on a YAML block scalar header covers its body.
 
 ```yaml
 cache-mode: write # actionlint:ignore cache-write-untrusted -- this job runs reviewed default-branch code only
 ```
+
+Local actions must have an `action.yml` or `action.yaml` available when linting.
+For generated actions, [map the runtime path to its source](config.md#local-action-source-mappings)
+to validate the checked-in manifest. For intentional exceptions, use a short comment:
+
+```yaml
+- uses: ./generated-action # actionlint:ignore missing-local-action
+```
+
+[Reusable ignores](config.md#reusable-ignores) let you declare an exception once
+for matching files, jobs, steps or action references.
 
 To ignore some errors, `-ignore` option offers to filter errors by messages
 using regular expression. The option is repeatable. The regular expression

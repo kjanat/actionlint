@@ -27,7 +27,7 @@ runs: false
 	} {
 		for _, nested := range []bool{false, true} {
 			for _, tc := range []struct{ name, directive, config, want string }{
-				{"malformed", "# actionlint:ignore action", "", "inline-suppression"},
+				{"malformed", "# actionlint:ignore action --", "", "inline-suppression"},
 				{"prohibited", "# actionlint:ignore action -- reviewed", "policy: {disallow-suppressions: true}\n", "disallow-suppressions"},
 				{"allowed", "# actionlint:ignore action -- reviewed", "", ""},
 			} {
@@ -110,9 +110,9 @@ func TestLocalActionSuppressionDiagnosticLevels(t *testing.T) {
 			name, rule, group, directive, caller, action string
 			wantCaller, wantAction                       string
 		}{
-			{"malformed-action-off", "inline-suppression", "correctness", "# actionlint:ignore action", "error", "off", "error", ""},
-			{"malformed-caller-off", "inline-suppression", "correctness", "# actionlint:ignore action", "off", "error", "", "error"},
-			{"malformed-severities", "inline-suppression", "correctness", "# actionlint:ignore action", "info", "warn", "info", "warning"},
+			{"malformed-action-off", "inline-suppression", "correctness", "# actionlint:ignore action --", "error", "off", "error", ""},
+			{"malformed-caller-off", "inline-suppression", "correctness", "# actionlint:ignore action --", "off", "error", "", "error"},
+			{"malformed-severities", "inline-suppression", "correctness", "# actionlint:ignore action --", "info", "warn", "info", "warning"},
 			{"policy-action-only", "disallow-suppressions", "policy", "# actionlint:ignore action -- reviewed", "off", "error", "", "error"},
 			{"policy-caller-only", "disallow-suppressions", "policy", "# actionlint:ignore action -- reviewed", "error", "off", "error", ""},
 			{"policy-severities", "disallow-suppressions", "policy", "# actionlint:ignore action -- reviewed", "info", "warn", "info", "warning"},
@@ -161,7 +161,7 @@ func TestLocalActionSuppressionsRespectCallerLintSwitch(t *testing.T) {
       run: echo ok`},
 	} {
 		for _, tc := range []struct{ name, directive, config, rule string }{
-			{"malformed", "# actionlint:ignore action", "", "inline-suppression"},
+			{"malformed", "# actionlint:ignore action --", "", "inline-suppression"},
 			{"prohibited", "# actionlint:ignore action -- reviewed", "policy: {disallow-suppressions: true}\n", "disallow-suppressions"},
 		} {
 			for _, enabled := range []bool{false, true} {
@@ -195,7 +195,7 @@ func TestCleanCompositeSuppressionDirectives(t *testing.T) {
 	for _, tc := range []struct {
 		name, directive, config, want string
 	}{
-		{"malformed", "# actionlint:ignore shellcheck", "", "inline-suppression"},
+		{"malformed", "# actionlint:ignore shellcheck --", "", "inline-suppression"},
 		{"prohibited", "# actionlint:ignore shellcheck -- reviewed", "policy: {disallow-suppressions: true}\n", "disallow-suppressions"},
 		{"allowed", "# actionlint:ignore shellcheck -- reviewed", "", ""},
 		{"override", "# actionlint:ignore shellcheck -- reviewed", `policy: {disallow-suppressions: true}
@@ -264,7 +264,7 @@ func TestCleanLocalActionSuppressionDirectives(t *testing.T) {
 			nested bool
 		}{{"direct", false}, {"nested", true}} {
 			for _, tc := range []struct{ name, directive, config, want string }{
-				{"malformed", "# actionlint:ignore action", "", "inline-suppression"},
+				{"malformed", "# actionlint:ignore action --", "", "inline-suppression"},
 				{"prohibited", "# actionlint:ignore action -- reviewed", "policy: {disallow-suppressions: true}\n", "disallow-suppressions"},
 				{"allowed", "# actionlint:ignore action -- reviewed", "", ""},
 				{"override", "# actionlint:ignore action -- reviewed", `policy: {disallow-suppressions: true}
@@ -311,7 +311,7 @@ runs:
 func TestLocalActionSuppressionSourcesStayWorkflowScoped(t *testing.T) {
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, "local/index.js", "console.log('ok');\n")
-	writeShellcheckFixture(t, root, "local/action.yml", `name: local # actionlint:ignore action
+	writeShellcheckFixture(t, root, "local/action.yml", `name: local # actionlint:ignore action --
 description: test
 runs:
   using: node24

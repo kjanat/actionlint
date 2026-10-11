@@ -10,6 +10,42 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
+func TestExprContextPropertySuggestions(t *testing.T) {
+	for _, tc := range []struct {
+		input, key, suggestion string
+	}{
+		{"github_repository", "jobs.<job_id>.if", "github.repository"},
+		{"GITHUB_REPOSITORY", "jobs.<job_id>.if", "github.repository"},
+		{"github.job_workflow_sha", "jobs.<job_id>.steps.run", "job.workflow_sha"},
+		{"github.job_workflow_sha", "jobs.<job_id>.if", ""},
+		{"github_nonexistent", "jobs.<job_id>.if", ""},
+		{"secrets_anything", "jobs.<job_id>.steps.run", ""},
+		{"github.repository", "jobs.<job_id>.steps.run", ""},
+	} {
+		t.Run(tc.input+"/"+tc.key, func(t *testing.T) {
+			expr, err := NewExprParser().Parse(NewExprLexer(tc.input + "}}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			checker := NewExprSemanticsChecker(false, nil)
+			checker.SetWorkflowKeyAvailability(tc.key)
+			_, errs := checker.Check(expr)
+			var messages []string
+			for _, err := range errs {
+				messages = append(messages, err.Message)
+			}
+			message := strings.Join(messages, "\n")
+			if tc.suggestion == "" {
+				if strings.Contains(message, "did you mean") {
+					t.Fatal(message)
+				}
+			} else if len(errs) != 1 || !strings.Contains(message, fmt.Sprintf("did you mean %q?", tc.suggestion)) {
+				t.Fatalf("expected suggestion %q, got %q", tc.suggestion, message)
+			}
+		})
+	}
+}
+
 func TestExprBareFunctionNames(t *testing.T) {
 	for _, key := range []string{"jobs.<job_id>.if", "jobs.<job_id>.steps.if"} {
 		for _, tc := range []struct {

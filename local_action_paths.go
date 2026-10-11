@@ -1,21 +1,61 @@
 package actionlint
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+
+	"actionlint.kjanat.dev/internal/localaction"
 )
 
+type unresolvedLocalActionError string
+
+func (e unresolvedLocalActionError) Error() string { return string(e) }
+
+func missingLocalActionMetadata(spec string) error {
+	return unresolvedLocalActionError(fmt.Sprintf("local action %q has no action.yml or action.yaml; check the path and ensure the action is available when linting", spec))
+}
+
 func (c *LocalActionsCache) findRepositoryMetadata(spec string) (*ActionMetadata, bool, error) {
+	original := spec
+	mapped := false
+	if normalized, err := localaction.Normalize(spec); err == nil {
+		if source, exists := c.sourceMappings[normalized]; exists {
+			spec, mapped = source, true
+		}
+		if c.caseInsensitive && asciiPath(normalized) {
+			matches := 0
+			for alias, source := range c.sourceMappings {
+				if asciiPath(alias) && strings.EqualFold(alias, normalized) {
+					matches++
+					spec, mapped = source, true
+				}
+			}
+			if matches > 1 {
+				return nil, false, fmt.Errorf("source mapping for local action %q is ambiguous under case-insensitive lookup", original)
+			}
+		}
+	}
 	if c.caseInsensitive && c.base.proj != nil {
 		local, ok := caseInsensitiveRepositoryPath(c.base.proj.RootDir(), spec)
 		if !ok {
-			return nil, false, nil
+			return nil, false, unresolvedLocalActionError(fmt.Sprintf("cannot resolve local action %q: its path is missing or ambiguous under case-insensitive lookup", spec))
 		}
 		spec = local
 	}
+	if mapped && c.base.proj != nil {
+		if err := localaction.CheckSource(c.base.proj.RootDir(), spec); err != nil {
+			return nil, false, fmt.Errorf("source mapping for local action %q: %w", original, err)
+		}
+	}
 	metadata, cached, err := c.base.FindMetadata(spec)
+	if mapped && metadata != nil {
+		mappedMetadata := *metadata
+		mappedMetadata.sourceMapped = true
+		metadata = &mappedMetadata
+	}
 	if c.usedSources != nil {
 		c.base.mu.RLock()
 		source, exists := c.base.sources[spec]

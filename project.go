@@ -70,8 +70,8 @@ func (p *Project) WorkflowsDir() string {
 // Knows returns true when the project knows the given file. When a file is included in the
 // project's directory, the project knows the file.
 func (p *Project) Knows(path string) bool {
-	// TODO: strings.HasPrefix is not perfect to check file path
-	return strings.HasPrefix(absPath(path), p.root)
+	rel, err := filepath.Rel(absPath(p.root), absPath(path))
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // Config returns config object of the GitHub project repository. The config file was read from

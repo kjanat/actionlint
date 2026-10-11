@@ -259,11 +259,6 @@ func TestLocalActionsParsingSkipped(t *testing.T) {
 			proj: &Project{root: ""},
 			spec: "actions/checkout@v4",
 		},
-		{
-			what: "action does not exist (#25, #40)",
-			proj: &Project{root: filepath.Join("testdata", "action_metadata")},
-			spec: "./this-action-does-not-exist",
-		},
 	}
 
 	for _, tc := range tests {
@@ -278,6 +273,25 @@ func TestLocalActionsParsingSkipped(t *testing.T) {
 			}
 			testCheckCachedFlag(t, false, cached)
 		})
+	}
+}
+
+func TestLocalActionsMissingMetadata(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, "empty"), 0750); err != nil {
+		t.Fatal(err)
+	}
+	for _, spec := range []string{"./missing", "./empty", "./ }", "$/missing"} {
+		c := NewLocalActionsCache(&Project{root: root}, nil)
+		for attempt := range 2 {
+			meta, cached, err := c.FindMetadata(spec)
+			if meta != nil || err == nil || !strings.Contains(err.Error(), "has no action.yml or action.yaml") {
+				t.Fatalf("%s: meta=%v err=%v", spec, meta, err)
+			}
+			if cached != (attempt > 0) {
+				t.Fatalf("%s: cached=%v on attempt %d", spec, cached, attempt)
+			}
+		}
 	}
 }
 
@@ -304,7 +318,7 @@ runs: {using: node24, main: index.js}
 	}
 	_, statErr := os.Stat(filepath.Join(root, "LOCAL", "nested", "action.yml"))
 	metadata, _, err := exact.FindMetadata("./LOCAL/nested")
-	if err != nil || (metadata != nil) != (statErr == nil) {
+	if (err == nil) != (statErr == nil) || (metadata != nil) != (statErr == nil) {
 		t.Fatalf("exact view changed host lookup behavior: metadata=%v, error=%v", metadata, err)
 	}
 }
@@ -320,7 +334,7 @@ func TestLocalActionsCaseCollision(t *testing.T) {
 	view := &LocalActionsCache{base: base, caseInsensitive: true}
 	for _, spec := range []string{"./local", "./LOCAL", "./Local", "$/LOCAL"} {
 		metadata, _, err := view.FindMetadata(spec)
-		if err != nil || metadata != nil {
+		if err == nil || metadata != nil {
 			t.Fatalf("ambiguous %s: metadata=%v, error=%v", spec, metadata, err)
 		}
 	}

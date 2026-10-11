@@ -263,6 +263,23 @@ func TestAnalysisSelectedConfigInput(t *testing.T) {
 	}
 }
 
+func TestAnalysisSessionWorkflowDirectoryTypo(t *testing.T) {
+	root := t.TempDir()
+	for _, dir := range []string{".git", ".gihub/workflows", "src"} {
+		if err := os.MkdirAll(filepath.Join(root, dir), 0750); err != nil {
+			t.Fatal(err)
+		}
+	}
+	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: filepath.Join(root, "src")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := session.Repository("")
+	if result != nil || err == nil || !strings.Contains(err.Error(), filepath.Join(root, ".gihub", "workflows")) || !strings.Contains(err.Error(), filepath.Join(root, ".github", "workflows")) {
+		t.Fatalf("result=%v, error=%v", result, err)
+	}
+}
+
 func TestAnalysisSessionConfigInputs(t *testing.T) {
 	root := t.TempDir()
 	workflowA := filepath.Join(root, "a", ".github", "workflows", "first.yml")

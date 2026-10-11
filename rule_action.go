@@ -825,7 +825,11 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *
 	}
 	meta, cached, err := rule.cache.FindMetadata(localSpec)
 	if err != nil {
-		rule.Error(action.Uses.Pos, err.Error())
+		if _, unresolved := errors.AsType[unresolvedLocalActionError](err); unresolved {
+			rule.errs = append(rule.errs, errorAt(action.Uses.Pos, "missing-local-action", err.Error()))
+		} else {
+			rule.Error(action.Uses.Pos, err.Error())
+		}
 		return
 	}
 	if meta == nil {

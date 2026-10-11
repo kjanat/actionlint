@@ -63,7 +63,12 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *Step, parents []Rule
 
 	children := make([]Rule, 0, len(parents))
 	for _, parent := range parents {
-		child := compositeScriptRule(parent, call, filepath.Dir(meta.Path()), analysis.actions)
+		actionPath := filepath.Dir(meta.Path())
+		if meta.sourceMapped {
+			// Source metadata does not establish the generated action's runtime directory.
+			actionPath = ""
+		}
+		child := compositeScriptRule(parent, call, actionPath, analysis.actions)
 		if _, ok := child.(*ruffRule); ok && analysis.configForFile != nil {
 			config, err := analysis.configForFile(meta.Path())
 			if err != nil {

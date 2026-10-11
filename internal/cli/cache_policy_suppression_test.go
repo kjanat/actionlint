@@ -43,7 +43,7 @@ jobs:
 func TestCachePolicyInvalidSuppressionSARIF(t *testing.T) {
 	t.Chdir(t.TempDir())
 	source := `on: pull_request_target
-cache-mode: write # actionlint:ignore cache-write-untrusted
+cache-mode: write # actionlint:ignore cache-write-untrusted --
 jobs:
   test:
 ` + cachePolicySteps

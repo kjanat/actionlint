@@ -25,6 +25,63 @@ func (r testErrorReader) Read(p []byte) (int, error) {
 	return 0, errors.New("dummy read error")
 }
 
+func TestLinterMissingLocalAction(t *testing.T) {
+	root := t.TempDir()
+	proj := &Project{root: root}
+	for _, tc := range []struct {
+		steps string
+		want  int
+	}{
+		{"      - uses: ./missing\n      - uses: ./missing\n      - uses: $/missing\n", 3},
+		{"      - uses: ./missing # actionlint:ignore missing-local-action -- downloaded at runtime\n", 0},
+		{"      - uses: ./missing\n        id: missing\n", 1},
+		{"      - uses: ./missing # actionlint:ignore missing-local-action -- downloaded at runtime\n        id: missing\n", 0},
+	} {
+		l, err := NewLinter(io.Discard, &LinterOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		l.defaultConfig = &Config{}
+		source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" + tc.steps
+		errs, err := l.Lint("test.yaml", []byte(source), proj)
+		if err != nil || len(errs) != tc.want {
+			t.Fatalf("got %v, %v; want %d diagnostics", errs, err, tc.want)
+		}
+		for i, diagnostic := range errs {
+			if diagnostic.Kind != "missing-local-action" || diagnostic.Line != 6+i || !strings.Contains(diagnostic.Message, "has no action.yml or action.yaml") {
+				t.Fatalf("unexpected diagnostic: %+v", diagnostic)
+			}
+		}
+	}
+}
+
+func TestMissingLocalActionRuleSelection(t *testing.T) {
+	for _, tc := range []struct {
+		rules string
+		want  string
+	}{
+		{"action: off", "missing-local-action"},
+		{"missing-local-action: off", "action"},
+	} {
+		t.Run(tc.rules, func(t *testing.T) {
+			cfg, err := ParseConfig([]byte("lint: {rules: {correctness: {" + tc.rules + "}}}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			l, err := NewLinter(io.Discard, &LinterOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			l.defaultConfig = cfg
+			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./missing\n      - uses: invalid\n"
+			findings, err := l.Lint("workflow.yml", []byte(source), &Project{root: t.TempDir()})
+			if err != nil || len(findings) != 1 || findings[0].Kind != tc.want {
+				t.Fatalf("got %v, %v; want only %s", findings, err, tc.want)
+			}
+		})
+	}
+}
+
 func TestLinterLintOK(t *testing.T) {
 	dir := filepath.Join("testdata", "ok")
 

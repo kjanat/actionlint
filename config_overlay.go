@@ -91,6 +91,13 @@ func ParseConfigOverlay(input string, content []byte) (ConfigOverlay, error) {
 	if err != nil {
 		return ConfigOverlay{}, fmt.Errorf("input %s: %w", input, err)
 	}
+	if node.Kind == yaml.MappingNode {
+		for i := 0; i < len(node.Content); i += 2 {
+			if node.Content[i].Value == "local-actions" {
+				normalizeLocalActionSourceNode(node.Content[i+1])
+			}
+		}
+	}
 	return ConfigOverlay{input, normalizeToolSwitch(node)}, nil
 }
 

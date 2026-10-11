@@ -88,6 +88,9 @@ func (l *analysisEngine) check(
 	if w != nil {
 		dbg := l.debugWriter()
 		localActions = &LocalActionsCache{base: localActions, usedSources: make(map[string][]byte)}
+		if cfg != nil {
+			localActions.sourceMappings = cfg.LocalActions
+		}
 
 		rules := []Rule{}
 		c := ruleContext{path: path, config: cfg, actions: localActions, workflows: localReusableWorkflows, process: proc, shellcheck: l.shellcheck}
@@ -215,6 +218,7 @@ func (l *analysisEngine) check(
 		suppressionPolicy = cfg.Policy.DisallowSuppressions
 	}
 	all = filterInlineSuppressions(content, all, suppressionPolicy)
+	all = filterConfigIgnores(path, root, content, all, cfg, false)
 	var projectDir string
 	if project != nil {
 		projectDir = project.RootDir()
@@ -273,6 +277,7 @@ func (l *analysisEngine) check(
 				policy = findingConfig.Policy.DisallowSuppressions
 			}
 			findings = filterForeignInlineSuppressions(sourcePath, source, findings, policy)
+			findings = filterConfigIgnores(sourcePath, root, source, findings, findingConfig, true)
 		}
 		findings = slices.DeleteFunc(findings, func(e *Error) bool {
 			levelConfig := cfg

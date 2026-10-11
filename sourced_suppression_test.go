@@ -32,7 +32,8 @@ func TestSourcedShellcheckDeclarationSuppression(t *testing.T) {
   |
   . ./scripts/check.sh
 name: *script`, "", "", false},
-			{"missing-reason", "run: . ./scripts/check.sh # actionlint:ignore shellcheck", "", "inline-suppression", true},
+			{"optional-reason", "run: . ./scripts/check.sh # actionlint:ignore shellcheck", "", "", false},
+			{"empty-reason", "run: . ./scripts/check.sh # actionlint:ignore shellcheck --", "", "inline-suppression", true},
 			{"forbidden", "run: . ./scripts/check.sh # actionlint:ignore shellcheck -- reviewed", "policy: {disallow-suppressions: true}\n", "disallow-suppressions", true},
 			{"report-suppression", "run: . ./scripts/check.sh # actionlint:ignore shellcheck -- reviewed", "policy: {disallow-suppressions: {report: suppression}}\n", "disallow-suppressions", false},
 			{"report-violation", "run: . ./scripts/check.sh # actionlint:ignore shellcheck -- reviewed", "policy: {disallow-suppressions: {report: violation}}\n", "", true},
@@ -97,7 +98,7 @@ runs:
 }
 
 func TestForeignSuppressionPreservesDiagnosticPath(t *testing.T) {
-	source := []byte("name: test # actionlint:ignore action\n")
+	source := []byte("name: test # actionlint:ignore action --\n")
 	finding := &Error{Filepath: "./local/action.yml", Line: 2, Kind: "expression", source: source}
 	got := filterForeignInlineSuppressions("/repo/local/action.yml", source, []*Error{finding}, nil)
 	if len(got) != 2 || got[0].Filepath != finding.Filepath || got[1].Filepath != "/repo/local/action.yml" || got[1].Kind != "inline-suppression" {

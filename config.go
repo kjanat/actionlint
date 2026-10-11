@@ -75,13 +75,14 @@ type Policy struct {
 	// CacheWriteUntrusted reports write-capable cache modes on low-trust triggers.
 	// Enabled by default. Set false to disable it; null or omission keeps the default.
 	CacheWriteUntrusted *bool `yaml:"cache-write-untrusted" jsonschema:"nullable,default=true"`
-	// DisallowSuppressions restricts inline diagnostic exceptions. `true` or `{}` reports
-	// each prohibited directive and retains its original violations. Omission, null, or false
-	// permits exceptions. Both ignore and ignore-next-line are covered equally.
+	// DisallowSuppressions restricts inline and configured diagnostic exceptions.
+	// `true` or `{}` reports each prohibited directive or matching config exception
+	// and retains its original violations. Omission, null, or false permits exceptions.
+	// Both ignore and ignore-next-line are covered equally.
 	//
 	// Use `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs.
 	// Omitted rules selects all suppressible rules; an explicit list must be nonempty.
-	// Report accepts suppression (directive only), violation (original findings only), or all (both kinds of diagnostic).
+	// Report accepts suppression (exception only), violation (original findings only), or all (both kinds of diagnostic).
 	DisallowSuppressions *SuppressionsPolicy `yaml:"disallow-suppressions" jsonschema:"nullable"`
 	// RequireCommitHash requires `uses:` references to be pinned to a full commit SHA, or an image digest
 	// for Docker images, when set to `true`.
@@ -354,8 +355,16 @@ type Config struct {
 	// Overrides applies per-file lint settings in declaration order. Later matching
 	// settings win; mappings merge and arrays replace. Paths are repository-relative.
 	Overrides []ConfigOverride `yaml:"overrides" jsonschema:"nullable"`
+	// Ignores suppresses a rule for matching files, actions, jobs, or steps.
+	// Every specified selector must match. Later config files replace the list.
+	Ignores IgnoreConfigs `yaml:"ignores" jsonschema:"nullable"`
 	// Tools configures external linters for both the CLI and GitHub Action.
 	Tools ToolsConfig `yaml:"tools" jsonschema:"nullable"`
+	// LocalActions maps generated action directories to checked-in source directories.
+	// Both paths are relative to the repository root, using ./ or $/ prefixes.
+	// Known checkout placements are removed before matching. Sources resolve once
+	// to actual directories; mappings do not chain.
+	LocalActions LocalActionSources `yaml:"local-actions" jsonschema:"nullable"`
 	// SelfHostedRunner configures extra labels accepted for self-hosted runners.
 	//
 	// Add your labels under `labels`, for example `{labels: [linux.2xlarge]}`.
@@ -403,7 +412,7 @@ type ToolsConfig struct {
 
 // RuffToolConfig selects isolated, read-only Ruff checks for Python run steps.
 // Repository Ruff configuration and noqa comments are not loaded; use actionlint
-// rule settings and reason-bearing suppressions for workflow exceptions.
+// rule settings and inline suppressions for workflow exceptions.
 type RuffToolConfig = ruff.Config
 
 // ShellcheckToolConfig contains ShellCheck's native configuration directives.
@@ -585,6 +594,11 @@ func resolveConfigNode(root *yaml.Node, inputs map[*yaml.Node]configInput) (reso
 		}
 	}
 
+	for _, ignore := range c.Ignores {
+		if err := ignore.validate(); err != nil {
+			return resolvedConfig{}, err
+		}
+	}
 	for pat := range c.Paths {
 		if !doublestar.ValidatePattern(pat) {
 			return resolvedConfig{}, fmt.Errorf("invalid glob pattern %q in \"paths\"", pat)

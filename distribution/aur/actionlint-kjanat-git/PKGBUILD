@@ -12,6 +12,7 @@ license=('MIT')
 depends=('glibc')
 makedepends=('git' 'go' 'pandoc-cli')
 optdepends=(
+	'ruff: check Python scripts in run steps'
 	'shellcheck: check shell scripts in run steps'
 )
 provides=("actionlint=$pkgver")

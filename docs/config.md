@@ -254,7 +254,7 @@ supported by Ruff, and otherwise to `py314`. An explicit setting takes precedenc
 Following [Astral's actionlint integration](https://github.com/astral-sh/actionlint/blob/0141e7822652fbee3a1b878c3d83d9c1dce87d67/rule_ruff.go),
 Ruff runs in isolated, read-only mode: no repository Ruff configuration, cache,
 automatic fixes, or `noqa` exemptions. Use actionlint rule levels, per-file
-overrides, and reason-bearing YAML suppressions for exceptions. Ruff codes such
+overrides, and YAML suppressions for exceptions. Ruff codes such
 as `F821` are retained in structured output. Literal/plain scripts use the shared
 YAML source map; unsupported scalar mappings fall back to the `run:` declaration.
 Inline YAML suppressions target the diagnostic's reported line. A directive on
@@ -467,6 +467,47 @@ Checked triggers: `branch_protection_rule`, `check_run`, `check_suite`, `deploym
 See [cache checks](checks.md#cache-safety-policies) for diagnostic examples.
 Disable with `policy: {cache-write-untrusted: false}`.
 
+### Local action source mappings
+
+When a workflow generates an action directory, map its repository-relative path to the
+checked-in source directory:
+
+```yaml
+local-actions:
+  ./generated-action: ./actions/source
+```
+
+Actionlint reads `actions/source/action.yml` or `action.yaml` to check the action's
+metadata, inputs and outputs. Both paths are relative to the repository root;
+known checkout paths are accounted for when resolving `uses`. Each mapping resolves
+once to an actual source directory. Per-file overrides can provide different
+`local-actions` mappings for different workflows.
+Build tests remain responsible for checking the generation step and its output.
+Missing source manifests and invalid source entrypoints remain errors.
+
+### Reusable ignores
+
+Declare repeated exceptions once in configuration:
+
+```yaml
+ignores:
+  - rule: missing-local-action
+    uses: ./generated-action
+    file: .github/workflows/ci.yml
+    reason: Release bundle built during CI.
+```
+
+An entry selects a rule and at least one of `file`, `uses`, `job` or `step`.
+All supplied selectors must match. `file` accepts repository-relative doublestar
+globs; `uses`, `job` and `step` match exact values, with `step` accepting its ID or
+name. `reason` is optional. This example suppresses
+only missing-manifest findings for the selected action in `ci.yml`; other action
+diagnostics still apply.
+
+With `extends`, an omitted `ignores` keeps inherited entries. A supplied list
+replaces them; `ignores: []` clears them. The `disallow-suppressions` policy also
+applies to these entries.
+
 ### Inline diagnostic suppressions
 
 ```yaml
@@ -474,7 +515,7 @@ cache-mode: write # actionlint:ignore cache-write-untrusted -- reviewed default-
 ```
 
 Or place `# actionlint:ignore-next-line RULE -- reason` immediately before the
-reported line. A nonempty reason is required. Comma-separated selectors accept
+reported line. The ` -- reason` suffix is optional. Comma-separated selectors accept
 any diagnostic rule ID listed by `actionlint rules`, including `expression`,
 `syntax-check`, `shellcheck`, `if-cond` and the suspicious rules.
 Exceptions apply to the reported physical line. A directive on a YAML block scalar
@@ -483,7 +524,7 @@ header (`run: |` or `run: >`) covers its body as well. A preceding
 other comments detach a preceding directive. For aliases, use the reported anchor
 location.
 
-For ShellCheck findings in sourced scripts, place a reason-bearing directive on
+For ShellCheck findings in sourced scripts, place a directive on
 the originating `run` declaration or its YAML block header. This suppresses findings
 from that invocation while keeping their reported script locations. Comments inside
 sourced scripts do not create actionlint suppression directives.
@@ -506,7 +547,7 @@ I/O and tool-launch failures remain operational errors and cannot be suppressed.
 
 ### disallow-suppressions
 
-`policy: {disallow-suppressions: true}` prohibits all supported inline exceptions.
+`policy: {disallow-suppressions: true}` prohibits inline and configured exceptions.
 To select rules and output:
 
 ```yaml
@@ -525,7 +566,8 @@ policy:
 `true` or `{}` selects all supported diagnostic rules; explicit `rules` must be nonempty.
 Omission, `null` or `false` permits exceptions. The policy cannot exempt itself,
 enable a disabled rule or override CLI/path ignores. `all` and `suppression` report
-prohibited directives even when no underlying finding exists.
+prohibited inline directives even when no underlying finding exists. Configured
+exceptions are reported when they match a finding.
 
 ### require-commit-hash
 

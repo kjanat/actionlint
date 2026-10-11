@@ -21,6 +21,26 @@ func testProjectDir(t *testing.T, fixture string) string {
 	return d
 }
 
+func TestProjectKnowsDirectoryBoundary(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "repo")
+	p := &Project{root: root}
+	for _, tc := range []struct {
+		path string
+		want bool
+	}{
+		{root, true},
+		{filepath.Join(root, ".github", "workflows", "ci.yml"), true},
+		{root + "-other", false},
+		{filepath.Join(root+"-other", "ci.yml"), false},
+		{filepath.Dir(root), false},
+		{filepath.Join(root, "..", "other"), false},
+	} {
+		if got := p.Knows(tc.path); got != tc.want {
+			t.Errorf("Knows(%q) = %v, want %v", tc.path, got, tc.want)
+		}
+	}
+}
+
 func TestProjectsFindProjectFromPath(t *testing.T) {
 	d := testProjectDir(t, filepath.Join("testdata", "find_project"))
 	abs, err := filepath.Abs(d)

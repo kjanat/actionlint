@@ -35,7 +35,7 @@ runs:
 		t.Fatal(err)
 	}
 	for _, tc := range []struct{ name, uses, extra, want string }{
-		{"missing action remains permitted", "./missing-action", "", ""},
+		{"missing action metadata", "./missing-action", "", "has no action.yml or action.yaml"},
 		{"malformed metadata", "./malformed", "", "could not parse action metadata"},
 		{"required input", "./action", "", "missing input"},
 		{"provided input", "./action", "\n        with: {token: value}", ""},

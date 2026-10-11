@@ -60,7 +60,10 @@ func parseInlineSuppression(comment inlineSuppressionComment) (inlineSuppression
 	if comment.startLine > 0 {
 		target = min(target, comment.startLine)
 	}
-	if !hasReason || strings.TrimSpace(reason) == "" {
+	if !hasReason && strings.HasSuffix(declaration, " --") {
+		hasReason = true
+	}
+	if hasReason && strings.TrimSpace(reason) == "" {
 		return inlineSuppressionDirective{}, invalid("inline suppression requires a reason after \" -- \"")
 	}
 	var rules []string
