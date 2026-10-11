@@ -1,6 +1,10 @@
 import { execFileSync } from 'node:child_process';
 
-const repository = 'https://github.com/kjanat/actionlint';
+import { packageRepositoryUrl } from 'dreamcli/config';
+
+import pkg from '#pkg' with { type: 'json' };
+
+const repository = packageRepositoryUrl(pkg, { require: true });
 const stableTag = /^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/;
 
 export function buildVersion(directory: string, latestRelease = '') {

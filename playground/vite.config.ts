@@ -1,9 +1,11 @@
 /// <reference types="vitest/config" />
+
+import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { copyFile, realpath } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
-import { defaultClientConditions, defineConfig } from 'vite';
+import { defaultClientConditions, defineConfig, searchForWorkspaceRoot } from 'vite';
 
 import { buildVersion, renderBuildVersion } from './src/build-version.ts';
 
@@ -15,6 +17,8 @@ const manual = resolve(oneUp, 'man/actionlint.1.html');
 const manualStyle = resolve(oneUp, 'man/manual.css');
 
 const version = buildVersion(oneUp, process.env.ACTIONLINT_LATEST_RELEASE);
+
+const goWasm = resolve(execFileSync('go', ['env', 'GOROOT'], { encoding: 'utf8' }).trim(), 'lib/wasm');
 
 // The deployed site is the bundle plus a 404 fallback and the rendered command manual.
 function sitePages(): import('vite').Plugin {
@@ -57,7 +61,11 @@ export default defineConfig({
 		},
 		sitePages(),
 	],
-	resolve: { conditions: ['source', ...defaultClientConditions] },
+	resolve: {
+		conditions: ['source', ...defaultClientConditions],
+		alias: [{ find: /^wasm_exec\.js$/, replacement: resolve(goWasm, 'wasm_exec.js') }],
+	},
+	server: { fs: { allow: [searchForWorkspaceRoot(here), goWasm] } },
 	build: {
 		outDir,
 		emptyOutDir: true,

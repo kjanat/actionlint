@@ -74,7 +74,7 @@ jobs:
       - name: Build command manual
         run: run make:man
       - name: Build and test playground
-        run: run --source make -s playground:make:build playground:make:test
+        run: run -s actionlint-playground:build actionlint-playground:test
       - name: Lint JavaScript workspaces
         run: run package.json:lint
   javascript:
