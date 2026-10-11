@@ -59,7 +59,7 @@
     "biome": {
       "binary": {
         "path": "mise",
-        "arguments": ["exec", "github:biomejs/biome", "--", "biome", "lsp-proxy"]
+        "arguments": ["exec", "--", "biome", "lsp-proxy"]
       },
       "settings": {
         "config_path": "./biome.jsonc",
