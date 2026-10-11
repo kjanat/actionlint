@@ -41,6 +41,7 @@
     "@typescript/native": "npm:typescript@^7.0.2",
     "biome": "npm:@biomejs/biome@^2.5",
     "runner-run": "^0.28",
+    "tsc-rs": "^0.2.0",
     "typescript": "npm:@typescript/typescript6@^6.0.2"
   },
   "devEngines": {
@@ -60,6 +61,7 @@
     ]
   },
   "allowScripts": {
-    "core-js": false
+    "core-js": false,
+    "tsc-rs@0.2.0": true
   }
 }
