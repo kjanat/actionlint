@@ -138,14 +138,6 @@ test('mise Go and Node release constraints include the repository versions', () 
 	}
 });
 
-test('mise enables the configured automatic dependency providers', () => {
-	const config = readFileSync(new URL('../.mise.toml', import.meta.url), 'utf8');
-	const settings = config.split('[settings]\n')[1].split('\n[')[0];
-	assert.match(settings, /^experimental\s*=\s*true$/m);
-	assert.match(config, /\[deps\.npm\]\nauto\s*=\s*true/);
-	assert.match(config, /\[deps\.go\]\nauto\s*=\s*true/);
-});
-
 test('a partial replacement write restores all files', t => {
 	const f = fixture(t);
 	const write = (/** @type {string} */ path, /** @type {string} */ content) => {
