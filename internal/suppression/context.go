@@ -24,12 +24,21 @@ func start(node *yaml.Node) position { return position{node.Line, node.Column} }
 type Index []context
 
 // Contexts indexes the first YAML document. Invalid YAML has no structural scopes.
-func Contexts(source []byte) Index {
+func Contexts(source []byte, resolve func(string) *string) Index {
 	var document yaml.Node
 	if yaml.Unmarshal(source, &document) != nil || len(document.Content) == 0 {
 		return nil
 	}
 	var result Index
+	scalar := func(node *yaml.Node, key string) string {
+		value := rawScalar(node, key)
+		if resolve != nil {
+			if resolved := resolve(value); resolved != nil {
+				return *resolved
+			}
+		}
+		return value
+	}
 	var visit func(*yaml.Node, position, []string, context)
 	var steps func(*yaml.Node, position, string)
 	steps = func(node *yaml.Node, end position, job string) {
@@ -80,7 +89,7 @@ func Contexts(source []byte) Index {
 	return result
 }
 
-func scalar(node *yaml.Node, key string) string {
+func rawScalar(node *yaml.Node, key string) string {
 	if node.Kind == yaml.MappingNode {
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			if node.Content[i].Value == key && node.Content[i+1].Kind == yaml.ScalarNode {

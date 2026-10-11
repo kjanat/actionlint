@@ -7,7 +7,7 @@ import (
 
 func TestFlowStepSelectors(t *testing.T) {
 	source := "jobs: {test: {steps: [{uses: ./a}, {uses: ./b}]}}"
-	index := Contexts([]byte(source))
+	index := Contexts([]byte(source), nil)
 	for _, action := range []string{"./a", "./b"} {
 		column := strings.Index(source, action) + 1
 		for _, selector := range []string{"./a", "./b"} {
@@ -33,7 +33,7 @@ func TestNestedParallelScopes(t *testing.T) {
                 uses: ./b
       - uses: ./c
 `
-	index := Contexts([]byte(source))
+	index := Contexts([]byte(source), nil)
 	for _, tc := range []struct {
 		line       int
 		step, uses string
@@ -49,7 +49,7 @@ func TestNestedParallelScopes(t *testing.T) {
 
 func TestFlowJobSelectors(t *testing.T) {
 	source := "jobs: {a: {uses: ./one}, b: {uses: ./two}}"
-	index := Contexts([]byte(source))
+	index := Contexts([]byte(source), nil)
 	column := strings.Index(source, "./two") + 1
 	if !index.Match(1, column, "b", "", "./two") || index.Match(1, column, "a", "", "./one") {
 		t.Fatal("job selectors crossed a flow-style sibling boundary")
@@ -57,7 +57,7 @@ func TestFlowJobSelectors(t *testing.T) {
 }
 
 func TestSourcedBlockScope(t *testing.T) {
-	index := Contexts([]byte("jobs:\n  test:\n    steps:\n      - id: script\n        run: |\n          echo hi\n      - run: echo bye\n"))
+	index := Contexts([]byte("jobs:\n  test:\n    steps:\n      - id: script\n        run: |\n          echo hi\n      - run: echo bye\n"), nil)
 	if !index.Match(5, 0, "test", "script", "") {
 		t.Fatal("unambiguous block header did not match without a column")
 	}

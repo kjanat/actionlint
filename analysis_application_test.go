@@ -275,7 +275,7 @@ func TestAnalysisSessionWorkflowDirectoryTypo(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := session.Repository("")
-	if result != nil || err == nil || !strings.Contains(err.Error(), filepath.Join(root, ".gihub", "workflows")) || !strings.Contains(err.Error(), filepath.Join(root, ".github", "workflows")) {
+	if result != nil || err == nil || !strings.Contains(err.Error(), fmt.Sprintf("%q", filepath.Join(root, ".gihub", "workflows"))) || !strings.Contains(err.Error(), fmt.Sprintf("%q", filepath.Join(root, ".github", "workflows"))) {
 		t.Fatalf("result=%v, error=%v", result, err)
 	}
 }

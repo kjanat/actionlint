@@ -83,14 +83,18 @@ func (c IgnoreConfig) validate() error {
 	return nil
 }
 
-func filterConfigIgnores(path, root string, source []byte, findings []*Error, cfg *Config, foreign bool) []*Error {
+func filterConfigIgnores(path, root string, source []byte, findings []*Error, cfg *Config, foreign bool, level func(string) RuleLevel) []*Error {
 	if cfg == nil || len(cfg.Ignores) == 0 || len(findings) == 0 {
 		return findings
 	}
 	file := filepath.ToSlash(repositoryRelativeConfigPath(path, root))
-	contexts := suppression.Contexts(source)
+	contexts := suppression.Contexts(source, literalExpressionValue)
 	filtered := make([]*Error, 0, len(findings))
 	for _, finding := range findings {
+		if level(finding.Kind) == "off" {
+			filtered = append(filtered, finding)
+			continue
+		}
 		line, column, applies := finding.Line, finding.Column, finding.source == nil || foreign
 		if origin := finding.suppressionOrigin; origin != nil {
 			line, applies = origin.first, origin.path == path || !foreign && origin.path == ""
