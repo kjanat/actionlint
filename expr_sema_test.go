@@ -2,12 +2,74 @@ package actionlint
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 	"testing"
 	"unicode"
 
 	"github.com/google/go-cmp/cmp"
 )
+
+func TestExprBareFunctionNames(t *testing.T) {
+	for _, key := range []string{"jobs.<job_id>.if", "jobs.<job_id>.steps.if"} {
+		for _, tc := range []struct {
+			input, want string
+		}{
+			{"always", `function "always" must be called with parentheses; did you mean "always()"?`},
+			{"success", `function "success" must be called with parentheses; did you mean "success()"?`},
+			{"failure", `function "failure" must be called with parentheses; did you mean "failure()"?`},
+			{"cancelled", `function "cancelled" must be called with parentheses; did you mean "cancelled()"?`},
+			{"AlWaYs", `function "AlWaYs" must be called with parentheses; did you mean "AlWaYs()"?`},
+			{"contains", `function "contains" must be called with parentheses and arguments`},
+			{"fromJSON", `function "fromJSON" must be called with parentheses and arguments`},
+			{"hashFiles", `function "hashFiles" must be called with parentheses and arguments`},
+			{"format", `function "format" must be called with parentheses and arguments`},
+			{"unknown", `undefined variable "unknown". available variables are `},
+			{"always()", ""},
+			{"success()", ""},
+			{"failure()", ""},
+			{"cancelled()", ""},
+			{"inputs.always", ""},
+		} {
+			t.Run(key+"/"+tc.input, func(t *testing.T) {
+				expr, err := NewExprParser().Parse(NewExprLexer(tc.input + "}}"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				checker := NewExprSemanticsChecker(false, nil)
+				checker.UpdateInputs(NewStrictObjectType(map[string]ExprType{"always": BoolType{}}))
+				checker.SetWorkflowKeyAvailability(key)
+				_, errs := checker.Check(expr)
+				if tc.want == "" {
+					if len(errs) != 0 {
+						t.Fatalf("unexpected diagnostics: %v", errs)
+					}
+					return
+				}
+				if len(errs) != 1 || !strings.HasPrefix(errs[0].Message, tc.want) {
+					t.Fatalf("got %v, want %q", errs, tc.want)
+				}
+				if errs[0].Line != 1 || errs[0].Column != 1 {
+					t.Fatalf("unexpected position: %+v", errs[0])
+				}
+			})
+		}
+	}
+	t.Run("variable takes precedence over function", func(t *testing.T) {
+		expr, err := NewExprParser().Parse(NewExprLexer("always}}"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		checker := NewExprSemanticsChecker(false, nil)
+		checker.vars = maps.Clone(checker.vars)
+		checker.vars["always"] = BoolType{}
+		checker.SetContextAvailability([]string{"always"})
+		ty, errs := checker.Check(expr)
+		if len(errs) != 0 || !cmp.Equal(ty, BoolType{}) {
+			t.Fatalf("got %v, %v; want bool without diagnostics", ty, errs)
+		}
+	})
+}
 
 func TestExprSemanticsCheckOK(t *testing.T) {
 	testCases := []struct {

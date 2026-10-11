@@ -2,6 +2,9 @@
 
 # Unreleased
 
+- Correct the v1.5.2 changelog entry: `0x01` and `1e0123` are valid in GitHub Actions, although that release rejected them. (kjanat/actionlint#176)
+- Suggest the missing parentheses when an expression uses a function name, such as `always`, without calling it. (kjanat/actionlint#226)
+- Resume WinGet update PRs for stable releases of `kjanat.actionlint`. (kjanat/actionlint#236)
 - Include typed workflow and action documents in JSON results, with source positions, inputs, outputs, execution variants and structured `uses` references. Preserve partial parses and ship matching schema and npm types. (kjanat/actionlint#189)
 
 - Select an exact Action binary with `version` or `version-file`, including `.tool-versions`; use `install-only` to put it and enabled optional tools on PATH without running analysis. (kjanat/actionlint#185)
@@ -2312,7 +2315,7 @@ actionlint -format '{{range $ := .}}### Error at line {{$.Line}}, col {{$.Column
 - [The table] for checking [Webhooks supported by GitHub Actions] is now generated from the official document automatically with [script][script-2]. The table continues to be updated weekly by [the CI workflow].
 - Improve error messages while lexing expressions as follows.
 - Fix column numbers are off-by-one on some lexer errors.
-- Fix checking invalid numbers where some digit follows zero in a hex number (e.g. `0x01`) or an exponent part of number (e.g. `1e0123`).
+- This change incorrectly rejected `0x01` and `1e0123`, which GitHub accepts.
 - Fix a parse error message when some tokens still remain after parsing finishes.
 - Refactor the expression lexer to lex an input incrementally. It slightly reduces memory consumption.
 

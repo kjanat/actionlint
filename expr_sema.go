@@ -650,6 +650,17 @@ func (sema *ExprSemanticsChecker) visitUntrustedCheckerOnLeaveNode(n ExprNode) {
 func (sema *ExprSemanticsChecker) checkVariable(n *VariableNode) ExprType {
 	v, ok := sema.vars[n.Name]
 	if !ok {
+		if sigs, known := sema.funcs[n.Name]; known && len(sigs) > 0 {
+			name := n.Token().Value
+			for _, sig := range sigs {
+				if len(sig.Params) == 0 {
+					sema.errorf(n, "function %q must be called with parentheses; did you mean %q?", name, name+"()")
+					return AnyType{}
+				}
+			}
+			sema.errorf(n, "function %q must be called with parentheses and arguments", name)
+			return AnyType{}
+		}
 		ss := make([]string, 0, len(sema.vars))
 		for n := range sema.vars {
 			ss = append(ss, n)

@@ -1,5 +1,7 @@
 # GitHub Action
 
+[![Latest release](https://img.shields.io/github/v/release/kjanat/actionlint?logo=github&logoColor=white&label=release&labelColor=181717&color=black)](https://github.com/kjanat/actionlint/releases)
+
 The upcoming Node 24 Action runs the ordinary actionlint binary without Docker.
 Existing immutable releases keep their original implementation. Examples using
 new inputs require a release containing this change.

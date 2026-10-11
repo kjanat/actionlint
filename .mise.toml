@@ -8,18 +8,28 @@ args    = ["run", "./cmd/actionlint"]
 env     = { GOFLAGS = "-buildvcs=true" }
 
 [tools]
-go                            = { prefix = "1.27" }
-node                          = { prefix = "26" }
-npm                           = "12.0.2"
-"golangci-lint"               = { prefix = "2", depends = ["go"] }
-"github:jgm/pandoc"           = { prefix = "3" }
-"github:kjanat/actionlint"    = { version = "latest", depends = ["shellcheck"] }
-"github:kjanat/runner"        = { prefix = "0.28" }
-"github:koalaman/shellcheck"  = { prefix = "0.11" }
-"github:microsoft/TypeScript" = { prefix = "7" }
-"github:rhysd/actionlint"     = { version = "latest", depends = ["shellcheck"] }
-"github:tombi-toml/tombi"     = { prefix = "1.8" }
-"npm:yaml-language-server"    = { prefix = "1.25" }
+npm                                      = "12.0.2"
+go                                       = { prefix = "1.27" }
+node                                     = { prefix = "26" }
+"github:charmbracelet/markscribe".prefix = "0.8"
+"github:jgm/pandoc".prefix               = "3"
+"github:kjanat/runner".prefix            = "0.28"
+"github:koalaman/shellcheck".prefix      = "0.11"
+"github:microsoft/TypeScript".prefix     = "7"
+"github:tombi-toml/tombi".prefix         = "1.8"
+"npm:yaml-language-server".prefix        = "1.25"
+
+[tools."golangci-lint"]
+prefix  = "2"
+depends = ["go"]
+
+[tools."github:kjanat/actionlint"]
+version = "latest"
+depends = ["shellcheck"]
+
+[tools."github:rhysd/actionlint"]
+version = "latest"
+depends = ["shellcheck"]
 
 [tools."github:kjanat/dprint"]
 version = "0.59.0-kjanat"

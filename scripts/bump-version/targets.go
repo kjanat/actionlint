@@ -70,6 +70,8 @@ var targets = []*target{
 		},
 		unrelated: []string{
 			"sarif/v2.1.0/sarif-v2.1.0.html",
+			"git-scm.com/docs/git-hook/2.54.0",
+			"git-scm.com/docs/git-hook/2.55.0",
 			goShellcheckDependency,
 			"We recommend v1.76.2 or newer.",
 		},
@@ -77,12 +79,14 @@ var targets = []*target{
 	{
 		path: "docs/install.md",
 		rules: []rule{
+			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
 			mustRule("gh release download tag", `--pattern '[^']+' v(\d+\.\d+\.\d+)`, 1),
 			mustRule("release asset name", `actionlint_(\d+\.\d+\.\d+)_linux_amd64\.tar\.gz`, 2),
 			mustRule("download script example description", `example installs v(\d+\.\d+\.\d+)`, 1),
 			mustRule("download script argument", `download-actionlint\.bash\) (\d+\.\d+\.\d+)`, 1),
 		},
 		unrelated: []string{
+			"was added after v1.17.0",
 			"has proposed switching the package to this fork at v1.16.0",
 			"mise 2026.9.7 release PR",
 			"On mise 2026.9.6,",
@@ -91,7 +95,6 @@ var targets = []*target{
 	{
 		path: "README.md",
 		rules: []rule{
-			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 4),
 			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
 		},
 		unrelated: []string{

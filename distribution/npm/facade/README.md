@@ -1,5 +1,7 @@
 # @kjanat/actionlint
 
+[![NPM Version](https://img.shields.io/npm/v/@kjanat/actionlint?logo=npm&labelColor=CB3837&color=black)](https://npm.im/@kjanat/actionlint)
+
 Static checker for GitHub Actions workflow files, distributed as a prebuilt binary.
 
 This is the npm distribution of [`kjanat/actionlint`](https://github.com/kjanat/actionlint), a fork of

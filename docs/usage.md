@@ -809,6 +809,45 @@ Please see
 super-linter/super-linter#1852
 for the discussion.
 
+### Native Git hooks
+
+[Git 2.54 and newer](https://git-scm.com/docs/git-hook/2.54.0) let you register named hooks directly in Git
+configuration. To run actionlint before each commit, [install actionlint](install.md) on your `PATH`, then run
+these commands in your repository:
+
+```sh
+git config set --local hook.actionlint.command actionlint
+git config set --local hook.actionlint.event pre-commit
+```
+
+Git runs actionlint when you commit. A lint failure blocks the commit. This checks all workflow files in the
+working tree, including unstaged edits; it does not check an isolated copy of the staged files.
+
+List the registered hooks and try them before committing:
+
+```sh
+git hook list --show-scope pre-commit
+git hook run pre-commit
+```
+
+The settings are local to this checkout and are not copied when someone clones the repository. Git runs the
+installed binary; you manage its installation and updates yourself. An existing `.git/hooks/pre-commit`
+script also runs, after the configured hooks.
+
+To disable only the actionlint hook, keeping its configuration:
+
+```sh
+git config set --local hook.actionlint.enabled false
+```
+
+Set the same key to `true` to enable it again.
+
+[Git 2.55](https://git-scm.com/docs/git-hook/2.55.0) adds parallel execution for eligible hook events and
+event-wide controls. The `pre-commit` event always runs its hooks sequentially.
+
+For a discussion of native hooks and the pre-commit framework, see
+[does git 2.54 make pre-commit obsolete?](https://www.youtube.com/watch?v=8Jwg_mM9WYc) by anthonywritescode.
+
 ### pre-commit
 
 > [!NOTE]
@@ -835,6 +874,48 @@ repos:
 
 As alternatives to `actionlint` hook, `actionlint-docker`, `actionlint-system`,
 `actionlint-shellcheck`, or `actionlint-bundled` hooks are available.
+
+#### Updating pre-commit hooks
+
+[`pre-commit autoupdate`](https://pre-commit.com/#pre-commit-autoupdate) picks a Git tag. It does not check whether
+that tag is a stable version or has a published GitHub release. Review the chosen tag before committing an update.
+
+These workarounds address the non-release updates reported in
+[kjanat/actionlint#192](https://github.com/kjanat/actionlint/issues/192) and the documentation request in
+[kjanat/actionlint#194](https://github.com/kjanat/actionlint/issues/194). A downstream guard was added in
+[lfreleng-actions/actions-template#251](https://github.com/lfreleng-actions/actions-template/pull/251).
+
+[pre-commit/pre-commit#3759](https://github.com/pre-commit/pre-commit/issues/3759) proposed letting each hook
+repository declare an allowed tag pattern in its manifest. `autoupdate` would read it from the pinned revision,
+filter candidate tags, then use its existing selection logic. Leaving the setting unset would keep the current
+behavior. Named release channels, such as stable and beta, were suggested as a later extension.
+
+For manual updates, set `rev` to a published `vX.Y.Z` release. Alternatively, use `actionlint-system` and update the
+installed binary yourself.
+
+Use `--freeze` to store a commit hash in `rev`. The chosen tag stays in a `# frozen:` comment:
+
+```sh
+pre-commit autoupdate --freeze --repo https://github.com/kjanat/actionlint
+```
+
+`--freeze` does not change which tag is chosen. Add this guard to your `repos` list to reject frozen-tag comments
+unless they use the format `X.Y.Z` or `vX.Y.Z`:
+
+```yaml
+- repo: local
+  hooks:
+    - id: frozen-revs-are-release-tags
+      name: Frozen revisions use stable release tags
+      language: pygrep
+      entry: '#[ \t]*frozen:(?![ \t]*v?[0-9]+\.[0-9]+\.[0-9]+[ \t]*\r?$)'
+      files: '^\.pre-commit-config\.ya?ml$'
+```
+
+The guard checks all frozen-tag comments in the file. Adjust it if other hooks use different version formats.
+You still need to check that the selected tag has a published release and matches the pinned commit.
+
+#### Hook installation
 
 | Hook ID                 | Explanation                                                                                                                                                                                                                         |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -985,7 +1066,7 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 
 [actionlint-matcher]: https://raw.githubusercontent.com/kjanat/actionlint/HEAD/.github/actionlint-matcher.json
 [cmd-manual]: https://kjanat.github.io/actionlint/usage.html
-[docker-badge]: https://img.shields.io/docker/v/kjanat/actionlint
+[docker-badge]: https://img.shields.io/docker/v/kjanat/actionlint?logo=docker&logoColor=white&label=Docker&labelColor=2496ED&color=black
 [dockerhub]: https://hub.docker.com/r/kjanat/actionlint
 [docker-image]: https://github.com/kjanat/actionlint/pkgs/container/actionlint
 [docker]: https://www.docker.com/
@@ -1008,7 +1089,7 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 [pulsar-linter]: https://web.pulsar-edit.dev/packages/linter-github-actions
 [pulsar]: https://pulsar-edit.dev/
 [re2]: https://golang.org/s/re2syntax
-[release-badge]: https://img.shields.io/github/v/release/kjanat/actionlint
+[release-badge]: https://img.shields.io/github/v/release/kjanat/actionlint?logo=github&logoColor=white&label=release&labelColor=181717&color=black
 [releases]: https://github.com/kjanat/actionlint/releases
 [reviewdog-actionlint]: https://github.com/reviewdog/action-actionlint
 [reviewdog]: https://github.com/reviewdog/reviewdog

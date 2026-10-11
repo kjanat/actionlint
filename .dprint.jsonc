@@ -5,7 +5,7 @@
     "cwd": "${configDir}",
     "commands": [
       {
-        "command": "mise exec --silent --quiet github:tombi-toml/tombi -- tombi format - --stdin-filename {{file_path}}",
+        "command": "mise exec --no-deps --silent --quiet github:tombi-toml/tombi -- tombi format - --stdin-filename {{file_path}}",
         "exts": ["toml"],
         "cacheKeyFiles": ["tombi.toml"],
       },

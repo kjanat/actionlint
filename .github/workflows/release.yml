@@ -152,6 +152,43 @@ jobs:
           commit_email: ${{ vars.COMMIT_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: Update to ${{ github.event.release.tag_name }}
+  winget:
+    name: Submit verified WinGet manifests
+    needs: verify
+    if: needs.verify.outputs.is-latest == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions: { contents: read, issues: write }
+    steps:
+      - uses: *Checkout
+        with: { persist-credentials: false }
+      - uses: *SetupNode
+        with: *Node24
+      - uses: *Download
+        with: { name: verified-release, path: .release-assets }
+      - name: Submit once or report why submission is blocked
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/release-assets.mjs publish-winget .release-assets "${VERSION}"
+  winget-failure:
+    name: Report a failed WinGet job
+    needs: [verify, winget]
+    if: always() && needs.verify.result == 'success' && (needs.winget.result == 'failure' || needs.winget.result == 'cancelled')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: { contents: read, issues: write }
+    steps:
+      - uses: *Checkout
+        with: { persist-credentials: false }
+      - uses: *SetupNode
+        with: *Node24
+      - name: Ensure a failure issue exists
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/release-assets.mjs report-winget-failure "${VERSION}"
   docker:
     name: Publish tested container bytes
     needs: verify
