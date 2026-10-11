@@ -1,6 +1,6 @@
 {
   runCommand,
-  git,
+  gitMinimal,
   jq,
   bash,
   actionlint,
@@ -9,7 +9,7 @@
 runCommand "actionlint-nix-integration"
   {
     nativeBuildInputs = [
-      git
+      gitMinimal
       jq
       bash
     ];

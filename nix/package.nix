@@ -3,7 +3,7 @@
   buildGoModule,
   installShellFiles,
   makeWrapper,
-  git,
+  gitMinimal,
   bash,
   bash-completion,
   zsh,
@@ -35,7 +35,7 @@ buildGoModule {
     pandoc
   ];
   nativeCheckInputs = [
-    git
+    gitMinimal
     bash
     bash-completion
     zsh
@@ -48,7 +48,7 @@ buildGoModule {
     runHook preCheck
     export GOFLAGS=''${GOFLAGS//-trimpath/}
     export BASH_COMPLETION_FILE=${bash-completion}/share/bash-completion/bash_completion
-    go test ./...
+    go test . ./cmd/... ./internal/...
     runHook postCheck
   '';
 
