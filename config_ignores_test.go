@@ -217,6 +217,45 @@ func TestReusableIgnoreLiteralMissingAction(t *testing.T) {
 	}
 }
 
+func TestReusableIgnoreCallerRelativeFile(t *testing.T) {
+	parent := t.TempDir()
+	t.Chdir(parent)
+	root := filepath.Join(parent, "repo")
+	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	const source = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo '${{ invalid }}'\n"
+	workflow := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", source)
+	for _, pattern := range []string{".github/workflows/**", ".github/workflows/other.yml"} {
+		t.Run(pattern, func(t *testing.T) {
+			config := "ignores: [{rule: expression, file: '" + pattern + "'}]"
+			writeShellcheckFixture(t, root, ".github/actionlint.yaml", config)
+			cfg, err := ParseConfig([]byte(config))
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := 0
+			if strings.HasSuffix(pattern, "other.yml") {
+				want = 1
+			}
+			for _, path := range []string{workflow, filepath.Join("repo", ".github", "workflows", "ci.yml")} {
+				session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: parent})
+				if err != nil {
+					t.Fatal(err)
+				}
+				result, err := session.Files([]string{path}, nil)
+				if err != nil || result.FileCount() != 1 || len(result.Diagnostics) != want {
+					t.Fatalf("session %s: %+v, %v", path, result, err)
+				}
+				result, err = Analyze(t.Context(), AnalysisRequest{WorkingDir: parent, Sources: []SourceUnit{{Path: path, Content: []byte(source), Project: &Project{root: root}, Config: cfg}}})
+				if err != nil || result.FileCount() != 1 || len(result.Diagnostics) != want {
+					t.Fatalf("direct %s: %+v, %v", path, result, err)
+				}
+			}
+		})
+	}
+}
+
 func TestReusableIgnoreMetadataScope(t *testing.T) {
 	for _, tc := range []struct {
 		selector string

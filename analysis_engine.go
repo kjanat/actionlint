@@ -218,7 +218,7 @@ func (l *analysisEngine) check(
 		suppressionPolicy = cfg.Policy.DisallowSuppressions
 	}
 	all = filterInlineSuppressions(content, all, suppressionPolicy)
-	all = filterConfigIgnores(path, root, content, all, cfg, false, cfg.diagnosticLevel)
+	all = filterConfigIgnores(configPath, root, content, all, cfg, false, cfg.diagnosticLevel)
 	var projectDir string
 	if project != nil {
 		projectDir = project.RootDir()
