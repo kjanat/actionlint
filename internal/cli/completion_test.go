@@ -175,12 +175,16 @@ func testCheckShellSyntax(t *testing.T, shell completionShell, script string) {
 		t.Fatal(err)
 	}
 
+	// Inherited REPORTTIME makes zsh -n print, and BASH_ENV makes bash -n source a file.
+	minimalEnv := []string{"PATH=" + os.Getenv("PATH")}
 	var candidates []string
 	var args []string
+	var env []string
 	switch shell {
 	case completionShellBash:
 		candidates = []string{"bash"}
 		args = []string{"-n", path}
+		env = minimalEnv
 	case completionShellFish:
 		candidates = []string{"fish"}
 		args = []string{"--no-config", "--no-execute", path}
@@ -198,6 +202,7 @@ func testCheckShellSyntax(t *testing.T, shell completionShell, script string) {
 	case completionShellZsh:
 		candidates = []string{"zsh"}
 		args = []string{"-f", "-n", path}
+		env = minimalEnv
 	}
 
 	var bin string
@@ -211,7 +216,11 @@ func testCheckShellSyntax(t *testing.T, shell completionShell, script string) {
 		t.Skipf("none of %v is installed", candidates)
 	}
 
-	out, err := exec.CommandContext(t.Context(), bin, args...).CombinedOutput()
+	cmd := exec.CommandContext(t.Context(), bin, args...)
+	if env != nil {
+		cmd.Env = env
+	}
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf(`%s reported a syntax error in the generated script: %v
 %s
