@@ -17,8 +17,21 @@ func TestCompositeAnalysisCancellation(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
-			outer := writeShellcheckFixture(t, root, "outer/action.yml", "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: $/inner\n")
-			inner := writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n")
+			outer := writeShellcheckFixture(t, root, "outer/action.yml", `name: outer
+description: test
+runs:
+  using: composite
+  steps:
+    - uses: $/inner
+`)
+			inner := writeShellcheckFixture(t, root, "inner/action.yml", `name: inner
+description: test
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: echo ok
+`)
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			outerReads, innerReads := 0, 0
@@ -26,7 +39,13 @@ func TestCompositeAnalysisCancellation(t *testing.T) {
 				WorkingDir: root,
 				Sources: []SourceUnit{{
 					Path: "workflow.yml", Project: &Project{root: root},
-					Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/outer\n"),
+					Content: []byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: $/outer
+`),
 				}},
 				OnRulesCreated: func(rules []Rule) []Rule {
 					if actionRule {

@@ -24,8 +24,14 @@ func TestUpstreamConformanceControls(t *testing.T) {
 		{ID: "unterminated expression", Kind: "expression", Input: "inputs[", Reject: true},
 		{ID: "expression terminator is not end of input", Kind: "expression", Input: "true }} ignored", Reject: true},
 		{ID: "quoted expression terminator", Kind: "expression", Input: "'text }} still quoted'"},
-		{ID: "invalid action runtime", Kind: "action", Input: "name: Test\ndescription: Test\nruns: {using: nonexistent, main: main.js}", Reject: true},
-		{ID: "invalid workflow key", Kind: "workflow", Input: "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    stepz: []", Reject: true},
+		{ID: "invalid action runtime", Kind: "action", Input: `name: Test
+description: Test
+runs: {using: nonexistent, main: main.js}`, Reject: true},
+		{ID: "invalid workflow key", Kind: "workflow", Input: `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    stepz: []`, Reject: true},
 	} {
 		t.Run(c.ID, func(t *testing.T) {
 			got := checkUpstreamCase(t, c)

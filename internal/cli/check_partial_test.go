@@ -27,7 +27,10 @@ func TestCheckJSONPartialFindings(t *testing.T) {
 		"config.yml":     "{}\n",
 		"successful.yml": commandBadWorkflow + "        shell: pwsh\n",
 		"failing.yml": commandBadWorkflow +
-			"        shell: bash\n      - run: FAIL_ANALYZER\n        shell: bash\n",
+			`        shell: bash
+      - run: FAIL_ANALYZER
+        shell: bash
+`,
 	} {
 		if err := os.WriteFile(name, []byte(content), 0600); err != nil {
 			t.Fatal(err)
@@ -125,8 +128,48 @@ func TestCheckJSONEmptyPartialFindings(t *testing.T) {
 			if result.Diagnostics == nil || len(result.Diagnostics) != 0 {
 				t.Fatalf("wanted empty diagnostics array: %s", &stderr)
 			}
+			if len(result.Documents) != 1 {
+				t.Fatalf("analysis failure discarded parsed outline: %+v", result.Documents)
+			}
+			workflow, ok := result.Documents[0].(actionlint.WorkflowOutline)
+			if !ok || workflow.Path != "failing.yml" || workflow.ParseStatus != "complete" || len(workflow.Jobs) != 1 {
+				t.Fatalf("analysis failure corrupted workflow document: %+v", result.Documents)
+			}
 			if result.FileCount == nil || *result.FileCount != 1 {
 				t.Fatalf("selected file count lost: %v", result.FileCount)
+			}
+		})
+	}
+}
+
+func TestCheckJSONRuffFailureKeepsOutline(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	if err := os.WriteFile("ci.yml", []byte(commandGoodWorkflow), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, modern := range []bool{false, true} {
+		t.Run(fmt.Sprintf("modern=%t", modern), func(t *testing.T) {
+			args := []string{"actionlint", "--no-config", "--shellcheck=", "--ruff", filepath.Join(dir, "missing-ruff"), "--json"}
+			if modern {
+				args = append(args, "check")
+			}
+			var stdout, stderr bytes.Buffer
+			command := Command{Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &stderr}
+			status := command.Main(append(args, "ci.yml"))
+			var result actionlint.CheckResult
+			if err := json.Unmarshal(stderr.Bytes(), &result); err != nil {
+				t.Fatalf("invalid failure envelope: %v: %s", err, &stderr)
+			}
+			if status != 3 || result.Completed || !strings.Contains(result.Error, "could not initialize Ruff") || stdout.Len() != 0 {
+				t.Fatalf("changed failure contract: status=%d, stdout=%s, stderr=%s", status, &stdout, &stderr)
+			}
+			if len(result.Documents) != 1 {
+				t.Fatalf("Ruff failure discarded parsed outline: %+v", result.Documents)
+			}
+			workflow, ok := result.Documents[0].(actionlint.WorkflowOutline)
+			if !ok || workflow.Path != "ci.yml" || workflow.ParseStatus != "complete" || len(workflow.Jobs) != 1 {
+				t.Fatalf("Ruff failure corrupted workflow document: %+v", result.Documents)
 			}
 		})
 	}

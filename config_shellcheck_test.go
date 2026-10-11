@@ -43,10 +43,22 @@ func TestShellcheckShorthandOverlay(t *testing.T) {
 		name, base, overlay string
 		enabled             bool
 	}{
-		{"turn off retaining config", "tools:\n  shellcheck:\n    enabled: true\n    config: ./.shellcheckrc\n", "shellcheck: false", false},
-		{"add config retaining disabled", "tools:\n  shellcheck: false\n", "shellcheck: {config: ./.shellcheckrc}", false},
-		{"merged shorthand", "tools:\n  <<: {shellcheck: false}\n", "shellcheck: {config: ./.shellcheckrc}", false},
-		{"enable retaining config", "tools:\n  shellcheck:\n    enabled: false\n    config: ./.shellcheckrc\n", "shellcheck: true", true},
+		{"turn off retaining config", `tools:
+  shellcheck:
+    enabled: true
+    config: ./.shellcheckrc
+`, "shellcheck: false", false},
+		{"add config retaining disabled", `tools:
+  shellcheck: false
+`, "shellcheck: {config: ./.shellcheckrc}", false},
+		{"merged shorthand", `tools:
+  <<: {shellcheck: false}
+`, "shellcheck: {config: ./.shellcheckrc}", false},
+		{"enable retaining config", `tools:
+  shellcheck:
+    enabled: false
+    config: ./.shellcheckrc
+`, "shellcheck: true", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			path := writeShellcheckFixture(t, t.TempDir(), "actionlint.yml", tc.base)
@@ -107,14 +119,22 @@ func TestShellcheckInlineConfigAnalysis(t *testing.T) {
 				}
 			}
 			for name, content := range map[string]string{
-				".github/actionlint.yaml":   "tools:\n  shellcheck:\n    " + tc.settings + "\n",
+				".github/actionlint.yaml": `tools:
+  shellcheck:
+    ` + tc.settings + "\n",
 				"lib's directory/config.sh": "VALUE=42\n",
 			} {
 				if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0o600); err != nil {
 					t.Fatal(err)
 				}
 			}
-			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          " + strings.ReplaceAll(tc.script, "\n", "\n          ") + "\n"
+			workflow := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          ` + strings.ReplaceAll(tc.script, "\n", "\n          ") + "\n"
 			linter, err := NewLinter(io.Discard, &LinterOptions{Shellcheck: command, WorkingDir: root})
 			if err != nil {
 				t.Fatal(err)
@@ -146,7 +166,13 @@ func TestShellcheckInlineConfigAnalysis(t *testing.T) {
 
 func TestShellcheckConfigOverlayOrigins(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "actionlint.yaml")
-	if err := os.WriteFile(path, []byte("tools:\n  shellcheck:\n    enabled: false\n    config:\n      disable: [SC2086]\n      enable: [all]\n"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte(`tools:
+  shellcheck:
+    enabled: false
+    config:
+      disable: [SC2086]
+      enable: [all]
+`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	overlay, err := ParseConfigOverlay("tools", []byte("shellcheck: {enabled: null, config: {disable: []}}"))

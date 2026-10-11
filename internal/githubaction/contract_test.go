@@ -65,8 +65,20 @@ func TestCLIAndActionResultContract(t *testing.T) {
 		name, source string
 		code         int
 	}{
-		{"clean", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n", 0},
-		{"findings", "on: push\njobs:\n  test:\n    runs-on: invalid-runner\n    steps:\n      - run: echo ok\n", 1},
+		{"clean", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`, 0},
+		{"findings", `on: push
+jobs:
+  test:
+    runs-on: invalid-runner
+    steps:
+      - run: echo ok
+`, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			workspace := t.TempDir()

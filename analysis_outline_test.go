@@ -1,0 +1,422 @@
+package actionlint
+
+import (
+	"bytes"
+	"encoding/json"
+	"maps"
+	"os"
+	"path/filepath"
+	"reflect"
+	"slices"
+	"strings"
+	"testing"
+)
+
+func TestAnalysisWorkflowOutlines(t *testing.T) {
+	const source = `name: Build
+on: [push, workflow_dispatch]
+jobs:
+  ZBuild:
+    name: "${{ github.ref }}"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - id: script
+        run: echo hi
+  ADeploy:
+    needs: ZBuild
+    uses: ./.github/workflows/deploy.yml
+`
+	analysis, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{
+		{Path: "clean.yml", Content: []byte(source)},
+		{Path: "partial.yml", Content: []byte(strings.Replace(source, "run: echo hi", "unexpected: value", 1))},
+		{Path: "broken.yml", Content: []byte("jobs: [")},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(analysis.Documents) != 3 {
+		t.Fatalf("lost input inventory: %+v", analysis.Documents)
+	}
+	clean := requireWorkflowOutline(t, analysis.Documents[0])
+	partial := requireWorkflowOutline(t, analysis.Documents[1])
+	broken := requireWorkflowOutline(t, analysis.Documents[2])
+	if clean.Path != "clean.yml" || clean.Name != "Build" || clean.ParseStatus != "complete" || !reflect.DeepEqual(clean.Triggers, []string{"push", "workflow_dispatch"}) {
+		t.Fatalf("wrong workflow: %+v", clean)
+	}
+	if len(clean.Jobs) != 2 || clean.Jobs[0].ID != "ZBuild" || clean.Jobs[1].ID != "ADeploy" {
+		t.Fatalf("job casing/source order lost: %+v", clean.Jobs)
+	}
+	build, deploy := clean.Jobs[0], clean.Jobs[1]
+	if build.Name != "${{ github.ref }}" || build.Start == nil || *build.Start != (DiagnosticPosition{4, 3}) {
+		t.Fatalf("declared expression/location lost: %+v", build)
+	}
+	if len(build.Steps) != 2 || build.Steps[0].Kind != "uses" || build.Steps[0].Uses != "actions/checkout@v7" || build.Steps[1].Kind != "run" || build.Steps[1].ID != "script" {
+		t.Fatalf("wrong steps: %+v", build.Steps)
+	}
+	if build.Steps[0].Start == nil || *build.Steps[0].Start != (DiagnosticPosition{8, 9}) {
+		t.Fatalf("step location lost: %+v", build.Steps[0])
+	}
+	if !reflect.DeepEqual(deploy.Needs, []string{"ZBuild"}) || deploy.Uses != "./.github/workflows/deploy.yml" || deploy.Steps == nil || len(deploy.Steps) != 0 {
+		t.Fatalf("reusable call lost: %+v", deploy)
+	}
+	if !reflect.DeepEqual(deploy.Reference, SelfRepositoryReference{Path: ".github/workflows/deploy.yml"}) {
+		t.Fatalf("local workflow call is not a self-repository reference: %#v", deploy.Reference)
+	}
+	if partial.Path != "partial.yml" || partial.ParseStatus != "partial" || len(partial.Jobs) != 2 || partial.Jobs[0].Steps[1].Kind != "unknown" {
+		t.Fatalf("partial tree lost: %+v", partial)
+	}
+	if broken.Path != "broken.yml" || broken.ParseStatus != "failed" || broken.Jobs == nil || len(broken.Jobs) != 0 {
+		t.Fatalf("failed parse missing: %+v", broken)
+	}
+	renderer, err := NewAnalysisRenderer(OutputFormatJSON, "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	if err := renderer.Render(&output, analysis); err != nil {
+		t.Fatal(err)
+	}
+	var report CheckResult
+	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(report.Documents, analysis.Documents) {
+		t.Fatalf("JSON lost outlines: %s", &output)
+	}
+	if strings.Contains(output.String(), "echo hi") {
+		t.Fatal("outline unexpectedly includes script bodies")
+	}
+}
+
+func TestOutlineLocalReferenceScope(t *testing.T) {
+	const source = `on: push
+jobs:
+  local:
+    uses: ./.github/workflows/deploy.yml
+  self:
+    uses: $/.github/workflows/deploy.yml
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./.github/actions/setup
+      - uses: $/.github/actions/setup
+`
+	workflow, errs := Parse([]byte(source))
+	if len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	outline := workflowOutline("ci.yml", workflow, false)
+	got := map[string]UsesReference{}
+	for _, job := range outline.Jobs {
+		got[job.ID] = job.Reference
+		for _, step := range job.Steps {
+			got[step.Uses] = step.Reference
+		}
+	}
+	want := map[string]UsesReference{
+		"local":                   SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
+		"self":                    SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
+		"build":                   nil,
+		"./.github/actions/setup": WorkspaceReference{Path: ".github/actions/setup"},
+		"$/.github/actions/setup": SelfRepositoryReference{Path: ".github/actions/setup"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("references by scope:\ngot  %#v\nwant %#v", got, want)
+	}
+}
+
+func TestAnalysisActionDocuments(t *testing.T) {
+	dir := t.TempDir()
+	const manifest = `name: Local
+description: Local test action
+inputs:
+  Token:
+    description: A token
+    required: true
+    default: ''
+runs:
+  using: composite
+  steps:
+    - id: child
+      uses: actions/checkout@v7
+`
+	for name, content := range map[string]string{"action.yml": manifest, "broken/action.yml": "runs: ["} {
+		path := filepath.Join(dir, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const source = `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: $/
+      - uses: $/
+      - uses: $/broken
+      - uses: $/missing
+`
+	analysis, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Project: &Project{root: dir}}}, WorkingDir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(analysis.Documents) != 3 {
+		t.Fatalf("wanted workflow and two read manifests: %+v", analysis.Documents)
+	}
+	action, ok := analysis.Documents[1].(ActionOutline)
+	if !ok || action.Path != "action.yml" || action.ParseStatus != "complete" {
+		t.Fatalf("wrong action document: %+v", analysis.Documents[1])
+	}
+	broken, ok := analysis.Documents[2].(ActionOutline)
+	if !ok || broken.ParseStatus != "failed" {
+		t.Fatalf("missing failed parse document: %+v", analysis.Documents[2])
+	}
+	data, err := json.Marshal(analysis.CheckResult())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result CheckResult
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(result.Documents, analysis.Documents) {
+		t.Fatalf("document roundtrip lost data: %s", data)
+	}
+}
+
+func TestAnalysisActionOutlineValidationDiagnostics(t *testing.T) {
+	for _, tc := range []struct {
+		name, manifest string
+		messages       []string
+	}{
+		{"missing identity", "runs: {using: composite, steps: []}", []string{"name is required", "description is required"}},
+		{"conflicting runtime", `name: Test
+description: Test
+runs: {using: node24, main: main.mjs, image: docker://alpine:3}`, []string{`"image" is not allowed in "runs" section`}},
+		{"conflicting step", `name: Test
+description: Test
+runs: {using: composite, steps: [{run: echo hi, uses: actions/checkout@v7, shell: bash}]}`, []string{`cannot have both "run" and "uses" keys`}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, "action.yml"), []byte(tc.manifest), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if tc.name == "conflicting runtime" {
+				if err := os.WriteFile(filepath.Join(dir, "main.mjs"), nil, 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			const source = `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: $/
+`
+			analysis, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Project: &Project{root: dir}}}, WorkingDir: dir})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(analysis.Documents) != 2 {
+				t.Fatalf("missing action inventory: %+v", analysis.Documents)
+			}
+			action, ok := analysis.Documents[1].(ActionOutline)
+			if !ok || action.ParseStatus != "complete" {
+				t.Fatalf("analysis validation changed decoding status: %+v", analysis.Documents[1])
+			}
+			for _, message := range tc.messages {
+				found := false
+				for _, diagnostic := range analysis.Diagnostics {
+					if strings.Contains(diagnostic.Message, message) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Fatalf("missing validation diagnostic containing %q: %+v", message, analysis.Diagnostics)
+				}
+			}
+		})
+	}
+}
+
+func requireWorkflowOutline(t *testing.T, document DocumentOutline) WorkflowOutline {
+	t.Helper()
+	workflow, ok := document.(WorkflowOutline)
+	if !ok {
+		t.Fatalf("expected workflow, got %T", document)
+	}
+	return workflow
+}
+
+func TestAnalysisEmptyDocuments(t *testing.T) {
+	result, err := Analyze(t.Context(), AnalysisRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, result := range []CheckResult{result.CheckResult(), (&AnalysisResult{}).CheckResult(), NewCheckResult(3)} {
+		data, err := json.Marshal(result)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var object map[string]json.RawMessage
+		if err := json.Unmarshal(data, &object); err != nil {
+			t.Fatal(err)
+		}
+		if string(object["documents"]) != "[]" {
+			t.Fatalf("empty inventory omitted or null: %s", data)
+		}
+	}
+}
+
+func TestAnalysisPartialWorkflowCall(t *testing.T) {
+	const source = `on: push
+jobs:
+  call:
+    uses: owner/repo/.github/workflows/build.yml@main
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+`
+	workflow, errs := Parse([]byte(source))
+	if len(errs) == 0 || workflow.Jobs["call"].WorkflowCall != nil {
+		t.Fatal("fixture must contain rejected workflow call")
+	}
+	outline := workflowOutline("ci.yml", workflow, true)
+	job := outline.Jobs[0]
+	if outline.ParseStatus != "partial" || job.Uses != "owner/repo/.github/workflows/build.yml@main" || job.Reference == nil || len(job.Steps) != 1 {
+		t.Fatalf("partial call declaration lost: %+v", outline)
+	}
+}
+
+func TestAnalysisPartialStepUses(t *testing.T) {
+	for _, tc := range []struct {
+		name, step, kind string
+	}{
+		{"uses before run", "uses: actions/checkout@v7\n        run: echo hi", "run"},
+		{"uses after run", "run: echo hi\n        uses: actions/checkout@v7", "uses"},
+		{"literal uses before run", "uses: ${{ 'actions/checkout@v7' }}\n        run: echo hi", "run"},
+		{"uses before wait", "uses: actions/checkout@v7\n        wait: child", "wait"},
+		{"uses before cancel", "uses: actions/checkout@v7\n        cancel: child", "cancel"},
+		{"uses before parallel", `uses: actions/checkout@v7
+        parallel:
+          - run: echo hi`, "parallel"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - ` + tc.step + "\n"
+			workflow, errs := Parse([]byte(source))
+			if len(errs) == 0 {
+				t.Fatal("fixture must contain conflicting execution keys")
+			}
+			outline := workflowOutline("ci.yml", workflow, true)
+			step := outline.Jobs[0].Steps[0]
+			if outline.ParseStatus != "partial" || step.Kind != tc.kind || step.Uses != "actions/checkout@v7" || step.Reference == nil {
+				t.Fatalf("partial uses declaration lost: %+v", step)
+			}
+		})
+	}
+}
+
+func TestAnalysisParallelOutline(t *testing.T) {
+	const source = `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - parallel:
+          - id: child
+            run: echo hi
+          - uses: actions/checkout@v7
+      - wait: child
+      - cancel: child
+`
+	workflow, errors := Parse([]byte(source))
+	if len(errors) != 0 {
+		t.Fatalf("unexpected parse errors: %v", errors)
+	}
+	outline := workflowOutline("ci.yml", workflow, false)
+	steps := outline.Jobs[0].Steps
+	if len(steps) != 3 || steps[0].Kind != "parallel" || steps[1].Kind != "wait" || steps[2].Kind != "cancel" {
+		t.Fatalf("wrong control step kinds: %+v", steps)
+	}
+	children := steps[0].Steps
+	if len(children) != 2 || children[0].ID != "child" || children[0].Kind != "run" || children[1].Uses != "actions/checkout@v7" {
+		t.Fatalf("parallel children lost: %+v", children)
+	}
+}
+
+func TestAnalysisFailureKeepsOutline(t *testing.T) {
+	root := t.TempDir()
+	writeShellcheckFixture(t, root, "local/index.js", "console.log('ok');\n")
+	writeShellcheckFixture(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: node24
+  main: index.js
+`)
+	const workflow = `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./local
+`
+	bogus := func(include string) *Config {
+		lint := &LintConfig{Rules: LintRulesConfig{Correctness: RuleGroupConfig{Rules: map[string]RuleSetting{"inline-suppression": {Level: "bogus"}}}}}
+		return &Config{Overrides: []ConfigOverride{{Includes: []string{include}, Lint: lint}}}
+	}
+	action := filepath.FromSlash("local/action.yml") + ":complete"
+	for _, tc := range []struct {
+		name    string
+		config  *Config
+		ruff    string
+		sources map[string]string
+		wantErr string
+		want    []string
+	}{
+		{"workflow config", bogus("**"), "", map[string]string{"ci.yml": workflow}, "rule level", []string{"ci.yml:complete"}},
+		{"workflow config with partial parse", bogus("**"), "", map[string]string{"ci.yml": strings.Replace(workflow, "    steps:", "    unknown: x\n    steps:", 1)}, "rule level", []string{"ci.yml:partial"}},
+		{"workflow config with failed parse", bogus("**"), "", map[string]string{"ci.yml": "on: [\n"}, "rule level", []string{"ci.yml:failed"}},
+		{"ruff", nil, filepath.Join(root, "missing-ruff"), map[string]string{"ci.yml": workflow}, "could not initialize Ruff", []string{"ci.yml:complete"}},
+		{"metadata config", bogus("local/action.yml"), "", map[string]string{"ci.yml": workflow}, "rule level", []string{"ci.yml:complete", action}},
+		{"one of several sources", bogus("bad.yml"), "", map[string]string{"bad.yml": workflow, "ok.yml": workflow}, "rule level", []string{"bad.yml:complete", "ok.yml:complete", action}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var sources []SourceUnit
+			for _, path := range slices.Sorted(maps.Keys(tc.sources)) {
+				sources = append(sources, SourceUnit{Path: path, Content: []byte(tc.sources[path]), Project: &Project{root: root}, Config: tc.config})
+			}
+			analysis, err := Analyze(t.Context(), AnalysisRequest{Sources: sources, WorkingDir: root, Ruff: tc.ruff})
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("fixture must fail with %q: %v", tc.wantErr, err)
+			}
+			if analysis == nil {
+				t.Fatalf("analysis failure discarded result: %v", err)
+			}
+			got := make([]string, 0, len(analysis.Documents))
+			for _, document := range analysis.Documents {
+				switch document := document.(type) {
+				case WorkflowOutline:
+					got = append(got, document.Path+":"+document.ParseStatus)
+				case ActionOutline:
+					got = append(got, document.Path+":"+document.ParseStatus)
+				default:
+					t.Fatalf("unexpected document %T", document)
+				}
+			}
+			if !slices.Equal(got, tc.want) {
+				t.Fatalf("analysis failure changed documents: got %v, want %v (%v)", got, tc.want, err)
+			}
+		})
+	}
+}

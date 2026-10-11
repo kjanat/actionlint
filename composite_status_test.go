@@ -7,7 +7,13 @@ import (
 
 func TestCompositeStatusConditionCheckout(t *testing.T) {
 	root, _ := executableFixture(t)
-	writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/checkout@v6\n")
+	writeShellcheckFixture(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v6
+`)
 	for _, tc := range []struct {
 		condition string
 		want      bool
@@ -26,7 +32,11 @@ func TestCompositeStatusConditionCheckout(t *testing.T) {
 		{"'success() && always()'", true},
 	} {
 		t.Run(tc.condition, func(t *testing.T) {
-			result := compositeAnalysis(t, root, "- uses: ./local\n  if: ${{ "+tc.condition+" }}\n- uses: actions/checkout@v6\n- shell: bash\n  working-directory: .\n  run: ./bad.sh", AnalysisOptions{})
+			result := compositeAnalysis(t, root, "- uses: ./local\n  if: ${{ "+tc.condition+` }}
+- uses: actions/checkout@v6
+- shell: bash
+  working-directory: .
+  run: ./bad.sh`, AnalysisOptions{})
 			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" })
 			if found != tc.want {
 				t.Fatalf("executable-bit = %v, want %v: %+v", found, tc.want, result.Diagnostics)

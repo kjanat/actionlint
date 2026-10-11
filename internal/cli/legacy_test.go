@@ -29,7 +29,13 @@ func TestCommandCompatibility(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	good := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+	good := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 	bad := strings.Replace(good, "echo ok", `echo "${{ missing.value }}"`, 1)
 	for name, src := range map[string]string{"bad.yml": bad, "good.yml": good, ".github/workflows/ci.yml": good} {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(src), 0o600); err != nil {

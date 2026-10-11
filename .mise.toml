@@ -10,7 +10,6 @@ go                            = { prefix = "1.27" }
 node                          = { prefix = "26" }
 npm                           = "12.0.2"
 "golangci-lint"               = { prefix = "2", depends = ["go"] }
-"github:biomejs/biome"        = { prefix = "2.5", version_prefix = "@biomejs/biome@" }
 "github:jgm/pandoc"           = { prefix = "3" }
 "github:kjanat/actionlint"    = { version = "latest", depends = ["shellcheck"] }
 "github:kjanat/runner"        = { prefix = "0.27" }
@@ -18,6 +17,7 @@ npm                           = "12.0.2"
 "github:microsoft/TypeScript" = { prefix = "7" }
 "github:rhysd/actionlint"     = { version = "latest", depends = ["shellcheck"] }
 "github:tombi-toml/tombi"     = { prefix = "1.8" }
+"npm:yaml-language-server"    = { prefix = "1.25" }
 
 [tools."github:kjanat/dprint"]
 version = "0.59.0-kjanat"
@@ -33,16 +33,17 @@ idiomatic_version_file_enable_tools = ["go", "node"]
 minimum_release_age                 = "0s"
 
 [env]
+_.path       = ["{{config_root}}/node_modules/.bin"]
 GOFLAGS      = "-buildvcs=true"
 VOLTA_BYPASS = 1
 
 [deps]
 [deps.npm]
-auto = true
+auto = false
 run  = "npm i --no-fund --no-audit --ignore-scripts"
 
 [deps.go]
-auto = true
+auto = false
 run  = "go mod tidy -diff"
 
 [tasks]

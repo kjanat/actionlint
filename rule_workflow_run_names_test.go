@@ -29,7 +29,16 @@ func TestWorkflowRunNames(t *testing.T) {
 		{"Typo", "lint: {rules: {correctness: {workflow-run-names: off}}}", 0},
 	} {
 		t.Run(tc.name+tc.config, func(t *testing.T) {
-			src := "on:\n  workflow_run:\n    workflows: ['" + tc.name + "']\n    types: [completed]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			src := `on:
+  workflow_run:
+    workflows: ['` + tc.name + `']
+    types: [completed]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 			config, err := ParseConfig([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
@@ -70,7 +79,13 @@ func TestWorkflowRunNamesLiteralNames(t *testing.T) {
 				root := t.TempDir()
 				project := &Project{root: root}
 				producer := "name: " + tc.name + "\n" + commandGoodWorkflow
-				consumer := "on: {workflow_run: {workflows: ['" + tc.reference + "'], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+				consumer := "on: {workflow_run: {workflows: ['" + tc.reference + `'], types: [completed]}}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 				sources := []SourceUnit{{Path: ".github/workflows/consumer.yml", Content: []byte(consumer), Project: project}}
 				if inMemory {
 					cfg, err := ParseConfig([]byte("files: {excludes: ['**/build.yml']}"))
@@ -103,7 +118,13 @@ func TestWorkflowRunNamesFilesystemPathCasing(t *testing.T) {
 					t.Skip("requires a case-insensitive filesystem")
 				}
 				project := &Project{root: strings.ToUpper(root)}
-				consumer := "on: {workflow_run: {workflows: [" + reference + "], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+				consumer := "on: {workflow_run: {workflows: [" + reference + `], types: [completed]}}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, ReadFile: func(path string) ([]byte, error) {
 					if strings.EqualFold(path, producer) {
 						t.Errorf("read stale on-disk producer %q", path)
@@ -139,7 +160,13 @@ func TestWorkflowRunNamesRelativeProject(t *testing.T) {
 	}
 	for _, name := range []string{"Build", "Missing"} {
 		t.Run(name, func(t *testing.T) {
-			src := "on: {workflow_run: {workflows: [" + name + "], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			src := "on: {workflow_run: {workflows: [" + name + `], types: [completed]}}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 			result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: ".github/workflows/consumer.yml", Content: []byte(src), Project: project}}})
 			if err != nil {
 				t.Fatal(err)
@@ -175,7 +202,13 @@ func TestWorkflowRunNamesPatterns(t *testing.T) {
 		t.Run(tc.name+tc.filters, func(t *testing.T) {
 			root := t.TempDir()
 			project := &Project{root: root}
-			consumer := "on: {workflow_run: {workflows: [" + tc.filters + "], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			consumer := "on: {workflow_run: {workflows: [" + tc.filters + `], types: [completed]}}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{
 				{Path: ".github/workflows/build.yml", Content: []byte("name: '" + tc.name + "'\n" + commandGoodWorkflow), Project: project},
 				{Path: ".github/workflows/consumer.yml", Content: []byte(consumer), Project: project},
@@ -209,8 +242,16 @@ func TestWorkflowRunNamesExcludedInMemory(t *testing.T) {
 			}
 			project := &Project{root: root}
 			// The excluded source also contains a lint finding that must remain excluded.
-			producerContent := "name: New\nenv: {VALUE: '${{ nonexistent }}'}\n" + commandGoodWorkflow
-			consumer := "on: {workflow_run: {workflows: [New], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			producerContent := `name: New
+env: {VALUE: '${{ nonexistent }}'}
+` + commandGoodWorkflow
+			consumer := `on: {workflow_run: {workflows: [New], types: [completed]}}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: ".", Sources: []SourceUnit{
 				{Path: ".github/workflows/build.yml", Content: []byte(producerContent), Project: project, Config: cfg},
 				{Path: ".github/workflows/consumer.yml", Content: []byte(consumer), Project: project, Config: cfg},
@@ -230,7 +271,13 @@ func TestWorkflowRunNamesUnreadableSibling(t *testing.T) {
 		t.Run(readErr.Error(), func(t *testing.T) {
 			root := t.TempDir()
 			producer := writeShellcheckFixture(t, root, ".github/workflows/build.yml", "name: Build\n"+commandGoodWorkflow)
-			consumer := "on: {workflow_run: {workflows: [Missing], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			consumer := `on: {workflow_run: {workflows: [Missing], types: [completed]}}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 			read := false
 			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, ReadFile: func(path string) ([]byte, error) {
 				if path == producer {
@@ -256,7 +303,13 @@ func TestWorkflowRunNamesUnreadableSibling(t *testing.T) {
 func TestWorkflowRunNamesInMemoryAndIncomplete(t *testing.T) {
 	root := t.TempDir()
 	producer := writeShellcheckFixture(t, root, ".github/workflows/build.yml", "name: Old\n"+commandGoodWorkflow)
-	consumer := "on: {workflow_run: {workflows: [New], types: [completed]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+	consumer := `on: {workflow_run: {workflows: [New], types: [completed]}}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 	project := &Project{root: root}
 	sources := []SourceUnit{{Path: producer, Content: []byte("name: New\n" + commandGoodWorkflow), Project: project}, {Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: project}}
 	result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: sources})

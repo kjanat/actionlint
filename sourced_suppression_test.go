@@ -19,9 +19,19 @@ func TestSourcedShellcheckDeclarationSuppression(t *testing.T) {
 			{"inline", "run: . ./scripts/check.sh # actionlint:ignore shellcheck -- reviewed", "", "", false},
 			{"block", "run: | # actionlint:ignore shellcheck -- reviewed\n  . ./scripts/check.sh", "", "", false},
 			{"next-line", "# actionlint:ignore-next-line shellcheck -- reviewed\nrun: . ./scripts/check.sh", "", "", false},
-			{"split-header", "run: !!str\n  | # actionlint:ignore shellcheck -- reviewed\n  . ./scripts/check.sh", "", "", false},
-			{"split-key", "run: # actionlint:ignore shellcheck -- reviewed\n  !!str\n  |\n  . ./scripts/check.sh", "", "", false},
-			{"split-anchor", "run:\n  !!str\n  &script # actionlint:ignore shellcheck -- reviewed\n  |\n  . ./scripts/check.sh\nname: *script", "", "", false},
+			{"split-header", `run: !!str
+  | # actionlint:ignore shellcheck -- reviewed
+  . ./scripts/check.sh`, "", "", false},
+			{"split-key", `run: # actionlint:ignore shellcheck -- reviewed
+  !!str
+  |
+  . ./scripts/check.sh`, "", "", false},
+			{"split-anchor", `run:
+  !!str
+  &script # actionlint:ignore shellcheck -- reviewed
+  |
+  . ./scripts/check.sh
+name: *script`, "", "", false},
 			{"missing-reason", "run: . ./scripts/check.sh # actionlint:ignore shellcheck", "", "inline-suppression", true},
 			{"forbidden", "run: . ./scripts/check.sh # actionlint:ignore shellcheck -- reviewed", "policy: {disallow-suppressions: true}\n", "disallow-suppressions", true},
 			{"report-suppression", "run: . ./scripts/check.sh # actionlint:ignore shellcheck -- reviewed", "policy: {disallow-suppressions: {report: suppression}}\n", "disallow-suppressions", false},
@@ -38,11 +48,18 @@ func TestSourcedShellcheckDeclarationSuppression(t *testing.T) {
 						t.Fatal(err)
 					}
 					declaration := strings.ReplaceAll(tc.declaration, "\n", ending)
-					steps := "- shell: bash\n  working-directory: .\n  " + strings.ReplaceAll(declaration, "\n", "\n  ")
+					steps := `- shell: bash
+  working-directory: .
+  ` + strings.ReplaceAll(declaration, "\n", "\n  ")
 					origin := ".github/workflows/composite.yml"
 					if composite {
 						origin = "local/action.yml"
-						writeShellcheckFixture(t, root, origin, "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    "+strings.ReplaceAll(steps, "\n", "\n    ")+"\n")
+						writeShellcheckFixture(t, root, origin, `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    `+strings.ReplaceAll(steps, "\n", "\n    ")+"\n")
 						steps = "- uses: ./local"
 					}
 					result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}}})
@@ -100,14 +117,27 @@ func TestSourcedShellcheckOriginIsolation(t *testing.T) {
 				root, _ := executableFixture(t)
 				writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 				writeShellcheckFixture(t, root, "scripts/check.sh", "echo $VALUE\n")
-				step := "- shell: bash\n  working-directory: .\n  run: . ./scripts/check.sh"
+				step := `- shell: bash
+  working-directory: .
+  run: . ./scripts/check.sh`
 				steps := step + directive + "\n" + step
 				if both {
 					steps += directive
 				}
 				if composite {
-					writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    "+strings.ReplaceAll(steps, "\n", "\n    ")+"\n")
-					writeShellcheckFixture(t, root, "outer/action.yml", "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: ./local\n")
+					writeShellcheckFixture(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    `+strings.ReplaceAll(steps, "\n", "\n    ")+"\n")
+					writeShellcheckFixture(t, root, "outer/action.yml", `name: outer
+description: test
+runs:
+  using: composite
+  steps:
+    - uses: ./local
+`)
 					steps = "- uses: ./outer"
 				}
 				result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}}})
@@ -128,7 +158,14 @@ func TestSourcedShellcheckAliasOrigin(t *testing.T) {
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	writeShellcheckFixture(t, root, "scripts/check.sh", "echo $VALUE\n")
-	steps := "- shell: bash\n  env: {SCRIPT: &script '. ./scripts/check.sh'}\n  run: echo safe\n- shell: bash\n  run: echo safe # actionlint:ignore shellcheck -- other run\n- shell: bash\n  working-directory: .\n  run: *script"
+	steps := `- shell: bash
+  env: {SCRIPT: &script '. ./scripts/check.sh'}
+  run: echo safe
+- shell: bash
+  run: echo safe # actionlint:ignore shellcheck -- other run
+- shell: bash
+  working-directory: .
+  run: *script`
 	result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}}})
 	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "SC2086" {
 		t.Fatalf("alias origin crossed intervening declarations: %+v", result.Diagnostics)
@@ -140,13 +177,31 @@ func TestSourcedShellcheckMetadataScope(t *testing.T) {
 	for _, ignoredPath := range []string{"", "scripts/**", "local/**"} {
 		t.Run(ignoredPath, func(t *testing.T) {
 			root, _ := executableFixture(t)
-			config := "tools: {shellcheck: true}\npolicy: {disallow-suppressions: true}\nlint: {rules: {policy: {require-job-timeout: {level: on, options: {min-minutes: 5}}}}}\noverrides:\n  - includes: ['local/**']\n    lint: {rules: {policy: {require-job-timeout: {level: on, options: {max-minutes: 3}}, disallow-suppressions: off}}}\n  - includes: ['alias/**']\n    lint: {rules: {policy: {disallow-suppressions: warn}}}\n"
+			config := `tools: {shellcheck: true}
+policy: {disallow-suppressions: true}
+lint: {rules: {policy: {require-job-timeout: {level: on, options: {min-minutes: 5}}}}}
+overrides:
+  - includes: ['local/**']
+    lint: {rules: {policy: {require-job-timeout: {level: on, options: {max-minutes: 3}}, disallow-suppressions: off}}}
+  - includes: ['alias/**']
+    lint: {rules: {policy: {disallow-suppressions: warn}}}
+`
 			if ignoredPath != "" {
-				config += "paths:\n  '" + ignoredPath + "':\n    ignore: ['SC2086']\n"
+				config += "paths:\n  '" + ignoredPath + `':
+    ignore: ['SC2086']
+`
 			}
 			writeShellcheckFixture(t, root, ".github/actionlint.yaml", config)
 			writeShellcheckFixture(t, root, "scripts/check.sh", "echo $VALUE\n")
-			writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      working-directory: .\n      run: . ./scripts/check.sh # actionlint:ignore shellcheck -- reviewed\n")
+			writeShellcheckFixture(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: .
+      run: . ./scripts/check.sh # actionlint:ignore shellcheck -- reviewed
+`)
 			if err := os.Symlink(filepath.Join(root, "local"), filepath.Join(root, "alias")); err != nil {
 				t.Skipf("symlinks unavailable: %v", err)
 			}
@@ -194,9 +249,17 @@ func TestSourcedScriptsAreNotSuppressionMetadata(t *testing.T) {
 					writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n"+tc.policy)
 					name := "scripts/check" + suffix
 					writeShellcheckFixture(t, root, name, "echo $VALUE "+tc.directive+"\n")
-					steps := "- run: . ./" + name + "\n  shell: bash\n  working-directory: ."
+					steps := "- run: . ./" + name + `
+  shell: bash
+  working-directory: .`
 					if composite {
-						writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: . ./"+name+"\n")
+						writeShellcheckFixture(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: . ./`+name+"\n")
 						steps = "- uses: ./local"
 					}
 					result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}}})

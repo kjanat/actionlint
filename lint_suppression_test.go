@@ -23,10 +23,18 @@ func TestEveryRuleIsSuppressible(t *testing.T) {
 func TestGeneralInlineSuppression(t *testing.T) {
 	for _, tc := range []struct{ body, config string }{
 		{"    if: true # actionlint:ignore if-cond -- intentionally always runs\n", ""},
-		{"    # actionlint:ignore-next-line expression -- provided by invocation\n    if: typo.value\n", ""},
+		{`    # actionlint:ignore-next-line expression -- provided by invocation
+    if: typo.value
+`, ""},
 		{"    if: github.ref == 'refs/heads/main' # actionlint:ignore case-insensitive-conditions -- casing intentionally irrelevant\n", "lint: {rules: {suspicious: {case-insensitive-conditions: on}}}"},
 	} {
-		source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n" + tc.body + "    steps:\n      - run: echo ok\n"
+		source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+` + tc.body + `    steps:
+      - run: echo ok
+`
 		if got := lintCachePolicy(t, source, tc.config); len(got) != 0 {
 			t.Fatal(got)
 		}

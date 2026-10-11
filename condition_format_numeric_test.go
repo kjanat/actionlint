@@ -38,7 +38,13 @@ func TestConstantFormatNumericArguments(t *testing.T) {
 			if tc.want != "" {
 				want = "always truthy"
 			}
-			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n        if: ${{ " + tc.expression + " }}\n"
+			source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+        if: ${{ ` + tc.expression + " }}\n"
 			findings := lintCachePolicy(t, source, "")
 			if len(findings) != 1 || !strings.Contains(findings[0].Message, want) {
 				t.Fatalf("want %q, got %v", want, findings)
@@ -78,7 +84,15 @@ func TestExecutableBitNumericFormatCheckout(t *testing.T) {
 		{"-0", 0}, {"1e15", 0}, {"0.12345678901234567", 0},
 	} {
 		t.Run(tc.argument, func(t *testing.T) {
-			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n        if: ${{ format('{0}', " + tc.argument + ") }}\n      - run: ./bad.sh\n"
+			workflow := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        if: ${{ format('{0}', ` + tc.argument + `) }}
+      - run: ./bad.sh
+`
 			file := writeShellcheckFixture(t, root, ".github/workflows/format.yml", workflow)
 			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
 			if err != nil {

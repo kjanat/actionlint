@@ -10,15 +10,38 @@ import (
 func TestRuffCompositeAliasConfiguration(t *testing.T) {
 	command := ruffForTest(t)
 	root := t.TempDir()
-	writeShellcheckFixture(t, root, "python-action/action.yml", "name: Python\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: python\n      run: |\n        import os\n        print(missing)\n")
+	writeShellcheckFixture(t, root, "python-action/action.yml", `name: Python
+description: test
+runs:
+  using: composite
+  steps:
+    - shell: python
+      run: |
+        import os
+        print(missing)
+`)
 	if err := os.Symlink(filepath.Join(root, "python-action"), filepath.Join(root, "python-alias")); err != nil {
 		t.Skipf("directory symlinks unavailable: %v", err)
 	}
-	config, err := ParseConfig([]byte("overrides:\n  - includes: ['python-action/action.yml']\n    tools: {ruff: {select: [F401]}}\n    lint: {rules: {external: {ruff: warn}}}\n  - includes: ['python-alias/action.yml']\n    tools: {ruff: {select: [F821]}}\n    lint: {rules: {external: {ruff: info}}}\n"))
+	config, err := ParseConfig([]byte(`overrides:
+  - includes: ['python-action/action.yml']
+    tools: {ruff: {select: [F401]}}
+    lint: {rules: {external: {ruff: warn}}}
+  - includes: ['python-alias/action.yml']
+    tools: {ruff: {select: [F821]}}
+    lint: {rules: {external: {ruff: info}}}
+`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/python-action\n      - uses: $/python-alias\n"
+	source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: $/python-action
+      - uses: $/python-alias
+`
 	result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: &Project{root: root}}}})
 	if err != nil {
 		t.Fatal(err)
@@ -48,8 +71,14 @@ func TestRuffCompositeFileConfiguration(t *testing.T) {
 		{"target version", "", "tools: {ruff: {target-version: py39}}", "match 1:\n  case 1:\n    pass", "invalid-syntax"},
 		{"workflow disabled composite enabled", "tools: {ruff: false}\n", "tools: {ruff: true}", "print(missing)", "F821"},
 		{"workflow rule disabled composite enabled", "lint: {rules: {external: {ruff: off}}}\n", "lint: {rules: {external: {ruff: on}}}", "print(missing)", "F821"},
-		{"workflow only override retains composite defaults", "overrides:\n  - includes: ['.github/workflows/**']\n    tools: {ruff: false}\n", "", "print(missing)", "F821"},
-		{"caller lint disabled", "overrides:\n  - includes: ['.github/workflows/**']\n    lint: {enabled: false}\n", "", "print(missing)", ""},
+		{"workflow only override retains composite defaults", `overrides:
+  - includes: ['.github/workflows/**']
+    tools: {ruff: false}
+`, "", "print(missing)", "F821"},
+		{"caller lint disabled", `overrides:
+  - includes: ['.github/workflows/**']
+    lint: {enabled: false}
+`, "", "print(missing)", ""},
 		{"caller lint disabled despite composite enabled", "lint: {enabled: false}\n", "lint: {enabled: true, rules: {external: {ruff: on}}}", "print(missing)", ""},
 		{"composite warning", "", "lint: {rules: {external: {ruff: warn}}}", "print(missing)", "F821"},
 	} {
@@ -57,10 +86,19 @@ func TestRuffCompositeFileConfiguration(t *testing.T) {
 			root := t.TempDir()
 			path := filepath.Join(root, ".github/workflows/ci.yml")
 			writeShellcheckFixture(t, root, ".github/workflows/ci.yml", commandGoodWorkflow)
-			writeShellcheckFixture(t, root, "python-action/action.yml", "name: Python\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: python\n      run: |\n        "+strings.ReplaceAll(tc.script, "\n", "\n        ")+"\n")
+			writeShellcheckFixture(t, root, "python-action/action.yml", `name: Python
+description: test
+runs:
+  using: composite
+  steps:
+    - shell: python
+      run: |
+        `+strings.ReplaceAll(tc.script, "\n", "\n        ")+"\n")
 			configText := tc.base
 			if tc.override != "" {
-				configText += "overrides:\n  - includes: ['python-action/action.yml']\n    " + tc.override + "\n"
+				configText += `overrides:
+  - includes: ['python-action/action.yml']
+    ` + tc.override + "\n"
 			}
 			config, err := ParseConfig([]byte(configText))
 			if err != nil {
@@ -71,7 +109,13 @@ func TestRuffCompositeFileConfiguration(t *testing.T) {
 					t.Fatalf("composite checker cannot be provisioned: enabled=%v, error=%v", enabled, err)
 				}
 			}
-			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/python-action\n"
+			source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: $/python-action
+`
 			result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: root, Sources: []SourceUnit{{Path: path, Content: []byte(source), Config: config, Project: &Project{root: root}}}})
 			if err != nil {
 				t.Fatal(err)

@@ -105,7 +105,14 @@ func TestSchemaAuditFunctionContracts(t *testing.T) {
 func TestSchemaAuditScalarDecoding(t *testing.T) {
 	for _, spelling := range []string{"true", "True", "TRUE"} {
 		t.Run(spelling, func(t *testing.T) {
-			workflow, errs := Parse([]byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    continue-on-error: " + spelling + "\n    steps:\n      - run: echo test\n"))
+			workflow, errs := Parse([]byte(`on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    continue-on-error: ` + spelling + `
+    steps:
+      - run: echo test
+`))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
@@ -119,7 +126,14 @@ func TestSchemaAuditScalarDecoding(t *testing.T) {
 		value    float64
 	}{{"0x1e", 30}, {"0o36", 30}, {"030", 30}, {"3e1", 30}} {
 		t.Run(tc.spelling, func(t *testing.T) {
-			workflow, errs := Parse([]byte(fmt.Sprintf("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    timeout-minutes: %s\n    steps:\n      - run: echo test\n", tc.spelling)))
+			workflow, errs := Parse(fmt.Appendf(nil, `on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: %s
+    steps:
+      - run: echo test
+`, tc.spelling))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
@@ -132,12 +146,29 @@ func TestSchemaAuditScalarDecoding(t *testing.T) {
 
 func TestSchemaAuditRequiredFlagsAreStatic(t *testing.T) {
 	for _, event := range []string{
-		"workflow_dispatch:\n    inputs:\n      value:\n        type: string\n        required: ${{ true }}",
-		"workflow_call:\n    inputs:\n      value:\n        type: string\n        required: ${{ true }}",
-		"workflow_call:\n    secrets:\n      value:\n        required: ${{ true }}",
+		`workflow_dispatch:
+    inputs:
+      value:
+        type: string
+        required: ${{ true }}`,
+		`workflow_call:
+    inputs:
+      value:
+        type: string
+        required: ${{ true }}`,
+		`workflow_call:
+    secrets:
+      value:
+        required: ${{ true }}`,
 	} {
 		t.Run(event, func(t *testing.T) {
-			_, errs := Parse([]byte("on:\n  " + event + "\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n"))
+			_, errs := Parse([]byte("on:\n  " + event + `
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo test
+`))
 			if len(errs) == 0 {
 				t.Fatal("accepted expression in a static boolean definition")
 			}
@@ -149,11 +180,19 @@ func TestSchemaAuditExpressionVisitorCoverage(t *testing.T) {
 	for _, tc := range []struct {
 		name, job, step, want string
 	}{
-		{"snapshot step output", "snapshot:\n      image-name: image\n      if: steps.build.outputs.ready != '' && success()", "id: build\n        run: echo test", ""},
-		{"snapshot missing step", "snapshot:\n      image-name: image\n      if: steps.missing.outputs.ready != ''", "run: echo test", `property "missing"`},
+		{"snapshot step output", `snapshot:
+      image-name: image
+      if: steps.build.outputs.ready != '' && success()`, "id: build\n        run: echo test", ""},
+		{"snapshot missing step", `snapshot:
+      image-name: image
+      if: steps.missing.outputs.ready != ''`, "run: echo test", `property "missing"`},
 		{"snapshot image invalid context", "snapshot:\n      image-name: ${{ env.IMAGE }}", "run: echo test", `context "env" is not allowed`},
-		{"snapshot version invalid context", "snapshot:\n      image-name: image\n      version: ${{ secrets.VERSION }}", "run: echo test", `context "secrets" is not allowed`},
-		{"snapshot condition secret", "snapshot:\n      image-name: image\n      if: secrets.READY != ''", "run: echo test", `context "secrets" is not allowed`},
+		{"snapshot version invalid context", `snapshot:
+      image-name: image
+      version: ${{ secrets.VERSION }}`, "run: echo test", `context "secrets" is not allowed`},
+		{"snapshot condition secret", `snapshot:
+      image-name: image
+      if: secrets.READY != ''`, "run: echo test", `context "secrets" is not allowed`},
 		{"background bool", "", "run: echo test\n        background: ${{ github.event_name == 'push' }}", ""},
 		{"background wrong type", "", "run: echo test\n        background: ${{ 1 }}", "type of expression must be bool"},
 		{"background malformed expression", "", "run: echo test\n        background: ${{ broken( }}", "unexpected"},
@@ -188,8 +227,12 @@ func TestSchemaAuditExpressionVisitorCoverage(t *testing.T) {
 		{"container missing image", `container: ${{ fromJSON('{}') }}`, "run: echo test", `requires property "image"`},
 		{"container cased image", `container: ${{ fromJSON('{"Image":"node:22"}') }}`, "run: echo test", ""},
 		{"container bad ports", `container: ${{ fromJSON('{"image":"node:22","ports":"80"}') }}`, "run: echo test", "container.ports must be array"},
-		{"container expression ports", "container:\n      image: node:22\n      ports: ${{ fromJSON('[80]') }}", "run: echo test", ""},
-		{"container expression volumes", "container:\n      image: node:22\n      volumes: ${{ fromJSON('[\"/data\"]') }}", "run: echo test", ""},
+		{"container expression ports", `container:
+      image: node:22
+      ports: ${{ fromJSON('[80]') }}`, "run: echo test", ""},
+		{"container expression volumes", `container:
+      image: node:22
+      volumes: ${{ fromJSON('["/data"]') }}`, "run: echo test", ""},
 		{"environment object", `environment: ${{ fromJSON('{"name":"staging","deployment":false}') }}`, "run: echo test", ""},
 		{"environment empty scalar", `environment: ${{ '' }}`, "run: echo test", "must be a non-empty string"},
 		{"environment empty name", `environment: ${{ fromJSON('{"name":""}') }}`, "run: echo test", "must be a non-empty string"},
@@ -217,7 +260,13 @@ func TestSchemaAuditExpressionVisitorCoverage(t *testing.T) {
 		{"unknown expression object", "container: ${{ fromJSON(vars.CONTAINER) }}\n    strategy: ${{ fromJSON(vars.STRATEGY) }}", "run: echo ${{ matrix.os }}", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    " + tc.job + "\n    steps:\n      - " + tc.step + "\n"
+			source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    ` + tc.job + `
+    steps:
+      - ` + tc.step + "\n"
 			workflow, errs := Parse([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
@@ -251,7 +300,13 @@ func TestSchemaAuditRunnerObjectExpressions(t *testing.T) {
 		{`fromJSON(vars.RUNNERS)`, ""},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
-			workflow, errs := Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ${{ " + tc.value + " }}\n    steps:\n      - run: echo test\n"))
+			workflow, errs := Parse([]byte(`on: push
+jobs:
+  test:
+    runs-on: ${{ ` + tc.value + ` }}
+    steps:
+      - run: echo test
+`))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}

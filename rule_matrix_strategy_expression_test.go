@@ -32,7 +32,14 @@ func TestRuleMatrixKnownStrategyExpression(t *testing.T) {
 		{"identical expression-looking data", `{"os":["${{ vars.RUNNER }}"],"exclude":[{"os":"${{ vars.RUNNER }}"}]}`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			source := "on: push\njobs:\n  test:\n    strategy: ${{ fromJSON('{\"matrix\":" + tc.matrix + "}') }}\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			source := `on: push
+jobs:
+  test:
+    strategy: ${{ fromJSON('{"matrix":` + tc.matrix + `}') }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 			linter, err := NewLinter(io.Discard, &LinterOptions{Shellcheck: "", Pyflakes: ""})
 			if err != nil {
 				t.Fatal(err)
@@ -62,7 +69,14 @@ func TestRuleMatrixUnknownOrInvalidStrategyExpression(t *testing.T) {
 		`fromJSON('{"matrix":{"exclude":"linux"}}')`,
 	} {
 		t.Run(expression, func(t *testing.T) {
-			source := "on: push\njobs:\n  test:\n    strategy: ${{ " + expression + " }}\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			source := `on: push
+jobs:
+  test:
+    strategy: ${{ ` + expression + ` }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 			workflow, errs := Parse([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)

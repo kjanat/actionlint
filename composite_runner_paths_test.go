@@ -31,8 +31,25 @@ func TestCompositeContextDirectorySeparators(t *testing.T) {
 			{"ubuntu-latest", `/literal\scripts`, runtime.GOOS != "windows"},
 		} {
 			t.Run(context+"/"+tc.runner+"/"+tc.suffix, func(t *testing.T) {
-				metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      working-directory: '${{ "+context+" }}"+tc.suffix+"'\n      run: |\n        . ./lib.sh\n        echo $VALUE\n")
-				workflow := writeShellcheckFixture(t, root, ".github/workflows/context.yml", "on: push\njobs:\n  test:\n    runs-on: "+tc.runner+"\n    steps:\n      - uses: actions/checkout@v6\n      - uses: $/local\n")
+				metadata := writeShellcheckFixture(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: '${{ `+context+" }}"+tc.suffix+`'
+      run: |
+        . ./lib.sh
+        echo $VALUE
+`)
+				workflow := writeShellcheckFixture(t, root, ".github/workflows/context.yml", `on: push
+jobs:
+  test:
+    runs-on: `+tc.runner+`
+    steps:
+      - uses: actions/checkout@v6
+      - uses: $/local
+`)
 				session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command})
 				if err != nil {
 					t.Fatal(err)
@@ -66,7 +83,13 @@ func TestCompositeExecutableUnixPaths(t *testing.T) {
 		{"colon direct operand", "a:debug", ".", "./a:debug/local/bad.sh"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      working-directory: '"+tc.directory+"'\n      run: "+tc.script+"\n")
+			metadata := writeShellcheckFixture(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: '`+tc.directory+"'\n      run: "+tc.script+"\n")
 			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {path: '"+tc.checkout+"'}\n- uses: ./"+tc.checkout+"/local", AnalysisOptions{})
 			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == metadata })
 			if found != (runtime.GOOS != "windows") {

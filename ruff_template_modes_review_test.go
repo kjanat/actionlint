@@ -25,10 +25,19 @@ func TestRuffStatementTemplatesPreserveFindings(t *testing.T) {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+ending, func(t *testing.T) {
 				script := tc.statement + "\n42\nprint(missing)"
-				source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: |\n          " + strings.ReplaceAll(script, "\n", "\n          ") + "\n"
+				source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: |
+          ` + strings.ReplaceAll(script, "\n", "\n          ") + "\n"
 				if tc.opaqueStatement {
 					// An opaque statement skips only its containing script.
-					source += "      - shell: python\n        run: print(second_missing)\n"
+					source += `      - shell: python
+        run: print(second_missing)
+`
 				}
 				result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}}})
 				if err != nil {
@@ -81,7 +90,17 @@ func TestRuffConversionTemplateSkipsOnlyItsScript(t *testing.T) {
 		`print(f"{"""value"""!${{ 'r' }}}")`,
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
-			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: |\n          " + strings.ReplaceAll(script, "\n", "\n          ") + "\n      - shell: python\n        run: print(missing)\n"
+			source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: |
+          ` + strings.ReplaceAll(script, "\n", "\n          ") + `
+      - shell: python
+        run: print(missing)
+`
 			result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}}})
 			if err != nil {
 				t.Fatal(err)
@@ -95,7 +114,14 @@ func TestRuffConversionTemplateSkipsOnlyItsScript(t *testing.T) {
 
 func TestRuffAPINonDiagnosticModes(t *testing.T) {
 	command := ruffForTest(t)
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\n"
+	source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: python
+        run: print(missing)
+`
 	for _, flag := range []string{"--help", "-h", "--watch", "-w", "--add-noqa", "--add-noqa=reviewed", "--add-ignore", "--add-ignore=reviewed"} {
 		_, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: &ExternalCommandOptions{Executable: &command, Arguments: []string{flag}}, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
 		if err == nil || !strings.Contains(err.Error(), "non-diagnostic mode") {

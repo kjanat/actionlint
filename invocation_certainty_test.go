@@ -58,7 +58,13 @@ func TestExecutableBitUnixColonPaths(t *testing.T) {
 		{"checkout", "        with: {path: 'a:debug'}\n", "run: ./a:debug/bad.sh", "bad.sh"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n" + tc.checkout +
+			workflow := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+` + tc.checkout +
 				"      - " + strings.ReplaceAll(tc.step, "\n", "\n        ") + "\n"
 			file := writeShellcheckFixture(t, root, ".github/workflows/colon.yml", workflow)
 			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
@@ -105,12 +111,16 @@ func TestExecutableBitRuntimeInputs(t *testing.T) {
 		{"run-only SSH command", "", "", "", "env: {GIT_SSH_COMMAND: wrapper}\n", true},
 		{"workflow proxy command", "env: {GIT_PROXY_COMMAND: wrapper}\n", "", "", "", false},
 		{"job proxy command", "", "env: {GIT_PROXY_COMMAND: wrapper}\n", "", "", false},
-		{"checkout proxy command", "", "", "with: {submodules: true}\nenv: {GIT_PROXY_COMMAND: wrapper}\n", "", false},
+		{"checkout proxy command", "", "", `with: {submodules: true}
+env: {GIT_PROXY_COMMAND: wrapper}
+`, "", false},
 		{"empty proxy command", "", "", "env: {GIT_PROXY_COMMAND: ''}\n", "", true},
 		{"run-only proxy command", "", "", "", "env: {GIT_PROXY_COMMAND: wrapper}\n", true},
 		{"workflow Git exec path", "env: {GIT_EXEC_PATH: helpers}\n", "", "", "", false},
 		{"job Git exec path", "", "env: {GIT_EXEC_PATH: helpers}\n", "", "", false},
-		{"checkout Git exec path", "", "", "with: {submodules: true}\nenv: {GIT_EXEC_PATH: helpers}\n", "", false},
+		{"checkout Git exec path", "", "", `with: {submodules: true}
+env: {GIT_EXEC_PATH: helpers}
+`, "", false},
 		{"literal Git exec path", "", "", "env: {\"${{ 'GIT_EXEC_PATH' }}\": \"${{ 'helpers' }}\"}\n", "", false},
 		{"unknown Git exec path", "", "", "env: {GIT_EXEC_PATH: '${{ vars.GIT_HELPERS }}'}\n", "", false},
 		{"empty Git exec path", "", "", "env: {GIT_EXEC_PATH: ''}\n", "", true},
@@ -161,8 +171,13 @@ func TestExecutableBitRuntimeInputs(t *testing.T) {
 			if tc.name == "double quoted braces" {
 				script = `"./{good,bad}.sh"`
 			}
-			workflow := "on: push\n" + tc.workflow + "jobs:\n  test:\n    runs-on: ubuntu-latest\n" + indent(tc.job, "    ") +
-				"    steps:\n      - uses: actions/checkout@v6\n" + indent(tc.checkout, "        ") +
+			workflow := "on: push\n" + tc.workflow + `jobs:
+  test:
+    runs-on: ubuntu-latest
+` + indent(tc.job, "    ") +
+				`    steps:
+      - uses: actions/checkout@v6
+` + indent(tc.checkout, "        ") +
 				"      - run: |\n          " + script + "\n" + indent(tc.step, "        ")
 			file := writeShellcheckFixture(t, root, ".github/workflows/runtime.yml", workflow)
 			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})

@@ -33,7 +33,15 @@ func TestMatrixExpandedInsertionChecks(t *testing.T) {
 		{"unknown nested expression differs from returned data", `os: [{name: "${{ vars.OS }}"}, "${{ fromJSON('[{\"name\":\"${{ vars.OS }}\"}]') }}"]`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: {" + tc.matrix + "}\n    steps:\n      - run: echo ok\n"
+			source := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: {` + tc.matrix + `}
+    steps:
+      - run: echo ok
+`
 			workflow, findings := Parse([]byte(source))
 			if len(findings) != 0 {
 				t.Fatal(findings)

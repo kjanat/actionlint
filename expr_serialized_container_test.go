@@ -35,7 +35,16 @@ func TestExprSerializedWorkflowRunContainers(t *testing.T) {
 		} {
 			t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, false) })
 		}
-		workflow := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    if: contains(toJSON(" + path + "), 'safe')\n    steps:\n      - env:\n          JSON: ${{ toJSON(" + path + ") }}\n        run: printf '%s\\n' \"$JSON\"\n"
+		workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    if: contains(toJSON(` + path + `), 'safe')
+    steps:
+      - env:
+          JSON: ${{ toJSON(` + path + `) }}
+        run: printf '%s\n' "$JSON"
+`
 		result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
 		if err != nil || len(result.Diagnostics) != 0 {
 			t.Fatalf("safe condition/environment binding rejected: %+v, %v", result.Diagnostics, err)
@@ -76,10 +85,21 @@ func TestExprSerializedContainerPreservesLeafChecks(t *testing.T) {
 func TestExprSerializedContainerScriptSinks(t *testing.T) {
 	for _, ending := range []string{"\n", "\r\n"} {
 		for _, script := range []string{
-			"      - run: |\n          echo '${{ toJSON(github.event.workflow_run.head_repository) }}'\n",
-			"      - uses: actions/github-script@v8\n        with:\n          script: |\n            console.log('${{ toJSON(github.event.workflow_run.head_repository) }}');\n",
+			`      - run: |
+          echo '${{ toJSON(github.event.workflow_run.head_repository) }}'
+`,
+			`      - uses: actions/github-script@v8
+        with:
+          script: |
+            console.log('${{ toJSON(github.event.workflow_run.head_repository) }}');
+`,
 		} {
-			source := "on: {workflow_run: {workflows: [Build], types: [completed]}}\njobs:\n  report:\n    runs-on: ubuntu-latest\n    steps:\n" + script
+			source := `on: {workflow_run: {workflows: [Build], types: [completed]}}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+` + script
 			result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(strings.ReplaceAll(source, "\n", ending))}}})
 			wantLine := 6
 			if strings.Contains(script, "uses:") {

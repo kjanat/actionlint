@@ -33,7 +33,17 @@ func TestShellcheckSourcedDiagnostics(t *testing.T) {
 			}
 			script := strings.Repeat("# library\n", tc.line-1) + "echo $VALUE\n"
 			path := writeShellcheckFixture(t, root, "app/lib/check.sh", script)
-			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    defaults:\n      run:\n        working-directory: app\n    steps:\n      - run: . ./lib/check.sh\n      - run: . ./lib/check.sh\n")
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - run: . ./lib/check.sh
+      - run: . ./lib/check.sh
+`)
 			options := AnalysisOptions{WorkingDir: root, Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}}}
 			if tc.rc {
 				rc := writeShellcheckFixture(t, root, ".shellcheckrc", "shell=bash\n")
@@ -89,7 +99,15 @@ func TestCompositeShellcheckSourcedDiagnostics(t *testing.T) {
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	path := writeShellcheckFixture(t, root, "app/lib/check.sh", "echo $VALUE\n")
-	writeShellcheckFixture(t, root, "local/action.yml", "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      working-directory: app\n      run: . ./lib/check.sh\n")
+	writeShellcheckFixture(t, root, "local/action.yml", `name: test
+description: test
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: app
+      run: . ./lib/check.sh
+`)
 	result := compositeAnalysis(t, root, "- uses: ./local", AnalysisOptions{
 		Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"-a"}},
 	})
@@ -119,7 +137,17 @@ func TestCompositeShellcheckSiblingWorkingDirectory(t *testing.T) {
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	writeShellcheckFixture(t, filepath.Dir(root), "shared/value.sh", "VALUE=42\n")
-	writeShellcheckFixture(t, root, "local/action.yml", "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      working-directory: ../shared\n      run: |\n        . ./value.sh\n        echo $VALUE\n")
+	writeShellcheckFixture(t, root, "local/action.yml", `name: test
+description: test
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: ../shared
+      run: |
+        . ./value.sh
+        echo $VALUE
+`)
 	result := compositeAnalysis(t, root, "- uses: ./local", AnalysisOptions{Shellcheck: command})
 	if len(result.Diagnostics) != 0 {
 		t.Fatalf("composite did not analyze sibling source: %+v", result.Diagnostics)
@@ -153,8 +181,18 @@ func TestShellcheckSourcedDiagnosticPathFilters(t *testing.T) {
 				t.Fatal(err)
 			}
 			writeShellcheckFixture(t, root, "scripts/lib.sh", "echo $LIBRARY\n")
-			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "paths:\n  '"+tc.pattern+"':\n    ignore: ['SC2086']\n")
-			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo $INLINE\n          . ./scripts/lib.sh\n")
+			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "paths:\n  '"+tc.pattern+`':
+    ignore: ['SC2086']
+`)
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo $INLINE
+          . ./scripts/lib.sh
+`)
 			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}}})
 			if err != nil {
 				t.Fatal(err)

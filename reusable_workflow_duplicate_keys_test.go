@@ -12,18 +12,51 @@ import (
 
 func TestReusableWorkflowDuplicateKeyMetadataOrder(t *testing.T) {
 	for _, tc := range []struct{ name, jobs string }{
-		{"cache-mode", "  call:\n    uses: ./leaf.yaml\n    cache-mode: read\n    cache-mode: write\n"},
-		{"uses", "  call:\n    uses: ./leaf.yaml\n    uses: ./missing.yaml\n"},
-		{"permissions", "  call:\n    uses: ./leaf.yaml\n    permissions: {contents: read}\n    permissions: {contents: write}\n"},
-		{"job", "  call:\n    uses: ./leaf.yaml\n  call:\n    uses: ./missing.yaml\n"},
-		{"job casing", "  call:\n    uses: ./leaf.yaml\n  CALL:\n    uses: ./missing.yaml\n"},
+		{"cache-mode", `  call:
+    uses: ./leaf.yaml
+    cache-mode: read
+    cache-mode: write
+`},
+		{"uses", `  call:
+    uses: ./leaf.yaml
+    uses: ./missing.yaml
+`},
+		{"permissions", `  call:
+    uses: ./leaf.yaml
+    permissions: {contents: read}
+    permissions: {contents: write}
+`},
+		{"job", `  call:
+    uses: ./leaf.yaml
+  call:
+    uses: ./missing.yaml
+`},
+		{"job casing", `  call:
+    uses: ./leaf.yaml
+  CALL:
+    uses: ./missing.yaml
+`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
 			project := &Project{root: root}
-			caller := []byte("on: push\ncache-mode: read\npermissions: {contents: read}\njobs:\n  call:\n    uses: ./callee.yaml\n")
-			callee := []byte("on: workflow_call\ncache-mode: read\njobs:\n" + tc.jobs)
-			leaf := []byte("on: workflow_call\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n")
+			caller := []byte(`on: push
+cache-mode: read
+permissions: {contents: read}
+jobs:
+  call:
+    uses: ./callee.yaml
+`)
+			callee := []byte(`on: workflow_call
+cache-mode: read
+jobs:
+` + tc.jobs)
+			leaf := []byte(`on: workflow_call
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps: [{run: echo ok}]
+`)
 			for name, source := range map[string][]byte{"caller.yaml": caller, "callee.yaml": callee, "leaf.yaml": leaf} {
 				if err := os.WriteFile(filepath.Join(root, name), source, 0o600); err != nil {
 					t.Fatal(err)

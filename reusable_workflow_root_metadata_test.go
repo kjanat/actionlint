@@ -29,9 +29,26 @@ func TestReusableWorkflowDuplicateRootCacheModeMetadataOrder(t *testing.T) {
 		t.Run(fmt.Sprintf("%s/%s/%s/leaf=%s", tc.key, tc.first, tc.second, tc.leaf), func(t *testing.T) {
 			root := t.TempDir()
 			project := &Project{root: root}
-			caller := []byte("on: push\ncache-mode: read\njobs:\n  call:\n    uses: $/callee.yaml\n")
-			callee := fmt.Appendf(nil, "on: workflow_call\n%s: %s\ncache-mode: %s\njobs:\n  nested:\n    uses: $/leaf.yaml\n", tc.key, tc.first, tc.second)
-			leaf := fmt.Appendf(nil, "on: workflow_call\ncache-mode: %s\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n", tc.leaf)
+			caller := []byte(`on: push
+cache-mode: read
+jobs:
+  call:
+    uses: $/callee.yaml
+`)
+			callee := fmt.Appendf(nil, `on: workflow_call
+%s: %s
+cache-mode: %s
+jobs:
+  nested:
+    uses: $/leaf.yaml
+`, tc.key, tc.first, tc.second)
+			leaf := fmt.Appendf(nil, `on: workflow_call
+cache-mode: %s
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps: [{run: echo ok}]
+`, tc.leaf)
 			for name, source := range map[string][]byte{"caller.yaml": caller, "callee.yaml": callee, "leaf.yaml": leaf} {
 				if err := os.WriteFile(filepath.Join(root, name), source, 0o600); err != nil {
 					t.Fatal(err)
@@ -132,9 +149,26 @@ func TestReusableWorkflowInvalidRootKeyMetadataOrder(t *testing.T) {
 			t.Run(fmt.Sprintf("%s/%s/%s/leaf=%s", entry.key, tc.invalid, tc.valid, tc.leaf), func(t *testing.T) {
 				root := t.TempDir()
 				project := &Project{root: root}
-				caller := []byte("on: push\ncache-mode: read\njobs:\n  call:\n    uses: $/callee.yaml\n")
-				callee := fmt.Appendf(nil, "on: workflow_call\n%s: %s\ncache-mode: %s\njobs:\n  nested:\n    uses: $/leaf.yaml\n", entry.key, tc.invalid, tc.valid)
-				leaf := fmt.Appendf(nil, "on: workflow_call\ncache-mode: %s\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n", tc.leaf)
+				caller := []byte(`on: push
+cache-mode: read
+jobs:
+  call:
+    uses: $/callee.yaml
+`)
+				callee := fmt.Appendf(nil, `on: workflow_call
+%s: %s
+cache-mode: %s
+jobs:
+  nested:
+    uses: $/leaf.yaml
+`, entry.key, tc.invalid, tc.valid)
+				leaf := fmt.Appendf(nil, `on: workflow_call
+cache-mode: %s
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps: [{run: echo ok}]
+`, tc.leaf)
 				for name, source := range map[string][]byte{"caller.yaml": caller, "callee.yaml": callee, "leaf.yaml": leaf} {
 					if err := os.WriteFile(filepath.Join(root, name), source, 0o600); err != nil {
 						t.Fatal(err)

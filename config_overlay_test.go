@@ -28,12 +28,16 @@ func TestConfigLoadedCallbackCanReenterSession(t *testing.T) {
 			return
 		}
 		session.configState.Unlock()
-		reentered, reentryErr = session.ReadStdin(strings.NewReader("on: push\njobs: {}\n"), false)
+		reentered, reentryErr = session.ReadStdin(strings.NewReader(`on: push
+jobs: {}
+`), false)
 	}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := session.ReadStdin(strings.NewReader("on: push\njobs: {}\n"), false)
+	result, err := session.ReadStdin(strings.NewReader(`on: push
+jobs: {}
+`), false)
 	if err != nil || result == nil || result.FileCount() != 1 {
 		t.Fatalf("outer analysis: %+v, %v", result, err)
 	}

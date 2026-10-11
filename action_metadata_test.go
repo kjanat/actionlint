@@ -283,7 +283,10 @@ func TestLocalActionsParsingSkipped(t *testing.T) {
 
 func TestLocalActionsCaseScopedCache(t *testing.T) {
 	root := t.TempDir()
-	file := writeShellcheckFixture(t, root, "local/Nested/action.yml", "name: local\ndescription: test\nruns: {using: node24, main: index.js}\n")
+	file := writeShellcheckFixture(t, root, "local/Nested/action.yml", `name: local
+description: test
+runs: {using: node24, main: index.js}
+`)
 	base := NewLocalActionsCache(&Project{root: root}, nil)
 	folded := &LocalActionsCache{base: base, caseInsensitive: true}
 	exact := &LocalActionsCache{base: base}

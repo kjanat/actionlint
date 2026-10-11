@@ -14,7 +14,10 @@ import (
 func TestCachePolicyCommandOutput(t *testing.T) {
 	t.Chdir(t.TempDir())
 	for _, exception := range []string{"", " # actionlint:ignore cache-write-untrusted -- reviewed code only"} {
-		source := "on: pull_request_target\ncache-mode: write" + exception + "\njobs:\n  test:\n" + cachePolicySteps
+		source := "on: pull_request_target\ncache-mode: write" + exception + `
+jobs:
+  test:
+` + cachePolicySteps
 		var stdout, stderr strings.Builder
 		cmd := Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
 		status := cmd.Main([]string{"actionlint", "-shellcheck=", "-pyflakes=", "-no-color", "-format", "{{json .}}", "-"})
@@ -39,7 +42,11 @@ func TestCachePolicyCommandOutput(t *testing.T) {
 
 func TestCachePolicyInvalidSuppressionSARIF(t *testing.T) {
 	t.Chdir(t.TempDir())
-	source := "on: pull_request_target\ncache-mode: write # actionlint:ignore cache-write-untrusted\njobs:\n  test:\n" + cachePolicySteps
+	source := `on: pull_request_target
+cache-mode: write # actionlint:ignore cache-write-untrusted
+jobs:
+  test:
+` + cachePolicySteps
 	var stdout, stderr strings.Builder
 	cmd := Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
 	status := cmd.Main([]string{"actionlint", "-shellcheck=", "-pyflakes=", "-format", actionlint.SARIFTemplate(), "-"})
@@ -91,11 +98,16 @@ func TestCachePolicySuppressionFilterPrecedence(t *testing.T) {
 			t.Chdir(t.TempDir())
 			config := filepath.Join(t.TempDir(), "actionlint.yaml")
 			if tc.pathIgnore != "" {
-				if err := os.WriteFile(config, []byte("paths:\n  'test.yaml':\n    ignore: ['"+tc.pathIgnore+"']\n"), 0o600); err != nil {
+				if err := os.WriteFile(config, []byte(`paths:
+  'test.yaml':
+    ignore: ['`+tc.pathIgnore+"']\n"), 0o600); err != nil {
 					t.Fatal(err)
 				}
 			}
-			source := "on: pull_request_target\ncache-mode: write # actionlint:ignore " + tc.directive + "\njobs:\n  test:\n" + cachePolicySteps
+			source := "on: pull_request_target\ncache-mode: write # actionlint:ignore " + tc.directive + `
+jobs:
+  test:
+` + cachePolicySteps
 			var stdout, stderr strings.Builder
 			cmd := Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
 			args := []string{"actionlint", "-shellcheck=", "-pyflakes=", "-no-color", "-format", "{{json .}}", "-stdin-filename", "test.yaml"}

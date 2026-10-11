@@ -14,9 +14,17 @@ import (
 
 func TestConfigExtends(t *testing.T) {
 	root := t.TempDir()
-	writeShellcheckFixture(t, root, "base/first.yml", "lint: {rules: {correctness: {if-cond: warn}, policy: {require-job-timeout: {level: error, options: {min-minutes: 5, max-minutes: 30}}}}}\nconfig-variables: [first]\ntools: {shellcheck: {config: .shellcheckrc}}\n")
-	writeShellcheckFixture(t, root, "base/second.yml", "extends: [first.yml]\nconfig-variables: [second]\n")
-	path := writeShellcheckFixture(t, root, "project/actionlint.yml", "extends: [../base/first.yml, ../base/second.yml]\nlint: {rules: {policy: {require-job-timeout: {level: warn, options: {max-minutes: 60}}}}}\nfiles: {includes: ['**/*.yml'], excludes: ['**/skip.yml']}\n")
+	writeShellcheckFixture(t, root, "base/first.yml", `lint: {rules: {correctness: {if-cond: warn}, policy: {require-job-timeout: {level: error, options: {min-minutes: 5, max-minutes: 30}}}}}
+config-variables: [first]
+tools: {shellcheck: {config: .shellcheckrc}}
+`)
+	writeShellcheckFixture(t, root, "base/second.yml", `extends: [first.yml]
+config-variables: [second]
+`)
+	path := writeShellcheckFixture(t, root, "project/actionlint.yml", `extends: [../base/first.yml, ../base/second.yml]
+lint: {rules: {policy: {require-job-timeout: {level: warn, options: {max-minutes: 60}}}}}
+files: {includes: ['**/*.yml'], excludes: ['**/skip.yml']}
+`)
 	cfg, err := ReadConfigFile(path)
 	if err != nil {
 		t.Fatal(err)

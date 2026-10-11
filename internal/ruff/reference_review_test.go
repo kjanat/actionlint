@@ -20,7 +20,9 @@ func TestTemplateReferences(t *testing.T) {
 	}{
 		{"import", "import os; print(${{ inputs.expression }})", nil},
 		{"local", "def f():\n    value = 1\n    return ${{ inputs.expression }}", nil},
-		{"annotation", "def f():\n    value: int\n    return ${{ inputs.expression }}", nil},
+		{"annotation", `def f():
+    value: int
+    return ${{ inputs.expression }}`, nil},
 		{"redefinition", "import os\nprint(${{ inputs.expression }})\nimport os\nprint(os.name)", nil},
 		{"export", `import os; __all__ = ["${{ inputs.export }}"]`, nil},
 		{"forward annotation", "from typing import Any\ndef f(value: '${{ inputs.annotation }}'): pass", nil},
@@ -28,7 +30,9 @@ func TestTemplateReferences(t *testing.T) {
 		{"multiline", "import os\nprint(${{\n inputs.expression\n}})", nil},
 		{"ordinary unused import", "import os; print(1)", []string{"F401"}},
 		{"ordinary unused local", "def f():\n    value = 1\n    return 0", []string{"F841"}},
-		{"ordinary unused annotation", "def f():\n    value: int\n    return 0", []string{"F842"}},
+		{"ordinary unused annotation", `def f():
+    value: int
+    return 0`, []string{"F842"}},
 		{"ordinary redefinition", "import os\nprint(1)\nimport os\nprint(os.name)", []string{"F811"}},
 		{"comment", "import os\n# ${{ inputs.expression }}\nprint(1)", []string{"F401"}},
 		{"independent duplicate key", "print(${{ inputs.expression }})\nvalue = {1: 2, 1: 3}", []string{"F601"}},

@@ -9,7 +9,13 @@ import (
 
 func TestCompositeConditionalCheckoutKeepsUnaffectedPaths(t *testing.T) {
 	root, _ := executableFixture(t)
-	metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: missing shell\n")
+	metadata := writeShellcheckFixture(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    - run: missing shell
+`)
 	for _, tc := range []struct {
 		name, destination, extra string
 		read                     bool
@@ -23,8 +29,17 @@ func TestCompositeConditionalCheckoutKeepsUnaffectedPaths(t *testing.T) {
 		{"tolerated same path", "source", "\n  continue-on-error: true", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			writeShellcheckFixture(t, root, "refresh/action.yml", "name: refresh\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/checkout@v6\n      with: {path: '"+tc.destination+"'}\n")
-			steps := "- uses: actions/checkout@v6\n  with: {path: source}\n- uses: ./source/refresh\n  if: inputs.refresh" + tc.extra + "\n- uses: ./source/local"
+			writeShellcheckFixture(t, root, "refresh/action.yml", `name: refresh
+description: test
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v6
+      with: {path: '`+tc.destination+"'}\n")
+			steps := `- uses: actions/checkout@v6
+  with: {path: source}
+- uses: ./source/refresh
+  if: inputs.refresh` + tc.extra + "\n- uses: ./source/local"
 			result := compositeAnalysis(t, root, steps, AnalysisOptions{})
 			if slices.Contains(result.Inputs, metadata) != tc.read {
 				t.Fatalf("metadata read=%v, want %v: %v", slices.Contains(result.Inputs, metadata), tc.read, result.Inputs)
@@ -41,8 +56,20 @@ func TestCompositeConditionalCheckoutKeepsUnaffectedPaths(t *testing.T) {
 
 func TestCompositeCheckoutEnvironmentPlacement(t *testing.T) {
 	root, _ := executableFixture(t)
-	metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: missing shell\n")
-	writeShellcheckFixture(t, root, "refresh/action.yml", "name: refresh\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/checkout@v6\n")
+	metadata := writeShellcheckFixture(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    - run: missing shell
+`)
+	writeShellcheckFixture(t, root, "refresh/action.yml", `name: refresh
+description: test
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v6
+`)
 	for _, scope := range []string{"workflow", "job", "step", "composite"} {
 		for _, tc := range []struct {
 			name, environment string
@@ -67,7 +94,10 @@ func TestCompositeCheckoutEnvironmentPlacement(t *testing.T) {
 						call = "$/refresh"
 					}
 				}
-				workflow := writeShellcheckFixture(t, root, ".github/workflows/environment.yml", "on: push\n"+workflowEnv+"jobs:\n  test:\n    runs-on: ubuntu-latest\n"+jobEnv+"    steps:\n      - uses: "+call+"\n"+stepEnv+"      - uses: ./local\n")
+				workflow := writeShellcheckFixture(t, root, ".github/workflows/environment.yml", "on: push\n"+workflowEnv+`jobs:
+  test:
+    runs-on: ubuntu-latest
+`+jobEnv+"    steps:\n      - uses: "+call+"\n"+stepEnv+"      - uses: ./local\n")
 				session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
 				if err != nil {
 					t.Fatal(err)
@@ -118,8 +148,26 @@ func TestCompositeWorkingDirectorySuffixSources(t *testing.T) {
 			{"independent", "$/local", "${{ github.action_path }}/SCRIPTS/nested"},
 		} {
 			t.Run(runner+"/"+tc.name, func(t *testing.T) {
-				metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      working-directory: "+tc.directory+"\n      run: |\n        . ./lib.sh\n        echo $VALUE\n        echo $OTHER\n")
-				workflow := writeShellcheckFixture(t, root, ".github/workflows/suffix.yml", "on: push\njobs:\n  test:\n    runs-on: "+runner+"\n    steps:\n      - uses: actions/checkout@v6\n        with: {path: source}\n      - uses: "+tc.spec+"\n")
+				metadata := writeShellcheckFixture(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: `+tc.directory+`
+      run: |
+        . ./lib.sh
+        echo $VALUE
+        echo $OTHER
+`)
+				workflow := writeShellcheckFixture(t, root, ".github/workflows/suffix.yml", `on: push
+jobs:
+  test:
+    runs-on: `+runner+`
+    steps:
+      - uses: actions/checkout@v6
+        with: {path: source}
+      - uses: `+tc.spec+"\n")
 				session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command})
 				if err != nil {
 					t.Fatal(err)
@@ -146,8 +194,22 @@ func TestCompositeCheckoutAlternateRefMetadata(t *testing.T) {
 	command := shellcheckForTest(t)
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
-	metadata := writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo $VALUE\n")
-	decoy := writeShellcheckFixture(t, root, "source/local/action.yml", "name: decoy\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo $DECOY\n")
+	metadata := writeShellcheckFixture(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: echo $VALUE
+`)
+	decoy := writeShellcheckFixture(t, root, "source/local/action.yml", `name: decoy
+description: test
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: echo $DECOY
+`)
 	for _, destination := range []string{".", "source"} {
 		for _, tc := range []struct {
 			name, ref string
@@ -185,7 +247,9 @@ func TestCompositeCheckoutAlternateRefMetadata(t *testing.T) {
 			})
 		}
 	}
-	result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {ref: v1}\n- uses: $/local", AnalysisOptions{Shellcheck: command})
+	result := compositeAnalysis(t, root, `- uses: actions/checkout@v6
+  with: {ref: v1}
+- uses: $/local`, AnalysisOptions{Shellcheck: command})
 	if !slices.Contains(result.Inputs, metadata) {
 		t.Fatalf("independent action metadata lost after alternate checkout: %v", result.Inputs)
 	}
