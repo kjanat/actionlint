@@ -4,6 +4,8 @@ package actionlint
 // It never changes displayed locations or the scope of inline comments.
 type diagnosticIgnoreOrigin struct {
 	job, stepID, stepName, uses string
+	// metadata uses the owning action's YAML location for inner selectors.
+	metadata bool
 }
 
 func newDiagnosticIgnoreOrigin(job string, step *Step) *diagnosticIgnoreOrigin {
@@ -64,6 +66,11 @@ func visitWithIgnoreOrigin(pass Pass, origin *diagnosticIgnoreOrigin, visit func
 	for _, finding := range rule.Errs()[start:] {
 		if finding.source == nil && finding.ignoreOrigin == nil {
 			finding.ignoreOrigin = origin
+		} else if finding.source != nil && finding.ignoreOrigin != nil {
+			// Each invocation owns its origin; shared metadata never stores caller state.
+			inner := *finding.ignoreOrigin
+			inner.job = origin.job
+			finding.ignoreOrigin = &inner
 		}
 	}
 	return err

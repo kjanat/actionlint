@@ -119,6 +119,9 @@ func filterConfigIgnores(path, root string, source []byte, findings []*Error, cf
 				matches := contexts.Match(line, column, ignore.Job, ignore.Step, ignore.Uses)
 				if finding.ignoreOrigin != nil {
 					matches = finding.ignoreOrigin.matches(ignore.Job, ignore.Step, ignore.Uses)
+					if finding.ignoreOrigin.metadata {
+						matches = (ignore.Job == "" || ignore.Job == finding.ignoreOrigin.job) && contexts.Match(line, column, "", ignore.Step, ignore.Uses)
+					}
 				}
 				if !matches {
 					continue

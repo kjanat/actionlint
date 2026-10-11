@@ -33,7 +33,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *Step, parents []Rule
 		analysis.actions.observeOpaqueAction(call, action)
 		for _, rule := range parents {
 			compositeCheckoutPaths(rule, analysis.actions)
-			if err := rule.VisitStep(call); err != nil {
+			if err := visitWithIgnoreOrigin(rule, newDiagnosticIgnoreOrigin(analysis.jobID, call), func() error { return rule.VisitStep(call) }); err != nil {
 				return err
 			}
 		}
@@ -97,7 +97,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *Step, parents []Rule
 				if parent, enabled := pass.(*RuleAction); enabled {
 					validation := NewRuleAction(analysis.actions)
 					validation.SetConfig(parent.Config())
-					if err := visitWithIgnoreOrigin(validation, newDiagnosticIgnoreOrigin("", step), func() error { return validation.VisitStep(step) }); err != nil {
+					if err := visitWithIgnoreOrigin(validation, newDiagnosticIgnoreOrigin(analysis.jobID, step), func() error { return validation.VisitStep(step) }); err != nil {
 						return err
 					}
 					analysis.rules = append(analysis.rules, compositeScriptRules{meta, []Rule{validation}})
@@ -111,7 +111,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *Step, parents []Rule
 		}
 		for _, rule := range children {
 			compositeCheckoutPaths(rule, analysis.actions)
-			if err := visitWithIgnoreOrigin(rule, newDiagnosticIgnoreOrigin("", step), func() error { return rule.VisitStep(step) }); err != nil {
+			if err := visitWithIgnoreOrigin(rule, newDiagnosticIgnoreOrigin(analysis.jobID, step), func() error { return rule.VisitStep(step) }); err != nil {
 				return err
 			}
 		}

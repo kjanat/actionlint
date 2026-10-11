@@ -23,20 +23,28 @@ func absPath(path string) string {
 // findProjectConfig finds the project to which the given path belongs.
 // A project must be a Git repository and have ".github/workflows" directory.
 func findProjectConfig(path string, skipConfig bool, readFile func(string) ([]byte, error)) (*Project, error) {
+	root := findProjectRoot(path)
+	if root == "" {
+		return nil, nil
+	}
+	if skipConfig {
+		return &Project{root: root}, nil
+	}
+	return newProject(root, readFile)
+}
+
+func findProjectRoot(path string) string {
 	d := absPath(path)
 	for {
 		if s, err := os.Stat(filepath.Join(d, ".github", "workflows")); err == nil && s.IsDir() {
 			if _, err := os.Stat(filepath.Join(d, ".git")); err == nil { // Note: .git may be a file
-				if skipConfig {
-					return &Project{root: d}, nil
-				}
-				return newProject(d, readFile)
+				return d
 			}
 		}
 
 		p := filepath.Dir(d)
 		if p == d {
-			return nil, nil
+			return ""
 		}
 		d = p
 	}
@@ -101,8 +109,14 @@ func NewProjects() *Projects {
 // At returns the Project instance which the path belongs to. It returns nil if no project is found
 // from the path.
 func (ps *Projects) At(path string) (*Project, error) {
+	// Discover the nearest repository before consulting cached configurations.
+	// A cached ancestor must not hide a nested repository or Git worktree.
+	root := findProjectRoot(path)
+	if root == "" {
+		return nil, nil
+	}
 	for _, p := range ps.known {
-		if p.Knows(path) {
+		if p.root == root {
 			return p, nil
 		}
 	}
@@ -111,13 +125,15 @@ func (ps *Projects) At(path string) (*Project, error) {
 	if readFile == nil {
 		readFile = os.ReadFile
 	}
-	p, err := findProjectConfig(path, ps.skipConfig, readFile)
-	if err != nil {
-		return nil, err
+	p := &Project{root: root}
+	if !ps.skipConfig {
+		var err error
+		p, err = newProject(root, readFile)
+		if err != nil {
+			return nil, err
+		}
 	}
-	if p != nil {
-		ps.known = append(ps.known, p)
-	}
+	ps.known = append(ps.known, p)
 
 	return p, nil
 }

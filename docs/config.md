@@ -505,6 +505,11 @@ name. `reason` is optional. This example suppresses
 only missing-manifest findings for the selected action in `ci.yml`; other action
 diagnostics still apply.
 
+Inside a composite action, `job` matches the calling workflow job, including through
+nested composites. `step` and `uses` match the composite's own step, and `file`
+still matches the reported file. Ignoring one job does not hide findings from
+another job that calls the same action.
+
 With `extends`, an omitted `ignores` keeps inherited entries. A supplied list
 replaces them; `ignores: []` clears them. The `disallow-suppressions` policy also
 applies to these entries. An ignore targeting `disallow-suppressions` is rejected.

@@ -549,6 +549,25 @@ func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, idx, line, c
 	err := errorAt(&Pos{Line: line, Col: col}, rule.name, fmt.Sprintf(`step %d in "runs.steps" section in metadata of %q action %s`, idx+1, meta.Name, m))
 	err.Filepath = meta.Path()
 	err.source = meta.src
+	if rule.Config() != nil && len(rule.Config().Ignores) != 0 && idx >= 0 && idx < len(meta.Runs.Steps) {
+		step := meta.Runs.Steps[idx]
+		origin := &diagnosticIgnoreOrigin{}
+		if step.id != nil {
+			origin.stepID = step.id.Value
+		}
+		if step.StepName != nil {
+			origin.stepName = step.StepName.Value
+		}
+		if step.Uses != nil {
+			origin.uses = *step.Uses
+		}
+		for _, value := range []*string{&origin.stepID, &origin.stepName, &origin.uses} {
+			if literal := literalExpressionValue(*value); literal != nil {
+				*value = *literal
+			}
+		}
+		err.ignoreOrigin = origin
+	}
 	rule.errs = append(rule.errs, err)
 }
 
@@ -558,6 +577,9 @@ func (rule *RuleAction) metadataErrorfAt(meta *ActionMetadata, line, col int, fo
 	err := errorfAt(&Pos{Line: line, Col: col}, rule.name, format, args...)
 	err.Filepath = meta.Path()
 	err.source = meta.src
+	if rule.Config() != nil && len(rule.Config().Ignores) != 0 {
+		err.ignoreOrigin = &diagnosticIgnoreOrigin{metadata: true}
+	}
 	rule.errs = append(rule.errs, err)
 }
 
@@ -836,7 +858,7 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *
 		return
 	}
 
-	if !cached {
+	if !cached || rule.Config() != nil && len(rule.Config().Ignores) != 0 {
 		rule.Debug("Checking metadata of %s action %q at %q", meta.Runs, meta.Name, displaySpec)
 		rule.checkLocalActionMetadata(meta, action)
 	}

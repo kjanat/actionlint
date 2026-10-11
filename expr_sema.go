@@ -750,13 +750,17 @@ func (sema *ExprSemanticsChecker) checkObjectDeref(n *ObjectDerefNode) ExprType 
 // Matching the context prefix preserves distinctions such as job.workflow_sha
 // (the called workflow) versus github.workflow_sha (the caller).
 func (sema *ExprSemanticsChecker) contextPropertySuggestion(name string) string {
+	return contextPropertySuggestion(name, sema.availableContexts, sema.vars)
+}
+
+func contextPropertySuggestion(name string, contexts []string, variables map[string]ExprType) string {
 	var suggestion string
-	for _, context := range sema.availableContexts {
+	for _, context := range contexts {
 		property, ok := strings.CutPrefix(name, context+"_")
 		if !ok {
 			continue
 		}
-		object, ok := sema.vars[context].(*ObjectType)
+		object, ok := variables[context].(*ObjectType)
 		if !ok {
 			continue
 		}

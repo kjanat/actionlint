@@ -54,7 +54,12 @@ func actionExpressionViolations(s string, bare bool, field string) []actionExpre
 			switch n := node.(type) {
 			case *VariableNode:
 				if !slices.Contains(avail.contexts, strings.ToLower(n.Name)) {
-					v.context = strings.ToLower(n.Name)
+					name := strings.ToLower(n.Name)
+					if suggestion := contextPropertySuggestion(name, avail.contexts, BuiltinGlobalVariableTypes); suggestion != "" {
+						v.message = fmt.Sprintf("uses undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
+					} else {
+						v.context = name
+					}
 				}
 			case *FuncCallNode:
 				name := strings.ToLower(n.Callee)

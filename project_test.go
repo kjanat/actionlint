@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,6 +38,62 @@ func TestProjectKnowsDirectoryBoundary(t *testing.T) {
 	} {
 		if got := p.Knows(tc.path); got != tc.want {
 			t.Errorf("Knows(%q) = %v, want %v", tc.path, got, tc.want)
+		}
+	}
+}
+
+func TestProjectsNestedRepositoryConfigIsolation(t *testing.T) {
+	for _, markerFile := range []bool{false, true} {
+		for _, innerFirst := range []bool{false, true} {
+			t.Run(fmt.Sprintf("git-file=%t/inner-first=%t", markerFile, innerFirst), func(t *testing.T) {
+				base := t.TempDir()
+				roots := []string{filepath.Join(base, "repo"), filepath.Join(base, "repo", "sub"), filepath.Join(base, "repo-other")}
+				for index, root := range roots {
+					writeShellcheckFixture(t, root, ".github/workflows/ci.yml", "on: push\n")
+					writeShellcheckFixture(t, root, ".github/actionlint.yaml", fmt.Sprintf("config-variables: [project%d]\n", index))
+					if markerFile && index == 1 {
+						writeShellcheckFixture(t, root, ".git", "gitdir: ../.git/modules/sub\n")
+					} else if err := os.Mkdir(filepath.Join(root, ".git"), 0o755); err != nil {
+						t.Fatal(err)
+					}
+				}
+				reads := make(map[string]int)
+				projects := NewProjects()
+				projects.readFile = func(path string) ([]byte, error) {
+					content, err := os.ReadFile(path)
+					if err == nil {
+						reads[path]++
+					}
+					return content, err
+				}
+				order := []int{0, 1, 2, 1, 0, 2}
+				if innerFirst {
+					order = []int{1, 0, 2, 0, 1, 2}
+				}
+				cached := make(map[int]*Project)
+				for _, index := range order {
+					root := roots[index]
+					project, err := projects.At(filepath.Join(root, ".github/workflows/ci.yml"))
+					if err != nil {
+						t.Fatal(err)
+					}
+					if project == nil || project.RootDir() != root {
+						t.Fatalf("root %q resolved to %+v", root, project)
+					}
+					if got := project.Config().ConfigVariables; len(got) != 1 || got[0] != fmt.Sprintf("project%d", index) {
+						t.Fatalf("root %q inherited configuration %v", root, got)
+					}
+					if previous := cached[index]; previous != nil && previous != project {
+						t.Fatalf("root %q was not cached", root)
+					}
+					cached[index] = project
+				}
+				for _, root := range roots {
+					if count := reads[filepath.Join(root, ".github/actionlint.yaml")]; count != 1 {
+						t.Fatalf("root %q configuration read %d times", root, count)
+					}
+				}
+			})
 		}
 	}
 }
