@@ -110,7 +110,7 @@ jobs:
           node scripts/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${tag#v}"
       - run: run make:man/actionlint.1
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
-        with: { version: v2.18.0, args: release --snapshot --clean }
+        with: { version-file: .tool-versions, args: release --snapshot --clean }
       - name: Smoke-test the linux/amd64 snapshot binary
         run: ./dist/linux_linux_amd64_v1/actionlint -version
   action-modules:
@@ -201,7 +201,7 @@ jobs:
       - name: Validate the staged release configuration
         if: runner.os == 'Linux'
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
-        with: { version: v2.18.0, args: check }
+        with: { version-file: .tool-versions, args: check }
       - name: Validate release workflows with this checkout
         if: runner.os == 'Linux'
         run: go run ./cmd/actionlint -shellcheck 'shellcheck -o all'
