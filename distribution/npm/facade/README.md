@@ -163,7 +163,7 @@ Homebrew, Arch (AUR), Scoop, Docker, a download script, and `go install` are all
 
 ## License
 
-MIT. See [LICENSE.txt](./LICENSE.txt).
+MIT. See [LICENSE](./LICENSE).
 
 [releases]: https://github.com/kjanat/actionlint/releases
 [shellcheck]: https://www.shellcheck.net/
