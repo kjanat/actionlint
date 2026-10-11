@@ -68,7 +68,7 @@ jobs:
         with:
           cache: true
           auto_update: true
-          install_args: go node npm github:kjanat/runner github:jgm/pandoc github:biomejs/biome
+          install_args: go node npm github:kjanat/runner github:jgm/pandoc
       - name: Install JavaScript dependencies
         run: runner install --pm npm --no-tools --frozen
       - name: Build command manual
