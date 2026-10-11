@@ -39,11 +39,11 @@ VOLTA_BYPASS = 1
 
 [deps]
 [deps.npm]
-auto = true
+auto = false
 run  = "npm i --no-fund --no-audit --ignore-scripts"
 
 [deps.go]
-auto = true
+auto = false
 run  = "go mod tidy -diff"
 
 [tasks]
