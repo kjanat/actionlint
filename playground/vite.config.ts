@@ -20,6 +20,19 @@ const version = buildVersion(oneUp, process.env.ACTIONLINT_LATEST_RELEASE);
 
 const goWasm = resolve(execFileSync('go', ['env', 'GOROOT'], { encoding: 'utf8' }).trim(), 'lib/wasm');
 
+function goWasmBinary(): import('vite').Plugin {
+	return {
+		name: 'actionlint:go-wasm',
+		buildStart() {
+			execFileSync('go', ['build', '-o', resolve(here, 'public/main.wasm'), '.'], {
+				cwd: here,
+				env: { ...process.env, GOOS: 'js', GOARCH: 'wasm' },
+				stdio: 'inherit',
+			});
+		},
+	};
+}
+
 // The deployed site is the bundle plus a 404 fallback and the rendered command manual.
 function sitePages(): import('vite').Plugin {
 	return {
@@ -42,6 +55,7 @@ function sitePages(): import('vite').Plugin {
 export default defineConfig({
 	base: './',
 	plugins: [
+		goWasmBinary(),
 		{
 			name: 'actionlint:workspace-reader',
 			apply: 'build',

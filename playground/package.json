@@ -23,17 +23,15 @@
   },
   "main": "main.js",
   "scripts": {
-    "build": "run -s wasm bundle",
-    "bundle": "vite build",
+    "build": "vite build",
     "dev": "vite",
     "lint": "run -qs lint:eslint typecheck",
     "lint:eslint": "eslint .",
     "preview": "vite preview --port 1234",
-    "test": "run -s wasm test:version test:vitest",
+    "test": "run -s test:version test:vitest",
     "test:version": "node --test src/*.test.ts",
     "test:vitest": "vitest run",
-    "typecheck": "run -q tsc7 --noEmit",
-    "wasm": "GOOS=js GOARCH=wasm go build -o public/main.wasm"
+    "typecheck": "run -q tsc7 --noEmit"
   },
   "overrides": {
     "diff": "^8.0.3",
