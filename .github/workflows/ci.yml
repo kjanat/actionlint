@@ -89,7 +89,7 @@ jobs:
           auto_update: true
           install_args: node npm github:kjanat/runner
       - name: Install dependencies and test JavaScript tooling
-        env: &MiseNoAutoInstall { MISE_TASK_RUN_AUTO_INSTALL: "false" }
+        env: { MISE_TASK_RUN_AUTO_INSTALL: "false" }
         run: runner install --pm npm --no-tools --frozen test:js
   release-snapshot:
     name: Release snapshot
@@ -196,7 +196,7 @@ jobs:
             if: runner.os == 'Linux'
             uses: $/.github/actions/setup-shellcheck
       - name: Test the JavaScript runtime and release packaging
-        env: *MiseNoAutoInstall
+        env: { MISE_TASK_RUN_AUTO_INSTALL: "false", MSYS_NO_PATHCONV: "1" }
         run: runner i --no-tools -fs actionlint-action:typecheck actionlint-action:test //scripts:test
       - name: Validate the staged release configuration
         if: runner.os == 'Linux'
