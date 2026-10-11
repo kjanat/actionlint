@@ -1,0 +1,3 @@
+[tasks.test]
+description = "Test comment-cop"
+run         = "node --test comment-cop.test.mjs"

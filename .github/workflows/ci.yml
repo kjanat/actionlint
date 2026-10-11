@@ -76,7 +76,7 @@ jobs:
       - name: Build and test playground
         run: run -s actionlint-playground:build actionlint-playground:test
       - name: Lint JavaScript workspaces
-        run: run package.json:lint
+        run: run -s lint:biome actionlint-playground:lint
   javascript:
     name: JavaScript
     runs-on: ubuntu-latest
@@ -89,6 +89,7 @@ jobs:
           auto_update: true
           install_args: node npm github:kjanat/runner
       - name: Install dependencies and test JavaScript tooling
+        env: &MiseNoAutoInstall { MISE_TASK_RUN_AUTO_INSTALL: "false" }
         run: runner install --pm npm --no-tools --frozen test:js
   release-snapshot:
     name: Release snapshot
@@ -99,7 +100,7 @@ jobs:
       - parallel:
           - &Go { uses: *SetupGo, with: *GoMod }
           - { name: Install Pandoc, uses: $/.github/actions/setup-pandoc }
-          - &Runner { uses: kjanat/runner@ad30f34c7352d89884b6d03febd9b16b4807ed56, with: { version: latest } } # v0.27.1
+          - &Runner { uses: kjanat/runner@b32ea932a1813ae0be44e755c16df9f9f5ca86a4, with: { version-file: .tool-versions } } # v0.28.0
           - name: Install syft for SBOM generation
             uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
           - uses: &SetupNode actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -188,16 +189,15 @@ jobs:
         with: { fetch-depth: 0, persist-credentials: false }
       - parallel:
           - *GoGomod
+          - *Runner
+          - { uses: *SetupMise, with: { install: false, env: false } }
           - { uses: *SetupNode, with: { node-version: "24", package-manager-cache: false } }
           - name: Install ShellCheck
             if: runner.os == 'Linux'
             uses: $/.github/actions/setup-shellcheck
       - name: Test the JavaScript runtime and release packaging
-        run: |
-          npm ci --ignore-scripts
-          npm run typecheck --workspace actionlint-action
-          npm test --workspace actionlint-action
-          node --test scripts/build-action-release.test.mjs scripts/release-candidate.test.mjs scripts/release-assets.test.mjs scripts/docker-action.test.mjs scripts/published-action.test.mjs
+        env: *MiseNoAutoInstall
+        run: runner i -fs actionlint-action:typecheck actionlint-action:test //scripts:test
       - name: Validate the staged release configuration
         if: runner.os == 'Linux'
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
@@ -229,9 +229,8 @@ jobs:
           test -f .actionlint-action-test/cmd/actionlint/main.go
           (cd .actionlint-action-test && sha256sum --check SHA256SUMS)
       - name: Check Git-tag version fallback
-        working-directory: packages/github-action
         run: |
-          env -u ACTIONLINT_VERSION node --run build -- --out-dir "${RUNNER_TEMP}/actionlint-action-fallback"
+          env -u ACTIONLINT_VERSION run actionlint-action:build --out-dir "${RUNNER_TEMP}/actionlint-action-fallback"
           cmp "${RUNNER_TEMP}/actionlint-action-fallback/action.mjs" "${RUNNER_TEMP}/actionlint-action/action/action.mjs"
       - name: Install an explicit historical version
         id: setup-version

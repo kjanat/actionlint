@@ -51,7 +51,7 @@ all: build test lint
 comment-cop:
 	node .github/actions/comment-cop/comment-cop.mjs $(COMMENT_COP_BASE)
 
-t test:
+test:
 	go test $(RACE) ./...
 
 .PHONY: conformance
@@ -68,7 +68,7 @@ coverage.html: coverage.out
 cov: coverage.out coverage.html
 	go tool cover -func=coverage.out
 
-l lint:
+lint:
 	golangci-lint run
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 ifneq ($(OS),Windows_NT)
@@ -102,7 +102,7 @@ endif
 
 FORCE:
 
-b build: $(TARGET)
+build: $(TARGET)
 
 # go test -fuzz accepts exactly one target.
 fuzz:
@@ -136,7 +136,7 @@ scripts/generate-actionlint-matcher/testdata/want.json: $(TARGET)
 CHANGELOG.md:
 	changelog-from-release > CHANGELOG.md
 
-c clean:
+clean:
 	rm -f ./$(TARGET) ./man/actionlint.1 ./man/actionlint.1.html ./actionlint-workflow-ast
 
-.PHONY: all comment-cop test clean build lint fuzz man bench cov b t c l CHANGELOG.md FORCE
+.PHONY: all comment-cop test clean build lint fuzz man bench cov CHANGELOG.md FORCE

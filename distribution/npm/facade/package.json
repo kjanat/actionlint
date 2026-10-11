@@ -62,6 +62,9 @@
     "README.md",
     "LICENSE.txt"
   ],
+  "scripts": {
+    "test": "node --test ./test/*.test.mjs"
+  },
   "dependencies": {
     "ansispeck": "^0.4.2"
   },

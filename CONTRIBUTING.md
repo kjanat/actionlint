@@ -91,7 +91,7 @@ The PR must explain the motivation, scope, compatibility impact, and validation 
 
 With mise activated in your shell, run `runner install` from the repository root. It installs the declared tools (including ShellCheck), installs npm workspace dependencies from the lockfile, and downloads Go modules. Installs are frozen by default; use `runner install --no-frozen` when intentionally updating dependencies. Use `runner config init` only to create a configuration in a new project; this repository already provides `runner.toml`.
 
-The task source is explicit in `runner.toml`, so adding another task with the same name does not change these defaults:
+Task names are unique across sources:
 
 | Command                              | Runs                                                   |
 | ------------------------------------ | ------------------------------------------------------ |
@@ -99,12 +99,13 @@ The task source is explicit in `runner.toml`, so adding another task with the sa
 | `runner test`                        | Go tests via Make, including its default race checks   |
 | `runner lint`                        | Go lint, vulnerability scan, and WebAssembly lint      |
 | `runner lint-docs`                   | Documentation examples; requires ShellCheck            |
-| `runner package.json:lint`           | Biome and playground ESLint/type checking              |
-| `runner package.json:test`           | Root JavaScript/TypeScript test tasks                  |
+| `runner lint:biome`                  | Biome                                                  |
+| `runner actionlint-playground:lint`  | Playground ESLint/type checking                        |
+| `runner test:js`                     | Root JavaScript/TypeScript test tasks                  |
 | `runner actionlint-playground:build` | Playground Vite build                                  |
 | `runner actionlint-playground:test`  | Playground JavaScript tests                            |
 
-Source-qualified commands such as `runner make:lint` and `runner package.json:lint` remain available. `runner why lint` shows the selected command without executing it. To regenerate sources during a Go build, use `runner build SKIP_GO_GENERATE=`. When mise is not activated, use `mise exec -- runner lint` to expose its tools.
+`runner why lint` shows the selected command without executing it. To regenerate sources during a Go build, use `runner build SKIP_GO_GENERATE=`. When mise is not activated, use `mise exec -- runner lint` to expose its tools.
 
 Python linting is not part of actionlint. Documentation examples require ShellCheck; CI runs both lint targets.
 

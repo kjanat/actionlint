@@ -42,18 +42,20 @@ jobs:
           - uses: &SetupNode actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
             with: &Node24 { node-version: "24", package-manager-cache: false }
           - uses: $/.github/actions/setup-shellcheck
+          - uses: kjanat/runner@b32ea932a1813ae0be44e755c16df9f9f5ca86a4 # v0.28.0
+            with: { version-file: .tool-versions }
+          - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+            with: { install: false, env: false }
       - name: Check pinned go-shellcheck version
         uses: $/.github/actions/shellcheck-versions
         with: { fail-on-outdated: true }
       - name: Validate source and release helpers
+        env: { MISE_TASK_RUN_AUTO_INSTALL: "false" }
         run: |
           go run ./scripts/bump-version -check
           go run ./scripts/bump-version -notes "v${VERSION}" > "${RUNNER_TEMP}/release-notes.md"
           go test ./...
-          npm ci --ignore-scripts
-          npm run typecheck --workspace actionlint-action
-          npm test --workspace actionlint-action
-          node --test scripts/build-action-release.test.mjs scripts/release-candidate.test.mjs scripts/release-assets.test.mjs scripts/docker-action.test.mjs scripts/published-action.test.mjs
+          runner i -fs actionlint-action:typecheck actionlint-action:test //scripts:test
       - name: Build the complete candidate tree
         id: candidate
         env:
@@ -66,8 +68,6 @@ jobs:
         env: { CANDIDATE: "${{ steps.candidate.outputs.candidate }}" }
         run: git checkout --detach "${CANDIDATE}"
       - uses: $/.github/actions/setup-pandoc
-      - uses: kjanat/runner@ad30f34c7352d89884b6d03febd9b16b4807ed56 # v0.27.1
-        with: { version: latest }
       - run: run make:man/actionlint.1
       - name: Install syft for SBOM generation
         uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3

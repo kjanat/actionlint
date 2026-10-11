@@ -1,5 +1,7 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 
+monorepo_root = true
+
 [wrappers.actionlint]
 command = "go"
 args    = ["run", "./cmd/actionlint"]
@@ -12,7 +14,7 @@ npm                           = "12.0.2"
 "golangci-lint"               = { prefix = "2", depends = ["go"] }
 "github:jgm/pandoc"           = { prefix = "3" }
 "github:kjanat/actionlint"    = { version = "latest", depends = ["shellcheck"] }
-"github:kjanat/runner"        = { prefix = "0.27" }
+"github:kjanat/runner"        = { prefix = "0.28" }
 "github:koalaman/shellcheck"  = { prefix = "0.11" }
 "github:microsoft/TypeScript" = { prefix = "7" }
 "github:rhysd/actionlint"     = { version = "latest", depends = ["shellcheck"] }
@@ -39,23 +41,25 @@ VOLTA_BYPASS = 1
 
 [deps]
 [deps.npm]
-auto = true
+auto = false
 run  = "npm i --no-fund --no-audit --ignore-scripts"
 
 [deps.go]
-auto = true
+auto = false
 run  = "go mod tidy -diff"
 
 [tasks]
-[tasks.build]
-alias       = "bin"
-description = "Build actionlint binary"
-run         = "go build -o actionlint ./cmd/actionlint"
-outputs     = ["./actionlint", "./actionlint.exe"]
-env         = { GOFLAGS = "-buildvcs=true" }
-
 [tasks.format]
 alias       = ["f", "fmt"]
 description = "Format code"
 run         = "dprint fmt"
 tools       = { tombi = { prefix = "1.8" } }
+
+[monorepo]
+config_roots = [
+  ".github/actions/comment-cop",
+  ".github/actions/shellcheck-versions",
+  "scripts",
+  "scripts/expression-probe",
+  "scripts/generate-actionlint-matcher",
+]
