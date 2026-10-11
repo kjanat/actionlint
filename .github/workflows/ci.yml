@@ -105,9 +105,8 @@ jobs:
           - uses: &SetupNode actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
             with: { node-version: "24", package-manager-cache: false }
       - name: Build JavaScript Action release files outside the checkout
-        run: |
-          npm ci --ignore-scripts
-          tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude '*-*')"
+        run: npm ci --ignore-scripts;
+          tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude '*-*')";
           node scripts/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${tag#v}"
       - run: run make:man/actionlint.1
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
@@ -138,10 +137,7 @@ jobs:
     steps:
       - *ActCheckNocred
       - *Go
-      - parallel:
-          - *Uv
-          - *InstallShellCheck
-          - *Runner
+      - parallel: [*Uv, *InstallShellCheck, *Runner]
       # Sibling actions can rewrite the event payload this action reads at startup.
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
