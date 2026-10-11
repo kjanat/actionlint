@@ -1,0 +1,3 @@
+[tasks.test]
+description = "Test the ShellCheck version lifecycle"
+run         = "node --test shellcheck-version-lifecycle.test.mjs"
