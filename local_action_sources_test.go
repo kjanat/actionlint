@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -210,10 +211,110 @@ func TestLocalActionSourceFailureReportedOncePerReference(t *testing.T) {
 				t.Fatalf("want one failure per reference: %+v", result.Diagnostics)
 			}
 			for _, diagnostic := range result.Diagnostics {
-				if diagnostic.Rule != "action" || !strings.Contains(diagnostic.Message, "source mapping") {
+				wantRule := "action"
+				if failure == "missing" {
+					wantRule = "missing-local-action"
+				}
+				if diagnostic.Rule != wantRule || !strings.Contains(diagnostic.Message, "source mapping") {
 					t.Fatalf("unexpected diagnostic: %+v", diagnostic)
 				}
 			}
 		})
+	}
+}
+
+func TestLocalActionUnknownCheckoutMissingMetadata(t *testing.T) {
+	for _, folded := range []bool{false, true} {
+		root := t.TempDir()
+		writeShellcheckFixture(t, root, "present/action.yml", "name: present\ndescription: present\nruns: {using: composite, steps: []}\n")
+		view := &LocalActionsCache{base: NewLocalActionsCache(&Project{root: root}, nil), caseInsensitive: folded}
+		view.setCheckout(runDirectory{kind: directoryUnknown})
+		for range 2 {
+			if meta, _, err := view.FindMetadata("./private/action"); err != nil || meta != nil {
+				t.Fatalf("unknown checkout: %+v %v", meta, err)
+			}
+		}
+		if meta, _, err := view.FindMetadata("./present"); err != nil || meta == nil {
+			t.Fatalf("lost best-effort metadata: %+v %v", meta, err)
+		}
+		if _, _, err := view.FindMetadata("$/private/action"); err == nil {
+			t.Fatal("self repository missing metadata must be reported")
+		}
+		view.sourceMappings = LocalActionSources{"./private/action": "./absent-source"}
+		if _, _, err := view.FindMetadata("./private/action"); err == nil {
+			t.Fatal("explicit missing source must be reported")
+		}
+		view.sourceMappings = nil
+		view.setCheckout(runDirectory{kind: directoryKnown})
+		if _, _, err := view.FindMetadata("./private/action"); err == nil {
+			t.Fatal("known checkout missing metadata must be reported")
+		}
+	}
+}
+
+func TestMissingLocalActionMappedSourceDiagnostic(t *testing.T) {
+	for _, folded := range []bool{false, true} {
+		root := t.TempDir()
+		view := &LocalActionsCache{base: NewLocalActionsCache(&Project{root: root}, nil), sourceMappings: LocalActionSources{"./generated": "./absent-source"}, caseInsensitive: folded}
+		_, _, err := view.FindMetadata("./generated")
+		if _, missing := errors.AsType[unresolvedLocalActionError](err); !missing {
+			t.Fatalf("folded=%v: expected missing-local-action: %v", folded, err)
+		}
+		want := `source mapping for local action "./generated": local action "./absent-source" has no action.yml or action.yaml; check the path and ensure the action is available when linting`
+		if err.Error() != want {
+			t.Fatalf("folded=%v: got %q; want %q", folded, err, want)
+		}
+	}
+}
+
+func TestMissingLocalActionRuntimeCheckout(t *testing.T) {
+	for _, tc := range []struct {
+		name, checkout string
+		missing        bool
+	}{
+		{"private", "- uses: actions/checkout@v6\n  with:\n    repository: ${{ secrets.PRIVATE_REPOSITORY }}\n    token: ${{ secrets.PRIVATE_TOKEN }}", false},
+		{"conditional", "- uses: actions/checkout@v6\n  if: github.event_name == 'push'", false},
+		{"continue-on-error", "- uses: actions/checkout@v6\n  continue-on-error: true", false},
+		{"known", "- uses: actions/checkout@v6", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, _ := executableFixture(t)
+			result := compositeAnalysis(t, root, tc.checkout+"\n- uses: ./private-action", AnalysisOptions{})
+			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "missing-local-action" })
+			if found != tc.missing {
+				t.Fatalf("missing=%t, expected=%t: %+v", found, tc.missing, result.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestMissingLocalActionSourceSuppression(t *testing.T) {
+	for _, runner := range []string{"ubuntu-latest", "windows-latest"} {
+		for _, ignored := range []bool{false, true} {
+			root, _ := executableFixture(t)
+			config, err := ParseConfig([]byte("local-actions: {'./generated': './absent-source'}\n"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			comment := ""
+			if ignored {
+				comment = " # actionlint:ignore missing-local-action"
+			}
+			content := []byte("on: push\njobs:\n  test:\n    runs-on: " + runner + "\n    steps:\n      - uses: ./generated" + comment + "\n")
+			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: ".github/workflows/test.yml", Content: content, Config: config, Project: &Project{root: root}}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := 1
+			if ignored {
+				want = 0
+			}
+			if len(result.Diagnostics) != want {
+				t.Fatalf("%s ignored=%t: %+v", runner, ignored, result.Diagnostics)
+			}
+			if !ignored && (result.Diagnostics[0].Rule != "missing-local-action" || strings.Contains(result.Diagnostics[0].Message, root)) {
+				t.Fatalf("%s: %+v", runner, result.Diagnostics)
+			}
+		}
 	}
 }

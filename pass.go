@@ -25,6 +25,7 @@ type Visitor struct {
 	passes     []Pass
 	dbg        io.Writer
 	composites *compositeAnalyzer
+	jobID      string
 }
 
 // NewVisitor creates Visitor instance
@@ -101,6 +102,10 @@ func (v *Visitor) Visit(n *Workflow) error {
 }
 
 func (v *Visitor) visitJob(n *Job) error {
+	v.jobID = ""
+	if n.ID != nil {
+		v.jobID = n.ID.Value
+	}
 	if v.composites != nil {
 		v.composites.beginJob(n)
 	}
@@ -110,7 +115,7 @@ func (v *Visitor) visitJob(n *Job) error {
 	}
 
 	for _, p := range v.passes {
-		if err := p.VisitJobPre(n); err != nil {
+		if err := visitWithIgnoreOrigin(p, jobDiagnosticIgnoreOrigin(n), func() error { return p.VisitJobPre(n) }); err != nil {
 			return err
 		}
 	}
@@ -132,7 +137,7 @@ func (v *Visitor) visitJob(n *Job) error {
 	}
 
 	for _, p := range v.passes {
-		if err := p.VisitJobPost(n); err != nil {
+		if err := visitWithIgnoreOrigin(p, jobDiagnosticIgnoreOrigin(n), func() error { return p.VisitJobPost(n) }); err != nil {
 			return err
 		}
 	}
@@ -156,7 +161,7 @@ func (v *Visitor) visitStep(n *Step) error {
 		}
 	} else {
 		for _, p := range v.passes {
-			if err := p.VisitStep(n); err != nil {
+			if err := visitWithIgnoreOrigin(p, newDiagnosticIgnoreOrigin(v.jobID, n), func() error { return p.VisitStep(n) }); err != nil {
 				return err
 			}
 		}

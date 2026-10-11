@@ -135,24 +135,27 @@
             "properties": {
               "file": {
                 "title": "file",
-                "description": "Repository-relative file path or doublestar glob.",
-                "markdownDescription": "Repository-relative file path or doublestar glob.",
+                "description": "Reported file path or doublestar glob relative to the repository. Matches sourced scripts when diagnostics point to them.",
+                "markdownDescription": "Reported file path or doublestar glob relative to the repository. Matches sourced scripts when diagnostics point to them.",
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "pattern": "[^\t\n\u000b\f\r    -     　]"
               },
               "job": {
                 "title": "job",
                 "description": "Exact workflow job ID.",
                 "markdownDescription": "Exact workflow job ID.",
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "pattern": "[^\t\n\u000b\f\r    -     　]"
               },
               "reason": {
                 "title": "reason",
                 "description": "Optional explanation for this exception.",
                 "markdownDescription": "Optional explanation for this exception.",
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "pattern": "[^\t\n\u000b\f\r    -     　]"
               },
               "rule": {
                 "title": "rule",
@@ -170,7 +173,6 @@
                   "mixed-type-comparisons",
                   "case-insensitive-conditions",
                   "mixed-type-matrix-filters",
-                  "disallow-suppressions",
                   "matrix",
                   "credentials",
                   "shell-name",
@@ -204,14 +206,16 @@
                 "description": "Exact step ID or name.",
                 "markdownDescription": "Exact step ID or name.",
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "pattern": "[^\t\n\u000b\f\r    -     　]"
               },
               "uses": {
                 "title": "uses",
                 "description": "Exact action or reusable workflow reference including its version.",
                 "markdownDescription": "Exact action or reusable workflow reference including its version.",
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "pattern": "[^\t\n\u000b\f\r    -     　]"
               }
             },
             "additionalProperties": false,

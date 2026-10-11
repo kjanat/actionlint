@@ -499,14 +499,15 @@ ignores:
 
 An entry selects a rule and at least one of `file`, `uses`, `job` or `step`.
 All supplied selectors must match. `file` accepts repository-relative doublestar
-globs; `uses`, `job` and `step` match exact values, with `step` accepting its ID or
+globs against the reported file, including a sourced script for ShellCheck findings.
+`uses`, `job` and `step` select the invocation that produced the finding and match exact values, with `step` accepting its ID or
 name. `reason` is optional. This example suppresses
 only missing-manifest findings for the selected action in `ci.yml`; other action
 diagnostics still apply.
 
 With `extends`, an omitted `ignores` keeps inherited entries. A supplied list
 replaces them; `ignores: []` clears them. The `disallow-suppressions` policy also
-applies to these entries.
+applies to these entries. An ignore targeting `disallow-suppressions` is rejected.
 
 ### Inline diagnostic suppressions
 

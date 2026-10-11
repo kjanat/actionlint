@@ -571,7 +571,7 @@ func (c *LocalActionsCache) writeCache(key string, val *ActionMetadata) {
 func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, error) {
 	if local, ok := selfRepositoryUsesLocalSpec(spec); ok {
 		if c.base != nil {
-			return c.findRepositoryMetadata(local)
+			return c.findRepositoryMetadata(local, true)
 		}
 		spec = local
 	}
@@ -580,7 +580,17 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 		if !ok {
 			return nil, false, nil
 		}
-		return c.findRepositoryMetadata(local)
+		certain := true
+		if state := c.checkoutState(); state != nil {
+			// An uncertain checkout permits best-effort local validation, but
+			// missing files do not establish what will exist at runtime.
+			placement := state.matching(spec)
+			if placement == nil {
+				placement = state
+			}
+			certain = placement.directory.kind != directoryUnknown
+		}
+		return c.findRepositoryMetadata(local, certain)
 	}
 	if c.proj == nil || !strings.HasPrefix(spec, "./") {
 		return nil, false, nil

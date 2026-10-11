@@ -17,6 +17,7 @@ type compositeAnalyzer struct {
 	workflowEnv   *Env
 	workflowShell shellValue
 	configForFile func(string) (*Config, error)
+	jobID         string
 }
 
 func (analysis *compositeAnalyzer) cancelled() error {
@@ -57,6 +58,10 @@ func (analysis *compositeAnalyzer) validateWorkflow() error {
 }
 
 func (analysis *compositeAnalyzer) beginJob(job *Job) {
+	analysis.jobID = ""
+	if job.ID != nil {
+		analysis.jobID = job.ID.Value
+	}
 	analysis.actions.setCheckout(runDirectory{})
 	analysis.actions.platform = runnerPlatform(job.RunsOn)
 	analysis.actions.caseInsensitive = analysis.actions.platform == platformKindWindows || macOSRunner(job.RunsOn)
@@ -95,7 +100,7 @@ func (analysis *compositeAnalyzer) visitStep(step *Step) error {
 				continue // Preserve checkout state while entering a local composite.
 			}
 		}
-		if err := pass.VisitStep(step); err != nil {
+		if err := visitWithIgnoreOrigin(pass, newDiagnosticIgnoreOrigin(analysis.jobID, step), func() error { return pass.VisitStep(step) }); err != nil {
 			return err
 		}
 	}

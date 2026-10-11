@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -23,7 +24,7 @@ func missingLocalActionMetadata(spec string) error {
 	return unresolvedLocalActionError(fmt.Sprintf("local action %q has no action.yml or action.yaml; check the path and ensure the action is available when linting", spec))
 }
 
-func (c *LocalActionsCache) findRepositoryMetadata(spec string) (*ActionMetadata, bool, error) {
+func (c *LocalActionsCache) findRepositoryMetadata(spec string, certain bool) (*ActionMetadata, bool, error) {
 	original := spec
 	mapped := false
 	if normalized, err := localaction.Normalize(spec); err == nil {
@@ -44,18 +45,37 @@ func (c *LocalActionsCache) findRepositoryMetadata(spec string) (*ActionMetadata
 		}
 	}
 	if c.caseInsensitive && c.base.proj != nil && !c.base.customReader {
-		local, ok := caseInsensitiveRepositoryPath(c.base.proj.RootDir(), spec)
-		if !ok {
+		local, err := caseInsensitiveRepositoryPathChecked(c.base.proj.RootDir(), spec)
+		if err != nil {
+			if mapped {
+				if errors.Is(err, os.ErrNotExist) {
+					return nil, false, missingMappedLocalAction(original, spec)
+				}
+				return nil, false, localActionMappingError{fmt.Errorf("source mapping for local action %q: cannot resolve source %q under case-insensitive lookup", original, spec)}
+			}
+			if !certain && errors.Is(err, os.ErrNotExist) {
+				return nil, false, nil
+			}
 			return nil, false, unresolvedLocalActionError(fmt.Sprintf("cannot resolve local action %q: its path is missing or ambiguous under case-insensitive lookup", spec))
 		}
 		spec = local
 	}
 	if mapped && c.base.proj != nil && !c.base.customReader {
 		if err := localaction.CheckSource(c.base.proj.RootDir(), spec); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil, false, missingMappedLocalAction(original, spec)
+			}
 			return nil, false, localActionMappingError{fmt.Errorf("source mapping for local action %q: %w", original, err)}
 		}
 	}
 	metadata, cached, err := c.base.FindMetadata(spec)
+	if _, missing := errors.AsType[unresolvedLocalActionError](err); missing {
+		if mapped {
+			err = missingMappedLocalAction(original, spec)
+		} else if !certain {
+			err = nil
+		}
+	}
 	if mapped && metadata != nil {
 		mappedMetadata := *metadata
 		mappedMetadata.sourceMapped = true
@@ -74,9 +94,18 @@ func (c *LocalActionsCache) findRepositoryMetadata(spec string) (*ActionMetadata
 	return metadata, cached, err
 }
 
+func missingMappedLocalAction(alias, source string) error {
+	return unresolvedLocalActionError(fmt.Sprintf("source mapping for local action %q: %s", alias, missingLocalActionMetadata(source)))
+}
+
 // Use on-disk spelling for cache keys and diagnostics, even on a Linux host.
 // Multiple case-equivalent entries cannot identify a unique runner action.
 func caseInsensitiveRepositoryPath(root, spec string) (string, bool) {
+	local, err := caseInsensitiveRepositoryPathChecked(root, spec)
+	return local, err == nil
+}
+
+func caseInsensitiveRepositoryPathChecked(root, spec string) (string, error) {
 	dir := root
 	for component := range strings.SplitSeq(strings.TrimPrefix(spec, "./"), "/") {
 		if component == "" || component == "." || component == ".." {
@@ -85,7 +114,7 @@ func caseInsensitiveRepositoryPath(root, spec string) (string, bool) {
 		}
 		entries, err := os.ReadDir(dir)
 		if err != nil {
-			return "", false
+			return "", err
 		}
 		match := ""
 		for _, entry := range entries {
@@ -94,17 +123,17 @@ func caseInsensitiveRepositoryPath(root, spec string) (string, bool) {
 				continue
 			}
 			if match != "" {
-				return "", false
+				return "", fmt.Errorf("ambiguous case-insensitive path %q", spec)
 			}
 			match = name
 		}
 		if match == "" {
-			return "", false
+			return "", os.ErrNotExist
 		}
 		dir = filepath.Join(dir, match)
 	}
 	local, err := filepath.Rel(root, dir)
-	return "./" + filepath.ToSlash(local), err == nil
+	return "./" + filepath.ToSlash(local), err
 }
 
 // Newer overlapping checkouts shadow older placements; unrelated copies survive.

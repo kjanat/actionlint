@@ -71,6 +71,9 @@ func (c *IgnoreConfig) UnmarshalYAML(n *yaml.Node) error {
 }
 
 func (c IgnoreConfig) validate() error {
+	if c.Rule == "disallow-suppressions" {
+		return errors.New("ignores: disallow-suppressions cannot be suppressed")
+	}
 	if !isInlineSuppressibleRule(c.Rule) {
 		return fmt.Errorf("ignores: unknown suppressible rule %q", c.Rule)
 	}
@@ -87,10 +90,14 @@ func filterConfigIgnores(path, root string, source []byte, findings []*Error, cf
 	if cfg == nil || len(cfg.Ignores) == 0 || len(findings) == 0 {
 		return findings
 	}
-	file := filepath.ToSlash(repositoryRelativeConfigPath(path, root))
 	contexts := suppression.Contexts(source, literalExpressionValue)
 	filtered := make([]*Error, 0, len(findings))
 	for _, finding := range findings {
+		reportedPath := path
+		if finding.Filepath != "" {
+			reportedPath = finding.Filepath
+		}
+		file := filepath.ToSlash(repositoryRelativeConfigPath(reportedPath, root))
 		if level(finding.Kind) == "off" {
 			filtered = append(filtered, finding)
 			continue
@@ -109,7 +116,11 @@ func filterConfigIgnores(path, root string, source []byte, findings []*Error, cf
 				if ignore.File != "" && !(filefilter.Selection{Includes: []string{ignore.File}}).Match(file) {
 					continue
 				}
-				if !contexts.Match(line, column, ignore.Job, ignore.Step, ignore.Uses) {
+				matches := contexts.Match(line, column, ignore.Job, ignore.Step, ignore.Uses)
+				if finding.ignoreOrigin != nil {
+					matches = finding.ignoreOrigin.matches(ignore.Job, ignore.Step, ignore.Uses)
+				}
+				if !matches {
 					continue
 				}
 				mode := cfg.Policy.DisallowSuppressions.reportFor(ignore.Rule)

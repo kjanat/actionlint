@@ -65,3 +65,23 @@ func TestSourcedBlockScope(t *testing.T) {
 		t.Fatal("preceding step captured next sibling")
 	}
 }
+
+func TestSourcedFirstStepKeyBoundary(t *testing.T) {
+	index := Contexts([]byte("jobs:\n  test:\n    steps:\n      - run: echo first\n        id: first\n      - run: . script.sh\n        id: second\n"), nil)
+	if !index.Match(6, 0, "test", "second", "") {
+		t.Fatal("preceding range excluded the new step's run key")
+	}
+	if index.Match(6, 0, "test", "first", "") {
+		t.Fatal("preceding step captured its sibling's run key")
+	}
+}
+
+func TestSourcedMultilineFlowBoundary(t *testing.T) {
+	source := "jobs: {test: {steps: [{id: first,\nrun: echo first}, {id: second, run: echo second}]}}"
+	index := Contexts([]byte(source), nil)
+	for _, step := range []string{"first", "second"} {
+		if index.Match(2, 0, "test", step, "") {
+			t.Fatal("ambiguous shared flow line matched", step)
+		}
+	}
+}

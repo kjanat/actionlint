@@ -46,6 +46,34 @@ func TestExprContextPropertySuggestions(t *testing.T) {
 	}
 }
 
+func TestExprContextSuggestionsPreserveUserProperties(t *testing.T) {
+	for _, receiver := range []string{"inputs", "matrix", "steps", "needs", "jobs", "env", "custom"} {
+		for _, property := range []string{"github_token", "runner_os", "job_workflow_sha"} {
+			t.Run(receiver+"."+property, func(t *testing.T) {
+				checker := NewExprSemanticsChecker(false, nil)
+				checker.ensureVarsCopied()
+				checker.vars[receiver] = NewStrictObjectType(map[string]ExprType{"declared": BoolType{}})
+				checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.run")
+				checker.availableContexts = append(checker.availableContexts, receiver)
+				expr, err := NewExprParser().Parse(NewExprLexer(receiver + "." + property + "}}"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, errs := checker.Check(expr)
+				want := fmt.Sprintf("property %q is not defined in object type {declared: bool}", property)
+				if len(errs) != 1 || errs[0].Message != want {
+					t.Fatalf("got %v, want %q", errs, want)
+				}
+				checker.vars[receiver] = NewStrictObjectType(map[string]ExprType{property: StringType{}})
+				ty, errs := checker.Check(expr)
+				if len(errs) != 0 || ty.String() != "string" {
+					t.Fatalf("declared property: type=%s errors=%v", ty.String(), errs)
+				}
+			})
+		}
+	}
+}
+
 func TestExprBareFunctionNames(t *testing.T) {
 	for _, key := range []string{"jobs.<job_id>.if", "jobs.<job_id>.steps.if"} {
 		for _, tc := range []struct {

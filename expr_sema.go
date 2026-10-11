@@ -697,10 +697,15 @@ func (sema *ExprSemanticsChecker) checkObjectDeref(n *ObjectDerefNode) ExprType 
 			return ty.Mapped
 		}
 		if ty.IsStrict() {
-			if _, ok := n.Receiver.(*VariableNode); ok {
-				if suggestion := sema.contextPropertySuggestion(n.Property); suggestion != "" {
-					sema.errorf(n, "property %q is not defined in this context; did you mean %q?", n.Property, suggestion)
-					return AnyType{}
+			if receiver, ok := n.Receiver.(*VariableNode); ok {
+				// User-defined properties can resemble context names without referring
+				// to them, such as inputs.github_token or matrix.runner_os.
+				switch receiver.Name {
+				case "github", "job", "runner", "strategy":
+					if suggestion := sema.contextPropertySuggestion(n.Property); suggestion != "" {
+						sema.errorf(n, "property %q is not defined in this context; did you mean %q?", n.Property, suggestion)
+						return AnyType{}
+					}
 				}
 			}
 			sema.errorf(n, "property %q is not defined in object type %s", n.Property, ty.String())

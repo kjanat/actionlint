@@ -3,6 +3,7 @@ package suppression
 
 import (
 	"bytes"
+	"strings"
 
 	"go.yaml.in/yaml/v4"
 )
@@ -10,6 +11,7 @@ import (
 type context struct {
 	first, end                  position
 	job, stepID, stepName, uses string
+	startsLine                  bool
 }
 
 type position struct{ line, column int }
@@ -30,6 +32,17 @@ func Contexts(source []byte, resolve func(string) *string) Index {
 		return nil
 	}
 	var result Index
+	lines := strings.Split(string(source), "\n")
+	startsLine := func(node *yaml.Node) bool {
+		if node.Line < 1 || node.Line > len(lines) {
+			return false
+		}
+		prefix := []rune(lines[node.Line-1])
+		if node.Column < 1 || node.Column > len(prefix)+1 {
+			return false
+		}
+		return strings.Trim(string(prefix[:node.Column-1]), " \t-") == ""
+	}
 	scalar := func(node *yaml.Node, key string) string {
 		value := rawScalar(node, key)
 		if resolve != nil {
@@ -53,7 +66,7 @@ func Contexts(source []byte, resolve func(string) *string) Index {
 			if step.Kind != yaml.MappingNode {
 				continue
 			}
-			result = append(result, context{first: start(step), end: last, job: job, stepID: scalar(step, "id"), stepName: scalar(step, "name"), uses: scalar(step, "uses")})
+			result = append(result, context{first: start(step), end: last, job: job, stepID: scalar(step, "id"), stepName: scalar(step, "name"), uses: scalar(step, "uses"), startsLine: startsLine(step)})
 			for j := 0; j+1 < len(step.Content); j += 2 {
 				if step.Content[j].Value != "parallel" {
 					continue
@@ -76,7 +89,7 @@ func Contexts(source []byte, resolve func(string) *string) Index {
 				}
 				next := current
 				if len(path) == 1 && path[0] == "jobs" {
-					next = context{first: start(key), end: last, job: key.Value, uses: scalar(value, "uses")}
+					next = context{first: start(key), end: last, job: key.Value, uses: scalar(value, "uses"), startsLine: startsLine(key)}
 					result = append(result, next)
 				}
 				visit(value, last, append(append([]string(nil), path...), key.Value), next)
@@ -113,7 +126,7 @@ func (index Index) Match(line, column int, job, step, uses string) bool {
 			// A sourced finding records the invoking line but no column. Do not
 			// choose between distinct flow-style constructs on that same line.
 			for _, other := range index {
-				if other.first.line > line || other.end.line < line {
+				if other.first.line > line || other.end.line < line || other.end.line == line && location.first.line == line && location.startsLine {
 					continue
 				}
 				if !other.first.before(location.end) || !location.first.before(other.end) {

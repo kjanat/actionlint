@@ -45,6 +45,8 @@ type Error struct {
 	// suppressionOrigin identifies the YAML run declaration which caused a
 	// sourced diagnostic, independently of its displayed script location.
 	suppressionOrigin *suppressionOrigin
+	// ignoreOrigin identifies the logical invocation independently of anchor coordinates.
+	ignoreOrigin *diagnosticIgnoreOrigin
 	// External analyzer metadata is exposed through Diagnostic, leaving legacy output unchanged.
 	code     string
 	severity string

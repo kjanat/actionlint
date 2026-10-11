@@ -404,6 +404,13 @@ func TestSchemaValidation(t *testing.T) {
 		parserValid bool
 	}{
 		{"empty", `{}`, true, true},
+		{"ignore policy itself", `ignores: [{rule: disallow-suppressions, file: '**'}]`, false, false},
+		{"ignore blank job", `ignores: [{rule: expression, job: ' '}]`, false, false},
+		{"ignore blank step", `ignores: [{rule: expression, step: "\t\n"}]`, false, false},
+		{"ignore blank file", `ignores: [{rule: expression, file: ' '}]`, false, false},
+		{"ignore blank uses", `ignores: [{rule: expression, uses: ' '}]`, false, false},
+		{"ignore unicode blank reason", `ignores: [{rule: expression, job: build, reason: "\u0085\u00a0\u3000"}]`, false, false},
+		{"ignore padded reason", `ignores: [{rule: expression, job: build, reason: ' reviewed '}]`, true, true},
 		{"ruff oldest target", `tools: {ruff: {target-version: py37}}`, true, true},
 		{"ruff selector prefix", `tools: {ruff: {select: [F82]}}`, true, true},
 		{"ruff selector alias", `tools: {ruff: {select: [C9, U004, SIM111]}}`, true, true},

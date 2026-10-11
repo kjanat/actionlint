@@ -28,6 +28,7 @@ func TestReusableIgnoreConfig(t *testing.T) {
 		`{rule: expression, step: ''}`, `{rule: expression, uses: './generated', reason: ''}`,
 		`{rule: expression, uses: './generated', unknown: x}`, `{rule: expression, file: true}`,
 		`{rule: expression, file: x, file: y}`, `{rule: expression, uses: null}`, `null`,
+		`{rule: disallow-suppressions, file: '**'}`, `{rule: expression, job: ' '}`,
 	} {
 		t.Run(entry, func(t *testing.T) {
 			if _, err := ParseConfig([]byte("ignores: [" + entry + "]")); err == nil {
@@ -286,16 +287,35 @@ runs:
 }
 
 func TestReusableIgnoreCannotSuppressPolicy(t *testing.T) {
-	const source = `on: push
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo '${{ invalid }}' # actionlint:ignore expression
-`
-	findings := lintCachePolicy(t, source, `ignores: [{rule: disallow-suppressions, file: '*.yaml'}]
-policy: {disallow-suppressions: {rules: [expression], report: suppression}}`)
-	if len(findings) != 1 || findings[0].Kind != "disallow-suppressions" {
-		t.Fatal(findings)
+	_, err := ParseConfig([]byte(`ignores: [{rule: disallow-suppressions, file: '*.yaml'}]`))
+	if err == nil || !strings.Contains(err.Error(), "disallow-suppressions") {
+		t.Fatalf("ineffective suppression was accepted: %v", err)
+	}
+}
+
+func TestReusableIgnoreReportedFile(t *testing.T) {
+	root := t.TempDir()
+	workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
+	script := filepath.Join(root, "scripts", "check.sh")
+	for _, tc := range []struct {
+		selector string
+		want     int
+	}{
+		{"file: scripts/check.sh", 0},
+		{"file: .github/workflows/ci.yml", 1},
+		{"file: scripts/check.sh, job: build, step: generated", 0},
+		{"file: scripts/check.sh, job: other", 1},
+	} {
+		t.Run(tc.selector, func(t *testing.T) {
+			cfg, err := ParseConfig([]byte("ignores: [{rule: shellcheck, " + tc.selector + "}]"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			finding := &Error{Kind: "shellcheck", Line: 1, Column: 6, Filepath: script, source: []byte("echo $VALUE\n"), suppressionOrigin: &suppressionOrigin{first: 10, last: 10}}
+			got := filterConfigIgnores(workflow, root, []byte(reusableIgnoreSource), []*Error{finding}, cfg, false, cfg.diagnosticLevel)
+			if len(got) != tc.want {
+				t.Fatalf("got %d findings, want %d", len(got), tc.want)
+			}
+		})
 	}
 }
