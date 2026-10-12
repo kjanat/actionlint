@@ -43,7 +43,9 @@ export async function sourceContexts(
 						length += bytesRead;
 					}
 					if (length > limit) continue;
-					lines = buffer.subarray(0, length).toString('utf8').split(/\r\n|\n|\r/);
+					const source = buffer.subarray(0, length).toString('utf8');
+					lines = source.split(/\r\n|\n|\r/);
+					if (/[\r\n]$/.test(source)) lines.pop();
 					cache.set(path, lines);
 				} finally {
 					await file.close();

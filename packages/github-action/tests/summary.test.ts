@@ -124,8 +124,9 @@ test('findings are visible with their severity, actual rule, source range and he
 	assert.ok(!text.includes('<strong>1 error'));
 	assert.ok(text.includes('Undefined variable &quot;missing&quot;'));
 	assert.ok(text.includes('<a href="https://example.com/help">Documentation</a>'));
-	assert.ok(text.includes('<h3><code>ci.yml:6:6</code></h3>'));
-	assert.ok(text.includes('<sub>Error: <code>expression</code></sub>'));
+	assert.ok(text.includes('<sub><code>ci.yml:6:6</code> | Rule: <code>expression</code></sub>'));
+	assert.ok(text.includes('<p><strong>Error:</strong> Undefined variable'));
+	assert.doesNotMatch(text, /<h[23]>/);
 	assert.ok(text.includes('<br><sub><a href="https://example.com/help">Documentation</a></sub>'));
 	assert.ok(!text.includes('See '));
 	assert.ok(!text.includes('for details'));
@@ -134,6 +135,7 @@ test('findings are visible with their severity, actual rule, source range and he
 });
 
 test('invocation titles can distinguish repeated runs without affecting machine output', () => {
+	assert.doesNotMatch(summary(result, { GITHUB_ACTION: 'lint_2' }), /lint_2|<h[23]>/);
 	assert.equal(reportStatus(result, { GITHUB_ACTION: 'lint_2' }), '');
 	assert.equal(
 		reportStatus({ ...result, diagnostics: [] }, { GITHUB_ACTION: 'lint_2', 'INPUT_SUMMARY-TITLE': 'Production' }),
@@ -141,9 +143,27 @@ test('invocation titles can distinguish repeated runs without affecting machine 
 	);
 	assert.ok(
 		summary(result, { 'INPUT_SUMMARY-TITLE': '<img>\n# spoof' }).startsWith(
-			'<h2>actionlint (&lt;img&gt; # spoof)</h2>\n',
+			'<p><strong>&lt;img&gt; # spoof</strong></p>\n',
 		),
 	);
+});
+
+test('summary joins severity to diagnostic prose and breaks advice into lines', () => {
+	const text = summary({
+		...result,
+		diagnostics: [{
+			...finding,
+			message:
+				'"github.event.head_commit.message" is unsafe. avoid inline expansion. instead use an environment variable. See https://example.com/help for more details.',
+		}],
+	});
+	assert.ok(
+		text.includes(
+			'<strong>Error:</strong> <code>github.event.head_commit.message</code> is unsafe.<br>avoid inline expansion.<br>instead use an environment variable.',
+		),
+	);
+	assert.ok(text.includes('<br><sub><a href="https://example.com/help">Documentation</a></sub>'));
+	assert.doesNotMatch(text, /<h[23]>|See https|for more details/);
 });
 
 test('startup failures explain missing config once and retain unrelated errors', () => {
@@ -223,7 +243,7 @@ test('findings retain individual severities without count announcements', () => 
 	const diagnostics = [finding, ...['warning', 'info', 'style'].map((severity) => ({ ...finding, severity }))];
 	const text = summary({ ...result, diagnostics, file_count: null });
 	for (const severity of ['Error', 'Warning', 'Notice', 'Style']) {
-		assert.ok(text.includes(`<sub>${severity}:`));
+		assert.ok(text.includes(`<strong>${severity}:</strong>`));
 	}
 	assert.doesNotMatch(text, /\d+ (?:errors?|warnings?|notices?|style findings?|workflows?)/);
 	assert.equal(reportStatus({ ...result, diagnostics }), '');

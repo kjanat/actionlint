@@ -79,6 +79,13 @@ test('summary reads bounded workspace context and keeps stale/external sources o
 			assert.ok(edgeSummary.includes(`${number} | ${lines[number - 1]}&#10;  | ^`));
 			assert.ok(!edgeSummary.includes('4 |'));
 		}
+		for (const newline of ['\n', '\r\n', '\r']) {
+			for (const endings of [1, 2]) {
+				await writeFile(join(workspace, 'sub', 'ci.yml'), lines.join(newline) + newline.repeat(endings));
+				const eofContexts = await sourceContexts({ ...result, diagnostics: [finding] }, environment);
+				assert.deepEqual(eofContexts.get(finding), endings === 1 ? lines : [...lines, '']);
+			}
+		}
 	} finally {
 		await rm(root, { recursive: true, force: true });
 	}

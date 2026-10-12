@@ -156,7 +156,8 @@ export function summary(
 	environment: Environment = {},
 	contexts = new Map<Diagnostic, string[]>(),
 ): string {
-	let text = `<h2>${html(title(environment))}</h2>\n\n`;
+	const label = environment['INPUT_SUMMARY-TITLE']?.trim();
+	let text = label ? `<p><strong>${html(label.replaceAll(/[\r\n]/g, ' ').slice(0, 120))}</strong></p>\n\n` : '';
 	const state = status(result);
 	if (state) text += `<p><strong>${state}</strong></p>\n\n`;
 	if (result.error) text += `<p>${html(failureMessage(result.error, environment)).replaceAll('&#10;', '<br>')}</p>\n\n`;
@@ -168,11 +169,11 @@ export function summary(
 	for (const diagnostic of result.diagnostics.slice(0, 50)) {
 		const severity = level(diagnostic) === 'info' ? 'notice' : level(diagnostic);
 		const rule = diagnostic.code ? `${diagnostic.rule}/${diagnostic.code}` : diagnostic.rule;
-		text += `<h3>${sourceLink(diagnostic, environment)}</h3>\n\n`;
-		text += `<p><sub>${html(severity[0]?.toUpperCase() || '')}${html(severity.slice(1))}: <code>${
-			html(rule)
-		}</code></sub></p>\n\n`;
-		text += `<p>${message(diagnostic.message.slice(0, 1000)).replaceAll('&#10;', '<br>')}</p>\n\n`;
+		const prose = diagnostic.message.slice(0, 1000).replace(/([.!?])\s+(?=(?:avoid|instead|see)\b)/gi, '$1\n');
+		text += `<p><strong>${html(severity[0]?.toUpperCase() || '')}${html(severity.slice(1))}:</strong> ${
+			message(prose).replaceAll('&#10;', '<br>')
+		}</p>\n\n`;
+		text += `<p><sub>${sourceLink(diagnostic, environment)} | Rule: <code>${html(rule)}</code></sub></p>\n\n`;
 		if (diagnostic.snippet || contexts.has(diagnostic)) {
 			text += `<pre lang="yaml">${html(contextualSnippet(diagnostic, contexts.get(diagnostic)))}</pre>\n\n`;
 		}

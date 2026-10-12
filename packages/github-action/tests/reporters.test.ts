@@ -261,7 +261,7 @@ test('report controls are independent and reject unsupported inputs', () => {
 
 test('summaries distinguish clean analysis, no selection, and incomplete analysis', () => {
 	const clean: ActionResult = { ...result, status: 'success', exit_code: 0, diagnostics: [] };
-	assert.equal(summary(clean), '<h2>actionlint</h2>\n\n<p><strong>No findings</strong></p>\n\n');
+	assert.equal(summary(clean), '<p><strong>No findings</strong></p>\n\n');
 	assert.ok(summary({ ...clean, file_count: 0 }).includes('<strong>No workflows selected'));
 	const incomplete: ActionResult = { ...result, completed: false, status: 'failure', exit_code: 3 };
 	assert.ok(summary(incomplete).includes('<strong>Analysis incomplete'));
@@ -550,7 +550,7 @@ test('annotation commands and Markdown summaries escape diagnostic content', () 
 	assert.ok(text.includes('Check &amp; retry'));
 	assert.ok(text.includes('<pre lang="yaml">2 | echo &quot;$foo&quot;&#10;  |   ^~~~~</pre>'));
 	assert.ok(!text.includes('<value>'));
-	assert.ok(text.includes('<sub>Warning:'));
+	assert.ok(text.includes('<strong>Warning:</strong>'));
 	const multiline = annotation({ ...diagnostic, end: { line: 4, column: 1 } });
 	assert.ok(multiline.includes('line=2,endLine=3,title='));
 	assert.ok(!multiline.includes(',col='));

@@ -189,8 +189,8 @@ run's commit when GitHub repository metadata is available; paths outside the
 workspace remain plain text. Locations respect `working-directory`.
 Findings remain visible without expanding a details section. Incomplete analysis
 is identified separately from lint findings. For multiple invocations in one job,
-set `summary-title: Production workflows` to label a report; the default label is
-the GitHub Action invocation ID. Clean runs, empty selections and failures include a short status message in the summary and text log.
+set `summary-title: Production workflows` to add a small report label. Summaries have no title by default.
+Clean runs, empty selections and failures include a short status message in the summary and text log.
 JSON, JSON Lines and SARIF console output remain machine-readable.
 
 Save reports even when findings fail the lint step:
@@ -303,30 +303,30 @@ remain available, including readable files outside the repository.
 
 All inputs are optional. Booleans accept `true`/`false`.
 
-| Input                                                                  | Default              | Meaning                                                                                  |
-| ---------------------------------------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------- |
-| `version`                                                              | Action release       | Exact binary release; overrides `version-file`.                                          |
-| `version-file`                                                         | empty                | Exact version file or `.tool-versions`, relative to `working-directory`.                 |
-| `install-only`                                                         | `false`              | Install tools on PATH without analysis or reporting.                                     |
-| `files`                                                                | discover             | Literal newline-separated workflow paths.                                                |
-| `format`                                                               | `github`             | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, `sarif`.               |
-| `ignore`                                                               | empty                | Newline-separated regular expressions.                                                   |
-| `config-file`                                                          | discover             | Explicit config file.                                                                    |
-| `config`                                                               | inherit              | Inline YAML/JSON overlay.                                                                |
-| `working-directory`                                                    | `.`                  | Analysis directory.                                                                      |
-| `shellcheck`                                                           | `true`               | Permit external analysis.                                                                |
-| `ruff`                                                                 | `true`               | Permit Python analysis; provision Ruff when required.                                    |
-| `shellcheck-rc`                                                        | inherit              | Rc selection: `true`, `false`, or path.                                                  |
-| `shellcheck-args`                                                      | `[]`                 | Literal argument array.                                                                  |
-| `add-actionlint-to-path`, `add-shellcheck-to-path`, `add-ruff-to-path` | `true`               | Independent exports for later steps.                                                     |
-| `output-file`                                                          | empty                | Workspace-relative legacy-format report.                                                 |
-| `fail-on-error`                                                        | `true`               | Fail for findings; invalid options/failures always fail.                                 |
-| `annotations`                                                          | `auto`               | Finding annotation control.                                                              |
-| `summary`                                                              | `true`               | Compact job summary.                                                                     |
-| `summary-title`                                                        | Action invocation ID | Label repeated runs in the job summary and text log, for example `Production workflows`. |
-| `sarif`                                                                | `false`              | Write additional SARIF file.                                                             |
-| `review`                                                               | `false`              | Advisory PR review posting.                                                              |
-| `token`                                                                | `github.token`       | Used only by the review reporter.                                                        |
+| Input                                                                  | Default        | Meaning                                                                                                                               |
+| ---------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `version`                                                              | Action release | Exact binary release; overrides `version-file`.                                                                                       |
+| `version-file`                                                         | empty          | Exact version file or `.tool-versions`, relative to `working-directory`.                                                              |
+| `install-only`                                                         | `false`        | Install tools on PATH without analysis or reporting.                                                                                  |
+| `files`                                                                | discover       | Literal newline-separated workflow paths.                                                                                             |
+| `format`                                                               | `github`       | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, `sarif`.                                                            |
+| `ignore`                                                               | empty          | Newline-separated regular expressions.                                                                                                |
+| `config-file`                                                          | discover       | Explicit config file.                                                                                                                 |
+| `config`                                                               | inherit        | Inline YAML/JSON overlay.                                                                                                             |
+| `working-directory`                                                    | `.`            | Analysis directory.                                                                                                                   |
+| `shellcheck`                                                           | `true`         | Permit external analysis.                                                                                                             |
+| `ruff`                                                                 | `true`         | Permit Python analysis; provision Ruff when required.                                                                                 |
+| `shellcheck-rc`                                                        | inherit        | Rc selection: `true`, `false`, or path.                                                                                               |
+| `shellcheck-args`                                                      | `[]`           | Literal argument array.                                                                                                               |
+| `add-actionlint-to-path`, `add-shellcheck-to-path`, `add-ruff-to-path` | `true`         | Independent exports for later steps.                                                                                                  |
+| `output-file`                                                          | empty          | Workspace-relative legacy-format report.                                                                                              |
+| `fail-on-error`                                                        | `true`         | Fail for findings; invalid options/failures always fail.                                                                              |
+| `annotations`                                                          | `auto`         | Finding annotation control.                                                                                                           |
+| `summary`                                                              | `true`         | Compact job summary.                                                                                                                  |
+| `summary-title`                                                        | Empty          | Add a summary label and text-log label, for example `Production workflows`. Without one, only text logs use the Action invocation ID. |
+| `sarif`                                                                | `false`        | Write additional SARIF file.                                                                                                          |
+| `review`                                                               | `false`        | Advisory PR review posting.                                                                                                           |
+| `token`                                                                | `github.token` | Used only by the review reporter.                                                                                                     |
 
 | Output           | Meaning                                                                                                                 |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
