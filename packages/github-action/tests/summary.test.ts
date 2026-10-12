@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { execFileSync } from 'node:child_process';
+import childProcess, { type ExecFileSyncOptions, execFileSync, spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -59,7 +60,7 @@ test('quoted expression context references render as code without quoting prose'
 	assert.ok(text.includes('&quot;github.&lt;script&gt;&quot;'));
 });
 
-test('source links canonicalize workspace paths and validate repository names', async () => {
+test('source links canonicalize workspace paths and validate repository names', async t => {
 	const root = await mkdtemp(join(tmpdir(), 'actionlint-summary-links-'));
 	try {
 		const workspace = join(root, 'workspace');
@@ -96,6 +97,38 @@ test('source links canonicalize workspace paths and validate repository names', 
 		const verifyCommitted = sourceLinkVerifier(environment, message => failures.push(message));
 		const committedVerified = verifyCommitted(join('sub', filename));
 		assert.equal(committedVerified, true, `Source verification failed: ${failures.join(', ')}`);
+		const isolatedEnvironment = {
+			...process.env,
+			GIT_CONFIG_GLOBAL: '/dev/null',
+			GIT_CONFIG_NOSYSTEM: '1',
+			GIT_TEST_ASSUME_DIFFERENT_OWNER: '1',
+		};
+		const untrusted = spawnSync('git', ['-C', workspace, 'rev-parse', 'HEAD'], {
+			env: isolatedEnvironment,
+			encoding: 'utf8',
+		});
+		assert.equal(untrusted.status, 128, `Expected ownership rejection: ${untrusted.stderr}`);
+		assert.match(untrusted.stderr, /dubious ownership/);
+		const execute = childProcess.execFileSync;
+		const assumeOtherOwner = t.mock.method(
+			childProcess,
+			'execFileSync',
+			(command: string, args: readonly string[], options: ExecFileSyncOptions) =>
+				execute(command, args, {
+					...options,
+					env: { ...options.env, GIT_TEST_ASSUME_DIFFERENT_OWNER: '1' },
+				}),
+		);
+		syncBuiltinESMExports();
+		try {
+			failures.length = 0;
+			const verifyOtherOwner = sourceLinkVerifier(environment, message => failures.push(message));
+			const otherOwnerVerified = verifyOtherOwner(join('sub', filename));
+			assert.equal(otherOwnerVerified, true, `Foreign-owned checkout rejected: ${failures.join(', ')}`);
+		} finally {
+			assumeOtherOwner.mock.restore();
+			syncBuiltinESMExports();
+		}
 		const text = summary(
 			{ ...result, diagnostics: [{ ...finding, path: filename, end: { line: 9, column: 1 } }] },
 			environment,

@@ -53,7 +53,7 @@ export function sourceLinkVerifier(
 		const remaining = deadline - Date.now();
 		if (remaining <= 0) throw new VerificationError('10-second verification budget exhausted');
 		try {
-			return execFileSync('git', ['-C', directory, ...args], {
+			return execFileSync('git', ['-c', `safe.directory=${workspace.split(sep).join('/')}`, '-C', directory, ...args], {
 				env,
 				timeout: Math.min(1500, remaining),
 				maxBuffer: limit + 1,
