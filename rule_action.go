@@ -345,14 +345,20 @@ func selfRepositoryUsesLocalSpec(spec string) (string, bool) {
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
 type RuleAction struct {
 	RuleBase
-	cache *LocalActionsCache
+	cache      *LocalActionsCache
+	validation *actionMetadataValidation
 }
 
 // NewRuleAction creates new RuleAction instance.
 func NewRuleAction(cache *LocalActionsCache) *RuleAction {
+	validation := newActionMetadataValidation()
+	if cache != nil && cache.validation != nil {
+		validation = cache.validation
+	}
 	return &RuleAction{
-		RuleBase: builtinRuleBase("action"),
-		cache:    cache,
+		RuleBase:   builtinRuleBase("action"),
+		cache:      cache,
+		validation: validation,
 	}
 }
 
@@ -549,7 +555,7 @@ func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, idx, line, c
 	err := errorAt(&Pos{Line: line, Col: col}, rule.name, fmt.Sprintf(`step %d in "runs.steps" section in metadata of %q action %s`, idx+1, meta.Name, m))
 	err.Filepath = meta.Path()
 	err.source = meta.src
-	if rule.Config() != nil && len(rule.Config().Ignores) != 0 && idx >= 0 && idx < len(meta.Runs.Steps) {
+	if idx >= 0 && idx < len(meta.Runs.Steps) {
 		step := meta.Runs.Steps[idx]
 		origin := &diagnosticIgnoreOrigin{}
 		if step.id != nil {
@@ -577,9 +583,7 @@ func (rule *RuleAction) metadataErrorfAt(meta *ActionMetadata, line, col int, fo
 	err := errorfAt(&Pos{Line: line, Col: col}, rule.name, format, args...)
 	err.Filepath = meta.Path()
 	err.source = meta.src
-	if rule.Config() != nil && len(rule.Config().Ignores) != 0 {
-		err.ignoreOrigin = &diagnosticIgnoreOrigin{metadata: true}
-	}
+	err.ignoreOrigin = &diagnosticIgnoreOrigin{metadata: true}
 	rule.errs = append(rule.errs, err)
 }
 
@@ -846,7 +850,7 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *
 	if strings.HasPrefix(displaySpec, "$/") {
 		localSpec = displaySpec
 	}
-	meta, cached, err := rule.cache.FindMetadata(localSpec)
+	meta, _, err := rule.cache.FindMetadata(localSpec)
 	if err != nil {
 		if _, unresolved := errors.AsType[unresolvedLocalActionError](err); unresolved {
 			rule.errs = append(rule.errs, errorAt(action.Uses.Pos, "missing-local-action", err.Error()))
@@ -859,14 +863,7 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *
 		return
 	}
 
-	// Only action ignores can make these metadata findings invocation-dependent.
-	// Other rules' ignores must not cause duplicate metadata diagnostics.
-	if !cached || rule.Config() != nil && slices.ContainsFunc(rule.Config().Ignores, func(ignore IgnoreConfig) bool {
-		return ignore.Rule == "action"
-	}) {
-		rule.Debug("Checking metadata of %s action %q at %q", meta.Runs, meta.Name, displaySpec)
-		rule.checkLocalActionMetadata(meta, action)
-	}
+	rule.replayMetadataFindings(meta, action)
 
 	rule.checkAction(meta, action, func(m *ActionMetadata) string {
 		return fmt.Sprintf("%q defined at %q", m.Name, displaySpec)

@@ -87,7 +87,7 @@ func (l *analysisEngine) check(
 
 	if w != nil {
 		dbg := l.debugWriter()
-		localActions = &LocalActionsCache{base: localActions, usedSources: make(map[string][]byte)}
+		localActions = &LocalActionsCache{base: localActions, usedSources: make(map[string][]byte), validation: newActionMetadataValidation()}
 		if cfg != nil {
 			localActions.sourceMappings = cfg.LocalActions
 		}
@@ -310,6 +310,7 @@ func (l *analysisEngine) check(
 		}
 	}
 
+	all = firstVisibleMetadataFindings(all)
 	for _, err := range all {
 		if err.Filepath == "" {
 			err.Filepath = path // Populate filename in the error

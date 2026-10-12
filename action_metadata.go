@@ -514,6 +514,7 @@ type LocalActionsCache struct {
 	missing              sync.Map // local action specs with no metadata file
 	sources              map[string]localActionMetadataSource
 	usedSources          map[string][]byte
+	validation           *actionMetadataValidation
 	dbg                  io.Writer
 	base                 *LocalActionsCache
 	sourceMappings       LocalActionSources

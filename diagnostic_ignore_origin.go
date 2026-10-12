@@ -50,7 +50,13 @@ func jobDiagnosticIgnoreOrigin(job *Job) *diagnosticIgnoreOrigin {
 // Synchronous passes can safely annotate only the findings produced by this visit.
 func visitWithIgnoreOrigin(pass Pass, origin *diagnosticIgnoreOrigin, visit func() error) error {
 	rule, ok := pass.(Rule)
-	if !ok || rule.Config() == nil || len(rule.Config().Ignores) == 0 {
+	if !ok {
+		return visit()
+	}
+	// Metadata can have file-specific ignores even when its caller has none.
+	_, actionRule := rule.(*RuleAction)
+	hasIgnores := rule.Config() != nil && len(rule.Config().Ignores) != 0
+	if !actionRule && !hasIgnores {
 		return visit()
 	}
 	switch rule := pass.(type) {
@@ -64,6 +70,9 @@ func visitWithIgnoreOrigin(pass Pass, origin *diagnosticIgnoreOrigin, visit func
 	start := len(rule.Errs())
 	err := visit()
 	for _, finding := range rule.Errs()[start:] {
+		if !hasIgnores && (finding.metadataFinding == nil || finding.source == nil) {
+			continue
+		}
 		if finding.source == nil && finding.ignoreOrigin == nil {
 			finding.ignoreOrigin = origin
 		} else if finding.source != nil && finding.ignoreOrigin != nil {

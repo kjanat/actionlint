@@ -47,6 +47,8 @@ type Error struct {
 	suppressionOrigin *suppressionOrigin
 	// ignoreOrigin identifies the logical invocation independently of anchor coordinates.
 	ignoreOrigin *diagnosticIgnoreOrigin
+	// metadataFinding identifies a reusable validation finding independently of its caller.
+	metadataFinding *actionMetadataFinding
 	// External analyzer metadata is exposed through Diagnostic, leaving legacy output unchanged.
 	code     string
 	severity string

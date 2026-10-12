@@ -1,8 +1,11 @@
 package actionlint
 
 import (
+	"cmp"
 	"fmt"
 	"io"
+	"maps"
+	"slices"
 	"time"
 )
 
@@ -72,8 +75,27 @@ func (v *Visitor) Visit(n *Workflow) error {
 		t = time.Now()
 	}
 
-	for _, j := range n.Jobs {
-		if err := v.visitJob(j); err != nil {
+	// Stable source order also makes reusable metadata findings select the first
+	// visible caller consistently, including calls through nested composites.
+	jobs := slices.SortedFunc(maps.Keys(n.Jobs), func(a, b string) int {
+		left, right := n.Jobs[a].Pos, n.Jobs[b].Pos
+		switch {
+		case left != nil && right != nil:
+			if order := cmp.Compare(left.Line, right.Line); order != 0 {
+				return order
+			}
+			if order := cmp.Compare(left.Col, right.Col); order != 0 {
+				return order
+			}
+		case left != nil:
+			return -1
+		case right != nil:
+			return 1
+		}
+		return cmp.Compare(a, b)
+	})
+	for _, id := range jobs {
+		if err := v.visitJob(n.Jobs[id]); err != nil {
 			return err
 		}
 	}
