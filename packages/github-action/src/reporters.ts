@@ -7,7 +7,10 @@ import { failedResult, parseResult } from '#result';
 import { postReview } from '#review';
 import type { Environment } from '#runtime';
 import { InputError } from '#runtime';
+import { reportStatus, summary } from '#summary';
 import { commandEscape, readOutputs, writeOutputs } from '#workflow';
+
+export { summary } from '#summary';
 
 export type ReportOptions = {
 	annotations: 'auto' | 'true' | 'false';
@@ -51,43 +54,6 @@ export function annotation(diagnostic: Diagnostic): string {
 	return `::${level} file=${property(diagnostic.path)},${range},title=${
 		property(diagnostic.code || diagnostic.rule)
 	}::${commandEscape(diagnostic.message)}`;
-}
-
-export function html(value: string): string {
-	return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
-}
-
-function paragraph(value: string): string {
-	return `<p>${html(value).replaceAll('\n', '<br>')}</p>\n\n`;
-}
-
-export function summary(result: ActionResult): string {
-	const findings = result.diagnostics.length === 1 ? 'finding' : 'findings';
-	const files = result.file_count === 1 ? 'workflow' : 'workflows';
-	const count = `${result.file_count ?? 'an unknown number of'} ${files}`;
-	const heading = !result.completed
-		? 'Analysis incomplete'
-		: result.diagnostics.length > 0
-		? `${result.diagnostics.length} ${findings} in ${count}`
-		: result.file_count === 0
-		? 'No workflows selected'
-		: `No findings in ${count}`;
-	let text = `### actionlint: ${heading}\n\n`;
-	if (!result.completed) text += `Exit ${result.exit_code}; ${result.diagnostics.length} ${findings} collected.\n\n`;
-	if (result.error) text += paragraph(result.error.slice(0, 2000));
-	for (const diagnostic of result.diagnostics.slice(0, 50)) {
-		text += `<details><summary>${html(diagnostic.path)}:${diagnostic.start.line}:${diagnostic.start.column} (${
-			html(diagnostic.code || diagnostic.rule)
-		})</summary>\n\n`;
-		text += paragraph(diagnostic.message.slice(0, 1000));
-		if (diagnostic.snippet) text += `<pre>${html(diagnostic.snippet.slice(0, 2000))}</pre>\n\n`;
-		text += '</details>\n\n';
-	}
-	if (result.diagnostics.length > 50) {
-		text += 'Showing the first 50 findings; the persisted result contains all findings.\n\n';
-	}
-	for (const hint of result.hints) text += paragraph(hint.slice(0, 1000));
-	return text;
 }
 
 export type ReporterRuntime = { log: (text: string) => void; review: typeof postReview };
@@ -137,7 +103,11 @@ export async function report(
 	}
 	const summaryPath = environment.GITHUB_STEP_SUMMARY;
 	if (options.summary && summaryPath) {
-		await attempt('Job summary unavailable', () => appendFile(summaryPath, summary(result)));
+		await attempt('Job summary unavailable', () => appendFile(summaryPath, summary(result, environment)));
+	}
+	if (!['json', 'json-lines', 'sarif'].includes(environment.INPUT_FORMAT || 'github')) {
+		// The runner recognizes legacy command markers anywhere in a log line.
+		runtime.log(reportStatus(result, environment).replaceAll('##[', '## ['));
 	}
 	if (options.review) {
 		await attempt('PR review skipped', async () => {

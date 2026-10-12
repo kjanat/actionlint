@@ -127,7 +127,7 @@ try {
 			1,
 			`duplicate or missing annotation: ${result.log}`,
 		);
-		assert.match(await readFile(summaryFile, 'utf8'), /1 finding in 1 workflow/);
+		assert.match(await readFile(summaryFile, 'utf8'), /\*\*Result:\*\* 1 error\n- \*\*Workflows:\*\* 1/);
 		assert.ok(result.outputs.get('result-file'));
 		assert.equal(result.outputs.has('report-json'), false);
 		const sarifPath = result.outputs.get('report-sarif');
@@ -145,7 +145,7 @@ try {
 	await run({ summary: 'false' });
 	assert.equal(await readFile(summaryFile, 'utf8'), '');
 	await run({});
-	assert.match(await readFile(summaryFile, 'utf8'), /No findings in 1 workflow/);
+	assert.match(await readFile(summaryFile, 'utf8'), /No findings/);
 	await run({ files: '' }, 3);
 	const shell = await run({
 		files: 'testdata/err/shellcheck_default_shell_detection.yaml',
