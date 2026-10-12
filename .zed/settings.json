@@ -2,10 +2,104 @@
 // see the documentation: https://zed.dev/docs/configuring-zed#settings-files
 // mkdir -p .zed; curl -fsSLo .zed/settings.json https://github.com/kjanat/kjanat/raw/HEAD/.zed/settings.json
 {
-  "formatter": [{ "external": { "command": "dprint", "arguments": ["fmt", "--stdin", "{buffer_path}"] } }],
-  "prettier": { "allowed": false },
+  "formatter": [
+    { "language_server": { "name": "dprint" } },
+    // { "external": { "command": "dprint", "arguments": ["fmt", "--stdin", "{buffer_path}"] } }
+  ],
+  "prettier": {
+    "allowed": false
+  },
+  "languages": {
+    "JavaScript": {
+      "language_servers": [
+        "typescript", // https://github.com/kjanat/zed-typescript
+        "biome",
+        "dprint"
+      ],
+      "code_actions_on_format": {
+        "source.fixAll.biome": true,
+        "source.organizeImports.biome": true
+      }
+    },
+    "TypeScript": {
+      "language_servers": [
+        "typescript", // https://github.com/kjanat/zed-typescript
+        "biome",
+        "dprint"
+      ],
+      "code_actions_on_format": {
+        "source.fixAll.biome": true,
+        "source.organizeImports.biome": true
+      }
+    },
+    "Markdown": {}
+  },
+  "markdown_preview": { // available in per-project config since https://github.com/kjanat/zed-editor v1.4.10
+    "limit_content_width": false,
+    "open_markdown_files_in_preview": false
+  },
   "lsp": {
+    "actup-lsp": {
+      "binary": { // currently private project.
+        "path": "mise",
+        "arguments": ["exec", "actup-lsp", "--", "actup-lsp"]
+      },
+    },
+    "golangci-lint": {
+      "initialization_options": {
+        "command": [
+          "mise",
+          "exec",
+          "golangci-lint",
+          "--",
+          "golangci-lint",
+          "run",
+          "--output.json.path",
+          "stdout",
+          "--show-stats=false",
+          "--output.text.path=",
+          "--issues-exit-code=1"
+        ]
+      }
+    },
+    "biome": {
+      "binary": {
+        "path": "mise",
+        "arguments": ["exec", "--", "biome", "lsp-proxy"]
+      },
+      "settings": {
+        "config_path": "./biome.jsonc",
+        "require_config_file": true
+      }
+    },
+    "gopls": {
+      "initialization_options": {
+        "buildFlags": ["-buildvcs=true"],
+        // "local": "actionlint.kjanat.dev",
+        "gofumpt": true,
+        "staticcheck": true,
+        "usePlaceholders": true,
+        "vulncheck": "Imports",
+        "hints": {
+          "ignoredError": true,
+          "parameterNames": true,
+          "constantValues": true,
+          "functionTypeParameters": true,
+        }
+      }
+    },
+    "tombi": {
+      "binary": {
+        "path": "mise",
+        "arguments": ["exec", "github:tombi-toml/tombi", "--", "tombi", "lsp", "-vv"],
+        "env": { "NO_COLOR": "true" },
+      }
+    },
     "yaml-language-server": {
+      "binary": {
+        "path": "mise",
+        "arguments": ["exec", "npm:yaml-language-server", "--", "yaml-language-server", "--stdio"]
+      },
       "settings": {
         "yaml": {
           "schemas": {
@@ -18,6 +112,12 @@
             ]
           }
         }
+      }
+    },
+    "dprint": {
+      "binary": {
+        "path": "mise",
+        "arguments": ["exec", "github:kjanat/dprint", "--", "dprint", "lsp"]
       }
     }
   }

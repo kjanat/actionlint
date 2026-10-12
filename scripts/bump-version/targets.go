@@ -43,23 +43,11 @@ var targets = []*target{
 	{
 		path: ".pre-commit-hooks.yaml",
 		rules: []rule{
-			mustRule("pre-commit Docker image tag", `(?m)^    --entrypoint sh ghcr\.io/kjanat/actionlint:(\d+\.\d+\.\d+) -c '\r?$`, 1),
+			mustRule("pre-commit Docker image tag", `(?m)^  entry: ghcr\.io/kjanat/actionlint:(\d+\.\d+\.\d+)\r?$`, 1),
 		},
 		unrelated: []string{
 			"minimum_pre_commit_version: 3.0.0",
 			goShellcheckDependency,
-		},
-	},
-	{
-		path: ".pre-commit-config.yaml",
-		rules: []rule{
-			mustRule("repository pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
-		},
-	},
-	{
-		path: "action.yml",
-		rules: []rule{
-			mustRule("action Docker image tag", `image: docker://ghcr\.io/kjanat/actionlint:action-(\d+\.\d+\.\d+)`, 1),
 		},
 	},
 	{
@@ -75,27 +63,30 @@ var targets = []*target{
 	{
 		path: "docs/usage.md",
 		rules: []rule{
-			mustRule("versioned release tag note", "`v(\\d+\\.\\d+\\.\\d+)` is a versioned release tag", 1),
 			mustRule("download script argument", `download-actionlint\.bash\) (\d+\.\d+\.\d+)`, 3),
 			mustRule("CLI image tag example", "`ghcr\\.io/kjanat/actionlint:(\\d+\\.\\d+\\.\\d+)`", 1),
-			mustRule("action image tag example", "`action-(\\d+\\.\\d+\\.\\d+)`", 1),
 			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 2),
 			mustRule("Trunk linter version", ` actionlint@(\d+\.\d+\.\d+)`, 2),
 		},
 		unrelated: []string{
 			"sarif/v2.1.0/sarif-v2.1.0.html",
+			"git-scm.com/docs/git-hook/2.54.0",
+			"git-scm.com/docs/git-hook/2.55.0",
 			goShellcheckDependency,
+			"We recommend v1.76.2 or newer.",
 		},
 	},
 	{
 		path: "docs/install.md",
 		rules: []rule{
+			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
 			mustRule("gh release download tag", `--pattern '[^']+' v(\d+\.\d+\.\d+)`, 1),
 			mustRule("release asset name", `actionlint_(\d+\.\d+\.\d+)_linux_amd64\.tar\.gz`, 2),
 			mustRule("download script example description", `example installs v(\d+\.\d+\.\d+)`, 1),
 			mustRule("download script argument", `download-actionlint\.bash\) (\d+\.\d+\.\d+)`, 1),
 		},
 		unrelated: []string{
+			"was added after v1.17.0",
 			"has proposed switching the package to this fork at v1.16.0",
 			"mise 2026.9.7 release PR",
 			"On mise 2026.9.6,",
@@ -104,9 +95,11 @@ var targets = []*target{
 	{
 		path: "README.md",
 		rules: []rule{
-			mustRule("versioned release tag note", "`v(\\d+\\.\\d+\\.\\d+)` is a versioned release tag", 1),
-			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 4),
 			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
+		},
+		unrelated: []string{
+			"[v1.7.12](https://github.com/rhysd/actionlint/releases/tag/v1.7.12)",
+			"Its independent release series starts at v1.8.0.",
 		},
 		generated: []*regexp.Regexp{
 			regexp.MustCompile(`(?m)^\*\*(?:Upstream actionlint|This fork) \d+\.\d+\.\d+ reports`),
@@ -123,6 +116,9 @@ var targets = []*target{
 		path: ".github/workflows/npm-release.yml",
 		rules: []rule{
 			mustRule("npm workflow release tag example", `Release tag to publish \(e\.g\. v(\d+\.\d+\.\d+)\)`, 1),
+		},
+		generated: []*regexp.Regexp{
+			regexp.MustCompile(`(?m)uses: [\w.-]+/[\w./-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+\r?$`),
 		},
 	},
 	{

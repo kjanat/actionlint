@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json",
   "version": "2.1.0",
   "runs": [
     {
@@ -70,6 +70,21 @@
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
+              "id": "case-insensitive-conditions",
+              "name": "CaseInsensitiveConditions",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Checks identity comparisons using case-insensitive matching",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {
+                "text": "Checks identity comparisons using case-insensitive matching"
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
               "id": "credentials",
               "name": "Credentials",
               "defaultConfiguration": {
@@ -106,11 +121,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Reports inline exceptions prohibited by configuration",
+                "description": "Reports inline and configured exceptions prohibited by suppression policy",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Reports inline exceptions prohibited by configuration"
+                "text": "Reports inline and configured exceptions prohibited by suppression policy"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -141,6 +156,21 @@
               },
               "fullDescription": {
                 "text": "Checks for workflow trigger events at \"on:\""
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
+              "id": "executable-bit",
+              "name": "ExecutableBit",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Checks Git executable bits for directly invoked repository scripts",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {
+                "text": "Checks Git executable bits for directly invoked repository scripts"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -211,11 +241,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks inline cache policy exception directives",
+                "description": "Checks inline diagnostic suppression directives",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks inline cache policy exception directives"
+                "text": "Checks inline diagnostic suppression directives"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -246,6 +276,51 @@
               },
               "fullDescription": {
                 "text": "Checks for matrix combinations in \"matrix:\""
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
+              "id": "missing-local-action",
+              "name": "MissingLocalAction",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Checks that local action manifests can be resolved",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {
+                "text": "Checks that local action manifests can be resolved"
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
+              "id": "mixed-type-comparisons",
+              "name": "MixedTypeComparisons",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Checks condition comparisons using implicit scalar coercion",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {
+                "text": "Checks condition comparisons using implicit scalar coercion"
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
+              "id": "mixed-type-matrix-filters",
+              "name": "MixedTypeMatrixFilters",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Checks matrix filters comparing different scalar types",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {
+                "text": "Checks matrix filters comparing different scalar types"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -310,6 +385,21 @@
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
+              "id": "string-conditions",
+              "name": "StringConditions",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Checks bare string conditions for unexpected truthiness",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {
+                "text": "Checks bare string conditions for unexpected truthiness"
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
               "id": "syntax-check",
               "name": "SyntaxCheck",
               "defaultConfiguration": {
@@ -322,6 +412,17 @@
               "fullDescription": {
                 "text": "Checks for GitHub Actions workflow syntax"
               },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
+              "id": "unsound-ternary",
+              "name": "UnsoundTernary",
+              "defaultConfiguration": {"level": "error"},
+              "properties": {
+                "description": "Checks conditional expressions whose falsy middle operand always selects the fallback",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {"text": "Checks conditional expressions whose falsy middle operand always selects the fallback"},
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {

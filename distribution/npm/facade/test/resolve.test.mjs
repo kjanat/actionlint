@@ -1,9 +1,11 @@
-import { platformPackage, resolveBinary } from '#resolve';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
 import { after, before, describe, test } from 'node:test';
+
+import { readFileSync } from 'node:fs';
+import { dirname, join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { platformPackage, resolveBinary } from '#resolve';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const facadeDir = join(here, '..');
@@ -47,15 +49,12 @@ function context({ platform, arch, packages = allPackages, installed, missingBin
 		/** @param {string} pkg */
 		resolvePackageJson(pkg) {
 			if (!present.has(pkg)) {
-				const err = new Error(`Cannot find module '${pkg}/package.json'`);
-				// @ts-expect-error -- mirroring Node's resolution failure
-				err.code = 'MODULE_NOT_FOUND';
-				throw err;
+				throw Object.assign(new Error(`Cannot find module '${pkg}/package.json'`), { code: 'MODULE_NOT_FOUND' });
 			}
-			return `/fake/node_modules/${pkg}/package.json`;
+			return join('/fake/node_modules', pkg, 'package.json');
 		},
 		/** @param {string} path */
-		fileExists: (path) => !missingBins.some((pkg) => path.startsWith(`/fake/node_modules/${pkg}/`)),
+		fileExists: (path) => !missingBins.some((pkg) => path.startsWith(join('/fake/node_modules', pkg) + sep)),
 	};
 }
 
@@ -91,7 +90,7 @@ describe('platformPackage', () => {
 describe('resolveBinary', () => {
 	test('resolves the package matching the host', () => {
 		const path = resolveBinary('actionlint', context({ platform: 'linux', arch: 'x64' }));
-		assert.equal(path, '/fake/node_modules/@kjanat-actionlint/actionlint-linux-x64/bin/actionlint');
+		assert.equal(path, join('/fake/node_modules/@kjanat-actionlint/actionlint-linux-x64', 'bin', 'actionlint'));
 	});
 
 	test('appends .exe on Windows only', () => {
@@ -103,7 +102,7 @@ describe('resolveBinary', () => {
 		for (const target of targets.targets) {
 			const path = resolveBinary('actionlint', context({ platform: target.os, arch: target.cpu }));
 			assert.ok(
-				path.includes(`${SCOPE}/${BINARY}-${target.pkg}/`),
+				path.includes(join(SCOPE, `${BINARY}-${target.pkg}`) + sep),
 				`${target.pkg} resolved to the wrong package: ${path}`,
 			);
 		}
@@ -113,7 +112,7 @@ describe('resolveBinary', () => {
 	// Alpine package to pick: linux-x64 is the answer on glibc and musl alike.
 	test('uses one linux package regardless of libc', () => {
 		const path = resolveBinary('actionlint', context({ platform: 'linux', arch: 'x64' }));
-		assert.ok(path.includes('/actionlint-linux-x64/'));
+		assert.ok(path.includes(`${sep}actionlint-linux-x64${sep}`));
 		assert.ok(!path.includes('musl') && !path.includes('gnu'));
 	});
 

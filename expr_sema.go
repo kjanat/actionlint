@@ -233,6 +233,7 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 		Params: []ExprType{
 			StringType{},
 		},
+		IsConstFunc: true,
 	}},
 	"hashfiles": {{
 		Name: "hashFiles",
@@ -415,6 +416,8 @@ type ExprSemanticsChecker struct {
 	jobCondition          bool
 	configVars            []string
 	configSecrets         []string
+	condition             bool
+	ruleConfig            *Config
 }
 
 // NewExprSemanticsChecker creates new ExprSemanticsChecker instance. When checkUntrustedInput is
@@ -428,6 +431,7 @@ func NewExprSemanticsChecker(checkUntrustedInput bool, cfg *Config) *ExprSemanti
 		githubVarCopied: false,
 	}
 	if cfg != nil {
+		c.ruleConfig = cfg
 		c.configVars = cfg.ConfigVariables
 		c.configSecrets = cfg.ConfigSecrets
 	}
@@ -438,12 +442,13 @@ func NewExprSemanticsChecker(checkUntrustedInput bool, cfg *Config) *ExprSemanti
 }
 
 func errorAtExpr(e ExprNode, msg string) *ExprError {
-	t := e.Token()
+	span := expressionSpan(e)
 	return &ExprError{
-		Message: msg,
-		Offset:  t.Offset,
-		Line:    t.Line,
-		Column:  t.Column,
+		Message:   msg,
+		Offset:    span.Start,
+		EndOffset: span.End,
+		Line:      span.Line,
+		Column:    span.Column,
 	}
 }
 
@@ -453,6 +458,14 @@ func errorfAtExpr(e ExprNode, format string, args ...any) *ExprError {
 
 func (sema *ExprSemanticsChecker) errorf(e ExprNode, format string, args ...any) {
 	sema.errs = append(sema.errs, errorfAtExpr(e, format, args...))
+}
+
+func errorfAtCallee(n *FuncCallNode, format string, args ...any) *ExprError {
+	return errorAtToken(n.Token(), fmt.Sprintf(format, args...))
+}
+
+func (sema *ExprSemanticsChecker) calleeErrorf(n *FuncCallNode, format string, args ...any) {
+	sema.errs = append(sema.errs, errorfAtCallee(n, format, args...))
 }
 
 func (sema *ExprSemanticsChecker) ensureVarsCopied() {
@@ -603,6 +616,7 @@ func (sema *ExprSemanticsChecker) SetSpecialFunctionAvailability(avail []string)
 // position-specific signatures. Job conditions allow job arguments to success
 // and failure; step and snapshot conditions require zero arguments.
 func (sema *ExprSemanticsChecker) SetWorkflowKeyAvailability(key string) {
+	sema.condition = strings.HasSuffix(key, ".if")
 	contexts, functions := WorkflowKeyAvailability(key)
 	sema.SetContextAvailability(contexts)
 	sema.SetSpecialFunctionAvailability(functions)
@@ -621,7 +635,7 @@ func (sema *ExprSemanticsChecker) checkSpecialFunctionAvailability(n *FuncCallNo
 		return
 	}
 
-	sema.errorf(
+	sema.calleeErrorf(
 		n,
 		"calling function %q is not allowed here. %q is only available in %s. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details",
 		n.Callee,
@@ -645,6 +659,27 @@ func (sema *ExprSemanticsChecker) visitUntrustedCheckerOnLeaveNode(n ExprNode) {
 func (sema *ExprSemanticsChecker) checkVariable(n *VariableNode) ExprType {
 	v, ok := sema.vars[n.Name]
 	if !ok {
+		if sigs, known := sema.funcs[n.Name]; known && len(sigs) > 0 {
+			name := n.Token().Value
+			for _, sig := range sigs {
+				if len(sig.Params) == 0 {
+					sema.errorf(n, "function %q must be called with parentheses; did you mean %q?", name, name+"()")
+					return AnyType{}
+				}
+			}
+			sema.errorf(n, "function %q must be called with parentheses and arguments", name)
+			return AnyType{}
+		}
+		if inputs, ok := sema.vars["inputs"].(*ObjectType); ok && inputs.IsStrict() && slices.Contains(sema.availableContexts, "inputs") {
+			if _, declared := inputs.Props[n.Name]; declared {
+				sema.errorf(n, "undefined variable %q; did you mean %q?", n.Token().Value, "inputs."+n.Name)
+				return AnyType{}
+			}
+		}
+		if suggestion := sema.contextPropertySuggestion(n.Name); suggestion != "" {
+			sema.errorf(n, "undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
+			return AnyType{}
+		}
 		ss := make([]string, 0, len(sema.vars))
 		for n := range sema.vars {
 			ss = append(ss, n)
@@ -677,6 +712,17 @@ func (sema *ExprSemanticsChecker) checkObjectDeref(n *ObjectDerefNode) ExprType 
 			return ty.Mapped
 		}
 		if ty.IsStrict() {
+			if receiver, ok := n.Receiver.(*VariableNode); ok {
+				// User-defined properties can resemble context names without referring
+				// to them, such as inputs.github_token or matrix.runner_os.
+				switch receiver.Name {
+				case "github", "job", "runner", "strategy":
+					if suggestion := sema.contextPropertySuggestion(n.Property); suggestion != "" {
+						sema.errorf(n, "property %q is not defined in this context; did you mean %q?", n.Property, suggestion)
+						return AnyType{}
+					}
+				}
+			}
 			sema.errorf(n, "property %q is not defined in object type %s", n.Property, ty.String())
 		}
 		return AnyType{}
@@ -713,6 +759,35 @@ func (sema *ExprSemanticsChecker) checkObjectDeref(n *ObjectDerefNode) ExprType 
 		sema.errorf(n, "receiver of object dereference %q must be type of object but got %q", n.Property, ty.String())
 		return AnyType{}
 	}
+}
+
+// Suggest only explicit properties in contexts available at this expression.
+// Matching the context prefix preserves distinctions such as job.workflow_sha
+// (the called workflow) versus github.workflow_sha (the caller).
+func (sema *ExprSemanticsChecker) contextPropertySuggestion(name string) string {
+	return contextPropertySuggestion(name, sema.availableContexts, sema.vars)
+}
+
+func contextPropertySuggestion(name string, contexts []string, variables map[string]ExprType) string {
+	var suggestion string
+	for _, context := range contexts {
+		property, ok := strings.CutPrefix(name, context+"_")
+		if !ok {
+			continue
+		}
+		object, ok := variables[context].(*ObjectType)
+		if !ok {
+			continue
+		}
+		if _, exists := object.Props[property]; !exists {
+			continue
+		}
+		if suggestion != "" {
+			return ""
+		}
+		suggestion = context + "." + property
+	}
+	return suggestion
 }
 
 func (sema *ExprSemanticsChecker) checkConfigVariables(n ExprNode, prop string) {
@@ -898,7 +973,7 @@ func checkFuncSignature(n *FuncCallNode, sig *FuncSignature, args []ExprType) *E
 		if sig.VariableLengthParams {
 			atLeast = "at least "
 		}
-		return errorfAtExpr(
+		return errorfAtCallee(
 			n,
 			"number of arguments is wrong. function %q takes %s%d parameters but %d arguments are given",
 			sig.String(),
@@ -946,6 +1021,12 @@ func checkFuncSignature(n *FuncCallNode, sig *FuncSignature, args []ExprType) *E
 
 func (sema *ExprSemanticsChecker) checkBuiltinFuncCall(n *FuncCallNode, sig *FuncSignature) ExprType {
 	sema.checkSpecialFunctionAvailability(n)
+	if sema.condition && sema.ruleConfig.diagnosticLevel("case-insensitive-conditions") != "off" && len(n.Args) == 2 {
+		switch strings.ToLower(n.Callee) {
+		case "contains", "startswith", "endswith":
+			sema.checkIdentityComparison(n, n.Args[0], n.Args[1])
+		}
+	}
 
 	// Special checks for specific built-in functions
 	switch strings.ToLower(n.Callee) {
@@ -960,18 +1041,25 @@ func (sema *ExprSemanticsChecker) checkBuiltinFuncCall(n *FuncCallNode, sig *Fun
 
 		for i := range l {
 			if _, ok := holders[i]; !ok {
-				sema.errorf(n, "format string %q does not contain placeholder {%d}. remove argument which is unused in the format string", lit.Value, i)
+				sema.calleeErrorf(n, "format string %q does not contain placeholder {%d}. remove argument which is unused in the format string", lit.Value, i)
 				continue
 			}
 			delete(holders, i) // forget it to check unused placeholders
 		}
 
 		for i := range holders {
-			sema.errorf(n, "format string %q contains placeholder {%d} but only %d arguments are given to format", lit.Value, i, l)
+			sema.calleeErrorf(n, "format string %q contains placeholder {%d} but only %d arguments are given to format", lit.Value, i, l)
 		}
 	case "fromjson":
 		lit, ok := n.Args[0].(*StringNode)
 		if !ok {
+			return sig.Ret
+		}
+		collisions := jsonMemberCollisions(lit.Value)
+		for _, collision := range collisions {
+			sema.errorf(lit, "fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", collision.first, collision.second, collision.offset)
+		}
+		if len(collisions) > 0 {
 			return sig.Ret
 		}
 		var v any
@@ -984,7 +1072,7 @@ func (sema *ExprSemanticsChecker) checkBuiltinFuncCall(n *FuncCallNode, sig *Fun
 		}
 	case "case":
 		if len(n.Args)%2 == 0 {
-			sema.errorf(n, "case() requires an odd number of arguments (pred/value pairs + default) but got %d", len(n.Args))
+			sema.calleeErrorf(n, "case() requires an odd number of arguments (pred/value pairs + default) but got %d", len(n.Args))
 		}
 	}
 
@@ -1000,14 +1088,14 @@ func (sema *ExprSemanticsChecker) checkFuncCall(n *FuncCallNode) ExprType {
 		for n := range sema.funcs {
 			ss = append(ss, n)
 		}
-		sema.errorf(n, "undefined function %q. available functions are %s", n.Callee, sortedQuotes(ss))
+		sema.calleeErrorf(n, "undefined function %q. available functions are %s", n.Callee, sortedQuotes(ss))
 		return AnyType{}
 	}
 
 	// The runner's expression parser limits these variadic functions to 255 arguments.
 	// https://github.com/actions/runner/blob/759385a3510197a58b5c08dc1f373b74b9f4643b/src/Sdk/DTExpressions2/Expressions2/ExpressionConstants.cs
 	if (callee == "hashfiles" || callee == "format" || callee == "case") && len(n.Args) > 255 {
-		sema.errorf(n, "function %q takes at most 255 arguments but %d arguments are given", n.Callee, len(n.Args))
+		sema.calleeErrorf(n, "function %q takes at most 255 arguments but %d arguments are given", n.Callee, len(n.Args))
 	}
 	if sema.jobCondition && (callee == "success" || callee == "failure") && len(n.Args) > 0 {
 		sigs = []*FuncSignature{{
@@ -1105,6 +1193,7 @@ func validateCompareOpOperands(op CompareOpNodeKind, l, r ExprType) bool {
 func (sema *ExprSemanticsChecker) checkCompareOp(n *CompareOpNode) ExprType {
 	l := sema.check(n.Left)
 	r := sema.check(n.Right)
+	sema.checkConditionComparison(n, l, r)
 
 	if !validateCompareOpOperands(n.Kind, l, r) {
 		sema.errorf(n, "%q value cannot be compared to %q value with %q operator", l.String(), r.String(), n.Kind.String())
@@ -1204,6 +1293,9 @@ func (sema *ExprSemanticsChecker) Check(expr ExprNode) (ExprType, []*ExprError) 
 		sema.untrusted.Init()
 	}
 	ty := sema.check(expr)
+	if sema.condition && sema.ruleConfig.diagnosticLevel("string-conditions") != "off" && conditionStringReference(expr, ty) {
+		sema.ruleError(expr, "string-conditions", "bare string condition is truthy for every non-empty value, including 'false' and '0'; use an explicit string comparison or fromJSON() for a boolean contract")
+	}
 	errs := sema.errs
 	if sema.untrusted != nil {
 		sema.untrusted.OnVisitEnd()

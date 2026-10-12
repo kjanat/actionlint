@@ -17,7 +17,7 @@ List of checks:
 - [Contextual typing for `needs` object](#check-contextual-needs-object)
 - [Strict type checks for comparison operators](#check-comparison-types)
 - [shellcheck integration for `run:`](#check-shellcheck-integ)
-- [pyflakes integration for `run:`](#check-pyflakes-integ)
+- [Executable bits on repository scripts](#check-executable-bit)
 - [Script injection by potentially untrusted inputs](#untrusted-inputs)
 - [Job dependencies validation](#check-job-deps)
 - [Parallel steps](#check-parallel-step-refs)
@@ -50,6 +50,9 @@ List of checks:
 The checks in this document run by default, including the configurable cache safety policies. Other policy checks
 are opt-in, as described in [the configuration document](config.md#policy-checks). For
 general code style checks, please consider using a general YAML checker like [yamllint][yamllint].
+
+Additional [suspicious rules](config.md#stable-suspicious-rules) inspect condition
+coercion and matrix filter types. They are disabled by default and are not policies.
 
 <a id="check-unexpected-keys"></a>
 
@@ -239,7 +242,7 @@ Output:
 test.yaml:7:24: got unexpected character '"' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' '. do you mean string literals? only single quotes are available for string delimiter [expression]
   |
 7 |       - run: echo '${{ "hello" }}'
-  |                        ^~~~~~~
+  |                        ^
 test.yaml:9:26: got unexpected character '+' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' ' [expression]
   |
 9 |       - run: echo '${{ 1 + 1 }}'
@@ -247,11 +250,11 @@ test.yaml:9:26: got unexpected character '+' while lexing expression, expecting 
 test.yaml:11:65: unexpected end of input while parsing arguments of function call. expecting ",", ")" [expression]
    |
 11 |       - run: echo "${{ toJson(hashFiles('**/lock', '**/cache/') }}"
-   |                                                                 ^~~
+   |                                                                 ^~
 test.yaml:13:38: unexpected end of input while parsing object property dereference like 'a.b' or array element dereference like 'a.*'. expecting "IDENT", "*" [expression]
    |
 13 |       - run: echo '${{ github.event. }}'
-   |                                      ^~~
+   |                                      ^~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNp0zUGKwzAMheF9TvEwA85kJgnZ5gBd9BaJEXVaY4VK7ib47kXtOisJ/g8e5xl7kdjceZW5AZRE7QLPkqW3XtaStfRpsfZJorTLVwG9yRkUIsP/HAdcpJTYoVZ/Rib8YToBzoDyVTi3cZF42RJJ67tuTBwe/h/2hiVEGv0vanVnI7dNY1kHelHWwcbeAQAA///H30Qz)
@@ -308,7 +311,7 @@ Output:
 test.yaml:7:28: property access of object must be type of string but got "number" [expression]
   |
 7 |       - run: echo '${{ env[0] }}'
-  |                            ^~
+  |                            ^
 test.yaml:9:24: property "os" is not defined in object type {id: string; network: string} [expression]
   |
 9 |       - run: echo '${{ job.container.os }}'
@@ -424,15 +427,15 @@ test.yaml:9:24: property "events" is not defined in object type {action: string;
 test.yaml:11:24: undefined function "startWith". available functions are "always", "cancelled", "case", "contains", "endswith", "failure", "format", "fromjson", "hashfiles", "join", "startswith", "success", "tojson" [expression]
    |
 11 |       - run: echo "${{ startWith('hello, world', 'lo,') }}"
-   |                        ^~~~~~~~~~~~~~~~~
+   |                        ^~~~~~~~~
 test.yaml:13:24: number of arguments is wrong. function "startsWith(string, string) -> bool" takes 2 parameters but 1 arguments are given [expression]
    |
 13 |       - run: echo "${{ startsWith('hello, world') }}"
-   |                        ^~~~~~~~~~~~~~~~~~
+   |                        ^~~~~~~~~~
 test.yaml:15:51: 2nd argument of function call is not assignable. "object" cannot be assigned to "string". called function type is "startsWith(string, string) -> bool" [expression]
    |
 15 |       - run: echo "${{ startsWith('hello, world', github.event) }}"
-   |                                                   ^~~~~~~~~~~~~
+   |                                                   ^~~~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNqckEFKxjAQhfc9xVCEqKQ5QC/iUpI6mGo6UzoTK5TcXWJB/OFvF11l8b7v5TFMPcxZYvPBQfoGQFG0vgBLJulqnkMmzV3yNfuNRHGWnQLoKtkDDpHBPGwbZPokXul1YFL8VijFHKHvo8YcHH4hqRyAbQVF/aIvo8ZHEzEltrDykt6MBZPYmicopT115Y58zbI3q0876gX8SHJh9J/6/zOXfMAk7tmRn9CCQYqeBpyQdK/7CQAA//9h6o/Y)
@@ -483,15 +486,15 @@ test.yaml:6:18: property "mac" is not defined in object type {linux: string; win
 test.yaml:9:24: format string "{0}{1}" does not contain placeholder {2}. remove argument which is unused in the format string [expression]
   |
 9 |       - run: echo "${{ format('{0}{1}', 1, 2, 3) }}"
-  |                        ^~~~~~~~~~~~~~~~
+  |                        ^~~~~~
 test.yaml:11:24: format string "{0}{1}{2}" contains placeholder {2} but only 2 arguments are given to format [expression]
    |
 11 |       - run: echo "${{ format('{0}{1}{2}', 1, 2) }}"
-   |                        ^~~~~~~~~~~~~~~~~~~
+   |                        ^~~~~~
 test.yaml:14:31: broken JSON string is passed to fromJSON() at offset 23: unexpected end of JSON input [expression]
    |
 14 |         if: contains(fromJson('["main","release","dev"'), github.ref_name)
-   |                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                               ^~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNqMj0FL9DAQhu/7K95v+CAtZMVdb/kJHvSgt0Uk7aY20k5KJnGFkP8ure5R8DJzmPeZhzewwZJl3O3eQydmByQnad1AzCz7NfC/FAwxzPdPjw+NKnTxTGad53CR/WRXhDRNnvMnGcpd5pSn66Gq9qRm26sX1Lo9luQW+XYA+9Vj4PoxgDZTiLNNjSq3tRyq0jhoHDXuWtRKf4PK8cr9Bj2PXuAFFrK43tsJXbTcj/9+soAfDPrAyXqWZmsvgRt1otl6Jk3RTc6KI01n90Gq1XjzaczdTXTDK9vZtV8BAAD//8ITaRA=)
@@ -536,11 +539,11 @@ Output:
 test.yaml:10:24: property "get_value" is not defined in object type {} [expression]
    |
 10 |       - run: echo '${{ steps.get_value.outputs.name }}'
-   |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                        ^~~~~~~~~~~~~~~
 test.yaml:22:24: property "get_value" is not defined in object type {} [expression]
    |
 22 |       - run: echo '${{ steps.get_value.outputs.name }}'
-   |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                        ^~~~~~~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNqskLFqhUAQRXu/4rIIVvoBC7FIk6RKCq1FzRoNZkecmTTiv4fdmFTCe/BeNcU9Zy5c8haL8ph8Usc2AcSxhAus6jkPuXbqRfO5DVmMSGVR4V8OGIgsTLptYHELFx9Omu92VlccYOHbL4d9N1GI0J+bhx4L14+E7IoX2YlnBqKHSBuUJUz69FI914/Na1291ZU5DGB6t/h/fMf+U68n38/KE/nDIhndenHa28b5CQAA//8V15Jb)
@@ -584,7 +587,7 @@ Output:
 test.yaml:8:23: property "cache" is not defined in object type {} [expression]
   |
 8 |       - run: echo ${{ steps.cache.outputs.cache-hit }}
-  |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  |                       ^~~~~~~~~~~
 test.yaml:18:23: property "cache_hit" is not defined in object type {cache-hit: string} [expression]
    |
 18 |       - run: echo ${{ steps.cache.outputs.cache_hit }}
@@ -876,7 +879,7 @@ Output:
 test.yaml:16:24: property "prepare" is not defined in object type {} [expression]
    |
 16 |       - run: echo '${{ needs.prepare.outputs.prepared }}'
-   |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                        ^~~~~~~~~~~~~
 test.yaml:26:24: property "foo" is not defined in object type {installed: string} [expression]
    |
 26 |       - run: echo '${{ needs.install.outputs.foo }}'
@@ -888,7 +891,7 @@ test.yaml:28:24: property "some_job" is not defined in object type {install: {ou
 test.yaml:33:24: property "build" is not defined in object type {} [expression]
    |
 33 |       - run: echo '${{ needs.build.outputs.built }}'
-   |                        ^~~~~~~~~~~~~~~~~~~~~~~~~
+   |                        ^~~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNqkkd1KxDAQhe/7FIdF2BubB8iriEhrRtOlJqEzwYul7y6Tzaaoi4q9KHQ6P985pzFYpMy+O8WRbQdMgWWYZ30FYpaUhS9F65GzOBhjDuXzkgP3eiaPOUju50GIpbRYKLXlXict6NlHHOslcHwj8VN4PXZAWigNC91E195+sl7R5zP629jd+YxA5NhUsqmCrrXDuurmmKfZXUhl3uKhmru/in68ZUj3ZLebQt+s4H0Sj017VdK0tx+IdcUQHP5s84eAvkJeYvx9SSU/neJYJ6N4Wuz/c9gOl0SalpKyMj4CAAD//41M6vc=)
@@ -929,11 +932,11 @@ Output:
 test.yaml:13:17: "object" value cannot be compared to "string" value with "==" operator [expression]
    |
 13 |         if: ${{ github.event == 'workflow_call' }}
-   |                 ^~~~~~~~~~~~
+   |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 test.yaml:16:17: "bool" value cannot be compared to "number" value with ">" operator [expression]
    |
 16 |         if: ${{ inputs.timeout > 60 }}
-   |                 ^~~~~~~~~~~~~~
+   |                 ^~~~~~~~~~~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNpsj81KwDAQhO99ihGEnFo8eQjUV5Gmbtto3C3NxiIl7y7pH4jednc+ZmaFbQWssnwMQdbXvguhHADPc9J4zID6T5Kk1wro90wWTiRQx1X1Lm5nleIJLYljLWyRXGJNdeiKtktRab6d60JaUD8JTImntwdzx/jB4nHbMHqdkmvoi1jRtjC/Ghvk/J/d2Ro+QkUQhMe/1sejzcW+4PkJOf8EAAD//0dGU1w=)
@@ -955,6 +958,72 @@ There are some additional surprising behaviors, but actionlint allows them not t
 - `'0' == false` and `0 == false` are true due to the same reason as above
 - Objects and arrays are only considered equal when they are the same instance
 
+<a id="check-executable-bit"></a>
+
+## Executable bits on repository scripts
+
+Example input:
+
+```yaml
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: ./bad.sh # ERROR: tracked with Git mode 100644
+```
+
+Output:
+
+<!-- Skip update output -->
+
+```console
+test.yaml:7:14: script "bad.sh" is executed directly but its Git index mode is 100644 (not executable); commit an executable bit with git update-index --chmod=+x, or invoke its interpreter explicitly [executable-bit]
+```
+
+<!-- Skip playground link -->
+
+This example requires `bad.sh` in the repository's Git index with mode `100644`.
+The `executable-bit` rule reads index modes, so it also works when actionlint runs
+on Windows and checks workflows targeting Linux or macOS. It requires Git and a
+detected local repository, but does not require ShellCheck. Missing Git, untracked
+files, unresolved merge entries, symlinks and submodules do not produce findings.
+
+Either commit the executable bit with `git update-index --chmod=+x bad.sh`, run
+`bash bad.sh` instead, or set permissions in the workflow before invoking the
+script. A literal `chmod` of an indexed regular file in an earlier step or command
+invalidates the index mode for that path. Missing or untracked operands leave
+subsequent execution uncertain. See GitHub's [Adding scripts to your workflow][workflow-scripts-doc].
+
+The rule shares the [run-directory resolver](config.md#shellcheck). It follows
+step, job and workflow working-directory defaults, and recognizes a literal `cd`
+within a step. The next step starts from its own configured working directory.
+A self checkout establishes the repository location; a static checkout `path`
+is supported, including calls such as `./source/bad.sh` from the workspace root.
+
+Detection is deliberately conservative. It checks direct literal calls in plain
+Bash or sh steps on recognized GitHub-hosted Linux/macOS runners after a self checkout.
+Literal script operands to `exec` and `command` are also checked, with an optional
+`--` separator; other options and lookup-only forms such as `command -v` are skipped.
+Self-hosted and grouped runners may retain repository settings from previous jobs.
+Reusable workflows may check out a different caller repository, so their local
+index modes are not assumed to match the runner. Steps that can run after failure,
+such as `if: always()`, cannot assume checkout completed successfully.
+Alternate checkout refs/repositories, containers, dynamic expressions, custom shells,
+shell startup environment settings, parallel/background steps and unsupported
+shell control flow are skipped. Earlier opaque actions or commands may change
+permissions, replace files or change Git settings, so subsequent calls in that
+job are skipped. A later checkout cannot guarantee that working-tree modes match
+the index when `core.fileMode` has changed. Interpreter and source calls do not require an executable
+bit on their argument. Shell syntax is parsed without executing any script.
+
+Referenced local composite actions are checked too, including nested calls.
+Their scripts use the caller's checkout and permission state, but their own
+shell and working directory. Findings point to `action.yml` or `action.yaml`.
+Remote action contents are not downloaded for these checks.
+
+[workflow-scripts-doc]: https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/add-scripts
 <a id="check-shellcheck-integ"></a>
 
 ## [shellcheck][shellcheck] integration for `run:`
@@ -1006,40 +1075,34 @@ line 1, column 6 relative to the script of the `run:` section. When that script 
 source, actionlint reports and underlines the offending range there. This mapping is supported for plain scalars and literal
 blocks. Other scalar forms, such as folded blocks, fall back to reporting the `run:` key when an exact mapping is not safe.
 
-actionlint remembers the default shell and checks what OS the job runs on. Only when the shell is `bash` or `sh`, actionlint
-applies shellcheck to scripts.
+actionlint applies ShellCheck to recognized `bash`, `sh`, `dash`, and `ksh` interpreters, including executable paths and
+supported custom shell templates. A leading `# shellcheck shell=...` directive can select a supported dialect explicitly.
 
 By default, actionlint checks if `shellcheck` command exists in your system and uses it when it is found. The `-shellcheck`
 option on running `actionlint` command takes a command line: a command name, a file path, or a command with flags such as
 `-shellcheck 'shellcheck -e SC2086'`. Those arguments are prepended to the ones actionlint appends itself, so `-f`/`--format`
 and file arguments must not be passed. Setting empty string by `shellcheck=` disables shellcheck integration explicitly.
 
-actionlint runs shellcheck with `--norc`, so a repository `.shellcheckrc` is never read and changing it has no effect. Pass
-the options through `-shellcheck '<command line>'` or the `SHELLCHECK_OPTS` environment variable described below instead.
+By default, actionlint passes `--norc` to disable rc-file discovery. Set
+[`tools.shellcheck.config`](config.md#shellcheck) to inline settings, an rc-file path, or a directory containing
+`.shellcheckrc` or `shellcheckrc`. Selecting an rc file replaces `--norc` with `--rcfile`; relative config paths resolve from
+the selected actionlint configuration file's directory. Additional options can use `-shellcheck '<command line>'` or the
+`SHELLCHECK_OPTS` environment variable described below.
 
 Since both `${{ }}` expression syntax and ShellScript's variable access `$FOO` use `$`, the remaining `${{ }}` confuses
 shellcheck. To avoid it, actionlint replaces `${{ }}` with underscores. For example `echo '${{ matrix.os }}'` is replaced
 with `echo '________________'`.
 
-Some shellcheck rules conflict with the `${{ }}` expression syntax. To avoid errors due to the syntax, [SC1091][SC1091], [SC2050][SC2050],
-[SC2194][SC2194], [SC2154][SC2154], [SC2157][SC2157], [SC2043][SC2043] are disabled.
+actionlint disables [SC2050][SC2050], [SC2194][SC2194], [SC2157][SC2157] and [SC2043][SC2043] because expression
+placeholders can trigger them. It also disables [SC1091][SC1091] because sourced files may exist only on the runner,
+and [SC2153][SC2153] and [SC2154][SC2154] because workflow environment variables can be supplied externally.
+These exclusions still apply when optional checks are enabled through configuration, directives or command-line options.
 
-When what shell is used cannot be determined statically, actionlint assumes `shell: bash` optimistically. For example,
-
-```yaml
-strategy:
-  matrix:
-    os: [ubuntu-latest, macos-latest, windows-latest]
-runs-on: ${{ matrix.os }}
-steps:
-  - name: Show file content
-    run: Get-Content -Path xxx\yyy.txt
-    if: ${{ matrix.os == 'windows-latest' }}
-```
-
-The 'Show file content' script is only run by `pwsh` due to `matrix.os == 'windows-latest'` guard. However, actionlint does not
-know that. It checks the script with shellcheck and it'd probably cause a false-positive (due to file separator). This kind of
-false positives can be avoided by showing the shell name explicitly. It is also better in terms of maintenance of the workflow.
+When an explicit shell expression cannot be resolved, or a custom wrapper's script language cannot be inferred, actionlint
+skips ShellCheck unless a leading native `shell` directive selects a supported dialect. Global dialect settings and command
+flags alone do not select unknown or non-shell scripts. If no shell is configured and the runner platform is unknown,
+actionlint still assumes Bash. Set `shell:` explicitly to identify the interpreter, for example for a step guarded by a
+matrix value:
 
 ```yaml
 - name: Show file content
@@ -1067,80 +1130,6 @@ On GitHub Actions:
   env:
     SHELLCHECK_OPTS: --exclude=SC2129
 ```
-
-<a id="check-pyflakes-integ"></a>
-
-## [pyflakes][pyflakes] integration for `run:`
-
-Example input:
-
-```yaml
-on: push
-jobs:
-  linux:
-    runs-on: ubuntu-latest
-    steps:
-      # Yay! No error
-      - run: print('${{ runner.os }}')
-        shell: python
-      # ERROR: Undefined variable
-      - run: print(hello)
-        shell: python
-  linux2:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        # Run script with Python by default
-        shell: python
-    steps:
-      - run: |
-          import sys
-          for sys in ['system1', 'system2']:
-            print(sys)
-      - run: |
-          from time import sleep
-          print(100)
-```
-
-Output:
-
-```console
-test.yaml:10:9: pyflakes reported issue in this script: 1:7: undefined name 'hello' [pyflakes]
-   |
-10 |       - run: print(hello)
-   |         ^~~~
-test.yaml:19:9: pyflakes reported issue in this script: 2:5: import 'sys' from line 1 shadowed by loop variable [pyflakes]
-   |
-19 |       - run: |
-   |         ^~~~
-test.yaml:23:9: pyflakes reported issue in this script: 1:1: 'time.sleep' imported but unused [pyflakes]
-   |
-23 |       - run: |
-   |         ^~~~
-```
-
-<!-- Skip playground link -->
-
-Python script can be written in `run:` when `shell: python` is configured.
-
-[pyflakes][pyflakes] is a famous linter for Python. It is suitable for linting small code like scripts at `run:` since it focuses
-on finding mistakes (not a code style issue) and tries to make false positives as minimal as possible. Install pyflakes
-by `pip install pyflakes`.
-
-actionlint runs pyflakes for scripts at `run:` steps in a workflow and reports errors found by pyflakes. actionlint detects
-Python scripts in a workflow by checking `shell: python` at each step and `defaults:` configurations at workflows and jobs.
-
-By default, actionlint checks if `pyflakes` command exists in your system and uses it when found. The `-pyflakes` option
-of `actionlint` command takes a command line: a command name, a file path, or a command with flags such as
-`-pyflakes 'python3 -m pyflakes'`. Setting empty string by `pyflakes=` disables pyflakes integration explicitly.
-
-pyflakes has no configuration file, no exclusion flag, and no `# noqa` support, so there is no pyflakes-side way to silence
-a single finding. Suppress it on the actionlint side with the `-ignore` option or the `ignore:` list under `paths:` in
-[the configuration file](config.md).
-
-Since both `${{ }}` expression syntax is invalid as Python, remaining `${{ }}` might confuse pyflakes. To avoid it,
-actionlint replaces `${{ }}` with underscores. For example `print('${{ matrix.os }}')` is replaced with
-`print('________________')`.
 
 <a id="untrusted-inputs"></a>
 
@@ -1190,7 +1179,7 @@ test.yaml:19:36: "github.event.head_commit.author.name" is potentially untrusted
 test.yaml:22:31: object filter extracts potentially untrusted properties "github.event.comment.body", "github.event.discussion.body", "github.event.issue.body", "github.event.pull_request.body", "github.event.review.body", "github.event.review_comment.body". avoid using the value directly in inline scripts. instead, pass the value through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]
    |
 22 |         run: echo '${{ toJSON(github.event.*.body) }}'
-   |                               ^~~~~~~~~~~~~~~~~~~~
+   |                               ^~~~~~~~~~~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNqEkUFr20AQhe/+FQ9RsFMqtT12QyGHltIGkkByCyGs1xPv1qsddWfWoQT/97KSMXGL6UmM5s33np6S7cngjkRnnAyGEuNjpl+lvpj95KWYGaAkWp9ALknaKizLkrS00dbduBKlQSYV0GIC3+SQdKRiT4UGjbSXjUADcp4xf/PygnVQX5YdbSlp9zpMN55ht5sfHIqQGFingZO8F7WRLrYfPxzQz0G9OUxApoFb5Q0lg+ol5DKpdHfXl1+vsNu9ko6wdshtTyJ2TdPB/8Ph2QpcZKHViZgToxWXw6AX208n004KA8dJOFIXeb34tyJPdvXouO+Ddrao59zV4mtPZ3/9im+kqEpKKqfqV/5xe321OLJ42y159fvsqPqJ+IUh3JP6kNZjfjhPblMn2YTh2CQ84R5NNXGc1IYki9N97j9lrPUd5ve3l99vHuY1Q4PPaDQXavBwDvWUpvhNdWzO8RT+BAAA//8/bORw)
@@ -1582,11 +1571,11 @@ test.yaml:33:24: property "massage" is not defined in object type {age: number; 
 test.yaml:35:28: property access of object must be type of string but got "bool" [expression]
    |
 35 |       - run: echo "${{ env[inputs.verbose] }}"
-   |                            ^~~~~~~~~~~~~~~
+   |                            ^~~~~~~~~~~~~~
 test.yaml:37:28: property access of object must be type of string but got "number" [expression]
    |
 37 |       - run: echo "${{ env[inputs.age] }}"
-   |                            ^~~~~~~~~~~
+   |                            ^~~~~~~~~~
 test.yaml:39:24: property "massage" is not defined in object type {age: string; id: string; kind: string; message: string; name: string; verbose: string} [expression]
    |
 39 |       - run: echo "${{ github.event.inputs.massage }}"
@@ -1917,8 +1906,8 @@ Action needs to be specified in a format defined in [the document][action-uses-d
 
 actionlint checks values at `uses:` sections follow one of these formats.
 
-The `$/` form has extra constraints. Leading slashes after the prefix are stripped, so `$//path/to/my-action` and
-`$/path/to/my-action` name the same action, and a value consisting of `$/` followed by nothing but slashes is a format error.
+Leading slashes after the `$/` prefix are stripped, so `$//path/to/my-action` and `$/path/to/my-action` name the same action.
+For actions, `$/`, `$//`, and `$///` refer to the repository root. Reusable workflow calls still require a workflow file path.
 What the path is relative to depends on where the `uses:` is written: a step in a workflow resolves against the workflow's
 repository at the running commit, and a step in a composite action resolves against the repository and ref that action was
 loaded from. The runner also needs its `actions_self_repository` feature flag enabled; when it is off the job fails during
@@ -1926,7 +1915,7 @@ Setup Job with an unhandled exception instead of a workflow annotation.
 
 Note that actionlint does not report any error when a directory for a local action does not exist in the repository because it is
 a common case where the action is managed in a separate repository and the action directory is cloned at running the workflow.
-(See [#25][issue-25] and [#40][issue-40] for more details).
+(See rhysd/actionlint#25 and rhysd/actionlint#40 for more details).
 
 <a id="check-local-action-inputs"></a>
 
@@ -3043,23 +3032,23 @@ Output:
 test.yaml:6:16: context "env" is not allowed here. no context is available here. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
   |
 6 |     shell: ${{ env.SHELL }}
-  |                ^~~~~~~~~
+  |                ^~~
 test.yaml:16:17: context "runner" is not allowed here. available contexts are "github", "inputs", "needs", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
    |
 16 |           - ${{ runner.temp }}
-   |                 ^~~~~~~~~~~
+   |                 ^~~~~~
 test.yaml:24:16: context "env" is not allowed here. available contexts are "github", "inputs", "matrix", "needs", "secrets", "strategy", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
    |
 24 |       FOO: ${{ env.BAR }}
-   |                ^~~~~~~
+   |                ^~~
 test.yaml:30:20: context "env" is not allowed here. no context is available here. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
    |
 30 |         shell: ${{ env.SHELL}}
-   |                    ^~~~~~~~~~~
+   |                    ^~~
 test.yaml:32:33: calling function "success" is not allowed here. "success" is only available in "jobs.<job_id>.if", "jobs.<job_id>.steps.if", "jobs.<job_id>.snapshot.if". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
    |
 32 |         run: echo 'Success? ${{ success() }}'
-   |                                 ^~~~~~~~~
+   |                                 ^~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNp8j81qwzAQhO96ijkU0h6cB/CltNDSQyDQPIHtrGO3imT2J2kIfvciJ45NIT2J0Xy7MxtDjs6kcW5LdWFeJXcAW0gPIA15n+PhfAaFw3Lz8bZaoe+d+4rlQCqJXlHlQml3uihgXyi3P6MCti1TpZFP0xeQDat3rTZWLo+Rv2sfjyngL8IWAvFSad+NNluQLPW30oJa5otUZrDmt1zRKfXeTcmjcBjB9/V6gl5fPkdElLrb4mw+8d/UveCZnUqCqiZisbGqIpHngZWLeHxC3y9udFvnk/MbAAD//3L9fcg=)
@@ -3107,10 +3096,10 @@ jobs:
 Output:
 
 ```console
-test.yaml:8:14: workflow command "set-output" was deprecated. use `echo "{name}={value}" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]
+test.yaml:8:22: workflow command "set-output" was deprecated. use `echo "{name}={value}" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]
   |
 8 |       - run: echo '::set-output name=foo::bar'
-  |              ^~~~
+  |                      ^~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNpsyjGOgzAQRuGeU/yyVqLyBUaCYpvdrVgpUEc2GUIi4kH2TM4fOWmpXvE+SYTdyto0d4mFGkC5aC2QLRVfgUVLan4L9b1XUd7LRwG+SgLPq6AlKqxeTHdTpPDgbhEhiiG3B9wtIl0M2aHv4b5+/sbf6fs8TOP/NLojT3ThaFeiEyt0ZQyzyhwUz5BvIW7sXgEAAP//zI0+6A==)
@@ -3166,7 +3155,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:9:13: constant expression "false" in condition. remove the if: section [if-cond]
+test.yaml:9:13: constant expression "false" in condition is always falsy. this step or job will be skipped [if-cond]
   |
 9 |         if: false
   |             ^~~~~
@@ -3186,9 +3175,12 @@ test.yaml:29:13: if: condition "${{ github.event_name == 'push' }} && ${{ github
 
 [Playground](https://kjanat.github.io/actionlint/#eNq0zz1OxDAQBeA+p3hYyK7CASxtw484ATVyYEKM1vZqZ0yz+O7Iy18iohBAVFH03nwzTtFil3lomsfUsW0AIZb6BfY5clsLuctRcrt1NTtGLLTj1xbQ1qYF3Q0J6vLq/Ob6BKeHAx68DLk7oyeKchtdIJSi3mYA31v0bss0o5iLFIIXeD4eR/dmMjaPbzYwtW1Qys/N548/LNl/g//jcPU9CrWGhSQE5+OUX5K1fo/31H+GY+QXG1e8R+tx6+tylPISAAD//9rl1qA=)
 
-actionlint reports constant conditions at `if:` like `if: true` as error because they are usually leftover debug code like
-`#if 0` in C. `if: true` should be removed because it doesn't affect the workflow behavior. `if: false` should be replaced with
-commenting out because it is more obvious (or simply remove the step or job if not needed).
+actionlint reports conditions whose outcome is provably constant. Removing `if: true`
+preserves the default success gate. An always-false condition skips the guarded work;
+removing it would enable that work. The diagnostic therefore does not suggest removal
+for false conditions. Blank and YAML-null conditions use `success()`. A sole string
+literal expression is folded and parsed as condition source; computed strings remain
+values. See [expression behavior](expression-behavior.md#condition-source-is-different-from-a-computed-string).
 
 In addition, evaluation of `${{ }}` at `if:` condition is tricky. When the expression in `${{ }}` is evaluated to boolean value
 and there is no extra characters around the `${{ }}`, the condition is evaluated to the boolean value. Otherwise the condition is
@@ -3589,10 +3581,10 @@ test.yaml:9:14: could not parse as YAML: unknown anchor 'credentials' referenced
 [SC2050]: https://github.com/koalaman/shellcheck/wiki/SC2050
 [SC2194]: https://github.com/koalaman/shellcheck/wiki/SC2194
 [SC2154]: https://github.com/koalaman/shellcheck/wiki/SC2154
+[SC2153]: https://github.com/koalaman/shellcheck/wiki/SC2153
 [SC2157]: https://github.com/koalaman/shellcheck/wiki/SC2157
 [SC2043]: https://github.com/koalaman/shellcheck/wiki/SC2043
 [shellcheck-env-var]: https://github.com/koalaman/shellcheck/wiki/Integration#environment-variables
-[pyflakes]: https://github.com/PyCQA/pyflakes
 [expr-doc]: https://docs.github.com/en/actions/learn-github-actions/expressions
 [contexts-doc]: https://docs.github.com/en/actions/learn-github-actions/contexts
 [funcs-doc]: https://docs.github.com/en/actions/learn-github-actions/expressions#functions

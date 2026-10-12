@@ -7,10 +7,38 @@ type ExprNode interface {
 	Token() *Token
 }
 
+// ExprSpan is a half-open byte range in the expression's decoded source.
+// Line and Column identify Start using one-based coordinates.
+type ExprSpan struct {
+	Start, End   int
+	Line, Column int
+}
+
+type exprNodeSpan struct{ span ExprSpan }
+
+// Span returns the source range retained by the expression parser.
+func (n *exprNodeSpan) Span() ExprSpan { return n.span }
+
+func (n *exprNodeSpan) setSpan(span ExprSpan) { n.span = span }
+
+func expressionSpan(node ExprNode) ExprSpan {
+	if n, ok := node.(interface{ Span() ExprSpan }); ok {
+		if span := n.Span(); span.Line != 0 {
+			return span
+		}
+	}
+	t := node.Token()
+	if t == nil {
+		return ExprSpan{}
+	}
+	return ExprSpan{t.Offset, t.Offset + len(t.Value), t.Line, t.Column}
+}
+
 // Variable
 
 // VariableNode is node for variable access.
 type VariableNode struct {
+	exprNodeSpan
 	// Name is name of the variable
 	Name string
 	tok  *Token
@@ -25,6 +53,7 @@ func (n *VariableNode) Token() *Token {
 
 // NullNode is node for null literal.
 type NullNode struct {
+	exprNodeSpan
 	tok *Token
 }
 
@@ -35,6 +64,7 @@ func (n *NullNode) Token() *Token {
 
 // BoolNode is node for boolean literal, true or false.
 type BoolNode struct {
+	exprNodeSpan
 	// Value is value of the boolean literal.
 	Value bool
 	tok   *Token
@@ -47,6 +77,7 @@ func (n *BoolNode) Token() *Token {
 
 // IntNode is node for integer literal.
 type IntNode struct {
+	exprNodeSpan
 	// Value is value of the integer literal.
 	Value int
 	tok   *Token
@@ -59,6 +90,7 @@ func (n *IntNode) Token() *Token {
 
 // FloatNode is node for float literal.
 type FloatNode struct {
+	exprNodeSpan
 	// Value is value of the float literal.
 	Value float64
 	tok   *Token
@@ -71,6 +103,7 @@ func (n *FloatNode) Token() *Token {
 
 // StringNode is node for string literal.
 type StringNode struct {
+	exprNodeSpan
 	// Value is value of the string literal. Escapes are resolved and quotes at both edges are
 	// removed.
 	Value string
@@ -86,6 +119,7 @@ func (n *StringNode) Token() *Token {
 
 // ObjectDerefNode represents property dereference of object like 'foo.bar'.
 type ObjectDerefNode struct {
+	exprNodeSpan
 	// Receiver is an expression at receiver of property dereference.
 	Receiver ExprNode
 	// Property is a name of property to access.
@@ -99,6 +133,7 @@ func (n ObjectDerefNode) Token() *Token {
 
 // ArrayDerefNode represents elements dereference of arrays like '*' in 'foo.bar.*.piyo'.
 type ArrayDerefNode struct {
+	exprNodeSpan
 	// Receiver is an expression at receiver of array element dereference.
 	Receiver ExprNode
 }
@@ -111,6 +146,7 @@ func (n ArrayDerefNode) Token() *Token {
 // IndexAccessNode is node for index access, which represents dynamic object property access or
 // array index access.
 type IndexAccessNode struct {
+	exprNodeSpan
 	// Operand is an expression at operand of index access, which should be array or object.
 	Operand ExprNode
 	// Index is an expression at index, which should be integer or string.
@@ -126,6 +162,7 @@ func (n *IndexAccessNode) Token() *Token {
 
 // NotOpNode is node for unary ! operator.
 type NotOpNode struct {
+	exprNodeSpan
 	// Operand is an expression at operand of ! operator.
 	Operand ExprNode
 	tok     *Token
@@ -182,6 +219,7 @@ func (kind CompareOpNodeKind) String() string {
 
 // CompareOpNode is node for binary expression to compare values; ==, !=, <, <=, > or >=.
 type CompareOpNode struct {
+	exprNodeSpan
 	// Kind is a kind of this expression to show which operator is used.
 	Kind CompareOpNodeKind
 	// Left is an expression for left hand side of the binary operator.
@@ -220,6 +258,7 @@ func (k LogicalOpNodeKind) String() string {
 
 // LogicalOpNode is node for logical binary operators; && or ||.
 type LogicalOpNode struct {
+	exprNodeSpan
 	// Kind is a kind to show which operator is used.
 	Kind LogicalOpNodeKind
 	// Left is an expression for left hand side of the binary operator.
@@ -236,6 +275,7 @@ func (n *LogicalOpNode) Token() *Token {
 // FuncCallNode represents function call in expression.
 // Note that currently only calling builtin functions is supported.
 type FuncCallNode struct {
+	exprNodeSpan
 	// Callee is a name of called function. This is string value because currently only built-in
 	// functions can be called.
 	Callee string

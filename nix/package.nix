@@ -3,21 +3,22 @@
   buildGoModule,
   installShellFiles,
   makeWrapper,
-  git,
+  gitMinimal,
   bash,
-  zsh,
-  fish,
   pandoc,
   shellcheck,
-  python3Packages,
+  ruff,
   src,
   version,
 }:
 
+let
+  completionTests = "TestCompletionShellBehaviour|TestCompletionScriptSyntax";
+in
 buildGoModule {
   pname = "actionlint";
   inherit src version;
-  vendorHash = "sha256-PVEf1pJvwQu/2dFS0YhWoXahnTqvqmRdYjVfujjs04k=";
+  vendorHash = "sha256-PLGu5fjEJWFNHV6MD05kGr1ZClQJIDkqr5VcJaW1GLc=";
   subPackages = [ "cmd/actionlint" ];
 
   env.CGO_ENABLED = 0;
@@ -34,18 +35,16 @@ buildGoModule {
     pandoc
   ];
   nativeCheckInputs = [
-    git
+    gitMinimal
     bash
-    zsh
-    fish
     shellcheck
-    python3Packages.pyflakes
+    ruff
   ];
 
   checkPhase = ''
     runHook preCheck
     export GOFLAGS=''${GOFLAGS//-trimpath/}
-    go test ./...
+    go test -skip '^(${completionTests})$' . ./cmd/... ./fuzz ./internal/...
     runHook postCheck
   '';
 
@@ -59,13 +58,16 @@ buildGoModule {
       --zsh <("$out/bin/actionlint" -completion zsh) \
       --fish <("$out/bin/actionlint" -completion fish)
     install -Dm644 actionlint.schema.json "$out/share/actionlint/actionlint.schema.json"
+    cp -r schemas "$out/share/actionlint/"
     wrapProgram "$out/bin/actionlint" --prefix PATH : ${
       lib.makeBinPath [
         shellcheck
-        python3Packages.pyflakes
+        ruff
       ]
     }
   '';
+
+  passthru = { inherit completionTests; };
 
   meta = {
     description = "Static checker for GitHub Actions workflow files";

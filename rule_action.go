@@ -333,13 +333,10 @@ func isImageOnDockerRegistry(image string) bool {
 
 func selfRepositoryUsesLocalSpec(spec string) (string, bool) {
 	p, ok := strings.CutPrefix(spec, "$/")
-	if !ok {
+	if !ok || strings.ContainsRune(p, '@') {
 		return "", false
 	}
 	p = strings.TrimLeft(p, "/")
-	if p == "" {
-		return "", false
-	}
 	return "./" + p, true
 }
 
@@ -348,17 +345,20 @@ func selfRepositoryUsesLocalSpec(spec string) (string, bool) {
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
 type RuleAction struct {
 	RuleBase
-	cache *LocalActionsCache
+	cache      *LocalActionsCache
+	validation *actionMetadataValidation
 }
 
 // NewRuleAction creates new RuleAction instance.
 func NewRuleAction(cache *LocalActionsCache) *RuleAction {
+	validation := newActionMetadataValidation()
+	if cache != nil && cache.validation != nil {
+		validation = cache.validation
+	}
 	return &RuleAction{
-		RuleBase: RuleBase{
-			name: "action",
-			desc: "Checks for popular actions released on GitHub, local actions, and action calls at \"uses:\"",
-		},
-		cache: cache,
+		RuleBase:   builtinRuleBase("action"),
+		cache:      cache,
+		validation: validation,
 	}
 }
 
@@ -387,7 +387,7 @@ func (rule *RuleAction) VisitStep(n *Step) error {
 		// Normalize it to the existing local path form so metadata and output validation still work.
 		local, ok := selfRepositoryUsesLocalSpec(spec)
 		if !ok {
-			rule.invalidActionFormat(e.Uses.Pos, spec, "path is missing")
+			rule.invalidActionFormat(e.Uses.Pos, spec, "self-repository references do not support an '@ref' suffix")
 			return nil
 		}
 		rule.checkLocalAction(local, spec, e)
@@ -531,9 +531,9 @@ func (rule *RuleAction) checkLocalCompositeActionRuns(meta *ActionMetadata, pos 
 			id := s.id.Value
 			switch {
 			case !jobIDPattern.MatchString(id) || len(id) >= 100 || strings.HasPrefix(id, "__"):
-				rule.compositeStepErrorfAt(meta, i, s.id.Line, s.id.Column, "has invalid ID %q; IDs must start with a letter or _, contain only alphanumeric characters, - or _, be shorter than 100 characters, and must not start with __", id)
+				rule.compositeStepErrorfAt(meta, i, s.id.Line, s.id.Column, nil, "has invalid ID %q; IDs must start with a letter or _, contain only alphanumeric characters, - or _, be shorter than 100 characters, and must not start with __", id)
 			case ids[strings.ToLower(id)]:
-				rule.compositeStepErrorfAt(meta, i, s.id.Line, s.id.Column, "has duplicate ID %q; step IDs are case insensitive", id)
+				rule.compositeStepErrorfAt(meta, i, s.id.Line, s.id.Column, nil, "has duplicate ID %q; step IDs are case insensitive", id)
 			}
 			ids[strings.ToLower(id)] = true
 		}
@@ -545,32 +545,53 @@ func (rule *RuleAction) checkLocalCompositeActionRuns(meta *ActionMetadata, pos 
 // compositeStepErrorf reports an error at the step's own position in the action metadata file
 // instead of at the "uses" site in the workflow being linted.
 func (rule *RuleAction) compositeStepErrorf(meta *ActionMetadata, s *ActionCompositeStep, idx int, format string, args ...any) {
-	rule.compositeStepErrorfAt(meta, idx, s.Line, s.Column, format, args...)
+	rule.compositeStepErrorfAt(meta, idx, s.Line, s.Column, nil, format, args...)
 }
 
-// compositeStepErrorfAt is compositeStepErrorf with an explicit position, used to point at a
-// specific key's value inside the step.
-func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, idx, line, col int, format string, args ...any) {
+// compositeStepErrorfAt reports a position inside the step, with an optional exclusive end.
+func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, idx, line, col int, end *Pos, format string, args ...any) {
 	m := fmt.Sprintf(format, args...)
-	err := errorAt(&Pos{Line: line, Col: col}, rule.name, fmt.Sprintf(`step %d in "runs.steps" section in metadata of %q action %s`, idx+1, meta.Name, m))
+	err := errorAt(&Pos{Line: line, Col: col}, rule.name, fmt.Sprintf(`"runs.steps[%d]" in metadata of %q action %s`, idx, meta.Name, m))
 	err.Filepath = meta.Path()
 	err.source = meta.src
+	err.endPosition = end
+	if idx >= 0 && idx < len(meta.Runs.Steps) {
+		step := meta.Runs.Steps[idx]
+		origin := &diagnosticIgnoreOrigin{}
+		if step.id != nil {
+			origin.stepID = step.id.Value
+		}
+		if step.StepName != nil {
+			origin.stepName = step.StepName.Value
+		}
+		if step.Uses != nil {
+			origin.uses = *step.Uses
+		}
+		for _, value := range []*string{&origin.stepID, &origin.stepName, &origin.uses} {
+			if literal := literalExpressionValue(*value); literal != nil {
+				*value = *literal
+			}
+		}
+		err.ignoreOrigin = origin
+	}
 	rule.errs = append(rule.errs, err)
 }
 
-// metadataErrorfAt reports an error at an explicit position inside the action metadata file
-// instead of at the "uses" site in the workflow being linted.
-func (rule *RuleAction) metadataErrorfAt(meta *ActionMetadata, line, col int, format string, args ...any) {
+// metadataErrorfAt reports inside the action metadata, with an optional exclusive end.
+func (rule *RuleAction) metadataErrorfAt(meta *ActionMetadata, line, col int, end *Pos, format string, args ...any) {
 	err := errorfAt(&Pos{Line: line, Col: col}, rule.name, format, args...)
 	err.Filepath = meta.Path()
 	err.source = meta.src
+	err.endPosition = end
+	err.ignoreOrigin = &diagnosticIgnoreOrigin{metadata: true}
 	rule.errs = append(rule.errs, err)
 }
 
 func (rule *RuleAction) checkActionInputDefaults(meta *ActionMetadata) {
 	const field = "inputs.*.default"
 	for _, kv := range meta.InputDefaults {
-		for _, v := range actionExpressionViolations(kv.Value.Value, false, field) {
+		for _, v := range actionExpressionViolationsWithInputs(kv.Value.Value, false, field, meta.Inputs) {
+			pos := metadataExpressionPosition(meta, &kv.Value, v.offset)
 			message := v.message
 			if v.context != "" {
 				message = fmt.Sprintf(
@@ -579,7 +600,7 @@ func (rule *RuleAction) checkActionInputDefaults(meta *ActionMetadata) {
 				)
 			}
 			rule.metadataErrorfAt(
-				meta, kv.Value.Line, kv.Value.Column,
+				meta, pos.Line, pos.Col, metadataExpressionEndPosition(meta, &kv.Value, v),
 				`default value of input %q in metadata of %q action %s`, kv.Name, meta.Name, message,
 			)
 		}
@@ -630,6 +651,8 @@ func (rule *RuleAction) checkCompositeActionStep(meta *ActionMetadata, s *Action
 			rule.compositeStepErrorf(meta, s, idx, `must have a string value at "uses" key`)
 		} else if *s.Uses == "" {
 			rule.compositeStepErrorf(meta, s, idx, `has empty "uses" value`)
+		} else if strings.HasPrefix(*s.Uses, "$/") && strings.ContainsRune(*s.Uses, '@') {
+			rule.compositeStepErrorf(meta, s, idx, `self-repository references do not support an '@ref' suffix at "uses" key`)
 		} else if u, _, _ := strings.Cut(*s.Uses, "@"); strings.HasSuffix(u, ".yml") || strings.HasSuffix(u, ".yaml") {
 			rule.compositeStepErrorf(meta, s, idx, `cannot call reusable workflow %q at "uses" key`, *s.Uses)
 		}
@@ -649,15 +672,17 @@ func (rule *RuleAction) checkCompositeActionStepExprs(meta *ActionMetadata, s *A
 		if v == nil {
 			return
 		}
-		for _, violation := range actionExpressionViolations(v.Value, bare, "runs.steps.*."+field) {
+		for _, violation := range actionExpressionViolationsWithInputs(v.Value, bare, "runs.steps.*."+field, meta.Inputs) {
+			pos := metadataExpressionPosition(meta, v, violation.offset)
+			end := metadataExpressionEndPosition(meta, v, violation)
 			if ctx := violation.context; ctx != "" {
 				rule.compositeStepErrorfAt(
-					meta, idx, v.Line, v.Column,
+					meta, idx, pos.Line, pos.Col, end,
 					`uses context %q at %q key which is not available in a composite action. %s`,
 					ctx, key, compositeStepContextHint(ctx),
 				)
 			} else {
-				rule.compositeStepErrorfAt(meta, idx, v.Line, v.Column, `%s at %q key`, violation.message, key)
+				rule.compositeStepErrorfAt(meta, idx, pos.Line, pos.Col, end, `%s at %q key`, violation.message, key)
 			}
 		}
 	}
@@ -824,19 +849,23 @@ func (rule *RuleAction) checkLocalActionMetadata(meta *ActionMetadata, action *E
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-action-in-the-same-repository-as-the-workflow
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
 func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *ExecAction) {
-	meta, cached, err := rule.cache.FindMetadata(localSpec)
+	if strings.HasPrefix(displaySpec, "$/") {
+		localSpec = displaySpec
+	}
+	meta, _, err := rule.cache.FindMetadata(localSpec)
 	if err != nil {
-		rule.Error(action.Uses.Pos, err.Error())
+		if _, unresolved := errors.AsType[unresolvedLocalActionError](err); unresolved {
+			rule.errs = append(rule.errs, errorAt(action.Uses.Pos, "missing-local-action", err.Error()))
+		} else {
+			rule.Error(action.Uses.Pos, err.Error())
+		}
 		return
 	}
 	if meta == nil {
 		return
 	}
 
-	if !cached {
-		rule.Debug("Checking metadata of %s action %q at %q", meta.Runs, meta.Name, displaySpec)
-		rule.checkLocalActionMetadata(meta, action)
-	}
+	rule.replayMetadataFindings(meta, action, displaySpec)
 
 	rule.checkAction(meta, action, func(m *ActionMetadata) string {
 		return fmt.Sprintf("%q defined at %q", m.Name, displaySpec)

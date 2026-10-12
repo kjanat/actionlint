@@ -162,6 +162,7 @@ code, pre {
   height: var(--pane-height, auto);
   min-height: 0;
 }
+
 .sidebar, .viewer {
   background: var(--panel);
   border: 1px solid var(--border);

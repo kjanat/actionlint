@@ -1,0 +1,21 @@
+name: Expression probe tests
+on:
+  push: { branches: [master] }
+  pull_request:
+  workflow_dispatch:
+permissions: { contents: read }
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version-file: .node-version }
+      - uses: kjanat/runner@b32ea932a1813ae0be44e755c16df9f9f5ca86a4 # v0.28.0
+        with: { version-file: .tool-versions }
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with: { install: false, env: false, add_shims_to_path: false }
+      - env: { MISE_TASK_RUN_AUTO_INSTALL: "false" }
+        run: run //scripts/expression-probe:test

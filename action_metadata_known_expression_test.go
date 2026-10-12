@@ -9,7 +9,13 @@ import (
 )
 
 func TestActionMetadataKnownExpressions(t *testing.T) {
-	const base = "name: audit\ndescription: audit\nruns:\n  using: composite\n  steps:\n    - uses: actions/checkout@v6\n"
+	const base = `name: audit
+description: audit
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v6
+`
 	for _, tc := range []struct {
 		name, field, value, message, path string
 	}{
@@ -22,10 +28,9 @@ func TestActionMetadataKnownExpressions(t *testing.T) {
 		{"with string", "with", `${{ 'not-a-map' }}`, "expected a mapping", "with"},
 		{"with array", "with", `${{ fromJSON('[]') }}`, "expected a mapping", "with"},
 		{"env JSON scalar", "env", `${{ fromJSON('false') }}`, "expected a mapping", "env"},
-		{"env nested array", "env", `${{ fromJSON('{"VALUE":[]}') }}`, "expected a scalar string", "env.*"},
-		{"with nested mapping", "with", `${{ fromJSON('{"value":{"nested":"value"}}') }}`, "expected a scalar string", "with.*"},
+		{"env nested array", "env", `${{ fromJSON('{"VALUE":[]}') }}`, "expected a scalar string", "env.VALUE"},
+		{"with nested mapping", "with", `${{ fromJSON('{"value":{"nested":"value"}}') }}`, "expected a scalar string", "with.value"},
 		{"env empty key", "env", `${{ fromJSON('{"":"value"}') }}`, "expected a non-empty scalar key", "env"},
-		{"env duplicate folded keys", "env", `${{ fromJSON('{"VALUE":"a","value":"b"}') }}`, `duplicate key "value"`, "env"},
 		{"continue boolean", "continue-on-error", `${{ true }}`, "", ""},
 		{"continue JSON boolean", "continue-on-error", `${{ fromJSON('false') }}`, "", ""},
 		{"continue string", "continue-on-error", `${{ 'true' }}`, "expected a boolean or expression", "continue-on-error"},
@@ -81,7 +86,7 @@ func TestActionMetadataKnownExpressions(t *testing.T) {
 				}
 				return
 			}
-			want := fmt.Sprintf("%s at %q in action metadata", tc.message, "runs.steps.*."+tc.path)
+			want := fmt.Sprintf("%s at %q in action metadata", tc.message, "runs.steps[0]."+tc.path)
 			if len(errs) != 1 || errs[0].Message != want {
 				t.Fatalf("wanted one diagnostic %q, got %v", want, errs)
 			}
@@ -89,5 +94,12 @@ func TestActionMetadataKnownExpressions(t *testing.T) {
 				t.Fatalf("diagnostic lost expression source position: %v", got)
 			}
 		})
+	}
+}
+
+func TestActionJSONMemberCollisions(t *testing.T) {
+	violations := actionExpressionViolations(`${{ fromJSON('{"VALUE":"a","value":"b"}') }}`, false, "runs.steps.*.env")
+	if len(violations) != 1 || !strings.Contains(violations[0].message, "collide under case-insensitive lookup") {
+		t.Fatal(violations)
 	}
 }

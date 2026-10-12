@@ -16,18 +16,37 @@ type actionExpressionAvailability struct {
 type actionExpressionViolation struct {
 	context string
 	message string
+	// Offsets are one-based decoded byte positions; endOffset is exclusive.
+	// Zero means the original position is unavailable after expression folding.
+	offset    int
+	endOffset int
 }
 
 // actionExpressionViolations checks availability without inventing types for caller-owned values.
 func actionExpressionViolations(s string, bare bool, field string) []actionExpressionViolation {
+	return actionExpressionViolationsWithInputs(s, bare, field, nil)
+}
+
+func actionExpressionViolationsWithInputs(s string, bare bool, field string, inputs ActionMetadataInputs) []actionExpressionViolation {
 	avail, ok := actionMetadataAvailability[field]
 	if !ok {
 		return nil
 	}
-	if bare && !strings.Contains(s, "${{") {
-		s = "${{" + s + "}}"
+	base, positionsKnown := 0, true
+	if bare && (!strings.Contains(s, "${{") || literalExpressionValue(s) != nil) {
+		if _, err, _ := parseConditionExpression(s); err != nil {
+			violation := actionExpressionViolation{message: "has an invalid expression: " + err.Message}
+			if conditionSource(s) == s {
+				violation.offset = err.Offset + 1
+				violation.endOffset = err.EndOffset + 1
+			}
+			return []actionExpressionViolation{violation}
+		}
+		folded := conditionSource(s)
+		positionsKnown = folded == s
+		s = "${{" + folded + "}}"
+		base = -3 // The synthetic opening delimiter is absent from the scalar.
 	}
-	seen := map[actionExpressionViolation]bool{}
 	var out []actionExpressionViolation
 	for {
 		i := strings.Index(s, "${{")
@@ -35,14 +54,22 @@ func actionExpressionViolations(s string, bare bool, field string) []actionExpre
 			break
 		}
 		s = s[i+3:]
+		base += i + 3
+		expressionOffset := base
 		lex := NewExprLexer(s)
 		expr, err := NewExprParser().Parse(lex)
-		if err != nil || expr == nil {
-			out = append(out, actionExpressionViolation{message: fmt.Sprintf("has an invalid expression: %v", err)})
+		if err != nil {
+			violation := actionExpressionViolation{message: "has an invalid expression: " + err.Message}
+			if positionsKnown {
+				violation.offset = expressionOffset + err.Offset + 1
+				violation.endOffset = expressionOffset + err.EndOffset + 1
+			}
+			out = append(out, violation)
 			break
 		}
 		// The lexer consumes the closing delimiter and skips delimiters inside strings.
 		s = s[lex.Offset():]
+		base += lex.Offset()
 		VisitExprNode(expr, func(node, _ ExprNode, entering bool) {
 			if !entering {
 				return
@@ -51,10 +78,33 @@ func actionExpressionViolations(s string, bare bool, field string) []actionExpre
 			switch n := node.(type) {
 			case *VariableNode:
 				if !slices.Contains(avail.contexts, strings.ToLower(n.Name)) {
-					v.context = strings.ToLower(n.Name)
+					name := strings.ToLower(n.Name)
+					var suggestion string
+					if _, declared := inputs[name]; declared && slices.Contains(avail.contexts, "inputs") {
+						suggestion = "inputs." + name
+					} else {
+						suggestion = contextPropertySuggestion(name, avail.contexts, BuiltinGlobalVariableTypes)
+					}
+					if suggestion != "" {
+						v.message = fmt.Sprintf("uses undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
+					} else {
+						v.context = name
+					}
 				}
 			case *FuncCallNode:
 				name := strings.ToLower(n.Callee)
+				if name == "fromjson" && len(n.Args) == 1 {
+					if literal, ok := n.Args[0].(*StringNode); ok {
+						for _, collision := range jsonMemberCollisions(literal.Value) {
+							v := actionExpressionViolation{message: fmt.Sprintf("fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", collision.first, collision.second, collision.offset)}
+							if positionsKnown {
+								v.offset = expressionOffset + n.Token().Offset + 1
+								v.endOffset = v.offset + len(n.Token().Value)
+							}
+							out = append(out, v)
+						}
+					}
+				}
 				if !slices.Contains(actionMetadataSpecialFunctions, name) {
 					signatures, ok := BuiltinFuncSignatures[name]
 					if !ok {
@@ -76,10 +126,24 @@ func actionExpressionViolations(s string, bare bool, field string) []actionExpre
 					}
 				}
 			}
-			if v != (actionExpressionViolation{}) && !seen[v] {
-				seen[v] = true
+			if v != (actionExpressionViolation{}) {
+				if positionsKnown {
+					v.offset = expressionOffset + node.Token().Offset + 1
+					v.endOffset = v.offset + len(node.Token().Value)
+				}
 				out = append(out, v)
 			}
+		})
+	}
+	if !positionsKnown {
+		seen := make(map[actionExpressionViolation]bool)
+		out = slices.DeleteFunc(out, func(v actionExpressionViolation) bool {
+			if v.offset != 0 {
+				return false
+			}
+			duplicate := seen[v]
+			seen[v] = true
+			return duplicate
 		})
 	}
 	return out

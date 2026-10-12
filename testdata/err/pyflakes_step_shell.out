@@ -1,3 +1,0 @@
-/test\.yaml:7:9: pyflakes reported issue in this script: .+ \[pyflakes\]/
-/test\.yaml:10:9: pyflakes reported issue in this script: .+ \[pyflakes\]/
-/test\.yaml:13:9: pyflakes reported issue in this script: .+ \[pyflakes\]/

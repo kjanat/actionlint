@@ -434,7 +434,7 @@ function defaultBase() {
 				stdio: ['ignore', 'pipe', 'pipe'],
 			}).trim();
 		} catch {
-			continue;
+			// Ignore errors
 		}
 	}
 	throw new Error('no origin/master or master found; pass a base ref');

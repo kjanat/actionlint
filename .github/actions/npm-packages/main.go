@@ -416,7 +416,7 @@ func (c *config) buildFacade(tf *targetsFile) error {
 		return err
 	}
 	src := filepath.Join(c.npmDir, "facade")
-	for _, sub := range []string{"bin", "lib"} {
+	for _, sub := range []string{"bin", "lib", "types"} {
 		if err := copyTree(filepath.Join(src, sub), filepath.Join(dir, sub)); err != nil {
 			return err
 		}
@@ -425,6 +425,9 @@ func (c *config) buildFacade(tf *targetsFile) error {
 		return err
 	}
 	if err := copyFile(filepath.Join(c.repoRoot, "actionlint.schema.json"), filepath.Join(dir, "actionlint.schema.json")); err != nil {
+		return err
+	}
+	if err := copyTree(filepath.Join(c.repoRoot, "schemas"), filepath.Join(dir, "schemas")); err != nil {
 		return err
 	}
 	if err := c.copyLegal(dir); err != nil {

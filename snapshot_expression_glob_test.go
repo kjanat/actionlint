@@ -18,14 +18,30 @@ func TestSnapshotExpressionVersionGlobs(t *testing.T) {
 		{"whole unknown", "snapshot: ${{ fromJSON(vars.SNAPSHOT) }}", "", 0, 0},
 		{"whole wrong type", `snapshot: ${{ fromJSON('{"image-name":"build","version":[]}') }}`, "expression", 5, 15},
 		{"whole empty", `snapshot: ${{ fromJSON('{"image-name":"build","version":""}') }}`, "expression", 5, 15},
-		{"field literal expression", "snapshot:\n      image-name: build\n      version: ${{ '[' }}", "glob", 7, 16},
-		{"field JSON expression", "snapshot:\n      image-name: build\n      version: ${{ fromJSON('\"[\"') }}", "glob", 7, 16},
-		{"field unknown", "snapshot:\n      image-name: build\n      version: ${{ vars.VERSION }}", "", 0, 0},
-		{"field unknown indexed", "snapshot:\n      image-name: build\n      version: ${{ vars['VERSION'] }}", "", 0, 0},
-		{"field interpolation", "snapshot:\n      image-name: build\n      version: prefix-${{ vars.VERSION }}", "", 0, 0},
-		{"field valid", "snapshot:\n      image-name: build\n      version: ${{ '1.*' }}", "", 0, 0},
-		{"field empty", "snapshot:\n      image-name: build\n      version: ${{ '' }}", "expression", 7, 16},
-		{"field null", "snapshot:\n      image-name: build\n      version: ${{ null }}", "expression", 7, 16},
+		{"field literal expression", `snapshot:
+      image-name: build
+      version: ${{ '[' }}`, "glob", 7, 16},
+		{"field JSON expression", `snapshot:
+      image-name: build
+      version: ${{ fromJSON('"["') }}`, "glob", 7, 16},
+		{"field unknown", `snapshot:
+      image-name: build
+      version: ${{ vars.VERSION }}`, "", 0, 0},
+		{"field unknown indexed", `snapshot:
+      image-name: build
+      version: ${{ vars['VERSION'] }}`, "", 0, 0},
+		{"field interpolation", `snapshot:
+      image-name: build
+      version: prefix-${{ vars.VERSION }}`, "", 0, 0},
+		{"field valid", `snapshot:
+      image-name: build
+      version: ${{ '1.*' }}`, "", 0, 0},
+		{"field empty", `snapshot:
+      image-name: build
+      version: ${{ '' }}`, "expression", 7, 16},
+		{"field null", `snapshot:
+      image-name: build
+      version: ${{ null }}`, "expression", 7, 16},
 		{"empty image name", "snapshot:\n      image-name: ${{ '' }}", "expression", 6, 19},
 		{"null image name", "snapshot:\n      image-name: ${{ null }}", "expression", 6, 19},
 	} {
@@ -34,7 +50,14 @@ func TestSnapshotExpressionVersionGlobs(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			source := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    " + tc.field + "\n    steps:\n      - run: echo ok\n"
+			source := `on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    ` + tc.field + `
+    steps:
+      - run: echo ok
+`
 			errs, err := linter.Lint("workflow.yml", []byte(source), nil)
 			if err != nil {
 				t.Fatal(err)

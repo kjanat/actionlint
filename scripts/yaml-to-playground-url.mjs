@@ -8,6 +8,7 @@
 //   node ./scripts/yaml-to-playground-url.mjs < test.yaml
 
 import { readFileSync } from 'node:fs';
+
 import { deflate } from 'pako';
 
 const src = readFileSync(process.stdin.fd, 'utf8');

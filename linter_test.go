@@ -25,6 +25,63 @@ func (r testErrorReader) Read(p []byte) (int, error) {
 	return 0, errors.New("dummy read error")
 }
 
+func TestLinterMissingLocalAction(t *testing.T) {
+	root := t.TempDir()
+	proj := &Project{root: root}
+	for _, tc := range []struct {
+		steps string
+		want  int
+	}{
+		{"      - uses: ./missing\n      - uses: ./missing\n      - uses: $/missing\n", 3},
+		{"      - uses: ./missing # actionlint:ignore missing-local-action -- downloaded at runtime\n", 0},
+		{"      - uses: ./missing\n        id: missing\n", 1},
+		{"      - uses: ./missing # actionlint:ignore missing-local-action -- downloaded at runtime\n        id: missing\n", 0},
+	} {
+		l, err := NewLinter(io.Discard, &LinterOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		l.defaultConfig = &Config{}
+		source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" + tc.steps
+		errs, err := l.Lint("test.yaml", []byte(source), proj)
+		if err != nil || len(errs) != tc.want {
+			t.Fatalf("got %v, %v; want %d diagnostics", errs, err, tc.want)
+		}
+		for i, diagnostic := range errs {
+			if diagnostic.Kind != "missing-local-action" || diagnostic.Line != 6+i || !strings.Contains(diagnostic.Message, "has no action.yml or action.yaml") {
+				t.Fatalf("unexpected diagnostic: %+v", diagnostic)
+			}
+		}
+	}
+}
+
+func TestMissingLocalActionRuleSelection(t *testing.T) {
+	for _, tc := range []struct {
+		rules string
+		want  string
+	}{
+		{"action: off", "missing-local-action"},
+		{"missing-local-action: off", "action"},
+	} {
+		t.Run(tc.rules, func(t *testing.T) {
+			cfg, err := ParseConfig([]byte("lint: {rules: {correctness: {" + tc.rules + "}}}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			l, err := NewLinter(io.Discard, &LinterOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			l.defaultConfig = cfg
+			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./missing\n      - uses: invalid\n"
+			findings, err := l.Lint("workflow.yml", []byte(source), &Project{root: t.TempDir()})
+			if err != nil || len(findings) != 1 || findings[0].Kind != tc.want {
+				t.Fatalf("got %v, %v; want only %s", findings, err, tc.want)
+			}
+		})
+	}
+}
+
 func TestLinterLintOK(t *testing.T) {
 	dir := filepath.Join("testdata", "ok")
 
@@ -46,20 +103,15 @@ func TestLinterLintOK(t *testing.T) {
 
 	proj := &Project{root: dir}
 	shellcheck, _ := execabs.LookPath("shellcheck")
-	pyflakes, _ := execabs.LookPath("pyflakes")
 
 	for _, f := range fs {
 		t.Run(filepath.Base(f), func(t *testing.T) {
 			if strings.Contains(f, "shellcheck") && shellcheck == "" {
 				t.Skip("skipping", f, "because \"shellcheck\" command does not exist in system")
 			}
-			if strings.Contains(f, "pyflakes") && pyflakes == "" {
-				t.Skip("skipping", f, "because \"pyflakes\" command does not exist in system")
-			}
 
 			opts := LinterOptions{
 				Shellcheck: shellcheck,
-				Pyflakes:   pyflakes,
 			}
 
 			linter, err := NewLinter(io.Discard, &opts)
@@ -142,10 +194,14 @@ func checkErrors(t *testing.T, outfile string, errs []*Error) {
 		if strings.HasPrefix(want, "/") && strings.HasSuffix(want, "/") {
 			want := regexp.MustCompile(want[1 : len(want)-1])
 			if !want.MatchString(have) {
-				t.Errorf("error message mismatch at %dth error does not match to regular expression\n  want: /%s/\n  have: %q", i+1, want, have)
+				t.Errorf(`error message mismatch at %dth error does not match to regular expression
+  want: /%s/
+  have: %q`, i+1, want, have)
 			}
 		} else if want != have {
-			t.Errorf("error message mismatch at %dth error does not match exactly\n  want: %q\n  have: %q", i+1, want, have)
+			t.Errorf(`error message mismatch at %dth error does not match exactly
+  want: %q
+  have: %q`, i+1, want, have)
 		}
 	}
 }
@@ -162,11 +218,6 @@ func TestLinterLintError(t *testing.T) {
 		shellcheck := ""
 		if p, err := execabs.LookPath("shellcheck"); err == nil {
 			shellcheck = p
-		}
-
-		pyflakes := ""
-		if p, err := execabs.LookPath("pyflakes"); err == nil {
-			pyflakes = p
 		}
 
 		for _, infile := range infiles {
@@ -186,13 +237,6 @@ func TestLinterLintError(t *testing.T) {
 						t.Skip("skipped because \"shellcheck\" command does not exist in system")
 					}
 					o.Shellcheck = shellcheck
-				}
-
-				if strings.Contains(testName, "pyflakes") {
-					if pyflakes == "" {
-						t.Skip("skipped because \"pyflakes\" command does not exist in system")
-					}
-					o.Pyflakes = pyflakes
 				}
 
 				l, err := NewLinter(io.Discard, &o)
@@ -219,11 +263,6 @@ func TestLinterLintAllErrorWorkflowsAtOnce(t *testing.T) {
 		t.Skipf("shellcheck is not found: %s", err)
 	}
 
-	pyflakes, err := execabs.LookPath("pyflakes")
-	if err != nil {
-		t.Skipf("pyflakes is not found: %s", err)
-	}
-
 	dir, files, err := testFindAllWorkflowsInDir("examples")
 	if err != nil {
 		panic(err)
@@ -240,7 +279,6 @@ func TestLinterLintAllErrorWorkflowsAtOnce(t *testing.T) {
 
 	o := LinterOptions{
 		Shellcheck: shellcheck,
-		Pyflakes:   pyflakes,
 	}
 
 	l, err := NewLinter(io.Discard, &o)
@@ -895,15 +933,10 @@ func BenchmarkExamplesLintFiles(b *testing.B) {
 	if err != nil {
 		b.Skipf("shellcheck is not found: %s", err)
 	}
-	pyflakes, err := execabs.LookPath("pyflakes")
-	if err != nil {
-		b.Skipf("pyflakes is not found: %s", err)
-	}
 
 	for b.Loop() {
 		opts := LinterOptions{
 			Shellcheck: shellcheck,
-			Pyflakes:   pyflakes,
 		}
 
 		l, err := NewLinter(io.Discard, &opts)

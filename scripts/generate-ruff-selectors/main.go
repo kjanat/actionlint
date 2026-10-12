@@ -1,0 +1,271 @@
+// Generate offline Ruff selector metadata from a pinned upstream release.
+// Run from the repository root with go run ./scripts/generate-ruff-selectors.
+package main
+
+import (
+	"bytes"
+	"context"
+	"crypto/sha256"
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"go/format"
+	"io"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"slices"
+	"strings"
+	"time"
+)
+
+const release = "0.17.0"
+const revision = "5b27c1ccfaa230fb195855f5cf3404a21e3379cd"
+const upstream = "https://raw.githubusercontent.com/astral-sh/ruff/" + revision + "/"
+const schemaPath = "schemas/ruff/" + release + ".schema.json"
+const selectorSchemaPath = "schemas/ruff/" + release + "-selectors.schema.json"
+const provenancePath = "schemas/ruff/" + release + ".provenance.json"
+const licensePath = "schemas/ruff/" + release + ".LICENSE.txt"
+
+var codePattern = regexp.MustCompile(`^[A-Z]+[0-9]*$`)
+var redirectPattern = regexp.MustCompile(`\("([A-Z]+[0-9]*)", "([A-Z]+[0-9]*)"\)`)
+
+type upstreamSchema struct {
+	Definitions map[string]struct {
+		Enum []string `json:"enum"`
+	} `json:"definitions"`
+}
+
+func schemaDefinitions(schema []byte) (upstreamSchema, error) {
+	var document upstreamSchema
+	err := json.Unmarshal(schema, &document)
+	return document, err
+}
+
+func selectors(schema, redirects, rules []byte) ([]string, error) {
+	var metadata []struct {
+		Code    string                     `json:"code"`
+		Preview *bool                      `json:"preview"`
+		Status  map[string]json.RawMessage `json:"status"`
+	}
+	if err := json.Unmarshal(rules, &metadata); err != nil {
+		return nil, err
+	}
+	stable := map[string]bool{"ALL": true}
+	for _, rule := range metadata {
+		if rule.Preview == nil {
+			return nil, errors.New("ruff rule metadata has no preview status")
+		}
+		_, removed := rule.Status["Removed"]
+		if *rule.Preview || removed || !codePattern.MatchString(rule.Code) {
+			continue
+		}
+		for length := 1; length <= len(rule.Code); length++ {
+			stable[rule.Code[:length]] = true
+		}
+	}
+	if !stable["F821"] {
+		return nil, errors.New("ruff rule metadata has no stable F821 rule")
+	}
+	document, err := schemaDefinitions(schema)
+	if err != nil {
+		return nil, err
+	}
+	available := map[string]bool{}
+	for _, selector := range document.Definitions["RuleSelector"].Enum {
+		// Human-readable names and categories require Ruff's preview mode.
+		if codePattern.MatchString(selector) && stable[selector] {
+			available[selector] = true
+		}
+	}
+	if !available["ALL"] || !available["F821"] {
+		return nil, errors.New("upstream schema has no supported RuleSelector definition")
+	}
+	aliases := map[string]string{}
+	for _, match := range redirectPattern.FindAllSubmatch(redirects, -1) {
+		aliases[string(match[1])] = string(match[2])
+	}
+	if aliases["C9"] != "C90" {
+		return nil, errors.New("upstream selector redirects were not recognized")
+	}
+	result := make([]string, 0, len(available)+len(aliases))
+	for selector := range available {
+		result = append(result, selector)
+	}
+	for alias, target := range aliases {
+		// Removed and test-only targets are absent from the release schema.
+		if available[target] && !available[alias] {
+			result = append(result, alias)
+		}
+	}
+	slices.Sort(result)
+	return result, nil
+}
+
+func targetVersions(schema []byte) ([]string, error) {
+	document, err := schemaDefinitions(schema)
+	if err != nil {
+		return nil, err
+	}
+	versions := document.Definitions["PythonVersion"].Enum
+	if len(versions) == 0 || !slices.Contains(versions, "py314") {
+		return nil, errors.New("upstream schema has no supported PythonVersion definition")
+	}
+	return versions, nil
+}
+
+// selectorSchema references upstream choices and records only adapter differences.
+func selectorSchema(schema []byte, supported []string) ([]byte, error) {
+	document, err := schemaDefinitions(schema)
+	if err != nil {
+		return nil, err
+	}
+	upstreamValues := document.Definitions["RuleSelector"].Enum
+	if len(upstreamValues) == 0 {
+		return nil, errors.New("upstream schema has no RuleSelector definition")
+	}
+	var excluded, aliases []string
+	for _, selector := range upstreamValues {
+		if codePattern.MatchString(selector) && !slices.Contains(supported, selector) {
+			excluded = append(excluded, selector)
+		}
+	}
+	for _, selector := range supported {
+		if !slices.Contains(upstreamValues, selector) {
+			aliases = append(aliases, selector)
+		}
+	}
+	slices.Sort(excluded)
+	slices.Sort(aliases)
+	constraints := []any{
+		map[string]any{"$ref": release + ".schema.json#/definitions/RuleSelector"},
+		map[string]any{"pattern": codePattern.String()},
+	}
+	if len(excluded) > 0 {
+		constraints = append(constraints, map[string]any{"not": map[string]any{"enum": excluded}})
+	}
+	choices := []any{map[string]any{"allOf": constraints}}
+	if len(aliases) > 0 {
+		choices = append(choices, map[string]any{"enum": aliases})
+	}
+	return encodeJSON(map[string]any{
+		"$schema":  "https://json-schema.org/draft/2020-12/schema",
+		"$comment": "Generated by scripts/generate-ruff-selectors. Upstream choices are restricted to stable selectors; compatibility redirects absent upstream are added separately.",
+		"title":    "Ruff " + release + " selectors supported by actionlint",
+		"anyOf":    choices,
+	})
+}
+
+func encodeJSON(value any) ([]byte, error) {
+	data, err := json.MarshalIndent(value, "", "  ")
+	return append(data, '\n'), err
+}
+
+func provenance(schema []byte) ([]byte, error) {
+	return encodeJSON(map[string]string{
+		"release":         release,
+		"revision":        revision,
+		"source":          "https://raw.githubusercontent.com/astral-sh/ruff/" + release + "/ruff.schema.json",
+		"immutableSource": upstream + "ruff.schema.json",
+		"sha256":          fmt.Sprintf("%x", sha256.Sum256(schema)),
+	})
+}
+
+func fetch(path string) ([]byte, error) {
+	client := &http.Client{Timeout: 30 * time.Second}
+	request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, upstream+path, nil)
+	if err != nil {
+		return nil, err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("fetch %s: %s", path, response.Status)
+	}
+	return io.ReadAll(io.LimitReader(response.Body, 4<<20))
+}
+
+func run(binary string) error {
+	version, err := exec.CommandContext(context.Background(), binary, "--version").Output()
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(string(version)) != "ruff "+release {
+		return fmt.Errorf("selector generation requires Ruff %s; got %q", release, strings.TrimSpace(string(version)))
+	}
+	rules, err := exec.CommandContext(context.Background(), binary, "rule", "--all", "--output-format", "json").Output()
+	if err != nil {
+		return err
+	}
+	schema, err := fetch("ruff.schema.json")
+	if err != nil {
+		return err
+	}
+	redirects, err := fetch("crates/ruff_linter/src/rule_redirects.rs")
+	if err != nil {
+		return err
+	}
+	license, err := fetch("LICENSE")
+	if err != nil {
+		return err
+	}
+	values, err := selectors(schema, redirects, rules)
+	if err != nil {
+		return err
+	}
+	versions, err := targetVersions(schema)
+	if err != nil {
+		return err
+	}
+	wrapper, err := selectorSchema(schema, values)
+	if err != nil {
+		return err
+	}
+	origin, err := provenance(schema)
+	if err != nil {
+		return err
+	}
+	var output bytes.Buffer
+	fmt.Fprintln(&output, "// Code generated by scripts/generate-ruff-selectors; DO NOT EDIT.")
+	fmt.Fprintf(&output, "// Ruff %s: https://github.com/astral-sh/ruff/tree/%s\n\n", release, revision)
+	fmt.Fprintln(&output, "package ruff")
+	fmt.Fprintf(&output, "\n// SchemaPath is the unmodified upstream schema bundled for offline references.\nconst SchemaPath = %q\n", schemaPath)
+	fmt.Fprintf(&output, "\n// SelectorSchemaPath is the generated compatibility wrapper for upstream selectors.\nconst SelectorSchemaPath = %q\n", selectorSchemaPath)
+	fmt.Fprintln(&output, "\nvar supportedTargetVersions = []string{")
+	for _, version := range versions {
+		fmt.Fprintf(&output, "%q,\n", version)
+	}
+	fmt.Fprintln(&output, "}\n\nvar supportedRuleSelectors = []string{")
+	for _, value := range values {
+		fmt.Fprintf(&output, "%q,\n", value)
+	}
+	fmt.Fprintln(&output, "}")
+	formatted, err := format.Source(output.Bytes())
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(schemaPath), 0o755); err != nil {
+		return err
+	}
+	for name, data := range map[string][]byte{schemaPath: schema, selectorSchemaPath: wrapper, provenancePath: origin, licensePath: license} {
+		if err := os.WriteFile(name, data, 0o644); err != nil {
+			return err
+		}
+	}
+	return os.WriteFile("internal/ruff/selectors_generated.go", formatted, 0o644)
+}
+
+func main() {
+	binary := flag.String("ruff", "ruff", "path to the pinned Ruff release")
+	flag.Parse()
+	if err := run(*binary); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}

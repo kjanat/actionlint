@@ -1,8 +1,6 @@
 package actionlint
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,15 +9,18 @@ import (
 	"sync"
 	"text/template"
 
+	"actionlint.kjanat.dev/internal/yamlsource"
+
 	"github.com/fatih/color"
 	"github.com/mattn/go-runewidth"
 )
 
 var (
-	bold   = color.New(color.Bold)
-	green  = color.New(color.FgGreen)
-	yellow = color.New(color.FgYellow)
-	gray   = color.New(color.FgHiBlack)
+	// Follow color.NoColor so command-line overrides also apply after initialization.
+	bold   = new(color.Color).Add(color.Bold)
+	green  = new(color.Color).Add(color.FgGreen)
+	yellow = new(color.Color).Add(color.FgYellow)
+	gray   = new(color.Color).Add(color.FgHiBlack)
 )
 
 // Error represents an error detected by actionlint rules
@@ -36,10 +37,24 @@ type Error struct {
 	Kind string
 	// endColumn is the inclusive column where the error range ends. A zero value lets the formatter
 	// infer the range from the source token at Column.
-	endColumn int
+	endColumn   int
+	endPosition *Pos
 	// source is the content of the file at Filepath when the error points at a file other than the
 	// linted workflow. It replaces the workflow source for rendering the snippet.
 	source []byte
+	// rawScriptSource retains the external checker's LF-based source coordinates.
+	rawScriptSource bool
+	// suppressionOrigin identifies the YAML run declaration which caused a
+	// sourced diagnostic, independently of its displayed script location.
+	suppressionOrigin *suppressionOrigin
+	// ignoreOrigin identifies the logical invocation independently of anchor coordinates.
+	ignoreOrigin *diagnosticIgnoreOrigin
+	// metadataFinding identifies a reusable validation finding independently of its caller.
+	metadataFinding *actionMetadataFinding
+	// External analyzer metadata is exposed through Diagnostic, leaving legacy output unchanged.
+	code     string
+	severity string
+	fixes    []DiagnosticFix
 }
 
 // Error returns summary of the error as string.
@@ -134,12 +149,14 @@ func (e *Error) PrettyPrint(w io.Writer, source []byte) {
 }
 
 func (e *Error) getLine(source []byte) (string, bool) {
-	s := bufio.NewScanner(bytes.NewReader(source))
-	l := 0
-	for s.Scan() {
-		l++
-		if l == e.Line {
-			return s.Text(), true
+	if !e.rawScriptSource {
+		return yamlsource.SourceLine(string(source), e.Line)
+	}
+	line := 0
+	for text := range strings.SplitSeq(string(source), "\n") {
+		line++
+		if line == e.Line {
+			return strings.TrimSuffix(text, "\r"), true
 		}
 	}
 	return "", false
@@ -206,7 +223,13 @@ func compareErrors(lhs, rhs *Error) int {
 	if lhs.Column != rhs.Column {
 		return lhs.Column - rhs.Column
 	}
-	return strings.Compare(lhs.Message, rhs.Message)
+	if c := strings.Compare(lhs.Message, rhs.Message); c != 0 {
+		return c
+	}
+	if lhs.endColumn != rhs.endColumn {
+		return lhs.endColumn - rhs.endColumn
+	}
+	return strings.Compare(lhs.severity, rhs.severity)
 }
 
 func equalsErrors(lhs, rhs *Error) bool {
@@ -214,7 +237,8 @@ func equalsErrors(lhs, rhs *Error) bool {
 		lhs.Line == rhs.Line &&
 		lhs.Column == rhs.Column &&
 		lhs.endColumn == rhs.endColumn &&
-		lhs.Message == rhs.Message
+		lhs.Message == rhs.Message &&
+		lhs.severity == rhs.severity
 }
 
 // ErrorTemplateFields holds all fields to format one error message.
@@ -294,10 +318,11 @@ func NewErrorFormatter(format string) (*ErrorFormatter, error) {
 		return nil, fmt.Errorf("template to format error messages must contain at least one {{ }} placeholder: %s", format)
 	}
 
-	r := map[string]*ruleTemplateFields{
-		"syntax-check":          {"syntax-check", "Checks for GitHub Actions workflow syntax"},
-		"inline-suppression":    {"inline-suppression", "Checks inline cache policy exception directives"},
-		"disallow-suppressions": {"disallow-suppressions", "Reports inline exceptions prohibited by configuration"},
+	r := map[string]*ruleTemplateFields{}
+	for _, descriptor := range builtinRuleDescriptors() {
+		if descriptor.build == nil {
+			r[descriptor.Name] = &ruleTemplateFields{descriptor.Name, descriptor.Description}
+		}
 	}
 
 	funcs := template.FuncMap(map[string]any{
@@ -313,7 +338,7 @@ func NewErrorFormatter(format string) (*ErrorFormatter, error) {
 			return strings.NewReplacer(oldnew...).Replace(s)
 		},
 		"toPascalCase": toPascalCase,
-		"getVersion":   getCommandVersion,
+		"getVersion":   Version,
 		"allKinds": func() []*ruleTemplateFields {
 			ret := make([]*ruleTemplateFields, 0, len(r))
 			for _, e := range r {

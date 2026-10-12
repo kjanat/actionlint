@@ -1,9 +1,13 @@
 /// <reference types="vitest/config" />
+
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { copyFile } from 'node:fs/promises';
+import { copyFile, realpath } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { defineConfig } from 'vite';
+
+import { defaultClientConditions, defineConfig, searchForWorkspaceRoot } from 'vite';
+
+import { buildVersion, renderBuildVersion } from './src/build-version.ts';
 
 const here = import.meta.dirname;
 const oneUp = dirname(here);
@@ -12,30 +16,29 @@ const outDir = resolve(here, 'dist');
 const manual = resolve(oneUp, 'man/actionlint.1.html');
 const manualStyle = resolve(oneUp, 'man/manual.css');
 
-function buildVersion() {
-	const repository = 'https://github.com/kjanat/actionlint';
-	try {
-		const git = (...args: string[]) =>
-			execFileSync('git', args, { cwd: oneUp, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
-		const ref = git('rev-parse', 'HEAD');
-		const version = git('describe', '--tags', '--match', 'v[0-9]*.[0-9]*.[0-9]*', '--always', '--dirty');
-		const url = /^v\d+\.\d+\.\d+$/.test(version)
-			? `${repository}/releases/tag/${version}`
-			: `${repository}/tree/${ref}`;
-		return { version, ref, url };
-	} catch {
-		return { version: 'development', ref: 'HEAD', url: repository };
-	}
-}
+const version = buildVersion(oneUp, process.env.ACTIONLINT_LATEST_RELEASE);
 
-const { version, ref, url } = buildVersion();
+const goWasm = resolve(execFileSync('go', ['env', 'GOROOT'], { encoding: 'utf8' }).trim(), 'lib/wasm');
+
+function goWasmBinary(): import('vite').Plugin {
+	return {
+		name: 'actionlint:go-wasm',
+		buildStart() {
+			execFileSync('go', ['build', '-o', resolve(here, 'public/main.wasm'), '.'], {
+				cwd: here,
+				env: { ...process.env, GOOS: 'js', GOARCH: 'wasm' },
+				stdio: 'inherit',
+			});
+		},
+	};
+}
 
 // The deployed site is the bundle plus a 404 fallback and the rendered command manual.
 function sitePages(): import('vite').Plugin {
 	return {
 		name: 'actionlint:site-pages',
 		apply: 'build',
-		async closeBundle() {
+		async writeBundle() {
 			await copyFile(resolve(outDir, 'index.html'), resolve(outDir, '404.html'));
 
 			if (!existsSync(manual)) {
@@ -52,14 +55,31 @@ function sitePages(): import('vite').Plugin {
 export default defineConfig({
 	base: './',
 	plugins: [
+		goWasmBinary(),
+		{
+			name: 'actionlint:workspace-reader',
+			apply: 'build',
+			async buildStart() {
+				const reader = await this.resolve('@kjlint/changelog-rss', resolve(here, 'github-changelog/index.html'));
+				const expected = await realpath(resolve(oneUp, 'packages/changelog-feed/src/index.ts'));
+				if (!reader || reader.external || await realpath(reader.id) !== expected) {
+					this.error(
+						'The changelog reader must resolve to this checkout’s packages/changelog-feed/src/index.ts. Check the workspace dependency and source export condition.',
+					);
+				}
+			},
+		},
 		{
 			name: 'actionlint:version',
-			transformIndexHtml: html =>
-				html.replaceAll('%ACTIONLINT_VERSION%', version)
-					.replaceAll('%ACTIONLINT_VERSION_URL%', url).replaceAll('%ACTIONLINT_REF%', ref),
+			transformIndexHtml: html => renderBuildVersion(html, version),
 		},
 		sitePages(),
 	],
+	resolve: {
+		conditions: ['source', ...defaultClientConditions],
+		alias: [{ find: /^wasm_exec\.js$/, replacement: resolve(goWasm, 'wasm_exec.js') }],
+	},
+	server: { fs: { allow: [searchForWorkspaceRoot(here), goWasm] } },
 	build: {
 		outDir,
 		emptyOutDir: true,

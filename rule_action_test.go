@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestRuleActionSelfRepositoryUsesLocalSpec(t *testing.T) {
@@ -16,9 +17,9 @@ func TestRuleActionSelfRepositoryUsesLocalSpec(t *testing.T) {
 		{"$/path/to/action", "./path/to/action", true},
 		{"$//a", "./a", true},
 		{"$///a", "./a", true},
-		{"$/", "", false},
-		{"$//", "", false},
-		{"$///", "", false},
+		{"$/", "./", true},
+		{"$//", "./", true},
+		{"$///", "./", true},
 		{"./a", "", false},
 		{"$", "", false},
 		{"", "", false},
@@ -51,7 +52,7 @@ func TestCompositeStepUnavailableContexts(t *testing.T) {
 		{"bare if with secrets", "secrets.TOKEN != ''", true, []string{"secrets"}},
 		{"bare if with vars", "vars.FLAG == 'true'", true, []string{"vars"}},
 		{"multiple distinct contexts", "${{ secrets.A }}${{ vars.B }}", false, []string{"secrets", "vars"}},
-		{"same context twice is deduped", "${{ secrets.A }}${{ secrets.B }}", false, []string{"secrets"}},
+		{"same context twice", "${{ secrets.A }}${{ secrets.B }}", false, []string{"secrets", "secrets"}},
 		{"quoted expression marker", "${{ 'text }} ${{ secrets.TOKEN }}' }}", false, nil},
 		{"literal followed by actual context", "${{ 'text }} ${{ secrets.TOKEN }}' }} ${{ vars.REGION }}", false, []string{"vars"}},
 		{"escaped quote before marker", "${{ 'it''s }} ${{ secrets.TOKEN }}' }}", false, nil},
@@ -69,7 +70,7 @@ func TestCompositeStepUnavailableContexts(t *testing.T) {
 			for _, ctx := range tc.want {
 				want = append(want, actionExpressionViolation{context: ctx})
 			}
-			if diff := cmp.Diff(want, got, cmp.AllowUnexported(actionExpressionViolation{})); diff != "" {
+			if diff := cmp.Diff(want, got, cmp.AllowUnexported(actionExpressionViolation{}), cmpopts.IgnoreFields(actionExpressionViolation{}, "offset", "endOffset")); diff != "" {
 				t.Fatal(diff)
 			}
 		})
@@ -86,7 +87,7 @@ func TestActionInputDefaultUnavailableContexts(t *testing.T) {
 		{"unavailable action contexts", "${{ secrets.TOKEN }}${{ vars.REGION }}${{ needs.build.result }}", []string{"secrets", "vars", "needs"}},
 		{"allowed contexts", "${{ github.sha }}${{ job.status }}${{ matrix.os }}${{ runner.os }}${{ strategy.job-index }}", nil},
 		{"quoted marker followed by context", "${{ 'text }} ${{ inputs.token }}' }}${{ env.TOKEN }}", []string{"env"}},
-		{"case-insensitive duplicates", "${{ INPUTS.a }}${{ inputs.b }}", []string{"inputs"}},
+		{"case-insensitive occurrences", "${{ INPUTS.a }}${{ inputs.b }}", []string{"inputs", "inputs"}},
 		{"allowed function", "${{ format('{0}', hashFiles('*.go')) }}", nil},
 	}
 	for _, tc := range tests {
@@ -96,7 +97,7 @@ func TestActionInputDefaultUnavailableContexts(t *testing.T) {
 			for _, ctx := range tc.want {
 				want = append(want, actionExpressionViolation{context: ctx})
 			}
-			if diff := cmp.Diff(want, got, cmp.AllowUnexported(actionExpressionViolation{})); diff != "" {
+			if diff := cmp.Diff(want, got, cmp.AllowUnexported(actionExpressionViolation{}), cmpopts.IgnoreFields(actionExpressionViolation{}, "offset", "endOffset")); diff != "" {
 				t.Fatal(diff)
 			}
 		})

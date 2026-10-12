@@ -9,7 +9,8 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "ES2024",
-    "types": ["node"]
+    "types": ["node"],
+    "allowImportingTsExtensions": true
   },
   "exclude": ["node_modules", "packages", "playground", "testdata", "github-docs"],
   "references": [

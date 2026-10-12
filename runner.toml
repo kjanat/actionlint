@@ -1,0 +1,19 @@
+#:schema https://kjanat.github.io/runner/schemas/runner.toml.schema.json
+
+[chain]
+on_fail = "wait"
+
+[install]
+tools  = true
+frozen = true
+
+[output]
+warnings = true
+errors   = true
+summary  = true
+progress = true
+groups   = true
+timing   = true
+
+[tasks.build]
+env = { SKIP_GO_GENERATE = "1" }

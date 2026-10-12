@@ -254,7 +254,9 @@ func TestValidateGlobSyntaxError(t *testing.T) {
 					err := errs[i]
 					want, have := expected[i], err.Message
 					if !strings.Contains(have, want) {
-						t.Errorf("%dth error message at col:%d from %s glob %q does not contain expected string:\n  want: %s\n  have: %s", i+1, err.Column, kind, tc.input, want, have)
+						t.Errorf(`%dth error message at col:%d from %s glob %q does not contain expected string:
+  want: %s
+  have: %s`, i+1, err.Column, kind, tc.input, want, have)
 					}
 				}
 			})
@@ -342,7 +344,9 @@ func TestValidateGlobGitRefNameInvalidCharacter(t *testing.T) {
 				err := errs[i]
 				want, have := expected[i], err.Message
 				if !strings.Contains(have, want) {
-					t.Errorf("%dth error message at col:%d from %q does not contain expected string:\n  want: %s\n  have: %s", i+1, err.Column, tc.input, want, have)
+					t.Errorf(`%dth error message at col:%d from %q does not contain expected string:
+  want: %s
+  have: %s`, i+1, err.Column, tc.input, want, have)
 				}
 			}
 		})

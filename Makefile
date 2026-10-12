@@ -2,8 +2,9 @@
 # directory over it whenever the directory is newer, so no built-in rule may apply here.
 MAKEFLAGS += --no-builtin-rules
 
-SRCS := $(filter-out %_test.go, $(wildcard *.go cmd/*/*.go)) sarif_template.txt go.mod go.sum
-TESTS := $(filter %_test.go, $(wildcard *.go cmd/*/*.go))
+GO_FILES := $(wildcard *.go cmd/*/*.go internal/*/*.go)
+SRCS := $(filter-out %_test.go, $(GO_FILES)) sarif_template.txt go.mod go.sum
+TESTS := $(filter %_test.go, $(GO_FILES))
 TOOL := $(wildcard scripts/*/*.go)
 TESTDATA := $(wildcard \
 		testdata/examples/* \
@@ -50,7 +51,7 @@ all: build test lint
 comment-cop:
 	node .github/actions/comment-cop/comment-cop.mjs $(COMMENT_COP_BASE)
 
-t test:
+test:
 	go test $(RACE) ./...
 
 .PHONY: conformance
@@ -67,13 +68,17 @@ coverage.html: coverage.out
 cov: coverage.out coverage.html
 	go tool cover -func=coverage.out
 
-l lint:
+lint:
 	golangci-lint run
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 ifneq ($(OS),Windows_NT)
 	GOOS=js GOARCH=wasm golangci-lint run ./playground
-	go run ./scripts/check-checks -quiet ./docs/checks.md
 endif
+
+# Documentation examples also require Pyflakes; keep that dependency explicit.
+.PHONY: lint-docs
+lint-docs:
+	go run ./scripts/check-checks -quiet ./docs/checks.md
 
 popular_actions.go all_webhooks.go availability.go action_metadata_availability.go action_runtimes.go: $(GO_GEN_SRCS)
 ifdef SKIP_GO_GENERATE
@@ -97,7 +102,7 @@ endif
 
 FORCE:
 
-b build: $(TARGET)
+build: $(TARGET)
 
 # go test -fuzz accepts exactly one target.
 fuzz:
@@ -131,7 +136,7 @@ scripts/generate-actionlint-matcher/testdata/want.json: $(TARGET)
 CHANGELOG.md:
 	changelog-from-release > CHANGELOG.md
 
-c clean:
+clean:
 	rm -f ./$(TARGET) ./man/actionlint.1 ./man/actionlint.1.html ./actionlint-workflow-ast
 
-.PHONY: all comment-cop test clean build lint fuzz man bench cov b t c l CHANGELOG.md FORCE
+.PHONY: all comment-cop test clean build lint fuzz man bench cov CHANGELOG.md FORCE

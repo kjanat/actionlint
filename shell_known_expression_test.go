@@ -32,11 +32,16 @@ func TestKnownShellExpressions(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			source := "on: push\njobs:\n  test:\n    runs-on: " + tc.runner + "\n"
+			source := `on: push
+jobs:
+  test:
+    runs-on: ` + tc.runner + "\n"
 			if tc.defaults != "" {
 				source += "    defaults:\n      run: " + tc.defaults + "\n"
 			}
-			source += "    steps:\n      - run: echo test\n"
+			source += `    steps:
+      - run: echo test
+`
 			if tc.step != "" {
 				source += "        shell: " + tc.step + "\n"
 			}
@@ -90,15 +95,15 @@ func TestKnownShellExternalLinters(t *testing.T) {
 		{"Windows labels expression skips ShellCheck", `{labels: "${{ fromJSON('[\"windows-latest\"]') }}"}`, "", "", "", ""},
 		{"Windows explicit override", `${{ fromJSON('{"labels":"windows-latest"}') }}`, "", "", "bash", "shellcheck"},
 		{"known bash default", "ubuntu-latest", "", `${{ fromJSON('{"shell":"bash"}') }}`, "", "shellcheck"},
-		{"known Python default", "ubuntu-latest", "", `${{ fromJSON('{"shell":"python"}') }}`, "", "pyflakes"},
-		{"known custom Python default", "ubuntu-latest", "", `${{ fromJSON('{"shell":"python -u {0}"}') }}`, "", "pyflakes"},
-		{"known default casing", "ubuntu-latest", "", `${{ fromJSON('{"ShElL":"python"}') }}`, "", "pyflakes"},
+		{"known Python default", "ubuntu-latest", "", `${{ fromJSON('{"shell":"python"}') }}`, "", ""},
+		{"known custom Python default", "ubuntu-latest", "", `${{ fromJSON('{"shell":"python -u {0}"}') }}`, "", ""},
+		{"known default casing", "ubuntu-latest", "", `${{ fromJSON('{"ShElL":"python"}') }}`, "", ""},
 		{"known PowerShell default", "ubuntu-latest", "", `${{ fromJSON('{"shell":"pwsh"}') }}`, "", ""},
 		{"known default overrides workflow", "ubuntu-latest", "python", `${{ fromJSON('{"shell":"bash"}') }}`, "", "shellcheck"},
 		{"step overrides known default", "ubuntu-latest", "", `${{ fromJSON('{"shell":"python"}') }}`, "bash", "shellcheck"},
 		{"dynamic custom Bash retains dispatch", "ubuntu-latest", "", "", `bash ${{ vars.FLAGS }} {0}`, "shellcheck"},
-		{"missing shell inherits workflow", "ubuntu-latest", "python", `${{ fromJSON('{"working-directory":"src"}') }}`, "", "pyflakes"},
-		{"empty mapping inherits workflow", "ubuntu-latest", "python", `${{ fromJSON('{}') }}`, "", "pyflakes"},
+		{"missing shell inherits workflow", "ubuntu-latest", "python", `${{ fromJSON('{"working-directory":"src"}') }}`, "", ""},
+		{"empty mapping inherits workflow", "ubuntu-latest", "python", `${{ fromJSON('{}') }}`, "", ""},
 		{"unknown map masks workflow Python", "ubuntu-latest", "python", `${{ fromJSON(vars.DEFAULTS) }}`, "", ""},
 		{"unknown map masks workflow Bash", "ubuntu-latest", "bash", `${{ fromJSON(vars.DEFAULTS) }}`, "", ""},
 		{"invalid map masks workflow", "ubuntu-latest", "python", `${{ fromJSON('{"shell":[]}') }}`, "", ""},
@@ -108,13 +113,19 @@ func TestKnownShellExternalLinters(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			source := "on: push\n"
 			if tc.workflowShell != "" {
-				source += "defaults:\n  run:\n    shell: " + tc.workflowShell + "\n"
+				source += `defaults:
+  run:
+    shell: ` + tc.workflowShell + "\n"
 			}
-			source += "jobs:\n  test:\n    runs-on: " + tc.runner + "\n"
+			source += `jobs:
+  test:
+    runs-on: ` + tc.runner + "\n"
 			if tc.defaults != "" {
 				source += "    defaults:\n      run: " + tc.defaults + "\n"
 			}
-			source += "    steps:\n      - run: echo test\n"
+			source += `    steps:
+      - run: echo test
+`
 			if tc.stepShell != "" {
 				source += "        shell: " + tc.stepShell + "\n"
 			}
@@ -124,7 +135,7 @@ func TestKnownShellExternalLinters(t *testing.T) {
 			}
 			linter, err := NewLinter(io.Discard, &LinterOptions{
 				OnRulesCreated: func(rules []Rule) []Rule {
-					return append(rules, newRuleShellcheck(command("shellcheck")), newRulePyflakes(command("pyflakes")))
+					return append(rules, newRuleShellcheck(command("shellcheck")))
 				},
 			})
 			if err != nil {
@@ -165,8 +176,6 @@ func TestKnownShellCommandHelper(t *testing.T) {
 	switch os.Args[index] {
 	case "shellcheck":
 		fmt.Fprintln(os.Stdout, `{"comments":[{"line":2,"endLine":2,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"shellcheck invoked"}]}`)
-	case "pyflakes":
-		fmt.Fprintln(os.Stdout, "<stdin>:1:1: pyflakes invoked")
 	default:
 		t.Fatalf("unexpected helper %q", os.Args[index])
 	}
@@ -191,21 +200,17 @@ jobs:
 		t.Fatal(errors)
 	}
 	shellcheck := newRuleShellcheck(&externalCommand{})
-	pyflakes := newRulePyflakes(&externalCommand{})
 	for _, id := range []string{"python", "bash"} {
 		job := workflow.Jobs[id]
-		for _, pass := range []Pass{shellcheck, pyflakes} {
+		for _, pass := range []Pass{shellcheck} {
 			if err := pass.VisitJobPre(job); err != nil {
 				t.Fatal(err)
 			}
 		}
-		if got := shellcheck.getShellName(&ExecRun{}); got != id {
+		if got := shellcheck.resolveShell(&ExecRun{}).name; got != id {
 			t.Fatalf("job %s resolved shell %q", id, got)
 		}
-		if got := pyflakes.isPythonShell(&ExecRun{}); got != (id == "python") {
-			t.Fatalf("job %s Python shell=%v", id, got)
-		}
-		for _, pass := range []Pass{shellcheck, pyflakes} {
+		for _, pass := range []Pass{shellcheck} {
 			if err := pass.VisitJobPost(job); err != nil {
 				t.Fatal(err)
 			}

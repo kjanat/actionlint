@@ -12,6 +12,48 @@ import (
 	"golang.org/x/sys/execabs"
 )
 
+func TestShellcheckInvocationDebugContext(t *testing.T) {
+	command := shellcheckForTest(t)
+	t.Setenv("SHELLCHECK_OPTS", "--shell=sh")
+	for _, kind := range []directoryKind{directoryKnown, directoryUnknown} {
+		t.Run(fmt.Sprint(kind), func(t *testing.T) {
+			proc := newConcurrentProcess(t.Context(), 1)
+			rule, err := NewRuleShellcheck(command, proc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var output bytes.Buffer
+			rule.EnableDebug(&output)
+			rule.rcArgs = []string{"--norc"}
+			rule.cmd.args = []string{"--severity=warning"}
+			rule.cmd.env = []string{"SHELLCHECK_OPTS=--shell=bash"}
+			rule.inlineConfig = &ShellcheckConfig{Enable: []string{"quote-safe-variables"}}
+			directory := runDirectory{kind, t.TempDir()}
+			if err := rule.runShellcheck("echo hello", nil, shellcheckShell{name: "sh"}, directory, &Pos{Line: 7, Col: 1}, nil); err != nil {
+				t.Fatal(err)
+			}
+			if err := rule.cmd.wait(); err != nil {
+				t.Fatal(err)
+			}
+			for _, want := range []string{
+				`dialect="bash" (explicit flags)`,
+				`"--severity=warning" "--norc"`,
+				`Inherited SHELLCHECK_OPTS="--shell=bash"`,
+				`# shellcheck enable=quote-safe-variables`,
+				fmt.Sprintf("%q", directory.path),
+			} {
+				if !strings.Contains(output.String(), want) {
+					t.Errorf("missing %q in debug output:\n%s", want, output.String())
+				}
+			}
+			disabled := strings.Contains(output.String(), "Source following disabled: working directory cannot be resolved locally")
+			if disabled != (kind == directoryUnknown) {
+				t.Fatalf("wrong source-following context:\n%s", output.String())
+			}
+		})
+	}
+}
+
 func TestRuleShellcheckLargeRunBlock(t *testing.T) {
 	shellcheck, err := execabs.LookPath("shellcheck")
 	if err != nil {
@@ -30,7 +72,13 @@ func TestRuleShellcheckLargeRunBlock(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          " + comment
+			workflow := `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          ` + comment
 			if findings {
 				workflow += "          echo $ACTIONLINT_STDIN_REGRESSION\n"
 			}
@@ -133,7 +181,9 @@ func TestRuleShellcheckSanitizeExpressionsInScript(t *testing.T) {
 		t.Run(fmt.Sprintf("%d_%s", i, tc.input), func(t *testing.T) {
 			have := sanitizeExpressionsInScript(tc.input)
 			if tc.want != have {
-				t.Fatalf("sanitized result is unexpected.\nwant: %q\nhave: %q", tc.want, have)
+				t.Fatalf(`sanitized result is unexpected.
+want: %q
+have: %q`, tc.want, have)
 			}
 		})
 	}
@@ -260,7 +310,7 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 			if tc.step != "" {
 				e.Shell = &String{Value: tc.step}
 			}
-			if s := r.getShellName(e); s != tc.want {
+			if s := r.resolveShell(e).name; s != tc.want {
 				t.Fatalf("detected shell %q but wanted %q", s, tc.want)
 			}
 		})

@@ -1,0 +1,13 @@
+name: Scalar locations
+description: Quoted and folded expression locations
+runs:
+  using: composite
+  steps:
+    - run: "echo ${{ \u0067ithub_repository }}"
+      shell: bash
+    - run: 'echo ''hello'' ${{ github_repository }}'
+      shell: bash
+    - run: >-
+        echo first
+        ${{ github_repository }}
+      shell: bash

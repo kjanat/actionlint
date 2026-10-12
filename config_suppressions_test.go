@@ -48,8 +48,8 @@ func TestDisallowSuppressionsInvalidConfig(t *testing.T) {
 	for _, value := range []string{
 		"'true'", "1", "[]", "{report: null}", "{report: true}", "{report: ignore}",
 		"{rules: null}", "{rules: []}", "{rules: cache-operation}", "{rules: [1]}",
-		"{rules: ['']}", "{rules: ['*']}", "{rules: [expression]}",
-		"{rules: [disallow-suppressions]}", "{rules: [cache-operation, typo]}",
+		"{rules: ['']}", "{rules: ['*']}", "{rules: [unknown-rule]}",
+		"{rules: [cache-operation, typo]}",
 		"{typo: true}", "{report: all, report: violation}",
 	} {
 		t.Run(value, func(t *testing.T) {

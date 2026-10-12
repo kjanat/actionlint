@@ -14,6 +14,8 @@ type inlineSuppressionComment struct {
 	pos        Pos
 	text       string
 	standalone bool
+	startLine  int
+	endLine    int
 }
 
 // collectInlineSuppressionComments isolates YAML attachment and source recovery
@@ -26,7 +28,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	// Normalizing line endings keeps YAML comment attachment consistent while
 	// preserving every source line and column used by diagnostics.
 	if err := yaml.Unmarshal(bytes.ReplaceAll(source, []byte("\r\n"), []byte("\n")), &root); err != nil {
-		return nil
+		return recoverInlineSuppressionComments(source)
 	}
 	lines := splitSourceLines(source)
 	documentEnd := len(lines)
@@ -42,6 +44,9 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 		}
 	}
 	var comments []inlineSuppressionComment
+	blockEnds := map[int]int{}
+	scalarParser := newSourceParser(source)
+	scalarParser.indexScalarSources(&root)
 	seen := map[int]bool{}
 	readComment := func(line int, comment string, standalone bool) {
 		text := strings.TrimSpace(strings.TrimPrefix(comment, "#"))
@@ -70,6 +75,13 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	var visit func(*yaml.Node, int)
 	visit = func(node *yaml.Node, endLine int) {
 		if node.Line > 0 && node.Line <= len(lines) {
+			if node.Kind == yaml.ScalarNode {
+				if content, last := inlineSuppressionScalarEnd(scalarParser, node, endLine); last > node.Line {
+					for first := node.Line; first <= content; first++ {
+						blockEnds[first] = last
+					}
+				}
+			}
 			if node.Style&yaml.FlowStyle != 0 || node.Kind == yaml.ScalarNode {
 				readYAMLNodePrefixComments(node, lines, endLine, readComment)
 			}
@@ -105,16 +117,50 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 			}
 			childEnd := endLine
 			if i+1 < len(node.Content) {
-				childEnd = min(childEnd, node.Content[i+1].Line-1)
+				nextLine := node.Content[i+1].Line
+				if node.Style&yaml.FlowStyle == 0 || child.Kind != yaml.ScalarNode {
+					nextLine--
+				}
+				// Flow siblings can share the scalar's closing line. Scalar
+				// recovery stops at its quote or final mapped content.
+				childEnd = min(childEnd, nextLine)
 			}
 			visit(child, max(child.Line, childEnd))
+			if node.Kind == yaml.MappingNode && i%2 == 1 && child.Kind == yaml.ScalarNode {
+				if last, exists := blockEnds[child.Line]; exists {
+					for line := node.Content[i-1].Line; line < child.Line; line++ {
+						blockEnds[line] = last
+					}
+				}
+			}
 		}
 	}
 	visit(&root, documentEnd)
+	blockStarts := map[int]int{}
+	for first, last := range blockEnds {
+		if start, exists := blockStarts[last]; !exists || first < start {
+			blockStarts[last] = first
+		}
+	}
+	for i := range comments {
+		target := comments[i].pos.Line
+		if comments[i].standalone {
+			target++
+		}
+		comments[i].endLine = blockEnds[target]
+		comments[i].startLine = blockStarts[comments[i].endLine]
+	}
 	return comments
 }
 
-// yamlClosingCommentLine locates a comment stored on a node's opening
+// Suppression extents use the same scalar scan that maps diagnostic positions.
+func inlineSuppressionScalarEnd(p *parser, node *yaml.Node, endLine int) (int, int) {
+	if source := p.scriptSource(node); source != nil {
+		return source.contentStart.Line, min(source.scalarEnd.Line, endLine)
+	}
+	return node.Line, node.Line
+}
+
 // position even when its flow collection or scalar spans multiple lines.
 func yamlClosingCommentLine(node *yaml.Node, comment string, lines []string, endLine int) int {
 	last := node

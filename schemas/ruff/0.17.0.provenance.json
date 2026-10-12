@@ -1,0 +1,7 @@
+{
+  "immutableSource": "https://raw.githubusercontent.com/astral-sh/ruff/5b27c1ccfaa230fb195855f5cf3404a21e3379cd/ruff.schema.json",
+  "release": "0.17.0",
+  "revision": "5b27c1ccfaa230fb195855f5cf3404a21e3379cd",
+  "sha256": "2d9a28aad9d9f2fc706c812eed77d0dabcf393f5487f35b30035cd398f9ab7f1",
+  "source": "https://raw.githubusercontent.com/astral-sh/ruff/0.17.0/ruff.schema.json"
+}

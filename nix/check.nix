@@ -1,38 +1,70 @@
 {
   runCommand,
-  git,
+  gitMinimal,
+  jq,
+  bash,
   actionlint,
 }:
 
-runCommand "actionlint-nix-integration" { nativeBuildInputs = [ git ]; } ''
-  ${actionlint}/bin/actionlint -version | grep -Fx 'actionlint.kjanat.dev ${actionlint.version}'
-  ${actionlint}/bin/actionlint -help > help.txt 2>&1
-  grep -F 'Usage: actionlint' help.txt
-  grep -F 'https://github.com/kjanat/actionlint/tree/v${actionlint.version}/docs/usage.md' help.txt
+runCommand "actionlint-nix-integration"
+  {
+    nativeBuildInputs = [
+      gitMinimal
+      jq
+      bash
+    ];
+  }
+  ''
+    bash ${../scripts/check-packaged-cli.bash} ${actionlint}/bin/actionlint
+    ${actionlint}/bin/actionlint -version | grep -Fx 'actionlint.kjanat.dev ${actionlint.version}'
+    expectedToolchain="$(sed -n 's/^toolchain //p' ${actionlint.src}/go.mod)"
+    test -n "$expectedToolchain"
+    ${actionlint}/bin/actionlint -version | grep -F "built with $expectedToolchain compiler for "
+    ${actionlint}/bin/actionlint -help > help.txt 2>&1
+    grep -Fx 'Usage:' help.txt
+    grep -F 'actionlint [flags] [files...] [-]' help.txt
+    grep -F 'https://github.com/kjanat/actionlint/tree/v${actionlint.version}/docs/usage.md' help.txt
 
-  for file in \
-    share/man/man1/actionlint.1.gz \
-    share/bash-completion/completions/actionlint.bash \
-    share/zsh/site-functions/_actionlint \
-    share/fish/vendor_completions.d/actionlint.fish \
-    share/actionlint/actionlint.schema.json; do
-    test -s "${actionlint}/$file"
-  done
+    for file in \
+      share/man/man1/actionlint.1.gz \
+      share/bash-completion/completions/actionlint.bash \
+      share/zsh/site-functions/_actionlint \
+      share/fish/vendor_completions.d/actionlint.fish \
+      share/actionlint/actionlint.schema.json; do
+      test -s "${actionlint}/$file"
+    done
 
-  git init --quiet project
-  mkdir -p project/.github/workflows
-  cp ${./integration.yml} project/.github/workflows/check.yml
-  cd project
-  ${actionlint}/bin/actionlint -init-config
-  grep -F 'yaml-language-server: $schema=' .github/actionlint.yaml
+    while IFS= read -r -d "" schema; do
+      jq -e . "$schema" > /dev/null
+      while IFS= read -r reference; do
+        case "$reference" in
+          \#* | *:*) continue ;;
+        esac
+        target="$(dirname "$schema")/''${reference%%#*}"
+        if ! test -s "$target"; then
+          echo "Missing schema reference in $schema: $reference" >&2
+          exit 1
+        fi
+      done < <(jq -r '.. | objects | ."$ref"? // empty' "$schema")
+    done < <(find "${actionlint}/share/actionlint" -type f -name '*.json' -print0)
 
-  set +e
-  PATH= ${actionlint}/bin/actionlint -no-color -oneline > diagnostics.txt 2>&1
-  status=$?
-  set -e
-  test "$status" -eq 1
-  grep -F 'SC2086' diagnostics.txt
-  grep -F "undefined name 'undefined_name'" diagnostics.txt
+    git init --quiet project
+    mkdir -p project/.github/workflows
+    cp ${./integration.yml} project/.github/workflows/check.yml
+    cd project
+    ${actionlint}/bin/actionlint -init-config
+    grep -F 'yaml-language-server: $schema=' .github/actionlint.yaml
 
-  touch "$out"
-''
+    set +e
+    PATH= ${actionlint}/bin/actionlint -no-color -oneline > diagnostics.txt 2>&1
+    status=$?
+    set -e
+    if ! test "$status" -eq 1 ||
+      ! grep -F 'SC2086' diagnostics.txt ||
+      ! grep -F 'F821' diagnostics.txt; then
+      cat diagnostics.txt >&2
+      exit 1
+    fi
+
+    touch "$out"
+  ''

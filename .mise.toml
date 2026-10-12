@@ -1,10 +1,75 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 
+monorepo_root = true
+
+[wrappers.actionlint]
+command = "go"
+args    = ["run", "./cmd/actionlint"]
+env     = { GOFLAGS = "-buildvcs=true" }
+
 [tools]
-"github:kjanat/actionlint" = "latest"
-shellcheck                 = "latest"
+npm                                      = "12.0.2"
+go                                       = { prefix = "1.27" }
+node                                     = { prefix = "26" }
+"github:charmbracelet/markscribe".prefix = "0.8"
+"github:jgm/pandoc".prefix               = "3"
+"github:kjanat/runner".prefix            = "0.28"
+"github:koalaman/shellcheck".prefix      = "0.11"
+"github:microsoft/TypeScript".prefix     = "7"
+"github:tombi-toml/tombi".prefix         = "1.8"
+"npm:yaml-language-server".prefix        = "1.25"
+
+[tools."golangci-lint"]
+prefix  = "2"
+depends = ["go"]
+
+[tools."github:kjanat/actionlint"]
+version = "latest"
+depends = ["shellcheck"]
+
+[tools."github:rhysd/actionlint"]
+version = "latest"
+depends = ["shellcheck"]
+
+[tools."github:kjanat/dprint"]
+version = "0.59.0-kjanat"
+depends = ["tombi", "go"]
+
+[tool_alias]
+tombi      = "github:tombi-toml/tombi"
+shellcheck = "github:koalaman/shellcheck"
 
 [settings]
-# tombi trips on this, awaiting new release shortly
-# already merged: https://github.com/tombi-toml/tombi/pull/2152
-minimum_release_age_excludes = ["github:kjanat/actionlint"]
+experimental                        = true
+idiomatic_version_file_enable_tools = ["go", "node"]
+minimum_release_age                 = "0s"
+
+[env]
+_.path       = ["{{config_root}}/node_modules/.bin"]
+GOFLAGS      = "-buildvcs=true"
+VOLTA_BYPASS = 1
+
+[deps]
+[deps.npm]
+auto = false
+run  = "npm i --no-fund --no-audit --ignore-scripts"
+
+[deps.go]
+auto = false
+run  = "go mod tidy -diff"
+
+[tasks]
+[tasks.format]
+alias       = ["f", "fmt"]
+description = "Format code"
+run         = "dprint fmt"
+tools       = { tombi = { prefix = "1.8" } }
+
+[monorepo]
+config_roots = [
+  ".github/actions/comment-cop",
+  ".github/actions/shellcheck-versions",
+  "scripts",
+  "scripts/expression-probe",
+  "scripts/generate-actionlint-matcher",
+]

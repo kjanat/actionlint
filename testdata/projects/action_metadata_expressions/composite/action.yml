@@ -24,3 +24,5 @@ runs:
       with: ${{ fromJSON(secrets.WITH) }}
     - uses: actions/checkout@v7
       with: ${{ fromJSON(inputs.allowed) }}
+    - uses: actions/checkout@v7
+      with: ${{ 'not-a-map' }}

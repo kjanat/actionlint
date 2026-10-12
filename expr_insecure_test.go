@@ -9,6 +9,18 @@ import (
 
 // From https://securitylab.github.com/research/github-actions-untrusted-input/
 var testAllUntrustedInputs = []string{
+	"github.event.commits.*.committer.name",
+	"github.event.commits.*.committer.email",
+	"github.event.head_commit.committer.name",
+	"github.event.head_commit.committer.email",
+	"github.event.workflow_run.head_branch",
+	"github.event.workflow_run.head_repository.default_branch",
+	"github.event.workflow_run.display_title",
+	"github.event.workflow_run.head_commit.message",
+	"github.event.workflow_run.head_commit.author.name",
+	"github.event.workflow_run.head_commit.author.email",
+	"github.event.workflow_run.head_commit.committer.name",
+	"github.event.workflow_run.head_commit.committer.email",
 	"github.event.issue.title",
 	"github.event.issue.body",
 	"github.event.pull_request.title",

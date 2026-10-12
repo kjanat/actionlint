@@ -1,5 +1,7 @@
 # @kjanat/actionlint
 
+[![NPM Version](https://img.shields.io/npm/v/@kjanat/actionlint?logo=npm&labelColor=CB3837&color=black)](https://npm.im/@kjanat/actionlint)
+
 Static checker for GitHub Actions workflow files, distributed as a prebuilt binary.
 
 This is the npm distribution of [`kjanat/actionlint`](https://github.com/kjanat/actionlint), a fork of
@@ -58,6 +60,11 @@ The package includes `actionlint.schema.json` for completion and validation in c
 # yaml-language-server: $schema=../node_modules/@kjanat/actionlint/actionlint.schema.json
 ```
 
+ShellCheck directives and Ruff options reference their versioned definitions in
+`schemas/shellcheck/` and `schemas/ruff/` relative to the main schema. The package
+includes these files, so local schema validation can run offline. A versioned CDN
+URL uses the schemas from the same npm release.
+
 <details>
 <summary>CDN URLs for the JSON schema</summary>
 
@@ -92,11 +99,10 @@ a specific release that includes it.
 
 </details>
 
-### ShellCheck and Pyflakes
+### ShellCheck
 
-`actionlint` also checks the shell scripts inside `run:` steps with [ShellCheck][shellcheck], and Python scripts with
-[Pyflakes][pyflakes], when those are on your `PATH`. Neither is bundled here; install them separately to enable those
-checks.
+`actionlint` checks shell scripts inside `run:` steps with [ShellCheck][shellcheck]
+when it is on your `PATH`. ShellCheck is not bundled here; install it separately to enable these checks.
 
 ## How this package is put together
 
@@ -134,6 +140,22 @@ Reinstall without `--no-optional` or `--omit=optional`.
 Using Bun with `minimumReleaseAge`? Add `@kjanat-actionlint/*` to `minimumReleaseAgeExcludes` alongside
 `@kjanat/actionlint`. A fresh release otherwise installs the facade while its binaries are still age-gated.
 
+## Analysis results
+
+CLI `check --json` and the GitHub Action emit the same versioned result contract.
+This package ships the schema and types supported by its matching binary:
+
+```typescript
+import type { CheckResult, DiagnosticRecord } from '@kjanat/actionlint/result';
+```
+
+`@kjanat/actionlint/result.schema.json` exports the result schema;
+`@kjanat/actionlint/schemas/results/v1.schema.json` selects its contract version.
+`CheckResult` describes a complete result, including failed analysis;
+`DiagnosticRecord` describes one JSONL record. Types do not validate untrusted JSON.
+See [the result contract](https://github.com/kjanat/actionlint/blob/master/docs/results.md)
+for compatibility and migration details.
+
 ## Other ways to install
 
 Homebrew, Arch (AUR), Scoop, Docker, a download script, and `go install` are all covered in
@@ -141,8 +163,7 @@ Homebrew, Arch (AUR), Scoop, Docker, a download script, and `go install` are all
 
 ## License
 
-MIT. See [LICENSE.txt](./LICENSE.txt).
+MIT. See [LICENSE](./LICENSE).
 
-[pyflakes]: https://pypi.org/project/pyflakes/
 [releases]: https://github.com/kjanat/actionlint/releases
 [shellcheck]: https://www.shellcheck.net/

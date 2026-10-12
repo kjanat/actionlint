@@ -57,7 +57,14 @@ func TestKnownStrategyRunnerLabels(t *testing.T) {
 			if runsOn == "" {
 				runsOn = "${{ matrix.os }}"
 			}
-			source := fmt.Sprintf("on: push\njobs:\n  test:\n    strategy: ${{ %s }}\n    runs-on: %s\n    steps:\n      - run: echo ok\n", tc.expression, runsOn)
+			source := fmt.Sprintf(`on: push
+jobs:
+  test:
+    strategy: ${{ %s }}
+    runs-on: %s
+    steps:
+      - run: echo ok
+`, tc.expression, runsOn)
 			workflow, errs := Parse([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
@@ -101,7 +108,14 @@ func TestKnownStrategyRunnerLabelsLint(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			source := "on: push\njobs:\n  test:\n    strategy: ${{ fromJSON('{\"matrix\":" + tc.matrix + "}') }}\n    runs-on: ${{ matrix.os }}\n    steps:\n      - run: echo ok\n"
+			source := `on: push
+jobs:
+  test:
+    strategy: ${{ fromJSON('{"matrix":` + tc.matrix + `}') }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - run: echo ok
+`
 			errs, err := lint.Lint("test.yaml", []byte(source), nil)
 			if err != nil {
 				t.Fatal(err)
@@ -133,7 +147,14 @@ func TestKnownStrategyRunnerGroupsLint(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			source := "on: push\njobs:\n  test:\n    strategy: ${{ fromJSON('{\"matrix\":" + tc.matrix + "}') }}\n    runs-on: ${{ matrix.os }}\n    steps:\n      - run: echo ok\n"
+			source := `on: push
+jobs:
+  test:
+    strategy: ${{ fromJSON('{"matrix":` + tc.matrix + `}') }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - run: echo ok
+`
 			errs, err := lint.Lint("test.yaml", []byte(source), nil)
 			if err != nil {
 				t.Fatal(err)
@@ -165,7 +186,14 @@ func TestRunnerMatrixIncludeExcludeParity(t *testing.T) {
 				"strategy:\n      matrix: " + tc.matrix,
 				"strategy: ${{ fromJSON('{\"matrix\":" + tc.matrix + "}') }}",
 			} {
-				source := "on: push\njobs:\n  test:\n    " + strategy + "\n    runs-on: ${{ matrix.os }}\n    steps:\n      - run: echo ok\n"
+				source := `on: push
+jobs:
+  test:
+    ` + strategy + `
+    runs-on: ${{ matrix.os }}
+    steps:
+      - run: echo ok
+`
 				workflow, errs := Parse([]byte(source))
 				if len(errs) != 0 {
 					t.Fatal(errs)
@@ -231,7 +259,13 @@ func TestRunnerMatrixCorrelatedLabels(t *testing.T) {
 					if runsOn == "" {
 						runsOn = `["${{ matrix.os }}", "${{ matrix.image }}"]`
 					}
-					source := "on: push\njobs:\n  test:\n    " + strategy + "\n    runs-on: " + runsOn + "\n    steps:\n      - run: echo ok\n"
+					source := `on: push
+jobs:
+  test:
+    ` + strategy + "\n    runs-on: " + runsOn + `
+    steps:
+      - run: echo ok
+`
 					linter, err := NewLinter(io.Discard, &LinterOptions{})
 					if err != nil {
 						t.Fatal(err)
@@ -301,7 +335,14 @@ func TestRunnerMatrixFilterExpansion(t *testing.T) {
 				if expression {
 					strategy = "strategy: ${{ fromJSON('{\"matrix\":" + tc.matrix + "}') }}"
 				}
-				source := "on: push\njobs:\n  test:\n    " + strategy + "\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+				source := `on: push
+jobs:
+  test:
+    ` + strategy + `
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 				workflow, errs := Parse([]byte(source))
 				if len(errs) != 0 {
 					t.Fatal(errs)
@@ -337,7 +378,15 @@ func TestRunnerMatrixNumericFilters(t *testing.T) {
 		{"0", "1e-999", true},
 	} {
 		t.Run(tc.value+"_"+tc.filter, func(t *testing.T) {
-			source := "on: push\njobs:\n  test:\n    strategy:\n      matrix: {value: [" + tc.value + "], exclude: [{value: '" + tc.filter + "'}]}\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			source := `on: push
+jobs:
+  test:
+    strategy:
+      matrix: {value: [` + tc.value + "], exclude: [{value: '" + tc.filter + `'}]}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`
 			workflow, errs := Parse([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
@@ -370,7 +419,14 @@ func TestRunnerMatrixCorrelationFallback(t *testing.T) {
 			if runsOn == "" {
 				runsOn = `["${{ matrix.os }}", "${{ matrix.image }}"]`
 			}
-			source := "on: push\njobs:\n  test:\n    strategy:\n      matrix: " + tc.matrix + "\n    runs-on: " + runsOn + "\n    steps:\n      - run: echo ok\n"
+			source := `on: push
+jobs:
+  test:
+    strategy:
+      matrix: ` + tc.matrix + "\n    runs-on: " + runsOn + `
+    steps:
+      - run: echo ok
+`
 			linter, err := NewLinter(io.Discard, &LinterOptions{})
 			if err != nil {
 				t.Fatal(err)

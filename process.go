@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"path/filepath"
+	"runtime"
+	"slices"
 	"strings"
 	"sync"
 
@@ -16,15 +19,29 @@ import (
 
 // cmdExecution represents a single command line execution.
 type cmdExecution struct {
+	maxExitCode   int
 	cmd           string
 	args          []string
 	stdin         string
 	combineOutput bool
+	env           []string
+	unsetEnv      []string
+	dir           string
 }
 
 func (e *cmdExecution) run(ctx context.Context) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, e.cmd, e.args...)
+	cmd.Dir = e.dir
 	cmd.Stderr = nil
+	if len(e.env) > 0 || len(e.unsetEnv) > 0 {
+		cmd.Env = append(cmd.Environ(), e.env...)
+		cmd.Env = slices.DeleteFunc(cmd.Env, func(entry string) bool {
+			name, _, _ := strings.Cut(entry, "=")
+			return slices.ContainsFunc(e.unsetEnv, func(unset string) bool {
+				return name == unset || runtime.GOOS == "windows" && strings.EqualFold(name, unset)
+			})
+		})
+	}
 	// Let os/exec start the reader before copying stdin. Writing the whole script
 	// before Start can fill the pipe and deadlock, even with a single worker.
 	cmd.Stdin = strings.NewReader(e.stdin)
@@ -48,6 +65,9 @@ func (e *cmdExecution) run(ctx context.Context) ([]byte, error) {
 
 			if code < 0 {
 				return nil, fmt.Errorf("%s was terminated. stderr: %q", e.cmd, stderr)
+			}
+			if e.maxExitCode > 0 && code > e.maxExitCode {
+				return nil, fmt.Errorf("%s exited with status %d. stderr: %q", e.cmd, code, stderr)
 			}
 
 			if len(stdout) == 0 {
@@ -106,10 +126,20 @@ func (proc *concurrentProcess) wait() {
 // newCommandRunner creates new external command runner for given executable. The executable path
 // is resolved in this function.
 func (proc *concurrentProcess) newCommandRunner(exe string, combineOutput bool) (*externalCommand, error) {
-	var args []string
-	p, args, err := resolveExternalCommand(exe)
+	return proc.configuredCommandRunner(exe, nil, combineOutput)
+}
+
+func (proc *concurrentProcess) configuredCommandRunner(exe string, options *ExternalCommandOptions, combineOutput bool) (*externalCommand, error) {
+	p, args, err := ResolveExternalCommandOptions(exe, options)
 	if err != nil {
 		return nil, err
+	}
+	// Resolve before per-script working directories change relative executable paths.
+	if p != "" {
+		p, err = filepath.Abs(p)
+		if err != nil {
+			return nil, err
+		}
 	}
 	cmd := &externalCommand{
 		proc:          proc,
@@ -117,10 +147,57 @@ func (proc *concurrentProcess) newCommandRunner(exe string, combineOutput bool) 
 		args:          args,
 		combineOutput: combineOutput,
 	}
+	if options != nil {
+		cmd.env = append([]string(nil), options.Environment...)
+		cmd.dir = options.WorkingDir
+	}
 	return cmd, nil
 }
 
-func resolveExternalCommand(exe string) (string, []string, error) {
+// ExternalCommandOptions supplies literal arguments and child environment overrides.
+// A non-nil Executable replaces the command line with a literal executable path;
+// an empty executable disables the tool. Nil retains the existing command parser.
+type ExternalCommandOptions struct {
+	// Optional permits automatic Ruff discovery to skip an unavailable executable.
+	// Explicitly configured checkers should leave this false.
+	Optional    bool
+	Executable  *string
+	Arguments   []string
+	Environment []string
+	// WorkingDir sets the default child directory and resolves explicit relative
+	// executable paths. Bare command names retain PATH lookup.
+	WorkingDir string
+}
+
+func externalCommandEnabled(command string, options *ExternalCommandOptions) bool {
+	if options != nil && options.Executable != nil {
+		return *options.Executable != ""
+	}
+	return command != ""
+}
+
+// ResolveExternalCommandOptions locates a configured tool without executing it.
+func ResolveExternalCommandOptions(command string, options *ExternalCommandOptions) (string, []string, error) {
+	if options == nil {
+		return ResolveExternalCommand(command)
+	}
+	if !externalCommandEnabled(command, options) {
+		return "", nil, nil
+	}
+	if options.Executable != nil {
+		executable := *options.Executable
+		if options.WorkingDir != "" && !filepath.IsAbs(executable) && filepath.Base(executable) != executable {
+			executable = filepath.Join(options.WorkingDir, executable)
+		}
+		path, err := execabs.LookPath(executable)
+		return path, append([]string(nil), options.Arguments...), err
+	}
+	path, args, err := ResolveExternalCommand(command)
+	return path, append(args, options.Arguments...), err
+}
+
+// ResolveExternalCommand locates an executable or parses a command with arguments without running it.
+func ResolveExternalCommand(exe string) (string, []string, error) {
 	c, err := execabs.LookPath(exe)
 	if err == nil {
 		return c, nil, nil
@@ -141,24 +218,32 @@ func resolveExternalCommand(exe string) (string, []string, error) {
 // by using errgroup.Group. The wait() method must be called at the end for checking if some fatal
 // error occurred.
 type externalCommand struct {
+	maxExitCode   int
 	proc          *concurrentProcess
 	eg            errgroup.Group
 	exe           string
 	args          []string
 	combineOutput bool
+	env           []string
+	unsetEnv      []string
+	dir           string
 }
 
 // run runs the command with given arguments and stdin. The callback function is called after the
 // process runs. First argument is stdout and the second argument is an error while running the
 // process.
 func (cmd *externalCommand) run(args []string, stdin string, callback func([]byte, error) error) {
+	cmd.runInDirectory(args, stdin, cmd.dir, callback)
+}
+
+func (cmd *externalCommand) runInDirectory(args []string, stdin, dir string, callback func([]byte, error) error) {
 	if len(cmd.args) > 0 {
 		allArgs := make([]string, 0, len(cmd.args)+len(args))
 		allArgs = append(allArgs, cmd.args...)
 		allArgs = append(allArgs, args...)
 		args = allArgs
 	}
-	exec := &cmdExecution{cmd.exe, args, stdin, cmd.combineOutput}
+	exec := &cmdExecution{cmd: cmd.exe, args: args, stdin: stdin, combineOutput: cmd.combineOutput, env: cmd.env, unsetEnv: cmd.unsetEnv, dir: dir, maxExitCode: cmd.maxExitCode}
 	cmd.proc.run(&cmd.eg, exec, callback)
 }
 

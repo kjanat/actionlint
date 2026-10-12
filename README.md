@@ -1,6 +1,9 @@
 # actionlint
 
 [![CI Status][ci-badge]][ci]
+[![Latest release][release-badge]][releases]
+[![NPM Version][npm-badge]][npm-package]
+[![Docker image version][docker-badge]][dockerhub]
 [![API Document][apidoc-badge]][apidoc]
 [![Sponsor this project][sponsor-badge]][sponsor]
 
@@ -8,14 +11,21 @@
 
 This is an actively maintained fork of [rhysd/actionlint][upstream]. It carries the upstream checks plus cache safety policies enabled by default, configurable opt-in [policy checks][config], composite action step validation, shell completion, and a first-party GitHub Action, and it ships attested binaries, a Docker image on [GHCR][ghcr] and [Docker Hub][dockerhub], and a Go module at `actionlint.kjanat.dev`. Report problems through [this fork's issue tracker][issue-form].
 
-Features:
+## Fork provenance and versioning
+
+This fork builds on upstream [v1.7.12](https://github.com/rhysd/actionlint/releases/tag/v1.7.12) ([`rhysd/actionlint@914e7df`]). Its independent release series starts at v1.8.0. Tags published by `kjanat/actionlint` identify this fork's releases; a matching tag need not exist in `rhysd/actionlint`.
+
+The [changelog] separates fork releases from inherited upstream history. Releases follow [Semantic Versioning for the supported CLI and configuration contracts], with [CLI compatibility] maintained for existing integrations. New or corrected lint findings can affect CI results; the [Go library API remains unstable].
+
+## Features
 
 - **Syntax check for workflow files** to check unexpected or missing keys following [workflow syntax][syntax-doc]
 - **Strong type check for `${{ }}` expressions** to catch several semantic errors like access to not existing property,
   type mismatches, ...
 - **Actions usage check** to check that inputs at `with:` and outputs in `steps.{id}.outputs` are correct
 - **Reusable workflow check** to check inputs/outputs/secrets of reusable workflows and workflow calls
-- **[shellcheck][shellcheck] and [pyflakes][pyflakes] integrations** for scripts at `run:`
+- **[shellcheck][shellcheck] integration** for scripts at `run:`
+- **[Ruff integration](docs/config.md#ruff)** for Python `run:` scripts, without requiring a Python interpreter
 - **Security checks**; [script injection][script-injection-doc] by untrusted inputs, hard-coded credentials
 - **Other several useful checks**; [glob syntax][filter-pattern-doc] validation, dependencies check for `needs:`, runner label validation, cron syntax validation, ...
 
@@ -38,7 +48,7 @@ See the [full list][checks] of checks done by actionlint.
 
 <details><summary><h3>Example of a broken workflow</h3></summary>
 
-The same files the animation above records, run through both linters. This section is generated from them by [`scripts/check-readme`](scripts/check-readme), so it cannot drift.
+The same files the animation above records, run through both linters. This section is generated from them by [`scripts/check-readme`].
 
 <!-- BEGIN generated demo -->
 
@@ -68,7 +78,7 @@ jobs:
 `docs/screenshots/actionlint.yaml`:
 
 ```yaml
-# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/@kjanat/actionlint/actionlint.schema.json
+# yaml-language-server: $schema=../../actionlint.schema.json
 ---
 policy:
   require-commit-hash: true
@@ -114,8 +124,8 @@ demo-workflow.yaml:18:15: "api" is not the ID of a preceding background step. "w
 
 ## Quick start
 
-Install with [npm](docs/install.md#npm), [Homebrew](docs/install.md#homebrew), [AUR](docs/install.md#arch-linux),
-[Scoop](docs/install.md#scoop), or [mise](docs/install.md#mise), or download [a release archive][releases].
+Install with [npm], [Homebrew], [AUR],
+[Scoop], [WinGet], or [mise], or download [a release archive][releases].
 See [the installation document][install] for all options. To run it through npm:
 
 ```sh
@@ -142,93 +152,34 @@ See [the usage document][usage] for more details.
 
 ## GitHub Action
 
-This repository can be used directly as a Docker action. The prebuilt image includes actionlint, ShellCheck, and pyflakes, and reports problems as GitHub annotations by default. Docker container actions run only on Linux, and this action also needs a reachable Docker daemon. `ubuntu-slim` is not supported: its job runs in an unprivileged container with the Docker client but no daemon or Docker socket. Standard Ubuntu runners, including `ubuntu-24.04-arm` and `ubuntu-26.04-arm`, are supported by the published `linux/amd64` and `linux/arm64` image.
+Lint with annotations and a compact job summary:
 
 ```yaml
-name: Lint GitHub Actions workflows
+name: Lint workflows
 on: [push, pull_request]
-
+permissions: { contents: read }
 jobs:
-  actionlint:
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - { uses: actions/checkout@v7, with: { persist-credentials: false } }
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
       - uses: kjanat/actionlint@v1
 ```
 
-On a daemon-less runner such as `ubuntu-slim`, download and run the binary instead:
+Project settings belong in [`.github/actionlint.yaml`](docs/config.md).
+Use the `config` input for a one-run override. No `with:` block is required.
 
-```yaml
-- uses: actions/checkout@v7
-  with: { persist-credentials: false }
-- name: Download and run actionlint
-  env: { GH_TOKEN: "${{ github.token }}", GH_REPO: "kjanat/actionlint" }
-  run: |
-    case "${RUNNER_ARCH}" in
-      X64) asset_arch=amd64 ;;
-      ARM64) asset_arch=arm64 ;;
-      ARM) asset_arch=armv6 ;;
-      X86) asset_arch=386 ;;
-      *) echo "Unsupported runner architecture: ${RUNNER_ARCH}" >&2; exit 1 ;;
-    esac
-    gh release download --pattern "actionlint_*_${RUNNER_OS,,}_${asset_arch}.tar.gz" --output - | tar -xzf - actionlint
-    ./actionlint -color
-```
+The upcoming JavaScript Action runs on Linux, macOS and Windows without Docker.
+Existing immutable releases retain their Docker implementation. Pin a published
+release commit SHA or normal `vX.Y.Z` tag; `v1` and `v1.X` are moving pointers.
 
-The moving `v1` tag follows compatible v1 releases, and `v1.16` follows v1.16 patch releases. These tags point to a
-commit immediately after the release that pins the published container image by digest. `v1.17.0` is a versioned release tag.
-For an immutable action reference with a pinned image, use the full commit SHA resolved from a
-floating tag.
-
-<details><summary><h3>Inputs</h3></summary>
-
-| Input               | Default       | Description                                                                                  |
-| ------------------- | ------------- | -------------------------------------------------------------------------------------------- |
-| `files`             | all workflows | Newline-separated workflow paths. Empty checks every workflow in the repository.             |
-| `format`            | `github`      | Output format: `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, or `sarif`. |
-| `ignore`            | none          | Newline-separated regular expressions for actionlint errors to ignore.                       |
-| `config-file`       | automatic     | Configuration file path relative to `working-directory`.                                     |
-| `shellcheck`        | `true`        | Run ShellCheck for shell scripts in workflow steps.                                          |
-| `pyflakes`          | `true`        | Run pyflakes for Python scripts in workflow steps.                                           |
-| `working-directory` | `.`           | Directory to lint, relative to the repository workspace.                                     |
-| `output-file`       | none          | Repository-relative file to receive the selected output format.                              |
-| `fail-on-error`     | `true`        | Fail when problems are found. Invalid options and fatal errors always fail.                  |
-
-</details>
-<details><summary><h3>Outputs</h3></summary>
-
-| Output           | Description                                                                                         |
-| ---------------- | --------------------------------------------------------------------------------------------------- |
-| `exit-code`      | actionlint exit code: `0` for clean, `1` for problems, `2` for invalid options, or `3` for failure. |
-| `result`         | `success`, `problems-found`, `invalid-options`, or `failure`.                                       |
-| `problems-found` | Whether actionlint found one or more problems.                                                      |
-| `problem-count`  | Number of problems, or an empty string if actionlint could not complete.                            |
-| `output`         | Complete actionlint output in the selected format.                                                  |
-| `output-file`    | Repository-relative output path, or an empty string when no file was requested.                     |
-
-Give the step an `id` to consume its outputs. For example, this writes JSON Lines without failing the lint step:
-
-```yaml
-- name: Check workflows
-  id: actionlint
-  uses: kjanat/actionlint@v1
-  with:
-    format: json-lines
-    output-file: actionlint-results.jsonl
-    fail-on-error: false
-- name: Report result
-  if: always()
-  env:
-    RESULT: ${{ steps.actionlint.outputs.result }}
-    PROBLEM_COUNT: ${{ steps.actionlint.outputs.problem-count }}
-  run: echo "${RESULT} (${PROBLEM_COUNT} problems)"
-```
-
-</details>
-
-See [the usage document][usage] for additional examples and output behavior.
+See the [Action guide](docs/action.md) for configuration, saved reports,
+optional PR reviews, tool prerequisites, migration and the input/output reference.
 
 ## pre-commit
+
+[![Latest release][release-badge]][releases]
 
 Workflow files can be checked on every commit with [pre-commit][pre-commit]. Add this to `.pre-commit-config.yaml`:
 
@@ -259,12 +210,14 @@ See [the usage document][usage] for the pinned ShellCheck build and how to choos
 
 ## Documents
 
+- [AI usage and policy] and [CLI compatibility]: How this fork uses AI and approaches compatibility for existing workflows and CI integrations.
 - [Checks][checks]: Full list of all checks done by actionlint with example inputs, outputs, and playground links.
-- [Installation][install]: Install with npm, Homebrew, AUR, Scoop, aqua, mise, the community pip/uv wrapper, release archives, the download script, Docker, or Go. Includes the status of WinGet and upstream-only package names.
+- [Installation][install]: Install with npm, Homebrew, AUR, Scoop, WinGet, aqua, mise, the community pip/uv wrapper, release archives, the download script, Docker, or Go. Includes upstream-only package names.
 - [Usage][usage]: How to use `actionlint` command locally or on GitHub Actions, the online playground, an official Docker image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit, VS Code.
 - [Configuration][config]: Runner labels, variables, secrets, default permissions, error filters, and opt-in policy checks, with YAML Language Server schema support.
 - [Go API][api]: How to use actionlint as Go library.
-- [Schema audit](docs/schema-audit.md): Pinned upstream definitions, compatibility fixes, validation evidence, and retained differences.
+- [Schema audit]: Pinned upstream definitions, compatibility fixes, validation evidence, and retained differences.
+- [Expression behavior]: Reproduce GitHub's runtime behavior, understand parser differences, and avoid surprising workflow decisions.
 - [References][refs]: Links to resources.
 - [GitHub Actions changelog][github-changelog]: Browse and search the latest entries from GitHub's Actions changelog feed.
 
@@ -272,35 +225,61 @@ See [the usage document][usage] for the pinned ShellCheck build and how to choos
 
 When you see some bugs or false positives, it is helpful to [file a new issue][issue-form] with a minimal example of input. Feature requests and ideas for additional checks are welcome too.
 
-See the [contribution guide](./CONTRIBUTING.md) for more details.
+See the [contribution guide] for more details.
 
 ## License
 
-actionlint is distributed under [the MIT license](./LICENSE.txt).
+actionlint is distributed under [the MIT license].
 
-[ci-badge]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml/badge.svg
-[ci]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml
+[AI usage and policy]: CONTRIBUTING.md#ai-usage-and-policy
+[AUR]: docs/install.md#arch-linux
+[CLI compatibility]: CONTRIBUTING.md#cli-compatibility
+[Expression behavior]: docs/expression-behavior.md
+[Go library API remains unstable]: CONTRIBUTING.md#go-library-api
+[Homebrew]: docs/install.md#homebrew
+[Schema audit]: docs/schema-audit.md
+[Scoop]: docs/install.md#scoop
+[WinGet]: docs/install.md#winget
+[Semantic Versioning for the supported CLI and configuration contracts]: CONTRIBUTING.md#release-versioning
+[`scripts/check-readme`]: scripts/check-readme
 [apidoc-badge]: https://pkg.go.dev/badge/actionlint.kjanat.dev.svg
 [apidoc]: https://pkg.go.dev/actionlint.kjanat.dev
+[changelog]: CHANGELOG.md#upstream-history
+[ci-badge]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml/badge.svg
+[ci]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml
+[config]: docs/config.md
+[contribution guide]: ./CONTRIBUTING.md
+[docker-badge]: https://img.shields.io/docker/v/kjanat/actionlint?logo=docker&logoColor=white&label=Docker&labelColor=2496ED&color=black
+[dockerhub]: https://hub.docker.com/r/kjanat/actionlint
+[filter-pattern-doc]: https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
+[ghcr]: https://github.com/kjanat/actionlint/pkgs/container/actionlint
+[github-changelog]: https://actionlint.kjanat.dev/github-changelog/
+[issue-form]: https://github.com/kjanat/actionlint/issues/new
+[mise]: docs/install.md#mise
+[npm]: docs/install.md#npm
+[npm-badge]: https://img.shields.io/npm/v/@kjanat/actionlint?logo=npm&labelColor=CB3837&color=black
+[npm-package]: https://npm.im/@kjanat/actionlint
+[playground]: https://kjanat.github.io/actionlint/
+[pre-commit]: https://pre-commit.com
+[release-badge]: https://img.shields.io/github/v/release/kjanat/actionlint?logo=github&logoColor=white&label=release&labelColor=181717&color=black
+[releases]: https://github.com/kjanat/actionlint/releases
+[repo]: https://github.com/kjanat/actionlint
+[script-injection-doc]: https://docs.github.com/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks
+[shellcheck]: https://github.com/koalaman/shellcheck
 [sponsor-badge]: https://img.shields.io/badge/Sponsor-ea4aaa?logo=githubsponsors&logoColor=white
 [sponsor]: https://github.com/sponsors/kjanat
-[repo]: https://github.com/kjanat/actionlint
-[playground]: https://kjanat.github.io/actionlint/
-[github-changelog]: https://actionlint.kjanat.dev/github-changelog/
-[pre-commit]: https://pre-commit.com
-[upstream]: https://github.com/rhysd/actionlint
-[ghcr]: https://github.com/kjanat/actionlint/pkgs/container/actionlint
-[dockerhub]: https://hub.docker.com/r/kjanat/actionlint
-[shellcheck]: https://github.com/koalaman/shellcheck
-[pyflakes]: https://github.com/PyCQA/pyflakes
 [syntax-doc]: https://docs.github.com/actions/reference/workflow-syntax-for-github-actions
-[filter-pattern-doc]: https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
-[script-injection-doc]: https://docs.github.com/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks
-[releases]: https://github.com/kjanat/actionlint/releases
-[checks]: https://github.com/kjanat/actionlint/blob/v1.17.0/docs/checks.md
-[install]: https://github.com/kjanat/actionlint/blob/master/docs/install.md
-[usage]: https://github.com/kjanat/actionlint/blob/v1.17.0/docs/usage.md
-[config]: docs/config.md
-[api]: https://github.com/kjanat/actionlint/blob/v1.17.0/docs/api.md
-[refs]: https://github.com/kjanat/actionlint/blob/v1.17.0/docs/reference.md
-[issue-form]: https://github.com/kjanat/actionlint/issues/new
+[the MIT license]: ./LICENSE.txt
+[upstream]: https://github.com/rhysd/actionlint
+
+<!-- documentation in this checkout -->
+
+[api]: docs/api.md
+[checks]: docs/checks.md
+[install]: docs/install.md
+[refs]: docs/reference.md
+[usage]: docs/usage.md
+
+<!-- specific commit refs -->
+
+[`rhysd/actionlint@914e7df`]: https://github.com/rhysd/actionlint/commit/914e7df21a07ef503a81201c76d2b11c789d3fca

@@ -35,7 +35,12 @@
   },
   "exports": {
     "./package.json": "./package.json",
-    "./schema": "./actionlint.schema.json"
+    "./schema": "./actionlint.schema.json",
+    "./result": {
+      "types": "./types/result.d.ts"
+    },
+    "./result.schema.json": "./schemas/results/v1.schema.json",
+    "./schemas/*": "./schemas/*"
   },
   "bin": {
     "actionlint": "bin/actionlint.mjs"
@@ -52,9 +57,14 @@
     "lib/",
     "man/",
     "actionlint.schema.json",
+    "schemas/",
+    "types/",
     "README.md",
-    "LICENSE.txt"
+    "LICENSE"
   ],
+  "scripts": {
+    "test": "node --test ./test/*.test.mjs"
+  },
   "dependencies": {
     "ansispeck": "^0.4.2"
   },

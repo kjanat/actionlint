@@ -217,6 +217,9 @@ func workflowExpressionLiteral(s *String) (any, bool) {
 	}
 	if call, ok := expr.(*FuncCallNode); ok && strings.EqualFold(call.Callee, "fromJSON") && len(call.Args) == 1 {
 		if literal, ok := call.Args[0].(*StringNode); ok {
+			if len(jsonMemberCollisions(literal.Value)) != 0 {
+				return nil, false
+			}
 			var value any
 			if json.Unmarshal([]byte(literal.Value), &value) == nil {
 				return value, true

@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"errors"
 	"regexp"
 	"strconv"
 	"strings"
@@ -36,15 +37,14 @@ type RuleExpression struct {
 	workflow         *Workflow
 	localActions     *LocalActionsCache
 	localWorkflows   *LocalReusableWorkflowCache
+	expressionSource *scriptSource
+	expressionOffset int
 }
 
 // NewRuleExpression creates new RuleExpression instance.
 func NewRuleExpression(actionsCache *LocalActionsCache, workflowCache *LocalReusableWorkflowCache) *RuleExpression {
 	return &RuleExpression{
-		RuleBase: RuleBase{
-			name: "expression",
-			desc: "Syntax and semantics checks for expressions embedded with ${{ }} syntax",
-		},
+		RuleBase:         builtinRuleBase("expression"),
 		matrixTy:         nil,
 		stepsTy:          nil,
 		needsTy:          nil,
@@ -60,6 +60,7 @@ func NewRuleExpression(actionsCache *LocalActionsCache, workflowCache *LocalReus
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
 func (rule *RuleExpression) VisitWorkflowPre(n *Workflow) error {
+	rule.workflow = n
 	rule.checkString(n.Name, "")
 	rule.checkString(n.Description, "")
 	hasNonWorkflowCallTrigger := len(n.On) > 1
@@ -370,9 +371,14 @@ func (rule *RuleExpression) getActionOutputsType(spec *String) *ObjectType {
 		localSpec = s
 	}
 	if strings.HasPrefix(localSpec, "./") {
-		meta, _, err := rule.localActions.FindMetadata(localSpec)
+		meta, _, err := rule.localActions.FindMetadata(spec.Value)
 		if err != nil {
-			rule.Error(spec.Pos, err.Error())
+			// The action rule reports path and mapping failures at every uses reference.
+			_, unresolved := errors.AsType[unresolvedLocalActionError](err)
+			_, mapping := errors.AsType[localActionMappingError](err)
+			if !unresolved && !mapping {
+				rule.Error(spec.Pos, err.Error())
+			}
 			return NewMapObjectType(StringType{})
 		}
 		if meta == nil {
@@ -721,28 +727,27 @@ func (rule *RuleExpression) checkIfCondition(str *String, workflowKey string) {
 	//   if: true && false
 
 	var condTy ExprType
-	if str.ContainsExpression() {
-		ts := rule.checkString(str, workflowKey)
-
-		if len(ts) == 1 {
-			if str.IsExpressionAssigned() {
-				condTy = ts[0].ty
-			}
-		}
-	} else {
-		src := str.Value + "}}" // }} is necessary since lexer lexes it as end of tokens
-		line, col := str.Pos.Line, str.Pos.Col
-
-		p := NewExprParser()
-		expr, err := p.Parse(NewExprLexer(src))
-		if err != nil {
-			rule.exprError(err, line, col)
-			return
-		}
-
-		if ty, ok := rule.checkSemanticsOfExprNode(expr, line, col, false, workflowKey); ok {
-			condTy = ty
-		}
+	restore := rule.scopeExpressionSource(str.Value, str.Pos)
+	defer restore()
+	expr, err, offset := parseConditionExpression(str.Value)
+	if conditionSource(str.Value) != str.Value && offset == 0 {
+		rule.expressionSource = nil
+	}
+	rule.expressionOffset = offset
+	line, col := str.Pos.Line, str.Pos.Col+offset
+	if offset != 0 && str.Quoted {
+		col++
+	}
+	if err != nil {
+		rule.exprError(err, line, col)
+		return
+	}
+	if expr == nil {
+		rule.checkString(str, workflowKey)
+		return
+	}
+	if ty, ok := rule.checkSemanticsOfExprNode(expr, line, col, false, workflowKey); ok {
+		condTy = ty
 	}
 
 	if condTy != nil && !(BoolType{}).Assignable(condTy) {
@@ -833,7 +838,8 @@ func (rule *RuleExpression) checkFloat(f *Float, workflowKey string) {
 }
 
 func (rule *RuleExpression) checkExprsIn(s string, pos *Pos, quoted, checkUntrusted bool, workflowKey string) ([]typedExpr, bool) {
-	// TODO: Line number is not correct when the string contains newlines.
+	restore := rule.scopeExpressionSource(s, pos)
+	defer restore()
 
 	line, col := pos.Line, pos.Col
 	if quoted {
@@ -841,6 +847,7 @@ func (rule *RuleExpression) checkExprsIn(s string, pos *Pos, quoted, checkUntrus
 	}
 	offset := 0
 	ts := []typedExpr{}
+	valid := true
 	for {
 		idx := strings.Index(s, "${{")
 		if idx == -1 {
@@ -850,27 +857,46 @@ func (rule *RuleExpression) checkExprsIn(s string, pos *Pos, quoted, checkUntrus
 		start := idx + 3 // 3 means removing "${{"
 		s = s[start:]
 		offset += start
+		rule.expressionOffset = offset
 		col := col + offset
 
 		ty, offsetAfter, ok := rule.checkSemantics(s, line, col, checkUntrusted, workflowKey)
-		if !ok {
+		// Parsed expressions have a complete boundary even when semantic checks fail.
+		// Scan later interpolations for independent rules, but retain aggregate invalidity.
+		if !ok && ty == nil {
 			return nil, false
 		}
+		valid = valid && ok
 		if ty == nil || offsetAfter == 0 {
 			return nil, true
 		}
-		ts = append(ts, typedExpr{ty, Pos{line, col - 3}})
+		position := Pos{line, col - 3}
+		if mapped := rule.expressionPosition(offset-3, false); mapped != nil {
+			position = *mapped
+		}
+		ts = append(ts, typedExpr{ty, position})
 
 		s = s[offsetAfter:]
 		offset += offsetAfter
 	}
 
-	return ts, true
+	return ts, valid
 }
 
 func (rule *RuleExpression) exprError(err *ExprError, lineBase, colBase int) {
 	pos := convertExprLineColToPos(err.Line, err.Column, lineBase, colBase)
-	rule.Error(pos, err.Message)
+	var end *Pos
+	if mapped := rule.expressionPosition(rule.expressionOffset+err.Offset, false); mapped != nil {
+		pos = mapped
+		end = rule.expressionPosition(rule.expressionOffset+err.EndOffset, true)
+	}
+	kind := err.rule
+	if kind == "" {
+		kind = rule.Name()
+	}
+	diagnostic := errorAt(pos, kind, err.Message)
+	diagnostic.endPosition = end
+	rule.errs = append(rule.errs, diagnostic)
 }
 
 func (rule *RuleExpression) checkSemanticsOfExprNode(expr ExprNode, line, col int, checkUntrusted bool, workflowKey string) (ExprType, bool) {
@@ -908,9 +934,16 @@ func (rule *RuleExpression) checkSemanticsOfExprNode(expr ExprNode, line, col in
 	for _, err := range errs {
 		rule.exprError(err, line, col)
 	}
+	if rule.config.diagnosticLevel("unsound-ternary") != "off" {
+		rule.checkUnsoundTernaries(expr, line, col)
+	}
 	if workflowKey == "" && len(errs) == 0 {
 		if _, literal := expr.(*StringNode); !literal {
-			rule.Error(&Pos{Line: line, Col: col}, "expressions are not allowed in this static workflow field")
+			position := &Pos{Line: line, Col: col}
+			if mapped := rule.expressionPosition(rule.expressionOffset, false); mapped != nil {
+				position = mapped
+			}
+			rule.Error(position, "expressions are not allowed in this static workflow field")
 			return ty, false
 		}
 	}
@@ -990,7 +1023,7 @@ func (rule *RuleExpression) checkMatrix(m *Matrix) *ObjectType {
 		} else {
 			for _, combi := range m.Exclude.Combinations {
 				if combi.Expression != nil {
-					rule.checkObjectExpression(combi.Expression, "exclude", "jobs.<job_id>.strategy")
+					rule.checkMatrixCombinationExpression(combi.Expression, "exclude")
 					continue
 				}
 				for _, a := range combi.Assigns {
@@ -1021,7 +1054,7 @@ func (rule *RuleExpression) checkMatrix(m *Matrix) *ObjectType {
 
 	for _, combi := range m.Include.Combinations {
 		if combi.Expression != nil {
-			ty := rule.checkObjectExpression(combi.Expression, "matrix combination at element of include section", "jobs.<job_id>.strategy")
+			ty := rule.checkMatrixCombinationExpression(combi.Expression, "include")
 			if ty == nil {
 				continue
 			}
@@ -1056,7 +1089,10 @@ func (rule *RuleExpression) checkMatrixRow(r *MatrixRow) ExprType {
 
 	var ty ExprType
 	for _, v := range r.Values {
-		t := rule.checkRawYAMLValue(v)
+		t := rule.checkMatrixSequenceItem(v)
+		if t == nil {
+			continue
+		}
 		if ty == nil {
 			ty = t
 		} else {
@@ -1068,6 +1104,51 @@ func (rule *RuleExpression) checkMatrixRow(r *MatrixRow) ExprType {
 		return AnyType{} // No element
 	}
 
+	return ty
+}
+
+func (rule *RuleExpression) checkMatrixCombinationExpression(s *String, section string) ExprType {
+	ty := rule.checkOneExpression(s, "matrix combination at element of "+section+" section", "jobs.<job_id>.strategy")
+	if array, ok := ty.(*ArrayType); ok {
+		if value, known := workflowExpressionLiteral(s); known {
+			if values, ok := value.([]any); ok {
+				// Merging object and scalar element types produces AnyType, so
+				// validate each known value before using the inferred element type.
+				invalid := false
+				for i, value := range values {
+					if _, ok := value.(map[string]any); !ok {
+						rule.Errorf(s.Pos, "matrix combination in %s at inserted array index %d must be an object but got %s", section, i, typeOfJSONValue(value))
+						invalid = true
+					}
+				}
+				if invalid || len(values) == 0 {
+					return nil
+				}
+			}
+		}
+		ty = array.Elem
+	}
+	switch ty.(type) {
+	case nil, AnyType, *ObjectType:
+		return ty
+	default:
+		rule.Errorf(s.Pos, "matrix combination in %s must be an object or an array of objects but got %s", section, ty)
+		return nil
+	}
+}
+
+func (rule *RuleExpression) checkMatrixSequenceItem(value RawYAMLValue) ExprType {
+	ty := rule.checkRawYAMLValue(value)
+	if scalar, ok := value.(*RawYAMLString); ok && parseAssignedExpression(scalar.Value) != nil {
+		if array, ok := ty.(*ArrayType); ok {
+			if literal, known := workflowExpressionLiteral(&String{Value: scalar.Value}); known {
+				if values, ok := literal.([]any); ok && len(values) == 0 {
+					return nil
+				}
+			}
+			return array.Elem // Template expansion inserts one level only.
+		}
+	}
 	return ty
 }
 
@@ -1110,12 +1191,18 @@ func (rule *RuleExpression) checkRawYAMLValue(v RawYAMLValue) ExprType {
 		}
 		return NewStrictObjectType(m)
 	case *RawYAMLArray:
-		if len(v.Elems) == 0 {
-			return &ArrayType{AnyType{}, false}
+		var elem ExprType
+		for _, value := range v.Elems {
+			if ty := rule.checkMatrixSequenceItem(value); ty != nil {
+				if elem == nil {
+					elem = ty
+				} else {
+					elem = elem.Merge(ty)
+				}
+			}
 		}
-		elem := rule.checkRawYAMLValue(v.Elems[0])
-		for _, v := range v.Elems[1:] {
-			elem = elem.Merge(rule.checkRawYAMLValue(v))
+		if elem == nil {
+			elem = AnyType{}
 		}
 		return &ArrayType{elem, false}
 	case *RawYAMLString:

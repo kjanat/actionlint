@@ -151,14 +151,22 @@ func TestResolvePermissionsASTAndYAMLAgree(t *testing.T) {
 		"permissions: write-all",
 		"permissions: bogus",
 		"permissions:\n  contents: read",
-		"permissions:\n  contents: read\n  id-token: write",
+		`permissions:
+  contents: read
+  id-token: write`,
 		"permissions:\n  Contents: Read",
 		"permissions:\n  this-scope-does-not-exist: read",
 	}
 
 	for _, tc := range tests {
 		t.Run(tc, func(t *testing.T) {
-			src := "on: push\n" + tc + "\njobs:\n  j:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo\n"
+			src := "on: push\n" + tc + `
+jobs:
+  j:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+`
 
 			w, _ := Parse([]byte(src))
 			if w == nil {
@@ -185,7 +193,11 @@ func TestResolvePermissionsASTAndYAMLAgree(t *testing.T) {
 }
 
 func TestResolvePermissionsScopeNamesAreCaseSensitive(t *testing.T) {
-	src := []byte("on: push\npermissions:\n  Contents: read\n  issues: Write\n")
+	src := []byte(`on: push
+permissions:
+  Contents: read
+  issues: Write
+`)
 	w, _ := Parse(src)
 	if w == nil {
 		t.Fatal("workflow was not parsed")

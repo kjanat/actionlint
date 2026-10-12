@@ -85,7 +85,7 @@ func testCheckCachedFlag(t *testing.T, want, have bool) {
 
 func TestLocalActionsFindMetadataOK(t *testing.T) {
 	testdir := filepath.Join("testdata", "action_metadata")
-	proj := &Project{testdir, nil}
+	proj := &Project{root: testdir}
 	c := NewLocalActionsCache(proj, nil)
 
 	want := testGetWantedActionMetadata()
@@ -203,7 +203,7 @@ func TestLocalActionsFindMetadataOK(t *testing.T) {
 
 func TestLocalActionsFindConcurrently(t *testing.T) {
 	n := 10
-	proj := &Project{filepath.Join("testdata", "action_metadata"), nil}
+	proj := &Project{root: filepath.Join("testdata", "action_metadata")}
 	c := NewLocalActionsCache(proj, nil)
 	ret := make(chan *ActionMetadata)
 	err := make(chan error)
@@ -256,13 +256,8 @@ func TestLocalActionsParsingSkipped(t *testing.T) {
 		},
 		{
 			what: "not a local action",
-			proj: &Project{"", nil},
+			proj: &Project{root: ""},
 			spec: "actions/checkout@v4",
-		},
-		{
-			what: "action does not exist (#25, #40)",
-			proj: &Project{filepath.Join("testdata", "action_metadata"), nil},
-			spec: "./this-action-does-not-exist",
 		},
 	}
 
@@ -281,8 +276,72 @@ func TestLocalActionsParsingSkipped(t *testing.T) {
 	}
 }
 
+func TestLocalActionsMissingMetadata(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, "empty"), 0750); err != nil {
+		t.Fatal(err)
+	}
+	for _, spec := range []string{"./missing", "./empty", "./ }", "$/missing"} {
+		c := NewLocalActionsCache(&Project{root: root}, nil)
+		for attempt := range 2 {
+			meta, cached, err := c.FindMetadata(spec)
+			if meta != nil || err == nil || !strings.Contains(err.Error(), "has no action.yml or action.yaml") {
+				t.Fatalf("%s: meta=%v err=%v", spec, meta, err)
+			}
+			if cached != (attempt > 0) {
+				t.Fatalf("%s: cached=%v on attempt %d", spec, cached, attempt)
+			}
+		}
+	}
+}
+
+func TestLocalActionsCaseScopedCache(t *testing.T) {
+	root := t.TempDir()
+	file := writeShellcheckFixture(t, root, "local/Nested/action.yml", `name: local
+description: test
+runs: {using: node24, main: index.js}
+`)
+	base := NewLocalActionsCache(&Project{root: root}, nil)
+	folded := &LocalActionsCache{base: base, caseInsensitive: true}
+	exact := &LocalActionsCache{base: base}
+	for _, spec := range []string{"./LOCAL/nested", "$/LOCAL/nested", "./local/Nested"} {
+		metadata, _, err := folded.FindMetadata(spec)
+		if err != nil || metadata == nil {
+			t.Fatalf("%s: metadata=%v, error=%v", spec, metadata, err)
+		}
+		if metadata.Path() != file {
+			t.Fatalf("%s: path=%q, want %q", spec, metadata.Path(), file)
+		}
+	}
+	if _, cached := base.readCache("./LOCAL/nested"); cached {
+		t.Fatal("case-insensitive alias leaked into shared cache")
+	}
+	_, statErr := os.Stat(filepath.Join(root, "LOCAL", "nested", "action.yml"))
+	metadata, _, err := exact.FindMetadata("./LOCAL/nested")
+	if (err == nil) != (statErr == nil) || (metadata != nil) != (statErr == nil) {
+		t.Fatalf("exact view changed host lookup behavior: metadata=%v, error=%v", metadata, err)
+	}
+}
+
+func TestLocalActionsCaseCollision(t *testing.T) {
+	root := t.TempDir()
+	writeShellcheckFixture(t, root, "local/action.yml", "name: lower\n")
+	if _, err := os.Stat(filepath.Join(root, "LOCAL")); err == nil {
+		t.Skip("case-sensitive filesystem required for colliding directories")
+	}
+	writeShellcheckFixture(t, root, "LOCAL/action.yml", "name: upper\n")
+	base := NewLocalActionsCache(&Project{root: root}, nil)
+	view := &LocalActionsCache{base: base, caseInsensitive: true}
+	for _, spec := range []string{"./local", "./LOCAL", "./Local", "$/LOCAL"} {
+		metadata, _, err := view.FindMetadata(spec)
+		if err == nil || metadata != nil {
+			t.Fatalf("ambiguous %s: metadata=%v, error=%v", spec, metadata, err)
+		}
+	}
+}
+
 func TestLocalActionsIgnoreRemoteActions(t *testing.T) {
-	proj := &Project{filepath.Join("testdata", "action_metadata"), nil}
+	proj := &Project{root: filepath.Join("testdata", "action_metadata")}
 	c := NewLocalActionsCache(proj, nil)
 	for _, spec := range []string{"actions/checkout@v2", "docker://example.com/foo/bar"} {
 		m, cached, err := c.FindMetadata(spec)
@@ -299,7 +358,7 @@ func TestLocalActionsIgnoreRemoteActions(t *testing.T) {
 func TestLocalActionsLogCacheHit(t *testing.T) {
 	dbg := &bytes.Buffer{}
 	testdir := filepath.Join("testdata", "action_metadata")
-	proj := &Project{testdir, nil}
+	proj := &Project{root: testdir}
 	c := NewLocalActionsCache(proj, dbg)
 
 	want := testGetWantedActionMetadata()
@@ -349,7 +408,7 @@ func TestLocalActionsBrokenMetadata(t *testing.T) {
 		},
 	}
 
-	proj := &Project{filepath.Join("testdata", "action_metadata"), nil}
+	proj := &Project{root: filepath.Join("testdata", "action_metadata")}
 	c := NewLocalActionsCache(proj, nil)
 
 	for _, tc := range tests {
@@ -378,7 +437,7 @@ func TestLocalActionsBrokenMetadata(t *testing.T) {
 }
 
 func TestLocalActionsDuplicateInputsOutputs(t *testing.T) {
-	proj := &Project{filepath.Join("testdata", "action_metadata"), nil}
+	proj := &Project{root: filepath.Join("testdata", "action_metadata")}
 	c := NewLocalActionsCache(proj, nil)
 
 	for _, tc := range []struct {
@@ -410,7 +469,7 @@ func TestLocalActionsDuplicateInputsOutputs(t *testing.T) {
 
 func TestLocalActionsConcurrentFailures(t *testing.T) {
 	n := 10
-	proj := &Project{filepath.Join("testdata", "action_metadata"), nil}
+	proj := &Project{root: filepath.Join("testdata", "action_metadata")}
 	c := NewLocalActionsCache(proj, nil)
 	errC := make(chan error)
 
@@ -444,7 +503,7 @@ func TestLocalActionsConcurrentFailures(t *testing.T) {
 }
 
 func TestLocalActionsConcurrentMultipleMetadataAndFailures(t *testing.T) {
-	proj := &Project{filepath.Join("testdata", "action_metadata"), nil}
+	proj := &Project{root: filepath.Join("testdata", "action_metadata")}
 	c := NewLocalActionsCache(proj, nil)
 
 	inputs := []string{
@@ -807,10 +866,10 @@ func TestActionMetadataPreservesPartialDecode(t *testing.T) {
 
 func TestLocalActionsCacheFactory(t *testing.T) {
 	f := NewLocalActionsCacheFactory(io.Discard)
-	p1 := &Project{"path/to/project1", nil}
+	p1 := &Project{root: "path/to/project1"}
 	c1 := f.GetCache(p1)
 
-	p2 := &Project{"path/to/project2", nil}
+	p2 := &Project{root: "path/to/project2"}
 	c2 := f.GetCache(p2)
 	if c1 == c2 {
 		t.Errorf("different cache was not created: %v", c1)

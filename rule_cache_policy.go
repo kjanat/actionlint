@@ -88,7 +88,7 @@ type RuleCacheWriteUntrusted struct {
 
 // NewRuleCacheWriteUntrusted creates a cache-write-untrusted rule.
 func NewRuleCacheWriteUntrusted() *RuleCacheWriteUntrusted {
-	return &RuleCacheWriteUntrusted{RuleBase: NewRuleBase("cache-write-untrusted", "Checks cache write grants on low-trust triggers")}
+	return &RuleCacheWriteUntrusted{RuleBase: builtinRuleBase("cache-write-untrusted")}
 }
 
 // VisitWorkflowPre records trigger and workflow defaults.
@@ -119,7 +119,7 @@ type RuleCacheCallUnrestricted struct {
 
 // NewRuleCacheCallUnrestricted creates a cache-call-unrestricted rule.
 func NewRuleCacheCallUnrestricted() *RuleCacheCallUnrestricted {
-	return &RuleCacheCallUnrestricted{RuleBase: NewRuleBase("cache-call-unrestricted", "Checks cache access ceilings on low-trust reusable workflow calls")}
+	return &RuleCacheCallUnrestricted{RuleBase: builtinRuleBase("cache-call-unrestricted")}
 }
 
 // VisitWorkflowPre records trigger and workflow defaults.
@@ -153,7 +153,7 @@ type RuleCacheOperation struct {
 
 // NewRuleCacheOperation creates a cache-operation rule.
 func NewRuleCacheOperation() *RuleCacheOperation {
-	return &RuleCacheOperation{RuleBase: NewRuleBase("cache-operation", "Checks cache actions disabled by explicit cache access modes")}
+	return &RuleCacheOperation{RuleBase: builtinRuleBase("cache-operation")}
 }
 
 func newRuleCacheOperation(cache *LocalReusableWorkflowCache) *RuleCacheOperation {

@@ -30,7 +30,14 @@ func TestStrategyExpressionParallelism(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				source := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    " + field + "\n    steps:\n      - run: echo ok\n"
+				source := `on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    ` + field + `
+    steps:
+      - run: echo ok
+`
 				errs, err := lint.Lint("workflow.yml", []byte(source), nil)
 				if err != nil {
 					t.Fatal(err)

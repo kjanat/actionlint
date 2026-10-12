@@ -171,6 +171,7 @@ type ActionCompositeStep struct {
 	withExpr        *ActionExprString
 	envExpr         *ActionExprString
 	id              *ActionExprString
+	node            *yaml.Node
 	// Uses is the value of "uses" key in the step. It is nil when the key is absent or its value
 	// is not a string.
 	Uses *string `json:"uses"`
@@ -183,6 +184,7 @@ func (s *ActionCompositeStep) UnmarshalYAML(n *yaml.Node) error {
 	}
 
 	s.Line, s.Column = n.Line, n.Column
+	s.node = n
 	if n.Kind != yaml.MappingNode {
 		return nil
 	}
@@ -380,10 +382,12 @@ func actionMetadataFields(node *yaml.Node) *yaml.Node {
 // ActionMetadata represents structure of action.yaml.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 type ActionMetadata struct {
-	dir        string
-	file       string
-	src        []byte
-	schemaRoot *yaml.Node
+	sourceMapped bool
+	dir          string
+	file         string
+	src          []byte
+	schemaRoot   *yaml.Node
+	positions    *metadataPositionCache
 	// Name is "name" field of action.yaml.
 	Name string `yaml:"name" json:"name"`
 	// Description is "description" field of action.yaml.
@@ -429,6 +433,7 @@ func (md *ActionMetadata) UnmarshalYAML(n *yaml.Node) error {
 		}
 	}
 	md.schemaRoot = n
+	md.positions = &metadataPositionCache{}
 	md.InputDefaults = collectInputDefaults(n)
 	return err
 }
@@ -491,23 +496,47 @@ func (md *ActionMetadata) Path() string {
 	return filepath.Join(md.dir, md.file)
 }
 
+type localActionMetadataSource struct {
+	path    string
+	content []byte
+}
+
 // LocalActionsCache is cache for local actions' metadata. It avoids repeating to find/read/parse
 // local action's metadata file (action.yml).
 // This cache is not available across multiple repositories. One LocalActionsCache instance needs
 // to be created per one repository.
 type LocalActionsCache struct {
-	mu    sync.RWMutex
-	proj  *Project // might be nil
-	cache map[string]*ActionMetadata
-	dbg   io.Writer
+	onRead               func(string)
+	onDocument           func(ActionOutline)
+	readFile             func(string) ([]byte, error)
+	customReader         bool
+	mu                   sync.RWMutex
+	proj                 *Project // might be nil
+	cache                map[string]*ActionMetadata
+	missing              sync.Map // local action specs with no metadata file
+	sources              map[string]localActionMetadataSource
+	usedSources          map[string][]byte
+	validation           *actionMetadataValidation
+	dbg                  io.Writer
+	base                 *LocalActionsCache
+	sourceMappings       LocalActionSources
+	checkout             *checkoutPlacement
+	platform             platformKind
+	caseInsensitive      bool
+	checkoutEnvUnknown   bool
+	persistentEnvUnknown bool
+	shellEnvUnknown      bool
+	checkoutShell        shellcheckShell
 }
 
 // NewLocalActionsCache creates new LocalActionsCache instance for the given project.
 func NewLocalActionsCache(proj *Project, dbg io.Writer) *LocalActionsCache {
 	return &LocalActionsCache{
-		proj:  proj,
-		cache: map[string]*ActionMetadata{},
-		dbg:   dbg,
+		readFile: os.ReadFile,
+		proj:     proj,
+		cache:    map[string]*ActionMetadata{},
+		sources:  map[string]localActionMetadataSource{},
+		dbg:      dbg,
 	}
 }
 
@@ -537,36 +566,70 @@ func (c *LocalActionsCache) writeCache(key string, val *ActionMetadata) {
 	c.mu.Unlock()
 }
 
-// FindMetadata finds metadata for given spec. The spec should indicate for local action hence it
-// should start with "./". The first return value can be nil even if error did not occur.
-// LocalActionCache caches that the action was not found. At first search, it returns an error that
-// the action was not found. But at the second search, it does not return an error even if the result
-// is nil. This behavior prevents repeating to report the same error from multiple places.
+// FindMetadata finds metadata for a local action, specified with "./" or "$/".
+// The first return value can be nil even if error did not occur.
+// Missing manifests are cached and reported at every reference. Other metadata errors
+// are reported on the first lookup; later lookups return the cached nil result.
 // Calling this method is thread-safe.
 func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, error) {
+	if local, ok := selfRepositoryUsesLocalSpec(spec); ok {
+		if c.base != nil {
+			return c.findRepositoryMetadata(local, true)
+		}
+		spec = local
+	}
+	if c.base != nil {
+		local, ok := c.localSpec(spec)
+		if !ok {
+			return nil, false, nil
+		}
+		certain := true
+		if state := c.checkoutState(); state != nil {
+			// An uncertain checkout permits best-effort local validation, but
+			// missing files do not establish what will exist at runtime.
+			placement := state.matching(spec)
+			if placement == nil {
+				placement = state
+			}
+			certain = placement.directory.kind != directoryUnknown
+		}
+		return c.findRepositoryMetadata(local, certain)
+	}
 	if c.proj == nil || !strings.HasPrefix(spec, "./") {
 		return nil, false, nil
 	}
 
 	if m, ok := c.readCache(spec); ok {
 		c.debug("Cache hit for %s: %v", spec, m)
+		if _, missing := c.missing.Load(spec); missing {
+			return nil, true, missingLocalActionMetadata(spec)
+		}
 		return m, true, nil
 	}
 
 	dir := filepath.Join(c.proj.RootDir(), filepath.FromSlash(spec))
-	b, f, ok := c.readLocalActionMetadataFile(dir)
-	if !ok {
-		c.debug("No action metadata found in %s", dir)
-		// Remember action was not found
+	b, f, err := c.readLocalActionMetadataFile(dir)
+	if err != nil {
 		c.writeCache(spec, nil)
-		// Do not complain about the action does not exist (#25, #40).
-		// It seems a common pattern that the local action does not exist in the repository
-		// (e.g. Git submodule) and it is cloned at running workflow (due to a private repository).
-		return nil, false, nil
+		return nil, false, err
 	}
+	if f == "" {
+		c.debug("No action metadata found in %s", dir)
+		c.missing.Store(spec, true)
+		c.writeCache(spec, nil)
+		return nil, false, missingLocalActionMetadata(spec)
+	}
+	c.mu.Lock()
+	c.sources[spec] = localActionMetadataSource{path: filepath.Join(dir, f), content: b}
+	c.mu.Unlock()
 
-	var meta ActionMetadata
-	if err := yaml.Unmarshal(b, &meta); err != nil {
+	meta := ActionMetadata{positions: &metadataPositionCache{}}
+	parseErr := yaml.Unmarshal(b, &meta)
+	meta.file, meta.dir, meta.src = f, dir, b
+	if c.onDocument != nil {
+		c.onDocument(actionOutline(filepath.Join(dir, f), &meta, parseErr))
+	}
+	if err := parseErr; err != nil {
 		c.writeCache(spec, nil) // Remember action was invalid
 
 		// Unwrap load errors when a single error occurs to simplify the error message
@@ -588,24 +651,28 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 
 		return nil, false, fmt.Errorf("could not parse action metadata in %q: %s", dir, m)
 	}
-	meta.file = f
-	meta.dir = dir
-	meta.src = b
-
-	c.debug("New metadata parsed from action %s: %v", dir, &meta)
+	c.debug("New metadata parsed from action %s: %s action %q", dir, meta.Runs.Using, meta.Name)
 	c.writeCache(spec, &meta)
 	return &meta, false, nil
 }
 
-func (c *LocalActionsCache) readLocalActionMetadataFile(dir string) ([]byte, string, bool) {
+func (c *LocalActionsCache) readLocalActionMetadataFile(dir string) ([]byte, string, error) {
 	for _, f := range []string{"action.yaml", "action.yml"} {
 		p := filepath.Join(dir, f)
-		if b, err := os.ReadFile(p); err == nil {
-			return b, f, true
+		b, err := c.readFile(p)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
 		}
+		if err != nil {
+			return nil, "", fmt.Errorf("could not read action metadata in %q: %w", dir, err)
+		}
+		if c.onRead != nil {
+			c.onRead(p)
+		}
+		return b, f, nil
 	}
 
-	return nil, "", false
+	return nil, "", nil
 }
 
 // LocalActionsCacheFactory is a factory to create LocalActionsCache instances. LocalActionsCache

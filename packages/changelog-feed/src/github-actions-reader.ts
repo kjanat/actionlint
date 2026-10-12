@@ -1,5 +1,5 @@
-import { FEED_URL, feedPageUrl, parseFeed } from './github-actions-feed.ts';
 import type { Feed, FeedItem } from './github-actions-feed.ts';
+import { FEED_URL, feedPageUrl, parseFeed } from './github-actions-feed.ts';
 
 interface CachedFeed {
 	complete?: boolean;
@@ -154,7 +154,7 @@ function unique(values: string[]): string[] {
 function fillSelect(select: HTMLSelectElement, values: string[], label: string): void {
 	const current = select.value;
 	select.replaceChildren(new Option(label, ''));
-	values.forEach(value => select.add(new Option(value, value)));
+	for (const value of values) select.add(new Option(value, value));
 	if (values.includes(current)) select.value = current;
 }
 

@@ -1,22 +1,20 @@
 name: npm release
-run-name: ${{ format('npm {0} {1}', case(inputs.dry-run, 'dry-run', 'publish'), case(github.event_name == 'release', github.event.release.tag_name, inputs.tag)) }}
+run-name: ${{ format('npm {0} {1}', case(inputs.dry-run, 'dry-run', 'publish'), inputs.tag) }}
 on:
   workflow_call:
     inputs:
       tag: { description: Release tag to publish, required: true, type: string }
       dist-tag: { description: npm dist-tag; auto selects next for prereleases and latest otherwise, default: auto, type: string }
       dry-run: { description: Build and smoke-test without publishing, default: false, type: boolean }
-  release: { types: [published] }
   workflow_dispatch:
     inputs:
       tag: { description: "Release tag to publish (e.g. v1.17.0)", required: true, type: string }
-      dist-tag: {
-        description: "npm dist-tag; auto picks next for a prerelease, otherwise latest",
-        required: false,
-        type: choice,
-        options: [auto, latest, next],
-        default: auto,
-      }
+      dist-tag:
+        description: "npm dist-tag; auto picks next for a prerelease, otherwise latest"
+        required: false
+        type: choice
+        options: [auto, latest, next]
+        default: auto
       dry-run: { description: Build and smoke-test the packages but do not publish, required: true, default: false, type: boolean }
 
 permissions: { contents: read }
@@ -24,19 +22,20 @@ permissions: { contents: read }
 # Never cancel a publish in flight: a half-published set would leave the facade
 # pointing at platform packages that do not exist.
 concurrency:
-  group: "npm-release-${{ case(github.event_name == 'release', github.event.release.tag_name, inputs.tag) }}"
+  group: "npm-release-${{ inputs.tag }}"
   cancel-in-progress: false
 
 env:
   GO: "1.27"
   REGISTRY: https://registry.npmjs.org/
-  RELEASE_TAG: ${{ case(github.event_name == 'release', github.event.release.tag_name, inputs.tag) }}
+  RELEASE_TAG: ${{ inputs.tag }}
   DRY_RUN: ${{ inputs.dry-run || 'false' }}
 
 jobs:
   build:
     name: build and smoke-test
     runs-on: ubuntu-latest
+    permissions: { contents: read, actions: read }
     outputs:
       dist-tag: ${{ steps.dist.outputs.tag }}
       platforms: ${{ steps.pack.outputs.platforms }}
@@ -44,19 +43,48 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { ref: "${{ case(inputs.dry-run, github.sha, format('refs/tags/{0}', env.RELEASE_TAG)) }}", persist-credentials: false }
+      # Manual recovery requires verified release bytes even if a later publishing job failed.
+      - name: Verify release before manual publishing
+        if: ${{ github.event_name == 'workflow_dispatch' && contains(github.workflow_ref, '/.github/workflows/npm-release.yml@') && !inputs.dry-run }}
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          set -euo pipefail
+          published="$(gh release view --repo "${GITHUB_REPOSITORY}" --json isDraft,publishedAt \
+            --jq '(.isDraft == false) and (.publishedAt != null)' -- "${RELEASE_TAG}")"
+          if [[ "${published}" != true ]]; then
+            echo '::error::Manual npm publishing requires a published GitHub release.'
+            exit 1
+          fi
+          commit="$(git rev-parse HEAD)"
+          runs="$(gh api --method GET "repos/${GITHUB_REPOSITORY}/actions/workflows/release.yml/runs" \
+            --field event=release --field status=completed --field "head_sha=${commit}" --field per_page=100 --paginate \
+            --jq '.workflow_runs[] | select(.status == "completed" and .head_branch == env.RELEASE_TAG) | .id')"
+          verified=''
+          while IFS= read -r run_id; do
+            [[ -n "${run_id}" ]] || continue
+            jobs="$(gh api --method GET "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs" \
+              --field filter=latest --field per_page=100 --paginate \
+              --jq '.jobs[] | select(.name == "Verify published candidate" and .status == "completed" and .conclusion == "success") | .id')"
+            if [[ -n "${jobs}" ]]; then
+              verified="${run_id}"
+              break
+            fi
+          done <<< "${runs}"
+          if [[ -z "${verified}" ]]; then
+            echo '::error::The selected tag and commit need a completed Release run with successful candidate verification before manual npm publishing.'
+            exit 1
+          fi
       - parallel:
           - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
             with: { go-version: "${{ env.GO }}", check-latest: true }
-          - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+          - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
             with: { node-version-file: .node-version, registry-url: "${{ env.REGISTRY }}" }
 
       # The publish jobs check out nothing, so .node-version cannot reach them.
       # Passing the version this job resolved keeps one source of truth.
       - name: Report the Node version
         id: node
-        run: |
-          set -euo pipefail
-          version="$(node --version)"
+        run: version="$(node --version)";
           echo "version=${version#v}" >> "${GITHUB_OUTPUT}"
 
       # Downloads every release archive, verifies each against the release's own
@@ -150,8 +178,9 @@ jobs:
             echo "::error::the facade tarball carries no man/actionlint.1"
             exit 1
           fi
+          bash scripts/check-packaged-cli.bash node "${facade}/bin/actionlint.mjs"
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with: { name: npm-tarballs, path: distribution/npm/tarballs, retention-days: 7 }
 
   # Leaves first: the facade pins them exactly. One job per package, each with
@@ -173,9 +202,9 @@ jobs:
       matrix:
         pkg: ${{ fromJSON(needs.build.outputs.platforms) }}
     steps:
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: { node-version: "${{ needs.build.outputs.node }}", registry-url: "${{ env.REGISTRY }}" }
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with: { name: npm-tarballs, path: tarballs }
       - uses: $/.github/actions/npm-publish
         id: publish
@@ -195,9 +224,9 @@ jobs:
     env:
       NPM_CONFIG_PROVENANCE: ${{ (inputs.dry-run && 'false') || vars.PROVENANCE || 'true' }}
     steps:
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: { node-version: "${{ needs.build.outputs.node }}", registry-url: "${{ env.REGISTRY }}" }
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with: { name: npm-tarballs, path: tarballs }
       - uses: $/.github/actions/npm-publish
         id: publish

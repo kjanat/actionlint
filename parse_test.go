@@ -42,7 +42,12 @@ func TestParseYAMLIntegerRadixBounds(t *testing.T) {
 
 func TestParserRejectsInvalidMappingKeys(t *testing.T) {
 	var doc yaml.Node
-	if err := yaml.Unmarshal([]byte("!!int first: {nested: !!bool nope}\n!!bool second: value\n'': empty\nvalid: kept\nVALID: duplicate\n"), &doc); err != nil {
+	if err := yaml.Unmarshal([]byte(`!!int first: {nested: !!bool nope}
+!!bool second: value
+'': empty
+valid: kept
+VALID: duplicate
+`), &doc); err != nil {
 		t.Fatal(err)
 	}
 	p := &parser{}
@@ -88,7 +93,14 @@ func TestParserRejectsInvalidMappingKeys(t *testing.T) {
 func TestParserAnchorNames(t *testing.T) {
 	for _, name := range []string{"git+opts", "git-opts", "git_opts", "opts123"} {
 		t.Run(name, func(t *testing.T) {
-			src := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: &%s echo test\n      - run: *%s\n", name, name)
+			src := fmt.Sprintf(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: &%s echo test
+      - run: *%s
+`, name, name)
 			_, errs := Parse([]byte(src))
 			if name != "git+opts" {
 				if len(errs) != 0 {
@@ -128,7 +140,10 @@ func TestParserAliasTypeLocations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var doc yaml.Node
-			src := "anchor: &value " + tt.value + "\nfirst: *value\nsecond: *value\n"
+			src := "anchor: &value " + tt.value + `
+first: *value
+second: *value
+`
 			if err := yaml.Unmarshal([]byte(src), &doc); err != nil {
 				t.Fatal(err)
 			}
@@ -163,8 +178,12 @@ func TestParserScriptSource(t *testing.T) {
 		wantMapped bool
 	}{
 		{
-			name:   "literal block",
-			source: "run: |2-\n  echo $foo\n    nested\nnext: value\n",
+			name: "literal block",
+			source: `run: |2-
+  echo $foo
+    nested
+next: value
+`,
 			node: &yaml.Node{
 				Style:  yaml.LiteralStyle,
 				Value:  "echo $foo\n  nested",
@@ -177,8 +196,12 @@ func TestParserScriptSource(t *testing.T) {
 			wantMapped: true,
 		},
 		{
-			name:   "indented literal line",
-			source: "run: |2-\n  echo $foo\n    nested\nnext: value\n",
+			name: "indented literal line",
+			source: `run: |2-
+  echo $foo
+    nested
+next: value
+`,
 			node: &yaml.Node{
 				Style:  yaml.LiteralStyle,
 				Value:  "echo $foo\n  nested",
@@ -191,8 +214,12 @@ func TestParserScriptSource(t *testing.T) {
 			wantMapped: true,
 		},
 		{
-			name:   "leading blank literal line",
-			source: "run: |\n\n  echo hi\nnext: value\n",
+			name: "leading blank literal line",
+			source: `run: |
+
+  echo hi
+next: value
+`,
 			node: &yaml.Node{
 				Style:  yaml.LiteralStyle,
 				Value:  "\necho hi\n",
@@ -214,8 +241,11 @@ func TestParserScriptSource(t *testing.T) {
 			wantMapped: true,
 		},
 		{
-			name:       "multiline plain scalar",
-			source:     "run: echo first\n  echo $foo\nnext: value\n",
+			name: "multiline plain scalar",
+			source: `run: echo first
+  echo $foo
+next: value
+`,
 			node:       &yaml.Node{Value: "echo first echo $foo", Line: 1, Column: 6},
 			line:       1,
 			column:     17,
@@ -223,16 +253,22 @@ func TestParserScriptSource(t *testing.T) {
 			wantMapped: true,
 		},
 		{
-			name:       "synthetic whitespace in plain scalar",
-			source:     "run: echo first\n  echo $foo\nnext: value\n",
+			name: "synthetic whitespace in plain scalar",
+			source: `run: echo first
+  echo $foo
+next: value
+`,
 			node:       &yaml.Node{Value: "echo first echo $foo", Line: 1, Column: 6},
 			line:       1,
 			column:     11,
 			wantMapped: false,
 		},
 		{
-			name:       "short continuation of plain scalar",
-			source:     "step:\n  run: echo first\n    x\n",
+			name: "short continuation of plain scalar",
+			source: `step:
+  run: echo first
+    x
+`,
 			node:       &yaml.Node{Value: "echo first x", Line: 2, Column: 8},
 			line:       1,
 			column:     12,
@@ -249,16 +285,21 @@ func TestParserScriptSource(t *testing.T) {
 			wantMapped: true,
 		},
 		{
-			name:       "folded block falls back",
-			source:     "run: >\n  echo $foo\n",
+			name: "folded block",
+			source: `run: >
+  echo $foo
+`,
 			node:       &yaml.Node{Style: yaml.FoldedStyle, Value: "echo $foo\n", Line: 1, Column: 6},
 			line:       1,
 			column:     6,
-			wantMapped: false,
+			want:       Pos{Line: 2, Col: 8},
+			wantMapped: true,
 		},
 		{
-			name:       "mismatched literal source falls back",
-			source:     "run: |\n  echo source\n",
+			name: "mismatched literal source falls back",
+			source: `run: |
+  echo source
+`,
 			node:       &yaml.Node{Style: yaml.LiteralStyle, Value: "echo decoded\n", Line: 1, Column: 6},
 			line:       1,
 			column:     1,
@@ -268,7 +309,7 @@ func TestParserScriptSource(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			p := &parser{sourceLines: splitSourceLines([]byte(tc.source))}
+			p := newSourceParser([]byte(tc.source))
 			source := p.scriptSource(tc.node)
 			var have *Pos
 			var ok bool
@@ -285,13 +326,15 @@ func TestParserScriptSource(t *testing.T) {
 	}
 
 	t.Run("parser-backed literal block", func(t *testing.T) {
-		input := "run: |\n  echo $foo\n"
+		input := `run: |
+  echo $foo
+`
 		var root yaml.Node
 		if err := yaml.Unmarshal([]byte(input), &root); err != nil {
 			t.Fatal(err)
 		}
 		run := root.Content[0].Content[1]
-		p := &parser{sourceLines: splitSourceLines([]byte(input))}
+		p := newSourceParser([]byte(input))
 		source := p.scriptSource(run)
 		pos, ok := source.pos(1, 6)
 		if !ok {
@@ -310,12 +353,15 @@ func TestParserScriptSource(t *testing.T) {
 	})
 
 	t.Run("aliased literal block", func(t *testing.T) {
-		input := "script: &script |\n  echo $foo\nrun: *script\n"
+		input := `script: &script |
+  echo $foo
+run: *script
+`
 		var root yaml.Node
 		if err := yaml.Unmarshal([]byte(input), &root); err != nil {
 			t.Fatal(err)
 		}
-		p := &parser{sourceLines: splitSourceLines([]byte(input))}
+		p := newSourceParser([]byte(input))
 		p.resolveAliases(&root)
 		if len(p.errors) != 0 {
 			t.Fatal(p.errors)
@@ -333,13 +379,16 @@ func TestParserScriptSource(t *testing.T) {
 	})
 
 	t.Run("parser-backed plain scalar with blank continuation", func(t *testing.T) {
-		input := "run: echo first\n\n  echo $foo\n"
+		input := `run: echo first
+
+  echo $foo
+`
 		var root yaml.Node
 		if err := yaml.Unmarshal([]byte(input), &root); err != nil {
 			t.Fatal(err)
 		}
 		run := root.Content[0].Content[1]
-		p := &parser{sourceLines: splitSourceLines([]byte(input))}
+		p := newSourceParser([]byte(input))
 		pos, ok := p.scriptSource(run).pos(2, 6)
 		if !ok {
 			t.Fatal("script position after blank continuation was not mapped")

@@ -7,9 +7,13 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/internal/buildinfo"
+	"actionlint.kjanat.dev/internal/configtree"
+	"actionlint.kjanat.dev/internal/ruff"
 	"github.com/bmatcuk/doublestar/v4"
 	"go.yaml.in/yaml/v4"
 )
@@ -71,13 +75,14 @@ type Policy struct {
 	// CacheWriteUntrusted reports write-capable cache modes on low-trust triggers.
 	// Enabled by default. Set false to disable it; null or omission keeps the default.
 	CacheWriteUntrusted *bool `yaml:"cache-write-untrusted" jsonschema:"nullable,default=true"`
-	// DisallowSuppressions restricts inline cache policy exceptions. `true` or `{}` reports
-	// each prohibited directive and retains its original violations. Omission, null, or false
-	// permits exceptions. Both ignore and ignore-next-line are covered equally.
+	// DisallowSuppressions restricts inline and configured diagnostic exceptions.
+	// `true` or `{}` reports each prohibited directive or matching config exception
+	// and retains its original violations. Omission, null, or false permits exceptions.
+	// Both ignore and ignore-next-line are covered equally.
 	//
 	// Use `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs.
 	// Omitted rules selects all suppressible rules; an explicit list must be nonempty.
-	// Report accepts suppression (directive only), violation (original findings only), or all (both kinds of diagnostic).
+	// Report accepts suppression (exception only), violation (original findings only), or all (both kinds of diagnostic).
 	DisallowSuppressions *SuppressionsPolicy `yaml:"disallow-suppressions" jsonschema:"nullable"`
 	// RequireCommitHash requires `uses:` references to be pinned to a full commit SHA, or an image digest
 	// for Docker images, when set to `true`.
@@ -338,6 +343,28 @@ type SelfHostedRunnerConfig struct {
 // Save as `.github/actionlint.yaml` or `.github/actionlint.yml`, or select a file with `-config-file`.
 // Every setting is optional; normal workflow correctness checks run without a configuration file.
 type Config struct {
+	filename    string
+	configFiles []string
+	// Extends loads local YAML/JSON files, relative to this config, in order.
+	// Later bases override earlier bases; this file wins over all bases. No URLs.
+	Extends []string `yaml:"extends,omitempty" jsonschema:"nullable"`
+	// Files selects repository-relative inputs shared by analysis features.
+	Files FilesConfig `yaml:"files,omitempty" jsonschema:"nullable"`
+	// Lint configures rule selection separately from repository policy.
+	Lint LintConfig `yaml:"lint" jsonschema:"nullable"`
+	// Overrides applies per-file lint settings in declaration order. Later matching
+	// settings win; mappings merge and arrays replace. Paths are repository-relative.
+	Overrides []ConfigOverride `yaml:"overrides" jsonschema:"nullable"`
+	// Ignores suppresses a rule for matching files, actions, jobs, or steps.
+	// Every specified selector must match. Later config files replace the list.
+	Ignores IgnoreConfigs `yaml:"ignores" jsonschema:"nullable"`
+	// Tools configures external linters for both the CLI and GitHub Action.
+	Tools ToolsConfig `yaml:"tools" jsonschema:"nullable"`
+	// LocalActions maps generated action directories to checked-in source directories.
+	// Both paths are relative to the repository root, using ./ or $/ prefixes.
+	// Known checkout placements are removed before matching. Sources resolve once
+	// to actual directories; mappings do not chain.
+	LocalActions LocalActionSources `yaml:"local-actions" jsonschema:"nullable"`
 	// SelfHostedRunner configures extra labels accepted for self-hosted runners.
 	//
 	// Add your labels under `labels`, for example `{labels: [linux.2xlarge]}`.
@@ -373,6 +400,67 @@ type Config struct {
 	// Cache policies default to true; other policies are opt-in. Set individual keys to override their
 	// defaults. Omit the mapping or use `{}` or `null` to keep defaults. Syntax checks always run.
 	Policy Policy `yaml:"policy" jsonschema:"nullable"`
+}
+
+// ToolsConfig contains configuration for external analysis tools.
+type ToolsConfig struct {
+	// Ruff configures checking of embedded Python scripts.
+	Ruff RuffToolConfig `yaml:"ruff"`
+	// Shellcheck configures checking of embedded shell scripts.
+	Shellcheck ShellcheckToolConfig `yaml:"shellcheck"`
+}
+
+// RuffToolConfig selects isolated, read-only Ruff checks for Python run steps.
+// Repository Ruff configuration and noqa comments are not loaded; use actionlint
+// rule settings and inline suppressions for workflow exceptions.
+type RuffToolConfig = ruff.Config
+
+// ShellcheckToolConfig contains ShellCheck's native configuration directives.
+type ShellcheckToolConfig struct {
+	// Enabled turns ShellCheck analysis on or off. Omission or null keeps it enabled.
+	// An empty CLI command or shellcheck: false Action input still disables the tool.
+	Enabled *bool `yaml:"enabled" jsonschema:"nullable,default=true"`
+	// Config selects inline ShellCheck settings or an rc file/directory for each checked script.
+	// File-relative paths use the directory containing actionlint.yaml; paths supplied by an overlay use the analysis working directory.
+	// ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} uses the repository root.
+	// ${{ github.workspace }} selects the runner workspace or local repository; ${{ github.action_path }} requires a composite action context.
+	// Lists replace during actionlint config overlays. The Action's explicit shellcheck-args can override settings.
+	// Omission or null adds no directives. This does not enable rc-file discovery.
+	Config *ShellcheckConfigSource `yaml:"config"`
+}
+
+// ShellcheckConfigSource selects inline directives or a configuration file/directory.
+// Relative paths use their config file or overlay working directory. ${{ configdir }} and
+// ${{ gitdir }} explicitly select that directory or the checked repository root.
+type ShellcheckConfigSource struct {
+	value     shellcheckConfigValue
+	fromInput bool
+}
+
+type shellcheckConfigValue interface{ shellcheckConfigValue() }
+type shellcheckConfigPath string
+
+func (shellcheckConfigPath) shellcheckConfigValue() {}
+
+type shellcheckInlineConfig struct{ ShellcheckConfig }
+
+func (shellcheckInlineConfig) shellcheckConfigValue() {}
+
+// ShellcheckConfig is a typed representation of project-wide ShellCheck directives.
+type ShellcheckConfig struct {
+	// Disable lists codes, code ranges or all, for example [SC2086, SC3000-SC4000].
+	Disable []string `yaml:"disable" jsonschema:"nullable,pattern=^(all|(SC)?[0-9]+(-(SC)?[0-9]+)?)$"`
+	// Enable lists optional check names, or all. ShellCheck validates available names.
+	Enable []string `yaml:"enable" jsonschema:"nullable,pattern=^[a-zA-Z-]+$"`
+	// Shell overrides the inferred dialect of scripts selected for ShellCheck.
+	Shell *string `yaml:"shell" jsonschema:"nullable,enum=sh,enum=bash,enum=dash,enum=ksh,enum=busybox"`
+	// ExtendedAnalysis enables or disables ShellCheck dataflow analysis. Omission keeps its default.
+	ExtendedAnalysis *bool `yaml:"extended-analysis" jsonschema:"nullable"`
+	// ExternalSources controls following sourced files. Omission preserves actionlint's enabled default.
+	ExternalSources *bool `yaml:"external-sources" jsonschema:"nullable"`
+	// SourcePath lists directories searched for sourced files, relative to the run step's effective working directory.
+	// Scripts arrive on stdin, so SCRIPTDIR does not denote the workflow file's directory.
+	SourcePath []string `yaml:"source-path" jsonschema:"nullable,minLength=1"`
 }
 
 // DefaultPermissionsAssumption is an assumption about the repository's "Workflow permissions" setting,
@@ -459,52 +547,147 @@ func (cfg *Config) RequiredActions() []string {
 // ParseConfig parses the given bytes as an actionlint config file. When deserializing the YAML file
 // or the config validation fails, this function returns an error.
 func ParseConfig(b []byte) (*Config, error) {
+	resolved, err := resolveConfigDocument(b)
+	if err != nil {
+		return nil, err
+	}
+	if len(resolved.config.Extends) > 0 {
+		return nil, errors.New("extends requires a file origin; use ReadConfigFile")
+	}
+	return resolved.config, nil
+}
+
+// resolvedConfig keeps validated values and their provenance from the same document.
+type resolvedConfig struct {
+	node     *yaml.Node
+	inputs   map[*yaml.Node]configInput
+	config   *Config
+	values   map[string]any
+	origins  map[string]ConfigOrigin
+	warnings []ConfigWarning
+}
+
+func resolveConfigDocument(b []byte) (resolvedConfig, error) {
+	var document yaml.Node
+	if err := yaml.Unmarshal(b, &document); err != nil {
+		return resolvedConfig{}, errors.New(strings.ReplaceAll(err.Error(), "\n", " "))
+	}
+	var root *yaml.Node
+	if len(document.Content) > 0 {
+		root = document.Content[0]
+	}
+	return resolveConfigNode(root, nil)
+}
+
+func resolveConfigNode(root *yaml.Node, inputs map[*yaml.Node]configInput) (resolvedConfig, error) {
+	if inputs == nil {
+		expanded, err := configtree.Expand(root, make(map[*yaml.Node]bool))
+		if err != nil {
+			return resolvedConfig{}, err
+		}
+		root = normalizeToolSwitch(expanded)
+	}
 	var c Config
-	if err := yaml.Unmarshal(b, &c); err != nil {
-		msg := strings.ReplaceAll(err.Error(), "\n", " ")
-		return nil, errors.New(msg)
+	if root != nil {
+		if err := root.Decode(&c); err != nil {
+			return resolvedConfig{}, errors.New(strings.ReplaceAll(err.Error(), "\n", " "))
+		}
+	}
+
+	for _, ignore := range c.Ignores {
+		if err := ignore.validate(); err != nil {
+			return resolvedConfig{}, err
+		}
 	}
 	for pat := range c.Paths {
 		if !doublestar.ValidatePattern(pat) {
-			return nil, fmt.Errorf("invalid glob pattern %q in \"paths\"", pat)
+			return resolvedConfig{}, fmt.Errorf("invalid glob pattern %q in \"paths\"", pat)
 		}
 	}
-	return &c, nil
+	values, err := effectiveConfig(&c)
+	if err != nil {
+		return resolvedConfig{}, err
+	}
+	origins := map[string]ConfigOrigin{}
+	configDefaultOrigins(values, "", origins)
+	if err := configOrigins(root, "", origins, inputs); err != nil {
+		return resolvedConfig{}, err
+	}
+	if c.Tools.Shellcheck.Config != nil {
+		c.Tools.Shellcheck.Config.fromInput = origins["/tools/shellcheck/config"].Source == "input"
+	}
+	for i := range c.Overrides {
+		tools := c.Overrides[i].Tools
+		if tools != nil && tools.Shellcheck.Config != nil {
+			tools.Shellcheck.Config.fromInput = origins["/overrides"].Source == "input"
+		}
+	}
+	return resolvedConfig{node: root, inputs: inputs, config: &c, values: values, origins: origins, warnings: configWarnings(root, inputs)}, nil
 }
 
 // ReadConfigFile reads actionlint config file (actionlint.yaml) from the given file path.
 func ReadConfigFile(path string) (*Config, error) {
-	b, err := os.ReadFile(path)
+	source, err := readConfigSource(path, os.ReadFile)
 	if err != nil {
-		return nil, fmt.Errorf("could not read config file %q: %w", path, err)
+		return nil, err
 	}
-	c, err := ParseConfig(b)
+	return source.config, nil
+}
+
+func readConfigSource(path string, readFile func(string) ([]byte, error)) (*loadedConfig, error) {
+	warningsByFile := map[string][]ConfigWarning{}
+	loaded, err := configtree.Load(path, readFile, func(origin string, node *yaml.Node) (*yaml.Node, error) {
+		normalized, warnings, err := normalizeExtendedConfig(origin, node, absPath(path) != origin)
+		warningsByFile[origin] = warnings
+		return normalized, err
+	})
+	if err != nil {
+		if _, ok := errors.AsType[*os.PathError](err); ok {
+			return nil, fmt.Errorf("could not read config file %q: %w", path, err)
+		}
+		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
+	}
+	inputs := map[*yaml.Node]configInput{}
+	if len(loaded.Files) > 1 {
+		for node, file := range loaded.Origins {
+			inputs[node] = configInput{File: file}
+		}
+	}
+	resolved, err := resolveConfigNode(loaded.Node, inputs)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
-	return c, nil
+	resolved.config.filename = absPath(path)
+	resolved.config.configFiles = loaded.Files
+	resolved.warnings = nil
+	for _, file := range loaded.Files {
+		resolved.warnings = mergeConfigWarnings(resolved.warnings, warningsByFile[file])
+	}
+	return &loadedConfig{resolved, path}, nil
 }
 
 // loadRepoConfig reads config file from the repository's .github/actionlint.yml or
 // .github/actionlint.yaml.
-func loadRepoConfig(root string) (*Config, error) {
+func loadRepoConfig(root string, readFile func(string) ([]byte, error)) (*loadedConfig, string, error) {
 	for _, f := range []string{"actionlint.yaml", "actionlint.yml"} {
 		p := filepath.Join(root, ".github", f)
-		c, err := ReadConfigFile(p)
+		c, err := readConfigSource(p, readFile)
 		switch {
 		case errors.Is(err, os.ErrNotExist):
 			continue
 		case err != nil:
-			return nil, fmt.Errorf("could not parse config file %q: %w", p, err)
+			return nil, "", fmt.Errorf("could not parse config file %q: %w", p, err)
 		default:
-			return c, nil
+			return c, p, nil
 		}
 	}
-	return nil, nil
+	return nil, "", nil
 }
 
 func writeDefaultConfigFile(path string) error {
-	b := []byte(`# yaml-language-server: $schema=https://raw.githubusercontent.com/kjanat/actionlint/HEAD/actionlint.schema.json
+	info, _ := debug.ReadBuildInfo()
+	ref := buildinfo.SourceRef(Version(), info)
+	b := []byte(`# yaml-language-server: $schema=https://raw.githubusercontent.com/kjanat/actionlint/` + ref + `/actionlint.schema.json
 ---
 self-hosted-runner:
   # Labels of self-hosted runner in array of strings.

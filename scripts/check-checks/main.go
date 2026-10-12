@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"slices"
 	"strings"
 
@@ -24,8 +25,8 @@ func Actionlint(src []byte) ([]byte, error) {
 	opts := &actionlint.LinterOptions{
 		StdinFileName: "test.yaml",
 		Shellcheck:    "shellcheck",
-		Pyflakes:      "pyflakes",
-		Color:         actionlint.ColorOptionKindNever,
+
+		Color: actionlint.ColorOptionKindNever,
 	}
 
 	l, err := actionlint.NewLinter(&out, opts)
@@ -52,6 +53,15 @@ func Actionlint(src []byte) ([]byte, error) {
 		return nil, err
 	}
 	if len(errs) == 0 {
+		var missing []string
+		for _, tool := range []string{"shellcheck"} {
+			if _, err := exec.LookPath(tool); err != nil {
+				missing = append(missing, tool)
+			}
+		}
+		if len(missing) != 0 {
+			return nil, fmt.Errorf("the input example caused no error, but required documentation linters are missing from PATH: %s; install ShellCheck and run runner lint-docs", strings.Join(missing, ", "))
+		}
 		return nil, errors.New("the input example caused no error")
 	}
 

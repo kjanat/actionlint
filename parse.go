@@ -8,8 +8,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
+	"actionlint.kjanat.dev/internal/yamlsource"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -77,129 +77,21 @@ func (l *delayedSprintf) String() string {
 }
 
 type parser struct {
-	errors      []*Error
-	sourceLines []string
-	aliases     map[*yaml.Node]*yaml.Node
+	scalarDocument *yamlsource.Document
+	errors         []*Error
+	sourceLines    []string
+	aliases        map[*yaml.Node]*yaml.Node
+	scalarContexts map[Pos]scalarContext
+	scalarSources  map[Pos]*scriptSource
 }
 
 func splitSourceLines(b []byte) []string {
-	lines := strings.Split(string(b), "\n")
-	for i := range lines {
-		lines[i] = strings.TrimSuffix(lines[i], "\r")
-	}
-	return lines
+	return yamlsource.NewDocument(string(b)).Lines
 }
 
-func (p *parser) scriptSource(n *yaml.Node) *scriptSource {
-	switch n.Style {
-	case yaml.LiteralStyle:
-		return p.literalScriptSource(n)
-	case 0:
-		return p.plainScriptSource(n)
-	default:
-		return nil
-	}
-}
-
-func (p *parser) literalScriptSource(n *yaml.Node) *scriptSource {
-	decoded := strings.Split(n.Value, "\n")
-	indent := -1
-
-	for i, line := range decoded {
-		if line == "" {
-			continue
-		}
-		sourceLine := n.Line + i
-		if sourceLine >= len(p.sourceLines) {
-			return nil
-		}
-		raw := p.sourceLines[sourceLine]
-		if !strings.HasSuffix(raw, line) {
-			return nil
-		}
-		prefix := raw[:len(raw)-len(line)]
-		if strings.Trim(prefix, " ") != "" {
-			return nil
-		}
-		if indent < 0 {
-			indent = len(prefix)
-		} else if len(prefix) != indent {
-			return nil
-		}
-	}
-
-	if indent < 0 {
-		return nil
-	}
-
-	source := newScriptSource(n.Value)
-	offset := 0
-	for i, line := range decoded {
-		scriptOffset := offset
-		offset += len(line) + 1
-		sourceLine := n.Line + i
-		if sourceLine >= len(p.sourceLines) {
-			break
-		}
-		raw := p.sourceLines[sourceLine]
-		if line == "" {
-			if strings.TrimSpace(raw) != "" {
-				continue
-			}
-		} else if len(raw) < indent || raw[indent:] != line {
-			return nil
-		}
-		if !source.mapBytes(scriptOffset, len(line), sourceLine+1, indent+1) {
-			return nil
-		}
-	}
-	return source
-}
-
-func (p *parser) plainScriptSource(n *yaml.Node) *scriptSource {
-	if n.Line <= 0 || n.Line > len(p.sourceLines) || n.Column <= 0 {
-		return nil
-	}
-
-	source := newScriptSource(n.Value)
-	offset := 0
-	for sourceLine := n.Line - 1; sourceLine < len(p.sourceLines) && offset < len(n.Value); sourceLine++ {
-		raw := p.sourceLines[sourceLine]
-		var start int
-		if sourceLine == n.Line-1 {
-			var ok bool
-			start, ok = byteOffsetAtColumn(raw, n.Column)
-			if !ok {
-				return nil
-			}
-		} else {
-			start = len(raw) - len(strings.TrimLeft(raw, " "))
-			for offset < len(n.Value) && (n.Value[offset] == ' ' || n.Value[offset] == '\n') {
-				offset++
-			}
-		}
-		candidate := strings.TrimRight(raw[start:], " \t")
-		if candidate == "" {
-			continue
-		}
-		matched := 0
-		for matched < len(candidate) && offset+matched < len(n.Value) && candidate[matched] == n.Value[offset+matched] {
-			matched++
-		}
-		if matched == 0 {
-			return nil
-		}
-		sourceCol := utf8.RuneCountInString(raw[:start]) + 1
-		if !source.mapBytes(offset, matched, sourceLine+1, sourceCol) {
-			return nil
-		}
-		offset += matched
-	}
-
-	if strings.TrimSpace(n.Value[offset:]) != "" {
-		return nil
-	}
-	return source
+func newSourceParser(source []byte) *parser {
+	document := yamlsource.NewDocument(string(source))
+	return &parser{sourceLines: document.Lines, scalarDocument: document}
 }
 
 func (p *parser) error(n *yaml.Node, m string) {
@@ -381,6 +273,18 @@ func (p *parser) parseString(n *yaml.Node, allowEmpty bool) *String {
 		return &String{"", false, posAt(n)}
 	}
 	return newString(n)
+}
+
+// parseCondition preserves the distinction between YAML null and the string "null".
+func (p *parser) parseCondition(n *yaml.Node) *String {
+	s := p.parseString(n, true)
+	if n.Tag == "!!null" {
+		s.Value = ""
+	}
+	if strings.TrimSpace(s.Value) == "" {
+		s.Value = "success()"
+	}
+	return s
 }
 
 // parseStaticString folds a sole literal expression before downstream validation.
@@ -1655,13 +1559,14 @@ func (p *parser) parseStep(n *yaml.Node) *Step {
 	)
 
 	kind := isUnknown
+	var declaredUses *String
 	entries := slices.Collect(p.parseMappingAt("element of \"steps\" section", n, false, true))
 	for _, e := range entries {
 		switch e.id {
 		case "id":
 			ret.ID = p.parseStaticString(e.val)
 		case "if":
-			ret.If = p.parseString(e.val, false)
+			ret.If = p.parseCondition(e.val)
 		case "name":
 			ret.Name = p.parseString(e.val, true)
 		case "env":
@@ -1676,6 +1581,10 @@ func (p *parser) parseStep(n *yaml.Node) *Step {
 			uses := e.val.Value
 			if literal := literalExpressionValue(uses); literal != nil {
 				uses = *literal
+			}
+			if e.val.Kind == yaml.ScalarNode {
+				declaredUses = newString(e.val)
+				declaredUses.Value = uses
 			}
 			if strings.HasPrefix(uses, "docker://") {
 				kind = isDocker
@@ -1695,6 +1604,9 @@ func (p *parser) parseStep(n *yaml.Node) *Step {
 		}
 	}
 
+	if kind != isAction && kind != isDocker {
+		ret.declaredUses = declaredUses
+	}
 	switch kind {
 	case isAction, isDocker:
 		ret.Exec = p.parseStepExecAction(entries, kind == isDocker)
@@ -1776,7 +1688,7 @@ func (p *parser) parseSnapshot(pos *Pos, n *yaml.Node) *Snapshot {
 			case "version":
 				ret.Version = p.parseString(e.val, false)
 			case "if":
-				ret.If = p.parseString(e.val, false)
+				ret.If = p.parseCondition(e.val)
 			default:
 				p.unexpectedKey(e.key, "snapshot", []string{"image-name", "version", "if"})
 			}
@@ -1845,7 +1757,7 @@ func (p *parser) parseJob(id *String, n *yaml.Node) *Job {
 		case "defaults":
 			ret.Defaults = p.parseDefaults(k.Pos, v)
 		case "if":
-			ret.If = p.parseString(v, false)
+			ret.If = p.parseCondition(v)
 		case "steps":
 			ret.Steps = p.parseSteps(v)
 		case "timeout-minutes":
@@ -1923,6 +1835,7 @@ func (p *parser) parseJob(id *String, n *yaml.Node) *Job {
 
 	if call.Uses != nil {
 		if stepsOnlyKey != nil {
+			ret.declaredUses = call.Uses
 			p.errorfAt(
 				stepsOnlyKey.Pos,
 				"when a reusable workflow is called with \"uses\", %q is not available. only following keys are allowed: \"name\", \"uses\", \"with\", \"secrets\", \"needs\", \"if\", \"permissions\", \"cache-mode\", \"strategy\", and \"concurrency\" in job %q",
@@ -1978,6 +1891,9 @@ func (p *parser) parse(n *yaml.Node) *Workflow {
 	if len(n.Content) == 0 {
 		p.error(n, "workflow is empty")
 		return w
+	}
+	if root := n.Content[0]; root.Kind == yaml.MappingNode && len(root.Content) != 0 {
+		w.Pos = posAt(root.Content[0])
 	}
 
 	for e := range p.parseSectionMapping("workflow", n.Content[0], false, true) {
@@ -2080,8 +1996,10 @@ func Parse(b []byte) (*Workflow, []*Error) {
 	// Uncomment for checking YAML tree
 	// dumpYAML(&n, 0)
 
-	p := &parser{sourceLines: splitSourceLines(b)}
+	p := newSourceParser(b)
+	p.indexScalarSources(&n)
 	w := p.parse(&n)
+	w.expressionSources = p.workflowExpressionSources(&n)
 
 	return w, p.errors
 }

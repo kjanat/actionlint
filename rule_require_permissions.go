@@ -9,18 +9,19 @@ type RuleRequirePermissions struct {
 // NewRuleRequirePermissions creates a rule for the given policy.
 func NewRuleRequirePermissions(policy *PermissionsPolicy) *RuleRequirePermissions {
 	return &RuleRequirePermissions{
-		RuleBase: RuleBase{
-			name: "require-permissions",
-			desc: "Checks for an explicit permissions declaration at workflow or job scope",
-		},
-		policy: policy,
+		RuleBase: builtinRuleBase("require-permissions"),
+		policy:   policy,
 	}
 }
 
 // VisitWorkflowPre checks the workflow declaration when workflow scope is enabled.
 func (rule *RuleRequirePermissions) VisitWorkflowPre(n *Workflow) error {
 	if rule.policy.Scope() == "workflow" && n.Permissions == nil {
-		rule.Errorf(&Pos{Line: 1, Col: 1}, "workflow-level \"permissions\" is required by the \"require-permissions\" policy. set \"permissions: {}\" and grant the scopes your jobs need")
+		pos := n.Pos
+		if pos == nil {
+			pos = &Pos{Line: 1, Col: 1}
+		}
+		rule.Errorf(pos, "workflow-level \"permissions\" is required by the \"require-permissions\" policy. set \"permissions: {}\" and grant the scopes your jobs need")
 	}
 	return nil
 }

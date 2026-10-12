@@ -1,11 +1,17 @@
 # Package layout
 
-Issue [#21](https://github.com/kjanat/actionlint/issues/21) asks whether the flat root package should be split into
+Issue kjanat/actionlint#21 asks whether the flat root package should be split into
 `ast`, `expr` and `rule`, and names one question as blocking the work: where `Pos` and `Error` end up. This document
 answers that question, records the measured dependency graph the answer rests on, gives a target layout that the same
 measurement shows is acyclic, and lists what each phase of the move has to do.
 
 Nothing here changes Go code. Phase 0 is this document.
+
+Implementation update for kjanat/actionlint#155: the frontend now lives in `internal/cli`.
+The root package exposes analysis sessions, result rendering and configuration inspection, and no longer imports Cobra or
+pflag. Build metadata remains in `version.go`, which also supplies the template's `getVersion` function. This removes the
+frontend/version dependency described below. The measurements and proposed broader package split remain the historical
+snapshot at [`kjanat/actionlint@2f85e20`].
 
 ## How the graph was measured
 
@@ -15,7 +21,7 @@ attribute every `types.Object` in `TypesInfo.Uses` to the file holding the decla
 `_test.go` files, and split `error.go` at symbol level into the `Error` value object and the `ErrorFormatter` side.
 Without that split the `{ErrorFormatter, command, linter}` cycle is smeared across three apparent ones.
 
-Every figure below was measured at commit `2f85e20`. Section [Reproducing the measurements](#reproducing-the-measurements)
+Every figure below was measured at commit [`kjanat/actionlint@2f85e20`]. Section [Reproducing the measurements]
 gives a command for each claim.
 
 ## What the root package holds today
@@ -401,12 +407,12 @@ import goes unnoticed until release.
 
 The module is published on the Go module proxy, and a version the proxy has served is immutable there, so the flat
 API is a published contract regardless of whether any dependent is known.
-[`@v/list`](https://proxy.golang.org/actionlint.kjanat.dev/@v/list) lists every released version, and
-[`@latest`](https://proxy.golang.org/actionlint.kjanat.dev/@latest) names the newest one together with the commit
+[`@v/list`] lists every released version, and
+[`@latest`] names the newest one together with the commit
 hash it was cut from, for anyone pinning to an exact revision:
 
-[![@latest version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fproxy.golang.org%2Factionlint.kjanat.dev%2F%40latest&query=%24.Version&label=%40latest)](https://proxy.golang.org/actionlint.kjanat.dev/@latest)
-[![@latest commit](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fproxy.golang.org%2Factionlint.kjanat.dev%2F%40latest&query=%24.Origin.Hash&label=commit)](https://proxy.golang.org/actionlint.kjanat.dev/@latest)
+[![@latest version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fproxy.golang.org%2Factionlint.kjanat.dev%2F%40latest&query=%24.Version&label=%40latest)][latest-version]
+[![@latest commit](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fproxy.golang.org%2Factionlint.kjanat.dev%2F%40latest&query=%24.Origin.Hash&label=commit)][latest-commit]
 
 The module path itself resolves through a `go-import` meta element on the Pages site.
 
@@ -475,7 +481,7 @@ relocate or split 41 of the 46 production files and can rewrite imports througho
 files. Any open branch touching a root file becomes unmergeable without hand re-pathing, so those phases need a window
 with no open feature branch.
 
-## Corrections to issue #21
+## Corrections to issue kjanat/actionlint#21
 
 | the issue says                                                                        | measured                                                                                                                                                                                                |
 | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -485,7 +491,7 @@ with no open feature branch.
 | "27 commits touching root `.go` files in the last six months, across 10 unique files" | 14 commits over 10 unique root files. 27 is the count for any `.go` file in the module. The fetched `upstream/main` also stops at 2026-04-19, so the window holds about two months of upstream activity |
 | the five-package layout                                                               | contains three import cycles, none of them named in the issue                                                                                                                                           |
 
-65 of the 82 root files differ from `upstream/main` at `011a6d15`: 17 identical, 57 changed, 8 present only in the fork
+65 of the 82 root files differ from `upstream/main` at [`rhysd/actionlint@011a6d1`]: 17 identical, 57 changed, 8 present only in the fork
 (`rule_parallel_steps.go`, `rule_action_test.go`, `rule_shell_name_test.go`, the three policy-rule files and the two
 new policy test files).
 
@@ -528,3 +534,26 @@ the top of the table carry the proof, and each is one `rg` away.
    members of `Config`: `Config.SelfHostedRunner` in `rule_runner_label.go`, `Config.ConfigVariables` in
    `rule_expression.go` and `Config.RequiredActions()` in `rule_required_actions.go`. A local interface would leave
    `rule` independent of `project`, at the cost of a harder break in the published `Rule` interface.
+
+[Reproducing the measurements]: #reproducing-the-measurements
+[`@latest`]: https://proxy.golang.org/actionlint.kjanat.dev/@latest
+[`@v/list`]: https://proxy.golang.org/actionlint.kjanat.dev/@v/list
+[`kjanat/actionlint@2f85e20`]: https://github.com/kjanat/actionlint/commit/2f85e2025722e99b2149cb97f7acfa1a0ff35c85
+[`rhysd/actionlint@011a6d1`]: https://github.com/rhysd/actionlint/commit/011a6d15e749bb3f2d771eed9c7aa0e7e3e10ee7
+[latest-commit]: https://proxy.golang.org/actionlint.kjanat.dev/@latest
+[latest-version]: https://proxy.golang.org/actionlint.kjanat.dev/@latest
+
+## Shared configuration internals
+
+The configuration implementation now separates public API types from reusable
+implementation machinery:
+
+- `internal/configtree`: YAML alias expansion, structural merging, local
+  `extends` loading, dependency tracking, and cycle detection.
+- `internal/filefilter`: feature-independent include/exclude glob selection.
+- `internal/lintconfig`: rule levels, presets, groups, and typed-option decoding.
+
+The root package retains public configuration aliases and adapters that connect
+these internals to the rule catalog and analysis engine. File selection can be
+reused by future formatter and language-server frontends without moving lint
+rules into those components. Neither frontend is implemented by this change.

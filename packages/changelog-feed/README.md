@@ -64,7 +64,7 @@ The source is TypeScript under `src/`, compiled to `dist/` by `tsc`. The tests r
 against `src/` directly on Node's type stripping.
 
 ```sh
-run test:feed
+run -s @kjlint/changelog-rss:typecheck @kjlint/changelog-rss:test
 run --dir packages/changelog-feed build
 ```
 

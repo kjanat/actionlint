@@ -219,11 +219,13 @@ func collectCacheOperations(operations []string, steps []*Step) []string {
 // indicated by 'proj' field. One LocalReusableWorkflowCache instance needs to be created per one
 // project.
 type LocalReusableWorkflowCache struct {
-	mu    sync.RWMutex
-	proj  *Project // maybe nil
-	cache map[string]reusableWorkflowMetadataResult
-	cwd   string
-	dbg   io.Writer
+	onRead   func(string)
+	readFile func(string) ([]byte, error)
+	mu       sync.RWMutex
+	proj     *Project // maybe nil
+	cache    map[string]reusableWorkflowMetadataResult
+	cwd      string
+	dbg      io.Writer
 }
 
 type reusableWorkflowMetadataResult struct {
@@ -270,13 +272,16 @@ func (c *LocalReusableWorkflowCache) FindMetadata(spec string) (*ReusableWorkflo
 	}
 
 	file := filepath.Join(c.proj.RootDir(), filepath.FromSlash(spec))
-	src, err := os.ReadFile(file)
+	src, err := c.readFile(file)
 	if err != nil {
 		err = fmt.Errorf("could not read reusable workflow file for %q: %w", spec, err)
 		c.writeCache(spec, nil, err)
 		return nil, err
 	}
 
+	if c.onRead != nil {
+		c.onRead(file)
+	}
 	m, err := parseReusableWorkflowMetadata(src)
 	if err != nil {
 		msg := strings.ReplaceAll(err.Error(), "\n", " ")
@@ -313,7 +318,10 @@ func (c *LocalReusableWorkflowCache) convWorkflowPathToSpec(p string) (string, b
 	if !filepath.IsAbs(p) {
 		p = filepath.Join(c.cwd, p)
 	}
-	r := c.proj.RootDir()
+	// Compare canonical identities without changing caller-owned project or
+	// source spellings used by readers and diagnostics.
+	p = absPath(p)
+	r := absPath(c.proj.RootDir())
 	if !strings.HasPrefix(p, r) {
 		return "", false
 	}
@@ -519,7 +527,7 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 
 	wp := resolvePermissionsYAML(&w.Permissions)
 	wc := cacheModeFromYAML(&w.CacheMode)
-	stepParser := parser{sourceLines: splitSourceLines(src)}
+	stepParser := newSourceParser(src)
 	if w.Jobs.Kind == yaml.MappingNode {
 		seenJobs := map[string]bool{}
 		for i := 0; i+1 < len(w.Jobs.Content); i += 2 {
@@ -585,10 +593,11 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 // the cache instance is project-local. It is not available across multiple projects.
 func NewLocalReusableWorkflowCache(proj *Project, cwd string, dbg io.Writer) *LocalReusableWorkflowCache {
 	return &LocalReusableWorkflowCache{
-		proj:  proj,
-		cache: map[string]reusableWorkflowMetadataResult{},
-		cwd:   cwd,
-		dbg:   dbg,
+		readFile: os.ReadFile,
+		proj:     proj,
+		cache:    map[string]reusableWorkflowMetadataResult{},
+		cwd:      cwd,
+		dbg:      dbg,
 	}
 }
 

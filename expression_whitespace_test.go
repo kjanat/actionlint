@@ -29,7 +29,14 @@ func TestExpressionWhitespaceWorkflowBoundaries(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			source := "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    " + tc.field + "\n    steps:\n      - run: echo ok\n"
+			source := `on: push
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    ` + tc.field + `
+    steps:
+      - run: echo ok
+`
 			errs, err := linter.Lint("workflow.yml", []byte(source), nil)
 			if err != nil {
 				t.Fatal(err)
@@ -56,7 +63,12 @@ func TestExpressionWhitespaceStaticUses(t *testing.T) {
 		{"stripped block", "|-\n          ${{ './action' }}", "./action", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			source := []byte("on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: " + tc.value + "\n")
+			source := []byte(`on: push
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ` + tc.value + "\n")
 			workflow, errs := Parse(source)
 			if len(errs) != 0 {
 				t.Fatal(errs)
@@ -97,7 +109,13 @@ func TestExpressionWhitespaceActionMappingBoundaries(t *testing.T) {
 			{"stripped block map", "|-\n        ${{ fromJSON('{}') }}", false},
 		} {
 			t.Run(field+"/"+tc.name, func(t *testing.T) {
-				source := []byte("name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/checkout@v6\n      " + field + ": " + tc.value + "\n")
+				source := []byte(`name: test
+description: test
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v6
+      ` + field + ": " + tc.value + "\n")
 				var meta ActionMetadata
 				if err := yaml.Unmarshal(source, &meta); err != nil {
 					t.Fatal(err)
@@ -125,7 +143,14 @@ func TestExpressionWhitespacePreservesExpressionErrors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			source := "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    env: \"" + value + "\"\n    steps:\n      - run: echo ok\n"
+			source := `on: push
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env: "` + value + `"
+    steps:
+      - run: echo ok
+`
 			errs, err := linter.Lint("workflow.yml", []byte(source), nil)
 			if err != nil {
 				t.Fatal(err)

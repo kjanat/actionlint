@@ -8,7 +8,7 @@ jobs:
         foo:
           - aaa
         exclude:
-          - foo: ${{ fromJSON('"x"') }}
+          - foo: ${{ fromJSON(github.event.matrix) }}
     steps:
       - run: echo ${{ matrix.foo }}
   nested-obj-1:
@@ -18,9 +18,9 @@ jobs:
         foo:
           - bar: aaa
         exclude:
-          - foo: ${{ fromJSON('"x"') }}
+          - foo: ${{ fromJSON(github.event.matrix) }}
           - foo:
-              bar: ${{ fromJSON('"x"') }}
+              bar: ${{ fromJSON(github.event.matrix) }}
     steps:
       - run: echo ${{ matrix.foo.bar }}
   nested-obj-2:
@@ -31,12 +31,12 @@ jobs:
           - bar:
               piyo: aaa
         exclude:
-          - foo: ${{ fromJSON('"x"') }}
+          - foo: ${{ fromJSON(github.event.matrix) }}
           - foo:
-              bar: ${{ fromJSON('"x"') }}
+              bar: ${{ fromJSON(github.event.matrix) }}
           - foo:
               bar:
-                piyo: ${{ fromJSON('"x"') }}
+                piyo: ${{ fromJSON(github.event.matrix) }}
     steps:
       - run: echo ${{ matrix.foo.bar.piyo }}
   nested-array-1:
@@ -46,9 +46,9 @@ jobs:
         foo:
           - [aaa]
         exclude:
-          - foo: ${{ fromJSON('"x"') }}
+          - foo: ${{ fromJSON(github.event.matrix) }}
           - foo:
-            - ${{ fromJSON('"x"') }}
+            - ${{ fromJSON(github.event.matrix) }}
     steps:
       - run: echo ${{ matrix.foo[0] }}
   nested-array-2:
@@ -58,10 +58,10 @@ jobs:
         foo:
           - [[aaa]]
         exclude:
-          - foo: ${{ fromJSON('"x"') }}
+          - foo: ${{ fromJSON(github.event.matrix) }}
           - foo:
-            - ${{ fromJSON('"x"') }}
+            - ${{ fromJSON(github.event.matrix) }}
           - foo:
-            - ["${{ fromJSON('\"x\"') }}"]
+            - ["${{ fromJSON(github.event.matrix) }}"]
     steps:
       - run: echo ${{ matrix.foo[0][0] }}

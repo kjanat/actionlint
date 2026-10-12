@@ -43,11 +43,16 @@ func TestConcurrencyExpressionGroups(t *testing.T) {
 					if scope == "workflow" {
 						source += field
 					}
-					source += "jobs:\n  test:\n    runs-on: ubuntu-latest\n"
+					source += `jobs:
+  test:
+    runs-on: ubuntu-latest
+`
 					if scope == "job" {
 						source += "    " + field
 					}
-					source += "    steps:\n      - run: echo ok\n"
+					source += `    steps:
+      - run: echo ok
+`
 					lint, err := NewLinter(io.Discard, &LinterOptions{Shellcheck: "", Pyflakes: ""})
 					if err != nil {
 						t.Fatal(err)

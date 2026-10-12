@@ -29,30 +29,271 @@ cat path/to/workflow.yaml | actionlint -
 To know all flags and options, see an output of `actionlint -h` or
 [the online command manual][cmd-manual].
 
+### Commands and compatibility
+
+The root invocation remains supported. It uses the original Go flag grammar:
+`-format` and `--format` are equivalent, boolean options accept `=false`, and
+parsing stops at the first filename. The explicit `check` command accepts options
+before or after filenames. Both routes use the same analysis engine.
+
+```sh
+actionlint
+actionlint workflow.yml
+actionlint check workflow.yml --output-format=json
+actionlint check --stdin-filename=.github/workflows/ci.yml -
+actionlint config show --origin
+actionlint rules expression
+actionlint doctor
+actionlint version
+```
+
+`check` accepts workflow files or a lone `-` for stdin. With no paths, it uses the
+same repository workflow discovery as the root. Directory arguments and standalone
+action-manifest linting are not added by the command redesign.
+
+An existing regular file named `check`, `config`, `rules`, `doctor`, `completion`,
+`version` or `help` takes precedence over the corresponding root command. Use `--`
+to force filenames or `--command NAME` to force a command despite a matching file.
+Root options still belong before filenames:
+
+```sh
+actionlint -- --workflow.yml
+actionlint --command check workflow.yml --json
+```
+
+Normal help and completion recommend the modern names. `--help-legacy` lists the
+supported old names without deprecation warnings. `--format` remains an alias for
+Go templates; it never interprets template text as a built-in format name.
+`-o`, `-f`, `-q` and `-h` mean output format, template, quiet and help.
+`-v` remains available for progress logging; new examples use `--log-level=info`.
+`-V` is the short form of `--version` and preserves its three-line output.
+Attached short-option values such as `-ojson` belong to `check`'s modern grammar.
+
+The root's `-color=false` means not forcing color on. If both `-color` and
+`-no-color` are true, `-no-color` wins regardless of order. The modern command
+accepts `check --color=auto|always|never`; bare `--color` means `always`.
+
+Human-readable help styles headings, command names and flags when stderr is a
+terminal. With `GITHUB_ACTIONS=true`, help and text diagnostics also use color in
+workflow logs without a terminal, including when `TERM=dumb`. Redirects to regular
+files and `--output-file` reports stay plain in auto mode. Custom templates receive
+no added color. JSON can use optional terminal formatting described below.
+Following the [NO_COLOR convention](https://no-color.org/),
+any non-empty `NO_COLOR` value, including `0` or `false`, disables automatic color;
+an empty value has no effect. `TERM=dumb` disables automatic help styling outside GitHub Actions.
+An explicit color request overrides those environment settings.
+`--no-color` and `check --color=never` disable styling. Root color flags belong
+before `--help`, since root help exits immediately. Redirected JSON help is uncolored.
+
+Help can make the project name and documentation URLs clickable using OSC 8
+terminal hyperlinks. The documentation URL uses the release tag or the build's
+source commit. Without embedded version or VCS metadata, it falls back to `HEAD`;
+use `go run -buildvcs=true ./cmd/actionlint --help` to include the checkout revision
+when running from source.
+
+Doctor uses `file://` links for its directory, configuration
+file and resolved executables. Select `--hyperlinks=auto|always|never` independently of
+color. The default `auto` follows the [no-hyperlinks convention](https://no-hyperlinks.org/spec):
+non-empty `NO_HYPERLINKS` disables links, then non-empty `FORCE_HYPERLINKS`
+enables them, then the output stream's TTY status and known terminal capabilities decide:
+stderr for help, stdout for doctor.
+Even `0` is a non-empty value. Explicit `always` or `never` overrides both variables.
+Unknown terminals and multiplexers use plain URLs in auto mode; `always` can
+enable links when the terminal and multiplexer are configured to pass them through.
+Both modes keep destination URLs visible. JSON, diagnostics, templates, version
+output and generated completion scripts remain free of added hyperlink sequences.
+
+```sh
+actionlint --hyperlinks=always --help
+actionlint check --hyperlinks=never --help
+actionlint doctor --hyperlinks=always
+```
+
+Put root hyperlink flags before `--help`, just like color flags. The same modes
+are available in subcommand help and generated shell completions.
+
+When running through npm, these forms pass the help flag to actionlint:
+
+```sh
+npx @kjanat/actionlint --help
+npm exec --package=@kjanat/actionlint -- actionlint --help
+```
+
+Do not put an extra `--` after the package in the first form. It reaches actionlint
+as the end of options, making the following `--help` a filename.
+
+### Output and machine-readable metadata
+
+```sh
+actionlint check --json
+actionlint check --output-format=jsonl
+actionlint check --output-format=sarif --output-file=actionlint.sarif
+actionlint check --output-format=github
+actionlint check --template-file=report.tmpl
+actionlint check --help --json
+actionlint version --json
+```
+
+`--output-format` accepts `text`, `oneline`, `json`, `jsonl`, `sarif` and `github`.
+`--json` selects JSON. `--template` and its supported `--format` alias render the
+existing Go-template fields and functions. `--template-file` reads the same syntax
+from a file. A template cannot be combined with a built-in output selector.
+The legacy `-oneline` option still yields to a nonempty template.
+
+JSON returns a versioned document. Each diagnostic has `rule`, `message`, `path`,
+`start`, `end` and an optional `snippet`. Positions use one-based Unicode character
+columns, and the end position is exclusive. Ranges may span multiple lines. For example:
+
+```json
+{
+  "schema_version": 1,
+  "status": "problems-found",
+  "completed": true,
+  "exit_code": 1,
+  "file_count": 1,
+  "configurations": [],
+  "hints": [],
+  "diagnostics": [
+    {
+      "rule": "expression",
+      "message": "undefined variable \"missing\"",
+      "path": ".github/workflows/ci.yml",
+      "start": { "line": 6, "column": 24 },
+      "end": { "line": 6, "column": 36 }
+    }
+  ]
+}
+```
+
+CLI and Action share [one result contract](results.md), published as a JSON Schema
+and TypeScript types in the npm package. A clean JSON result has an empty `diagnostics` array. JSON Lines emits those
+individual diagnostic objects with `schema_version: 1` on every record, or nothing for a clean result. Legacy
+`-format '{{json .}}'` retains its original array and field names, including
+`kind`, `filepath` and `end_column`. SARIF uses the bundled renderer. `github`
+emits escaped workflow annotation commands; it is enabled only by that explicit
+format choice, including when running inside GitHub Actions.
+
+Check results go to stdout, or to `--output-file PATH`. `--output-file -` means stdout.
+This destination option applies only to checks.
+A report file is replaced only after analysis completes; an operational failure
+preserves any previous report. An output file cannot replace a consumed workflow, local action, reusable workflow, configuration, template, or existing stdin filename, including links to those files. Replacing a report preserves its permission bits; a new report is private to the current user.
+Logs and operational errors go to stderr. Structured output never includes ANSI
+color or terminal hyperlinks. A clean default text run stays silent.
+
+Try additional checks without changing a configuration file:
+
+```sh
+actionlint --strict
+actionlint --experimental
+actionlint check --strict --experimental
+```
+
+`--strict` selects all stable catalog rules, including non-recommended suspicious checks
+and opt-in repository policies. Explicit group and individual rule exceptions remain in effect, as do
+configured timeout bounds, permission scopes, suppression report modes and
+rule-ID/path ignores. It does not invent a
+`required-actions` list or install missing external linters. `--experimental`
+enables nursery rules while retaining individual exclusions. Strict
+mode alone does not enable nursery rules. Both switches apply after file
+overrides; `--experimental=false` clears only nursery selections. No current rules are in nursery.
+`--strict=false` removes the strict preset. Policies enabled in configuration remain active.
+Use `ACTIONLINT_STRICT=true` and `ACTIONLINT_EXPERIMENTAL=true` for equivalent
+environment defaults; explicit flags, including `false`, take precedence.
+
+`--log-level=none|info|debug` controls logging. `--summary` adds an opt-in count on
+stderr. `--quiet` suppresses logs and summaries while preserving requested results
+and errors. In JSON modes, check failures on stderr use the same result contract, with
+`completed: false`, `error`, and `exit_code`. Metadata commands keep their own
+error records. Log
+records have `log`, and the summary has `summary.files` and `summary.findings`.
+Check the exit status before interpreting empty stdout as success.
+
+| Exit status | Meaning                                                                       |
+| ----------- | ----------------------------------------------------------------------------- |
+| `0`         | Completed without findings, or completed an information/configuration command |
+| `1`         | Completed with findings                                                       |
+| `2`         | Invalid CLI arguments or incompatible options                                 |
+| `3`         | Could not initialize or complete, including invalid config, regex or template |
+
+`--help --json` describes commands, flags, choices, defaults and exit codes.
+`version --json` exposes build metadata. The old `-version` and `--version` flags
+retain their original three-line text output.
+
+When stdout is a terminal and `jq` is installed, JSON metadata and JSON/SARIF
+diagnostics are indented and colored according to the color controls. Use
+`--json-pretty=false` to disable this. Pipes, files, JSONL, templates and stderr
+records retain their existing output. Missing or failing `jq` falls back to the
+original JSON; it is never installed automatically.
+
+CLI defaults can also come from [environment variables](env.md), including
+configuration selection, output, logging and external linters. Explicit flags
+take precedence, including empty strings and `false`.
+
+### Configuration inspection
+
+```sh
+actionlint check --config=other.yml workflow.yml
+actionlint check --no-config workflow.yml
+actionlint config init
+actionlint config path
+actionlint config show --origin
+actionlint config validate
+```
+
+Configuration selection remains one explicit file or the repository's
+`.github/actionlint.yaml`, then `.github/actionlint.yml`. There is no new global
+configuration search or merge policy. `ACTIONLINT_CONFIG` and
+`ACTIONLINT_NO_CONFIG` provide selection defaults; explicit config flags override
+both. `--no-config` skips
+configuration loading. An explicit `check --config` also avoids parsing an
+unselected repository config.
+
+`config path` prints the selected path, or nothing when none is selected. It can
+identify an invalid file without parsing it. `config show` prints effective YAML;
+`--json` returns a document with `path` and `config`. `--origin` adds an `origins`
+map keyed by JSON Pointer. Sources distinguish `default` from `config`, and
+states distinguish missing keys, explicit `null` and explicit values such as
+`false` and `[]`. Config sources include line and column positions. A default
+value does not imply that the user explicitly set it.
+
+`config validate` uses the same parser and validation as analysis, including its
+current handling of unknown keys described in [Configuration](config.md). It does
+not silently introduce the stricter JSON Schema validation policy.
+`config init` retains the repository destination, refuses to overwrite either
+config filename, and includes the YAML Language Server schema directive.
+
+`rules` lists checks by name, description and category; `rules NAME` explains one
+check. `doctor` reports the selected config and resolves configured external-tool
+commands without executing them. Its paths become clickable `file://` links when
+hyperlinks are enabled, with spaces and non-ASCII characters encoded in the target.
+Windows drive and UNC paths are supported. Missing optional tools are reported as unavailable;
+a malformed selected configuration returns exit status 3. Help, version, rules and
+completion do not load configuration or create a linter.
+
 ### Shell completion
 
-`-completion` prints a completion script for the given shell to stdout. The
+`completion <shell>` prints a completion script for the given shell to stdout. The
 supported shells are `bash`, `fish`, `powershell` and `zsh`. The value also
-accepts `pwsh` as an alias for `powershell`, a shell path so that
-`actionlint -completion "$SHELL"` works, and `auto` to pick the shell from
-`$SHELL`, falling back to PowerShell when `$PSModulePath` is set. The script
-completes the flags in both their `-flag` and `--flag` spellings, the values
-they take, and workflow file paths.
+accepts `pwsh` as an alias for `powershell` and executable paths such as `$SHELL`.
+`auto` selects the shell from `$SHELL`, then tries PowerShell when `$PSModulePath`
+is set. Cobra generates the scripts from the CLI definitions. They complete long flags,
+short options, values, and workflow paths. Install `bash-completion` for Bash,
+and initialize `compinit` for Zsh. Regenerate saved scripts after upgrading.
 
 ```sh
 mkdir -p ~/.local/share/bash-completion/completions
-actionlint -completion bash > ~/.local/share/bash-completion/completions/actionlint
+actionlint completion bash > ~/.local/share/bash-completion/completions/actionlint
 ```
 
 ```sh
 mkdir -p ~/.config/fish/completions
-actionlint -completion fish > ~/.config/fish/completions/actionlint.fish
+actionlint completion fish > ~/.config/fish/completions/actionlint.fish
 ```
 
 The zsh script belongs in a directory listed in `$fpath`.
 
 ```sh
-actionlint -completion zsh > "${fpath[1]}/_actionlint"
+actionlint completion zsh > "${fpath[1]}/_actionlint"
 ```
 
 The PowerShell script is loaded from your profile. The first command creates
@@ -61,24 +302,36 @@ the profile's directory, which does not exist on a fresh account and makes
 
 ```powershell
 New-Item -ItemType Directory -Force (Split-Path -Parent $PROFILE) | Out-Null
-actionlint -completion powershell | Out-File -Append -Encoding utf8 $PROFILE
+actionlint completion powershell | Out-File -Append -Encoding utf8 $PROFILE
 ```
 
 To load the script into the current session only, pipe it through
 `Invoke-Expression` instead.
 
 ```powershell
-actionlint -completion powershell | Out-String | Invoke-Expression
+actionlint completion powershell | Out-String | Invoke-Expression
 ```
 
 ### Ignore some errors
 
-The three cache policies support [inline exceptions](config.md#inline-cache-policy-exceptions) with a rule name and
-a reason. Place the comment on the reported line, or use `actionlint:ignore-next-line` immediately before it:
+Every registered diagnostic rule supports [inline exceptions](config.md#inline-diagnostic-suppressions)
+with a rule name and an optional reason. Place the comment on the reported line, or use
+`actionlint:ignore-next-line` immediately before it. A directive on a YAML block scalar header covers its body.
 
 ```yaml
 cache-mode: write # actionlint:ignore cache-write-untrusted -- this job runs reviewed default-branch code only
 ```
+
+Local actions must have an `action.yml` or `action.yaml` available when linting.
+For generated actions, [map the runtime path to its source](config.md#local-action-source-mappings)
+to validate the checked-in manifest. For intentional exceptions, use a short comment:
+
+```yaml
+- uses: ./generated-action # actionlint:ignore missing-local-action
+```
+
+[Reusable ignores](config.md#reusable-ignores) let you declare an exception once
+for matching files, jobs, steps or action references.
 
 To ignore some errors, `-ignore` option offers to filter errors by messages
 using regular expression. The option is repeatable. The regular expression
@@ -88,26 +341,56 @@ syntax is the same as [RE2][re2].
 actionlint -ignore 'label ".+" is unknown' -ignore '".+" is potentially untrusted'
 ```
 
-`-shellcheck` and `-pyflakes` take a command line, not only a path. A command
-name, a file path, or a command with flags all work. Setting an empty string
-disables the `shellcheck` and `pyflakes` rules. As a bonus, disabling them makes
-actionlint much faster. These external linter integrations spawn many processes.
+The `-shellcheck` option accepts a command name, path, or command line with arguments.
+An empty value disables ShellCheck.
 
 ```sh
-actionlint -shellcheck= -pyflakes=
+actionlint -shellcheck=
 actionlint -shellcheck 'shellcheck -e SC2086'
-actionlint -pyflakes 'python3 -m pyflakes'
 ```
 
-Your arguments are prepended to the ones actionlint appends itself, so do not
-pass `-f`/`--format` or file arguments. actionlint appends
-`--norc -f json1 -x --shell <sh> -e SC1091,SC2194,SC2050,SC2153,SC2154,SC2157,SC2043 -`
-and parses the JSON1 output.
+Ruff checks Python `run:` steps when `ruff` is installed on `PATH`. Use `--ruff`
+to select another executable or command line; `--ruff=false` or `--ruff=` disables it. No Python
+interpreter or Pyflakes installation is needed. See [Ruff configuration](config.md#ruff).
 
-Because of that `--norc`, a repository `.shellcheckrc` is not read. Use
-`-shellcheck '<command line>'` or the [`SHELLCHECK_OPTS` environment variable](checks.md#check-shellcheck-integ) instead. pyflakes has no
-configuration file and no `# noqa`, so suppress its findings with `-ignore` or
-the `paths:` section of the configuration file.
+Pyflakes integration has been removed. The released `-pyflakes` option remains
+a deprecated no-op; use Ruff for Python analysis.
+
+To configure executables, arguments and child environments separately, use
+`ACTIONLINT_SHELLCHECK_BIN`, `ACTIONLINT_SHELLCHECK_FLAGS`, and
+`ACTIONLINT_SHELLCHECK_ENV`.
+Ruff has matching `ACTIONLINT_RUFF_BIN`, `ACTIONLINT_RUFF_FLAGS`, and
+`ACTIONLINT_RUFF_ENV` settings.
+An explicit tool flag overrides all three environment settings for that tool.
+See [External linter environment settings](env.md#external-linters) for quoting,
+Windows paths and examples.
+
+ShellCheck runs for recognized shell interpreters or scripts selected by a leading
+native `shell` directive. Configured dialects and command flags alone do not select
+unknown or non-shell scripts.
+
+ShellCheck commands, including wrappers, run in the step's resolved working
+directory so sourced files resolve as they do on the runner. Arguments are passed
+literally; use absolute paths for wrapper-owned files. For ShellCheck rc files,
+use [`tools.shellcheck.config`](config.md#shellcheck), which resolves paths
+relative to the actionlint configuration file.
+
+Your arguments are prepended to actionlint's integration arguments. actionlint
+owns the JSON1 output format and stdin input, so do not pass `-f`/`--format` or
+file arguments. It supplies its default exclusions, rc-file selection and source
+following settings. An inferred `--shell <dialect>` is added only when no explicit
+ShellCheck flag or leading `shell` directive selects the dialect. ShellCheck
+arguments take precedence over `SHELLCHECK_OPTS`, followed by a leading `shell`
+directive, actionlint's configured dialect and the workflow-derived dialect. See
+[script selection and directives](config.md#script-selection-and-directives).
+
+By default, `--norc` disables rc discovery. Set
+[`tools.shellcheck.config`](config.md#shellcheck) to an inline mapping or an rc
+file/directory; an rc path replaces `--norc` with `--rcfile`. Following sourced
+files (`-x`) can be disabled in
+configuration and is disabled when the step's working directory cannot be resolved
+locally. Additional options can use `-shellcheck '<command line>'` or the
+[`SHELLCHECK_OPTS` environment variable](checks.md#check-shellcheck-integ).
 
 <a id="format"></a>
 
@@ -117,17 +400,14 @@ the `paths:` section of the configuration file.
 
 Before explaining the formatting details, let's see some examples.
 
-#### Example: Serialized into JSON
+#### Example: Legacy template JSON
 
 ```sh
 actionlint -format '{{json .}}'
 ```
 
-Output:
-
-```json
-[{"message":"unexpected key \"branch\" for ...
-```
+This returns the original template-field array. Use `check --json` for the
+versioned native result described above.
 
 #### Example: Markdown
 
@@ -165,7 +445,7 @@ property "platform" is not defined in object type {os: string}
 #### Example: Serialized in [JSON Lines][jsonl]
 
 ```sh
-actionlint -format '{{range $err := .}}{{json $err}}{{end}}'
+actionlint --output jsonl
 ```
 
 Output:
@@ -190,7 +470,7 @@ Output:
 <img src="https://cdn.jsdelivr.net/gh/rhysd/ss@5530c2526b44ad28dc12f91a3d71bcd57940f008/actionlint/ga-annotate.png" alt="annotations on GitHub Actions" width="731" height="522"/>
 
 To include newlines in the annotation body, it prints `%0A`. (ref
-[actions/toolkit#193](https://github.com/actions/toolkit/issues/193)). And it
+actions/toolkit#193). And it
 suppresses `SC2016` shellcheck rule error since it complains about the template
 argument.
 
@@ -201,8 +481,13 @@ reviewdog as explained in ['Tools integration' section](#tools-integ) below.
 
 [The Static Analysis Results Interchange Format (SARIF)][sarif] is a standardized format for the results of static analysis tools.
 
-Since this practical format is much more complex than the above examples, the template is not written here. Please read
-[the canonical template file](../sarif_template.txt).
+Use the built-in format directly:
+
+```sh
+actionlint --output sarif > actionlint.sarif
+```
+
+The [canonical template](../sarif_template.txt) remains available for custom formatting.
 
 Outputs are also too large to be written here. Please read [the output example in test data](../testdata/format/test.sarif).
 
@@ -226,7 +511,7 @@ The error object has the following fields.
 | `{{$err.Message}}`   | Body of error message                                 | `property "platform" is not defined in object type {os: string}`    |
 | `{{$err.Snippet}}`   | Code snippet to indicate error position               |  <code>          node_version: 16.x\n          ^~~~~~~~~~~~~</code> |
 | `{{$err.Kind}}`      | Name of rule the error belongs to                     | `expression`                                                        |
-| `{{$err.Filepath}}`  | Canonical relative file path of the error position    | `.github/workflows/ci.yml`                                         |
+| `{{$err.Filepath}}`  | Canonical relative file path of the error position    | `.github/workflows/ci.yml`                                          |
 | `{{$err.Line}}`      | Line number of the error position (1-based)           | `9`                                                                 |
 | `{{$err.Column}}`    | Column number of the error's start position (1-based) | `11`                                                                |
 | `{{$err.EndColumn}}` | Column number of the error's end position (1-based)   | `23`                                                                |
@@ -287,100 +572,13 @@ string are automatically unescaped.
 
 ## Use actionlint on GitHub Actions
 
-The repository provides a Docker action backed by a prebuilt image containing
-actionlint, ShellCheck, and pyflakes. It reports each problem as a GitHub
-annotation by default, without compiling actionlint in the consumer's workflow.
+Start with the [Action guide](action.md): quick start, configuration, saved reports,
+optional PR reviews, tools and the complete input/output reference.
 
-```yaml
-name: Lint GitHub Actions workflows
-on: [push, pull_request]
+### Manual installation
 
-jobs:
-  actionlint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with: { persist-credentials: false }
-      - name: Check workflow files
-        uses: kjanat/actionlint@v1
-```
-
-Docker container actions run only on Linux, and this action also needs a
-reachable Docker daemon. `ubuntu-slim` is not supported: it runs the job in an
-unprivileged container and provides the Docker client, but no daemon or Docker
-socket. Standard Ubuntu runners, including `ubuntu-24.04-arm` and
-`ubuntu-26.04-arm`, are supported by the published `linux/amd64` and
-`linux/arm64` image.
-
-On a daemon-less runner such as `ubuntu-slim`, download and run the binary
-instead. `uses: docker://ghcr.io/kjanat/actionlint:latest` is not an alternative
-there because it has the same Docker daemon requirement.
-
-```yaml
-- uses: actions/checkout@v7
-  with: { persist-credentials: false }
-- name: Download and run actionlint
-  env: { GH_TOKEN: "${{ github.token }}", GH_REPO: "kjanat/actionlint" }
-  run: |
-    case "${RUNNER_ARCH}" in
-      X64) asset_arch=amd64 ;;
-      ARM64) asset_arch=arm64 ;;
-      ARM) asset_arch=armv6 ;;
-      X86) asset_arch=386 ;;
-      *) echo "Unsupported runner architecture: ${RUNNER_ARCH}" >&2; exit 1 ;;
-    esac
-    gh release download --pattern "actionlint_*_${RUNNER_OS,,}_${asset_arch}.tar.gz" --output - | tar -xzf - actionlint
-    ./actionlint -color
-```
-
-The binary-only path does not bundle ShellCheck or pyflakes; install them on the
-runner when those integrations are required.
-
-`v1` follows compatible v1 releases, and `v1.16` follows v1.16 patch releases. Each points to a commit immediately
-after the release that pins the published container image by digest. `v1.17.0` is a versioned release tag.
-For an immutable action reference with a pinned image, use the full commit SHA resolved from a
-floating tag.
-
-The action accepts these inputs:
-
-| Input               | Default       | Description                                                                  |
-| ------------------- | ------------- | ---------------------------------------------------------------------------- |
-| `files`             | all workflows | Newline-separated workflow file paths                                        |
-| `format`            | `github`      | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, or `sarif` |
-| `ignore`            | none          | Newline-separated regular expressions for errors to ignore                   |
-| `config-file`       | automatic     | Configuration file relative to `working-directory`                           |
-| `shellcheck`        | `true`        | Enable ShellCheck integration                                                |
-| `pyflakes`          | `true`        | Enable pyflakes integration                                                  |
-| `working-directory` | `.`           | Directory to lint, relative to the repository workspace                      |
-| `output-file`       | none          | Repository-relative file to receive the selected output                      |
-| `fail-on-error`     | `true`        | Fail when problems are found; command failures always fail                   |
-
-The `exit-code`, `result`, `problems-found`, `problem-count`, `output`, and
-`output-file` outputs can be used by later steps. For example, this writes JSON
-Lines without failing the lint step, while still exposing whether problems were
-found:
-
-```yaml
-- name: Check selected workflows
-  id: actionlint
-  uses: kjanat/actionlint@v1
-  with:
-    files: |
-      .github/workflows/ci.yml
-      .github/workflows/release.yml
-    format: json-lines
-    output-file: actionlint-results.jsonl
-    fail-on-error: false
-- name: Report result
-  if: always()
-  env:
-    RESULT: ${{ steps.actionlint.outputs.result }}
-    PROBLEM_COUNT: ${{ steps.actionlint.outputs.problem-count }}
-  run: echo "$RESULT ($PROBLEM_COUNT problems)"
-```
-
-The download script remains useful on macOS, Windows, or when direct access to
-the executable is preferred. It sets an absolute file path of the downloaded
+The download script remains useful when direct access to the executable is
+preferred. It sets an absolute file path of the downloaded
 executable to the `executable` output for following steps.
 
 Here is an example of simple workflow to run actionlint on GitHub Actions.
@@ -402,7 +600,8 @@ jobs:
         run: bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) 1.17.0
         shell: bash
       - name: Check workflow files
-        run: ${{ steps.get_actionlint.outputs.executable }} -color
+        env: { actionlint: "${{ steps.get_actionlint.outputs.executable }}" }
+        run: "${actionlint}" -color
         shell: bash
 ```
 
@@ -464,8 +663,10 @@ results table moves a cursor to position of the error in the code editor.
 
 [![Docker Image Version][docker-badge]][dockerhub]
 
-[Docker image][docker-image] is available. The image contains `actionlint`
-executable and all dependencies (shellcheck and pyflakes).
+[Docker image][docker-image] is available. Images built from this revision contain `actionlint`,
+ShellCheck, and the native Ruff executable. No Python interpreter is required.
+Ruff's official release archive is pinned by version and SHA-256 for both Linux amd64 and arm64.
+Previously published images are unchanged; Ruff will be included in the next release image.
 
 Available tags are:
 
@@ -474,18 +675,13 @@ Available tags are:
 - `ghcr.io/kjanat/actionlint:{version}`:\
   Release-specific actionlint image rather than a moving alias.\
   (e.g. `ghcr.io/kjanat/actionlint:1.17.0`)
-- `ghcr.io/kjanat/actionlint:action-{version}`:\
-  Release-specific image used by `action.yml` rather than a moving alias.\
-  (e.g. `action-1.17.0`)
-- `ghcr.io/kjanat/actionlint:action-v1`:\
-  Moving alias for the latest compatible v1 image available to Docker Action users.
-- `ghcr.io/kjanat/actionlint:action-latest`:\
-  Moving alias for the latest stable image available to Docker Action users.
 
 The CLI image is also published to Docker Hub as `kjanat/actionlint:latest` and
 `kjanat/actionlint:{version}`. Both registries carry the same manifest, so pick
-whichever your setup pulls from more easily. The `action-*` tags exist on
-`ghcr.io` only, since `action.yml` refers to them there.
+whichever your setup pulls from more easily. Previous `action-*` images remain
+available for older action refs; new releases use the JavaScript action.
+The ordinary binary also supports `-github-action` to run the action adapter
+with `INPUT_*`, `GITHUB_WORKSPACE`, and `GITHUB_OUTPUT` environment variables.
 
 For byte-for-byte reproducibility, use the image's manifest digest as
 `ghcr.io/kjanat/actionlint:{version}@sha256:<digest>`.
@@ -524,8 +720,7 @@ docker run --rm -v "$(git rev-parse --show-toplevel):/w" \
   -e SHELLCHECK_OPTS='-e SC2086' ghcr.io/kjanat/actionlint:latest -color
 ```
 
-The `action-*` images are the exception. Their `shellcheck` and `pyflakes`
-inputs are booleans that only switch the integrations on or off, so
+The `action-*` images are the exception. Their `shellcheck` input is a boolean that switches the integration on or off, so
 `SHELLCHECK_OPTS` in the step's `env:` is the only way to configure shellcheck
 there.
 
@@ -539,29 +734,43 @@ Go APIs are available. See [the Go API document](api.md) for more details.
 
 ### reviewdog
 
-> [!WARNING]
-> `reviewdog/action-actionlint` uses a hard-coded installer for `rhysd/actionlint`.
-> It does NOT use this fork.
+[reviewdog][reviewdog] posts inline review comments and filters findings to changed
+lines, keeping feedback focused on the pull request.
+The [`reviewdog/action-actionlint` action][reviewdog-actionlint] runs this fork
+with ShellCheck enabled.
+We recommend v1.76.2 or newer.
 
-[reviewdog][reviewdog] is an automated review tool for various code hosting
-services. It officially [supports actionlint][reviewdog-actionlint]. You can
-check errors from actionlint easily with inline review comments at pull request
-review.
-
-The usage is easy. Run `reviewdog/action-actionlint` action in your workflow as
-follows.
+Add the following workflow to `.github/workflows/reviewdog-actionlint.yaml`:
 
 ```yaml
-name: reviewdog
+name: reviewdog-actionlint
 on: [pull_request]
 jobs:
   actionlint:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v7
         with: { persist-credentials: false }
       - uses: reviewdog/action-actionlint@v1
+        with:
+          reporter: github-pr-review
+          filter_mode: added
+          fail_level: any
 ```
+
+This posts review comments for findings on added or modified lines and fails the
+step when those lines have problems. Set `filter_mode: diff_context` to include
+the surrounding diff context, or `fail_level: none` to leave comments without
+failing the step. Invalid options and fatal errors always fail the step.
+
+For pull requests from forks, reviewdog falls back to GitHub annotations when the
+workflow token cannot post review comments.
+
+Pass additional actionlint options through `actionlint_flags`. See the
+[action documentation][reviewdog-actionlint] for all inputs and available reporters.
 
 <a id="problem-matchers"></a>
 
@@ -592,12 +801,7 @@ in the step of your workflow.
 When you change your workflow and the changed line causes a new error, CI will
 annotate the diff with the extracted error message.
 
-<img
-  src="https://cdn.jsdelivr.net/gh/rhysd/ss@5530c2526b44ad28dc12f91a3d71bcd57940f008/actionlint/problem-matcher.png"
-  alt="annotation by Problem Matchers"
-  width="715"
-  height="221"
-/>
+<img src="https://cdn.jsdelivr.net/gh/rhysd/ss@5530c2526b44ad28dc12f91a3d71bcd57940f008/actionlint/problem-matcher.png" alt="annotation by Problem Matchers" width="715" height="221" />
 
 ### super-linter
 
@@ -613,8 +817,47 @@ super-linter in your repository automatically runs actionlint.
 To ignore some errors, please add `-ignore` option by using
 [`GITHUB_ACTIONS_COMMAND_ARGS` environment variable][super-linter-env-var].
 Please see
-[super-linter/super-linter#1852](https://github.com/super-linter/super-linter/issues/1852)
+super-linter/super-linter#1852
 for the discussion.
+
+### Native Git hooks
+
+[Git 2.54 and newer](https://git-scm.com/docs/git-hook/2.54.0) let you register named hooks directly in Git
+configuration. To run actionlint before each commit, [install actionlint](install.md) on your `PATH`, then run
+these commands in your repository:
+
+```sh
+git config set --local hook.actionlint.command actionlint
+git config set --local hook.actionlint.event pre-commit
+```
+
+Git runs actionlint when you commit. A lint failure blocks the commit. This checks all workflow files in the
+working tree, including unstaged edits; it does not check an isolated copy of the staged files.
+
+List the registered hooks and try them before committing:
+
+```sh
+git hook list --show-scope pre-commit
+git hook run pre-commit
+```
+
+The settings are local to this checkout and are not copied when someone clones the repository. Git runs the
+installed binary; you manage its installation and updates yourself. An existing `.git/hooks/pre-commit`
+script also runs, after the configured hooks.
+
+To disable only the actionlint hook, keeping its configuration:
+
+```sh
+git config set --local hook.actionlint.enabled false
+```
+
+Set the same key to `true` to enable it again.
+
+[Git 2.55](https://git-scm.com/docs/git-hook/2.55.0) adds parallel execution for eligible hook events and
+event-wide controls. The `pre-commit` event always runs its hooks sequentially.
+
+For a discussion of native hooks and the pre-commit framework, see
+[does git 2.54 make pre-commit obsolete?](https://www.youtube.com/watch?v=8Jwg_mM9WYc) by anthonywritescode.
 
 ### pre-commit
 
@@ -623,6 +866,7 @@ for the discussion.
 > `actionlint` hook builds this fork, `actionlint-docker` pulls this fork's
 > image, and `actionlint-system` runs the `actionlint` executable on `PATH`.
 > `actionlint-shellcheck` builds this fork and installs ShellCheck next to it.
+> `actionlint-bundled` builds the selected source revision's Docker image with both ShellCheck and Ruff.
 
 [pre-commit][pre-commit] is a framework for managing and maintaining
 multi-language Git pre-commit hooks. actionlint is available as a pre-commit
@@ -658,17 +902,63 @@ repos:
 ```
 
 As alternatives to `actionlint` hook, `actionlint-docker`, `actionlint-system`,
-or `actionlint-shellcheck` hooks are available.
+`actionlint-shellcheck`, or `actionlint-bundled` hooks are available.
+
+#### Updating pre-commit hooks
+
+[`pre-commit autoupdate`](https://pre-commit.com/#pre-commit-autoupdate) picks a Git tag. It does not check whether
+that tag is a stable version or has a published GitHub release. Review the chosen tag before committing an update.
+
+These workarounds address the non-release updates reported in
+[kjanat/actionlint#192](https://github.com/kjanat/actionlint/issues/192) and the documentation request in
+[kjanat/actionlint#194](https://github.com/kjanat/actionlint/issues/194). A downstream guard was added in
+[lfreleng-actions/actions-template#251](https://github.com/lfreleng-actions/actions-template/pull/251).
+
+[pre-commit/pre-commit#3759](https://github.com/pre-commit/pre-commit/issues/3759) proposed letting each hook
+repository declare an allowed tag pattern in its manifest. `autoupdate` would read it from the pinned revision,
+filter candidate tags, then use its existing selection logic. Leaving the setting unset would keep the current
+behavior. Named release channels, such as stable and beta, were suggested as a later extension.
+
+For manual updates, set `rev` to a published `vX.Y.Z` release. Alternatively, use `actionlint-system` and update the
+installed binary yourself.
+
+Use `--freeze` to store a commit hash in `rev`. The chosen tag stays in a `# frozen:` comment:
+
+```sh
+pre-commit autoupdate --freeze --repo https://github.com/kjanat/actionlint
+```
+
+`--freeze` does not change which tag is chosen. Add this guard to your `repos` list to reject frozen-tag comments
+unless they use the format `X.Y.Z` or `vX.Y.Z`:
+
+```yaml
+- repo: local
+  hooks:
+    - id: frozen-revs-are-release-tags
+      name: Frozen revisions use stable release tags
+      language: pygrep
+      entry: '#[ \t]*frozen:(?![ \t]*v?[0-9]+\.[0-9]+\.[0-9]+[ \t]*\r?$)'
+      files: '^\.pre-commit-config\.ya?ml$'
+```
+
+The guard checks all frozen-tag comments in the file. Adjust it if other hooks use different version formats.
+You still need to check that the selected tag has a published release and matches the pinned commit.
+
+#### Hook installation
 
 | Hook ID                 | Explanation                                                                                                                                                                                                                         |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `actionlint`            | Automatically installs `actionlint` command in isolated `$GOPATH` directory using [Go toolchain][go-install].                                                                                                                       |
 | `actionlint-docker`     | Automatically pulls [the actionlint Docker image](#docker).                                                                                                                                                                         |
+| `actionlint-bundled`    | Builds this revision's Dockerfile, bundling ShellCheck and Ruff. Requires Docker; no host Go, Python, ShellCheck, or Ruff installation is needed.                                                                                   |
 | `actionlint-system`     | Uses system-installed `actionlint` command. The command is necessary to be [installed manually](install.md).                                                                                                                        |
 | `actionlint-shellcheck` | Same as `actionlint`, and additionally installs a Go build of ShellCheck ([`wasilibs/go-shellcheck`][go-shellcheck]) so [the shellcheck integration](checks.md#check-shellcheck-integ) works without a host-installed `shellcheck`. |
 
-The `actionlint` hook installs into an isolated `$GOPATH`, so it only finds a
-`shellcheck` executable that is already on `PATH`.
+The `actionlint` hook installs into an isolated `$GOPATH`, so ShellCheck and Ruff must already be on `PATH`.
+The `actionlint-shellcheck` hook installs ShellCheck but not Ruff. Go `additional_dependencies` cannot install
+Ruff's Python package, and a separate `ruff-pre-commit` hook does not share its environment with actionlint.
+Use `actionlint-bundled` to install both automatically: select a commit or release containing this hook and set
+`id: actionlint-bundled`. It builds the bundled image from that revision.
 
 `actionlint-shellcheck` pins go-shellcheck so each actionlint revision builds a
 reproducible pre-commit environment. The scheduled [Upkeep workflow](../.github/workflows/upkeep.yml) checks both go-shellcheck
@@ -805,7 +1095,7 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 
 [actionlint-matcher]: https://raw.githubusercontent.com/kjanat/actionlint/HEAD/.github/actionlint-matcher.json
 [cmd-manual]: https://kjanat.github.io/actionlint/usage.html
-[docker-badge]: https://img.shields.io/docker/v/kjanat/actionlint
+[docker-badge]: https://img.shields.io/docker/v/kjanat/actionlint?logo=docker&logoColor=white&label=Docker&labelColor=2496ED&color=black
 [dockerhub]: https://hub.docker.com/r/kjanat/actionlint
 [docker-image]: https://github.com/kjanat/actionlint/pkgs/container/actionlint
 [docker]: https://www.docker.com/
@@ -828,7 +1118,7 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 [pulsar-linter]: https://web.pulsar-edit.dev/packages/linter-github-actions
 [pulsar]: https://pulsar-edit.dev/
 [re2]: https://golang.org/s/re2syntax
-[release-badge]: https://img.shields.io/github/v/release/kjanat/actionlint
+[release-badge]: https://img.shields.io/github/v/release/kjanat/actionlint?logo=github&logoColor=white&label=release&labelColor=181717&color=black
 [releases]: https://github.com/kjanat/actionlint/releases
 [reviewdog-actionlint]: https://github.com/reviewdog/action-actionlint
 [reviewdog]: https://github.com/reviewdog/reviewdog

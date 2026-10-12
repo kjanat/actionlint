@@ -1,4 +1,6 @@
-#:schema https://golangci-lint.run/jsonschema/golangci.v2.jsonschema.json
+#:schema https://www.schemastore.org/golangci-lint.json
+# this breaks in current tombi, something about the schema and tombi is wrong.
+# https://golangci-lint.run/jsonschema/golangci.v2.jsonschema.json
 
 version = "2"
 

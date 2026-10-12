@@ -8,10 +8,11 @@ import (
 
 func errorAtToken(t *Token, msg string) *ExprError {
 	return &ExprError{
-		Message: msg,
-		Offset:  t.Offset,
-		Line:    t.Line,
-		Column:  t.Column,
+		Message:   msg,
+		Offset:    t.Offset,
+		EndOffset: t.Offset + len(t.Value),
+		Line:      t.Line,
+		Column:    t.Column,
 	}
 }
 
@@ -21,6 +22,7 @@ type ExprParser struct {
 	cur   *Token
 	lexer *ExprLexer
 	err   *ExprError
+	last  *Token
 }
 
 // NewExprParser creates new ExprParser instance.
@@ -58,15 +60,26 @@ func (p *ExprParser) unexpected(where string, expected []TokenKind) {
 
 func (p *ExprParser) next() *Token {
 	ret := p.cur
+	p.last = ret
 	p.cur = p.lexer.Next()
 	return ret
+}
+
+type parsedExprNode interface {
+	ExprNode
+	setSpan(ExprSpan)
+}
+
+func (p *ExprParser) node(n parsedExprNode, start *Token) parsedExprNode {
+	n.setSpan(ExprSpan{start.Offset, p.last.Offset + len(p.last.Value), start.Line, start.Column})
+	return n
 }
 
 func (p *ExprParser) peek() *Token {
 	return p.cur
 }
 
-func (p *ExprParser) parseIdent() ExprNode {
+func (p *ExprParser) parseIdent() parsedExprNode {
 	ident := p.next() // eat ident
 	switch p.peek().Kind {
 	case TokenKindLeftParen:
@@ -102,25 +115,25 @@ func (p *ExprParser) parseIdent() ExprNode {
 				}
 			}
 		}
-		return &FuncCallNode{ident.Value, args, ident}
+		return p.node(&FuncCallNode{Callee: ident.Value, Args: args, tok: ident}, ident)
 	default:
 		// Handle keywords. Note that keywords are case sensitive. TRUE, FALSE, NULL are invalid named value.
 		switch ident.Value {
 		case "null":
-			return &NullNode{ident}
+			return p.node(&NullNode{tok: ident}, ident)
 		case "true":
-			return &BoolNode{true, ident}
+			return p.node(&BoolNode{Value: true, tok: ident}, ident)
 		case "false":
-			return &BoolNode{false, ident}
+			return p.node(&BoolNode{Value: false, tok: ident}, ident)
 		default:
 			// Variable name access is case insensitive. github.event and GITHUB.event are the same.
-			return &VariableNode{strings.ToLower(ident.Value), ident}
+			return p.node(&VariableNode{Name: strings.ToLower(ident.Value), tok: ident}, ident)
 		}
 	}
 }
 
-func (p *ExprParser) parseNestedExpr() ExprNode {
-	p.next() // eat '('
+func (p *ExprParser) parseNestedExpr() parsedExprNode {
+	start := p.next() // eat '('
 
 	nested := p.parseLogicalOr()
 	if nested == nil {
@@ -134,10 +147,10 @@ func (p *ExprParser) parseNestedExpr() ExprNode {
 		return nil
 	}
 
-	return nested
+	return p.node(nested, start)
 }
 
-func (p *ExprParser) parseInt() ExprNode {
+func (p *ExprParser) parseInt() parsedExprNode {
 	t := p.peek()
 	i, err := strconv.ParseInt(t.Value, 0, 32)
 	if err != nil {
@@ -147,10 +160,10 @@ func (p *ExprParser) parseInt() ExprNode {
 
 	p.next() // eat int
 
-	return &IntNode{int(i), t}
+	return p.node(&IntNode{Value: int(i), tok: t}, t)
 }
 
-func (p *ExprParser) parseFloat() ExprNode {
+func (p *ExprParser) parseFloat() parsedExprNode {
 	t := p.peek()
 	f, err := strconv.ParseFloat(t.Value, 64)
 	if err != nil {
@@ -160,18 +173,18 @@ func (p *ExprParser) parseFloat() ExprNode {
 
 	p.next() // eat float
 
-	return &FloatNode{f, t}
+	return p.node(&FloatNode{Value: f, tok: t}, t)
 }
 
-func (p *ExprParser) parseString() ExprNode {
+func (p *ExprParser) parseString() parsedExprNode {
 	t := p.next() // eat string
 	s := t.Value
 	s = s[1 : len(s)-1]                  // strip first and last single quotes
 	s = strings.ReplaceAll(s, "''", "'") // unescape ''
-	return &StringNode{s, t}
+	return p.node(&StringNode{Value: s, tok: t}, t)
 }
 
-func (p *ExprParser) parsePrimaryExpr() ExprNode {
+func (p *ExprParser) parsePrimaryExpr() parsedExprNode {
 	switch p.peek().Kind {
 	case TokenKindIdent:
 		return p.parseIdent()
@@ -198,7 +211,8 @@ func (p *ExprParser) parsePrimaryExpr() ExprNode {
 	}
 }
 
-func (p *ExprParser) parsePostfixOp() ExprNode {
+func (p *ExprParser) parsePostfixOp() parsedExprNode {
+	start := p.peek()
 	ret := p.parsePrimaryExpr()
 	if ret == nil {
 		return nil
@@ -211,11 +225,11 @@ func (p *ExprParser) parsePostfixOp() ExprNode {
 			switch p.peek().Kind {
 			case TokenKindStar:
 				p.next() // eat '*'
-				ret = &ArrayDerefNode{ret}
+				ret = p.node(&ArrayDerefNode{Receiver: ret}, start)
 			case TokenKindIdent:
 				t := p.next() // eat 'b' of 'a.b'
 				// Property name is case insensitive. github.event and github.EVENT are the same
-				ret = &ObjectDerefNode{ret, strings.ToLower(t.Value)}
+				ret = p.node(&ObjectDerefNode{Receiver: ret, Property: strings.ToLower(t.Value)}, start)
 			default:
 				p.unexpected(
 					"object property dereference like 'a.b' or array element dereference like 'a.*'",
@@ -229,19 +243,19 @@ func (p *ExprParser) parsePostfixOp() ExprNode {
 			if idx == nil {
 				return nil
 			}
-			ret = &IndexAccessNode{ret, idx}
 			if p.peek().Kind != TokenKindRightBracket {
 				p.unexpected("closing bracket ']' for index access", []TokenKind{TokenKindRightBracket})
 				return nil
 			}
 			p.next() // eat ']'
+			ret = p.node(&IndexAccessNode{Operand: ret, Index: idx}, start)
 		default:
 			return ret
 		}
 	}
 }
 
-func (p *ExprParser) parsePrefixOp() ExprNode {
+func (p *ExprParser) parsePrefixOp() parsedExprNode {
 	t := p.peek()
 	if t.Kind != TokenKindNot {
 		return p.parsePostfixOp()
@@ -253,10 +267,11 @@ func (p *ExprParser) parsePrefixOp() ExprNode {
 		return nil
 	}
 
-	return &NotOpNode{o, t}
+	return p.node(&NotOpNode{Operand: o, tok: t}, t)
 }
 
-func (p *ExprParser) parseCompareBinOp() ExprNode {
+func (p *ExprParser) parseCompareBinOp() parsedExprNode {
+	start := p.peek()
 	l := p.parsePrefixOp()
 	if l == nil {
 		return nil
@@ -286,10 +301,11 @@ func (p *ExprParser) parseCompareBinOp() ExprNode {
 		return nil
 	}
 
-	return &CompareOpNode{k, l, r}
+	return p.node(&CompareOpNode{Kind: k, Left: l, Right: r}, start)
 }
 
-func (p *ExprParser) parseLogicalAnd() ExprNode {
+func (p *ExprParser) parseLogicalAnd() parsedExprNode {
+	start := p.peek()
 	l := p.parseCompareBinOp()
 	if l == nil {
 		return nil
@@ -302,10 +318,11 @@ func (p *ExprParser) parseLogicalAnd() ExprNode {
 	if r == nil {
 		return nil
 	}
-	return &LogicalOpNode{LogicalOpNodeKindAnd, l, r}
+	return p.node(&LogicalOpNode{Kind: LogicalOpNodeKindAnd, Left: l, Right: r}, start)
 }
 
-func (p *ExprParser) parseLogicalOr() ExprNode {
+func (p *ExprParser) parseLogicalOr() parsedExprNode {
+	start := p.peek()
 	l := p.parseLogicalAnd()
 	if l == nil {
 		return nil
@@ -318,7 +335,7 @@ func (p *ExprParser) parseLogicalOr() ExprNode {
 	if r == nil {
 		return nil
 	}
-	return &LogicalOpNode{LogicalOpNodeKindOr, l, r}
+	return p.node(&LogicalOpNode{Kind: LogicalOpNodeKindOr, Left: l, Right: r}, start)
 }
 
 // Err returns an error which was caused while previous parsing.

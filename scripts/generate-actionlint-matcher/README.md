@@ -17,10 +17,10 @@ node ./scripts/generate-actionlint-matcher/main.mjs .github/actionlint-matcher.j
 ## Test
 
 ```sh
-npm run test:matcher
+run //scripts/generate-actionlint-matcher:test
 ```
 
-It runs on `node --test` and is also covered by `npm test`.
+It runs on `node --test` and is also covered by `run test:js`.
 
 The test uses test data at `./scripts/generate-actionlint-matcher/testdata/*.txt`. They should be updated when actionlint changes
 the default error message format. To update them:

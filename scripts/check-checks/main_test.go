@@ -160,6 +160,18 @@ func TestMainPrintHelp(t *testing.T) {
 	}
 }
 
+func TestActionlintMissingLinters(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	_, err := Actionlint([]byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello
+`))
+	testErr(t, err, "missing from PATH: shellcheck", "runner lint-docs")
+}
+
 func TestMainCheckError(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("check-checks doesn't support Windows")

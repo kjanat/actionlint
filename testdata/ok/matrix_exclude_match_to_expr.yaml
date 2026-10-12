@@ -6,7 +6,7 @@ jobs:
     strategy:
       matrix:
         foo:
-          - ${{ fromJSON('{"bar":"x"}') }}
+          - ${{ fromJSON(github.event.matrix) }}
         exclude:
           - foo: bar
     steps:
@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         foo:
-          - bar: ${{ fromJSON('"x"') }}
+          - bar: ${{ fromJSON(github.event.matrix) }}
         exclude:
           - foo:
               bar: ...
@@ -27,7 +27,7 @@ jobs:
     strategy:
       matrix:
         foo:
-          - ["${{ fromJSON('\"x\"') }}"]
+          - ["${{ fromJSON(github.event.matrix) }}"]
         exclude:
           - foo: ['...']
     steps:
