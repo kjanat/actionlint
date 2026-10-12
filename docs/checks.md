@@ -1764,6 +1764,14 @@ actionlint also checks the `timezone` configuration [is a valid IANA timezone st
 
 ## Runner labels
 
+`ubuntu-latest` accepts Ubuntu 24.04 and 26.04 compatibility during the
+[October 19 to November 19, 2026 migration](https://github.blog/changelog/2026-09-17-ubuntu-26-generally-available-and-latest-migration/).
+`macos-latest-xlarge` maps to macOS 26.
+
+GitHub will [retire `macos-14`, `macos-14-large`, and `macos-14-xlarge` on November 2, 2026](https://github.blog/changelog/2026-10-01-github-actions-macos-14-runner-image-retirement/).
+These labels remain accepted before retirement. Move hosted jobs to `macos-15`, `macos-26`, or the corresponding
+`-xlarge` label; check architecture requirements when replacing the Intel `macos-14-large` image.
+
 Example input:
 
 ```yaml
@@ -3293,7 +3301,9 @@ actionlint checks metadata files used in workflows and reports errors when they 
 - Runner name at `using:` is `composite`, `docker`, or a JavaScript runtime accepted by GitHub's manifest parser.
   The generated runtime table currently includes `node12`, `node16`, `node20`, and `node24`. Accepted metadata syntax
   is separate from lifecycle: `node12` and `node16` are no longer bundled, `node20` is deprecated, and `node24` is current.
-  GitHub can execute a legacy declaration on a newer runtime. `node22` is a valid Node.js release but is not accepted
+  GitHub.com now executes JavaScript actions with Node 24, including legacy `node20` declarations, and no longer
+  honors the Node 20 opt-out. This hosted-service policy does not change the generated runner bundle inventory.
+  `node22` is a valid Node.js release but is not accepted
   as an action's `runs.using` value. The check does not infer action runtime support from Node.js release numbers.
 - Keys under `runs:` section are correct. Required/Valid keys are different depending on the type of action; Docker action or
   Composite action or JavaScript action (e.g. `image:` is required for Docker action).

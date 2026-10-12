@@ -15,6 +15,24 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 	}{
 		// Normal cases
 		{
+			what:   "Ubuntu migration accepts new image",
+			labels: []string{"ubuntu-latest", "ubuntu-26.04"},
+		},
+		{
+			what:   "Ubuntu migration still rejects older image",
+			labels: []string{"ubuntu-latest", "ubuntu-22.04"},
+			errs:   []string{`label "ubuntu-22.04" conflicts with label "ubuntu-latest"`},
+		},
+		{
+			what:   "macOS latest xlarge uses macOS 26",
+			labels: []string{"macos-latest-xlarge", "macos-26-xlarge"},
+		},
+		{
+			what:   "macOS latest xlarge no longer uses macOS 15",
+			labels: []string{"macos-latest-xlarge", "macos-15-xlarge"},
+			errs:   []string{`label "macos-15-xlarge" conflicts with label "macos-latest-xlarge"`},
+		},
+		{
 			what:   "simple GH-hosted Linux runner label",
 			labels: []string{"ubuntu-24.04"},
 		},

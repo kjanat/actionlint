@@ -87,8 +87,10 @@ var selfHostedRunnerPresetOtherLabels = []string{
 }
 
 var defaultRunnerOSCompats = map[string]runnerOSCompat{
-	"ubuntu-slim":            compatUbuntu2404,
-	"ubuntu-latest":          compatUbuntu2404,
+	"ubuntu-slim": compatUbuntu2404,
+	// GitHub migrates this alias during October 19-November 19, 2026.
+	// Both images can serve the alias during the rollout.
+	"ubuntu-latest":          compatUbuntu2404 | compatUbuntu2604,
 	"ubuntu-latest-4-cores":  compatUbuntu2404,
 	"ubuntu-latest-8-cores":  compatUbuntu2404,
 	"ubuntu-latest-16-cores": compatUbuntu2404,
@@ -100,7 +102,7 @@ var defaultRunnerOSCompats = map[string]runnerOSCompat{
 	"ubuntu-22.04-arm":       compatUbuntu2204,
 	"xcode-27":               compatXcode270,
 	"xcode-27-xlarge":        compatXcode270XL,
-	"macos-latest-xlarge":    compatMacOS150XL,
+	"macos-latest-xlarge":    compatMacOS260XL,
 	"macos-latest-large":     compatMacOS260L,
 	"macos-latest":           compatMacOS260,
 	"macos-26-intel":         compatMacOS260Intel,
