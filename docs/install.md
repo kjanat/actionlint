@@ -210,6 +210,14 @@ For the usage of actionlint on GitHub Actions, see [the usage document](usage.md
 The fork publishes CLI images as `ghcr.io/kjanat/actionlint` and `docker.io/kjanat/actionlint`. See
 [Docker usage](usage.md#docker) for running the linter with a mounted repository.
 
+Development images are available from both registries as `:nightly`, `:nightly-<git-describe>`
+and `:sha-<full-commit-SHA>` for Linux amd64 and arm64. They are published after successful
+master CI, or manually after the same CI check, and include ShellCheck and Ruff.
+Publication is skipped if master has advanced beyond the tested commit.
+`nightly` follows master; release tags and `latest` are unchanged. Rebuilding a commit can
+update its image, so pin an image digest when you need identical bytes.
+OCI labels record the Git description, full commit SHA, build date, source and build-run URL.
+
 ### Cross-platform version managers
 
 #### aqua
