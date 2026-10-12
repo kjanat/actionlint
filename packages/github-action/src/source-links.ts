@@ -17,6 +17,12 @@ function failureCode(error: unknown): string {
 
 class VerificationError extends Error {}
 
+function sameSourceLines(left: Buffer, right: Buffer): boolean {
+	if (left.equals(right)) return true;
+	// Latin-1 preserves every byte; only CRLF pairs are normalized, without running Git filters.
+	return left.toString('latin1').replaceAll('\r\n', '\n') === right.toString('latin1').replaceAll('\r\n', '\n');
+}
+
 function originMatches(remote: string, server: string, repository: string): boolean {
 	try {
 		const scp = /^(?:[^@/]+@)?([^:/]+):(.+)$/.exec(remote);
@@ -30,7 +36,7 @@ function originMatches(remote: string, server: string, repository: string): bool
 	}
 }
 
-// Verify local bytes against the run's commit before linking into its repository.
+// Verify local source lines against the run's commit before linking into its repository.
 export function sourceLinkVerifier(
 	environment: Environment,
 	onFailure?: (stage: string) => void,
@@ -114,7 +120,7 @@ export function sourceLinkVerifier(
 				if (length > limit) throw new VerificationError('file exceeds 1 MiB');
 				stage = 'committed blob';
 				const blob = git(workspace, 'cat-file', 'blob', `${environment.GITHUB_SHA}:${path.split(sep).join('/')}`);
-				const equal = blob.equals(bytes.subarray(0, length));
+				const equal = sameSourceLines(blob, bytes.subarray(0, length));
 				if (!equal) throw new VerificationError('file content differs from the committed blob');
 				cache.set(path, equal);
 				return equal;

@@ -186,7 +186,8 @@ The job summary shows findings with source
 excerpts, caret ranges and two surrounding lines on either side when the source is available.
 Documentation URLs appear on their own line. Source locations link to the
 run's commit only when the checkout matches its repository and revision and the file
-matches the committed bytes. Modified, generated, external and nested-checkout files remain plain text.
+matches the committed content, allowing LF/CRLF line-ending conversion. Other content changes,
+generated, external and nested-checkout files remain plain text. Repository-defined Git filters are not run.
 Locations respect `working-directory`.
 Findings remain visible without expanding a details section. Incomplete analysis
 is identified separately from lint findings. For multiple invocations in one job,

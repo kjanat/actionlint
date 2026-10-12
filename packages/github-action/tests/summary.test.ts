@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import childProcess, { type ExecFileSyncOptions, execFileSync, spawnSync } from 'node:child_process';
-import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -69,6 +69,8 @@ test('source links canonicalize workspace paths and validate repository names', 
 		await writeFile(join(root, 'ci.yml'), 'external');
 		const filename = process.platform === 'win32' ? 'a #.yml' : 'a #?.yml';
 		await writeFile(join(workspace, 'sub', filename), 'source');
+		await writeFile(join(workspace, '.gitattributes'), 'sub/crlf.yml text eol=crlf\n');
+		await writeFile(join(workspace, 'sub', 'crlf.yml'), 'first\nsecond\n');
 		const git = (...args: string[]): string =>
 			execFileSync('git', [
 				'-C',
@@ -97,6 +99,29 @@ test('source links canonicalize workspace paths and validate repository names', 
 		const verifyCommitted = sourceLinkVerifier(environment, message => failures.push(message));
 		const committedVerified = verifyCommitted(join('sub', filename));
 		assert.equal(committedVerified, true, `Source verification failed: ${failures.join(', ')}`);
+		await rm(join(workspace, 'sub', 'crlf.yml'));
+		git('checkout-index', '--force', '--', 'sub/crlf.yml');
+		const checkedOut = await readFile(join(workspace, 'sub', 'crlf.yml'), 'utf8');
+		assert.equal(checkedOut, 'first\r\nsecond\r\n', 'Git must produce the CRLF checkout for this regression');
+		const unchanged = git('diff', '--exit-code', '--', 'sub/crlf.yml');
+		assert.equal(unchanged, '', 'Git must consider the CRLF checkout unchanged');
+		for (
+			const [source, expected] of [
+				['first\r\nsecond\r\n', true],
+				['first\nsecond\n', true],
+				['first\r\nsecond\n', true],
+				['first\rsecond\n', false],
+				['first\r\nchanged\r\n', false],
+				['first\r\nsecond', false],
+				['first\r\n\r\nsecond\r\n', false],
+			] as const
+		) {
+			await writeFile(join(workspace, 'sub', 'crlf.yml'), source);
+			failures.length = 0;
+			const verifyLineEndings = sourceLinkVerifier(environment, message => failures.push(message));
+			const lineEndingsVerified = verifyLineEndings(join('sub', 'crlf.yml'));
+			assert.equal(lineEndingsVerified, expected, `Source ${JSON.stringify(source)}: ${failures.join(', ')}`);
+		}
 		const isolatedEnvironment = {
 			...process.env,
 			GIT_CONFIG_GLOBAL: '/dev/null',
