@@ -7,7 +7,7 @@ import { failedResult, parseResult } from '#result';
 import { postReview } from '#review';
 import type { Environment } from '#runtime';
 import { InputError } from '#runtime';
-import { reportStatus, summary } from '#summary';
+import { diagnosticSnippet, reportStatus, summary } from '#summary';
 import { commandEscape, readOutputs, writeOutputs } from '#workflow';
 
 export { summary } from '#summary';
@@ -53,7 +53,7 @@ export function annotation(diagnostic: Diagnostic): string {
 		: 'error';
 	return `::${level} file=${property(diagnostic.path)},${range},title=${
 		property(diagnostic.code || diagnostic.rule)
-	}::${commandEscape(diagnostic.message)}`;
+	}::${commandEscape(diagnostic.message + (diagnostic.snippet ? `\n\n${diagnosticSnippet(diagnostic)}` : ''))}`;
 }
 
 export type ReporterRuntime = { log: (text: string) => void; review: typeof postReview };

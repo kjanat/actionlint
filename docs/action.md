@@ -172,6 +172,10 @@ first; a checked-in config file avoids escaping nested expressions.
 Explicit annotations off preserves the serialized `output` value. Fatal errors
 still report a step error. Multiple destinations share one analysis.
 
+Finding annotations include the diagnostic message followed by a numbered source
+excerpt and caret range when source is available. Embedded line breaks are encoded
+for the runner, so each finding emits one annotation with a multiline body.
+
 The job summary shows the result, workflow count, and findings with source ranges.
 Findings remain visible without expanding a details section. Incomplete analysis
 is identified separately from lint findings. For multiple invocations in one job,
