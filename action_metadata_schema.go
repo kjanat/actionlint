@@ -71,7 +71,7 @@ func (rule *RuleAction) checkActionMetadataSchema(meta *ActionMetadata) {
 	var checkTags func(*yaml.Node)
 	checkTags = func(n *yaml.Node) {
 		if message := rawYAMLTagError(n); message != "" {
-			rule.metadataErrorfAt(meta, n.Line, n.Column, "%s in action metadata", message)
+			_ = rule.metadataErrorfAt(meta, n.Line, n.Column, "%s in action metadata", message)
 		}
 		for _, child := range n.Content {
 			checkTags(child)
@@ -82,7 +82,7 @@ func (rule *RuleAction) checkActionMetadataSchema(meta *ActionMetadata) {
 }
 
 func (rule *RuleAction) actionSchemaError(meta *ActionMetadata, n *yaml.Node, path, message string) {
-	rule.metadataErrorfAt(meta, n.Line, n.Column, "%s at %q in action metadata", message, path)
+	_ = rule.metadataErrorfAt(meta, n.Line, n.Column, "%s at %q in action metadata", message, path)
 }
 
 // path selects schema availability; location names the actual YAML member.
@@ -144,7 +144,8 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 						message = fmt.Sprintf("context %q is not available", violation.context)
 					}
 					pos := metadataExpressionPosition(meta, value, violation.offset)
-					rule.metadataErrorfAt(meta, pos.Line, pos.Col, "%s at %q in action metadata", message, location)
+					finding := rule.metadataErrorfAt(meta, pos.Line, pos.Col, "%s at %q in action metadata", message, location)
+					finding.endPosition = metadataExpressionEndPosition(meta, value, violation)
 				}
 			}
 			if definition == "step-if" {
@@ -223,7 +224,8 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 							message = fmt.Sprintf("context %q is not available in keys", violation.context)
 						}
 						pos := metadataExpressionPosition(meta, expr, violation.offset)
-						rule.metadataErrorfAt(meta, pos.Line, pos.Col, "%s at %q in action metadata", message, location)
+						finding := rule.metadataErrorfAt(meta, pos.Line, pos.Col, "%s at %q in action metadata", message, location)
+						finding.endPosition = metadataExpressionEndPosition(meta, expr, violation)
 					}
 				}
 			}

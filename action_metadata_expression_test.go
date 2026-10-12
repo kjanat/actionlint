@@ -25,7 +25,7 @@ func TestActionExpressionContextSuggestions(t *testing.T) {
 	} {
 		t.Run(tc.field+"/"+tc.expression, func(t *testing.T) {
 			got := actionExpressionViolations(tc.expression, tc.field == "runs.steps.*.if", tc.field)
-			if diff := cmp.Diff(tc.want, got, cmp.AllowUnexported(actionExpressionViolation{}), cmpopts.IgnoreFields(actionExpressionViolation{}, "offset")); diff != "" {
+			if diff := cmp.Diff(tc.want, got, cmp.AllowUnexported(actionExpressionViolation{}), cmpopts.IgnoreFields(actionExpressionViolation{}, "offset", "endOffset")); diff != "" {
 				t.Fatal(diff)
 			}
 		})
@@ -109,15 +109,15 @@ func TestActionExpressionFunctions(t *testing.T) {
 		{"quoted delimiters", "runs.steps.*.name", "${{ '}} ${{ success() }}' }}", false, nil},
 		{"literal then real function", "runs.steps.*.name", "${{ '}} ${{ success() }}' }}${{ success() }}", false,
 			[]actionExpressionViolation{{message: `calls function "success" which is not available here`}}},
-		{"deduplicated functions", "inputs.*.default", "${{ always() }}${{ ALWAYS() }}", false,
-			[]actionExpressionViolation{{message: `calls function "always" which is not available here`}}},
+		{"repeated functions", "inputs.*.default", "${{ always() }}${{ ALWAYS() }}", false,
+			[]actionExpressionViolation{{message: `calls function "always" which is not available here`}, {message: `calls function "always" which is not available here`}}},
 		{"hash maximum", "runs.steps.*.shell", "${{ hashFiles(" + strings.Repeat("'x',", 254) + "'x') }}", false, nil},
 		{"hash over maximum", "runs.steps.*.shell", "${{ hashFiles(" + strings.Repeat("'x',", 255) + "'x') }}", false,
 			[]actionExpressionViolation{{message: `calls function "hashfiles" with 256 argument(s); expected at least 1 and at most 255`}}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if diff := cmp.Diff(tc.want, actionExpressionViolations(tc.expression, tc.bare, tc.field), cmp.AllowUnexported(actionExpressionViolation{}), cmpopts.IgnoreFields(actionExpressionViolation{}, "offset")); diff != "" {
+			if diff := cmp.Diff(tc.want, actionExpressionViolations(tc.expression, tc.bare, tc.field), cmp.AllowUnexported(actionExpressionViolation{}), cmpopts.IgnoreFields(actionExpressionViolation{}, "offset", "endOffset")); diff != "" {
 				t.Fatal(diff)
 			}
 		})

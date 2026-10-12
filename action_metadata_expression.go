@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"unicode/utf8"
 )
 
 type actionFunctionLimits struct{ min, max int }
@@ -16,8 +17,10 @@ type actionExpressionAvailability struct {
 type actionExpressionViolation struct {
 	context string
 	message string
-	// offset is a one-based byte offset in the decoded scalar, or zero when unavailable.
-	offset int
+	// Offsets are one-based decoded byte positions; endOffset is exclusive.
+	// Zero means the original position is unavailable after expression folding.
+	offset    int
+	endOffset int
 }
 
 // actionExpressionViolations checks availability without inventing types for caller-owned values.
@@ -36,6 +39,7 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 			violation := actionExpressionViolation{message: fmt.Sprintf("has an invalid expression: %v", err)}
 			if conditionSource(s) == s {
 				violation.offset = err.Offset + 1
+				violation.endOffset = metadataExpressionErrorEnd(s, err.Offset) + 1
 			}
 			return []actionExpressionViolation{violation}
 		}
@@ -44,7 +48,6 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 		s = "${{" + folded + "}}"
 		base = -3 // The synthetic opening delimiter is absent from the scalar.
 	}
-	seen := map[actionExpressionViolation]bool{}
 	var out []actionExpressionViolation
 	for {
 		i := strings.Index(s, "${{")
@@ -60,6 +63,7 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 			violation := actionExpressionViolation{message: fmt.Sprintf("has an invalid expression: %v", err)}
 			if err != nil && positionsKnown {
 				violation.offset = expressionOffset + err.Offset + 1
+				violation.endOffset = expressionOffset + metadataExpressionErrorEnd(s, err.Offset) + 1
 			}
 			out = append(out, violation)
 			break
@@ -94,13 +98,11 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 					if literal, ok := n.Args[0].(*StringNode); ok {
 						for _, collision := range jsonMemberCollisions(literal.Value) {
 							v := actionExpressionViolation{message: fmt.Sprintf("fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", collision.first, collision.second, collision.offset)}
-							if !seen[v] {
-								seen[v] = true
-								if positionsKnown {
-									v.offset = expressionOffset + n.Token().Offset + 1
-								}
-								out = append(out, v)
+							if positionsKnown {
+								v.offset = expressionOffset + n.Token().Offset + 1
+								v.endOffset = v.offset + len(n.Token().Value)
 							}
+							out = append(out, v)
 						}
 					}
 				}
@@ -125,18 +127,27 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 					}
 				}
 			}
-			identity := v
-			identity.offset = 0
-			if identity != (actionExpressionViolation{}) && !seen[identity] {
-				seen[identity] = true
+			if v != (actionExpressionViolation{}) {
 				if positionsKnown {
 					v.offset = expressionOffset + node.Token().Offset + 1
+					v.endOffset = v.offset + len(node.Token().Value)
 				}
 				out = append(out, v)
 			}
 		})
 	}
 	return out
+}
+
+func metadataExpressionErrorEnd(source string, offset int) int {
+	if offset < 0 || offset >= len(source) {
+		return offset
+	}
+	if token := NewExprLexer(source[offset:]).Next(); token != nil && token.Offset == 0 && token.Value != "" {
+		return offset + len(token.Value)
+	}
+	_, size := utf8.DecodeRuneInString(source[offset:])
+	return offset + size
 }
 
 func actionFunctionArityMatches(signatures []*FuncSignature, count int) bool {

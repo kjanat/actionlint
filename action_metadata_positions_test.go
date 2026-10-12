@@ -14,12 +14,14 @@ func TestCompositeSuggestionPositions(t *testing.T) {
 		{"plain", "run: echo ${{ github_repository }}", "github_repository", false},
 		{"unicode", "run: echo café ${{ github_repository }}", "github_repository", false},
 		{"later-expression", "run: echo ${{ github.ref }} ${{ github_repository }}", "github_repository", false},
-		{"repeated", "run: echo ${{ github_repository }} ${{ github_repository }}", "github_repository", false},
 		{"literal", "run: |\n        echo before\n        echo ${{ github_repository }}", "github_repository", false},
 		{"multiline-plain", "run: echo before\n        ${{ github_repository }}", "github_repository", false},
 		{"bare-if", "run: echo ok\n      if: github_repository == 'x'", "github_repository", false},
 		{"declared-input", "run: echo ${{ custom_name }}", "custom_name", false},
 		{"quoted", `run: "echo ${{ github_repository }}"`, "github_repository", false},
+		{"tagged-quoted", `run: !!str "echo ${{ github_repository }}"`, "github_repository", false},
+		{"anchored-quoted", `run: &script "echo ${{ github_repository }}"`, "github_repository", false},
+		{"tagged-anchored-folded", "run: !!str &script >\n        echo ${{ github_repository }}", "github_repository", false},
 		{"escaped", `run: "echo ${{ \u0067ithub_repository }}"`, `\u0067ithub_repository`, false},
 		{"single-quoted", `run: 'echo ''hello'' ${{ github_repository }}'`, "github_repository", false},
 		{"folded", "run: >\n        echo ${{ github_repository }}", "github_repository", false},
@@ -33,8 +35,12 @@ func TestCompositeSuggestionPositions(t *testing.T) {
 				metadata := "name: inner\ndescription: test\ninputs:\n  custom_name:\n    description: custom\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      " + tc.declaration + "\n"
 				writeShellcheckFixture(t, root, "inner/action.yml", strings.ReplaceAll(metadata, "\n", ending))
 				result := compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
-				if len(result.Diagnostics) != 1 || !strings.Contains(result.Diagnostics[0].Message, "did you mean") {
-					t.Fatalf("expected one suggestion: %+v", result.Diagnostics)
+				count := 1
+				if tc.name == "repeated" {
+					count = 2
+				}
+				if len(result.Diagnostics) != count || !strings.Contains(result.Diagnostics[0].Message, "did you mean") {
+					t.Fatalf("expected %d suggestions: %+v", count, result.Diagnostics)
 				}
 				var want DiagnosticPosition
 				for i, line := range strings.Split(metadata, "\n") {

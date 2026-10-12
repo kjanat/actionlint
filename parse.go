@@ -91,6 +91,10 @@ func splitSourceLines(b []byte) []string {
 }
 
 func (p *parser) scriptSource(n *yaml.Node) *scriptSource {
+	n = p.scalarContentNode(n)
+	if n == nil {
+		return nil
+	}
 	switch n.Style {
 	case yaml.LiteralStyle:
 		return p.literalScriptSource(n)

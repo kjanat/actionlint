@@ -17,6 +17,10 @@ func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 		{"syntax", composite + "run: echo ${{ github.ref + 'main' }}\n", "+", "invalid expression"},
 		{"later-syntax", composite + "run: echo ${{ github.ref }} ${{ github.ref + 'main' }}\n", "+", "invalid expression"},
 		{"syntax-eof", composite + "run: echo ${{ github.ref", "github.ref", "invalid expression"},
+		{"syntax-eof-literal", composite + "run: |\n        echo ${{ github.ref\n", "github.ref", "invalid expression"},
+		{"syntax-eof-folded", composite + "run: >\n        echo ${{ github.ref\n", "github.ref", "invalid expression"},
+		{"syntax-eof-literal-no-newline", composite + "run: |\n        echo ${{ github.ref", "github.ref", "invalid expression"},
+		{"syntax-eof-folded-no-newline", composite + "run: >\n        echo ${{ github.ref", "github.ref", "invalid expression"},
 		{"bare-syntax", composite + "run: echo ok\n      if: github.ref + 'main'\n", "+", "invalid expression"},
 		{"later-context", composite + "run: echo ${{ github.ref }} ${{ forbidden_context.value }}\n", "forbidden_context", "not available"},
 		{"input-default", "inputs:\n  test:\n    description: test\n    default: prefix ${{ forbidden_context.value }}\n" + composite + "run: echo ok\n", "forbidden_context", "not available"},
@@ -42,7 +46,7 @@ func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 			for i, line := range strings.Split(metadata, "\n") {
 				if col := strings.Index(line, tc.token); col >= 0 {
 					want = DiagnosticPosition{Line: i + 1, Column: utf8.RuneCountInString(line[:col]) + 1}
-					if tc.name == "syntax-eof" {
+					if strings.HasPrefix(tc.name, "syntax-eof") {
 						want.Column = utf8.RuneCountInString(line) + 1
 					}
 					break

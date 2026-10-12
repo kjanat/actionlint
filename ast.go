@@ -99,6 +99,22 @@ func (s *scriptSource) lookup(line, col int, endPosition bool) (*Pos, bool) {
 		return nil, false
 	}
 	offset := l.start + rel
+	// Block chomping can append decoded newlines without source characters. An
+	// EOF diagnostic belongs at the end of the final mapped physical line.
+	if endPosition && offset == len(s.value) && len(s.spans) != 0 {
+		index := len(s.spans) - 1
+		for index > 0 && s.spans[index].start == s.spans[index].end {
+			index--
+		}
+		last := s.spans[index]
+		if last.end < offset && strings.Trim(s.value[last.end:], "\n") == "" {
+			column := last.yamlColumn + utf8.RuneCountInString(s.value[last.start:last.end])
+			if last.yamlEndColumn != 0 {
+				column = last.yamlEndColumn
+			}
+			return &Pos{Line: last.yamlLine, Col: column}, true
+		}
+	}
 	i := sort.Search(len(s.spans), func(i int) bool {
 		if endPosition {
 			return s.spans[i].end >= offset

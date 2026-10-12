@@ -7,6 +7,56 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+// Scalar node positions can name a tag or anchor before the scalar token. Keep
+// the original node for parser diagnostics, and map from its actual content.
+func (p *parser) scalarContentNode(n *yaml.Node) *yaml.Node {
+	if n.Line <= 0 || n.Line > len(p.sourceLines) {
+		return nil
+	}
+	row := n.Line - 1
+	column, ok := byteOffsetAtColumn(p.sourceLines[row], n.Column)
+	if !ok {
+		return nil
+	}
+	content := *n
+	content.Style &^= yaml.TaggedStyle
+	properties := false
+	for row < len(p.sourceLines) {
+		raw := p.sourceLines[row]
+		if properties {
+			for column < len(raw) && (raw[column] == ' ' || raw[column] == '\t') {
+				column++
+			}
+			if column == len(raw) || raw[column] == '#' {
+				row++
+				column = 0
+				continue
+			}
+		}
+		if column >= len(raw) {
+			return nil
+		}
+		if raw[column] != '!' && raw[column] != '&' {
+			content.Line = row + 1
+			content.Column = utf8.RuneCountInString(raw[:column]) + 1
+			return &content
+		}
+		properties = true
+		if raw[column] == '!' && column+1 < len(raw) && raw[column+1] == '<' {
+			end := strings.IndexByte(raw[column+2:], '>')
+			if end < 0 {
+				return nil
+			}
+			column += end + 3
+			continue
+		}
+		for column < len(raw) && !strings.ContainsRune(" \t,[]{}", rune(raw[column])) {
+			column++
+		}
+	}
+	return nil
+}
+
 // scalarSourceBuilder only publishes mappings when the decoded bytes match the
 // parser's value. YAML folding introduces bytes with no corresponding source token.
 type scalarSourceBuilder struct {

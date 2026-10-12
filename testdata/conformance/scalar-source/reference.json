@@ -1,0 +1,884 @@
+{
+  "cases": [
+    {
+      "request": {
+        "id": "plain",
+        "operation": "parse-yaml",
+        "engine": "next",
+        "allowAnchors": true,
+        "input": "run: echo ${{ github_repository }}\n"
+      },
+      "response": {
+        "id": "plain",
+        "protocolVersion": 1,
+        "runnerSha": "67f01c276e0a91d967ba499ce4cdc9a95efa0262",
+        "command": "parse-yaml",
+        "engines": [
+          {
+            "engine": "next",
+            "semantics": {
+              "entrypoint": "ParseYaml",
+              "engine": "Next",
+              "anchors": "Allowed",
+              "foreign": false
+            },
+            "parsed": true,
+            "yaml": {
+              "kind": "mapping",
+              "items": [
+                {
+                  "key": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 1,
+                    "value": "run"
+                  },
+                  "value": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 6,
+                    "value": "echo ${{ github_repository }}"
+                  }
+                }
+              ],
+              "line": 1,
+              "col": 1
+            },
+            "yamlAnchors": 0,
+            "yamlAliases": 0,
+            "templateErrors": [
+              "(Line: 1, Col: 6): Unrecognized named-value: 'github_repository'. Located at position 1 within expression: github_repository"
+            ],
+            "accepted": false,
+            "diagnosed": true
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "id": "literal-eof",
+        "operation": "parse-yaml",
+        "engine": "next",
+        "allowAnchors": true,
+        "input": "run: |\n  echo ${{ github.ref\n"
+      },
+      "response": {
+        "id": "literal-eof",
+        "protocolVersion": 1,
+        "runnerSha": "67f01c276e0a91d967ba499ce4cdc9a95efa0262",
+        "command": "parse-yaml",
+        "engines": [
+          {
+            "engine": "next",
+            "semantics": {
+              "entrypoint": "ParseYaml",
+              "engine": "Next",
+              "anchors": "Allowed",
+              "foreign": false
+            },
+            "parsed": true,
+            "yaml": {
+              "kind": "mapping",
+              "items": [
+                {
+                  "key": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 1,
+                    "value": "run"
+                  },
+                  "value": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 6,
+                    "value": "echo ${{ github.ref\n"
+                  }
+                }
+              ],
+              "line": 1,
+              "col": 1
+            },
+            "yamlAnchors": 0,
+            "yamlAliases": 0,
+            "templateErrors": [
+              "(Line: 1, Col: 6): The expression is not closed. An unescaped ${{ sequence was found, but the closing }} sequence was not found."
+            ],
+            "accepted": false,
+            "diagnosed": true
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "id": "literal-strip-eof",
+        "operation": "parse-yaml",
+        "engine": "next",
+        "allowAnchors": true,
+        "input": "run: |-\n  echo ${{ github.ref\n"
+      },
+      "response": {
+        "id": "literal-strip-eof",
+        "protocolVersion": 1,
+        "runnerSha": "67f01c276e0a91d967ba499ce4cdc9a95efa0262",
+        "command": "parse-yaml",
+        "engines": [
+          {
+            "engine": "next",
+            "semantics": {
+              "entrypoint": "ParseYaml",
+              "engine": "Next",
+              "anchors": "Allowed",
+              "foreign": false
+            },
+            "parsed": true,
+            "yaml": {
+              "kind": "mapping",
+              "items": [
+                {
+                  "key": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 1,
+                    "value": "run"
+                  },
+                  "value": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 6,
+                    "value": "echo ${{ github.ref"
+                  }
+                }
+              ],
+              "line": 1,
+              "col": 1
+            },
+            "yamlAnchors": 0,
+            "yamlAliases": 0,
+            "templateErrors": [
+              "(Line: 1, Col: 6): The expression is not closed. An unescaped ${{ sequence was found, but the closing }} sequence was not found."
+            ],
+            "accepted": false,
+            "diagnosed": true
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "id": "literal-keep-eof",
+        "operation": "parse-yaml",
+        "engine": "next",
+        "allowAnchors": true,
+        "input": "run: |+\n  echo ${{ github.ref\n\n"
+      },
+      "response": {
+        "id": "literal-keep-eof",
+        "protocolVersion": 1,
+        "runnerSha": "67f01c276e0a91d967ba499ce4cdc9a95efa0262",
+        "command": "parse-yaml",
+        "engines": [
+          {
+            "engine": "next",
+            "semantics": {
+              "entrypoint": "ParseYaml",
+              "engine": "Next",
+              "anchors": "Allowed",
+              "foreign": false
+            },
+            "parsed": true,
+            "yaml": {
+              "kind": "mapping",
+              "items": [
+                {
+                  "key": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 1,
+                    "value": "run"
+                  },
+                  "value": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 6,
+                    "value": "echo ${{ github.ref\n\n"
+                  }
+                }
+              ],
+              "line": 1,
+              "col": 1
+            },
+            "yamlAnchors": 0,
+            "yamlAliases": 0,
+            "templateErrors": [
+              "(Line: 1, Col: 6): The expression is not closed. An unescaped ${{ sequence was found, but the closing }} sequence was not found."
+            ],
+            "accepted": false,
+            "diagnosed": true
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "id": "folded-eof",
+        "operation": "parse-yaml",
+        "engine": "next",
+        "allowAnchors": true,
+        "input": "run: >\n  echo first\n  ${{ github.ref\n"
+      },
+      "response": {
+        "id": "folded-eof",
+        "protocolVersion": 1,
+        "runnerSha": "67f01c276e0a91d967ba499ce4cdc9a95efa0262",
+        "command": "parse-yaml",
+        "engines": [
+          {
+            "engine": "next",
+            "semantics": {
+              "entrypoint": "ParseYaml",
+              "engine": "Next",
+              "anchors": "Allowed",
+              "foreign": false
+            },
+            "parsed": true,
+            "yaml": {
+              "kind": "mapping",
+              "items": [
+                {
+                  "key": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 1,
+                    "value": "run"
+                  },
+                  "value": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 6,
+                    "value": "echo first ${{ github.ref\n"
+                  }
+                }
+              ],
+              "line": 1,
+              "col": 1
+            },
+            "yamlAnchors": 0,
+            "yamlAliases": 0,
+            "templateErrors": [
+              "(Line: 1, Col: 6): The expression is not closed. An unescaped ${{ sequence was found, but the closing }} sequence was not found."
+            ],
+            "accepted": false,
+            "diagnosed": true
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "id": "double-escape",
+        "operation": "parse-yaml",
+        "engine": "next",
+        "allowAnchors": true,
+        "input": "run: \"echo ${{ \\u0067ithub_repository }}\"\n"
+      },
+      "response": {
+        "id": "double-escape",
+        "protocolVersion": 1,
+        "runnerSha": "67f01c276e0a91d967ba499ce4cdc9a95efa0262",
+        "command": "parse-yaml",
+        "engines": [
+          {
+            "engine": "next",
+            "semantics": {
+              "entrypoint": "ParseYaml",
+              "engine": "Next",
+              "anchors": "Allowed",
+              "foreign": false
+            },
+            "parsed": true,
+            "yaml": {
+              "kind": "mapping",
+              "items": [
+                {
+                  "key": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 1,
+                    "value": "run"
+                  },
+                  "value": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 6,
+                    "value": "echo ${{ github_repository }}"
+                  }
+                }
+              ],
+              "line": 1,
+              "col": 1
+            },
+            "yamlAnchors": 0,
+            "yamlAliases": 0,
+            "templateErrors": [
+              "(Line: 1, Col: 6): Unrecognized named-value: 'github_repository'. Located at position 1 within expression: github_repository"
+            ],
+            "accepted": false,
+            "diagnosed": true
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "id": "single-escape",
+        "operation": "parse-yaml",
+        "engine": "next",
+        "allowAnchors": true,
+        "input": "run: 'echo ''hi'' ${{ github_repository }}'\n"
+      },
+      "response": {
+        "id": "single-escape",
+        "protocolVersion": 1,
+        "runnerSha": "67f01c276e0a91d967ba499ce4cdc9a95efa0262",
+        "command": "parse-yaml",
+        "engines": [
+          {
+            "engine": "next",
+            "semantics": {
+              "entrypoint": "ParseYaml",
+              "engine": "Next",
+              "anchors": "Allowed",
+              "foreign": false
+            },
+            "parsed": true,
+            "yaml": {
+              "kind": "mapping",
+              "items": [
+                {
+                  "key": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 1,
+                    "value": "run"
+                  },
+                  "value": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 6,
+                    "value": "echo 'hi' ${{ github_repository }}"
+                  }
+                }
+              ],
+              "line": 1,
+              "col": 1
+            },
+            "yamlAnchors": 0,
+            "yamlAliases": 0,
+            "templateErrors": [
+              "(Line: 1, Col: 6): Unrecognized named-value: 'github_repository'. Located at position 1 within expression: github_repository"
+            ],
+            "accepted": false,
+            "diagnosed": true
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "id": "folded",
+        "operation": "parse-yaml",
+        "engine": "next",
+        "allowAnchors": true,
+        "input": "run: >-\n  echo first\n  ${{ github_repository }}\n"
+      },
+      "response": {
+        "id": "folded",
+        "protocolVersion": 1,
+        "runnerSha": "67f01c276e0a91d967ba499ce4cdc9a95efa0262",
+        "command": "parse-yaml",
+        "engines": [
+          {
+            "engine": "next",
+            "semantics": {
+              "entrypoint": "ParseYaml",
+              "engine": "Next",
+              "anchors": "Allowed",
+              "foreign": false
+            },
+            "parsed": true,
+            "yaml": {
+              "kind": "mapping",
+              "items": [
+                {
+                  "key": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 1,
+                    "value": "run"
+                  },
+                  "value": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 6,
+                    "value": "echo first ${{ github_repository }}"
+                  }
+                }
+              ],
+              "line": 1,
+              "col": 1
+            },
+            "yamlAnchors": 0,
+            "yamlAliases": 0,
+            "templateErrors": [
+              "(Line: 1, Col: 6): Unrecognized named-value: 'github_repository'. Located at position 1 within expression: github_repository"
+            ],
+            "accepted": false,
+            "diagnosed": true
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "id": "tag-double",
+        "operation": "parse-yaml",
+        "engine": "next",
+        "allowAnchors": true,
+        "input": "run: !!str \"echo ${{ github_repository }}\"\n"
+      },
+      "response": {
+        "id": "tag-double",
+        "protocolVersion": 1,
+        "runnerSha": "67f01c276e0a91d967ba499ce4cdc9a95efa0262",
+        "command": "parse-yaml",
+        "engines": [
+          {
+            "engine": "next",
+            "semantics": {
+              "entrypoint": "ParseYaml",
+              "engine": "Next",
+              "anchors": "Allowed",
+              "foreign": false
+            },
+            "parsed": true,
+            "yaml": {
+              "kind": "mapping",
+              "items": [
+                {
+                  "key": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 1,
+                    "value": "run"
+                  },
+                  "value": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 6,
+                    "value": "echo ${{ github_repository }}"
+                  }
+                }
+              ],
+              "line": 1,
+              "col": 1
+            },
+            "yamlAnchors": 0,
+            "yamlAliases": 0,
+            "templateErrors": [
+              "(Line: 1, Col: 6): Unrecognized named-value: 'github_repository'. Located at position 1 within expression: github_repository"
+            ],
+            "accepted": false,
+            "diagnosed": true
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "id": "tag-single",
+        "operation": "parse-yaml",
+        "engine": "next",
+        "allowAnchors": true,
+        "input": "run: !!str 'echo ${{ github_repository }}'\n"
+      },
+      "response": {
+        "id": "tag-single",
+        "protocolVersion": 1,
+        "runnerSha": "67f01c276e0a91d967ba499ce4cdc9a95efa0262",
+        "command": "parse-yaml",
+        "engines": [
+          {
+            "engine": "next",
+            "semantics": {
+              "entrypoint": "ParseYaml",
+              "engine": "Next",
+              "anchors": "Allowed",
+              "foreign": false
+            },
+            "parsed": true,
+            "yaml": {
+              "kind": "mapping",
+              "items": [
+                {
+                  "key": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 1,
+                    "value": "run"
+                  },
+                  "value": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 6,
+                    "value": "echo ${{ github_repository }}"
+                  }
+                }
+              ],
+              "line": 1,
+              "col": 1
+            },
+            "yamlAnchors": 0,
+            "yamlAliases": 0,
+            "templateErrors": [
+              "(Line: 1, Col: 6): Unrecognized named-value: 'github_repository'. Located at position 1 within expression: github_repository"
+            ],
+            "accepted": false,
+            "diagnosed": true
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "id": "tag-plain",
+        "operation": "parse-yaml",
+        "engine": "next",
+        "allowAnchors": true,
+        "input": "run: !!str echo ${{ github_repository }}\n"
+      },
+      "response": {
+        "id": "tag-plain",
+        "protocolVersion": 1,
+        "runnerSha": "67f01c276e0a91d967ba499ce4cdc9a95efa0262",
+        "command": "parse-yaml",
+        "engines": [
+          {
+            "engine": "next",
+            "semantics": {
+              "entrypoint": "ParseYaml",
+              "engine": "Next",
+              "anchors": "Allowed",
+              "foreign": false
+            },
+            "parsed": true,
+            "yaml": {
+              "kind": "mapping",
+              "items": [
+                {
+                  "key": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 1,
+                    "value": "run"
+                  },
+                  "value": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 6,
+                    "value": "echo ${{ github_repository }}"
+                  }
+                }
+              ],
+              "line": 1,
+              "col": 1
+            },
+            "yamlAnchors": 0,
+            "yamlAliases": 0,
+            "templateErrors": [
+              "(Line: 1, Col: 6): Unrecognized named-value: 'github_repository'. Located at position 1 within expression: github_repository"
+            ],
+            "accepted": false,
+            "diagnosed": true
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "id": "tag-literal",
+        "operation": "parse-yaml",
+        "engine": "next",
+        "allowAnchors": true,
+        "input": "run: !!str |\n  echo ${{ github_repository }}\n"
+      },
+      "response": {
+        "id": "tag-literal",
+        "protocolVersion": 1,
+        "runnerSha": "67f01c276e0a91d967ba499ce4cdc9a95efa0262",
+        "command": "parse-yaml",
+        "engines": [
+          {
+            "engine": "next",
+            "semantics": {
+              "entrypoint": "ParseYaml",
+              "engine": "Next",
+              "anchors": "Allowed",
+              "foreign": false
+            },
+            "parsed": true,
+            "yaml": {
+              "kind": "mapping",
+              "items": [
+                {
+                  "key": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 1,
+                    "value": "run"
+                  },
+                  "value": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 6,
+                    "value": "echo ${{ github_repository }}\n"
+                  }
+                }
+              ],
+              "line": 1,
+              "col": 1
+            },
+            "yamlAnchors": 0,
+            "yamlAliases": 0,
+            "templateErrors": [
+              "(Line: 1, Col: 6): Unrecognized named-value: 'github_repository'. Located at position 1 within expression: github_repository"
+            ],
+            "accepted": false,
+            "diagnosed": true
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "id": "tag-folded",
+        "operation": "parse-yaml",
+        "engine": "next",
+        "allowAnchors": true,
+        "input": "run: !!str >\n  echo ${{ github_repository }}\n"
+      },
+      "response": {
+        "id": "tag-folded",
+        "protocolVersion": 1,
+        "runnerSha": "67f01c276e0a91d967ba499ce4cdc9a95efa0262",
+        "command": "parse-yaml",
+        "engines": [
+          {
+            "engine": "next",
+            "semantics": {
+              "entrypoint": "ParseYaml",
+              "engine": "Next",
+              "anchors": "Allowed",
+              "foreign": false
+            },
+            "parsed": true,
+            "yaml": {
+              "kind": "mapping",
+              "items": [
+                {
+                  "key": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 1,
+                    "value": "run"
+                  },
+                  "value": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 6,
+                    "value": "echo ${{ github_repository }}\n"
+                  }
+                }
+              ],
+              "line": 1,
+              "col": 1
+            },
+            "yamlAnchors": 0,
+            "yamlAliases": 0,
+            "templateErrors": [
+              "(Line: 1, Col: 6): Unrecognized named-value: 'github_repository'. Located at position 1 within expression: github_repository"
+            ],
+            "accepted": false,
+            "diagnosed": true
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "id": "anchor-double",
+        "operation": "parse-yaml",
+        "engine": "next",
+        "allowAnchors": true,
+        "input": "run: &script \"echo ${{ github_repository }}\"\n"
+      },
+      "response": {
+        "id": "anchor-double",
+        "protocolVersion": 1,
+        "runnerSha": "67f01c276e0a91d967ba499ce4cdc9a95efa0262",
+        "command": "parse-yaml",
+        "engines": [
+          {
+            "engine": "next",
+            "semantics": {
+              "entrypoint": "ParseYaml",
+              "engine": "Next",
+              "anchors": "Allowed",
+              "foreign": false
+            },
+            "parsed": true,
+            "yaml": {
+              "kind": "mapping",
+              "items": [
+                {
+                  "key": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 1,
+                    "value": "run"
+                  },
+                  "value": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 6,
+                    "value": "echo ${{ github_repository }}"
+                  }
+                }
+              ],
+              "line": 1,
+              "col": 1
+            },
+            "yamlAnchors": 1,
+            "yamlAliases": 0,
+            "templateErrors": [
+              "(Line: 1, Col: 6): Unrecognized named-value: 'github_repository'. Located at position 1 within expression: github_repository"
+            ],
+            "accepted": false,
+            "diagnosed": true
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "id": "tag-anchor-double",
+        "operation": "parse-yaml",
+        "engine": "next",
+        "allowAnchors": true,
+        "input": "run: !!str &script \"echo ${{ github_repository }}\"\n"
+      },
+      "response": {
+        "id": "tag-anchor-double",
+        "protocolVersion": 1,
+        "runnerSha": "67f01c276e0a91d967ba499ce4cdc9a95efa0262",
+        "command": "parse-yaml",
+        "engines": [
+          {
+            "engine": "next",
+            "semantics": {
+              "entrypoint": "ParseYaml",
+              "engine": "Next",
+              "anchors": "Allowed",
+              "foreign": false
+            },
+            "parsed": true,
+            "yaml": {
+              "kind": "mapping",
+              "items": [
+                {
+                  "key": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 1,
+                    "value": "run"
+                  },
+                  "value": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 6,
+                    "value": "echo ${{ github_repository }}"
+                  }
+                }
+              ],
+              "line": 1,
+              "col": 1
+            },
+            "yamlAnchors": 1,
+            "yamlAliases": 0,
+            "templateErrors": [
+              "(Line: 1, Col: 6): Unrecognized named-value: 'github_repository'. Located at position 1 within expression: github_repository"
+            ],
+            "accepted": false,
+            "diagnosed": true
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "id": "repeated",
+        "operation": "parse-yaml",
+        "engine": "next",
+        "allowAnchors": true,
+        "input": "run: echo ${{ github_repository }} ${{ github_repository }}\n"
+      },
+      "response": {
+        "id": "repeated",
+        "protocolVersion": 1,
+        "runnerSha": "67f01c276e0a91d967ba499ce4cdc9a95efa0262",
+        "command": "parse-yaml",
+        "engines": [
+          {
+            "engine": "next",
+            "semantics": {
+              "entrypoint": "ParseYaml",
+              "engine": "Next",
+              "anchors": "Allowed",
+              "foreign": false
+            },
+            "parsed": true,
+            "yaml": {
+              "kind": "mapping",
+              "items": [
+                {
+                  "key": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 1,
+                    "value": "run"
+                  },
+                  "value": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 6,
+                    "value": "echo ${{ github_repository }} ${{ github_repository }}"
+                  }
+                }
+              ],
+              "line": 1,
+              "col": 1
+            },
+            "yamlAnchors": 0,
+            "yamlAliases": 0,
+            "templateErrors": [
+              "(Line: 1, Col: 6): Unrecognized named-value: 'github_repository'. Located at position 1 within expression: github_repository"
+            ],
+            "accepted": false,
+            "diagnosed": true
+          }
+        ]
+      }
+    }
+  ]
+}

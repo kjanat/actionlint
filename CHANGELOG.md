@@ -2,7 +2,7 @@
 
 # Unreleased
 
-- Report action metadata expression errors at the offending token, including quoted and folded values. Name composite steps with zero-based paths such as `"runs.steps[0]"`, and use concrete paths such as `"runs.steps[0].with"` in schema diagnostics. (kjanat/actionlint#252)
+- Report each action metadata expression error with its token's source range, including quoted, folded, tagged and anchored values. Locate unfinished block expressions at the end of their content. Name composite steps with zero-based paths such as `"runs.steps[0]"`, and use concrete paths such as `"runs.steps[0].with"` in schema diagnostics. (kjanat/actionlint#252)
 - Report missing local action manifests by default, including repeated references, under the independently configurable `missing-local-action` rule. (kjanat/actionlint#196; kjanat/actionlint#159)
 - Accept short inline ignores without a reason and reusable configuration ignores matched by rule, file, job, step or action reference.
 - Map generated local action paths to checked-in source directories for metadata, input and output validation.

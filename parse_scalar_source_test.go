@@ -11,6 +11,12 @@ import (
 func TestQuotedFoldedScriptSource(t *testing.T) {
 	for _, tc := range []struct{ name, input, token, rawToken string }{
 		{"double", `run: "echo \"hello\" $foo"`, "$foo", "$foo"},
+		{"tagged-double", `run: !!str "echo \"hello\" $foo"`, "$foo", "$foo"},
+		{"anchored-double", `run: &script "echo \"hello\" $foo"`, "$foo", "$foo"},
+		{"tag-anchor", `run: !!str &script 'echo $foo'`, "$foo", "$foo"},
+		{"anchor-tag", `run: &script !!str echo $foo`, "$foo", "$foo"},
+		{"verbatim-tag", `run: !<tag:yaml.org,2002:str> "echo $foo"`, "$foo", "$foo"},
+		{"multiline-properties", "run: &script # source anchor\n  !!str\n  \"echo $foo\"", "$foo", "$foo"},
 		{"unicode-escape", `run: "echo \u0024foo"`, "$foo", `\u0024foo`},
 		{"unicode-before", `run: "echo \u00e9 $foo"`, "$foo", "$foo"},
 		{"newline-escape", `run: "echo\n$foo"`, "$foo", "$foo"},
@@ -21,6 +27,7 @@ func TestQuotedFoldedScriptSource(t *testing.T) {
 		{"quoted-continuation", "run: \"echo \\\n  $foo\"", "$foo", "$foo"},
 		{"quoted-escaped-trailing-space", "run: \"echo\\ \n  $foo\"", "$foo", "$foo"},
 		{"folded", "run: >\n  echo first\n  $foo\n", "$foo", "$foo"},
+		{"tagged-folded", "run: !!str &script >\n  echo first\n  $foo\n", "$foo", "$foo"},
 		{"folded-blank", "run: >-\n  echo first\n\n  $foo\n", "$foo", "$foo"},
 		{"folded-indent", "run: >2-\n  echo first\n    $foo\n  done\n", "$foo", "$foo"},
 		{"folded-tab", "run: >2-\n  echo first\n  \t$foo\n  done\n", "$foo", "$foo"},
@@ -69,5 +76,31 @@ func TestQuotedFoldedScriptSource(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestBlockScalarEOFPosition(t *testing.T) {
+	for _, header := range []string{"|", ">", "|-", ">-", "|+", ">+", "!!str &script |", "&script !!str >"} {
+		for _, ending := range []string{"\n", "\r\n", ""} {
+			t.Run(header+ending, func(t *testing.T) {
+				input := "run: " + header + "\n  echo ${{ github.ref"
+				if ending != "" {
+					input = strings.ReplaceAll(input+"\nnext: value\n", "\n", ending)
+				}
+				var root yaml.Node
+				if err := yaml.Unmarshal([]byte(input), &root); err != nil {
+					t.Fatal(err)
+				}
+				node := root.Content[0].Content[1]
+				p := parser{sourceLines: splitSourceLines([]byte(input))}
+				source := p.scriptSource(node)
+				lines := strings.Split(node.Value, "\n")
+				got, ok := source.endPos(len(lines), utf8.RuneCountInString(lines[len(lines)-1])+1)
+				want := Pos{Line: 2, Col: len("  echo ${{ github.ref") + 1}
+				if !ok || *got != want {
+					t.Fatalf("EOF position = %v, %v; want %v", got, ok, want)
+				}
+			})
+		}
 	}
 }
