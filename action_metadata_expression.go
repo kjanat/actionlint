@@ -16,19 +16,29 @@ type actionExpressionAvailability struct {
 type actionExpressionViolation struct {
 	context string
 	message string
+	// offset is a one-based byte offset in the decoded scalar, or zero when unavailable.
+	offset int
 }
 
 // actionExpressionViolations checks availability without inventing types for caller-owned values.
 func actionExpressionViolations(s string, bare bool, field string) []actionExpressionViolation {
+	return actionExpressionViolationsWithInputs(s, bare, field, nil)
+}
+
+func actionExpressionViolationsWithInputs(s string, bare bool, field string, inputs ActionMetadataInputs) []actionExpressionViolation {
 	avail, ok := actionMetadataAvailability[field]
 	if !ok {
 		return nil
 	}
+	base, positionsKnown := 0, true
 	if bare && (!strings.Contains(s, "${{") || literalExpressionValue(s) != nil) {
 		if _, err, _ := parseConditionExpression(s); err != nil {
 			return []actionExpressionViolation{{message: fmt.Sprintf("has an invalid expression: %v", err)}}
 		}
-		s = "${{" + conditionSource(s) + "}}"
+		folded := conditionSource(s)
+		positionsKnown = folded == s
+		s = "${{" + folded + "}}"
+		base = -3 // The synthetic opening delimiter is absent from the scalar.
 	}
 	seen := map[actionExpressionViolation]bool{}
 	var out []actionExpressionViolation
@@ -38,6 +48,8 @@ func actionExpressionViolations(s string, bare bool, field string) []actionExpre
 			break
 		}
 		s = s[i+3:]
+		base += i + 3
+		expressionOffset := base
 		lex := NewExprLexer(s)
 		expr, err := NewExprParser().Parse(lex)
 		if err != nil || expr == nil {
@@ -46,6 +58,7 @@ func actionExpressionViolations(s string, bare bool, field string) []actionExpre
 		}
 		// The lexer consumes the closing delimiter and skips delimiters inside strings.
 		s = s[lex.Offset():]
+		base += lex.Offset()
 		VisitExprNode(expr, func(node, _ ExprNode, entering bool) {
 			if !entering {
 				return
@@ -55,8 +68,17 @@ func actionExpressionViolations(s string, bare bool, field string) []actionExpre
 			case *VariableNode:
 				if !slices.Contains(avail.contexts, strings.ToLower(n.Name)) {
 					name := strings.ToLower(n.Name)
-					if suggestion := contextPropertySuggestion(name, avail.contexts, BuiltinGlobalVariableTypes); suggestion != "" {
+					var suggestion string
+					if _, declared := inputs[name]; declared && slices.Contains(avail.contexts, "inputs") {
+						suggestion = "inputs." + name
+					} else {
+						suggestion = contextPropertySuggestion(name, avail.contexts, BuiltinGlobalVariableTypes)
+					}
+					if suggestion != "" {
 						v.message = fmt.Sprintf("uses undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
+						if positionsKnown {
+							v.offset = expressionOffset + n.Token().Offset + 1
+						}
 					} else {
 						v.context = name
 					}
@@ -95,8 +117,10 @@ func actionExpressionViolations(s string, bare bool, field string) []actionExpre
 					}
 				}
 			}
-			if v != (actionExpressionViolation{}) && !seen[v] {
-				seen[v] = true
+			identity := v
+			identity.offset = 0
+			if identity != (actionExpressionViolation{}) && !seen[identity] {
+				seen[identity] = true
 				out = append(out, v)
 			}
 		})

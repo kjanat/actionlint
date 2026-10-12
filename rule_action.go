@@ -586,7 +586,7 @@ func (rule *RuleAction) metadataErrorfAt(meta *ActionMetadata, line, col int, fo
 func (rule *RuleAction) checkActionInputDefaults(meta *ActionMetadata) {
 	const field = "inputs.*.default"
 	for _, kv := range meta.InputDefaults {
-		for _, v := range actionExpressionViolations(kv.Value.Value, false, field) {
+		for _, v := range actionExpressionViolationsWithInputs(kv.Value.Value, false, field, meta.Inputs) {
 			message := v.message
 			if v.context != "" {
 				message = fmt.Sprintf(
@@ -667,15 +667,16 @@ func (rule *RuleAction) checkCompositeActionStepExprs(meta *ActionMetadata, s *A
 		if v == nil {
 			return
 		}
-		for _, violation := range actionExpressionViolations(v.Value, bare, "runs.steps.*."+field) {
+		for _, violation := range actionExpressionViolationsWithInputs(v.Value, bare, "runs.steps.*."+field, meta.Inputs) {
+			pos := metadataExpressionPosition(meta, v, violation.offset)
 			if ctx := violation.context; ctx != "" {
 				rule.compositeStepErrorfAt(
-					meta, idx, v.Line, v.Column,
+					meta, idx, pos.Line, pos.Col,
 					`uses context %q at %q key which is not available in a composite action. %s`,
 					ctx, key, compositeStepContextHint(ctx),
 				)
 			} else {
-				rule.compositeStepErrorfAt(meta, idx, v.Line, v.Column, `%s at %q key`, violation.message, key)
+				rule.compositeStepErrorfAt(meta, idx, pos.Line, pos.Col, `%s at %q key`, violation.message, key)
 			}
 		}
 	}

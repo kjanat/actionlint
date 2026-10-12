@@ -661,6 +661,12 @@ func (sema *ExprSemanticsChecker) checkVariable(n *VariableNode) ExprType {
 			sema.errorf(n, "function %q must be called with parentheses and arguments", name)
 			return AnyType{}
 		}
+		if inputs, ok := sema.vars["inputs"].(*ObjectType); ok && inputs.IsStrict() && slices.Contains(sema.availableContexts, "inputs") {
+			if _, declared := inputs.Props[n.Name]; declared {
+				sema.errorf(n, "undefined variable %q; did you mean %q?", n.Token().Value, "inputs."+n.Name)
+				return AnyType{}
+			}
+		}
 		if suggestion := sema.contextPropertySuggestion(n.Name); suggestion != "" {
 			sema.errorf(n, "undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
 			return AnyType{}
