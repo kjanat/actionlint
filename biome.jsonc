@@ -19,6 +19,9 @@
       "preset": "recommended",
       "complexity": {
         "useLiteralKeys": "off"
+      },
+      "suspicious": {
+        "noControlCharactersInRegex": "off"
       }
     },
     "domains": {
