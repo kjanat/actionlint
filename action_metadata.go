@@ -651,7 +651,7 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 
 		return nil, false, fmt.Errorf("could not parse action metadata in %q: %s", dir, m)
 	}
-	c.debug("New metadata parsed from action %s: %v", dir, &meta)
+	c.debug("New metadata parsed from action %s: %s action %q", dir, meta.Runs.Using, meta.Name)
 	c.writeCache(spec, &meta)
 	return &meta, false, nil
 }
