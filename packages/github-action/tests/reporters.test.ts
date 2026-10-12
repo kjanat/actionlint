@@ -261,11 +261,11 @@ test('report controls are independent and reject unsupported inputs', () => {
 
 test('summaries distinguish clean analysis, no selection, and incomplete analysis', () => {
 	const clean: ActionResult = { ...result, status: 'success', exit_code: 0, diagnostics: [] };
-	assert.equal(summary(clean), '## actionlint\n\n### Summary\n\n- **Result:** No findings\n- **Workflows:** 2\n\n');
-	assert.ok(summary({ ...clean, file_count: 0 }).includes('**Result:** No workflows selected'));
+	assert.equal(summary(clean), '<p><strong>No findings</strong></p>\n\n');
+	assert.ok(summary({ ...clean, file_count: 0 }).includes('<strong>No workflows selected'));
 	const incomplete: ActionResult = { ...result, completed: false, status: 'failure', exit_code: 3 };
-	assert.ok(summary(incomplete).includes('**Result:** Analysis incomplete'));
-	assert.ok(summary(incomplete).includes('Partial results: 1 warning.'));
+	assert.ok(summary(incomplete).includes('<strong>Analysis incomplete'));
+	assert.ok(summary(incomplete).includes('Analysis stopped before completion; further findings may exist.'));
 	assert.ok(
 		summary({ ...result, diagnostics: Array.from({ length: 51 }, () => diagnostic) }).includes('first 50 findings'),
 	);
@@ -320,13 +320,15 @@ test('annotation policy is independent of serialization with auto enabled for Gi
 
 test('plain status logs preserve percent signs and cannot inject workflow commands', async () => {
 	const messages: string[] = [];
-	await report(result, 'result.json', { 'INPUT_SUMMARY-TITLE': '100% coverage\n::error::fake ##[error]fake' }, {
+	await report({ ...result, diagnostics: [] }, 'result.json', {
+		'INPUT_SUMMARY-TITLE': '100% coverage\n::error::fake ##[error]fake',
+	}, {
 		annotations: 'false',
 		summary: false,
 		sarif: false,
 		review: false,
 	}, { log: (text) => messages.push(text), review: async () => assert.fail('review disabled') });
-	assert.deepEqual(messages, ['actionlint (100% coverage ::error::fake ## [error]fake): 1 warning']);
+	assert.deepEqual(messages, ['actionlint (100% coverage ::error::fake ## [error]fake): No findings']);
 });
 
 test('reporter failures preserve native result and let other destinations finish', async () => {
@@ -529,7 +531,7 @@ test('real entrypoint rejects malformed native results and summarizes input fail
 			assert.equal(persisted.completed, false);
 			assert.equal(persisted.status, scenario.status);
 			assert.equal(persisted.exit_code, scenario.code);
-			assert.ok((await readFile(summaryPath, 'utf8')).includes('**Result:** Could not start analysis'));
+			assert.ok((await readFile(summaryPath, 'utf8')).includes('<strong>Could not start analysis'));
 		}
 	} finally {
 		await rm(directory, { recursive: true });
@@ -543,12 +545,12 @@ test('annotation commands and Markdown summaries escape diagnostic content', () 
 	);
 	const text = summary({ ...result, error: 'Missing <config>\nTry another path', hints: ['Check & retry'] });
 	assert.ok(text.includes('&amp; &lt;value&gt;'));
-	assert.ok(text.includes('Quote this &amp; &lt;value&gt;\n::warning::spoof'));
-	assert.ok(text.includes('Missing &lt;config&gt;\nTry another path'));
+	assert.ok(text.includes('Quote this &amp; &lt;value&gt;<br>::warning::spoof'));
+	assert.ok(text.includes('Missing &lt;config&gt;<br>Try another path'));
 	assert.ok(text.includes('Check &amp; retry'));
-	assert.ok(text.includes('2 | echo "$foo"\n  |   ^~~~~'));
+	assert.ok(text.includes('<pre lang="yaml">echo &quot;$foo&quot;&#10;  ^~~~~</pre>'));
 	assert.ok(!text.includes('<value>'));
-	assert.ok(text.includes('**Result:** 1 warning'));
+	assert.ok(text.includes('<strong>Warning:</strong>'));
 	const multiline = annotation({ ...diagnostic, end: { line: 4, column: 1 } });
 	assert.ok(multiline.includes('line=2,endLine=3,title='));
 	assert.ok(!multiline.includes(',col='));
@@ -590,9 +592,8 @@ test('one analysis feeds reports; github annotations are not emitted twice; revi
 				},
 			},
 		);
-		assert.equal(messages.length, 3);
-		assert.equal(messages[1], 'actionlint: 1 warning');
-		assert.ok(messages[2]?.startsWith('::warning::PR review skipped: HTTP 403'));
+		assert.equal(messages.length, 2);
+		assert.ok(messages[1]?.startsWith('::warning::PR review skipped: HTTP 403'));
 		assert.deepEqual(JSON.parse(await readFile(`${path}.sarif`, 'utf8')), result.sarif);
 		assert.ok((await readFile(stepSummary, 'utf8')).includes('SC2086'));
 		assert.ok((await readFile(output, 'utf8')).includes('result-file<<'));

@@ -130,7 +130,13 @@ try {
 		const annotation = result.log.split('\n').find(line => line.startsWith('::error file='));
 		assert.ok(annotation?.includes('%0A%0A6 |'), `annotation lacks numbered source: ${result.log}`);
 		assert.match(annotation || '', /%0A {2}\| +\^~+/);
-		assert.match(await readFile(summaryFile, 'utf8'), /\*\*Result:\*\* 1 error\n- \*\*Workflows:\*\* 1/);
+		const summary = await readFile(summaryFile, 'utf8');
+		assert.doesNotMatch(summary, /\d+ errors? in \d+ workflows?/);
+		assert.ok(summary.includes('<pre lang="yaml">'));
+		assert.ok(summary.includes('    runs-on: ubuntu-latest&#10;    steps:&#10;'));
+		assert.match(summary, /&#10; +\^~+/);
+		assert.doesNotMatch(summary, /&#10;\d+ \| |&#10; *\|/);
+		assert.ok(summary.includes('<code>github.event.head_commit.message</code>'));
 		assert.ok(result.outputs.get('result-file'));
 		assert.equal(result.outputs.has('report-json'), false);
 		const sarifPath = result.outputs.get('report-sarif');

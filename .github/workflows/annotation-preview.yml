@@ -1,13 +1,35 @@
 name: Annotation preview
 on:
   workflow_dispatch:
+    inputs:
+      permalink-only:
+        description: Test native source permalink rendering without building the Action
+        type: boolean
+        default: false
 
-permissions: { contents: read }
+permissions: { contents: read, actions: read }
 
 jobs:
-  preview:
-    name: Preview error, warning and notice annotations
+  permalink:
+    name: Source permalink preview
+    if: inputs.permalink-only
     runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Render bare source permalink
+        run: |
+          printf '%s\n' 'https://github.com/kjanat/actionlint/blob/55c999e33481bbabb53ea99d396892b681af12e4/testdata/err/one_error.yaml#L1-L6' >> "${GITHUB_STEP_SUMMARY}"
+  preview:
+    if: ${{ !inputs.permalink-only }}
+    name: ${{ matrix.title }} preview
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { severity: error, title: Error }
+          - { severity: warn, title: Warning }
+          - { severity: info, title: Notice }
     timeout-minutes: 15
     env:
       GOTOOLCHAIN: local
@@ -17,6 +39,7 @@ jobs:
       INPUT_SHELLCHECK: "false"
       INPUT_RUFF: "false"
       INPUT_SUMMARY: "true"
+      INPUT_CONFIG: "lint: {rules: {correctness: {expression: '${{ matrix.severity }}'}}}"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { fetch-depth: 0, persist-credentials: false }
@@ -30,24 +53,16 @@ jobs:
           go build -o "${RUNNER_TEMP}/actionlint-preview" ./cmd/actionlint
           echo "ACTIONLINT_ACTION_BINARY=${RUNNER_TEMP}/actionlint-preview" >> "${GITHUB_ENV}"
           npm run build --workspace actionlint-action -- --out-dir "${RUNNER_TEMP}/annotation-preview"
-      - name: Error annotation
-        env:
-          INPUT_CONFIG: "lint: {rules: {correctness: {expression: error}}}"
-          INPUT_SUMMARY-TITLE: Error preview
+      - name: Preview annotation and summary
         run: node "${RUNNER_TEMP}/annotation-preview/action.mjs"
-      - name: Warning annotation
+      - name: Link annotation step logs
         env:
-          INPUT_CONFIG: "lint: {rules: {correctness: {expression: warn}}}"
-          INPUT_SUMMARY-TITLE: Warning preview
-        run: node "${RUNNER_TEMP}/annotation-preview/action.mjs"
-      - name: Notice annotation
-        env:
-          INPUT_CONFIG: "lint: {rules: {correctness: {expression: info}}}"
-          INPUT_SUMMARY-TITLE: Notice preview
-        run: node "${RUNNER_TEMP}/annotation-preview/action.mjs"
-      - name: Link the preview
-        env:
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GH_TOKEN: ${{ github.token }}
+          JOB_NAME: ${{ matrix.title }} preview
         run: |
-          printf '\n### Inspect the preview\n\n[Open the run](%s) to compare its error, warning and notice annotations with these summaries. The findings are intentional.\n' \
-            "${RUN_URL}" >> "${GITHUB_STEP_SUMMARY}"
+          if gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs?filter=latest" > "${RUNNER_TEMP}/preview-jobs.json"; then
+            step_url="$(jq -r --arg name "${JOB_NAME}" '.jobs[] | select(.name == $name and .status == "in_progress") | .html_url as $url | .steps[] | select(.name == "Preview annotation and summary") | "\($url)#step:\(.number):1"' "${RUNNER_TEMP}/preview-jobs.json")"
+            if [[ -n "${step_url}" ]]; then
+              printf '\n[View annotation step logs](%s)\n' "${step_url}" >> "${GITHUB_STEP_SUMMARY}"
+            fi
+          fi

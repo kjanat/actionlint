@@ -111,7 +111,7 @@ inputs:
     required: false
     default: "true"
   summary-title:
-    description: Label this invocation in the job summary and text log. Defaults to the GitHub Action invocation ID.
+    description: Optional summary label and text-log label. Without a label, summaries have no title and status logs use the GitHub Action invocation ID.
     required: false
     default: ""
   sarif:
