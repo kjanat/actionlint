@@ -138,3 +138,27 @@ func TestBlockScalarEOFPosition(t *testing.T) {
 		}
 	}
 }
+
+func TestQuotedEscapedLineBreakEOFPosition(t *testing.T) {
+	for _, escape := range []string{`\r`, `\n`, `\r\n`, `\n\r`, `\x0d`, `\u000d`, `\U0000000d`, `\x0a`, `\u000a`} {
+		for _, suffix := range []string{"", "\n  ", "\n\n  "} {
+			t.Run(escape+suffix, func(t *testing.T) {
+				content := `run: "echo ${{ github.ref` + escape
+				input := content + suffix + "\"\n"
+				var root yaml.Node
+				if err := yaml.Unmarshal([]byte(input), &root); err != nil {
+					t.Fatal(err)
+				}
+				node := root.Content[0].Content[1]
+				p := parser{sourceLines: splitSourceLines([]byte(input))}
+				source := p.scriptSource(node)
+				lines := strings.Split(node.Value, "\n")
+				got, ok := source.endPos(len(lines), utf8.RuneCountInString(lines[len(lines)-1])+1)
+				want := Pos{Line: 1, Col: len(content) + 1}
+				if !ok || *got != want {
+					t.Fatalf("EOF = %v, %v; want %v", got, ok, want)
+				}
+			})
+		}
+	}
+}

@@ -68,9 +68,16 @@ func (b *scalarSourceBuilder) append(value string, line, column, width int) bool
 	if !strings.HasPrefix(b.source.value[b.offset:], value) {
 		return false
 	}
-	if line != 0 && !strings.ContainsAny(value, "\r\n") && value != "" {
+	if line != 0 && value != "" {
 		previous := len(b.source.spans) - 1
-		if !b.source.mapBytes(b.offset, len(value), line, column) {
+		if value == "\n" && width != 0 {
+			// An escaped LF crosses decoded lines but occupies one physical
+			// source token. Unlike folded whitespace, both ends are mapped.
+			b.source.spans = append(b.source.spans, scriptSourceSpan{
+				start: b.offset, end: b.offset + len(value),
+				yamlLine: line, yamlColumn: column,
+			})
+		} else if !b.source.mapBytes(b.offset, len(value), line, column) {
 			return false
 		}
 		if width != 0 {
