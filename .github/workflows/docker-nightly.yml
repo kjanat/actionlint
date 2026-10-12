@@ -1,0 +1,117 @@
+name: Nightly container
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+
+permissions: { contents: read }
+
+jobs:
+  publish:
+    name: Test and publish nightly CLI image
+    if: >-
+      github.repository == 'kjanat/actionlint' &&
+      ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'master' &&
+      github.event.workflow_run.head_repository.full_name == github.repository))
+    runs-on: ubuntu-latest
+    concurrency: { group: docker-nightly, cancel-in-progress: false, queue: max }
+    timeout-minutes: 60
+    permissions: { contents: read, actions: read, packages: write }
+    env:
+      SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { ref: "${{ env.SOURCE_SHA }}", fetch-depth: 0, persist-credentials: false }
+      - name: Require successful master CI for this commit
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          test "$(git rev-parse HEAD)" = "${SOURCE_SHA}"
+          passed="$(gh api --method GET "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs" \
+            -f head_sha="${SOURCE_SHA}" -f branch=master -f event=push -f status=success \
+            --jq '.workflow_runs | length > 0')"
+          if [[ "${passed}" != true ]]; then
+            echo "::error::No successful push CI exists for ${SOURCE_SHA} on master."
+            exit 1
+          fi
+      - name: Derive image metadata
+        id: metadata
+        run: |
+          version="$(git describe --tags --long --abbrev=12 --always --match 'v[0-9]*.[0-9]*.[0-9]*')"
+          # Keep the version safe for Docker tags and the Go linker argument.
+          [[ "${version}" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$ && ${#version} -le 110 ]]
+          {
+            echo "version=${version}"
+            echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } >> "${GITHUB_OUTPUT}"
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build both platforms before publishing
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: cli
+          platforms: linux/amd64,linux/arm64
+          build-args: ACTIONLINT_VER=${{ steps.metadata.outputs.version }}
+          outputs: type=oci,dest=${{ runner.temp }}/nightly.tar
+          tags: actionlint:nightly-test
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha,scope=docker-nightly
+          cache-to: type=gha,scope=docker-nightly,mode=max
+          labels: |
+            org.opencontainers.image.title=actionlint
+            org.opencontainers.image.description=Development build from master
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            org.opencontainers.image.version=${{ steps.metadata.outputs.version }}
+            org.opencontainers.image.revision=${{ env.SOURCE_SHA }}
+            org.opencontainers.image.created=${{ steps.metadata.outputs.created }}
+            org.opencontainers.image.licenses=MIT
+      - name: Test the stored image on both platforms
+        env: { VERSION: "${{ steps.metadata.outputs.version }}" }
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends skopeo
+          for arch in amd64 arm64; do
+            image="actionlint:nightly-test-${arch}"
+            skopeo --override-os linux --override-arch "${arch}" copy \
+              "oci-archive:${RUNNER_TEMP}/nightly.tar" "docker-daemon:${image}"
+            docker run --rm --platform "linux/${arch}" "${image}" --version | grep -F -- "${VERSION}"
+            docker run --rm --platform "linux/${arch}" --entrypoint shellcheck "${image}" --version
+            bash scripts/test-docker-ruff.bash "${image}" "linux/${arch}"
+            docker run --rm --platform "linux/${arch}" --mount type=bind,source="${PWD}",target=/w,readonly \
+              "${image}" testdata/ok/minimal.yaml
+            lint_status=0
+            docker run --rm --platform "linux/${arch}" --mount type=bind,source="${PWD}",target=/w,readonly \
+              "${image}" testdata/err/one_error.yaml || lint_status=$?
+            test "${lint_status}" = 1
+          done
+      - uses: &DockerLogin docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with: { registry: ghcr.io, username: "${{ github.repository_owner }}", password: "${{ github.token }}" }
+      - uses: *DockerLogin
+        with: { username: "${{ github.repository_owner }}", password: "${{ secrets.DOCKERHUB_TOKEN }}" }
+      - name: Publish the tested bytes
+        env:
+          VERSION: ${{ steps.metadata.outputs.version }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          [[ "${DIGEST}" =~ ^sha256:[a-f0-9]{64}$ ]]
+          # A delayed CI completion or manual rerun must not roll nightly back.
+          current="$(git ls-remote origin refs/heads/master | cut -f1)"
+          if [[ "${current}" != "${SOURCE_SHA}" ]]; then
+            echo 'Master advanced while this image was building; publication skipped.'
+            exit 0
+          fi
+          for registry in ghcr.io docker.io; do
+            for tag in "sha-${SOURCE_SHA}" "nightly-${VERSION}" nightly; do
+              skopeo copy --all --preserve-digests --authfile "${HOME}/.docker/config.json" \
+                --digestfile "${RUNNER_TEMP}/published.digest" \
+                "oci-archive:${RUNNER_TEMP}/nightly.tar" "docker://${registry}/${GITHUB_REPOSITORY}:${tag}"
+              test "$(cat "${RUNNER_TEMP}/published.digest")" = "${DIGEST}"
+            done
+          done
