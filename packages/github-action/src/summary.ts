@@ -60,9 +60,9 @@ function sourceLink(diagnostic: Diagnostic, environment: Environment, verified: 
 	let path: string;
 	try {
 		const configuredWorkspace = resolve(environment.GITHUB_WORKSPACE || '.');
-		const workspace = realpathSync(configuredWorkspace);
+		const workspace = realpathSync.native(configuredWorkspace);
 		const directory = resolve(configuredWorkspace, environment['INPUT_WORKING-DIRECTORY'] || '.');
-		path = relative(workspace, realpathSync(resolve(directory, diagnostic.path)));
+		path = relative(workspace, realpathSync.native(resolve(directory, diagnostic.path)));
 	} catch {
 		return label;
 	}
@@ -163,8 +163,9 @@ export function summary(
 	result: ActionResult,
 	environment: Environment = {},
 	contexts = new Map<Diagnostic, string[]>(),
+	onSourceLinkFailure?: (message: string) => void,
 ): string {
-	const verified = sourceLinkVerifier(environment);
+	const verified = sourceLinkVerifier(environment, onSourceLinkFailure);
 	const label = environment['INPUT_SUMMARY-TITLE']?.trim();
 	let text = label ? `<p><strong>${html(label.replaceAll(/[\r\n]/g, ' ').slice(0, 120))}</strong></p>\n\n` : '';
 	const state = status(result);

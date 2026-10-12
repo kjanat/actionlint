@@ -107,7 +107,12 @@ export async function report(
 	if (options.summary && summaryPath) {
 		await attempt('Job summary unavailable', async () => {
 			const contexts = await sourceContexts(result, environment);
-			await appendFile(summaryPath, summary(result, environment, contexts));
+			await appendFile(
+				summaryPath,
+				summary(result, environment, contexts, message => {
+					runtime.log(`::debug::${commandEscape(`Source permalink unavailable: ${message}`)}`);
+				}),
+			);
 		});
 	}
 	if (!['json', 'json-lines', 'sarif'].includes(environment.INPUT_FORMAT || 'github')) {

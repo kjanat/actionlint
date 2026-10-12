@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import type { ActionResult, Diagnostic } from '#result';
+import { sourceLinkVerifier } from '#source-links';
 import { diagnosticSnippet, reportStatus, summary } from '#summary';
 
 const finding: Diagnostic = {
@@ -91,15 +92,18 @@ test('source links canonicalize workspace paths and validate repository names', 
 			GITHUB_WORKSPACE: workspace,
 			'INPUT_WORKING-DIRECTORY': 'sub',
 		};
+		const failures: string[] = [];
+		const verifyCommitted = sourceLinkVerifier(environment, message => failures.push(message));
+		const committedVerified = verifyCommitted(join('sub', filename));
+		assert.equal(committedVerified, true, `Source verification failed: ${failures.join(', ')}`);
 		const text = summary(
 			{ ...result, diagnostics: [{ ...finding, path: filename, end: { line: 9, column: 1 } }] },
 			environment,
 		);
-		assert.ok(
-			text.includes(
-				`href="https://github.example.com/owner/repo/blob/${sha}/sub/${encodeURIComponent(filename)}#L6-L8"`,
-			),
-		);
+		const expectedLink = `href="https://github.example.com/owner/repo/blob/${sha}/sub/${
+			encodeURIComponent(filename)
+		}#L6-L8"`;
+		assert.ok(text.includes(expectedLink), `Expected ${expectedLink} in summary:\n${text}`);
 		assert.ok(text.includes(`<code>${filename}:6:6</code></a>`));
 		for (
 			const invalid of [{ GITHUB_SHA: '' }, { GITHUB_REPOSITORY: '../repo' }, { GITHUB_REPOSITORY: 'owner/..' }, {
@@ -143,9 +147,22 @@ test('source links canonicalize workspace paths and validate repository names', 
 		assert.ok(!summary(result, environment).includes('/blob/'));
 		git('remote', 'set-url', 'origin', 'https://github.example.com/owner/repo.git');
 		await writeFile(join(workspace, 'sub', 'ci.yml'), 'modified');
+		failures.length = 0;
+		const verifyModified = sourceLinkVerifier(environment, message => failures.push(message));
+		const modifiedVerified = verifyModified(join('sub', 'ci.yml'));
+		assert.equal(modifiedVerified, false, 'Modified content must not link to the committed blob');
+		assert.match(failures[0] || '', /committed blob: file content differs from the committed blob/);
+		failures.length = 0;
+		summary(result, environment, new Map(), message => failures.push(message));
+		assert.match(failures[0] || '', /file content differs from the committed blob/);
 		assert.ok(!summary(result, environment).includes('/blob/'));
 		await writeFile(join(workspace, 'sub', 'ci.yml'), 'source');
 		await writeFile(join(workspace, 'sub', 'untracked.yml'), 'source');
+		failures.length = 0;
+		const verifyUntracked = sourceLinkVerifier(environment, message => failures.push(message));
+		const untrackedVerified = verifyUntracked(join('sub', 'untracked.yml'));
+		assert.equal(untrackedVerified, false, 'Untracked files must not link to a nonexistent committed blob');
+		assert.match(failures[0] || '', /committed blob: git cat-file: exit 128/);
 		assert.ok(
 			!summary({ ...result, diagnostics: [{ ...finding, path: 'untracked.yml' }] }, environment).includes('/blob/'),
 		);
