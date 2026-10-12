@@ -3,7 +3,6 @@ package actionlint
 import (
 	"fmt"
 	"slices"
-	"strconv"
 	"strings"
 
 	"go.yaml.in/yaml/v4"
@@ -96,7 +95,7 @@ func actionSchemaMemberPath(parent, key string) string {
 		}
 	}
 	if !identifier {
-		return parent + "[" + strconv.Quote(key) + "]"
+		return parent + "['" + strings.ReplaceAll(key, "'", "''") + "']"
 	}
 	if parent == "" {
 		return key

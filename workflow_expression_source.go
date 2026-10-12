@@ -77,15 +77,46 @@ func (rule *RuleExpression) expressionTokenEnd(offset int) *Pos {
 	if token.Offset != 0 || width == 0 || token.Kind == TokenKindUnknown {
 		_, width = utf8.DecodeRuneInString(text[offset:])
 	} else if token.Kind == TokenKindIdent {
-		// Object-property diagnostics start at their receiver. Keep the full
-		// dotted reference visible, including folded or escaped member names.
-		for lexer.Next().Kind == TokenKindDot {
-			member := lexer.Next()
-			if member.Kind != TokenKindIdent && member.Kind != TokenKindStar {
-				break
-			}
-			width = member.Offset + len(member.Value)
-		}
+		width = expressionReferenceWidth(lexer, width)
 	}
 	return rule.expressionPosition(rule.expressionOffset+offset+width, true)
+}
+
+// Calls alone highlight their name. A call used as a property receiver and
+// bracket accesses belong to the reference, including nested index expressions.
+func expressionReferenceWidth(lexer *ExprLexer, width int) int {
+	for {
+		token := lexer.Next()
+		switch token.Kind {
+		case TokenKindDot:
+			member := lexer.Next()
+			if member.Kind != TokenKindIdent && member.Kind != TokenKindStar {
+				return width
+			}
+			width = member.Offset + len(member.Value)
+		case TokenKindLeftParen, TokenKindLeftBracket:
+			call := token.Kind == TokenKindLeftParen
+			stack := []TokenKind{token.Kind}
+			for len(stack) > 0 {
+				token = lexer.Next()
+				switch token.Kind {
+				case TokenKindEnd, TokenKindUnknown:
+					return width
+				case TokenKindLeftParen, TokenKindLeftBracket:
+					stack = append(stack, token.Kind)
+				case TokenKindRightParen, TokenKindRightBracket:
+					opening := stack[len(stack)-1]
+					if (opening == TokenKindLeftParen) != (token.Kind == TokenKindRightParen) {
+						return width
+					}
+					stack = stack[:len(stack)-1]
+				}
+			}
+			if !call {
+				width = token.Offset + len(token.Value)
+			}
+		default:
+			return width
+		}
+	}
 }
