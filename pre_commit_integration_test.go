@@ -11,11 +11,15 @@ import (
 )
 
 func TestPreCommitDeletionOnlyIntegration(t *testing.T) {
-	if testing.Short() {
+	required := os.Getenv("ACTIONLINT_PRE_COMMIT_INTEGRATION") == "1"
+	if testing.Short() && !required {
 		t.Skip("requires external Git and pre-commit processes")
 	}
 	for _, executable := range []string{"pre-commit", "git", "sh"} {
 		if _, err := exec.LookPath(executable); err != nil {
+			if required {
+				t.Fatalf("integration test requires %s: %v", executable, err)
+			}
 			t.Skipf("integration test requires %s: %v", executable, err)
 		}
 	}
@@ -29,10 +33,6 @@ func TestPreCommitDeletionOnlyIntegration(t *testing.T) {
 	if hook.ID == "" {
 		t.Fatal("actionlint-system hook is missing")
 	}
-	shellArgs := preCommitShellArgs(t, hook)
-	// Git for Windows changes PATH during shell startup; select the fixture afterward.
-	script := `PATH="$PWD/bin:$PATH"; ` + shellArgs[1]
-	hook.Entry = "sh -c '" + strings.ReplaceAll(script, "'", "'\"'\"'") + "' --"
 	type localHook struct {
 		preCommitHook `yaml:",inline"`
 		Name          string `yaml:"name"`
@@ -62,7 +62,7 @@ func TestPreCommitDeletionOnlyIntegration(t *testing.T) {
 	for _, deleted := range []string{"action.yml", ".github/actionlint.yaml", ".github/workflows/callee.yml"} {
 		t.Run(deleted, func(t *testing.T) {
 			root := t.TempDir()
-			env := append(os.Environ(), "PRE_COMMIT_HOME="+t.TempDir(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+os.DevNull)
+			env := append(os.Environ(), "PRE_COMMIT_HOME="+t.TempDir(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+os.DevNull, "PATH="+filepath.Join(root, "bin")+string(os.PathListSeparator)+os.Getenv("PATH"))
 			write := func(name, content string, mode os.FileMode) {
 				t.Helper()
 				path := filepath.Join(root, name)
@@ -75,7 +75,7 @@ func TestPreCommitDeletionOnlyIntegration(t *testing.T) {
 			}
 			run := func(executable string, args ...string) string {
 				t.Helper()
-				cmd := exec.Command(executable, args...)
+				cmd := exec.CommandContext(t.Context(), executable, args...)
 				cmd.Dir = root
 				cmd.Env = env
 				output, err := cmd.CombinedOutput()

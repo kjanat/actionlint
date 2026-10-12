@@ -425,3 +425,6 @@ jobs:
           rm .github/workflows/_pre-commit-shellcheck-fixture.yml
           test "${status}" -ne 0
           grep -q SC2086 pre-commit-output.txt
+      - name: Run the deletion-only pre-commit integration test
+        env: { ACTIONLINT_PRE_COMMIT_INTEGRATION: "1" }
+        run: go test -count=1 -run '^TestPreCommitDeletionOnlyIntegration$' .

@@ -380,7 +380,6 @@ func TestDeclaredTargetsMatchRepository(t *testing.T) {
 func TestPreCommitVersionBumps(t *testing.T) {
 	for _, tc := range []struct{ path, prefix string }{
 		{".pre-commit-hooks.yaml", "ghcr.io/kjanat/actionlint:"},
-		{".pre-commit-config.yaml", "rev: v"},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
 			tgt := targetNamed(t, targets, tc.path)

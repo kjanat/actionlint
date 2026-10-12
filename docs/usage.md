@@ -874,23 +874,15 @@ For a discussion of native hooks and the pre-commit framework, see
 multi-language Git pre-commit hooks. actionlint is available as a pre-commit
 hook to check workflow files in the `.github/workflows/` directory.
 
-All four hooks run on every commit and check **all repository workflows**.
-This also rechecks unchanged callers after an action, reusable workflow, or
-configuration file is changed or deleted. Pre-commit excludes deleted files
-from filename selection, so the hooks use `always_run: true`.
-The hooks use `pass_filenames: false`. Workflow analysis reads the referenced
-action metadata and repository configuration.
+All hooks run on every commit and check **all repository workflows**, even when
+the commit changes no workflow file. Changing or deleting a local action, a
+reusable workflow, or the actionlint configuration rechecks the unchanged
+workflows that use it. Pre-commit excludes deleted files from filename
+selection, so the hooks use `always_run: true` and `pass_filenames: false`.
 
 Only local actions referenced by the checked workflows receive action-metadata
-validation. Unreferenced actions are not independently linted. Missing local
-actions retain actionlint's normal behavior: they may be supplied at runtime,
-so their absence alone does not produce a missing-file diagnostic. Repositories
-without workflow YAML files are skipped, including action-only repositories
-and empty `.github/workflows/` directories.
-
-The Go and system hooks require POSIX `sh` and `find` on `PATH`; on Windows,
-use the tools supplied by Git for Windows. The Docker hook uses these tools
-inside its image.
+validation. A missing local action is reported under `missing-local-action`.
+Repositories without workflow files, such as action-only repositories, pass.
 
 Add this to your `.pre-commit-config.yaml` in your repository:
 
