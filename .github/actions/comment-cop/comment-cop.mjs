@@ -318,8 +318,7 @@ export default async function run({ github, context, core }) {
 	const groups = [];
 	const unscannedPaths = new Set();
 	for (const file of files) {
-		if (file.status === 'removed' || langFor(file.filename) === null) continue;
-		if (file.filename.startsWith('vendor/') || file.filename.includes('/vendor/')) continue;
+		if (file.status === 'removed' || !scannable(file.filename)) continue;
 		if (file.patch === undefined) {
 			unscannedPaths.add(file.filename);
 			core.warning(`No patch available for ${file.filename}; skipping comment scan.`);
@@ -456,7 +455,9 @@ function untrackedPatch(name) {
 const outputLines = output => output.split('\n').map(line => line.trim()).filter(Boolean);
 
 /** @param {string} name */
-const scannable = name => langFor(name) !== null && !name.startsWith('vendor/') && !name.includes('/vendor/');
+const scannable = name =>
+	langFor(name) !== null && !name.startsWith('vendor/') && !name.includes('/vendor/')
+	&& !name.startsWith('docs/releases/');
 
 /** @param {string | undefined} base */
 export function scanLocal(base) {

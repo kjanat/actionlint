@@ -1,5 +1,6 @@
 import { stringify } from 'yaml';
 
+import { plainText } from '#notes';
 import {
 	type DefaultLocaleManifest,
 	defaultLocaleManifest,
@@ -143,7 +144,7 @@ export function generateManifests(options: GenerateOptions): Manifests {
 			+ 'placeholders, the shell scripts in run: steps, and many other mistakes that only surface once a workflow '
 			+ 'runs. This is the kjanat fork, published separately from rhysd.actionlint.',
 		Tags: ['actionlint', 'ci', 'github-actions', 'linter', 'ruff', 'shellcheck', 'static-analysis', 'workflow', 'yaml'],
-		ReleaseNotes: capReleaseNotes(options.releaseNotes, releaseNotesUrl),
+		ReleaseNotes: capReleaseNotes(plainText(options.releaseNotes), releaseNotesUrl),
 		ReleaseNotesUrl: releaseNotesUrl,
 		InstallationNotes:
 			'ShellCheck and Ruff are optional. When installed, actionlint uses them to check shell and Python '

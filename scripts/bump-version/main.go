@@ -137,15 +137,11 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		if flags.NArg() != 0 {
 			return fmt.Errorf("-notes takes no argument but got %v", flags.Args())
 		}
-		content, err := readChangelog(root)
+		text, err := ReleaseNotes(root, notes)
 		if err != nil {
 			return err
 		}
-		section, err := sectionNotes(content, notes)
-		if err != nil {
-			return err
-		}
-		_, err = io.WriteString(stdout, section)
+		_, err = io.WriteString(stdout, text)
 		return err
 	}
 
@@ -153,10 +149,14 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		if flags.NArg() != 0 {
 			return fmt.Errorf("-check takes no argument but got %v", flags.Args())
 		}
-		if err := Check(root, targets, stdout); err != nil {
+		declared, err := Check(root, targets, stdout)
+		if err != nil {
 			return err
 		}
-		return checkChangelog(root)
+		if err := checkChangelog(root); err != nil {
+			return err
+		}
+		return CheckReleaseNotes(root, "v"+declared, stdout)
 	}
 
 	if flags.NArg() != 1 {
@@ -173,6 +173,9 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 	if err := CheckChangelogRelease(root, v, stdout); err != nil {
+		return err
+	}
+	if err := CheckReleaseNotes(root, tag, stdout); err != nil {
 		return err
 	}
 	nixArgs, err := r.nixCommand(nix)

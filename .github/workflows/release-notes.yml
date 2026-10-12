@@ -1,0 +1,61 @@
+name: Release notes
+on:
+  push:
+    branches: [master]
+    paths: [docs/releases/v*.md]
+  workflow_dispatch:
+
+permissions: { contents: read }
+defaults: { run: { shell: "bash --noprofile --norc -eo pipefail {0}" } }
+
+jobs:
+  sync:
+    name: Copy docs/releases to the GitHub releases
+    if: github.repository == 'kjanat/actionlint' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency: { group: release-notes, cancel-in-progress: false, queue: max }
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { fetch-depth: 0, persist-credentials: false }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with: { go-version-file: go.mod }
+      - name: Update every release whose notes file changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == push && "${BEFORE}" =~ ^[0-9a-f]{40}$ && "${BEFORE}" != 0000000000000000000000000000000000000000 ]]; then
+            deleted="$(git diff --name-only --no-renames --diff-filter=D "${BEFORE}" "${GITHUB_SHA}" -- 'docs/releases/v*.md')"
+            if [[ -n "${deleted}" ]]; then
+              echo "::error::Release notes files were deleted; their releases keep a body without a source: ${deleted//$'\n'/, }"
+              exit 1
+            fi
+            changed="$(git diff --name-only --no-renames --diff-filter=AM "${BEFORE}" "${GITHUB_SHA}" -- 'docs/releases/v*.md')"
+          else
+            changed="$(git ls-files -- 'docs/releases/v*.md')"
+          fi
+          if [[ -z "${changed}" ]]; then
+            echo 'No release notes file changed.'
+            exit 0
+          fi
+          mapfile -t files <<< "${changed}"
+          tags=()
+          for file in "${files[@]}"; do
+            tag="$(basename "${file}" .md)"
+            [[ "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            go run ./scripts/bump-version -notes "${tag}" > "${RUNNER_TEMP}/${tag}.md"
+            tags+=("${tag}")
+          done
+          for tag in "${tags[@]}"; do
+            if lookup="$(gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" --json tagName --jq .tagName 2>&1)"; then
+              gh release edit "${tag}" --repo "${GITHUB_REPOSITORY}" --notes-file "${RUNNER_TEMP}/${tag}.md"
+              echo "${tag}: notes updated from docs/releases/${tag}.md"
+            elif [[ "${lookup}" == *"release not found"* ]]; then
+              echo "::notice file=docs/releases/${tag}.md::No release ${tag} exists yet; the file publishes with it."
+            else
+              echo "${lookup}" >&2
+              exit 1
+            fi
+          done

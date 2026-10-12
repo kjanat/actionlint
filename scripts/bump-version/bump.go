@@ -212,17 +212,17 @@ func (t *target) bump(content []byte, v version) ([]byte, int, error) {
 	return updated, len(occs), nil
 }
 
-func Check(root string, ts []*target, out io.Writer) error {
+func Check(root string, ts []*target, out io.Writer) (string, error) {
 	found := map[string][]string{}
 	for _, t := range ts {
 		path := filepath.Join(root, t.path)
 		content, err := os.ReadFile(path)
 		if err != nil {
-			return fmt.Errorf("could not read %s: %w", t.path, err)
+			return "", fmt.Errorf("could not read %s: %w", t.path, err)
 		}
 		occs, err := t.scan(content)
 		if err != nil {
-			return err
+			return "", err
 		}
 		for _, o := range occs {
 			_, _ = fmt.Fprintf(out, "%s:%d: %s: %s\n", t.path, lineAt(content, o.value.start), o.rule, o.version)
@@ -240,9 +240,12 @@ func Check(root string, ts []*target, out io.Writer) error {
 		_, _ = fmt.Fprintf(out, "version %s is referenced %d time(s)\n", v, len(found[v]))
 	}
 	if len(versions) > 1 {
-		return fmt.Errorf("release version references are inconsistent: %s", strings.Join(versions, ", "))
+		return "", fmt.Errorf("release version references are inconsistent: %s", strings.Join(versions, ", "))
 	}
-	return nil
+	if len(versions) == 0 {
+		return "", errors.New("no declared file references a release version")
+	}
+	return versions[0], nil
 }
 
 func Bump(root string, ts []*target, v version, out io.Writer) error {

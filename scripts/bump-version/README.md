@@ -130,11 +130,13 @@ go run ./scripts/bump-version -notes v1.2.3
 ```
 
 Bumping the version requires a clean working tree, a clean index, the `master` branch, a version tag
-which does not exist yet, and release notes for the version. The notes are the `v1.2.3` section of
-`CHANGELOG.md` when the file has one, and the `Unreleased` entries when it does not. The bump moves
-the `Unreleased` entries into a `v1.2.3` section dated today, so the bump commit carries the
-complete changelog and no post-release edit is needed. Writing the entries under `Unreleased` as
-changes land is the only manual changelog work.
+which does not exist yet, changelog entries for the version, and `docs/releases/v1.2.3.md`. The
+changelog entries are the `v1.2.3` section when the file has one, and the `Unreleased` entries when
+it does not. The bump moves the `Unreleased` entries into a `v1.2.3` section dated today, so the
+bump commit carries the complete changelog and no post-release edit is needed. `-notes` prints
+`docs/releases/v1.2.3.md`, normalized to LF line endings with one trailing newline; the GitHub
+release, GoReleaser and the WinGet manifest publish that text. `-check` requires the file of the
+declared version.
 
 ## Adding a version reference
 
