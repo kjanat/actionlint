@@ -1,7 +1,6 @@
 package actionlint
 
 import (
-	"strconv"
 	"strings"
 	"testing"
 )
@@ -30,6 +29,7 @@ func TestActionSchemaQuotedMemberPaths(t *testing.T) {
 		{"escaped-output", "outputs:\n  'x\"y\\z':\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['x"y\z'].value`},
 		{"dotted-input", "runs:\n  using: composite\n  steps:\n    - uses: owner/action@v1\n      with:\n        a.b: [invalid]\n", `runs.steps[0].with['a.b']`},
 		{"normal-output", "outputs:\n  normal_name:\n    value: [invalid]\nruns: {using: composite, steps: []}\n", "outputs.normal_name.value"},
+		{"control-output", "outputs:\n  \"x\\ny\\tz\\e\":\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['x\ny\tz\x1b'].value`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root, _ := executableFixture(t)
@@ -37,7 +37,7 @@ func TestActionSchemaQuotedMemberPaths(t *testing.T) {
 			writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\n"+tc.body)
 			result := compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
 			for _, finding := range result.Diagnostics {
-				if strings.Contains(finding.Message, "expected a scalar string at "+strconv.Quote(tc.path)) {
+				if strings.Contains(finding.Message, "expected a scalar string at \""+tc.path+"\" in action metadata") {
 					return
 				}
 			}

@@ -443,11 +443,13 @@ func NewExprSemanticsChecker(checkUntrustedInput bool, cfg *Config) *ExprSemanti
 
 func errorAtExpr(e ExprNode, msg string) *ExprError {
 	t := e.Token()
+	_, nameOnly := e.(*FuncCallNode)
 	return &ExprError{
-		Message: msg,
-		Offset:  t.Offset,
-		Line:    t.Line,
-		Column:  t.Column,
+		Message:  msg,
+		Offset:   t.Offset,
+		Line:     t.Line,
+		Column:   t.Column,
+		nameOnly: nameOnly,
 	}
 }
 

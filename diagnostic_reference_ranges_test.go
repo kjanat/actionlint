@@ -61,6 +61,80 @@ func TestWorkflowIndexedReferenceDiagnosticRanges(t *testing.T) {
 	}
 }
 
+func TestFunctionDiagnosticRangeIgnoresResultAccess(t *testing.T) {
+	for _, call := range []string{`format('{0}{1}', 1, 2, 3)`, `startWith('a', 'b')`, `startsWith('a')`} {
+		for _, suffix := range []string{"", "[0]", ".x", "[0].x"} {
+			src := "on: push\nenv:\n  VALUE: ${{ " + call + suffix + " }}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			start := strings.Index(src, call)
+			found := false
+			for _, d := range result.Diagnostics {
+				if strings.Contains(d.Message, "format string") || strings.Contains(d.Message, "undefined function") || strings.Contains(d.Message, "number of arguments") {
+					found = true
+					assertDiagnosticOffsetRange(t, src, d, start, start+strings.IndexByte(call, '('))
+				}
+			}
+			if !found {
+				t.Fatalf("missing function finding for %s%s: %+v", call, suffix, result.Diagnostics)
+			}
+		}
+	}
+}
+
+func TestCompositeDeprecatedCommands(t *testing.T) {
+	for _, mode := range []string{"enabled", "inline", "disabled", "nested", "override-off", "override-on"} {
+		t.Run(mode, func(t *testing.T) {
+			root, _ := executableFixture(t)
+			config := "tools: {shellcheck: false, ruff: false}\n"
+			if mode == "disabled" || mode == "override-on" {
+				config += "lint: {rules: {correctness: {deprecated-commands: off}}}\n"
+			}
+			if mode == "override-off" {
+				config += "overrides:\n  - includes: [inner/action.yml]\n    lint: {rules: {correctness: {deprecated-commands: off}}}\n"
+			}
+			if mode == "override-on" {
+				config += "overrides:\n  - includes: [inner/action.yml]\n    lint: {rules: {correctness: {deprecated-commands: error}}}\n"
+			}
+			writeShellcheckFixture(t, root, ".github/actionlint.yaml", config)
+			body := "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n"
+			body += "    - shell: bash\n"
+			if mode == "inline" {
+				body += "      # actionlint:ignore-next-line deprecated-commands -- legacy fixture\n"
+			}
+			body += "      run: |\n        echo ::set-output name=x::1\n        echo ::set-output name=y::2\n"
+			writeShellcheckFixture(t, root, "inner/action.yml", body)
+			call := "- uses: ./inner"
+			if mode == "nested" {
+				writeShellcheckFixture(t, root, "outer/action.yml", "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: ./inner\n")
+				call = "- uses: ./outer"
+			}
+			result := compositeAnalysis(t, root, call, AnalysisOptions{})
+			count := 0
+			for _, d := range result.Diagnostics {
+				if d.Rule != "deprecated-commands" {
+					continue
+				}
+				start := strings.Index(body, "set-output")
+				if count == 1 {
+					start += len("set-output") + strings.Index(body[start+len("set-output"):], "set-output")
+				}
+				assertDiagnosticOffsetRange(t, body, d, start, start+len("set-output"))
+				count++
+			}
+			want := 2
+			if mode == "inline" || mode == "disabled" || mode == "override-off" {
+				want = 0
+			}
+			if count != want {
+				t.Fatalf("got %d deprecated commands, want %d: %+v", count, want, result.Diagnostics)
+			}
+		})
+	}
+}
+
 func assertDiagnosticOffsetRange(t *testing.T, src string, d Diagnostic, start, end int) {
 	t.Helper()
 	position := func(offset int) (int, int) {

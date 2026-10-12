@@ -15,6 +15,8 @@ type ExprError struct {
 	Column int
 	// rule identifies a separately configurable semantic diagnostic.
 	rule string
+	// nameOnly limits errors about a function itself to its identifier.
+	nameOnly bool
 }
 
 func (e *ExprError) Error() string {

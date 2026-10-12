@@ -267,7 +267,7 @@ func (l *analysisEngine) check(
 		findingConfig := cfg
 		diagnosticLevel := func(kind string) RuleLevel {
 			levelConfig := cfg
-			if (kind == "inline-suppression" || kind == "disallow-suppressions") && (cfg == nil || cfg.Lint.Enabled == nil || *cfg.Lint.Enabled) {
+			if (kind == "inline-suppression" || kind == "disallow-suppressions" || kind == "deprecated-commands") && (cfg == nil || cfg.Lint.Enabled == nil || *cfg.Lint.Enabled) {
 				levelConfig = findingConfig
 			}
 			// Ruff supports per-composite settings while respecting the caller's lint switch.

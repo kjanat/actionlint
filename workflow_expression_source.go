@@ -62,7 +62,7 @@ func (rule *RuleExpression) expressionPosition(offset int, end bool) *Pos {
 	return position
 }
 
-func (rule *RuleExpression) expressionTokenEnd(offset int) *Pos {
+func (rule *RuleExpression) expressionTokenEnd(offset int, nameOnly bool) *Pos {
 	source := rule.expressionSource
 	if source == nil || rule.expressionOffset > len(source.value) {
 		return nil
@@ -76,7 +76,7 @@ func (rule *RuleExpression) expressionTokenEnd(offset int) *Pos {
 	width := len(token.Value)
 	if token.Offset != 0 || width == 0 || token.Kind == TokenKindUnknown {
 		_, width = utf8.DecodeRuneInString(text[offset:])
-	} else if token.Kind == TokenKindIdent {
+	} else if token.Kind == TokenKindIdent && !nameOnly {
 		width = expressionReferenceWidth(lexer, width)
 	}
 	return rule.expressionPosition(rule.expressionOffset+offset+width, true)

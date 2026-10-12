@@ -3,7 +3,9 @@ package actionlint
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
+	"unicode"
 
 	"go.yaml.in/yaml/v4"
 )
@@ -82,7 +84,21 @@ func (rule *RuleAction) checkActionMetadataSchema(meta *ActionMetadata) {
 }
 
 func (rule *RuleAction) actionSchemaError(meta *ActionMetadata, n *yaml.Node, path, message string) {
-	rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "%s at %q in action metadata", message, path)
+	rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "%s at \"%s\" in action metadata", message, actionSchemaDisplayPath(path))
+}
+
+// Keep quotes readable without letting control characters split diagnostic lines.
+func actionSchemaDisplayPath(path string) string {
+	var display strings.Builder
+	for _, r := range path {
+		if unicode.IsControl(r) || r == '\u2028' || r == '\u2029' {
+			quoted := strconv.QuoteRune(r)
+			display.WriteString(quoted[1 : len(quoted)-1])
+		} else {
+			display.WriteRune(r)
+		}
+	}
+	return display.String()
 }
 
 func actionSchemaMemberPath(parent, key string) string {
@@ -162,7 +178,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 						message = fmt.Sprintf("context %q is not available", violation.context)
 					}
 					pos := metadataExpressionPosition(meta, value, violation.offset)
-					rule.metadataErrorfAt(meta, pos.Line, pos.Col, metadataExpressionEndPosition(meta, value, violation), "%s at %q in action metadata", message, location)
+					rule.metadataErrorfAt(meta, pos.Line, pos.Col, metadataExpressionEndPosition(meta, value, violation), "%s at \"%s\" in action metadata", message, actionSchemaDisplayPath(location))
 				}
 			}
 			if definition == "step-if" {
@@ -241,7 +257,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 							message = fmt.Sprintf("context %q is not available in keys", violation.context)
 						}
 						pos := metadataExpressionPosition(meta, expr, violation.offset)
-						rule.metadataErrorfAt(meta, pos.Line, pos.Col, metadataExpressionEndPosition(meta, expr, violation), "%s at %q in action metadata", message, location)
+						rule.metadataErrorfAt(meta, pos.Line, pos.Col, metadataExpressionEndPosition(meta, expr, violation), "%s at \"%s\" in action metadata", message, actionSchemaDisplayPath(location))
 					}
 				}
 			}

@@ -888,7 +888,7 @@ func (rule *RuleExpression) exprError(err *ExprError, lineBase, colBase int) {
 	var end *Pos
 	if mapped := rule.expressionPosition(rule.expressionOffset+err.Offset, false); mapped != nil {
 		pos = mapped
-		end = rule.expressionTokenEnd(err.Offset)
+		end = rule.expressionTokenEnd(err.Offset, err.nameOnly)
 	}
 	kind := err.rule
 	if kind == "" {
