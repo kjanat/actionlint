@@ -123,12 +123,18 @@ test('source links canonicalize workspace paths and validate repository names', 
 		git('remote', 'set-url', 'origin', 'ssh://git@github.example.com/owner/repo.git');
 		assert.ok(summary(result, environment).includes('/blob/'));
 		const previousGitDir = process.env.GIT_DIR;
+		const previousGlobalConfig = process.env.GIT_CONFIG_GLOBAL;
+		const invalidConfig = join(root, 'invalid.gitconfig');
+		await writeFile(invalidConfig, '[invalid');
 		try {
 			process.env.GIT_DIR = join(root, 'missing-git');
+			process.env.GIT_CONFIG_GLOBAL = invalidConfig;
 			assert.ok(summary(result, environment).includes('/blob/'));
 		} finally {
 			if (previousGitDir === undefined) delete process.env.GIT_DIR;
 			else process.env.GIT_DIR = previousGitDir;
+			if (previousGlobalConfig === undefined) delete process.env.GIT_CONFIG_GLOBAL;
+			else process.env.GIT_CONFIG_GLOBAL = previousGlobalConfig;
 		}
 		assert.ok(!summary(result, { ...environment, GITHUB_SHA: '0'.repeat(40) }).includes('/blob/'));
 		git('remote', 'set-url', 'origin', 'https://wrong.example.com/owner/repo.git');

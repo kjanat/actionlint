@@ -1,6 +1,5 @@
 import { execFileSync } from 'node:child_process';
 import { closeSync, constants, fstatSync, openSync, readSync, realpathSync } from 'node:fs';
-import { devNull } from 'node:os';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 
 import type { Environment } from '#runtime';
@@ -28,7 +27,8 @@ export function sourceLinkVerifier(environment: Environment): (path: string) => 
 	const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.toUpperCase().startsWith('GIT_')));
 	Object.assign(env, {
 		GIT_CONFIG_NOSYSTEM: '1',
-		GIT_CONFIG_GLOBAL: devNull,
+		// Git accepts /dev/null on Windows; Node's \\.\nul device path is not a valid Git config path.
+		GIT_CONFIG_GLOBAL: '/dev/null',
 		GIT_TERMINAL_PROMPT: '0',
 		GIT_NO_REPLACE_OBJECTS: '1',
 		GIT_NO_LAZY_FETCH: '1',
