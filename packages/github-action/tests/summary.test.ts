@@ -178,7 +178,7 @@ test('findings are visible with their severity, actual rule, source range and he
 	assert.ok(text.includes('<a href="https://example.com/help">https://example.com/help</a>'));
 	assert.ok(text.includes('<p><code>ci.yml:6:6</code> | Rule: <code>expression</code></p>'));
 	assert.ok(!text.includes('<sub><code>ci.yml'));
-	assert.ok(text.includes('<p><strong>Error:</strong> Undefined variable'));
+	assert.ok(text.includes('<p>🔴 <strong>Error:</strong> Undefined variable'));
 	assert.doesNotMatch(text, /<h[23]>/);
 	assert.ok(text.includes('<br><sub><a href="https://example.com/help">https://example.com/help</a></sub>'));
 	assert.ok(!text.includes('See '));
@@ -296,8 +296,8 @@ test('untrusted Markdown cannot escape snippets or create active links', () => {
 test('findings retain individual severities without count announcements', () => {
 	const diagnostics = [finding, ...['warning', 'info', 'style'].map((severity) => ({ ...finding, severity }))];
 	const text = summary({ ...result, diagnostics, file_count: null });
-	for (const severity of ['Error', 'Warning', 'Notice', 'Style']) {
-		assert.ok(text.includes(`<strong>${severity}:</strong>`));
+	for (const [severity, icon] of [['Error', '🔴'], ['Warning', '⚠️'], ['Notice', 'ℹ️'], ['Style', '💡']]) {
+		assert.ok(text.includes(`<p>${icon} <strong>${severity}:</strong>`));
 	}
 	assert.doesNotMatch(text, /\d+ (?:errors?|warnings?|notices?|style findings?|workflows?)/);
 	assert.equal(reportStatus({ ...result, diagnostics }), '');

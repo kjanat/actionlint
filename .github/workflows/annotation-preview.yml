@@ -1,11 +1,26 @@
 name: Annotation preview
 on:
   workflow_dispatch:
+    inputs:
+      permalink-only:
+        description: Test native source permalink rendering without building the Action
+        type: boolean
+        default: false
 
 permissions: { contents: read, actions: read }
 
 jobs:
+  permalink:
+    name: Source permalink preview
+    if: inputs.permalink-only
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Render bare source permalink
+        run: |
+          printf '%s\n' 'https://github.com/kjanat/actionlint/blob/55c999e33481bbabb53ea99d396892b681af12e4/testdata/err/one_error.yaml#L1-L6' >> "${GITHUB_STEP_SUMMARY}"
   preview:
+    if: ${{ !inputs.permalink-only }}
     name: ${{ matrix.title }} preview
     runs-on: ubuntu-latest
     strategy:

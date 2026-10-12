@@ -174,9 +174,10 @@ export function summary(
 	}
 	for (const diagnostic of result.diagnostics.slice(0, 50)) {
 		const severity = level(diagnostic) === 'info' ? 'notice' : level(diagnostic);
+		const icon = severity === 'error' ? '🔴' : severity === 'warning' ? '⚠️' : severity === 'notice' ? 'ℹ️' : '💡';
 		const rule = diagnostic.code ? `${diagnostic.rule}/${diagnostic.code}` : diagnostic.rule;
 		const prose = diagnostic.message.slice(0, 1000);
-		text += `<p><strong>${html(severity[0]?.toUpperCase() || '')}${html(severity.slice(1))}:</strong> ${
+		text += `<p>${icon} <strong>${html(severity[0]?.toUpperCase() || '')}${html(severity.slice(1))}:</strong> ${
 			message(prose).replaceAll('&#10;', '<br>')
 		}</p>\n\n`;
 		text += `<p>${sourceLink(diagnostic, environment)} | Rule: <code>${html(rule)}</code></p>\n\n`;
