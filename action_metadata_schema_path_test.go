@@ -5,23 +5,6 @@ import (
 	"testing"
 )
 
-func TestActionSchemaMemberPath(t *testing.T) {
-	for _, tc := range []struct{ parent, key, want string }{
-		{"", "runs", "runs"},
-		{"runs", "pre-if", "runs.pre-if"},
-		{"", ".leading", `['.leading']`},
-		{"outputs", "0", `outputs['0']`},
-		{"outputs", "a\nb", "outputs['a\nb']"},
-		{"outputs", "a b", `outputs['a b']`},
-		{"outputs", "a'b", `outputs['a''b']`},
-		{"outputs", "", `outputs['']`},
-	} {
-		if got := actionSchemaMemberPath(tc.parent, tc.key); got != tc.want {
-			t.Errorf("member path(%q, %q) = %q, want %q", tc.parent, tc.key, got, tc.want)
-		}
-	}
-}
-
 func TestActionSchemaQuotedMemberPaths(t *testing.T) {
 	for _, tc := range []struct{ name, body, path string }{
 		{"dotted-output", "outputs:\n  x.y:\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['x.y'].value`},
@@ -38,6 +21,9 @@ func TestActionSchemaQuotedMemberPaths(t *testing.T) {
 		{"line-separator", "outputs:\n  \"p\\u2028q\":\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['p\u2028q'].value`},
 		{"paragraph-separator", "outputs:\n  \"p\\u2029q\":\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['p\u2029q'].value`},
 		{"printable-unicode", "outputs:\n  'café日本':\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['café日本'].value`},
+		{"single-quote", "outputs:\n  \"a'b\":\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['a''b'].value`},
+		{"wildcard-key", "outputs:\n  '*':\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['*'].value`},
+		{"case-preserved", "outputs:\n  MixedCase:\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs.MixedCase.value`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root, _ := executableFixture(t)
@@ -50,6 +36,39 @@ func TestActionSchemaQuotedMemberPaths(t *testing.T) {
 				}
 			}
 			t.Fatalf("missing concrete path %s in %+v", tc.path, result.Diagnostics)
+		})
+	}
+}
+
+func TestActionSchemaExpressionPaths(t *testing.T) {
+	for _, tc := range []struct{ name, body, message string }{
+		{
+			"loose-output-value",
+			"outputs:\n  \"x\\ny\":\n    value: ${{ secrets.X }}\nruns: {using: composite, steps: []}\n",
+			`context "secrets" is not available at "outputs['x\ny'].value" in action metadata`,
+		},
+		{
+			"sequence-value",
+			"runs: {using: docker, image: Dockerfile, args: ['ok', '${{ secrets.X }}']}\n",
+			`context "secrets" is not available at "runs.args[1]" in action metadata`,
+		},
+		{
+			"mapping-key",
+			"runs:\n  using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n    - uses: owner/action@v1\n      with:\n        '${{ secrets.X }}': ok\n",
+			`context "secrets" is not available in keys at "runs.steps[1].with" in action metadata`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, _ := executableFixture(t)
+			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
+			writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\n"+tc.body)
+			result := compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
+			for _, finding := range result.Diagnostics {
+				if strings.Contains(finding.Message, tc.message) {
+					return
+				}
+			}
+			t.Fatalf("missing message %q in %+v", tc.message, result.Diagnostics)
 		})
 	}
 }

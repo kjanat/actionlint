@@ -40,7 +40,7 @@ func TestQuotedFoldedScriptSource(t *testing.T) {
 				t.Fatal(err)
 			}
 			node := root.Content[0].Content[1]
-			p := parser{sourceLines: splitSourceLines([]byte(tc.input))}
+			p := newSourceParser([]byte(tc.input))
 			source := p.scriptSource(node)
 			if source == nil {
 				t.Fatalf("no mapping for %q decoded as %q", tc.input, node.Value)
@@ -91,7 +91,7 @@ func TestQuotedScalarEOFPosition(t *testing.T) {
 						t.Fatal(err)
 					}
 					node := root.Content[0].Content[1]
-					p := parser{sourceLines: splitSourceLines([]byte(input))}
+					p := newSourceParser([]byte(input))
 					source := p.scriptSource(node)
 					lines := strings.Split(node.Value, "\n")
 					got, ok := source.endPos(len(lines), utf8.RuneCountInString(lines[len(lines)-1])+1)
@@ -126,7 +126,7 @@ func TestBlockScalarEOFPosition(t *testing.T) {
 					t.Fatal(err)
 				}
 				node := root.Content[0].Content[1]
-				p := parser{sourceLines: splitSourceLines([]byte(input))}
+				p := newSourceParser([]byte(input))
 				source := p.scriptSource(node)
 				lines := strings.Split(node.Value, "\n")
 				got, ok := source.endPos(len(lines), utf8.RuneCountInString(lines[len(lines)-1])+1)
@@ -150,7 +150,7 @@ func TestQuotedEscapedLineBreakEOFPosition(t *testing.T) {
 					t.Fatal(err)
 				}
 				node := root.Content[0].Content[1]
-				p := parser{sourceLines: splitSourceLines([]byte(input))}
+				p := newSourceParser([]byte(input))
 				source := p.scriptSource(node)
 				lines := strings.Split(node.Value, "\n")
 				got, ok := source.endPos(len(lines), utf8.RuneCountInString(lines[len(lines)-1])+1)

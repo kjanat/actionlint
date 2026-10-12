@@ -23,7 +23,8 @@ func (cache *metadataPositionCache) source(meta *ActionMetadata, value *ActionEx
 	if cache.scalars == nil {
 		cache.scalars = make(map[Pos]*yaml.Node)
 		cache.sources = make(map[Pos]*scriptSource)
-		cache.parser = &parser{sourceLines: splitSourceLines(meta.src)}
+		cache.parser = newSourceParser(meta.src)
+		cache.parser.indexScalarSources(meta.schemaRoot)
 		var visit func(*yaml.Node)
 		visit = func(node *yaml.Node) {
 			if node == nil {
@@ -56,7 +57,7 @@ func (cache *metadataPositionCache) source(meta *ActionMetadata, value *ActionEx
 }
 
 // Metadata diagnostics use the same verified scalar mappings as script analyzers.
-// Unsupported YAML styles and folded expression strings retain the value position.
+// Missing source maps and folded expression strings retain the value position.
 func metadataExpressionPosition(meta *ActionMetadata, value *ActionExprString, offset int) *Pos {
 	fallback := &Pos{Line: value.Line, Col: value.Column}
 	if offset <= 0 || offset > len(value.Value)+1 {

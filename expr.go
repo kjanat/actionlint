@@ -9,14 +9,14 @@ type ExprError struct {
 	Message string
 	// Offset is byte offset position which caused the error
 	Offset int
-	// Offset is line number position which caused the error. Note that this value is 1-based.
+	// EndOffset is the exclusive byte end of the diagnostic's intended range.
+	EndOffset int
+	// Line is line number position which caused the error. Note that this value is 1-based.
 	Line int
 	// Column is column number position which caused the error. Note that this value is 1-based.
 	Column int
 	// rule identifies a separately configurable semantic diagnostic.
 	rule string
-	// nameOnly limits errors about a function itself to its identifier.
-	nameOnly bool
 }
 
 func (e *ExprError) Error() string {

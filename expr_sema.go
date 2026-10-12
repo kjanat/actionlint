@@ -442,14 +442,13 @@ func NewExprSemanticsChecker(checkUntrustedInput bool, cfg *Config) *ExprSemanti
 }
 
 func errorAtExpr(e ExprNode, msg string) *ExprError {
-	t := e.Token()
-	_, nameOnly := e.(*FuncCallNode)
+	span := expressionSpan(e)
 	return &ExprError{
-		Message:  msg,
-		Offset:   t.Offset,
-		Line:     t.Line,
-		Column:   t.Column,
-		nameOnly: nameOnly,
+		Message:   msg,
+		Offset:    span.Start,
+		EndOffset: span.End,
+		Line:      span.Line,
+		Column:    span.Column,
 	}
 }
 
@@ -459,6 +458,14 @@ func errorfAtExpr(e ExprNode, format string, args ...any) *ExprError {
 
 func (sema *ExprSemanticsChecker) errorf(e ExprNode, format string, args ...any) {
 	sema.errs = append(sema.errs, errorfAtExpr(e, format, args...))
+}
+
+func errorfAtCallee(n *FuncCallNode, format string, args ...any) *ExprError {
+	return errorAtToken(n.Token(), fmt.Sprintf(format, args...))
+}
+
+func (sema *ExprSemanticsChecker) calleeErrorf(n *FuncCallNode, format string, args ...any) {
+	sema.errs = append(sema.errs, errorfAtCallee(n, format, args...))
 }
 
 func (sema *ExprSemanticsChecker) ensureVarsCopied() {
@@ -628,7 +635,7 @@ func (sema *ExprSemanticsChecker) checkSpecialFunctionAvailability(n *FuncCallNo
 		return
 	}
 
-	sema.errorf(
+	sema.calleeErrorf(
 		n,
 		"calling function %q is not allowed here. %q is only available in %s. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details",
 		n.Callee,
@@ -966,7 +973,7 @@ func checkFuncSignature(n *FuncCallNode, sig *FuncSignature, args []ExprType) *E
 		if sig.VariableLengthParams {
 			atLeast = "at least "
 		}
-		return errorfAtExpr(
+		return errorfAtCallee(
 			n,
 			"number of arguments is wrong. function %q takes %s%d parameters but %d arguments are given",
 			sig.String(),
@@ -1034,14 +1041,14 @@ func (sema *ExprSemanticsChecker) checkBuiltinFuncCall(n *FuncCallNode, sig *Fun
 
 		for i := range l {
 			if _, ok := holders[i]; !ok {
-				sema.errorf(n, "format string %q does not contain placeholder {%d}. remove argument which is unused in the format string", lit.Value, i)
+				sema.calleeErrorf(n, "format string %q does not contain placeholder {%d}. remove argument which is unused in the format string", lit.Value, i)
 				continue
 			}
 			delete(holders, i) // forget it to check unused placeholders
 		}
 
 		for i := range holders {
-			sema.errorf(n, "format string %q contains placeholder {%d} but only %d arguments are given to format", lit.Value, i, l)
+			sema.calleeErrorf(n, "format string %q contains placeholder {%d} but only %d arguments are given to format", lit.Value, i, l)
 		}
 	case "fromjson":
 		lit, ok := n.Args[0].(*StringNode)
@@ -1065,7 +1072,7 @@ func (sema *ExprSemanticsChecker) checkBuiltinFuncCall(n *FuncCallNode, sig *Fun
 		}
 	case "case":
 		if len(n.Args)%2 == 0 {
-			sema.errorf(n, "case() requires an odd number of arguments (pred/value pairs + default) but got %d", len(n.Args))
+			sema.calleeErrorf(n, "case() requires an odd number of arguments (pred/value pairs + default) but got %d", len(n.Args))
 		}
 	}
 
@@ -1081,14 +1088,14 @@ func (sema *ExprSemanticsChecker) checkFuncCall(n *FuncCallNode) ExprType {
 		for n := range sema.funcs {
 			ss = append(ss, n)
 		}
-		sema.errorf(n, "undefined function %q. available functions are %s", n.Callee, sortedQuotes(ss))
+		sema.calleeErrorf(n, "undefined function %q. available functions are %s", n.Callee, sortedQuotes(ss))
 		return AnyType{}
 	}
 
 	// The runner's expression parser limits these variadic functions to 255 arguments.
 	// https://github.com/actions/runner/blob/759385a3510197a58b5c08dc1f373b74b9f4643b/src/Sdk/DTExpressions2/Expressions2/ExpressionConstants.cs
 	if (callee == "hashfiles" || callee == "format" || callee == "case") && len(n.Args) > 255 {
-		sema.errorf(n, "function %q takes at most 255 arguments but %d arguments are given", n.Callee, len(n.Args))
+		sema.calleeErrorf(n, "function %q takes at most 255 arguments but %d arguments are given", n.Callee, len(n.Args))
 	}
 	if sema.jobCondition && (callee == "success" || callee == "failure") && len(n.Args) > 0 {
 		sigs = []*FuncSignature{{

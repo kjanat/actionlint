@@ -17,7 +17,7 @@ func shellcheckFixSource(t *testing.T, input string) *scriptSource {
 	if err := yaml.Unmarshal([]byte(input), &root); err != nil {
 		t.Fatal(err)
 	}
-	p := &parser{sourceLines: splitSourceLines([]byte(input))}
+	p := newSourceParser([]byte(input))
 	return p.scriptSource(root.Content[0].Content[1])
 }
 

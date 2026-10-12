@@ -72,7 +72,7 @@ func TestScalarSourceReferenceRecorded(t *testing.T) {
 			if want.Kind != "string" || node.Value != want.Value || node.Line != want.Line || node.Column != want.Col {
 				t.Fatalf("reference scalar = %+v; local = %q at %d:%d", want, node.Value, node.Line, node.Column)
 			}
-			p := parser{sourceLines: splitSourceLines([]byte(request.Input))}
+			p := newSourceParser([]byte(request.Input))
 			if p.scriptSource(node) == nil {
 				t.Fatal("reference-compatible scalar has no source mapping")
 			}

@@ -6,25 +6,27 @@ import (
 	"unicode/utf8"
 )
 
-func TestExpressionReferenceWidth(t *testing.T) {
+func TestParserOwnedExpressionSpans(t *testing.T) {
 	for _, tc := range []struct{ text, want string }{
 		{`fromJSON('{"win":1}')['mac']`, `fromJSON('{"win":1}')['mac']`},
 		{`steps.foo.outputs['bar']`, `steps.foo.outputs['bar']`},
 		{`matrix.x.y`, `matrix.x.y`},
-		{`env[inputs.name] && true`, `env[inputs.name]`},
+		{`env[inputs.name] && true`, `env[inputs.name] && true`},
 		{`fromJSON(format('{0}', '[]'))[0].name`, `fromJSON(format('{0}', '[]'))[0].name`},
 		{`env[format('a]b', inputs.name)]`, `env[format('a]b', inputs.name)]`},
-		{`startWith('hello')`, `startWith`},
-		{`format('x', 1) && false`, `format`},
-		{`env['unterminated`, `env`},
-		{`env[inputs.name)`, `env`},
+		{`startWith('hello')`, `startWith('hello')`},
+		{`format('x', 1) && false`, `format('x', 1) && false`},
+		{`(fromJSON('{}'))['mac']`, `(fromJSON('{}'))['mac']`},
 		{`env . NAME [ 'x' ]`, `env . NAME [ 'x' ]`},
 	} {
 		t.Run(tc.text, func(t *testing.T) {
-			lexer := NewExprLexer(tc.text)
-			first := lexer.Next()
-			if got := expressionReferenceWidth(lexer, len(first.Value)); got != len(tc.want) {
-				t.Fatalf("range %q, want %q", tc.text[:got], tc.want)
+			node, err := NewExprParser().Parse(NewExprLexer(tc.text + "}}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			span := expressionSpan(node)
+			if got := tc.text[span.Start:span.End]; got != tc.want {
+				t.Fatalf("range %q, want %q", got, tc.want)
 			}
 		})
 	}
@@ -47,6 +49,9 @@ func TestWorkflowIndexedReferenceDiagnosticRanges(t *testing.T) {
 			}
 			start := strings.Index(src, "${{ ") + 4
 			end := strings.Index(src, " }}")
+			if strings.HasPrefix(expression, "steps.foo") {
+				end = start + len("steps.foo")
+			}
 			found := false
 			for _, d := range result.Diagnostics {
 				if strings.HasPrefix(d.Message, "property ") {

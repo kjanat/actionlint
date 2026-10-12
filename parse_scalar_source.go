@@ -4,246 +4,116 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"actionlint.kjanat.dev/internal/yamlsource"
 	"go.yaml.in/yaml/v4"
 )
 
-// Scalar node positions can name a tag or anchor before the scalar token. Keep
-// the original node for parser diagnostics, and map from its actual content.
-func (p *parser) scalarContentNode(n *yaml.Node) *yaml.Node {
-	if n.Line <= 0 || n.Line > len(p.sourceLines) {
-		return nil
-	}
-	row := n.Line - 1
-	column, ok := byteOffsetAtColumn(p.sourceLines[row], n.Column)
-	if !ok {
-		return nil
-	}
-	content := *n
-	content.Style &^= yaml.TaggedStyle
-	properties := false
-	for row < len(p.sourceLines) {
-		raw := p.sourceLines[row]
-		if properties {
-			for column < len(raw) && (raw[column] == ' ' || raw[column] == '\t') {
-				column++
-			}
-			if column == len(raw) || raw[column] == '#' {
-				row++
-				column = 0
-				continue
+type scalarContext = yamlsource.Context
+
+// Index structural context before alias resolution changes the physical tree.
+// Decode lazily: most workflow scalars never need source-level diagnostics.
+func (p *parser) indexScalarSources(root *yaml.Node) {
+	p.scalarContexts = make(map[Pos]scalarContext)
+	p.scalarSources = make(map[Pos]*scriptSource)
+	var visit func(*yaml.Node, scalarContext)
+	visit = func(n *yaml.Node, context scalarContext) {
+		if n == nil {
+			return
+		}
+		if n.Kind == yaml.ScalarNode {
+			p.scalarContexts[*posAt(n)] = context
+		}
+		if n.Kind == yaml.MappingNode || n.Kind == yaml.SequenceNode {
+			context.Flow = context.Flow || n.Style&yaml.FlowStyle != 0
+			if !context.Flow {
+				context.Indent = scalarCollectionIndent(n, p.sourceLines)
 			}
 		}
-		if column >= len(raw) {
-			return nil
-		}
-		if raw[column] != '!' && raw[column] != '&' {
-			content.Line = row + 1
-			content.Column = utf8.RuneCountInString(raw[:column]) + 1
-			return &content
-		}
-		properties = true
-		if raw[column] == '!' && column+1 < len(raw) && raw[column+1] == '<' {
-			end := strings.IndexByte(raw[column+2:], '>')
-			if end < 0 {
-				return nil
-			}
-			column += end + 3
-			continue
-		}
-		for column < len(raw) && !strings.ContainsRune(" \t,[]{}", rune(raw[column])) {
-			column++
+		for _, child := range n.Content {
+			visit(child, context)
 		}
 	}
-	return nil
+	visit(root, scalarContext{Indent: -1})
 }
 
-// scalarSourceBuilder only publishes mappings when the decoded bytes match the
-// parser's value. YAML folding introduces bytes with no corresponding source token.
-type scalarSourceBuilder struct {
-	source *scriptSource
-	offset int
+// Collection positions can point at properties preceding their first entry.
+// Recover the structural indentation once for all scalar consumers.
+func scalarCollectionIndent(node *yaml.Node, lines []string) int {
+	indent := node.Column - 1
+	if len(node.Content) == 0 {
+		return indent
+	}
+	first := node.Content[0]
+	if node.Kind == yaml.MappingNode {
+		if node.Anchor != "" || node.Style&yaml.TaggedStyle != 0 {
+			indent = first.Column - 1
+			if len(node.Content) > 1 && node.Content[1].Line > first.Line {
+				declaration := lines[node.Content[1].Line-1]
+				prefix := strings.TrimLeft(declaration, " ")
+				if prefix == ":" || strings.HasPrefix(prefix, ": ") || strings.HasPrefix(prefix, ":\t") {
+					indent = len(declaration) - len(prefix)
+				}
+			}
+		}
+	} else if first.Line != node.Line {
+		for line := node.Line; line <= first.Line; line++ {
+			declaration := []rune(lines[line-1])
+			start := 0
+			if line == node.Line {
+				start = node.Column - 1
+			}
+			prefix := strings.TrimLeft(string(declaration[start:]), " ")
+			if prefix == "-" || strings.HasPrefix(prefix, "- ") || strings.HasPrefix(prefix, "-\t") {
+				return len(declaration) - utf8.RuneCountInString(prefix)
+			}
+		}
+	}
+	return indent
 }
 
-func (b *scalarSourceBuilder) append(value string, line, column, width int) bool {
-	if !strings.HasPrefix(b.source.value[b.offset:], value) {
-		return false
-	}
-	if line != 0 && value != "" {
-		previous := len(b.source.spans) - 1
-		if value == "\n" && width != 0 {
-			// An escaped LF crosses decoded lines but occupies one physical
-			// source token. Unlike folded whitespace, both ends are mapped.
-			b.source.spans = append(b.source.spans, scriptSourceSpan{
-				start: b.offset, end: b.offset + len(value),
-				yamlLine: line, yamlColumn: column,
-			})
-		} else if !b.source.mapBytes(b.offset, len(value), line, column) {
-			return false
-		}
-		if width != 0 {
-			b.source.spans[len(b.source.spans)-1].yamlEndColumn = column + width
-		} else if previous >= 0 {
-			prior := &b.source.spans[previous]
-			if prior.yamlEndColumn == 0 && prior.end == b.offset && prior.yamlLine == line {
-				prior.end += len(value)
-				b.source.spans = b.source.spans[:previous+1]
-			}
-		}
-	}
-	b.offset += len(value)
-	return true
-}
-
-func (p *parser) quotedScriptSource(n *yaml.Node) *scriptSource {
-	if n.Line <= 0 || n.Line > len(p.sourceLines) {
+func (p *parser) scriptSource(n *yaml.Node) *scriptSource {
+	if n == nil || n.Kind != 0 && n.Kind != yaml.ScalarNode {
 		return nil
 	}
-	start, ok := byteOffsetAtColumn(p.sourceLines[n.Line-1], n.Column)
-	if !ok || start >= len(p.sourceLines[n.Line-1]) {
-		return nil
-	}
-	quote := byte('\'')
-	if n.Style == yaml.DoubleQuotedStyle {
-		quote = '"'
-	}
-	if p.sourceLines[n.Line-1][start] != quote {
-		return nil
-	}
-	b := scalarSourceBuilder{source: newScriptSource(n.Value)}
-	start++
-	for row := n.Line - 1; row < len(p.sourceLines); row++ {
-		raw := p.sourceLines[row]
-		end := len(strings.TrimRight(raw, " \t"))
-		if quote == '"' && end < len(raw) {
-			backslashes := 0
-			for i := end - 1; i >= start && raw[i] == '\\'; i-- {
-				backslashes++
-			}
-			if backslashes%2 != 0 {
-				end++ // The first space is escaped; subsequent trailing spaces fold.
-			}
-		}
-		continued := false
-		column := utf8.RuneCountInString(raw[:start]) + 1
-		for i := start; i < end; {
-			if raw[i] == quote {
-				if quote == '\'' && i+1 < end && raw[i+1] == quote {
-					if !b.append("'", row+1, column, 2) {
-						return nil
-					}
-					i += 2
-					column += 2
-					continue
-				}
-				if b.offset == len(n.Value) {
-					return b.source
-				}
-				return nil
-			}
-			if quote == '"' && raw[i] == '\\' {
-				if i+1 == end {
-					continued = true
-					break
-				}
-				size := 2
-				switch raw[i+1] {
-				case 'x':
-					size = 4
-				case 'u':
-					size = 6
-				case 'U':
-					size = 10
-				}
-				if i+size > end {
-					return nil
-				}
-				var decoded string
-				if err := yaml.Unmarshal([]byte("\""+raw[i:i+size]+"\""), &decoded); err != nil || !b.append(decoded, row+1, column, size) {
-					return nil
-				}
-				i += size
-				column += size
-				continue
-			}
-			_, size := utf8.DecodeRuneInString(raw[i:])
-			if !b.append(raw[i:i+size], row+1, column, 0) {
-				return nil
-			}
-			i += size
-			column++
-		}
-		next := row + 1
-		for next < len(p.sourceLines) && strings.Trim(p.sourceLines[next], " \t") == "" {
-			next++
-		}
-		if next == len(p.sourceLines) {
+	if p.scalarContexts == nil {
+		// Standalone parser users can request a source map before parsing a tree.
+		var root yaml.Node
+		if err := yaml.Unmarshal([]byte(strings.Join(p.sourceLines, "\n")), &root); err != nil {
 			return nil
 		}
-		breaks := next - row - 1
-		fold := strings.Repeat("\n", breaks)
-		if breaks == 0 && !continued {
-			fold = " "
-		}
-		if !b.append(fold, 0, 0, 0) {
+		p.indexScalarSources(&root)
+	}
+	key := *posAt(n)
+	if source, exists := p.scalarSources[key]; exists {
+		if source != nil && source.value != n.Value {
 			return nil
 		}
-		row = next - 1
-		start = len(p.sourceLines[next]) - len(strings.TrimLeft(p.sourceLines[next], " \t"))
+		return source
 	}
-	return nil
-}
-
-func (p *parser) foldedScriptSource(n *yaml.Node) *scriptSource {
-	if n.Line <= 0 || n.Line >= len(p.sourceLines) {
+	p.scalarSources[key] = nil
+	context, exists := p.scalarContexts[key]
+	if !exists {
 		return nil
 	}
-	first := n.Line
-	for first < len(p.sourceLines) && strings.Trim(p.sourceLines[first], " ") == "" {
-		first++
-	}
-	if first == len(p.sourceLines) {
+	decoded, err := p.scalarDocument.Decode(yamlsource.Position{Line: n.Line, Column: n.Column}, context)
+	if err != nil || decoded.Value != n.Value {
 		return nil
 	}
-	decoded := strings.TrimLeft(n.Value, "\n")
-	indent := len(p.sourceLines[first]) - len(strings.TrimLeft(p.sourceLines[first], " "))
-	indent -= len(decoded) - len(strings.TrimLeft(decoded, " "))
-	if indent <= 0 {
-		return nil
+	source := newScriptSource(decoded.Value)
+	source.literal = decoded.Literal
+	source.contentStart = Pos{Line: decoded.Start.Line, Col: decoded.Start.Column}
+	source.scalarEnd = Pos{Line: decoded.End.Line, Col: decoded.End.Column}
+	for _, span := range decoded.Spans {
+		endColumn := 0
+		if span.Width != 0 {
+			endColumn = span.Column + span.Width
+		}
+		endLine := 0
+		if span.LineBreak {
+			endLine, endColumn = span.Line+1, 1
+		}
+		source.spans = append(source.spans, scriptSourceSpan{start: span.Start, end: span.End, yamlLine: span.Line, yamlColumn: span.Column, yamlEndColumn: endColumn, yamlEndLine: endLine})
 	}
-	b := scalarSourceBuilder{source: newScriptSource(n.Value)}
-	if !b.append(strings.Repeat("\n", first-n.Line), 0, 0, 0) {
-		return nil
-	}
-	for row := first; row < len(p.sourceLines); row++ {
-		raw := p.sourceLines[row]
-		if len(raw) < indent || strings.Trim(raw[:indent], " ") != "" {
-			break
-		}
-		content := raw[indent:]
-		if !b.append(content, row+1, indent+1, 0) {
-			return nil
-		}
-		next := row + 1
-		for next < len(p.sourceLines) && strings.Trim(p.sourceLines[next], " ") == "" {
-			next++
-		}
-		if next == len(p.sourceLines) || len(p.sourceLines[next]) < indent || strings.Trim(p.sourceLines[next][:indent], " ") != "" {
-			break
-		}
-		breaks := next - row - 1
-		fold := strings.Repeat("\n", breaks)
-		if strings.HasPrefix(content, " ") || strings.HasPrefix(content, "\t") || strings.HasPrefix(p.sourceLines[next][indent:], " ") || strings.HasPrefix(p.sourceLines[next][indent:], "\t") {
-			fold += "\n"
-		} else if breaks == 0 {
-			fold = " "
-		}
-		if !b.append(fold, 0, 0, 0) {
-			return nil
-		}
-		row = next - 1
-	}
-	if strings.Trim(b.source.value[b.offset:], "\n") != "" {
-		return nil
-	}
-	return b.source
+	p.scalarSources[key] = source
+	return source
 }

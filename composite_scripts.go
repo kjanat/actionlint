@@ -84,7 +84,8 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *Step, parents []Rule
 		children = append(children, child)
 	}
 	analysis.rules = append(analysis.rules, compositeScriptRules{meta, children})
-	parser := &parser{sourceLines: splitSourceLines(meta.src)}
+	parser := newSourceParser(meta.src)
+	parser.indexScalarSources(meta.schemaRoot)
 	for _, metadataStep := range meta.Runs.Steps {
 		if err := analysis.cancelled(); err != nil {
 			return err

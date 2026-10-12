@@ -539,11 +539,11 @@ Output:
 test.yaml:10:24: property "get_value" is not defined in object type {} [expression]
    |
 10 |       - run: echo '${{ steps.get_value.outputs.name }}'
-   |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                        ^~~~~~~~~~~~~~~
 test.yaml:22:24: property "get_value" is not defined in object type {} [expression]
    |
 22 |       - run: echo '${{ steps.get_value.outputs.name }}'
-   |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                        ^~~~~~~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNqskLFqhUAQRXu/4rIIVvoBC7FIk6RKCq1FzRoNZkecmTTiv4fdmFTCe/BeNcU9Zy5c8haL8ph8Usc2AcSxhAus6jkPuXbqRfO5DVmMSGVR4V8OGIgsTLptYHELFx9Omu92VlccYOHbL4d9N1GI0J+bhx4L14+E7IoX2YlnBqKHSBuUJUz69FI914/Na1291ZU5DGB6t/h/fMf+U68n38/KE/nDIhndenHa28b5CQAA//8V15Jb)
@@ -587,7 +587,7 @@ Output:
 test.yaml:8:23: property "cache" is not defined in object type {} [expression]
   |
 8 |       - run: echo ${{ steps.cache.outputs.cache-hit }}
-  |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  |                       ^~~~~~~~~~~
 test.yaml:18:23: property "cache_hit" is not defined in object type {cache-hit: string} [expression]
    |
 18 |       - run: echo ${{ steps.cache.outputs.cache_hit }}
@@ -879,7 +879,7 @@ Output:
 test.yaml:16:24: property "prepare" is not defined in object type {} [expression]
    |
 16 |       - run: echo '${{ needs.prepare.outputs.prepared }}'
-   |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                        ^~~~~~~~~~~~~
 test.yaml:26:24: property "foo" is not defined in object type {installed: string} [expression]
    |
 26 |       - run: echo '${{ needs.install.outputs.foo }}'
@@ -891,7 +891,7 @@ test.yaml:28:24: property "some_job" is not defined in object type {install: {ou
 test.yaml:33:24: property "build" is not defined in object type {} [expression]
    |
 33 |       - run: echo '${{ needs.build.outputs.built }}'
-   |                        ^~~~~~~~~~~~~~~~~~~~~~~~~
+   |                        ^~~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNqkkd1KxDAQhe/7FIdF2BubB8iriEhrRtOlJqEzwYul7y6Tzaaoi4q9KHQ6P985pzFYpMy+O8WRbQdMgWWYZ30FYpaUhS9F65GzOBhjDuXzkgP3eiaPOUju50GIpbRYKLXlXict6NlHHOslcHwj8VN4PXZAWigNC91E195+sl7R5zP629jd+YxA5NhUsqmCrrXDuurmmKfZXUhl3uKhmru/in68ZUj3ZLebQt+s4H0Sj017VdK0tx+IdcUQHP5s84eAvkJeYvx9SSU/neJYJ6N4Wuz/c9gOl0SalpKyMj4CAAD//41M6vc=)
@@ -932,11 +932,11 @@ Output:
 test.yaml:13:17: "object" value cannot be compared to "string" value with "==" operator [expression]
    |
 13 |         if: ${{ github.event == 'workflow_call' }}
-   |                 ^~~~~~~~~~~~
+   |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 test.yaml:16:17: "bool" value cannot be compared to "number" value with ">" operator [expression]
    |
 16 |         if: ${{ inputs.timeout > 60 }}
-   |                 ^~~~~~~~~~~~~~
+   |                 ^~~~~~~~~~~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNpsj81KwDAQhO99ihGEnFo8eQjUV5Gmbtto3C3NxiIl7y7pH4jednc+ZmaFbQWssnwMQdbXvguhHADPc9J4zID6T5Kk1wro90wWTiRQx1X1Lm5nleIJLYljLWyRXGJNdeiKtktRab6d60JaUD8JTImntwdzx/jB4nHbMHqdkmvoi1jRtjC/Ghvk/J/d2Ro+QkUQhMe/1sejzcW+4PkJOf8EAAD//0dGU1w=)
@@ -3032,19 +3032,19 @@ Output:
 test.yaml:6:16: context "env" is not allowed here. no context is available here. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
   |
 6 |     shell: ${{ env.SHELL }}
-  |                ^~~~~~~~~
+  |                ^~~
 test.yaml:16:17: context "runner" is not allowed here. available contexts are "github", "inputs", "needs", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
    |
 16 |           - ${{ runner.temp }}
-   |                 ^~~~~~~~~~~
+   |                 ^~~~~~
 test.yaml:24:16: context "env" is not allowed here. available contexts are "github", "inputs", "matrix", "needs", "secrets", "strategy", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
    |
 24 |       FOO: ${{ env.BAR }}
-   |                ^~~~~~~
+   |                ^~~
 test.yaml:30:20: context "env" is not allowed here. no context is available here. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
    |
 30 |         shell: ${{ env.SHELL}}
-   |                    ^~~~~~~~~
+   |                    ^~~
 test.yaml:32:33: calling function "success" is not allowed here. "success" is only available in "jobs.<job_id>.if", "jobs.<job_id>.steps.if", "jobs.<job_id>.snapshot.if". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
    |
 32 |         run: echo 'Success? ${{ success() }}'

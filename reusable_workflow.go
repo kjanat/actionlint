@@ -527,7 +527,7 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 
 	wp := resolvePermissionsYAML(&w.Permissions)
 	wc := cacheModeFromYAML(&w.CacheMode)
-	stepParser := parser{sourceLines: splitSourceLines(src)}
+	stepParser := newSourceParser(src)
 	if w.Jobs.Kind == yaml.MappingNode {
 		seenJobs := map[string]bool{}
 		for i := 0; i+1 < len(w.Jobs.Content); i += 2 {

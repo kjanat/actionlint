@@ -3,9 +3,9 @@ package actionlint
 import (
 	"fmt"
 	"slices"
-	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/internal/schemapath"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -79,47 +79,15 @@ func (rule *RuleAction) checkActionMetadataSchema(meta *ActionMetadata) {
 		}
 	}
 	checkTags(meta.schemaRoot)
-	rule.checkActionSchemaValue(meta, meta.schemaRoot, "action-root", "", "", 0, false)
+	rule.checkActionSchemaValue(meta, meta.schemaRoot, "action-root", schemapath.Path{}, 0, false)
 }
 
-func (rule *RuleAction) actionSchemaError(meta *ActionMetadata, n *yaml.Node, path, message string) {
-	rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "%s at \"%s\" in action metadata", message, actionSchemaDisplayPath(path))
+func (rule *RuleAction) actionSchemaError(meta *ActionMetadata, n *yaml.Node, path schemapath.Path, message string) {
+	rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "%s at \"%s\" in action metadata", message, path.Display())
 }
 
-// Keep quotes readable and escape backslashes and non-printable characters.
-func actionSchemaDisplayPath(path string) string {
-	var display strings.Builder
-	for _, r := range path {
-		if r == '\\' || !strconv.IsPrint(r) {
-			quoted := strconv.QuoteRune(r)
-			display.WriteString(quoted[1 : len(quoted)-1])
-		} else {
-			display.WriteRune(r)
-		}
-	}
-	return display.String()
-}
-
-func actionSchemaMemberPath(parent, key string) string {
-	identifier := key != ""
-	for i, r := range key {
-		allowed := r == '_' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || i > 0 && (r == '-' || r >= '0' && r <= '9')
-		if !allowed {
-			identifier = false
-			break
-		}
-	}
-	if !identifier {
-		return parent + "['" + strings.ReplaceAll(key, "'", "''") + "']"
-	}
-	if parent == "" {
-		return key
-	}
-	return parent + "." + key
-}
-
-// path selects schema availability; location names the actual YAML member.
-func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.Node, definition, path, location string, depth int, evaluated bool) {
+func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.Node, definition string, location schemapath.Path, depth int, evaluated bool) {
+	path := location.Schema()
 	n := actionSchemaNode(node)
 	if n == nil || definition == "any" {
 		return
@@ -162,7 +130,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 			}
 		}
 		if slices.Contains(d.variants, variant) {
-			rule.checkActionSchemaValue(meta, n, variant, path, location, depth, evaluated)
+			rule.checkActionSchemaValue(meta, n, variant, location, depth, evaluated)
 		}
 		return
 	}
@@ -177,7 +145,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 						message = fmt.Sprintf("context %q is not available", violation.context)
 					}
 					pos := metadataExpressionPosition(meta, value, violation.offset)
-					rule.metadataErrorfAt(meta, pos.Line, pos.Col, metadataExpressionEndPosition(meta, value, violation), "%s at \"%s\" in action metadata", message, actionSchemaDisplayPath(location))
+					rule.metadataErrorfAt(meta, pos.Line, pos.Col, metadataExpressionEndPosition(meta, value, violation), "%s at \"%s\" in action metadata", message, location.Display())
 				}
 			}
 			if definition == "step-if" {
@@ -229,7 +197,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 			return
 		}
 		for index, value := range n.Content {
-			rule.checkActionSchemaValue(meta, value, d.item, path+".*", fmt.Sprintf("%s[%d]", location, index), depth+1, evaluated)
+			rule.checkActionSchemaValue(meta, value, d.item, location.Index(index), depth+1, evaluated)
 		}
 	case actionSchemaMapping:
 		if n.Kind != yaml.MappingNode {
@@ -247,7 +215,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 				} else if strings.TrimSpace(expr.Value) == "${{ insert }}" {
 					// The template reader treats insert as a mapping directive,
 					// whose value is another mapping or a mapping expression.
-					rule.checkActionSchemaValue(meta, value, definition, path, location, depth+1, evaluated)
+					rule.checkActionSchemaValue(meta, value, definition, location, depth+1, evaluated)
 					continue
 				} else {
 					for _, violation := range actionExpressionViolationsWithInputs(expr.Value, false, path, meta.Inputs) {
@@ -256,7 +224,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 							message = fmt.Sprintf("context %q is not available in keys", violation.context)
 						}
 						pos := metadataExpressionPosition(meta, expr, violation.offset)
-						rule.metadataErrorfAt(meta, pos.Line, pos.Col, metadataExpressionEndPosition(meta, expr, violation), "%s at \"%s\" in action metadata", message, actionSchemaDisplayPath(location))
+						rule.metadataErrorfAt(meta, pos.Line, pos.Col, metadataExpressionEndPosition(meta, expr, violation), "%s at \"%s\" in action metadata", message, location.Display())
 					}
 				}
 			}
@@ -271,9 +239,9 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 			}
 			seen[lower] = true
 			child, known := d.properties[lower]
-			childPath := strings.TrimPrefix(path+"."+lower, ".")
+			childPath := location.Key(*name)
 			if !known {
-				child, childPath = d.loose, path+".*"
+				child, childPath = d.loose, location.LooseKey(*name)
 				if child == "" {
 					// Existing step diagnostics also explain the allowed keys. Runs
 					// fields with values are already checked against the runtime.
@@ -283,7 +251,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 					continue
 				}
 			}
-			rule.checkActionSchemaValue(meta, value, child, childPath, actionSchemaMemberPath(location, *name), depth+1, evaluated)
+			rule.checkActionSchemaValue(meta, value, child, childPath, depth+1, evaluated)
 		}
 		for _, key := range d.required {
 			if !seen[key] && (path != "runs.steps.*" || !slices.Contains([]string{"run", "shell", "uses"}, key)) {

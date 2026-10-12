@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"unicode/utf8"
 )
 
 type actionFunctionLimits struct{ min, max int }
@@ -39,7 +38,7 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 			violation := actionExpressionViolation{message: fmt.Sprintf("has an invalid expression: %v", err)}
 			if conditionSource(s) == s {
 				violation.offset = err.Offset + 1
-				violation.endOffset = metadataExpressionErrorEnd(s, err.Offset) + 1
+				violation.endOffset = err.EndOffset + 1
 			}
 			return []actionExpressionViolation{violation}
 		}
@@ -63,7 +62,7 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 			violation := actionExpressionViolation{message: fmt.Sprintf("has an invalid expression: %v", err)}
 			if err != nil && positionsKnown {
 				violation.offset = expressionOffset + err.Offset + 1
-				violation.endOffset = expressionOffset + metadataExpressionErrorEnd(s, err.Offset) + 1
+				violation.endOffset = expressionOffset + err.EndOffset + 1
 			}
 			out = append(out, violation)
 			break
@@ -148,17 +147,6 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 		})
 	}
 	return out
-}
-
-func metadataExpressionErrorEnd(source string, offset int) int {
-	if offset < 0 || offset >= len(source) {
-		return offset
-	}
-	if token := NewExprLexer(source[offset:]).Next(); token != nil && token.Offset == 0 && token.Value != "" {
-		return offset + len(token.Value)
-	}
-	_, size := utf8.DecodeRuneInString(source[offset:])
-	return offset + size
 }
 
 func actionFunctionArityMatches(signatures []*FuncSignature, count int) bool {
