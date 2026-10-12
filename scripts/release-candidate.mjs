@@ -11,6 +11,22 @@ import { createReleaseCommit, prepareRelease, recordRelease, sourceRoot } from '
 export const workflowPath = '.github/workflows/release-prepare.yml';
 export const manifestName = 'release-candidate.json';
 export const bundleName = 'release-candidate.bundle';
+export const releaseNotesDirectory = 'docs/releases';
+
+/** @param {string} root @param {string} tag */
+export async function releaseNotes(root, tag) {
+	const path = `${releaseNotesDirectory}/${tag}.md`;
+	/** @type {string} */
+	let content;
+	try {
+		content = await readFile(join(root, path), 'utf8');
+	} catch (error) {
+		throw new Error(`${path} is missing; the release notes file publishes with ${tag}`, { cause: error });
+	}
+	const notes = content.replaceAll('\r\n', '\n').replace(/^\n+/, '').replace(/\n+$/, '');
+	if (!notes.trim()) throw new Error(`${path} is empty, so ${tag} would be released without notes`);
+	return `${notes}\n`;
+}
 
 /** @typedef {{name: string, size: number, sha256: string}} CandidateAsset */
 /** @typedef {{version: string, source: string, candidate: string, tree: string}} CandidateMetadata */
@@ -473,11 +489,22 @@ export async function promoteCandidate(root, version, runID, repository) {
 			throw new Error('Draft manifest differs from immutable workflow artifact');
 		}
 		await verifyCandidate(root, directory, manifest);
+		const body = await releaseNotes(root, manifest.tag);
+		if (typeof release.body === 'string' && `${release.body.replaceAll('\r\n', '\n').trim()}\n` !== body) {
+			console.error(
+				`The draft notes differ from ${releaseNotesDirectory}/${manifest.tag}.md; publication uses the file.`,
+			);
+		}
 		return finalizePromotion(manifest, release, {
 			git: (...args) => git(root, ...args),
 			record: (tag, source) => recordRelease(root, tag, source),
 			publish: (id) =>
-				api(root, `repos/${repository}/releases/${id}`, { draft: false, prerelease: false, make_latest: 'legacy' }),
+				api(root, `repos/${repository}/releases/${id}`, {
+					draft: false,
+					prerelease: false,
+					make_latest: 'legacy',
+					body,
+				}),
 		});
 	} finally {
 		if (dirname(temporary) === tempRoot) await rm(temporary, { recursive: true, force: true });

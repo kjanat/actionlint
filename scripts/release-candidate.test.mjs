@@ -16,6 +16,7 @@ import {
 	manifestName,
 	parseManifest,
 	prepareCandidate,
+	releaseNotes,
 	verifyAssets,
 	verifyCandidate,
 	verifyRun,
@@ -792,3 +793,20 @@ for (
 		else assert.equal(result.status, 1, result.stdout + result.stderr);
 	});
 }
+
+test('promotion publishes docs/releases with LF endings and one trailing newline', async () => {
+	const root = await mkdtemp(join(tmpdir(), 'actionlint-release-notes-'));
+	try {
+		await assert.rejects(releaseNotes(root, 'v1.2.3'), /docs\/releases\/v1\.2\.3\.md is missing/);
+		const file = join(root, 'docs', 'releases', 'v1.2.3.md');
+		await mkdir(dirname(file), { recursive: true });
+		await writeFile(file, '\r\n# Title\r\n\r\n- change\r\n\r\n');
+		assert.equal(await releaseNotes(root, 'v1.2.3'), '# Title\n\n- change\n');
+		await writeFile(file, '\n    indented code\nText  \n');
+		assert.equal(await releaseNotes(root, 'v1.2.3'), '    indented code\nText  \n');
+		await writeFile(file, ' \n');
+		await assert.rejects(releaseNotes(root, 'v1.2.3'), /is empty/);
+	} finally {
+		await rm(root, { recursive: true, force: true });
+	}
+});
