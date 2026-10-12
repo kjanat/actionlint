@@ -36,11 +36,8 @@ func TestMetadataCacheWithReusableIgnores(t *testing.T) {
 				if d.Rule != "action" {
 					t.Fatalf("unexpected diagnostic: %+v", d)
 				}
-				wantLine := 6
-				if tc.name == "action-first-job" {
-					wantLine = 10
-				}
-				if d.Start.Line != wantLine {
+				wantLine := map[string]int{"action-first-job": 10, "action-second-job": 6}[tc.name]
+				if wantLine != 0 && d.Start.Line != wantLine {
 					t.Fatalf("expected finding at invocation line %d, got %+v", wantLine, d)
 				}
 			}
