@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -66,9 +67,26 @@ test('source links canonicalize workspace paths and validate repository names', 
 		await writeFile(join(root, 'ci.yml'), 'external');
 		const filename = process.platform === 'win32' ? 'a #.yml' : 'a #?.yml';
 		await writeFile(join(workspace, 'sub', filename), 'source');
+		const git = (...args: string[]): string =>
+			execFileSync('git', [
+				'-C',
+				workspace,
+				'-c',
+				'user.name=Test',
+				'-c',
+				'user.email=test@example.com',
+				'-c',
+				'commit.gpgsign=false',
+				...args,
+			], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+		git('init', '--template=');
+		git('add', '.');
+		git('commit', '-m', 'Fixture');
+		git('remote', 'add', 'origin', 'https://github.example.com/owner/repo.git');
+		const sha = git('rev-parse', 'HEAD');
 		const environment = {
 			GITHUB_REPOSITORY: 'owner/repo',
-			GITHUB_SHA: 'a'.repeat(40),
+			GITHUB_SHA: sha,
 			GITHUB_SERVER_URL: 'https://github.example.com',
 			GITHUB_WORKSPACE: workspace,
 			'INPUT_WORKING-DIRECTORY': 'sub',
@@ -79,7 +97,7 @@ test('source links canonicalize workspace paths and validate repository names', 
 		);
 		assert.ok(
 			text.includes(
-				`href="https://github.example.com/owner/repo/blob/${'a'.repeat(40)}/sub/${encodeURIComponent(filename)}#L6-L8"`,
+				`href="https://github.example.com/owner/repo/blob/${sha}/sub/${encodeURIComponent(filename)}#L6-L8"`,
 			),
 		);
 		assert.ok(text.includes(`<code>${filename}:6:6</code></a>`));
@@ -99,8 +117,35 @@ test('source links canonicalize workspace paths and validate repository names', 
 			!summary({ ...result, diagnostics: [{ ...finding, path: 'missing.yml' }] }, environment).includes('/blob/'),
 		);
 		for (const repository of ['owner/.github', 'owner/.hidden']) {
+			git('remote', 'set-url', 'origin', `git@github.example.com:${repository}.git`);
 			assert.ok(summary(result, { ...environment, GITHUB_REPOSITORY: repository }).includes(`/${repository}/blob/`));
 		}
+		git('remote', 'set-url', 'origin', 'ssh://git@github.example.com/owner/repo.git');
+		assert.ok(summary(result, environment).includes('/blob/'));
+		const previousGitDir = process.env.GIT_DIR;
+		try {
+			process.env.GIT_DIR = join(root, 'missing-git');
+			assert.ok(summary(result, environment).includes('/blob/'));
+		} finally {
+			if (previousGitDir === undefined) delete process.env.GIT_DIR;
+			else process.env.GIT_DIR = previousGitDir;
+		}
+		assert.ok(!summary(result, { ...environment, GITHUB_SHA: '0'.repeat(40) }).includes('/blob/'));
+		git('remote', 'set-url', 'origin', 'https://wrong.example.com/owner/repo.git');
+		assert.ok(!summary(result, environment).includes('/blob/'));
+		git('remote', 'set-url', 'origin', 'https://github.example.com/other/repo.git');
+		assert.ok(!summary(result, environment).includes('/blob/'));
+		git('remote', 'set-url', 'origin', 'https://github.example.com/owner/repo.git');
+		await writeFile(join(workspace, 'sub', 'ci.yml'), 'modified');
+		assert.ok(!summary(result, environment).includes('/blob/'));
+		await writeFile(join(workspace, 'sub', 'ci.yml'), 'source');
+		await writeFile(join(workspace, 'sub', 'untracked.yml'), 'source');
+		assert.ok(
+			!summary({ ...result, diagnostics: [{ ...finding, path: 'untracked.yml' }] }, environment).includes('/blob/'),
+		);
+		assert.ok(
+			!summary(result, { ...environment, GITHUB_WORKSPACE: root, 'INPUT_WORKING-DIRECTORY': '.' }).includes('/blob/'),
+		);
 		await symlink(
 			join(workspace, 'sub'),
 			join(workspace, 'internal'),
@@ -113,6 +158,8 @@ test('source links canonicalize workspace paths and validate repository names', 
 		assert.ok(
 			summary(result, { ...environment, GITHUB_WORKSPACE: join(root, 'linked-workspace') }).includes('/sub/ci.yml#L6'),
 		);
+		execFileSync('git', ['-C', join(workspace, 'sub'), 'init', '--template='], { stdio: 'ignore' });
+		assert.ok(!summary(result, environment).includes('/blob/'));
 	} finally {
 		await rm(root, { recursive: true, force: true });
 	}

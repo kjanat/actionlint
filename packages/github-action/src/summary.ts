@@ -5,6 +5,7 @@ import stringWidth from 'string-width';
 
 import type { ActionResult, Diagnostic } from '#result';
 import type { Environment } from '#runtime';
+import { sourceLinkVerifier } from '#source-links';
 
 function html(value: string): string {
 	return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
@@ -39,7 +40,7 @@ function message(value: string): string {
 	}).join('');
 }
 
-function sourceLink(diagnostic: Diagnostic, environment: Environment): string {
+function sourceLink(diagnostic: Diagnostic, environment: Environment, verified: (path: string) => boolean): string {
 	const label = `<code>${html(diagnostic.path)}:${diagnostic.start.line}:${diagnostic.start.column}</code>`;
 	const repository = environment.GITHUB_REPOSITORY || '';
 	const sha = environment.GITHUB_SHA || '';
@@ -66,6 +67,7 @@ function sourceLink(diagnostic: Diagnostic, environment: Environment): string {
 		return label;
 	}
 	if (!path || isAbsolute(path) || path === '..' || path.startsWith(`..${sep}`)) return label;
+	if (!verified(path)) return label;
 	const encoded = path.split(sep).map(encodeURIComponent).join('/');
 	const end = diagnostic.end.line > diagnostic.start.line && diagnostic.end.column === 1
 		? diagnostic.end.line - 1
@@ -162,6 +164,7 @@ export function summary(
 	environment: Environment = {},
 	contexts = new Map<Diagnostic, string[]>(),
 ): string {
+	const verified = sourceLinkVerifier(environment);
 	const label = environment['INPUT_SUMMARY-TITLE']?.trim();
 	let text = label ? `<p><strong>${html(label.replaceAll(/[\r\n]/g, ' ').slice(0, 120))}</strong></p>\n\n` : '';
 	const state = status(result);
@@ -180,7 +183,7 @@ export function summary(
 		text += `<p>${icon} <strong>${html(severity[0]?.toUpperCase() || '')}${html(severity.slice(1))}:</strong> ${
 			message(prose).replaceAll('&#10;', '<br>')
 		}</p>\n\n`;
-		text += `<p>${sourceLink(diagnostic, environment)} | Rule: <code>${html(rule)}</code></p>\n\n`;
+		text += `<p>${sourceLink(diagnostic, environment, verified)} | Rule: <code>${html(rule)}</code></p>\n\n`;
 		if (diagnostic.snippet || contexts.has(diagnostic)) {
 			text += `<pre lang="yaml">${html(contextualSnippet(diagnostic, contexts.get(diagnostic)))}</pre>\n\n`;
 		}

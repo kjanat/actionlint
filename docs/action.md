@@ -185,8 +185,9 @@ pushes or pull requests; ordinary CI checks annotation payloads in captured outp
 The job summary shows findings with source
 excerpts, caret ranges and two surrounding lines on either side when the source is available.
 Documentation URLs appear on their own line. Source locations link to the
-run's commit when GitHub repository metadata is available; paths outside the
-workspace remain plain text. Locations respect `working-directory`.
+run's commit only when the checkout matches its repository and revision and the file
+matches the committed bytes. Modified, generated, external and nested-checkout files remain plain text.
+Locations respect `working-directory`.
 Findings remain visible without expanding a details section. Incomplete analysis
 is identified separately from lint findings. For multiple invocations in one job,
 set `summary-title: Production workflows` to add a small report label. Summaries have no title by default.
