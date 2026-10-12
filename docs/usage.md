@@ -7,9 +7,7 @@ This document describes how to use [actionlint](../README.md).
 ## `actionlint` command
 
 With no argument, actionlint finds all workflow files in the current repository
-and checks them. The repository is the nearest directory containing `.git`. A
-repository without workflow files passes with nothing to check. Running outside
-a repository is an error.
+and checks them.
 
 ```sh
 actionlint
