@@ -33,7 +33,11 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 	base, positionsKnown := 0, true
 	if bare && (!strings.Contains(s, "${{") || literalExpressionValue(s) != nil) {
 		if _, err, _ := parseConditionExpression(s); err != nil {
-			return []actionExpressionViolation{{message: fmt.Sprintf("has an invalid expression: %v", err)}}
+			violation := actionExpressionViolation{message: fmt.Sprintf("has an invalid expression: %v", err)}
+			if conditionSource(s) == s {
+				violation.offset = err.Offset + 1
+			}
+			return []actionExpressionViolation{violation}
 		}
 		folded := conditionSource(s)
 		positionsKnown = folded == s
@@ -53,7 +57,11 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 		lex := NewExprLexer(s)
 		expr, err := NewExprParser().Parse(lex)
 		if err != nil || expr == nil {
-			out = append(out, actionExpressionViolation{message: fmt.Sprintf("has an invalid expression: %v", err)})
+			violation := actionExpressionViolation{message: fmt.Sprintf("has an invalid expression: %v", err)}
+			if err != nil && positionsKnown {
+				violation.offset = expressionOffset + err.Offset + 1
+			}
+			out = append(out, violation)
 			break
 		}
 		// The lexer consumes the closing delimiter and skips delimiters inside strings.
@@ -76,9 +84,6 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 					}
 					if suggestion != "" {
 						v.message = fmt.Sprintf("uses undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
-						if positionsKnown {
-							v.offset = expressionOffset + n.Token().Offset + 1
-						}
 					} else {
 						v.context = name
 					}
@@ -91,6 +96,9 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 							v := actionExpressionViolation{message: fmt.Sprintf("fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", collision.first, collision.second, collision.offset)}
 							if !seen[v] {
 								seen[v] = true
+								if positionsKnown {
+									v.offset = expressionOffset + n.Token().Offset + 1
+								}
 								out = append(out, v)
 							}
 						}
@@ -121,6 +129,9 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 			identity.offset = 0
 			if identity != (actionExpressionViolation{}) && !seen[identity] {
 				seen[identity] = true
+				if positionsKnown {
+					v.offset = expressionOffset + node.Token().Offset + 1
+				}
 				out = append(out, v)
 			}
 		})

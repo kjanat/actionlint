@@ -1646,7 +1646,7 @@
     "reason": "SchemaStore accepts duplicate composite step IDs; runner WorkflowTemplateConverter.ConvertToSteps and IdBuilder.TryAddKnownId require case-insensitive uniqueness. The fixture repeats pleasantries.",
     "cases": {
       "schemastore/src/test/github-action/composite-run-steps.json": [
-        "<action>/action.yml:38:15: step 4 in \"runs.steps\" section in metadata of \"Test composite run steps\" action has duplicate ID \"pleasantries\"; step IDs are case insensitive [action]"
+        "<action>/action.yml:38:15: \"runs.steps[3]\" in metadata of \"Test composite run steps\" action has duplicate ID \"pleasantries\"; step IDs are case insensitive [action]"
       ]
     }
   }

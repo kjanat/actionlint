@@ -1,0 +1,56 @@
+package actionlint
+
+import (
+	"strings"
+	"testing"
+	"unicode/utf8"
+)
+
+func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
+	const composite = "runs:\n  using: composite\n  steps:\n    - shell: bash\n      "
+	for _, tc := range []struct{ name, body, token, message string }{
+		{"context", composite + "run: echo ${{ forbidden_context.value }}\n", "forbidden_context", "not available"},
+		{"unknown-function", composite + "run: echo ${{ nonexistentFunction() }}\n", "nonexistentFunction", "unknown function"},
+		{"arity", composite + "run: echo ${{ contains('a') }}\n", "contains", "invalid number"},
+		{"special-function", composite + "run: echo ${{ always() }}\n", "always", "not available"},
+		{"json-collision", composite + "run: |\n        echo ${{ fromJSON('{\"a\":1,\"A\":2}') }}\n", "fromJSON", "collide"},
+		{"syntax", composite + "run: echo ${{ github.ref + 'main' }}\n", "+", "invalid expression"},
+		{"later-syntax", composite + "run: echo ${{ github.ref }} ${{ github.ref + 'main' }}\n", "+", "invalid expression"},
+		{"syntax-eof", composite + "run: echo ${{ github.ref", "github.ref", "invalid expression"},
+		{"bare-syntax", composite + "run: echo ok\n      if: github.ref + 'main'\n", "+", "invalid expression"},
+		{"later-context", composite + "run: echo ${{ github.ref }} ${{ forbidden_context.value }}\n", "forbidden_context", "not available"},
+		{"input-default", "inputs:\n  test:\n    description: test\n    default: prefix ${{ forbidden_context.value }}\n" + composite + "run: echo ok\n", "forbidden_context", "not available"},
+		{"schema-value", "outputs:\n  test:\n    description: test\n    value: prefix ${{ forbidden_context.value }}\n" + composite + "run: echo ok\n", "forbidden_context", "not available"},
+		{"schema-key", "runs:\n  using: docker\n  image: docker://alpine\n  env:\n    prefix_${{ forbidden_context.value }}: value\n", "forbidden_context", "not available in keys"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, _ := executableFixture(t)
+			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
+			metadata := "name: inner\ndescription: test\n" + tc.body
+			writeShellcheckFixture(t, root, "inner/action.yml", metadata)
+			result := compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
+			var matched []Diagnostic
+			for _, d := range result.Diagnostics {
+				if strings.Contains(d.Message, tc.message) {
+					matched = append(matched, d)
+				}
+			}
+			if len(matched) != 1 {
+				t.Fatalf("want one %q diagnostic: %+v", tc.message, result.Diagnostics)
+			}
+			var want DiagnosticPosition
+			for i, line := range strings.Split(metadata, "\n") {
+				if col := strings.Index(line, tc.token); col >= 0 {
+					want = DiagnosticPosition{Line: i + 1, Column: utf8.RuneCountInString(line[:col]) + 1}
+					if tc.name == "syntax-eof" {
+						want.Column = utf8.RuneCountInString(line) + 1
+					}
+					break
+				}
+			}
+			if matched[0].Start != want {
+				t.Fatalf("want %+v got %+v: %s", want, matched[0].Start, matched[0].Message)
+			}
+		})
+	}
+}

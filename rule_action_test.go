@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestRuleActionSelfRepositoryUsesLocalSpec(t *testing.T) {
@@ -69,7 +70,7 @@ func TestCompositeStepUnavailableContexts(t *testing.T) {
 			for _, ctx := range tc.want {
 				want = append(want, actionExpressionViolation{context: ctx})
 			}
-			if diff := cmp.Diff(want, got, cmp.AllowUnexported(actionExpressionViolation{})); diff != "" {
+			if diff := cmp.Diff(want, got, cmp.AllowUnexported(actionExpressionViolation{}), cmpopts.IgnoreFields(actionExpressionViolation{}, "offset")); diff != "" {
 				t.Fatal(diff)
 			}
 		})
@@ -96,7 +97,7 @@ func TestActionInputDefaultUnavailableContexts(t *testing.T) {
 			for _, ctx := range tc.want {
 				want = append(want, actionExpressionViolation{context: ctx})
 			}
-			if diff := cmp.Diff(want, got, cmp.AllowUnexported(actionExpressionViolation{})); diff != "" {
+			if diff := cmp.Diff(want, got, cmp.AllowUnexported(actionExpressionViolation{}), cmpopts.IgnoreFields(actionExpressionViolation{}, "offset")); diff != "" {
 				t.Fatal(diff)
 			}
 		})

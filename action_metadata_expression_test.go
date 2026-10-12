@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -24,7 +25,7 @@ func TestActionExpressionContextSuggestions(t *testing.T) {
 	} {
 		t.Run(tc.field+"/"+tc.expression, func(t *testing.T) {
 			got := actionExpressionViolations(tc.expression, tc.field == "runs.steps.*.if", tc.field)
-			if diff := cmp.Diff(tc.want, got, cmp.AllowUnexported(actionExpressionViolation{})); diff != "" {
+			if diff := cmp.Diff(tc.want, got, cmp.AllowUnexported(actionExpressionViolation{}), cmpopts.IgnoreFields(actionExpressionViolation{}, "offset")); diff != "" {
 				t.Fatal(diff)
 			}
 		})
@@ -116,7 +117,7 @@ func TestActionExpressionFunctions(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if diff := cmp.Diff(tc.want, actionExpressionViolations(tc.expression, tc.bare, tc.field), cmp.AllowUnexported(actionExpressionViolation{})); diff != "" {
+			if diff := cmp.Diff(tc.want, actionExpressionViolations(tc.expression, tc.bare, tc.field), cmp.AllowUnexported(actionExpressionViolation{}), cmpopts.IgnoreFields(actionExpressionViolation{}, "offset")); diff != "" {
 				t.Fatal(diff)
 			}
 		})

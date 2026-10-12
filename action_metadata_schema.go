@@ -142,7 +142,8 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 					if violation.context != "" {
 						message = fmt.Sprintf("context %q is not available", violation.context)
 					}
-					rule.actionSchemaError(meta, n, path, message)
+					pos := metadataExpressionPosition(meta, value, violation.offset)
+					rule.metadataErrorfAt(meta, pos.Line, pos.Col, "%s at %q in action metadata", message, path)
 				}
 			}
 			if definition == "step-if" {
@@ -220,7 +221,8 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 						if violation.context != "" {
 							message = fmt.Sprintf("context %q is not available in keys", violation.context)
 						}
-						rule.actionSchemaError(meta, key, path, message)
+						pos := metadataExpressionPosition(meta, expr, violation.offset)
+						rule.metadataErrorfAt(meta, pos.Line, pos.Col, "%s at %q in action metadata", message, path)
 					}
 				}
 			}

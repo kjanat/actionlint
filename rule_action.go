@@ -552,7 +552,7 @@ func (rule *RuleAction) compositeStepErrorf(meta *ActionMetadata, s *ActionCompo
 // specific key's value inside the step.
 func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, idx, line, col int, format string, args ...any) {
 	m := fmt.Sprintf(format, args...)
-	err := errorAt(&Pos{Line: line, Col: col}, rule.name, fmt.Sprintf(`step %d in "runs.steps" section in metadata of %q action %s`, idx+1, meta.Name, m))
+	err := errorAt(&Pos{Line: line, Col: col}, rule.name, fmt.Sprintf(`"runs.steps[%d]" in metadata of %q action %s`, idx, meta.Name, m))
 	err.Filepath = meta.Path()
 	err.source = meta.src
 	if idx >= 0 && idx < len(meta.Runs.Steps) {
@@ -591,6 +591,7 @@ func (rule *RuleAction) checkActionInputDefaults(meta *ActionMetadata) {
 	const field = "inputs.*.default"
 	for _, kv := range meta.InputDefaults {
 		for _, v := range actionExpressionViolationsWithInputs(kv.Value.Value, false, field, meta.Inputs) {
+			pos := metadataExpressionPosition(meta, &kv.Value, v.offset)
 			message := v.message
 			if v.context != "" {
 				message = fmt.Sprintf(
@@ -599,7 +600,7 @@ func (rule *RuleAction) checkActionInputDefaults(meta *ActionMetadata) {
 				)
 			}
 			rule.metadataErrorfAt(
-				meta, kv.Value.Line, kv.Value.Column,
+				meta, pos.Line, pos.Col,
 				`default value of input %q in metadata of %q action %s`, kv.Name, meta.Name, message,
 			)
 		}

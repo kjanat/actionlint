@@ -387,6 +387,7 @@ type ActionMetadata struct {
 	file         string
 	src          []byte
 	schemaRoot   *yaml.Node
+	positions    *metadataPositionCache
 	// Name is "name" field of action.yaml.
 	Name string `yaml:"name" json:"name"`
 	// Description is "description" field of action.yaml.
@@ -432,6 +433,7 @@ func (md *ActionMetadata) UnmarshalYAML(n *yaml.Node) error {
 		}
 	}
 	md.schemaRoot = n
+	md.positions = &metadataPositionCache{}
 	md.InputDefaults = collectInputDefaults(n)
 	return err
 }
