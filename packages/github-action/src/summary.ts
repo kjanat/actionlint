@@ -1,3 +1,4 @@
+import { realpathSync } from 'node:fs';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 
 import stringWidth from 'string-width';
@@ -34,7 +35,7 @@ function message(value: string): string {
 				break;
 			}
 		}
-		return `<br><sub><a href="${html(url)}">Documentation</a></sub>${html(part.slice(url.length))}`;
+		return `<br><sub><a href="${html(url)}">${html(url)}</a></sub>${html(part.slice(url.length))}`;
 	}).join('');
 }
 
@@ -43,7 +44,11 @@ function sourceLink(diagnostic: Diagnostic, environment: Environment): string {
 	const repository = environment.GITHUB_REPOSITORY || '';
 	const sha = environment.GITHUB_SHA || '';
 	const server = environment.GITHUB_SERVER_URL || 'https://github.com';
-	if (!/^[\w-][\w.-]*\/[\w-][\w.-]*$/.test(repository) || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(sha)) return label;
+	if (
+		!/^[\w-][\w.-]*\/[\w.-]+$/.test(repository)
+		|| repository.split('/').some(segment => segment === '.' || segment === '..')
+		|| !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(sha)
+	) return label;
 	let origin: URL;
 	try {
 		origin = new URL(server);
@@ -51,9 +56,15 @@ function sourceLink(diagnostic: Diagnostic, environment: Environment): string {
 		return label;
 	}
 	if (origin.protocol !== 'https:' || origin.username || origin.password) return label;
-	const workspace = resolve(environment.GITHUB_WORKSPACE || '.');
-	const directory = resolve(workspace, environment['INPUT_WORKING-DIRECTORY'] || '.');
-	const path = relative(workspace, resolve(directory, diagnostic.path));
+	let path: string;
+	try {
+		const configuredWorkspace = resolve(environment.GITHUB_WORKSPACE || '.');
+		const workspace = realpathSync(configuredWorkspace);
+		const directory = resolve(configuredWorkspace, environment['INPUT_WORKING-DIRECTORY'] || '.');
+		path = relative(workspace, realpathSync(resolve(directory, diagnostic.path)));
+	} catch {
+		return label;
+	}
 	if (!path || isAbsolute(path) || path === '..' || path.startsWith(`..${sep}`)) return label;
 	const encoded = path.split(sep).map(encodeURIComponent).join('/');
 	const end = diagnostic.end.line > diagnostic.start.line && diagnostic.end.column === 1
@@ -110,7 +121,7 @@ function failureMessage(message: string, environment: Environment): string {
 }
 
 // Source columns count code points; caret padding uses displayed character widths.
-export function diagnosticSnippet(diagnostic: Diagnostic): string {
+export function diagnosticSnippet(diagnostic: Diagnostic, numbered = true): string {
 	const source = Array.from((diagnostic.snippet || '').split('\n')[0] || '');
 	const offset = Math.max(0, Math.min(source.length, diagnostic.start.column - 1) - 80);
 	const line = source.slice(offset, offset + 240);
@@ -123,28 +134,23 @@ export function diagnosticSnippet(diagnostic: Diagnostic): string {
 	const width = Math.max(1, stringWidth(expand(line.slice(start, end))));
 	const number = String(diagnostic.start.line);
 	const preview = (offset ? '…' : '') + expand(line) + (source.length > offset + line.length ? '…' : '');
-	return `${number} | ${preview}\n${' '.repeat(number.length)} | ${' '.repeat(stringWidth(prefix))}^${
-		'~'.repeat(width - 1)
-	}`;
+	const caret = `${' '.repeat(stringWidth(prefix))}^${'~'.repeat(width - 1)}`;
+	return numbered ? `${number} | ${preview}\n${' '.repeat(number.length)} | ${caret}` : `${preview}\n${caret}`;
 }
 
 function contextualSnippet(diagnostic: Diagnostic, lines?: string[]): string {
-	if (!lines) return diagnosticSnippet(diagnostic);
+	if (!lines) return diagnosticSnippet(diagnostic, false);
 	const first = Math.max(1, diagnostic.start.line - 2);
 	const last = Math.min(lines.length, diagnostic.start.line + 2);
-	const width = String(last).length;
 	const output: string[] = [];
 	for (let number = first; number <= last; number++) {
 		const snippet = lines[number - 1] || '';
 		if (number === diagnostic.start.line) {
-			const rendered = diagnosticSnippet({ ...diagnostic, snippet }).split('\n');
-			output.push(...rendered.map(line => ' '.repeat(width - String(number).length) + line));
+			output.push(diagnosticSnippet({ ...diagnostic, snippet }, false));
 		} else {
 			const points = Array.from(snippet);
 			output.push(
-				`${String(number).padStart(width)} | ${points.slice(0, 240).join('').replaceAll('\t', '    ')}${
-					points.length > 240 ? '…' : ''
-				}`,
+				`${points.slice(0, 240).join('').replaceAll('\t', '    ')}${points.length > 240 ? '…' : ''}`,
 			);
 		}
 	}
@@ -169,11 +175,11 @@ export function summary(
 	for (const diagnostic of result.diagnostics.slice(0, 50)) {
 		const severity = level(diagnostic) === 'info' ? 'notice' : level(diagnostic);
 		const rule = diagnostic.code ? `${diagnostic.rule}/${diagnostic.code}` : diagnostic.rule;
-		const prose = diagnostic.message.slice(0, 1000).replace(/([.!?])\s+(?=(?:avoid|instead|see)\b)/gi, '$1\n');
+		const prose = diagnostic.message.slice(0, 1000);
 		text += `<p><strong>${html(severity[0]?.toUpperCase() || '')}${html(severity.slice(1))}:</strong> ${
 			message(prose).replaceAll('&#10;', '<br>')
 		}</p>\n\n`;
-		text += `<p><sub>${sourceLink(diagnostic, environment)} | Rule: <code>${html(rule)}</code></sub></p>\n\n`;
+		text += `<p>${sourceLink(diagnostic, environment)} | Rule: <code>${html(rule)}</code></p>\n\n`;
 		if (diagnostic.snippet || contexts.has(diagnostic)) {
 			text += `<pre lang="yaml">${html(contextualSnippet(diagnostic, contexts.get(diagnostic)))}</pre>\n\n`;
 		}

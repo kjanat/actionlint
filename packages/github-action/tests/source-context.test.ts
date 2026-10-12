@@ -52,7 +52,7 @@ test('summary reads bounded workspace context and keeps stale/external sources o
 		const rendered = summary({ ...result, diagnostics: [finding] }, environment, contexts);
 		assert.ok(
 			rendered.includes(
-				'2 | second&#10;3 | third&#10;4 | echo missing&#10;  |      ^~~~~~~&#10;5 | fifth&#10;6 | sixth',
+				'second&#10;third&#10;echo missing&#10;     ^~~~~~~&#10;fifth&#10;sixth',
 			),
 		);
 		assert.ok(!rendered.includes('first'));
@@ -76,8 +76,8 @@ test('summary reads bounded workspace context and keeps stale/external sources o
 			const edgeResult = { ...result, diagnostics: [edge] };
 			const edgeContexts = await sourceContexts(edgeResult, environment);
 			const edgeSummary = summary(edgeResult, environment, edgeContexts);
-			assert.ok(edgeSummary.includes(`${number} | ${lines[number - 1]}&#10;  | ^`));
-			assert.ok(!edgeSummary.includes('4 |'));
+			assert.ok(edgeSummary.includes(`${lines[number - 1]}&#10;^`));
+			assert.ok(!edgeSummary.includes('echo missing'));
 		}
 		for (const newline of ['\n', '\r\n', '\r']) {
 			for (const endings of [1, 2]) {

@@ -548,7 +548,7 @@ test('annotation commands and Markdown summaries escape diagnostic content', () 
 	assert.ok(text.includes('Quote this &amp; &lt;value&gt;<br>::warning::spoof'));
 	assert.ok(text.includes('Missing &lt;config&gt;<br>Try another path'));
 	assert.ok(text.includes('Check &amp; retry'));
-	assert.ok(text.includes('<pre lang="yaml">2 | echo &quot;$foo&quot;&#10;  |   ^~~~~</pre>'));
+	assert.ok(text.includes('<pre lang="yaml">echo &quot;$foo&quot;&#10;  ^~~~~</pre>'));
 	assert.ok(!text.includes('<value>'));
 	assert.ok(text.includes('<strong>Warning:</strong>'));
 	const multiline = annotation({ ...diagnostic, end: { line: 4, column: 1 } });

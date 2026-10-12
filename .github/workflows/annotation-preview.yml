@@ -40,14 +40,14 @@ jobs:
           npm run build --workspace actionlint-action -- --out-dir "${RUNNER_TEMP}/annotation-preview"
       - name: Preview annotation and summary
         run: node "${RUNNER_TEMP}/annotation-preview/action.mjs"
-      - name: Link job logs
+      - name: Link annotation step logs
         env:
           GH_TOKEN: ${{ github.token }}
           JOB_NAME: ${{ matrix.title }} preview
         run: |
           if gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs?filter=latest" > "${RUNNER_TEMP}/preview-jobs.json"; then
-            job_url="$(jq -r --arg name "${JOB_NAME}" '.jobs[] | select(.name == $name and .status == "in_progress") | .html_url' "${RUNNER_TEMP}/preview-jobs.json")"
-            if [[ -n "${job_url}" ]]; then
-              printf '\n[View annotation job logs](%s)\n' "${job_url}" >> "${GITHUB_STEP_SUMMARY}"
+            step_url="$(jq -r --arg name "${JOB_NAME}" '.jobs[] | select(.name == $name and .status == "in_progress") | .html_url as $url | .steps[] | select(.name == "Preview annotation and summary") | "\($url)#step:\(.number):1"' "${RUNNER_TEMP}/preview-jobs.json")"
+            if [[ -n "${step_url}" ]]; then
+              printf '\n[View annotation step logs](%s)\n' "${step_url}" >> "${GITHUB_STEP_SUMMARY}"
             fi
           fi

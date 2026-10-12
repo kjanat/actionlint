@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import type { ActionResult, Diagnostic } from '#result';
 import { diagnosticSnippet, reportStatus, summary } from '#summary';
 
@@ -23,6 +27,21 @@ const result: ActionResult = {
 	hints: [],
 };
 
+test('URLs from workflow values keep their visible destination', () => {
+	const text = summary({
+		...result,
+		diagnostics: [{
+			...finding,
+			rule: 'runner-label',
+			message: 'label "https://attacker.example/a?x=1&y=2" is unknown',
+		}],
+	});
+	assert.ok(
+		text.includes('<a href="https://attacker.example/a?x=1&amp;y=2">https://attacker.example/a?x=1&amp;y=2</a>'),
+	);
+	assert.ok(!text.includes('Documentation'));
+});
+
 test('quoted expression context references render as code without quoting prose', () => {
 	const text = summary({
 		...result,
@@ -38,32 +57,65 @@ test('quoted expression context references render as code without quoting prose'
 	assert.ok(text.includes('&quot;github.&lt;script&gt;&quot;'));
 });
 
-test('source locations link to the run commit, respecting working-directory and exclusive ends', () => {
-	const environment = {
-		GITHUB_REPOSITORY: 'owner/repo',
-		GITHUB_SHA: 'a'.repeat(40),
-		GITHUB_SERVER_URL: 'https://github.example.com',
-		GITHUB_WORKSPACE: '/repo',
-		'INPUT_WORKING-DIRECTORY': 'sub',
-	};
-	const text = summary(
-		{ ...result, diagnostics: [{ ...finding, path: 'a #?.yml', end: { line: 9, column: 1 } }] },
-		environment,
-	);
-	assert.ok(
-		text.includes(`href="https://github.example.com/owner/repo/blob/${'a'.repeat(40)}/sub/a%20%23%3F.yml#L6-L8"`),
-	);
-	assert.ok(text.includes('<code>a #?.yml:6:6</code></a>'));
-	for (
-		const invalid of [{ GITHUB_SHA: '' }, { GITHUB_REPOSITORY: '../repo' }, {
-			GITHUB_SERVER_URL: 'javascript:alert(1)',
-		}]
-	) {
-		assert.ok(!summary(result, { ...environment, ...invalid }).includes('/blob/'));
+test('source links canonicalize workspace paths and validate repository names', async () => {
+	const root = await mkdtemp(join(tmpdir(), 'actionlint-summary-links-'));
+	try {
+		const workspace = join(root, 'workspace');
+		await mkdir(join(workspace, 'sub'), { recursive: true });
+		await writeFile(join(workspace, 'sub', 'ci.yml'), 'source');
+		await writeFile(join(root, 'ci.yml'), 'external');
+		const filename = process.platform === 'win32' ? 'a #.yml' : 'a #?.yml';
+		await writeFile(join(workspace, 'sub', filename), 'source');
+		const environment = {
+			GITHUB_REPOSITORY: 'owner/repo',
+			GITHUB_SHA: 'a'.repeat(40),
+			GITHUB_SERVER_URL: 'https://github.example.com',
+			GITHUB_WORKSPACE: workspace,
+			'INPUT_WORKING-DIRECTORY': 'sub',
+		};
+		const text = summary(
+			{ ...result, diagnostics: [{ ...finding, path: filename, end: { line: 9, column: 1 } }] },
+			environment,
+		);
+		assert.ok(
+			text.includes(
+				`href="https://github.example.com/owner/repo/blob/${'a'.repeat(40)}/sub/${encodeURIComponent(filename)}#L6-L8"`,
+			),
+		);
+		assert.ok(text.includes(`<code>${filename}:6:6</code></a>`));
+		for (
+			const invalid of [{ GITHUB_SHA: '' }, { GITHUB_REPOSITORY: '../repo' }, { GITHUB_REPOSITORY: 'owner/..' }, {
+				GITHUB_REPOSITORY: 'owner/.',
+			}, {
+				GITHUB_SERVER_URL: 'javascript:alert(1)',
+			}]
+		) {
+			assert.ok(!summary(result, { ...environment, ...invalid }).includes('/blob/'));
+		}
+		assert.ok(
+			!summary({ ...result, diagnostics: [{ ...finding, path: '../../ci.yml' }] }, environment).includes('/blob/'),
+		);
+		assert.ok(
+			!summary({ ...result, diagnostics: [{ ...finding, path: 'missing.yml' }] }, environment).includes('/blob/'),
+		);
+		for (const repository of ['owner/.github', 'owner/.hidden']) {
+			assert.ok(summary(result, { ...environment, GITHUB_REPOSITORY: repository }).includes(`/${repository}/blob/`));
+		}
+		await symlink(
+			join(workspace, 'sub'),
+			join(workspace, 'internal'),
+			process.platform === 'win32' ? 'junction' : 'dir',
+		);
+		await symlink(root, join(workspace, 'external'), process.platform === 'win32' ? 'junction' : 'dir');
+		await symlink(workspace, join(root, 'linked-workspace'), process.platform === 'win32' ? 'junction' : 'dir');
+		assert.ok(summary(result, { ...environment, 'INPUT_WORKING-DIRECTORY': 'internal' }).includes(`/sub/ci.yml#L6`));
+		assert.ok(!summary(result, { ...environment, 'INPUT_WORKING-DIRECTORY': 'external' }).includes('/blob/'));
+		assert.ok(
+			summary(result, { ...environment, GITHUB_WORKSPACE: join(root, 'linked-workspace') }).includes('/sub/ci.yml#L6'),
+		);
+	} finally {
+		await rm(root, { recursive: true, force: true });
 	}
-	assert.ok(
-		!summary({ ...result, diagnostics: [{ ...finding, path: '../../outside.yml' }] }, environment).includes('/blob/'),
-	);
 });
 
 test('HTML content and URL attributes cannot introduce markup', () => {
@@ -79,7 +131,7 @@ test('HTML content and URL attributes cannot introduce markup', () => {
 	assert.ok(!text.includes('<script>'));
 	assert.ok(!text.includes('<img'));
 	assert.ok(text.includes('&quot;onmouseover=&quot;oops'));
-	assert.ok(text.includes('<pre lang="yaml">6 | &lt;/pre&gt;'));
+	assert.ok(text.includes('<pre lang="yaml">&lt;/pre&gt;'));
 });
 
 test('blank lines in untrusted fields cannot end HTML blocks and activate Markdown', () => {
@@ -110,11 +162,11 @@ test('guidance links exclude prose punctuation and retain balanced URL delimiter
 		]
 	) {
 		const text = summary({ ...result, diagnostics: [{ ...finding, message: input || '' }] });
-		assert.ok(text.includes(`<a href="${expected}">Documentation</a>`), text);
+		assert.ok(text.includes(`<a href="${expected}">${expected}</a>`), text);
 	}
 	assert.ok(
 		summary({ ...result, diagnostics: [{ ...finding, message: 'See (https://example.com/help).' }] }).includes(
-			'See (<br><sub><a href="https://example.com/help">Documentation</a></sub>).',
+			'See (<br><sub><a href="https://example.com/help">https://example.com/help</a></sub>).',
 		),
 	);
 });
@@ -123,14 +175,16 @@ test('findings are visible with their severity, actual rule, source range and he
 	const text = summary(result);
 	assert.ok(!text.includes('<strong>1 error'));
 	assert.ok(text.includes('Undefined variable &quot;missing&quot;'));
-	assert.ok(text.includes('<a href="https://example.com/help">Documentation</a>'));
-	assert.ok(text.includes('<sub><code>ci.yml:6:6</code> | Rule: <code>expression</code></sub>'));
+	assert.ok(text.includes('<a href="https://example.com/help">https://example.com/help</a>'));
+	assert.ok(text.includes('<p><code>ci.yml:6:6</code> | Rule: <code>expression</code></p>'));
+	assert.ok(!text.includes('<sub><code>ci.yml'));
 	assert.ok(text.includes('<p><strong>Error:</strong> Undefined variable'));
 	assert.doesNotMatch(text, /<h[23]>/);
-	assert.ok(text.includes('<br><sub><a href="https://example.com/help">Documentation</a></sub>'));
+	assert.ok(text.includes('<br><sub><a href="https://example.com/help">https://example.com/help</a></sub>'));
 	assert.ok(!text.includes('See '));
 	assert.ok(!text.includes('for details'));
-	assert.ok(text.includes('<pre lang="yaml">6 | echo missing&#10;  |      ^~~~~~~</pre>'));
+	assert.ok(text.includes('<pre lang="yaml">echo missing&#10;     ^~~~~~~</pre>'));
+	assert.doesNotMatch(text, /(?:> |&#10;)\d+ \| |&#10; *\|/);
 	assert.doesNotMatch(text, /<details>|```text|### Summary|### Findings|—|·|workflows checked/);
 });
 
@@ -148,7 +202,7 @@ test('invocation titles can distinguish repeated runs without affecting machine 
 	);
 });
 
-test('summary joins severity to diagnostic prose and breaks advice into lines', () => {
+test('summary keeps advice continuous and places documentation on its own line', () => {
 	const text = summary({
 		...result,
 		diagnostics: [{
@@ -159,10 +213,10 @@ test('summary joins severity to diagnostic prose and breaks advice into lines', 
 	});
 	assert.ok(
 		text.includes(
-			'<strong>Error:</strong> <code>github.event.head_commit.message</code> is unsafe.<br>avoid inline expansion.<br>instead use an environment variable.',
+			'<strong>Error:</strong> <code>github.event.head_commit.message</code> is unsafe. avoid inline expansion. instead use an environment variable.',
 		),
 	);
-	assert.ok(text.includes('<br><sub><a href="https://example.com/help">Documentation</a></sub>'));
+	assert.ok(text.includes('<br><sub><a href="https://example.com/help">https://example.com/help</a></sub>'));
 	assert.doesNotMatch(text, /<h[23]>|See https|for more details/);
 });
 
@@ -235,7 +289,7 @@ test('untrusted Markdown cannot escape snippets or create active links', () => {
 		diagnostics: [{ ...finding, message: '[click](javascript:alert(1)) <img src=x>', snippet: '```\n# injected' }],
 	});
 	assert.ok(text.includes('[click](javascript:alert(1)) &lt;img src=x&gt;'));
-	assert.ok(text.includes('<pre lang="yaml">6 | ```'));
+	assert.ok(text.includes('<pre lang="yaml">```'));
 	assert.ok(!text.includes('\n# injected'));
 });
 
