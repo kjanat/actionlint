@@ -130,7 +130,7 @@ try {
 		const annotation = result.log.split('\n').find(line => line.startsWith('::error file='));
 		assert.ok(annotation?.includes('%0A%0A6 |'), `annotation lacks numbered source: ${result.log}`);
 		assert.match(annotation || '', /%0A {2}\| +\^~+/);
-		assert.match(await readFile(summaryFile, 'utf8'), /\*\*Result:\*\* 1 error\n- \*\*Workflows:\*\* 1/);
+		assert.match(await readFile(summaryFile, 'utf8'), /<strong>1 error in 1 workflow<\/strong>/);
 		assert.ok(result.outputs.get('result-file'));
 		assert.equal(result.outputs.has('report-json'), false);
 		const sarifPath = result.outputs.get('report-sarif');

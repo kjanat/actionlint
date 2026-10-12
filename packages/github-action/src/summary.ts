@@ -1,16 +1,18 @@
+import { isAbsolute, relative, resolve, sep } from 'node:path';
+
 import stringWidth from 'string-width';
 
 import type { ActionResult, Diagnostic } from '#result';
 import type { Environment } from '#runtime';
 
-function markdown(value: string): string {
+function html(value: string): string {
 	return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
-		.replaceAll(/([\\`*_{}[\]()#+.!|~-])/g, '\\$1');
+		.replaceAll('"', '&quot;').replaceAll("'", '&#39;').replaceAll(/\r\n?|\n/g, '&#10;');
 }
 
 function message(value: string): string {
 	return value.split(/(https?:\/\/[^\s<>]+)/g).map((part, index) => {
-		if (index % 2 === 0) return markdown(part);
+		if (index % 2 === 0) return html(part);
 		let url = part;
 		const pairs: Record<string, string> = { ')': '(', ']': '[', '}': '{' };
 		while (url) {
@@ -22,14 +24,33 @@ function message(value: string): string {
 				break;
 			}
 		}
-		return `<${url.replaceAll('&', '&amp;').replaceAll('"', '%22')}>${markdown(part.slice(url.length))}`;
+		return `<a href="${html(url)}">Documentation</a>${html(part.slice(url.length))}`;
 	}).join('');
 }
 
-function fence(value: string): string {
-	const longest = Math.max(2, ...Array.from(value.matchAll(/`+/g), (match) => match[0].length));
-	const delimiter = '`'.repeat(longest + 1);
-	return `${delimiter}text\n${value}\n${delimiter}\n\n`;
+function sourceLink(diagnostic: Diagnostic, environment: Environment): string {
+	const label = `<code>${html(diagnostic.path)}:${diagnostic.start.line}:${diagnostic.start.column}</code>`;
+	const repository = environment.GITHUB_REPOSITORY || '';
+	const sha = environment.GITHUB_SHA || '';
+	const server = environment.GITHUB_SERVER_URL || 'https://github.com';
+	if (!/^[\w-][\w.-]*\/[\w-][\w.-]*$/.test(repository) || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(sha)) return label;
+	let origin: URL;
+	try {
+		origin = new URL(server);
+	} catch {
+		return label;
+	}
+	if (origin.protocol !== 'https:' || origin.username || origin.password) return label;
+	const workspace = resolve(environment.GITHUB_WORKSPACE || '.');
+	const directory = resolve(workspace, environment['INPUT_WORKING-DIRECTORY'] || '.');
+	const path = relative(workspace, resolve(directory, diagnostic.path));
+	if (!path || isAbsolute(path) || path === '..' || path.startsWith(`..${sep}`)) return label;
+	const encoded = path.split(sep).map(encodeURIComponent).join('/');
+	const end = diagnostic.end.line > diagnostic.start.line && diagnostic.end.column === 1
+		? diagnostic.end.line - 1
+		: diagnostic.end.line;
+	const range = `#L${diagnostic.start.line}${end > diagnostic.start.line ? `-L${end}` : ''}`;
+	return `<a href="${html(`${origin.origin}/${repository}/blob/${sha}/${encoded}${range}`)}">${label}</a>`;
 }
 
 function level(diagnostic: Diagnostic): string {
@@ -105,27 +126,33 @@ export function diagnosticSnippet(diagnostic: Diagnostic): string {
 }
 
 export function summary(result: ActionResult, environment: Environment = {}): string {
-	let text = `## ${markdown(title(environment))}\n\n### Summary\n\n`;
-	text += `- **Result:** ${status(result)}\n`;
-	if (result.completed && result.file_count !== null) text += `- **Workflows:** ${result.file_count}\n`;
-	text += '\n';
-	if (result.error) text += `### Failure\n\n${markdown(failureMessage(result.error, environment))}\n\n`;
+	let text = `<h2>${html(title(environment))}</h2>\n\n`;
+	text += `<p><strong>${status(result)}`;
+	if (result.completed && result.file_count) {
+		text += ` in ${result.file_count} workflow${result.file_count === 1 ? '' : 's'}`;
+	}
+	text += '</strong></p>\n\n';
+	if (result.error) text += `<p>${html(failureMessage(result.error, environment)).replaceAll('&#10;', '<br>')}</p>\n\n`;
 	if (!result.completed) {
 		text += result.diagnostics.length
 			? `Partial results: ${counts(result)}. Analysis stopped before completion; further findings may exist.\n\n`
 			: 'No complete lint result is available.\n\n';
 	}
-	if (result.diagnostics.length) text += '### Findings\n\n';
 	for (const diagnostic of result.diagnostics.slice(0, 50)) {
-		text += `${message(diagnostic.message.slice(0, 1000))}\n\n`;
-		text += `${markdown(diagnostic.path)}:${diagnostic.start.line}:${diagnostic.start.column} (${
-			markdown(level(diagnostic))
-		}, ${markdown(diagnostic.code ? `${diagnostic.rule}/${diagnostic.code}` : diagnostic.rule)})\n\n`;
-		if (diagnostic.snippet) text += fence(diagnosticSnippet(diagnostic));
+		const severity = level(diagnostic) === 'info' ? 'notice' : level(diagnostic);
+		const rule = diagnostic.code ? `${diagnostic.rule}/${diagnostic.code}` : diagnostic.rule;
+		text += `<p><strong>${html(severity)}</strong> <code>${html(rule)}</code><br>${
+			sourceLink(diagnostic, environment)
+		}</p>\n\n`;
+		text += `<p>${message(diagnostic.message.slice(0, 1000)).replaceAll('&#10;', '<br>')}</p>\n\n`;
+		if (diagnostic.snippet) {
+			const source = diagnosticSnippet(diagnostic).split('\n')[0]?.replace(/^\d+ \| /, '') || '';
+			text += `<pre lang="yaml">${html(source)}</pre>\n\n`;
+		}
 	}
 	if (result.diagnostics.length > 50) {
 		text += 'Showing the first 50 findings; the persisted result contains all findings.\n\n';
 	}
-	for (const hint of result.hints) text += `${markdown(hint.slice(0, 1000))}\n\n`;
+	for (const hint of result.hints) text += `<p>${html(hint.slice(0, 1000))}</p>\n\n`;
 	return text;
 }

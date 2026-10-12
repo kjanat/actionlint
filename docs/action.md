@@ -182,7 +182,10 @@ branch to build. It emits one intentional error, warning and notice, with matchi
 job summaries. Expected findings do not fail the job. The preview never runs on
 pushes or pull requests; ordinary CI checks annotation payloads in captured output.
 
-The job summary shows the result, workflow count, and findings with source ranges.
+The job summary shows a compact result count and visible findings with YAML source
+excerpts. Documentation URLs use short link labels. Source locations link to the
+run's commit when GitHub repository metadata is available; paths outside the
+workspace remain plain text. Locations respect `working-directory`.
 Findings remain visible without expanding a details section. Incomplete analysis
 is identified separately from lint findings. For multiple invocations in one job,
 set `summary-title: Production workflows` to label a report; the default label is

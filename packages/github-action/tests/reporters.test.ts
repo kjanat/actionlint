@@ -261,10 +261,10 @@ test('report controls are independent and reject unsupported inputs', () => {
 
 test('summaries distinguish clean analysis, no selection, and incomplete analysis', () => {
 	const clean: ActionResult = { ...result, status: 'success', exit_code: 0, diagnostics: [] };
-	assert.equal(summary(clean), '## actionlint\n\n### Summary\n\n- **Result:** No findings\n- **Workflows:** 2\n\n');
-	assert.ok(summary({ ...clean, file_count: 0 }).includes('**Result:** No workflows selected'));
+	assert.equal(summary(clean), '<h2>actionlint</h2>\n\n<p><strong>No findings in 2 workflows</strong></p>\n\n');
+	assert.ok(summary({ ...clean, file_count: 0 }).includes('<strong>No workflows selected'));
 	const incomplete: ActionResult = { ...result, completed: false, status: 'failure', exit_code: 3 };
-	assert.ok(summary(incomplete).includes('**Result:** Analysis incomplete'));
+	assert.ok(summary(incomplete).includes('<strong>Analysis incomplete'));
 	assert.ok(summary(incomplete).includes('Partial results: 1 warning.'));
 	assert.ok(
 		summary({ ...result, diagnostics: Array.from({ length: 51 }, () => diagnostic) }).includes('first 50 findings'),
@@ -529,7 +529,7 @@ test('real entrypoint rejects malformed native results and summarizes input fail
 			assert.equal(persisted.completed, false);
 			assert.equal(persisted.status, scenario.status);
 			assert.equal(persisted.exit_code, scenario.code);
-			assert.ok((await readFile(summaryPath, 'utf8')).includes('**Result:** Could not start analysis'));
+			assert.ok((await readFile(summaryPath, 'utf8')).includes('<strong>Could not start analysis'));
 		}
 	} finally {
 		await rm(directory, { recursive: true });
@@ -543,12 +543,12 @@ test('annotation commands and Markdown summaries escape diagnostic content', () 
 	);
 	const text = summary({ ...result, error: 'Missing <config>\nTry another path', hints: ['Check & retry'] });
 	assert.ok(text.includes('&amp; &lt;value&gt;'));
-	assert.ok(text.includes('Quote this &amp; &lt;value&gt;\n::warning::spoof'));
-	assert.ok(text.includes('Missing &lt;config&gt;\nTry another path'));
+	assert.ok(text.includes('Quote this &amp; &lt;value&gt;<br>::warning::spoof'));
+	assert.ok(text.includes('Missing &lt;config&gt;<br>Try another path'));
 	assert.ok(text.includes('Check &amp; retry'));
-	assert.ok(text.includes('2 | echo "$foo"\n  |   ^~~~~'));
+	assert.ok(text.includes('<pre lang="yaml">echo &quot;$foo&quot;</pre>'));
 	assert.ok(!text.includes('<value>'));
-	assert.ok(text.includes('**Result:** 1 warning'));
+	assert.ok(text.includes('<strong>1 warning'));
 	const multiline = annotation({ ...diagnostic, end: { line: 4, column: 1 } });
 	assert.ok(multiline.includes('line=2,endLine=3,title='));
 	assert.ok(!multiline.includes(',col='));

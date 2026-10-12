@@ -23,6 +23,65 @@ const result: ActionResult = {
 	hints: [],
 };
 
+test('source locations link to the run commit, respecting working-directory and exclusive ends', () => {
+	const environment = {
+		GITHUB_REPOSITORY: 'owner/repo',
+		GITHUB_SHA: 'a'.repeat(40),
+		GITHUB_SERVER_URL: 'https://github.example.com',
+		GITHUB_WORKSPACE: '/repo',
+		'INPUT_WORKING-DIRECTORY': 'sub',
+	};
+	const text = summary(
+		{ ...result, diagnostics: [{ ...finding, path: 'a #?.yml', end: { line: 9, column: 1 } }] },
+		environment,
+	);
+	assert.ok(
+		text.includes(`href="https://github.example.com/owner/repo/blob/${'a'.repeat(40)}/sub/a%20%23%3F.yml#L6-L8"`),
+	);
+	assert.ok(text.includes('<code>a #?.yml:6:6</code></a>'));
+	for (
+		const invalid of [{ GITHUB_SHA: '' }, { GITHUB_REPOSITORY: '../repo' }, {
+			GITHUB_SERVER_URL: 'javascript:alert(1)',
+		}]
+	) {
+		assert.ok(!summary(result, { ...environment, ...invalid }).includes('/blob/'));
+	}
+	assert.ok(
+		!summary({ ...result, diagnostics: [{ ...finding, path: '../../outside.yml' }] }, environment).includes('/blob/'),
+	);
+});
+
+test('HTML content and URL attributes cannot introduce markup', () => {
+	const text = summary({
+		...result,
+		diagnostics: [{
+			...finding,
+			message: 'See https://example.com/"onmouseover="oops and </p><script>oops</script>',
+			path: '</code><img src=x>',
+			snippet: '</pre><script>oops</script>',
+		}],
+	});
+	assert.ok(!text.includes('<script>'));
+	assert.ok(!text.includes('<img'));
+	assert.ok(text.includes('&quot;onmouseover=&quot;oops'));
+	assert.ok(text.includes('<pre lang="yaml">&lt;/pre&gt;'));
+});
+
+test('blank lines in untrusted fields cannot end HTML blocks and activate Markdown', () => {
+	for (const newline of ['\n', '\r', '\r\n']) {
+		const injected =
+			`prefix${newline}${newline}![tracking](https://example.com/tracking.png)${newline}${newline}suffix`;
+		const text = summary({
+			...result,
+			hints: [injected],
+			diagnostics: [{ ...finding, path: injected, rule: injected, code: injected }],
+		});
+		assert.ok(!text.includes(`${newline}${newline}![tracking]`));
+		assert.ok(text.includes('prefix&#10;&#10;![tracking]'));
+		assert.ok(!text.includes('<img'));
+	}
+});
+
 test('guidance links exclude prose punctuation and retain balanced URL delimiters', () => {
 	for (
 		const [input, expected] of [
@@ -36,23 +95,23 @@ test('guidance links exclude prose punctuation and retain balanced URL delimiter
 		]
 	) {
 		const text = summary({ ...result, diagnostics: [{ ...finding, message: input || '' }] });
-		assert.ok(text.includes(`<${expected}>`), text);
+		assert.ok(text.includes(`<a href="${expected}">Documentation</a>`), text);
 	}
 	assert.ok(
 		summary({ ...result, diagnostics: [{ ...finding, message: 'See (https://example.com/help).' }] }).includes(
-			'See \\(<https://example.com/help>\\)\\.',
+			'See (<a href="https://example.com/help">Documentation</a>).',
 		),
 	);
 });
 
 test('findings are visible with their severity, actual rule, source range and help link', () => {
 	const text = summary(result);
-	assert.ok(text.includes('- **Result:** 1 error\n- **Workflows:** 1'));
-	assert.ok(text.includes('### Findings\n\nUndefined variable "missing"'));
-	assert.ok(text.includes('<https://example.com/help>'));
-	assert.ok(text.includes('(error, expression)'));
-	assert.ok(text.includes('```text\n6 | echo missing\n  |      ^~~~~~~\n```'));
-	assert.doesNotMatch(text, /<details>|<pre>|&quot;|—|·|workflows checked/);
+	assert.ok(text.includes('<strong>1 error in 1 workflow</strong>'));
+	assert.ok(text.includes('Undefined variable &quot;missing&quot;'));
+	assert.ok(text.includes('<a href="https://example.com/help">Documentation</a>'));
+	assert.ok(text.includes('<strong>error</strong> <code>expression</code>'));
+	assert.ok(text.includes('<pre lang="yaml">echo missing</pre>'));
+	assert.doesNotMatch(text, /<details>|```text|### Summary|### Findings|—|·|workflows checked/);
 });
 
 test('invocation titles can distinguish repeated runs without affecting machine output', () => {
@@ -63,7 +122,7 @@ test('invocation titles can distinguish repeated runs without affecting machine 
 	);
 	assert.ok(
 		summary(result, { 'INPUT_SUMMARY-TITLE': '<img>\n# spoof' }).startsWith(
-			'## actionlint \\(&lt;img&gt; \\# spoof\\)\n',
+			'<h2>actionlint (&lt;img&gt; # spoof)</h2>\n',
 		),
 	);
 });
@@ -81,7 +140,7 @@ test('startup failures explain missing config once and retain unrelated errors',
 	};
 	const text = summary(failure, { GITHUB_WORKSPACE: '/repo' });
 	assert.ok(text.includes('Could not start analysis'));
-	assert.ok(text.includes('Configuration file not found: \\.github/actionlint\\-missing\\.yaml'));
+	assert.ok(text.includes('Configuration file not found: .github/actionlint-missing.yaml'));
 	assert.ok(text.includes('ensure the file exists in the checkout'));
 	assert.doesNotMatch(text, /\/repo|Exit 3|0 findings|No findings|\*\*Workflows/);
 	assert.ok(summary({ ...failure, error: 'Permission denied' }).includes('Permission denied'));
@@ -93,7 +152,7 @@ test('startup failures explain missing config once and retain unrelated errors',
 			error: `could not read config file ${
 				JSON.stringify(windowsPath)
 			}: open ${windowsPath}: The system cannot find the file specified.`,
-		}, { GITHUB_WORKSPACE: String.raw`C:\repo` }).includes('Configuration file not found: missing\\.yml'),
+		}, { GITHUB_WORKSPACE: String.raw`C:\repo` }).includes('Configuration file not found: missing.yml'),
 	);
 });
 
@@ -132,14 +191,14 @@ test('untrusted Markdown cannot escape snippets or create active links', () => {
 		...result,
 		diagnostics: [{ ...finding, message: '[click](javascript:alert(1)) <img src=x>', snippet: '```\n# injected' }],
 	});
-	assert.ok(text.includes('\\[click\\]\\(javascript:alert\\(1\\)\\) &lt;img src=x&gt;'));
-	assert.ok(text.includes('````text\n6 | ```'));
+	assert.ok(text.includes('[click](javascript:alert(1)) &lt;img src=x&gt;'));
+	assert.ok(text.includes('<pre lang="yaml">```</pre>'));
 	assert.ok(!text.includes('\n# injected'));
 });
 
 test('severity totals stay separate and unknown workflow counts are omitted', () => {
 	const diagnostics = [finding, ...['warning', 'info', 'style'].map((severity) => ({ ...finding, severity }))];
 	const text = summary({ ...result, diagnostics, file_count: null });
-	assert.ok(text.includes('**Result:** 1 error, 1 warning, 1 notice, 1 style finding'));
+	assert.ok(text.includes('<strong>1 error, 1 warning, 1 notice, 1 style finding</strong>'));
 	assert.ok(!text.includes('**Workflows:**'));
 });
