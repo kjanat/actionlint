@@ -178,12 +178,13 @@ for the runner, so each finding emits one annotation with a multiline body.
 
 Maintainers can inspect GitHub's rendering with the manual **Annotation preview**
 workflow once it is merged into the default branch. In Actions, select that workflow, choose **Run workflow** and select the
-branch to build. It emits one intentional error, warning and notice, with matching
-job summaries. Expected findings do not fail the job. The preview never runs on
+branch to build. It emits one intentional error, warning and notice in separate
+jobs, each with its own summary. Expected findings do not fail the job. The preview never runs on
 pushes or pull requests; ordinary CI checks annotation payloads in captured output.
 
-The job summary shows a compact result count and visible findings with YAML source
-excerpts. Documentation URLs use short link labels. Source locations link to the
+The job summary shows a compact result count and visible findings with numbered source
+excerpts, caret ranges and two surrounding lines on either side when the source is available.
+Documentation URLs use short link labels. Source locations link to the
 run's commit when GitHub repository metadata is available; paths outside the
 workspace remain plain text. Locations respect `working-directory`.
 Findings remain visible without expanding a details section. Incomplete analysis

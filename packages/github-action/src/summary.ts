@@ -12,7 +12,16 @@ function html(value: string): string {
 
 function message(value: string): string {
 	return value.split(/(https?:\/\/[^\s<>]+)/g).map((part, index) => {
-		if (index % 2 === 0) return html(part);
+		if (index % 2 === 0) {
+			return part.split(
+				/(["'](?:github|env|vars|job|jobs|steps|runner|secrets|strategy|matrix|needs|inputs)(?:\.(?:[A-Za-z_][A-Za-z0-9_-]*|\*))+["'])/g,
+			)
+				.map((piece, pieceIndex) =>
+					pieceIndex % 2 && piece[0] === piece.at(-1)
+						? `<code>${html(piece.slice(1, -1))}</code>`
+						: html(piece)
+				).join('');
+		}
 		let url = part;
 		const pairs: Record<string, string> = { ')': '(', ']': '[', '}': '{' };
 		while (url) {
@@ -125,7 +134,34 @@ export function diagnosticSnippet(diagnostic: Diagnostic): string {
 	}`;
 }
 
-export function summary(result: ActionResult, environment: Environment = {}): string {
+function contextualSnippet(diagnostic: Diagnostic, lines?: string[]): string {
+	if (!lines) return diagnosticSnippet(diagnostic);
+	const first = Math.max(1, diagnostic.start.line - 2);
+	const last = Math.min(lines.length, diagnostic.start.line + 2);
+	const width = String(last).length;
+	const output: string[] = [];
+	for (let number = first; number <= last; number++) {
+		const snippet = lines[number - 1] || '';
+		if (number === diagnostic.start.line) {
+			const rendered = diagnosticSnippet({ ...diagnostic, snippet }).split('\n');
+			output.push(...rendered.map(line => ' '.repeat(width - String(number).length) + line));
+		} else {
+			const points = Array.from(snippet);
+			output.push(
+				`${String(number).padStart(width)} | ${points.slice(0, 240).join('').replaceAll('\t', '    ')}${
+					points.length > 240 ? '…' : ''
+				}`,
+			);
+		}
+	}
+	return output.join('\n');
+}
+
+export function summary(
+	result: ActionResult,
+	environment: Environment = {},
+	contexts = new Map<Diagnostic, string[]>(),
+): string {
 	let text = `<h2>${html(title(environment))}</h2>\n\n`;
 	text += `<p><strong>${status(result)}`;
 	if (result.completed && result.file_count) {
@@ -145,9 +181,8 @@ export function summary(result: ActionResult, environment: Environment = {}): st
 			sourceLink(diagnostic, environment)
 		}</p>\n\n`;
 		text += `<p>${message(diagnostic.message.slice(0, 1000)).replaceAll('&#10;', '<br>')}</p>\n\n`;
-		if (diagnostic.snippet) {
-			const source = diagnosticSnippet(diagnostic).split('\n')[0]?.replace(/^\d+ \| /, '') || '';
-			text += `<pre lang="yaml">${html(source)}</pre>\n\n`;
+		if (diagnostic.snippet || contexts.has(diagnostic)) {
+			text += `<pre>${html(contextualSnippet(diagnostic, contexts.get(diagnostic)))}</pre>\n\n`;
 		}
 	}
 	if (result.diagnostics.length > 50) {

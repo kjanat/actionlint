@@ -23,6 +23,21 @@ const result: ActionResult = {
 	hints: [],
 };
 
+test('quoted expression context references render as code without quoting prose', () => {
+	const text = summary({
+		...result,
+		diagnostics: [{
+			...finding,
+			message:
+				'Avoid "github.event.head_commit.message" and \'inputs.branch\'; keep "ordinary prose" and "github.<script>" literal.',
+		}],
+	});
+	assert.ok(text.includes('<code>github.event.head_commit.message</code>'));
+	assert.ok(text.includes('<code>inputs.branch</code>'));
+	assert.ok(text.includes('&quot;ordinary prose&quot;'));
+	assert.ok(text.includes('&quot;github.&lt;script&gt;&quot;'));
+});
+
 test('source locations link to the run commit, respecting working-directory and exclusive ends', () => {
 	const environment = {
 		GITHUB_REPOSITORY: 'owner/repo',
@@ -64,7 +79,7 @@ test('HTML content and URL attributes cannot introduce markup', () => {
 	assert.ok(!text.includes('<script>'));
 	assert.ok(!text.includes('<img'));
 	assert.ok(text.includes('&quot;onmouseover=&quot;oops'));
-	assert.ok(text.includes('<pre lang="yaml">&lt;/pre&gt;'));
+	assert.ok(text.includes('<pre>6 | &lt;/pre&gt;'));
 });
 
 test('blank lines in untrusted fields cannot end HTML blocks and activate Markdown', () => {
@@ -110,7 +125,7 @@ test('findings are visible with their severity, actual rule, source range and he
 	assert.ok(text.includes('Undefined variable &quot;missing&quot;'));
 	assert.ok(text.includes('<a href="https://example.com/help">Documentation</a>'));
 	assert.ok(text.includes('<strong>error</strong> <code>expression</code>'));
-	assert.ok(text.includes('<pre lang="yaml">echo missing</pre>'));
+	assert.ok(text.includes('<pre>6 | echo missing&#10;  |      ^~~~~~~</pre>'));
 	assert.doesNotMatch(text, /<details>|```text|### Summary|### Findings|—|·|workflows checked/);
 });
 
@@ -192,7 +207,7 @@ test('untrusted Markdown cannot escape snippets or create active links', () => {
 		diagnostics: [{ ...finding, message: '[click](javascript:alert(1)) <img src=x>', snippet: '```\n# injected' }],
 	});
 	assert.ok(text.includes('[click](javascript:alert(1)) &lt;img src=x&gt;'));
-	assert.ok(text.includes('<pre lang="yaml">```</pre>'));
+	assert.ok(text.includes('<pre>6 | ```'));
 	assert.ok(!text.includes('\n# injected'));
 });
 

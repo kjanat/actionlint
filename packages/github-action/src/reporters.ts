@@ -7,6 +7,7 @@ import { failedResult, parseResult } from '#result';
 import { postReview } from '#review';
 import type { Environment } from '#runtime';
 import { InputError } from '#runtime';
+import { sourceContexts } from '#source-context';
 import { diagnosticSnippet, reportStatus, summary } from '#summary';
 import { commandEscape, readOutputs, writeOutputs } from '#workflow';
 
@@ -51,9 +52,10 @@ export function annotation(diagnostic: Diagnostic): string {
 		: diagnostic.severity === 'info' || diagnostic.severity === 'style'
 		? 'notice'
 		: 'error';
+	const message = diagnostic.message.replace(/([.!?])\s+(?=(?:avoid|instead|see)\b)/gi, '$1\n');
 	return `::${level} file=${property(diagnostic.path)},${range},title=${
 		property(diagnostic.code || diagnostic.rule)
-	}::${commandEscape(diagnostic.message + (diagnostic.snippet ? `\n\n${diagnosticSnippet(diagnostic)}` : ''))}`;
+	}::${commandEscape(message + (diagnostic.snippet ? `\n\n${diagnosticSnippet(diagnostic)}` : ''))}`;
 }
 
 export type ReporterRuntime = { log: (text: string) => void; review: typeof postReview };
@@ -103,7 +105,10 @@ export async function report(
 	}
 	const summaryPath = environment.GITHUB_STEP_SUMMARY;
 	if (options.summary && summaryPath) {
-		await attempt('Job summary unavailable', () => appendFile(summaryPath, summary(result, environment)));
+		await attempt('Job summary unavailable', async () => {
+			const contexts = await sourceContexts(result, environment);
+			await appendFile(summaryPath, summary(result, environment, contexts));
+		});
 	}
 	if (!['json', 'json-lines', 'sarif'].includes(environment.INPUT_FORMAT || 'github')) {
 		// The runner recognizes legacy command markers anywhere in a log line.
