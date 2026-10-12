@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"errors"
 	"regexp"
 	"strconv"
 	"strings"
@@ -369,7 +370,12 @@ func (rule *RuleExpression) getActionOutputsType(spec *String) *ObjectType {
 	if strings.HasPrefix(localSpec, "./") {
 		meta, _, err := rule.localActions.FindMetadata(spec.Value)
 		if err != nil {
-			rule.Error(spec.Pos, err.Error())
+			// The action rule reports path and mapping failures at every uses reference.
+			_, unresolved := errors.AsType[unresolvedLocalActionError](err)
+			_, mapping := errors.AsType[localActionMappingError](err)
+			if !unresolved && !mapping {
+				rule.Error(spec.Pos, err.Error())
+			}
 			return NewMapObjectType(StringType{})
 		}
 		if meta == nil {

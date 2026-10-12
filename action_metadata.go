@@ -382,10 +382,11 @@ func actionMetadataFields(node *yaml.Node) *yaml.Node {
 // ActionMetadata represents structure of action.yaml.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 type ActionMetadata struct {
-	dir        string
-	file       string
-	src        []byte
-	schemaRoot *yaml.Node
+	sourceMapped bool
+	dir          string
+	file         string
+	src          []byte
+	schemaRoot   *yaml.Node
 	// Name is "name" field of action.yaml.
 	Name string `yaml:"name" json:"name"`
 	// Description is "description" field of action.yaml.
@@ -506,13 +507,17 @@ type LocalActionsCache struct {
 	onRead               func(string)
 	onDocument           func(ActionOutline)
 	readFile             func(string) ([]byte, error)
+	customReader         bool
 	mu                   sync.RWMutex
 	proj                 *Project // might be nil
 	cache                map[string]*ActionMetadata
+	missing              sync.Map // local action specs with no metadata file
 	sources              map[string]localActionMetadataSource
 	usedSources          map[string][]byte
+	validation           *actionMetadataValidation
 	dbg                  io.Writer
 	base                 *LocalActionsCache
+	sourceMappings       LocalActionSources
 	checkout             *checkoutPlacement
 	platform             platformKind
 	caseInsensitive      bool
@@ -561,14 +566,13 @@ func (c *LocalActionsCache) writeCache(key string, val *ActionMetadata) {
 
 // FindMetadata finds metadata for a local action, specified with "./" or "$/".
 // The first return value can be nil even if error did not occur.
-// LocalActionCache caches that the action was not found. At first search, it returns an error that
-// the action was not found. But at the second search, it does not return an error even if the result
-// is nil. This behavior prevents repeating to report the same error from multiple places.
+// Missing manifests are cached and reported at every reference. Other metadata errors
+// are reported on the first lookup; later lookups return the cached nil result.
 // Calling this method is thread-safe.
 func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, error) {
 	if local, ok := selfRepositoryUsesLocalSpec(spec); ok {
 		if c.base != nil {
-			return c.findRepositoryMetadata(local)
+			return c.findRepositoryMetadata(local, true)
 		}
 		spec = local
 	}
@@ -577,7 +581,17 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 		if !ok {
 			return nil, false, nil
 		}
-		return c.findRepositoryMetadata(local)
+		certain := true
+		if state := c.checkoutState(); state != nil {
+			// An uncertain checkout permits best-effort local validation, but
+			// missing files do not establish what will exist at runtime.
+			placement := state.matching(spec)
+			if placement == nil {
+				placement = state
+			}
+			certain = placement.directory.kind != directoryUnknown
+		}
+		return c.findRepositoryMetadata(local, certain)
 	}
 	if c.proj == nil || !strings.HasPrefix(spec, "./") {
 		return nil, false, nil
@@ -585,6 +599,9 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 
 	if m, ok := c.readCache(spec); ok {
 		c.debug("Cache hit for %s: %v", spec, m)
+		if _, missing := c.missing.Load(spec); missing {
+			return nil, true, missingLocalActionMetadata(spec)
+		}
 		return m, true, nil
 	}
 
@@ -596,12 +613,9 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 	}
 	if f == "" {
 		c.debug("No action metadata found in %s", dir)
-		// Remember action was not found
+		c.missing.Store(spec, true)
 		c.writeCache(spec, nil)
-		// Do not complain about the action does not exist (#25, #40).
-		// It seems a common pattern that the local action does not exist in the repository
-		// (e.g. Git submodule) and it is cloned at running workflow (due to a private repository).
-		return nil, false, nil
+		return nil, false, missingLocalActionMetadata(spec)
 	}
 	c.mu.Lock()
 	c.sources[spec] = localActionMetadataSource{path: filepath.Join(dir, f), content: b}

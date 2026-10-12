@@ -5,7 +5,8 @@ import "actionlint.kjanat.dev/internal/ruff"
 // ruffRule is the AST/source-map adapter; Python analysis lives in internal/ruff.
 type ruffRule struct {
 	RuleBase
-	checker *ruff.Checker
+	checker      *ruff.Checker
+	ignoreOrigin *diagnosticIgnoreOrigin
 }
 
 func newRuffRule(c ruleContext) (*ruffRule, error) {
@@ -73,6 +74,7 @@ func (r *ruffRule) VisitStep(step *Step) error {
 	if r.config != nil {
 		config = r.config.Tools.Ruff
 	}
+	ignoreOrigin := r.ignoreOrigin
 	return r.checker.Check(run.Run.Value, ruffShellValue(run.Shell), run.RunPos.String(), config, func(d ruff.Diagnostic) {
 		pos, mapped := run.source.pos(d.Location.Row, d.Location.Column)
 		if !mapped {
@@ -85,5 +87,6 @@ func (r *ruffRule) VisitStep(step *Step) error {
 		r.errorfRange(pos, end, "Ruff reported issue in this script: %s: %s", d.Code, d.Message)
 		r.errs[len(r.errs)-1].code = d.Code
 		r.errs[len(r.errs)-1].severity = "error"
+		r.errs[len(r.errs)-1].ignoreOrigin = ignoreOrigin
 	})
 }

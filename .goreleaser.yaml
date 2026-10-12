@@ -192,6 +192,7 @@ aurs:
     conflicts: [actionlint, actionlint-bin, actionlint-git, actionlint-kjanat]
     optdepends:
       - "shellcheck: check shell scripts in run steps"
+      - "ruff: check Python scripts in run steps"
     package: |-
       install -Dm0755 actionlint "${pkgdir}/usr/bin/actionlint"
       install -Dm0644 LICENSE.txt "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.txt"
@@ -235,6 +236,7 @@ aur_sources:
     makedepends: [go, git]
     optdepends:
       - "shellcheck: check shell scripts in run steps"
+      - "ruff: check Python scripts in run steps"
     prepare: |-
       cd "actionlint-${pkgver}"
       go mod download

@@ -21,7 +21,7 @@ func TestCachePolicyInlineSuppression(t *testing.T) {
 cache-mode: write
 `, nil},
 		{"unrelated selector", "cache-mode: write # actionlint:ignore cache-operation -- unused test selector\n", []string{"cache-write-untrusted"}},
-		{"missing reason", "cache-mode: write # actionlint:ignore cache-write-untrusted\n", []string{"cache-write-untrusted", "inline-suppression"}},
+		{"optional reason", "cache-mode: write # actionlint:ignore cache-write-untrusted\n", nil},
 		{"empty reason", "cache-mode: write # actionlint:ignore cache-write-untrusted -- \n", []string{"cache-write-untrusted", "inline-suppression"}},
 		{"misspelled selector", "cache-mode: write # actionlint:ignore cache-write-untrustd -- only reviewed code runs\n", []string{"cache-write-untrusted", "inline-suppression"}},
 		{"wildcard rejected", "cache-mode: write # actionlint:ignore * -- only reviewed code runs\n", []string{"cache-write-untrusted", "inline-suppression"}},
@@ -235,6 +235,8 @@ func TestCachePolicySuppressionGrammar(t *testing.T) {
 		invalid      bool
 	}{
 		{"unsupported rule", "unknown-rule -- reviewed", true},
+		{"optional reason", "cache-write-untrusted", false},
+		{"empty reason", "cache-write-untrusted --", true},
 		{"duplicate selector", "cache-write-untrusted,cache-write-untrusted -- reviewed", false},
 		{"leading empty selector", ",cache-write-untrusted -- reviewed", true},
 		{"trailing empty selector", "cache-write-untrusted, -- reviewed", true},

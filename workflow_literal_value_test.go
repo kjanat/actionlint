@@ -34,9 +34,16 @@ runs:
 	if err := os.WriteFile(filepath.Join(root, "malformed", "action.yml"), []byte("runs: ["), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Mkdir(filepath.Join(root, "incomplete"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "incomplete", "action.yml"), []byte("name: incomplete\nruns: {using: composite, steps: [{run: echo ok, shell: bash}]}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	for _, tc := range []struct{ name, uses, extra, want string }{
-		{"missing action remains permitted", "./missing-action", "", ""},
+		{"missing action metadata", "./missing-action", "", "has no action.yml or action.yaml"},
 		{"malformed metadata", "./malformed", "", "could not parse action metadata"},
+		{"incomplete metadata", "./incomplete", "", "description is required"},
 		{"required input", "./action", "", "missing input"},
 		{"provided input", "./action", "\n        with: {token: value}", ""},
 		{"invalid spec", "not-an-action", "", "invalid"},
@@ -65,7 +72,7 @@ jobs:
 				}
 				if uses == tc.uses {
 					plain = diagnostics
-				} else if diff := cmp.Diff(plain, diagnostics, cmp.AllowUnexported(Error{})); diff != "" {
+				} else if diff := cmp.Diff(plain, diagnostics, cmp.AllowUnexported(Error{}, actionMetadataFinding{}, actionMetadataFindingKey{})); diff != "" {
 					t.Fatal(diff)
 				}
 			}

@@ -33,7 +33,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *Step, parents []Rule
 		analysis.actions.observeOpaqueAction(call, action)
 		for _, rule := range parents {
 			compositeCheckoutPaths(rule, analysis.actions)
-			if err := rule.VisitStep(call); err != nil {
+			if err := visitWithIgnoreOrigin(rule, newDiagnosticIgnoreOrigin(analysis.jobID, call), func() error { return rule.VisitStep(call) }); err != nil {
 				return err
 			}
 		}
@@ -63,7 +63,12 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *Step, parents []Rule
 
 	children := make([]Rule, 0, len(parents))
 	for _, parent := range parents {
-		child := compositeScriptRule(parent, call, filepath.Dir(meta.Path()), analysis.actions)
+		actionPath := filepath.Dir(meta.Path())
+		if meta.sourceMapped {
+			// Source metadata does not establish the generated action's runtime directory.
+			actionPath = ""
+		}
+		child := compositeScriptRule(parent, call, actionPath, analysis.actions)
 		if _, ok := child.(*ruffRule); ok && analysis.configForFile != nil {
 			config, err := analysis.configForFile(meta.Path())
 			if err != nil {
@@ -92,7 +97,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *Step, parents []Rule
 				if parent, enabled := pass.(*RuleAction); enabled {
 					validation := NewRuleAction(analysis.actions)
 					validation.SetConfig(parent.Config())
-					if err := validation.VisitStep(step); err != nil {
+					if err := visitWithIgnoreOrigin(validation, newDiagnosticIgnoreOrigin(analysis.jobID, step), func() error { return validation.VisitStep(step) }); err != nil {
 						return err
 					}
 					analysis.rules = append(analysis.rules, compositeScriptRules{meta, []Rule{validation}})
@@ -106,7 +111,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *Step, parents []Rule
 		}
 		for _, rule := range children {
 			compositeCheckoutPaths(rule, analysis.actions)
-			if err := rule.VisitStep(step); err != nil {
+			if err := visitWithIgnoreOrigin(rule, newDiagnosticIgnoreOrigin(analysis.jobID, step), func() error { return rule.VisitStep(step) }); err != nil {
 				return err
 			}
 		}

@@ -73,6 +73,7 @@ type RuleShellcheck struct {
 	actionPath    string
 	onInput       func(string)
 	mu            sync.Mutex
+	ignoreOrigin  *diagnosticIgnoreOrigin
 }
 
 func newRuleShellcheck(cmd *externalCommand) *RuleShellcheck {
@@ -312,6 +313,7 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 		}
 	}
 
+	ignoreOrigin := rule.ignoreOrigin
 	rule.cmd.runInDirectory(args, script.text, directory.path, func(stdout []byte, err error) error {
 		if err != nil {
 			rule.Debug("Command %s %s failed: %v", rule.cmd.exe, args, err)
@@ -330,6 +332,12 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 		// Synchronize rule.Errorf calls
 		rule.mu.Lock()
 		defer rule.mu.Unlock()
+		first := len(rule.errs)
+		defer func() {
+			for _, finding := range rule.errs[first:] {
+				finding.ignoreOrigin = ignoreOrigin
+			}
+		}()
 		sources := make(map[string][]byte)
 		for _, err := range errs {
 			if err.File != "" && err.File != "-" {

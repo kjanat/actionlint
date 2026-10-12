@@ -121,11 +121,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Reports inline exceptions prohibited by configuration",
+                "description": "Reports inline and configured exceptions prohibited by suppression policy",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Reports inline exceptions prohibited by configuration"
+                "text": "Reports inline and configured exceptions prohibited by suppression policy"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -276,6 +276,21 @@
               },
               "fullDescription": {
                 "text": "Checks for matrix combinations in \"matrix:\""
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+            },
+            {
+              "id": "missing-local-action",
+              "name": "MissingLocalAction",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Checks that local action manifests can be resolved",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              },
+              "fullDescription": {
+                "text": "Checks that local action manifests can be resolved"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },

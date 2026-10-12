@@ -120,6 +120,134 @@
         }
       ]
     },
+    "ignores": {
+      "title": "ignores",
+      "description": "Suppresses a rule for matching files, actions, jobs, or steps. Every specified selector must match. Later config files replace the list.",
+      "markdownDescription": "Suppresses a rule for matching files, actions, jobs, or steps. Every specified selector must match. Later config files replace the list.",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "rule"
+            ],
+            "properties": {
+              "file": {
+                "title": "file",
+                "description": "Reported file path or doublestar glob relative to the repository. Matches sourced scripts when diagnostics point to them.",
+                "markdownDescription": "Reported file path or doublestar glob relative to the repository. Matches sourced scripts when diagnostics point to them.",
+                "type": "string",
+                "minLength": 1,
+                "pattern": "[^\t\n\u000b\f\r    -     　]"
+              },
+              "job": {
+                "title": "job",
+                "description": "Exact workflow job ID.",
+                "markdownDescription": "Exact workflow job ID.",
+                "type": "string",
+                "minLength": 1,
+                "pattern": "[^\t\n\u000b\f\r    -     　]"
+              },
+              "reason": {
+                "title": "reason",
+                "description": "Optional explanation for this exception.",
+                "markdownDescription": "Optional explanation for this exception.",
+                "type": "string",
+                "minLength": 1,
+                "pattern": "[^\t\n\u000b\f\r    -     　]"
+              },
+              "rule": {
+                "title": "rule",
+                "description": "Diagnostic rule to suppress.",
+                "markdownDescription": "Diagnostic rule to suppress.",
+                "type": "string",
+                "enum": [
+                  "workflow-run-names",
+                  "unsound-ternary",
+                  "ruff",
+                  "syntax-check",
+                  "inline-suppression",
+                  "missing-local-action",
+                  "string-conditions",
+                  "mixed-type-comparisons",
+                  "case-insensitive-conditions",
+                  "mixed-type-matrix-filters",
+                  "matrix",
+                  "credentials",
+                  "shell-name",
+                  "runner-label",
+                  "events",
+                  "job-needs",
+                  "parallel-steps",
+                  "action",
+                  "executable-bit",
+                  "env-var",
+                  "id",
+                  "glob",
+                  "permissions",
+                  "workflow-call",
+                  "expression",
+                  "deprecated-commands",
+                  "if-cond",
+                  "require-commit-hash",
+                  "require-job-timeout",
+                  "require-permissions",
+                  "required-actions",
+                  "cache-write-untrusted",
+                  "cache-call-unrestricted",
+                  "cache-operation",
+                  "shellcheck"
+                ],
+                "minLength": 1
+              },
+              "step": {
+                "title": "step",
+                "description": "Exact step ID or name.",
+                "markdownDescription": "Exact step ID or name.",
+                "type": "string",
+                "minLength": 1,
+                "pattern": "[^\t\n\u000b\f\r    -     　]"
+              },
+              "uses": {
+                "title": "uses",
+                "description": "Exact action or reusable workflow reference including its version.",
+                "markdownDescription": "Exact action or reusable workflow reference including its version.",
+                "type": "string",
+                "minLength": 1,
+                "pattern": "[^\t\n\u000b\f\r    -     　]"
+              }
+            },
+            "additionalProperties": false,
+            "anyOf": [
+              {
+                "required": [
+                  "file"
+                ]
+              },
+              {
+                "required": [
+                  "uses"
+                ]
+              },
+              {
+                "required": [
+                  "job"
+                ]
+              },
+              {
+                "required": [
+                  "step"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "lint": {
       "title": "lint",
       "description": "Configures rule selection separately from repository policy.",
@@ -1164,6 +1292,79 @@
                                 }
                               ]
                             },
+                            "missing-local-action": {
+                              "title": "missing-local-action",
+                              "description": "Checks that local action manifests can be resolved",
+                              "markdownDescription": "Checks that local action manifests can be resolved",
+                              "oneOf": [
+                                {
+                                  "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean",
+                                      "not": {
+                                        "const": true
+                                      },
+                                      "doNotSuggest": true
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean",
+                                          "not": {
+                                            "const": true
+                                          },
+                                          "doNotSuggest": true
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
                             "parallel-steps": {
                               "title": "parallel-steps",
                               "description": "Checks \"wait\"/\"cancel\" references to background steps and steps forbidden inside a \"parallel\" group",
@@ -1776,6 +1977,7 @@
                           "ruff",
                           "syntax-check",
                           "inline-suppression",
+                          "missing-local-action",
                           "string-conditions",
                           "mixed-type-comparisons",
                           "case-insensitive-conditions",
@@ -2163,8 +2365,8 @@
                           "properties": {
                             "disallow-suppressions": {
                               "title": "disallow-suppressions",
-                              "description": "Reports inline exceptions prohibited by configuration. Stable; not enabled by the recommended preset.",
-                              "markdownDescription": "Reports inline exceptions prohibited by configuration. Stable; not enabled by the recommended preset.",
+                              "description": "Reports inline and configured exceptions prohibited by suppression policy. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Reports inline and configured exceptions prohibited by suppression policy. Stable; not enabled by the recommended preset.",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -2284,6 +2486,7 @@
                                                       "inline-suppression",
                                                       "job-needs",
                                                       "matrix",
+                                                      "missing-local-action",
                                                       "mixed-type-comparisons",
                                                       "mixed-type-matrix-filters",
                                                       "parallel-steps",
@@ -3454,6 +3657,22 @@
         }
       ]
     },
+    "local-actions": {
+      "title": "local-actions",
+      "description": "Maps generated action directories to checked-in source directories. Both paths are relative to the repository root, using ./ or $/ prefixes. Known checkout placements are removed before matching. Sources resolve once to actual directories; mappings do not chain.",
+      "markdownDescription": "Maps generated action directories to checked-in source directories. Both paths are relative to the repository root, using ./ or $/ prefixes. Known checkout placements are removed before matching. Sources resolve once to actual directories; mappings do not chain.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "overrides": {
       "title": "overrides",
       "description": "Applies per-file lint settings in declaration order. Later matching settings win; mappings merge and arrays replace. Paths are repository-relative.",
@@ -4539,6 +4758,79 @@
                                           }
                                         ]
                                       },
+                                      "missing-local-action": {
+                                        "title": "missing-local-action",
+                                        "description": "Checks that local action manifests can be resolved",
+                                        "markdownDescription": "Checks that local action manifests can be resolved",
+                                        "oneOf": [
+                                          {
+                                            "description": "Diagnostic level: default, off, on, info, warn, or error.",
+                                            "markdownDescription": "Diagnostic level: default, off, on, info, warn, or error.",
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean",
+                                                "not": {
+                                                  "const": true
+                                                },
+                                                "doNotSuggest": true
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean",
+                                                    "not": {
+                                                      "const": true
+                                                    },
+                                                    "doNotSuggest": true
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
                                       "parallel-steps": {
                                         "title": "parallel-steps",
                                         "description": "Checks \"wait\"/\"cancel\" references to background steps and steps forbidden inside a \"parallel\" group",
@@ -5151,6 +5443,7 @@
                                     "ruff",
                                     "syntax-check",
                                     "inline-suppression",
+                                    "missing-local-action",
                                     "string-conditions",
                                     "mixed-type-comparisons",
                                     "case-insensitive-conditions",
@@ -5538,8 +5831,8 @@
                                     "properties": {
                                       "disallow-suppressions": {
                                         "title": "disallow-suppressions",
-                                        "description": "Reports inline exceptions prohibited by configuration. Stable; not enabled by the recommended preset.",
-                                        "markdownDescription": "Reports inline exceptions prohibited by configuration. Stable; not enabled by the recommended preset.",
+                                        "description": "Reports inline and configured exceptions prohibited by suppression policy. Stable; not enabled by the recommended preset.",
+                                        "markdownDescription": "Reports inline and configured exceptions prohibited by suppression policy. Stable; not enabled by the recommended preset.",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -5659,6 +5952,7 @@
                                                                 "inline-suppression",
                                                                 "job-needs",
                                                                 "matrix",
+                                                                "missing-local-action",
                                                                 "mixed-type-comparisons",
                                                                 "mixed-type-matrix-filters",
                                                                 "parallel-steps",
@@ -6829,6 +7123,22 @@
                   }
                 ]
               },
+              "local-actions": {
+                "title": "local-actions",
+                "description": "Overlays generated action source mappings for matching files.",
+                "markdownDescription": "Overlays generated action source mappings for matching files.",
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "tools": {
                 "title": "tools",
                 "description": "Overlays external checker settings for the selected files.",
@@ -7133,8 +7443,8 @@
             },
             "disallow-suppressions": {
               "title": "disallow-suppressions",
-              "description": "Restricts inline diagnostic exceptions. `true` or `{}` reports each prohibited directive and retains its original violations. Omission, null, or false permits exceptions. Both ignore and ignore-next-line are covered equally.\n\nUse `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs. Omitted rules selects all suppressible rules; an explicit list must be nonempty. Report accepts suppression (directive only), violation (original findings only), or all (both kinds of diagnostic).",
-              "markdownDescription": "Restricts inline diagnostic exceptions. `true` or `{}` reports each prohibited directive and retains its original violations. Omission, null, or false permits exceptions. Both ignore and ignore-next-line are covered equally.\n\nUse `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs. Omitted rules selects all suppressible rules; an explicit list must be nonempty. Report accepts suppression (directive only), violation (original findings only), or all (both kinds of diagnostic).",
+              "description": "Restricts inline and configured diagnostic exceptions. `true` or `{}` reports each prohibited directive or matching config exception and retains its original violations. Omission, null, or false permits exceptions. Both ignore and ignore-next-line are covered equally.\n\nUse `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs. Omitted rules selects all suppressible rules; an explicit list must be nonempty. Report accepts suppression (exception only), violation (original findings only), or all (both kinds of diagnostic).",
+              "markdownDescription": "Restricts inline and configured diagnostic exceptions. `true` or `{}` reports each prohibited directive or matching config exception and retains its original violations. Omission, null, or false permits exceptions. Both ignore and ignore-next-line are covered equally.\n\nUse `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs. Omitted rules selects all suppressible rules; an explicit list must be nonempty. Report accepts suppression (exception only), violation (original findings only), or all (both kinds of diagnostic).",
               "oneOf": [
                 {
                   "oneOf": [
@@ -7183,6 +7493,7 @@
                               "inline-suppression",
                               "job-needs",
                               "matrix",
+                              "missing-local-action",
                               "mixed-type-comparisons",
                               "mixed-type-matrix-filters",
                               "parallel-steps",

@@ -1,1 +1,2 @@
+test.yaml:6:15: local action "./foo/bar" has no action.yml or action.yaml; check the path and ensure the action is available when linting [missing-local-action]
 /{string => string}/

@@ -9,7 +9,7 @@ import (
 func TestMetadataSuppressionAliasConfigurations(t *testing.T) {
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, "inner/index.js", "console.log('ok');\n")
-	writeShellcheckFixture(t, root, "inner/action.yml", `name: inner # actionlint:ignore action
+	writeShellcheckFixture(t, root, "inner/action.yml", `name: inner # actionlint:ignore action --
 description: test
 runs:
   using: node24
@@ -42,7 +42,7 @@ func TestMetadataSuppressionIgnoresWorkflowOptions(t *testing.T) {
   steps:
     - shell: bash
       run: echo ok`} {
-		for _, directive := range []string{"# actionlint:ignore action", "# actionlint:ignore action -- reviewed"} {
+		for _, directive := range []string{"# actionlint:ignore action --", "# actionlint:ignore action -- reviewed"} {
 			t.Run(runtime+directive, func(t *testing.T) {
 				root, _ := executableFixture(t)
 				config := `lint:

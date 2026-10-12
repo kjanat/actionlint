@@ -311,11 +311,11 @@ jobs: [`,
 			t.Fatalf("scalar content became a directive in %q: %+v", source, got)
 		}
 	}
-	source := []byte("jobs: [ # actionlint:ignore syntax-check")
+	source := []byte("jobs: [ # actionlint:ignore syntax-check --")
 	_, findings := Parse(source)
 	got := filterInlineSuppressions(source, findings, nil)
 	if len(got) != 2 || got[1].Kind != "inline-suppression" || !strings.Contains(got[1].Message, "reason") {
-		t.Fatalf("missing reason was accepted: %+v", got)
+		t.Fatalf("explicit empty reason was accepted: %+v", got)
 	}
 	cfg, err := ParseConfig([]byte("policy: {disallow-suppressions: true}"))
 	if err != nil {
@@ -386,7 +386,7 @@ jobs: [`,
 				t.Fatalf("unrelated comment suppressed malformed header: %+v", got)
 			}
 		}
-		for _, reason := range []string{"", " -- intentional"} {
+		for _, reason := range []string{" --", " -- intentional"} {
 			source := []byte(strings.ReplaceAll("run: # actionlint:ignore syntax-check"+reason+"\n  !!str\n  | bad\n    echo ok", "\n", ending))
 			_, findings := Parse(source)
 			cfg, err := ParseConfig([]byte("policy: {disallow-suppressions: true}"))
@@ -394,7 +394,7 @@ jobs: [`,
 				t.Fatal(err)
 			}
 			want := "disallow-suppressions"
-			if reason == "" {
+			if reason == " --" {
 				want = "inline-suppression"
 			}
 			if got := filterInlineSuppressions(source, findings, cfg.Policy.DisallowSuppressions); len(got) != 2 || got[1].Kind != want {

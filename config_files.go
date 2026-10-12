@@ -86,6 +86,9 @@ func normalizeExtendedConfig(path string, node *yaml.Node, inherited bool) (*yam
 	}
 	if node.Kind == yaml.MappingNode {
 		for i := 0; i < len(node.Content); i += 2 {
+			if node.Content[i].Value == "local-actions" {
+				normalizeLocalActionSourceNode(node.Content[i+1])
+			}
 			if node.Content[i].Value == "lint" {
 				node.Content[i+1] = expandLintShorthands(node.Content[i+1])
 			}

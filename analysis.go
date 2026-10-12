@@ -41,6 +41,7 @@ type AnalysisRequest struct {
 	// WorkingDir resolves workflow paths in reusable-workflow caches. Empty uses os.Getwd.
 	WorkingDir string
 	// ReadFile reads local action metadata and reusable workflows. Nil uses os.ReadFile.
+	// Custom readers own path resolution and filesystem boundary enforcement.
 	// It must support concurrent calls and does not restrict external tools.
 	ReadFile    func(string) ([]byte, error)
 	RulePresets RulePresets
@@ -221,6 +222,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		ac.onRead, wc.onRead = inputs.add, inputs.add
 		ac.onDocument = documents.add
 		ac.readFile, wc.readFile = readFile, readFile
+		ac.customReader = request.ReadFile != nil
 	}
 	group := errgroup.Group{}
 	group.SetLimit(runtime.NumCPU())
@@ -295,6 +297,11 @@ func (r *AnalysisResult) collectDiagnostics() {
 		start               DiagnosticPosition
 	}
 	seen := make(map[location][]Diagnostic)
+	type metadataLocation struct {
+		project, kind, severity string
+		finding                 actionMetadataFindingKey
+	}
+	seenMetadata := make(map[metadataLocation]bool)
 	for i := range r.files {
 		file := &r.files[i]
 		project := ""
@@ -304,6 +311,13 @@ func (r *AnalysisResult) collectDiagnostics() {
 		unique := file.errors[:0]
 		for _, finding := range file.errors {
 			diagnostic := finding.diagnostic(file.source.Content)
+			if identity := finding.metadataFinding; identity != nil && finding.Kind == "action" {
+				key := metadataLocation{project, finding.Kind, finding.severity, identity.key}
+				if seenMetadata[key] {
+					continue
+				}
+				seenMetadata[key] = true
+			}
 			key := location{project, diagnostic.Path, diagnostic.Rule, diagnostic.Start}
 			if slices.ContainsFunc(seen[key], func(previous Diagnostic) bool {
 				return reflect.DeepEqual(previous, diagnostic)

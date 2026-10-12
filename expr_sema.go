@@ -661,6 +661,16 @@ func (sema *ExprSemanticsChecker) checkVariable(n *VariableNode) ExprType {
 			sema.errorf(n, "function %q must be called with parentheses and arguments", name)
 			return AnyType{}
 		}
+		if inputs, ok := sema.vars["inputs"].(*ObjectType); ok && inputs.IsStrict() && slices.Contains(sema.availableContexts, "inputs") {
+			if _, declared := inputs.Props[n.Name]; declared {
+				sema.errorf(n, "undefined variable %q; did you mean %q?", n.Token().Value, "inputs."+n.Name)
+				return AnyType{}
+			}
+		}
+		if suggestion := sema.contextPropertySuggestion(n.Name); suggestion != "" {
+			sema.errorf(n, "undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
+			return AnyType{}
+		}
 		ss := make([]string, 0, len(sema.vars))
 		for n := range sema.vars {
 			ss = append(ss, n)
@@ -693,6 +703,17 @@ func (sema *ExprSemanticsChecker) checkObjectDeref(n *ObjectDerefNode) ExprType 
 			return ty.Mapped
 		}
 		if ty.IsStrict() {
+			if receiver, ok := n.Receiver.(*VariableNode); ok {
+				// User-defined properties can resemble context names without referring
+				// to them, such as inputs.github_token or matrix.runner_os.
+				switch receiver.Name {
+				case "github", "job", "runner", "strategy":
+					if suggestion := sema.contextPropertySuggestion(n.Property); suggestion != "" {
+						sema.errorf(n, "property %q is not defined in this context; did you mean %q?", n.Property, suggestion)
+						return AnyType{}
+					}
+				}
+			}
 			sema.errorf(n, "property %q is not defined in object type %s", n.Property, ty.String())
 		}
 		return AnyType{}
@@ -729,6 +750,35 @@ func (sema *ExprSemanticsChecker) checkObjectDeref(n *ObjectDerefNode) ExprType 
 		sema.errorf(n, "receiver of object dereference %q must be type of object but got %q", n.Property, ty.String())
 		return AnyType{}
 	}
+}
+
+// Suggest only explicit properties in contexts available at this expression.
+// Matching the context prefix preserves distinctions such as job.workflow_sha
+// (the called workflow) versus github.workflow_sha (the caller).
+func (sema *ExprSemanticsChecker) contextPropertySuggestion(name string) string {
+	return contextPropertySuggestion(name, sema.availableContexts, sema.vars)
+}
+
+func contextPropertySuggestion(name string, contexts []string, variables map[string]ExprType) string {
+	var suggestion string
+	for _, context := range contexts {
+		property, ok := strings.CutPrefix(name, context+"_")
+		if !ok {
+			continue
+		}
+		object, ok := variables[context].(*ObjectType)
+		if !ok {
+			continue
+		}
+		if _, exists := object.Props[property]; !exists {
+			continue
+		}
+		if suggestion != "" {
+			return ""
+		}
+		suggestion = context + "." + property
+	}
+	return suggestion
 }
 
 func (sema *ExprSemanticsChecker) checkConfigVariables(n ExprNode, prop string) {

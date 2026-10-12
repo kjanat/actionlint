@@ -42,6 +42,31 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		return schema
 	}
 	switch t {
+	case reflect.TypeFor[actionlint.IgnoreConfig]():
+		mapping := reflectMapping(struct {
+			Rule   string `yaml:"rule" jsonschema:"required,minLength=1,description=Diagnostic rule to suppress."`
+			File   string `yaml:"file,omitempty" jsonschema:"minLength=1,description=Reported file path or doublestar glob relative to the repository. Matches sourced scripts when diagnostics point to them."`
+			Uses   string `yaml:"uses,omitempty" jsonschema:"minLength=1,description=Exact action or reusable workflow reference including its version."`
+			Job    string `yaml:"job,omitempty" jsonschema:"minLength=1,description=Exact workflow job ID."`
+			Step   string `yaml:"step,omitempty" jsonschema:"minLength=1,description=Exact step ID or name."`
+			Reason string `yaml:"reason,omitempty" jsonschema:"minLength=1,description=Optional explanation for this exception."`
+		}{})
+		rule, _ := mapping.Properties.Get("rule")
+		for _, name := range actionlint.InlineSuppressibleRules() {
+			if name == "disallow-suppressions" {
+				continue
+			}
+			rule.Enum = append(rule.Enum, name)
+		}
+		for _, name := range []string{"file", "uses", "job", "step", "reason"} {
+			property, _ := mapping.Properties.Get(name)
+			// Match strings containing a character outside Go's Unicode whitespace set.
+			property.Pattern = "[^\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]"
+		}
+		for _, selector := range []string{"file", "uses", "job", "step"} {
+			mapping.AnyOf = append(mapping.AnyOf, &jsonschema.Schema{Required: []string{selector}})
+		}
+		return mapping
 	case reflect.TypeFor[actionlint.FilesConfig]():
 		mapping := reflectMapping(struct {
 			Includes []string `yaml:"includes" jsonschema:"nullable,description=Repository-relative doublestar globs. Omitted or null selects all files; an empty array selects none. A leading ! excludes a match."`

@@ -137,7 +137,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 	if value := yamlExprString(n); !evaluated && value != nil && strings.Contains(value.Value, "${{") {
 		if _, allowed := actionMetadataAvailability[path]; allowed {
 			if !strings.HasPrefix(path, "runs.steps.*.") && path != "inputs.*.default" {
-				for _, violation := range actionExpressionViolations(value.Value, false, path) {
+				for _, violation := range actionExpressionViolationsWithInputs(value.Value, false, path, meta.Inputs) {
 					message := violation.message
 					if violation.context != "" {
 						message = fmt.Sprintf("context %q is not available", violation.context)
@@ -215,7 +215,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 					rule.checkActionSchemaValue(meta, value, definition, path, depth+1, evaluated)
 					continue
 				} else {
-					for _, violation := range actionExpressionViolations(expr.Value, false, path) {
+					for _, violation := range actionExpressionViolationsWithInputs(expr.Value, false, path, meta.Inputs) {
 						message := violation.message
 						if violation.context != "" {
 							message = fmt.Sprintf("context %q is not available in keys", violation.context)

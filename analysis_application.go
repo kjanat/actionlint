@@ -10,6 +10,8 @@ import (
 	"slices"
 	"strings"
 	"sync"
+
+	"actionlint.kjanat.dev/internal/projectpath"
 )
 
 // AnalysisOptions controls source discovery and analysis without selecting an output format.
@@ -41,6 +43,7 @@ type AnalysisOptions struct {
 	OnFilesSelected func([]string)
 	// ReadFile reads workflows, local action metadata, reusable workflows, and config.
 	// It must support concurrent calls. Nil uses os.ReadFile.
+	// Custom readers own path resolution and filesystem boundary enforcement.
 	// This does not restrict filesystem access by external tools.
 	ReadFile    func(string) ([]byte, error)
 	RulePresets RulePresets
@@ -118,7 +121,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 		a.readFile = os.ReadFile
 	}
 	a.projects.readFile = a.readFile
-	a.request.ReadFile = a.readFile
+	a.request.ReadFile = opts.ReadFile
 	a.request.RulePresets = opts.RulePresets
 	if a.logOut == nil {
 		a.logOut = io.Discard
@@ -185,6 +188,9 @@ func (a *AnalysisSession) Repository(dir string) (*AnalysisResult, error) {
 		return nil, err
 	}
 	if project == nil {
+		if found, expected := projectpath.WorkflowTypo(dir); found != "" {
+			return nil, fmt.Errorf("no workflows directory was found: %q looks misspelled; rename it to %q", found, expected)
+		}
 		return nil, fmt.Errorf("no project was found in any parent directories of %q. check workflows directory is put correctly in your Git repository", dir)
 	}
 	a.selectionLog("Detected project:", project.RootDir())

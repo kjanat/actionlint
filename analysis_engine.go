@@ -87,7 +87,10 @@ func (l *analysisEngine) check(
 
 	if w != nil {
 		dbg := l.debugWriter()
-		localActions = &LocalActionsCache{base: localActions, usedSources: make(map[string][]byte)}
+		localActions = &LocalActionsCache{base: localActions, usedSources: make(map[string][]byte), validation: newActionMetadataValidation()}
+		if cfg != nil {
+			localActions.sourceMappings = cfg.LocalActions
+		}
 
 		rules := []Rule{}
 		c := ruleContext{path: path, config: cfg, actions: localActions, workflows: localReusableWorkflows, process: proc, shellcheck: l.shellcheck}
@@ -215,6 +218,7 @@ func (l *analysisEngine) check(
 		suppressionPolicy = cfg.Policy.DisallowSuppressions
 	}
 	all = filterInlineSuppressions(content, all, suppressionPolicy)
+	all = filterConfigIgnores(configPath, root, content, all, cfg, false, cfg.diagnosticLevel)
 	var projectDir string
 	if project != nil {
 		projectDir = project.RootDir()
@@ -261,6 +265,19 @@ func (l *analysisEngine) check(
 		sourcePath, isMetadata := foreignSources[scopePath]
 		source := metadataSources[sourcePath]
 		findingConfig := cfg
+		diagnosticLevel := func(kind string) RuleLevel {
+			levelConfig := cfg
+			if (kind == "inline-suppression" || kind == "disallow-suppressions") && (cfg == nil || cfg.Lint.Enabled == nil || *cfg.Lint.Enabled) {
+				levelConfig = findingConfig
+			}
+			// Ruff supports per-composite settings while respecting the caller's lint switch.
+			if kind == "ruff" && (cfg == nil || cfg.Lint.Enabled == nil || *cfg.Lint.Enabled) {
+				if compositeConfig, ok := compositeConfigs[sourcePath]; ok {
+					levelConfig = compositeConfig
+				}
+			}
+			return levelConfig.diagnosticLevel(kind)
+		}
 		if findingPath != path && isMetadata && source != nil {
 			var err error
 			findingConfig, err = suppressionConfigForFile(projectConfig, sourcePath, root)
@@ -273,20 +290,10 @@ func (l *analysisEngine) check(
 				policy = findingConfig.Policy.DisallowSuppressions
 			}
 			findings = filterForeignInlineSuppressions(sourcePath, source, findings, policy)
+			findings = filterConfigIgnores(sourcePath, root, source, findings, findingConfig, true, diagnosticLevel)
 		}
 		findings = slices.DeleteFunc(findings, func(e *Error) bool {
-			levelConfig := cfg
-			if (e.Kind == "inline-suppression" || e.Kind == "disallow-suppressions") && (cfg == nil || cfg.Lint.Enabled == nil || *cfg.Lint.Enabled) {
-				levelConfig = findingConfig
-			}
-			// Ruff explicitly supports per-composite settings, but cannot override
-			// the caller's switch disabling the entire lint analysis.
-			if e.Kind == "ruff" && (cfg == nil || cfg.Lint.Enabled == nil || *cfg.Lint.Enabled) {
-				if compositeConfig, ok := compositeConfigs[sourcePath]; ok {
-					levelConfig = compositeConfig
-				}
-			}
-			switch levelConfig.diagnosticLevel(e.Kind) {
+			switch diagnosticLevel(e.Kind) {
 			case "off":
 				return true
 			case "warn":
@@ -303,6 +310,7 @@ func (l *analysisEngine) check(
 		}
 	}
 
+	all = firstVisibleMetadataFindings(all)
 	for _, err := range all {
 		if err.Filepath == "" {
 			err.Filepath = path // Populate filename in the error

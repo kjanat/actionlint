@@ -1,6 +1,5 @@
 .zed-save-backup-*
 /.cache/
-/.github/actionlint.yaml
 /.github/actionlint.yml
 /.idea
 /.mise.local.toml

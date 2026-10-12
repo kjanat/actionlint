@@ -345,14 +345,20 @@ func selfRepositoryUsesLocalSpec(spec string) (string, bool) {
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
 type RuleAction struct {
 	RuleBase
-	cache *LocalActionsCache
+	cache      *LocalActionsCache
+	validation *actionMetadataValidation
 }
 
 // NewRuleAction creates new RuleAction instance.
 func NewRuleAction(cache *LocalActionsCache) *RuleAction {
+	validation := newActionMetadataValidation()
+	if cache != nil && cache.validation != nil {
+		validation = cache.validation
+	}
 	return &RuleAction{
-		RuleBase: builtinRuleBase("action"),
-		cache:    cache,
+		RuleBase:   builtinRuleBase("action"),
+		cache:      cache,
+		validation: validation,
 	}
 }
 
@@ -549,6 +555,25 @@ func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, idx, line, c
 	err := errorAt(&Pos{Line: line, Col: col}, rule.name, fmt.Sprintf(`step %d in "runs.steps" section in metadata of %q action %s`, idx+1, meta.Name, m))
 	err.Filepath = meta.Path()
 	err.source = meta.src
+	if idx >= 0 && idx < len(meta.Runs.Steps) {
+		step := meta.Runs.Steps[idx]
+		origin := &diagnosticIgnoreOrigin{}
+		if step.id != nil {
+			origin.stepID = step.id.Value
+		}
+		if step.StepName != nil {
+			origin.stepName = step.StepName.Value
+		}
+		if step.Uses != nil {
+			origin.uses = *step.Uses
+		}
+		for _, value := range []*string{&origin.stepID, &origin.stepName, &origin.uses} {
+			if literal := literalExpressionValue(*value); literal != nil {
+				*value = *literal
+			}
+		}
+		err.ignoreOrigin = origin
+	}
 	rule.errs = append(rule.errs, err)
 }
 
@@ -558,13 +583,14 @@ func (rule *RuleAction) metadataErrorfAt(meta *ActionMetadata, line, col int, fo
 	err := errorfAt(&Pos{Line: line, Col: col}, rule.name, format, args...)
 	err.Filepath = meta.Path()
 	err.source = meta.src
+	err.ignoreOrigin = &diagnosticIgnoreOrigin{metadata: true}
 	rule.errs = append(rule.errs, err)
 }
 
 func (rule *RuleAction) checkActionInputDefaults(meta *ActionMetadata) {
 	const field = "inputs.*.default"
 	for _, kv := range meta.InputDefaults {
-		for _, v := range actionExpressionViolations(kv.Value.Value, false, field) {
+		for _, v := range actionExpressionViolationsWithInputs(kv.Value.Value, false, field, meta.Inputs) {
 			message := v.message
 			if v.context != "" {
 				message = fmt.Sprintf(
@@ -645,15 +671,16 @@ func (rule *RuleAction) checkCompositeActionStepExprs(meta *ActionMetadata, s *A
 		if v == nil {
 			return
 		}
-		for _, violation := range actionExpressionViolations(v.Value, bare, "runs.steps.*."+field) {
+		for _, violation := range actionExpressionViolationsWithInputs(v.Value, bare, "runs.steps.*."+field, meta.Inputs) {
+			pos := metadataExpressionPosition(meta, v, violation.offset)
 			if ctx := violation.context; ctx != "" {
 				rule.compositeStepErrorfAt(
-					meta, idx, v.Line, v.Column,
+					meta, idx, pos.Line, pos.Col,
 					`uses context %q at %q key which is not available in a composite action. %s`,
 					ctx, key, compositeStepContextHint(ctx),
 				)
 			} else {
-				rule.compositeStepErrorfAt(meta, idx, v.Line, v.Column, `%s at %q key`, violation.message, key)
+				rule.compositeStepErrorfAt(meta, idx, pos.Line, pos.Col, `%s at %q key`, violation.message, key)
 			}
 		}
 	}
@@ -823,19 +850,20 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *
 	if strings.HasPrefix(displaySpec, "$/") {
 		localSpec = displaySpec
 	}
-	meta, cached, err := rule.cache.FindMetadata(localSpec)
+	meta, _, err := rule.cache.FindMetadata(localSpec)
 	if err != nil {
-		rule.Error(action.Uses.Pos, err.Error())
+		if _, unresolved := errors.AsType[unresolvedLocalActionError](err); unresolved {
+			rule.errs = append(rule.errs, errorAt(action.Uses.Pos, "missing-local-action", err.Error()))
+		} else {
+			rule.Error(action.Uses.Pos, err.Error())
+		}
 		return
 	}
 	if meta == nil {
 		return
 	}
 
-	if !cached {
-		rule.Debug("Checking metadata of %s action %q at %q", meta.Runs, meta.Name, displaySpec)
-		rule.checkLocalActionMetadata(meta, action)
-	}
+	rule.replayMetadataFindings(meta, action)
 
 	rule.checkAction(meta, action, func(m *ActionMetadata) string {
 		return fmt.Sprintf("%q defined at %q", m.Name, displaySpec)

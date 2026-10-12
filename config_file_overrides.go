@@ -3,6 +3,7 @@ package actionlint
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 
 	"actionlint.kjanat.dev/internal/configtree"
@@ -25,6 +26,9 @@ type ConfigOverride struct {
 	// Tools overlays external checker settings for the selected files.
 	Tools     *ToolsConfig `yaml:"tools" jsonschema:"nullable"`
 	toolsNode *yaml.Node
+	// LocalActions overlays generated action source mappings for matching files.
+	LocalActions    LocalActionSources `yaml:"local-actions" jsonschema:"nullable"`
+	localActionsSet bool
 }
 
 // UnmarshalYAML validates paths and retains omitted/null fields for merging.
@@ -55,6 +59,9 @@ func (o *ConfigOverride) UnmarshalYAML(n *yaml.Node) error {
 		return errors.New("yaml: overrides.includes requires at least one positive file glob")
 	}
 	for i := 0; i < len(n.Content); i += 2 {
+		if n.Content[i].Value == "local-actions" {
+			next.localActionsSet = true
+		}
 		if n.Content[i].Value == "lint" {
 			next.lintNode = n.Content[i+1]
 		}
@@ -76,6 +83,9 @@ func (o *ConfigOverride) UnmarshalYAML(n *yaml.Node) error {
 // MarshalYAML preserves omitted fields in partial overlays during round trips.
 func (o ConfigOverride) MarshalYAML() (any, error) {
 	value := map[string]any{"includes": o.Includes}
+	if o.localActionsSet || o.LocalActions != nil {
+		value["local-actions"] = o.LocalActions
+	}
 	if o.Excludes != nil {
 		value["excludes"] = o.Excludes
 	}
@@ -137,7 +147,19 @@ func lintConfigNode(config LintConfig) (*yaml.Node, error) {
 // configForFile never mutates shared project settings; parallel file analyses
 // each receive their own effective configuration.
 func configForFile(config *Config, path, root string) (*Config, error) {
-	if config == nil || len(config.Overrides) == 0 {
+	if config == nil {
+		return config, nil
+	}
+	if config.LocalActions != nil {
+		next := *config
+		var err error
+		next.LocalActions, err = normalizedLocalActionSources(config.LocalActions)
+		if err != nil {
+			return nil, err
+		}
+		config = &next
+	}
+	if len(config.Overrides) == 0 {
 		return config, nil
 	}
 	path = repositoryRelativeConfigPath(path, root)
@@ -146,9 +168,24 @@ func configForFile(config *Config, path, root string) (*Config, error) {
 		return nil, err
 	}
 	tools := config.Tools
+	localActions := config.LocalActions
 	for _, override := range config.Overrides {
 		if !override.matches(path) {
 			continue
+		}
+		if override.localActionsSet || override.LocalActions != nil {
+			if override.LocalActions == nil {
+				localActions = nil
+			} else {
+				overlay, err := normalizedLocalActionSources(override.LocalActions)
+				if err != nil {
+					return nil, err
+				}
+				next := make(LocalActionSources)
+				maps.Copy(next, localActions)
+				maps.Copy(next, overlay)
+				localActions = next
+			}
 		}
 		if override.toolsNode != nil || override.Tools != nil {
 			tools, err = mergeToolsOverride(tools, override)
@@ -170,6 +207,7 @@ func configForFile(config *Config, path, root string) (*Config, error) {
 	}
 	next := *config
 	next.Tools = tools
+	next.LocalActions = localActions
 	next.Lint = LintConfig{}
 	content, err := yaml.Marshal(node)
 	if err != nil {

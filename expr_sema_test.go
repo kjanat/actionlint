@@ -10,6 +10,144 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
+func TestExprContextPropertySuggestions(t *testing.T) {
+	for _, tc := range []struct {
+		input, key, suggestion string
+	}{
+		{"github_repository", "jobs.<job_id>.if", "github.repository"},
+		{"GITHUB_REPOSITORY", "jobs.<job_id>.if", "github.repository"},
+		{"github.job_workflow_sha", "jobs.<job_id>.steps.run", "job.workflow_sha"},
+		{"github.job_workflow_sha", "jobs.<job_id>.if", ""},
+		{"github_nonexistent", "jobs.<job_id>.if", ""},
+		{"secrets_anything", "jobs.<job_id>.steps.run", ""},
+		{"github.repository", "jobs.<job_id>.steps.run", ""},
+	} {
+		t.Run(tc.input+"/"+tc.key, func(t *testing.T) {
+			expr, err := NewExprParser().Parse(NewExprLexer(tc.input + "}}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			checker := NewExprSemanticsChecker(false, nil)
+			checker.SetWorkflowKeyAvailability(tc.key)
+			_, errs := checker.Check(expr)
+			var messages []string
+			for _, err := range errs {
+				messages = append(messages, err.Message)
+			}
+			message := strings.Join(messages, "\n")
+			if tc.suggestion == "" {
+				if strings.Contains(message, "did you mean") {
+					t.Fatal(message)
+				}
+			} else if len(errs) != 1 || !strings.Contains(message, fmt.Sprintf("did you mean %q?", tc.suggestion)) {
+				t.Fatalf("expected suggestion %q, got %q", tc.suggestion, message)
+			}
+		})
+	}
+}
+
+func TestExprContextSuggestionsPreserveUserProperties(t *testing.T) {
+	for _, receiver := range []string{"inputs", "matrix", "steps", "needs", "jobs", "env", "custom"} {
+		for _, property := range []string{"github_token", "runner_os", "job_workflow_sha"} {
+			t.Run(receiver+"."+property, func(t *testing.T) {
+				checker := NewExprSemanticsChecker(false, nil)
+				checker.ensureVarsCopied()
+				checker.vars[receiver] = NewStrictObjectType(map[string]ExprType{"declared": BoolType{}})
+				checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.run")
+				checker.availableContexts = append(checker.availableContexts, receiver)
+				expr, err := NewExprParser().Parse(NewExprLexer(receiver + "." + property + "}}"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, errs := checker.Check(expr)
+				want := fmt.Sprintf("property %q is not defined in object type {declared: bool}", property)
+				if len(errs) != 1 || errs[0].Message != want {
+					t.Fatalf("got %v, want %q", errs, want)
+				}
+				checker.vars[receiver] = NewStrictObjectType(map[string]ExprType{property: StringType{}})
+				ty, errs := checker.Check(expr)
+				if len(errs) != 0 || ty.String() != "string" {
+					t.Fatalf("declared property: type=%s errors=%v", ty.String(), errs)
+				}
+			})
+		}
+	}
+}
+
+func TestExprDeclaredInputSuggestions(t *testing.T) {
+	for _, tc := range []struct {
+		name, expression, key, suggestion string
+		inputs                            *ObjectType
+	}{
+		{"declared input wins", "github_repository", "jobs.<job_id>.steps.run", "inputs.github_repository", NewStrictObjectType(map[string]ExprType{"github_repository": StringType{}})},
+		{"case insensitive", "GITHUB_REPOSITORY", "jobs.<job_id>.if", "inputs.github_repository", NewStrictObjectType(map[string]ExprType{"github_repository": StringType{}})},
+		{"ordinary input", "deploy_target", "jobs.<job_id>.steps.run", "inputs.deploy_target", NewStrictObjectType(map[string]ExprType{"deploy_target": StringType{}})},
+		{"undeclared input", "github_repository", "jobs.<job_id>.steps.run", "github.repository", NewEmptyStrictObjectType()},
+		{"loose input object", "github_repository", "jobs.<job_id>.steps.run", "github.repository", NewObjectType(map[string]ExprType{"github_repository": StringType{}})},
+		{"inputs unavailable", "github_repository", "", "github.repository", NewStrictObjectType(map[string]ExprType{"github_repository": StringType{}})},
+		{"dotted context unchanged", "github.job_workflow_sha", "jobs.<job_id>.steps.run", "job.workflow_sha", NewStrictObjectType(map[string]ExprType{"job_workflow_sha": StringType{}})},
+		{"declared dotted input", "inputs.github_repository", "jobs.<job_id>.steps.run", "", NewStrictObjectType(map[string]ExprType{"github_repository": StringType{}})},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			checker := NewExprSemanticsChecker(false, nil)
+			checker.UpdateInputs(tc.inputs)
+			checker.SetWorkflowKeyAvailability(tc.key)
+			if tc.key == "" {
+				checker.SetContextAvailability([]string{"github"})
+			}
+			expr, err := NewExprParser().Parse(NewExprLexer(tc.expression + "}}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, errs := checker.Check(expr)
+			if tc.suggestion == "" {
+				if len(errs) != 0 {
+					t.Fatalf("unexpected diagnostics: %v", errs)
+				}
+			} else if len(errs) != 1 || !strings.Contains(errs[0].Message, fmt.Sprintf("did you mean %q?", tc.suggestion)) {
+				t.Fatalf("expected suggestion %q, got %v", tc.suggestion, errs)
+			}
+		})
+	}
+}
+
+func TestExprDeclaredWorkflowInputSuggestion(t *testing.T) {
+	for _, expression := range []string{"github_repository", "inputs.github_repository"} {
+		t.Run(expression, func(t *testing.T) {
+			config, err := ParseConfig([]byte("tools: {shellcheck: false, ruff: false}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			source := `on:
+  workflow_call:
+    inputs:
+      github_repository:
+        type: string
+        required: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo '${{ ` + expression + ` }}'
+`
+			result, err := Analyze(t.Context(), AnalysisRequest{
+				WorkingDir: t.TempDir(),
+				Sources:    []SourceUnit{{Path: "ci.yml", Content: []byte(source), Config: config}},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if expression == "inputs.github_repository" {
+				if len(result.Diagnostics) != 0 {
+					t.Fatalf("qualified input reported: %+v", result.Diagnostics)
+				}
+			} else if len(result.Diagnostics) != 1 || !strings.Contains(result.Diagnostics[0].Message, `did you mean "inputs.github_repository"?`) {
+				t.Fatalf("declared input suggestion: %+v", result.Diagnostics)
+			}
+		})
+	}
+}
+
 func TestExprBareFunctionNames(t *testing.T) {
 	for _, key := range []string{"jobs.<job_id>.if", "jobs.<job_id>.steps.if"} {
 		for _, tc := range []struct {
