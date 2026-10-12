@@ -182,7 +182,7 @@ branch to build. It emits one intentional error, warning and notice in separate
 jobs, each with its own summary. Expected findings do not fail the job. The preview never runs on
 pushes or pull requests; ordinary CI checks annotation payloads in captured output.
 
-The job summary shows a compact result count and visible findings with numbered source
+The job summary shows findings with numbered source
 excerpts, caret ranges and two surrounding lines on either side when the source is available.
 Documentation URLs use short link labels. Source locations link to the
 run's commit when GitHub repository metadata is available; paths outside the
@@ -190,7 +190,7 @@ workspace remain plain text. Locations respect `working-directory`.
 Findings remain visible without expanding a details section. Incomplete analysis
 is identified separately from lint findings. For multiple invocations in one job,
 set `summary-title: Production workflows` to label a report; the default label is
-the GitHub Action invocation ID. Text logs include the same short result line.
+the GitHub Action invocation ID. Clean runs, empty selections and failures include a short status message in the summary and text log.
 JSON, JSON Lines and SARIF console output remain machine-readable.
 
 Save reports even when findings fail the lint step:

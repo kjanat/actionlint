@@ -79,7 +79,7 @@ test('HTML content and URL attributes cannot introduce markup', () => {
 	assert.ok(!text.includes('<script>'));
 	assert.ok(!text.includes('<img'));
 	assert.ok(text.includes('&quot;onmouseover=&quot;oops'));
-	assert.ok(text.includes('<pre>6 | &lt;/pre&gt;'));
+	assert.ok(text.includes('<pre lang="yaml">6 | &lt;/pre&gt;'));
 });
 
 test('blank lines in untrusted fields cannot end HTML blocks and activate Markdown', () => {
@@ -114,26 +114,30 @@ test('guidance links exclude prose punctuation and retain balanced URL delimiter
 	}
 	assert.ok(
 		summary({ ...result, diagnostics: [{ ...finding, message: 'See (https://example.com/help).' }] }).includes(
-			'See (<a href="https://example.com/help">Documentation</a>).',
+			'See (<br><sub><a href="https://example.com/help">Documentation</a></sub>).',
 		),
 	);
 });
 
 test('findings are visible with their severity, actual rule, source range and help link', () => {
 	const text = summary(result);
-	assert.ok(text.includes('<strong>1 error in 1 workflow</strong>'));
+	assert.ok(!text.includes('<strong>1 error'));
 	assert.ok(text.includes('Undefined variable &quot;missing&quot;'));
 	assert.ok(text.includes('<a href="https://example.com/help">Documentation</a>'));
-	assert.ok(text.includes('<strong>error</strong> <code>expression</code>'));
-	assert.ok(text.includes('<pre>6 | echo missing&#10;  |      ^~~~~~~</pre>'));
+	assert.ok(text.includes('<h3><code>ci.yml:6:6</code></h3>'));
+	assert.ok(text.includes('<sub>Error: <code>expression</code></sub>'));
+	assert.ok(text.includes('<br><sub><a href="https://example.com/help">Documentation</a></sub>'));
+	assert.ok(!text.includes('See '));
+	assert.ok(!text.includes('for details'));
+	assert.ok(text.includes('<pre lang="yaml">6 | echo missing&#10;  |      ^~~~~~~</pre>'));
 	assert.doesNotMatch(text, /<details>|```text|### Summary|### Findings|—|·|workflows checked/);
 });
 
 test('invocation titles can distinguish repeated runs without affecting machine output', () => {
-	assert.equal(reportStatus(result, { GITHUB_ACTION: 'lint_2' }), 'actionlint (lint_2): 1 error');
+	assert.equal(reportStatus(result, { GITHUB_ACTION: 'lint_2' }), '');
 	assert.equal(
-		reportStatus(result, { GITHUB_ACTION: 'lint_2', 'INPUT_SUMMARY-TITLE': 'Production' }),
-		'actionlint (Production): 1 error',
+		reportStatus({ ...result, diagnostics: [] }, { GITHUB_ACTION: 'lint_2', 'INPUT_SUMMARY-TITLE': 'Production' }),
+		'actionlint (Production): No findings',
 	);
 	assert.ok(
 		summary(result, { 'INPUT_SUMMARY-TITLE': '<img>\n# spoof' }).startsWith(
@@ -159,7 +163,11 @@ test('startup failures explain missing config once and retain unrelated errors',
 	assert.ok(text.includes('ensure the file exists in the checkout'));
 	assert.doesNotMatch(text, /\/repo|Exit 3|0 findings|No findings|\*\*Workflows/);
 	assert.ok(summary({ ...failure, error: 'Permission denied' }).includes('Permission denied'));
-	assert.ok(summary({ ...failure, diagnostics: [finding] }).includes('Partial results: 1 error.'));
+	assert.ok(
+		summary({ ...failure, diagnostics: [finding] }).includes(
+			'Analysis stopped before completion; further findings may exist.',
+		),
+	);
 	const windowsPath = String.raw`C:\repo\missing.yml`;
 	assert.ok(
 		summary({
@@ -207,13 +215,17 @@ test('untrusted Markdown cannot escape snippets or create active links', () => {
 		diagnostics: [{ ...finding, message: '[click](javascript:alert(1)) <img src=x>', snippet: '```\n# injected' }],
 	});
 	assert.ok(text.includes('[click](javascript:alert(1)) &lt;img src=x&gt;'));
-	assert.ok(text.includes('<pre>6 | ```'));
+	assert.ok(text.includes('<pre lang="yaml">6 | ```'));
 	assert.ok(!text.includes('\n# injected'));
 });
 
-test('severity totals stay separate and unknown workflow counts are omitted', () => {
+test('findings retain individual severities without count announcements', () => {
 	const diagnostics = [finding, ...['warning', 'info', 'style'].map((severity) => ({ ...finding, severity }))];
 	const text = summary({ ...result, diagnostics, file_count: null });
-	assert.ok(text.includes('<strong>1 error, 1 warning, 1 notice, 1 style finding</strong>'));
+	for (const severity of ['Error', 'Warning', 'Notice', 'Style']) {
+		assert.ok(text.includes(`<sub>${severity}:`));
+	}
+	assert.doesNotMatch(text, /\d+ (?:errors?|warnings?|notices?|style findings?|workflows?)/);
+	assert.equal(reportStatus({ ...result, diagnostics }), '');
 	assert.ok(!text.includes('**Workflows:**'));
 });

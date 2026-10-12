@@ -112,7 +112,8 @@ export async function report(
 	}
 	if (!['json', 'json-lines', 'sarif'].includes(environment.INPUT_FORMAT || 'github')) {
 		// The runner recognizes legacy command markers anywhere in a log line.
-		runtime.log(reportStatus(result, environment).replaceAll('##[', '## ['));
+		const status = reportStatus(result, environment);
+		if (status) runtime.log(status.replaceAll('##[', '## ['));
 	}
 	if (options.review) {
 		await attempt('PR review skipped', async () => {
