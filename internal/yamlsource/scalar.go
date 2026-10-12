@@ -338,7 +338,10 @@ func (d *decoder) escape() error {
 			return errors.New("invalid scalar escape")
 		}
 		r, err := strconv.ParseUint(d.lines[d.row][d.col:d.col+width], 16, 32)
-		if err != nil || !utf8.ValidRune(rune(r)) {
+		if err != nil || r > utf8.MaxRune {
+			return errors.New("invalid scalar escape")
+		}
+		if !utf8.ValidRune(rune(r)) {
 			return errors.New("invalid scalar escape")
 		}
 		value = string(rune(r))
