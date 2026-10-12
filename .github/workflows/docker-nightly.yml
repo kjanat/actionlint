@@ -29,7 +29,8 @@ jobs:
       - name: Require successful master CI for this commit
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
-          test "$(git rev-parse HEAD)" = "${SOURCE_SHA}"
+          checked_out="$(git rev-parse HEAD)"
+          test "${checked_out}" = "${SOURCE_SHA}"
           passed="$(gh api --method GET "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs" \
             -f head_sha="${SOURCE_SHA}" -f branch=master -f event=push -f status=success \
             --jq '.workflow_runs | length > 0')"
@@ -43,9 +44,10 @@ jobs:
           version="$(git describe --tags --long --abbrev=12 --always --match 'v[0-9]*.[0-9]*.[0-9]*')"
           # Keep the version safe for Docker tags and the Go linker argument.
           [[ "${version}" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$ && ${#version} -le 110 ]]
+          created="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           {
             echo "version=${version}"
-            echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "created=${created}"
           } >> "${GITHUB_OUTPUT}"
       - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
@@ -81,7 +83,8 @@ jobs:
             image="actionlint:nightly-test-${arch}"
             skopeo --override-os linux --override-arch "${arch}" copy \
               "oci-archive:${RUNNER_TEMP}/nightly.tar" "docker-daemon:${image}"
-            docker run --rm --platform "linux/${arch}" "${image}" --version | grep -F -- "${VERSION}"
+            image_version="$(docker run --rm --platform "linux/${arch}" "${image}" --version)"
+            grep -F -- "${VERSION}" <<< "${image_version}"
             docker run --rm --platform "linux/${arch}" --entrypoint shellcheck "${image}" --version
             bash scripts/test-docker-ruff.bash "${image}" "linux/${arch}"
             docker run --rm --platform "linux/${arch}" --mount type=bind,source="${PWD}",target=/w,readonly \
@@ -102,7 +105,8 @@ jobs:
         run: |
           [[ "${DIGEST}" =~ ^sha256:[a-f0-9]{64}$ ]]
           # A delayed CI completion or manual rerun must not roll nightly back.
-          current="$(git ls-remote origin refs/heads/master | cut -f1)"
+          remote_ref="$(git ls-remote --exit-code origin refs/heads/master)"
+          current="${remote_ref%%[[:space:]]*}"
           if [[ "${current}" != "${SOURCE_SHA}" ]]; then
             echo 'Master advanced while this image was building; publication skipped.'
             exit 0
@@ -112,6 +116,7 @@ jobs:
               skopeo copy --all --preserve-digests --authfile "${HOME}/.docker/config.json" \
                 --digestfile "${RUNNER_TEMP}/published.digest" \
                 "oci-archive:${RUNNER_TEMP}/nightly.tar" "docker://${registry}/${GITHUB_REPOSITORY}:${tag}"
-              test "$(cat "${RUNNER_TEMP}/published.digest")" = "${DIGEST}"
+              published_digest="$(cat "${RUNNER_TEMP}/published.digest")"
+              test "${published_digest}" = "${DIGEST}"
             done
           done
