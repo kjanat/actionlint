@@ -15,6 +15,32 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 	}{
 		// Normal cases
 		{
+			what:   "retired macOS 14",
+			labels: []string{"macos-14"},
+			errs:   []string{`label "macos-14" is unknown`},
+		},
+		{
+			what:   "retired macOS 14 large",
+			labels: []string{"macos-14-large"},
+			errs:   []string{`label "macos-14-large" is unknown`},
+		},
+		{
+			what:   "retired macOS 14 xlarge in matrix",
+			labels: []string{"${{ matrix.os }}"},
+			matrix: []string{"macos-14-xlarge"},
+			errs:   []string{`label "macos-14-xlarge" is unknown`},
+		},
+		{
+			what:   "retired macOS 14 case insensitive",
+			labels: []string{"macOS-14"},
+			errs:   []string{`label "macOS-14" is unknown`},
+		},
+		{
+			what:   "configured self-hosted macOS 14 labels",
+			labels: []string{"self-hosted", "macos-14", "macos-14-large", "macos-14-xlarge"},
+			known:  []string{"macos-14*"},
+		},
+		{
 			what:   "simple GH-hosted Linux runner label",
 			labels: []string{"ubuntu-24.04"},
 		},
@@ -36,7 +62,7 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 		},
 		{
 			what:   "simple GH-hosted macOS runner label",
-			labels: []string{"macos-14"},
+			labels: []string{"macos-15"},
 		},
 		{
 			what:   "Xcode 27 runner label",
@@ -48,7 +74,7 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 		},
 		{
 			what:   "simple GH-hosted runner label in upper case",
-			labels: []string{"macOS-14"},
+			labels: []string{"macOS-15"},
 		},
 		{
 			what:   "self-hosted Linux runner",
@@ -260,8 +286,8 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 		},
 		{
 			what:   "macOS labels version conflict",
-			labels: []string{"macos-14", "macos-15"},
-			errs:   []string{`label "macos-15" conflicts with label "macos-14"`},
+			labels: []string{"macos-15", "macos-26"},
+			errs:   []string{`label "macos-26" conflicts with label "macos-15"`},
 		},
 		{
 			what:   "macOS latest label conflicts with previous version",
