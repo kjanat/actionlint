@@ -17,13 +17,6 @@ type metadataPositionCache struct {
 	parser  *parser
 }
 
-func initializeActionMetadataPositions(actions map[string]*ActionMetadata) map[string]*ActionMetadata {
-	for _, metadata := range actions {
-		metadata.positions = &metadataPositionCache{}
-	}
-	return actions
-}
-
 func (cache *metadataPositionCache) source(meta *ActionMetadata, value *ActionExprString) *scriptSource {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()

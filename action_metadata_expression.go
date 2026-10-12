@@ -136,6 +136,17 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 			}
 		})
 	}
+	if !positionsKnown {
+		seen := make(map[actionExpressionViolation]bool)
+		out = slices.DeleteFunc(out, func(v actionExpressionViolation) bool {
+			if v.offset != 0 {
+				return false
+			}
+			duplicate := seen[v]
+			seen[v] = true
+			return duplicate
+		})
+	}
 	return out
 }
 

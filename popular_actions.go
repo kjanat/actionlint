@@ -4,7 +4,7 @@ package actionlint
 
 // PopularActions is data set of known popular actions. Keys are specs (owner/repo@ref) of actions
 // and values are their metadata.
-var PopularActions = initializeActionMetadataPositions(map[string]*ActionMetadata{
+var PopularActions = map[string]*ActionMetadata{
 	"8398a7/action-slack@v3": {
 		Name: "action-slack",
 		Runs: ActionMetadataRuns{Using: "node20"},
@@ -6264,7 +6264,7 @@ var PopularActions = initializeActionMetadataPositions(map[string]*ActionMetadat
 			"xo_extensions":                        {"xo_extensions", false, false, ""},
 		},
 	},
-})
+}
 
 // OutdatedPopularActionSpecs is a spec set of known outdated popular actions. The word 'outdated'
 // means that the runner used by the action is no longer available such as "node12", "node16".

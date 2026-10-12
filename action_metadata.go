@@ -1,7 +1,6 @@
 package actionlint
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -410,18 +409,6 @@ type ActionMetadata struct {
 	Branding ActionMetadataBranding `yaml:"branding" json:"-"`
 	// InputDefaults holds each string input default and its position in the metadata file.
 	InputDefaults []*ActionKeyValue `yaml:"-" json:"-"`
-}
-
-// UnmarshalJSON initializes private source state for metadata loaded from JSON.
-func (md *ActionMetadata) UnmarshalJSON(data []byte) error {
-	type metadata ActionMetadata
-	value := metadata(*md)
-	if err := json.Unmarshal(data, &value); err != nil {
-		return err
-	}
-	value.positions = &metadataPositionCache{}
-	*md = ActionMetadata(value)
-	return nil
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler. In addition to the struct tags, it captures the

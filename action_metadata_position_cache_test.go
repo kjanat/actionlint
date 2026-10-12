@@ -9,10 +9,23 @@ import (
 )
 
 func TestMetadataPositionCacheConstruction(t *testing.T) {
-	for spec, meta := range PopularActions {
-		if meta.positions == nil {
-			t.Fatalf("generated action %s has no position cache", spec)
+	value := &ActionExprString{Value: "example", Line: 2, Column: 3}
+	checkSourceLess := func(meta *ActionMetadata) {
+		t.Helper()
+		if meta.positions != nil {
+			t.Fatal("source-less metadata has a position cache")
 		}
+		for range 2 {
+			if got := metadataExpressionPosition(meta, value, 2); *got != (Pos{Line: 2, Col: 3}) || meta.positions != nil {
+				t.Fatal("source-less metadata did not retain its fallback position")
+			}
+		}
+	}
+	for spec, meta := range PopularActions {
+		if meta == nil {
+			t.Fatalf("generated action %s has no metadata", spec)
+		}
+		checkSourceLess(meta)
 	}
 	var decoded struct {
 		Metadata *ActionMetadata `json:"metadata"`
@@ -20,16 +33,17 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"metadata":{"name":"test","inputs":{}}}`), &decoded); err != nil {
 		t.Fatal(err)
 	}
-	if decoded.Metadata == nil || decoded.Metadata.positions == nil {
-		t.Fatal("JSONL-shaped metadata has no position cache")
+	if decoded.Metadata == nil {
+		t.Fatal("JSONL-shaped metadata was not decoded")
 	}
-	previous := decoded.Metadata.positions
+	checkSourceLess(decoded.Metadata)
 	if err := json.Unmarshal([]byte(`{"inputs":{"token":{"name":"token"}}}`), decoded.Metadata); err != nil {
 		t.Fatal(err)
 	}
-	if decoded.Metadata.Name != "test" || decoded.Metadata.positions == previous {
-		t.Fatal("JSON update lost existing fields or retained stale position cache")
+	if decoded.Metadata.Name != "test" || decoded.Metadata.Inputs["token"] == nil {
+		t.Fatal("JSON update lost existing fields or did not decode new fields")
 	}
+	checkSourceLess(decoded.Metadata)
 	root := t.TempDir()
 	writeShellcheckFixture(t, root, "source/action.yml", "name: source\ndescription: source\nruns: {using: composite, steps: []}\n")
 	base := NewLocalActionsCache(&Project{root: root}, nil)
@@ -53,13 +67,7 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 			t.Fatalf("standalone construction: %+v, %v", outline, err)
 		}
 	}
-	manual := &ActionMetadata{}
-	value := &ActionExprString{Value: "example", Line: 2, Column: 3}
-	for range 2 {
-		if got := metadataExpressionPosition(manual, value, 2); *got != (Pos{Line: 2, Col: 3}) || manual.positions != nil {
-			t.Fatal("source-less metadata allocated a transient position cache")
-		}
-	}
+	checkSourceLess(&ActionMetadata{})
 }
 
 func TestMetadataPositionCache(t *testing.T) {

@@ -6,6 +6,27 @@ import (
 	"unicode/utf8"
 )
 
+func TestMetadataFoldedConditionDiagnostics(t *testing.T) {
+	for _, tc := range []struct {
+		condition string
+		want      int
+	}{
+		{"${{ 'secrets.A || secrets.A' }}", 1},
+		{"${{ 'secrets.A || vars.A' }}", 2},
+		{"${{ secrets.A || secrets.A }}", 2},
+	} {
+		t.Run(tc.condition, func(t *testing.T) {
+			root, _ := executableFixture(t)
+			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
+			writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n      if: "+tc.condition+"\n")
+			result := compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
+			if len(result.Diagnostics) != tc.want {
+				t.Fatalf("want %d diagnostics, got %+v", tc.want, result.Diagnostics)
+			}
+		})
+	}
+}
+
 func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 	const composite = "runs:\n  using: composite\n  steps:\n    - shell: bash\n      "
 	for _, tc := range []struct{ name, body, token, message string }{

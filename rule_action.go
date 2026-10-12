@@ -531,9 +531,9 @@ func (rule *RuleAction) checkLocalCompositeActionRuns(meta *ActionMetadata, pos 
 			id := s.id.Value
 			switch {
 			case !jobIDPattern.MatchString(id) || len(id) >= 100 || strings.HasPrefix(id, "__"):
-				_ = rule.compositeStepErrorfAt(meta, i, s.id.Line, s.id.Column, "has invalid ID %q; IDs must start with a letter or _, contain only alphanumeric characters, - or _, be shorter than 100 characters, and must not start with __", id)
+				rule.compositeStepErrorfAt(meta, i, s.id.Line, s.id.Column, nil, "has invalid ID %q; IDs must start with a letter or _, contain only alphanumeric characters, - or _, be shorter than 100 characters, and must not start with __", id)
 			case ids[strings.ToLower(id)]:
-				_ = rule.compositeStepErrorfAt(meta, i, s.id.Line, s.id.Column, "has duplicate ID %q; step IDs are case insensitive", id)
+				rule.compositeStepErrorfAt(meta, i, s.id.Line, s.id.Column, nil, "has duplicate ID %q; step IDs are case insensitive", id)
 			}
 			ids[strings.ToLower(id)] = true
 		}
@@ -545,16 +545,16 @@ func (rule *RuleAction) checkLocalCompositeActionRuns(meta *ActionMetadata, pos 
 // compositeStepErrorf reports an error at the step's own position in the action metadata file
 // instead of at the "uses" site in the workflow being linted.
 func (rule *RuleAction) compositeStepErrorf(meta *ActionMetadata, s *ActionCompositeStep, idx int, format string, args ...any) {
-	_ = rule.compositeStepErrorfAt(meta, idx, s.Line, s.Column, format, args...)
+	rule.compositeStepErrorfAt(meta, idx, s.Line, s.Column, nil, format, args...)
 }
 
-// compositeStepErrorfAt is compositeStepErrorf with an explicit position, used to point at a
-// specific key's value inside the step.
-func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, idx, line, col int, format string, args ...any) *Error {
+// compositeStepErrorfAt reports a position inside the step, with an optional exclusive end.
+func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, idx, line, col int, end *Pos, format string, args ...any) {
 	m := fmt.Sprintf(format, args...)
 	err := errorAt(&Pos{Line: line, Col: col}, rule.name, fmt.Sprintf(`"runs.steps[%d]" in metadata of %q action %s`, idx, meta.Name, m))
 	err.Filepath = meta.Path()
 	err.source = meta.src
+	err.endPosition = end
 	if idx >= 0 && idx < len(meta.Runs.Steps) {
 		step := meta.Runs.Steps[idx]
 		origin := &diagnosticIgnoreOrigin{}
@@ -575,18 +575,16 @@ func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, idx, line, c
 		err.ignoreOrigin = origin
 	}
 	rule.errs = append(rule.errs, err)
-	return err
 }
 
-// metadataErrorfAt reports an error at an explicit position inside the action metadata file
-// instead of at the "uses" site in the workflow being linted.
-func (rule *RuleAction) metadataErrorfAt(meta *ActionMetadata, line, col int, format string, args ...any) *Error {
+// metadataErrorfAt reports inside the action metadata, with an optional exclusive end.
+func (rule *RuleAction) metadataErrorfAt(meta *ActionMetadata, line, col int, end *Pos, format string, args ...any) {
 	err := errorfAt(&Pos{Line: line, Col: col}, rule.name, format, args...)
 	err.Filepath = meta.Path()
 	err.source = meta.src
+	err.endPosition = end
 	err.ignoreOrigin = &diagnosticIgnoreOrigin{metadata: true}
 	rule.errs = append(rule.errs, err)
-	return err
 }
 
 func (rule *RuleAction) checkActionInputDefaults(meta *ActionMetadata) {
@@ -601,11 +599,10 @@ func (rule *RuleAction) checkActionInputDefaults(meta *ActionMetadata) {
 					v.context, quotes(actionMetadataAvailability[field].contexts),
 				)
 			}
-			finding := rule.metadataErrorfAt(
-				meta, pos.Line, pos.Col,
+			rule.metadataErrorfAt(
+				meta, pos.Line, pos.Col, metadataExpressionEndPosition(meta, &kv.Value, v),
 				`default value of input %q in metadata of %q action %s`, kv.Name, meta.Name, message,
 			)
-			finding.endPosition = metadataExpressionEndPosition(meta, &kv.Value, v)
 		}
 	}
 }
@@ -677,17 +674,16 @@ func (rule *RuleAction) checkCompositeActionStepExprs(meta *ActionMetadata, s *A
 		}
 		for _, violation := range actionExpressionViolationsWithInputs(v.Value, bare, "runs.steps.*."+field, meta.Inputs) {
 			pos := metadataExpressionPosition(meta, v, violation.offset)
-			var finding *Error
+			end := metadataExpressionEndPosition(meta, v, violation)
 			if ctx := violation.context; ctx != "" {
-				finding = rule.compositeStepErrorfAt(
-					meta, idx, pos.Line, pos.Col,
+				rule.compositeStepErrorfAt(
+					meta, idx, pos.Line, pos.Col, end,
 					`uses context %q at %q key which is not available in a composite action. %s`,
 					ctx, key, compositeStepContextHint(ctx),
 				)
 			} else {
-				finding = rule.compositeStepErrorfAt(meta, idx, pos.Line, pos.Col, `%s at %q key`, violation.message, key)
+				rule.compositeStepErrorfAt(meta, idx, pos.Line, pos.Col, end, `%s at %q key`, violation.message, key)
 			}
-			finding.endPosition = metadataExpressionEndPosition(meta, v, violation)
 		}
 	}
 

@@ -4,7 +4,7 @@ package actionlint
 
 // PopularActions is data set of known popular actions. Keys are specs (owner/repo@ref) of actions
 // and values are their metadata.
-var PopularActions = initializeActionMetadataPositions(map[string]*ActionMetadata{
+var PopularActions = map[string]*ActionMetadata{
 	"kjanat/actions-shells@v0.1.0": {
 		Name: "Actions Shells",
 		Runs: ActionMetadataRuns{Using: "node24"},
@@ -28,7 +28,7 @@ var PopularActions = initializeActionMetadataPositions(map[string]*ActionMetadat
 			"version":      {"version", false, false, ""},
 		},
 	},
-})
+}
 
 // OutdatedPopularActionSpecs is a spec set of known outdated popular actions. The word 'outdated'
 // means that the runner used by the action is no longer available such as "node12", "node16".

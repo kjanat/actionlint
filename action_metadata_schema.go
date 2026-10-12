@@ -71,7 +71,7 @@ func (rule *RuleAction) checkActionMetadataSchema(meta *ActionMetadata) {
 	var checkTags func(*yaml.Node)
 	checkTags = func(n *yaml.Node) {
 		if message := rawYAMLTagError(n); message != "" {
-			_ = rule.metadataErrorfAt(meta, n.Line, n.Column, "%s in action metadata", message)
+			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "%s in action metadata", message)
 		}
 		for _, child := range n.Content {
 			checkTags(child)
@@ -82,7 +82,7 @@ func (rule *RuleAction) checkActionMetadataSchema(meta *ActionMetadata) {
 }
 
 func (rule *RuleAction) actionSchemaError(meta *ActionMetadata, n *yaml.Node, path, message string) {
-	_ = rule.metadataErrorfAt(meta, n.Line, n.Column, "%s at %q in action metadata", message, path)
+	rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "%s at %q in action metadata", message, path)
 }
 
 // path selects schema availability; location names the actual YAML member.
@@ -144,8 +144,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 						message = fmt.Sprintf("context %q is not available", violation.context)
 					}
 					pos := metadataExpressionPosition(meta, value, violation.offset)
-					finding := rule.metadataErrorfAt(meta, pos.Line, pos.Col, "%s at %q in action metadata", message, location)
-					finding.endPosition = metadataExpressionEndPosition(meta, value, violation)
+					rule.metadataErrorfAt(meta, pos.Line, pos.Col, metadataExpressionEndPosition(meta, value, violation), "%s at %q in action metadata", message, location)
 				}
 			}
 			if definition == "step-if" {
@@ -224,8 +223,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 							message = fmt.Sprintf("context %q is not available in keys", violation.context)
 						}
 						pos := metadataExpressionPosition(meta, expr, violation.offset)
-						finding := rule.metadataErrorfAt(meta, pos.Line, pos.Col, "%s at %q in action metadata", message, location)
-						finding.endPosition = metadataExpressionEndPosition(meta, expr, violation)
+						rule.metadataErrorfAt(meta, pos.Line, pos.Col, metadataExpressionEndPosition(meta, expr, violation), "%s at %q in action metadata", message, location)
 					}
 				}
 			}

@@ -10,6 +10,36 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+func TestActionExpressionFallbackDeduplication(t *testing.T) {
+	for _, tc := range []struct {
+		expression string
+		want       int
+		positioned bool
+	}{
+		{"${{ 'secrets.A || secrets.A' }}", 1, false},
+		{"${{ 'secrets.A || vars.A' }}", 2, false},
+		{"${{ 'unknown() || unknown()' }}", 1, false},
+		{"${{ 'unknown() || other()' }}", 2, false},
+		{"${{ secrets.A || secrets.A }}", 2, true},
+		{"${{ unknown() || unknown() }}", 2, true},
+	} {
+		t.Run(tc.expression, func(t *testing.T) {
+			got := actionExpressionViolations(tc.expression, true, "runs.steps.*.if")
+			if len(got) != tc.want {
+				t.Fatalf("want %d violations, got %+v", tc.want, got)
+			}
+			for _, violation := range got {
+				if (violation.offset != 0) != tc.positioned {
+					t.Fatalf("position availability differs: %+v", violation)
+				}
+			}
+			if tc.positioned && got[0].offset == got[1].offset {
+				t.Fatal("distinct tokens share an offset")
+			}
+		})
+	}
+}
+
 func TestActionExpressionContextSuggestions(t *testing.T) {
 	for _, tc := range []struct {
 		field, expression string
