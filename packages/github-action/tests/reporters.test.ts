@@ -261,10 +261,11 @@ test('report controls are independent and reject unsupported inputs', () => {
 
 test('summaries distinguish clean analysis, no selection, and incomplete analysis', () => {
 	const clean: ActionResult = { ...result, status: 'success', exit_code: 0, diagnostics: [] };
-	assert.equal(summary(clean), '### actionlint: No findings in 2 workflows\n\n');
-	assert.equal(summary({ ...clean, file_count: 0 }), '### actionlint: No workflows selected\n\n');
+	assert.equal(summary(clean), '<p><strong>No findings</strong></p>\n\n');
+	assert.ok(summary({ ...clean, file_count: 0 }).includes('<strong>No workflows selected'));
 	const incomplete: ActionResult = { ...result, completed: false, status: 'failure', exit_code: 3 };
-	assert.ok(summary(incomplete).startsWith('### actionlint: Analysis incomplete\n\nExit 3; 1 finding collected.'));
+	assert.ok(summary(incomplete).includes('<strong>Analysis incomplete'));
+	assert.ok(summary(incomplete).includes('Analysis stopped before completion; further findings may exist.'));
 	assert.ok(
 		summary({ ...result, diagnostics: Array.from({ length: 51 }, () => diagnostic) }).includes('first 50 findings'),
 	);
@@ -302,7 +303,7 @@ test('configuration warnings and origins survive parsing without becoming requir
 });
 
 test('annotation policy is independent of serialization with auto enabled for GitHub format', async () => {
-	for (const format of ['', 'github', 'json', 'oneline']) {
+	for (const format of ['', 'github', 'json', 'json-lines', 'sarif', 'oneline']) {
 		for (const annotations of ['auto', 'true', 'false']) {
 			const messages: string[] = [];
 			const environment = { INPUT_FORMAT: format, INPUT_ANNOTATIONS: annotations, INPUT_SUMMARY: 'false' };
@@ -311,9 +312,23 @@ test('annotation policy is independent of serialization with auto enabled for Gi
 				review: async () => assert.fail('review disabled'),
 			});
 			const enabled = annotations === 'true' || (annotations === 'auto' && (format === '' || format === 'github'));
-			assert.deepEqual(messages, enabled ? [annotation(diagnostic)] : []);
+			assert.deepEqual(messages.filter((message) => message.startsWith('::')), enabled ? [annotation(diagnostic)] : []);
+			if (['json', 'json-lines', 'sarif'].includes(format)) assert.equal(messages.length, enabled ? 1 : 0);
 		}
 	}
+});
+
+test('plain status logs preserve percent signs and cannot inject workflow commands', async () => {
+	const messages: string[] = [];
+	await report({ ...result, diagnostics: [] }, 'result.json', {
+		'INPUT_SUMMARY-TITLE': '100% coverage\n::error::fake ##[error]fake',
+	}, {
+		annotations: 'false',
+		summary: false,
+		sarif: false,
+		review: false,
+	}, { log: (text) => messages.push(text), review: async () => assert.fail('review disabled') });
+	assert.deepEqual(messages, ['actionlint (100% coverage ::error::fake ## [error]fake): No findings']);
 });
 
 test('reporter failures preserve native result and let other destinations finish', async () => {
@@ -516,7 +531,7 @@ test('real entrypoint rejects malformed native results and summarizes input fail
 			assert.equal(persisted.completed, false);
 			assert.equal(persisted.status, scenario.status);
 			assert.equal(persisted.exit_code, scenario.code);
-			assert.ok((await readFile(summaryPath, 'utf8')).startsWith('### actionlint: Analysis incomplete'));
+			assert.ok((await readFile(summaryPath, 'utf8')).includes('<strong>Could not start analysis'));
 		}
 	} finally {
 		await rm(directory, { recursive: true });
@@ -526,19 +541,35 @@ test('real entrypoint rejects malformed native results and summarizes input fail
 test('annotation commands and Markdown summaries escape diagnostic content', () => {
 	assert.equal(
 		annotation(diagnostic),
-		'::warning file=a%2Cb.yml,line=2,endLine=2,col=3,endColumn=7,title=SC2086::Quote this & <value>%0A::warning::spoof',
+		'::warning file=a%2Cb.yml,line=2,endLine=2,col=3,endColumn=7,title=SC2086::Quote this & <value>%0A::warning::spoof%0A%0A2 | echo "$foo"%0A  |   ^~~~~',
 	);
 	const text = summary({ ...result, error: 'Missing <config>\nTry another path', hints: ['Check & retry'] });
 	assert.ok(text.includes('&amp; &lt;value&gt;'));
-	assert.ok(text.includes('<p>Quote this &amp; &lt;value&gt;<br>::warning::spoof</p>'));
-	assert.ok(text.includes('<p>Missing &lt;config&gt;<br>Try another path</p>'));
-	assert.ok(text.includes('<p>Check &amp; retry</p>'));
-	assert.ok(text.includes('<pre>echo &quot;$foo&quot;</pre>'));
+	assert.ok(text.includes('Quote this &amp; &lt;value&gt;<br>::warning::spoof'));
+	assert.ok(text.includes('Missing &lt;config&gt;<br>Try another path'));
+	assert.ok(text.includes('Check &amp; retry'));
+	assert.ok(text.includes('<pre lang="yaml">echo &quot;$foo&quot;&#10;  ^~~~~</pre>'));
 	assert.ok(!text.includes('<value>'));
-	assert.ok(text.includes('1 finding in 2 workflows'));
+	assert.ok(text.includes('<strong>Warning:</strong>'));
 	const multiline = annotation({ ...diagnostic, end: { line: 4, column: 1 } });
 	assert.ok(multiline.includes('line=2,endLine=3,title='));
 	assert.ok(!multiline.includes(',col='));
+});
+
+test('annotation bodies include source context without creating extra runner commands', () => {
+	const emitted = annotation({
+		...diagnostic,
+		message: 'First line\nSecond line: 100%',
+		snippet: '::error::100% <script>',
+	});
+	assert.equal(emitted.split('\n').length, 1);
+	assert.ok(emitted.includes('First line%0ASecond line: 100%25%0A%0A2 | ::error::100%25 <script>%0A  |   ^~~~~'));
+	const withoutSnippet = { ...diagnostic };
+	delete withoutSnippet.snippet;
+	assert.equal(
+		annotation(withoutSnippet),
+		'::warning file=a%2Cb.yml,line=2,endLine=2,col=3,endColumn=7,title=SC2086::Quote this & <value>%0A::warning::spoof',
+	);
 });
 
 test('one analysis feeds reports; github annotations are not emitted twice; review errors are advisory', async () => {

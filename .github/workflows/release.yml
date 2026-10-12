@@ -166,12 +166,23 @@ jobs:
         with: *Node24
       - uses: *Download
         with: { name: verified-release, path: .release-assets }
+      - run: npm ci --ignore-scripts
+      - name: Generate the manifests from the published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.verify.outputs.version }}
+          WINGET_CHECKSUMS: .release-assets/actionlint_${{ needs.verify.outputs.version }}_checksums.txt
+          WINGET_RELEASE_NOTES: ${{ runner.temp }}/release-notes.md
+          WINGET_OUT: ${{ runner.temp }}/winget
+        run: |
+          gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" --json body --jq .body > "${WINGET_RELEASE_NOTES}"
+          node distribution/winget/src/cli.ts generate
       - name: Submit once or report why submission is blocked
         env:
           VERSION: ${{ needs.verify.outputs.version }}
           WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/release-assets.mjs publish-winget .release-assets "${VERSION}"
+        run: node scripts/release-assets.mjs publish-winget "${RUNNER_TEMP}/winget" "${VERSION}"
   winget-failure:
     name: Report a failed WinGet job
     needs: [verify, winget]

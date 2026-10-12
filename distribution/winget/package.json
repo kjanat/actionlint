@@ -1,0 +1,27 @@
+{
+  "name": "@kjanat/actionlint-winget",
+  "version": "0.0.0",
+  "private": true,
+  "description": "WinGet manifest generator for the kjanat.actionlint package",
+  "type": "module",
+  "imports": {
+    "#pkg": "./package.json",
+    "#*": "./src/*.ts"
+  },
+  "scripts": {
+    "generate": "node src/cli.ts generate",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@kjanat/dreamcli": "4.1.0",
+    "remark": "15.0.1",
+    "remark-gfm": "4.0.1",
+    "strip-markdown": "6.0.0",
+    "yaml": "2.9.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/mdast": "4.0.4",
+    "typescript": ">=7"
+  }
+}

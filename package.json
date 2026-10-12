@@ -16,6 +16,7 @@
   "type": "module",
   "workspaces": [
     "distribution/npm/facade",
+    "distribution/winget",
     "packages/*",
     "playground"
   ],

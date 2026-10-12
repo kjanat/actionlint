@@ -318,8 +318,12 @@ func TestBumpReportsMissingFile(t *testing.T) {
 func TestCheckReportsEveryReference(t *testing.T) {
 	root := copyFixture(t)
 	var out bytes.Buffer
-	if err := Check(root, fixtureTargets(), &out); err != nil {
+	declared, err := Check(root, fixtureTargets(), &out)
+	if err != nil {
 		t.Fatal(err)
+	}
+	if declared != "1.2.0" {
+		t.Errorf("declared version = %q, want 1.2.0", declared)
 	}
 	for _, want := range []string{
 		"docs.md:4: package reference: 1.2.0",
@@ -341,7 +345,7 @@ func TestCheckRejectsInconsistentVersions(t *testing.T) {
 	if err := os.WriteFile(path, content, 0666); err != nil {
 		t.Fatal(err)
 	}
-	err := Check(root, fixtureTargets(), io.Discard)
+	_, err := Check(root, fixtureTargets(), io.Discard)
 	if err == nil || !strings.Contains(err.Error(), "release version references are inconsistent: 1.2.0, 1.3.0") {
 		t.Fatalf("expected mismatched release versions to fail validation, got %v", err)
 	}
@@ -372,7 +376,7 @@ func TestDeclaredTargetsAreWellFormed(t *testing.T) {
 }
 
 func TestDeclaredTargetsMatchRepository(t *testing.T) {
-	if err := Check(filepath.Join("..", ".."), targets, io.Discard); err != nil {
+	if _, err := Check(filepath.Join("..", ".."), targets, io.Discard); err != nil {
 		t.Fatalf("the declared version references are out of sync with the repository: %v", err)
 	}
 }
@@ -540,7 +544,7 @@ func TestNixFailureProcess(t *testing.T) {
 		fmt.Fprintln(os.Stderr, "unexpected Nix arguments:", got)
 		os.Exit(2)
 	}
-	if err := Check(".", targets, io.Discard); err != nil {
+	if _, err := Check(".", targets, io.Discard); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
@@ -588,6 +592,7 @@ func releaseRepo(t *testing.T) *repo {
 	if err := os.WriteFile(filepath.Join(r.root, changelogFile), []byte(changelog), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	writeReleaseNotes(t, r.root, "v9.9.9", "# Test release\n\nTest release notes.\n")
 	if err := r.run("add", "."); err != nil {
 		t.Fatal(err)
 	}
@@ -634,7 +639,7 @@ func TestReleaseCommitWaitsForCandidateBeforeTagging(t *testing.T) {
 	if err := Main(t.Context(), []string{"bump-version", "-root", r.root, "-nix-command", command, "-commit", "9.9.9"}, &out, &out); err != nil {
 		t.Fatalf("commit failed: %v\n%s", err, &out)
 	}
-	if err := Check(r.root, targets, io.Discard); err != nil {
+	if _, err := Check(r.root, targets, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	if status, err := r.git("status", "--porcelain"); err != nil || status != "" {

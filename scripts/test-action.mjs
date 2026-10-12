@@ -127,7 +127,16 @@ try {
 			1,
 			`duplicate or missing annotation: ${result.log}`,
 		);
-		assert.match(await readFile(summaryFile, 'utf8'), /1 finding in 1 workflow/);
+		const annotation = result.log.split('\n').find(line => line.startsWith('::error file='));
+		assert.ok(annotation?.includes('%0A%0A6 |'), `annotation lacks numbered source: ${result.log}`);
+		assert.match(annotation || '', /%0A {2}\| +\^~+/);
+		const summary = await readFile(summaryFile, 'utf8');
+		assert.doesNotMatch(summary, /\d+ errors? in \d+ workflows?/);
+		assert.ok(summary.includes('<pre lang="yaml">'));
+		assert.ok(summary.includes('    runs-on: ubuntu-latest&#10;    steps:&#10;'));
+		assert.match(summary, /&#10; +\^~+/);
+		assert.doesNotMatch(summary, /&#10;\d+ \| |&#10; *\|/);
+		assert.ok(summary.includes('<code>github.event.head_commit.message</code>'));
 		assert.ok(result.outputs.get('result-file'));
 		assert.equal(result.outputs.has('report-json'), false);
 		const sarifPath = result.outputs.get('report-sarif');
@@ -145,7 +154,13 @@ try {
 	await run({ summary: 'false' });
 	assert.equal(await readFile(summaryFile, 'utf8'), '');
 	await run({});
-	assert.match(await readFile(summaryFile, 'utf8'), /No findings in 1 workflow/);
+	assert.match(await readFile(summaryFile, 'utf8'), /No findings/);
+	const setupFailure = await run({ 'config-file': '.github/actionlint-missing.yaml', sarif: 'true' }, 3);
+	assert.equal(setupFailure.outputs.get('exit-code'), '3');
+	assert.equal(setupFailure.outputs.get('report-sarif'), '');
+	assert.equal(setupFailure.analysis.completed, false);
+	assert.match(await readFile(summaryFile, 'utf8'), /Could not start analysis/);
+	assert.match(setupFailure.log, /::error::/);
 	await run({ files: '' }, 3);
 	const shell = await run({
 		files: 'testdata/err/shellcheck_default_shell_detection.yaml',

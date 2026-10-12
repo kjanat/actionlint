@@ -1,0 +1,68 @@
+name: Annotation preview
+on:
+  workflow_dispatch:
+    inputs:
+      permalink-only:
+        description: Test native source permalink rendering without building the Action
+        type: boolean
+        default: false
+
+permissions: { contents: read, actions: read }
+
+jobs:
+  permalink:
+    name: Source permalink preview
+    if: inputs.permalink-only
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Render bare source permalink
+        run: |
+          printf '%s\n' 'https://github.com/kjanat/actionlint/blob/55c999e33481bbabb53ea99d396892b681af12e4/testdata/err/one_error.yaml#L1-L6' >> "${GITHUB_STEP_SUMMARY}"
+  preview:
+    if: ${{ !inputs.permalink-only }}
+    name: ${{ matrix.title }} preview
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { severity: error, title: Error }
+          - { severity: warn, title: Warning }
+          - { severity: info, title: Notice }
+    timeout-minutes: 15
+    env:
+      GOTOOLCHAIN: local
+      INPUT_FILES: testdata/err/one_error.yaml
+      INPUT_ANNOTATIONS: "true"
+      INPUT_FAIL-ON-ERROR: "false"
+      INPUT_SHELLCHECK: "false"
+      INPUT_RUFF: "false"
+      INPUT_SUMMARY: "true"
+      INPUT_CONFIG: "lint: {rules: {correctness: {expression: '${{ matrix.severity }}'}}}"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { fetch-depth: 0, persist-credentials: false }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with: { go-version-file: go.mod }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: { node-version-file: .node-version, package-manager-cache: false }
+      - name: Build this branch's binary and Action
+        run: |
+          npm ci
+          go build -o "${RUNNER_TEMP}/actionlint-preview" ./cmd/actionlint
+          echo "ACTIONLINT_ACTION_BINARY=${RUNNER_TEMP}/actionlint-preview" >> "${GITHUB_ENV}"
+          npm run build --workspace actionlint-action -- --out-dir "${RUNNER_TEMP}/annotation-preview"
+      - name: Preview annotation and summary
+        run: node "${RUNNER_TEMP}/annotation-preview/action.mjs"
+      - name: Link annotation step logs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_NAME: ${{ matrix.title }} preview
+        run: |
+          if gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs?filter=latest" > "${RUNNER_TEMP}/preview-jobs.json"; then
+            step_url="$(jq -r --arg name "${JOB_NAME}" '.jobs[] | select(.name == $name and .status == "in_progress") | .html_url as $url | .steps[] | select(.name == "Preview annotation and summary") | "\($url)#step:\(.number):1"' "${RUNNER_TEMP}/preview-jobs.json")"
+            if [[ -n "${step_url}" ]]; then
+              printf '\n[View annotation step logs](%s)\n' "${step_url}" >> "${GITHUB_STEP_SUMMARY}"
+            fi
+          fi

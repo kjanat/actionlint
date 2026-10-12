@@ -492,10 +492,10 @@
     "reason": "Extra lifecycle checks: these historical fixtures remain parser-valid, while actionlint reports their deprecated or retired action runtimes.",
     "cases": {
       "languageservices/languageservice/src/validate.yaml-anchors.test.ts/should handle anchors in steps": [
-        "<stdin>:8:15: runtime \"node20\" is deprecated in GitHub Actions; removal is scheduled for September 23rd, 2026. see https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/. update the version of action \"actions/checkout@v4\" [action]"
+        "<stdin>:8:15: runtime \"node20\" is deprecated; GitHub.com now runs JavaScript actions with Node 24 and no longer supports the Node 20 opt-out. see https://github.blog/changelog/2026-09-23-node-20-is-no-longer-available-in-github-actions/. update the version of action \"actions/checkout@v4\" [action]"
       ],
       "languageservices/workflow-parser/testdata/reader/background-steps.yml": [
-        "<stdin>:10:15: runtime \"node20\" is deprecated in GitHub Actions; removal is scheduled for September 23rd, 2026. see https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/. update the version of action \"actions/checkout@v4\" [action]"
+        "<stdin>:10:15: runtime \"node20\" is deprecated; GitHub.com now runs JavaScript actions with Node 24 and no longer supports the Node 20 opt-out. see https://github.blog/changelog/2026-09-23-node-20-is-no-longer-available-in-github-actions/. update the version of action \"actions/checkout@v4\" [action]"
       ],
       "languageservices/workflow-parser/testdata/reader/basic.yml": [
         "<stdin>:6:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
@@ -553,7 +553,7 @@
         ":1:1: runtime \"node16\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
       ],
       "runner/src/Test/TestData/node20action.yml": [
-        ":1:1: runtime \"node20\" is deprecated in GitHub Actions; removal is scheduled for September 23rd, 2026. see https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/. update runs.using in local action \"Hello World\" to a current runtime [action]"
+        ":1:1: runtime \"node20\" is deprecated; GitHub.com now runs JavaScript actions with Node 24 and no longer supports the Node 20 opt-out. see https://github.blog/changelog/2026-09-23-node-20-is-no-longer-available-in-github-actions/. update runs.using in local action \"Hello World\" to a current runtime [action]"
       ],
       "runner/src/Test/TestData/nodeaction.yml": [
         ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
@@ -593,11 +593,11 @@
         "<stdin>:41:15: the runtime or service used by \"actions/setup-node@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
       ],
       "schemastore/src/test/github-workflow/parallel-steps.yaml": [
-        "<stdin>:21:15: runtime \"node20\" is deprecated in GitHub Actions; removal is scheduled for September 23rd, 2026. see https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/. update the version of action \"actions/checkout@v4\" [action]",
-        "<stdin>:78:15: runtime \"node20\" is deprecated in GitHub Actions; removal is scheduled for September 23rd, 2026. see https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/. update the version of action \"actions/checkout@v4\" [action]",
-        "<stdin>:93:19: runtime \"node20\" is deprecated in GitHub Actions; removal is scheduled for September 23rd, 2026. see https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/. update the version of action \"actions/setup-node@v4\" [action]",
-        "<stdin>:94:19: runtime \"node20\" is deprecated in GitHub Actions; removal is scheduled for September 23rd, 2026. see https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/. update the version of action \"actions/setup-python@v5\" [action]",
-        "<stdin>:100:15: runtime \"node20\" is deprecated in GitHub Actions; removal is scheduled for September 23rd, 2026. see https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/. update the version of action \"actions/checkout@v4\" [action]"
+        "<stdin>:21:15: runtime \"node20\" is deprecated; GitHub.com now runs JavaScript actions with Node 24 and no longer supports the Node 20 opt-out. see https://github.blog/changelog/2026-09-23-node-20-is-no-longer-available-in-github-actions/. update the version of action \"actions/checkout@v4\" [action]",
+        "<stdin>:78:15: runtime \"node20\" is deprecated; GitHub.com now runs JavaScript actions with Node 24 and no longer supports the Node 20 opt-out. see https://github.blog/changelog/2026-09-23-node-20-is-no-longer-available-in-github-actions/. update the version of action \"actions/checkout@v4\" [action]",
+        "<stdin>:93:19: runtime \"node20\" is deprecated; GitHub.com now runs JavaScript actions with Node 24 and no longer supports the Node 20 opt-out. see https://github.blog/changelog/2026-09-23-node-20-is-no-longer-available-in-github-actions/. update the version of action \"actions/setup-node@v4\" [action]",
+        "<stdin>:94:19: runtime \"node20\" is deprecated; GitHub.com now runs JavaScript actions with Node 24 and no longer supports the Node 20 opt-out. see https://github.blog/changelog/2026-09-23-node-20-is-no-longer-available-in-github-actions/. update the version of action \"actions/setup-python@v5\" [action]",
+        "<stdin>:100:15: runtime \"node20\" is deprecated; GitHub.com now runs JavaScript actions with Node 24 and no longer supports the Node 20 opt-out. see https://github.blog/changelog/2026-09-23-node-20-is-no-longer-available-in-github-actions/. update the version of action \"actions/checkout@v4\" [action]"
       ],
       "schemastore/src/test/github-workflow/reusable-workflow.yaml": [
         "<stdin>:27:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
