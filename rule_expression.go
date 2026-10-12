@@ -37,6 +37,8 @@ type RuleExpression struct {
 	workflow         *Workflow
 	localActions     *LocalActionsCache
 	localWorkflows   *LocalReusableWorkflowCache
+	expressionSource *scriptSource
+	expressionOffset int
 }
 
 // NewRuleExpression creates new RuleExpression instance.
@@ -58,6 +60,7 @@ func NewRuleExpression(actionsCache *LocalActionsCache, workflowCache *LocalReus
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
 func (rule *RuleExpression) VisitWorkflowPre(n *Workflow) error {
+	rule.workflow = n
 	rule.checkString(n.Name, "")
 	rule.checkString(n.Description, "")
 	hasNonWorkflowCallTrigger := len(n.On) > 1
@@ -724,7 +727,13 @@ func (rule *RuleExpression) checkIfCondition(str *String, workflowKey string) {
 	//   if: true && false
 
 	var condTy ExprType
+	restore := rule.scopeExpressionSource(str.Value, str.Pos)
+	defer restore()
 	expr, err, offset := parseConditionExpression(str.Value)
+	if conditionSource(str.Value) != str.Value && offset == 0 {
+		rule.expressionSource = nil
+	}
+	rule.expressionOffset = offset
 	line, col := str.Pos.Line, str.Pos.Col+offset
 	if offset != 0 && str.Quoted {
 		col++
@@ -829,7 +838,8 @@ func (rule *RuleExpression) checkFloat(f *Float, workflowKey string) {
 }
 
 func (rule *RuleExpression) checkExprsIn(s string, pos *Pos, quoted, checkUntrusted bool, workflowKey string) ([]typedExpr, bool) {
-	// TODO: Line number is not correct when the string contains newlines.
+	restore := rule.scopeExpressionSource(s, pos)
+	defer restore()
 
 	line, col := pos.Line, pos.Col
 	if quoted {
@@ -847,6 +857,7 @@ func (rule *RuleExpression) checkExprsIn(s string, pos *Pos, quoted, checkUntrus
 		start := idx + 3 // 3 means removing "${{"
 		s = s[start:]
 		offset += start
+		rule.expressionOffset = offset
 		col := col + offset
 
 		ty, offsetAfter, ok := rule.checkSemantics(s, line, col, checkUntrusted, workflowKey)
@@ -859,7 +870,11 @@ func (rule *RuleExpression) checkExprsIn(s string, pos *Pos, quoted, checkUntrus
 		if ty == nil || offsetAfter == 0 {
 			return nil, true
 		}
-		ts = append(ts, typedExpr{ty, Pos{line, col - 3}})
+		position := Pos{line, col - 3}
+		if mapped := rule.expressionPosition(offset-3, false); mapped != nil {
+			position = *mapped
+		}
+		ts = append(ts, typedExpr{ty, position})
 
 		s = s[offsetAfter:]
 		offset += offsetAfter
@@ -870,11 +885,18 @@ func (rule *RuleExpression) checkExprsIn(s string, pos *Pos, quoted, checkUntrus
 
 func (rule *RuleExpression) exprError(err *ExprError, lineBase, colBase int) {
 	pos := convertExprLineColToPos(err.Line, err.Column, lineBase, colBase)
-	if err.rule != "" {
-		rule.errs = append(rule.errs, errorAt(pos, err.rule, err.Message))
-		return
+	var end *Pos
+	if mapped := rule.expressionPosition(rule.expressionOffset+err.Offset, false); mapped != nil {
+		pos = mapped
+		end = rule.expressionTokenEnd(err.Offset)
 	}
-	rule.Error(pos, err.Message)
+	kind := err.rule
+	if kind == "" {
+		kind = rule.Name()
+	}
+	diagnostic := errorAt(pos, kind, err.Message)
+	diagnostic.endPosition = end
+	rule.errs = append(rule.errs, diagnostic)
 }
 
 func (rule *RuleExpression) checkSemanticsOfExprNode(expr ExprNode, line, col int, checkUntrusted bool, workflowKey string) (ExprType, bool) {
@@ -917,7 +939,11 @@ func (rule *RuleExpression) checkSemanticsOfExprNode(expr ExprNode, line, col in
 	}
 	if workflowKey == "" && len(errs) == 0 {
 		if _, literal := expr.(*StringNode); !literal {
-			rule.Error(&Pos{Line: line, Col: col}, "expressions are not allowed in this static workflow field")
+			position := &Pos{Line: line, Col: col}
+			if mapped := rule.expressionPosition(rule.expressionOffset, false); mapped != nil {
+				position = mapped
+			}
+			rule.Error(position, "expressions are not allowed in this static workflow field")
 			return ty, false
 		}
 	}

@@ -6,7 +6,7 @@ import (
 )
 
 func metadataExpressionEndPosition(meta *ActionMetadata, value *ActionExprString, violation actionExpressionViolation) *Pos {
-	if meta.positions == nil || violation.offset <= 0 || violation.endOffset <= violation.offset || violation.endOffset > len(value.Value)+1 {
+	if meta.positions == nil || violation.offset <= 0 || violation.endOffset < violation.offset || violation.endOffset > len(value.Value)+1 {
 		return nil
 	}
 	source := meta.positions.source(meta, value)
@@ -15,6 +15,15 @@ func metadataExpressionEndPosition(meta *ActionMetadata, value *ActionExprString
 		return strings.Count(prefix, "\n") + 1, utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1
 	}
 	line, column := coordinates(violation.offset)
+	if violation.offset == len(value.Value)+1 && violation.endOffset == violation.offset {
+		if end, ok := source.endPos(line, column); ok {
+			return end
+		}
+		return nil
+	}
+	if violation.endOffset == violation.offset {
+		return nil
+	}
 	if _, ok := source.pos(line, column); !ok {
 		return nil
 	}

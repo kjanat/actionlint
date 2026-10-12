@@ -38,6 +38,7 @@ func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 		{"syntax", composite + "run: echo ${{ github.ref + 'main' }}\n", "+", "invalid expression"},
 		{"later-syntax", composite + "run: echo ${{ github.ref }} ${{ github.ref + 'main' }}\n", "+", "invalid expression"},
 		{"syntax-eof", composite + "run: echo ${{ github.ref", "github.ref", "invalid expression"},
+		{"syntax-eof-unclosed-string", composite + "run: echo ${{ 'abc }}", "'abc", "invalid expression"},
 		{"syntax-eof-double-quoted", composite + "run: \"echo ${{ github.ref\n        \"\n", "github.ref", "invalid expression"},
 		{"syntax-eof-single-quoted", composite + "run: 'echo ${{ github.ref\n        '\n", "github.ref", "invalid expression"},
 		{"syntax-eof-literal", composite + "run: |\n        echo ${{ github.ref\n", "github.ref", "invalid expression"},
@@ -77,6 +78,9 @@ func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 			}
 			if matched[0].Start != want {
 				t.Fatalf("want %+v got %+v: %s", want, matched[0].Start, matched[0].Message)
+			}
+			if strings.HasPrefix(tc.name, "syntax-eof") && matched[0].End != want {
+				t.Fatalf("EOF must have a zero-width range at %+v, got %+v", want, matched[0])
 			}
 		})
 	}

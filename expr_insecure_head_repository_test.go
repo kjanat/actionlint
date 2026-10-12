@@ -144,11 +144,11 @@ func TestWorkflowRunUserProfileScriptLocations(t *testing.T) {
 			step string
 			line int
 		}{
-			{"      - run: |\n          echo '${{ github.event.workflow_run." + path + " }}'\n", 6},
+			{"      - run: |\n          echo '${{ github.event.workflow_run." + path + " }}'\n", 7},
 			{`      - uses: actions/github-script@v8
         with:
           script: |
-            console.log('${{ github.event.workflow_run.` + path + " }}')\n", 8},
+            console.log('${{ github.event.workflow_run.` + path + " }}')\n", 9},
 		} {
 			for _, ending := range []string{"\n", "\r\n"} {
 				workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}

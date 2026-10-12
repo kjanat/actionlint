@@ -45,6 +45,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	}
 	var comments []inlineSuppressionComment
 	blockEnds := map[int]int{}
+	scalarParser := parser{sourceLines: lines}
 	seen := map[int]bool{}
 	readComment := func(line int, comment string, standalone bool) {
 		text := strings.TrimSpace(strings.TrimPrefix(comment, "#"))
@@ -73,6 +74,13 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	var visit func(*yaml.Node, int, int)
 	visit = func(node *yaml.Node, endLine, parentIndent int) {
 		if node.Line > 0 && node.Line <= len(lines) {
+			if node.Kind == yaml.ScalarNode && node.Style&(yaml.LiteralStyle|yaml.FoldedStyle) == 0 {
+				if content, last := inlineSuppressionScalarEnd(&scalarParser, node, endLine); last > node.Line {
+					for first := node.Line; first <= content; first++ {
+						blockEnds[first] = last
+					}
+				}
+			}
 			if node.Style&yaml.FlowStyle != 0 || node.Kind == yaml.ScalarNode {
 				readYAMLNodePrefixComments(node, lines, endLine, parentIndent, readComment, blockEnds)
 			}
@@ -139,10 +147,16 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 			}
 			childEnd := endLine
 			if i+1 < len(node.Content) {
-				childEnd = min(childEnd, node.Content[i+1].Line-1)
+				nextLine := node.Content[i+1].Line
+				if node.Style&yaml.FlowStyle == 0 || child.Kind != yaml.ScalarNode {
+					nextLine--
+				}
+				// Flow siblings can share the scalar's closing line. Scalar
+				// recovery stops at its quote or final mapped content.
+				childEnd = min(childEnd, nextLine)
 			}
 			visit(child, max(child.Line, childEnd), parentIndent)
-			if node.Kind == yaml.MappingNode && i%2 == 1 && child.Kind == yaml.ScalarNode && child.Style&(yaml.LiteralStyle|yaml.FoldedStyle) != 0 {
+			if node.Kind == yaml.MappingNode && i%2 == 1 && child.Kind == yaml.ScalarNode {
 				if last, exists := blockEnds[child.Line]; exists {
 					for line := node.Content[i-1].Line; line < child.Line; line++ {
 						blockEnds[line] = last
@@ -167,6 +181,51 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 		comments[i].startLine = blockStarts[comments[i].endLine]
 	}
 	return comments
+}
+
+// Plain scalars end at their final mapped source span. Quoted scalars additionally
+// include their closing quote, which can occupy a separate line without content.
+func inlineSuppressionScalarEnd(p *parser, node *yaml.Node, endLine int) (int, int) {
+	content := p.scalarContentNode(node)
+	if content == nil {
+		return node.Line, node.Line
+	}
+	if content.Style&(yaml.SingleQuotedStyle|yaml.DoubleQuotedStyle) != 0 {
+		start, ok := byteOffsetAtColumn(p.sourceLines[content.Line-1], content.Column)
+		if !ok {
+			return content.Line, node.Line
+		}
+		quote := byte('\'')
+		if content.Style&yaml.DoubleQuotedStyle != 0 {
+			quote = '"'
+		}
+		start++
+		for line := content.Line; line <= endLine; line++ {
+			raw := p.sourceLines[line-1]
+			for i := start; i < len(raw); i++ {
+				if quote == '"' && raw[i] == '\\' {
+					i++
+					continue
+				}
+				if raw[i] == quote {
+					if quote == '\'' && i+1 < len(raw) && raw[i+1] == quote {
+						i++
+						continue
+					}
+					return content.Line, line
+				}
+			}
+			start = 0
+		}
+		return content.Line, node.Line
+	}
+	last := node.Line
+	if source := p.scriptSource(node); source != nil {
+		for _, span := range source.spans {
+			last = max(last, min(span.yamlLine, endLine))
+		}
+	}
+	return content.Line, last
 }
 
 // yamlClosingCommentLine locates a comment stored on a node's opening

@@ -22,11 +22,11 @@ func TestWorkflowRunSiblingWorkflowMetadataInjection(t *testing.T) {
 				step string
 				line int
 			}{
-				{"      - run: |\n          echo '${{ " + expression + " }}'\n", 6},
+				{"      - run: |\n          echo '${{ " + expression + " }}'\n", 7},
 				{`      - uses: actions/github-script@v8
         with:
           script: |
-            console.log('${{ ` + expression + " }}')\n", 8},
+            console.log('${{ ` + expression + " }}')\n", 9},
 			} {
 				for _, ending := range []string{"\n", "\r\n"} {
 					findings := lintSiblingWorkflowMetadata(t, strings.ReplaceAll(script.step, "\n", ending), ending)

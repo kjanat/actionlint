@@ -1245,6 +1245,7 @@ type Job struct {
 // Workflow is root of workflow syntax tree, which represents one workflow configuration file.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions
 type Workflow struct {
+	expressionSources map[Pos]*scriptSource
 	// Name is name of the workflow. This field can be nil when user didn't specify the name explicitly.
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#name
 	Name *String

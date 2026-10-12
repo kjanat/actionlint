@@ -3,6 +3,7 @@ package actionlint
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"go.yaml.in/yaml/v4"
@@ -83,6 +84,24 @@ func (rule *RuleAction) checkActionMetadataSchema(meta *ActionMetadata) {
 
 func (rule *RuleAction) actionSchemaError(meta *ActionMetadata, n *yaml.Node, path, message string) {
 	rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "%s at %q in action metadata", message, path)
+}
+
+func actionSchemaMemberPath(parent, key string) string {
+	identifier := key != ""
+	for i, r := range key {
+		allowed := r == '_' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || i > 0 && (r == '-' || r >= '0' && r <= '9')
+		if !allowed {
+			identifier = false
+			break
+		}
+	}
+	if !identifier {
+		return parent + "[" + strconv.Quote(key) + "]"
+	}
+	if parent == "" {
+		return key
+	}
+	return parent + "." + key
 }
 
 // path selects schema availability; location names the actual YAML member.
@@ -250,7 +269,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 					continue
 				}
 			}
-			rule.checkActionSchemaValue(meta, value, child, childPath, strings.TrimPrefix(location+"."+*name, "."), depth+1, evaluated)
+			rule.checkActionSchemaValue(meta, value, child, childPath, actionSchemaMemberPath(location, *name), depth+1, evaluated)
 		}
 		for _, key := range d.required {
 			if !seen[key] && (path != "runs.steps.*" || !slices.Contains([]string{"run", "shell", "uses"}, key)) {

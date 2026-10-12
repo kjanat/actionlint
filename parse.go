@@ -2115,6 +2115,7 @@ func Parse(b []byte) (*Workflow, []*Error) {
 
 	p := &parser{sourceLines: splitSourceLines(b)}
 	w := p.parse(&n)
+	w.expressionSources = p.workflowExpressionSources(&n)
 
 	return w, p.errors
 }
