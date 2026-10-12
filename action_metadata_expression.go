@@ -35,7 +35,7 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 	base, positionsKnown := 0, true
 	if bare && (!strings.Contains(s, "${{") || literalExpressionValue(s) != nil) {
 		if _, err, _ := parseConditionExpression(s); err != nil {
-			violation := actionExpressionViolation{message: fmt.Sprintf("has an invalid expression: %v", err)}
+			violation := actionExpressionViolation{message: "has an invalid expression: " + err.Message}
 			if conditionSource(s) == s {
 				violation.offset = err.Offset + 1
 				violation.endOffset = err.EndOffset + 1
@@ -58,9 +58,9 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 		expressionOffset := base
 		lex := NewExprLexer(s)
 		expr, err := NewExprParser().Parse(lex)
-		if err != nil || expr == nil {
-			violation := actionExpressionViolation{message: fmt.Sprintf("has an invalid expression: %v", err)}
-			if err != nil && positionsKnown {
+		if err != nil {
+			violation := actionExpressionViolation{message: "has an invalid expression: " + err.Message}
+			if positionsKnown {
 				violation.offset = expressionOffset + err.Offset + 1
 				violation.endOffset = expressionOffset + err.EndOffset + 1
 			}

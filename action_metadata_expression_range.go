@@ -21,9 +21,6 @@ func metadataExpressionEndPosition(meta *ActionMetadata, value *ActionExprString
 		}
 		return nil
 	}
-	if violation.endOffset == violation.offset {
-		return nil
-	}
 	if _, ok := source.pos(line, column); !ok {
 		return nil
 	}

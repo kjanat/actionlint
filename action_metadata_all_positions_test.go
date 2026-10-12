@@ -36,6 +36,7 @@ func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 		{"special-function", composite + "run: echo ${{ always() }}\n", "always", "not available"},
 		{"json-collision", composite + "run: |\n        echo ${{ fromJSON('{\"a\":1,\"A\":2}') }}\n", "fromJSON", "collide"},
 		{"syntax", composite + "run: echo ${{ github.ref + 'main' }}\n", "+", "invalid expression"},
+		{"syntax-delimiter", composite + "run: echo ${{ github.ref. }}\n", "}}", "invalid expression"},
 		{"later-syntax", composite + "run: echo ${{ github.ref }} ${{ github.ref + 'main' }}\n", "+", "invalid expression"},
 		{"syntax-eof", composite + "run: echo ${{ github.ref", "github.ref", "invalid expression"},
 		{"syntax-eof-unclosed-string", composite + "run: echo ${{ 'abc }}", "'abc", "invalid expression"},
@@ -66,6 +67,12 @@ func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 			if len(matched) != 1 {
 				t.Fatalf("want one %q diagnostic: %+v", tc.message, result.Diagnostics)
 			}
+			if tc.message == "invalid expression" {
+				_, detail, ok := strings.Cut(matched[0].Message, "has an invalid expression: ")
+				if !ok || detail == "" || detail[0] >= '0' && detail[0] <= '9' {
+					t.Fatalf("syntax message includes raw coordinates or lacks detail: %s", matched[0].Message)
+				}
+			}
 			var want DiagnosticPosition
 			for i, line := range strings.Split(metadata, "\n") {
 				if col := strings.Index(line, tc.token); col >= 0 {
@@ -78,6 +85,9 @@ func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 			}
 			if matched[0].Start != want {
 				t.Fatalf("want %+v got %+v: %s", want, matched[0].Start, matched[0].Message)
+			}
+			if tc.name == "syntax-delimiter" && matched[0].End != (DiagnosticPosition{Line: want.Line, Column: want.Column + 2}) {
+				t.Fatalf("closing delimiter must retain its two-character range: %+v", matched[0])
 			}
 			if strings.HasPrefix(tc.name, "syntax-eof") && matched[0].End != want {
 				t.Fatalf("EOF must have a zero-width range at %+v, got %+v", want, matched[0])
