@@ -859,7 +859,11 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *
 		return
 	}
 
-	if !cached || rule.Config() != nil && len(rule.Config().Ignores) != 0 {
+	// Only action ignores can make these metadata findings invocation-dependent.
+	// Other rules' ignores must not cause duplicate metadata diagnostics.
+	if !cached || rule.Config() != nil && slices.ContainsFunc(rule.Config().Ignores, func(ignore IgnoreConfig) bool {
+		return ignore.Rule == "action"
+	}) {
 		rule.Debug("Checking metadata of %s action %q at %q", meta.Runs, meta.Name, displaySpec)
 		rule.checkLocalActionMetadata(meta, action)
 	}
