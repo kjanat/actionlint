@@ -79,6 +79,40 @@ func TestQuotedFoldedScriptSource(t *testing.T) {
 	}
 }
 
+func TestQuotedScalarEOFPosition(t *testing.T) {
+	for _, quote := range []string{"\"", "'"} {
+		for _, suffix := range []string{"\n  ", "\n\n  ", "\n\n\n  ", "  "} {
+			for _, newline := range []string{"\n", "\r\n"} {
+				t.Run(quote+suffix+newline, func(t *testing.T) {
+					content := "run: " + quote + "echo ${{ github.ref"
+					input := strings.ReplaceAll(content+suffix+quote+"\n", "\n", newline)
+					var root yaml.Node
+					if err := yaml.Unmarshal([]byte(input), &root); err != nil {
+						t.Fatal(err)
+					}
+					node := root.Content[0].Content[1]
+					p := parser{sourceLines: splitSourceLines([]byte(input))}
+					source := p.scriptSource(node)
+					lines := strings.Split(node.Value, "\n")
+					got, ok := source.endPos(len(lines), utf8.RuneCountInString(lines[len(lines)-1])+1)
+					want := Pos{Line: 1, Col: len(content) + 1}
+					if suffix == "  " {
+						want.Col += len(suffix)
+					}
+					if !ok || *got != want {
+						t.Fatalf("EOF position = %v, %v; want %v", got, ok, want)
+					}
+					if suffix == "\n  " {
+						if got, ok := source.pos(1, utf8.RuneCountInString(node.Value)); ok {
+							t.Fatalf("synthesized space has a start position: %v", got)
+						}
+					}
+				})
+			}
+		}
+	}
+}
+
 func TestBlockScalarEOFPosition(t *testing.T) {
 	for _, header := range []string{"|", ">", "|-", ">-", "|+", ">+", "!!str &script |", "&script !!str >"} {
 		for _, ending := range []string{"\n", "\r\n", ""} {

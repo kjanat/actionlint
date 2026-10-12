@@ -17,6 +17,8 @@ func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 		{"syntax", composite + "run: echo ${{ github.ref + 'main' }}\n", "+", "invalid expression"},
 		{"later-syntax", composite + "run: echo ${{ github.ref }} ${{ github.ref + 'main' }}\n", "+", "invalid expression"},
 		{"syntax-eof", composite + "run: echo ${{ github.ref", "github.ref", "invalid expression"},
+		{"syntax-eof-double-quoted", composite + "run: \"echo ${{ github.ref\n        \"\n", "github.ref", "invalid expression"},
+		{"syntax-eof-single-quoted", composite + "run: 'echo ${{ github.ref\n        '\n", "github.ref", "invalid expression"},
 		{"syntax-eof-literal", composite + "run: |\n        echo ${{ github.ref\n", "github.ref", "invalid expression"},
 		{"syntax-eof-folded", composite + "run: >\n        echo ${{ github.ref\n", "github.ref", "invalid expression"},
 		{"syntax-eof-literal-no-newline", composite + "run: |\n        echo ${{ github.ref", "github.ref", "invalid expression"},

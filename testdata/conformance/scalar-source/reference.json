@@ -879,6 +879,116 @@
           }
         ]
       }
+    },
+    {
+      "request": {
+        "id": "double-quoted-eof",
+        "operation": "parse-yaml",
+        "engine": "next",
+        "allowAnchors": true,
+        "input": "run: \"echo ${{ github.ref\n  \"\n"
+      },
+      "response": {
+        "id": "double-quoted-eof",
+        "protocolVersion": 1,
+        "runnerSha": "67f01c276e0a91d967ba499ce4cdc9a95efa0262",
+        "command": "parse-yaml",
+        "engines": [
+          {
+            "engine": "next",
+            "semantics": {
+              "entrypoint": "ParseYaml",
+              "engine": "Next",
+              "anchors": "Allowed",
+              "foreign": false
+            },
+            "parsed": true,
+            "yaml": {
+              "kind": "mapping",
+              "items": [
+                {
+                  "key": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 1,
+                    "value": "run"
+                  },
+                  "value": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 6,
+                    "value": "echo ${{ github.ref "
+                  }
+                }
+              ],
+              "line": 1,
+              "col": 1
+            },
+            "yamlAnchors": 0,
+            "yamlAliases": 0,
+            "templateErrors": [
+              "(Line: 1, Col: 6): The expression is not closed. An unescaped ${{ sequence was found, but the closing }} sequence was not found."
+            ],
+            "accepted": false,
+            "diagnosed": true
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "id": "single-quoted-eof",
+        "operation": "parse-yaml",
+        "engine": "next",
+        "allowAnchors": true,
+        "input": "run: 'echo ${{ github.ref\n  '\n"
+      },
+      "response": {
+        "id": "single-quoted-eof",
+        "protocolVersion": 1,
+        "runnerSha": "67f01c276e0a91d967ba499ce4cdc9a95efa0262",
+        "command": "parse-yaml",
+        "engines": [
+          {
+            "engine": "next",
+            "semantics": {
+              "entrypoint": "ParseYaml",
+              "engine": "Next",
+              "anchors": "Allowed",
+              "foreign": false
+            },
+            "parsed": true,
+            "yaml": {
+              "kind": "mapping",
+              "items": [
+                {
+                  "key": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 1,
+                    "value": "run"
+                  },
+                  "value": {
+                    "kind": "string",
+                    "line": 1,
+                    "col": 6,
+                    "value": "echo ${{ github.ref "
+                  }
+                }
+              ],
+              "line": 1,
+              "col": 1
+            },
+            "yamlAnchors": 0,
+            "yamlAliases": 0,
+            "templateErrors": [
+              "(Line: 1, Col: 6): The expression is not closed. An unescaped ${{ sequence was found, but the closing }} sequence was not found."
+            ],
+            "accepted": false,
+            "diagnosed": true
+          }
+        ]
+      }
     }
   ]
 }

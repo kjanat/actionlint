@@ -1,6 +1,6 @@
 # Scalar source mapping reference
 
-`reference.json` records 16 requests and responses from the original runner's
+`reference.json` records 18 requests and responses from the original runner's
 next YAML/template parser, compiled from runner commit
 `67f01c276e0a91d967ba499ce4cdc9a95efa0262` into a workflow-capable WASI module.
 Only elapsed time (`ns`) and allocation counts (`alloc`) are omitted.
