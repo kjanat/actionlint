@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev"
+	"actionlint.kjanat.dev/internal/projectpath"
 	"github.com/fatih/color"
 	"github.com/mattn/go-colorable"
 )
@@ -18,6 +19,19 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	r, err = resolveTemplate(r)
 	if err != nil {
 		return 0, err
+	}
+	if c.PreCommit {
+		cwd, wdErr := os.Getwd()
+		if wdErr != nil {
+			return 0, wdErr
+		}
+		root := projectpath.RepositoryRoot(cwd)
+		if typo, _ := projectpath.WorkflowTypo(cwd); typo == "" && (root == "" || !projectpath.HasWorkflowFiles(root)) {
+			if c.Verbose && !r.Quiet {
+				_, _ = fmt.Fprintf(streams.Stderr, "verbose: No workflow files to check from %q\n", cwd)
+			}
+			return 0, nil
+		}
 	}
 
 	// A completed analysis replaces the previous report atomically.

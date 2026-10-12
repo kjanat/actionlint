@@ -89,7 +89,7 @@ func TestPreCommitDeletionOnlyIntegration(t *testing.T) {
 			write(".github/workflows/callee.yml", "on: workflow_call\n", 0o644)
 			write("action.yml", "name: Fixture\n", 0o644)
 			write(".github/actionlint.yaml", "{}\n", 0o644)
-			write("bin/actionlint", "#!/bin/sh\nprintf '%s\\n' \"$#\" > hook-invoked\n", 0o755)
+			write("bin/actionlint", "#!/bin/sh\nprintf '%s\\n' \"$*\" > hook-invoked\n", 0o755)
 			run("git", "init", "--quiet")
 			run("git", "add", ".")
 			run("git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "-c", "core.hooksPath="+t.TempDir(), "commit", "--quiet", "-m", "Fixture")
@@ -113,8 +113,8 @@ func TestPreCommitDeletionOnlyIntegration(t *testing.T) {
 			if err != nil {
 				t.Fatalf("deletion-only commit did not invoke actionlint: %v", err)
 			}
-			if string(invoked) != "0\n" {
-				t.Fatalf("expected invocation without filenames, got %q", invoked)
+			if string(invoked) != "pre-commit\n" {
+				t.Fatalf("expected the pre-commit command without filenames, got %q", invoked)
 			}
 		})
 	}

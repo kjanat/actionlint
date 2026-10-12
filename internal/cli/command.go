@@ -63,6 +63,9 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 		// Parsing can fail before a command's RunE records its full operation.
 		// Keep metadata-command errors out of the analysis-result contract.
 		app.inv.Operation = operation(rest[0])
+		if rest[0] == "pre-commit" {
+			app.inv.Operation = operationCheck
+		}
 		app.root.SetArgs(rest)
 		app.prefixIgnore = slices.Clone(app.inv.Check.IgnoreRegex)
 		if err := app.root.ExecuteContext(ctx); err != nil {

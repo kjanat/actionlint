@@ -121,5 +121,5 @@ func isCommandName(name string) bool {
 }
 
 func commandNames() []string {
-	return []string{"check", "config", "rules", "doctor", "completion", "version", "help"}
+	return []string{"check", "pre-commit", "config", "rules", "doctor", "completion", "version", "help"}
 }

@@ -7,36 +7,61 @@ import (
 	"strings"
 )
 
-// WorkflowTypo returns a misspelled workflow directory and its expected path.
-// It only examines the nearest repository, and never selects files for linting.
-func WorkflowTypo(start string) (found, expected string) {
+// RepositoryRoot returns the nearest directory containing .git, or "" outside a repository.
+func RepositoryRoot(start string) string {
 	dir, err := filepath.Abs(start)
 	if err != nil {
-		return "", ""
+		return ""
 	}
 	for {
 		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
-			entries, _ := os.ReadDir(dir)
-			for _, entry := range entries {
-				if !entry.IsDir() || !near(entry.Name(), ".github") {
-					continue
-				}
-				parent := filepath.Join(dir, entry.Name())
-				children, _ := os.ReadDir(parent)
-				for _, child := range children {
-					if child.IsDir() && near(child.Name(), "workflows") && (entry.Name() != ".github" || child.Name() != "workflows") {
-						return filepath.Join(parent, child.Name()), filepath.Join(dir, ".github", "workflows")
-					}
-				}
-			}
-			return "", ""
+			return dir
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return "", ""
+			return ""
 		}
 		dir = parent
 	}
+}
+
+// HasWorkflowFiles reports whether any YAML file exists under the repository's workflows directory.
+func HasWorkflowFiles(root string) bool {
+	found := false
+	_ = filepath.WalkDir(filepath.Join(root, ".github", "workflows"), func(path string, entry os.DirEntry, err error) error {
+		if err != nil || found {
+			return filepath.SkipAll
+		}
+		if !entry.IsDir() && (strings.HasSuffix(path, ".yml") || strings.HasSuffix(path, ".yaml")) {
+			found = true
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	return found
+}
+
+// WorkflowTypo returns a misspelled workflow directory and its expected path.
+// It only examines the nearest repository, and never selects files for linting.
+func WorkflowTypo(start string) (found, expected string) {
+	dir := RepositoryRoot(start)
+	if dir == "" {
+		return "", ""
+	}
+	entries, _ := os.ReadDir(dir)
+	for _, entry := range entries {
+		if !entry.IsDir() || !near(entry.Name(), ".github") {
+			continue
+		}
+		parent := filepath.Join(dir, entry.Name())
+		children, _ := os.ReadDir(parent)
+		for _, child := range children {
+			if child.IsDir() && near(child.Name(), "workflows") && (entry.Name() != ".github" || child.Name() != "workflows") {
+				return filepath.Join(parent, child.Name()), filepath.Join(dir, ".github", "workflows")
+			}
+		}
+	}
+	return "", ""
 }
 
 // Recognize one insertion, deletion, substitution, or adjacent transposition.

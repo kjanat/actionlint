@@ -35,6 +35,7 @@ type checkInvocation struct {
 	Strict            bool
 	Experimental      bool
 	ExperimentalSet   bool
+	PreCommit         bool
 }
 
 // renderOptions controls result presentation without changing analysis.
