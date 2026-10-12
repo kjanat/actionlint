@@ -172,6 +172,16 @@ first; a checked-in config file avoids escaping nested expressions.
 Explicit annotations off preserves the serialized `output` value. Fatal errors
 still report a step error. Multiple destinations share one analysis.
 
+Finding annotations include the diagnostic message followed by a numbered source
+excerpt and caret range when source is available. Embedded line breaks are encoded
+for the runner, so each finding emits one annotation with a multiline body.
+
+Maintainers can inspect GitHub's rendering with the manual **Annotation preview**
+workflow once it is merged into the default branch. In Actions, select that workflow, choose **Run workflow** and select the
+branch to build. It emits one intentional error, warning and notice, with matching
+job summaries. Expected findings do not fail the job. The preview never runs on
+pushes or pull requests; ordinary CI checks annotation payloads in captured output.
+
 The job summary shows the result, workflow count, and findings with source ranges.
 Findings remain visible without expanding a details section. Incomplete analysis
 is identified separately from lint findings. For multiple invocations in one job,

@@ -539,7 +539,7 @@ test('real entrypoint rejects malformed native results and summarizes input fail
 test('annotation commands and Markdown summaries escape diagnostic content', () => {
 	assert.equal(
 		annotation(diagnostic),
-		'::warning file=a%2Cb.yml,line=2,endLine=2,col=3,endColumn=7,title=SC2086::Quote this & <value>%0A::warning::spoof',
+		'::warning file=a%2Cb.yml,line=2,endLine=2,col=3,endColumn=7,title=SC2086::Quote this & <value>%0A::warning::spoof%0A%0A2 | echo "$foo"%0A  |   ^~~~~',
 	);
 	const text = summary({ ...result, error: 'Missing <config>\nTry another path', hints: ['Check & retry'] });
 	assert.ok(text.includes('&amp; &lt;value&gt;'));
@@ -552,6 +552,22 @@ test('annotation commands and Markdown summaries escape diagnostic content', () 
 	const multiline = annotation({ ...diagnostic, end: { line: 4, column: 1 } });
 	assert.ok(multiline.includes('line=2,endLine=3,title='));
 	assert.ok(!multiline.includes(',col='));
+});
+
+test('annotation bodies include source context without creating extra runner commands', () => {
+	const emitted = annotation({
+		...diagnostic,
+		message: 'First line\nSecond line: 100%',
+		snippet: '::error::100% <script>',
+	});
+	assert.equal(emitted.split('\n').length, 1);
+	assert.ok(emitted.includes('First line%0ASecond line: 100%25%0A%0A2 | ::error::100%25 <script>%0A  |   ^~~~~'));
+	const withoutSnippet = { ...diagnostic };
+	delete withoutSnippet.snippet;
+	assert.equal(
+		annotation(withoutSnippet),
+		'::warning file=a%2Cb.yml,line=2,endLine=2,col=3,endColumn=7,title=SC2086::Quote this & <value>%0A::warning::spoof',
+	);
 });
 
 test('one analysis feeds reports; github annotations are not emitted twice; review errors are advisory', async () => {

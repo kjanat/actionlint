@@ -127,6 +127,9 @@ try {
 			1,
 			`duplicate or missing annotation: ${result.log}`,
 		);
+		const annotation = result.log.split('\n').find(line => line.startsWith('::error file='));
+		assert.ok(annotation?.includes('%0A%0A6 |'), `annotation lacks numbered source: ${result.log}`);
+		assert.match(annotation || '', /%0A {2}\| +\^~+/);
 		assert.match(await readFile(summaryFile, 'utf8'), /\*\*Result:\*\* 1 error\n- \*\*Workflows:\*\* 1/);
 		assert.ok(result.outputs.get('result-file'));
 		assert.equal(result.outputs.has('report-json'), false);
@@ -146,6 +149,12 @@ try {
 	assert.equal(await readFile(summaryFile, 'utf8'), '');
 	await run({});
 	assert.match(await readFile(summaryFile, 'utf8'), /No findings/);
+	const setupFailure = await run({ 'config-file': '.github/actionlint-missing.yaml', sarif: 'true' }, 3);
+	assert.equal(setupFailure.outputs.get('exit-code'), '3');
+	assert.equal(setupFailure.outputs.get('report-sarif'), '');
+	assert.equal(setupFailure.analysis.completed, false);
+	assert.match(await readFile(summaryFile, 'utf8'), /Could not start analysis/);
+	assert.match(setupFailure.log, /::error::/);
 	await run({ files: '' }, 3);
 	const shell = await run({
 		files: 'testdata/err/shellcheck_default_shell_detection.yaml',

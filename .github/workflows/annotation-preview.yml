@@ -1,0 +1,53 @@
+name: Annotation preview
+on:
+  workflow_dispatch:
+
+permissions: { contents: read }
+
+jobs:
+  preview:
+    name: Preview error, warning and notice annotations
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GOTOOLCHAIN: local
+      INPUT_FILES: testdata/err/one_error.yaml
+      INPUT_ANNOTATIONS: "true"
+      INPUT_FAIL-ON-ERROR: "false"
+      INPUT_SHELLCHECK: "false"
+      INPUT_RUFF: "false"
+      INPUT_SUMMARY: "true"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { fetch-depth: 0, persist-credentials: false }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with: { go-version-file: go.mod }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: { node-version-file: .node-version, package-manager-cache: false }
+      - name: Build this branch's binary and Action
+        run: |
+          npm ci
+          go build -o "${RUNNER_TEMP}/actionlint-preview" ./cmd/actionlint
+          echo "ACTIONLINT_ACTION_BINARY=${RUNNER_TEMP}/actionlint-preview" >> "${GITHUB_ENV}"
+          npm run build --workspace actionlint-action -- --out-dir "${RUNNER_TEMP}/annotation-preview"
+      - name: Error annotation
+        env:
+          INPUT_CONFIG: "lint: {rules: {correctness: {expression: error}}}"
+          INPUT_SUMMARY-TITLE: Error preview
+        run: node "${RUNNER_TEMP}/annotation-preview/action.mjs"
+      - name: Warning annotation
+        env:
+          INPUT_CONFIG: "lint: {rules: {correctness: {expression: warn}}}"
+          INPUT_SUMMARY-TITLE: Warning preview
+        run: node "${RUNNER_TEMP}/annotation-preview/action.mjs"
+      - name: Notice annotation
+        env:
+          INPUT_CONFIG: "lint: {rules: {correctness: {expression: info}}}"
+          INPUT_SUMMARY-TITLE: Notice preview
+        run: node "${RUNNER_TEMP}/annotation-preview/action.mjs"
+      - name: Link the preview
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          printf '\n### Inspect the preview\n\n[Open the run](%s) to compare its error, warning and notice annotations with these summaries. The findings are intentional.\n' \
+            "${RUN_URL}" >> "${GITHUB_STEP_SUMMARY}"
