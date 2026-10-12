@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Accept both Ubuntu 24.04 and 26.04 for `ubuntu-latest` during its migration, while rejecting combinations of x64 and ARM64 Ubuntu labels. Map `macos-latest-xlarge` to macOS 26. Explain the completed GitHub.com Node 24 migration without rejecting `node20` action metadata. (kjanat/actionlint#179; kjanat/actionlint#216; kjanat/actionlint#197)
+
 - Generate the WinGet manifests in `distribution/winget`, validated against the official manifest schemas, with `InstallerSuccessCodes: [3]`, an `InstallationMetadata` entry that runs `actionlint.exe -version` and documentation links, replacing GoReleaser's winget pipe. (kjanat/actionlint#258)
 - Report workflow expression errors, action metadata expression errors, and ShellCheck and Ruff findings at their mapped source positions across YAML scalar styles, tags, anchors, and line endings. Highlight the failing expression node: a missing property covers the access through that property, while an error about a function covers its name. Use zero-width ranges at end of input. Share scalar boundaries with inline suppressions so they cover multi-line values. Name composite steps with zero-based paths such as `runs.steps[0]`, and quote special keys as in `runs.steps[0].with['a.b']`. Report each deprecated workflow command at its own position in workflow and composite-action scripts. Parsed Go expression nodes expose `Span()`, and expression errors include `EndOffset`; construct AST nodes with keyed literals. (kjanat/actionlint#252)
 - Report missing local action manifests by default, including repeated references, under the independently configurable `missing-local-action` rule. (kjanat/actionlint#196; kjanat/actionlint#159)
