@@ -83,7 +83,7 @@ func (a *ActionOutline) UnmarshalJSON(data []byte) error {
 // or running analyzers. Decoder errors accompany any recovered declarations.
 // Complete means decoding succeeded. Validity and executability need separate checks.
 func ParseActionOutline(path string, content []byte) (ActionOutline, error) {
-	var metadata ActionMetadata
+	metadata := ActionMetadata{positions: &metadataPositionCache{}}
 	err := yaml.Unmarshal(content, &metadata)
 	metadata.dir, metadata.file, metadata.src = filepath.Dir(path), filepath.Base(path), content
 	return parsedActionOutline(path, &metadata, err)

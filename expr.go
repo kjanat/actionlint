@@ -9,7 +9,9 @@ type ExprError struct {
 	Message string
 	// Offset is byte offset position which caused the error
 	Offset int
-	// Offset is line number position which caused the error. Note that this value is 1-based.
+	// EndOffset is the exclusive byte end of the diagnostic's intended range.
+	EndOffset int
+	// Line is line number position which caused the error. Note that this value is 1-based.
 	Line int
 	// Column is column number position which caused the error. Note that this value is 1-based.
 	Column int

@@ -21,13 +21,15 @@ func newActionMetadataValidation() *actionMetadataValidation {
 	return &actionMetadataValidation{templates: make(map[string][]*Error)}
 }
 
-func (rule *RuleAction) replayMetadataFindings(meta *ActionMetadata, action *ExecAction) {
+func (rule *RuleAction) replayMetadataFindings(meta *ActionMetadata, action *ExecAction, displaySpec string) {
 	store := rule.validation
 	path := meta.Path()
 	templates, checked := store.templates[path]
 	if !checked {
+		rule.Debug("Checking metadata of %s action %q at %q", meta.Runs.Using, meta.Name, displaySpec)
 		validator := NewRuleAction(rule.cache)
 		validator.SetConfig(rule.Config())
+		validator.EnableDebug(rule.dbg)
 		validator.checkLocalActionMetadata(meta, action)
 		templates = validator.Errs()
 		store.templates[path] = templates

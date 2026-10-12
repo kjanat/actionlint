@@ -152,10 +152,6 @@ jobs:
 		finding := result.files[0].errors[0]
 		lines := strings.Split(src, "\n")
 		wantColumn := len([]rune(strings.Split(lines[finding.Line-1], "missing")[0])) + 1
-		// Quoted/folded scalar mappings fall back to the run key position.
-		if strings.HasPrefix(script, "\"") || strings.HasPrefix(script, "'") {
-			wantColumn = 9
-		}
 		if finding.Column != wantColumn || finding.code != "F821" {
 			t.Fatalf("wrong source mapping: %+v want column %d", finding, wantColumn)
 		}

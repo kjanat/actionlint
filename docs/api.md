@@ -45,6 +45,10 @@ Followings are unexhaustive list of interesting APIs.
 - `ExprLexer` lexes expression syntax in `${{ }}` and returns slice of `Token`.
 - `ExprParser` parses given slice of `Token` and returns syntax tree for expression in `${{ }}`. `ExprNode` is an
   interface for nodes in the expression syntax tree.
+  Built-in node types expose `Span() ExprSpan`, a half-open byte range in the decoded expression text. Function diagnostics
+  select the callee token when appropriate; `ExprError.Offset` and `EndOffset` carry the selected range.
+  Nodes constructed manually have no parser-owned span. Use keyed struct literals when constructing AST nodes; the structs
+  now contain private span storage. The `ExprNode` interface remains unchanged for custom node implementations.
 - `ExprType` is an interface of types in expression syntax `${{ }}`. `ObjectType`, `ArrayType`, `StringType`,
   `NumberType`, ... are structs to represent actual types of expression.
 - `ExprSemanticsChecker` checks semantics of expression syntax `${{ }}`. It traverses given expression syntax tree and

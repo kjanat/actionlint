@@ -28,8 +28,8 @@ runs:
 		{"with string", "with", `${{ 'not-a-map' }}`, "expected a mapping", "with"},
 		{"with array", "with", `${{ fromJSON('[]') }}`, "expected a mapping", "with"},
 		{"env JSON scalar", "env", `${{ fromJSON('false') }}`, "expected a mapping", "env"},
-		{"env nested array", "env", `${{ fromJSON('{"VALUE":[]}') }}`, "expected a scalar string", "env.*"},
-		{"with nested mapping", "with", `${{ fromJSON('{"value":{"nested":"value"}}') }}`, "expected a scalar string", "with.*"},
+		{"env nested array", "env", `${{ fromJSON('{"VALUE":[]}') }}`, "expected a scalar string", "env.VALUE"},
+		{"with nested mapping", "with", `${{ fromJSON('{"value":{"nested":"value"}}') }}`, "expected a scalar string", "with.value"},
 		{"env empty key", "env", `${{ fromJSON('{"":"value"}') }}`, "expected a non-empty scalar key", "env"},
 		{"continue boolean", "continue-on-error", `${{ true }}`, "", ""},
 		{"continue JSON boolean", "continue-on-error", `${{ fromJSON('false') }}`, "", ""},
@@ -86,7 +86,7 @@ runs:
 				}
 				return
 			}
-			want := fmt.Sprintf("%s at %q in action metadata", tc.message, "runs.steps.*."+tc.path)
+			want := fmt.Sprintf("%s at %q in action metadata", tc.message, "runs.steps[0]."+tc.path)
 			if len(errs) != 1 || errs[0].Message != want {
 				t.Fatalf("wanted one diagnostic %q, got %v", want, errs)
 			}

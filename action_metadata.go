@@ -387,6 +387,7 @@ type ActionMetadata struct {
 	file         string
 	src          []byte
 	schemaRoot   *yaml.Node
+	positions    *metadataPositionCache
 	// Name is "name" field of action.yaml.
 	Name string `yaml:"name" json:"name"`
 	// Description is "description" field of action.yaml.
@@ -432,6 +433,7 @@ func (md *ActionMetadata) UnmarshalYAML(n *yaml.Node) error {
 		}
 	}
 	md.schemaRoot = n
+	md.positions = &metadataPositionCache{}
 	md.InputDefaults = collectInputDefaults(n)
 	return err
 }
@@ -621,7 +623,7 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 	c.sources[spec] = localActionMetadataSource{path: filepath.Join(dir, f), content: b}
 	c.mu.Unlock()
 
-	var meta ActionMetadata
+	meta := ActionMetadata{positions: &metadataPositionCache{}}
 	parseErr := yaml.Unmarshal(b, &meta)
 	meta.file, meta.dir, meta.src = f, dir, b
 	if c.onDocument != nil {
@@ -649,7 +651,7 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 
 		return nil, false, fmt.Errorf("could not parse action metadata in %q: %s", dir, m)
 	}
-	c.debug("New metadata parsed from action %s: %v", dir, &meta)
+	c.debug("New metadata parsed from action %s: %s action %q", dir, meta.Runs.Using, meta.Name)
 	c.writeCache(spec, &meta)
 	return &meta, false, nil
 }

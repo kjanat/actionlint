@@ -285,14 +285,15 @@ next: value
 			wantMapped: true,
 		},
 		{
-			name: "folded block falls back",
+			name: "folded block",
 			source: `run: >
   echo $foo
 `,
 			node:       &yaml.Node{Style: yaml.FoldedStyle, Value: "echo $foo\n", Line: 1, Column: 6},
 			line:       1,
 			column:     6,
-			wantMapped: false,
+			want:       Pos{Line: 2, Col: 8},
+			wantMapped: true,
 		},
 		{
 			name: "mismatched literal source falls back",
@@ -308,7 +309,7 @@ next: value
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			p := &parser{sourceLines: splitSourceLines([]byte(tc.source))}
+			p := newSourceParser([]byte(tc.source))
 			source := p.scriptSource(tc.node)
 			var have *Pos
 			var ok bool
@@ -333,7 +334,7 @@ next: value
 			t.Fatal(err)
 		}
 		run := root.Content[0].Content[1]
-		p := &parser{sourceLines: splitSourceLines([]byte(input))}
+		p := newSourceParser([]byte(input))
 		source := p.scriptSource(run)
 		pos, ok := source.pos(1, 6)
 		if !ok {
@@ -360,7 +361,7 @@ run: *script
 		if err := yaml.Unmarshal([]byte(input), &root); err != nil {
 			t.Fatal(err)
 		}
-		p := &parser{sourceLines: splitSourceLines([]byte(input))}
+		p := newSourceParser([]byte(input))
 		p.resolveAliases(&root)
 		if len(p.errors) != 0 {
 			t.Fatal(p.errors)
@@ -387,7 +388,7 @@ run: *script
 			t.Fatal(err)
 		}
 		run := root.Content[0].Content[1]
-		p := &parser{sourceLines: splitSourceLines([]byte(input))}
+		p := newSourceParser([]byte(input))
 		pos, ok := p.scriptSource(run).pos(2, 6)
 		if !ok {
 			t.Fatal("script position after blank continuation was not mapped")

@@ -5,7 +5,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-// Resolve the lint settings needed to interpret metadata directives.
+// Resolve metadata diagnostic settings independently of workflow-only rule options.
 func suppressionConfigForFile(config *Config, path, root string) (*Config, error) {
 	if config == nil {
 		return nil, nil
@@ -38,7 +38,7 @@ func suppressionConfigForFile(config *Config, path, root string) (*Config, error
 
 func suppressionLintNode(node *yaml.Node) *yaml.Node {
 	return configtree.SelectLintRules(node, map[string][]string{
-		"correctness": {"inline-suppression"},
+		"correctness": {"inline-suppression", "deprecated-commands"},
 		"policy":      {"disallow-suppressions"},
 	})
 }

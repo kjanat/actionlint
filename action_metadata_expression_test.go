@@ -6,8 +6,39 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"go.yaml.in/yaml/v4"
 )
+
+func TestActionExpressionFallbackDeduplication(t *testing.T) {
+	for _, tc := range []struct {
+		expression string
+		want       int
+		positioned bool
+	}{
+		{"${{ 'secrets.A || secrets.A' }}", 1, false},
+		{"${{ 'secrets.A || vars.A' }}", 2, false},
+		{"${{ 'unknown() || unknown()' }}", 1, false},
+		{"${{ 'unknown() || other()' }}", 2, false},
+		{"${{ secrets.A || secrets.A }}", 2, true},
+		{"${{ unknown() || unknown() }}", 2, true},
+	} {
+		t.Run(tc.expression, func(t *testing.T) {
+			got := actionExpressionViolations(tc.expression, true, "runs.steps.*.if")
+			if len(got) != tc.want {
+				t.Fatalf("want %d violations, got %+v", tc.want, got)
+			}
+			for _, violation := range got {
+				if (violation.offset != 0) != tc.positioned {
+					t.Fatalf("position availability differs: %+v", violation)
+				}
+			}
+			if tc.positioned && got[0].offset == got[1].offset {
+				t.Fatal("distinct tokens share an offset")
+			}
+		})
+	}
+}
 
 func TestActionExpressionContextSuggestions(t *testing.T) {
 	for _, tc := range []struct {
@@ -24,7 +55,7 @@ func TestActionExpressionContextSuggestions(t *testing.T) {
 	} {
 		t.Run(tc.field+"/"+tc.expression, func(t *testing.T) {
 			got := actionExpressionViolations(tc.expression, tc.field == "runs.steps.*.if", tc.field)
-			if diff := cmp.Diff(tc.want, got, cmp.AllowUnexported(actionExpressionViolation{})); diff != "" {
+			if diff := cmp.Diff(tc.want, got, cmp.AllowUnexported(actionExpressionViolation{}), cmpopts.IgnoreFields(actionExpressionViolation{}, "offset", "endOffset")); diff != "" {
 				t.Fatal(diff)
 			}
 		})
@@ -108,15 +139,15 @@ func TestActionExpressionFunctions(t *testing.T) {
 		{"quoted delimiters", "runs.steps.*.name", "${{ '}} ${{ success() }}' }}", false, nil},
 		{"literal then real function", "runs.steps.*.name", "${{ '}} ${{ success() }}' }}${{ success() }}", false,
 			[]actionExpressionViolation{{message: `calls function "success" which is not available here`}}},
-		{"deduplicated functions", "inputs.*.default", "${{ always() }}${{ ALWAYS() }}", false,
-			[]actionExpressionViolation{{message: `calls function "always" which is not available here`}}},
+		{"repeated functions", "inputs.*.default", "${{ always() }}${{ ALWAYS() }}", false,
+			[]actionExpressionViolation{{message: `calls function "always" which is not available here`}, {message: `calls function "always" which is not available here`}}},
 		{"hash maximum", "runs.steps.*.shell", "${{ hashFiles(" + strings.Repeat("'x',", 254) + "'x') }}", false, nil},
 		{"hash over maximum", "runs.steps.*.shell", "${{ hashFiles(" + strings.Repeat("'x',", 255) + "'x') }}", false,
 			[]actionExpressionViolation{{message: `calls function "hashfiles" with 256 argument(s); expected at least 1 and at most 255`}}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if diff := cmp.Diff(tc.want, actionExpressionViolations(tc.expression, tc.bare, tc.field), cmp.AllowUnexported(actionExpressionViolation{})); diff != "" {
+			if diff := cmp.Diff(tc.want, actionExpressionViolations(tc.expression, tc.bare, tc.field), cmp.AllowUnexported(actionExpressionViolation{}), cmpopts.IgnoreFields(actionExpressionViolation{}, "offset", "endOffset")); diff != "" {
 				t.Fatal(diff)
 			}
 		})

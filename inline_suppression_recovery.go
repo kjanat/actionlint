@@ -4,13 +4,14 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yamlsource"
 )
 
 // recoverInlineSuppressionComments reads lexical comments when malformed YAML
 // prevents node construction. Quoted scalars and block bodies remain opaque.
 func recoverInlineSuppressionComments(source []byte) []inlineSuppressionComment {
-	lines := splitSourceLines(source)
+	document := yamlsource.NewDocument(string(source))
+	lines := document.Lines
 	var comments []inlineSuppressionComment
 	var quote byte
 	var flow []int
@@ -98,8 +99,10 @@ func recoverInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 			case len(flow) > 0 && c == ',':
 				plain = false
 			case !plain && len(flow) == 0 && (c == '|' || c == '>'):
-				node := &yaml.Node{Line: lineNumber, Column: utf8.RuneCountInString(line[:col]) + 1}
-				readYAMLNodePrefixComments(node, lines, len(lines), parentIndent, func(int, string, bool) {}, blockEnds)
+				position := yamlsource.Position{Line: lineNumber, Column: utf8.RuneCountInString(line[:col]) + 1}
+				if scalar, err := document.Decode(position, yamlsource.Context{Indent: parentIndent}); err == nil {
+					blockEnds[lineNumber] = scalar.End.Line
+				}
 				blockEnd = blockEnds[lineNumber]
 				if prefixStart != 0 {
 					for prefix := prefixStart; prefix < lineNumber; prefix++ {

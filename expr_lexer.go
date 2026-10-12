@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"text/scanner"
+	"unicode/utf8"
 )
 
 // TokenKind is kind of token.
@@ -182,11 +183,17 @@ func NewExprLexer(src string) *ExprLexer {
 func (lex *ExprLexer) error(msg string) {
 	if lex.lexErr == nil {
 		p := lex.scan.Pos()
+		end := p.Offset
+		if end < len(lex.src) {
+			_, width := utf8.DecodeRuneInString(lex.src[end:])
+			end += width
+		}
 		lex.lexErr = &ExprError{
-			Message: msg,
-			Offset:  p.Offset,
-			Line:    p.Line,
-			Column:  p.Column,
+			Message:   msg,
+			Offset:    p.Offset,
+			EndOffset: end,
+			Line:      p.Line,
+			Column:    p.Column,
 		}
 	}
 }

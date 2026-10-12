@@ -1,8 +1,6 @@
 package actionlint
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"text/template"
+
+	"actionlint.kjanat.dev/internal/yamlsource"
 
 	"github.com/fatih/color"
 	"github.com/mattn/go-runewidth"
@@ -42,6 +42,8 @@ type Error struct {
 	// source is the content of the file at Filepath when the error points at a file other than the
 	// linted workflow. It replaces the workflow source for rendering the snippet.
 	source []byte
+	// rawScriptSource retains the external checker's LF-based source coordinates.
+	rawScriptSource bool
 	// suppressionOrigin identifies the YAML run declaration which caused a
 	// sourced diagnostic, independently of its displayed script location.
 	suppressionOrigin *suppressionOrigin
@@ -147,12 +149,14 @@ func (e *Error) PrettyPrint(w io.Writer, source []byte) {
 }
 
 func (e *Error) getLine(source []byte) (string, bool) {
-	s := bufio.NewScanner(bytes.NewReader(source))
-	l := 0
-	for s.Scan() {
-		l++
-		if l == e.Line {
-			return s.Text(), true
+	if !e.rawScriptSource {
+		return yamlsource.SourceLine(string(source), e.Line)
+	}
+	line := 0
+	for text := range strings.SplitSeq(string(source), "\n") {
+		line++
+		if line == e.Line {
+			return strings.TrimSuffix(text, "\r"), true
 		}
 	}
 	return "", false

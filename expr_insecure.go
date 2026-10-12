@@ -443,6 +443,9 @@ func (u *UntrustedInputChecker) followAccess(expr ExprNode) bool {
 	default:
 		return false
 	}
+	if u.start != nil {
+		u.start = expr
+	}
 	return true
 }
 
@@ -498,15 +501,24 @@ func (u *UntrustedInputChecker) OnVisitNodeLeave(n ExprNode) {
 		u.onVar(n)
 	case *ObjectDerefNode:
 		u.onPropAccess(n.Property)
+		if u.start != nil {
+			u.start = n
+		}
 	case *IndexAccessNode:
 		if lit, ok := n.Index.(*StringNode); ok {
 			// Special case like github['event']['issue']['title']
 			u.onPropAccess(strings.ToLower(lit.Value))
-			break
+		} else {
+			u.onIndexAccess()
 		}
-		u.onIndexAccess()
+		if u.start != nil {
+			u.start = n
+		}
 	case *ArrayDerefNode:
 		u.onObjectFilter()
+		if u.start != nil {
+			u.start = n
+		}
 	case *FuncCallNode:
 		if u.booleanContexts == 0 && strings.EqualFold(n.Callee, "toJSON") && len(n.Args) == 1 {
 			switch n.Args[0].(type) {

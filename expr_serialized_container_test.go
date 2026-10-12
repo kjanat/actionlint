@@ -101,9 +101,9 @@ jobs:
     steps:
 ` + script
 			result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(strings.ReplaceAll(source, "\n", ending))}}})
-			wantLine := 6
+			wantLine := 7
 			if strings.Contains(script, "uses:") {
-				wantLine = 8
+				wantLine = 9
 			}
 			if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "expression" || result.Diagnostics[0].Path != "workflow.yaml" || result.Diagnostics[0].Start.Line != wantLine {
 				t.Fatalf("missing container injection at %d: %+v, %v", wantLine, result.Diagnostics, err)

@@ -29,16 +29,21 @@ type scriptSourceSpan struct {
 	end        int
 	yamlLine   int
 	yamlColumn int
+	// Nonzero for a decoded escape whose source width differs from its value.
+	yamlEndColumn int
+	yamlEndLine   int
 }
 
 // scriptSource maps spans in a decoded run script back to positions in the YAML source. Bytes that
 // were synthesized while decoding YAML, such as whitespace between folded plain-scalar lines, are
 // intentionally left outside the mapped spans.
 type scriptSource struct {
-	value   string
-	lines   []scriptSourceLine
-	spans   []scriptSourceSpan
-	literal bool
+	contentStart Pos
+	scalarEnd    Pos
+	value        string
+	lines        []scriptSourceLine
+	spans        []scriptSourceSpan
+	literal      bool
 }
 
 func newScriptSource(value string) *scriptSource {
@@ -54,29 +59,6 @@ func newScriptSource(value string) *scriptSource {
 		s.lines = append(s.lines, scriptSourceLine{start: start, end: end})
 		start = end + 1
 	}
-}
-
-func (s *scriptSource) mapBytes(offset, length, line, col int) bool {
-	end := offset + length
-	if offset < 0 || length < 0 || end > len(s.value) || line <= 0 || col <= 0 {
-		return false
-	}
-	i := sort.Search(len(s.lines), func(i int) bool {
-		return s.lines[i].end >= offset
-	})
-	if i == len(s.lines) || offset < s.lines[i].start || end > s.lines[i].end {
-		return false
-	}
-	if n := len(s.spans); n > 0 && offset < s.spans[n-1].end {
-		return false
-	}
-	s.spans = append(s.spans, scriptSourceSpan{
-		start:      offset,
-		end:        end,
-		yamlLine:   line,
-		yamlColumn: col,
-	})
-	return true
 }
 
 func (s *scriptSource) pos(line, col int) (*Pos, bool) {
@@ -97,6 +79,26 @@ func (s *scriptSource) lookup(line, col int, endPosition bool) (*Pos, bool) {
 		return nil, false
 	}
 	offset := l.start + rel
+	// Block chomping and quoted folding can append unmapped newlines or spaces.
+	// An EOF diagnostic belongs at the end of the final mapped physical line.
+	if endPosition && offset == len(s.value) && len(s.spans) != 0 {
+		index := len(s.spans) - 1
+		for index > 0 && s.spans[index].start == s.spans[index].end {
+			index--
+		}
+		last := s.spans[index]
+		if last.end < offset && strings.Trim(s.value[last.end:], " \n") == "" {
+			column := last.yamlColumn + utf8.RuneCountInString(s.value[last.start:last.end])
+			if last.yamlEndColumn != 0 {
+				column = last.yamlEndColumn
+			}
+			line := last.yamlLine
+			if last.yamlEndLine != 0 {
+				line = last.yamlEndLine
+			}
+			return &Pos{Line: line, Col: column}, true
+		}
+	}
 	i := sort.Search(len(s.spans), func(i int) bool {
 		if endPosition {
 			return s.spans[i].end >= offset
@@ -111,7 +113,17 @@ func (s *scriptSource) lookup(line, col int, endPosition bool) (*Pos, bool) {
 		return nil, false
 	}
 	column := span.yamlColumn + utf8.RuneCountInString(s.value[span.start:offset])
-	return &Pos{Line: span.yamlLine, Col: column}, true
+	if span.yamlEndColumn != 0 {
+		column = span.yamlColumn
+		if endPosition && offset == span.end {
+			column = span.yamlEndColumn
+		}
+	}
+	line = span.yamlLine
+	if endPosition && offset == span.end && span.yamlEndLine != 0 {
+		line = span.yamlEndLine
+	}
+	return &Pos{Line: line, Col: column}, true
 }
 
 // byteOffsetAtColumn converts a 1-based character column to a byte offset. The column immediately
@@ -1221,6 +1233,7 @@ type Job struct {
 // Workflow is root of workflow syntax tree, which represents one workflow configuration file.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions
 type Workflow struct {
+	expressionSources map[Pos]*scriptSource
 	// Name is name of the workflow. This field can be nil when user didn't specify the name explicitly.
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#name
 	Name *String

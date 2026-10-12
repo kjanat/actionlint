@@ -242,7 +242,7 @@ Output:
 test.yaml:7:24: got unexpected character '"' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' '. do you mean string literals? only single quotes are available for string delimiter [expression]
   |
 7 |       - run: echo '${{ "hello" }}'
-  |                        ^~~~~~~
+  |                        ^
 test.yaml:9:26: got unexpected character '+' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' ' [expression]
   |
 9 |       - run: echo '${{ 1 + 1 }}'
@@ -250,11 +250,11 @@ test.yaml:9:26: got unexpected character '+' while lexing expression, expecting 
 test.yaml:11:65: unexpected end of input while parsing arguments of function call. expecting ",", ")" [expression]
    |
 11 |       - run: echo "${{ toJson(hashFiles('**/lock', '**/cache/') }}"
-   |                                                                 ^~~
+   |                                                                 ^~
 test.yaml:13:38: unexpected end of input while parsing object property dereference like 'a.b' or array element dereference like 'a.*'. expecting "IDENT", "*" [expression]
    |
 13 |       - run: echo '${{ github.event. }}'
-   |                                      ^~~
+   |                                      ^~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNp0zUGKwzAMheF9TvEwA85kJgnZ5gBd9BaJEXVaY4VK7ib47kXtOisJ/g8e5xl7kdjceZW5AZRE7QLPkqW3XtaStfRpsfZJorTLVwG9yRkUIsP/HAdcpJTYoVZ/Rib8YToBzoDyVTi3cZF42RJJ67tuTBwe/h/2hiVEGv0vanVnI7dNY1kHelHWwcbeAQAA///H30Qz)
@@ -311,7 +311,7 @@ Output:
 test.yaml:7:28: property access of object must be type of string but got "number" [expression]
   |
 7 |       - run: echo '${{ env[0] }}'
-  |                            ^~
+  |                            ^
 test.yaml:9:24: property "os" is not defined in object type {id: string; network: string} [expression]
   |
 9 |       - run: echo '${{ job.container.os }}'
@@ -427,15 +427,15 @@ test.yaml:9:24: property "events" is not defined in object type {action: string;
 test.yaml:11:24: undefined function "startWith". available functions are "always", "cancelled", "case", "contains", "endswith", "failure", "format", "fromjson", "hashfiles", "join", "startswith", "success", "tojson" [expression]
    |
 11 |       - run: echo "${{ startWith('hello, world', 'lo,') }}"
-   |                        ^~~~~~~~~~~~~~~~~
+   |                        ^~~~~~~~~
 test.yaml:13:24: number of arguments is wrong. function "startsWith(string, string) -> bool" takes 2 parameters but 1 arguments are given [expression]
    |
 13 |       - run: echo "${{ startsWith('hello, world') }}"
-   |                        ^~~~~~~~~~~~~~~~~~
+   |                        ^~~~~~~~~~
 test.yaml:15:51: 2nd argument of function call is not assignable. "object" cannot be assigned to "string". called function type is "startsWith(string, string) -> bool" [expression]
    |
 15 |       - run: echo "${{ startsWith('hello, world', github.event) }}"
-   |                                                   ^~~~~~~~~~~~~
+   |                                                   ^~~~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNqckEFKxjAQhfc9xVCEqKQ5QC/iUpI6mGo6UzoTK5TcXWJB/OFvF11l8b7v5TFMPcxZYvPBQfoGQFG0vgBLJulqnkMmzV3yNfuNRHGWnQLoKtkDDpHBPGwbZPokXul1YFL8VijFHKHvo8YcHH4hqRyAbQVF/aIvo8ZHEzEltrDykt6MBZPYmicopT115Y58zbI3q0876gX8SHJh9J/6/zOXfMAk7tmRn9CCQYqeBpyQdK/7CQAA//9h6o/Y)
@@ -486,15 +486,15 @@ test.yaml:6:18: property "mac" is not defined in object type {linux: string; win
 test.yaml:9:24: format string "{0}{1}" does not contain placeholder {2}. remove argument which is unused in the format string [expression]
   |
 9 |       - run: echo "${{ format('{0}{1}', 1, 2, 3) }}"
-  |                        ^~~~~~~~~~~~~~~~
+  |                        ^~~~~~
 test.yaml:11:24: format string "{0}{1}{2}" contains placeholder {2} but only 2 arguments are given to format [expression]
    |
 11 |       - run: echo "${{ format('{0}{1}{2}', 1, 2) }}"
-   |                        ^~~~~~~~~~~~~~~~~~~
+   |                        ^~~~~~
 test.yaml:14:31: broken JSON string is passed to fromJSON() at offset 23: unexpected end of JSON input [expression]
    |
 14 |         if: contains(fromJson('["main","release","dev"'), github.ref_name)
-   |                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                               ^~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNqMj0FL9DAQhu/7K95v+CAtZMVdb/kJHvSgt0Uk7aY20k5KJnGFkP8ure5R8DJzmPeZhzewwZJl3O3eQydmByQnad1AzCz7NfC/FAwxzPdPjw+NKnTxTGad53CR/WRXhDRNnvMnGcpd5pSn66Gq9qRm26sX1Lo9luQW+XYA+9Vj4PoxgDZTiLNNjSq3tRyq0jhoHDXuWtRKf4PK8cr9Bj2PXuAFFrK43tsJXbTcj/9+soAfDPrAyXqWZmsvgRt1otl6Jk3RTc6KI01n90Gq1XjzaczdTXTDK9vZtV8BAAD//8ITaRA=)
@@ -539,11 +539,11 @@ Output:
 test.yaml:10:24: property "get_value" is not defined in object type {} [expression]
    |
 10 |       - run: echo '${{ steps.get_value.outputs.name }}'
-   |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                        ^~~~~~~~~~~~~~~
 test.yaml:22:24: property "get_value" is not defined in object type {} [expression]
    |
 22 |       - run: echo '${{ steps.get_value.outputs.name }}'
-   |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                        ^~~~~~~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNqskLFqhUAQRXu/4rIIVvoBC7FIk6RKCq1FzRoNZkecmTTiv4fdmFTCe/BeNcU9Zy5c8haL8ph8Usc2AcSxhAus6jkPuXbqRfO5DVmMSGVR4V8OGIgsTLptYHELFx9Omu92VlccYOHbL4d9N1GI0J+bhx4L14+E7IoX2YlnBqKHSBuUJUz69FI914/Na1291ZU5DGB6t/h/fMf+U68n38/KE/nDIhndenHa28b5CQAA//8V15Jb)
@@ -587,7 +587,7 @@ Output:
 test.yaml:8:23: property "cache" is not defined in object type {} [expression]
   |
 8 |       - run: echo ${{ steps.cache.outputs.cache-hit }}
-  |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  |                       ^~~~~~~~~~~
 test.yaml:18:23: property "cache_hit" is not defined in object type {cache-hit: string} [expression]
    |
 18 |       - run: echo ${{ steps.cache.outputs.cache_hit }}
@@ -879,7 +879,7 @@ Output:
 test.yaml:16:24: property "prepare" is not defined in object type {} [expression]
    |
 16 |       - run: echo '${{ needs.prepare.outputs.prepared }}'
-   |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                        ^~~~~~~~~~~~~
 test.yaml:26:24: property "foo" is not defined in object type {installed: string} [expression]
    |
 26 |       - run: echo '${{ needs.install.outputs.foo }}'
@@ -891,7 +891,7 @@ test.yaml:28:24: property "some_job" is not defined in object type {install: {ou
 test.yaml:33:24: property "build" is not defined in object type {} [expression]
    |
 33 |       - run: echo '${{ needs.build.outputs.built }}'
-   |                        ^~~~~~~~~~~~~~~~~~~~~~~~~
+   |                        ^~~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNqkkd1KxDAQhe/7FIdF2BubB8iriEhrRtOlJqEzwYul7y6Tzaaoi4q9KHQ6P985pzFYpMy+O8WRbQdMgWWYZ30FYpaUhS9F65GzOBhjDuXzkgP3eiaPOUju50GIpbRYKLXlXict6NlHHOslcHwj8VN4PXZAWigNC91E195+sl7R5zP629jd+YxA5NhUsqmCrrXDuurmmKfZXUhl3uKhmru/in68ZUj3ZLebQt+s4H0Sj017VdK0tx+IdcUQHP5s84eAvkJeYvx9SSU/neJYJ6N4Wuz/c9gOl0SalpKyMj4CAAD//41M6vc=)
@@ -932,11 +932,11 @@ Output:
 test.yaml:13:17: "object" value cannot be compared to "string" value with "==" operator [expression]
    |
 13 |         if: ${{ github.event == 'workflow_call' }}
-   |                 ^~~~~~~~~~~~
+   |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 test.yaml:16:17: "bool" value cannot be compared to "number" value with ">" operator [expression]
    |
 16 |         if: ${{ inputs.timeout > 60 }}
-   |                 ^~~~~~~~~~~~~~
+   |                 ^~~~~~~~~~~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNpsj81KwDAQhO99ihGEnFo8eQjUV5Gmbtto3C3NxiIl7y7pH4jednc+ZmaFbQWssnwMQdbXvguhHADPc9J4zID6T5Kk1wro90wWTiRQx1X1Lm5nleIJLYljLWyRXGJNdeiKtktRab6d60JaUD8JTImntwdzx/jB4nHbMHqdkmvoi1jRtjC/Ghvk/J/d2Ro+QkUQhMe/1sejzcW+4PkJOf8EAAD//0dGU1w=)
@@ -1179,7 +1179,7 @@ test.yaml:19:36: "github.event.head_commit.author.name" is potentially untrusted
 test.yaml:22:31: object filter extracts potentially untrusted properties "github.event.comment.body", "github.event.discussion.body", "github.event.issue.body", "github.event.pull_request.body", "github.event.review.body", "github.event.review_comment.body". avoid using the value directly in inline scripts. instead, pass the value through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]
    |
 22 |         run: echo '${{ toJSON(github.event.*.body) }}'
-   |                               ^~~~~~~~~~~~~~~~~~~~
+   |                               ^~~~~~~~~~~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNqEkUFr20AQhe/+FQ9RsFMqtT12QyGHltIGkkByCyGs1xPv1qsddWfWoQT/97KSMXGL6UmM5s33np6S7cngjkRnnAyGEuNjpl+lvpj95KWYGaAkWp9ALknaKizLkrS00dbduBKlQSYV0GIC3+SQdKRiT4UGjbSXjUADcp4xf/PygnVQX5YdbSlp9zpMN55ht5sfHIqQGFingZO8F7WRLrYfPxzQz0G9OUxApoFb5Q0lg+ol5DKpdHfXl1+vsNu9ko6wdshtTyJ2TdPB/8Ph2QpcZKHViZgToxWXw6AX208n004KA8dJOFIXeb34tyJPdvXouO+Ddrao59zV4mtPZ3/9im+kqEpKKqfqV/5xe321OLJ42y159fvsqPqJ+IUh3JP6kNZjfjhPblMn2YTh2CQ84R5NNXGc1IYki9N97j9lrPUd5ve3l99vHuY1Q4PPaDQXavBwDvWUpvhNdWzO8RT+BAAA//8/bORw)
@@ -1571,11 +1571,11 @@ test.yaml:33:24: property "massage" is not defined in object type {age: number; 
 test.yaml:35:28: property access of object must be type of string but got "bool" [expression]
    |
 35 |       - run: echo "${{ env[inputs.verbose] }}"
-   |                            ^~~~~~~~~~~~~~~
+   |                            ^~~~~~~~~~~~~~
 test.yaml:37:28: property access of object must be type of string but got "number" [expression]
    |
 37 |       - run: echo "${{ env[inputs.age] }}"
-   |                            ^~~~~~~~~~~
+   |                            ^~~~~~~~~~
 test.yaml:39:24: property "massage" is not defined in object type {age: string; id: string; kind: string; message: string; name: string; verbose: string} [expression]
    |
 39 |       - run: echo "${{ github.event.inputs.massage }}"
@@ -3032,23 +3032,23 @@ Output:
 test.yaml:6:16: context "env" is not allowed here. no context is available here. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
   |
 6 |     shell: ${{ env.SHELL }}
-  |                ^~~~~~~~~
+  |                ^~~
 test.yaml:16:17: context "runner" is not allowed here. available contexts are "github", "inputs", "needs", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
    |
 16 |           - ${{ runner.temp }}
-   |                 ^~~~~~~~~~~
+   |                 ^~~~~~
 test.yaml:24:16: context "env" is not allowed here. available contexts are "github", "inputs", "matrix", "needs", "secrets", "strategy", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
    |
 24 |       FOO: ${{ env.BAR }}
-   |                ^~~~~~~
+   |                ^~~
 test.yaml:30:20: context "env" is not allowed here. no context is available here. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
    |
 30 |         shell: ${{ env.SHELL}}
-   |                    ^~~~~~~~~~~
+   |                    ^~~
 test.yaml:32:33: calling function "success" is not allowed here. "success" is only available in "jobs.<job_id>.if", "jobs.<job_id>.steps.if", "jobs.<job_id>.snapshot.if". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
    |
 32 |         run: echo 'Success? ${{ success() }}'
-   |                                 ^~~~~~~~~
+   |                                 ^~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNp8j81qwzAQhO96ijkU0h6cB/CltNDSQyDQPIHtrGO3imT2J2kIfvciJ45NIT2J0Xy7MxtDjs6kcW5LdWFeJXcAW0gPIA15n+PhfAaFw3Lz8bZaoe+d+4rlQCqJXlHlQml3uihgXyi3P6MCti1TpZFP0xeQDat3rTZWLo+Rv2sfjyngL8IWAvFSad+NNluQLPW30oJa5otUZrDmt1zRKfXeTcmjcBjB9/V6gl5fPkdElLrb4mw+8d/UveCZnUqCqiZisbGqIpHngZWLeHxC3y9udFvnk/MbAAD//3L9fcg=)
@@ -3096,10 +3096,10 @@ jobs:
 Output:
 
 ```console
-test.yaml:8:14: workflow command "set-output" was deprecated. use `echo "{name}={value}" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]
+test.yaml:8:22: workflow command "set-output" was deprecated. use `echo "{name}={value}" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]
   |
 8 |       - run: echo '::set-output name=foo::bar'
-  |              ^~~~
+  |                      ^~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNpsyjGOgzAQRuGeU/yyVqLyBUaCYpvdrVgpUEc2GUIi4kH2TM4fOWmpXvE+SYTdyto0d4mFGkC5aC2QLRVfgUVLan4L9b1XUd7LRwG+SgLPq6AlKqxeTHdTpPDgbhEhiiG3B9wtIl0M2aHv4b5+/sbf6fs8TOP/NLojT3ThaFeiEyt0ZQyzyhwUz5BvIW7sXgEAAP//zI0+6A==)

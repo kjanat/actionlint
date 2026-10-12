@@ -1,6 +1,9 @@
 package actionlint
 
-import "strings"
+import (
+	"strings"
+	"unicode/utf8"
+)
 
 // conditionSource models the template reader's single string literal fold,
 // followed by the workflow converter's empty-condition default. Computed
@@ -23,6 +26,16 @@ func parseConditionExpression(source string) (ExprNode, *ExprError, int) {
 		folded := conditionSource(source) + "}}"
 		lex := NewExprLexer(folded)
 		expr, err := NewExprParser().Parse(lex)
+		if err != nil && err.EndOffset > len(folded)-2 {
+			// The closing delimiter is synthetic for a bare condition.
+			err.EndOffset = len(folded) - 2
+			if err.Offset > err.EndOffset {
+				body := folded[:err.EndOffset]
+				err.Offset = err.EndOffset
+				err.Line = strings.Count(body, "\n") + 1
+				err.Column = utf8.RuneCountInString(body[strings.LastIndexByte(body, '\n')+1:]) + 1
+			}
+		}
 		if err == nil && lex.Offset() != len(folded) {
 			lex.error("unexpected trailing text in condition")
 			return nil, lex.Err(), 0

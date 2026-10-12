@@ -11,7 +11,7 @@
   },
   "boolean-false": {
     "status": 1,
-    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~~~~~~~\n",
+    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~\n",
     "stderr": ""
   },
   "boolean-numeric": {
@@ -21,12 +21,12 @@
   },
   "boolean-repeat": {
     "status": 1,
-    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~~~~~~~\n",
+    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~\n",
     "stderr": ""
   },
   "color": {
     "status": 1,
-    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~~~~~~~\n",
+    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~\n",
     "stderr": ""
   },
   "custom-template": {
@@ -41,17 +41,17 @@
   },
   "files": {
     "status": 1,
-    "stdout": "bad.yml:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~~~~~~~\n",
+    "stdout": "bad.yml:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~\n",
     "stderr": ""
   },
   "files-json-template": {
     "status": 1,
-    "stdout": "[{\"message\":\"undefined variable \\\"missing\\\". available variables are \\\"env\\\", \\\"github\\\", \\\"inputs\\\", \\\"job\\\", \\\"matrix\\\", \\\"needs\\\", \\\"runner\\\", \\\"secrets\\\", \\\"steps\\\", \\\"strategy\\\", \\\"vars\\\"\",\"filepath\":\"bad.yml\",\"line\":6,\"column\":24,\"kind\":\"expression\",\"snippet\":\"      - run: echo \\\"${{ missing.value }}\\\"\\n                       ^~~~~~~~~~~~~\",\"end_column\":36}]\n",
+    "stdout": "[{\"message\":\"undefined variable \\\"missing\\\". available variables are \\\"env\\\", \\\"github\\\", \\\"inputs\\\", \\\"job\\\", \\\"matrix\\\", \\\"needs\\\", \\\"runner\\\", \\\"secrets\\\", \\\"steps\\\", \\\"strategy\\\", \\\"vars\\\"\",\"filepath\":\"bad.yml\",\"line\":6,\"column\":24,\"kind\":\"expression\",\"snippet\":\"      - run: echo \\\"${{ missing.value }}\\\"\\n                       ^~~~~~~\",\"end_column\":30}]\n",
     "stderr": ""
   },
   "ignore-with-comma": {
     "status": 1,
-    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~~~~~~~\n",
+    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~\n",
     "stderr": ""
   },
   "ignored-diagnostic": {
@@ -61,7 +61,7 @@
   },
   "json-template": {
     "status": 1,
-    "stdout": "[{\"message\":\"undefined variable \\\"missing\\\". available variables are \\\"env\\\", \\\"github\\\", \\\"inputs\\\", \\\"job\\\", \\\"matrix\\\", \\\"needs\\\", \\\"runner\\\", \\\"secrets\\\", \\\"steps\\\", \\\"strategy\\\", \\\"vars\\\"\",\"filepath\":\"\\u003cstdin\\u003e\",\"line\":6,\"column\":24,\"kind\":\"expression\",\"snippet\":\"      - run: echo \\\"${{ missing.value }}\\\"\\n                       ^~~~~~~~~~~~~\",\"end_column\":36}]\n",
+    "stdout": "[{\"message\":\"undefined variable \\\"missing\\\". available variables are \\\"env\\\", \\\"github\\\", \\\"inputs\\\", \\\"job\\\", \\\"matrix\\\", \\\"needs\\\", \\\"runner\\\", \\\"secrets\\\", \\\"steps\\\", \\\"strategy\\\", \\\"vars\\\"\",\"filepath\":\"\\u003cstdin\\u003e\",\"line\":6,\"column\":24,\"kind\":\"expression\",\"snippet\":\"      - run: echo \\\"${{ missing.value }}\\\"\\n                       ^~~~~~~\",\"end_column\":30}]\n",
     "stderr": ""
   },
   "json-template-empty": {
@@ -71,7 +71,7 @@
   },
   "jsonl-template": {
     "status": 1,
-    "stdout": "{\"message\":\"undefined variable \\\"missing\\\". available variables are \\\"env\\\", \\\"github\\\", \\\"inputs\\\", \\\"job\\\", \\\"matrix\\\", \\\"needs\\\", \\\"runner\\\", \\\"secrets\\\", \\\"steps\\\", \\\"strategy\\\", \\\"vars\\\"\",\"filepath\":\"\\u003cstdin\\u003e\",\"line\":6,\"column\":24,\"kind\":\"expression\",\"snippet\":\"      - run: echo \\\"${{ missing.value }}\\\"\\n                       ^~~~~~~~~~~~~\",\"end_column\":36}\n",
+    "stdout": "{\"message\":\"undefined variable \\\"missing\\\". available variables are \\\"env\\\", \\\"github\\\", \\\"inputs\\\", \\\"job\\\", \\\"matrix\\\", \\\"needs\\\", \\\"runner\\\", \\\"secrets\\\", \\\"steps\\\", \\\"strategy\\\", \\\"vars\\\"\",\"filepath\":\"\\u003cstdin\\u003e\",\"line\":6,\"column\":24,\"kind\":\"expression\",\"snippet\":\"      - run: echo \\\"${{ missing.value }}\\\"\\n                       ^~~~~~~\",\"end_column\":30}\n",
     "stderr": ""
   },
   "long-version": {
@@ -81,7 +81,7 @@
   },
   "no-color-wins": {
     "status": 1,
-    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~~~~~~~\n",
+    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~\n",
     "stderr": ""
   },
   "repeat-ignore": {
@@ -106,7 +106,7 @@
   },
   "stdin-label": {
     "status": 1,
-    "stdout": "source with spaces.yml:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~~~~~~~\n",
+    "stdout": "source with spaces.yml:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~\n",
     "stderr": ""
   },
   "stdin-long-flags": {
@@ -121,12 +121,12 @@
   },
   "stdin-pretty": {
     "status": 1,
-    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~~~~~~~\n",
+    "stdout": "\u003cstdin\u003e:6:24: undefined variable \"missing\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]\n  |\n6 |       - run: echo \"${{ missing.value }}\"\n  |                        ^~~~~~~\n",
     "stderr": ""
   },
   "template-over-oneline": {
     "status": 1,
-    "stdout": "[{\"message\":\"undefined variable \\\"missing\\\". available variables are \\\"env\\\", \\\"github\\\", \\\"inputs\\\", \\\"job\\\", \\\"matrix\\\", \\\"needs\\\", \\\"runner\\\", \\\"secrets\\\", \\\"steps\\\", \\\"strategy\\\", \\\"vars\\\"\",\"filepath\":\"\\u003cstdin\\u003e\",\"line\":6,\"column\":24,\"kind\":\"expression\",\"snippet\":\"      - run: echo \\\"${{ missing.value }}\\\"\\n                       ^~~~~~~~~~~~~\",\"end_column\":36}]\n",
+    "stdout": "[{\"message\":\"undefined variable \\\"missing\\\". available variables are \\\"env\\\", \\\"github\\\", \\\"inputs\\\", \\\"job\\\", \\\"matrix\\\", \\\"needs\\\", \\\"runner\\\", \\\"secrets\\\", \\\"steps\\\", \\\"strategy\\\", \\\"vars\\\"\",\"filepath\":\"\\u003cstdin\\u003e\",\"line\":6,\"column\":24,\"kind\":\"expression\",\"snippet\":\"      - run: echo \\\"${{ missing.value }}\\\"\\n                       ^~~~~~~\",\"end_column\":30}]\n",
     "stderr": ""
   },
   "version": {
