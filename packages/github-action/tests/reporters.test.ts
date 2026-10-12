@@ -318,6 +318,17 @@ test('annotation policy is independent of serialization with auto enabled for Gi
 	}
 });
 
+test('plain status logs preserve percent signs and cannot inject workflow commands', async () => {
+	const messages: string[] = [];
+	await report(result, 'result.json', { 'INPUT_SUMMARY-TITLE': '100% coverage\n::error::fake ##[error]fake' }, {
+		annotations: 'false',
+		summary: false,
+		sarif: false,
+		review: false,
+	}, { log: (text) => messages.push(text), review: async () => assert.fail('review disabled') });
+	assert.deepEqual(messages, ['actionlint (100% coverage ::error::fake ## [error]fake): 1 warning']);
+});
+
 test('reporter failures preserve native result and let other destinations finish', async () => {
 	const directory = await mkdtemp(join(tmpdir(), 'actionlint-report-failure-'));
 	try {

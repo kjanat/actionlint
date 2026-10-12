@@ -9,9 +9,21 @@ function markdown(value: string): string {
 }
 
 function message(value: string): string {
-	return value.split(/(https?:\/\/[^\s<>]+)/g).map((part, index) =>
-		index % 2 ? `<${part.replaceAll('&', '&amp;').replaceAll('"', '%22')}>` : markdown(part)
-	).join('');
+	return value.split(/(https?:\/\/[^\s<>]+)/g).map((part, index) => {
+		if (index % 2 === 0) return markdown(part);
+		let url = part;
+		const pairs: Record<string, string> = { ')': '(', ']': '[', '}': '{' };
+		while (url) {
+			const last = url.at(-1) || '';
+			const open = pairs[last];
+			if (/[.,;:!?"']/.test(last) || (open && url.split(last).length > url.split(open).length)) {
+				url = url.slice(0, -1);
+			} else {
+				break;
+			}
+		}
+		return `<${url.replaceAll('&', '&amp;').replaceAll('"', '%22')}>${markdown(part.slice(url.length))}`;
+	}).join('');
 }
 
 function fence(value: string): string {

@@ -106,7 +106,8 @@ export async function report(
 		await attempt('Job summary unavailable', () => appendFile(summaryPath, summary(result, environment)));
 	}
 	if (!['json', 'json-lines', 'sarif'].includes(environment.INPUT_FORMAT || 'github')) {
-		runtime.log(commandEscape(reportStatus(result, environment)));
+		// The runner recognizes legacy command markers anywhere in a log line.
+		runtime.log(reportStatus(result, environment).replaceAll('##[', '## ['));
 	}
 	if (options.review) {
 		await attempt('PR review skipped', async () => {

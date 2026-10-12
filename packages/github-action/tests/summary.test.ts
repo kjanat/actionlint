@@ -23,6 +23,28 @@ const result: ActionResult = {
 	hints: [],
 };
 
+test('guidance links exclude prose punctuation and retain balanced URL delimiters', () => {
+	for (
+		const [input, expected] of [
+			['See (https://example.com/help).', 'https://example.com/help'],
+			['See https://example.com/help.', 'https://example.com/help'],
+			['See [https://example.com/help],', 'https://example.com/help'],
+			['See "https://example.com/help".', 'https://example.com/help'],
+			['See (https://example.com/a_(b)).', 'https://example.com/a_(b)'],
+			['See https://example.com/?q=a%29&n=1.', 'https://example.com/?q=a%29&amp;n=1'],
+			['See https://[::1]/help.', 'https://[::1]/help'],
+		]
+	) {
+		const text = summary({ ...result, diagnostics: [{ ...finding, message: input || '' }] });
+		assert.ok(text.includes(`<${expected}>`), text);
+	}
+	assert.ok(
+		summary({ ...result, diagnostics: [{ ...finding, message: 'See (https://example.com/help).' }] }).includes(
+			'See \\(<https://example.com/help>\\)\\.',
+		),
+	);
+});
+
 test('findings are visible with their severity, actual rule, source range and help link', () => {
 	const text = summary(result);
 	assert.ok(text.includes('- **Result:** 1 error\n- **Workflows:** 1'));
