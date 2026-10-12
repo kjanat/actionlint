@@ -258,7 +258,7 @@ package actionlint
 
 // PopularActions is data set of known popular actions. Keys are specs (owner/repo@ref) of actions
 // and values are their metadata.
-var PopularActions = map[string]*ActionMetadata{
+var PopularActions = initializeActionMetadataPositions(map[string]*ActionMetadata{
 `)
 
 	specs := make([]string, 0, len(actions))
@@ -322,7 +322,7 @@ var PopularActions = map[string]*ActionMetadata{
 		fmt.Fprintf(b, "},\n")
 	}
 
-	fmt.Fprintln(b, "}")
+	fmt.Fprintln(b, "})")
 
 	fmt.Fprintln(b, `// OutdatedPopularActionSpecs is a spec set of known outdated popular actions. The word 'outdated'
 // means that the runner used by the action is no longer available such as "node12", "node16".

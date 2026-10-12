@@ -1,11 +1,66 @@
 package actionlint
 
 import (
+	"encoding/json"
 	"sync"
 	"testing"
 
 	"go.yaml.in/yaml/v4"
 )
+
+func TestMetadataPositionCacheConstruction(t *testing.T) {
+	for spec, meta := range PopularActions {
+		if meta.positions == nil {
+			t.Fatalf("generated action %s has no position cache", spec)
+		}
+	}
+	var decoded struct {
+		Metadata *ActionMetadata `json:"metadata"`
+	}
+	if err := json.Unmarshal([]byte(`{"metadata":{"name":"test","inputs":{}}}`), &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.Metadata == nil || decoded.Metadata.positions == nil {
+		t.Fatal("JSONL-shaped metadata has no position cache")
+	}
+	previous := decoded.Metadata.positions
+	if err := json.Unmarshal([]byte(`{"inputs":{"token":{"name":"token"}}}`), decoded.Metadata); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.Metadata.Name != "test" || decoded.Metadata.positions == previous {
+		t.Fatal("JSON update lost existing fields or retained stale position cache")
+	}
+	root := t.TempDir()
+	writeShellcheckFixture(t, root, "source/action.yml", "name: source\ndescription: source\nruns: {using: composite, steps: []}\n")
+	base := NewLocalActionsCache(&Project{root: root}, nil)
+	meta, _, err := base.FindMetadata("./source")
+	if err != nil || meta == nil || meta.positions == nil {
+		t.Fatalf("local metadata cache: %+v, %v", meta, err)
+	}
+	view := &LocalActionsCache{base: base, sourceMappings: LocalActionSources{"./generated": "./source"}}
+	mapped, _, err := view.FindMetadata("./generated")
+	if err != nil || mapped == nil || mapped.positions != meta.positions {
+		t.Fatalf("mapped metadata lost shared cache: %+v, %v", mapped, err)
+	}
+	writeShellcheckFixture(t, root, "empty/action.yml", "null\n")
+	empty, _, err := base.FindMetadata("./empty")
+	if err != nil || empty == nil || empty.positions == nil {
+		t.Fatalf("null YAML bypassed cache initialization: %+v, %v", empty, err)
+	}
+	for _, content := range []string{"null\n", "name: standalone\nruns: {using: composite, steps: []}\n"} {
+		outline, err := ParseActionOutline("action.yml", []byte(content))
+		if (err != nil) != (content == "null\n") || outline.Path != "action.yml" {
+			t.Fatalf("standalone construction: %+v, %v", outline, err)
+		}
+	}
+	manual := &ActionMetadata{}
+	value := &ActionExprString{Value: "example", Line: 2, Column: 3}
+	for range 2 {
+		if got := metadataExpressionPosition(manual, value, 2); *got != (Pos{Line: 2, Col: 3}) || manual.positions != nil {
+			t.Fatal("source-less metadata allocated a transient position cache")
+		}
+	}
+}
 
 func TestMetadataPositionCache(t *testing.T) {
 	const source = "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo ${{ github_repository }}\n      shell: bash\n"

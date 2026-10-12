@@ -94,6 +94,10 @@ func (p *parser) scriptSource(n *yaml.Node) *scriptSource {
 	switch n.Style {
 	case yaml.LiteralStyle:
 		return p.literalScriptSource(n)
+	case yaml.FoldedStyle:
+		return p.foldedScriptSource(n)
+	case yaml.SingleQuotedStyle, yaml.DoubleQuotedStyle:
+		return p.quotedScriptSource(n)
 	case 0:
 		return p.plainScriptSource(n)
 	default:

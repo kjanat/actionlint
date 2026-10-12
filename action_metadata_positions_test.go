@@ -19,9 +19,11 @@ func TestCompositeSuggestionPositions(t *testing.T) {
 		{"multiline-plain", "run: echo before\n        ${{ github_repository }}", "github_repository", false},
 		{"bare-if", "run: echo ok\n      if: github_repository == 'x'", "github_repository", false},
 		{"declared-input", "run: echo ${{ custom_name }}", "custom_name", false},
-		{"quoted", `run: "echo ${{ github_repository }}"`, "github_repository", true},
-		{"escaped", `run: "echo ${{ \u0067ithub_repository }}"`, `\u0067ithub_repository`, true},
-		{"folded", "run: >\n        echo ${{ github_repository }}", "github_repository", true},
+		{"quoted", `run: "echo ${{ github_repository }}"`, "github_repository", false},
+		{"escaped", `run: "echo ${{ \u0067ithub_repository }}"`, `\u0067ithub_repository`, false},
+		{"single-quoted", `run: 'echo ''hello'' ${{ github_repository }}'`, "github_repository", false},
+		{"folded", "run: >\n        echo ${{ github_repository }}", "github_repository", false},
+		{"folded-lines", "run: >\n        echo first\n        ${{ github_repository }}", "github_repository", false},
 		{"folded-condition", "run: echo ok\n      if: ${{ 'github_repository' }}", "github_repository", true},
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {

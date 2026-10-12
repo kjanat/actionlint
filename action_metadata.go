@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -411,6 +412,18 @@ type ActionMetadata struct {
 	InputDefaults []*ActionKeyValue `yaml:"-" json:"-"`
 }
 
+// UnmarshalJSON initializes private source state for metadata loaded from JSON.
+func (md *ActionMetadata) UnmarshalJSON(data []byte) error {
+	type metadata ActionMetadata
+	value := metadata(*md)
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	value.positions = &metadataPositionCache{}
+	*md = ActionMetadata(value)
+	return nil
+}
+
 // UnmarshalYAML implements yaml.Unmarshaler. In addition to the struct tags, it captures the
 // value and position of each input's "default" so that ${{ }} expressions used there can be
 // checked against the runner's input-default context.
@@ -623,7 +636,7 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 	c.sources[spec] = localActionMetadataSource{path: filepath.Join(dir, f), content: b}
 	c.mu.Unlock()
 
-	var meta ActionMetadata
+	meta := ActionMetadata{positions: &metadataPositionCache{}}
 	parseErr := yaml.Unmarshal(b, &meta)
 	meta.file, meta.dir, meta.src = f, dir, b
 	if c.onDocument != nil {

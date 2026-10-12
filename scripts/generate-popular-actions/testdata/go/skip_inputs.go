@@ -4,7 +4,7 @@ package actionlint
 
 // PopularActions is data set of known popular actions. Keys are specs (owner/repo@ref) of actions
 // and values are their metadata.
-var PopularActions = map[string]*ActionMetadata{
+var PopularActions = initializeActionMetadataPositions(map[string]*ActionMetadata{
 	"rhysd/action-setup-vim@v1": {
 		Name:       "Setup Vim",
 		Runs:       ActionMetadataRuns{Using: "node20"},
@@ -13,7 +13,7 @@ var PopularActions = map[string]*ActionMetadata{
 			"executable": {"executable"},
 		},
 	},
-}
+})
 
 // OutdatedPopularActionSpecs is a spec set of known outdated popular actions. The word 'outdated'
 // means that the runner used by the action is no longer available such as "node12", "node16".

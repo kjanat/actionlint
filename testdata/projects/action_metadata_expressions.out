@@ -4,5 +4,6 @@
 /composite/action\.yml:17:30: "runs\.steps\[0\]" in metadata of "Composite expressions" action uses context "vars" at "continue-on-error" key which is not available in a composite action\. the runner does not provide the vars context to actions; pass the values as inputs instead \[action\]/
 /composite/action\.yml:22:25: "runs\.steps\[1\]" in metadata of "Composite expressions" action uses context "secrets" at "env" key which is not available in a composite action\. pass secrets to the action as inputs instead \[action\]/
 /composite/action\.yml:24:26: "runs\.steps\[2\]" in metadata of "Composite expressions" action uses context "secrets" at "with" key which is not available in a composite action\. pass secrets to the action as inputs instead \[action\]/
+/composite/action\.yml:28:13: expected a mapping at "runs\.steps\[4\]\.with" in action metadata \[action\]/
 /docker/action\.yml:9:18: default value of input "invalid" in metadata of "Docker defaults" action uses context "env" which is not available in input defaults\. available contexts are "github", "job", "matrix", "runner", "strategy" \[action\]/
 /javascript/action\.yml:9:18: default value of input "invalid" in metadata of "JavaScript defaults" action uses context "inputs" which is not available in input defaults\. available contexts are "github", "job", "matrix", "runner", "strategy" \[action\]/

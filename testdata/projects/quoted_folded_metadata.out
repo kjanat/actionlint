@@ -1,0 +1,3 @@
+/composite/action\.yml:6:22: "runs\.steps\[0\]" in metadata of "Scalar locations" action uses undefined variable "github_repository"; did you mean "github\.repository"\? at "run" key \[action\]/
+/composite/action\.yml:8:32: "runs\.steps\[1\]" in metadata of "Scalar locations" action uses undefined variable "github_repository"; did you mean "github\.repository"\? at "run" key \[action\]/
+/composite/action\.yml:12:13: "runs\.steps\[2\]" in metadata of "Scalar locations" action uses undefined variable "github_repository"; did you mean "github\.repository"\? at "run" key \[action\]/

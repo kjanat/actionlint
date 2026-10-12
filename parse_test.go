@@ -285,14 +285,15 @@ next: value
 			wantMapped: true,
 		},
 		{
-			name: "folded block falls back",
+			name: "folded block",
 			source: `run: >
   echo $foo
 `,
 			node:       &yaml.Node{Style: yaml.FoldedStyle, Value: "echo $foo\n", Line: 1, Column: 6},
 			line:       1,
 			column:     6,
-			wantMapped: false,
+			want:       Pos{Line: 2, Col: 8},
+			wantMapped: true,
 		},
 		{
 			name: "mismatched literal source falls back",

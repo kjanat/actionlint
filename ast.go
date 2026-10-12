@@ -29,6 +29,8 @@ type scriptSourceSpan struct {
 	end        int
 	yamlLine   int
 	yamlColumn int
+	// Nonzero for a decoded escape whose source width differs from its value.
+	yamlEndColumn int
 }
 
 // scriptSource maps spans in a decoded run script back to positions in the YAML source. Bytes that
@@ -111,6 +113,12 @@ func (s *scriptSource) lookup(line, col int, endPosition bool) (*Pos, bool) {
 		return nil, false
 	}
 	column := span.yamlColumn + utf8.RuneCountInString(s.value[span.start:offset])
+	if span.yamlEndColumn != 0 {
+		column = span.yamlColumn
+		if endPosition && offset == span.end {
+			column = span.yamlEndColumn
+		}
+	}
 	return &Pos{Line: span.yamlLine, Col: column}, true
 }
 
