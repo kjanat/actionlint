@@ -64,7 +64,7 @@ export default defineConfig(async ({ outDir }): Promise<UserConfig> => {
 		define: {
 			__ACTIONLINT_VERSION__: JSON.stringify(version),
 		},
-		deps: { alwaysBundle: ['undici'], onlyImport: [] },
+		deps: { alwaysBundle: ['undici', 'string-width'], onlyImport: [] },
 		outputOptions: {
 			entryFileNames: '[name].mjs',
 			codeSplitting: false,
