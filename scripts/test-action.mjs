@@ -146,7 +146,9 @@ try {
 	assert.equal(await readFile(summaryFile, 'utf8'), '');
 	await run({});
 	assert.match(await readFile(summaryFile, 'utf8'), /No findings in 1 workflow/);
-	await run({ files: '' }, 3);
+	const empty = await run({ files: '' });
+	assert.equal(empty.outputs.get('problem-count'), '0', empty.log);
+	assert.match(empty.log, /0 problems in 0 workflow files/);
 	const shell = await run({
 		files: 'testdata/err/shellcheck_default_shell_detection.yaml',
 		pyflakes: 'false',
