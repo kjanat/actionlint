@@ -2,6 +2,7 @@
 
 # Unreleased
 
+- Pass repository discovery with nothing to check when the nearest Git repository has no workflow files, such as an action-only repository, a submodule without workflows, or an empty `.github/workflows`. Running outside a Git repository remains an error. (kjanat/actionlint#170)
 - Report workflow expression errors, action metadata expression errors, and ShellCheck and Ruff findings at their mapped source positions across YAML scalar styles, tags, anchors, and line endings. Highlight the failing expression node: a missing property covers the access through that property, while an error about a function covers its name. Use zero-width ranges at end of input. Share scalar boundaries with inline suppressions so they cover multi-line values. Name composite steps with zero-based paths such as `runs.steps[0]`, and quote special keys as in `runs.steps[0].with['a.b']`. Report each deprecated workflow command at its own position in workflow and composite-action scripts. Parsed Go expression nodes expose `Span()`, and expression errors include `EndOffset`; construct AST nodes with keyed literals. (kjanat/actionlint#252)
 - Report missing local action manifests by default, including repeated references, under the independently configurable `missing-local-action` rule. (kjanat/actionlint#196; kjanat/actionlint#159)
 - Accept short inline ignores without a reason and reusable configuration ignores matched by rule, file, job, step or action reference.

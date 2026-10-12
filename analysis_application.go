@@ -187,14 +187,27 @@ func (a *AnalysisSession) Repository(dir string) (*AnalysisResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	if project == nil {
+	root := projectpath.RepositoryRoot(dir)
+	if project == nil || project.RootDir() != root {
 		if found, expected := projectpath.WorkflowTypo(dir); found != "" {
 			return nil, fmt.Errorf("no workflows directory was found: %q looks misspelled; rename it to %q", found, expected)
 		}
-		return nil, fmt.Errorf("no project was found in any parent directories of %q. check workflows directory is put correctly in your Git repository", dir)
+		if root == "" {
+			return nil, fmt.Errorf("no Git repository was found in any parent directories of %q", dir)
+		}
+		a.selectionLog("No workflows directory in repository:", root)
+		return a.Files(nil, nil)
 	}
 	a.selectionLog("Detected project:", project.RootDir())
-	return a.directory(project.WorkflowsDir(), project)
+	paths, err := workflowPaths(project.WorkflowsDir())
+	if err != nil {
+		return nil, err
+	}
+	if len(paths) == 0 {
+		a.selectionLog("No YAML file in", project.WorkflowsDir())
+		return a.Files(nil, project)
+	}
+	return a.workflowFiles(paths, project)
 }
 
 func (a *AnalysisSession) directory(dir string, project *Project) (*AnalysisResult, error) {
@@ -206,6 +219,10 @@ func (a *AnalysisSession) directory(dir string, project *Project) (*AnalysisResu
 		a.filesSelected(paths)
 		return nil, fmt.Errorf("no YAML file was found in %q", dir)
 	}
+	return a.workflowFiles(paths, project)
+}
+
+func (a *AnalysisSession) workflowFiles(paths []string, project *Project) (*AnalysisResult, error) {
 	a.selectionLog("Collected", len(paths), "YAML files")
 	result, err := a.Files(paths, project)
 	if result != nil {

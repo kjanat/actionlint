@@ -140,8 +140,8 @@ func TestRunLinterDistinguishesEmptyDiscovery(t *testing.T) {
 	})
 	got := runLinter(&lintRequest{workingDir: dir, format: formatJSON})
 
-	if got.code != actionlint.ExitStatusFailure || !strings.Contains(got.stderr, "no YAML file was found") {
-		t.Fatalf("wanted empty discovery to fail linting but got %#v", got)
+	if got.code != actionlint.ExitStatusSuccessNoProblem || got.stderr != "" {
+		t.Fatalf("wanted empty discovery to pass without workflows but got %#v", got)
 	}
 	if !got.fileCountKnown || got.fileCount != 0 {
 		t.Errorf("wanted a known zero file count but got %#v", got)
@@ -263,7 +263,7 @@ func TestRunLinterReportsFatalErrors(t *testing.T) {
 		{
 			"no repository",
 			&lintRequest{workingDir: dir, format: formatJSON},
-			"no project was found",
+			"no Git repository was found",
 			0,
 			false,
 		},

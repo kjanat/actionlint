@@ -280,6 +280,45 @@ func TestAnalysisSessionWorkflowDirectoryTypo(t *testing.T) {
 	}
 }
 
+func TestAnalysisSessionRepositoryWithoutWorkflows(t *testing.T) {
+	for _, tc := range []struct {
+		name, workingDir string
+		files            map[string]string
+		wantErr          string
+	}{
+		{"action-only", ".", map[string]string{".git/HEAD": "", "action.yml": "name: Standalone\n"}, ""},
+		{"empty-workflows", ".", map[string]string{".git/HEAD": "", ".github/workflows/README.md": "none\n"}, ""},
+		{"nested-repository", "inner", map[string]string{".git/HEAD": "", ".github/workflows/ci.yml": "invalid: [yaml\n", "inner/.git": "gitdir: ../.git/modules/inner\n"}, ""},
+		{"no-repository", ".", map[string]string{"action.yml": "name: Standalone\n"}, "no Git repository was found in any parent directories of"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			for name, content := range tc.files {
+				writeShellcheckFixture(t, root, name, content)
+			}
+			var selected []string
+			notified := false
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: filepath.Join(root, tc.workingDir), OnFilesSelected: func(paths []string) { selected, notified = paths, true }})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := session.Repository("")
+			if tc.wantErr != "" {
+				if result != nil || err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("result=%v, error=%v", result, err)
+				}
+				return
+			}
+			if err != nil || result == nil || result.FileCount() != 0 || len(result.Diagnostics) != 0 {
+				t.Fatalf("result=%+v, error=%v", result, err)
+			}
+			if !notified || len(selected) != 0 {
+				t.Fatalf("expected an empty file selection, got %v (notified=%v)", selected, notified)
+			}
+		})
+	}
+}
+
 func TestAnalysisSessionConfigInputs(t *testing.T) {
 	root := t.TempDir()
 	workflowA := filepath.Join(root, "a", ".github", "workflows", "first.yml")
