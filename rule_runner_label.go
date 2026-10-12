@@ -14,6 +14,9 @@ const (
 	compatUbuntu2204 runnerOSCompat = 1 << iota
 	compatUbuntu2404
 	compatUbuntu2604
+	compatUbuntu2204ARM
+	compatUbuntu2404ARM
+	compatUbuntu2604ARM
 	compatXcode270
 	compatXcode270XL
 	compatMacOS140
@@ -95,11 +98,11 @@ var defaultRunnerOSCompats = map[string]runnerOSCompat{
 	"ubuntu-latest-8-cores":  compatUbuntu2404,
 	"ubuntu-latest-16-cores": compatUbuntu2404,
 	"ubuntu-26.04":           compatUbuntu2604,
-	"ubuntu-26.04-arm":       compatUbuntu2604,
+	"ubuntu-26.04-arm":       compatUbuntu2604ARM,
 	"ubuntu-24.04":           compatUbuntu2404,
-	"ubuntu-24.04-arm":       compatUbuntu2404,
+	"ubuntu-24.04-arm":       compatUbuntu2404ARM,
 	"ubuntu-22.04":           compatUbuntu2204,
-	"ubuntu-22.04-arm":       compatUbuntu2204,
+	"ubuntu-22.04-arm":       compatUbuntu2204ARM,
 	"xcode-27":               compatXcode270,
 	"xcode-27-xlarge":        compatXcode270XL,
 	"macos-latest-xlarge":    compatMacOS260XL,
@@ -125,7 +128,7 @@ var defaultRunnerOSCompats = map[string]runnerOSCompat{
 	// Allow both images while GitHub rolls the alias forward.
 	"windows-11-arm":        compatWindows11Arm | compatWindows11VS2026Arm,
 	"windows-11-vs2026-arm": compatWindows11VS2026Arm,
-	"linux":                 compatUbuntu2604 | compatUbuntu2404 | compatUbuntu2204, // Note: "linux" does not always indicate Ubuntu. It might be Fedora or Arch or ...
+	"linux":                 compatUbuntu2604 | compatUbuntu2404 | compatUbuntu2204 | compatUbuntu2604ARM | compatUbuntu2404ARM | compatUbuntu2204ARM, // Note: "linux" does not always indicate Ubuntu. It might be Fedora or Arch or ...
 	"macos":                 compatXcode270 | compatXcode270XL | compatMacOS260 | compatMacOS260Intel | compatMacOS260L | compatMacOS260XL | compatMacOS150 | compatMacOS150Intel | compatMacOS150L | compatMacOS150XL | compatMacOS140 | compatMacOS140L | compatMacOS140XL,
 	"windows":               compatWindows2025VS2026 | compatWindows2022 | compatWindows11Arm | compatWindows11VS2026Arm,
 }

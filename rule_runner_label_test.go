@@ -419,6 +419,37 @@ func TestRuleRunnerLabelDoNothingOnNoRunsOn(t *testing.T) {
 	}
 }
 
+func TestUbuntuRunnerArchitectures(t *testing.T) {
+	for _, version := range []string{"22.04", "24.04", "26.04"} {
+		arm := "ubuntu-" + version + "-arm"
+		for _, x64 := range []string{"ubuntu-" + version, "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores"} {
+			t.Run(x64+"/"+arm, func(t *testing.T) {
+				rule := NewRuleRunnerLabel()
+				pos := &Pos{Line: 1, Col: 1}
+				job := &Job{RunsOn: &Runner{Labels: []*String{{Value: x64, Pos: pos}, {Value: arm, Pos: pos}}}}
+				if err := rule.VisitJobPre(job); err != nil {
+					t.Fatal(err)
+				}
+				errs := rule.Errs()
+				if len(errs) != 1 || !strings.Contains(errs[0].Message, "conflicts with") {
+					t.Fatalf("incompatible architectures %s and %s: got %v", x64, arm, errs)
+				}
+			})
+		}
+		t.Run("linux/"+arm, func(t *testing.T) {
+			rule := NewRuleRunnerLabel()
+			pos := &Pos{Line: 1, Col: 1}
+			job := &Job{RunsOn: &Runner{Labels: []*String{{Value: "linux", Pos: pos}, {Value: arm, Pos: pos}}}}
+			if err := rule.VisitJobPre(job); err != nil {
+				t.Fatal(err)
+			}
+			if errs := rule.Errs(); len(errs) != 0 {
+				t.Fatalf("Linux must remain compatible with %s: %v", arm, errs)
+			}
+		})
+	}
+}
+
 func TestRuleRunnerLabelAllGitHubHostedRunnerLabels(t *testing.T) {
 	all := []string{}
 	all = append(all, allGitHubHostedRunnerLabels...)
