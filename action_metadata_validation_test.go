@@ -73,6 +73,24 @@ func TestMetadataFirstVisibleInvocation(t *testing.T) {
 	}
 }
 
+func TestMetadataValidationDebugLog(t *testing.T) {
+	root, _ := executableFixture(t)
+	writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\nruns: {using: node24, main: index.js}\n")
+	writeShellcheckFixture(t, root, "inner/index.js", "")
+	var cacheLog, ruleLog strings.Builder
+	rule := NewRuleAction(NewLocalActionsCache(&Project{root: root}, &cacheLog))
+	rule.EnableDebug(&ruleLog)
+	for i := 1; i <= 2; i++ {
+		rule.checkLocalAction("./inner", "./inner", &ExecAction{Uses: &String{Value: "./inner", Pos: &Pos{Line: i, Col: 1}}})
+	}
+	if want := "[LocalActionsCache] New metadata parsed from action " + filepath.Join(root, "inner") + ": node24 action \"inner\"\n"; !strings.Contains(cacheLog.String(), want) {
+		t.Fatalf("cache log lacks %q: %q", want, cacheLog.String())
+	}
+	if want := "[action] Checking metadata of node24 action \"inner\" at \"./inner\"\n"; ruleLog.String() != want {
+		t.Fatalf("rule log = %q, want %q", ruleLog.String(), want)
+	}
+}
+
 func TestMetadataValidationTemplatesDetached(t *testing.T) {
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\nruns: {using: node24, main: index.js}\n")

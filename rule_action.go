@@ -865,7 +865,7 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *
 		return
 	}
 
-	rule.replayMetadataFindings(meta, action)
+	rule.replayMetadataFindings(meta, action, displaySpec)
 
 	rule.checkAction(meta, action, func(m *ActionMetadata) string {
 		return fmt.Sprintf("%q defined at %q", m.Name, displaySpec)
