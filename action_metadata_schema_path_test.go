@@ -26,10 +26,18 @@ func TestActionSchemaQuotedMemberPaths(t *testing.T) {
 	for _, tc := range []struct{ name, body, path string }{
 		{"dotted-output", "outputs:\n  x.y:\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['x.y'].value`},
 		{"bracket-output", "outputs:\n  'x[0]':\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['x[0]'].value`},
-		{"escaped-output", "outputs:\n  'x\"y\\z':\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['x"y\z'].value`},
+		{"escaped-output", "outputs:\n  'x\"y\\z':\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['x"y\\z'].value`},
 		{"dotted-input", "runs:\n  using: composite\n  steps:\n    - uses: owner/action@v1\n      with:\n        a.b: [invalid]\n", `runs.steps[0].with['a.b']`},
 		{"normal-output", "outputs:\n  normal_name:\n    value: [invalid]\nruns: {using: composite, steps: []}\n", "outputs.normal_name.value"},
 		{"control-output", "outputs:\n  \"x\\ny\\tz\\e\":\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['x\ny\tz\x1b'].value`},
+		{"literal-backslash-n", "outputs:\n  'x\\ny':\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['x\\ny'].value`},
+		{"newline", "outputs:\n  \"x\\ny\":\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['x\ny'].value`},
+		{"bidi", "outputs:\n  \"p\\u202Eq\":\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['p\u202eq'].value`},
+		{"zero-width-space", "outputs:\n  \"p\\u200Bq\":\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['p\u200bq'].value`},
+		{"bom", "outputs:\n  \"p\\uFEFFq\":\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['p\ufeffq'].value`},
+		{"line-separator", "outputs:\n  \"p\\u2028q\":\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['p\u2028q'].value`},
+		{"paragraph-separator", "outputs:\n  \"p\\u2029q\":\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['p\u2029q'].value`},
+		{"printable-unicode", "outputs:\n  'café日本':\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['café日本'].value`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root, _ := executableFixture(t)

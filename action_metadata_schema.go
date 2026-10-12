@@ -5,7 +5,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"go.yaml.in/yaml/v4"
 )
@@ -87,11 +86,11 @@ func (rule *RuleAction) actionSchemaError(meta *ActionMetadata, n *yaml.Node, pa
 	rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "%s at \"%s\" in action metadata", message, actionSchemaDisplayPath(path))
 }
 
-// Keep quotes readable without letting control characters split diagnostic lines.
+// Keep quotes readable and escape backslashes and non-printable characters.
 func actionSchemaDisplayPath(path string) string {
 	var display strings.Builder
 	for _, r := range path {
-		if unicode.IsControl(r) || r == '\u2028' || r == '\u2029' {
+		if r == '\\' || !strconv.IsPrint(r) {
 			quoted := strconv.QuoteRune(r)
 			display.WriteString(quoted[1 : len(quoted)-1])
 		} else {
