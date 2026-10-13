@@ -1,7 +1,8 @@
 /// <reference types="vitest/config" />
 
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
 import { copyFile, realpath } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
@@ -24,7 +25,17 @@ function goWasmBinary(): import('vite').Plugin {
 	return {
 		name: 'actionlint:go-wasm',
 		buildStart() {
-			execFileSync('go', ['build', '-o', resolve(here, 'public/main.wasm'), '.'], {
+			const catalogue = readFileSync(resolve(oneUp, 'internal/actioncatalog/popular_actions.json'));
+			const digest = createHash('sha256').update(catalogue).digest('hex');
+			execFileSync('go', [
+				'build',
+				'-tags=actionlint_external_catalog',
+				'-ldflags',
+				`-X main.catalogueDigest=${digest}`,
+				'-o',
+				resolve(here, 'public/main.wasm'),
+				'.',
+			], {
 				cwd: here,
 				env: { ...process.env, GOOS: 'js', GOARCH: 'wasm' },
 				stdio: 'inherit',

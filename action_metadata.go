@@ -13,7 +13,7 @@ import (
 )
 
 //go:generate go run ./scripts/generate-action-metadata -runtimes
-//go:generate go run ./scripts/generate-popular-actions ./popular_actions.go
+//go:generate go run ./scripts/generate-popular-actions -f json ./internal/actioncatalog/popular_actions.json
 //go:generate go run ./scripts/generate-action-metadata
 
 // ActionMetadataInput is input metadata in "inputs" section in action.yml metadata file.

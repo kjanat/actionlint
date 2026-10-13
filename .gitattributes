@@ -8,3 +8,4 @@
 /packages/github-action/tools/*.json linguist-generated=true
 /scripts/generate-webhook-events/testdata/** -text
 /testdata/** -text
+/.zed/*.json linguist-language=JSONC

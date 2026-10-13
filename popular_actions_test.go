@@ -1,9 +1,60 @@
 package actionlint
 
 import (
+	"reflect"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/actioncatalog"
 )
+
+func TestBundledCatalogueIndependentEntries(t *testing.T) {
+	data := []byte(`{"version":1,"references":{"a/b@v1":"d","a/b@v2":"d"},"definitions":{"d":{"name":"Example","inputs":["Token","old"],"required":["token"],"deprecated":{"old":""},"outputs":["Result"]}},"retired":["a/b@v0"]}`)
+	catalog, err := actioncatalog.Decode(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries, retired := materializePopularActions(catalog)
+	a, b := entries["a/b@v1"], entries["a/b@v2"]
+	if !reflect.DeepEqual(a, b) {
+		t.Fatal("shared definition must produce equal metadata")
+	}
+	if a.Inputs["token"].Name != "Token" || !a.Inputs["token"].Required || !a.Inputs["old"].Deprecated || a.Outputs["result"].Name != "Result" {
+		t.Fatalf("lost metadata: %+v", a)
+	}
+	a.Inputs["token"].Name = "changed"
+	a.Outputs["result"].Name = "changed"
+	delete(a.Inputs, "old")
+	if b.Inputs["token"].Name != "Token" || b.Outputs["result"].Name != "Result" || b.Inputs["old"] == nil {
+		t.Fatal("mutations leaked across references")
+	}
+	if _, ok := retired["a/b@v0"]; !ok {
+		t.Fatal("lost retired reference")
+	}
+}
+
+func TestCatalogueLookupCompatibility(t *testing.T) {
+	const ref = "example.test/custom@exact"
+	defer delete(PopularActions, ref)
+	meta := &ActionMetadata{Name: "Custom"}
+	PopularActions[ref] = meta
+	if got, retired := lookupPopularAction(ref); got != meta || retired {
+		t.Fatalf("override lost: %v, retired=%v", got, retired)
+	}
+	if got, retired := lookupPopularAction(ref + "-unknown"); got != nil || retired {
+		t.Fatalf("unknown reference inferred: %v, retired=%v", got, retired)
+	}
+}
+
+func TestInvalidCatalogueDoesNotReplaceEntries(t *testing.T) {
+	before := PopularActions["actions/checkout@v7"]
+	if err := LoadPopularActions([]byte(`{"version":999}`)); err == nil {
+		t.Fatal("invalid catalogue accepted")
+	}
+	if PopularActions["actions/checkout@v7"] != before {
+		t.Fatal("invalid catalogue replaced current metadata")
+	}
+}
 
 func TestPopularActionsDataset(t *testing.T) {
 	if len(PopularActions) == 0 {

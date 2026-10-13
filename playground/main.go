@@ -3,11 +3,17 @@
 package main
 
 import (
+	"crypto/sha256"
+	"errors"
+	"fmt"
 	"io"
 	"syscall/js"
 
 	"actionlint.kjanat.dev"
 )
+
+// Set by the site build to reject catalogue/WASM deployment mismatches.
+var catalogueDigest string
 
 var (
 	window = js.Global().Get("window")
@@ -59,6 +65,21 @@ func runActionlint(_this js.Value, args []js.Value) any {
 }
 
 func main() {
+	value := window.Get("actionlintCatalogue")
+	if value.Type() != js.TypeString {
+		fail(errors.New("action catalogue was not loaded"), "initializing action metadata")
+		return
+	}
+	data := []byte(value.String())
+	window.Delete("actionlintCatalogue")
+	if catalogueDigest == "" || fmt.Sprintf("%x", sha256.Sum256(data)) != catalogueDigest {
+		fail(errors.New("action catalogue does not match this playground build; reload the page"), "initializing action metadata")
+		return
+	}
+	if err := actionlint.LoadPopularActions(data); err != nil {
+		fail(err, "initializing action metadata")
+		return
+	}
 	window.Set("runActionlint", js.FuncOf(runActionlint))
 	window.Call("dismissLoading")
 	lint(window.Call("getYamlSource").String()) // Show the first result

@@ -1,6 +1,6 @@
 # generate-popular-actions
 
-This is a script for generating [`popular_actions.go`](../../popular_actions.go).
+Generate the bundled [`popular_actions.json`](../../internal/actioncatalog/popular_actions.json) catalogue.
 
 It does:
 
@@ -8,15 +8,16 @@ It does:
   - from https://github.com
   - from JSONL file in local
 - Generates the fetched data set of metadata
+  - as a versioned JSON catalogue with shared definitions
   - as Go source file
   - as JSONL file
 
 ## Usage
 
-Generate Go source:
+Generate the bundled catalogue:
 
 ```sh
-go run ./scripts/generate-popular-actions ./popular_actions.go
+go run ./scripts/generate-popular-actions -f json ./internal/actioncatalog/popular_actions.json
 ```
 
 Detect new releases on GitHub:
@@ -50,7 +51,32 @@ Verify refs with `git ls-remote --tags --heads https://github.com/OWNER/REPO.git
 and fetch the action's `action.yml` or `action.yaml` at each selected ref. Major
 refs may be branches. Repositories containing several actions need separate
 entries with `path`; a repository name alone does not identify those actions.
-Regenerate `popular_actions.go` with the command above after changing the registry.
+Regenerate `internal/actioncatalog/popular_actions.json` with the command above after changing the registry.
+
+## Catalogue format
+
+The catalogue has a `$schema` link to [`popular_actions.schema.json`](../../internal/actioncatalog/popular_actions.schema.json)
+for editor completion and validation. It is separate from this directory's fetch registry.
+
+- `version` identifies the file format; the loader rejects unsupported versions.
+- `references` maps each exact action reference to a definition ID. Identical definitions share an ID,
+  chosen from the first reference in sorted order. IDs do not imply version compatibility.
+- `definitions` stores action names, runtimes, input/output names and validation flags. Input/output names
+  preserve their casing. `required` and `deprecated` use lowercase input IDs. An empty deprecation message
+  still marks an input deprecated. Missing flags default to false.
+- `retired` lists exact references with retired runtimes or services.
+
+The loader also checks relationships that JSON Schema cannot express here: definition references,
+input exceptions, case-insensitive name collisions, and active/retired overlap.
+Unknown action references remain unchecked; no tag or commit equivalence is guessed.
+
+The catalogue is embedded in ordinary CLI/library builds. The playground uses the `actionlint_external_catalog`
+build tag, fetches the JSON as a separate hashed asset, and verifies its SHA-256 against the WASM build before
+enabling linting. Missing or mismatched metadata stops initialization. Each exported `PopularActions` entry receives independent mutable
+metadata, preserving existing Go API behavior. The file shares definitions; the compatibility map does not
+share mutable input/output objects between versions. Both built-in consumers use one lookup function.
+
+`-f go` remains available for Go source consumers and `-f jsonl` for metadata interchange.
 
 Extraction preserves supported input fields when metadata also contains unknown
 input keys, such as `type` or the misspelled `deprecation-message`. Extraction ignores

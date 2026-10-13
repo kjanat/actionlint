@@ -349,13 +349,13 @@ The generator resolves the newest commit touching those inputs and downloads all
 
 `go generate` refreshes runtime data before popular-action metadata; weekly `Upkeep` includes both in its PR. Popular actions retain their JavaScript runtime alongside input/output metadata. Input/output checks continue when the runtime is deprecated. The generator identifies removed runtimes from the runner's packaging sources and includes scheduled removal dates in diagnostics. This data describes the upstream runner. Individual installations can use different migration dates and runtimes through GitHub's server-side flags.
 
-### Maintain `popular_actions.go`
+### Maintain `popular_actions.json`
 
-[`popular_actions.go`] is a data set of metadata of popular actions hosted on GitHub. It is generated automatically with `go generate`. The command runs [`generate-popular-actions`] script.
+[`popular_actions.json`] is the bundled metadata catalogue for actions hosted on GitHub. It is generated automatically with `go generate`. The command runs [`generate-popular-actions`] script. Its `$schema` link provides editor validation and completion.
 
 The script also can detect new major releases of popular actions on GitHub by giving `-d` flag.
 
-The [`Upkeep`] CI workflow weekly runs to detect new major releases and update `popular_actions.go`, and opens a pull request with the result. Runs can be found [actions/workflows/upkeep.yml].
+The [`Upkeep`] CI workflow weekly runs to detect new major releases and update `popular_actions.json`, and opens a pull request with the result. Runs can be found [actions/workflows/upkeep.yml].
 
 ### Maintain `all_webhooks.go`
 
@@ -431,7 +431,7 @@ Please see [the readme of the script][the readme of the script-2] for the usage 
 [`man/actionlint.1.md`]: ./man/actionlint.1.md
 [`man/manual.css`]: ./man/manual.css
 [`playground/README.md`]: ./playground/README.md
-[`popular_actions.go`]: ./popular_actions.go
+[`popular_actions.json`]: ./internal/actioncatalog/popular_actions.json
 [`release.yml`]: .github/workflows/release.yml
 [`scripts/`]: ./scripts
 [actions/workflows/upkeep.yml]: https://github.com/kjanat/actionlint/actions/workflows/upkeep.yml

@@ -3,7 +3,7 @@
 MAKEFLAGS += --no-builtin-rules
 
 GO_FILES := $(wildcard *.go cmd/*/*.go internal/*/*.go)
-SRCS := $(filter-out %_test.go, $(GO_FILES)) sarif_template.txt go.mod go.sum
+SRCS := $(filter-out %_test.go, $(GO_FILES)) sarif_template.txt internal/actioncatalog/popular_actions.json go.mod go.sum
 TESTS := $(filter %_test.go, $(GO_FILES))
 TOOL := $(wildcard scripts/*/*.go)
 TESTDATA := $(wildcard \
@@ -15,7 +15,7 @@ TESTDATA := $(wildcard \
 		testdata/projects/* \
 		testdata/reusable_workflow_metadata/* \
 	)
-GO_GEN_SRCS := scripts/generate-popular-actions/main.go \
+GO_GEN_SRCS := $(wildcard scripts/generate-popular-actions/*.go) \
 				scripts/generate-popular-actions/popular_actions.json \
 				scripts/generate-webhook-events/main.go \
 				scripts/generate-availability/main.go \
@@ -45,6 +45,28 @@ ifeq ($(NORACE),1)
 	RACE =
 endif
 
+# Probe the race runtime before the suite: some ARM64 kernels have an
+# unsupported virtual address layout. Keep running ordinary tests on those hosts.
+ifeq ($(OS),Windows_NT)
+GO_TEST = go test $(RACE) $(1)
+else
+define GO_TEST
+@race='$(RACE)'; \
+if [ -n "$$race" ]; then \
+	if probe="$$(go test $$race -run '^$$' -count=1 ./internal/projectpath 2>&1)"; then \
+		:; \
+	elif printf '%s\n' "$$probe" | grep -Fq 'ThreadSanitizer: unsupported VMA range'; then \
+		printf '%s\n' 'Race detector unavailable on this kernel; running tests without -race.'; \
+		race=; \
+	else \
+		printf '%s\n' "$$probe" >&2; \
+		exit 1; \
+	fi; \
+fi; \
+echo "go test$${race:+ $$race} $(1)"; \
+go test $$race $(1)
+endef
+endif
 
 all: build test lint
 
@@ -52,7 +74,7 @@ comment-cop:
 	node .github/actions/comment-cop/comment-cop.mjs $(COMMENT_COP_BASE)
 
 test:
-	go test $(RACE) ./...
+	$(call GO_TEST,./...)
 
 .PHONY: conformance
 conformance:
@@ -60,7 +82,7 @@ conformance:
 	go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m .
 
 coverage.out: $(TESTS) $(SRCS) $(TESTDATA) $(TOOL)
-	go test $(RACE) -coverprofile coverage.out -covermode=atomic ./...
+	$(call GO_TEST,-coverprofile coverage.out -covermode=atomic ./...)
 
 coverage.html: coverage.out
 	go tool cover -html=coverage.out -o coverage.html
@@ -80,9 +102,9 @@ endif
 lint-docs:
 	go run ./scripts/check-checks -quiet ./docs/checks.md
 
-popular_actions.go all_webhooks.go availability.go action_metadata_availability.go action_runtimes.go: $(GO_GEN_SRCS)
+internal/actioncatalog/popular_actions.json all_webhooks.go availability.go action_metadata_availability.go action_runtimes.go: $(GO_GEN_SRCS)
 ifdef SKIP_GO_GENERATE
-	$(TOUCH) popular_actions.go all_webhooks.go availability.go action_metadata_availability.go action_runtimes.go
+	$(TOUCH) internal/actioncatalog/popular_actions.json all_webhooks.go availability.go action_metadata_availability.go action_runtimes.go
 else
 	go generate
 endif

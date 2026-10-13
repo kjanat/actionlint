@@ -42,10 +42,14 @@
     "actup-lsp": {
       "binary": { // currently private project.
         "path": "mise",
-        "arguments": ["exec", "actup-lsp", "--", "actup-lsp"]
+        "arguments": ["exec", "actup-lsp", "--", "actup-lsp"],
+        "env": {},
       },
     },
     "golangci-lint": {
+      "binary": {
+        "env": {}
+      },
       "initialization_options": {
         "command": [
           "mise",
@@ -65,7 +69,8 @@
     "biome": {
       "binary": {
         "path": "mise",
-        "arguments": ["exec", "--", "biome", "lsp-proxy"]
+        "arguments": ["exec", "--", "biome", "lsp-proxy"],
+        "env": {},
       },
       "settings": {
         "config_path": "./biome.jsonc",
@@ -74,7 +79,7 @@
     },
     "gopls": {
       "initialization_options": {
-        "buildFlags": ["-buildvcs=true"],
+        "buildFlags": ["-buildvcs=true", "-tags=actionlint_external_catalog"],
         // "local": "actionlint.kjanat.dev",
         "gofumpt": true,
         "staticcheck": true,
@@ -85,7 +90,8 @@
           "parameterNames": true,
           "constantValues": true,
           "functionTypeParameters": true,
-        }
+        },
+        "hoverKind": "SynopsisDocumentation"
       }
     },
     "tombi": {
@@ -95,10 +101,23 @@
         "env": { "NO_COLOR": "true" },
       }
     },
+    "json-language-server": {
+      "settings": {
+        "json": {
+          "schemas": [
+            {
+              "fileMatch": ["internal/actioncatalog/popular_actions.json"],
+              "url": "internal/actioncatalog/popular_actions.schema.json"
+            },
+          ]
+        }
+      }
+    },
     "yaml-language-server": {
       "binary": {
         "path": "mise",
-        "arguments": ["exec", "npm:yaml-language-server", "--", "yaml-language-server", "--stdio"]
+        "arguments": ["exec", "npm:yaml-language-server", "--", "yaml-language-server", "--stdio"],
+        "env": {},
       },
       "settings": {
         "yaml": {
@@ -117,7 +136,8 @@
     "dprint": {
       "binary": {
         "path": "mise",
-        "arguments": ["exec", "github:kjanat/dprint", "--", "dprint", "lsp"]
+        "arguments": ["exec", "github:kjanat/dprint", "--", "dprint", "lsp"],
+        "env": {},
       }
     }
   }

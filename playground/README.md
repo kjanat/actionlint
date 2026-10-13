@@ -30,6 +30,11 @@ npm test
 
 `npm run dev` builds `public/main.wasm` and starts the Vite dev server with hot reloading.
 
+The playground fetches `internal/actioncatalog/popular_actions.json` separately through Vite's asset pipeline.
+Production builds give the JSON a content-hashed URL. WASM excludes the embedded catalogue and checks the fetched
+bytes against its build-time SHA-256 before exposing the lint function. A failed fetch or mismatched deployment
+stops startup and reports an error. Ordinary CLI and library builds still embed the catalogue.
+
 Vite derives the version badge and links from Git when it starts. A clean release tag links to its release; development
 builds show `git describe` and link to their commit. Documentation links use that same commit. Without tags, the badge
 shows the commit; without Git metadata, it shows `development`. Pages also reads the latest published release and displays

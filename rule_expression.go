@@ -396,7 +396,7 @@ func (rule *RuleExpression) getActionOutputsType(spec *String) *ObjectType {
 
 	// When the action run at this step is a popular action, we know what outputs are set by it.
 	// Set the output names to `steps.{step_id}.outputs.{name}`.
-	if meta, ok := PopularActions[spec.Value]; ok {
+	if meta, _ := lookupPopularAction(spec.Value); meta != nil {
 		return typeOfActionOutputs(meta)
 	}
 
