@@ -28,6 +28,7 @@ type Repository struct {
 	hashLength       int
 	excludes         string
 	unresolvedGitDir string
+	base             string
 	reads            fileReads
 }
 
@@ -57,6 +58,7 @@ func (r *Repository) ReadFiles() []string {
 }
 
 type location struct {
+	start      string
 	dir        string
 	gitDir     string
 	unresolved string
@@ -83,6 +85,7 @@ func Open(dir string) (*Repository, error) {
 	if err != nil || found == nil {
 		return nil, err
 	}
+	found.start = start
 	found.unresolved = found.gitDir
 	if runtime.GOOS != "windows" && found.dir == start && found.gitDir == filepath.Join(start, ".git") {
 		found.unresolved = filepath.Join(logical, ".git")
@@ -337,6 +340,10 @@ func open(found *location) (*Repository, error) {
 	if repo.WorkTree, err = format.resolveWorkTree(found); err != nil {
 		return nil, err
 	}
+	repo.base = found.start
+	if relative, err := filepath.Rel(repo.WorkTree, found.start); repo.WorkTree != "" && err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		repo.base = repo.WorkTree
+	}
 	if format.sha256 {
 		repo.hashLength = 32
 	}
@@ -359,9 +366,16 @@ func open(found *location) (*Repository, error) {
 	if configured {
 		repo.excludes = excludes
 	} else if xdg, ok := xdgConfigHome(); ok {
-		repo.excludes = filepath.Join(xdg, "git", "ignore")
+		repo.excludes = repo.absolute(filepath.Join(xdg, "git", "ignore"))
 	}
 	return repo, nil
+}
+
+func (r *Repository) absolute(path string) string {
+	if path == "" || isAbsolutePath(path) {
+		return path
+	}
+	return filepath.Join(r.base, path)
 }
 
 func (r *Repository) branch(read func(string)) (string, error) {
@@ -393,7 +407,7 @@ func (r *Repository) config() (config, error) {
 		if !ok {
 			system = systemConfigPath()
 		}
-		files = append(files, system)
+		files = append(files, r.absolute(system))
 	}
 	global, ok := os.LookupEnv("GIT_CONFIG_GLOBAL")
 	globals := []string{global}
@@ -401,6 +415,7 @@ func (r *Repository) config() (config, error) {
 		globals = globalConfigFiles()
 	}
 	for _, file := range globals {
+		file = r.absolute(file)
 		if f, err := os.Open(file); err == nil {
 			_ = f.Close()
 		} else if errors.Is(err, fs.ErrPermission) {
@@ -439,9 +454,7 @@ func (r *Repository) excludesFile(values []configValue) (string, bool, error) {
 			return "", false, fmt.Errorf("failed to expand user dir in: %q", text)
 		}
 		expanded = filepath.FromSlash(expanded)
-		if expanded != "" && !isAbsolutePath(expanded) {
-			expanded = filepath.Join(r.WorkTree, expanded)
-		}
+		expanded = r.absolute(expanded)
 		path, configured = expanded, true
 		if !optional {
 			continue

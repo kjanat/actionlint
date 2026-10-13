@@ -607,6 +607,9 @@ func TestExpandedIndexEnvironmentAlternates(t *testing.T) {
 	}
 	t.Setenv("GIT_ALTERNATE_OBJECT_DIRECTORIES", "# comment"+string(os.PathListSeparator)+moved)
 	assertExpandedScripts(t, fixture.compareIndex())
+	t.Chdir(filepath.Join(fixture.root, "in"))
+	t.Setenv("GIT_ALTERNATE_OBJECT_DIRECTORIES", filepath.Join("..", "elsewhere", "objects"))
+	assertExpandedScripts(t, fixture.compareIndex())
 }
 
 func TestParseAlternates(t *testing.T) {

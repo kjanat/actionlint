@@ -56,7 +56,7 @@ func (r *Repository) openObjectStore(settings config) (*objectStore, error) {
 	visit = func(dir string, depth int) {
 		alternates := readAlternates(dir)
 		if depth < 0 {
-			alternates = append(environmentAlternates(), alternates...)
+			alternates = append(environmentAlternates(r.base), alternates...)
 		}
 		if len(alternates) > 0 && depth+1 > alternateMaximumDepth {
 			return
@@ -105,12 +105,8 @@ func readAlternates(objects string) []string {
 	return parseAlternates(string(data), '\n', realPath(objects))
 }
 
-func environmentAlternates() []string {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil
-	}
-	return parseAlternates(os.Getenv("GIT_ALTERNATE_OBJECT_DIRECTORIES"), os.PathListSeparator, cwd)
+func environmentAlternates(base string) []string {
+	return parseAlternates(os.Getenv("GIT_ALTERNATE_OBJECT_DIRECTORIES"), os.PathListSeparator, base)
 }
 
 func parseAlternates(data string, separator byte, base string) []string {

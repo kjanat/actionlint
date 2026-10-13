@@ -770,14 +770,72 @@ func TestOpenSkipsUnusableConfigFilesLikeGit(t *testing.T) {
 	})
 }
 
-func TestOpenRelativeXDGConfigHomeMatchesGit(t *testing.T) {
-	fixture := newTestRepo(t)
-	writeConfig(t, filepath.Join(fixture.root, "xdg", "git", "config"), "[core]\n\tprobe = 1\n")
-	t.Chdir(fixture.root)
-	t.Setenv("XDG_CONFIG_HOME", "xdg")
-	fixture.compareProbe("core.probe")
-	if got := fixture.probe("core.probe"); got != 0 {
-		t.Fatalf("probe = %d, want 0", got)
+func probeIn(t *testing.T, dir, key string) int {
+	t.Helper()
+	repo, err := Open(dir)
+	if err != nil || repo == nil {
+		return 128
+	}
+	settings, err := repo.config()
+	switch _, ok := settings.last(key); {
+	case err != nil:
+		return 128
+	case ok:
+		return 0
+	}
+	return 1
+}
+
+func compareProbeIn(t *testing.T, dir, key string, want int) {
+	t.Helper()
+	ours := probeIn(t, dir, key)
+	_, _, err := gitIn(t, dir, "config", "--get", key)
+	theirs := 0
+	if exit, ok := errors.AsType[*exec.ExitError](err); ok {
+		theirs = exit.ExitCode()
+	} else if err != nil {
+		t.Fatal(err)
+	}
+	if ours != theirs || ours != want {
+		t.Fatalf("%s from %s: ours %d, git %d, want %d", key, dir, ours, theirs, want)
+	}
+}
+
+func TestOpenRelativeConfigPathsMatchGit(t *testing.T) {
+	for name, tc := range map[string]struct {
+		env  map[string]string
+		file string
+	}{
+		"xdg":    {env: map[string]string{"XDG_CONFIG_HOME": "xdg"}, file: "xdg/git/config"},
+		"home":   {env: map[string]string{"HOME": "home", "USERPROFILE": "home", "XDG_CONFIG_HOME": ""}, file: "home/.gitconfig"},
+		"global": {env: map[string]string{"GIT_CONFIG_GLOBAL": "global"}, file: "global"},
+		"system": {env: map[string]string{"GIT_CONFIG_NOSYSTEM": "0", "GIT_CONFIG_SYSTEM": "system"}, file: "system"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			fixture := newTestRepo(t)
+			sub := filepath.Join(fixture.root, "sub")
+			if err := os.MkdirAll(sub, 0o750); err != nil {
+				t.Fatal(err)
+			}
+			for key, value := range tc.env {
+				t.Setenv(key, value)
+				if value == "" {
+					if err := os.Unsetenv(key); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			writeConfig(t, filepath.Join(fixture.root, filepath.FromSlash(tc.file)), "[core]\n\tprobe = 1\n")
+			t.Chdir(fixture.root)
+			compareProbeIn(t, fixture.root, "core.probe", 0)
+			t.Chdir(sub)
+			compareProbeIn(t, sub, "core.probe", 0)
+			if err := os.Remove(filepath.Join(fixture.root, filepath.FromSlash(tc.file))); err != nil {
+				t.Fatal(err)
+			}
+			writeConfig(t, filepath.Join(sub, filepath.FromSlash(tc.file)), "[core]\n\tprobe = 1\n")
+			compareProbeIn(t, sub, "core.probe", 1)
+		})
 	}
 }
 
@@ -791,15 +849,23 @@ func TestOpenCommandConfigIncludesMatchGit(t *testing.T) {
 		"matching gitdir":    {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "includeIf.gitdir:repo/.path", "GIT_CONFIG_VALUE_0": "{home}/inc"},
 		"other gitdir":       {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "includeIf.gitdir:other/.path", "GIT_CONFIG_VALUE_0": "{home}/inc"},
 		"bare false include": {"GIT_CONFIG_PARAMETERS": "'includeIf.onbranch:nope.path'"},
+		"dot worktree":       {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "includeIf.worktree:./elsewhere/.path", "GIT_CONFIG_VALUE_0": "{home}/inc"},
+		"worktree":           {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "includeIf.worktree:{root}.path", "GIT_CONFIG_VALUE_0": "{home}/inc"},
+		"slashed worktree":   {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "includeIf.worktree:{root}/.path", "GIT_CONFIG_VALUE_0": "{home}/inc"},
+		"worktree glob":      {"GIT_CONFIG_PARAMETERS": "'includeIf.worktree:**/repo.path'='{home}/inc'"},
 		"remote url":         {"GIT_CONFIG_PARAMETERS": "'remote.origin.url'='https://example.com/x' 'includeIf.hasconfig:remote.*.url:https://example.com/**.path'='{home}/inc'"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			fixture := newTestRepo(t)
 			writeConfig(t, filepath.Join(fixture.home, "inc"), "[core]\n\tinc = 1\n")
 			for key, value := range env {
-				t.Setenv(key, strings.ReplaceAll(value, "{home}", filepath.ToSlash(fixture.home)))
+				value = strings.ReplaceAll(value, "{home}", filepath.ToSlash(fixture.home))
+				t.Setenv(key, strings.ReplaceAll(value, "{root}", filepath.ToSlash(resolvedPath(t, fixture.root))))
 			}
 			fixture.compareProbe("core.inc")
+			if want, pinned := map[string]int{"dot worktree": 0, "worktree": 0, "slashed worktree": 1, "worktree glob": 0}[name]; pinned && fixture.probe("core.inc") != want {
+				t.Fatalf("probe = %d, want %d", fixture.probe("core.inc"), want)
+			}
 		})
 	}
 }
@@ -1104,13 +1170,36 @@ func TestReadFilesLocators(t *testing.T) {
 
 func TestOpenEmptyHomeMatchesGit(t *testing.T) {
 	fixture := newTestRepo(t)
+	writeConfig(t, filepath.Join(fixture.root, ".gitconfig"), "[core]\n\tprobe = 1\n")
+	writeConfig(t, filepath.Join(fixture.root, ".config", "git", "config"), "[core]\n\tprobe = 1\n")
+	t.Chdir(fixture.root)
 	t.Setenv("HOME", "")
 	t.Setenv("XDG_CONFIG_HOME", "")
 	if err := os.Unsetenv("XDG_CONFIG_HOME"); err != nil {
 		t.Fatal(err)
 	}
-	fixture.compareProbe("core.probe")
+	compareProbeIn(t, fixture.root, "core.probe", 1)
 	if got := globalConfigFiles(); !slices.Equal(got, []string{filepath.FromSlash("/.config/git/config"), filepath.FromSlash("/.gitconfig")}) {
 		t.Fatalf("globalConfigFiles = %q", got)
 	}
+	if err := os.Unsetenv("HOME"); err != nil {
+		t.Fatal(err)
+	}
+	compareProbeIn(t, fixture.root, "core.probe", 1)
+	if got := globalConfigFiles(); runtime.GOOS != "windows" && len(got) != 0 {
+		t.Fatalf("globalConfigFiles without HOME = %q", got)
+	}
+}
+
+func TestOpenRelativeConfigPathsBareMatchGit(t *testing.T) {
+	fixture := newTestRepo(t, "--bare")
+	t.Setenv("GIT_CONFIG_GLOBAL", "global")
+	writeConfig(t, filepath.Join(fixture.root, "global"), "[core]\n\tprobe = 1\n")
+	t.Chdir(fixture.root)
+	compareProbeIn(t, fixture.root, "core.probe", 0)
+	hooks := filepath.Join(fixture.root, "hooks")
+	t.Chdir(hooks)
+	compareProbeIn(t, hooks, "core.probe", 1)
+	writeConfig(t, filepath.Join(hooks, "global"), "[core]\n\tprobe = 1\n")
+	compareProbeIn(t, hooks, "core.probe", 0)
 }
