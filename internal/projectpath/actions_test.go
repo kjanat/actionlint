@@ -10,6 +10,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/gitrepo"
 )
 
 func writeFixture(t *testing.T, root, name, content string) {
@@ -198,6 +200,71 @@ func TestActionsFoldTrackedPaths(t *testing.T) {
 	}
 	if want := []string{filepath.Join(root, "build", "action.yml")}; !slices.Equal(got, want) {
 		t.Fatalf("Actions = %q, want %q", got, want)
+	}
+}
+
+func TestActionsComposeDecomposedNames(t *testing.T) {
+	root := t.TempDir()
+	git := gitFixture(t, root)
+	writeFixture(t, root, ".gitignore", "café/\n")
+	writeFixture(t, root, "café/action.yml", "name: fixture\n")
+	writeFixture(t, root, "café/kept/action.yml", "name: fixture\n")
+	writeFixture(t, root, "plain/action.yml", "name: fixture\n")
+	blob, err := exec.CommandContext(t.Context(), "git", "-C", root, "hash-object", "-w", "--", "plain/action.yml").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	git("update-index", "--add", "--cacheinfo", "100644,"+strings.TrimSpace(string(blob))+",café/kept/action.yml")
+	repo, err := gitrepo.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	physical, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, tc := range map[string]struct {
+		precompose bool
+		want       []string
+	}{
+		"composed":   {true, []string{filepath.Join("café", "kept", "action.yml"), filepath.Join("plain", "action.yml")}},
+		"decomposed": {false, []string{filepath.Join("café", "action.yml"), filepath.Join("café", "kept", "action.yml"), filepath.Join("plain", "action.yml")}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			discovery, err := newActionDiscovery(physical, repo, tc.precompose)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := discovery.walk(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(got, tc.want) {
+				t.Fatalf("walk = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestActionsPrecomposeUnicodeMatchesGit(t *testing.T) {
+	root := t.TempDir()
+	git := gitFixture(t, root)
+	git("config", "core.precomposeUnicode", "true")
+	writeFixture(t, root, ".gitignore", "café/\n")
+	writeFixture(t, root, "café/action.yml", "name: fixture\n")
+	manifest := filepath.Join(root, "café", "action.yml")
+	err := exec.CommandContext(t.Context(), "git", "-C", root, "check-ignore", "--quiet", "--", "café/action.yml").Run()
+	var exit *exec.ExitError
+	ignored := err == nil
+	if err != nil && (!errors.As(err, &exit) || exit.ExitCode() != 1) {
+		t.Fatal(err)
+	}
+	got, err := Actions(t.Context(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slices.Contains(got, manifest) == ignored {
+		t.Fatalf("Actions = %q, git check-ignore ignored = %v", got, ignored)
 	}
 }
 

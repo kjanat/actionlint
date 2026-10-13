@@ -69,10 +69,14 @@ func TestOpenRejectsBrokenGitFile(t *testing.T) {
 func TestOpenReadsConfig(t *testing.T) {
 	fixture := newTestRepo(t)
 	fixture.git("config", "core.ignoreCase", "true")
+	fixture.git("config", "core.precomposeUnicode", "true")
 	fixture.git("config", "core.excludesFile", "~/global-ignore")
 	repo := fixture.open()
-	if !repo.ignoreCase {
-		t.Fatal("ignoreCase = false")
+	if !repo.IgnoreCase() {
+		t.Fatal("IgnoreCase = false")
+	}
+	if !repo.PrecomposeUnicode() {
+		t.Fatal("PrecomposeUnicode = false")
 	}
 	if want := filepath.Join(fixture.home, "global-ignore"); repo.excludes != want {
 		t.Fatalf("excludes = %q, want %q", repo.excludes, want)

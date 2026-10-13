@@ -17,6 +17,7 @@ type Repository struct {
 	GitDir     string
 	CommonDir  string
 	ignoreCase bool
+	precompose bool
 	hashLength int
 	excludes   string
 }
@@ -89,6 +90,9 @@ func open(workTree, dotGit string, info fs.FileInfo) (*Repository, error) {
 	if repo.ignoreCase, err = settings.boolean("core.ignorecase"); err != nil {
 		return nil, err
 	}
+	if repo.precompose, err = settings.boolean("core.precomposeunicode"); err != nil {
+		return nil, err
+	}
 	switch format := strings.ToLower(settings["extensions.objectformat"]); format {
 	case "", "sha1":
 	case "sha256":
@@ -106,6 +110,10 @@ func open(workTree, dotGit string, info fs.FileInfo) (*Repository, error) {
 
 func (r *Repository) IgnoreCase() bool {
 	return r.ignoreCase
+}
+
+func (r *Repository) PrecomposeUnicode() bool {
+	return r.precompose
 }
 
 func (r *Repository) config() (config, error) {

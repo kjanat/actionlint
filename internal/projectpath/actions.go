@@ -6,9 +6,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"sort"
 	"strings"
+
+	"golang.org/x/text/unicode/norm"
 
 	"actionlint.kjanat.dev/internal/gitrepo"
 )
@@ -37,6 +40,7 @@ type actionDiscovery struct {
 	ignores    *gitrepo.Ignores
 	tracked    []string
 	ignoreCase bool
+	precompose bool
 }
 
 func discoverActions(ctx context.Context, physical string) ([]string, error) {
@@ -46,28 +50,35 @@ func discoverActions(ctx context.Context, physical string) ([]string, error) {
 	}
 	discovery := &actionDiscovery{root: physical}
 	if repo != nil {
-		relative, err := filepath.Rel(repo.WorkTree, physical)
-		if err != nil {
+		if discovery, err = newActionDiscovery(physical, repo, runtime.GOOS == "darwin" && repo.PrecomposeUnicode()); err != nil {
 			return nil, err
 		}
-		if relative != "." {
-			discovery.prefix = filepath.ToSlash(relative) + "/"
-		}
-		if discovery.ignores, err = repo.Ignores(); err != nil {
-			return nil, err
-		}
-		tracked, err := repo.TrackedFiles()
-		if err != nil {
-			return nil, err
-		}
-		discovery.ignoreCase = repo.IgnoreCase()
-		discovery.tracked = make([]string, 0, len(tracked))
-		for _, path := range tracked {
-			discovery.tracked = append(discovery.tracked, discovery.fold(path))
-		}
-		slices.Sort(discovery.tracked)
 	}
 	return discovery.walk(ctx)
+}
+
+func newActionDiscovery(physical string, repo *gitrepo.Repository, precompose bool) (*actionDiscovery, error) {
+	discovery := &actionDiscovery{root: physical, ignoreCase: repo.IgnoreCase(), precompose: precompose}
+	relative, err := filepath.Rel(repo.WorkTree, physical)
+	if err != nil {
+		return nil, err
+	}
+	if relative != "." {
+		discovery.prefix = discovery.compose(filepath.ToSlash(relative)) + "/"
+	}
+	if discovery.ignores, err = repo.Ignores(); err != nil {
+		return nil, err
+	}
+	tracked, err := repo.TrackedFiles()
+	if err != nil {
+		return nil, err
+	}
+	discovery.tracked = make([]string, 0, len(tracked))
+	for _, path := range tracked {
+		discovery.tracked = append(discovery.tracked, discovery.fold(path))
+	}
+	slices.Sort(discovery.tracked)
+	return discovery, nil
 }
 
 func (d *actionDiscovery) walk(ctx context.Context) ([]string, error) {
@@ -86,7 +97,7 @@ func (d *actionDiscovery) walk(ctx context.Context) ([]string, error) {
 		if err != nil {
 			return err
 		}
-		treePath := d.prefix + filepath.ToSlash(relative)
+		treePath := d.prefix + d.compose(filepath.ToSlash(relative))
 		if entry.IsDir() {
 			skip, err := skipDirectory(d.root, path)
 			if err != nil {
@@ -123,6 +134,13 @@ func (d *actionDiscovery) walk(ctx context.Context) ([]string, error) {
 		return nil
 	})
 	return relatives, err
+}
+
+func (d *actionDiscovery) compose(treePath string) string {
+	if !d.precompose {
+		return treePath
+	}
+	return norm.NFC.String(treePath)
 }
 
 func (d *actionDiscovery) fold(treePath string) string {
