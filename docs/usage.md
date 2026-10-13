@@ -19,6 +19,21 @@ When paths to YAML workflow files are given as arguments, actionlint checks them
 actionlint path/to/workflow1.yaml path/to/workflow2.yaml
 ```
 
+Explicit `action.yml` and `action.yaml` inputs are checked as action metadata,
+including composite steps and their ShellCheck and Ruff findings. You can mix
+workflows and actions in one invocation:
+
+```sh
+actionlint .github/workflows/ci.yml .github/actions/build/action.yml
+```
+
+Files directly under `.github/workflows` remain workflows, even when named
+`action.yml` or `action.yaml`.
+
+Metadata findings point into the action file. Configuration overrides, rule levels
+and ignores apply to that file. With no paths, discovery still selects workflows
+only; it does not scan for unreferenced actions.
+
 When `-` argument is given, actionlint reads inputs from stdin and checks it as
 workflow source.
 
@@ -47,9 +62,10 @@ actionlint doctor
 actionlint version
 ```
 
-`check` accepts workflow files or a lone `-` for stdin. With no paths, it uses the
-same repository workflow discovery as the root. Directory arguments and standalone
-action-manifest linting are not added by the command redesign.
+`check` accepts workflow files, action manifests or a lone `-` for stdin. With no
+paths, it uses the same repository workflow discovery as the root. Directory
+arguments are not supported. Use `--stdin-filename=action.yml` to check action
+metadata from stdin.
 
 An existing regular file named `check`, `config`, `rules`, `doctor`, `completion`,
 `version` or `help` takes precedence over the corresponding root command. Use `--`

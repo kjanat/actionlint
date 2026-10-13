@@ -10,6 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/internal/ruff"
 	"actionlint.kjanat.dev/internal/workflownames"
+	"go.yaml.in/yaml/v4"
 )
 
 type analysisEngine struct {
@@ -39,7 +40,7 @@ func (l *analysisEngine) check(
 	localActions *LocalActionsCache,
 	localReusableWorkflows *LocalReusableWorkflowCache,
 	usedRules *[]Rule,
-) ([]*Error, WorkflowOutline, error) {
+) ([]*Error, DocumentOutline, error) {
 	// Each call owns its rules; caches and process scheduling are shared across files.
 	root := l.workingDir
 	if project != nil {
@@ -53,6 +54,10 @@ func (l *analysisEngine) check(
 	}
 	cfg, configErr = configForFile(cfg, configPath, root)
 	if configErr != nil {
+		if isActionInput(path) {
+			outline, _ := ParseActionOutline(path, content)
+			return nil, outline, configErr
+		}
 		w, all := Parse(content)
 		return nil, workflowOutline(path, w, len(all) != 0), configErr
 	}
@@ -74,8 +79,27 @@ func (l *analysisEngine) check(
 		l.debug("No config was found")
 	}
 
-	w, all := Parse(content)
-	outline := workflowOutline(path, w, len(all) != 0)
+	var w *Workflow
+	var all []*Error
+	var outline DocumentOutline
+	var metadata *ActionMetadata
+	if isActionInput(path) {
+		metadata = &ActionMetadata{}
+		err := yaml.Unmarshal(content, metadata)
+		metadata.dir, metadata.file, metadata.src = filepath.Dir(configPath), filepath.Base(configPath), content
+		outline = actionOutline(path, metadata, err)
+		if err != nil {
+			all = handleYAMLUnmarshalError(err)
+			for _, finding := range all {
+				finding.Line, finding.Column = max(1, finding.Line), max(1, finding.Column)
+			}
+		} else {
+			w = &Workflow{}
+		}
+	} else {
+		w, all = Parse(content)
+		outline = workflowOutline(path, w, len(all) != 0)
+	}
 	var analysisErr error
 	metadataSources := map[string][]byte{}
 	compositeConfigs := map[string]*Config{}
@@ -111,6 +135,9 @@ func (l *analysisEngine) check(
 			c.projectRoot = project.RootDir()
 		}
 		for _, descriptor := range builtinRuleDescriptors() {
+			if metadata != nil && !standaloneActionRule(descriptor.Name) {
+				continue
+			}
 			if descriptor.build == nil {
 				continue
 			}
@@ -170,7 +197,11 @@ func (l *analysisEngine) check(
 			}
 		}
 
-		analysisErr = v.Visit(w)
+		if metadata != nil {
+			analysisErr = visitStandaloneAction(metadata, rules, v.composites)
+		} else {
+			analysisErr = v.Visit(w)
+		}
 		if analysisErr != nil {
 			l.debug("Error occurred while visiting workflow syntax tree: %v", analysisErr)
 		}
@@ -217,8 +248,17 @@ func (l *analysisEngine) check(
 	if cfg != nil {
 		suppressionPolicy = cfg.Policy.DisallowSuppressions
 	}
-	all = filterInlineSuppressions(content, all, suppressionPolicy)
-	all = filterConfigIgnores(configPath, root, content, all, cfg, false, cfg.diagnosticLevel)
+	if metadata != nil {
+		metadataSources[metadata.Path()] = content
+		for _, finding := range all {
+			if finding.Filepath == "" {
+				finding.Filepath, finding.source = metadata.Path(), content
+			}
+		}
+	} else {
+		all = filterInlineSuppressions(content, all, suppressionPolicy)
+		all = filterConfigIgnores(configPath, root, content, all, cfg, false, cfg.diagnosticLevel)
+	}
 	var projectDir string
 	if project != nil {
 		projectDir = project.RootDir()
@@ -261,7 +301,6 @@ func (l *analysisEngine) check(
 	}
 	all = nil
 	for scopePath, findings := range byPath {
-		findingPath := findingKey(scopePath)
 		sourcePath, isMetadata := foreignSources[scopePath]
 		source := metadataSources[sourcePath]
 		findingConfig := cfg
@@ -278,7 +317,7 @@ func (l *analysisEngine) check(
 			}
 			return levelConfig.diagnosticLevel(kind)
 		}
-		if findingPath != path && isMetadata && source != nil {
+		if isMetadata && source != nil {
 			var err error
 			findingConfig, err = suppressionConfigForFile(projectConfig, sourcePath, root)
 			if err != nil {

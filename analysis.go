@@ -16,7 +16,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// SourceUnit is a workflow and the configuration resolved for it by the caller.
+// SourceUnit is a workflow or action manifest and its resolved configuration.
 type SourceUnit struct {
 	Path    string
 	Content []byte
@@ -63,7 +63,7 @@ type analyzedFile struct {
 	source  SourceUnit
 	errors  []*Error
 	rules   []Rule
-	outline WorkflowOutline
+	outline DocumentOutline
 }
 
 type inputFiles struct {
@@ -105,7 +105,7 @@ func (f *inputFiles) addConfig(config *Config, project *Project) {
 	}
 }
 
-// Analyze checks resolved workflows and returns data without rendering diagnostics.
+// Analyze checks resolved workflows and action manifests without rendering diagnostics.
 // On analysis failure, a non-nil result retains findings collected before the failure.
 func Analyze(ctx context.Context, request AnalysisRequest) (*AnalysisResult, error) {
 	return analyze(ctx, request, io.Discard, LogLevelNone)
@@ -251,11 +251,18 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	}
 	result.collectDiagnostics()
 	result.Documents = make(DocumentOutlines, 0, len(result.files))
+	explicitActions := make(map[string]bool)
 	for _, file := range result.files {
 		result.Documents = append(result.Documents, file.outline)
+		if _, action := file.outline.(ActionOutline); action {
+			explicitActions[filepath.Clean(relativeAnalysisPath(engine.workingDir, file.outline.DocumentPath()))] = true
+		}
 	}
 	for _, document := range documents.list() {
-		result.Documents = append(result.Documents, document.WithPath(relativeAnalysisPath(engine.workingDir, document.DocumentPath())))
+		path := relativeAnalysisPath(engine.workingDir, document.DocumentPath())
+		if !explicitActions[filepath.Clean(path)] {
+			result.Documents = append(result.Documents, document.WithPath(path))
+		}
 	}
 	result.Inputs = inputs.list()
 	return result, err
@@ -366,5 +373,5 @@ func CompileIgnorePatterns(patterns []string) (IgnorePatterns, error) {
 	return ignore, nil
 }
 
-// FileCount reports the number of workflows analyzed, including those with no findings.
+// FileCount reports the number of explicit inputs analyzed, including clean files.
 func (r *AnalysisResult) FileCount() int { return len(r.files) }

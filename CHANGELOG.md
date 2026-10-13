@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Check explicit `action.yml` and `action.yaml` inputs as action metadata, with findings at their declarations and composite script checks. Allow workflows and actions in the same invocation and report action document outlines. (kjanat/actionlint#243)
+
 - Respect job event guards in `cache-call-unrestricted` and `cache-write-untrusted`. Keep findings for reachable restricted events, including unguarded jobs inheriting a workflow-level write grant. (kjanat/actionlint#198)
 
 - Accept both Ubuntu 24.04 and 26.04 for `ubuntu-latest` during its migration, while rejecting combinations of x64 and ARM64 Ubuntu labels. Map `macos-latest-xlarge` to macOS 26. Explain the completed GitHub.com Node 24 migration without rejecting `node20` action metadata. (kjanat/actionlint#179; kjanat/actionlint#216; kjanat/actionlint#197)
