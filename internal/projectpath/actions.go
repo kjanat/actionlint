@@ -2,6 +2,7 @@ package projectpath
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -50,9 +51,14 @@ func gitFiles(ctx context.Context, root string) ([]string, bool, error) {
 		}
 		command.Env = append(command.Env, entry)
 	}
+	var stderr strings.Builder
+	command.Stderr = &stderr
 	output, err := command.Output()
 	if err != nil {
 		return nil, false, ctx.Err()
+	}
+	if stderr.Len() > 0 {
+		return nil, false, errors.New(strings.TrimSpace(stderr.String()))
 	}
 	var names []string
 	for name := range strings.SplitSeq(string(output), "\x00") {

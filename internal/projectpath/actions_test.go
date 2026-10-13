@@ -166,25 +166,55 @@ func TestActionsDirectoryError(t *testing.T) {
 	}
 }
 
-func TestActionsManifestError(t *testing.T) {
+func sealDirectory(t *testing.T, dir string) {
+	t.Helper()
 	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
 		t.Skip("directory permissions are not enforced")
 	}
-	root := t.TempDir()
-	writeFixture(t, root, "sealed/action.yml", "name: fixture\n")
-	git := gitFixture(t, root)
-	git("add", "--", "sealed/action.yml")
-	sealed := filepath.Join(root, "sealed")
-	if err := os.Chmod(sealed, 0); err != nil {
+	if err := os.Chmod(dir, 0); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if err := os.Chmod(sealed, 0750); err != nil {
+		if err := os.Chmod(dir, 0750); err != nil {
 			t.Fatal(err)
 		}
 	})
-	if got, err := Actions(t.Context(), root); err == nil {
-		t.Fatalf("Actions = %q, want an error for the unreadable manifest directory", got)
+}
+
+func TestActionsManifestError(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		setup func(t *testing.T, root string, git func(...string))
+	}{
+		{"unreadable tracked directory", func(t *testing.T, root string, git func(...string)) {
+			writeFixture(t, root, "sealed/action.yml", "name: fixture\n")
+			git("add", "--", "sealed/action.yml")
+			sealDirectory(t, filepath.Join(root, "sealed"))
+		}},
+		{"unreadable untracked directory", func(t *testing.T, root string, git func(...string)) {
+			writeFixture(t, root, "sealed/action.yml", "name: fixture\n")
+			sealDirectory(t, filepath.Join(root, "sealed"))
+		}},
+		{"looping tracked directory", func(t *testing.T, root string, git func(...string)) {
+			writeFixture(t, root, "loop/action.yml", "name: fixture\n")
+			git("add", "--", "loop/action.yml")
+			git("commit", "--quiet", "-m", "Loop")
+			if err := os.RemoveAll(filepath.Join(root, "loop")); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink("loop", filepath.Join(root, "loop")); err != nil {
+				t.Skipf("symlinks unavailable: %v", err)
+			}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			git := gitFixture(t, root)
+			tc.setup(t, root, git)
+			if got, err := Actions(t.Context(), root); err == nil {
+				t.Fatalf("Actions = %q, want an error", got)
+			}
+		})
 	}
 }
 
