@@ -40,11 +40,15 @@ func TestOpenWorktree(t *testing.T) {
 	if repo.WorkTree != worktree {
 		t.Fatalf("WorkTree = %q, want %q", repo.WorkTree, worktree)
 	}
-	if !strings.HasPrefix(repo.GitDir, filepath.Join(fixture.root, ".git", "worktrees")) {
+	mainGitDir, err := filepath.EvalSymlinks(filepath.Join(fixture.root, ".git"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(repo.GitDir, filepath.Join(mainGitDir, "worktrees")) {
 		t.Fatalf("GitDir = %q", repo.GitDir)
 	}
-	if repo.CommonDir != filepath.Join(fixture.root, ".git") {
-		t.Fatalf("CommonDir = %q", repo.CommonDir)
+	if repo.CommonDir != mainGitDir {
+		t.Fatalf("CommonDir = %q, want %q", repo.CommonDir, mainGitDir)
 	}
 }
 
