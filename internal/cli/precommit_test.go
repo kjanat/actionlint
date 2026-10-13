@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -87,7 +88,7 @@ func TestPreCommitCommandReportsUnreadableWorkflows(t *testing.T) {
 func TestPreCommitCommandRendersEmptyResult(t *testing.T) {
 	t.Chdir(t.TempDir())
 	got := testRunCommand("", "pre-commit", "--json")
-	if got.Status != 0 || !json.Valid([]byte(got.Stdout)) || got.Stderr != "" {
+	if got.Status != 0 || !json.Valid([]byte(got.Stdout)) || !strings.Contains(got.Stdout, `"documents":[]`) || got.Stderr != "" {
 		t.Fatalf("got %+v", got)
 	}
 	if err := os.WriteFile("report.json", []byte("previous report"), 0o600); err != nil {
@@ -97,6 +98,29 @@ func TestPreCommitCommandRendersEmptyResult(t *testing.T) {
 	data, err := os.ReadFile("report.json")
 	if err != nil || got.Status != 0 || got.Stdout != "" || !json.Valid(data) || got.Stderr != "{\"summary\":{\"files\":0,\"findings\":0}}\n" {
 		t.Fatalf("%+v %s (%v)", got, data, err)
+	}
+}
+
+func TestPreCommitCommandProtectsRepositoryConfig(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := os.MkdirAll(filepath.Join(".github", "workflows"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(".git", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	config := filepath.Join(".github", "actionlint.yaml")
+	if err := os.WriteFile(config, []byte("{}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got := testRunCommand("", "pre-commit", "--json", "--output-file", config)
+	data, err := os.ReadFile(config)
+	if got.Status != 3 || !strings.Contains(got.Stderr, "also an input") || err != nil || string(data) != "{}\n" {
+		t.Fatalf("the empty report replaced the configuration: %+v %s (%v)", got, data, err)
+	}
+	got = testRunCommand("", "pre-commit", "--json")
+	if got.Status != 0 || !strings.Contains(got.Stdout, `"configurations":[{`) || !strings.Contains(got.Stdout, "actionlint.yaml") {
+		t.Fatalf("the empty result lost the configuration report: %+v", got)
 	}
 }
 

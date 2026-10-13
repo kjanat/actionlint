@@ -361,6 +361,41 @@ func TestAnalysisSessionExplicitConfigInput(t *testing.T) {
 	}
 }
 
+func TestAnalysisSessionEmptySelectionInputs(t *testing.T) {
+	root := t.TempDir()
+	config := filepath.Join(root, ".github", "actionlint.yaml")
+	for _, dir := range []string{".git", ".github/workflows"} {
+		if err := os.MkdirAll(filepath.Join(root, dir), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(config, []byte("{}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := session.Files(nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff([]string{config}, result.Inputs); diff != "" {
+		t.Fatalf("empty selection input mismatch (-want +got):\n%s", diff)
+	}
+	if len(result.Configurations) != 1 || result.Configurations[0].File != config || len(result.Diagnostics) != 0 {
+		t.Fatalf("empty selection result: %+v", result)
+	}
+	outside, err := NewAnalysisSession(AnalysisOptions{WorkingDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err = outside.Files(nil, nil)
+	if err != nil || len(result.Inputs) != 0 || len(result.Configurations) != 0 {
+		t.Fatalf("empty selection outside a project: %+v, %v", result, err)
+	}
+}
+
 func TestLinterEmptySelection(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()

@@ -250,12 +250,36 @@ func (a *AnalysisSession) filesSelected(paths []string) {
 func (a *AnalysisSession) Files(paths []string, project *Project) (*AnalysisResult, error) {
 	a.filesSelected(paths)
 	if len(paths) == 0 {
-		return &AnalysisResult{Diagnostics: []Diagnostic{}}, nil
+		return a.empty(project)
 	}
 	if len(paths) > 1 {
 		a.selectionLog("Linting", len(paths), "files")
 	}
 	return a.readFiles(paths, project)
+}
+
+// empty analyzes nothing while recording the configuration of the working directory's project.
+func (a *AnalysisSession) empty(project *Project) (*AnalysisResult, error) {
+	if project == nil {
+		var err error
+		if project, err = a.projects.At(a.cwd); err != nil {
+			return nil, err
+		}
+	}
+	result := &AnalysisResult{Diagnostics: []Diagnostic{}}
+	inputs := &inputFiles{}
+	inputs.add(a.defaultConfigPath)
+	if project != nil {
+		if _, err := a.configForProject(project); err != nil {
+			return nil, err
+		}
+		a.configState.Lock()
+		inputs.addConfig(a.configState.loaded[project], project)
+		result.Configurations = append(result.Configurations, a.configState.reports[project])
+		a.configState.Unlock()
+	}
+	result.Inputs = inputs.list()
+	return result, nil
 }
 
 func (a *AnalysisSession) readFiles(paths []string, project *Project) (*AnalysisResult, error) {
