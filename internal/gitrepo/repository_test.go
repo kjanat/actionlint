@@ -30,7 +30,7 @@ type gitLocation struct {
 	workTree, gitDir, commonDir string
 }
 
-func realPath(t *testing.T, path string) string {
+func resolvedPath(t *testing.T, path string) string {
 	t.Helper()
 	resolved, err := filepath.EvalSymlinks(path)
 	if err != nil {
@@ -63,11 +63,11 @@ func gitDiscovery(t *testing.T, dir string) (gitLocation, gitOutcome, string) {
 		t.Fatalf("git rev-parse --git-common-dir: %v: %s", err, stderr)
 	}
 	if !filepath.IsAbs(common) {
-		common = filepath.Join(realPath(t, dir), common)
+		common = filepath.Join(resolvedPath(t, dir), common)
 	}
-	location := gitLocation{gitDir: realPath(t, gitDir), commonDir: realPath(t, common)}
+	location := gitLocation{gitDir: resolvedPath(t, gitDir), commonDir: resolvedPath(t, common)}
 	if top, _, err := gitIn(t, dir, "rev-parse", "--show-toplevel"); err == nil {
-		location.workTree = realPath(t, top)
+		location.workTree = resolvedPath(t, top)
 	}
 	return location, gitFound, stderr
 }
@@ -91,9 +91,9 @@ func requireMatchesGit(t *testing.T, dir string) *Repository {
 	if err != nil || repo == nil {
 		t.Fatalf("Open(%q) = %+v, %v; git finds %+v", dir, repo, err, want)
 	}
-	got := gitLocation{gitDir: realPath(t, repo.GitDir), commonDir: realPath(t, repo.CommonDir)}
+	got := gitLocation{gitDir: resolvedPath(t, repo.GitDir), commonDir: resolvedPath(t, repo.CommonDir)}
 	if repo.WorkTree != "" {
-		got.workTree = realPath(t, repo.WorkTree)
+		got.workTree = resolvedPath(t, repo.WorkTree)
 	}
 	if got != want {
 		t.Fatalf("Open(%q) = %+v, git finds %+v", dir, got, want)
@@ -481,7 +481,7 @@ func TestOpenBadDiscoveryEnvironment(t *testing.T) {
 
 func TestOpenStopsAtFilesystemBoundary(t *testing.T) {
 	newTestRepo(t)
-	start := realPath(t, t.TempDir())
+	start := resolvedPath(t, t.TempDir())
 	device, err := deviceID(start)
 	if err != nil {
 		t.Fatal(err)
@@ -575,7 +575,7 @@ func TestOpenSymlinkedGitDir(t *testing.T) {
 	}
 	fixture.git("status", "--short")
 	repo := fixture.open()
-	if repo.GitDir != filepath.Join(realPath(t, fixture.root), ".git") {
+	if repo.GitDir != filepath.Join(resolvedPath(t, fixture.root), ".git") {
 		t.Fatalf("GitDir = %q", repo.GitDir)
 	}
 	if got, err := repo.TrackedFiles(); err != nil || len(got) != 1 {

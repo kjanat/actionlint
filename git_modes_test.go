@@ -157,6 +157,49 @@ func TestGitModesIntentToAddAfterRemoval(t *testing.T) {
 	}
 }
 
+func TestGitModesSparseIndex(t *testing.T) {
+	root, git := executableFixture(t)
+	git("config", "user.name", "Test")
+	git("config", "user.email", "test@example.com")
+	git("config", "core.hooksPath", t.TempDir())
+	git("config", "core.filemode", "true")
+	for _, name := range []string{"scripts/good.sh", "good.sh", "{good,bad}.sh"} {
+		if err := os.Chmod(filepath.Join(root, filepath.FromSlash(name)), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	git("rm", "--cached", "--quiet", "intent.sh")
+	git("commit", "--no-gpg-sign", "--quiet", "-m", "baseline")
+	git("sparse-checkout", "set", "--cone", "--sparse-index", ".github")
+	repo, err := gitrepo.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := repo.Index()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sparse := false
+	for _, entry := range raw {
+		sparse = sparse || entry.IsSparseDirectory() && entry.Path == "scripts/"
+	}
+	if !sparse {
+		t.Fatalf("scripts/ is not a sparse directory entry: %v", raw)
+	}
+	snapshot := (&gitModes{}).load(t.Context(), root)
+	if snapshot.err != nil {
+		t.Fatal(snapshot.err)
+	}
+	for name, want := range map[string]string{"scripts/good.sh": "100755", "scripts/bad.sh": "100644", "space dir/bad.sh": "100644"} {
+		if got := snapshot.modes[name]; got != want {
+			t.Errorf("%s = %q, want %q", name, got, want)
+		}
+	}
+	if _, ok := snapshot.modes["scripts/"]; ok {
+		t.Error("the sparse directory entry has a mode")
+	}
+}
+
 func TestGitModeMap(t *testing.T) {
 	got := gitModeMap([]gitrepo.IndexEntry{
 		{Path: "plain", Mode: 0o100644},

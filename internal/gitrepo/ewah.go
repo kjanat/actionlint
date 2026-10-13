@@ -2,76 +2,66 @@ package gitrepo
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math/bits"
 )
 
-func (r *indexReader) ewah(limit int) ([]int, error) {
-	bitCount, err := r.uint32()
-	if err != nil {
-		return nil, err
+type ewahBitmap []uint64
+
+func (r *indexReader) ewah() (ewahBitmap, error) {
+	if _, err := r.uint32(); err != nil {
+		return nil, errors.New("corrupt ewah bitmap: eof before bit size")
 	}
 	wordCount, err := r.uint32()
 	if err != nil {
-		return nil, err
+		return nil, errors.New("corrupt ewah bitmap: eof before length")
 	}
-	if wordCount > uint32(len(r.data)/8) {
-		return nil, fmt.Errorf("the EWAH bitmap has %d words", wordCount)
+	size := uint64(wordCount) * 8
+	if size > uint64(len(r.data)-r.pos) {
+		return nil, fmt.Errorf("corrupt ewah bitmap: eof in data (%d bytes short)", size-uint64(len(r.data)-r.pos))
 	}
-	raw, err := r.bytes(int(wordCount) * 8)
-	if err != nil {
-		return nil, err
-	}
+	raw := r.data[r.pos : r.pos+int(size)]
+	r.pos += int(size)
 	if _, err := r.bytes(4); err != nil {
-		return nil, err
+		return nil, errors.New("corrupt ewah bitmap: eof before rlw")
 	}
-	words := make([]uint64, wordCount)
+	words := make(ewahBitmap, wordCount)
 	for i := range words {
 		words[i] = binary.BigEndian.Uint64(raw[i*8:])
 	}
-	var positions []int
-	push := func(position uint64) error {
-		if position >= uint64(limit) {
-			return fmt.Errorf("the EWAH bitmap sets bit %d, beyond %d", position, limit)
-		}
-		positions = append(positions, int(position))
-		return nil
-	}
-	offset := uint64(0)
-	for index := 0; index < len(words); {
-		marker := words[index]
+	return words, nil
+}
+
+func (b ewahBitmap) each(visit func(position uint64) error) error {
+	position := uint64(0)
+	for index := 0; index < len(b); {
+		marker := b[index]
 		index++
 		runWords := (marker >> 1) & 0xffff_ffff
 		literalWords := marker >> 33
-		runEnd := offset + runWords*64
-		if runEnd < offset {
-			runEnd = ^uint64(0)
-		}
 		if marker&1 == 1 {
-			for position := offset; position < runEnd && position < uint64(bitCount); position++ {
-				if err := push(position); err != nil {
-					return nil, err
+			for range runWords * 64 {
+				if err := visit(position); err != nil {
+					return err
 				}
+				position++
 			}
+		} else {
+			position += runWords * 64
 		}
-		offset = runEnd
-		if literalWords > uint64(len(words)-index) {
-			return nil, fmt.Errorf("the EWAH bitmap has %d literal words but only %d words left", literalWords, len(words)-index)
+		if literalWords > uint64(len(b)-index) {
+			return fmt.Errorf("the EWAH bitmap has %d literal words but only %d words left", literalWords, len(b)-index)
 		}
 		for range literalWords {
-			word := words[index]
-			index++
-			for word != 0 {
-				position := offset + uint64(bits.TrailingZeros64(word))
-				if position < uint64(bitCount) {
-					if err := push(position); err != nil {
-						return nil, err
-					}
+			for word := b[index]; word != 0; word &= word - 1 {
+				if err := visit(position + uint64(bits.TrailingZeros64(word))); err != nil {
+					return err
 				}
-				word &= word - 1
 			}
-			offset += 64
+			index++
+			position += 64
 		}
 	}
-	return positions, nil
+	return nil
 }

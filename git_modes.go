@@ -51,7 +51,7 @@ func (cache *gitModes) load(_ context.Context, root string) *gitModeSnapshot {
 			snapshot.err = fmt.Errorf("%s is in a Git repository without a work tree", root)
 			return
 		}
-		entries, err := repo.Index()
+		entries, err := repo.ExpandedIndex()
 		if err != nil {
 			snapshot.err = fmt.Errorf("read Git index: %w", err)
 			return
