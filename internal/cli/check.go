@@ -20,6 +20,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	if err != nil {
 		return 0, err
 	}
+	emptyRepository := false
 	if c.PreCommit {
 		cwd, wdErr := os.Getwd()
 		if wdErr != nil {
@@ -32,12 +33,8 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 				return 0, err
 			}
 		}
-		if typo, _ := projectpath.WorkflowTypo(cwd); typo == "" && !hasWorkflows {
-			if c.Verbose && !r.Quiet {
-				_, _ = fmt.Fprintf(streams.Stderr, "verbose: No workflow files to check from %q\n", cwd)
-			}
-			return 0, nil
-		}
+		typo, _ := projectpath.WorkflowTypo(cwd)
+		emptyRepository = typo == "" && !hasWorkflows
 	}
 
 	// A completed analysis replaces the previous report atomically.
@@ -123,7 +120,15 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 			_, _ = fmt.Fprintf(log, "[Linter] Create a Linter instance with option %#v\n", &options)
 		}
 	}
-	result, err := analyzeCommand(app, streams.Stdin, c.Paths, !inv.Legacy)
+	var result *actionlint.AnalysisResult
+	if emptyRepository {
+		if options.Verbose {
+			_, _ = fmt.Fprintf(log, "verbose: No workflow files to check from %q\n", options.WorkingDir)
+		}
+		result, err = app.Files(nil, nil)
+	} else {
+		result, err = analyzeCommand(app, streams.Stdin, c.Paths, !inv.Legacy)
+	}
 	if err != nil {
 		if inv.Legacy {
 			err = actionlint.LegacyAnalysisError(err)

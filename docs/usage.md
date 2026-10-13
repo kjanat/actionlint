@@ -884,7 +884,9 @@ passes a repository without workflow files, such as an action-only repository,
 and otherwise checks the nearest repository exactly like `actionlint` with no
 arguments. The `actionlint-system` hook needs an actionlint release that has
 this command. Between releases, the `actionlint-docker` hook on the `master`
-branch runs the `nightly` image; a release pins its own image tag.
+branch runs the `nightly` image; a release pins its own image tag. Docker reuses
+a cached `nightly` image, so run `docker pull ghcr.io/kjanat/actionlint:nightly`
+to pick up a newer build.
 
 Only local actions referenced by the checked workflows receive action-metadata
 validation. A missing local action is reported under `missing-local-action`.

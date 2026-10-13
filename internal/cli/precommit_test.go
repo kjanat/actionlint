@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"runtime"
 	"strings"
@@ -80,6 +81,22 @@ func TestPreCommitCommandReportsUnreadableWorkflows(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(".github/workflows", 0o700) })
 	if got := testRunCommand("", "pre-commit"); got.Status != 3 || got.Stdout != "" || !strings.Contains(got.Stderr, "permission denied") {
 		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestPreCommitCommandRendersEmptyResult(t *testing.T) {
+	t.Chdir(t.TempDir())
+	got := testRunCommand("", "pre-commit", "--json")
+	if got.Status != 0 || !json.Valid([]byte(got.Stdout)) || got.Stderr != "" {
+		t.Fatalf("got %+v", got)
+	}
+	if err := os.WriteFile("report.json", []byte("previous report"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got = testRunCommand("", "pre-commit", "--json", "--summary", "--output-file", "report.json")
+	data, err := os.ReadFile("report.json")
+	if err != nil || got.Status != 0 || got.Stdout != "" || !json.Valid(data) || got.Stderr != "{\"summary\":{\"files\":0,\"findings\":0}}\n" {
+		t.Fatalf("%+v %s (%v)", got, data, err)
 	}
 }
 
