@@ -823,6 +823,7 @@ func TestParseAlternatesRootedEntries(t *testing.T) {
 	} else if err := os.Mkdir(filepath.Join(root, rooted), 0o750); err != nil {
 		t.Fatal(err)
 	}
+	t.Chdir(resolved)
 	got := parseAlternates(rooted, '\n', resolved)
 	if len(got) != 1 {
 		t.Fatalf("parseAlternates(%q) = %q", rooted, got)
