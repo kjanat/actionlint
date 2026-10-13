@@ -537,7 +537,7 @@ func loadMultiPackIndexFile(path string, hashLength int) (*multiPackIndex, error
 }
 
 func midxChunks(data []byte, count, hashLength int) (map[string][]byte, bool) {
-	chunks := make(map[string][]byte, count)
+	chunks := make(map[string][]byte)
 	toc := data[midxHeaderSize:]
 	if len(toc) < (count+1)*midxChunkEntrySize {
 		return nil, false
