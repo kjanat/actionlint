@@ -379,10 +379,12 @@ func (r *Repository) absolute(path string) string {
 }
 
 func (r *Repository) branch(read func(string)) (string, error) {
-	if r.reftable {
-		return reftableBranch(r.GitDir, read)
-	}
-	return headBranch(filepath.Join(r.GitDir, "HEAD"), read)
+	return resolveBranch(func(name string) (refValue, error) {
+		if r.reftable {
+			return r.readReftableRef(name, read)
+		}
+		return r.readLooseRef(name, read)
+	})
 }
 
 func (r *Repository) IgnoreCase() bool {

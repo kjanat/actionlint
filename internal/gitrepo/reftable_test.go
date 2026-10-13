@@ -1,6 +1,8 @@
 package gitrepo
 
 import (
+	"encoding/binary"
+	"hash/crc32"
 	"os"
 	"path/filepath"
 	"slices"
@@ -24,14 +26,8 @@ func reftableVarintBytes(value uint64) []byte {
 	return out
 }
 
-func reftableFile(version byte, hashID string, records ...reftableRecord) []byte {
-	data := append([]byte("REFT"), version, 0, 0x10, 0)
-	data = append(data, make([]byte, 16)...)
-	if version == 2 {
-		data = append(data, hashID...)
-	}
-	start := len(data)
-	data = append(data, 'r', 0, 0, 0)
+func reftableRecordBytes(records []reftableRecord) []byte {
+	var data []byte
 	for _, record := range records {
 		data = append(data, reftableVarintBytes(uint64(record.prefix))...)
 		data = append(data, reftableVarintBytes(uint64(len(record.suffix))<<3|record.kind)...)
@@ -42,21 +38,74 @@ func reftableFile(version byte, hashID string, records ...reftableRecord) []byte
 		}
 		data = append(data, record.value...)
 	}
-	data = append(data, 0, 0, byte(start), 0, 1)
-	data[start+1], data[start+2], data[start+3] = byte(len(data)>>16), byte(len(data)>>8), byte(len(data))
 	return data
 }
 
-func reftableRaw(payload []byte, restarts int) []byte {
-	data := reftableFile(1, "")[:reftableHeaderV1]
-	data = append(data, 'r', 0, 0, 0)
-	data = append(data, payload...)
+func reftableHeader(version byte, hashID string, blockSize int) []byte {
+	data := append([]byte("REFT"), version, byte(blockSize>>16), byte(blockSize>>8), byte(blockSize))
+	data = append(data, make([]byte, 16)...)
+	if version == 2 {
+		data = append(data, hashID...)
+	}
+	return data
+}
+
+func reftableBlock(kind byte, payload []byte, restarts int) []byte {
+	data := append([]byte{kind, 0, 0, 0}, payload...)
 	for range restarts {
-		data = append(data, 0, 0, reftableHeaderV1+4)
+		data = append(data, 0, 0, 4)
 	}
 	data = append(data, byte(restarts>>8), byte(restarts))
-	data[reftableHeaderV1+1], data[reftableHeaderV1+2], data[reftableHeaderV1+3] = byte(len(data)>>16), byte(len(data)>>8), byte(len(data))
+	data[1], data[2], data[3] = byte(len(data)>>16), byte(len(data)>>8), byte(len(data))
 	return data
+}
+
+type reftablePositions struct{ refIndex, obj, log uint64 }
+
+func reftableFooter(data []byte, positions reftablePositions) []byte {
+	header := reftableHeaderV1
+	if data[4] == 2 {
+		header = reftableHeaderV2
+	}
+	footer := slices.Clone(data[:header])
+	footer = binary.BigEndian.AppendUint64(footer, positions.refIndex)
+	footer = binary.BigEndian.AppendUint64(footer, positions.obj<<5)
+	footer = binary.BigEndian.AppendUint64(footer, 0)
+	footer = binary.BigEndian.AppendUint64(footer, positions.log)
+	footer = binary.BigEndian.AppendUint64(footer, 0)
+	return append(data, binary.BigEndian.AppendUint32(footer, crc32.ChecksumIEEE(footer))...)
+}
+
+func reftableBody(version byte, hashID string, blockSize int, blocks ...[]reftableRecord) []byte {
+	data := reftableHeader(version, hashID, blockSize)
+	for i, records := range blocks {
+		block := reftableBlock('r', reftableRecordBytes(records), 1)
+		if i == 0 {
+			size := len(data) + len(block)
+			block[1], block[2], block[3] = byte(size>>16), byte(size>>8), byte(size)
+		}
+		data = append(data, block...)
+		if blockSize > 0 {
+			data = append(data, make([]byte, blockSize*(i+1)-len(data))...)
+		}
+	}
+	return data
+}
+
+func reftableBlocks(version byte, hashID string, blockSize int, blocks ...[]reftableRecord) []byte {
+	return reftableFooter(reftableBody(version, hashID, blockSize, blocks...), reftablePositions{})
+}
+
+func reftableFile(version byte, hashID string, records ...reftableRecord) []byte {
+	return reftableBlocks(version, hashID, 0, records)
+}
+
+func reftableRaw(payload []byte, restarts int) []byte {
+	data := reftableHeader(1, "", 0)
+	block := reftableBlock('r', payload, restarts)
+	size := len(data) + len(block)
+	block[1], block[2], block[3] = byte(size>>16), byte(size>>8), byte(size)
+	return reftableFooter(append(data, block...), reftablePositions{})
 }
 
 func TestReftableVarintRoundTrip(t *testing.T) {
@@ -73,63 +122,103 @@ func TestReftableVarintRoundTrip(t *testing.T) {
 	}
 }
 
-func TestReftableHead(t *testing.T) {
+func TestReftableRef(t *testing.T) {
 	sha1 := make([]byte, 20)
 	sha256 := make([]byte, 32)
+	head := func(target string) reftableRecord {
+		return reftableRecord{suffix: "HEAD", kind: reftableSymref, value: []byte(target)}
+	}
+	filler := func(n int) []reftableRecord {
+		var records []reftableRecord
+		for i := range n {
+			records = append(records, reftableRecord{suffix: "A_" + strings.Repeat("x", i%7) + string(rune('a'+i%26)), kind: 1, value: sha1})
+		}
+		return records
+	}
+	unpaddedSingle := reftableBody(1, "", 0, filler(30))
+	unpaddedSingle[5], unpaddedSingle[6], unpaddedSingle[7] = 0, 0x10, 0
+	restartOverflow := reftableRaw(nil, 1)
+	restartOverflow[32] = 9
+	badCRC := reftableFile(1, "", head("refs/heads/main"))
+	badCRC[len(badCRC)-10] ^= 1
 	for name, tc := range map[string]struct {
-		data   []byte
-		target string
-		found  bool
-		err    string
+		data    []byte
+		name    string
+		target  string
+		symref  bool
+		found   bool
+		present bool
+		err     string
 	}{
-		"symref":          {data: reftableFile(1, "", reftableRecord{suffix: "HEAD", kind: reftableSymref, value: []byte("refs/heads/main")}), target: "refs/heads/main", found: true},
-		"detached":        {data: reftableFile(1, "", reftableRecord{suffix: "HEAD", kind: 1, value: sha1}), found: true},
-		"deleted":         {data: reftableFile(1, "", reftableRecord{suffix: "HEAD", kind: 0}), found: true},
-		"after peeled":    {data: reftableFile(1, "", reftableRecord{suffix: "CHERRY_PICK_HEAD", kind: 2, value: make([]byte, 40)}, reftableRecord{suffix: "HEAD", kind: reftableSymref, value: []byte("refs/heads/x")}), target: "refs/heads/x", found: true},
-		"prefix":          {data: reftableFile(1, "", reftableRecord{suffix: "HE", kind: 1, value: sha1}, reftableRecord{prefix: 2, suffix: "AD", kind: reftableSymref, value: []byte("refs/heads/p")}), target: "refs/heads/p", found: true},
+		"symref":          {data: reftableFile(1, "", head("refs/heads/main")), target: "refs/heads/main", symref: true, found: true, present: true},
+		"detached":        {data: reftableFile(1, "", reftableRecord{suffix: "HEAD", kind: 1, value: sha1}), found: true, present: true},
+		"deleted":         {data: reftableFile(1, "", reftableRecord{suffix: "HEAD", kind: 0}), present: true},
+		"after peeled":    {data: reftableFile(1, "", reftableRecord{suffix: "CHERRY_PICK_HEAD", kind: 2, value: make([]byte, 40)}, head("refs/heads/x")), target: "refs/heads/x", symref: true, found: true, present: true},
+		"prefix":          {data: reftableFile(1, "", reftableRecord{suffix: "HE", kind: 1, value: sha1}, reftableRecord{prefix: 2, suffix: "AD", kind: reftableSymref, value: []byte("refs/heads/p")}), target: "refs/heads/p", symref: true, found: true, present: true},
 		"only branches":   {data: reftableFile(1, "", reftableRecord{suffix: "refs/heads/main", kind: 1, value: sha1})},
+		"other name":      {data: reftableFile(1, "", head("refs/heads/main"), reftableRecord{suffix: "refs/meta/x", kind: reftableSymref, value: []byte("refs/heads/y")}), name: "refs/meta/x", target: "refs/heads/y", symref: true, found: true, present: true},
 		"empty block":     {data: reftableFile(1, "")},
-		"sha256 symref":   {data: reftableFile(2, "s256", reftableRecord{suffix: "A", kind: 1, value: sha256}, reftableRecord{suffix: "HEAD", kind: reftableSymref, value: []byte("refs/heads/s")}), target: "refs/heads/s", found: true},
-		"sha1 v2":         {data: reftableFile(2, "sha1", reftableRecord{suffix: "A", kind: 2, value: make([]byte, 40)}, reftableRecord{suffix: "HEAD", kind: reftableSymref, value: []byte("refs/heads/v")}), target: "refs/heads/v", found: true},
+		"empty symref":    {data: reftableFile(1, "", head("")), symref: true, found: true, present: true},
+		"sha256 symref":   {data: reftableFile(2, "s256", reftableRecord{suffix: "A", kind: 1, value: sha256}, head("refs/heads/s")), target: "refs/heads/s", symref: true, found: true, present: true},
+		"sha1 v2":         {data: reftableFile(2, "sha1", reftableRecord{suffix: "A", kind: 2, value: make([]byte, 40)}, head("refs/heads/v")), target: "refs/heads/v", symref: true, found: true, present: true},
+		"second block":    {data: reftableBlocks(1, "", 4096, filler(120), []reftableRecord{head("refs/heads/second")}), target: "refs/heads/second", symref: true, found: true, present: true},
+		"third block":     {data: reftableBlocks(1, "", 1024, filler(30), filler(30), []reftableRecord{head("refs/heads/third")}), target: "refs/heads/third", symref: true, found: true, present: true},
+		"unaligned":       {data: reftableBlocks(1, "", 0, filler(120), []reftableRecord{head("refs/heads/loose")}), target: "refs/heads/loose", symref: true, found: true, present: true},
+		"passed in later": {data: reftableBlocks(1, "", 1024, filler(30), []reftableRecord{{suffix: "refs/heads/z", kind: 1, value: sha1}})},
+		"ends at index":   {data: reftableFooter(slices.Concat(reftableBody(1, "", 1024, filler(30)), reftableBlock('i', nil, 1)), reftablePositions{refIndex: 1024})},
+		"ends at objects": {data: reftableFooter(slices.Concat(reftableBody(1, "", 1024, filler(30)), reftableBlock('o', nil, 1)), reftablePositions{obj: 1024})},
+		"ends at log":     {data: reftableFooter(slices.Concat(reftableBody(1, "", 1024, filler(30)), []byte{'g', 0, 0, 10, 'r', 0}), reftablePositions{log: 1024})},
+		"unpadded single": {data: reftableFooter(unpaddedSingle, reftablePositions{})},
+		"empty table":     {data: reftableFooter(reftableHeader(1, "", 0), reftablePositions{})},
 		"not a reftable":  {data: []byte("not a reftable at all, long enough"), err: "not a reftable"},
 		"short":           {data: []byte("REFT"), err: "not a reftable"},
 		"version":         {data: reftableFile(3, "s256"), err: "unsupported reftable version 3"},
 		"truncated":       {data: reftableFile(1, "")[:26], err: "truncated reftable"},
-		"log only":        {data: slices.Concat(reftableFile(1, "")[:24], []byte{'g', 0, 0, 10, 0, 0})},
-		"block length":    {data: slices.Concat(reftableFile(1, "")[:24], []byte{'r', 0xff, 0xff, 0xff, 0, 0}), err: "ref block length out of range"},
+		"no footer":       {data: reftableBody(1, "", 1024, filler(30), filler(30)), err: "bad reftable footer"},
+		"bad footer crc":  {data: badCRC, err: "bad reftable footer"},
+		"log only":        {data: reftableFooter(slices.Concat(reftableHeader(1, "", 0), []byte{'g', 0, 0, 10, 0, 0}), reftablePositions{log: 24})},
+		"block length":    {data: reftableFooter(slices.Concat(reftableHeader(1, "", 0), []byte{'r', 0xff, 0xff, 0xff, 0, 0}), reftablePositions{}), err: "ref block length out of range"},
+		"over block size": {data: reftableFooter(slices.Concat(reftableHeader(1, "", 32), reftableBlock('r', reftableRecordBytes(filler(3)), 1)), reftablePositions{}), err: "ref block length out of range"},
 		"no restarts":     {data: reftableRaw(nil, 0), err: "ref block restart table out of range"},
+		"many restarts":   {data: restartOverflow, err: "ref block restart table out of range"},
 		"bad varint":      {data: reftableRaw([]byte{0, 0x80}, 1), err: "bad ref record"},
 		"bad index delta": {data: reftableRaw([]byte{0, 4<<3 | 1, 'H', 'E', 'A', 'D', 0x80}, 1), err: "bad ref record"},
 		"bad prefix":      {data: reftableFile(1, "", reftableRecord{prefix: 3, suffix: "AD", kind: 0}), err: "bad ref record"},
+		"long suffix":     {data: reftableRaw(slices.Concat([]byte{0}, reftableVarintBytes(200<<3|1), []byte{'H'}), 1), err: "bad ref record"},
 		"long symref":     {data: reftableRaw([]byte{0, 4<<3 | reftableSymref, 'H', 'E', 'A', 'D', 0, 100}, 1), err: "bad symref record"},
-		"empty symref":    {data: reftableFile(1, "", reftableRecord{suffix: "HEAD", kind: reftableSymref, value: nil}), found: true},
+		"huge symref":     {data: reftableRaw(slices.Concat([]byte{0, 4<<3 | reftableSymref, 'H', 'E', 'A', 'D', 0}, reftableVarintBytes(1<<63)), 1), err: "bad symref record"},
 		"unknown type":    {data: reftableFile(1, "", reftableRecord{suffix: "HEAD", kind: 5}), err: "unknown ref record type 5"},
 		"short oid":       {data: reftableFile(2, "s256", reftableRecord{suffix: "HEAD", kind: 1, value: sha1}), err: "bad ref record"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			target, found, err := reftableHead(tc.data)
+			if tc.name == "" {
+				tc.name = "HEAD"
+			}
+			value, present, err := reftableRef(tc.data, tc.name)
 			if tc.err != "" {
 				if err == nil || !strings.Contains(err.Error(), tc.err) {
-					t.Fatalf("reftableHead = %q, %v, %v; want error %q", target, found, err, tc.err)
+					t.Fatalf("reftableRef = %+v, %v, %v; want error %q", value, present, err, tc.err)
 				}
 				return
 			}
-			if err != nil || found != tc.found || target != tc.target {
-				t.Fatalf("reftableHead = %q, %v, %v; want %q, %v", target, found, err, tc.target, tc.found)
+			want := refValue{target: tc.target, symref: tc.symref, found: tc.found}
+			if err != nil || present != tc.present || value != want {
+				t.Fatalf("reftableRef = %+v, %v, %v; want %+v, %v", value, present, err, want, tc.present)
 			}
 		})
 	}
 }
 
-func TestReftableBranch(t *testing.T) {
+func TestReadReftableRef(t *testing.T) {
 	gitDir := t.TempDir()
+	repo := &Repository{GitDir: gitDir, CommonDir: gitDir, hashLength: 20, reftable: true}
 	dir := filepath.Join(gitDir, "reftable")
 	if err := os.Mkdir(dir, 0o750); err != nil {
 		t.Fatal(err)
 	}
 	var reads []string
 	record := func(path string) { reads = append(reads, path) }
-	if _, err := reftableBranch(gitDir, record); err == nil {
+	if _, err := repo.readReftableRef("HEAD", record); err == nil {
 		t.Fatal("missing tables.list succeeded")
 	}
 	write := func(name string, data []byte) {
@@ -139,25 +228,29 @@ func TestReftableBranch(t *testing.T) {
 		}
 	}
 	write("tables.list", []byte("older.ref\nnewer.ref\n"))
-	if _, err := reftableBranch(gitDir, record); err == nil {
+	if _, err := repo.readReftableRef("HEAD", record); err == nil {
 		t.Fatal("missing table succeeded")
 	}
 	write("older.ref", reftableFile(1, "", reftableRecord{suffix: "HEAD", kind: reftableSymref, value: []byte("refs/heads/old")}))
 	write("newer.ref", reftableFile(1, "", reftableRecord{suffix: "refs/heads/old", kind: 1, value: make([]byte, 20)}))
 	reads = nil
-	branch, err := reftableBranch(gitDir, record)
+	branch, err := repo.branch(record)
 	if err != nil || branch != "old" {
-		t.Fatalf("reftableBranch = %q, %v", branch, err)
+		t.Fatalf("branch = %q, %v", branch, err)
 	}
-	if want := []string{filepath.Join(dir, "tables.list"), filepath.Join(dir, "newer.ref"), filepath.Join(dir, "older.ref")}; !slices.Equal(reads, want) {
+	if want := []string{filepath.Join(dir, "tables.list"), filepath.Join(dir, "newer.ref"), filepath.Join(dir, "older.ref"), filepath.Join(dir, "tables.list"), filepath.Join(dir, "newer.ref")}; !slices.Equal(reads, want) {
 		t.Fatalf("reads = %q, want %q", reads, want)
 	}
 	write("newer.ref", reftableFile(1, "", reftableRecord{suffix: "HEAD", kind: reftableSymref, value: []byte("refs/remotes/origin/x")}))
-	if branch, err := reftableBranch(gitDir, record); err != nil || branch != "" {
-		t.Fatalf("reftableBranch with a remote symref = %q, %v", branch, err)
+	if branch, err := repo.branch(record); err != nil || branch != "" {
+		t.Fatalf("branch with a remote symref = %q, %v", branch, err)
+	}
+	write("newer.ref", reftableFile(1, "", reftableRecord{suffix: "HEAD", kind: 0}))
+	if branch, err := repo.branch(record); err != nil || branch != "" {
+		t.Fatalf("branch with HEAD deleted in the newest table = %q, %v", branch, err)
 	}
 	write("newer.ref", []byte("garbage"))
-	if _, err := reftableBranch(gitDir, record); err == nil || !strings.Contains(err.Error(), "newer.ref") {
+	if _, err := repo.branch(record); err == nil || !strings.Contains(err.Error(), "newer.ref") {
 		t.Fatalf("garbage table: %v", err)
 	}
 }

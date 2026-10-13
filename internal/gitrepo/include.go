@@ -3,13 +3,11 @@ package gitrepo
 import (
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 )
 
 const maxIncludeDepth = 10
@@ -71,44 +69,6 @@ func newIncludeContext(gitDir, unresolvedGitDir, workTree string, branch func(re
 		return nil, err
 	}
 	return ctx, nil
-}
-
-func headBranch(path string, read func(string)) (string, error) {
-	info, err := os.Lstat(path)
-	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
-		return "", nil
-	}
-	if err != nil {
-		return "", err
-	}
-	if info.Mode()&fs.ModeSymlink != 0 {
-		target, err := os.Readlink(path)
-		if err != nil {
-			return "", err
-		}
-		read(path)
-		if target = filepath.ToSlash(target); strings.HasPrefix(target, "refs/") {
-			branch, _ := strings.CutPrefix(target, "refs/heads/")
-			if branch == target {
-				branch = ""
-			}
-			return branch, nil
-		}
-	}
-	head, err := readOptional(path)
-	if err != nil || head == nil {
-		return "", err
-	}
-	read(path)
-	ref, ok := strings.CutPrefix(strings.TrimRight(string(head), " \t\r\n"), "ref:")
-	if !ok {
-		return "", nil
-	}
-	branch, ok := strings.CutPrefix(strings.TrimLeft(ref, " \t\r\n"), "refs/heads/")
-	if !ok {
-		return "", nil
-	}
-	return branch, nil
 }
 
 type configLoader struct {
