@@ -258,6 +258,29 @@ func (a *AnalysisSession) Files(paths []string, project *Project) (*AnalysisResu
 	return a.readFiles(paths, project)
 }
 
+// Empty analyzes nothing. The result records the selected configuration of WorkingDir, explicit
+// or from its project, as an input with its report.
+func (a *AnalysisSession) Empty() (*AnalysisResult, error) {
+	project, err := a.projects.At(a.cwd)
+	if err != nil {
+		return nil, err
+	}
+	result := &AnalysisResult{Diagnostics: []Diagnostic{}}
+	inputs := &inputFiles{}
+	inputs.add(a.defaultConfigPath)
+	if project != nil || a.defaultConfig != nil {
+		if _, err := a.configForProject(project); err != nil {
+			return nil, err
+		}
+		a.configState.Lock()
+		inputs.addConfig(a.configState.loaded[project], project)
+		result.Configurations = append(result.Configurations, a.configState.reports[project])
+		a.configState.Unlock()
+	}
+	result.Inputs = inputs.list()
+	return result, nil
+}
+
 func (a *AnalysisSession) readFiles(paths []string, project *Project) (*AnalysisResult, error) {
 	sources := make([]SourceUnit, 0, len(paths))
 	configProjects := make([]*Project, 0, len(paths))

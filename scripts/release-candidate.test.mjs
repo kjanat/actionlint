@@ -7,7 +7,7 @@ import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promi
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
-import { createReleaseCommit, recordRelease } from './build-action-release.mjs';
+import { createReleaseCommit, pinPreCommitImage, recordRelease } from './build-action-release.mjs';
 import {
 	bundleName,
 	containerAssets,
@@ -24,6 +24,8 @@ import {
 	writeManifest,
 } from './release-candidate.mjs';
 import { verifyTagRecovery } from './release-tag-recovery.mjs';
+
+const hooksManifest = '- id: actionlint-docker\n  entry: ghcr.io/kjanat/actionlint:nightly pre-commit\n';
 
 test('tag recovery accepts the final push failing after the publication gate', () => {
 	const commit = 'a'.repeat(40);
@@ -245,6 +247,7 @@ test('manifest binds exact assets to the complete candidate tree', async () => {
 		const code = 'console.log("candidate");\n';
 		const sources = {
 			'.gitattributes': '* text=auto eol=lf\n',
+			'.pre-commit-hooks.yaml': hooksManifest,
 			'action.yml': 'runs: { using: node24, main: action.mjs }\n',
 			'README.md': '# Fixture\n',
 			'LICENSE.txt': 'Fixture\n',
@@ -290,6 +293,8 @@ await writeFile(join(directory, 'SHA256SUMS'), createHash('sha256').update(code)
 		});
 		assert.deepEqual(JSON.parse(await readFile(join(assets, manifestName), 'utf8')), manifest);
 		await verifyCandidate(root, assets, manifest);
+		assert.equal(git('show', `${candidate}:.pre-commit-hooks.yaml`), pinPreCommitImage(hooksManifest, version).trim());
+		assert.equal(git('show', `${source}:.pre-commit-hooks.yaml`), hooksManifest.trim());
 		for (const name of containerAssets(version)) {
 			const archive = join(assets, `${name}.tar`);
 			await writeFile(archive, 'changed OCI archive');
@@ -316,24 +321,44 @@ await writeFile(join(directory, 'SHA256SUMS'), createHash('sha256').update(code)
 		await writeFile(join(assets, `actionlint-action_${version}.mjs`), 'changed');
 		await assert.rejects(verifyAssets(assets, manifest), /asset changed/);
 		await writeFile(join(assets, `actionlint-action_${version}.mjs`), code);
+		/** @param {string} message */
+		const bundledCandidate = async (message) => {
+			const tree = git('write-tree');
+			const commit = git('commit-tree', tree, '-p', source, '-m', message);
+			git('update-ref', ref, commit);
+			git('bundle', 'create', join(assets, bundleName), ref, `^${source}`);
+			const bytes = await readFile(join(assets, bundleName));
+			return {
+				...manifest,
+				candidate: commit,
+				tree,
+				assets: manifest.assets.map((asset) =>
+					asset.name === bundleName
+						? { ...asset, size: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') }
+						: asset
+				),
+			};
+		};
+		git('read-tree', candidate);
+		await writeFile(join(root, '.pre-commit-hooks.yaml'), pinPreCommitImage(hooksManifest, '1.17.2'));
+		git('add', '.pre-commit-hooks.yaml');
+		await assert.rejects(
+			verifyCandidate(root, assets, await bundledCandidate('Repinned candidate')),
+			/image pin differs/,
+		);
+		await writeFile(join(root, '.pre-commit-hooks.yaml'), hooksManifest);
+		git('add', '.pre-commit-hooks.yaml');
+		await assert.rejects(
+			verifyCandidate(root, assets, await bundledCandidate('Unpinned candidate')),
+			/changed source files/,
+		);
+		git('read-tree', source);
 		await writeFile(join(root, 'go.mod'), 'module changed.invalid/source\n');
 		git('add', 'go.mod');
-		const changedTree = git('write-tree');
-		const changed = git('commit-tree', changedTree, '-p', source, '-m', 'Changed source');
-		git('update-ref', ref, changed);
-		git('bundle', 'create', join(assets, bundleName), ref, `^${source}`);
-		const changedBytes = await readFile(join(assets, bundleName));
-		const altered = {
-			...manifest,
-			candidate: changed,
-			tree: changedTree,
-			assets: manifest.assets.map((asset) =>
-				asset.name === bundleName
-					? { ...asset, size: changedBytes.length, sha256: createHash('sha256').update(changedBytes).digest('hex') }
-					: asset
-			),
-		};
-		await assert.rejects(verifyCandidate(root, assets, altered), /changed source files/);
+		await assert.rejects(
+			verifyCandidate(root, assets, await bundledCandidate('Changed source')),
+			/changed source files/,
+		);
 	} finally {
 		if (dirname(temporary) === tempRoot) await rm(temporary, { recursive: true, force: true });
 	}
@@ -581,6 +606,7 @@ test('real signed promotion survives rejected pushes and lost responses without 
 		git(root, 'init', '--quiet', '--initial-branch=master');
 		configure(root);
 		const sourceFiles = {
+			'.pre-commit-hooks.yaml': hooksManifest,
 			'action.yml': 'runs: {using: node24, main: action.mjs}\n',
 			'README.md': '# Promotion fixture\n',
 			'LICENSE.txt': 'Fixture license\n',

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev"
+	"actionlint.kjanat.dev/internal/projectpath"
 	"github.com/fatih/color"
 	"github.com/mattn/go-colorable"
 )
@@ -18,6 +19,22 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	r, err = resolveTemplate(r)
 	if err != nil {
 		return 0, err
+	}
+	emptyRepository := false
+	if c.PreCommit {
+		cwd, wdErr := os.Getwd()
+		if wdErr != nil {
+			return 0, wdErr
+		}
+		hasWorkflows := false
+		if root := projectpath.RepositoryRoot(cwd); root != "" {
+			hasWorkflows, err = projectpath.HasWorkflowFiles(root)
+			if err != nil {
+				return 0, err
+			}
+		}
+		typo, _ := projectpath.WorkflowTypo(cwd)
+		emptyRepository = typo == "" && !hasWorkflows
 	}
 
 	// A completed analysis replaces the previous report atomically.
@@ -103,7 +120,15 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 			_, _ = fmt.Fprintf(log, "[Linter] Create a Linter instance with option %#v\n", &options)
 		}
 	}
-	result, err := analyzeCommand(app, streams.Stdin, c.Paths, !inv.Legacy)
+	var result *actionlint.AnalysisResult
+	if emptyRepository {
+		if options.Verbose {
+			_, _ = fmt.Fprintf(log, "verbose: No workflow files to check from %q\n", options.WorkingDir)
+		}
+		result, err = app.Empty()
+	} else {
+		result, err = analyzeCommand(app, streams.Stdin, c.Paths, !inv.Legacy)
+	}
 	if err != nil {
 		if inv.Legacy {
 			err = actionlint.LegacyAnalysisError(err)

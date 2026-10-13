@@ -381,6 +381,101 @@ func TestDeclaredTargetsMatchRepository(t *testing.T) {
 	}
 }
 
+func TestPreCommitVersionBumps(t *testing.T) {
+	const path, prefix = ".pre-commit-hooks.yaml", "ghcr.io/kjanat/actionlint:"
+	tgt := targetNamed(t, targets, path)
+	content, err := os.ReadFile(filepath.Join("..", "..", path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lf := bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
+	occs, err := tgt.scan(lf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(occs) != 1 {
+		t.Fatalf("expected one image pin, got %+v", occs)
+	}
+	nightly := bytes.Replace(lf, []byte(prefix+string(lf[occs[0].value.start:occs[0].value.end])), []byte(prefix+developmentPin), 1)
+	for _, newline := range []string{"\n", "\r\n"} {
+		t.Run(fmt.Sprintf("newline=%q", newline), func(t *testing.T) {
+			next := mustParse(t, "999.0.0")
+			root := t.TempDir()
+			file := filepath.Join(root, path)
+			bump := func(before []byte) []byte {
+				if err := os.WriteFile(file, before, 0o644); err != nil {
+					t.Fatal(err)
+				}
+				if err := Bump(root, []*target{tgt}, next, io.Discard); err != nil {
+					t.Fatal(err)
+				}
+				got, err := os.ReadFile(file)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return got
+			}
+			before := bytes.ReplaceAll(nightly, []byte("\n"), []byte(newline))
+			occs, err := tgt.scan(before)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(occs) != 1 || !occs[0].development {
+				t.Fatalf("expected one development pin, got %+v", occs)
+			}
+			if got := bump(before); !bytes.Equal(got, before) {
+				t.Fatalf("bump must leave the development pin:\ngot:\n%s\nwant:\n%s", got, before)
+			}
+			pinned := bytes.Replace(before, []byte(prefix+developmentPin), []byte(prefix+"1.17.0"), 1)
+			occs, err = tgt.scan(pinned)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(occs) != 1 || occs[0].development || occs[0].version != mustParse(t, "1.17.0") {
+				t.Fatalf("expected one release pin, got %+v", occs)
+			}
+			want := bytes.Replace(before, []byte(prefix+developmentPin), []byte(prefix+next.String()), 1)
+			if got := bump(pinned); !bytes.Equal(got, want) {
+				t.Fatalf("bump must replace the release pin:\ngot:\n%s\nwant:\n%s", got, want)
+			}
+		})
+	}
+}
+
+func TestCheckReportsDevelopmentPin(t *testing.T) {
+	root := copyFixture(t)
+	if err := os.WriteFile(filepath.Join(root, "image.txt"), []byte("image: tool:nightly\n"), 0o666); err != nil {
+		t.Fatal(err)
+	}
+	ts := append(fixtureTargets(), &target{
+		path:  "image.txt",
+		rules: []rule{mustRule("image tag", `tool:(\d+\.\d+\.\d+|nightly)`, 1)},
+	})
+	var out bytes.Buffer
+	declared, err := Check(root, ts, &out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if declared != "1.2.0" {
+		t.Errorf("declared version = %q, want 1.2.0", declared)
+	}
+	for _, want := range []string{"image.txt:1: image tag: nightly (development)", "version 1.2.0 is referenced 4 time(s)"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("output does not contain %q:\n%s", want, out.String())
+		}
+	}
+	if err := Bump(root, ts, mustParse(t, "2.0.0"), io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(root, "image.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "image: tool:nightly\n" {
+		t.Errorf("bump changed the development pin: %q", got)
+	}
+}
+
 func TestDeclaredTargetsAcceptCRLF(t *testing.T) {
 	root := filepath.Join("..", "..")
 	for _, tgt := range targets {
