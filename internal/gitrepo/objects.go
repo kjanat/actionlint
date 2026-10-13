@@ -54,7 +54,7 @@ func (r *Repository) openObjectStore(settings config) (*objectStore, error) {
 	seen := map[string]bool{r.objectDirKey(realPath(primary)): true}
 	var visit func(dir string, depth int)
 	visit = func(dir string, depth int) {
-		alternates := readAlternates(dir)
+		alternates := readAlternates(dir, r.reads.record)
 		if depth < 0 {
 			alternates = append(environmentAlternates(r.base), alternates...)
 		}
@@ -97,11 +97,13 @@ func realPath(path string) string {
 	return path
 }
 
-func readAlternates(objects string) []string {
-	data, err := os.ReadFile(filepath.Join(objects, "info", "alternates"))
+func readAlternates(objects string, record func(string)) []string {
+	path := filepath.Join(objects, "info", "alternates")
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil
 	}
+	record(path)
 	return parseAlternates(string(data), '\n', realPath(objects))
 }
 

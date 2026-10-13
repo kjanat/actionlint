@@ -527,8 +527,52 @@ func TestReadAlternates(t *testing.T) {
 	}
 	resolved := realPath(root)
 	want := []string{filepath.Join(resolved, "relative"), filepath.Join(resolved, "quoted dir"), filepath.Join(resolved, "absolute")}
-	if got := readAlternates(objects); !slices.Equal(got, want) {
+	var reads []string
+	if got := readAlternates(objects, func(path string) { reads = append(reads, path) }); !slices.Equal(got, want) {
 		t.Fatalf("readAlternates = %q, want %q", got, want)
+	}
+	if want := []string{filepath.Join(objects, "info", "alternates")}; !slices.Equal(reads, want) {
+		t.Fatalf("recorded %q, want %q", reads, want)
+	}
+	reads = nil
+	if got := readAlternates(filepath.Join(root, "absent"), func(path string) { reads = append(reads, path) }); got != nil || reads != nil {
+		t.Fatalf("readAlternates without a file = %q, recorded %q", got, reads)
+	}
+}
+
+func TestReadFilesAlternates(t *testing.T) {
+	fixture := sparseFixture(t)
+	objects := filepath.Join(fixture.root, ".git", "objects")
+	moved := filepath.Join(filepath.Dir(fixture.root), "elsewhere", "objects")
+	if err := os.MkdirAll(filepath.Dir(moved), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(objects, moved); err != nil {
+		t.Fatal(err)
+	}
+	second := filepath.Join(filepath.Dir(fixture.root), "second", "objects")
+	if err := os.MkdirAll(filepath.Join(second, "pack"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	for _, dir := range []string{filepath.Join(objects, "pack"), filepath.Join(moved, "info")} {
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fixture.write(".git/objects/info/alternates", moved+"\n")
+	if err := os.WriteFile(filepath.Join(moved, "info", "alternates"), []byte(second+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	repo := fixture.open()
+	assertExpandedScripts(t, fixture.compareIndex())
+	if _, err := repo.ExpandedIndex(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	reads := repo.ReadFiles()
+	for _, want := range []string{filepath.Join(repo.CommonDir, "objects", "info", "alternates"), filepath.Join(realPath(moved), "info", "alternates")} {
+		if !slices.Contains(reads, want) {
+			t.Errorf("ReadFiles %q lacks %q", reads, want)
+		}
 	}
 }
 
