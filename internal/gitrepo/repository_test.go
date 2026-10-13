@@ -1049,15 +1049,17 @@ func TestPrefixOf(t *testing.T) {
 }
 
 func TestSystemConfigFor(t *testing.T) {
-	for prefix, want := range map[string]string{
-		"/usr":                      "/etc/gitconfig",
-		"/nix/store/abc-git-2.55.0": "/etc/gitconfig",
-		"/usr/local":                filepath.FromSlash("/usr/local/etc/gitconfig"),
-		"/opt/homebrew":             filepath.FromSlash("/opt/homebrew/etc/gitconfig"),
-		"C:/Program Files/Git":      filepath.FromSlash("C:/Program Files/Git/etc/gitconfig"),
+	for _, tc := range []struct{ goos, prefix, want string }{
+		{"linux", "/usr", "/etc/gitconfig"},
+		{"darwin", "/usr", "/etc/gitconfig"},
+		{"linux", "/nix/store/abc-git-2.55.0", "/etc/gitconfig"},
+		{"darwin", "/nix/store/abc-git-2.55.0", filepath.FromSlash("/nix/store/abc-git-2.55.0/etc/gitconfig")},
+		{"linux", "/usr/local", filepath.FromSlash("/usr/local/etc/gitconfig")},
+		{"darwin", "/opt/homebrew", filepath.FromSlash("/opt/homebrew/etc/gitconfig")},
+		{"windows", "C:/Program Files/Git", filepath.FromSlash("C:/Program Files/Git/etc/gitconfig")},
 	} {
-		if got := systemConfigFor(prefix); got != want {
-			t.Errorf("systemConfigFor(%q) = %q, want %q", prefix, got, want)
+		if got := systemConfigFor(tc.goos, tc.prefix); got != tc.want {
+			t.Errorf("systemConfigFor(%s, %q) = %q, want %q", tc.goos, tc.prefix, got, tc.want)
 		}
 	}
 }

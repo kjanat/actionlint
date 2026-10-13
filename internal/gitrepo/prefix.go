@@ -31,11 +31,11 @@ func prefixOf(goos, exe string) string {
 }
 
 func systemConfigPath() string {
-	return systemConfigFor(gitPrefix())
+	return systemConfigFor(runtime.GOOS, gitPrefix())
 }
 
-func systemConfigFor(prefix string) string {
-	if prefix == "/usr" || strings.HasPrefix(prefix, "/nix/store/") {
+func systemConfigFor(goos, prefix string) string {
+	if prefix == "/usr" || (goos != "darwin" && strings.HasPrefix(prefix, "/nix/store/")) {
 		return "/etc/gitconfig"
 	}
 	return filepath.FromSlash(prefix + "/etc/gitconfig")
