@@ -66,10 +66,7 @@ func TestLoadConfigIncludes(t *testing.T) {
 	global := filepath.Join(home, "gitconfig")
 	writeConfig(t, global, text.String())
 	t.Setenv("GIT_CONFIG_GLOBAL", global)
-	settings, err := fixture.open().config()
-	if err != nil {
-		t.Fatal(err)
-	}
+	settings := fixture.settings()
 	gitKnowsWorktree := fixture.gitBool("config", "--get", "core.worktreeProbe")
 	for key := range conditions {
 		if strings.HasPrefix(conditions[key], "worktree:") && !gitKnowsWorktree {
@@ -121,11 +118,8 @@ func TestLoadConfigDotPatternUsesRealPath(t *testing.T) {
 	global := filepath.Join(alias, "gitconfig")
 	writeConfig(t, global, "[includeIf \"gitdir:./repo-link/\"]\n\tpath = matched\n")
 	t.Setenv("GIT_CONFIG_GLOBAL", global)
-	settings, err := fixture.open().config()
-	if err != nil {
-		t.Fatal(err)
-	}
-	ours := settings["core.matched"] == "1"
+	settings := fixture.settings()
+	ours := lastText(settings, "core.matched") == "1"
 	theirs := fixture.gitBool("config", "--get", "core.matched")
 	if ours != theirs {
 		t.Fatalf("included by us %v, by git %v", ours, theirs)
@@ -139,11 +133,8 @@ func TestLoadConfigRemoteURLFromLaterFile(t *testing.T) {
 	writeConfig(t, global, "[includeIf \"hasconfig:remote.*.url:https://example.com/**\"]\n\tpath = matched\n")
 	t.Setenv("GIT_CONFIG_GLOBAL", global)
 	fixture.git("config", "remote.origin.url", "https://example.com/repo")
-	settings, err := fixture.open().config()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if settings["core.matched"] != "1" || !fixture.gitBool("config", "--get", "core.matched") {
+	settings := fixture.settings()
+	if lastText(settings, "core.matched") != "1" || !fixture.gitBool("config", "--get", "core.matched") {
 		t.Fatalf("hasconfig include ignored the repository config: %v", settings["core.matched"])
 	}
 }
@@ -174,11 +165,11 @@ func TestLoadConfigUserHome(t *testing.T) {
 	if _, err := user.Lookup(current.Username); err != nil {
 		t.Skipf("user lookup unavailable: %v", err)
 	}
-	got, ok := expandHome("~" + current.Username + "/x")
+	got, ok := expandHome("~"+current.Username+"/x", false)
 	if !ok || got != current.HomeDir+"/x" {
 		t.Fatalf("expandHome = %q, %v", got, ok)
 	}
-	if got, ok := expandHome("~nobody-" + current.Username + "/x"); ok {
+	if got, ok := expandHome("~nobody-"+current.Username+"/x", false); ok {
 		t.Fatalf("unknown user expanded to %q", got)
 	}
 }
@@ -191,7 +182,7 @@ func TestLoadConfigIncludeDepth(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := loadConfigFiles([]string{path}, ctx); err == nil {
+	if _, err := loadConfigFiles([]string{path}, nil, ctx); err == nil {
 		t.Fatal("a self-including config loaded")
 	}
 }

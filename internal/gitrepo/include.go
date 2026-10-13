@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -64,21 +65,31 @@ type configLoader struct {
 	remoteURLs  []string
 }
 
-func loadConfigFiles(files []string, ctx *includeContext) (config, error) {
+func loadConfigFiles(files []string, params []configParam, ctx *includeContext) (config, error) {
 	collector := &configLoader{settings: config{}, ctx: ctx, collectURLs: true}
-	for _, file := range files {
-		if err := collector.load(file, 0, false); err != nil {
-			return nil, err
-		}
+	if err := collector.loadAll(files, params); err != nil {
+		return nil, err
 	}
 	ctx.remoteURLs = collector.remoteURLs
 	loader := &configLoader{settings: config{}, ctx: ctx}
-	for _, file := range files {
-		if err := loader.load(file, 0, false); err != nil {
-			return nil, err
-		}
+	if err := loader.loadAll(files, params); err != nil {
+		return nil, err
 	}
 	return loader.settings, nil
+}
+
+func (l *configLoader) loadAll(files []string, params []configParam) error {
+	for _, file := range files {
+		if err := l.load(file, 0, false); err != nil {
+			return err
+		}
+	}
+	for _, param := range params {
+		if err := l.visit("", 0, false, param.section, param.name, param.value); err != nil {
+			return fmt.Errorf("unable to parse command-line config: %w", err)
+		}
+	}
+	return nil
 }
 
 func (l *configLoader) load(path string, depth int, forbidRemoteURL bool) error {
@@ -89,38 +100,47 @@ func (l *configLoader) load(path string, depth int, forbidRemoteURL bool) error 
 	if err != nil || data == nil {
 		return err
 	}
-	return parseConfig(data, func(section, name, value string) error {
-		l.settings[section+"."+name] = value
-		if strings.HasPrefix(section, "remote.") && name == "url" {
-			if forbidRemoteURL {
-				return errors.New("remote URLs cannot be configured in file directly or indirectly included by includeIf.hasconfig:remote.*.url")
-			}
-			l.remoteURLs = append(l.remoteURLs, value)
-		}
-		if name != "path" {
-			return nil
-		}
-		condition, conditional := strings.CutPrefix(section, "includeif.")
-		switch {
-		case section == "include":
-			condition = ""
-		case !conditional:
-			return nil
-		}
-		matched, viaRemoteURL, err := l.matches(condition, path)
-		if err != nil || !matched {
-			return err
-		}
-		target, err := resolveInclude(value, filepath.Dir(path))
-		if err != nil {
-			return err
-		}
-		return l.load(target, depth+1, forbidRemoteURL || viaRemoteURL)
+	return parseConfig(path, data, func(section, name string, value configValue) error {
+		return l.visit(path, depth, forbidRemoteURL, section, name, value)
 	})
 }
 
-func resolveInclude(include, dir string) (string, error) {
-	expanded, ok := expandHome(include)
+func (l *configLoader) visit(file string, depth int, forbidRemoteURL bool, section, name string, value configValue) error {
+	l.settings.add(section, name, value)
+	if strings.HasPrefix(section, "remote.") && name == "url" {
+		if forbidRemoteURL {
+			return errors.New("remote URLs cannot be configured in file directly or indirectly included by includeIf.hasconfig:remote.*.url")
+		}
+		if !value.bare {
+			l.remoteURLs = append(l.remoteURLs, value.text)
+		}
+	}
+	if name != "path" {
+		return nil
+	}
+	condition, conditional := strings.CutPrefix(section, "includeif.")
+	switch {
+	case section == "include":
+		condition = ""
+	case !conditional:
+		return nil
+	}
+	matched, viaRemoteURL, err := l.matches(condition, file)
+	if err != nil || !matched {
+		return err
+	}
+	if value.bare {
+		return errors.New("missing value for 'include.path'")
+	}
+	target, err := resolveInclude(value.text, file)
+	if err != nil {
+		return err
+	}
+	return l.load(target, depth+1, forbidRemoteURL || viaRemoteURL)
+}
+
+func resolveInclude(include, file string) (string, error) {
+	expanded, ok := expandHome(include, false)
 	if !ok {
 		return "", fmt.Errorf("could not expand include path %q", include)
 	}
@@ -128,7 +148,10 @@ func resolveInclude(include, dir string) (string, error) {
 	if isAbsolutePath(expanded) {
 		return expanded, nil
 	}
-	return filepath.Join(dir, expanded), nil
+	if file == "" {
+		return "", errors.New("relative config includes must come from files")
+	}
+	return filepath.Join(filepath.Dir(file), expanded), nil
 }
 
 func (l *configLoader) matches(condition, configFile string) (bool, bool, error) {
@@ -177,11 +200,13 @@ func matchIncludePath(subject pathPair, pattern, configFile string, icase bool) 
 	if subject.absolute == "" {
 		return false, nil
 	}
-	if expanded, ok := expandHome(pattern); ok {
+	if expanded, ok := expandHome(pattern, true); ok {
 		pattern = expanded
 	}
 	prefix := ""
 	switch {
+	case (strings.HasPrefix(pattern, "./") || strings.HasPrefix(pattern, `.\`)) && configFile == "":
+		return true, nil
 	case strings.HasPrefix(pattern, "./") || strings.HasPrefix(pattern, `.\`):
 		dir, err := filepath.EvalSymlinks(filepath.Dir(configFile))
 		if err != nil {
@@ -214,28 +239,53 @@ func isAbsolutePath(path string) bool {
 	return strings.HasPrefix(path, "/") || strings.HasPrefix(path, `\`) || filepath.IsAbs(filepath.FromSlash(path)) || (len(path) >= 2 && path[1] == ':' && isAlpha(path[0]))
 }
 
-func expandHome(path string) (string, bool) {
+func expandHome(path string, realHome bool) (string, bool) {
+	if rest, ok := strings.CutPrefix(path, "%(prefix)/"); ok {
+		if isAbsolutePath(rest) {
+			return rest, true
+		}
+		return gitPrefix + "/" + rest, true
+	}
 	if !strings.HasPrefix(path, "~") {
 		return path, true
 	}
-	name, rest, _ := strings.Cut(path[1:], "/")
+	name, rest := path[1:], ""
+	if slash := strings.IndexByte(path, '/'); slash >= 0 {
+		name, rest = path[1:slash], path[slash:]
+	}
 	if name == "" {
 		home, ok := homeDir()
 		if !ok {
 			return "", false
 		}
-		return home + "/" + rest, true
+		if realHome {
+			if resolved, err := filepath.EvalSymlinks(home); err == nil {
+				home = resolved
+			}
+		}
+		return filepath.ToSlash(home) + rest, true
 	}
 	account, err := user.Lookup(name)
-	if err != nil || account.HomeDir == "" {
+	if err != nil {
 		return "", false
 	}
-	return account.HomeDir + "/" + rest, true
+	return account.HomeDir + rest, true
 }
 
 func homeDir() (string, bool) {
-	home, err := os.UserHomeDir()
-	return home, err == nil && home != ""
+	return lookupHome(runtime.GOOS == "windows", os.LookupEnv)
+}
+
+func lookupHome(windows bool, getenv func(string) (string, bool)) (string, bool) {
+	if home, ok := getenv("HOME"); ok || !windows {
+		return home, ok
+	}
+	drive, hasDrive := getenv("HOMEDRIVE")
+	path, hasPath := getenv("HOMEPATH")
+	if info, err := os.Stat(drive + path); hasDrive && hasPath && err == nil && info.IsDir() {
+		return drive + path, true
+	}
+	return getenv("USERPROFILE")
 }
 
 func wildmatch(pattern, text string, fold bool) bool {

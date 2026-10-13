@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 )
@@ -84,7 +85,14 @@ func open(workTree, dotGit string, info fs.FileInfo) (*Repository, error) {
 		}
 		repo.CommonDir = filepath.Clean(repo.CommonDir)
 	}
-	settings, err := repo.config()
+	format, err := readRepositoryFormat(filepath.Join(repo.CommonDir, "config"))
+	if err != nil {
+		return nil, err
+	}
+	if format.sha256 {
+		repo.hashLength = 32
+	}
+	settings, err := repo.config(format)
 	if err != nil {
 		return nil, err
 	}
@@ -94,15 +102,12 @@ func open(workTree, dotGit string, info fs.FileInfo) (*Repository, error) {
 	if repo.precompose, err = settings.boolean("core.precomposeunicode"); err != nil {
 		return nil, err
 	}
-	switch format := strings.ToLower(settings["extensions.objectformat"]); format {
-	case "", "sha1":
-	case "sha256":
-		repo.hashLength = 32
-	default:
-		return nil, fmt.Errorf("unknown object format %q", format)
+	excludes, configured, err := repo.excludesFile(settings["core.excludesfile"])
+	if err != nil {
+		return nil, err
 	}
-	if configured, ok := settings["core.excludesfile"]; ok {
-		repo.excludes = repo.excludesFile(configured)
+	if configured {
+		repo.excludes = excludes
 	} else if xdg, ok := xdgConfigHome(); ok {
 		repo.excludes = filepath.Join(xdg, "git", "ignore")
 	}
@@ -117,59 +122,92 @@ func (r *Repository) PrecomposeUnicode() bool {
 	return r.precompose
 }
 
-func (r *Repository) config() (config, error) {
+// git reads one system file fixed at build time; distribution builds use prefix /usr and ETC_GITCONFIG /etc/gitconfig.
+const (
+	gitPrefix    = "/usr"
+	systemConfig = "/etc/gitconfig"
+)
+
+func (r *Repository) config(format repositoryFormat) (config, error) {
 	var files []string
-	noSystem, err := parseBool(os.Getenv("GIT_CONFIG_NOSYSTEM"))
-	if err != nil {
-		return nil, fmt.Errorf("GIT_CONFIG_NOSYSTEM: %w", err)
+	noSystem := false
+	if env, ok := os.LookupEnv("GIT_CONFIG_NOSYSTEM"); ok {
+		var err error
+		if noSystem, err = parseBool(env); err != nil {
+			return nil, fmt.Errorf("bad boolean environment value %q for 'GIT_CONFIG_NOSYSTEM'", env)
+		}
 	}
 	if !noSystem {
-		files = append(files, envOr("GIT_CONFIG_SYSTEM", "/etc/gitconfig"))
+		system, ok := os.LookupEnv("GIT_CONFIG_SYSTEM")
+		if !ok {
+			system = systemConfig
+		}
+		files = append(files, system)
 	}
-	if global := os.Getenv("GIT_CONFIG_GLOBAL"); global != "" {
-		files = append(files, global)
-	} else {
+	global, ok := os.LookupEnv("GIT_CONFIG_GLOBAL")
+	globals := []string{global}
+	if !ok {
+		globals = nil
 		if xdg, ok := xdgConfigHome(); ok {
-			files = append(files, filepath.Join(xdg, "git", "config"))
+			globals = append(globals, filepath.Join(xdg, "git", "config"))
 		}
 		if home, ok := homeDir(); ok {
-			files = append(files, filepath.Join(home, ".gitconfig"))
+			globals = append(globals, filepath.Join(home, ".gitconfig"))
 		}
 	}
+	for _, file := range globals {
+		if f, err := os.Open(file); err == nil {
+			_ = f.Close()
+		} else if errors.Is(err, fs.ErrPermission) {
+			continue
+		}
+		files = append(files, file)
+	}
 	files = append(files, filepath.Join(r.CommonDir, "config"))
+	if format.worktreeConfig {
+		files = append(files, filepath.Join(r.GitDir, "config.worktree"))
+	}
+	files = slices.DeleteFunc(files, func(file string) bool {
+		info, err := os.Stat(file)
+		return file == "" || (err == nil && info.IsDir())
+	})
+	params, err := commandConfig()
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse command-line config: %w", err)
+	}
 	ctx, err := newIncludeContext(r.GitDir, r.WorkTree)
 	if err != nil {
 		return nil, err
 	}
-	settings, err := loadConfigFiles(files, ctx)
-	if err != nil {
-		return nil, err
-	}
-	worktreeConfig, err := settings.boolean("extensions.worktreeconfig")
-	if err != nil {
-		return nil, err
-	}
-	if worktreeConfig {
-		files = append(files, filepath.Join(r.GitDir, "config.worktree"))
-		if settings, err = loadConfigFiles(files, ctx); err != nil {
-			return nil, err
-		}
-	}
-	return settings, nil
+	return loadConfigFiles(files, params, ctx)
 }
 
-func (r *Repository) excludesFile(configured string) string {
-	if configured == "" {
-		return ""
+func (r *Repository) excludesFile(values []configValue) (string, bool, error) {
+	path, configured := "", false
+	for _, value := range values {
+		if value.bare {
+			return "", false, errors.New("missing value for 'core.excludesfile'")
+		}
+		text, optional := strings.CutPrefix(value.text, ":(optional)")
+		expanded, ok := expandHome(text, false)
+		if !ok {
+			return "", false, fmt.Errorf("failed to expand user dir in: %q", text)
+		}
+		expanded = filepath.FromSlash(expanded)
+		if expanded != "" && !isAbsolutePath(expanded) {
+			expanded = filepath.Join(r.WorkTree, expanded)
+		}
+		path, configured = expanded, true
+		if !optional {
+			continue
+		}
+		if _, err := os.Stat(expanded); errors.Is(err, fs.ErrNotExist) {
+			path, configured = "", false
+		} else if err != nil {
+			return "", false, err
+		}
 	}
-	expanded, ok := expandHome(configured)
-	if !ok {
-		return ""
-	}
-	if isAbsolutePath(expanded) {
-		return filepath.FromSlash(expanded)
-	}
-	return filepath.Join(r.WorkTree, filepath.FromSlash(expanded))
+	return path, configured, nil
 }
 
 func xdgConfigHome() (string, bool) {
@@ -180,14 +218,7 @@ func xdgConfigHome() (string, bool) {
 	if !ok {
 		return "", false
 	}
-	return filepath.Join(home, ".config"), true
-}
-
-func envOr(name, fallback string) string {
-	if value := os.Getenv(name); value != "" {
-		return value
-	}
-	return fallback
+	return home + "/.config", true
 }
 
 func readOptional(path string) ([]byte, error) {
