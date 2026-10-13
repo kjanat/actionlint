@@ -26,7 +26,7 @@ func TestLoadConfigIncludes(t *testing.T) {
 	fixture.git("checkout", "--quiet", "-b", "feature/x")
 	fixture.git("config", "remote.origin.url", "https://github.com/kjanat/actionlint")
 	home := fixture.home
-	root := filepath.ToSlash(fixture.root)
+	root := filepath.ToSlash(longPath(fixture.root))
 	conditions := map[string]string{
 		"plain":            "",
 		"nested":           "",
