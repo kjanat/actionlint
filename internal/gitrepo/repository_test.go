@@ -1030,3 +1030,34 @@ func TestGitPrefixWithoutGit(t *testing.T) {
 		t.Fatalf("systemConfigPath = %q", got)
 	}
 }
+
+func TestPrefixOf(t *testing.T) {
+	for _, tc := range []struct{ goos, exe, want string }{
+		{"linux", "/usr/bin/git", "/usr"},
+		{"linux", "/usr/local/bin/git", "/usr/local"},
+		{"darwin", "/opt/homebrew/bin/git", "/opt/homebrew"},
+		{"linux", "/nix/store/abc-git-2.55.0/bin/git", "/nix/store/abc-git-2.55.0"},
+		{"windows", "C:/Program Files/Git/cmd/git.exe", "C:/Program Files/Git"},
+		{"windows", "C:/Program Files/Git/mingw64/bin/git.exe", "C:/Program Files/Git"},
+		{"windows", "C:/Program Files/Git/clangarm64/bin/git.exe", "C:/Program Files/Git"},
+		{"linux", "/opt/mingw64/bin/git", "/opt/mingw64"},
+	} {
+		if got := prefixOf(tc.goos, tc.exe); got != tc.want {
+			t.Errorf("prefixOf(%s, %q) = %q, want %q", tc.goos, tc.exe, got, tc.want)
+		}
+	}
+}
+
+func TestSystemConfigFor(t *testing.T) {
+	for prefix, want := range map[string]string{
+		"/usr":                      "/etc/gitconfig",
+		"/nix/store/abc-git-2.55.0": "/etc/gitconfig",
+		"/usr/local":                filepath.FromSlash("/usr/local/etc/gitconfig"),
+		"/opt/homebrew":             filepath.FromSlash("/opt/homebrew/etc/gitconfig"),
+		"C:/Program Files/Git":      filepath.FromSlash("C:/Program Files/Git/etc/gitconfig"),
+	} {
+		if got := systemConfigFor(prefix); got != want {
+			t.Errorf("systemConfigFor(%q) = %q, want %q", prefix, got, want)
+		}
+	}
+}
