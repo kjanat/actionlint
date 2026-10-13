@@ -264,12 +264,12 @@ func TestLoadConfigReftableWorktreeChain(t *testing.T) {
 func TestLoadConfigResolvesBranchOnlyForOnbranch(t *testing.T) {
 	fixture := newTestRepo(t, "--initial-branch=main")
 	fixture.commit()
-	head := filepath.Join(fixture.root, ".git", "HEAD")
-	branch := filepath.Join(fixture.root, ".git", "refs", "heads", "main")
 	global := filepath.Join(fixture.home, "gitconfig")
 	t.Setenv("GIT_CONFIG_GLOBAL", global)
 	writeConfig(t, global, "[core]\n\tplain = 1\n")
 	repo := fixture.open()
+	head := filepath.Join(repo.GitDir, "HEAD")
+	branch := filepath.Join(repo.GitDir, "refs", "heads", "main")
 	if _, err := repo.config(); err != nil {
 		t.Fatal(err)
 	}
