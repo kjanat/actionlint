@@ -63,7 +63,7 @@ export function compareVersions(left, right) {
 
 /**
  * @param {string} value
- * @returns {{ release: string, wrapper: number }}
+ * @returns {{ release: string, wrapper: number | null }}
  */
 export function parseInstallerVersion(value) {
 	const match = INSTALLER_PATTERN.exec(value);
@@ -73,7 +73,7 @@ export function parseInstallerVersion(value) {
 		);
 	}
 	parseVersion(match[1]);
-	return { release: match[1], wrapper: match[2] === undefined ? 0 : Number(match[2]) };
+	return { release: match[1], wrapper: match[2] === undefined ? null : Number(match[2]) };
 }
 
 /**
@@ -88,8 +88,10 @@ export function compareInstallerVersions(left, right) {
 	if (releases !== 0) {
 		return releases;
 	}
-	if (leftVersion.wrapper !== rightVersion.wrapper) {
-		return leftVersion.wrapper < rightVersion.wrapper ? -1 : 1;
+	const leftWrapper = leftVersion.wrapper ?? -1;
+	const rightWrapper = rightVersion.wrapper ?? -1;
+	if (leftWrapper !== rightWrapper) {
+		return leftWrapper < rightWrapper ? -1 : 1;
 	}
 	return 0;
 }

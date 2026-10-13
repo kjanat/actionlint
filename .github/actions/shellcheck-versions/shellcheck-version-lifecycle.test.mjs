@@ -103,7 +103,11 @@ test('stable versions are parsed and compared numerically', () => {
 });
 
 test('installer versions carry an optional wrapper number', () => {
-	assert.deepEqual(parseInstallerVersion('v0.11.0'), { release: 'v0.11.0', wrapper: 0 });
+	assert.deepEqual(parseInstallerVersion('v0.11.0'), { release: 'v0.11.0', wrapper: null });
+	assert.deepEqual(parseInstallerVersion('v0.11.0-wrapper.0'), { release: 'v0.11.0', wrapper: 0 });
+	assert.equal(compareInstallerVersions('v0.11.0-wrapper.0', 'v0.11.0'), 1);
+	assert.equal(compareInstallerVersions('v0.11.0', 'v0.11.0-wrapper.0'), -1);
+	assert.equal(compareInstallerVersions('v0.11.0', 'v0.11.0'), 0);
 	assert.deepEqual(parseInstallerVersion('v0.11.0-wrapper.3'), { release: 'v0.11.0', wrapper: 3 });
 	assert.equal(compareInstallerVersions('v0.11.0-wrapper.1', 'v0.11.0'), 1);
 	assert.equal(compareInstallerVersions('v0.11.0-wrapper.2', 'v0.11.0-wrapper.10'), -1);
@@ -146,6 +150,11 @@ test('pin updates are atomic across all version sources', () => {
 	assert.equal(wrapper.changed, true);
 	for (const contents of wrapper.files.values()) {
 		assert.match(contents, /shellcheck@v0\.11\.0-wrapper\.2\n/);
+	}
+	const wrapperZero = planVersionUpdate(versionFiles('v0.11.0'), 'v0.11.0-wrapper.0');
+	assert.equal(wrapperZero.changed, true);
+	for (const contents of wrapperZero.files.values()) {
+		assert.match(contents, /shellcheck@v0\.11\.0-wrapper\.0\n/);
 	}
 	for (const malformed of ['v0.11.0-wrapper.01', 'v0.11.0-rc.1', 'v0.11.0.1', 'v0.11', '']) {
 		assert.throws(
