@@ -38,7 +38,7 @@ func gitFiles(ctx context.Context, root string) ([]string, bool) {
 	if RepositoryRoot(root) == "" {
 		return nil, false
 	}
-	command := exec.CommandContext(ctx, "git", "-C", root, "-c", "core.fsmonitor=false", "ls-files", "-z", "--cached", "--others", "--exclude-standard")
+	command := exec.CommandContext(ctx, "git", "-C", root, "-c", "core.fsmonitor=false", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", ":(glob)**/action.yml", ":(glob)**/action.yaml")
 	for _, entry := range os.Environ() {
 		name, _, _ := strings.Cut(entry, "=")
 		switch strings.ToUpper(name) {
@@ -68,7 +68,14 @@ func listedActions(root string, names []string) ([]string, error) {
 			continue
 		}
 		path := filepath.Join(root, relative)
-		if info, err := os.Lstat(path); err != nil || !info.Mode().IsRegular() {
+		info, err := os.Lstat(path)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		if !info.Mode().IsRegular() {
 			continue
 		}
 		skip := false

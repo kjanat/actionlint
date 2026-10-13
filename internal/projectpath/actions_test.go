@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"testing"
 )
@@ -146,6 +147,28 @@ func TestActionsDirectoryError(t *testing.T) {
 				t.Fatalf("Actions = %q, want an error for the looping .git link", got)
 			}
 		})
+	}
+}
+
+func TestActionsManifestError(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("directory permissions are not enforced")
+	}
+	root := t.TempDir()
+	writeFixture(t, root, "sealed/action.yml", "name: fixture\n")
+	git := gitFixture(t, root)
+	git("add", "--", "sealed/action.yml")
+	sealed := filepath.Join(root, "sealed")
+	if err := os.Chmod(sealed, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chmod(sealed, 0750); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if got, err := Actions(t.Context(), root); err == nil {
+		t.Fatalf("Actions = %q, want an error for the unreadable manifest directory", got)
 	}
 }
 
