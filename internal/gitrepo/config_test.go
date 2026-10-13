@@ -174,7 +174,7 @@ func TestParseBoolMatchesGit(t *testing.T) {
 			ours, err := parseBool(value)
 			command := exec.CommandContext(t.Context(), "git", "-c", "core.x="+value, "config", "--type=bool", "core.x")
 			command.Dir = t.TempDir()
-			command.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+os.DevNull)
+			command.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null")
 			out, gitErr := command.Output()
 			if (err == nil) != (gitErr == nil) {
 				t.Fatalf("parseBool(%q) error %v, git error %v", value, err, gitErr)
@@ -269,7 +269,7 @@ func TestCommandConfigMatchesGit(t *testing.T) {
 				return
 			}
 			t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
-			t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+			t.Setenv("GIT_CONFIG_GLOBAL", "/dev/null")
 			theirs, ok := gitEntries(t, t.TempDir())
 			if ok != (tc.want != nil) || (ok && len(theirs)+len(tc.want) > 0 && !slices.Equal(theirs, tc.want)) {
 				t.Fatalf("git config = %q, %v, want %q", theirs, ok, tc.want)

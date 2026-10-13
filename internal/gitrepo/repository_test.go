@@ -720,7 +720,7 @@ func TestOpenEmptyConfigEnvironmentMatchesGit(t *testing.T) {
 			if name == "GIT_CONFIG_SYSTEM" {
 				t.Setenv("GIT_CONFIG_NOSYSTEM", "0")
 				t.Setenv("GIT_CONFIG_SYSTEM", filepath.Join(fixture.home, ".gitconfig"))
-				t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+				t.Setenv("GIT_CONFIG_GLOBAL", "/dev/null")
 			}
 			fixture.compareProbe("core.probe")
 			if got := fixture.probe("core.probe"); got != 0 {
