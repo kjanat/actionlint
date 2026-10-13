@@ -2,7 +2,7 @@
 
 # Unreleased
 
-- Honour `.gitignore`, `.git/info/exclude` and the global Git excludes file when discovering `action.yml` and `action.yaml` manifests inside a repository, including Git worktrees. actionlint reads the repository's configuration, index and ignore files itself, and the `executable-bit` rule reads index modes the same way, so actionlint runs no `git` process at all; tracked manifests inside ignored directories stay discovered. Discovery walks the directory tree outside a repository. `files.excludes` remains the explicit override. (kjanat/actionlint#274)
+- Honour `.gitignore`, `.git/info/exclude` and the global Git excludes file when discovering `action.yml` and `action.yaml` manifests inside a repository, including Git worktrees. actionlint reads the repository's configuration, index and ignore files itself, and the `executable-bit` rule reads index modes the same way, so actionlint runs no `git` process at all; tracked manifests inside ignored directories stay discovered. Discovery walks the directory tree outside a repository. `files.excludes` remains the explicit override. The Git configuration, ignore and index files read during discovery are listed in the analysis inputs. (kjanat/actionlint#274)
 
 - Discover `action.yml` and `action.yaml` manifests alongside workflows by default, including unreferenced actions and action-only repositories. Check action metadata at its declarations and lint composite scripts. Allow workflows and actions in the same invocation and report action document outlines. (kjanat/actionlint#243)
 
