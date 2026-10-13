@@ -9,6 +9,7 @@ import path from 'node:path';
  * @typedef VersionStatus
  * @property {string} shellcheckVersion
  * @property {string} rshellcheckVersion
+ * @property {string} rshellcheckInstallerVersion
  * @property {string} pinnedRshellcheckVersion
  * @property {boolean} pinnedOutdated
  * @property {boolean} portLagging
@@ -21,7 +22,7 @@ export const TRACKING_MARKER = '<!-- go-shellcheck-shellcheck-version-tracker --
 const DEPENDENCY = 'github.com/kjanat/shellcheck-rs/go/cmd/shellcheck@';
 const DEPENDENCY_PATTERN =
 	/github\.com\/kjanat\/shellcheck-rs\/go\/cmd\/shellcheck@(v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-wrapper\.(?:0|[1-9]\d*))?)/g;
-const WRAPPER_SUFFIX = /-wrapper\.(?:0|[1-9]\d*)$/;
+const INSTALLER_PATTERN = /^(v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))(?:-wrapper\.(0|[1-9]\d*))?$/;
 const RELEASE_TAG_PREFIX = 'rshellcheck-';
 const INSTALLER_TAG_PREFIX = 'go/';
 const VERSION_PATTERN = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
@@ -62,6 +63,39 @@ export function compareVersions(left, right) {
 }
 
 /**
+ * @param {string} value
+ * @returns {{ release: string, wrapper: number }}
+ */
+export function parseInstallerVersion(value) {
+	const match = INSTALLER_PATTERN.exec(value);
+	if (match === null) {
+		throw new Error(
+			`expected an installer version vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-wrapper.N, got ${JSON.stringify(value)}`,
+		);
+	}
+	parseVersion(match[1]);
+	return { release: match[1], wrapper: match[2] === undefined ? 0 : Number(match[2]) };
+}
+
+/**
+ * @param {string} left
+ * @param {string} right
+ * @returns {-1 | 0 | 1}
+ */
+export function compareInstallerVersions(left, right) {
+	const leftVersion = parseInstallerVersion(left);
+	const rightVersion = parseInstallerVersion(right);
+	const releases = compareVersions(leftVersion.release, rightVersion.release);
+	if (releases !== 0) {
+		return releases;
+	}
+	if (leftVersion.wrapper !== rightVersion.wrapper) {
+		return leftVersion.wrapper < rightVersion.wrapper ? -1 : 1;
+	}
+	return 0;
+}
+
+/**
  * @param {boolean} pinnedOutdated
  * @param {boolean} portLagging
  * @returns {'current' | 'dependency-update-available' | 'port-update-needed' | 'dependency-update-available-and-port-update-needed'}
@@ -84,7 +118,7 @@ export function versionVerdict(pinnedOutdated, portLagging) {
  * @param {string} latestVersion
  */
 export function planVersionUpdate(files, latestVersion) {
-	parseVersion(latestVersion);
+	parseInstallerVersion(latestVersion);
 	/** @type {Map<string, string>} */
 	const found = new Map();
 	for (const file of VERSION_FILES) {
@@ -110,9 +144,9 @@ export function planVersionUpdate(files, latestVersion) {
 		throw new Error('rshellcheck pin is missing');
 	}
 
-	const comparison = compareVersions(latestVersion, currentVersion.replace(WRAPPER_SUFFIX, ''));
+	const comparison = compareInstallerVersions(latestVersion, currentVersion);
 	if (comparison < 0) {
-		throw new Error(`latest rshellcheck release ${latestVersion} is older than pinned ${currentVersion}`);
+		throw new Error(`latest rshellcheck installer ${latestVersion} is older than pinned ${currentVersion}`);
 	}
 	if (comparison === 0) {
 		return { changed: false, currentVersion, files };
@@ -168,21 +202,35 @@ function portVersion(release) {
 }
 
 /**
- * The installer module is tagged go/vMAJOR.MINOR.PATCH beside each release.
+ * The installer module is tagged go/vMAJOR.MINOR.PATCH beside each release, and
+ * go/vMAJOR.MINOR.PATCH-wrapper.N for installer-only fixes of that release.
  *
  * @param {AsyncFunctionArguments['github']} github
  * @param {string} version
  */
-async function requireInstallerTag(github, version) {
+async function latestInstallerVersion(github, version) {
 	const ref = `tags/${INSTALLER_TAG_PREFIX}${version}`;
-	try {
-		await github.rest.git.getRef({ owner: 'kjanat', repo: 'shellcheck-rs', ref });
-	} catch (error) {
+	const { data } = await github.rest.git.listMatchingRefs({ owner: 'kjanat', repo: 'shellcheck-rs', ref });
+	const prefix = `refs/tags/${INSTALLER_TAG_PREFIX}`;
+	/** @type {string[]} */
+	const versions = [];
+	for (const entry of data) {
+		if (!entry.ref.startsWith(prefix)) {
+			continue;
+		}
+		const candidate = entry.ref.slice(prefix.length);
+		const match = INSTALLER_PATTERN.exec(candidate);
+		if (match !== null && match[1] === version) {
+			versions.push(candidate);
+		}
+	}
+	if (!versions.includes(version)) {
 		throw new Error(
 			`kjanat/shellcheck-rs release ${version} has no ${INSTALLER_TAG_PREFIX}${version} tag, so the installer cannot be pinned to it`,
-			{ cause: error },
 		);
 	}
+	versions.sort(compareInstallerVersions);
+	return versions[versions.length - 1];
 }
 
 /**
@@ -210,7 +258,7 @@ export async function checkVersions({
 	]);
 	const shellcheckVersion = releaseVersion(shellcheckRelease, 'koalaman/shellcheck');
 	const rshellcheckVersion = portVersion(rshellcheckRelease);
-	await requireInstallerTag(github, rshellcheckVersion);
+	const rshellcheckInstallerVersion = await latestInstallerVersion(github, rshellcheckVersion);
 
 	if (compareVersions(rshellcheckVersion, shellcheckVersion) > 0) {
 		throw new Error(
@@ -225,7 +273,7 @@ export async function checkVersions({
 			) => /** @type {[string, string]} */ ([file, await readFile(path.join(workspace, file), 'utf8')])),
 		),
 	);
-	const update = planVersionUpdate(files, rshellcheckVersion);
+	const update = planVersionUpdate(files, rshellcheckInstallerVersion);
 	const pinnedOutdated = update.changed;
 	const portLagging = compareVersions(shellcheckVersion, rshellcheckVersion) > 0;
 	const filesUpdated = updateFiles && pinnedOutdated;
@@ -240,6 +288,7 @@ export async function checkVersions({
 	core.setOutput('verdict', verdict);
 	core.setOutput('shellcheck-version', shellcheckVersion);
 	core.setOutput('rshellcheck-version', rshellcheckVersion);
+	core.setOutput('rshellcheck-installer-version', rshellcheckInstallerVersion);
 	core.setOutput('pinned-rshellcheck-version', update.currentVersion);
 	core.setOutput('pinned-outdated', String(pinnedOutdated));
 	core.setOutput('port-lagging', String(portLagging));
@@ -252,6 +301,7 @@ export async function checkVersions({
 		],
 		['ShellCheck release', shellcheckVersion],
 		['rshellcheck release', rshellcheckVersion],
+		['Latest rshellcheck installer', rshellcheckInstallerVersion],
 		['Pinned rshellcheck installer', update.currentVersion],
 	];
 	await core.summary
@@ -263,13 +313,14 @@ export async function checkVersions({
 		.write();
 
 	core.info(
-		`ShellCheck ${shellcheckVersion}; rshellcheck ${rshellcheckVersion}; pinned ${update.currentVersion}; verdict ${verdict}`,
+		`ShellCheck ${shellcheckVersion}; rshellcheck ${rshellcheckVersion}; installer ${rshellcheckInstallerVersion}; pinned ${update.currentVersion}; verdict ${verdict}`,
 	);
 
 	/** @type {VersionStatus} */
 	const status = {
 		shellcheckVersion,
 		rshellcheckVersion,
+		rshellcheckInstallerVersion,
 		pinnedRshellcheckVersion: update.currentVersion,
 		pinnedOutdated,
 		portLagging,
@@ -278,7 +329,7 @@ export async function checkVersions({
 	};
 	if (failOnOutdated && pinnedOutdated) {
 		throw new Error(
-			`pinned rshellcheck ${update.currentVersion} is outdated; latest release is ${rshellcheckVersion}`,
+			`pinned rshellcheck ${update.currentVersion} is outdated; latest installer is ${rshellcheckInstallerVersion}`,
 		);
 	}
 	return status;

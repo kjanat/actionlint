@@ -999,8 +999,9 @@ installer also verifies the release's build provenance with `gh attestation veri
 refuses an archive that fails. Every later run starts the native binary directly.
 rshellcheck reports its own diagnostics, such as SC9001 and SC9002, beside upstream's,
 and actionlint passes them through unchanged. The scheduled
-[Upkeep workflow](../.github/workflows/upkeep.yml) compares the pinned release with the latest
-ShellCheck release and proposes pin updates automatically. To choose a different version
+[Upkeep workflow](../.github/workflows/upkeep.yml) compares the pin with the latest rshellcheck
+release and its newest installer tag, including installer-only `-wrapper.N` releases, and
+proposes pin updates automatically. To choose a different version
 yourself, use `additional_dependencies` on the plain hook:
 
 ```yaml

@@ -23,6 +23,9 @@ outputs:
   rshellcheck-version:
     description: Latest stable rshellcheck release, which ports the ShellCheck release of the same version
     value: ${{ steps.check.outputs.rshellcheck-version }}
+  rshellcheck-installer-version:
+    description: Newest installer tag for the latest rshellcheck release, including installer-only wrapper releases
+    value: ${{ steps.check.outputs.rshellcheck-installer-version }}
   pinned-rshellcheck-version:
     description: rshellcheck installer version currently pinned by actionlint
     value: ${{ steps.check.outputs.pinned-rshellcheck-version }}

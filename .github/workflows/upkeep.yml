@@ -213,10 +213,10 @@ jobs:
             .pre-commit-hooks.yaml
             docs/usage.md
             scripts/bump-version/targets.go
-          commit-message: "Bump rshellcheck to ${{ steps.versions.outputs.rshellcheck-version }}"
-          title: "Bump rshellcheck to ${{ steps.versions.outputs.rshellcheck-version }}"
+          commit-message: "Bump rshellcheck to ${{ steps.versions.outputs.rshellcheck-installer-version }}"
+          title: "Bump rshellcheck to ${{ steps.versions.outputs.rshellcheck-installer-version }}"
           body: |
-            Updates the pinned rshellcheck installer from `${{ steps.versions.outputs.pinned-rshellcheck-version }}` to `${{ steps.versions.outputs.rshellcheck-version }}`.
+            Updates the pinned rshellcheck installer from `${{ steps.versions.outputs.pinned-rshellcheck-version }}` to `${{ steps.versions.outputs.rshellcheck-installer-version }}`.
 
             The release ports ShellCheck `${{ steps.versions.outputs.rshellcheck-version }}`. Latest upstream ShellCheck: `${{ steps.versions.outputs.shellcheck-version }}`.
 

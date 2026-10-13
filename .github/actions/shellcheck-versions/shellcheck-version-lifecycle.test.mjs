@@ -7,7 +7,9 @@ import path from 'node:path';
 
 import {
 	checkVersions,
+	compareInstallerVersions,
 	compareVersions,
+	parseInstallerVersion,
 	parseVersion,
 	planVersionUpdate,
 	reconcileTrackingIssue,
@@ -54,7 +56,7 @@ function mockCore() {
 	};
 }
 
-function versionGithub({ shellcheck = 'v0.12.0', rshellcheck = 'v0.12.0', installerTag = true } = {}) {
+function versionGithub({ shellcheck = 'v0.12.0', rshellcheck = 'v0.12.0', installerTag = true, wrappers = [] } = {}) {
 	const refs = [];
 	return {
 		refs,
@@ -65,12 +67,14 @@ function versionGithub({ shellcheck = 'v0.12.0', rshellcheck = 'v0.12.0', instal
 				},
 			},
 			git: {
-				async getRef({ owner, repo, ref }) {
+				async listMatchingRefs({ owner, repo, ref }) {
 					refs.push(`${owner}/${repo}@${ref}`);
-					if (!installerTag) {
-						throw new Error('Not Found');
+					const tags = installerTag ? [`refs/${ref}`] : [];
+					for (const wrapper of wrappers) {
+						tags.push(`refs/${ref}-wrapper.${wrapper}`);
 					}
-					return { data: { ref: `refs/${ref}` } };
+					tags.push(`refs/${ref}1`);
+					return { data: tags.map((tag) => ({ ref: tag })) };
 				},
 			},
 		},
@@ -98,6 +102,18 @@ test('stable versions are parsed and compared numerically', () => {
 	}
 });
 
+test('installer versions carry an optional wrapper number', () => {
+	assert.deepEqual(parseInstallerVersion('v0.11.0'), { release: 'v0.11.0', wrapper: 0 });
+	assert.deepEqual(parseInstallerVersion('v0.11.0-wrapper.3'), { release: 'v0.11.0', wrapper: 3 });
+	assert.equal(compareInstallerVersions('v0.11.0-wrapper.1', 'v0.11.0'), 1);
+	assert.equal(compareInstallerVersions('v0.11.0-wrapper.2', 'v0.11.0-wrapper.10'), -1);
+	assert.equal(compareInstallerVersions('v0.12.0', 'v0.11.0-wrapper.9'), 1);
+	assert.equal(compareInstallerVersions('v0.11.0-wrapper.1', 'v0.11.0-wrapper.1'), 0);
+	for (const invalid of ['v0.11.0-wrapper', 'v0.11.0-wrapper.01', 'v0.11.0-rc.1', '0.11.0-wrapper.1']) {
+		assert.throws(() => parseInstallerVersion(invalid), /installer version/);
+	}
+});
+
 test('verdict preserves the independent dependency and port states', () => {
 	assert.equal(versionVerdict(false, false), 'current');
 	assert.equal(versionVerdict(true, false), 'dependency-update-available');
@@ -122,9 +138,15 @@ test('pin updates are atomic across all version sources', () => {
 	foreign.set(VERSION_FILES[0], 'github.com/wasilibs/go-shellcheck/cmd/shellcheck@v0.11.1\n');
 	assert.throws(() => planVersionUpdate(foreign, 'v0.12.1'), /expected one pinned rshellcheck installer/);
 
-	const wrapper = planVersionUpdate(versionFiles('v0.11.0-wrapper.1'), 'v0.11.0');
-	assert.equal(wrapper.changed, false);
-	assert.equal(wrapper.currentVersion, 'v0.11.0-wrapper.1');
+	assert.throws(() => planVersionUpdate(versionFiles('v0.11.0-wrapper.1'), 'v0.11.0'), /older than pinned/);
+	const same = planVersionUpdate(versionFiles('v0.11.0-wrapper.1'), 'v0.11.0-wrapper.1');
+	assert.equal(same.changed, false);
+	assert.equal(same.currentVersion, 'v0.11.0-wrapper.1');
+	const wrapper = planVersionUpdate(versionFiles('v0.11.0'), 'v0.11.0-wrapper.2');
+	assert.equal(wrapper.changed, true);
+	for (const contents of wrapper.files.values()) {
+		assert.match(contents, /shellcheck@v0\.11\.0-wrapper\.2\n/);
+	}
 	const bumped = planVersionUpdate(versionFiles('v0.11.0-wrapper.1'), 'v0.12.0');
 	assert.equal(bumped.changed, true);
 	for (const contents of bumped.files.values()) {
@@ -144,11 +166,30 @@ test('check-only mode reports an outdated pin without modifying files', async (t
 	assert.equal(status.filesUpdated, false);
 	assert.equal(outputs.get('pinned-outdated'), 'true');
 	assert.equal(outputs.get('rshellcheck-version'), 'v0.12.0');
+	assert.equal(outputs.get('rshellcheck-installer-version'), 'v0.12.0');
 	assert.equal(outputs.get('pinned-rshellcheck-version'), 'v0.11.0');
 	assert.deepEqual(github.refs, ['kjanat/shellcheck-rs@tags/go/v0.12.0']);
 	for (const file of VERSION_FILES) {
 		assert.match(await fs.readFile(path.join(workspace, file), 'utf8'), /shellcheck@v0\.11\.0/);
 	}
+});
+
+test('a wrapper-only installer release is proposed for the pinned rshellcheck release', async (t) => {
+	const workspace = await temporaryWorkspace(t);
+	const { core, outputs } = mockCore();
+	const github = versionGithub({ shellcheck: 'v0.11.0', rshellcheck: 'v0.11.0', wrappers: [2, 1] });
+	const status = await checkVersions({ github, core, workspace, updateFiles: true });
+	assert.equal(status.verdict, 'dependency-update-available');
+	assert.equal(status.rshellcheckInstallerVersion, 'v0.11.0-wrapper.2');
+	assert.equal(outputs.get('rshellcheck-version'), 'v0.11.0');
+	assert.equal(outputs.get('rshellcheck-installer-version'), 'v0.11.0-wrapper.2');
+	for (const file of VERSION_FILES) {
+		assert.match(await fs.readFile(path.join(workspace, file), 'utf8'), /shellcheck@v0\.11\.0-wrapper\.2\n/);
+	}
+
+	const current = await checkVersions({ github, core, workspace });
+	assert.equal(current.verdict, 'current');
+	assert.equal(current.pinnedRshellcheckVersion, 'v0.11.0-wrapper.2');
 });
 
 test('a lagging port is reported without a pin update', async (t) => {

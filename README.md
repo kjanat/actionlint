@@ -195,12 +195,12 @@ repos:
 
 Four hooks check `.github/workflows/` the same way and differ only in where the `actionlint` executable comes from.
 
-| Hook ID                 | Where the executable comes from                           | Requires                    |
-| ----------------------- | --------------------------------------------------------- | --------------------------- |
-| `actionlint`            | Built from this repository into an isolated `$GOPATH`.    | Go toolchain                |
-| `actionlint-shellcheck` | Same, plus a Go build of ShellCheck installed next to it. | Go toolchain                |
-| `actionlint-docker`     | Pulls this repository's image from `ghcr.io`.             | Docker                      |
-| `actionlint-system`     | Runs the `actionlint` already on `PATH`.                  | [A manual install][install] |
+| Hook ID                 | Where the executable comes from                                                                                    | Requires                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
+| `actionlint`            | Built from this repository into an isolated `$GOPATH`.                                                             | Go toolchain                             |
+| `actionlint-shellcheck` | Same, plus rshellcheck, the native ShellCheck port, which its Go installer downloads from GitHub on the first run. | Go toolchain, GitHub access on first run |
+| `actionlint-docker`     | Pulls this repository's image from `ghcr.io`.                                                                      | Docker                                   |
+| `actionlint-system`     | Runs the `actionlint` already on `PATH`.                                                                           | [A manual install][install]              |
 
 The `actionlint` hook installs into an isolated `$GOPATH`, so [the ShellCheck integration][checks] finds a `shellcheck` executable only when one is already on `PATH`. `actionlint-shellcheck` supplies one itself, which is the option to pick when contributors should not have to install ShellCheck.
 
