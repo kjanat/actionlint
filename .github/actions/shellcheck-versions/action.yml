@@ -1,40 +1,37 @@
 name: Check ShellCheck versions
-description: Compare ShellCheck, go-shellcheck, and the version pinned by actionlint
+description: Compare ShellCheck, rshellcheck, and the installer version pinned by actionlint
 inputs:
   token:
     description: Token used to read upstream GitHub releases
     required: true
     default: ${{ github.token }}
   update-files:
-    description: Update repository files when the go-shellcheck pin is outdated
+    description: Update repository files when the rshellcheck pin is outdated
     required: false
     default: "false"
   fail-on-outdated:
-    description: Fail when the pinned go-shellcheck version is outdated
+    description: Fail when the pinned rshellcheck version is outdated
     required: false
     default: "false"
 outputs:
   verdict:
-    description: Combined dependency-pin and wrapper status
+    description: Combined dependency-pin and port status
     value: ${{ steps.check.outputs.verdict }}
   shellcheck-version:
     description: Latest stable ShellCheck release
     value: ${{ steps.check.outputs.shellcheck-version }}
-  go-shellcheck-version:
-    description: Latest stable go-shellcheck release
-    value: ${{ steps.check.outputs.go-shellcheck-version }}
-  embedded-shellcheck-version:
-    description: ShellCheck version embedded by the latest go-shellcheck release
-    value: ${{ steps.check.outputs.embedded-shellcheck-version }}
-  pinned-go-shellcheck-version:
-    description: go-shellcheck version currently pinned by actionlint
-    value: ${{ steps.check.outputs.pinned-go-shellcheck-version }}
+  rshellcheck-version:
+    description: Latest stable rshellcheck release, which ports the ShellCheck release of the same version
+    value: ${{ steps.check.outputs.rshellcheck-version }}
+  pinned-rshellcheck-version:
+    description: rshellcheck installer version currently pinned by actionlint
+    value: ${{ steps.check.outputs.pinned-rshellcheck-version }}
   pinned-outdated:
-    description: Whether actionlint's go-shellcheck pin is outdated
+    description: Whether actionlint's rshellcheck pin is outdated
     value: ${{ steps.check.outputs.pinned-outdated }}
-  wrapper-lagging:
-    description: Whether go-shellcheck embeds an older ShellCheck release
-    value: ${{ steps.check.outputs.wrapper-lagging }}
+  port-lagging:
+    description: Whether the latest rshellcheck release ports an older ShellCheck release than the latest
+    value: ${{ steps.check.outputs.port-lagging }}
   files-updated:
     description: Whether this invocation updated the pinned version files
     value: ${{ steps.check.outputs.files-updated }}

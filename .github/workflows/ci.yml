@@ -399,6 +399,34 @@ jobs:
           rm .github/workflows/_pre-commit-shellcheck-fixture.yml
           test "${status}" -ne 0
           grep -q SC2086 pre-commit-output.txt
+      - name: Check 60 generated workflows through the hook environment within the startup budget
+        run: |
+          shellcheck_bin="$(find ~/.cache/pre-commit -type f -path '*/bin/shellcheck' -print -quit)"
+          test -n "${shellcheck_bin}"
+          hook_bin="$(dirname "${shellcheck_bin}")"
+          for i in $(seq -w 1 60); do
+            cat > ".github/workflows/_pre-commit-shellcheck-bench-${i}.yml" <<FIXTURE
+          name: Bench ${i}
+          on: push
+          jobs:
+            bench:
+              runs-on: ubuntu-latest
+              steps:
+                - run: echo "\${GITHUB_SHA}"
+                - run: printf '%s\n' "\${RUNNER_OS}"
+                - run: test -d "\${GITHUB_WORKSPACE}"
+          FIXTURE
+          done
+          start="$(date +%s)"
+          set +e
+          PATH="${hook_bin}:${PATH}" "${hook_bin}/actionlint" pre-commit
+          status=$?
+          set -e
+          elapsed="$(( $(date +%s) - start ))"
+          rm .github/workflows/_pre-commit-shellcheck-bench-*.yml
+          echo "actionlint pre-commit with the hook's shellcheck checked 60 generated workflows in ${elapsed}s, exit ${status}"
+          test "${status}" -le 1
+          test "${elapsed}" -le 30
       - name: Run the deletion-only pre-commit integration test
         env: { ACTIONLINT_PRE_COMMIT_INTEGRATION: "1" }
         run: go test -count=1 -run '^TestPreCommitDeletionOnlyIntegration$' .

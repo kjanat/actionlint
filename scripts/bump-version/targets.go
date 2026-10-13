@@ -31,7 +31,7 @@ func mustRule(desc, pattern string, count int) rule {
 	return rule{desc: desc, pattern: re, count: count}
 }
 
-const goShellcheckDependency = "github.com/wasilibs/go-shellcheck/cmd/shellcheck@v0.11.1"
+const rshellcheckDependency = "github.com/kjanat/shellcheck-rs/go/cmd/shellcheck@v0.11.0"
 
 var targets = []*target{
 	{
@@ -47,7 +47,7 @@ var targets = []*target{
 		},
 		unrelated: []string{
 			"minimum_pre_commit_version: 3.0.0",
-			goShellcheckDependency,
+			rshellcheckDependency,
 		},
 	},
 	{
@@ -72,7 +72,7 @@ var targets = []*target{
 			"sarif/v2.1.0/sarif-v2.1.0.html",
 			"git-scm.com/docs/git-hook/2.54.0",
 			"git-scm.com/docs/git-hook/2.55.0",
-			goShellcheckDependency,
+			rshellcheckDependency,
 			"We recommend v1.76.2 or newer.",
 		},
 	},

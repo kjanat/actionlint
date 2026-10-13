@@ -8,18 +8,22 @@ import path from 'node:path';
 /**
  * @typedef VersionStatus
  * @property {string} shellcheckVersion
- * @property {string} goShellcheckVersion
- * @property {string} embeddedShellcheckVersion
- * @property {string} pinnedGoShellcheckVersion
+ * @property {string} rshellcheckVersion
+ * @property {string} pinnedRshellcheckVersion
  * @property {boolean} pinnedOutdated
- * @property {boolean} wrapperLagging
+ * @property {boolean} portLagging
  * @property {boolean} filesUpdated
  * @property {ReturnType<typeof versionVerdict>} verdict
  */
 
 export const TRACKING_MARKER = '<!-- go-shellcheck-shellcheck-version-tracker -->';
 
-const DEPENDENCY = 'github.com/wasilibs/go-shellcheck/cmd/shellcheck@';
+const DEPENDENCY = 'github.com/kjanat/shellcheck-rs/go/cmd/shellcheck@';
+const DEPENDENCY_PATTERN =
+	/github\.com\/kjanat\/shellcheck-rs\/go\/cmd\/shellcheck@(v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-wrapper\.(?:0|[1-9]\d*))?)/g;
+const WRAPPER_SUFFIX = /-wrapper\.(?:0|[1-9]\d*)$/;
+const RELEASE_TAG_PREFIX = 'rshellcheck-';
+const INSTALLER_TAG_PREFIX = 'go/';
 const VERSION_PATTERN = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 export const VERSION_FILES = [
 	'.pre-commit-hooks.yaml',
@@ -59,23 +63,26 @@ export function compareVersions(left, right) {
 
 /**
  * @param {boolean} pinnedOutdated
- * @param {boolean} wrapperLagging
- * @returns {'current' | 'dependency-update-available' | 'wrapper-update-needed' | 'dependency-update-available-and-wrapper-update-needed'}
+ * @param {boolean} portLagging
+ * @returns {'current' | 'dependency-update-available' | 'port-update-needed' | 'dependency-update-available-and-port-update-needed'}
  */
-export function versionVerdict(pinnedOutdated, wrapperLagging) {
-	if (pinnedOutdated && wrapperLagging) {
-		return 'dependency-update-available-and-wrapper-update-needed';
+export function versionVerdict(pinnedOutdated, portLagging) {
+	if (pinnedOutdated && portLagging) {
+		return 'dependency-update-available-and-port-update-needed';
 	}
 	if (pinnedOutdated) {
 		return 'dependency-update-available';
 	}
-	if (wrapperLagging) {
-		return 'wrapper-update-needed';
+	if (portLagging) {
+		return 'port-update-needed';
 	}
 	return 'current';
 }
 
 /**
+ * A pin may name a wrapper-only installer release, go/vX.Y.Z-wrapper.N, which runs the
+ * rshellcheck-vX.Y.Z binaries; the comparison uses X.Y.Z.
+ *
  * @param {Map<string, string>} files
  * @param {string} latestVersion
  */
@@ -88,13 +95,9 @@ export function planVersionUpdate(files, latestVersion) {
 		if (contents === undefined) {
 			throw new Error(`missing version source ${file}`);
 		}
-		const matches = [
-			...contents.matchAll(
-				/github\.com\/wasilibs\/go-shellcheck\/cmd\/shellcheck@(v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))/g,
-			),
-		];
+		const matches = [...contents.matchAll(DEPENDENCY_PATTERN)];
 		if (matches.length !== 1) {
-			throw new Error(`expected one pinned go-shellcheck dependency in ${file}, found ${matches.length}`);
+			throw new Error(`expected one pinned rshellcheck installer in ${file}, found ${matches.length}`);
 		}
 		found.set(file, matches[0][1]);
 	}
@@ -102,17 +105,17 @@ export function planVersionUpdate(files, latestVersion) {
 	const currentVersions = new Set(found.values());
 	if (currentVersions.size !== 1) {
 		throw new Error(
-			`go-shellcheck pins disagree: ${[...found].map(([file, version]) => `${file}=${version}`).join(', ')}`,
+			`rshellcheck pins disagree: ${[...found].map(([file, version]) => `${file}=${version}`).join(', ')}`,
 		);
 	}
 	const currentVersion = currentVersions.values().next().value;
 	if (currentVersion === undefined) {
-		throw new Error('go-shellcheck pin is missing');
+		throw new Error('rshellcheck pin is missing');
 	}
 
-	const comparison = compareVersions(latestVersion, currentVersion);
+	const comparison = compareVersions(latestVersion, currentVersion.replace(WRAPPER_SUFFIX, ''));
 	if (comparison < 0) {
-		throw new Error(`latest go-shellcheck release ${latestVersion} is older than pinned ${currentVersion}`);
+		throw new Error(`latest rshellcheck release ${latestVersion} is older than pinned ${currentVersion}`);
 	}
 	if (comparison === 0) {
 		return { changed: false, currentVersion, files };
@@ -132,37 +135,57 @@ export function planVersionUpdate(files, latestVersion) {
  * @param {unknown} release
  * @param {string} repository
  */
-function releaseVersion(release, repository) {
+function releaseTag(release, repository) {
 	const response = /** @type {{ data?: { tag_name?: unknown } }} */ (release);
 	const tag = response.data?.tag_name;
 	if (typeof tag !== 'string') {
 		throw new Error(`${repository} latest release did not contain a tag name`);
 	}
+	return tag;
+}
+
+/**
+ * @param {unknown} release
+ * @param {string} repository
+ */
+function releaseVersion(release, repository) {
+	const tag = releaseTag(release, repository);
 	parseVersion(tag);
 	return tag;
 }
 
 /**
- * @param {unknown} response
- * @param {string} repository
- * @param {string} file
+ * The port's release tag is rshellcheck-vMAJOR.MINOR.PATCH, and the version is the
+ * ShellCheck release it ports.
+ *
+ * @param {unknown} release
  */
-function decodedContent(response, repository, file) {
-	const decoded = /** @type {{ data?: unknown }} */ (response).data;
-	if (
-		decoded === null
-		|| typeof decoded !== 'object'
-		|| Array.isArray(decoded)
-		|| !('content' in decoded)
-		|| typeof decoded.content !== 'string'
-	) {
-		throw new Error(`${repository}/${file} was not a file`);
+function portVersion(release) {
+	const tag = releaseTag(release, 'kjanat/shellcheck-rs');
+	if (!tag.startsWith(RELEASE_TAG_PREFIX)) {
+		throw new Error(`kjanat/shellcheck-rs latest release tag ${tag} does not start with ${RELEASE_TAG_PREFIX}`);
 	}
-	if (!('encoding' in decoded) || decoded.encoding !== 'base64') {
-		const encoding = 'encoding' in decoded ? decoded.encoding : undefined;
-		throw new Error(`${repository}/${file} used unsupported encoding ${JSON.stringify(encoding)}`);
+	const version = tag.slice(RELEASE_TAG_PREFIX.length);
+	parseVersion(version);
+	return version;
+}
+
+/**
+ * The installer module is tagged go/vMAJOR.MINOR.PATCH beside each release.
+ *
+ * @param {AsyncFunctionArguments['github']} github
+ * @param {string} version
+ */
+async function requireInstallerTag(github, version) {
+	const ref = `tags/${INSTALLER_TAG_PREFIX}${version}`;
+	try {
+		await github.rest.git.getRef({ owner: 'kjanat', repo: 'shellcheck-rs', ref });
+	} catch (error) {
+		throw new Error(
+			`kjanat/shellcheck-rs release ${version} has no ${INSTALLER_TAG_PREFIX}${version} tag, so the installer cannot be pinned to it`,
+			{ cause: error },
+		);
 	}
-	return Buffer.from(decoded.content, 'base64').toString('utf8').trim();
 }
 
 /**
@@ -184,28 +207,17 @@ export async function checkVersions({
 	updateFiles = false,
 	failOnOutdated = false,
 }) {
-	const [shellcheckRelease, goShellcheckRelease] = await Promise.all([
+	const [shellcheckRelease, rshellcheckRelease] = await Promise.all([
 		github.rest.repos.getLatestRelease({ owner: 'koalaman', repo: 'shellcheck' }),
-		github.rest.repos.getLatestRelease({ owner: 'wasilibs', repo: 'go-shellcheck' }),
+		github.rest.repos.getLatestRelease({ owner: 'kjanat', repo: 'shellcheck-rs' }),
 	]);
 	const shellcheckVersion = releaseVersion(shellcheckRelease, 'koalaman/shellcheck');
-	const goShellcheckVersion = releaseVersion(goShellcheckRelease, 'wasilibs/go-shellcheck');
-	const embeddedResponse = await github.rest.repos.getContent({
-		owner: 'wasilibs',
-		repo: 'go-shellcheck',
-		path: 'buildtools/wasm/version.txt',
-		ref: goShellcheckVersion,
-	});
-	const embeddedShellcheckVersion = decodedContent(
-		embeddedResponse,
-		'wasilibs/go-shellcheck',
-		'buildtools/wasm/version.txt',
-	);
-	parseVersion(embeddedShellcheckVersion);
+	const rshellcheckVersion = portVersion(rshellcheckRelease);
+	await requireInstallerTag(github, rshellcheckVersion);
 
-	if (compareVersions(embeddedShellcheckVersion, shellcheckVersion) > 0) {
+	if (compareVersions(rshellcheckVersion, shellcheckVersion) > 0) {
 		throw new Error(
-			`go-shellcheck ${goShellcheckVersion} embeds ${embeddedShellcheckVersion}, newer than the latest ShellCheck release ${shellcheckVersion}`,
+			`rshellcheck ${rshellcheckVersion} is newer than the latest ShellCheck release ${shellcheckVersion}`,
 		);
 	}
 
@@ -216,11 +228,11 @@ export async function checkVersions({
 			) => /** @type {[string, string]} */ ([file, await readFile(path.join(workspace, file), 'utf8')])),
 		),
 	);
-	const update = planVersionUpdate(files, goShellcheckVersion);
+	const update = planVersionUpdate(files, rshellcheckVersion);
 	const pinnedOutdated = update.changed;
-	const wrapperLagging = compareVersions(shellcheckVersion, embeddedShellcheckVersion) > 0;
+	const portLagging = compareVersions(shellcheckVersion, rshellcheckVersion) > 0;
 	const filesUpdated = updateFiles && pinnedOutdated;
-	const verdict = versionVerdict(pinnedOutdated, wrapperLagging);
+	const verdict = versionVerdict(pinnedOutdated, portLagging);
 
 	if (filesUpdated) {
 		for (const [file, contents] of update.files) {
@@ -230,11 +242,10 @@ export async function checkVersions({
 
 	core.setOutput('verdict', verdict);
 	core.setOutput('shellcheck-version', shellcheckVersion);
-	core.setOutput('go-shellcheck-version', goShellcheckVersion);
-	core.setOutput('embedded-shellcheck-version', embeddedShellcheckVersion);
-	core.setOutput('pinned-go-shellcheck-version', update.currentVersion);
+	core.setOutput('rshellcheck-version', rshellcheckVersion);
+	core.setOutput('pinned-rshellcheck-version', update.currentVersion);
 	core.setOutput('pinned-outdated', String(pinnedOutdated));
-	core.setOutput('wrapper-lagging', String(wrapperLagging));
+	core.setOutput('port-lagging', String(portLagging));
 	core.setOutput('files-updated', String(filesUpdated));
 	/** @type {Array<Array<string | { data: string, header?: boolean }>>} */
 	const versionTable = [
@@ -243,36 +254,34 @@ export async function checkVersions({
 			{ data: 'Version', header: true },
 		],
 		['ShellCheck release', shellcheckVersion],
-		['go-shellcheck release', goShellcheckVersion],
-		['ShellCheck embedded by go-shellcheck', embeddedShellcheckVersion],
-		['Pinned go-shellcheck dependency', update.currentVersion],
+		['rshellcheck release', rshellcheckVersion],
+		['Pinned rshellcheck installer', update.currentVersion],
 	];
 	await core.summary
 		.addHeading('ShellCheck version status')
 		.addTable(versionTable)
 		.addRaw(`\nVerdict: ${verdict}\n`)
 		.addRaw(`\nLocal pin outdated: ${pinnedOutdated ? 'yes' : 'no'}\n`)
-		.addRaw(`\ngo-shellcheck behind ShellCheck: ${wrapperLagging ? 'yes' : 'no'}\n`)
+		.addRaw(`\nrshellcheck behind ShellCheck: ${portLagging ? 'yes' : 'no'}\n`)
 		.write();
 
 	core.info(
-		`ShellCheck ${shellcheckVersion}; go-shellcheck ${goShellcheckVersion} embeds ${embeddedShellcheckVersion}; pinned ${update.currentVersion}; verdict ${verdict}`,
+		`ShellCheck ${shellcheckVersion}; rshellcheck ${rshellcheckVersion}; pinned ${update.currentVersion}; verdict ${verdict}`,
 	);
 
 	/** @type {VersionStatus} */
 	const status = {
 		shellcheckVersion,
-		goShellcheckVersion,
-		embeddedShellcheckVersion,
-		pinnedGoShellcheckVersion: update.currentVersion,
+		rshellcheckVersion,
+		pinnedRshellcheckVersion: update.currentVersion,
 		pinnedOutdated,
-		wrapperLagging,
+		portLagging,
 		filesUpdated,
 		verdict,
 	};
 	if (failOnOutdated && pinnedOutdated) {
 		throw new Error(
-			`pinned go-shellcheck ${update.currentVersion} is outdated; latest release is ${goShellcheckVersion}`,
+			`pinned rshellcheck ${update.currentVersion} is outdated; latest release is ${rshellcheckVersion}`,
 		);
 	}
 	return status;
@@ -336,17 +345,17 @@ function optionalPullRequestURL(env, owner, repo) {
 
 /** @param {string} shellcheckVersion */
 function trackingTitle(shellcheckVersion) {
-	return `Track ${shellcheckVersion} support in go-shellcheck`;
+	return `Track ${shellcheckVersion} support in shellcheck-rs`;
 }
 
-/** @param {{ shellcheckVersion: string, goShellcheckVersion: string, embeddedShellcheckVersion: string, bumpPullRequestURL: string }} versions */
-function trackingBody({ shellcheckVersion, goShellcheckVersion, embeddedShellcheckVersion, bumpPullRequestURL }) {
+/** @param {{ shellcheckVersion: string, rshellcheckVersion: string, bumpPullRequestURL: string }} versions */
+function trackingBody({ shellcheckVersion, rshellcheckVersion, bumpPullRequestURL }) {
 	const pullRequest = bumpPullRequestURL === '' ? '' : `\n\nLocal dependency update: ${bumpPullRequestURL}`;
 	return `${TRACKING_MARKER}
 
-[ShellCheck ${shellcheckVersion}](https://github.com/koalaman/shellcheck/releases/tag/${shellcheckVersion}) is available, but the latest [go-shellcheck ${goShellcheckVersion}](https://github.com/wasilibs/go-shellcheck/releases/tag/${goShellcheckVersion}) release embeds ShellCheck ${embeddedShellcheckVersion}.
+[ShellCheck ${shellcheckVersion}](https://github.com/koalaman/shellcheck/releases/tag/${shellcheckVersion}) is available, but the latest [rshellcheck ${rshellcheckVersion}](https://github.com/kjanat/shellcheck-rs/releases/tag/${RELEASE_TAG_PREFIX}${rshellcheckVersion}) release ports ShellCheck ${rshellcheckVersion}.
 
-Keep this issue open until a go-shellcheck release embeds ShellCheck ${shellcheckVersion} or newer.${pullRequest}
+Keep this issue open until a shellcheck-rs release ports ShellCheck ${shellcheckVersion} or newer.${pullRequest}
 
 This issue is maintained by the ShellCheck version lifecycle workflow.`;
 }
@@ -364,9 +373,8 @@ This issue is maintained by the ShellCheck version lifecycle workflow.`;
 export async function reconcileTrackingIssue({ github, context, core, env = process.env }) {
 	const { owner, repo } = context.repo;
 	const shellcheckVersion = requiredVersion(env, 'SHELLCHECK_VERSION');
-	const goShellcheckVersion = requiredVersion(env, 'GO_SHELLCHECK_VERSION');
-	const embeddedShellcheckVersion = requiredVersion(env, 'EMBEDDED_SHELLCHECK_VERSION');
-	const wrapperLagging = requiredBoolean(env, 'GO_SHELLCHECK_LAGGING');
+	const rshellcheckVersion = requiredVersion(env, 'RSHELLCHECK_VERSION');
+	const portLagging = requiredBoolean(env, 'RSHELLCHECK_LAGGING');
 	const bumpPullRequestURL = optionalPullRequestURL(env, owner, repo);
 
 	const issues = await github.paginate(github.rest.issues.listForRepo, {
@@ -386,14 +394,9 @@ export async function reconcileTrackingIssue({ github, context, core, env = proc
 	}
 	const trackingIssue = trackingIssues[0];
 
-	if (wrapperLagging) {
+	if (portLagging) {
 		const title = trackingTitle(shellcheckVersion);
-		const body = trackingBody({
-			shellcheckVersion,
-			goShellcheckVersion,
-			embeddedShellcheckVersion,
-			bumpPullRequestURL,
-		});
+		const body = trackingBody({ shellcheckVersion, rshellcheckVersion, bumpPullRequestURL });
 		if (trackingIssue === undefined) {
 			const created = await github.rest.issues.create({
 				owner,
@@ -423,7 +426,7 @@ export async function reconcileTrackingIssue({ github, context, core, env = proc
 	}
 
 	if (trackingIssue === undefined || trackingIssue.state !== 'open') {
-		core.info('No open go-shellcheck tracking issue needs closing');
+		core.info('No open shellcheck-rs tracking issue needs closing');
 		return;
 	}
 	const pullRequest = bumpPullRequestURL === '' ? '' : ` Dependency update: ${bumpPullRequestURL}.`;
@@ -431,7 +434,7 @@ export async function reconcileTrackingIssue({ github, context, core, env = proc
 		owner,
 		repo,
 		issue_number: trackingIssue.number,
-		body: `go-shellcheck ${goShellcheckVersion} now embeds ShellCheck ${embeddedShellcheckVersion}.${pullRequest}`,
+		body: `rshellcheck ${rshellcheckVersion} ports ShellCheck ${rshellcheckVersion}.${pullRequest}`,
 	});
 	await github.rest.issues.update({
 		owner,

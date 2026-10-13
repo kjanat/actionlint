@@ -184,7 +184,7 @@ jobs:
             type:maintenance
           assignees: ${{ github.repository_owner }}
   shellcheck:
-    name: Bump go-shellcheck
+    name: Bump rshellcheck
     if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository_owner == 'kjanat'
     runs-on: ubuntu-latest
     permissions: { contents: write, issues: write, pull-requests: write }
@@ -201,24 +201,24 @@ jobs:
           if [[ -z "${UPKEEP_TOKEN}" ]]; then
             echo '::warning title=No UPKEEP_TOKEN::GITHUB_TOKEN opens the pull request, and GitHub runs no workflows on it. Store a fine-grained token with contents and pull-requests write as the UPKEEP_TOKEN secret.'
           fi
-      - name: Create or update the go-shellcheck bump
+      - name: Create or update the rshellcheck bump
         id: bump
         if: steps.versions.outputs.files-updated == 'true'
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.UPKEEP_TOKEN || github.token }}
-          branch: ci/go-shellcheck-version
+          branch: ci/rshellcheck-version
           delete-branch: true
           add-paths: |
             .pre-commit-hooks.yaml
             docs/usage.md
             scripts/bump-version/targets.go
-          commit-message: "Bump go-shellcheck to ${{ steps.versions.outputs.go-shellcheck-version }}"
-          title: "Bump go-shellcheck to ${{ steps.versions.outputs.go-shellcheck-version }}"
+          commit-message: "Bump rshellcheck to ${{ steps.versions.outputs.rshellcheck-version }}"
+          title: "Bump rshellcheck to ${{ steps.versions.outputs.rshellcheck-version }}"
           body: |
-            Updates the pinned go-shellcheck dependency from `${{ steps.versions.outputs.pinned-go-shellcheck-version }}` to `${{ steps.versions.outputs.go-shellcheck-version }}`.
+            Updates the pinned rshellcheck installer from `${{ steps.versions.outputs.pinned-rshellcheck-version }}` to `${{ steps.versions.outputs.rshellcheck-version }}`.
 
-            The new go-shellcheck release embeds ShellCheck `${{ steps.versions.outputs.embedded-shellcheck-version }}`. Latest upstream ShellCheck: `${{ steps.versions.outputs.shellcheck-version }}`.
+            The release ports ShellCheck `${{ steps.versions.outputs.rshellcheck-version }}`. Latest upstream ShellCheck: `${{ steps.versions.outputs.shellcheck-version }}`.
 
             Created by [this Upkeep run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
           labels: |
@@ -230,9 +230,8 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           BUMP_PR_URL: ${{ steps.bump.outputs.pull-request-url }}
-          EMBEDDED_SHELLCHECK_VERSION: ${{ steps.versions.outputs.embedded-shellcheck-version }}
-          GO_SHELLCHECK_LAGGING: ${{ steps.versions.outputs.wrapper-lagging }}
-          GO_SHELLCHECK_VERSION: ${{ steps.versions.outputs.go-shellcheck-version }}
+          RSHELLCHECK_LAGGING: ${{ steps.versions.outputs.port-lagging }}
+          RSHELLCHECK_VERSION: ${{ steps.versions.outputs.rshellcheck-version }}
           SHELLCHECK_VERSION: ${{ steps.versions.outputs.shellcheck-version }}
         with:
           github-token: ${{ github.token }}
