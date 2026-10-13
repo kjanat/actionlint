@@ -36,4 +36,4 @@
   always_run: true
   entry: actionlint pre-commit
   minimum_pre_commit_version: 3.0.0
-  additional_dependencies: [github.com/kjanat/shellcheck-rs/go/cmd/shellcheck@v0.11.0]
+  additional_dependencies: [github.com/kjanat/shellcheck-rs/go/cmd/shellcheck@v0.11.0-wrapper.1]

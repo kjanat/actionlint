@@ -427,6 +427,19 @@ jobs:
           echo "actionlint-shellcheck checked 60 generated workflows in ${duration}s, exit ${status}"
           test "${status}" -eq 0
           test "${duration}" -le 30
+      - name: Confirm the pinned installer verifies release provenance with a signed-in gh
+        env: *HookToken
+        run: |
+          dependency="$(grep -o 'github\.com/kjanat/shellcheck-rs/go/cmd/shellcheck@[^] ]*' .pre-commit-hooks.yaml | sort -u)"
+          pins="$(wc -l <<< "${dependency}")"
+          test "${pins}" -eq 1
+          GOBIN="${RUNNER_TEMP}/rshellcheck-installer" go install "${dependency}"
+          XDG_CACHE_HOME="${RUNNER_TEMP}/rshellcheck-cache" "${RUNNER_TEMP}/rshellcheck-installer/shellcheck" --version 2> installer-stderr.txt
+          cat installer-stderr.txt
+          if grep -q 'provenance not verified' installer-stderr.txt; then
+            echo '::error::The rshellcheck installer skipped provenance verification.' >&2
+            exit 1
+          fi
       - name: Run the deletion-only pre-commit integration test
         env: { ACTIONLINT_PRE_COMMIT_INTEGRATION: "1" }
         run: go test -count=1 -run '^TestPreCommitDeletionOnlyIntegration$' .

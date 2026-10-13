@@ -994,9 +994,11 @@ Use `actionlint-bundled` to install both automatically: select a commit or relea
 reproducible pre-commit environment. The installer's module version selects the matching
 rshellcheck release. Its first run downloads that release's binary for the hook's platform,
 checks it against the release checksums and caches it in the user cache directory, so the
-first run needs network access to github.com. Every later run starts the native binary
-directly. rshellcheck reports its own diagnostics, such as SC9001 and SC9002, beside
-upstream's, and actionlint passes them through unchanged. The scheduled
+first run needs network access to github.com. When `gh` is on `PATH` and signed in, the
+installer also verifies the release's build provenance with `gh attestation verify` and
+refuses an archive that fails. Every later run starts the native binary directly.
+rshellcheck reports its own diagnostics, such as SC9001 and SC9002, beside upstream's,
+and actionlint passes them through unchanged. The scheduled
 [Upkeep workflow](../.github/workflows/upkeep.yml) compares the pinned release with the latest
 ShellCheck release and proposes pin updates automatically. To choose a different version
 yourself, use `additional_dependencies` on the plain hook:
@@ -1009,7 +1011,7 @@ repos:
     hooks:
       - id: actionlint
         additional_dependencies:
-          - github.com/kjanat/shellcheck-rs/go/cmd/shellcheck@v0.11.0
+          - github.com/kjanat/shellcheck-rs/go/cmd/shellcheck@v0.11.0-wrapper.1
 ```
 
 ### VS Code

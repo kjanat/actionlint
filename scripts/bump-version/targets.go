@@ -31,7 +31,7 @@ func mustRule(desc, pattern string, count int) rule {
 	return rule{desc: desc, pattern: re, count: count}
 }
 
-const rshellcheckDependency = "github.com/kjanat/shellcheck-rs/go/cmd/shellcheck@v0.11.0"
+const rshellcheckDependency = "github.com/kjanat/shellcheck-rs/go/cmd/shellcheck@v0.11.0-wrapper.1"
 
 var targets = []*target{
 	{
