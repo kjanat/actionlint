@@ -56,38 +56,3 @@ Extraction preserves supported input fields when metadata also contains unknown
 input keys, such as `type` or the misspelled `deprecation-message`. Extraction ignores
 those keys. Invalid values, duplicate inputs and malformed YAML
 still stop generation. This does not relax validation of local action metadata.
-
-### References omitted from the October 2026 expansion
-
-These supplied repository names were not publicly fetchable during verification:
-
-- `actions-rs/fmt`
-- `bitrise-io/bitrise-build`
-- `cloudflare/pages-action`
-- `codemagic-ci/codemagic-action`
-- `hashicorp/setup-consul`
-- `hashicorp/setup-vault`
-- `microsoft/setup-msvc`
-- `reviewdog/action-ansible-lint`
-- `reviewdog/action-checkstyle`
-- `reviewdog/action-clang-format`
-- `reviewdog/action-clang-tidy`
-- `reviewdog/action-dotenv-linter`
-- `reviewdog/action-htmlhint`
-- `reviewdog/action-phpcs`
-- `reviewdog/action-phpstan`
-- `reviewdog/action-prettier`
-- `reviewdog/action-pylint`
-- `reviewdog/action-scss-lint`
-- `reviewdog/action-textlint`
-- `reviewdog/action-vale`
-- `step-security/wait-for-docker`
-
-`netlify/actions/cli` had no `action.yml` or `action.yaml` at its default branch,
-so there was no declared metadata to import. `gradle/actions` has a root action
-that only reports an invalid-path error; the registry instead includes its
-`setup-gradle`, `dependency-submission` and `wrapper-validation` sub-actions.
-
-Legacy aliases with fetchable manifests, including `toolmantim/release-drafter`,
-remain registered. Versions using retired runtimes enter
-`OutdatedPopularActionSpecs` and receive the retired-runtime diagnostic.
