@@ -14,7 +14,10 @@ updates:
     directory: /
     schedule: { interval: monthly }
     groups: { “npm modules”: { patterns: ["*"] } }
-    ignore: [{ dependency-name: "typescript", versions: ["^7"] }]
+    ignore:
+      - { dependency-name: "typescript", versions: ["^7"] }
+      # GitHub Actions branding uses Feather 4.28.0.
+      - dependency-name: feather-icons
   - package-ecosystem: docker
     directory: /
     schedule: { interval: monthly }
