@@ -86,6 +86,20 @@ func TestActionsHonourGitIgnore(t *testing.T) {
 			git("add", "--", "link/action.yml")
 			return root
 		}},
+		{"symlinked directory", func(t *testing.T, root string, git func(...string)) string {
+			writeFixture(t, root, "moved/action.yml", "name: fixture\n")
+			git("add", "--", "moved/action.yml")
+			git("commit", "--quiet", "-m", "Move")
+			if err := os.RemoveAll(filepath.Join(root, "moved")); err != nil {
+				t.Fatal(err)
+			}
+			outside := t.TempDir()
+			writeFixture(t, outside, "action.yml", "name: fixture\n")
+			if err := os.Symlink(outside, filepath.Join(root, "moved")); err != nil {
+				t.Skipf("symlinks unavailable: %v", err)
+			}
+			return root
+		}},
 		{"nested repository", func(t *testing.T, root string, git func(...string)) string {
 			writeFixture(t, root, "nested/action.yml", "name: fixture\n")
 			git("add", "--", "nested/action.yml")

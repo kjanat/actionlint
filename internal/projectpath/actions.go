@@ -83,7 +83,14 @@ func listedActions(root string, names []string) ([]string, error) {
 		}
 		skip := false
 		for dir := filepath.Dir(path); dir != root && !skip; dir = filepath.Dir(dir) {
-			var err error
+			parent, err := os.Lstat(dir)
+			if err != nil {
+				return nil, err
+			}
+			if !parent.IsDir() {
+				skip = true
+				break
+			}
 			if skip, err = skipDirectory(root, dir); err != nil {
 				return nil, err
 			}
