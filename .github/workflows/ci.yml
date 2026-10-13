@@ -375,6 +375,7 @@ jobs:
   pre-commit-shellcheck:
     name: pre-commit ShellCheck integration
     runs-on: ubuntu-latest
+    env: { GH_TOKEN: "${{ github.token }}" }
     steps:
       - *ActCheckNocred
       - parallel: [*Go, *Uv]
