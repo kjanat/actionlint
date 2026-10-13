@@ -130,6 +130,10 @@ func TestActionsHonourGitIgnore(t *testing.T) {
 			git("update-index", "--index-version", "4")
 			return root
 		}},
+		{"split index", func(t *testing.T, root string, git func(...string)) string {
+			git("update-index", "--split-index")
+			return root
+		}},
 		{"ignore case", func(t *testing.T, root string, git func(...string)) string {
 			git("config", "core.ignoreCase", "true")
 			writeFixture(t, root, ".gitignore", "IGNORED/\n")
@@ -246,11 +250,6 @@ func TestActionsRepositoryError(t *testing.T) {
 			writeFixture(t, root, "sub/.gitignore", "x\n")
 			writeFixture(t, root, "sub/action.yml", "name: fixture\n")
 			seal(t, filepath.Join(root, "sub", ".gitignore"))
-		}},
-		{"split index", func(t *testing.T, root string, git func(...string)) {
-			writeFixture(t, root, "action.yml", "name: fixture\n")
-			git("add", "--", "action.yml")
-			git("update-index", "--split-index")
 		}},
 		{"broken repository", func(t *testing.T, root string, git func(...string)) {
 			writeFixture(t, root, "action.yml", "name: fixture\n")
