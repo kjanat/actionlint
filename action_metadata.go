@@ -671,7 +671,7 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 func (c *LocalActionsCache) readLocalActionMetadataFile(dir string) ([]byte, string, error) {
 	for _, name := range []string{"action.yaml", "action.yml"} {
 		path := filepath.Join(dir, name)
-		if content, ok := c.explicitSources[absPath(path)]; ok {
+		if content, ok := c.explicitSources[physicalSourcePath(path)]; ok {
 			if c.onRead != nil {
 				c.onRead(path)
 			}
@@ -702,7 +702,7 @@ func (c *LocalActionsCache) hasExplicitAction(spec string) bool {
 	}
 	dir := filepath.Join(c.proj.RootDir(), filepath.FromSlash(spec))
 	for _, name := range []string{"action.yaml", "action.yml"} {
-		if _, ok := c.explicitSources[absPath(filepath.Join(dir, name))]; ok {
+		if _, ok := c.explicitSources[physicalSourcePath(filepath.Join(dir, name))]; ok {
 			return true
 		}
 	}

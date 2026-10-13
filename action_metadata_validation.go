@@ -1,5 +1,10 @@
 package actionlint
 
+import (
+	"strconv"
+	"strings"
+)
+
 // Each workflow analysis owns its validation store.
 // Its templates contain no caller state and are also shared with nested composites.
 type actionMetadataValidation struct {
@@ -10,6 +15,17 @@ type actionMetadataValidation struct {
 type actionMetadataFindingKey struct {
 	path, message string
 	line, column  int
+}
+
+func metadataFindingKey(meta *ActionMetadata, finding *Error) actionMetadataFindingKey {
+	// Validation messages may embed the metadata directory. Normalize that
+	// spelling for identity without changing the user-facing source path.
+	message := strings.ReplaceAll(finding.Message, strconv.Quote(meta.Dir()), strconv.Quote(physicalSourcePath(meta.Dir())))
+	key := actionMetadataFindingKey{path: physicalSourcePath(meta.Path()), message: message}
+	if finding.source != nil {
+		key.line, key.column = finding.Line, finding.Column
+	}
+	return key
 }
 
 type actionMetadataFinding struct {
@@ -38,11 +54,9 @@ func (rule *RuleAction) replayMetadataFindings(meta *ActionMetadata, action *Exe
 	store.visits++
 	for _, template := range templates {
 		finding := *template
-		key := actionMetadataFindingKey{path: path, message: finding.Message}
+		key := metadataFindingKey(meta, &finding)
 		if finding.source == nil {
 			finding.Line, finding.Column = action.Uses.Pos.Line, action.Uses.Pos.Col
-		} else {
-			key.line, key.column = finding.Line, finding.Column
 		}
 		if finding.ignoreOrigin != nil {
 			origin := *finding.ignoreOrigin

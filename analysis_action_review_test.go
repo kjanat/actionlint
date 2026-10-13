@@ -36,6 +36,67 @@ func TestActionDiscoverySymlinkRoot(t *testing.T) {
 	}
 }
 
+func TestExplicitActionSnapshotAliasedRoot(t *testing.T) {
+	for _, disk := range []bool{false, true} {
+		for _, manifest := range []string{standaloneComposite, "name: inner\ndescription: inner\nruns: {using: node24}\n", "name: [\n"} {
+			t.Run(fmt.Sprintf("disk=%t/manifest=%q", disk, manifest), func(t *testing.T) {
+				root := t.TempDir()
+				if disk {
+					writeShellcheckFixture(t, root, "inner/action.yml", "stale: true\n")
+				}
+				alias := filepath.Join(t.TempDir(), "alias")
+				if err := os.Symlink(root, alias); err != nil {
+					t.Skipf("symlinks unavailable: %v", err)
+				}
+				project := &Project{root: root}
+				workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n"
+				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: alias, Sources: []SourceUnit{
+					{Path: "ci.yml", Content: []byte(workflow), Project: project},
+					{Path: "inner/action.yml", Content: []byte(manifest), Project: project},
+				}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				want := 1
+				if manifest == standaloneComposite {
+					want = 0
+				}
+				if len(result.Diagnostics) != want {
+					t.Fatalf("want %d snapshot findings, got %+v", want, result.Diagnostics)
+				}
+				if len(result.Documents) != 2 {
+					t.Errorf("want one workflow and one action outline, got %+v", result.Documents)
+				}
+				for _, diagnostic := range result.Diagnostics {
+					if filepath.Base(diagnostic.Path) != "action.yml" {
+						t.Errorf("finding must belong to explicit declaration: %+v", diagnostic)
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestGenerateConfigActionOnlyRepository(t *testing.T) {
+	root := t.TempDir()
+	writeShellcheckFixture(t, root, ".git", "gitdir: elsewhere\n")
+	writeShellcheckFixture(t, root, "action.yml", standaloneComposite)
+	path, err := GenerateProjectConfig(root, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ParseConfig(content); err != nil {
+		t.Fatalf("generated config is invalid: %v", err)
+	}
+	if _, err := GenerateProjectConfig(root, false); err == nil {
+		t.Fatal("existing config must not be overwritten")
+	}
+}
+
 func TestActionDiscoveryDoesNotHideWorkflowTypo(t *testing.T) {
 	root := t.TempDir()
 	writeShellcheckFixture(t, root, ".git", "gitdir: elsewhere\n")

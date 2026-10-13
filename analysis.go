@@ -221,7 +221,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	actionContents := make(map[string][]byte)
 	for path, content := range sourceContents {
 		if isActionInput(path) {
-			actionContents[path] = content
+			actionContents[physicalSourcePath(path)] = content
 		}
 	}
 	for _, source := range request.Sources {
@@ -263,12 +263,12 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	for _, file := range result.files {
 		result.Documents = append(result.Documents, file.outline)
 		if _, action := file.outline.(ActionOutline); action {
-			explicitActions[filepath.Clean(relativeAnalysisPath(engine.workingDir, file.outline.DocumentPath()))] = true
+			explicitActions[physicalSourcePath(file.source.inputPath)] = true
 		}
 	}
 	for _, document := range documents.list() {
 		path := relativeAnalysisPath(engine.workingDir, document.DocumentPath())
-		if !explicitActions[filepath.Clean(path)] {
+		if !explicitActions[physicalSourcePath(document.DocumentPath())] {
 			result.Documents = append(result.Documents, document.WithPath(path))
 		}
 	}
@@ -330,7 +330,7 @@ func (r *AnalysisResult) collectDiagnostics() {
 		}
 		for _, finding := range file.errors {
 			if _, action := file.outline.(ActionOutline); action && finding.Kind == "syntax-check" {
-				parseDeclarations[filepath.Clean(file.source.inputPath)] = true
+				parseDeclarations[physicalSourcePath(file.source.inputPath)] = true
 			}
 			if identity := finding.metadataFinding; identity != nil && identity.declaration && finding.Kind == "action" {
 				declarations[declarationLocation{project, identity.key}] = true
@@ -345,7 +345,7 @@ func (r *AnalysisResult) collectDiagnostics() {
 		}
 		unique := file.errors[:0]
 		for _, finding := range file.errors {
-			if finding.Kind == "action" && finding.metadataParsePath != "" && parseDeclarations[filepath.Clean(finding.metadataParsePath)] {
+			if finding.Kind == "action" && finding.metadataParsePath != "" && parseDeclarations[physicalSourcePath(finding.metadataParsePath)] {
 				continue
 			}
 			diagnostic := finding.diagnostic(file.source.Content)

@@ -176,6 +176,9 @@ func generateProjectConfig(projects *Projects, dir string) (string, error) {
 	}
 
 	p := filepath.Join(d, "actionlint.yaml")
+	if err := os.MkdirAll(d, 0755); err != nil {
+		return "", fmt.Errorf("could not create config directory %q: %w", d, err)
+	}
 	if err := writeDefaultConfigFile(p); err != nil {
 		return "", err
 	}

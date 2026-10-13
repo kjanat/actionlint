@@ -8,9 +8,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -90,6 +92,49 @@ func newTestGen(stdout, stderr, debug io.Writer) *gen {
 }
 
 // Normal cases
+
+func TestWriteGoChunksLargeCatalogues(t *testing.T) {
+	for _, count := range []int{0, 50, 51, 100, 101} {
+		t.Run(strconv.Itoa(count), func(t *testing.T) {
+			actions := make(map[string]*actionlint.ActionMetadata)
+			for i := range count {
+				actions[fmt.Sprintf("example/action-%03d@v1", i)] = &actionlint.ActionMetadata{Name: fmt.Sprintf("Action %d", i)}
+			}
+			actions["example/retired@v1"] = &actionlint.ActionMetadata{Name: "Retired", Runs: actionlint.ActionMetadataRuns{Using: "node12"}}
+			var output bytes.Buffer
+			g := newGen(io.Discard, io.Discard, io.Discard)
+			if err := g.writeGo(&output, actions); err != nil {
+				t.Fatal(err)
+			}
+			code := output.String()
+			chunks := 0
+			if count > 50 {
+				chunks = (count + 49) / 50
+			}
+			if got := strings.Count(code, "func popularActionsChunk"); got != chunks {
+				t.Fatalf("%d actions: want %d initializer chunks, got %d", count, chunks, got)
+			}
+			for i := range chunks {
+				call := fmt.Sprintf("range popularActionsChunk%d()", i)
+				if got := strings.Count(code, call); got != 1 {
+					t.Errorf("initializer must call %s once, got %d", call, got)
+				}
+			}
+			for spec := range actions {
+				if got := strings.Count(code, fmt.Sprintf("%q:", spec)); got != 1 {
+					t.Errorf("expected exactly one entry for %s, got %d", spec, got)
+				}
+			}
+			var repeated bytes.Buffer
+			if err := g.writeGo(&repeated, actions); err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(output.Bytes(), repeated.Bytes()) {
+				t.Fatal("generation is not deterministic")
+			}
+		})
+	}
+}
 
 func TestDefaultPopularActions(t *testing.T) {
 	popularActions, err := newGen(nil, nil, nil).registry()
@@ -347,6 +392,42 @@ func TestLighthouseMetadataTypoPreservesClassification(t *testing.T) {
 			}
 			if have := isOutdated(spec, md.Runs.Using); have != tc.outdated {
 				t.Fatalf("outdated = %v, want %v", have, tc.outdated)
+			}
+		})
+	}
+}
+
+func TestRegistryExtractionUnknownInputFields(t *testing.T) {
+	for _, tc := range []struct {
+		name, input string
+		fail        bool
+	}{
+		{"extra type", "    type: boolean\n", false},
+		{"misspelled deprecation", "    deprecation-message: use new\n", false},
+		{"invalid required", "    required: [bad]\n", true},
+		{"extra field and invalid required", "    type: boolean\n    required: [bad]\n", true},
+		{"malformed yaml", "    type: [\n", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := "name: Example\ninputs:\n  token:\n    required: true\n" + tc.input + "  optional:\n    required: true\n    default: value\noutputs:\n  result: {}\nruns:\n  using: node24\n  main: index.js\n"
+			g := newGen(io.Discard, io.Discard, io.Discard)
+			g.rawRegistry = []byte(`[{"slug":"example/action","tags":["v1"]}]`)
+			g.client = &http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Request: req}, nil
+			})}
+			metadata, err := g.fetchRemote()
+			if tc.fail {
+				if err == nil {
+					t.Fatal("invalid metadata must stop generation")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			m := metadata["example/action@v1"]
+			if m == nil || len(m.Inputs) != 2 || !m.Inputs["token"].Required || m.Inputs["optional"].Required || m.Inputs["token"].Deprecated || m.Outputs["result"] == nil || m.Runs.Using != "node24" {
+				t.Fatalf("supported metadata was not preserved: %+v", m)
 			}
 		})
 	}
