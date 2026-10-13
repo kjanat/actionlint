@@ -501,6 +501,14 @@ type localActionMetadataSource struct {
 	content []byte
 }
 
+type actionMetadataParseError struct {
+	path string
+	err  error
+}
+
+func (e *actionMetadataParseError) Error() string { return e.err.Error() }
+func (e *actionMetadataParseError) Unwrap() error { return e.err }
+
 // LocalActionsCache is cache for local actions' metadata. It avoids repeating to find/read/parse
 // local action's metadata file (action.yml).
 // This cache is not available across multiple repositories. One LocalActionsCache instance needs
@@ -609,6 +617,9 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 	}
 
 	dir := filepath.Join(c.proj.RootDir(), filepath.FromSlash(spec))
+	if c.hasExplicitAction(spec) {
+		dir = absPath(dir)
+	}
 	b, f, err := c.readLocalActionMetadataFile(dir)
 	if err != nil {
 		c.writeCache(spec, nil)
@@ -650,7 +661,7 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 			m = err.Error()
 		}
 
-		return nil, false, fmt.Errorf("could not parse action metadata in %q: %s", dir, m)
+		return nil, false, &actionMetadataParseError{path: filepath.Join(dir, f), err: fmt.Errorf("could not parse action metadata in %q: %s", dir, m)}
 	}
 	c.debug("New metadata parsed from action %s: %s action %q", dir, meta.Runs.Using, meta.Name)
 	c.writeCache(spec, &meta)
@@ -660,7 +671,7 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 func (c *LocalActionsCache) readLocalActionMetadataFile(dir string) ([]byte, string, error) {
 	for _, name := range []string{"action.yaml", "action.yml"} {
 		path := filepath.Join(dir, name)
-		if content, ok := c.explicitSources[path]; ok {
+		if content, ok := c.explicitSources[absPath(path)]; ok {
 			if c.onRead != nil {
 				c.onRead(path)
 			}
@@ -691,7 +702,7 @@ func (c *LocalActionsCache) hasExplicitAction(spec string) bool {
 	}
 	dir := filepath.Join(c.proj.RootDir(), filepath.FromSlash(spec))
 	for _, name := range []string{"action.yaml", "action.yml"} {
-		if _, ok := c.explicitSources[filepath.Join(dir, name)]; ok {
+		if _, ok := c.explicitSources[absPath(filepath.Join(dir, name))]; ok {
 			return true
 		}
 	}

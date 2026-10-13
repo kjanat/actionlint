@@ -865,7 +865,11 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *
 		if _, unresolved := errors.AsType[unresolvedLocalActionError](err); unresolved {
 			rule.errs = append(rule.errs, errorAt(action.Uses.Pos, "missing-local-action", err.Error()))
 		} else {
-			rule.Error(action.Uses.Pos, err.Error())
+			finding := errorAt(action.Uses.Pos, rule.Name(), err.Error())
+			if parseError, ok := errors.AsType[*actionMetadataParseError](err); ok {
+				finding.metadataParsePath = parseError.path
+			}
+			rule.errs = append(rule.errs, finding)
 		}
 		return
 	}

@@ -317,15 +317,23 @@ func (r *AnalysisResult) collectDiagnostics() {
 		finding                 actionMetadataFindingKey
 	}
 	seenMetadata := make(map[metadataLocation]bool)
-	declarations := make(map[metadataLocation]bool)
+	type declarationLocation struct {
+		project string
+		finding actionMetadataFindingKey
+	}
+	declarations := make(map[declarationLocation]bool)
+	parseDeclarations := make(map[string]bool)
 	for _, file := range r.files {
 		project := ""
 		if file.source.Project != nil {
 			project = absPath(file.source.Project.RootDir())
 		}
 		for _, finding := range file.errors {
+			if _, action := file.outline.(ActionOutline); action && finding.Kind == "syntax-check" {
+				parseDeclarations[filepath.Clean(file.source.inputPath)] = true
+			}
 			if identity := finding.metadataFinding; identity != nil && identity.declaration && finding.Kind == "action" {
-				declarations[metadataLocation{project, finding.Kind, finding.severity, identity.key}] = true
+				declarations[declarationLocation{project, identity.key}] = true
 			}
 		}
 	}
@@ -337,10 +345,13 @@ func (r *AnalysisResult) collectDiagnostics() {
 		}
 		unique := file.errors[:0]
 		for _, finding := range file.errors {
+			if finding.Kind == "action" && finding.metadataParsePath != "" && parseDeclarations[filepath.Clean(finding.metadataParsePath)] {
+				continue
+			}
 			diagnostic := finding.diagnostic(file.source.Content)
 			if identity := finding.metadataFinding; identity != nil && finding.Kind == "action" {
 				key := metadataLocation{project, finding.Kind, finding.severity, identity.key}
-				if !identity.declaration && declarations[key] {
+				if !identity.declaration && declarations[declarationLocation{project, identity.key}] {
 					continue
 				}
 				if seenMetadata[key] {

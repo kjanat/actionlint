@@ -51,6 +51,8 @@ type Error struct {
 	ignoreOrigin *diagnosticIgnoreOrigin
 	// metadataFinding identifies a reusable validation finding independently of its caller.
 	metadataFinding *actionMetadataFinding
+	// metadataParsePath links caller parse failures to a selected manifest.
+	metadataParsePath string
 	// External analyzer metadata is exposed through Diagnostic, leaving legacy output unchanged.
 	code     string
 	severity string

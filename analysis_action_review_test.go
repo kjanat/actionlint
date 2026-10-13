@@ -96,3 +96,79 @@ func TestExplicitActionSnapshotAndDeduplication(t *testing.T) {
 		}
 	}
 }
+
+func TestRelativeProjectExplicitActionSnapshot(t *testing.T) {
+	for _, projectRoot := range []string{".", "repo"} {
+		for _, disk := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/disk=%t", projectRoot, disk), func(t *testing.T) {
+				cwd := t.TempDir()
+				t.Chdir(cwd)
+				root := filepath.Join(cwd, projectRoot)
+				if err := os.MkdirAll(root, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if disk {
+					writeShellcheckFixture(t, root, "inner/action.yml", "name: stale\nruns: {using: node24}\n")
+				}
+				project, err := NewProject(projectRoot)
+				if err != nil {
+					t.Fatal(err)
+				}
+				workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n"
+				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: cwd, Sources: []SourceUnit{
+					{Path: filepath.Join(projectRoot, "ci.yml"), Content: []byte(workflow), Project: project},
+					{Path: filepath.Join(projectRoot, "inner/action.yml"), Content: []byte(standaloneComposite), Project: project},
+				}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(result.Diagnostics) != 0 {
+					t.Fatalf("explicit valid snapshot should override missing/stale disk metadata: %+v", result.Diagnostics)
+				}
+				if project.RootDir() != projectRoot {
+					t.Fatalf("analysis mutated caller project: root=%q", project.RootDir())
+				}
+			})
+		}
+	}
+}
+
+func TestSelectedActionDeclarationPreference(t *testing.T) {
+	for _, reverse := range []bool{false, true} {
+		for _, tc := range []struct {
+			name, manifest, config, rule, path, severity string
+		}{
+			{"severity", "name: inner\ndescription: inner\nruns: {using: node24}\n", "overrides: [{includes: [inner/action.yml], lint: {rules: {correctness: {action: warn}}}}]", "action", "inner/action.yml", "warning"},
+			{"malformed", "name: [\n", "", "syntax-check", "inner/action.yml", ""},
+			{"malformed-declaration-disabled", "name: [\n", "overrides: [{includes: [inner/action.yml], lint: {rules: {correctness: {syntax-check: off}}}}]", "action", "ci.yml", ""},
+		} {
+			t.Run(fmt.Sprintf("%s/reverse=%t", tc.name, reverse), func(t *testing.T) {
+				root := t.TempDir()
+				cfg, err := ParseConfig([]byte(tc.config))
+				if err != nil {
+					t.Fatal(err)
+				}
+				project := &Project{root: root}
+				workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n"
+				sources := []SourceUnit{
+					{Path: "ci.yml", Content: []byte(workflow), Project: project, Config: cfg},
+					{Path: "inner/action.yml", Content: []byte(tc.manifest), Project: project, Config: cfg},
+				}
+				if reverse {
+					sources[0], sources[1] = sources[1], sources[0]
+				}
+				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: sources})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(result.Diagnostics) != 1 {
+					t.Fatalf("want exactly one visible finding, got %+v", result.Diagnostics)
+				}
+				d := result.Diagnostics[0]
+				if d.Rule != tc.rule || filepath.ToSlash(d.Path) != tc.path || d.Severity != tc.severity {
+					t.Fatalf("want %s at %s with severity %q, got %+v", tc.rule, tc.path, tc.severity, d)
+				}
+			})
+		}
+	}
+}
