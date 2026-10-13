@@ -27,9 +27,10 @@ func newPathPair(path string) (pathPair, error) {
 	if err != nil {
 		return pathPair{}, err
 	}
+	absolute = longPath(absolute)
 	pair := pathPair{real: filepath.ToSlash(absolute), absolute: filepath.ToSlash(absolute)}
 	if resolved, err := filepath.EvalSymlinks(absolute); err == nil {
-		pair.real = filepath.ToSlash(resolved)
+		pair.real = filepath.ToSlash(longPath(resolved))
 	}
 	return pair, nil
 }

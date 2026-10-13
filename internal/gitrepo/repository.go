@@ -157,11 +157,10 @@ func (r *Repository) excludesFile(configured string) string {
 	if !ok {
 		return ""
 	}
-	expanded = filepath.FromSlash(expanded)
-	if filepath.IsAbs(expanded) {
-		return expanded
+	if isAbsolutePath(expanded) {
+		return filepath.FromSlash(expanded)
 	}
-	return filepath.Join(r.WorkTree, expanded)
+	return filepath.Join(r.WorkTree, filepath.FromSlash(expanded))
 }
 
 func xdgConfigHome() (string, bool) {

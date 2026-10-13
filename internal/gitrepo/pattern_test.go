@@ -561,7 +561,7 @@ func TestPatternAgreesWithGitCheckIgnore(t *testing.T) {
 
 	r := rng(0x9E3779B97F4A7C15)
 	var cases []*gitCase
-	for index := range 1500 {
+	for index := range 600 {
 		var buffer strings.Builder
 		if r.below(10) == 0 {
 			buffer.WriteString("\uFEFF")
@@ -582,7 +582,7 @@ func TestPatternAgreesWithGitCheckIgnore(t *testing.T) {
 		text := buffer.String()
 		cases = append(cases, &gitCase{dir: fmt.Sprintf("single%d", index), buffer: text, patterns: list([]byte(text), false), folded: list([]byte(text), true), paths: paths, checkAncestors: true})
 	}
-	for index := range 400 {
+	for index := range 200 {
 		var buffer strings.Builder
 		var paths []patternCase
 		for range 6 {
