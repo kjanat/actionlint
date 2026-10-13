@@ -107,7 +107,6 @@ export function generateManifests(options: GenerateOptions): Manifests {
 		NestedInstallerType: 'portable',
 		NestedInstallerFiles: [{ RelativeFilePath: 'actionlint.exe', PortableCommandAlias: 'actionlint' }],
 		Scope: 'user',
-		InstallerSuccessCodes: [3],
 		UpgradeBehavior: 'install',
 		Commands: ['actionlint'],
 		ReleaseDate: releaseDate,

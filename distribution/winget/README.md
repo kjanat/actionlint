@@ -20,6 +20,8 @@ The `winget` job of the release workflow runs this after the release is publishe
 
 `src/schema.ts` holds Zod schemas transcribed from the 1.12.0 manifest schemas: every pattern, length, enum and uniqueness rule of the fields the generator emits, with unknown keys rejected. The manifest objects are typed from them and parsed through them before they are written.
 
-## Exit codes
+## Executable validation
 
-The installer manifest declares `InstallerSuccessCodes: [3]`, because `actionlint` with no arguments exits 3 outside a repository, and `InstallationMetadata` with `InvocationParameter: -version`, so tooling that runs the installed executable can run `actionlint.exe -version`.
+`kjanat.actionlint` is a ZIP containing a portable CLI, not an executable installer. Running `actionlint` with no arguments outside a Git repository exits 3 because there are no workflows to lint. That exit code is not an installation success code: `InstallerSuccessCodes` applies to installer processes, not to an installed application's own command-line behavior. Do not declare it for this package.
+
+The manifest instead supplies `InstallationMetadata.Files` with `FileType: launch` and `InvocationParameter: -version`, which lets tools invoke the installed `actionlint.exe` successfully without requiring a repository. This metadata does not guarantee that the WinGet automated executable probe uses those arguments. If it still reports `Validation-Executable-Error` after successful installation and a working `actionlint -version`, the remaining check requires administrator review; do not change the CLI's normal exit codes just to satisfy the probe.

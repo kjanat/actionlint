@@ -10,6 +10,7 @@
   },
   "scripts": {
     "generate": "node src/cli.ts generate",
+    "test": "node --test src/*.test.ts",
     "typecheck": "tsc"
   },
   "dependencies": {

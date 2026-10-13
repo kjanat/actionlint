@@ -331,6 +331,10 @@ test('WinGet submits verified bytes once and preserves the permanent attempt mar
 	const f = await wingetFixture(t);
 	await f.submit();
 	assert.equal(f.creationCalls().length, 1);
+	const submission = f.creationCalls()[0];
+	assert.ok(submission);
+	assert.match(submission.body.body, /\/blob\/master\/distribution\/winget\/README\.md/);
+	assert.doesNotMatch(submission.body.body, /\/blob\/v1\.2\.3\/distribution\/winget\//);
 	assert.ok(f.state.refs.has('refs/tags/actionlint-winget-attempt-1.2.3'));
 	assert.ok(!f.state.refs.has('refs/heads/actionlint-winget-submission-lock'));
 	await assert.rejects(f.submit(), /already attempted/);
