@@ -399,11 +399,8 @@ jobs:
           rm .github/workflows/_pre-commit-shellcheck-fixture.yml
           test "${status}" -ne 0
           grep -q SC2086 pre-commit-output.txt
-      - name: Check 60 generated workflows through the hook environment within the startup budget
+      - name: Check 60 generated workflows through the hook within the startup budget
         run: |
-          shellcheck_bin="$(find ~/.cache/pre-commit -type f -path '*/bin/shellcheck' -print -quit)"
-          test -n "${shellcheck_bin}"
-          hook_bin="$(dirname "${shellcheck_bin}")"
           for i in $(seq -w 1 60); do
             cat > ".github/workflows/_pre-commit-shellcheck-bench-${i}.yml" <<FIXTURE
           name: Bench ${i}
@@ -417,16 +414,17 @@ jobs:
                 - run: test -d "\${GITHUB_WORKSPACE}"
           FIXTURE
           done
-          start="$(date +%s)"
           set +e
-          PATH="${hook_bin}:${PATH}" "${hook_bin}/actionlint" pre-commit
+          pre-commit try-repo . actionlint-shellcheck --files .github/workflows/_pre-commit-shellcheck-bench-*.yml --verbose > bench-output.txt 2>&1
           status=$?
           set -e
-          elapsed="$(( $(date +%s) - start ))"
+          cat bench-output.txt
           rm .github/workflows/_pre-commit-shellcheck-bench-*.yml
-          echo "actionlint pre-commit with the hook's shellcheck checked 60 generated workflows in ${elapsed}s, exit ${status}"
-          test "${status}" -le 1
-          test "${elapsed}" -le 30
+          duration="$(sed -n 's/^- duration: \([0-9]*\)\(\.[0-9]*\)\?s$/\1/p' bench-output.txt)"
+          test -n "${duration}"
+          echo "actionlint-shellcheck checked 60 generated workflows in ${duration}s, exit ${status}"
+          test "${status}" -eq 0
+          test "${duration}" -le 30
       - name: Run the deletion-only pre-commit integration test
         env: { ACTIONLINT_PRE_COMMIT_INTEGRATION: "1" }
         run: go test -count=1 -run '^TestPreCommitDeletionOnlyIntegration$' .

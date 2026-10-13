@@ -80,9 +80,6 @@ export function versionVerdict(pinnedOutdated, portLagging) {
 }
 
 /**
- * A pin may name a wrapper-only installer release, go/vX.Y.Z-wrapper.N, which runs the
- * rshellcheck-vX.Y.Z binaries; the comparison uses X.Y.Z.
- *
  * @param {Map<string, string>} files
  * @param {string} latestVersion
  */
