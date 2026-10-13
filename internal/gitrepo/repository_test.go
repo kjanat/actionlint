@@ -1245,3 +1245,49 @@ func TestOpenBackslashExcludesFileMatchesGit(t *testing.T) {
 		})
 	}
 }
+
+func TestOpenNegativeFormatVersionsMatchGit(t *testing.T) {
+	for name, tc := range map[string]struct {
+		version  string
+		bare     bool
+		worktree bool
+	}{
+		"minus two bare":     {version: "-2", bare: true},
+		"minus two worktree": {version: "-2", worktree: true},
+		"minus one bare":     {version: "-1", bare: true},
+		"minus one worktree": {version: "-1", worktree: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			fixture := newTestRepo(t)
+			elsewhere := filepath.Join(fixture.home, "elsewhere")
+			if err := os.MkdirAll(elsewhere, 0o750); err != nil {
+				t.Fatal(err)
+			}
+			fixture.git("config", "core.repositoryformatversion", tc.version)
+			if tc.bare {
+				fixture.git("config", "core.bare", "true")
+			}
+			if tc.worktree {
+				fixture.git("config", "core.worktree", filepath.ToSlash(elsewhere))
+			}
+			repo := fixture.open()
+			theirsBare, _, err := gitIn(t, fixture.root, "rev-parse", "--is-bare-repository")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ours := repo.WorkTree == ""; ours != (theirsBare == "true") {
+				t.Fatalf("bare: ours %v, git %s", ours, theirsBare)
+			}
+			if repo.WorkTree == "" {
+				return
+			}
+			theirs, _, err := gitIn(t, fixture.root, "rev-parse", "--show-toplevel")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ours := filepath.ToSlash(resolvedPath(t, repo.WorkTree)); ours != filepath.ToSlash(resolvedPath(t, theirs)) {
+				t.Fatalf("work tree: ours %s, git %s", ours, theirs)
+			}
+		})
+	}
+}
