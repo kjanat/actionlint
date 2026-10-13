@@ -152,6 +152,12 @@ jobs:
           commit_email: ${{ vars.COMMIT_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: Update to ${{ github.event.release.tag_name }}
+  pypi:
+    name: Publish PyPI wheels
+    needs: verify
+    permissions: { contents: read, attestations: read, id-token: write }
+    uses: $/.github/workflows/pypi-release.yml
+    with: { tag: "${{ github.event.release.tag_name }}" }
   winget:
     name: Submit verified WinGet manifests
     needs: verify
@@ -307,10 +313,11 @@ jobs:
         uses: ./.published-action-test
   action-tags:
     name: Update moving Action references
-    needs: [verify, npm, distributions, docker, action-smoke]
+    needs: [verify, npm, distributions, pypi, docker, action-smoke]
     if: >-
       always() && needs.verify.result == 'success' && needs.npm.result == 'success' && needs.docker.result == 'success' &&
-      needs.action-smoke.result == 'success' && contains(fromJSON('["success", "skipped"]'), needs.distributions.result)
+      needs.action-smoke.result == 'success' && contains(fromJSON('["success", "skipped"]'), needs.distributions.result) &&
+      contains(fromJSON('["success", "skipped"]'), needs.pypi.result)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions: { contents: write }

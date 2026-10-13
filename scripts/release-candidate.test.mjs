@@ -286,12 +286,19 @@ await writeFile(join(directory, 'SHA256SUMS'), createHash('sha256').update(code)
 			await writeFile(join(assets, `${name}.tar`), 'OCI archive fixture');
 			await writeFile(join(assets, `${name}.digest`), `sha256:${'a'.repeat(64)}\n`);
 		}
+		const wheel = `actionlint_kjanat-${version}-py3-none-manylinux_2_17_x86_64.whl`;
+		await writeFile(join(assets, wheel), 'wheel fixture');
 		const manifest = await writeManifest(root, assets, { version, source, candidate }, {
 			GITHUB_REPOSITORY: 'kjanat/actionlint',
 			GITHUB_RUN_ID: '123',
 			GITHUB_RUN_ATTEMPT: '2',
 		});
 		assert.deepEqual(JSON.parse(await readFile(join(assets, manifestName), 'utf8')), manifest);
+		assert.deepEqual(manifest.assets.find((asset) => asset.name === wheel), {
+			name: wheel,
+			size: 13,
+			sha256: createHash('sha256').update('wheel fixture').digest('hex'),
+		});
 		await verifyCandidate(root, assets, manifest);
 		assert.equal(git('show', `${candidate}:.pre-commit-hooks.yaml`), pinPreCommitImage(hooksManifest, version).trim());
 		assert.equal(git('show', `${source}:.pre-commit-hooks.yaml`), hooksManifest.trim());

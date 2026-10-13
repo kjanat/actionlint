@@ -49,6 +49,33 @@ jobs:
       - name: Check pinned go-shellcheck version
         uses: $/.github/actions/shellcheck-versions
         with: { fail-on-outdated: true }
+      - name: Stage stub release archives for the PyPI wheel check
+        run: |
+          stub="${RUNNER_TEMP}/pypi-stub"
+          mkdir -p "${stub}/linux" "${stub}/darwin" "${stub}/windows"
+          printf '#!/bin/sh\necho "actionlint %s"\n' "${VERSION}" > "${stub}/linux/actionlint"
+          cp "${stub}/linux/actionlint" "${stub}/windows/actionlint.exe"
+          {
+            printf '\xcf\xfa\xed\xfe\x07\x00\x00\x01\x03\x00\x00\x00\x02\x00\x00\x00\x01\x00\x00\x00\x18\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            printf '\x32\x00\x00\x00\x18\x00\x00\x00\x01\x00\x00\x00\x00\x00\x0d\x00\x00\x00\x0d\x00\x00\x00\x00\x00'
+          } > "${stub}/darwin/actionlint"
+          chmod 755 "${stub}/linux/actionlint" "${stub}/darwin/actionlint" "${stub}/windows/actionlint.exe"
+          for os in linux darwin windows; do cp LICENSE.txt "${stub}/${os}/"; done
+          for platform in darwin_amd64 darwin_arm64 linux_386 linux_amd64 linux_arm64 linux_armv6; do
+            tar -czf "${stub}/actionlint_${VERSION}_${platform}.tar.gz" -C "${stub}/${platform%%_*}" actionlint LICENSE.txt
+          done
+          for platform in windows_386 windows_amd64 windows_arm64; do
+            (cd "${stub}/windows" && zip -q "${stub}/actionlint_${VERSION}_${platform}.zip" actionlint.exe LICENSE.txt)
+          done
+          (cd "${stub}" && sha256sum -- *.tar.gz *.zip > "actionlint_${VERSION}_checksums.txt")
+          {
+            echo "PYPI_ASSETS=${stub}"
+            echo "PYPI_OUT=${RUNNER_TEMP}/pypi-stub-wheels"
+          } >> "${GITHUB_ENV}"
+      - &PypiWheels
+        name: Build the PyPI wheels and run the x86-64 Linux wheel
+        uses: $/.github/actions/pypi-wheels
+        with: { version: "${{ inputs.version }}", assets-dir: "${{ env.PYPI_ASSETS }}", out-dir: "${{ env.PYPI_OUT }}", smoke: manylinux_2_17_x86_64 }
       - name: Validate source and release helpers
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false" }
         run: |
@@ -81,6 +108,13 @@ jobs:
         run: |
           node scripts/release-assets.mjs collect "${RUNNER_TEMP}/actionlint-action/assets"
           cp "${RUNNER_TEMP}/release-notes.md" "${RUNNER_TEMP}/actionlint-action/release-notes.md"
+      - name: Write the PyPI wheels beside the release archives
+        run: |
+          {
+            echo "PYPI_ASSETS=${RUNNER_TEMP}/actionlint-action/assets"
+            echo "PYPI_OUT=${RUNNER_TEMP}/actionlint-action/assets"
+          } >> "${GITHUB_ENV}"
+      - *PypiWheels
       - uses: &Upload actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with: { name: prepared-release, path: "${{ runner.temp }}/actionlint-action", if-no-files-found: error }
   nix:
@@ -156,6 +190,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           shellcheck --version
           exit $LASTEXITCODE
+      - name: Run the prepared Windows x86-64 wheel
+        if: runner.os == 'Windows'
+        uses: $/.github/actions/pypi-wheels
+        with: { version: "${{ inputs.version }}", out-dir: "${{ runner.temp }}/actionlint-action/assets", smoke: win_amd64 }
   container:
     name: Build and test candidate container (${{ matrix.target }})
     needs: prepare

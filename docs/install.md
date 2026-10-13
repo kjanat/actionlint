@@ -5,8 +5,8 @@
 This document describes how to install the [kjanat/actionlint fork](../README.md). Package names matter: several
 registries also provide [rhysd/actionlint][upstream] under the unqualified name `actionlint`.
 
-ShellCheck and Ruff are optional external linters. Standalone archives, Go installs, and npm packages contain
-actionlint only; install `shellcheck` and `ruff` separately on `PATH` to check shell and Python scripts.
+ShellCheck and Ruff are optional external linters. Standalone archives, Go installs, and npm and PyPI packages
+contain actionlint only; install `shellcheck` and `ruff` separately on `PATH` to check shell and Python scripts.
 See [external linter configuration](usage.md#ignore-some-errors).
 
 Images built from this revision bundle both native executables, without requiring Python. The Nix package
@@ -18,7 +18,7 @@ Previously published releases are unchanged and do not include Ruff.
 
 These methods install packages, binaries, or source published by this project.
 
-[Scoop](#scoop) · [WinGet](#winget) · [AUR](#arch-linux) · [Homebrew](#homebrew) · [npm](#npm) · [Archives](#prebuilt-binaries) ·
+[Scoop](#scoop) · [WinGet](#winget) · [AUR](#arch-linux) · [Homebrew](#homebrew) · [npm](#npm) · [PyPI](#pypi) · [Archives](#prebuilt-binaries) ·
 [Download script](#download-script) · [Docker](#docker-image) · [aqua](#aqua) · [mise](#mise) · [Nix](#nix) · [Go](#build-from-source)
 · [pre-commit](#pre-commit) · [GitHub Action](#github-action)
 
@@ -133,6 +133,26 @@ npx @kjanat/actionlint
 The distribution uses platform packages containing the GitHub release binaries. Keep npm's optional
 dependencies enabled, since the launcher needs the package matching your operating system and architecture.
 Linux binaries are statically linked and work with both musl and glibc.
+
+### [PyPI](https://pypi.org/ "pypi.org homepage")
+
+[![PyPI Version][pypi-kjanat-badge]][pypi-kjanat]
+
+[`actionlint-kjanat`][pypi-kjanat] is available on PyPI. Each wheel contains the release binary for one platform;
+installation needs no Go toolchain and no download from GitHub:
+
+```sh
+python -m pip install actionlint-kjanat
+```
+
+Or run it in an isolated environment with [uv][uv-tools]:
+
+```sh
+uvx --from actionlint-kjanat actionlint
+```
+
+Wheels cover macOS (x86_64, arm64), Linux with glibc or musl (i686, x86_64, 32-bit ARM, aarch64) and Windows
+(x86, x86_64, arm64). The [`actionlint-py-kjanat`](#python-pip-and-uv) wrapper is a separate community package.
 
 ### Prebuilt binaries
 
@@ -486,6 +506,8 @@ Until it is merged, use one of the [project-maintained distributions](#project-m
 [npm-package]: https://npm.im/@kjanat/actionlint "npm package for kjanat/actionlint"
 [paru]: https://github.com/Morganamilo/paru "paru AUR helper"
 [pypi-badge]: https://img.shields.io/pypi/v/actionlint-py-kjanat?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMS42OTYgMzAuMDI0Ij48ZyBzdHJva2U9IiNjY2MiIHN0cm9rZS1saW5lam9pbj0iYmV2ZWwiIHN0cm9rZS13aWR0aD0iLjM1NSI%2BPHBhdGggZmlsbD0iI2Y3ZjdmNCIgZD0ibS4xNzggNS45MTIgMTUuNTU1IDUuNjYyTDMxLjUxOSA1LjgzIDE1Ljk2My4xNjd6Ii8%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTE1LjczMyAxMS41NzR2MTguMjgzbDE1Ljc4Ni01Ljc0NlY1LjgzeiIvPjxwYXRoIGZpbGw9IiNlZmVlZWEiIGQ9Im0uMTc4IDUuOTEyIDE1LjU1NSA1LjY2MnYxOC4yODNMLjE3OCAyNC4xOTV6Ii8%2BPC9nPjwvc3ZnPg%3D%3D&color=3775A9
+[pypi-kjanat-badge]: https://img.shields.io/pypi/v/actionlint-kjanat?logo=pypi&logoColor=white&label=PyPI&labelColor=3775A9&color=black
+[pypi-kjanat]: https://pypi.org/project/actionlint-kjanat/ "PyPI package for kjanat/actionlint"
 [pypi-package]: https://pypi.org/project/actionlint-py-kjanat/ "PyPI package for kjanat/actionlint Python wrapper"
 [python-wrapper-pr]: https://github.com/renefritze/actionlint-py-kjanat/pull/1 "PR switching the Python wrapper to kjanat/actionlint"
 [python-wrapper]: https://github.com/renefritze/actionlint-py-kjanat "René Fritze's GitHub repository for the Python wrapper"
