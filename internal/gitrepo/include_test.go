@@ -294,3 +294,50 @@ func TestLoadConfigIncludesUnresolvedGitDir(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadConfigHeadForms(t *testing.T) {
+	for name, head := range map[string]string{
+		"detached":   "",
+		"spaced ref": "ref:\t  refs/heads/feature/x  \n",
+		"other ref":  "ref: refs/remotes/origin/main\n",
+		"junk":       "nonsense\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			fixture := newTestRepo(t)
+			fixture.git("checkout", "--quiet", "-b", "feature/x")
+			fixture.commit()
+			if head == "" {
+				fixture.git("checkout", "--quiet", "--detach")
+			} else {
+				fixture.write(".git/HEAD", head)
+			}
+			writeConfig(t, filepath.Join(fixture.home, "any"), "[core]\n\tany = 1\n")
+			writeConfig(t, filepath.Join(fixture.home, "feature"), "[core]\n\tfeature = 1\n")
+			global := filepath.Join(fixture.home, "gitconfig")
+			writeConfig(t, global, "[includeIf \"onbranch:**\"]\n\tpath = any\n[includeIf \"onbranch:feature/**\"]\n\tpath = feature\n")
+			t.Setenv("GIT_CONFIG_GLOBAL", global)
+			repo, err := Open(fixture.root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if repo == nil {
+				for _, key := range []string{"core.any", "core.feature"} {
+					if fixture.gitBool("config", "--get", key) {
+						t.Errorf("Open found no repository but git includes %s", key)
+					}
+				}
+				return
+			}
+			settings, err := repo.config()
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, key := range []string{"core.any", "core.feature"} {
+				_, ours := settings[key]
+				if theirs := fixture.gitBool("config", "--get", key); ours != theirs {
+					t.Errorf("%s: included by us %v, by git %v", key, ours, theirs)
+				}
+			}
+		})
+	}
+}

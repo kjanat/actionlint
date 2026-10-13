@@ -87,8 +87,11 @@ func headBranch(path string, read func(string)) (string, error) {
 			return "", err
 		}
 		read(path)
-		branch, _ := strings.CutPrefix(filepath.ToSlash(target), "refs/heads/")
-		if strings.HasPrefix(filepath.ToSlash(target), "refs/") {
+		if target = filepath.ToSlash(target); strings.HasPrefix(target, "refs/") {
+			branch, _ := strings.CutPrefix(target, "refs/heads/")
+			if branch == target {
+				branch = ""
+			}
 			return branch, nil
 		}
 	}
@@ -97,7 +100,14 @@ func headBranch(path string, read func(string)) (string, error) {
 		return "", err
 	}
 	read(path)
-	branch, _ := strings.CutPrefix(strings.TrimRight(string(head), "\r\n"), "ref: refs/heads/")
+	ref, ok := strings.CutPrefix(strings.TrimRight(string(head), " \t\r\n"), "ref:")
+	if !ok {
+		return "", nil
+	}
+	branch, ok := strings.CutPrefix(strings.TrimLeft(ref, " \t\r\n"), "refs/heads/")
+	if !ok {
+		return "", nil
+	}
 	return branch, nil
 }
 

@@ -59,6 +59,7 @@ type location struct {
 	dir        string
 	gitDir     string
 	unresolved string
+	gitFile    string
 	bare       bool
 }
 
@@ -113,7 +114,7 @@ func discover(dir string) (*location, error) {
 		gitDir, err := readGitFile(dotGit)
 		switch {
 		case err == nil:
-			return &location{dir: dir, gitDir: gitDir}, nil
+			return &location{dir: dir, gitDir: gitDir, gitFile: dotGit}, nil
 		case errors.Is(err, errGitFileIsDir):
 			ok, err := isGitDirectory(dotGit)
 			if err != nil {
@@ -241,7 +242,7 @@ func isGitDirectory(suspect string) (bool, error) {
 	if !validHead(joinRaw(suspect, "HEAD")) {
 		return false, nil
 	}
-	common, _, err := commonDir(suspect)
+	common, _, _, err := commonDir(suspect)
 	if err != nil {
 		return false, err
 	}
@@ -288,17 +289,17 @@ func hexPrefix(data []byte, length int) bool {
 	return true
 }
 
-func commonDir(gitDir string) (string, bool, error) {
+func commonDir(gitDir string) (string, bool, string, error) {
 	path := joinRaw(gitDir, "commondir")
 	if !exists(path) {
-		return gitDir, false, nil
+		return gitDir, false, "", nil
 	}
 	data, err := os.ReadFile(path)
 	if err == nil && len(data) == 0 {
 		err = errors.New("the file is empty")
 	}
 	if err != nil {
-		return "", false, fmt.Errorf("failed to read %s: %w", path, err)
+		return "", false, "", fmt.Errorf("failed to read %s: %w", path, err)
 	}
 	common, _, _ := strings.Cut(strings.TrimRight(string(data), "\r\n"), "\x00")
 	if common = filepath.FromSlash(common); !isAbsolutePath(common) {
@@ -306,9 +307,9 @@ func commonDir(gitDir string) (string, bool, error) {
 	}
 	resolved, err := filepath.EvalSymlinks(common)
 	if err != nil {
-		return "", false, err
+		return "", false, "", err
 	}
-	return resolved, true, nil
+	return resolved, true, path, nil
 }
 
 func exists(path string) bool {
@@ -318,11 +319,16 @@ func exists(path string) bool {
 
 func open(found *location) (*Repository, error) {
 	repo := &Repository{GitDir: found.gitDir, unresolvedGitDir: found.unresolved, hashLength: 20}
-	common, shared, err := commonDir(found.gitDir)
+	common, shared, commonFile, err := commonDir(found.gitDir)
 	if err != nil {
 		return nil, err
 	}
 	repo.CommonDir = common
+	for _, locator := range []string{found.gitFile, commonFile} {
+		if locator != "" {
+			repo.reads.record(locator)
+		}
+	}
 	format, err := readDiscoveryFormat(repo.GitDir, repo.CommonDir, shared)
 	if err != nil {
 		return nil, err
@@ -383,13 +389,7 @@ func (r *Repository) config() (config, error) {
 	global, ok := os.LookupEnv("GIT_CONFIG_GLOBAL")
 	globals := []string{global}
 	if !ok {
-		globals = nil
-		if xdg, ok := xdgConfigHome(); ok {
-			globals = append(globals, filepath.Join(xdg, "git", "config"))
-		}
-		if home, ok := homeDir(); ok {
-			globals = append(globals, filepath.Join(home, ".gitconfig"))
-		}
+		globals = globalConfigFiles()
 	}
 	for _, file := range globals {
 		if f, err := os.Open(file); err == nil {
@@ -444,6 +444,17 @@ func (r *Repository) excludesFile(values []configValue) (string, bool, error) {
 		}
 	}
 	return path, configured, nil
+}
+
+func globalConfigFiles() []string {
+	var files []string
+	if xdg, ok := xdgConfigHome(); ok {
+		files = append(files, filepath.Join(xdg, "git", "config"))
+	}
+	if home, ok := homeDir(); ok {
+		files = append(files, home+"/.gitconfig")
+	}
+	return files
 }
 
 func xdgConfigHome() (string, bool) {

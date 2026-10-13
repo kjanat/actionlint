@@ -589,3 +589,37 @@ func TestWalkTreeCancelled(t *testing.T) {
 		t.Fatalf("walkTree = %v, want context.Canceled", err)
 	}
 }
+
+func TestExpandedIndexEnvironmentAlternates(t *testing.T) {
+	fixture := sparseFixture(t)
+	objects := filepath.Join(fixture.root, ".git", "objects")
+	moved := filepath.Join(filepath.Dir(fixture.root), "elsewhere", "objects")
+	if err := os.MkdirAll(filepath.Dir(moved), 0750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(objects, moved); err != nil {
+		t.Fatal(err)
+	}
+	for _, dir := range []string{filepath.Join(objects, "info"), filepath.Join(objects, "pack")} {
+		if err := os.MkdirAll(dir, 0750); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("GIT_ALTERNATE_OBJECT_DIRECTORIES", "# comment"+string(os.PathListSeparator)+moved)
+	assertExpandedScripts(t, fixture.compareIndex())
+}
+
+func TestParseAlternates(t *testing.T) {
+	root := t.TempDir()
+	for _, dir := range []string{"relative", "quoted dir", "absolute"} {
+		if err := os.MkdirAll(filepath.Join(root, dir), 0750); err != nil {
+			t.Fatal(err)
+		}
+	}
+	resolved := realPath(root)
+	want := []string{filepath.Join(resolved, "relative"), filepath.Join(resolved, "quoted dir"), filepath.Join(resolved, "absolute")}
+	data := "# comment:relative:\"" + filepath.ToSlash(root) + "/quoted\\040dir\":" + filepath.Join(root, "absolute") + ":" + filepath.Join(root, "missing")
+	if got := parseAlternates(data, ':', resolved); !slices.Equal(got, want) {
+		t.Fatalf("parseAlternates = %q, want %q", got, want)
+	}
+}

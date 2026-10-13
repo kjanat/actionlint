@@ -1031,35 +1031,86 @@ func TestGitPrefixWithoutGit(t *testing.T) {
 	}
 }
 
-func TestPrefixOf(t *testing.T) {
-	for _, tc := range []struct{ goos, exe, want string }{
-		{"linux", "/usr/bin/git", "/usr"},
-		{"linux", "/usr/local/bin/git", "/usr/local"},
-		{"darwin", "/opt/homebrew/bin/git", "/opt/homebrew"},
-		{"linux", "/nix/store/abc-git-2.55.0/bin/git", "/nix/store/abc-git-2.55.0"},
-		{"windows", "C:/Program Files/Git/cmd/git.exe", "C:/Program Files/Git"},
-		{"windows", "C:/Program Files/Git/mingw64/bin/git.exe", "C:/Program Files/Git"},
-		{"windows", "C:/Program Files/Git/clangarm64/bin/git.exe", "C:/Program Files/Git"},
-		{"linux", "/opt/mingw64/bin/git", "/opt/mingw64"},
+func TestInstallationOf(t *testing.T) {
+	for _, tc := range []struct{ goos, exe, prefix, config string }{
+		{"linux", "/usr/bin/git", "/usr", "/etc/gitconfig"},
+		{"linux", "/usr/local/bin/git", "/usr/local", "/usr/local/etc/gitconfig"},
+		{"darwin", "/usr/bin/git", "/usr", "/etc/gitconfig"},
+		{"darwin", "/opt/homebrew/Cellar/git/2.55.0/bin/git", "/opt/homebrew/opt/git", "/opt/homebrew/etc/gitconfig"},
+		{"linux", "/home/linuxbrew/.linuxbrew/Cellar/git/2.55.0/bin/git", "/home/linuxbrew/.linuxbrew/opt/git", "/home/linuxbrew/.linuxbrew/etc/gitconfig"},
+		{"darwin", "/opt/local/bin/git", "/opt/local", "/opt/local/etc/gitconfig"},
+		{"linux", "/nix/store/abc-git-2.55.0/bin/git", "/nix/store/abc-git-2.55.0", "/etc/gitconfig"},
+		{"darwin", "/nix/store/abc-git-2.55.0/bin/git", "/nix/store/abc-git-2.55.0", "/nix/store/abc-git-2.55.0/etc/gitconfig"},
+		{"windows", "C:/Program Files/Git/cmd/git.exe", "C:/Program Files/Git", "C:/Program Files/Git/etc/gitconfig"},
+		{"windows", "C:/Program Files/Git/mingw64/bin/git.exe", "C:/Program Files/Git", "C:/Program Files/Git/etc/gitconfig"},
+		{"windows", "C:/Program Files/Git/clangarm64/bin/git.exe", "C:/Program Files/Git", "C:/Program Files/Git/etc/gitconfig"},
+		{"linux", "/opt/mingw64/bin/git", "/opt/mingw64", "/opt/mingw64/etc/gitconfig"},
 	} {
-		if got := prefixOf(tc.goos, tc.exe); got != tc.want {
-			t.Errorf("prefixOf(%s, %q) = %q, want %q", tc.goos, tc.exe, got, tc.want)
+		got := installationOf(tc.goos, tc.exe)
+		if got.prefix != tc.prefix || got.systemConfig != filepath.FromSlash(tc.config) {
+			t.Errorf("installationOf(%s, %q) = %+v, want prefix %q and config %q", tc.goos, tc.exe, got, tc.prefix, tc.config)
 		}
 	}
 }
 
-func TestSystemConfigFor(t *testing.T) {
-	for _, tc := range []struct{ goos, prefix, want string }{
-		{"linux", "/usr", "/etc/gitconfig"},
-		{"darwin", "/usr", "/etc/gitconfig"},
-		{"linux", "/nix/store/abc-git-2.55.0", "/etc/gitconfig"},
-		{"darwin", "/nix/store/abc-git-2.55.0", filepath.FromSlash("/nix/store/abc-git-2.55.0/etc/gitconfig")},
-		{"linux", "/usr/local", filepath.FromSlash("/usr/local/etc/gitconfig")},
-		{"darwin", "/opt/homebrew", filepath.FromSlash("/opt/homebrew/etc/gitconfig")},
-		{"windows", "C:/Program Files/Git", filepath.FromSlash("C:/Program Files/Git/etc/gitconfig")},
-	} {
-		if got := systemConfigFor(tc.goos, tc.prefix); got != tc.want {
-			t.Errorf("systemConfigFor(%s, %q) = %q, want %q", tc.goos, tc.prefix, got, tc.want)
+func TestGitInstallationResolvesSymlinks(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "usr", "bin", "git")
+	if err := os.MkdirAll(filepath.Dir(target), 0750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(target, []byte("#!/bin/sh\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	custom := filepath.Join(t.TempDir(), "custom", "bin")
+	if err := os.MkdirAll(custom, 0750); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(custom, "git")
+	if runtime.GOOS == "windows" {
+		link += ".exe"
+		target += ".exe"
+		if err := os.Rename(filepath.Join(filepath.Dir(target), "git"), target); err != nil {
+			t.Fatal(err)
 		}
+	}
+	symlink(t, target, link)
+	t.Setenv("PATH", custom)
+	resolved, err := filepath.EvalSymlinks(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := gitPrefix(), filepath.ToSlash(filepath.Dir(filepath.Dir(resolved))); got != want {
+		t.Fatalf("gitPrefix = %q, want %q", got, want)
+	}
+}
+
+func TestReadFilesLocators(t *testing.T) {
+	fixture := newTestRepo(t)
+	worktree := fixture.worktree("wt")
+	repo, err := Open(worktree)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.Index(); err != nil {
+		t.Fatal(err)
+	}
+	got := repo.ReadFiles()
+	for _, want := range []string{filepath.Join(resolvedPath(t, worktree), ".git"), filepath.Join(repo.GitDir, "commondir")} {
+		if !slices.Contains(got, want) {
+			t.Errorf("ReadFiles = %q, missing %q", got, want)
+		}
+	}
+}
+
+func TestOpenEmptyHomeMatchesGit(t *testing.T) {
+	fixture := newTestRepo(t)
+	t.Setenv("HOME", "")
+	t.Setenv("XDG_CONFIG_HOME", "")
+	if err := os.Unsetenv("XDG_CONFIG_HOME"); err != nil {
+		t.Fatal(err)
+	}
+	fixture.compareProbe("core.probe")
+	if got := globalConfigFiles(); !slices.Equal(got, []string{"/.config/git/config", "/.gitconfig"}) {
+		t.Fatalf("globalConfigFiles = %q", got)
 	}
 }

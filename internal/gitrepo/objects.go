@@ -55,6 +55,9 @@ func (r *Repository) openObjectStore(settings config) (*objectStore, error) {
 	var visit func(dir string, depth int)
 	visit = func(dir string, depth int) {
 		alternates := readAlternates(dir)
+		if depth < 0 {
+			alternates = append(environmentAlternates(), alternates...)
+		}
 		if len(alternates) > 0 && depth+1 > alternateMaximumDepth {
 			return
 		}
@@ -99,8 +102,20 @@ func readAlternates(objects string) []string {
 	if err != nil {
 		return nil
 	}
+	return parseAlternates(string(data), '\n', realPath(objects))
+}
+
+func environmentAlternates() []string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil
+	}
+	return parseAlternates(os.Getenv("GIT_ALTERNATE_OBJECT_DIRECTORIES"), os.PathListSeparator, cwd)
+}
+
+func parseAlternates(data string, separator byte, base string) []string {
 	var out []string
-	for rest := string(data); rest != ""; {
+	for rest := data; rest != ""; {
 		var entry string
 		if unquoted, end, ok := unquoteC(rest); ok {
 			entry, rest = unquoted, rest[end:]
@@ -108,7 +123,7 @@ func readAlternates(objects string) []string {
 				rest = rest[1:]
 			}
 		} else {
-			entry, rest, _ = strings.Cut(rest, "\n")
+			entry, rest, _ = strings.Cut(rest, string(separator))
 			if strings.HasPrefix(entry, "#") {
 				continue
 			}
@@ -117,7 +132,7 @@ func readAlternates(objects string) []string {
 			continue
 		}
 		if !filepath.IsAbs(entry) {
-			entry = realPath(objects) + "/" + entry
+			entry = base + "/" + entry
 		}
 		if resolved, err := filepath.EvalSymlinks(entry); err == nil {
 			out = append(out, resolved)
