@@ -375,7 +375,6 @@ jobs:
   pre-commit-shellcheck:
     name: pre-commit ShellCheck integration
     runs-on: ubuntu-latest
-    env: { GH_TOKEN: "${{ github.token }}" }
     steps:
       - *ActCheckNocred
       - parallel: [*Go, *Uv]
@@ -386,6 +385,7 @@ jobs:
       - name: Confirm shellcheck is not on PATH
         run: if command -v shellcheck; then echo "shellcheck is still on PATH; test invalid" >&2; exit 1; fi
       - name: Confirm actionlint-shellcheck reports a fixture's SC2086
+        env: &HookToken { GH_TOKEN: "${{ github.token }}" }
         run: |
           cat > .github/workflows/_pre-commit-shellcheck-fixture.yml <<'FIXTURE'
           name: CI
@@ -401,6 +401,7 @@ jobs:
           test "${status}" -ne 0
           grep -q SC2086 pre-commit-output.txt
       - name: Check 60 generated workflows through the hook within the startup budget
+        env: *HookToken
         run: |
           for i in $(seq -w 1 60); do
             cat > ".github/workflows/_pre-commit-shellcheck-bench-${i}.yml" <<FIXTURE
