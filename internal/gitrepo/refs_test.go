@@ -249,3 +249,14 @@ func reftableBlockRefOnly(data []byte, blockSize int, name string) (refValue, bo
 	value, present, _, err := reftableBlockRef(data[reftableHeaderV1+4:end], 20, name)
 	return value, present, err
 }
+
+func TestLoadConfigReftableWorktreeChain(t *testing.T) {
+	fixture := newTestRepo(t, "--ref-format=reftable", "--initial-branch=main")
+	fixture.commit()
+	worktree := filepath.Join(filepath.Dir(fixture.root), "linked")
+	fixture.git("worktree", "add", "--quiet", "-b", "side", worktree)
+	linked := &testRepo{t: t, root: worktree, home: fixture.home}
+	linked.git("symbolic-ref", "refs/meta/current", "refs/heads/main")
+	linked.git("symbolic-ref", "HEAD", "refs/meta/current")
+	linked.compareBranchIncludes(map[string]bool{"main": true, "any": true})
+}

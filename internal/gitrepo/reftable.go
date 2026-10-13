@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"hash/crc32"
+	"io/fs"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 )
 
 const (
@@ -19,23 +22,15 @@ const (
 )
 
 func (r *Repository) readReftableRef(name string, read func(string)) (refValue, error) {
-	list := filepath.Join(r.GitDir, "reftable", "tables.list")
-	data, err := os.ReadFile(list)
+	dir, key := r.reftableStack(name)
+	tables, err := defaultReftableLoader.load(dir, read)
 	if err != nil {
 		return refValue{}, err
 	}
-	read(list)
-	tables := strings.Fields(string(data))
 	for _, table := range slices.Backward(tables) {
-		table := filepath.Join(r.GitDir, "reftable", table)
-		content, err := os.ReadFile(table)
+		value, present, err := reftableRef(table.data, key)
 		if err != nil {
-			return refValue{}, err
-		}
-		read(table)
-		value, present, err := reftableRef(content, name)
-		if err != nil {
-			return refValue{}, fmt.Errorf("%s: %w", table, err)
+			return refValue{}, fmt.Errorf("%s: %w", table.path, err)
 		}
 		if present {
 			return value, nil
@@ -44,41 +39,156 @@ func (r *Repository) readReftableRef(name string, read func(string)) (refValue, 
 	return refValue{}, nil
 }
 
-func reftableRef(data []byte, name string) (refValue, bool, error) {
-	if len(data) < reftableHeaderV1 || string(data[:4]) != "REFT" {
-		return refValue{}, false, errors.New("not a reftable")
+func (r *Repository) reftableStack(name string) (string, string) {
+	if rest, ok := strings.CutPrefix(name, "worktrees/"); ok {
+		worktree, bare, hasSlash := strings.Cut(rest, "/")
+		if !hasSlash || currentWorktreeRef(bare) {
+			return filepath.Join(r.CommonDir, "worktrees", worktree, "reftable"), bare
+		}
 	}
-	header := reftableHeaderV1
+	if rest, ok := strings.CutPrefix(name, "main-worktree/"); ok && currentWorktreeRef(rest) {
+		return filepath.Join(r.CommonDir, "reftable"), rest
+	}
+	if currentWorktreeRef(name) && r.GitDir != r.CommonDir {
+		return filepath.Join(r.GitDir, "reftable"), name
+	}
+	return filepath.Join(r.CommonDir, "reftable"), name
+}
+
+type reftableTable struct {
+	path string
+	data []byte
+}
+
+type reftableLoader struct {
+	readFile func(string) ([]byte, error)
+	now      func() time.Time
+	sleep    func(time.Duration)
+}
+
+var defaultReftableLoader = reftableLoader{readFile: os.ReadFile, now: time.Now, sleep: time.Sleep}
+
+func (l reftableLoader) load(dir string, read func(string)) ([]reftableTable, error) {
+	list := filepath.Join(dir, "tables.list")
+	deadline := l.now().Add(3 * time.Second)
+	var delay time.Duration
+	var missing error
+	for tries := 1; ; tries++ {
+		if tries > 3 && !l.now().Before(deadline) {
+			return nil, missing
+		}
+		names, listed, err := l.names(list)
+		if err != nil {
+			return nil, err
+		}
+		tables, err := l.open(dir, names)
+		if err == nil {
+			if listed {
+				read(list)
+			}
+			for _, table := range tables {
+				read(table.path)
+			}
+			return tables, nil
+		}
+		if !errors.Is(err, fs.ErrNotExist) {
+			return nil, err
+		}
+		missing = err
+		after, _, err := l.names(list)
+		if err != nil {
+			return nil, err
+		}
+		if slices.Equal(after, names) {
+			return nil, missing
+		}
+		delay += time.Duration(rand.Int64N(int64(delay)+1)) + time.Millisecond
+		l.sleep(delay)
+	}
+}
+
+func (l reftableLoader) names(list string) ([]string, bool, error) {
+	data, err := l.readFile(list)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	var names []string
+	for name := range strings.SplitSeq(string(data), "\n") {
+		if name != "" {
+			names = append(names, name)
+		}
+	}
+	return names, true, nil
+}
+
+func (l reftableLoader) open(dir string, names []string) ([]reftableTable, error) {
+	tables := make([]reftableTable, 0, len(names))
+	for _, name := range names {
+		path := filepath.Join(dir, name)
+		data, err := l.readFile(path)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := reftableLayout(data); err != nil {
+			return nil, fmt.Errorf("%s: %w", path, err)
+		}
+		tables = append(tables, reftableTable{path: path, data: data})
+	}
+	return tables, nil
+}
+
+type reftableShape struct {
+	header     int
+	hashLength int
+	blockSize  int
+	refEnd     int
+}
+
+func reftableLayout(data []byte) (reftableShape, error) {
+	if len(data) < reftableHeaderV1 || string(data[:4]) != "REFT" {
+		return reftableShape{}, errors.New("not a reftable")
+	}
+	shape := reftableShape{header: reftableHeaderV1, hashLength: 20, blockSize: uint24(data[5:])}
 	switch data[4] {
 	case 1:
 	case 2:
-		header = reftableHeaderV2
+		shape.header = reftableHeaderV2
 	default:
-		return refValue{}, false, fmt.Errorf("unsupported reftable version %d", data[4])
+		return reftableShape{}, fmt.Errorf("unsupported reftable version %d", data[4])
 	}
-	blockSize := uint24(data[5:])
-	hashLength := 20
-	if header == reftableHeaderV2 && string(data[reftableHeaderV1:reftableHeaderV2]) == "s256" {
-		hashLength = 32
+	if shape.header == reftableHeaderV2 && string(data[reftableHeaderV1:reftableHeaderV2]) == "s256" {
+		shape.hashLength = 32
 	}
-	refEnd, err := reftableRefSectionEnd(data, header)
+	end, err := reftableRefSectionEnd(data, shape.header)
+	if err != nil {
+		return reftableShape{}, err
+	}
+	shape.refEnd = end
+	return shape, nil
+}
+
+func reftableRef(data []byte, name string) (refValue, bool, error) {
+	shape, err := reftableLayout(data)
 	if err != nil {
 		return refValue{}, false, err
 	}
-	for offset, start := 0, header; start+4 <= refEnd; {
+	for offset, start := 0, shape.header; start+4 <= shape.refEnd; {
 		if data[start] != 'r' {
 			return refValue{}, false, nil
 		}
 		end := offset + uint24(data[start+1:])
-		if end < start+4+2 || end > refEnd || blockSize > 0 && end > offset+blockSize {
+		if end < start+4+2 || end > shape.refEnd || shape.blockSize > 0 && end > offset+shape.blockSize {
 			return refValue{}, false, errors.New("ref block length out of range")
 		}
-		value, present, passed, err := reftableBlockRef(data[start+4:end], hashLength, name)
+		value, present, passed, err := reftableBlockRef(data[start+4:end], shape.hashLength, name)
 		if err != nil || present || passed {
 			return value, present, err
 		}
-		if blockSize > 0 {
-			offset += blockSize
+		if shape.blockSize > 0 {
+			offset += shape.blockSize
 		} else {
 			offset = end
 		}

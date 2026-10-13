@@ -2,12 +2,16 @@ package gitrepo
 
 import (
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"hash/crc32"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 type reftableRecord struct {
@@ -218,8 +222,8 @@ func TestReadReftableRef(t *testing.T) {
 	}
 	var reads []string
 	record := func(path string) { reads = append(reads, path) }
-	if _, err := repo.readReftableRef("HEAD", record); err == nil {
-		t.Fatal("missing tables.list succeeded")
+	if value, err := repo.readReftableRef("HEAD", record); err != nil || value.found || reads != nil {
+		t.Fatalf("missing tables.list = %+v, %v, read %q; want an empty stack", value, err, reads)
 	}
 	write := func(name string, data []byte) {
 		t.Helper()
@@ -228,8 +232,8 @@ func TestReadReftableRef(t *testing.T) {
 		}
 	}
 	write("tables.list", []byte("older.ref\nnewer.ref\n"))
-	if _, err := repo.readReftableRef("HEAD", record); err == nil {
-		t.Fatal("missing table succeeded")
+	if _, err := repo.readReftableRef("HEAD", record); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("missing table: %v", err)
 	}
 	write("older.ref", reftableFile(1, "", reftableRecord{suffix: "HEAD", kind: reftableSymref, value: []byte("refs/heads/old")}))
 	write("newer.ref", reftableFile(1, "", reftableRecord{suffix: "refs/heads/old", kind: 1, value: make([]byte, 20)}))
@@ -238,7 +242,8 @@ func TestReadReftableRef(t *testing.T) {
 	if err != nil || branch != "old" {
 		t.Fatalf("branch = %q, %v", branch, err)
 	}
-	if want := []string{filepath.Join(dir, "tables.list"), filepath.Join(dir, "newer.ref"), filepath.Join(dir, "older.ref"), filepath.Join(dir, "tables.list"), filepath.Join(dir, "newer.ref")}; !slices.Equal(reads, want) {
+	snapshot := []string{filepath.Join(dir, "tables.list"), filepath.Join(dir, "older.ref"), filepath.Join(dir, "newer.ref")}
+	if want := slices.Concat(snapshot, snapshot); !slices.Equal(reads, want) {
 		t.Fatalf("reads = %q, want %q", reads, want)
 	}
 	write("newer.ref", reftableFile(1, "", reftableRecord{suffix: "HEAD", kind: reftableSymref, value: []byte("refs/remotes/origin/x")}))
@@ -252,5 +257,108 @@ func TestReadReftableRef(t *testing.T) {
 	write("newer.ref", []byte("garbage"))
 	if _, err := repo.branch(record); err == nil || !strings.Contains(err.Error(), "newer.ref") {
 		t.Fatalf("garbage table: %v", err)
+	}
+	write("newer.ref", reftableFile(1, "", reftableRecord{suffix: "HEAD", kind: reftableSymref, value: []byte("refs/heads/new")}))
+	write("older.ref", []byte("garbage"))
+	if _, err := repo.branch(record); err == nil || !strings.Contains(err.Error(), "older.ref") {
+		t.Fatalf("a corrupt older table is not reported: %v", err)
+	}
+	if err := os.Remove(filepath.Join(dir, "tables.list")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(dir, "tables.list"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.branch(record); err == nil || errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("an unreadable tables.list: %v", err)
+	}
+}
+
+type fakeReftableFS struct {
+	files map[string][]byte
+	lists [][]byte
+	reads int
+	now   time.Time
+	slept []time.Duration
+}
+
+func (f *fakeReftableFS) loader() reftableLoader {
+	return reftableLoader{
+		readFile: func(path string) ([]byte, error) {
+			if filepath.Base(path) == "tables.list" {
+				list := f.lists[min(f.reads, len(f.lists)-1)]
+				f.reads++
+				return list, nil
+			}
+			if data, ok := f.files[filepath.Base(path)]; ok {
+				return data, nil
+			}
+			return nil, fmt.Errorf("open %s: %w", path, fs.ErrNotExist)
+		},
+		now:   func() time.Time { return f.now },
+		sleep: func(d time.Duration) { f.slept = append(f.slept, d); f.now = f.now.Add(d) },
+	}
+}
+
+func TestReftableLoaderRetries(t *testing.T) {
+	table := reftableFile(1, "", reftableRecord{suffix: "HEAD", kind: reftableSymref, value: []byte("refs/heads/main")})
+	t.Run("unchanged list", func(t *testing.T) {
+		fake := &fakeReftableFS{lists: [][]byte{[]byte("gone.ref\n")}}
+		if _, err := fake.loader().load("dir", func(string) {}); !errors.Is(err, fs.ErrNotExist) || len(fake.slept) != 0 {
+			t.Fatalf("load = %v after %d sleeps, want a missing table without retrying", err, len(fake.slept))
+		}
+	})
+	t.Run("compacted", func(t *testing.T) {
+		fake := &fakeReftableFS{lists: [][]byte{[]byte("gone.ref\n"), []byte("new.ref\n")}, files: map[string][]byte{"new.ref": table}}
+		var reads []string
+		tables, err := fake.loader().load("dir", func(path string) { reads = append(reads, path) })
+		if err != nil || len(tables) != 1 || tables[0].path != filepath.Join("dir", "new.ref") || len(fake.slept) != 1 {
+			t.Fatalf("load = %v, %v after %d sleeps", tables, err, len(fake.slept))
+		}
+		if want := []string{filepath.Join("dir", "tables.list"), filepath.Join("dir", "new.ref")}; !slices.Equal(reads, want) {
+			t.Fatalf("reads = %q, want %q", reads, want)
+		}
+	})
+	t.Run("deadline", func(t *testing.T) {
+		var lists [][]byte
+		for i := range 10000 {
+			lists = append(lists, fmt.Appendf(nil, "gone%d.ref\n", i))
+		}
+		fake := &fakeReftableFS{lists: lists, now: time.Unix(0, 0)}
+		_, err := fake.loader().load("dir", func(string) {})
+		if !errors.Is(err, fs.ErrNotExist) {
+			t.Fatalf("load = %v, want the missing table after the deadline", err)
+		}
+		if len(fake.slept) < 3 || fake.now.Sub(time.Unix(0, 0)) < 3*time.Second {
+			t.Fatalf("gave up after %d sleeps and %v", len(fake.slept), fake.now.Sub(time.Unix(0, 0)))
+		}
+		for i := 1; i < len(fake.slept); i++ {
+			if fake.slept[i] <= fake.slept[i-1] {
+				t.Fatalf("delays do not grow: %v", fake.slept)
+			}
+		}
+	})
+}
+
+func TestReftableStack(t *testing.T) {
+	main := &Repository{GitDir: "common", CommonDir: "common"}
+	linked := &Repository{GitDir: filepath.Join("common", "worktrees", "wt"), CommonDir: "common"}
+	for _, tc := range []struct {
+		repo      *Repository
+		name, dir string
+		key       string
+	}{
+		{main, "HEAD", filepath.Join("common", "reftable"), "HEAD"},
+		{main, "refs/heads/x", filepath.Join("common", "reftable"), "refs/heads/x"},
+		{linked, "HEAD", filepath.Join("common", "worktrees", "wt", "reftable"), "HEAD"},
+		{linked, "refs/bisect/bad", filepath.Join("common", "worktrees", "wt", "reftable"), "refs/bisect/bad"},
+		{linked, "refs/heads/x", filepath.Join("common", "reftable"), "refs/heads/x"},
+		{linked, "main-worktree/HEAD", filepath.Join("common", "reftable"), "HEAD"},
+		{linked, "worktrees/other/HEAD", filepath.Join("common", "worktrees", "other", "reftable"), "HEAD"},
+		{linked, "worktrees/other/refs/heads/x", filepath.Join("common", "reftable"), "worktrees/other/refs/heads/x"},
+	} {
+		if dir, key := tc.repo.reftableStack(tc.name); dir != tc.dir || key != tc.key {
+			t.Errorf("reftableStack(%q) in %s = %s, %s; want %s, %s", tc.name, tc.repo.GitDir, dir, key, tc.dir, tc.key)
+		}
 	}
 }
