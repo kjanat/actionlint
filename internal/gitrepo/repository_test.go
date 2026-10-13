@@ -1092,7 +1092,7 @@ func TestGitPrefixWithoutGit(t *testing.T) {
 	if got := gitPrefix(); got != "/usr" {
 		t.Fatalf("gitPrefix = %q", got)
 	}
-	if got := systemConfigPath(); got != "/etc/gitconfig" {
+	if got := systemConfigPath(); got != filepath.FromSlash("/etc/gitconfig") {
 		t.Fatalf("systemConfigPath = %q", got)
 	}
 }
