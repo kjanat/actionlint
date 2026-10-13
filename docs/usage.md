@@ -6,8 +6,9 @@ This document describes how to use [actionlint](../README.md).
 
 ## `actionlint` command
 
-With no argument, actionlint finds all workflow files in the current repository
-and checks them.
+With no argument, actionlint checks workflows and `action.yml`/`action.yaml`
+manifests in the current repository, including actions that no workflow references.
+Repositories containing only actions are supported too.
 
 ```sh
 actionlint
@@ -31,8 +32,16 @@ Files directly under `.github/workflows` remain workflows, even when named
 `action.yml` or `action.yaml`.
 
 Metadata findings point into the action file. Configuration overrides, rule levels
-and ignores apply to that file. With no paths, discovery still selects workflows
-only; it does not scan for unreferenced actions.
+and ignores apply to that file. Discovery skips `.git`, `node_modules`, `vendor`,
+`.venv`, `venv`, `.cache`, `.worktrees` and `testdata` directories, nested Git repositories,
+and symlinked action files or directories. Use [file exclusions](config.md) to
+omit fixtures or generated actions. Explicit paths can select actions in skipped
+directories; configured file exclusions still apply.
+
+Standalone actions have no known runner, so `executable-bit` is checked only when
+an action is reached through a workflow with a known runner. The Go API's
+`OnRulesCreated` hook applies to workflow inputs only; standalone metadata uses
+the built-in metadata and script checks, without invoking custom workflow rules.
 
 When `-` argument is given, actionlint reads inputs from stdin and checks it as
 workflow source.
@@ -63,7 +72,7 @@ actionlint version
 ```
 
 `check` accepts workflow files, action manifests or a lone `-` for stdin. With no
-paths, it uses the same repository workflow discovery as the root. Directory
+paths, it uses the same repository discovery as the root. Directory
 arguments are not supported. Use `--stdin-filename=action.yml` to check action
 metadata from stdin.
 
@@ -847,7 +856,7 @@ git config set --local hook.actionlint.command actionlint
 git config set --local hook.actionlint.event pre-commit
 ```
 
-Git runs actionlint when you commit. A lint failure blocks the commit. This checks all workflow files in the
+Git runs actionlint when you commit. A lint failure blocks the commit. This checks discovered workflows and actions in the
 working tree, including unstaged edits; it does not check an isolated copy of the staged files.
 
 List the registered hooks and try them before committing:

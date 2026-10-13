@@ -21,7 +21,7 @@ func absPath(path string) string {
 }
 
 // findProjectConfig finds the project to which the given path belongs.
-// A project must be a Git repository and have ".github/workflows" directory.
+// A project must be a Git repository; action-only repositories need no workflows directory.
 func findProjectConfig(path string, skipConfig bool, readFile func(string) ([]byte, error)) (*Project, error) {
 	root := findProjectRoot(path)
 	if root == "" {
@@ -55,10 +55,8 @@ func cachedProjectRoot(path string, roots map[string]string, stat func(string) (
 		if roots != nil {
 			visited = append(visited, d)
 		}
-		if s, err := stat(filepath.Join(d, ".github", "workflows")); err == nil && s.IsDir() {
-			if _, err := stat(filepath.Join(d, ".git")); err == nil { // Note: .git may be a file
-				return remember(d)
-			}
+		if _, err := stat(filepath.Join(d, ".git")); err == nil { // Note: .git may be a file
+			return remember(d)
 		}
 
 		p := filepath.Dir(d)

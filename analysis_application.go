@@ -39,6 +39,7 @@ type AnalysisOptions struct {
 	Verbose         bool
 	Debug           bool
 	LogWriter       io.Writer
+	// OnRulesCreated customizes workflow rules, as in LinterOptions. It is not called for action metadata.
 	OnRulesCreated  func([]Rule) []Rule
 	OnFilesSelected func([]string)
 	// ReadFile reads workflows, local action metadata, reusable workflows, and config.
@@ -177,12 +178,12 @@ func (a *AnalysisSession) selectionLog(args ...any) {
 	}
 }
 
-// Repository analyzes the nearest repository's workflows. An empty dir uses WorkingDir.
+// Repository analyzes the nearest repository's workflows and actions. An empty dir uses WorkingDir.
 func (a *AnalysisSession) Repository(dir string) (*AnalysisResult, error) {
 	if dir == "" {
 		dir = a.cwd
 	}
-	a.selectionLog("Linting all workflow files in repository:", dir)
+	a.selectionLog("Linting workflows and actions in repository:", dir)
 	project, err := a.projects.At(dir)
 	if err != nil {
 		return nil, err
@@ -191,10 +192,21 @@ func (a *AnalysisSession) Repository(dir string) (*AnalysisResult, error) {
 		if found, expected := projectpath.WorkflowTypo(dir); found != "" {
 			return nil, fmt.Errorf("no workflows directory was found: %q looks misspelled; rename it to %q", found, expected)
 		}
-		return nil, fmt.Errorf("no project was found in any parent directories of %q. check workflows directory is put correctly in your Git repository", dir)
+		return nil, fmt.Errorf("no project was found in any parent directories of %q. run actionlint inside a Git repository or provide explicit file paths", dir)
 	}
 	a.selectionLog("Detected project:", project.RootDir())
-	return a.directory(project.WorkflowsDir(), project)
+	paths, err := repositoryPaths(project)
+	if err != nil {
+		return nil, err
+	}
+	if len(paths) == 0 {
+		a.filesSelected(paths)
+		if found, expected := projectpath.WorkflowTypo(dir); found != "" {
+			return nil, fmt.Errorf("no workflows directory was found: %q looks misspelled; rename it to %q", found, expected)
+		}
+		return nil, fmt.Errorf("no workflow or action files were found in %q", project.RootDir())
+	}
+	return a.discoveredFiles(paths, project)
 }
 
 func (a *AnalysisSession) directory(dir string, project *Project) (*AnalysisResult, error) {
@@ -206,6 +218,10 @@ func (a *AnalysisSession) directory(dir string, project *Project) (*AnalysisResu
 		a.filesSelected(paths)
 		return nil, fmt.Errorf("no YAML file was found in %q", dir)
 	}
+	return a.discoveredFiles(paths, project)
+}
+
+func (a *AnalysisSession) discoveredFiles(paths []string, project *Project) (*AnalysisResult, error) {
 	a.selectionLog("Collected", len(paths), "YAML files")
 	result, err := a.Files(paths, project)
 	if result != nil {
@@ -221,6 +237,25 @@ func (a *AnalysisSession) directory(dir string, project *Project) (*AnalysisResu
 		result.Inputs = inputs.list()
 	}
 	return result, err
+}
+
+func repositoryPaths(project *Project) ([]string, error) {
+	paths, err := projectpath.Actions(project.RootDir())
+	if err != nil {
+		return nil, err
+	}
+	workflows := project.WorkflowsDir()
+	if _, err := os.Stat(workflows); err == nil {
+		files, err := workflowPaths(workflows)
+		if err != nil {
+			return nil, err
+		}
+		paths = append(paths, files...)
+	} else if !os.IsNotExist(err) {
+		return nil, err
+	}
+	slices.Sort(paths)
+	return slices.Compact(paths), nil
 }
 
 func workflowPaths(dir string) ([]string, error) {

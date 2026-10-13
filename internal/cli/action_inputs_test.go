@@ -48,3 +48,28 @@ func TestCommandActionInputs(t *testing.T) {
 		}
 	}
 }
+
+func TestCommandDefaultActionDiscovery(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := os.Mkdir(".git", 0700); err != nil {
+		t.Fatal(err)
+	}
+	const manifest = "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo ${{ secrets.TOKEN }}\n      shell: bash\n"
+	if err := os.WriteFile("action.yml", []byte(manifest), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, modern := range []bool{false, true} {
+		args := []string{"--json", "--shellcheck=", "--ruff=", "--no-config"}
+		if modern {
+			args = append([]string{"check"}, args...)
+		}
+		got := testRunCommand("", args...)
+		var report actionlint.CheckResult
+		if err := json.Unmarshal([]byte(got.Stdout), &report); err != nil {
+			t.Fatalf("args=%v: invalid JSON: %v; output=%+v", args, err, got)
+		}
+		if got.Status != 1 || len(report.Diagnostics) != 1 || report.Diagnostics[0].Rule != "action" || report.Diagnostics[0].Path != "action.yml" || len(report.Documents) != 1 {
+			t.Fatalf("args=%v: expected one discovered metadata error, got %+v, report=%+v", args, got, report)
+		}
+	}
+}

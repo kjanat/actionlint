@@ -18,7 +18,7 @@ func isActionInput(path string) bool {
 
 func standaloneActionRule(name string) bool {
 	switch name {
-	case "action", "shellcheck", "ruff", "executable-bit", "deprecated-commands":
+	case "action", "shellcheck", "ruff", "deprecated-commands":
 		return true
 	default:
 		return false
@@ -39,8 +39,11 @@ func visitStandaloneAction(meta *ActionMetadata, rules []Rule, analysis *composi
 			action.standalone = meta
 			action.checkLocalActionMetadata(meta, &ExecAction{Uses: &String{Pos: &Pos{Line: 1, Col: 1}}})
 			action.standalone = nil
-		} else if standaloneActionRule(rule.Name()) {
-			scripts = append(scripts, rule)
+		} else {
+			switch rule.(type) {
+			case *RuleShellcheck, *ruffRule, *RuleDeprecatedCommands:
+				scripts = append(scripts, rule)
+			}
 		}
 	}
 	if strings.EqualFold(meta.Runs.Using, "composite") {

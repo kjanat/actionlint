@@ -37,7 +37,8 @@ type AnalysisRequest struct {
 	// Deprecated: Pyflakes integration was removed. This field is ignored.
 	PyflakesOptions *ExternalCommandOptions
 	IgnorePatterns  IgnorePatterns
-	OnRulesCreated  func([]Rule) []Rule
+	// OnRulesCreated customizes workflow rules, as in LinterOptions. It is not called for action metadata.
+	OnRulesCreated func([]Rule) []Rule
 	// WorkingDir resolves workflow paths in reusable-workflow caches. Empty uses os.Getwd.
 	WorkingDir string
 	// ReadFile reads local action metadata and reusable workflows. Nil uses os.ReadFile.

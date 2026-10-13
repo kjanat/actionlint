@@ -105,12 +105,67 @@ func TestStandaloneActionMixedInputs(t *testing.T) {
 }
 
 func TestStandaloneActionWorkflowFilename(t *testing.T) {
-	result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: filepath.Join(".github", "workflows", "action.yml"), Content: []byte(commandGoodWorkflow)}}})
-	if err != nil || len(result.Diagnostics) != 0 {
-		t.Fatalf("workflow named action.yml failed: result=%+v err=%v", result, err)
+	root := t.TempDir()
+	for _, cwd := range []string{".", ".github", ".github/workflows"} {
+		for _, name := range []string{"action.yml", "action.yaml"} {
+			workingDir := filepath.Join(root, filepath.FromSlash(cwd))
+			path, err := filepath.Rel(workingDir, filepath.Join(root, ".github", "workflows", name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: workingDir, Sources: []SourceUnit{{Path: path, Content: []byte(commandGoodWorkflow)}}})
+			if err != nil || len(result.Diagnostics) != 0 {
+				t.Fatalf("cwd=%s path=%s: workflow failed: result=%+v err=%v", cwd, path, result, err)
+			}
+			if _, ok := result.Documents[0].(WorkflowOutline); !ok {
+				t.Fatalf("cwd=%s path=%s: workflow routed to metadata parser: %#v", cwd, path, result.Documents)
+			}
+		}
 	}
-	if _, ok := result.Documents[0].(WorkflowOutline); !ok {
-		t.Fatalf("workflow incorrectly routed to metadata parser: %#v", result.Documents)
+}
+
+func TestStandaloneActionCustomRules(t *testing.T) {
+	for _, name := range []string{"step-name", "action", "shellcheck", "ruff", "deprecated-commands", "executable-bit"} {
+		t.Run(name, func(t *testing.T) {
+			calls := 0
+			custom := NewRuleBase(name, "custom rule")
+			request := AnalysisRequest{
+				WorkingDir: t.TempDir(),
+				Sources: []SourceUnit{
+					{Path: "action.yml", Content: []byte(standaloneComposite)},
+					{Path: "ci.yml", Content: []byte(commandGoodWorkflow)},
+				},
+				OnRulesCreated: func([]Rule) []Rule {
+					calls++
+					return []Rule{&custom}
+				},
+			}
+			result, err := Analyze(t.Context(), request)
+			if err != nil || len(result.Diagnostics) != 0 || calls != 1 {
+				t.Fatalf("expected hook once for workflow only; calls=%d result=%+v error=%v", calls, result, err)
+			}
+		})
+	}
+}
+
+func TestStandaloneActionExecutableBitRequiresCaller(t *testing.T) {
+	root, _ := executableFixture(t)
+	manifest := strings.Replace(standaloneComposite, "echo ok", "./bad.sh", 1)
+	writeShellcheckFixture(t, root, "action.yml", manifest)
+	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - uses: ./\n"
+	for _, source := range []SourceUnit{{Path: "action.yml", Content: []byte(manifest)}, {Path: "ci.yml", Content: []byte(workflow)}} {
+		source.Project = &Project{root: root}
+		result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{source}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var found bool
+		for _, finding := range result.Diagnostics {
+			found = found || finding.Rule == "executable-bit"
+		}
+		if want := source.Path == "ci.yml"; found != want {
+			t.Fatalf("%s: executable-bit=%v, want %v; diagnostics=%+v", source.Path, found, want, result.Diagnostics)
+		}
 	}
 }
 

@@ -54,7 +54,7 @@ func (l *analysisEngine) check(
 	}
 	cfg, configErr = configForFile(cfg, configPath, root)
 	if configErr != nil {
-		if isActionInput(path) {
+		if isActionInput(configPath) {
 			outline, _ := ParseActionOutline(path, content)
 			return nil, outline, configErr
 		}
@@ -83,7 +83,7 @@ func (l *analysisEngine) check(
 	var all []*Error
 	var outline DocumentOutline
 	var metadata *ActionMetadata
-	if isActionInput(path) {
+	if isActionInput(configPath) {
 		metadata = &ActionMetadata{}
 		err := yaml.Unmarshal(content, metadata)
 		metadata.dir, metadata.file, metadata.src = filepath.Dir(configPath), filepath.Base(configPath), content
@@ -167,7 +167,7 @@ func (l *analysisEngine) check(
 			rules = append(rules, r)
 		}
 
-		if l.onRulesCreated != nil {
+		if l.onRulesCreated != nil && metadata == nil {
 			rules = l.onRulesCreated(rules)
 		}
 
