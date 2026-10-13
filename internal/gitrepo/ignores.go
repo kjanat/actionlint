@@ -24,7 +24,7 @@ func (r *Repository) Ignores() (*Ignores, error) {
 		if file == "" {
 			continue
 		}
-		data, err := readOptional(file)
+		data, err := readNoFollow(file)
 		if err != nil {
 			return nil, err
 		}
@@ -55,7 +55,7 @@ func (i *Ignores) node(dir string) (*ignoreNode, error) {
 	node := &ignoreNode{parent: parent, dir: dir}
 	node.ignored = parent.ignored || parent.matched([]byte(dir), true) == patternPositive
 	if !node.ignored {
-		data, err := readOptional(filepath.Join(i.repo.WorkTree, filepath.FromSlash(dir), ".gitignore"))
+		data, err := readNoFollow(filepath.Join(i.repo.WorkTree, filepath.FromSlash(dir), ".gitignore"))
 		if err != nil {
 			return nil, err
 		}

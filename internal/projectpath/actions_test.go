@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -176,6 +177,26 @@ func TestActionsTrackedInIgnoredDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	if want := []string{filepath.Join(root, "build", "kept", "action.yml")}; !slices.Equal(got, want) {
+		t.Fatalf("Actions = %q, want %q", got, want)
+	}
+}
+
+func TestActionsFoldTrackedPaths(t *testing.T) {
+	root := t.TempDir()
+	git := gitFixture(t, root)
+	git("config", "core.ignoreCase", "true")
+	writeFixture(t, root, ".gitignore", "build/\n")
+	writeFixture(t, root, "build/action.yml", "name: fixture\n")
+	blob, err := exec.CommandContext(t.Context(), "git", "-C", root, "hash-object", "-w", "--", "build/action.yml").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	git("update-index", "--add", "--cacheinfo", "100644,"+strings.TrimSpace(string(blob))+",Build/Action.yml")
+	got, err := Actions(t.Context(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{filepath.Join(root, "build", "action.yml")}; !slices.Equal(got, want) {
 		t.Fatalf("Actions = %q, want %q", got, want)
 	}
 }

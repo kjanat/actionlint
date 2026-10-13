@@ -2,12 +2,14 @@ package gitrepo
 
 import (
 	"bytes"
+	"fmt"
+	"strconv"
 	"strings"
 )
 
 type config map[string]string
 
-func parseConfig(data []byte, into config, onInclude func(condition, path string) error) error {
+func parseConfig(data []byte, visit func(section, name, value string) error) error {
 	data = bytes.TrimPrefix(data, []byte("\xEF\xBB\xBF"))
 	p := configParser{data: data}
 	section := ""
@@ -36,18 +38,8 @@ func parseConfig(data []byte, into config, onInclude func(condition, path string
 			if section == "" {
 				continue
 			}
-			into[section+"."+name] = value
-			if name != "path" || onInclude == nil {
-				continue
-			}
-			if section == "include" {
-				if err := onInclude("", value); err != nil {
-					return err
-				}
-			} else if condition, ok := strings.CutPrefix(section, "includeif."); ok {
-				if err := onInclude(condition, value); err != nil {
-					return err
-				}
+			if err := visit(section, name, value); err != nil {
+				return err
 			}
 		default:
 			p.skipLine()
@@ -56,12 +48,26 @@ func parseConfig(data []byte, into config, onInclude func(condition, path string
 	return nil
 }
 
-func (c config) truthy(key string) bool {
-	switch strings.ToLower(c[key]) {
-	case "true", "yes", "on", "1":
-		return true
+func (c config) boolean(key string) (bool, error) {
+	value, ok := c[key]
+	if !ok {
+		return false, nil
 	}
-	return false
+	return parseBool(value)
+}
+
+func parseBool(value string) (bool, error) {
+	switch strings.ToLower(value) {
+	case "true", "yes", "on":
+		return true, nil
+	case "false", "no", "off", "":
+		return false, nil
+	}
+	number, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return false, fmt.Errorf("bad boolean config value %q", value)
+	}
+	return number != 0, nil
 }
 
 type configParser struct {

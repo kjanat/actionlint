@@ -32,10 +32,11 @@ func Actions(ctx context.Context, root string) ([]string, error) {
 }
 
 type actionDiscovery struct {
-	root    string
-	prefix  string
-	ignores *gitrepo.Ignores
-	tracked []string
+	root       string
+	prefix     string
+	ignores    *gitrepo.Ignores
+	tracked    []string
+	ignoreCase bool
 }
 
 func discoverActions(ctx context.Context, physical string) ([]string, error) {
@@ -55,9 +56,16 @@ func discoverActions(ctx context.Context, physical string) ([]string, error) {
 		if discovery.ignores, err = repo.Ignores(); err != nil {
 			return nil, err
 		}
-		if discovery.tracked, err = repo.TrackedFiles(); err != nil {
+		tracked, err := repo.TrackedFiles()
+		if err != nil {
 			return nil, err
 		}
+		discovery.ignoreCase = repo.IgnoreCase()
+		discovery.tracked = make([]string, 0, len(tracked))
+		for _, path := range tracked {
+			discovery.tracked = append(discovery.tracked, discovery.fold(path))
+		}
+		slices.Sort(discovery.tracked)
 	}
 	return discovery.walk(ctx)
 }
@@ -117,13 +125,26 @@ func (d *actionDiscovery) walk(ctx context.Context) ([]string, error) {
 	return relatives, err
 }
 
+func (d *actionDiscovery) fold(treePath string) string {
+	if !d.ignoreCase {
+		return treePath
+	}
+	folded := []byte(treePath)
+	for i, b := range folded {
+		if 'A' <= b && b <= 'Z' {
+			folded[i] = b + 'a' - 'A'
+		}
+	}
+	return string(folded)
+}
+
 func (d *actionDiscovery) isTracked(treePath string) bool {
-	_, found := slices.BinarySearch(d.tracked, treePath)
+	_, found := slices.BinarySearch(d.tracked, d.fold(treePath))
 	return found
 }
 
 func (d *actionDiscovery) trackedUnder(treePath string) bool {
-	prefix := treePath + "/"
+	prefix := d.fold(treePath) + "/"
 	index := sort.SearchStrings(d.tracked, prefix)
 	return index < len(d.tracked) && strings.HasPrefix(d.tracked[index], prefix)
 }

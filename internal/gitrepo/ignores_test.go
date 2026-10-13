@@ -60,6 +60,31 @@ func TestIgnoresPrecedence(t *testing.T) {
 	}
 }
 
+func TestIgnoresSkipSymlinkedFiles(t *testing.T) {
+	fixture := newTestRepo(t)
+	fixture.write("rules", "linked/\n")
+	if err := os.Symlink("rules", filepath.Join(fixture.root, ".gitignore")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	fixture.write("sub/rules", "deep/\n")
+	if err := os.Symlink("rules", filepath.Join(fixture.root, "sub", ".gitignore")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	ignores, err := fixture.open().Ignores()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"linked", "sub/deep"} {
+		got, err := ignores.Ignored(path, true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := fixture.checkIgnore(path, true); got != want || got {
+			t.Errorf("Ignored(%q) = %v, git says %v", path, got, want)
+		}
+	}
+}
+
 func TestIgnoresCaseFolding(t *testing.T) {
 	fixture := newTestRepo(t)
 	fixture.git("config", "core.ignoreCase", "true")

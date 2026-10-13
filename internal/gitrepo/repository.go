@@ -28,11 +28,11 @@ func Open(dir string) (*Repository, error) {
 	}
 	for {
 		dotGit := filepath.Join(workTree, ".git")
-		info, err := os.Lstat(dotGit)
+		info, err := os.Stat(dotGit)
 		switch {
 		case err == nil:
 			return open(workTree, dotGit, info)
-		case !errors.Is(err, fs.ErrNotExist):
+		case !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, syscall.ENOTDIR):
 			return nil, err
 		}
 		parent := filepath.Dir(workTree)
@@ -76,13 +76,19 @@ func open(workTree, dotGit string, info fs.FileInfo) (*Repository, error) {
 		return nil, err
 	}
 	if common != nil {
-		repo.CommonDir = filepath.Clean(filepath.Join(repo.GitDir, filepath.FromSlash(strings.TrimRight(string(common), "\r\n"))))
+		repo.CommonDir = filepath.FromSlash(strings.TrimRight(string(common), "\r\n"))
+		if !filepath.IsAbs(repo.CommonDir) {
+			repo.CommonDir = filepath.Join(repo.GitDir, repo.CommonDir)
+		}
+		repo.CommonDir = filepath.Clean(repo.CommonDir)
 	}
 	settings, err := repo.config()
 	if err != nil {
 		return nil, err
 	}
-	repo.ignoreCase = settings.truthy("core.ignorecase")
+	if repo.ignoreCase, err = settings.boolean("core.ignorecase"); err != nil {
+		return nil, err
+	}
 	switch format := strings.ToLower(settings["extensions.objectformat"]); format {
 	case "", "sha1":
 	case "sha256":
@@ -90,14 +96,25 @@ func open(workTree, dotGit string, info fs.FileInfo) (*Repository, error) {
 	default:
 		return nil, fmt.Errorf("unknown object format %q", format)
 	}
-	repo.excludes = excludesFile(settings["core.excludesfile"])
+	if configured, ok := settings["core.excludesfile"]; ok {
+		repo.excludes = repo.excludesFile(configured)
+	} else if xdg, ok := xdgConfigHome(); ok {
+		repo.excludes = filepath.Join(xdg, "git", "ignore")
+	}
 	return repo, nil
 }
 
+func (r *Repository) IgnoreCase() bool {
+	return r.ignoreCase
+}
+
 func (r *Repository) config() (config, error) {
-	settings := config{}
 	var files []string
-	if !truthyEnv("GIT_CONFIG_NOSYSTEM") {
+	noSystem, err := parseBool(os.Getenv("GIT_CONFIG_NOSYSTEM"))
+	if err != nil {
+		return nil, fmt.Errorf("GIT_CONFIG_NOSYSTEM: %w", err)
+	}
+	if !noSystem {
 		files = append(files, envOr("GIT_CONFIG_SYSTEM", "/etc/gitconfig"))
 	}
 	if global := os.Getenv("GIT_CONFIG_GLOBAL"); global != "" {
@@ -111,43 +128,40 @@ func (r *Repository) config() (config, error) {
 		}
 	}
 	files = append(files, filepath.Join(r.CommonDir, "config"))
-	ctx, err := newIncludeContext(r.GitDir)
+	ctx, err := newIncludeContext(r.GitDir, r.WorkTree)
 	if err != nil {
 		return nil, err
 	}
-	for _, file := range files {
-		if err := loadConfig(file, settings, ctx, 0); err != nil {
-			return nil, err
-		}
+	settings, err := loadConfigFiles(files, ctx)
+	if err != nil {
+		return nil, err
 	}
-	if settings.truthy("extensions.worktreeconfig") {
-		if err := loadConfig(filepath.Join(r.GitDir, "config.worktree"), settings, ctx, 0); err != nil {
+	worktreeConfig, err := settings.boolean("extensions.worktreeconfig")
+	if err != nil {
+		return nil, err
+	}
+	if worktreeConfig {
+		files = append(files, filepath.Join(r.GitDir, "config.worktree"))
+		if settings, err = loadConfigFiles(files, ctx); err != nil {
 			return nil, err
 		}
 	}
 	return settings, nil
 }
 
-func excludesFile(configured string) string {
+func (r *Repository) excludesFile(configured string) string {
 	if configured == "" {
-		if xdg, ok := xdgConfigHome(); ok {
-			return filepath.Join(xdg, "git", "ignore")
-		}
 		return ""
 	}
-	return expandHome(configured)
-}
-
-func expandHome(path string) string {
-	rest, ok := strings.CutPrefix(path, "~/")
-	if !ok {
-		return filepath.FromSlash(path)
-	}
-	home, ok := homeDir()
+	expanded, ok := expandHome(configured)
 	if !ok {
 		return ""
 	}
-	return filepath.Join(home, filepath.FromSlash(rest))
+	expanded = filepath.FromSlash(expanded)
+	if filepath.IsAbs(expanded) {
+		return expanded
+	}
+	return filepath.Join(r.WorkTree, expanded)
 }
 
 func xdgConfigHome() (string, bool) {
@@ -168,10 +182,6 @@ func envOr(name, fallback string) string {
 	return fallback
 }
 
-func truthyEnv(name string) bool {
-	return config{"env": os.Getenv(name)}.truthy("env")
-}
-
 func readOptional(path string) ([]byte, error) {
 	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
@@ -180,7 +190,16 @@ func readOptional(path string) ([]byte, error) {
 	return data, err
 }
 
-func homeDir() (string, bool) {
-	home, err := os.UserHomeDir()
-	return home, err == nil && home != ""
+func readNoFollow(path string) ([]byte, error) {
+	info, err := os.Lstat(path)
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if info.Mode()&fs.ModeSymlink != 0 {
+		return nil, nil
+	}
+	return readOptional(path)
 }

@@ -82,6 +82,70 @@ func TestOpenReadsConfig(t *testing.T) {
 	}
 }
 
+func TestOpenExcludesFileSettings(t *testing.T) {
+	for name, tc := range map[string]struct{ value, want string }{
+		"empty disables": {"", ""},
+		"relative":       {"mine", "mine"},
+		"nested":         {"config/ignore", filepath.Join("config", "ignore")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			fixture := newTestRepo(t)
+			fixture.git("config", "core.excludesFile", tc.value)
+			want := tc.want
+			if want != "" {
+				want = filepath.Join(fixture.root, want)
+			}
+			if repo := fixture.open(); repo.excludes != want {
+				t.Fatalf("excludes = %q, want %q", repo.excludes, want)
+			}
+		})
+	}
+}
+
+func TestOpenAbsoluteCommonDir(t *testing.T) {
+	fixture := newTestRepo(t)
+	fixture.write("file", "")
+	fixture.git("add", "file")
+	fixture.git("commit", "--quiet", "-m", "Fixture")
+	worktree := filepath.Join(t.TempDir(), "wt")
+	fixture.git("worktree", "add", "--quiet", worktree)
+	linked, err := Open(worktree)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(linked.GitDir, "commondir"), []byte(linked.CommonDir+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	again, err := Open(worktree)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.CommonDir != linked.CommonDir {
+		t.Fatalf("CommonDir = %q, want %q", again.CommonDir, linked.CommonDir)
+	}
+}
+
+func TestOpenSymlinkedGitDir(t *testing.T) {
+	fixture := newTestRepo(t)
+	fixture.write("file", "")
+	fixture.git("add", "file")
+	elsewhere := filepath.Join(t.TempDir(), "metadata")
+	if err := os.Rename(filepath.Join(fixture.root, ".git"), elsewhere); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(elsewhere, filepath.Join(fixture.root, ".git")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	fixture.git("status", "--short")
+	repo := fixture.open()
+	if repo.GitDir != filepath.Join(fixture.root, ".git") {
+		t.Fatalf("GitDir = %q", repo.GitDir)
+	}
+	if got, err := repo.TrackedFiles(); err != nil || len(got) != 1 {
+		t.Fatalf("TrackedFiles = %q, %v", got, err)
+	}
+}
+
 func TestOpenDefaultExcludesFile(t *testing.T) {
 	fixture := newTestRepo(t)
 	repo := fixture.open()
