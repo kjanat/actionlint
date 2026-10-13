@@ -10,14 +10,18 @@ import (
 // Actions discovers manifests without following symlinks or crossing repository
 // boundaries. Skip conventional dependency, cache and test-fixture directories.
 func Actions(root string) ([]string, error) {
+	physical, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return nil, fmt.Errorf("could not resolve action discovery root %q: %w", root, err)
+	}
 	var paths []string
-	workflows := filepath.Join(root, ".github", "workflows")
-	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+	workflows := filepath.Join(physical, ".github", "workflows")
+	err = filepath.WalkDir(physical, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if entry.IsDir() {
-			if path == root {
+			if path == physical {
 				return nil
 			}
 			if path == workflows {
@@ -35,7 +39,11 @@ func Actions(root string) ([]string, error) {
 			return nil
 		}
 		if entry.Type().IsRegular() && (entry.Name() == "action.yml" || entry.Name() == "action.yaml") {
-			paths = append(paths, path)
+			relative, err := filepath.Rel(physical, path)
+			if err != nil {
+				return err
+			}
+			paths = append(paths, filepath.Join(root, relative))
 		}
 		return nil
 	})

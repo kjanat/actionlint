@@ -28,6 +28,10 @@ workflows and actions in one invocation:
 actionlint .github/workflows/ci.yml .github/actions/build/action.yml
 ```
 
+When a selected workflow references a selected action, both use the supplied
+action content. Shared metadata defects are reported once at their declaration;
+caller-specific input errors still point to the workflow's `uses:` step.
+
 Files directly under `.github/workflows` remain workflows, even when named
 `action.yml` or `action.yaml`.
 

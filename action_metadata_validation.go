@@ -13,8 +13,9 @@ type actionMetadataFindingKey struct {
 }
 
 type actionMetadataFinding struct {
-	key   actionMetadataFindingKey
-	visit uint64
+	key         actionMetadataFindingKey
+	visit       uint64
+	declaration bool
 }
 
 func newActionMetadataValidation() *actionMetadataValidation {
@@ -51,7 +52,7 @@ func (rule *RuleAction) replayMetadataFindings(meta *ActionMetadata, action *Exe
 			end := *finding.endPosition
 			finding.endPosition = &end
 		}
-		finding.metadataFinding = &actionMetadataFinding{key, store.visits}
+		finding.metadataFinding = &actionMetadataFinding{key: key, visit: store.visits}
 		rule.errs = append(rule.errs, &finding)
 	}
 }

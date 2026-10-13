@@ -506,6 +506,7 @@ type localActionMetadataSource struct {
 // This cache is not available across multiple repositories. One LocalActionsCache instance needs
 // to be created per one repository.
 type LocalActionsCache struct {
+	explicitSources      map[string][]byte
 	onRead               func(string)
 	onDocument           func(ActionOutline)
 	readFile             func(string) ([]byte, error)
@@ -657,6 +658,15 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 }
 
 func (c *LocalActionsCache) readLocalActionMetadataFile(dir string) ([]byte, string, error) {
+	for _, name := range []string{"action.yaml", "action.yml"} {
+		path := filepath.Join(dir, name)
+		if content, ok := c.explicitSources[path]; ok {
+			if c.onRead != nil {
+				c.onRead(path)
+			}
+			return content, name, nil
+		}
+	}
 	for _, f := range []string{"action.yaml", "action.yml"} {
 		p := filepath.Join(dir, f)
 		b, err := c.readFile(p)
@@ -673,6 +683,19 @@ func (c *LocalActionsCache) readLocalActionMetadataFile(dir string) ([]byte, str
 	}
 
 	return nil, "", nil
+}
+
+func (c *LocalActionsCache) hasExplicitAction(spec string) bool {
+	if c.proj == nil {
+		return false
+	}
+	dir := filepath.Join(c.proj.RootDir(), filepath.FromSlash(spec))
+	for _, name := range []string{"action.yaml", "action.yml"} {
+		if _, ok := c.explicitSources[filepath.Join(dir, name)]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 // LocalActionsCacheFactory is a factory to create LocalActionsCache instances. LocalActionsCache

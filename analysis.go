@@ -218,12 +218,19 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		return workflow.Name.Value, !workflow.Name.ContainsExpression(), nil
 	}}
 	// Initialize shared caches before any analysis goroutines access them.
+	actionContents := make(map[string][]byte)
+	for path, content := range sourceContents {
+		if isActionInput(path) {
+			actionContents[path] = content
+		}
+	}
 	for _, source := range request.Sources {
 		ac, wc := actions.GetCache(source.Project), workflows.GetCache(source.Project)
 		ac.onRead, wc.onRead = inputs.add, inputs.add
 		ac.onDocument = documents.add
 		ac.readFile, wc.readFile = readFile, readFile
 		ac.customReader = request.ReadFile != nil
+		ac.explicitSources = actionContents
 	}
 	group := errgroup.Group{}
 	group.SetLimit(runtime.NumCPU())
@@ -310,6 +317,18 @@ func (r *AnalysisResult) collectDiagnostics() {
 		finding                 actionMetadataFindingKey
 	}
 	seenMetadata := make(map[metadataLocation]bool)
+	declarations := make(map[metadataLocation]bool)
+	for _, file := range r.files {
+		project := ""
+		if file.source.Project != nil {
+			project = absPath(file.source.Project.RootDir())
+		}
+		for _, finding := range file.errors {
+			if identity := finding.metadataFinding; identity != nil && identity.declaration && finding.Kind == "action" {
+				declarations[metadataLocation{project, finding.Kind, finding.severity, identity.key}] = true
+			}
+		}
+	}
 	for i := range r.files {
 		file := &r.files[i]
 		project := ""
@@ -321,6 +340,9 @@ func (r *AnalysisResult) collectDiagnostics() {
 			diagnostic := finding.diagnostic(file.source.Content)
 			if identity := finding.metadataFinding; identity != nil && finding.Kind == "action" {
 				key := metadataLocation{project, finding.Kind, finding.severity, identity.key}
+				if !identity.declaration && declarations[key] {
+					continue
+				}
 				if seenMetadata[key] {
 					continue
 				}

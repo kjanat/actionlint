@@ -38,6 +38,13 @@ func visitStandaloneAction(meta *ActionMetadata, rules []Rule, analysis *composi
 		if action, ok := rule.(*RuleAction); ok {
 			action.standalone = meta
 			action.checkLocalActionMetadata(meta, &ExecAction{Uses: &String{Pos: &Pos{Line: 1, Col: 1}}})
+			for _, finding := range action.errs {
+				key := actionMetadataFindingKey{path: meta.Path(), message: finding.Message}
+				if finding.source != nil {
+					key.line, key.column = finding.Line, finding.Column
+				}
+				finding.metadataFinding = &actionMetadataFinding{key: key, declaration: true}
+			}
 			action.standalone = nil
 		} else {
 			switch rule.(type) {

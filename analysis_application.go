@@ -195,6 +195,11 @@ func (a *AnalysisSession) Repository(dir string) (*AnalysisResult, error) {
 		return nil, fmt.Errorf("no project was found in any parent directories of %q. run actionlint inside a Git repository or provide explicit file paths", dir)
 	}
 	a.selectionLog("Detected project:", project.RootDir())
+	if _, err := os.Stat(project.WorkflowsDir()); os.IsNotExist(err) {
+		if found, expected := projectpath.WorkflowTypo(dir); found != "" {
+			return nil, fmt.Errorf("no workflows directory was found: %q looks misspelled; rename it to %q", found, expected)
+		}
+	}
 	paths, err := repositoryPaths(project)
 	if err != nil {
 		return nil, err
