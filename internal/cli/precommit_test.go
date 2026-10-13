@@ -124,6 +124,20 @@ func TestPreCommitCommandProtectsRepositoryConfig(t *testing.T) {
 	}
 }
 
+func TestPreCommitCommandReportsExplicitConfig(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := os.Mkdir(".git", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile("lint.yaml", []byte("{}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got := testRunCommand("", "pre-commit", "--config", "lint.yaml", "--json")
+	if got.Status != 0 || !strings.Contains(got.Stdout, `"configurations":[{`) || !strings.Contains(got.Stdout, "lint.yaml") || got.Stderr != "" {
+		t.Fatalf("the explicit configuration is missing from the report: %+v", got)
+	}
+}
+
 func TestPreCommitCommandVerbose(t *testing.T) {
 	t.Chdir(t.TempDir())
 	got := testRunCommand("", "pre-commit", "--verbose")

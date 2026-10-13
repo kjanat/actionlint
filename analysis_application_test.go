@@ -361,7 +361,7 @@ func TestAnalysisSessionExplicitConfigInput(t *testing.T) {
 	}
 }
 
-func TestAnalysisSessionEmptySelectionInputs(t *testing.T) {
+func TestAnalysisSessionEmpty(t *testing.T) {
 	root := t.TempDir()
 	config := filepath.Join(root, ".github", "actionlint.yaml")
 	for _, dir := range []string{".git", ".github/workflows"} {
@@ -376,23 +376,46 @@ func TestAnalysisSessionEmptySelectionInputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := session.Files(nil, nil)
+	result, err := session.Empty()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if diff := cmp.Diff([]string{config}, result.Inputs); diff != "" {
-		t.Fatalf("empty selection input mismatch (-want +got):\n%s", diff)
+		t.Fatalf("project config input mismatch (-want +got):\n%s", diff)
 	}
 	if len(result.Configurations) != 1 || result.Configurations[0].File != config || len(result.Diagnostics) != 0 {
-		t.Fatalf("empty selection result: %+v", result)
+		t.Fatalf("project config report: %+v", result)
 	}
-	outside, err := NewAnalysisSession(AnalysisOptions{WorkingDir: t.TempDir()})
+	if result, err := session.Files(nil, nil); err != nil || len(result.Inputs) != 0 || len(result.Configurations) != 0 {
+		t.Fatalf("an empty file selection discovered the project: %+v, %v", result, err)
+	}
+
+	outside := t.TempDir()
+	explicit := filepath.Join(outside, "lint.yaml")
+	if err := os.WriteFile(explicit, []byte("{}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	session, err = NewAnalysisSession(AnalysisOptions{WorkingDir: outside, ConfigFile: explicit})
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = outside.Files(nil, nil)
-	if err != nil || len(result.Inputs) != 0 || len(result.Configurations) != 0 {
-		t.Fatalf("empty selection outside a project: %+v, %v", result, err)
+	result, err = session.Empty()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff([]string{explicit}, result.Inputs); diff != "" {
+		t.Fatalf("explicit config input mismatch (-want +got):\n%s", diff)
+	}
+	if len(result.Configurations) != 1 || result.Configurations[0].File != explicit || !result.Configurations[0].Explicit {
+		t.Fatalf("explicit config report: %+v", result.Configurations)
+	}
+
+	session, err = NewAnalysisSession(AnalysisOptions{WorkingDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result, err := session.Empty(); err != nil || len(result.Inputs) != 0 || len(result.Configurations) != 0 {
+		t.Fatalf("outside a project without a config: %+v, %v", result, err)
 	}
 }
 

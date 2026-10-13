@@ -250,7 +250,7 @@ func (a *AnalysisSession) filesSelected(paths []string) {
 func (a *AnalysisSession) Files(paths []string, project *Project) (*AnalysisResult, error) {
 	a.filesSelected(paths)
 	if len(paths) == 0 {
-		return a.empty(project)
+		return &AnalysisResult{Diagnostics: []Diagnostic{}}, nil
 	}
 	if len(paths) > 1 {
 		a.selectionLog("Linting", len(paths), "files")
@@ -258,18 +258,17 @@ func (a *AnalysisSession) Files(paths []string, project *Project) (*AnalysisResu
 	return a.readFiles(paths, project)
 }
 
-// empty analyzes nothing while recording the configuration of the working directory's project.
-func (a *AnalysisSession) empty(project *Project) (*AnalysisResult, error) {
-	if project == nil {
-		var err error
-		if project, err = a.projects.At(a.cwd); err != nil {
-			return nil, err
-		}
+// Empty analyzes nothing. The result records the selected configuration of WorkingDir, explicit
+// or from its project, as an input with its report.
+func (a *AnalysisSession) Empty() (*AnalysisResult, error) {
+	project, err := a.projects.At(a.cwd)
+	if err != nil {
+		return nil, err
 	}
 	result := &AnalysisResult{Diagnostics: []Diagnostic{}}
 	inputs := &inputFiles{}
 	inputs.add(a.defaultConfigPath)
-	if project != nil {
+	if project != nil || a.defaultConfig != nil {
 		if _, err := a.configForProject(project); err != nil {
 			return nil, err
 		}

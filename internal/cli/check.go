@@ -125,7 +125,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		if options.Verbose {
 			_, _ = fmt.Fprintf(log, "verbose: No workflow files to check from %q\n", options.WorkingDir)
 		}
-		result, err = app.Files(nil, nil)
+		result, err = app.Empty()
 	} else {
 		result, err = analyzeCommand(app, streams.Stdin, c.Paths, !inv.Legacy)
 	}
