@@ -81,9 +81,10 @@ func cacheRestrictedEvents(w *Workflow) []string {
 // RuleCacheWriteUntrusted checks write grants on triggers with restricted cache defaults.
 type RuleCacheWriteUntrusted struct {
 	RuleBase
-	workflow *CacheMode
-	events   []string
-	reported map[*CacheMode]bool
+	workflow  *CacheMode
+	events    []string
+	reported  map[*CacheMode]bool
+	reachable map[*CacheMode][]string
 }
 
 // NewRuleCacheWriteUntrusted creates a cache-write-untrusted rule.
@@ -95,6 +96,14 @@ func NewRuleCacheWriteUntrusted() *RuleCacheWriteUntrusted {
 func (r *RuleCacheWriteUntrusted) VisitWorkflowPre(w *Workflow) error {
 	r.workflow, r.events = w.CacheMode, cacheRestrictedEvents(w)
 	r.reported = map[*CacheMode]bool{}
+	r.reachable = map[*CacheMode][]string{}
+	for _, job := range w.Jobs {
+		mode := effectiveCacheMode(r.workflow, job.CacheMode)
+		access, valid := mode.capabilities()
+		if valid && access&2 != 0 {
+			r.reachable[mode] = append(r.reachable[mode], cacheReachableEvents(r.events, job)...)
+		}
+	}
 	return nil
 }
 
@@ -105,8 +114,17 @@ func (r *RuleCacheWriteUntrusted) VisitJobPre(job *Job) error {
 	if len(r.events) == 0 || !valid || access&2 == 0 || r.reported[mode] {
 		return nil
 	}
+	events := cacheReachableEvents(r.events, job)
+	if len(events) == 0 {
+		return nil
+	}
+	// Include every reachable event sharing this declaration, even when another
+	// job is visited later. Emit at the first reachable job to retain its origin.
+	events = append(events, r.reachable[mode]...)
+	slices.Sort(events)
+	events = slices.Compact(events)
 	r.reported[mode] = true
-	r.Errorf(mode.Pos, "cache-mode %q grants cache writes for low-trust trigger(s) %s. untrusted code or input can poison caches consumed by privileged workflows. use \"read\" or \"none\", or document a reviewed exception with an inline suppression", mode.Kind.String(), sortedQuotes(r.events))
+	r.Errorf(mode.Pos, "cache-mode %q grants cache writes for low-trust trigger(s) %s. untrusted code or input can poison caches consumed by privileged workflows. use \"read\" or \"none\", or document a reviewed exception with an inline suppression", mode.Kind.String(), sortedQuotes(events))
 	return nil
 }
 
@@ -139,7 +157,11 @@ func (r *RuleCacheCallUnrestricted) VisitJobPre(job *Job) error {
 			return nil
 		}
 	}
-	r.Errorf(call.Uses.Pos, "reusable workflow call %q has no explicit cache access limit for low-trust trigger(s) %s. the callee can request writes despite the trigger's read-only default. set \"cache-mode: read\" or \"cache-mode: none\" on this job or workflow", call.Uses.Value, sortedQuotes(r.events))
+	events := cacheReachableEvents(r.events, job)
+	if len(events) == 0 {
+		return nil
+	}
+	r.Errorf(call.Uses.Pos, "reusable workflow call %q has no explicit cache access limit for low-trust trigger(s) %s. the callee can request writes despite the trigger's read-only default. set \"cache-mode: read\" or \"cache-mode: none\" on this job or workflow", call.Uses.Value, sortedQuotes(events))
 	return nil
 }
 
