@@ -8,6 +8,8 @@ import (
 	"os/user"
 	"path/filepath"
 	"runtime"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -180,7 +182,7 @@ func TestLoadConfigIncludeDepth(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "loop")
 	writeConfig(t, path, "[include]\n\tpath = loop\n")
-	ctx, err := newIncludeContext("", "", "", nil)
+	ctx, err := newIncludeContext("", "", "", nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,6 +339,77 @@ func TestLoadConfigHeadForms(t *testing.T) {
 				if theirs := fixture.gitBool("config", "--get", key); ours != theirs {
 					t.Errorf("%s: included by us %v, by git %v", key, ours, theirs)
 				}
+			}
+		})
+	}
+}
+
+func TestLoadConfigReftableHead(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git required")
+	}
+	if out, err := exec.CommandContext(t.Context(), "git", "-C", t.TempDir(), "init", "--quiet", "--ref-format=reftable").CombinedOutput(); err != nil {
+		t.Skipf("reftable unsupported: %v: %s", err, out)
+	}
+	for name, tc := range map[string]struct {
+		detach bool
+		format string
+	}{"branch": {}, "detached": {detach: true}, "sha256": {format: "--object-format=sha256"}, "sha256 detached": {detach: true, format: "--object-format=sha256"}} {
+		t.Run(name, func(t *testing.T) {
+			detach := tc.detach
+			args := []string{"--ref-format=reftable"}
+			if tc.format != "" {
+				args = append(args, tc.format)
+			}
+			fixture := newTestRepo(t, args...)
+			fixture.git("checkout", "--quiet", "-b", "main")
+			fixture.commit()
+			fixture.git("checkout", "--quiet", "-b", "feature/x")
+			for i := range 3 {
+				fixture.write("file", strconv.Itoa(i))
+				fixture.git("commit", "--quiet", "--all", "-m", "Fixture")
+				fixture.git("checkout", "--quiet", "main")
+				fixture.git("checkout", "--quiet", "feature/x")
+			}
+			if detach {
+				fixture.git("checkout", "--quiet", "--detach")
+			}
+			head, err := os.ReadFile(filepath.Join(fixture.root, ".git", "HEAD"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(head), ".invalid") {
+				t.Fatalf("HEAD stub = %q", head)
+			}
+			conditions := map[string]string{"any": "onbranch:**", "feature": "onbranch:feature/**", "main": "onbranch:main", "invalid": "onbranch:.invalid"}
+			var global strings.Builder
+			for key, condition := range conditions {
+				writeConfig(t, filepath.Join(fixture.home, key), "[core]\n\t"+key+" = 1\n")
+				fmt.Fprintf(&global, "[includeIf %q]\n\tpath = %s\n", condition, key)
+			}
+			path := filepath.Join(fixture.home, "gitconfig")
+			writeConfig(t, path, global.String())
+			t.Setenv("GIT_CONFIG_GLOBAL", path)
+			repo := fixture.open()
+			settings, err := repo.config()
+			if err != nil {
+				t.Fatal(err)
+			}
+			for key := range conditions {
+				_, ours := settings["core."+key]
+				if theirs := fixture.gitBool("config", "--get", "core."+key); ours != theirs {
+					t.Errorf("%s: included by us %v, by git %v", conditions[key], ours, theirs)
+				}
+			}
+			if _, ok := settings["core.feature"]; ok == detach {
+				t.Errorf("onbranch:feature/** included %v with detach %v", ok, detach)
+			}
+			if _, ok := settings["core.invalid"]; ok {
+				t.Error("onbranch:.invalid matched the HEAD stub")
+			}
+			reads := repo.ReadFiles()
+			if !slices.Contains(reads, filepath.Join(repo.GitDir, "reftable", "tables.list")) {
+				t.Errorf("tables.list missing from ReadFiles %q", reads)
 			}
 		})
 	}

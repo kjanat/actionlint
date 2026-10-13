@@ -12,6 +12,7 @@ type discoveryFormat struct {
 	version        int64
 	worktreeConfig bool
 	sha256         bool
+	refStorage     string
 	bare           int
 	workTree       string
 	hasWorkTree    bool
@@ -133,9 +134,11 @@ func (f *discoveryFormat) extension(name string, value configValue) error {
 		if err := value.nonbool(); err != nil {
 			return err
 		}
-		if backend, _, _ := strings.Cut(value.text, "://"); backend != "files" && backend != "reftable" {
+		backend, _, _ := strings.Cut(value.text, "://")
+		if backend != "files" && backend != "reftable" {
 			return fmt.Errorf("invalid value %q", value.text)
 		}
+		f.refStorage = backend
 	case "relativeworktrees", "submodulepathconfig":
 		if _, err = value.boolean(); err != nil {
 			return err

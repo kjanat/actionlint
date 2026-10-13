@@ -24,6 +24,7 @@ type Repository struct {
 	ignoreCase       bool
 	precompose       bool
 	worktreeConfig   bool
+	reftable         bool
 	hashLength       int
 	excludes         string
 	unresolvedGitDir string
@@ -340,6 +341,7 @@ func open(found *location) (*Repository, error) {
 		repo.hashLength = 32
 	}
 	repo.worktreeConfig = format.worktreeConfig
+	repo.reftable = format.refStorage == "reftable"
 	settings, err := repo.config()
 	if err != nil {
 		return nil, err
@@ -360,6 +362,13 @@ func open(found *location) (*Repository, error) {
 		repo.excludes = filepath.Join(xdg, "git", "ignore")
 	}
 	return repo, nil
+}
+
+func (r *Repository) branch(read func(string)) (string, error) {
+	if r.reftable {
+		return reftableBranch(r.GitDir, read)
+	}
+	return headBranch(filepath.Join(r.GitDir, "HEAD"), read)
 }
 
 func (r *Repository) IgnoreCase() bool {
@@ -411,7 +420,7 @@ func (r *Repository) config() (config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse command-line config: %w", err)
 	}
-	ctx, err := newIncludeContext(r.GitDir, r.unresolvedGitDir, r.WorkTree, r.reads.record)
+	ctx, err := newIncludeContext(r.GitDir, r.unresolvedGitDir, r.WorkTree, r.branch, r.reads.record)
 	if err != nil {
 		return nil, err
 	}

@@ -45,7 +45,7 @@ func newPathPair(path string) (pathPair, error) {
 	return pair, nil
 }
 
-func newIncludeContext(gitDir, unresolvedGitDir, workTree string, record func(path string)) (*includeContext, error) {
+func newIncludeContext(gitDir, unresolvedGitDir, workTree string, branch func(read func(string)) (string, error), record func(path string)) (*includeContext, error) {
 	ctx := &includeContext{record: record}
 	if gitDir == "" {
 		return ctx, nil
@@ -66,7 +66,7 @@ func newIncludeContext(gitDir, unresolvedGitDir, workTree string, record func(pa
 			return nil, err
 		}
 	}
-	ctx.branch, err = headBranch(filepath.Join(gitDir, "HEAD"), ctx.read)
+	ctx.branch, err = branch(ctx.read)
 	if err != nil {
 		return nil, err
 	}
