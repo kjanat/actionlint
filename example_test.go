@@ -32,7 +32,7 @@ func ExampleLinter() {
 	// - LintFile: Check the given single file
 	// - LintFiles: Check the given multiple files
 	// - LintDir: Check all workflow files in the given single directory recursively
-	// - LintRepository: Check all workflow files under .github/workflows in the given repository
+	// - LintRepository: Discover and check workflows and action manifests in the given repository
 	// - LintStdin: Check the given workflow content read from STDIN
 	// - Lint: Check the given workflow content assuming the given file path
 	errs, err := l.LintFile(f, nil)

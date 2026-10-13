@@ -44,7 +44,8 @@ func (c *LocalActionsCache) findRepositoryMetadata(spec string, certain bool) (*
 			}
 		}
 	}
-	if c.caseInsensitive && c.base.proj != nil && !c.base.customReader {
+	explicit := c.base.hasExplicitAction(spec)
+	if c.caseInsensitive && c.base.proj != nil && !c.base.customReader && !explicit {
 		local, err := caseInsensitiveRepositoryPathChecked(c.base.proj.RootDir(), spec)
 		if err != nil {
 			if mapped {
@@ -60,7 +61,7 @@ func (c *LocalActionsCache) findRepositoryMetadata(spec string, certain bool) (*
 		}
 		spec = local
 	}
-	if mapped && c.base.proj != nil && !c.base.customReader {
+	if mapped && c.base.proj != nil && !c.base.customReader && !explicit {
 		if err := localaction.CheckSource(c.base.proj.RootDir(), spec); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				return nil, false, missingMappedLocalAction(original, spec)

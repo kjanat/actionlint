@@ -347,6 +347,7 @@ type RuleAction struct {
 	RuleBase
 	cache      *LocalActionsCache
 	validation *actionMetadataValidation
+	standalone *ActionMetadata
 }
 
 // NewRuleAction creates new RuleAction instance.
@@ -468,6 +469,7 @@ func (rule *RuleAction) invalidActionFormat(pos *Pos, spec string, why string) {
 }
 
 func (rule *RuleAction) missingRunsProp(pos *Pos, prop, ty, action, path string) {
+	pos = rule.metadataFieldPosition(pos, "runs", prop)
 	rule.Errorf(pos, `%q is required in "runs" section because %q is a %s action. the action is defined at %q`, prop, action, ty, path)
 }
 
@@ -487,12 +489,14 @@ func (rule *RuleAction) checkInvalidRunsProps(pos *Pos, r *ActionMetadataRuns, t
 			prop == "env" && r.Env != nil
 
 		if invalid {
+			pos := rule.metadataFieldPosition(pos, "runs", prop)
 			rule.Errorf(pos, `%q is not allowed in "runs" section because %q is a %s action. the action is defined at %q`, prop, action, ty, path)
 		}
 	}
 }
 
 func (rule *RuleAction) checkRunsFileExists(file, dir, prop, name string, pos *Pos) {
+	pos = rule.metadataFieldPosition(pos, "runs", prop)
 	f := filepath.FromSlash(file)
 	if f == "" {
 		return
@@ -511,6 +515,7 @@ func (rule *RuleAction) checkLocalDockerActionRuns(r *ActionMetadataRuns, dir, n
 	} else if !isImageOnDockerRegistry(r.Image) {
 		rule.checkRunsFileExists(r.Image, dir, "image", name, pos)
 		if filepath.Base(filepath.FromSlash(r.Image)) != "Dockerfile" {
+			pos := rule.metadataFieldPosition(pos, "runs", "image")
 			rule.Errorf(pos, `the local file %q referenced from "image" key must be named "Dockerfile" in %q action. the action is defined at %q`, r.Image, name, dir)
 		}
 	}
@@ -727,11 +732,13 @@ func (rule *RuleAction) checkLocalJavaScriptActionRuns(r *ActionMetadataRuns, di
 
 	rule.checkRunsFileExists(r.Pre, dir, "pre", name, pos)
 	if r.Pre == "" && r.PreIf != "" {
+		pos := rule.metadataFieldPosition(pos, "runs", "pre-if")
 		rule.Errorf(pos, `"pre" is required when "pre-if" is specified in "runs" section in %q action. the action is defined at %q`, name, dir)
 	}
 
 	rule.checkRunsFileExists(r.Post, dir, "post", name, pos)
 	if r.Post == "" && r.PostIf != "" {
+		pos := rule.metadataFieldPosition(pos, "runs", "post-if")
 		rule.Errorf(pos, `"post" is required when "post-if" is specified in "runs" section in %q action. the action is defined at %q`, name, dir)
 	}
 
@@ -742,7 +749,7 @@ func (rule *RuleAction) checkLocalActionInputs(meta *ActionMetadata, pos *Pos) {
 	for _, i := range meta.Inputs {
 		if i.Deprecated && i.DeprecationMessage == "" {
 			rule.Errorf(
-				pos,
+				rule.metadataFieldPosition(pos, "inputs", i.Name, "deprecationMessage"),
 				"input %q is deprecated but \"deprecationMessage\" is empty in metadata of %q action at %q",
 				i.Name,
 				meta.Name,
@@ -755,6 +762,7 @@ func (rule *RuleAction) checkLocalActionInputs(meta *ActionMetadata, pos *Pos) {
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
 func (rule *RuleAction) checkLocalActionRuns(meta *ActionMetadata, pos *Pos) {
+	pos = rule.metadataFieldPosition(pos, "runs", "using")
 	r := &meta.Runs
 	using := strings.ToLower(r.Using)
 	switch using {
@@ -814,15 +822,15 @@ func (rule *RuleAction) checkDockerAction(uri string, exec *ExecAction) {
 func (rule *RuleAction) checkLocalActionMetadata(meta *ActionMetadata, action *ExecAction) {
 	rule.checkActionMetadataSchema(meta)
 	if meta.Name == "" {
-		rule.Errorf(action.Uses.Pos, "name is required in action metadata %q", meta.Path())
+		rule.Errorf(rule.metadataFieldPosition(action.Uses.Pos, "name"), "name is required in action metadata %q", meta.Path())
 	}
 	if meta.Description == "" {
-		rule.Errorf(action.Uses.Pos, "description is required in metadata of %q action at %q", meta.Name, meta.Path())
+		rule.Errorf(rule.metadataFieldPosition(action.Uses.Pos, "description"), "description is required in metadata of %q action at %q", meta.Name, meta.Path())
 	}
 	if meta.Branding.Icon != "" {
 		if _, ok := BrandingIcons[strings.ToLower(meta.Branding.Icon)]; !ok {
 			rule.Errorf(
-				action.Uses.Pos,
+				rule.metadataFieldPosition(action.Uses.Pos, "branding", "icon"),
 				"incorrect icon name %q at branding.icon in metadata of %q action at %q. see the official document to know the exhaustive list of supported icons: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingicon",
 				meta.Branding.Icon,
 				meta.Name,
@@ -833,7 +841,7 @@ func (rule *RuleAction) checkLocalActionMetadata(meta *ActionMetadata, action *E
 	if meta.Branding.Color != "" {
 		if _, ok := BrandingColors[strings.ToLower(meta.Branding.Color)]; !ok {
 			rule.Errorf(
-				action.Uses.Pos,
+				rule.metadataFieldPosition(action.Uses.Pos, "branding", "color"),
 				"incorrect color %q at branding.icon in metadata of %q action at %q. see the official document to know the exhaustive list of supported colors: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingcolor",
 				meta.Branding.Color,
 				meta.Name,
@@ -857,7 +865,11 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *
 		if _, unresolved := errors.AsType[unresolvedLocalActionError](err); unresolved {
 			rule.errs = append(rule.errs, errorAt(action.Uses.Pos, "missing-local-action", err.Error()))
 		} else {
-			rule.Error(action.Uses.Pos, err.Error())
+			finding := errorAt(action.Uses.Pos, rule.Name(), err.Error())
+			if parseError, ok := errors.AsType[*actionMetadataParseError](err); ok {
+				finding.metadataParsePath = parseError.path
+			}
+			rule.errs = append(rule.errs, finding)
 		}
 		return
 	}

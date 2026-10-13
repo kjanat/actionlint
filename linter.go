@@ -83,9 +83,9 @@ type LinterOptions struct {
 	// WorkingDir is a file path to the current working directory. When this value is empty, os.Getwd
 	// will be used to get a working directory.
 	WorkingDir string
-	// OnRulesCreated is a hook to add or remove the check rules. This function is called on checking
-	// every workflow files. Rules created by Linter instance are passed to the argument and the
-	// function should return the modified rules.
+	// OnRulesCreated adds or removes rules for each workflow input. It receives
+	// the built-in rules and returns the rules to run. Standalone action metadata
+	// uses built-in metadata and script checks and does not call this hook.
 	// Note that syntax errors may be reported even if this function returns nil or an empty slice.
 	OnRulesCreated func([]Rule) []Rule
 	// OnFilesSelected is called with the exact file set passed to LintFiles. The callback receives
@@ -176,13 +176,16 @@ func generateProjectConfig(projects *Projects, dir string) (string, error) {
 	}
 
 	p := filepath.Join(d, "actionlint.yaml")
+	if err := os.MkdirAll(d, 0755); err != nil {
+		return "", fmt.Errorf("could not create config directory %q: %w", d, err)
+	}
 	if err := writeDefaultConfigFile(p); err != nil {
 		return "", err
 	}
 	return p, nil
 }
 
-// LintRepository finds workflows in the nearest project and prints their findings.
+// LintRepository finds workflows and actions in the nearest project and prints their findings.
 // An empty directory starts discovery at LinterOptions.WorkingDir.
 func (l *Linter) LintRepository(dir string) ([]*Error, error) {
 	return l.report(l.Repository(dir))

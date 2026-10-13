@@ -155,5 +155,5 @@ outputs:
     description: Absolute path to the versioned analysis result, retained for later steps even when analysis fails.
   report-sarif:
     description: Absolute path to the SARIF report when requested and analysis completed.
-runs: { using: node24, main: action.mjs }
+runs: { using: node24, main: action.mjs } # actionlint:ignore action -- action.mjs is generated when building the release bundle.
 branding: { icon: check-circle, color: blue }

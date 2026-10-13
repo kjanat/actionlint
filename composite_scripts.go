@@ -39,6 +39,10 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *Step, parents []Rule
 		}
 		return nil
 	}
+	return analysis.visitMetadataScripts(meta, call, parents, active)
+}
+
+func (analysis *compositeAnalyzer) visitMetadataScripts(meta *ActionMetadata, call *Step, parents []Rule, active map[string]bool) error {
 	active[meta.Path()] = true
 	defer delete(active, meta.Path())
 	checkout := analysis.actions.checkoutState()

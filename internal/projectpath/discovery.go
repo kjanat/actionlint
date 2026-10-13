@@ -1,4 +1,4 @@
-// Package projectpath provides hints for unsuccessful workflow discovery.
+// Package projectpath discovers action manifests and provides workflow directory hints.
 package projectpath
 
 import (

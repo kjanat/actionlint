@@ -40,5 +40,6 @@ func suppressionLintNode(node *yaml.Node) *yaml.Node {
 	return configtree.SelectLintRules(node, map[string][]string{
 		"correctness": {"inline-suppression", "deprecated-commands"},
 		"policy":      {"disallow-suppressions"},
+		"external":    {"shellcheck"},
 	})
 }

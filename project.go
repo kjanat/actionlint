@@ -20,8 +20,28 @@ func absPath(path string) string {
 	return path
 }
 
+// physicalSourcePath also resolves aliases above an in-memory file which does
+// not exist yet. Failures other than missing paths retain the original spelling.
+func physicalSourcePath(path string) string {
+	path = absPath(path)
+	parent, suffix := path, ""
+	for {
+		if resolved, err := filepath.EvalSymlinks(parent); err == nil {
+			return filepath.Join(resolved, suffix)
+		} else if !os.IsNotExist(err) {
+			return path
+		}
+		next := filepath.Dir(parent)
+		if next == parent {
+			return path
+		}
+		suffix = filepath.Join(filepath.Base(parent), suffix)
+		parent = next
+	}
+}
+
 // findProjectConfig finds the project to which the given path belongs.
-// A project must be a Git repository and have ".github/workflows" directory.
+// A project must be a Git repository; action-only repositories need no workflows directory.
 func findProjectConfig(path string, skipConfig bool, readFile func(string) ([]byte, error)) (*Project, error) {
 	root := findProjectRoot(path)
 	if root == "" {
@@ -55,10 +75,8 @@ func cachedProjectRoot(path string, roots map[string]string, stat func(string) (
 		if roots != nil {
 			visited = append(visited, d)
 		}
-		if s, err := stat(filepath.Join(d, ".github", "workflows")); err == nil && s.IsDir() {
-			if _, err := stat(filepath.Join(d, ".git")); err == nil { // Note: .git may be a file
-				return remember(d)
-			}
+		if _, err := stat(filepath.Join(d, ".git")); err == nil { // Note: .git may be a file
+			return remember(d)
 		}
 
 		p := filepath.Dir(d)

@@ -16,7 +16,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// SourceUnit is a workflow and the configuration resolved for it by the caller.
+// SourceUnit is a workflow or action manifest and its resolved configuration.
 type SourceUnit struct {
 	Path    string
 	Content []byte
@@ -37,7 +37,8 @@ type AnalysisRequest struct {
 	// Deprecated: Pyflakes integration was removed. This field is ignored.
 	PyflakesOptions *ExternalCommandOptions
 	IgnorePatterns  IgnorePatterns
-	OnRulesCreated  func([]Rule) []Rule
+	// OnRulesCreated customizes workflow rules, as in LinterOptions. It is not called for action metadata.
+	OnRulesCreated func([]Rule) []Rule
 	// WorkingDir resolves workflow paths in reusable-workflow caches. Empty uses os.Getwd.
 	WorkingDir string
 	// ReadFile reads local action metadata and reusable workflows. Nil uses os.ReadFile.
@@ -63,7 +64,7 @@ type analyzedFile struct {
 	source  SourceUnit
 	errors  []*Error
 	rules   []Rule
-	outline WorkflowOutline
+	outline DocumentOutline
 }
 
 type inputFiles struct {
@@ -105,7 +106,7 @@ func (f *inputFiles) addConfig(config *Config, project *Project) {
 	}
 }
 
-// Analyze checks resolved workflows and returns data without rendering diagnostics.
+// Analyze checks resolved workflows and action manifests without rendering diagnostics.
 // On analysis failure, a non-nil result retains findings collected before the failure.
 func Analyze(ctx context.Context, request AnalysisRequest) (*AnalysisResult, error) {
 	return analyze(ctx, request, io.Discard, LogLevelNone)
@@ -217,12 +218,19 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		return workflow.Name.Value, !workflow.Name.ContainsExpression(), nil
 	}}
 	// Initialize shared caches before any analysis goroutines access them.
+	actionContents := make(map[string][]byte)
+	for path, content := range sourceContents {
+		if isActionInput(path) {
+			actionContents[physicalSourcePath(path)] = content
+		}
+	}
 	for _, source := range request.Sources {
 		ac, wc := actions.GetCache(source.Project), workflows.GetCache(source.Project)
 		ac.onRead, wc.onRead = inputs.add, inputs.add
 		ac.onDocument = documents.add
 		ac.readFile, wc.readFile = readFile, readFile
 		ac.customReader = request.ReadFile != nil
+		ac.explicitSources = actionContents
 	}
 	group := errgroup.Group{}
 	group.SetLimit(runtime.NumCPU())
@@ -251,11 +259,18 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	}
 	result.collectDiagnostics()
 	result.Documents = make(DocumentOutlines, 0, len(result.files))
+	explicitActions := make(map[string]bool)
 	for _, file := range result.files {
 		result.Documents = append(result.Documents, file.outline)
+		if _, action := file.outline.(ActionOutline); action {
+			explicitActions[physicalSourcePath(file.source.inputPath)] = true
+		}
 	}
 	for _, document := range documents.list() {
-		result.Documents = append(result.Documents, document.WithPath(relativeAnalysisPath(engine.workingDir, document.DocumentPath())))
+		path := relativeAnalysisPath(engine.workingDir, document.DocumentPath())
+		if !explicitActions[physicalSourcePath(document.DocumentPath())] {
+			result.Documents = append(result.Documents, document.WithPath(path))
+		}
 	}
 	result.Inputs = inputs.list()
 	return result, err
@@ -302,6 +317,26 @@ func (r *AnalysisResult) collectDiagnostics() {
 		finding                 actionMetadataFindingKey
 	}
 	seenMetadata := make(map[metadataLocation]bool)
+	type declarationLocation struct {
+		project string
+		finding actionMetadataFindingKey
+	}
+	declarations := make(map[declarationLocation]bool)
+	parseDeclarations := make(map[string]bool)
+	for _, file := range r.files {
+		project := ""
+		if file.source.Project != nil {
+			project = absPath(file.source.Project.RootDir())
+		}
+		for _, finding := range file.errors {
+			if _, action := file.outline.(ActionOutline); action && finding.Kind == "syntax-check" {
+				parseDeclarations[physicalSourcePath(file.source.inputPath)] = true
+			}
+			if identity := finding.metadataFinding; identity != nil && identity.declaration && finding.Kind == "action" {
+				declarations[declarationLocation{project, identity.key}] = true
+			}
+		}
+	}
 	for i := range r.files {
 		file := &r.files[i]
 		project := ""
@@ -310,9 +345,15 @@ func (r *AnalysisResult) collectDiagnostics() {
 		}
 		unique := file.errors[:0]
 		for _, finding := range file.errors {
+			if finding.Kind == "action" && finding.metadataParsePath != "" && parseDeclarations[physicalSourcePath(finding.metadataParsePath)] {
+				continue
+			}
 			diagnostic := finding.diagnostic(file.source.Content)
 			if identity := finding.metadataFinding; identity != nil && finding.Kind == "action" {
 				key := metadataLocation{project, finding.Kind, finding.severity, identity.key}
+				if !identity.declaration && declarations[declarationLocation{project, identity.key}] {
+					continue
+				}
 				if seenMetadata[key] {
 					continue
 				}
@@ -366,5 +407,5 @@ func CompileIgnorePatterns(patterns []string) (IgnorePatterns, error) {
 	return ignore, nil
 }
 
-// FileCount reports the number of workflows analyzed, including those with no findings.
+// FileCount reports the number of explicit inputs analyzed, including clean files.
 func (r *AnalysisResult) FileCount() int { return len(r.files) }

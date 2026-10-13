@@ -1,5 +1,10 @@
 package actionlint
 
+import (
+	"strconv"
+	"strings"
+)
+
 // Each workflow analysis owns its validation store.
 // Its templates contain no caller state and are also shared with nested composites.
 type actionMetadataValidation struct {
@@ -12,9 +17,24 @@ type actionMetadataFindingKey struct {
 	line, column  int
 }
 
+func metadataFindingKey(meta *ActionMetadata, finding *Error) actionMetadataFindingKey {
+	// Validation messages may embed the metadata filename or directory. Normalize
+	// those spellings for identity without changing the user-facing source path.
+	message := strings.NewReplacer(
+		strconv.Quote(meta.Path()), strconv.Quote(physicalSourcePath(meta.Path())),
+		strconv.Quote(meta.Dir()), strconv.Quote(physicalSourcePath(meta.Dir())),
+	).Replace(finding.Message)
+	key := actionMetadataFindingKey{path: physicalSourcePath(meta.Path()), message: message}
+	if finding.source != nil {
+		key.line, key.column = finding.Line, finding.Column
+	}
+	return key
+}
+
 type actionMetadataFinding struct {
-	key   actionMetadataFindingKey
-	visit uint64
+	key         actionMetadataFindingKey
+	visit       uint64
+	declaration bool
 }
 
 func newActionMetadataValidation() *actionMetadataValidation {
@@ -37,11 +57,9 @@ func (rule *RuleAction) replayMetadataFindings(meta *ActionMetadata, action *Exe
 	store.visits++
 	for _, template := range templates {
 		finding := *template
-		key := actionMetadataFindingKey{path: path, message: finding.Message}
+		key := metadataFindingKey(meta, &finding)
 		if finding.source == nil {
 			finding.Line, finding.Column = action.Uses.Pos.Line, action.Uses.Pos.Col
-		} else {
-			key.line, key.column = finding.Line, finding.Column
 		}
 		if finding.ignoreOrigin != nil {
 			origin := *finding.ignoreOrigin
@@ -51,7 +69,7 @@ func (rule *RuleAction) replayMetadataFindings(meta *ActionMetadata, action *Exe
 			end := *finding.endPosition
 			finding.endPosition = &end
 		}
-		finding.metadataFinding = &actionMetadataFinding{key, store.visits}
+		finding.metadataFinding = &actionMetadataFinding{key: key, visit: store.visits}
 		rule.errs = append(rule.errs, &finding)
 	}
 }

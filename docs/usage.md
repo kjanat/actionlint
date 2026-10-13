@@ -6,8 +6,9 @@ This document describes how to use [actionlint](../README.md).
 
 ## `actionlint` command
 
-With no argument, actionlint finds all workflow files in the current repository
-and checks them.
+With no argument, actionlint checks workflows and `action.yml`/`action.yaml`
+manifests in the current repository, including actions that no workflow references.
+Repositories containing only actions are supported too.
 
 ```sh
 actionlint
@@ -18,6 +19,33 @@ When paths to YAML workflow files are given as arguments, actionlint checks them
 ```sh
 actionlint path/to/workflow1.yaml path/to/workflow2.yaml
 ```
+
+Explicit `action.yml` and `action.yaml` inputs are checked as action metadata,
+including composite steps and their ShellCheck and Ruff findings. You can mix
+workflows and actions in one invocation:
+
+```sh
+actionlint .github/workflows/ci.yml .github/actions/build/action.yml
+```
+
+When a selected workflow references a selected action, both use the supplied
+action content. Shared metadata defects are reported once at their declaration;
+caller-specific input errors still point to the workflow's `uses:` step.
+
+Files directly under `.github/workflows` remain workflows, even when named
+`action.yml` or `action.yaml`.
+
+Metadata findings point into the action file. Configuration overrides, rule levels
+and ignores apply to that file. Discovery skips `.git`, `node_modules`, `vendor`,
+`.venv`, `venv`, `.cache`, `.worktrees` and `testdata` directories, nested Git repositories,
+and symlinked action files or directories. Use [file exclusions](config.md) to
+omit fixtures or generated actions. Explicit paths can select actions in skipped
+directories; configured file exclusions still apply.
+
+Standalone actions have no known runner, so `executable-bit` is checked only when
+an action is reached through a workflow with a known runner. The Go API's
+`OnRulesCreated` hook applies to workflow inputs only; standalone metadata uses
+the built-in metadata and script checks, without invoking custom workflow rules.
 
 When `-` argument is given, actionlint reads inputs from stdin and checks it as
 workflow source.
@@ -47,9 +75,10 @@ actionlint doctor
 actionlint version
 ```
 
-`check` accepts workflow files or a lone `-` for stdin. With no paths, it uses the
-same repository workflow discovery as the root. Directory arguments and standalone
-action-manifest linting are not added by the command redesign.
+`check` accepts workflow files, action manifests or a lone `-` for stdin. With no
+paths, it uses the same repository discovery as the root. Directory
+arguments are not supported. Use `--stdin-filename=action.yml` to check action
+metadata from stdin.
 
 An existing regular file named `check`, `config`, `rules`, `doctor`, `completion`,
 `version` or `help` takes precedence over the corresponding root command. Use `--`
@@ -831,7 +860,7 @@ git config set --local hook.actionlint.command actionlint
 git config set --local hook.actionlint.event pre-commit
 ```
 
-Git runs actionlint when you commit. A lint failure blocks the commit. This checks all workflow files in the
+Git runs actionlint when you commit. A lint failure blocks the commit. This checks discovered workflows and actions in the
 working tree, including unstaged edits; it does not check an isolated copy of the staged files.
 
 List the registered hooks and try them before committing:

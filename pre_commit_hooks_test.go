@@ -92,6 +92,7 @@ func TestPreCommitDependencyChangesRecheckWorkflows(t *testing.T) {
 				t.Fatalf("valid baseline failed: %+v", diagnostics)
 			}
 			want := "name is required"
+			wantPath := ".github/workflows/ci.yml"
 			switch kind {
 			case "deleted-callee":
 				if err := os.Remove(filepath.Join(root, ".github/workflows/callee.yml")); err != nil {
@@ -106,12 +107,13 @@ func TestPreCommitDependencyChangesRecheckWorkflows(t *testing.T) {
 				want = "invalid-runner-label"
 			default:
 				write(actionPath, strings.TrimPrefix(action, "name: Build\n"))
+				wantPath = actionPath
 			}
 			diagnostics := run()
 			if !slices.ContainsFunc(diagnostics, func(d Diagnostic) bool {
-				return strings.Contains(d.Message, want) && filepath.Base(d.Path) == "ci.yml"
+				return strings.Contains(d.Message, want) && filepath.ToSlash(d.Path) == wantPath
 			}) {
-				t.Fatalf("expected a ci.yml diagnostic containing %q after changing a dependency: %+v", want, diagnostics)
+				t.Fatalf("expected a %s diagnostic containing %q after changing a dependency: %+v", wantPath, want, diagnostics)
 			}
 		})
 	}

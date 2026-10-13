@@ -33,7 +33,7 @@
     }
   },
   "dependencies": {
-    "feather-icons": "4.29.2"
+    "feather-icons": "4.28.0"
   },
   "devDependencies": {
     "@actions/github-script": "github:actions/github-script",

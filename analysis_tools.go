@@ -16,7 +16,7 @@ type ExternalToolRequirements struct {
 }
 
 // RequiredTools resolves configuration for each input without reading workflows or
-// starting analyzers. Empty paths discovers the working directory's workflows.
+// starting analyzers. Empty paths discovers the working directory's workflows and actions.
 // Relative paths resolve against the session's WorkingDir; absolute paths are unchanged.
 func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirements, error) {
 	var needed ExternalToolRequirements
@@ -27,7 +27,7 @@ func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirement
 			return needed, err
 		}
 		if project != nil {
-			paths, err = workflowPaths(project.WorkflowsDir())
+			paths, err = repositoryPaths(project)
 			if err != nil {
 				return needed, err
 			}
