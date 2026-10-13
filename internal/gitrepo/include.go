@@ -45,7 +45,7 @@ func newPathPair(path string) (pathPair, error) {
 	return pair, nil
 }
 
-func newIncludeContext(gitDir, workTree string, record func(path string)) (*includeContext, error) {
+func newIncludeContext(gitDir, unresolvedGitDir, workTree string, record func(path string)) (*includeContext, error) {
 	ctx := &includeContext{record: record}
 	if gitDir == "" {
 		return ctx, nil
@@ -53,6 +53,13 @@ func newIncludeContext(gitDir, workTree string, record func(path string)) (*incl
 	var err error
 	if ctx.gitDir, err = newPathPair(gitDir); err != nil {
 		return nil, err
+	}
+	if unresolvedGitDir != "" {
+		absolute, err := filepath.Abs(unresolvedGitDir)
+		if err != nil {
+			return nil, err
+		}
+		ctx.gitDir.absolute = filepath.ToSlash(longPath(absolute))
 	}
 	if workTree != "" {
 		if ctx.workTree, err = newPathPair(workTree); err != nil {

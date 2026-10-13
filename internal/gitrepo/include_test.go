@@ -27,6 +27,7 @@ func TestLoadConfigIncludes(t *testing.T) {
 	fixture.git("config", "remote.origin.url", "https://github.com/kjanat/actionlint")
 	home := fixture.home
 	root := filepath.ToSlash(longPath(fixture.root))
+	physical := filepath.ToSlash(longPath(resolvedPath(t, fixture.root)))
 	conditions := map[string]string{
 		"plain":            "",
 		"nested":           "",
@@ -35,8 +36,8 @@ func TestLoadConfigIncludes(t *testing.T) {
 		"gitdirFold":       "gitdir/i:" + strings.ToUpper(root) + "/",
 		"gitdirRelative":   "gitdir:repo/",
 		"gitdirDot":        "gitdir:./repo/",
-		"worktree":         "worktree:" + root,
-		"worktreeOther":    "worktree:" + root + "/sub",
+		"worktree":         "worktree:" + physical,
+		"worktreeOther":    "worktree:" + physical + "/sub",
 		"branch":           "onbranch:feature/**",
 		"branchOther":      "onbranch:main",
 		"remote":           "hasconfig:remote.*.url:https://github.com/kjanat/**",
@@ -178,7 +179,7 @@ func TestLoadConfigIncludeDepth(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "loop")
 	writeConfig(t, path, "[include]\n\tpath = loop\n")
-	ctx, err := newIncludeContext("", "", nil)
+	ctx, err := newIncludeContext("", "", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,5 +260,36 @@ func TestLoadConfigSymlinkedHead(t *testing.T) {
 	}
 	if !ours {
 		t.Fatal("onbranch did not match the symlinked HEAD")
+	}
+}
+
+func TestLoadConfigIncludesUnresolvedGitDir(t *testing.T) {
+	fixture := newTestRepo(t)
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(fixture.root, alias); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	writeConfig(t, filepath.Join(fixture.home, "alias"), "[core]\n\talias = 1\n")
+	writeConfig(t, filepath.Join(fixture.home, "physical"), "[core]\n\tphysical = 1\n")
+	global := filepath.Join(fixture.home, "gitconfig")
+	writeConfig(t, global, "[includeIf \"gitdir:"+filepath.ToSlash(alias)+"/\"]\n\tpath = alias\n[includeIf \"gitdir:"+filepath.ToSlash(resolvedPath(t, fixture.root))+"/\"]\n\tpath = physical\n")
+	t.Setenv("GIT_CONFIG_GLOBAL", global)
+	repo, err := Open(alias)
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings, err := repo.config()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"core.alias", "core.physical"} {
+		_, ours := settings[key]
+		_, _, gitErr := gitIn(t, alias, "config", "--get", key)
+		if theirs := gitErr == nil; ours != theirs {
+			t.Errorf("%s from %s: included by us %v, by git %v", key, alias, ours, theirs)
+		}
+		if !ours {
+			t.Errorf("%s: not included", key)
+		}
 	}
 }

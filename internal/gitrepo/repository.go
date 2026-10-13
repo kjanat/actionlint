@@ -17,15 +17,16 @@ import (
 )
 
 type Repository struct {
-	WorkTree       string
-	GitDir         string
-	CommonDir      string
-	ignoreCase     bool
-	precompose     bool
-	worktreeConfig bool
-	hashLength     int
-	excludes       string
-	reads          fileReads
+	WorkTree         string
+	GitDir           string
+	CommonDir        string
+	ignoreCase       bool
+	precompose       bool
+	worktreeConfig   bool
+	hashLength       int
+	excludes         string
+	unresolvedGitDir string
+	reads            fileReads
 }
 
 type fileReads struct {
@@ -54,9 +55,10 @@ func (r *Repository) ReadFiles() []string {
 }
 
 type location struct {
-	dir    string
-	gitDir string
-	bare   bool
+	dir        string
+	gitDir     string
+	unresolved string
+	bare       bool
 }
 
 var (
@@ -66,16 +68,21 @@ var (
 
 // Open ignores GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE, GIT_COMMON_DIR and GIT_OBJECT_DIRECTORY, which git exports to hooks for the hook's own repository.
 func Open(dir string) (*Repository, error) {
-	start, err := filepath.Abs(dir)
+	logical, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
 	}
-	if start, err = filepath.EvalSymlinks(start); err != nil {
+	start, err := filepath.EvalSymlinks(logical)
+	if err != nil {
 		return nil, err
 	}
 	found, err := discover(start)
 	if err != nil || found == nil {
 		return nil, err
+	}
+	found.unresolved = found.gitDir
+	if found.dir == start && found.gitDir == filepath.Join(start, ".git") {
+		found.unresolved = filepath.Join(logical, ".git")
 	}
 	return open(found)
 }
@@ -309,7 +316,7 @@ func exists(path string) bool {
 }
 
 func open(found *location) (*Repository, error) {
-	repo := &Repository{GitDir: found.gitDir, hashLength: 20}
+	repo := &Repository{GitDir: found.gitDir, unresolvedGitDir: found.unresolved, hashLength: 20}
 	common, shared, err := commonDir(found.gitDir)
 	if err != nil {
 		return nil, err
@@ -403,7 +410,7 @@ func (r *Repository) config() (config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse command-line config: %w", err)
 	}
-	ctx, err := newIncludeContext(r.GitDir, r.WorkTree, r.reads.record)
+	ctx, err := newIncludeContext(r.GitDir, r.unresolvedGitDir, r.WorkTree, r.reads.record)
 	if err != nil {
 		return nil, err
 	}
