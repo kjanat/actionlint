@@ -113,8 +113,8 @@ func TestPreCommitDeletionOnlyIntegration(t *testing.T) {
 			if err != nil {
 				t.Fatalf("deletion-only commit did not invoke actionlint: %v", err)
 			}
-			if string(invoked) != "pre-commit\n" {
-				t.Fatalf("expected the pre-commit command without filenames, got %q", invoked)
+			if string(invoked) != "\n" {
+				t.Fatalf("expected an invocation without arguments, got %q", invoked)
 			}
 		})
 	}

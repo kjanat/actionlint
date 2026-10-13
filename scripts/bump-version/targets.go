@@ -43,7 +43,7 @@ var targets = []*target{
 	{
 		path: ".pre-commit-hooks.yaml",
 		rules: []rule{
-			mustRule("pre-commit Docker image tag", `(?m)^  entry: ghcr\.io/kjanat/actionlint:(\d+\.\d+\.\d+) pre-commit\r?$`, 1),
+			mustRule("pre-commit Docker image tag", `(?m)^  entry: ghcr\.io/kjanat/actionlint:(\d+\.\d+\.\d+)\r?$`, 1),
 		},
 		unrelated: []string{
 			"minimum_pre_commit_version: 3.0.0",
