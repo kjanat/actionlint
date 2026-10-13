@@ -618,8 +618,9 @@ func TestParseAlternates(t *testing.T) {
 	}
 	resolved := realPath(root)
 	want := []string{filepath.Join(resolved, "relative"), filepath.Join(resolved, "quoted dir"), filepath.Join(resolved, "absolute")}
-	data := "# comment:relative:\"" + filepath.ToSlash(root) + "/quoted\\040dir\":" + filepath.Join(root, "absolute") + ":" + filepath.Join(root, "missing")
-	if got := parseAlternates(data, ':', resolved); !slices.Equal(got, want) {
+	sep := string(os.PathListSeparator)
+	data := "# comment" + sep + "relative" + sep + "\"" + filepath.ToSlash(root) + "/quoted\\040dir\"" + sep + filepath.Join(root, "absolute") + sep + filepath.Join(root, "missing")
+	if got := parseAlternates(data, os.PathListSeparator, resolved); !slices.Equal(got, want) {
 		t.Fatalf("parseAlternates = %q, want %q", got, want)
 	}
 }

@@ -452,7 +452,7 @@ func globalConfigFiles() []string {
 		files = append(files, filepath.Join(xdg, "git", "config"))
 	}
 	if home, ok := homeDir(); ok {
-		files = append(files, home+"/.gitconfig")
+		files = append(files, filepath.FromSlash(home+"/.gitconfig"))
 	}
 	return files
 }

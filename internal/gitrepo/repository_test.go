@@ -1110,7 +1110,7 @@ func TestOpenEmptyHomeMatchesGit(t *testing.T) {
 		t.Fatal(err)
 	}
 	fixture.compareProbe("core.probe")
-	if got := globalConfigFiles(); !slices.Equal(got, []string{"/.config/git/config", "/.gitconfig"}) {
+	if got := globalConfigFiles(); !slices.Equal(got, []string{filepath.FromSlash("/.config/git/config"), filepath.FromSlash("/.gitconfig")}) {
 		t.Fatalf("globalConfigFiles = %q", got)
 	}
 }

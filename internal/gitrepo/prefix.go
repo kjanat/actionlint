@@ -48,7 +48,7 @@ func installationOf(goos, exe string) installation {
 		return installation{prefix: root + "/opt/" + path.Base(path.Dir(prefix)), systemConfig: filepath.FromSlash(root + "/etc/gitconfig")}
 	}
 	if prefix == "/usr" || (goos != "darwin" && strings.HasPrefix(prefix, "/nix/store/")) {
-		return installation{prefix: prefix, systemConfig: "/etc/gitconfig"}
+		return installation{prefix: prefix, systemConfig: filepath.FromSlash("/etc/gitconfig")}
 	}
 	return installation{prefix: prefix, systemConfig: filepath.FromSlash(prefix + "/etc/gitconfig")}
 }
