@@ -422,11 +422,11 @@ jobs:
           set -e
           cat bench-output.txt
           rm .github/workflows/_pre-commit-shellcheck-bench-*.yml
-          duration="$(sed -n 's/^- duration: \([0-9]*\)\(\.[0-9]*\)\?s$/\1/p' bench-output.txt)"
+          duration="$(sed -n 's/^- duration: \([0-9]*\(\.[0-9]*\)\?\)s$/\1/p' bench-output.txt)"
           test -n "${duration}"
           echo "actionlint-shellcheck checked 60 generated workflows in ${duration}s, exit ${status}"
           test "${status}" -eq 0
-          test "${duration}" -le 30
+          awk -v duration="${duration}" 'BEGIN { exit !(duration <= 30) }'
       - name: Confirm the pinned installer verifies release provenance with a signed-in gh
         env: *HookToken
         run: |
