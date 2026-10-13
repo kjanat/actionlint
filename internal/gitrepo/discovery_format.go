@@ -25,10 +25,10 @@ func newDiscoveryFormat() discoveryFormat {
 	return discoveryFormat{version: -1, bare: -1}
 }
 
-func readDiscoveryFormat(gitDir, commonDir string, shared bool) (discoveryFormat, error) {
+func readDiscoveryFormat(d disk, gitDir, commonDir string, shared bool) (discoveryFormat, error) {
 	format := newDiscoveryFormat()
 	path := filepath.Join(commonDir, "config")
-	data, err := readOptional(path)
+	data, err := d.readOptional(path)
 	if err == nil {
 		err = parseConfig(path, data, format.visit)
 	}
@@ -46,7 +46,7 @@ func readDiscoveryFormat(gitDir, commonDir string, shared bool) (discoveryFormat
 	}
 	if format.worktreeConfig {
 		path := filepath.Join(gitDir, "config.worktree")
-		data, err := readOptional(path)
+		data, err := d.readOptional(path)
 		if err == nil {
 			err = parseConfig(path, data, format.visitWorktree)
 		}

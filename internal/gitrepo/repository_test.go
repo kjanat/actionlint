@@ -13,7 +13,7 @@ import (
 )
 
 func TestOpenOutsideRepository(t *testing.T) {
-	repo, err := Open(t.TempDir())
+	repo, err := Open(t.Context(), t.TempDir())
 	if err != nil || repo != nil {
 		t.Fatalf("Open = %v, %v, want nil, nil", repo, err)
 	}
@@ -76,7 +76,7 @@ func gitDiscovery(t *testing.T, dir string) (gitLocation, gitOutcome, string) {
 func requireMatchesGit(t *testing.T, dir string) *Repository {
 	t.Helper()
 	want, outcome, stderr := gitDiscovery(t, dir)
-	repo, err := Open(dir)
+	repo, err := Open(t.Context(), dir)
 	switch outcome {
 	case gitAbsent:
 		if err != nil || repo != nil {
@@ -237,7 +237,7 @@ func TestOpenMatchesGit(t *testing.T) {
 			return r.gitFile("other", "gitdir: ../link/../../repo/.git\n")
 		}},
 		{"gitfile naming a linked worktree git directory", func(t *testing.T, r *testRepo) string {
-			linked, err := Open(r.worktree("wt"))
+			linked, err := Open(t.Context(), r.worktree("wt"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -245,7 +245,7 @@ func TestOpenMatchesGit(t *testing.T) {
 		}},
 		{"absolute commondir", func(t *testing.T, r *testRepo) string {
 			worktree := r.worktree("wt")
-			linked, err := Open(worktree)
+			linked, err := Open(t.Context(), worktree)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -386,7 +386,7 @@ func TestOpenNonRegularGitFile(t *testing.T) {
 		t.Fatalf("mkfifo: %v: %s", err, out)
 	}
 	requireMatchesGit(t, other)
-	if repo, err := Open(other); err == nil || !strings.Contains(err.Error(), "not a regular file") {
+	if repo, err := Open(t.Context(), other); err == nil || !strings.Contains(err.Error(), "not a regular file") {
 		t.Fatalf("Open = %+v, %v", repo, err)
 	}
 }
@@ -468,7 +468,7 @@ func TestOpenHookEnvironment(t *testing.T) {
 	for _, name := range []string{"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY"} {
 		t.Setenv(name, missing)
 	}
-	got, err := Open(start)
+	got, err := Open(t.Context(), start)
 	if err != nil || got == nil || got.WorkTree != want.WorkTree || got.GitDir != want.GitDir || got.CommonDir != want.CommonDir {
 		t.Fatalf("Open = %+v, %v, want %+v", got, err, want)
 	}
@@ -624,7 +624,7 @@ func TestOpenWithoutHome(t *testing.T) {
 				}
 			}
 			repo := fixture.open()
-			ignores, err := repo.Ignores()
+			ignores, err := repo.Ignores(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -663,11 +663,11 @@ func (r *testRepo) gitExit(args ...string) int {
 
 func (r *testRepo) probe(key string) int {
 	r.t.Helper()
-	repo, err := Open(r.root)
+	repo, err := Open(r.t.Context(), r.root)
 	if err != nil {
 		return 128
 	}
-	settings, err := repo.config()
+	settings, err := repo.config(r.t.Context())
 	switch _, ok := settings.last(key); {
 	case err != nil:
 		return 128
@@ -773,11 +773,11 @@ func TestOpenSkipsUnusableConfigFilesLikeGit(t *testing.T) {
 
 func probeIn(t *testing.T, dir, key string) int {
 	t.Helper()
-	repo, err := Open(dir)
+	repo, err := Open(t.Context(), dir)
 	if err != nil || repo == nil {
 		return 128
 	}
-	settings, err := repo.config()
+	settings, err := repo.config(t.Context())
 	switch _, ok := settings.last(key); {
 	case err != nil:
 		return 128
@@ -936,7 +936,7 @@ func TestOpenObjectFormatMatchesGit(t *testing.T) {
 			command := exec.CommandContext(t.Context(), "git", "rev-parse", "--show-object-format")
 			command.Dir = fixture.root
 			out, gitErr := command.Output()
-			repo, err := Open(fixture.root)
+			repo, err := Open(t.Context(), fixture.root)
 			if (err == nil) != (gitErr == nil) {
 				t.Fatalf("Open error %v, git error %v", err, gitErr)
 			}
@@ -983,8 +983,8 @@ func TestOpenExcludesFileMatchesGit(t *testing.T) {
 			for _, file := range []string{"from-mine", "from-xdg", "from-home"} {
 				theirs := fixture.gitExit("check-ignore", "--quiet", "--no-index", file)
 				ours := 128
-				if repo, err := Open(fixture.root); err == nil {
-					ignores, err := repo.Ignores()
+				if repo, err := Open(t.Context(), fixture.root); err == nil {
+					ignores, err := repo.Ignores(t.Context())
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -1071,15 +1071,15 @@ func TestReadFiles(t *testing.T) {
 		t.Fatalf("shared index: %q, %v", shared, err)
 	}
 	repo := fixture.open()
-	ignores, err := repo.Ignores()
+	ignores, err := repo.Ignores(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
 	ignores.Ignored("sub/file", false)
-	if _, err := repo.Index(); err != nil {
+	if _, err := repo.Index(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{global, included, filepath.Join(repo.GitDir, "config"), excludes, filepath.Join(repo.CommonDir, "info", "exclude"), filepath.Join(repo.WorkTree, ".gitignore"), filepath.Join(repo.WorkTree, "sub", ".gitignore"), repo.IndexPath(), filepath.Join(repo.GitDir, filepath.Base(shared[0]))}
+	want := []string{global, included, filepath.Join(repo.GitDir, "HEAD"), filepath.Join(repo.GitDir, "config"), excludes, filepath.Join(repo.CommonDir, "info", "exclude"), filepath.Join(repo.WorkTree, ".gitignore"), filepath.Join(repo.WorkTree, "sub", ".gitignore"), repo.IndexPath(), filepath.Join(repo.GitDir, filepath.Base(shared[0]))}
 	slices.Sort(want)
 	if got := repo.ReadFiles(); !slices.Equal(got, want) {
 		t.Fatalf("ReadFiles = %q, want %q", got, want)
@@ -1170,11 +1170,11 @@ func TestGitInstallationResolvesSymlinks(t *testing.T) {
 func TestReadFilesLocators(t *testing.T) {
 	fixture := newTestRepo(t)
 	worktree := fixture.worktree("wt")
-	repo, err := Open(worktree)
+	repo, err := Open(t.Context(), worktree)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := repo.Index(); err != nil {
+	if _, err := repo.Index(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	got := repo.ReadFiles()
@@ -1232,7 +1232,7 @@ func TestOpenBackslashExcludesFileMatchesGit(t *testing.T) {
 			fixture.write("sub/probe.txt", "")
 			fixture.git("config", "core.excludesFile", name)
 			t.Chdir(fixture.home)
-			ignores, err := fixture.open().Ignores()
+			ignores, err := fixture.open().Ignores(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}

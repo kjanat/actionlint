@@ -72,9 +72,13 @@ func (r *testRepo) write(name, content string) string {
 	return path
 }
 
+func testDisk(t *testing.T) disk {
+	return disk{ctx: t.Context(), record: func(string) {}}
+}
+
 func (r *testRepo) open() *Repository {
 	r.t.Helper()
-	repo, err := Open(r.root)
+	repo, err := Open(r.t.Context(), r.root)
 	if err != nil {
 		r.t.Fatal(err)
 	}

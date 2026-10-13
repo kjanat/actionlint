@@ -187,14 +187,14 @@ func (r *testRepo) compareBranchIncludes(want map[string]bool) {
 	global := filepath.Join(r.home, "gitconfig")
 	writeConfig(r.t, global, "[includeIf \"onbranch:main\"]\n\tpath = main\n[includeIf \"onbranch:**\"]\n\tpath = any\n")
 	r.t.Setenv("GIT_CONFIG_GLOBAL", global)
-	repo, err := Open(r.root)
+	repo, err := Open(r.t.Context(), r.root)
 	if err != nil {
 		r.t.Fatal(err)
 	}
 	if repo == nil {
 		r.t.Fatal("Open found no repository")
 	}
-	settings, err := repo.config()
+	settings, err := repo.config(r.t.Context())
 	if err != nil {
 		r.t.Fatal(err)
 	}
@@ -270,38 +270,46 @@ func TestLoadConfigResolvesBranchOnlyForOnbranch(t *testing.T) {
 	repo := fixture.open()
 	head := filepath.Join(repo.GitDir, "HEAD")
 	branch := filepath.Join(repo.GitDir, "refs", "heads", "main")
-	if _, err := repo.config(); err != nil {
+	if _, err := repo.config(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if reads := repo.ReadFiles(); slices.Contains(reads, head) || slices.Contains(reads, branch) {
-		t.Fatalf("ReadFiles without onbranch = %q, want neither HEAD nor its branch", reads)
+	if reads := repo.ReadFiles(); !slices.Contains(reads, head) || slices.Contains(reads, branch) {
+		t.Fatalf("ReadFiles without onbranch = %q, want HEAD from discovery and not its branch", reads)
 	}
 	writeConfig(t, filepath.Join(fixture.home, "main"), "[core]\n\tmain = 1\n")
 	writeConfig(t, global, "[includeIf \"onbranch:main\"]\n\tpath = main\n[includeIf \"onbranch:ma*\"]\n\tpath = main\n")
 	repo = fixture.open()
 	var reads []string
 	resolutions := 0
-	ctx, err := newIncludeContext(repo.GitDir, "", repo.WorkTree, func(read func(string)) string {
+	d := disk{ctx: t.Context(), record: func(path string) { reads = append(reads, path) }}
+	ctx, err := newIncludeContext(repo.GitDir, "", repo.WorkTree, func() (string, error) {
 		resolutions++
-		return repo.branch(read)
-	}, func(path string) { reads = append(reads, path) })
+		return repo.branch(d)
+	}, d)
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, second := ctx.currentBranch(), ctx.currentBranch()
+	first, err := ctx.currentBranch()
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := ctx.currentBranch()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if first != "main" || second != "main" || resolutions != 1 {
 		t.Fatalf("currentBranch = %q, %q after %d resolutions", first, second, resolutions)
 	}
-	if !slices.Contains(reads, head) {
-		t.Fatalf("reads with onbranch = %q, want HEAD", reads)
+	if !slices.Contains(reads, head) || !slices.Contains(reads, branch) {
+		t.Fatalf("reads with onbranch = %q, want HEAD and its branch", reads)
 	}
-	if settings, err := repo.config(); err != nil {
+	if settings, err := repo.config(t.Context()); err != nil {
 		t.Fatal(err)
 	} else if _, ok := settings["core.main"]; !ok {
 		t.Fatal("onbranch:main did not match")
 	}
-	if !slices.Contains(repo.ReadFiles(), head) {
-		t.Fatalf("ReadFiles with onbranch = %q, want HEAD", repo.ReadFiles())
+	if !slices.Contains(repo.ReadFiles(), branch) {
+		t.Fatalf("ReadFiles with onbranch = %q, want the branch HEAD names", repo.ReadFiles())
 	}
 }
 
@@ -325,7 +333,7 @@ func TestLoadConfigUnreadableBranchRef(t *testing.T) {
 	global := filepath.Join(fixture.home, "gitconfig")
 	writeConfig(t, global, "[include]\n\tpath = plain\n")
 	t.Setenv("GIT_CONFIG_GLOBAL", global)
-	ignores, err := fixture.open().Ignores()
+	ignores, err := fixture.open().Ignores(t.Context())
 	if err != nil {
 		t.Fatalf("Ignores without onbranch: %v", err)
 	}

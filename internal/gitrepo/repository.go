@@ -4,6 +4,7 @@ package gitrepo
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -63,7 +64,6 @@ type location struct {
 	dir        string
 	gitDir     string
 	unresolved string
-	gitFile    string
 	bare       bool
 }
 
@@ -73,7 +73,7 @@ var (
 )
 
 // Open ignores GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE, GIT_COMMON_DIR and GIT_OBJECT_DIRECTORY, which git exports to hooks for the hook's own repository.
-func Open(dir string) (*Repository, error) {
+func Open(ctx context.Context, dir string) (*Repository, error) {
 	logical, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
@@ -82,7 +82,9 @@ func Open(dir string) (*Repository, error) {
 	if err != nil {
 		return nil, err
 	}
-	found, err := discover(start)
+	repo := &Repository{hashLength: 20}
+	d := repo.disk(ctx)
+	found, err := discover(d, start)
 	if err != nil || found == nil {
 		return nil, err
 	}
@@ -91,10 +93,13 @@ func Open(dir string) (*Repository, error) {
 	if runtime.GOOS != "windows" && found.dir == start && found.gitDir == filepath.Join(start, ".git") {
 		found.unresolved = filepath.Join(logical, ".git")
 	}
-	return open(found)
+	if err := repo.load(d, found); err != nil {
+		return nil, err
+	}
+	return repo, nil
 }
 
-func discover(dir string) (*location, error) {
+func discover(d disk, dir string) (*location, error) {
 	minOffset := rootLength(dir)
 	ceiling := ceilingLength(dir)
 	if ceiling < 0 {
@@ -116,12 +121,12 @@ func discover(dir string) (*location, error) {
 		if offset > minOffset {
 			dotGit = joinRaw(dir, ".git")
 		}
-		gitDir, err := readGitFile(dotGit)
+		gitDir, err := readGitFile(d, dotGit)
 		switch {
 		case err == nil:
-			return &location{dir: dir, gitDir: gitDir, gitFile: dotGit}, nil
+			return &location{dir: dir, gitDir: gitDir}, nil
 		case errors.Is(err, errGitFileIsDir):
-			ok, err := isGitDirectory(dotGit)
+			ok, err := isGitDirectory(d, dotGit)
 			if err != nil {
 				return nil, err
 			}
@@ -131,7 +136,7 @@ func discover(dir string) (*location, error) {
 		case !errors.Is(err, errNoGitFile):
 			return nil, err
 		}
-		ok, err := isGitDirectory(dir)
+		ok, err := isGitDirectory(d, dir)
 		if err != nil {
 			return nil, err
 		}
@@ -205,7 +210,7 @@ func joinRaw(dir, name string) string {
 	return dir + string(os.PathSeparator) + name
 }
 
-func readGitFile(path string) (string, error) {
+func readGitFile(d disk, path string) (string, error) {
 	info, err := os.Stat(path)
 	switch {
 	case errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR):
@@ -219,7 +224,7 @@ func readGitFile(path string) (string, error) {
 	case info.Size() > 1<<20:
 		return "", fmt.Errorf("too large to be a .git file: %s", path)
 	}
-	data, err := os.ReadFile(path)
+	data, err := d.readFile(path)
 	if err != nil {
 		return "", err
 	}
@@ -234,7 +239,7 @@ func readGitFile(path string) (string, error) {
 	if target = filepath.FromSlash(target); !isAbsolutePath(target) {
 		target = joinRaw(filepath.Dir(path), target)
 	}
-	if ok, err = isGitDirectory(target); err != nil {
+	if ok, err = isGitDirectory(d, target); err != nil {
 		return "", err
 	}
 	if !ok {
@@ -243,27 +248,30 @@ func readGitFile(path string) (string, error) {
 	return filepath.EvalSymlinks(target)
 }
 
-func isGitDirectory(suspect string) (bool, error) {
-	if !validHead(joinRaw(suspect, "HEAD")) {
+func isGitDirectory(d disk, suspect string) (bool, error) {
+	if !validHead(d, joinRaw(suspect, "HEAD")) {
+		if err := d.ctx.Err(); err != nil {
+			return false, err
+		}
 		return false, nil
 	}
-	common, _, _, err := commonDir(suspect)
+	common, _, err := commonDir(d, suspect)
 	if err != nil {
 		return false, err
 	}
 	return searchable(joinRaw(common, "objects")) && searchable(joinRaw(common, "refs")), nil
 }
 
-func validHead(path string) bool {
+func validHead(d disk, path string) bool {
 	info, err := os.Lstat(path)
 	if err != nil {
 		return false
 	}
 	if info.Mode()&fs.ModeSymlink != 0 {
-		target, err := os.Readlink(path)
+		target, err := d.readlink(path)
 		return err == nil && strings.HasPrefix(filepath.ToSlash(target), "refs/")
 	}
-	file, err := os.Open(path)
+	file, err := d.open(path)
 	if err != nil {
 		return false
 	}
@@ -294,17 +302,17 @@ func hexPrefix(data []byte, length int) bool {
 	return true
 }
 
-func commonDir(gitDir string) (string, bool, string, error) {
+func commonDir(d disk, gitDir string) (string, bool, error) {
 	path := joinRaw(gitDir, "commondir")
 	if !exists(path) {
-		return gitDir, false, "", nil
+		return gitDir, false, nil
 	}
-	data, err := os.ReadFile(path)
+	data, err := d.readFile(path)
 	if err == nil && len(data) == 0 {
 		err = errors.New("the file is empty")
 	}
 	if err != nil {
-		return "", false, "", fmt.Errorf("failed to read %s: %w", path, err)
+		return "", false, fmt.Errorf("failed to read %s: %w", path, err)
 	}
 	common, _, _ := strings.Cut(strings.TrimRight(string(data), "\r\n"), "\x00")
 	if common = filepath.FromSlash(common); !isAbsolutePath(common) {
@@ -312,9 +320,9 @@ func commonDir(gitDir string) (string, bool, string, error) {
 	}
 	resolved, err := filepath.EvalSymlinks(common)
 	if err != nil {
-		return "", false, "", err
+		return "", false, err
 	}
-	return resolved, true, path, nil
+	return resolved, true, nil
 }
 
 func exists(path string) bool {
@@ -322,55 +330,50 @@ func exists(path string) bool {
 	return err == nil
 }
 
-func open(found *location) (*Repository, error) {
-	repo := &Repository{GitDir: found.gitDir, unresolvedGitDir: found.unresolved, hashLength: 20}
-	common, shared, commonFile, err := commonDir(found.gitDir)
+func (r *Repository) load(d disk, found *location) error {
+	r.GitDir, r.unresolvedGitDir = found.gitDir, found.unresolved
+	common, shared, err := commonDir(d, found.gitDir)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	repo.CommonDir = common
-	for _, locator := range []string{found.gitFile, commonFile} {
-		if locator != "" {
-			repo.reads.record(locator)
-		}
-	}
-	format, err := readDiscoveryFormat(repo.GitDir, repo.CommonDir, shared)
+	r.CommonDir = common
+	format, err := readDiscoveryFormat(d, r.GitDir, r.CommonDir, shared)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if repo.WorkTree, err = format.resolveWorkTree(found); err != nil {
-		return nil, err
+	if r.WorkTree, err = format.resolveWorkTree(found); err != nil {
+		return err
 	}
-	repo.base = found.start
-	if relative, err := filepath.Rel(repo.WorkTree, found.start); repo.WorkTree != "" && err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-		repo.base = repo.WorkTree
+	r.base = found.start
+	if relative, err := filepath.Rel(r.WorkTree, found.start); r.WorkTree != "" && err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		r.base = r.WorkTree
 	}
 	if format.sha256 {
-		repo.hashLength = 32
+		r.hashLength = 32
 	}
-	repo.worktreeConfig = format.worktreeConfig
-	repo.reftable = format.refStorage == "reftable"
-	repo.partialClone = format.partialClone
-	settings, err := repo.config()
+	r.worktreeConfig = format.worktreeConfig
+	r.reftable = format.refStorage == "reftable"
+	r.partialClone = format.partialClone
+	settings, err := r.config(d.ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if repo.ignoreCase, err = settings.boolean("core.ignorecase"); err != nil {
-		return nil, err
+	if r.ignoreCase, err = settings.boolean("core.ignorecase"); err != nil {
+		return err
 	}
-	if repo.precompose, err = settings.boolean("core.precomposeunicode"); err != nil {
-		return nil, err
+	if r.precompose, err = settings.boolean("core.precomposeunicode"); err != nil {
+		return err
 	}
-	excludes, configured, err := repo.excludesFile(settings["core.excludesfile"])
+	excludes, configured, err := r.excludesFile(settings["core.excludesfile"])
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if configured {
-		repo.excludes = excludes
+		r.excludes = excludes
 	} else if xdg, ok := xdgConfigHome(); ok {
-		repo.excludes = repo.absolute(filepath.Join(xdg, "git", "ignore"))
+		r.excludes = r.absolute(filepath.Join(xdg, "git", "ignore"))
 	}
-	return repo, nil
+	return nil
 }
 
 func (r *Repository) absolute(path string) string {
@@ -380,13 +383,17 @@ func (r *Repository) absolute(path string) string {
 	return filepath.Join(r.base, path)
 }
 
-func (r *Repository) branch(read func(string)) string {
-	return resolveBranch(func(name string) (refValue, error) {
+func (r *Repository) branch(d disk) (string, error) {
+	branch := resolveBranch(func(name string) (refValue, error) {
 		if r.reftable {
-			return r.readReftableRef(name, read)
+			return r.readReftableRef(d, name)
 		}
-		return r.readLooseRef(name, read)
+		return r.readLooseRef(d, name)
 	})
+	if err := d.ctx.Err(); err != nil {
+		return "", err
+	}
+	return branch, nil
 }
 
 func (r *Repository) IgnoreCase() bool {
@@ -397,7 +404,8 @@ func (r *Repository) PrecomposeUnicode() bool {
 	return r.precompose
 }
 
-func (r *Repository) config() (config, error) {
+func (r *Repository) config(ctx context.Context) (config, error) {
+	d := r.disk(ctx)
 	var files []string
 	noSystem := false
 	if env, ok := os.LookupEnv("GIT_CONFIG_NOSYSTEM"); ok {
@@ -420,9 +428,7 @@ func (r *Repository) config() (config, error) {
 	}
 	for _, file := range globals {
 		file = r.absolute(file)
-		if f, err := os.Open(file); err == nil {
-			_ = f.Close()
-		} else if errors.Is(err, fs.ErrPermission) {
+		if permissionDenied(file) {
 			continue
 		}
 		files = append(files, file)
@@ -439,11 +445,11 @@ func (r *Repository) config() (config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse command-line config: %w", err)
 	}
-	ctx, err := newIncludeContext(r.GitDir, r.unresolvedGitDir, r.WorkTree, r.branch, r.reads.record)
+	includes, err := newIncludeContext(r.GitDir, r.unresolvedGitDir, r.WorkTree, func() (string, error) { return r.branch(d) }, d)
 	if err != nil {
 		return nil, err
 	}
-	return loadConfigFiles(files, params, ctx)
+	return loadConfigFiles(files, params, includes)
 }
 
 func (r *Repository) excludesFile(values []configValue) (string, bool, error) {
@@ -494,43 +500,33 @@ func xdgConfigHome() (string, bool) {
 	return home + "/.config", true
 }
 
-func readOptional(path string) ([]byte, error) {
-	data, err := os.ReadFile(path)
-	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
-		return nil, nil
-	}
-	return data, err
-}
-
 const maxPatternFileSize = 100 << 20
 
-func (r *Repository) readNoFollow(path string) []byte {
+func readNoFollow(d disk, path string) []byte {
 	info, err := os.Lstat(path)
 	if err != nil || info.Mode()&fs.ModeSymlink != 0 {
 		return nil
 	}
-	data, err := readPatternFile(path)
+	data, err := readPatternFile(d, path)
 	if err != nil {
 		return nil
 	}
-	r.reads.record(path)
 	return data
 }
 
-func (r *Repository) readExcludeFile(path string) ([]byte, error) {
+func readExcludeFile(d disk, path string) ([]byte, error) {
 	if !readable(path) {
 		return nil, nil
 	}
-	data, err := readPatternFile(path)
+	data, err := readPatternFile(d, path)
 	if err != nil {
 		return nil, fmt.Errorf("cannot use %s as an exclude file: %w", path, err)
 	}
-	r.reads.record(path)
 	return data, nil
 }
 
-func readPatternFile(path string) ([]byte, error) {
-	file, err := os.Open(path)
+func readPatternFile(d disk, path string) ([]byte, error) {
+	file, err := d.open(path)
 	if err != nil {
 		return nil, err
 	}

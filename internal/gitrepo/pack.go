@@ -1,15 +1,12 @@
 package gitrepo
 
 import (
-	"bufio"
 	"bytes"
-	"compress/zlib"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
-	"math/bits"
 	"os"
 	"path/filepath"
 	"slices"
@@ -36,8 +33,8 @@ type packIndex struct {
 	count      uint32
 }
 
-func loadPackIndex(path string, hashLength int) (*packIndex, error) {
-	data, err := os.ReadFile(path)
+func loadPackIndex(d disk, path string, hashLength int) (*packIndex, error) {
+	data, err := d.readFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -140,6 +137,7 @@ func (x *packIndex) packChecksum() []byte {
 }
 
 type packFile struct {
+	disk   disk
 	path   string
 	index  *packIndex
 	file   *os.File
@@ -148,8 +146,8 @@ type packFile struct {
 	err    error
 }
 
-func newPackFile(indexPath string) *packFile {
-	return &packFile{path: strings.TrimSuffix(indexPath, ".idx") + ".pack"}
+func newPackFile(d disk, indexPath string) *packFile {
+	return &packFile{disk: d, path: strings.TrimSuffix(indexPath, ".idx") + ".pack"}
 }
 
 func (p *packFile) indexPath() string {
@@ -166,12 +164,12 @@ func (p *packFile) open(hashLength int) error {
 }
 
 func (p *packFile) validate(hashLength int) error {
-	index, err := loadPackIndex(p.indexPath(), hashLength)
+	index, err := loadPackIndex(p.disk, p.indexPath(), hashLength)
 	if err != nil {
 		return fmt.Errorf("packfile %s index unavailable: %w", p.path, err)
 	}
 	p.index = index
-	if p.file, err = os.Open(p.path); err != nil {
+	if p.file, err = p.disk.open(p.path); err != nil {
 		return err
 	}
 	info, err := p.file.Stat()
@@ -310,19 +308,13 @@ func (p *packFile) deltaBase(kind objectType, info []byte, offset uint64) (uint6
 
 func (p *packFile) inflate(offset, size uint64) ([]byte, error) {
 	compressed := uint64(p.size) - offset
-	if hi, limit := bits.Mul64(compressed, zlibMaximumRatio); hi == 0 && size > limit+64 {
-		return nil, fmt.Errorf("object at offset %d in %s claims %d bytes", offset, p.path, size)
-	}
-	reader, err := zlib.NewReader(bufio.NewReader(io.NewSectionReader(p.file, int64(offset), int64(compressed))))
+	z, err := newInflater(io.NewSectionReader(p.file, int64(offset), int64(compressed)), compressed)
 	if err != nil {
 		return nil, fmt.Errorf("inflate at offset %d in %s: %w", offset, p.path, err)
 	}
-	data := make([]byte, size)
-	if _, err := io.ReadFull(reader, data); err != nil {
+	data, err := z.exact(size)
+	if err != nil {
 		return nil, fmt.Errorf("inflate at offset %d in %s: %w", offset, p.path, err)
-	}
-	if n, err := reader.Read(make([]byte, 1)); n != 0 || err != io.EOF {
-		return nil, fmt.Errorf("inflate at offset %d in %s: the stream does not end after %d bytes", offset, p.path, size)
 	}
 	return data, nil
 }
@@ -448,13 +440,13 @@ type multiPackIndex struct {
 	base        *multiPackIndex
 }
 
-func loadMultiPackIndex(packDir string, hashLength int) (*multiPackIndex, error) {
-	m, err := loadMultiPackIndexFile(filepath.Join(packDir, "multi-pack-index"), hashLength)
+func loadMultiPackIndex(d disk, packDir string, hashLength int) (*multiPackIndex, error) {
+	m, err := loadMultiPackIndexFile(d, filepath.Join(packDir, "multi-pack-index"), hashLength)
 	if m != nil || err != nil {
 		return m, err
 	}
 	chainDir := filepath.Join(packDir, "multi-pack-index.d")
-	chain, err := readOptional(filepath.Join(chainDir, "multi-pack-index-chain"))
+	chain, err := d.readOptional(filepath.Join(chainDir, "multi-pack-index-chain"))
 	if err != nil || len(chain) < hashLength*2 {
 		return nil, err
 	}
@@ -464,7 +456,7 @@ func loadMultiPackIndex(packDir string, hashLength int) (*multiPackIndex, error)
 		if len(line) != hashLength*2 || strings.Trim(line, "0123456789abcdefABCDEF") != "" {
 			break
 		}
-		layer, err := loadMultiPackIndexFile(filepath.Join(chainDir, "multi-pack-index-"+line+".midx"), hashLength)
+		layer, err := loadMultiPackIndexFile(d, filepath.Join(chainDir, "multi-pack-index-"+line+".midx"), hashLength)
 		if err != nil {
 			return nil, err
 		}
@@ -477,8 +469,8 @@ func loadMultiPackIndex(packDir string, hashLength int) (*multiPackIndex, error)
 	return top, nil
 }
 
-func loadMultiPackIndexFile(path string, hashLength int) (*multiPackIndex, error) {
-	data, err := readOptional(path)
+func loadMultiPackIndexFile(d disk, path string, hashLength int) (*multiPackIndex, error) {
+	data, err := d.readOptional(path)
 	if err != nil || data == nil || len(data) < midxHeaderSize+hashLength {
 		return nil, err
 	}

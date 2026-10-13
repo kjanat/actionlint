@@ -62,7 +62,7 @@ func newPackedRepo(t *testing.T, args ...string) *packedRepo {
 		t.Fatalf("packs %v: %v", packs, err)
 	}
 	p := &packedRepo{testRepo: fixture, pack: packs[0], index: strings.TrimSuffix(packs[0], ".pack") + ".idx"}
-	index, err := loadPackIndex(p.index, 20)
+	index, err := loadPackIndex(testDisk(t), p.index, 20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +179,7 @@ func TestExpandedIndexCorruptPackMatchesGit(t *testing.T) {
 			})
 		}},
 		"chain base data": {nil, func(t *testing.T, p *packedRepo) {
-			pack := newPackFile(p.index)
+			pack := newPackFile(testDisk(t), p.index)
 			if err := pack.open(20); err != nil {
 				t.Fatal(err)
 			}
@@ -205,7 +205,7 @@ func TestExpandedIndexCorruptPackMatchesGit(t *testing.T) {
 			patchFile(t, p.pack, func(d []byte) []byte { d[offset] ^= 0xff; return d })
 		}},
 		"wrong delta base": {nil, func(t *testing.T, p *packedRepo) {
-			pack := newPackFile(p.index)
+			pack := newPackFile(testDisk(t), p.index)
 			if err := pack.open(20); err != nil {
 				t.Fatal(err)
 			}
@@ -442,7 +442,7 @@ func TestExpandedIndexMultiPackIndexLargeOffsets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m, err := loadMultiPackIndexFile(midx, 20)
+	m, err := loadMultiPackIndexFile(testDisk(t), midx, 20)
 	if err != nil || m == nil {
 		t.Fatalf("loadMultiPackIndexFile = %v, %v", m, err)
 	}
@@ -570,7 +570,7 @@ func TestPackIndexLargeOffsets(t *testing.T) {
 	if err := os.WriteFile(path, data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	index, err := loadPackIndex(path, 20)
+	index, err := loadPackIndex(testDisk(t), path, 20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -598,7 +598,7 @@ func TestPackIndexLargeOffsets(t *testing.T) {
 
 func TestPackInflateRejects(t *testing.T) {
 	p := newPackedRepo(t)
-	pack := newPackFile(p.index)
+	pack := newPackFile(testDisk(t), p.index)
 	if err := pack.open(20); err != nil {
 		t.Fatal(err)
 	}
@@ -645,7 +645,7 @@ func TestPackDeltaBaseRejects(t *testing.T) {
 
 func TestPackWindowAfterTruncation(t *testing.T) {
 	p := newPackedRepo(t)
-	pack := newPackFile(p.index)
+	pack := newPackFile(testDisk(t), p.index)
 	if err := pack.open(20); err != nil {
 		t.Fatal(err)
 	}

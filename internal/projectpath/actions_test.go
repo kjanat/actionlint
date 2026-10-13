@@ -215,7 +215,7 @@ func TestActionsComposeDecomposedNames(t *testing.T) {
 		t.Fatal(err)
 	}
 	git("update-index", "--add", "--cacheinfo", "100644,"+strings.TrimSpace(string(blob))+",café/kept/action.yml")
-	repo, err := gitrepo.Open(root)
+	repo, err := gitrepo.Open(t.Context(), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -476,7 +476,7 @@ func TestActionsReportReadFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	config := filepath.Dir(os.Getenv("GIT_CONFIG_GLOBAL"))
-	want := []string{root, filepath.Join(root, "sub"), filepath.Join(config, "gitconfig"), filepath.Join(config, "excludes"), filepath.Join(physical, ".git", "config"), filepath.Join(physical, ".git", "index"), filepath.Join(physical, ".git", "info", "exclude"), filepath.Join(physical, ".gitignore"), filepath.Join(physical, "sub", ".gitignore")}
+	want := []string{root, filepath.Join(root, "sub"), filepath.Join(config, "gitconfig"), filepath.Join(config, "excludes"), filepath.Join(physical, ".git", "HEAD"), filepath.Join(physical, ".git", "config"), filepath.Join(physical, ".git", "index"), filepath.Join(physical, ".git", "info", "exclude"), filepath.Join(physical, ".gitignore"), filepath.Join(physical, "sub", ".gitignore")}
 	slices.Sort(want)
 	slices.Sort(got)
 	if !slices.Equal(got, want) {

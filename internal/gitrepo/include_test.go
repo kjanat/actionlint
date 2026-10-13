@@ -156,7 +156,7 @@ func TestLoadConfigForbidsRemoteURLInRemoteInclude(t *testing.T) {
 	if err := probe.Run(); !errors.As(err, &exit) || exit.ExitCode() != 128 {
 		t.Fatalf("git accepted a remote URL inside a hasconfig include: %v", err)
 	}
-	if repo, err := Open(fixture.root); err == nil {
+	if repo, err := Open(t.Context(), fixture.root); err == nil {
 		t.Fatalf("Open = %+v, want an error", repo)
 	}
 }
@@ -182,7 +182,7 @@ func TestLoadConfigIncludeDepth(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "loop")
 	writeConfig(t, path, "[include]\n\tpath = loop\n")
-	ctx, err := newIncludeContext("", "", "", nil, nil)
+	ctx, err := newIncludeContext("", "", "", nil, testDisk(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,7 +226,7 @@ func TestLoadConfigBareRepositoryConditions(t *testing.T) {
 	if repo.WorkTree != "" {
 		t.Fatalf("WorkTree = %q, want empty", repo.WorkTree)
 	}
-	settings, err := repo.config()
+	settings, err := repo.config(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,7 +253,7 @@ func TestLoadConfigSymlinkedHead(t *testing.T) {
 	global := filepath.Join(fixture.home, "gitconfig")
 	writeConfig(t, global, "[includeIf \"onbranch:feature/**\"]\n\tpath = branch\n")
 	t.Setenv("GIT_CONFIG_GLOBAL", global)
-	settings, err := fixture.open().config()
+	settings, err := fixture.open().config(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,11 +277,11 @@ func TestLoadConfigIncludesUnresolvedGitDir(t *testing.T) {
 	global := filepath.Join(fixture.home, "gitconfig")
 	writeConfig(t, global, "[includeIf \"gitdir:"+filepath.ToSlash(alias)+"/\"]\n\tpath = alias\n[includeIf \"gitdir:"+filepath.ToSlash(resolvedPath(t, fixture.root))+"/\"]\n\tpath = physical\n")
 	t.Setenv("GIT_CONFIG_GLOBAL", global)
-	repo, err := Open(alias)
+	repo, err := Open(t.Context(), alias)
 	if err != nil {
 		t.Fatal(err)
 	}
-	settings, err := repo.config()
+	settings, err := repo.config(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -318,7 +318,7 @@ func TestLoadConfigHeadForms(t *testing.T) {
 			global := filepath.Join(fixture.home, "gitconfig")
 			writeConfig(t, global, "[includeIf \"onbranch:**\"]\n\tpath = any\n[includeIf \"onbranch:feature/**\"]\n\tpath = feature\n")
 			t.Setenv("GIT_CONFIG_GLOBAL", global)
-			repo, err := Open(fixture.root)
+			repo, err := Open(t.Context(), fixture.root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -330,7 +330,7 @@ func TestLoadConfigHeadForms(t *testing.T) {
 				}
 				return
 			}
-			settings, err := repo.config()
+			settings, err := repo.config(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -391,7 +391,7 @@ func TestLoadConfigReftableHead(t *testing.T) {
 			writeConfig(t, path, global.String())
 			t.Setenv("GIT_CONFIG_GLOBAL", path)
 			repo := fixture.open()
-			settings, err := repo.config()
+			settings, err := repo.config(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -426,7 +426,7 @@ func TestLoadConfigSymlinkedConfigDotConditions(t *testing.T) {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
 	t.Setenv("GIT_CONFIG_GLOBAL", link)
-	settings, err := fixture.open().config()
+	settings, err := fixture.open().config(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}

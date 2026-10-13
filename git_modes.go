@@ -39,7 +39,7 @@ func (cache *gitModes) load(ctx context.Context, root string) *gitModeSnapshot {
 	}
 	cache.mu.Unlock()
 	snapshot.once.Do(func() {
-		repo, err := gitrepo.Open(root)
+		repo, err := gitrepo.Open(ctx, root)
 		if err != nil {
 			snapshot.err = fmt.Errorf("locate Git index: %w", err)
 			return

@@ -147,7 +147,7 @@ func gitParse(t *testing.T, text string) ([]string, bool) {
 func (r *testRepo) settings() config {
 	r.t.Helper()
 	repo := r.open()
-	settings, err := repo.config()
+	settings, err := repo.config(r.t.Context())
 	if err != nil {
 		r.t.Fatal(err)
 	}

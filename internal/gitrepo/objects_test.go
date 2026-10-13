@@ -76,11 +76,11 @@ func (r *testRepo) looseObjects() []string {
 func (r *testRepo) packedKind(oid string) objectType {
 	r.t.Helper()
 	repo := r.open()
-	settings, err := repo.config()
+	settings, err := repo.config(r.t.Context())
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	store, err := repo.openObjectStore(settings)
+	store, err := repo.openObjectStore(repo.disk(r.t.Context()), settings)
 	if err != nil {
 		r.t.Fatal(err)
 	}
@@ -247,11 +247,11 @@ func (r *testRepo) twoPacks(between func()) {
 func assertMultiPackIndex(t *testing.T, fixture *testRepo, packs int) {
 	t.Helper()
 	repo := fixture.open()
-	settings, err := repo.config()
+	settings, err := repo.config(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	store, err := repo.openObjectStore(settings)
+	store, err := repo.openObjectStore(repo.disk(t.Context()), settings)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,6 +337,12 @@ func TestExpandedIndexCorruptTree(t *testing.T) {
 		"dot git":          deflate("tree 32\x00100644 .git\x00" + strings.Repeat("\x01", 20)),
 		"truncated stream": deflate("tree 3\x00abc")[:10],
 		"bad mode":         deflate("tree 29\x00100648 a\x00" + strings.Repeat("\x01", 20)),
+		"empty tree":       deflate("tree 0\x00"),
+		"leading zero":     deflate("tree 03\x00abc"),
+		"long header":      deflate(strings.Repeat("t", 40) + " 3\x00abc"),
+		"claimed size":     deflate("tree 1073741824\x00abc"),
+		"longer content":   deflate("tree 3\x00abcd"),
+		"garbage after":    append(deflate("tree 0\x00"), 'x'),
 	} {
 		t.Run(name, func(t *testing.T) {
 			fixture := sparseFixture(t)
@@ -529,14 +535,15 @@ func TestReadAlternates(t *testing.T) {
 	resolved := realPath(root)
 	want := []string{filepath.Join(resolved, "relative"), filepath.Join(resolved, "quoted dir"), filepath.Join(resolved, "absolute")}
 	var reads []string
-	if got := readAlternates(objects, func(path string) { reads = append(reads, path) }); !slices.Equal(got, want) {
+	d := disk{ctx: t.Context(), record: func(path string) { reads = append(reads, path) }}
+	if got := readAlternates(d, objects); !slices.Equal(got, want) {
 		t.Fatalf("readAlternates = %q, want %q", got, want)
 	}
 	if want := []string{filepath.Join(objects, "info", "alternates")}; !slices.Equal(reads, want) {
 		t.Fatalf("recorded %q, want %q", reads, want)
 	}
 	reads = nil
-	if got := readAlternates(filepath.Join(root, "absent"), func(path string) { reads = append(reads, path) }); got != nil || reads != nil {
+	if got := readAlternates(d, filepath.Join(root, "absent")); got != nil || reads != nil {
 		t.Fatalf("readAlternates without a file = %q, recorded %q", got, reads)
 	}
 }
@@ -606,7 +613,7 @@ func TestLoadPackIndexRejects(t *testing.T) {
 		if err := os.WriteFile(path, data, 0600); err != nil {
 			t.Fatal(err)
 		}
-		if got, err := loadPackIndex(path, 20); err == nil {
+		if got, err := loadPackIndex(testDisk(t), path, 20); err == nil {
 			t.Errorf("%s: loadPackIndex = %+v, want an error", name, got)
 		}
 	}
@@ -615,11 +622,12 @@ func TestLoadPackIndexRejects(t *testing.T) {
 func TestWalkTreeCancelled(t *testing.T) {
 	fixture := sparseFixture(t)
 	repo := fixture.open()
-	settings, err := repo.config()
+	settings, err := repo.config(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	store, err := repo.openObjectStore(settings)
+	ctx, cancel := context.WithCancel(t.Context())
+	store, err := repo.openObjectStore(repo.disk(ctx), settings)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -628,9 +636,8 @@ func TestWalkTreeCancelled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	err = store.walkTree(ctx, oid, []byte("out/"), 0, defaultMaxTreeDepth, pathRules{}, func(indexEntry) { t.Fatal("walked a cancelled tree") })
+	err = store.walkTree(oid, []byte("out/"), 0, defaultMaxTreeDepth, pathRules{}, func(indexEntry) { t.Fatal("walked a cancelled tree") })
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("walkTree = %v, want context.Canceled", err)
 	}

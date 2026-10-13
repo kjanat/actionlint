@@ -175,11 +175,11 @@ func TestGitModesSparseIndex(t *testing.T) {
 	git("rm", "--cached", "--quiet", "intent.sh")
 	git("commit", "--no-gpg-sign", "--quiet", "-m", "baseline")
 	git("sparse-checkout", "set", "--cone", "--sparse-index", ".github")
-	repo, err := gitrepo.Open(root)
+	repo, err := gitrepo.Open(t.Context(), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, err := repo.Index()
+	raw, err := repo.Index(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}

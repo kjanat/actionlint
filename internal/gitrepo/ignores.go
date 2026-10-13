@@ -1,6 +1,7 @@
 package gitrepo
 
 import (
+	"context"
 	"path"
 	"path/filepath"
 	"strings"
@@ -8,6 +9,7 @@ import (
 
 type Ignores struct {
 	repo  *Repository
+	disk  disk
 	nodes map[string]*ignoreNode
 }
 
@@ -18,20 +20,24 @@ type ignoreNode struct {
 	ignored  bool
 }
 
-func (r *Repository) Ignores() (*Ignores, error) {
+func (r *Repository) Ignores(ctx context.Context) (*Ignores, error) {
+	d := r.disk(ctx)
 	root := &ignoreNode{patterns: newPatternList(r.ignoreCase)}
 	for _, file := range []string{r.excludes, filepath.Join(r.CommonDir, "info", "exclude")} {
 		if file == "" {
 			continue
 		}
-		data, err := r.readExcludeFile(file)
+		data, err := readExcludeFile(d, file)
 		if err != nil {
 			return nil, err
 		}
 		root.patterns.addBuffer(data)
 	}
-	root.patterns.addBuffer(r.readNoFollow(filepath.Join(r.WorkTree, ".gitignore")))
-	return &Ignores{repo: r, nodes: map[string]*ignoreNode{"": root}}, nil
+	root.patterns.addBuffer(readNoFollow(d, filepath.Join(r.WorkTree, ".gitignore")))
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return &Ignores{repo: r, disk: d, nodes: map[string]*ignoreNode{"": root}}, nil
 }
 
 func (i *Ignores) Ignored(relative string, isDir bool) bool {
@@ -47,7 +53,7 @@ func (i *Ignores) node(dir string) *ignoreNode {
 	node := &ignoreNode{parent: parent, dir: dir}
 	node.ignored = parent.ignored || parent.matched([]byte(dir), true) == patternPositive
 	if !node.ignored {
-		if data := i.repo.readNoFollow(filepath.Join(i.repo.WorkTree, filepath.FromSlash(dir), ".gitignore")); data != nil {
+		if data := readNoFollow(i.disk, filepath.Join(i.repo.WorkTree, filepath.FromSlash(dir), ".gitignore")); data != nil {
 			node.patterns = newPatternList(i.repo.ignoreCase)
 			node.patterns.addBuffer(data)
 		}

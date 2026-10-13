@@ -13,29 +13,25 @@ import (
 const maxIncludeDepth = 10
 
 type includeContext struct {
+	disk          disk
 	gitDir        pathPair
 	workTree      pathPair
-	resolveBranch func(read func(string)) string
+	resolveBranch func() (string, error)
 	branch        string
 	resolved      bool
 	remoteURLs    []string
-	record        func(path string)
 }
 
-func (c *includeContext) read(path string) {
-	if c.record != nil {
-		c.record(path)
-	}
-}
-
-func (c *includeContext) currentBranch() string {
-	if !c.resolved {
-		c.resolved = true
-		if c.resolveBranch != nil {
-			c.branch = c.resolveBranch(c.read)
+func (c *includeContext) currentBranch() (string, error) {
+	if !c.resolved && c.resolveBranch != nil {
+		branch, err := c.resolveBranch()
+		if err != nil {
+			return "", err
 		}
+		c.branch = branch
 	}
-	return c.branch
+	c.resolved = true
+	return c.branch, nil
 }
 
 type pathPair struct {
@@ -55,8 +51,8 @@ func newPathPair(path string) (pathPair, error) {
 	return pair, nil
 }
 
-func newIncludeContext(gitDir, unresolvedGitDir, workTree string, branch func(read func(string)) string, record func(path string)) (*includeContext, error) {
-	ctx := &includeContext{record: record}
+func newIncludeContext(gitDir, unresolvedGitDir, workTree string, branch func() (string, error), d disk) (*includeContext, error) {
+	ctx := &includeContext{disk: d}
 	if gitDir == "" {
 		return ctx, nil
 	}
@@ -118,11 +114,10 @@ func (l *configLoader) load(path string, depth int, forbidRemoteURL bool) error 
 	if depth > maxIncludeDepth {
 		return fmt.Errorf("%s exceeds the maximum include depth", path)
 	}
-	data, err := readOptional(path)
+	data, err := l.ctx.disk.readOptional(path)
 	if err != nil || data == nil {
 		return err
 	}
-	l.ctx.read(path)
 	return parseConfig(path, data, func(section, name string, value configValue) error {
 		return l.visit(path, depth, forbidRemoteURL, section, name, value)
 	})
@@ -196,7 +191,10 @@ func (l *configLoader) matches(condition, configFile string) (bool, bool, error)
 		ok, err := matchIncludePath(ctx.workTree, strings.TrimPrefix(condition, "worktree/i:"), configFile, true)
 		return ok, false, err
 	case strings.HasPrefix(condition, "onbranch:"):
-		branch := ctx.currentBranch()
+		branch, err := ctx.currentBranch()
+		if err != nil {
+			return false, false, err
+		}
 		if branch == "" {
 			return false, false, nil
 		}

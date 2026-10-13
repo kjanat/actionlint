@@ -2,12 +2,9 @@ package gitrepo
 
 import (
 	"bytes"
-	"compress/zlib"
-	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -36,11 +33,12 @@ type objectSource struct {
 }
 
 type objectStore struct {
+	disk       disk
 	hashLength int
 	sources    []*objectSource
 }
 
-func (r *Repository) openObjectStore(settings config) (*objectStore, error) {
+func (r *Repository) openObjectStore(d disk, settings config) (*objectStore, error) {
 	useMidx := true
 	if _, ok := settings["core.multipackindex"]; ok {
 		var err error
@@ -48,13 +46,13 @@ func (r *Repository) openObjectStore(settings config) (*objectStore, error) {
 			return nil, err
 		}
 	}
-	store := &objectStore{hashLength: r.hashLength}
+	store := &objectStore{disk: d, hashLength: r.hashLength}
 	primary := filepath.Join(r.CommonDir, "objects")
 	dirs := []string{primary}
 	seen := map[string]bool{r.objectDirKey(realPath(primary)): true}
 	var visit func(dir string, depth int)
 	visit = func(dir string, depth int) {
-		alternates := readAlternates(dir, r.reads.record)
+		alternates := readAlternates(d, dir)
 		if depth < 0 {
 			alternates = append(environmentAlternates(r.base), alternates...)
 		}
@@ -73,7 +71,7 @@ func (r *Repository) openObjectStore(settings config) (*objectStore, error) {
 	}
 	visit(primary, -1)
 	for _, dir := range dirs {
-		source, err := openObjectSource(dir, r.hashLength, useMidx)
+		source, err := openObjectSource(d, dir, r.hashLength, useMidx)
 		if err != nil {
 			store.close()
 			return nil, err
@@ -97,13 +95,11 @@ func realPath(path string) string {
 	return path
 }
 
-func readAlternates(objects string, record func(string)) []string {
-	path := filepath.Join(objects, "info", "alternates")
-	data, err := os.ReadFile(path)
+func readAlternates(d disk, objects string) []string {
+	data, err := d.readFile(filepath.Join(objects, "info", "alternates"))
 	if err != nil {
 		return nil
 	}
-	record(path)
 	return parseAlternates(string(data), '\n', realPath(objects))
 }
 
@@ -172,23 +168,26 @@ func unquoteC(s string) (string, int, bool) {
 
 func isOctal(c byte) bool { return c >= '0' && c <= '7' }
 
-func openObjectSource(dir string, hashLength int, useMidx bool) (*objectSource, error) {
+func openObjectSource(d disk, dir string, hashLength int, useMidx bool) (*objectSource, error) {
 	source := &objectSource{dir: dir, midxPacks: make(map[string]*packFile)}
 	packDir := filepath.Join(dir, "pack")
 	if useMidx {
-		midx, err := loadMultiPackIndex(packDir, hashLength)
+		midx, err := loadMultiPackIndex(d, packDir, hashLength)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", packDir, err)
 		}
 		source.midx = midx
 	}
-	entries, _ := os.ReadDir(packDir)
+	entries, _ := d.readDir(packDir)
+	if err := d.ctx.Err(); err != nil {
+		return nil, err
+	}
 	for _, entry := range entries {
 		name := entry.Name()
 		if !strings.HasSuffix(name, ".idx") || source.midx != nil && source.midx.contains(name) {
 			continue
 		}
-		pack := newPackFile(filepath.Join(packDir, name))
+		pack := newPackFile(d, filepath.Join(packDir, name))
 		if _, err := os.Stat(pack.path); err == nil {
 			source.packs = append(source.packs, pack)
 		}
@@ -232,7 +231,7 @@ func (s *objectStore) readPacked(source *objectSource, oid []byte) (objectType, 
 		if ok {
 			pack := source.midxPacks[name]
 			if pack == nil {
-				pack = newPackFile(filepath.Join(source.dir, "pack", name))
+				pack = newPackFile(s.disk, filepath.Join(source.dir, "pack", name))
 				source.midxPacks[name] = pack
 			}
 			if pack.open(s.hashLength) == nil {
@@ -258,7 +257,10 @@ func (s *objectStore) readPacked(source *objectSource, oid []byte) (objectType, 
 func (s *objectStore) readLoose(dir string, oid []byte) (objectType, []byte, error) {
 	name := hex.EncodeToString(oid)
 	path := filepath.Join(dir, name[:2], name[2:])
-	file, err := os.Open(path)
+	file, err := s.disk.open(path)
+	if ctxErr := s.disk.ctx.Err(); ctxErr != nil {
+		return 0, nil, ctxErr
+	}
 	if err != nil {
 		return 0, nil, errObjectMissing
 	}
@@ -266,17 +268,17 @@ func (s *objectStore) readLoose(dir string, oid []byte) (objectType, []byte, err
 	corrupt := func(reason string) error {
 		return fmt.Errorf("loose object %s (stored in %s) is corrupt: %s", name, path, reason)
 	}
-	reader, err := zlib.NewReader(file)
+	info, err := file.Stat()
+	if err != nil {
+		return 0, nil, err
+	}
+	z, err := newInflater(file, uint64(max(info.Size(), 0)))
 	if err != nil {
 		return 0, nil, corrupt(err.Error())
 	}
-	data, err := io.ReadAll(reader)
+	header, err := z.header()
 	if err != nil {
 		return 0, nil, corrupt(err.Error())
-	}
-	header, content, ok := bytes.Cut(data, []byte{0})
-	if !ok {
-		return 0, nil, corrupt("the header is unterminated")
 	}
 	typeName, sizeText, ok := strings.Cut(string(header), " ")
 	if !ok {
@@ -287,11 +289,15 @@ func (s *objectStore) readLoose(dir string, oid []byte) (objectType, []byte, err
 		return 0, nil, corrupt("unknown object type " + strconv.Quote(typeName))
 	}
 	size, err := strconv.ParseUint(sizeText, 10, 64)
-	if err != nil {
+	if err != nil || len(sizeText) > 1 && sizeText[0] == '0' {
 		return 0, nil, corrupt("bad object size")
 	}
-	if size != uint64(len(content)) {
-		return 0, nil, corrupt("the size does not match the content")
+	content, err := z.exact(size)
+	if err != nil {
+		return 0, nil, corrupt(err.Error())
+	}
+	if err := z.finished(); err != nil {
+		return 0, nil, corrupt(err.Error())
 	}
 	return kind, content, nil
 }
@@ -351,8 +357,8 @@ func permissions(mode uint32) uint32 {
 
 var errTreeUnreadable = errors.New("unreadable tree")
 
-func (s *objectStore) walkTree(ctx context.Context, oid []byte, base []byte, depth, maxDepth int, rules pathRules, add func(indexEntry)) error {
-	if err := ctx.Err(); err != nil {
+func (s *objectStore) walkTree(oid []byte, base []byte, depth, maxDepth int, rules pathRules, add func(indexEntry)) error {
+	if err := s.disk.ctx.Err(); err != nil {
 		return err
 	}
 	if depth > maxDepth {
@@ -375,7 +381,7 @@ func (s *objectStore) walkTree(ctx context.Context, oid []byte, base []byte, dep
 	for _, entry := range entries {
 		path := slices.Concat(base, entry.name)
 		if entry.mode == modeDirectory {
-			if err := s.walkTree(ctx, entry.oid, append(path, '/'), depth+1, maxDepth, rules, add); err != nil {
+			if err := s.walkTree(entry.oid, append(path, '/'), depth+1, maxDepth, rules, add); err != nil {
 				return err
 			}
 			continue

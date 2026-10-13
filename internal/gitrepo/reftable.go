@@ -7,7 +7,6 @@ import (
 	"hash/crc32"
 	"io/fs"
 	"math/rand/v2"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -21,9 +20,9 @@ const (
 	reftableSymref     = 3
 )
 
-func (r *Repository) readReftableRef(name string, read func(string)) (refValue, error) {
+func (r *Repository) readReftableRef(d disk, name string) (refValue, error) {
 	dir, key := r.reftableStack(name)
-	tables, err := defaultReftableLoader.load(dir, read)
+	tables, err := newReftableLoader(d).load(dir)
 	if err != nil {
 		return refValue{}, err
 	}
@@ -63,12 +62,14 @@ type reftableTable struct {
 type reftableLoader struct {
 	readFile func(string) ([]byte, error)
 	now      func() time.Time
-	sleep    func(time.Duration)
+	wait     func(time.Duration) error
 }
 
-var defaultReftableLoader = reftableLoader{readFile: os.ReadFile, now: time.Now, sleep: time.Sleep}
+func newReftableLoader(d disk) reftableLoader {
+	return reftableLoader{readFile: d.readFile, now: time.Now, wait: d.wait}
+}
 
-func (l reftableLoader) load(dir string, read func(string)) ([]reftableTable, error) {
+func (l reftableLoader) load(dir string) ([]reftableTable, error) {
 	list := filepath.Join(dir, "tables.list")
 	deadline := l.now().Add(3 * time.Second)
 	var delay time.Duration
@@ -77,25 +78,19 @@ func (l reftableLoader) load(dir string, read func(string)) ([]reftableTable, er
 		if tries > 3 && !l.now().Before(deadline) {
 			return nil, missing
 		}
-		names, listed, err := l.names(list)
+		names, err := l.names(list)
 		if err != nil {
 			return nil, err
 		}
 		tables, err := l.open(dir, names)
 		if err == nil {
-			if listed {
-				read(list)
-			}
-			for _, table := range tables {
-				read(table.path)
-			}
 			return tables, nil
 		}
 		if !errors.Is(err, fs.ErrNotExist) {
 			return nil, err
 		}
 		missing = err
-		after, _, err := l.names(list)
+		after, err := l.names(list)
 		if err != nil {
 			return nil, err
 		}
@@ -103,17 +98,19 @@ func (l reftableLoader) load(dir string, read func(string)) ([]reftableTable, er
 			return nil, missing
 		}
 		delay += time.Duration(rand.Int64N(int64(delay)+1)) + time.Millisecond
-		l.sleep(delay)
+		if err := l.wait(delay); err != nil {
+			return nil, err
+		}
 	}
 }
 
-func (l reftableLoader) names(list string) ([]string, bool, error) {
+func (l reftableLoader) names(list string) ([]string, error) {
 	data, err := l.readFile(list)
 	if errors.Is(err, fs.ErrNotExist) {
-		return nil, false, nil
+		return nil, nil
 	}
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 	var names []string
 	for name := range strings.SplitSeq(string(data), "\n") {
@@ -121,7 +118,7 @@ func (l reftableLoader) names(list string) ([]string, bool, error) {
 			names = append(names, name)
 		}
 	}
-	return names, true, nil
+	return names, nil
 }
 
 func (l reftableLoader) open(dir string, names []string) ([]reftableTable, error) {

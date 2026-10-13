@@ -45,7 +45,7 @@ type actionDiscovery struct {
 }
 
 func discoverActions(ctx context.Context, root, physical string, onRead func(path string)) ([]string, error) {
-	repo, err := gitrepo.Open(root)
+	repo, err := gitrepo.Open(ctx, root)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func newActionDiscovery(ctx context.Context, physical string, repo *gitrepo.Repo
 	if relative != "." {
 		discovery.prefix = discovery.compose(filepath.ToSlash(relative)) + "/"
 	}
-	ignores, err := repo.Ignores()
+	ignores, err := repo.Ignores(ctx)
 	if err != nil {
 		return nil, err
 	}

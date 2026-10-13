@@ -24,7 +24,7 @@ func TestIgnoresPrecedence(t *testing.T) {
 	fixture.write("sub/.gitignore", "!*.log\nlocal/\n")
 	fixture.write("sub/nested/.gitignore", "keep.log\n")
 	fixture.write("ignored/.gitignore", "!inside.txt\n")
-	ignores, err := fixture.open().Ignores()
+	ignores, err := fixture.open().Ignores(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestIgnoresSkipSymlinkedFiles(t *testing.T) {
 	if err := os.Symlink("rules", filepath.Join(fixture.root, "sub", ".gitignore")); err != nil {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
-	ignores, err := fixture.open().Ignores()
+	ignores, err := fixture.open().Ignores(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestIgnoresCaseFolding(t *testing.T) {
 	fixture := newTestRepo(t)
 	fixture.git("config", "core.ignoreCase", "true")
 	fixture.write(".gitignore", "BUILD/\n")
-	ignores, err := fixture.open().Ignores()
+	ignores, err := fixture.open().Ignores(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +247,7 @@ type ignoreQuery struct {
 
 func (r *testRepo) assertIgnoresMatchGit(mustMatch bool, queries ...ignoreQuery) {
 	r.t.Helper()
-	ignores, err := r.open().Ignores()
+	ignores, err := r.open().Ignores(r.t.Context())
 	matched := false
 	for _, q := range queries {
 		want, gitErr := r.gitCheckIgnore(q.path, q.isDir)

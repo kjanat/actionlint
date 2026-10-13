@@ -97,8 +97,8 @@ func (r *Repository) IndexPath() string {
 	return filepath.Join(r.GitDir, "index")
 }
 
-func (r *Repository) Index() ([]IndexEntry, error) {
-	index, err := r.readIndex()
+func (r *Repository) Index(ctx context.Context) ([]IndexEntry, error) {
+	index, err := r.readIndex(r.disk(ctx))
 	if err != nil || index == nil {
 		return nil, err
 	}
@@ -109,14 +109,15 @@ func (r *Repository) ExpandedIndex(ctx context.Context) ([]IndexEntry, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	index, err := r.readIndex()
+	d := r.disk(ctx)
+	index, err := r.readIndex(d)
 	if err != nil || index == nil {
 		return nil, err
 	}
 	if !index.sparse {
 		return publicEntries(index.entries), nil
 	}
-	settings, err := r.config()
+	settings, err := r.config(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +136,7 @@ func (r *Repository) ExpandedIndex(ctx context.Context) ([]IndexEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	store, err := r.openObjectStore(settings)
+	store, err := r.openObjectStore(d, settings)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +147,7 @@ func (r *Repository) ExpandedIndex(ctx context.Context) ([]IndexEntry, error) {
 			expanded = append(expanded, entry)
 			continue
 		}
-		err := store.walkTree(ctx, entry.oid, entry.path, 0, maxDepth, rules, func(e indexEntry) {
+		err := store.walkTree(entry.oid, entry.path, 0, maxDepth, rules, func(e indexEntry) {
 			expanded = append(expanded, e)
 		})
 		if err != nil && !errors.Is(err, errTreeUnreadable) {
@@ -230,28 +231,23 @@ func (r *Repository) TrackedFiles(ctx context.Context) ([]string, error) {
 	return slices.Compact(paths), nil
 }
 
-func (r *Repository) readIndex() (*indexFile, error) {
+func (r *Repository) readIndex(d disk) (*indexFile, error) {
 	path := r.IndexPath()
-	data, err := readOptional(path)
+	data, err := d.readOptional(path)
 	if err != nil || data == nil {
 		return nil, err
 	}
-	r.reads.record(path)
 	index, err := readIndex(data, indexSource{
 		hashLength: r.hashLength,
 		loadShared: func(name string) ([]byte, error) {
-			shared := filepath.Join(r.GitDir, "sharedindex."+name)
-			data, err := readOptional(shared)
+			data, err := d.readOptional(filepath.Join(r.GitDir, "sharedindex."+name))
 			if err == nil && data == nil {
 				err = fmt.Errorf("the shared index sharedindex.%s is missing", name)
-			}
-			if err == nil {
-				r.reads.record(shared)
 			}
 			return data, err
 		},
 		pathRules: func() (pathRules, error) {
-			settings, err := r.config()
+			settings, err := r.config(d.ctx)
 			if err != nil {
 				return pathRules{}, err
 			}

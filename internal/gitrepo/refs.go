@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 )
 
 const symrefMaximumDepth = 5
@@ -75,25 +74,27 @@ func currentWorktreeRef(name string) bool {
 	return true
 }
 
-func (r *Repository) readLooseRef(name string, read func(string)) (refValue, error) {
+func (r *Repository) readLooseRef(d disk, name string) (refValue, error) {
+	if err := d.ctx.Err(); err != nil {
+		return refValue{}, err
+	}
 	path := r.refPath(name)
 	info, err := os.Lstat(path)
-	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+	if missing(err) {
 		return refValue{}, nil
 	}
 	if err != nil {
 		return refValue{}, err
 	}
 	if info.Mode()&fs.ModeSymlink != 0 {
-		target, err := os.Readlink(path)
+		target, err := d.readlink(path)
 		if err != nil {
 			return refValue{}, err
 		}
-		read(path)
 		if target = filepath.ToSlash(target); strings.HasPrefix(target, "refs/") && validRefname(target, false) {
 			return refValue{target: target, symref: true, found: true}, nil
 		}
-		if info, err = os.Stat(path); errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+		if info, err = os.Stat(path); missing(err) {
 			return refValue{}, nil
 		} else if err != nil {
 			return refValue{}, err
@@ -102,11 +103,10 @@ func (r *Repository) readLooseRef(name string, read func(string)) (refValue, err
 	if info.IsDir() {
 		return refValue{}, nil
 	}
-	data, err := os.ReadFile(path)
+	data, err := d.readFile(path)
 	if err != nil {
 		return refValue{}, err
 	}
-	read(path)
 	content := strings.TrimRight(string(data), refSpace)
 	if target, ok := strings.CutPrefix(content, "ref:"); ok {
 		return refValue{target: strings.TrimLeft(target, refSpace), symref: true, found: true}, nil

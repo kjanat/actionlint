@@ -18,6 +18,7 @@ enable  = [
   "errorlint",
   "exptostd",
   "fatcontext",
+  "forbidigo",
   "forcetypeassert",
   "gocheckcompilerdirectives",
   "gocritic",
@@ -42,6 +43,13 @@ enable  = [
   "whitespace"
 ]
 
+[linters.settings.forbidigo]
+forbid = [
+  { pattern = '^os\.(Open|OpenFile|ReadDir|ReadFile|Readlink)$', msg = "read through disk in internal/gitrepo/disk.go" },
+  { pattern = '^time\.Sleep$', msg = "wait through disk.wait in internal/gitrepo/disk.go" },
+  { pattern = '^(io\.ReadAll|zlib\.NewReader)$', msg = "inflate through inflater in internal/gitrepo/inflate.go" },
+]
+
 [linters.settings.staticcheck]
 checks = ["all", "-ST1003"]
 
@@ -52,6 +60,14 @@ paths     = [
   # An npm dependency ships Go sources that are not part of this module.
   "node_modules",
 ]
+
+[[linters.exclusions.rules]]
+path-except = "^internal/gitrepo/"
+linters     = ["forbidigo"]
+
+[[linters.exclusions.rules]]
+path    = '^internal/gitrepo/(disk|inflate)\.go$|_test\.go$'
+linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
 path    = "_test\\.go"

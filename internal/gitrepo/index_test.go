@@ -92,7 +92,7 @@ func (r *testRepo) gitIndex(args ...string) []IndexEntry {
 func (r *testRepo) compareIndex() []IndexEntry {
 	r.t.Helper()
 	repo := r.open()
-	raw, err := repo.Index()
+	raw, err := repo.Index(r.t.Context())
 	if err != nil {
 		r.t.Fatal(err)
 	}
@@ -314,7 +314,7 @@ func TestIndexMissingSharedIndex(t *testing.T) {
 	if out, failed := fixture.gitFails("ls-files"); !failed {
 		t.Fatalf("git ls-files accepted the missing shared index: %s", out)
 	}
-	if got, err := fixture.open().Index(); err == nil {
+	if got, err := fixture.open().Index(t.Context()); err == nil {
 		t.Fatalf("Index = %v, want an error for the missing shared index", got)
 	}
 }
@@ -360,7 +360,7 @@ func TestIndexSharedIndexUnreadable(t *testing.T) {
 			if out, failed := fixture.gitFails("ls-files"); !failed {
 				t.Fatalf("git ls-files accepted the damaged shared index: %s", out)
 			}
-			if got, err := fixture.open().Index(); err == nil {
+			if got, err := fixture.open().Index(t.Context()); err == nil {
 				t.Fatalf("Index = %v, want an error", got)
 			}
 		})
@@ -380,7 +380,7 @@ func TestIndexSplitAdditionsNeedPathRules(t *testing.T) {
 	if out, failed := fixture.gitFails("ls-files"); !failed {
 		t.Fatalf("git ls-files accepted core.protectNTFS=maybe: %s", out)
 	}
-	if got, err := repo.Index(); err == nil {
+	if got, err := repo.Index(t.Context()); err == nil {
 		t.Fatalf("Index = %v, want an error for core.protectNTFS=maybe", got)
 	}
 	if got, err := repo.TrackedFiles(t.Context()); err == nil {
@@ -391,7 +391,7 @@ func TestIndexSplitAdditionsNeedPathRules(t *testing.T) {
 	if out, failed := fixture.gitFails("ls-files"); !failed {
 		t.Fatalf("git ls-files accepted GIT_CONFIG_NOSYSTEM=maybe: %s", out)
 	}
-	if got, err := repo.Index(); err == nil {
+	if got, err := repo.Index(t.Context()); err == nil {
 		t.Fatalf("Index = %v, want an error for GIT_CONFIG_NOSYSTEM=maybe", got)
 	}
 }
@@ -416,7 +416,7 @@ func TestIndexSharedIndexChecksumMismatch(t *testing.T) {
 	if out, failed := fixture.gitFails("ls-files"); !failed || !strings.Contains(out, "broken index") {
 		t.Fatalf("git ls-files = %q, %v, want broken index", out, failed)
 	}
-	if got, err := fixture.open().Index(); err == nil || !strings.Contains(err.Error(), "broken index") {
+	if got, err := fixture.open().Index(t.Context()); err == nil || !strings.Contains(err.Error(), "broken index") {
 		t.Fatalf("Index = %v, %v, want broken index", got, err)
 	}
 }
@@ -508,7 +508,7 @@ func TestIndexCorruptionMatchesGit(t *testing.T) {
 			}
 			if tc.gitFails {
 				repo := fixture.open()
-				if got, err := repo.Index(); err == nil {
+				if got, err := repo.Index(t.Context()); err == nil {
 					t.Fatalf("Index = %v, want an error", got)
 				}
 				if got, err := repo.ExpandedIndex(t.Context()); err == nil {
@@ -528,7 +528,7 @@ func TestIndexDirectoryEntryWithoutTree(t *testing.T) {
 		t.Fatal(err)
 	}
 	repo := fixture.open()
-	raw, err := repo.Index()
+	raw, err := repo.Index(t.Context())
 	if err != nil || len(raw) != 3 || !raw[1].IsSparseDirectory() || !raw[1].SkipWorktree {
 		t.Fatalf("Index = %v, %v, want a, the dir/ entry and z", raw, err)
 	}
@@ -631,7 +631,7 @@ func TestIndexSplitCorruptionMatchesGit(t *testing.T) {
 				t.Fatalf("git ls-files failed = %v, want %v: %s", failed, tc.gitFails, out)
 			}
 			if tc.gitFails {
-				if got, err := fixture.open().Index(); err == nil {
+				if got, err := fixture.open().Index(t.Context()); err == nil {
 					t.Fatalf("Index = %v, want an error", got)
 				}
 				return
