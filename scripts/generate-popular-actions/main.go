@@ -153,10 +153,7 @@ func (g *gen) fetchRemote() (map[string]*actionlint.ActionMetadata, error) {
 		}
 		spec := req.action.spec(req.tag)
 		var meta actionlint.ActionMetadata
-		if err := yaml.Unmarshal(body, &meta); err != nil &&
-			// treosh/lighthouse-ci-action's metadata causes parse error due to typo. Ignore the error not to stop codegen
-			// https://github.com/treosh/lighthouse-ci-action/pull/153
-			(!strings.HasPrefix(spec, "treosh/lighthouse-ci-action@") || !strings.Contains(err.Error(), "unexpected key")) {
+		if err := yaml.Unmarshal(body, &meta); err != nil && !onlyUnknownInputFields(err) {
 			return &fetched{err: fmt.Errorf("could not parse metadata for %s: %w", url, err)}
 		}
 		if req.action.SkipInputs {
@@ -236,6 +233,21 @@ func (g *gen) fetchRemote() (map[string]*actionlint.ActionMetadata, error) {
 
 	close(done)
 	return ret, nil
+}
+
+// Input decoding preserves supported fields when it reports unknown input keys.
+// Registry extraction can use that metadata without relaxing local validation.
+func onlyUnknownInputFields(err error) bool {
+	issues, ok := errors.AsType[*yaml.LoadErrors](err)
+	if !ok || len(issues.Errors) == 0 {
+		return false
+	}
+	for _, issue := range issues.Errors {
+		if !strings.HasPrefix(issue.Message, "unexpected key ") || !strings.Contains(issue.Message, " for definition of input ") {
+			return false
+		}
+	}
+	return true
 }
 
 func (g *gen) writeJSONL(out io.Writer, actions map[string]*actionlint.ActionMetadata) error {

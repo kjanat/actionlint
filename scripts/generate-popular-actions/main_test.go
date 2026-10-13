@@ -352,6 +352,42 @@ func TestLighthouseMetadataTypoPreservesClassification(t *testing.T) {
 	}
 }
 
+func TestRegistryExtractionUnknownInputFields(t *testing.T) {
+	for _, tc := range []struct {
+		name, input string
+		fail        bool
+	}{
+		{"extra type", "    type: boolean\n", false},
+		{"misspelled deprecation", "    deprecation-message: use new\n", false},
+		{"invalid required", "    required: [bad]\n", true},
+		{"extra field and invalid required", "    type: boolean\n    required: [bad]\n", true},
+		{"malformed yaml", "    type: [\n", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := "name: Example\ninputs:\n  token:\n    required: true\n" + tc.input + "  optional:\n    required: true\n    default: value\noutputs:\n  result: {}\nruns:\n  using: node24\n  main: index.js\n"
+			g := newGen(io.Discard, io.Discard, io.Discard)
+			g.rawRegistry = []byte(`[{"slug":"example/action","tags":["v1"]}]`)
+			g.client = &http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Request: req}, nil
+			})}
+			metadata, err := g.fetchRemote()
+			if tc.fail {
+				if err == nil {
+					t.Fatal("invalid metadata must stop generation")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			m := metadata["example/action@v1"]
+			if m == nil || len(m.Inputs) != 2 || !m.Inputs["token"].Required || m.Inputs["optional"].Required || m.Inputs["token"].Deprecated || m.Outputs["result"] == nil || m.Runs.Using != "node24" {
+				t.Fatalf("supported metadata was not preserved: %+v", m)
+			}
+		})
+	}
+}
+
 func TestWriteOutdatedActionAsJSONL(t *testing.T) {
 	f := filepath.Join("testdata", "registry", "outdated.json")
 	stdout := &bytes.Buffer{}
