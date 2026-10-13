@@ -82,6 +82,13 @@ jobs:
           node scripts/release-candidate.mjs verify --directory "${assets}"
           mkdir -p distribution/pypi/dist
           cp -- "${assets}"/*.whl distribution/pypi/dist/
+      - name: Verify the build provenance of every released wheel
+        if: ${{ steps.source.outputs.wheels == 'true' && github.event_name == 'workflow_dispatch' && contains(github.workflow_ref, '/.github/workflows/pypi-release.yml@') && !inputs.dry-run }}
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          for wheel in distribution/pypi/dist/*.whl; do
+            gh attestation verify --repo "${GITHUB_REPOSITORY}" "${wheel}"
+          done
       - uses: $/.github/actions/pypi-wheels
         if: steps.source.outputs.wheels == 'true'
         with: { version: "${{ steps.release.outputs.version }}", out-dir: "${{ github.workspace }}/distribution/pypi/dist", smoke: manylinux_2_17_x86_64 }
