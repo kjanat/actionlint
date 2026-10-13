@@ -482,3 +482,44 @@ func TestActionsReportReadFiles(t *testing.T) {
 		t.Fatalf("read files = %q, want %q", got, want)
 	}
 }
+
+func TestActionsSymlinkedRootIncludes(t *testing.T) {
+	root := t.TempDir()
+	gitFixture(t, root)
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(root, alias); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	config := filepath.Dir(os.Getenv("GIT_CONFIG_GLOBAL"))
+	writeFixture(t, config, "hidden-excludes", "hidden/\n")
+	writeFixture(t, config, "alias-include", "[core]\n\texcludesFile = "+filepath.ToSlash(filepath.Join(config, "hidden-excludes"))+"\n")
+	global := filepath.Join(config, "gitconfig")
+	existing, err := os.ReadFile(global)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFixture(t, config, "gitconfig", string(existing)+"[includeIf \"gitdir:"+filepath.ToSlash(alias)+"/\"]\n\tpath = alias-include\n")
+	writeFixture(t, root, "hidden/action.yml", "name: fixture\n")
+	writeFixture(t, root, "shown/action.yml", "name: fixture\n")
+	paths, err := Actions(t.Context(), alias, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ours := !slices.Contains(paths, filepath.Join(alias, "hidden", "action.yml"))
+	check := exec.CommandContext(t.Context(), "git", "check-ignore", "--quiet", "hidden/action.yml")
+	check.Dir = alias
+	_, checkErr := check.Output()
+	var exit *exec.ExitError
+	if checkErr != nil && (!errors.As(checkErr, &exit) || exit.ExitCode() != 1) {
+		t.Fatalf("git check-ignore: %v", checkErr)
+	}
+	if theirs := checkErr == nil; ours != theirs {
+		t.Fatalf("hidden/action.yml ignored by us %v, by git %v", ours, theirs)
+	}
+	if !ours && runtime.GOOS != "windows" {
+		t.Fatal("the gitdir include for the symlinked root did not apply")
+	}
+	if !slices.Contains(paths, filepath.Join(alias, "shown", "action.yml")) {
+		t.Fatalf("Actions = %q", paths)
+	}
+}

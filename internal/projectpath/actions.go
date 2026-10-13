@@ -23,7 +23,7 @@ func Actions(ctx context.Context, root string, onRead func(path string)) ([]stri
 	if err != nil {
 		return nil, fmt.Errorf("could not resolve action discovery root %q: %w", root, err)
 	}
-	relatives, err := discoverActions(ctx, physical, onRead)
+	relatives, err := discoverActions(ctx, root, physical, onRead)
 	if err != nil {
 		return nil, fmt.Errorf("could not discover actions in %q: %w", root, err)
 	}
@@ -43,8 +43,8 @@ type actionDiscovery struct {
 	precompose bool
 }
 
-func discoverActions(ctx context.Context, physical string, onRead func(path string)) ([]string, error) {
-	repo, err := gitrepo.Open(physical)
+func discoverActions(ctx context.Context, root, physical string, onRead func(path string)) ([]string, error) {
+	repo, err := gitrepo.Open(root)
 	if err != nil {
 		return nil, err
 	}
