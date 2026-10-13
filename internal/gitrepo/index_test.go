@@ -94,6 +94,78 @@ func TestTrackedFilesConflict(t *testing.T) {
 	}
 }
 
+func TestIndexEntries(t *testing.T) {
+	fixture := newTestRepo(t)
+	fixture.git("config", "core.filemode", "false")
+	fixture.write("plain.sh", "echo\n")
+	fixture.write("exec.sh", "echo\n")
+	fixture.write("intent.sh", "echo\n")
+	fixture.git("add", "plain.sh", "exec.sh")
+	fixture.git("update-index", "--chmod=+x", "exec.sh")
+	fixture.git("add", "-N", "intent.sh")
+	blob := strings.TrimSpace(fixture.git("hash-object", "-w", "--stdin"))
+	path := fixture.write("index-info", "100644 "+blob+" 1\tconflict.txt\n100644 "+blob+" 2\tconflict.txt\n100755 "+blob+" 3\tconflict.txt\n")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := exec.CommandContext(t.Context(), "git", "update-index", "--index-info")
+	command.Dir = fixture.root
+	command.Stdin = bytes.NewReader(data)
+	if out, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("git update-index: %v: %s", err, out)
+	}
+	got, err := fixture.open().Index()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []IndexEntry{
+		{Path: "conflict.txt", Mode: 0o100644, Stage: 1},
+		{Path: "conflict.txt", Mode: 0o100644, Stage: 2},
+		{Path: "conflict.txt", Mode: 0o100755, Stage: 3},
+		{Path: "exec.sh", Mode: 0o100755},
+		{Path: "intent.sh", Mode: 0o100644, IntentToAdd: true},
+		{Path: "plain.sh", Mode: 0o100644},
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("Index = %v, want %v", got, want)
+	}
+}
+
+func TestTrackedFilesChecksum(t *testing.T) {
+	fixture := newTestRepo(t)
+	fixture.write("file", "content\n")
+	fixture.git("add", "file")
+	path := filepath.Join(fixture.root, ".git", "index")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	corrupted := slices.Clone(data)
+	corrupted[len(corrupted)-25] ^= 0x01
+	if err := os.WriteFile(path, corrupted, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := fixture.open().TrackedFiles(); err == nil {
+		t.Fatalf("TrackedFiles = %q, want an error for the corrupted index", got)
+	}
+	fixture.git("config", "index.skipHash", "true")
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	fixture.git("update-index", "--force-write-index")
+	rewritten, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(rewritten[len(rewritten)-20:], make([]byte, 20)) {
+		t.Skip("git kept writing the index checksum")
+	}
+	if got, err := fixture.open().TrackedFiles(); err != nil || !slices.Equal(got, []string{"file"}) {
+		t.Fatalf("TrackedFiles = %q, %v with index.skipHash", got, err)
+	}
+}
+
 func TestTrackedFilesMissingIndex(t *testing.T) {
 	fixture := newTestRepo(t)
 	got, err := fixture.open().TrackedFiles()
@@ -188,8 +260,8 @@ func TestIndexPathsRejectsGarbage(t *testing.T) {
 		"bad extension": append([]byte("DIRC\x00\x00\x00\x02\x00\x00\x00\x00link\x00\x00\x00\x00"), make([]byte, 20)...),
 	} {
 		t.Run(name, func(t *testing.T) {
-			if got, err := indexPaths(data, 20, nil); err == nil {
-				t.Fatalf("indexPaths = %q, want an error", got)
+			if got, err := indexEntries(data, 20, nil); err == nil {
+				t.Fatalf("indexEntries = %v, want an error", got)
 			}
 		})
 	}

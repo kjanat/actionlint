@@ -985,10 +985,11 @@ test.yaml:7:14: script "bad.sh" is executed directly but its Git index mode is 1
 <!-- Skip playground link -->
 
 This example requires `bad.sh` in the repository's Git index with mode `100644`.
-The `executable-bit` rule reads index modes, so it also works when actionlint runs
-on Windows and checks workflows targeting Linux or macOS. It requires Git and a
-detected local repository, but does not require ShellCheck. Missing Git, untracked
-files, unresolved merge entries, symlinks and submodules do not produce findings.
+The `executable-bit` rule reads the index file itself, so it also works when
+actionlint runs on Windows and checks workflows targeting Linux or macOS, and it
+needs no `git` binary. It requires a detected local repository, but does not
+require ShellCheck. Untracked files, unresolved merge entries, symlinks and
+submodules do not produce findings.
 
 Either commit the executable bit with `git update-index --chmod=+x bad.sh`, run
 `bash bad.sh` instead, or set permissions in the workflow before invoking the

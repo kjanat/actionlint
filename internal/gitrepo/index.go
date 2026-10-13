@@ -2,6 +2,8 @@ package gitrepo
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
@@ -11,15 +13,31 @@ import (
 )
 
 const (
-	indexStatBeforeMode = 24
-	indexStatAfterMode  = 12
-	indexExtendedFlag   = 0x4000
-	indexNameLengthMask = 0xfff
+	indexStatBeforeMode  = 24
+	indexStatAfterMode   = 12
+	indexExtendedFlag    = 0x4000
+	indexStageShift      = 12
+	indexNameLengthMask  = 0xfff
+	indexIntentToAddFlag = 0x2000
 )
 
+type IndexEntry struct {
+	Path        string
+	Mode        uint32
+	Stage       uint8
+	IntentToAdd bool
+}
+
+func (e IndexEntry) IsFile() bool {
+	kind := e.Mode >> 12
+	return kind == 0b1000 || kind == 0b1010
+}
+
 type indexEntry struct {
-	path    []byte
-	tracked bool
+	path        []byte
+	mode        uint32
+	stage       uint8
+	intentToAdd bool
 }
 
 type indexFile struct {
@@ -32,13 +50,17 @@ type indexLink struct {
 	bitmaps []byte
 }
 
-func (r *Repository) TrackedFiles() ([]string, error) {
-	path := filepath.Join(r.GitDir, "index")
+func (r *Repository) IndexPath() string {
+	return filepath.Join(r.GitDir, "index")
+}
+
+func (r *Repository) Index() ([]IndexEntry, error) {
+	path := r.IndexPath()
 	data, err := readOptional(path)
 	if err != nil || data == nil {
 		return nil, err
 	}
-	paths, err := indexPaths(data, r.hashLength, func(shared string) ([]byte, error) {
+	entries, err := indexEntries(data, r.hashLength, func(shared string) ([]byte, error) {
 		data, err := readOptional(filepath.Join(r.GitDir, "sharedindex."+shared))
 		if err == nil && data == nil {
 			err = errors.New("the shared index is missing")
@@ -48,10 +70,25 @@ func (r *Repository) TrackedFiles() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not read %s: %w", path, err)
 	}
-	return paths, nil
+	return entries, nil
 }
 
-func indexPaths(data []byte, hashLength int, loadShared func(shared string) ([]byte, error)) ([]string, error) {
+func (r *Repository) TrackedFiles() ([]string, error) {
+	entries, err := r.Index()
+	if err != nil {
+		return nil, err
+	}
+	var paths []string
+	for _, entry := range entries {
+		if entry.IsFile() {
+			paths = append(paths, entry.Path)
+		}
+	}
+	slices.Sort(paths)
+	return slices.Compact(paths), nil
+}
+
+func indexEntries(data []byte, hashLength int, loadShared func(shared string) ([]byte, error)) ([]IndexEntry, error) {
 	index, err := parseIndex(data, hashLength)
 	if err != nil {
 		return nil, err
@@ -73,17 +110,14 @@ func indexPaths(data []byte, hashLength int, loadShared func(shared string) ([]b
 			return nil, err
 		}
 	}
-	var paths []string
+	result := make([]IndexEntry, 0, len(entries))
 	for _, entry := range entries {
 		if len(entry.path) == 0 {
 			return nil, errors.New("an index entry has an empty path")
 		}
-		if entry.tracked {
-			paths = append(paths, string(entry.path))
-		}
+		result = append(result, IndexEntry{Path: string(entry.path), Mode: entry.mode, Stage: entry.stage, IntentToAdd: entry.intentToAdd})
 	}
-	slices.Sort(paths)
-	return slices.Compact(paths), nil
+	return result, nil
 }
 
 func mergeSplitIndex(base, split []indexEntry, bitmaps []byte) ([]indexEntry, error) {
@@ -108,7 +142,9 @@ func mergeSplitIndex(base, split []indexEntry, bitmaps []byte) ([]indexEntry, er
 	}
 	merged := slices.Clone(base)
 	for i, position := range replaced {
-		merged[position] = indexEntry{path: base[position].path, tracked: split[i].tracked}
+		replacement := split[i]
+		replacement.path = base[position].path
+		merged[position] = replacement
 	}
 	var entries []indexEntry
 	for position, entry := range merged {
@@ -123,7 +159,21 @@ func parseIndex(data []byte, hashLength int) (*indexFile, error) {
 	if len(data) < hashLength {
 		return nil, errors.New("the index is shorter than its checksum")
 	}
-	reader := indexReader{data: data[:len(data)-hashLength]}
+	body, checksum := data[:len(data)-hashLength], data[len(data)-hashLength:]
+	if !bytes.Equal(checksum, make([]byte, hashLength)) {
+		var sum []byte
+		if hashLength == 32 {
+			digest := sha256.Sum256(body)
+			sum = digest[:]
+		} else {
+			digest := sha1.Sum(body)
+			sum = digest[:]
+		}
+		if !bytes.Equal(sum, checksum) {
+			return nil, errors.New("the index checksum does not match its contents")
+		}
+	}
+	reader := indexReader{data: body}
 	signature, err := reader.bytes(4)
 	if err != nil {
 		return nil, err
@@ -256,8 +306,9 @@ func (r *indexReader) entry(version uint32, hashLength int, previous []byte) (in
 	if err != nil {
 		return indexEntry{}, err
 	}
+	var extended uint16
 	if flags&indexExtendedFlag != 0 {
-		if _, err := r.uint16(); err != nil {
+		if extended, err = r.uint16(); err != nil {
 			return indexEntry{}, err
 		}
 	}
@@ -291,10 +342,8 @@ func (r *indexReader) entry(version uint32, hashLength int, previous []byte) (in
 		return indexEntry{}, fmt.Errorf("the index entry %q does not match its length %d", path, nameLength)
 	}
 	switch mode >> 12 {
-	case 0b1000, 0b1010:
-		return indexEntry{path: path, tracked: true}, nil
-	case 0b1110, 0b0100:
-		return indexEntry{path: path}, nil
+	case 0b1000, 0b1010, 0b1110, 0b0100:
+		return indexEntry{path: path, mode: mode, stage: uint8(flags >> indexStageShift & 3), intentToAdd: extended&indexIntentToAddFlag != 0}, nil
 	}
 	return indexEntry{}, fmt.Errorf("the index entry %q has mode %o", path, mode)
 }
