@@ -3,11 +3,13 @@ package gitrepo
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 )
 
 const maxIncludeDepth = 10
@@ -43,8 +45,8 @@ func newPathPair(path string) (pathPair, error) {
 	return pair, nil
 }
 
-func newIncludeContext(gitDir, workTree string) (*includeContext, error) {
-	ctx := &includeContext{}
+func newIncludeContext(gitDir, workTree string, record func(path string)) (*includeContext, error) {
+	ctx := &includeContext{record: record}
 	if gitDir == "" {
 		return ctx, nil
 	}
@@ -57,14 +59,39 @@ func newIncludeContext(gitDir, workTree string) (*includeContext, error) {
 			return nil, err
 		}
 	}
-	head, err := readOptional(filepath.Join(gitDir, "HEAD"))
+	ctx.branch, err = headBranch(filepath.Join(gitDir, "HEAD"), ctx.read)
 	if err != nil {
 		return nil, err
 	}
-	if ref, ok := strings.CutPrefix(strings.TrimRight(string(head), "\r\n"), "ref: refs/heads/"); ok {
-		ctx.branch = ref
-	}
 	return ctx, nil
+}
+
+func headBranch(path string, read func(string)) (string, error) {
+	info, err := os.Lstat(path)
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	if info.Mode()&fs.ModeSymlink != 0 {
+		target, err := os.Readlink(path)
+		if err != nil {
+			return "", err
+		}
+		read(path)
+		branch, _ := strings.CutPrefix(filepath.ToSlash(target), "refs/heads/")
+		if strings.HasPrefix(filepath.ToSlash(target), "refs/") {
+			return branch, nil
+		}
+	}
+	head, err := readOptional(path)
+	if err != nil || head == nil {
+		return "", err
+	}
+	read(path)
+	branch, _ := strings.CutPrefix(strings.TrimRight(string(head), "\r\n"), "ref: refs/heads/")
+	return branch, nil
 }
 
 type configLoader struct {
@@ -254,7 +281,7 @@ func expandHome(path string, realHome bool) (string, bool) {
 		if isAbsolutePath(rest) {
 			return rest, true
 		}
-		return gitPrefix + "/" + rest, true
+		return gitPrefix() + "/" + rest, true
 	}
 	if !strings.HasPrefix(path, "~") {
 		return path, true

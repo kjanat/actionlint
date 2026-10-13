@@ -2,8 +2,10 @@ package gitrepo
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha1"
 	"encoding/binary"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -97,19 +99,19 @@ func (r *testRepo) compareIndex() []IndexEntry {
 	if want := r.gitIndex("--sparse"); !slices.Equal(raw, want) {
 		r.t.Fatalf("Index =\n%v\nwant git ls-files --sparse\n%v", raw, want)
 	}
-	expanded, err := repo.ExpandedIndex()
+	expanded, err := repo.ExpandedIndex(r.t.Context())
 	if err != nil {
 		r.t.Fatal(err)
 	}
 	if want := r.gitIndex(); !slices.Equal(expanded, want) {
 		r.t.Fatalf("ExpandedIndex =\n%v\nwant git ls-files\n%v", expanded, want)
 	}
-	tracked, err := repo.TrackedFiles()
+	tracked, err := repo.TrackedFiles(r.t.Context())
 	if err != nil {
 		r.t.Fatal(err)
 	}
 	var want []string
-	for _, entry := range raw {
+	for _, entry := range expanded {
 		if entry.IsFile() {
 			want = append(want, entry.Path)
 		}
@@ -281,7 +283,7 @@ func TestIndexSplitWithSkipHash(t *testing.T) {
 
 func TestTrackedFilesMissingIndex(t *testing.T) {
 	fixture := newTestRepo(t)
-	got, err := fixture.open().TrackedFiles()
+	got, err := fixture.open().TrackedFiles(t.Context())
 	if err != nil || got != nil {
 		t.Fatalf("TrackedFiles = %q, %v, want nil, nil", got, err)
 	}
@@ -376,7 +378,7 @@ func TestIndexSplitAdditionsNeedPathRules(t *testing.T) {
 	if got, err := repo.Index(); err == nil {
 		t.Fatalf("Index = %v, want an error for core.protectNTFS=maybe", got)
 	}
-	if got, err := repo.TrackedFiles(); err == nil {
+	if got, err := repo.TrackedFiles(t.Context()); err == nil {
 		t.Fatalf("TrackedFiles = %v, want an error for core.protectNTFS=maybe", got)
 	}
 	fixture.git("config", "core.protectNTFS", "true")
@@ -504,7 +506,7 @@ func TestIndexCorruptionMatchesGit(t *testing.T) {
 				if got, err := repo.Index(); err == nil {
 					t.Fatalf("Index = %v, want an error", got)
 				}
-				if got, err := repo.ExpandedIndex(); err == nil {
+				if got, err := repo.ExpandedIndex(t.Context()); err == nil {
 					t.Fatalf("ExpandedIndex = %v, want an error", got)
 				}
 				return
@@ -525,7 +527,7 @@ func TestIndexDirectoryEntryWithoutTree(t *testing.T) {
 	if err != nil || len(raw) != 3 || !raw[1].IsSparseDirectory() || !raw[1].SkipWorktree {
 		t.Fatalf("Index = %v, %v, want a, the dir/ entry and z", raw, err)
 	}
-	expanded, err := repo.ExpandedIndex()
+	expanded, err := repo.ExpandedIndex(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -708,5 +710,19 @@ func TestPathRulesMatchGit(t *testing.T) {
 		if got := rules.valid([]byte(tc.path), 0o100644); got == failed {
 			t.Errorf("valid(%q) with %v = %v, git update-index failed = %v", tc.path, tc.config, got, failed)
 		}
+	}
+}
+
+func TestExpandedIndexCancelled(t *testing.T) {
+	fixture := newTestRepo(t)
+	fixture.write("file", "")
+	fixture.git("add", "file")
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if got, err := fixture.open().ExpandedIndex(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("ExpandedIndex = %v, %v, want context.Canceled", got, err)
+	}
+	if got, err := fixture.open().TrackedFiles(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("TrackedFiles = %v, %v, want context.Canceled", got, err)
 	}
 }

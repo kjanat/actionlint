@@ -178,7 +178,7 @@ func TestLoadConfigIncludeDepth(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "loop")
 	writeConfig(t, path, "[include]\n\tpath = loop\n")
-	ctx, err := newIncludeContext("", "")
+	ctx, err := newIncludeContext("", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -231,5 +231,33 @@ func TestLoadConfigBareRepositoryConditions(t *testing.T) {
 		if theirs := fixture.gitBool("config", "--get", key); ours != theirs {
 			t.Errorf("%s: included by us %v, by git %v", key, ours, theirs)
 		}
+	}
+}
+
+func TestLoadConfigSymlinkedHead(t *testing.T) {
+	fixture := newTestRepo(t)
+	fixture.git("checkout", "--quiet", "-b", "feature/x")
+	fixture.write("file", "")
+	fixture.git("add", "file")
+	fixture.git("commit", "--quiet", "-m", "base")
+	head := filepath.Join(fixture.root, ".git", "HEAD")
+	if err := os.Remove(head); err != nil {
+		t.Fatal(err)
+	}
+	symlink(t, "refs/heads/feature/x", head)
+	writeConfig(t, filepath.Join(fixture.home, "branch"), "[core]\n\tbranch = 1\n")
+	global := filepath.Join(fixture.home, "gitconfig")
+	writeConfig(t, global, "[includeIf \"onbranch:feature/**\"]\n\tpath = branch\n")
+	t.Setenv("GIT_CONFIG_GLOBAL", global)
+	settings, err := fixture.open().config()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, ours := settings["core.branch"]
+	if theirs := fixture.gitBool("config", "--get", "core.branch"); ours != theirs {
+		t.Fatalf("onbranch with a symlinked HEAD: included by us %v, by git %v", ours, theirs)
+	}
+	if !ours {
+		t.Fatal("onbranch did not match the symlinked HEAD")
 	}
 }

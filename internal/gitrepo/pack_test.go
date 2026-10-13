@@ -15,7 +15,7 @@ import (
 func (r *testRepo) matchGit() {
 	r.t.Helper()
 	out, failed := r.gitFails("ls-files", "--stage")
-	got, err := r.open().ExpandedIndex()
+	got, err := r.open().ExpandedIndex(r.t.Context())
 	if failed {
 		if err == nil {
 			r.t.Fatalf("git ls-files failed (%s) but ExpandedIndex = %v", out, got)
@@ -261,7 +261,7 @@ func TestPackReferenceDeltaLoop(t *testing.T) {
 		copy(d[p.offset+uint64(p.header):], p.tree)
 		return d
 	})
-	if got, err := p.open().ExpandedIndex(); err == nil || !strings.Contains(err.Error(), "loops") {
+	if got, err := p.open().ExpandedIndex(t.Context()); err == nil || !strings.Contains(err.Error(), "loops") {
 		t.Fatalf("ExpandedIndex = %v, %v, want a delta loop error", got, err)
 	}
 }

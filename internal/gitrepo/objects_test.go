@@ -3,7 +3,9 @@ package gitrepo
 import (
 	"bytes"
 	"compress/zlib"
+	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -344,7 +346,7 @@ func TestExpandedIndexCorruptTree(t *testing.T) {
 				t.Fatal(err)
 			}
 			out, failed := fixture.gitFails("ls-files")
-			got, err := fixture.open().ExpandedIndex()
+			got, err := fixture.open().ExpandedIndex(t.Context())
 			if failed != (err != nil) {
 				t.Fatalf("git ls-files failed = %v (%s), ExpandedIndex = %v, %v", failed, out, got, err)
 			}
@@ -378,7 +380,7 @@ func TestExpandedIndexBadConfig(t *testing.T) {
 			if out, failed := fixture.gitFails("ls-files"); !failed {
 				t.Fatalf("git ls-files accepted the configuration: %s", out)
 			}
-			if got, err := repo.ExpandedIndex(); err == nil {
+			if got, err := repo.ExpandedIndex(t.Context()); err == nil {
 				t.Fatalf("ExpandedIndex = %v, want an error", got)
 			}
 		})
@@ -393,7 +395,7 @@ func TestExpandedIndexTreeDepth(t *testing.T) {
 	if out, failed := fixture.gitFails("ls-files"); !failed {
 		t.Fatalf("git ls-files accepted core.maxTreeDepth=deep: %s", out)
 	}
-	if got, err := fixture.open().ExpandedIndex(); err == nil {
+	if got, err := fixture.open().ExpandedIndex(t.Context()); err == nil {
 		t.Fatalf("ExpandedIndex = %v, want an error for a bad core.maxTreeDepth", got)
 	}
 }
@@ -561,5 +563,29 @@ func TestLoadPackIndexRejects(t *testing.T) {
 		if got, err := loadPackIndex(path, 20); err == nil {
 			t.Errorf("%s: loadPackIndex = %+v, want an error", name, got)
 		}
+	}
+}
+
+func TestWalkTreeCancelled(t *testing.T) {
+	fixture := sparseFixture(t)
+	repo := fixture.open()
+	settings, err := repo.config()
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := repo.openObjectStore(settings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.close()
+	oid, err := hex.DecodeString(fixture.treeOID("out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	err = store.walkTree(ctx, oid, []byte("out/"), 0, defaultMaxTreeDepth, pathRules{}, func(indexEntry) { t.Fatal("walked a cancelled tree") })
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("walkTree = %v, want context.Canceled", err)
 	}
 }

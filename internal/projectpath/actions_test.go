@@ -231,7 +231,7 @@ func TestActionsComposeDecomposedNames(t *testing.T) {
 		"decomposed": {false, []string{filepath.Join("café", "action.yml"), filepath.Join("café", "kept", "action.yml"), filepath.Join("plain", "action.yml")}},
 	} {
 		t.Run(name, func(t *testing.T) {
-			discovery, err := newActionDiscovery(physical, repo, tc.precompose)
+			discovery, err := newActionDiscovery(t.Context(), physical, repo, tc.precompose)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -476,7 +476,7 @@ func TestActionsReportReadFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	config := filepath.Dir(os.Getenv("GIT_CONFIG_GLOBAL"))
-	want := []string{filepath.Join(config, "gitconfig"), filepath.Join(config, "excludes"), filepath.Join(physical, ".git", "config"), filepath.Join(physical, ".git", "index"), filepath.Join(physical, ".git", "info", "exclude"), filepath.Join(physical, ".gitignore"), filepath.Join(physical, "sub", ".gitignore")}
+	want := []string{filepath.Join(config, "gitconfig"), filepath.Join(config, "excludes"), filepath.Join(physical, ".git", "HEAD"), filepath.Join(physical, ".git", "config"), filepath.Join(physical, ".git", "index"), filepath.Join(physical, ".git", "info", "exclude"), filepath.Join(physical, ".gitignore"), filepath.Join(physical, "sub", ".gitignore")}
 	slices.Sort(want)
 	if !slices.Equal(got, want) {
 		t.Fatalf("read files = %q, want %q", got, want)

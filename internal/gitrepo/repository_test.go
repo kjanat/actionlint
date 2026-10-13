@@ -582,7 +582,7 @@ func TestOpenSymlinkedGitDir(t *testing.T) {
 	if repo.GitDir != filepath.Join(resolvedPath(t, fixture.root), ".git") {
 		t.Fatalf("GitDir = %q", repo.GitDir)
 	}
-	if got, err := repo.TrackedFiles(); err != nil || len(got) != 1 {
+	if got, err := repo.TrackedFiles(t.Context()); err != nil || len(got) != 1 {
 		t.Fatalf("TrackedFiles = %q, %v", got, err)
 	}
 }
@@ -630,7 +630,7 @@ func TestOpenWithoutHome(t *testing.T) {
 			if !ignores.Ignored("ignored", true) {
 				t.Fatal("Ignored(ignored) = false")
 			}
-			if _, err := repo.TrackedFiles(); err != nil {
+			if _, err := repo.TrackedFiles(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 		})
@@ -864,7 +864,7 @@ func TestOpenObjectFormatMatchesGit(t *testing.T) {
 			if repo.hashLength != want {
 				t.Fatalf("hashLength = %d, git says %s", repo.hashLength, out)
 			}
-			if got, err := repo.TrackedFiles(); err != nil || !slices.Equal(got, []string{"file"}) {
+			if got, err := repo.TrackedFiles(t.Context()); err != nil || !slices.Equal(got, []string{"file"}) {
 				t.Fatalf("TrackedFiles = %q, %v", got, err)
 			}
 			fixture.compareProbe("core.probe")
@@ -951,7 +951,7 @@ func TestExpandHome(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	for _, tc := range []struct{ path, want string }{
-		{"%(prefix)/etc/x", gitPrefix + "/etc/x"},
+		{"%(prefix)/etc/x", gitPrefix() + "/etc/x"},
 		{"%(prefix)//abs", "/abs"},
 		{"~", filepath.ToSlash(home)},
 		{"~/x", filepath.ToSlash(home) + "/x"},
@@ -996,9 +996,37 @@ func TestReadFiles(t *testing.T) {
 	if _, err := repo.Index(); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{global, included, filepath.Join(repo.GitDir, "config"), excludes, filepath.Join(repo.CommonDir, "info", "exclude"), filepath.Join(repo.WorkTree, ".gitignore"), filepath.Join(repo.WorkTree, "sub", ".gitignore"), repo.IndexPath(), filepath.Join(repo.GitDir, filepath.Base(shared[0]))}
+	want := []string{global, included, filepath.Join(repo.GitDir, "HEAD"), filepath.Join(repo.GitDir, "config"), excludes, filepath.Join(repo.CommonDir, "info", "exclude"), filepath.Join(repo.WorkTree, ".gitignore"), filepath.Join(repo.WorkTree, "sub", ".gitignore"), repo.IndexPath(), filepath.Join(repo.GitDir, filepath.Base(shared[0]))}
 	slices.Sort(want)
 	if got := repo.ReadFiles(); !slices.Equal(got, want) {
 		t.Fatalf("ReadFiles = %q, want %q", got, want)
+	}
+}
+
+func TestSystemConfigPathMatchesGit(t *testing.T) {
+	requireGit(t)
+	for _, name := range []string{"GIT_CONFIG_SYSTEM", "GIT_CONFIG_NOSYSTEM"} {
+		t.Setenv(name, "")
+		if err := os.Unsetenv(name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	out, err := exec.CommandContext(t.Context(), "git", "var", "GIT_CONFIG_SYSTEM").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	theirs := filepath.Clean(filepath.FromSlash(strings.TrimSpace(string(out))))
+	if ours := filepath.Clean(systemConfigPath()); ours != theirs {
+		t.Fatalf("systemConfigPath = %q, git var GIT_CONFIG_SYSTEM = %q", ours, theirs)
+	}
+}
+
+func TestGitPrefixWithoutGit(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	if got := gitPrefix(); got != "/usr" {
+		t.Fatalf("gitPrefix = %q", got)
+	}
+	if got := systemConfigPath(); got != "/etc/gitconfig" {
+		t.Fatalf("systemConfigPath = %q", got)
 	}
 }

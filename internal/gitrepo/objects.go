@@ -3,6 +3,7 @@ package gitrepo
 import (
 	"bytes"
 	"compress/zlib"
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -337,7 +338,10 @@ func permissions(mode uint32) uint32 {
 
 var errTreeUnreadable = errors.New("unreadable tree")
 
-func (s *objectStore) walkTree(oid []byte, base []byte, depth, maxDepth int, rules pathRules, add func(indexEntry)) error {
+func (s *objectStore) walkTree(ctx context.Context, oid []byte, base []byte, depth, maxDepth int, rules pathRules, add func(indexEntry)) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if depth > maxDepth {
 		return fmt.Errorf("%w: exceeded maximum allowed tree depth", errTreeUnreadable)
 	}
@@ -358,7 +362,7 @@ func (s *objectStore) walkTree(oid []byte, base []byte, depth, maxDepth int, rul
 	for _, entry := range entries {
 		path := slices.Concat(base, entry.name)
 		if entry.mode == modeDirectory {
-			if err := s.walkTree(entry.oid, append(path, '/'), depth+1, maxDepth, rules, add); err != nil {
+			if err := s.walkTree(ctx, entry.oid, append(path, '/'), depth+1, maxDepth, rules, add); err != nil {
 				return err
 			}
 			continue

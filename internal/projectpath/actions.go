@@ -50,7 +50,7 @@ func discoverActions(ctx context.Context, physical string, onRead func(path stri
 	}
 	discovery := &actionDiscovery{root: physical}
 	if repo != nil && repo.WorkTree != "" {
-		if discovery, err = newActionDiscovery(physical, repo, runtime.GOOS == "darwin" && repo.PrecomposeUnicode()); err != nil {
+		if discovery, err = newActionDiscovery(ctx, physical, repo, runtime.GOOS == "darwin" && repo.PrecomposeUnicode()); err != nil {
 			return nil, err
 		}
 	}
@@ -66,7 +66,7 @@ func discoverActions(ctx context.Context, physical string, onRead func(path stri
 	return relatives, nil
 }
 
-func newActionDiscovery(physical string, repo *gitrepo.Repository, precompose bool) (*actionDiscovery, error) {
+func newActionDiscovery(ctx context.Context, physical string, repo *gitrepo.Repository, precompose bool) (*actionDiscovery, error) {
 	discovery := &actionDiscovery{root: physical, ignoreCase: repo.IgnoreCase(), precompose: precompose}
 	relative, err := filepath.Rel(repo.WorkTree, physical)
 	if err != nil {
@@ -81,7 +81,7 @@ func newActionDiscovery(physical string, repo *gitrepo.Repository, precompose bo
 	if discovery.ignores, err = repo.Ignores(); err != nil {
 		return nil, err
 	}
-	tracked, err := repo.TrackedFiles()
+	tracked, err := repo.TrackedFiles(ctx)
 	if err != nil {
 		return nil, err
 	}

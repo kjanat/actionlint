@@ -27,7 +27,7 @@ type gitModeSnapshot struct {
 	err      error
 }
 
-func (cache *gitModes) load(_ context.Context, root string) *gitModeSnapshot {
+func (cache *gitModes) load(ctx context.Context, root string) *gitModeSnapshot {
 	cache.mu.Lock()
 	if cache.entries == nil {
 		cache.entries = make(map[string]*gitModeSnapshot)
@@ -52,7 +52,7 @@ func (cache *gitModes) load(_ context.Context, root string) *gitModeSnapshot {
 			snapshot.err = fmt.Errorf("%s is in a Git repository without a work tree", root)
 			return
 		}
-		entries, err := repo.ExpandedIndex()
+		entries, err := repo.ExpandedIndex(ctx)
 		if err != nil {
 			snapshot.err = fmt.Errorf("read Git index: %w", err)
 			return

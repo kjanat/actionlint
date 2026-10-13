@@ -356,12 +356,6 @@ func (r *Repository) PrecomposeUnicode() bool {
 	return r.precompose
 }
 
-// git reads one system file fixed at build time; distribution builds use prefix /usr and ETC_GITCONFIG /etc/gitconfig.
-const (
-	gitPrefix    = "/usr"
-	systemConfig = "/etc/gitconfig"
-)
-
 func (r *Repository) config() (config, error) {
 	var files []string
 	noSystem := false
@@ -374,7 +368,7 @@ func (r *Repository) config() (config, error) {
 	if !noSystem {
 		system, ok := os.LookupEnv("GIT_CONFIG_SYSTEM")
 		if !ok {
-			system = systemConfig
+			system = systemConfigPath()
 		}
 		files = append(files, system)
 	}
@@ -409,11 +403,10 @@ func (r *Repository) config() (config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse command-line config: %w", err)
 	}
-	ctx, err := newIncludeContext(r.GitDir, r.WorkTree)
+	ctx, err := newIncludeContext(r.GitDir, r.WorkTree, r.reads.record)
 	if err != nil {
 		return nil, err
 	}
-	ctx.record = r.reads.record
 	return loadConfigFiles(files, params, ctx)
 }
 

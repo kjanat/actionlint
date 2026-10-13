@@ -2,6 +2,7 @@ package gitrepo
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
@@ -101,7 +102,10 @@ func (r *Repository) Index() ([]IndexEntry, error) {
 	return publicEntries(index.entries), nil
 }
 
-func (r *Repository) ExpandedIndex() ([]IndexEntry, error) {
+func (r *Repository) ExpandedIndex(ctx context.Context) ([]IndexEntry, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	index, err := r.readIndex()
 	if err != nil || index == nil {
 		return nil, err
@@ -139,7 +143,7 @@ func (r *Repository) ExpandedIndex() ([]IndexEntry, error) {
 			expanded = append(expanded, entry)
 			continue
 		}
-		err := store.walkTree(entry.oid, entry.path, 0, maxDepth, rules, func(e indexEntry) {
+		err := store.walkTree(ctx, entry.oid, entry.path, 0, maxDepth, rules, func(e indexEntry) {
 			expanded = append(expanded, e)
 		})
 		if err != nil && !errors.Is(err, errTreeUnreadable) {
@@ -149,8 +153,8 @@ func (r *Repository) ExpandedIndex() ([]IndexEntry, error) {
 	return publicEntries(expanded), nil
 }
 
-func (r *Repository) TrackedFiles() ([]string, error) {
-	entries, err := r.Index()
+func (r *Repository) TrackedFiles(ctx context.Context) ([]string, error) {
+	entries, err := r.ExpandedIndex(ctx)
 	if err != nil {
 		return nil, err
 	}

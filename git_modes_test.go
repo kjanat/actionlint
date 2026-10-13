@@ -3,6 +3,7 @@ package actionlint
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -221,5 +222,14 @@ func TestGitModeMap(t *testing.T) {
 		if got[name] != mode {
 			t.Errorf("%s = %q, want %q", name, got[name], mode)
 		}
+	}
+}
+
+func TestGitModesCancelled(t *testing.T) {
+	root, _ := executableFixture(t)
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if snapshot := (&gitModes{}).load(ctx, root); !errors.Is(snapshot.err, context.Canceled) {
+		t.Fatalf("load = %v, want context.Canceled", snapshot.err)
 	}
 }
