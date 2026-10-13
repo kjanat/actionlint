@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -10,6 +11,31 @@ import (
 )
 
 const standaloneComposite = "name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n"
+
+func TestStandaloneActionVirtualSourceThroughSymlink(t *testing.T) {
+	root := t.TempDir()
+	physical := filepath.Join(root, "real")
+	if err := os.Mkdir(physical, 0700); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(root, "alias")
+	if err := os.Symlink(physical, alias); err != nil {
+		t.Skipf("directory symlinks unavailable: %v", err)
+	}
+	source := strings.Replace(standaloneComposite, "echo ok", "echo ${{ secrets.TOKEN }}", 1)
+	for _, onDisk := range []bool{false, true} {
+		if onDisk {
+			writeShellcheckFixture(t, physical, "action.yml", source)
+		}
+		result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: alias, Sources: []SourceUnit{{Path: "action.yml", Content: []byte(source)}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(result.Diagnostics) != 1 || result.Diagnostics[0].Path != "action.yml" {
+			t.Fatalf("onDisk=%v: expected one finding in action.yml, got %+v", onDisk, result.Diagnostics)
+		}
+	}
+}
 
 func TestStandaloneActionMetadata(t *testing.T) {
 	for _, tc := range []struct {

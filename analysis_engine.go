@@ -373,11 +373,12 @@ func relativeAnalysisPath(directory, source string) string {
 	if !filepath.IsAbs(source) {
 		return source
 	}
-	if resolved, err := filepath.EvalSymlinks(directory); err == nil {
-		directory = resolved
-	}
-	if resolved, err := filepath.EvalSymlinks(source); err == nil {
-		source = resolved
+	// In-memory sources need not exist on disk. Use physical paths only when
+	// both resolve; otherwise retain both original spellings.
+	if resolvedDirectory, err := filepath.EvalSymlinks(directory); err == nil {
+		if resolvedSource, err := filepath.EvalSymlinks(source); err == nil {
+			directory, source = resolvedDirectory, resolvedSource
+		}
 	}
 	if relative, err := filepath.Rel(directory, source); err == nil {
 		return relative
