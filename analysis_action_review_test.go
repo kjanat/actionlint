@@ -13,7 +13,7 @@ func TestActionDiscoverySymlinkRoot(t *testing.T) {
 	for _, mixed := range []bool{false, true} {
 		t.Run(strconv.FormatBool(mixed), func(t *testing.T) {
 			root := t.TempDir()
-			writeShellcheckFixture(t, root, ".git", "gitdir: elsewhere\n")
+			writeShellcheckFixture(t, root, ".git/HEAD", "ref: refs/heads/main\n")
 			writeShellcheckFixture(t, root, "action.yml", standaloneComposite)
 			want := 1
 			if mixed {
@@ -86,7 +86,7 @@ func TestExplicitActionSnapshotAliasedRoot(t *testing.T) {
 
 func TestGenerateConfigActionOnlyRepository(t *testing.T) {
 	root := t.TempDir()
-	writeShellcheckFixture(t, root, ".git", "gitdir: elsewhere\n")
+	writeShellcheckFixture(t, root, ".git/HEAD", "ref: refs/heads/main\n")
 	writeShellcheckFixture(t, root, "action.yml", standaloneComposite)
 	path, err := GenerateProjectConfig(root, false)
 	if err != nil {
@@ -106,7 +106,7 @@ func TestGenerateConfigActionOnlyRepository(t *testing.T) {
 
 func TestActionDiscoveryDoesNotHideWorkflowTypo(t *testing.T) {
 	root := t.TempDir()
-	writeShellcheckFixture(t, root, ".git", "gitdir: elsewhere\n")
+	writeShellcheckFixture(t, root, ".git/HEAD", "ref: refs/heads/main\n")
 	writeShellcheckFixture(t, root, "action.yml", standaloneComposite)
 	writeShellcheckFixture(t, root, ".github/workflow/ci.yml", commandGoodWorkflow)
 	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})

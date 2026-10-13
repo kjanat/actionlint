@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
+
+	"actionlint.kjanat.dev/internal/gitrepo"
 )
 
 // Actions discovers manifests without following symlinks or crossing repository
@@ -18,15 +20,7 @@ func Actions(ctx context.Context, root string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not resolve action discovery root %q: %w", root, err)
 	}
-	var relatives []string
-	names, listed, err := gitFiles(ctx, physical)
-	switch {
-	case err != nil:
-	case listed:
-		relatives, err = listedActions(physical, names)
-	default:
-		relatives, err = walkActions(physical)
-	}
+	relatives, err := discoverActions(ctx, physical)
 	if err != nil {
 		return nil, fmt.Errorf("could not discover actions in %q: %w", root, err)
 	}
@@ -37,106 +31,101 @@ func Actions(ctx context.Context, root string) ([]string, error) {
 	return paths, nil
 }
 
-func gitFiles(ctx context.Context, root string) ([]string, bool, error) {
-	if RepositoryRoot(root) == "" {
-		return nil, false, nil
-	}
-	command := exec.CommandContext(ctx, "git", "-C", root, "-c", "core.fsmonitor=false", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", ":(glob)**/action.yml", ":(glob)**/action.yaml")
-	for _, entry := range os.Environ() {
-		name, _, _ := strings.Cut(entry, "=")
-		switch strings.ToUpper(name) {
-		case "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR":
-			continue
-		}
-		command.Env = append(command.Env, entry)
-	}
-	var stderr strings.Builder
-	command.Stderr = &stderr
-	output, err := command.Output()
-	if err != nil {
-		return nil, false, ctx.Err()
-	}
-	if stderr.Len() > 0 {
-		return nil, false, nil
-	}
-	var names []string
-	for name := range strings.SplitSeq(string(output), "\x00") {
-		if name != "" {
-			names = append(names, name)
-		}
-	}
-	return names, true, nil
+type actionDiscovery struct {
+	root    string
+	prefix  string
+	ignores *gitrepo.Ignores
+	tracked []string
 }
 
-func listedActions(root string, names []string) ([]string, error) {
-	var relatives []string
-	for _, name := range names {
-		relative := filepath.FromSlash(name)
-		if !isManifest(filepath.Base(relative)) {
-			continue
-		}
-		path := filepath.Join(root, relative)
-		info, err := os.Lstat(path)
-		if os.IsNotExist(err) {
-			continue
-		}
+func discoverActions(ctx context.Context, physical string) ([]string, error) {
+	repo, err := gitrepo.Open(physical)
+	if err != nil {
+		return nil, err
+	}
+	discovery := &actionDiscovery{root: physical}
+	if repo != nil {
+		relative, err := filepath.Rel(repo.WorkTree, physical)
 		if err != nil {
 			return nil, err
 		}
-		if !info.Mode().IsRegular() {
-			continue
+		if relative != "." {
+			discovery.prefix = filepath.ToSlash(relative) + "/"
 		}
-		skip := false
-		for dir := filepath.Dir(path); dir != root && !skip; dir = filepath.Dir(dir) {
-			parent, err := os.Lstat(dir)
-			if err != nil {
-				return nil, err
-			}
-			if !parent.IsDir() {
-				skip = true
-				break
-			}
-			if skip, err = skipDirectory(root, dir); err != nil {
-				return nil, err
-			}
+		if discovery.ignores, err = repo.Ignores(); err != nil {
+			return nil, err
 		}
-		if !skip {
-			relatives = append(relatives, relative)
+		if discovery.tracked, err = repo.TrackedFiles(); err != nil {
+			return nil, err
 		}
 	}
-	slices.Sort(relatives)
-	return slices.Compact(relatives), nil
+	return discovery.walk(ctx)
 }
 
-func walkActions(root string) ([]string, error) {
+func (d *actionDiscovery) walk(ctx context.Context) ([]string, error) {
 	var relatives []string
-	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+	err := filepath.WalkDir(d.root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if path == d.root {
+			return nil
+		}
+		relative, err := filepath.Rel(d.root, path)
+		if err != nil {
+			return err
+		}
+		treePath := d.prefix + filepath.ToSlash(relative)
 		if entry.IsDir() {
-			if path == root {
-				return nil
-			}
-			skip, err := skipDirectory(root, path)
+			skip, err := skipDirectory(d.root, path)
 			if err != nil {
 				return err
 			}
 			if skip {
 				return filepath.SkipDir
 			}
-			return nil
-		}
-		if entry.Type().IsRegular() && isManifest(entry.Name()) {
-			relative, err := filepath.Rel(root, path)
+			if d.ignores == nil {
+				return nil
+			}
+			ignored, err := d.ignores.Ignored(treePath, true)
 			if err != nil {
 				return err
 			}
-			relatives = append(relatives, relative)
+			if ignored && !d.trackedUnder(treePath) {
+				return filepath.SkipDir
+			}
+			return nil
 		}
+		if !entry.Type().IsRegular() || !isManifest(entry.Name()) {
+			return nil
+		}
+		if d.ignores != nil && !d.isTracked(treePath) {
+			ignored, err := d.ignores.Ignored(treePath, false)
+			if err != nil {
+				return err
+			}
+			if ignored {
+				return nil
+			}
+		}
+		relatives = append(relatives, relative)
 		return nil
 	})
 	return relatives, err
+}
+
+func (d *actionDiscovery) isTracked(treePath string) bool {
+	_, found := slices.BinarySearch(d.tracked, treePath)
+	return found
+}
+
+func (d *actionDiscovery) trackedUnder(treePath string) bool {
+	prefix := treePath + "/"
+	index := sort.SearchStrings(d.tracked, prefix)
+	return index < len(d.tracked) && strings.HasPrefix(d.tracked[index], prefix)
 }
 
 func skipDirectory(root, path string) (bool, error) {

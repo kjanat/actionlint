@@ -90,7 +90,7 @@ func TestProjectsLookupCacheRetriesFailures(t *testing.T) {
 	if len(projects.roots) != 0 {
 		t.Fatal("unsuccessful discovery was cached")
 	}
-	writeShellcheckFixture(t, root, ".git", "gitdir: elsewhere\n")
+	writeShellcheckFixture(t, root, ".git/HEAD", "ref: refs/heads/main\n")
 	writeShellcheckFixture(t, root, ".github/workflows/ci.yml", "on: push\n")
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "[broken")
 	if project, err := projects.At(root); err == nil || project != nil {

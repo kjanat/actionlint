@@ -67,6 +67,10 @@ func TestActionsHonourGitIgnore(t *testing.T) {
 			t.Setenv("GIT_INDEX_FILE", filepath.Join(root, "missing", "index"))
 			return root
 		}},
+		{"git unavailable", func(t *testing.T, root string, git func(...string)) string {
+			t.Setenv("PATH", t.TempDir())
+			return root
+		}},
 		{"deleted tracked manifest", func(t *testing.T, root string, git func(...string)) string {
 			writeFixture(t, root, "deleted/action.yml", "name: fixture\n")
 			git("add", "--", "deleted/action.yml")
@@ -122,6 +126,15 @@ func TestActionsHonourGitIgnore(t *testing.T) {
 			populate(t, worktree)
 			return worktree
 		}},
+		{"index version 4", func(t *testing.T, root string, git func(...string)) string {
+			git("update-index", "--index-version", "4")
+			return root
+		}},
+		{"ignore case", func(t *testing.T, root string, git func(...string)) string {
+			git("config", "core.ignoreCase", "true")
+			writeFixture(t, root, ".gitignore", "IGNORED/\n")
+			return root
+		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -144,6 +157,40 @@ func TestActionsHonourGitIgnore(t *testing.T) {
 				t.Fatalf("Actions = %q, want %q", got, want)
 			}
 		})
+	}
+}
+
+func TestActionsTrackedInIgnoredDirectory(t *testing.T) {
+	root := t.TempDir()
+	git := gitFixture(t, root)
+	writeFixture(t, root, ".gitignore", "build/\n")
+	writeFixture(t, root, "build/kept/action.yml", "name: fixture\n")
+	writeFixture(t, root, "build/other/action.yml", "name: fixture\n")
+	git("add", "--force", "--", ".gitignore", "build/kept/action.yml")
+	got, err := Actions(t.Context(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{filepath.Join(root, "build", "kept", "action.yml")}; !slices.Equal(got, want) {
+		t.Fatalf("Actions = %q, want %q", got, want)
+	}
+}
+
+func TestActionsInsideSubdirectory(t *testing.T) {
+	root := t.TempDir()
+	gitFixture(t, root)
+	writeFixture(t, root, ".gitignore", "ignored/\n")
+	writeFixture(t, root, "packages/.gitignore", "local/\n")
+	writeFixture(t, root, "packages/app/action.yml", "name: fixture\n")
+	writeFixture(t, root, "packages/ignored/action.yml", "name: fixture\n")
+	writeFixture(t, root, "packages/local/action.yml", "name: fixture\n")
+	start := filepath.Join(root, "packages")
+	got, err := Actions(t.Context(), start)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{filepath.Join(start, "app", "action.yml")}; !slices.Equal(got, want) {
+		t.Fatalf("Actions = %q, want %q", got, want)
 	}
 }
 
@@ -181,7 +228,7 @@ func seal(t *testing.T, path string) {
 	})
 }
 
-func TestActionsManifestError(t *testing.T) {
+func TestActionsRepositoryError(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
 		setup func(t *testing.T, root string, git func(...string))
@@ -195,16 +242,22 @@ func TestActionsManifestError(t *testing.T) {
 			writeFixture(t, root, "sealed/action.yml", "name: fixture\n")
 			seal(t, filepath.Join(root, "sealed"))
 		}},
-		{"looping tracked directory", func(t *testing.T, root string, git func(...string)) {
-			writeFixture(t, root, "loop/action.yml", "name: fixture\n")
-			git("add", "--", "loop/action.yml")
-			git("commit", "--quiet", "-m", "Loop")
-			if err := os.RemoveAll(filepath.Join(root, "loop")); err != nil {
+		{"unreadable ignore file", func(t *testing.T, root string, git func(...string)) {
+			writeFixture(t, root, "sub/.gitignore", "x\n")
+			writeFixture(t, root, "sub/action.yml", "name: fixture\n")
+			seal(t, filepath.Join(root, "sub", ".gitignore"))
+		}},
+		{"split index", func(t *testing.T, root string, git func(...string)) {
+			writeFixture(t, root, "action.yml", "name: fixture\n")
+			git("add", "--", "action.yml")
+			git("update-index", "--split-index")
+		}},
+		{"broken repository", func(t *testing.T, root string, git func(...string)) {
+			writeFixture(t, root, "action.yml", "name: fixture\n")
+			if err := os.RemoveAll(filepath.Join(root, ".git")); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.Symlink("loop", filepath.Join(root, "loop")); err != nil {
-				t.Skipf("symlinks unavailable: %v", err)
-			}
+			writeFixture(t, root, ".git", "gitdir: elsewhere\n")
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -229,39 +282,18 @@ func TestActionsCancelled(t *testing.T) {
 	}
 }
 
-func TestActionsWalkFallback(t *testing.T) {
-	for _, tc := range []struct {
-		name  string
-		setup func(t *testing.T, root string)
-	}{
-		{"no repository", func(t *testing.T, root string) {}},
-		{"invalid repository", func(t *testing.T, root string) {
-			writeFixture(t, root, ".git", "gitdir: elsewhere\n")
-		}},
-		{"git unavailable", func(t *testing.T, root string) {
-			gitFixture(t, root)
-			t.Setenv("PATH", t.TempDir())
-		}},
-		{"git warning", func(t *testing.T, root string) {
-			gitFixture(t, root)
-			seal(t, filepath.Join(root, ".gitignore"))
-		}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			root := t.TempDir()
-			for _, name := range []string{"action.yml", "ignored/action.yml", "node_modules/action.yml"} {
-				writeFixture(t, root, name, "name: fixture\n")
-			}
-			writeFixture(t, root, ".gitignore", "ignored/\n")
-			tc.setup(t, root)
-			got, err := Actions(t.Context(), root)
-			if err != nil {
-				t.Fatal(err)
-			}
-			want := []string{filepath.Join(root, "action.yml"), filepath.Join(root, "ignored", "action.yml")}
-			if !slices.Equal(got, want) {
-				t.Fatalf("Actions = %q, want %q", got, want)
-			}
-		})
+func TestActionsOutsideRepository(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"action.yml", "ignored/action.yml", "node_modules/action.yml"} {
+		writeFixture(t, root, name, "name: fixture\n")
+	}
+	writeFixture(t, root, ".gitignore", "ignored/\n")
+	got, err := Actions(t.Context(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{filepath.Join(root, "action.yml"), filepath.Join(root, "ignored", "action.yml")}
+	if !slices.Equal(got, want) {
+		t.Fatalf("Actions = %q, want %q", got, want)
 	}
 }
