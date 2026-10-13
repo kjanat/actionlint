@@ -839,6 +839,15 @@ func TestOpenRelativeConfigPathsMatchGit(t *testing.T) {
 	}
 }
 
+func (r *testRepo) gitKnowsWorktreeConditions() bool {
+	r.t.Helper()
+	writeConfig(r.t, filepath.Join(r.home, "worktree-known"), "[core]\n\tworktreeKnown = 1\n")
+	command := exec.CommandContext(r.t.Context(), "git", "config", "--get", "core.worktreeKnown")
+	command.Dir = r.root
+	command.Env = append(os.Environ(), "GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0=includeIf.worktree:**.path", "GIT_CONFIG_VALUE_0="+filepath.ToSlash(filepath.Join(r.home, "worktree-known")))
+	return command.Run() == nil
+}
+
 func TestOpenCommandConfigIncludesMatchGit(t *testing.T) {
 	for name, env := range map[string]map[string]string{
 		"absolute include":   {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "include.path", "GIT_CONFIG_VALUE_0": "{home}/inc"},
@@ -862,8 +871,15 @@ func TestOpenCommandConfigIncludesMatchGit(t *testing.T) {
 				value = strings.ReplaceAll(value, "{home}", filepath.ToSlash(fixture.home))
 				t.Setenv(key, strings.ReplaceAll(value, "{root}", filepath.ToSlash(resolvedPath(t, fixture.root))))
 			}
+			want, pinned := map[string]int{"dot worktree": 0, "worktree": 0, "slashed worktree": 1, "worktree glob": 0}[name]
+			if pinned && !fixture.gitKnowsWorktreeConditions() {
+				if got := fixture.probe("core.inc"); got != want {
+					t.Fatalf("probe = %d, want %d", got, want)
+				}
+				return
+			}
 			fixture.compareProbe("core.inc")
-			if want, pinned := map[string]int{"dot worktree": 0, "worktree": 0, "slashed worktree": 1, "worktree glob": 0}[name]; pinned && fixture.probe("core.inc") != want {
+			if pinned && fixture.probe("core.inc") != want {
 				t.Fatalf("probe = %d, want %d", fixture.probe("core.inc"), want)
 			}
 		})
