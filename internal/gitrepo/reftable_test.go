@@ -238,29 +238,31 @@ func TestReadReftableRef(t *testing.T) {
 	write("older.ref", reftableFile(1, "", reftableRecord{suffix: "HEAD", kind: reftableSymref, value: []byte("refs/heads/old")}))
 	write("newer.ref", reftableFile(1, "", reftableRecord{suffix: "refs/heads/old", kind: 1, value: make([]byte, 20)}))
 	reads = nil
-	branch, err := repo.branch(record)
-	if err != nil || branch != "old" {
-		t.Fatalf("branch = %q, %v", branch, err)
+	if branch := repo.branch(record); branch != "old" {
+		t.Fatalf("branch = %q", branch)
 	}
 	snapshot := []string{filepath.Join(dir, "tables.list"), filepath.Join(dir, "older.ref"), filepath.Join(dir, "newer.ref")}
 	if want := slices.Concat(snapshot, snapshot); !slices.Equal(reads, want) {
 		t.Fatalf("reads = %q, want %q", reads, want)
 	}
 	write("newer.ref", reftableFile(1, "", reftableRecord{suffix: "HEAD", kind: reftableSymref, value: []byte("refs/remotes/origin/x")}))
-	if branch, err := repo.branch(record); err != nil || branch != "" {
-		t.Fatalf("branch with a remote symref = %q, %v", branch, err)
+	if branch := repo.branch(record); branch != "" {
+		t.Fatalf("branch with a remote symref = %q", branch)
 	}
 	write("newer.ref", reftableFile(1, "", reftableRecord{suffix: "HEAD", kind: 0}))
-	if branch, err := repo.branch(record); err != nil || branch != "" {
-		t.Fatalf("branch with HEAD deleted in the newest table = %q, %v", branch, err)
+	if branch := repo.branch(record); branch != "" {
+		t.Fatalf("branch with HEAD deleted in the newest table = %q", branch)
 	}
 	write("newer.ref", []byte("garbage"))
-	if _, err := repo.branch(record); err == nil || !strings.Contains(err.Error(), "newer.ref") {
+	if _, err := repo.readReftableRef("HEAD", record); err == nil || !strings.Contains(err.Error(), "newer.ref") {
 		t.Fatalf("garbage table: %v", err)
+	}
+	if branch := repo.branch(record); branch != "" {
+		t.Fatalf("branch with a garbage table = %q", branch)
 	}
 	write("newer.ref", reftableFile(1, "", reftableRecord{suffix: "HEAD", kind: reftableSymref, value: []byte("refs/heads/new")}))
 	write("older.ref", []byte("garbage"))
-	if _, err := repo.branch(record); err == nil || !strings.Contains(err.Error(), "older.ref") {
+	if _, err := repo.readReftableRef("HEAD", record); err == nil || !strings.Contains(err.Error(), "older.ref") {
 		t.Fatalf("a corrupt older table is not reported: %v", err)
 	}
 	if err := os.Remove(filepath.Join(dir, "tables.list")); err != nil {
@@ -269,8 +271,11 @@ func TestReadReftableRef(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(dir, "tables.list"), 0o750); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := repo.branch(record); err == nil || errors.Is(err, fs.ErrNotExist) {
+	if _, err := repo.readReftableRef("HEAD", record); err == nil || errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("an unreadable tables.list: %v", err)
+	}
+	if branch := repo.branch(record); branch != "" {
+		t.Fatalf("branch with an unreadable tables.list = %q", branch)
 	}
 }
 

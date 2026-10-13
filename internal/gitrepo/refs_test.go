@@ -260,3 +260,78 @@ func TestLoadConfigReftableWorktreeChain(t *testing.T) {
 	linked.git("symbolic-ref", "HEAD", "refs/meta/current")
 	linked.compareBranchIncludes(map[string]bool{"main": true, "any": true})
 }
+
+func TestLoadConfigResolvesBranchOnlyForOnbranch(t *testing.T) {
+	fixture := newTestRepo(t, "--initial-branch=main")
+	fixture.commit()
+	head := filepath.Join(fixture.root, ".git", "HEAD")
+	branch := filepath.Join(fixture.root, ".git", "refs", "heads", "main")
+	global := filepath.Join(fixture.home, "gitconfig")
+	t.Setenv("GIT_CONFIG_GLOBAL", global)
+	writeConfig(t, global, "[core]\n\tplain = 1\n")
+	repo := fixture.open()
+	if _, err := repo.config(); err != nil {
+		t.Fatal(err)
+	}
+	if reads := repo.ReadFiles(); slices.Contains(reads, head) || slices.Contains(reads, branch) {
+		t.Fatalf("ReadFiles without onbranch = %q, want neither HEAD nor its branch", reads)
+	}
+	writeConfig(t, filepath.Join(fixture.home, "main"), "[core]\n\tmain = 1\n")
+	writeConfig(t, global, "[includeIf \"onbranch:main\"]\n\tpath = main\n[includeIf \"onbranch:ma*\"]\n\tpath = main\n")
+	repo = fixture.open()
+	var reads []string
+	resolutions := 0
+	ctx, err := newIncludeContext(repo.GitDir, "", repo.WorkTree, func(read func(string)) string {
+		resolutions++
+		return repo.branch(read)
+	}, func(path string) { reads = append(reads, path) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, second := ctx.currentBranch(), ctx.currentBranch()
+	if first != "main" || second != "main" || resolutions != 1 {
+		t.Fatalf("currentBranch = %q, %q after %d resolutions", first, second, resolutions)
+	}
+	if !slices.Contains(reads, head) {
+		t.Fatalf("reads with onbranch = %q, want HEAD", reads)
+	}
+	if settings, err := repo.config(); err != nil {
+		t.Fatal(err)
+	} else if _, ok := settings["core.main"]; !ok {
+		t.Fatal("onbranch:main did not match")
+	}
+	if !slices.Contains(repo.ReadFiles(), head) {
+		t.Fatalf("ReadFiles with onbranch = %q, want HEAD", repo.ReadFiles())
+	}
+}
+
+func TestLoadConfigUnreadableBranchRef(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod cannot make a file unreadable on Windows")
+	}
+	fixture := newTestRepo(t, "--initial-branch=main")
+	fixture.commit()
+	fixture.git("symbolic-ref", "HEAD", "refs/meta/current")
+	fixture.write(".git/refs/meta/current", "ref: refs/heads/main\n")
+	ref := filepath.Join(fixture.root, ".git", "refs", "meta", "current")
+	if err := os.Chmod(ref, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(ref, 0o600) })
+	if data, err := os.ReadFile(ref); err == nil {
+		t.Skipf("the file stays readable, as for root: %q", data)
+	}
+	writeConfig(t, filepath.Join(fixture.home, "plain"), "[core]\n\tplain = 1\n")
+	global := filepath.Join(fixture.home, "gitconfig")
+	writeConfig(t, global, "[include]\n\tpath = plain\n")
+	t.Setenv("GIT_CONFIG_GLOBAL", global)
+	ignores, err := fixture.open().Ignores()
+	if err != nil {
+		t.Fatalf("Ignores without onbranch: %v", err)
+	}
+	ignores.Ignored("x", false)
+	if !fixture.gitBool("config", "--get", "core.plain") {
+		t.Fatal("git failed to read the configuration")
+	}
+	fixture.compareBranchIncludes(map[string]bool{"main": false, "any": false})
+}

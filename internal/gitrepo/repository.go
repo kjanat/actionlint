@@ -380,7 +380,7 @@ func (r *Repository) absolute(path string) string {
 	return filepath.Join(r.base, path)
 }
 
-func (r *Repository) branch(read func(string)) (string, error) {
+func (r *Repository) branch(read func(string)) string {
 	return resolveBranch(func(name string) (refValue, error) {
 		if r.reftable {
 			return r.readReftableRef(name, read)

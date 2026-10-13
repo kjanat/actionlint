@@ -1079,7 +1079,7 @@ func TestReadFiles(t *testing.T) {
 	if _, err := repo.Index(); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{global, included, filepath.Join(repo.GitDir, "HEAD"), filepath.Join(repo.GitDir, "config"), excludes, filepath.Join(repo.CommonDir, "info", "exclude"), filepath.Join(repo.WorkTree, ".gitignore"), filepath.Join(repo.WorkTree, "sub", ".gitignore"), repo.IndexPath(), filepath.Join(repo.GitDir, filepath.Base(shared[0]))}
+	want := []string{global, included, filepath.Join(repo.GitDir, "config"), excludes, filepath.Join(repo.CommonDir, "info", "exclude"), filepath.Join(repo.WorkTree, ".gitignore"), filepath.Join(repo.WorkTree, "sub", ".gitignore"), repo.IndexPath(), filepath.Join(repo.GitDir, filepath.Base(shared[0]))}
 	slices.Sort(want)
 	if got := repo.ReadFiles(); !slices.Equal(got, want) {
 		t.Fatalf("ReadFiles = %q, want %q", got, want)

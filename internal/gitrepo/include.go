@@ -13,17 +13,29 @@ import (
 const maxIncludeDepth = 10
 
 type includeContext struct {
-	gitDir     pathPair
-	workTree   pathPair
-	branch     string
-	remoteURLs []string
-	record     func(path string)
+	gitDir        pathPair
+	workTree      pathPair
+	resolveBranch func(read func(string)) string
+	branch        string
+	resolved      bool
+	remoteURLs    []string
+	record        func(path string)
 }
 
 func (c *includeContext) read(path string) {
 	if c.record != nil {
 		c.record(path)
 	}
+}
+
+func (c *includeContext) currentBranch() string {
+	if !c.resolved {
+		c.resolved = true
+		if c.resolveBranch != nil {
+			c.branch = c.resolveBranch(c.read)
+		}
+	}
+	return c.branch
 }
 
 type pathPair struct {
@@ -43,7 +55,7 @@ func newPathPair(path string) (pathPair, error) {
 	return pair, nil
 }
 
-func newIncludeContext(gitDir, unresolvedGitDir, workTree string, branch func(read func(string)) (string, error), record func(path string)) (*includeContext, error) {
+func newIncludeContext(gitDir, unresolvedGitDir, workTree string, branch func(read func(string)) string, record func(path string)) (*includeContext, error) {
 	ctx := &includeContext{record: record}
 	if gitDir == "" {
 		return ctx, nil
@@ -64,10 +76,7 @@ func newIncludeContext(gitDir, unresolvedGitDir, workTree string, branch func(re
 			return nil, err
 		}
 	}
-	ctx.branch, err = branch(ctx.read)
-	if err != nil {
-		return nil, err
-	}
+	ctx.resolveBranch = branch
 	return ctx, nil
 }
 
@@ -187,14 +196,15 @@ func (l *configLoader) matches(condition, configFile string) (bool, bool, error)
 		ok, err := matchIncludePath(ctx.workTree, strings.TrimPrefix(condition, "worktree/i:"), configFile, true)
 		return ok, false, err
 	case strings.HasPrefix(condition, "onbranch:"):
-		if ctx.branch == "" {
+		branch := ctx.currentBranch()
+		if branch == "" {
 			return false, false, nil
 		}
 		pattern := strings.TrimPrefix(condition, "onbranch:")
 		if strings.HasSuffix(pattern, "/") {
 			pattern += "**"
 		}
-		return wildmatch(pattern, ctx.branch, false), false, nil
+		return wildmatch(pattern, branch, false), false, nil
 	case strings.HasPrefix(condition, "hasconfig:remote.*.url:"):
 		if l.collectURLs {
 			return true, true, nil

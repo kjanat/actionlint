@@ -20,34 +20,31 @@ type refValue struct {
 	found  bool
 }
 
-func resolveBranch(read func(name string) (refValue, error)) (string, error) {
+func resolveBranch(read func(name string) (refValue, error)) string {
 	name := "HEAD"
 	symref := false
 	for range symrefMaximumDepth {
 		value, err := read(name)
-		if errors.Is(err, errRefBroken) {
-			return "", nil
-		}
 		if err != nil {
-			return "", err
+			return ""
 		}
 		if !value.found || !value.symref {
 			if !symref {
-				return "", nil
+				return ""
 			}
 			branch, _ := strings.CutPrefix(name, "refs/heads/")
 			if branch == name {
-				return "", nil
+				return ""
 			}
-			return branch, nil
+			return branch
 		}
 		symref = true
 		name = value.target
 		if !validRefname(name, true) {
-			return "", nil
+			return ""
 		}
 	}
-	return "", nil
+	return ""
 }
 
 func (r *Repository) refPath(name string) string {
