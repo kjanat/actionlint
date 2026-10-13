@@ -35,6 +35,12 @@ func workspaceWith(t *testing.T, files map[string]string) string {
 	dir := resolved(t, t.TempDir())
 	for name, content := range files {
 		path := filepath.Join(dir, filepath.FromSlash(name))
+		if name == ".git" {
+			if err := os.MkdirAll(path, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			continue
+		}
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			t.Fatal(err)
 		}

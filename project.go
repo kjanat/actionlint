@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"actionlint.kjanat.dev/internal/fsread"
 )
 
 // Project represents one GitHub project. One Git repository corresponds to one project.
@@ -90,7 +92,7 @@ func cachedProjectRoot(path string, roots map[string]string, stat func(string) (
 // NewProject creates a new instance with a file path to the root directory of the repository.
 // This function returns an error when failing to parse an actionlint config file in the repository.
 func NewProject(root string) (*Project, error) {
-	return newProject(root, os.ReadFile)
+	return newProject(root, fsread.Disk)
 }
 
 func newProject(root string, readFile func(string) ([]byte, error)) (*Project, error) {
@@ -165,7 +167,7 @@ func (ps *Projects) At(path string) (*Project, error) {
 
 	readFile := ps.readFile
 	if readFile == nil {
-		readFile = os.ReadFile
+		readFile = fsread.Disk
 	}
 	p := &Project{root: root}
 	if !ps.skipConfig {

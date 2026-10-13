@@ -38,7 +38,9 @@ Files directly under `.github/workflows` remain workflows, even when named
 Metadata findings point into the action file. Configuration overrides, rule levels
 and ignores apply to that file. Discovery skips `.git`, `node_modules`, `vendor`,
 `.venv`, `venv`, `.cache`, `.worktrees` and `testdata` directories, nested Git repositories,
-and symlinked action files or directories. Use [file exclusions](config.md) to
+and symlinked action files or directories. Inside a Git repository, discovery
+honours Git's ignore rules, and `files.excludes` remains the explicit override.
+Use [file exclusions](config.md) to
 omit fixtures or generated actions. Explicit paths can select actions in skipped
 directories; configured file exclusions still apply.
 

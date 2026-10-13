@@ -3,6 +3,8 @@ package actionlint
 import (
 	"path/filepath"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/fsread"
 )
 
 func TestRunDirectoryContexts(t *testing.T) {
@@ -23,7 +25,7 @@ func TestRunDirectoryContexts(t *testing.T) {
 		{"config-only context", "${{ configdir }}", "local", "", "", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			paths := runPaths{workspace: root, checkout: tc.checkout}
+			paths := runPaths{workspace: root, checkout: tc.checkout, reader: fsread.New(t.Context(), nil, nil)}
 			if tc.action != "" {
 				paths.actionPath = filepath.Join(root, tc.action)
 			}
@@ -49,7 +51,7 @@ func TestCompositeActionPathCasing(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			actions := &LocalActionsCache{caseInsensitive: true}
 			actions.restoreCheckout(&checkoutPlacement{directory: runDirectory{directoryKnown, tc.checkout}, caseInsensitive: true})
-			paths := runPaths{workspace: root, analysis: root, platform: platformKindWindows, placements: actions.checkoutState()}
+			paths := runPaths{workspace: root, analysis: root, platform: platformKindWindows, placements: actions.checkoutState(), reader: fsread.New(t.Context(), nil, nil)}
 			call := &Step{Exec: &ExecAction{Uses: &String{Value: tc.spec}}}
 			compositeActionOrigin(&paths, call, filepath.Join(root, "local", "Nested"))
 			if paths.actionRunnerPath != tc.want {

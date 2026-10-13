@@ -11,14 +11,13 @@ import (
 
 func executableFixture(t *testing.T) (string, func(...string)) {
 	t.Helper()
-	git, err := exec.LookPath("git")
-	if err != nil {
+	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("Git required")
 	}
 	root := t.TempDir()
 	command := func(args ...string) {
 		t.Helper()
-		if out, err := repositoryGit(t.Context(), git, root, args...).CombinedOutput(); err != nil {
+		if out, err := repositoryGit(t.Context(), root, args...).CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v: %s", args, err, out)
 		}
 	}
@@ -43,7 +42,7 @@ func executableFixture(t *testing.T) (string, func(...string)) {
 func TestExecutableBitWorkflows(t *testing.T) {
 	root, git := executableFixture(t)
 	link := writeShellcheckFixture(t, root, "link", "bad.sh")
-	object, err := repositoryGit(t.Context(), "git", root, "hash-object", "-w", "--", link).Output()
+	object, err := repositoryGit(t.Context(), root, "hash-object", "-w", "--", link).Output()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -796,12 +795,5 @@ jobs:
 	}
 	if slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" }) {
 		t.Fatalf("session retained stale Git index: %+v", result.Diagnostics)
-	}
-}
-
-func TestGitIndexModes(t *testing.T) {
-	modes, err := parseGitModes("100644 abc 0\tspace name.sh\x00100755 def 0\tok.sh\x00120000 abc 0\tlink\x00100644 abc 1\tconflict.sh\x00100755 def 2\tconflict.sh\x00")
-	if err != nil || modes["space name.sh"] != "100644" || modes["ok.sh"] != "100755" || modes["link"] != "120000" || modes["conflict.sh"] != "unmerged" {
-		t.Fatalf("incorrect index modes: %v, %v", modes, err)
 	}
 }
