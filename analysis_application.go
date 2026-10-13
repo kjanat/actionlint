@@ -200,7 +200,7 @@ func (a *AnalysisSession) Repository(dir string) (*AnalysisResult, error) {
 			return nil, fmt.Errorf("no workflows directory was found: %q looks misspelled; rename it to %q", found, expected)
 		}
 	}
-	paths, err := repositoryPaths(project)
+	paths, err := repositoryPaths(a.ctx, project)
 	if err != nil {
 		return nil, err
 	}
@@ -244,8 +244,8 @@ func (a *AnalysisSession) discoveredFiles(paths []string, project *Project) (*An
 	return result, err
 }
 
-func repositoryPaths(project *Project) ([]string, error) {
-	paths, err := projectpath.Actions(project.RootDir())
+func repositoryPaths(ctx context.Context, project *Project) ([]string, error) {
+	paths, err := projectpath.Actions(ctx, project.RootDir())
 	if err != nil {
 		return nil, err
 	}

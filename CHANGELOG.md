@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Honour `.gitignore`, `.git/info/exclude` and the global Git excludes file when discovering `action.yml` and `action.yaml` manifests inside a repository, including Git worktrees. Discovery walks the directory tree outside a repository or when Git is unavailable. `files.excludes` remains the explicit override. (kjanat/actionlint#274)
+
 - Discover `action.yml` and `action.yaml` manifests alongside workflows by default, including unreferenced actions and action-only repositories. Check action metadata at its declarations and lint composite scripts. Allow workflows and actions in the same invocation and report action document outlines. (kjanat/actionlint#243)
 
 - Expand bundled action metadata by 117 action paths, including Bun, uv, pnpm, mise, Nix, Docker Bake, Gradle, cloud deployment, security scanners and release automation. Validate their declared inputs and outputs and recognize retired runtime versions.

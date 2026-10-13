@@ -57,7 +57,7 @@ func TestRepositoryActionDiscoverySymlinks(t *testing.T) {
 	if err := os.Symlink(manifest, filepath.Join(root, "action.yaml")); err != nil {
 		t.Fatal(err)
 	}
-	paths, err := repositoryPaths(&Project{root: root})
+	paths, err := repositoryPaths(t.Context(), &Project{root: root})
 	if err != nil || !slices.Equal(paths, []string{manifest}) {
 		t.Fatalf("want only %q, got %v, error %v", manifest, paths, err)
 	}

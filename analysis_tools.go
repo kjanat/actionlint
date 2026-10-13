@@ -27,7 +27,7 @@ func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirement
 			return needed, err
 		}
 		if project != nil {
-			paths, err = repositoryPaths(project)
+			paths, err = repositoryPaths(a.ctx, project)
 			if err != nil {
 				return needed, err
 			}

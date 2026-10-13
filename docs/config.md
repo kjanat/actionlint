@@ -67,7 +67,9 @@ inheritance. In-memory `ParseConfig` and inline Action overlays cannot resolve
 Top-level `files` controls which input files are analyzed, independently of lint
 rule settings. Patterns are repository-relative doublestar globs using `/`; when
 there is no repository, they are relative to the working directory. They filter
-selected inputs and do not discover additional files.
+selected inputs and do not discover additional files. Inside a Git repository,
+discovery honours Git's ignore rules, and `files.excludes` remains the explicit
+override.
 
 Omitted or `null` `includes` selects every input; `includes: []` selects none.
 `excludes` and include patterns starting with `!` exclude matches regardless of
