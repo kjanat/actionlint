@@ -24,22 +24,19 @@ func (r *Repository) Ignores() (*Ignores, error) {
 		if file == "" {
 			continue
 		}
-		data, err := readExcludeFile(file)
+		data, err := r.readExcludeFile(file)
 		if err != nil {
 			return nil, err
 		}
 		root.patterns.addBuffer(data)
 	}
-	root.patterns.addBuffer(readNoFollow(filepath.Join(r.WorkTree, ".gitignore")))
+	root.patterns.addBuffer(r.readNoFollow(filepath.Join(r.WorkTree, ".gitignore")))
 	return &Ignores{repo: r, nodes: map[string]*ignoreNode{"": root}}, nil
 }
 
-func (i *Ignores) Ignored(relative string, isDir bool) (bool, error) {
+func (i *Ignores) Ignored(relative string, isDir bool) bool {
 	node := i.node(parentDir(relative))
-	if node.ignored {
-		return true, nil
-	}
-	return node.matched([]byte(relative), isDir) == patternPositive, nil
+	return node.ignored || node.matched([]byte(relative), isDir) == patternPositive
 }
 
 func (i *Ignores) node(dir string) *ignoreNode {
@@ -50,7 +47,7 @@ func (i *Ignores) node(dir string) *ignoreNode {
 	node := &ignoreNode{parent: parent, dir: dir}
 	node.ignored = parent.ignored || parent.matched([]byte(dir), true) == patternPositive
 	if !node.ignored {
-		if data := readNoFollow(filepath.Join(i.repo.WorkTree, filepath.FromSlash(dir), ".gitignore")); data != nil {
+		if data := i.repo.readNoFollow(filepath.Join(i.repo.WorkTree, filepath.FromSlash(dir), ".gitignore")); data != nil {
 			node.patterns = newPatternList(i.repo.ignoreCase)
 			node.patterns.addBuffer(data)
 		}

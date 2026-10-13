@@ -170,12 +170,17 @@ func (r *Repository) readIndex() (*indexFile, error) {
 	if err != nil || data == nil {
 		return nil, err
 	}
+	r.reads.record(path)
 	index, err := readIndex(data, indexSource{
 		hashLength: r.hashLength,
 		loadShared: func(name string) ([]byte, error) {
-			data, err := readOptional(filepath.Join(r.GitDir, "sharedindex."+name))
+			shared := filepath.Join(r.GitDir, "sharedindex."+name)
+			data, err := readOptional(shared)
 			if err == nil && data == nil {
 				err = fmt.Errorf("the shared index sharedindex.%s is missing", name)
+			}
+			if err == nil {
+				r.reads.record(shared)
 			}
 			return data, err
 		},

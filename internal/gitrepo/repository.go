@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"syscall"
 )
 
@@ -24,6 +25,32 @@ type Repository struct {
 	worktreeConfig bool
 	hashLength     int
 	excludes       string
+	reads          fileReads
+}
+
+type fileReads struct {
+	mu    sync.Mutex
+	paths map[string]struct{}
+}
+
+func (f *fileReads) record(path string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.paths == nil {
+		f.paths = map[string]struct{}{}
+	}
+	f.paths[path] = struct{}{}
+}
+
+func (r *Repository) ReadFiles() []string {
+	r.reads.mu.Lock()
+	defer r.reads.mu.Unlock()
+	paths := make([]string, 0, len(r.reads.paths))
+	for path := range r.reads.paths {
+		paths = append(paths, path)
+	}
+	slices.Sort(paths)
+	return paths
 }
 
 type location struct {
@@ -386,6 +413,7 @@ func (r *Repository) config() (config, error) {
 	if err != nil {
 		return nil, err
 	}
+	ctx.record = r.reads.record
 	return loadConfigFiles(files, params, ctx)
 }
 
@@ -438,7 +466,7 @@ func readOptional(path string) ([]byte, error) {
 
 const maxPatternFileSize = 100 << 20
 
-func readNoFollow(path string) []byte {
+func (r *Repository) readNoFollow(path string) []byte {
 	info, err := os.Lstat(path)
 	if err != nil || info.Mode()&fs.ModeSymlink != 0 {
 		return nil
@@ -447,10 +475,11 @@ func readNoFollow(path string) []byte {
 	if err != nil {
 		return nil
 	}
+	r.reads.record(path)
 	return data
 }
 
-func readExcludeFile(path string) ([]byte, error) {
+func (r *Repository) readExcludeFile(path string) ([]byte, error) {
 	if !readable(path) {
 		return nil, nil
 	}
@@ -458,6 +487,7 @@ func readExcludeFile(path string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot use %s as an exclude file: %w", path, err)
 	}
+	r.reads.record(path)
 	return data, nil
 }
 

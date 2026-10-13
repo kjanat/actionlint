@@ -155,7 +155,7 @@ func TestActionsHonourGitIgnore(t *testing.T) {
 			writeFixture(t, root, ".git/info/exclude", "excluded/\n")
 			populate(t, root)
 			discovery := tc.setup(t, root, git)
-			got, err := Actions(t.Context(), discovery)
+			got, err := Actions(t.Context(), discovery, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -174,7 +174,7 @@ func TestActionsTrackedInIgnoredDirectory(t *testing.T) {
 	writeFixture(t, root, "build/kept/action.yml", "name: fixture\n")
 	writeFixture(t, root, "build/other/action.yml", "name: fixture\n")
 	git("add", "--force", "--", ".gitignore", "build/kept/action.yml")
-	got, err := Actions(t.Context(), root)
+	got, err := Actions(t.Context(), root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +194,7 @@ func TestActionsFoldTrackedPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 	git("update-index", "--add", "--cacheinfo", "100644,"+strings.TrimSpace(string(blob))+",Build/Action.yml")
-	got, err := Actions(t.Context(), root)
+	got, err := Actions(t.Context(), root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,7 +259,7 @@ func TestActionsPrecomposeUnicodeMatchesGit(t *testing.T) {
 	if err != nil && (!errors.As(err, &exit) || exit.ExitCode() != 1) {
 		t.Fatal(err)
 	}
-	got, err := Actions(t.Context(), root)
+	got, err := Actions(t.Context(), root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,7 +277,7 @@ func TestActionsInsideSubdirectory(t *testing.T) {
 	writeFixture(t, root, "packages/ignored/action.yml", "name: fixture\n")
 	writeFixture(t, root, "packages/local/action.yml", "name: fixture\n")
 	start := filepath.Join(root, "packages")
-	got, err := Actions(t.Context(), start)
+	got, err := Actions(t.Context(), start, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -298,7 +298,7 @@ func TestActionsDirectoryError(t *testing.T) {
 			if err := os.Symlink(".git", filepath.Join(root, "loop", ".git")); err != nil {
 				t.Skipf("symlinks unavailable: %v", err)
 			}
-			if got, err := Actions(t.Context(), root); err == nil {
+			if got, err := Actions(t.Context(), root, nil); err == nil {
 				t.Fatalf("Actions = %q, want an error for the looping .git link", got)
 			}
 		})
@@ -350,7 +350,7 @@ func TestActionsUnusableGitignore(t *testing.T) {
 			if !slices.Contains(strings.Split(string(status), "\n"), "?? sub/action.yml") {
 				t.Fatalf("git status does not list sub/action.yml as untracked:\n%s", status)
 			}
-			got, err := Actions(t.Context(), root)
+			got, err := Actions(t.Context(), root, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -387,7 +387,7 @@ func TestActionsRepositoryError(t *testing.T) {
 			root := t.TempDir()
 			git := gitFixture(t, root)
 			tc.setup(t, root, git)
-			if got, err := Actions(t.Context(), root); err == nil {
+			if got, err := Actions(t.Context(), root, nil); err == nil {
 				t.Fatalf("Actions = %q, want an error", got)
 			}
 		})
@@ -400,7 +400,7 @@ func TestActionsCancelled(t *testing.T) {
 	gitFixture(t, root)
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if got, err := Actions(ctx, root); !errors.Is(err, context.Canceled) {
+	if got, err := Actions(ctx, root, nil); !errors.Is(err, context.Canceled) {
 		t.Fatalf("Actions = %q, %v, want %v", got, err, context.Canceled)
 	}
 }
@@ -427,7 +427,7 @@ func TestActionsWithoutWorkTree(t *testing.T) {
 				writeFixture(t, root, name, "name: fixture\n")
 			}
 			discovery := tc.setup(t, root, git)
-			got, err := Actions(t.Context(), discovery)
+			got, err := Actions(t.Context(), discovery, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -445,12 +445,40 @@ func TestActionsOutsideRepository(t *testing.T) {
 		writeFixture(t, root, name, "name: fixture\n")
 	}
 	writeFixture(t, root, ".gitignore", "ignored/\n")
-	got, err := Actions(t.Context(), root)
+	got, err := Actions(t.Context(), root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := []string{filepath.Join(root, "action.yml"), filepath.Join(root, "ignored", "action.yml")}
 	if !slices.Equal(got, want) {
 		t.Fatalf("Actions = %q, want %q", got, want)
+	}
+}
+
+func TestActionsReportReadFiles(t *testing.T) {
+	root := t.TempDir()
+	git := gitFixture(t, root)
+	writeFixture(t, root, ".gitignore", "ignored/\n")
+	writeFixture(t, root, "sub/.gitignore", "local/\n")
+	writeFixture(t, root, "sub/action.yml", "name: fixture\n")
+	writeFixture(t, root, "README.md", "")
+	git("add", "--", "README.md")
+	var got []string
+	paths, err := Actions(t.Context(), root, func(path string) { got = append(got, path) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{filepath.Join(root, "sub", "action.yml")}; !slices.Equal(paths, want) {
+		t.Fatalf("Actions = %q, want %q", paths, want)
+	}
+	physical, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := filepath.Dir(os.Getenv("GIT_CONFIG_GLOBAL"))
+	want := []string{filepath.Join(config, "gitconfig"), filepath.Join(config, "excludes"), filepath.Join(physical, ".git", "config"), filepath.Join(physical, ".git", "index"), filepath.Join(physical, ".git", "info", "exclude"), filepath.Join(physical, ".gitignore"), filepath.Join(physical, "sub", ".gitignore")}
+	slices.Sort(want)
+	if !slices.Equal(got, want) {
+		t.Fatalf("read files = %q, want %q", got, want)
 	}
 }

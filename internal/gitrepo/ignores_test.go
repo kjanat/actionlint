@@ -52,10 +52,7 @@ func TestIgnoresPrecedence(t *testing.T) {
 		{"plain.txt", false, false},
 		{"sub", true, false},
 	} {
-		got, err := ignores.Ignored(tc.path, tc.isDir)
-		if err != nil {
-			t.Fatal(err)
-		}
+		got := ignores.Ignored(tc.path, tc.isDir)
 		if got != tc.want {
 			t.Errorf("Ignored(%q, %v) = %v, want %v", tc.path, tc.isDir, got, tc.want)
 		}
@@ -81,11 +78,7 @@ func TestIgnoresSkipSymlinkedFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range []string{"linked", "sub/deep"} {
-		got, err := ignores.Ignored(path, true)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if want := fixture.checkIgnore(path, true); got != want || got {
+		if got, want := ignores.Ignored(path, true), fixture.checkIgnore(path, true); got != want || got {
 			t.Errorf("Ignored(%q) = %v, git says %v", path, got, want)
 		}
 	}
@@ -99,8 +92,8 @@ func TestIgnoresCaseFolding(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, err := ignores.Ignored("build", true); err != nil || !got {
-		t.Fatalf("Ignored(build) = %v, %v", got, err)
+	if !ignores.Ignored("build", true) {
+		t.Fatal("Ignored(build) = false")
 	}
 }
 
@@ -264,10 +257,7 @@ func (r *testRepo) assertIgnoresMatchGit(mustMatch bool, queries ...ignoreQuery)
 		if err != nil {
 			continue
 		}
-		got, err := ignores.Ignored(q.path, q.isDir)
-		if err != nil {
-			r.t.Fatal(err)
-		}
+		got := ignores.Ignored(q.path, q.isDir)
 		if got != want {
 			r.t.Errorf("Ignored(%q, %v) = %v, git says %v", q.path, q.isDir, got, want)
 		}

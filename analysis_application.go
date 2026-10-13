@@ -200,7 +200,8 @@ func (a *AnalysisSession) Repository(dir string) (*AnalysisResult, error) {
 			return nil, fmt.Errorf("no workflows directory was found: %q looks misspelled; rename it to %q", found, expected)
 		}
 	}
-	paths, err := repositoryPaths(a.ctx, project)
+	metadata := &inputFiles{}
+	paths, err := repositoryPaths(a.ctx, project, metadata.add)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +212,7 @@ func (a *AnalysisSession) Repository(dir string) (*AnalysisResult, error) {
 		}
 		return nil, fmt.Errorf("no workflow or action files were found in %q", project.RootDir())
 	}
-	return a.discoveredFiles(paths, project)
+	return a.discoveredFiles(paths, metadata.list(), project)
 }
 
 func (a *AnalysisSession) directory(dir string, project *Project) (*AnalysisResult, error) {
@@ -223,10 +224,10 @@ func (a *AnalysisSession) directory(dir string, project *Project) (*AnalysisResu
 		a.filesSelected(paths)
 		return nil, fmt.Errorf("no YAML file was found in %q", dir)
 	}
-	return a.discoveredFiles(paths, project)
+	return a.discoveredFiles(paths, nil, project)
 }
 
-func (a *AnalysisSession) discoveredFiles(paths []string, project *Project) (*AnalysisResult, error) {
+func (a *AnalysisSession) discoveredFiles(paths, metadata []string, project *Project) (*AnalysisResult, error) {
 	a.selectionLog("Collected", len(paths), "YAML files")
 	result, err := a.Files(paths, project)
 	if result != nil {
@@ -239,13 +240,16 @@ func (a *AnalysisSession) discoveredFiles(paths []string, project *Project) (*An
 		for _, path := range paths {
 			inputs.add(path)
 		}
+		for _, path := range metadata {
+			inputs.add(path)
+		}
 		result.Inputs = inputs.list()
 	}
 	return result, err
 }
 
-func repositoryPaths(ctx context.Context, project *Project) ([]string, error) {
-	paths, err := projectpath.Actions(ctx, project.RootDir())
+func repositoryPaths(ctx context.Context, project *Project, onRead func(path string)) ([]string, error) {
+	paths, err := projectpath.Actions(ctx, project.RootDir(), onRead)
 	if err != nil {
 		return nil, err
 	}

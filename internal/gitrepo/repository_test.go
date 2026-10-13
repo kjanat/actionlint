@@ -623,8 +623,8 @@ func TestOpenWithoutHome(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got, err := ignores.Ignored("ignored", true); err != nil || !got {
-				t.Fatalf("Ignored(ignored) = %v, %v", got, err)
+			if !ignores.Ignored("ignored", true) {
+				t.Fatal("Ignored(ignored) = false")
 			}
 			if _, err := repo.TrackedFiles(); err != nil {
 				t.Fatal(err)
@@ -901,11 +901,7 @@ func TestOpenExcludesFileMatchesGit(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					ignored, err := ignores.Ignored(file, false)
-					if err != nil {
-						t.Fatal(err)
-					}
-					ours = map[bool]int{true: 0, false: 1}[ignored]
+					ours = map[bool]int{true: 0, false: 1}[ignores.Ignored(file, false)]
 				}
 				if ours != theirs {
 					t.Fatalf("%s: ours %d, git %d", file, ours, theirs)
@@ -965,5 +961,41 @@ func TestExpandHome(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", "")
 	if got, ok := xdgConfigHome(); !ok || got != "/.config" {
 		t.Fatalf("xdgConfigHome with empty HOME = %q, %v", got, ok)
+	}
+}
+
+func TestReadFiles(t *testing.T) {
+	fixture := newTestRepo(t)
+	included := filepath.Join(fixture.home, "included")
+	writeConfig(t, included, "[core]\n\tincluded = 1\n")
+	global := filepath.Join(fixture.home, "gitconfig")
+	writeConfig(t, global, "[include]\n\tpath = included\n\tpath = missing\n[core]\n\texcludesFile = ~/excludes\n")
+	t.Setenv("GIT_CONFIG_GLOBAL", global)
+	excludes := filepath.Join(fixture.home, "excludes")
+	writeConfig(t, excludes, "excluded/\n")
+	info := filepath.Join(fixture.root, ".git", "info", "exclude")
+	writeConfig(t, info, "info/\n")
+	fixture.write(".gitignore", "ignored/\n")
+	fixture.write("sub/.gitignore", "local/\n")
+	fixture.write("sub/file", "")
+	fixture.git("add", "sub/file")
+	fixture.git("update-index", "--split-index")
+	shared, err := filepath.Glob(filepath.Join(fixture.root, ".git", "sharedindex.*"))
+	if err != nil || len(shared) != 1 {
+		t.Fatalf("shared index: %q, %v", shared, err)
+	}
+	repo := fixture.open()
+	ignores, err := repo.Ignores()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ignores.Ignored("sub/file", false)
+	if _, err := repo.Index(); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{global, included, filepath.Join(repo.GitDir, "config"), excludes, info, filepath.Join(repo.WorkTree, ".gitignore"), filepath.Join(repo.WorkTree, "sub", ".gitignore"), repo.IndexPath(), filepath.Join(repo.GitDir, filepath.Base(shared[0]))}
+	slices.Sort(want)
+	if got := repo.ReadFiles(); !slices.Equal(got, want) {
+		t.Fatalf("ReadFiles = %q, want %q", got, want)
 	}
 }

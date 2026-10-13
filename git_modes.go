@@ -23,6 +23,7 @@ type gitModeSnapshot struct {
 	dirs     map[string]struct{}
 	folded   map[string]string
 	index    string
+	inputs   []string
 	err      error
 }
 
@@ -57,6 +58,7 @@ func (cache *gitModes) load(_ context.Context, root string) *gitModeSnapshot {
 			return
 		}
 		snapshot.index = repo.IndexPath()
+		snapshot.inputs = repo.ReadFiles()
 		snapshot.modes = gitModeMap(entries)
 	})
 	return snapshot

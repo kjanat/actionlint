@@ -18,12 +18,12 @@ import (
 
 // Actions discovers manifests without following symlinks or crossing repository
 // boundaries. Skip conventional dependency, cache and test-fixture directories.
-func Actions(ctx context.Context, root string) ([]string, error) {
+func Actions(ctx context.Context, root string, onRead func(path string)) ([]string, error) {
 	physical, err := filepath.EvalSymlinks(root)
 	if err != nil {
 		return nil, fmt.Errorf("could not resolve action discovery root %q: %w", root, err)
 	}
-	relatives, err := discoverActions(ctx, physical)
+	relatives, err := discoverActions(ctx, physical, onRead)
 	if err != nil {
 		return nil, fmt.Errorf("could not discover actions in %q: %w", root, err)
 	}
@@ -43,7 +43,7 @@ type actionDiscovery struct {
 	precompose bool
 }
 
-func discoverActions(ctx context.Context, physical string) ([]string, error) {
+func discoverActions(ctx context.Context, physical string, onRead func(path string)) ([]string, error) {
 	repo, err := gitrepo.Open(physical)
 	if err != nil {
 		return nil, err
@@ -54,7 +54,16 @@ func discoverActions(ctx context.Context, physical string) ([]string, error) {
 			return nil, err
 		}
 	}
-	return discovery.walk(ctx)
+	relatives, err := discovery.walk(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if repo != nil && onRead != nil {
+		for _, path := range repo.ReadFiles() {
+			onRead(path)
+		}
+	}
+	return relatives, nil
 }
 
 func newActionDiscovery(physical string, repo *gitrepo.Repository, precompose bool) (*actionDiscovery, error) {
@@ -112,11 +121,7 @@ func (d *actionDiscovery) walk(ctx context.Context) ([]string, error) {
 			if d.ignores == nil {
 				return nil
 			}
-			ignored, err := d.ignores.Ignored(treePath, true)
-			if err != nil {
-				return err
-			}
-			if ignored && !d.trackedUnder(treePath) {
+			if d.ignores.Ignored(treePath, true) && !d.trackedUnder(treePath) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -124,14 +129,8 @@ func (d *actionDiscovery) walk(ctx context.Context) ([]string, error) {
 		if !entry.Type().IsRegular() || !isManifest(entry.Name()) {
 			return nil
 		}
-		if d.ignores != nil && !d.isTracked(treePath) {
-			ignored, err := d.ignores.Ignored(treePath, false)
-			if err != nil {
-				return err
-			}
-			if ignored {
-				return nil
-			}
+		if d.ignores != nil && !d.isTracked(treePath) && d.ignores.Ignored(treePath, false) {
+			return nil
 		}
 		relatives = append(relatives, relative)
 		return nil

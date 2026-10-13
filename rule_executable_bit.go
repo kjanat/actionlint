@@ -710,7 +710,9 @@ func (rule *RuleExecutableBit) index() *gitModeSnapshot {
 	if snapshot.err != nil {
 		rule.Debug("Git index unavailable: %v", snapshot.err)
 	} else if rule.context.inputs != nil {
-		rule.context.inputs.add(snapshot.index)
+		for _, path := range snapshot.inputs {
+			rule.context.inputs.add(path)
+		}
 	}
 	return snapshot
 }

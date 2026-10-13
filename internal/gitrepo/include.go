@@ -17,6 +17,13 @@ type includeContext struct {
 	workTree   pathPair
 	branch     string
 	remoteURLs []string
+	record     func(path string)
+}
+
+func (c *includeContext) read(path string) {
+	if c.record != nil {
+		c.record(path)
+	}
 }
 
 type pathPair struct {
@@ -102,6 +109,7 @@ func (l *configLoader) load(path string, depth int, forbidRemoteURL bool) error 
 	if err != nil || data == nil {
 		return err
 	}
+	l.ctx.read(path)
 	return parseConfig(path, data, func(section, name string, value configValue) error {
 		return l.visit(path, depth, forbidRemoteURL, section, name, value)
 	})
