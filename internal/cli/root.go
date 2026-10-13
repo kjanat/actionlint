@@ -72,6 +72,12 @@ func newCommandApp(streams *Command) *commandApp {
 		Args: cobra.ArbitraryArgs, RunE: a.capture("check"), ValidArgsFunction: a.root.ValidArgsFunction,
 	}
 	a.checkFlags(check, true)
+	preCommit := &cobra.Command{
+		Use: "pre-commit [flags]", Short: "Check the repository for a pre-commit hook", Hidden: true,
+		Long: "Check every workflow in the nearest repository.\nA repository without workflow files passes.",
+		Args: cobra.NoArgs, RunE: a.capture("check"),
+	}
+	a.checkFlags(preCommit, true)
 	config := &cobra.Command{
 		Use: "config", Short: "Inspect and validate configuration",
 		Long: "Select one explicit configuration file or the repository's .github/actionlint.yaml or .yml.\nACTIONLINT_CONFIG and ACTIONLINT_NO_CONFIG supply defaults for selection.\nNo global configuration or file merging is applied.",
@@ -116,7 +122,7 @@ func newCommandApp(streams *Command) *commandApp {
 	version := &cobra.Command{Use: "version", Short: "Show version and build information", Args: cobra.NoArgs, RunE: a.capture("version")}
 	a.commonFlags(version, version.Flags())
 	a.hyperlinkFlag(completion, completion.Flags())
-	a.root.AddCommand(check, config, rules, doctor, completion, version)
+	a.root.AddCommand(check, preCommit, config, rules, doctor, completion, version)
 	return a
 }
 
@@ -254,11 +260,13 @@ func (a *commandApp) capture(op operation) func(*cobra.Command, []string) error 
 	return func(c *cobra.Command, args []string) error {
 		a.inv.Operation = op
 		a.inv.Check.Paths = args
+		a.inv.Check.PreCommit = c.Name() == "pre-commit"
+		check := c.Name() == "check" || a.inv.Check.PreCommit
 		c.Flags().Visit(func(f *pflag.Flag) { a.set[f.Name] = true })
-		if c.Name() == "check" && (c.Flags().Changed("ignore-regex") || c.Flags().Changed("ignore")) {
+		if check && (c.Flags().Changed("ignore-regex") || c.Flags().Changed("ignore")) {
 			a.inv.Check.IgnoreRegex = append(a.prefixIgnore, a.inv.Check.IgnoreRegex...)
 		}
-		if c.Name() == "check" && c.Flags().Changed("color") {
+		if check && c.Flags().Changed("color") {
 			a.set["modern-color"] = true
 		}
 		if a.opts.helpLegacy {

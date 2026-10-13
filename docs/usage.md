@@ -899,7 +899,26 @@ For a discussion of native hooks and the pre-commit framework, see
 
 [pre-commit][pre-commit] is a framework for managing and maintaining
 multi-language Git pre-commit hooks. actionlint is available as a pre-commit
-hook to check workflow files in `.github/workflows/` directory.
+hook to check workflow files in the `.github/workflows/` directory.
+
+All hooks run `actionlint pre-commit` on every commit and check **all
+repository workflows**, even when the commit changes no workflow file. Changing
+or deleting a local action, a reusable workflow, or the actionlint configuration
+rechecks the unchanged workflows that use it. Pre-commit excludes deleted files
+from filename selection, so the hooks use `always_run: true` and
+`pass_filenames: false`.
+
+`actionlint pre-commit` exists for the hooks and stays out of `--help`. It
+passes a repository without workflow files, such as an action-only repository,
+and otherwise checks the nearest repository exactly like `actionlint` with no
+arguments. The `actionlint-system` hook needs an actionlint release that has
+this command. Between releases, the `actionlint-docker` hook on the `master`
+branch runs the `nightly` image; a release pins its own image tag. Docker reuses
+a cached `nightly` image, so run `docker pull ghcr.io/kjanat/actionlint:nightly`
+to pick up a newer build.
+
+Only local actions referenced by the checked workflows receive action-metadata
+validation. A missing local action is reported under `missing-local-action`.
 
 Add this to your `.pre-commit-config.yaml` in your repository:
 

@@ -3,37 +3,37 @@
   name: Lint GitHub Actions workflow files
   description: Runs actionlint to lint GitHub Actions workflow files
   language: golang
-  types: [yaml]
-  files: ^\.github/workflows/
-  entry: actionlint
+  pass_filenames: false
+  always_run: true
+  entry: actionlint pre-commit
   minimum_pre_commit_version: 3.0.0
 - id: actionlint-docker
   name: Lint GitHub Actions workflow files
   description: Runs actionlint Docker image to lint GitHub Actions workflow files
   language: docker_image
-  types: [yaml]
-  files: ^\.github/workflows/
-  entry: ghcr.io/kjanat/actionlint:1.17.0
+  pass_filenames: false
+  always_run: true
+  entry: ghcr.io/kjanat/actionlint:nightly pre-commit
 - id: actionlint-system
   name: Lint GitHub Actions workflow files
   description: Runs system-installed actionlint to lint GitHub Actions workflow files
   language: system
-  types: [yaml]
-  files: ^\.github/workflows/
-  entry: actionlint
+  pass_filenames: false
+  always_run: true
+  entry: actionlint pre-commit
 - id: actionlint-bundled
   name: Lint GitHub Actions workflow files (with ShellCheck and Ruff)
   description: Builds this revision's Docker image, including ShellCheck and Ruff
   language: docker
-  types: [yaml]
-  files: ^\.github/workflows/
-  entry: /usr/local/bin/actionlint
+  pass_filenames: false
+  always_run: true
+  entry: /usr/local/bin/actionlint pre-commit
 - id: actionlint-shellcheck
   name: Lint GitHub Actions workflow files (with ShellCheck)
   description: Runs actionlint with the ShellCheck integration enabled via a Go build of ShellCheck
   language: golang
-  types: [yaml]
-  files: ^\.github/workflows/
-  entry: actionlint
+  pass_filenames: false
+  always_run: true
+  entry: actionlint pre-commit
   minimum_pre_commit_version: 3.0.0
   additional_dependencies: [github.com/wasilibs/go-shellcheck/cmd/shellcheck@v0.11.1]

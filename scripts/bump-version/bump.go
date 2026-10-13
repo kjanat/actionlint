@@ -62,11 +62,14 @@ func (s span) contains(o span) bool {
 	return s.start <= o.start && o.end <= s.end
 }
 
+const developmentPin = "nightly"
+
 type occurrence struct {
-	rule    string
-	match   span
-	value   span
-	version version
+	rule        string
+	match       span
+	value       span
+	version     version
+	development bool
 }
 
 func lineAt(content []byte, pos int) int {
@@ -107,11 +110,16 @@ func (t *target) scan(content []byte) ([]occurrence, error) {
 			return nil, fmt.Errorf("%s: expected %d occurrence(s) of %s but found %d", t.path, r.count, r.desc, len(ms))
 		}
 		for _, m := range ms {
-			v, err := parseVersion(string(content[m[2]:m[3]]))
-			if err != nil {
-				return nil, fmt.Errorf("%s:%d: %s: %w", t.path, lineAt(content, m[2]), r.desc, err)
+			o := occurrence{rule: r.desc, match: span{m[0], m[1]}, value: span{m[2], m[3]}}
+			if value := string(content[m[2]:m[3]]); value == developmentPin {
+				o.development = true
+			} else {
+				v, err := parseVersion(value)
+				if err != nil {
+					return nil, fmt.Errorf("%s:%d: %s: %w", t.path, lineAt(content, m[2]), r.desc, err)
+				}
+				o.version = v
 			}
-			o := occurrence{rule: r.desc, match: span{m[0], m[1]}, value: span{m[2], m[3]}, version: v}
 			occs = append(occs, o)
 			covered = append(covered, o.match)
 		}
@@ -169,6 +177,9 @@ func rewrite(content []byte, occs []occurrence, v version) []byte {
 	out := make([]byte, 0, len(content))
 	last := 0
 	for _, o := range occs {
+		if o.development {
+			continue
+		}
 		out = append(out, content[last:o.value.start]...)
 		out = append(out, v.String()...)
 		last = o.value.end
@@ -182,10 +193,10 @@ func (t *target) verify(content []byte, v version) error {
 		return err
 	}
 	for _, o := range occs {
-		if o.version != v {
+		if !o.development && o.version != v {
 			return fmt.Errorf(
-				"%s:%d: %s refers to version %s but %s was expected",
-				t.path, lineAt(content, o.value.start), o.rule, o.version, v,
+				"%s:%d: %s refers to %s but %s was expected",
+				t.path, lineAt(content, o.value.start), o.rule, content[o.value.start:o.value.end], v,
 			)
 		}
 	}
@@ -197,19 +208,24 @@ func (t *target) bump(content []byte, v version) ([]byte, int, error) {
 	if err != nil {
 		return nil, 0, err
 	}
+	n := 0
 	for _, o := range occs {
+		if o.development {
+			continue
+		}
 		if o.version.compare(v) > 0 {
 			return nil, 0, fmt.Errorf(
 				"%s:%d: %s refers to version %s which is newer than %s. a version bump must not go backwards",
 				t.path, lineAt(content, o.value.start), o.rule, o.version, v,
 			)
 		}
+		n++
 	}
 	updated := rewrite(content, occs, v)
 	if err := t.verify(updated, v); err != nil {
 		return nil, 0, fmt.Errorf("the update did not produce a consistent file: %w", err)
 	}
-	return updated, len(occs), nil
+	return updated, n, nil
 }
 
 func Check(root string, ts []*target, out io.Writer) (string, error) {
@@ -225,6 +241,10 @@ func Check(root string, ts []*target, out io.Writer) (string, error) {
 			return "", err
 		}
 		for _, o := range occs {
+			if o.development {
+				_, _ = fmt.Fprintf(out, "%s:%d: %s: %s (development)\n", t.path, lineAt(content, o.value.start), o.rule, developmentPin)
+				continue
+			}
 			_, _ = fmt.Fprintf(out, "%s:%d: %s: %s\n", t.path, lineAt(content, o.value.start), o.rule, o.version)
 			key := o.version.String()
 			found[key] = append(found[key], t.path)

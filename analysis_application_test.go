@@ -361,6 +361,64 @@ func TestAnalysisSessionExplicitConfigInput(t *testing.T) {
 	}
 }
 
+func TestAnalysisSessionEmpty(t *testing.T) {
+	root := t.TempDir()
+	config := filepath.Join(root, ".github", "actionlint.yaml")
+	for _, dir := range []string{".git", ".github/workflows"} {
+		if err := os.MkdirAll(filepath.Join(root, dir), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(config, []byte("{}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := session.Empty()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff([]string{config}, result.Inputs); diff != "" {
+		t.Fatalf("project config input mismatch (-want +got):\n%s", diff)
+	}
+	if len(result.Configurations) != 1 || result.Configurations[0].File != config || len(result.Diagnostics) != 0 {
+		t.Fatalf("project config report: %+v", result)
+	}
+	if result, err := session.Files(nil, nil); err != nil || len(result.Inputs) != 0 || len(result.Configurations) != 0 {
+		t.Fatalf("an empty file selection discovered the project: %+v, %v", result, err)
+	}
+
+	outside := t.TempDir()
+	explicit := filepath.Join(outside, "lint.yaml")
+	if err := os.WriteFile(explicit, []byte("{}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	session, err = NewAnalysisSession(AnalysisOptions{WorkingDir: outside, ConfigFile: explicit})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err = session.Empty()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff([]string{explicit}, result.Inputs); diff != "" {
+		t.Fatalf("explicit config input mismatch (-want +got):\n%s", diff)
+	}
+	if len(result.Configurations) != 1 || result.Configurations[0].File != explicit || !result.Configurations[0].Explicit {
+		t.Fatalf("explicit config report: %+v", result.Configurations)
+	}
+
+	session, err = NewAnalysisSession(AnalysisOptions{WorkingDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result, err := session.Empty(); err != nil || len(result.Inputs) != 0 || len(result.Configurations) != 0 {
+		t.Fatalf("outside a project without a config: %+v, %v", result, err)
+	}
+}
+
 func TestLinterEmptySelection(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()

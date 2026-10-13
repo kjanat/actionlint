@@ -6,7 +6,15 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { createReleaseCommit, prepareRelease, recordRelease, sourceRoot } from './build-action-release.mjs';
+import {
+	createReleaseCommit,
+	pinPreCommitImage,
+	preCommitHooks,
+	prepareRelease,
+	recordRelease,
+	showBytes,
+	sourceRoot,
+} from './build-action-release.mjs';
 
 export const workflowPath = '.github/workflows/release-prepare.yml';
 export const manifestName = 'release-candidate.json';
@@ -253,24 +261,24 @@ export async function verifyCandidate(root, directory, manifest) {
 		throw new Error('Candidate tree differs');
 	}
 	const changed = git(root, 'diff-tree', '--no-commit-id', '--name-status', '-r', manifest.source, manifest.candidate);
-	if (changed !== 'A\tSHA256SUMS\nA\taction.mjs') {
+	if (changed !== `M\t${preCommitHooks}\nA\tSHA256SUMS\nA\taction.mjs`) {
 		throw new Error('Candidate changed source files or omitted the bundle');
 	}
-	for (const name of ['action.mjs', 'SHA256SUMS']) {
+	for (const name of ['action.mjs', 'SHA256SUMS', preCommitHooks]) {
 		if (!git(root, 'ls-tree', manifest.candidate, '--', name).startsWith('100644 blob ')) {
 			throw new Error(`Invalid candidate file mode: ${name}`);
 		}
 	}
-	const bundleBytes = spawnSync('git', ['show', `${manifest.candidate}:action.mjs`], {
-		cwd: root,
-		maxBuffer: 16 * 1024 * 1024,
-	});
-	if (bundleBytes.error) throw bundleBytes.error;
-	if (bundleBytes.status !== 0) throw new Error('Cannot read candidate entrypoint');
-	const digest = sha256(bundleBytes.stdout);
+	const sourceHooks = showBytes(root, `${manifest.source}:${preCommitHooks}`).toString('utf8');
+	const candidateHooks = showBytes(root, `${manifest.candidate}:${preCommitHooks}`).toString('utf8');
+	if (candidateHooks !== pinPreCommitImage(sourceHooks, manifest.version)) {
+		throw new Error('Candidate pre-commit image pin differs');
+	}
+	const bundleBytes = showBytes(root, `${manifest.candidate}:action.mjs`);
+	const digest = sha256(bundleBytes);
 	const checksum = git(root, 'show', `${manifest.candidate}:SHA256SUMS`);
 	if (checksum !== `${digest}  action.mjs`) throw new Error('Candidate tree checksum differs');
-	if (!(await readFile(join(directory, `actionlint-action_${manifest.version}.mjs`))).equals(bundleBytes.stdout)) {
+	if (!(await readFile(join(directory, `actionlint-action_${manifest.version}.mjs`))).equals(bundleBytes)) {
 		throw new Error('Published Action asset differs from the candidate tree');
 	}
 	const assetChecksums = await readFile(join(directory, `actionlint-action_${manifest.version}_checksums.txt`), 'utf8');
