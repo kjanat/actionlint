@@ -67,6 +67,23 @@ func TestExpandedPopularActions(t *testing.T) {
 		"Platane/snk@v3",
 		"aquasecurity/trivy-action@v0.36.0",
 		"github/codeql-action/upload-sarif@v4",
+		"jdx/mise-action@v5",
+		"anchore/sbom-action/download-syft@v0",
+		"autofix-ci/action@v1",
+		"cachix/install-nix-action@v31",
+		"KSXGitHub/github-actions-deploy-aur@v3",
+		"peter-evans/dockerhub-description@v5",
+		"immanuwell/dockerfile-roast@1.7.0",
+		"kjanat/install-dprint@v2",
+		"kjanat/runner@v0.28.0",
+		"reviewdog/action-ansiblelint@v1",
+		"EPMatt/reviewdog-action-prettier@v1",
+		"dciborow/action-pylint@0.1.1",
+		"tsuyoshicho/action-textlint@v3",
+		"dotenv-linter/action-dotenv-linter@v3",
+		"ilammy/msvc-dev-cmd@v1",
+		"vale-cli/vale-action@v3",
+		"codemagic-ci-cd/trigger-codemagic-workflow-action@v3.0.1",
 	} {
 		if meta := PopularActions[spec]; meta == nil || len(meta.Inputs) == 0 {
 			t.Errorf("expected generated input metadata for %q, got %+v", spec, meta)

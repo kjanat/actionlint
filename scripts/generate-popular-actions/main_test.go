@@ -8,9 +8,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -90,6 +92,49 @@ func newTestGen(stdout, stderr, debug io.Writer) *gen {
 }
 
 // Normal cases
+
+func TestWriteGoChunksLargeCatalogues(t *testing.T) {
+	for _, count := range []int{0, 50, 51, 100, 101} {
+		t.Run(strconv.Itoa(count), func(t *testing.T) {
+			actions := make(map[string]*actionlint.ActionMetadata)
+			for i := range count {
+				actions[fmt.Sprintf("example/action-%03d@v1", i)] = &actionlint.ActionMetadata{Name: fmt.Sprintf("Action %d", i)}
+			}
+			actions["example/retired@v1"] = &actionlint.ActionMetadata{Name: "Retired", Runs: actionlint.ActionMetadataRuns{Using: "node12"}}
+			var output bytes.Buffer
+			g := newGen(io.Discard, io.Discard, io.Discard)
+			if err := g.writeGo(&output, actions); err != nil {
+				t.Fatal(err)
+			}
+			code := output.String()
+			chunks := 0
+			if count > 50 {
+				chunks = (count + 49) / 50
+			}
+			if got := strings.Count(code, "func popularActionsChunk"); got != chunks {
+				t.Fatalf("%d actions: want %d initializer chunks, got %d", count, chunks, got)
+			}
+			for i := range chunks {
+				call := fmt.Sprintf("range popularActionsChunk%d()", i)
+				if got := strings.Count(code, call); got != 1 {
+					t.Errorf("initializer must call %s once, got %d", call, got)
+				}
+			}
+			for spec := range actions {
+				if got := strings.Count(code, fmt.Sprintf("%q:", spec)); got != 1 {
+					t.Errorf("expected exactly one entry for %s, got %d", spec, got)
+				}
+			}
+			var repeated bytes.Buffer
+			if err := g.writeGo(&repeated, actions); err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(output.Bytes(), repeated.Bytes()) {
+				t.Fatal("generation is not deterministic")
+			}
+		})
+	}
+}
 
 func TestDefaultPopularActions(t *testing.T) {
 	popularActions, err := newGen(nil, nil, nil).registry()

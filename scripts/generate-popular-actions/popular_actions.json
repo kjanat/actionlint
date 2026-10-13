@@ -16,6 +16,11 @@
     "next": "v2"
   },
   {
+    "slug": "EPMatt/reviewdog-action-prettier",
+    "tags": ["v0", "v1"],
+    "next": "v2"
+  },
+  {
     "slug": "EndBug/add-and-commit",
     "tags": ["v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11"],
     "next": "v12"
@@ -29,6 +34,11 @@
     "slug": "JamesIves/github-pages-deploy-action",
     "tags": ["releases/v3", "v4"],
     "next": "v5"
+  },
+  {
+    "slug": "KSXGitHub/github-actions-deploy-aur",
+    "tags": ["v1", "v2", "v3"],
+    "next": "v4"
   },
   {
     "slug": "Platane/snk",
@@ -228,6 +238,12 @@
     "next": "v43"
   },
   {
+    "slug": "anchore/sbom-action",
+    "tags": ["v0"],
+    "next": "v1",
+    "path": "/download-syft"
+  },
+  {
     "slug": "anchore/scan-action",
     "tags": ["v1", "v2", "v3", "v4", "v5", "v6", "v7"],
     "next": "v8"
@@ -266,6 +282,11 @@
     "slug": "astral-sh/setup-uv",
     "tags": ["v1", "v2", "v3", "v4", "v5", "v6", "v7"],
     "next": "v8"
+  },
+  {
+    "slug": "autofix-ci/action",
+    "tags": ["v1"],
+    "next": "v2"
   },
   {
     "slug": "aws-actions/amazon-ecr-login",
@@ -333,6 +354,42 @@
     "next": "v2"
   },
   {
+    "slug": "cachix/install-nix-action",
+    "tags": [
+      "v1",
+      "v2",
+      "v3",
+      "v4",
+      "v5",
+      "v6",
+      "v7",
+      "v8",
+      "v9",
+      "v10",
+      "v11",
+      "v12",
+      "v13",
+      "v14",
+      "v15",
+      "v16",
+      "v17",
+      "v18",
+      "v19",
+      "v20",
+      "v21",
+      "v22",
+      "v23",
+      "v24",
+      "v25",
+      "v26",
+      "v27",
+      "v29",
+      "v30",
+      "v31"
+    ],
+    "next": "v32"
+  },
+  {
     "slug": "calibreapp/image-actions",
     "tags": ["1.5.0"]
   },
@@ -345,6 +402,10 @@
     "slug": "codecov/codecov-action",
     "tags": ["v1", "v2", "v3", "v4", "v5", "v6", "v7"],
     "next": "v8"
+  },
+  {
+    "slug": "codemagic-ci-cd/trigger-codemagic-workflow-action",
+    "tags": ["v3.0.1"]
   },
   {
     "slug": "coverallsapp/github-action",
@@ -454,6 +515,10 @@
     "next": "v19"
   },
   {
+    "slug": "dciborow/action-pylint",
+    "tags": ["0.1.1"]
+  },
+  {
     "slug": "denoland/setup-deno",
     "tags": ["v1", "v2", "v2.0.5"],
     "next": "v3"
@@ -512,6 +577,11 @@
   },
   {
     "slug": "dorny/test-reporter",
+    "tags": ["v1", "v2", "v3"],
+    "next": "v4"
+  },
+  {
+    "slug": "dotenv-linter/action-dotenv-linter",
     "tags": ["v1", "v2", "v3"],
     "next": "v4"
   },
@@ -683,6 +753,20 @@
     "next": "v3"
   },
   {
+    "slug": "ilammy/msvc-dev-cmd",
+    "tags": ["v1"],
+    "next": "v2"
+  },
+  {
+    "slug": "immanuwell/dockerfile-roast",
+    "tags": ["1.7.0"]
+  },
+  {
+    "slug": "jdx/mise-action",
+    "tags": ["v1", "v2", "v3", "v4", "v5"],
+    "next": "v6"
+  },
+  {
     "slug": "julia-actions/setup-julia",
     "tags": ["v1", "v2", "v3"],
     "next": "v4"
@@ -691,6 +775,15 @@
     "slug": "kjanat/actionlint",
     "tags": ["v1"],
     "next": "v2"
+  },
+  {
+    "slug": "kjanat/install-dprint",
+    "tags": ["v1", "v2"],
+    "next": "v3"
+  },
+  {
+    "slug": "kjanat/runner",
+    "tags": ["v0.28.0"]
   },
   {
     "slug": "marvinpinto/action-automatic-releases",
@@ -803,6 +896,11 @@
     "next": "v9"
   },
   {
+    "slug": "peter-evans/dockerhub-description",
+    "tags": ["v2", "v3", "v4", "v5"],
+    "next": "v6"
+  },
+  {
     "slug": "peter-evans/find-comment",
     "tags": ["v1", "v2", "v3", "v4"],
     "next": "v5"
@@ -859,6 +957,11 @@
   },
   {
     "slug": "reviewdog/action-alex",
+    "tags": ["v1"],
+    "next": "v2"
+  },
+  {
+    "slug": "reviewdog/action-ansiblelint",
     "tags": ["v1"],
     "next": "v2"
   },
@@ -1059,6 +1162,16 @@
   {
     "slug": "trufflesecurity/trufflehog",
     "tags": ["v3.99.2"]
+  },
+  {
+    "slug": "tsuyoshicho/action-textlint",
+    "tags": ["v1", "v2", "v3"],
+    "next": "v4"
+  },
+  {
+    "slug": "vale-cli/vale-action",
+    "tags": ["v1", "v2", "v3"],
+    "next": "v4"
   },
   {
     "slug": "wagoid/commitlint-github-action",
