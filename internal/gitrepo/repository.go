@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 type Repository struct {
@@ -89,8 +90,8 @@ func open(workTree, dotGit string, info fs.FileInfo) (*Repository, error) {
 	default:
 		return nil, fmt.Errorf("unknown object format %q", format)
 	}
-	repo.excludes, err = excludesFile(settings["core.excludesfile"])
-	return repo, err
+	repo.excludes = excludesFile(settings["core.excludesfile"])
+	return repo, nil
 }
 
 func (r *Repository) config() (config, error) {
@@ -102,10 +103,10 @@ func (r *Repository) config() (config, error) {
 	if global := os.Getenv("GIT_CONFIG_GLOBAL"); global != "" {
 		files = append(files, global)
 	} else {
-		if xdg, err := xdgConfigHome(); err == nil {
+		if xdg, ok := xdgConfigHome(); ok {
 			files = append(files, filepath.Join(xdg, "git", "config"))
 		}
-		if home, err := os.UserHomeDir(); err == nil {
+		if home, ok := homeDir(); ok {
 			files = append(files, filepath.Join(home, ".gitconfig"))
 		}
 	}
@@ -127,33 +128,37 @@ func (r *Repository) config() (config, error) {
 	return settings, nil
 }
 
-func excludesFile(configured string) (string, error) {
+func excludesFile(configured string) string {
 	if configured == "" {
-		xdg, err := xdgConfigHome()
-		if err != nil {
-			return "", err
+		if xdg, ok := xdgConfigHome(); ok {
+			return filepath.Join(xdg, "git", "ignore")
 		}
-		return filepath.Join(xdg, "git", "ignore"), nil
+		return ""
 	}
-	if rest, ok := strings.CutPrefix(configured, "~/"); ok {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", err
-		}
-		return filepath.Join(home, filepath.FromSlash(rest)), nil
-	}
-	return filepath.FromSlash(configured), nil
+	return expandHome(configured)
 }
 
-func xdgConfigHome() (string, error) {
+func expandHome(path string) string {
+	rest, ok := strings.CutPrefix(path, "~/")
+	if !ok {
+		return filepath.FromSlash(path)
+	}
+	home, ok := homeDir()
+	if !ok {
+		return ""
+	}
+	return filepath.Join(home, filepath.FromSlash(rest))
+}
+
+func xdgConfigHome() (string, bool) {
 	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
-		return xdg, nil
+		return xdg, true
 	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
+	home, ok := homeDir()
+	if !ok {
+		return "", false
 	}
-	return filepath.Join(home, ".config"), nil
+	return filepath.Join(home, ".config"), true
 }
 
 func envOr(name, fallback string) string {
@@ -169,8 +174,13 @@ func truthyEnv(name string) bool {
 
 func readOptional(path string) ([]byte, error) {
 	data, err := os.ReadFile(path)
-	if errors.Is(err, fs.ErrNotExist) {
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
 		return nil, nil
 	}
 	return data, err
+}
+
+func homeDir() (string, bool) {
+	home, err := os.UserHomeDir()
+	return home, err == nil && home != ""
 }

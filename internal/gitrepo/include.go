@@ -2,7 +2,6 @@ package gitrepo
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 )
@@ -48,27 +47,23 @@ func loadConfig(path string, into config, ctx *includeContext, depth int) error 
 		if err != nil || !matched {
 			return err
 		}
-		target, err := resolveInclude(include, dir)
-		if err != nil {
-			return err
+		target := resolveInclude(include, dir)
+		if target == "" {
+			return nil
 		}
 		return loadConfig(target, into, ctx, depth+1)
 	})
 }
 
-func resolveInclude(include, dir string) (string, error) {
-	if rest, ok := strings.CutPrefix(include, "~/"); ok {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", err
-		}
-		return filepath.Join(home, filepath.FromSlash(rest)), nil
+func resolveInclude(include, dir string) string {
+	if strings.HasPrefix(include, "~/") {
+		return expandHome(include)
 	}
 	include = filepath.FromSlash(include)
 	if filepath.IsAbs(include) {
-		return include, nil
+		return include
 	}
-	return filepath.Join(dir, include), nil
+	return filepath.Join(dir, include)
 }
 
 func (c *includeContext) matches(condition, dir string, settings config) (bool, error) {
@@ -84,11 +79,8 @@ func (c *includeContext) matches(condition, dir string, settings config) (bool, 
 		if c.gitDir == "" {
 			return false, nil
 		}
-		pattern, err := gitdirPattern(pattern, dir)
-		if err != nil {
-			return false, err
-		}
-		return wildmatch(pattern, c.gitDir, keyword == "gitdir/i"), nil
+		pattern, ok := gitdirPattern(pattern, dir)
+		return ok && wildmatch(pattern, c.gitDir, keyword == "gitdir/i"), nil
 	case "onbranch":
 		if c.branch == "" {
 			return false, nil
@@ -112,12 +104,12 @@ func (c *includeContext) matches(condition, dir string, settings config) (bool, 
 	return false, fmt.Errorf("unsupported includeIf condition %q", condition)
 }
 
-func gitdirPattern(pattern, dir string) (string, error) {
+func gitdirPattern(pattern, dir string) (string, bool) {
 	switch {
 	case strings.HasPrefix(pattern, "~/"):
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", err
+		home, ok := homeDir()
+		if !ok {
+			return "", false
 		}
 		pattern = filepath.ToSlash(home) + pattern[1:]
 	case strings.HasPrefix(pattern, "./"):
@@ -128,7 +120,7 @@ func gitdirPattern(pattern, dir string) (string, error) {
 	if strings.HasSuffix(pattern, "/") {
 		pattern += "**"
 	}
-	return pattern, nil
+	return pattern, true
 }
 
 func wildmatch(pattern, text string, fold bool) bool {

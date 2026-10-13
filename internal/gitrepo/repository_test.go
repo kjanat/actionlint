@@ -98,6 +98,36 @@ func TestOpenGlobalConfigFile(t *testing.T) {
 	}
 }
 
+func TestOpenWithoutHome(t *testing.T) {
+	for name, home := range map[string]string{"unset": "", "dev null": os.DevNull} {
+		t.Run(name, func(t *testing.T) {
+			fixture := newTestRepo(t)
+			fixture.write(".gitignore", "ignored/\n")
+			t.Setenv("XDG_CONFIG_HOME", "")
+			t.Setenv("HOME", home)
+			t.Setenv("USERPROFILE", home)
+			if home == "" {
+				for _, name := range []string{"HOME", "USERPROFILE", "XDG_CONFIG_HOME"} {
+					if err := os.Unsetenv(name); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			repo := fixture.open()
+			ignores, err := repo.Ignores()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got, err := ignores.Ignored("ignored", true); err != nil || !got {
+				t.Fatalf("Ignored(ignored) = %v, %v", got, err)
+			}
+			if _, err := repo.TrackedFiles(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
 func TestOpenSha256(t *testing.T) {
 	fixture := newTestRepo(t, "--object-format=sha256")
 	if repo := fixture.open(); repo.hashLength != 32 {
