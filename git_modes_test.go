@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -162,7 +163,9 @@ func TestGitModesSparseIndex(t *testing.T) {
 	git("config", "user.name", "Test")
 	git("config", "user.email", "test@example.com")
 	git("config", "core.hooksPath", t.TempDir())
-	git("config", "core.filemode", "true")
+	if runtime.GOOS != "windows" {
+		git("config", "core.filemode", "true")
+	}
 	for _, name := range []string{"scripts/good.sh", "good.sh", "{good,bad}.sh"} {
 		if err := os.Chmod(filepath.Join(root, filepath.FromSlash(name)), 0o700); err != nil {
 			t.Fatal(err)

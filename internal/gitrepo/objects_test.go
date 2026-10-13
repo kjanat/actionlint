@@ -518,7 +518,7 @@ func TestReadAlternates(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(objects, "info"), 0750); err != nil {
 		t.Fatal(err)
 	}
-	content := "# comment\n../../relative\n\n\"" + filepath.Join(root, "quoted\\040dir") + "\"\n" + filepath.Join(root, "absolute") + "/\n" + filepath.Join(root, "missing") + "\n"
+	content := "# comment\n../../relative\n\n\"" + filepath.ToSlash(root) + "/quoted\\040dir\"\n" + filepath.Join(root, "absolute") + "/\n" + filepath.Join(root, "missing") + "\n"
 	if err := os.WriteFile(filepath.Join(objects, "info", "alternates"), []byte(content), 0600); err != nil {
 		t.Fatal(err)
 	}

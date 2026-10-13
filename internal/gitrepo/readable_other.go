@@ -5,6 +5,6 @@ package gitrepo
 import "os"
 
 func readable(path string) bool {
-	_, err := os.Stat(path)
+	_, err := os.Lstat(path)
 	return err == nil
 }

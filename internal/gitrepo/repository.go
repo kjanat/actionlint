@@ -247,7 +247,7 @@ func validHead(path string) bool {
 	}
 	if info.Mode()&fs.ModeSymlink != 0 {
 		target, err := os.Readlink(path)
-		return err == nil && strings.HasPrefix(target, "refs/")
+		return err == nil && strings.HasPrefix(filepath.ToSlash(target), "refs/")
 	}
 	file, err := os.Open(path)
 	if err != nil {

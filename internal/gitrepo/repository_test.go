@@ -373,6 +373,9 @@ func TestOpenGitFileErrorsMatchGit(t *testing.T) {
 }
 
 func TestOpenNonRegularGitFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("named pipes are not files on Windows")
+	}
 	if _, err := exec.LookPath("mkfifo"); err != nil {
 		t.Skip("mkfifo required")
 	}
@@ -551,11 +554,12 @@ func TestOpenExcludesFileSettings(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			fixture := newTestRepo(t)
 			fixture.git("config", "core.excludesFile", tc.value)
+			repo := fixture.open()
 			want := tc.want
 			if want != "" {
-				want = filepath.Join(fixture.root, want)
+				want = filepath.Join(repo.WorkTree, want)
 			}
-			if repo := fixture.open(); repo.excludes != want {
+			if repo.excludes != want {
 				t.Fatalf("excludes = %q, want %q", repo.excludes, want)
 			}
 		})
@@ -973,8 +977,7 @@ func TestReadFiles(t *testing.T) {
 	t.Setenv("GIT_CONFIG_GLOBAL", global)
 	excludes := filepath.Join(fixture.home, "excludes")
 	writeConfig(t, excludes, "excluded/\n")
-	info := filepath.Join(fixture.root, ".git", "info", "exclude")
-	writeConfig(t, info, "info/\n")
+	writeConfig(t, filepath.Join(fixture.root, ".git", "info", "exclude"), "info/\n")
 	fixture.write(".gitignore", "ignored/\n")
 	fixture.write("sub/.gitignore", "local/\n")
 	fixture.write("sub/file", "")
@@ -993,7 +996,7 @@ func TestReadFiles(t *testing.T) {
 	if _, err := repo.Index(); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{global, included, filepath.Join(repo.GitDir, "config"), excludes, info, filepath.Join(repo.WorkTree, ".gitignore"), filepath.Join(repo.WorkTree, "sub", ".gitignore"), repo.IndexPath(), filepath.Join(repo.GitDir, filepath.Base(shared[0]))}
+	want := []string{global, included, filepath.Join(repo.GitDir, "config"), excludes, filepath.Join(repo.CommonDir, "info", "exclude"), filepath.Join(repo.WorkTree, ".gitignore"), filepath.Join(repo.WorkTree, "sub", ".gitignore"), repo.IndexPath(), filepath.Join(repo.GitDir, filepath.Base(shared[0]))}
 	slices.Sort(want)
 	if got := repo.ReadFiles(); !slices.Equal(got, want) {
 		t.Fatalf("ReadFiles = %q, want %q", got, want)
