@@ -4,8 +4,10 @@ import { beforeAll, describe, it } from 'vitest';
 import { promises as fs } from 'node:fs';
 
 import { Text } from '@codemirror/state';
+import * as pako from 'pako';
 
 import { errorRange } from './range';
+import { inflateSource, maxSourceBytes, readSource } from './source';
 
 // The Go wasm runtime installs `globalThis.Go` as a side effect.
 import 'wasm_exec.js';
@@ -55,6 +57,30 @@ describe('errorRange', () => {
 	it('clamps an end column past the line to the line end', () => {
 		const doc = Text.of(['on: foo', 'jobs: {}']);
 		assert.deepEqual(errorRange(doc, error(1, 5, 99)), { from: 4, to: 7 });
+	});
+});
+
+describe('source', () => {
+	it('inflates a shared source', () => {
+		assert.equal(inflateSource(pako.deflate(new TextEncoder().encode('on: push\n'))), 'on: push\n');
+	});
+
+	it('stops inflating past the source limit', () => {
+		assert.throws(() => inflateSource(pako.deflate(new Uint8Array(maxSourceBytes + 1))), /inflates past/);
+	});
+
+	it('rejects a truncated stream', () => {
+		const compressed = pako.deflate(new TextEncoder().encode('on: push\n'));
+		assert.throws(() => inflateSource(compressed.subarray(0, compressed.length - 4)), /not a complete zlib stream/);
+	});
+
+	it('reads a remote source', async () => {
+		assert.equal(await readSource(new Response('on: push\n')), 'on: push\n');
+		assert.equal(await readSource(new Response(null)), '');
+	});
+
+	it('stops reading past the source limit', async () => {
+		await assert.rejects(readSource(new Response(new Uint8Array(maxSourceBytes + 1))), /larger than/);
 	});
 });
 
