@@ -43,3 +43,16 @@ of each action registry. Each registry is a JSON object containing the following
 | `file_ext`     | File extension of action metadata file. The default is `"yml"`  | `"yaml"`                   | No        |
 
 Alternative actions registry JSON file can be used via `-r` option.
+
+## Registry maintenance
+
+Verify refs with `git ls-remote --tags --heads https://github.com/OWNER/REPO.git`
+and fetch the action's `action.yml` or `action.yaml` at each selected ref. Major
+refs may be branches. Repositories containing several actions need separate
+entries with `path`; a repository name alone does not identify those actions.
+Regenerate `popular_actions.go` with the command above after changing the registry.
+
+Extraction preserves supported input fields when metadata also contains unknown
+input keys, such as `type` or the misspelled `deprecation-message`. Extraction ignores
+those keys. Invalid values, duplicate inputs and malformed YAML
+still stop generation. This does not relax validation of local action metadata.
