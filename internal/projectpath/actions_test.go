@@ -1,6 +1,8 @@
 package projectpath
 
 import (
+	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -169,6 +171,17 @@ func TestActionsManifestError(t *testing.T) {
 	})
 	if got, err := Actions(t.Context(), root); err == nil {
 		t.Fatalf("Actions = %q, want an error for the unreadable manifest directory", got)
+	}
+}
+
+func TestActionsCancelled(t *testing.T) {
+	root := t.TempDir()
+	writeFixture(t, root, "action.yml", "name: fixture\n")
+	gitFixture(t, root)
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if got, err := Actions(ctx, root); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Actions = %q, %v, want %v", got, err, context.Canceled)
 	}
 }
 

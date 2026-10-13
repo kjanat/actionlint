@@ -19,9 +19,12 @@ func Actions(ctx context.Context, root string) ([]string, error) {
 		return nil, fmt.Errorf("could not resolve action discovery root %q: %w", root, err)
 	}
 	var relatives []string
-	if names, ok := gitFiles(ctx, physical); ok {
+	names, listed, err := gitFiles(ctx, physical)
+	switch {
+	case err != nil:
+	case listed:
 		relatives, err = listedActions(physical, names)
-	} else {
+	default:
 		relatives, err = walkActions(physical)
 	}
 	if err != nil {
@@ -34,9 +37,9 @@ func Actions(ctx context.Context, root string) ([]string, error) {
 	return paths, nil
 }
 
-func gitFiles(ctx context.Context, root string) ([]string, bool) {
+func gitFiles(ctx context.Context, root string) ([]string, bool, error) {
 	if RepositoryRoot(root) == "" {
-		return nil, false
+		return nil, false, nil
 	}
 	command := exec.CommandContext(ctx, "git", "-C", root, "-c", "core.fsmonitor=false", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", ":(glob)**/action.yml", ":(glob)**/action.yaml")
 	for _, entry := range os.Environ() {
@@ -49,7 +52,7 @@ func gitFiles(ctx context.Context, root string) ([]string, bool) {
 	}
 	output, err := command.Output()
 	if err != nil {
-		return nil, false
+		return nil, false, ctx.Err()
 	}
 	var names []string
 	for name := range strings.SplitSeq(string(output), "\x00") {
@@ -57,7 +60,7 @@ func gitFiles(ctx context.Context, root string) ([]string, bool) {
 			names = append(names, name)
 		}
 	}
-	return names, true
+	return names, true, nil
 }
 
 func listedActions(root string, names []string) ([]string, error) {
