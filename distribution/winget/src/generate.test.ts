@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+
 import { parse } from 'yaml';
 
 import { generateManifests, manifestFileNames, renderManifests } from '#generate';
@@ -35,6 +36,7 @@ test('portable WinGet manifest validates the CLI without accepting lint failures
 	assert.equal(Object.hasOwn(installer, 'InstallerSuccessCodes'), false);
 
 	const installerYaml = renderManifests(manifests)[manifestFileNames.installer];
+	assert.ok(installerYaml);
 	assert.doesNotMatch(installerYaml, /^InstallerSuccessCodes:/m);
 	assert.deepEqual(installerManifest.parse(parse(installerYaml)), installer);
 });
