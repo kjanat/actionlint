@@ -7,9 +7,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"maps"
+	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -149,8 +152,67 @@ func (r *Repository) ExpandedIndex(ctx context.Context) ([]IndexEntry, error) {
 		if err != nil && !errors.Is(err, errTreeUnreadable) {
 			return nil, fmt.Errorf("expand %s: %w", entry.path, err)
 		}
+		if errors.Is(err, errObjectMissing) {
+			lazy, lazyErr := r.fetchesMissingObjects(settings)
+			if lazyErr != nil {
+				return nil, lazyErr
+			}
+			if lazy {
+				return nil, fmt.Errorf("expand %s: %w; git fetches it from the promisor remote", entry.path, err)
+			}
+		}
 	}
 	return publicEntries(expanded), nil
+}
+
+func (r *Repository) fetchesMissingObjects(settings config) (bool, error) {
+	if value, ok := os.LookupEnv("GIT_NO_LAZY_FETCH"); ok {
+		disabled, err := parseBool(value)
+		if err != nil {
+			return false, fmt.Errorf("GIT_NO_LAZY_FETCH: %w", err)
+		}
+		if disabled {
+			return false, nil
+		}
+	}
+	promisor := r.partialClone != "" && !strings.HasPrefix(r.partialClone, "/")
+	for _, key := range slices.Sorted(maps.Keys(settings)) {
+		name, variable, ok := remoteVariable(key)
+		if !ok {
+			continue
+		}
+		for _, value := range settings[key] {
+			switch variable {
+			case "promisor":
+				enabled, err := value.boolean()
+				if err != nil {
+					return false, fmt.Errorf("bad boolean config value %q for '%s'", value.text, key)
+				}
+				promisor = promisor || enabled && !strings.HasPrefix(name, "/")
+			case "partialclonefilter":
+				if strings.HasPrefix(name, "/") {
+					continue
+				}
+				if value.bare {
+					return false, fmt.Errorf("missing value for '%s'", key)
+				}
+				promisor = true
+			}
+		}
+	}
+	return promisor, nil
+}
+
+func remoteVariable(key string) (string, string, bool) {
+	rest, ok := strings.CutPrefix(key, "remote.")
+	if !ok {
+		return "", "", false
+	}
+	name, variable := "", rest
+	if dot := strings.LastIndexByte(rest, '.'); dot >= 0 {
+		name, variable = rest[:dot], rest[dot+1:]
+	}
+	return name, variable, variable == "promisor" || variable == "partialclonefilter"
 }
 
 func (r *Repository) TrackedFiles(ctx context.Context) ([]string, error) {

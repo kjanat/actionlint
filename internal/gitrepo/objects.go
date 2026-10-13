@@ -358,7 +358,7 @@ func (s *objectStore) walkTree(ctx context.Context, oid []byte, base []byte, dep
 	}
 	kind, data, err := s.read(oid)
 	if errors.Is(err, errObjectMissing) {
-		return fmt.Errorf("%w: could not read %s", errTreeUnreadable, hex.EncodeToString(oid))
+		return fmt.Errorf("%w: %w", errTreeUnreadable, err)
 	}
 	if err != nil {
 		return err

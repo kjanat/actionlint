@@ -25,6 +25,7 @@ type Repository struct {
 	precompose       bool
 	worktreeConfig   bool
 	reftable         bool
+	partialClone     string
 	hashLength       int
 	excludes         string
 	unresolvedGitDir string
@@ -349,6 +350,7 @@ func open(found *location) (*Repository, error) {
 	}
 	repo.worktreeConfig = format.worktreeConfig
 	repo.reftable = format.refStorage == "reftable"
+	repo.partialClone = format.partialClone
 	settings, err := repo.config()
 	if err != nil {
 		return nil, err

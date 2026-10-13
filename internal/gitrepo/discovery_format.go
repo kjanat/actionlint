@@ -13,6 +13,7 @@ type discoveryFormat struct {
 	worktreeConfig bool
 	sha256         bool
 	refStorage     string
+	partialClone   string
 	bare           int
 	workTree       string
 	hasWorkTree    bool
@@ -109,7 +110,11 @@ func (f *discoveryFormat) extension(name string, value configValue) error {
 	case "noop":
 		return nil
 	case "partialclone":
-		return value.nonbool()
+		if err := value.nonbool(); err != nil {
+			return err
+		}
+		f.partialClone = value.text
+		return nil
 	case "preciousobjects":
 		_, err = value.boolean()
 		return err

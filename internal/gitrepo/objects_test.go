@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -625,5 +626,145 @@ func TestParseAlternates(t *testing.T) {
 	data := "# comment" + sep + "relative" + sep + "\"" + filepath.ToSlash(root) + "/quoted\\040dir\"" + sep + filepath.Join(root, "absolute") + sep + filepath.Join(root, "missing")
 	if got := parseAlternates(data, os.PathListSeparator, resolved); !slices.Equal(got, want) {
 		t.Fatalf("parseAlternates = %q, want %q", got, want)
+	}
+}
+
+func partialCloneFixture(t *testing.T) (*testRepo, string) {
+	t.Helper()
+	source := newTestRepo(t, "--initial-branch=main")
+	source.writeFiles("in/action.yml", "out/action.yml", "out/deep/x.txt", "root.txt")
+	source.git("add", "--all")
+	source.git("commit", "--quiet", "--no-gpg-sign", "-m", "base")
+	source.git("config", "uploadpack.allowFilter", "true")
+	clone := &testRepo{t: t, root: filepath.Join(filepath.Dir(source.root), "clone"), home: source.home}
+	source.git("clone", "--quiet", "--no-local", "--no-checkout", "--filter=tree:0", source.root, clone.root)
+	oid := source.treeOID("out")
+	raw, err := hex.DecodeString(oid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for key, value := range map[string]string{"core.sparseCheckout": "true", "core.sparseCheckoutCone": "true", "index.sparse": "true"} {
+		clone.git("config", key, value)
+	}
+	clone.write(".git/info/sparse-checkout", "/*\n!/*/\n/in/\n")
+	data := encodeIndex(3, []rawIndexEntry{{mode: 0o040000, flags: indexExtendedFlag | 4, extended: indexSkipWorktreeFlag, name: []byte("out/"), oid: raw}})
+	if err := os.WriteFile(filepath.Join(clone.root, ".git", "index"), data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return clone, oid
+}
+
+func (r *testRepo) objectMissing(oid string) bool {
+	r.t.Helper()
+	command := exec.CommandContext(r.t.Context(), "git", "cat-file", "-e", oid)
+	command.Dir = r.root
+	command.Env = append(os.Environ(), "GIT_NO_LAZY_FETCH=1")
+	return command.Run() != nil
+}
+
+func TestExpandedIndexPartialClone(t *testing.T) {
+	for name, tc := range map[string]struct {
+		keep      []string
+		extension string
+		lazy      bool
+	}{
+		"as cloned": {keep: []string{"promisor", "partialclonefilter"}, lazy: true},
+		"promisor":  {keep: []string{"promisor"}, lazy: true},
+		"filter":    {keep: []string{"partialclonefilter"}, lazy: true},
+		"extension": {extension: "origin", lazy: true},
+		"neither":   {},
+		"slash":     {extension: "/origin"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			clone, oid := partialCloneFixture(t)
+			for _, variable := range []string{"promisor", "partialclonefilter"} {
+				if !slices.Contains(tc.keep, variable) {
+					clone.git("config", "--unset", "remote.origin."+variable)
+				}
+			}
+			if tc.extension != "" {
+				clone.git("config", "extensions.partialClone", tc.extension)
+			}
+			if !clone.objectMissing(oid) {
+				t.Fatal("the clone already has the out/ tree")
+			}
+			_, err := clone.open().ExpandedIndex(t.Context())
+			if !tc.lazy {
+				if err != nil {
+					t.Fatal(err)
+				}
+				clone.compareIndex()
+				if !clone.objectMissing(oid) {
+					t.Fatal("git fetched the out/ tree without a promisor remote")
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), "promisor remote") {
+				t.Fatalf("ExpandedIndex = %v, want the promisor remote error", err)
+			}
+			t.Setenv("GIT_NO_LAZY_FETCH", "1")
+			clone.compareIndex()
+			if !clone.objectMissing(oid) {
+				t.Fatal("git fetched the out/ tree with GIT_NO_LAZY_FETCH")
+			}
+			t.Setenv("GIT_NO_LAZY_FETCH", "0")
+			clone.git("ls-files")
+			if clone.objectMissing(oid) {
+				t.Fatal("git did not fetch the out/ tree")
+			}
+			clone.compareIndex()
+		})
+	}
+}
+
+func TestFetchesMissingObjects(t *testing.T) {
+	for name, tc := range map[string]struct {
+		env      string
+		partial  string
+		settings config
+		want     bool
+		err      string
+	}{
+		"nothing":            {settings: config{}},
+		"extension":          {partial: "origin", settings: config{}, want: true},
+		"remote":             {settings: config{"remote.origin.promisor": {valueOf("true")}}, want: true},
+		"bare remote":        {settings: config{"remote.origin.promisor": {{bare: true}}}, want: true},
+		"later false":        {settings: config{"remote.origin.promisor": {valueOf("true"), valueOf("false")}}, want: true},
+		"remote false":       {settings: config{"remote.origin.promisor": {valueOf("false")}}},
+		"no subsection":      {settings: config{"remote.promisor": {valueOf("yes")}}, want: true},
+		"other key":          {settings: config{"remote.origin.promisorx": {valueOf("true")}}},
+		"filter":             {settings: config{"remote.origin.partialclonefilter": {valueOf("tree:0")}}, want: true},
+		"empty filter":       {settings: config{"remote.origin.partialclonefilter": {valueOf("")}}, want: true},
+		"bare filter":        {settings: config{"remote.origin.partialclonefilter": {{bare: true}}}, err: "missing value"},
+		"dotted name":        {settings: config{"remote.a.b.partialclonefilter": {valueOf("blob:none")}}, want: true},
+		"slash promisor":     {settings: config{"remote./x.promisor": {valueOf("true")}}},
+		"slash bad promisor": {settings: config{"remote./x.promisor": {valueOf("maybe")}}, err: "bad boolean config value"},
+		"slash bare filter":  {settings: config{"remote./x.partialclonefilter": {{bare: true}}}},
+		"slash extension":    {partial: "/origin", settings: config{}},
+		"bad remote":         {settings: config{"remote.origin.promisor": {valueOf("maybe")}}, err: "bad boolean config value"},
+		"bad remote too":     {partial: "origin", settings: config{"remote.origin.promisor": {valueOf("maybe")}}, err: "bad boolean config value"},
+		"disabled":           {env: "1", partial: "origin", settings: config{"remote.origin.promisor": {valueOf("true")}}},
+		"enabled explicitly": {env: "false", partial: "origin", settings: config{}, want: true},
+		"empty env":          {env: "", partial: "origin", settings: config{}, want: true},
+		"bad env":            {env: "maybe", partial: "origin", settings: config{}, err: "GIT_NO_LAZY_FETCH"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Setenv("GIT_NO_LAZY_FETCH", tc.env)
+			if tc.env == "" && name != "empty env" {
+				if err := os.Unsetenv("GIT_NO_LAZY_FETCH"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			got, err := (&Repository{partialClone: tc.partial}).fetchesMissingObjects(tc.settings)
+			if tc.err != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.err) {
+					t.Fatalf("fetchesMissingObjects = %v, %v; want error %q", got, err, tc.err)
+				}
+				return
+			}
+			if err != nil || got != tc.want {
+				t.Fatalf("fetchesMissingObjects = %v, %v; want %v", got, err, tc.want)
+			}
+		})
 	}
 }
