@@ -688,12 +688,21 @@ func TestExpandedIndexPartialClone(t *testing.T) {
 			if !clone.objectMissing(oid) {
 				t.Fatal("the clone already has the out/ tree")
 			}
+			gitExpands := gitAtLeast(t, 2, 56)
+			expandsEmpty := func() {
+				t.Helper()
+				if gitExpands {
+					clone.compareIndex()
+				} else if entries, err := clone.open().ExpandedIndex(t.Context()); err != nil || len(entries) != 0 {
+					t.Fatalf("ExpandedIndex = %v, %v; want no entries", entries, err)
+				}
+			}
 			_, err := clone.open().ExpandedIndex(t.Context())
 			if !tc.lazy {
 				if err != nil {
 					t.Fatal(err)
 				}
-				clone.compareIndex()
+				expandsEmpty()
 				if !clone.objectMissing(oid) {
 					t.Fatal("git fetched the out/ tree without a promisor remote")
 				}
@@ -703,12 +712,16 @@ func TestExpandedIndexPartialClone(t *testing.T) {
 				t.Fatalf("ExpandedIndex = %v, want the promisor remote error", err)
 			}
 			t.Setenv("GIT_NO_LAZY_FETCH", "1")
-			clone.compareIndex()
+			expandsEmpty()
 			if !clone.objectMissing(oid) {
 				t.Fatal("git fetched the out/ tree with GIT_NO_LAZY_FETCH")
 			}
 			t.Setenv("GIT_NO_LAZY_FETCH", "0")
-			clone.git("ls-files")
+			if gitExpands {
+				clone.git("ls-files")
+			} else {
+				clone.git("cat-file", "-t", oid)
+			}
 			if clone.objectMissing(oid) {
 				t.Fatal("git did not fetch the out/ tree")
 			}
