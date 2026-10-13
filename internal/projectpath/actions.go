@@ -35,12 +35,13 @@ func Actions(ctx context.Context, root string, onRead func(path string)) ([]stri
 }
 
 type actionDiscovery struct {
-	root       string
-	prefix     string
-	ignores    *gitrepo.Ignores
-	tracked    []string
-	ignoreCase bool
-	precompose bool
+	root        string
+	prefix      string
+	ignores     *gitrepo.Ignores
+	tracked     []string
+	ignoreCase  bool
+	precompose  bool
+	onDirectory func(relative string)
 }
 
 func discoverActions(ctx context.Context, root, physical string, onRead func(path string)) ([]string, error) {
@@ -53,6 +54,9 @@ func discoverActions(ctx context.Context, root, physical string, onRead func(pat
 		if discovery, err = newActionDiscovery(ctx, physical, repo, runtime.GOOS == "darwin" && repo.PrecomposeUnicode()); err != nil {
 			return nil, err
 		}
+	}
+	if onRead != nil {
+		discovery.onDirectory = func(relative string) { onRead(filepath.Join(root, relative)) }
 	}
 	relatives, err := discovery.walk(ctx)
 	if err != nil {
@@ -110,6 +114,7 @@ func (d *actionDiscovery) walk(ctx context.Context) ([]string, error) {
 			return err
 		}
 		if path == d.root {
+			d.readDirectory(".")
 			return nil
 		}
 		relative, err := filepath.Rel(d.root, path)
@@ -125,12 +130,10 @@ func (d *actionDiscovery) walk(ctx context.Context) ([]string, error) {
 			if skip {
 				return filepath.SkipDir
 			}
-			if d.ignores == nil {
-				return nil
-			}
-			if d.ignores.Ignored(treePath, true) && !d.trackedUnder(treePath) {
+			if d.ignores != nil && d.ignores.Ignored(treePath, true) && !d.trackedUnder(treePath) {
 				return filepath.SkipDir
 			}
+			d.readDirectory(relative)
 			return nil
 		}
 		if !entry.Type().IsRegular() || !isManifest(entry.Name()) {
@@ -143,6 +146,12 @@ func (d *actionDiscovery) walk(ctx context.Context) ([]string, error) {
 		return nil
 	})
 	return relatives, err
+}
+
+func (d *actionDiscovery) readDirectory(relative string) {
+	if d.onDirectory != nil {
+		d.onDirectory(relative)
+	}
 }
 
 func (d *actionDiscovery) compose(treePath string) string {

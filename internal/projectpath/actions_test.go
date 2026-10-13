@@ -476,11 +476,50 @@ func TestActionsReportReadFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	config := filepath.Dir(os.Getenv("GIT_CONFIG_GLOBAL"))
-	want := []string{filepath.Join(config, "gitconfig"), filepath.Join(config, "excludes"), filepath.Join(physical, ".git", "config"), filepath.Join(physical, ".git", "index"), filepath.Join(physical, ".git", "info", "exclude"), filepath.Join(physical, ".gitignore"), filepath.Join(physical, "sub", ".gitignore")}
+	want := []string{root, filepath.Join(root, "sub"), filepath.Join(config, "gitconfig"), filepath.Join(config, "excludes"), filepath.Join(physical, ".git", "config"), filepath.Join(physical, ".git", "index"), filepath.Join(physical, ".git", "info", "exclude"), filepath.Join(physical, ".gitignore"), filepath.Join(physical, "sub", ".gitignore")}
 	slices.Sort(want)
+	slices.Sort(got)
 	if !slices.Equal(got, want) {
 		t.Fatalf("read files = %q, want %q", got, want)
 	}
+}
+
+func TestActionsReportReadDirectories(t *testing.T) {
+	t.Run("repository", func(t *testing.T) {
+		root := t.TempDir()
+		git := gitFixture(t, root)
+		writeFixture(t, root, ".gitignore", "ignored/\n")
+		writeFixture(t, root, "ignored/deep/action.yml", "name: fixture\n")
+		writeFixture(t, root, "kept/deep/README.md", "")
+		writeFixture(t, root, "node_modules/x/action.yml", "name: fixture\n")
+		git("add", "--", "kept/deep/README.md")
+		got := map[string]bool{}
+		if _, err := Actions(t.Context(), root, func(path string) { got[path] = true }); err != nil {
+			t.Fatal(err)
+		}
+		for _, dir := range []string{root, filepath.Join(root, "kept"), filepath.Join(root, "kept", "deep")} {
+			if !got[dir] {
+				t.Errorf("walked directory %s is not reported in %v", dir, got)
+			}
+		}
+		for _, dir := range []string{filepath.Join(root, "ignored"), filepath.Join(root, "ignored", "deep"), filepath.Join(root, ".git"), filepath.Join(root, "node_modules")} {
+			if got[dir] {
+				t.Errorf("unread directory %s is reported", dir)
+			}
+		}
+	})
+	t.Run("outside a repository", func(t *testing.T) {
+		root := t.TempDir()
+		writeFixture(t, root, "a/b/action.yml", "name: fixture\n")
+		var got []string
+		if _, err := Actions(t.Context(), root, func(path string) { got = append(got, path) }); err != nil {
+			t.Fatal(err)
+		}
+		slices.Sort(got)
+		if want := []string{root, filepath.Join(root, "a"), filepath.Join(root, "a", "b")}; !slices.Equal(got, want) {
+			t.Fatalf("reported %q, want %q", got, want)
+		}
+	})
 }
 
 func TestActionsSymlinkedRootIncludes(t *testing.T) {
