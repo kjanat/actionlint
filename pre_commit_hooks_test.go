@@ -47,8 +47,8 @@ func TestPreCommitHookManifest(t *testing.T) {
 			if hook.Files != "" || len(hook.Types) != 0 {
 				t.Fatalf("hook must not filter files: files=%q types=%v", hook.Files, hook.Types)
 			}
-			if words := strings.Fields(hook.Entry); len(words) != 1 || !strings.HasSuffix(words[0], "actionlint") && !strings.Contains(words[0], "actionlint:") {
-				t.Fatalf("entry must run actionlint without arguments: %q", hook.Entry)
+			if words := strings.Fields(hook.Entry); len(words) != 2 || words[1] != "pre-commit" || !strings.HasSuffix(words[0], "actionlint") && !strings.Contains(words[0], "actionlint:") {
+				t.Fatalf("entry must run the actionlint pre-commit command: %q", hook.Entry)
 			}
 		})
 	}

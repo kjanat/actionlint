@@ -148,3 +148,9 @@ Version numbers which are not actionlint release versions, such as the minimum p
 or an upstream specification version, are listed in the `unrelated` field of the target instead.
 The script requires each of those literals to still be present, so a stale declaration is reported
 rather than silently ignored.
+
+A rule whose pattern also accepts `nightly` lets a reference track the development image between
+releases. `-check` reports such a reference as `nightly (development)` and leaves it out of the
+release version decision; a bump replaces it with the release version like any other reference.
+The pre-commit Docker image tag in `.pre-commit-hooks.yaml` is `nightly` on `master` and reset to
+`nightly` after each release.
