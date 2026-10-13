@@ -38,7 +38,14 @@ func TestActionDiscoverySymlinkRoot(t *testing.T) {
 
 func TestExplicitActionSnapshotAliasedRoot(t *testing.T) {
 	for _, disk := range []bool{false, true} {
-		for _, manifest := range []string{standaloneComposite, "name: inner\ndescription: inner\nruns: {using: node24}\n", "name: [\n"} {
+		for _, manifest := range []string{
+			standaloneComposite,
+			"name: inner\ndescription: inner\nruns: {using: node24}\n",
+			"name: [\n",
+			strings.Replace(standaloneComposite, "name: example\n", "", 1),
+			strings.Replace(standaloneComposite, "description: example\n", "", 1),
+			standaloneComposite + "branding: {icon: invalid-icon}\n",
+		} {
 			t.Run(fmt.Sprintf("disk=%t/manifest=%q", disk, manifest), func(t *testing.T) {
 				root := t.TempDir()
 				if disk {

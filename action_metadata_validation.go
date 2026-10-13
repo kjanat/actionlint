@@ -18,9 +18,12 @@ type actionMetadataFindingKey struct {
 }
 
 func metadataFindingKey(meta *ActionMetadata, finding *Error) actionMetadataFindingKey {
-	// Validation messages may embed the metadata directory. Normalize that
-	// spelling for identity without changing the user-facing source path.
-	message := strings.ReplaceAll(finding.Message, strconv.Quote(meta.Dir()), strconv.Quote(physicalSourcePath(meta.Dir())))
+	// Validation messages may embed the metadata filename or directory. Normalize
+	// those spellings for identity without changing the user-facing source path.
+	message := strings.NewReplacer(
+		strconv.Quote(meta.Path()), strconv.Quote(physicalSourcePath(meta.Path())),
+		strconv.Quote(meta.Dir()), strconv.Quote(physicalSourcePath(meta.Dir())),
+	).Replace(finding.Message)
 	key := actionMetadataFindingKey{path: physicalSourcePath(meta.Path()), message: message}
 	if finding.source != nil {
 		key.line, key.column = finding.Line, finding.Column

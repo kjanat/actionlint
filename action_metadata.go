@@ -677,10 +677,7 @@ func (c *LocalActionsCache) readLocalActionMetadataFile(dir string) ([]byte, str
 			}
 			return content, name, nil
 		}
-	}
-	for _, f := range []string{"action.yaml", "action.yml"} {
-		p := filepath.Join(dir, f)
-		b, err := c.readFile(p)
+		b, err := c.readFile(path)
 		if errors.Is(err, os.ErrNotExist) {
 			continue
 		}
@@ -688,9 +685,9 @@ func (c *LocalActionsCache) readLocalActionMetadataFile(dir string) ([]byte, str
 			return nil, "", fmt.Errorf("could not read action metadata in %q: %w", dir, err)
 		}
 		if c.onRead != nil {
-			c.onRead(p)
+			c.onRead(path)
 		}
-		return b, f, nil
+		return b, name, nil
 	}
 
 	return nil, "", nil

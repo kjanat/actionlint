@@ -240,3 +240,77 @@ func TestStandaloneActionScriptTools(t *testing.T) {
 		})
 	}
 }
+
+func TestMixedActionShellcheckLevels(t *testing.T) {
+	executable, err := execabs.LookPath("shellcheck")
+	if err != nil {
+		t.Skipf("ShellCheck unavailable: %v", err)
+	}
+	for _, level := range []string{"warn", "info", "off"} {
+		t.Run(level, func(t *testing.T) {
+			root := t.TempDir()
+			cfg, err := ParseConfig([]byte("overrides: [{includes: [inner/action.yml], lint: {rules: {external: {shellcheck: " + level + "}}}}]"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			project := &Project{root: root}
+			manifest := strings.Replace(standaloneComposite, "echo ok", "echo $UNQUOTED", 1)
+			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n"
+			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, ShellCheck: executable, Sources: []SourceUnit{
+				{Path: "ci.yml", Content: []byte(workflow), Project: project, Config: cfg},
+				{Path: "inner/action.yml", Content: []byte(manifest), Project: project, Config: cfg},
+			}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := 1
+			if level == "off" {
+				want = 0
+			}
+			if len(result.Diagnostics) != want {
+				t.Fatalf("want %d findings, got %+v", want, result.Diagnostics)
+			}
+			for _, diagnostic := range result.Diagnostics {
+				severity := level
+				if severity == "warn" {
+					severity = "warning"
+				}
+				if diagnostic.Rule != "shellcheck" || diagnostic.Severity != severity || filepath.ToSlash(diagnostic.Path) != "inner/action.yml" {
+					t.Errorf("want %s ShellCheck finding at inner/action.yml, got %+v", severity, diagnostic)
+				}
+			}
+		})
+	}
+}
+
+func TestActionSnapshotManifestPrecedence(t *testing.T) {
+	for _, tc := range []struct {
+		name, diskYAML, diskYML, explicitYAML, explicitYML, wantName, wantContent string
+	}{
+		{"disk-yaml-wins", "disk yaml", "", "", "snapshot yml", "action.yaml", "disk yaml"},
+		{"snapshot-yaml-wins", "disk yaml", "disk yml", "snapshot yaml", "snapshot yml", "action.yaml", "snapshot yaml"},
+		{"snapshot-yml-overrides", "", "disk yml", "", "snapshot yml", "action.yml", "snapshot yml"},
+		{"snapshot-yaml-before-disk-yml", "", "disk yml", "snapshot yaml", "", "action.yaml", "snapshot yaml"},
+		{"disk-yml-fallback", "", "disk yml", "", "", "action.yml", "disk yml"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			cache := NewLocalActionsCache(&Project{root: root}, nil)
+			cache.explicitSources = make(map[string][]byte)
+			for name, content := range map[string]string{"action.yaml": tc.diskYAML, "action.yml": tc.diskYML} {
+				if content != "" {
+					writeShellcheckFixture(t, root, name, content)
+				}
+			}
+			for name, content := range map[string]string{"action.yaml": tc.explicitYAML, "action.yml": tc.explicitYML} {
+				if content != "" {
+					cache.explicitSources[physicalSourcePath(filepath.Join(root, name))] = []byte(content)
+				}
+			}
+			content, name, err := cache.readLocalActionMetadataFile(root)
+			if err != nil || name != tc.wantName || string(content) != tc.wantContent {
+				t.Fatalf("want %s containing %q; got %s containing %q, error: %v", tc.wantName, tc.wantContent, name, content, err)
+			}
+		})
+	}
+}
