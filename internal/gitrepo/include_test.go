@@ -210,3 +210,26 @@ func TestWildmatch(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadConfigBareRepositoryConditions(t *testing.T) {
+	fixture := newTestRepo(t, "--bare")
+	writeConfig(t, filepath.Join(fixture.home, "worktree"), "[core]\n\tworktree = 1\n")
+	writeConfig(t, filepath.Join(fixture.home, "gitdir"), "[core]\n\tgitdir = 1\n")
+	global := filepath.Join(fixture.home, "gitconfig")
+	writeConfig(t, global, "[includeIf \"worktree:**\"]\n\tpath = worktree\n[includeIf \"gitdir:**\"]\n\tpath = gitdir\n")
+	t.Setenv("GIT_CONFIG_GLOBAL", global)
+	repo := fixture.open()
+	if repo.WorkTree != "" {
+		t.Fatalf("WorkTree = %q, want empty", repo.WorkTree)
+	}
+	settings, err := repo.config()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"core.worktree", "core.gitdir"} {
+		_, ours := settings[key]
+		if theirs := fixture.gitBool("config", "--get", key); ours != theirs {
+			t.Errorf("%s: included by us %v, by git %v", key, ours, theirs)
+		}
+	}
+}

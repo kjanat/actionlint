@@ -45,8 +45,10 @@ func newIncludeContext(gitDir, workTree string) (*includeContext, error) {
 	if ctx.gitDir, err = newPathPair(gitDir); err != nil {
 		return nil, err
 	}
-	if ctx.workTree, err = newPathPair(workTree); err != nil {
-		return nil, err
+	if workTree != "" {
+		if ctx.workTree, err = newPathPair(workTree); err != nil {
+			return nil, err
+		}
 	}
 	head, err := readOptional(filepath.Join(gitDir, "HEAD"))
 	if err != nil {
