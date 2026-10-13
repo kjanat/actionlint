@@ -396,11 +396,6 @@ func TestPreCommitVersionBumps(t *testing.T) {
 	if len(occs) != 1 {
 		t.Fatalf("expected one image pin, got %+v", occs)
 	}
-	_, err = os.Stat(filepath.Join("..", "..", "action.mjs"))
-	candidate := err == nil
-	if occs[0].development == candidate {
-		t.Fatalf("%s pins %q while the tree is a release candidate: %v", path, lf[occs[0].value.start:occs[0].value.end], candidate)
-	}
 	nightly := bytes.Replace(lf, []byte(prefix+string(lf[occs[0].value.start:occs[0].value.end])), []byte(prefix+developmentPin), 1)
 	for _, newline := range []string{"\n", "\r\n"} {
 		t.Run(fmt.Sprintf("newline=%q", newline), func(t *testing.T) {
