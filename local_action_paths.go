@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/localaction"
 )
 
@@ -46,7 +47,7 @@ func (c *LocalActionsCache) findRepositoryMetadata(spec string, certain bool) (*
 	}
 	explicit := c.base.hasExplicitAction(spec)
 	if c.caseInsensitive && c.base.proj != nil && !c.base.customReader && !explicit {
-		local, err := caseInsensitiveRepositoryPathChecked(c.base.proj.RootDir(), spec, c.base.onRead)
+		local, err := caseInsensitiveRepositoryPathChecked(c.base.proj.RootDir(), spec, c.base.reader)
 		if err != nil {
 			if mapped {
 				if errors.Is(err, os.ErrNotExist) {
@@ -101,24 +102,21 @@ func missingMappedLocalAction(alias, source string) error {
 
 // Use on-disk spelling for cache keys and diagnostics, even on a Linux host.
 // Multiple case-equivalent entries cannot identify a unique runner action.
-func caseInsensitiveRepositoryPath(root, spec string, onRead func(string)) (string, bool) {
-	local, err := caseInsensitiveRepositoryPathChecked(root, spec, onRead)
+func caseInsensitiveRepositoryPath(root, spec string, reader *fsread.Reader) (string, bool) {
+	local, err := caseInsensitiveRepositoryPathChecked(root, spec, reader)
 	return local, err == nil
 }
 
-func caseInsensitiveRepositoryPathChecked(root, spec string, onRead func(string)) (string, error) {
+func caseInsensitiveRepositoryPathChecked(root, spec string, reader *fsread.Reader) (string, error) {
 	dir := root
 	for component := range strings.SplitSeq(strings.TrimPrefix(spec, "./"), "/") {
 		if component == "" || component == "." || component == ".." {
 			dir = filepath.Join(dir, component)
 			continue
 		}
-		entries, err := os.ReadDir(dir)
+		entries, err := reader.ReadDir(dir)
 		if err != nil {
 			return "", err
-		}
-		if onRead != nil {
-			onRead(dir)
 		}
 		match := ""
 		for _, entry := range entries {

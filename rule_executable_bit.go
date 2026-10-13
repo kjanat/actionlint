@@ -63,10 +63,7 @@ func (rule *RuleExecutableBit) VisitJobPre(job *Job) error {
 		rule.unix = false
 	}
 	rule.executableState = newExecutableState(knownHostedRunner(job.RunsOn), rule.callerRepositoryUnknown)
-	rule.paths = runPaths{workspace: rule.context.projectRoot, analysis: rule.context.workingDir, platform: runnerPlatform(job.RunsOn)}
-	if rule.context.inputs != nil {
-		rule.paths.onRead = rule.context.inputs.add
-	}
+	rule.paths = runPaths{workspace: rule.context.projectRoot, analysis: rule.context.workingDir, platform: runnerPlatform(job.RunsOn), reader: rule.context.reader}
 	return nil
 }
 
@@ -712,9 +709,9 @@ func (rule *RuleExecutableBit) index() *gitModeSnapshot {
 	snapshot := rule.context.gitModes.load(rule.context.process.ctx, rule.paths.workspace)
 	if snapshot.err != nil {
 		rule.Debug("Git index unavailable: %v", snapshot.err)
-	} else if rule.context.inputs != nil {
+	} else {
 		for _, path := range snapshot.inputs {
-			rule.context.inputs.add(path)
+			rule.paths.reader.Record(path)
 		}
 	}
 	return snapshot

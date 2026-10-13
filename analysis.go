@@ -12,6 +12,7 @@ import (
 	"slices"
 	"sync"
 
+	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/workflownames"
 	"golang.org/x/sync/errgroup"
 )
@@ -172,13 +173,10 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		}
 	}
 	workflows := NewLocalReusableWorkflowCacheFactory(cwd, engine.debugWriter())
-	engine.workingDir, engine.inputs = absPath(cwd), inputs
+	reader := fsread.New(ctx, request.ReadFile, inputs.add)
+	engine.workingDir, engine.reader = absPath(cwd), reader
 	engine.gitModes = &gitModes{}
 	result := &AnalysisResult{Diagnostics: []Diagnostic{}, files: make([]analyzedFile, len(request.Sources))}
-	readFile := request.ReadFile
-	if readFile == nil {
-		readFile = os.ReadFile
-	}
 	sourceContents := map[string][]byte{}
 	sourcePaths := make([]string, 0, len(allSources))
 	for _, source := range allSources {
@@ -192,19 +190,20 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		sourceContents[filepath.Clean(path)] = source.Content
 		sourcePaths = append(sourcePaths, filepath.Clean(path))
 	}
-	engine.workflowNames = &workflownames.Index{Paths: sourcePaths, OnDirectory: inputs.add, Load: func(path string) (string, bool, error) {
+	engine.workflowNames = &workflownames.Index{Paths: sourcePaths, Reader: reader, Load: func(path string) (string, bool, error) {
 		if err := ctx.Err(); err != nil {
 			return "", false, err
 		}
 		content, ok := sourceContents[filepath.Clean(path)]
-		if !ok {
+		if ok {
+			reader.Record(path)
+		} else {
 			var err error
-			content, err = readFile(path)
+			content, err = reader.ReadFile(path)
 			if err != nil {
 				return "", false, err
 			}
 		}
-		inputs.add(path)
 		workflow, errs := Parse(content)
 		if workflow == nil || len(errs) > 0 {
 			return "", false, nil
@@ -226,9 +225,8 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	}
 	for _, source := range request.Sources {
 		ac, wc := actions.GetCache(source.Project), workflows.GetCache(source.Project)
-		ac.onRead, wc.onRead = inputs.add, inputs.add
+		ac.reader, wc.reader = reader, reader
 		ac.onDocument = documents.add
-		ac.readFile, wc.readFile = readFile, readFile
 		ac.customReader = request.ReadFile != nil
 		ac.explicitSources = actionContents
 	}

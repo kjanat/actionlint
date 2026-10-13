@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"actionlint.kjanat.dev/internal/fsread"
 )
 
 // ExternalToolRequirements identifies tools enabled by the selected configurations.
@@ -27,7 +29,7 @@ func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirement
 			return needed, err
 		}
 		if project != nil {
-			paths, err = repositoryPaths(a.ctx, project, nil)
+			paths, err = repositoryPaths(a.ctx, project, fsread.New(a.ctx, nil, nil))
 			if err != nil {
 				return needed, err
 			}

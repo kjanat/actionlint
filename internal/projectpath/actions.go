@@ -13,17 +13,18 @@ import (
 
 	"golang.org/x/text/unicode/norm"
 
+	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/gitrepo"
 )
 
 // Actions discovers manifests without following symlinks or crossing repository
 // boundaries. Skip conventional dependency, cache and test-fixture directories.
-func Actions(ctx context.Context, root string, onRead func(path string)) ([]string, error) {
+func Actions(ctx context.Context, root string, reader *fsread.Reader) ([]string, error) {
 	physical, err := filepath.EvalSymlinks(root)
 	if err != nil {
 		return nil, fmt.Errorf("could not resolve action discovery root %q: %w", root, err)
 	}
-	relatives, err := discoverActions(ctx, root, physical, onRead)
+	relatives, err := discoverActions(ctx, root, physical, reader)
 	if err != nil {
 		return nil, fmt.Errorf("could not discover actions in %q: %w", root, err)
 	}
@@ -35,36 +36,40 @@ func Actions(ctx context.Context, root string, onRead func(path string)) ([]stri
 }
 
 type actionDiscovery struct {
-	root        string
-	prefix      string
-	ignores     *gitrepo.Ignores
-	tracked     []string
-	ignoreCase  bool
-	precompose  bool
-	onDirectory func(relative string)
+	root       string
+	prefix     string
+	ignores    *gitrepo.Ignores
+	tracked    []string
+	ignoreCase bool
+	precompose bool
+	reader     *fsread.Reader
 }
 
-func discoverActions(ctx context.Context, root, physical string, onRead func(path string)) ([]string, error) {
+func discoverActions(ctx context.Context, root, physical string, reader *fsread.Reader) ([]string, error) {
 	repo, err := gitrepo.Open(ctx, root)
 	if err != nil {
 		return nil, err
 	}
-	discovery := &actionDiscovery{root: physical}
+	logical := reader.Mapped(func(path string) string {
+		relative, err := filepath.Rel(physical, path)
+		if err != nil {
+			return path
+		}
+		return filepath.Join(root, relative)
+	})
+	discovery := &actionDiscovery{root: physical, reader: logical}
 	if repo != nil && repo.WorkTree != "" {
-		if discovery, err = newActionDiscovery(ctx, physical, repo, runtime.GOOS == "darwin" && repo.PrecomposeUnicode()); err != nil {
+		if discovery, err = newActionDiscovery(ctx, physical, repo, runtime.GOOS == "darwin" && repo.PrecomposeUnicode(), logical); err != nil {
 			return nil, err
 		}
-	}
-	if onRead != nil {
-		discovery.onDirectory = func(relative string) { onRead(filepath.Join(root, relative)) }
 	}
 	relatives, err := discovery.walk(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if repo != nil && onRead != nil {
+	if repo != nil {
 		for _, path := range repo.ReadFiles() {
-			onRead(path)
+			reader.Record(path)
 		}
 	}
 	return relatives, nil
@@ -78,11 +83,11 @@ func insideWorkTree(workTree, path string) (string, bool) {
 	return relative, relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
 
-func newActionDiscovery(ctx context.Context, physical string, repo *gitrepo.Repository, precompose bool) (*actionDiscovery, error) {
-	discovery := &actionDiscovery{root: physical, ignoreCase: repo.IgnoreCase(), precompose: precompose}
+func newActionDiscovery(ctx context.Context, physical string, repo *gitrepo.Repository, precompose bool, reader *fsread.Reader) (*actionDiscovery, error) {
+	discovery := &actionDiscovery{root: physical, ignoreCase: repo.IgnoreCase(), precompose: precompose, reader: reader}
 	relative, inside := insideWorkTree(repo.WorkTree, physical)
 	if !inside {
-		return &actionDiscovery{root: physical}, nil
+		return &actionDiscovery{root: physical, reader: reader}, nil
 	}
 	if relative != "." {
 		discovery.prefix = discovery.compose(filepath.ToSlash(relative)) + "/"
@@ -106,7 +111,7 @@ func newActionDiscovery(ctx context.Context, physical string, repo *gitrepo.Repo
 
 func (d *actionDiscovery) walk(ctx context.Context) ([]string, error) {
 	var relatives []string
-	err := filepath.WalkDir(d.root, func(path string, entry fs.DirEntry, err error) error {
+	err := d.reader.WalkDir(d.root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -114,7 +119,6 @@ func (d *actionDiscovery) walk(ctx context.Context) ([]string, error) {
 			return err
 		}
 		if path == d.root {
-			d.readDirectory(".")
 			return nil
 		}
 		relative, err := filepath.Rel(d.root, path)
@@ -133,7 +137,6 @@ func (d *actionDiscovery) walk(ctx context.Context) ([]string, error) {
 			if d.ignores != nil && d.ignores.Ignored(treePath, true) && !d.trackedUnder(treePath) {
 				return filepath.SkipDir
 			}
-			d.readDirectory(relative)
 			return nil
 		}
 		if !entry.Type().IsRegular() || !isManifest(entry.Name()) {
@@ -146,12 +149,6 @@ func (d *actionDiscovery) walk(ctx context.Context) ([]string, error) {
 		return nil
 	})
 	return relatives, err
-}
-
-func (d *actionDiscovery) readDirectory(relative string) {
-	if d.onDirectory != nil {
-		d.onDirectory(relative)
-	}
 }
 
 func (d *actionDiscovery) compose(treePath string) string {

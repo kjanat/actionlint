@@ -2,7 +2,6 @@ package actionlint
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 )
@@ -16,16 +15,13 @@ func (rule *RuleShellcheck) sourcedDiagnostic(comment shellcheckError, directory
 	content, found := sources[path]
 	if !found {
 		var err error
-		content, err = os.ReadFile(path)
+		content, err = rule.paths.reader.ReadFile(path)
 		if err != nil {
 			rule.Debug("Cannot read ShellCheck diagnostic source %q: %v", path, err)
 			// Keep the diagnostic if the file disappeared, with an empty snippet.
 			content = []byte{}
 		}
 		sources[path] = content
-		if rule.onInput != nil {
-			rule.onInput(path)
-		}
 	}
 	finding := &Error{
 		Filepath: path, Line: comment.Line, Column: comment.Column, Kind: rule.Name(),

@@ -8,6 +8,7 @@ import (
 	"slices"
 	"time"
 
+	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/ruff"
 	"actionlint.kjanat.dev/internal/workflownames"
 	"go.yaml.in/yaml/v4"
@@ -24,7 +25,7 @@ type analysisEngine struct {
 	shellcheckOptions  *ExternalCommandOptions
 	shellcheckSettings *ShellcheckSettings
 	workingDir         string
-	inputs             *inputFiles
+	reader             *fsread.Reader
 	gitModes           *gitModes
 	ignorePats         IgnorePatterns
 	onRulesCreated     func([]Rule) []Rule
@@ -129,7 +130,7 @@ func (l *analysisEngine) check(
 		c.workflowNames = l.workflowNames
 		c.shellcheckOptions = l.shellcheckOptions
 		c.shellcheckSettings = l.shellcheckSettings
-		c.workingDir, c.inputs = l.workingDir, l.inputs
+		c.workingDir, c.reader = l.workingDir, l.reader
 		c.gitModes = l.gitModes
 		if project != nil {
 			c.projectRoot = project.RootDir()

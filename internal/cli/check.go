@@ -10,6 +10,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev"
+	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/projectpath"
 	"github.com/fatih/color"
 	"github.com/mattn/go-colorable"
@@ -28,7 +29,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		if wdErr != nil {
 			return 0, wdErr
 		}
-		record := func(dir string) { listed = append(listed, dir) }
+		record := fsread.New(ctx, nil, func(dir string) { listed = append(listed, dir) })
 		hasWorkflows := false
 		if root := projectpath.RepositoryRoot(cwd); root != "" {
 			hasWorkflows, err = projectpath.HasWorkflowFiles(root, record)

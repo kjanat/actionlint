@@ -45,8 +45,10 @@ enable  = [
 
 [linters.settings.forbidigo]
 forbid = [
-  { pattern = '^os\.(Open|OpenFile|ReadDir|ReadFile|Readlink)$', msg = "read through disk in internal/gitrepo/disk.go" },
-  { pattern = '^time\.Sleep$', msg = "wait through disk.wait in internal/gitrepo/disk.go" },
+  { pattern = '^os\.(Open|OpenFile|ReadDir|ReadFile|Readlink)$', msg = "read through fsread.Reader, or disk in internal/gitrepo" },
+  { pattern = '^(filepath\.(Walk|WalkDir)|fs\.(ReadFile|ReadDir|WalkDir))$', msg = "walk through fsread.Reader" },
+  { pattern = '^fsread\.(Disk|ProbeDir)$', msg = "fsread.Disk and fsread.ProbeDir skip recording; read through fsread.Reader" },
+  { pattern = '^time\.Sleep$', msg = "wait on the context" },
   { pattern = '^(io\.ReadAll|zlib\.NewReader)$', msg = "inflate through inflater in internal/gitrepo/inflate.go" },
 ]
 
@@ -62,12 +64,23 @@ paths     = [
 ]
 
 [[linters.exclusions.rules]]
-path-except = "^internal/gitrepo/"
-linters     = ["forbidigo"]
+path    = '_test\.go$|^(scripts|\.github|cmd|fuzz|playground)/|^internal/(cli|githubaction|conformance|fsread)/|^internal/gitrepo/(disk|inflate)\.go$'
+linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
-path    = '^internal/gitrepo/(disk|inflate)\.go$|_test\.go$'
+path    = '^(config|config_inspection|project|analysis_application)\.go$'
+text    = "fsread\\.Disk"
 linters = ["forbidigo"]
+
+[[linters.exclusions.rules]]
+path    = '^internal/workflownames/index\.go$'
+text    = "fsread\\.ProbeDir"
+linters = ["forbidigo"]
+
+[[linters.exclusions.rules]]
+path-except = "^internal/gitrepo/"
+text        = "io\\.ReadAll"
+linters     = ["forbidigo"]
 
 [[linters.exclusions.rules]]
 path    = "_test\\.go"

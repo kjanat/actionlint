@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/ruff"
 	"actionlint.kjanat.dev/internal/workflownames"
 )
@@ -32,7 +33,7 @@ type ruleContext struct {
 	shellcheckOptions       *ExternalCommandOptions
 	shellcheckSettings      *ShellcheckSettings
 	workingDir, projectRoot string
-	inputs                  *inputFiles
+	reader                  *fsread.Reader
 	gitModes                *gitModes
 }
 
@@ -89,11 +90,7 @@ func builtinRuleDescriptors() []ruleDescriptor {
 			if err != nil {
 				return nil, err
 			}
-			rule.paths = runPaths{workspace: c.projectRoot, analysis: c.workingDir}
-			if c.inputs != nil {
-				rule.onInput = c.inputs.add
-				rule.paths.onRead = c.inputs.add
-			}
+			rule.paths = runPaths{workspace: c.projectRoot, analysis: c.workingDir, reader: c.reader}
 			return rule, nil
 		}, enabled: func(c ruleContext) bool {
 			return externalCommandEnabled(c.shellcheck, c.shellcheckOptions) &&
