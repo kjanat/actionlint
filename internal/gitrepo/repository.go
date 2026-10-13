@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -81,7 +82,7 @@ func Open(dir string) (*Repository, error) {
 		return nil, err
 	}
 	found.unresolved = found.gitDir
-	if found.dir == start && found.gitDir == filepath.Join(start, ".git") {
+	if runtime.GOOS != "windows" && found.dir == start && found.gitDir == filepath.Join(start, ".git") {
 		found.unresolved = filepath.Join(logical, ".git")
 	}
 	return open(found)

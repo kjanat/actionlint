@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -288,7 +289,7 @@ func TestLoadConfigIncludesUnresolvedGitDir(t *testing.T) {
 		if theirs := gitErr == nil; ours != theirs {
 			t.Errorf("%s from %s: included by us %v, by git %v", key, alias, ours, theirs)
 		}
-		if !ours {
+		if !ours && (key == "core.physical" || runtime.GOOS != "windows") {
 			t.Errorf("%s: not included", key)
 		}
 	}
