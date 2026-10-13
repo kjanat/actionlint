@@ -523,3 +523,21 @@ func TestActionsSymlinkedRootIncludes(t *testing.T) {
 		t.Fatalf("Actions = %q", paths)
 	}
 }
+
+func TestNewActionDiscoveryOtherVolume(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("only Windows paths can lie on different volumes")
+	}
+	physical := t.TempDir()
+	other := `Z:\work`
+	if strings.EqualFold(filepath.VolumeName(physical), "Z:") {
+		other = `Y:\work`
+	}
+	discovery, err := newActionDiscovery(t.Context(), physical, &gitrepo.Repository{WorkTree: other}, false)
+	if err != nil {
+		t.Fatalf("newActionDiscovery with the work tree on another volume: %v", err)
+	}
+	if discovery.root != physical || discovery.ignores != nil || discovery.tracked != nil {
+		t.Fatalf("discovery = %+v, want a plain walk of %s", discovery, physical)
+	}
+}

@@ -66,21 +66,28 @@ func discoverActions(ctx context.Context, root, physical string, onRead func(pat
 	return relatives, nil
 }
 
+func insideWorkTree(workTree, path string) (string, bool) {
+	relative, err := filepath.Rel(workTree, path)
+	if err != nil {
+		return "", false
+	}
+	return relative, relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
+}
+
 func newActionDiscovery(ctx context.Context, physical string, repo *gitrepo.Repository, precompose bool) (*actionDiscovery, error) {
 	discovery := &actionDiscovery{root: physical, ignoreCase: repo.IgnoreCase(), precompose: precompose}
-	relative, err := filepath.Rel(repo.WorkTree, physical)
-	if err != nil {
-		return nil, err
-	}
-	if relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+	relative, inside := insideWorkTree(repo.WorkTree, physical)
+	if !inside {
 		return &actionDiscovery{root: physical}, nil
 	}
 	if relative != "." {
 		discovery.prefix = discovery.compose(filepath.ToSlash(relative)) + "/"
 	}
-	if discovery.ignores, err = repo.Ignores(); err != nil {
+	ignores, err := repo.Ignores()
+	if err != nil {
 		return nil, err
 	}
+	discovery.ignores = ignores
 	tracked, err := repo.TrackedFiles(ctx)
 	if err != nil {
 		return nil, err
