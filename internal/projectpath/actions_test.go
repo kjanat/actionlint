@@ -166,16 +166,16 @@ func TestActionsDirectoryError(t *testing.T) {
 	}
 }
 
-func sealDirectory(t *testing.T, dir string) {
+func seal(t *testing.T, path string) {
 	t.Helper()
 	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
-		t.Skip("directory permissions are not enforced")
+		t.Skip("permissions are not enforced")
 	}
-	if err := os.Chmod(dir, 0); err != nil {
+	if err := os.Chmod(path, 0); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if err := os.Chmod(dir, 0750); err != nil {
+		if err := os.Chmod(path, 0750); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -189,11 +189,11 @@ func TestActionsManifestError(t *testing.T) {
 		{"unreadable tracked directory", func(t *testing.T, root string, git func(...string)) {
 			writeFixture(t, root, "sealed/action.yml", "name: fixture\n")
 			git("add", "--", "sealed/action.yml")
-			sealDirectory(t, filepath.Join(root, "sealed"))
+			seal(t, filepath.Join(root, "sealed"))
 		}},
 		{"unreadable untracked directory", func(t *testing.T, root string, git func(...string)) {
 			writeFixture(t, root, "sealed/action.yml", "name: fixture\n")
-			sealDirectory(t, filepath.Join(root, "sealed"))
+			seal(t, filepath.Join(root, "sealed"))
 		}},
 		{"looping tracked directory", func(t *testing.T, root string, git func(...string)) {
 			writeFixture(t, root, "loop/action.yml", "name: fixture\n")
@@ -241,6 +241,10 @@ func TestActionsWalkFallback(t *testing.T) {
 		{"git unavailable", func(t *testing.T, root string) {
 			gitFixture(t, root)
 			t.Setenv("PATH", t.TempDir())
+		}},
+		{"git warning", func(t *testing.T, root string) {
+			gitFixture(t, root)
+			seal(t, filepath.Join(root, ".gitignore"))
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
