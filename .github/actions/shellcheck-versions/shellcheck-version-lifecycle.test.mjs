@@ -147,6 +147,26 @@ test('pin updates are atomic across all version sources', () => {
 	for (const contents of wrapper.files.values()) {
 		assert.match(contents, /shellcheck@v0\.11\.0-wrapper\.2\n/);
 	}
+	for (const malformed of ['v0.11.0-wrapper.01', 'v0.11.0-rc.1', 'v0.11.0.1', 'v0.11', '']) {
+		assert.throws(
+			() => planVersionUpdate(versionFiles(malformed), 'v0.12.0'),
+			new RegExp(`${VERSION_FILES[0].replaceAll('.', '\\.')}: expected an installer version`),
+			malformed,
+		);
+	}
+	const quoted = new Map(
+		VERSION_FILES.map((file) => [file, `x = "${dependency}v0.11.0"\ny: [${dependency}v0.11.0]\n`]),
+	);
+	assert.throws(() => planVersionUpdate(quoted, 'v0.12.0'), /found 2/);
+	const delimited = new Map([
+		[VERSION_FILES[0], `additional_dependencies: [${dependency}v0.11.0-wrapper.1]\n`],
+		[VERSION_FILES[1], `          - ${dependency}v0.11.0-wrapper.1\n`],
+		[VERSION_FILES[2], `\tdependency = "${dependency}v0.11.0-wrapper.1"\n`],
+	]);
+	const fromDelimited = planVersionUpdate(delimited, 'v0.12.0');
+	assert.equal(fromDelimited.currentVersion, 'v0.11.0-wrapper.1');
+	assert.equal(fromDelimited.files.get(VERSION_FILES[0]), `additional_dependencies: [${dependency}v0.12.0]\n`);
+	assert.equal(fromDelimited.files.get(VERSION_FILES[2]), `\tdependency = "${dependency}v0.12.0"\n`);
 	const bumped = planVersionUpdate(versionFiles('v0.11.0-wrapper.1'), 'v0.12.0');
 	assert.equal(bumped.changed, true);
 	for (const contents of bumped.files.values()) {

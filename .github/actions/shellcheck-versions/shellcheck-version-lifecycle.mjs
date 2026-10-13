@@ -20,8 +20,7 @@ import path from 'node:path';
 export const TRACKING_MARKER = '<!-- go-shellcheck-shellcheck-version-tracker -->';
 
 const DEPENDENCY = 'github.com/kjanat/shellcheck-rs/go/cmd/shellcheck@';
-const DEPENDENCY_PATTERN =
-	/github\.com\/kjanat\/shellcheck-rs\/go\/cmd\/shellcheck@(v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-wrapper\.(?:0|[1-9]\d*))?)/g;
+const DEPENDENCY_PATTERN = /github\.com\/kjanat\/shellcheck-rs\/go\/cmd\/shellcheck@([^\s"'`\]]*)/g;
 const INSTALLER_PATTERN = /^(v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))(?:-wrapper\.(0|[1-9]\d*))?$/;
 const RELEASE_TAG_PREFIX = 'rshellcheck-';
 const INSTALLER_TAG_PREFIX = 'go/';
@@ -129,6 +128,11 @@ export function planVersionUpdate(files, latestVersion) {
 		const matches = [...contents.matchAll(DEPENDENCY_PATTERN)];
 		if (matches.length !== 1) {
 			throw new Error(`expected one pinned rshellcheck installer in ${file}, found ${matches.length}`);
+		}
+		try {
+			parseInstallerVersion(matches[0][1]);
+		} catch (error) {
+			throw new Error(`${file}: ${error instanceof Error ? error.message : String(error)}`);
 		}
 		found.set(file, matches[0][1]);
 	}
