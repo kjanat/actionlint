@@ -250,7 +250,17 @@ func matchIncludePath(subject pathPair, pattern, configFile string, icase bool) 
 }
 
 func isAbsolutePath(path string) bool {
-	return strings.HasPrefix(path, "/") || strings.HasPrefix(path, `\`) || filepath.IsAbs(filepath.FromSlash(path)) || (len(path) >= 2 && path[1] == ':' && isAlpha(path[0]))
+	return absolutePathOn(runtime.GOOS, path)
+}
+
+func absolutePathOn(goos, path string) bool {
+	if strings.HasPrefix(path, "/") {
+		return true
+	}
+	if goos != "windows" {
+		return false
+	}
+	return strings.HasPrefix(path, `\`) || (len(path) >= 2 && path[1] == ':' && isAlpha(path[0]))
 }
 
 func expandHome(path string, realHome bool) (string, bool) {

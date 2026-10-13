@@ -52,6 +52,32 @@ func TestValidRefname(t *testing.T) {
 	}
 }
 
+func TestAbsolutePathOn(t *testing.T) {
+	for _, tc := range []struct {
+		goos, path string
+		want       bool
+	}{
+		{"linux", "/x", true},
+		{"linux", `\x`, false},
+		{"linux", "C:x", false},
+		{"linux", "C:/x", false},
+		{"linux", "x", false},
+		{"darwin", `\x`, false},
+		{"windows", "/x", true},
+		{"windows", `\x`, true},
+		{"windows", "C:x", true},
+		{"windows", "C:/x", true},
+		{"windows", "c:", true},
+		{"windows", "x", false},
+		{"windows", "1:x", false},
+		{"windows", "", false},
+	} {
+		if got := absolutePathOn(tc.goos, tc.path); got != tc.want {
+			t.Errorf("absolutePathOn(%s, %q) = %v, want %v", tc.goos, tc.path, got, tc.want)
+		}
+	}
+}
+
 func TestRefPath(t *testing.T) {
 	repo := &Repository{GitDir: filepath.Join("common", "worktrees", "wt"), CommonDir: "common"}
 	for name, want := range map[string]string{

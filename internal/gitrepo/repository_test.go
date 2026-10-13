@@ -1219,3 +1219,29 @@ func TestOpenRelativeConfigPathsBareMatchGit(t *testing.T) {
 	writeConfig(t, filepath.Join(hooks, "global"), "[core]\n\tprobe = 1\n")
 	compareProbeIn(t, hooks, "core.probe", 0)
 }
+
+func TestOpenBackslashExcludesFileMatchesGit(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("a backslash cannot appear in a Windows file name")
+	}
+	for _, name := range []string{`\ignore`, "C:ignore"} {
+		t.Run(name, func(t *testing.T) {
+			fixture := newTestRepo(t)
+			fixture.write(name, "probe.txt\n")
+			fixture.write("sub/probe.txt", "")
+			fixture.git("config", "core.excludesFile", name)
+			t.Chdir(fixture.home)
+			ignores, err := fixture.open().Ignores()
+			if err != nil {
+				t.Fatal(err)
+			}
+			ours := ignores.Ignored("sub/probe.txt", false)
+			if theirs := fixture.gitBool("check-ignore", "-q", "sub/probe.txt"); ours != theirs {
+				t.Fatalf("ignored by us %v, by git %v", ours, theirs)
+			}
+			if !ours {
+				t.Fatal("the relative excludes file was not read")
+			}
+		})
+	}
+}
