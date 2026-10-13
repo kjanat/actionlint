@@ -28,9 +28,8 @@ type indexFile struct {
 }
 
 type indexLink struct {
-	shared   string
-	deleted  []int
-	replaced []int
+	shared  string
+	bitmaps []byte
 }
 
 func (r *Repository) TrackedFiles() ([]string, error) {
@@ -70,7 +69,7 @@ func indexPaths(data []byte, hashLength int, loadShared func(shared string) ([]b
 		if base.link != nil {
 			return nil, fmt.Errorf("shared index %s is split itself", index.link.shared)
 		}
-		if entries, err = mergeSplitIndex(base.entries, index.entries, index.link); err != nil {
+		if entries, err = mergeSplitIndex(base.entries, index.entries, index.link.bitmaps); err != nil {
 			return nil, err
 		}
 	}
@@ -87,22 +86,28 @@ func indexPaths(data []byte, hashLength int, loadShared func(shared string) ([]b
 	return slices.Compact(paths), nil
 }
 
-func mergeSplitIndex(base, split []indexEntry, link *indexLink) ([]indexEntry, error) {
-	if len(link.replaced) > len(split) {
-		return nil, fmt.Errorf("the split index replaces %d entries but holds %d", len(link.replaced), len(split))
+func mergeSplitIndex(base, split []indexEntry, bitmaps []byte) ([]indexEntry, error) {
+	reader := indexReader{data: bitmaps}
+	deletedPositions, err := reader.ewah(len(base))
+	if err != nil {
+		return nil, err
 	}
-	deleted := make(map[int]bool, len(link.deleted))
-	for _, position := range link.deleted {
-		if position >= len(base) {
-			return nil, fmt.Errorf("the split index deletes entry %d of %d", position, len(base))
-		}
+	replaced, err := reader.ewah(len(base))
+	if err != nil {
+		return nil, err
+	}
+	if !reader.done() {
+		return nil, errors.New("the link extension has trailing data")
+	}
+	if len(replaced) > len(split) {
+		return nil, fmt.Errorf("the split index replaces %d entries but holds %d", len(replaced), len(split))
+	}
+	deleted := make(map[int]bool, len(deletedPositions))
+	for _, position := range deletedPositions {
 		deleted[position] = true
 	}
 	merged := slices.Clone(base)
-	for i, position := range link.replaced {
-		if position >= len(base) {
-			return nil, fmt.Errorf("the split index replaces entry %d of %d", position, len(base))
-		}
+	for i, position := range replaced {
 		merged[position] = indexEntry{path: base[position].path, tracked: split[i].tracked}
 	}
 	var entries []indexEntry
@@ -111,7 +116,7 @@ func mergeSplitIndex(base, split []indexEntry, link *indexLink) ([]indexEntry, e
 			entries = append(entries, entry)
 		}
 	}
-	return append(entries, split[len(link.replaced):]...), nil
+	return append(entries, split[len(replaced):]...), nil
 }
 
 func parseIndex(data []byte, hashLength int) (*indexFile, error) {
@@ -165,9 +170,10 @@ func parseIndex(data []byte, hashLength int) (*indexFile, error) {
 			if index.link != nil {
 				return nil, errors.New("the index has two link extensions")
 			}
-			if index.link, err = parseLink(payload, hashLength, len(index.entries)); err != nil {
-				return nil, err
+			if len(payload) < hashLength {
+				return nil, errors.New("the link extension is shorter than its shared index hash")
 			}
+			index.link = &indexLink{shared: hex.EncodeToString(payload[:hashLength]), bitmaps: payload[hashLength:]}
 		case string(signature) == "sdir":
 		case signature[0] >= 'A' && signature[0] <= 'Z':
 		default:
@@ -175,28 +181,6 @@ func parseIndex(data []byte, hashLength int) (*indexFile, error) {
 		}
 	}
 	return index, nil
-}
-
-func parseLink(payload []byte, hashLength, entries int) (*indexLink, error) {
-	reader := indexReader{data: payload}
-	shared, err := reader.bytes(hashLength)
-	if err != nil {
-		return nil, err
-	}
-	link := &indexLink{shared: hex.EncodeToString(shared)}
-	if link.deleted, err = reader.ewah(1 << 31); err != nil {
-		return nil, err
-	}
-	if link.replaced, err = reader.ewah(1 << 31); err != nil {
-		return nil, err
-	}
-	if !reader.done() {
-		return nil, errors.New("the link extension has trailing data")
-	}
-	if len(link.replaced) > entries {
-		return nil, fmt.Errorf("the link extension replaces %d entries but the index holds %d", len(link.replaced), entries)
-	}
-	return link, nil
 }
 
 type indexReader struct {
