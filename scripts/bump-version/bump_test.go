@@ -389,12 +389,38 @@ func TestPreCommitVersionBumps(t *testing.T) {
 		t.Fatal(err)
 	}
 	lf := bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
-	if !bytes.Contains(lf, []byte(prefix+developmentPin+" pre-commit\n")) {
-		t.Fatalf("%s does not pin the %s image on master:\n%s", path, developmentPin, lf)
+	occs, err := tgt.scan(lf)
+	if err != nil {
+		t.Fatal(err)
 	}
+	if len(occs) != 1 {
+		t.Fatalf("expected one image pin, got %+v", occs)
+	}
+	_, err = os.Stat(filepath.Join("..", "..", "action.mjs"))
+	candidate := err == nil
+	if occs[0].development == candidate {
+		t.Fatalf("%s pins %q while the tree is a release candidate: %v", path, lf[occs[0].value.start:occs[0].value.end], candidate)
+	}
+	nightly := bytes.Replace(lf, []byte(prefix+string(lf[occs[0].value.start:occs[0].value.end])), []byte(prefix+developmentPin), 1)
 	for _, newline := range []string{"\n", "\r\n"} {
 		t.Run(fmt.Sprintf("newline=%q", newline), func(t *testing.T) {
-			before := bytes.ReplaceAll(lf, []byte("\n"), []byte(newline))
+			next := mustParse(t, "999.0.0")
+			root := t.TempDir()
+			file := filepath.Join(root, path)
+			bump := func(before []byte) []byte {
+				if err := os.WriteFile(file, before, 0o644); err != nil {
+					t.Fatal(err)
+				}
+				if err := Bump(root, []*target{tgt}, next, io.Discard); err != nil {
+					t.Fatal(err)
+				}
+				got, err := os.ReadFile(file)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return got
+			}
+			before := bytes.ReplaceAll(nightly, []byte("\n"), []byte(newline))
 			occs, err := tgt.scan(before)
 			if err != nil {
 				t.Fatal(err)
@@ -402,29 +428,20 @@ func TestPreCommitVersionBumps(t *testing.T) {
 			if len(occs) != 1 || !occs[0].development {
 				t.Fatalf("expected one development pin, got %+v", occs)
 			}
-			root := t.TempDir()
-			file := filepath.Join(root, path)
-			if err := os.WriteFile(file, before, 0o644); err != nil {
-				t.Fatal(err)
+			if got := bump(before); !bytes.Equal(got, before) {
+				t.Fatalf("bump must leave the development pin:\ngot:\n%s\nwant:\n%s", got, before)
 			}
-			var out bytes.Buffer
-			if err := Bump(root, []*target{tgt}, mustParse(t, "999.0.0"), &out); err != nil {
-				t.Fatal(err)
-			}
-			got, err := os.ReadFile(file)
+			pinned := bytes.Replace(before, []byte(prefix+developmentPin), []byte(prefix+"1.17.0"), 1)
+			occs, err = tgt.scan(pinned)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !bytes.Equal(got, before) {
-				t.Fatalf("bump must leave the development pin:\ngot:\n%s\nwant:\n%s", got, before)
+			if len(occs) != 1 || occs[0].development || occs[0].version != mustParse(t, "1.17.0") {
+				t.Fatalf("expected one release pin, got %+v", occs)
 			}
-			if want := path + ": 0 reference(s) set to 999.0.0\n"; out.String() != want {
-				t.Errorf("bump output %q, want %q", out.String(), want)
-			}
-			pinned := bytes.Replace(before, []byte(prefix+developmentPin), []byte(prefix+"1.17.0"), 1)
-			const want = "expected 1 occurrence(s) of pre-commit Docker image tag but found 0"
-			if _, err := tgt.scan(pinned); err == nil || !strings.Contains(err.Error(), want) {
-				t.Fatalf("a release pin on master must be rejected, got %v", err)
+			want := bytes.Replace(before, []byte(prefix+developmentPin), []byte(prefix+next.String()), 1)
+			if got := bump(pinned); !bytes.Equal(got, want) {
+				t.Fatalf("bump must replace the release pin:\ngot:\n%s\nwant:\n%s", got, want)
 			}
 		})
 	}

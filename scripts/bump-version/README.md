@@ -150,8 +150,9 @@ or an upstream specification version, are listed in the `unrelated` field of the
 The script requires each of those literals to still be present, so a stale declaration is reported
 rather than silently ignored.
 
-A rule whose pattern captures `nightly` declares a reference to the development image. `-check`
-reports it as `nightly (development)` and leaves it out of the release version decision; a bump
-leaves it unchanged. The pre-commit Docker image tag in `.pre-commit-hooks.yaml` is `nightly` on
-`master`; release preparation pins it to the release version in the candidate commit, which the
-version tag points at.
+A rule whose pattern also accepts `nightly` lets a reference point at the development image.
+`-check` reports such a reference as `nightly (development)` and leaves it out of the release
+version decision; a bump leaves it unchanged. The pre-commit Docker image tag in
+`.pre-commit-hooks.yaml` is `nightly` on `master`; release preparation pins it to the release
+version in the candidate commit, which the version tag points at, so a release checkout declares
+the release version there.
