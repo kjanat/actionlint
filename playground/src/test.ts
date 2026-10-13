@@ -7,7 +7,7 @@ import { Text } from '@codemirror/state';
 import * as pako from 'pako';
 
 import { errorRange } from './range';
-import { inflateSource, maxSourceBytes, readSource } from './source';
+import { maxEncodedLength, maxSourceBytes, readSource, sharedSource } from './source';
 
 // The Go wasm runtime installs `globalThis.Go` as a side effect.
 import 'wasm_exec.js';
@@ -61,17 +61,47 @@ describe('errorRange', () => {
 });
 
 describe('source', () => {
+	function encode(bytes: Uint8Array): string {
+		return Buffer.from(bytes).toString('base64');
+	}
+
+	function shared(text: string): string {
+		return encode(pako.deflate(new TextEncoder().encode(text)));
+	}
+
 	it('inflates a shared source', () => {
-		assert.equal(inflateSource(pako.deflate(new TextEncoder().encode('on: push\n'))), 'on: push\n');
+		assert.equal(sharedSource(shared('on: push\n')), 'on: push\n');
+	});
+
+	it('accepts an incompressible source at the limit', () => {
+		const source = new Uint8Array(maxSourceBytes);
+		for (let offset = 0; offset < source.length; offset += 65536) {
+			crypto.getRandomValues(source.subarray(offset, offset + 65536));
+		}
+		const encoded = encode(pako.deflate(source));
+		assert.ok(encoded.length <= maxEncodedLength, `${encoded.length} > ${maxEncodedLength}`);
+		assert.equal(sharedSource(encoded).length > 0, true);
+	});
+
+	it('refuses an encoded source past the limit before decoding it', () => {
+		assert.throws(() => sharedSource('A'.repeat(maxEncodedLength + 1)), /longer than/);
 	});
 
 	it('stops inflating past the source limit', () => {
-		assert.throws(() => inflateSource(pako.deflate(new Uint8Array(maxSourceBytes + 1))), /inflates past/);
+		assert.throws(() => sharedSource(encode(pako.deflate(new Uint8Array(maxSourceBytes + 1)))), /inflates past/);
 	});
 
 	it('rejects a truncated stream', () => {
 		const compressed = pako.deflate(new TextEncoder().encode('on: push\n'));
-		assert.throws(() => inflateSource(compressed.subarray(0, compressed.length - 4)), /not a complete zlib stream/);
+		assert.throws(
+			() => sharedSource(encode(compressed.subarray(0, compressed.length - 4))),
+			/not a complete zlib stream/,
+		);
+	});
+
+	it('rejects data after the stream', () => {
+		const compressed = pako.deflate(new TextEncoder().encode('on: push\n'));
+		assert.throws(() => sharedSource(encode(new Uint8Array([...compressed, 0, 1, 2]))), /3 bytes after/);
 	});
 
 	it('reads a remote source', async () => {

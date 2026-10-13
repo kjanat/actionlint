@@ -16,7 +16,7 @@ import isMobile from 'ismobilejs';
 import * as pako from 'pako';
 
 import { errorRange } from './range';
-import { inflateSource, readSource } from './source';
+import { readSource, sharedSource } from './source';
 
 const editorTheme = new Compartment();
 
@@ -99,9 +99,7 @@ function toBase64(bytes: Uint8Array): string {
 		}
 
 		if (window.location.hash !== '') {
-			const b64 = window.location.hash.slice(1); // Omit first '#'
-			const compressed = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-			return inflateSource(compressed);
+			return sharedSource(window.location.hash.slice(1));
 		}
 
 		const src = `# Paste your workflow YAML to this code editor
