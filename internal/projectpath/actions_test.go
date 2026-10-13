@@ -320,6 +320,47 @@ func seal(t *testing.T, path string) {
 	})
 }
 
+func TestActionsUnusableGitignore(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		setup func(t *testing.T, path string)
+	}{
+		{"unreadable", func(t *testing.T, path string) {
+			writeFixture(t, filepath.Dir(path), ".gitignore", "action.yml\n")
+			seal(t, path)
+		}},
+		{"directory", func(t *testing.T, path string) {
+			writeFixture(t, path, "rules", "action.yml\n")
+		}},
+		{"symlink loop", func(t *testing.T, path string) {
+			if err := os.Symlink(".gitignore", path); err != nil {
+				t.Skipf("symlinks unavailable: %v", err)
+			}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			gitFixture(t, root)
+			writeFixture(t, root, "sub/action.yml", "name: fixture\n")
+			tc.setup(t, filepath.Join(root, "sub", ".gitignore"))
+			status, err := exec.CommandContext(t.Context(), "git", "-C", root, "status", "--porcelain", "--ignored", "--untracked-files=all").CombinedOutput()
+			if err != nil {
+				t.Fatalf("git status: %v: %s", err, status)
+			}
+			if !slices.Contains(strings.Split(string(status), "\n"), "?? sub/action.yml") {
+				t.Fatalf("git status does not list sub/action.yml as untracked:\n%s", status)
+			}
+			got, err := Actions(t.Context(), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := []string{filepath.Join(root, "sub", "action.yml")}; !slices.Equal(got, want) {
+				t.Fatalf("Actions = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
 func TestActionsRepositoryError(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -333,11 +374,6 @@ func TestActionsRepositoryError(t *testing.T) {
 		{"unreadable untracked directory", func(t *testing.T, root string, git func(...string)) {
 			writeFixture(t, root, "sealed/action.yml", "name: fixture\n")
 			seal(t, filepath.Join(root, "sealed"))
-		}},
-		{"unreadable ignore file", func(t *testing.T, root string, git func(...string)) {
-			writeFixture(t, root, "sub/.gitignore", "x\n")
-			writeFixture(t, root, "sub/action.yml", "name: fixture\n")
-			seal(t, filepath.Join(root, "sub", ".gitignore"))
 		}},
 		{"broken repository", func(t *testing.T, root string, git func(...string)) {
 			writeFixture(t, root, "action.yml", "name: fixture\n")

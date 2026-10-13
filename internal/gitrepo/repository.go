@@ -5,6 +5,7 @@ package gitrepo
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -197,16 +198,47 @@ func readOptional(path string) ([]byte, error) {
 	return data, err
 }
 
-func readNoFollow(path string) ([]byte, error) {
+const maxPatternFileSize = 100 << 20
+
+func readNoFollow(path string) []byte {
 	info, err := os.Lstat(path)
-	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+	if err != nil || info.Mode()&fs.ModeSymlink != 0 {
+		return nil
+	}
+	data, err := readPatternFile(path)
+	if err != nil {
+		return nil
+	}
+	return data
+}
+
+func readExcludeFile(path string) ([]byte, error) {
+	if !readable(path) {
 		return nil, nil
 	}
+	data, err := readPatternFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("cannot use %s as an exclude file: %w", path, err)
+	}
+	return data, nil
+}
+
+func readPatternFile(path string) ([]byte, error) {
+	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	if info.Mode()&fs.ModeSymlink != 0 {
-		return nil, nil
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil || info.Size() == 0 {
+		return nil, err
 	}
-	return readOptional(path)
+	if info.Size() >= maxPatternFileSize {
+		return nil, fmt.Errorf("%s is larger than %d bytes", file.Name(), maxPatternFileSize-1)
+	}
+	data := make([]byte, info.Size())
+	if _, err := io.ReadFull(file, data); err != nil {
+		return nil, err
+	}
+	return data, nil
 }

@@ -20,52 +20,43 @@ type ignoreNode struct {
 
 func (r *Repository) Ignores() (*Ignores, error) {
 	root := &ignoreNode{patterns: newPatternList(r.ignoreCase)}
-	for _, file := range []string{r.excludes, filepath.Join(r.CommonDir, "info", "exclude"), filepath.Join(r.WorkTree, ".gitignore")} {
+	for _, file := range []string{r.excludes, filepath.Join(r.CommonDir, "info", "exclude")} {
 		if file == "" {
 			continue
 		}
-		data, err := readNoFollow(file)
+		data, err := readExcludeFile(file)
 		if err != nil {
 			return nil, err
 		}
 		root.patterns.addBuffer(data)
 	}
+	root.patterns.addBuffer(readNoFollow(filepath.Join(r.WorkTree, ".gitignore")))
 	return &Ignores{repo: r, nodes: map[string]*ignoreNode{"": root}}, nil
 }
 
 func (i *Ignores) Ignored(relative string, isDir bool) (bool, error) {
-	node, err := i.node(parentDir(relative))
-	if err != nil {
-		return false, err
-	}
+	node := i.node(parentDir(relative))
 	if node.ignored {
 		return true, nil
 	}
 	return node.matched([]byte(relative), isDir) == patternPositive, nil
 }
 
-func (i *Ignores) node(dir string) (*ignoreNode, error) {
+func (i *Ignores) node(dir string) *ignoreNode {
 	if node, ok := i.nodes[dir]; ok {
-		return node, nil
+		return node
 	}
-	parent, err := i.node(parentDir(dir))
-	if err != nil {
-		return nil, err
-	}
+	parent := i.node(parentDir(dir))
 	node := &ignoreNode{parent: parent, dir: dir}
 	node.ignored = parent.ignored || parent.matched([]byte(dir), true) == patternPositive
 	if !node.ignored {
-		data, err := readNoFollow(filepath.Join(i.repo.WorkTree, filepath.FromSlash(dir), ".gitignore"))
-		if err != nil {
-			return nil, err
-		}
-		if data != nil {
+		if data := readNoFollow(filepath.Join(i.repo.WorkTree, filepath.FromSlash(dir), ".gitignore")); data != nil {
 			node.patterns = newPatternList(i.repo.ignoreCase)
 			node.patterns.addBuffer(data)
 		}
 	}
 	i.nodes[dir] = node
-	return node, nil
+	return node
 }
 
 func (n *ignoreNode) matched(relative []byte, isDir bool) patternMatch {
