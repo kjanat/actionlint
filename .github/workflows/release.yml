@@ -35,7 +35,8 @@ jobs:
           object="$(git rev-parse "refs/tags/${TAG}")"
           object_type="$(git cat-file -t "${object}")"
           test "${object_type}" = tag
-          grep -q -- '-----BEGIN PGP SIGNATURE-----' < <(git cat-file -p "${object}")
+          tag_object="$(git cat-file -p "${object}")"
+          grep -q -- '-----BEGIN PGP SIGNATURE-----' <<< "${tag_object}"
           verified="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${object}" --jq '.verification.verified')"
           test "${verified}" = true
           tag_commit="$(git rev-parse "refs/tags/${TAG}^{commit}")"
