@@ -25,8 +25,14 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		if wdErr != nil {
 			return 0, wdErr
 		}
-		root := projectpath.RepositoryRoot(cwd)
-		if typo, _ := projectpath.WorkflowTypo(cwd); typo == "" && (root == "" || !projectpath.HasWorkflowFiles(root)) {
+		hasWorkflows := false
+		if root := projectpath.RepositoryRoot(cwd); root != "" {
+			hasWorkflows, err = projectpath.HasWorkflowFiles(root)
+			if err != nil {
+				return 0, err
+			}
+		}
+		if typo, _ := projectpath.WorkflowTypo(cwd); typo == "" && !hasWorkflows {
 			if c.Verbose && !r.Quiet {
 				_, _ = fmt.Fprintf(streams.Stderr, "verbose: No workflow files to check from %q\n", cwd)
 			}

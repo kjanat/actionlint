@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -46,6 +47,39 @@ func TestPreCommitCommandChecksRepository(t *testing.T) {
 	}
 	if got := testRunCommand("", "pre-commit", "ci.yml"); got.Status != 2 {
 		t.Fatalf("positional arguments must be rejected, got %+v", got)
+	}
+}
+
+func TestPreCommitCommandIgnoresFileNamedPreCommit(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := os.Mkdir(".git", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile("pre-commit", []byte("#!/bin/sh\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if got := testRunCommand("", "pre-commit"); got.Status != 0 || got.Stdout != "" || got.Stderr != "" {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestPreCommitCommandReportsUnreadableWorkflows(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("directory permissions are not enforced")
+	}
+	t.Chdir(t.TempDir())
+	if err := os.MkdirAll(".github/workflows", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(".git", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(".github/workflows", 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(".github/workflows", 0o700) })
+	if got := testRunCommand("", "pre-commit"); got.Status != 3 || got.Stdout != "" || !strings.Contains(got.Stderr, "permission denied") {
+		t.Fatalf("got %+v", got)
 	}
 }
 

@@ -107,6 +107,9 @@ func (a *commandApp) parseLegacy(args []string) (rest []string, forced string, t
 }
 
 func commandFileExists(name string) bool {
+	if name == "pre-commit" {
+		return false
+	}
 	for _, candidate := range append(commandNames(), "__complete", "__completeNoDesc") {
 		if name == candidate {
 			info, err := os.Stat(candidate)

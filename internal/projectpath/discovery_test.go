@@ -1,8 +1,11 @@
 package projectpath
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -22,17 +25,35 @@ func TestRepositoryRootAndWorkflowFiles(t *testing.T) {
 	if got := RepositoryRoot(filepath.Join(t.TempDir(), "missing")); got != "" {
 		t.Fatalf("RepositoryRoot outside a repository = %q", got)
 	}
-	if HasWorkflowFiles(root) {
-		t.Fatal("empty workflows directory reported workflow files")
+	if found, err := HasWorkflowFiles(root); err != nil || found {
+		t.Fatalf("empty workflows directory: %v, %v", found, err)
 	}
-	if HasWorkflowFiles(filepath.Join(root, "inner")) {
-		t.Fatal("repository without a workflows directory reported workflow files")
+	if found, err := HasWorkflowFiles(filepath.Join(root, "inner")); err != nil || found {
+		t.Fatalf("repository without a workflows directory: %v, %v", found, err)
 	}
 	if err := os.WriteFile(filepath.Join(root, ".github", "workflows", "sub", "ci.yaml"), []byte("on: push\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if !HasWorkflowFiles(root) {
-		t.Fatal("nested workflow file was not found")
+	if found, err := HasWorkflowFiles(root); err != nil || !found {
+		t.Fatalf("nested workflow file was not found: %v", err)
+	}
+}
+
+func TestHasWorkflowFilesUnreadable(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("directory permissions are not enforced")
+	}
+	root := t.TempDir()
+	workflows := filepath.Join(root, ".github", "workflows")
+	if err := os.MkdirAll(workflows, 0750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(workflows, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(workflows, 0750) })
+	if found, err := HasWorkflowFiles(root); !errors.Is(err, fs.ErrPermission) || found {
+		t.Fatalf("HasWorkflowFiles = %v, %v; want a permission error", found, err)
 	}
 }
 

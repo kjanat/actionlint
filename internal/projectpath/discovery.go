@@ -2,6 +2,8 @@
 package projectpath
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,11 +28,11 @@ func RepositoryRoot(start string) string {
 }
 
 // HasWorkflowFiles reports whether any YAML file exists under the repository's workflows directory.
-func HasWorkflowFiles(root string) bool {
+func HasWorkflowFiles(root string) (bool, error) {
 	found := false
-	_ = filepath.WalkDir(filepath.Join(root, ".github", "workflows"), func(path string, entry os.DirEntry, err error) error {
-		if err != nil || found {
-			return filepath.SkipAll
+	err := filepath.WalkDir(filepath.Join(root, ".github", "workflows"), func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
 		}
 		if !entry.IsDir() && (strings.HasSuffix(path, ".yml") || strings.HasSuffix(path, ".yaml")) {
 			found = true
@@ -38,7 +40,10 @@ func HasWorkflowFiles(root string) bool {
 		}
 		return nil
 	})
-	return found
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+	return found, err
 }
 
 // WorkflowTypo returns a misspelled workflow directory and its expected path.
