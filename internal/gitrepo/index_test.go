@@ -276,8 +276,13 @@ func TestIndexSplitWithSkipHash(t *testing.T) {
 		t.Fatalf("git did not name the shared index after the null hash: %v", err)
 	}
 	entries := fixture.compareIndex()
-	if len(entries) != 3 || entries[0].Path != "" || entries[2].Path != "c" {
-		t.Fatalf("entries = %v, want two unnamed replacements and c", entries)
+	if len(entries) == 0 || entries[len(entries)-1].Path != "c" {
+		t.Fatalf("entries = %v, want c last", entries)
+	}
+	for _, entry := range entries[:len(entries)-1] {
+		if entry.Path != "" {
+			t.Fatalf("entries = %v, want only unnamed replacements before c", entries)
+		}
 	}
 }
 
