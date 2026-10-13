@@ -405,6 +405,40 @@ func TestActionsCancelled(t *testing.T) {
 	}
 }
 
+func TestActionsWithoutWorkTree(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		setup func(t *testing.T, root string, git func(...string)) string
+	}{
+		{"bare repository", func(t *testing.T, root string, git func(...string)) string {
+			git("config", "core.bare", "true")
+			return root
+		}},
+		{"outside core.worktree", func(t *testing.T, root string, git func(...string)) string {
+			git("config", "core.worktree", t.TempDir())
+			return root
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			git := gitFixture(t, root)
+			writeFixture(t, root, ".gitignore", "ignored/\n")
+			for _, name := range []string{"action.yml", "ignored/action.yml"} {
+				writeFixture(t, root, name, "name: fixture\n")
+			}
+			discovery := tc.setup(t, root, git)
+			got, err := Actions(t.Context(), discovery)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := []string{filepath.Join(discovery, "action.yml"), filepath.Join(discovery, "ignored", "action.yml")}
+			if !slices.Equal(got, want) {
+				t.Fatalf("Actions = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
 func TestActionsOutsideRepository(t *testing.T) {
 	root := t.TempDir()
 	for _, name := range []string{"action.yml", "ignored/action.yml", "node_modules/action.yml"} {

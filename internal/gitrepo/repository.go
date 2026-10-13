@@ -3,6 +3,7 @@
 package gitrepo
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -15,84 +16,290 @@ import (
 )
 
 type Repository struct {
-	WorkTree   string
-	GitDir     string
-	CommonDir  string
-	ignoreCase bool
-	precompose bool
-	hashLength int
-	excludes   string
+	WorkTree       string
+	GitDir         string
+	CommonDir      string
+	ignoreCase     bool
+	precompose     bool
+	worktreeConfig bool
+	hashLength     int
+	excludes       string
 }
 
+type location struct {
+	dir    string
+	gitDir string
+	bare   bool
+}
+
+var (
+	errNoGitFile    = errors.New("no gitfile")
+	errGitFileIsDir = errors.New("gitfile is a directory")
+)
+
+// Open ignores GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE, GIT_COMMON_DIR and GIT_OBJECT_DIRECTORY, which git exports to hooks for the hook's own repository.
 func Open(dir string) (*Repository, error) {
-	workTree, err := filepath.Abs(dir)
+	start, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
 	}
-	for {
-		dotGit := filepath.Join(workTree, ".git")
-		info, err := os.Stat(dotGit)
-		switch {
-		case err == nil:
-			return open(workTree, dotGit, info)
-		case !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, syscall.ENOTDIR):
-			return nil, err
-		}
-		parent := filepath.Dir(workTree)
-		if parent == workTree {
-			return nil, nil
-		}
-		workTree = parent
+	if start, err = filepath.EvalSymlinks(start); err != nil {
+		return nil, err
 	}
+	found, err := discover(start)
+	if err != nil || found == nil {
+		return nil, err
+	}
+	return open(found)
 }
 
-func open(workTree, dotGit string, info fs.FileInfo) (*Repository, error) {
-	repo := &Repository{WorkTree: workTree, hashLength: 20}
-	switch {
-	case info.IsDir():
-		repo.GitDir = dotGit
-	case info.Mode().IsRegular():
-		data, err := os.ReadFile(dotGit)
+func discover(dir string) (*location, error) {
+	minOffset := rootLength(dir)
+	ceiling := ceilingLength(dir)
+	if ceiling < 0 {
+		ceiling = minOffset - 2
+	}
+	acrossFilesystems, err := parseBool(os.Getenv("GIT_DISCOVERY_ACROSS_FILESYSTEM"))
+	if err != nil {
+		return nil, fmt.Errorf("GIT_DISCOVERY_ACROSS_FILESYSTEM: %w", err)
+	}
+	var device uint64
+	if !acrossFilesystems {
+		if device, err = deviceID(dir); err != nil {
+			return nil, err
+		}
+	}
+	for {
+		offset := len(dir)
+		dotGit := dir + ".git"
+		if offset > minOffset {
+			dotGit = joinRaw(dir, ".git")
+		}
+		gitDir, err := readGitFile(dotGit)
+		switch {
+		case err == nil:
+			return &location{dir: dir, gitDir: gitDir}, nil
+		case errors.Is(err, errGitFileIsDir):
+			ok, err := isGitDirectory(dotGit)
+			if err != nil {
+				return nil, err
+			}
+			if ok {
+				return &location{dir: dir, gitDir: dotGit}, nil
+			}
+		case !errors.Is(err, errNoGitFile):
+			return nil, err
+		}
+		ok, err := isGitDirectory(dir)
 		if err != nil {
 			return nil, err
 		}
-		target, ok := strings.CutPrefix(strings.TrimRight(string(data), "\r\n"), "gitdir: ")
-		if !ok {
-			return nil, fmt.Errorf("%s has no gitdir line", dotGit)
+		if ok {
+			return &location{dir: dir, gitDir: dir, bare: true}, nil
 		}
-		repo.GitDir = filepath.FromSlash(target)
-		if !filepath.IsAbs(repo.GitDir) {
-			repo.GitDir = filepath.Join(workTree, repo.GitDir)
+		if offset <= minOffset {
+			return nil, nil
 		}
-		repo.GitDir = filepath.Clean(repo.GitDir)
-		if gitInfo, err := os.Stat(repo.GitDir); err != nil {
-			return nil, err
-		} else if !gitInfo.IsDir() {
-			return nil, fmt.Errorf("%s is not a directory", repo.GitDir)
+		for offset--; offset > ceiling && !os.IsPathSeparator(dir[offset]); offset-- {
 		}
-	default:
-		return nil, fmt.Errorf("%s is neither a directory nor a file", dotGit)
+		if offset <= ceiling {
+			return nil, nil
+		}
+		dir = dir[:max(offset, minOffset)]
+		if !acrossFilesystems {
+			current, err := deviceID(dir)
+			if err != nil {
+				return nil, err
+			}
+			if current != device {
+				return nil, nil
+			}
+		}
 	}
-	repo.CommonDir = repo.GitDir
-	common, err := readOptional(filepath.Join(repo.GitDir, "commondir"))
+}
+
+func rootLength(path string) int {
+	length := len(filepath.VolumeName(path))
+	if length < len(path) && os.IsPathSeparator(path[length]) {
+		length++
+	}
+	return length
+}
+
+func ceilingLength(dir string) int {
+	value, ok := os.LookupEnv("GIT_CEILING_DIRECTORIES")
+	path := filepath.ToSlash(dir)
+	if !ok || path == "/" {
+		return -1
+	}
+	longest := -1
+	verbatim := false
+	for ceiling := range strings.SplitSeq(value, string(os.PathListSeparator)) {
+		switch {
+		case ceiling == "":
+			verbatim = true
+			continue
+		case !isAbsolutePath(ceiling):
+			continue
+		case !verbatim:
+			resolved, err := filepath.EvalSymlinks(ceiling)
+			if err != nil {
+				continue
+			}
+			ceiling = resolved
+		}
+		ceiling = filepath.ToSlash(ceiling)
+		length := len(strings.TrimSuffix(ceiling, "/"))
+		if len(path) > length+1 && path[length] == '/' && path[:length] == ceiling[:length] {
+			longest = max(longest, length)
+		}
+	}
+	return longest
+}
+
+func joinRaw(dir, name string) string {
+	if dir != "" && os.IsPathSeparator(dir[len(dir)-1]) {
+		return dir + name
+	}
+	return dir + string(os.PathSeparator) + name
+}
+
+func readGitFile(path string) (string, error) {
+	info, err := os.Stat(path)
+	switch {
+	case errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR):
+		return "", errNoGitFile
+	case err != nil:
+		return "", err
+	case info.IsDir():
+		return "", errGitFileIsDir
+	case !info.Mode().IsRegular():
+		return "", fmt.Errorf("not a regular file: %s", path)
+	case info.Size() > 1<<20:
+		return "", fmt.Errorf("too large to be a .git file: %s", path)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	target, ok := strings.CutPrefix(string(data), "gitdir: ")
+	if !ok {
+		return "", fmt.Errorf("invalid gitfile format: %s", path)
+	}
+	if target = strings.TrimRight(target, "\r\n"); target == "" {
+		return "", fmt.Errorf("no path in gitfile: %s", path)
+	}
+	target, _, _ = strings.Cut(target, "\x00")
+	if target = filepath.FromSlash(target); !isAbsolutePath(target) {
+		target = joinRaw(filepath.Dir(path), target)
+	}
+	if ok, err = isGitDirectory(target); err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", fmt.Errorf("gitfile does not point to a valid repository: %s", path)
+	}
+	return filepath.EvalSymlinks(target)
+}
+
+func isGitDirectory(suspect string) (bool, error) {
+	if !validHead(joinRaw(suspect, "HEAD")) {
+		return false, nil
+	}
+	common, _, err := commonDir(suspect)
+	if err != nil {
+		return false, err
+	}
+	return searchable(joinRaw(common, "objects")) && searchable(joinRaw(common, "refs")), nil
+}
+
+func validHead(path string) bool {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return false
+	}
+	if info.Mode()&fs.ModeSymlink != 0 {
+		target, err := os.Readlink(path)
+		return err == nil && strings.HasPrefix(target, "refs/")
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	buffer := make([]byte, 255)
+	n, err := io.ReadFull(file, buffer)
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		err = nil
+	}
+	if err = errors.Join(err, file.Close()); err != nil {
+		return false
+	}
+	head, _, _ := bytes.Cut(buffer[:n], []byte{0})
+	if ref, ok := bytes.CutPrefix(head, []byte("ref:")); ok && bytes.HasPrefix(bytes.TrimLeft(ref, " \t\n\v\f\r"), []byte("refs/")) {
+		return true
+	}
+	return hexPrefix(head, 64) || hexPrefix(head, 40)
+}
+
+func hexPrefix(data []byte, length int) bool {
+	if len(data) < length {
+		return false
+	}
+	for _, b := range data[:length] {
+		if hexValue(b) >= 16 {
+			return false
+		}
+	}
+	return true
+}
+
+func commonDir(gitDir string) (string, bool, error) {
+	path := joinRaw(gitDir, "commondir")
+	if !exists(path) {
+		return gitDir, false, nil
+	}
+	data, err := os.ReadFile(path)
+	if err == nil && len(data) == 0 {
+		err = errors.New("the file is empty")
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("failed to read %s: %w", path, err)
+	}
+	common, _, _ := strings.Cut(strings.TrimRight(string(data), "\r\n"), "\x00")
+	if common = filepath.FromSlash(common); !isAbsolutePath(common) {
+		common = joinRaw(gitDir, common)
+	}
+	resolved, err := filepath.EvalSymlinks(common)
+	if err != nil {
+		return "", false, err
+	}
+	return resolved, true, nil
+}
+
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+func open(found *location) (*Repository, error) {
+	repo := &Repository{GitDir: found.gitDir, hashLength: 20}
+	common, shared, err := commonDir(found.gitDir)
 	if err != nil {
 		return nil, err
 	}
-	if common != nil {
-		repo.CommonDir = filepath.FromSlash(strings.TrimRight(string(common), "\r\n"))
-		if !filepath.IsAbs(repo.CommonDir) {
-			repo.CommonDir = filepath.Join(repo.GitDir, repo.CommonDir)
-		}
-		repo.CommonDir = filepath.Clean(repo.CommonDir)
-	}
-	format, err := readRepositoryFormat(filepath.Join(repo.CommonDir, "config"))
+	repo.CommonDir = common
+	format, err := readDiscoveryFormat(repo.GitDir, repo.CommonDir, shared)
 	if err != nil {
+		return nil, err
+	}
+	if repo.WorkTree, err = format.resolveWorkTree(found); err != nil {
 		return nil, err
 	}
 	if format.sha256 {
 		repo.hashLength = 32
 	}
-	settings, err := repo.config(format)
+	repo.worktreeConfig = format.worktreeConfig
+	settings, err := repo.config()
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +335,7 @@ const (
 	systemConfig = "/etc/gitconfig"
 )
 
-func (r *Repository) config(format repositoryFormat) (config, error) {
+func (r *Repository) config() (config, error) {
 	var files []string
 	noSystem := false
 	if env, ok := os.LookupEnv("GIT_CONFIG_NOSYSTEM"); ok {
@@ -164,7 +371,7 @@ func (r *Repository) config(format repositoryFormat) (config, error) {
 		files = append(files, file)
 	}
 	files = append(files, filepath.Join(r.CommonDir, "config"))
-	if format.worktreeConfig {
+	if r.worktreeConfig {
 		files = append(files, filepath.Join(r.GitDir, "config.worktree"))
 	}
 	files = slices.DeleteFunc(files, func(file string) bool {

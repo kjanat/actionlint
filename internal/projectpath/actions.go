@@ -49,7 +49,7 @@ func discoverActions(ctx context.Context, physical string) ([]string, error) {
 		return nil, err
 	}
 	discovery := &actionDiscovery{root: physical}
-	if repo != nil {
+	if repo != nil && repo.WorkTree != "" {
 		if discovery, err = newActionDiscovery(physical, repo, runtime.GOOS == "darwin" && repo.PrecomposeUnicode()); err != nil {
 			return nil, err
 		}
@@ -62,6 +62,9 @@ func newActionDiscovery(physical string, repo *gitrepo.Repository, precompose bo
 	relative, err := filepath.Rel(repo.WorkTree, physical)
 	if err != nil {
 		return nil, err
+	}
+	if relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return &actionDiscovery{root: physical}, nil
 	}
 	if relative != "." {
 		discovery.prefix = discovery.compose(filepath.ToSlash(relative)) + "/"

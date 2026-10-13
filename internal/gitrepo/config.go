@@ -343,53 +343,6 @@ func (p *configParser) value() (string, bool) {
 	}
 }
 
-type repositoryFormat struct {
-	worktreeConfig bool
-	sha256         bool
-}
-
-func readRepositoryFormat(path string) (repositoryFormat, error) {
-	data, err := readOptional(path)
-	if err != nil {
-		return repositoryFormat{}, err
-	}
-	settings := config{}
-	err = parseConfig(path, data, func(section, name string, value configValue) error {
-		settings.add(section, name, value)
-		return nil
-	})
-	if err != nil {
-		return repositoryFormat{}, err
-	}
-	version := int64(-1)
-	for _, value := range settings["core.repositoryformatversion"] {
-		var ok bool
-		if version, ok = parseInt(value.text); value.bare || !ok {
-			return repositoryFormat{}, fmt.Errorf("bad numeric config value %q for 'core.repositoryformatversion' in file %s", value.text, path)
-		}
-	}
-	var format repositoryFormat
-	if format.worktreeConfig, err = settings.boolean("extensions.worktreeconfig"); err != nil {
-		return repositoryFormat{}, err
-	}
-	for _, value := range settings["extensions.objectformat"] {
-		switch {
-		case value.bare:
-			return repositoryFormat{}, errors.New("missing value for 'extensions.objectformat'")
-		case value.text == "sha1":
-			format.sha256 = false
-		case value.text == "sha256":
-			format.sha256 = true
-		default:
-			return repositoryFormat{}, fmt.Errorf("invalid value for 'extensions.objectformat': %q", value.text)
-		}
-	}
-	if version == -1 {
-		return repositoryFormat{}, nil
-	}
-	return format, nil
-}
-
 type configParam struct {
 	section, name string
 	value         configValue

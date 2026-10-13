@@ -34,7 +34,11 @@ func TestGitModesIgnoreHookEnvironment(t *testing.T) {
 	if snapshot.err != nil || snapshot.modes["bad.sh"] != "100644" || snapshot.modes["good.sh"] != "100755" {
 		t.Fatalf("index mode query failed: %v, %v", snapshot.modes, snapshot.err)
 	}
-	if want := filepath.Join(root, ".git", "index"); snapshot.index != want {
+	physical, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(physical, ".git", "index"); snapshot.index != want {
 		t.Fatalf("index location = %q, want %q", snapshot.index, want)
 	}
 }
@@ -43,6 +47,20 @@ func TestGitModesOutsideRepository(t *testing.T) {
 	snapshot := (&gitModes{}).load(t.Context(), t.TempDir())
 	if snapshot.err == nil || snapshot.modes != nil {
 		t.Fatalf("no repository: %v, %v", snapshot.modes, snapshot.err)
+	}
+}
+
+func TestGitModesBareRepository(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git required")
+	}
+	root := t.TempDir()
+	if output, err := repositoryGit(t.Context(), root, "init", "--quiet", "--bare").CombinedOutput(); err != nil {
+		t.Fatalf("initialize repository: %v: %s", err, output)
+	}
+	snapshot := (&gitModes{}).load(t.Context(), root)
+	if snapshot.err == nil || !strings.Contains(snapshot.err.Error(), "without a work tree") {
+		t.Fatalf("bare repository: %v, %v", snapshot.modes, snapshot.err)
 	}
 }
 

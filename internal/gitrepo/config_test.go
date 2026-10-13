@@ -147,11 +147,7 @@ func gitParse(t *testing.T, text string) ([]string, bool) {
 func (r *testRepo) settings() config {
 	r.t.Helper()
 	repo := r.open()
-	format, err := readRepositoryFormat(filepath.Join(repo.CommonDir, "config"))
-	if err != nil {
-		r.t.Fatal(err)
-	}
-	settings, err := repo.config(format)
+	settings, err := repo.config()
 	if err != nil {
 		r.t.Fatal(err)
 	}

@@ -18,55 +18,507 @@ func TestOpenOutsideRepository(t *testing.T) {
 	}
 }
 
-func TestOpenFindsAncestor(t *testing.T) {
-	fixture := newTestRepo(t)
-	nested := fixture.write("a/b/file", "")
-	repo, err := Open(filepath.Dir(nested))
+type gitOutcome int
+
+const (
+	gitFound gitOutcome = iota
+	gitAbsent
+	gitFailed
+)
+
+type gitLocation struct {
+	workTree, gitDir, commonDir string
+}
+
+func realPath(t *testing.T, path string) string {
+	t.Helper()
+	resolved, err := filepath.EvalSymlinks(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if repo.WorkTree != fixture.root || repo.GitDir != filepath.Join(fixture.root, ".git") || repo.CommonDir != repo.GitDir {
-		t.Fatalf("Open = %+v", repo)
+	return resolved
+}
+
+func gitIn(t *testing.T, dir string, args ...string) (string, string, error) {
+	t.Helper()
+	command := exec.CommandContext(t.Context(), "git", args...)
+	command.Dir = dir
+	var stderr strings.Builder
+	command.Stderr = &stderr
+	out, err := command.Output()
+	return strings.TrimRight(string(out), "\r\n"), stderr.String(), err
+}
+
+func gitDiscovery(t *testing.T, dir string) (gitLocation, gitOutcome, string) {
+	t.Helper()
+	gitDir, stderr, err := gitIn(t, dir, "rev-parse", "--absolute-git-dir")
+	if err != nil {
+		if strings.Contains(stderr, "not a git repository (or any") {
+			return gitLocation{}, gitAbsent, stderr
+		}
+		return gitLocation{}, gitFailed, stderr
+	}
+	common, stderr, err := gitIn(t, dir, "rev-parse", "--git-common-dir")
+	if err != nil {
+		t.Fatalf("git rev-parse --git-common-dir: %v: %s", err, stderr)
+	}
+	if !filepath.IsAbs(common) {
+		common = filepath.Join(realPath(t, dir), common)
+	}
+	location := gitLocation{gitDir: realPath(t, gitDir), commonDir: realPath(t, common)}
+	if top, _, err := gitIn(t, dir, "rev-parse", "--show-toplevel"); err == nil {
+		location.workTree = realPath(t, top)
+	}
+	return location, gitFound, stderr
+}
+
+func requireMatchesGit(t *testing.T, dir string) *Repository {
+	t.Helper()
+	want, outcome, stderr := gitDiscovery(t, dir)
+	repo, err := Open(dir)
+	switch outcome {
+	case gitAbsent:
+		if err != nil || repo != nil {
+			t.Fatalf("Open(%q) = %+v, %v; git: %s", dir, repo, err, stderr)
+		}
+		return nil
+	case gitFailed:
+		if err == nil {
+			t.Fatalf("Open(%q) = %+v, want an error; git: %s", dir, repo, stderr)
+		}
+		return nil
+	}
+	if err != nil || repo == nil {
+		t.Fatalf("Open(%q) = %+v, %v; git finds %+v", dir, repo, err, want)
+	}
+	got := gitLocation{gitDir: realPath(t, repo.GitDir), commonDir: realPath(t, repo.CommonDir)}
+	if repo.WorkTree != "" {
+		got.workTree = realPath(t, repo.WorkTree)
+	}
+	if got != want {
+		t.Fatalf("Open(%q) = %+v, git finds %+v", dir, got, want)
+	}
+	return repo
+}
+
+func (r *testRepo) commit() {
+	r.t.Helper()
+	r.write("file", "")
+	r.git("add", "file")
+	r.git("commit", "--quiet", "-m", "Fixture")
+}
+
+func (r *testRepo) worktree(name string) string {
+	r.t.Helper()
+	r.commit()
+	worktree := filepath.Join(filepath.Dir(r.root), name)
+	r.git("worktree", "add", "--quiet", worktree)
+	return worktree
+}
+
+func (r *testRepo) mkdir(name string) string {
+	r.t.Helper()
+	path := filepath.Join(filepath.Dir(r.root), filepath.FromSlash(name))
+	if err := os.MkdirAll(path, 0750); err != nil {
+		r.t.Fatal(err)
+	}
+	return path
+}
+
+func (r *testRepo) gitFile(name, content string) string {
+	r.t.Helper()
+	dir := r.mkdir(name)
+	if err := os.WriteFile(filepath.Join(dir, ".git"), []byte(content), 0600); err != nil {
+		r.t.Fatal(err)
+	}
+	return dir
+}
+
+func symlink(t *testing.T, target, link string) {
+	t.Helper()
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
 	}
 }
 
-func TestOpenWorktree(t *testing.T) {
-	fixture := newTestRepo(t)
-	fixture.write("file", "")
-	fixture.git("add", "file")
-	fixture.git("commit", "--quiet", "-m", "Fixture")
-	worktree := filepath.Join(t.TempDir(), "wt")
-	fixture.git("worktree", "add", "--quiet", worktree)
-	repo, err := Open(worktree)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if repo.WorkTree != worktree {
-		t.Fatalf("WorkTree = %q, want %q", repo.WorkTree, worktree)
-	}
-	mainGitDir, err := filepath.EvalSymlinks(filepath.Join(fixture.root, ".git"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.HasPrefix(repo.GitDir, filepath.Join(mainGitDir, "worktrees")) {
-		t.Fatalf("GitDir = %q", repo.GitDir)
-	}
-	if repo.CommonDir != mainGitDir {
-		t.Fatalf("CommonDir = %q, want %q", repo.CommonDir, mainGitDir)
-	}
-}
-
-func TestOpenRejectsBrokenGitFile(t *testing.T) {
-	for name, content := range map[string]string{"no gitdir line": "nonsense\n", "missing target": "gitdir: elsewhere\n"} {
-		t.Run(name, func(t *testing.T) {
-			root := t.TempDir()
-			if err := os.WriteFile(filepath.Join(root, ".git"), []byte(content), 0600); err != nil {
+func TestOpenMatchesGit(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		setup func(t *testing.T, r *testRepo) string
+	}{
+		{"top level", func(t *testing.T, r *testRepo) string { return r.root }},
+		{"subdirectory", func(t *testing.T, r *testRepo) string { return filepath.Dir(r.write("a/b/file", "")) }},
+		{"inside the git directory", func(t *testing.T, r *testRepo) string { return filepath.Join(r.root, ".git", "refs", "heads") }},
+		{"bare repository", func(t *testing.T, r *testRepo) string {
+			bare := r.mkdir("bare.git")
+			if _, stderr, err := gitIn(t, bare, "init", "--quiet", "--bare"); err != nil {
+				t.Fatalf("git init --bare: %v: %s", err, stderr)
+			}
+			return bare
+		}},
+		{"inside a bare repository", func(t *testing.T, r *testRepo) string {
+			bare := r.mkdir("bare.git")
+			if _, stderr, err := gitIn(t, bare, "init", "--quiet", "--bare"); err != nil {
+				t.Fatalf("git init --bare: %v: %s", err, stderr)
+			}
+			return filepath.Join(bare, "refs")
+		}},
+		{"core.bare", func(t *testing.T, r *testRepo) string {
+			r.git("config", "core.bare", "true")
+			return r.root
+		}},
+		{"relative core.worktree", func(t *testing.T, r *testRepo) string {
+			r.mkdir("repo/wt")
+			r.git("config", "core.worktree", "../wt")
+			return filepath.Join(r.root, "wt")
+		}},
+		{"relative core.worktree outside the start", func(t *testing.T, r *testRepo) string {
+			r.mkdir("elsewhere")
+			r.git("config", "core.worktree", "../../elsewhere")
+			return r.root
+		}},
+		{"absolute core.worktree", func(t *testing.T, r *testRepo) string {
+			r.git("config", "core.worktree", r.mkdir("elsewhere"))
+			return r.root
+		}},
+		{"core.bare beats core.worktree", func(t *testing.T, r *testRepo) string {
+			r.mkdir("repo/wt")
+			r.git("config", "core.worktree", "../wt")
+			r.git("config", "core.bare", "true")
+			return r.root
+		}},
+		{"linked worktree", func(t *testing.T, r *testRepo) string { return r.worktree("wt") }},
+		{"linked worktree subdirectory", func(t *testing.T, r *testRepo) string {
+			r.worktree("wt")
+			return r.mkdir("wt/a/b")
+		}},
+		{"linked worktree ignores the common core.bare", func(t *testing.T, r *testRepo) string {
+			worktree := r.worktree("wt")
+			r.git("config", "core.bare", "true")
+			return worktree
+		}},
+		{"worktreeConfig keeps the common core.bare", func(t *testing.T, r *testRepo) string {
+			worktree := r.worktree("wt")
+			r.git("config", "extensions.worktreeConfig", "true")
+			r.git("config", "core.bare", "true")
+			return worktree
+		}},
+		{"config.worktree core.bare", func(t *testing.T, r *testRepo) string {
+			worktree := r.worktree("wt")
+			r.git("config", "extensions.worktreeConfig", "true")
+			if _, stderr, err := gitIn(t, worktree, "config", "--worktree", "core.bare", "true"); err != nil {
+				t.Fatalf("git config --worktree: %v: %s", err, stderr)
+			}
+			return worktree
+		}},
+		{"separate git directory", func(t *testing.T, r *testRepo) string {
+			work := r.mkdir("work")
+			if _, stderr, err := gitIn(t, work, "init", "--quiet", "--separate-git-dir", filepath.Join(filepath.Dir(r.root), "metadata")); err != nil {
+				t.Fatalf("git init --separate-git-dir: %v: %s", err, stderr)
+			}
+			return work
+		}},
+		{"relative gitfile with dot-dot", func(t *testing.T, r *testRepo) string {
+			return r.gitFile("other", "gitdir: ../repo/.git\n")
+		}},
+		{"gitfile with CRLF and blank lines", func(t *testing.T, r *testRepo) string {
+			return r.gitFile("other", "gitdir: ../repo/.git\r\n\r\n")
+		}},
+		{"gitfile without newline", func(t *testing.T, r *testRepo) string {
+			return r.gitFile("other", "gitdir: ../repo/.git")
+		}},
+		{"absolute gitfile", func(t *testing.T, r *testRepo) string {
+			return r.gitFile("other", "gitdir: "+filepath.ToSlash(filepath.Join(r.root, ".git"))+"\n")
+		}},
+		{"gitfile resolves dot-dot after symlinks", func(t *testing.T, r *testRepo) string {
+			deep := r.mkdir("deep/x")
+			symlink(t, deep, filepath.Join(filepath.Dir(r.root), "link"))
+			return r.gitFile("other", "gitdir: ../link/../../repo/.git\n")
+		}},
+		{"gitfile naming a linked worktree git directory", func(t *testing.T, r *testRepo) string {
+			linked, err := Open(r.worktree("wt"))
+			if err != nil {
 				t.Fatal(err)
 			}
-			if repo, err := Open(root); err == nil {
-				t.Fatalf("Open = %+v, want an error", repo)
+			return r.gitFile("alias", "gitdir: "+filepath.ToSlash(linked.GitDir)+"\n")
+		}},
+		{"absolute commondir", func(t *testing.T, r *testRepo) string {
+			worktree := r.worktree("wt")
+			linked, err := Open(worktree)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(linked.GitDir, "commondir"), []byte(filepath.Join(r.root, ".git")+"\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			return worktree
+		}},
+		{"symlinked .git directory", func(t *testing.T, r *testRepo) string {
+			elsewhere := filepath.Join(filepath.Dir(r.root), "metadata")
+			if err := os.Rename(filepath.Join(r.root, ".git"), elsewhere); err != nil {
+				t.Fatal(err)
+			}
+			symlink(t, elsewhere, filepath.Join(r.root, ".git"))
+			return r.root
+		}},
+		{"dangling .git symlink", func(t *testing.T, r *testRepo) string {
+			sub := filepath.Join(r.root, "sub")
+			if err := os.Mkdir(sub, 0750); err != nil {
+				t.Fatal(err)
+			}
+			symlink(t, filepath.Join(r.root, "missing"), filepath.Join(sub, ".git"))
+			return sub
+		}},
+		{"empty .git directory", func(t *testing.T, r *testRepo) string {
+			return filepath.Dir(r.write("sub/.git/placeholder", ""))
+		}},
+		{"invalid HEAD", func(t *testing.T, r *testRepo) string {
+			r.write("sub/.git/HEAD", "garbage\n")
+			r.write("sub/.git/objects/placeholder", "")
+			r.write("sub/.git/refs/placeholder", "")
+			return filepath.Join(r.root, "sub")
+		}},
+		{"detached HEAD", func(t *testing.T, r *testRepo) string {
+			r.write("sub/.git/HEAD", strings.Repeat("0", 40)+"\n")
+			r.write("sub/.git/objects/placeholder", "")
+			r.write("sub/.git/refs/placeholder", "")
+			return filepath.Join(r.root, "sub")
+		}},
+		{"symlinked HEAD", func(t *testing.T, r *testRepo) string {
+			r.write("sub/.git/objects/placeholder", "")
+			r.write("sub/.git/refs/placeholder", "")
+			symlink(t, "refs/heads/main", filepath.Join(r.root, "sub", ".git", "HEAD"))
+			return filepath.Join(r.root, "sub")
+		}},
+		{"HEAD symlink outside refs", func(t *testing.T, r *testRepo) string {
+			r.write("sub/.git/objects/placeholder", "")
+			r.write("sub/.git/refs/placeholder", "")
+			symlink(t, "../HEAD", filepath.Join(r.root, "sub", ".git", "HEAD"))
+			return filepath.Join(r.root, "sub")
+		}},
+		{"symlinked start directory", func(t *testing.T, r *testRepo) string {
+			link := filepath.Join(filepath.Dir(r.root), "link")
+			symlink(t, filepath.Dir(r.write("a/b/file", "")), link)
+			return link
+		}},
+		{"symlink leaving the repository", func(t *testing.T, r *testRepo) string {
+			link := filepath.Join(r.root, "out")
+			symlink(t, r.mkdir("outside"), link)
+			return link
+		}},
+		{"ceiling above the repository", func(t *testing.T, r *testRepo) string {
+			t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(r.root))
+			return filepath.Dir(r.write("a/b/file", ""))
+		}},
+		{"ceiling at the repository", func(t *testing.T, r *testRepo) string {
+			t.Setenv("GIT_CEILING_DIRECTORIES", r.root)
+			return filepath.Dir(r.write("a/b/file", ""))
+		}},
+		{"ceiling with a trailing separator", func(t *testing.T, r *testRepo) string {
+			t.Setenv("GIT_CEILING_DIRECTORIES", r.root+string(filepath.Separator))
+			return filepath.Dir(r.write("a/b/file", ""))
+		}},
+		{"ceiling at the start", func(t *testing.T, r *testRepo) string {
+			start := filepath.Dir(r.write("a/b/file", ""))
+			t.Setenv("GIT_CEILING_DIRECTORIES", start)
+			return start
+		}},
+		{"ceiling list", func(t *testing.T, r *testRepo) string {
+			t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Join(r.root, "a", "b")+string(filepath.ListSeparator)+"relative"+string(filepath.ListSeparator)+filepath.Join(r.root, "a"))
+			return filepath.Dir(r.write("a/b/c/file", ""))
+		}},
+		{"ceiling through a symlink", func(t *testing.T, r *testRepo) string {
+			link := filepath.Join(filepath.Dir(r.root), "link")
+			symlink(t, r.root, link)
+			t.Setenv("GIT_CEILING_DIRECTORIES", link)
+			return filepath.Dir(r.write("a/b/file", ""))
+		}},
+		{"ceiling after an empty entry stays verbatim", func(t *testing.T, r *testRepo) string {
+			link := filepath.Join(filepath.Dir(r.root), "link")
+			symlink(t, r.root, link)
+			t.Setenv("GIT_CEILING_DIRECTORIES", string(filepath.ListSeparator)+link)
+			return filepath.Dir(r.write("a/b/file", ""))
+		}},
+		{"discovery across filesystems", func(t *testing.T, r *testRepo) string {
+			t.Setenv("GIT_DISCOVERY_ACROSS_FILESYSTEM", "true")
+			return filepath.Dir(r.write("a/b/file", ""))
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			requireMatchesGit(t, tc.setup(t, newTestRepo(t)))
+		})
+	}
+}
+
+func TestOpenGitFileErrorsMatchGit(t *testing.T) {
+	for name, content := range map[string]string{
+		"no gitdir line":   "nonsense\n",
+		"missing target":   "gitdir: elsewhere\n",
+		"trailing spaces":  "gitdir: ../repo/.git  \n",
+		"no space":         "gitdir:../repo/.git\n",
+		"capitalised":      "Gitdir: ../repo/.git\n",
+		"empty path":       "gitdir: \r\n",
+		"empty file":       "",
+		"too large":        "gitdir: ../repo/.git\n" + strings.Repeat("\n", 1<<20),
+		"not a repository": "gitdir: ../repo\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := newTestRepo(t)
+			requireMatchesGit(t, r.gitFile("other", content))
+			if _, outcome, _ := gitDiscovery(t, filepath.Join(filepath.Dir(r.root), "other")); outcome != gitFailed {
+				t.Fatalf("git outcome = %d, want a failure", outcome)
 			}
 		})
+	}
+}
+
+func TestOpenNonRegularGitFile(t *testing.T) {
+	if _, err := exec.LookPath("mkfifo"); err != nil {
+		t.Skip("mkfifo required")
+	}
+	r := newTestRepo(t)
+	other := r.mkdir("other")
+	if out, err := exec.CommandContext(t.Context(), "mkfifo", filepath.Join(other, ".git")).CombinedOutput(); err != nil {
+		t.Fatalf("mkfifo: %v: %s", err, out)
+	}
+	requireMatchesGit(t, other)
+	if repo, err := Open(other); err == nil || !strings.Contains(err.Error(), "not a regular file") {
+		t.Fatalf("Open = %+v, %v", repo, err)
+	}
+}
+
+func TestOpenEmptyCommonDir(t *testing.T) {
+	r := newTestRepo(t)
+	worktree := r.worktree("wt")
+	linked := requireMatchesGit(t, worktree)
+	if err := os.WriteFile(filepath.Join(linked.GitDir, "commondir"), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, outcome, _ := gitDiscovery(t, worktree); outcome != gitFailed {
+		t.Fatalf("git outcome = %d, want a failure", outcome)
+	}
+	requireMatchesGit(t, worktree)
+}
+
+func TestOpenRepositoryFormatMatchesGit(t *testing.T) {
+	for name, lines := range map[string]string{
+		"version 0":                              "[core]\n\trepositoryformatversion = 0\n",
+		"version 1":                              "[core]\n\trepositoryformatversion = 1\n",
+		"version 2":                              "[core]\n\trepositoryformatversion = 2\n",
+		"version with unit":                      "[core]\n\trepositoryformatversion = 1k\n",
+		"hexadecimal version":                    "[core]\n\trepositoryformatversion = 0x1\n",
+		"octal version":                          "[core]\n\trepositoryformatversion = 010\n",
+		"textual version":                        "[core]\n\trepositoryformatversion = abc\n",
+		"empty version":                          "[core]\n\trepositoryformatversion =\n",
+		"unknown extension at version 0":         "[core]\n\trepositoryformatversion = 0\n[extensions]\n\tbogus = true\n",
+		"unknown extension at version 1":         "[core]\n\trepositoryformatversion = 1\n[extensions]\n\tbogus = true\n",
+		"unknown extension at version -3":        "[core]\n\trepositoryformatversion = -3\n[extensions]\n\tbogus = true\n",
+		"sha1 at version 1":                      "[core]\n\trepositoryformatversion = 1\n[extensions]\n\tobjectformat = sha1\n",
+		"sha256 at version 0":                    "[core]\n\trepositoryformatversion = 0\n[extensions]\n\tobjectformat = sha256\n",
+		"objectformat at version -1":             "[core]\n\trepositoryformatversion = -1\n[extensions]\n\tobjectformat = bogus\n",
+		"uppercase objectformat":                 "[core]\n\trepositoryformatversion = 1\n[extensions]\n\tobjectformat = SHA1\n",
+		"refstorage with payload":                "[core]\n\trepositoryformatversion = 1\n[extensions]\n\trefstorage = files://payload\n",
+		"unknown refstorage":                     "[core]\n\trepositoryformatversion = 1\n[extensions]\n\trefstorage = bogus\n",
+		"v1 extension at version 0":              "[core]\n\trepositoryformatversion = 0\n[extensions]\n\tnoop-v1 = true\n",
+		"v1 extension at version 1":              "[core]\n\trepositoryformatversion = 1\n[extensions]\n\tnoop-v1 = true\n",
+		"v0 extensions at version 0":             "[core]\n\trepositoryformatversion = 0\n[extensions]\n\tnoop = true\n\tpartialclone = origin\n\tpreciousobjects = true\n",
+		"bad preciousobjects":                    "[extensions]\n\tpreciousobjects = maybe\n",
+		"bad worktreeconfig":                     "[extensions]\n\tworktreeconfig = maybe\n",
+		"bad relativeworktrees":                  "[core]\n\trepositoryformatversion = 1\n[extensions]\n\trelativeworktrees = maybe\n",
+		"v1 booleans":                            "[core]\n\trepositoryformatversion = 1\n[extensions]\n\trelativeworktrees = true\n\tsubmodulepathconfig = false\n",
+		"duplicate compatobjectformat":           "[core]\n\trepositoryformatversion = 1\n[extensions]\n\tcompatobjectformat = sha256\n\tcompatobjectformat = sha256\n",
+		"bad compatobjectformat":                 "[core]\n\trepositoryformatversion = 1\n[extensions]\n\tcompatobjectformat = md5\n",
+		"bad core.bare":                          "[core]\n\tbare = maybe\n",
+		"extension in a subsection at version 1": "[core]\n\trepositoryformatversion = 1\n[extensions \"sub\"]\n\tnoop = true\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := newTestRepo(t)
+			config, err := os.OpenFile(filepath.Join(r.root, ".git", "config"), os.O_APPEND|os.O_WRONLY, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := config.WriteString(lines); err != nil {
+				t.Fatal(err)
+			}
+			if err := config.Close(); err != nil {
+				t.Fatal(err)
+			}
+			requireMatchesGit(t, r.root)
+		})
+	}
+}
+
+func TestOpenWithoutConfigFile(t *testing.T) {
+	r := newTestRepo(t)
+	if err := os.Remove(filepath.Join(r.root, ".git", "config")); err != nil {
+		t.Fatal(err)
+	}
+	requireMatchesGit(t, r.root)
+}
+
+func TestOpenHookEnvironment(t *testing.T) {
+	r := newTestRepo(t)
+	start := filepath.Dir(r.write("a/file", ""))
+	want := requireMatchesGit(t, start)
+	missing := filepath.Join(t.TempDir(), "missing")
+	for _, name := range []string{"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY"} {
+		t.Setenv(name, missing)
+	}
+	got, err := Open(start)
+	if err != nil || got == nil || got.WorkTree != want.WorkTree || got.GitDir != want.GitDir || got.CommonDir != want.CommonDir {
+		t.Fatalf("Open = %+v, %v, want %+v", got, err, want)
+	}
+}
+
+func TestOpenBadDiscoveryEnvironment(t *testing.T) {
+	r := newTestRepo(t)
+	t.Setenv("GIT_DISCOVERY_ACROSS_FILESYSTEM", "maybe")
+	if _, outcome, _ := gitDiscovery(t, r.root); outcome != gitFailed {
+		t.Fatalf("git outcome = %d, want a failure", outcome)
+	}
+	requireMatchesGit(t, r.root)
+}
+
+func TestOpenStopsAtFilesystemBoundary(t *testing.T) {
+	newTestRepo(t)
+	start := realPath(t, t.TempDir())
+	device, err := deviceID(start)
+	if err != nil {
+		t.Fatal(err)
+	}
+	boundary := false
+	for dir := start; filepath.Dir(dir) != dir; dir = filepath.Dir(dir) {
+		if parent, err := deviceID(filepath.Dir(dir)); err != nil {
+			t.Fatal(err)
+		} else if parent != device {
+			boundary = true
+			break
+		}
+	}
+	if !boundary {
+		t.Skip("the temporary directory shares a filesystem with the root")
+	}
+	if _, outcome, stderr := gitDiscovery(t, start); outcome != gitAbsent || !strings.Contains(stderr, "mount point") {
+		t.Fatalf("git outcome = %d: %s", outcome, stderr)
+	}
+	requireMatchesGit(t, start)
+	t.Setenv("GIT_DISCOVERY_ACROSS_FILESYSTEM", "1")
+	requireMatchesGit(t, start)
+}
+
+func TestParseInt(t *testing.T) {
+	for _, tc := range []struct {
+		value string
+		want  int64
+	}{{"0", 0}, {" +1", 1}, {"-1", -1}, {"0x1F", 31}, {"017", 15}, {"2k", 2048}, {"1M", 1 << 20}, {"1g", 1 << 30}, {"-2g", -1 << 31}, {"2147483647", 1<<31 - 1}} {
+		if got, ok := parseInt(tc.value); !ok || got != tc.want {
+			t.Errorf("parseInt(%q) = %d, %v, want %d", tc.value, got, ok, tc.want)
+		}
+	}
+	for _, value := range []string{"", " ", "x", "0x", "1_0", "08", "2g", "2147483648", "1kk", "1 k", "99999999999999999999"} {
+		if got, ok := parseInt(value); ok {
+			t.Errorf("parseInt(%q) = %d, want a failure", value, got)
+		}
 	}
 }
 
@@ -110,29 +562,6 @@ func TestOpenExcludesFileSettings(t *testing.T) {
 	}
 }
 
-func TestOpenAbsoluteCommonDir(t *testing.T) {
-	fixture := newTestRepo(t)
-	fixture.write("file", "")
-	fixture.git("add", "file")
-	fixture.git("commit", "--quiet", "-m", "Fixture")
-	worktree := filepath.Join(t.TempDir(), "wt")
-	fixture.git("worktree", "add", "--quiet", worktree)
-	linked, err := Open(worktree)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(linked.GitDir, "commondir"), []byte(linked.CommonDir+"\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	again, err := Open(worktree)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if again.CommonDir != linked.CommonDir {
-		t.Fatalf("CommonDir = %q, want %q", again.CommonDir, linked.CommonDir)
-	}
-}
-
 func TestOpenSymlinkedGitDir(t *testing.T) {
 	fixture := newTestRepo(t)
 	fixture.write("file", "")
@@ -146,7 +575,7 @@ func TestOpenSymlinkedGitDir(t *testing.T) {
 	}
 	fixture.git("status", "--short")
 	repo := fixture.open()
-	if repo.GitDir != filepath.Join(fixture.root, ".git") {
+	if repo.GitDir != filepath.Join(realPath(t, fixture.root), ".git") {
 		t.Fatalf("GitDir = %q", repo.GitDir)
 	}
 	if got, err := repo.TrackedFiles(); err != nil || len(got) != 1 {
@@ -233,11 +662,7 @@ func (r *testRepo) probe(key string) int {
 	if err != nil {
 		return 128
 	}
-	format, err := readRepositoryFormat(filepath.Join(repo.CommonDir, "config"))
-	if err != nil {
-		return 128
-	}
-	settings, err := repo.config(format)
+	settings, err := repo.config()
 	switch _, ok := settings.last(key); {
 	case err != nil:
 		return 128
@@ -375,7 +800,7 @@ func TestOpenCommandConfigIncludesMatchGit(t *testing.T) {
 	}
 }
 
-func TestOpenRepositoryFormatMatchesGit(t *testing.T) {
+func TestOpenObjectFormatMatchesGit(t *testing.T) {
 	for name, tc := range map[string]struct {
 		global, setup string
 	}{
