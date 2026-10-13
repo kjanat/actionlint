@@ -688,44 +688,28 @@ func TestExpandedIndexPartialClone(t *testing.T) {
 			if !clone.objectMissing(oid) {
 				t.Fatal("the clone already has the out/ tree")
 			}
-			gitExpands := gitAtLeast(t, 2, 56)
-			expandsEmpty := func() {
-				t.Helper()
-				if gitExpands {
-					clone.compareIndex()
-				} else if entries, err := clone.open().ExpandedIndex(t.Context()); err != nil || len(entries) != 0 {
-					t.Fatalf("ExpandedIndex = %v, %v; want no entries", entries, err)
-				}
+			entries, err := clone.open().ExpandedIndex(t.Context())
+			if tc.lazy && (err == nil || !strings.Contains(err.Error(), "promisor remote")) {
+				t.Fatalf("ExpandedIndex = %v, %v; want the promisor remote error", entries, err)
 			}
-			_, err := clone.open().ExpandedIndex(t.Context())
-			if !tc.lazy {
-				if err != nil {
-					t.Fatal(err)
-				}
-				expandsEmpty()
-				if !clone.objectMissing(oid) {
-					t.Fatal("git fetched the out/ tree without a promisor remote")
-				}
-				return
-			}
-			if err == nil || !strings.Contains(err.Error(), "promisor remote") {
-				t.Fatalf("ExpandedIndex = %v, want the promisor remote error", err)
+			if !tc.lazy && (err != nil || len(entries) != 0) {
+				t.Fatalf("ExpandedIndex = %v, %v; want no entries", entries, err)
 			}
 			t.Setenv("GIT_NO_LAZY_FETCH", "1")
-			expandsEmpty()
-			if !clone.objectMissing(oid) {
+			if entries, err := clone.open().ExpandedIndex(t.Context()); err != nil || len(entries) != 0 {
+				t.Fatalf("ExpandedIndex with GIT_NO_LAZY_FETCH = %v, %v; want no entries", entries, err)
+			}
+			if _, _, err := gitIn(t, clone.root, "cat-file", "-t", oid); err == nil || !clone.objectMissing(oid) {
 				t.Fatal("git fetched the out/ tree with GIT_NO_LAZY_FETCH")
 			}
 			t.Setenv("GIT_NO_LAZY_FETCH", "0")
-			if gitExpands {
-				clone.git("ls-files")
-			} else {
-				clone.git("cat-file", "-t", oid)
+			_, _, err = gitIn(t, clone.root, "cat-file", "-t", oid)
+			if fetched := err == nil && !clone.objectMissing(oid); fetched != tc.lazy {
+				t.Fatalf("git fetched the out/ tree: %v, want %v", fetched, tc.lazy)
 			}
-			if clone.objectMissing(oid) {
-				t.Fatal("git did not fetch the out/ tree")
+			if tc.lazy {
+				clone.compareIndex()
 			}
-			clone.compareIndex()
 		})
 	}
 }
