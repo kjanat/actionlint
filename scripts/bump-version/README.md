@@ -81,8 +81,9 @@ git push origin master
 gh workflow run release-prepare.yml --ref master -f version=1.2.3
 ```
 
-Preparation builds a child commit containing the complete source tree, root `action.mjs`, and
-`SHA256SUMS`. The candidate commit travels in a Git bundle; its version tag exists only inside the
+Preparation builds a child commit containing the complete source tree, root `action.mjs`,
+`SHA256SUMS`, and `.pre-commit-hooks.yaml` with the Docker hook pinned to the release image.
+The candidate commit travels in a Git bundle; its version tag exists only inside the
 build job. The workflow builds archives and package manifests without publishing, tests the candidate
 on Linux, macOS and Windows, checks Nix, and tests both CLI and compatibility Action containers on
 Linux amd64 and arm64 before uploading the draft assets. Container tests load the stored OCI archives;
@@ -149,8 +150,8 @@ or an upstream specification version, are listed in the `unrelated` field of the
 The script requires each of those literals to still be present, so a stale declaration is reported
 rather than silently ignored.
 
-A rule whose pattern also accepts `nightly` lets a reference track the development image between
-releases. `-check` reports such a reference as `nightly (development)` and leaves it out of the
-release version decision; a bump replaces it with the release version like any other reference.
-The pre-commit Docker image tag in `.pre-commit-hooks.yaml` is `nightly` on `master` and reset to
-`nightly` after each release.
+A rule whose pattern captures `nightly` declares a reference to the development image. `-check`
+reports it as `nightly (development)` and leaves it out of the release version decision; a bump
+leaves it unchanged. The pre-commit Docker image tag in `.pre-commit-hooks.yaml` is `nightly` on
+`master`; release preparation pins it to the release version in the candidate commit, which the
+version tag points at.

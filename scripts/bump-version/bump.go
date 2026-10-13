@@ -177,6 +177,9 @@ func rewrite(content []byte, occs []occurrence, v version) []byte {
 	out := make([]byte, 0, len(content))
 	last := 0
 	for _, o := range occs {
+		if o.development {
+			continue
+		}
 		out = append(out, content[last:o.value.start]...)
 		out = append(out, v.String()...)
 		last = o.value.end
@@ -190,7 +193,7 @@ func (t *target) verify(content []byte, v version) error {
 		return err
 	}
 	for _, o := range occs {
-		if o.development || o.version != v {
+		if !o.development && o.version != v {
 			return fmt.Errorf(
 				"%s:%d: %s refers to %s but %s was expected",
 				t.path, lineAt(content, o.value.start), o.rule, content[o.value.start:o.value.end], v,
@@ -205,19 +208,24 @@ func (t *target) bump(content []byte, v version) ([]byte, int, error) {
 	if err != nil {
 		return nil, 0, err
 	}
+	n := 0
 	for _, o := range occs {
+		if o.development {
+			continue
+		}
 		if o.version.compare(v) > 0 {
 			return nil, 0, fmt.Errorf(
 				"%s:%d: %s refers to version %s which is newer than %s. a version bump must not go backwards",
 				t.path, lineAt(content, o.value.start), o.rule, o.version, v,
 			)
 		}
+		n++
 	}
 	updated := rewrite(content, occs, v)
 	if err := t.verify(updated, v); err != nil {
 		return nil, 0, fmt.Errorf("the update did not produce a consistent file: %w", err)
 	}
-	return updated, len(occs), nil
+	return updated, n, nil
 }
 
 func Check(root string, ts []*target, out io.Writer) (string, error) {
