@@ -122,6 +122,15 @@ var targets = []*target{
 		},
 	},
 	{
+		path: ".github/workflows/pypi-release.yml",
+		rules: []rule{
+			mustRule("PyPI workflow release tag example", `Release tag to publish \(e\.g\. v(\d+\.\d+\.\d+)\)`, 1),
+		},
+		generated: []*regexp.Regexp{
+			regexp.MustCompile(`(?m)uses: [\w.-]+/[\w./-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+\r?$`),
+		},
+	},
+	{
 		path: "distribution/npm/README.md",
 		rules: []rule{
 			mustRule("npm package build version", `INPUT_VERSION=(\d+\.\d+\.\d+)`, 1),

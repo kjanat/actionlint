@@ -1,0 +1,53 @@
+name: Build PyPI wheels
+description: Build the actionlint-kjanat wheels from release archives and run one of them in a virtual environment
+inputs:
+  version:
+    description: Release version, MAJOR.MINOR.PATCH
+    required: true
+  assets-dir:
+    description: Directory holding actionlint_<version>_checksums.txt and the release archives; empty skips the build
+    required: false
+    default: ""
+  out-dir:
+    description: Directory the wheels are written to, or already hold them when assets-dir is empty
+    required: true
+  smoke:
+    description: Platform tag of the wheel to install and run, such as manylinux_2_17_x86_64 or win_amd64
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Build the wheels
+      if: inputs.assets-dir != ''
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        ASSETS_DIR: ${{ inputs.assets-dir }}
+        OUT_DIR: ${{ inputs.out-dir }}
+      run: |
+        set -euo pipefail
+        npm ci --ignore-scripts
+        node distribution/pypi/src/cli.ts build --version "${VERSION}" --assets "${ASSETS_DIR}" --out "${OUT_DIR}"
+    - name: Install the ${{ inputs.smoke }} wheel and run actionlint -version
+      shell: pwsh
+      env:
+        VERSION: ${{ inputs.version }}
+        OUT_DIR: ${{ inputs.out-dir }}
+        SMOKE: ${{ inputs.smoke }}
+      run: |
+        $venv = Join-Path $env:RUNNER_TEMP pypi-smoke-venv
+        $python = $IsWindows ? 'python' : 'python3'
+        & $python -m venv --clear $venv
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        $bin = Join-Path $venv ($IsWindows ? 'Scripts' : 'bin')
+        $exe = $IsWindows ? '.exe' : ''
+        $wheel = Join-Path $env:OUT_DIR "actionlint_kjanat-$env:VERSION-py3-none-$env:SMOKE.whl"
+        & (Join-Path $bin "python$exe") -m pip install --no-index --no-deps $wheel
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        $version = @(& (Join-Path $bin "actionlint$exe") -version)
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        $version
+        if (-not $version[0].EndsWith(" $env:VERSION")) {
+          Write-Output "::error::actionlint -version from $wheel reported '$($version[0])', expected it to end with $env:VERSION"
+          exit 1
+        }

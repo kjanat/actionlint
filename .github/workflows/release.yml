@@ -100,6 +100,15 @@ jobs:
         with: { subject-checksums: "${{ runner.temp }}/release-assets/actionlint_${{ steps.release.outputs.version }}_checksums.txt" }
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
         with: { subject-path: "${{ runner.temp }}/release-assets/actionlint-action_${{ steps.release.outputs.version }}.mjs" }
+      - name: Detect released wheels
+        id: wheels
+        run: |
+          present=false
+          if compgen -G "${RUNNER_TEMP}/release-assets/*.whl" > /dev/null; then present=true; fi
+          echo "present=${present}" >> "${GITHUB_OUTPUT}"
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        if: steps.wheels.outputs.present == 'true'
+        with: { subject-path: "${{ runner.temp }}/release-assets/*.whl" }
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with: { name: verified-release, path: "${{ runner.temp }}/release-assets", if-no-files-found: error, compression-level: 0 }
   npm:
@@ -152,6 +161,12 @@ jobs:
           commit_email: ${{ vars.COMMIT_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: Update to ${{ github.event.release.tag_name }}
+  pypi:
+    name: Publish PyPI wheels
+    needs: verify
+    permissions: { contents: read, attestations: read, id-token: write }
+    uses: $/.github/workflows/pypi-release.yml
+    with: { tag: "${{ github.event.release.tag_name }}" }
   winget:
     name: Submit verified WinGet manifests
     needs: verify
@@ -307,10 +322,11 @@ jobs:
         uses: ./.published-action-test
   action-tags:
     name: Update moving Action references
-    needs: [verify, npm, distributions, docker, action-smoke]
+    needs: [verify, npm, distributions, pypi, docker, action-smoke]
     if: >-
       always() && needs.verify.result == 'success' && needs.npm.result == 'success' && needs.docker.result == 'success' &&
-      needs.action-smoke.result == 'success' && contains(fromJSON('["success", "skipped"]'), needs.distributions.result)
+      needs.action-smoke.result == 'success' && contains(fromJSON('["success", "skipped"]'), needs.distributions.result) &&
+      contains(fromJSON('["success", "skipped"]'), needs.pypi.result)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions: { contents: write }

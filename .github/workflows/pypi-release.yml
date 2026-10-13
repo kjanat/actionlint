@@ -1,0 +1,149 @@
+name: PyPI release
+run-name: ${{ format('PyPI {0} {1}', case(inputs.dry-run, 'dry-run', 'publish'), inputs.tag) }}
+on:
+  workflow_call:
+    inputs:
+      tag: { description: Release tag to publish, required: true, type: string }
+  workflow_dispatch:
+    inputs:
+      tag: { description: "Release tag to publish (e.g. v1.17.0)", required: true, type: string }
+      dry-run: { description: Build and smoke-test the wheels but do not publish, required: true, default: false, type: boolean }
+
+permissions: { contents: read }
+
+concurrency:
+  group: "pypi-release-${{ inputs.tag }}"
+  cancel-in-progress: false
+
+defaults: { run: { shell: "bash --noprofile --norc -eo pipefail {0}" } }
+env: { RELEASE_TAG: "${{ inputs.tag }}" }
+
+jobs:
+  build:
+    name: Collect and smoke-test the wheels
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions: { contents: read, attestations: read }
+    outputs: { version: "${{ steps.release.outputs.version }}" }
+    steps:
+      - name: Check the release tag
+        id: release
+        run: |
+          [[ "${RELEASE_TAG}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          echo "version=${RELEASE_TAG#v}" >> "${GITHUB_OUTPUT}"
+      - uses: &Checkout actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { fetch-depth: 0, persist-credentials: false }
+      - uses: *Checkout
+        if: &Manual ${{ github.event_name == 'workflow_dispatch' && contains(github.workflow_ref, '/.github/workflows/pypi-release.yml@') && !inputs.dry-run }}
+        with: { ref: "refs/tags/${{ inputs.tag }}", path: .release-tag, fetch-depth: 0, persist-credentials: false }
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version-file: .node-version, package-manager-cache: false }
+      - name: Verify release before manual publishing
+        if: *Manual
+        working-directory: .release-tag
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          published="$(gh release view --repo "${GITHUB_REPOSITORY}" --json isDraft,publishedAt \
+            --jq '(.isDraft == false) and (.publishedAt != null)' -- "${RELEASE_TAG}")"
+          if [[ "${published}" != true ]]; then
+            echo '::error::Manual PyPI publishing requires a published GitHub release.'
+            exit 1
+          fi
+          object="$(git rev-parse "refs/tags/${RELEASE_TAG}")"
+          object_type="$(git cat-file -t "${object}")"
+          test "${object_type}" = tag
+          tag_object="$(git cat-file -p "${object}")"
+          grep -q -- '-----BEGIN PGP SIGNATURE-----' <<< "${tag_object}"
+          verified="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${object}" --jq '.verification.verified')"
+          test "${verified}" = true
+          tag_commit="$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")"
+          head_commit="$(git rev-parse HEAD)"
+          test "${tag_commit}" = "${head_commit}"
+      - name: Detect whether the release carries wheels
+        id: source
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          names="$(gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --json assets --jq '.assets[].name')"
+          wheels=false
+          if grep -q '\.whl$' <<< "${names}"; then wheels=true; fi
+          echo "wheels=${wheels}" >> "${GITHUB_OUTPUT}"
+          echo "${RELEASE_TAG} carries wheels: ${wheels}"
+
+      - name: Verify the released wheels against the release candidate manifest
+        if: steps.source.outputs.wheels == 'true'
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          assets="${RUNNER_TEMP}/candidate-assets"
+          gh release download "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --dir "${assets}"
+          manifest_tag="$(jq -r .tag "${assets}/release-candidate.json")"
+          test "${manifest_tag}" = "${RELEASE_TAG}"
+          manifest_commit="$(jq -r .candidate "${assets}/release-candidate.json")"
+          tag_commit="$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")"
+          test "${manifest_commit}" = "${tag_commit}"
+          node scripts/release-candidate.mjs verify --directory "${assets}"
+          mkdir -p distribution/pypi/dist
+          cp -- "${assets}"/*.whl distribution/pypi/dist/
+      - name: Verify the build provenance of every released wheel
+        if: steps.source.outputs.wheels == 'true'
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          for wheel in distribution/pypi/dist/*.whl; do
+            gh attestation verify --repo "${GITHUB_REPOSITORY}" "${wheel}"
+          done
+      - uses: $/.github/actions/pypi-wheels
+        if: steps.source.outputs.wheels == 'true'
+        with: { version: "${{ steps.release.outputs.version }}", out-dir: "${{ github.workspace }}/distribution/pypi/dist", smoke: manylinux_2_17_x86_64 }
+
+      - name: Download the release archives and check them against the release checksums
+        if: steps.source.outputs.wheels == 'false'
+        env: { GH_TOKEN: "${{ github.token }}", VERSION: "${{ steps.release.outputs.version }}" }
+        run: |
+          gh release download "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --dir "${RUNNER_TEMP}/release-assets" \
+            --pattern "actionlint_${VERSION}_*"
+          cd "${RUNNER_TEMP}/release-assets"
+          sha256sum --check --ignore-missing --strict "actionlint_${VERSION}_checksums.txt"
+      - name: Verify the build provenance of every archive
+        if: steps.source.outputs.wheels == 'false'
+        env: { GH_TOKEN: "${{ github.token }}", VERSION: "${{ steps.release.outputs.version }}" }
+        run: |
+          for archive in "${RUNNER_TEMP}/release-assets/actionlint_${VERSION}_"*.{tar.gz,zip}; do
+            gh attestation verify --repo "${GITHUB_REPOSITORY}" "${archive}"
+          done
+      - name: Verify the release candidate manifest when the release has one
+        if: ${{ steps.source.outputs.wheels == 'false' && github.event_name == 'workflow_dispatch' && contains(github.workflow_ref, '/.github/workflows/pypi-release.yml@') && !inputs.dry-run }}
+        working-directory: .release-tag
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          names="$(gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --json assets --jq '.assets[].name')"
+          if ! grep -qx release-candidate.json <<< "${names}"; then
+            echo "::notice::${RELEASE_TAG} predates the release candidate pipeline and has no release-candidate.json."
+            exit 0
+          fi
+          gh release download "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --dir "${RUNNER_TEMP}/candidate-assets"
+          node scripts/release-candidate.mjs verify --directory "${RUNNER_TEMP}/candidate-assets"
+      - uses: $/.github/actions/pypi-wheels
+        if: steps.source.outputs.wheels == 'false'
+        with:
+          version: ${{ steps.release.outputs.version }}
+          assets-dir: ${{ runner.temp }}/release-assets
+          out-dir: ${{ github.workspace }}/distribution/pypi/dist
+          smoke: manylinux_2_17_x86_64
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with: { name: pypi-wheels, path: distribution/pypi/dist/*.whl, if-no-files-found: error, retention-days: 7 }
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    if: ${{ !inputs.dry-run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: { contents: read, id-token: write }
+    environment:
+      name: pypi
+      url: https://pypi.org/project/actionlint-kjanat/${{ needs.build.outputs.version }}/
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with: { name: pypi-wheels, path: dist }
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with: { packages-dir: dist, skip-existing: true }
