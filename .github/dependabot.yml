@@ -6,6 +6,7 @@ updates:
     directory: /
     schedule: { interval: monthly }
     groups: { "GitHub Actions": { patterns: ["*"] } }
+    labels: [dependencies, github-actions]
   - package-ecosystem: gomod
     directory: /
     schedule: { interval: monthly }
@@ -15,7 +16,7 @@ updates:
     schedule: { interval: monthly }
     groups: { “npm modules”: { patterns: ["*"] } }
     ignore:
-      - { dependency-name: "typescript", versions: ["^7"] }
+      - dependency-name: typescript
       # GitHub Actions branding uses Feather 4.28.0.
       - dependency-name: feather-icons
   - package-ecosystem: docker
