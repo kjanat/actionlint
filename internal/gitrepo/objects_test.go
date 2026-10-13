@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -807,5 +808,38 @@ func TestFetchesMissingObjects(t *testing.T) {
 				t.Fatalf("fetchesMissingObjects = %v, %v; want %v", got, err, tc.want)
 			}
 		})
+	}
+}
+
+func TestParseAlternatesRootedEntries(t *testing.T) {
+	root := t.TempDir()
+	resolved := realPath(root)
+	rooted := `\rooted`
+	if runtime.GOOS == "windows" {
+		rooted = resolved[len(filepath.VolumeName(resolved)):] + `\rooted`
+		if err := os.Mkdir(filepath.Join(resolved, "rooted"), 0o750); err != nil {
+			t.Fatal(err)
+		}
+	} else if err := os.Mkdir(filepath.Join(root, rooted), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	got := parseAlternates(rooted, '\n', resolved)
+	if len(got) != 1 {
+		t.Fatalf("parseAlternates(%q) = %q", rooted, got)
+	}
+	want := filepath.Join(resolved, rooted)
+	if runtime.GOOS == "windows" {
+		want = filepath.Join(resolved, "rooted")
+	}
+	gotInfo, err := os.Stat(got[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantInfo, err := os.Stat(want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(gotInfo, wantInfo) {
+		t.Fatalf("parseAlternates(%q) = %q, want %q", rooted, got[0], want)
 	}
 }

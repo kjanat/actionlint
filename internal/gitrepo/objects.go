@@ -129,7 +129,7 @@ func parseAlternates(data string, separator byte, base string) []string {
 		if entry == "" {
 			continue
 		}
-		if !filepath.IsAbs(entry) {
+		if !isAbsolutePath(entry) {
 			entry = base + "/" + entry
 		}
 		if resolved, err := filepath.EvalSymlinks(entry); err == nil {
