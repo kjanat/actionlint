@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -1271,6 +1272,15 @@ func TestOpenNegativeFormatVersionsMatchGit(t *testing.T) {
 				fixture.git("config", "core.worktree", filepath.ToSlash(elsewhere))
 			}
 			repo := fixture.open()
+			if bare := repo.WorkTree == ""; tc.version == "-2" && bare != tc.bare {
+				t.Fatalf("bare = %v, want %v", bare, tc.bare)
+			}
+			if tc.version == "-2" && tc.worktree && !os.SameFile(statPath(t, repo.WorkTree), statPath(t, elsewhere)) {
+				t.Fatalf("work tree = %s, want %s", repo.WorkTree, elsewhere)
+			}
+			if tc.version == "-2" && !gitAtLeast(t, 2, 56) {
+				return
+			}
 			theirsBare, _, err := gitIn(t, fixture.root, "rev-parse", "--is-bare-repository")
 			if err != nil {
 				t.Fatal(err)
@@ -1285,9 +1295,43 @@ func TestOpenNegativeFormatVersionsMatchGit(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if ours := filepath.ToSlash(resolvedPath(t, repo.WorkTree)); ours != filepath.ToSlash(resolvedPath(t, theirs)) {
-				t.Fatalf("work tree: ours %s, git %s", ours, theirs)
+			if !os.SameFile(statPath(t, repo.WorkTree), statPath(t, theirs)) {
+				t.Fatalf("work tree: ours %s, git %s", repo.WorkTree, theirs)
 			}
 		})
 	}
+}
+
+func statPath(t *testing.T, path string) os.FileInfo {
+	t.Helper()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return info
+}
+
+func gitAtLeast(t *testing.T, major, minor int) bool {
+	t.Helper()
+	out, err := exec.CommandContext(t.Context(), "git", "--version").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	version, ok := strings.CutPrefix(strings.TrimSpace(string(out)), "git version ")
+	if !ok {
+		t.Fatalf("git --version = %q", out)
+	}
+	parts := strings.Split(version, ".")
+	if len(parts) < 2 {
+		t.Fatalf("git --version = %q", out)
+	}
+	gotMajor, err := strconv.Atoi(parts[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotMinor, err := strconv.Atoi(parts[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	return gotMajor > major || gotMajor == major && gotMinor >= minor
 }
