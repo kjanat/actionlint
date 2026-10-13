@@ -189,12 +189,12 @@ func (i *Index) ForRoot(root string) (Names, error) {
 		load = sync.OnceValues(func() (Names, error) {
 			names := Names{Values: map[string]bool{}, Complete: true}
 			dir := filepath.Join(root, ".github", "workflows")
-			if i.OnDirectory != nil {
-				i.OnDirectory(dir)
-			}
 			entries, err := os.ReadDir(dir)
 			if err != nil && !errors.Is(err, os.ErrNotExist) {
 				names.Complete = false
+			}
+			if err == nil && i.OnDirectory != nil {
+				i.OnDirectory(dir)
 			}
 			var candidates []string
 			for _, entry := range entries {

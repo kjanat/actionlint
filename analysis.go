@@ -196,7 +196,6 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		if err := ctx.Err(); err != nil {
 			return "", false, err
 		}
-		inputs.add(path)
 		content, ok := sourceContents[filepath.Clean(path)]
 		if !ok {
 			var err error
@@ -205,6 +204,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 				return "", false, err
 			}
 		}
+		inputs.add(path)
 		workflow, errs := Parse(content)
 		if workflow == nil || len(errs) > 0 {
 			return "", false, nil

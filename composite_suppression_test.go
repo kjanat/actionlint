@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -90,8 +91,13 @@ func TestInvalidLocalActionSuppressionSourceCache(t *testing.T) {
 					t.Fatalf("attempt %d lost raw metadata source: %v", attempt, view.usedSources)
 				}
 			}
-			if len(inputs) != 1 || inputs[0] != path {
-				t.Fatalf("metadata inputs changed on cached lookup: %v", inputs)
+			want := []string{path}
+			if strings.Contains(spec, "INNER") {
+				want = append(want, root)
+			}
+			slices.Sort(want)
+			if got := slices.Compact(slices.Sorted(slices.Values(inputs))); !slices.Equal(got, want) {
+				t.Fatalf("metadata inputs = %q, want %q", got, want)
 			}
 		})
 	}

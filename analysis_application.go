@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -189,14 +190,14 @@ func (a *AnalysisSession) Repository(dir string) (*AnalysisResult, error) {
 		return nil, err
 	}
 	if project == nil {
-		if found, expected := projectpath.WorkflowTypo(dir); found != "" {
+		if found, expected := projectpath.WorkflowTypo(dir, nil); found != "" {
 			return nil, fmt.Errorf("no workflows directory was found: %q looks misspelled; rename it to %q", found, expected)
 		}
 		return nil, fmt.Errorf("no project was found in any parent directories of %q. run actionlint inside a Git repository or provide explicit file paths", dir)
 	}
 	a.selectionLog("Detected project:", project.RootDir())
 	if _, err := os.Stat(project.WorkflowsDir()); os.IsNotExist(err) {
-		if found, expected := projectpath.WorkflowTypo(dir); found != "" {
+		if found, expected := projectpath.WorkflowTypo(dir, nil); found != "" {
 			return nil, fmt.Errorf("no workflows directory was found: %q looks misspelled; rename it to %q", found, expected)
 		}
 	}
@@ -207,7 +208,7 @@ func (a *AnalysisSession) Repository(dir string) (*AnalysisResult, error) {
 	}
 	if len(paths) == 0 {
 		a.filesSelected(paths)
-		if found, expected := projectpath.WorkflowTypo(dir); found != "" {
+		if found, expected := projectpath.WorkflowTypo(dir, nil); found != "" {
 			return nil, fmt.Errorf("no workflows directory was found: %q looks misspelled; rename it to %q", found, expected)
 		}
 		return nil, fmt.Errorf("no workflow or action files were found in %q", project.RootDir())
@@ -216,7 +217,8 @@ func (a *AnalysisSession) Repository(dir string) (*AnalysisResult, error) {
 }
 
 func (a *AnalysisSession) directory(dir string, project *Project) (*AnalysisResult, error) {
-	paths, err := workflowPaths(dir)
+	listed := &inputFiles{}
+	paths, err := workflowPaths(dir, listed.add)
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +226,7 @@ func (a *AnalysisSession) directory(dir string, project *Project) (*AnalysisResu
 		a.filesSelected(paths)
 		return nil, fmt.Errorf("no YAML file was found in %q", dir)
 	}
-	return a.discoveredFiles(paths, nil, project)
+	return a.discoveredFiles(paths, listed.list(), project)
 }
 
 func (a *AnalysisSession) discoveredFiles(paths, metadata []string, project *Project) (*AnalysisResult, error) {
@@ -255,7 +257,7 @@ func repositoryPaths(ctx context.Context, project *Project, onRead func(path str
 	}
 	workflows := project.WorkflowsDir()
 	if _, err := os.Stat(workflows); err == nil {
-		files, err := workflowPaths(workflows)
+		files, err := workflowPaths(workflows, onRead)
 		if err != nil {
 			return nil, err
 		}
@@ -267,13 +269,19 @@ func repositoryPaths(ctx context.Context, project *Project, onRead func(path str
 	return slices.Compact(paths), nil
 }
 
-func workflowPaths(dir string) ([]string, error) {
+func workflowPaths(dir string, onDirectory func(string)) ([]string, error) {
 	paths := []string{}
-	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	if err := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if !info.IsDir() && (strings.HasSuffix(path, ".yml") || strings.HasSuffix(path, ".yaml")) {
+		if entry.IsDir() {
+			if onDirectory != nil {
+				onDirectory(path)
+			}
+			return nil
+		}
+		if strings.HasSuffix(path, ".yml") || strings.HasSuffix(path, ".yaml") {
 			paths = append(paths, path)
 		}
 		return nil

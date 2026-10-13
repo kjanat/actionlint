@@ -92,6 +92,7 @@ func builtinRuleDescriptors() []ruleDescriptor {
 			rule.paths = runPaths{workspace: c.projectRoot, analysis: c.workingDir}
 			if c.inputs != nil {
 				rule.onInput = c.inputs.add
+				rule.paths.onRead = c.inputs.add
 			}
 			return rule, nil
 		}, enabled: func(c ruleContext) bool {

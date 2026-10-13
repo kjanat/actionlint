@@ -46,7 +46,7 @@ func (c *LocalActionsCache) findRepositoryMetadata(spec string, certain bool) (*
 	}
 	explicit := c.base.hasExplicitAction(spec)
 	if c.caseInsensitive && c.base.proj != nil && !c.base.customReader && !explicit {
-		local, err := caseInsensitiveRepositoryPathChecked(c.base.proj.RootDir(), spec)
+		local, err := caseInsensitiveRepositoryPathChecked(c.base.proj.RootDir(), spec, c.base.onRead)
 		if err != nil {
 			if mapped {
 				if errors.Is(err, os.ErrNotExist) {
@@ -101,12 +101,12 @@ func missingMappedLocalAction(alias, source string) error {
 
 // Use on-disk spelling for cache keys and diagnostics, even on a Linux host.
 // Multiple case-equivalent entries cannot identify a unique runner action.
-func caseInsensitiveRepositoryPath(root, spec string) (string, bool) {
-	local, err := caseInsensitiveRepositoryPathChecked(root, spec)
+func caseInsensitiveRepositoryPath(root, spec string, onRead func(string)) (string, bool) {
+	local, err := caseInsensitiveRepositoryPathChecked(root, spec, onRead)
 	return local, err == nil
 }
 
-func caseInsensitiveRepositoryPathChecked(root, spec string) (string, error) {
+func caseInsensitiveRepositoryPathChecked(root, spec string, onRead func(string)) (string, error) {
 	dir := root
 	for component := range strings.SplitSeq(strings.TrimPrefix(spec, "./"), "/") {
 		if component == "" || component == "." || component == ".." {
@@ -116,6 +116,9 @@ func caseInsensitiveRepositoryPathChecked(root, spec string) (string, error) {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
 			return "", err
+		}
+		if onRead != nil {
+			onRead(dir)
 		}
 		match := ""
 		for _, entry := range entries {

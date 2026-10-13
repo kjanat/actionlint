@@ -31,6 +31,7 @@ type runPaths struct {
 	actionIndependent bool
 	placements        *checkoutPlacement
 	caseInsensitive   bool
+	onRead            func(string)
 }
 
 func workingDirectoryValue(value *String) runDirectory {
@@ -213,7 +214,7 @@ func (paths runPaths) analysisPath(value string) (string, bool) {
 		}
 	}
 	if caseInsensitive && filepath.IsLocal(relativePath) {
-		canonical, known := caseInsensitiveRepositoryPath(paths.workspace, filepath.ToSlash(relativePath))
+		canonical, known := caseInsensitiveRepositoryPath(paths.workspace, filepath.ToSlash(relativePath), paths.onRead)
 		if !known {
 			return "", false
 		}

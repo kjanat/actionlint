@@ -237,7 +237,7 @@ func TestAnalysisSelectedConfigInput(t *testing.T) {
 			if err := os.WriteFile(workflow, []byte(commandGoodWorkflow), 0600); err != nil {
 				t.Fatal(err)
 			}
-			want := []string{workflow, root, filepath.Join(root, ".github")}
+			want := []string{workflow, root, filepath.Join(root, ".github"), filepath.Join(root, ".github", "workflows")}
 			for _, name := range names {
 				if err := os.WriteFile(filepath.Join(root, ".github", name), []byte("{}\n"), 0600); err != nil {
 					t.Fatal(err)

@@ -64,6 +64,9 @@ func (rule *RuleExecutableBit) VisitJobPre(job *Job) error {
 	}
 	rule.executableState = newExecutableState(knownHostedRunner(job.RunsOn), rule.callerRepositoryUnknown)
 	rule.paths = runPaths{workspace: rule.context.projectRoot, analysis: rule.context.workingDir, platform: runnerPlatform(job.RunsOn)}
+	if rule.context.inputs != nil {
+		rule.paths.onRead = rule.context.inputs.add
+	}
 	return nil
 }
 
