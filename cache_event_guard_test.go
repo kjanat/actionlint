@@ -92,12 +92,13 @@ func TestCachePolicyInheritedEventUnion(t *testing.T) {
 		{"true", "github.event_name == 'pull_request'"},
 		{"github.event_name == 'pull_request_target'", "github.event_name == 'issue_comment'"},
 	} {
-		source := "on: [pull_request, pull_request_target, issue_comment]\ncache-mode: write\njobs:\n"
+		var source strings.Builder
+		source.WriteString("on: [pull_request, pull_request_target, issue_comment]\ncache-mode: write\njobs:\n")
 		for i, condition := range conditions {
-			source += "  job" + string(rune('a'+i)) + ":\n    if: " + condition + "\n" + cachePolicySteps
+			source.WriteString("  job" + string(rune('a'+i)) + ":\n    if: " + condition + "\n" + cachePolicySteps)
 		}
 		var findings []*Error
-		for _, finding := range lintCachePolicy(t, source, "") {
+		for _, finding := range lintCachePolicy(t, source.String(), "") {
 			if finding.Kind == "cache-write-untrusted" {
 				findings = append(findings, finding)
 			}
