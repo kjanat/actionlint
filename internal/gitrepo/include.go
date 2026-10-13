@@ -222,11 +222,11 @@ func matchIncludePath(subject pathPair, pattern, configFile string, icase bool) 
 	case (strings.HasPrefix(pattern, "./") || strings.HasPrefix(pattern, `.\`)) && configFile == "":
 		return true, nil
 	case strings.HasPrefix(pattern, "./") || strings.HasPrefix(pattern, `.\`):
-		dir, err := filepath.EvalSymlinks(filepath.Dir(configFile))
+		resolved, err := filepath.EvalSymlinks(configFile)
 		if err != nil {
 			return false, err
 		}
-		prefix = filepath.ToSlash(dir) + "/"
+		prefix = filepath.ToSlash(filepath.Dir(resolved)) + "/"
 		pattern = prefix + pattern[2:]
 	case !isAbsolutePath(pattern):
 		pattern = "**/" + pattern

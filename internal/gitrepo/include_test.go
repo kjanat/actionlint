@@ -414,3 +414,27 @@ func TestLoadConfigReftableHead(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadConfigSymlinkedConfigDotConditions(t *testing.T) {
+	fixture := newTestRepo(t)
+	base := filepath.Dir(fixture.root)
+	target := filepath.Join(base, "gitconfig")
+	writeConfig(t, filepath.Join(base, "dot"), "[core]\n\tdot = 1\n")
+	writeConfig(t, target, "[includeIf \"gitdir:./repo/\"]\n\tpath = "+filepath.ToSlash(filepath.Join(base, "dot"))+"\n")
+	link := filepath.Join(fixture.home, "gitconfig")
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	t.Setenv("GIT_CONFIG_GLOBAL", link)
+	settings, err := fixture.open().config()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, ours := settings["core.dot"]
+	if theirs := fixture.gitBool("config", "--get", "core.dot"); ours != theirs {
+		t.Fatalf("gitdir:./ from a symlinked config: included by us %v, by git %v", ours, theirs)
+	}
+	if !ours {
+		t.Fatal("gitdir:./ was not anchored at the config symlink's target")
+	}
+}
