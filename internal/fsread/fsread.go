@@ -81,6 +81,9 @@ func (r *Reader) ReadDir(path string) ([]fs.DirEntry, error) {
 }
 
 func (r *Reader) WalkDir(root string, fn fs.WalkDirFunc) error {
+	if err := r.ctx.Err(); err != nil {
+		return err
+	}
 	info, err := os.Lstat(root)
 	if err != nil {
 		err = fn(root, nil, err)

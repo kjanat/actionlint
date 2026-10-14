@@ -94,6 +94,8 @@ check_input scripts/generate-action-metadata/main.go true false
 check_input scripts/generate-webhook-events/main.go true false
 check_input scripts/generate-availability/main.go true false
 check_input popular_actions.go true false
+check_input internal/actioncatalog/popular_actions.json true false
+check_input internal/actioncatalog/catalog.go true false
 check_input docs/screenshots/demo-workflow.yaml false true
 check_input docs/screenshots/actionlint.yaml false true
 check_input scripts/check-readme/main.go false true

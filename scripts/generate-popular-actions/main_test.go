@@ -115,7 +115,7 @@ func TestWriteGoChunksLargeCatalogues(t *testing.T) {
 				t.Fatalf("%d actions: want %d initializer chunks, got %d", count, chunks, got)
 			}
 			for i := range chunks {
-				call := fmt.Sprintf("range popularActionsChunk%d()", i)
+				call := fmt.Sprintf("maps.Copy(actions, popularActionsChunk%d())", i)
 				if got := strings.Count(code, call); got != 1 {
 					t.Errorf("initializer must call %s once, got %d", call, got)
 				}

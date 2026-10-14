@@ -62,7 +62,7 @@ jobs:
           branch: ci/go-generate
           delete-branch: true
           add-paths: |
-            popular_actions.go
+            internal/actioncatalog/popular_actions.json
             all_webhooks.go
             availability.go
             action_metadata_availability.go

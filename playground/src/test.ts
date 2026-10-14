@@ -68,6 +68,30 @@ describe('errorRange', () => {
 	});
 });
 
+describe('catalogue startup', () => {
+	for (const data of [undefined, '{"version":1}']) {
+		it(`refuses ${data === undefined ? 'missing' : 'mismatched'} metadata before exposing linting`, async () => {
+			delete window.runActionlint;
+			window.actionlintCatalogue = data;
+			let message = '';
+			let enabled = false;
+			window.showError = value => {
+				message = value;
+			};
+			window.dismissLoading = () => {
+				enabled = true;
+			};
+			const go = new Go();
+			const bin = await fs.readFile('./public/main.wasm');
+			const result = await WebAssembly.instantiate(bin.buffer, go.importObject);
+			await go.run(result.instance);
+			assert.match(message, /action catalogue/);
+			assert.equal(enabled, false, 'failed catalogue must not enable the editor');
+			assert.equal(window.runActionlint, undefined, 'failed catalogue must not expose linting');
+		});
+	}
+});
+
 describe('source', () => {
 	function encode(bytes: Uint8Array): string {
 		return Buffer.from(bytes).toString('base64');
@@ -168,7 +192,10 @@ jobs:
 		window.onCheckCompleted = results.onCheckCompleted.bind(results);
 
 		const go = new Go();
+		window.actionlintCatalogue = await fs.readFile('../internal/actioncatalog/popular_actions.json', 'utf8');
 		const bin = await fs.readFile('./public/main.wasm');
+		const catalogue = await fs.readFile('../internal/actioncatalog/popular_actions.json');
+		assert.equal(bin.includes(catalogue), false, 'site WASM must not embed the JSON catalogue');
 		const result = await WebAssembly.instantiate(bin.buffer, go.importObject);
 
 		// This promise is never settled, so it must not be awaited.
@@ -215,6 +242,19 @@ jobs:
 		// Columns 5 to 7 are "foo", the range the editor underlines.
 		assert.equal(err.endColumn, 7, `end column is unexpected: ${json}`);
 		assert.equal(err.kind, 'events', `kind is unexpected: ${json}`);
+	});
+
+	it('validates action inputs using the separately loaded catalogue', async () => {
+		assert.ok(window.runActionlint);
+		results.reset();
+		window.runActionlint(
+			'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v7\n        with:\n          definitely-not-an-input: true\n',
+		);
+		const errors = await results.waitCheckCompleted();
+		const metadataErrors = errors.filter(error =>
+			error.kind === 'action' && error.message.includes('definitely-not-an-input')
+		);
+		assert.equal(metadataErrors.length, 1, JSON.stringify(errors));
 	});
 
 	it('reports no error by running actionlint with runActionlint', async () => {

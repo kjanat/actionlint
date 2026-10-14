@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Store bundled action metadata in a versioned JSON catalogue with shared definitions and a JSON Schema for editor support. Preserve existing action validation and mutable Go API entries.
+
 - Install ShellCheck for the `actionlint-shellcheck` pre-commit hook through `github.com/kjanat/shellcheck-rs/go/cmd/shellcheck`, a Go installer that downloads and runs the native rshellcheck release, in place of go-shellcheck, which compiled a WASM build of ShellCheck in every process actionlint spawned. With `gh` signed in, the installer verifies the release's build provenance before installing. rshellcheck's own diagnostics, such as SC9001 and SC9002, pass through unchanged. (kjanat/actionlint#89)
 
 - Honour `.gitignore`, `.git/info/exclude` and the global Git excludes file when discovering `action.yml` and `action.yaml` manifests inside a repository, including Git worktrees. Discovery asks `git` 2.8 or newer which paths its ignore rules exclude. Tracked manifests inside ignored directories stay discovered. Discovery fails when `git` is missing or warns about an incomplete listing. Discovery walks the directory tree outside a repository. `files.excludes` remains the explicit override. The Docker image now includes `git`. (kjanat/actionlint#274)

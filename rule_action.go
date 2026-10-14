@@ -442,9 +442,9 @@ func (rule *RuleAction) checkRepoAction(spec string, exec *ExecAction) {
 		rule.invalidActionFormat(exec.Uses.Pos, spec, "owner and repo and ref should not be empty")
 	}
 
-	meta, ok := PopularActions[spec]
-	if !ok {
-		if _, ok := OutdatedPopularActionSpecs[spec]; ok {
+	meta, retired := lookupPopularAction(spec)
+	if meta == nil {
+		if retired {
 			rule.Errorf(exec.Uses.Pos, "the runtime or service used by %q action is retired on GitHub.com. update the action's version to fix this issue", spec)
 			return
 		}

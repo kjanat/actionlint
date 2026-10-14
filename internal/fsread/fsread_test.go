@@ -201,7 +201,13 @@ func TestReaderCancelled(t *testing.T) {
 	_, openErr := reader.Open(filepath.Join(root, "top.txt"))
 	_, dirErr := reader.ReadDir(root)
 	walkErr := reader.WalkDir(root, func(path string, entry fs.DirEntry, err error) error { return err })
-	for name, err := range map[string]error{"ReadFile": readErr, "Open": openErr, "ReadDir": dirErr, "WalkDir": walkErr} {
+	missingErr := reader.WalkDir(filepath.Join(root, "absent"), func(path string, entry fs.DirEntry, err error) error {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		return err
+	})
+	for name, err := range map[string]error{"ReadFile": readErr, "Open": openErr, "ReadDir": dirErr, "WalkDir": walkErr, "WalkDir of a missing root": missingErr} {
 		if !errors.Is(err, context.Canceled) {
 			t.Errorf("%s = %v, want context.Canceled", name, err)
 		}

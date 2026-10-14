@@ -8,6 +8,7 @@ interface ActionlintError {
 }
 
 interface Window {
+	actionlintCatalogue?: string;
 	runActionlint?(src: string): void;
 	getYamlSource(): string;
 	showError(msg: string): void;
@@ -21,3 +22,8 @@ declare class Go {
 }
 
 declare module '*wasm_exec.js';
+
+declare module '*?url' {
+	const url: string;
+	export default url;
+}

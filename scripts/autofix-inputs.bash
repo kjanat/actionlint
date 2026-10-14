@@ -11,7 +11,7 @@ git diff --name-only --no-renames -z "$1" "$2" -- | {
 				tables=true
 				readme=true
 				;;
-			action_metadata.go | action_metadata_availability.go | action_runtime.go | action_runtimes.go | all_webhooks.go | availability.go | popular_actions.go | rule_events.go | rule_expression.go | scripts/generate-action-metadata/* | scripts/generate-popular-actions/* | scripts/generate-webhook-events/* | scripts/generate-availability/*)
+			action_metadata.go | action_metadata_availability.go | action_runtime.go | action_runtimes.go | all_webhooks.go | availability.go | popular_actions.go | internal/actioncatalog/* | rule_events.go | rule_expression.go | scripts/generate-action-metadata/* | scripts/generate-popular-actions/* | scripts/generate-webhook-events/* | scripts/generate-availability/*)
 				tables=true
 				;;
 			.mise.toml | README.md | docs/screenshots/* | scripts/check-readme/*)

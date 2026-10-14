@@ -2038,7 +2038,7 @@ can check popular actions without fetching any `action.yml` of the actions from 
 Note that it only supports the case of specifying major versions like `actions/checkout@v7`. Fixing version of action like
 `actions/checkout@v7.0.1` and using the HEAD of action like `actions/checkout@main` are not supported for now.
 
-So far, actionlint supports more than 100 popular actions The data set is embedded at [`popular_actions.go`](../popular_actions.go)
+Actionlint bundles metadata for popular actions in [`popular_actions.json`](../internal/actioncatalog/popular_actions.json)
 and were automatically collected by [a script][generate-popular-actions]. If you want more checks for other actions, please
 make a request [as an issue][issue-form].
 
