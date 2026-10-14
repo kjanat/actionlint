@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -35,13 +36,16 @@ func workspaceWith(t *testing.T, files map[string]string) string {
 	dir := resolved(t, t.TempDir())
 	for name, content := range files {
 		if name == ".git" {
-			content = "ref: refs/heads/main\n"
-			name = ".git/HEAD"
-			for _, sub := range []string{"objects", "refs"} {
-				if err := os.MkdirAll(filepath.Join(dir, ".git", sub), 0o755); err != nil {
-					t.Fatal(err)
+			command := exec.CommandContext(t.Context(), "git", "init", "--quiet", dir)
+			for _, entry := range os.Environ() {
+				if name, _, _ := strings.Cut(entry, "="); !strings.HasPrefix(name, "GIT_") {
+					command.Env = append(command.Env, entry)
 				}
 			}
+			if out, err := command.CombinedOutput(); err != nil {
+				t.Fatalf("git init: %v: %s", err, out)
+			}
+			continue
 		}
 		path := filepath.Join(dir, filepath.FromSlash(name))
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

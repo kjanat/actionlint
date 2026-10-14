@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"os"
-	"path/filepath"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -17,13 +17,14 @@ type commandTranscript struct {
 
 func gitRepository(t *testing.T, dir string) {
 	t.Helper()
-	for _, path := range []string{"objects", "refs"} {
-		if err := os.MkdirAll(filepath.Join(dir, ".git", path), 0o700); err != nil {
-			t.Fatal(err)
+	command := exec.CommandContext(t.Context(), "git", "init", "--quiet", dir)
+	for _, entry := range os.Environ() {
+		if name, _, _ := strings.Cut(entry, "="); !strings.HasPrefix(name, "GIT_") {
+			command.Env = append(command.Env, entry)
 		}
 	}
-	if err := os.WriteFile(filepath.Join(dir, ".git", "HEAD"), []byte("ref: refs/heads/main\n"), 0o600); err != nil {
-		t.Fatal(err)
+	if out, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
 	}
 }
 

@@ -27,11 +27,14 @@ func writeShellcheckFixture(t *testing.T, root, name, content string) string {
 
 func writeGitRepository(t *testing.T, root string) {
 	t.Helper()
-	writeShellcheckFixture(t, root, ".git/HEAD", "ref: refs/heads/main\n")
-	for _, dir := range []string{"objects", "refs"} {
-		if err := os.MkdirAll(filepath.Join(root, ".git", dir), 0o700); err != nil {
-			t.Fatal(err)
+	command := exec.CommandContext(t.Context(), "git", "init", "--quiet", root)
+	for _, entry := range os.Environ() {
+		if name, _, _ := strings.Cut(entry, "="); !strings.HasPrefix(name, "GIT_") {
+			command.Env = append(command.Env, entry)
 		}
+	}
+	if out, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
 	}
 }
 
