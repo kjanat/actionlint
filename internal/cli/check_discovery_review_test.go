@@ -10,10 +10,9 @@ func TestReportCannotReplaceExcludedDiscoveredWorkflow(t *testing.T) {
 	for _, modern := range []bool{false, true} {
 		t.Run(fmtTestName(modern, "excluded"), func(t *testing.T) {
 			t.Chdir(t.TempDir())
-			for _, dir := range []string{".git", ".github/workflows"} {
-				if err := os.MkdirAll(dir, 0700); err != nil {
-					t.Fatal(err)
-				}
+			gitRepository(t, ".")
+			if err := os.MkdirAll(".github/workflows", 0700); err != nil {
+				t.Fatal(err)
 			}
 			const target = ".github/workflows/excluded.yml"
 			const content = "invalid: [yaml\n"

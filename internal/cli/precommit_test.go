@@ -54,9 +54,7 @@ func TestPreCommitCommandChecksRepository(t *testing.T) {
 
 func TestPreCommitCommandIgnoresFileNamedPreCommit(t *testing.T) {
 	t.Chdir(t.TempDir())
-	if err := os.Mkdir(".git", 0o700); err != nil {
-		t.Fatal(err)
-	}
+	gitRepository(t, ".")
 	if err := os.WriteFile("pre-commit", []byte("#!/bin/sh\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -73,9 +71,7 @@ func TestPreCommitCommandReportsUnreadableWorkflows(t *testing.T) {
 	if err := os.MkdirAll(".github/workflows", 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(".git", 0o700); err != nil {
-		t.Fatal(err)
-	}
+	gitRepository(t, ".")
 	if err := os.Chmod(".github/workflows", 0); err != nil {
 		t.Fatal(err)
 	}
@@ -106,9 +102,7 @@ func TestPreCommitCommandProtectsRepositoryConfig(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(".github", "workflows"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(".git", 0o700); err != nil {
-		t.Fatal(err)
-	}
+	gitRepository(t, ".")
 	config := filepath.Join(".github", "actionlint.yaml")
 	if err := os.WriteFile(config, []byte("{}\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -129,9 +123,7 @@ func TestPreCommitCommandProtectsListedDirectories(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(".github", "workflows", "nested"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(".git", 0o700); err != nil {
-		t.Fatal(err)
-	}
+	gitRepository(t, ".")
 	got := testRunCommand("", "pre-commit", "--json", "--output-file", filepath.Join(".github", "workflows", "nested"))
 	if got.Status != 3 || !strings.Contains(got.Stderr, "also an input") {
 		t.Fatalf("a listed workflows directory is not an input: %+v", got)
@@ -140,9 +132,7 @@ func TestPreCommitCommandProtectsListedDirectories(t *testing.T) {
 
 func TestPreCommitCommandReportsExplicitConfig(t *testing.T) {
 	t.Chdir(t.TempDir())
-	if err := os.Mkdir(".git", 0o700); err != nil {
-		t.Fatal(err)
-	}
+	gitRepository(t, ".")
 	if err := os.WriteFile("lint.yaml", []byte("{}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}

@@ -151,11 +151,10 @@ func TestAnalysisConcurrentLogRecords(t *testing.T) {
 func TestLinterAnalysisFacades(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, ".github", "workflows")
-	for _, path := range []string{dir, filepath.Join(root, ".git")} {
-		if err := os.MkdirAll(path, 0700); err != nil {
-			t.Fatal(err)
-		}
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
 	}
+	writeGitRepository(t, root)
 	if err := os.WriteFile(filepath.Join(root, ".github", "actionlint.yaml"), []byte("config-variables: []\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -228,16 +227,9 @@ func TestAnalysisSelectedConfigInput(t *testing.T) {
 	for _, names := range [][]string{nil, {"actionlint.yaml"}, {"actionlint.yml"}, {"actionlint.yaml", "actionlint.yml"}} {
 		t.Run(strings.Join(names, "+"), func(t *testing.T) {
 			root := t.TempDir()
-			for _, dir := range []string{".git", ".github/workflows"} {
-				if err := os.MkdirAll(filepath.Join(root, dir), 0700); err != nil {
-					t.Fatal(err)
-				}
-			}
-			workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
-			if err := os.WriteFile(workflow, []byte(commandGoodWorkflow), 0600); err != nil {
-				t.Fatal(err)
-			}
-			want := []string{workflow, root, filepath.Join(root, ".github"), filepath.Join(root, ".github", "workflows")}
+			writeGitRepository(t, root)
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", commandGoodWorkflow)
+			want := []string{workflow, filepath.Join(root, ".github", "workflows")}
 			for _, name := range names {
 				if err := os.WriteFile(filepath.Join(root, ".github", name), []byte("{}\n"), 0600); err != nil {
 					t.Fatal(err)

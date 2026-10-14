@@ -167,10 +167,9 @@ policy:
 
 func TestCommandConfigAndEmptyArgs(t *testing.T) {
 	t.Chdir(t.TempDir())
-	for _, dir := range []string{".git", ".github/workflows"} {
-		if err := os.MkdirAll(dir, 0o700); err != nil {
-			t.Fatal(err)
-		}
+	gitRepository(t, ".")
+	if err := os.MkdirAll(".github/workflows", 0o700); err != nil {
+		t.Fatal(err)
 	}
 	if err := os.WriteFile(".github/workflows/ci.yml", []byte(commandGoodWorkflow), 0o600); err != nil {
 		t.Fatal(err)

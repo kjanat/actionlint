@@ -12,9 +12,7 @@ import (
 
 func TestWorkflowDiscoveryRecordsListedDirectories(t *testing.T) {
 	root := t.TempDir()
-	if err := os.Mkdir(filepath.Join(root, ".git"), 0o750); err != nil {
-		t.Fatal(err)
-	}
+	writeGitRepository(t, root)
 	writeShellcheckFixture(t, root, ".github/workflows/ci.yml", commandGoodWorkflow)
 	writeShellcheckFixture(t, root, ".github/workflows/nested/more.yml", commandGoodWorkflow)
 	workflows := filepath.Join(root, ".github", "workflows")

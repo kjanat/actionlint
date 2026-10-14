@@ -63,7 +63,7 @@ func TestPreCommitDependencyChangesRecheckWorkflows(t *testing.T) {
 		t.Run(kind, func(t *testing.T) {
 			root := t.TempDir()
 			write := func(path, content string) { writeShellcheckFixture(t, root, path, content) }
-			write(".git/HEAD", "ref: refs/heads/main\n")
+			writeGitRepository(t, root)
 			actionPath := ".github/actions/build/action.yml"
 			if kind == "action.yaml" {
 				actionPath = ".github/actions/build/action.yaml"

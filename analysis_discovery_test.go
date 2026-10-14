@@ -13,7 +13,7 @@ func TestRepositoryActionDiscovery(t *testing.T) {
 	for _, workflows := range []bool{false, true} {
 		t.Run(map[bool]string{false: "actions only", true: "mixed"}[workflows], func(t *testing.T) {
 			root := t.TempDir()
-			writeShellcheckFixture(t, root, ".git", "gitdir: elsewhere\n")
+			writeGitRepository(t, root)
 			want := []string{".github/actions/unused/action.yaml", "action.yml", "packages/build/action.yml"}
 			for _, path := range want {
 				writeShellcheckFixture(t, root, path, standaloneComposite)
@@ -50,7 +50,7 @@ func TestRepositoryActionDiscovery(t *testing.T) {
 
 func TestRepositoryActionDiscoverySymlinks(t *testing.T) {
 	root := t.TempDir()
-	writeShellcheckFixture(t, root, ".git", "gitdir: elsewhere\n")
+	writeGitRepository(t, root)
 	manifest := writeShellcheckFixture(t, root, "action.yml", standaloneComposite)
 	alias := filepath.Join(root, "alias")
 	if err := os.Symlink(root, alias); err != nil {
@@ -67,7 +67,7 @@ func TestRepositoryActionDiscoverySymlinks(t *testing.T) {
 
 func TestRequiredToolsDiscoversActions(t *testing.T) {
 	root := t.TempDir()
-	writeShellcheckFixture(t, root, ".git", "gitdir: elsewhere\n")
+	writeGitRepository(t, root)
 	writeShellcheckFixture(t, root, "action.yml", standaloneComposite)
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", `lint:
   rules:

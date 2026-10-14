@@ -25,6 +25,16 @@ func writeShellcheckFixture(t *testing.T, root, name, content string) string {
 	return path
 }
 
+func writeGitRepository(t *testing.T, root string) {
+	t.Helper()
+	writeShellcheckFixture(t, root, ".git/HEAD", "ref: refs/heads/main\n")
+	for _, dir := range []string{"objects", "refs"} {
+		if err := os.MkdirAll(filepath.Join(root, ".git", dir), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func shellcheckForTest(t *testing.T) string {
 	t.Helper()
 	command, err := exec.LookPath("shellcheck")
