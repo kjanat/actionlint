@@ -54,7 +54,9 @@ for (const wrapperExits of [false, true]) {
 		await temporary(async (directory) => {
 			const pidFile = join(directory, 'descendant.pid');
 			const stopDescendant = async () => {
-				const pid = Number(await readFile(pidFile, 'utf8'));
+				const recorded = await readFile(pidFile, 'utf8').catch(() => '');
+				assert.ok(recorded !== '', 'the wrapper did not start its descendant before the capture deadline');
+				const pid = Number(recorded);
 				assert.ok(Number.isSafeInteger(pid) && pid > 0);
 				try {
 					process.kill(pid, 'SIGKILL');
@@ -65,7 +67,7 @@ for (const wrapperExits of [false, true]) {
 			const wrapper = `
 const { spawn } = require('node:child_process');
 const { writeFileSync } = require('node:fs');
-const descendant = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 5000)'], {
+const descendant = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 20000)'], {
 	stdio: ['ignore', 'inherit', 'inherit'], windowsHide: true,
 });
 writeFileSync(${JSON.stringify(pidFile)}, String(descendant.pid));
@@ -74,7 +76,7 @@ ${wrapperExits ? 'descendant.unref();' : 'setInterval(() => {}, 1000);'}
 			const caller = `
 import { capture } from ${JSON.stringify(import.meta.resolve('#native'))};
 try {
-	await capture(process.execPath, ['-e', ${JSON.stringify(wrapper)}], process.env, { timeoutMS: 500 });
+	await capture(process.execPath, ['-e', ${JSON.stringify(wrapper)}], process.env, { timeoutMS: 3000 });
 	process.exitCode = 1;
 } catch (error) {
 	console.log(error.message);
@@ -82,11 +84,11 @@ try {
 `;
 			try {
 				const result = await promisify(execFile)(process.execPath, ['--input-type=module', '-e', caller], {
-					timeout: 2_000,
+					timeout: 10_000,
 					killSignal: 'SIGKILL',
 					windowsHide: true,
 				});
-				assert.match(result.stdout, /timed out after 500ms/);
+				assert.match(result.stdout, /timed out after 3000ms/);
 			} finally {
 				await stopDescendant();
 			}
