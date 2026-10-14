@@ -150,6 +150,8 @@ func newGitFilter(ctx context.Context, root string, reader *fsread.Reader) (*git
 	}
 	read = append(read, excludes)
 	for _, location := range read {
+		// Git for Windows prints configured paths with forward slashes.
+		location = filepath.Clean(location)
 		if info, err := os.Stat(location); err == nil && info.Mode().IsRegular() {
 			reader.Record(location)
 		}
