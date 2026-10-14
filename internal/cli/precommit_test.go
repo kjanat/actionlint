@@ -47,7 +47,7 @@ func TestPreCommitCommandChecksRepository(t *testing.T) {
 	if got := testRunCommand("", "pre-commit", "--ignore-regex", "missing"); got.Status != 0 || got.Stdout != "" {
 		t.Fatalf("check flags must apply, got %+v", got)
 	}
-	for _, args := range [][]string{{"origin", "https://example.com/repo.git"}, {".git/COMMIT_EDITMSG"}, {"absent.yml"}} {
+	for _, args := range [][]string{{"origin", "https://example.com/repo.git"}, {".git/COMMIT_EDITMSG"}, {"absent.yml"}, {"--root"}, {"--root", "main"}} {
 		if got := testRunCommand("", append([]string{"pre-commit"}, args...)...); got.Status != 1 || !strings.Contains(got.Stdout, `undefined variable "missing"`) {
 			t.Fatalf("hook arguments %q must be ignored, got %+v", args, got)
 		}

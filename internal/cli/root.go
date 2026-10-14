@@ -76,6 +76,8 @@ func newCommandApp(streams *Command) *commandApp {
 		Use: "pre-commit [flags]", Short: "Check the repository for a pre-commit hook", Hidden: true,
 		Long: "Check every workflow in the nearest repository.\nA repository without workflow files passes.\nArguments that Git passes to a hook are ignored.",
 		Args: cobra.ArbitraryArgs, RunE: a.capture("check"),
+		// git rebase --root passes --root to pre-rebase hooks.
+		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 	}
 	a.checkFlags(preCommit, true)
 	config := &cobra.Command{
