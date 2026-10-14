@@ -354,6 +354,59 @@ func TestActionsReportGitInputs(t *testing.T) {
 	}
 }
 
+func TestActionsReportSplitIndexAndGitfile(t *testing.T) {
+	root := t.TempDir()
+	git := gitFixture(t, root)
+	writeFixture(t, root, "action.yml", "name: fixture\n")
+	git("add", "--", "action.yml")
+	git("commit", "--quiet", "-m", "Fixture")
+	git("update-index", "--split-index")
+	worktree := filepath.Join(t.TempDir(), "worktree")
+	git("worktree", "add", "--quiet", worktree)
+	for _, tc := range []struct {
+		start string
+		want  func(t *testing.T) string
+	}{
+		{root, func(t *testing.T) string {
+			shared, err := filepath.Glob(filepath.Join(root, ".git", "sharedindex.*"))
+			if err != nil || len(shared) != 1 {
+				t.Fatalf("split index files = %q, %v", shared, err)
+			}
+			physical, err := filepath.EvalSymlinks(shared[0])
+			if err != nil {
+				t.Fatal(err)
+			}
+			return physical
+		}},
+		{worktree, func(t *testing.T) string {
+			physical, err := filepath.EvalSymlinks(filepath.Join(worktree, ".git"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			return physical
+		}},
+	} {
+		got := map[string]bool{}
+		if _, err := Actions(t.Context(), tc.start, fsread.New(t.Context(), nil, func(path string) { got[path] = true })); err != nil {
+			t.Fatal(err)
+		}
+		if want := tc.want(t); !got[want] {
+			t.Errorf("Actions(%s) did not report %s in %v", tc.start, want, got)
+		}
+	}
+}
+
+func TestGitConfigSettings(t *testing.T) {
+	settings := parseGitConfig([]byte("file:.git/config\x00core.ignorecase\ntrue\x00file:.git/config\x00core.precomposeunicode\x00command line:\x00core.excludesfile\nrelative\x00"), "/top")
+	if !settings.ignoreCase || !settings.precompose || settings.excludesFile != "relative" || !slices.Equal(settings.files, []string{filepath.Join("/top", ".git", "config")}) {
+		t.Fatalf("settings = %+v", settings)
+	}
+	filter := &gitFilter{ignoreCase: true, precompose: true}
+	if got, want := filter.key("Café/action.yml"), "café/action.yml"; got != want {
+		t.Fatalf("key = %q, want %q", got, want)
+	}
+}
+
 func TestActionsReportLogicalDirectories(t *testing.T) {
 	root := t.TempDir()
 	writeFixture(t, root, "a/action.yml", "name: fixture\n")

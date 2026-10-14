@@ -8,10 +8,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 
 	"golang.org/x/sys/execabs"
+	"golang.org/x/text/unicode/norm"
 
 	"actionlint.kjanat.dev/internal/fsread"
 )
@@ -53,6 +55,7 @@ type gitFilter struct {
 	manifests  map[string]bool
 	ignored    map[string]bool
 	ignoreCase bool
+	precompose bool
 }
 
 func newGitFilter(ctx context.Context, root string, reader *fsread.Reader) (*gitFilter, error) {
@@ -88,7 +91,7 @@ func newGitFilter(ctx context.Context, root string, reader *fsread.Reader) (*git
 	if err != nil {
 		return nil, err
 	}
-	locations, err := run("rev-parse", "--show-toplevel", "--git-path", "info/exclude", "--git-path", "index")
+	locations, err := run("rev-parse", "--show-toplevel", "--git-path", "info/exclude", "--git-path", "index", "--shared-index-path")
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +109,7 @@ func newGitFilter(ctx context.Context, root string, reader *fsread.Reader) (*git
 		return nil, fmt.Errorf("git rev-parse printed no work tree for %q", root)
 	}
 	top := filepath.Clean(read[0])
-	read = read[1:]
+	read = append(read[1:], filepath.Join(top, ".git"))
 	for i, location := range read {
 		if !filepath.IsAbs(location) {
 			read[i] = filepath.Join(root, location)
@@ -139,7 +142,10 @@ func newGitFilter(ctx context.Context, root string, reader *fsread.Reader) (*git
 			reader.Record(location)
 		}
 	}
-	filter := &gitFilter{manifests: map[string]bool{}, ignored: map[string]bool{}, ignoreCase: settings.ignoreCase}
+	filter := &gitFilter{
+		manifests: map[string]bool{}, ignored: map[string]bool{},
+		ignoreCase: settings.ignoreCase, precompose: settings.precompose && runtime.GOOS == "darwin",
+	}
 	for name := range bytes.SplitSeq(manifests, []byte{0}) {
 		if len(name) > 0 {
 			filter.manifests[filter.key(string(name))] = true
@@ -154,6 +160,10 @@ func newGitFilter(ctx context.Context, root string, reader *fsread.Reader) (*git
 }
 
 func (f *gitFilter) key(path string) string {
+	// git ls-files prints NFC names on macOS when core.precomposeUnicode is set.
+	if f.precompose {
+		path = norm.NFC.String(path)
+	}
 	if f.ignoreCase {
 		return strings.ToLower(path)
 	}
@@ -164,6 +174,7 @@ type gitSettings struct {
 	files        []string
 	excludesFile string
 	ignoreCase   bool
+	precompose   bool
 }
 
 // git config --list --show-origin -z prints origin NUL key [LF value] NUL per entry.
@@ -184,15 +195,20 @@ func parseGitConfig(output []byte, top string) gitSettings {
 		case "core.excludesfile":
 			settings.excludesFile = value
 		case "core.ignorecase":
-			switch strings.ToLower(value) {
-			case "true", "yes", "on", "1":
-				settings.ignoreCase = true
-			default:
-				settings.ignoreCase = !hasValue
-			}
+			settings.ignoreCase = gitBool(value, hasValue)
+		case "core.precomposeunicode":
+			settings.precompose = gitBool(value, hasValue)
 		}
 	}
 	return settings
+}
+
+func gitBool(value string, hasValue bool) bool {
+	switch strings.ToLower(value) {
+	case "true", "yes", "on", "1":
+		return true
+	}
+	return !hasValue
 }
 
 // gitignore(5) names this file when core.excludesFile is unset.
