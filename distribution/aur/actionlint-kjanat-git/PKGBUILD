@@ -71,6 +71,7 @@ check() {
 }
 
 package() {
+	_system_tools
 	cd actionlint || exit 1
 	install -Dm0755 build/actionlint "${pkgdir}/usr/bin/actionlint"
 	install -Dm0644 LICENSE.txt "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.txt"
