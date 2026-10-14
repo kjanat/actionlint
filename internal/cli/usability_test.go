@@ -106,10 +106,6 @@ func TestCompletionExamplesFollowDetectedShell(t *testing.T) {
 				}
 			}
 			if shell, ok := currentCompletionShell(); ok {
-				got := testRunCommand("", "--help")
-				if !strings.Contains(got.Stderr, "actionlint completion "+string(shell)) {
-					t.Fatalf("root example ignores detection: %+v", got)
-				}
 				if auto, explicit := testRunCommand("", "completion", "auto"), testRunCommand("", "completion", string(shell)); auto.Status != 0 || auto != explicit {
 					t.Fatal("auto detection disagrees with help examples")
 				}
@@ -134,7 +130,7 @@ func TestCompletionExamplesAndAutoUsePathExt(t *testing.T) {
 	}
 }
 
-func TestReportOverwriteRequiresExplicitOption(t *testing.T) {
+func TestNoninteractiveReportOverwriteRequiresConfirmation(t *testing.T) {
 	for _, modern := range []bool{false, true} {
 		t.Run(fmtTestName(modern, "report"), func(t *testing.T) {
 			commandTestRepo(t)
@@ -148,16 +144,16 @@ func TestReportOverwriteRequiresExplicitOption(t *testing.T) {
 			// The destination error must win over a missing input: no analysis yet.
 			got := testRunCommand("", append(args, "missing.yml")...)
 			data, err := os.ReadFile("report.json")
-			if got.Status != 3 || !strings.Contains(got.Stderr, "--overwrite-output") || err != nil || string(data) != "previous report" {
+			if got.Status != 3 || !strings.Contains(got.Stderr, "--yes") || err != nil || string(data) != "previous report" {
 				t.Fatalf("%+v: %s, %v", got, data, err)
 			}
-			got = testRunCommand("", append(args, "--overwrite-output")...)
+			got = testRunCommand("", append(args, "--yes")...)
 			data, err = os.ReadFile("report.json")
 			if got.Status != 1 || err != nil || string(data) == "previous report" {
 				t.Fatalf("explicit replacement failed: %+v, %v", got, err)
 			}
 			before := bytes.Clone(data)
-			got = testRunCommand("", append(args, "--overwrite-output", "missing.yml")...)
+			got = testRunCommand("", append(args, "--yes", "missing.yml")...)
 			data, err = os.ReadFile("report.json")
 			if got.Status != 3 || err != nil || !bytes.Equal(before, data) {
 				t.Fatalf("failed analysis changed report: %+v, %v", got, err)

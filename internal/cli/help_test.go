@@ -6,12 +6,58 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/fatih/color"
 	"github.com/spf13/pflag"
 )
+
+func TestRootHelpOverview(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+	t.Setenv("NO_HYPERLINKS", "1")
+	root := testRunCommand("", "--help")
+	if root.Status != 0 || root.Stdout != "" {
+		t.Fatalf("%+v", root)
+	}
+	flags := regexp.MustCompile(`(?m)^\s+(?:-\w, )?--([\w-]+)`)
+	var names []string
+	for _, match := range flags.FindAllStringSubmatch(root.Stderr, -1) {
+		names = append(names, match[1])
+	}
+	want := []string{"strict", "experimental", "config", "ignore-regex", "json", "output-format", "output-file", "quiet", "help", "version"}
+	if !slices.Equal(names, want) {
+		t.Fatalf("root overview flags = %v, want %v", names, want)
+	}
+	for _, text := range []string{
+		"— Check workflows, actions and embedded scripts",
+		"actionlint [flags] [files...]\n  actionlint [flags] -\n  actionlint <command>",
+		"\nRule selection:\n", "\nFlags:\n",
+		"Enable all stable rules, respecting configured exceptions",
+		"Enable nursery rules, respecting configured exceptions",
+		"Run actionlint <command> --help for command options.",
+		"Docs: https://actionlint.kjanat.dev",
+	} {
+		if !strings.Contains(root.Stderr, text) {
+			t.Errorf("root help missing %q: %s", text, root.Stderr)
+		}
+	}
+	check := testRunCommand("", "check", "--help")
+	metadata := testRunCommand("", "--help", "--json")
+	var description commandDescription
+	if check.Status != 0 || metadata.Status != 0 || json.Unmarshal([]byte(metadata.Stdout), &description) != nil {
+		t.Fatalf("full help unavailable: %+v / %+v", check, metadata)
+	}
+	for _, name := range []string{"no-config", "stdin-filename", "template", "hyperlinks", "ruff", "shellcheck", "json-pretty", "help-legacy"} {
+		if !strings.Contains(check.Stderr, name) || !slices.ContainsFunc(description.Flags, func(f commandFlagDescription) bool { return f.Name == name }) {
+			t.Errorf("%s missing from full check help or root JSON metadata", name)
+		}
+	}
+	if strings.Contains(check.Stderr, "--json[-pretty]") || strings.Contains(check.Stderr, "--help[-legacy]") {
+		t.Fatal("distinct help or JSON options were compressed together")
+	}
+}
 
 func TestRedirectedHelpWidth(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")

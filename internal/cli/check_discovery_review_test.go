@@ -21,7 +21,7 @@ func TestReportCannotReplaceExcludedDiscoveredWorkflow(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			args := []string{"--overwrite-output", "--output-file", target}
+			args := []string{"--yes", "--output-file", target}
 			if modern {
 				args = append([]string{"check"}, args...)
 			}

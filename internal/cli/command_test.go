@@ -80,7 +80,7 @@ func TestModernInformationCommandsDoNotRunAnalysis(t *testing.T) {
 	if got := testRunCommand("", "rules", "nonexistent"); got.Status != 2 {
 		t.Fatal(got)
 	}
-	got := testRunCommand("", "doctor", "--no-config", "--json", "--shellcheck", "this-tool-does-not-exist", "--pyflakes=")
+	got := testRunCommand("", "doctor", "--no-config", "--json", "--shellcheck=this-tool-does-not-exist", "--pyflakes=")
 	var report struct {
 		Tools []doctorTool `json:"tools"`
 	}

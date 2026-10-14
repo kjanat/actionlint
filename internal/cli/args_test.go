@@ -73,3 +73,13 @@ func TestCommandLiteralFilenames(t *testing.T) {
 		}
 	}
 }
+
+func TestRootUsesCommandFlagDefinitions(t *testing.T) {
+	app := newCommandApp(&Command{})
+	var enabled bool
+	app.root.Flags().BoolVarP(&enabled, "test-option", "t", false, "")
+	rest, _, _, err := app.parseRoot([]string{"-t", "input.yml"})
+	if err != nil || !enabled || !app.set["t"] || len(rest) != 1 || rest[0] != "input.yml" {
+		t.Fatalf("root did not use the shared flag definition: enabled=%v rest=%v err=%v", enabled, rest, err)
+	}
+}

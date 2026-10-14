@@ -111,8 +111,12 @@ func TestHelpHyperlinks(t *testing.T) {
 				t.Fatalf("unexpected help output: %+v", got)
 			}
 			plain := osc.ReplaceAllString(got.Stderr, "")
-			if strings.Contains(plain, "\x1b") || !strings.Contains(plain, "Project:\n  "+projectURL+"\n") || !strings.Contains(plain, "/docs/usage.md\n") {
+			compact := strings.Contains(plain, "\nFlags:\n")
+			if strings.Contains(plain, "\x1b") || (compact && !strings.Contains(plain, "Docs: https://actionlint.kjanat.dev\n")) || (!compact && (!strings.Contains(plain, "Project:\n  "+projectURL+"\n") || !strings.Contains(plain, "/docs/usage.md\n"))) {
 				t.Fatalf("links lost readable destinations or leaked escapes: %q", plain)
+			}
+			if compact && tc.want && !strings.Contains(got.Stderr, "\x1b]8;;https://actionlint.kjanat.dev\x1b\\") {
+				t.Fatal("missing documentation hyperlink")
 			}
 			if tc.want && !strings.Contains(got.Stderr, "\x1b]8;;"+projectURL+"\x1b\\") {
 				t.Fatal("missing project hyperlink")

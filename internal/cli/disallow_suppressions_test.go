@@ -58,7 +58,7 @@ func TestDisallowSuppressionsCommand(t *testing.T) {
 jobs:
 ` + body
 					cmd := Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
-					args := []string{"actionlint", "-shellcheck=", "-pyflakes=", "-no-color", "-format", "{{json .}}"}
+					args := []string{"actionlint", "--summary=false", "-shellcheck=", "-pyflakes=", "-no-color", "-format", "{{json .}}"}
 					input := "-"
 					if !discovery {
 						args = append(args, "-config-file", configPath)
@@ -131,7 +131,7 @@ jobs:
 			}
 			var stdout, stderr strings.Builder
 			cmd := Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
-			args := []string{"actionlint", "-shellcheck=", "-pyflakes=", "-no-color", "-format", tc.format, "-config-file", config, "-stdin-filename", "test.yaml"}
+			args := []string{"actionlint", "--summary=false", "-shellcheck=", "-pyflakes=", "-no-color", "-format", tc.format, "-config-file", config, "-stdin-filename", "test.yaml"}
 			if tc.cliIgnore != "" {
 				args = append(args, "-ignore", tc.cliIgnore)
 			}

@@ -59,8 +59,10 @@ workflow source.
 cat path/to/workflow.yaml | actionlint -
 ```
 
-To know all flags and options, see an output of `actionlint -h` or
-[the online command manual][cmd-manual].
+Use `actionlint --help` for common options and commands, and
+`actionlint check --help` for all checking options. The root invocation also
+accepts the options listed under `check`. See [the online command manual][cmd-manual]
+for the full reference.
 
 ### Commands and compatibility
 
@@ -208,14 +210,16 @@ emits escaped workflow annotation commands; it is enabled only by that explicit
 format choice, including when running inside GitHub Actions.
 
 Check results go to stdout, or to `--output-file PATH`. `--output-file -` means stdout.
-An existing destination is rejected before analysis. Use `--overwrite-output`
-to explicitly replace it after successful analysis; failures preserve the previous
-report. This option applies only to the report destination.
-This destination option applies only to checks.
+If the destination exists, an interactive terminal asks `Overwrite? [y/N]`
+before analysis. Enter or a negative answer keeps the existing file and stops the
+check. Use `-y` or `--yes` to answer yes without prompting. This is required when
+stderr is not a terminal or `-` supplies workflow input; confirmation never consumes
+workflow stdin. `yes | actionlint --output-file report.json` also works in an
+interactive terminal. The destination option applies only to checks.
 A report file is replaced only after analysis completes; an operational failure
 preserves any previous report. An output file cannot replace a consumed workflow, local action, reusable workflow, configuration, template, or existing stdin filename, including links to those files. Replacing a report preserves its permission bits; a new report is private to the current user.
 Logs and operational errors go to stderr. Structured output never includes ANSI
-color or terminal hyperlinks. A clean default text run stays silent.
+color or terminal hyperlinks. Checks print a summary to stderr by default.
 
 Try additional checks without changing a configuration file:
 
@@ -237,8 +241,9 @@ overrides; `--experimental=false` clears only nursery selections. No current rul
 Use `ACTIONLINT_STRICT=true` and `ACTIONLINT_EXPERIMENTAL=true` for equivalent
 environment defaults; explicit flags, including `false`, take precedence.
 
-`--log-level=none|info|debug` controls logging. `--summary` adds an opt-in count on
-stderr. `--quiet` suppresses logs and summaries while preserving requested results
+`--log-level=none|info|debug` controls logging. Checks print workflow and finding
+counts on stderr by default. `--summary=false` disables the summary.
+`--quiet` suppresses logs and summaries while preserving requested results
 and errors. In JSON modes, check failures on stderr use the same result contract, with
 `completed: false`, `error`, and `exit_code`. Metadata commands keep their own
 error records. Log
@@ -258,9 +263,16 @@ retain their original three-line text output.
 
 When stdout is a terminal and `jq` is installed, JSON metadata and JSON/SARIF
 diagnostics are indented and colored according to the color controls. Use
-`--json-pretty=false` to disable this. Pipes, files, JSONL, templates and stderr
-records retain their existing output. Missing or failing `jq` falls back to the
-original JSON; it is never installed automatically.
+`--json-pretty=false` to disable this. Without an explicit pretty flag, pipes and
+files retain their existing output. Missing or failing `jq` falls back to the
+original JSON. It is never installed automatically.
+
+Explicit `--json-pretty` also selects JSON when no other output format is set.
+For example, `actionlint rules --json-pretty` prints the rules as JSON. The default
+value and `--json-pretty=false` do not change the selected output format.
+Explicit `--json-pretty` also indents JSON written to pipes and files, using
+built-in formatting without color codes or a jq dependency. JSONL, templates and
+stderr records retain their existing output.
 
 CLI defaults can also come from [environment variables](env.md), including
 configuration selection, output, logging and external linters. Explicit flags
@@ -397,9 +409,15 @@ actionlint -shellcheck=
 actionlint -shellcheck 'shellcheck -e SC2086'
 ```
 
-Ruff checks Python `run:` steps when `ruff` is installed on `PATH`. Use `--ruff`
-to select another executable or command line; `--ruff=false` or `--ruff=` disables it. No Python
-interpreter or Pyflakes installation is needed. See [Ruff configuration](config.md#ruff).
+Ruff checks Python `run:` steps when `ruff` is installed on `PATH`. A bare
+`--ruff` selects `ruff` on `PATH`. Use `--ruff=COMMAND` for a custom executable or
+command line, and `--no-ruff` to disable it. ShellCheck follows the same pattern:
+`--shellcheck`, `--shellcheck=COMMAND`, and `--no-shellcheck`.
+Optional command values require `=` so the next argument remains a workflow path.
+A disable flag wins if both forms are supplied and skips the tool's environment
+settings. Legacy `-ruff COMMAND` and `-shellcheck COMMAND` still accept separate
+values on the root. The older `=false` and empty values also remain supported.
+No Python interpreter or Pyflakes installation is needed. See [Ruff configuration](config.md#ruff).
 
 Pyflakes integration has been removed. The released `-pyflakes` option remains
 a deprecated no-op; use Ruff for Python analysis.

@@ -70,11 +70,11 @@ func TestWindowsForwardSlashCheckPaths(t *testing.T) {
 				if got.Status != 3 || !strings.Contains(got.Stderr, "already exists") {
 					t.Fatalf("existing output was not recognised: %+v", got)
 				}
-				got = testRunCommand("", append(slices.Clone(args), "--overwrite-output", path(".github/workflows/test.yml"))...)
+				got = testRunCommand("", append(slices.Clone(args), "--yes", path(".github/workflows/test.yml"))...)
 				if got.Status != 0 {
 					t.Fatalf("explicit overwrite failed: %+v", got)
 				}
-				got = testRunCommand("", "check", "--overwrite-output", "--output-file", path(".github/workflows/test.yml"), filepath.Join(root, ".github/workflows/test.yml"))
+				got = testRunCommand("", "check", "--yes", "--output-file", path(".github/workflows/test.yml"), filepath.Join(root, ".github/workflows/test.yml"))
 				if got.Status != 3 || !strings.Contains(got.Stderr, "also an input") {
 					t.Fatalf("alternate input spelling escaped protection: %+v", got)
 				}

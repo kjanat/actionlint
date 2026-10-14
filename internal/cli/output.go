@@ -43,7 +43,7 @@ func resolveTemplate(r renderOptions) (renderOptions, error) {
 }
 
 func writeCommandJSON(out io.Writer, value any) error {
-	if terminal, ok := out.(*terminalJSONOutput); ok {
+	if terminal, ok := out.(*prettyJSONOutput); ok {
 		return terminal.writeJSON(value)
 	}
 	return json.NewEncoder(out).Encode(value)

@@ -64,7 +64,7 @@ actionlint config show --origin
 | `ACTIONLINT_OUTPUT_FILE`   | `--output-file`                  | Report destination. Empty or `-` writes to stdout. Checks only.                       |
 | `ACTIONLINT_LOG_LEVEL`     | `--log-level`                    | `none`, `info`, or `debug`. Checks only; default: none.                               |
 | `ACTIONLINT_QUIET`         | `--quiet` / `-q`                 | Suppress progress and summaries, retaining findings and errors. Default: false.       |
-| `ACTIONLINT_SUMMARY`       | `--summary`                      | Write a check summary to stderr. Default: false.                                      |
+| `ACTIONLINT_SUMMARY`       | `--summary`                      | Show analysis summary. Default: true.                                                 |
 | `ACTIONLINT_COLOR`         | Color controls                   | `auto`, `always`, or `never`. Default: auto.                                          |
 | `ACTIONLINT_HYPERLINKS`    | `--hyperlinks`                   | `auto`, `always`, or `never`. Default: auto.                                          |
 
@@ -72,8 +72,10 @@ An explicit format, JSON, template, template-file or oneline flag replaces the
 environment's whole format selection. Conflicting environment selections are
 rejected, just like conflicting flags. Format and output destination are separate;
 use `--output-file=-` to override an environment report path.
-An existing report destination requires the explicit `--overwrite-output` flag,
-including destinations selected by `ACTIONLINT_OUTPUT_FILE`.
+Existing report destinations selected by `ACTIONLINT_OUTPUT_FILE` use the same
+interactive confirmation as `--output-file`. Use `--yes` to skip the prompt;
+noninteractive runs and checks reading workflow stdin require explicit confirmation
+with this flag.
 
 Explicit `--log-level`, `--verbose`/`-v`, or `--debug` overrides the environment log
 level. `--quiet=false` and `--summary=false` can disable environment defaults.
@@ -85,10 +87,16 @@ SARIF reports use `jq`'s identity filter (`.`) for indentation and terminal colo
 This includes `--version --json`, `version --json`, `doctor --json`, config/rules/help
 JSON, and `check --json`.
 
-Pipes and regular files retain their existing bytes. JSONL, legacy templates and
-stderr log/error records are never passed to `jq`. If `jq` is absent, fails, or
-takes more than two seconds, actionlint writes its original JSON. Nothing is
-installed automatically. Cancellation still cancels the command.
+Explicit `--json-pretty` selects JSON when no other format is supplied and
+overrides environment format defaults. Setting `ACTIONLINT_JSON_PRETTY=true`
+only controls formatting and does not select JSON output.
+
+Explicit `--json-pretty` also indents JSON written to pipes and regular files,
+using built-in formatting without color codes or a jq dependency. Otherwise,
+pipes and files retain their existing bytes. JSONL, legacy templates and stderr
+log/error records keep their existing format. If `jq` is absent, fails, or takes
+more than two seconds, actionlint uses its built-in output. Nothing is installed
+automatically. Cancellation still cancels the command.
 
 ```sh
 actionlint --version --json

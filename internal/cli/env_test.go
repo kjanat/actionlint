@@ -20,7 +20,7 @@ func TestEnvironmentDefaults(t *testing.T) {
 	t.Setenv("ACTIONLINT_STDIN_FILENAME", "from-env.yml")
 	t.Setenv("ACTIONLINT_SUMMARY", "true")
 	for _, args := range [][]string{{"-"}, {"check", "-"}} {
-		got := testRunCommand(commandBadWorkflow, args...)
+		got := testRunCommandDefaults(commandBadWorkflow, args...)
 		if got.Status != 1 || !json.Valid([]byte(got.Stdout)) || !strings.Contains(got.Stdout, "from-env.yml") || !strings.Contains(got.Stderr, `"summary"`) {
 			t.Fatalf("%v: %+v", args, got)
 		}
@@ -43,7 +43,7 @@ func TestExplicitRuffMissingExecutable(t *testing.T) {
 	run := func(input string, args ...string) commandTranscript {
 		var out, stderr bytes.Buffer
 		command := Command{Stdin: strings.NewReader(input), Stdout: &out, Stderr: &stderr}
-		status := command.Main(append([]string{"actionlint", "--no-color"}, args...))
+		status := command.Main(append([]string{"actionlint", "--summary=false", "--no-color"}, args...))
 		return commandTranscript{status, out.String(), stderr.String()}
 	}
 	for _, prefix := range [][]string{nil, {"check"}} {
@@ -313,7 +313,7 @@ func TestEnvironmentExternalTools(t *testing.T) {
 	for _, args := range [][]string{{"-"}, {"check", "-"}} {
 		var out, stderr bytes.Buffer
 		cmd := Command{Stdin: strings.NewReader(input), Stdout: &out, Stderr: &stderr}
-		status := cmd.Main(append([]string{"actionlint", "--no-config", "--no-color"}, args...))
+		status := cmd.Main(append([]string{"actionlint", "--summary=false", "--no-config", "--no-color"}, args...))
 		if status != 0 || out.Len()+stderr.Len() != 0 {
 			t.Fatalf("exit %d: %s %s", status, &out, &stderr)
 		}

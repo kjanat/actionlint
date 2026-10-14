@@ -68,7 +68,7 @@ func TestDoctorHyperlinks(t *testing.T) {
 		t.Fatal(err)
 	}
 	config := "." + string(filepath.Separator) + string(filepath.Separator) + name
-	args := []string{"doctor", "--config", config, "--shellcheck", `"` + filepath.ToSlash(executable) + `"`}
+	args := []string{"doctor", "--config", config, "--shellcheck=" + `"` + filepath.ToSlash(executable) + `"`}
 	osc := regexp.MustCompile(`\x1b\]8;;[^\x1b]*\x1b\\`)
 	for _, tc := range []struct {
 		name, no, force, mode string

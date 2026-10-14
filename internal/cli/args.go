@@ -55,7 +55,17 @@ func commandRequestsJSON(flags *pflag.FlagSet, args []string) bool {
 }
 
 func requestsJSON(flags *pflag.FlagSet, args []string, interspersed bool) bool {
+	return scanJSONOptions(flags, args, interspersed).JSON
+}
+
+type requestedJSONOptions struct {
+	JSON, Pretty, PrettySet bool
+}
+
+func scanJSONOptions(flags *pflag.FlagSet, args []string, interspersed bool) requestedJSONOptions {
 	jsonMode, output := false, ""
+	formatSelected := false
+	options := requestedJSONOptions{}
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if arg == "--" {
@@ -85,6 +95,9 @@ func requestsJSON(flags *pflag.FlagSet, args []string, interspersed bool) bool {
 		}
 		if !equal {
 			value = flag.NoOptDefVal
+			if !interspersed && !strings.HasPrefix(arg, "--") && flag.Value.Type() != "bool" {
+				value = ""
+			}
 			if value == "" && i+1 < len(args) {
 				i++
 				value = args[i]
@@ -92,10 +105,18 @@ func requestsJSON(flags *pflag.FlagSet, args []string, interspersed bool) bool {
 		}
 		switch flag.Name {
 		case "json":
+			formatSelected = true
 			jsonMode, _ = strconv.ParseBool(value)
+		case "json-pretty":
+			options.PrettySet = true
+			options.Pretty, _ = strconv.ParseBool(value)
 		case "output", "output-format":
+			formatSelected = true
 			output = value
+		case "template", "format", "template-file", "oneline":
+			formatSelected = true
 		}
 	}
-	return jsonMode || output == "json" || output == "jsonl"
+	options.JSON = jsonMode || output == "json" || output == "jsonl" || options.Pretty && !formatSelected
+	return options
 }

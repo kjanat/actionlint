@@ -12,6 +12,7 @@ type invocation struct {
 	Operation operation
 	Check     checkInvocation
 	Render    renderOptions
+	Yes       bool
 	JSON      bool
 	Legacy    bool
 	Origin    bool
@@ -40,23 +41,23 @@ type checkInvocation struct {
 
 // renderOptions controls result presentation without changing analysis.
 type renderOptions struct {
-	PrettyJSON      bool
-	Hyperlinks      hyperlinkMode
-	Format          actionlint.OutputFormat
-	Template        string
-	TemplateFile    string
-	OutputFile      string
-	OverwriteOutput bool
-	Color           actionlint.ColorOptionKind
-	Oneline         bool
-	Quiet           bool
-	Summary         bool
+	PrettyJSON         bool
+	PrettyJSONExplicit bool
+	Hyperlinks         hyperlinkMode
+	Format             actionlint.OutputFormat
+	Template           string
+	TemplateFile       string
+	OutputFile         string
+	Color              actionlint.ColorOptionKind
+	Oneline            bool
+	Quiet              bool
+	Summary            bool
 }
 
 func defaultInvocation() invocation {
 	return invocation{
 		Operation: "check",
-		Render:    renderOptions{PrettyJSON: true},
+		Render:    renderOptions{PrettyJSON: true, Summary: true},
 		Check:     checkInvocation{StdinFilename: "<stdin>", ShellCheck: "shellcheck", Ruff: "ruff"},
 	}
 }
@@ -95,9 +96,6 @@ func (a *commandApp) prepareInvocation() error {
 	}
 	if i.Operation != "check" && i.Render.OutputFile != "" {
 		return commandUsageError{errors.New("--output-file is only supported for checks")}
-	}
-	if i.Render.OverwriteOutput && (i.Operation != operationCheck || i.Render.OutputFile == "" || i.Render.OutputFile == "-") {
-		return commandUsageError{errors.New("--overwrite-output requires --output-file with a filesystem path")}
 	}
 	if i.Operation == "version" || i.Operation == "completion" {
 		return nil
@@ -176,7 +174,7 @@ func (inv invocation) request() (commandRequest, error) {
 		}
 		return configInitRequest{JSON: inv.JSON, Hyperlinks: inv.Render.Hyperlinks}, nil
 	case operationCheck:
-		return checkRequest{Check: inv.Check, Render: inv.Render, JSON: inv.JSON, Legacy: inv.Legacy}, nil
+		return checkRequest{Check: inv.Check, Render: inv.Render, Yes: inv.Yes, JSON: inv.JSON, Legacy: inv.Legacy}, nil
 	default:
 		return nil, commandUsageError{fmt.Errorf("unknown operation %q", inv.Operation)}
 	}

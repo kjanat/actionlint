@@ -15,9 +15,9 @@ import (
 	"github.com/spf13/pflag"
 )
 
-var commandHelpGroups = []string{"Input", "Output", "External linters", "Information"}
+var commandHelpGroups = []string{"Input", "Configuration", "Rule selection", "Filtering", "Output", "External linters", "Information"}
 
-var helpFlagPattern = regexp.MustCompile(`(?m)(^|[ \t])--?[a-zA-Z][a-zA-Z0-9-]*`)
+var helpFlagPattern = regexp.MustCompile(`(?m)(^|[ \t])--?(?:\[no-\])?[a-zA-Z][a-zA-Z0-9-]*`)
 
 func (a *commandApp) helpOutput(c *cobra.Command) (io.Writer, bool, func()) {
 	out := a.streams.Stderr
@@ -98,7 +98,7 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 		}
 		out := a.streams.Stdout
 		if a.inv.Render.PrettyJSON {
-			out = &terminalJSONOutput{Writer: out, ctx: c.Context(), color: a.inv.Render.Color}
+			out = &prettyJSONOutput{Writer: out, ctx: c.Context(), color: a.inv.Render.Color, explicit: a.inv.Render.PrettyJSONExplicit}
 		}
 		if err := writeCommandJSON(out, describeCommand(c)); err != nil {
 			a.status = a.reportError(err)
@@ -117,7 +117,12 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 	heading := helpStyle(colored, color.Bold, color.FgCyan)
 	command := helpStyle(colored, color.Bold)
 	option := helpStyle(colored, color.FgCyan)
+	if c == a.root {
+		a.rootHelp(out, width, colored, links)
+		return
+	}
 	usage := strings.Replace(c.UseLine(), "actionlint", terminalLink(links, "actionlint", projectURL), 1)
+	_, _ = fmt.Fprintln(out, command.Sprintf("actionlint %s", actionlint.Version()))
 	_, _ = fmt.Fprintf(out, "%s\n\n%s\n  %s\n", command.Sprint(c.Short), heading.Sprint("Usage:"), command.Sprint(usage))
 	if c.Long != "" {
 		_, _ = fmt.Fprintf(out, "\n%s\n", c.Long)
@@ -139,8 +144,22 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 		flags.AddFlagSet(c.Flags())
 		flags.AddFlagSet(c.InheritedFlags())
 		flags.VisitAll(func(f *pflag.Flag) {
+			if name, negated := strings.CutPrefix(f.Name, "no-"); negated {
+				if positive := flags.Lookup(name); positive != nil && len(positive.Annotations[commandOptionalValueAnnotation]) > 0 {
+					return
+				}
+			}
 			if groups := f.Annotations[commandGroupAnnotation]; len(groups) > 0 && groups[0] == group {
-				fs.AddFlag(f)
+				display := *f
+				if value := f.Annotations[commandOptionalValueAnnotation]; len(value) > 0 {
+					display.Name += "[=" + value[0] + "]"
+					if flags.Lookup("no-"+f.Name) != nil {
+						display.Name = "[no-]" + display.Name
+					}
+					display.NoOptDefVal, display.DefValue = "", ""
+					display.Value = helpOptionalValue{Value: f.Value}
+				}
+				fs.AddFlag(&display)
 			}
 		})
 		if usage := fs.FlagUsagesWrapped(width); usage != "" {
@@ -151,21 +170,79 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 	writeHelpDestinations(out, heading, links)
 }
 
+// Root help is an overview. The registered flags remain available to the parser,
+// completions and JSON help, while check --help lists all checking options.
+func (a *commandApp) rootHelp(out io.Writer, width int, colored, links bool) {
+	heading := helpStyle(colored, color.Bold, color.FgCyan)
+	command := helpStyle(colored, color.Bold)
+	option := helpStyle(colored, color.FgCyan)
+	name := terminalLink(links, "actionlint", projectURL)
+	_, _ = fmt.Fprintln(out, command.Sprintf("actionlint %s — Check workflows, actions and embedded scripts", actionlint.Version()))
+	_, _ = fmt.Fprintf(out, "\n%s\n  %s [flags] [files...]\n  %s [flags] -\n  %s <command>\n", heading.Sprint("Usage:"), command.Sprint(name), command.Sprint(name), command.Sprint(name))
+	_, _ = fmt.Fprintln(out, "\nNo files: discover workflows and actions. Use - for stdin.\nUse -- before filenames beginning with a dash.")
+	_, _ = fmt.Fprintln(out, "\n"+heading.Sprint("Commands:"))
+	for _, name := range []string{"check", "config", "rules", "doctor", "completion", "version"} {
+		for _, sub := range a.root.Commands() {
+			if sub.Name() == name {
+				_, _ = fmt.Fprintf(out, "  %s %s\n", command.Sprintf("%-12s", sub.Name()), sub.Short)
+				break
+			}
+		}
+	}
+	type flagHelp struct{ name, usage string }
+	for _, group := range []struct {
+		name  string
+		flags []flagHelp
+	}{
+		{"Rule selection", []flagHelp{
+			{"strict", "Enable all stable rules, respecting configured exceptions"},
+			{"experimental", "Enable nursery rules, respecting configured exceptions"},
+		}},
+		{"Flags", []flagHelp{
+			{"config", "Read configuration from `PATH`"},
+			{"ignore-regex", "Ignore findings matching `RE` (repeatable)"},
+			{"json", "Write JSON results"},
+			{"output-format", "Output `FMT`: text, oneline, json, jsonl, sarif, github"},
+			{"output-file", "Write results to `PATH`"},
+			{"quiet", "Suppress progress and summaries"},
+			{"help", "Show help"},
+			{"version", "Show version"},
+		}},
+	} {
+		flags := pflag.NewFlagSet(group.name, pflag.ContinueOnError)
+		flags.SortFlags = false
+		for _, item := range group.flags {
+			display := *a.root.Flags().Lookup(item.name)
+			display.Usage = item.usage
+			flags.AddFlag(&display)
+		}
+		_, _ = fmt.Fprintf(out, "\n%s\n%s", heading.Sprint(group.name+":"), styleHelpFlags(flags.FlagUsagesWrapped(width), option))
+	}
+	_, _ = fmt.Fprintln(out, "\nRun actionlint <command> --help for command options.")
+	_, _ = fmt.Fprintln(out, "Exit codes: 0 clean · 1 findings · 2 invalid arguments · 3 failure")
+	_, _ = fmt.Fprintln(out, "Docs: "+terminalLink(links, "https://actionlint.kjanat.dev", "https://actionlint.kjanat.dev"))
+}
+
+// The optional value is already part of the display name, so omit its type label.
+type helpOptionalValue struct{ pflag.Value }
+
+func (helpOptionalValue) Type() string { return "" }
+
 func (a *commandApp) legacyHelp(c *cobra.Command) {
 	a.helpShown = true
 	out, colored, restore := a.helpOutput(c)
 	defer restore()
 	heading := helpStyle(colored, color.Bold, color.FgCyan)
 	option := helpStyle(colored, color.FgCyan)
-	_, _ = fmt.Fprintln(out, heading.Sprint("Legacy root interface (both -name and --name remain supported):"))
+	_, _ = fmt.Fprintln(out, helpStyle(colored, color.Bold).Sprintf("actionlint %s", actionlint.Version()))
 	_, _ = fmt.Fprintln(out, styleHelpFlags(`
   -format TEMPLATE        --template TEMPLATE
   -oneline                --output-format=oneline
-  -ignore REGEX           --ignore-regex REGEX (repeatable; message matching)
+  -ignore REGEX           --ignore-regex REGEX (repeatable, matches diagnostic messages)
   -config-file PATH       --config PATH
-  -init / -init-config    config init (also: init, init-config, config --init)
-  -completion SHELL       completion SHELL (-completions also works)
-  -version                version (the old flag keeps its original output)
+  -init / -init-config    config init
+  -completion SHELL       completion SHELL
+  -version                version
   -verbose / -debug       --log-level=info / --log-level=debug
   -color / -no-color      boolean options on the root; no-color wins
   -shellcheck COMMAND     false or an empty value disables ShellCheck
@@ -175,8 +252,7 @@ func (a *commandApp) legacyHelp(c *cobra.Command) {
 
 Root parsing stops at the first filename. -- ends option parsing.
 Existing files named check, config, rules, doctor, completion or version win
-over commands. Use --command NAME to select a command despite such a file.
-Legacy options are supported without deprecation warnings.`, option))
+over commands. Use --command NAME to select a command despite such a file.`, option))
 	writeHelpDestinations(out, heading, a.helpHyperlinks())
 }
 

@@ -177,7 +177,7 @@ func TestCommandConfigAndEmptyArgs(t *testing.T) {
 	for _, args := range [][]string{nil, {"actionlint"}} {
 		var out, errout bytes.Buffer
 		cmd := Command{Stdout: &out, Stderr: &errout}
-		if code := cmd.Main(args); code != 0 || out.Len() != 0 || errout.Len() != 0 {
+		if code := cmd.Main(args); code != 0 || out.Len() != 0 || errout.String() != "✓ Checked 1 workflow. All clear!\n" {
 			t.Fatalf("empty args imported process args: %d %s %s", code, &out, &errout)
 		}
 	}

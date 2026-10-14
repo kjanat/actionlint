@@ -2,7 +2,7 @@
 
 # Unreleased
 
-- Refresh CLI help with terminal-width wrapping, explicit `[--]` usage and focused completion guidance. Fix command completion in Zsh, accept `completions` and init aliases, and generate a current configuration reference with relative, optionally clickable paths. Refuse existing report destinations before analysis unless `--overwrite-output` is supplied, retaining the previous report when analysis fails.
+- Refresh CLI help with terminal-width wrapping, explicit `[--]` usage and focused completion guidance. Fix command completion in Zsh, accept `completions` and init aliases, and generate a current configuration reference with relative, optionally clickable paths. Ask for confirmation before replacing an existing report, with `-y`/`--yes` to skip the prompt, retaining the previous report when analysis fails.
 
 - Build the `actionlint-kjanat` and `actionlint-kjanat-git` AUR packages without reading the repository's mise configuration, so mise shims on the builder's `PATH` no longer ask to trust it. (kjanat/actionlint#195)
 

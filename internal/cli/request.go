@@ -14,6 +14,7 @@ type commandRequest interface {
 type checkRequest struct {
 	Check        checkInvocation
 	Render       renderOptions
+	Yes          bool
 	JSON, Legacy bool
 }
 
@@ -116,7 +117,7 @@ func executeInvocation(ctx context.Context, streams Command, inv invocation) (in
 		return 0, err
 	}
 	if inv.JSON && inv.Render.PrettyJSON && inv.Operation != operationCheck {
-		streams.Stdout = &terminalJSONOutput{Writer: streams.Stdout, ctx: ctx, color: inv.Render.Color}
+		streams.Stdout = &prettyJSONOutput{Writer: streams.Stdout, ctx: ctx, color: inv.Render.Color, explicit: inv.Render.PrettyJSONExplicit}
 	}
 	return request.run(ctx, streams)
 }

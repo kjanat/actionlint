@@ -13,21 +13,29 @@ import (
 	"golang.org/x/sys/execabs"
 )
 
-type terminalJSONOutput struct {
+type prettyJSONOutput struct {
 	io.Writer
-	ctx   context.Context
-	color actionlint.ColorOptionKind
+	ctx      context.Context
+	color    actionlint.ColorOptionKind
+	explicit bool
 }
 
-func (out *terminalJSONOutput) writeJSON(value any) error {
+func (out *prettyJSONOutput) writeJSON(value any) error {
 	data, err := json.Marshal(value)
 	if err != nil {
 		return err
 	}
-	return writeTerminalJSON(out.ctx, out.Writer, out.color, append(data, '\n'))
+	return writePrettyJSON(out.ctx, out.Writer, out.color, append(data, '\n'), out.explicit)
 }
 
-func writeTerminalJSON(ctx context.Context, out io.Writer, mode actionlint.ColorOptionKind, data []byte) error {
+func writePrettyJSON(ctx context.Context, out io.Writer, mode actionlint.ColorOptionKind, data []byte, explicit bool) error {
+	if explicit {
+		var formatted bytes.Buffer
+		if err := json.Indent(&formatted, bytes.TrimSpace(data), "", "  "); err != nil {
+			return err
+		}
+		data = append(formatted.Bytes(), '\n')
+	}
 	file, terminal := terminalFile(out)
 	if terminal {
 		if jq, err := execabs.LookPath("jq"); err == nil {
