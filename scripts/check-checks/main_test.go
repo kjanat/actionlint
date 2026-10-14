@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"io"
 	"log"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -263,6 +264,35 @@ func TestPlaygroundLinkSizeLimit(t *testing.T) {
 	u.PlaygroundLink(bytes.Repeat(line, playgroundMaxSourceBytes/len(line)+1))
 	if u.firstErr == nil || !strings.Contains(u.firstErr.Error(), "larger than the playground") {
 		t.Fatalf("a source past the limit was accepted: %v", u.firstErr)
+	}
+}
+
+func TestPlaygroundLinkURLLimit(t *testing.T) {
+	random := rand.New(rand.NewPCG(1, 2))
+	var src bytes.Buffer
+	for src.Len() < 2*playgroundMaxURLLength {
+		for range 1023 {
+			src.WriteByte(byte('a' + random.IntN(26)))
+		}
+		src.WriteByte('\n')
+	}
+	u := NewUpdater(nil)
+	u.PlaygroundLink(src.Bytes())
+	if u.firstErr == nil || !strings.Contains(u.firstErr.Error(), "browsers load") {
+		t.Fatalf("an incompressible source produced a link past the URL limit: %v", u.firstErr)
+	}
+}
+
+func TestPlaygroundRetainedLinkLimit(t *testing.T) {
+	payload := bytes.Repeat([]byte("a"), playgroundMaxSourceBytes+1)
+	if err := playgroundLinkError(payload, "[Playground]("+playgroundURL+"eJw=)"); err == nil {
+		t.Fatal("a retained link with an oversized payload passed")
+	}
+	if err := playgroundLinkError([]byte("on: push"), "[Playground]("+playgroundURL+strings.Repeat("A", playgroundMaxURLLength)+")"); err == nil {
+		t.Fatal("a retained link past the URL limit passed")
+	}
+	if err := playgroundLinkError([]byte("on: push"), "[Playground]("+playgroundURL+"eJw=)"); err != nil {
+		t.Fatalf("a small retained link failed: %v", err)
 	}
 }
 

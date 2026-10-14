@@ -27,12 +27,28 @@ function toBase64(bytes: Uint8Array): string {
 	return btoa(s);
 }
 
-export function encodeSource(source: string): string {
+// Chromium refuses URLs longer than 2 MiB.
+export const maxURLLength = 2 * 1024 * 1024;
+
+function sourceBytes(source: string, origin: string): Uint8Array {
 	const bytes = new TextEncoder().encode(source);
 	if (bytes.length > maxSourceBytes) {
-		throw new Error(`The source is larger than ${maxSourceBytes} bytes`);
+		throw new Error(`The ${origin} is larger than ${maxSourceBytes} bytes`);
 	}
-	return toBase64(pako.deflate(bytes));
+	return bytes;
+}
+
+export function querySource(source: string): string {
+	sourceBytes(source, 'query source');
+	return source;
+}
+
+export function shareURL(base: string, source: string): string {
+	const url = `${base}#${toBase64(pako.deflate(sourceBytes(source, 'source')))}`;
+	if (url.length > maxURLLength) {
+		throw new Error(`The shared URL is longer than ${maxURLLength} characters`);
+	}
+	return url;
 }
 
 export function sharedSource(encoded: string): string {

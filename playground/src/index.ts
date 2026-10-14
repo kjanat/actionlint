@@ -15,7 +15,7 @@ import { basicSetup } from 'codemirror';
 import isMobile from 'ismobilejs';
 
 import { errorRange } from './range';
-import { encodeSource, readSource, sharedSource } from './source';
+import { querySource, readSource, sharedSource, shareURL } from './source';
 
 const editorTheme = new Compartment();
 
@@ -80,7 +80,7 @@ function themeFor(isDark: boolean): Extension {
 
 		const s = params.get('s');
 		if (s !== null) {
-			return s;
+			return querySource(s);
 		}
 
 		const u = params.get('u');
@@ -343,16 +343,16 @@ jobs:
 	permalinkButton.addEventListener('click', () => {
 		void (async () => {
 			const label = permalinkButton.textContent;
-			let encoded: string | undefined;
+			let url: string | undefined;
 			try {
-				encoded = encodeSource(getSource());
+				url = shareURL(window.location.origin + window.location.pathname, getSource());
 			} catch {
 				permalinkButton.textContent = 'Too large to share';
 			}
-			if (encoded !== undefined) {
-				window.location.hash = encoded;
+			if (url !== undefined) {
+				window.history.replaceState(null, '', url);
 				try {
-					await navigator.clipboard.writeText(window.location.href);
+					await navigator.clipboard.writeText(url);
 					permalinkButton.textContent = 'Copied!';
 				} catch {
 					permalinkButton.textContent = 'In address bar';

@@ -7,7 +7,15 @@ import { Text } from '@codemirror/state';
 import * as pako from 'pako';
 
 import { errorRange } from './range';
-import { encodeSource, maxEncodedLength, maxSourceBytes, readSource, sharedSource } from './source';
+import {
+	maxEncodedLength,
+	maxSourceBytes,
+	maxURLLength,
+	querySource,
+	readSource,
+	sharedSource,
+	shareURL,
+} from './source';
 
 // The Go wasm runtime installs `globalThis.Go` as a side effect.
 import 'wasm_exec.js';
@@ -73,15 +81,33 @@ describe('source', () => {
 		assert.equal(sharedSource(shared('on: push\n')), 'on: push\n');
 	});
 
+	const base = 'https://kjanat.github.io/actionlint/';
+
+	function hashOf(url: string): string {
+		assert.ok(url.startsWith(`${base}#`), url.slice(0, 80));
+		return url.slice(base.length + 1);
+	}
+
 	it('shares a source that the loader accepts', () => {
-		assert.equal(sharedSource(encodeSource('on: push\n')), 'on: push\n');
+		assert.equal(sharedSource(hashOf(shareURL(base, 'on: push\n'))), 'on: push\n');
 		const limit = 'a'.repeat(maxSourceBytes);
-		assert.equal(sharedSource(encodeSource(limit)), limit);
+		assert.equal(sharedSource(hashOf(shareURL(base, limit))), limit);
 	});
 
 	it('refuses to share a source past the limit', () => {
-		assert.throws(() => encodeSource('a'.repeat(maxSourceBytes + 1)), /larger than/);
-		assert.throws(() => encodeSource('é'.repeat(maxSourceBytes / 2 + 1)), /larger than/);
+		assert.throws(() => shareURL(base, 'a'.repeat(maxSourceBytes + 1)), /larger than/);
+		assert.throws(() => shareURL(base, 'é'.repeat(maxSourceBytes / 2 + 1)), /larger than/);
+	});
+
+	it('refuses to share a URL past the browser limit', () => {
+		const letters = 'abcdefghijklmnopqrstuvwxyz';
+		const source = Array.from({ length: 2 * maxURLLength }, () => letters[Math.floor(Math.random() * 26)]).join('');
+		assert.throws(() => shareURL(base, source), /longer than/);
+	});
+
+	it('bounds a query source', () => {
+		assert.equal(querySource('on: push\n'), 'on: push\n');
+		assert.throws(() => querySource('a'.repeat(maxSourceBytes + 1)), /larger than/);
 	});
 
 	it('accepts an incompressible source at the limit', () => {
