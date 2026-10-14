@@ -1,8 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { afterAll, beforeAll, it, vi } from 'vitest';
 
-import { readFileSync } from 'node:fs';
-
 import { diagnosticCount } from '@codemirror/lint';
 import { EditorView } from '@codemirror/view';
 
@@ -20,7 +18,30 @@ let error: HTMLElement;
 let cleanup = () => {};
 
 beforeAll(async () => {
-	document.body.innerHTML = readFileSync('index.html', 'utf8');
+	document.body.replaceChildren();
+	const elements: [keyof HTMLElementTagNameMap, string][] = [
+		['div', 'editor'],
+		['div', 'loading'],
+		['div', 'error-msg'],
+		['div', 'success-msg'],
+		['button', 'check-url-btn'],
+		['button', 'permalink-btn'],
+		['input', 'check-url-input'],
+		['p', 'invalid-input'],
+		['a', 'shellcheck-license'],
+	];
+	for (const [tag, id] of elements) {
+		const element = document.createElement(tag);
+		element.id = id;
+		if (element instanceof HTMLButtonElement) element.type = 'button';
+		if (element instanceof HTMLInputElement) element.type = 'text';
+		document.body.append(element);
+	}
+	const table = document.createElement('table');
+	const tbody = document.createElement('tbody');
+	tbody.id = 'lint-result-body';
+	table.append(tbody);
+	document.body.append(table);
 	vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, addListener() {}, removeListener() {} }));
 	vi.stubGlobal('fetch', () => Promise.resolve(new Response('')));
 	vi.stubGlobal(
