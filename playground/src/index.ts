@@ -95,8 +95,8 @@ function themeFor(isDark: boolean): Extension {
 			return sharedSource(window.location.hash.slice(1));
 		}
 
-		const src = `# Paste your workflow YAML to this code editor
-
+		const src = `\
+# Paste your workflow YAML to this code editor
 on:
   push:
     branch: main
@@ -108,18 +108,19 @@ jobs:
       matrix:
         os: [macos-latest, linux-latest]
     runs-on: \${{ matrix.os }}
+    shell: bash
     steps:
       - run: echo "Checking commit '\${{ github.event.head_commit.message }}'"
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v3
       - uses: actions/setup-node@v7
-        with:
-          node_version: 18.x
+        with: { node_version: 18.x }
       - uses: actions/cache@v6
         with:
           path: ~/.npm
           key: \${{ matrix.platform }}-node-\${{ hashFiles('**/package-lock.json') }}
         if: \${{ github.repository.permissions.admin == true }}
-      - run: npm install && npm test`;
+      - run: npm install && npm test && echo $globberdyglobberdyglob && echo '$huh'
+`;
 
 		return src;
 	}
