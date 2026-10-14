@@ -34,11 +34,14 @@ pkgver() {
 
 prepare() {
 	cd actionlint || exit 1
+	# mise shims on the builder's PATH otherwise ask to trust the repository's mise configs.
+	export MISE_IGNORED_CONFIG_PATHS="${srcdir}/actionlint"
 	go mod download
 }
 
 build() {
 	cd actionlint || exit 1
+	export MISE_IGNORED_CONFIG_PATHS="${srcdir}/actionlint"
 	export CGO_CPPFLAGS="${CPPFLAGS}"
 	export CGO_CFLAGS="${CFLAGS}"
 	export CGO_CXXFLAGS="${CXXFLAGS}"
@@ -55,6 +58,7 @@ build() {
 
 check() {
 	cd actionlint || exit 1
+	export MISE_IGNORED_CONFIG_PATHS="${srcdir}/actionlint"
 	# The ./scripts/... tests reach the network; the shellcheck
 	# integration tests self-skip when those tools are absent.
 	go test . ./cmd/...

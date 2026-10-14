@@ -193,9 +193,11 @@ aur_sources:
       - "ruff: check Python scripts in run steps"
     prepare: |-
       cd "actionlint-${pkgver}"
+      export MISE_IGNORED_CONFIG_PATHS="${srcdir}/actionlint-${pkgver}"
       go mod download
     build: |-
       cd "actionlint-${pkgver}"
+      export MISE_IGNORED_CONFIG_PATHS="${srcdir}/actionlint-${pkgver}"
       export CGO_CPPFLAGS="${CPPFLAGS}"
       export CGO_CFLAGS="${CFLAGS}"
       export CGO_CXXFLAGS="${CXXFLAGS}"

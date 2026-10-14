@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Build the `actionlint-kjanat` and `actionlint-kjanat-git` AUR packages without reading the repository's mise configuration, so mise shims on the builder's `PATH` no longer ask to trust it. (kjanat/actionlint#195)
+
 - Store bundled action metadata in a versioned JSON catalogue with shared definitions and a JSON Schema for editor support. Preserve existing action validation and mutable Go API entries.
 
 - Install ShellCheck for the `actionlint-shellcheck` pre-commit hook through `github.com/kjanat/shellcheck-rs/go/cmd/shellcheck`, a Go installer that downloads and runs the native rshellcheck release, in place of go-shellcheck, which compiled a WASM build of ShellCheck in every process actionlint spawned. With `gh` signed in, the installer verifies the release's build provenance before installing. rshellcheck's own diagnostics, such as SC9001 and SC9002, pass through unchanged. (kjanat/actionlint#89)
