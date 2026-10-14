@@ -142,6 +142,7 @@ aurs:
     skip_upload: true
     provides: [actionlint, actionlint-kjanat]
     conflicts: [actionlint, actionlint-bin, actionlint-git, actionlint-kjanat]
+    depends: [git]
     optdepends:
       - "shellcheck: check shell scripts in run steps"
       - "ruff: check Python scripts in run steps"
@@ -184,7 +185,7 @@ aur_sources:
     conflicts: [actionlint, actionlint-bin, actionlint-git, actionlint-kjanat-bin]
     # Built with cgo and -linkmode=external per the Arch Go guidelines, so it
     # links against the system libc, unlike the static release binaries.
-    depends: [glibc]
+    depends: [glibc, git]
     makedepends: [go, git]
     optdepends:
       - "shellcheck: check shell scripts in run steps"

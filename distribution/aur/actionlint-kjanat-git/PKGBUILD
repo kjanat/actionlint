@@ -10,8 +10,8 @@ pkgdesc='Static checker for GitHub Actions workflow files (kjanat fork, git mast
 arch=('x86_64' 'aarch64' 'armv7h')
 url='https://actionlint.kjanat.dev'
 license=('MIT')
-depends=('glibc')
-makedepends=('git' 'go' 'pandoc-cli')
+depends=('glibc' 'git')
+makedepends=('go' 'pandoc-cli')
 optdepends=(
 	'ruff: check Python scripts in run steps'
 	'shellcheck: check shell scripts in run steps'

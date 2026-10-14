@@ -64,7 +64,7 @@ buildGoModule {
         shellcheck
         ruff
       ]
-    }
+    } --suffix PATH : ${lib.makeBinPath [ gitMinimal ]}
   '';
 
   passthru = { inherit completionTests; };
