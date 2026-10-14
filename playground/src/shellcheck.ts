@@ -1,5 +1,5 @@
-import ShellcheckWorker from '@kjanat/rshellcheck-wasm/worker?worker';
 import wasmUrl from '@kjanat/rshellcheck-wasm/wasm?url';
+import ShellcheckWorker from '@kjanat/rshellcheck-wasm/worker?worker';
 
 import { shellcheckOutput, shellcheckRequest } from './shellcheck-request';
 

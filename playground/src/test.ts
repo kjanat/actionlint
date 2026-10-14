@@ -3,13 +3,13 @@ import { beforeAll, describe, it } from 'vitest';
 
 import { promises as fs } from 'node:fs';
 import { createRequire } from 'node:module';
-import { createChecker } from '@kjanat/rshellcheck-wasm';
-import { shellcheckOutput, shellcheckRequest } from './shellcheck-request';
 
 import { Text } from '@codemirror/state';
+import { createChecker } from '@kjanat/rshellcheck-wasm';
 import * as pako from 'pako';
 
 import { errorRange } from './range';
+import { shellcheckOutput, shellcheckRequest } from './shellcheck-request';
 import {
 	maxEncodedLength,
 	maxSourceBytes,

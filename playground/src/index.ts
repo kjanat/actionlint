@@ -8,8 +8,6 @@ import './style.css';
 import { indentWithTab } from '@codemirror/commands';
 import { yaml } from '@codemirror/lang-yaml';
 import type { Diagnostic } from '@codemirror/lint';
-import { loadShellcheck } from './shellcheck';
-import shellcheckLicenseUrl from 'rshellcheck-license?url';
 import { lintGutter, setDiagnostics } from '@codemirror/lint';
 import type { Extension } from '@codemirror/state';
 import { Compartment } from '@codemirror/state';
@@ -19,7 +17,10 @@ import { basicSetup } from 'codemirror';
 import isMobile from 'ismobilejs';
 
 import { errorRange } from './range';
+import { loadShellcheck } from './shellcheck';
 import { querySource, readSource, sharedSource, shareURL } from './source';
+
+import shellcheckLicenseUrl from 'rshellcheck-license?url';
 
 const editorTheme = new Compartment();
 
