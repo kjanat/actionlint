@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"actionlint.kjanat.dev"
 	"go.yaml.in/yaml/v4"
@@ -103,10 +104,10 @@ func initLegacyCommandConfig(streams Command, req legacyConfigInitRequest) error
 			return err
 		}
 	}
-	return generateCommandConfig(streams.Stdout, req.JSON, false)
+	return generateCommandConfig(streams.Stdout, req.JSON, false, req.Hyperlinks)
 }
 
-func generateCommandConfig(out io.Writer, asJSON, withSchema bool) error {
+func generateCommandConfig(out io.Writer, asJSON, withSchema bool, hyperlinks hyperlinkMode) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -118,6 +119,16 @@ func generateCommandConfig(out io.Writer, asJSON, withSchema bool) error {
 	if asJSON {
 		return writeCommandJSON(out, map[string]string{"path": path})
 	}
-	_, err = fmt.Fprintf(out, "Config file was generated at %q\n", path)
+	label, err := filepath.Rel(cwd, path)
+	if err != nil {
+		label = path
+	}
+	file, terminal := terminalFile(out)
+	links := hyperlinks.enabled(terminal, os.Getenv)
+	if links && terminal {
+		restore := enableTerminalVT(file)
+		defer restore()
+	}
+	_, err = fmt.Fprintf(out, "Created %s\n", fileLink(links, label))
 	return err
 }

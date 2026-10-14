@@ -4,10 +4,42 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 )
+
+// Commands and input paths share the first position. Extension-filter directives
+// would make the shell interpret Cobra's command candidates as file extensions.
+func completeRootInputs(_ *cobra.Command, args []string, prefix string) ([]string, cobra.ShellCompDirective) {
+	if len(args) != 0 {
+		return []string{"yaml", "yml"}, cobra.ShellCompDirectiveFilterFileExt
+	}
+	directory, name := filepath.Split(prefix)
+	readDir := directory
+	if readDir == "" {
+		readDir = "."
+	}
+	entries, err := os.ReadDir(readDir)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	var candidates []string
+	for _, entry := range entries {
+		if !strings.HasPrefix(entry.Name(), name) {
+			continue
+		}
+		candidate := directory + entry.Name()
+		if entry.IsDir() {
+			candidate += string(filepath.Separator)
+		} else if ext := filepath.Ext(candidate); ext != ".yaml" && ext != ".yml" {
+			continue
+		}
+		candidates = append(candidates, candidate)
+	}
+	return candidates, cobra.ShellCompDirectiveNoFileComp
+}
 
 type completionShell string
 
@@ -60,22 +92,60 @@ func completionShellFromPath(p string) (completionShell, bool) {
 	if i := strings.LastIndexAny(p, `/\`); i >= 0 {
 		p = p[i+1:]
 	}
-	p = strings.TrimSuffix(strings.ToLower(p), ".exe")
-	return completionShellFromName(p)
+	pathExt := os.Getenv("PATHEXT")
+	if pathExt == "" {
+		// Match os/exec's Windows fallback when PATHEXT is unset or empty.
+		pathExt = ".COM;.EXE;.BAT;.CMD"
+	}
+	ext := filepath.Ext(p)
+	for suffix := range strings.SplitSeq(pathExt, ";") {
+		suffix = strings.TrimSpace(suffix)
+		if suffix == "" {
+			continue
+		}
+		if !strings.HasPrefix(suffix, ".") {
+			suffix = "." + suffix
+		}
+		if strings.EqualFold(ext, suffix) {
+			p = strings.TrimSuffix(p, ext)
+			break
+		}
+	}
+	return completionShellFromName(strings.ToLower(p))
 }
 
 // detectCompletionShell resolves the current shell from the process environment. $SHELL wins when
-// it names a supported shell. PowerShell exports $PSModulePath but never $SHELL, so a non-empty
+// it names a supported shell. PowerShell exports $PSModulePath but never $SHELL, so a present
 // $PSModulePath is the fallback signal. A pwsh session launched from bash inherits SHELL=/bin/bash
 // and the login shell the user opted into wins over the fallback.
-func detectCompletionShell(shellVar, psModulePath string) (completionShell, bool) {
+func detectCompletionShell(shellVar string, powerShellPresent bool) (completionShell, bool) {
 	if s, ok := completionShellFromPath(shellVar); ok {
 		return s, true
 	}
-	if psModulePath != "" {
+	if powerShellPresent {
 		return completionShellPowerShell, true
 	}
 	return "", false
+}
+
+func currentCompletionShell() (completionShell, bool) {
+	_, powerShellPresent := os.LookupEnv("PSModulePath")
+	return detectCompletionShell(os.Getenv("SHELL"), powerShellPresent)
+}
+
+func completionExamples(shell completionShell) string {
+	switch shell {
+	case completionShellBash:
+		return "  source <(actionlint completion bash)\n  actionlint completion bash > actionlint.bash"
+	case completionShellZsh:
+		return "  source <(actionlint completion zsh)\n  actionlint completion zsh > /path/on/fpath/_actionlint"
+	case completionShellFish:
+		return "  actionlint completion fish | source\n  actionlint completion fish > actionlint.fish"
+	case completionShellPowerShell:
+		return "  actionlint completion powershell | Out-String | Invoke-Expression\n  actionlint completion powershell | Out-File -Encoding utf8 actionlint-completion.ps1"
+	default:
+		return "  actionlint completion bash\n  actionlint completion zsh\n  actionlint completion fish\n  actionlint completion powershell"
+	}
 }
 
 func (s *completionShell) String() string {
@@ -84,7 +154,7 @@ func (s *completionShell) String() string {
 
 func (s *completionShell) Set(v string) error {
 	if v == "auto" {
-		c, ok := detectCompletionShell(os.Getenv("SHELL"), os.Getenv("PSModulePath"))
+		c, ok := currentCompletionShell()
 		if !ok {
 			return fmt.Errorf("cannot detect the current shell from the environment. Set $SHELL or name one of %s", completionShellNames())
 		}

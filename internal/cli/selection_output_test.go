@@ -25,7 +25,7 @@ func TestReportCannotReplaceExcludedSelectionConfig(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
-				args := []string{"--output-file", target}
+				args := []string{"--overwrite-output", "--output-file", target}
 				if target == ".github/workflows/ci.yml" {
 					args = append(args, target)
 				}

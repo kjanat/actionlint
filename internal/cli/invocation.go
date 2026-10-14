@@ -40,16 +40,17 @@ type checkInvocation struct {
 
 // renderOptions controls result presentation without changing analysis.
 type renderOptions struct {
-	PrettyJSON   bool
-	Hyperlinks   hyperlinkMode
-	Format       actionlint.OutputFormat
-	Template     string
-	TemplateFile string
-	OutputFile   string
-	Color        actionlint.ColorOptionKind
-	Oneline      bool
-	Quiet        bool
-	Summary      bool
+	PrettyJSON      bool
+	Hyperlinks      hyperlinkMode
+	Format          actionlint.OutputFormat
+	Template        string
+	TemplateFile    string
+	OutputFile      string
+	OverwriteOutput bool
+	Color           actionlint.ColorOptionKind
+	Oneline         bool
+	Quiet           bool
+	Summary         bool
 }
 
 func defaultInvocation() invocation {
@@ -94,6 +95,9 @@ func (a *commandApp) prepareInvocation() error {
 	}
 	if i.Operation != "check" && i.Render.OutputFile != "" {
 		return commandUsageError{errors.New("--output-file is only supported for checks")}
+	}
+	if i.Render.OverwriteOutput && (i.Operation != operationCheck || i.Render.OutputFile == "" || i.Render.OutputFile == "-") {
+		return commandUsageError{errors.New("--overwrite-output requires --output-file with a filesystem path")}
 	}
 	if i.Operation == "version" || i.Operation == "completion" {
 		return nil
@@ -165,12 +169,12 @@ func (inv invocation) request() (commandRequest, error) {
 		if inv.Legacy {
 			return legacyConfigInitRequest{ConfigPath: inv.Check.Config.Path, IgnoreRegex: inv.Check.IgnoreRegex,
 				Template: inv.Render.Template, TemplateFile: inv.Render.TemplateFile,
-				Log: (inv.Check.Verbose || inv.Check.Debug) && !inv.Render.Quiet, JSON: inv.JSON}, nil
+				Log: (inv.Check.Verbose || inv.Check.Debug) && !inv.Render.Quiet, JSON: inv.JSON, Hyperlinks: inv.Render.Hyperlinks}, nil
 		}
 		if inv.Check.Config.Path != "" || inv.Check.Config.Disabled {
 			return nil, commandUsageError{errors.New("config init always creates the repository config; omit --config and --no-config")}
 		}
-		return configInitRequest{JSON: inv.JSON}, nil
+		return configInitRequest{JSON: inv.JSON, Hyperlinks: inv.Render.Hyperlinks}, nil
 	case operationCheck:
 		return checkRequest{Check: inv.Check, Render: inv.Render, JSON: inv.JSON, Legacy: inv.Legacy}, nil
 	default:

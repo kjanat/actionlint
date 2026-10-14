@@ -34,6 +34,7 @@ func (a *commandApp) parseLegacy(args []string) (rest []string, forced string, t
 	text(&r.Template, "", "format", "template", "f")
 	text(&r.TemplateFile, "", "template-file")
 	text(&r.OutputFile, "", "output-file")
+	boolean(&r.OverwriteOutput, "overwrite-output")
 	text(&o.output, "text", "output", "output-format", "o")
 	text(&o.logLevel, "none", "log-level")
 	text(&forced, "", "command")
@@ -48,7 +49,7 @@ func (a *commandApp) parseLegacy(args []string) (rest []string, forced string, t
 	boolean(&o.color, "color")
 	boolean(&o.noColor, "no-color")
 	boolean(&o.version, "version", "V")
-	boolean(&o.initConfig, "init-config")
+	boolean(&o.initConfig, "init-config", "init")
 	boolean(&o.helpLegacy, "help-legacy")
 	boolean(&a.inv.JSON, "json")
 	f.BoolVar(&r.PrettyJSON, "json-pretty", true, "")
@@ -124,5 +125,5 @@ func isCommandName(name string) bool {
 }
 
 func commandNames() []string {
-	return []string{"check", "pre-commit", "config", "rules", "doctor", "completion", "version", "help"}
+	return []string{"check", "pre-commit", "config", "rules", "doctor", "completion", "completions", "version", "help", "init", "init-config"}
 }

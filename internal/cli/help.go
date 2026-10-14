@@ -107,10 +107,10 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 	}
 	out, colored, restore := a.helpOutput(c)
 	defer restore()
-	width := 80
+	width := 120
 	if file, ok := a.streams.Stderr.(*os.File); ok {
 		if columns := terminalWidth(file); columns > 0 {
-			width = min(width, columns)
+			width = columns
 		}
 	}
 	links := a.helpHyperlinks()
@@ -147,7 +147,7 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 			_, _ = fmt.Fprintf(out, "\n%s\n%s", heading.Sprint(group+":"), styleHelpFlags(usage, option))
 		}
 	}
-	_, _ = fmt.Fprintf(out, "\n%s\n  Root options precede filenames. check accepts options after filenames.\n  Existing -flag and --flag spellings remain supported; see --help-legacy.\n  Use -- to force filenames, including names that match commands.\n\n%s\n  0  No findings   1  Findings   2  Invalid arguments   3  Could not complete\n", heading.Sprint("Compatibility:"), heading.Sprint("Exit status:"))
+	_, _ = fmt.Fprintf(out, "\n%s\n  0  No findings   1  Findings   2  Invalid arguments   3  Could not complete\n", heading.Sprint("Exit status:"))
 	writeHelpDestinations(out, heading, links)
 }
 
@@ -163,7 +163,7 @@ func (a *commandApp) legacyHelp(c *cobra.Command) {
   -oneline                --output-format=oneline
   -ignore REGEX           --ignore-regex REGEX (repeatable; message matching)
   -config-file PATH       --config PATH
-  -init-config            config init
+  -init / -init-config    config init (also: init, init-config, config --init)
   -completion SHELL       completion SHELL (-completions also works)
   -version                version (the old flag keeps its original output)
   -verbose / -debug       --log-level=info / --log-level=debug
@@ -224,7 +224,7 @@ func describeCommand(c *cobra.Command) commandDescription {
 		d.Description = c.Short
 	}
 	if c == c.Root() {
-		d.LegacyAliases = map[string]string{"-flag": "--flag", "completions": "completion", "format": "template", "ignore": "ignore-regex", "config-file": "config"}
+		d.LegacyAliases = map[string]string{"-flag": "--flag", "completions": "completion", "format": "template", "ignore": "ignore-regex", "config-file": "config", "init": "config init", "init-config": "config init"}
 	}
 	c.InitDefaultHelpFlag()
 	annotateFlag(c.Flags(), "help", "Information")

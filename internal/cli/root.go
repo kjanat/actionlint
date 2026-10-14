@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"io"
 	"strings"
 
@@ -43,21 +44,26 @@ func newCommandApp(streams *Command) *commandApp {
 	if a.streams.Stderr == nil {
 		a.streams.Stderr = io.Discard
 	}
+	shell, detectedShell := currentCompletionShell()
+	completionExample := "  actionlint completion --help"
+	if detectedShell {
+		completionExample = "  actionlint completion " + string(shell)
+	}
 	a.root = &cobra.Command{
-		Use:   "actionlint [flags] [files...] [-]",
+		Use:   "actionlint [flags] [--] [files... | -]",
 		Short: "Check GitHub Actions workflows",
-		Long:  "Check workflow syntax, expressions, actions and embedded scripts.\nWith no files, discover workflows in the current repository.\nPass - alone to read stdin.",
+		Long:  "Check workflows, actions and embedded scripts.\nWith no files, discover workflows and actions in the current repository.\nPass - alone to read stdin.",
 		Example: strings.Join([]string{
 			"  actionlint",
 			"  actionlint check --output-format=json workflow.yml",
 			"  actionlint config show --origin",
-			"  actionlint completion powershell",
+			completionExample,
 		}, "\n"),
 		SilenceErrors: true, SilenceUsage: true, DisableFlagsInUseLine: true,
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 		RunE:              a.capture("check"),
 		Args:              cobra.ArbitraryArgs,
-		ValidArgsFunction: cobra.FixedCompletions([]string{"yaml", "yml"}, cobra.ShellCompDirectiveFilterFileExt),
+		ValidArgsFunction: completeRootInputs,
 	}
 	a.root.SetIn(a.streams.Stdin)
 	a.root.SetOut(a.streams.Stdout)
@@ -67,9 +73,10 @@ func newCommandApp(streams *Command) *commandApp {
 	a.checkFlags(a.root, false)
 	a.root.Flags().SetInterspersed(false)
 	check := &cobra.Command{
-		Use: "check [flags] [files...] [-]", Short: "Check workflows",
-		Long: "Check explicit workflow files, stdin, or the current repository.\nOptions may appear before or after filenames. Directory inputs are not expanded.",
-		Args: cobra.ArbitraryArgs, RunE: a.capture("check"), ValidArgsFunction: a.root.ValidArgsFunction,
+		Use: "check [flags] [--] [files... | -]", Short: "Check workflows and actions",
+		Long: "Check workflow and action files, stdin, or the current repository.\nOptions may appear before or after filenames. Directory inputs are not expanded.",
+		Args: cobra.ArbitraryArgs, RunE: a.capture("check"),
+		ValidArgsFunction: cobra.FixedCompletions([]string{"yaml", "yml"}, cobra.ShellCompDirectiveFilterFileExt),
 	}
 	a.checkFlags(check, true)
 	preCommit := &cobra.Command{
@@ -82,7 +89,19 @@ func newCommandApp(streams *Command) *commandApp {
 	a.checkFlags(preCommit, true)
 	config := &cobra.Command{
 		Use: "config", Short: "Inspect and validate configuration",
-		Long: "Select one explicit configuration file or the repository's .github/actionlint.yaml or .yml.\nACTIONLINT_CONFIG and ACTIONLINT_NO_CONFIG supply defaults for selection.\nNo global configuration or file merging is applied.",
+		Long: "Select a configuration file or the repository's .github/actionlint.yaml or .yml.\nUse extends for shared configuration and overrides for file-specific settings.",
+		Args: cobra.NoArgs,
+		RunE: func(c *cobra.Command, args []string) error {
+			if a.opts.initConfig {
+				return a.capture(operationConfigInit)(c, args)
+			}
+			a.help(c, args)
+			return nil
+		},
+	}
+	for _, name := range []string{"init", "init-config"} {
+		config.PersistentFlags().BoolVar(&a.opts.initConfig, name, false, "Alias for config init")
+		_ = config.PersistentFlags().MarkHidden(name)
 	}
 	a.configFlags(config.PersistentFlags())
 	a.commonFlags(config, config.PersistentFlags())
@@ -117,14 +136,31 @@ func newCommandApp(streams *Command) *commandApp {
 	a.configFlags(doctor.Flags())
 	a.toolFlags(doctor.Flags())
 	completion := &cobra.Command{
-		Use: "completion <shell>", Short: "Generate Bash, Zsh, Fish or PowerShell completions",
-		Args: cobra.ExactArgs(1), RunE: a.capture("completion"),
+		Use: "completion <shell>", Aliases: []string{"completions"}, Short: "Generate shell completions",
+		Long:    "Supported shells: bash, zsh, fish, powershell (alias: pwsh).\nUse auto to detect your shell, or pass its executable path.",
+		Example: completionExamples(shell),
+		Args: func(_ *cobra.Command, args []string) error {
+			if len(args) > 1 {
+				return fmt.Errorf("completion accepts one shell: %s, pwsh or auto\nUsage: actionlint completion <shell>", completionShellNames())
+			}
+			return nil
+		},
+		RunE: func(c *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				a.help(c, args)
+				return nil
+			}
+			return a.capture(operationCompletion)(c, args)
+		},
 		ValidArgsFunction: cobra.FixedCompletions(append(completionShellNameList(), "pwsh", "auto"), cobra.ShellCompDirectiveNoFileComp),
 	}
 	version := &cobra.Command{Use: "version", Short: "Show version and build information", Args: cobra.NoArgs, RunE: a.capture("version")}
 	a.commonFlags(version, version.Flags())
 	a.hyperlinkFlag(completion, completion.Flags())
-	a.root.AddCommand(check, preCommit, config, rules, doctor, completion, version)
+	init := &cobra.Command{Use: "init", Aliases: []string{"init-config"}, Hidden: true,
+		Short: "Alias for config init", Args: cobra.NoArgs, RunE: a.capture(operationConfigInit)}
+	a.commonFlags(init, init.Flags())
+	a.root.AddCommand(check, preCommit, config, rules, doctor, completion, version, init)
 	return a
 }
 
@@ -189,6 +225,7 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	f.StringVar(&a.inv.Render.Template, "format", "", "Alias for --template")
 	f.StringVar(&a.inv.Render.TemplateFile, "template-file", "", "Read a Go template from this path")
 	f.StringVar(&a.inv.Render.OutputFile, "output-file", "", "Write results to this path; - means stdout")
+	f.BoolVar(&a.inv.Render.OverwriteOutput, "overwrite-output", false, "Allow replacing an existing --output-file destination")
 	f.BoolVar(&a.inv.Render.Summary, "summary", false, "Write an analysis summary to stderr")
 	f.BoolVar(&a.inv.Render.Oneline, "oneline", false, "Use legacy one-line diagnostics")
 	f.BoolVarP(&a.inv.Check.Verbose, "verbose", "v", false, "Use legacy progress logging")
@@ -201,12 +238,12 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 		f.BoolVar(&a.opts.color, "color", false, "Always use color in text diagnostics and help")
 	}
 	f.BoolVar(&a.opts.noColor, "no-color", false, "Disable color")
-	f.BoolVar(&a.opts.helpLegacy, "help-legacy", false, "Show supported legacy options")
+	f.BoolVar(&a.opts.helpLegacy, "help-legacy", false, "Show legacy flags and argument-parsing rules")
 	f.BoolP("help", "h", false, "Show help")
 	for _, name := range []string{"stdin-filename", "ignore-regex", "ignore"} {
 		annotateFlag(f, name, "Input")
 	}
-	for _, name := range []string{"output-format", "output", "template", "format", "template-file", "output-file", "summary", "oneline", "verbose", "debug", "log-level", "color", "no-color"} {
+	for _, name := range []string{"output-format", "output", "template", "format", "template-file", "output-file", "overwrite-output", "summary", "oneline", "verbose", "debug", "log-level", "color", "no-color"} {
 		annotateFlag(f, name, "Output")
 	}
 	for _, name := range []string{"help", "help-legacy"} {
@@ -219,9 +256,10 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 		f.BoolVarP(&a.opts.version, "version", "V", false, "Show version and build information")
 		annotateFlag(f, "version", "Information")
 		f.BoolVar(&a.opts.initConfig, "init-config", false, "Create the repository config")
+		f.BoolVar(&a.opts.initConfig, "init", false, "Alias for --init-config")
 		f.Var(&a.opts.completion, "completion", "Print generated completions for a shell")
 		f.Var(&a.opts.completion, "completions", "Alias for --completion")
-		for _, name := range []string{"init-config", "completion", "completions"} {
+		for _, name := range []string{"init", "init-config", "completion", "completions"} {
 			annotateFlag(f, name, "Information")
 			_ = f.MarkHidden(name)
 		}

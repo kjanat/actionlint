@@ -3,6 +3,8 @@ package actionlint
 import (
 	"os"
 	"path/filepath"
+	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -381,28 +383,58 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const schemaHeader = "# yaml-language-server: $schema=https://raw.githubusercontent.com/kjanat/actionlint/v1.17.0/actionlint.schema.json\n---\n"
+	const schemaHeader = "# yaml-language-server: $schema=https://raw.githubusercontent.com/kjanat/actionlint/v1.17.0/actionlint.schema.json\n"
 	if !strings.HasPrefix(string(b), schemaHeader) {
 		t.Fatalf("generated config must start with the YAML Language Server schema directive, got %q", string(b))
 	}
-	want := "#policy:\n#  cache-call-unrestricted: true\n#  cache-operation: true\n#  cache-write-untrusted: true\n#  disallow-suppressions: false\n"
-	if !strings.Contains(string(b), want) {
-		t.Fatalf("wanted generated config file %q to contain %q", string(b), want)
+	if strings.Count(string(b), "\n---\n") != 1 || strings.Count(string(b), "# yaml-language-server: $schema=") != 1 {
+		t.Fatal("generated config duplicates the schema header or document separator")
 	}
-	want = "#  # Require every \"uses:\" to be pinned to a full commit SHA or an image\n#  # digest.\n#  require-commit-hash: true\n"
-	if !strings.Contains(string(b), want) {
-		t.Fatalf("wanted generated config file %q to contain %q", string(b), want)
+	// Every public top-level setting must be discoverable in the reference.
+	typ := reflect.TypeFor[Config]()
+	for field := range typ.Fields() {
+		if !field.IsExported() {
+			continue
+		}
+		key, _, _ := strings.Cut(field.Tag.Get("yaml"), ",")
+		if key != "" && key != "-" && !strings.Contains(string(b), key+":") {
+			t.Errorf("generated reference omits %s", key)
+		}
 	}
-	want = "#  # Actions every workflow must use. \"owner/repo@ref\" also pins the version.\n#  required-actions:\n#    - actions/checkout\n"
-	if !strings.Contains(string(b), want) {
-		t.Fatalf("wanted generated config file %q to contain %q", string(b), want)
+	if strings.Index(string(b), "lint:") > strings.Index(string(b), "self-hosted-runner:") {
+		t.Fatal("repository allowlists precede lint settings")
 	}
-	want = "#  # Require \"timeout-minutes\" on every job. A mapping with \"min-minutes\" and\n#  # \"max-minutes\" also sets inclusive bounds.\n#  require-job-timeout: true\n"
-	if !strings.Contains(string(b), want) {
-		t.Fatalf("wanted generated config file %q to contain %q", string(b), want)
+	if got := c.diagnosticLevel("missing-local-action"); got != "on" {
+		t.Fatalf("generated config changes recommended rules: %s", got)
 	}
-	if !strings.Contains(string(b), "#  require-permissions: true\n") {
-		t.Fatal("generated config omits the permissions policy")
+	baseline, err := ParseConfig([]byte("{}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, rule := range BuiltinRules() {
+		if got, want := c.diagnosticLevel(rule.Name), baseline.diagnosticLevel(rule.Name); got != want {
+			t.Errorf("generated config changes %s from %s to %s", rule.Name, want, got)
+		}
+	}
+}
+
+func TestDefaultConfigReferenceExamples(t *testing.T) {
+	// Enable the commented YAML settings to check that the reference stays valid
+	// as the real configuration types and rule options evolve.
+	setting := regexp.MustCompile(`^\s*(?:[a-z][a-z-]*:|[".].*:|- )`)
+	var example strings.Builder
+	for line := range strings.SplitSeq(defaultConfigTemplate, "\n") {
+		indent := len(line) - len(strings.TrimLeft(line, " "))
+		if strings.HasPrefix(line[indent:], "# ") {
+			line = line[:indent] + line[indent+2:]
+		}
+		if setting.MatchString(line) {
+			example.WriteString(line + "\n")
+		}
+	}
+	var config Config
+	if err := yaml.Unmarshal([]byte(example.String()), &config); err != nil {
+		t.Fatalf("invalid reference example: %v\n%s", err, example.String())
 	}
 }
 

@@ -208,6 +208,9 @@ emits escaped workflow annotation commands; it is enabled only by that explicit
 format choice, including when running inside GitHub Actions.
 
 Check results go to stdout, or to `--output-file PATH`. `--output-file -` means stdout.
+An existing destination is rejected before analysis. Use `--overwrite-output`
+to explicitly replace it after successful analysis; failures preserve the previous
+report. This option applies only to the report destination.
 This destination option applies only to checks.
 A report file is replaced only after analysis completes; an operational failure
 preserves any previous report. An output file cannot replace a consumed workflow, local action, reusable workflow, configuration, template, or existing stdin filename, including links to those files. Replacing a report preserves its permission bits; a new report is private to the current user.
@@ -295,6 +298,11 @@ current handling of unknown keys described in [Configuration](config.md). It doe
 not silently introduce the stricter JSON Schema validation policy.
 `config init` retains the repository destination, refuses to overwrite either
 config filename, and includes the YAML Language Server schema directive.
+It creates a commented configuration reference with lint rules and tools first.
+`init`, `init-config`, `--init` and `--init-config` are compatibility aliases;
+`config --init` and `config --init-config` also work. The success message displays
+a path relative to the working directory, linked to the file when terminal
+hyperlinks are enabled. JSON output retains the absolute path.
 
 `rules` lists checks by name, description and category; `rules NAME` explains one
 check. `doctor` reports the selected config and resolves configured external-tool
@@ -306,8 +314,14 @@ completion do not load configuration or create a linter.
 
 ### Shell completion
 
-`completion <shell>` prints a completion script for the given shell to stdout. The
-supported shells are `bash`, `fish`, `powershell` and `zsh`. The value also
+`completion <shell>` prints a completion script for the given shell to stdout.
+`completions` command is an alias; either command without a shell shows help.
+Help examples follow the same shell detection as `completion auto`: a supported
+`SHELL` wins, then the presence of `PSModulePath` selects PowerShell. When neither
+signal resolves, help lists explicit shell choices without shell-specific loading syntax.
+Executable suffixes follow `PATHEXT`, matched case-insensitively. When it is unset
+or empty, the Windows fallback is `.COM;.EXE;.BAT;.CMD`.
+Supported shells are `bash`, `fish`, `powershell` and `zsh`. The value also
 accepts `pwsh` as an alias for `powershell` and executable paths such as `$SHELL`.
 `auto` selects the shell from `$SHELL`, then tries PowerShell when `$PSModulePath`
 is set. Cobra generates the scripts from the CLI definitions. They complete long flags,

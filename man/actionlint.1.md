@@ -11,9 +11,8 @@ footer: actionlint 1.17.0
 
 # SYNOPSIS
 
-**actionlint** \[*flags*\]\
-**actionlint** \[*flags*\] *file*...\
-**actionlint** \[*flags*\] -
+**actionlint** [*flags*] [**--**] [*files*... | **-**]\
+**actionlint check** [*flags*] [**--**] [*files*... | **-**]
 
 # DESCRIPTION
 
@@ -36,7 +35,7 @@ With no paths, **actionlint** and **actionlint check** find the current reposito
 containing both `.git` and `.github/workflows`, then recursively check workflow
 YAML files in that directory. Explicit file arguments and a lone **-** for stdin
 remain supported. Passing a directory does not enable recursive input expansion;
-passing an action manifest does not select standalone action-metadata linting.
+action manifests are also discovered and can be passed as explicit inputs.
 
     $ actionlint
     $ actionlint file1.yaml file2.yaml
@@ -118,8 +117,12 @@ over the legacy **--oneline** option.
 
 **--output-file** *PATH*
 : Write results to the given path. `-` means stdout. Replace the file
-only after successful analysis, including analysis that found problems. A failure
+only with **--overwrite-output** and after successful analysis, including analysis that found problems. A failure
 preserves a previous report. The output cannot also be a selected input.
+
+**--overwrite-output**
+: Permit replacing an existing **--output-file** destination. Without this
+option, an existing destination is rejected before analysis. Requires a file path.
 
 **--color**[=*MODE*]
 : On **check**, select `auto`, `always`, or `never`; a bare flag means `always`.
@@ -210,8 +213,9 @@ to `shellcheck`; `false` or an empty value disables it. Also available on **doct
 **doctor**. Uses isolated, read-only checks with the F rules by default;
 `tools.ruff` configures rule selection and the Python target version.
 
-**--init-config**
-: Root-only alias for **config init**, retaining existing initialization behavior.
+**--init-config**, **--init**
+: Aliases for **config init**, supported on the root and **config** command.
+The positional **init** and **init-config** commands invoke the same operation.
 
 **--completion**, **--completions** *SHELL*
 : Root-only supported aliases for **completion** *SHELL*. Accept `bash`, `fish`,

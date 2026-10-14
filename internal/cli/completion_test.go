@@ -52,7 +52,7 @@ func TestCompletionShellBehaviour(t *testing.T) {
 Set-PSReadLineKeyHandler -Key Tab -Function TabCompleteNext
 foreach ($Line in @('actionlint --co', 'actionlint --output j', 'actionlint -completion z',
   'actionlint check workflow.yml --output-format j', 'actionlint config show --or',
-  'actionlint completion z', 'actionlint rules express')) {
+  'actionlint completion z', 'actionlint rules express', 'actionlint co')) {
   $r = TabExpansion2 -inputScript $Line -cursorColumn $Line.Length
   Write-Output (@($r.CompletionMatches | ForEach-Object { $_.CompletionText }) -join '|')
 }
@@ -68,7 +68,7 @@ Write-Output ''
 		{completionShellFish, "fish", `source $argv[1]
 for line in 'actionlint --co' 'actionlint --output j' 'actionlint -completion z' \
     'actionlint check workflow.yml --output-format j' 'actionlint config show --or' \
-    'actionlint completion z' 'actionlint rules express' 'actionlint --ignore '
+    'actionlint completion z' 'actionlint rules express' 'actionlint co' 'actionlint --ignore '
   set results (complete -C "$line" | string split -f1 \t)
   echo (string join -- '|' $results)
 end
@@ -94,10 +94,42 @@ run actionlint check workflow.yml --output-format j
 run actionlint config show --or
 run actionlint completion z
 run actionlint rules express
+run actionlint co
 run actionlint --ignore ''
 `, []string{"--noprofile", "--norc"}},
+		{completionShellZsh, "zsh", `
+compdef() { :; }
+source "$1"
+# Capture candidates passed to Zsh's UI; extension filters take a separate path.
+_describe() {
+  local item
+  local -a matches
+  matches=("${(@P)2}")
+  for item in "${matches[@]}"; do
+    [[ "${item%%:*}" == "${words[-1]}"* ]] || continue
+    print -r -- "${item%%:*}"
+  done
+}
+_arguments() { print -r -- unexpected-file-filter; }
+run() {
+  words=("$@")
+  CURRENT=${#words}
+  local -a values
+  values=("${(@f)$( _actionlint )}")
+  print -r -- "${(j:|:)values}"
+}
+run actionlint --co
+run actionlint --output j
+run actionlint -completion z
+run actionlint check workflow.yml --output-format j
+run actionlint config show --or
+run actionlint completion z
+run actionlint rules express
+run actionlint co
+run actionlint --ignore ''
+`, []string{"-f"}},
 	}
-	want := [][]string{{"--color", "--config"}, {"json", "jsonl"}, {"zsh"}, {"json", "jsonl"}, {"--origin"}, {"zsh"}, {"expression"}, nil}
+	want := [][]string{{"--color", "--config"}, {"json", "jsonl"}, {"zsh"}, {"json", "jsonl"}, {"--origin"}, {"zsh"}, {"expression"}, {"completion", "config"}, nil}
 	for _, tc := range tests {
 		t.Run(string(tc.shell), func(t *testing.T) {
 			if runtime.GOOS == "windows" && tc.shell != completionShellPowerShell {
@@ -236,6 +268,7 @@ script:
 }
 
 func TestCompletionShellResolution(t *testing.T) {
+	t.Setenv("PATHEXT", "")
 	tests := []struct {
 		in   string
 		want completionShell
@@ -249,6 +282,14 @@ func TestCompletionShellResolution(t *testing.T) {
 		{"/usr/bin/zsh", completionShellZsh, true},
 		{"/usr/local/bin/fish", completionShellFish, true},
 		{`C:\Program Files\PowerShell\7\pwsh.exe`, completionShellPowerShell, true},
+		{"C:/Program Files/PowerShell/7/pwsh.exe", completionShellPowerShell, true},
+		{`C:\Program Files/PowerShell\7/pwsh.exe`, completionShellPowerShell, true},
+		{"C:/tools/PwSh.ExE", completionShellPowerShell, true},
+		{"//server/share/PowerShell/pwsh.exe", completionShellPowerShell, true},
+		{`\\server/share\PowerShell/pwsh.exe`, completionShellPowerShell, true},
+		{`C:\tools\pwsh.CMD`, completionShellPowerShell, true},
+		{`C:\tools\powershell.bat`, completionShellPowerShell, true},
+		{`C:\tools\pwsh.com`, completionShellPowerShell, true},
 		{"ZSH", completionShellZsh, true},
 		{"tcsh", "", false},
 		{"/usr/bin/ksh", "", false},
@@ -265,27 +306,56 @@ func TestCompletionShellResolution(t *testing.T) {
 	}
 }
 
+func TestCompletionShellPathExt(t *testing.T) {
+	for _, tc := range []struct {
+		name, pathExt, input string
+		want                 completionShell
+		ok                   bool
+	}{
+		{"custom extension", ".EXE;.PS1", `C:\tools\pwsh.PS1`, completionShellPowerShell, true},
+		{"mixed case", ".eXe;.pS1", `C:\tools\PwSh.Ps1`, completionShellPowerShell, true},
+		{"forward slash custom extension", ".eXe;.pS1", "C:/tools/PwSh.Ps1", completionShellPowerShell, true},
+		{"mixed separator custom extension", ".eXe;.pS1", `C:\tools/wrappers\PwSh.Ps1`, completionShellPowerShell, true},
+		{"spaces and optional dot", " exe ; pS1 ; .CUSTOM ", `C:\tools\pwsh.CUSTOM`, completionShellPowerShell, true},
+		{"excluded exe", ".PS1", `C:\tools\pwsh.exe`, "", false},
+		{"excluded cmd", ".PS1", `C:\tools\pwsh.cmd`, "", false},
+		{"empty entries", ";;.PS1;;", "powershell.ps1", completionShellPowerShell, true},
+		{"no extensions", ";;", "pwsh.exe", "", false},
+		{"bare shell", ";;", "pwsh", completionShellPowerShell, true},
+		{"unlisted extension", ".EXE", "pwsh.conf", "", false},
+		{"unknown shell", ".PS1", "script.ps1", "", false},
+		{"one suffix only", ".EXE;.PS1", "pwsh.ps1.exe", "", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("PATHEXT", tc.pathExt)
+			if got, ok := completionShellFromPath(tc.input); got != tc.want || ok != tc.ok {
+				t.Fatalf("got %q, %v; want %q, %v", got, ok, tc.want, tc.ok)
+			}
+		})
+	}
+}
+
 func TestCompletionShellDetection(t *testing.T) {
 	tests := []struct {
-		what     string
-		shellVar string
-		psmp     string
-		want     completionShell
-		ok       bool
+		what              string
+		shellVar          string
+		powerShellPresent bool
+		want              completionShell
+		ok                bool
 	}{
-		{"shell variable wins", "/bin/bash", "", completionShellBash, true},
-		{"shell variable wins over the fallback", "/bin/bash", "/some/modules", completionShellBash, true},
-		{"psmodulepath fallback without shell variable", "", "/some/modules", completionShellPowerShell, true},
-		{"psmodulepath fallback on an unsupported shell", "/usr/bin/ksh", "/some/modules", completionShellPowerShell, true},
-		{"no signal", "", "", "", false},
-		{"unsupported shell without fallback", "/usr/bin/ksh", "", "", false},
+		{"shell variable wins", "/bin/bash", false, completionShellBash, true},
+		{"shell variable wins over the fallback", "/bin/bash", true, completionShellBash, true},
+		{"psmodulepath fallback without shell variable", "", true, completionShellPowerShell, true},
+		{"psmodulepath fallback on an unsupported shell", "/usr/bin/ksh", true, completionShellPowerShell, true},
+		{"no signal", "", false, "", false},
+		{"unsupported shell without fallback", "/usr/bin/ksh", false, "", false},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
-			have, ok := detectCompletionShell(tc.shellVar, tc.psmp)
+			have, ok := detectCompletionShell(tc.shellVar, tc.powerShellPresent)
 			if ok != tc.ok || have != tc.want {
-				t.Fatalf("detectCompletionShell(%q, %q) = (%q, %v) but wanted (%q, %v)", tc.shellVar, tc.psmp, have, ok, tc.want, tc.ok)
+				t.Fatalf("detectCompletionShell(%q, %v) = (%q, %v) but wanted (%q, %v)", tc.shellVar, tc.powerShellPresent, have, ok, tc.want, tc.ok)
 			}
 		})
 	}
@@ -307,6 +377,9 @@ func TestCommandCompletionAuto(t *testing.T) {
 	t.Run("no signal", func(t *testing.T) {
 		t.Setenv("SHELL", "")
 		t.Setenv("PSModulePath", "")
+		if err := os.Unsetenv("PSModulePath"); err != nil {
+			t.Fatal(err)
+		}
 		stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 		cmd := &Command{Stdin: bytes.NewReader(nil), Stdout: stdout, Stderr: stderr}
 		if status := cmd.Main([]string{"actionlint", "-completion", "auto"}); status != actionlint.ExitStatusInvalidCommandOption {
@@ -359,6 +432,7 @@ func TestCompletionProtocol(t *testing.T) {
 		absent []string
 	}{
 		{"flags", []string{"--j"}, []string{"--json", ":4"}, nil},
+		{"commands", []string{"co"}, []string{"completion\t", "config\t", ":4"}, []string{":8"}},
 		{"version shorthand", []string{"-V"}, []string{"-V", ":4"}, nil},
 		{"output choices", []string{"--output", "j"}, []string{"text", "oneline", "json", "jsonl", "sarif", ":4"}, nil},
 		{"legacy flag values", []string{"-completion", ""}, []string{"bash", "fish", "powershell", "zsh"}, nil},

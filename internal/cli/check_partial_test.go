@@ -48,7 +48,7 @@ func TestCheckJSONPartialFindings(t *testing.T) {
 						if err := os.WriteFile("report.json", []byte("previous report"), 0600); err != nil {
 							t.Fatal(err)
 						}
-						args = append(args, "--output-file", "report.json")
+						args = append(args, "--overwrite-output", "--output-file", "report.json")
 					}
 					paths := []string{"successful.yml", "failing.yml"}
 					if failingFirst {

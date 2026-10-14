@@ -80,13 +80,16 @@ func (r configValidateRequest) run(_ context.Context, streams Command) (int, err
 	return 0, writeConfigValidation(streams.Stdout, r)
 }
 
-type configInitRequest struct{ JSON bool }
+type configInitRequest struct {
+	JSON       bool
+	Hyperlinks hyperlinkMode
+}
 
 func (r configInitRequest) run(ctx context.Context, streams Command) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, err
 	}
-	return 0, generateCommandConfig(streams.Stdout, r.JSON, true)
+	return 0, generateCommandConfig(streams.Stdout, r.JSON, true, r.Hyperlinks)
 }
 
 type legacyConfigInitRequest struct {
@@ -94,6 +97,7 @@ type legacyConfigInitRequest struct {
 	IgnoreRegex            []string
 	Template, TemplateFile string
 	Log, JSON              bool
+	Hyperlinks             hyperlinkMode
 }
 
 func (r legacyConfigInitRequest) run(ctx context.Context, streams Command) (int, error) {

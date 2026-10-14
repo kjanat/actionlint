@@ -72,6 +72,8 @@ An explicit format, JSON, template, template-file or oneline flag replaces the
 environment's whole format selection. Conflicting environment selections are
 rejected, just like conflicting flags. Format and output destination are separate;
 use `--output-file=-` to override an environment report path.
+An existing report destination requires the explicit `--overwrite-output` flag,
+including destinations selected by `ACTIONLINT_OUTPUT_FILE`.
 
 Explicit `--log-level`, `--verbose`/`-v`, or `--debug` overrides the environment log
 level. `--quiet=false` and `--summary=false` can disable environment defaults.

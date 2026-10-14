@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -18,6 +19,19 @@ import (
 
 func executeCheck(ctx context.Context, streams Command, inv checkRequest) (status int, err error) {
 	c, r := inv.Check, inv.Render
+	if r.OutputFile != "" && r.OutputFile != "-" {
+		info, e := os.Lstat(r.OutputFile)
+		if e == nil {
+			if info.IsDir() {
+				return 0, fmt.Errorf("output file %q is a directory", r.OutputFile)
+			}
+			if !r.OverwriteOutput {
+				return 0, outputExistsError(r.OutputFile)
+			}
+		} else if !errors.Is(e, os.ErrNotExist) {
+			return 0, e
+		}
+	}
 	r, err = resolveTemplate(r)
 	if err != nil {
 		return 0, err
@@ -62,7 +76,15 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 				err = closeErr
 			}
 			if err == nil {
-				err = os.Rename(file.Name(), r.OutputFile)
+				if r.OverwriteOutput {
+					err = os.Rename(file.Name(), r.OutputFile)
+				} else {
+					// Publish without replacing a destination created during analysis.
+					err = os.Link(file.Name(), r.OutputFile)
+					if errors.Is(err, os.ErrExist) {
+						err = outputExistsError(r.OutputFile)
+					}
+				}
 			}
 			_ = os.Remove(file.Name())
 		}()
@@ -206,6 +228,10 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		}
 	}
 	return status, err
+}
+
+func outputExistsError(path string) error {
+	return fmt.Errorf("output file %q already exists; use --overwrite-output to replace it", path)
 }
 
 // checkAnalysisError carries collected findings to the existing failure report.
