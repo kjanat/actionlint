@@ -283,6 +283,22 @@ func TestPlaygroundLinkURLLimit(t *testing.T) {
 	}
 }
 
+func TestPlaygroundLinkTrailingData(t *testing.T) {
+	link := NewUpdater(nil).PlaygroundLink([]byte("on: push"))
+	if payload, ok := playgroundLinkPayload(link); !ok || string(payload) != "on: push" {
+		t.Fatalf("a generated link does not decode: %q, %v", payload, ok)
+	}
+	enc := strings.TrimSuffix(strings.TrimPrefix(link, "[Playground]("+playgroundURL), ")")
+	raw, err := base64.StdEncoding.DecodeString(enc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	padded := "[Playground](" + playgroundURL + base64.StdEncoding.EncodeToString(append(raw, 0, 1, 2)) + ")"
+	if _, ok := playgroundLinkPayload(padded); ok {
+		t.Fatal("a link with bytes after its zlib stream decoded")
+	}
+}
+
 func TestPlaygroundRetainedLinkLimit(t *testing.T) {
 	payload := bytes.Repeat([]byte("a"), playgroundMaxSourceBytes+1)
 	if err := playgroundLinkError(payload, "[Playground]("+playgroundURL+"eJw=)"); err == nil {

@@ -195,13 +195,15 @@ func playgroundLinkPayload(line string) ([]byte, bool) {
 	if err != nil {
 		return nil, false
 	}
-	r, err := zlib.NewReader(bytes.NewReader(raw))
+	compressed := bytes.NewReader(raw)
+	r, err := zlib.NewReader(compressed)
 	if err != nil {
 		return nil, false
 	}
 	defer func() { _ = r.Close() }()
 	dec, err := io.ReadAll(r)
-	if err != nil {
+	// playground/src/source.ts refuses bytes after the zlib stream, which Go's reader ignores.
+	if err != nil || compressed.Len() != 0 {
 		return nil, false
 	}
 	return dec, true
