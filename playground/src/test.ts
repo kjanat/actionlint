@@ -354,6 +354,41 @@ jobs:
 		}
 	});
 
+	it('discards both stale successes and failures immediately on edit, before another lint starts', async () => {
+		assert.ok(window.runActionlint);
+		assert.ok(window.invalidateActionlint);
+		const real = window.runShellcheck;
+		const showError = window.showError;
+		const failures: string[] = [];
+		try {
+			window.showError = message => failures.push(message);
+			for (const reject of [false, true]) {
+				let finish: (() => void) | undefined;
+				window.runShellcheck = () =>
+					new Promise((resolve, fail) => {
+						finish = () => {
+							if (reject) fail(new Error('obsolete timeout'));
+							else resolve('{"comments":[]}');
+						};
+					});
+				results.reset();
+				window.runActionlint(
+					'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n',
+				);
+				await new Promise(resolve => setTimeout(resolve, 0));
+				assert.ok(finish, 'analysis must reach the asynchronous checker');
+				window.invalidateActionlint();
+				finish();
+				await new Promise(resolve => setTimeout(resolve, 0));
+				assert.deepEqual(failures, [], 'an edit must invalidate errors during debounce');
+				assert.equal(results.errors, null, 'an edit must invalidate results during debounce');
+			}
+		} finally {
+			window.runShellcheck = real;
+			window.showError = showError;
+		}
+	});
+
 	it('reports a rejected worker without publishing a clean result', async () => {
 		assert.ok(window.runActionlint);
 		const real = window.runShellcheck;

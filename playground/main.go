@@ -118,6 +118,10 @@ func main() {
 		return
 	}
 	window.Set("runActionlint", js.FuncOf(runActionlint))
+	window.Set("invalidateActionlint", js.FuncOf(func(js.Value, []js.Value) any {
+		latestCheck++
+		return nil
+	}))
 	window.Call("dismissLoading")
 	latestCheck++
 	go lint(window.Call("getYamlSource").String(), latestCheck) // Show the first result
