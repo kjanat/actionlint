@@ -46,6 +46,9 @@ func Decode(data []byte) (*Catalog, error) {
 	if c.Version != 1 {
 		return nil, fmt.Errorf("unsupported action catalogue version %d", c.Version)
 	}
+	if c.References == nil || c.Definitions == nil || c.Retired == nil {
+		return nil, errors.New("action catalogue needs references, definitions and retired")
+	}
 	for ref, id := range c.References {
 		if _, ok := c.Definitions[id]; !ok {
 			return nil, fmt.Errorf("reference %q uses missing definition %q", ref, id)
