@@ -74,6 +74,12 @@ func TestActionsHonourGitIgnore(t *testing.T) {
 			t.Setenv("GIT_INDEX_FILE", filepath.Join(root, "missing", "index"))
 			return root
 		}},
+		{"inherited pathspec and trace settings", func(t *testing.T, root string, git func(...string)) string {
+			for _, name := range []string{"GIT_LITERAL_PATHSPECS", "GIT_NOGLOB_PATHSPECS", "GIT_TRACE", "GIT_TRACE2", "GIT_TRACE_PERFORMANCE", "GIT_TRACE_SETUP"} {
+				t.Setenv(name, "1")
+			}
+			return root
+		}},
 		{"deleted tracked manifest", func(t *testing.T, root string, git func(...string)) string {
 			writeFixture(t, root, "deleted/action.yml", "name: fixture\n")
 			git("add", "--", "deleted/action.yml")
@@ -228,18 +234,6 @@ func TestActionsGitError(t *testing.T) {
 			writeFixture(t, root, "sealed/action.yml", "name: fixture\n")
 			seal(t, filepath.Join(root, "sealed"))
 		}},
-		{"looping tracked directory", func(t *testing.T, root string) {
-			git := gitFixture(t, root)
-			writeFixture(t, root, "loop/action.yml", "name: fixture\n")
-			git("add", "--", "loop/action.yml")
-			git("commit", "--quiet", "-m", "Loop")
-			if err := os.RemoveAll(filepath.Join(root, "loop")); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.Symlink("loop", filepath.Join(root, "loop")); err != nil {
-				t.Skipf("symlinks unavailable: %v", err)
-			}
-		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -289,6 +283,49 @@ func TestActionsReportReadDirectories(t *testing.T) {
 	slices.Sort(want)
 	if !slices.Equal(got, want) {
 		t.Fatalf("reported %q, want %q", got, want)
+	}
+}
+
+func TestActionsReportGitInputs(t *testing.T) {
+	root := t.TempDir()
+	git := gitFixture(t, root)
+	writeFixture(t, root, ".gitignore", "ignored/\n")
+	writeFixture(t, root, "sub/.gitignore", "local/\n")
+	writeFixture(t, root, "sub/deep/action.yml", "name: fixture\n")
+	writeFixture(t, root, "ignored/deep/action.yml", "name: fixture\n")
+	writeFixture(t, root, "sub/local/action.yml", "name: fixture\n")
+	writeFixture(t, root, ".git/info/exclude", "excluded/\n")
+	git("add", "--", ".gitignore")
+	config := filepath.Dir(os.Getenv("GIT_CONFIG_GLOBAL"))
+	physical, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		start string
+		want  []string
+	}{
+		{root, []string{root, filepath.Join(root, ".gitignore"), filepath.Join(root, "sub"), filepath.Join(root, "sub", ".gitignore"), filepath.Join(root, "sub", "deep")}},
+		{filepath.Join(root, "sub"), []string{filepath.Join(root, "sub"), filepath.Join(physical, ".gitignore"), filepath.Join(root, "sub", ".gitignore"), filepath.Join(root, "sub", "deep")}},
+	} {
+		got := map[string]bool{}
+		paths, err := Actions(t.Context(), tc.start, fsread.New(t.Context(), nil, func(path string) { got[path] = true }))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := []string{filepath.Join(root, "sub", "deep", "action.yml")}; !slices.Equal(paths, want) {
+			t.Fatalf("Actions(%s) = %q, want %q", tc.start, paths, want)
+		}
+		for _, path := range slices.Concat(tc.want, []string{filepath.Join(config, "excludes"), filepath.Join(physical, ".git", "info", "exclude"), filepath.Join(physical, ".git", "index")}) {
+			if !got[path] {
+				t.Errorf("Actions(%s) did not report %s in %v", tc.start, path, got)
+			}
+		}
+		for _, path := range []string{filepath.Join(root, "ignored"), filepath.Join(root, "ignored", "deep"), filepath.Join(root, "sub", "local"), filepath.Join(root, ".git")} {
+			if got[path] {
+				t.Errorf("Actions(%s) reported the unread directory %s", tc.start, path)
+			}
+		}
 	}
 }
 

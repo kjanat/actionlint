@@ -1,14 +1,13 @@
 package projectpath
 
 import (
+	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"golang.org/x/sys/execabs"
@@ -18,25 +17,27 @@ import (
 
 // Actions discovers manifests without following symlinks or crossing repository
 // boundaries. Skip conventional dependency, cache and test-fixture directories.
-// Inside a Git repository, git lists the candidates so ignore rules apply and
-// tracked manifests in ignored directories stay discovered.
+// Inside a Git repository, git decides which manifests and directories its
+// ignore rules exclude, and tracked manifests in ignored directories stay discovered.
 func Actions(ctx context.Context, root string, reader *fsread.Reader) ([]string, error) {
 	physical, err := filepath.EvalSymlinks(root)
 	if err != nil {
 		return nil, fmt.Errorf("could not resolve action discovery root %q: %w", root, err)
 	}
-	var relatives []string
-	if RepositoryRoot(physical) == "" {
-		relatives, err = walkActions(ctx, physical, reader.Mapped(func(path string) string {
-			relative, err := filepath.Rel(physical, path)
-			if err != nil {
-				return path
-			}
-			return filepath.Join(root, relative)
-		}))
-	} else {
-		relatives, err = gitActions(ctx, physical)
+	var filter *gitFilter
+	if RepositoryRoot(physical) != "" {
+		if filter, err = newGitFilter(ctx, physical, reader); err != nil {
+			return nil, fmt.Errorf("could not discover actions in %q: %w", root, err)
+		}
 	}
+	logical := reader.Mapped(func(path string) string {
+		relative, err := filepath.Rel(physical, path)
+		if err != nil {
+			return path
+		}
+		return filepath.Join(root, relative)
+	})
+	relatives, err := walkActions(ctx, physical, logical, filter)
 	if err != nil {
 		return nil, fmt.Errorf("could not discover actions in %q: %w", root, err)
 	}
@@ -47,85 +48,122 @@ func Actions(ctx context.Context, root string, reader *fsread.Reader) ([]string,
 	return paths, nil
 }
 
-func gitActions(ctx context.Context, root string) ([]string, error) {
+type gitFilter struct {
+	manifests map[string]bool
+	ignored   map[string]bool
+}
+
+func newGitFilter(ctx context.Context, root string, reader *fsread.Reader) (*gitFilter, error) {
 	git, err := execabs.LookPath("git")
 	if err != nil {
 		return nil, fmt.Errorf("git is required to apply ignore rules inside a repository: %w", err)
 	}
-	// Repository-configured fsmonitor commands must not run during discovery.
-	command := exec.CommandContext(ctx, git, "-C", root, "-c", "core.fsmonitor=false", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", ":(glob)**/action.yml", ":(glob)**/action.yaml")
+	run := func(args ...string) ([]byte, error) {
+		// Repository-configured fsmonitor commands must not run during discovery.
+		command := exec.CommandContext(ctx, git, append([]string{"-C", root, "-c", "core.fsmonitor=false"}, args...)...)
+		command.Env = gitEnvironment()
+		var stderr strings.Builder
+		command.Stderr = &stderr
+		output, err := command.Output()
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
+		message := strings.TrimSpace(stderr.String())
+		if err != nil {
+			return nil, fmt.Errorf("git %s: %w: %s", args[0], err, message)
+		}
+		// Git skips an unreadable directory with a warning and exit status 0.
+		if message != "" {
+			return nil, fmt.Errorf("git %s: %s", args[0], message)
+		}
+		return output, nil
+	}
+	manifests, err := run("ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", ":(glob)**/action.yml", ":(glob)**/action.yaml")
+	if err != nil {
+		return nil, err
+	}
+	ignored, err := run("ls-files", "-z", "--others", "--ignored", "--exclude-standard", "--directory")
+	if err != nil {
+		return nil, err
+	}
+	locations, err := run("rev-parse", "--path-format=absolute", "--show-toplevel", "--git-path", "info/exclude", "--git-path", "index")
+	if err != nil {
+		return nil, err
+	}
+	excludes, err := run("config", "--path", "--default", defaultExcludesFile(), "--get", "core.excludesFile")
+	if err != nil {
+		return nil, err
+	}
+	var read []string
+	for location := range strings.Lines(string(locations) + string(excludes)) {
+		if location = strings.TrimRight(location, "\r\n"); location != "" {
+			read = append(read, location)
+		}
+	}
+	if len(read) == 0 {
+		return nil, fmt.Errorf("git rev-parse printed no work tree for %q", root)
+	}
+	top := filepath.Clean(read[0])
+	read = read[1:]
+	for dir := root; dir != top; {
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+		read = append(read, filepath.Join(dir, ".gitignore"))
+	}
+	for _, location := range read {
+		if !filepath.IsAbs(location) {
+			location = filepath.Join(root, location)
+		}
+		if info, err := os.Stat(location); err == nil && info.Mode().IsRegular() {
+			reader.Record(location)
+		}
+	}
+	filter := &gitFilter{manifests: map[string]bool{}, ignored: map[string]bool{}}
+	for name := range bytes.SplitSeq(manifests, []byte{0}) {
+		if len(name) > 0 {
+			filter.manifests[string(name)] = true
+		}
+	}
+	for name := range bytes.SplitSeq(ignored, []byte{0}) {
+		if directory, ok := bytes.CutSuffix(name, []byte{'/'}); ok {
+			filter.ignored[string(directory)] = true
+		}
+	}
+	return filter, nil
+}
+
+// gitignore(5) names this file when core.excludesFile is unset.
+func defaultExcludesFile() string {
+	if config := os.Getenv("XDG_CONFIG_HOME"); config != "" {
+		return filepath.Join(config, "git", "ignore")
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".config", "git", "ignore")
+}
+
+func gitEnvironment() []string {
+	var env []string
 	for _, entry := range os.Environ() {
 		name, _, _ := strings.Cut(entry, "=")
-		switch strings.ToUpper(name) {
-		case "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR":
-			continue
-		}
-		command.Env = append(command.Env, entry)
-	}
-	var stderr strings.Builder
-	command.Stderr = &stderr
-	output, err := command.Output()
-	if ctxErr := ctx.Err(); ctxErr != nil {
-		return nil, ctxErr
-	}
-	message := strings.TrimSpace(stderr.String())
-	if err != nil {
-		return nil, fmt.Errorf("git ls-files: %w: %s", err, message)
-	}
-	// Git skips an unreadable directory with a warning and exit status 0.
-	if message != "" {
-		return nil, fmt.Errorf("git ls-files: %s", message)
-	}
-	var relatives []string
-	for name := range strings.SplitSeq(string(output), "\x00") {
-		if name == "" {
-			continue
-		}
-		relative := filepath.FromSlash(name)
-		keep, err := listedManifest(root, relative)
-		if err != nil {
-			return nil, err
-		}
-		if keep {
-			relatives = append(relatives, relative)
+		name = strings.ToUpper(name)
+		switch {
+		case name == "GIT_DIR", name == "GIT_WORK_TREE", name == "GIT_INDEX_FILE", name == "GIT_COMMON_DIR":
+		case name == "GIT_LITERAL_PATHSPECS", name == "GIT_GLOB_PATHSPECS", name == "GIT_NOGLOB_PATHSPECS", name == "GIT_ICASE_PATHSPECS":
+		case strings.HasPrefix(name, "GIT_TRACE"):
+		default:
+			env = append(env, entry)
 		}
 	}
-	slices.Sort(relatives)
-	return slices.Compact(relatives), nil
+	return env
 }
 
-func listedManifest(root, relative string) (bool, error) {
-	if !isManifest(filepath.Base(relative)) {
-		return false, nil
-	}
-	path := filepath.Join(root, relative)
-	info, err := os.Lstat(path)
-	if errors.Is(err, fs.ErrNotExist) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	if !info.Mode().IsRegular() {
-		return false, nil
-	}
-	for dir := filepath.Dir(path); dir != root; dir = filepath.Dir(dir) {
-		parent, err := os.Lstat(dir)
-		if err != nil {
-			return false, err
-		}
-		if !parent.IsDir() {
-			return false, nil
-		}
-		skip, err := skipDirectory(root, dir)
-		if err != nil || skip {
-			return false, err
-		}
-	}
-	return true, nil
-}
-
-func walkActions(ctx context.Context, root string, reader *fsread.Reader) ([]string, error) {
+func walkActions(ctx context.Context, root string, reader *fsread.Reader, filter *gitFilter) ([]string, error) {
 	var relatives []string
 	err := reader.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -134,24 +172,30 @@ func walkActions(ctx context.Context, root string, reader *fsread.Reader) ([]str
 		if err := ctx.Err(); err != nil {
 			return err
 		}
+		if path == root {
+			return nil
+		}
+		relative, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
 		if entry.IsDir() {
-			if path == root {
-				return nil
-			}
 			skip, err := skipDirectory(root, path)
 			if err != nil {
 				return err
 			}
-			if skip {
+			if skip || filter != nil && filter.ignored[filepath.ToSlash(relative)] {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		if entry.Type().IsRegular() && isManifest(entry.Name()) {
-			relative, err := filepath.Rel(root, path)
-			if err != nil {
-				return err
-			}
+		if !entry.Type().IsRegular() {
+			return nil
+		}
+		if filter != nil && entry.Name() == ".gitignore" {
+			reader.Record(path)
+		}
+		if isManifest(entry.Name()) && (filter == nil || filter.manifests[filepath.ToSlash(relative)]) {
 			relatives = append(relatives, relative)
 		}
 		return nil
