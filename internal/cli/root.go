@@ -74,8 +74,8 @@ func newCommandApp(streams *Command) *commandApp {
 	a.checkFlags(check, true)
 	preCommit := &cobra.Command{
 		Use: "pre-commit [flags]", Short: "Check the repository for a pre-commit hook", Hidden: true,
-		Long: "Check every workflow in the nearest repository.\nA repository without workflow files passes.",
-		Args: cobra.NoArgs, RunE: a.capture("check"),
+		Long: "Check every workflow in the nearest repository.\nA repository without workflow files passes.\nArguments that Git passes to a hook are ignored.",
+		Args: cobra.ArbitraryArgs, RunE: a.capture("check"),
 	}
 	a.checkFlags(preCommit, true)
 	config := &cobra.Command{
@@ -259,8 +259,10 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 func (a *commandApp) capture(op operation) func(*cobra.Command, []string) error {
 	return func(c *cobra.Command, args []string) error {
 		a.inv.Operation = op
-		a.inv.Check.Paths = args
 		a.inv.Check.PreCommit = c.Name() == "pre-commit"
+		if !a.inv.Check.PreCommit {
+			a.inv.Check.Paths = args
+		}
 		check := c.Name() == "check" || a.inv.Check.PreCommit
 		c.Flags().Visit(func(f *pflag.Flag) { a.set[f.Name] = true })
 		if check && (c.Flags().Changed("ignore-regex") || c.Flags().Changed("ignore")) {

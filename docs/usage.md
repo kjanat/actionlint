@@ -861,9 +861,12 @@ configuration. To run actionlint before each commit, [install actionlint](instal
 these commands in your repository:
 
 ```sh
-git config set --local hook.actionlint.command actionlint
+git config set --local hook.actionlint.command 'actionlint pre-commit'
 git config set --local hook.actionlint.event pre-commit
 ```
+
+`actionlint pre-commit` ignores the arguments Git passes to a hook, so the same command also works for events
+such as `pre-push`.
 
 Git runs actionlint when you commit. A lint failure blocks the commit. This checks discovered workflows and actions in the
 working tree, including unstaged edits; it does not check an isolated copy of the staged files.
