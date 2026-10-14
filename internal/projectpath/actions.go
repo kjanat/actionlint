@@ -1,23 +1,36 @@
 package projectpath
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+
+	"actionlint.kjanat.dev/internal/fsread"
 )
 
 // Actions discovers manifests without following symlinks or crossing repository
 // boundaries. Skip conventional dependency, cache and test-fixture directories.
-func Actions(root string) ([]string, error) {
+func Actions(ctx context.Context, root string, reader *fsread.Reader) ([]string, error) {
 	physical, err := filepath.EvalSymlinks(root)
 	if err != nil {
 		return nil, fmt.Errorf("could not resolve action discovery root %q: %w", root, err)
 	}
+	logical := reader.Mapped(func(path string) string {
+		relative, err := filepath.Rel(physical, path)
+		if err != nil {
+			return path
+		}
+		return filepath.Join(root, relative)
+	})
 	var paths []string
 	workflows := filepath.Join(physical, ".github", "workflows")
-	err = filepath.WalkDir(physical, func(path string, entry fs.DirEntry, err error) error {
+	err = logical.WalkDir(physical, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
+			return err
+		}
+		if err := ctx.Err(); err != nil {
 			return err
 		}
 		if entry.IsDir() {

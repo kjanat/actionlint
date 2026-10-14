@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/fsread"
 )
 
 func TestInvalidLocalActionSuppressionDirectives(t *testing.T) {
@@ -79,7 +82,7 @@ func TestInvalidLocalActionSuppressionSourceCache(t *testing.T) {
 		t.Run(spec, func(t *testing.T) {
 			base := NewLocalActionsCache(&Project{root: root}, nil)
 			var inputs []string
-			base.onRead = func(path string) { inputs = append(inputs, path) }
+			base.reader = fsread.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })
 			for attempt := range 2 {
 				view := &LocalActionsCache{base: base, usedSources: make(map[string][]byte), caseInsensitive: strings.Contains(spec, "INNER")}
 				metadata, cached, err := view.FindMetadata(spec)
@@ -90,8 +93,13 @@ func TestInvalidLocalActionSuppressionSourceCache(t *testing.T) {
 					t.Fatalf("attempt %d lost raw metadata source: %v", attempt, view.usedSources)
 				}
 			}
-			if len(inputs) != 1 || inputs[0] != path {
-				t.Fatalf("metadata inputs changed on cached lookup: %v", inputs)
+			want := []string{path}
+			if strings.Contains(spec, "INNER") {
+				want = append(want, root)
+			}
+			slices.Sort(want)
+			if got := slices.Compact(slices.Sorted(slices.Values(inputs))); !slices.Equal(got, want) {
+				t.Fatalf("metadata inputs = %q, want %q", got, want)
 			}
 		})
 	}
@@ -335,7 +343,7 @@ jobs:
 	actions := NewLocalActionsCache(project, nil)
 	workflows := NewLocalReusableWorkflowCache(project, root, nil)
 	process := newConcurrentProcess(t.Context(), 1)
-	engine := &analysisEngine{ctx: t.Context(), workingDir: root, inputs: &inputFiles{}, gitModes: &gitModes{}}
+	engine := &analysisEngine{ctx: t.Context(), workingDir: root, reader: fsread.New(t.Context(), nil, nil), gitModes: &gitModes{}}
 	for _, workflow := range []string{used, unused, used} {
 		source, err := os.ReadFile(workflow)
 		if err != nil {

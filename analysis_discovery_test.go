@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/fsread"
 )
 
 func TestRepositoryActionDiscovery(t *testing.T) {
@@ -57,7 +59,7 @@ func TestRepositoryActionDiscoverySymlinks(t *testing.T) {
 	if err := os.Symlink(manifest, filepath.Join(root, "action.yaml")); err != nil {
 		t.Fatal(err)
 	}
-	paths, err := repositoryPaths(&Project{root: root})
+	paths, err := repositoryPaths(t.Context(), &Project{root: root}, fsread.New(t.Context(), nil, nil))
 	if err != nil || !slices.Equal(paths, []string{manifest}) {
 		t.Fatalf("want only %q, got %v, error %v", manifest, paths, err)
 	}

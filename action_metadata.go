@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"actionlint.kjanat.dev/internal/fsread"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -515,9 +517,8 @@ func (e *actionMetadataParseError) Unwrap() error { return e.err }
 // to be created per one repository.
 type LocalActionsCache struct {
 	explicitSources      map[string][]byte
-	onRead               func(string)
 	onDocument           func(ActionOutline)
-	readFile             func(string) ([]byte, error)
+	reader               *fsread.Reader
 	customReader         bool
 	mu                   sync.RWMutex
 	proj                 *Project // might be nil
@@ -541,11 +542,11 @@ type LocalActionsCache struct {
 // NewLocalActionsCache creates new LocalActionsCache instance for the given project.
 func NewLocalActionsCache(proj *Project, dbg io.Writer) *LocalActionsCache {
 	return &LocalActionsCache{
-		readFile: os.ReadFile,
-		proj:     proj,
-		cache:    map[string]*ActionMetadata{},
-		sources:  map[string]localActionMetadataSource{},
-		dbg:      dbg,
+		reader:  fsread.New(context.Background(), nil, nil),
+		proj:    proj,
+		cache:   map[string]*ActionMetadata{},
+		sources: map[string]localActionMetadataSource{},
+		dbg:     dbg,
 	}
 }
 
@@ -672,20 +673,15 @@ func (c *LocalActionsCache) readLocalActionMetadataFile(dir string) ([]byte, str
 	for _, name := range []string{"action.yaml", "action.yml"} {
 		path := filepath.Join(dir, name)
 		if content, ok := c.explicitSources[physicalSourcePath(path)]; ok {
-			if c.onRead != nil {
-				c.onRead(path)
-			}
+			c.reader.Record(path)
 			return content, name, nil
 		}
-		b, err := c.readFile(path)
+		b, err := c.reader.ReadFile(path)
 		if errors.Is(err, os.ErrNotExist) {
 			continue
 		}
 		if err != nil {
 			return nil, "", fmt.Errorf("could not read action metadata in %q: %w", dir, err)
-		}
-		if c.onRead != nil {
-			c.onRead(path)
 		}
 		return b, name, nil
 	}

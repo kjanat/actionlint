@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"unicode"
+
+	"actionlint.kjanat.dev/internal/fsread"
 )
 
 // Names is a complete inventory only when every workflow name could be read.
@@ -21,9 +23,8 @@ type Names struct {
 
 // Index shares immutable inventories across concurrent workflow checks.
 type Index struct {
-	Load func(string) (name string, known bool, err error)
-	// OnDirectory records directory discovery as an incremental dependency.
-	OnDirectory func(string)
+	Load   func(string) (name string, known bool, err error)
+	Reader *fsread.Reader
 	// Paths includes in-memory source files which may not exist on disk yet.
 	Paths []string
 	mu    sync.Mutex
@@ -36,7 +37,7 @@ func SamePath(left, right string) bool {
 }
 
 func samePath(left, right string, windows bool) bool {
-	return samePathOnFilesystem(left, right, windows, os.Stat, os.ReadDir)
+	return samePathOnFilesystem(left, right, windows, os.Stat, fsread.ProbeDir)
 }
 
 func samePathOnFilesystem(left, right string, windows bool, stat func(string) (os.FileInfo, error), readDir func(string) ([]os.DirEntry, error)) bool {
@@ -189,10 +190,7 @@ func (i *Index) ForRoot(root string) (Names, error) {
 		load = sync.OnceValues(func() (Names, error) {
 			names := Names{Values: map[string]bool{}, Complete: true}
 			dir := filepath.Join(root, ".github", "workflows")
-			if i.OnDirectory != nil {
-				i.OnDirectory(dir)
-			}
-			entries, err := os.ReadDir(dir)
+			entries, err := i.Reader.ReadDir(dir)
 			if err != nil && !errors.Is(err, os.ErrNotExist) {
 				names.Complete = false
 			}

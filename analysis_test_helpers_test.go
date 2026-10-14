@@ -1,6 +1,10 @@
 package actionlint
 
-import "errors"
+import (
+	"errors"
+
+	"actionlint.kjanat.dev/internal/fsread"
+)
 
 const commandGoodWorkflow = `on: push
 jobs:
@@ -26,7 +30,7 @@ func (commandFailingIO) Write([]byte) (int, error) { return 0, errors.New("write
 // check lets cache-order regressions share one cache across explicitly ordered analyses.
 func (l *Linter) check(path string, content []byte, project *Project, proc *concurrentProcess, actions *LocalActionsCache, workflows *LocalReusableWorkflowCache) ([]*Error, error) {
 	engine := analysisEngine{
-		analysisLogger: l.analysisLogger, ctx: l.ctx,
+		analysisLogger: l.analysisLogger, ctx: l.ctx, reader: fsread.New(l.ctx, l.request.ReadFile, nil),
 		shellcheck:        l.request.ShellCheck,
 		shellcheckOptions: l.request.ShellcheckOptions,
 		ignorePats:        l.request.IgnorePatterns, onRulesCreated: l.request.OnRulesCreated,

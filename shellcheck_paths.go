@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"actionlint.kjanat.dev/internal/fsread"
 )
 
 // Interpret runner path syntax before applying local filesystem operations.
@@ -93,7 +95,7 @@ func (rule *RuleShellcheck) prepareConfigPath() error {
 			return nil
 		}
 		var err error
-		path, err = discoverShellcheckRC(rule.paths.analysis)
+		path, err = discoverShellcheckRC(rule.paths.reader, rule.paths.analysis)
 		if err != nil {
 			return err
 		}
@@ -105,7 +107,7 @@ func (rule *RuleShellcheck) prepareConfigPath() error {
 		var err error
 		path, err = rule.pathContext().resolveFrom(string(selected), base)
 		if err == nil {
-			path, err = shellcheckRCFile(path)
+			path, err = shellcheckRCFile(rule.paths.reader, path)
 		}
 		if err != nil {
 			return fmt.Errorf("tools.shellcheck.config: %w", err)
@@ -114,9 +116,6 @@ func (rule *RuleShellcheck) prepareConfigPath() error {
 		return errors.New("unsupported ShellCheck configuration selection")
 	}
 	rule.rcArgs = []string{"--rcfile", path}
-	if rule.onInput != nil {
-		rule.onInput(path)
-	}
 	return nil
 }
 
@@ -161,7 +160,7 @@ func shellcheckRCInDirectory(directory string) (string, error) {
 	return "", nil
 }
 
-func shellcheckRCFile(path string) (string, error) {
+func shellcheckRCFile(reader *fsread.Reader, path string) (string, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return "", err
@@ -178,7 +177,7 @@ func shellcheckRCFile(path string) (string, error) {
 	} else if !info.Mode().IsRegular() {
 		return "", fmt.Errorf("%q is not a regular ShellCheck configuration file", path)
 	}
-	file, err := os.Open(path)
+	file, err := reader.Open(path)
 	if err != nil {
 		return "", err
 	}
@@ -188,14 +187,14 @@ func shellcheckRCFile(path string) (string, error) {
 	return absPath(path), nil
 }
 
-func discoverShellcheckRC(start string) (string, error) {
+func discoverShellcheckRC(reader *fsread.Reader, start string) (string, error) {
 	for directory := start; ; directory = filepath.Dir(directory) {
 		path, err := shellcheckRCInDirectory(directory)
 		if err != nil {
 			return "", err
 		}
 		if path != "" {
-			return shellcheckRCFile(path)
+			return shellcheckRCFile(reader, path)
 		}
 		if filepath.Dir(directory) == directory {
 			break
@@ -224,7 +223,7 @@ func discoverShellcheckRC(start string) (string, error) {
 		} else if err != nil {
 			return "", err
 		}
-		return shellcheckRCFile(candidate)
+		return shellcheckRCFile(reader, candidate)
 	}
 	return "", nil
 }

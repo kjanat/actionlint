@@ -148,8 +148,8 @@ jobs:
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !slices.Contains(result.Inputs, dir) {
-			t.Fatalf("directory discovery missing from inputs: %v", result.Inputs)
+		if slices.Contains(result.Inputs, dir) != present {
+			t.Fatalf("workflows directory present=%v, inputs %v", present, result.Inputs)
 		}
 		if (len(result.Diagnostics) == 0) != present {
 			t.Fatalf("producer present=%v diagnostics=%+v", present, result.Diagnostics)
