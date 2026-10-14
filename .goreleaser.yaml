@@ -193,9 +193,13 @@ aur_sources:
       - "ruff: check Python scripts in run steps"
     prepare: |-
       cd "actionlint-${pkgver}"
+      export PATH="/usr/bin:${PATH}"
+      export MISE_IGNORED_CONFIG_PATHS="${srcdir}/actionlint-${pkgver}${MISE_IGNORED_CONFIG_PATHS:+:${MISE_IGNORED_CONFIG_PATHS}}"
       go mod download
     build: |-
       cd "actionlint-${pkgver}"
+      export PATH="/usr/bin:${PATH}"
+      export MISE_IGNORED_CONFIG_PATHS="${srcdir}/actionlint-${pkgver}${MISE_IGNORED_CONFIG_PATHS:+:${MISE_IGNORED_CONFIG_PATHS}}"
       export CGO_CPPFLAGS="${CPPFLAGS}"
       export CGO_CFLAGS="${CFLAGS}"
       export CGO_CXXFLAGS="${CXXFLAGS}"
@@ -206,6 +210,8 @@ aur_sources:
         ./cmd/actionlint
     package: |-
       cd "actionlint-${pkgver}"
+      export PATH="/usr/bin:${PATH}"
+      export MISE_IGNORED_CONFIG_PATHS="${srcdir}/actionlint-${pkgver}${MISE_IGNORED_CONFIG_PATHS:+:${MISE_IGNORED_CONFIG_PATHS}}"
       install -Dm0755 build/actionlint "${pkgdir}/usr/bin/actionlint"
       install -Dm0644 LICENSE.txt "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.txt"
       install -Dm0644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
