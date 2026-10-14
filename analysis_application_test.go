@@ -238,7 +238,7 @@ func TestAnalysisSelectedConfigInput(t *testing.T) {
 				t.Fatal(err)
 			}
 			workflow := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", commandGoodWorkflow)
-			want := []string{workflow, root, filepath.Join(root, ".github"), filepath.Join(root, ".github", "workflows"), physicalExclude}
+			want := []string{workflow, root, filepath.Join(root, ".github"), filepath.Join(root, ".github", "workflows"), physicalExclude, filepath.Join(filepath.Dir(filepath.Dir(physicalExclude)), "config")}
 			for _, name := range names {
 				if err := os.WriteFile(filepath.Join(root, ".github", name), []byte("{}\n"), 0600); err != nil {
 					t.Fatal(err)

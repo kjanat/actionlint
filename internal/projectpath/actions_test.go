@@ -129,6 +129,10 @@ func TestActionsHonourGitIgnore(t *testing.T) {
 		{"subdirectory", func(t *testing.T, root string, git func(...string)) string {
 			return filepath.Join(root, "sub")
 		}},
+		{"ceiling at the repository root", func(t *testing.T, root string, git func(...string)) string {
+			t.Setenv("GIT_CEILING_DIRECTORIES", root)
+			return filepath.Join(root, "sub")
+		}},
 		{"worktree", func(t *testing.T, root string, git func(...string)) string {
 			worktree := filepath.Join(t.TempDir(), "worktree")
 			git("worktree", "add", "--quiet", worktree)
@@ -286,6 +290,24 @@ func TestActionsReportReadDirectories(t *testing.T) {
 	}
 }
 
+func TestActionsCaseInsensitiveWorktree(t *testing.T) {
+	root := t.TempDir()
+	git := gitFixture(t, root)
+	writeFixture(t, root, "actions/build/action.yml", "name: fixture\n")
+	git("add", "--", "actions/build/action.yml")
+	git("config", "core.ignorecase", "true")
+	if err := os.Rename(filepath.Join(root, "actions"), filepath.Join(root, "Actions")); err != nil {
+		t.Fatal(err)
+	}
+	got, err := actions(t, t.Context(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{filepath.Join(root, "Actions", "build", "action.yml")}; !slices.Equal(got, want) {
+		t.Fatalf("Actions = %q, want %q", got, want)
+	}
+}
+
 func TestActionsReportGitInputs(t *testing.T) {
 	root := t.TempDir()
 	git := gitFixture(t, root)
@@ -294,7 +316,10 @@ func TestActionsReportGitInputs(t *testing.T) {
 	writeFixture(t, root, "sub/deep/action.yml", "name: fixture\n")
 	writeFixture(t, root, "ignored/deep/action.yml", "name: fixture\n")
 	writeFixture(t, root, "sub/local/action.yml", "name: fixture\n")
+	writeFixture(t, root, "sub/relative/action.yml", "name: fixture\n")
+	writeFixture(t, root, "relative-excludes", "relative/\n")
 	writeFixture(t, root, ".git/info/exclude", "excluded/\n")
+	git("config", "core.excludesFile", "relative-excludes")
 	git("add", "--", ".gitignore")
 	config := filepath.Dir(os.Getenv("GIT_CONFIG_GLOBAL"))
 	physical, err := filepath.EvalSymlinks(root)
@@ -316,7 +341,7 @@ func TestActionsReportGitInputs(t *testing.T) {
 		if want := []string{filepath.Join(root, "sub", "deep", "action.yml")}; !slices.Equal(paths, want) {
 			t.Fatalf("Actions(%s) = %q, want %q", tc.start, paths, want)
 		}
-		for _, path := range slices.Concat(tc.want, []string{filepath.Join(config, "excludes"), filepath.Join(physical, ".git", "info", "exclude"), filepath.Join(physical, ".git", "index")}) {
+		for _, path := range slices.Concat(tc.want, []string{filepath.Join(config, "gitconfig"), filepath.Join(physical, ".git", "config"), filepath.Join(physical, "relative-excludes"), filepath.Join(physical, ".git", "info", "exclude"), filepath.Join(physical, ".git", "index")}) {
 			if !got[path] {
 				t.Errorf("Actions(%s) did not report %s in %v", tc.start, path, got)
 			}

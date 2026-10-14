@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"golang.org/x/sys/execabs"
@@ -49,8 +50,9 @@ func Actions(ctx context.Context, root string, reader *fsread.Reader) ([]string,
 }
 
 type gitFilter struct {
-	manifests map[string]bool
-	ignored   map[string]bool
+	manifests  map[string]bool
+	ignored    map[string]bool
+	ignoreCase bool
 }
 
 func newGitFilter(ctx context.Context, root string, reader *fsread.Reader) (*gitFilter, error) {
@@ -86,16 +88,16 @@ func newGitFilter(ctx context.Context, root string, reader *fsread.Reader) (*git
 	if err != nil {
 		return nil, err
 	}
-	locations, err := run("rev-parse", "--path-format=absolute", "--show-toplevel", "--git-path", "info/exclude", "--git-path", "index")
+	locations, err := run("rev-parse", "--show-toplevel", "--git-path", "info/exclude", "--git-path", "index")
 	if err != nil {
 		return nil, err
 	}
-	excludes, err := run("config", "--path", "--default", defaultExcludesFile(), "--get", "core.excludesFile")
+	config, err := run("config", "--list", "--show-origin", "-z")
 	if err != nil {
 		return nil, err
 	}
 	var read []string
-	for location := range strings.Lines(string(locations) + string(excludes)) {
+	for location := range strings.Lines(string(locations)) {
 		if location = strings.TrimRight(location, "\r\n"); location != "" {
 			read = append(read, location)
 		}
@@ -105,6 +107,11 @@ func newGitFilter(ctx context.Context, root string, reader *fsread.Reader) (*git
 	}
 	top := filepath.Clean(read[0])
 	read = read[1:]
+	for i, location := range read {
+		if !filepath.IsAbs(location) {
+			read[i] = filepath.Join(root, location)
+		}
+	}
 	for dir := root; dir != top; {
 		parent := filepath.Dir(dir)
 		if parent == dir {
@@ -113,26 +120,79 @@ func newGitFilter(ctx context.Context, root string, reader *fsread.Reader) (*git
 		dir = parent
 		read = append(read, filepath.Join(dir, ".gitignore"))
 	}
-	for _, location := range read {
-		if !filepath.IsAbs(location) {
-			location = filepath.Join(root, location)
+	settings := parseGitConfig(config, top)
+	read = append(read, settings.files...)
+	excludes := settings.excludesFile
+	if excludes == "" {
+		excludes = defaultExcludesFile()
+	} else if home, ok := strings.CutPrefix(excludes, "~/"); ok {
+		if dir, err := os.UserHomeDir(); err == nil {
+			excludes = filepath.Join(dir, home)
 		}
+	}
+	if excludes != "" && !filepath.IsAbs(excludes) {
+		excludes = filepath.Join(top, excludes)
+	}
+	read = append(read, excludes)
+	for _, location := range read {
 		if info, err := os.Stat(location); err == nil && info.Mode().IsRegular() {
 			reader.Record(location)
 		}
 	}
-	filter := &gitFilter{manifests: map[string]bool{}, ignored: map[string]bool{}}
+	filter := &gitFilter{manifests: map[string]bool{}, ignored: map[string]bool{}, ignoreCase: settings.ignoreCase}
 	for name := range bytes.SplitSeq(manifests, []byte{0}) {
 		if len(name) > 0 {
-			filter.manifests[string(name)] = true
+			filter.manifests[filter.key(string(name))] = true
 		}
 	}
 	for name := range bytes.SplitSeq(ignored, []byte{0}) {
 		if directory, ok := bytes.CutSuffix(name, []byte{'/'}); ok {
-			filter.ignored[string(directory)] = true
+			filter.ignored[filter.key(string(directory))] = true
 		}
 	}
 	return filter, nil
+}
+
+func (f *gitFilter) key(path string) string {
+	if f.ignoreCase {
+		return strings.ToLower(path)
+	}
+	return path
+}
+
+type gitSettings struct {
+	files        []string
+	excludesFile string
+	ignoreCase   bool
+}
+
+// git config --list --show-origin -z prints origin NUL key [LF value] NUL per entry.
+func parseGitConfig(output []byte, top string) gitSettings {
+	var settings gitSettings
+	fields := strings.Split(string(output), "\x00")
+	for i := 0; i+1 < len(fields); i += 2 {
+		if file, ok := strings.CutPrefix(fields[i], "file:"); ok {
+			if !filepath.IsAbs(file) {
+				file = filepath.Join(top, file)
+			}
+			if !slices.Contains(settings.files, file) {
+				settings.files = append(settings.files, file)
+			}
+		}
+		key, value, hasValue := strings.Cut(fields[i+1], "\n")
+		switch strings.ToLower(key) {
+		case "core.excludesfile":
+			settings.excludesFile = value
+		case "core.ignorecase":
+			switch strings.ToLower(value) {
+			case "true", "yes", "on", "1":
+				settings.ignoreCase = true
+			default:
+				settings.ignoreCase = !hasValue
+			}
+		}
+	}
+	return settings
 }
 
 // gitignore(5) names this file when core.excludesFile is unset.
@@ -153,14 +213,15 @@ func gitEnvironment() []string {
 		name, _, _ := strings.Cut(entry, "=")
 		name = strings.ToUpper(name)
 		switch {
-		case name == "GIT_DIR", name == "GIT_WORK_TREE", name == "GIT_INDEX_FILE", name == "GIT_COMMON_DIR":
+		case name == "GIT_DIR", name == "GIT_WORK_TREE", name == "GIT_INDEX_FILE", name == "GIT_COMMON_DIR", name == "GIT_CEILING_DIRECTORIES", name == "GIT_DISCOVERY_ACROSS_FILESYSTEM":
 		case name == "GIT_LITERAL_PATHSPECS", name == "GIT_GLOB_PATHSPECS", name == "GIT_NOGLOB_PATHSPECS", name == "GIT_ICASE_PATHSPECS":
 		case strings.HasPrefix(name, "GIT_TRACE"):
 		default:
 			env = append(env, entry)
 		}
 	}
-	return env
+	// RepositoryRoot crosses filesystem boundaries, and git must find the same repository.
+	return append(env, "GIT_DISCOVERY_ACROSS_FILESYSTEM=1")
 }
 
 func walkActions(ctx context.Context, root string, reader *fsread.Reader, filter *gitFilter) ([]string, error) {
@@ -184,7 +245,7 @@ func walkActions(ctx context.Context, root string, reader *fsread.Reader, filter
 			if err != nil {
 				return err
 			}
-			if skip || filter != nil && filter.ignored[filepath.ToSlash(relative)] {
+			if skip || filter != nil && filter.ignored[filter.key(filepath.ToSlash(relative))] {
 				return filepath.SkipDir
 			}
 			return nil
@@ -195,7 +256,7 @@ func walkActions(ctx context.Context, root string, reader *fsread.Reader, filter
 		if filter != nil && entry.Name() == ".gitignore" {
 			reader.Record(path)
 		}
-		if isManifest(entry.Name()) && (filter == nil || filter.manifests[filepath.ToSlash(relative)]) {
+		if isManifest(entry.Name()) && (filter == nil || filter.manifests[filter.key(filepath.ToSlash(relative))]) {
 			relatives = append(relatives, relative)
 		}
 		return nil
