@@ -18,6 +18,23 @@ function decode(chunks: Uint8Array[], size: number): string {
 	return new TextDecoder().decode(bytes);
 }
 
+// Spreading the whole array into String.fromCharCode throws RangeError past about 128 KiB.
+function toBase64(bytes: Uint8Array): string {
+	let s = '';
+	for (const b of bytes) {
+		s += String.fromCharCode(b);
+	}
+	return btoa(s);
+}
+
+export function encodeSource(source: string): string {
+	const bytes = new TextEncoder().encode(source);
+	if (bytes.length > maxSourceBytes) {
+		throw new Error(`The source is larger than ${maxSourceBytes} bytes`);
+	}
+	return toBase64(pako.deflate(bytes));
+}
+
 export function sharedSource(encoded: string): string {
 	if (encoded.length > maxEncodedLength) {
 		throw new Error(`The shared source is longer than ${maxEncodedLength} base64 characters`);

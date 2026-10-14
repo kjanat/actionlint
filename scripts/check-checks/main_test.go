@@ -253,6 +253,19 @@ func TestUpdateError(t *testing.T) {
 	}
 }
 
+func TestPlaygroundLinkSizeLimit(t *testing.T) {
+	line := append(bytes.Repeat([]byte("a"), 1023), '\n')
+	u := NewUpdater(nil)
+	u.PlaygroundLink(bytes.Repeat(line, playgroundMaxSourceBytes/len(line)))
+	if u.firstErr != nil {
+		t.Fatalf("a source at the limit failed: %v", u.firstErr)
+	}
+	u.PlaygroundLink(bytes.Repeat(line, playgroundMaxSourceBytes/len(line)+1))
+	if u.firstErr == nil || !strings.Contains(u.firstErr.Error(), "larger than the playground") {
+		t.Fatalf("a source past the limit was accepted: %v", u.firstErr)
+	}
+}
+
 func TestStateString(t *testing.T) {
 	tests := []struct {
 		state state

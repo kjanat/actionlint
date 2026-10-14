@@ -13,24 +13,14 @@ import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView, keymap } from '@codemirror/view';
 import { basicSetup } from 'codemirror';
 import isMobile from 'ismobilejs';
-import * as pako from 'pako';
 
 import { errorRange } from './range';
-import { readSource, sharedSource } from './source';
+import { encodeSource, readSource, sharedSource } from './source';
 
 const editorTheme = new Compartment();
 
 function themeFor(isDark: boolean): Extension {
 	return isDark ? oneDark : [];
-}
-
-// Spreading the whole array into String.fromCharCode throws RangeError past about 128 KiB.
-function toBase64(bytes: Uint8Array): string {
-	let s = '';
-	for (const b of bytes) {
-		s += String.fromCharCode(b);
-	}
-	return btoa(s);
 }
 
 (async () => {
@@ -352,14 +342,21 @@ jobs:
 
 	permalinkButton.addEventListener('click', () => {
 		void (async () => {
-			const compressed = pako.deflate(new TextEncoder().encode(getSource()));
-			window.location.hash = toBase64(compressed);
 			const label = permalinkButton.textContent;
+			let encoded: string | undefined;
 			try {
-				await navigator.clipboard.writeText(window.location.href);
-				permalinkButton.textContent = 'Copied!';
+				encoded = encodeSource(getSource());
 			} catch {
-				permalinkButton.textContent = 'In address bar';
+				permalinkButton.textContent = 'Too large to share';
+			}
+			if (encoded !== undefined) {
+				window.location.hash = encoded;
+				try {
+					await navigator.clipboard.writeText(window.location.href);
+					permalinkButton.textContent = 'Copied!';
+				} catch {
+					permalinkButton.textContent = 'In address bar';
+				}
 			}
 			window.setTimeout(() => {
 				permalinkButton.textContent = label;

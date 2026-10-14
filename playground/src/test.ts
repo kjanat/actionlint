@@ -7,7 +7,7 @@ import { Text } from '@codemirror/state';
 import * as pako from 'pako';
 
 import { errorRange } from './range';
-import { maxEncodedLength, maxSourceBytes, readSource, sharedSource } from './source';
+import { encodeSource, maxEncodedLength, maxSourceBytes, readSource, sharedSource } from './source';
 
 // The Go wasm runtime installs `globalThis.Go` as a side effect.
 import 'wasm_exec.js';
@@ -71,6 +71,17 @@ describe('source', () => {
 
 	it('inflates a shared source', () => {
 		assert.equal(sharedSource(shared('on: push\n')), 'on: push\n');
+	});
+
+	it('shares a source that the loader accepts', () => {
+		assert.equal(sharedSource(encodeSource('on: push\n')), 'on: push\n');
+		const limit = 'a'.repeat(maxSourceBytes);
+		assert.equal(sharedSource(encodeSource(limit)), limit);
+	});
+
+	it('refuses to share a source past the limit', () => {
+		assert.throws(() => encodeSource('a'.repeat(maxSourceBytes + 1)), /larger than/);
+		assert.throws(() => encodeSource('é'.repeat(maxSourceBytes / 2 + 1)), /larger than/);
 	});
 
 	it('accepts an incompressible source at the limit', () => {

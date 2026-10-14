@@ -7,11 +7,20 @@
 //   pbpaste | node ./scripts/yaml-to-playground-url.mjs
 //   node ./scripts/yaml-to-playground-url.mjs < test.yaml
 
-import { readFileSync } from 'node:fs';
-
 import { deflate } from 'pako';
 
-const src = readFileSync(process.stdin.fd, 'utf8');
-const compressed = deflate(new TextEncoder().encode(src));
+// playground/src/source.ts refuses shared sources past this size.
+const maxSourceBytes = 16 * 1024 * 1024;
+
+const chunks = [];
+for await (const chunk of process.stdin) {
+	chunks.push(chunk);
+}
+const src = Buffer.concat(chunks);
+if (src.length > maxSourceBytes) {
+	console.error(`The source is larger than ${maxSourceBytes} bytes, which the playground refuses to load`);
+	process.exit(1);
+}
+const compressed = deflate(src);
 const b64 = Buffer.from(compressed).toString('base64');
 console.log(`https://kjanat.github.io/actionlint#${b64}`);

@@ -146,6 +146,9 @@ func (u *Updater) End() ([]byte, error) {
 
 const playgroundURL = "https://kjanat.github.io/actionlint/#"
 
+// playground/src/source.ts refuses shared sources past this size.
+const playgroundMaxSourceBytes = 16 * 1024 * 1024
+
 func playgroundPayload(src []byte) ([]byte, error) {
 	var out bytes.Buffer
 	scan := bufio.NewScanner(bytes.NewReader(src))
@@ -193,6 +196,9 @@ func playgroundLinkPayload(line string) ([]byte, bool) {
 func (u *Updater) PlaygroundLink(src []byte) string {
 	payload, err := playgroundPayload(src)
 	u.err(err)
+	if len(payload) > playgroundMaxSourceBytes {
+		u.err(fmt.Errorf("playground source is %d bytes, larger than the playground's %d byte limit", len(payload), playgroundMaxSourceBytes))
+	}
 
 	var out bytes.Buffer
 	b64 := base64.NewEncoder(base64.StdEncoding, &out)
