@@ -375,7 +375,7 @@ pre-commit run actionlint --all-files
 This project's [hook manifest](../.pre-commit-hooks.yaml) provides five installation options:
 
 - `actionlint`: builds actionlint with Go. ShellCheck and Ruff are separate installations on `PATH`.
-- `actionlint-shellcheck`: builds actionlint and ShellCheck with Go. Ruff is a separate installation.
+- `actionlint-shellcheck`: builds actionlint with Go and installs rshellcheck, the native ShellCheck port, through its Go installer; the first run downloads the release binary from GitHub. Ruff is a separate installation.
 - `actionlint-docker`: pulls the project's published container image; requires Docker.
 - `actionlint-bundled`: builds the selected revision's container image with ShellCheck and Ruff; requires Docker.
 - `actionlint-system`: runs your existing `actionlint` installation on `PATH`.

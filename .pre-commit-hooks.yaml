@@ -30,10 +30,10 @@
   entry: /usr/local/bin/actionlint pre-commit
 - id: actionlint-shellcheck
   name: Lint GitHub Actions workflow files (with ShellCheck)
-  description: Runs actionlint with the ShellCheck integration enabled via a Go build of ShellCheck
+  description: Runs actionlint with the ShellCheck integration enabled via the native rshellcheck release, downloaded from GitHub on first run
   language: golang
   pass_filenames: false
   always_run: true
   entry: actionlint pre-commit
   minimum_pre_commit_version: 3.0.0
-  additional_dependencies: [github.com/wasilibs/go-shellcheck/cmd/shellcheck@v0.11.1]
+  additional_dependencies: [github.com/kjanat/shellcheck-rs/go/cmd/shellcheck@v0.11.0-wrapper.1]
