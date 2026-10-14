@@ -78,7 +78,20 @@ func TestActionsHonourGitIgnore(t *testing.T) {
 			for _, name := range []string{"GIT_LITERAL_PATHSPECS", "GIT_NOGLOB_PATHSPECS", "GIT_TRACE", "GIT_TRACE2", "GIT_TRACE_PERFORMANCE", "GIT_TRACE_SETUP"} {
 				t.Setenv(name, "1")
 			}
+			t.Setenv("GIT_OBJECT_DIRECTORY", filepath.Join(root, "missing"))
+			t.Setenv("GIT_ALTERNATE_OBJECT_DIRECTORIES", filepath.Join(root, "missing"))
 			return root
+		}},
+		{"newline in the repository path", func(t *testing.T, root string, git func(...string)) string {
+			if runtime.GOOS == "windows" {
+				t.Skip("Windows paths cannot contain newlines")
+			}
+			moved := filepath.Join(t.TempDir(), "line\nbreak")
+			if err := os.Rename(root, moved); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = os.Rename(moved, root) })
+			return moved
 		}},
 		{"deleted tracked manifest", func(t *testing.T, root string, git func(...string)) string {
 			writeFixture(t, root, "deleted/action.yml", "name: fixture\n")
@@ -320,6 +333,8 @@ func TestActionsReportGitInputs(t *testing.T) {
 	writeFixture(t, root, "relative-excludes", "relative/\n")
 	writeFixture(t, root, ".git/info/exclude", "excluded/\n")
 	git("config", "core.excludesFile", "relative-excludes")
+	writeFixture(t, root, ".git/empty-include", "")
+	git("config", "include.path", "empty-include")
 	git("add", "--", ".gitignore")
 	config := filepath.Dir(os.Getenv("GIT_CONFIG_GLOBAL"))
 	physical, err := filepath.EvalSymlinks(root)
@@ -341,7 +356,7 @@ func TestActionsReportGitInputs(t *testing.T) {
 		if want := []string{filepath.Join(root, "sub", "deep", "action.yml")}; !slices.Equal(paths, want) {
 			t.Fatalf("Actions(%s) = %q, want %q", tc.start, paths, want)
 		}
-		for _, path := range slices.Concat(tc.want, []string{filepath.Join(config, "gitconfig"), filepath.Join(physical, ".git", "config"), filepath.Join(physical, "relative-excludes"), filepath.Join(physical, ".git", "info", "exclude"), filepath.Join(physical, ".git", "index")}) {
+		for _, path := range slices.Concat(tc.want, []string{filepath.Join(config, "gitconfig"), filepath.Join(physical, ".git", "config"), filepath.Join(physical, "relative-excludes"), filepath.Join(physical, ".git", "empty-include"), filepath.Join(physical, ".git", "info", "exclude"), filepath.Join(physical, ".git", "index")}) {
 			if !got[path] {
 				t.Errorf("Actions(%s) did not report %s in %v", tc.start, path, got)
 			}
@@ -396,9 +411,35 @@ func TestActionsReportSplitIndexAndGitfile(t *testing.T) {
 	}
 }
 
+func TestActionsExpandHomeInExcludesFile(t *testing.T) {
+	root := t.TempDir()
+	git := gitFixture(t, root)
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	writeFixture(t, home, "home-excludes", "hidden/\n")
+	git("config", "core.excludesFile", "~/home-excludes")
+	writeFixture(t, root, "hidden/action.yml", "name: fixture\n")
+	writeFixture(t, root, "shown/action.yml", "name: fixture\n")
+	got := map[string]bool{}
+	paths, err := Actions(t.Context(), root, fsread.New(t.Context(), nil, func(path string) { got[path] = true }))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{filepath.Join(root, "shown", "action.yml")}; !slices.Equal(paths, want) {
+		t.Fatalf("Actions = %q, want %q", paths, want)
+	}
+	physical, err := filepath.EvalSymlinks(filepath.Join(home, "home-excludes"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got[physical] && !got[filepath.Join(home, "home-excludes")] {
+		t.Fatalf("expanded excludes file is not reported in %v", got)
+	}
+}
+
 func TestGitConfigSettings(t *testing.T) {
 	settings := parseGitConfig([]byte("file:.git/config\x00core.ignorecase\ntrue\x00file:.git/config\x00core.precomposeunicode\x00command line:\x00core.excludesfile\nrelative\x00"), "/top")
-	if !settings.ignoreCase || !settings.precompose || settings.excludesFile != "relative" || !slices.Equal(settings.files, []string{filepath.Join("/top", ".git", "config")}) {
+	if !settings.ignoreCase || !settings.precompose || !slices.Equal(settings.files, []string{filepath.Join("/top", ".git", "config")}) {
 		t.Fatalf("settings = %+v", settings)
 	}
 	filter := &gitFilter{ignoreCase: true, precompose: true}

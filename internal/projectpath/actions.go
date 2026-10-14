@@ -3,6 +3,7 @@ package projectpath
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -63,7 +64,7 @@ func newGitFilter(ctx context.Context, root string, reader *fsread.Reader) (*git
 	if err != nil {
 		return nil, fmt.Errorf("git is required to apply ignore rules inside a repository: %w", err)
 	}
-	run := func(args ...string) ([]byte, error) {
+	run := func(optional bool, args ...string) ([]byte, error) {
 		// Repository-configured fsmonitor commands must not run during discovery.
 		command := exec.CommandContext(ctx, git, append([]string{"-C", root, "-c", "core.fsmonitor=false"}, args...)...)
 		command.Env = gitEnvironment()
@@ -74,6 +75,11 @@ func newGitFilter(ctx context.Context, root string, reader *fsread.Reader) (*git
 			return nil, ctxErr
 		}
 		message := strings.TrimSpace(stderr.String())
+		var exit *exec.ExitError
+		// git config exits 1 without output when a key is unset.
+		if optional && message == "" && errors.As(err, &exit) && exit.ExitCode() == 1 {
+			return nil, nil
+		}
 		if err != nil {
 			return nil, fmt.Errorf("git %s: %w: %s", args[0], err, message)
 		}
@@ -83,37 +89,44 @@ func newGitFilter(ctx context.Context, root string, reader *fsread.Reader) (*git
 		}
 		return output, nil
 	}
-	manifests, err := run("ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", ":(glob)**/action.yml", ":(glob)**/action.yaml")
+	path := func(optional bool, args ...string) (string, error) {
+		output, err := run(optional, args...)
+		return strings.TrimSuffix(strings.TrimSuffix(string(output), "\n"), "\r"), err
+	}
+	manifests, err := run(false, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", ":(glob)**/action.yml", ":(glob)**/action.yaml")
 	if err != nil {
 		return nil, err
 	}
-	ignored, err := run("ls-files", "-z", "--others", "--ignored", "--exclude-standard", "--directory")
+	ignored, err := run(false, "ls-files", "-z", "--others", "--ignored", "--exclude-standard", "--directory")
 	if err != nil {
 		return nil, err
 	}
-	locations, err := run("rev-parse", "--show-toplevel", "--git-path", "info/exclude", "--git-path", "index", "--shared-index-path")
+	config, err := run(false, "config", "--list", "--show-origin", "-z")
 	if err != nil {
 		return nil, err
 	}
-	config, err := run("config", "--list", "--show-origin", "-z")
+	includes, err := run(true, "config", "--show-origin", "--path", "-z", "--get-all", "include.path")
 	if err != nil {
 		return nil, err
 	}
-	var read []string
-	for location := range strings.Lines(string(locations)) {
-		if location = strings.TrimRight(location, "\r\n"); location != "" {
-			read = append(read, location)
-		}
+	top, err := path(false, "rev-parse", "--show-toplevel")
+	if err != nil {
+		return nil, err
 	}
-	if len(read) == 0 {
+	if top == "" {
 		return nil, fmt.Errorf("git rev-parse printed no work tree for %q", root)
 	}
-	top := filepath.Clean(read[0])
-	read = append(read[1:], filepath.Join(top, ".git"))
-	for i, location := range read {
-		if !filepath.IsAbs(location) {
-			read[i] = filepath.Join(root, location)
+	top = filepath.Clean(top)
+	read := []string{filepath.Join(top, ".git")}
+	for _, args := range [][]string{{"--git-path", "info/exclude"}, {"--git-path", "index"}, {"--shared-index-path"}} {
+		location, err := path(false, append([]string{"rev-parse"}, args...)...)
+		if err != nil {
+			return nil, err
 		}
+		if location != "" && !filepath.IsAbs(location) {
+			location = filepath.Join(root, location)
+		}
+		read = append(read, location)
 	}
 	for dir := root; dir != top; {
 		parent := filepath.Dir(dir)
@@ -125,15 +138,14 @@ func newGitFilter(ctx context.Context, root string, reader *fsread.Reader) (*git
 	}
 	settings := parseGitConfig(config, top)
 	read = append(read, settings.files...)
-	excludes := settings.excludesFile
+	read = append(read, includedConfigFiles(includes, top)...)
+	excludes, err := path(true, "config", "--path", "--get", "core.excludesFile")
+	if err != nil {
+		return nil, err
+	}
 	if excludes == "" {
 		excludes = defaultExcludesFile()
-	} else if home, ok := strings.CutPrefix(excludes, "~/"); ok {
-		if dir, err := os.UserHomeDir(); err == nil {
-			excludes = filepath.Join(dir, home)
-		}
-	}
-	if excludes != "" && !filepath.IsAbs(excludes) {
+	} else if !filepath.IsAbs(excludes) {
 		excludes = filepath.Join(top, excludes)
 	}
 	read = append(read, excludes)
@@ -171,10 +183,9 @@ func (f *gitFilter) key(path string) string {
 }
 
 type gitSettings struct {
-	files        []string
-	excludesFile string
-	ignoreCase   bool
-	precompose   bool
+	files      []string
+	ignoreCase bool
+	precompose bool
 }
 
 // git config --list --show-origin -z prints origin NUL key [LF value] NUL per entry.
@@ -192,8 +203,6 @@ func parseGitConfig(output []byte, top string) gitSettings {
 		}
 		key, value, hasValue := strings.Cut(fields[i+1], "\n")
 		switch strings.ToLower(key) {
-		case "core.excludesfile":
-			settings.excludesFile = value
 		case "core.ignorecase":
 			settings.ignoreCase = gitBool(value, hasValue)
 		case "core.precomposeunicode":
@@ -201,6 +210,28 @@ func parseGitConfig(output []byte, top string) gitSettings {
 		}
 	}
 	return settings
+}
+
+// git config --show-origin --path -z --get-all prints origin NUL value NUL per entry.
+// A relative include path is relative to the file that names it.
+func includedConfigFiles(output []byte, top string) []string {
+	var files []string
+	fields := strings.Split(string(output), "\x00")
+	for i := 0; i+1 < len(fields); i += 2 {
+		origin, ok := strings.CutPrefix(fields[i], "file:")
+		value := fields[i+1]
+		if !ok || value == "" {
+			continue
+		}
+		if !filepath.IsAbs(origin) {
+			origin = filepath.Join(top, origin)
+		}
+		if !filepath.IsAbs(value) {
+			value = filepath.Join(filepath.Dir(origin), value)
+		}
+		files = append(files, value)
+	}
+	return files
 }
 
 func gitBool(value string, hasValue bool) bool {
@@ -230,6 +261,7 @@ func gitEnvironment() []string {
 		name = strings.ToUpper(name)
 		switch {
 		case name == "GIT_DIR", name == "GIT_WORK_TREE", name == "GIT_INDEX_FILE", name == "GIT_COMMON_DIR", name == "GIT_CEILING_DIRECTORIES", name == "GIT_DISCOVERY_ACROSS_FILESYSTEM":
+		case name == "GIT_OBJECT_DIRECTORY", name == "GIT_ALTERNATE_OBJECT_DIRECTORIES":
 		case name == "GIT_LITERAL_PATHSPECS", name == "GIT_GLOB_PATHSPECS", name == "GIT_NOGLOB_PATHSPECS", name == "GIT_ICASE_PATHSPECS":
 		case strings.HasPrefix(name, "GIT_TRACE"):
 		default:
