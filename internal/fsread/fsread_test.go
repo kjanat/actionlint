@@ -208,6 +208,34 @@ func TestReaderCancelled(t *testing.T) {
 	}
 }
 
+func TestReaderWalkStopsWhenCancelled(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"a", "b", "c"} {
+		if err := os.WriteFile(filepath.Join(root, name), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	var visited []string
+	err := New(ctx, nil, nil).WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		visited = append(visited, filepath.Base(path))
+		if path != root {
+			cancel()
+		}
+		return err
+	})
+	if !errors.Is(err, context.Canceled) || !slices.Equal(visited, []string{filepath.Base(root), "a"}) {
+		t.Fatalf("walk = %v after visiting %q, want context.Canceled after a", err, visited)
+	}
+	file := filepath.Join(root, "a")
+	if err := New(ctx, nil, nil).WalkDir(file, func(string, fs.DirEntry, error) error {
+		t.Error("visited a file root after cancellation")
+		return nil
+	}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("walk of a file root = %v, want context.Canceled", err)
+	}
+}
+
 func TestUnrecordedHelpers(t *testing.T) {
 	root := tree(t)
 	if data, err := Disk(filepath.Join(root, "top.txt")); err != nil || string(data) != "top.txt" {

@@ -94,6 +94,9 @@ func (r *Reader) WalkDir(root string, fn fs.WalkDirFunc) error {
 }
 
 func (r *Reader) walk(path string, entry fs.DirEntry, fn fs.WalkDirFunc) error {
+	if err := r.ctx.Err(); err != nil {
+		return err
+	}
 	if err := fn(path, entry, nil); err != nil || !entry.IsDir() {
 		if errors.Is(err, filepath.SkipDir) && entry.IsDir() {
 			return nil
