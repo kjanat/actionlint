@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
 
+	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/projectpath"
 )
 
@@ -119,7 +121,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 		a.ctx = context.Background()
 	}
 	if a.readFile == nil {
-		a.readFile = os.ReadFile
+		a.readFile = fsread.Disk
 	}
 	a.projects.readFile = a.readFile
 	a.request.ReadFile = opts.ReadFile
@@ -189,33 +191,35 @@ func (a *AnalysisSession) Repository(dir string) (*AnalysisResult, error) {
 		return nil, err
 	}
 	if project == nil {
-		if found, expected := projectpath.WorkflowTypo(dir); found != "" {
+		if found, expected := projectpath.WorkflowTypo(dir, fsread.New(a.ctx, nil, nil)); found != "" {
 			return nil, fmt.Errorf("no workflows directory was found: %q looks misspelled; rename it to %q", found, expected)
 		}
 		return nil, fmt.Errorf("no project was found in any parent directories of %q. run actionlint inside a Git repository or provide explicit file paths", dir)
 	}
 	a.selectionLog("Detected project:", project.RootDir())
 	if _, err := os.Stat(project.WorkflowsDir()); os.IsNotExist(err) {
-		if found, expected := projectpath.WorkflowTypo(dir); found != "" {
+		if found, expected := projectpath.WorkflowTypo(dir, fsread.New(a.ctx, nil, nil)); found != "" {
 			return nil, fmt.Errorf("no workflows directory was found: %q looks misspelled; rename it to %q", found, expected)
 		}
 	}
-	paths, err := repositoryPaths(project)
+	metadata := &inputFiles{}
+	paths, err := repositoryPaths(a.ctx, project, fsread.New(a.ctx, nil, metadata.add))
 	if err != nil {
 		return nil, err
 	}
 	if len(paths) == 0 {
 		a.filesSelected(paths)
-		if found, expected := projectpath.WorkflowTypo(dir); found != "" {
+		if found, expected := projectpath.WorkflowTypo(dir, fsread.New(a.ctx, nil, nil)); found != "" {
 			return nil, fmt.Errorf("no workflows directory was found: %q looks misspelled; rename it to %q", found, expected)
 		}
 		return nil, fmt.Errorf("no workflow or action files were found in %q", project.RootDir())
 	}
-	return a.discoveredFiles(paths, project)
+	return a.discoveredFiles(paths, metadata.list(), project)
 }
 
 func (a *AnalysisSession) directory(dir string, project *Project) (*AnalysisResult, error) {
-	paths, err := workflowPaths(dir)
+	listed := &inputFiles{}
+	paths, err := workflowPaths(fsread.New(a.ctx, nil, listed.add), dir)
 	if err != nil {
 		return nil, err
 	}
@@ -223,10 +227,10 @@ func (a *AnalysisSession) directory(dir string, project *Project) (*AnalysisResu
 		a.filesSelected(paths)
 		return nil, fmt.Errorf("no YAML file was found in %q", dir)
 	}
-	return a.discoveredFiles(paths, project)
+	return a.discoveredFiles(paths, listed.list(), project)
 }
 
-func (a *AnalysisSession) discoveredFiles(paths []string, project *Project) (*AnalysisResult, error) {
+func (a *AnalysisSession) discoveredFiles(paths, metadata []string, project *Project) (*AnalysisResult, error) {
 	a.selectionLog("Collected", len(paths), "YAML files")
 	result, err := a.Files(paths, project)
 	if result != nil {
@@ -239,19 +243,22 @@ func (a *AnalysisSession) discoveredFiles(paths []string, project *Project) (*An
 		for _, path := range paths {
 			inputs.add(path)
 		}
+		for _, path := range metadata {
+			inputs.add(path)
+		}
 		result.Inputs = inputs.list()
 	}
 	return result, err
 }
 
-func repositoryPaths(project *Project) ([]string, error) {
-	paths, err := projectpath.Actions(project.RootDir())
+func repositoryPaths(ctx context.Context, project *Project, reader *fsread.Reader) ([]string, error) {
+	paths, err := projectpath.Actions(ctx, project.RootDir(), reader)
 	if err != nil {
 		return nil, err
 	}
 	workflows := project.WorkflowsDir()
 	if _, err := os.Stat(workflows); err == nil {
-		files, err := workflowPaths(workflows)
+		files, err := workflowPaths(reader, workflows)
 		if err != nil {
 			return nil, err
 		}
@@ -263,13 +270,16 @@ func repositoryPaths(project *Project) ([]string, error) {
 	return slices.Compact(paths), nil
 }
 
-func workflowPaths(dir string) ([]string, error) {
+func workflowPaths(reader *fsread.Reader, dir string) ([]string, error) {
 	paths := []string{}
-	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	if err := reader.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if !info.IsDir() && (strings.HasSuffix(path, ".yml") || strings.HasSuffix(path, ".yaml")) {
+		if entry.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(path, ".yml") || strings.HasSuffix(path, ".yaml") {
 			paths = append(paths, path)
 		}
 		return nil

@@ -2,16 +2,13 @@ package actionlint
 
 import (
 	"os"
-	"path/filepath"
 	"slices"
 	"testing"
 )
 
 func TestRepositoryRetainsExcludedCandidates(t *testing.T) {
 	root := t.TempDir()
-	if err := os.Mkdir(filepath.Join(root, ".git"), 0700); err != nil {
-		t.Fatal(err)
-	}
+	writeGitRepository(t, root)
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "files: {excludes: ['**/excluded.yml']}\n")
 	excluded := writeShellcheckFixture(t, root, ".github/workflows/excluded.yml", "invalid: [yaml\n")
 	selected := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", commandGoodWorkflow)

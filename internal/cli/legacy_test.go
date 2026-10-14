@@ -24,10 +24,9 @@ func TestCommandCompatibility(t *testing.T) {
 	}
 	root := t.TempDir()
 	t.Chdir(root)
-	for _, dir := range []string{".git", ".github/workflows"} {
-		if err := os.MkdirAll(filepath.Join(root, dir), 0o700); err != nil {
-			t.Fatal(err)
-		}
+	gitRepository(t, root)
+	if err := os.MkdirAll(filepath.Join(root, ".github", "workflows"), 0o700); err != nil {
+		t.Fatal(err)
 	}
 	good := `on: push
 jobs:

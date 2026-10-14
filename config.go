@@ -13,6 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/internal/buildinfo"
 	"actionlint.kjanat.dev/internal/configtree"
+	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/ruff"
 	"github.com/bmatcuk/doublestar/v4"
 	"go.yaml.in/yaml/v4"
@@ -627,7 +628,7 @@ func resolveConfigNode(root *yaml.Node, inputs map[*yaml.Node]configInput) (reso
 
 // ReadConfigFile reads actionlint config file (actionlint.yaml) from the given file path.
 func ReadConfigFile(path string) (*Config, error) {
-	source, err := readConfigSource(path, os.ReadFile)
+	source, err := readConfigSource(path, fsread.Disk)
 	if err != nil {
 		return nil, err
 	}

@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/fsread"
 )
 
 func writeShellcheckFixture(t *testing.T, root, name, content string) string {
@@ -21,6 +23,19 @@ func writeShellcheckFixture(t *testing.T, root, name, content string) string {
 		t.Fatal(err)
 	}
 	return path
+}
+
+func writeGitRepository(t *testing.T, root string) {
+	t.Helper()
+	command := exec.CommandContext(t.Context(), "git", "init", "--quiet", root)
+	for _, entry := range os.Environ() {
+		if name, _, _ := strings.Cut(entry, "="); !strings.HasPrefix(name, "GIT_") {
+			command.Env = append(command.Env, entry)
+		}
+	}
+	if out, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
 }
 
 func shellcheckForTest(t *testing.T) string {
@@ -345,12 +360,12 @@ func TestShellcheckRunnerWorkingDirectory(t *testing.T) {
 
 func TestShellcheckConfigDirectorySelection(t *testing.T) {
 	root := t.TempDir()
-	if _, err := shellcheckRCFile(root); err == nil {
+	if _, err := shellcheckRCFile(fsread.New(t.Context(), nil, nil), root); err == nil {
 		t.Fatal("accepted empty config directory")
 	}
 	writeShellcheckFixture(t, root, "shellcheckrc", "enable=all\n")
 	dotfile := writeShellcheckFixture(t, root, ".shellcheckrc", "disable=SC2086\n")
-	got, err := shellcheckRCFile(root)
+	got, err := shellcheckRCFile(fsread.New(t.Context(), nil, nil), root)
 	if err != nil || got != dotfile {
 		t.Fatalf("want dotfile first, got %q: %v", got, err)
 	}

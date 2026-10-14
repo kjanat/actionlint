@@ -15,23 +15,14 @@ import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView, keymap } from '@codemirror/view';
 import { basicSetup } from 'codemirror';
 import isMobile from 'ismobilejs';
-import * as pako from 'pako';
 
 import { errorRange } from './range';
+import { querySource, readSource, sharedSource, shareURL } from './source';
 
 const editorTheme = new Compartment();
 
 function themeFor(isDark: boolean): Extension {
 	return isDark ? oneDark : [];
-}
-
-// Spreading the whole array into String.fromCharCode throws RangeError past about 128 KiB.
-function toBase64(bytes: Uint8Array): string {
-	let s = '';
-	for (const b of bytes) {
-		s += String.fromCharCode(b);
-	}
-	return btoa(s);
 }
 
 (async () => {
@@ -82,7 +73,7 @@ function toBase64(bytes: Uint8Array): string {
 		if (!res.ok) {
 			throw new Error(`Fetching ${url} failed with status ${res.status}: ${res.statusText}`);
 		}
-		const src = await res.text();
+		const src = await readSource(res);
 		return src.trim();
 	}
 
@@ -91,7 +82,7 @@ function toBase64(bytes: Uint8Array): string {
 
 		const s = params.get('s');
 		if (s !== null) {
-			return s;
+			return querySource(s);
 		}
 
 		const u = params.get('u');
@@ -100,10 +91,7 @@ function toBase64(bytes: Uint8Array): string {
 		}
 
 		if (window.location.hash !== '') {
-			const b64 = window.location.hash.slice(1); // Omit first '#'
-			const compressed = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-			const decompressed = pako.inflate(compressed);
-			return new TextDecoder().decode(decompressed);
+			return sharedSource(window.location.hash.slice(1));
 		}
 
 		const src = `# Paste your workflow YAML to this code editor
@@ -356,14 +344,21 @@ jobs:
 
 	permalinkButton.addEventListener('click', () => {
 		void (async () => {
-			const compressed = pako.deflate(new TextEncoder().encode(getSource()));
-			window.location.hash = toBase64(compressed);
 			const label = permalinkButton.textContent;
+			let url: string | undefined;
 			try {
-				await navigator.clipboard.writeText(window.location.href);
-				permalinkButton.textContent = 'Copied!';
+				url = shareURL(window.location.origin + window.location.pathname, getSource());
 			} catch {
-				permalinkButton.textContent = 'In address bar';
+				permalinkButton.textContent = 'Too large to share';
+			}
+			if (url !== undefined) {
+				window.history.replaceState(null, '', url);
+				try {
+					await navigator.clipboard.writeText(url);
+					permalinkButton.textContent = 'Copied!';
+				} catch {
+					permalinkButton.textContent = 'In address bar';
+				}
 			}
 			window.setTimeout(() => {
 				permalinkButton.textContent = label;

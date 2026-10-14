@@ -29,6 +29,8 @@ RUN case "${TARGETARCH}" in \
 FROM alpine:${ALPINE_VER} AS runtime
 LABEL org.opencontainers.image.source="https://github.com/kjanat/actionlint"
 LABEL org.opencontainers.image.licenses="MIT"
+# Git refuses a mounted repository owned by another user.
+RUN apk add --no-cache git && git config --system --add safe.directory '*'
 COPY --from=builder /go/src/app/actionlint /usr/local/bin/
 COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
 COPY --from=ruff /ruff /usr/local/bin/ruff

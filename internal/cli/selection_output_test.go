@@ -11,10 +11,9 @@ func TestReportCannotReplaceExcludedSelectionConfig(t *testing.T) {
 		for _, target := range []string{".github/actionlint.yaml", "base.yml", ".github/workflows/ci.yml"} {
 			t.Run(fmtTestName(modern, target), func(t *testing.T) {
 				t.Chdir(t.TempDir())
-				for _, dir := range []string{".git", ".github/workflows"} {
-					if err := os.MkdirAll(dir, 0700); err != nil {
-						t.Fatal(err)
-					}
+				gitRepository(t, ".")
+				if err := os.MkdirAll(".github/workflows", 0700); err != nil {
+					t.Fatal(err)
 				}
 				files := map[string]string{
 					"base.yml":                 "files: {includes: []}\n",

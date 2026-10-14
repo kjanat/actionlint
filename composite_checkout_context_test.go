@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/fsread"
 )
 
 func TestCompositeConditionalCheckoutKeepsUnaffectedPaths(t *testing.T) {
@@ -122,7 +124,7 @@ func TestRunDirectoryCaseInsensitiveSuffix(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, checkout := range []string{"", "source"} {
-		paths := runPaths{workspace: root, analysis: root, placements: &checkoutPlacement{
+		paths := runPaths{workspace: root, analysis: root, reader: fsread.New(t.Context(), nil, nil), placements: &checkoutPlacement{
 			directory: runDirectory{directoryKnown, checkout}, caseInsensitive: true,
 		}}
 		mapped, known := paths.analysisPath(joinRunnerPath(checkout, "SCRIPTS/nested"))

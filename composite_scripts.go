@@ -174,7 +174,7 @@ func compositeScriptRule(parent Rule, call *Step, actionPath string, actions *Lo
 		child = &ruffRule{RuleBase: builtinRuleBase("ruff"), checker: rule.checker.Fork()}
 	case *RuleShellcheck:
 		scoped := newRuleShellcheck(rule.cmd)
-		scoped.config, scoped.paths, scoped.onInput = rule.config, rule.paths, rule.onInput
+		scoped.config, scoped.paths = rule.config, rule.paths
 		scoped.platform = rule.platform
 		// Resolve configuration anew: nested actions have different action_path
 		// values even when they inherit the same configuration selection.

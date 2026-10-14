@@ -38,7 +38,12 @@ Files directly under `.github/workflows` remain workflows, even when named
 Metadata findings point into the action file. Configuration overrides, rule levels
 and ignores apply to that file. Discovery skips `.git`, `node_modules`, `vendor`,
 `.venv`, `venv`, `.cache`, `.worktrees` and `testdata` directories, nested Git repositories,
-and symlinked action files or directories. Use [file exclusions](config.md) to
+and symlinked action files or directories. Inside a Git repository, discovery
+asks `git` 2.8 or newer which paths its ignore rules exclude: `.gitignore`,
+`.git/info/exclude` and the global excludes file apply, and tracked manifests in
+ignored directories stay discovered. Discovery fails when `git` is missing or
+reports an incomplete listing. `files.excludes` remains the explicit override.
+Use [file exclusions](config.md) to
 omit fixtures or generated actions. Explicit paths can select actions in skipped
 directories; configured file exclusions still apply.
 
@@ -976,13 +981,13 @@ You still need to check that the selected tag has a published release and matche
 
 #### Hook installation
 
-| Hook ID                 | Explanation                                                                                                                                                                                                                         |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `actionlint`            | Automatically installs `actionlint` command in isolated `$GOPATH` directory using [Go toolchain][go-install].                                                                                                                       |
-| `actionlint-docker`     | Automatically pulls [the actionlint Docker image](#docker).                                                                                                                                                                         |
-| `actionlint-bundled`    | Builds this revision's Dockerfile, bundling ShellCheck and Ruff. Requires Docker; no host Go, Python, ShellCheck, or Ruff installation is needed.                                                                                   |
-| `actionlint-system`     | Uses system-installed `actionlint` command. The command is necessary to be [installed manually](install.md).                                                                                                                        |
-| `actionlint-shellcheck` | Same as `actionlint`, and additionally installs a Go build of ShellCheck ([`wasilibs/go-shellcheck`][go-shellcheck]) so [the shellcheck integration](checks.md#check-shellcheck-integ) works without a host-installed `shellcheck`. |
+| Hook ID                 | Explanation                                                                                                                                                                                                                                               |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `actionlint`            | Automatically installs `actionlint` command in isolated `$GOPATH` directory using [Go toolchain][go-install].                                                                                                                                             |
+| `actionlint-docker`     | Automatically pulls [the actionlint Docker image](#docker).                                                                                                                                                                                               |
+| `actionlint-bundled`    | Builds this revision's Dockerfile, bundling ShellCheck and Ruff. Requires Docker; no host Go, Python, ShellCheck, or Ruff installation is needed.                                                                                                         |
+| `actionlint-system`     | Uses system-installed `actionlint` command. The command is necessary to be [installed manually](install.md).                                                                                                                                              |
+| `actionlint-shellcheck` | Same as `actionlint`, and additionally installs [rshellcheck][shellcheck-rs], the native Rust port of ShellCheck, through its Go installer so [the shellcheck integration](checks.md#check-shellcheck-integ) works without a host-installed `shellcheck`. |
 
 The `actionlint` hook installs into an isolated `$GOPATH`, so ShellCheck and Ruff must already be on `PATH`.
 The `actionlint-shellcheck` hook installs ShellCheck but not Ruff. Go `additional_dependencies` cannot install
@@ -990,11 +995,19 @@ Ruff's Python package, and a separate `ruff-pre-commit` hook does not share its 
 Use `actionlint-bundled` to install both automatically: select a commit or release containing this hook and set
 `id: actionlint-bundled`. It builds the bundled image from that revision.
 
-`actionlint-shellcheck` pins go-shellcheck so each actionlint revision builds a
-reproducible pre-commit environment. The scheduled [Upkeep workflow](../.github/workflows/upkeep.yml) checks both go-shellcheck
-and the ShellCheck version it embeds, and proposes pin updates automatically.
-To choose a different version yourself, use `additional_dependencies` on the
-plain hook:
+`actionlint-shellcheck` pins the rshellcheck installer so each actionlint revision builds a
+reproducible pre-commit environment. The installer's module version selects the matching
+rshellcheck release. Its first run downloads that release's binary for the hook's platform,
+checks it against the release checksums and caches it in the user cache directory, so the
+first run needs network access to github.com. When `gh` is on `PATH` and signed in, the
+installer also verifies the release's build provenance with `gh attestation verify` and
+refuses an archive that fails. Every later run starts the native binary directly.
+rshellcheck reports its own diagnostics, such as SC9001 and SC9002, beside upstream's,
+and actionlint passes them through unchanged. The scheduled
+[Upkeep workflow](../.github/workflows/upkeep.yml) compares the pin with the latest rshellcheck
+release and its newest installer tag, including installer-only `-wrapper.N` releases, and
+proposes pin updates automatically. To choose a different version
+yourself, use `additional_dependencies` on the plain hook:
 
 ```yaml
 ---
@@ -1004,7 +1017,7 @@ repos:
     hooks:
       - id: actionlint
         additional_dependencies:
-          - github.com/wasilibs/go-shellcheck/cmd/shellcheck@v0.11.1
+          - github.com/kjanat/shellcheck-rs/go/cmd/shellcheck@v0.11.0-wrapper.1
 ```
 
 ### VS Code
@@ -1136,7 +1149,6 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 [emacs-melpa]: https://melpa.org/
 [ga-annotate-error]: https://docs.github.com/en/actions/learn-github-actions/workflow-commands-for-github-actions#setting-an-error-message
 [go-install]: https://go.dev/doc/install
-[go-shellcheck]: https://github.com/wasilibs/go-shellcheck
 [go-template]: https://pkg.go.dev/text/template
 [jsonl]: https://jsonlines.org/
 [nova-extension]: https://extensions.panic.com/extensions/org.netwrk/org.netwrk.actionlint/
@@ -1153,6 +1165,7 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 [reviewdog-actionlint]: https://github.com/reviewdog/action-actionlint
 [reviewdog]: https://github.com/reviewdog/reviewdog
 [sarif]: https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html
+[shellcheck-rs]: https://github.com/kjanat/shellcheck-rs
 [super-linter-env-var]: https://github.com/super-linter/super-linter#environment-variables
 [super-linter]: https://github.com/github/super-linter
 [trunk-docs]: https://docs.trunk.io/docs/check

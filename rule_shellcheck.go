@@ -1,11 +1,14 @@
 package actionlint
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
 	"sync"
+
+	"actionlint.kjanat.dev/internal/fsread"
 )
 
 type shellcheckError struct {
@@ -71,7 +74,6 @@ type RuleShellcheck struct {
 	rcArgs        []string
 	inlineConfig  *ShellcheckConfig
 	actionPath    string
-	onInput       func(string)
 	mu            sync.Mutex
 	ignoreOrigin  *diagnosticIgnoreOrigin
 }
@@ -80,6 +82,7 @@ func newRuleShellcheck(cmd *externalCommand) *RuleShellcheck {
 	return &RuleShellcheck{
 		RuleBase: builtinRuleBase("shellcheck"),
 		cmd:      cmd,
+		paths:    runPaths{reader: fsread.New(context.Background(), nil, nil)},
 	}
 }
 

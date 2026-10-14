@@ -146,6 +146,23 @@ func (u *Updater) End() ([]byte, error) {
 
 const playgroundURL = "https://kjanat.github.io/actionlint/#"
 
+// playground/src/source.ts refuses shared sources past this size.
+const playgroundMaxSourceBytes = 16 * 1024 * 1024
+
+// Chromium refuses URLs longer than 2 MiB.
+const playgroundMaxURLLength = 2 * 1024 * 1024
+
+func playgroundLinkError(payload []byte, link string) error {
+	if len(payload) > playgroundMaxSourceBytes {
+		return fmt.Errorf("playground source is %d bytes, larger than the playground's %d byte limit", len(payload), playgroundMaxSourceBytes)
+	}
+	url := strings.TrimSuffix(strings.TrimPrefix(link, "[Playground]("), ")")
+	if len(url) > playgroundMaxURLLength {
+		return fmt.Errorf("playground URL is %d characters, longer than the %d characters browsers load", len(url), playgroundMaxURLLength)
+	}
+	return nil
+}
+
 func playgroundPayload(src []byte) ([]byte, error) {
 	var out bytes.Buffer
 	scan := bufio.NewScanner(bytes.NewReader(src))
@@ -178,13 +195,15 @@ func playgroundLinkPayload(line string) ([]byte, bool) {
 	if err != nil {
 		return nil, false
 	}
-	r, err := zlib.NewReader(bytes.NewReader(raw))
+	compressed := bytes.NewReader(raw)
+	r, err := zlib.NewReader(compressed)
 	if err != nil {
 		return nil, false
 	}
 	defer func() { _ = r.Close() }()
 	dec, err := io.ReadAll(r)
-	if err != nil {
+	// playground/src/source.ts refuses bytes after the zlib stream, which Go's reader ignores.
+	if err != nil || compressed.Len() != 0 {
 		return nil, false
 	}
 	return dec, true
@@ -202,7 +221,9 @@ func (u *Updater) PlaygroundLink(src []byte) string {
 	u.err(comp.Close())
 	u.err(b64.Close())
 
-	return fmt.Sprintf("[Playground](%s%s)", playgroundURL, out.Bytes())
+	link := fmt.Sprintf("[Playground](%s%s)", playgroundURL, out.Bytes())
+	u.err(playgroundLinkError(payload, link))
+	return link
 }
 
 func (u *Updater) state(s state, reason string) {
@@ -352,6 +373,7 @@ func (u *Updater) Update() {
 			if dec, ok := playgroundLinkPayload(l); perr != nil || !ok || !bytes.Equal(dec, payload) {
 				ln = u.PlaygroundLink(u.input.Bytes())
 			}
+			u.err(playgroundLinkError(payload, ln))
 			u.out.WriteString(ln)
 			u.out.WriteByte('\n')
 			u.input.Reset()

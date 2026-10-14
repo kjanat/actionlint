@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"actionlint.kjanat.dev/internal/fsread"
 )
 
 // ConfigSelection selects an explicit file, repository discovery, or no configuration.
@@ -43,7 +45,7 @@ func SelectedConfigPath(selection ConfigSelection) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	project, err := findProjectConfig(cwd, true, os.ReadFile)
+	project, err := findProjectConfig(cwd, true, fsread.Disk)
 	if err != nil || project == nil {
 		return "", err
 	}
@@ -67,7 +69,7 @@ func InspectConfig(selection ConfigSelection, withOrigin bool) (ConfigInspection
 	var resolved resolvedConfig
 	if path != "" {
 		var source *loadedConfig
-		source, err = readConfigSource(path, os.ReadFile)
+		source, err = readConfigSource(path, fsread.Disk)
 		if err != nil {
 			return ConfigInspection{Path: path}, err
 		}
