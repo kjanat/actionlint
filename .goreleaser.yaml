@@ -113,6 +113,7 @@ scoops:
     commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
     homepage: https://actionlint.kjanat.dev
     description: Static checker for GitHub Actions workflow files
+    depends: [git]
     license: MIT
     skip_upload: true
     repository:
