@@ -70,7 +70,9 @@ async function run(inputs, expected = 0) {
 }
 
 try {
-	await mkdir(join(workspace, '.git'));
+	const gitEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
+	const init = spawnSync('git', ['init', '--quiet', workspace], { encoding: 'utf8', env: gitEnv });
+	assert.equal(init.status, 0, `git init: ${init.error ?? init.stderr}`);
 	await mkdir(join(workspace, '.github/workflows'), { recursive: true });
 	for (
 		const name of [
