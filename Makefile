@@ -15,11 +15,10 @@ TESTDATA := $(wildcard \
 		testdata/projects/* \
 		testdata/reusable_workflow_metadata/* \
 	)
-GO_GEN_SRCS := $(wildcard scripts/generate-popular-actions/*.go) \
+GO_GEN_SRCS := $(filter-out %_test.go,$(wildcard scripts/generate-popular-actions/*.go scripts/generate-action-metadata/*.go)) \
 				scripts/generate-popular-actions/popular_actions.json \
 				scripts/generate-webhook-events/main.go \
-				scripts/generate-availability/main.go \
-				$(wildcard scripts/generate-action-metadata/*.go)
+				scripts/generate-availability/main.go
 PANDOC := pandoc --standalone --from=markdown-smart --syntax-highlighting=none
 
 ifeq ($(OS),Windows_NT)
