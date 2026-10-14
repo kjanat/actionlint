@@ -19,10 +19,9 @@ import (
 func TestCommandWorkflowPaths(t *testing.T) {
 	root := t.TempDir()
 	repo := filepath.Join(root, "repo")
-	for _, dir := range []string{filepath.Join(repo, ".git"), filepath.Join(repo, ".github", "workflows")} {
-		if err := os.MkdirAll(dir, 0700); err != nil {
-			t.Fatal(err)
-		}
+	gitRepository(t, repo)
+	if err := os.MkdirAll(filepath.Join(repo, ".github", "workflows"), 0700); err != nil {
+		t.Fatal(err)
 	}
 	outside := filepath.Join(root, "outside.yml")
 	for _, path := range []string{outside, filepath.Join(repo, ".github", "workflows", "ci.yml")} {
@@ -278,7 +277,8 @@ func TestReportCannotReplaceConsumedFile(t *testing.T) {
 			t.Run(fmtTestName(modern, kind), func(t *testing.T) {
 				root := t.TempDir()
 				t.Chdir(root)
-				for _, dir := range []string{".git", ".github/workflows", "local"} {
+				gitRepository(t, ".")
+				for _, dir := range []string{".github/workflows", "local"} {
 					if err := os.MkdirAll(dir, 0700); err != nil {
 						t.Fatal(err)
 					}

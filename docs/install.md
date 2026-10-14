@@ -5,6 +5,10 @@
 This document describes how to install the [kjanat/actionlint fork](../README.md). Package names matter: several
 registries also provide [rhysd/actionlint][upstream] under the unqualified name `actionlint`.
 
+Inside a Git repository, action discovery runs `git` 2.8 or newer to apply ignore rules. The Docker image, the Nix
+package and the AUR and Scoop packages provide it. Standalone archives, Go installs, the Homebrew cask, WinGet, and
+npm and PyPI packages need `git` on `PATH`; on macOS the Xcode Command Line Tools provide it.
+
 ShellCheck and Ruff are optional external linters. Standalone archives, Go installs, and npm and PyPI packages
 contain actionlint only; install `shellcheck` and `ruff` separately on `PATH` to check shell and Python scripts.
 See [external linter configuration](usage.md#ignore-some-errors).
@@ -94,7 +98,7 @@ The unqualified [`actionlint` formula][formula] in Homebrew core installs the up
 The per-project `kjanat/actionlint` tap redirects to `kjanat/tap` through Homebrew's tap migration metadata, so existing
 `kjanat/actionlint/actionlint` installations keep upgrading. Releases publish only to `kjanat/tap`.
 
-The cask has no package dependencies. ShellCheck and Ruff are optional and must be installed separately on `PATH`.
+The cask has no package dependencies and uses the system `git`. ShellCheck and Ruff are optional and must be installed separately on `PATH`.
 For [ShellCheck integration](checks.md#check-shellcheck-integ),
 the `kjanat/tap/shellcheck` cask provides the upstream static binary and shell completions with no dependencies.
 Uninstall the homebrew-core formula first if it already owns the `shellcheck` binary:

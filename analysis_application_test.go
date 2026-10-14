@@ -151,11 +151,10 @@ func TestAnalysisConcurrentLogRecords(t *testing.T) {
 func TestLinterAnalysisFacades(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, ".github", "workflows")
-	for _, path := range []string{dir, filepath.Join(root, ".git")} {
-		if err := os.MkdirAll(path, 0700); err != nil {
-			t.Fatal(err)
-		}
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
 	}
+	writeGitRepository(t, root)
 	if err := os.WriteFile(filepath.Join(root, ".github", "actionlint.yaml"), []byte("config-variables: []\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -227,17 +226,19 @@ func TestLinterAnalysisFacades(t *testing.T) {
 func TestAnalysisSelectedConfigInput(t *testing.T) {
 	for _, names := range [][]string{nil, {"actionlint.yaml"}, {"actionlint.yml"}, {"actionlint.yaml", "actionlint.yml"}} {
 		t.Run(strings.Join(names, "+"), func(t *testing.T) {
+			config := t.TempDir()
+			t.Setenv("GIT_CONFIG_GLOBAL", writeShellcheckFixture(t, config, "gitconfig", ""))
+			t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+			t.Setenv("XDG_CONFIG_HOME", config)
 			root := t.TempDir()
-			for _, dir := range []string{".git", ".github/workflows"} {
-				if err := os.MkdirAll(filepath.Join(root, dir), 0700); err != nil {
-					t.Fatal(err)
-				}
-			}
-			workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
-			if err := os.WriteFile(workflow, []byte(commandGoodWorkflow), 0600); err != nil {
+			writeGitRepository(t, root)
+			exclude := writeShellcheckFixture(t, root, ".git/info/exclude", "")
+			physicalExclude, err := filepath.EvalSymlinks(exclude)
+			if err != nil {
 				t.Fatal(err)
 			}
-			want := []string{workflow, root, filepath.Join(root, ".github"), filepath.Join(root, ".github", "workflows")}
+			workflow := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", commandGoodWorkflow)
+			want := []string{workflow, root, filepath.Join(root, ".github"), filepath.Join(root, ".github", "workflows"), physicalExclude, filepath.Join(filepath.Dir(filepath.Dir(physicalExclude)), "config")}
 			for _, name := range names {
 				if err := os.WriteFile(filepath.Join(root, ".github", name), []byte("{}\n"), 0600); err != nil {
 					t.Fatal(err)

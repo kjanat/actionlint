@@ -51,9 +51,7 @@ func TestCommandActionInputs(t *testing.T) {
 
 func TestCommandDefaultActionDiscovery(t *testing.T) {
 	t.Chdir(t.TempDir())
-	if err := os.Mkdir(".git", 0700); err != nil {
-		t.Fatal(err)
-	}
+	gitRepository(t, ".")
 	const manifest = "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo ${{ secrets.TOKEN }}\n      shell: bash\n"
 	if err := os.WriteFile("action.yml", []byte(manifest), 0600); err != nil {
 		t.Fatal(err)

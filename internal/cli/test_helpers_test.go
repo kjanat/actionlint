@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -14,13 +15,25 @@ type commandTranscript struct {
 	Stderr string `json:"stderr"`
 }
 
+func gitRepository(t *testing.T, dir string) {
+	t.Helper()
+	command := exec.CommandContext(t.Context(), "git", "init", "--quiet", dir)
+	for _, entry := range os.Environ() {
+		if name, _, _ := strings.Cut(entry, "="); !strings.HasPrefix(name, "GIT_") {
+			command.Env = append(command.Env, entry)
+		}
+	}
+	if out, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+}
+
 func commandTestRepo(t *testing.T) {
 	t.Helper()
 	t.Chdir(t.TempDir())
-	for _, path := range []string{".git", ".github/workflows"} {
-		if err := os.MkdirAll(path, 0o700); err != nil {
-			t.Fatal(err)
-		}
+	gitRepository(t, ".")
+	if err := os.MkdirAll(".github/workflows", 0o700); err != nil {
+		t.Fatal(err)
 	}
 	if err := os.WriteFile(".github/workflows/ci.yml", []byte(commandBadWorkflow), 0o600); err != nil {
 		t.Fatal(err)
