@@ -16,7 +16,8 @@ import (
 var catalogueDigest string
 
 var (
-	window = js.Global().Get("window")
+	window      = js.Global().Get("window")
+	latestCheck uint64
 )
 
 func fail(err error, when string) {
@@ -34,19 +35,51 @@ func encodeErrorAsMap(err *actionlint.Error, src []byte) map[string]any {
 	return obj
 }
 
-func lint(source string) any {
-	opts := actionlint.LinterOptions{}
+// The JS worker returns a Promise. Run lint in a goroutine so the Go callback
+// returns to the browser event loop before waiting for its resolution.
+func shellcheck(args []string, stdin string) ([]byte, error) {
+	type response struct {
+		output []byte
+		err    error
+	}
+	result := make(chan response, 1)
+	resolve := js.FuncOf(func(_ js.Value, args []js.Value) any {
+		result <- response{output: []byte(args[0].String())}
+		return nil
+	})
+	reject := js.FuncOf(func(_ js.Value, args []js.Value) any {
+		result <- response{err: fmt.Errorf("ShellCheck worker: %s", js.Global().Get("String").Invoke(args[0]).String())}
+		return nil
+	})
+	defer resolve.Release()
+	defer reject.Release()
+	arguments := make([]any, len(args))
+	for i, arg := range args {
+		arguments[i] = arg
+	}
+	window.Call("runShellcheck", js.ValueOf(arguments), stdin).Call("then", resolve, reject)
+	r := <-result
+	return r.output, r.err
+}
+
+func lint(source string, check uint64) {
+	opts := actionlint.LinterOptions{WorkingDir: "/", OnRulesCreated: func(rules []actionlint.Rule) []actionlint.Rule {
+		return append(rules, actionlint.NewRuleShellcheckWithRunner(shellcheck))
+	}}
 	linter, err := actionlint.NewLinter(io.Discard, &opts)
 	if err != nil {
 		fail(err, "creating linter instance")
-		return nil
+		return
 	}
 
 	src := []byte(source)
 	errs, err := linter.Lint("test.yaml", src, nil)
+	if check != latestCheck {
+		return // An edit superseded this worker request.
+	}
 	if err != nil {
 		fail(err, "applying lint rules")
-		return nil
+		return
 	}
 
 	ret := make([]any, 0, len(errs))
@@ -54,14 +87,14 @@ func lint(source string) any {
 		ret = append(ret, encodeErrorAsMap(err, src))
 	}
 
-	window.Call("onCheckCompleted", js.ValueOf(ret))
-
-	return nil
+	window.Call("onCheckCompleted", js.ValueOf(ret), source)
 }
 
 func runActionlint(_this js.Value, args []js.Value) any {
 	source := args[0].String()
-	return lint(source)
+	latestCheck++
+	go lint(source, latestCheck)
+	return nil
 }
 
 func main() {
@@ -80,8 +113,13 @@ func main() {
 		fail(err, "initializing action metadata")
 		return
 	}
+	if window.Get("runShellcheck").Type() != js.TypeFunction {
+		fail(errors.New("ShellCheck worker was not loaded"), "initializing ShellCheck")
+		return
+	}
 	window.Set("runActionlint", js.FuncOf(runActionlint))
 	window.Call("dismissLoading")
-	lint(window.Call("getYamlSource").String()) // Show the first result
+	latestCheck++
+	go lint(window.Call("getYamlSource").String(), latestCheck) // Show the first result
 	select {}
 }

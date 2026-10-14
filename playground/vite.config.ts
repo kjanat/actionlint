@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { copyFile, realpath } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 
 import { defaultClientConditions, defineConfig, searchForWorkspaceRoot } from 'vite';
@@ -102,7 +103,13 @@ export default defineConfig({
 	],
 	resolve: {
 		conditions: ['source', ...defaultClientConditions],
-		alias: [{ find: /^wasm_exec\.js$/, replacement: resolve(goWasm, 'wasm_exec.js') }],
+		alias: [
+			{ find: /^wasm_exec\.js$/, replacement: resolve(goWasm, 'wasm_exec.js') },
+			{
+				find: /^rshellcheck-license(?=\?|$)/,
+				replacement: resolve(dirname(createRequire(import.meta.url).resolve('@kjanat/rshellcheck-wasm')), 'LICENSE'),
+			},
+		],
 	},
 	server: { fs: { allow: [searchForWorkspaceRoot(here), goWasm] } },
 	build: {
@@ -117,7 +124,7 @@ export default defineConfig({
 		},
 	},
 	test: {
-		include: ['src/test.ts'],
+		include: ['src/test.ts', 'src/*.spec.ts'],
 		environment: 'jsdom',
 	},
 });

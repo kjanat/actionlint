@@ -8,6 +8,8 @@ import './style.css';
 import { indentWithTab } from '@codemirror/commands';
 import { yaml } from '@codemirror/lang-yaml';
 import type { Diagnostic } from '@codemirror/lint';
+import { loadShellcheck } from './shellcheck';
+import shellcheckLicenseUrl from 'rshellcheck-license?url';
 import { lintGutter, setDiagnostics } from '@codemirror/lint';
 import type { Extension } from '@codemirror/state';
 import { Compartment } from '@codemirror/state';
@@ -243,7 +245,9 @@ jobs:
 		}
 	}
 
-	function onCheckCompleted(errors: ActionlintError[]): void {
+	function onCheckCompleted(errors: ActionlintError[], source: string): void {
+		// Edits can precede the debounced next request while the worker is busy.
+		if (source !== getSource()) return;
 		body.textContent = '';
 
 		if (errors.length === 0) {
@@ -383,6 +387,8 @@ jobs:
 	}
 
 	window.actionlintCatalogue = await fetchActionCatalogue(catalogueUrl);
+	getElementById('shellcheck-license').setAttribute('href', shellcheckLicenseUrl);
+	window.runShellcheck = await loadShellcheck();
 	await go.run(result.instance);
 })().catch((err: unknown) => {
 	console.error('ERROR!:', err);
