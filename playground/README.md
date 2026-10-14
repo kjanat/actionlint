@@ -43,7 +43,7 @@ request format and rejects unsupported flags. Repository source files and rc fil
 Python and PowerShell scripts are not sent to ShellCheck; Ruff is not included in this playground.
 
 ShellCheck runs in a dedicated worker with a ten-second deadline. Worker failures and incomplete
-analysis are reported as errors, not clean results. A subsequent edit can restart a failed worker,
+analysis produce error messages. A subsequent edit can restart a failed worker,
 and results from superseded edits cannot overwrite the current analysis. The separate ShellCheck
 module is GPL-3.0-or-later; the footer links its corresponding source at the npm provenance commit.
 
