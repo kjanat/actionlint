@@ -8,7 +8,7 @@ import (
 )
 
 func TestWindowsForwardSlashActionPaths(t *testing.T) {
-	workspace := filepath.Join(t.TempDir(), "workspace with spaces #é")
+	workspace := filepath.Join(resolved(t, t.TempDir()), "workspace with spaces #é")
 	if err := os.MkdirAll(filepath.Join(workspace, "nested dir"), 0700); err != nil {
 		t.Fatal(err)
 	}

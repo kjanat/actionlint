@@ -1,10 +1,8 @@
 name: CodeQL
 
 on:
-  push:
-    branches: [master]
-  pull_request:
-    branches: [master]
+  push: { branches: [master] }
+  pull_request: { branches: [master] }
   schedule:
     # Every Saturday 6:41 in JST
     - cron: "41 21 * * 5"
@@ -19,36 +17,66 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  analyze:
-    name: Analyze ${{ matrix.language }}
+  changes:
+    uses: $/.github/workflows/ci-changes.yml
+    with:
+      filters: |
+        {
+          "shared": [
+            ".github/workflows/codeql.yml", ".github/workflows/ci-changes.yml", ".github/ci/**", ".tool-versions",
+            ".mise.toml"
+          ],
+          "jobs": {
+            "go": [
+              "**/*.go", "go.mod", "go.sum", "config_default.yaml", "sarif_template.txt", ".github/codeql/**", "!testdata/**", "!**/testdata/**",
+              "!**/*_test.go"
+            ],
+            "javascript-typescript": [
+              "**/*.js", "**/*.mjs", "**/*.cjs", "**/*.jsx", "**/*.ts", "**/*.tsx", "**/package.json", "**/tsconfig*.json", "package-lock.json",
+              ".github/codeql/**", "!testdata/**", "!**/testdata/**"
+            ],
+            "actions": [".github/workflows/**", ".github/actions/**", "action.yml", ".github/codeql/**", "!.github/actions/**/testdata/**"]
+          }
+        }
+  analyze-go:
+    name: Analyze go
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['go']) }}
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - language: go
-            build-mode: manual
-          - language: javascript-typescript
-            build-mode: none
-          - language: actions
-            build-mode: none
-    steps:
+    env: { CODEQL_LANGUAGE: go, CODEQL_BUILD_MODE: manual }
+    steps: &AnalyzeSteps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        if: ${{ matrix.language == 'go' }}
+        if: ${{ env.CODEQL_LANGUAGE == 'go' }}
         with: { go-version-file: go.mod }
       - uses: github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
-        with: {
-          config-file: ./.github/codeql/codeql-config.yaml,
-          languages: "${{ matrix.language }}",
-          build-mode: "${{ matrix.build-mode }}",
-        }
+        with:
+          config-file: ./.github/codeql/codeql-config.yaml
+          languages: "${{ env.CODEQL_LANGUAGE }}"
+          build-mode: "${{ env.CODEQL_BUILD_MODE }}"
       - name: Build Go sources
-        if: ${{ matrix.language == 'go' }}
-        run: |
-          set -x
-          go build -v ./...
-          GOOS=js GOARCH=wasm go build -v -o ./playground/main.wasm ./playground
+        if: ${{ env.CODEQL_LANGUAGE == 'go' }}
+        shell: bash -ex {0}
+        run: go build -v ./...
+      - name: Build Go playground
+        if: ${{ env.CODEQL_LANGUAGE == 'go' }}
+        shell: bash -ex {0}
+        env: { GOOS: js, GOARCH: wasm }
+        run: go build -v -o ./playground/main.wasm ./playground
       - uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
-        with: { category: "/language:${{ matrix.language }}" }
+        with: { category: "/language:${{ env.CODEQL_LANGUAGE }}" }
+  analyze-javascript-typescript:
+    name: Analyze javascript-typescript
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['javascript-typescript']) }}
+    runs-on: ubuntu-latest
+    env: { CODEQL_LANGUAGE: javascript-typescript, CODEQL_BUILD_MODE: none }
+    steps: *AnalyzeSteps
+  analyze-actions:
+    name: Analyze actions
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['actions']) }}
+    runs-on: ubuntu-latest
+    env: { CODEQL_LANGUAGE: actions, CODEQL_BUILD_MODE: none }
+    steps: *AnalyzeSteps

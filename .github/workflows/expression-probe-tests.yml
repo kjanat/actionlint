@@ -5,7 +5,25 @@ on:
   workflow_dispatch:
 permissions: { contents: read }
 jobs:
+  changes:
+    uses: $/.github/workflows/ci-changes.yml
+    with:
+      filters: |
+        {
+          "shared": [
+            ".github/workflows/expression-probe-tests.yml", ".github/workflows/ci-changes.yml", ".github/ci/**",
+            ".tool-versions", ".mise.toml"
+          ],
+          "jobs": {
+            "expression-probe": [
+              "scripts/expression-probe/**", ".github/workflows/expr-conformance-probe.yml", ".node-version", "!scripts/expression-probe/**/*.md",
+              "!scripts/expression-probe/results/**"
+            ]
+          }
+        }
   test:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['expression-probe']) }}
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:

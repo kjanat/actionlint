@@ -24,7 +24,7 @@
   "scripts": {
     "lint:biome": "biome check . --error-on-warnings",
     "lint:workspaces": "npm run lint --workspaces --if-present",
-    "test:js": "run -p //.github/actions/comment-cop:test //scripts/generate-actionlint-matcher:test //.github/actions/shellcheck-versions:test //scripts:test typecheck @kjanat/actionlint-winget:typecheck @kjanat/actionlint-winget:test @kjanat/actionlint:test @kjanat/actionlint-pypi:test @kjlint/changelog-rss:typecheck @kjlint/changelog-rss:test",
+    "test:js": "run -p //.github/ci:test //.github/actions/comment-cop:test //scripts/generate-actionlint-matcher:test //.github/actions/shellcheck-versions:test //scripts:test typecheck @kjanat/actionlint-winget:typecheck @kjanat/actionlint-winget:test @kjanat/actionlint:test @kjanat/actionlint-pypi:test @kjlint/changelog-rss:typecheck @kjlint/changelog-rss:test",
     "test:workspaces": "npm run test --workspaces --if-present",
     "typecheck": "run -q @typescript/native --noEmit"
   },

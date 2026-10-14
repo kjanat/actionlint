@@ -1,0 +1,3 @@
+[tasks.test]
+description = "Test CI path selection and commit trailers"
+run         = "node --test plan.test.mjs"

@@ -58,8 +58,12 @@ func TestCIActionResultGate(t *testing.T) {
 		}
 	}
 	step := gate.Steps[0]
-	if step.Env["RESULT"] != "${{ needs.action.result }}" || step.Env["SLIM_RESULT"] != "${{ needs.action-slim.result }}" || strings.TrimSpace(step.Run) != `test "${RESULT}" = success && test "${SLIM_RESULT}" = success` {
-		t.Fatalf("aggregate no longer requires both successful dependencies: %+v", step)
+	wantRun := `if [[ "${RESULT}" == skipped && "${SLIM_RESULT}" == skipped ]]; then
+  exit 0
+fi
+test "${RESULT}" = success && test "${SLIM_RESULT}" = success`
+	if step.Env["RESULT"] != "${{ needs.action.result }}" || step.Env["SLIM_RESULT"] != "${{ needs.action-slim.result }}" || strings.TrimSpace(step.Run) != wantRun {
+		t.Fatalf("aggregate must require both successful or both unselected dependencies: %+v", step)
 	}
 	t.Run("assertion", func(t *testing.T) {
 		bash, err := exec.LookPath("bash")
@@ -72,7 +76,7 @@ func TestCIActionResultGate(t *testing.T) {
 					cmd := exec.CommandContext(t.Context(), bash, "--noprofile", "--norc", "-exo", "pipefail", "-c", step.Run)
 					cmd.Env = append(os.Environ(), "RESULT="+result, "SLIM_RESULT="+slim)
 					output, err := cmd.CombinedOutput()
-					wantSuccess := result == "success" && slim == "success"
+					wantSuccess := (result == "success" && slim == "success") || (result == "skipped" && slim == "skipped")
 					if (err == nil) != wantSuccess {
 						t.Fatalf("aggregate assertion: %v\n%s", err, output)
 					}

@@ -12,6 +12,7 @@
     "types": ["node"],
     "allowImportingTsExtensions": true
   },
+  "include": ["**/*", ".github/ci/*.mjs"],
   "exclude": ["node_modules", "packages", "playground", "testdata", "github-docs"],
   "references": [
     { "path": "./playground/tsconfig.json" }

@@ -70,6 +70,7 @@ tools       = { tombi = { prefix = "1.8" } }
 config_roots = [
   ".github/actions/comment-cop",
   ".github/actions/shellcheck-versions",
+  ".github/ci",
   "scripts",
   "scripts/expression-probe",
   "scripts/generate-actionlint-matcher",

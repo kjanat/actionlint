@@ -95,7 +95,12 @@ func TestCachePolicyInheritedEventUnion(t *testing.T) {
 		var source strings.Builder
 		source.WriteString("on: [pull_request, pull_request_target, issue_comment]\ncache-mode: write\njobs:\n")
 		for i, condition := range conditions {
-			source.WriteString("  job" + string(rune('a'+i)) + ":\n    if: " + condition + "\n" + cachePolicySteps)
+			source.WriteString("  job")
+			source.WriteRune('a' + rune(i))
+			source.WriteString(":\n    if: ")
+			source.WriteString(condition)
+			source.WriteString("\n")
+			source.WriteString(cachePolicySteps)
 		}
 		var findings []*Error
 		for _, finding := range lintCachePolicy(t, source.String(), "") {

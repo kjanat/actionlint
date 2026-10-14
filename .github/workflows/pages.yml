@@ -1,7 +1,34 @@
 name: Pages
 
 on:
-  push: { branches: [master] }
+  push:
+    branches: [master]
+    paths:
+      - "*.go"
+      - "go.mod"
+      - "go.sum"
+      - "config_default.yaml"
+      - "sarif_template.txt"
+      - "cmd/**"
+      - "internal/**"
+      - "playground/**"
+      - "man/**"
+      - "packages/changelog-feed/**"
+      - "!cmd/**"
+      - "!internal/cli/**"
+      - "!internal/githubaction/**"
+      - "!**/*_test.go"
+      - "package.json"
+      - "package-lock.json"
+      - ".node-version"
+      - ".tool-versions"
+      - ".mise.toml"
+      - "tsconfig.json"
+      - "Makefile"
+      - ".github/workflows/pages.yml"
+      - "scripts/update-go-toolchain.mjs"
+      - "!**/*.md"
+      - "man/actionlint.1.md"
   workflow_run: { workflows: [Release], types: [completed] }
   workflow_dispatch: null
 
