@@ -17,6 +17,7 @@ import { basicSetup } from 'codemirror';
 import isMobile from 'ismobilejs';
 
 import { errorRange } from './range';
+import { loadShellcheck, type ShellcheckClient, shellcheckAssets } from './shellcheck';
 import { querySource, readSource, sharedSource, shareURL } from './source';
 
 const editorTheme = new Compartment();
@@ -126,18 +127,28 @@ jobs:
 	const debounceInterval = isMobile().phone ? 1000 : 300;
 	let debounceId: number | null = null;
 	let contentChanged = false;
+	let shellcheck: ShellcheckClient | null = null;
+
+	function clearResults(): void {
+		body.textContent = '';
+		errorMessage.style.display = 'none';
+		successMessage.style.display = 'none';
+		editor.dispatch(setDiagnostics(editor.state, []));
+	}
 
 	function startActionlint(): void {
 		debounceId = null;
-		errorMessage.style.display = 'none';
-		successMessage.style.display = 'none';
+		clearResults();
 		invalidInputMessage.style.display = 'none';
-		editor.dispatch(setDiagnostics(editor.state, []));
 		window.runActionlint?.(getSource());
 	}
 
 	function onDocChanged(pasted: boolean): void {
 		contentChanged = true;
+		// Invalidate before rejecting worker promises, including during debounce.
+		window.invalidateActionlint?.();
+		shellcheck?.cancel();
+		clearResults();
 
 		if (typeof window.runActionlint !== 'function') {
 			showError('Preparing Wasm file is not completed yet. Please wait for a while and try again.');
@@ -183,6 +194,7 @@ jobs:
 	}
 
 	function showError(message: string): void {
+		clearResults();
 		errorMessage.textContent = message;
 		errorMessage.style.display = 'block';
 	}
@@ -243,7 +255,9 @@ jobs:
 		}
 	}
 
-	function onCheckCompleted(errors: ActionlintError[]): void {
+	function onCheckCompleted(errors: ActionlintError[], source: string): void {
+		// Edits can precede the debounced next request while the worker is busy.
+		if (source !== getSource()) return;
 		body.textContent = '';
 
 		if (errors.length === 0) {
@@ -383,6 +397,9 @@ jobs:
 	}
 
 	window.actionlintCatalogue = await fetchActionCatalogue(catalogueUrl);
+	getElementById('shellcheck-license').setAttribute('href', shellcheckAssets.license);
+	shellcheck = await loadShellcheck();
+	window.runShellcheck = shellcheck.check;
 	await go.run(result.instance);
 })().catch((err: unknown) => {
 	console.error('ERROR!:', err);

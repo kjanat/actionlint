@@ -30,6 +30,19 @@
       "types": "recommended"
     }
   },
+  "overrides": [
+    {
+      "includes": ["playground/src/test.ts", "playground/src/**/*.test.ts", "playground/src/**/*.spec.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            // Workflow fixtures deliberately contain literal GitHub Actions expressions.
+            "noTemplateCurlyInString": "off"
+          }
+        }
+      }
+    }
+  ],
   "javascript": {
     "formatter": {
       "quoteStyle": "single"

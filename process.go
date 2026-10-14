@@ -218,6 +218,9 @@ func ResolveExternalCommand(exe string) (string, []string, error) {
 // by using errgroup.Group. The wait() method must be called at the end for checking if some fatal
 // error occurred.
 type externalCommand struct {
+	// runner replaces process execution for embedded checkers. It must honor
+	// the same arguments/stdout contract; callbacks still join through eg.
+	runner        func(args []string, stdin string) ([]byte, error)
 	maxExitCode   int
 	proc          *concurrentProcess
 	eg            errgroup.Group
@@ -242,6 +245,13 @@ func (cmd *externalCommand) runInDirectory(args []string, stdin, dir string, cal
 		allArgs = append(allArgs, cmd.args...)
 		allArgs = append(allArgs, args...)
 		args = allArgs
+	}
+	if cmd.runner != nil {
+		cmd.eg.Go(func() error {
+			stdout, err := cmd.runner(args, stdin)
+			return callback(stdout, err)
+		})
+		return
 	}
 	exec := &cmdExecution{cmd: cmd.exe, args: args, stdin: stdin, combineOutput: cmd.combineOutput, env: cmd.env, unsetEnv: cmd.unsetEnv, dir: dir, maxExitCode: cmd.maxExitCode}
 	cmd.proc.run(&cmd.eg, exec, callback)
