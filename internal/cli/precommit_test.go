@@ -124,6 +124,20 @@ func TestPreCommitCommandProtectsRepositoryConfig(t *testing.T) {
 	}
 }
 
+func TestPreCommitCommandProtectsListedDirectories(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := os.MkdirAll(filepath.Join(".github", "workflows", "nested"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(".git", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	got := testRunCommand("", "pre-commit", "--json", "--output-file", filepath.Join(".github", "workflows", "nested"))
+	if got.Status != 3 || !strings.Contains(got.Stderr, "also an input") {
+		t.Fatalf("a listed workflows directory is not an input: %+v", got)
+	}
+}
+
 func TestPreCommitCommandReportsExplicitConfig(t *testing.T) {
 	t.Chdir(t.TempDir())
 	if err := os.Mkdir(".git", 0o700); err != nil {

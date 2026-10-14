@@ -1,15 +1,16 @@
 package actionlint
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 
+	"actionlint.kjanat.dev/internal/fsread"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -219,13 +220,12 @@ func collectCacheOperations(operations []string, steps []*Step) []string {
 // indicated by 'proj' field. One LocalReusableWorkflowCache instance needs to be created per one
 // project.
 type LocalReusableWorkflowCache struct {
-	onRead   func(string)
-	readFile func(string) ([]byte, error)
-	mu       sync.RWMutex
-	proj     *Project // maybe nil
-	cache    map[string]reusableWorkflowMetadataResult
-	cwd      string
-	dbg      io.Writer
+	reader *fsread.Reader
+	mu     sync.RWMutex
+	proj   *Project // maybe nil
+	cache  map[string]reusableWorkflowMetadataResult
+	cwd    string
+	dbg    io.Writer
 }
 
 type reusableWorkflowMetadataResult struct {
@@ -272,16 +272,13 @@ func (c *LocalReusableWorkflowCache) FindMetadata(spec string) (*ReusableWorkflo
 	}
 
 	file := filepath.Join(c.proj.RootDir(), filepath.FromSlash(spec))
-	src, err := c.readFile(file)
+	src, err := c.reader.ReadFile(file)
 	if err != nil {
 		err = fmt.Errorf("could not read reusable workflow file for %q: %w", spec, err)
 		c.writeCache(spec, nil, err)
 		return nil, err
 	}
 
-	if c.onRead != nil {
-		c.onRead(file)
-	}
 	m, err := parseReusableWorkflowMetadata(src)
 	if err != nil {
 		msg := strings.ReplaceAll(err.Error(), "\n", " ")
@@ -593,11 +590,11 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 // the cache instance is project-local. It is not available across multiple projects.
 func NewLocalReusableWorkflowCache(proj *Project, cwd string, dbg io.Writer) *LocalReusableWorkflowCache {
 	return &LocalReusableWorkflowCache{
-		readFile: os.ReadFile,
-		proj:     proj,
-		cache:    map[string]reusableWorkflowMetadataResult{},
-		cwd:      cwd,
-		dbg:      dbg,
+		reader: fsread.New(context.Background(), nil, nil),
+		proj:   proj,
+		cache:  map[string]reusableWorkflowMetadataResult{},
+		cwd:    cwd,
+		dbg:    dbg,
 	}
 }
 

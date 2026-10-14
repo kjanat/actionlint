@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"actionlint.kjanat.dev/internal/fsread"
 )
 
 type directoryKind uint8
@@ -31,6 +33,7 @@ type runPaths struct {
 	actionIndependent bool
 	placements        *checkoutPlacement
 	caseInsensitive   bool
+	reader            *fsread.Reader
 }
 
 func workingDirectoryValue(value *String) runDirectory {
@@ -213,7 +216,7 @@ func (paths runPaths) analysisPath(value string) (string, bool) {
 		}
 	}
 	if caseInsensitive && filepath.IsLocal(relativePath) {
-		canonical, known := caseInsensitiveRepositoryPath(paths.workspace, filepath.ToSlash(relativePath))
+		canonical, known := caseInsensitiveRepositoryPath(paths.workspace, filepath.ToSlash(relativePath), paths.reader)
 		if !known {
 			return "", false
 		}

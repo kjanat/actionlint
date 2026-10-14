@@ -7,8 +7,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"actionlint.kjanat.dev"
+	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/projectpath"
 	"github.com/fatih/color"
 	"github.com/mattn/go-colorable"
@@ -21,19 +23,21 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		return 0, err
 	}
 	emptyRepository := false
+	var listed []string
 	if c.PreCommit {
 		cwd, wdErr := os.Getwd()
 		if wdErr != nil {
 			return 0, wdErr
 		}
+		record := fsread.New(ctx, nil, func(dir string) { listed = append(listed, dir) })
 		hasWorkflows := false
 		if root := projectpath.RepositoryRoot(cwd); root != "" {
-			hasWorkflows, err = projectpath.HasWorkflowFiles(root)
+			hasWorkflows, err = projectpath.HasWorkflowFiles(root, record)
 			if err != nil {
 				return 0, err
 			}
 		}
-		typo, _ := projectpath.WorkflowTypo(cwd)
+		typo, _ := projectpath.WorkflowTypo(cwd, record)
 		emptyRepository = typo == "" && !hasWorkflows
 	}
 
@@ -126,6 +130,9 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 			_, _ = fmt.Fprintf(log, "verbose: No workflow files to check from %q\n", options.WorkingDir)
 		}
 		result, err = app.Empty()
+		if result != nil {
+			result.Inputs = slices.Compact(slices.Sorted(slices.Values(append(result.Inputs, listed...))))
+		}
 	} else {
 		result, err = analyzeCommand(app, streams.Stdin, c.Paths, !inv.Legacy)
 	}

@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/fsread"
 )
 
 func TestWorkflowPathsLinearIdentityChecks(t *testing.T) {
@@ -77,7 +79,7 @@ func TestIndexSymlinkCheckout(t *testing.T) {
 		}
 	}
 	loads := 0
-	index := &Index{Paths: []string{overlay, missing}, Load: func(path string) (string, bool, error) {
+	index := &Index{Reader: fsread.New(t.Context(), nil, nil), Paths: []string{overlay, missing}, Load: func(path string) (string, bool, error) {
 		loads++
 		if path != overlay && path != missing {
 			t.Errorf("did not retain overlay spelling: %q", path)
@@ -111,7 +113,7 @@ func TestIndexUnnamedOverlaySpelling(t *testing.T) {
 		overlay = disk
 	}
 	loads := 0
-	index := &Index{Paths: []string{overlay}, Load: func(path string) (string, bool, error) {
+	index := &Index{Reader: fsread.New(t.Context(), nil, nil), Paths: []string{overlay}, Load: func(path string) (string, bool, error) {
 		loads++
 		if path != overlay {
 			t.Errorf("loaded %q instead of original overlay %q", path, overlay)
@@ -231,7 +233,7 @@ func TestIndexFilesystemCaseAlias(t *testing.T) {
 	}
 	for _, name := range []string{"New name", ""} {
 		loads := 0
-		index := &Index{Paths: []string{overlay}, Load: func(path string) (string, bool, error) {
+		index := &Index{Reader: fsread.New(t.Context(), nil, nil), Paths: []string{overlay}, Load: func(path string) (string, bool, error) {
 			loads++
 			if path != overlay {
 				t.Errorf("loaded stale disk spelling %q", path)
