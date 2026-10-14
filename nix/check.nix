@@ -22,7 +22,7 @@ runCommand "actionlint-nix-integration"
     ${actionlint}/bin/actionlint -version | grep -F "built with $expectedToolchain compiler for "
     ${actionlint}/bin/actionlint -help > help.txt 2>&1
     grep -Fx 'Usage:' help.txt
-    grep -F 'actionlint [flags] [files...] [-]' help.txt
+    grep -F 'actionlint [flags] [--] [files... | -]' help.txt
     grep -F 'https://github.com/kjanat/actionlint/tree/v${actionlint.version}/docs/usage.md' help.txt
 
     for file in \

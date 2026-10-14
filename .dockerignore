@@ -4,6 +4,7 @@
 !go.mod
 !go.sum
 !*.go
+!config_default.yaml
 !sarif_template.txt
 !cmd
 !cmd/**

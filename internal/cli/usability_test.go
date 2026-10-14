@@ -18,7 +18,8 @@ func TestConfigInitAliases(t *testing.T) {
 			commandTestRepo(t)
 			t.Setenv("NO_HYPERLINKS", "1")
 			got := testRunCommand("", args...)
-			if got.Status != 0 || got.Stderr != "" || got.Stdout != "Created .github/actionlint.yaml\n" {
+			want := "Created " + filepath.Join(".github", "actionlint.yaml") + "\n"
+			if got.Status != 0 || got.Stderr != "" || got.Stdout != want {
 				t.Fatalf("%+v", got)
 			}
 			before, err := os.ReadFile(".github/actionlint.yaml")
