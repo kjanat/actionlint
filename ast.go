@@ -650,8 +650,9 @@ type ExecAction struct {
 	Args *String
 
 	// Constant mapping results must not be interpreted as expression source.
-	entrypointEvaluated bool
-	argsEvaluated       bool
+	entrypointEvaluated  bool
+	argsEvaluated        bool
+	inputNameExpressions []*String
 }
 
 // Kind returns kind of the step execution.

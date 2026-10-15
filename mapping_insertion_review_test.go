@@ -71,3 +71,77 @@ func TestDockerExpressionInsertedReservedInputs(t *testing.T) {
 		}
 	}
 }
+
+func TestConstantInsertedKeyCollisions(t *testing.T) {
+	for _, section := range []string{"env", "with", "matrix"} {
+		value := "one"
+		if section == "matrix" {
+			value = "[one]"
+		}
+		for _, tc := range []struct {
+			name, mapping string
+			duplicate     bool
+		}{
+			{"literal before expression", `{FOO: %s, '${{ insert }}': {"${{ 'foo' }}": %s}}`, true},
+			{"expression before literal", `{'${{ insert }}': {"${{ 'foo' }}": %s}, FOO: %s}`, true},
+			{"expression sibling", `{"${{ 'FOO' }}": %s, '${{ insert }}': {foo: %s}}`, true},
+			{"nested expression", `{FOO: %s, '${{ insert }}': {'${{ insert }}': {"${{ 'foo' }}": %s}}}`, true},
+			{"same inserted mapping", `{'${{ insert }}': {FOO: %s, "${{ 'foo' }}": %s}}`, true},
+			{"numeric key", `{'42': %s, '${{ insert }}': {'${{ 42 }}': %s}}`, true},
+			{"unknown key", `{FOO: %s, '${{ insert }}': {'${{ vars.KEY }}': %s}}`, false},
+		} {
+			t.Run(section+"/"+tc.name, func(t *testing.T) {
+				_, errs := Parse([]byte(insertionSectionWorkflow(section, fmt.Sprintf(tc.mapping, value, value))))
+				duplicates := 0
+				for _, err := range errs {
+					if strings.Contains(err.Message, "is duplicated") {
+						duplicates++
+					} else {
+						t.Fatalf("unexpected diagnostic: %v", err)
+					}
+				}
+				if (duplicates > 0) != tc.duplicate {
+					t.Fatalf("duplicate=%v, want=%v: %v", duplicates > 0, tc.duplicate, errs)
+				}
+			})
+		}
+	}
+}
+
+func TestDockerConstantInputKeys(t *testing.T) {
+	for _, scope := range []string{"with", "insert", "nested"} {
+		for _, tc := range []struct{ name, mapping, entrypoint, args, want string }{
+			{"empty entrypoint", `{"${{ 'entrypoint' }}": ''}`, "", "", "string should not be empty"},
+			{"constant keys", `{"${{ 'ENTRYPOINT' }}": bash, "${{ 'args' }}": hello}`, "bash", "hello", ""},
+			{"unknown key", `{'${{ vars.KEY }}': ''}`, "", "", ""},
+			{"key expression checked", `{"${{ case(true, 'entrypoint', missing) }}": bash}`, "", "", `undefined variable "missing"`},
+		} {
+			t.Run(scope+"/"+tc.name, func(t *testing.T) {
+				mapping := tc.mapping
+				for range map[string]int{"with": 0, "insert": 1, "nested": 2}[scope] {
+					mapping = "{'${{ insert }}': " + mapping + "}"
+				}
+				source := strings.Replace(insertionSectionWorkflow("with", mapping), "example/action@v1", "docker://alpine:3", 1)
+				errs := lintCredentialsExpressionTest(t, source)
+				if tc.want != "" {
+					if len(errs) != 1 || !strings.Contains(errs[0].Message, tc.want) {
+						t.Fatalf("want %q, got %v", tc.want, errs)
+					}
+					return
+				}
+				if len(errs) != 0 {
+					t.Fatal(errs)
+				}
+				workflow, _ := Parse([]byte(source))
+				action := workflow.Jobs["test"].Steps[0].Exec.(*ExecAction)
+				if tc.entrypoint == "" {
+					if action.Entrypoint != nil || action.Args != nil {
+						t.Fatal("unknown input name was resolved as a reserved field")
+					}
+				} else if action.Entrypoint == nil || action.Entrypoint.Value != tc.entrypoint || action.Args == nil || action.Args.Value != tc.args {
+					t.Fatalf("reserved fields lost: %+v", action)
+				}
+			})
+		}
+	}
+}
