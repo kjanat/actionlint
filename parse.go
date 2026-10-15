@@ -515,7 +515,16 @@ func (p *parser) parseMappingEntries(where delayedSprintf, n *yaml.Node, allowEm
 				empty = false
 				continue
 			}
-			if pos, ok := keys[id]; ok {
+			comparisonID := id
+			if insertions {
+				if resolved, known := knownMappingKey(k); known {
+					comparisonID = resolved.Value
+					if !caseSensitive {
+						comparisonID = strings.ToLower(comparisonID)
+					}
+				}
+			}
+			if pos, ok := keys[comparisonID]; ok {
 				var note string
 				if !caseSensitive {
 					note = ". note that this key is case insensitive"
@@ -528,7 +537,7 @@ func (p *parser) parseMappingEntries(where delayedSprintf, n *yaml.Node, allowEm
 				break
 			}
 
-			keys[id] = k.Pos
+			keys[comparisonID] = k.Pos
 			empty = false
 		}
 
@@ -1427,17 +1436,36 @@ func (p *parser) parseActionInputMapping(n *yaml.Node, allowEmpty bool, docker *
 		switch {
 		case isMappingInsertion(e.key.Value):
 			mapping.Insertions = append(mapping.Insertions, p.parseActionInputMapping(e.val, true, docker))
-		case docker != nil && e.id == "entrypoint":
-			docker.Entrypoint = p.parseString(e.val, false)
-			docker.entrypointEvaluated = false
-		case docker != nil && e.id == "args":
-			docker.Args = p.parseString(e.val, true)
-			docker.argsEvaluated = false
+		case p.parseDockerInput(e, docker):
 		default:
 			mapping.Inputs[e.id] = &Input{e.key, p.parseString(e.val, true)}
 		}
 	}
 	return mapping
+}
+
+func (p *parser) parseDockerInput(entry workflowMappingEntry, docker *ExecAction) bool {
+	if docker == nil {
+		return false
+	}
+	key, known := knownMappingKey(entry.key)
+	if !known {
+		return false
+	}
+	switch strings.ToLower(key.Value) {
+	case "entrypoint":
+		docker.Entrypoint = p.parseString(entry.val, false)
+		docker.entrypointEvaluated = false
+	case "args":
+		docker.Args = p.parseString(entry.val, true)
+		docker.argsEvaluated = false
+	default:
+		return false
+	}
+	if entry.key.ContainsExpression() {
+		docker.inputNameExpressions = append(docker.inputNameExpressions, entry.key)
+	}
+	return true
 }
 
 func (p *parser) parseDockerInputExpression(n *yaml.Node, expression *String, docker *ExecAction) {
@@ -1496,16 +1524,7 @@ func (p *parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 						ret.InputInsertions = append(ret.InputInsertions, p.parseActionInputMapping(e.val, true, ret))
 						continue
 					}
-					switch e.id {
-					case "entrypoint":
-						// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepswithentrypoint
-						ret.Entrypoint = p.parseString(e.val, false)
-						ret.entrypointEvaluated = false
-					case "args":
-						// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepswithargs
-						ret.Args = p.parseString(e.val, true)
-						ret.argsEvaluated = false
-					default:
+					if !p.parseDockerInput(e, ret) {
 						ret.Inputs[e.id] = &Input{e.key, p.parseString(e.val, true)}
 					}
 				}

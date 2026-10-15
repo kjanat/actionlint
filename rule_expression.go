@@ -324,6 +324,9 @@ func (rule *RuleExpression) VisitStep(n *Step) error {
 		rule.checkString(e.WorkingDirectory, "jobs.<job_id>.steps.working-directory")
 	case *ExecAction:
 		rule.checkString(e.Uses, "")
+		for _, name := range e.inputNameExpressions {
+			rule.checkString(name, "jobs.<job_id>.steps.with")
+		}
 		rule.checkWorkflowExpression(e.InputsExpression, "with", "jobs.<job_id>.steps.with", workflowStringMap)
 		for _, insertion := range e.InputInsertions {
 			rule.checkActionInputInsertion(insertion, e.Uses)

@@ -28,11 +28,25 @@ func knownInsertedMappingKeys(node *yaml.Node) map[string]*String {
 			key := newString(n.Content[i])
 			if isMappingInsertion(key.Value) {
 				collect(n.Content[i+1])
-			} else if !key.ContainsExpression() {
-				keys[strings.ToLower(key.Value)] = key
+			} else if resolved, known := knownMappingKey(key); known {
+				keys[strings.ToLower(resolved.Value)] = resolved
 			}
 		}
 	}
 	collect(node)
 	return keys
+}
+
+func knownMappingKey(key *String) (*String, bool) {
+	if !key.ContainsExpression() {
+		return key, true
+	}
+	literal, known := workflowExpressionLiteral(key)
+	name, scalar := workflowScalarString(literal)
+	if !known || !scalar {
+		return nil, false
+	}
+	resolved := *key
+	resolved.Value = name
+	return &resolved, true
 }
