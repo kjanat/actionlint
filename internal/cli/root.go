@@ -64,7 +64,7 @@ func newCommandApp(streams *Command) *commandApp {
 	a.root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return commandUsageError{err} })
 	a.root.SetHelpFunc(a.help)
 	a.checkFlags(a.root, false)
-	a.root.Flags().SetInterspersed(false)
+	a.root.Flags().SetInterspersed(true)
 	check := &cobra.Command{
 		Use: "check [flags] [--] [files... | -]", Short: "Check workflows and actions",
 		Long: "Check workflow and action files, stdin, or the current repository.\nOptions may appear before or after filenames. Directory inputs are not expanded.",

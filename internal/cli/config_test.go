@@ -166,6 +166,7 @@ policy:
 }
 
 func TestCommandConfigAndEmptyArgs(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
 	t.Chdir(t.TempDir())
 	gitRepository(t, ".")
 	if err := os.MkdirAll(".github/workflows", 0o700); err != nil {

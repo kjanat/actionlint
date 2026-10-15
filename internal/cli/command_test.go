@@ -16,6 +16,9 @@ func TestModernCommandDispatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, args := range [][]string{
+		{"good.yml", "--json"},
+		{"good.yml", "-o", "json"},
+		{"good.yml", "--output-format=json"},
 		{"check", "good.yml", "--json"},
 		{"check", "--json", "good.yml"},
 		{"check", "-ojson", "good.yml"},
@@ -26,9 +29,12 @@ func TestModernCommandDispatch(t *testing.T) {
 			t.Fatalf("%q: %+v", args, got)
 		}
 	}
-	legacy := testRunCommand("", "good.yml", "--json")
-	if legacy.Status != 3 || !strings.Contains(legacy.Stderr, `"--json"`) {
-		t.Fatalf("root parsed a filename as a flag: %+v", legacy)
+	multiple := testRunCommand("", "good.yml", "--json", "good.yml")
+	var result struct {
+		FileCount int `json:"file_count"`
+	}
+	if json.Unmarshal([]byte(multiple.Stdout), &result) != nil || multiple.Status != 0 || multiple.Stderr != "" || result.FileCount != 2 {
+		t.Fatalf("a flag between filenames changed the selected inputs: %+v", multiple)
 	}
 	for _, name := range []string{"check", "config", "rules", "doctor", "completion", "version"} {
 		got := testRunCommand("", "-version", name)

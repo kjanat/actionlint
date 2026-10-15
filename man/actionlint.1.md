@@ -42,8 +42,8 @@ action manifests are also discovered and can be passed as explicit inputs.
     $ actionlint check file1.yaml --output-format=json
     $ actionlint check --stdin-filename .github/workflows/ci.yml -
 
-The root stops option parsing at the first filename. **check** accepts options
-before or after filenames. **--** forces subsequent arguments to be filenames.
+The root and **check** accept options before or after filenames.
+**--** forces subsequent arguments to be filenames.
 An existing regular file named like a command takes precedence on the root.
 The hidden `--command NAME` escape explicitly selects a command in that case.
 

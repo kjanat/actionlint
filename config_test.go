@@ -429,7 +429,8 @@ func TestDefaultConfigReferenceExamples(t *testing.T) {
 			line = line[:indent] + line[indent+2:]
 		}
 		if setting.MatchString(line) {
-			example.WriteString(line + "\n")
+			example.WriteString(line)
+			example.WriteString("\n")
 		}
 	}
 	var config Config

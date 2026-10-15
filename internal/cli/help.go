@@ -250,7 +250,7 @@ func (a *commandApp) legacyHelp(c *cobra.Command) {
   -pyflakes COMMAND       deprecated and ignored; use Ruff instead
   -stdin-filename PATH    unchanged
 
-Root parsing stops at the first filename. -- ends option parsing.
+Options may appear before or after filenames. -- ends option parsing.
 Existing files named check, config, rules, doctor, completion or version win
 over commands. Use --command NAME to select a command despite such a file.`, option))
 	writeHelpDestinations(out, heading, a.helpHyperlinks())

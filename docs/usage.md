@@ -66,10 +66,10 @@ for the full reference.
 
 ### Commands and compatibility
 
-The root invocation remains supported. It uses the original Go flag grammar:
-`-format` and `--format` are equivalent, boolean options accept `=false`, and
-parsing stops at the first filename. The explicit `check` command accepts options
-before or after filenames. Both routes use the same analysis engine.
+The root invocation and the explicit `check` command accept options before or
+after filenames. On the root, `-format` and `--format` are equivalent and boolean
+options accept `=false`. Both routes use the same analysis engine. Use `--` to
+treat every remaining argument as a filename, including names beginning with `-`.
 
 ```sh
 actionlint

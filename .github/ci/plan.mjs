@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, readFileSync } from 'node:fs';
+import { appendFileSync, readFileSync, realpathSync } from 'node:fs';
+import { resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const optional = new Set(['nix', 'conformance', 'expression-probe']);
@@ -9,6 +10,14 @@ function required(environment, name) {
 	const value = environment[name];
 	if (!value) throw new Error(`Missing ${name}`);
 	return value;
+}
+
+/** Resolve runner-owned command files without allowing paths outside their directory. @param {NodeJS.ProcessEnv} environment @param {string} name */
+function commandFile(environment, name) {
+	const root = realpathSync(resolve(required(environment, 'RUNNER_TEMP'), '_runner_file_commands')) + sep;
+	const file = realpathSync(required(environment, name));
+	if (!file.startsWith(root)) throw new Error(`${name} must be inside the runner command directory`);
+	return file;
 }
 
 /** Match the ordered *, ** and ! path patterns used by our workflows. @param {string} path @param {string[]} patterns */
@@ -106,12 +115,14 @@ export function plan(environment = process.env, cwd = process.cwd()) {
 		jobs = Object.fromEntries(Object.keys(filters.jobs).map(job => [job, true]));
 		fallback = true;
 	}
-	appendFileSync(required(environment, 'GITHUB_OUTPUT'), `jobs=${JSON.stringify(jobs)}\n`);
+	const output = commandFile(environment, 'GITHUB_OUTPUT');
+	const summary = environment.GITHUB_STEP_SUMMARY ? commandFile(environment, 'GITHUB_STEP_SUMMARY') : undefined;
+	appendFileSync(output, `jobs=${JSON.stringify(jobs)}\n`);
 	const rows = Object.entries(jobs).map(([job, run]) => `| ${job} | ${run ? 'Run' : 'Skip'} |`).join('\n');
 	const report = `${
 		fallback ? 'Comparison or trailer unavailable; running every check.\n\n' : ''
 	}| Check | Selection |\n| --- | --- |\n${rows}\n`;
-	if (environment.GITHUB_STEP_SUMMARY) appendFileSync(environment.GITHUB_STEP_SUMMARY, report);
+	if (summary) appendFileSync(summary, report);
 	return jobs;
 }
 

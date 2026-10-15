@@ -185,13 +185,13 @@ func TestHelpForcedColorInFile(t *testing.T) {
 }
 
 func TestCommandJSONHelpAndVersion(t *testing.T) {
-	for _, args := range [][]string{{"--help", "--", "--json"}, {"--help", "--stdin-filename", "--json"}, {"--help", "workflow.yml", "--json"}} {
+	for _, args := range [][]string{{"--help", "--", "--json"}, {"--help", "--stdin-filename", "--json"}} {
 		got := testRunCommand("", args...)
 		if got.Status != 0 || got.Stdout != "" || !strings.Contains(got.Stderr, "Usage:") {
 			t.Fatalf("literal data selected JSON help: %+v", got)
 		}
 	}
-	for _, args := range [][]string{{"--help", "--json"}, {"--json", "-h"}, {"--output=json", "--help"}} {
+	for _, args := range [][]string{{"--help", "--json"}, {"--json", "-h"}, {"--output=json", "--help"}, {"workflow.yml", "--help", "--json"}, {"--help", "workflow.yml", "--json"}} {
 		got := testRunCommand("", args...)
 		var help commandDescription
 		if err := json.Unmarshal([]byte(got.Stdout), &help); err != nil {

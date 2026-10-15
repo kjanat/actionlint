@@ -9,18 +9,26 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// Normalize only option tokens. Values and filenames may themselves look like
-// flags, and the legacy parser stops at the first positional argument.
+// Normalize root option tokens, including those between filenames. Stop at a
+// command or --, and leave option values untouched.
 func normalizeCommandArgs(flags *pflag.FlagSet, args []string) []string {
 	if len(args) > 1 && (args[0] == cobra.ShellCompRequestCmd || args[0] == cobra.ShellCompNoDescRequestCmd) {
 		ret := append([]string{args[0]}, normalizeCommandArgs(flags, args[1:len(args)-1])...)
 		return append(ret, args[len(args)-1])
 	}
 	ret := slices.Clone(args)
+	hasInput := false
 	for i := 0; i < len(ret); i++ {
 		a := ret[i]
-		if a == "--" || a == "-" || !strings.HasPrefix(a, "-") {
+		if a == "--" {
 			break
+		}
+		if a == "-" || !strings.HasPrefix(a, "-") {
+			if !hasInput && isCommandName(a) && !commandFileExists(a) {
+				break
+			}
+			hasInput = true
+			continue
 		}
 		name, value, equals := strings.Cut(strings.TrimPrefix(strings.TrimPrefix(a, "-"), "-"), "=")
 		if name == "h" || name == "help" {

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
@@ -39,6 +39,20 @@ function repository(t) {
 	};
 	const environment = { GITHUB_EVENT_NAME: 'pull_request', GITHUB_EVENT_PATH: eventPath };
 	return { cwd, git, commit, base, event, environment };
+}
+
+/** @param {string} cwd */
+function commandEnvironment(cwd) {
+	const directory = join(cwd, '_runner_file_commands');
+	mkdirSync(directory);
+	const environment = {
+		RUNNER_TEMP: cwd,
+		GITHUB_OUTPUT: join(directory, 'set_output_test'),
+		GITHUB_STEP_SUMMARY: join(directory, 'step_summary_test'),
+	};
+	writeFileSync(environment.GITHUB_OUTPUT, '');
+	writeFileSync(environment.GITHUB_STEP_SUMMARY, '');
+	return environment;
 }
 
 test('paths are rooted, * does not cross directories, and ** does', () => {
@@ -114,20 +128,44 @@ test('renames retain both old and new names, and deletions still select their ch
 test('missing history or invalid skip requests run all checks and explain the fallback', t => {
 	const repo = repository(t);
 	const head = repo.commit('docs/usage.md', 'Docs\n\nCI-Skip: unit');
-	const output = join(repo.cwd, 'output');
-	const summary = join(repo.cwd, 'summary');
+	const commands = commandEnvironment(repo.cwd);
 	const environment = {
 		...repo.environment,
+		...commands,
 		CI_FILTERS: JSON.stringify({ shared: [], jobs: { unit: ['**/*.go'], nix: ['nix/**'] } }),
-		GITHUB_OUTPUT: output,
-		GITHUB_STEP_SUMMARY: summary,
 	};
 	for (const base of [repo.base, 'f'.repeat(40)]) {
 		repo.event({ pull_request: { base: { sha: base }, head: { sha: head } } });
 		assert.deepEqual(plan(environment, repo.cwd), { unit: true, nix: true });
 	}
-	assert.match(readFileSync(summary, 'utf8'), /running every check/);
-	assert.match(readFileSync(output, 'utf8'), /jobs=\{"unit":true,"nix":true\}/);
+	assert.match(readFileSync(commands.GITHUB_STEP_SUMMARY, 'utf8'), /running every check/);
+	assert.match(readFileSync(commands.GITHUB_OUTPUT, 'utf8'), /jobs=\{"unit":true,"nix":true\}/);
+});
+
+test('runner command files cannot escape through traversal, sibling prefixes or symlinks', t => {
+	const repo = repository(t);
+	repo.event({});
+	const commands = commandEnvironment(repo.cwd);
+	const sibling = join(repo.cwd, '_runner_file_commands-other');
+	mkdirSync(sibling);
+	const outside = join(sibling, 'report');
+	writeFileSync(outside, 'unchanged');
+	const link = join(repo.cwd, '_runner_file_commands', 'linked');
+	symlinkSync(outside, link);
+	const traversal = `${dirname(commands.GITHUB_OUTPUT)}/../_runner_file_commands-other/report`;
+	for (const name of ['GITHUB_OUTPUT', 'GITHUB_STEP_SUMMARY']) {
+		for (const path of [outside, traversal, link]) {
+			assert.throws(() =>
+				plan({
+					...repo.environment,
+					...commands,
+					GITHUB_EVENT_NAME: 'workflow_dispatch',
+					CI_FILTERS: JSON.stringify({ shared: [], jobs: { unit: ['**/*.go'] } }),
+					[name]: path,
+				}, repo.cwd), /runner command directory/);
+			assert.equal(readFileSync(outside, 'utf8'), 'unchanged');
+		}
+	}
 });
 
 test('manual and scheduled runs select all jobs', t => {

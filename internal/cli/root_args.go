@@ -11,9 +11,9 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// Root invocations retain Go's flag grammar. The command tree owns every flag
-// definition; this adapter only preserves single-dash names, boolean values,
-// early help and stopping at the first filename.
+// The command tree owns every flag definition. This adapter accepts options
+// between filenames while preserving single-dash names, boolean values and early
+// help. Commands and -- delimit the root options.
 func (a *commandApp) parseRoot(args []string) (rest []string, forced string, terminated bool, err error) {
 	f := flag.NewFlagSet("actionlint", flag.ContinueOnError)
 	f.SetOutput(io.Discard)
@@ -29,21 +29,25 @@ func (a *commandApp) parseRoot(args []string) (rest []string, forced string, ter
 			f.Var(value, v.Shorthand, "")
 		}
 	})
-	jsonOptions := scanJSONOptions(a.root.Flags(), args, false)
-	a.errorJSON = jsonOptions.JSON
 	// --command selects the modern parser for everything after its value.
 	// Option values that happen to contain --command or -- remain data.
-	end := len(args)
-	parsedArgs := slices.Clone(args)
+	parsedArgs := make([]string, 0, len(args))
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if arg == "--" {
 			terminated = true
+			rest = append(rest, args[i+1:]...)
 			break
 		}
 		if arg == "-" || !strings.HasPrefix(arg, "-") {
-			break
+			if len(rest) == 0 && isCommandName(arg) && !commandFileExists(arg) {
+				rest = append(rest, args[i:]...)
+				break
+			}
+			rest = append(rest, arg)
+			continue
 		}
+		parsedArgs = append(parsedArgs, arg)
 		name, _, equals := strings.Cut(strings.TrimLeft(arg, "-"), "=")
 		v := f.Lookup(name)
 		if v == nil {
@@ -52,20 +56,25 @@ func (a *commandApp) parseRoot(args []string) (rest []string, forced string, ter
 		if !equals {
 			option := a.root.Flags().Lookup(name)
 			if strings.HasPrefix(arg, "--") && option != nil && option.Value.Type() != "bool" && option.NoOptDefVal != "" {
-				parsedArgs[i] += "=" + option.NoOptDefVal
+				parsedArgs[len(parsedArgs)-1] += "=" + option.NoOptDefVal
 				continue
 			}
 			b, ok := v.Value.(interface{ IsBoolFlag() bool })
 			if !ok || !b.IsBoolFlag() {
-				i++
+				if i+1 < len(args) {
+					i++
+					parsedArgs = append(parsedArgs, args[i])
+				}
 			}
 		}
 		if name == "command" {
-			end = min(i+1, len(args))
+			rest = append(rest, args[i+1:]...)
 			break
 		}
 	}
-	err = f.Parse(parsedArgs[:end])
+	jsonOptions := scanJSONOptions(a.root.Flags(), parsedArgs, false)
+	a.errorJSON = jsonOptions.JSON
+	err = f.Parse(parsedArgs)
 	f.Visit(func(v *flag.Flag) { a.set[v.Name] = true })
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -84,9 +93,9 @@ func (a *commandApp) parseRoot(args []string) (rest []string, forced string, ter
 		if forced == "" {
 			return nil, "", false, commandUsageError{errors.New("--command requires a command name")}
 		}
-		return args[end:], forced, false, nil
+		return rest, forced, false, nil
 	}
-	return f.Args(), forced, terminated, nil
+	return rest, forced, terminated, nil
 }
 
 // flag and pflag share the value contract, but flag also needs this marker to

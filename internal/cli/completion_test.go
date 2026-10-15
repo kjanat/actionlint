@@ -439,7 +439,10 @@ func TestCompletionProtocol(t *testing.T) {
 		{"plural alias values", []string{"--completions", ""}, []string{"bash", "powershell"}, nil},
 		{"config files", []string{"--config-file", ""}, []string{"yaml", "yml", ":8"}, nil},
 		{"opaque templates", []string{"--format", ""}, []string{":4"}, []string{"--json"}},
-		{"flags after files", []string{"workflow.yml", "--j"}, []string{":8"}, []string{"--json"}},
+		{"flags after files", []string{"workflow.yml", "--j"}, []string{":4", "--json"}, nil},
+		{"flags after stdin", []string{"-", "--j"}, []string{":4", "--json"}, nil},
+		{"legacy values after files", []string{"workflow.yml", "-completion", ""}, []string{"bash", "powershell", ":4"}, nil},
+		{"flags after delimiter", []string{"workflow.yml", "--", "--j"}, []string{":8"}, []string{"--json"}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

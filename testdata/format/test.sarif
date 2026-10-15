@@ -16,11 +16,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks for popular actions released on GitHub, local actions, and action calls at \"uses:\"",
+                "description": "Validate action references, inputs, outputs, and local metadata",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks for popular actions released on GitHub, local actions, and action calls at \"uses:\""
+                "text": "Validate action references, inputs, outputs, and local metadata"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -31,11 +31,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks cache access ceilings on low-trust reusable workflow calls",
+                "description": "Report reusable workflow calls without explicit cache limits on low-trust triggers",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks cache access ceilings on low-trust reusable workflow calls"
+                "text": "Report reusable workflow calls without explicit cache limits on low-trust triggers"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -46,11 +46,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks cache actions disabled by explicit cache access modes",
+                "description": "Report cache actions blocked by explicit cache access limits",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks cache actions disabled by explicit cache access modes"
+                "text": "Report cache actions blocked by explicit cache access limits"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -61,11 +61,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks cache write grants on low-trust triggers",
+                "description": "Report cache write access granted on low-trust triggers",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks cache write grants on low-trust triggers"
+                "text": "Report cache write access granted on low-trust triggers"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -76,11 +76,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks identity comparisons using case-insensitive matching",
+                "description": "Flag case-insensitive identity comparisons",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks identity comparisons using case-insensitive matching"
+                "text": "Flag case-insensitive identity comparisons"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -91,11 +91,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks for credentials in \"services:\" configuration",
+                "description": "Detect hardcoded passwords in job and service containers",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks for credentials in \"services:\" configuration"
+                "text": "Detect hardcoded passwords in job and service containers"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -106,11 +106,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks for deprecated \"set-output\", \"save-state\", \"set-env\", and \"add-path\" commands at \"run:\"",
+                "description": "Report deprecated set-output, save-state, set-env, and add-path commands",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks for deprecated \"set-output\", \"save-state\", \"set-env\", and \"add-path\" commands at \"run:\""
+                "text": "Report deprecated set-output, save-state, set-env, and add-path commands"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -121,11 +121,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Reports inline and configured exceptions prohibited by suppression policy",
+                "description": "Report suppressions forbidden by policy",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Reports inline and configured exceptions prohibited by suppression policy"
+                "text": "Report suppressions forbidden by policy"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -136,11 +136,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks for environment variables configuration at \"env:\"",
+                "description": "Validate environment variable declarations",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks for environment variables configuration at \"env:\""
+                "text": "Validate environment variable declarations"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -151,11 +151,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks for workflow trigger events at \"on:\"",
+                "description": "Validate workflow triggers and their options",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks for workflow trigger events at \"on:\""
+                "text": "Validate workflow triggers and their options"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -166,11 +166,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks Git executable bits for directly invoked repository scripts",
+                "description": "Report directly invoked repository scripts not marked executable in Git",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks Git executable bits for directly invoked repository scripts"
+                "text": "Report directly invoked repository scripts not marked executable in Git"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -181,11 +181,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Syntax and semantics checks for expressions embedded with ${{ }} syntax",
+                "description": "Validate expression syntax, names, types, and context availability",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Syntax and semantics checks for expressions embedded with ${{ }} syntax"
+                "text": "Validate expression syntax, names, types, and context availability"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -196,11 +196,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks for glob syntax used in branch names, tags, and paths",
+                "description": "Validate branch, tag, and path filter patterns",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks for glob syntax used in branch names, tags, and paths"
+                "text": "Validate branch, tag, and path filter patterns"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -211,11 +211,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks for duplication and naming convention of job/step IDs",
+                "description": "Report invalid job or step IDs and duplicate step IDs",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks for duplication and naming convention of job/step IDs"
+                "text": "Report invalid job or step IDs and duplicate step IDs"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -226,11 +226,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks for if: conditions which are always true/false",
+                "description": "Report conditions that always evaluate to true or false",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks for if: conditions which are always true/false"
+                "text": "Report conditions that always evaluate to true or false"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -241,11 +241,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks inline diagnostic suppression directives",
+                "description": "Validate inline suppression directives",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks inline diagnostic suppression directives"
+                "text": "Validate inline suppression directives"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -256,11 +256,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks for job IDs in \"needs:\". Undefined IDs and cyclic dependencies are checked",
+                "description": "Report undefined job dependencies and dependency cycles",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks for job IDs in \"needs:\". Undefined IDs and cyclic dependencies are checked"
+                "text": "Report undefined job dependencies and dependency cycles"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -271,11 +271,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks for matrix combinations in \"matrix:\"",
+                "description": "Validate matrix definitions, combinations, and filters",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks for matrix combinations in \"matrix:\""
+                "text": "Validate matrix definitions, combinations, and filters"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -286,11 +286,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks that local action manifests can be resolved",
+                "description": "Report local action references whose manifests cannot be found",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks that local action manifests can be resolved"
+                "text": "Report local action references whose manifests cannot be found"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -301,11 +301,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks condition comparisons using implicit scalar coercion",
+                "description": "Flag condition comparisons that implicitly convert scalar types",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks condition comparisons using implicit scalar coercion"
+                "text": "Flag condition comparisons that implicitly convert scalar types"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -316,11 +316,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks matrix filters comparing different scalar types",
+                "description": "Flag matrix filters that compare different or unknown scalar types",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks matrix filters comparing different scalar types"
+                "text": "Flag matrix filters that compare different or unknown scalar types"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -331,11 +331,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks \"wait\"/\"cancel\" references to background steps and steps forbidden inside a \"parallel\" group",
+                "description": "Validate background-step references and restrictions within parallel groups",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks \"wait\"/\"cancel\" references to background steps and steps forbidden inside a \"parallel\" group"
+                "text": "Validate background-step references and restrictions within parallel groups"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -346,11 +346,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks for permissions configuration in \"permissions:\". Permission names and permission scopes are checked",
+                "description": "Validate token permission scopes and access levels",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks for permissions configuration in \"permissions:\". Permission names and permission scopes are checked"
+                "text": "Validate token permission scopes and access levels"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -361,11 +361,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks for GitHub-hosted and preset self-hosted runner labels in \"runs-on:\"",
+                "description": "Report unknown or incompatible runner labels",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks for GitHub-hosted and preset self-hosted runner labels in \"runs-on:\""
+                "text": "Report unknown or incompatible runner labels"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -376,11 +376,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks for shell names used for scripts in \"run:\"",
+                "description": "Validate script shells for the selected runner",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks for shell names used for scripts in \"run:\""
+                "text": "Validate script shells for the selected runner"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -391,11 +391,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks bare string conditions for unexpected truthiness",
+                "description": "Flag string conditions whose truthiness may be misleading",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks bare string conditions for unexpected truthiness"
+                "text": "Flag string conditions whose truthiness may be misleading"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -406,11 +406,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks for GitHub Actions workflow syntax",
+                "description": "Validate GitHub Actions workflow syntax",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks for GitHub Actions workflow syntax"
+                "text": "Validate GitHub Actions workflow syntax"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
@@ -419,10 +419,10 @@
               "name": "UnsoundTernary",
               "defaultConfiguration": {"level": "error"},
               "properties": {
-                "description": "Checks conditional expressions whose falsy middle operand always selects the fallback",
+                "description": "Report a && b || c expressions where b is always falsy",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
-              "fullDescription": {"text": "Checks conditional expressions whose falsy middle operand always selects the fallback"},
+              "fullDescription": {"text": "Report a && b || c expressions where b is always falsy"},
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
@@ -432,11 +432,11 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Checks for reusable workflow calls. Inputs and outputs of called reusable workflow are checked",
+                "description": "Validate reusable workflow references and their declared inputs and outputs",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
               "fullDescription": {
-                "text": "Checks for reusable workflow calls. Inputs and outputs of called reusable workflow are checked"
+                "text": "Validate reusable workflow references and their declared inputs and outputs"
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             }
