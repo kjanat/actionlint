@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/internal/fsread"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestRunDirectoryContexts(t *testing.T) {
@@ -29,7 +30,7 @@ func TestRunDirectoryContexts(t *testing.T) {
 			if tc.action != "" {
 				paths.actionPath = filepath.Join(root, tc.action)
 			}
-			got := paths.workingDirectory(&String{Value: tc.value})
+			got := paths.workingDirectory(&workflowlang.String{Value: tc.value})
 			if (got.kind == directoryKnown) != tc.known || tc.known && got.path != tc.want {
 				t.Fatalf("directory = %+v, want known=%v path=%q", got, tc.known, tc.want)
 			}
@@ -52,12 +53,12 @@ func TestCompositeActionPathCasing(t *testing.T) {
 			actions := &LocalActionsCache{caseInsensitive: true}
 			actions.restoreCheckout(&checkoutPlacement{directory: runDirectory{directoryKnown, tc.checkout}, caseInsensitive: true})
 			paths := runPaths{workspace: root, analysis: root, platform: platformKindWindows, placements: actions.checkoutState(), reader: fsread.New(t.Context(), nil, nil)}
-			call := &Step{Exec: &ExecAction{Uses: &String{Value: tc.spec}}}
+			call := &workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: tc.spec}}}
 			compositeActionOrigin(&paths, call, filepath.Join(root, "local", "Nested"))
 			if paths.actionRunnerPath != tc.want {
 				t.Fatalf("runner action path=%q, want %q", paths.actionRunnerPath, tc.want)
 			}
-			directory := paths.resolve(paths.workingDirectory(&String{Value: "${{ github.action_path }}"}))
+			directory := paths.resolve(paths.workingDirectory(&workflowlang.String{Value: "${{ github.action_path }}"}))
 			if directory.kind != directoryKnown || directory.path != wantDirectory {
 				t.Fatalf("action source directory unresolved: %+v", directory)
 			}

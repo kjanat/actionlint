@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/internal/lintconfig"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 // reCommitSHA matches a full-length Git object ID in both the SHA-1 and the SHA-256 object formats.
@@ -31,8 +32,8 @@ func NewRuleRequireCommitHash() *RuleRequireCommitHash {
 }
 
 // VisitStep is callback when visiting Step node.
-func (rule *RuleRequireCommitHash) VisitStep(n *Step) error {
-	e, ok := n.Exec.(*ExecAction)
+func (rule *RuleRequireCommitHash) VisitStep(n *workflowlang.Step) error {
+	e, ok := n.Exec.(*workflowlang.ExecAction)
 	if !ok || e.Uses == nil || e.Uses.ContainsExpression() || rule.excluded(e.Uses.Value) {
 		return nil
 	}
@@ -56,7 +57,7 @@ func (rule *RuleRequireCommitHash) VisitStep(n *Step) error {
 	return nil
 }
 
-func (rule *RuleRequireCommitHash) checkImageDigest(image string, uses *String) {
+func (rule *RuleRequireCommitHash) checkImageDigest(image string, uses *workflowlang.String) {
 	if strings.HasSuffix(image, ":") {
 		return
 	}
@@ -74,7 +75,7 @@ func (rule *RuleRequireCommitHash) checkImageDigest(image string, uses *String) 
 }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
-func (rule *RuleRequireCommitHash) VisitJobPre(n *Job) error {
+func (rule *RuleRequireCommitHash) VisitJobPre(n *workflowlang.Job) error {
 	if n.WorkflowCall == nil {
 		return nil
 	}

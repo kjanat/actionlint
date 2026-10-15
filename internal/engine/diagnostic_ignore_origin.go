@@ -1,5 +1,10 @@
 package engine
 
+import (
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+)
+
 // diagnosticIgnoreOrigin distinguishes executions of shared YAML anchors.
 // It never changes displayed locations or the scope of inline comments.
 type diagnosticIgnoreOrigin struct {
@@ -8,20 +13,20 @@ type diagnosticIgnoreOrigin struct {
 	metadata bool
 }
 
-func newDiagnosticIgnoreOrigin(job string, step *Step) *diagnosticIgnoreOrigin {
+func newDiagnosticIgnoreOrigin(job string, step *workflowlang.Step) *diagnosticIgnoreOrigin {
 	origin := &diagnosticIgnoreOrigin{job: job}
-	value := func(s *String) string {
+	value := func(s *workflowlang.String) string {
 		if s == nil {
 			return ""
 		}
-		if literal := literalExpressionValue(s.Value); literal != nil {
+		if literal := exprlang.LiteralExpressionValue(s.Value); literal != nil {
 			return *literal
 		}
 		return s.Value
 	}
 	if step != nil {
 		origin.stepID, origin.stepName = value(step.ID), value(step.Name)
-		if action, ok := step.Exec.(*ExecAction); ok {
+		if action, ok := step.Exec.(*workflowlang.ExecAction); ok {
 			origin.uses = value(action.Uses)
 		}
 	}
@@ -32,14 +37,14 @@ func (origin *diagnosticIgnoreOrigin) matches(job, step, uses string) bool {
 	return (job == "" || job == origin.job) && (step == "" || step == origin.stepID || step == origin.stepName) && (uses == "" || uses == origin.uses)
 }
 
-func jobDiagnosticIgnoreOrigin(job *Job) *diagnosticIgnoreOrigin {
+func jobDiagnosticIgnoreOrigin(job *workflowlang.Job) *diagnosticIgnoreOrigin {
 	origin := newDiagnosticIgnoreOrigin("", nil)
 	if job.ID != nil {
 		origin.job = job.ID.Value
 	}
 	if job.WorkflowCall != nil && job.WorkflowCall.Uses != nil {
 		origin.uses = job.WorkflowCall.Uses.Value
-		if literal := literalExpressionValue(origin.uses); literal != nil {
+		if literal := exprlang.LiteralExpressionValue(origin.uses); literal != nil {
 			origin.uses = *literal
 		}
 	}

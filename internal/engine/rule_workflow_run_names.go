@@ -3,6 +3,8 @@ package engine
 import (
 	"path/filepath"
 
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/workflownames"
 )
 
@@ -23,13 +25,13 @@ type workflowRunNamesRule struct {
 	index *workflownames.Index
 }
 
-func (r *workflowRunNamesRule) VisitWorkflowPre(w *Workflow) error {
+func (r *workflowRunNamesRule) VisitWorkflowPre(w *workflowlang.Workflow) error {
 	if r.config.diagnosticLevel(r.Name()) == "off" {
 		return nil
 	}
-	var references []*String
+	var references []*workflowlang.String
 	for _, event := range w.On {
-		if hook, ok := event.(*WebhookEvent); ok && hook.Hook.Value == "workflow_run" {
+		if hook, ok := event.(*workflowlang.WebhookEvent); ok && hook.Hook.Value == "workflow_run" {
 			references = append(references, hook.Workflows...)
 		}
 	}
@@ -51,7 +53,7 @@ func (r *workflowRunNamesRule) VisitWorkflowPre(w *Workflow) error {
 			continue
 		}
 		value := ref.Value
-		if literal := literalExpressionValue(value); literal != nil {
+		if literal := exprlang.LiteralExpressionValue(value); literal != nil {
 			value = *literal
 		} else if ref.ContainsExpression() {
 			allKnown = false

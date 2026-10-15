@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 const cachePolicySteps = `    runs-on: ubuntu-latest
@@ -44,12 +46,12 @@ func TestCachePolicyTriggers(t *testing.T) {
 		for event := range strings.FieldsSeq(group.events) {
 			t.Run(event, func(t *testing.T) {
 				// Exercise each event independently of event-specific required fields.
-				w := &Workflow{On: []Event{&WebhookEvent{Hook: &String{Value: event}}}, CacheMode: &CacheMode{Kind: CacheModeWrite, Pos: &Pos{Line: 2, Col: 13}}}
+				w := &workflowlang.Workflow{On: []workflowlang.Event{&workflowlang.WebhookEvent{Hook: &workflowlang.String{Value: event}}}, CacheMode: &workflowlang.CacheMode{Kind: workflowlang.CacheModeWrite, Pos: &workflowlang.Pos{Line: 2, Col: 13}}}
 				r := NewRuleCacheWriteUntrusted()
 				if err := r.VisitWorkflowPre(w); err != nil {
 					t.Fatal(err)
 				}
-				if err := r.VisitJobPre(&Job{}); err != nil {
+				if err := r.VisitJobPre(&workflowlang.Job{}); err != nil {
 					t.Fatal(err)
 				}
 				if (len(r.Errs()) == 1) != group.warn {
@@ -361,10 +363,10 @@ func TestCachePolicyOperationReferences(t *testing.T) {
 	} {
 		t.Run(tc.uses, func(t *testing.T) {
 			r := NewRuleCacheOperation()
-			if err := r.VisitJobPre(&Job{CacheMode: &CacheMode{Kind: CacheModeNone}}); err != nil {
+			if err := r.VisitJobPre(&workflowlang.Job{CacheMode: &workflowlang.CacheMode{Kind: workflowlang.CacheModeNone}}); err != nil {
 				t.Fatal(err)
 			}
-			if err := r.VisitStep(&Step{Exec: &ExecAction{Uses: &String{Value: tc.uses, Pos: &Pos{Line: 7, Col: 15}}}}); err != nil {
+			if err := r.VisitStep(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: tc.uses, Pos: &workflowlang.Pos{Line: 7, Col: 15}}}}); err != nil {
 				t.Fatal(err)
 			}
 			if tc.warn {

@@ -5,7 +5,9 @@ import (
 	"slices"
 	"strings"
 
+	exprlang "actionlint.kjanat.dev/internal/expression"
 	"actionlint.kjanat.dev/internal/schemapath"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -44,7 +46,7 @@ func actionSchemaNode(n *yaml.Node) *yaml.Node {
 func actionSchemaScalar(n *yaml.Node) *string {
 	v := actionSchemaLiteralScalar(n)
 	if v != nil {
-		if literal := literalExpressionValue(*v); literal != nil {
+		if literal := exprlang.LiteralExpressionValue(*v); literal != nil {
 			return literal
 		}
 	}
@@ -71,7 +73,7 @@ func (rule *RuleAction) checkActionMetadataSchema(meta *ActionMetadata) {
 	// following aliases here would recurse through self-referential anchors.
 	var checkTags func(*yaml.Node)
 	checkTags = func(n *yaml.Node) {
-		if message := rawYAMLTagError(n); message != "" {
+		if message := workflowlang.RawYAMLTagError(n); message != "" {
 			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "%s in action metadata", message)
 		}
 		for _, child := range n.Content {
@@ -151,7 +153,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 			if definition == "step-if" {
 				return // Conditions use expression truthiness, including object and array values.
 			}
-			if literal, known := workflowExpressionLiteral(&String{Value: value.Value}); known {
+			if literal, known := workflowlang.WorkflowExpressionLiteral(&workflowlang.String{Value: value.Value}); known {
 				var result yaml.Node
 				if err := result.Encode(literal); err != nil {
 					rule.actionSchemaError(meta, n, location, fmt.Sprintf("could not validate expression value: %v", err))
@@ -159,7 +161,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 				}
 				actionSchemaSetPosition(&result, n.Line, n.Column)
 				n, evaluated = &result, true
-			} else if d.kind == actionSchemaString || parseAssignedExpression(value.Value) != nil {
+			} else if d.kind == actionSchemaString || exprlang.ParseAssignedExpression(value.Value) != nil {
 				return // The runner validates the evaluated value's type at runtime.
 			}
 		} else if !actionLiteralExpression(value.Value) {
@@ -212,7 +214,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 			if expr := yamlExprString(key); !evaluated && expr != nil && strings.Contains(expr.Value, "${{") && !actionLiteralExpression(expr.Value) {
 				if _, allowed := actionMetadataAvailability[path]; !allowed {
 					rule.actionSchemaError(meta, key, location, "expressions are not allowed in keys")
-				} else if isMappingInsertion(expr.Value) {
+				} else if exprlang.IsMappingInsertion(expr.Value) {
 					// The template reader treats insert as a mapping directive,
 					// whose value is another mapping or a mapping expression.
 					rule.checkActionSchemaValue(meta, value, definition, location, depth+1, evaluated)
@@ -301,5 +303,5 @@ func actionRunsPropertyChecked(meta *ActionMetadata, key string) bool {
 }
 
 func actionLiteralExpression(s string) bool {
-	return literalExpressionValue(s) != nil
+	return exprlang.LiteralExpressionValue(s) != nil
 }

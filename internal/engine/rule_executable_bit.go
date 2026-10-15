@@ -8,6 +8,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"mvdan.cc/sh/v3/syntax"
 )
 
@@ -22,7 +24,7 @@ type RuleExecutableBit struct {
 	paths                               runPaths
 	unix                                bool
 	workflowEnv, jobEnv                 bool
-	workflowGitEnv                      *Env
+	workflowGitEnv                      *workflowlang.Env
 	jobGitEnv                           bool
 	workflowPathUnknown, jobPathUnknown bool
 	pathUnknown                         bool
@@ -36,7 +38,7 @@ func newRuleExecutableBit(context ruleContext) *RuleExecutableBit {
 	return &RuleExecutableBit{RuleBase: builtinRuleBase("executable-bit"), context: context}
 }
 
-func (rule *RuleExecutableBit) VisitWorkflowPre(workflow *Workflow) error {
+func (rule *RuleExecutableBit) VisitWorkflowPre(workflow *workflowlang.Workflow) error {
 	rule.workflowDir = defaultsWorkingDirectory(workflow.Defaults)
 	rule.workflowShell = defaultsShellValue(workflow.Defaults)
 	rule.workflowEnv = shellEnvironmentUnknown(workflow.Env)
@@ -46,7 +48,7 @@ func (rule *RuleExecutableBit) VisitWorkflowPre(workflow *Workflow) error {
 	return nil
 }
 
-func (rule *RuleExecutableBit) VisitJobPre(job *Job) error {
+func (rule *RuleExecutableBit) VisitJobPre(job *workflowlang.Job) error {
 	rule.jobDir, rule.jobShell = defaultsWorkingDirectory(job.Defaults), defaultsShellValue(job.Defaults)
 	rule.jobEnv = rule.workflowEnv || shellEnvironmentUnknown(job.Env)
 	platform := runnerPlatform(job.RunsOn)
@@ -67,7 +69,7 @@ func (rule *RuleExecutableBit) VisitJobPre(job *Job) error {
 	return nil
 }
 
-func (rule *RuleExecutableBit) VisitStep(step *Step) error {
+func (rule *RuleExecutableBit) VisitStep(step *workflowlang.Step) error {
 	if !rule.unix || !rule.sequential {
 		return nil
 	}
@@ -83,9 +85,9 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 		return nil
 	}
 	switch command := step.Exec.(type) {
-	case *ExecParallel:
+	case *workflowlang.ExecParallel:
 		rule.afterConcurrentExecution()
-	case *ExecAction:
+	case *workflowlang.ExecAction:
 		if rule.jobGitEnv || checkoutEnvironmentUnknown(step.Env, rule.paths.platform) {
 			rule.repositoryUnknown = true
 			rule.actionPristine = false
@@ -96,7 +98,7 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 			rule.actionPristine = false
 		}
 		rule.checkout(command, !conditionKnown || boolMayBeTrue(step.ContinueOnError))
-	case *ExecRun:
+	case *workflowlang.ExecRun:
 		workspacePristine := rule.pristine
 		independent := rule.paths.effectiveRunDirectory(command, rule.jobDir, rule.workflowDir).kind == directoryActionKnown
 		if independent {
@@ -126,15 +128,15 @@ func (rule *RuleExecutableBit) VisitStep(step *Step) error {
 	return nil
 }
 
-func stepCondition(condition *String) (enabled, known bool) {
+func stepCondition(condition *workflowlang.String) (enabled, known bool) {
 	if condition == nil {
 		return true, true
 	}
-	expression, _, _ := parseConditionExpression(condition.Value)
-	value, known := conditionConstantValue(expression)
+	expression, _, _ := exprlang.ParseConditionExpression(condition.Value)
+	value, known := exprlang.ConditionConstantValue(expression)
 	if !known {
 		// Explicit success() has the same gate as an ordinary step.
-		if call, ok := expression.(*FuncCallNode); ok && strings.EqualFold(call.Callee, "success") && len(call.Args) == 0 {
+		if call, ok := expression.(*exprlang.FuncCallNode); ok && strings.EqualFold(call.Callee, "success") && len(call.Args) == 0 {
 			return true, true
 		}
 		return false, false
@@ -154,17 +156,17 @@ func stepCondition(condition *String) (enabled, known bool) {
 	}
 }
 
-func stepCanRunAfterFailure(condition *String) bool {
+func stepCanRunAfterFailure(condition *workflowlang.String) bool {
 	if condition == nil {
 		return false
 	}
-	expression, err, _ := parseConditionExpression(condition.Value)
+	expression, err, _ := exprlang.ParseConditionExpression(condition.Value)
 	if err != nil || expression == nil {
 		return true
 	}
 	hasStatusFunction := false
-	VisitExprNode(expression, func(node, _ ExprNode, entering bool) {
-		if call, ok := node.(*FuncCallNode); entering && ok {
+	exprlang.Visit(expression, func(node, _ exprlang.Node, entering bool) {
+		if call, ok := node.(*exprlang.FuncCallNode); entering && ok {
 			switch strings.ToLower(call.Callee) {
 			case "always", "cancelled", "failure", "success":
 				hasStatusFunction = true
@@ -175,16 +177,16 @@ func stepCanRunAfterFailure(condition *String) bool {
 	return hasStatusFunction && !expressionRequiresSuccess(expression)
 }
 
-func expressionRequiresSuccess(expression ExprNode) bool {
+func expressionRequiresSuccess(expression exprlang.Node) bool {
 	switch node := expression.(type) {
-	case *FuncCallNode:
+	case *exprlang.FuncCallNode:
 		return strings.EqualFold(node.Callee, "success") && len(node.Args) == 0
-	case *LogicalOpNode:
+	case *exprlang.LogicalOpNode:
 		left, right := expressionRequiresSuccess(node.Left), expressionRequiresSuccess(node.Right)
 		switch node.Kind {
-		case LogicalOpNodeKindAnd:
+		case exprlang.LogicalOpNodeKindAnd:
 			return left || right
-		case LogicalOpNodeKindOr:
+		case exprlang.LogicalOpNodeKindOr:
 			return left && right
 		default:
 			return false
@@ -194,15 +196,15 @@ func expressionRequiresSuccess(expression ExprNode) bool {
 	}
 }
 
-func knownHostedRunner(runner *Runner) bool {
+func knownHostedRunner(runner *workflowlang.Runner) bool {
 	if runner == nil || runner.Group != nil {
 		return false
 	}
-	for _, expression := range []*String{runner.Expression, runner.LabelsExpr} {
+	for _, expression := range []*workflowlang.String{runner.Expression, runner.LabelsExpr} {
 		if expression == nil {
 			continue
 		}
-		value, known := workflowExpressionLiteral(expression)
+		value, known := workflowlang.WorkflowExpressionLiteral(expression)
 		if !known {
 			return false
 		}
@@ -226,21 +228,21 @@ func knownHostedRunner(runner *Runner) bool {
 	return len(labels) != 0
 }
 
-func boolMayBeTrue(value *Bool) bool {
+func boolMayBeTrue(value *workflowlang.Bool) bool {
 	if value == nil {
 		return false
 	}
 	if value.Expression == nil {
 		return value.Value
 	}
-	literal, known := workflowExpressionLiteral(value.Expression)
+	literal, known := workflowlang.WorkflowExpressionLiteral(value.Expression)
 	enabled, boolean := literal.(bool)
 	return !known || !boolean || enabled
 }
 
 // A known self checkout establishes which index is represented in the workspace.
 // Opaque actions may change permissions or replace files, so invalidate that state.
-func (rule *RuleExecutableBit) checkout(action *ExecAction, mayNotComplete bool) {
+func (rule *RuleExecutableBit) checkout(action *workflowlang.ExecAction, mayNotComplete bool) {
 	rule.pristine = false
 	if rule.repositoryUnknown {
 		return
@@ -277,12 +279,12 @@ func (rule *RuleExecutableBit) checkout(action *ExecAction, mayNotComplete bool)
 	rule.afterKnownCheckout(checkout, rule.caseInsensitive)
 }
 
-func checkoutInput(action *ExecAction, name string) (string, bool) {
-	value, known := actionInputValue(action, name)
+func checkoutInput(action *workflowlang.ExecAction, name string) (string, bool) {
+	value, known := workflowlang.ActionInputValue(action, name)
 	return strings.TrimSpace(value), known
 }
 
-func (rule *RuleExecutableBit) checkScript(run *ExecRun) {
+func (rule *RuleExecutableBit) checkScript(run *workflowlang.ExecRun) {
 	if run.Run == nil {
 		return
 	}
@@ -312,7 +314,7 @@ func (rule *RuleExecutableBit) checkScript(run *ExecRun) {
 	}
 }
 
-func (rule *RuleExecutableBit) statement(statement *syntax.Stmt, run *ExecRun, directory *runDirectory) {
+func (rule *RuleExecutableBit) statement(statement *syntax.Stmt, run *workflowlang.ExecRun, directory *runDirectory) {
 	if !rule.pristine {
 		return
 	}
@@ -440,7 +442,7 @@ func standardShellDescriptor(value string) bool {
 	return value == "0" || value == "1" || value == "2"
 }
 
-func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *ExecRun, directory *runDirectory) {
+func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *workflowlang.ExecRun, directory *runDirectory) {
 	if len(command.Args) == 0 {
 		rule.pristine = false
 		return
@@ -628,7 +630,7 @@ func (rule *RuleExecutableBit) scriptPath(directory runDirectory, script string)
 	return executableLocation{repository: filepath.ToSlash(relative), runner: runnerPath}, true
 }
 
-func (rule *RuleExecutableBit) checkInvocation(run *ExecRun, word *syntax.Word, directory runDirectory, script string) {
+func (rule *RuleExecutableBit) checkInvocation(run *workflowlang.ExecRun, word *syntax.Word, directory runDirectory, script string) {
 	if rule.skipFindings {
 		return
 	}
@@ -648,7 +650,7 @@ func (rule *RuleExecutableBit) checkInvocation(run *ExecRun, word *syntax.Word, 
 	if line <= len(lines) && column <= len(lines[line-1])+1 {
 		column = utf8.RuneCountInString(lines[line-1][:column-1]) + 1
 	}
-	if mapped, ok := run.source.pos(line, column); ok {
+	if mapped, ok := run.Source.Position(line, column); ok {
 		pos = mapped
 	}
 	rule.Errorf(pos, "script %q is executed directly but its Git index mode is 100644 (not executable); commit an executable bit with git update-index --chmod=+x, or invoke its interpreter explicitly", name)
@@ -756,11 +758,11 @@ func (snapshot *gitModeSnapshot) directoryExists(name string) bool {
 // Model common octal and symbolic modes; other syntax leaves execution unknown.
 var knownChmodMode = regexp.MustCompile(`^([0-7]{1,4}|[ugoa]*([+=-]([rwxXst]*|[ugo]))+(,[ugoa]*([+=-]([rwxXst]*|[ugo]))+)*)$`)
 
-func shellEnvironmentUnknown(env *Env) bool {
+func shellEnvironmentUnknown(env *workflowlang.Env) bool {
 	return shellEnvironmentUnknownForPlatform(env, platformKindMacOrLinux)
 }
 
-func shellEnvironmentUnknownForPlatform(env *Env, platform platformKind) bool {
+func shellEnvironmentUnknownForPlatform(env *workflowlang.Env, platform platformKind) bool {
 	return environmentContains(env, platform, func(name, value string, known bool) bool {
 		if loaderEnvironmentUnknown(name, value, known) {
 			return true
@@ -778,11 +780,11 @@ func shellEnvironmentUnknownForPlatform(env *Env, platform platformKind) bool {
 	})
 }
 
-func shellPathUnknown(env *Env) bool {
+func shellPathUnknown(env *workflowlang.Env) bool {
 	return shellPathUnknownForPlatform(env, platformKindMacOrLinux)
 }
 
-func shellPathUnknownForPlatform(env *Env, platform platformKind) bool {
+func shellPathUnknownForPlatform(env *workflowlang.Env, platform platformKind) bool {
 	return environmentContains(env, platform, func(name, _ string, _ bool) bool {
 		return name == "PATH"
 	})
@@ -795,7 +797,8 @@ func (rule *RuleExecutableBit) forComposite(invocation compositeInvocation) (Rul
 	child.SetConfig(rule.Config())
 	return child, nil
 }
-func (rule *RuleExecutableBit) joinCompositeResult(call *Step, result Rule) {
+
+func (rule *RuleExecutableBit) joinCompositeResult(call *workflowlang.Step, result Rule) {
 	child, ok := result.(*RuleExecutableBit)
 	if ok {
 		rule.joinComposite(call, child)

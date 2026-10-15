@@ -15,6 +15,7 @@ import (
 	"strings"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/google/go-cmp/cmp"
 	"golang.org/x/sys/execabs"
 )
@@ -609,7 +610,7 @@ type customRuleForTest struct {
 	count int
 }
 
-func (r *customRuleForTest) VisitStep(n *Step) error {
+func (r *customRuleForTest) VisitStep(n *workflowlang.Step) error {
 	r.count++
 	if r.count > 1 {
 		r.Errorf(n.Pos, "only single step is allowed but got %d steps", r.count)

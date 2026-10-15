@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/internal/fsread"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 type directoryKind uint8
@@ -36,36 +37,36 @@ type runPaths struct {
 	reader            *fsread.Reader
 }
 
-func workingDirectoryValue(value *String) runDirectory {
+func workingDirectoryValue(value *workflowlang.String) runDirectory {
 	if value == nil {
 		return runDirectory{}
 	}
 	if !value.ContainsExpression() {
 		return runDirectory{directoryKnown, value.Value}
 	}
-	if literal, known := workflowExpressionLiteral(value); known {
-		if text, ok := workflowScalarString(literal); ok {
+	if literal, known := workflowlang.WorkflowExpressionLiteral(value); known {
+		if text, ok := workflowlang.WorkflowScalarString(literal); ok {
 			return runDirectory{directoryKnown, text}
 		}
 	}
 	return runDirectory{kind: directoryUnknown}
 }
 
-func defaultsWorkingDirectory(defaults *Defaults) runDirectory {
+func defaultsWorkingDirectory(defaults *workflowlang.Defaults) runDirectory {
 	if defaults == nil || defaults.Run == nil {
 		return runDirectory{}
 	}
 	if defaults.Run.Expression == nil {
 		return workingDirectoryValue(defaults.Run.WorkingDirectory)
 	}
-	value, known := workflowExpressionLiteral(defaults.Run.Expression)
+	value, known := workflowlang.WorkflowExpressionLiteral(defaults.Run.Expression)
 	if !known || len(workflowExpressionLiteralErrors(workflowDefaultsRun, value, "defaults.run")) != 0 {
 		return runDirectory{kind: directoryUnknown}
 	}
 	if object, ok := value.(map[string]any); ok {
 		for key, field := range object {
 			if strings.EqualFold(key, "working-directory") {
-				if text, ok := workflowScalarString(field); ok {
+				if text, ok := workflowlang.WorkflowScalarString(field); ok {
 					return runDirectory{directoryKnown, text}
 				}
 				return runDirectory{kind: directoryUnknown}
@@ -75,7 +76,7 @@ func defaultsWorkingDirectory(defaults *Defaults) runDirectory {
 	return runDirectory{}
 }
 
-func (paths runPaths) effectiveRunDirectory(run *ExecRun, jobDir, workflowDir runDirectory) runDirectory {
+func (paths runPaths) effectiveRunDirectory(run *workflowlang.ExecRun, jobDir, workflowDir runDirectory) runDirectory {
 	directory := runDirectory{directoryKnown, ""}
 	for _, candidate := range []runDirectory{paths.workingDirectory(run.WorkingDirectory), jobDir, workflowDir} {
 		if candidate.kind != directoryUnspecified {
@@ -91,7 +92,7 @@ func (paths runPaths) effectiveRunDirectory(run *ExecRun, jobDir, workflowDir ru
 	return directory
 }
 
-func (paths runPaths) workingDirectory(value *String) runDirectory {
+func (paths runPaths) workingDirectory(value *workflowlang.String) runDirectory {
 	directory := workingDirectoryValue(value)
 	if directory.kind != directoryUnknown {
 		return directory

@@ -8,17 +8,18 @@ import (
 	"strings"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"go.yaml.in/yaml/v4"
 )
 
-func shellcheckFixSource(t *testing.T, input string) *scriptSource {
+func shellcheckFixSource(t *testing.T, input string) *workflowlang.ScriptSource {
 	t.Helper()
 	var root yaml.Node
 	if err := yaml.Unmarshal([]byte(input), &root); err != nil {
 		t.Fatal(err)
 	}
-	p := newSourceParser([]byte(input))
-	return p.scriptSource(root.Content[0].Content[1])
+	p := workflowlang.NewSourceParser([]byte(input))
+	return p.ScriptSource(root.Content[0].Content[1])
 }
 
 func applyDiagnosticFix(t *testing.T, input string, fix DiagnosticFix) string {
@@ -33,7 +34,7 @@ func applyDiagnosticFix(t *testing.T, input string, fix DiagnosticFix) string {
 			start += i + 1
 		}
 		line, _, _ := strings.Cut(input[start:], "\n")
-		i, ok := byteOffsetAtColumn(line, pos.Column)
+		i, ok := workflowlang.ByteOffsetAtColumn(line, pos.Column)
 		if !ok {
 			t.Fatalf("edit column outside source: %+v", pos)
 		}
@@ -52,7 +53,7 @@ func TestShellcheckFixLiteralMapping(t *testing.T) {
 		t.Run("newline="+newline, func(t *testing.T) {
 			input := strings.ReplaceAll("run: |\n  #!/bin/bash\n  echo\té 🐚 $VALUE\n  echo $OTHER\nnext: unchanged\n", "\n", newline)
 			source := shellcheckFixSource(t, input)
-			script := prepareShellcheckScript(source.value, "# shellcheck disable=SC2154\n", "set -e -o pipefail")
+			script := prepareShellcheckScript(source.Value, "# shellcheck disable=SC2154\n", "set -e -o pipefail")
 			fix := &shellcheckFix{Replacements: []shellcheckReplacement{
 				{Line: 4, EndLine: 4, Column: 10, EndColumn: 10, Replacement: `"`},
 				{Line: 4, EndLine: 4, Column: 16, EndColumn: 16, Replacement: `"`},
@@ -121,7 +122,7 @@ func TestShellcheckFixRejectsAmbiguousChanges(t *testing.T) {
 			source := shellcheckFixSource(t, tc.input)
 			value := "echo $VALUE\n"
 			if source != nil {
-				value = source.value
+				value = source.Value
 			}
 			script := prepareShellcheckScript(sanitizeExpressionsInScript(value), "# shellcheck disable=SC2154\n", "set -e")
 			if fixes := shellcheckDiagnosticFixes(source, script, &shellcheckFix{tc.replacements}, "Fix"); len(fixes) != 0 {

@@ -3,6 +3,8 @@ package engine
 import (
 	"fmt"
 	"io"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 // RuleBase is a struct to be a base of rule structs.
@@ -25,36 +27,36 @@ func NewRuleBase(name string, desc string) RuleBase {
 }
 
 // VisitStep is callback when visiting Step node.
-func (r *RuleBase) VisitStep(node *Step) error { return nil }
+func (r *RuleBase) VisitStep(node *workflowlang.Step) error { return nil }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
-func (r *RuleBase) VisitJobPre(node *Job) error { return nil }
+func (r *RuleBase) VisitJobPre(node *workflowlang.Job) error { return nil }
 
 // VisitJobPost is callback when visiting Job node after visiting its children.
-func (r *RuleBase) VisitJobPost(node *Job) error { return nil }
+func (r *RuleBase) VisitJobPost(node *workflowlang.Job) error { return nil }
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
-func (r *RuleBase) VisitWorkflowPre(node *Workflow) error { return nil }
+func (r *RuleBase) VisitWorkflowPre(node *workflowlang.Workflow) error { return nil }
 
 // VisitWorkflowPost is callback when visiting Workflow node after visiting its children.
-func (r *RuleBase) VisitWorkflowPost(node *Workflow) error { return nil }
+func (r *RuleBase) VisitWorkflowPost(node *workflowlang.Workflow) error { return nil }
 
 // Error creates a new error from the source position and the error message and stores it in the
 // rule instance. The errors can be accessed by Errs method.
-func (r *RuleBase) Error(pos *Pos, msg string) {
+func (r *RuleBase) Error(pos *workflowlang.Pos, msg string) {
 	err := errorAt(pos, r.name, msg)
 	r.errs = append(r.errs, err)
 }
 
 // Errorf reports a new error with the source position and the formatted error message and stores it
 // in the rule instance. The errors can be accessed by Errs method.
-func (r *RuleBase) Errorf(pos *Pos, format string, args ...any) {
+func (r *RuleBase) Errorf(pos *workflowlang.Pos, format string, args ...any) {
 	err := errorfAt(pos, r.name, format, args...)
 	r.errs = append(r.errs, err)
 }
 
 // errorfRange reports an error with an exclusive source-range end.
-func (r *RuleBase) errorfRange(start, end *Pos, format string, args ...any) {
+func (r *RuleBase) errorfRange(start, end *workflowlang.Pos, format string, args ...any) {
 	err := errorfAt(start, r.name, format, args...)
 	if end != nil {
 		copied := *end
@@ -125,8 +127,10 @@ type configuredRule interface {
 	Config() *Config
 }
 
-type debugRule interface{ EnableDebug(io.Writer) }
-type describedRule interface{ Description() string }
+type (
+	debugRule     interface{ EnableDebug(io.Writer) }
+	describedRule interface{ Description() string }
+)
 
 func ruleConfig(rule Rule) *Config {
 	if configured, ok := rule.(configuredRule); ok {

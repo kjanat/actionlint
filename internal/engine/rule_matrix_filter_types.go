@@ -4,16 +4,18 @@ import (
 	"math"
 	"strconv"
 
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"go.yaml.in/yaml/v4"
 )
 
-func (rule *RuleMatrix) checkFilterTypes(matrix *Matrix, expressions bool) {
-	for _, filters := range []*MatrixCombinations{matrix.Include, matrix.Exclude} {
+func (rule *RuleMatrix) checkFilterTypes(matrix *workflowlang.Matrix, expressions bool) {
+	for _, filters := range []*workflowlang.MatrixCombinations{matrix.Include, matrix.Exclude} {
 		rule.checkFilterSectionTypes(matrix, filters, expressions, expressions)
 	}
 }
 
-func (rule *RuleMatrix) checkFilterSectionTypes(matrix *Matrix, filters *MatrixCombinations, expressions, filterExpressions bool) {
+func (rule *RuleMatrix) checkFilterSectionTypes(matrix *workflowlang.Matrix, filters *workflowlang.MatrixCombinations, expressions, filterExpressions bool) {
 	if filters == nil {
 		return
 	}
@@ -40,10 +42,10 @@ func (rule *RuleMatrix) checkFilterSectionTypes(matrix *Matrix, filters *MatrixC
 				continue // Include may add properties which are not axes.
 			}
 			values := row.Values
-			valueExpressions := expressions && !row.evaluated
+			valueExpressions := expressions && !row.Evaluated
 			if row.Expression != nil {
-				values = []RawYAMLValue{&RawYAMLString{Value: row.Expression.Value}}
-				if value, known := workflowExpressionLiteral(row.Expression); known {
+				values = []workflowlang.RawYAMLValue{&workflowlang.RawYAMLString{Value: row.Expression.Value}}
+				if value, known := workflowlang.WorkflowExpressionLiteral(row.Expression); known {
 					if array, ok := value.([]any); ok {
 						valueExpressions = false
 						values = nil
@@ -54,10 +56,10 @@ func (rule *RuleMatrix) checkFilterSectionTypes(matrix *Matrix, filters *MatrixC
 				}
 			}
 			for _, value := range values {
-				candidates := []RawYAMLValue{value}
+				candidates := []workflowlang.RawYAMLValue{value}
 				candidateExpressions := valueExpressions
-				if scalar, ok := value.(*RawYAMLString); ok && valueExpressions {
-					if literal, known := workflowExpressionLiteral(&String{Value: scalar.Value}); known {
+				if scalar, ok := value.(*workflowlang.RawYAMLString); ok && valueExpressions {
+					if literal, known := workflowlang.WorkflowExpressionLiteral(&workflowlang.String{Value: scalar.Value}); known {
 						candidateExpressions = false
 						if array, ok := literal.([]any); ok {
 							candidates = nil
@@ -65,13 +67,13 @@ func (rule *RuleMatrix) checkFilterSectionTypes(matrix *Matrix, filters *MatrixC
 								candidates = append(candidates, matrixLiteralValue(item))
 							}
 						} else {
-							candidates = []RawYAMLValue{matrixLiteralValue(literal)}
+							candidates = []workflowlang.RawYAMLValue{matrixLiteralValue(literal)}
 						}
 					}
 				}
 				mismatch := false
 				for _, candidate := range candidates {
-					mismatch = mismatch || matrixFilterTypeMismatch(candidate, assign.Value, candidateExpressions, filterExpressions && !filter.evaluated)
+					mismatch = mismatch || matrixFilterTypeMismatch(candidate, assign.Value, candidateExpressions, filterExpressions && !filter.Evaluated)
 				}
 				if mismatch {
 					rule.errs = append(rule.errs, errorfAt(assign.Value.Pos(), "mixed-type-matrix-filters", "matrix filter for %q compares different or unknown scalar types using Actions loose equality; validate axis types before filtering", key))
@@ -82,8 +84,8 @@ func (rule *RuleMatrix) checkFilterSectionTypes(matrix *Matrix, filters *MatrixC
 	}
 }
 
-func knownMatrixFilters(expression *String, insertion bool) *MatrixCombinations {
-	value, known := workflowExpressionLiteral(expression)
+func knownMatrixFilters(expression *workflowlang.String, insertion bool) *workflowlang.MatrixCombinations {
+	value, known := workflowlang.WorkflowExpressionLiteral(expression)
 	if !known {
 		return nil
 	}
@@ -111,30 +113,30 @@ func knownMatrixFilters(expression *String, insertion bool) *MatrixCombinations 
 		}
 	}
 	setPosition(&node)
-	return (&parser{}).parseMatrixCombinations("matrix filters", &node)
+	return (&workflowlang.Parser{}).ParseMatrixCombinations("matrix filters", &node)
 }
 
-func matrixLiteralValue(value any) RawYAMLValue {
+func matrixLiteralValue(value any) workflowlang.RawYAMLValue {
 	var node yaml.Node
 	if node.Encode(value) != nil {
 		return nil
 	}
-	return (&parser{}).parseRawYAMLValue(&node)
+	return (&workflowlang.Parser{}).ParseRawYAMLValue(&node)
 }
 
-func matrixFilterTypeMismatch(value, filter RawYAMLValue, valueExpressions, filterExpressions bool) bool {
+func matrixFilterTypeMismatch(value, filter workflowlang.RawYAMLValue, valueExpressions, filterExpressions bool) bool {
 	return matrixFilterTypeMismatchKnown(value, filter, valueExpressions, filterExpressions, false)
 }
 
-func matrixFilterTypeMismatchKnown(value, filter RawYAMLValue, valueExpressions, filterExpressions, unknown bool) bool {
-	if scalar, ok := value.(*RawYAMLString); valueExpressions && ok && ContainsExpression(scalar.Value) {
-		if literal, known := workflowExpressionLiteral(&String{Value: scalar.Value}); known {
+func matrixFilterTypeMismatchKnown(value, filter workflowlang.RawYAMLValue, valueExpressions, filterExpressions, unknown bool) bool {
+	if scalar, ok := value.(*workflowlang.RawYAMLString); valueExpressions && ok && exprlang.ContainsExpression(scalar.Value) {
+		if literal, known := workflowlang.WorkflowExpressionLiteral(&workflowlang.String{Value: scalar.Value}); known {
 			return matrixFilterTypeMismatch(matrixLiteralValue(literal), filter, false, filterExpressions)
 		}
 		value, unknown = nil, true
 	}
 	switch f := filter.(type) {
-	case *RawYAMLObject:
+	case *workflowlang.RawYAMLObject:
 		lookup := newMatrixFilterLookup(value, valueExpressions)
 		for key, leaf := range f.Props {
 			actual, actualExpressions, uncertain := lookup.at(key)
@@ -145,7 +147,7 @@ func matrixFilterTypeMismatchKnown(value, filter RawYAMLValue, valueExpressions,
 				return true
 			}
 		}
-	case *RawYAMLArray:
+	case *workflowlang.RawYAMLArray:
 		filters, _ := matrixFilterElements(f, filterExpressions)
 		lookup := newMatrixFilterLookup(value, valueExpressions)
 		for i, leaf := range filters {
@@ -157,54 +159,54 @@ func matrixFilterTypeMismatchKnown(value, filter RawYAMLValue, valueExpressions,
 				return true
 			}
 		}
-	case *RawYAMLString:
-		if filterExpressions && ContainsExpression(f.Value) {
-			if literal, known := workflowExpressionLiteral(&String{Value: f.Value}); known {
+	case *workflowlang.RawYAMLString:
+		if filterExpressions && exprlang.ContainsExpression(f.Value) {
+			if literal, known := workflowlang.WorkflowExpressionLiteral(&workflowlang.String{Value: f.Value}); known {
 				return matrixFilterTypeMismatchKnown(value, matrixLiteralValue(literal), valueExpressions, false, unknown)
 			}
 			return false
 		}
-		actual, ok := value.(*RawYAMLString)
+		actual, ok := value.(*workflowlang.RawYAMLString)
 		if !ok {
 			if value == nil && !unknown {
-				return matrixScalarKind(f.scalarValue()) != "null"
+				return matrixScalarKind(f.ScalarValue()) != "null"
 			}
-			switch f.scalarValue().(type) {
+			switch f.ScalarValue().(type) {
 			case bool, float64:
 				return value == nil
 			}
 			return false
 		}
-		return matrixScalarKind(actual.scalarValue()) != matrixScalarKind(f.scalarValue())
+		return matrixScalarKind(actual.ScalarValue()) != matrixScalarKind(f.ScalarValue())
 	}
 	return false
 }
 
 type matrixFilterElement struct {
-	value       RawYAMLValue
+	value       workflowlang.RawYAMLValue
 	expressions bool
 }
 
 type matrixFilterLookup struct {
-	value                        RawYAMLValue
+	value                        workflowlang.RawYAMLValue
 	expressions, array, complete bool
 	elements                     []matrixFilterElement
 }
 
-func newMatrixFilterLookup(value RawYAMLValue, expressions bool) matrixFilterLookup {
+func newMatrixFilterLookup(value workflowlang.RawYAMLValue, expressions bool) matrixFilterLookup {
 	lookup := matrixFilterLookup{value: value, expressions: expressions, complete: true}
-	if array, ok := value.(*RawYAMLArray); ok {
+	if array, ok := value.(*workflowlang.RawYAMLArray); ok {
 		lookup.array = true
 		lookup.elements, lookup.complete = matrixFilterElements(array, expressions)
 	}
 	return lookup
 }
 
-func (lookup matrixFilterLookup) at(key string) (RawYAMLValue, bool, bool) {
+func (lookup matrixFilterLookup) at(key string) (workflowlang.RawYAMLValue, bool, bool) {
 	if !lookup.array {
 		return matrixFilterValueAt(lookup.value, key), lookup.expressions, false
 	}
-	index := matrixFilterNumber(key)
+	index := exprlang.ToNumber(key)
 	if math.IsNaN(index) || index < 0 || index > math.MaxInt32 {
 		return nil, false, false
 	}
@@ -217,11 +219,11 @@ func (lookup matrixFilterLookup) at(key string) (RawYAMLValue, bool, bool) {
 
 // Expression-valued sequence elements insert one array level. A dynamic element
 // leaves the remaining indices unknown; retain only the preceding known prefix.
-func matrixFilterElements(array *RawYAMLArray, expressions bool) ([]matrixFilterElement, bool) {
+func matrixFilterElements(array *workflowlang.RawYAMLArray, expressions bool) ([]matrixFilterElement, bool) {
 	var elements []matrixFilterElement
 	for _, value := range array.Elems {
-		if scalar, ok := value.(*RawYAMLString); expressions && ok && ContainsExpression(scalar.Value) {
-			literal, known := workflowExpressionLiteral(&String{Value: scalar.Value})
+		if scalar, ok := value.(*workflowlang.RawYAMLString); expressions && ok && exprlang.ContainsExpression(scalar.Value) {
+			literal, known := workflowlang.WorkflowExpressionLiteral(&workflowlang.String{Value: scalar.Value})
 			if !known {
 				return elements, false
 			}

@@ -3,15 +3,17 @@ package engine
 import (
 	"maps"
 	"slices"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 type workflowCacheModeVisit struct {
 	spec string
-	mode CacheModeKind
+	mode workflowlang.CacheModeKind
 }
 
-func (rule *RuleWorkflowCall) checkWorkflowCallCacheMode(pos *Pos, spec, sourceSpec string, granted *CacheMode, m *ReusableWorkflowMetadata, checked map[workflowCacheModeVisit]bool) {
-	have, known := granted.capabilities()
+func (rule *RuleWorkflowCall) checkWorkflowCallCacheMode(pos *workflowlang.Pos, spec, sourceSpec string, granted *workflowlang.CacheMode, m *ReusableWorkflowMetadata, checked map[workflowCacheModeVisit]bool) {
+	have, known := granted.Capabilities()
 	if granted != nil && !known {
 		return
 	}
@@ -26,8 +28,8 @@ func (rule *RuleWorkflowCall) checkWorkflowCallCacheMode(pos *Pos, spec, sourceS
 
 	for _, id := range slices.Sorted(maps.Keys(m.JobCacheAccess)) {
 		access := m.JobCacheAccess[id]
-		mode := effectiveCacheMode(granted, access.Mode)
-		want, valid := mode.capabilities()
+		mode := workflowlang.EffectiveCacheMode(granted, access.Mode)
+		want, valid := mode.Capabilities()
 		if mode != nil && !valid {
 			continue
 		}

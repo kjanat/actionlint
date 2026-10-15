@@ -7,9 +7,10 @@ import (
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/mapping"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
-func documentAnalyzerInput(path string, content []byte, workflow *Workflow, outline DocumentOutline) analyzer.Input {
+func documentAnalyzerInput(path string, content []byte, workflow *workflowlang.Workflow, outline DocumentOutline) analyzer.Input {
 	input := analyzer.Input{Available: []analyzer.Fact{analyzer.Source}, Path: path, Content: string(content), Kind: "workflow", ParseStatus: "failed"}
 	switch outline := outline.(type) {
 	case WorkflowOutline:
@@ -22,12 +23,12 @@ func documentAnalyzerInput(path string, content []byte, workflow *Workflow, outl
 		return input
 	}
 	input.Available = append(input.Available, analyzer.Scripts, analyzer.Mappings)
-	addMapping := func(scope string, values *mapping.Inputs[*String]) {
+	addMapping := func(scope string, values *mapping.Inputs[*workflowlang.String]) {
 		if values == nil {
 			return
 		}
 		record := analyzer.Mapping{Scope: scope}
-		record.Complete = inputResolver.Walk(values, nil, func(entry mapping.Entry[*String]) {
+		record.Complete = workflowlang.InputResolver.Walk(values, nil, func(entry mapping.Entry[*workflowlang.String]) {
 			item := analyzer.Entry{State: analyzer.UnknownKey, Evaluated: entry.Evaluated}
 			switch entry.State {
 			case mapping.KnownKey:
@@ -46,25 +47,25 @@ func documentAnalyzerInput(path string, content []byte, workflow *Workflow, outl
 		})
 		input.Mappings = append(input.Mappings, record)
 	}
-	addEnv := func(scope string, env *Env) {
+	addEnv := func(scope string, env *workflowlang.Env) {
 		if env != nil {
-			addMapping(scope, envMappingView(env))
+			addMapping(scope, workflowlang.EnvMappingView(env))
 		}
 	}
 	addEnv("env", workflow.Env)
-	var steps func(string, string, []*Step)
-	steps = func(jobID, scope string, nodes []*Step) {
+	var steps func(string, string, []*workflowlang.Step)
+	steps = func(jobID, scope string, nodes []*workflowlang.Step) {
 		for _, step := range nodes {
 			stepID := outlineString(step.ID)
 			addEnv(scope+".env", step.Env)
 			switch exec := step.Exec.(type) {
-			case *ExecRun:
+			case *workflowlang.ExecRun:
 				if exec.Run != nil {
 					input.Scripts = append(input.Scripts, analyzer.Script{JobID: jobID, StepID: stepID, Text: exec.Run.Value, Shell: outlineString(exec.Shell), Start: factPosition(exec.Run.Pos)})
 				}
-			case *ExecAction:
-				addMapping(scope+".with", actionInputMapping(exec))
-			case *ExecParallel:
+			case *workflowlang.ExecAction:
+				addMapping(scope+".with", workflowlang.InputMapping(exec))
+			case *workflowlang.ExecParallel:
 				steps(jobID, scope+".parallel", exec.Steps)
 			}
 		}
@@ -89,21 +90,21 @@ func documentAnalyzerInput(path string, content []byte, workflow *Workflow, outl
 	return input
 }
 
-func factPosition(pos *Pos) diagnostic.Position {
+func factPosition(pos *workflowlang.Pos) diagnostic.Position {
 	if pos == nil {
 		return diagnostic.Position{}
 	}
 	return diagnostic.Position{Line: pos.Line, Column: pos.Col}
 }
 
-func matrixKeysView(matrix *Matrix) *mapping.Inputs[*String] {
-	result := &mapping.Inputs[*String]{Expression: matrix.Expression, Values: map[string]mapping.Input[*String]{}}
+func matrixKeysView(matrix *workflowlang.Matrix) *mapping.Inputs[*workflowlang.String] {
+	result := &mapping.Inputs[*workflowlang.String]{Expression: matrix.Expression, Values: map[string]mapping.Input[*workflowlang.String]{}}
 	for name, row := range matrix.Rows {
-		result.Values[name] = mapping.Input[*String]{Name: row.Name, Evaluated: row.evaluated}
+		result.Values[name] = mapping.Input[*workflowlang.String]{Name: row.Name, Evaluated: row.Evaluated}
 	}
-	for name, filters := range map[string]*MatrixCombinations{"include": matrix.Include, "exclude": matrix.Exclude} {
+	for name, filters := range map[string]*workflowlang.MatrixCombinations{"include": matrix.Include, "exclude": matrix.Exclude} {
 		if filters != nil {
-			result.Values[name] = mapping.Input[*String]{Name: filters.Name, Evaluated: filters.evaluated}
+			result.Values[name] = mapping.Input[*workflowlang.String]{Name: filters.Name, Evaluated: filters.Evaluated}
 		}
 	}
 	for _, insertion := range matrix.Insertions {
@@ -112,12 +113,12 @@ func matrixKeysView(matrix *Matrix) *mapping.Inputs[*String] {
 	return result
 }
 
-func actionFactsWorkflow(metadata *ActionMetadata) *Workflow {
-	parser := newSourceParser(metadata.src)
-	parser.indexScalarSources(metadata.schemaRoot)
-	job := &Job{}
+func actionFactsWorkflow(metadata *ActionMetadata) *workflowlang.Workflow {
+	parser := workflowlang.NewSourceParser(metadata.src)
+	parser.IndexScalarSources(metadata.schemaRoot)
+	job := &workflowlang.Job{}
 	for _, step := range metadata.Runs.Steps {
 		job.Steps = append(job.Steps, compositeScriptStep(step, parser))
 	}
-	return &Workflow{Jobs: map[string]*Job{"": job}}
+	return &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"": job}}
 }

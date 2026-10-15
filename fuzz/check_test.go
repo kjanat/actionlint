@@ -1,14 +1,15 @@
 package actionlint_fuzz
 
 import (
-	"actionlint.kjanat.dev/analysis"
 	"io/fs"
 	"testing"
 
+	"actionlint.kjanat.dev/analysis"
 	actionlint "actionlint.kjanat.dev/internal/engine"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
-func parseWorkflowPanicFree(data []byte) *actionlint.Workflow {
+func parseWorkflowPanicFree(data []byte) *workflowlang.Workflow {
 	// Avoid Parse() panicking. It panics when go-yaml panics
 	defer func() { _ = recover() }()
 	w, _ := actionlint.Parse(data)

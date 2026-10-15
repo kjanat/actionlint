@@ -4,6 +4,10 @@ import (
 	"maps"
 	"slices"
 	"strings"
+
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	stringutil "actionlint.kjanat.dev/internal/stringutil"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 type cacheEventClass uint8
@@ -63,7 +67,7 @@ var cacheEventClasses = map[string]cacheEventClass{
 // cacheRestrictedEvents includes unclassified triggers conservatively.
 //
 // Inventory tests require an explicit decision before a new generated event can ship.
-func cacheRestrictedEvents(w *Workflow) []string {
+func cacheRestrictedEvents(w *workflowlang.Workflow) []string {
 	var events []string
 	for _, event := range w.On {
 		name := event.EventName()
@@ -81,10 +85,10 @@ func cacheRestrictedEvents(w *Workflow) []string {
 // RuleCacheWriteUntrusted checks write grants on triggers with restricted cache defaults.
 type RuleCacheWriteUntrusted struct {
 	RuleBase
-	workflow  *CacheMode
+	workflow  *workflowlang.CacheMode
 	events    []string
-	reported  map[*CacheMode]bool
-	reachable map[*CacheMode][]string
+	reported  map[*workflowlang.CacheMode]bool
+	reachable map[*workflowlang.CacheMode][]string
 }
 
 // NewRuleCacheWriteUntrusted creates a cache-write-untrusted rule.
@@ -93,13 +97,13 @@ func NewRuleCacheWriteUntrusted() *RuleCacheWriteUntrusted {
 }
 
 // VisitWorkflowPre records trigger and workflow defaults.
-func (r *RuleCacheWriteUntrusted) VisitWorkflowPre(w *Workflow) error {
+func (r *RuleCacheWriteUntrusted) VisitWorkflowPre(w *workflowlang.Workflow) error {
 	r.workflow, r.events = w.CacheMode, cacheRestrictedEvents(w)
-	r.reported = map[*CacheMode]bool{}
-	r.reachable = map[*CacheMode][]string{}
+	r.reported = map[*workflowlang.CacheMode]bool{}
+	r.reachable = map[*workflowlang.CacheMode][]string{}
 	for _, job := range w.Jobs {
-		mode := effectiveCacheMode(r.workflow, job.CacheMode)
-		access, valid := mode.capabilities()
+		mode := workflowlang.EffectiveCacheMode(r.workflow, job.CacheMode)
+		access, valid := mode.Capabilities()
 		if valid && access&2 != 0 {
 			r.reachable[mode] = append(r.reachable[mode], cacheReachableEvents(r.events, job)...)
 		}
@@ -108,9 +112,9 @@ func (r *RuleCacheWriteUntrusted) VisitWorkflowPre(w *Workflow) error {
 }
 
 // VisitJobPre checks the job's effective declaration, including reusable calls.
-func (r *RuleCacheWriteUntrusted) VisitJobPre(job *Job) error {
-	mode := effectiveCacheMode(r.workflow, job.CacheMode)
-	access, valid := mode.capabilities()
+func (r *RuleCacheWriteUntrusted) VisitJobPre(job *workflowlang.Job) error {
+	mode := workflowlang.EffectiveCacheMode(r.workflow, job.CacheMode)
+	access, valid := mode.Capabilities()
 	if len(r.events) == 0 || !valid || access&2 == 0 || r.reported[mode] {
 		return nil
 	}
@@ -124,14 +128,14 @@ func (r *RuleCacheWriteUntrusted) VisitJobPre(job *Job) error {
 	slices.Sort(events)
 	events = slices.Compact(events)
 	r.reported[mode] = true
-	r.Errorf(mode.Pos, "cache-mode %q grants cache writes for low-trust trigger(s) %s. untrusted code or input can poison caches consumed by privileged workflows. use \"read\" or \"none\", or document a reviewed exception with an inline suppression", mode.Kind.String(), sortedQuotes(events))
+	r.Errorf(mode.Pos, "cache-mode %q grants cache writes for low-trust trigger(s) %s. untrusted code or input can poison caches consumed by privileged workflows. use \"read\" or \"none\", or document a reviewed exception with an inline suppression", mode.Kind.String(), stringutil.SortedQuotes(events))
 	return nil
 }
 
 // RuleCacheCallUnrestricted checks explicit cache limits on low-trust reusable calls.
 type RuleCacheCallUnrestricted struct {
 	RuleBase
-	workflow *CacheMode
+	workflow *workflowlang.CacheMode
 	events   []string
 }
 
@@ -141,15 +145,15 @@ func NewRuleCacheCallUnrestricted() *RuleCacheCallUnrestricted {
 }
 
 // VisitWorkflowPre records trigger and workflow defaults.
-func (r *RuleCacheCallUnrestricted) VisitWorkflowPre(w *Workflow) error {
+func (r *RuleCacheCallUnrestricted) VisitWorkflowPre(w *workflowlang.Workflow) error {
 	r.workflow, r.events = w.CacheMode, cacheRestrictedEvents(w)
 	return nil
 }
 
 // VisitJobPre requires an explicit ceiling at each affected call site.
-func (r *RuleCacheCallUnrestricted) VisitJobPre(job *Job) error {
+func (r *RuleCacheCallUnrestricted) VisitJobPre(job *workflowlang.Job) error {
 	call := job.WorkflowCall
-	if len(r.events) == 0 || call == nil || call.Uses == nil || call.Uses.ContainsExpression() || effectiveCacheMode(r.workflow, job.CacheMode) != nil {
+	if len(r.events) == 0 || call == nil || call.Uses == nil || call.Uses.ContainsExpression() || workflowlang.EffectiveCacheMode(r.workflow, job.CacheMode) != nil {
 		return nil
 	}
 	if _, local := workflowCallUsesLocalSpec(call.Uses.Value); !local {
@@ -161,15 +165,15 @@ func (r *RuleCacheCallUnrestricted) VisitJobPre(job *Job) error {
 	if len(events) == 0 {
 		return nil
 	}
-	r.Errorf(call.Uses.Pos, "reusable workflow call %q has no explicit cache access limit for low-trust trigger(s) %s. the callee can request writes despite the trigger's read-only default. set \"cache-mode: read\" or \"cache-mode: none\" on this job or workflow", call.Uses.Value, sortedQuotes(events))
+	r.Errorf(call.Uses.Pos, "reusable workflow call %q has no explicit cache access limit for low-trust trigger(s) %s. the callee can request writes despite the trigger's read-only default. set \"cache-mode: read\" or \"cache-mode: none\" on this job or workflow", call.Uses.Value, stringutil.SortedQuotes(events))
 	return nil
 }
 
 // RuleCacheOperation checks cache actions which an explicit mode makes ineffective.
 type RuleCacheOperation struct {
 	RuleBase
-	workflow *CacheMode
-	job      *CacheMode
+	workflow *workflowlang.CacheMode
+	job      *workflowlang.CacheMode
 	cache    *LocalReusableWorkflowCache
 }
 
@@ -185,14 +189,14 @@ func newRuleCacheOperation(cache *LocalReusableWorkflowCache) *RuleCacheOperatio
 }
 
 // VisitWorkflowPre records the workflow's explicit mode.
-func (r *RuleCacheOperation) VisitWorkflowPre(w *Workflow) error {
+func (r *RuleCacheOperation) VisitWorkflowPre(w *workflowlang.Workflow) error {
 	r.workflow = w.CacheMode
 	return nil
 }
 
 // VisitJobPre resolves job overrides.
-func (r *RuleCacheOperation) VisitJobPre(job *Job) error {
-	r.job = effectiveCacheMode(r.workflow, job.CacheMode)
+func (r *RuleCacheOperation) VisitJobPre(job *workflowlang.Job) error {
+	r.job = workflowlang.EffectiveCacheMode(r.workflow, job.CacheMode)
 	if call := job.WorkflowCall; call != nil && call.Uses != nil && r.cache != nil {
 		r.checkCallOperations(call.Uses.Pos, call.Uses.Value, r.job, map[workflowCacheModeVisit]bool{})
 	}
@@ -202,12 +206,12 @@ func (r *RuleCacheOperation) VisitJobPre(job *Job) error {
 // checkCallOperations reports inherited restrictions at the call site, where
 // inline suppression and policy configuration apply. Metadata stores callee
 // operations; each traversal evaluates them against the caller's ceiling.
-func (r *RuleCacheOperation) checkCallOperations(pos *Pos, sourceSpec string, granted *CacheMode, checked map[workflowCacheModeVisit]bool) {
+func (r *RuleCacheOperation) checkCallOperations(pos *workflowlang.Pos, sourceSpec string, granted *workflowlang.CacheMode, checked map[workflowCacheModeVisit]bool) {
 	spec, local := workflowCallUsesLocalSpec(sourceSpec)
 	if !local {
 		return
 	}
-	have, known := granted.capabilities()
+	have, known := granted.Capabilities()
 	if granted != nil && !known {
 		return
 	}
@@ -226,8 +230,8 @@ func (r *RuleCacheOperation) checkCallOperations(pos *Pos, sourceSpec string, gr
 	}
 	for _, id := range slices.Sorted(maps.Keys(m.JobCacheAccess)) {
 		job := m.JobCacheAccess[id]
-		mode := effectiveCacheMode(granted, job.Mode)
-		want, valid := mode.capabilities()
+		mode := workflowlang.EffectiveCacheMode(granted, job.Mode)
+		want, valid := mode.Capabilities()
 		if mode != nil && !valid || known && valid && want&^have != 0 {
 			// Invalid declarations and ceiling mismatches have their own diagnostics.
 			continue
@@ -247,12 +251,12 @@ func (r *RuleCacheOperation) checkCallOperations(pos *Pos, sourceSpec string, gr
 }
 
 // VisitStep checks the three official cache action entry points.
-func (r *RuleCacheOperation) VisitStep(step *Step) error {
-	action, ok := step.Exec.(*ExecAction)
+func (r *RuleCacheOperation) VisitStep(step *workflowlang.Step) error {
+	action, ok := step.Exec.(*workflowlang.ExecAction)
 	if !ok || action.Uses == nil {
 		return nil
 	}
-	access, valid := r.job.capabilities()
+	access, valid := r.job.Capabilities()
 	if !valid {
 		return nil
 	}
@@ -266,7 +270,7 @@ func (r *RuleCacheOperation) VisitStep(step *Step) error {
 // cacheActionName recognizes only the official cache action entry points.
 func cacheActionName(uses string) string {
 	name, ref, ok := strings.Cut(uses, "@")
-	if !ok || ref == "" || ContainsExpression(uses) {
+	if !ok || ref == "" || exprlang.ContainsExpression(uses) {
 		return ""
 	}
 	owner, rest, ok := strings.Cut(name, "/")

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"go.yaml.in/yaml/v4"
@@ -77,7 +78,7 @@ runs:
 	}
 	meta.file, meta.src = "action.yml", []byte(source)
 	rule := NewRuleAction(nil)
-	rule.checkLocalActionMetadata(&meta, &ExecAction{Uses: &String{Value: "./test", Pos: &Pos{Line: 1, Col: 1}}})
+	rule.checkLocalActionMetadata(&meta, &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./test", Pos: &workflowlang.Pos{Line: 1, Col: 1}}})
 	findings := rule.Errs()
 	if len(findings) != 1 || !strings.Contains(findings[0].Message, `did you mean "github.repository"?`) || findings[0].Filepath != "action.yml" || findings[0].Line != 6 {
 		t.Fatalf("metadata suggestion lost diagnostic or position: %v", findings)
@@ -126,24 +127,38 @@ func TestActionExpressionFunctions(t *testing.T) {
 	}{
 		{"bare condition", "runs.steps.*.if", "success() && !cancelled()", true, nil},
 		{"interpolated condition", "runs.steps.*.if", "${{ always() || failure() }}", true, nil},
-		{"status outside condition", "runs.steps.*.name", "${{ success() }}", false,
-			[]actionExpressionViolation{{message: `calls function "success" which is not available here`}}},
-		{"status in default", "inputs.*.default", "${{ always() }}", false,
-			[]actionExpressionViolation{{message: `calls function "always" which is not available here`}}},
-		{"hash with no patterns", "inputs.*.default", "${{ hashFiles() }}", false,
-			[]actionExpressionViolation{{message: `calls function "hashfiles" with 0 argument(s); expected at least 1 and at most 255`}}},
-		{"status with argument", "runs.steps.*.if", "${{ success('x') }}", true,
-			[]actionExpressionViolation{{message: `calls function "success" with 1 argument(s); expected at least 0 and at most 0`}}},
+		{
+			"status outside condition", "runs.steps.*.name", "${{ success() }}", false,
+			[]actionExpressionViolation{{message: `calls function "success" which is not available here`}},
+		},
+		{
+			"status in default", "inputs.*.default", "${{ always() }}", false,
+			[]actionExpressionViolation{{message: `calls function "always" which is not available here`}},
+		},
+		{
+			"hash with no patterns", "inputs.*.default", "${{ hashFiles() }}", false,
+			[]actionExpressionViolation{{message: `calls function "hashfiles" with 0 argument(s); expected at least 1 and at most 255`}},
+		},
+		{
+			"status with argument", "runs.steps.*.if", "${{ success('x') }}", true,
+			[]actionExpressionViolation{{message: `calls function "success" with 1 argument(s); expected at least 0 and at most 0`}},
+		},
 		{"case insensitive nested functions", "runs.steps.*.run", "${{ format('{0}', HASHFILES('*.go')) }}", false, nil},
 		{"caller properties have no invented types", "runs.steps.*.run", "${{ inputs.custom }} ${{ steps.custom.outputs.custom }}", false, nil},
 		{"quoted delimiters", "runs.steps.*.name", "${{ '}} ${{ success() }}' }}", false, nil},
-		{"literal then real function", "runs.steps.*.name", "${{ '}} ${{ success() }}' }}${{ success() }}", false,
-			[]actionExpressionViolation{{message: `calls function "success" which is not available here`}}},
-		{"repeated functions", "inputs.*.default", "${{ always() }}${{ ALWAYS() }}", false,
-			[]actionExpressionViolation{{message: `calls function "always" which is not available here`}, {message: `calls function "always" which is not available here`}}},
+		{
+			"literal then real function", "runs.steps.*.name", "${{ '}} ${{ success() }}' }}${{ success() }}", false,
+			[]actionExpressionViolation{{message: `calls function "success" which is not available here`}},
+		},
+		{
+			"repeated functions", "inputs.*.default", "${{ always() }}${{ ALWAYS() }}", false,
+			[]actionExpressionViolation{{message: `calls function "always" which is not available here`}, {message: `calls function "always" which is not available here`}},
+		},
 		{"hash maximum", "runs.steps.*.shell", "${{ hashFiles(" + strings.Repeat("'x',", 254) + "'x') }}", false, nil},
-		{"hash over maximum", "runs.steps.*.shell", "${{ hashFiles(" + strings.Repeat("'x',", 255) + "'x') }}", false,
-			[]actionExpressionViolation{{message: `calls function "hashfiles" with 256 argument(s); expected at least 1 and at most 255`}}},
+		{
+			"hash over maximum", "runs.steps.*.shell", "${{ hashFiles(" + strings.Repeat("'x',", 255) + "'x') }}", false,
+			[]actionExpressionViolation{{message: `calls function "hashfiles" with 256 argument(s); expected at least 1 and at most 255`}},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

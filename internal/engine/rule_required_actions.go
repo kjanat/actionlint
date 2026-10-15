@@ -3,6 +3,8 @@ package engine
 import (
 	"path"
 	"strings"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 // actionUse is one "uses:" value of an action step found while visiting a workflow.
@@ -10,7 +12,7 @@ type actionUse struct {
 	spec string
 	name string
 	ref  string
-	pos  *Pos
+	pos  *workflowlang.Pos
 }
 
 // splitActionRef splits an action reference, or a pattern for one, into its name and its ref at the
@@ -41,8 +43,8 @@ func matchGlob(pattern, value string) bool {
 }
 
 // Jobs are stored in a map. Source order keeps diagnostics stable across runs.
-func firstStepsJobPos(w *Workflow) *Pos {
-	var ret *Pos
+func firstStepsJobPos(w *workflowlang.Workflow) *workflowlang.Pos {
+	var ret *workflowlang.Pos
 	for _, j := range w.Jobs {
 		if j == nil || j.Pos == nil || j.WorkflowCall != nil {
 			continue
@@ -70,15 +72,15 @@ func NewRuleRequiredActions() *RuleRequiredActions {
 }
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
-func (rule *RuleRequiredActions) VisitWorkflowPre(n *Workflow) error {
+func (rule *RuleRequiredActions) VisitWorkflowPre(n *workflowlang.Workflow) error {
 	rule.uses = nil
 	rule.unknown = false
 	return nil
 }
 
 // VisitStep is callback when visiting Step node.
-func (rule *RuleRequiredActions) VisitStep(n *Step) error {
-	e, ok := n.Exec.(*ExecAction)
+func (rule *RuleRequiredActions) VisitStep(n *workflowlang.Step) error {
+	e, ok := n.Exec.(*workflowlang.ExecAction)
 	if !ok || e.Uses == nil {
 		return nil
 	}
@@ -97,7 +99,7 @@ func (rule *RuleRequiredActions) VisitStep(n *Step) error {
 }
 
 // VisitWorkflowPost is callback when visiting Workflow node after visiting its children.
-func (rule *RuleRequiredActions) VisitWorkflowPost(n *Workflow) error {
+func (rule *RuleRequiredActions) VisitWorkflowPost(n *workflowlang.Workflow) error {
 	if rule.unknown {
 		return nil
 	}
@@ -111,7 +113,7 @@ func (rule *RuleRequiredActions) VisitWorkflowPost(n *Workflow) error {
 	return nil
 }
 
-func (rule *RuleRequiredActions) report(required string, pos *Pos) {
+func (rule *RuleRequiredActions) report(required string, pos *workflowlang.Pos) {
 	name, ref := splitActionRef(required)
 	name = strings.ToLower(name)
 

@@ -101,9 +101,9 @@ endif
 lint-docs:
 	go run ./scripts/check-checks -quiet ./docs/checks.md
 
-internal/actioncatalog/popular_actions.json internal/engine/all_webhooks.go internal/engine/availability.go internal/engine/action_metadata_availability.go internal/engine/action_runtimes.go: $(GO_GEN_SRCS)
+internal/actioncatalog/popular_actions.json internal/engine/all_webhooks.go internal/workflowcontext/availability.go internal/engine/action_metadata_availability.go internal/engine/action_runtimes.go: $(GO_GEN_SRCS)
 ifdef SKIP_GO_GENERATE
-	$(TOUCH) internal/actioncatalog/popular_actions.json internal/engine/all_webhooks.go internal/engine/availability.go internal/engine/action_metadata_availability.go internal/engine/action_runtimes.go
+	$(TOUCH) internal/actioncatalog/popular_actions.json internal/engine/all_webhooks.go internal/workflowcontext/availability.go internal/engine/action_metadata_availability.go internal/engine/action_runtimes.go
 else
 	go generate
 endif

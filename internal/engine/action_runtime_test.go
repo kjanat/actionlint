@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestNode20HostedMigration(t *testing.T) {
@@ -27,14 +29,18 @@ func TestLocalActionRuntimeLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct{ using, problem string }{
-		{"node24", ""}, {"NODE24", ""}, {"node20", "deprecated"},
-		{"node16", "no longer bundled"}, {"node12", "no longer bundled"},
-		{"node22", "invalid runner name"}, {"node999", "invalid runner name"},
+		{"node24", ""},
+		{"NODE24", ""},
+		{"node20", "deprecated"},
+		{"node16", "no longer bundled"},
+		{"node12", "no longer bundled"},
+		{"node22", "invalid runner name"},
+		{"node999", "invalid runner name"},
 	} {
 		t.Run(tc.using, func(t *testing.T) {
 			meta := &ActionMetadata{Name: "example", dir: dir, Runs: ActionMetadataRuns{Using: tc.using, Main: "main.js"}}
 			rule := NewRuleAction(nil)
-			rule.checkLocalActionRuns(meta, &Pos{Line: 1, Col: 1})
+			rule.checkLocalActionRuns(meta, &workflowlang.Pos{Line: 1, Col: 1})
 			errs := rule.Errs()
 			if tc.problem == "" {
 				if len(errs) != 0 {
@@ -50,7 +56,7 @@ func TestLocalActionRuntimeLifecycle(t *testing.T) {
 func TestDeprecatedRuntimeStillChecksJavaScriptMetadata(t *testing.T) {
 	rule := NewRuleAction(nil)
 	meta := &ActionMetadata{Name: "example", Runs: ActionMetadataRuns{Using: "node20"}}
-	rule.checkLocalActionRuns(meta, &Pos{Line: 1, Col: 1})
+	rule.checkLocalActionRuns(meta, &workflowlang.Pos{Line: 1, Col: 1})
 	var deprecated, missingMain bool
 	for _, err := range rule.Errs() {
 		deprecated = deprecated || strings.Contains(err.Message, "deprecated")
@@ -67,8 +73,8 @@ func TestDeprecatedPopularActionKeepsInputAndOutputMetadata(t *testing.T) {
 	if meta == nil || meta.Runs.Using != "node20" || meta.Outputs["result"] == nil {
 		t.Fatal("deprecated action lost its runtime or output metadata")
 	}
-	pos := &Pos{Line: 1, Col: 1}
-	exec := &ExecAction{Uses: &String{Value: spec, Pos: pos}}
+	pos := &workflowlang.Pos{Line: 1, Col: 1}
+	exec := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: spec, Pos: pos}}
 	rule := NewRuleAction(nil)
 	rule.checkRepoAction(spec, exec)
 	var deprecated, missingScript bool

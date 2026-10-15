@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestDependencyPathsDoNotResolveWorkflowOverrides(t *testing.T) {
@@ -37,7 +39,7 @@ overrides:
 					Sources:    []SourceUnit{{Path: ".github/workflows/ci.yml", Content: []byte(commandGoodWorkflow), Config: cfg, Project: &Project{root: root}}},
 					OnRulesCreated: func([]Rule) []Rule {
 						rule := NewRuleBase("expression", "dependency finding")
-						rule.Error(&Pos{Line: 1, Col: 1}, "dependency finding")
+						rule.Error(&workflowlang.Pos{Line: 1, Col: 1}, "dependency finding")
 						rule.errs[0].Filepath = filepath.Join(root, dependency)
 						rule.errs[0].source = []byte("dependency content")
 						return []Rule{&rule}
@@ -192,7 +194,7 @@ func TestWorkflowOverridesApplyToDependencyDiagnostics(t *testing.T) {
 					Sources:    []SourceUnit{{Path: ".github/workflows/ci.yml", Content: []byte(commandGoodWorkflow), Config: cfg, Project: &Project{root: root}}},
 					OnRulesCreated: func([]Rule) []Rule {
 						rule := NewRuleBase("expression", "dependency finding")
-						rule.Error(&Pos{Line: 1, Col: 1}, "dependency finding")
+						rule.Error(&workflowlang.Pos{Line: 1, Col: 1}, "dependency finding")
 						rule.errs[0].Filepath = filepath.Join(root, dependency)
 						rule.errs[0].source = []byte("dependency content")
 						return []Rule{&rule}

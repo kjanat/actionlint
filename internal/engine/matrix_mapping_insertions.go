@@ -1,13 +1,15 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/internal/mapping"
 	"strings"
+
+	"actionlint.kjanat.dev/internal/mapping"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
-type matrixInsertionView = mapping.Matrix[*MatrixRow, *MatrixCombinations, *String]
+type matrixInsertionView = mapping.Matrix[*workflowlang.MatrixRow, *workflowlang.MatrixCombinations, *workflowlang.String]
 
-func matrixMappingView(matrix *Matrix) *matrixInsertionView {
+func matrixMappingView(matrix *workflowlang.Matrix) *matrixInsertionView {
 	if matrix == nil {
 		return nil
 	}
@@ -18,9 +20,9 @@ func matrixMappingView(matrix *Matrix) *matrixInsertionView {
 	return result
 }
 
-func expandedMatrixInsertions(matrix *Matrix) (*Matrix, bool) {
-	resolved, complete := mapping.ExpandMatrix(matrixMappingView(matrix), func(source *String) *matrixInsertionView {
-		value, known := workflowExpressionLiteral(source)
+func expandedMatrixInsertions(matrix *workflowlang.Matrix) (*workflowlang.Matrix, bool) {
+	resolved, complete := mapping.ExpandMatrix(matrixMappingView(matrix), func(source *workflowlang.String) *matrixInsertionView {
+		value, known := workflowlang.WorkflowExpressionLiteral(source)
 		if !known {
 			return nil
 		}
@@ -33,36 +35,36 @@ func expandedMatrixInsertions(matrix *Matrix) (*Matrix, bool) {
 	if matrix.Expression != nil {
 		pos = matrix.Expression.Pos
 	}
-	return &Matrix{Rows: resolved.Rows, Include: resolved.Include, Exclude: resolved.Exclude, Pos: pos}, complete
+	return &workflowlang.Matrix{Rows: resolved.Rows, Include: resolved.Include, Exclude: resolved.Exclude, Pos: pos}, complete
 }
 
-func expandedMatrixCombinations(filters *MatrixCombinations) (*MatrixCombinations, bool) {
+func expandedMatrixCombinations(filters *workflowlang.MatrixCombinations) (*workflowlang.MatrixCombinations, bool) {
 	if filters == nil {
 		return nil, true
 	}
 	items, complete := mapping.ExpandCombinations(filters.Expression, filters.Combinations,
-		func(item *MatrixCombination) *String { return item.Expression },
-		func(source *String, splice bool) ([]*MatrixCombination, bool) {
+		func(item *workflowlang.MatrixCombination) *workflowlang.String { return item.Expression },
+		func(source *workflowlang.String, splice bool) ([]*workflowlang.MatrixCombination, bool) {
 			result := knownMatrixFilters(source, splice)
 			if result == nil {
 				return nil, false
 			}
 			for _, item := range result.Combinations {
-				item.evaluated = true
+				item.Evaluated = true
 			}
 			return result.Combinations, true
 		})
 	if !complete {
 		return nil, false
 	}
-	return &MatrixCombinations{Combinations: items}, true
+	return &workflowlang.MatrixCombinations{Combinations: items}, true
 }
 
-func resolvedMatrixRowName(fallback string, row *MatrixRow) (string, bool) {
+func resolvedMatrixRowName(fallback string, row *workflowlang.MatrixRow) (string, bool) {
 	if row.Name == nil {
 		return fallback, true
 	}
-	key := inputResolver.ResolveKey(row.Name, row.evaluated)
+	key := workflowlang.InputResolver.ResolveKey(row.Name, row.Evaluated)
 	if key.State != mapping.KnownKey {
 		return "", false
 	}

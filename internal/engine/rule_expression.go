@@ -2,22 +2,19 @@ package engine
 
 import (
 	"errors"
-	"regexp"
 	"strconv"
 	"strings"
 
+	exprlang "actionlint.kjanat.dev/internal/expression"
 	"actionlint.kjanat.dev/internal/mapping"
-)
-
-// The integer and float productions of the YAML 1.2 core schema, as GitHub implements them.
-var (
-	reCoreSchemaInt   = regexp.MustCompile(`^(?:[0-9]+|[-+][0-9]+|0x[0-9a-fA-F]+|0o[0-7]+)$`)
-	reCoreSchemaFloat = regexp.MustCompile(`^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?$`)
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowcontext "actionlint.kjanat.dev/internal/workflowcontext"
+	yamlscalar "actionlint.kjanat.dev/internal/yamlscalar"
 )
 
 type typedExpr struct {
-	ty  ExprType
-	pos Pos
+	ty  exprlang.Type
+	pos workflowlang.Pos
 }
 
 // RuleExpression is a rule checker to check expression syntax in string values of workflow syntax.
@@ -27,17 +24,17 @@ type typedExpr struct {
 // - https://docs.github.com/en/actions/learn-github-actions/expressions
 type RuleExpression struct {
 	RuleBase
-	matrixTy         *ObjectType
-	stepsTy          *ObjectType
-	needsTy          *ObjectType
-	secretsTy        *ObjectType
-	inputsTy         *ObjectType
-	dispatchInputsTy *ObjectType
-	jobsTy           *ObjectType
-	workflow         *Workflow
+	matrixTy         *exprlang.ObjectType
+	stepsTy          *exprlang.ObjectType
+	needsTy          *exprlang.ObjectType
+	secretsTy        *exprlang.ObjectType
+	inputsTy         *exprlang.ObjectType
+	dispatchInputsTy *exprlang.ObjectType
+	jobsTy           *exprlang.ObjectType
+	workflow         *workflowlang.Workflow
 	localActions     *LocalActionsCache
 	localWorkflows   *LocalReusableWorkflowCache
-	expressionSource *scriptSource
+	expressionSource *workflowlang.ScriptSource
 	expressionOffset int
 }
 
@@ -59,7 +56,7 @@ func NewRuleExpression(actionsCache *LocalActionsCache, workflowCache *LocalReus
 }
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
-func (rule *RuleExpression) VisitWorkflowPre(n *Workflow) error {
+func (rule *RuleExpression) VisitWorkflowPre(n *workflowlang.Workflow) error {
 	rule.workflow = n
 	rule.checkString(n.Name, "")
 	rule.checkString(n.Description, "")
@@ -67,7 +64,7 @@ func (rule *RuleExpression) VisitWorkflowPre(n *Workflow) error {
 
 	for _, e := range n.On {
 		switch e := e.(type) {
-		case *WebhookEvent:
+		case *workflowlang.WebhookEvent:
 			rule.checkStrings(e.Types, "")
 			rule.checkWebhookEventFilter(e.Branches)
 			rule.checkWebhookEventFilter(e.BranchesIgnore)
@@ -76,37 +73,37 @@ func (rule *RuleExpression) VisitWorkflowPre(n *Workflow) error {
 			rule.checkWebhookEventFilter(e.Paths)
 			rule.checkWebhookEventFilter(e.PathsIgnore)
 			rule.checkStrings(e.Workflows, "")
-		case *ScheduledEvent:
+		case *workflowlang.ScheduledEvent:
 			for _, s := range e.Schedules {
 				rule.checkString(s.Cron, "")
 				rule.checkString(s.Timezone, "")
 			}
-		case *WorkflowDispatchEvent:
-			ity := NewEmptyStrictObjectType()
+		case *workflowlang.WorkflowDispatchEvent:
+			ity := exprlang.NewEmptyStrictObjectType()
 			for id, i := range e.Inputs {
 				rule.checkString(i.Description, "")
 				rule.checkString(i.Default, "")
 				rule.checkBool(i.Required, "")
 				rule.checkStrings(i.Options, "")
 
-				var ty ExprType
+				var ty exprlang.Type
 				switch i.Type {
-				case WorkflowDispatchEventInputTypeBoolean:
-					ty = BoolType{}
-				case WorkflowDispatchEventInputTypeNumber:
-					ty = NumberType{}
-				case WorkflowDispatchEventInputTypeString, WorkflowDispatchEventInputTypeChoice, WorkflowDispatchEventInputTypeEnvironment:
-					ty = StringType{}
+				case workflowlang.WorkflowDispatchEventInputTypeBoolean:
+					ty = exprlang.BoolType{}
+				case workflowlang.WorkflowDispatchEventInputTypeNumber:
+					ty = exprlang.NumberType{}
+				case workflowlang.WorkflowDispatchEventInputTypeString, workflowlang.WorkflowDispatchEventInputTypeChoice, workflowlang.WorkflowDispatchEventInputTypeEnvironment:
+					ty = exprlang.StringType{}
 				default:
-					ty = AnyType{}
+					ty = exprlang.AnyType{}
 				}
 				ity.Props[id] = ty
 			}
 			rule.dispatchInputsTy = ity
-		case *RepositoryDispatchEvent:
+		case *workflowlang.RepositoryDispatchEvent:
 			rule.checkStrings(e.Types, "")
-		case *WorkflowCallEvent:
-			ity := NewEmptyStrictObjectType()
+		case *workflowlang.WorkflowCallEvent:
+			ity := exprlang.NewEmptyStrictObjectType()
 
 			// Set `inputs` context object before checking inputs since input's default values can refer `inputs` context.
 			//   inputs:
@@ -126,32 +123,32 @@ func (rule *RuleExpression) VisitWorkflowPre(n *Workflow) error {
 				//       default: ${{ inputs.recursive }}
 				ts := rule.checkString(i.Default, "on.workflow_call.inputs.<inputs_id>.default")
 
-				var ty ExprType
+				var ty exprlang.Type
 				switch i.Type {
-				case WorkflowCallEventInputTypeString:
-					ty = StringType{}
-				case WorkflowCallEventInputTypeBoolean:
-					ty = BoolType{}
+				case workflowlang.WorkflowCallEventInputTypeString:
+					ty = exprlang.StringType{}
+				case workflowlang.WorkflowCallEventInputTypeBoolean:
+					ty = exprlang.BoolType{}
 					if len(ts) == 1 && i.Default.IsExpressionAssigned() {
 						switch ts[0].ty.(type) {
-						case BoolType, AnyType:
+						case exprlang.BoolType, exprlang.AnyType:
 							// ok
 						default:
 							rule.Errorf(i.Default.Pos, "type of input %q must be bool but found type %s", i.Name.Value, ts[0].ty.String())
 						}
 					}
-				case WorkflowCallEventInputTypeNumber:
-					ty = NumberType{}
+				case workflowlang.WorkflowCallEventInputTypeNumber:
+					ty = exprlang.NumberType{}
 					if len(ts) == 1 && i.Default.IsExpressionAssigned() {
 						switch ts[0].ty.(type) {
-						case NumberType, AnyType:
+						case exprlang.NumberType, exprlang.AnyType:
 							// ok
 						default:
 							rule.Errorf(i.Default.Pos, "type of input %q must be number but found type %s", i.Name.Value, ts[0].ty.String())
 						}
 					}
 				default:
-					ty = AnyType{}
+					ty = exprlang.AnyType{}
 				}
 				ity.Props[i.ID] = ty
 			}
@@ -161,12 +158,12 @@ func (rule *RuleExpression) VisitWorkflowPre(n *Workflow) error {
 			// exist. When `e.Secrets` is an empty map, `secrets:` exists but it has no child. A workflow with another
 			// trigger can also access repository secrets on that trigger path, so its secrets type must remain open.
 			if e.Secrets != nil {
-				sty := NewEmptyStrictObjectType()
+				sty := exprlang.NewEmptyStrictObjectType()
 				for id := range e.Secrets {
-					sty.Props[id] = StringType{}
+					sty.Props[id] = exprlang.StringType{}
 				}
 				if hasNonWorkflowCallTrigger {
-					sty.Mapped = StringType{}
+					sty.Mapped = exprlang.StringType{}
 				}
 				rule.secretsTy = sty
 			}
@@ -178,7 +175,7 @@ func (rule *RuleExpression) VisitWorkflowPre(n *Workflow) error {
 				rule.checkString(o.Description, "")
 				// o.Value will be checked in VisitWorkflowPost
 			}
-		case *ImageVersionEvent:
+		case *workflowlang.ImageVersionEvent:
 			rule.checkStrings(e.Types, "")
 			rule.checkStrings(e.Names, "")
 			rule.checkStrings(e.Versions, "")
@@ -196,7 +193,7 @@ func (rule *RuleExpression) VisitWorkflowPre(n *Workflow) error {
 }
 
 // VisitWorkflowPost is callback when visiting Workflow node after visiting its children
-func (rule *RuleExpression) VisitWorkflowPost(n *Workflow) error {
+func (rule *RuleExpression) VisitWorkflowPost(n *workflowlang.Workflow) error {
 	if e, ok := n.FindWorkflowCallEvent(); ok {
 		rule.checkWorkflowCallOutputs(e.Outputs, n.Jobs)
 	}
@@ -205,7 +202,7 @@ func (rule *RuleExpression) VisitWorkflowPost(n *Workflow) error {
 }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
-func (rule *RuleExpression) VisitJobPre(n *Job) error {
+func (rule *RuleExpression) VisitJobPre(n *workflowlang.Job) error {
 	// Type of needs must be resolved before resolving type of matrix because `needs` context can
 	// be used in matrix configuration.
 	rule.needsTy = rule.calcNeedsType(n)
@@ -221,8 +218,8 @@ func (rule *RuleExpression) VisitJobPre(n *Job) error {
 	if n.Strategy != nil {
 		if n.Strategy.Expression != nil {
 			ty := rule.checkWorkflowExpression(n.Strategy.Expression, "strategy", "jobs.<job_id>.strategy", workflowStrategy)
-			rule.matrixTy = NewEmptyObjectType()
-			if object, ok := ty.(*ObjectType); ok {
+			rule.matrixTy = exprlang.NewEmptyObjectType()
+			if object, ok := ty.(*exprlang.ObjectType); ok {
 				rule.matrixTy = matrixTypeFromExpression(workflowObjectProperty(object.Props, "matrix"))
 			}
 		} else if n.Strategy.Matrix != nil {
@@ -239,8 +236,8 @@ func (rule *RuleExpression) VisitJobPre(n *Job) error {
 		if n.RunsOn.LabelsExpr != nil {
 			if ty := rule.checkOneExpression(n.RunsOn.LabelsExpr, "runner label at \"runs-on\" section", "jobs.<job_id>.runs-on"); ty != nil {
 				switch ty.(type) {
-				case *ArrayType, StringType, AnyType:
-					if value, known := workflowExpressionLiteral(n.RunsOn.LabelsExpr); known {
+				case *exprlang.ArrayType, exprlang.StringType, exprlang.AnyType:
+					if value, known := workflowlang.WorkflowExpressionLiteral(n.RunsOn.LabelsExpr); known {
 						if labels, ok := value.([]any); ok && len(labels) == 0 {
 							rule.Error(n.RunsOn.LabelsExpr.Pos, "runs-on.labels must contain at least one value")
 						}
@@ -284,13 +281,13 @@ func (rule *RuleExpression) VisitJobPre(n *Job) error {
 
 	rule.checkWorkflowCall(n.WorkflowCall)
 
-	rule.stepsTy = NewEmptyStrictObjectType()
+	rule.stepsTy = exprlang.NewEmptyStrictObjectType()
 
 	return nil
 }
 
 // VisitJobPost is callback when visiting Job node after visiting its children
-func (rule *RuleExpression) VisitJobPost(n *Job) error {
+func (rule *RuleExpression) VisitJobPost(n *workflowlang.Job) error {
 	// Snapshot conditions run after the job's steps, so their outputs are available.
 	rule.checkSnapshot(n.Snapshot)
 	// 'environment' and 'outputs' sections are evaluated after all steps are run
@@ -312,26 +309,26 @@ func (rule *RuleExpression) VisitJobPost(n *Job) error {
 }
 
 // VisitStep is callback when visiting Step node.
-func (rule *RuleExpression) VisitStep(n *Step) error {
+func (rule *RuleExpression) VisitStep(n *workflowlang.Step) error {
 	rule.checkString(n.Name, "jobs.<job_id>.steps.name")
 	rule.checkIfCondition(n.If, "jobs.<job_id>.steps.if")
 
-	var spec *String
+	var spec *workflowlang.String
 	switch e := n.Exec.(type) {
-	case *ExecRun:
+	case *workflowlang.ExecRun:
 		rule.checkScriptString(e.Run, "jobs.<job_id>.steps.run")
 		rule.checkString(e.Shell, "")
 		rule.checkString(e.WorkingDirectory, "jobs.<job_id>.steps.working-directory")
-	case *ExecAction:
+	case *workflowlang.ExecAction:
 		rule.checkString(e.Uses, "")
-		for _, name := range e.inputNameExpressions {
+		for _, name := range e.InputNameExpressions {
 			rule.checkString(name, "jobs.<job_id>.steps.with")
 		}
-		rule.checkActionInputs(actionInputMapping(e), e.Uses)
-		if !e.entrypointEvaluated {
+		rule.checkActionInputs(workflowlang.InputMapping(e), e.Uses)
+		if !e.EntrypointEvaluated {
 			rule.checkString(e.Entrypoint, "jobs.<job_id>.steps.with")
 		}
-		if !e.argsEvaluated {
+		if !e.ArgsEvaluated {
 			rule.checkString(e.Args, "jobs.<job_id>.steps.with")
 		}
 		spec = e.Uses
@@ -350,10 +347,10 @@ func (rule *RuleExpression) VisitStep(n *Step) error {
 		}
 		// Step ID is case insensitive
 		id := strings.ToLower(n.ID.Value)
-		rule.stepsTy.Props[id] = NewStrictObjectType(map[string]ExprType{
+		rule.stepsTy.Props[id] = exprlang.NewStrictObjectType(map[string]exprlang.Type{
 			"outputs":    rule.getActionOutputsType(spec),
-			"conclusion": StringType{},
-			"outcome":    StringType{},
+			"conclusion": exprlang.StringType{},
+			"outcome":    exprlang.StringType{},
 		})
 	}
 
@@ -361,9 +358,9 @@ func (rule *RuleExpression) VisitStep(n *Step) error {
 }
 
 // Get type of `outputs.<output name>`
-func (rule *RuleExpression) getActionOutputsType(spec *String) *ObjectType {
+func (rule *RuleExpression) getActionOutputsType(spec *workflowlang.String) *exprlang.ObjectType {
 	if spec == nil {
-		return NewMapObjectType(StringType{})
+		return exprlang.NewMapObjectType(exprlang.StringType{})
 	}
 
 	localSpec := spec.Value
@@ -379,10 +376,10 @@ func (rule *RuleExpression) getActionOutputsType(spec *String) *ObjectType {
 			if !unresolved && !mapping {
 				rule.Error(spec.Pos, err.Error())
 			}
-			return NewMapObjectType(StringType{})
+			return exprlang.NewMapObjectType(exprlang.StringType{})
 		}
 		if meta == nil {
-			return NewMapObjectType(StringType{})
+			return exprlang.NewMapObjectType(exprlang.StringType{})
 		}
 
 		return typeOfActionOutputs(meta)
@@ -391,7 +388,7 @@ func (rule *RuleExpression) getActionOutputsType(spec *String) *ObjectType {
 	// github-script action allows to set any outputs through calling `core.setOutput` directly.
 	// So any `outputs.*` properties should be accepted (#104)
 	if strings.HasPrefix(spec.Value, "actions/github-script@") {
-		return NewEmptyObjectType()
+		return exprlang.NewEmptyObjectType()
 	}
 
 	// When the action run at this step is a popular action, we know what outputs are set by it.
@@ -400,31 +397,31 @@ func (rule *RuleExpression) getActionOutputsType(spec *String) *ObjectType {
 		return typeOfActionOutputs(meta)
 	}
 
-	return NewMapObjectType(StringType{})
+	return exprlang.NewMapObjectType(exprlang.StringType{})
 }
 
-func (rule *RuleExpression) getWorkflowCallOutputsType(call *WorkflowCall) *ObjectType {
+func (rule *RuleExpression) getWorkflowCallOutputsType(call *workflowlang.WorkflowCall) *exprlang.ObjectType {
 	if call.Uses == nil {
-		return NewMapObjectType(StringType{})
+		return exprlang.NewMapObjectType(exprlang.StringType{})
 	}
 
 	m, err := rule.localWorkflows.findMetadataForCall(call.Uses.Value)
 	if err != nil {
 		rule.Error(call.Uses.Pos, err.Error())
-		return NewMapObjectType(StringType{})
+		return exprlang.NewMapObjectType(exprlang.StringType{})
 	}
 	if m == nil {
-		return NewMapObjectType(StringType{})
+		return exprlang.NewMapObjectType(exprlang.StringType{})
 	}
 
-	p := make(map[string]ExprType, len(m.Outputs))
+	p := make(map[string]exprlang.Type, len(m.Outputs))
 	for n := range m.Outputs {
-		p[n] = StringType{}
+		p[n] = exprlang.StringType{}
 	}
-	return NewStrictObjectType(p)
+	return exprlang.NewStrictObjectType(p)
 }
 
-func (rule *RuleExpression) checkOneExpression(s *String, what, workflowKey string) ExprType {
+func (rule *RuleExpression) checkOneExpression(s *workflowlang.String, what, workflowKey string) exprlang.Type {
 	// checkString is not available since it checks types for embedding values into a string
 	if s == nil {
 		return nil
@@ -441,18 +438,18 @@ func (rule *RuleExpression) checkOneExpression(s *String, what, workflowKey stri
 		return nil
 	}
 
-	if value, known := workflowExpressionLiteral(s); known {
-		return typeOfJSONValue(value)
+	if value, known := workflowlang.WorkflowExpressionLiteral(s); known {
+		return exprlang.TypeOfJSONValue(value)
 	}
 	return ts[0].ty
 }
 
-func (rule *RuleExpression) checkObjectTy(ty ExprType, pos *Pos, what string) ExprType {
+func (rule *RuleExpression) checkObjectTy(ty exprlang.Type, pos *workflowlang.Pos, what string) exprlang.Type {
 	if ty == nil {
 		return nil
 	}
 	switch ty.(type) {
-	case *ObjectType, AnyType:
+	case *exprlang.ObjectType, exprlang.AnyType:
 		return ty
 	default:
 		rule.Errorf(pos, "type of expression at %q must be object but found type %s", what, ty.String())
@@ -460,12 +457,12 @@ func (rule *RuleExpression) checkObjectTy(ty ExprType, pos *Pos, what string) Ex
 	}
 }
 
-func (rule *RuleExpression) checkArrayTy(ty ExprType, pos *Pos, what string) ExprType {
+func (rule *RuleExpression) checkArrayTy(ty exprlang.Type, pos *workflowlang.Pos, what string) exprlang.Type {
 	if ty == nil {
 		return nil
 	}
 	switch ty.(type) {
-	case *ArrayType, AnyType:
+	case *exprlang.ArrayType, exprlang.AnyType:
 		return ty
 	default:
 		rule.Errorf(pos, "type of expression at %q must be array but found type %s", what, ty.String())
@@ -473,12 +470,12 @@ func (rule *RuleExpression) checkArrayTy(ty ExprType, pos *Pos, what string) Exp
 	}
 }
 
-func (rule *RuleExpression) checkNumberTy(ty ExprType, pos *Pos, what string) ExprType {
+func (rule *RuleExpression) checkNumberTy(ty exprlang.Type, pos *workflowlang.Pos, what string) exprlang.Type {
 	if ty == nil {
 		return nil
 	}
 	switch ty.(type) {
-	case NumberType, AnyType:
+	case exprlang.NumberType, exprlang.AnyType:
 		return ty
 	default:
 		rule.Errorf(pos, "type of expression at %q must be number but found type %s", what, ty.String())
@@ -486,7 +483,7 @@ func (rule *RuleExpression) checkNumberTy(ty ExprType, pos *Pos, what string) Ex
 	}
 }
 
-func (rule *RuleExpression) checkObjectExpression(s *String, what, workflowKey string) ExprType {
+func (rule *RuleExpression) checkObjectExpression(s *workflowlang.String, what, workflowKey string) exprlang.Type {
 	ty := rule.checkOneExpression(s, what, workflowKey)
 	if ty == nil {
 		return nil
@@ -494,7 +491,7 @@ func (rule *RuleExpression) checkObjectExpression(s *String, what, workflowKey s
 	return rule.checkObjectTy(ty, s.Pos, what)
 }
 
-func (rule *RuleExpression) checkArrayExpression(s *String, what, workflowKey string) ExprType {
+func (rule *RuleExpression) checkArrayExpression(s *workflowlang.String, what, workflowKey string) exprlang.Type {
 	ty := rule.checkOneExpression(s, what, workflowKey)
 	if ty == nil {
 		return nil
@@ -502,7 +499,7 @@ func (rule *RuleExpression) checkArrayExpression(s *String, what, workflowKey st
 	return rule.checkArrayTy(ty, s.Pos, what)
 }
 
-func (rule *RuleExpression) checkNumberExpression(s *String, what, workflowKey string) {
+func (rule *RuleExpression) checkNumberExpression(s *workflowlang.String, what, workflowKey string) {
 	ty := rule.checkOneExpression(s, what, workflowKey)
 	if ty == nil {
 		return
@@ -510,31 +507,35 @@ func (rule *RuleExpression) checkNumberExpression(s *String, what, workflowKey s
 	rule.checkNumberTy(ty, s.Pos, what)
 }
 
-func (rule *RuleExpression) checkActionInputs(inputs *mapping.Inputs[*String], uses *String) {
+func (rule *RuleExpression) checkActionInputs(inputs *mapping.Inputs[*workflowlang.String], uses *workflowlang.String) {
 	const key = "jobs.<job_id>.steps.with"
 	var action string
 	if uses != nil {
 		action = uses.Value
 	}
-	inputResolver.Check(inputs, action, mapping.Checks[*String]{
-		Mapping: func(source *String) { rule.checkWorkflowExpression(source, "with", key, workflowStringMap) },
-		String:  func(source *String) { rule.checkString(source, key) },
-		Script:  func(source *String) { rule.checkScriptString(source, key) },
+	workflowlang.InputResolver.Check(inputs, action, mapping.Checks[*workflowlang.String]{
+		Mapping: func(source *workflowlang.String) {
+			rule.checkWorkflowExpression(source, "with", key, workflowStringMap)
+		},
+		String: func(source *workflowlang.String) { rule.checkString(source, key) },
+		Script: func(source *workflowlang.String) { rule.checkScriptString(source, key) },
 	})
 }
 
-func (rule *RuleExpression) checkEnv(env *Env, workflowKey string) {
+func (rule *RuleExpression) checkEnv(env *workflowlang.Env, workflowKey string) {
 	if env == nil {
 		return
 	}
 
-	inputResolver.Check(envMappingView(env), "", mapping.Checks[*String]{
-		Mapping: func(source *String) { rule.checkWorkflowExpression(source, "env", workflowKey, workflowStringMap) },
-		String:  func(source *String) { rule.checkString(source, workflowKey) },
+	workflowlang.InputResolver.Check(workflowlang.EnvMappingView(env), "", mapping.Checks[*workflowlang.String]{
+		Mapping: func(source *workflowlang.String) {
+			rule.checkWorkflowExpression(source, "env", workflowKey, workflowStringMap)
+		},
+		String: func(source *workflowlang.String) { rule.checkString(source, workflowKey) },
 	})
 }
 
-func (rule *RuleExpression) checkContainer(c *Container, workflowKey, childWorkflowKeyPrefix string) {
+func (rule *RuleExpression) checkContainer(c *workflowlang.Container, workflowKey, childWorkflowKeyPrefix string) {
 	if c == nil {
 		return
 	}
@@ -563,7 +564,7 @@ func (rule *RuleExpression) checkContainer(c *Container, workflowKey, childWorkf
 	rule.checkString(c.Entrypoint, workflowKey)
 }
 
-func (rule *RuleExpression) checkConcurrency(c *Concurrency, workflowKey string) {
+func (rule *RuleExpression) checkConcurrency(c *workflowlang.Concurrency, workflowKey string) {
 	if c == nil {
 		return
 	}
@@ -593,18 +594,18 @@ func (rule *RuleExpression) checkConcurrency(c *Concurrency, workflowKey string)
 	}
 	var queue any = c.Queue.Value
 	if c.Queue.ContainsExpression() {
-		queue, _ = workflowExpressionLiteral(c.Queue)
+		queue, _ = workflowlang.WorkflowExpressionLiteral(c.Queue)
 	}
 	var cancel any = c.CancelInProgress.Value
 	if c.CancelInProgress.Expression != nil {
-		cancel, _ = workflowExpressionLiteral(c.CancelInProgress.Expression)
+		cancel, _ = workflowlang.WorkflowExpressionLiteral(c.CancelInProgress.Expression)
 	}
 	if queue == "max" && cancel == true {
 		rule.Error(c.Queue.Pos, `"queue: max" cannot be combined with "cancel-in-progress: true" in "concurrency" section`)
 	}
 }
 
-func (rule *RuleExpression) checkDefaults(d *Defaults, workflowKey string) {
+func (rule *RuleExpression) checkDefaults(d *workflowlang.Defaults, workflowKey string) {
 	if d == nil || d.Run == nil {
 		return
 	}
@@ -613,7 +614,7 @@ func (rule *RuleExpression) checkDefaults(d *Defaults, workflowKey string) {
 	rule.checkString(d.Run.WorkingDirectory, workflowKey)
 }
 
-func (rule *RuleExpression) checkWorkflowCall(c *WorkflowCall) {
+func (rule *RuleExpression) checkWorkflowCall(c *workflowlang.WorkflowCall) {
 	if c == nil || c.Uses == nil {
 		return
 	}
@@ -636,23 +637,23 @@ func (rule *RuleExpression) checkWorkflowCall(c *WorkflowCall) {
 		if !ok || mi == nil {
 			continue
 		}
-		if _, ok := mi.Type.(AnyType); ok {
+		if _, ok := mi.Type.(exprlang.AnyType); ok {
 			continue
 		}
 
 		v := strings.TrimSpace(i.Value.Value)
 
-		var ty ExprType = StringType{}
+		var ty exprlang.Type = exprlang.StringType{}
 		switch len(ts) {
 		case 0:
 			switch v {
 			case "null":
-				ty = NullType{}
+				ty = exprlang.NullType{}
 			case "true", "false":
-				ty = BoolType{}
+				ty = exprlang.BoolType{}
 			default:
 				if _, err := strconv.ParseFloat(v, 64); err == nil {
-					ty = NumberType{}
+					ty = exprlang.NumberType{}
 				}
 			}
 		case 1:
@@ -678,13 +679,13 @@ func (rule *RuleExpression) checkWorkflowCall(c *WorkflowCall) {
 	}
 }
 
-func (rule *RuleExpression) checkSnapshot(s *Snapshot) {
+func (rule *RuleExpression) checkSnapshot(s *workflowlang.Snapshot) {
 	if s == nil {
 		return
 	}
 	rule.checkWorkflowExpression(s.Expression, "snapshot", "jobs.<job_id>.snapshot", workflowSnapshot)
 	for _, field := range []struct {
-		value *String
+		value *workflowlang.String
 		name  string
 	}{{s.ImageName, "image-name"}, {s.Version, "version"}} {
 		if field.value != nil && field.value.IsExpressionAssigned() {
@@ -696,20 +697,20 @@ func (rule *RuleExpression) checkSnapshot(s *Snapshot) {
 	rule.checkIfCondition(s.If, "jobs.<job_id>.snapshot.if")
 }
 
-func (rule *RuleExpression) checkWebhookEventFilter(f *WebhookEventFilter) {
+func (rule *RuleExpression) checkWebhookEventFilter(f *workflowlang.WebhookEventFilter) {
 	if f == nil {
 		return
 	}
 	rule.checkStrings(f.Values, "")
 }
 
-func (rule *RuleExpression) checkStrings(ss []*String, workflowKey string) {
+func (rule *RuleExpression) checkStrings(ss []*workflowlang.String, workflowKey string) {
 	for _, s := range ss {
 		rule.checkString(s, workflowKey)
 	}
 }
 
-func (rule *RuleExpression) checkIfCondition(str *String, workflowKey string) {
+func (rule *RuleExpression) checkIfCondition(str *workflowlang.String, workflowKey string) {
 	if str == nil {
 		return
 	}
@@ -736,11 +737,11 @@ func (rule *RuleExpression) checkIfCondition(str *String, workflowKey string) {
 	// - run: echo 'not run'
 	//   if: true && false
 
-	var condTy ExprType
+	var condTy exprlang.Type
 	restore := rule.scopeExpressionSource(str.Value, str.Pos)
 	defer restore()
-	expr, err, offset := parseConditionExpression(str.Value)
-	if conditionSource(str.Value) != str.Value && offset == 0 {
+	expr, err, offset := exprlang.ParseConditionExpression(str.Value)
+	if exprlang.ConditionSource(str.Value) != str.Value && offset == 0 {
 		rule.expressionSource = nil
 	}
 	rule.expressionOffset = offset
@@ -760,7 +761,7 @@ func (rule *RuleExpression) checkIfCondition(str *String, workflowKey string) {
 		condTy = ty
 	}
 
-	if condTy != nil && !(BoolType{}).Assignable(condTy) {
+	if condTy != nil && !(exprlang.BoolType{}).Assignable(condTy) {
 		rule.Errorf(str.Pos, "\"if\" condition should be type \"bool\" but got type %q", condTy.String())
 	}
 }
@@ -768,13 +769,13 @@ func (rule *RuleExpression) checkIfCondition(str *String, workflowKey string) {
 func (rule *RuleExpression) checkTemplateEvaluatedType(ts []typedExpr) {
 	for _, t := range ts {
 		switch t.ty.(type) {
-		case *ObjectType, *ArrayType, NullType:
+		case *exprlang.ObjectType, *exprlang.ArrayType, exprlang.NullType:
 			rule.Errorf(&t.pos, "object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type %s", t.ty)
 		}
 	}
 }
 
-func (rule *RuleExpression) checkString(str *String, workflowKey string) []typedExpr {
+func (rule *RuleExpression) checkString(str *workflowlang.String, workflowKey string) []typedExpr {
 	if str == nil {
 		return nil
 	}
@@ -794,7 +795,7 @@ func (rule *RuleExpression) checkString(str *String, workflowKey string) []typed
 	return ts
 }
 
-func (rule *RuleExpression) checkScriptString(str *String, workflowKey string) {
+func (rule *RuleExpression) checkScriptString(str *workflowlang.String, workflowKey string) {
 	if str == nil {
 		return
 	}
@@ -807,7 +808,7 @@ func (rule *RuleExpression) checkScriptString(str *String, workflowKey string) {
 	rule.checkTemplateEvaluatedType(ts)
 }
 
-func (rule *RuleExpression) checkBool(b *Bool, workflowKey string) {
+func (rule *RuleExpression) checkBool(b *workflowlang.Bool, workflowKey string) {
 	if b == nil || b.Expression == nil {
 		return
 	}
@@ -818,14 +819,14 @@ func (rule *RuleExpression) checkBool(b *Bool, workflowKey string) {
 	}
 
 	switch ty.(type) {
-	case BoolType, AnyType:
+	case exprlang.BoolType, exprlang.AnyType:
 		// ok
 	default:
 		rule.Errorf(b.Expression.Pos, "type of expression must be bool but found type %s", ty.String())
 	}
 }
 
-func (rule *RuleExpression) checkMaxParallel(i *Int, workflowKey string) {
+func (rule *RuleExpression) checkMaxParallel(i *workflowlang.Int, workflowKey string) {
 	if i == nil || i.Expression == nil {
 		return
 	}
@@ -833,21 +834,21 @@ func (rule *RuleExpression) checkMaxParallel(i *Int, workflowKey string) {
 	if rule.checkNumberTy(ty, i.Expression.Pos, "integer value") == nil {
 		return
 	}
-	if value, known := workflowExpressionLiteral(i.Expression); known {
+	if value, known := workflowlang.WorkflowExpressionLiteral(i.Expression); known {
 		for _, message := range workflowExpressionLiteralErrors(workflowPositive, value, "max-parallel") {
 			rule.Error(i.Expression.Pos, message)
 		}
 	}
 }
 
-func (rule *RuleExpression) checkFloat(f *Float, workflowKey string) {
+func (rule *RuleExpression) checkFloat(f *workflowlang.Float, workflowKey string) {
 	if f == nil {
 		return
 	}
 	rule.checkNumberExpression(f.Expression, "float number value", workflowKey)
 }
 
-func (rule *RuleExpression) checkExprsIn(s string, pos *Pos, quoted, checkUntrusted bool, workflowKey string) ([]typedExpr, bool) {
+func (rule *RuleExpression) checkExprsIn(s string, pos *workflowlang.Pos, quoted, checkUntrusted bool, workflowKey string) ([]typedExpr, bool) {
 	restore := rule.scopeExpressionSource(s, pos)
 	defer restore()
 
@@ -880,7 +881,7 @@ func (rule *RuleExpression) checkExprsIn(s string, pos *Pos, quoted, checkUntrus
 		if ty == nil || offsetAfter == 0 {
 			return nil, true
 		}
-		position := Pos{line, col - 3}
+		position := workflowlang.Pos{Line: line, Col: col - 3}
 		if mapped := rule.expressionPosition(offset-3, false); mapped != nil {
 			position = *mapped
 		}
@@ -893,14 +894,14 @@ func (rule *RuleExpression) checkExprsIn(s string, pos *Pos, quoted, checkUntrus
 	return ts, valid
 }
 
-func (rule *RuleExpression) exprError(err *ExprError, lineBase, colBase int) {
+func (rule *RuleExpression) exprError(err *exprlang.Error, lineBase, colBase int) {
 	pos := convertExprLineColToPos(err.Line, err.Column, lineBase, colBase)
-	var end *Pos
+	var end *workflowlang.Pos
 	if mapped := rule.expressionPosition(rule.expressionOffset+err.Offset, false); mapped != nil {
 		pos = mapped
 		end = rule.expressionPosition(rule.expressionOffset+err.EndOffset, true)
 	}
-	kind := err.rule
+	kind := err.Rule
 	if kind == "" {
 		kind = rule.Name()
 	}
@@ -909,8 +910,8 @@ func (rule *RuleExpression) exprError(err *ExprError, lineBase, colBase int) {
 	rule.errs = append(rule.errs, diagnostic)
 }
 
-func (rule *RuleExpression) checkSemanticsOfExprNode(expr ExprNode, line, col int, checkUntrusted bool, workflowKey string) (ExprType, bool) {
-	c := NewExprSemanticsChecker(checkUntrusted, rule.config)
+func (rule *RuleExpression) checkSemanticsOfExprNode(expr exprlang.Node, line, col int, checkUntrusted bool, workflowKey string) (exprlang.Type, bool) {
+	c := exprlang.NewChecker(checkUntrusted, expressionOptionsFromConfig(rule.config))
 	if rule.matrixTy != nil {
 		c.UpdateMatrix(rule.matrixTy)
 	}
@@ -933,7 +934,7 @@ func (rule *RuleExpression) checkSemanticsOfExprNode(expr ExprNode, line, col in
 		c.UpdateJobs(rule.jobsTy)
 	}
 	if workflowKey != "" {
-		ctx, _ := WorkflowKeyAvailability(workflowKey)
+		ctx, _ := workflowcontext.WorkflowKeyAvailability(workflowKey)
 		if len(ctx) == 0 {
 			rule.Debug("No context availability was found for workflow key %q", workflowKey)
 		}
@@ -945,11 +946,13 @@ func (rule *RuleExpression) checkSemanticsOfExprNode(expr ExprNode, line, col in
 		rule.exprError(err, line, col)
 	}
 	if rule.config.diagnosticLevel("unsound-ternary") != "off" {
-		rule.checkUnsoundTernaries(expr, line, col)
+		for _, finding := range exprlang.CheckUnsoundTernaries(expr) {
+			rule.exprError(finding, line, col)
+		}
 	}
 	if workflowKey == "" && len(errs) == 0 {
-		if _, literal := expr.(*StringNode); !literal {
-			position := &Pos{Line: line, Col: col}
+		if _, literal := expr.(*exprlang.StringNode); !literal {
+			position := &workflowlang.Pos{Line: line, Col: col}
 			if mapped := rule.expressionPosition(rule.expressionOffset, false); mapped != nil {
 				position = mapped
 			}
@@ -961,9 +964,9 @@ func (rule *RuleExpression) checkSemanticsOfExprNode(expr ExprNode, line, col in
 	return ty, len(errs) == 0
 }
 
-func (rule *RuleExpression) checkSemantics(src string, line, col int, checkUntrusted bool, workflowKey string) (ExprType, int, bool) {
-	l := NewExprLexer(src)
-	p := NewExprParser()
+func (rule *RuleExpression) checkSemantics(src string, line, col int, checkUntrusted bool, workflowKey string) (exprlang.Type, int, bool) {
+	l := exprlang.NewLexer(src)
+	p := exprlang.NewParser()
 	expr, err := p.Parse(l)
 	if err != nil {
 		rule.exprError(err, line, col)
@@ -973,14 +976,14 @@ func (rule *RuleExpression) checkSemantics(src string, line, col int, checkUntru
 	return t, l.Offset(), ok
 }
 
-func (rule *RuleExpression) calcNeedsType(job *Job) *ObjectType {
+func (rule *RuleExpression) calcNeedsType(job *workflowlang.Job) *exprlang.ObjectType {
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#needs-context
-	o := NewEmptyStrictObjectType()
+	o := exprlang.NewEmptyStrictObjectType()
 	rule.populateDependantNeedsTypes(o, job, job)
 	return o
 }
 
-func (rule *RuleExpression) populateDependantNeedsTypes(out *ObjectType, job *Job, root *Job) {
+func (rule *RuleExpression) populateDependantNeedsTypes(out *exprlang.ObjectType, job *workflowlang.Job, root *workflowlang.Job) {
 	for _, id := range job.Needs {
 		i := strings.ToLower(id.Value) // ID is case insensitive
 		if i == root.ID.Value {
@@ -995,45 +998,45 @@ func (rule *RuleExpression) populateDependantNeedsTypes(out *ObjectType, job *Jo
 			continue
 		}
 
-		var outputs *ObjectType
+		var outputs *exprlang.ObjectType
 		if j.WorkflowCall == nil {
-			outputs = NewEmptyStrictObjectType()
+			outputs = exprlang.NewEmptyStrictObjectType()
 			for name := range j.Outputs {
-				outputs.Props[name] = StringType{}
+				outputs.Props[name] = exprlang.StringType{}
 			}
 		} else {
 			outputs = rule.getWorkflowCallOutputsType(j.WorkflowCall)
 		}
 
-		out.Props[i] = NewStrictObjectType(map[string]ExprType{
+		out.Props[i] = exprlang.NewStrictObjectType(map[string]exprlang.Type{
 			"outputs": outputs,
-			"result":  StringType{},
+			"result":  exprlang.StringType{},
 		})
 
 		// Do not collect outputs type from parent of parent recursively. (#151)
 	}
 }
 
-func (rule *RuleExpression) checkMatrixExpression(expr *String) *ObjectType {
+func (rule *RuleExpression) checkMatrixExpression(expr *workflowlang.String) *exprlang.ObjectType {
 	ty := rule.checkObjectExpression(expr, "matrix", "jobs.<job_id>.strategy")
 	return matrixTypeFromExpression(ty)
 }
 
-func (rule *RuleExpression) checkMatrix(m *Matrix) *ObjectType {
+func (rule *RuleExpression) checkMatrix(m *workflowlang.Matrix) *exprlang.ObjectType {
 	if m.Expression != nil {
 		return rule.checkMatrixExpression(m.Expression)
 	}
 
-	for _, filters := range []*MatrixCombinations{m.Include, m.Exclude} {
+	for _, filters := range []*workflowlang.MatrixCombinations{m.Include, m.Exclude} {
 		if filters != nil {
-			mapping.CheckSourceKey(filters.Name, filters.evaluated, func(source *String) { rule.checkString(source, "jobs.<job_id>.strategy") })
+			mapping.CheckSourceKey(filters.Name, filters.Evaluated, func(source *workflowlang.String) { rule.checkString(source, "jobs.<job_id>.strategy") })
 		}
 	}
 
 	// Check types of "exclude" but they are not used to guess type of matrix
 	if m.Exclude != nil {
 		if m.Exclude.Expression != nil {
-			if ty, ok := rule.checkArrayExpression(m.Exclude.Expression, "exclude", "jobs.<job_id>.strategy").(*ArrayType); ok {
+			if ty, ok := rule.checkArrayExpression(m.Exclude.Expression, "exclude", "jobs.<job_id>.strategy").(*exprlang.ArrayType); ok {
 				rule.checkObjectTy(ty.Elem, m.Exclude.Expression.Pos, "exclude")
 			}
 		} else {
@@ -1043,23 +1046,23 @@ func (rule *RuleExpression) checkMatrix(m *Matrix) *ObjectType {
 					continue
 				}
 				for _, a := range combi.Assigns {
-					mapping.CheckSourceKey(a.Key, combi.evaluated, func(source *String) { rule.checkString(source, "jobs.<job_id>.strategy") })
+					mapping.CheckSourceKey(a.Key, combi.Evaluated, func(source *workflowlang.String) { rule.checkString(source, "jobs.<job_id>.strategy") })
 					rule.checkRawYAMLValue(a.Value)
 				}
 			}
 		}
 	}
 
-	o := NewEmptyStrictObjectType()
+	o := exprlang.NewEmptyStrictObjectType()
 	for _, insertion := range m.Insertions {
-		var inserted *ObjectType
+		var inserted *exprlang.ObjectType
 		if insertion.Expression != nil {
 			ty := rule.checkWorkflowExpression(insertion.Expression, "matrix insertion", "jobs.<job_id>.strategy", workflowStrategy.props["matrix"])
 			inserted = matrixTypeFromExpression(ty)
 		} else {
 			inserted = rule.checkMatrix(insertion)
 		}
-		if merged, ok := o.Merge(inserted).(*ObjectType); ok {
+		if merged, ok := o.Merge(inserted).(*exprlang.ObjectType); ok {
 			o = merged
 		} else {
 			o.Loose()
@@ -1079,12 +1082,12 @@ func (rule *RuleExpression) checkMatrix(m *Matrix) *ObjectType {
 	}
 
 	if m.Include.Expression != nil {
-		if a, ok := rule.checkOneExpression(m.Include.Expression, "include", "jobs.<job_id>.strategy").(*ArrayType); ok {
-			if ret, ok := o.Merge(a.Elem).(*ObjectType); ok {
+		if a, ok := rule.checkOneExpression(m.Include.Expression, "include", "jobs.<job_id>.strategy").(*exprlang.ArrayType); ok {
+			if ret, ok := o.Merge(a.Elem).(*exprlang.ObjectType); ok {
 				return ret
 			}
 		}
-		return NewEmptyObjectType()
+		return exprlang.NewEmptyObjectType()
 	}
 
 	for _, combi := range m.Include.Combinations {
@@ -1093,7 +1096,7 @@ func (rule *RuleExpression) checkMatrix(m *Matrix) *ObjectType {
 			if ty == nil {
 				continue
 			}
-			if merged, ok := o.Merge(ty).(*ObjectType); ok {
+			if merged, ok := o.Merge(ty).(*exprlang.ObjectType); ok {
 				o = merged
 			} else {
 				o.Loose()
@@ -1102,8 +1105,8 @@ func (rule *RuleExpression) checkMatrix(m *Matrix) *ObjectType {
 		}
 
 		for n, assign := range combi.Assigns {
-			mapping.CheckSourceKey(assign.Key, combi.evaluated, func(source *String) { rule.checkString(source, "jobs.<job_id>.strategy") })
-			key := inputResolver.ResolveKey(assign.Key, combi.evaluated)
+			mapping.CheckSourceKey(assign.Key, combi.Evaluated, func(source *workflowlang.String) { rule.checkString(source, "jobs.<job_id>.strategy") })
+			key := workflowlang.InputResolver.ResolveKey(assign.Key, combi.Evaluated)
 			if key.State == mapping.KnownKey {
 				n = strings.ToLower(key.Name.Value)
 			} else {
@@ -1123,18 +1126,18 @@ func (rule *RuleExpression) checkMatrix(m *Matrix) *ObjectType {
 	return o
 }
 
-func (rule *RuleExpression) checkMatrixRow(r *MatrixRow) ExprType {
-	mapping.CheckSourceKey(r.Name, r.evaluated, func(source *String) {
+func (rule *RuleExpression) checkMatrixRow(r *workflowlang.MatrixRow) exprlang.Type {
+	mapping.CheckSourceKey(r.Name, r.Evaluated, func(source *workflowlang.String) {
 		rule.checkString(source, "jobs.<job_id>.strategy")
 	})
 	if r.Expression != nil {
-		if a, ok := rule.checkArrayExpression(r.Expression, "matrix row", "jobs.<job_id>.strategy").(*ArrayType); ok {
+		if a, ok := rule.checkArrayExpression(r.Expression, "matrix row", "jobs.<job_id>.strategy").(*exprlang.ArrayType); ok {
 			return a.Elem
 		}
-		return AnyType{}
+		return exprlang.AnyType{}
 	}
 
-	var ty ExprType
+	var ty exprlang.Type
 	for _, v := range r.Values {
 		t := rule.checkMatrixSequenceItem(v)
 		if t == nil {
@@ -1148,23 +1151,23 @@ func (rule *RuleExpression) checkMatrixRow(r *MatrixRow) ExprType {
 	}
 
 	if ty == nil {
-		return AnyType{} // No element
+		return exprlang.AnyType{} // No element
 	}
 
 	return ty
 }
 
-func (rule *RuleExpression) checkMatrixCombinationExpression(s *String, section string) ExprType {
+func (rule *RuleExpression) checkMatrixCombinationExpression(s *workflowlang.String, section string) exprlang.Type {
 	ty := rule.checkOneExpression(s, "matrix combination at element of "+section+" section", "jobs.<job_id>.strategy")
-	if array, ok := ty.(*ArrayType); ok {
-		if value, known := workflowExpressionLiteral(s); known {
+	if array, ok := ty.(*exprlang.ArrayType); ok {
+		if value, known := workflowlang.WorkflowExpressionLiteral(s); known {
 			if values, ok := value.([]any); ok {
 				// Merging object and scalar element types produces AnyType, so
 				// validate each known value before using the inferred element type.
 				invalid := false
 				for i, value := range values {
 					if _, ok := value.(map[string]any); !ok {
-						rule.Errorf(s.Pos, "matrix combination in %s at inserted array index %d must be an object but got %s", section, i, typeOfJSONValue(value))
+						rule.Errorf(s.Pos, "matrix combination in %s at inserted array index %d must be an object but got %s", section, i, exprlang.TypeOfJSONValue(value))
 						invalid = true
 					}
 				}
@@ -1176,7 +1179,7 @@ func (rule *RuleExpression) checkMatrixCombinationExpression(s *String, section 
 		ty = array.Elem
 	}
 	switch ty.(type) {
-	case nil, AnyType, *ObjectType:
+	case nil, exprlang.AnyType, *exprlang.ObjectType:
 		return ty
 	default:
 		rule.Errorf(s.Pos, "matrix combination in %s must be an object or an array of objects but got %s", section, ty)
@@ -1184,11 +1187,11 @@ func (rule *RuleExpression) checkMatrixCombinationExpression(s *String, section 
 	}
 }
 
-func (rule *RuleExpression) checkMatrixSequenceItem(value RawYAMLValue) ExprType {
+func (rule *RuleExpression) checkMatrixSequenceItem(value workflowlang.RawYAMLValue) exprlang.Type {
 	ty := rule.checkRawYAMLValue(value)
-	if scalar, ok := value.(*RawYAMLString); ok && parseAssignedExpression(scalar.Value) != nil {
-		if array, ok := ty.(*ArrayType); ok {
-			if literal, known := workflowExpressionLiteral(&String{Value: scalar.Value}); known {
+	if scalar, ok := value.(*workflowlang.RawYAMLString); ok && exprlang.ParseAssignedExpression(scalar.Value) != nil {
+		if array, ok := ty.(*exprlang.ArrayType); ok {
+			if literal, known := workflowlang.WorkflowExpressionLiteral(&workflowlang.String{Value: scalar.Value}); known {
 				if values, ok := literal.([]any); ok && len(values) == 0 {
 					return nil
 				}
@@ -1199,46 +1202,46 @@ func (rule *RuleExpression) checkMatrixSequenceItem(value RawYAMLValue) ExprType
 	return ty
 }
 
-func (rule *RuleExpression) checkWorkflowCallOutputs(outputs map[string]*WorkflowCallEventOutput, jobs map[string]*Job) {
+func (rule *RuleExpression) checkWorkflowCallOutputs(outputs map[string]*workflowlang.WorkflowCallEventOutput, jobs map[string]*workflowlang.Job) {
 	if len(outputs) == 0 || len(jobs) == 0 {
 		return
 	}
 
-	props := make(map[string]ExprType, len(jobs))
+	props := make(map[string]exprlang.Type, len(jobs))
 	for n, j := range jobs {
-		var o *ObjectType
+		var o *exprlang.ObjectType
 		if j.WorkflowCall != nil {
 			// Outputs are not defined in jobs.<job_id> section when it is reusable workflow call.
-			o = NewEmptyObjectType()
+			o = exprlang.NewEmptyObjectType()
 		} else {
-			p := make(map[string]ExprType, len(j.Outputs))
+			p := make(map[string]exprlang.Type, len(j.Outputs))
 			for n := range j.Outputs {
-				p[n] = StringType{}
+				p[n] = exprlang.StringType{}
 			}
-			o = NewStrictObjectType(p)
+			o = exprlang.NewStrictObjectType(p)
 		}
-		props[n] = NewStrictObjectType(map[string]ExprType{
+		props[n] = exprlang.NewStrictObjectType(map[string]exprlang.Type{
 			"outputs": o,
-			"result":  StringType{},
+			"result":  exprlang.StringType{},
 		})
 	}
-	rule.jobsTy = NewStrictObjectType(props)
+	rule.jobsTy = exprlang.NewStrictObjectType(props)
 
 	for _, o := range outputs {
 		rule.checkString(o.Value, "on.workflow_call.outputs.<output_id>.value")
 	}
 }
 
-func (rule *RuleExpression) checkRawYAMLValue(v RawYAMLValue) ExprType {
+func (rule *RuleExpression) checkRawYAMLValue(v workflowlang.RawYAMLValue) exprlang.Type {
 	switch v := v.(type) {
-	case *RawYAMLObject:
-		m := make(map[string]ExprType, len(v.Props))
+	case *workflowlang.RawYAMLObject:
+		m := make(map[string]exprlang.Type, len(v.Props))
 		for k, p := range v.Props {
 			m[k] = rule.checkRawYAMLValue(p)
 		}
-		return NewStrictObjectType(m)
-	case *RawYAMLArray:
-		var elem ExprType
+		return exprlang.NewStrictObjectType(m)
+	case *workflowlang.RawYAMLArray:
+		var elem exprlang.Type
 		for _, value := range v.Elems {
 			if ty := rule.checkMatrixSequenceItem(value); ty != nil {
 				if elem == nil {
@@ -1249,99 +1252,75 @@ func (rule *RuleExpression) checkRawYAMLValue(v RawYAMLValue) ExprType {
 			}
 		}
 		if elem == nil {
-			elem = AnyType{}
+			elem = exprlang.AnyType{}
 		}
-		return &ArrayType{elem, false}
-	case *RawYAMLString:
+		return &exprlang.ArrayType{Elem: elem, Deref: false}
+	case *workflowlang.RawYAMLString:
 		return rule.checkRawYAMLString(v)
 	default:
 		panic("unreachable")
 	}
 }
 
-func (rule *RuleExpression) checkRawYAMLString(y *RawYAMLString) ExprType {
+func (rule *RuleExpression) checkRawYAMLString(y *workflowlang.RawYAMLString) exprlang.Type {
 	ts, ok := rule.checkExprsIn(y.Value, y.Pos(), false, false, "jobs.<job_id>.strategy")
 
-	if isExprAssigned(y.Value) {
+	if workflowlang.IsExprAssigned(y.Value) {
 		if !ok || len(ts) != 1 {
-			return AnyType{}
+			return exprlang.AnyType{}
 		}
-		if value, known := workflowExpressionLiteral(&String{Value: y.Value}); known {
-			return typeOfJSONValue(value)
+		if value, known := workflowlang.WorkflowExpressionLiteral(&workflowlang.String{Value: y.Value}); known {
+			return exprlang.TypeOfJSONValue(value)
 		}
 		return ts[0].ty
 	}
 
 	switch y.Tag {
-	case yamlTagBool:
-		if isCoreSchemaBool(y.Value) {
-			return BoolType{}
+	case workflowlang.YamlTagBool:
+		if yamlscalar.IsCoreSchemaBool(y.Value) {
+			return exprlang.BoolType{}
 		}
-	case yamlTagNull:
-		if isCoreSchemaNull(y.Value) {
-			return NullType{}
+	case workflowlang.YamlTagNull:
+		if yamlscalar.IsCoreSchemaNull(y.Value) {
+			return exprlang.NullType{}
 		}
-	case yamlTagInt, yamlTagFloat:
-		if isCoreSchemaNumber(y.Value) {
-			return NumberType{}
+	case workflowlang.YamlTagInt, workflowlang.YamlTagFloat:
+		if yamlscalar.IsCoreSchemaNumber(y.Value) {
+			return exprlang.NumberType{}
 		}
 	}
-	return StringType{}
+	return exprlang.StringType{}
 }
 
-// The bool, null, integer and float productions of the YAML 1.2 core schema, as GitHub implements them.
-// https://github.com/actions/runner/blob/258d6c857db3519913f7deb6004b60172f8043ae/src/Sdk/WorkflowParser/Conversion/YamlObjectReader.cs#L474-L717
-func isCoreSchemaBool(s string) bool {
-	switch s {
-	case "true", "True", "TRUE", "false", "False", "FALSE":
-		return true
-	}
-	return false
-}
-
-func isCoreSchemaNull(s string) bool {
-	switch s {
-	case "", "null", "Null", "NULL", "~":
-		return true
-	}
-	return false
-}
-
-func isCoreSchemaInt(s string) bool {
-	return reCoreSchemaInt.MatchString(s)
-}
-
-func isCoreSchemaFloat(s string) bool {
-	switch s {
-	case ".inf", ".Inf", ".INF", "+.inf", "+.Inf", "+.INF", "-.inf", "-.Inf", "-.INF", ".nan", ".NaN", ".NAN":
-		return true
-	}
-	return reCoreSchemaFloat.MatchString(s)
-}
-
-// The YAML library resolves a plain scalar more permissively than the core schema, and the runner
-// matches it against the integer production first and the float production second.
-func isCoreSchemaNumber(s string) bool {
-	return isCoreSchemaInt(s) || isCoreSchemaFloat(s)
-}
-
-func convertExprLineColToPos(line, col, lineBase, colBase int) *Pos {
+func convertExprLineColToPos(line, col, lineBase, colBase int) *workflowlang.Pos {
 	// Line and column in ExprError are 1-based
-	return &Pos{
+	return &workflowlang.Pos{
 		Line: line - 1 + lineBase,
 		Col:  col - 1 + colBase,
 	}
 }
 
-func typeOfActionOutputs(meta *ActionMetadata) *ObjectType {
+func typeOfActionOutputs(meta *ActionMetadata) *exprlang.ObjectType {
 	// Some action sets outputs dynamically. Such outputs are not defined in action.yml. actionlint
 	// cannot check such outputs statically so it allows any props (#18)
 	if meta.SkipOutputs {
-		return NewEmptyObjectType()
+		return exprlang.NewEmptyObjectType()
 	}
-	props := make(map[string]ExprType, len(meta.Outputs))
+	props := make(map[string]exprlang.Type, len(meta.Outputs))
 	for n := range meta.Outputs {
-		props[strings.ToLower(n)] = StringType{}
+		props[strings.ToLower(n)] = exprlang.StringType{}
 	}
-	return NewStrictObjectType(props)
+	return exprlang.NewStrictObjectType(props)
+}
+
+func expressionOptionsFromConfig(config *Config) *exprlang.Options {
+	options := &exprlang.Options{Checks: exprlang.Checks{
+		StringConditions:          config.diagnosticLevel("string-conditions") != "off",
+		MixedTypeComparisons:      config.diagnosticLevel("mixed-type-comparisons") != "off",
+		CaseInsensitiveConditions: config.diagnosticLevel("case-insensitive-conditions") != "off",
+	}}
+	if config != nil {
+		options.Variables, options.Secrets = config.ConfigVariables, config.ConfigSecrets
+	}
+	return options
 }

@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -368,7 +369,7 @@ jobs:
 	if diff := cmp.Diff(fromFile.JobCacheAccess, fromAST.JobCacheAccess); diff != "" {
 		t.Fatal(diff)
 	}
-	for id, want := range map[string]CacheModeKind{"base": CacheModeRead, "alias": CacheModeRead, "save": CacheModeWriteOnly, "none": CacheModeNone, "invalid": CacheModeInvalid, "scalar-alias": CacheModeRead} {
+	for id, want := range map[string]workflowlang.CacheModeKind{"base": workflowlang.CacheModeRead, "alias": workflowlang.CacheModeRead, "save": workflowlang.CacheModeWriteOnly, "none": workflowlang.CacheModeNone, "invalid": workflowlang.CacheModeInvalid, "scalar-alias": workflowlang.CacheModeRead} {
 		if mode := fromFile.JobCacheAccess[id].Mode; mode == nil || mode.Kind != want {
 			t.Errorf("%s: wanted %v, got %v", id, want, mode)
 		}

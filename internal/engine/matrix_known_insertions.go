@@ -1,14 +1,19 @@
 package engine
 
-import "slices"
+import (
+	"slices"
 
-func matrixValueContainsExpression(value RawYAMLValue) bool {
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+)
+
+func matrixValueContainsExpression(value workflowlang.RawYAMLValue) bool {
 	switch value := value.(type) {
-	case *RawYAMLString:
-		return ContainsExpression(value.Value)
-	case *RawYAMLArray:
+	case *workflowlang.RawYAMLString:
+		return exprlang.ContainsExpression(value.Value)
+	case *workflowlang.RawYAMLArray:
 		return slices.ContainsFunc(value.Elems, matrixValueContainsExpression)
-	case *RawYAMLObject:
+	case *workflowlang.RawYAMLObject:
 		for _, item := range value.Props {
 			if matrixValueContainsExpression(item) {
 				return true
@@ -20,11 +25,11 @@ func matrixValueContainsExpression(value RawYAMLValue) bool {
 
 // matrixRowElements retains expression provenance after inserting one array
 // level. Unknown elements leave the row open to additional runtime values.
-func matrixRowElements(row *MatrixRow, expressions bool) ([]matrixFilterElement, bool) {
-	expressions = expressions && !row.evaluated
+func matrixRowElements(row *workflowlang.MatrixRow, expressions bool) ([]matrixFilterElement, bool) {
+	expressions = expressions && !row.Evaluated
 	values := row.Values
 	if row.Expression != nil {
-		literal, known := workflowExpressionLiteral(row.Expression)
+		literal, known := workflowlang.WorkflowExpressionLiteral(row.Expression)
 		if !known {
 			return nil, false
 		}
@@ -40,8 +45,8 @@ func matrixRowElements(row *MatrixRow, expressions bool) ([]matrixFilterElement,
 	var elements []matrixFilterElement
 	complete := true
 	for _, value := range values {
-		if scalar, ok := value.(*RawYAMLString); expressions && ok && ContainsExpression(scalar.Value) {
-			literal, known := workflowExpressionLiteral(&String{Value: scalar.Value, Pos: scalar.Pos()})
+		if scalar, ok := value.(*workflowlang.RawYAMLString); expressions && ok && exprlang.ContainsExpression(scalar.Value) {
+			literal, known := workflowlang.WorkflowExpressionLiteral(&workflowlang.String{Value: scalar.Value, Pos: scalar.Pos()})
 			if known {
 				inserted, ok := literal.([]any)
 				if !ok {
@@ -66,11 +71,11 @@ func matrixRowElements(row *MatrixRow, expressions bool) ([]matrixFilterElement,
 }
 
 type matrixKnownCombination struct {
-	combination *MatrixCombination
+	combination *workflowlang.MatrixCombination
 	expressions bool
 }
 
-func matrixExcludeCombinations(filters *MatrixCombinations, expressions bool) []matrixKnownCombination {
+func matrixExcludeCombinations(filters *workflowlang.MatrixCombinations, expressions bool) []matrixKnownCombination {
 	if filters == nil {
 		return nil
 	}
@@ -88,7 +93,7 @@ func matrixExcludeCombinations(filters *MatrixCombinations, expressions bool) []
 			}
 			continue
 		}
-		combinations = append(combinations, matrixKnownCombination{combination, expressions && !combination.evaluated})
+		combinations = append(combinations, matrixKnownCombination{combination, expressions && !combination.Evaluated})
 	}
 	return combinations
 }

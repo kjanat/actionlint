@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestStructuredRenderRanges(t *testing.T) {
@@ -20,8 +22,10 @@ func TestStructuredRenderRanges(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := []byte("abcde\nfghij\n")
-			finding := &Error{Filepath: "input.yml", Kind: "expression", Message: "bad range", Line: 1, Column: 2,
-				endPosition: &Pos{Line: tc.end.Line, Col: tc.end.Column}}
+			finding := &Error{
+				Filepath: "input.yml", Kind: "expression", Message: "bad range", Line: 1, Column: 2,
+				endPosition: &workflowlang.Pos{Line: tc.end.Line, Col: tc.end.Column},
+			}
 			result := &AnalysisResult{Diagnostics: []Diagnostic{finding.diagnostic(source)}, files: []analyzedFile{{
 				source: SourceUnit{Path: "input.yml", Content: source}, errors: []*Error{finding},
 			}}}

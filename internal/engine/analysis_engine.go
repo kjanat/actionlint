@@ -1,8 +1,6 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/analyzerhost"
 	"context"
 	"errors"
 	"maps"
@@ -10,7 +8,10 @@ import (
 	"slices"
 	"time"
 
+	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/internal/analyzerhost"
 	"actionlint.kjanat.dev/internal/fsread"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/workflownames"
 	"go.yaml.in/yaml/v4"
 )
@@ -84,7 +85,7 @@ func (l *analysisEngine) check(
 		l.debug("No config was found")
 	}
 
-	var w *Workflow
+	var w *workflowlang.Workflow
 	var all []*Error
 	var metadata *ActionMetadata
 	if isActionInput(configPath) {
@@ -93,12 +94,12 @@ func (l *analysisEngine) check(
 		metadata.dir, metadata.file, metadata.src = filepath.Dir(configPath), filepath.Base(configPath), content
 		outline = actionOutline(path, metadata, err)
 		if err != nil {
-			all = handleYAMLUnmarshalError(err)
+			all = adaptSyntaxFindings(workflowlang.HandleYAMLUnmarshalError(err))
 			for _, finding := range all {
 				finding.Line, finding.Column = max(1, finding.Line), max(1, finding.Column)
 			}
 		} else {
-			w = &Workflow{}
+			w = &workflowlang.Workflow{}
 		}
 	} else {
 		w, all = Parse(content)
@@ -120,8 +121,10 @@ func (l *analysisEngine) check(
 			localActions.sourceMappings = cfg.LocalActions
 		}
 
-		c := ruleContext{path: path, config: cfg, projectConfig: projectConfig, actions: localActions, workflows: localReusableWorkflows, process: proc,
-			workflowNames: l.workflowNames, workingDir: l.workingDir, reader: l.reader, gitModes: l.gitModes}
+		c := ruleContext{
+			path: path, config: cfg, projectConfig: projectConfig, actions: localActions, workflows: localReusableWorkflows, process: proc,
+			workflowNames: l.workflowNames, workingDir: l.workingDir, reader: l.reader, gitModes: l.gitModes,
+		}
 		if project != nil {
 			c.projectRoot = project.RootDir()
 		}

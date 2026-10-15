@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestWorkflowRunPathsUntrusted(t *testing.T) {
@@ -84,7 +86,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 			if workflow == nil || reference != "" && len(errs) != 0 {
 				t.Fatalf("parse: %v", errs)
 			}
-			pos := *workflow.On[0].(*WebhookEvent).Workflows[0].Pos
+			pos := *workflow.On[0].(*workflowlang.WebhookEvent).Workflows[0].Pos
 			wantRule, wantMessage := "glob", "glob pattern cannot be empty"
 			if reference == "" {
 				wantRule, wantMessage = "syntax-check", "string should not be empty"
@@ -121,7 +123,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 			t.Fatalf("literal pattern %q: %v", pattern, rule.Errs())
 		}
 		if want {
-			pos := workflow.On[0].(*WebhookEvent).Workflows[0].Pos
+			pos := workflow.On[0].(*workflowlang.WebhookEvent).Workflows[0].Pos
 			if rule.Errs()[0].Line != pos.Line || rule.Errs()[0].Column != pos.Col {
 				t.Fatalf("evaluated pattern finding should retain expression position: %v", rule.Errs()[0])
 			}

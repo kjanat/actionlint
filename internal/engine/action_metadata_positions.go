@@ -5,6 +5,7 @@ import (
 	"sync"
 	"unicode/utf8"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -12,26 +13,26 @@ import (
 // Metadata views may copy its pointer; initialization and lazy mappings are synchronized.
 type metadataPositionCache struct {
 	mu      sync.Mutex
-	scalars map[Pos]*yaml.Node
-	sources map[Pos]*scriptSource
-	parser  *parser
+	scalars map[workflowlang.Pos]*yaml.Node
+	sources map[workflowlang.Pos]*workflowlang.ScriptSource
+	parser  *workflowlang.Parser
 }
 
-func (cache *metadataPositionCache) source(meta *ActionMetadata, value *ActionExprString) *scriptSource {
+func (cache *metadataPositionCache) source(meta *ActionMetadata, value *ActionExprString) *workflowlang.ScriptSource {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 	if cache.scalars == nil {
-		cache.scalars = make(map[Pos]*yaml.Node)
-		cache.sources = make(map[Pos]*scriptSource)
-		cache.parser = newSourceParser(meta.src)
-		cache.parser.indexScalarSources(meta.schemaRoot)
+		cache.scalars = make(map[workflowlang.Pos]*yaml.Node)
+		cache.sources = make(map[workflowlang.Pos]*workflowlang.ScriptSource)
+		cache.parser = workflowlang.NewSourceParser(meta.src)
+		cache.parser.IndexScalarSources(meta.schemaRoot)
 		var visit func(*yaml.Node)
 		visit = func(node *yaml.Node) {
 			if node == nil {
 				return
 			}
 			if node.Kind == yaml.ScalarNode {
-				key := Pos{Line: node.Line, Col: node.Column}
+				key := workflowlang.Pos{Line: node.Line, Col: node.Column}
 				if _, exists := cache.scalars[key]; !exists {
 					cache.scalars[key] = node
 				}
@@ -43,7 +44,7 @@ func (cache *metadataPositionCache) source(meta *ActionMetadata, value *ActionEx
 		}
 		visit(meta.schemaRoot)
 	}
-	key := Pos{Line: value.Line, Col: value.Column}
+	key := workflowlang.Pos{Line: value.Line, Col: value.Column}
 	scalar := cache.scalars[key]
 	if scalar == nil || scalar.Value != value.Value {
 		return nil
@@ -51,15 +52,15 @@ func (cache *metadataPositionCache) source(meta *ActionMetadata, value *ActionEx
 	if source, exists := cache.sources[key]; exists {
 		return source
 	}
-	source := cache.parser.scriptSource(scalar)
+	source := cache.parser.ScriptSource(scalar)
 	cache.sources[key] = source
 	return source
 }
 
 // Metadata diagnostics use the same verified scalar mappings as script analyzers.
 // Missing source maps and folded expression strings retain the value position.
-func metadataExpressionPosition(meta *ActionMetadata, value *ActionExprString, offset int) *Pos {
-	fallback := &Pos{Line: value.Line, Col: value.Column}
+func metadataExpressionPosition(meta *ActionMetadata, value *ActionExprString, offset int) *workflowlang.Pos {
+	fallback := &workflowlang.Pos{Line: value.Line, Col: value.Column}
 	if offset <= 0 || offset > len(value.Value)+1 {
 		return fallback
 	}
@@ -72,12 +73,12 @@ func metadataExpressionPosition(meta *ActionMetadata, value *ActionExprString, o
 	line := strings.Count(prefix, "\n") + 1
 	column := utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1
 	if offset == len(value.Value)+1 {
-		if pos, ok := source.endPos(line, column); ok {
+		if pos, ok := source.EndPos(line, column); ok {
 			return pos
 		}
 		return fallback
 	}
-	if pos, ok := source.pos(line, column); ok {
+	if pos, ok := source.Position(line, column); ok {
 		return pos
 	}
 	return fallback

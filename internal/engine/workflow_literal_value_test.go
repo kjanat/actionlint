@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -97,10 +98,10 @@ jobs:
 		t.Fatal(errs)
 	}
 	steps := w.Jobs["test"].Steps
-	if steps[0].ID.Value != "build" || steps[0].ID.Pos.Line != 6 || steps[0].Exec.(*ExecRun).Shell.Value != "bash" {
+	if steps[0].ID.Value != "build" || steps[0].ID.Pos.Line != 6 || steps[0].Exec.(*workflowlang.ExecRun).Shell.Value != "bash" {
 		t.Fatal("static values or positions changed")
 	}
-	action := steps[1].Exec.(*ExecAction)
+	action := steps[1].Exec.(*workflowlang.ExecAction)
 	if action.Uses.Value != "docker://alpine:3" || action.Entrypoint == nil || action.Args == nil || len(action.Inputs) != 0 {
 		t.Fatalf("Docker input dispatch lost: %#v", action)
 	}

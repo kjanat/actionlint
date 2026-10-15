@@ -5,19 +5,22 @@ import (
 	"math"
 	"slices"
 	"strings"
+
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 // workflowExpressionShape describes evaluated expression values. Unlike
 // ExprType.Assignable, it distinguishes strict schema booleans from truthiness
 // and optional object properties from required ones.
 type workflowExpressionShape interface {
-	validate(ExprType, string) []string
+	validate(exprlang.Type, string) []string
 }
 
 type workflowExpressionScalar string
 
-func (shape workflowExpressionScalar) validate(ty ExprType, path string) []string {
-	if _, unknown := ty.(AnyType); unknown {
+func (shape workflowExpressionScalar) validate(ty exprlang.Type, path string) []string {
+	if _, unknown := ty.(exprlang.AnyType); unknown {
 		return nil
 	}
 	valid := false
@@ -27,13 +30,13 @@ func (shape workflowExpressionScalar) validate(ty ExprType, path string) []strin
 	case "string", "non-empty string", "concurrency queue":
 		// TemplateReader converts scalar literals to strings in string definitions.
 		switch ty.(type) {
-		case StringType, NumberType, BoolType, NullType:
+		case exprlang.StringType, exprlang.NumberType, exprlang.BoolType, exprlang.NullType:
 			valid = true
 		}
 	case "bool":
-		_, valid = ty.(BoolType)
+		_, valid = ty.(exprlang.BoolType)
 	case "positive integer":
-		_, valid = ty.(NumberType)
+		_, valid = ty.(exprlang.NumberType)
 	}
 	if valid {
 		return nil
@@ -46,11 +49,11 @@ type workflowExpressionArray struct {
 	nonempty bool
 }
 
-func (shape workflowExpressionArray) validate(ty ExprType, path string) []string {
-	if _, unknown := ty.(AnyType); unknown {
+func (shape workflowExpressionArray) validate(ty exprlang.Type, path string) []string {
+	if _, unknown := ty.(exprlang.AnyType); unknown {
 		return nil
 	}
-	if array, ok := ty.(*ArrayType); ok {
+	if array, ok := ty.(*exprlang.ArrayType); ok {
 		return shape.elem.validate(array.Elem, path+"[]")
 	}
 	return []string{fmt.Sprintf("%s must be array but found %s", path, ty.String())}
@@ -62,11 +65,11 @@ type workflowExpressionObject struct {
 	mapped   workflowExpressionShape
 }
 
-func (shape workflowExpressionObject) validate(ty ExprType, path string) []string {
-	if _, unknown := ty.(AnyType); unknown {
+func (shape workflowExpressionObject) validate(ty exprlang.Type, path string) []string {
+	if _, unknown := ty.(exprlang.AnyType); unknown {
 		return nil
 	}
-	object, ok := ty.(*ObjectType)
+	object, ok := ty.(*exprlang.ObjectType)
 	if !ok {
 		return []string{fmt.Sprintf("%s must be object but found %s", path, ty.String())}
 	}
@@ -107,7 +110,7 @@ func (shape workflowExpressionObject) validate(ty ExprType, path string) []strin
 
 type workflowExpressionUnion []workflowExpressionShape
 
-func (shape workflowExpressionUnion) validate(ty ExprType, path string) []string {
+func (shape workflowExpressionUnion) validate(ty exprlang.Type, path string) []string {
 	// Report the selected structural branch's details when its outer kind matches.
 	for _, candidate := range shape {
 		if errors := candidate.validate(ty, path); len(errors) == 0 {
@@ -117,11 +120,11 @@ func (shape workflowExpressionUnion) validate(ty ExprType, path string) []string
 	for _, candidate := range shape {
 		switch candidate.(type) {
 		case workflowExpressionObject:
-			if _, ok := ty.(*ObjectType); ok {
+			if _, ok := ty.(*exprlang.ObjectType); ok {
 				return candidate.validate(ty, path)
 			}
 		case workflowExpressionArray:
-			if _, ok := ty.(*ArrayType); ok {
+			if _, ok := ty.(*exprlang.ArrayType); ok {
 				return candidate.validate(ty, path)
 			}
 		}
@@ -175,7 +178,7 @@ func workflowContainerShape(service bool) workflowExpressionShape {
 	return workflowExpressionUnion{workflowString, workflowExpressionObject{props: props, required: []string{"image"}}}
 }
 
-func (rule *RuleExpression) checkWorkflowExpression(s *String, what, key string, shape workflowExpressionShape) ExprType {
+func (rule *RuleExpression) checkWorkflowExpression(s *workflowlang.String, what, key string, shape workflowExpressionShape) exprlang.Type {
 	if s == nil {
 		return nil
 	}
@@ -187,10 +190,10 @@ func (rule *RuleExpression) checkWorkflowExpression(s *String, what, key string,
 	// Inferred array elements can merge to AnyType. Retain known JSON values for
 	// per-element and literal constraint checks.
 	if len(errors) == 0 {
-		if value, known := workflowExpressionLiteral(s); known {
+		if value, known := workflowlang.WorkflowExpressionLiteral(s); known {
 			errors = workflowExpressionLiteralErrors(shape, value, what)
 			if len(errors) == 0 {
-				ty = typeOfJSONValue(value)
+				ty = exprlang.TypeOfJSONValue(value)
 			}
 		}
 	}
@@ -200,16 +203,8 @@ func (rule *RuleExpression) checkWorkflowExpression(s *String, what, key string,
 	return ty
 }
 
-func workflowExpressionLiteral(s *String) (any, bool) {
-	expr := parseAssignedExpression(s.Value)
-	if expr == nil {
-		return nil, false
-	}
-	return conditionConstantValue(expr)
-}
-
 func workflowExpressionLiteralErrors(shape workflowExpressionShape, value any, path string) []string {
-	ty := typeOfJSONValue(value)
+	ty := exprlang.TypeOfJSONValue(value)
 	if errors := shape.validate(ty, path); len(errors) != 0 {
 		return errors
 	}
@@ -278,25 +273,25 @@ func workflowObjectProperty[T any](properties map[string]T, name string) T {
 	return zero
 }
 
-func matrixTypeFromExpression(ty ExprType) *ObjectType {
-	object, ok := ty.(*ObjectType)
+func matrixTypeFromExpression(ty exprlang.Type) *exprlang.ObjectType {
+	object, ok := ty.(*exprlang.ObjectType)
 	if !ok {
-		return NewEmptyObjectType()
+		return exprlang.NewEmptyObjectType()
 	}
-	result := &ObjectType{Props: map[string]ExprType{}, Mapped: object.Mapped}
+	result := &exprlang.ObjectType{Props: map[string]exprlang.Type{}, Mapped: object.Mapped}
 	for name, value := range object.Props {
 		name = strings.ToLower(name)
 		if name == "include" || name == "exclude" {
 			continue
 		}
-		if array, ok := value.(*ArrayType); ok {
+		if array, ok := value.(*exprlang.ArrayType); ok {
 			value = array.Elem
 		}
 		result.Props[name] = value
 	}
 	includeType := workflowObjectProperty(object.Props, "include")
-	if include, ok := includeType.(*ArrayType); ok {
-		if combination, ok := include.Elem.(*ObjectType); ok {
+	if include, ok := includeType.(*exprlang.ArrayType); ok {
+		if combination, ok := include.Elem.(*exprlang.ObjectType); ok {
 			for name, value := range combination.Props {
 				name = strings.ToLower(name)
 				if current, ok := result.Props[name]; ok {
@@ -307,7 +302,7 @@ func matrixTypeFromExpression(ty ExprType) *ObjectType {
 		} else {
 			result.Loose()
 		}
-	} else if _, unknown := includeType.(AnyType); unknown {
+	} else if _, unknown := includeType.(exprlang.AnyType); unknown {
 		result.Loose()
 	}
 	return result

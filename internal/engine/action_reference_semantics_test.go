@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -38,7 +39,7 @@ runs:
 				t.Fatal(err)
 			}
 			rule := NewRuleAction(nil)
-			rule.checkLocalActionMetadata(&meta, &ExecAction{Uses: &String{Value: "./test", Pos: &Pos{Line: 1, Col: 1}}})
+			rule.checkLocalActionMetadata(&meta, &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./test", Pos: &workflowlang.Pos{Line: 1, Col: 1}}})
 			check(rule.Errs())
 		})
 	}

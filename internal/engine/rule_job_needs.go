@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 type nodeStatus int
@@ -19,7 +21,7 @@ type jobNode struct {
 	needs    []string
 	resolved []*jobNode
 	status   nodeStatus
-	pos      *Pos
+	pos      *workflowlang.Pos
 }
 
 type edge struct {
@@ -47,7 +49,7 @@ func contains[T comparable](heystack []T, needle T) bool {
 }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
-func (rule *RuleJobNeeds) VisitJobPre(n *Job) error {
+func (rule *RuleJobNeeds) VisitJobPre(n *workflowlang.Job) error {
 	needs := make([]string, 0, len(n.Needs))
 	for _, j := range n.Needs {
 		id := strings.ToLower(j.Value)
@@ -81,7 +83,7 @@ func (rule *RuleJobNeeds) VisitJobPre(n *Job) error {
 }
 
 // VisitWorkflowPost is callback when visiting Workflow node after visiting its children.
-func (rule *RuleJobNeeds) VisitWorkflowPost(n *Workflow) error {
+func (rule *RuleJobNeeds) VisitWorkflowPost(n *workflowlang.Workflow) error {
 	// Resolve nodes
 	valid := true
 	for id, node := range rule.nodes {

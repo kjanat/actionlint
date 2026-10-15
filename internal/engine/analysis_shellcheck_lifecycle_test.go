@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync/atomic"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestShellcheckPipelineCompletesAfterTraversalFailure(t *testing.T) {
@@ -30,7 +32,7 @@ func TestShellcheckFallsBackWhenEitherEndpointIsUnmapped(t *testing.T) {
 	if len(failures) != 0 {
 		t.Fatal(failures)
 	}
-	run := workflow.Jobs["test"].Steps[0].Exec.(*ExecRun)
+	run := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecRun)
 	for _, endpoints := range []struct {
 		name       string
 		start, end int
@@ -39,10 +41,10 @@ func TestShellcheckFallsBackWhenEitherEndpointIsUnmapped(t *testing.T) {
 	} {
 		t.Run(endpoints.name, func(t *testing.T) {
 			cmd := &externalCommand{runner: func([]string, string) ([]byte, error) {
-				return []byte(fmt.Sprintf(`{"comments":[{"line":1,"column":%d,"endLine":%d,"endColumn":2,"code":9999,"level":"warning","message":"range"}]}`, endpoints.start, endpoints.end)), nil
+				return fmt.Appendf(nil, `{"comments":[{"line":1,"column":%d,"endLine":%d,"endColumn":2,"code":9999,"level":"warning","message":"range"}]}`, endpoints.start, endpoints.end), nil
 			}}
 			invocation := &shellcheckRun{cmd: cmd, rcArgs: []string{"--norc"}}
-			if err := invocation.runShellcheck(run.Run.Value, run.source, shellcheckShell{name: "bash {0}"}, runDirectory{directoryKnown, t.TempDir()}, run.RunPos, run.Run.Pos); err != nil {
+			if err := invocation.runShellcheck(run.Run.Value, run.Source, shellcheckShell{name: "bash {0}"}, runDirectory{directoryKnown, t.TempDir()}, run.RunPos, run.Run.Pos); err != nil {
 				t.Fatal(err)
 			}
 			if err := cmd.wait(); err != nil {
@@ -71,8 +73,8 @@ func TestShellcheckRetainsFindingsWhenAnotherScopeHasInvalidConfig(t *testing.T)
 	}
 	validScope := &scriptScope{paths: runPaths{analysis: root, workspace: root}}
 	invalidScope := &scriptScope{paths: validScope.paths, config: invalid, composite: true}
-	pos := &Pos{Line: 1, Col: 1}
-	run := &ExecRun{Run: &String{Value: "echo test", Pos: pos}, RunPos: pos}
+	pos := &workflowlang.Pos{Line: 1, Col: 1}
+	run := &workflowlang.ExecRun{Run: &workflowlang.String{Value: "echo test", Pos: pos}, RunPos: pos}
 	makeScript := func(scope *scriptScope) scriptUnit {
 		return scriptUnit{scope: scope, run: run, execution: scriptExecution{shell: shellcheckShell{name: "bash {0}"}, directory: runDirectory{directoryKnown, root}}}
 	}

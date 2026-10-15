@@ -4,15 +4,18 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	stringutil "actionlint.kjanat.dev/internal/stringutil"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 // RuleWorkflowCall is a rule checker to check workflow call at jobs.<job_id>.
 type RuleWorkflowCall struct {
 	RuleBase
-	workflowCallEventPos *Pos
+	workflowCallEventPos *workflowlang.Pos
 	workflowPath         string
-	workflowPermissions  *Permissions
-	workflowCacheMode    *CacheMode
+	workflowPermissions  *workflowlang.Permissions
+	workflowCacheMode    *workflowlang.CacheMode
 	cache                *LocalReusableWorkflowCache
 }
 
@@ -28,11 +31,11 @@ func NewRuleWorkflowCall(workflowPath string, cache *LocalReusableWorkflowCache)
 }
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
-func (rule *RuleWorkflowCall) VisitWorkflowPre(n *Workflow) error {
+func (rule *RuleWorkflowCall) VisitWorkflowPre(n *workflowlang.Workflow) error {
 	rule.workflowPermissions = n.Permissions
 	rule.workflowCacheMode = n.CacheMode
 	for _, e := range n.On {
-		if e, ok := e.(*WorkflowCallEvent); ok {
+		if e, ok := e.(*workflowlang.WorkflowCallEvent); ok {
 			rule.workflowCallEventPos = e.Pos
 			// Register this reusable workflow in cache so that it does not need to parse this workflow
 			// file again when this workflow is called by other workflows.
@@ -44,7 +47,7 @@ func (rule *RuleWorkflowCall) VisitWorkflowPre(n *Workflow) error {
 }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
-func (rule *RuleWorkflowCall) VisitJobPre(n *Job) error {
+func (rule *RuleWorkflowCall) VisitJobPre(n *workflowlang.Job) error {
 	if n.WorkflowCall == nil {
 		return nil
 	}
@@ -78,7 +81,7 @@ func (rule *RuleWorkflowCall) VisitJobPre(n *Job) error {
 	return nil
 }
 
-func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, jobPerms *Permissions, jobCacheMode *CacheMode, localSpec string) {
+func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *workflowlang.WorkflowCall, jobPerms *workflowlang.Permissions, jobCacheMode *workflowlang.CacheMode, localSpec string) {
 	u := call.Uses
 	m, err := rule.cache.findMetadataForCall(u.Value)
 	if err != nil {
@@ -109,7 +112,7 @@ func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, job
 				if len(is) == 1 {
 					note = fmt.Sprintf("defined input is %q", is[0])
 				} else {
-					note = "defined inputs are " + sortedQuotes(is)
+					note = "defined inputs are " + stringutil.SortedQuotes(is)
 				}
 			}
 			rule.Errorf(i.Name.Pos, "input %q is not defined in %q reusable workflow. %s", i.Name.Value, u.Value, note)
@@ -136,7 +139,7 @@ func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, job
 					if len(ss) == 1 {
 						note = fmt.Sprintf("defined secret is %q", ss[0])
 					} else {
-						note = "defined secrets are " + sortedQuotes(ss)
+						note = "defined secrets are " + stringutil.SortedQuotes(ss)
 					}
 				}
 				rule.Errorf(s.Name.Pos, "secret %q is not defined in %q reusable workflow. %s", s.Name.Value, u.Value, note)
@@ -145,7 +148,7 @@ func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, job
 	}
 
 	rule.checkWorkflowCallPermissions(call, jobPerms, m)
-	rule.checkWorkflowCallCacheMode(call.Uses.Pos, localSpec, call.Uses.Value, effectiveCacheMode(rule.workflowCacheMode, jobCacheMode), m, map[workflowCacheModeVisit]bool{})
+	rule.checkWorkflowCallCacheMode(call.Uses.Pos, localSpec, call.Uses.Value, workflowlang.EffectiveCacheMode(rule.workflowCacheMode, jobCacheMode), m, map[workflowCacheModeVisit]bool{})
 
 	rule.Debug("Validated reusable workflow %q", u.Value)
 }
@@ -154,7 +157,7 @@ func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *WorkflowCall, job
 // against the permissions the calling job grants. GitHub validates this when the workflow is loaded,
 // so a shortfall aborts the whole run before any job starts, including any "if: failure()" handler.
 // "if:" on a job of the called workflow does not affect the comparison.
-func (rule *RuleWorkflowCall) checkWorkflowCallPermissions(call *WorkflowCall, jobPerms *Permissions, m *ReusableWorkflowMetadata) {
+func (rule *RuleWorkflowCall) checkWorkflowCallPermissions(call *workflowlang.WorkflowCall, jobPerms *workflowlang.Permissions, m *ReusableWorkflowMetadata) {
 	if len(m.JobPermissions) == 0 {
 		return
 	}
@@ -207,8 +210,8 @@ func (rule *RuleWorkflowCall) checkWorkflowCallPermissions(call *WorkflowCall, j
 			"nested job %q of %q requires %s but the calling job grants %s",
 			id,
 			call.Uses.Value,
-			quotes(want),
-			quotes(have),
+			stringutil.Quotes(want),
+			stringutil.Quotes(have),
 		)
 	}
 }

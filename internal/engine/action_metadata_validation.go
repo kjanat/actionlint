@@ -3,6 +3,8 @@ package engine
 import (
 	"strconv"
 	"strings"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 // Each workflow analysis owns its validation store.
@@ -41,7 +43,7 @@ func newActionMetadataValidation() *actionMetadataValidation {
 	return &actionMetadataValidation{templates: make(map[string][]*Error)}
 }
 
-func (rule *RuleAction) replayMetadataFindings(meta *ActionMetadata, action *ExecAction, displaySpec string) {
+func (rule *RuleAction) replayMetadataFindings(meta *ActionMetadata, action *workflowlang.ExecAction, displaySpec string) {
 	store := rule.validation
 	path := meta.Path()
 	templates, checked := store.templates[path]

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -73,7 +74,7 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			uses := workflow.Jobs["check"].Steps[0].Exec.(*ExecAction).Uses
+			uses := workflow.Jobs["check"].Steps[0].Exec.(*workflowlang.ExecAction).Uses
 			if uses.Value != tc.parsed {
 				t.Fatalf("decoded uses changed: got %q, want %q", uses.Value, tc.parsed)
 			}
@@ -122,7 +123,7 @@ runs:
 				}
 				meta.file, meta.src = "action.yml", source
 				rule := NewRuleAction(nil)
-				rule.checkLocalActionMetadata(&meta, &ExecAction{Uses: &String{Value: "./action", Pos: &Pos{Line: 1, Col: 1}}})
+				rule.checkLocalActionMetadata(&meta, &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./action", Pos: &workflowlang.Pos{Line: 1, Col: 1}}})
 				errs := rule.Errs()
 				if tc.invalid {
 					if len(errs) != 1 || !strings.Contains(errs[0].Message, "expected a mapping") {

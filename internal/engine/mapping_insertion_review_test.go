@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestOpaqueMatrixInsertionPreservesKnownRows(t *testing.T) {
@@ -63,7 +65,7 @@ func TestDockerExpressionInsertedReservedInputs(t *testing.T) {
 					t.Fatal(errs)
 				}
 				workflow, _ := Parse([]byte(source))
-				action := workflow.Jobs["test"].Steps[0].Exec.(*ExecAction)
+				action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
 				if action.Entrypoint == nil || action.Entrypoint.Value != tc.entrypoint || action.Args == nil || action.Args.Value != tc.args {
 					t.Fatalf("reserved fields lost: %+v", action)
 				}
@@ -133,7 +135,7 @@ func TestDockerConstantInputKeys(t *testing.T) {
 					t.Fatal(errs)
 				}
 				workflow, _ := Parse([]byte(source))
-				action := workflow.Jobs["test"].Steps[0].Exec.(*ExecAction)
+				action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
 				if tc.entrypoint == "" {
 					if action.Entrypoint != nil || action.Args != nil {
 						t.Fatal("unknown input name was resolved as a reserved field")
@@ -161,12 +163,12 @@ func TestActionInputResolutionAcrossConsumers(t *testing.T) {
 					t.Fatalf("script injection check missing: %v", errs)
 				}
 				workflow, _ := Parse([]byte(source))
-				action := workflow.Jobs["test"].Steps[0].Exec.(*ExecAction)
-				names, complete := actionInputNames(action)
+				action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
+				names, complete := workflowlang.ActionInputNames(action)
 				if !complete || names["script"] == nil || len(names) != 1 {
 					t.Fatalf("metadata resolved different names: %v, %v", names, complete)
 				}
-				if _, known := actionInputValue(action, "script"); known {
+				if _, known := workflowlang.ActionInputValue(action, "script"); known {
 					t.Fatal("untrusted script value was treated as a constant")
 				}
 			})
@@ -184,8 +186,8 @@ func TestActionInputObjectResultsStayData(t *testing.T) {
 			t.Fatalf("evaluated script string interpreted as source: %v", errs)
 		}
 		workflow, _ := Parse([]byte(source))
-		action := workflow.Jobs["test"].Steps[0].Exec.(*ExecAction)
-		if value, known := actionInputValue(action, "script"); !known || value != "${{ github.event.issue.title }}" {
+		action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
+		if value, known := workflowlang.ActionInputValue(action, "script"); !known || value != "${{ github.event.issue.title }}" {
 			t.Fatalf("resolved value=%q, known=%v", value, known)
 		}
 	}
@@ -285,8 +287,8 @@ func TestMatrixSourceKeyExpressions(t *testing.T) {
 }
 
 func TestEvaluatedMatrixKeyIsData(t *testing.T) {
-	source := &String{Value: "${{ missing }}", Pos: &Pos{Line: 1, Col: 1}}
-	row := &MatrixRow{Name: source, evaluated: true, Values: []RawYAMLValue{&RawYAMLString{Value: "one", pos: source.Pos}}}
+	source := &workflowlang.String{Value: "${{ missing }}", Pos: &workflowlang.Pos{Line: 1, Col: 1}}
+	row := &workflowlang.MatrixRow{Name: source, Evaluated: true, Values: []workflowlang.RawYAMLValue{&workflowlang.RawYAMLString{Value: "one", Position: source.Pos}}}
 	rule := NewRuleExpression(nil, nil)
 	rule.checkMatrixRow(row)
 	if errs := rule.Errs(); len(errs) != 0 {

@@ -5,6 +5,7 @@ import (
 	"sync"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -16,7 +17,7 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 			t.Fatal("source-less metadata has a position cache")
 		}
 		for range 2 {
-			if got := metadataExpressionPosition(meta, value, 2); *got != (Pos{Line: 2, Col: 3}) || meta.positions != nil {
+			if got := metadataExpressionPosition(meta, value, 2); *got != (workflowlang.Pos{Line: 2, Col: 3}) || meta.positions != nil {
 				t.Fatal("source-less metadata did not retain its fallback position")
 			}
 		}
@@ -92,7 +93,7 @@ func TestMetadataPositionCache(t *testing.T) {
 			if got := view.positions.source(&view, value); got != first {
 				t.Errorf("copied metadata did not reuse scalar mapping")
 			}
-			if pos := metadataExpressionPosition(&view, value, 10); *pos != (Pos{Line: 6, Col: 21}) {
+			if pos := metadataExpressionPosition(&view, value, 10); *pos != (workflowlang.Pos{Line: 6, Col: 21}) {
 				t.Errorf("position = %+v", pos)
 			}
 		})

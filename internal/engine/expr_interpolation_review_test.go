@@ -3,6 +3,8 @@ package engine
 import (
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestInterpolationChecksContinueAfterSemanticErrors(t *testing.T) {
@@ -125,7 +127,7 @@ func TestInterpolationSemanticErrorsRemainInvalid(t *testing.T) {
 			"${{ missingFunction('}}') }} ${{ github.ref && '' || 'fallback' }}",
 		} {
 			rule := NewRuleExpression(nil, nil)
-			types, valid := rule.checkExprsIn(source, &Pos{Line: 1, Col: 1}, false, script, "env")
+			types, valid := rule.checkExprsIn(source, &workflowlang.Pos{Line: 1, Col: 1}, false, script, "env")
 			if valid || len(types) != strings.Count(source, "${{") {
 				t.Fatalf("must scan all parsed interpolations without treating their types as valid: %v, %+v", valid, types)
 			}
@@ -138,7 +140,7 @@ func TestInterpolationSemanticErrorsRemainInvalid(t *testing.T) {
 			if ternaries != 1 {
 				t.Fatalf("later diagnostic missing: %+v", rule.Errs())
 			}
-			if ty := rule.checkOneExpression(&String{Value: source, Pos: &Pos{Line: 1, Col: 1}}, "value", "env"); ty != nil {
+			if ty := rule.checkOneExpression(&workflowlang.String{Value: source, Pos: &workflowlang.Pos{Line: 1, Col: 1}}, "value", "env"); ty != nil {
 				t.Fatalf("invalid interpolation types escaped into type checking: %v", ty)
 			}
 		}
@@ -153,7 +155,7 @@ func TestInterpolationParseErrorsStillStopScanning(t *testing.T) {
 			"${{ unknown.value",
 		} {
 			rule := NewRuleExpression(nil, nil)
-			types, valid := rule.checkExprsIn(source, &Pos{Line: 1, Col: 1}, false, script, "env")
+			types, valid := rule.checkExprsIn(source, &workflowlang.Pos{Line: 1, Col: 1}, false, script, "env")
 			if valid || types != nil || len(rule.Errs()) == 0 {
 				t.Fatalf("unparsed interpolation must remain invalid: %v, %+v, %+v", valid, types, rule.Errs())
 			}

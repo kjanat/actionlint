@@ -1,6 +1,10 @@
 package engine
 
-import "strings"
+import (
+	"strings"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+)
 
 // RuleParallelSteps is a rule to check parallel steps: a 'wait' or 'cancel' step must refer to the ID
 // of a preceding background step, and a 'parallel' group may only contain 'run' and 'uses' steps
@@ -17,7 +21,7 @@ type RuleParallelSteps struct {
 	// allowed there at all (only 'run'/'uses' are), so their 'wait'/'cancel' references are not
 	// separately validated: the "not allowed inside a parallel group" error stands on its own
 	// instead of cascading into a redundant "unknown reference" error from the same step.
-	inParallel map[*Step]struct{}
+	inParallel map[*workflowlang.Step]struct{}
 }
 
 // NewRuleParallelSteps creates a new RuleParallelSteps instance.
@@ -28,36 +32,36 @@ func NewRuleParallelSteps() *RuleParallelSteps {
 }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
-func (rule *RuleParallelSteps) VisitJobPre(n *Job) error {
+func (rule *RuleParallelSteps) VisitJobPre(n *workflowlang.Job) error {
 	rule.background = map[string]struct{}{}
-	rule.inParallel = map[*Step]struct{}{}
+	rule.inParallel = map[*workflowlang.Step]struct{}{}
 	return nil
 }
 
 // VisitJobPost is callback when visiting Job node after visiting its children.
-func (rule *RuleParallelSteps) VisitJobPost(n *Job) error {
+func (rule *RuleParallelSteps) VisitJobPost(n *workflowlang.Job) error {
 	rule.background = nil
 	rule.inParallel = nil
 	return nil
 }
 
 // VisitStep is callback when visiting Step node.
-func (rule *RuleParallelSteps) VisitStep(n *Step) error {
+func (rule *RuleParallelSteps) VisitStep(n *workflowlang.Step) error {
 	// A step that is itself inside a 'parallel' group is already reported by checkParallelChildren as
 	// not allowed there, so skip its reference check to avoid a second, redundant error.
 	_, insideParallel := rule.inParallel[n]
 	switch e := n.Exec.(type) {
-	case *ExecWait:
+	case *workflowlang.ExecWait:
 		if !insideParallel {
 			for _, name := range e.Names {
 				rule.checkRef(name)
 			}
 		}
-	case *ExecCancel:
+	case *workflowlang.ExecCancel:
 		if !insideParallel {
 			rule.checkRef(e.Name)
 		}
-	case *ExecParallel:
+	case *workflowlang.ExecParallel:
 		rule.checkParallelChildren(e.Steps)
 	}
 
@@ -73,28 +77,28 @@ func (rule *RuleParallelSteps) VisitStep(n *Step) error {
 // checkParallelChildren checks the steps inside a 'parallel' group. Only 'run' and 'uses' steps are
 // allowed there: 'background', 'wait', 'wait-all', 'cancel', and nested 'parallel' steps are not,
 // because steps in a 'parallel' group already run in the background with an implicit wait at the end.
-func (rule *RuleParallelSteps) checkParallelChildren(steps []*Step) {
+func (rule *RuleParallelSteps) checkParallelChildren(steps []*workflowlang.Step) {
 	for _, s := range steps {
 		rule.inParallel[s] = struct{}{}
 		if s.Background != nil {
 			rule.Errorf(s.Background.Pos, "\"background\" is not allowed for a step inside a \"parallel\" group because the group's steps already run in the background")
 		}
 		switch e := s.Exec.(type) {
-		case *ExecWait:
+		case *workflowlang.ExecWait:
 			kind := "wait"
 			if e.All {
 				kind = "wait-all"
 			}
 			rule.Errorf(s.Pos, "%q step is not allowed inside a \"parallel\" group", kind)
-		case *ExecCancel:
+		case *workflowlang.ExecCancel:
 			rule.Errorf(s.Pos, "\"cancel\" step is not allowed inside a \"parallel\" group")
-		case *ExecParallel:
+		case *workflowlang.ExecParallel:
 			rule.Errorf(s.Pos, "\"parallel\" step cannot be nested in another \"parallel\" step")
 		}
 	}
 }
 
-func (rule *RuleParallelSteps) checkRef(ref *String) {
+func (rule *RuleParallelSteps) checkRef(ref *workflowlang.String) {
 	if ref == nil || ref.Value == "" || ref.ContainsExpression() {
 		// Empty values come from an already-reported parse error; expression step IDs can't be
 		// resolved statically. Skip both.
@@ -112,6 +116,6 @@ func (rule *RuleParallelSteps) checkRef(ref *String) {
 // isBackgroundStep reports whether the step runs (or may run) in the background. When 'background' is
 // an expression, whether the step runs in the background can't be known statically, so it's treated
 // as a possible background step to avoid false positives.
-func isBackgroundStep(s *Step) bool {
+func isBackgroundStep(s *workflowlang.Step) bool {
 	return s.Background != nil && (s.Background.Expression != nil || s.Background.Value)
 }

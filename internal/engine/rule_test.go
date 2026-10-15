@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -25,8 +26,8 @@ func TestRuleBaseErrorfAndErrs(t *testing.T) {
 	if len(errs) > 0 {
 		t.Error("no error is expected", errs)
 	}
-	r.Error(&Pos{Line: 1, Col: 2}, "this is test 1")
-	r.Errorf(&Pos{Line: 3, Col: 4}, "this is test %d", 2)
+	r.Error(&workflowlang.Pos{Line: 1, Col: 2}, "this is test 1")
+	r.Errorf(&workflowlang.Pos{Line: 3, Col: 4}, "this is test %d", 2)
 	errs = r.Errs()
 	if len(errs) != 2 {
 		t.Error("wanted 2 errors but have", errs)

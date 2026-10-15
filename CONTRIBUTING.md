@@ -435,7 +435,7 @@ Please see [the readme of the script][the readme of the script-2] for the usage 
 [`action_metadata_availability.go`]: ./internal/engine/action_metadata_availability.go
 [`actionlint-matcher.json`]: .github/actionlint-matcher.json
 [`all_webhooks.go`]: ./internal/engine/all_webhooks.go
-[`availability.go`]: ./internal/engine/availability.go
+[`availability.go`]: ./internal/workflowcontext/availability.go
 [`check-checks`]: ./scripts/check-checks
 [`ci.yml`]: .github/workflows/ci.yml
 [`events-that-trigger-workflows.md`]: https://raw.githubusercontent.com/github/docs/refs/heads/main/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md

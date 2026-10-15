@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -151,17 +152,17 @@ func TestAnalysisConcurrentLogRecords(t *testing.T) {
 func TestLinterAnalysisFacades(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, ".github", "workflows")
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	writeGitRepository(t, root)
-	if err := os.WriteFile(filepath.Join(root, ".github", "actionlint.yaml"), []byte("config-variables: []\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".github", "actionlint.yaml"), []byte("config-variables: []\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	content := []byte(strings.Replace(commandBadWorkflow, "missing.value", "vars.UNKNOWN", 1))
 	first, second := filepath.Join(dir, "a.yml"), filepath.Join(dir, "b.yml")
 	for _, path := range []string{first, second} {
-		if err := os.WriteFile(path, content, 0600); err != nil {
+		if err := os.WriteFile(path, content, 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -184,7 +185,8 @@ func TestLinterAnalysisFacades(t *testing.T) {
 			var out strings.Builder
 			var selected []string
 			calls := 0
-			l, err := NewLinter(&out, &LinterOptions{WorkingDir: root, StdinFileName: first, OutputFormat: OutputFormatJSON,
+			l, err := NewLinter(&out, &LinterOptions{
+				WorkingDir: root, StdinFileName: first, OutputFormat: OutputFormatJSON,
 				OnFilesSelected: func(paths []string) {
 					calls++
 					selected = slices.Clone(paths)
@@ -240,7 +242,7 @@ func TestAnalysisSelectedConfigInput(t *testing.T) {
 			workflow := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", commandGoodWorkflow)
 			want := []string{workflow, root, filepath.Join(root, ".github"), filepath.Join(root, ".github", "workflows"), physicalExclude, filepath.Join(filepath.Dir(filepath.Dir(physicalExclude)), "config")}
 			for _, name := range names {
-				if err := os.WriteFile(filepath.Join(root, ".github", name), []byte("{}\n"), 0600); err != nil {
+				if err := os.WriteFile(filepath.Join(root, ".github", name), []byte("{}\n"), 0o600); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -267,7 +269,7 @@ func TestAnalysisSelectedConfigInput(t *testing.T) {
 func TestAnalysisSessionWorkflowDirectoryTypo(t *testing.T) {
 	root := t.TempDir()
 	for _, dir := range []string{".git", ".gihub/workflows", "src"} {
-		if err := os.MkdirAll(filepath.Join(root, dir), 0750); err != nil {
+		if err := os.MkdirAll(filepath.Join(root, dir), 0o750); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -291,18 +293,18 @@ func TestAnalysisSessionConfigInputs(t *testing.T) {
 	loose := filepath.Join(root, "loose.yml")
 	for _, name := range []string{"a", "b"} {
 		for _, dir := range []string{".git", ".github/workflows"} {
-			if err := os.MkdirAll(filepath.Join(root, name, dir), 0700); err != nil {
+			if err := os.MkdirAll(filepath.Join(root, name, dir), 0o700); err != nil {
 				t.Fatal(err)
 			}
 		}
 	}
 	for _, path := range []string{workflowA, workflowB, secondB, loose} {
-		if err := os.WriteFile(path, []byte(commandGoodWorkflow), 0600); err != nil {
+		if err := os.WriteFile(path, []byte(commandGoodWorkflow), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
 	for _, path := range []string{configA, configB} {
-		if err := os.WriteFile(path, []byte("{}\n"), 0600); err != nil {
+		if err := os.WriteFile(path, []byte("{}\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -342,7 +344,7 @@ func TestAnalysisSessionExplicitConfigInput(t *testing.T) {
 		workflow: commandGoodWorkflow,
 		config:   "{}\n",
 	} {
-		if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -366,11 +368,11 @@ func TestAnalysisSessionEmpty(t *testing.T) {
 	root := t.TempDir()
 	config := filepath.Join(root, ".github", "actionlint.yaml")
 	for _, dir := range []string{".git", ".github/workflows"} {
-		if err := os.MkdirAll(filepath.Join(root, dir), 0700); err != nil {
+		if err := os.MkdirAll(filepath.Join(root, dir), 0o700); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := os.WriteFile(config, []byte("{}\n"), 0600); err != nil {
+	if err := os.WriteFile(config, []byte("{}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
@@ -393,7 +395,7 @@ func TestAnalysisSessionEmpty(t *testing.T) {
 
 	outside := t.TempDir()
 	explicit := filepath.Join(outside, "lint.yaml")
-	if err := os.WriteFile(explicit, []byte("{}\n"), 0600); err != nil {
+	if err := os.WriteFile(explicit, []byte("{}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	session, err = NewAnalysisSession(AnalysisOptions{WorkingDir: outside, ConfigFile: explicit})
@@ -425,7 +427,8 @@ func TestLinterEmptySelection(t *testing.T) {
 	cancel()
 	var out strings.Builder
 	selections, rules := 0, 0
-	l, err := NewLinter(&out, &LinterOptions{Context: ctx, OutputFormat: OutputFormatJSON,
+	l, err := NewLinter(&out, &LinterOptions{
+		Context: ctx, OutputFormat: OutputFormatJSON,
 		OnFilesSelected: func(paths []string) {
 			selections++
 			if len(paths) != 0 {
@@ -475,19 +478,20 @@ type analysisFailingRule struct {
 	err error
 }
 
-func (r *analysisFailingRule) VisitWorkflowPre(*Workflow) error { return r.err }
+func (r *analysisFailingRule) VisitWorkflowPre(*workflowlang.Workflow) error { return r.err }
 
 func TestLinterAnalysisFailure(t *testing.T) {
 	t.Chdir(t.TempDir())
 	for _, path := range []string{"a.yml", "b.yml"} {
-		if err := os.WriteFile(path, []byte(commandGoodWorkflow), 0600); err != nil {
+		if err := os.WriteFile(path, []byte(commandGoodWorkflow), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
 	cause := errors.New("custom analysis failed")
 	for _, paths := range [][]string{{"a.yml"}, {"a.yml", "b.yml"}} {
 		var out strings.Builder
-		l, err := NewLinter(&out, &LinterOptions{OutputFormat: OutputFormatJSON,
+		l, err := NewLinter(&out, &LinterOptions{
+			OutputFormat: OutputFormatJSON,
 			OnRulesCreated: func([]Rule) []Rule {
 				return []Rule{&analysisFailingRule{NewRuleBase("failing", ""), cause}}
 			},

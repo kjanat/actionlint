@@ -3,6 +3,8 @@ package engine
 import (
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestCheckInvalidJobNames(t *testing.T) {
@@ -18,31 +20,31 @@ func TestCheckInvalidJobNames(t *testing.T) {
 	for _, input := range inputs {
 		tests := []struct {
 			where    string
-			job      *Job
+			job      *workflowlang.Job
 			expected string
 		}{
 			{
 				"jobs.<job_id>",
-				&Job{
-					ID: &String{Value: input, Pos: &Pos{}},
+				&workflowlang.Job{
+					ID: &workflowlang.String{Value: input, Pos: &workflowlang.Pos{}},
 				},
 				"invalid job ID",
 			},
 			{
 				"jobs.<job_id>.needs",
-				&Job{
-					ID: &String{Value: "test", Pos: &Pos{}},
-					Needs: []*String{
-						{Value: input, Pos: &Pos{}},
+				&workflowlang.Job{
+					ID: &workflowlang.String{Value: "test", Pos: &workflowlang.Pos{}},
+					Needs: []*workflowlang.String{
+						{Value: input, Pos: &workflowlang.Pos{}},
 					},
 				},
 				"invalid job ID",
 			},
 			{
 				"steps.*.id",
-				&Job{
-					Steps: []*Step{
-						{ID: &String{Value: input, Pos: &Pos{}}},
+				&workflowlang.Job{
+					Steps: []*workflowlang.Step{
+						{ID: &workflowlang.String{Value: input, Pos: &workflowlang.Pos{}}},
 					},
 				},
 				"invalid step ID",
@@ -91,13 +93,13 @@ func TestCheckValidJobNames(t *testing.T) {
 			if strings.HasPrefix(stepID, "__") {
 				stepID = "step" + stepID
 			}
-			job := &Job{
-				ID: &String{Value: input, Pos: &Pos{}},
-				Needs: []*String{
-					{Value: input, Pos: &Pos{}},
+			job := &workflowlang.Job{
+				ID: &workflowlang.String{Value: input, Pos: &workflowlang.Pos{}},
+				Needs: []*workflowlang.String{
+					{Value: input, Pos: &workflowlang.Pos{}},
 				},
-				Steps: []*Step{
-					{ID: &String{Value: stepID, Pos: &Pos{}}},
+				Steps: []*workflowlang.Step{
+					{ID: &workflowlang.String{Value: stepID, Pos: &workflowlang.Pos{}}},
 				},
 			}
 			r := NewRuleID()

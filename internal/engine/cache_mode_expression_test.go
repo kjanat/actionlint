@@ -7,11 +7,12 @@ import (
 	"strings"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/google/go-cmp/cmp"
 )
 
 func TestCacheModeLiteralExpressionMetadata(t *testing.T) {
-	for _, kind := range []CacheModeKind{CacheModeRead, CacheModeWrite, CacheModeWriteOnly, CacheModeNone} {
+	for _, kind := range []workflowlang.CacheModeKind{workflowlang.CacheModeRead, workflowlang.CacheModeWrite, workflowlang.CacheModeWriteOnly, workflowlang.CacheModeNone} {
 		for _, aliased := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/alias=%v", kind, aliased), func(t *testing.T) {
 				expression := "${{ '" + kind.String() + "' }}"
@@ -39,7 +40,7 @@ jobs:
 					t.Fatal(diagnostics)
 				}
 				root := t.TempDir()
-				if err := os.WriteFile(filepath.Join(root, "callee.yaml"), []byte(source), 0600); err != nil {
+				if err := os.WriteFile(filepath.Join(root, "callee.yaml"), []byte(source), 0o600); err != nil {
 					t.Fatal(err)
 				}
 				project := &Project{root: root}
@@ -63,9 +64,9 @@ jobs:
 				}
 				for id, line := range map[string]int{"inherited": 2, "explicit": 9, "call": 14} {
 					mode := fromFile.JobCacheAccess[id].Mode
-					want := Pos{Line: line, Col: 17}
+					want := workflowlang.Pos{Line: line, Col: 17}
 					if line == 2 || aliased {
-						want = Pos{Line: 2, Col: 13}
+						want = workflowlang.Pos{Line: 2, Col: 13}
 					}
 					if mode == nil || mode.Kind != kind || *mode.Pos != want {
 						t.Fatalf("%s: expected %s at %v, got %#v", id, kind, want, mode)
@@ -77,7 +78,7 @@ jobs:
 }
 
 func TestWorkflowCallCacheModeLiteralExpressions(t *testing.T) {
-	for _, kind := range []CacheModeKind{CacheModeRead, CacheModeWrite, CacheModeWriteOnly, CacheModeNone} {
+	for _, kind := range []workflowlang.CacheModeKind{workflowlang.CacheModeRead, workflowlang.CacheModeWrite, workflowlang.CacheModeWriteOnly, workflowlang.CacheModeNone} {
 		for _, fromAST := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/AST=%v", kind, fromAST), func(t *testing.T) {
 				caller := `on: push
@@ -96,7 +97,7 @@ jobs:
       - run: echo ok
 `
 				diagnostics := checkCacheModeCall(t, caller, map[string]string{"callee.yaml": callee}, fromAST)
-				if kind == CacheModeWrite {
+				if kind == workflowlang.CacheModeWrite {
 					if len(diagnostics) != 0 {
 						t.Fatal(diagnostics)
 					}

@@ -3,6 +3,9 @@ package engine
 import (
 	"slices"
 	"strings"
+
+	stringutil "actionlint.kjanat.dev/internal/stringutil"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 type platformKind int
@@ -29,15 +32,15 @@ func NewRuleShellName() *RuleShellName {
 }
 
 // VisitStep is callback when visiting Step node.
-func (rule *RuleShellName) VisitStep(n *Step) error {
-	if run, ok := n.Exec.(*ExecRun); ok {
+func (rule *RuleShellName) VisitStep(n *workflowlang.Step) error {
+	if run, ok := n.Exec.(*workflowlang.ExecRun); ok {
 		rule.checkShellName(run.Shell)
 	}
 	return nil
 }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
-func (rule *RuleShellName) VisitJobPre(n *Job) error {
+func (rule *RuleShellName) VisitJobPre(n *workflowlang.Job) error {
 	if n.RunsOn == nil {
 		return nil
 	}
@@ -47,18 +50,18 @@ func (rule *RuleShellName) VisitJobPre(n *Job) error {
 }
 
 // VisitJobPost is callback when visiting Job node after visiting its children.
-func (rule *RuleShellName) VisitJobPost(n *Job) error {
+func (rule *RuleShellName) VisitJobPost(n *workflowlang.Job) error {
 	rule.platform = platformKindAny // Clear
 	return nil
 }
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
-func (rule *RuleShellName) VisitWorkflowPre(n *Workflow) error {
+func (rule *RuleShellName) VisitWorkflowPre(n *workflowlang.Workflow) error {
 	rule.checkShellValue(defaultsShellValue(n.Defaults))
 	return nil
 }
 
-func (rule *RuleShellName) checkShellName(node *String) {
+func (rule *RuleShellName) checkShellName(node *workflowlang.String) {
 	rule.checkShellValue(shellValueFromString(node))
 }
 
@@ -105,7 +108,7 @@ func (rule *RuleShellName) checkShellValue(shell shellValue) {
 		"shell name %q is invalid%s. available names are %s",
 		node.Value,
 		onPlatform,
-		sortedQuotes(available),
+		stringutil.SortedQuotes(available),
 	)
 }
 
@@ -141,7 +144,7 @@ func getAvailableShellNames(kind platformKind) []string {
 	}
 }
 
-func runnerPlatform(runner *Runner) platformKind {
+func runnerPlatform(runner *workflowlang.Runner) platformKind {
 	if runner == nil {
 		return platformKindAny
 	}

@@ -1,14 +1,19 @@
 package engine
 
-import "strings"
+import (
+	"strings"
+
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+)
 
 // cacheReachableEvents removes only events for which the job condition is false.
 // Other context values and unsupported expressions remain unknown.
-func cacheReachableEvents(events []string, job *Job) []string {
+func cacheReachableEvents(events []string, job *workflowlang.Job) []string {
 	if job.If == nil {
 		return events
 	}
-	expr, err, _ := parseConditionExpression(job.If.Value)
+	expr, err, _ := exprlang.ParseConditionExpression(job.If.Value)
 	if err != nil || expr == nil {
 		return events
 	}
@@ -22,15 +27,15 @@ func cacheReachableEvents(events []string, job *Job) []string {
 	return reachable
 }
 
-func cacheEventCondition(expr ExprNode, event string) (bool, bool) {
+func cacheEventCondition(expr exprlang.Node, event string) (bool, bool) {
 	switch n := expr.(type) {
-	case *NotOpNode:
+	case *exprlang.NotOpNode:
 		value, known := cacheEventCondition(n.Operand, event)
 		return !value, known
-	case *LogicalOpNode:
+	case *exprlang.LogicalOpNode:
 		left, lok := cacheEventCondition(n.Left, event)
 		right, rok := cacheEventCondition(n.Right, event)
-		if n.Kind == LogicalOpNodeKindAnd {
+		if n.Kind == exprlang.LogicalOpNodeKindAnd {
 			if (lok && !left) || (rok && !right) {
 				return false, true
 			}
@@ -42,29 +47,29 @@ func cacheEventCondition(expr ExprNode, event string) (bool, bool) {
 		return false, lok && rok
 	default:
 		value, known := cacheEventValue(expr, event)
-		return expressionTruthy(value), known
+		return exprlang.ExpressionTruthy(value), known
 	}
 }
 
-func cacheEventValue(expr ExprNode, event string) (any, bool) {
+func cacheEventValue(expr exprlang.Node, event string) (any, bool) {
 	switch n := expr.(type) {
-	case *ObjectDerefNode:
-		if receiver, ok := n.Receiver.(*VariableNode); ok && strings.EqualFold(receiver.Name, "github") && strings.EqualFold(n.Property, "event_name") {
+	case *exprlang.ObjectDerefNode:
+		if receiver, ok := n.Receiver.(*exprlang.VariableNode); ok && strings.EqualFold(receiver.Name, "github") && strings.EqualFold(n.Property, "event_name") {
 			return event, true
 		}
-	case *IndexAccessNode:
-		if receiver, ok := n.Operand.(*VariableNode); ok && strings.EqualFold(receiver.Name, "github") {
-			if key, ok := n.Index.(*StringNode); ok && strings.EqualFold(key.Value, "event_name") {
+	case *exprlang.IndexAccessNode:
+		if receiver, ok := n.Operand.(*exprlang.VariableNode); ok && strings.EqualFold(receiver.Name, "github") {
+			if key, ok := n.Index.(*exprlang.StringNode); ok && strings.EqualFold(key.Value, "event_name") {
 				return event, true
 			}
 		}
-	case *CompareOpNode:
+	case *exprlang.CompareOpNode:
 		left, lok := cacheEventValue(n.Left, event)
 		right, rok := cacheEventValue(n.Right, event)
 		if lok && rok {
-			return compareConditionValues(n.Kind, left, right)
+			return exprlang.CompareConditionValues(n.Kind, left, right)
 		}
 		return nil, false
 	}
-	return conditionConstantValue(expr)
+	return exprlang.ConditionConstantValue(expr)
 }

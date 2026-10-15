@@ -3,6 +3,9 @@ package engine
 import (
 	"strings"
 	"testing"
+
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestConstantFormatNumericArguments(t *testing.T) {
@@ -21,16 +24,16 @@ func TestConstantFormatNumericArguments(t *testing.T) {
 		{"format('{0}', null)", ""},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
-			expr := parseAssignedExpression("${{ " + tc.expression + " }}")
+			expr := exprlang.ParseAssignedExpression("${{ " + tc.expression + " }}")
 			if expr == nil {
 				t.Fatal("invalid expression fixture")
 			}
-			value, known := conditionConstantValue(expr)
+			value, known := exprlang.ConditionConstantValue(expr)
 			if !known || value != tc.want {
 				t.Fatalf("value=%v known=%v, want %q", value, known, tc.want)
 			}
 			for _, condition := range []string{tc.expression, "${{ " + tc.expression + " }}"} {
-				if enabled, known := invocationCondition(&String{Value: condition}); !known || enabled != (tc.want != "") {
+				if enabled, known := invocationCondition(&workflowlang.String{Value: condition}); !known || enabled != (tc.want != "") {
 					t.Fatalf("invocation=%v known=%v, want %v", enabled, known, tc.want != "")
 				}
 			}
@@ -63,11 +66,11 @@ func TestConstantFormatUncertainArguments(t *testing.T) {
 		"format('{0}', inputs.number)",
 	} {
 		t.Run(expression, func(t *testing.T) {
-			value, known := conditionConstantValue(parseAssignedExpression("${{ " + expression + " }}"))
+			value, known := exprlang.ConditionConstantValue(exprlang.ParseAssignedExpression("${{ " + expression + " }}"))
 			if known {
 				t.Fatalf("unexpected constant value %v", value)
 			}
-			if _, known := invocationCondition(&String{Value: "${{ " + expression + " }}"}); known {
+			if _, known := invocationCondition(&workflowlang.String{Value: "${{ " + expression + " }}"}); known {
 				t.Fatal("uncertain format argument made invocation known")
 			}
 		})
@@ -80,8 +83,12 @@ func TestExecutableBitNumericFormatCheckout(t *testing.T) {
 		argument string
 		want     int
 	}{
-		{"0", 1}, {"42", 1}, {"-42", 1},
-		{"-0", 0}, {"1e15", 0}, {"0.12345678901234567", 0},
+		{"0", 1},
+		{"42", 1},
+		{"-42", 1},
+		{"-0", 0},
+		{"1e15", 0},
+		{"0.12345678901234567", 0},
 	} {
 		t.Run(tc.argument, func(t *testing.T) {
 			workflow := `on: push

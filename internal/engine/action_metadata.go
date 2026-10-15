@@ -10,7 +10,9 @@ import (
 	"strings"
 	"sync"
 
+	exprlang "actionlint.kjanat.dev/internal/expression"
 	"actionlint.kjanat.dev/internal/fsread"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -197,7 +199,7 @@ func (s *ActionCompositeStep) UnmarshalYAML(n *yaml.Node) error {
 		case "id":
 			s.id = yamlActionExprString(v)
 			if s.id != nil {
-				if literal := literalExpressionValue(s.id.Value); literal != nil {
+				if literal := exprlang.LiteralExpressionValue(s.id.Value); literal != nil {
 					s.id.Value = *literal
 				}
 			}
@@ -278,7 +280,7 @@ func (ss *actionCompositeSteps) UnmarshalYAML(n *yaml.Node) error {
 	if n.Kind != yaml.SequenceNode {
 		return fmt.Errorf(
 			"yaml: steps must be sequence node but %s node was found at line:%d, col:%d",
-			nodeKindName(n.Kind),
+			workflowlang.NodeKindName(n.Kind),
 			n.Line,
 			n.Column,
 		)
@@ -426,7 +428,7 @@ func (md *ActionMetadata) UnmarshalYAML(n *yaml.Node) error {
 		&md.Runs.PreIf, &md.Runs.PostIf, &md.Runs.Image,
 		&md.Runs.Entrypoint, &md.Runs.PreEntrypoint, &md.Runs.PostEntrypoint,
 	} {
-		if literal := literalExpressionValue(*value); literal != nil {
+		if literal := exprlang.LiteralExpressionValue(*value); literal != nil {
 			*value = *literal
 		}
 	}

@@ -1,12 +1,17 @@
 package engine
 
-import "strings"
+import (
+	"strings"
 
-func invocationCondition(condition *String) (enabled, known bool) {
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+)
+
+func invocationCondition(condition *workflowlang.String) (enabled, known bool) {
 	return invocationConditionInStatuses(condition, []string{"success", "failure", "other"})
 }
 
-func jobInvocationCondition(job *Job) (enabled, known bool) {
+func jobInvocationCondition(job *workflowlang.Job) (enabled, known bool) {
 	if len(job.Needs) == 0 {
 		// No ancestor can have failed. Cancellation still prevents assuming success.
 		return invocationConditionInStatuses(job.If, []string{"success", "other"})
@@ -14,9 +19,9 @@ func jobInvocationCondition(job *Job) (enabled, known bool) {
 	return invocationCondition(job.If)
 }
 
-func invocationConditionInStatuses(condition *String, statuses []string) (enabled, known bool) {
+func invocationConditionInStatuses(condition *workflowlang.String, statuses []string) (enabled, known bool) {
 	if condition != nil {
-		expr, _, _ := parseConditionExpression(condition.Value)
+		expr, _, _ := exprlang.ParseConditionExpression(condition.Value)
 		if conditionNeverRunsInStatuses(expr, statuses) {
 			return false, true
 		}
@@ -39,11 +44,11 @@ const (
 // functions inspect action_status instead.
 // Keep cancellation independent and leave unsupported expressions unknown.
 // https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idneeds
-func conditionNeverRuns(expression ExprNode) bool {
+func conditionNeverRuns(expression exprlang.Node) bool {
 	return conditionNeverRunsInStatuses(expression, []string{"success", "failure", "other"})
 }
 
-func conditionNeverRunsInStatuses(expression ExprNode, statuses []string) bool {
+func conditionNeverRunsInStatuses(expression exprlang.Node, statuses []string) bool {
 	for _, status := range statuses {
 		for _, cancelled := range []bool{false, true} {
 			if conditionStatusTruth(expression, status, cancelled) != conditionFalse {
@@ -54,19 +59,19 @@ func conditionNeverRunsInStatuses(expression ExprNode, statuses []string) bool {
 	return true
 }
 
-func conditionStatusTruth(expression ExprNode, status string, cancelled bool) conditionTruth {
+func conditionStatusTruth(expression exprlang.Node, status string, cancelled bool) conditionTruth {
 	switch node := expression.(type) {
-	case *NullNode:
+	case *exprlang.NullNode:
 		return conditionFalse
-	case *BoolNode:
+	case *exprlang.BoolNode:
 		return knownConditionTruth(node.Value)
-	case *IntNode:
+	case *exprlang.IntNode:
 		return knownConditionTruth(node.Value != 0)
-	case *FloatNode:
+	case *exprlang.FloatNode:
 		return knownConditionTruth(node.Value != 0)
-	case *StringNode:
+	case *exprlang.StringNode:
 		return knownConditionTruth(node.Value != "")
-	case *FuncCallNode:
+	case *exprlang.FuncCallNode:
 		if len(node.Args) != 0 {
 			return conditionUnknown
 		}
@@ -78,7 +83,7 @@ func conditionStatusTruth(expression ExprNode, status string, cancelled bool) co
 		case "cancelled":
 			return knownConditionTruth(cancelled)
 		}
-	case *NotOpNode:
+	case *exprlang.NotOpNode:
 		switch conditionStatusTruth(node.Operand, status, cancelled) {
 		case conditionFalse:
 			return conditionTrue
@@ -87,18 +92,18 @@ func conditionStatusTruth(expression ExprNode, status string, cancelled bool) co
 		case conditionUnknown:
 			return conditionUnknown
 		}
-	case *LogicalOpNode:
+	case *exprlang.LogicalOpNode:
 		left := conditionStatusTruth(node.Left, status, cancelled)
 		right := conditionStatusTruth(node.Right, status, cancelled)
 		switch node.Kind {
-		case LogicalOpNodeKindAnd:
+		case exprlang.LogicalOpNodeKindAnd:
 			if left == conditionFalse || right == conditionFalse {
 				return conditionFalse
 			}
 			if left == conditionTrue && right == conditionTrue {
 				return conditionTrue
 			}
-		case LogicalOpNodeKindOr:
+		case exprlang.LogicalOpNodeKindOr:
 			if left == conditionTrue || right == conditionTrue {
 				return conditionTrue
 			}

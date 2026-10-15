@@ -5,11 +5,13 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestAnalysisSourceRanges(t *testing.T) {
 	rule := NewRuleBase("test", "")
-	rule.errorfRange(&Pos{Line: 1, Col: 2}, &Pos{Line: 2, Col: 4}, "multi-line")
+	rule.errorfRange(&workflowlang.Pos{Line: 1, Col: 2}, &workflowlang.Pos{Line: 2, Col: 4}, "multi-line")
 	diagnostic := rule.Errs()[0].diagnostic([]byte("abc\ndefgh"))
 	if diagnostic.Start != (DiagnosticPosition{Line: 1, Column: 2}) || diagnostic.End != (DiagnosticPosition{Line: 2, Column: 4}) {
 		t.Fatal(diagnostic)
@@ -22,6 +24,7 @@ func TestAnalysisSourceRanges(t *testing.T) {
 		t.Fatalf("%+v %v", result, err)
 	}
 }
+
 func TestEffectiveConfigFieldCoverage(t *testing.T) {
 	resolved, err := effectiveConfig(&Config{})
 	if err != nil {

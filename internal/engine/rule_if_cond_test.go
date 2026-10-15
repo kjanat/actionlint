@@ -3,6 +3,8 @@ package engine
 import (
 	"fmt"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestRuleIfCond(t *testing.T) {
@@ -27,9 +29,9 @@ func TestRuleIfCond(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(fmt.Sprintf("%q at step", tc.cond), func(t *testing.T) {
-			var s Step
+			var s workflowlang.Step
 			if len(tc.cond) > 0 {
-				s.If = &String{Value: tc.cond, Pos: &Pos{}}
+				s.If = &workflowlang.String{Value: tc.cond, Pos: &workflowlang.Pos{}}
 			}
 
 			r := NewRuleIfCond()
@@ -49,12 +51,12 @@ func TestRuleIfCond(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(fmt.Sprintf("%q at job", tc.cond), func(t *testing.T) {
-			var j Job
+			var j workflowlang.Job
 			if len(tc.cond) > 0 {
-				j.If = &String{Value: tc.cond, Pos: &Pos{}}
-				j.Snapshot = &Snapshot{
-					ImageName: &String{Value: "test", Pos: &Pos{}},
-					If:        &String{Value: tc.cond, Pos: &Pos{}},
+				j.If = &workflowlang.String{Value: tc.cond, Pos: &workflowlang.Pos{}}
+				j.Snapshot = &workflowlang.Snapshot{
+					ImageName: &workflowlang.String{Value: "test", Pos: &workflowlang.Pos{}},
+					If:        &workflowlang.String{Value: tc.cond, Pos: &workflowlang.Pos{}},
 				}
 			}
 

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/workflowcommands"
 )
 
@@ -19,14 +20,14 @@ func (deprecatedCommandsAnalyzer) AnalyzeScripts(ctx context.Context, batch scri
 		}
 		run := script.run
 		for _, command := range workflowcommands.Deprecated(run.Run.Value) {
-			position := func(offset int, exclusive bool) (*Pos, bool) {
+			position := func(offset int, exclusive bool) (*workflowlang.Pos, bool) {
 				prefix := run.Run.Value[:offset]
 				line := strings.Count(prefix, "\n") + 1
 				column := utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1
 				if exclusive {
-					return run.source.endPos(line, column)
+					return run.Source.EndPos(line, column)
 				}
-				return run.source.pos(line, column)
+				return run.Source.Position(line, column)
 			}
 			start, startOK := position(command.Start, false)
 			end, endOK := position(command.End, true)

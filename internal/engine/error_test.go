@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"
 )
@@ -30,7 +31,7 @@ func (w testErrorWriter) Write(b []byte) (int, error) {
 func TestErrorErrorAt(t *testing.T) {
 	m := "message"
 	k := "kind"
-	err := errorAt(&Pos{1, 2}, k, m)
+	err := errorAt(&workflowlang.Pos{Line: 1, Col: 2}, k, m)
 	if err.Message != m {
 		t.Errorf("wanted %q but got %q", m, err.Message)
 	}
@@ -51,7 +52,7 @@ func TestErrorErrorAt(t *testing.T) {
 func TestErrorErrorfAt(t *testing.T) {
 	m := "this is message"
 	k := "kind"
-	err := errorfAt(&Pos{1, 2}, k, "%s is %s", "this", "message")
+	err := errorfAt(&workflowlang.Pos{Line: 1, Col: 2}, k, "%s is %s", "this", "message")
 	if err.Message != m {
 		t.Errorf("wanted %q but got %q", m, err.Message)
 	}
@@ -212,7 +213,7 @@ func TestErrorPrettyPrint(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.message, func(t *testing.T) {
-			err := errorAt(&Pos{tc.line, tc.column}, "kind", tc.message)
+			err := errorAt(&workflowlang.Pos{Line: tc.line, Col: tc.column}, "kind", tc.message)
 			err.Filepath = "filename.txt"
 
 			var buf bytes.Buffer
@@ -371,7 +372,7 @@ func TestErrorGetTemplateFieldsOK(t *testing.T) {
 
 	for i, tc := range testCases {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			err := errorAt(&Pos{1, tc.column}, "kind", tc.message)
+			err := errorAt(&workflowlang.Pos{Line: 1, Col: tc.column}, "kind", tc.message)
 			err.Filepath = "filename.txt"
 			f := err.GetTemplateFields([]byte(tc.source))
 			if f.Message != tc.message {
@@ -401,7 +402,7 @@ func TestErrorGetTemplateFieldsOK(t *testing.T) {
 
 // Regression test for #128
 func TestErrorGetTemplateFieldsColumnIsOutOfBounds(t *testing.T) {
-	err := errorAt(&Pos{1, 9999}, "kind", "this is message")
+	err := errorAt(&workflowlang.Pos{Line: 1, Col: 9999}, "kind", "this is message")
 	err.Filepath = "filename.yaml"
 	f := err.GetTemplateFields([]byte("this is source"))
 	if strings.Contains(f.Snippet, "\n") {
@@ -410,7 +411,7 @@ func TestErrorGetTemplateFieldsColumnIsOutOfBounds(t *testing.T) {
 }
 
 func TestErrorGetTemplateFieldsExplicitEndColumn(t *testing.T) {
-	err := errorAt(&Pos{Line: 1, Col: 6}, "kind", "this is message")
+	err := errorAt(&workflowlang.Pos{Line: 1, Col: 6}, "kind", "this is message")
 	err.endColumn = 9
 	f := err.GetTemplateFields([]byte("echo $foo bar"))
 	if f.Snippet != "echo $foo bar\n     ^~~~" {
@@ -422,7 +423,7 @@ func TestErrorGetTemplateFieldsExplicitEndColumn(t *testing.T) {
 }
 
 func TestErrorGetTemplateFieldsExplicitEndColumnAfterUnicode(t *testing.T) {
-	err := errorAt(&Pos{Line: 1, Col: 8}, "kind", "this is message")
+	err := errorAt(&workflowlang.Pos{Line: 1, Col: 8}, "kind", "this is message")
 	err.endColumn = 11
 	f := err.GetTemplateFields([]byte("echo é $foo"))
 	if f.Snippet != "echo é $foo\n       ^~~~" {
@@ -434,7 +435,7 @@ func TestErrorGetTemplateFieldsExplicitEndColumnAfterUnicode(t *testing.T) {
 }
 
 func TestErrorGetTemplateFieldsEndColumnAfterWideRunes(t *testing.T) {
-	err := errorAt(&Pos{Line: 1, Col: 5}, "kind", "this is message")
+	err := errorAt(&workflowlang.Pos{Line: 1, Col: 5}, "kind", "this is message")
 	f := err.GetTemplateFields([]byte("日本語 $foo"))
 	if f.Snippet != "日本語 $foo\n       ^~~~" {
 		t.Fatalf("unexpected snippet: %q", f.Snippet)
@@ -526,8 +527,8 @@ func TestErrorPrintFormattedWithTemplateFields(t *testing.T) {
 
 func TestErrorPrintFormattedErrors(t *testing.T) {
 	errs := []*Error{
-		errorAt(&Pos{1, 1}, "kind1", "error1"),
-		errorAt(&Pos{1, 0}, "kind2", "error2"),
+		errorAt(&workflowlang.Pos{Line: 1, Col: 1}, "kind1", "error1"),
+		errorAt(&workflowlang.Pos{Line: 1, Col: 0}, "kind2", "error2"),
 	}
 
 	f, err := NewErrorFormatter("{{range $ = .}}({{$.Message | printf \"%q\"}},{{$.Snippet | printf \"%q\"}}){{end}}")

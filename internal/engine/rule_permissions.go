@@ -1,6 +1,11 @@
 package engine
 
-import "slices"
+import (
+	"slices"
+
+	stringutil "actionlint.kjanat.dev/internal/stringutil"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+)
 
 var allPermissionScopes = map[string][]string{
 	"actions":              {"read", "write", "none"},
@@ -39,18 +44,18 @@ func NewRulePermissions() *RulePermissions {
 }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
-func (rule *RulePermissions) VisitJobPre(n *Job) error {
+func (rule *RulePermissions) VisitJobPre(n *workflowlang.Job) error {
 	rule.checkPermissions(n.Permissions)
 	return nil
 }
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
-func (rule *RulePermissions) VisitWorkflowPre(n *Workflow) error {
+func (rule *RulePermissions) VisitWorkflowPre(n *workflowlang.Workflow) error {
 	rule.checkPermissions(n.Permissions)
 	return nil
 }
 
-func (rule *RulePermissions) checkPermissions(p *Permissions) {
+func (rule *RulePermissions) checkPermissions(p *workflowlang.Permissions) {
 	if p == nil {
 		return
 	}
@@ -73,12 +78,12 @@ func (rule *RulePermissions) checkPermissions(p *Permissions) {
 			for s := range allPermissionScopes {
 				ss = append(ss, s)
 			}
-			rule.Errorf(p.Name.Pos, "unknown permission scope %q. all available permission scopes are %s", n, sortedQuotes(ss))
+			rule.Errorf(p.Name.Pos, "unknown permission scope %q. all available permission scopes are %s", n, stringutil.SortedQuotes(ss))
 			continue
 		}
 
 		if !slices.Contains(s, p.Value.Value) {
-			rule.Errorf(p.Value.Pos, "%q is invalid as permission of scope %q. available values are %s", p.Value.Value, n, quotes(s))
+			rule.Errorf(p.Value.Pos, "%q is invalid as permission of scope %q. available values are %s", p.Value.Value, n, stringutil.Quotes(s))
 		}
 	}
 }

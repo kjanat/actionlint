@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -14,11 +15,11 @@ type compositeScriptRules struct {
 	rules []Rule
 }
 
-func (analysis *compositeAnalyzer) visitActionScripts(call *Step, parents []Rule, active map[string]bool) error {
+func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, parents []Rule, active map[string]bool) error {
 	if err := analysis.cancelled(); err != nil {
 		return err
 	}
-	action, ok := call.Exec.(*ExecAction)
+	action, ok := call.Exec.(*workflowlang.ExecAction)
 	if !ok {
 		return nil
 	}
@@ -42,7 +43,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *Step, parents []Rule
 	return analysis.visitMetadataScripts(meta, call, parents, active)
 }
 
-func (analysis *compositeAnalyzer) visitMetadataScripts(meta *ActionMetadata, call *Step, parents []Rule, active map[string]bool) error {
+func (analysis *compositeAnalyzer) visitMetadataScripts(meta *ActionMetadata, call *workflowlang.Step, parents []Rule, active map[string]bool) error {
 	active[meta.Path()] = true
 	defer delete(active, meta.Path())
 	checkout := analysis.actions.checkoutState()
@@ -107,8 +108,8 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *ActionMetadata, ca
 		participants = append(participants, parent)
 	}
 	analysis.rules = append(analysis.rules, compositeScriptRules{meta, children})
-	parser := newSourceParser(meta.src)
-	parser.indexScalarSources(meta.schemaRoot)
+	parser := workflowlang.NewSourceParser(meta.src)
+	parser.IndexScalarSources(meta.schemaRoot)
 	for _, metadataStep := range meta.Runs.Steps {
 		if err := analysis.cancelled(); err != nil {
 			return err
@@ -117,7 +118,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *ActionMetadata, ca
 		analysis.actions.observeExecution(step)
 		analysis.actions.observeCheckout(step)
 		analysis.collectScript(step, scriptConfig, meta.Path(), meta.src, nil, nil)
-		if _, action := step.Exec.(*ExecAction); action {
+		if _, action := step.Exec.(*workflowlang.ExecAction); action {
 			for _, pass := range analysis.passes {
 				if parent, enabled := pass.(metadataParticipant); enabled {
 					validation := parent.forMetadata(analysis.actions)
@@ -160,10 +161,10 @@ func compositeCheckoutPaths(rule Pass, actions *LocalActionsCache) {
 	paths.caseInsensitive = actions.caseInsensitive
 }
 
-func compositeActionOrigin(paths *runPaths, call *Step, actionPath string) {
+func compositeActionOrigin(paths *runPaths, call *workflowlang.Step, actionPath string) {
 	paths.actionPath = actionPath
 	paths.actionRunnerPath, paths.actionIndependent = "", false
-	if action, ok := call.Exec.(*ExecAction); ok && action.Uses != nil {
+	if action, ok := call.Exec.(*workflowlang.ExecAction); ok && action.Uses != nil {
 		_, paths.actionIndependent = selfRepositoryUsesLocalSpec(action.Uses.Value)
 		if !paths.actionIndependent {
 			paths.actionRunnerPath = strings.TrimPrefix(action.Uses.Value, "./")
@@ -181,9 +182,9 @@ func compositeActionOrigin(paths *runPaths, call *Step, actionPath string) {
 // Composite steps require their own shell and do not inherit defaults.run.
 // Relative working-directory values resolve from github.workspace.
 // https://github.com/actions/runner/blob/main/src/Runner.Worker/Handlers/ScriptHandler.cs
-func compositeScriptStep(metadata *ActionCompositeStep, parser *parser) *Step {
-	pos := &Pos{Line: metadata.Line, Col: metadata.Column}
-	opaque := &Step{Pos: pos, Exec: &ExecAction{}}
+func compositeScriptStep(metadata *ActionCompositeStep, parser *workflowlang.Parser) *workflowlang.Step {
+	pos := &workflowlang.Pos{Line: metadata.Line, Col: metadata.Column}
+	opaque := &workflowlang.Step{Pos: pos, Exec: &workflowlang.ExecAction{}}
 	if metadata.node == nil || !metadata.IsMapping {
 		return opaque
 	}
@@ -196,13 +197,13 @@ func compositeScriptStep(metadata *ActionCompositeStep, parser *parser) *Step {
 	if !ok {
 		return opaque
 	}
-	parser.errors = nil
-	step := parser.parseStep(actionMetadataFields(node))
-	if len(parser.errors) != 0 {
+	parser.Errors = nil
+	step := parser.ParseStep(actionMetadataFields(node))
+	if len(parser.Errors) != 0 {
 		return opaque
 	}
 	switch step.Exec.(type) {
-	case *ExecRun, *ExecAction:
+	case *workflowlang.ExecRun, *workflowlang.ExecAction:
 		return step
 	default:
 		return opaque

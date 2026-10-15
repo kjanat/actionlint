@@ -9,8 +9,8 @@ import (
 	"sync"
 	"text/template"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/yamlsource"
-
 	"github.com/fatih/color"
 	"github.com/mattn/go-runewidth"
 )
@@ -38,7 +38,7 @@ type Error struct {
 	// endColumn is the inclusive column where the error range ends. A zero value lets the formatter
 	// infer the range from the source token at Column.
 	endColumn   int
-	endPosition *Pos
+	endPosition *workflowlang.Pos
 	// source is the content of the file at Filepath when the error points at a file other than the
 	// linted workflow. It replaces the workflow source for rendering the snippet.
 	source []byte
@@ -68,7 +68,7 @@ func (e *Error) String() string {
 	return e.Error()
 }
 
-func errorAt(pos *Pos, kind string, msg string) *Error {
+func errorAt(pos *workflowlang.Pos, kind string, msg string) *Error {
 	return &Error{
 		Message: msg,
 		Line:    pos.Line,
@@ -77,7 +77,7 @@ func errorAt(pos *Pos, kind string, msg string) *Error {
 	}
 }
 
-func errorfAt(pos *Pos, kind string, format string, args ...any) *Error {
+func errorfAt(pos *workflowlang.Pos, kind string, format string, args ...any) *Error {
 	return &Error{
 		Message: fmt.Sprintf(format, args...),
 		Line:    pos.Line,
@@ -169,22 +169,7 @@ func (e *Error) getEndColumn(line string) int {
 		return e.endColumn
 	}
 
-	start, ok := byteOffsetAtColumn(line, e.Column)
-	if !ok {
-		return e.Column
-	}
-
-	col := e.Column
-	for _, c := range line[start:] {
-		if c == ' ' || c == '\t' || c == '\n' || c == '\r' {
-			break
-		}
-		col++
-	}
-	if col > e.Column {
-		col--
-	}
-	return col
+	return yamlsource.TokenEndColumn(line, e.Column) - 1
 }
 
 func (e *Error) getIndicator(line string) string {
@@ -192,7 +177,7 @@ func (e *Error) getIndicator(line string) string {
 		return ""
 	}
 
-	start, ok := byteOffsetAtColumn(line, e.Column)
+	start, ok := workflowlang.ByteOffsetAtColumn(line, e.Column)
 	if !ok {
 		return ""
 	}
@@ -200,7 +185,7 @@ func (e *Error) getIndicator(line string) string {
 	// Count width of non-space characters after '^' for underline
 	uw := 0
 	if end := e.getEndColumn(line); end >= e.Column {
-		off, ok := byteOffsetAtColumn(line, end+1)
+		off, ok := workflowlang.ByteOffsetAtColumn(line, end+1)
 		if !ok {
 			off = len(line)
 		}

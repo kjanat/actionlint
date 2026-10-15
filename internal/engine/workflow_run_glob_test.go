@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestWorkflowRunGlobDiagnostics(t *testing.T) {
@@ -81,7 +83,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 
 func TestWorkflowRunGlobUnknownExpression(t *testing.T) {
 	rule := NewRuleGlob()
-	workflow := &Workflow{On: []Event{&WebhookEvent{Workflows: []*String{{Value: "${{ inputs.pattern }}", Pos: &Pos{Line: 1, Col: 1}}}}}}
+	workflow := &workflowlang.Workflow{On: []workflowlang.Event{&workflowlang.WebhookEvent{Workflows: []*workflowlang.String{{Value: "${{ inputs.pattern }}", Pos: &workflowlang.Pos{Line: 1, Col: 1}}}}}}
 	if err := rule.VisitWorkflowPre(workflow); err != nil || len(rule.Errs()) != 0 {
 		t.Fatalf("unknown expression treated as a literal glob: %v, %v", rule.Errs(), err)
 	}

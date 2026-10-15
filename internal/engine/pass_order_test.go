@@ -3,30 +3,32 @@ package engine
 import (
 	"reflect"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 type jobOrderPass struct {
 	RuleBase
-	jobs []*Job
+	jobs []*workflowlang.Job
 }
 
-func (p *jobOrderPass) VisitJobPre(job *Job) error {
+func (p *jobOrderPass) VisitJobPre(job *workflowlang.Job) error {
 	p.jobs = append(p.jobs, job)
 	return nil
 }
 
 func TestVisitorJobSourceOrder(t *testing.T) {
-	first := &Job{Pos: &Pos{Line: 1, Col: 1}}
-	second := &Job{Pos: &Pos{Line: 2, Col: 1}}
-	missingA, missingZ := &Job{}, &Job{}
+	first := &workflowlang.Job{Pos: &workflowlang.Pos{Line: 1, Col: 1}}
+	second := &workflowlang.Job{Pos: &workflowlang.Pos{Line: 2, Col: 1}}
+	missingA, missingZ := &workflowlang.Job{}, &workflowlang.Job{}
 	for range 10 {
 		pass := &jobOrderPass{}
 		visitor := NewVisitor()
 		visitor.AddPass(pass)
-		if err := visitor.Visit(&Workflow{Jobs: map[string]*Job{"z": first, "b": second, "missing-a": missingA, "missing-z": missingZ}}); err != nil {
+		if err := visitor.Visit(&workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"z": first, "b": second, "missing-a": missingA, "missing-z": missingZ}}); err != nil {
 			t.Fatal(err)
 		}
-		if !reflect.DeepEqual(pass.jobs, []*Job{first, second, missingA, missingZ}) {
+		if !reflect.DeepEqual(pass.jobs, []*workflowlang.Job{first, second, missingA, missingZ}) {
 			t.Fatalf("unexpected job order: %v", pass.jobs)
 		}
 	}

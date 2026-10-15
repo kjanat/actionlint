@@ -3,6 +3,9 @@ package engine
 import (
 	"strings"
 	"testing"
+
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestConstantPredicateNumericCoercion(t *testing.T) {
@@ -25,16 +28,16 @@ func TestConstantPredicateNumericCoercion(t *testing.T) {
 		{"contains(fromJSON('[1,2,3]'), 2)", true},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
-			expr := parseAssignedExpression("${{ " + tc.expression + " }}")
+			expr := exprlang.ParseAssignedExpression("${{ " + tc.expression + " }}")
 			if expr == nil {
 				t.Fatal("invalid expression fixture")
 			}
-			value, known := conditionConstantValue(expr)
+			value, known := exprlang.ConditionConstantValue(expr)
 			if !known || value != tc.want {
 				t.Fatalf("value=%v known=%v, want %v", value, known, tc.want)
 			}
 			for _, condition := range []string{tc.expression, "${{ " + tc.expression + " }}"} {
-				if enabled, known := invocationCondition(&String{Value: condition}); !known || enabled != tc.want {
+				if enabled, known := invocationCondition(&workflowlang.String{Value: condition}); !known || enabled != tc.want {
 					t.Fatalf("invocation=%v known=%v, want %v", enabled, known, tc.want)
 				}
 			}
@@ -66,7 +69,7 @@ func TestConstantPredicateAmbiguousNumbersStayUnknown(t *testing.T) {
 		"contains(inputs.number, '1')",
 	} {
 		t.Run(expression, func(t *testing.T) {
-			value, known := conditionConstantValue(parseAssignedExpression("${{ " + expression + " }}"))
+			value, known := exprlang.ConditionConstantValue(exprlang.ParseAssignedExpression("${{ " + expression + " }}"))
 			if known {
 				t.Fatalf("unexpected constant value %v", value)
 			}

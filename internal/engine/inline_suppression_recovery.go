@@ -4,6 +4,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/yamlsource"
 )
 
@@ -66,7 +67,7 @@ func recoverInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 				}
 				if strings.HasPrefix(text, "actionlint:") {
 					comments = append(comments, inlineSuppressionComment{
-						pos: Pos{Line: lineNumber, Col: utf8.RuneCountInString(line[:col]) + 1}, text: text, standalone: standalone,
+						pos: workflowlang.Pos{Line: lineNumber, Col: utf8.RuneCountInString(line[:col]) + 1}, text: text, standalone: standalone,
 					})
 				}
 				break

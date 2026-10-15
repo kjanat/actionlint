@@ -3,13 +3,14 @@
 package conformance_test
 
 import (
-	actionlint "actionlint.kjanat.dev/internal/engine"
 	"encoding/json"
 	"io/fs"
 	"regexp"
 	"strconv"
 	"strings"
 	"testing"
+
+	exprlang "actionlint.kjanat.dev/internal/expression"
 )
 
 type upstreamBlock struct{ Name, Body string }
@@ -125,20 +126,20 @@ func loadRunnerExpressions(t *testing.T, root fs.FS) []upstreamCase {
 }
 
 func TestUpstreamConformanceContextScope(t *testing.T) {
-	checker := actionlint.NewExprSemanticsChecker(false, nil)
-	contexts := map[string]actionlint.ExprType{"CUSTOM": actionlint.AnyType{}}
+	checker := exprlang.NewChecker(false, nil)
+	contexts := map[string]exprlang.Type{"CUSTOM": exprlang.AnyType{}}
 	checker.SetContextTypes(contexts)
 	checker.SetContextAvailability([]string{"custom"})
 	delete(contexts, "CUSTOM")
-	parser := actionlint.ExprParser{}
-	custom, err := parser.Parse(actionlint.NewExprLexer("custom}}"))
+	parser := exprlang.Parser{}
+	custom, err := parser.Parse(exprlang.NewLexer("custom}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, errs := checker.Check(custom); len(errs) != 0 {
 		t.Fatalf("scope was not normalized and copied: %v", errs)
 	}
-	other := actionlint.NewExprSemanticsChecker(false, nil)
+	other := exprlang.NewChecker(false, nil)
 	if _, errs := other.Check(custom); len(errs) == 0 {
 		t.Fatal("custom scope leaked to another checker")
 	}

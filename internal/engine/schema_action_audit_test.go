@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -27,9 +28,9 @@ func TestSchemaActionDefinitionCoverage(t *testing.T) {
 func TestSchemaActionDynamicRequiredInputs(t *testing.T) {
 	meta := &ActionMetadata{Inputs: ActionMetadataInputs{"token": {Name: "token", Required: true}}}
 	for _, dynamic := range []bool{false, true} {
-		exec := &ExecAction{Uses: &String{Value: "./audit", Pos: &Pos{Line: 1, Col: 1}}}
+		exec := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./audit", Pos: &workflowlang.Pos{Line: 1, Col: 1}}}
 		if dynamic {
-			exec.InputsExpression = &String{Value: "${{ fromJSON(inputs.parameters) }}", Pos: &Pos{Line: 2, Col: 1}}
+			exec.InputsExpression = &workflowlang.String{Value: "${{ fromJSON(inputs.parameters) }}", Pos: &workflowlang.Pos{Line: 2, Col: 1}}
 		}
 		rule := NewRuleAction(nil)
 		rule.checkAction(meta, exec, func(*ActionMetadata) string { return "audit" })
@@ -117,7 +118,7 @@ description: audit
 				}
 				meta.dir, meta.file = dir, "action.yml"
 				rule := NewRuleAction(nil)
-				rule.checkLocalActionMetadata(&meta, &ExecAction{Uses: &String{Value: "./audit", Pos: &Pos{Line: 1, Col: 1}}})
+				rule.checkLocalActionMetadata(&meta, &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./audit", Pos: &workflowlang.Pos{Line: 1, Col: 1}}})
 				if len(rule.Errs()) == 0 {
 					t.Fatal("invalid property shape was accepted")
 				}
@@ -278,7 +279,7 @@ runs:
 			if err == nil {
 				meta.file = "action.yml"
 				meta.src = []byte(tc.source)
-				rule.checkLocalActionMetadata(&meta, &ExecAction{Uses: &String{Value: "./audit", Pos: &Pos{Line: 1, Col: 1}}})
+				rule.checkLocalActionMetadata(&meta, &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./audit", Pos: &workflowlang.Pos{Line: 1, Col: 1}}})
 			}
 			valid := err == nil && len(rule.Errs()) == 0
 			if valid != tc.valid {

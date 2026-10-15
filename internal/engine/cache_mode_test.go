@@ -4,54 +4,56 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestParseCacheMode(t *testing.T) {
 	tests := []struct {
 		value string
-		kind  CacheModeKind
+		kind  workflowlang.CacheModeKind
 	}{
-		{"read", CacheModeRead},
-		{"write", CacheModeWrite},
-		{"write-only", CacheModeWriteOnly},
-		{"none", CacheModeNone},
-		{`"read"`, CacheModeRead},
-		{`'write-only'`, CacheModeWriteOnly},
-		{"${{ 'read' }}", CacheModeRead},
-		{"${{ 'write' }}", CacheModeWrite},
-		{"${{ 'write-only' }}", CacheModeWriteOnly},
-		{"${{ 'none' }}", CacheModeNone},
-		{"${{ 'READ' }}", CacheModeInvalid},
-		{"${{ '' }}", CacheModeInvalid},
-		{"${{ true }}", CacheModeInvalid},
-		{"${{ 1 }}", CacheModeInvalid},
-		{"${{ null }}", CacheModeInvalid},
-		{"${{ format('read') }}", CacheModeInvalid},
-		{`${{ fromJSON('"read"') }}`, CacheModeInvalid},
-		{"read-${{ 'read' }}", CacheModeInvalid},
-		{"${{ 'read' }}-suffix", CacheModeInvalid},
-		{"${{ 'read' }}${{ '' }}", CacheModeInvalid},
-		{`" ${{ 'read' }} "`, CacheModeInvalid},
-		{"${{ '${{ ''read'' }}' }}", CacheModeInvalid},
-		{"READ", CacheModeInvalid},
-		{"read-only", CacheModeInvalid},
-		{"false", CacheModeInvalid},
-		{"42", CacheModeInvalid},
-		{"null", CacheModeInvalid},
-		{"", CacheModeInvalid},
-		{`""`, CacheModeInvalid},
-		{"[]", CacheModeInvalid},
-		{"{}", CacheModeInvalid},
-		{"${{ github.event_name }}", CacheModeInvalid},
+		{"read", workflowlang.CacheModeRead},
+		{"write", workflowlang.CacheModeWrite},
+		{"write-only", workflowlang.CacheModeWriteOnly},
+		{"none", workflowlang.CacheModeNone},
+		{`"read"`, workflowlang.CacheModeRead},
+		{`'write-only'`, workflowlang.CacheModeWriteOnly},
+		{"${{ 'read' }}", workflowlang.CacheModeRead},
+		{"${{ 'write' }}", workflowlang.CacheModeWrite},
+		{"${{ 'write-only' }}", workflowlang.CacheModeWriteOnly},
+		{"${{ 'none' }}", workflowlang.CacheModeNone},
+		{"${{ 'READ' }}", workflowlang.CacheModeInvalid},
+		{"${{ '' }}", workflowlang.CacheModeInvalid},
+		{"${{ true }}", workflowlang.CacheModeInvalid},
+		{"${{ 1 }}", workflowlang.CacheModeInvalid},
+		{"${{ null }}", workflowlang.CacheModeInvalid},
+		{"${{ format('read') }}", workflowlang.CacheModeInvalid},
+		{`${{ fromJSON('"read"') }}`, workflowlang.CacheModeInvalid},
+		{"read-${{ 'read' }}", workflowlang.CacheModeInvalid},
+		{"${{ 'read' }}-suffix", workflowlang.CacheModeInvalid},
+		{"${{ 'read' }}${{ '' }}", workflowlang.CacheModeInvalid},
+		{`" ${{ 'read' }} "`, workflowlang.CacheModeInvalid},
+		{"${{ '${{ ''read'' }}' }}", workflowlang.CacheModeInvalid},
+		{"READ", workflowlang.CacheModeInvalid},
+		{"read-only", workflowlang.CacheModeInvalid},
+		{"false", workflowlang.CacheModeInvalid},
+		{"42", workflowlang.CacheModeInvalid},
+		{"null", workflowlang.CacheModeInvalid},
+		{"", workflowlang.CacheModeInvalid},
+		{`""`, workflowlang.CacheModeInvalid},
+		{"[]", workflowlang.CacheModeInvalid},
+		{"{}", workflowlang.CacheModeInvalid},
+		{"${{ github.event_name }}", workflowlang.CacheModeInvalid},
 	}
 	for _, placement := range []string{"workflow", "job", "call"} {
 		for _, tt := range tests {
 			t.Run(placement+"/"+tt.value, func(t *testing.T) {
 				src := "on: push\n"
-				wantPos := Pos{Line: 4, Col: 17}
+				wantPos := workflowlang.Pos{Line: 4, Col: 17}
 				if placement == "workflow" {
 					src += "cache-mode: " + tt.value + "\n"
-					wantPos = Pos{Line: 2, Col: 13}
+					wantPos = workflowlang.Pos{Line: 2, Col: 13}
 				}
 				src += `jobs:
   test:
@@ -69,7 +71,7 @@ func TestParseCacheMode(t *testing.T) {
 				}
 				w, errs := Parse([]byte(src))
 				wantErrors := 0
-				if tt.kind == CacheModeInvalid {
+				if tt.kind == workflowlang.CacheModeInvalid {
 					wantErrors = 1
 				}
 				if len(errs) != wantErrors {
@@ -118,7 +120,7 @@ func TestParseCacheModeOmittedAndAliased(t *testing.T) {
 			if w.CacheMode != nil || w.Jobs["test"].CacheMode != nil {
 				t.Fatal("omitted cache mode acquired an explicit default")
 			}
-		} else if w.CacheMode.Kind != CacheModeRead || w.Jobs["test"].CacheMode.Kind != CacheModeRead {
+		} else if w.CacheMode.Kind != workflowlang.CacheModeRead || w.Jobs["test"].CacheMode.Kind != workflowlang.CacheModeRead {
 			t.Fatal("cache mode alias was not resolved")
 		}
 	}

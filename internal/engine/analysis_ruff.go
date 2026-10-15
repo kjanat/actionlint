@@ -1,11 +1,13 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/internal/ruff"
 	"context"
 	"errors"
 	"fmt"
 	"slices"
+
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	"actionlint.kjanat.dev/internal/ruff"
 )
 
 // ruffAnalyzer consumes prepared scripts. It has no traversal or diagnostic state.
@@ -53,8 +55,10 @@ func newRuffChecker(c ruleContext) (*ruff.Checker, error) {
 			return nil, err
 		}
 		defer cmd.proc.sema.Release(1)
-		execution := cmdExecution{cmd: cmd.exe, args: slices.Concat(cmd.launcherArgs, cmd.args, args), stdin: source,
-			dir: cmd.dir, env: cmd.env, unsetEnv: cmd.unsetEnv, maxExitCode: 1}
+		execution := cmdExecution{
+			cmd: cmd.exe, args: slices.Concat(cmd.launcherArgs, cmd.args, args), stdin: source,
+			dir: cmd.dir, env: cmd.env, unsetEnv: cmd.unsetEnv, maxExitCode: 1,
+		}
 		return execution.run(ctx)
 	}, cmd.exe, cmd.args, cmd.dir)
 	cmd.args = prefix
@@ -70,8 +74,8 @@ func newRuffChecker(c ruleContext) (*ruff.Checker, error) {
 }
 
 func ruffExpressionEnd(src string) (int, bool) {
-	lexer := NewExprLexer(src)
-	_, err := NewExprParser().Parse(lexer)
+	lexer := exprlang.NewLexer(src)
+	_, err := exprlang.NewParser().Parse(lexer)
 	return lexer.Offset(), err == nil
 }
 
@@ -119,8 +123,8 @@ func (r *ruffAnalyzer) AnalyzeScripts(ctx context.Context, batch scriptBatch) ([
 			continue
 		}
 		err := checker.Check(run.Run.Value, script.shell, run.RunPos.String(), config, func(d ruff.Diagnostic) {
-			pos, mapped := run.source.pos(d.Location.Row, d.Location.Column)
-			end, endMapped := run.source.endPos(d.EndLocation.Row, d.EndLocation.Column)
+			pos, mapped := run.Source.Position(d.Location.Row, d.Location.Column)
+			end, endMapped := run.Source.EndPos(d.EndLocation.Row, d.EndLocation.Column)
 			if !mapped || !endMapped {
 				pos, end = run.RunPos, nil
 			}

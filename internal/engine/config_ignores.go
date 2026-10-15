@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	exprlang "actionlint.kjanat.dev/internal/expression"
 	"actionlint.kjanat.dev/internal/filefilter"
 	"actionlint.kjanat.dev/internal/suppression"
 	"go.yaml.in/yaml/v4"
@@ -90,7 +91,7 @@ func filterConfigIgnores(path, root string, source []byte, findings []*Error, cf
 	if cfg == nil || len(cfg.Ignores) == 0 || len(findings) == 0 {
 		return findings
 	}
-	contexts := suppression.Contexts(source, literalExpressionValue)
+	contexts := suppression.Contexts(source, exprlang.LiteralExpressionValue)
 	filtered := make([]*Error, 0, len(findings))
 	for _, finding := range findings {
 		reportedPath := path

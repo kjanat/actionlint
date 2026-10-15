@@ -3,6 +3,8 @@ package engine
 import (
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestKnownExpressionActionInputs(t *testing.T) {
@@ -33,7 +35,7 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			exec := workflow.Jobs["test"].Steps[0].Exec.(*ExecAction)
+			exec := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
 			rule := NewRuleAction(nil)
 			rule.checkAction(meta, exec, func(*ActionMetadata) string { return "example/action@v1" })
 			errs = rule.Errs()

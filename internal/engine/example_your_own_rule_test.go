@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	actionlint "actionlint.kjanat.dev/internal/engine"
+	workflow "actionlint.kjanat.dev/internal/workflow"
 )
 
 // A rule type to check every steps have their names.
@@ -15,7 +16,7 @@ type RuleStepName struct {
 }
 
 // Reimplement methods in RuleBase. Visit* methods are called on checking workflows.
-func (r *RuleStepName) VisitStep(n *actionlint.Step) error {
+func (r *RuleStepName) VisitStep(n *workflow.Step) error {
 	// Implement your own check
 	if n.Name == nil {
 		// RuleBase provides methods to report errors. See RuleBase.Error and RuleBase.Errorf.

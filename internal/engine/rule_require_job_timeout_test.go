@@ -3,29 +3,31 @@ package engine
 import (
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestRuleRequireJobTimeout(t *testing.T) {
-	jobPos := &Pos{Line: 4, Col: 3}
-	valuePos := &Pos{Line: 6, Col: 22}
+	jobPos := &workflowlang.Pos{Line: 4, Col: 3}
+	valuePos := &workflowlang.Pos{Line: 6, Col: 22}
 	missing := ":4:3: \"timeout-minutes\" is not set in job \"test\". it is required because \"require-job-timeout\" is enabled in the \"policy\" configuration. a job which does not set it is cancelled after the default of 360 minutes [require-job-timeout]"
 
-	newJob := func(timeout *Float) *Job {
-		return &Job{
-			ID:             &String{Value: "test", Pos: jobPos},
-			Steps:          []*Step{{Pos: &Pos{Line: 7, Col: 7}}},
+	newJob := func(timeout *workflowlang.Float) *workflowlang.Job {
+		return &workflowlang.Job{
+			ID:             &workflowlang.String{Value: "test", Pos: jobPos},
+			Steps:          []*workflowlang.Step{{Pos: &workflowlang.Pos{Line: 7, Col: 7}}},
 			TimeoutMinutes: timeout,
 			Pos:            jobPos,
 		}
 	}
-	minutes := func(v float64) *Float {
-		return &Float{Value: v, Pos: valuePos}
+	minutes := func(v float64) *workflowlang.Float {
+		return &workflowlang.Float{Value: v, Pos: valuePos}
 	}
 
 	tests := []struct {
 		what   string
 		policy *JobTimeoutPolicy
-		job    *Job
+		job    *workflowlang.Job
 		want   []string
 	}{
 		{
@@ -94,38 +96,38 @@ func TestRuleRequireJobTimeout(t *testing.T) {
 		{
 			what:   "timeout is an expression",
 			policy: RequireJobTimeout(30),
-			job: newJob(&Float{
+			job: newJob(&workflowlang.Float{
 				Value:      45,
-				Expression: &String{Value: "matrix.timeout", Pos: valuePos},
+				Expression: &workflowlang.String{Value: "matrix.timeout", Pos: valuePos},
 				Pos:        valuePos,
 			}),
 		},
 		{
 			what:   "job calls a reusable workflow",
 			policy: RequireJobTimeout(30),
-			job: &Job{
-				ID: &String{Value: "test", Pos: jobPos},
-				WorkflowCall: &WorkflowCall{
-					Uses: &String{Value: "./.github/workflows/ci.yaml", Pos: &Pos{Line: 5, Col: 11}},
+			job: &workflowlang.Job{
+				ID: &workflowlang.String{Value: "test", Pos: jobPos},
+				WorkflowCall: &workflowlang.WorkflowCall{
+					Uses: &workflowlang.String{Value: "./.github/workflows/ci.yaml", Pos: &workflowlang.Pos{Line: 5, Col: 11}},
 				},
-				Steps: []*Step{{Pos: &Pos{Line: 7, Col: 7}}},
+				Steps: []*workflowlang.Step{{Pos: &workflowlang.Pos{Line: 7, Col: 7}}},
 				Pos:   jobPos,
 			},
 		},
 		{
 			what:   "job has no steps",
 			policy: RequireJobTimeout(30),
-			job: &Job{
-				ID:  &String{Value: "test", Pos: jobPos},
+			job: &workflowlang.Job{
+				ID:  &workflowlang.String{Value: "test", Pos: jobPos},
 				Pos: jobPos,
 			},
 		},
 		{
 			what:   "job has an empty steps section",
 			policy: RequireJobTimeout(30),
-			job: &Job{
-				ID:    &String{Value: "test", Pos: jobPos},
-				Steps: []*Step{},
+			job: &workflowlang.Job{
+				ID:    &workflowlang.String{Value: "test", Pos: jobPos},
+				Steps: []*workflowlang.Step{},
 				Pos:   jobPos,
 			},
 			want: []string{missing},
@@ -174,13 +176,13 @@ func TestRuleRequireJobTimeoutRange(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			pos := &Pos{Line: 6, Col: 22}
-			job := &Job{ID: &String{Value: "test"}, Pos: &Pos{Line: 4, Col: 3}, Steps: []*Step{}, TimeoutMinutes: &Float{Value: tc.value, Pos: pos}}
+			pos := &workflowlang.Pos{Line: 6, Col: 22}
+			job := &workflowlang.Job{ID: &workflowlang.String{Value: "test"}, Pos: &workflowlang.Pos{Line: 4, Col: 3}, Steps: []*workflowlang.Step{}, TimeoutMinutes: &workflowlang.Float{Value: tc.value, Pos: pos}}
 			if tc.expression {
-				job.TimeoutMinutes.Expression = &String{Value: "matrix.timeout", Pos: pos}
+				job.TimeoutMinutes.Expression = &workflowlang.String{Value: "matrix.timeout", Pos: pos}
 			}
 			if tc.call {
-				job.WorkflowCall = &WorkflowCall{}
+				job.WorkflowCall = &workflowlang.WorkflowCall{}
 			}
 			rule := NewRuleRequireJobTimeout(policy)
 			if err := rule.VisitJobPre(job); err != nil {

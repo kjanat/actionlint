@@ -10,6 +10,10 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	stringutil "actionlint.kjanat.dev/internal/stringutil"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 // BrandingColors is a set of colors allowed at branding.color in action.yaml.
@@ -364,8 +368,8 @@ func NewRuleAction(cache *LocalActionsCache) *RuleAction {
 }
 
 // VisitStep is callback when visiting Step node.
-func (rule *RuleAction) VisitStep(n *Step) error {
-	e, ok := n.Exec.(*ExecAction)
+func (rule *RuleAction) VisitStep(n *workflowlang.Step) error {
+	e, ok := n.Exec.(*workflowlang.ExecAction)
 	if !ok || e.Uses == nil {
 		return nil
 	}
@@ -431,7 +435,7 @@ func splitActionUses(spec string) (owner, repo, ref, problem string) {
 	return owner, repo, ref, ""
 }
 
-func (rule *RuleAction) checkRepoAction(spec string, exec *ExecAction) {
+func (rule *RuleAction) checkRepoAction(spec string, exec *workflowlang.ExecAction) {
 	owner, repo, ref, problem := splitActionUses(spec)
 	if problem != "" {
 		rule.invalidActionFormat(exec.Uses.Pos, spec, problem)
@@ -464,16 +468,16 @@ func (rule *RuleAction) checkRepoAction(spec string, exec *ExecAction) {
 	})
 }
 
-func (rule *RuleAction) invalidActionFormat(pos *Pos, spec string, why string) {
+func (rule *RuleAction) invalidActionFormat(pos *workflowlang.Pos, spec string, why string) {
 	rule.Errorf(pos, "specifying action %q in invalid format because %s. available formats are \"{owner}/{repo}@{ref}\", \"{owner}/{repo}/{path}@{ref}\", \"./{path}\", or \"$/{path}\"", spec, why)
 }
 
-func (rule *RuleAction) missingRunsProp(pos *Pos, prop, ty, action, path string) {
+func (rule *RuleAction) missingRunsProp(pos *workflowlang.Pos, prop, ty, action, path string) {
 	pos = rule.metadataFieldPosition(pos, "runs", prop)
 	rule.Errorf(pos, `%q is required in "runs" section because %q is a %s action. the action is defined at %q`, prop, action, ty, path)
 }
 
-func (rule *RuleAction) checkInvalidRunsProps(pos *Pos, r *ActionMetadataRuns, ty, action, path string, props []string) {
+func (rule *RuleAction) checkInvalidRunsProps(pos *workflowlang.Pos, r *ActionMetadataRuns, ty, action, path string, props []string) {
 	for _, prop := range props {
 		invalid := prop == "main" && r.Main != "" ||
 			prop == "pre" && r.Pre != "" ||
@@ -495,7 +499,7 @@ func (rule *RuleAction) checkInvalidRunsProps(pos *Pos, r *ActionMetadataRuns, t
 	}
 }
 
-func (rule *RuleAction) checkRunsFileExists(file, dir, prop, name string, pos *Pos) {
+func (rule *RuleAction) checkRunsFileExists(file, dir, prop, name string, pos *workflowlang.Pos) {
 	pos = rule.metadataFieldPosition(pos, "runs", prop)
 	f := filepath.FromSlash(file)
 	if f == "" {
@@ -509,7 +513,7 @@ func (rule *RuleAction) checkRunsFileExists(file, dir, prop, name string, pos *P
 
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-docker-container-actions
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
-func (rule *RuleAction) checkLocalDockerActionRuns(r *ActionMetadataRuns, dir, name string, pos *Pos) {
+func (rule *RuleAction) checkLocalDockerActionRuns(r *ActionMetadataRuns, dir, name string, pos *workflowlang.Pos) {
 	if r.Image == "" {
 		rule.missingRunsProp(pos, "image", "Docker", name, dir)
 	} else if !isImageOnDockerRegistry(r.Image) {
@@ -525,7 +529,7 @@ func (rule *RuleAction) checkLocalDockerActionRuns(r *ActionMetadataRuns, dir, n
 
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-composite-actions
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
-func (rule *RuleAction) checkLocalCompositeActionRuns(meta *ActionMetadata, pos *Pos) {
+func (rule *RuleAction) checkLocalCompositeActionRuns(meta *ActionMetadata, pos *workflowlang.Pos) {
 	r := &meta.Runs
 	if r.Steps == nil {
 		rule.missingRunsProp(pos, "steps", "Composite", meta.Name, meta.Dir())
@@ -554,9 +558,9 @@ func (rule *RuleAction) compositeStepErrorf(meta *ActionMetadata, s *ActionCompo
 }
 
 // compositeStepErrorfAt reports a position inside the step, with an optional exclusive end.
-func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, idx, line, col int, end *Pos, format string, args ...any) {
+func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, idx, line, col int, end *workflowlang.Pos, format string, args ...any) {
 	m := fmt.Sprintf(format, args...)
-	err := errorAt(&Pos{Line: line, Col: col}, rule.name, fmt.Sprintf(`"runs.steps[%d]" in metadata of %q action %s`, idx, meta.Name, m))
+	err := errorAt(&workflowlang.Pos{Line: line, Col: col}, rule.name, fmt.Sprintf(`"runs.steps[%d]" in metadata of %q action %s`, idx, meta.Name, m))
 	err.Filepath = meta.Path()
 	err.source = meta.src
 	err.endPosition = end
@@ -573,7 +577,7 @@ func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, idx, line, c
 			origin.uses = *step.Uses
 		}
 		for _, value := range []*string{&origin.stepID, &origin.stepName, &origin.uses} {
-			if literal := literalExpressionValue(*value); literal != nil {
+			if literal := exprlang.LiteralExpressionValue(*value); literal != nil {
 				*value = *literal
 			}
 		}
@@ -583,8 +587,8 @@ func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, idx, line, c
 }
 
 // metadataErrorfAt reports inside the action metadata, with an optional exclusive end.
-func (rule *RuleAction) metadataErrorfAt(meta *ActionMetadata, line, col int, end *Pos, format string, args ...any) {
-	err := errorfAt(&Pos{Line: line, Col: col}, rule.name, format, args...)
+func (rule *RuleAction) metadataErrorfAt(meta *ActionMetadata, line, col int, end *workflowlang.Pos, format string, args ...any) {
+	err := errorfAt(&workflowlang.Pos{Line: line, Col: col}, rule.name, format, args...)
 	err.Filepath = meta.Path()
 	err.source = meta.src
 	err.endPosition = end
@@ -601,7 +605,7 @@ func (rule *RuleAction) checkActionInputDefaults(meta *ActionMetadata) {
 			if v.context != "" {
 				message = fmt.Sprintf(
 					`uses context %q which is not available in input defaults. available contexts are %s`,
-					v.context, quotes(actionMetadataAvailability[field].contexts),
+					v.context, stringutil.Quotes(actionMetadataAvailability[field].contexts),
 				)
 			}
 			rule.metadataErrorfAt(
@@ -615,7 +619,7 @@ func (rule *RuleAction) checkActionInputDefaults(meta *ActionMetadata) {
 func (rule *RuleAction) checkCompositeActionStepKeys(meta *ActionMetadata, s *ActionCompositeStep, idx int, allowed []string) {
 	for _, k := range s.Keys {
 		if !slices.Contains(allowed, strings.ToLower(k)) {
-			rule.compositeStepErrorf(meta, s, idx, "has unexpected key %q. expected one of %s", k, sortedQuotes(allowed))
+			rule.compositeStepErrorf(meta, s, idx, "has unexpected key %q. expected one of %s", k, stringutil.SortedQuotes(allowed))
 		}
 	}
 }
@@ -723,7 +727,7 @@ func compositeStepContextHint(ctx string) string {
 
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-javascript-actions
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
-func (rule *RuleAction) checkLocalJavaScriptActionRuns(r *ActionMetadataRuns, dir, name string, pos *Pos) {
+func (rule *RuleAction) checkLocalJavaScriptActionRuns(r *ActionMetadataRuns, dir, name string, pos *workflowlang.Pos) {
 	if r.Main == "" {
 		rule.missingRunsProp(pos, "main", "JavaScript", name, dir)
 	} else {
@@ -745,7 +749,7 @@ func (rule *RuleAction) checkLocalJavaScriptActionRuns(r *ActionMetadataRuns, di
 	rule.checkInvalidRunsProps(pos, r, "JavaScript", name, dir, []string{"steps", "image", "pre-entrypoint", "entrypoint", "post-entrypoint", "args", "env"})
 }
 
-func (rule *RuleAction) checkLocalActionInputs(meta *ActionMetadata, pos *Pos) {
+func (rule *RuleAction) checkLocalActionInputs(meta *ActionMetadata, pos *workflowlang.Pos) {
 	for _, i := range meta.Inputs {
 		if i.Deprecated && i.DeprecationMessage == "" {
 			rule.Errorf(
@@ -761,7 +765,7 @@ func (rule *RuleAction) checkLocalActionInputs(meta *ActionMetadata, pos *Pos) {
 
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
-func (rule *RuleAction) checkLocalActionRuns(meta *ActionMetadata, pos *Pos) {
+func (rule *RuleAction) checkLocalActionRuns(meta *ActionMetadata, pos *workflowlang.Pos) {
 	pos = rule.metadataFieldPosition(pos, "runs", "using")
 	r := &meta.Runs
 	using := strings.ToLower(r.Using)
@@ -790,7 +794,7 @@ func (rule *RuleAction) checkLocalActionRuns(meta *ActionMetadata, pos *Pos) {
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-the-github-packages-container-registry
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
-func (rule *RuleAction) checkDockerAction(uri string, exec *ExecAction) {
+func (rule *RuleAction) checkDockerAction(uri string, exec *workflowlang.ExecAction) {
 	tag := ""
 	tagExists := false
 	if idx := strings.IndexRune(uri[len("docker://"):], ':'); idx != -1 {
@@ -819,7 +823,7 @@ func (rule *RuleAction) checkDockerAction(uri string, exec *ExecAction) {
 
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
-func (rule *RuleAction) checkLocalActionMetadata(meta *ActionMetadata, action *ExecAction) {
+func (rule *RuleAction) checkLocalActionMetadata(meta *ActionMetadata, action *workflowlang.ExecAction) {
 	rule.checkActionMetadataSchema(meta)
 	if meta.Name == "" {
 		rule.Errorf(rule.metadataFieldPosition(action.Uses.Pos, "name"), "name is required in action metadata %q", meta.Path())
@@ -856,7 +860,7 @@ func (rule *RuleAction) checkLocalActionMetadata(meta *ActionMetadata, action *E
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-action-in-the-same-repository-as-the-workflow
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
-func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *ExecAction) {
+func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *workflowlang.ExecAction) {
 	if strings.HasPrefix(displaySpec, "$/") {
 		localSpec = displaySpec
 	}
@@ -886,8 +890,8 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *
 
 var reNewlineWithIndent = regexp.MustCompile(`\s*\r?\n\s*`)
 
-func (rule *RuleAction) checkAction(meta *ActionMetadata, exec *ExecAction, describe func(*ActionMetadata) string) {
-	inputs, known := actionInputNames(exec)
+func (rule *RuleAction) checkAction(meta *ActionMetadata, exec *workflowlang.ExecAction, describe func(*ActionMetadata) string) {
+	inputs, known := workflowlang.ActionInputNames(exec)
 	// Check specified inputs are defined in action's inputs spec
 	for id, i := range inputs {
 		m, ok := meta.Inputs[id]
@@ -901,7 +905,7 @@ func (rule *RuleAction) checkAction(meta *ActionMetadata, exec *ExecAction, desc
 				"input %q is not defined in action %s. available inputs are %s",
 				i.Name.Value,
 				describe(meta),
-				sortedQuotes(ns),
+				stringutil.SortedQuotes(ns),
 			)
 		} else if m.Deprecated && !m.Required {
 			// Note: Using required inputs cannot be avoided. So we don't report it as error (though this should not
@@ -934,7 +938,7 @@ func (rule *RuleAction) checkAction(meta *ActionMetadata, exec *ExecAction, desc
 					"missing input %q which is required by action %s. all required inputs are %s",
 					i.Name,
 					describe(meta),
-					sortedQuotes(ns),
+					stringutil.SortedQuotes(ns),
 				)
 			}
 		}
@@ -946,10 +950,11 @@ func (rule *RuleAction) forMetadata(actions *LocalActionsCache) Rule {
 	child.SetConfig(rule.Config())
 	return child
 }
+
 func (rule *RuleAction) checkStandaloneMetadata(meta *ActionMetadata) {
 	rule.standalone = meta
 	defer func() { rule.standalone = nil }()
-	rule.checkLocalActionMetadata(meta, &ExecAction{Uses: &String{Pos: &Pos{Line: 1, Col: 1}}})
+	rule.checkLocalActionMetadata(meta, &workflowlang.ExecAction{Uses: &workflowlang.String{Pos: &workflowlang.Pos{Line: 1, Col: 1}}})
 	for _, finding := range rule.errs {
 		finding.metadataFinding = &actionMetadataFinding{key: metadataFindingKey(meta, finding), declaration: true}
 	}

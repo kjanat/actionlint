@@ -3,6 +3,8 @@ package engine
 import (
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestRuleRunnerLabelCheckLabels(t *testing.T) {
@@ -356,26 +358,26 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
-			pos := &Pos{}
-			labels := make([]*String, 0, len(tc.labels))
+			pos := &workflowlang.Pos{}
+			labels := make([]*workflowlang.String, 0, len(tc.labels))
 			for _, l := range tc.labels {
-				labels = append(labels, &String{l, false, pos})
+				labels = append(labels, &workflowlang.String{Value: l, Quoted: false, Pos: pos})
 			}
-			node := &Job{
-				RunsOn: &Runner{
+			node := &workflowlang.Job{
+				RunsOn: &workflowlang.Runner{
 					Labels: labels,
 				},
 			}
 
 			if tc.matrix != nil {
-				n := &String{"os", false, pos}
-				row := make([]RawYAMLValue, 0, len(tc.matrix))
+				n := &workflowlang.String{Value: "os", Quoted: false, Pos: pos}
+				row := make([]workflowlang.RawYAMLValue, 0, len(tc.matrix))
 				for _, m := range tc.matrix {
-					row = append(row, &RawYAMLString{Value: m, Tag: yamlTagStr, pos: pos})
+					row = append(row, &workflowlang.RawYAMLString{Value: m, Tag: workflowlang.YamlTagStr, Position: pos})
 				}
-				st := &Strategy{
-					Matrix: &Matrix{
-						Rows: map[string]*MatrixRow{
+				st := &workflowlang.Strategy{
+					Matrix: &workflowlang.Matrix{
+						Rows: map[string]*workflowlang.MatrixRow{
 							"os": {
 								Name:   n,
 								Values: row,
@@ -411,7 +413,7 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 
 func TestRuleRunnerLabelDoNothingOnNoRunsOn(t *testing.T) {
 	rule := NewRuleRunnerLabel()
-	if err := rule.VisitJobPre(&Job{}); err != nil {
+	if err := rule.VisitJobPre(&workflowlang.Job{}); err != nil {
 		t.Fatal(err)
 	}
 	if errs := rule.Errs(); len(errs) > 0 {
@@ -425,8 +427,8 @@ func TestUbuntuRunnerArchitectures(t *testing.T) {
 		for _, x64 := range []string{"ubuntu-" + version, "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores"} {
 			t.Run(x64+"/"+arm, func(t *testing.T) {
 				rule := NewRuleRunnerLabel()
-				pos := &Pos{Line: 1, Col: 1}
-				job := &Job{RunsOn: &Runner{Labels: []*String{{Value: x64, Pos: pos}, {Value: arm, Pos: pos}}}}
+				pos := &workflowlang.Pos{Line: 1, Col: 1}
+				job := &workflowlang.Job{RunsOn: &workflowlang.Runner{Labels: []*workflowlang.String{{Value: x64, Pos: pos}, {Value: arm, Pos: pos}}}}
 				if err := rule.VisitJobPre(job); err != nil {
 					t.Fatal(err)
 				}
@@ -438,8 +440,8 @@ func TestUbuntuRunnerArchitectures(t *testing.T) {
 		}
 		t.Run("linux/"+arm, func(t *testing.T) {
 			rule := NewRuleRunnerLabel()
-			pos := &Pos{Line: 1, Col: 1}
-			job := &Job{RunsOn: &Runner{Labels: []*String{{Value: "linux", Pos: pos}, {Value: arm, Pos: pos}}}}
+			pos := &workflowlang.Pos{Line: 1, Col: 1}
+			job := &workflowlang.Job{RunsOn: &workflowlang.Runner{Labels: []*workflowlang.String{{Value: "linux", Pos: pos}, {Value: arm, Pos: pos}}}}
 			if err := rule.VisitJobPre(job); err != nil {
 				t.Fatal(err)
 			}

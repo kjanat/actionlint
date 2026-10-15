@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	stringutil "actionlint.kjanat.dev/internal/stringutil"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/robfig/cron/v3"
 )
 
@@ -23,31 +25,31 @@ func NewRuleEvents() *RuleEvents {
 }
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
-func (rule *RuleEvents) VisitWorkflowPre(n *Workflow) error {
+func (rule *RuleEvents) VisitWorkflowPre(n *workflowlang.Workflow) error {
 	for _, e := range n.On {
 		rule.checkEvent(e)
 	}
 	return nil
 }
 
-func (rule *RuleEvents) checkEvent(event Event) {
+func (rule *RuleEvents) checkEvent(event workflowlang.Event) {
 	switch e := event.(type) {
-	case *ScheduledEvent:
+	case *workflowlang.ScheduledEvent:
 		for _, s := range e.Schedules {
 			rule.checkCron(s.Cron)
 			if s.Timezone != nil {
 				rule.checkTimezone(s.Timezone)
 			}
 		}
-	case *WorkflowDispatchEvent:
+	case *workflowlang.WorkflowDispatchEvent:
 		rule.checkWorkflowDispatchEvent(e)
-	case *RepositoryDispatchEvent:
+	case *workflowlang.RepositoryDispatchEvent:
 		// Nothing to do
-	case *WorkflowCallEvent:
+	case *workflowlang.WorkflowCallEvent:
 		rule.checkWorkflowCallEvent(e)
-	case *WebhookEvent:
+	case *workflowlang.WebhookEvent:
 		rule.checkWebhookEvent(e)
-	case *ImageVersionEvent:
+	case *workflowlang.ImageVersionEvent:
 		rule.checkImageVersionEvent(e)
 	default:
 		panic("unreachable")
@@ -55,7 +57,7 @@ func (rule *RuleEvents) checkEvent(event Event) {
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#onschedule
-func (rule *RuleEvents) checkCron(spec *String) {
+func (rule *RuleEvents) checkCron(spec *workflowlang.String) {
 	p := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 	sched, err := p.Parse(spec.Value)
 	if err != nil {
@@ -76,7 +78,7 @@ func (rule *RuleEvents) checkCron(spec *String) {
 }
 
 // https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onschedule
-func (rule *RuleEvents) checkTimezone(tz *String) {
+func (rule *RuleEvents) checkTimezone(tz *workflowlang.String) {
 	// Local is a Go host-timezone selector; UTC is a valid IANA alias for Etc/UTC.
 	ok := tz.Value != "" && !strings.EqualFold(tz.Value, "local")
 	if ok {
@@ -88,7 +90,7 @@ func (rule *RuleEvents) checkTimezone(tz *String) {
 	}
 }
 
-func (rule *RuleEvents) filterNotAvailable(pos *Pos, filter, hook string, available []string) {
+func (rule *RuleEvents) filterNotAvailable(pos *workflowlang.Pos, filter, hook string, available []string) {
 	e := "events"
 	if len(available) < 2 {
 		e = "event"
@@ -96,7 +98,7 @@ func (rule *RuleEvents) filterNotAvailable(pos *Pos, filter, hook string, availa
 	rule.Errorf(pos, "%q filter is not available for %s event. it is only for %s %s", filter, hook, strings.Join(available, ", "), e)
 }
 
-func (rule *RuleEvents) checkExclusiveFilters(filter, ignore *WebhookEventFilter, hook string, available []string) {
+func (rule *RuleEvents) checkExclusiveFilters(filter, ignore *workflowlang.WebhookEventFilter, hook string, available []string) {
 	ok := slices.Contains(available, hook)
 
 	if ok {
@@ -118,7 +120,7 @@ func (rule *RuleEvents) checkExclusiveFilters(filter, ignore *WebhookEventFilter
 }
 
 // https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#webhook-events
-func (rule *RuleEvents) checkWebhookEvent(event *WebhookEvent) {
+func (rule *RuleEvents) checkWebhookEvent(event *workflowlang.WebhookEvent) {
 	hook := event.Hook.Value
 
 	types, ok := AllWebhookTypes[hook]
@@ -165,7 +167,7 @@ func (rule *RuleEvents) checkWebhookEvent(event *WebhookEvent) {
 	)
 }
 
-func (rule *RuleEvents) checkTypes(hook *String, types []*String, expected []string) {
+func (rule *RuleEvents) checkTypes(hook *workflowlang.String, types []*workflowlang.String, expected []string) {
 	if len(expected) == 0 && len(types) > 0 {
 		rule.Errorf(hook.Pos, "\"types\" cannot be specified for %q Webhook event", hook.Value)
 		return
@@ -179,14 +181,14 @@ func (rule *RuleEvents) checkTypes(hook *String, types []*String, expected []str
 				"invalid activity type %q for %q Webhook event. available types are %s",
 				ty.Value,
 				hook.Value,
-				sortedQuotes(expected),
+				stringutil.SortedQuotes(expected),
 			)
 		}
 	}
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/reusing-workflows
-func (rule *RuleEvents) checkWorkflowCallEvent(event *WorkflowCallEvent) {
+func (rule *RuleEvents) checkWorkflowCallEvent(event *workflowlang.WorkflowCallEvent) {
 	for _, i := range event.Inputs {
 		if i.Default == nil {
 			continue
@@ -194,7 +196,7 @@ func (rule *RuleEvents) checkWorkflowCallEvent(event *WorkflowCallEvent) {
 		// ${{ }} is available in the default value
 		if !i.Default.ContainsExpression() {
 			switch i.Type {
-			case WorkflowCallEventInputTypeNumber:
+			case workflowlang.WorkflowCallEventInputTypeNumber:
 				if _, err := strconv.ParseFloat(i.Default.Value, 64); err != nil {
 					rule.Errorf(
 						i.Default.Pos,
@@ -204,7 +206,7 @@ func (rule *RuleEvents) checkWorkflowCallEvent(event *WorkflowCallEvent) {
 						err,
 					)
 				}
-			case WorkflowCallEventInputTypeBoolean:
+			case workflowlang.WorkflowCallEventInputTypeBoolean:
 				if d := strings.ToLower(i.Default.Value); d != "true" && d != "false" {
 					rule.Errorf(
 						i.Default.Pos,
@@ -228,9 +230,9 @@ func (rule *RuleEvents) checkWorkflowCallEvent(event *WorkflowCallEvent) {
 
 // https://github.blog/changelog/2021-11-10-github-actions-input-types-for-manual-workflows/
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#onworkflow_dispatchinputs
-func (rule *RuleEvents) checkWorkflowDispatchEvent(event *WorkflowDispatchEvent) {
+func (rule *RuleEvents) checkWorkflowDispatchEvent(event *workflowlang.WorkflowDispatchEvent) {
 	for n, i := range event.Inputs {
-		if i.Type == WorkflowDispatchEventInputTypeChoice {
+		if i.Type == workflowlang.WorkflowDispatchEventInputTypeChoice {
 			if len(i.Options) == 0 {
 				rule.Errorf(i.Name.Pos, "input type of %q is \"choice\" but \"options\" is not set", n)
 				continue
@@ -244,12 +246,12 @@ func (rule *RuleEvents) checkWorkflowDispatchEvent(event *WorkflowDispatchEvent)
 				seen[o.Value] = struct{}{}
 			}
 			if i.Default != nil {
-				var b quotesBuilder
+				var b stringutil.QuotesBuilder
 				for _, o := range i.Options {
-					b.append(o.Value)
+					b.Append(o.Value)
 				}
 				if _, ok := seen[i.Default.Value]; !ok {
-					rule.Errorf(i.Default.Pos, "default value %q of %q input is not included in its options %q", i.Default.Value, n, b.build())
+					rule.Errorf(i.Default.Pos, "default value %q of %q input is not included in its options %q", i.Default.Value, n, b.Build())
 				}
 			}
 		} else {
@@ -260,7 +262,7 @@ func (rule *RuleEvents) checkWorkflowDispatchEvent(event *WorkflowDispatchEvent)
 				// TODO: Can some check be done for WorkflowDispatchEventInputTypeEnvironment?
 				// What is suitable for default value of the type? (Or is a default value never suitable?)
 				switch i.Type {
-				case WorkflowDispatchEventInputTypeNumber:
+				case workflowlang.WorkflowDispatchEventInputTypeNumber:
 					if _, err := strconv.ParseFloat(i.Default.Value, 64); err != nil {
 						rule.Errorf(
 							i.Default.Pos,
@@ -270,7 +272,7 @@ func (rule *RuleEvents) checkWorkflowDispatchEvent(event *WorkflowDispatchEvent)
 							err,
 						)
 					}
-				case WorkflowDispatchEventInputTypeBoolean:
+				case workflowlang.WorkflowDispatchEventInputTypeBoolean:
 					if d := strings.ToLower(i.Default.Value); d != "true" && d != "false" {
 						rule.Errorf(i.Default.Pos, "type of %q input is \"boolean\". its default value %q must be \"true\" or \"false\"", n, i.Default.Value)
 					}
@@ -291,8 +293,8 @@ func (rule *RuleEvents) checkWorkflowDispatchEvent(event *WorkflowDispatchEvent)
 }
 
 // https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#image_version
-func (rule *RuleEvents) checkImageVersionEvent(event *ImageVersionEvent) {
+func (rule *RuleEvents) checkImageVersionEvent(event *workflowlang.ImageVersionEvent) {
 	// Both official workflow schemas define these activities in image-version-activity-type.
-	hook := &String{Value: event.EventName(), Pos: event.Pos}
+	hook := &workflowlang.String{Value: event.EventName(), Pos: event.Pos}
 	rule.checkTypes(hook, event.Types, []string{"created", "ready", "deleted"})
 }

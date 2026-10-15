@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -47,7 +48,7 @@ run-name: |
   two # actionlint:ignore cache-operation, cache-operation -- reviewed -- intentionally unused
 `
 	comments := collectInlineSuppressionComments([]byte(source))
-	if len(comments) != 1 || comments[0].pos != (Pos{Line: 2, Col: 7}) || comments[0].standalone {
+	if len(comments) != 1 || comments[0].pos != (workflowlang.Pos{Line: 2, Col: 7}) || comments[0].standalone {
 		t.Fatalf("want only the real closing comment at 2:7, got %+v", comments)
 	}
 	directive, err := parseInlineSuppression(comments[0])
@@ -55,7 +56,7 @@ run-name: |
 		t.Fatal(err)
 	}
 	want := inlineSuppressionDirective{
-		pos: Pos{Line: 2, Col: 7}, targetLine: 2,
+		pos: workflowlang.Pos{Line: 2, Col: 7}, targetLine: 2,
 		rules: []string{"cache-operation"}, reason: "reviewed -- intentionally unused",
 	}
 	if diff := cmp.Diff(want, directive, cmp.AllowUnexported(inlineSuppressionDirective{})); diff != "" {
@@ -124,7 +125,7 @@ func TestInlineSuppressionRegistry(t *testing.T) {
 				t.Fatal(err)
 			}
 			comment := inlineSuppressionComment{
-				pos: Pos{Line: 4, Col: 3}, standalone: true,
+				pos: workflowlang.Pos{Line: 4, Col: 3}, standalone: true,
 				text: "actionlint:ignore-next-line " + name + " -- reviewed",
 			}
 			directive, parseErr := parseInlineSuppression(comment)

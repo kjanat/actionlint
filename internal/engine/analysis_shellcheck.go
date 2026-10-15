@@ -1,11 +1,12 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/analyzerhost"
 	"context"
 	"errors"
 	"slices"
+
+	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/internal/analyzerhost"
 )
 
 // shellcheckAnalyzer owns execution; traversal supplies resolved invocation facts.
@@ -130,7 +131,7 @@ func (analyzer *shellcheckAnalyzer) AnalyzeScripts(ctx context.Context, batch sc
 		run := *base
 		run.ignoreOrigin = script.origin
 		runs[i] = &run
-		if err := run.runShellcheck(script.run.Run.Value, script.run.source, script.execution.shell, script.execution.directory, script.run.RunPos, script.run.Run.Pos); err != nil {
+		if err := run.runShellcheck(script.run.Run.Value, script.run.Source, script.execution.shell, script.execution.directory, script.run.RunPos, script.run.Run.Pos); err != nil {
 			failure = errors.Join(failure, err)
 			break
 		}

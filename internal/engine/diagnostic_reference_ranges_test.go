@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	exprlang "actionlint.kjanat.dev/internal/expression"
 )
 
 func TestParserOwnedExpressionSpans(t *testing.T) {
@@ -20,11 +22,11 @@ func TestParserOwnedExpressionSpans(t *testing.T) {
 		{`env . NAME [ 'x' ]`, `env . NAME [ 'x' ]`},
 	} {
 		t.Run(tc.text, func(t *testing.T) {
-			node, err := NewExprParser().Parse(NewExprLexer(tc.text + "}}"))
+			node, err := exprlang.NewParser().Parse(exprlang.NewLexer(tc.text + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			span := expressionSpan(node)
+			span := exprlang.ExpressionSpan(node)
 			if got := tc.text[span.Start:span.End]; got != tc.want {
 				t.Fatalf("range %q, want %q", got, tc.want)
 			}

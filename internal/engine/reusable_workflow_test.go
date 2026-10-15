@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -35,7 +37,7 @@ func TestReusableWorkflowUnmarshalOK(t *testing.T) {
 			`,
 			want: &ReusableWorkflowMetadata{
 				Inputs: ReusableWorkflowMetadataInputs{
-					"i": {"i", false, StringType{}},
+					"i": {"i", false, exprlang.StringType{}},
 				},
 				Outputs: ReusableWorkflowMetadataOutputs{
 					"o": {"o"},
@@ -103,15 +105,15 @@ func TestReusableWorkflowUnmarshalOK(t *testing.T) {
 			`,
 			want: &ReusableWorkflowMetadata{
 				Inputs: ReusableWorkflowMetadataInputs{
-					"a": {"a", false, StringType{}},
-					"b": {"b", false, NumberType{}},
-					"c": {"c", false, BoolType{}},
-					"d": {"d", false, AnyType{}},
-					"e": {"e", false, StringType{}},
-					"f": {"f", true, StringType{}},
-					"g": {"g", false, StringType{}},
-					"h": {"h", false, StringType{}},
-					"i": {"i", true, AnyType{}},
+					"a": {"a", false, exprlang.StringType{}},
+					"b": {"b", false, exprlang.NumberType{}},
+					"c": {"c", false, exprlang.BoolType{}},
+					"d": {"d", false, exprlang.AnyType{}},
+					"e": {"e", false, exprlang.StringType{}},
+					"f": {"f", true, exprlang.StringType{}},
+					"g": {"g", false, exprlang.StringType{}},
+					"h": {"h", false, exprlang.StringType{}},
+					"i": {"i", true, exprlang.AnyType{}},
 				},
 				Outputs: nil,
 				Secrets: nil,
@@ -133,7 +135,7 @@ func TestReusableWorkflowUnmarshalOK(t *testing.T) {
 			`,
 			want: &ReusableWorkflowMetadata{
 				Inputs: ReusableWorkflowMetadataInputs{
-					"i": {"i", false, StringType{}},
+					"i": {"i", false, exprlang.StringType{}},
 				},
 				Outputs: ReusableWorkflowMetadataOutputs{
 					"o": {"o"},
@@ -220,8 +222,8 @@ func TestReusableWorkflowUnmarshalOK(t *testing.T) {
 			`,
 			want: &ReusableWorkflowMetadata{
 				Inputs: ReusableWorkflowMetadataInputs{
-					"my_input1": {"MY_INPUT1", false, StringType{}},
-					"my_input2": {"MY_INPUT2", false, NumberType{}},
+					"my_input1": {"MY_INPUT1", false, exprlang.StringType{}},
+					"my_input2": {"MY_INPUT2", false, exprlang.NumberType{}},
 				},
 				Outputs: ReusableWorkflowMetadataOutputs{
 					"my_output1": {"MY_OUTPUT1"},
@@ -346,8 +348,8 @@ func TestReusableWorkflowUnmarshalEventNotFound(t *testing.T) {
 
 var testReusableWorkflowWantedMetadata *ReusableWorkflowMetadata = &ReusableWorkflowMetadata{
 	Inputs: ReusableWorkflowMetadataInputs{
-		"input1": {"input1", false, StringType{}},
-		"input2": {"input2", true, BoolType{}},
+		"input1": {"input1", false, exprlang.StringType{}},
+		"input2": {"input2", true, exprlang.BoolType{}},
 	},
 	Outputs: ReusableWorkflowMetadataOutputs{
 		"output1": {"output1"},
@@ -551,70 +553,70 @@ func TestReusableWorkflowConvertWorkflowPathToSpec(t *testing.T) {
 func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 	tests := []struct {
 		what   string
-		inputs map[string]*WorkflowCallEventInput
+		inputs map[string]*workflowlang.WorkflowCallEventInput
 		want   ReusableWorkflowMetadataInputs
 	}{
 		{
 			what: "type of inputs",
-			inputs: map[string]*WorkflowCallEventInput{
-				"string_input":  {Type: WorkflowCallEventInputTypeString},
-				"number_input":  {Type: WorkflowCallEventInputTypeNumber},
-				"bool_input":    {Type: WorkflowCallEventInputTypeBoolean},
+			inputs: map[string]*workflowlang.WorkflowCallEventInput{
+				"string_input":  {Type: workflowlang.WorkflowCallEventInputTypeString},
+				"number_input":  {Type: workflowlang.WorkflowCallEventInputTypeNumber},
+				"bool_input":    {Type: workflowlang.WorkflowCallEventInputTypeBoolean},
 				"unknown_input": {},
 			},
 			want: ReusableWorkflowMetadataInputs{
-				"string_input":  {"string_input", false, StringType{}},
-				"number_input":  {"number_input", false, NumberType{}},
-				"bool_input":    {"bool_input", false, BoolType{}},
-				"unknown_input": {"unknown_input", false, AnyType{}},
+				"string_input":  {"string_input", false, exprlang.StringType{}},
+				"number_input":  {"number_input", false, exprlang.NumberType{}},
+				"bool_input":    {"bool_input", false, exprlang.BoolType{}},
+				"unknown_input": {"unknown_input", false, exprlang.AnyType{}},
 			},
 		},
 		{
 			what: "required or optional",
-			inputs: map[string]*WorkflowCallEventInput{
+			inputs: map[string]*workflowlang.WorkflowCallEventInput{
 				"unspecified":  {},
-				"not_required": {Required: &Bool{Value: false, Pos: &Pos{}}},
-				"required":     {Required: &Bool{Value: true, Pos: &Pos{}}},
+				"not_required": {Required: &workflowlang.Bool{Value: false, Pos: &workflowlang.Pos{}}},
+				"required":     {Required: &workflowlang.Bool{Value: true, Pos: &workflowlang.Pos{}}},
 				"required_but_default": {
-					Required: &Bool{Value: true, Pos: &Pos{}},
-					Default:  &String{Pos: &Pos{}},
+					Required: &workflowlang.Bool{Value: true, Pos: &workflowlang.Pos{}},
+					Default:  &workflowlang.String{Pos: &workflowlang.Pos{}},
 				},
 				"expression": {
-					Required: &Bool{
-						Expression: &String{Pos: &Pos{}},
-						Pos:        &Pos{},
+					Required: &workflowlang.Bool{
+						Expression: &workflowlang.String{Pos: &workflowlang.Pos{}},
+						Pos:        &workflowlang.Pos{},
 					},
 				},
 			},
 			want: ReusableWorkflowMetadataInputs{
-				"unspecified":          {"unspecified", false, AnyType{}},
-				"not_required":         {"not_required", false, AnyType{}},
-				"required":             {"required", true, AnyType{}},
-				"required_but_default": {"required_but_default", false, AnyType{}},
-				"expression":           {"expression", false, AnyType{}},
+				"unspecified":          {"unspecified", false, exprlang.AnyType{}},
+				"not_required":         {"not_required", false, exprlang.AnyType{}},
+				"required":             {"required", true, exprlang.AnyType{}},
+				"required_but_default": {"required_but_default", false, exprlang.AnyType{}},
+				"expression":           {"expression", false, exprlang.AnyType{}},
 			},
 		},
 		{
 			what:   "empty",
-			inputs: map[string]*WorkflowCallEventInput{},
+			inputs: map[string]*workflowlang.WorkflowCallEventInput{},
 			want:   ReusableWorkflowMetadataInputs{},
 		},
 		{
 			what: "upper case input",
-			inputs: map[string]*WorkflowCallEventInput{
-				"MY_INPUT": {Type: WorkflowCallEventInputTypeString},
+			inputs: map[string]*workflowlang.WorkflowCallEventInput{
+				"MY_INPUT": {Type: workflowlang.WorkflowCallEventInputTypeString},
 			},
 			want: ReusableWorkflowMetadataInputs{
-				"my_input": {"MY_INPUT", false, StringType{}},
+				"my_input": {"MY_INPUT", false, exprlang.StringType{}},
 			},
 		},
 		{
 			what: "upper case inputs",
-			inputs: map[string]*WorkflowCallEventInput{
+			inputs: map[string]*workflowlang.WorkflowCallEventInput{
 				"MY_INPUT": {},
 			},
 			want: ReusableWorkflowMetadataInputs{
-				"my_input": {"MY_INPUT", false, AnyType{}},
+				"my_input": {"MY_INPUT", false, exprlang.AnyType{}},
 			},
 		},
 	}
@@ -624,9 +626,9 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 			cwd := filepath.Join("path", "to", "project")
 			proj := &Project{root: cwd}
 			c := NewLocalReusableWorkflowCache(proj, cwd, nil)
-			e := &WorkflowCallEvent{Inputs: []*WorkflowCallEventInput{}}
+			e := &workflowlang.WorkflowCallEvent{Inputs: []*workflowlang.WorkflowCallEventInput{}}
 			for n, i := range tc.inputs {
-				i.Name = &String{Value: n, Pos: &Pos{}}
+				i.Name = &workflowlang.String{Value: n, Pos: &workflowlang.Pos{}}
 				i.ID = strings.ToLower(n)
 				e.Inputs = append(e.Inputs, i)
 			}
@@ -663,10 +665,10 @@ func TestReusableWorkflowMetadataFromASTNodeOutputs(t *testing.T) {
 			cwd := filepath.Join("path", "to", "project")
 			proj := &Project{root: cwd}
 			c := NewLocalReusableWorkflowCache(proj, cwd, nil)
-			e := &WorkflowCallEvent{Outputs: map[string]*WorkflowCallEventOutput{}}
+			e := &workflowlang.WorkflowCallEvent{Outputs: map[string]*workflowlang.WorkflowCallEventOutput{}}
 			for _, o := range outputs {
-				e.Outputs[strings.ToLower(o)] = &WorkflowCallEventOutput{
-					Name: &String{Value: o, Pos: &Pos{}},
+				e.Outputs[strings.ToLower(o)] = &workflowlang.WorkflowCallEventOutput{
+					Name: &workflowlang.String{Value: o, Pos: &workflowlang.Pos{}},
 				}
 			}
 
@@ -696,20 +698,20 @@ func TestReusableWorkflowMetadataFromASTNodeOutputs(t *testing.T) {
 }
 
 func TestReusableWorkflowMetadataFromASTNodeSecrets(t *testing.T) {
-	tests := []map[string]*Bool{
+	tests := []map[string]*workflowlang.Bool{
 		{},
 		{"a": nil},
-		{"a": &Bool{Value: false, Pos: &Pos{}}},
-		{"a": &Bool{Value: true, Pos: &Pos{}}},
-		{"a": &Bool{Expression: &String{Pos: &Pos{}}, Pos: &Pos{}}},
+		{"a": &workflowlang.Bool{Value: false, Pos: &workflowlang.Pos{}}},
+		{"a": &workflowlang.Bool{Value: true, Pos: &workflowlang.Pos{}}},
+		{"a": &workflowlang.Bool{Expression: &workflowlang.String{Pos: &workflowlang.Pos{}}, Pos: &workflowlang.Pos{}}},
 		{
-			"a": &Bool{Value: false, Pos: &Pos{}},
-			"b": &Bool{Value: true, Pos: &Pos{}},
+			"a": &workflowlang.Bool{Value: false, Pos: &workflowlang.Pos{}},
+			"b": &workflowlang.Bool{Value: true, Pos: &workflowlang.Pos{}},
 			"c": nil,
 		},
 		{
-			"A": &Bool{Value: false, Pos: &Pos{}},
-			"B": &Bool{Value: true, Pos: &Pos{}},
+			"A": &workflowlang.Bool{Value: false, Pos: &workflowlang.Pos{}},
+			"B": &workflowlang.Bool{Value: true, Pos: &workflowlang.Pos{}},
 			"C": nil,
 		},
 	}
@@ -718,10 +720,10 @@ func TestReusableWorkflowMetadataFromASTNodeSecrets(t *testing.T) {
 			cwd := filepath.Join("path", "to", "project")
 			proj := &Project{root: cwd}
 			c := NewLocalReusableWorkflowCache(proj, cwd, nil)
-			e := &WorkflowCallEvent{Secrets: map[string]*WorkflowCallEventSecret{}}
+			e := &workflowlang.WorkflowCallEvent{Secrets: map[string]*workflowlang.WorkflowCallEventSecret{}}
 			for n, r := range secrets {
-				e.Secrets[strings.ToLower(n)] = &WorkflowCallEventSecret{
-					Name:     &String{Value: n, Pos: &Pos{}},
+				e.Secrets[strings.ToLower(n)] = &workflowlang.WorkflowCallEventSecret{
+					Name:     &workflowlang.String{Value: n, Pos: &workflowlang.Pos{}},
 					Required: r,
 				}
 			}
@@ -757,7 +759,7 @@ func TestReusableWorkflowMetadataFromASTNodeSecrets(t *testing.T) {
 func TestReusableWorkflowMetadataFromASTNodeDoNothing(t *testing.T) {
 	cwd := filepath.Join("path", "to", "project")
 	c := NewLocalReusableWorkflowCache(nil, cwd, nil)
-	c.WriteWorkflowCallEvent("workflow.yaml", &WorkflowCallEvent{})
+	c.WriteWorkflowCallEvent("workflow.yaml", &workflowlang.WorkflowCallEvent{})
 	m, _, ok := c.readCache("./workflow.yaml")
 	if ok {
 		t.Fatal("Metadata created:", m)
@@ -765,7 +767,7 @@ func TestReusableWorkflowMetadataFromASTNodeDoNothing(t *testing.T) {
 
 	proj := &Project{root: cwd}
 	c = NewLocalReusableWorkflowCache(proj, filepath.Join("path", "to", "another-project"), nil)
-	c.WriteWorkflowCallEvent("workflow.yaml", &WorkflowCallEvent{})
+	c.WriteWorkflowCallEvent("workflow.yaml", &workflowlang.WorkflowCallEvent{})
 	m, _, ok = c.readCache("./workflow.yaml")
 	if ok {
 		t.Fatal("Metadata created:", m)
@@ -774,7 +776,7 @@ func TestReusableWorkflowMetadataFromASTNodeDoNothing(t *testing.T) {
 	m1 := &ReusableWorkflowMetadata{}
 	c = NewLocalReusableWorkflowCache(proj, cwd, nil)
 	c.writeCache("./dir/workflow.yaml", m1, nil)
-	c.WriteWorkflowCallEvent(filepath.Join("dir", "workflow.yaml"), &WorkflowCallEvent{})
+	c.WriteWorkflowCallEvent(filepath.Join("dir", "workflow.yaml"), &workflowlang.WorkflowCallEvent{})
 	m2, _, ok := c.readCache("./dir/workflow.yaml")
 	if !ok {
 		t.Fatal("Metadata was not created for ./dir/workflow.yaml")
@@ -852,7 +854,7 @@ func TestReusableWorkflowMetadataCacheWriteFromFileAndASTNodeConcurrently(t *tes
 		ret <- struct{}{}
 	}
 	fromNode := func() {
-		c.WriteWorkflowCallEvent("workflow.yaml", &WorkflowCallEvent{})
+		c.WriteWorkflowCallEvent("workflow.yaml", &workflowlang.WorkflowCallEvent{})
 		if _, _, ok := c.readCache("./workflow.yaml"); !ok {
 			err <- errors.New("Cache was not created from WorkflowCallEvent")
 			return
@@ -891,7 +893,7 @@ func TestReusableWorkflowMetadataCacheWriteFromFileAndASTNodeConcurrently(t *tes
 
 func TestReusableWorkflowNullCache(t *testing.T) {
 	c := newNullLocalReusableWorkflowCache(io.Discard)
-	e := &WorkflowCallEvent{Inputs: []*WorkflowCallEventInput{}}
+	e := &workflowlang.WorkflowCallEvent{Inputs: []*workflowlang.WorkflowCallEventInput{}}
 
 	// This should do nothing
 	c.WriteWorkflowCallEvent(filepath.Join("foo", "test.yaml"), e)
@@ -975,7 +977,7 @@ func TestReusableWorkflowMetadataJobPermissionsFromWorkflowNode(t *testing.T) {
 
 	cwd := filepath.Join("path", "to", "project")
 	c := NewLocalReusableWorkflowCache(&Project{root: cwd}, cwd, nil)
-	c.WriteWorkflowCallEventFromWorkflow("test.yaml", &WorkflowCallEvent{}, w)
+	c.WriteWorkflowCallEventFromWorkflow("test.yaml", &workflowlang.WorkflowCallEvent{}, w)
 	fromNode, _, ok := c.readCache("./test.yaml")
 	if !ok {
 		t.Fatal("metadata was not created")
@@ -1095,7 +1097,7 @@ func TestReusableWorkflowMetadataUnusedAnchorParity(t *testing.T) {
 
 	cwd := filepath.Join("path", "to", "project")
 	c2 := NewLocalReusableWorkflowCache(&Project{root: cwd}, cwd, nil)
-	c2.WriteWorkflowCallEventFromWorkflow("test.yaml", &WorkflowCallEvent{}, w)
+	c2.WriteWorkflowCallEventFromWorkflow("test.yaml", &workflowlang.WorkflowCallEvent{}, w)
 	fromNode, _, ok := c2.readCache("./test.yaml")
 	if !ok {
 		t.Fatal("metadata was not created from the AST")

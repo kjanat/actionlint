@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -58,98 +60,98 @@ func TestRuleExpressionCheckRawYAMLStringTag(t *testing.T) {
 		what  string
 		value string
 		tag   string
-		want  ExprType
+		want  exprlang.Type
 	}{
 		{
 			what:  "!!bool tagging the YAML 1.1 spelling on",
 			value: "on",
-			tag:   yamlTagBool,
-			want:  StringType{},
+			tag:   workflowlang.YamlTagBool,
+			want:  exprlang.StringType{},
 		},
 		{
 			what:  "!!bool tagging the YAML 1.1 spelling yes",
 			value: "yes",
-			tag:   yamlTagBool,
-			want:  StringType{},
+			tag:   workflowlang.YamlTagBool,
+			want:  exprlang.StringType{},
 		},
 		{
 			what:  "!!bool tagging the YAML 1.1 spelling off",
 			value: "off",
-			tag:   yamlTagBool,
-			want:  StringType{},
+			tag:   workflowlang.YamlTagBool,
+			want:  exprlang.StringType{},
 		},
 		{
 			what:  "!!bool tagging the core schema spelling true",
 			value: "true",
-			tag:   yamlTagBool,
-			want:  BoolType{},
+			tag:   workflowlang.YamlTagBool,
+			want:  exprlang.BoolType{},
 		},
 		{
 			what:  "!!bool tagging the core schema spelling FALSE",
 			value: "FALSE",
-			tag:   yamlTagBool,
-			want:  BoolType{},
+			tag:   workflowlang.YamlTagBool,
+			want:  exprlang.BoolType{},
 		},
 		{
 			what:  "!!null tagging a spelling outside the core schema",
 			value: "none",
-			tag:   yamlTagNull,
-			want:  StringType{},
+			tag:   workflowlang.YamlTagNull,
+			want:  exprlang.StringType{},
 		},
 		{
 			what:  "!!null tagging the core schema spelling ~",
 			value: "~",
-			tag:   yamlTagNull,
-			want:  NullType{},
+			tag:   workflowlang.YamlTagNull,
+			want:  exprlang.NullType{},
 		},
 		{
 			what:  "!!null tagging an empty value",
 			value: "",
-			tag:   yamlTagNull,
-			want:  NullType{},
+			tag:   workflowlang.YamlTagNull,
+			want:  exprlang.NullType{},
 		},
 		{
 			what:  "!!int tagging a binary integer, which the core schema does not have",
 			value: "0b10",
-			tag:   yamlTagInt,
-			want:  StringType{},
+			tag:   workflowlang.YamlTagInt,
+			want:  exprlang.StringType{},
 		},
 		{
 			what:  "!!int tagging an underscored integer, which the core schema does not have",
 			value: "1_000",
-			tag:   yamlTagInt,
-			want:  StringType{},
+			tag:   workflowlang.YamlTagInt,
+			want:  exprlang.StringType{},
 		},
 		{
 			what:  "!!int tagging a hexadecimal integer",
 			value: "0x1F",
-			tag:   yamlTagInt,
-			want:  NumberType{},
+			tag:   workflowlang.YamlTagInt,
+			want:  exprlang.NumberType{},
 		},
 		{
 			what:  "!!float tagging an infinity",
 			value: ".inf",
-			tag:   yamlTagFloat,
-			want:  NumberType{},
+			tag:   workflowlang.YamlTagFloat,
+			want:  exprlang.NumberType{},
 		},
 		{
 			what:  "!!str tagging text that looks like a number",
 			value: "3.10",
-			tag:   yamlTagStr,
-			want:  StringType{},
+			tag:   workflowlang.YamlTagStr,
+			want:  exprlang.StringType{},
 		},
 		{
 			what:  "!!str tagging text that looks like a boolean",
 			value: "true",
-			tag:   yamlTagStr,
-			want:  StringType{},
+			tag:   workflowlang.YamlTagStr,
+			want:  exprlang.StringType{},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
 			rule := NewRuleExpression(nil, nil)
-			have := rule.checkRawYAMLString(&RawYAMLString{Value: tc.value, Tag: tc.tag, pos: &Pos{}})
+			have := rule.checkRawYAMLString(&workflowlang.RawYAMLString{Value: tc.value, Tag: tc.tag, Position: &workflowlang.Pos{}})
 			if diff := cmp.Diff(tc.want, have); diff != "" {
 				t.Fatalf(`wanted %s but got %s
 diff:

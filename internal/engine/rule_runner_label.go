@@ -5,6 +5,10 @@ import (
 	"path"
 	"slices"
 	"strings"
+
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	stringutil "actionlint.kjanat.dev/internal/stringutil"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 type runnerOSCompat uint
@@ -143,7 +147,7 @@ type RuleRunnerLabel struct {
 	// Note: Using only one compatibility integer is enough to check compatibility. But we remember
 	// all past compatibility values here for better error message. If accumulating all compatibility
 	// values into one integer, we can no longer know what labels are conflicting.
-	compats map[runnerOSCompat]*String
+	compats map[runnerOSCompat]*workflowlang.String
 }
 
 // NewRuleRunnerLabel creates new RuleRunnerLabel instance.
@@ -155,7 +159,7 @@ func NewRuleRunnerLabel() *RuleRunnerLabel {
 }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
-func (rule *RuleRunnerLabel) VisitJobPre(n *Job) error {
+func (rule *RuleRunnerLabel) VisitJobPre(n *workflowlang.Job) error {
 	if n.RunsOn == nil {
 		return nil
 	}
@@ -168,7 +172,7 @@ func (rule *RuleRunnerLabel) VisitJobPre(n *Job) error {
 		return nil
 	}
 
-	rule.compats = map[runnerOSCompat]*String{}
+	rule.compats = map[runnerOSCompat]*workflowlang.String{}
 	switch {
 	case n.RunsOn.Expression != nil:
 		rule.checkLabelAndConflict(n.RunsOn.Expression, n.Strategy)
@@ -185,7 +189,7 @@ func (rule *RuleRunnerLabel) VisitJobPre(n *Job) error {
 }
 
 // https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
-func (rule *RuleRunnerLabel) checkLabelAndConflict(l *String, strategy *Strategy) {
+func (rule *RuleRunnerLabel) checkLabelAndConflict(l *workflowlang.String, strategy *workflowlang.Strategy) {
 	if l.ContainsExpression() {
 		if labels, known := knownRunnerExpressionLabels(l); known {
 			for _, label := range labels {
@@ -201,7 +205,7 @@ func (rule *RuleRunnerLabel) checkLabelAndConflict(l *String, strategy *Strategy
 	rule.checkCompat(comp, l)
 }
 
-func (rule *RuleRunnerLabel) checkLabel(l *String, strategy *Strategy) {
+func (rule *RuleRunnerLabel) checkLabel(l *workflowlang.String, strategy *workflowlang.Strategy) {
 	if l.ContainsExpression() {
 		if labels, known := knownRunnerExpressionLabels(l); known {
 			for _, label := range labels {
@@ -220,15 +224,15 @@ func (rule *RuleRunnerLabel) checkLabel(l *String, strategy *Strategy) {
 	rule.verifyRunnerLabel(l)
 }
 
-func knownRunnerExpressionLabels(expr *String) ([]*String, bool) {
-	value, known := workflowExpressionLiteral(expr)
+func knownRunnerExpressionLabels(expr *workflowlang.String) ([]*workflowlang.String, bool) {
+	value, known := workflowlang.WorkflowExpressionLiteral(expr)
 	if !known {
 		return nil, false
 	}
 	return runnerExpressionLabels(value, expr.Pos, false), true
 }
 
-func runnerExpressionLabels(value any, pos *Pos, nullIsLabel bool) []*String {
+func runnerExpressionLabels(value any, pos *workflowlang.Pos, nullIsLabel bool) []*workflowlang.String {
 	if object, ok := value.(map[string]any); ok {
 		value = nil
 		found := false
@@ -242,7 +246,7 @@ func runnerExpressionLabels(value any, pos *Pos, nullIsLabel bool) []*String {
 			return nil
 		}
 	}
-	var labels []*String
+	var labels []*workflowlang.String
 	appendLabel := func(value any) {
 		if value == nil && !nullIsLabel {
 			return // The runs-on schema reports null values.
@@ -261,16 +265,16 @@ func runnerExpressionLabels(value any, pos *Pos, nullIsLabel bool) []*String {
 	return labels
 }
 
-func runnerExpressionLabel(value any, pos *Pos) *String {
-	label, ok := workflowScalarString(value)
+func runnerExpressionLabel(value any, pos *workflowlang.Pos) *workflowlang.String {
+	label, ok := workflowlang.WorkflowScalarString(value)
 	if !ok {
 		return nil
 	}
-	return &String{Value: label, Pos: pos}
+	return &workflowlang.String{Value: label, Pos: pos}
 }
 
-func knownStrategyRunnerLabels(expr *String, property string) [][]*String {
-	value, known := workflowExpressionLiteral(expr)
+func knownStrategyRunnerLabels(expr *workflowlang.String, property string) [][]*workflowlang.String {
+	value, known := workflowlang.WorkflowExpressionLiteral(expr)
 	if !known {
 		return nil
 	}
@@ -282,7 +286,7 @@ func knownStrategyRunnerLabels(expr *String, property string) [][]*String {
 	if !ok {
 		return nil
 	}
-	var labels [][]*String
+	var labels [][]*workflowlang.String
 	if row, ok := workflowObjectProperty(matrix, property).([]any); ok {
 		for _, value := range row {
 			labels = append(labels, runnerExpressionLabels(value, expr.Pos, true))
@@ -303,7 +307,7 @@ func knownStrategyRunnerLabels(expr *String, property string) [][]*String {
 	return labels
 }
 
-func (rule *RuleRunnerLabel) verifyRunnerLabel(label *String) runnerOSCompat {
+func (rule *RuleRunnerLabel) verifyRunnerLabel(label *workflowlang.String) runnerOSCompat {
 	l := label.Value
 	if c, ok := defaultRunnerOSCompats[strings.ToLower(l)]; ok {
 		return c
@@ -331,7 +335,7 @@ func (rule *RuleRunnerLabel) verifyRunnerLabel(label *String) runnerOSCompat {
 		label.Pos,
 		"label %q is unknown. available labels are %s. if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file",
 		label.Value,
-		quotesAll(
+		stringutil.QuotesAll(
 			allGitHubHostedRunnerLabels,
 			selfHostedRunnerPresetOtherLabels,
 			selfHostedRunnerPresetOSLabels,
@@ -342,7 +346,7 @@ func (rule *RuleRunnerLabel) verifyRunnerLabel(label *String) runnerOSCompat {
 	return compatInvalid
 }
 
-func (rule *RuleRunnerLabel) tryToGetLabelsInMatrix(label *String, strategy *Strategy) [][]*String {
+func (rule *RuleRunnerLabel) tryToGetLabelsInMatrix(label *workflowlang.String, strategy *workflowlang.Strategy) [][]*workflowlang.String {
 	if strategy == nil {
 		return nil
 	}
@@ -360,20 +364,20 @@ func (rule *RuleRunnerLabel) tryToGetLabelsInMatrix(label *String, strategy *Str
 	if m == nil {
 		return nil
 	}
-	var labels [][]*String
+	var labels [][]*workflowlang.String
 
 	if row := m.Rows[prop]; row != nil {
 		elements, _ := matrixRowElements(row, true)
 		for _, element := range elements {
-			if scalar, ok := element.value.(*RawYAMLString); ok && (!element.expressions || !ContainsExpression(scalar.Value)) {
-				labels = append(labels, []*String{{scalar.Value, false, scalar.Pos()}})
+			if scalar, ok := element.value.(*workflowlang.RawYAMLString); ok && (!element.expressions || !exprlang.ContainsExpression(scalar.Value)) {
+				labels = append(labels, []*workflowlang.String{{Value: scalar.Value, Quoted: false, Pos: scalar.Pos()}})
 			}
 		}
 	}
 	for _, combination := range matrixExcludeCombinations(m.Include, true) {
 		if assign := combination.combination.Assigns[prop]; assign != nil {
-			if scalar, ok := assign.Value.(*RawYAMLString); ok && (!combination.expressions || !ContainsExpression(scalar.Value)) {
-				labels = append(labels, []*String{{scalar.Value, false, scalar.Pos()}})
+			if scalar, ok := assign.Value.(*workflowlang.RawYAMLString); ok && (!combination.expressions || !exprlang.ContainsExpression(scalar.Value)) {
+				labels = append(labels, []*workflowlang.String{{Value: scalar.Value, Quoted: false, Pos: scalar.Pos()}})
 			}
 		}
 	}
@@ -381,18 +385,18 @@ func (rule *RuleRunnerLabel) tryToGetLabelsInMatrix(label *String, strategy *Str
 	return labels
 }
 
-func runnerMatrixProperty(label *String) string {
-	deref, ok := parseAssignedExpression(label.Value).(*ObjectDerefNode)
+func runnerMatrixProperty(label *workflowlang.String) string {
+	deref, ok := exprlang.ParseAssignedExpression(label.Value).(*exprlang.ObjectDerefNode)
 	if !ok {
 		return ""
 	}
-	if recv, ok := deref.Receiver.(*VariableNode); ok && recv.Name == "matrix" {
+	if recv, ok := deref.Receiver.(*exprlang.VariableNode); ok && recv.Name == "matrix" {
 		return deref.Property
 	}
 	return ""
 }
 
-func (rule *RuleRunnerLabel) checkCorrelatedMatrixLabels(job *Job) bool {
+func (rule *RuleRunnerLabel) checkCorrelatedMatrixLabels(job *workflowlang.Job) bool {
 	properties := make([]string, len(job.RunsOn.Labels))
 	references := 0
 	for i, label := range job.RunsOn.Labels {
@@ -405,9 +409,9 @@ func (rule *RuleRunnerLabel) checkCorrelatedMatrixLabels(job *Job) bool {
 		return false
 	}
 
-	rule.compats = map[runnerOSCompat]*String{}
+	rule.compats = map[runnerOSCompat]*workflowlang.String{}
 	defer func() { rule.compats = nil }()
-	checkLabels := func(labels []*String) {
+	checkLabels := func(labels []*workflowlang.String) {
 		for _, label := range labels {
 			rule.checkCompat(defaultRunnerOSCompats[strings.ToLower(label.Value)], label)
 		}
@@ -418,7 +422,7 @@ func (rule *RuleRunnerLabel) checkCorrelatedMatrixLabels(job *Job) bool {
 			if labels, known := knownRunnerExpressionLabels(label); known {
 				checkLabels(labels)
 			} else if !label.ContainsExpression() {
-				checkLabels([]*String{label})
+				checkLabels([]*workflowlang.String{label})
 			}
 		}
 	}
@@ -447,9 +451,9 @@ func (rule *RuleRunnerLabel) checkCorrelatedMatrixLabels(job *Job) bool {
 	return true
 }
 
-type runnerMatrixCombination map[string]RawYAMLValue
+type runnerMatrixCombination map[string]workflowlang.RawYAMLValue
 
-func knownRunnerMatrixCombinations(strategy *Strategy) ([]runnerMatrixCombination, bool) {
+func knownRunnerMatrixCombinations(strategy *workflowlang.Strategy) ([]runnerMatrixCombination, bool) {
 	if strategy == nil {
 		return nil, false
 	}
@@ -479,8 +483,10 @@ func knownRunnerMatrixCombinations(strategy *Strategy) ([]runnerMatrixCombinatio
 		return nil, false
 	}
 	matrix = &resolved
-	known := func(value RawYAMLValue) bool { return evaluated || !ContainsExpression(value.String()) }
-	for _, combinations := range []*MatrixCombinations{matrix.Include, matrix.Exclude} {
+	known := func(value workflowlang.RawYAMLValue) bool {
+		return evaluated || !exprlang.ContainsExpression(value.String())
+	}
+	for _, combinations := range []*workflowlang.MatrixCombinations{matrix.Include, matrix.Exclude} {
 		if combinations == nil {
 			continue
 		}
@@ -489,7 +495,7 @@ func knownRunnerMatrixCombinations(strategy *Strategy) ([]runnerMatrixCombinatio
 		}
 		for _, combination := range combinations.Combinations {
 			for _, assign := range combination.Assigns {
-				if !combination.evaluated && !known(assign.Value) {
+				if !combination.Evaluated && !known(assign.Value) {
 					return nil, false
 				}
 			}
@@ -579,17 +585,17 @@ func knownRunnerMatrixCombinations(strategy *Strategy) ([]runnerMatrixCombinatio
 	return result, true
 }
 
-func runnerMatrixValueLabels(value RawYAMLValue) []*String {
-	if object, ok := value.(*RawYAMLObject); ok {
+func runnerMatrixValueLabels(value workflowlang.RawYAMLValue) []*workflowlang.String {
+	if object, ok := value.(*workflowlang.RawYAMLObject); ok {
 		value = object.Props["labels"]
 	}
-	var labels []*String
-	appendLabel := func(value RawYAMLValue) {
-		if scalar, ok := value.(*RawYAMLString); ok {
-			labels = append(labels, runnerExpressionLabel(scalar.scalarValue(), scalar.Pos()))
+	var labels []*workflowlang.String
+	appendLabel := func(value workflowlang.RawYAMLValue) {
+		if scalar, ok := value.(*workflowlang.RawYAMLString); ok {
+			labels = append(labels, runnerExpressionLabel(scalar.ScalarValue(), scalar.Pos()))
 		}
 	}
-	if array, ok := value.(*RawYAMLArray); ok {
+	if array, ok := value.(*workflowlang.RawYAMLArray); ok {
 		for _, item := range array.Elems {
 			appendLabel(item)
 		}
@@ -599,7 +605,7 @@ func runnerMatrixValueLabels(value RawYAMLValue) []*String {
 	return labels
 }
 
-func (rule *RuleRunnerLabel) checkConflict(comp runnerOSCompat, label *String) bool {
+func (rule *RuleRunnerLabel) checkConflict(comp runnerOSCompat, label *workflowlang.String) bool {
 	for c, l := range rule.compats {
 		if c&comp == 0 {
 			rule.Errorf(label.Pos, "label %q conflicts with label %q defined at %s. note: to run your job on each workers, use matrix", label.Value, l.Value, l.Pos)
@@ -609,7 +615,7 @@ func (rule *RuleRunnerLabel) checkConflict(comp runnerOSCompat, label *String) b
 	return true
 }
 
-func (rule *RuleRunnerLabel) checkCompat(comp runnerOSCompat, label *String) {
+func (rule *RuleRunnerLabel) checkCompat(comp runnerOSCompat, label *workflowlang.String) {
 	if comp == compatInvalid || !rule.checkConflict(comp, label) {
 		return
 	}
@@ -618,7 +624,7 @@ func (rule *RuleRunnerLabel) checkCompat(comp runnerOSCompat, label *String) {
 	}
 }
 
-func (rule *RuleRunnerLabel) checkMatrixLabels(groups [][]*String) {
+func (rule *RuleRunnerLabel) checkMatrixLabels(groups [][]*workflowlang.String) {
 	previous := rule.compats
 	combined := maps.Clone(previous)
 	for _, labels := range groups {

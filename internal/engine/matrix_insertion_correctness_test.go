@@ -3,6 +3,8 @@ package engine
 import (
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestMatrixExpandedInsertionChecks(t *testing.T) {
@@ -58,7 +60,7 @@ jobs:
 			} else if len(findings) != 1 || !strings.Contains(findings[0].Message, tc.want) || findings[0].Line != 6 || findings[0].Column < 16 {
 				t.Fatalf("want one %q at matrix source, got %v", tc.want, findings)
 			}
-			var position *Pos
+			var position *workflowlang.Pos
 			switch tc.name {
 			case "axis insertion duplicate":
 				position = workflow.Jobs["test"].Strategy.Matrix.Rows["os"].Values[1].Pos()

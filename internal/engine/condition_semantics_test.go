@@ -3,15 +3,26 @@ package engine
 import (
 	"strings"
 	"testing"
+
+	exprlang "actionlint.kjanat.dev/internal/expression"
 )
 
 func TestConditionNormalization(t *testing.T) {
 	for _, tc := range []struct{ source, want string }{
-		{"null", ""}, {"~", ""}, {"", ""}, {`""`, ""}, {`"  "`, ""},
-		{"${{ '' }}", ""}, {"${{ ' ' }}", ""}, {"${{ 'failure()' }}", ""},
-		{`"null"`, "always falsy"}, {"${{ null }}", "always falsy"},
-		{"${{ 'false' }}", "always falsy"}, {"${{ '1 == 2' }}", "always falsy"},
-		{"${{ format('') }}", "always falsy"}, {"${{ format('false') }}", "always truthy"},
+		{"null", ""},
+		{"~", ""},
+		{"", ""},
+		{`""`, ""},
+		{`"  "`, ""},
+		{"${{ '' }}", ""},
+		{"${{ ' ' }}", ""},
+		{"${{ 'failure()' }}", ""},
+		{`"null"`, "always falsy"},
+		{"${{ null }}", "always falsy"},
+		{"${{ 'false' }}", "always falsy"},
+		{"${{ '1 == 2' }}", "always falsy"},
+		{"${{ format('') }}", "always falsy"},
+		{"${{ format('false') }}", "always truthy"},
 		{"${{ fromJSON('false') }}", "always falsy"},
 		{"${{ 'fromJSON(''false'')' }}", "always falsy"},
 		{"${{ fromJSON('true') }}", "always truthy"},
@@ -29,7 +40,8 @@ func TestConditionNormalization(t *testing.T) {
 		{`${{ contains(fromJSON('["x"]'), 'y') }}`, "always falsy"},
 		{`${{ fromJSON('{}') == null }}`, "always falsy"},
 		{`${{ null != fromJSON('[]') }}`, "always truthy"},
-		{"${{ join('') }}", "always falsy"}, {"${{ join('x') }}", "always truthy"},
+		{"${{ join('') }}", "always falsy"},
+		{"${{ join('x') }}", "always truthy"},
 		{"${{ join('x', ':') }}", "always truthy"},
 		{`${{ join(fromJSON('[]')) }}`, "always falsy"},
 		{`${{ join(fromJSON('["", ""]'), '') }}`, "always falsy"},
@@ -37,7 +49,8 @@ func TestConditionNormalization(t *testing.T) {
 		{`${{ join(fromJSON('["a", "b"]'), '-') }}`, "always truthy"},
 		{`${{ join(fromJSON('[{}, ""]'), '') }}`, "always truthy"},
 		{`${{ join(fromJSON('[[], ""]'), '') }}`, "always truthy"},
-		{"false", "always falsy"}, {"true", "always truthy"},
+		{"false", "always falsy"},
+		{"true", "always truthy"},
 		{"${{ 'nope' }}", "undefined variable"},
 		{"${{ '${{ false }}' }}", "unexpected"},
 		{"${{ '}}' }}", "unexpected"},
@@ -106,14 +119,23 @@ func TestConditionConstantOutcomes(t *testing.T) {
 		expression string
 		truthy     bool
 	}{
-		{"'0'", true}, {"'0' == false", true}, {"'' == 0", true},
-		{"0 == '0'", true}, {"'' == '0'", false}, {"'0.0' == 0", true},
-		{"'0x0' == 0", true}, {"'0x80000000' <= 100", true},
-		{"'false' == false", false}, {"1 == 2", false},
-		{"false || (true && true)", true}, {"0 || 1", true},
-		{"format('')", false}, {"format('false')", true},
+		{"'0'", true},
+		{"'0' == false", true},
+		{"'' == 0", true},
+		{"0 == '0'", true},
+		{"'' == '0'", false},
+		{"'0.0' == 0", true},
+		{"'0x0' == 0", true},
+		{"'0x80000000' <= 100", true},
+		{"'false' == false", false},
+		{"1 == 2", false},
+		{"false || (true && true)", true},
+		{"0 || 1", true},
+		{"format('')", false},
+		{"format('false')", true},
 		{"contains(format('{0} {1}', 'foo', 'bar'), 'O B')", true},
-		{"fromJSON('false')", false}, {"fromJSON('[]')", true},
+		{"fromJSON('false')", false},
+		{"fromJSON('[]')", true},
 		{`contains(fromJSON('["x"]'), 'X')`, true},
 		{`contains(fromJSON('["x"]'), 'y')`, false},
 		{`contains(fromJSON('[]'), null)`, false},
@@ -127,12 +149,12 @@ func TestConditionConstantOutcomes(t *testing.T) {
 		{`null != fromJSON('{}')`, true},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
-			expr, err := NewExprParser().Parse(NewExprLexer(tc.expression + "}}"))
+			expr, err := exprlang.NewParser().Parse(exprlang.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			value, known := conditionConstantValue(expr)
-			if !known || expressionTruthy(value) != tc.truthy {
+			value, known := exprlang.ConditionConstantValue(expr)
+			if !known || exprlang.ExpressionTruthy(value) != tc.truthy {
 				t.Fatalf("value=%v known=%v", value, known)
 			}
 		})
@@ -174,11 +196,11 @@ func TestConditionConstantCase(t *testing.T) {
 		{"case(true, false, true, false)", nil, false},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
-			expr := parseAssignedExpression("${{ " + tc.expression + " }}")
+			expr := exprlang.ParseAssignedExpression("${{ " + tc.expression + " }}")
 			if expr == nil {
 				t.Fatal("invalid fixture")
 			}
-			value, known := conditionConstantValue(expr)
+			value, known := exprlang.ConditionConstantValue(expr)
 			if known != tc.known || value != tc.value {
 				t.Fatalf("value=%v known=%v, want value=%v known=%v", value, known, tc.value, tc.known)
 			}
@@ -204,8 +226,8 @@ func TestConditionConstantSerialization(t *testing.T) {
 		{`join(fromJSON('[null, false, true]'), '-')`, "-false-true"},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
-			expr := parseAssignedExpression("${{ " + tc.expression + " }}")
-			value, known := conditionConstantValue(expr)
+			expr := exprlang.ParseAssignedExpression("${{ " + tc.expression + " }}")
+			value, known := exprlang.ConditionConstantValue(expr)
 			if !known || value != tc.want {
 				t.Fatalf("value=%v known=%v, want %q", value, known, tc.want)
 			}
@@ -225,11 +247,11 @@ func TestConditionSerializationRemainsUnknown(t *testing.T) {
 		`fromJSON('{}') == fromJSON('{}')`,
 		`contains(fromJSON('[{}]'), fromJSON('{}'))`,
 	} {
-		expr := parseAssignedExpression("${{ " + expression + " }}")
+		expr := exprlang.ParseAssignedExpression("${{ " + expression + " }}")
 		if expr == nil {
 			t.Fatalf("invalid fixture %s", expression)
 		}
-		if v, known := conditionConstantValue(expr); known {
+		if v, known := exprlang.ConditionConstantValue(expr); known {
 			t.Fatalf("invented outcome for %s: %v", expression, v)
 		}
 	}

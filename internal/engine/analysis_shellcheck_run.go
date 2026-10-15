@@ -1,8 +1,6 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/analyzerhost"
 	"context"
 	"encoding/json"
 	"errors"
@@ -10,6 +8,10 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/internal/analyzerhost"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 type shellcheckError struct {
@@ -82,7 +84,7 @@ func (run *shellcheckRun) Debug(format string, args ...any) {
 	}
 }
 
-func (run *shellcheckRun) addFinding(start, end *Pos, format string, args ...any) {
+func (run *shellcheckRun) addFinding(start, end *workflowlang.Pos, format string, args ...any) {
 	finding := errorfAt(start, "shellcheck", format, args...)
 	finding.endPosition = end
 	if end != nil && end.Line == start.Line && end.Col > start.Col {
@@ -132,7 +134,7 @@ func sanitizeExpressionsInScript(src string) string {
 	}
 }
 
-func (run *shellcheckRun) runShellcheck(src string, source *scriptSource, shell shellcheckShell, directory runDirectory, pos, valuePos *Pos) error {
+func (run *shellcheckRun) runShellcheck(src string, source *workflowlang.ScriptSource, shell shellcheckShell, directory runDirectory, pos, valuePos *workflowlang.Pos) error {
 	dialect, setup := shell.analysis()
 	header, _, directiveShell := shellcheckHeader(src)
 	if dialect == "" && !directiveShell {
@@ -250,8 +252,8 @@ func (run *shellcheckRun) runShellcheck(src string, source *scriptSource, shell 
 		origin.last = max(origin.last, valuePos.Line)
 	}
 	if source != nil {
-		for _, span := range source.spans {
-			origin.last = max(origin.last, span.yamlLine)
+		for _, span := range source.Spans {
+			origin.last = max(origin.last, span.YamlLine)
 		}
 	}
 
@@ -281,8 +283,8 @@ func (run *shellcheckRun) runShellcheck(src string, source *scriptSource, shell 
 				continue
 			}
 			msg := strings.TrimSuffix(err.Message, ".") // Trim period aligning style of error message
-			start, startOK := source.pos(line, err.Column)
-			end, endOK := source.endPos(script.originalLine(err.EndLine), err.EndColumn)
+			start, startOK := source.Position(line, err.Column)
+			end, endOK := source.EndPos(script.originalLine(err.EndLine), err.EndColumn)
 			if startOK && endOK {
 				run.addFinding(start, end, "shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", err.Code, err.Level, line, err.Column, msg)
 			} else {

@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -29,7 +30,7 @@ runs:
 				}
 				rule := NewRuleAction(nil)
 				meta.dir, meta.file = t.TempDir(), "action.yml"
-				rule.checkLocalActionMetadata(&meta, &ExecAction{Uses: &String{Value: "./test", Pos: &Pos{Line: 1, Col: 1}}})
+				rule.checkLocalActionMetadata(&meta, &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./test", Pos: &workflowlang.Pos{Line: 1, Col: 1}}})
 				if errs := rule.Errs(); len(errs) != 0 {
 					t.Fatalf("literal field key rejected: %v", errs)
 				}
@@ -117,7 +118,7 @@ runs:
 	}
 	meta.dir, meta.file = t.TempDir(), "action.yml"
 	rule := NewRuleAction(nil)
-	rule.checkLocalActionMetadata(&meta, &ExecAction{Uses: &String{Value: "./test", Pos: &Pos{Line: 1, Col: 1}}})
+	rule.checkLocalActionMetadata(&meta, &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./test", Pos: &workflowlang.Pos{Line: 1, Col: 1}}})
 	errs := rule.Errs()
 	if len(errs) != 1 || !strings.Contains(errs[0].Message, `context "secrets"`) {
 		t.Fatalf("expected the original expression diagnostic, got %v", errs)

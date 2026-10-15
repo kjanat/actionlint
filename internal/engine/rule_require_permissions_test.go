@@ -5,6 +5,8 @@ import (
 	"io"
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestRuleRequirePermissions(t *testing.T) {
@@ -114,7 +116,7 @@ on: push`} {
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 `, "\n", ending)
 				workflow, findings := Parse([]byte(source))
-				if len(findings) != 0 || workflow == nil || workflow.Pos == nil || *workflow.Pos != (Pos{Line: tc.line, Col: 1}) {
+				if len(findings) != 0 || workflow == nil || workflow.Pos == nil || *workflow.Pos != (workflowlang.Pos{Line: tc.line, Col: 1}) {
 					t.Fatalf("missing workflow declaration position: %+v, %+v", workflow, findings)
 				}
 				rule := NewRuleRequirePermissions(policy)
@@ -128,7 +130,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 		}
 	}
 	rule := NewRuleRequirePermissions(policy)
-	if err := rule.VisitWorkflowPre(&Workflow{}); err != nil {
+	if err := rule.VisitWorkflowPre(&workflowlang.Workflow{}); err != nil {
 		t.Fatal(err)
 	}
 	if findings := rule.Errs(); len(findings) != 1 || findings[0].Line != 1 || findings[0].Column != 1 {

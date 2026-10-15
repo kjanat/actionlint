@@ -1,9 +1,13 @@
 package engine
 
-import "strings"
+import (
+	"strings"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+)
 
 // Checkout inherits these settings; its files need not represent the local index.
-func checkoutEnvironmentUnknown(env *Env, platform platformKind) bool {
+func checkoutEnvironmentUnknown(env *workflowlang.Env, platform platformKind) bool {
 	return environmentContains(env, platform, func(name, value string, known bool) bool {
 		if loaderEnvironmentUnknown(name, value, known) {
 			return true
@@ -27,7 +31,7 @@ func checkoutEnvironmentUnknown(env *Env, platform platformKind) bool {
 }
 
 // Evaluate mapping expressions once; their names and values remain data.
-func environmentContains(env *Env, platform platformKind, matches func(string, string, bool) bool) bool {
+func environmentContains(env *workflowlang.Env, platform platformKind, matches func(string, string, bool) bool) bool {
 	if env == nil {
 		return false
 	}
@@ -38,13 +42,13 @@ func environmentContains(env *Env, platform platformKind, matches func(string, s
 		return matches(name, value, known)
 	}
 	if env.Expression != nil {
-		literal, known := workflowExpressionLiteral(env.Expression)
+		literal, known := workflowlang.WorkflowExpressionLiteral(env.Expression)
 		object, isObject := literal.(map[string]any)
 		if !known || !isObject {
 			return true
 		}
 		for name, value := range object {
-			text, scalar := workflowScalarString(value)
+			text, scalar := workflowlang.WorkflowScalarString(value)
 			if check(name, text, scalar) {
 				return true
 			}
@@ -68,7 +72,7 @@ func environmentContains(env *Env, platform platformKind, matches func(string, s
 	return false
 }
 
-func ubuntuRunner(runner *Runner) bool {
+func ubuntuRunner(runner *workflowlang.Runner) bool {
 	if !knownHostedRunner(runner) {
 		return false
 	}
@@ -94,23 +98,23 @@ func loaderEnvironmentUnknown(name, value string, known bool) bool {
 }
 
 // Expression results remain literal data.
-func environmentLiteral(value *String) (string, bool) {
+func environmentLiteral(value *workflowlang.String) (string, bool) {
 	if value == nil {
 		return "", false
 	}
 	if !value.ContainsExpression() {
 		return value.Value, true
 	}
-	literal, known := workflowExpressionLiteral(value)
+	literal, known := workflowlang.WorkflowExpressionLiteral(value)
 	if !known {
 		return "", false
 	}
-	return workflowScalarString(literal)
+	return workflowlang.WorkflowScalarString(literal)
 }
 
 // Services run concurrently with every step. Opaque mounts/options can expose
 // the workspace even when the job itself does not run in a container.
-func servicesMayChangeWorkspace(services *Services) bool {
+func servicesMayChangeWorkspace(services *workflowlang.Services) bool {
 	if services == nil {
 		return false
 	}
@@ -127,7 +131,7 @@ func servicesMayChangeWorkspace(services *Services) bool {
 	return false
 }
 
-func macOSRunner(runner *Runner) bool {
+func macOSRunner(runner *workflowlang.Runner) bool {
 	labels := runnerPlatformLabels(runner)
 	if len(labels) == 0 {
 		return false

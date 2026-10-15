@@ -64,7 +64,7 @@ jobs:
           add-paths: |
             internal/actioncatalog/popular_actions.json
             internal/engine/all_webhooks.go
-            internal/engine/availability.go
+            internal/workflowcontext/availability.go
             internal/engine/action_metadata_availability.go
             internal/engine/action_runtimes.go
           commit-message: "Update the generated Go tables"

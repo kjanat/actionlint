@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	exprlang "actionlint.kjanat.dev/internal/expression"
 )
 
 type actionFunctionLimits struct{ min, max int }
@@ -33,16 +35,16 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 		return nil
 	}
 	base, positionsKnown := 0, true
-	if bare && (!strings.Contains(s, "${{") || literalExpressionValue(s) != nil) {
-		if _, err, _ := parseConditionExpression(s); err != nil {
+	if bare && (!strings.Contains(s, "${{") || exprlang.LiteralExpressionValue(s) != nil) {
+		if _, err, _ := exprlang.ParseConditionExpression(s); err != nil {
 			violation := actionExpressionViolation{message: "has an invalid expression: " + err.Message}
-			if conditionSource(s) == s {
+			if exprlang.ConditionSource(s) == s {
 				violation.offset = err.Offset + 1
 				violation.endOffset = err.EndOffset + 1
 			}
 			return []actionExpressionViolation{violation}
 		}
-		folded := conditionSource(s)
+		folded := exprlang.ConditionSource(s)
 		positionsKnown = folded == s
 		s = "${{" + folded + "}}"
 		base = -3 // The synthetic opening delimiter is absent from the scalar.
@@ -56,8 +58,8 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 		s = s[i+3:]
 		base += i + 3
 		expressionOffset := base
-		lex := NewExprLexer(s)
-		expr, err := NewExprParser().Parse(lex)
+		lex := exprlang.NewLexer(s)
+		expr, err := exprlang.NewParser().Parse(lex)
 		if err != nil {
 			violation := actionExpressionViolation{message: "has an invalid expression: " + err.Message}
 			if positionsKnown {
@@ -70,20 +72,20 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 		// The lexer consumes the closing delimiter and skips delimiters inside strings.
 		s = s[lex.Offset():]
 		base += lex.Offset()
-		VisitExprNode(expr, func(node, _ ExprNode, entering bool) {
+		exprlang.Visit(expr, func(node, _ exprlang.Node, entering bool) {
 			if !entering {
 				return
 			}
 			var v actionExpressionViolation
 			switch n := node.(type) {
-			case *VariableNode:
+			case *exprlang.VariableNode:
 				if !slices.Contains(avail.contexts, strings.ToLower(n.Name)) {
 					name := strings.ToLower(n.Name)
 					var suggestion string
 					if _, declared := inputs[name]; declared && slices.Contains(avail.contexts, "inputs") {
 						suggestion = "inputs." + name
 					} else {
-						suggestion = contextPropertySuggestion(name, avail.contexts, BuiltinGlobalVariableTypes)
+						suggestion = exprlang.ContextPropertySuggestion(name, avail.contexts, exprlang.BuiltinGlobalVariableTypes)
 					}
 					if suggestion != "" {
 						v.message = fmt.Sprintf("uses undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
@@ -91,12 +93,12 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 						v.context = name
 					}
 				}
-			case *FuncCallNode:
+			case *exprlang.FuncCallNode:
 				name := strings.ToLower(n.Callee)
 				if name == "fromjson" && len(n.Args) == 1 {
-					if literal, ok := n.Args[0].(*StringNode); ok {
-						for _, collision := range jsonMemberCollisions(literal.Value) {
-							v := actionExpressionViolation{message: fmt.Sprintf("fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", collision.first, collision.second, collision.offset)}
+					if literal, ok := n.Args[0].(*exprlang.StringNode); ok {
+						for _, collision := range exprlang.JSONMemberCollisions(literal.Value) {
+							v := actionExpressionViolation{message: fmt.Sprintf("fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", collision.First, collision.Second, collision.Offset)}
 							if positionsKnown {
 								v.offset = expressionOffset + n.Token().Offset + 1
 								v.endOffset = v.offset + len(n.Token().Value)
@@ -106,7 +108,7 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 					}
 				}
 				if !slices.Contains(actionMetadataSpecialFunctions, name) {
-					signatures, ok := BuiltinFuncSignatures[name]
+					signatures, ok := exprlang.BuiltinFuncSignatures[name]
 					if !ok {
 						v.message = fmt.Sprintf("calls unknown function %q", name)
 					} else if !actionFunctionArityMatches(signatures, len(n.Args)) ||
@@ -149,7 +151,7 @@ func actionExpressionViolationsWithInputs(s string, bare bool, field string, inp
 	return out
 }
 
-func actionFunctionArityMatches(signatures []*FuncSignature, count int) bool {
+func actionFunctionArityMatches(signatures []*exprlang.FuncSignature, count int) bool {
 	for _, signature := range signatures {
 		if signature.VariableLengthParams && count >= len(signature.Params) || !signature.VariableLengthParams && count == len(signature.Params) {
 			return true

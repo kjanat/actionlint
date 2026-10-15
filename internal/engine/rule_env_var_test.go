@@ -1,16 +1,20 @@
 package engine
 
-import "testing"
+import (
+	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+)
 
 func testValidateEnvVarName(t *testing.T, name string) []*Error {
 	t.Helper()
-	n := &String{Value: name, Pos: &Pos{}}
-	e := &Env{
-		Vars: map[string]*EnvVar{
-			name: {n, &String{Value: "", Pos: &Pos{}}},
+	n := &workflowlang.String{Value: name, Pos: &workflowlang.Pos{}}
+	e := &workflowlang.Env{
+		Vars: map[string]*workflowlang.EnvVar{
+			name: {Name: n, Value: &workflowlang.String{Value: "", Pos: &workflowlang.Pos{}}},
 		},
 	}
-	w := &Workflow{Env: e}
+	w := &workflowlang.Workflow{Env: e}
 	r := NewRuleEnvVar()
 	if err := r.VisitWorkflowPre(w); err != nil {
 		t.Fatal(err)
@@ -53,7 +57,7 @@ func TestRuleEnvVarCheckInvalidName(t *testing.T) {
 }
 
 func TestRuleEnvVarSkipEdgeCaseEnv(t *testing.T) {
-	w := &Workflow{Env: nil}
+	w := &workflowlang.Workflow{Env: nil}
 	r := NewRuleEnvVar()
 	if err := r.VisitWorkflowPre(w); err != nil {
 		t.Fatal(err)
@@ -62,9 +66,9 @@ func TestRuleEnvVarSkipEdgeCaseEnv(t *testing.T) {
 		t.Fatal("no error should be detected when `Env` is nil but got", errs)
 	}
 
-	w = &Workflow{
-		Env: &Env{
-			Expression: &String{Value: ""},
+	w = &workflowlang.Workflow{
+		Env: &workflowlang.Env{
+			Expression: &workflowlang.String{Value: ""},
 		},
 	}
 	r = NewRuleEnvVar()

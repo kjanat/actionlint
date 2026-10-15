@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -74,7 +75,7 @@ func actionInputOutlines(node *yaml.Node) []ActionInputOutline {
 		fields := actionOutlineFields(node.Content[i+1])
 		input := ActionInputOutline{
 			ID: actionMetadataKey(key), Description: actionOutlineString(fields["description"]),
-			Default: actionSchemaScalar(fields["default"]), Start: outlinePosition(posAt(key)),
+			Default: actionSchemaScalar(fields["default"]), Start: outlinePosition(workflowlang.PosAt(key)),
 		}
 		if required := fields["required"]; required != nil {
 			var value *bool
@@ -98,7 +99,7 @@ func actionOutputOutlines(node *yaml.Node) []ActionOutputOutline {
 		fields := actionOutlineFields(node.Content[i+1])
 		outputs = append(outputs, ActionOutputOutline{
 			ID: actionMetadataKey(key), Description: actionOutlineString(fields["description"]),
-			Value: actionSchemaScalar(fields["value"]), Start: outlinePosition(posAt(key)),
+			Value: actionSchemaScalar(fields["value"]), Start: outlinePosition(workflowlang.PosAt(key)),
 		})
 	}
 	return outputs
@@ -147,7 +148,7 @@ func actionStepOutlines(node *yaml.Node) []StepOutline {
 		fields := actionOutlineFields(node)
 		step := StepOutline{
 			ID: actionOutlineString(fields["id"]), Name: actionOutlineString(fields["name"]),
-			Start: outlinePosition(posAt(node)), Kind: "unknown", Uses: actionOutlineString(fields["uses"]),
+			Start: outlinePosition(workflowlang.PosAt(node)), Kind: "unknown", Uses: actionOutlineString(fields["uses"]),
 		}
 		_, hasRun := fields["run"]
 		_, hasUses := fields["uses"]

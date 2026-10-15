@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/internal/ruff"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestRuffAnalyzerCompletesBeforeReturning(t *testing.T) {
@@ -32,8 +33,8 @@ func TestRuffAnalyzerCompletesBeforeReturning(t *testing.T) {
 		})
 	}, func() error { workers.Wait(); return failure }, ruffExpressionEnd)
 	analyzer := &ruffAnalyzer{checker: checker}
-	pos := &Pos{Line: 1, Col: 1}
-	run := &ExecRun{Run: &String{Value: "x", Pos: pos}, RunPos: pos}
+	pos := &workflowlang.Pos{Line: 1, Col: 1}
+	run := &workflowlang.ExecRun{Run: &workflowlang.String{Value: "x", Pos: pos}, RunPos: pos}
 	python := "python"
 	scripts := []scriptUnit{{run: run, shell: &python, path: "first.yml"}, {run: run, shell: &python, path: "second.yml"}}
 	findings, err := analyzer.AnalyzeScripts(t.Context(), scriptBatch{scripts: scripts})
@@ -81,8 +82,8 @@ jobs:
 		}
 	}
 	// Composite scripts have their own declared shell and never inherit callers.
-	pos := &Pos{Line: 1, Col: 1}
-	collector.collectScript(&Step{Exec: &ExecRun{Run: &String{Value: "echo composite", Pos: pos}, RunPos: pos}}, nil, "action.yml", nil, nil, nil)
+	pos := &workflowlang.Pos{Line: 1, Col: 1}
+	collector.collectScript(&workflowlang.Step{Exec: &workflowlang.ExecRun{Run: &workflowlang.String{Value: "echo composite", Pos: pos}, RunPos: pos}}, nil, "action.yml", nil, nil, nil)
 	for _, script := range collector.scripts {
 		shell := ""
 		if script.shell != nil {

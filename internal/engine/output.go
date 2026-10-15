@@ -1,11 +1,13 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/diagnostic"
 	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
+
+	"actionlint.kjanat.dev/diagnostic"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 // OutputFormat selects a built-in diagnostic representation. The empty value
@@ -21,10 +23,12 @@ const (
 	OutputFormatGitHub  OutputFormat = "github"
 )
 
-type DiagnosticPosition = diagnostic.Position
-type Diagnostic = diagnostic.Diagnostic
-type DiagnosticFix = diagnostic.Fix
-type DiagnosticEdit = diagnostic.Edit
+type (
+	DiagnosticPosition = diagnostic.Position
+	Diagnostic         = diagnostic.Diagnostic
+	DiagnosticFix      = diagnostic.Fix
+	DiagnosticEdit     = diagnostic.Edit
+)
 
 // CheckResult is the versioned JSON document shared by CLI and Action checks.
 // ExitCode describes analysis, even when a caller chooses not to fail on findings.
@@ -121,14 +125,18 @@ func (e *Error) diagnostic(source []byte) Diagnostic {
 			fixes[i].Edits[j] = edit
 		}
 	}
-	return Diagnostic{Rule: e.Kind, Code: e.code, Severity: e.severity, Message: e.Message, Path: e.Filepath,
-		Start: DiagnosticPosition{Line: e.Line, Column: e.Column}, End: end, Snippet: snippet, Fixes: fixes}
+	return Diagnostic{
+		Rule: e.Kind, Code: e.code, Severity: e.severity, Message: e.Message, Path: e.Filepath,
+		Start: DiagnosticPosition{Line: e.Line, Column: e.Column}, End: end, Snippet: snippet, Fixes: fixes,
+	}
 }
 
 // legacyError adapts a canonical half-open span to the legacy renderer's inclusive columns.
 func legacyDiagnosticError(d Diagnostic) *Error {
-	e := &Error{Kind: d.Rule, Message: d.Message, Filepath: d.Path, Line: d.Start.Line, Column: d.Start.Column,
-		endPosition: &Pos{Line: d.End.Line, Col: d.End.Column}, code: d.Code, severity: d.Severity, fixes: d.Fixes}
+	e := &Error{
+		Kind: d.Rule, Message: d.Message, Filepath: d.Path, Line: d.Start.Line, Column: d.Start.Column,
+		endPosition: &workflowlang.Pos{Line: d.End.Line, Col: d.End.Column}, code: d.Code, severity: d.Severity, fixes: d.Fixes,
+	}
 	if d.End.Line == d.Start.Line && d.End.Column > d.Start.Column {
 		e.endColumn = d.End.Column - 1
 	}

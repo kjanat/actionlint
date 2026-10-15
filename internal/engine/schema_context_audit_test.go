@@ -5,6 +5,9 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	workflowcontext "actionlint.kjanat.dev/internal/workflowcontext"
 )
 
 // These profiles cover every expression-bearing workflow key in the runner
@@ -37,17 +40,17 @@ func TestSchemaAuditContextProfiles(t *testing.T) {
 		for key := range strings.FieldsSeq(profile.keys) {
 			covered[key] = true
 			t.Run(key, func(t *testing.T) {
-				contexts, functions := WorkflowKeyAvailability(key)
+				contexts, functions := workflowcontext.WorkflowKeyAvailability(key)
 				if !slices.Equal(contexts, strings.Fields(profile.contexts)) || !slices.Equal(functions, strings.Fields(profile.funcs)) {
 					t.Fatalf("contexts %v; functions %v", contexts, functions)
 				}
-				if !slices.Contains(allWorkflowKeys, key) {
+				if !slices.Contains(workflowcontext.AllWorkflowKeys, key) {
 					t.Fatal("missing from generated workflow key inventory")
 				}
-				for context := range BuiltinGlobalVariableTypes {
-					checker := NewExprSemanticsChecker(false, nil)
+				for context := range exprlang.BuiltinGlobalVariableTypes {
+					checker := exprlang.NewChecker(false, nil)
 					checker.SetWorkflowKeyAvailability(key)
-					expr, err := NewExprParser().Parse(NewExprLexer("toJSON(" + context + ")}}"))
+					expr, err := exprlang.NewParser().Parse(exprlang.NewLexer("toJSON(" + context + ")}}"))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -59,7 +62,7 @@ func TestSchemaAuditContextProfiles(t *testing.T) {
 			})
 		}
 	}
-	for _, key := range allWorkflowKeys {
+	for _, key := range workflowcontext.AllWorkflowKeys {
 		if !covered[key] {
 			t.Errorf("workflow key %q has no authoritative audit profile", key)
 		}
@@ -88,11 +91,11 @@ func TestSchemaAuditFunctionContracts(t *testing.T) {
 		{"jobs.<job_id>.steps.run", "case(" + strings.Repeat("true,'x',", 128) + "'y')", false},
 	} {
 		t.Run(tc.key+"/"+tc.expression, func(t *testing.T) {
-			expr, err := NewExprParser().Parse(NewExprLexer(tc.expression + "}}"))
+			expr, err := exprlang.NewParser().Parse(exprlang.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := NewExprSemanticsChecker(false, nil)
+			checker := exprlang.NewChecker(false, nil)
 			checker.SetWorkflowKeyAvailability(tc.key)
 			_, errs := checker.Check(expr)
 			if (len(errs) == 0) != tc.valid {
@@ -343,7 +346,7 @@ func TestSchemaAuditExpressionDepth(t *testing.T) {
 		{"flattened parenthesized chain", strings.Repeat("true || (", 60) + "true" + strings.Repeat(")", 60), true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := NewExprParser().Parse(NewExprLexer(tc.expression + "}}"))
+			_, err := exprlang.NewParser().Parse(exprlang.NewLexer(tc.expression + "}}"))
 			if (err == nil) != tc.valid {
 				t.Fatalf("valid=%v, error=%v", tc.valid, err)
 			}

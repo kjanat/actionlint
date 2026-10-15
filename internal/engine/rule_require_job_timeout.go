@@ -1,5 +1,9 @@
 package engine
 
+import (
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+)
+
 // RuleRequireJobTimeout is a rule to check that every job sets "timeout-minutes:". The
 // "require-job-timeout" policy enables it and can set inclusive minimum and maximum bounds.
 // https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idtimeout-minutes
@@ -17,7 +21,7 @@ func NewRuleRequireJobTimeout(policy *JobTimeoutPolicy) *RuleRequireJobTimeout {
 }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
-func (rule *RuleRequireJobTimeout) VisitJobPre(n *Job) error {
+func (rule *RuleRequireJobTimeout) VisitJobPre(n *workflowlang.Job) error {
 	if !rule.policy.Enabled() {
 		return nil
 	}

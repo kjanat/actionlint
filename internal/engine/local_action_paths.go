@@ -10,6 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/localaction"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 type unresolvedLocalActionError string
@@ -261,16 +262,16 @@ func (c *LocalActionsCache) localSpec(spec string) (string, bool) {
 	return "", false
 }
 
-func (c *LocalActionsCache) observeCheckout(step *Step) {
+func (c *LocalActionsCache) observeCheckout(step *workflowlang.Step) {
 	enabled, known := invocationCondition(step.If)
 	if known && !enabled {
 		return
 	}
-	if _, parallel := step.Exec.(*ExecParallel); parallel {
+	if _, parallel := step.Exec.(*workflowlang.ExecParallel); parallel {
 		c.setCheckout(runDirectory{kind: directoryUnknown})
 		return
 	}
-	action, ok := step.Exec.(*ExecAction)
+	action, ok := step.Exec.(*workflowlang.ExecAction)
 	if !ok || action.Uses == nil {
 		return
 	}

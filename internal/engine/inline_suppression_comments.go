@@ -5,13 +5,14 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"go.yaml.in/yaml/v4"
 )
 
 // inlineSuppressionComment is a real YAML comment attached to a declaration.
 // Its position refers to the comment, independently of the YAML node's start.
 type inlineSuppressionComment struct {
-	pos        Pos
+	pos        workflowlang.Pos
 	text       string
 	standalone bool
 	startLine  int
@@ -30,7 +31,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	if err := yaml.Unmarshal(bytes.ReplaceAll(source, []byte("\r\n"), []byte("\n")), &root); err != nil {
 		return recoverInlineSuppressionComments(source)
 	}
-	lines := splitSourceLines(source)
+	lines := workflowlang.SplitSourceLines(source)
 	documentEnd := len(lines)
 	if len(root.Content) != 0 {
 		// Unmarshal and Parse read the first document only. Block scalar content
@@ -45,8 +46,8 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	}
 	var comments []inlineSuppressionComment
 	blockEnds := map[int]int{}
-	scalarParser := newSourceParser(source)
-	scalarParser.indexScalarSources(&root)
+	scalarParser := workflowlang.NewSourceParser(source)
+	scalarParser.IndexScalarSources(&root)
 	seen := map[int]bool{}
 	readComment := func(line int, comment string, standalone bool) {
 		text := strings.TrimSpace(strings.TrimPrefix(comment, "#"))
@@ -59,7 +60,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 		}
 		seen[line] = true
 		comments = append(comments, inlineSuppressionComment{
-			pos:        Pos{Line: line, Col: utf8.RuneCountInString(lines[line-1][:col]) + 1},
+			pos:        workflowlang.Pos{Line: line, Col: utf8.RuneCountInString(lines[line-1][:col]) + 1},
 			text:       text,
 			standalone: standalone,
 		})
@@ -154,9 +155,9 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 }
 
 // Suppression extents use the same scalar scan that maps diagnostic positions.
-func inlineSuppressionScalarEnd(p *parser, node *yaml.Node, endLine int) (int, int) {
-	if source := p.scriptSource(node); source != nil {
-		return source.contentStart.Line, min(source.scalarEnd.Line, endLine)
+func inlineSuppressionScalarEnd(p *workflowlang.Parser, node *yaml.Node, endLine int) (int, int) {
+	if source := p.ScriptSource(node); source != nil {
+		return source.ContentStart.Line, min(source.ScalarEnd.Line, endLine)
 	}
 	return node.Line, node.Line
 }

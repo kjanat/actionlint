@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestKnownStrategyRunnerLabels(t *testing.T) {
@@ -352,7 +354,7 @@ jobs:
 					t.Fatalf("known=%v, wanted %v, got %v", known, tc.want, combinations)
 				}
 				for i, combination := range combinations {
-					value := &RawYAMLObject{Props: combination}
+					value := &workflowlang.RawYAMLObject{Props: combination}
 					if got := value.String(); got != tc.want[i] {
 						t.Fatalf("wanted %s, got %s", tc.want[i], got)
 					}

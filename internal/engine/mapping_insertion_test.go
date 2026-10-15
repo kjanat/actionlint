@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestActionInputMappingInsertions(t *testing.T) {
@@ -63,7 +65,7 @@ func TestInsertedActionInputMetadata(t *testing.T) {
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			exec := workflow.Jobs["test"].Steps[0].Exec.(*ExecAction)
+			exec := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
 			rule := NewRuleAction(nil)
 			rule.checkAction(&ActionMetadata{Inputs: map[string]*ActionMetadataInput{"token": {Name: "token", Required: true}}}, exec, func(*ActionMetadata) string { return "example/action@v1" })
 			got := rule.Errs()
@@ -262,8 +264,8 @@ func TestRepeatedMappingInsertions(t *testing.T) {
 						t.Fatalf("insertion lost: %+v", env)
 					}
 				case "with":
-					action := workflow.Jobs["test"].Steps[0].Exec.(*ExecAction)
-					inputs, known := actionInputNames(action)
+					action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
+					inputs, known := workflowlang.ActionInputNames(action)
 					if !known || len(inputs) != 2 || inputs["second"] == nil {
 						t.Fatalf("insertion lost: %+v", inputs)
 					}
@@ -343,7 +345,7 @@ func TestDockerInsertedReservedInputs(t *testing.T) {
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
-				action := workflow.Jobs["test"].Steps[0].Exec.(*ExecAction)
+				action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
 				if action.Entrypoint == nil || action.Entrypoint.Value != "bash" || action.Args == nil || action.Args.Value != "hello" {
 					t.Fatalf("reserved inputs lost: %+v", action)
 				}

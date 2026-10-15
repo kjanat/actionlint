@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 // InlineSuppressibleRules returns the rule IDs accepted by inline directives and
@@ -25,7 +27,7 @@ func isInlineSuppressibleRule(name string) bool {
 // selects matching diagnostics on that physical line, including anchors. A block
 // header extends the range through its body using endLine.
 type inlineSuppressionDirective struct {
-	pos        Pos
+	pos        workflowlang.Pos
 	targetLine int
 	endLine    int
 	rules      []string

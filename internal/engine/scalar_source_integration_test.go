@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -89,10 +90,10 @@ func BenchmarkScalarWideFlow(b *testing.B) {
 			b.SetBytes(int64(len(content)))
 			b.ResetTimer()
 			for b.Loop() {
-				p := newSourceParser(content)
-				p.indexScalarSources(&root)
+				p := workflowlang.NewSourceParser(content)
+				p.IndexScalarSources(&root)
 				for i := 1; i < len(mapping.Content); i += 2 {
-					if p.scriptSource(mapping.Content[i]) == nil {
+					if p.ScriptSource(mapping.Content[i]) == nil {
 						b.Fatal("missing source")
 					}
 				}

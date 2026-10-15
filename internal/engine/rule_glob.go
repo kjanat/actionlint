@@ -3,6 +3,8 @@ package engine
 import (
 	"strings"
 
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/workflownames"
 )
 
@@ -20,10 +22,10 @@ func NewRuleGlob() *RuleGlob {
 }
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
-func (rule *RuleGlob) VisitWorkflowPre(n *Workflow) error {
+func (rule *RuleGlob) VisitWorkflowPre(n *workflowlang.Workflow) error {
 	for _, e := range n.On {
 		switch e := e.(type) {
-		case *WebhookEvent:
+		case *workflowlang.WebhookEvent:
 			rule.checkGitRefGlobs(e.Branches)
 			rule.checkGitRefGlobs(e.BranchesIgnore)
 			rule.checkGitRefGlobs(e.Tags)
@@ -31,7 +33,7 @@ func (rule *RuleGlob) VisitWorkflowPre(n *Workflow) error {
 			rule.checkFilePathGlobs(e.Paths)
 			rule.checkFilePathGlobs(e.PathsIgnore)
 			rule.checkWorkflowNameGlobs(e.Workflows)
-		case *ImageVersionEvent:
+		case *workflowlang.ImageVersionEvent:
 			for _, v := range e.Versions {
 				rule.checkRefGlob(v)
 			}
@@ -40,7 +42,7 @@ func (rule *RuleGlob) VisitWorkflowPre(n *Workflow) error {
 	return nil
 }
 
-func (rule *RuleGlob) checkWorkflowNameGlobs(names []*String) {
+func (rule *RuleGlob) checkWorkflowNameGlobs(names []*workflowlang.String) {
 	allValid, positive := len(names) != 0, false
 	for _, name := range names {
 		if name == nil {
@@ -48,7 +50,7 @@ func (rule *RuleGlob) checkWorkflowNameGlobs(names []*String) {
 			continue
 		}
 		value, evaluated := name.Value, false
-		if literal := literalExpressionValue(value); literal != nil {
+		if literal := exprlang.LiteralExpressionValue(value); literal != nil {
 			value, evaluated = *literal, true
 		} else if name.ContainsExpression() {
 			allValid = false
@@ -78,18 +80,18 @@ func (rule *RuleGlob) checkWorkflowNameGlobs(names []*String) {
 	}
 }
 
-func (rule *RuleGlob) VisitJobPre(n *Job) error {
+func (rule *RuleGlob) VisitJobPre(n *workflowlang.Job) error {
 	if n.Snapshot == nil {
 		return nil
 	}
 	if expression := n.Snapshot.Expression; expression != nil {
-		if value, known := workflowExpressionLiteral(expression); known {
+		if value, known := workflowlang.WorkflowExpressionLiteral(expression); known {
 			if snapshot, ok := value.(map[string]any); ok {
 				rule.checkKnownRefGlob(workflowObjectProperty(snapshot, "version"), expression.Pos)
 			}
 		}
 	} else if version := n.Snapshot.Version; version != nil && version.ContainsExpression() {
-		if value, known := workflowExpressionLiteral(version); known {
+		if value, known := workflowlang.WorkflowExpressionLiteral(version); known {
 			rule.checkKnownRefGlob(value, version.Pos)
 		}
 	} else {
@@ -98,8 +100,8 @@ func (rule *RuleGlob) VisitJobPre(n *Job) error {
 	return nil
 }
 
-func (rule *RuleGlob) checkKnownRefGlob(value any, pos *Pos) {
-	pattern, known := workflowScalarString(value)
+func (rule *RuleGlob) checkKnownRefGlob(value any, pos *workflowlang.Pos) {
+	pattern, known := workflowlang.WorkflowScalarString(value)
 	if !known || pattern == "" {
 		return
 	}
@@ -110,7 +112,7 @@ func (rule *RuleGlob) checkKnownRefGlob(value any, pos *Pos) {
 	rule.globErrors(errs, pos, false)
 }
 
-func (rule *RuleGlob) checkRefGlob(s *String) {
+func (rule *RuleGlob) checkRefGlob(s *workflowlang.String) {
 	// Empty value is already checked by parser. Avoid duplicate errors
 	if s == nil || s.Value == "" {
 		return
@@ -118,7 +120,7 @@ func (rule *RuleGlob) checkRefGlob(s *String) {
 	rule.globErrors(ValidateRefGlob(s.Value), s.Pos, s.Quoted)
 }
 
-func (rule *RuleGlob) checkGitRefGlobs(filter *WebhookEventFilter) {
+func (rule *RuleGlob) checkGitRefGlobs(filter *workflowlang.WebhookEventFilter) {
 	if filter == nil {
 		return
 	}
@@ -127,7 +129,7 @@ func (rule *RuleGlob) checkGitRefGlobs(filter *WebhookEventFilter) {
 	}
 }
 
-func (rule *RuleGlob) checkFilePathGlobs(filter *WebhookEventFilter) {
+func (rule *RuleGlob) checkFilePathGlobs(filter *workflowlang.WebhookEventFilter) {
 	if filter == nil {
 		return
 	}
@@ -139,7 +141,7 @@ func (rule *RuleGlob) checkFilePathGlobs(filter *WebhookEventFilter) {
 	}
 }
 
-func (rule *RuleGlob) globErrors(errs []InvalidGlobPatternError, pos *Pos, quoted bool) {
+func (rule *RuleGlob) globErrors(errs []InvalidGlobPatternError, pos *workflowlang.Pos, quoted bool) {
 	for i := range errs {
 		err := &errs[i]
 		p := *pos

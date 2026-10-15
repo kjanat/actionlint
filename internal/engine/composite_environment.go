@@ -3,16 +3,17 @@ package engine
 import (
 	"strings"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"mvdan.cc/sh/v3/syntax"
 )
 
 // Environment files persist across steps, including across composite returns.
 // Prove only simple literal shell commands cannot write them; do not execute code.
-func (c *LocalActionsCache) observeExecution(step *Step) {
+func (c *LocalActionsCache) observeExecution(step *workflowlang.Step) {
 	if enabled, known := invocationCondition(step.If); known && !enabled {
 		return
 	}
-	run, ok := step.Exec.(*ExecRun)
+	run, ok := step.Exec.(*workflowlang.ExecRun)
 	if !ok {
 		return
 	}
@@ -21,15 +22,15 @@ func (c *LocalActionsCache) observeExecution(step *Step) {
 	}
 }
 
-func (c *LocalActionsCache) shellEnvironmentUnknown(env *Env) bool {
+func (c *LocalActionsCache) shellEnvironmentUnknown(env *workflowlang.Env) bool {
 	return shellEnvironmentUnknownForPlatform(env, c.platform) || shellPathUnknownForPlatform(env, c.platform)
 }
 
-func (c *LocalActionsCache) runPreservesEnvironment(run *ExecRun) bool {
+func (c *LocalActionsCache) runPreservesEnvironment(run *workflowlang.ExecRun) bool {
 	if run.Run == nil || run.Run.ContainsExpression() {
 		return false
 	}
-	shell := resolveRunShell(run, shellValueFromString(&String{Value: c.checkoutShell.name}), shellValue{}, shellValue{kind: shellValueUnknown})
+	shell := resolveRunShell(run, shellValueFromString(&workflowlang.String{Value: c.checkoutShell.name}), shellValue{}, shellValue{kind: shellValueUnknown})
 	variant := syntax.LangBash
 	switch strings.ToLower(shell.name) {
 	case "bash":
@@ -75,7 +76,7 @@ func preservesEnvironment(statement *syntax.Stmt) bool {
 	return false
 }
 
-func (c *LocalActionsCache) observeOpaqueAction(step *Step, action *ExecAction) {
+func (c *LocalActionsCache) observeOpaqueAction(step *workflowlang.Step, action *workflowlang.ExecAction) {
 	if enabled, known := invocationCondition(step.If); known && !enabled {
 		return
 	}

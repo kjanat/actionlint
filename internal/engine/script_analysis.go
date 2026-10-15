@@ -1,11 +1,15 @@
 package engine
 
-import "context"
+import (
+	"context"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+)
 
 // scriptUnit snapshots invocation context before analyzers run. Source mapping
 // remains an adapter concern; backends receive text and explicit shell selection.
 type scriptUnit struct {
-	run       *ExecRun
+	run       *workflowlang.ExecRun
 	shell     *string
 	config    *Config
 	path      string
@@ -45,18 +49,18 @@ type builtinAnalyzers struct {
 	scripts          []scriptAnalyzer
 }
 
-func scriptDefaultShell(defaults *Defaults) *string {
+func scriptDefaultShell(defaults *workflowlang.Defaults) *string {
 	if defaults == nil || defaults.Run == nil || defaults.Run.Shell == nil {
 		return nil
 	}
 	return &defaults.Run.Shell.Value
 }
 
-func (analysis *compositeAnalyzer) collectScript(step *Step, cfg *Config, path string, content []byte, jobShell, workflowShell *string) {
+func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *Config, path string, content []byte, jobShell, workflowShell *string) {
 	if !analysis.collectScripts {
 		return
 	}
-	run, ok := step.Exec.(*ExecRun)
+	run, ok := step.Exec.(*workflowlang.ExecRun)
 	if !ok || run.Run == nil {
 		return
 	}

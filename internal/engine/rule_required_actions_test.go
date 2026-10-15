@@ -3,6 +3,8 @@ package engine
 import (
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func runRuleRequiredActions(t *testing.T, src string, required []string) []*Error {
@@ -110,18 +112,18 @@ jobs:
 }
 
 func TestRuleRequiredActionsFirstStepsJobPos(t *testing.T) {
-	w := &Workflow{Jobs: map[string]*Job{}}
+	w := &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{}}
 	for i := range 8 {
 		id := string(rune('a' + i))
-		w.Jobs[id] = &Job{
-			ID:  &String{Value: id, Pos: &Pos{Line: 2 + i, Col: 3}},
-			Pos: &Pos{Line: 2 + i, Col: 3},
+		w.Jobs[id] = &workflowlang.Job{
+			ID:  &workflowlang.String{Value: id, Pos: &workflowlang.Pos{Line: 2 + i, Col: 3}},
+			Pos: &workflowlang.Pos{Line: 2 + i, Col: 3},
 		}
 	}
-	w.Jobs["call"] = &Job{Pos: &Pos{Line: 1, Col: 1}, WorkflowCall: &WorkflowCall{}}
+	w.Jobs["call"] = &workflowlang.Job{Pos: &workflowlang.Pos{Line: 1, Col: 1}, WorkflowCall: &workflowlang.WorkflowCall{}}
 	w.Jobs["nil"] = nil
-	w.Jobs["no-position"] = &Job{}
-	w.Jobs["same-line"] = &Job{Pos: &Pos{Line: 2, Col: 4}}
+	w.Jobs["no-position"] = &workflowlang.Job{}
+	w.Jobs["same-line"] = &workflowlang.Job{Pos: &workflowlang.Pos{Line: 2, Col: 4}}
 
 	for range 100 {
 		p := firstStepsJobPos(w)
@@ -133,7 +135,7 @@ func TestRuleRequiredActionsFirstStepsJobPos(t *testing.T) {
 		}
 	}
 
-	if p := firstStepsJobPos(&Workflow{}); p != nil {
+	if p := firstStepsJobPos(&workflowlang.Workflow{}); p != nil {
 		t.Fatalf("wanted nil for a workflow without a job but got %s", p)
 	}
 }

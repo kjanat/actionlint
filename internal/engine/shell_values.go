@@ -1,6 +1,8 @@
 package engine
 
-import "actionlint.kjanat.dev/internal/mapping"
+import (
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+)
 
 type shellValueKind uint8
 
@@ -14,17 +16,17 @@ const (
 // shellValue distinguishes an absent shell from an unresolved override.
 type shellValue struct {
 	kind  shellValueKind
-	value *String
+	value *workflowlang.String
 }
 
-func shellValueFromString(value *String) shellValue {
+func shellValueFromString(value *workflowlang.String) shellValue {
 	if value == nil {
 		return shellValue{}
 	}
 	return shellValue{kind: shellValueSource, value: value}
 }
 
-func defaultsShellValue(defaults *Defaults) shellValue {
+func defaultsShellValue(defaults *workflowlang.Defaults) shellValue {
 	if defaults == nil || defaults.Run == nil {
 		return shellValue{}
 	}
@@ -32,7 +34,7 @@ func defaultsShellValue(defaults *Defaults) shellValue {
 	if run.Expression == nil {
 		return shellValueFromString(run.Shell)
 	}
-	value, known := workflowExpressionLiteral(run.Expression)
+	value, known := workflowlang.WorkflowExpressionLiteral(run.Expression)
 	if !known || len(workflowExpressionLiteralErrors(workflowDefaultsRun, value, "defaults.run")) != 0 {
 		return shellValue{kind: shellValueUnknown}
 	}
@@ -44,25 +46,20 @@ func defaultsShellValue(defaults *Defaults) shellValue {
 	if shell == nil {
 		return shellValue{}
 	}
-	name, ok := workflowScalarString(shell)
+	name, ok := workflowlang.WorkflowScalarString(shell)
 	if !ok {
 		return shellValue{kind: shellValueUnknown}
 	}
 	// Evaluated strings are data, including any expression delimiters they contain.
-	return shellValue{kind: shellValueEvaluated, value: &String{Value: name, Pos: run.Expression.Pos}}
+	return shellValue{kind: shellValueEvaluated, value: &workflowlang.String{Value: name, Pos: run.Expression.Pos}}
 }
 
-// workflowScalarString applies the runner's scalar conversion for string schemas.
-func workflowScalarString(value any) (string, bool) {
-	return mapping.ScalarString(value)
-}
-
-func runnerPlatformLabels(runner *Runner) []*String {
+func runnerPlatformLabels(runner *workflowlang.Runner) []*workflowlang.String {
 	if runner == nil {
 		return nil
 	}
-	var labels []*String
-	for _, expression := range []*String{runner.Expression, runner.LabelsExpr} {
+	var labels []*workflowlang.String
+	for _, expression := range []*workflowlang.String{runner.Expression, runner.LabelsExpr} {
 		if expression != nil {
 			if known, ok := knownRunnerExpressionLabels(expression); ok {
 				labels = append(labels, known...)

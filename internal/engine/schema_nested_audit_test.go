@@ -4,6 +4,8 @@ import (
 	"io"
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestSchemaNestedTimezoneAliases(t *testing.T) {
@@ -15,7 +17,7 @@ func TestSchemaNestedTimezoneAliases(t *testing.T) {
 	}{{"UTC", true}, {"Etc/UTC", true}, {"Universal", true}, {"Europe/Amsterdam", true}, {"Local", false}, {"local", false}, {"Invalid/Timezone", false}} {
 		t.Run(tz.name, func(t *testing.T) {
 			rule := NewRuleEvents()
-			rule.checkTimezone(&String{Value: tz.name, Pos: &Pos{Line: 1, Col: 1}})
+			rule.checkTimezone(&workflowlang.String{Value: tz.name, Pos: &workflowlang.Pos{Line: 1, Col: 1}})
 			if valid := len(rule.Errs()) == 0; valid != tz.valid {
 				t.Fatalf("valid=%v, expected %v: %v", valid, tz.valid, rule.Errs())
 			}

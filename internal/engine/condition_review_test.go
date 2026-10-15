@@ -3,6 +3,8 @@ package engine
 import (
 	"strings"
 	"testing"
+
+	exprlang "actionlint.kjanat.dev/internal/expression"
 )
 
 func TestConditionSourceFullConsumption(t *testing.T) {
@@ -12,7 +14,7 @@ func TestConditionSourceFullConsumption(t *testing.T) {
 		"github.ref }} ignored",
 	} {
 		t.Run(source, func(t *testing.T) {
-			expr, err, _ := parseConditionExpression(source)
+			expr, err, _ := exprlang.ParseConditionExpression(source)
 			if err == nil || expr != nil {
 				t.Fatalf("accepted incomplete condition: expr=%v err=%v", expr, err)
 			}

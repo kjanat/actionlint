@@ -3,9 +3,11 @@ package engine
 import (
 	"cmp"
 	"slices"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
-func workflowOutline(path string, workflow *Workflow, parseErrors bool) WorkflowOutline {
+func workflowOutline(path string, workflow *workflowlang.Workflow, parseErrors bool) WorkflowOutline {
 	outline := WorkflowOutline{Path: path, ParseStatus: "failed", Triggers: []string{}, Jobs: []JobOutline{}}
 	if workflow == nil {
 		return outline
@@ -29,7 +31,7 @@ func workflowOutline(path string, workflow *Workflow, parseErrors bool) Workflow
 		if job.WorkflowCall != nil {
 			record.Uses = outlineString(job.WorkflowCall.Uses)
 		} else {
-			record.Uses = outlineString(job.declaredUses)
+			record.Uses = outlineString(job.DeclaredUses)
 		}
 		record.Reference = ParseWorkflowCallReference(record.Uses)
 		outline.Jobs = append(outline.Jobs, record)
@@ -53,23 +55,23 @@ func workflowOutline(path string, workflow *Workflow, parseErrors bool) Workflow
 	return outline
 }
 
-func stepOutlines(steps []*Step) []StepOutline {
+func stepOutlines(steps []*workflowlang.Step) []StepOutline {
 	records := make([]StepOutline, 0, len(steps))
 	for _, step := range steps {
 		record := StepOutline{
 			ID: outlineString(step.ID), Name: outlineString(step.Name),
-			Start: outlinePosition(step.Pos), Kind: "unknown", Uses: outlineString(step.declaredUses),
+			Start: outlinePosition(step.Pos), Kind: "unknown", Uses: outlineString(step.DeclaredUses),
 		}
 		switch exec := step.Exec.(type) {
-		case *ExecRun:
+		case *workflowlang.ExecRun:
 			record.Kind = "run"
-		case *ExecAction:
+		case *workflowlang.ExecAction:
 			record.Kind, record.Uses = "uses", outlineString(exec.Uses)
-		case *ExecWait:
+		case *workflowlang.ExecWait:
 			record.Kind = "wait"
-		case *ExecCancel:
+		case *workflowlang.ExecCancel:
 			record.Kind = "cancel"
-		case *ExecParallel:
+		case *workflowlang.ExecParallel:
 			record.Kind, record.Steps = "parallel", stepOutlines(exec.Steps)
 		}
 		record.Reference = ParseUsesReference(record.Uses)
@@ -78,14 +80,14 @@ func stepOutlines(steps []*Step) []StepOutline {
 	return records
 }
 
-func outlineString(value *String) string {
+func outlineString(value *workflowlang.String) string {
 	if value == nil {
 		return ""
 	}
 	return value.Value
 }
 
-func outlinePosition(pos *Pos) *DiagnosticPosition {
+func outlinePosition(pos *workflowlang.Pos) *DiagnosticPosition {
 	if pos == nil {
 		return nil
 	}

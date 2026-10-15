@@ -3,6 +3,8 @@ package engine
 import (
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestUnsoundTernary(t *testing.T) {
@@ -58,7 +60,7 @@ func TestUnsoundTernary(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			rule := NewRuleExpression(nil, nil)
-			rule.checkExprsIn("${{ "+tc.expression+" }}", &Pos{Line: 3, Col: 5}, false, false, "env")
+			rule.checkExprsIn("${{ "+tc.expression+" }}", &workflowlang.Pos{Line: 3, Col: 5}, false, false, "env")
 			count := 0
 			for _, finding := range rule.Errs() {
 				if finding.Kind == "unsound-ternary" {

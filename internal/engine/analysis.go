@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/analyzer"
 	"context"
 	"fmt"
 	"io"
@@ -13,6 +12,8 @@ import (
 	"slices"
 	"sync"
 
+	"actionlint.kjanat.dev/analyzer"
+	exprlang "actionlint.kjanat.dev/internal/expression"
 	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/workflownames"
 	"golang.org/x/sync/errgroup"
@@ -165,9 +166,11 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		log = &analysisLogWriter{out: log}
 	}
 	logger := analysisLogger{log, level}
-	engine := &analysisEngine{analyzers: request.Analyzers, ctx: ctx,
+	engine := &analysisEngine{
+		analyzers: request.Analyzers, ctx: ctx,
 		buildRules: builtinFactory(request, logger), rulePresets: request.RulePresets,
-		ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: logger}
+		ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: logger,
+	}
 
 	documents := &actionDocuments{byPath: map[string]ActionOutline{}}
 	proc := newConcurrentProcess(ctx, runtime.NumCPU())
@@ -219,7 +222,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		if workflow.Name == nil {
 			return "", true, nil
 		}
-		if literal := literalExpressionValue(workflow.Name.Value); literal != nil {
+		if literal := exprlang.LiteralExpressionValue(workflow.Name.Value); literal != nil {
 			return *literal, true, nil
 		}
 		return workflow.Name.Value, !workflow.Name.ContainsExpression(), nil

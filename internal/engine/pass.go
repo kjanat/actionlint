@@ -7,20 +7,22 @@ import (
 	"maps"
 	"slices"
 	"time"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 // Pass is an interface to traverse a workflow syntax tree
 type Pass interface {
 	// VisitStep is callback when visiting Step node. It returns internal error when it cannot continue the process
-	VisitStep(node *Step) error
+	VisitStep(node *workflowlang.Step) error
 	// VisitJobPre is callback when visiting Job node before visiting its children. It returns internal error when it cannot continue the process
-	VisitJobPre(node *Job) error
+	VisitJobPre(node *workflowlang.Job) error
 	// VisitJobPost is callback when visiting Job node after visiting its children. It returns internal error when it cannot continue the process
-	VisitJobPost(node *Job) error
+	VisitJobPost(node *workflowlang.Job) error
 	// VisitWorkflowPre is callback when visiting Workflow node before visiting its children. It returns internal error when it cannot continue the process
-	VisitWorkflowPre(node *Workflow) error
+	VisitWorkflowPre(node *workflowlang.Workflow) error
 	// VisitWorkflowPost is callback when visiting Workflow node after visiting its children. It returns internal error when it cannot continue the process
-	VisitWorkflowPost(node *Workflow) error
+	VisitWorkflowPost(node *workflowlang.Workflow) error
 }
 
 // Visitor visits syntax tree from root in depth-first order
@@ -52,7 +54,7 @@ func (v *Visitor) reportElapsedTime(what string, start time.Time) {
 }
 
 // Visit visits given syntax tree in depth-first order
-func (v *Visitor) Visit(n *Workflow) error {
+func (v *Visitor) Visit(n *workflowlang.Workflow) error {
 	var t time.Time
 	if v.dbg != nil {
 		t = time.Now()
@@ -115,7 +117,7 @@ func (v *Visitor) Visit(n *Workflow) error {
 	return nil
 }
 
-func (v *Visitor) visitJob(n *Job) error {
+func (v *Visitor) visitJob(n *workflowlang.Job) error {
 	v.jobID = ""
 	if n.ID != nil {
 		v.jobID = n.ID.Value
@@ -163,7 +165,7 @@ func (v *Visitor) visitJob(n *Job) error {
 	return nil
 }
 
-func (v *Visitor) visitStep(n *Step) error {
+func (v *Visitor) visitStep(n *workflowlang.Step) error {
 	var t time.Time
 	if v.dbg != nil {
 		t = time.Now()
@@ -183,7 +185,7 @@ func (v *Visitor) visitStep(n *Step) error {
 
 	// Steps grouped in a 'parallel' step are visited as well so that rules are applied to them.
 	// https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
-	if e, ok := n.Exec.(*ExecParallel); ok {
+	if e, ok := n.Exec.(*workflowlang.ExecParallel); ok {
 		for _, s := range e.Steps {
 			if v.composites != nil {
 				v.composites.invalidateCheckout()

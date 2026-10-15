@@ -10,6 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	stringutil "actionlint.kjanat.dev/internal/stringutil"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -182,11 +185,11 @@ func TestRuleWorkflowCallCheckWorkflowCallUsesFormat(t *testing.T) {
 		t.Run(tc.uses, func(t *testing.T) {
 			c := NewLocalReusableWorkflowCache(nil, "", nil)
 			r := NewRuleWorkflowCall("", c)
-			j := &Job{
-				WorkflowCall: &WorkflowCall{
-					Uses: &String{
+			j := &workflowlang.Job{
+				WorkflowCall: &workflowlang.WorkflowCall{
+					Uses: &workflowlang.String{
 						Value: tc.uses,
-						Pos:   &Pos{},
+						Pos:   &workflowlang.Pos{},
 					},
 				},
 			}
@@ -208,19 +211,19 @@ func TestRuleWorkflowCallCheckWorkflowCallUsesFormat(t *testing.T) {
 }
 
 func TestRuleWorkflowCallNestedWorkflowCalls(t *testing.T) {
-	w := &Workflow{
-		On: []Event{
-			&WorkflowCallEvent{
-				Pos: &Pos{},
+	w := &workflowlang.Workflow{
+		On: []workflowlang.Event{
+			&workflowlang.WorkflowCallEvent{
+				Pos: &workflowlang.Pos{},
 			},
 		},
 	}
 
-	j := &Job{
-		WorkflowCall: &WorkflowCall{
-			Uses: &String{
+	j := &workflowlang.Job{
+		WorkflowCall: &workflowlang.WorkflowCall{
+			Uses: &workflowlang.String{
 				Value: "o/r/w.yaml@r",
-				Pos:   &Pos{},
+				Pos:   &workflowlang.Pos{},
 			},
 		},
 	}
@@ -243,26 +246,26 @@ func TestRuleWorkflowCallNestedWorkflowCalls(t *testing.T) {
 }
 
 func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
-	s := func(v string) *String {
-		return &String{Value: v, Pos: &Pos{}}
+	s := func(v string) *workflowlang.String {
+		return &workflowlang.String{Value: v, Pos: &workflowlang.Pos{}}
 	}
-	w := &Workflow{
-		On: []Event{
-			&WorkflowCallEvent{
-				Inputs: []*WorkflowCallEventInput{
+	w := &workflowlang.Workflow{
+		On: []workflowlang.Event{
+			&workflowlang.WorkflowCallEvent{
+				Inputs: []*workflowlang.WorkflowCallEventInput{
 					{
 						Name: s("input1"),
-						Type: WorkflowCallEventInputTypeString,
+						Type: workflowlang.WorkflowCallEventInputTypeString,
 						ID:   "input1",
 					},
 				},
-				Outputs: map[string]*WorkflowCallEventOutput{
+				Outputs: map[string]*workflowlang.WorkflowCallEventOutput{
 					"output1": {Name: s("output1")},
 				},
-				Secrets: map[string]*WorkflowCallEventSecret{
+				Secrets: map[string]*workflowlang.WorkflowCallEventSecret{
 					"secret1": {Name: s("secret1")},
 				},
-				Pos: &Pos{},
+				Pos: &workflowlang.Pos{},
 			},
 		},
 	}
@@ -287,7 +290,7 @@ func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
 
 	want := &ReusableWorkflowMetadata{
 		Inputs: ReusableWorkflowMetadataInputs{
-			"input1": {"input1", false, StringType{}},
+			"input1": {"input1", false, exprlang.StringType{}},
 		},
 		Outputs: ReusableWorkflowMetadataOutputs{
 			"output1": {"output1"},
@@ -310,8 +313,8 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 		// workflow0.yaml
 		{
 			Inputs: ReusableWorkflowMetadataInputs{
-				"optional_input": {"optional_input", false, StringType{}},
-				"required_input": {"required_input", true, StringType{}},
+				"optional_input": {"optional_input", false, exprlang.StringType{}},
+				"required_input": {"required_input", true, exprlang.StringType{}},
 			},
 			Outputs: ReusableWorkflowMetadataOutputs{
 				"output": {"output"},
@@ -324,8 +327,8 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 		// workflow1.yaml: Inputs and outputs in upper case (#216)
 		{
 			Inputs: ReusableWorkflowMetadataInputs{
-				"optional_input": {"OPTIONAL_INPUT", false, StringType{}},
-				"required_input": {"REQUIRED_INPUT", true, StringType{}},
+				"optional_input": {"OPTIONAL_INPUT", false, exprlang.StringType{}},
+				"required_input": {"REQUIRED_INPUT", true, exprlang.StringType{}},
 			},
 			Outputs: ReusableWorkflowMetadataOutputs{
 				"output": {"OUTPUT"},
@@ -468,10 +471,10 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 		t.Run(tc.what, func(t *testing.T) {
 			r := NewRuleWorkflowCall("this-workflow.yaml", cache)
 
-			w := &Workflow{
-				On: []Event{
-					&WorkflowCallEvent{
-						Pos: &Pos{},
+			w := &workflowlang.Workflow{
+				On: []workflowlang.Event{
+					&workflowlang.WorkflowCallEvent{
+						Pos: &workflowlang.Pos{},
 					},
 				},
 			}
@@ -479,26 +482,26 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c := &WorkflowCall{
-				Uses:           &String{Value: tc.uses, Pos: &Pos{}},
-				Inputs:         map[string]*WorkflowCallInput{},
-				Secrets:        map[string]*WorkflowCallSecret{},
+			c := &workflowlang.WorkflowCall{
+				Uses:           &workflowlang.String{Value: tc.uses, Pos: &workflowlang.Pos{}},
+				Inputs:         map[string]*workflowlang.WorkflowCallInput{},
+				Secrets:        map[string]*workflowlang.WorkflowCallSecret{},
 				InheritSecrets: tc.inheritSecrets,
 			}
 			for _, i := range tc.inputs {
-				c.Inputs[strings.ToLower(i)] = &WorkflowCallInput{
-					Name:  &String{Value: i, Pos: &Pos{}},
-					Value: &String{Value: "", Pos: &Pos{}},
+				c.Inputs[strings.ToLower(i)] = &workflowlang.WorkflowCallInput{
+					Name:  &workflowlang.String{Value: i, Pos: &workflowlang.Pos{}},
+					Value: &workflowlang.String{Value: "", Pos: &workflowlang.Pos{}},
 				}
 			}
 			for _, s := range tc.secrets {
-				c.Secrets[strings.ToLower(s)] = &WorkflowCallSecret{
-					Name:  &String{Value: s, Pos: &Pos{}},
-					Value: &String{Value: "", Pos: &Pos{}},
+				c.Secrets[strings.ToLower(s)] = &workflowlang.WorkflowCallSecret{
+					Name:  &workflowlang.String{Value: s, Pos: &workflowlang.Pos{}},
+					Value: &workflowlang.String{Value: "", Pos: &workflowlang.Pos{}},
 				}
 			}
 
-			j := &Job{WorkflowCall: c}
+			j := &workflowlang.Job{WorkflowCall: c}
 			if err := r.VisitJobPre(j); err != nil {
 				t.Fatal(err)
 			}
@@ -529,7 +532,7 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 	}
 }
 
-func testParseWorkflowPermissions(t *testing.T, src string) *Permissions {
+func testParseWorkflowPermissions(t *testing.T, src string) *workflowlang.Permissions {
 	t.Helper()
 	if src == "" {
 		return nil
@@ -554,16 +557,16 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 	run := func(t *testing.T, cache *LocalReusableWorkflowCache) []string {
 		t.Helper()
 		r := NewRuleWorkflowCall("caller.yaml", cache)
-		if err := r.VisitWorkflowPre(&Workflow{}); err != nil {
+		if err := r.VisitWorkflowPre(&workflowlang.Workflow{}); err != nil {
 			t.Fatal(err)
 		}
-		j := &Job{
-			ID:          &String{Value: "caller", Pos: &Pos{}},
+		j := &workflowlang.Job{
+			ID:          &workflowlang.String{Value: "caller", Pos: &workflowlang.Pos{}},
 			Permissions: testParseWorkflowPermissions(t, "permissions: {}"),
-			WorkflowCall: &WorkflowCall{
-				Uses:    &String{Value: "./permissions.yaml", Pos: &Pos{}},
-				Inputs:  map[string]*WorkflowCallInput{},
-				Secrets: map[string]*WorkflowCallSecret{},
+			WorkflowCall: &workflowlang.WorkflowCall{
+				Uses:    &workflowlang.String{Value: "./permissions.yaml", Pos: &workflowlang.Pos{}},
+				Inputs:  map[string]*workflowlang.WorkflowCallInput{},
+				Secrets: map[string]*workflowlang.WorkflowCallSecret{},
 			},
 		}
 		if err := r.VisitJobPre(j); err != nil {
@@ -586,9 +589,9 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 	if w == nil {
 		t.Fatal("callee was not parsed:", errs)
 	}
-	var event *WorkflowCallEvent
+	var event *workflowlang.WorkflowCallEvent
 	for _, e := range w.On {
-		if ev, ok := e.(*WorkflowCallEvent); ok {
+		if ev, ok := e.(*workflowlang.WorkflowCallEvent); ok {
 			event = ev
 		}
 	}
@@ -637,8 +640,8 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 	}
 	writeAllMsg := fmt.Sprintf(
 		"nested job \"j\" of \"./callee.yaml\" requires %s but the calling job grants %s",
-		quotes(writeAllWant),
-		quotes(writeAllHave),
+		stringutil.Quotes(writeAllWant),
+		stringutil.Quotes(writeAllHave),
 	)
 
 	tests := []struct {
@@ -815,22 +818,22 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 				r.SetConfig(tc.cfg)
 			}
 
-			w := &Workflow{Permissions: testParseWorkflowPermissions(t, tc.workflowPerms)}
+			w := &workflowlang.Workflow{Permissions: testParseWorkflowPermissions(t, tc.workflowPerms)}
 			if err := r.VisitWorkflowPre(w); err != nil {
 				t.Fatal(err)
 			}
 
-			j := &Job{
-				ID:          &String{Value: "caller", Pos: &Pos{}},
+			j := &workflowlang.Job{
+				ID:          &workflowlang.String{Value: "caller", Pos: &workflowlang.Pos{}},
 				Permissions: testParseWorkflowPermissions(t, tc.jobPerms),
-				WorkflowCall: &WorkflowCall{
-					Uses:    &String{Value: "./callee.yaml", Pos: &Pos{}},
-					Inputs:  map[string]*WorkflowCallInput{},
-					Secrets: map[string]*WorkflowCallSecret{},
+				WorkflowCall: &workflowlang.WorkflowCall{
+					Uses:    &workflowlang.String{Value: "./callee.yaml", Pos: &workflowlang.Pos{}},
+					Inputs:  map[string]*workflowlang.WorkflowCallInput{},
+					Secrets: map[string]*workflowlang.WorkflowCallSecret{},
 				},
 			}
 			if tc.jobIf {
-				j.If = &String{Value: "${{ github.event_name == 'push' }}", Pos: &Pos{}}
+				j.If = &workflowlang.String{Value: "${{ github.event_name == 'push' }}", Pos: &workflowlang.Pos{}}
 			}
 			if err := r.VisitJobPre(j); err != nil {
 				t.Fatal(err)

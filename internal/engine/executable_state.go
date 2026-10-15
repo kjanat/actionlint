@@ -1,6 +1,10 @@
 package engine
 
-import "maps"
+import (
+	"maps"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+)
 
 // executableState tracks when indexed modes still describe execution. Workspace
 // and independently downloaded action copies retain separate mutation histories.
@@ -40,7 +44,7 @@ func (state *executableState) afterKnownCheckout(checkout string, caseInsensitiv
 	}
 }
 
-func (rule *RuleExecutableBit) forkComposite(call *Step, actionPath string, actions *LocalActionsCache) *RuleExecutableBit {
+func (rule *RuleExecutableBit) forkComposite(call *workflowlang.Step, actionPath string, actions *LocalActionsCache) *RuleExecutableBit {
 	scoped := newRuleExecutableBit(rule.context)
 	scoped.executableState = rule.executableState
 	scoped.unix, scoped.caseInsensitive, scoped.shIsDash = rule.unix, rule.caseInsensitive, rule.shIsDash
@@ -66,7 +70,7 @@ func (rule *RuleExecutableBit) forkComposite(call *Step, actionPath string, acti
 	return scoped
 }
 
-func (rule *RuleExecutableBit) joinComposite(call *Step, child *RuleExecutableBit) {
+func (rule *RuleExecutableBit) joinComposite(call *workflowlang.Step, child *RuleExecutableBit) {
 	enabled, conditionKnown := invocationCondition(call.If)
 	if conditionKnown && !enabled {
 		return

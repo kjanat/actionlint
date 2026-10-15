@@ -4,6 +4,7 @@ import (
 	"slices"
 	"strings"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -117,7 +118,7 @@ func resolvePermissions(src permissionsSource) resolvedPermissions {
 
 // resolvePermissionsAST resolves a parsed "permissions:" section. A nil node means the section is
 // absent.
-func resolvePermissionsAST(p *Permissions) resolvedPermissions {
+func resolvePermissionsAST(p *workflowlang.Permissions) resolvedPermissions {
 	if p == nil {
 		return resolvedPermissions{kind: permissionsAbsent}
 	}

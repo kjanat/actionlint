@@ -10,7 +10,9 @@ import (
 	"strings"
 	"sync"
 
+	exprlang "actionlint.kjanat.dev/internal/expression"
 	"actionlint.kjanat.dev/internal/fsread"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -18,7 +20,7 @@ func expectedMapping(where string, n *yaml.Node) error {
 	return fmt.Errorf(
 		"yaml: %s must be mapping node but %s node was found at line:%d, col:%d",
 		where,
-		nodeKindName(n.Kind),
+		workflowlang.NodeKindName(n.Kind),
 		n.Line,
 		n.Column,
 	)
@@ -31,7 +33,7 @@ type ReusableWorkflowMetadataInput struct {
 	// Required is true when 'required' field of the input is set to true and no default value is set.
 	Required bool
 	// Type is a type of the input. When the input type is unknown, 'any' type is set.
-	Type ExprType
+	Type exprlang.Type
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
@@ -50,13 +52,13 @@ func (input *ReusableWorkflowMetadataInput) UnmarshalYAML(n *yaml.Node) error {
 	input.Required = md.Required && md.Default == nil
 	switch md.Type {
 	case "boolean":
-		input.Type = BoolType{}
+		input.Type = exprlang.BoolType{}
 	case "number":
-		input.Type = NumberType{}
+		input.Type = exprlang.NumberType{}
 	case "string":
-		input.Type = StringType{}
+		input.Type = exprlang.StringType{}
 	default:
-		input.Type = AnyType{}
+		input.Type = exprlang.AnyType{}
 	}
 
 	return nil
@@ -82,7 +84,7 @@ func (inputs *ReusableWorkflowMetadataInputs) UnmarshalYAML(n *yaml.Node) error 
 		}
 		m.Name = k.Value
 		if m.Type == nil {
-			m.Type = AnyType{} // Reach here when `v` is null node
+			m.Type = exprlang.AnyType{} // Reach here when `v` is null node
 		}
 
 		md[strings.ToLower(k.Value)] = &m
@@ -174,7 +176,7 @@ type ReusableWorkflowMetadata struct {
 // ReusableWorkflowCacheAccess describes a job's declared cache access and any local callee.
 type ReusableWorkflowCacheAccess struct {
 	// Mode is nil when the job inherits the calling workflow's access limit.
-	Mode *CacheMode
+	Mode *workflowlang.CacheMode
 	// Uses is the normalized local workflow reference, or empty for other jobs.
 	Uses string
 	// SourceUses preserves the local reference's source spelling for diagnostics.
@@ -183,7 +185,7 @@ type ReusableWorkflowCacheAccess struct {
 	Operations []string
 }
 
-func (m *ReusableWorkflowMetadata) recordJobCacheAccess(id string, mode *CacheMode, uses string, steps []*Step) {
+func (m *ReusableWorkflowMetadata) recordJobCacheAccess(id string, mode *workflowlang.CacheMode, uses string, steps []*workflowlang.Step) {
 	local, ok := workflowCallUsesLocalSpec(uses)
 	if !ok {
 		local = ""
@@ -199,16 +201,16 @@ func (m *ReusableWorkflowMetadata) recordJobCacheAccess(id string, mode *CacheMo
 	m.JobCacheAccess[id] = ReusableWorkflowCacheAccess{Mode: mode, Uses: local, SourceUses: uses, Operations: operations}
 }
 
-func collectCacheOperations(operations []string, steps []*Step) []string {
+func collectCacheOperations(operations []string, steps []*workflowlang.Step) []string {
 	for _, step := range steps {
 		switch exec := step.Exec.(type) {
-		case *ExecAction:
+		case *workflowlang.ExecAction:
 			if exec.Uses != nil {
 				if name := cacheActionName(exec.Uses.Value); name != "" {
 					operations = append(operations, name)
 				}
 			}
-		case *ExecParallel:
+		case *workflowlang.ExecParallel:
 			operations = collectCacheOperations(operations, exec.Steps)
 		}
 	}
@@ -262,7 +264,7 @@ func (c *LocalReusableWorkflowCache) writeCache(key string, val *ReusableWorkflo
 //
 // Calling this method is thread-safe.
 func (c *LocalReusableWorkflowCache) FindMetadata(spec string) (*ReusableWorkflowMetadata, error) {
-	if c.proj == nil || !strings.HasPrefix(spec, "./") || ContainsExpression(spec) {
+	if c.proj == nil || !strings.HasPrefix(spec, "./") || exprlang.ContainsExpression(spec) {
 		return nil, nil
 	}
 
@@ -339,7 +341,7 @@ func (c *LocalReusableWorkflowCache) convWorkflowPathToSpec(p string) (string, b
 // This method does nothing when (1) no project is set, (2) it could not convert the workflow path
 // to workflow call spec, (3) some cache for the workflow is already existing.
 // This method is thread safe.
-func (c *LocalReusableWorkflowCache) WriteWorkflowCallEvent(wpath string, event *WorkflowCallEvent) {
+func (c *LocalReusableWorkflowCache) WriteWorkflowCallEvent(wpath string, event *workflowlang.WorkflowCallEvent) {
 	c.WriteWorkflowCallEventFromWorkflow(wpath, event, nil)
 }
 
@@ -347,7 +349,7 @@ func (c *LocalReusableWorkflowCache) WriteWorkflowCallEvent(wpath string, event 
 // each job of the reusable workflow requires, taken from the workflow AST. The permission check on
 // workflow calls needs them. Passing a nil 'w' is equivalent to WriteWorkflowCallEvent. The same
 // do-nothing conditions and thread safety apply.
-func (c *LocalReusableWorkflowCache) WriteWorkflowCallEventFromWorkflow(wpath string, event *WorkflowCallEvent, w *Workflow) {
+func (c *LocalReusableWorkflowCache) WriteWorkflowCallEventFromWorkflow(wpath string, event *workflowlang.WorkflowCallEvent, w *workflowlang.Workflow) {
 	// Convert workflow path to workflow call spec
 	spec, ok := c.convWorkflowPathToSpec(wpath)
 	if !ok {
@@ -369,14 +371,14 @@ func (c *LocalReusableWorkflowCache) WriteWorkflowCallEventFromWorkflow(wpath st
 	}
 
 	for _, i := range event.Inputs {
-		var t ExprType = AnyType{}
+		var t exprlang.Type = exprlang.AnyType{}
 		switch i.Type {
-		case WorkflowCallEventInputTypeBoolean:
-			t = BoolType{}
-		case WorkflowCallEventInputTypeNumber:
-			t = NumberType{}
-		case WorkflowCallEventInputTypeString:
-			t = StringType{}
+		case workflowlang.WorkflowCallEventInputTypeBoolean:
+			t = exprlang.BoolType{}
+		case workflowlang.WorkflowCallEventInputTypeNumber:
+			t = exprlang.NumberType{}
+		case workflowlang.WorkflowCallEventInputTypeString:
+			t = exprlang.StringType{}
 		}
 		m.Inputs[i.ID] = &ReusableWorkflowMetadataInput{
 			Type:     t,
@@ -406,7 +408,7 @@ func (c *LocalReusableWorkflowCache) WriteWorkflowCallEventFromWorkflow(wpath st
 			if j.WorkflowCall != nil && j.WorkflowCall.Uses != nil {
 				uses = j.WorkflowCall.Uses.Value
 			}
-			m.recordJobCacheAccess(j.ID.Value, effectiveCacheMode(w.CacheMode, j.CacheMode), uses, j.Steps)
+			m.recordJobCacheAccess(j.ID.Value, workflowlang.EffectiveCacheMode(w.CacheMode, j.CacheMode), uses, j.Steps)
 			p := wp
 			if j.Permissions != nil {
 				p = resolvePermissionsAST(j.Permissions)
@@ -444,8 +446,8 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 	}
 
 	var aliasErr error
-	resolveYAMLAliases(&doc, func(n *yaml.Node, d yamlAliasDiagnostic, m string) {
-		if d != yamlAliasDiagnosticUnusedAnchor && aliasErr == nil {
+	workflowlang.ResolveYAMLAliases(&doc, func(n *yaml.Node, d workflowlang.YamlAliasDiagnostic, m string) {
+		if d != workflowlang.YamlAliasDiagnosticUnusedAnchor && aliasErr == nil {
 			aliasErr = fmt.Errorf("line:%d, column:%d: %s", n.Line, n.Column, m)
 		}
 	})
@@ -465,7 +467,7 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 			seen := map[string]bool{}
 			for i := 0; i+1 < len(n.Content); i += 2 {
 				key := n.Content[i]
-				if key.Kind != yaml.ScalarNode || key.Value == "" || key.Value == "<<" || rawYAMLTagError(key) != "" {
+				if key.Kind != yaml.ScalarNode || key.Value == "" || key.Value == "<<" || workflowlang.RawYAMLTagError(key) != "" {
 					continue
 				}
 				// The workflow parser reports duplicate keys and retains the first value.
@@ -523,8 +525,8 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 	}
 
 	wp := resolvePermissionsYAML(&w.Permissions)
-	wc := cacheModeFromYAML(&w.CacheMode)
-	stepParser := newSourceParser(src)
+	wc := workflowlang.CacheModeFromYAML(&w.CacheMode)
+	stepParser := workflowlang.NewSourceParser(src)
 	if w.Jobs.Kind == yaml.MappingNode {
 		seenJobs := map[string]bool{}
 		for i := 0; i+1 < len(w.Jobs.Content); i += 2 {
@@ -541,7 +543,7 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 			mode, uses := wc, ""
 			stepsOnly := false
 			seenKeys := map[string]bool{}
-			var steps []*Step
+			var steps []*workflowlang.Step
 			for k := 0; k+1 < len(job.Content); k += 2 {
 				key := job.Content[k].Value
 				// parseMapping keeps the first occurrence after reporting a duplicate.
@@ -549,20 +551,20 @@ func parseReusableWorkflowMetadata(src []byte) (*ReusableWorkflowMetadata, error
 					continue
 				}
 				seenKeys[key] = true
-				if jobKeyRequiresSteps(key) {
+				if workflowlang.JobKeyRequiresSteps(key) {
 					stepsOnly = true
 				}
 				switch key {
 				case "steps":
-					steps = stepParser.parseSteps(job.Content[k+1])
+					steps = stepParser.ParseSteps(job.Content[k+1])
 				case "permissions":
 					p = resolvePermissionsYAML(job.Content[k+1])
 				case "cache-mode":
-					mode = cacheModeFromYAML(job.Content[k+1])
+					mode = workflowlang.CacheModeFromYAML(job.Content[k+1])
 				case "uses":
 					if n := job.Content[k+1]; n.Kind == yaml.ScalarNode {
 						uses = n.Value
-						if literal := literalExpressionValue(uses); literal != nil {
+						if literal := exprlang.LiteralExpressionValue(uses); literal != nil {
 							uses = *literal
 						}
 					}

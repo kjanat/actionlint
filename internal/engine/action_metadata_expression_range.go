@@ -3,9 +3,11 @@ package engine
 import (
 	"strings"
 	"unicode/utf8"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
-func metadataExpressionEndPosition(meta *ActionMetadata, value *ActionExprString, violation actionExpressionViolation) *Pos {
+func metadataExpressionEndPosition(meta *ActionMetadata, value *ActionExprString, violation actionExpressionViolation) *workflowlang.Pos {
 	if meta.positions == nil || violation.offset <= 0 || violation.endOffset < violation.offset || violation.endOffset > len(value.Value)+1 {
 		return nil
 	}
@@ -16,16 +18,16 @@ func metadataExpressionEndPosition(meta *ActionMetadata, value *ActionExprString
 	}
 	line, column := coordinates(violation.offset)
 	if violation.offset == len(value.Value)+1 && violation.endOffset == violation.offset {
-		if end, ok := source.endPos(line, column); ok {
+		if end, ok := source.EndPos(line, column); ok {
 			return end
 		}
 		return nil
 	}
-	if _, ok := source.pos(line, column); !ok {
+	if _, ok := source.Position(line, column); !ok {
 		return nil
 	}
 	line, column = coordinates(violation.endOffset)
-	if end, ok := source.endPos(line, column); ok {
+	if end, ok := source.EndPos(line, column); ok {
 		return end
 	}
 	return nil

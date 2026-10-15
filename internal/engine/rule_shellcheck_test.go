@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"golang.org/x/sys/execabs"
 )
 
@@ -30,7 +31,7 @@ func TestShellcheckInvocationDebugContext(t *testing.T) {
 			rule.cmd.env = []string{"SHELLCHECK_OPTS=--shell=bash"}
 			rule.inlineConfig = &ShellcheckConfig{Enable: []string{"quote-safe-variables"}}
 			directory := runDirectory{kind, t.TempDir()}
-			if err := rule.runShellcheck("echo hello", nil, shellcheckShell{name: "sh"}, directory, &Pos{Line: 7, Col: 1}, nil); err != nil {
+			if err := rule.runShellcheck("echo hello", nil, shellcheckShell{name: "sh"}, directory, &workflowlang.Pos{Line: 7, Col: 1}, nil); err != nil {
 				t.Fatal(err)
 			}
 			if err := rule.cmd.wait(); err != nil {
@@ -276,39 +277,39 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 		t.Run(tc.what, func(t *testing.T) {
 			collector := &compositeAnalyzer{collectScripts: true, resolveScriptExecution: true, actions: &LocalActionsCache{}}
 
-			w := &Workflow{}
+			w := &workflowlang.Workflow{}
 			if tc.workflow != "" {
-				w.Defaults = &Defaults{
-					Run: &DefaultsRun{
-						Shell: &String{Value: tc.workflow},
+				w.Defaults = &workflowlang.Defaults{
+					Run: &workflowlang.DefaultsRun{
+						Shell: &workflowlang.String{Value: tc.workflow},
 					},
 				}
 			}
 			collector.beginWorkflow(w)
 
-			j := &Job{}
+			j := &workflowlang.Job{}
 			if tc.job != "" {
-				j.Defaults = &Defaults{
-					Run: &DefaultsRun{
-						Shell: &String{Value: tc.job},
+				j.Defaults = &workflowlang.Defaults{
+					Run: &workflowlang.DefaultsRun{
+						Shell: &workflowlang.String{Value: tc.job},
 					},
 				}
 			}
 			if tc.runner != "" {
-				j.RunsOn = &Runner{
-					Labels: []*String{
+				j.RunsOn = &workflowlang.Runner{
+					Labels: []*workflowlang.String{
 						{Value: tc.runner},
 					},
 				}
 			}
 			collector.beginJob(j)
 
-			e := &ExecRun{}
+			e := &workflowlang.ExecRun{}
 			if tc.step != "" {
-				e.Shell = &String{Value: tc.step}
+				e.Shell = &workflowlang.String{Value: tc.step}
 			}
-			e.Run = &String{Value: "echo ok"}
-			collector.collectScript(&Step{Exec: e}, nil, "", nil, nil, nil)
+			e.Run = &workflowlang.String{Value: "echo ok"}
+			collector.collectScript(&workflowlang.Step{Exec: e}, nil, "", nil, nil, nil)
 			if s := collector.scripts[0].execution.shell.name; s != tc.want {
 				t.Fatalf("detected shell %q but wanted %q", s, tc.want)
 			}

@@ -3,6 +3,8 @@ package engine
 import (
 	"path"
 	"strings"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 // implicit distinguishes the runner's bash -e fallback from explicit bash,
@@ -12,7 +14,7 @@ type shellcheckShell struct {
 	implicit bool
 }
 
-func resolveRunShell(exec *ExecRun, jobShell, workflowShell, runnerShell shellValue) shellcheckShell {
+func resolveRunShell(exec *workflowlang.ExecRun, jobShell, workflowShell, runnerShell shellValue) shellcheckShell {
 	for _, candidate := range []shellValue{shellValueFromString(exec.Shell), jobShell, workflowShell} {
 		candidate = shellcheckLiteral(candidate)
 		switch candidate.kind {
@@ -40,9 +42,9 @@ func shellcheckLiteral(value shellValue) shellValue {
 	if value.kind != shellValueSource || !value.value.ContainsExpression() {
 		return value
 	}
-	if literal, known := workflowExpressionLiteral(value.value); known {
-		if text, ok := workflowScalarString(literal); ok {
-			return shellValue{kind: shellValueEvaluated, value: &String{Value: text}}
+	if literal, known := workflowlang.WorkflowExpressionLiteral(value.value); known {
+		if text, ok := workflowlang.WorkflowScalarString(literal); ok {
+			return shellValue{kind: shellValueEvaluated, value: &workflowlang.String{Value: text}}
 		}
 	}
 	// A custom template can have a known executable and dynamic arguments.
@@ -53,36 +55,36 @@ func shellcheckLiteral(value shellValue) shellValue {
 	return shellValue{kind: shellValueUnknown}
 }
 
-func shellcheckContainerShell(container *Container) shellValue {
+func shellcheckContainerShell(container *workflowlang.Container) shellValue {
 	if container == nil {
 		return shellValue{}
 	}
 	image := shellValueFromString(container.Image)
 	if container.Expression != nil {
-		value, known := workflowExpressionLiteral(container.Expression)
+		value, known := workflowlang.WorkflowExpressionLiteral(container.Expression)
 		if !known {
 			return shellValue{kind: shellValueUnknown}
 		}
 		if object, ok := value.(map[string]any); ok {
 			value = workflowObjectProperty(object, "image")
 		}
-		text, ok := workflowScalarString(value)
+		text, ok := workflowlang.WorkflowScalarString(value)
 		if !ok {
 			return shellValue{kind: shellValueUnknown}
 		}
-		image = shellValue{kind: shellValueEvaluated, value: &String{Value: text}}
+		image = shellValue{kind: shellValueEvaluated, value: &workflowlang.String{Value: text}}
 	} else if image.kind == shellValueSource && image.value.ContainsExpression() {
-		value, known := workflowExpressionLiteral(image.value)
-		text, scalar := workflowScalarString(value)
+		value, known := workflowlang.WorkflowExpressionLiteral(image.value)
+		text, scalar := workflowlang.WorkflowScalarString(value)
 		if !known || !scalar {
 			return shellValue{kind: shellValueUnknown}
 		}
-		image = shellValue{kind: shellValueEvaluated, value: &String{Value: text}}
+		image = shellValue{kind: shellValueEvaluated, value: &workflowlang.String{Value: text}}
 	}
 	if image.value == nil || image.value.Value == "" {
 		return shellValue{}
 	}
-	return shellValueFromString(&String{Value: "sh"})
+	return shellValueFromString(&workflowlang.String{Value: "sh"})
 }
 
 func (shell shellcheckShell) analysis() (dialect, setup string) {

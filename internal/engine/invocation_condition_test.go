@@ -1,6 +1,11 @@
 package engine
 
-import "testing"
+import (
+	"testing"
+
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+)
 
 func TestStepCanRunAfterFailure(t *testing.T) {
 	if stepCanRunAfterFailure(nil) {
@@ -31,7 +36,7 @@ func TestStepCanRunAfterFailure(t *testing.T) {
 		{"before ${{ failure() }}", true},
 	} {
 		t.Run(tc.condition, func(t *testing.T) {
-			if got := stepCanRunAfterFailure(&String{Value: tc.condition}); got != tc.want {
+			if got := stepCanRunAfterFailure(&workflowlang.String{Value: tc.condition}); got != tc.want {
 				t.Fatalf("stepCanRunAfterFailure() = %v, want %v", got, tc.want)
 			}
 		})
@@ -66,7 +71,7 @@ func TestInvocationCondition(t *testing.T) {
 		{"success() && github.event_name == 'push'", false, false},
 	} {
 		t.Run(tc.condition, func(t *testing.T) {
-			enabled, known := invocationCondition(&String{Value: tc.condition})
+			enabled, known := invocationCondition(&workflowlang.String{Value: tc.condition})
 			if enabled != tc.enabled || known != tc.known {
 				t.Fatalf("invocationCondition() = %v, %v; want %v, %v", enabled, known, tc.enabled, tc.known)
 			}
@@ -93,9 +98,9 @@ func TestJobInvocationCondition(t *testing.T) {
 		{"case(false, false, true)", true, true, true},
 	} {
 		t.Run(tc.condition, func(t *testing.T) {
-			job := &Job{If: &String{Value: tc.condition}}
+			job := &workflowlang.Job{If: &workflowlang.String{Value: tc.condition}}
 			if tc.dependencies {
-				job.Needs = []*String{{Value: "build"}}
+				job.Needs = []*workflowlang.String{{Value: "build"}}
 			}
 			enabled, known := jobInvocationCondition(job)
 			if enabled != tc.enabled || known != tc.known {
@@ -132,7 +137,7 @@ func TestConditionNeverRuns(t *testing.T) {
 		{"always()", false},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
-			expression := parseAssignedExpression("${{ " + tc.expression + " }}")
+			expression := exprlang.ParseAssignedExpression("${{ " + tc.expression + " }}")
 			if expression == nil {
 				t.Fatal("invalid test expression")
 			}

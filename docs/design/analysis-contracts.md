@@ -15,7 +15,9 @@ inputs and returned results, while the host must own completion even when traver
 ## Decision
 
 Keep one module and separate the public packages by responsibility. Root contains the convenience entry point and
-generation directives. The analysis implementation, legacy rules and their tests live in `internal/engine`.
+generation directives. The analysis host and remaining visitor rules live in `internal/engine`.
+`internal/workflow` owns workflow syntax, parsing and scalar source maps. `internal/expression` owns expression
+parsing, types, constant evaluation and semantic checks. Both implementations can run without the analysis host.
 `internal/analyzerhost` owns generic execution and resource scopes. `internal/report` owns document models and their codecs; the public `document` package exposes those models without
 importing the engine. Existing focused internal packages retain ownership
 of mapping resolution, external checker logic, filesystem reads, configuration trees and suppressions.
@@ -25,7 +27,13 @@ flowchart TD
     Root[Root Analyze] --> API[analysis]
     API --> Engine[internal/engine]
     CLI[internal/cli] --> Engine
-    Syntax[syntax] --> Engine
+    Syntax[syntax] --> Workflow[internal/workflow]
+    Engine --> Workflow
+    Engine --> Expressions[internal/expression]
+    Workflow --> Expressions
+    Engine --> Contexts[internal/workflowcontext]
+    Workflow --> Scalars[internal/yamlscalar]
+    Expressions --> Scalars
     Config[config] --> Engine
     Engine --> Host[internal/analyzerhost]
     Engine --> Mapping[internal/mapping]
@@ -78,8 +86,11 @@ shapes, and must not parse expression-looking text returned as data a second tim
 
 - One module makes these packages share a release and permits internal implementation imports. Separate modules would
   require independent compatibility and release contracts that this change does not establish.
-- Configuration and syntax models still use selected aliases into the engine. Diagnostics, analyzer contracts and
-  document models own their types independently. Moving model ownership further requires separating parser source-mapping state from syntax data.
+- Configuration still aliases engine-owned types. Syntax aliases the independent workflow implementation instead;
+  importing it no longer imports discovery, rule execution, configuration loading or native tools. The parser retains
+  decoded source maps alongside syntax because accurate diagnostics require both.
+- Remaining engine work includes repository configuration, discovery, action metadata, visitor rules and rendering.
+  These extractions remove two language subsystems; they do not make the engine a composition-only package yet.
 - Existing built-in checks still use a shared AST traversal internally. This change removes that traversal from the public
   extension contract and separates its resource/configuration/debug capabilities; it does not claim that every built-in
   rule has been rewritten as a fact consumer.
@@ -94,7 +105,9 @@ External-package tests exercise the public root entry point, config and syntax p
 partial results and composite-action scripts. Host tests cover input isolation, unavailable facts, cancellation and
 joining all resources once. Engine regressions cover traversal failure, cancellation with retained findings, independent script scopes and fallback
 when either ShellCheck range endpoint cannot be mapped. Import-boundary tests check that public analyzer, diagnostic and
-document contracts have no transitive dependency on the engine, CLI or process execution. Existing semantic, CLI,
+document and syntax contracts, together with the standalone language implementations, have no transitive dependency
+on the engine, CLI, configuration API or process execution. A separate guard prevents expression semantics from importing
+workflow ASTs, analyzer execution or repository configuration trees. Existing semantic, CLI,
 generator and conformance suites remain applicable.
 
 ## Decision: separate engines from execution transports
@@ -142,3 +155,28 @@ without reproducing Go's package structure. This change does not add a WASM load
 An argv-only abstraction was rejected because it would force embedded engines to implement CLI parsing and
 stdout protocols. A universal filesystem capability was deferred because the current Ruff plugin needs none
 and ShellCheck requires explicit source/dependency semantics before such a capability can be specified.
+
+## Decision: separate language analysis from the host
+
+Expression analysis receives `expression.Options`: allowed variable and secret names and explicit semantic-check
+selection. The host resolves presets and diagnostic levels before constructing those options. The checker never reads
+repository `Config`. Callers can replace context types independently of workflow traversal. Constant evaluation,
+numeric coercion and ternary findings belong to this language layer; the matrix and expression rules consume them.
+
+Workflow parsing returns a recovered tree and syntax findings. A finding contains its message, rule and source position;
+it has no suppression state, action-cache identity, renderer state or executable rule. The analysis adapter adds host
+diagnostic state after parsing. The public `syntax.Parse` API projects parser findings directly into the shared
+diagnostic contract. The parser and host share token-range calculation so that this boundary preserves diagnostic spans.
+
+The workflow layer also owns inserted mapping resolution and decoded source maps. It depends on the expression layer
+to interpret statically known expressions. The reverse dependency is forbidden. YAML scalar grammar is a separate leaf
+shared by the parser and expression numeric conversion, rather than being owned by an expression visitor rule.
+Generated workflow context availability has its own package and generation target.
+
+The existing language tests move with their implementations. Workflow/rule integration tests remain with the host.
+This allows direct parser and semantic validation without constructing a linter or loading configuration. Import guards
+enforce the dependency direction transitively, including public type aliases.
+
+Keeping type aliases back into `engine` was rejected because it preserves the same dependency graph under a new path.
+A separate Go module per language was also rejected: these internal implementations share a release, and independently
+versioning their implementation types would introduce a compatibility boundary without a current consumer requirement.

@@ -1,6 +1,10 @@
 package engine
 
-import "context"
+import (
+	"context"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+)
 
 // compositeAnalyzer owns script-analyzer policy and invocation-specific state,
 // leaving Visitor responsible for the workflow's ordinary pass lifecycle.
@@ -20,7 +24,7 @@ type compositeAnalyzer struct {
 	actions                           *LocalActionsCache
 	passes                            []Pass
 	rules                             []compositeScriptRules
-	workflowEnv                       *Env
+	workflowEnv                       *workflowlang.Env
 	workflowShell                     shellValue
 	configForFile                     func(string) (*Config, error)
 	jobID                             string
@@ -33,7 +37,7 @@ func (analysis *compositeAnalyzer) cancelled() error {
 	return analysis.ctx.Err()
 }
 
-func (analysis *compositeAnalyzer) beginWorkflow(workflow *Workflow) {
+func (analysis *compositeAnalyzer) beginWorkflow(workflow *workflowlang.Workflow) {
 	analysis.scriptScope = &scriptScope{paths: analysis.scriptPaths, config: analysis.scriptConfig}
 	analysis.scriptScopes = append(analysis.scriptScopes, analysis.scriptScope)
 	analysis.scriptWorkflowDir = defaultsWorkingDirectory(workflow.Defaults)
@@ -42,13 +46,13 @@ func (analysis *compositeAnalyzer) beginWorkflow(workflow *Workflow) {
 	analysis.workflowShell = defaultsShellValue(workflow.Defaults)
 }
 
-func (analysis *compositeAnalyzer) beginJob(job *Job) {
+func (analysis *compositeAnalyzer) beginJob(job *workflowlang.Job) {
 	analysis.jobScriptShell = scriptDefaultShell(job.Defaults)
 	analysis.scriptJobShell = defaultsShellValue(job.Defaults)
 	analysis.scriptJobDir = defaultsWorkingDirectory(job.Defaults)
 	analysis.scriptRunnerShell = shellValue{}
 	if runnerPlatform(job.RunsOn) == platformKindWindows {
-		analysis.scriptRunnerShell = shellValueFromString(&String{Value: "pwsh"})
+		analysis.scriptRunnerShell = shellValueFromString(&workflowlang.String{Value: "pwsh"})
 	}
 	if container := shellcheckContainerShell(job.Container); container.kind != shellValueUnspecified {
 		analysis.scriptRunnerShell = container
@@ -66,21 +70,21 @@ func (analysis *compositeAnalyzer) beginJob(job *Job) {
 	runnerShell := shellValue{kind: shellValueUnknown}
 	switch analysis.actions.platform {
 	case platformKindWindows:
-		runnerShell = shellValueFromString(&String{Value: "pwsh"})
+		runnerShell = shellValueFromString(&workflowlang.String{Value: "pwsh"})
 	case platformKindMacOrLinux:
 		runnerShell = shellValue{}
 	}
 	if container := shellcheckContainerShell(job.Container); container.kind != shellValueUnspecified {
 		runnerShell = container
 	}
-	analysis.actions.checkoutShell = resolveRunShell(&ExecRun{}, defaultsShellValue(job.Defaults), analysis.workflowShell, runnerShell)
+	analysis.actions.checkoutShell = resolveRunShell(&workflowlang.ExecRun{}, defaultsShellValue(job.Defaults), analysis.workflowShell, runnerShell)
 }
 
 func (analysis *compositeAnalyzer) invalidateCheckout() {
 	analysis.actions.setCheckout(runDirectory{kind: directoryUnknown})
 }
 
-func (analysis *compositeAnalyzer) visitStep(step *Step) error {
+func (analysis *compositeAnalyzer) visitStep(step *workflowlang.Step) error {
 	if err := analysis.cancelled(); err != nil {
 		return err
 	}
@@ -90,7 +94,7 @@ func (analysis *compositeAnalyzer) visitStep(step *Step) error {
 	for _, pass := range analysis.passes {
 		compositeCheckoutPaths(pass, analysis.actions)
 		if participant, ok := pass.(invocationParticipant); ok && participant.deferActionInvocation() {
-			if _, action := step.Exec.(*ExecAction); action {
+			if _, action := step.Exec.(*workflowlang.ExecAction); action {
 				continue // Preserve checkout state while entering a local composite.
 			}
 		}
@@ -98,7 +102,7 @@ func (analysis *compositeAnalyzer) visitStep(step *Step) error {
 			return err
 		}
 	}
-	if _, action := step.Exec.(*ExecAction); !action {
+	if _, action := step.Exec.(*workflowlang.ExecAction); !action {
 		return nil
 	}
 	var scripts []Rule

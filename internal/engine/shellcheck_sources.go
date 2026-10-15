@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func (run *shellcheckRun) sourcedDiagnostic(comment shellcheckError, directory string, sources map[string][]byte) *Error {
@@ -29,7 +31,7 @@ func (run *shellcheckRun) sourcedDiagnostic(comment shellcheckError, directory s
 		source:  content, rawScriptSource: true, code: fmt.Sprintf("SC%d", comment.Code), severity: comment.Level,
 	}
 	if comment.EndLine >= comment.Line && comment.EndColumn > 0 {
-		finding.endPosition = &Pos{Line: comment.EndLine, Col: comment.EndColumn}
+		finding.endPosition = &workflowlang.Pos{Line: comment.EndLine, Col: comment.EndColumn}
 		if comment.EndLine == comment.Line && comment.EndColumn > comment.Column {
 			finding.endColumn = comment.EndColumn - 1
 		}
