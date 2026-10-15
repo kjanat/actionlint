@@ -1,6 +1,10 @@
 package actionlint
 
-import "strings"
+import (
+	"strings"
+
+	"actionlint.kjanat.dev/internal/mapping"
+)
 
 // RuleEnvVar is a rule checker to check environment variables setup.
 type RuleEnvVar struct {
@@ -44,23 +48,11 @@ func (rule *RuleEnvVar) checkEnv(env *Env) {
 	if env == nil {
 		return
 	}
-	if env.Expression != nil {
-		value, known := workflowExpressionLiteral(env.Expression)
-		if object, ok := value.(map[string]any); known && ok {
-			for name := range object {
-				rule.checkName(name, env.Expression.Pos)
-			}
+	inputResolver.Walk(envMappingView(env), nil, func(entry mapping.Entry[*String]) {
+		if entry.Name != nil {
+			rule.checkName(entry.Name.Value, entry.Name.Pos)
 		}
-	}
-	for _, v := range env.Vars {
-		if v.Name.ContainsExpression() {
-			continue // Key name can contain expressions (#312)
-		}
-		rule.checkName(v.Name.Value, v.Name.Pos)
-	}
-	for _, insertion := range env.Insertions {
-		rule.checkEnv(insertion)
-	}
+	})
 }
 
 func (rule *RuleEnvVar) checkName(name string, pos *Pos) {

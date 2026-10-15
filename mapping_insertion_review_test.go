@@ -223,3 +223,31 @@ func TestResolvedMatrixKeysReachConsumers(t *testing.T) {
 		}
 	}
 }
+
+func TestUnknownScriptInputNames(t *testing.T) {
+	for _, action := range []string{"actions/github-script@v8", "example/action@v1"} {
+		for _, key := range []string{"${{ inputs.input-name }}", "${{ vars.NAME }}", "${{ 'github-token' }}"} {
+			for depth := range 3 {
+				t.Run(fmt.Sprintf("%s/%s/depth=%d", action, key, depth), func(t *testing.T) {
+					mapping := fmt.Sprintf("{%q: '${{ github.event.issue.title }}'}", key)
+					if key == "${{ 'github-token' }}" {
+						mapping = fmt.Sprintf("{script: return, %q: '${{ github.event.issue.title }}'}", key)
+					}
+					for range depth {
+						mapping = "{'${{ insert }}': " + mapping + "}"
+					}
+					source := strings.Replace(insertionSectionWorkflow("with", mapping), "example/action@v1", action, 1)
+					source = strings.Replace(source, "on: push", "on: {issues: {}, workflow_dispatch: {inputs: {input-name: {type: string}}}}", 1)
+					errs := lintCredentialsExpressionTest(t, source)
+					if action == "actions/github-script@v8" && key != "${{ 'github-token' }}" {
+						if len(errs) != 1 || !strings.Contains(errs[0].Message, "potentially untrusted") {
+							t.Fatalf("unknown script name bypassed injection check: %v", errs)
+						}
+					} else if len(errs) != 0 {
+						t.Fatalf("non-script input checked as executable: %v", errs)
+					}
+				})
+			}
+		}
+	}
+}
