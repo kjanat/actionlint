@@ -335,8 +335,12 @@ func (rule *RuleExpression) VisitStep(n *Step) error {
 				rule.checkString(i.Value, "jobs.<job_id>.steps.with")
 			}
 		}
-		rule.checkString(e.Entrypoint, "jobs.<job_id>.steps.with")
-		rule.checkString(e.Args, "jobs.<job_id>.steps.with")
+		if !e.entrypointEvaluated {
+			rule.checkString(e.Entrypoint, "jobs.<job_id>.steps.with")
+		}
+		if !e.argsEvaluated {
+			rule.checkString(e.Args, "jobs.<job_id>.steps.with")
+		}
 		spec = e.Uses
 	}
 

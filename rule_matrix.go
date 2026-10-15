@@ -43,10 +43,10 @@ func (rule *RuleMatrix) VisitJobPre(n *Job) error {
 		return nil
 	}
 
+	complete := true
 	if len(m.Insertions) != 0 {
-		var known bool
-		m, known = expandedMatrixInsertions(m)
-		if !known {
+		m, complete = expandedMatrixInsertions(m)
+		if m == nil {
 			return nil
 		}
 	}
@@ -55,6 +55,9 @@ func (rule *RuleMatrix) VisitJobPre(n *Job) error {
 			name = row.Name.Value
 		}
 		rule.checkDuplicateInRow(name, row, !evaluated)
+	}
+	if !complete {
+		return nil
 	}
 
 	// Note:

@@ -20,10 +20,12 @@ func expandedMatrixInsertions(matrix *Matrix) (*Matrix, bool) {
 		result.Rows = map[string]*MatrixRow{}
 	}
 	result.Insertions = nil
+	complete := true
 	for _, insertion := range matrix.Insertions {
 		inserted, known := expandedMatrixInsertions(insertion)
-		if !known {
-			return nil, false
+		complete = complete && known
+		if inserted == nil {
+			continue
 		}
 		for name, row := range inserted.Rows {
 			if _, duplicate := result.Rows[name]; duplicate {
@@ -44,7 +46,7 @@ func expandedMatrixInsertions(matrix *Matrix) (*Matrix, bool) {
 			result.Exclude = inserted.Exclude
 		}
 	}
-	return &result, true
+	return &result, complete
 }
 
 func expandedMatrixCombinations(filters *MatrixCombinations) (*MatrixCombinations, bool) {
