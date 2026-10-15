@@ -29,15 +29,14 @@ type ExpressionEnd func(string) (int, bool)
 // Checker owns Python selection, invocation and diagnostic delivery. It knows
 // nothing about the host AST: its callbacks bridge expressions and source maps.
 type Checker struct {
-	run                     Run
-	wait                    func() error
-	expressionEnd           ExpressionEnd
-	flags                   []string
-	commandError            error
-	workingDirectory        string
-	beforeCheck             func() (bool, error)
-	workflowShell, jobShell *string
-	mu                      sync.Mutex
+	run              Run
+	wait             func() error
+	expressionEnd    ExpressionEnd
+	flags            []string
+	commandError     error
+	workingDirectory string
+	beforeCheck      func() (bool, error)
+	mu               sync.Mutex
 }
 
 // New creates a checker. The host must accept exit statuses 0 and 1, but not 2.
@@ -45,7 +44,7 @@ func New(run Run, wait func() error, expressionEnd ExpressionEnd, flags ...strin
 	return &Checker{run: run, wait: wait, expressionEnd: expressionEnd, flags: append([]string(nil), flags...)}
 }
 
-// Fork shares command scheduling but not workflow defaults or diagnostic state.
+// Fork shares command scheduling and copies checker configuration.
 func (c *Checker) Fork() *Checker {
 	child := New(c.run, c.wait, c.expressionEnd, c.flags...)
 	child.workingDirectory = c.workingDirectory
@@ -67,12 +66,6 @@ func (c *Checker) OptionalVersion(check *Compatibility, ctx context.Context, war
 // They must be removed after applying explicit child environment overrides too.
 func UnsetEnvironment() []string { return []string{"RUFF_OUTPUT_FILE"} }
 
-// WorkflowShell sets the workflow-level default shell.
-func (c *Checker) WorkflowShell(shell *string) { c.workflowShell = shell }
-
-// JobShell sets (or clears) the job-level default shell.
-func (c *Checker) JobShell(shell *string) { c.jobShell = shell }
-
 // Wait drains scheduled checks before diagnostics are read.
 func (c *Checker) Wait() error { return c.wait() }
 
@@ -80,12 +73,6 @@ func (c *Checker) Wait() error { return c.wait() }
 func (c *Checker) Check(script string, shell *string, location string, config Config, report func(Diagnostic)) error {
 	if config.Enabled != nil && !*config.Enabled {
 		return nil
-	}
-	if shell == nil {
-		shell = c.jobShell
-	}
-	if shell == nil {
-		shell = c.workflowShell
 	}
 	if shell == nil || strings.Contains(*shell, "${{") {
 		return nil

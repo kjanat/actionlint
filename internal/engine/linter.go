@@ -96,6 +96,8 @@ type LinterOptions struct {
 	Context context.Context
 	// Ruff selects the executable for Python run scripts. Empty disables it.
 	Ruff string
+	// ShellcheckRunner supplies an isolated embedded ShellCheck backend.
+	ShellcheckRunner func([]string, string) ([]byte, error)
 	// More options will come here
 }
 
@@ -244,7 +246,7 @@ func LegacyAnalysisError(err error) error {
 func newLegacyAnalysisSession(opts *LinterOptions) (*AnalysisSession, error) {
 	return NewAnalysisSession(AnalysisOptions{
 		Context: opts.Context, WorkingDir: opts.WorkingDir, StdinFileName: opts.StdinFileName,
-		ConfigFile: opts.ConfigFile, ConfigOverlays: opts.ConfigOverlays, OnConfigLoaded: opts.OnConfigLoaded, Shellcheck: opts.Shellcheck,
+		ConfigFile: opts.ConfigFile, ConfigOverlays: opts.ConfigOverlays, OnConfigLoaded: opts.OnConfigLoaded, Shellcheck: opts.Shellcheck, ShellcheckRunner: opts.ShellcheckRunner,
 		Ruff:           opts.Ruff,
 		IgnorePatterns: opts.IgnorePatterns, Verbose: opts.Verbose, Debug: opts.Debug,
 		LogWriter: opts.LogWriter, OnRulesCreated: opts.OnRulesCreated, OnFilesSelected: opts.OnFilesSelected,

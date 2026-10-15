@@ -63,9 +63,6 @@ func (v *Visitor) Visit(n *Workflow) error {
 	}
 	for _, p := range v.passes {
 		if err := p.VisitWorkflowPre(n); err != nil {
-			if v.composites != nil && v.composites.deferWorkflowError(p, err) {
-				continue
-			}
 			return err
 		}
 	}
@@ -96,11 +93,6 @@ func (v *Visitor) Visit(n *Workflow) error {
 	})
 	for _, id := range jobs {
 		if err := v.visitJob(n.Jobs[id]); err != nil {
-			return err
-		}
-	}
-	if v.composites != nil {
-		if err := v.composites.validateWorkflow(); err != nil {
 			return err
 		}
 	}

@@ -349,7 +349,7 @@ jobs:
 		if err != nil {
 			t.Fatal(err)
 		}
-		var rules []Rule
+		var rules []RuleInfo
 		findings, _, err := engine.check(workflow, source, project, nil, process, actions, workflows, &rules)
 		if err != nil {
 			t.Fatal(err)

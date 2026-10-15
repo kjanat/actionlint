@@ -212,8 +212,7 @@ func TestVersionedShellTarget(t *testing.T) {
 					t.Fatalf("target: %v; want %s", args, tc.want)
 				}
 			}, func() error { return nil }, nil)
-			checker.WorkflowShell(&tc.shell)
-			if err := checker.Check("print(1)", nil, "test", Config{TargetVersion: tc.explicit}, func(Diagnostic) {}); err != nil || calls != 1 {
+			if err := checker.Check("print(1)", &tc.shell, "test", Config{TargetVersion: tc.explicit}, func(Diagnostic) {}); err != nil || calls != 1 {
 				t.Fatalf("calls=%d, error=%v", calls, err)
 			}
 		})

@@ -12,10 +12,6 @@ type shellcheckShell struct {
 	implicit bool
 }
 
-func (rule *RuleShellcheck) resolveShell(exec *ExecRun) shellcheckShell {
-	return resolveRunShell(exec, rule.jobShell, rule.workflowShell, rule.runnerShell)
-}
-
 func resolveRunShell(exec *ExecRun, jobShell, workflowShell, runnerShell shellValue) shellcheckShell {
 	for _, candidate := range []shellValue{shellValueFromString(exec.Shell), jobShell, workflowShell} {
 		candidate = shellcheckLiteral(candidate)

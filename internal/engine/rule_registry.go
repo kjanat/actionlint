@@ -16,18 +16,20 @@ const (
 )
 
 type ruleDescriptor struct {
-	configurationScope ruleConfigurationScope
-	skipWhenDisabled   bool
-	required           func(ruleContext) bool
-	supportsActions    bool
-	Name               string `json:"name"`
-	Description        string `json:"description"`
-	Category           string `json:"category"`
-	Recommended        bool   `json:"recommended"`
-	newOptions         func() any
-	configure          func(*Config, RuleSetting)
-	build              func(ruleContext) (Rule, error)
-	enabled            func(ruleContext) bool
+	requiresScriptExecution bool
+	buildScripts            func(ruleContext) (scriptAnalyzer, error)
+	configurationScope      ruleConfigurationScope
+	skipWhenDisabled        bool
+	required                func(ruleContext) bool
+	supportsActions         bool
+	Name                    string `json:"name"`
+	Description             string `json:"description"`
+	Category                string `json:"category"`
+	Recommended             bool   `json:"recommended"`
+	newOptions              func() any
+	configure               func(*Config, RuleSetting)
+	build                   func(ruleContext) (Rule, error)
+	enabled                 func(ruleContext) bool
 }
 type ruleContext struct {
 	workflowNames           *workflownames.Index
@@ -42,6 +44,8 @@ type ruleContext struct {
 	workflows               *LocalReusableWorkflowCache
 	process                 *concurrentProcess
 	shellcheck              string
+	shellcheckRunner        func([]string, string) ([]byte, error)
+	debug                   func(string, ...any)
 	shellcheckOptions       *ExternalCommandOptions
 	shellcheckSettings      *ShellcheckSettings
 	workingDir, projectRoot string
@@ -55,13 +59,13 @@ func builtinRuleDescriptors() []ruleDescriptor {
 			return &workflowRunNamesRule{RuleBase: builtinRuleBase("workflow-run-names"), root: absPath(c.projectRoot), index: c.workflowNames}, nil
 		}, enabled: workflowRunNamesAvailable},
 		{Name: "unsound-ternary", Description: "Report a && b || c expressions where b is always falsy", Category: "correctness", Recommended: true},
-		{configurationScope: compositeConfiguration, required: func(c ruleContext) bool { return c.ruffOptions == nil || !c.ruffOptions.Optional }, supportsActions: true, Name: "ruff", Description: "Analyze embedded Python scripts with Ruff", Category: "external", Recommended: true, build: func(c ruleContext) (Rule, error) { return newRuffRule(c) }, enabled: func(c ruleContext) bool {
+		{configurationScope: compositeConfiguration, required: func(c ruleContext) bool { return c.ruffOptions == nil || !c.ruffOptions.Optional }, supportsActions: true, Name: "ruff", Description: "Analyze embedded Python scripts with Ruff", Category: "external", Recommended: true, buildScripts: newRuffAnalyzer, enabled: func(c ruleContext) bool {
 			possible, err := ruffProjectConfigMayEnable(c.config, c.projectConfig, c.projectRoot != "")
 			// Validated config should merge successfully; analysis resolves the
 			// actual metadata path and reports any remaining composition error.
 			return externalCommandEnabled(c.ruff, c.ruffOptions) && (possible || err != nil)
 		}},
-		{Name: "syntax-check", Description: "Validate GitHub Actions workflow syntax", Category: "correctness", Recommended: true},
+		{supportsActions: true, Name: "syntax-check", Description: "Validate GitHub Actions workflow syntax", Category: "correctness", Recommended: true},
 		{configurationScope: sourceConfiguration, Name: "inline-suppression", Description: "Validate inline suppression directives", Category: "correctness", Recommended: true},
 		{Name: "missing-local-action", Description: "Report local action references whose manifests cannot be found", Category: "correctness", Recommended: true},
 		{Name: "string-conditions", Description: "Flag string conditions whose truthiness may be misleading", Category: "suspicious"},
@@ -86,7 +90,7 @@ func builtinRuleDescriptors() []ruleDescriptor {
 		{Name: "permissions", Description: "Validate token permission scopes and access levels", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRulePermissions(), nil }},
 		{Name: "workflow-call", Description: "Validate reusable workflow references and their declared inputs and outputs", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleWorkflowCall(c.path, c.workflows), nil }},
 		{Name: "expression", Description: "Validate expression syntax, names, types, and context availability", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleExpression(c.actions, c.workflows), nil }},
-		{supportsActions: true, configurationScope: sourceConfiguration, Name: "deprecated-commands", Description: "Report deprecated set-output, save-state, set-env, and add-path commands", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleDeprecatedCommands(), nil }},
+		{supportsActions: true, configurationScope: sourceConfiguration, Name: "deprecated-commands", Description: "Report deprecated set-output, save-state, set-env, and add-path commands", Category: "correctness", Recommended: true, buildScripts: func(ruleContext) (scriptAnalyzer, error) { return deprecatedCommandsAnalyzer{}, nil }},
 		{Name: "if-cond", Description: "Report conditions that always evaluate to true or false", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleIfCond(), nil }},
 		{Name: "require-commit-hash", Description: "Require full commit SHAs for actions and workflows, and digests for images", Category: "policy", build: func(c ruleContext) (Rule, error) { return NewRuleRequireCommitHash(), nil }, enabled: func(c ruleContext) bool { return c.config.RequiresCommitHash() }},
 		{Name: "require-job-timeout", Description: "Require explicit job timeouts within configured bounds", Category: "policy", build: func(c ruleContext) (Rule, error) { return NewRuleRequireJobTimeout(c.config.RequiresJobTimeout()), nil }, enabled: func(c ruleContext) bool { return c.config.RequiresJobTimeout().Enabled() }},
@@ -97,15 +101,8 @@ func builtinRuleDescriptors() []ruleDescriptor {
 		{Name: "cache-write-untrusted", Description: "Report cache write access granted on low-trust triggers", Category: "policy", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleCacheWriteUntrusted(), nil }, enabled: func(c ruleContext) bool { return c.config.cachePolicyEnabled("cache-write-untrusted") }},
 		{Name: "cache-call-unrestricted", Description: "Report reusable workflow calls without explicit cache limits on low-trust triggers", Category: "policy", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleCacheCallUnrestricted(), nil }, enabled: func(c ruleContext) bool { return c.config.cachePolicyEnabled("cache-call-unrestricted") }},
 		{Name: "cache-operation", Description: "Report cache actions blocked by explicit cache access limits", Category: "policy", Recommended: true, build: func(c ruleContext) (Rule, error) { return newRuleCacheOperation(c.workflows), nil }, enabled: func(c ruleContext) bool { return c.config.cachePolicyEnabled("cache-operation") }},
-		{supportsActions: true, configurationScope: sourceConfiguration, skipWhenDisabled: true, Name: "shellcheck", Description: "Analyze embedded shell scripts with ShellCheck", Category: "external", Recommended: true, build: func(c ruleContext) (Rule, error) {
-			rule, err := configuredShellcheck(c.shellcheck, c.shellcheckOptions, c.shellcheckSettings, c.process)
-			if err != nil {
-				return nil, err
-			}
-			rule.paths = runPaths{workspace: c.projectRoot, analysis: c.workingDir, reader: c.reader}
-			return rule, nil
-		}, enabled: func(c ruleContext) bool {
-			return externalCommandEnabled(c.shellcheck, c.shellcheckOptions) &&
+		{supportsActions: true, configurationScope: sourceConfiguration, skipWhenDisabled: true, requiresScriptExecution: true, Name: "shellcheck", Description: "Analyze embedded shell scripts with ShellCheck", Category: "external", Recommended: true, buildScripts: newShellcheckAnalyzer, enabled: func(c ruleContext) bool {
+			return (c.shellcheckRunner != nil || externalCommandEnabled(c.shellcheck, c.shellcheckOptions)) &&
 				(c.config == nil || c.config.Tools.Shellcheck.Enabled == nil || *c.config.Tools.Shellcheck.Enabled)
 		}},
 	}

@@ -294,18 +294,10 @@ func TestExternalOverridePlanMatchesExecution(t *testing.T) {
 			}
 			writeShellcheckFixture(t, root, ".github/actionlint.yaml", tc.config)
 			workflow := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", commandGoodWorkflow)
-			created := false
+
 			session, err := NewAnalysisSession(AnalysisOptions{
 				WorkingDir:        root,
 				ShellcheckOptions: &ExternalCommandOptions{Executable: &executable, Arguments: []string{"-test.run=^TestKnownShellCommandHelper$", "--", "shellcheck"}},
-				OnRulesCreated: func(rules []Rule) []Rule {
-					for _, rule := range rules {
-						if _, ok := rule.(*RuleShellcheck); ok {
-							created = true
-						}
-					}
-					return rules
-				},
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -315,8 +307,8 @@ func TestExternalOverridePlanMatchesExecution(t *testing.T) {
 				t.Fatalf("tool requirement: %+v, %v", needed, err)
 			}
 			result, err := session.Files([]string{workflow}, nil)
-			if err != nil || created != tc.enabled {
-				t.Fatalf("ShellCheck registration=%v, plan=%+v, error=%v", created, needed, err)
+			if err != nil {
+				t.Fatalf("ShellCheck execution failed, plan=%+v, error=%v", needed, err)
 			}
 			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "shellcheck" })
 			if found != tc.enabled {

@@ -1,4 +1,4 @@
-package engine
+package report
 
 import (
 	"encoding/json"

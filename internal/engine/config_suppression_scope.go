@@ -10,13 +10,34 @@ func suppressionConfigForFile(config *Config, path, root string) (*Config, error
 	if config == nil {
 		return nil, nil
 	}
+	return scopedConfigForFile(config, path, root, suppressionLintNode, false)
+}
+
+// Action metadata has no jobs or workflow policy options. Project only the
+// settings consumed by action checks before merging per-file overrides.
+func actionConfigForFile(config *Config, path, root string) (*Config, error) {
+	selected := map[string][]string{}
+	for _, descriptor := range builtinRuleDescriptors() {
+		if descriptor.supportsActions || descriptor.configurationScope == sourceConfiguration {
+			selected[descriptor.Category] = append(selected[descriptor.Category], descriptor.Name)
+		}
+	}
+	return scopedConfigForFile(config, path, root, func(node *yaml.Node) *yaml.Node {
+		return configtree.SelectLintRules(node, selected)
+	}, true)
+}
+
+func scopedConfigForFile(config *Config, path, root string, selectLint func(*yaml.Node) *yaml.Node, tools bool) (*Config, error) {
+	if config == nil {
+		return nil, nil
+	}
 	node, err := lintConfigNode(config.Lint)
 	if err != nil {
 		return nil, err
 	}
 	next := *config
 	next.Lint = LintConfig{}
-	if err := suppressionLintNode(node).Decode(&next.Lint); err != nil {
+	if err := selectLint(node).Decode(&next.Lint); err != nil {
 		return nil, err
 	}
 	next.Overrides = append([]ConfigOverride(nil), config.Overrides...)
@@ -29,9 +50,11 @@ func suppressionConfigForFile(config *Config, path, root string) (*Config, error
 				return nil, err
 			}
 		}
-		override.lintNode = suppressionLintNode(node)
+		override.lintNode = selectLint(node)
 		override.Lint = nil
-		override.Tools, override.toolsNode = nil, nil
+		if !tools {
+			override.Tools, override.toolsNode = nil, nil
+		}
 	}
 	return configForFile(&next, path, root)
 }
@@ -42,4 +65,12 @@ func suppressionLintNode(node *yaml.Node) *yaml.Node {
 		"policy":      {"disallow-suppressions"},
 		"external":    {"shellcheck"},
 	})
+}
+
+// Use the same configuration scope for planning and executing a selected input.
+func configForDocument(config *Config, path, root string) (*Config, error) {
+	if isActionInput(path) {
+		return actionConfigForFile(config, path, root)
+	}
+	return configForFile(config, path, root)
 }

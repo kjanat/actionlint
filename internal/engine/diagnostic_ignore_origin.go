@@ -84,8 +84,3 @@ func visitWithIgnoreOrigin(pass Pass, origin *diagnosticIgnoreOrigin, visit func
 
 // originParticipant snapshots context for asynchronous diagnostic producers.
 type originParticipant interface{ setIgnoreOrigin(*diagnosticIgnoreOrigin) }
-
-func (rule *RuleShellcheck) setIgnoreOrigin(origin *diagnosticIgnoreOrigin) {
-	rule.ignoreOrigin = origin
-}
-func (r *ruffRule) setIgnoreOrigin(origin *diagnosticIgnoreOrigin) { r.ignoreOrigin = origin }

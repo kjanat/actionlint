@@ -54,6 +54,8 @@ type AnalysisOptions struct {
 	RulePresets RulePresets
 	Ruff        string
 	RuffOptions *ExternalCommandOptions
+	// ShellcheckRunner supplies an isolated embedded ShellCheck backend.
+	ShellcheckRunner func([]string, string) ([]byte, error)
 }
 
 // AnalysisSession resolves local inputs before handing them to Analyze.
@@ -116,7 +118,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 		stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected,
 		readFile:       opts.ReadFile,
 		logSelection:   !opts.QuietSelection,
-		request:        AnalysisRequest{Analyzers: opts.Analyzers, Ruff: opts.Ruff, RuffOptions: opts.RuffOptions, ShellCheck: opts.Shellcheck, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, OnRulesCreated: opts.OnRulesCreated},
+		request:        AnalysisRequest{Analyzers: opts.Analyzers, Ruff: opts.Ruff, RuffOptions: opts.RuffOptions, ShellCheck: opts.Shellcheck, ShellcheckRunner: opts.ShellcheckRunner, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, OnRulesCreated: opts.OnRulesCreated},
 		analysisLogger: analysisLogger{logOut: opts.LogWriter},
 	}
 	if a.ctx == nil {

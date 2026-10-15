@@ -9,6 +9,7 @@ on:
       - "analyzer/**"
       - "config/**"
       - "diagnostic/**"
+      - "document/**"
       - "syntax/**"
       - "go.mod"
       - "go.sum"

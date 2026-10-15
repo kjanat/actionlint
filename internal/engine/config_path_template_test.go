@@ -125,7 +125,7 @@ jobs:
 
 func TestShellcheckPathContext(t *testing.T) {
 	repository, workspace, action := t.TempDir(), t.TempDir(), t.TempDir()
-	rule := newRuleShellcheck(&externalCommand{})
+	rule := newShellcheckRunForTest(&externalCommand{})
 	rule.paths.workspace = repository
 	rule.actionPath = action
 	t.Setenv("GITHUB_WORKSPACE", workspace)
@@ -156,8 +156,8 @@ func TestShellcheckApplicationPathOrigin(t *testing.T) {
 		{".shellcheckrc", rc},
 		{"${{ configdir }}/.shellcheckrc", projectRC},
 	} {
-		rule := newRuleShellcheck(&externalCommand{})
-		rule.SetConfig(&Config{filename: configFile})
+		rule := newShellcheckRunForTest(&externalCommand{})
+		rule.cfg = &Config{filename: configFile}
 		rule.config = &ShellcheckSettings{Config: ShellcheckRCFile(tc.selected)}
 		if err := rule.prepareConfigPath(); err != nil {
 			t.Fatal(err)

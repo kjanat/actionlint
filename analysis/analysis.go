@@ -6,6 +6,7 @@ import (
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/config"
 	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/document"
 	"actionlint.kjanat.dev/internal/engine"
 	"context"
 )
@@ -58,19 +59,11 @@ type Request struct {
 // error when analysis completed only partially. FileCount includes clean sources.
 type Result struct {
 	Diagnostics    []diagnostic.Diagnostic `json:"diagnostics"`
-	Documents      Documents               `json:"documents"`
+	Documents      document.Outlines       `json:"documents"`
 	Inputs         []string                `json:"inputs"`
 	Configurations []config.Report         `json:"configurations"`
 	FileCount      int                     `json:"file_count"`
 }
-
-// Document is a selected declaration outline, not a complete semantic graph.
-type Document = engine.DocumentOutline
-type Documents = engine.DocumentOutlines
-type Workflow = engine.WorkflowOutline
-type Job = engine.JobOutline
-type Step = engine.StepOutline
-type Action = engine.ActionOutline
 
 // Analyze checks already-loaded sources. It does not perform source discovery.
 func Analyze(ctx context.Context, request Request) (*Result, error) {

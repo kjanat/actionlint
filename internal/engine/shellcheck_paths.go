@@ -56,30 +56,30 @@ func shellcheckDirectoryPath(path string, platform platformKind) (string, bool) 
 	return runnerDirectoryPath(path, platform)
 }
 
-func (rule *RuleShellcheck) prepareConfigPath() error {
-	if rule.paths.analysis == "" {
+func (run *shellcheckRun) prepareConfigPath() error {
+	if run.paths.analysis == "" {
 		cwd, err := os.Getwd()
 		if err != nil {
 			return err
 		}
-		rule.paths.analysis = cwd
+		run.paths.analysis = cwd
 	}
-	if rule.paths.workspace == "" {
-		rule.paths.workspace = rule.paths.analysis
+	if run.paths.workspace == "" {
+		run.paths.workspace = run.paths.analysis
 	}
-	if err := rule.prepareInlineConfig(); err != nil {
+	if err := run.prepareInlineConfig(); err != nil {
 		return err
 	}
 	var selection ShellcheckConfigSelection
-	base := rule.pathContext().configDir
-	if rule.config != nil && rule.config.Config != nil {
-		selection = rule.config.Config
+	base := run.pathContext().configDir
+	if run.config != nil && run.config.Config != nil {
+		selection = run.config.Config
 		base = "" // Application paths retain their process-working-directory origin.
-	} else if config := rule.Config(); config != nil {
+	} else if config := run.cfg; config != nil {
 		if path := config.Tools.Shellcheck.Config.path(); path != "" {
 			selection = ShellcheckRCFile(path)
 			if config.Tools.Shellcheck.Config.fromInput {
-				base = rule.paths.analysis
+				base = run.paths.analysis
 			}
 		}
 	}
@@ -87,27 +87,27 @@ func (rule *RuleShellcheck) prepareConfigPath() error {
 	var path string
 	switch selected := selection.(type) {
 	case nil:
-		rule.rcArgs = rcArgs
+		run.rcArgs = rcArgs
 		return nil
 	case ShellcheckRCMode:
 		if selected == ShellcheckRCDisabled {
-			rule.rcArgs = rcArgs
+			run.rcArgs = rcArgs
 			return nil
 		}
 		var err error
-		path, err = discoverShellcheckRC(rule.paths.reader, rule.paths.analysis)
+		path, err = discoverShellcheckRC(run.paths.reader, run.paths.analysis)
 		if err != nil {
 			return err
 		}
 		if path == "" {
-			rule.rcArgs = rcArgs
+			run.rcArgs = rcArgs
 			return nil
 		}
 	case ShellcheckRCFile:
 		var err error
-		path, err = rule.pathContext().resolveFrom(string(selected), base)
+		path, err = run.pathContext().resolveFrom(string(selected), base)
 		if err == nil {
-			path, err = shellcheckRCFile(rule.paths.reader, path)
+			path, err = shellcheckRCFile(run.paths.reader, path)
 		}
 		if err != nil {
 			return fmt.Errorf("tools.shellcheck.config: %w", err)
@@ -115,13 +115,13 @@ func (rule *RuleShellcheck) prepareConfigPath() error {
 	default:
 		return errors.New("unsupported ShellCheck configuration selection")
 	}
-	rule.rcArgs = []string{"--rcfile", path}
+	run.rcArgs = []string{"--rcfile", path}
 	return nil
 }
 
-func (rule *RuleShellcheck) prepareInlineConfig() error {
-	rule.inlineConfig = nil
-	config := rule.Config()
+func (run *shellcheckRun) prepareInlineConfig() error {
+	run.inlineConfig = nil
+	config := run.cfg
 	if config == nil {
 		return nil
 	}
@@ -133,12 +133,12 @@ func (rule *RuleShellcheck) prepareInlineConfig() error {
 	resolved.SourcePath = make([]string, len(inline.SourcePath))
 	for i, path := range inline.SourcePath {
 		var err error
-		resolved.SourcePath[i], err = rule.pathContext().expand(path)
+		resolved.SourcePath[i], err = run.pathContext().expand(path)
 		if err != nil {
 			return fmt.Errorf("tools.shellcheck.config.source-path: %w", err)
 		}
 	}
-	rule.inlineConfig = &resolved
+	run.inlineConfig = &resolved
 	return nil
 }
 

@@ -18,12 +18,13 @@ func TestShellcheckInvocationDebugContext(t *testing.T) {
 	for _, kind := range []directoryKind{directoryKnown, directoryUnknown} {
 		t.Run(fmt.Sprint(kind), func(t *testing.T) {
 			proc := newConcurrentProcess(t.Context(), 1)
-			rule, err := NewRuleShellcheck(command, proc)
+			cmd, err := proc.configuredCommandRunner(command, nil, false)
 			if err != nil {
 				t.Fatal(err)
 			}
 			var output bytes.Buffer
-			rule.EnableDebug(&output)
+			rule := newShellcheckRunForTest(cmd)
+			rule.debug = func(format string, args ...any) { fmt.Fprintf(&output, format, args...) }
 			rule.rcArgs = []string{"--norc"}
 			rule.cmd.args = []string{"--severity=warning"}
 			rule.cmd.env = []string{"SHELLCHECK_OPTS=--shell=bash"}
@@ -273,7 +274,7 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
-			r := newRuleShellcheck(&externalCommand{})
+			collector := &compositeAnalyzer{collectScripts: true, resolveScriptExecution: true, actions: &LocalActionsCache{}}
 
 			w := &Workflow{}
 			if tc.workflow != "" {
@@ -283,9 +284,7 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 					},
 				}
 			}
-			if err := r.VisitWorkflowPre(w); err != nil {
-				t.Fatal(err)
-			}
+			collector.beginWorkflow(w)
 
 			j := &Job{}
 			if tc.job != "" {
@@ -302,15 +301,15 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 					},
 				}
 			}
-			if err := r.VisitJobPre(j); err != nil {
-				t.Fatal(err)
-			}
+			collector.beginJob(j)
 
 			e := &ExecRun{}
 			if tc.step != "" {
 				e.Shell = &String{Value: tc.step}
 			}
-			if s := r.resolveShell(e).name; s != tc.want {
+			e.Run = &String{Value: "echo ok"}
+			collector.collectScript(&Step{Exec: e}, nil, "", nil, nil, nil)
+			if s := collector.scripts[0].execution.shell.name; s != tc.want {
 				t.Fatalf("detected shell %q but wanted %q", s, tc.want)
 			}
 		})

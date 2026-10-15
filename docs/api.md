@@ -3,14 +3,15 @@
 The Go library has one module, `actionlint.kjanat.dev`, with packages for distinct responsibilities. The v1.18.0 API
 intentionally breaks the former flat root API. The command-line interface and its output formats are separate contracts.
 
-| Package                            | Responsibility                                                            |
-| ---------------------------------- | ------------------------------------------------------------------------- |
-| `actionlint.kjanat.dev`            | Convenience `Analyze` entry point                                         |
-| `actionlint.kjanat.dev/analysis`   | Source requests, file/repository discovery, results and document outlines |
-| `actionlint.kjanat.dev/analyzer`   | Analyzer input, required facts, registration and returned diagnostics     |
-| `actionlint.kjanat.dev/diagnostic` | Diagnostics, source positions and suggested edits                         |
-| `actionlint.kjanat.dev/config`     | Configuration values, loading, composition and inspection                 |
-| `actionlint.kjanat.dev/syntax`     | Workflow syntax model and parser                                          |
+| Package                            | Responsibility                                                        |
+| ---------------------------------- | --------------------------------------------------------------------- |
+| `actionlint.kjanat.dev`            | Convenience `Analyze` entry point                                     |
+| `actionlint.kjanat.dev/analysis`   | Source requests, file/repository discovery and results                |
+| `actionlint.kjanat.dev/analyzer`   | Analyzer input, required facts, registration and returned diagnostics |
+| `actionlint.kjanat.dev/document`   | Workflow/action outlines and structured action references             |
+| `actionlint.kjanat.dev/diagnostic` | Diagnostics, source positions and suggested edits                     |
+| `actionlint.kjanat.dev/config`     | Configuration values, loading, composition and inspection             |
+| `actionlint.kjanat.dev/syntax`     | Workflow syntax model and parser                                      |
 
 ## Analyze loaded sources
 
@@ -29,7 +30,9 @@ result, err := actionlint.Analyze(ctx, analysis.Request{
 `result.Diagnostics`; a finding does not itself produce a Go error. An error means the analysis was incomplete, and a
 non-nil result may still contain useful findings and document outlines. Always inspect both values.
 
-`result.FileCount` includes clean documents. Document outlines are selected declarations, not a complete semantic graph.
+`result.FileCount` includes clean documents. `result.Documents` uses `document.Outlines`. The `document` package can
+encode and decode workflow/action outlines and parse `uses` references without importing the parser or execution engine.
+Outlines are selected declarations, not a complete semantic graph.
 Positions are one-based Unicode character positions; range ends are exclusive. The library result can be marshalled to
 JSON, but it is not the CLI's versioned result envelope.
 
@@ -97,6 +100,7 @@ public names are the supported import surface. Treat unexported state as opaque 
 | `Analyze` with `AnalysisRequest` / `SourceUnit`            | `Analyze` with `analysis.Request` / `analysis.Source`                           |
 | `AnalysisSession.Files` / `Repository`                     | `analysis.Files` / `analysis.Repository`                                        |
 | `AnalysisResult.FileCount()`                               | `analysis.Result.FileCount`                                                     |
+| `DocumentOutline`, `WorkflowOutline`, `ActionOutline`      | `document.Outline`, `document.Workflow`, `document.Action`                      |
 | `Error`, diagnostic output fields                          | `diagnostic.Diagnostic`                                                         |
 | `Config`, `ParseConfig`, `ReadConfigFile`, `InspectConfig` | `config.Config`, `Parse`, `Load`, `Inspect`                                     |
 | `Workflow`, `Job`, `Step`, `Parse`                         | `syntax.Workflow`, `Job`, `Step`, `Parse`                                       |

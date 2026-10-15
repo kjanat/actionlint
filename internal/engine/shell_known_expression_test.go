@@ -129,23 +129,15 @@ func TestKnownShellExternalLinters(t *testing.T) {
 			if tc.stepShell != "" {
 				source += "        shell: " + tc.stepShell + "\n"
 			}
-			proc := newConcurrentProcess(t.Context(), 1)
-			command := func(name string) *externalCommand {
-				return &externalCommand{proc: proc, exe: exe, args: []string{"-test.run=^TestKnownShellCommandHelper$", "--", name}}
-			}
-			linter, err := NewLinter(io.Discard, &LinterOptions{
-				OnRulesCreated: func(rules []Rule) []Rule {
-					return append(rules, newRuleShellcheck(command("shellcheck")))
-				},
-			})
+			session, err := NewAnalysisSession(AnalysisOptions{ShellcheckOptions: &ExternalCommandOptions{Executable: &exe, Arguments: []string{"-test.run=^TestKnownShellCommandHelper$", "--", "shellcheck"}}})
 			if err != nil {
 				t.Fatal(err)
 			}
-			errors, err := linter.Lint("test.yaml", []byte(source), nil)
-			proc.wait()
+			result, err := session.content("test.yaml", []byte(source), nil, false)
 			if err != nil {
 				t.Fatal(err)
 			}
+			errors := result.legacyErrors()
 			var actual []string
 			for _, diagnostic := range errors {
 				if diagnostic.Kind == "shellcheck" || diagnostic.Kind == "pyflakes" {
@@ -199,21 +191,14 @@ jobs:
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
-	shellcheck := newRuleShellcheck(&externalCommand{})
+	collector := &compositeAnalyzer{collectScripts: true, resolveScriptExecution: true, actions: &LocalActionsCache{}}
+	collector.beginWorkflow(workflow)
 	for _, id := range []string{"python", "bash"} {
 		job := workflow.Jobs[id]
-		for _, pass := range []Pass{shellcheck} {
-			if err := pass.VisitJobPre(job); err != nil {
-				t.Fatal(err)
-			}
-		}
-		if got := shellcheck.resolveShell(&ExecRun{}).name; got != id {
+		collector.beginJob(job)
+		collector.collectScript(job.Steps[0], nil, "", nil, nil, nil)
+		if got := collector.scripts[len(collector.scripts)-1].execution.shell.name; got != id {
 			t.Fatalf("job %s resolved shell %q", id, got)
-		}
-		for _, pass := range []Pass{shellcheck} {
-			if err := pass.VisitJobPost(job); err != nil {
-				t.Fatal(err)
-			}
 		}
 	}
 	job := workflow.Jobs["python"]

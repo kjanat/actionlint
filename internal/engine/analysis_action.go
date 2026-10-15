@@ -23,7 +23,7 @@ func visitStandaloneAction(meta *ActionMetadata, rules []Rule, analysis *composi
 	analysis.beginWorkflow(workflow)
 	var scripts []Rule
 	for _, rule := range rules {
-		if err := rule.VisitWorkflowPre(workflow); err != nil && !analysis.deferWorkflowError(rule, err) {
+		if err := rule.VisitWorkflowPre(workflow); err != nil {
 			return err
 		}
 		if participant, ok := rule.(metadataParticipant); ok {
@@ -40,9 +40,6 @@ func visitStandaloneAction(meta *ActionMetadata, rules []Rule, analysis *composi
 		if err := analysis.visitMetadataScripts(meta, call, scripts, make(map[string]bool)); err != nil {
 			return err
 		}
-	}
-	if err := analysis.validateWorkflow(); err != nil {
-		return err
 	}
 	for _, rule := range rules {
 		if err := rule.VisitWorkflowPost(workflow); err != nil {

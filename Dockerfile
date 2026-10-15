@@ -8,6 +8,7 @@ COPY analyzer analyzer/
 COPY analysis analysis/
 COPY config config/
 COPY diagnostic diagnostic/
+COPY document document/
 COPY syntax syntax/
 COPY cmd cmd/
 COPY internal internal/

@@ -20,7 +20,7 @@ type analysisEngine struct {
 	workflowNames *workflownames.Index
 	analysisLogger
 	ctx            context.Context
-	buildRules     func(ruleContext, bool) ([]Rule, error)
+	buildRules     func(ruleContext, bool) (builtinAnalyzers, error)
 	workingDir     string
 	reader         *fsread.Reader
 	gitModes       *gitModes
@@ -37,7 +37,7 @@ func (l *analysisEngine) check(
 	proc *concurrentProcess,
 	localActions *LocalActionsCache,
 	localReusableWorkflows *LocalReusableWorkflowCache,
-	usedRules *[]Rule,
+	usedRules *[]RuleInfo,
 ) (findings []*Error, outline DocumentOutline, resultErr error) {
 	proc = proc.fork()
 	joined := false
@@ -57,7 +57,7 @@ func (l *analysisEngine) check(
 	if !filepath.IsAbs(configPath) {
 		configPath = filepath.Join(l.workingDir, configPath)
 	}
-	cfg, configErr = configForFile(cfg, configPath, root)
+	cfg, configErr = configForDocument(cfg, configPath, root)
 	if configErr != nil {
 		if isActionInput(configPath) {
 			outline, _ := ParseActionOutline(path, content)
@@ -129,11 +129,12 @@ func (l *analysisEngine) check(
 		if build == nil {
 			build = builtinFactory(AnalysisRequest{}, l.analysisLogger)
 		}
-		rules, err := build(c, metadata != nil)
+		builtins, err := build(c, metadata != nil)
 		if err != nil {
 			return nil, outline, err
 		}
 
+		rules := builtins.rules
 		if l.onRulesCreated != nil && metadata == nil {
 			rules = l.onRulesCreated(rules)
 		}
@@ -145,9 +146,9 @@ func (l *analysisEngine) check(
 			}
 			v.AddPass(rule)
 		}
-		v.composites = &compositeAnalyzer{ctx: l.ctx, actions: localActions, passes: v.passes}
+		v.composites = &compositeAnalyzer{ctx: l.ctx, actions: localActions, passes: v.passes, scriptConfig: cfg, scriptPaths: runPaths{workspace: root, analysis: c.workingDir, reader: c.reader}, collectScripts: len(builtins.scripts) != 0, resolveScriptExecution: builtins.resolveExecution}
 		v.composites.configForFile = func(path string) (*Config, error) {
-			config, err := configForFile(projectConfig, path, root)
+			config, err := actionConfigForFile(projectConfig, path, root)
 			if err != nil {
 				return nil, err
 			}
@@ -179,6 +180,14 @@ func (l *analysisEngine) check(
 		if analysisErr != nil {
 			l.debug("Error occurred while visiting workflow syntax tree: %v", analysisErr)
 		}
+		batch := scriptBatch{scopes: v.composites.scriptScopes, scripts: v.composites.scripts}
+		tasks := make([]analyzerhost.Task[*Error], len(builtins.scripts))
+		for i, analyzer := range builtins.scripts {
+			tasks[i] = func(ctx context.Context) ([]*Error, error) { return analyzer.AnalyzeScripts(ctx, batch) }
+		}
+		findings, scriptErr := analyzerhost.RunTasks(l.ctx, tasks)
+		all = append(all, findings...)
+		analysisErr = errors.Join(analysisErr, scriptErr)
 		analysisErr = errors.Join(analysisErr, proc.finish())
 		joined = true
 
@@ -203,7 +212,14 @@ func (l *analysisEngine) check(
 		}
 		maps.Copy(metadataSources, localActions.usedSources)
 
-		*usedRules = rules
+		*usedRules = append(*usedRules, builtins.scriptInfo...)
+		for _, rule := range rules {
+			info := RuleInfo{Name: rule.Name()}
+			if described, ok := rule.(describedRule); ok {
+				info.Description = described.Description()
+			}
+			*usedRules = append(*usedRules, info)
+		}
 	}
 
 	if len(l.analyzers) != 0 {

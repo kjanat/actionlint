@@ -14,30 +14,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-type analysisCancelRule struct {
-	RuleBase
-	shellcheck *externalCommand
-	cancel     context.CancelFunc
-}
-
-func (rule *analysisCancelRule) VisitStep(step *Step) error {
-	run, ok := step.Exec.(*ExecRun)
-	if !ok || run.Shell == nil || run.Shell.Value != "python" {
-		return nil
-	}
-	// Keep an already completed finding while cancelling another analyzer.
-	if err := rule.shellcheck.wait(); err != nil {
-		return err
-	}
-	rule.cancel()
-	return context.Canceled
-}
-
 func TestAnalysisPartialFindingsOnCancellation(t *testing.T) {
-	executable, err := os.Executable()
-	if err != nil {
-		t.Fatal(err)
-	}
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	result, err := Analyze(ctx, AnalysisRequest{
@@ -45,14 +22,9 @@ func TestAnalysisPartialFindingsOnCancellation(t *testing.T) {
       - run: print(1)
         shell: python
 `)}},
-		ShellcheckOptions: &ExternalCommandOptions{Executable: &executable, Arguments: []string{"-test.run=^TestAnalysisPartialAnalyzerHelper$", "--", "shellcheck"}},
-		OnRulesCreated: func(rules []Rule) []Rule {
-			for _, rule := range rules {
-				if shellcheck, ok := rule.(*RuleShellcheck); ok {
-					return append(rules, &analysisCancelRule{NewRuleBase("cancel", ""), shellcheck.cmd, cancel})
-				}
-			}
-			return rules
+		ShellcheckRunner: func([]string, string) ([]byte, error) {
+			cancel()
+			return []byte(`{"comments":[{"line":3,"endLine":3,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"retained ShellCheck finding"}]}`), nil
 		},
 	})
 	if !errors.Is(err, context.Canceled) || result == nil {

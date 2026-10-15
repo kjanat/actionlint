@@ -21,3 +21,6 @@
 
 !analyzer/
 !analyzer/**
+
+!document
+!document/**

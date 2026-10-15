@@ -149,9 +149,6 @@ func (proc *concurrentProcess) configuredCommandRunner(exe string, options *Exte
 		args:          args,
 		combineOutput: combineOutput,
 	}
-	if proc.scope != nil {
-		proc.scope.Register(cmd.wait)
-	}
 	if options != nil {
 		cmd.env = append([]string(nil), options.Environment...)
 		cmd.dir = options.WorkingDir

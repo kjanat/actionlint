@@ -58,7 +58,7 @@ func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirement
 			continue
 		}
 		projectConfig := config
-		config, err = configForFile(config, path, root)
+		config, err = configForDocument(config, path, root)
 		if err != nil {
 			return needed, err
 		}

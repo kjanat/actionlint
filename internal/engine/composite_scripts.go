@@ -65,6 +65,28 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *ActionMetadata, ca
 		}
 	}()
 
+	scriptConfig := analysis.scriptConfig
+	if analysis.collectScripts && analysis.configForFile != nil {
+		var err error
+		scriptConfig, err = analysis.configForFile(meta.Path())
+		if err != nil {
+			return err
+		}
+	}
+	parentScope := analysis.scriptScope
+	scope := &scriptScope{paths: analysis.scriptPaths, config: analysis.scriptConfig, composite: true}
+	if parentScope != nil {
+		scope.paths, scope.config = parentScope.paths, parentScope.config
+	}
+	scope.actionPath = filepath.Dir(meta.Path())
+	if meta.sourceMapped {
+		scope.actionPath = ""
+	}
+	scope.paths.placements = analysis.actions.checkoutState()
+	compositeActionOrigin(&scope.paths, call, scope.actionPath)
+	analysis.scriptScope = scope
+	analysis.scriptScopes = append(analysis.scriptScopes, scope)
+	defer func() { analysis.scriptScope = parentScope }()
 	children := make([]Rule, 0, len(parents))
 	var participants []Rule
 	for _, parent := range parents {
@@ -77,7 +99,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *ActionMetadata, ca
 		if !ok {
 			continue
 		}
-		child, err := participant.forComposite(compositeInvocation{call, actionPath, analysis.actions, meta, analysis.configForFile})
+		child, err := participant.forComposite(compositeInvocation{call, actionPath, analysis.actions})
 		if err != nil {
 			return err
 		}
@@ -94,6 +116,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *ActionMetadata, ca
 		step := compositeScriptStep(metadataStep, parser)
 		analysis.actions.observeExecution(step)
 		analysis.actions.observeCheckout(step)
+		analysis.collectScript(step, scriptConfig, meta.Path(), meta.src, nil, nil)
 		if _, action := step.Exec.(*ExecAction); action {
 			for _, pass := range analysis.passes {
 				if parent, enabled := pass.(metadataParticipant); enabled {

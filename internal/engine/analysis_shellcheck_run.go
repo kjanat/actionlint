@@ -1,14 +1,10 @@
 package engine
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
-	"sync"
-
-	"actionlint.kjanat.dev/internal/fsread"
 )
 
 type shellcheckError struct {
@@ -58,110 +54,34 @@ const (
 	ShellcheckRCDiscover ShellcheckRCMode = true
 )
 
-// RuleShellcheck is a rule to check shell scripts at 'run:' using shellcheck.
-// https://github.com/koalaman/shellcheck
-type RuleShellcheck struct {
-	hostManaged bool
-	RuleBase
-	cmd           *externalCommand
-	config        *ShellcheckSettings
-	workflowShell shellValue
-	jobShell      shellValue
-	runnerShell   shellValue
-	platform      platformKind
-	workflowDir   runDirectory
-	jobDir        runDirectory
-	paths         runPaths
-	rcArgs        []string
-	inlineConfig  *ShellcheckConfig
-	actionPath    string
-	mu            sync.Mutex
-	ignoreOrigin  *diagnosticIgnoreOrigin
+// shellcheckRun owns one prepared script and its callback result. It has no
+// visitor lifecycle; its owner must join cmd before reading errs.
+type shellcheckRun struct {
+	cmd          *externalCommand
+	config       *ShellcheckSettings
+	cfg          *Config
+	paths        runPaths
+	rcArgs       []string
+	inlineConfig *ShellcheckConfig
+	actionPath   string
+	ignoreOrigin *diagnosticIgnoreOrigin
+	errs         []*Error
+	debug        func(string, ...any)
 }
 
-func newRuleShellcheck(cmd *externalCommand) *RuleShellcheck {
-	return &RuleShellcheck{
-		RuleBase: builtinRuleBase("shellcheck"),
-		cmd:      cmd,
-		paths:    runPaths{reader: fsread.New(context.Background(), nil, nil)},
+func (run *shellcheckRun) Debug(format string, args ...any) {
+	if run.debug != nil {
+		run.debug(format, args...)
 	}
 }
 
-// NewRuleShellcheck creates new RuleShellcheck instance. The executable argument can be command
-// name or relative/absolute file path. When the given executable is not found in system, it returns
-// an error as 2nd return value.
-func NewRuleShellcheck(executable string, proc *concurrentProcess) (*RuleShellcheck, error) {
-	return configuredShellcheck(executable, nil, nil, proc)
-}
-
-func configuredShellcheck(executable string, options *ExternalCommandOptions, config *ShellcheckSettings, proc *concurrentProcess) (*RuleShellcheck, error) {
-	cmd, err := proc.configuredCommandRunner(executable, options, false)
-	if err != nil {
-		return nil, err
+func (run *shellcheckRun) addFinding(start, end *Pos, format string, args ...any) {
+	finding := errorfAt(start, "shellcheck", format, args...)
+	finding.endPosition = end
+	if end != nil && end.Line == start.Line && end.Col > start.Col {
+		finding.endColumn = end.Col - 1
 	}
-	rule := newRuleShellcheck(cmd)
-	rule.config = config
-	return rule, nil
-}
-
-// VisitStep is callback when visiting Step node.
-func (rule *RuleShellcheck) VisitStep(n *Step) error {
-	run, ok := n.Exec.(*ExecRun)
-	if !ok || run.Run == nil {
-		return nil
-	}
-	if rule.rcArgs == nil {
-		if err := rule.prepareConfigPath(); err != nil {
-			return err
-		}
-	}
-
-	directory := rule.paths.effectiveRunDirectory(run, rule.jobDir, rule.workflowDir)
-	return rule.runShellcheck(run.Run.Value, run.source, rule.resolveShell(run), rule.paths.resolve(directory), run.RunPos, run.Run.Pos)
-}
-
-// VisitJobPre is callback when visiting Job node before visiting its children.
-func (rule *RuleShellcheck) VisitJobPre(n *Job) error {
-	rule.jobShell = defaultsShellValue(n.Defaults)
-	rule.jobDir = defaultsWorkingDirectory(n.Defaults)
-	rule.runnerShell = shellValue{}
-	rule.platform = runnerPlatform(n.RunsOn)
-	rule.paths.platform = rule.platform
-	if rule.platform == platformKindWindows {
-		rule.runnerShell = shellValueFromString(&String{Value: "pwsh"})
-	}
-	if container := shellcheckContainerShell(n.Container); container.kind != shellValueUnspecified {
-		rule.runnerShell = container
-	}
-
-	return nil
-}
-
-// VisitJobPost is callback when visiting Job node after visiting its children.
-func (rule *RuleShellcheck) VisitJobPost(n *Job) error {
-	rule.jobShell = shellValue{}
-	rule.jobDir = runDirectory{}
-	rule.runnerShell = shellValue{}
-	rule.platform = platformKindAny
-	return nil
-}
-
-// VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
-func (rule *RuleShellcheck) VisitWorkflowPre(n *Workflow) error {
-	rule.workflowShell = defaultsShellValue(n.Defaults)
-	rule.workflowDir = defaultsWorkingDirectory(n.Defaults)
-	rule.rcArgs = nil
-	return rule.prepareConfigPath()
-}
-
-// VisitWorkflowPost is callback when visiting Workflow node after visiting its children.
-func (rule *RuleShellcheck) VisitWorkflowPost(n *Workflow) error {
-	rule.workflowShell = shellValue{}
-	rule.workflowDir = runDirectory{}
-	if rule.hostManaged || (rule.cmd.proc != nil && rule.cmd.proc.scope != nil) {
-		return nil
-	}
-	return rule.cmd.wait()
+	run.errs = append(run.errs, finding)
 }
 
 // Replace ${{ ... }} with underscores like __________
@@ -205,15 +125,15 @@ func sanitizeExpressionsInScript(src string) string {
 	}
 }
 
-func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shell shellcheckShell, directory runDirectory, pos, valuePos *Pos) error {
+func (run *shellcheckRun) runShellcheck(src string, source *scriptSource, shell shellcheckShell, directory runDirectory, pos, valuePos *Pos) error {
 	dialect, setup := shell.analysis()
 	header, _, directiveShell := shellcheckHeader(src)
 	if dialect == "" && !directiveShell {
-		rule.Debug("%s: Skip ShellCheck: cannot infer a supported script dialect from shell %q; a leading # shellcheck shell=bash (or another supported dialect) selects it explicitly", pos, shell.name)
+		run.Debug("%s: Skip ShellCheck: cannot infer a supported script dialect from shell %q; a leading # shellcheck shell=bash (or another supported dialect) selects it explicitly", pos, shell.name)
 		return nil
 	}
-	if rule.rcArgs == nil {
-		if err := rule.prepareConfigPath(); err != nil {
+	if run.rcArgs == nil {
+		if err := run.prepareConfigPath(); err != nil {
 			return err
 		}
 	}
@@ -221,7 +141,7 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 	dialectOrigin := "workflow shell"
 	// Explicit flags retain native precedence over script directives. Do not append
 	// an inferred --shell after them and silently change the requested analysis.
-	flagShell, explicitShell := rule.cmd.shellcheckDialect()
+	flagShell, explicitShell := run.cmd.shellcheckDialect()
 	appendDialect := !explicitShell && !directiveShell
 	if explicitShell {
 		dialect = flagShell
@@ -230,14 +150,14 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 		dialect = shellcheckHeaderDialect(header)
 		dialectOrigin = "script directive"
 	}
-	inline := rule.inlineConfig
+	inline := run.inlineConfig
 	if appendDialect {
 		if inline != nil && inline.Shell != nil {
 			dialect = *inline.Shell
 			dialectOrigin = "inline configuration"
 		}
-		if rule.config != nil && rule.config.Shell != "" {
-			dialect = rule.config.Shell
+		if run.config != nil && run.config.Shell != "" {
+			dialect = run.config.Shell
 			dialectOrigin = "application settings"
 		}
 	}
@@ -246,7 +166,7 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 	}
 
 	src = sanitizeExpressionsInScript(src)
-	rule.Debug("%s: Run ShellCheck: shell=%q, dialect=%q (%s), native shell directive=%t, startup=%q:\n%s", pos, shell.name, dialect, dialectOrigin, directiveShell, setup, src)
+	run.Debug("%s: Run ShellCheck: shell=%q, dialect=%q (%s), native shell directive=%t, startup=%q:\n%s", pos, shell.name, dialect, dialectOrigin, directiveShell, setup, src)
 
 	// Reasons to exclude the rules:
 	//
@@ -263,10 +183,10 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 	//           this can happen. For example, `if [ -z ${{ env.FOO }} ]` -> `if [ -z ______________ ]` (#113).
 	// - SC2043: Loop can be detected as only running once when the target of iteration is a placeholder. (#355)
 	//           e.g. `for foo in ${{ inputs.foo }}; do`
-	args := append([]string(nil), rule.rcArgs...)
+	args := append([]string(nil), run.rcArgs...)
 	excluded := []string{"SC1091", "SC2194", "SC2050", "SC2153", "SC2154", "SC2157", "SC2043"}
-	if rule.config != nil {
-		for _, code := range rule.config.Exclude {
+	if run.config != nil {
+		for _, code := range run.config.Exclude {
 			if !slices.Contains(excluded, code) {
 				excluded = append(excluded, code)
 			}
@@ -276,14 +196,14 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 	if inline != nil && inline.ExternalSources != nil {
 		externalSources = *inline.ExternalSources
 	}
-	if rule.config != nil && rule.config.ExternalSources != nil {
-		externalSources = *rule.config.ExternalSources
+	if run.config != nil && run.config.ExternalSources != nil {
+		externalSources = *run.config.ExternalSources
 	}
 	if directory.kind == directoryUnknown {
 		externalSources = false
-		rule.Debug("%s: Source following disabled: working directory cannot be resolved locally; analysis directory=%q", pos, directory.path)
+		run.Debug("%s: Source following disabled: working directory cannot be resolved locally; analysis directory=%q", pos, directory.path)
 	} else {
-		rule.Debug("%s: Working directory=%q; source following requested=%t", pos, directory.path, externalSources)
+		run.Debug("%s: Working directory=%q; source following requested=%t", pos, directory.path, externalSources)
 	}
 	if externalSources {
 		args = append(args, "-x")
@@ -293,9 +213,9 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 		args = append(args, "--shell", dialect)
 	}
 	args = append(args, "-e", strings.Join(excluded, ","), "-")
-	rule.Debug("%s: Running %q with arguments %q", pos, rule.cmd.exe, append(slices.Clone(rule.cmd.args), args...))
-	if options := rule.cmd.shellcheckEnvironmentOptions(); options != "" {
-		rule.Debug("%s: Inherited SHELLCHECK_OPTS=%q", pos, options)
+	run.Debug("%s: Running %q with arguments %q", pos, run.cmd.exe, append(slices.Clone(run.cmd.args), args...))
+	if options := run.cmd.shellcheckEnvironmentOptions(); options != "" {
+		run.Debug("%s: Inherited SHELLCHECK_OPTS=%q", pos, options)
 	}
 
 	// Native file-wide directives also work with --norc and never need a temp file.
@@ -307,7 +227,7 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 		prefix += "# shellcheck external-sources=false\n"
 	}
 	if prefix != "" {
-		rule.Debug("%s: Applied inline ShellCheck directives:\n%s", pos, prefix)
+		run.Debug("%s: Applied inline ShellCheck directives:\n%s", pos, prefix)
 	}
 	script := prepareShellcheckScript(src, prefix, setup)
 	origin := &suppressionOrigin{first: pos.Line, last: pos.Line}
@@ -320,11 +240,11 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 		}
 	}
 
-	ignoreOrigin := rule.ignoreOrigin
-	rule.cmd.runInDirectory(args, script.text, directory.path, func(stdout []byte, err error) error {
+	ignoreOrigin := run.ignoreOrigin
+	run.cmd.runInDirectory(args, script.text, directory.path, func(stdout []byte, err error) error {
 		if err != nil {
-			rule.Debug("Command %s %s failed: %v", rule.cmd.exe, args, err)
-			return fmt.Errorf("`%s %s` did not run successfully while checking script at %s: %w", rule.cmd.exe, strings.Join(args, " "), pos, err)
+			run.Debug("Command %s %s failed: %v", run.cmd.exe, args, err)
+			return fmt.Errorf("`%s %s` did not run successfully while checking script at %s: %w", run.cmd.exe, strings.Join(args, " "), pos, err)
 		}
 
 		result := shellcheckResult{}
@@ -336,21 +256,18 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 			return nil
 		}
 
-		// Synchronize rule.Errorf calls
-		rule.mu.Lock()
-		defer rule.mu.Unlock()
-		first := len(rule.errs)
+		first := len(run.errs)
 		defer func() {
-			for _, finding := range rule.errs[first:] {
+			for _, finding := range run.errs[first:] {
 				finding.ignoreOrigin = ignoreOrigin
 			}
 		}()
 		sources := make(map[string][]byte)
 		for _, err := range errs {
 			if err.File != "" && err.File != "-" {
-				finding := rule.sourcedDiagnostic(err, directory.path, sources)
+				finding := run.sourcedDiagnostic(err, directory.path, sources)
 				finding.suppressionOrigin = origin
-				rule.errs = append(rule.errs, finding)
+				run.errs = append(run.errs, finding)
 				continue
 			}
 			// Dialect overrides can make generated startup options non-portable.
@@ -363,13 +280,14 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 				continue
 			}
 			msg := strings.TrimSuffix(err.Message, ".") // Trim period aligning style of error message
-			if start, ok := source.pos(line, err.Column); ok {
-				end, _ := source.endPos(script.originalLine(err.EndLine), err.EndColumn)
-				rule.errorfRange(start, end, "shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", err.Code, err.Level, line, err.Column, msg)
+			start, startOK := source.pos(line, err.Column)
+			end, endOK := source.endPos(script.originalLine(err.EndLine), err.EndColumn)
+			if startOK && endOK {
+				run.addFinding(start, end, "shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", err.Code, err.Level, line, err.Column, msg)
 			} else {
-				rule.Errorf(pos, "shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", err.Code, err.Level, line, err.Column, msg)
+				run.addFinding(pos, nil, "shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", err.Code, err.Level, line, err.Column, msg)
 			}
-			finding := rule.errs[len(rule.errs)-1]
+			finding := run.errs[len(run.errs)-1]
 			finding.code = fmt.Sprintf("SC%d", err.Code)
 			finding.severity = err.Level
 			finding.fixes = shellcheckDiagnosticFixes(source, script, err.Fix, err.Message)
@@ -378,18 +296,4 @@ func (rule *RuleShellcheck) runShellcheck(src string, source *scriptSource, shel
 		return nil
 	})
 	return nil
-}
-
-func (rule *RuleShellcheck) checkoutPaths() *runPaths { return &rule.paths }
-func (rule *RuleShellcheck) forComposite(invocation compositeInvocation) (Rule, error) {
-	child := newRuleShellcheck(rule.cmd)
-	child.config, child.paths, child.platform = rule.config, rule.paths, rule.platform
-	child.actionPath = invocation.actionPath
-	child.SetConfig(rule.Config())
-	compositeCheckoutPaths(child, invocation.actions)
-	compositeActionOrigin(&child.paths, invocation.call, invocation.actionPath)
-	if err := child.prepareConfigPath(); err != nil {
-		return nil, err
-	}
-	return child, nil
 }

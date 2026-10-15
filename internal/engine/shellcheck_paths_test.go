@@ -394,7 +394,7 @@ func TestShellcheckWorkingDirectorySymlinks(t *testing.T) {
 	for _, workspace := range []string{root, alias} {
 		for _, directory := range []string{"internal", "external", "chain", "broken"} {
 			t.Run(filepath.Base(workspace)+"/"+directory, func(t *testing.T) {
-				rule := newRuleShellcheck(&externalCommand{})
+				rule := newShellcheckRunForTest(&externalCommand{})
 				rule.paths.workspace, rule.paths.analysis = workspace, analyzer
 				got := rule.paths.resolve(runDirectory{directoryKnown, directory})
 				if directory != "broken" {
@@ -647,5 +647,28 @@ jobs:
 				t.Fatalf("overlay rc origin lost: %+v", result)
 			}
 		})
+	}
+}
+
+func TestShellcheckSourcesUseAnalysisDirectoryWithoutProject(t *testing.T) {
+	root := t.TempDir()
+	writeShellcheckFixture(t, root, "lib.sh", "echo $VALUE\n")
+	result, err := Analyze(t.Context(), AnalysisRequest{
+		WorkingDir:        root,
+		ShellCheck:        shellcheckForTest(t),
+		ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}},
+		Sources: []SourceUnit{{Path: "workflow.yml", Content: []byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: . ./lib.sh
+`)}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Path != "lib.sh" || result.Diagnostics[0].Code != "SC2086" {
+		t.Fatalf("source was not resolved in the requested analysis directory: %+v", result.Diagnostics)
 	}
 }

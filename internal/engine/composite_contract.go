@@ -3,11 +3,9 @@ package engine
 // compositeInvocation supplies the already-resolved caller and action scope.
 // Participants own analyzer-specific configuration and state adaptation.
 type compositeInvocation struct {
-	call          *Step
-	actionPath    string
-	actions       *LocalActionsCache
-	metadata      *ActionMetadata
-	configForFile func(string) (*Config, error)
+	call       *Step
+	actionPath string
+	actions    *LocalActionsCache
 }
 
 type compositeParticipant interface {
@@ -24,9 +22,4 @@ type metadataParticipant interface {
 	forMetadata(*LocalActionsCache) Rule
 }
 
-var (
-	_ compositeParticipant = (*RuleDeprecatedCommands)(nil)
-	_ compositeParticipant = (*RuleExecutableBit)(nil)
-	_ compositeParticipant = (*RuleShellcheck)(nil)
-	_ compositeParticipant = (*ruffRule)(nil)
-)
+var _ compositeParticipant = (*RuleExecutableBit)(nil)

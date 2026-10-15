@@ -20,24 +20,24 @@ jobs:
           ],
           "jobs": {
             "unit": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "fuzz/**", "scripts/**/*.go",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "fuzz/**", "scripts/**/*.go",
               "scripts/**/testdata/**", "testdata/**", "schemas/**", "actionlint.schema.json", "Makefile", ".pre-commit-hooks.yaml",
               ".github/actions/setup-shellcheck/**", ".github/workflows/upkeep.yml", "scripts/*.bash", "Dockerfile", "CONTRIBUTING.md", "flake.nix",
               "flake.lock"
             ],
             "race": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "fuzz/**", "scripts/**/*.go",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "fuzz/**", "scripts/**/*.go",
               "scripts/**/testdata/**", "testdata/**", "schemas/**", "actionlint.schema.json", "Makefile", ".pre-commit-hooks.yaml",
               ".github/actions/setup-shellcheck/**", ".github/workflows/upkeep.yml", "scripts/*.bash", "Dockerfile", "CONTRIBUTING.md", "flake.nix",
               "flake.lock"
             ],
             "nix": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "nix/**",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "nix/**",
               "flake.nix", "flake.lock", "man/**", "schemas/**", "actionlint.schema.json", "scripts/check-packaged-cli.bash",
               ".github/workflows/nix.yml", "!**/testdata/**"
             ],
             "wasm": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "playground/**", "man/**",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "playground/**", "man/**",
               "packages/changelog-feed/**", "!cmd/**", "!internal/cli/**", "!internal/githubaction/**", "!**/*_test.go", "package.json",
               "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json", "Makefile"
             ],
@@ -47,7 +47,7 @@ jobs:
               ".github/actions/**/mise.toml"
             ],
             "release": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "Makefile",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "Makefile",
               ".goreleaser.yaml", "man/**", "schemas/**", "actionlint.schema.json", "distribution/**", "packages/github-action/**",
               "scripts/build-action-release.mjs", "scripts/release-*.mjs", "action.yml", ".pre-commit-hooks.yaml", "package.json",
               "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json", "!packages/github-action/tests/**",
@@ -58,16 +58,16 @@ jobs:
               "go.sum"
             ],
             "lint": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "**/*.go", ".golangci.toml",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "**/*.go", ".golangci.toml",
               "docs/checks.md", "scripts/*.bash", "Makefile", ".github/workflows/**", ".github/actions/**", ".github/actionlint.yaml",
               "!testdata/**", "!**/testdata/**"
             ],
             "docker": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "Dockerfile",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "Dockerfile",
               ".dockerignore", "scripts/*docker*.bash", "scripts/docker-action-wrapper.bash", "action.yml", "!**/testdata/**"
             ],
             "action": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go",
               "packages/github-action/**", "distribution/npm/facade/types/**", "action.yml", "scripts/*.mjs", ".pre-commit-hooks.yaml",
               ".goreleaser.yaml", "package.json", "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
               "!**/testdata/**", "testdata/ok/minimal.yaml", "testdata/err/one_error.yaml"
@@ -77,7 +77,7 @@ jobs:
               ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json"
             ],
             "precommit": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go",
               ".pre-commit-hooks.yaml", "scripts/check-packaged-cli.bash", ".github/actions/setup-shellcheck/**", "!**/testdata/**"
             ]
           }

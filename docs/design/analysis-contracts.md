@@ -16,7 +16,8 @@ inputs and returned results, while the host must own completion even when traver
 
 Keep one module and separate the public packages by responsibility. Root contains the convenience entry point and
 generation directives. The analysis implementation, legacy rules and their tests live in `internal/engine`.
-`internal/analyzerhost` owns generic execution and resource scopes. Existing focused internal packages retain ownership
+`internal/analyzerhost` owns generic execution and resource scopes. `internal/report` owns document models and their codecs; the public `document` package exposes those models without
+importing the engine. Existing focused internal packages retain ownership
 of mapping resolution, external checker logic, filesystem reads, configuration trees and suppressions.
 
 ```mermaid
@@ -32,7 +33,14 @@ flowchart TD
     Engine --> Factory
     Host --> Contract[analyzer]
     Contract --> Diagnostic[diagnostic]
-    Adapters --> Backends[Internal checker backends]
+    Engine --> Prepared[Prepared scripts and invocation scopes]
+    Prepared --> Checks[Script analyzers]
+    Checks --> Backends[Internal checker backends]
+    Checks --> Host
+    API --> Documents[document]
+    Documents --> Models[internal/report]
+    Engine --> Models
+    Models --> Diagnostic
 ```
 
 New analyzers declare required facts and return diagnostics and errors. They have no AST-visit, configuration mutation
@@ -45,9 +53,22 @@ early exit, including injected checkers with their own runners. Concurrent compl
 ownership is a separate capability from internal traversal rules. Configuration and debug configuration are separate
 capabilities too. The document runner does not identify external tool types to wait for them.
 
-Tool selection and initialization policy belong to built-in composition and adapters. Composite analysis requests
-capabilities for child construction, checkout state, metadata validation and result joining. Each adapter owns its
-configuration and state adaptation. Suppression-origin snapshots use a capability rather than concrete tool switches.
+Tool selection and initialization policy belong to built-in composition. Ruff, ShellCheck and deprecated-command checks
+consume a prepared script batch and return findings and an error. They do not implement visitors. Each invocation records
+its shell selection, configuration, source location and suppression origin. ShellCheck additionally requires effective
+execution facts: runner defaults, working directories and checkout/action placement. The collector resolves these facts
+only when a selected analyzer requires them. Composite scripts receive their own scope and do not inherit workflow shell
+or working-directory defaults.
+
+Built-in script analyzers and public analyzers use the same bounded task executor. It preserves registration order and
+partial results and waits for every started task. Each external checker owns and joins its callbacks before returning,
+including on cancellation or an error. Callbacks write to separate per-script result slots. Rendering retains rule
+metadata instead of retaining executable rule objects. The Playground supplies an embedded ShellCheck runner directly.
+
+Composite analysis still requests capabilities for the remaining visitor adapters: checkout state, metadata validation,
+child construction and result joining. Configuration for action inputs is projected to applicable rules before overrides
+are merged. Workflow-only option constraints cannot invalidate an action's script or suppression settings. Tool planning
+and analysis use the same selected-input scope.
 
 Mapping resolution provides one key contract: canonical value, source provenance, evaluated-data provenance and
 known/unknown/invalid state. Consumers must retain uncertainty instead of turning runtime names into closed object
@@ -57,8 +78,8 @@ shapes, and must not parse expression-looking text returned as data a second tim
 
 - One module makes these packages share a release and permits internal implementation imports. Separate modules would
   require independent compatibility and release contracts that this change does not establish.
-- Configuration, syntax and outline models use selected public aliases. Diagnostics and analyzer contracts own their
-  types independently. Moving model ownership further requires separating parser source-mapping state from syntax data.
+- Configuration and syntax models still use selected aliases into the engine. Diagnostics, analyzer contracts and
+  document models own their types independently. Moving model ownership further requires separating parser source-mapping state from syntax data.
 - Existing built-in checks still use a shared AST traversal internally. This change removes that traversal from the public
   extension contract and separates its resource/configuration/debug capabilities; it does not claim that every built-in
   rule has been rewritten as a fact consumer.
@@ -71,5 +92,7 @@ shapes, and must not parse expression-looking text returned as data a second tim
 
 External-package tests exercise the public root entry point, config and syntax packages, file analysis, custom analyzer
 partial results and composite-action scripts. Host tests cover input isolation, unavailable facts, cancellation and
-joining all resources once. An engine regression forces traversal failure after an injected checker has scheduled work
-and verifies that completion waits for it. Existing semantic, CLI, generator and conformance suites remain applicable.
+joining all resources once. Engine regressions cover traversal failure, cancellation with retained findings, independent script scopes and fallback
+when either ShellCheck range endpoint cannot be mapped. Import-boundary tests check that public analyzer, diagnostic and
+document contracts have no transitive dependency on the engine, CLI or process execution. Existing semantic, CLI,
+generator and conformance suites remain applicable.

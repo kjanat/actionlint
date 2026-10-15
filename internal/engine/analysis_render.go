@@ -63,7 +63,7 @@ func (r *AnalysisRenderer) Render(out io.Writer, result *AnalysisResult) error {
 	if r.formatter != nil {
 		for _, file := range result.files {
 			for _, rule := range file.rules {
-				r.formatter.RegisterRule(rule)
+				r.formatter.registerRuleInfo(rule)
 			}
 		}
 	}

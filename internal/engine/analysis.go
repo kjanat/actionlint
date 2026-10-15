@@ -51,6 +51,8 @@ type AnalysisRequest struct {
 	RulePresets RulePresets
 	Ruff        string
 	RuffOptions *ExternalCommandOptions
+	// ShellcheckRunner supplies an isolated embedded ShellCheck backend.
+	ShellcheckRunner func([]string, string) ([]byte, error)
 }
 
 // AnalysisResult contains findings, their sources, and every local input read during analysis.
@@ -66,7 +68,7 @@ type AnalysisResult struct {
 type analyzedFile struct {
 	source  SourceUnit
 	errors  []*Error
-	rules   []Rule
+	rules   []RuleInfo
 	outline DocumentOutline
 }
 

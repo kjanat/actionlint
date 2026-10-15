@@ -1,7 +1,9 @@
 package engine
 
 import (
+	"actionlint.kjanat.dev/internal/analyzerhost"
 	"errors"
+	"sync"
 	"sync/atomic"
 	"testing"
 )
@@ -19,7 +21,7 @@ func TestAnalysisJoinsInjectedResourcesAfterVisitFailure(t *testing.T) {
 	result, err := Analyze(t.Context(), AnalysisRequest{
 		Sources: []SourceUnit{{Path: "workflow.yml", Content: []byte(commandGoodWorkflow)}},
 		OnRulesCreated: func([]Rule) []Rule {
-			checker := NewRuleShellcheckWithRunner(func([]string, string) ([]byte, error) { completed.Store(true); return []byte(`[]`), nil })
+			checker := &scheduledResourceRule{RuleBase: NewRuleBase("resource", ""), completed: &completed}
 			return []Rule{checker, &failAfterScheduling{RuleBase: NewRuleBase("fail", ""), failure: failure}}
 		},
 	})
@@ -29,4 +31,18 @@ func TestAnalysisJoinsInjectedResourcesAfterVisitFailure(t *testing.T) {
 	if !completed.Load() {
 		t.Fatal("analysis returned before the injected checker finished")
 	}
+}
+
+type scheduledResourceRule struct {
+	RuleBase
+	workers   sync.WaitGroup
+	completed *atomic.Bool
+}
+
+func (rule *scheduledResourceRule) attachScope(scope *analyzerhost.Scope) {
+	scope.Register(func() error { rule.workers.Wait(); return nil })
+}
+func (rule *scheduledResourceRule) VisitStep(*Step) error {
+	rule.workers.Go(func() { rule.completed.Store(true) })
+	return nil
 }

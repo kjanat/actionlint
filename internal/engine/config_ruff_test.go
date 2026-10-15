@@ -415,18 +415,9 @@ runs:
 			if !tc.enabled {
 				command = filepath.Join(root, "missing-ruff")
 			}
-			created := false
 			session, err := NewAnalysisSession(AnalysisOptions{
 				WorkingDir:  root,
 				RuffOptions: &ExternalCommandOptions{Executable: &command, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=[]"}},
-				OnRulesCreated: func(rules []Rule) []Rule {
-					for _, rule := range rules {
-						if _, ok := rule.(*ruffRule); ok {
-							created = true
-						}
-					}
-					return rules
-				},
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -435,8 +426,8 @@ runs:
 			if err != nil || needed.Ruff != tc.enabled {
 				t.Fatalf("needed=%+v, error=%v", needed, err)
 			}
-			if _, err := session.Files([]string{workflow}, nil); err != nil || created != tc.enabled {
-				t.Fatalf("checker created=%v, error=%v", created, err)
+			if _, err := session.Files([]string{workflow}, nil); err != nil {
+				t.Fatalf("checker initialization: %v", err)
 			}
 		})
 	}

@@ -322,7 +322,7 @@ func NewErrorFormatter(format string) (*ErrorFormatter, error) {
 
 	r := map[string]*ruleTemplateFields{}
 	for _, descriptor := range builtinRuleDescriptors() {
-		if descriptor.build == nil {
+		if descriptor.build == nil && descriptor.buildScripts == nil {
 			r[descriptor.Name] = &ruleTemplateFields{descriptor.Name, descriptor.Description}
 		}
 	}
@@ -379,16 +379,17 @@ func (f *ErrorFormatter) PrintErrors(out io.Writer, errs []*Error, src []byte) e
 // kinds when you use `kindDescription` or `kindIndex` functions in an error format template. This
 // method can be called multiple times safely in parallel.
 func (f *ErrorFormatter) RegisterRule(r Rule) {
-	// Synchronize access to f.rules (#370)
+	info := RuleInfo{Name: r.Name()}
+	if described, ok := r.(describedRule); ok {
+		info.Description = described.Description()
+	}
+	f.registerRuleInfo(info)
+}
+
+func (f *ErrorFormatter) registerRuleInfo(info RuleInfo) {
 	f.rulesMu.Lock()
 	defer f.rulesMu.Unlock()
-
-	n := r.Name()
-	if _, ok := f.rules[n]; !ok {
-		description := ""
-		if described, ok := r.(describedRule); ok {
-			description = described.Description()
-		}
-		f.rules[n] = &ruleTemplateFields{n, description}
+	if _, exists := f.rules[info.Name]; !exists {
+		f.rules[info.Name] = &ruleTemplateFields{info.Name, info.Description}
 	}
 }

@@ -19,16 +19,16 @@ type configPathContext struct {
 
 var errConfigActionPathUnavailable = errors.New("path interpolation \"github.action_path\" requires an analyzed composite action")
 
-func (rule *RuleShellcheck) pathContext() configPathContext {
-	configDir := rule.paths.workspace
-	if config := rule.Config(); config != nil && config.filename != "" {
+func (run *shellcheckRun) pathContext() configPathContext {
+	configDir := run.paths.workspace
+	if config := run.cfg; config != nil && config.filename != "" {
 		configDir = filepath.Dir(config.filename)
 	}
 	workspace := os.Getenv("GITHUB_WORKSPACE")
 	if workspace == "" {
-		workspace = rule.paths.workspace
+		workspace = run.paths.workspace
 	}
-	actionPath := rule.actionPath
+	actionPath := run.actionPath
 	if runnerPath := os.Getenv("GITHUB_ACTION_PATH"); actionPath != "" && runnerPath != "" {
 		local, localErr := os.Stat(actionPath)
 		runner, runnerErr := os.Stat(runnerPath)
@@ -37,7 +37,7 @@ func (rule *RuleShellcheck) pathContext() configPathContext {
 		}
 	}
 	return configPathContext{
-		configDir: configDir, gitDir: rule.paths.workspace,
+		configDir: configDir, gitDir: run.paths.workspace,
 		workspace: workspace, actionPath: actionPath,
 	}
 }

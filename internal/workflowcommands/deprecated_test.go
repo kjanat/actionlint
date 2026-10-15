@@ -1,7 +1,7 @@
-package engine
+package workflowcommands_test
 
 import (
-	"regexp"
+	"actionlint.kjanat.dev/internal/workflowcommands"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -89,32 +89,15 @@ func TestRuleDeprecatedCommandsDetectTargetCommands(t *testing.T) {
 			want: []string{},
 		},
 	}
-	re := regexp.MustCompile(`\s+workflow command "([a-z-]+)" was deprecated\.`)
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
-			s := &Step{
-				Exec: &ExecRun{
-					Run: &String{
-						Value: tc.run,
-						Pos:   &Pos{},
-					},
-				},
-			}
-			r := NewRuleDeprecatedCommands()
-			if err := r.VisitStep(s); err != nil {
-				t.Fatal(err)
-			}
-
-			errs := r.Errs()
 			have := []string{}
-			for i, err := range errs {
-				m := err.Error()
-				ss := re.FindStringSubmatch(m)
-				if len(ss) == 0 {
-					t.Fatalf("%dth error was unexpected: %q", i, m)
+			for _, finding := range workflowcommands.Deprecated(tc.run) {
+				have = append(have, finding.Command)
+				if got := tc.run[finding.Start:finding.End]; got != finding.Command {
+					t.Fatalf("range contains %q", got)
 				}
-				have = append(have, ss[1])
 			}
 
 			if diff := cmp.Diff(have, tc.want); diff != "" {
