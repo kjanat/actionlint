@@ -212,7 +212,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 			if expr := yamlExprString(key); !evaluated && expr != nil && strings.Contains(expr.Value, "${{") && !actionLiteralExpression(expr.Value) {
 				if _, allowed := actionMetadataAvailability[path]; !allowed {
 					rule.actionSchemaError(meta, key, location, "expressions are not allowed in keys")
-				} else if strings.TrimSpace(expr.Value) == "${{ insert }}" {
+				} else if isMappingInsertion(expr.Value) {
 					// The template reader treats insert as a mapping directive,
 					// whose value is another mapping or a mapping expression.
 					rule.checkActionSchemaValue(meta, value, definition, location, depth+1, evaluated)

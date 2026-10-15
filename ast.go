@@ -621,6 +621,15 @@ type Input struct {
 	Value *String
 }
 
+// ActionInputMapping is a literal or expression-valued action input mapping.
+type ActionInputMapping struct {
+	// Inputs contains named input values.
+	Inputs     map[string]*Input
+	Expression *String
+	// Insertions contains nested mapping directives.
+	Insertions []*ActionInputMapping
+}
+
 // ExecAction is configuration how to run action at the step.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsuses
 type ExecAction struct {
@@ -631,6 +640,8 @@ type ExecAction struct {
 	Inputs map[string]*Input
 	// InputsExpression supplies the complete action inputs mapping.
 	InputsExpression *String
+	// InputInsertions supplies additional action inputs through mapping directives.
+	InputInsertions []*ActionInputMapping
 	// Entrypoint represents optional 'entrypoint' field in 'with' section. Nil field means nothing specified
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepswithentrypoint
 	Entrypoint *String
@@ -898,6 +909,7 @@ func (s *RawYAMLString) String() string {
 // stored as row of values in this struct.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategymatrix
 type MatrixRow struct {
+	evaluated bool // Expression results are data and must not be evaluated again.
 	// Name is a name of matrix value.
 	Name *String
 	// Values is variations of values which the matrix value can take.
@@ -918,7 +930,8 @@ type MatrixAssign struct {
 // MatrixCombination is combination of matrix value assignments to define one of matrix variations.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategymatrix
 type MatrixCombination struct {
-	Assigns map[string]*MatrixAssign
+	evaluated bool // Expression results are data and must not be evaluated again.
+	Assigns   map[string]*MatrixAssign
 	// Expression is a string when expression syntax ${{ }} is used for this section.
 	Expression *String
 }
@@ -948,6 +961,8 @@ func (cs *MatrixCombinations) ContainsExpression() bool {
 // Matrix is matrix variations configuration of a job.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategymatrix
 type Matrix struct {
+	// Insertions supplies additional axes or filters through mapping directives.
+	Insertions []*Matrix
 	// Values stores mappings from name to values. Keys are in lower case since they are case-insensitive.
 	Rows map[string]*MatrixRow
 	// Include is list of combinations of matrix values and additional values on running matrix combinations.
@@ -992,8 +1007,11 @@ type EnvVar struct {
 type Env struct {
 	// Vars is mapping from env var name to env var value.
 	Vars map[string]*EnvVar
+	// Insertions contains mappings or object expressions supplied by ${{ insert }}
+	// directives. Their entries are environment variables, not directive keys.
+	Insertions []*Env
 	// Expression is an expression string which contains ${{ ... }}. When this value is not empty,
-	// Vars should be nil.
+	// Vars and Insertions should be nil.
 	Expression *String
 }
 

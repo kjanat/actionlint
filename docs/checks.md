@@ -386,6 +386,61 @@ test.yaml:19:14: env must be object but found string [expression]
 
 In above example, environment variables mapping is expanded at `env:` section. actionlint checks type of the expanded value.
 
+Use `${{ insert }}` as an `env:` mapping key to insert additional variables beside
+explicit entries. Its value must be a mapping or an expression producing an object:
+
+```yaml
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello
+        env:
+          MODE: test
+          ${{ insert }}: ${{ fromJSON(vars.ENVIRONMENT) }}
+```
+
+actionlint validates the inserted value in the surrounding `env:` context.
+Known arrays and scalars are rejected as insertion sources; literal mappings
+retain environment-name and expression checks. Unknown object expressions are
+accepted and keep checkout and executable-bit analysis conservative. The
+directive applies to workflow, job, step, container and service environment
+mappings. `${{ insert }}` in an ordinary value remains an undefined variable.
+
+Mapping insertion also works in action `with:` inputs and at the matrix mapping:
+
+```yaml
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        base: [one]
+        ${{ insert }}: ${{ fromJSON('{"extra":[1,2]}') }}
+    steps:
+      - uses: example/action@v1
+        with:
+          path: source
+          ${{ insert }}: ${{ fromJSON(vars.ACTION_INPUTS) }}
+```
+
+Known inserted action inputs still receive unknown-name and required-input
+checks. Unknown mappings may provide required inputs, so missing-input findings
+are deferred. Known inserted axes and filters participate in matrix and
+runner-label checks; unknown insertions keep the matrix open.
+
+An expression-produced array inside a matrix axis or `include`/`exclude` sequence
+splices one level into that sequence. Literal nested arrays remain individual
+values. For example, `[before, "${{ fromJSON('[1,2]') }}", after]` has four
+values, while `[before, [1,2], after]` has three.
+
+`case(predicate, result, ..., default)` requires Boolean predicates, preserves
+falsy and structured results, and evaluates only the selected branch. Use it to
+select an object for insertion. `condition && value || fallback` also preserves
+short-circuit evaluation, but chooses the fallback when `value` is falsy.
+
 <a id="check-contexts-and-builtin-func"></a>
 
 ## Contexts and built-in functions

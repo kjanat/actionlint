@@ -43,6 +43,13 @@ func (rule *RuleMatrix) VisitJobPre(n *Job) error {
 		return nil
 	}
 
+	if len(m.Insertions) != 0 {
+		var known bool
+		m, known = expandedMatrixInsertions(m)
+		if !known {
+			return nil
+		}
+	}
 	for name, row := range m.Rows {
 		if row.Name != nil {
 			name = row.Name.Value
@@ -96,7 +103,7 @@ func knownLiteralMatrix(value any, position *Pos) *Matrix {
 		}
 	}
 	setPosition(&node)
-	return (&parser{}).parseMatrix(position, &node)
+	return (&parser{}).parseMatrixMapping(position, &node, true, true)
 }
 
 func (rule *RuleMatrix) checkDuplicateInRow(name string, row *MatrixRow, expressions bool) {

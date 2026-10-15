@@ -247,7 +247,7 @@ func (rule *RuleExecutableBit) checkout(action *ExecAction, mayNotComplete bool)
 	}
 	// Opaque execution can change Git settings that preserve working-tree modes.
 	rule.repositoryUnknown = true
-	if action.Uses == nil || mayNotComplete || action.InputsExpression != nil {
+	if action.Uses == nil || mayNotComplete || action.InputsExpression != nil || len(action.InputInsertions) != 0 {
 		return
 	}
 	name, ref, versioned := strings.Cut(action.Uses.Value, "@")
@@ -779,6 +779,11 @@ func shellEnvironmentUnknownForPlatform(env *Env, platform platformKind) bool {
 	if env.Expression != nil {
 		return true
 	}
+	for _, insertion := range env.Insertions {
+		if shellEnvironmentUnknownForPlatform(insertion, platform) {
+			return true
+		}
+	}
 	for _, variable := range env.Vars {
 		name, known := environmentLiteral(variable.Name)
 		if platform != platformKindMacOrLinux {
@@ -806,6 +811,14 @@ func shellPathUnknown(env *Env) bool {
 
 func shellPathUnknownForPlatform(env *Env, platform platformKind) bool {
 	if env != nil {
+		if env.Expression != nil {
+			return true
+		}
+		for _, insertion := range env.Insertions {
+			if shellPathUnknownForPlatform(insertion, platform) {
+				return true
+			}
+		}
 		for _, variable := range env.Vars {
 			name, known := environmentLiteral(variable.Name)
 			if platform != platformKindMacOrLinux {
