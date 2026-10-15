@@ -761,23 +761,8 @@ func shellEnvironmentUnknown(env *Env) bool {
 }
 
 func shellEnvironmentUnknownForPlatform(env *Env, platform platformKind) bool {
-	if env == nil {
-		return false
-	}
-	if env.Expression != nil {
-		return true
-	}
-	for _, insertion := range env.Insertions {
-		if shellEnvironmentUnknownForPlatform(insertion, platform) {
-			return true
-		}
-	}
-	for _, variable := range env.Vars {
-		name, known := environmentLiteral(variable.Name)
-		if platform != platformKindMacOrLinux {
-			name = strings.ToUpper(name)
-		}
-		if !known || loaderEnvironmentUnknown(name, variable.Value) {
+	return environmentContains(env, platform, func(name, value string, known bool) bool {
+		if loaderEnvironmentUnknown(name, value, known) {
 			return true
 		}
 		if strings.HasPrefix(name, "BASH_FUNC_") && strings.HasSuffix(name, "%%") {
@@ -785,12 +770,12 @@ func shellEnvironmentUnknownForPlatform(env *Env, platform platformKind) bool {
 		}
 		switch name {
 		case "BASH_ENV", "ENV", "CDPATH", "SHELLOPTS", "BASHOPTS":
-			if value, known := environmentLiteral(variable.Value); !known || value != "" {
+			if !known || value != "" {
 				return true
 			}
 		}
-	}
-	return false
+		return false
+	})
 }
 
 func shellPathUnknown(env *Env) bool {
@@ -798,24 +783,7 @@ func shellPathUnknown(env *Env) bool {
 }
 
 func shellPathUnknownForPlatform(env *Env, platform platformKind) bool {
-	if env != nil {
-		if env.Expression != nil {
-			return true
-		}
-		for _, insertion := range env.Insertions {
-			if shellPathUnknownForPlatform(insertion, platform) {
-				return true
-			}
-		}
-		for _, variable := range env.Vars {
-			name, known := environmentLiteral(variable.Name)
-			if platform != platformKindMacOrLinux {
-				name = strings.ToUpper(name)
-			}
-			if !known || name == "PATH" {
-				return true
-			}
-		}
-	}
-	return false
+	return environmentContains(env, platform, func(name, _ string, _ bool) bool {
+		return name == "PATH"
+	})
 }

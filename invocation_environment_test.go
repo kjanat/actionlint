@@ -13,6 +13,15 @@ func TestCheckoutEnvironmentPlatform(t *testing.T) {
 				if got, want := checkoutEnvironmentUnknown(env, platform), platform != platformKindMacOrLinux; got != want {
 					t.Fatalf("checkout uncertainty = %v, want %v", got, want)
 				}
+				expression := &Env{Insertions: []*Env{{Expression: &String{Value: fmt.Sprintf("${{ fromJSON('{%q:\"override\"}') }}", name)}}}}
+				if got, want := checkoutEnvironmentUnknown(expression, platform), platform != platformKindMacOrLinux; got != want {
+					t.Fatalf("inserted checkout uncertainty = %v, want %v", got, want)
+				}
+				if name == "path" {
+					if got, want := shellPathUnknownForPlatform(expression, platform), platform != platformKindMacOrLinux; got != want {
+						t.Fatalf("inserted PATH uncertainty = %v, want %v", got, want)
+					}
+				}
 			})
 		}
 	}

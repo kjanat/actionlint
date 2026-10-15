@@ -46,6 +46,12 @@ jobs:
 func TestInsertedActionInputMetadata(t *testing.T) {
 	for _, tc := range []struct{ name, value, want string }{
 		{"supplies required", "{token: value}", ""},
+		{"constant input name", `{ "${{ 'token' }}": value }`, ""},
+		{"case-insensitive input name", `{ "${{ 'TOKEN' }}": value }`, ""},
+		{"nested constant input name", `{'${{ insert }}': {"${{ 'token' }}": value}}`, ""},
+		{"unresolved input name", `{'${{ vars.NAME }}': value}`, ""},
+		{"unresolved name retains known checks", `{'${{ vars.NAME }}': value, typo: value}`, `input "typo" is not defined`},
+		{"constant unknown input name", `{token: value, "${{ 'typo' }}": value}`, `input "typo" is not defined`},
 		{"known object supplies required", `${{ fromJSON('{"token":"value"}') }}`, ""},
 		{"unknown can supply required", "${{ fromJSON(vars.EXTRA) }}", ""},
 		{"known empty misses required", "{}", `missing input "token"`},
