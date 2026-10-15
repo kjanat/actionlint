@@ -29,15 +29,31 @@ export function yamlExampleLines(lines) {
 	};
 	/** @type {number | null} */
 	let parentIndent = null;
+	/** @type {number | null} */
+	let blockIndent = null;
 	for (const [index, text] of textLines.entries()) {
 		if (text === null || text === undefined) {
 			parentIndent = null;
+			blockIndent = null;
 			continue;
+		}
+		if (blockIndent !== null) {
+			if (text.trim() === '' || text.length - text.trimStart().length > blockIndent) {
+				examples.add(index + 1);
+				continue;
+			}
+			blockIndent = null;
 		}
 		if (text.trimStart().startsWith('#')) continue;
 		const mapping = mappings[index];
 		const indent = mapping?.indent ?? text.length - text.trimStart().length;
 		const nested = parentIndent !== null && indent > parentIndent;
+		const blockValue = mapping?.value ?? /^\s*-\s+(.+)$/.exec(text)?.[1].trim();
+		if (blockValue && /^[|>](?:[+-][1-9]?|[1-9][+-]?)?(?:\s+#.*)?$/.test(blockValue)) {
+			blockIndent = indent;
+			examples.add(index + 1);
+			continue;
+		}
 
 		if (mapping !== null) {
 			const value = mapping.value;

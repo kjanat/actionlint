@@ -498,3 +498,28 @@ test('recognizes a standalone sequence mapping while retaining labeled prose', (
 		[['"X rather than Y"']],
 	);
 });
+
+test('recognizes commented block scalars and restores prose at their boundary', () => {
+	for (const indicator of ['|', '|-', '|+', '>', '>-', '>+', '|2', '|2-', '|-2', '>2+', '>+2', '| # script']) {
+		for (const [header, indent] of [['run:', '  '], ['- run:', '    '], ['-', '  '], ['  run:', '    ']]) {
+			const source = [
+				`# ${header} ${indicator}`,
+				`# ${indent}echo use this rather than that`,
+				'#',
+				`# ${indent}Note: use this rather than that`,
+				'# Note: use this rather than that',
+			].join('\n');
+			const patch = `@@ -0,0 +1,5 @@\n${source.split('\n').map(line => `+${line}`).join('\n')}`;
+			for (const contents of [undefined, source]) {
+				assert.deepEqual(
+					groupsFromPatch('workflow.yml', patch, contents).map(group => ({
+						start: group.start,
+						reasons: group.reasons,
+					})),
+					[{ start: 5, reasons: ['"X rather than Y"'] }],
+				);
+			}
+			assert.deepEqual(groupsFromPatch('workflow.yml', `@@ -2 +2 @@\n+${source.split('\n')[1]}`, source), []);
+		}
+	}
+});

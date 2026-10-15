@@ -41,7 +41,7 @@ func (r Resolver[S]) Check(inputs *Inputs[S], action string, checks Checks[S]) {
 		if entry.Evaluated {
 			return
 		}
-		if strings.HasPrefix(action, "actions/github-script@") && entry.Name != zero && strings.EqualFold(r.Text(entry.Name), "script") {
+		if strings.HasPrefix(action, "actions/github-script@") && (entry.Name == zero || strings.EqualFold(r.Text(entry.Name), "script")) {
 			checks.Script(entry.Value)
 		} else {
 			checks.String(entry.Value)
