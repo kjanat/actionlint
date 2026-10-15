@@ -1011,8 +1011,7 @@ type EnvVar struct {
 type Env struct {
 	// Vars is mapping from env var name to env var value.
 	Vars map[string]*EnvVar
-	// Insertions contains mappings or object expressions supplied by ${{ insert }}
-	// directives. Their entries are environment variables, not directive keys.
+	// Insertions contains environment mappings or object expressions supplied by ${{ insert }} directives.
 	Insertions []*Env
 	// Expression is an expression string which contains ${{ ... }}. When this value is not empty,
 	// Vars and Insertions should be nil.
