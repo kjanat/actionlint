@@ -490,6 +490,17 @@ func (sema *ExprSemanticsChecker) ensureGithubVarCopied() {
 	sema.vars["github"] = sema.vars["github"].DeepCopy()
 }
 
+// SetContextTypes replaces the expression's context names and types with a caller-supplied scope.
+// Names are case-insensitive. The checker copies the map; referenced types follow the same ownership as UpdateMatrix.
+func (sema *ExprSemanticsChecker) SetContextTypes(contexts map[string]ExprType) {
+	sema.vars = make(map[string]ExprType, len(contexts))
+	for name, ty := range contexts {
+		sema.vars[strings.ToLower(name)] = ty
+	}
+	sema.varsCopied = true
+	sema.githubVarCopied = false
+}
+
 // UpdateMatrix updates matrix object to given object type. Since matrix values change according to
 // 'matrix' section of job configuration, the type needs to be updated.
 func (sema *ExprSemanticsChecker) UpdateMatrix(ty *ObjectType) {

@@ -247,7 +247,7 @@ func (rule *RuleExecutableBit) checkout(action *ExecAction, mayNotComplete bool)
 	}
 	// Opaque execution can change Git settings that preserve working-tree modes.
 	rule.repositoryUnknown = true
-	if action.Uses == nil || mayNotComplete || action.InputsExpression != nil || len(action.InputInsertions) != 0 {
+	if action.Uses == nil || mayNotComplete {
 		return
 	}
 	name, ref, versioned := strings.Cut(action.Uses.Value, "@")
@@ -278,20 +278,8 @@ func (rule *RuleExecutableBit) checkout(action *ExecAction, mayNotComplete bool)
 }
 
 func checkoutInput(action *ExecAction, name string) (string, bool) {
-	input := action.Inputs[name]
-	if input == nil || input.Value == nil {
-		return "", true
-	}
-	value := input.Value.Value
-	if input.Value.ContainsExpression() {
-		literal, known := workflowExpressionLiteral(input.Value)
-		text, scalar := workflowScalarString(literal)
-		if !known || !scalar {
-			return "", false
-		}
-		value = text
-	}
-	return strings.TrimSpace(value), true
+	value, known := actionInputValue(action, name)
+	return strings.TrimSpace(value), known
 }
 
 func (rule *RuleExecutableBit) checkScript(run *ExecRun) {

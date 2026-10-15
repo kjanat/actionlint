@@ -453,3 +453,23 @@ test('reports a failed batch without submitting individual reviews', async () =>
 	assert.deepEqual(h.warning.mock.calls[0].arguments, ['Could not submit Comment Cop review: Review rejected']);
 	assert.match(h.info.mock.calls[0].arguments[0], /0 posted/);
 });
+
+test('recognizes consecutive scalar YAML examples while retaining prose labels', () => {
+	const source = [
+		'# Note: use the robust wrapper rather than the default.',
+		'# image: ubuntu-latest',
+		'# shell: bash',
+		'# working-directory: src',
+		'# Warning: use the robust wrapper rather than the default.',
+	].join('\n');
+	const patch = `@@ -0,0 +1,5 @@\n${source.split('\n').map(line => `+${line}`).join('\n')}`;
+	for (const contents of [undefined, source]) {
+		assert.deepEqual(
+			groupsFromPatch('config.yml', patch, contents).map(group => ({ start: group.start, reasons: group.reasons })),
+			[
+				{ start: 1, reasons: ['"X rather than Y"', 'inflated diction'] },
+				{ start: 5, reasons: ['"X rather than Y"', 'inflated diction'] },
+			],
+		);
+	}
+});
