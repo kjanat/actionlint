@@ -24,13 +24,13 @@ func Deprecated(script string) []Finding {
 		var replacement string
 		switch command {
 		case "set-output":
-			replacement = `echo "{name}={value}" >> $GITHUB_OUTPUT`
+			replacement = `echo "{name}={value}" >> "${GITHUB_OUTPUT}"`
 		case "save-state":
-			replacement = `echo "{name}={value}" >> $GITHUB_STATE`
+			replacement = `echo "{name}={value}" >> "${GITHUB_STATE}"`
 		case "set-env":
-			replacement = `echo "{name}={value}" >> $GITHUB_ENV`
+			replacement = `echo "{name}={value}" >> "${GITHUB_ENV}"`
 		case "add-path":
-			replacement = `echo "{path}" >> $GITHUB_PATH`
+			replacement = `echo "{path}" >> "${GITHUB_PATH}"`
 		}
 		findings = append(findings, Finding{Start: start, End: end, Command: command, Replacement: replacement})
 	}
