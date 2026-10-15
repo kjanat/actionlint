@@ -477,7 +477,11 @@ func (p *parser) parseMappingEntries(where delayedSprintf, n *yaml.Node, allowEm
 		keys := make(map[string]*Pos, len(n.Content)/2)
 		empty := true
 		for i := 0; i < len(n.Content); i += 2 {
-			if !p.checkString(n.Content[i], false) {
+			keyNode := n.Content[i]
+			if insertions {
+				keyNode = inputResolver.KeyNode(keyNode, newString)
+			}
+			if !p.checkString(keyNode, false) {
 				p.checkRawYAMLTags(n.Content[i+1])
 				empty = false
 				continue
@@ -489,7 +493,7 @@ func (p *parser) parseMappingEntries(where delayedSprintf, n *yaml.Node, allowEm
 				continue
 			}
 
-			id := k.Value
+			id := keyNode.Value
 			if !caseSensitive {
 				// Keys of mappings are sometimes case insensitive. For example, following matrix is invalid.
 				//   matrix:
@@ -515,16 +519,7 @@ func (p *parser) parseMappingEntries(where delayedSprintf, n *yaml.Node, allowEm
 				empty = false
 				continue
 			}
-			comparisonID := id
-			if insertions {
-				if resolved, known := knownMappingKey(k); known {
-					comparisonID = resolved.Value
-					if !caseSensitive {
-						comparisonID = strings.ToLower(comparisonID)
-					}
-				}
-			}
-			if pos, ok := keys[comparisonID]; ok {
+			if pos, ok := keys[id]; ok {
 				var note string
 				if !caseSensitive {
 					note = ". note that this key is case insensitive"
@@ -533,11 +528,11 @@ func (p *parser) parseMappingEntries(where delayedSprintf, n *yaml.Node, allowEm
 				continue
 			}
 
-			if !yield(workflowMappingEntry{comparisonID, k, n.Content[i+1]}) {
+			if !yield(workflowMappingEntry{id, k, n.Content[i+1]}) {
 				break
 			}
 
-			keys[comparisonID] = k.Pos
+			keys[id] = k.Pos
 			empty = false
 		}
 
