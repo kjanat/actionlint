@@ -36,3 +36,18 @@ func (r Resolver[S]) InsertedKeys(node *yaml.Node, source func(*yaml.Node) S, in
 	collect(node)
 	return keys
 }
+
+// KeyNode resolves a scalar key for validation and indexing while preserving
+// its source position and leaving the original node available for diagnostics.
+func (r Resolver[S]) KeyNode(node *yaml.Node, source func(*yaml.Node) S) *yaml.Node {
+	if node.Kind != yaml.ScalarNode {
+		return node
+	}
+	resolved, known := r.Key(source(node))
+	if !known {
+		return node
+	}
+	result := *node
+	result.Value = r.Text(resolved)
+	return &result
+}

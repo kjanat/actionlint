@@ -293,3 +293,32 @@ func TestEvaluatedMatrixKeyIsData(t *testing.T) {
 		t.Fatalf("evaluated key interpreted as source: %v", errs)
 	}
 }
+
+func TestResolvedEmptyMappingKeys(t *testing.T) {
+	for _, section := range []string{"env", "with", "matrix"} {
+		value := "one"
+		if section == "matrix" {
+			value = "[one]"
+		}
+		for _, key := range []string{"", "${{ '' }}", "${{ format('{0}', '') }}", "${{ null }}", "${{ vars.KEY }}", "${{ 'valid' }}"} {
+			for depth := range 3 {
+				t.Run(fmt.Sprintf("%s/%s/depth=%d", section, key, depth), func(t *testing.T) {
+					mapping := fmt.Sprintf("{%q: %s}", key, value)
+					for range depth {
+						mapping = "{'${{ insert }}': " + mapping + "}"
+					}
+					_, errs := Parse([]byte(insertionSectionWorkflow(section, mapping)))
+					if key == "${{ vars.KEY }}" || key == "${{ 'valid' }}" {
+						if len(errs) != 0 {
+							t.Fatal(errs)
+						}
+						return
+					}
+					if len(errs) != 1 || errs[0].Message != "string should not be empty" {
+						t.Fatalf("want one empty-key diagnostic, got %v", errs)
+					}
+				})
+			}
+		}
+	}
+}
