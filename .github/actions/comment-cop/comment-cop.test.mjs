@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import test, { mock } from 'node:test';
+
+import { readFileSync } from 'node:fs';
 
 import run, { bodyFor, groupsFromPatch, keyFor } from './comment-cop.mjs';
 
@@ -43,7 +44,7 @@ test('scans prose around commented YAML examples without counting example lines'
 		'',
 		'# Use defaults rather than loading another file.',
 	].join('\n');
-	const patch = `@@ -0,0 +1,${source.split('\n').length} @@\n` + source.split('\n').map(line => `+${line}`).join('\n');
+	const patch = `@@ -0,0 +1,${source.split('\n').length} @@\n${source.split('\n').map(line => `+${line}`).join('\n')}`;
 	const groups = groupsFromPatch('config.yaml', patch, source);
 	assert.deepEqual(groups.map(group => ({ start: group.start, reasons: group.reasons })), [
 		{ start: 19, reasons: ['"X rather than Y"'] },
@@ -63,7 +64,7 @@ test('still scans prose list items in YAML comments', () => {
 test('does not flag the generated configuration examples by length', () => {
 	const source = readFileSync(new URL('../../../config_default.yaml', import.meta.url), 'utf8');
 	const lines = source.split('\n');
-	const patch = `@@ -0,0 +1,${lines.length} @@\n` + lines.map(line => `+${line}`).join('\n');
+	const patch = `@@ -0,0 +1,${lines.length} @@\n${lines.map(line => `+${line}`).join('\n')}`;
 	const groups = groupsFromPatch('config_default.yaml', patch, source);
 	const examplesStart = lines.findIndex(line => line.startsWith('# Tools are discovered')) + 1;
 	assert.ok(examplesStart > 0);
@@ -402,7 +403,7 @@ test('resolves an existing finding caused by commented YAML data', async () => {
 		filename: path,
 		status: 'modified',
 		contents_url: 'config',
-		patch: '@@ -0,0 +1,3 @@\n' + text.split('\n').map(line => `+${line}`).join('\n'),
+		patch: `@@ -0,0 +1,3 @@\n${text.split('\n').map(line => `+${line}`).join('\n')}`,
 	}];
 	const h = reviewHarness([bodyFor(oldGroup)], undefined, files, path);
 	await run(h.args);

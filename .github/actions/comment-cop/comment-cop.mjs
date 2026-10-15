@@ -95,8 +95,8 @@ function isCommentLine(line, lang) {
 function isYamlExampleLine(line) {
 	const text = line.trimStart().replace(/^#\s?/, '');
 	return /^\s*(?:-\s+)?(?:[\w./*{}$-]+|"(?:[^"\\]|\\.)*"|'(?:[^']|'')*')\s*:(?:\s|$)/.test(text)
-		|| /^(?:\s+-\s+\S|-\s+["'\[{])/.test(text)
-		|| /^\s*[\[\]{}][\s,]*$/.test(text);
+		|| /^(?:\s+-\s+\S|-\s+["'[{])/.test(text)
+		|| /^\s*[[\]{}][\s,]*$/.test(text);
 }
 
 /** @param {string} line */
