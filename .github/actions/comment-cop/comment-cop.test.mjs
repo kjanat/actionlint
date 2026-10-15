@@ -473,3 +473,28 @@ test('recognizes consecutive scalar YAML examples while retaining prose labels',
 		);
 	}
 });
+
+test('recognizes scalar mapping keys in sequence items and partial hunks', () => {
+	for (const prefix of ['- ', '  - ', '-   ']) {
+		for (const key of ['name', '"name"', "'name'"]) {
+			const source = [
+				`# ${prefix}${key}: build rather than deploy`,
+				`# ${' '.repeat(prefix.length)}run: echo rather than deploy`,
+				`# ${' '.repeat(prefix.length)}shell: bash`,
+			].join('\n');
+			const patch = `@@ -0,0 +1,3 @@\n${source.split('\n').map(line => `+${line}`).join('\n')}`;
+			for (const contents of [undefined, source]) {
+				assert.deepEqual(groupsFromPatch('workflow.yml', patch, contents), []);
+			}
+			assert.deepEqual(groupsFromPatch('workflow.yml', `@@ -1 +1 @@\n+${source.split('\n')[0]}`, source), []);
+		}
+	}
+});
+
+test('recognizes a standalone sequence mapping while retaining labeled prose', () => {
+	assert.deepEqual(groupsFromPatch('config.yml', '@@ -0,0 +1 @@\n+# - name: build rather than deploy'), []);
+	assert.deepEqual(
+		groupsFromPatch('config.yml', '@@ -0,0 +1 @@\n+# - Note: use this rather than that').map(group => group.reasons),
+		[['"X rather than Y"']],
+	);
+});

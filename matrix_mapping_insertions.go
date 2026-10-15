@@ -1,82 +1,56 @@
 package actionlint
 
-import "maps"
+import "actionlint.kjanat.dev/internal/mapping"
 
-// Resolve known insertions without modifying the parsed tree or reinterpreting
-// evaluated strings as expression source. Opaque or overlapping mappings leave
-// combination-dependent diagnostics deferred to runtime.
-func expandedMatrixInsertions(matrix *Matrix) (*Matrix, bool) {
-	if matrix.Expression != nil {
-		value, known := workflowExpressionLiteral(matrix.Expression)
-		if !known {
-			return nil, false
-		}
-		result := knownLiteralMatrix(value, matrix.Expression.Pos)
-		return result, result != nil
+type matrixInsertionView = mapping.Matrix[*MatrixRow, *MatrixCombinations, *String]
+
+func matrixMappingView(matrix *Matrix) *matrixInsertionView {
+	if matrix == nil {
+		return nil
 	}
-	result := *matrix
-	result.Rows = maps.Clone(matrix.Rows)
-	if result.Rows == nil {
-		result.Rows = map[string]*MatrixRow{}
-	}
-	result.Insertions = nil
-	complete := true
+	result := &matrixInsertionView{Rows: matrix.Rows, Include: matrix.Include, Exclude: matrix.Exclude, Expression: matrix.Expression}
 	for _, insertion := range matrix.Insertions {
-		inserted, known := expandedMatrixInsertions(insertion)
-		complete = complete && known
-		if inserted == nil {
-			continue
-		}
-		for name, row := range inserted.Rows {
-			if _, duplicate := result.Rows[name]; duplicate {
-				return nil, false
-			}
-			result.Rows[name] = row
-		}
-		if inserted.Include != nil {
-			if result.Include != nil {
-				return nil, false
-			}
-			result.Include = inserted.Include
-		}
-		if inserted.Exclude != nil {
-			if result.Exclude != nil {
-				return nil, false
-			}
-			result.Exclude = inserted.Exclude
-		}
+		result.Insertions = append(result.Insertions, matrixMappingView(insertion))
 	}
-	return &result, complete
+	return result
+}
+
+func expandedMatrixInsertions(matrix *Matrix) (*Matrix, bool) {
+	resolved, complete := mapping.ExpandMatrix(matrixMappingView(matrix), func(source *String) *matrixInsertionView {
+		value, known := workflowExpressionLiteral(source)
+		if !known {
+			return nil
+		}
+		return matrixMappingView(knownLiteralMatrix(value, source.Pos))
+	})
+	if resolved == nil {
+		return nil, false
+	}
+	pos := matrix.Pos
+	if matrix.Expression != nil {
+		pos = matrix.Expression.Pos
+	}
+	return &Matrix{Rows: resolved.Rows, Include: resolved.Include, Exclude: resolved.Exclude, Pos: pos}, complete
 }
 
 func expandedMatrixCombinations(filters *MatrixCombinations) (*MatrixCombinations, bool) {
 	if filters == nil {
 		return nil, true
 	}
-	if filters.Expression != nil {
-		result := knownMatrixFilters(filters.Expression, false)
-		if result == nil {
-			return nil, false
-		}
-		for _, combination := range result.Combinations {
-			combination.evaluated = true
-		}
-		return result, true
+	items, complete := mapping.ExpandCombinations(filters.Expression, filters.Combinations,
+		func(item *MatrixCombination) *String { return item.Expression },
+		func(source *String, splice bool) ([]*MatrixCombination, bool) {
+			result := knownMatrixFilters(source, splice)
+			if result == nil {
+				return nil, false
+			}
+			for _, item := range result.Combinations {
+				item.evaluated = true
+			}
+			return result.Combinations, true
+		})
+	if !complete {
+		return nil, false
 	}
-	result := &MatrixCombinations{}
-	for _, combination := range filters.Combinations {
-		if combination.Expression == nil {
-			result.Combinations = append(result.Combinations, combination)
-			continue
-		}
-		inserted := knownMatrixFilters(combination.Expression, true)
-		if inserted == nil {
-			return nil, false
-		}
-		for _, item := range inserted.Combinations {
-			item.evaluated = true
-		}
-		result.Combinations = append(result.Combinations, inserted.Combinations...)
-	}
-	return result, true
+	return &MatrixCombinations{Combinations: items}, true
 }

@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"actionlint.kjanat.dev/internal/mapping"
 )
 
 //go:generate go run ./scripts/generate-availability ./availability.go
@@ -327,17 +329,7 @@ func (rule *RuleExpression) VisitStep(n *Step) error {
 		for _, name := range e.inputNameExpressions {
 			rule.checkString(name, "jobs.<job_id>.steps.with")
 		}
-		rule.checkWorkflowExpression(e.InputsExpression, "with", "jobs.<job_id>.steps.with", workflowStringMap)
-		for _, insertion := range e.InputInsertions {
-			rule.checkActionInputInsertion(insertion, e.Uses)
-		}
-		for n, i := range e.Inputs {
-			if e.Uses != nil && strings.HasPrefix(e.Uses.Value, "actions/github-script@") && n == "script" {
-				rule.checkScriptString(i.Value, "jobs.<job_id>.steps.with")
-			} else {
-				rule.checkString(i.Value, "jobs.<job_id>.steps.with")
-			}
-		}
+		rule.checkActionInputs(actionInputMapping(e), e.Uses)
 		if !e.entrypointEvaluated {
 			rule.checkString(e.Entrypoint, "jobs.<job_id>.steps.with")
 		}
@@ -520,20 +512,17 @@ func (rule *RuleExpression) checkNumberExpression(s *String, what, workflowKey s
 	rule.checkNumberTy(ty, s.Pos, what)
 }
 
-func (rule *RuleExpression) checkActionInputInsertion(mapping *ActionInputMapping, uses *String) {
+func (rule *RuleExpression) checkActionInputs(inputs *mapping.Inputs[*String], uses *String) {
 	const key = "jobs.<job_id>.steps.with"
-	rule.checkWorkflowExpression(mapping.Expression, "with", key, workflowStringMap)
-	for name, input := range mapping.Inputs {
-		rule.checkString(input.Name, key)
-		if uses != nil && strings.HasPrefix(uses.Value, "actions/github-script@") && name == "script" {
-			rule.checkScriptString(input.Value, key)
-		} else {
-			rule.checkString(input.Value, key)
-		}
+	var action string
+	if uses != nil {
+		action = uses.Value
 	}
-	for _, insertion := range mapping.Insertions {
-		rule.checkActionInputInsertion(insertion, uses)
-	}
+	inputResolver.Check(inputs, action, mapping.Checks[*String]{
+		Mapping: func(source *String) { rule.checkWorkflowExpression(source, "with", key, workflowStringMap) },
+		String:  func(source *String) { rule.checkString(source, key) },
+		Script:  func(source *String) { rule.checkScriptString(source, key) },
+	})
 }
 
 func (rule *RuleExpression) checkEnv(env *Env, workflowKey string) {
