@@ -3,6 +3,8 @@ package engine
 import (
 	"regexp"
 	"strings"
+
+	"actionlint.kjanat.dev/internal/lintconfig"
 )
 
 // reCommitSHA matches a full-length Git object ID in both the SHA-1 and the SHA-256 object formats.
@@ -31,7 +33,7 @@ func NewRuleRequireCommitHash() *RuleRequireCommitHash {
 // VisitStep is callback when visiting Step node.
 func (rule *RuleRequireCommitHash) VisitStep(n *Step) error {
 	e, ok := n.Exec.(*ExecAction)
-	if !ok || e.Uses == nil || e.Uses.ContainsExpression() {
+	if !ok || e.Uses == nil || e.Uses.ContainsExpression() || rule.excluded(e.Uses.Value) {
 		return nil
 	}
 
@@ -78,7 +80,7 @@ func (rule *RuleRequireCommitHash) VisitJobPre(n *Job) error {
 	}
 
 	u := n.WorkflowCall.Uses
-	if u == nil || u.Value == "" || u.ContainsExpression() {
+	if u == nil || u.Value == "" || u.ContainsExpression() || rule.excluded(u.Value) {
 		return nil
 	}
 
@@ -94,6 +96,14 @@ func (rule *RuleRequireCommitHash) VisitJobPre(n *Job) error {
 		u.Value,
 	)
 	return nil
+}
+
+func (rule *RuleRequireCommitHash) excluded(spec string) bool {
+	if cfg := rule.Config(); cfg != nil {
+		options, _ := cfg.Lint.Rules.Policy.Rules["require-commit-hash"].Options.(*lintconfig.CommitHashOptions)
+		return options.Excludes(spec)
+	}
+	return false
 }
 
 // Return the {ref} part of a {owner}/{repo}@{ref} or {owner}/{repo}/{path}@{ref} specification. The

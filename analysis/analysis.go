@@ -18,13 +18,21 @@ type Source struct {
 	Config  *config.Config
 }
 
-// Tool selects a literal executable and arguments. An empty executable disables
+// Process selects a literal executable and arguments. An empty executable disables
 // the tool; executable paths are never interpreted as shell command lines.
-type Tool struct {
+type Process struct {
 	Executable  string
 	Arguments   []string
 	Environment []string
 	WorkingDir  string
+}
+
+// Tool selects one engine implementation. Backend is independent of transport;
+// Process selects the built-in native adapter. A zero Tool disables the engine.
+// Supplying both is an error. The caller owns backend lifetime and may reuse it.
+type Tool struct {
+	Backend analyzer.ScriptBackend
+	Process *Process
 }
 
 // Options controls configuration, external tools and filesystem access.
@@ -77,7 +85,8 @@ func Analyze(ctx context.Context, request Request) (*Result, error) {
 	}
 	result, err := engine.Analyze(ctx, engine.AnalysisRequest{
 		Analyzers: request.Options.Analyzers, Sources: sources, WorkingDir: request.Options.WorkingDir, ReadFile: request.Options.ReadFile,
-		ShellcheckOptions: toolOptions(request.Options.ShellCheck), RuffOptions: toolOptions(request.Options.Ruff),
+		ShellcheckOptions: backendProcessOptions(request.Options.ShellCheck), RuffOptions: backendProcessOptions(request.Options.Ruff),
+		RuffBackend: request.Options.Ruff.Backend, ShellcheckBackend: request.Options.ShellCheck.Backend,
 		RulePresets: request.Options.Presets, IgnorePatterns: ignore,
 	})
 	return resultView(result), err
@@ -103,16 +112,16 @@ func Repository(ctx context.Context, directory string, options FileOptions) (*Re
 	return resultView(result), err
 }
 
-func toolOptions(tool Tool) *engine.ExternalCommandOptions {
-	return &engine.ExternalCommandOptions{Executable: &tool.Executable, Arguments: tool.Arguments, Environment: tool.Environment, WorkingDir: tool.WorkingDir}
+func toolOptions(tool Process) *engine.ExternalCommandOptions {
+	return &engine.ExternalCommandOptions{Executable: &tool.Executable, LauncherArguments: tool.Arguments, Environment: tool.Environment, WorkingDir: tool.WorkingDir}
 }
 
 func sessionOptions(ctx context.Context, options FileOptions) engine.AnalysisOptions {
 	return engine.AnalysisOptions{
 		Analyzers: options.Analyzers, Context: ctx, WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile,
 		ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig,
-		ReadFile: options.ReadFile, ShellcheckOptions: toolOptions(options.ShellCheck),
-		RuffOptions: toolOptions(options.Ruff), RulePresets: options.Presets,
+		ReadFile: options.ReadFile, ShellcheckOptions: backendProcessOptions(options.ShellCheck),
+		RuffOptions: backendProcessOptions(options.Ruff), RuffBackend: options.Ruff.Backend, ShellcheckBackend: options.ShellCheck.Backend, RulePresets: options.Presets,
 		IgnorePatterns: options.IgnorePatterns, QuietSelection: true,
 	}
 }
@@ -122,4 +131,14 @@ func resultView(result *engine.AnalysisResult) *Result {
 		return nil
 	}
 	return &Result{Diagnostics: result.Diagnostics, Documents: result.Documents, Inputs: result.Inputs, Configurations: result.Configurations, FileCount: result.FileCount()}
+}
+
+func backendProcessOptions(tool Tool) *engine.ExternalCommandOptions {
+	if tool.Process != nil {
+		return toolOptions(*tool.Process)
+	}
+	if tool.Backend != nil {
+		return nil
+	}
+	return toolOptions(Process{})
 }

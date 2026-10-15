@@ -41,7 +41,7 @@ func TestRuleGroupConfigErrors(t *testing.T) {
 	for _, input := range []string{
 		"lint: {rulse: {}}", "lint: {rules: {experimetnal: true}}",
 		"lint: {rules: {experimental: true}}",
-		"lint: {rules: {nursery: true}}", "lint: {rules: {nursery: []}}",
+		"lint: {rules: {nursery: []}}",
 		"lint: {rules: {nursery: {enabled: true}}}",
 		"lint: {rules: {nursery: {preset: typo}}}",
 		"lint: {rules: {nursery: {case-insensitive-conditions: on}}}",

@@ -16,6 +16,7 @@ import (
 	"actionlint.kjanat.dev/internal/configtree"
 	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/ruff"
+	"actionlint.kjanat.dev/internal/toolconfig"
 	"github.com/bmatcuk/doublestar/v4"
 	"go.yaml.in/yaml/v4"
 )
@@ -417,6 +418,9 @@ type RuffToolConfig = ruff.Config
 
 // ShellcheckToolConfig contains ShellCheck's native configuration directives.
 type ShellcheckToolConfig struct {
+	// Backend selects the execution transport and its settings.
+	// Explicit CLI or application invocation settings take precedence.
+	Backend *toolconfig.Backend `yaml:"backend,omitempty"`
 	// Enabled turns ShellCheck analysis on or off. Omission or null keeps it enabled.
 	// An empty CLI command or shellcheck: false Action input still disables the tool.
 	Enabled *bool `yaml:"enabled" jsonschema:"nullable,default=true"`

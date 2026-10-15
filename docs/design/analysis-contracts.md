@@ -96,3 +96,49 @@ joining all resources once. Engine regressions cover traversal failure, cancella
 when either ShellCheck range endpoint cannot be mapped. Import-boundary tests check that public analyzer, diagnostic and
 document contracts have no transitive dependency on the engine, CLI or process execution. Existing semantic, CLI,
 generator and conformance suites remain applicable.
+
+## Decision: separate engines from execution transports
+
+Script engines now have a synchronous request/result contract in `analyzer`: sanitized source, virtual
+filename and engine-owned configuration in; diagnostics and an optional error out. `analysis.Tool`
+selects a backend implementation or the native process adapter, with ambiguous selections rejected.
+Command lines, environment variables, executable discovery and stdout decoding remain transport details.
+The native Ruff adapter and injected backends use the same host scheduling and source-mapping path.
+
+```mermaid
+flowchart LR
+    Host[Prepared scripts and mappings] --> Contract[ScriptBackend.Check]
+    Contract --> Native[Native process adapter]
+    Contract --> Embedded[Injected engine]
+    Contract -. future .-> Core[Core-WASM ABI adapter]
+    Contract -. future .-> Component[Component WIT adapter]
+    Native --> Ruff[Ruff]
+    Embedded --> Results[Script diagnostics]
+    Ruff --> Results
+    Results --> Host
+```
+
+The existing actionlint-plugin-ruff `check` operation is the reference for Ruff's payload and coordinates.
+The host does not duplicate Ruff's full options catalogue. The native adapter converts native options into
+isolated, read-only invocation settings. Integration-controlled file access and output options are rejected.
+Existing CLI Pyflakes compatibility remains an adapter concern; it does not define the backend interface.
+
+ShellCheck can use the same backend contract for hermetic snippets. Its native path still has additional
+source-file and fix capabilities. Those are not silently promised to injected engines: external-source
+and rc-file requests fail until an explicit resource capability exists. Extending that contract needs source
+identity, content, dependencies and edit provenance, not a process working directory disguised as a backend.
+
+Backend completion is synchronous and diagnostics can accompany failure. The host bounds concurrent work,
+waits for every started operation, and rejects diagnostics that refer to a different virtual input. Caller-owned
+backends can be reused across documents; an adapter must serialize or pool instances when its runtime is not
+concurrent. A future WASM adapter must handle memory limits, cancellation, traps and instance disposal itself.
+The host does not inspect backend concrete types for cleanup.
+
+The Go interface is not the plugin wire ABI. Core module memory ownership and ABI version negotiation stay
+in the core-WASM adapter. Component-WASM uses a separate WIT binding and resource lifecycle. Neither Go
+pointers nor Rust layout/traits cross that boundary. A Rust host can implement the same operation semantics
+without reproducing Go's package structure. This change does not add a WASM loader or select a runtime.
+
+An argv-only abstraction was rejected because it would force embedded engines to implement CLI parsing and
+stdout protocols. A universal filesystem capability was deferred because the current Ruff plugin needs none
+and ShellCheck requires explicit source/dependency semantics before such a capability can be specified.

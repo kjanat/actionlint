@@ -36,18 +36,16 @@ func generatedSchema(t *testing.T) []byte {
 func TestRuleLevelSuggestions(t *testing.T) {
 	schema := mapYAMLType(reflect.TypeFor[actionlint.RuleLevel](), nil)
 	if len(schema.AnyOf) != 3 {
-		t.Fatal("expected named levels and two hidden compatibility branches")
+		t.Fatal("expected named levels, booleans, and null")
 	}
 	if diff := cmp.Diff([]any{"default", "off", "on", "info", "warn", "error"}, schema.AnyOf[0].Enum); diff != "" {
-		t.Fatalf("suggest only named levels (-want +got):\n%s", diff)
+		t.Fatal(diff)
 	}
-	for _, branch := range schema.AnyOf[1:] {
-		if branch.Extras["doNotSuggest"] != true || len(branch.Enum) != 0 || branch.Description != "" {
-			t.Fatal("compatibility values must not be suggested or advertised")
-		}
+	if schema.AnyOf[1].Type != "boolean" || schema.AnyOf[1].Not != nil {
+		t.Fatal("both boolean switches must be supported")
 	}
-	if strings.Contains(schema.Description, "false") || strings.Contains(schema.Description, "null") {
-		t.Fatal("describe only named levels")
+	if schema.AnyOf[2].Extras["doNotSuggest"] != true {
+		t.Fatal("reset branch should not obscure level suggestions")
 	}
 }
 
@@ -483,7 +481,7 @@ func TestSchemaValidation(t *testing.T) {
 		{"rule empty actions", `lint: {rules: {policy: {required-actions: {level: on, options: {actions: []}}}}}`, true, true},
 		{"rule null actions", `lint: {rules: {policy: {required-actions: {level: on, options: {actions: null}}}}}`, false, false},
 		{"rule omitted actions", `lint: {rules: {policy: {required-actions: {level: on, options: {}}}}}`, false, false},
-		{"rule null options", `lint: {rules: {policy: {required-actions: {level: on, options: null}}}}`, false, false},
+		{"rule null options", `lint: {rules: {policy: {required-actions: {level: on, options: null}}}}`, true, true},
 		{"rule null timeout bound", `lint: {rules: {policy: {require-job-timeout: {level: on, options: {max-minutes: null}}}}}`, false, false},
 		{"rule null minimum bound", `lint: {rules: {policy: {require-job-timeout: {level: on, options: {min-minutes: null}}}}}`, false, false},
 		{"rule null permissions scope", `lint: {rules: {policy: {require-permissions: {level: on, options: {scope: null}}}}}`, false, false},
@@ -502,6 +500,9 @@ func TestSchemaValidation(t *testing.T) {
 		{"rule disabled alias", `lint: {rules: {correctness: {expression: false}}}`, true, true},
 		{"rule level disabled alias", `lint: {rules: {correctness: {expression: {level: false}}}}`, true, true},
 		{"rule level default", `lint: {rules: {correctness: {expression: {level: null}}}}`, true, true},
+		{"group enabled alias", `lint: {rules: {security: true}}`, true, true},
+		{"group all alias", `lint: {rules: {security: all}}`, true, true},
+		{"rule enabled alias", `lint: {rules: {policy: {disallow-suppressions: true}}}`, true, true},
 		{"group disabled alias", `lint: {rules: {correctness: false}}`, true, true},
 		{"group level disabled alias", `lint: {rules: {correctness: {level: false}}}`, true, true},
 		{"group level default", `lint: {rules: {correctness: {level: null}}}`, true, true},

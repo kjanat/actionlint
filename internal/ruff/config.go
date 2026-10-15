@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/internal/toolconfig"
+
 	"go.yaml.in/yaml/v4"
 )
 
@@ -15,7 +17,11 @@ func SupportedTargetVersions() []string {
 
 // Config controls isolated analysis of embedded Python scripts.
 type Config struct {
-	Enabled *bool `yaml:"enabled" jsonschema:"nullable,default=true"`
+	Enabled *bool               `yaml:"enabled" jsonschema:"nullable,default=true"`
+	Backend *toolconfig.Backend `yaml:"backend,omitempty"`
+	// Native contains Ruff's own options, using its target-version and lint mapping.
+	// The selected Ruff engine validates these options. Null values reset defaults.
+	Native map[string]any `yaml:"config,omitempty"`
 	// TargetVersion overrides the versioned Python shell target, or py314 fallback.
 	TargetVersion string `yaml:"target-version,omitempty"`
 	// Select chooses rule codes or prefixes. Omission uses Ruff's defaults.
@@ -28,6 +34,12 @@ type Config struct {
 // explicit empty selection during per-file composition and API round trips.
 func (c Config) MarshalYAML() (any, error) {
 	value := map[string]any{}
+	if c.Backend != nil {
+		value["backend"] = c.Backend
+	}
+	if c.Native != nil {
+		value["config"] = c.Native
+	}
 	if c.Enabled != nil {
 		value["enabled"] = *c.Enabled
 	}
@@ -84,6 +96,9 @@ func (c *Config) UnmarshalYAML(node *yaml.Node) error {
 				return fmt.Errorf("tools.ruff: invalid rule selector %q", selector)
 			}
 		}
+	}
+	if _, err := Config(next).nativeArguments(); err != nil {
+		return err
 	}
 	*c = Config(next)
 	return nil

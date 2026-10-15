@@ -64,8 +64,8 @@ func TestRuleLevelPrecedence(t *testing.T) {
 
 func TestRuleSettingsInvalid(t *testing.T) {
 	for _, rules := range []string{
-		"preset: typo", "correctness: true", "correctness: typo", "correctness: {expression: ''}",
-		"correctness: {expression: true}", "correctness: {expression: warning}",
+		"preset: typo", "correctness: typo", "correctness: {expression: ''}",
+		"correctness: {expression: warning}",
 		"correctness: {expression: {options: {}}}", "correctness: {expression: {level: off, typo: 1}}",
 		"correctness: {expression: {level: off, options: {}}}", "policy: {string-conditions: on}",
 		"suspicious: {no-such-rule: on}", "policy: {require-job-timeout: {level: error, options: true}}",
@@ -90,7 +90,7 @@ func TestTypedRuleOptionsNull(t *testing.T) {
 		"disallow-suppressions": {"rules", "report"},
 	} {
 		t.Run(rule, func(t *testing.T) {
-			options := []string{"null"}
+			options := []string{}
 			for _, field := range fields {
 				options = append(options, "{"+field+": null}")
 			}
@@ -129,6 +129,11 @@ func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 		want  RuleLevel
 	}{
 		{"correctness: false", "expression", "off"},
+		{"preset: none, correctness: true", "expression", "on"},
+		{"preset: none, correctness: all", "expression", "on"},
+		{"correctness: {expression: true}", "expression", "on"},
+		{"correctness: {expression: {level: true, options: null}}", "expression", "on"},
+		{"correctness: {level: true}", "expression", "on"},
 		{"correctness: {level: false}", "expression", "off"},
 		{"correctness: {expression: false}", "expression", "off"},
 		{"correctness: {expression: {level: false}}", "expression", "off"},
@@ -171,7 +176,6 @@ func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 	for _, rules := range []string{
 		"correctness: ''", "correctness: {level: ''}",
 		"correctness: {expression: ''}", "correctness: {expression: {level: ''}}",
-		"correctness: {expression: {level: true}}", "correctness: {level: true}",
 	} {
 		if _, err := ParseConfig([]byte("lint: {rules: {" + rules + "}}")); err == nil {
 			t.Fatalf("invalid setting accepted: %s", rules)

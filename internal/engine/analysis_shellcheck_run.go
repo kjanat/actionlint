@@ -1,9 +1,14 @@
 package engine
 
 import (
+	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/internal/analyzerhost"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -57,6 +62,8 @@ const (
 // shellcheckRun owns one prepared script and its callback result. It has no
 // visitor lifecycle; its owner must join cmd before reading errs.
 type shellcheckRun struct {
+	backend      analyzer.ScriptBackend
+	pending      analyzerhost.Task[*Error]
 	cmd          *externalCommand
 	config       *ShellcheckSettings
 	cfg          *Config
@@ -141,7 +148,11 @@ func (run *shellcheckRun) runShellcheck(src string, source *scriptSource, shell 
 	dialectOrigin := "workflow shell"
 	// Explicit flags retain native precedence over script directives. Do not append
 	// an inferred --shell after them and silently change the requested analysis.
-	flagShell, explicitShell := run.cmd.shellcheckDialect()
+	var flagShell string
+	explicitShell := false
+	if run.cmd != nil {
+		flagShell, explicitShell = run.cmd.shellcheckDialect()
+	}
 	appendDialect := !explicitShell && !directiveShell
 	if explicitShell {
 		dialect = flagShell
@@ -205,6 +216,9 @@ func (run *shellcheckRun) runShellcheck(src string, source *scriptSource, shell 
 	} else {
 		run.Debug("%s: Working directory=%q; source following requested=%t", pos, directory.path, externalSources)
 	}
+	if run.backend != nil {
+		externalSources = false
+	}
 	if externalSources {
 		args = append(args, "-x")
 	}
@@ -213,11 +227,12 @@ func (run *shellcheckRun) runShellcheck(src string, source *scriptSource, shell 
 		args = append(args, "--shell", dialect)
 	}
 	args = append(args, "-e", strings.Join(excluded, ","), "-")
-	run.Debug("%s: Running %q with arguments %q", pos, run.cmd.exe, append(slices.Clone(run.cmd.args), args...))
-	if options := run.cmd.shellcheckEnvironmentOptions(); options != "" {
-		run.Debug("%s: Inherited SHELLCHECK_OPTS=%q", pos, options)
+	if run.cmd != nil {
+		run.Debug("%s: Running %q with arguments %q", pos, run.cmd.exe, append(slices.Clone(run.cmd.args), args...))
+		if options := run.cmd.shellcheckEnvironmentOptions(); options != "" {
+			run.Debug("%s: Inherited SHELLCHECK_OPTS=%q", pos, options)
+		}
 	}
-
 	// Native file-wide directives also work with --norc and never need a temp file.
 	prefix, err := inline.directives()
 	if err != nil {
@@ -241,21 +256,7 @@ func (run *shellcheckRun) runShellcheck(src string, source *scriptSource, shell 
 	}
 
 	ignoreOrigin := run.ignoreOrigin
-	run.cmd.runInDirectory(args, script.text, directory.path, func(stdout []byte, err error) error {
-		if err != nil {
-			run.Debug("Command %s %s failed: %v", run.cmd.exe, args, err)
-			return fmt.Errorf("`%s %s` did not run successfully while checking script at %s: %w", run.cmd.exe, strings.Join(args, " "), pos, err)
-		}
-
-		result := shellcheckResult{}
-		if err := json.Unmarshal(stdout, &result); err != nil {
-			return fmt.Errorf("could not parse JSON output from shellcheck: %w: stdout=%q", err, stdout)
-		}
-		errs := result.Comments
-		if len(errs) == 0 {
-			return nil
-		}
-
+	deliver := func(errs []shellcheckError) error {
 		first := len(run.errs)
 		defer func() {
 			for _, finding := range run.errs[first:] {
@@ -294,6 +295,41 @@ func (run *shellcheckRun) runShellcheck(src string, source *scriptSource, shell 
 		}
 
 		return nil
-	})
+	}
+	if run.backend != nil {
+		options, err := json.Marshal(map[string]any{"shell": dialect, "exclude": excluded, "external-sources": false})
+		if err != nil {
+			return err
+		}
+		request := analyzer.ScriptRequest{Source: script.text, Filename: "actionlint.sh", Config: options}
+		run.pending = func(ctx context.Context) ([]*Error, error) {
+			if validator, ok := run.backend.(analyzer.ScriptConfigValidator); ok {
+				if err := validator.ValidateConfig(ctx, options); err != nil {
+					return nil, err
+				}
+			}
+			findings, failure := run.backend.Check(ctx, request)
+			converted := make([]shellcheckError, len(findings))
+			for i, finding := range findings {
+				code, err := strconv.Atoi(strings.TrimPrefix(finding.Code, "SC"))
+				if err != nil || !strings.HasPrefix(finding.Code, "SC") || finding.Filename != request.Filename || finding.Message == "" || finding.Location.Row < 1 || finding.Location.Column < 1 {
+					return nil, errors.Join(failure, fmt.Errorf("invalid ShellCheck backend diagnostic: %+v", finding))
+				}
+				converted[i] = shellcheckError{Code: code, Message: finding.Message, Level: finding.Severity, Line: finding.Location.Row, Column: finding.Location.Column, EndLine: finding.EndLocation.Row, EndColumn: finding.EndLocation.Column}
+			}
+			return nil, errors.Join(failure, deliver(converted))
+		}
+	} else {
+		run.cmd.runInDirectory(args, script.text, directory.path, func(stdout []byte, err error) error {
+			if err != nil {
+				return fmt.Errorf("`%s %s` did not run successfully while checking script at %s: %w", run.cmd.exe, strings.Join(args, " "), pos, err)
+			}
+			var result shellcheckResult
+			if err := json.Unmarshal(stdout, &result); err != nil {
+				return fmt.Errorf("could not parse JSON output from shellcheck: %w: stdout=%q", err, stdout)
+			}
+			return deliver(result.Comments)
+		})
+	}
 	return nil
 }

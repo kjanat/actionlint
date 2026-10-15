@@ -3,6 +3,7 @@ package engine
 import (
 	"fmt"
 
+	"actionlint.kjanat.dev/internal/lintconfig"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -43,6 +44,7 @@ func configureRuleDescriptor(d *ruleDescriptor) {
 		d.Category = "correctness"
 		d.configure = boolRuleOption(func(p *Policy) **bool { return &p.CacheOperation })
 	case "require-commit-hash":
+		d.newOptions = func() any { return &lintconfig.CommitHashOptions{} }
 		d.configure = boolRuleOption(func(p *Policy) **bool { return &p.RequireCommitHash })
 	case "require-job-timeout":
 		d.newOptions = func() any { return &JobTimeoutPolicy{} }

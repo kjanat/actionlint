@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"actionlint.kjanat.dev/internal/toolconfig"
 	"path/filepath"
 	"strings"
 
@@ -51,6 +52,7 @@ func normalizeExtendedConfig(path string, node *yaml.Node, inherited bool) (*yam
 	for i := range resolved.warnings {
 		resolved.warnings[i].File = path
 	}
+	toolconfig.NormalizePaths(node, filepath.Dir(path))
 	// Preserve the declaring origin of inherited relative ShellCheck rc paths.
 	var visit func(*yaml.Node, []string)
 	visit = func(n *yaml.Node, keys []string) {

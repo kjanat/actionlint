@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/ruff"
 	"actionlint.kjanat.dev/internal/workflownames"
@@ -33,6 +34,8 @@ type ruleDescriptor struct {
 }
 type ruleContext struct {
 	workflowNames           *workflownames.Index
+	ruffBackend             analyzer.ScriptBackend
+	shellcheckBackend       analyzer.ScriptBackend
 	ruff                    string
 	ruffOptions             *ExternalCommandOptions
 	ruffCompatibility       *ruff.Compatibility
@@ -59,11 +62,14 @@ func builtinRuleDescriptors() []ruleDescriptor {
 			return &workflowRunNamesRule{RuleBase: builtinRuleBase("workflow-run-names"), root: absPath(c.projectRoot), index: c.workflowNames}, nil
 		}, enabled: workflowRunNamesAvailable},
 		{Name: "unsound-ternary", Description: "Report a && b || c expressions where b is always falsy", Category: "correctness", Recommended: true},
-		{configurationScope: compositeConfiguration, required: func(c ruleContext) bool { return c.ruffOptions == nil || !c.ruffOptions.Optional }, supportsActions: true, Name: "ruff", Description: "Analyze embedded Python scripts with Ruff", Category: "external", Recommended: true, buildScripts: newRuffAnalyzer, enabled: func(c ruleContext) bool {
+		{configurationScope: compositeConfiguration, required: func(c ruleContext) bool {
+			options := projectToolOptions("ruff", c.ruff, c.ruffOptions, c.config, c.workingDir)
+			return c.ruffBackend != nil || options == nil || !options.Optional
+		}, supportsActions: true, Name: "ruff", Description: "Analyze embedded Python scripts with Ruff", Category: "external", Recommended: true, buildScripts: newRuffAnalyzer, enabled: func(c ruleContext) bool {
 			possible, err := ruffProjectConfigMayEnable(c.config, c.projectConfig, c.projectRoot != "")
 			// Validated config should merge successfully; analysis resolves the
 			// actual metadata path and reports any remaining composition error.
-			return externalCommandEnabled(c.ruff, c.ruffOptions) && (possible || err != nil)
+			return (c.ruffBackend != nil || externalCommandEnabled(c.ruff, c.ruffOptions)) && (possible || err != nil)
 		}},
 		{supportsActions: true, Name: "syntax-check", Description: "Validate GitHub Actions workflow syntax", Category: "correctness", Recommended: true},
 		{configurationScope: sourceConfiguration, Name: "inline-suppression", Description: "Validate inline suppression directives", Category: "correctness", Recommended: true},
@@ -101,8 +107,11 @@ func builtinRuleDescriptors() []ruleDescriptor {
 		{Name: "cache-write-untrusted", Description: "Report cache write access granted on low-trust triggers", Category: "policy", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleCacheWriteUntrusted(), nil }, enabled: func(c ruleContext) bool { return c.config.cachePolicyEnabled("cache-write-untrusted") }},
 		{Name: "cache-call-unrestricted", Description: "Report reusable workflow calls without explicit cache limits on low-trust triggers", Category: "policy", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleCacheCallUnrestricted(), nil }, enabled: func(c ruleContext) bool { return c.config.cachePolicyEnabled("cache-call-unrestricted") }},
 		{Name: "cache-operation", Description: "Report cache actions blocked by explicit cache access limits", Category: "policy", Recommended: true, build: func(c ruleContext) (Rule, error) { return newRuleCacheOperation(c.workflows), nil }, enabled: func(c ruleContext) bool { return c.config.cachePolicyEnabled("cache-operation") }},
-		{supportsActions: true, configurationScope: sourceConfiguration, skipWhenDisabled: true, requiresScriptExecution: true, Name: "shellcheck", Description: "Analyze embedded shell scripts with ShellCheck", Category: "external", Recommended: true, buildScripts: newShellcheckAnalyzer, enabled: func(c ruleContext) bool {
-			return (c.shellcheckRunner != nil || externalCommandEnabled(c.shellcheck, c.shellcheckOptions)) &&
+		{required: func(c ruleContext) bool {
+			options := projectToolOptions("shellcheck", c.shellcheck, c.shellcheckOptions, c.config, c.workingDir)
+			return c.shellcheckBackend != nil || options != nil && !options.Optional
+		}, supportsActions: true, configurationScope: sourceConfiguration, skipWhenDisabled: true, requiresScriptExecution: true, Name: "shellcheck", Description: "Analyze embedded shell scripts with ShellCheck", Category: "external", Recommended: true, buildScripts: newShellcheckAnalyzer, enabled: func(c ruleContext) bool {
+			return (c.shellcheckBackend != nil || c.shellcheckRunner != nil || externalCommandEnabled(c.shellcheck, c.shellcheckOptions)) &&
 				(c.config == nil || c.config.Tools.Shellcheck.Enabled == nil || *c.config.Tools.Shellcheck.Enabled)
 		}},
 	}

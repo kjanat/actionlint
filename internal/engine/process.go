@@ -150,6 +150,7 @@ func (proc *concurrentProcess) configuredCommandRunner(exe string, options *Exte
 		combineOutput: combineOutput,
 	}
 	if options != nil {
+		cmd.launcherArgs = slices.Clone(options.LauncherArguments)
 		cmd.env = append([]string(nil), options.Environment...)
 		cmd.dir = options.WorkingDir
 	}
@@ -160,12 +161,17 @@ func (proc *concurrentProcess) configuredCommandRunner(exe string, options *Exte
 // A non-nil Executable replaces the command line with a literal executable path;
 // an empty executable disables the tool. Nil retains the existing command parser.
 type ExternalCommandOptions struct {
+	// IgnoreConfig marks an explicit application invocation that overrides the
+	// repository's command settings, even when it names the default executable.
+	IgnoreConfig bool
 	// Optional permits automatic Ruff discovery to skip an unavailable executable.
 	// Explicitly configured checkers should leave this false.
-	Optional    bool
-	Executable  *string
-	Arguments   []string
-	Environment []string
+	Optional   bool
+	Executable *string
+	Arguments  []string
+	// LauncherArguments precede engine arguments without parsing.
+	LauncherArguments []string
+	Environment       []string
 	// WorkingDir sets the default child directory and resolves explicit relative
 	// executable paths. Bare command names retain PATH lookup.
 	WorkingDir string
@@ -228,6 +234,7 @@ type externalCommand struct {
 	eg            errgroup.Group
 	exe           string
 	args          []string
+	launcherArgs  []string
 	combineOutput bool
 	env           []string
 	unsetEnv      []string
@@ -248,6 +255,7 @@ func (cmd *externalCommand) runInDirectory(args []string, stdin, dir string, cal
 		allArgs = append(allArgs, args...)
 		args = allArgs
 	}
+	args = append(slices.Clone(cmd.launcherArgs), args...)
 	if cmd.runner != nil {
 		cmd.eg.Go(func() error {
 			stdout, err := cmd.runner(args, stdin)

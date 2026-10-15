@@ -13,6 +13,8 @@ func builtinFactory(request AnalysisRequest, logger analysisLogger) func(ruleCon
 		c.shellcheckRunner, c.debug = request.ShellcheckRunner, logger.debug
 		c.shellcheck, c.shellcheckOptions, c.shellcheckSettings = request.ShellCheck, request.ShellcheckOptions, request.ShellcheckSettings
 		c.ruff, c.ruffOptions, c.ruffCompatibility = request.Ruff, request.RuffOptions, compatibility
+		c.ruffBackend = request.RuffBackend
+		c.shellcheckBackend = request.ShellcheckBackend
 		c.ruffWarning = func(err error) {
 			if logger.logOut != nil {
 				_, _ = fmt.Fprintln(logger.logOut, "warning: skipping automatically discovered Ruff:", err)

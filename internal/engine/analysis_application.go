@@ -50,10 +50,12 @@ type AnalysisOptions struct {
 	// It must support concurrent calls. Nil uses os.ReadFile.
 	// Custom readers own path resolution and filesystem boundary enforcement.
 	// This does not restrict filesystem access by external tools.
-	ReadFile    func(string) ([]byte, error)
-	RulePresets RulePresets
-	Ruff        string
-	RuffOptions *ExternalCommandOptions
+	ReadFile          func(string) ([]byte, error)
+	RulePresets       RulePresets
+	Ruff              string
+	RuffOptions       *ExternalCommandOptions
+	RuffBackend       analyzer.ScriptBackend
+	ShellcheckBackend analyzer.ScriptBackend
 	// ShellcheckRunner supplies an isolated embedded ShellCheck backend.
 	ShellcheckRunner func([]string, string) ([]byte, error)
 }
@@ -118,8 +120,11 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 		stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected,
 		readFile:       opts.ReadFile,
 		logSelection:   !opts.QuietSelection,
-		request:        AnalysisRequest{Analyzers: opts.Analyzers, Ruff: opts.Ruff, RuffOptions: opts.RuffOptions, ShellCheck: opts.Shellcheck, ShellcheckRunner: opts.ShellcheckRunner, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, OnRulesCreated: opts.OnRulesCreated},
+		request:        AnalysisRequest{Analyzers: opts.Analyzers, Ruff: opts.Ruff, RuffOptions: opts.RuffOptions, RuffBackend: opts.RuffBackend, ShellcheckBackend: opts.ShellcheckBackend, ShellCheck: opts.Shellcheck, ShellcheckRunner: opts.ShellcheckRunner, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, OnRulesCreated: opts.OnRulesCreated},
 		analysisLogger: analysisLogger{logOut: opts.LogWriter},
+	}
+	if err := a.request.validateBackends(); err != nil {
+		return nil, err
 	}
 	if a.ctx == nil {
 		a.ctx = context.Background()

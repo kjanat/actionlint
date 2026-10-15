@@ -15,6 +15,7 @@ import (
 	actionlint "actionlint.kjanat.dev/internal/engine"
 	"actionlint.kjanat.dev/internal/genfile"
 	"actionlint.kjanat.dev/internal/ruff"
+	"actionlint.kjanat.dev/internal/toolconfig"
 	"github.com/invopop/jsonschema"
 )
 
@@ -78,10 +79,10 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		return mapping
 	case reflect.TypeFor[actionlint.RuleLevel]():
 		return &jsonschema.Schema{
-			Description: "Diagnostic level: default, off, on, info, warn, or error.",
+			Description: "Diagnostic level: default, off, on, info, warn, or error. Booleans enable or disable the rule.",
 			AnyOf: []*jsonschema.Schema{
 				{Type: "string", Enum: []any{"default", "off", "on", "info", "warn", "error"}},
-				{Type: "boolean", Not: &jsonschema.Schema{Const: true}, Extras: map[string]any{"doNotSuggest": true}},
+				{Type: "boolean"},
 				{Type: "null", Extras: map[string]any{"doNotSuggest": true}},
 			},
 		}
@@ -112,10 +113,11 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 					Level actionlint.RuleLevel `yaml:"level" jsonschema:"required,description=Diagnostic level for this rule: default, off, on, info, warn, or error."`
 				}{})
 				setting.Version, setting.ID = "", ""
+				setting.Properties.Set("options", &jsonschema.Schema{Type: "null", Description: "Reset rule options to their defaults."})
 				if options := actionlint.BuiltinRuleOptions(rule.Name); options != nil {
 					optionsSchema := reflectMapping(options)
 					optionsSchema.Version, optionsSchema.ID = "", ""
-					setting.Properties.Set("options", &jsonschema.Schema{Description: "Validated options specific to this rule.", AllOf: []*jsonschema.Schema{{Type: "object"}, optionsSchema}})
+					setting.Properties.Set("options", &jsonschema.Schema{Description: "Options specific to this rule; null resets to defaults.", AnyOf: []*jsonschema.Schema{{Type: "null"}, {AllOf: []*jsonschema.Schema{{Type: "object"}, optionsSchema}}}})
 				}
 				description := rule.Description
 				if rule.Maturity == "nursery" {
@@ -123,9 +125,24 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 				} else if !rule.Recommended {
 					description += ". Stable; not enabled by the recommended preset."
 				}
-				group.Properties.Set(rule.Name, &jsonschema.Schema{Description: description, OneOf: []*jsonschema.Schema{reflectMapping(actionlint.RuleLevel("")), setting}})
+				level := reflectMapping(actionlint.RuleLevel(""))
+				level.Description = ""
+				group.Properties.Set(rule.Name, &jsonschema.Schema{Description: description, OneOf: []*jsonschema.Schema{level, setting}})
 			}
-			mapping.Properties.Set(category, &jsonschema.Schema{Description: "Rules concerning " + category + ". Individual rule settings override group levels and presets.", OneOf: []*jsonschema.Schema{reflectMapping(actionlint.RuleLevel("")), group}})
+			level := reflectMapping(actionlint.RuleLevel(""))
+			level.Description = ""
+			level.AnyOf[0].Enum = append(level.AnyOf[0].Enum, "all")
+			description := "Rules concerning " + category + ". Use true/on to enable the group, false/off to disable it, all for its full preset, or a mapping for individual rules. Group settings override the root preset; individual settings override the group."
+			if category == "nursery" {
+				count := 0
+				for _, rule := range actionlint.BuiltinRules() {
+					if rule.Category == category {
+						count++
+					}
+				}
+				description = fmt.Sprintf("Experimental rules excluded from root presets. Currently contains %d rules. Select all to enable the nursery group explicitly.", count)
+			}
+			mapping.Properties.Set(category, &jsonschema.Schema{Description: description, OneOf: []*jsonschema.Schema{level, group}})
 		}
 		mapping.Version, mapping.ID = "", ""
 		return mapping
@@ -156,6 +173,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		}
 	case reflect.TypeFor[actionlint.ShellcheckToolConfig]():
 		mapping := reflectMapping(struct {
+			Backend *toolconfig.Backend                `yaml:"backend,omitempty" jsonschema:"description=Select the execution backend. Process settings apply only to the native adapter."`
 			Enabled *bool                              `yaml:"enabled" jsonschema:"nullable,default=true,description=Enable ShellCheck analysis. Omission or null keeps it enabled."`
 			Config  *actionlint.ShellcheckConfigSource `yaml:"config"`
 		}{})
@@ -171,6 +189,11 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		mapping.Version, mapping.ID = "", ""
 		mapping.Type = ""
 		mapping.OneOf = []*jsonschema.Schema{{Type: "boolean"}, {Type: "object"}, {Type: "null"}}
+		native := &jsonschema.Schema{Description: "Ruff's native configuration, including target-version and lint settings. Validated by the selected Ruff engine. Omission or null uses defaults.", AnyOf: []*jsonschema.Schema{{Ref: ruff.SchemaPath}, {Type: "null"}}}
+		for _, key := range ruff.UnsupportedConfigOptions() {
+			native.AllOf = append(native.AllOf, &jsonschema.Schema{Not: &jsonschema.Schema{Type: "object", Required: []string{key}}})
+		}
+		mapping.Properties.Set("config", native)
 		target, _ := mapping.Properties.Get("target-version")
 		target.Type = ""
 		target.OneOf = []*jsonschema.Schema{{Ref: ruff.SchemaPath + "#/definitions/PythonVersion"}, {Type: "null", Extras: map[string]any{"doNotSuggest": true}}}
@@ -182,7 +205,8 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			property.Not = &jsonschema.Schema{Type: "array", Contains: &jsonschema.Schema{Not: &jsonschema.Schema{Ref: ruff.SelectorSchemaPath}}}
 		}
 		for name, description := range map[string]string{
-			"enabled":        "Enable Ruff analysis when the executable is available.",
+			"backend":        "Select the execution backend. Process settings apply only to the native adapter.",
+			"enabled":        "Enable Ruff analysis with the selected backend.",
 			"target-version": "Ruff Python target version; omission uses a supported versioned Python shell target, otherwise py314.",
 			"select":         "Ruff rule codes or prefixes to select; omission uses Ruff's defaults.",
 			"ignore":         "Ruff rule codes or prefixes to exclude.",
@@ -281,6 +305,12 @@ func documentFields(s *jsonschema.Schema) {
 
 func documentedReflector() (*jsonschema.Reflector, error) {
 	r := reflector()
+	if err := r.AddGoComments("actionlint.kjanat.dev", "internal/lintconfig/commit_hash.go", jsonschema.WithFullComment()); err != nil {
+		return nil, err
+	}
+	if err := r.AddGoComments("actionlint.kjanat.dev", "internal/toolconfig/command.go", jsonschema.WithFullComment()); err != nil {
+		return nil, err
+	}
 	for _, file := range []string{"config.go", "config_lint.go", "config_rule_settings.go", "rule_options.go", "config_file_overrides.go"} {
 		if err := r.AddGoComments("actionlint.kjanat.dev", filepath.Join("internal", "engine", file), jsonschema.WithFullComment()); err != nil {
 			return nil, fmt.Errorf("read config comments: %w", err)

@@ -53,7 +53,7 @@ in-memory requests.
 External tools are disabled by default in the library. Enable them explicitly with `Options.ShellCheck` or `Options.Ruff`:
 
 ```go
-options.Ruff = analysis.Tool{Executable: "ruff"}
+options.Ruff = analysis.Tool{Process: &analysis.Process{Executable: "ruff"}}
 ```
 
 `Executable` is a literal executable name or path. `Arguments` supplies separate arguments; no shell command-line parsing
@@ -110,3 +110,27 @@ public names are the supported import surface. Treat unexported state as opaque 
 
 The architecture decision and remaining implementation boundaries are recorded in
 [the analysis contracts ADR](design/analysis-contracts.md).
+
+### Script engine backends
+
+`analysis.Tool` selects either `Process` or an `analyzer.ScriptBackend`. Supplying both is an error;
+leaving both absent disables the tool. `Process.Arguments` is a literal launcher prefix, for example
+`mise exec -- ruff`; configure Ruff rules through `tools.ruff.config` instead of command flags.
+Environment overrides and working directories belong to the process adapter.
+
+A backend implements `Check(context.Context, analyzer.ScriptRequest)` and returns script diagnostics
+plus an optional failure. Requests contain a virtual filename, sanitized source, and engine configuration
+as JSON. Positions count Unicode scalar values from one; end positions are exclusive. Diagnostics may
+accompany a failure. The host maps them into the workflow/action source, applies suppressions, and joins
+all started work. A backend must honor cancellation and permit concurrent calls; callers own its lifetime.
+It may implement `ScriptConfigValidator` to validate its engine configuration before checking a snippet.
+
+Ruff receives its native options (`target-version`, `lint`, etc.). The native process adapter implements
+this same contract. ShellCheck backends receive `shell`, `exclude`, and `external-sources: false`; the
+source includes resolved inline directives and runner startup options. That backend route has no external
+source or rc-file capability: requests for those features fail explicitly. Native ShellCheck retains its
+filesystem-aware integration, including sourced-file diagnostics and fixes.
+
+These Go types are a host API, not a stable wire ABI. A core-WASM adapter can translate them to a versioned
+plugin operation; a future component adapter can use WIT types without imitating process arguments.
+No WASM runtime or component loader is included by this API change.

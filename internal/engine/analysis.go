@@ -47,10 +47,12 @@ type AnalysisRequest struct {
 	// ReadFile reads local action metadata and reusable workflows. Nil uses os.ReadFile.
 	// Custom readers own path resolution and filesystem boundary enforcement.
 	// It must support concurrent calls and does not restrict external tools.
-	ReadFile    func(string) ([]byte, error)
-	RulePresets RulePresets
-	Ruff        string
-	RuffOptions *ExternalCommandOptions
+	ReadFile          func(string) ([]byte, error)
+	RulePresets       RulePresets
+	Ruff              string
+	RuffOptions       *ExternalCommandOptions
+	RuffBackend       analyzer.ScriptBackend
+	ShellcheckBackend analyzer.ScriptBackend
 	// ShellcheckRunner supplies an isolated embedded ShellCheck backend.
 	ShellcheckRunner func([]string, string) ([]byte, error)
 }
@@ -118,6 +120,9 @@ func Analyze(ctx context.Context, request AnalysisRequest) (*AnalysisResult, err
 }
 
 func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level LogLevel) (*AnalysisResult, error) {
+	if err := request.validateBackends(); err != nil {
+		return nil, err
+	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
