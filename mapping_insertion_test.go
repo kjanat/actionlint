@@ -87,6 +87,8 @@ func TestMatrixMappingInsertions(t *testing.T) {
 		{"inserted axis", `base: [one], '${{ insert }}': "${{ fromJSON('{\"extra\":[1,2]}') }}"`, 2, ""},
 		{"literal axis", `base: [one], '${{ insert }}': {extra: [1,2]}`, 2, ""},
 		{"nested literal axis", `base: [one], '${{ insert }}': {'${{ insert }}': {extra: [1,2]}}`, 2, ""},
+		{"constant include key", `base: [one], '${{ insert }}': {"${{ 'include' }}": [{base: two}]}`, 2, ""},
+		{"constant exclude key", `base: [one,two], '${{ insert }}': {"${{ 'exclude' }}": [{base: two}]}`, 1, ""},
 		{"case-selected insertion", `base: [one], '${{ insert }}': "${{ case(true, fromJSON('{\"extra\":[1,2]}'), fromJSON('bad JSON')) }}"`, 2, ""},
 		{"empty insertion", `base: [one], '${{ insert }}': {}`, 1, ""},
 		{"empty expression insertion", `base: [one], '${{ insert }}': "${{ fromJSON('{}') }}"`, 1, ""},

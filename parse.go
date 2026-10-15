@@ -533,7 +533,7 @@ func (p *parser) parseMappingEntries(where delayedSprintf, n *yaml.Node, allowEm
 				continue
 			}
 
-			if !yield(workflowMappingEntry{id, k, n.Content[i+1]}) {
+			if !yield(workflowMappingEntry{comparisonID, k, n.Content[i+1]}) {
 				break
 			}
 

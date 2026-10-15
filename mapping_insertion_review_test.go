@@ -190,3 +190,36 @@ func TestActionInputObjectResultsStayData(t *testing.T) {
 		}
 	}
 }
+
+func TestResolvedMatrixKeysReachConsumers(t *testing.T) {
+	for depth := range 3 {
+		for _, key := range []string{"${{ 'os' }}", "${{ 'OS' }}", "${{ format('{0}', 'os') }}"} {
+			t.Run(fmt.Sprintf("depth=%d/%s", depth, key), func(t *testing.T) {
+				matrix := fmt.Sprintf("{%q: [ubuntu-latest]}", key)
+				for range depth {
+					matrix = "{'${{ insert }}': " + matrix + "}"
+				}
+				source := "on: push\njobs:\n  test:\n    runs-on: ${{ matrix.os }}\n    strategy:\n      matrix: " + matrix + "\n    steps: [{run: echo ok}]\n"
+				if errs := lintCredentialsExpressionTest(t, source); len(errs) != 0 {
+					t.Fatalf("resolved axis rejected: %v", errs)
+				}
+				workflow, errs := Parse([]byte(source))
+				if len(errs) != 0 {
+					t.Fatal(errs)
+				}
+				mapping := workflow.Jobs["test"].Strategy.Matrix
+				for range depth {
+					mapping = mapping.Insertions[0]
+				}
+				row := mapping.Rows["os"]
+				if row == nil || row.Name == nil || row.Name.Value != key || row.Name.Pos.Line != 6 {
+					t.Fatalf("resolved ID or source key lost: %+v", row)
+				}
+				invalid := strings.Replace(source, "ubuntu-latest", "not-a-runner", 1)
+				if errs := lintCredentialsExpressionTest(t, invalid); len(errs) != 1 || errs[0].Kind != "runner-label" {
+					t.Fatalf("resolved axis bypassed runner validation: %v", errs)
+				}
+			})
+		}
+	}
+}
