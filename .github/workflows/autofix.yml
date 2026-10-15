@@ -1,7 +1,37 @@
 name: autofix.ci
 on:
-  push: { branches: [master] }
-  pull_request: null
+  push:
+    branches: [master]
+    paths: &FormatPaths
+      - "**/*.go"
+      - "**/*.json"
+      - "**/*.jsonc"
+      - "**/*.yaml"
+      - "**/*.yml"
+      - "**/*.toml"
+      - "**/*.md"
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "**/*.js"
+      - "**/*.mjs"
+      - "**/*.css"
+      - "**/*.html"
+      - "**/*.bash"
+      - "**/*.sh"
+      - "**/*.ps1"
+      - "Dockerfile"
+      - "Dockerfile.*"
+      - "go.mod"
+      - "go.sum"
+      - "Makefile"
+      - "!testdata/**"
+      - "!**/testdata/**"
+      - "!docs/releases/**"
+      - "!man/actionlint.1.md"
+      - "!.github/**"
+      - ".github/workflows/autofix.yml"
+  pull_request:
+    paths: *FormatPaths
 
 permissions: { contents: read }
 

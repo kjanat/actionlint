@@ -1,6 +1,7 @@
 package actionlint
 
 import (
+	_ "embed"
 	"errors"
 	"fmt"
 	"math"
@@ -685,60 +686,13 @@ func loadRepoConfig(root string, readFile func(string) ([]byte, error)) (*loaded
 	return nil, "", nil
 }
 
+//go:embed config_default.yaml
+var defaultConfigTemplate string
+
 func writeDefaultConfigFile(path string) error {
 	info, _ := debug.ReadBuildInfo()
 	ref := buildinfo.SourceRef(Version(), info)
-	b := []byte(`# yaml-language-server: $schema=https://raw.githubusercontent.com/kjanat/actionlint/` + ref + `/actionlint.schema.json
----
-self-hosted-runner:
-  # Labels of self-hosted runner in array of strings.
-  labels: []
-
-# Configuration variables in array of strings defined in your repository or
-# organization. ` + "`null`" + ` means disabling configuration variables check.
-# Empty array means no configuration variable is allowed.
-config-variables: null
-
-# Secrets in array of strings defined in your repository or organization.
-# ` + "`null`" + ` means disabling the secrets check. Empty array means no secret is
-# allowed.
-config-secrets: null
-
-# Configuration for file paths. The keys are glob patterns to match to file
-# paths relative to the repository root. The values are the configurations for
-# the file paths. Note that the path separator is always '/'.
-# The following configurations are available.
-#
-# "ignore" is an array of regular expression patterns. Matched error messages
-# are ignored. This is similar to the "-ignore" command line option.
-paths:
-#  .github/workflows/**/*.yml:
-#    ignore: []
-
-# Permissions assumed for a caller workflow that declares no "permissions:"
-# block at all. "restricted" (the default) assumes GitHub's restricted default
-# token.
-#assume-default-permissions: restricted
-
-# Cache policies are enabled by default. Set a cache policy to false to disable
-# it. The remaining policies are opt-in repository conventions.
-#policy:
-#  cache-call-unrestricted: true
-#  cache-operation: true
-#  cache-write-untrusted: true
-#  disallow-suppressions: false
-#  # Require every "uses:" to be pinned to a full commit SHA or an image
-#  # digest.
-#  require-commit-hash: true
-#  # Require "timeout-minutes" on every job. A mapping with "min-minutes" and
-#  # "max-minutes" also sets inclusive bounds.
-#  require-job-timeout: true
-#  # Require workflow-level "permissions". Use {scope: job} for every job.
-#  require-permissions: true
-#  # Actions every workflow must use. "owner/repo@ref" also pins the version.
-#  required-actions:
-#    - actions/checkout
-`)
+	b := []byte(strings.Replace(defaultConfigTemplate, "/HEAD/actionlint.schema.json", "/"+ref+"/actionlint.schema.json", 1))
 	if err := os.WriteFile(path, b, 0644); err != nil {
 		return fmt.Errorf("could not write default configuration file at %q: %w", path, err)
 	}

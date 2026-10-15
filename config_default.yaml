@@ -1,0 +1,102 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kjanat/actionlint/HEAD/actionlint.schema.json
+# Replace HEAD with either v1|vX.Y.X|etc. to get a tailored schema for your actionlint version.
+# Lint rules: recommended checks are enabled without a configuration file.
+# Use all for all stable rules, or none to select rules individually.
+---
+lint:
+  enabled: true
+  rules:
+    preset: recommended
+    # Each group accepts a level or individual rules. Levels: off, on, info,
+    # warn, error, default. Warnings and info findings also cause exit status 1.
+    # List rules and their defaults with: actionlint rules
+    # correctness:
+    #   deprecated-commands: warn
+    # suspicious:
+    #   case-insensitive-conditions: off
+    # security:
+    #   cache-write-untrusted: error
+    # policy:
+    #   require-commit-hash: error
+    #   require-job-timeout:
+    #     level: error
+    #     options: {min-minutes: 1, max-minutes: 30}
+    #   require-permissions:
+    #     level: error
+    #     options: {scope: job}
+    #   required-actions:
+    #     level: error
+    #     options: {actions: [actions/checkout]}
+    # external:
+    #   shellcheck: on
+    #   ruff: on
+    # Nursery rules require explicit selection; stable presets exclude them.
+    # nursery: {preset: none}
+    # disable: []
+
+# Tools are discovered on PATH. Python scripts are linted without execution.
+# This example selects F, B and S rules and targets Python 3.14.
+# tools:
+#   ruff: {enabled: true, target-version: py314, select: [F, B, S], ignore: []}
+#   shellcheck:
+#     enabled: true
+#     # config also accepts an rc path, auto for discovery, or false to skip rc files.
+#     # Inline directives remain active with config: false.
+#     config: {disable: [SC2086], enable: [check-unassigned-uppercase], shell: bash,
+#       extended-analysis: true, external-sources: true, source-path: ["${{ workspace }}"]}
+
+# Input selection uses repository-relative globs. Omitted includes selects all
+# workflows and actions; includes: [] selects none. Git ignore rules also apply.
+# files:
+#   includes: ["**/*.{yml,yaml}"]
+#   excludes: ["fixtures/**", "generated/**"]
+
+# Reusable suppressions match a rule and at least one file/job/step/uses selector.
+# All supplied selectors must match. Prefer a documented, narrow exception.
+# ignores:
+#   - rule: shellcheck
+#     file: .github/workflows/legacy.yml
+#     job: build
+#     step: example
+#     reason: Reviewed exception
+#   - rule: missing-local-action
+#     uses: ./generated-action
+#     reason: Created by an earlier workflow step
+
+# Apply lint/tool settings to matching files. Later matching overrides win.
+# overrides:
+#   - includes: [".github/workflows/release*.yml"]
+#     excludes: [".github/workflows/release-preview.yml"]
+#     lint: {rules: {policy: {require-commit-hash: error}}}
+#     tools: {ruff: {ignore: [F401]}}
+
+# Shared local configs resolve relative to this file, in the order listed.
+# Mappings merge recursively; lists/scalars replace; null resets a setting.
+# extends: [../config/actionlint-base.yml]
+
+# Map generated action locations to checked-in source directories.
+# local-actions:
+#   ./generated-action: ./src/action
+
+# Repository-specific runner labels and allowed vars/secrets.
+# self-hosted-runner:
+#   labels: [linux.2xlarge]
+# config-variables: null  # null disables the check; [] allows no variables.
+# config-secrets: null   # null disables the check; [] allows only built-ins
+#                        # and secrets declared by workflow_call.
+# assume-default-permissions: restricted
+
+# Older configuration forms remain supported. Prefer lint.rules for policies
+# and ignores/overrides for scoped settings in new configurations.
+# paths:
+#   ".github/workflows/**/*.{yml,yaml}":
+#     ignore: ["shellcheck reported issue in this script: SC2086:.+"]
+# policy:
+#   cache-call-unrestricted: true
+#   cache-operation: true
+#   cache-write-untrusted: true
+#   disallow-suppressions: false
+#   require-commit-hash: false
+#   require-job-timeout: false
+#   require-permissions: false
+#   required-actions: []

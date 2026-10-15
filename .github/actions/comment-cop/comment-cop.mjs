@@ -92,6 +92,14 @@ function isCommentLine(line, lang) {
 }
 
 /** @param {string} line */
+function isYamlExampleLine(line) {
+	const text = line.trimStart().replace(/^#\s?/, '');
+	return /^\s*(?:-\s+)?(?:[\w./*{}$-]+|"(?:[^"\\]|\\.)*"|'(?:[^']|'')*')\s*:(?:\s|$)/.test(text)
+		|| /^(?:\s+-\s+\S|-\s+["'[{])/.test(text)
+		|| /^\s*[[\]{}][\s,]*$/.test(text);
+}
+
+/** @param {string} line */
 function stripCommentPrefix(line) {
 	return line
 		.trimStart()
@@ -165,6 +173,7 @@ export function groupsFromPatch(path, patch, source) {
 	const lang = langFor(path);
 	if (lang === null) return [];
 	const markdown = lang === 'md';
+	const yaml = /\.ya?ml$/.test(path);
 	const sourceLines = source?.split('\n');
 	/** @type {Group[]} */
 	const groups = [];
@@ -193,7 +202,7 @@ export function groupsFromPatch(path, patch, source) {
 
 	/** @param {string} content */
 	const startsBlock = content => {
-		if (!markdown) return isCommentLine(content, lang);
+		if (!markdown) return isCommentLine(content, lang) && !(yaml && isYamlExampleLine(content));
 		const nextFence = updateFence(fence, content);
 		if (nextFence !== fence) {
 			fence = nextFence;

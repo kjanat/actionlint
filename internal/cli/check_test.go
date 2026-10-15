@@ -62,7 +62,7 @@ func TestLegacyCLITextWriteErrors(t *testing.T) {
 		text := format == actionlint.OutputFormatText || format == actionlint.OutputFormatOneline
 		var stderr strings.Builder
 		cmd := Command{Stdin: strings.NewReader(commandBadWorkflow), Stdout: commandFailingIO{}, Stderr: &stderr}
-		status := cmd.Main([]string{"actionlint", "--shellcheck=", "--pyflakes=", "--output-format=" + string(format), "-"})
+		status := cmd.Main([]string{"actionlint", "--summary=false", "--shellcheck=", "--pyflakes=", "--output-format=" + string(format), "-"})
 		if text && (status != 1 || stderr.Len() != 0) || !text && (status != 3 || !strings.Contains(stderr.String(), "write failed")) {
 			t.Fatalf("%s changed CLI streams or status: %d, %s", format, status, &stderr)
 		}
@@ -74,12 +74,12 @@ func TestModernOutputDestinationsAndSummary(t *testing.T) {
 	if err := os.WriteFile("report.json", []byte("previous report"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	got := testRunCommand("", "check", "--json", "--output-file", "report.json", "missing.yml")
+	got := testRunCommand("", "check", "--json", "--yes", "--output-file", "report.json", "missing.yml")
 	data, err := os.ReadFile("report.json")
 	if err != nil || got.Status != 3 || string(data) != "previous report" {
 		t.Fatalf("failed check changed output: %+v %s (%v)", got, data, err)
 	}
-	got = testRunCommand("", "check", "--json", "--summary", "--output-file", "report.json")
+	got = testRunCommand("", "check", "--json", "--summary", "--yes", "--output-file", "report.json")
 	data, err = os.ReadFile("report.json")
 	if err != nil || got.Status != 1 || got.Stdout != "" || !json.Valid(data) || got.Stderr != "{\"summary\":{\"files\":1,\"findings\":1}}\n" {
 		t.Fatalf("%+v %s (%v)", got, data, err)
@@ -88,7 +88,7 @@ func TestModernOutputDestinationsAndSummary(t *testing.T) {
 	if got.Status != 1 || !json.Valid([]byte(got.Stdout)) || got.Stderr != "" {
 		t.Fatal(got)
 	}
-	got = testRunCommand("", "check", "--output-file", ".github/workflows/ci.yml")
+	got = testRunCommand("", "check", "--yes", "--output-file", ".github/workflows/ci.yml")
 	data, err = os.ReadFile(".github/workflows/ci.yml")
 	if err != nil || got.Status != 3 || string(data) != commandBadWorkflow {
 		t.Fatalf("overwrote workflow: %+v (%v)", got, err)
@@ -110,7 +110,7 @@ func TestModernOutputDestinationsAndSummary(t *testing.T) {
 func TestReportMayReplaceUnusedStdinFilename(t *testing.T) {
 	commandTestRepo(t)
 	for _, modern := range []bool{false, true} {
-		args := []string{"--stdin-filename", "report.json", "--output-file", "report.json", "--json", ".github/workflows/ci.yml"}
+		args := []string{"--stdin-filename", "report.json", "--yes", "--output-file", "report.json", "--json", ".github/workflows/ci.yml"}
 		if modern {
 			args = append([]string{"check"}, args...)
 		}
@@ -128,11 +128,11 @@ func TestModernRendererAndUsageErrors(t *testing.T) {
 	for _, format := range []string{"text", "oneline", "json", "jsonl", "github", "sarif"} {
 		var errout bytes.Buffer
 		cmd := Command{Stdin: strings.NewReader(commandBadWorkflow), Stdout: commandFailingIO{}, Stderr: &errout}
-		if code := cmd.Main([]string{"actionlint", "check", "-", "--output-format=" + format, "--shellcheck=", "--pyflakes="}); code != 3 || !strings.Contains(errout.String(), "write failed") {
+		if code := cmd.Main([]string{"actionlint", "--summary=false", "check", "-", "--output-format=" + format, "--shellcheck=", "--pyflakes="}); code != 3 || !strings.Contains(errout.String(), "write failed") {
 			t.Fatalf("%s: %d %s", format, code, &errout)
 		}
 	}
-	for _, args := range [][]string{{"check", "--unknown", "--json", "-"}, {"check", "-", "--output-format=csv", "--json"}, {"check", "--json", "--template=x", "-"}, {"config", "show", "--unknown", "--json"}, {"completion"}, {"version", "extra"}} {
+	for _, args := range [][]string{{"check", "--unknown", "--json", "-"}, {"check", "-", "--output-format=csv", "--json"}, {"check", "--json", "--template=x", "-"}, {"config", "show", "--unknown", "--json"}, {"version", "extra"}} {
 		if got := testRunCommand(commandGoodWorkflow, args...); got.Status != 2 {
 			t.Fatalf("%q: %+v", args, got)
 		}
@@ -146,7 +146,7 @@ func TestModernRendererAndUsageErrors(t *testing.T) {
 	for _, mode := range []string{"auto", "always", "never"} {
 		var out, errout bytes.Buffer
 		cmd := Command{Stdin: strings.NewReader(commandBadWorkflow), Stdout: &out, Stderr: &errout}
-		status := cmd.Main([]string{"actionlint", "check", "-", "--json", "--color=" + mode, "--shellcheck=", "--pyflakes="})
+		status := cmd.Main([]string{"actionlint", "--summary=false", "check", "-", "--json", "--color=" + mode, "--shellcheck=", "--pyflakes="})
 		got := commandTranscript{status, out.String(), errout.String()}
 		if got.Status != 1 || !json.Valid([]byte(got.Stdout)) || strings.ContainsRune(got.Stdout, '\x1b') {
 			t.Fatal(got)
@@ -328,13 +328,13 @@ jobs:
 						t.Skip(err)
 					}
 				}
-				args := []string{"--output-file", report, "--stdin-filename", target, "-"}
+				args := []string{"--yes", "--output-file", report, "--stdin-filename", target, "-"}
 				input := workflow
 				if kind != "stdin" {
 					if err := os.WriteFile(".github/workflows/input.yml", []byte(workflow), 0644); err != nil {
 						t.Fatal(err)
 					}
-					args = []string{"--output-file", report, ".github/workflows/input.yml"}
+					args = []string{"--yes", "--output-file", report, ".github/workflows/input.yml"}
 					input = ""
 				}
 				if modern {
@@ -362,7 +362,7 @@ func TestReportMayReplaceUnselectedConfig(t *testing.T) {
 				t.Fatal(err)
 			}
 			unused := filepath.Join(".github", "actionlint.yml")
-			args := []string{"--json", "--output-file", unused}
+			args := []string{"--json", "--yes", "--output-file", unused}
 			if modern {
 				args = append([]string{"check"}, args...)
 			}
@@ -389,7 +389,7 @@ func TestReportPreservesPermissions(t *testing.T) {
 	if err := os.WriteFile("report", []byte("old"), 0640); err != nil {
 		t.Fatal(err)
 	}
-	got := testRunCommand(commandGoodWorkflow, "check", "--output-file", "report", "-")
+	got := testRunCommand(commandGoodWorkflow, "check", "--yes", "--output-file", "report", "-")
 	if got.Status != 0 {
 		t.Fatal(got)
 	}

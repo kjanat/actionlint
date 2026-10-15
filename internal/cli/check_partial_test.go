@@ -48,7 +48,7 @@ func TestCheckJSONPartialFindings(t *testing.T) {
 						if err := os.WriteFile("report.json", []byte("previous report"), 0600); err != nil {
 							t.Fatal(err)
 						}
-						args = append(args, "--output-file", "report.json")
+						args = append(args, "--yes", "--output-file", "report.json")
 					}
 					paths := []string{"successful.yml", "failing.yml"}
 					if failingFirst {
@@ -150,7 +150,7 @@ func TestCheckJSONRuffFailureKeepsOutline(t *testing.T) {
 	}
 	for _, modern := range []bool{false, true} {
 		t.Run(fmt.Sprintf("modern=%t", modern), func(t *testing.T) {
-			args := []string{"actionlint", "--no-config", "--shellcheck=", "--ruff", filepath.Join(dir, "missing-ruff"), "--json"}
+			args := []string{"actionlint", "--no-config", "--shellcheck=", "--ruff=" + filepath.Join(dir, "missing-ruff"), "--json"}
 			if modern {
 				args = append(args, "check")
 			}

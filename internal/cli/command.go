@@ -43,7 +43,7 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 		}
 		return app.status
 	}
-	rest, forced, terminated, err := app.parseLegacy(args)
+	rest, forced, terminated, err := app.parseRoot(args)
 	if err != nil {
 		return app.reportError(err)
 	}

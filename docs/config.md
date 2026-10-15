@@ -228,9 +228,9 @@ Each file gets its own effective configuration, without changing other files.
 Ruff checks Python scripts selected by `shell: python`, `shell: python3`, or a
 custom command beginning with either interpreter, including workflow/job shell
 defaults and local composite actions. The CLI discovers Ruff on `PATH` and skips
-it when unavailable. `--ruff=false` or `--ruff=` disables it;
-`--ruff /path/to/ruff` selects a binary.
-`--ruff 'python -m ruff'` runs Ruff through a Python module launcher.
+it when unavailable. `--no-ruff` disables it. A bare `--ruff` explicitly selects
+`ruff` on `PATH`. `--ruff=/path/to/ruff` selects a binary.
+`--ruff='python -m ruff'` runs Ruff through a Python module launcher.
 It never installs tools or executes Python scripts.
 
 ```yaml
@@ -238,7 +238,7 @@ tools:
   ruff:
     enabled: true
     target-version: py314
-    select: [F]
+    # select: [F, B, S]
     ignore: []
 lint:
   rules:
@@ -246,7 +246,7 @@ lint:
       ruff: error
 ```
 
-The default selection is Ruff's `F` correctness checks. `select` and `ignore`
+Ruff uses its own default rule selection. `select` and `ignore`
 accept Ruff codes or prefixes matching stable rules; preview-only selectors are
 rejected. Lists replace inherited lists. `select: []` selects
 no lint rules (Python syntax errors can still be reported). `target-version`

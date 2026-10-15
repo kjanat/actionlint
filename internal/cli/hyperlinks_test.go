@@ -111,8 +111,12 @@ func TestHelpHyperlinks(t *testing.T) {
 				t.Fatalf("unexpected help output: %+v", got)
 			}
 			plain := osc.ReplaceAllString(got.Stderr, "")
-			if strings.Contains(plain, "\x1b") || !strings.Contains(plain, "Project:\n  "+projectURL+"\n") || !strings.Contains(plain, "/docs/usage.md\n") {
+			compact := strings.Contains(plain, "\nFlags:\n")
+			if strings.Contains(plain, "\x1b") || (compact && !strings.Contains(plain, "Docs: https://actionlint.kjanat.dev\n")) || (!compact && (!strings.Contains(plain, "Project:\n  "+projectURL+"\n") || !strings.Contains(plain, "/docs/usage.md\n"))) {
 				t.Fatalf("links lost readable destinations or leaked escapes: %q", plain)
+			}
+			if compact && tc.want && !strings.Contains(got.Stderr, "\x1b]8;;https://actionlint.kjanat.dev\x1b\\") {
+				t.Fatal("missing documentation hyperlink")
 			}
 			if tc.want && !strings.Contains(got.Stderr, "\x1b]8;;"+projectURL+"\x1b\\") {
 				t.Fatal("missing project hyperlink")
@@ -193,10 +197,15 @@ func TestFileURL(t *testing.T) {
 	if filepath.Separator == '\\' {
 		cases = append(cases, []struct{ path, want string }{
 			{`C:\Users\Kaj Kowalski\répo #1\100%.yaml`, "file:///C:/Users/Kaj%20Kowalski/r%C3%A9po%20%231/100%25.yaml"},
+			{"C:/Users/Kaj Kowalski/répo #1/100%.yaml", "file:///C:/Users/Kaj%20Kowalski/r%C3%A9po%20%231/100%25.yaml"},
+			{`C:\Users/Kaj Kowalski\répo #1/100%.yaml`, "file:///C:/Users/Kaj%20Kowalski/r%C3%A9po%20%231/100%25.yaml"},
 			{`C:\repo\\.github\actionlint.yaml`, "file:///C:/repo/.github/actionlint.yaml"},
 			{`\\server\share\folder name\workflow.yml`, "file://server/share/folder%20name/workflow.yml"},
 			{`\\?\C:\repo\workflow.yml`, "file:///C:/repo/workflow.yml"},
 			{`\\?\UNC\server\share\workflow.yml`, "file://server/share/workflow.yml"},
+			{"//server/share/workflow.yml", "file://server/share/workflow.yml"},
+			{"//?/C:/repo/workflow.yml", "file:///C:/repo/workflow.yml"},
+			{"//?/UNC/server/share/workflow.yml", "file://server/share/workflow.yml"},
 			{`\\.\NUL`, ""},
 		}...)
 	} else {

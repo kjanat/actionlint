@@ -9,18 +9,26 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// Normalize only option tokens. Values and filenames may themselves look like
-// flags, and the legacy parser stops at the first positional argument.
+// Normalize root option tokens, including those between filenames. Stop at a
+// command or --, and leave option values untouched.
 func normalizeCommandArgs(flags *pflag.FlagSet, args []string) []string {
 	if len(args) > 1 && (args[0] == cobra.ShellCompRequestCmd || args[0] == cobra.ShellCompNoDescRequestCmd) {
 		ret := append([]string{args[0]}, normalizeCommandArgs(flags, args[1:len(args)-1])...)
 		return append(ret, args[len(args)-1])
 	}
 	ret := slices.Clone(args)
+	hasInput := false
 	for i := 0; i < len(ret); i++ {
 		a := ret[i]
-		if a == "--" || a == "-" || !strings.HasPrefix(a, "-") {
+		if a == "--" {
 			break
+		}
+		if a == "-" || !strings.HasPrefix(a, "-") {
+			if !hasInput && isCommandName(a) && !commandFileExists(a) {
+				break
+			}
+			hasInput = true
+			continue
 		}
 		name, value, equals := strings.Cut(strings.TrimPrefix(strings.TrimPrefix(a, "-"), "-"), "=")
 		if name == "h" || name == "help" {
@@ -55,7 +63,17 @@ func commandRequestsJSON(flags *pflag.FlagSet, args []string) bool {
 }
 
 func requestsJSON(flags *pflag.FlagSet, args []string, interspersed bool) bool {
+	return scanJSONOptions(flags, args, interspersed).JSON
+}
+
+type requestedJSONOptions struct {
+	JSON, Pretty, PrettySet bool
+}
+
+func scanJSONOptions(flags *pflag.FlagSet, args []string, interspersed bool) requestedJSONOptions {
 	jsonMode, output := false, ""
+	formatSelected := false
+	options := requestedJSONOptions{}
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if arg == "--" {
@@ -85,6 +103,9 @@ func requestsJSON(flags *pflag.FlagSet, args []string, interspersed bool) bool {
 		}
 		if !equal {
 			value = flag.NoOptDefVal
+			if !interspersed && !strings.HasPrefix(arg, "--") && flag.Value.Type() != "bool" {
+				value = ""
+			}
 			if value == "" && i+1 < len(args) {
 				i++
 				value = args[i]
@@ -92,10 +113,18 @@ func requestsJSON(flags *pflag.FlagSet, args []string, interspersed bool) bool {
 		}
 		switch flag.Name {
 		case "json":
+			formatSelected = true
 			jsonMode, _ = strconv.ParseBool(value)
+		case "json-pretty":
+			options.PrettySet = true
+			options.Pretty, _ = strconv.ParseBool(value)
 		case "output", "output-format":
+			formatSelected = true
 			output = value
+		case "template", "format", "template-file", "oneline":
+			formatSelected = true
 		}
 	}
-	return jsonMode || output == "json" || output == "jsonl"
+	options.JSON = jsonMode || output == "json" || output == "jsonl" || options.Pretty && !formatSelected
+	return options
 }

@@ -43,7 +43,9 @@ func TestMetadataFirstVisibleInvocation(t *testing.T) {
 					var source strings.Builder
 					source.WriteString("on: push\njobs:\n")
 					for _, job := range []string{"c", "b", "a"} {
-						source.WriteString("  " + job + ":\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n")
+						source.WriteString("  ")
+						source.WriteString(job)
+						source.WriteString(":\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n")
 					}
 					result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source.String()), Config: config, Project: &Project{root: root}}}})
 					if err != nil {

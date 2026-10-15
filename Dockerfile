@@ -3,7 +3,7 @@ ARG ALPINE_VER=3.24
 
 FROM golang:${GOLANG_VER} AS builder
 WORKDIR /go/src/app
-COPY go.* *.go sarif_template.txt ./
+COPY go.* *.go config_default.yaml sarif_template.txt ./
 COPY cmd cmd/
 COPY internal internal/
 ENV CGO_ENABLED=0

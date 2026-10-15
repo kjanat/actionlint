@@ -39,53 +39,53 @@ type ruleContext struct {
 
 func builtinRuleDescriptors() []ruleDescriptor {
 	rules := []ruleDescriptor{
-		{Name: "workflow-run-names", Description: "Checks workflow_run names against repository workflows", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) {
+		{Name: "workflow-run-names", Description: "Report workflow_run references to unknown repository workflows", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) {
 			return &workflowRunNamesRule{RuleBase: builtinRuleBase("workflow-run-names"), root: absPath(c.projectRoot), index: c.workflowNames}, nil
 		}, enabled: workflowRunNamesAvailable},
-		{Name: "unsound-ternary", Description: "Checks conditional expressions whose falsy middle operand always selects the fallback", Category: "correctness", Recommended: true},
-		{Name: "ruff", Description: "Checks embedded Python scripts with Ruff", Category: "external", Recommended: true, build: func(c ruleContext) (Rule, error) { return newRuffRule(c) }, enabled: func(c ruleContext) bool {
+		{Name: "unsound-ternary", Description: "Report a && b || c expressions where b is always falsy", Category: "correctness", Recommended: true},
+		{Name: "ruff", Description: "Analyze embedded Python scripts with Ruff", Category: "external", Recommended: true, build: func(c ruleContext) (Rule, error) { return newRuffRule(c) }, enabled: func(c ruleContext) bool {
 			possible, err := ruffProjectConfigMayEnable(c.config, c.projectConfig, c.projectRoot != "")
 			// Validated config should merge successfully; analysis resolves the
 			// actual metadata path and reports any remaining composition error.
 			return externalCommandEnabled(c.ruff, c.ruffOptions) && (possible || err != nil)
 		}},
-		{Name: "syntax-check", Description: "Checks for GitHub Actions workflow syntax", Category: "correctness", Recommended: true},
-		{Name: "inline-suppression", Description: "Checks inline diagnostic suppression directives", Category: "correctness", Recommended: true},
-		{Name: "missing-local-action", Description: "Checks that local action manifests can be resolved", Category: "correctness", Recommended: true},
-		{Name: "string-conditions", Description: "Checks bare string conditions for unexpected truthiness", Category: "suspicious"},
-		{Name: "mixed-type-comparisons", Description: "Checks condition comparisons using implicit scalar coercion", Category: "suspicious"},
-		{Name: "case-insensitive-conditions", Description: "Checks identity comparisons using case-insensitive matching", Category: "suspicious"},
-		{Name: "mixed-type-matrix-filters", Description: "Checks matrix filters comparing different scalar types", Category: "suspicious"},
-		{Name: "disallow-suppressions", Description: "Reports inline and configured exceptions prohibited by suppression policy", Category: "policy"},
-		{Name: "matrix", Description: "Checks for matrix combinations in \"matrix:\"", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleMatrix(), nil }},
-		{Name: "credentials", Description: "Checks for credentials in \"services:\" configuration", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleCredentials(), nil }},
-		{Name: "shell-name", Description: "Checks for shell names used for scripts in \"run:\"", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleShellName(), nil }},
-		{Name: "runner-label", Description: "Checks for GitHub-hosted and preset self-hosted runner labels in \"runs-on:\"", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleRunnerLabel(), nil }},
-		{Name: "events", Description: "Checks for workflow trigger events at \"on:\"", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleEvents(), nil }},
-		{Name: "job-needs", Description: "Checks for job IDs in \"needs:\". Undefined IDs and cyclic dependencies are checked", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleJobNeeds(), nil }},
-		{Name: "parallel-steps", Description: "Checks \"wait\"/\"cancel\" references to background steps and steps forbidden inside a \"parallel\" group", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleParallelSteps(), nil }},
-		{Name: "action", Description: "Checks for popular actions released on GitHub, local actions, and action calls at \"uses:\"", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleAction(c.actions), nil }},
-		{Name: "executable-bit", Description: "Checks Git executable bits for directly invoked repository scripts", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) {
+		{Name: "syntax-check", Description: "Validate GitHub Actions workflow syntax", Category: "correctness", Recommended: true},
+		{Name: "inline-suppression", Description: "Validate inline suppression directives", Category: "correctness", Recommended: true},
+		{Name: "missing-local-action", Description: "Report local action references whose manifests cannot be found", Category: "correctness", Recommended: true},
+		{Name: "string-conditions", Description: "Flag string conditions whose truthiness may be misleading", Category: "suspicious"},
+		{Name: "mixed-type-comparisons", Description: "Flag condition comparisons that implicitly convert scalar types", Category: "suspicious"},
+		{Name: "case-insensitive-conditions", Description: "Flag case-insensitive identity comparisons", Category: "suspicious"},
+		{Name: "mixed-type-matrix-filters", Description: "Flag matrix filters that compare different or unknown scalar types", Category: "suspicious"},
+		{Name: "disallow-suppressions", Description: "Report suppressions forbidden by policy", Category: "policy"},
+		{Name: "matrix", Description: "Validate matrix definitions, combinations, and filters", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleMatrix(), nil }},
+		{Name: "credentials", Description: "Detect hardcoded passwords in job and service containers", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleCredentials(), nil }},
+		{Name: "shell-name", Description: "Validate script shells for the selected runner", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleShellName(), nil }},
+		{Name: "runner-label", Description: "Report unknown or incompatible runner labels", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleRunnerLabel(), nil }},
+		{Name: "events", Description: "Validate workflow triggers and their options", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleEvents(), nil }},
+		{Name: "job-needs", Description: "Report undefined job dependencies and dependency cycles", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleJobNeeds(), nil }},
+		{Name: "parallel-steps", Description: "Validate background-step references and restrictions within parallel groups", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleParallelSteps(), nil }},
+		{Name: "action", Description: "Validate action references, inputs, outputs, and local metadata", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleAction(c.actions), nil }},
+		{Name: "executable-bit", Description: "Report directly invoked repository scripts not marked executable in Git", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) {
 			return newRuleExecutableBit(c), nil
 		}, enabled: func(c ruleContext) bool { return c.projectRoot != "" && c.gitModes != nil }},
-		{Name: "env-var", Description: "Checks for environment variables configuration at \"env:\"", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleEnvVar(), nil }},
-		{Name: "id", Description: "Checks for duplication and naming convention of job/step IDs", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleID(), nil }},
-		{Name: "glob", Description: "Checks for glob syntax used in branch names, tags, and paths", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleGlob(), nil }},
-		{Name: "permissions", Description: "Checks for permissions configuration in \"permissions:\". Permission names and permission scopes are checked", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRulePermissions(), nil }},
-		{Name: "workflow-call", Description: "Checks for reusable workflow calls. Inputs and outputs of called reusable workflow are checked", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleWorkflowCall(c.path, c.workflows), nil }},
-		{Name: "expression", Description: "Syntax and semantics checks for expressions embedded with ${{ }} syntax", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleExpression(c.actions, c.workflows), nil }},
-		{Name: "deprecated-commands", Description: "Checks for deprecated \"set-output\", \"save-state\", \"set-env\", and \"add-path\" commands at \"run:\"", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleDeprecatedCommands(), nil }},
-		{Name: "if-cond", Description: "Checks for if: conditions which are always true/false", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleIfCond(), nil }},
-		{Name: "require-commit-hash", Description: "Checks that every \"uses:\" is pinned to a full-length commit SHA or an image digest", Category: "policy", build: func(c ruleContext) (Rule, error) { return NewRuleRequireCommitHash(), nil }, enabled: func(c ruleContext) bool { return c.config.RequiresCommitHash() }},
-		{Name: "require-job-timeout", Description: "Checks that every job sets \"timeout-minutes:\" within the configured bounds", Category: "policy", build: func(c ruleContext) (Rule, error) { return NewRuleRequireJobTimeout(c.config.RequiresJobTimeout()), nil }, enabled: func(c ruleContext) bool { return c.config.RequiresJobTimeout().Enabled() }},
-		{Name: "require-permissions", Description: "Checks for an explicit permissions declaration at workflow or job scope", Category: "policy", build: func(c ruleContext) (Rule, error) {
+		{Name: "env-var", Description: "Validate environment variable declarations", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleEnvVar(), nil }},
+		{Name: "id", Description: "Report invalid job or step IDs and duplicate step IDs", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleID(), nil }},
+		{Name: "glob", Description: "Validate branch, tag, and path filter patterns", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleGlob(), nil }},
+		{Name: "permissions", Description: "Validate token permission scopes and access levels", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRulePermissions(), nil }},
+		{Name: "workflow-call", Description: "Validate reusable workflow references and their declared inputs and outputs", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleWorkflowCall(c.path, c.workflows), nil }},
+		{Name: "expression", Description: "Validate expression syntax, names, types, and context availability", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleExpression(c.actions, c.workflows), nil }},
+		{Name: "deprecated-commands", Description: "Report deprecated set-output, save-state, set-env, and add-path commands", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleDeprecatedCommands(), nil }},
+		{Name: "if-cond", Description: "Report conditions that always evaluate to true or false", Category: "correctness", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleIfCond(), nil }},
+		{Name: "require-commit-hash", Description: "Require full commit SHAs for actions and workflows, and digests for images", Category: "policy", build: func(c ruleContext) (Rule, error) { return NewRuleRequireCommitHash(), nil }, enabled: func(c ruleContext) bool { return c.config.RequiresCommitHash() }},
+		{Name: "require-job-timeout", Description: "Require explicit job timeouts within configured bounds", Category: "policy", build: func(c ruleContext) (Rule, error) { return NewRuleRequireJobTimeout(c.config.RequiresJobTimeout()), nil }, enabled: func(c ruleContext) bool { return c.config.RequiresJobTimeout().Enabled() }},
+		{Name: "require-permissions", Description: "Require explicit token permissions at workflow or job scope", Category: "policy", build: func(c ruleContext) (Rule, error) {
 			return NewRuleRequirePermissions(c.config.RequiresPermissions()), nil
 		}, enabled: func(c ruleContext) bool { return c.config.RequiresPermissions().Enabled() }},
-		{Name: "required-actions", Description: "Checks that the actions listed in the \"required-actions\" policy in actionlint.yaml are used", Category: "policy", build: func(c ruleContext) (Rule, error) { return NewRuleRequiredActions(), nil }, enabled: func(c ruleContext) bool { return len(c.config.RequiredActions()) > 0 }},
-		{Name: "cache-write-untrusted", Description: "Checks cache write grants on low-trust triggers", Category: "policy", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleCacheWriteUntrusted(), nil }, enabled: func(c ruleContext) bool { return c.config.cachePolicyEnabled("cache-write-untrusted") }},
-		{Name: "cache-call-unrestricted", Description: "Checks cache access ceilings on low-trust reusable workflow calls", Category: "policy", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleCacheCallUnrestricted(), nil }, enabled: func(c ruleContext) bool { return c.config.cachePolicyEnabled("cache-call-unrestricted") }},
-		{Name: "cache-operation", Description: "Checks cache actions disabled by explicit cache access modes", Category: "policy", Recommended: true, build: func(c ruleContext) (Rule, error) { return newRuleCacheOperation(c.workflows), nil }, enabled: func(c ruleContext) bool { return c.config.cachePolicyEnabled("cache-operation") }},
-		{Name: "shellcheck", Description: "Checks for shell script sources in \"run:\" using shellcheck", Category: "external", Recommended: true, build: func(c ruleContext) (Rule, error) {
+		{Name: "required-actions", Description: "Require actions listed in the project policy", Category: "policy", build: func(c ruleContext) (Rule, error) { return NewRuleRequiredActions(), nil }, enabled: func(c ruleContext) bool { return len(c.config.RequiredActions()) > 0 }},
+		{Name: "cache-write-untrusted", Description: "Report cache write access granted on low-trust triggers", Category: "policy", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleCacheWriteUntrusted(), nil }, enabled: func(c ruleContext) bool { return c.config.cachePolicyEnabled("cache-write-untrusted") }},
+		{Name: "cache-call-unrestricted", Description: "Report reusable workflow calls without explicit cache limits on low-trust triggers", Category: "policy", Recommended: true, build: func(c ruleContext) (Rule, error) { return NewRuleCacheCallUnrestricted(), nil }, enabled: func(c ruleContext) bool { return c.config.cachePolicyEnabled("cache-call-unrestricted") }},
+		{Name: "cache-operation", Description: "Report cache actions blocked by explicit cache access limits", Category: "policy", Recommended: true, build: func(c ruleContext) (Rule, error) { return newRuleCacheOperation(c.workflows), nil }, enabled: func(c ruleContext) bool { return c.config.cachePolicyEnabled("cache-operation") }},
+		{Name: "shellcheck", Description: "Analyze embedded shell scripts with ShellCheck", Category: "external", Recommended: true, build: func(c ruleContext) (Rule, error) {
 			rule, err := configuredShellcheck(c.shellcheck, c.shellcheckOptions, c.shellcheckSettings, c.process)
 			if err != nil {
 				return nil, err

@@ -12,6 +12,7 @@ type invocation struct {
 	Operation operation
 	Check     checkInvocation
 	Render    renderOptions
+	Yes       bool
 	JSON      bool
 	Legacy    bool
 	Origin    bool
@@ -40,22 +41,23 @@ type checkInvocation struct {
 
 // renderOptions controls result presentation without changing analysis.
 type renderOptions struct {
-	PrettyJSON   bool
-	Hyperlinks   hyperlinkMode
-	Format       actionlint.OutputFormat
-	Template     string
-	TemplateFile string
-	OutputFile   string
-	Color        actionlint.ColorOptionKind
-	Oneline      bool
-	Quiet        bool
-	Summary      bool
+	PrettyJSON         bool
+	PrettyJSONExplicit bool
+	Hyperlinks         hyperlinkMode
+	Format             actionlint.OutputFormat
+	Template           string
+	TemplateFile       string
+	OutputFile         string
+	Color              actionlint.ColorOptionKind
+	Oneline            bool
+	Quiet              bool
+	Summary            bool
 }
 
 func defaultInvocation() invocation {
 	return invocation{
 		Operation: "check",
-		Render:    renderOptions{PrettyJSON: true},
+		Render:    renderOptions{PrettyJSON: true, Summary: true},
 		Check:     checkInvocation{StdinFilename: "<stdin>", ShellCheck: "shellcheck", Ruff: "ruff"},
 	}
 }
@@ -165,14 +167,14 @@ func (inv invocation) request() (commandRequest, error) {
 		if inv.Legacy {
 			return legacyConfigInitRequest{ConfigPath: inv.Check.Config.Path, IgnoreRegex: inv.Check.IgnoreRegex,
 				Template: inv.Render.Template, TemplateFile: inv.Render.TemplateFile,
-				Log: (inv.Check.Verbose || inv.Check.Debug) && !inv.Render.Quiet, JSON: inv.JSON}, nil
+				Log: (inv.Check.Verbose || inv.Check.Debug) && !inv.Render.Quiet, JSON: inv.JSON, Hyperlinks: inv.Render.Hyperlinks}, nil
 		}
 		if inv.Check.Config.Path != "" || inv.Check.Config.Disabled {
 			return nil, commandUsageError{errors.New("config init always creates the repository config; omit --config and --no-config")}
 		}
-		return configInitRequest{JSON: inv.JSON}, nil
+		return configInitRequest{JSON: inv.JSON, Hyperlinks: inv.Render.Hyperlinks}, nil
 	case operationCheck:
-		return checkRequest{Check: inv.Check, Render: inv.Render, JSON: inv.JSON, Legacy: inv.Legacy}, nil
+		return checkRequest{Check: inv.Check, Render: inv.Render, Yes: inv.Yes, JSON: inv.JSON, Legacy: inv.Legacy}, nil
 	default:
 		return nil, commandUsageError{fmt.Errorf("unknown operation %q", inv.Operation)}
 	}

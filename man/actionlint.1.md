@@ -11,9 +11,8 @@ footer: actionlint 1.17.0
 
 # SYNOPSIS
 
-**actionlint** \[*flags*\]\
-**actionlint** \[*flags*\] *file*...\
-**actionlint** \[*flags*\] -
+**actionlint** [*flags*] [**--**] [*files*... | **-**]\
+**actionlint check** [*flags*] [**--**] [*files*... | **-**]
 
 # DESCRIPTION
 
@@ -36,17 +35,21 @@ With no paths, **actionlint** and **actionlint check** find the current reposito
 containing both `.git` and `.github/workflows`, then recursively check workflow
 YAML files in that directory. Explicit file arguments and a lone **-** for stdin
 remain supported. Passing a directory does not enable recursive input expansion;
-passing an action manifest does not select standalone action-metadata linting.
+action manifests are also discovered and can be passed as explicit inputs.
 
     $ actionlint
     $ actionlint file1.yaml file2.yaml
     $ actionlint check file1.yaml --output-format=json
     $ actionlint check --stdin-filename .github/workflows/ci.yml -
 
-The root stops option parsing at the first filename. **check** accepts options
-before or after filenames. **--** forces subsequent arguments to be filenames.
+The root and **check** accept options before or after filenames.
+**--** forces subsequent arguments to be filenames.
 An existing regular file named like a command takes precedence on the root.
 The hidden `--command NAME` escape explicitly selects a command in that case.
+
+**actionlint --help** shows common options and commands. Run
+**actionlint check --help** for all checking options, which the root invocation
+also accepts.
 
 # COMMANDS
 
@@ -72,7 +75,9 @@ empty lists remain distinguishable from defaults and null.
 handling; it does not substitute the stricter editor JSON Schema validator.
 
 **rules** [*name*]
-: List checks by name and category, or explain one check. Supports **--json**.
+: List checks under Correctness, Security, Suspicious, Policy, and External linters,
+alphabetically within each group, or explain one check. **--json** returns the
+alphabetical array of rule metadata.
 
 **doctor**
 : Inspect configuration and external-tool resolution without executing tools.
@@ -104,8 +109,12 @@ metadata. Operational errors are JSON objects on stderr.
 
 **--json-pretty**[=*BOOL*]
 : Format JSON and SARIF on a terminal with installed jq. Default: true. False
-keeps the original JSON. Pipes, files, JSONL, templates and stderr records are
-unchanged. Unavailable or failing jq falls back to the original JSON.
+keeps the original JSON. Unavailable or failing jq falls back to built-in output.
+Explicitly enabling this flag also selects JSON if no other output format is
+specified. The default value and `--json-pretty=false` do not select JSON.
+Explicit true also indents JSON in pipes and files without color codes or a jq
+dependency. Without an explicit pretty flag, pipes and files keep their original
+output. JSONL, templates and stderr records keep their existing format.
 
 **--template**, **--format**, **-f** *TEMPLATE*
 : Render diagnostics with a Go template. Existing template fields and functions
@@ -117,9 +126,19 @@ over the legacy **--oneline** option.
 : Read a Go template from a file. Cannot be combined with an inline template.
 
 **--output-file** *PATH*
-: Write results to the given path. `-` means stdout. Replace the file
-only after successful analysis, including analysis that found problems. A failure
+: Write results to the given path. `-` means stdout. An existing destination
+prompts `Overwrite? [y/N]` in an interactive terminal before analysis. Enter or a
+negative answer keeps the file and stops the check. Replacement happens only
+after analysis completes, including analysis that found problems. A failure
 preserves a previous report. The output cannot also be a selected input.
+
+**-y**, **--yes**
+: Answer yes to confirmation prompts. Required to replace an existing report
+when stderr is not a terminal or when `-` supplies workflow stdin. Confirmation
+never consumes workflow input. Piping `yes` also works in an interactive terminal.
+
+**--command** *NAME*
+: Select a command explicitly when a file has the same name.
 
 **--color**[=*MODE*]
 : On **check**, select `auto`, `always`, or `never`; a bare flag means `always`.
@@ -185,7 +204,8 @@ errors remain visible. Also available on information and config commands.
 
 **--summary**
 : Print selected workflow and finding counts on stderr after checking. In JSON
-modes this is a JSON record with a `summary` field. A normal clean run stays silent.
+modes this is a JSON record with a `summary` field. Default: true.
+Use `--summary=false` or **--quiet** to suppress it.
 
 **--verbose**, **-v**
 : Retain legacy progress logging. Prefer **--log-level**=info on **check**.
@@ -197,21 +217,35 @@ flags are true. An explicit **--log-level** selects the requested new log level.
 **--oneline**
 : Retain one-line diagnostic output. Prefer **--output-format**=oneline.
 
-**--shellcheck** *COMMAND*
-: ShellCheck command, executable path or command line with arguments. Defaults
-to `shellcheck`; `false` or an empty value disables it. Also available on **doctor**.
+**--shellcheck**[=*COMMAND*]
+: Check shell scripts with ShellCheck. A bare flag uses `shellcheck` on PATH.
+Use `--shellcheck=COMMAND` for a custom executable or command line. Also available
+on **doctor**. Legacy `-shellcheck COMMAND` remains supported on the root.
+
+**--no-shellcheck**
+: Disable ShellCheck, overriding any selected command or environment settings.
 
 **--pyflakes** *COMMAND*
-: Deprecated compatibility option; ignored. Use Ruff for Python scripts.
+: Deprecated compatibility option. Selects Ruff's Pyflakes (`F`) rules when no Ruff
+option is supplied. An empty command or `false` disables Python linting.
+The command value is accepted for compatibility and is never executed.
 
-**--ruff** *COMMAND*
-: Ruff command or command line for Python `run:` scripts. Defaults to `ruff`;
-`false` or an empty value disables it. Ruff must already be installed. Also available on
-**doctor**. Uses isolated, read-only checks with the F rules by default;
+**--ruff**[=*COMMAND*]
+: Check Python scripts with Ruff. A bare flag uses `ruff` on PATH.
+Use `--ruff=COMMAND` for a custom executable or command line. Ruff must already be
+installed. Also available on **doctor**. Legacy `-ruff COMMAND` remains supported
+on the root. Uses isolated, read-only checks with Ruff's default rule selection.
 `tools.ruff` configures rule selection and the Python target version.
 
-**--init-config**
-: Root-only alias for **config init**, retaining existing initialization behavior.
+**--no-ruff**
+: Disable Ruff, overriding any selected command or environment settings.
+
+The older `--ruff=false`, `--shellcheck=false`, and empty command values remain
+supported. A disable flag takes precedence when both forms are supplied.
+
+**--init-config**, **--init**
+: Aliases for **config init**, supported on the root and **config** command.
+The positional **init** and **init-config** commands invoke the same operation.
 
 **--completion**, **--completions** *SHELL*
 : Root-only supported aliases for **completion** *SHELL*. Accept `bash`, `fish`,
@@ -343,7 +377,7 @@ The executables must be available through `PATH` or the corresponding command fl
 command cannot be resolved, its integration is skipped; **--verbose** explains why.
 
     $ actionlint --shellcheck=
-    $ actionlint --shellcheck 'shellcheck -e SC2086'
+    $ actionlint --shellcheck='shellcheck -e SC2086'
 
 Command strings are parsed into an executable and arguments, not executed by a shell. Shell
 pipes and redirections are not supported in these flags. Your arguments precede actionlint's
@@ -473,9 +507,11 @@ Templates and output files apply only to checks.
 
 **ACTIONLINT_JSON_PRETTY**
 : Whether terminal JSON may use installed **jq**. Default: true. The
-**--json-pretty=false** flag disables this. Pipes, files, JSONL, templates and
-stderr records retain their existing output. Missing or failing jq falls back
-to the original JSON.
+**--json-pretty=false** flag disables this. Explicit **--json-pretty** also
+indents JSON in pipes and files without color codes or a jq dependency.
+Otherwise, pipes and files retain their original output. JSONL, templates and
+stderr records keep their existing format. Missing or failing jq falls back
+to built-in output.
 
 **ACTIONLINT_LOG_LEVEL**, **ACTIONLINT_QUIET**, **ACTIONLINT_SUMMARY**
 : Logging and summary defaults. Explicit flags, including false values, take precedence.

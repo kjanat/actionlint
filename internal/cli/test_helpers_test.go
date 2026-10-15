@@ -56,7 +56,12 @@ jobs:
       - run: echo '${{ missing.value }}'
 `
 
+// testRunCommand disables summaries for diagnostic transcript tests.
 func testRunCommand(input string, args ...string) commandTranscript {
+	return testRunCommandDefaults(input, append([]string{"--summary=false"}, args...)...)
+}
+
+func testRunCommandDefaults(input string, args ...string) commandTranscript {
 	var out, errout bytes.Buffer
 	cmd := Command{Stdin: strings.NewReader(input), Stdout: &out, Stderr: &errout}
 	status := cmd.Main(append([]string{"actionlint", "--shellcheck=", "--ruff=", "--pyflakes=", "--no-color"}, args...))

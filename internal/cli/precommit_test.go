@@ -92,7 +92,7 @@ func TestPreCommitCommandRendersEmptyResult(t *testing.T) {
 	if err := os.WriteFile("report.json", []byte("previous report"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	got = testRunCommand("", "pre-commit", "--json", "--summary", "--output-file", "report.json")
+	got = testRunCommand("", "pre-commit", "--json", "--summary", "--yes", "--output-file", "report.json")
 	data, err := os.ReadFile("report.json")
 	if err != nil || got.Status != 0 || got.Stdout != "" || !json.Valid(data) || got.Stderr != "{\"summary\":{\"files\":0,\"findings\":0}}\n" {
 		t.Fatalf("%+v %s (%v)", got, data, err)
@@ -109,7 +109,7 @@ func TestPreCommitCommandProtectsRepositoryConfig(t *testing.T) {
 	if err := os.WriteFile(config, []byte("{}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	got := testRunCommand("", "pre-commit", "--json", "--output-file", config)
+	got := testRunCommand("", "pre-commit", "--json", "--yes", "--output-file", config)
 	data, err := os.ReadFile(config)
 	if got.Status != 3 || !strings.Contains(got.Stderr, "also an input") || err != nil || string(data) != "{}\n" {
 		t.Fatalf("the empty report replaced the configuration: %+v %s (%v)", got, data, err)
@@ -126,8 +126,8 @@ func TestPreCommitCommandProtectsListedDirectories(t *testing.T) {
 		t.Fatal(err)
 	}
 	gitRepository(t, ".")
-	got := testRunCommand("", "pre-commit", "--json", "--output-file", filepath.Join(".github", "workflows", "nested"))
-	if got.Status != 3 || !strings.Contains(got.Stderr, "also an input") {
+	got := testRunCommand("", "pre-commit", "--json", "--yes", "--output-file", filepath.Join(".github", "workflows", "nested"))
+	if got.Status != 3 || !strings.Contains(got.Stderr, "directory") {
 		t.Fatalf("a listed workflows directory is not an input: %+v", got)
 	}
 }
@@ -167,7 +167,7 @@ func TestPreCommitCommandIsHidden(t *testing.T) {
 	if code := cmd.Main([]string{"actionlint", "__complete", ""}); code != 0 {
 		t.Fatalf("exit=%d, stderr=%s", code, &errout)
 	}
-	if !strings.Contains(out.String(), "check") || strings.Contains(out.String(), "pre-commit") {
+	if !strings.Contains(out.String(), "check\t") || strings.Contains("\n"+out.String(), "\npre-commit\t") {
 		t.Fatalf("completion output: %s", &out)
 	}
 }

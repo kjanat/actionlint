@@ -2,6 +2,7 @@ package cli
 
 import (
 	"os"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -63,7 +64,7 @@ func TestCommandLiteralFilenames(t *testing.T) {
 		}
 	}
 	for _, args := range [][]string{
-		{"first.yml", "--json", "-completions", "--help"},
+		{"first.yml", "--", "--json", "-completions", "--help"},
 		{"--", "--json", "--help", "-completions", "__complete"},
 		{"version", "completion"},
 	} {
@@ -71,5 +72,62 @@ func TestCommandLiteralFilenames(t *testing.T) {
 		if got != (commandTranscript{}) {
 			t.Errorf("%q: %+v", args, got)
 		}
+	}
+}
+
+func TestRootFlagsBetweenFilenames(t *testing.T) {
+	t.Chdir(t.TempDir())
+	for _, tc := range []struct {
+		name       string
+		args, want []string
+		forced     string
+		terminated bool
+		json       bool
+	}{
+		{name: "after file", args: []string{"first.yml", "--json"}, want: []string{"first.yml"}, json: true},
+		{name: "between files", args: []string{"first.yml", "--json", "second.yml"}, want: []string{"first.yml", "second.yml"}, json: true},
+		{name: "after stdin", args: []string{"-", "--json"}, want: []string{"-"}, json: true},
+		{name: "single dash option", args: []string{"first.yml", "-json"}, want: []string{"first.yml"}, json: true},
+		{name: "optional linter", args: []string{"first.yml", "--ruff", "second.yml", "--json"}, want: []string{"first.yml", "second.yml"}, json: true},
+		{name: "option-like value", args: []string{"first.yml", "--stdin-filename", "--json", "-"}, want: []string{"first.yml", "-"}},
+		{name: "legacy linter value", args: []string{"first.yml", "-ruff", "--json"}, want: []string{"first.yml"}},
+		{name: "delimiter value", args: []string{"first.yml", "--stdin-filename", "--", "--json"}, want: []string{"first.yml"}, json: true},
+		{name: "delimiter", args: []string{"first.yml", "--", "--json", "-h"}, want: []string{"first.yml", "--json", "-h"}, terminated: true},
+		{name: "delimiter after flag", args: []string{"first.yml", "--json", "--", "--help"}, want: []string{"first.yml", "--help"}, terminated: true, json: true},
+		{name: "command after file", args: []string{"first.yml", "version", "--json"}, want: []string{"first.yml", "version"}, json: true},
+		{name: "command boundary", args: []string{"check", "first.yml", "--json"}, want: []string{"check", "first.yml", "--json"}},
+		{name: "forced command", args: []string{"first.yml", "--command", "check", "--color=never", "--json"}, want: []string{"first.yml", "--color=never", "--json"}, forced: "check"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := newCommandApp(&Command{})
+			rest, forced, terminated, err := app.parseRoot(tc.args)
+			if err != nil || !slices.Equal(rest, tc.want) || forced != tc.forced || terminated != tc.terminated || app.inv.JSON != tc.json || app.errorJSON != tc.json {
+				t.Fatalf("paths=%v forced=%q terminated=%v json=%v errorJSON=%v err=%v", rest, forced, terminated, app.inv.JSON, app.errorJSON, err)
+			}
+		})
+	}
+	for _, args := range [][]string{
+		{"-", "--ignore-regex", "undefined variable", "--ignore", "other"},
+		{"-", "-ignore", "other", "--ignore-regex", "undefined variable"},
+	} {
+		if got := testRunCommand(commandBadWorkflow, args...); got != (commandTranscript{}) {
+			t.Fatalf("filters after stdin were lost: %v: %+v", args, got)
+		}
+	}
+	for _, args := range [][]string{{"missing.yml", "--unknown", "--json"}, {"missing.yml", "--json", "--output-file"}} {
+		got := testRunCommand("", args...)
+		if got.Status != 2 || !strings.Contains(got.Stderr, `"exit_code":2`) {
+			t.Fatalf("invalid options after filenames did not select JSON errors: %v: %+v", args, got)
+		}
+	}
+}
+
+func TestRootUsesCommandFlagDefinitions(t *testing.T) {
+	app := newCommandApp(&Command{})
+	var enabled bool
+	app.root.Flags().BoolVarP(&enabled, "test-option", "t", false, "")
+	rest, _, _, err := app.parseRoot([]string{"-t", "input.yml"})
+	if err != nil || !enabled || !app.set["t"] || len(rest) != 1 || rest[0] != "input.yml" {
+		t.Fatalf("root did not use the shared flag definition: enabled=%v rest=%v err=%v", enabled, rest, err)
 	}
 }

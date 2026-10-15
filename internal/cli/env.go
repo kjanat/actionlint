@@ -80,20 +80,28 @@ func (a *commandApp) applyEnvironment() error {
 	}
 	var err error
 	for name, command := range map[string]*string{"ruff": &i.Check.Ruff, "shellcheck": &i.Check.ShellCheck} {
-		if a.set[name] && strings.EqualFold(*command, "false") {
+		disabled := name == "ruff" && a.opts.noRuff || name == "shellcheck" && a.opts.noShellCheck
+		if disabled || a.set[name] && strings.EqualFold(*command, "false") {
 			*command = ""
 		}
 	}
-	if !a.set["ruff"] {
+	if !a.set["ruff"] && !a.opts.noRuff {
 		i.Check.RuffOptions, err = externalToolEnvironment("RUFF")
 		if err != nil {
 			return err
 		}
 		if i.Check.RuffOptions == nil {
 			i.Check.RuffOptions = &actionlint.ExternalCommandOptions{Optional: true}
+			if a.set["pyflakes"] {
+				if i.Check.Pyflakes == "" || strings.EqualFold(i.Check.Pyflakes, "false") {
+					i.Check.Ruff = ""
+				} else {
+					i.Check.RuffOptions.Arguments = []string{"--select", "F"}
+				}
+			}
 		}
 	}
-	if !a.set["shellcheck"] {
+	if !a.set["shellcheck"] && !a.opts.noShellCheck {
 		i.Check.ShellcheckOptions, err = externalToolEnvironment("SHELLCHECK")
 		if err != nil {
 			return err
@@ -109,7 +117,8 @@ func (a *commandApp) presentationEnvironment() error {
 	if err := a.envBool("ACTIONLINT_JSON_PRETTY", &a.inv.Render.PrettyJSON, "json-pretty"); err != nil {
 		return err
 	}
-	if !a.anySet("json", "output-format", "output", "o", "template", "format", "f", "template-file", "oneline") {
+	a.inv.Render.PrettyJSONExplicit = a.set["json-pretty"]
+	if !a.formatSelected() && !a.prettyJSONSelected() {
 		if err := a.envBool("ACTIONLINT_JSON", &a.inv.JSON); err != nil {
 			return err
 		}
@@ -149,7 +158,7 @@ func (a *commandApp) checkEnvironment() error {
 	}
 	_, experimentalEnv := os.LookupEnv("ACTIONLINT_EXPERIMENTAL")
 	i.Check.ExperimentalSet = a.set["experimental"] || experimentalEnv
-	if !a.anySet("output-format", "output", "o", "json", "template", "format", "f", "template-file", "oneline") {
+	if !a.formatSelected() && !a.prettyJSONSelected() {
 		if value := os.Getenv("ACTIONLINT_OUTPUT_FORMAT"); value != "" {
 			a.opts.output, a.set["output-format"] = value, true
 		}

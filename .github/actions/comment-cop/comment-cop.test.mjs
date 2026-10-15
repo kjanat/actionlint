@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test, { mock } from 'node:test';
 
+import { readFileSync } from 'node:fs';
+
 import run, { bodyFor, groupsFromPatch, keyFor } from './comment-cop.mjs';
 
 /** @typedef {Parameters<Parameters<typeof run>[0]['github']['rest']['pulls']['createReview']>[0]} ReviewParams */
@@ -18,6 +20,55 @@ test('flags a long implementation comment', () => {
 	);
 
 	assert.deepEqual(groups.map(group => group.reasons), [['3 lines']]);
+});
+
+test('scans prose around commented YAML examples without counting example lines', () => {
+	const source = [
+		'# Tools are discovered on PATH.',
+		'# Python scripts are linted without execution.',
+		'# tools:',
+		'#   ruff: {select: [F, B, S]}',
+		'#   shellcheck:',
+		'#     # Inline directives remain active.',
+		'#     config: {shell: bash}',
+		'',
+		'# local-actions:',
+		'#   ./generated-action: ./src/action',
+		'# files:',
+		'#   includes:',
+		'#     - "**/*.yaml"',
+		'#     - "rather than.yml"',
+		'# ignores:',
+		'#   - rule: shellcheck',
+		'#     reason: Use the robust compatibility wrapper rather than the default.',
+		'',
+		'# Use defaults rather than loading another file.',
+	].join('\n');
+	const patch = `@@ -0,0 +1,${source.split('\n').length} @@\n${source.split('\n').map(line => `+${line}`).join('\n')}`;
+	const groups = groupsFromPatch('config.yaml', patch, source);
+	assert.deepEqual(groups.map(group => ({ start: group.start, reasons: group.reasons })), [
+		{ start: 19, reasons: ['"X rather than Y"'] },
+	]);
+});
+
+test('still measures consecutive YAML prose comments by length', () => {
+	const patch = '@@ -0,0 +1,4 @@\n+# Read the settings.\n+# Resolve the paths.\n+# Return the result.\n+enabled: true';
+	assert.deepEqual(groupsFromPatch('config.yml', patch).map(group => group.reasons), [['3 lines']]);
+});
+
+test('still scans prose list items in YAML comments', () => {
+	const patch = '@@ -0,0 +1,1 @@\n+# - Use the cache rather than parsing twice.';
+	assert.deepEqual(groupsFromPatch('config.yml', patch).map(group => group.reasons), [['"X rather than Y"']]);
+});
+
+test('does not flag the generated configuration examples by length', () => {
+	const source = readFileSync(new URL('../../../config_default.yaml', import.meta.url), 'utf8');
+	const lines = source.split('\n');
+	const patch = `@@ -0,0 +1,${lines.length} @@\n${lines.map(line => `+${line}`).join('\n')}`;
+	const groups = groupsFromPatch('config_default.yaml', patch, source);
+	const examplesStart = lines.findIndex(line => line.startsWith('# Tools are discovered')) + 1;
+	assert.ok(examplesStart > 0);
+	assert.deepEqual(groups.filter(group => group.start >= examplesStart), []);
 });
 
 test('does not measure Go doc comments by length', () => {
@@ -227,7 +278,7 @@ const firstGroup = {
 };
 
 /** @param {string[]} seenBodies @param {Error | undefined} submitError */
-function reviewHarness(seenBodies = [], submitError = undefined, files = reviewFiles) {
+function reviewHarness(seenBodies = [], submitError = undefined, files = reviewFiles, threadPath = 'docs/first.md') {
 	const createReview = mock.fn(async (/** @type {ReviewParams} */ params) => {
 		if (submitError) throw submitError;
 		return params;
@@ -242,7 +293,7 @@ function reviewHarness(seenBodies = [], submitError = undefined, files = reviewF
 					nodes: seenBodies.map((body, i) => ({
 						id: `thread-${i}`,
 						isResolved: false,
-						path: 'docs/first.md',
+						path: threadPath,
 						comments: { nodes: [{ body, viewerDidAuthor: true }] },
 					})),
 				},
@@ -328,6 +379,7 @@ test('excludes existing findings from the next review', async () => {
 
 	assert.equal(h.createReview.mock.callCount(), 1);
 	const params = h.createReview.mock.calls[0].arguments[0];
+	assert.ok(params);
 	assert.ok(params.comments);
 	assert.deepEqual(params.comments.map(({ path, line }) => ({ path, line })), [
 		{ path: 'docs/first.md', line: 5 },
@@ -341,6 +393,25 @@ test('does not submit an empty review when the diff has no findings', async () =
 
 	assert.equal(h.createReview.mock.callCount(), 0);
 	assert.match(h.info.mock.calls[0].arguments[0], /0 posted/);
+});
+
+test('resolves an existing finding caused by commented YAML data', async () => {
+	const path = 'config.yaml';
+	const text = '# tools:\n#   ruff:\n#     select: [F, B, S]';
+	const oldGroup = { path, start: 1, end: 3, text, reasons: ['3 lines'] };
+	const files = [{
+		filename: path,
+		status: 'modified',
+		contents_url: 'config',
+		patch: `@@ -0,0 +1,3 @@\n${text.split('\n').map(line => `+${line}`).join('\n')}`,
+	}];
+	const h = reviewHarness([bodyFor(oldGroup)], undefined, files, path);
+	await run(h.args);
+
+	assert.equal(h.createReview.mock.callCount(), 0);
+	assert.equal(h.graphql.mock.callCount(), 2);
+	assert.deepEqual(h.graphql.mock.calls[1].arguments.slice(1), [{ id: 'thread-0' }]);
+	assert.match(h.info.mock.calls[0].arguments[0], /1 stale threads resolved/);
 });
 
 test('reports a failed batch without submitting individual reviews', async () => {

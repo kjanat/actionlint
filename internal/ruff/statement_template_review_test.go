@@ -110,7 +110,7 @@ func TestOpaqueStatementTemplatesRealRuff(t *testing.T) {
 				}
 				if tc.expansion != "" {
 					expansion := strings.ReplaceAll(tc.expansion, "\n", ending)
-					if err := checker.Check(expansion, &python, "workflow:12", Config{}, func(d Diagnostic) { diagnostics = append(diagnostics, d) }); err != nil {
+					if err := checker.Check(expansion, &python, "workflow:12", Config{Select: []string{"F"}}, func(d Diagnostic) { diagnostics = append(diagnostics, d) }); err != nil {
 						t.Fatal(err)
 					}
 					if err := checker.Wait(); err != nil || calls != 1 || len(diagnostics) != 0 {

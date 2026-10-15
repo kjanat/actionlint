@@ -9,42 +9,133 @@ concurrency:
 permissions: { contents: read }
 defaults: { run: { shell: "bash --noprofile --norc -exo pipefail {0}" } }
 jobs:
-  nix: { uses: $/.github/workflows/nix.yml }
+  changes:
+    uses: $/.github/workflows/ci-changes.yml
+    with:
+      filters: |
+        {
+          "shared": [
+            ".github/workflows/ci.yml", ".github/workflows/ci-changes.yml", ".github/ci/**", ".tool-versions",
+            ".mise.toml"
+          ],
+          "jobs": {
+            "unit": [
+              "*.go", "go.mod", "go.sum", "config_default.yaml", "sarif_template.txt", "cmd/**", "internal/**", "fuzz/**", "scripts/**/*.go",
+              "scripts/**/testdata/**", "testdata/**", "schemas/**", "actionlint.schema.json", "Makefile", ".pre-commit-hooks.yaml",
+              ".github/actions/setup-shellcheck/**", ".github/workflows/upkeep.yml", "scripts/*.bash", "Dockerfile", "CONTRIBUTING.md", "flake.nix",
+              "flake.lock"
+            ],
+            "race": [
+              "*.go", "go.mod", "go.sum", "config_default.yaml", "sarif_template.txt", "cmd/**", "internal/**", "fuzz/**", "scripts/**/*.go",
+              "scripts/**/testdata/**", "testdata/**", "schemas/**", "actionlint.schema.json", "Makefile", ".pre-commit-hooks.yaml",
+              ".github/actions/setup-shellcheck/**", ".github/workflows/upkeep.yml", "scripts/*.bash", "Dockerfile", "CONTRIBUTING.md", "flake.nix",
+              "flake.lock"
+            ],
+            "nix": [
+              "*.go", "go.mod", "go.sum", "config_default.yaml", "sarif_template.txt", "cmd/**", "internal/**", "!**/*_test.go", "nix/**",
+              "flake.nix", "flake.lock", "man/**", "schemas/**", "actionlint.schema.json", "scripts/check-packaged-cli.bash",
+              ".github/workflows/nix.yml", "!**/testdata/**"
+            ],
+            "wasm": [
+              "*.go", "go.mod", "go.sum", "config_default.yaml", "sarif_template.txt", "cmd/**", "internal/**", "playground/**", "man/**",
+              "packages/changelog-feed/**", "!cmd/**", "!internal/cli/**", "!internal/githubaction/**", "!**/*_test.go", "package.json",
+              "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json", "Makefile"
+            ],
+            "javascript": [
+              "**/*.js", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.tsx", "**/package.json", "**/tsconfig*.json", "package-lock.json", "biome.jsonc",
+              "go.mod", "!testdata/**", "!**/testdata/**", "package.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
+              ".github/actions/**/mise.toml"
+            ],
+            "release": [
+              "*.go", "go.mod", "go.sum", "config_default.yaml", "sarif_template.txt", "cmd/**", "internal/**", "!**/*_test.go", "Makefile",
+              ".goreleaser.yaml", "man/**", "schemas/**", "actionlint.schema.json", "distribution/**", "packages/github-action/**",
+              "scripts/build-action-release.mjs", "scripts/release-*.mjs", "action.yml", ".pre-commit-hooks.yaml", "package.json",
+              "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json", "!packages/github-action/tests/**",
+              "!scripts/*.test.mjs", "!**/testdata/**"
+            ],
+            "modules": [
+              ".github/actions/**", "distribution/**", "schemas/**", "actionlint.schema.json", "man/**", "README.md", "LICENSE.txt", "go.mod",
+              "go.sum"
+            ],
+            "lint": [
+              "*.go", "go.mod", "go.sum", "config_default.yaml", "sarif_template.txt", "cmd/**", "internal/**", "**/*.go", ".golangci.toml",
+              "docs/checks.md", "scripts/*.bash", "Makefile", ".github/workflows/**", ".github/actions/**", ".github/actionlint.yaml",
+              "!testdata/**", "!**/testdata/**"
+            ],
+            "docker": [
+              "*.go", "go.mod", "go.sum", "config_default.yaml", "sarif_template.txt", "cmd/**", "internal/**", "!**/*_test.go", "Dockerfile",
+              ".dockerignore", "scripts/*docker*.bash", "scripts/docker-action-wrapper.bash", "action.yml", "!**/testdata/**"
+            ],
+            "action": [
+              "*.go", "go.mod", "go.sum", "config_default.yaml", "sarif_template.txt", "cmd/**", "internal/**", "!**/*_test.go",
+              "packages/github-action/**", "distribution/npm/facade/types/**", "action.yml", "scripts/*.mjs", ".pre-commit-hooks.yaml",
+              ".goreleaser.yaml", "package.json", "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
+              "!**/testdata/**", "testdata/ok/minimal.yaml", "testdata/err/one_error.yaml"
+            ],
+            "action-tests": [
+              "packages/github-action/**", "distribution/npm/facade/types/**", "scripts/*.mjs", "action.yml", "package.json", "package-lock.json",
+              ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json"
+            ],
+            "precommit": [
+              "*.go", "go.mod", "go.sum", "config_default.yaml", "sarif_template.txt", "cmd/**", "internal/**", "!**/*_test.go",
+              ".pre-commit-hooks.yaml", "scripts/check-packaged-cli.bash", ".github/actions/setup-shellcheck/**", "!**/testdata/**"
+            ]
+          }
+        }
+  nix:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['nix']) }}
+    uses: $/.github/workflows/nix.yml
   unit-tests:
-    name: Unit tests
+    needs: changes
+    if: ${{ !cancelled() }}
+    name: Unit tests (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix: { os: [ubuntu-26.04, ubuntu-26.04-arm, macos-latest, macos-26-intel, windows-2025-vs2026, windows-11-vs2026-arm] }
-    runs-on: ${{ matrix.os }}
+    # Keep every required platform check present without allocating its native runner when unselected.
+    runs-on: ${{ (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['unit']) && matrix.os || 'ubuntu-slim' }}
+    env: { CI_UNIT: "${{ needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['unit'] }}" }
     steps:
       - uses: &ActionsCheckout actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        if: env.CI_UNIT == 'true'
         with: &NoCreds { persist-credentials: false }
       - parallel:
           - uses: &SetupGo actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+            if: env.CI_UNIT == 'true'
             with: &GoMod { go-version-file: go.mod }
           - uses: &SetupUv astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+            if: env.CI_UNIT == 'true'
             with: &NoCache { enable-cache: false }
-      - &InstallShellCheck { name: Install ShellCheck, uses: $/.github/actions/setup-shellcheck }
-      - &InstallRuff { name: Install Ruff for integration tests, run: uv tool install ruff==0.17.0 }
+      - name: Install ShellCheck
+        if: env.CI_UNIT == 'true'
+        uses: $/.github/actions/setup-shellcheck
+      - name: Install Ruff for integration tests
+        if: env.CI_UNIT == 'true'
+        run: uv tool install ruff==0.17.0
       - name: Install shells for completion tests on Linux
-        if: ${{ runner.os == 'Linux' }}
+        if: ${{ env.CI_UNIT == 'true' && runner.os == 'Linux' }}
         run: |
           sudo apt-get update && sudo apt-get install -y --no-install-recommends zsh fish bash-completion
           zsh --version; fish --version
-      - run: go test -v ./...
+      - if: env.CI_UNIT == 'true'
+        run: go test -v ./...
       # Check build without CGO
-      - run: go build ./cmd/actionlint
+      - if: env.CI_UNIT == 'true'
+        run: go build ./cmd/actionlint
         env: { CGO_ENABLED: 0 }
   race:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['race']) }}
     name: Race detector and coverage
     runs-on: ubuntu-latest
     permissions: { contents: read, id-token: write }
     steps:
       - &ActCheckNocred { uses: *ActionsCheckout, with: *NoCreds }
       - &GoGomod { uses: *SetupGo, with: *GoMod }
-      - *InstallShellCheck
+      - &InstallShellCheck { name: Install ShellCheck, uses: $/.github/actions/setup-shellcheck }
       - &Uv { uses: *SetupUv, with: *NoCache }
-      - *InstallRuff
+      - { name: Install Ruff for integration tests, run: uv tool install ruff==0.17.0 }
 
       - run: go test -v -race -coverprofile coverage.txt -covermode=atomic ./...
       - run: go tool cover -func ./coverage.txt
@@ -59,6 +150,8 @@ jobs:
       - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with: { use_oidc: true }
   wasm:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['wasm']) }}
     name: Wasm
     runs-on: ubuntu-latest
     steps:
@@ -75,9 +168,11 @@ jobs:
         run: run make:man
       - name: Build and test playground
         run: run -s actionlint-playground:build actionlint-playground:test
-      - name: Lint JavaScript workspaces
-        run: run -s lint:biome actionlint-playground:lint
+      - name: Lint playground
+        run: run actionlint-playground:lint
   javascript:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['javascript']) }}
     name: JavaScript
     runs-on: ubuntu-latest
     steps:
@@ -90,8 +185,10 @@ jobs:
           install_args: node npm github:kjanat/runner
       - name: Install dependencies and test JavaScript tooling
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false" }
-        run: runner install --pm npm --no-tools --frozen test:js
+        run: runner install --pm npm --no-tools --frozen test:js lint:biome
   release-snapshot:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['release']) }}
     name: Release snapshot
     runs-on: ubuntu-latest
     steps:
@@ -115,6 +212,8 @@ jobs:
       - name: Smoke-test the linux/amd64 snapshot binary
         run: ./dist/linux_linux_amd64_v1/actionlint -version
   action-modules:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['modules']) }}
     name: Action modules
     runs-on: ubuntu-latest
     steps:
@@ -133,6 +232,8 @@ jobs:
             echo "::endgroup::"
           done
   lint:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['lint']) }}
     name: Lint
     runs-on: ubuntu-latest
     steps:
@@ -152,6 +253,8 @@ jobs:
       - name: Lint bash scripts
         run: shellcheck ./scripts/*.bash
   docker:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['docker']) }}
     name: Dockerfile
     runs-on: ubuntu-latest
     steps:
@@ -178,6 +281,8 @@ jobs:
           - name: Lint Dockerfile with droast
             uses: immanuwell/dockerfile-roast@1c87b2aa189338c24db4acde40864dae8994de8f # 1.7.0
   action:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['action']) }}
     name: GitHub Action
     strategy:
       fail-fast: false
@@ -196,6 +301,7 @@ jobs:
             if: runner.os == 'Linux'
             uses: $/.github/actions/setup-shellcheck
       - name: Test the JavaScript runtime and release packaging
+        if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['action-tests']) }}
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false", MSYS_NO_PATHCONV: "1" }
         run: runner i --no-tools -fs actionlint-action:typecheck actionlint-action:test //scripts:test
       - name: Validate the staged release configuration
@@ -371,8 +477,14 @@ jobs:
     steps:
       - name: Require all Action platforms to pass
         env: { RESULT: "${{ needs.action.result }}", SLIM_RESULT: "${{ needs.action-slim.result }}" }
-        run: test "${RESULT}" = success && test "${SLIM_RESULT}" = success
+        run: |
+          if [[ "${RESULT}" == skipped && "${SLIM_RESULT}" == skipped ]]; then
+            exit 0
+          fi
+          test "${RESULT}" = success && test "${SLIM_RESULT}" = success
   pre-commit-shellcheck:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['precommit']) }}
     name: pre-commit ShellCheck integration
     runs-on: ubuntu-latest
     steps:

@@ -8,7 +8,26 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  changes:
+    uses: $/.github/workflows/ci-changes.yml
+    with:
+      filters: |
+        {
+          "shared": [
+            ".github/workflows/conformance.yml", ".github/workflows/ci-changes.yml", ".github/ci/**",
+            ".tool-versions", ".mise.toml"
+          ],
+          "jobs": {
+            "conformance": [
+              "*.go", "go.mod", "go.sum", "config_default.yaml", "sarif_template.txt", "cmd/**", "internal/**", "testdata/conformance/**",
+              "scripts/fetch-conformance/**", "!cmd/**", "!internal/cli/**", "!internal/githubaction/**", "!**/*_test.go",
+              "upstream_conformance_test.go", "internal/conformance/**", "!**/*.md"
+            ]
+          }
+        }
   conformance:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['conformance']) }}
     name: Upstream fixtures (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10

@@ -124,7 +124,7 @@ func TestIndependentTemplateValues(t *testing.T) {
 					return end + 2, end >= 0
 				})
 				python := "python"
-				if err := checker.Check(script, &python, "workflow:12", Config{}, func(d Diagnostic) { diagnostics = append(diagnostics, d) }); err != nil {
+				if err := checker.Check(script, &python, "workflow:12", Config{Select: []string{"F"}}, func(d Diagnostic) { diagnostics = append(diagnostics, d) }); err != nil {
 					t.Fatal(err)
 				}
 				if err := checker.Wait(); err != nil {

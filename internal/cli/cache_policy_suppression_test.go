@@ -20,7 +20,7 @@ jobs:
 ` + cachePolicySteps
 		var stdout, stderr strings.Builder
 		cmd := Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
-		status := cmd.Main([]string{"actionlint", "-shellcheck=", "-pyflakes=", "-no-color", "-format", "{{json .}}", "-"})
+		status := cmd.Main([]string{"actionlint", "--summary=false", "-shellcheck=", "-pyflakes=", "-no-color", "-format", "{{json .}}", "-"})
 		if stderr.Len() != 0 {
 			t.Fatalf("unexpected stderr: %s", &stderr)
 		}
@@ -49,7 +49,7 @@ jobs:
 ` + cachePolicySteps
 	var stdout, stderr strings.Builder
 	cmd := Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
-	status := cmd.Main([]string{"actionlint", "-shellcheck=", "-pyflakes=", "-format", actionlint.SARIFTemplate(), "-"})
+	status := cmd.Main([]string{"actionlint", "--summary=false", "-shellcheck=", "-pyflakes=", "-format", actionlint.SARIFTemplate(), "-"})
 	if status != actionlint.ExitStatusSuccessProblemFound || stderr.Len() != 0 {
 		t.Fatalf("status=%d stderr=%s", status, &stderr)
 	}
@@ -110,7 +110,7 @@ jobs:
 ` + cachePolicySteps
 			var stdout, stderr strings.Builder
 			cmd := Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
-			args := []string{"actionlint", "-shellcheck=", "-pyflakes=", "-no-color", "-format", "{{json .}}", "-stdin-filename", "test.yaml"}
+			args := []string{"actionlint", "--summary=false", "-shellcheck=", "-pyflakes=", "-no-color", "-format", "{{json .}}", "-stdin-filename", "test.yaml"}
 			if tc.pathIgnore != "" {
 				args = append(args, "-config-file", config)
 			}

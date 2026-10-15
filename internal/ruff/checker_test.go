@@ -18,7 +18,7 @@ func TestArguments(t *testing.T) {
 		config                      Config
 		selectRules, ignore, target string
 	}{
-		{"defaults", Config{}, "F", "", "py314"},
+		{"defaults", Config{}, "", "", "py314"},
 		{"selection", Config{Select: []string{"F", "B"}, Ignore: []string{"F401"}, TargetVersion: "py312"}, "F,B", "F401", "py312"},
 		{"empty selection", Config{Select: []string{}}, "ALL", "ALL", "py314"},
 	} {

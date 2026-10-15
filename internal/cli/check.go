@@ -1,13 +1,16 @@
 package cli
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"actionlint.kjanat.dev"
 	"actionlint.kjanat.dev/internal/fsread"
@@ -18,6 +21,33 @@ import (
 
 func executeCheck(ctx context.Context, streams Command, inv checkRequest) (status int, err error) {
 	c, r := inv.Check, inv.Render
+	overwrite := inv.Yes
+	if r.OutputFile != "" && r.OutputFile != "-" {
+		info, e := os.Lstat(r.OutputFile)
+		if e == nil {
+			if info.IsDir() {
+				return 0, fmt.Errorf("output file %q is a directory", r.OutputFile)
+			}
+			if !overwrite {
+				// stdin may be a pipe from yes, but never consume workflow input.
+				if _, terminal := terminalFile(streams.Stderr); !terminal || slices.Contains(c.Paths, "-") {
+					return 0, outputExistsError(r.OutputFile)
+				}
+				overwrite, err = confirmOverwrite(streams, r.OutputFile)
+				if err != nil {
+					return 0, err
+				}
+				if !overwrite {
+					return 0, fmt.Errorf("output file %q was not replaced", r.OutputFile)
+				}
+			}
+			if err := ctx.Err(); err != nil {
+				return 0, err
+			}
+		} else if !errors.Is(e, os.ErrNotExist) {
+			return 0, e
+		}
+	}
 	r, err = resolveTemplate(r)
 	if err != nil {
 		return 0, err
@@ -62,7 +92,15 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 				err = closeErr
 			}
 			if err == nil {
-				err = os.Rename(file.Name(), r.OutputFile)
+				if overwrite {
+					err = os.Rename(file.Name(), r.OutputFile)
+				} else {
+					// Publish without replacing a destination created during analysis.
+					err = publishNewReport(file.Name(), r.OutputFile)
+					if errors.Is(err, os.ErrExist) {
+						err = outputExistsError(r.OutputFile)
+					}
+				}
 			}
 			_ = os.Remove(file.Name())
 		}()
@@ -74,13 +112,13 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	r.resolveGitHubActionsColor(out)
 	jsonDestination := out
 	_, terminal := terminalFile(out)
-	prettyJSON := terminal && r.PrettyJSON && r.Template == "" && (r.Format == actionlint.OutputFormatJSON || r.Format == actionlint.OutputFormatSARIF)
+	prettyJSON := (terminal || r.PrettyJSONExplicit) && r.PrettyJSON && r.Template == "" && (r.Format == actionlint.OutputFormatJSON || r.Format == actionlint.OutputFormatSARIF)
 	log := streams.Stderr
 	if inv.JSON {
 		log = &commandJSONLogWriter{out: log}
 	}
 	if c.Pyflakes != "" {
-		fmt.Fprintln(log, "warning: --pyflakes is deprecated and ignored; use Ruff for Python script linting")
+		fmt.Fprintln(log, "warning: --pyflakes is deprecated; use --ruff for Python script linting")
 	}
 	options := actionlint.LinterOptions{
 		Context: ctx, LogWriter: log, Color: r.Color, Oneline: r.Oneline,
@@ -184,7 +222,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		if err := renderer.Render(&data, result); err != nil {
 			return 0, err
 		}
-		if err := writeTerminalJSON(ctx, jsonDestination, jsonColor, data.Bytes()); err != nil {
+		if err := writePrettyJSON(ctx, jsonDestination, jsonColor, data.Bytes(), r.PrettyJSONExplicit); err != nil {
 			return 0, err
 		}
 	} else if err := renderer.Render(out, result); err != nil {
@@ -202,10 +240,27 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		if inv.JSON {
 			err = writeCommandJSON(streams.Stderr, map[string]actionlint.CheckSummary{"summary": summary})
 		} else {
-			_, err = fmt.Fprintf(streams.Stderr, "Checked %d workflows; %d findings.\n", summary.Files, summary.Findings)
+			err = writeCheckSummary(streams.Stderr, inv.Render.Color, summary)
 		}
 	}
 	return status, err
+}
+
+func outputExistsError(path string) error {
+	return fmt.Errorf("output file %q already exists; use --yes to replace it", path)
+}
+
+// Confirmation uses stderr so report output remains usable by other programs.
+func confirmOverwrite(streams Command, path string) (bool, error) {
+	if _, err := fmt.Fprintf(streams.Stderr, "%q already exists. Overwrite? [y/N] ", path); err != nil {
+		return false, err
+	}
+	answer, err := bufio.NewReader(streams.Stdin).ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return false, err
+	}
+	answer = strings.TrimSpace(answer)
+	return strings.EqualFold(answer, "y") || strings.EqualFold(answer, "yes"), nil
 }
 
 // checkAnalysisError carries collected findings to the existing failure report.

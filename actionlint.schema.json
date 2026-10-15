@@ -316,8 +316,8 @@
                           "properties": {
                             "action": {
                               "title": "action",
-                              "description": "Checks for popular actions released on GitHub, local actions, and action calls at \"uses:\"",
-                              "markdownDescription": "Checks for popular actions released on GitHub, local actions, and action calls at \"uses:\"",
+                              "description": "Validate action references, inputs, outputs, and local metadata",
+                              "markdownDescription": "Validate action references, inputs, outputs, and local metadata",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -389,8 +389,8 @@
                             },
                             "cache-operation": {
                               "title": "cache-operation",
-                              "description": "Checks cache actions disabled by explicit cache access modes",
-                              "markdownDescription": "Checks cache actions disabled by explicit cache access modes",
+                              "description": "Report cache actions blocked by explicit cache access limits",
+                              "markdownDescription": "Report cache actions blocked by explicit cache access limits",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -462,8 +462,8 @@
                             },
                             "deprecated-commands": {
                               "title": "deprecated-commands",
-                              "description": "Checks for deprecated \"set-output\", \"save-state\", \"set-env\", and \"add-path\" commands at \"run:\"",
-                              "markdownDescription": "Checks for deprecated \"set-output\", \"save-state\", \"set-env\", and \"add-path\" commands at \"run:\"",
+                              "description": "Report deprecated set-output, save-state, set-env, and add-path commands",
+                              "markdownDescription": "Report deprecated set-output, save-state, set-env, and add-path commands",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -535,8 +535,8 @@
                             },
                             "env-var": {
                               "title": "env-var",
-                              "description": "Checks for environment variables configuration at \"env:\"",
-                              "markdownDescription": "Checks for environment variables configuration at \"env:\"",
+                              "description": "Validate environment variable declarations",
+                              "markdownDescription": "Validate environment variable declarations",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -608,8 +608,8 @@
                             },
                             "events": {
                               "title": "events",
-                              "description": "Checks for workflow trigger events at \"on:\"",
-                              "markdownDescription": "Checks for workflow trigger events at \"on:\"",
+                              "description": "Validate workflow triggers and their options",
+                              "markdownDescription": "Validate workflow triggers and their options",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -681,8 +681,8 @@
                             },
                             "executable-bit": {
                               "title": "executable-bit",
-                              "description": "Checks Git executable bits for directly invoked repository scripts",
-                              "markdownDescription": "Checks Git executable bits for directly invoked repository scripts",
+                              "description": "Report directly invoked repository scripts not marked executable in Git",
+                              "markdownDescription": "Report directly invoked repository scripts not marked executable in Git",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -754,8 +754,8 @@
                             },
                             "expression": {
                               "title": "expression",
-                              "description": "Syntax and semantics checks for expressions embedded with ${{ }} syntax",
-                              "markdownDescription": "Syntax and semantics checks for expressions embedded with ${{ }} syntax",
+                              "description": "Validate expression syntax, names, types, and context availability",
+                              "markdownDescription": "Validate expression syntax, names, types, and context availability",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -827,8 +827,8 @@
                             },
                             "glob": {
                               "title": "glob",
-                              "description": "Checks for glob syntax used in branch names, tags, and paths",
-                              "markdownDescription": "Checks for glob syntax used in branch names, tags, and paths",
+                              "description": "Validate branch, tag, and path filter patterns",
+                              "markdownDescription": "Validate branch, tag, and path filter patterns",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -900,8 +900,8 @@
                             },
                             "id": {
                               "title": "id",
-                              "description": "Checks for duplication and naming convention of job/step IDs",
-                              "markdownDescription": "Checks for duplication and naming convention of job/step IDs",
+                              "description": "Report invalid job or step IDs and duplicate step IDs",
+                              "markdownDescription": "Report invalid job or step IDs and duplicate step IDs",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -973,8 +973,8 @@
                             },
                             "if-cond": {
                               "title": "if-cond",
-                              "description": "Checks for if: conditions which are always true/false",
-                              "markdownDescription": "Checks for if: conditions which are always true/false",
+                              "description": "Report conditions that always evaluate to true or false",
+                              "markdownDescription": "Report conditions that always evaluate to true or false",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -1046,8 +1046,8 @@
                             },
                             "inline-suppression": {
                               "title": "inline-suppression",
-                              "description": "Checks inline diagnostic suppression directives",
-                              "markdownDescription": "Checks inline diagnostic suppression directives",
+                              "description": "Validate inline suppression directives",
+                              "markdownDescription": "Validate inline suppression directives",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -1119,8 +1119,8 @@
                             },
                             "job-needs": {
                               "title": "job-needs",
-                              "description": "Checks for job IDs in \"needs:\". Undefined IDs and cyclic dependencies are checked",
-                              "markdownDescription": "Checks for job IDs in \"needs:\". Undefined IDs and cyclic dependencies are checked",
+                              "description": "Report undefined job dependencies and dependency cycles",
+                              "markdownDescription": "Report undefined job dependencies and dependency cycles",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -1221,8 +1221,8 @@
                             },
                             "matrix": {
                               "title": "matrix",
-                              "description": "Checks for matrix combinations in \"matrix:\"",
-                              "markdownDescription": "Checks for matrix combinations in \"matrix:\"",
+                              "description": "Validate matrix definitions, combinations, and filters",
+                              "markdownDescription": "Validate matrix definitions, combinations, and filters",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -1294,8 +1294,8 @@
                             },
                             "missing-local-action": {
                               "title": "missing-local-action",
-                              "description": "Checks that local action manifests can be resolved",
-                              "markdownDescription": "Checks that local action manifests can be resolved",
+                              "description": "Report local action references whose manifests cannot be found",
+                              "markdownDescription": "Report local action references whose manifests cannot be found",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -1367,8 +1367,8 @@
                             },
                             "parallel-steps": {
                               "title": "parallel-steps",
-                              "description": "Checks \"wait\"/\"cancel\" references to background steps and steps forbidden inside a \"parallel\" group",
-                              "markdownDescription": "Checks \"wait\"/\"cancel\" references to background steps and steps forbidden inside a \"parallel\" group",
+                              "description": "Validate background-step references and restrictions within parallel groups",
+                              "markdownDescription": "Validate background-step references and restrictions within parallel groups",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -1440,8 +1440,8 @@
                             },
                             "permissions": {
                               "title": "permissions",
-                              "description": "Checks for permissions configuration in \"permissions:\". Permission names and permission scopes are checked",
-                              "markdownDescription": "Checks for permissions configuration in \"permissions:\". Permission names and permission scopes are checked",
+                              "description": "Validate token permission scopes and access levels",
+                              "markdownDescription": "Validate token permission scopes and access levels",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -1524,8 +1524,8 @@
                             },
                             "runner-label": {
                               "title": "runner-label",
-                              "description": "Checks for GitHub-hosted and preset self-hosted runner labels in \"runs-on:\"",
-                              "markdownDescription": "Checks for GitHub-hosted and preset self-hosted runner labels in \"runs-on:\"",
+                              "description": "Report unknown or incompatible runner labels",
+                              "markdownDescription": "Report unknown or incompatible runner labels",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -1597,8 +1597,8 @@
                             },
                             "shell-name": {
                               "title": "shell-name",
-                              "description": "Checks for shell names used for scripts in \"run:\"",
-                              "markdownDescription": "Checks for shell names used for scripts in \"run:\"",
+                              "description": "Validate script shells for the selected runner",
+                              "markdownDescription": "Validate script shells for the selected runner",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -1670,8 +1670,8 @@
                             },
                             "syntax-check": {
                               "title": "syntax-check",
-                              "description": "Checks for GitHub Actions workflow syntax",
-                              "markdownDescription": "Checks for GitHub Actions workflow syntax",
+                              "description": "Validate GitHub Actions workflow syntax",
+                              "markdownDescription": "Validate GitHub Actions workflow syntax",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -1743,8 +1743,8 @@
                             },
                             "unsound-ternary": {
                               "title": "unsound-ternary",
-                              "description": "Checks conditional expressions whose falsy middle operand always selects the fallback",
-                              "markdownDescription": "Checks conditional expressions whose falsy middle operand always selects the fallback",
+                              "description": "Report a && b || c expressions where b is always falsy",
+                              "markdownDescription": "Report a && b || c expressions where b is always falsy",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -1816,8 +1816,8 @@
                             },
                             "workflow-call": {
                               "title": "workflow-call",
-                              "description": "Checks for reusable workflow calls. Inputs and outputs of called reusable workflow are checked",
-                              "markdownDescription": "Checks for reusable workflow calls. Inputs and outputs of called reusable workflow are checked",
+                              "description": "Validate reusable workflow references and their declared inputs and outputs",
+                              "markdownDescription": "Validate reusable workflow references and their declared inputs and outputs",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -1889,8 +1889,8 @@
                             },
                             "workflow-run-names": {
                               "title": "workflow-run-names",
-                              "description": "Checks workflow_run names against repository workflows",
-                              "markdownDescription": "Checks workflow_run names against repository workflows",
+                              "description": "Report workflow_run references to unknown repository workflows",
+                              "markdownDescription": "Report workflow_run references to unknown repository workflows",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -2097,8 +2097,8 @@
                             },
                             "ruff": {
                               "title": "ruff",
-                              "description": "Checks embedded Python scripts with Ruff",
-                              "markdownDescription": "Checks embedded Python scripts with Ruff",
+                              "description": "Analyze embedded Python scripts with Ruff",
+                              "markdownDescription": "Analyze embedded Python scripts with Ruff",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -2170,8 +2170,8 @@
                             },
                             "shellcheck": {
                               "title": "shellcheck",
-                              "description": "Checks for shell script sources in \"run:\" using shellcheck",
-                              "markdownDescription": "Checks for shell script sources in \"run:\" using shellcheck",
+                              "description": "Analyze embedded shell scripts with ShellCheck",
+                              "markdownDescription": "Analyze embedded shell scripts with ShellCheck",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -2365,8 +2365,8 @@
                           "properties": {
                             "disallow-suppressions": {
                               "title": "disallow-suppressions",
-                              "description": "Reports inline and configured exceptions prohibited by suppression policy. Stable; not enabled by the recommended preset.",
-                              "markdownDescription": "Reports inline and configured exceptions prohibited by suppression policy. Stable; not enabled by the recommended preset.",
+                              "description": "Report suppressions forbidden by policy. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Report suppressions forbidden by policy. Stable; not enabled by the recommended preset.",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -2561,8 +2561,8 @@
                             },
                             "require-commit-hash": {
                               "title": "require-commit-hash",
-                              "description": "Checks that every \"uses:\" is pinned to a full-length commit SHA or an image digest. Stable; not enabled by the recommended preset.",
-                              "markdownDescription": "Checks that every \"uses:\" is pinned to a full-length commit SHA or an image digest. Stable; not enabled by the recommended preset.",
+                              "description": "Require full commit SHAs for actions and workflows, and digests for images. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Require full commit SHAs for actions and workflows, and digests for images. Stable; not enabled by the recommended preset.",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -2634,8 +2634,8 @@
                             },
                             "require-job-timeout": {
                               "title": "require-job-timeout",
-                              "description": "Checks that every job sets \"timeout-minutes:\" within the configured bounds. Stable; not enabled by the recommended preset.",
-                              "markdownDescription": "Checks that every job sets \"timeout-minutes:\" within the configured bounds. Stable; not enabled by the recommended preset.",
+                              "description": "Require explicit job timeouts within configured bounds. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Require explicit job timeouts within configured bounds. Stable; not enabled by the recommended preset.",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -2744,8 +2744,8 @@
                             },
                             "require-permissions": {
                               "title": "require-permissions",
-                              "description": "Checks for an explicit permissions declaration at workflow or job scope. Stable; not enabled by the recommended preset.",
-                              "markdownDescription": "Checks for an explicit permissions declaration at workflow or job scope. Stable; not enabled by the recommended preset.",
+                              "description": "Require explicit token permissions at workflow or job scope. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Require explicit token permissions at workflow or job scope. Stable; not enabled by the recommended preset.",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -2851,8 +2851,8 @@
                             },
                             "required-actions": {
                               "title": "required-actions",
-                              "description": "Checks that the actions listed in the \"required-actions\" policy in actionlint.yaml are used. Stable; not enabled by the recommended preset.",
-                              "markdownDescription": "Checks that the actions listed in the \"required-actions\" policy in actionlint.yaml are used. Stable; not enabled by the recommended preset.",
+                              "description": "Require actions listed in the project policy. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Require actions listed in the project policy. Stable; not enabled by the recommended preset.",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -3006,8 +3006,8 @@
                           "properties": {
                             "cache-call-unrestricted": {
                               "title": "cache-call-unrestricted",
-                              "description": "Checks cache access ceilings on low-trust reusable workflow calls",
-                              "markdownDescription": "Checks cache access ceilings on low-trust reusable workflow calls",
+                              "description": "Report reusable workflow calls without explicit cache limits on low-trust triggers",
+                              "markdownDescription": "Report reusable workflow calls without explicit cache limits on low-trust triggers",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -3079,8 +3079,8 @@
                             },
                             "cache-write-untrusted": {
                               "title": "cache-write-untrusted",
-                              "description": "Checks cache write grants on low-trust triggers",
-                              "markdownDescription": "Checks cache write grants on low-trust triggers",
+                              "description": "Report cache write access granted on low-trust triggers",
+                              "markdownDescription": "Report cache write access granted on low-trust triggers",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -3152,8 +3152,8 @@
                             },
                             "credentials": {
                               "title": "credentials",
-                              "description": "Checks for credentials in \"services:\" configuration",
-                              "markdownDescription": "Checks for credentials in \"services:\" configuration",
+                              "description": "Detect hardcoded passwords in job and service containers",
+                              "markdownDescription": "Detect hardcoded passwords in job and service containers",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -3306,8 +3306,8 @@
                           "properties": {
                             "case-insensitive-conditions": {
                               "title": "case-insensitive-conditions",
-                              "description": "Checks identity comparisons using case-insensitive matching. Stable; not enabled by the recommended preset.",
-                              "markdownDescription": "Checks identity comparisons using case-insensitive matching. Stable; not enabled by the recommended preset.",
+                              "description": "Flag case-insensitive identity comparisons. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Flag case-insensitive identity comparisons. Stable; not enabled by the recommended preset.",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -3408,8 +3408,8 @@
                             },
                             "mixed-type-comparisons": {
                               "title": "mixed-type-comparisons",
-                              "description": "Checks condition comparisons using implicit scalar coercion. Stable; not enabled by the recommended preset.",
-                              "markdownDescription": "Checks condition comparisons using implicit scalar coercion. Stable; not enabled by the recommended preset.",
+                              "description": "Flag condition comparisons that implicitly convert scalar types. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Flag condition comparisons that implicitly convert scalar types. Stable; not enabled by the recommended preset.",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -3481,8 +3481,8 @@
                             },
                             "mixed-type-matrix-filters": {
                               "title": "mixed-type-matrix-filters",
-                              "description": "Checks matrix filters comparing different scalar types. Stable; not enabled by the recommended preset.",
-                              "markdownDescription": "Checks matrix filters comparing different scalar types. Stable; not enabled by the recommended preset.",
+                              "description": "Flag matrix filters that compare different or unknown scalar types. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Flag matrix filters that compare different or unknown scalar types. Stable; not enabled by the recommended preset.",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -3565,8 +3565,8 @@
                             },
                             "string-conditions": {
                               "title": "string-conditions",
-                              "description": "Checks bare string conditions for unexpected truthiness. Stable; not enabled by the recommended preset.",
-                              "markdownDescription": "Checks bare string conditions for unexpected truthiness. Stable; not enabled by the recommended preset.",
+                              "description": "Flag string conditions whose truthiness may be misleading. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Flag string conditions whose truthiness may be misleading. Stable; not enabled by the recommended preset.",
                               "oneOf": [
                                 {
                                   "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -3782,8 +3782,8 @@
                                     "properties": {
                                       "action": {
                                         "title": "action",
-                                        "description": "Checks for popular actions released on GitHub, local actions, and action calls at \"uses:\"",
-                                        "markdownDescription": "Checks for popular actions released on GitHub, local actions, and action calls at \"uses:\"",
+                                        "description": "Validate action references, inputs, outputs, and local metadata",
+                                        "markdownDescription": "Validate action references, inputs, outputs, and local metadata",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -3855,8 +3855,8 @@
                                       },
                                       "cache-operation": {
                                         "title": "cache-operation",
-                                        "description": "Checks cache actions disabled by explicit cache access modes",
-                                        "markdownDescription": "Checks cache actions disabled by explicit cache access modes",
+                                        "description": "Report cache actions blocked by explicit cache access limits",
+                                        "markdownDescription": "Report cache actions blocked by explicit cache access limits",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -3928,8 +3928,8 @@
                                       },
                                       "deprecated-commands": {
                                         "title": "deprecated-commands",
-                                        "description": "Checks for deprecated \"set-output\", \"save-state\", \"set-env\", and \"add-path\" commands at \"run:\"",
-                                        "markdownDescription": "Checks for deprecated \"set-output\", \"save-state\", \"set-env\", and \"add-path\" commands at \"run:\"",
+                                        "description": "Report deprecated set-output, save-state, set-env, and add-path commands",
+                                        "markdownDescription": "Report deprecated set-output, save-state, set-env, and add-path commands",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -4001,8 +4001,8 @@
                                       },
                                       "env-var": {
                                         "title": "env-var",
-                                        "description": "Checks for environment variables configuration at \"env:\"",
-                                        "markdownDescription": "Checks for environment variables configuration at \"env:\"",
+                                        "description": "Validate environment variable declarations",
+                                        "markdownDescription": "Validate environment variable declarations",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -4074,8 +4074,8 @@
                                       },
                                       "events": {
                                         "title": "events",
-                                        "description": "Checks for workflow trigger events at \"on:\"",
-                                        "markdownDescription": "Checks for workflow trigger events at \"on:\"",
+                                        "description": "Validate workflow triggers and their options",
+                                        "markdownDescription": "Validate workflow triggers and their options",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -4147,8 +4147,8 @@
                                       },
                                       "executable-bit": {
                                         "title": "executable-bit",
-                                        "description": "Checks Git executable bits for directly invoked repository scripts",
-                                        "markdownDescription": "Checks Git executable bits for directly invoked repository scripts",
+                                        "description": "Report directly invoked repository scripts not marked executable in Git",
+                                        "markdownDescription": "Report directly invoked repository scripts not marked executable in Git",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -4220,8 +4220,8 @@
                                       },
                                       "expression": {
                                         "title": "expression",
-                                        "description": "Syntax and semantics checks for expressions embedded with ${{ }} syntax",
-                                        "markdownDescription": "Syntax and semantics checks for expressions embedded with ${{ }} syntax",
+                                        "description": "Validate expression syntax, names, types, and context availability",
+                                        "markdownDescription": "Validate expression syntax, names, types, and context availability",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -4293,8 +4293,8 @@
                                       },
                                       "glob": {
                                         "title": "glob",
-                                        "description": "Checks for glob syntax used in branch names, tags, and paths",
-                                        "markdownDescription": "Checks for glob syntax used in branch names, tags, and paths",
+                                        "description": "Validate branch, tag, and path filter patterns",
+                                        "markdownDescription": "Validate branch, tag, and path filter patterns",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -4366,8 +4366,8 @@
                                       },
                                       "id": {
                                         "title": "id",
-                                        "description": "Checks for duplication and naming convention of job/step IDs",
-                                        "markdownDescription": "Checks for duplication and naming convention of job/step IDs",
+                                        "description": "Report invalid job or step IDs and duplicate step IDs",
+                                        "markdownDescription": "Report invalid job or step IDs and duplicate step IDs",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -4439,8 +4439,8 @@
                                       },
                                       "if-cond": {
                                         "title": "if-cond",
-                                        "description": "Checks for if: conditions which are always true/false",
-                                        "markdownDescription": "Checks for if: conditions which are always true/false",
+                                        "description": "Report conditions that always evaluate to true or false",
+                                        "markdownDescription": "Report conditions that always evaluate to true or false",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -4512,8 +4512,8 @@
                                       },
                                       "inline-suppression": {
                                         "title": "inline-suppression",
-                                        "description": "Checks inline diagnostic suppression directives",
-                                        "markdownDescription": "Checks inline diagnostic suppression directives",
+                                        "description": "Validate inline suppression directives",
+                                        "markdownDescription": "Validate inline suppression directives",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -4585,8 +4585,8 @@
                                       },
                                       "job-needs": {
                                         "title": "job-needs",
-                                        "description": "Checks for job IDs in \"needs:\". Undefined IDs and cyclic dependencies are checked",
-                                        "markdownDescription": "Checks for job IDs in \"needs:\". Undefined IDs and cyclic dependencies are checked",
+                                        "description": "Report undefined job dependencies and dependency cycles",
+                                        "markdownDescription": "Report undefined job dependencies and dependency cycles",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -4687,8 +4687,8 @@
                                       },
                                       "matrix": {
                                         "title": "matrix",
-                                        "description": "Checks for matrix combinations in \"matrix:\"",
-                                        "markdownDescription": "Checks for matrix combinations in \"matrix:\"",
+                                        "description": "Validate matrix definitions, combinations, and filters",
+                                        "markdownDescription": "Validate matrix definitions, combinations, and filters",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -4760,8 +4760,8 @@
                                       },
                                       "missing-local-action": {
                                         "title": "missing-local-action",
-                                        "description": "Checks that local action manifests can be resolved",
-                                        "markdownDescription": "Checks that local action manifests can be resolved",
+                                        "description": "Report local action references whose manifests cannot be found",
+                                        "markdownDescription": "Report local action references whose manifests cannot be found",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -4833,8 +4833,8 @@
                                       },
                                       "parallel-steps": {
                                         "title": "parallel-steps",
-                                        "description": "Checks \"wait\"/\"cancel\" references to background steps and steps forbidden inside a \"parallel\" group",
-                                        "markdownDescription": "Checks \"wait\"/\"cancel\" references to background steps and steps forbidden inside a \"parallel\" group",
+                                        "description": "Validate background-step references and restrictions within parallel groups",
+                                        "markdownDescription": "Validate background-step references and restrictions within parallel groups",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -4906,8 +4906,8 @@
                                       },
                                       "permissions": {
                                         "title": "permissions",
-                                        "description": "Checks for permissions configuration in \"permissions:\". Permission names and permission scopes are checked",
-                                        "markdownDescription": "Checks for permissions configuration in \"permissions:\". Permission names and permission scopes are checked",
+                                        "description": "Validate token permission scopes and access levels",
+                                        "markdownDescription": "Validate token permission scopes and access levels",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -4990,8 +4990,8 @@
                                       },
                                       "runner-label": {
                                         "title": "runner-label",
-                                        "description": "Checks for GitHub-hosted and preset self-hosted runner labels in \"runs-on:\"",
-                                        "markdownDescription": "Checks for GitHub-hosted and preset self-hosted runner labels in \"runs-on:\"",
+                                        "description": "Report unknown or incompatible runner labels",
+                                        "markdownDescription": "Report unknown or incompatible runner labels",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -5063,8 +5063,8 @@
                                       },
                                       "shell-name": {
                                         "title": "shell-name",
-                                        "description": "Checks for shell names used for scripts in \"run:\"",
-                                        "markdownDescription": "Checks for shell names used for scripts in \"run:\"",
+                                        "description": "Validate script shells for the selected runner",
+                                        "markdownDescription": "Validate script shells for the selected runner",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -5136,8 +5136,8 @@
                                       },
                                       "syntax-check": {
                                         "title": "syntax-check",
-                                        "description": "Checks for GitHub Actions workflow syntax",
-                                        "markdownDescription": "Checks for GitHub Actions workflow syntax",
+                                        "description": "Validate GitHub Actions workflow syntax",
+                                        "markdownDescription": "Validate GitHub Actions workflow syntax",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -5209,8 +5209,8 @@
                                       },
                                       "unsound-ternary": {
                                         "title": "unsound-ternary",
-                                        "description": "Checks conditional expressions whose falsy middle operand always selects the fallback",
-                                        "markdownDescription": "Checks conditional expressions whose falsy middle operand always selects the fallback",
+                                        "description": "Report a && b || c expressions where b is always falsy",
+                                        "markdownDescription": "Report a && b || c expressions where b is always falsy",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -5282,8 +5282,8 @@
                                       },
                                       "workflow-call": {
                                         "title": "workflow-call",
-                                        "description": "Checks for reusable workflow calls. Inputs and outputs of called reusable workflow are checked",
-                                        "markdownDescription": "Checks for reusable workflow calls. Inputs and outputs of called reusable workflow are checked",
+                                        "description": "Validate reusable workflow references and their declared inputs and outputs",
+                                        "markdownDescription": "Validate reusable workflow references and their declared inputs and outputs",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -5355,8 +5355,8 @@
                                       },
                                       "workflow-run-names": {
                                         "title": "workflow-run-names",
-                                        "description": "Checks workflow_run names against repository workflows",
-                                        "markdownDescription": "Checks workflow_run names against repository workflows",
+                                        "description": "Report workflow_run references to unknown repository workflows",
+                                        "markdownDescription": "Report workflow_run references to unknown repository workflows",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -5563,8 +5563,8 @@
                                       },
                                       "ruff": {
                                         "title": "ruff",
-                                        "description": "Checks embedded Python scripts with Ruff",
-                                        "markdownDescription": "Checks embedded Python scripts with Ruff",
+                                        "description": "Analyze embedded Python scripts with Ruff",
+                                        "markdownDescription": "Analyze embedded Python scripts with Ruff",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -5636,8 +5636,8 @@
                                       },
                                       "shellcheck": {
                                         "title": "shellcheck",
-                                        "description": "Checks for shell script sources in \"run:\" using shellcheck",
-                                        "markdownDescription": "Checks for shell script sources in \"run:\" using shellcheck",
+                                        "description": "Analyze embedded shell scripts with ShellCheck",
+                                        "markdownDescription": "Analyze embedded shell scripts with ShellCheck",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -5831,8 +5831,8 @@
                                     "properties": {
                                       "disallow-suppressions": {
                                         "title": "disallow-suppressions",
-                                        "description": "Reports inline and configured exceptions prohibited by suppression policy. Stable; not enabled by the recommended preset.",
-                                        "markdownDescription": "Reports inline and configured exceptions prohibited by suppression policy. Stable; not enabled by the recommended preset.",
+                                        "description": "Report suppressions forbidden by policy. Stable; not enabled by the recommended preset.",
+                                        "markdownDescription": "Report suppressions forbidden by policy. Stable; not enabled by the recommended preset.",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -6027,8 +6027,8 @@
                                       },
                                       "require-commit-hash": {
                                         "title": "require-commit-hash",
-                                        "description": "Checks that every \"uses:\" is pinned to a full-length commit SHA or an image digest. Stable; not enabled by the recommended preset.",
-                                        "markdownDescription": "Checks that every \"uses:\" is pinned to a full-length commit SHA or an image digest. Stable; not enabled by the recommended preset.",
+                                        "description": "Require full commit SHAs for actions and workflows, and digests for images. Stable; not enabled by the recommended preset.",
+                                        "markdownDescription": "Require full commit SHAs for actions and workflows, and digests for images. Stable; not enabled by the recommended preset.",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -6100,8 +6100,8 @@
                                       },
                                       "require-job-timeout": {
                                         "title": "require-job-timeout",
-                                        "description": "Checks that every job sets \"timeout-minutes:\" within the configured bounds. Stable; not enabled by the recommended preset.",
-                                        "markdownDescription": "Checks that every job sets \"timeout-minutes:\" within the configured bounds. Stable; not enabled by the recommended preset.",
+                                        "description": "Require explicit job timeouts within configured bounds. Stable; not enabled by the recommended preset.",
+                                        "markdownDescription": "Require explicit job timeouts within configured bounds. Stable; not enabled by the recommended preset.",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -6210,8 +6210,8 @@
                                       },
                                       "require-permissions": {
                                         "title": "require-permissions",
-                                        "description": "Checks for an explicit permissions declaration at workflow or job scope. Stable; not enabled by the recommended preset.",
-                                        "markdownDescription": "Checks for an explicit permissions declaration at workflow or job scope. Stable; not enabled by the recommended preset.",
+                                        "description": "Require explicit token permissions at workflow or job scope. Stable; not enabled by the recommended preset.",
+                                        "markdownDescription": "Require explicit token permissions at workflow or job scope. Stable; not enabled by the recommended preset.",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -6317,8 +6317,8 @@
                                       },
                                       "required-actions": {
                                         "title": "required-actions",
-                                        "description": "Checks that the actions listed in the \"required-actions\" policy in actionlint.yaml are used. Stable; not enabled by the recommended preset.",
-                                        "markdownDescription": "Checks that the actions listed in the \"required-actions\" policy in actionlint.yaml are used. Stable; not enabled by the recommended preset.",
+                                        "description": "Require actions listed in the project policy. Stable; not enabled by the recommended preset.",
+                                        "markdownDescription": "Require actions listed in the project policy. Stable; not enabled by the recommended preset.",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -6472,8 +6472,8 @@
                                     "properties": {
                                       "cache-call-unrestricted": {
                                         "title": "cache-call-unrestricted",
-                                        "description": "Checks cache access ceilings on low-trust reusable workflow calls",
-                                        "markdownDescription": "Checks cache access ceilings on low-trust reusable workflow calls",
+                                        "description": "Report reusable workflow calls without explicit cache limits on low-trust triggers",
+                                        "markdownDescription": "Report reusable workflow calls without explicit cache limits on low-trust triggers",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -6545,8 +6545,8 @@
                                       },
                                       "cache-write-untrusted": {
                                         "title": "cache-write-untrusted",
-                                        "description": "Checks cache write grants on low-trust triggers",
-                                        "markdownDescription": "Checks cache write grants on low-trust triggers",
+                                        "description": "Report cache write access granted on low-trust triggers",
+                                        "markdownDescription": "Report cache write access granted on low-trust triggers",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -6618,8 +6618,8 @@
                                       },
                                       "credentials": {
                                         "title": "credentials",
-                                        "description": "Checks for credentials in \"services:\" configuration",
-                                        "markdownDescription": "Checks for credentials in \"services:\" configuration",
+                                        "description": "Detect hardcoded passwords in job and service containers",
+                                        "markdownDescription": "Detect hardcoded passwords in job and service containers",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -6772,8 +6772,8 @@
                                     "properties": {
                                       "case-insensitive-conditions": {
                                         "title": "case-insensitive-conditions",
-                                        "description": "Checks identity comparisons using case-insensitive matching. Stable; not enabled by the recommended preset.",
-                                        "markdownDescription": "Checks identity comparisons using case-insensitive matching. Stable; not enabled by the recommended preset.",
+                                        "description": "Flag case-insensitive identity comparisons. Stable; not enabled by the recommended preset.",
+                                        "markdownDescription": "Flag case-insensitive identity comparisons. Stable; not enabled by the recommended preset.",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -6874,8 +6874,8 @@
                                       },
                                       "mixed-type-comparisons": {
                                         "title": "mixed-type-comparisons",
-                                        "description": "Checks condition comparisons using implicit scalar coercion. Stable; not enabled by the recommended preset.",
-                                        "markdownDescription": "Checks condition comparisons using implicit scalar coercion. Stable; not enabled by the recommended preset.",
+                                        "description": "Flag condition comparisons that implicitly convert scalar types. Stable; not enabled by the recommended preset.",
+                                        "markdownDescription": "Flag condition comparisons that implicitly convert scalar types. Stable; not enabled by the recommended preset.",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -6947,8 +6947,8 @@
                                       },
                                       "mixed-type-matrix-filters": {
                                         "title": "mixed-type-matrix-filters",
-                                        "description": "Checks matrix filters comparing different scalar types. Stable; not enabled by the recommended preset.",
-                                        "markdownDescription": "Checks matrix filters comparing different scalar types. Stable; not enabled by the recommended preset.",
+                                        "description": "Flag matrix filters that compare different or unknown scalar types. Stable; not enabled by the recommended preset.",
+                                        "markdownDescription": "Flag matrix filters that compare different or unknown scalar types. Stable; not enabled by the recommended preset.",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -7031,8 +7031,8 @@
                                       },
                                       "string-conditions": {
                                         "title": "string-conditions",
-                                        "description": "Checks bare string conditions for unexpected truthiness. Stable; not enabled by the recommended preset.",
-                                        "markdownDescription": "Checks bare string conditions for unexpected truthiness. Stable; not enabled by the recommended preset.",
+                                        "description": "Flag string conditions whose truthiness may be misleading. Stable; not enabled by the recommended preset.",
+                                        "markdownDescription": "Flag string conditions whose truthiness may be misleading. Stable; not enabled by the recommended preset.",
                                         "oneOf": [
                                           {
                                             "description": "Diagnostic level: default, off, on, info, warn, or error.",
@@ -7199,8 +7199,8 @@
                           },
                           "select": {
                             "title": "select",
-                            "description": "Ruff rule codes or prefixes to select; omission selects F.",
-                            "markdownDescription": "Ruff rule codes or prefixes to select; omission selects F.",
+                            "description": "Ruff rule codes or prefixes to select; omission uses Ruff's defaults.",
+                            "markdownDescription": "Ruff rule codes or prefixes to select; omission uses Ruff's defaults.",
                             "items": {
                               "examples": [
                                 "F",
@@ -7725,8 +7725,8 @@
                 },
                 "select": {
                   "title": "select",
-                  "description": "Ruff rule codes or prefixes to select; omission selects F.",
-                  "markdownDescription": "Ruff rule codes or prefixes to select; omission selects F.",
+                  "description": "Ruff rule codes or prefixes to select; omission uses Ruff's defaults.",
+                  "markdownDescription": "Ruff rule codes or prefixes to select; omission uses Ruff's defaults.",
                   "items": {
                     "examples": [
                       "F",

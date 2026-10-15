@@ -33,6 +33,15 @@ const result: ActionResult = {
 	sarif: { version: '2.1.0', runs: [{ results: [{ message: { text: diagnostic.message } }] }] },
 };
 
+function captureReporter() {
+	const messages: string[] = [];
+	return {
+		messages,
+		log: (message: string) => messages.push(message),
+		review: async () => assert.fail('review disabled'),
+	};
+}
+
 test('normalized JSON output also replaces the native report file', async () => {
 	const directory = await mkdtemp(join(tmpdir(), 'actionlint-report-json-'));
 	try {
@@ -52,7 +61,7 @@ test('normalized JSON output also replaces the native report file', async () => 
 				await writeFile(reportPath, legacy);
 				await writeOutputs(environment.GITHUB_OUTPUT, { output: legacy, 'output-file': `${format}-report` });
 				return 1;
-			});
+			}, captureReporter());
 			const outputs = await readOutputs(output);
 			const expected: string = format === 'json'
 				? `${JSON.stringify(result)}\n`
@@ -428,6 +437,7 @@ test('native process failures preserve collected diagnostics and configuration',
 	try {
 		for (const reject of [false, true]) {
 			let resultPath = '';
+			const reporter = captureReporter();
 			const outputPath = join(directory, `outputs-${reject}`);
 			assert.equal(
 				await withReporting(
@@ -439,9 +449,17 @@ test('native process failures preserve collected diagnostics and configuration',
 						if (reject) throw new Error('native process crashed');
 						return 3;
 					},
+					reporter,
 				),
 				3,
 			);
+			assert.deepEqual(reporter.messages, [
+				`::error::${
+					reject ? 'native process crashed' : 'Native process status disagrees with its persisted analysis result'
+				}`,
+				annotation(diagnostic),
+				'actionlint: Analysis incomplete',
+			]);
 			const persisted = parseResult(JSON.parse(await readFile(resultPath, 'utf8')));
 			assert.equal(persisted.completed, false);
 			assert.equal(persisted.status, 'failure');
@@ -465,7 +483,7 @@ test('core output publication failure remains fatal and preserves analysis evide
 		resultPath = environment.ACTIONLINT_ACTION_RESULT;
 		await writeFile(resultPath, JSON.stringify(result));
 		return 1;
-	}));
+	}, captureReporter()));
 	const persisted = parseResult(JSON.parse(await readFile(resultPath, 'utf8')));
 	assert.equal(persisted.status, 'failure');
 	assert.equal(persisted.completed, false);
@@ -618,6 +636,7 @@ test('unique results survive for later steps and preserve fail-on-error false', 
 	const directory = await mkdtemp(join(tmpdir(), 'actionlint-persist-test-'));
 	try {
 		const paths: string[] = [];
+		const reporter = captureReporter();
 		for (let invocation = 0; invocation < 2; invocation++) {
 			assert.equal(
 				await withReporting({ RUNNER_TEMP: directory, 'INPUT_FAIL-ON-ERROR': 'false' }, async (environment) => {
@@ -626,10 +645,11 @@ test('unique results survive for later steps and preserve fail-on-error false', 
 					paths.push(path);
 					await writeFile(path, JSON.stringify(result));
 					return 0;
-				}),
+				}, reporter),
 				0,
 			);
 		}
+		assert.deepEqual(reporter.messages, [annotation(diagnostic), annotation(diagnostic)]);
 		assert.notEqual(paths[0], paths[1]);
 		for (const path of paths) assert.deepEqual(parseResult(JSON.parse(await readFile(path, 'utf8'))), result);
 	} finally {
@@ -681,24 +701,29 @@ test('missing or corrupt native results cannot become a clean analysis', async (
 	const directory = await mkdtemp(join(tmpdir(), 'actionlint-incomplete-test-'));
 	try {
 		const disabledSummary = join(directory, 'disabled-summary');
+		const reporter = captureReporter();
 		assert.equal(
-			await withReporting({
-				RUNNER_TEMP: directory,
-				INPUT_ANNOTATIONS: 'invalid',
-				INPUT_SUMMARY: 'false',
-				GITHUB_STEP_SUMMARY: disabledSummary,
-			}, async () => assert.fail('invalid inputs must stop before execution')),
+			await withReporting(
+				{
+					RUNNER_TEMP: directory,
+					INPUT_ANNOTATIONS: 'invalid',
+					INPUT_SUMMARY: 'false',
+					GITHUB_STEP_SUMMARY: disabledSummary,
+				},
+				async () => assert.fail('invalid inputs must stop before execution'),
+				reporter,
+			),
 			2,
 		);
 		await assert.rejects(readFile(disabledSummary), { code: 'ENOENT' });
-		assert.equal(await withReporting({ RUNNER_TEMP: directory }, async () => 0), 3);
+		assert.equal(await withReporting({ RUNNER_TEMP: directory }, async () => 0, reporter), 3);
 		assert.equal(
 			await withReporting({ RUNNER_TEMP: directory }, async (environment) => {
 				const path = environment.ACTIONLINT_ACTION_RESULT;
 				assert.ok(path);
 				await writeFile(path, '{"schema_version":');
 				return 0;
-			}),
+			}, reporter),
 			3,
 		);
 		const output = join(directory, 'outputs');
@@ -708,15 +733,22 @@ test('missing or corrupt native results cannot become a clean analysis', async (
 				assert.ok(path);
 				await writeFile(path, JSON.stringify(result));
 				return 3;
-			}),
+			}, reporter),
 			3,
 		);
 		assert.equal(
 			await withReporting({ RUNNER_TEMP: directory, GITHUB_OUTPUT: output }, async () => {
 				throw new Error('download failed');
-			}),
+			}, reporter),
 			3,
 		);
+		assert.deepEqual(reporter.messages.filter(message => message.startsWith('::error::')), [
+			"::error::Input 'annotations' must be 'auto', 'true' or 'false'",
+			'::error::The native analysis did not write a completed result',
+			'::error::Unexpected end of JSON input',
+			'::error::Native process status disagrees with its persisted analysis result',
+			'::error::download failed',
+		]);
 		assert.ok((await readFile(output, 'utf8')).includes('result-file<<'));
 	} finally {
 		await rm(directory, { recursive: true });

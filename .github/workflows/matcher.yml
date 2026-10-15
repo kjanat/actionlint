@@ -9,7 +9,25 @@ on:
 permissions: { contents: read }
 
 jobs:
+  changes:
+    uses: $/.github/workflows/ci-changes.yml
+    with:
+      filters: |
+        {
+          "shared": [
+            ".github/workflows/matcher.yml", ".github/workflows/ci-changes.yml", ".github/ci/**",
+            ".tool-versions", ".mise.toml"
+          ],
+          "jobs": {
+            "matcher": [
+              "*.go", "go.mod", "go.sum", "config_default.yaml", "sarif_template.txt", "cmd/**", "internal/**", "!**/*_test.go",
+              "scripts/generate-actionlint-matcher/**", ".github/actionlint-matcher.json", "testdata/**", "Makefile", ".node-version"
+            ]
+          }
+        }
   matcher-test:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['matcher']) }}
     name: Test generate-actionlint-matcher
     runs-on: ubuntu-latest
     steps:

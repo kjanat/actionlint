@@ -87,6 +87,22 @@ The PR must explain the motivation, scope, compatibility impact, and validation 
 
 `make` (3.81 or later) is useful to run each tasks and reduce redundant builds/tests.
 
+### Selecting CI checks
+
+The CI, CodeQL, matcher, upstream-conformance and expression-probe workflows declare their inputs in each workflow's `filters` list. Paths start at the repository root: `*` matches within one directory, `**` crosses directories, and a later `!` pattern excludes an earlier match. A later positive pattern can include a path again. Each changed file is matched independently, so an excluded documentation change does not suppress checks for a source file in the same PR.
+
+Required workflows still start on every PR. Unneeded jobs are skipped; the unit-test matrix keeps its exact required check names using `ubuntu-slim` jobs with their setup and test steps skipped. Go test-only changes keep the relevant test and lint jobs without rebuilding packages. PR comparisons cover the full diff from the merge-base; pushes cover all commits in the push. Manual and scheduled runs select every check in their workflow. If comparison history, a path pattern or a trailer is invalid, selection falls back to running every check.
+
+To skip optional PR checks, add trailers to the **latest PR head commit** after a blank line:
+
+```text
+Refine CLI output
+
+CI-Skip: nix, conformance, expression-probe
+```
+
+`CI-Skip` accepts only those three optional groups. It cannot disable required checks, and it is ignored on pushes to `master`. Use `CI: full` to run all checks in the five selection-enabled workflows regardless of changed paths or `CI-Skip`. Older commit trailers and the generated PR merge commit do not control selection. Each selection job publishes the chosen checks in its job summary.
+
 ### Project task defaults
 
 With mise activated in your shell, run `runner install` from the repository root. It installs the declared tools (including ShellCheck), installs npm workspace dependencies from the lockfile, and downloads Go modules. Installs are frozen by default; use `runner install --no-frozen` when intentionally updating dependencies. Use `runner config init` only to create a configuration in a new project; this repository already provides `runner.toml`.

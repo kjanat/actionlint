@@ -361,10 +361,10 @@ func arguments(config Config) []string {
 		// lint codes without suppressing Python syntax errors.
 		selectRules, ignoreRules = []string{"ALL"}, []string{"ALL"}
 	}
-	if selectRules == nil {
-		selectRules = []string{"F"}
+	args := []string{"check", "--isolated", "--target-version", target, "--ignore-noqa", "--no-fix", "--no-cache", "--output-format", "json", "--stdin-filename", stdinFilename, "--extension", "py:python"}
+	if selectRules != nil {
+		args = append(args, "--select", strings.Join(selectRules, ","))
 	}
-	args := []string{"check", "--isolated", "--target-version", target, "--select", strings.Join(selectRules, ","), "--ignore-noqa", "--no-fix", "--no-cache", "--output-format", "json", "--stdin-filename", stdinFilename, "--extension", "py:python"}
 	if len(ignoreRules) > 0 {
 		args = append(args, "--ignore", strings.Join(ignoreRules, ","))
 	}

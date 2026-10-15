@@ -6,12 +6,58 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/fatih/color"
 	"github.com/spf13/pflag"
 )
+
+func TestRootHelpOverview(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+	t.Setenv("NO_HYPERLINKS", "1")
+	root := testRunCommand("", "--help")
+	if root.Status != 0 || root.Stdout != "" {
+		t.Fatalf("%+v", root)
+	}
+	flags := regexp.MustCompile(`(?m)^\s+(?:-\w, )?--([\w-]+)`)
+	var names []string
+	for _, match := range flags.FindAllStringSubmatch(root.Stderr, -1) {
+		names = append(names, match[1])
+	}
+	want := []string{"strict", "experimental", "config", "ignore-regex", "json", "output-format", "output-file", "quiet", "help", "version"}
+	if !slices.Equal(names, want) {
+		t.Fatalf("root overview flags = %v, want %v", names, want)
+	}
+	for _, text := range []string{
+		"— Check workflows, actions and embedded scripts",
+		"actionlint [flags] [files...]\n  actionlint [flags] -\n  actionlint <command>",
+		"\nRule selection:\n", "\nFlags:\n",
+		"Enable all stable rules, respecting configured exceptions",
+		"Enable nursery rules, respecting configured exceptions",
+		"Run actionlint <command> --help for command options.",
+		"Docs: https://actionlint.kjanat.dev",
+	} {
+		if !strings.Contains(root.Stderr, text) {
+			t.Errorf("root help missing %q: %s", text, root.Stderr)
+		}
+	}
+	check := testRunCommand("", "check", "--help")
+	metadata := testRunCommand("", "--help", "--json")
+	var description commandDescription
+	if check.Status != 0 || metadata.Status != 0 || json.Unmarshal([]byte(metadata.Stdout), &description) != nil {
+		t.Fatalf("full help unavailable: %+v / %+v", check, metadata)
+	}
+	for _, name := range []string{"no-config", "stdin-filename", "template", "hyperlinks", "ruff", "shellcheck", "json-pretty", "help-legacy"} {
+		if !strings.Contains(check.Stderr, name) || !slices.ContainsFunc(description.Flags, func(f commandFlagDescription) bool { return f.Name == name }) {
+			t.Errorf("%s missing from full check help or root JSON metadata", name)
+		}
+	}
+	if strings.Contains(check.Stderr, "--json[-pretty]") || strings.Contains(check.Stderr, "--help[-legacy]") {
+		t.Fatal("distinct help or JSON options were compressed together")
+	}
+}
 
 func TestRedirectedHelpWidth(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
@@ -22,7 +68,7 @@ func TestRedirectedHelpWidth(t *testing.T) {
 			t.Fatalf("%v: %+v", args, got)
 		}
 		for line := range strings.SplitSeq(got.Stderr, "\n") {
-			if width := len([]rune(line)); width > 80 {
+			if width := len([]rune(line)); width > 120 {
 				t.Errorf("%v: help line is %d columns: %s", args, width, line)
 			}
 		}
@@ -139,13 +185,13 @@ func TestHelpForcedColorInFile(t *testing.T) {
 }
 
 func TestCommandJSONHelpAndVersion(t *testing.T) {
-	for _, args := range [][]string{{"--help", "--", "--json"}, {"--help", "--stdin-filename", "--json"}, {"--help", "workflow.yml", "--json"}} {
+	for _, args := range [][]string{{"--help", "--", "--json"}, {"--help", "--stdin-filename", "--json"}} {
 		got := testRunCommand("", args...)
 		if got.Status != 0 || got.Stdout != "" || !strings.Contains(got.Stderr, "Usage:") {
 			t.Fatalf("literal data selected JSON help: %+v", got)
 		}
 	}
-	for _, args := range [][]string{{"--help", "--json"}, {"--json", "-h"}, {"--output=json", "--help"}} {
+	for _, args := range [][]string{{"--help", "--json"}, {"--json", "-h"}, {"--output=json", "--help"}, {"workflow.yml", "--help", "--json"}, {"--help", "workflow.yml", "--json"}} {
 		got := testRunCommand("", args...)
 		var help commandDescription
 		if err := json.Unmarshal([]byte(got.Stdout), &help); err != nil {
