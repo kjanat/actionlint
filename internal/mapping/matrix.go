@@ -1,0 +1,72 @@
+package mapping
+
+import "maps"
+
+type Matrix[R any, F, S comparable] struct {
+	Rows             map[string]R
+	Include, Exclude F
+	Expression       S
+	Insertions       []*Matrix[R, F, S]
+}
+
+func ExpandMatrix[R any, F, S comparable](matrix *Matrix[R, F, S], evaluate func(S) *Matrix[R, F, S]) (*Matrix[R, F, S], bool) {
+	var zeroSource S
+	var zeroFilter F
+	if matrix.Expression != zeroSource {
+		result := evaluate(matrix.Expression)
+		return result, result != nil
+	}
+	result := *matrix
+	result.Rows = maps.Clone(matrix.Rows)
+	if result.Rows == nil {
+		result.Rows = map[string]R{}
+	}
+	result.Insertions = nil
+	complete := true
+	for _, insertion := range matrix.Insertions {
+		inserted, known := ExpandMatrix(insertion, evaluate)
+		complete = complete && known
+		if inserted == nil {
+			continue
+		}
+		for name, row := range inserted.Rows {
+			if _, duplicate := result.Rows[name]; duplicate {
+				return nil, false
+			}
+			result.Rows[name] = row
+		}
+		if inserted.Include != zeroFilter {
+			if result.Include != zeroFilter {
+				return nil, false
+			}
+			result.Include = inserted.Include
+		}
+		if inserted.Exclude != zeroFilter {
+			if result.Exclude != zeroFilter {
+				return nil, false
+			}
+			result.Exclude = inserted.Exclude
+		}
+	}
+	return &result, complete
+}
+
+func ExpandCombinations[C any, S comparable](expression S, items []C, itemExpression func(C) S, evaluate func(S, bool) ([]C, bool)) ([]C, bool) {
+	var zero S
+	if expression != zero {
+		return evaluate(expression, false)
+	}
+	var result []C
+	for _, item := range items {
+		if source := itemExpression(item); source != zero {
+			inserted, known := evaluate(source, true)
+			if !known {
+				return nil, false
+			}
+			result = append(result, inserted...)
+		} else {
+			result = append(result, item)
+		}
+	}
+	return result, true
+}

@@ -5,6 +5,8 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
+import { yamlExampleLines } from '#internal/commentcop/yaml-examples.mjs';
+
 /** @typedef {'go' | 'js' | 'hash' | 'md'} Lang */
 /** @typedef {{path: string, start: number, end: number, text: string, reasons: string[]}} Group */
 /** @typedef {{start: number, end: number, lang: Lang, topLevel: boolean, doc: boolean, lines: string[]}} PendingGroup */
@@ -89,54 +91,6 @@ function isCommentLine(line, lang) {
 		|| text === '*'
 		|| text === '*/'
 		|| text.startsWith('* ');
-}
-
-/** @param {string[]} lines */
-function yamlExampleLines(lines) {
-	const examples = new Set();
-	const textLines = lines.map(line => isCommentLine(line, 'hash') ? line.trimStart().replace(/^#\s?/, '') : null);
-	/** @param {number} index */
-	const scalarEntry = index => {
-		const text = textLines[index];
-		if (text === null || text === undefined || /^\s*(?:note|warning|important|tip|caution|todo|fixme):/i.test(text)) {
-			return null;
-		}
-		return /^\s*(?:[\w./*{}$-]+|"(?:[^"\\]|\\.)*"|'(?:[^']|'')*')\s*:\s+\S/.test(text)
-			? text.length - text.trimStart().length
-			: null;
-	};
-	/** @type {number | null} */
-	let parentIndent = null;
-	for (const [index, text] of textLines.entries()) {
-		if (text === null || text === undefined) {
-			parentIndent = null;
-			continue;
-		}
-		if (text.trimStart().startsWith('#')) continue;
-		const indent = text.length - text.trimStart().length;
-		const nested = parentIndent !== null && indent > parentIndent;
-		const mapping = /^\s*(?:-\s+)?(?:[\w./*{}$-]+|"(?:[^"\\]|\\.)*"|'(?:[^']|'')*')\s*:(?:\s+(.*))?$/.exec(text);
-		if (mapping !== null) {
-			const value = mapping[1]?.trim() ?? '';
-			const child = textLines.slice(index + 1).find(line =>
-				line === null || line !== undefined && !line.trimStart().startsWith('#')
-			);
-			const container = /^[[{]/.test(value) || value === '' && child !== null && child !== undefined
-					&& child.length - child.trimStart().length > indent
-					&& /^\s*(?:\S.*:|-)\s*/.test(child);
-			const scalar = /^(?:true|false|null|[-+]?\d+(?:\.\d+)?)(?:\s+#.*)?$/.test(value);
-			const adjacentScalars = scalarEntry(index) === indent
-				&& (scalarEntry(index - 1) === indent || scalarEntry(index + 1) === indent);
-			if (nested || container || scalar || adjacentScalars) examples.add(index + 1);
-			if (container && !nested) parentIndent = indent;
-			else if (!nested) parentIndent = null;
-		} else if (nested && (/^\s*-\s+\S/.test(text) || /^\s*[[\]{}][\s,]*$/.test(text))) {
-			examples.add(index + 1);
-		} else if (text.trim() !== '') {
-			parentIndent = null;
-		}
-	}
-	return examples;
 }
 
 /** @param {string} patch */

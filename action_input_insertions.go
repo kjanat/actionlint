@@ -1,98 +1,45 @@
 package actionlint
 
-import "strings"
+import "actionlint.kjanat.dev/internal/mapping"
 
-// Resolve one input without interpreting evaluated strings as expression source.
-func actionInputValue(action *ExecAction, name string) (string, bool) {
-	var value string
-	found, complete := false, true
-	add := func(candidate any, known bool) {
-		text, scalar := workflowScalarString(candidate)
-		complete = complete && known && scalar && !found
-		found = true
-		value = text
-	}
-	var collect func(*ActionInputMapping)
-	collect = func(mapping *ActionInputMapping) {
-		for key, input := range mapping.Inputs {
-			if input.Name != nil && input.Name.ContainsExpression() {
-				literal, known := workflowExpressionLiteral(input.Name)
-				text, scalar := workflowScalarString(literal)
-				if !known || !scalar {
-					complete = false
-					continue
-				}
-				key = text
-			}
-			if !strings.EqualFold(key, name) || input.Value == nil {
-				continue
-			}
-			if input.Value.ContainsExpression() {
-				literal, known := workflowExpressionLiteral(input.Value)
-				add(literal, known)
-			} else {
-				add(input.Value.Value, true)
-			}
+var inputResolver = mapping.Resolver[*String]{
+	Text:          func(s *String) string { return s.Value },
+	HasExpression: (*String).ContainsExpression,
+	Evaluate:      workflowExpressionLiteral,
+	NewText: func(value string, source *String) *String {
+		if source == nil {
+			return &String{Value: value}
 		}
-		if mapping.Expression != nil {
-			literal, known := workflowExpressionLiteral(mapping.Expression)
-			object, isObject := literal.(map[string]any)
-			if !known || !isObject {
-				complete = false
-			} else {
-				for key, candidate := range object {
-					if strings.EqualFold(key, name) {
-						add(candidate, true)
-					}
-				}
-			}
-		}
-		for _, insertion := range mapping.Insertions {
-			collect(insertion)
-		}
-	}
-	collect(&ActionInputMapping{Inputs: action.Inputs, Expression: action.InputsExpression, Insertions: action.InputInsertions})
-	return value, complete
+		result := *source
+		result.Value = value
+		return &result
+	},
 }
 
-// Retain known names even when another insertion may provide required inputs.
-func actionInputNames(action *ExecAction) (map[string]*Input, bool) {
-	inputs := map[string]*Input{}
-	var collect func(*ActionInputMapping) bool
-	collect = func(mapping *ActionInputMapping) bool {
-		complete := true
-		for key, input := range mapping.Inputs {
-			if input.Name != nil && input.Name.ContainsExpression() {
-				name, known := environmentLiteral(input.Name)
-				if !known {
-					complete = false
-					continue
-				}
-				resolved := *input
-				resolvedName := *input.Name
-				resolvedName.Value = name
-				resolved.Name = &resolvedName
-				input = &resolved
-				key = strings.ToLower(name)
-			}
-			inputs[key] = input
-		}
-		if expression := mapping.Expression; expression != nil {
-			value, known := workflowExpressionLiteral(expression)
-			object, objectValue := value.(map[string]any)
-			if !known || !objectValue {
-				complete = false
-			} else {
-				for name := range object {
-					inputs[strings.ToLower(name)] = &Input{Name: &String{Value: name, Pos: expression.Pos}}
-				}
-			}
-		}
-		for _, insertion := range mapping.Insertions {
-			complete = collect(insertion) && complete
-		}
-		return complete
+func actionInputMapping(action *ExecAction) *mapping.Inputs[*String] {
+	return inputMappingView(&ActionInputMapping{Inputs: action.Inputs, Expression: action.InputsExpression, Insertions: action.InputInsertions})
+}
+
+func inputMappingView(source *ActionInputMapping) *mapping.Inputs[*String] {
+	result := &mapping.Inputs[*String]{Expression: source.Expression, Values: make(map[string]mapping.Input[*String], len(source.Inputs))}
+	for name, input := range source.Inputs {
+		result.Values[name] = mapping.Input[*String]{Name: input.Name, Value: input.Value}
 	}
-	complete := collect(&ActionInputMapping{Inputs: action.Inputs, Expression: action.InputsExpression, Insertions: action.InputInsertions})
+	for _, insertion := range source.Insertions {
+		result.Insertions = append(result.Insertions, inputMappingView(insertion))
+	}
+	return result
+}
+
+func actionInputValue(action *ExecAction, name string) (string, bool) {
+	return inputResolver.Value(actionInputMapping(action), name)
+}
+
+func actionInputNames(action *ExecAction) (map[string]*Input, bool) {
+	names, complete := inputResolver.Names(actionInputMapping(action))
+	inputs := make(map[string]*Input, len(names))
+	for name, input := range names {
+		inputs[name] = &Input{Name: input.Name, Value: input.Value}
+	}
 	return inputs, complete
 }

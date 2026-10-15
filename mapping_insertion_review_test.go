@@ -145,3 +145,48 @@ func TestDockerConstantInputKeys(t *testing.T) {
 		}
 	}
 }
+
+func TestActionInputResolutionAcrossConsumers(t *testing.T) {
+	for _, key := range []string{"script", `"${{ 'script' }}"`, `"${{ 'SCRIPT' }}"`, `"${{ format('{0}', 'script') }}"`} {
+		for depth := range 3 {
+			t.Run(fmt.Sprintf("%s/depth=%d", key, depth), func(t *testing.T) {
+				mapping := "{" + key + ": '${{ github.event.issue.title }}'}"
+				for range depth {
+					mapping = "{'${{ insert }}': " + mapping + "}"
+				}
+				source := strings.Replace(insertionSectionWorkflow("with", mapping), "example/action@v1", "actions/github-script@v8", 1)
+				source = strings.Replace(source, "on: push", "on: issues", 1)
+				errs := lintCredentialsExpressionTest(t, source)
+				if len(errs) != 1 || !strings.Contains(errs[0].Message, "potentially untrusted") {
+					t.Fatalf("script injection check missing: %v", errs)
+				}
+				workflow, _ := Parse([]byte(source))
+				action := workflow.Jobs["test"].Steps[0].Exec.(*ExecAction)
+				names, complete := actionInputNames(action)
+				if !complete || names["script"] == nil || len(names) != 1 {
+					t.Fatalf("metadata resolved different names: %v, %v", names, complete)
+				}
+				if _, known := actionInputValue(action, "script"); known {
+					t.Fatal("untrusted script value was treated as a constant")
+				}
+			})
+		}
+	}
+}
+
+func TestActionInputObjectResultsStayData(t *testing.T) {
+	for _, mapping := range []string{
+		`"${{ fromJSON('{\"script\":\"${{ github.event.issue.title }}\"}') }}"`,
+		`{'${{ insert }}': "${{ fromJSON('{\"script\":\"${{ github.event.issue.title }}\"}') }}"}`,
+	} {
+		source := strings.Replace(insertionSectionWorkflow("with", mapping), "example/action@v1", "actions/github-script@v8", 1)
+		if errs := lintCredentialsExpressionTest(t, source); len(errs) != 0 {
+			t.Fatalf("evaluated script string interpreted as source: %v", errs)
+		}
+		workflow, _ := Parse([]byte(source))
+		action := workflow.Jobs["test"].Steps[0].Exec.(*ExecAction)
+		if value, known := actionInputValue(action, "script"); !known || value != "${{ github.event.issue.title }}" {
+			t.Fatalf("resolved value=%q, known=%v", value, known)
+		}
+	}
+}

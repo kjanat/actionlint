@@ -1,6 +1,6 @@
 package actionlint
 
-import "strconv"
+import "actionlint.kjanat.dev/internal/mapping"
 
 type shellValueKind uint8
 
@@ -54,18 +54,7 @@ func defaultsShellValue(defaults *Defaults) shellValue {
 
 // workflowScalarString applies the runner's scalar conversion for string schemas.
 func workflowScalarString(value any) (string, bool) {
-	switch value := value.(type) {
-	case nil:
-		return "", true
-	case string:
-		return value, true
-	case bool:
-		return strconv.FormatBool(value), true
-	case float64:
-		return strconv.FormatFloat(value, 'g', -1, 64), true
-	default:
-		return "", false
-	}
+	return mapping.ScalarString(value)
 }
 
 func runnerPlatformLabels(runner *Runner) []*String {
