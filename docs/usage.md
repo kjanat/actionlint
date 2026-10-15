@@ -419,8 +419,9 @@ settings. Legacy `-ruff COMMAND` and `-shellcheck COMMAND` still accept separate
 values on the root. The older `=false` and empty values also remain supported.
 No Python interpreter or Pyflakes installation is needed. See [Ruff configuration](config.md#ruff).
 
-Pyflakes integration has been removed. The released `-pyflakes` option remains
-a deprecated no-op; use Ruff for Python analysis.
+The deprecated `-pyflakes COMMAND` option selects Ruff's Pyflakes (`F`) rules
+when no Ruff option is supplied. The command value is never executed.
+An empty value or `false` disables Python linting. Explicit Ruff options take precedence.
 
 To configure executables, arguments and child environments separately, use
 `ACTIONLINT_SHELLCHECK_BIN`, `ACTIONLINT_SHELLCHECK_FLAGS`, and

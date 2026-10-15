@@ -226,13 +226,15 @@ on **doctor**. Legacy `-shellcheck COMMAND` remains supported on the root.
 : Disable ShellCheck, overriding any selected command or environment settings.
 
 **--pyflakes** *COMMAND*
-: Deprecated compatibility option; ignored. Use Ruff for Python scripts.
+: Deprecated compatibility option. Selects Ruff's Pyflakes (`F`) rules when no Ruff
+option is supplied. An empty command or `false` disables Python linting.
+The command value is accepted for compatibility and is never executed.
 
 **--ruff**[=*COMMAND*]
 : Check Python scripts with Ruff. A bare flag uses `ruff` on PATH.
 Use `--ruff=COMMAND` for a custom executable or command line. Ruff must already be
 installed. Also available on **doctor**. Legacy `-ruff COMMAND` remains supported
-on the root. Uses isolated, read-only checks with the F rules by default.
+on the root. Uses isolated, read-only checks with Ruff's default rule selection.
 `tools.ruff` configures rule selection and the Python target version.
 
 **--no-ruff**

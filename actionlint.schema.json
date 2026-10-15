@@ -7199,8 +7199,8 @@
                           },
                           "select": {
                             "title": "select",
-                            "description": "Ruff rule codes or prefixes to select; omission selects F.",
-                            "markdownDescription": "Ruff rule codes or prefixes to select; omission selects F.",
+                            "description": "Ruff rule codes or prefixes to select; omission uses Ruff's defaults.",
+                            "markdownDescription": "Ruff rule codes or prefixes to select; omission uses Ruff's defaults.",
                             "items": {
                               "examples": [
                                 "F",
@@ -7725,8 +7725,8 @@
                 },
                 "select": {
                   "title": "select",
-                  "description": "Ruff rule codes or prefixes to select; omission selects F.",
-                  "markdownDescription": "Ruff rule codes or prefixes to select; omission selects F.",
+                  "description": "Ruff rule codes or prefixes to select; omission uses Ruff's defaults.",
+                  "markdownDescription": "Ruff rule codes or prefixes to select; omission uses Ruff's defaults.",
                   "items": {
                     "examples": [
                       "F",

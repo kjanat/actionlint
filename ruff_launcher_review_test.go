@@ -111,7 +111,7 @@ jobs:
 						}
 						return
 					}
-					if err != nil || readErr != nil || string(content) != strings.Join(prefix, " ")+" --version\n"+strings.Join(prefix, " ")+" check --preview --isolated --target-version py314 --select F --ignore-noqa --no-fix --no-cache --output-format json --stdin-filename actionlint.py --extension py:python -\n" {
+					if err != nil || readErr != nil || string(content) != strings.Join(prefix, " ")+" --version\n"+strings.Join(prefix, " ")+" check --preview --isolated --target-version py314 --ignore-noqa --no-fix --no-cache --output-format json --stdin-filename actionlint.py --extension py:python -\n" {
 						t.Fatalf("launcher invocation changed: %v, %v, %s", err, readErr, content)
 					}
 				})

@@ -68,9 +68,9 @@ jobs:
             ],
             "action": [
               "*.go", "go.mod", "go.sum", "config_default.yaml", "sarif_template.txt", "cmd/**", "internal/**", "!**/*_test.go",
-              "packages/github-action/**", "distribution/npm/facade/types/**", "action.yml", "scripts/*.mjs", "testdata/ok/minimal.yaml",
-              "testdata/err/one_error.yaml", ".pre-commit-hooks.yaml", ".goreleaser.yaml", "package.json", "package-lock.json", ".node-version",
-              ".tool-versions", ".mise.toml", "tsconfig.json", "!**/testdata/**"
+              "packages/github-action/**", "distribution/npm/facade/types/**", "action.yml", "scripts/*.mjs", ".pre-commit-hooks.yaml",
+              ".goreleaser.yaml", "package.json", "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
+              "!**/testdata/**", "testdata/ok/minimal.yaml", "testdata/err/one_error.yaml"
             ],
             "action-tests": [
               "packages/github-action/**", "distribution/npm/facade/types/**", "scripts/*.mjs", "action.yml", "package.json", "package-lock.json",

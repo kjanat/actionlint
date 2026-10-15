@@ -238,7 +238,7 @@ tools:
   ruff:
     enabled: true
     target-version: py314
-    select: [F]
+    # select: [F, B, S]
     ignore: []
 lint:
   rules:
@@ -246,7 +246,7 @@ lint:
       ruff: error
 ```
 
-The default selection is Ruff's `F` correctness checks. `select` and `ignore`
+Ruff uses its own default rule selection. `select` and `ignore`
 accept Ruff codes or prefixes matching stable rules; preview-only selectors are
 rejected. Lists replace inherited lists. `select: []` selects
 no lint rules (Python syntax errors can still be reported). `target-version`

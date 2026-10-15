@@ -18,7 +18,7 @@ type Config struct {
 	Enabled *bool `yaml:"enabled" jsonschema:"nullable,default=true"`
 	// TargetVersion overrides the versioned Python shell target, or py314 fallback.
 	TargetVersion string `yaml:"target-version,omitempty"`
-	// Select chooses rule codes or prefixes. Omission selects F.
+	// Select chooses rule codes or prefixes. Omission uses Ruff's defaults.
 	Select []string `yaml:"select,omitempty" jsonschema:"nullable"`
 	// Ignore excludes rule codes or prefixes from the selection.
 	Ignore []string `yaml:"ignore,omitempty" jsonschema:"nullable"`

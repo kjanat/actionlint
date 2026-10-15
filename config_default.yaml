@@ -34,25 +34,16 @@ lint:
     # nursery: {preset: none}
     # disable: []
 
-# External tools are discovered on PATH; no Python scripts are executed.
-# Leave rule selection and Python target unset to use their defaults.
+# Tools are discovered on PATH. Python scripts are linted without execution.
+# This example selects F, B and S rules and targets Python 3.14.
 # tools:
-#   ruff:
-#     enabled: true
-#     target-version: py314
-#     select: [F, B, S]  # Optional replacement selection, not the default.
-#     ignore: []
+#   ruff: {enabled: true, target-version: py314, select: [F, B, S], ignore: []}
 #   shellcheck:
 #     enabled: true
-#     # config: false disables rc loading; inline directives remain active.
-#     # config: ../.shellcheckrc selects a file; auto discovers an rc file.
-#     config:
-#       disable: [SC2086]
-#       enable: [check-unassigned-uppercase]
-#       shell: bash
-#       extended-analysis: true
-#       external-sources: true
-#       source-path: ["${{ workspace }}"]
+#     # config also accepts an rc path, auto for discovery, or false to skip rc files.
+#     # Inline directives remain active with config: false.
+#     config: {disable: [SC2086], enable: [check-unassigned-uppercase], shell: bash,
+#       extended-analysis: true, external-sources: true, source-path: ["${{ workspace }}"]}
 
 # Input selection uses repository-relative globs. Omitted includes selects all
 # workflows and actions; includes: [] selects none. Git ignore rules also apply.
@@ -76,13 +67,8 @@ lint:
 # overrides:
 #   - includes: [".github/workflows/release*.yml"]
 #     excludes: [".github/workflows/release-preview.yml"]
-#     lint:
-#       rules:
-#         policy:
-#           require-commit-hash: error
-#     tools:
-#       ruff:
-#         ignore: [F401]
+#     lint: {rules: {policy: {require-commit-hash: error}}}
+#     tools: {ruff: {ignore: [F401]}}
 
 # Shared local configs resolve relative to this file, in the order listed.
 # Mappings merge recursively; lists/scalars replace; null resets a setting.

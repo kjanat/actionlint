@@ -218,3 +218,11 @@ test('action tests, probe results, mixed documentation and source changes select
 	assert.equal(selectJobs(ci, ['.github/workflows/upkeep.yml']).unit, true);
 	assert.ok(Object.values(selectJobs(ci, ['.github/workflows/ci.yml'])).every(Boolean));
 });
+
+test('Action smoke fixtures are re-included after the general testdata exclusion', () => {
+	const ci = workflowFilters('ci');
+	for (const path of ['testdata/ok/minimal.yaml', 'testdata/err/one_error.yaml']) {
+		assert.equal(selectJobs(ci, [path]).action, true, path);
+	}
+	assert.equal(selectJobs(ci, ['testdata/ok/other.yaml']).action, false);
+});

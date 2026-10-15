@@ -26,7 +26,7 @@ export function matchesPaths(path, patterns) {
 	for (const pattern of patterns) {
 		const exclude = pattern.startsWith('!');
 		const glob = exclude ? pattern.slice(1) : pattern;
-		// Reject unsupported syntax rather than silently omitting a check.
+		// Reject unsupported CI path syntax.
 		if (!glob || /[?+[\]{}\\]/.test(glob)) throw new Error('Unsupported CI path pattern');
 		const expression = glob.split(/(\*\*\/|\*\*|\*)/).map(part => {
 			if (part === '**/') return '(?:.*/)?';

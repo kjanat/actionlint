@@ -203,7 +203,7 @@ func (a *commandApp) toolFlags(f *pflag.FlagSet) {
 		f.Lookup(name).NoOptDefVal = name
 		f.Lookup(name).Annotations[commandOptionalValueAnnotation] = []string{"COMMAND"}
 	}
-	f.StringVar(&a.inv.Check.Pyflakes, "pyflakes", "", "Deprecated: Pyflakes integration was removed; ignored")
+	f.StringVar(&a.inv.Check.Pyflakes, "pyflakes", "", "Deprecated: select Pyflakes rules through Ruff")
 	_ = f.MarkHidden("pyflakes")
 	annotateFlag(f, "pyflakes", "External linters")
 }

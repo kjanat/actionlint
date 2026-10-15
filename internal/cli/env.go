@@ -92,6 +92,13 @@ func (a *commandApp) applyEnvironment() error {
 		}
 		if i.Check.RuffOptions == nil {
 			i.Check.RuffOptions = &actionlint.ExternalCommandOptions{Optional: true}
+			if a.set["pyflakes"] {
+				if i.Check.Pyflakes == "" || strings.EqualFold(i.Check.Pyflakes, "false") {
+					i.Check.Ruff = ""
+				} else {
+					i.Check.RuffOptions.Arguments = []string{"--select", "F"}
+				}
+			}
 		}
 	}
 	if !a.set["shellcheck"] && !a.opts.noShellCheck {

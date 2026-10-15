@@ -96,7 +96,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 					err = os.Rename(file.Name(), r.OutputFile)
 				} else {
 					// Publish without replacing a destination created during analysis.
-					err = os.Link(file.Name(), r.OutputFile)
+					err = publishNewReport(file.Name(), r.OutputFile)
 					if errors.Is(err, os.ErrExist) {
 						err = outputExistsError(r.OutputFile)
 					}
@@ -118,7 +118,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		log = &commandJSONLogWriter{out: log}
 	}
 	if c.Pyflakes != "" {
-		fmt.Fprintln(log, "warning: --pyflakes is deprecated and ignored; use Ruff for Python script linting")
+		fmt.Fprintln(log, "warning: --pyflakes is deprecated; use --ruff for Python script linting")
 	}
 	options := actionlint.LinterOptions{
 		Context: ctx, LogWriter: log, Color: r.Color, Oneline: r.Oneline,

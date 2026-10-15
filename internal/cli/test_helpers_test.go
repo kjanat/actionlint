@@ -56,7 +56,7 @@ jobs:
       - run: echo '${{ missing.value }}'
 `
 
-// Most transcript tests focus on diagnostics rather than the completion summary.
+// testRunCommand disables summaries for diagnostic transcript tests.
 func testRunCommand(input string, args ...string) commandTranscript {
 	return testRunCommandDefaults(input, append([]string{"--summary=false"}, args...)...)
 }
