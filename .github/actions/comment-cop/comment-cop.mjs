@@ -95,6 +95,16 @@ function isCommentLine(line, lang) {
 function yamlExampleLines(lines) {
 	const examples = new Set();
 	const textLines = lines.map(line => isCommentLine(line, 'hash') ? line.trimStart().replace(/^#\s?/, '') : null);
+	/** @param {number} index */
+	const scalarEntry = index => {
+		const text = textLines[index];
+		if (text === null || text === undefined || /^\s*(?:note|warning|important|tip|caution|todo|fixme):/i.test(text)) {
+			return null;
+		}
+		return /^\s*(?:[\w./*{}$-]+|"(?:[^"\\]|\\.)*"|'(?:[^']|'')*')\s*:\s+\S/.test(text)
+			? text.length - text.trimStart().length
+			: null;
+	};
 	/** @type {number | null} */
 	let parentIndent = null;
 	for (const [index, text] of textLines.entries()) {
@@ -115,7 +125,9 @@ function yamlExampleLines(lines) {
 					&& child.length - child.trimStart().length > indent
 					&& /^\s*(?:\S.*:|-)\s*/.test(child);
 			const scalar = /^(?:true|false|null|[-+]?\d+(?:\.\d+)?)(?:\s+#.*)?$/.test(value);
-			if (nested || container || scalar) examples.add(index + 1);
+			const adjacentScalars = scalarEntry(index) === indent
+				&& (scalarEntry(index - 1) === indent || scalarEntry(index + 1) === indent);
+			if (nested || container || scalar || adjacentScalars) examples.add(index + 1);
 			if (container && !nested) parentIndent = indent;
 			else if (!nested) parentIndent = null;
 		} else if (nested && (/^\s*-\s+\S/.test(text) || /^\s*[[\]{}][\s,]*$/.test(text))) {

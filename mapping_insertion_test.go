@@ -226,3 +226,120 @@ func TestUnsupportedStructuralTemplatesRemainRejected(t *testing.T) {
 		}
 	}
 }
+
+func TestRepeatedMappingInsertions(t *testing.T) {
+	for _, tc := range []struct{ name, section, first, second string }{
+		{"environment", "env", "{FIRST: one}", "{SECOND: two}"},
+		{"inputs", "with", "{first: one}", "{second: two}"},
+		{"matrix", "matrix", "{first: [one]}", "{second: [two]}"},
+	} {
+		for _, nested := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/nested=%v", tc.name, nested), func(t *testing.T) {
+				contents := "{'${{ insert }}': " + tc.first + ", '${{ insert }}': " + tc.second + "}"
+				if nested {
+					contents = "{'${{ insert }}': " + contents + "}"
+				}
+				source := insertionSectionWorkflow(tc.section, contents)
+				workflow, errs := Parse([]byte(source))
+				if len(errs) != 0 {
+					t.Fatal(errs)
+				}
+				switch tc.section {
+				case "env":
+					env := workflow.Env
+					if nested {
+						env = env.Insertions[0]
+					}
+					if len(env.Insertions) != 2 || env.Insertions[1].Vars["second"] == nil {
+						t.Fatalf("insertion lost: %+v", env)
+					}
+				case "with":
+					action := workflow.Jobs["test"].Steps[0].Exec.(*ExecAction)
+					inputs, known := actionInputNames(action)
+					if !known || len(inputs) != 2 || inputs["second"] == nil {
+						t.Fatalf("insertion lost: %+v", inputs)
+					}
+				case "matrix":
+					matrix, known := expandedMatrixInsertions(workflow.Jobs["test"].Strategy.Matrix)
+					if !known || len(matrix.Rows) != 2 || matrix.Rows["second"] == nil {
+						t.Fatalf("insertion lost: %+v", matrix)
+					}
+				}
+			})
+		}
+	}
+}
+
+func insertionSectionWorkflow(section, mapping string) string {
+	prefix := "on: push\n"
+	job := "jobs:\n  test:\n    runs-on: ubuntu-latest\n"
+	steps := "    steps: [{uses: 'example/action@v1', with: " + mapping + "}]\n"
+	switch section {
+	case "env":
+		return prefix + "env: " + mapping + "\n" + job + "    steps: [{run: echo ok}]\n"
+	case "matrix":
+		return prefix + job + "    strategy:\n      matrix: " + mapping + "\n    steps: [{run: echo ok}]\n"
+	default:
+		return prefix + job + steps
+	}
+}
+
+func TestInsertedMappingKeyCollisions(t *testing.T) {
+	for _, section := range []string{"env", "with", "matrix"} {
+		for _, mapping := range []string{
+			`{key: [one], '${{ insert }}': {KEY: [two]}}`,
+			`{'${{ insert }}': {KEY: [one]}, key: [two]}`,
+			`{'${{ insert }}': {key: [one]}, '${{ insert }}': {KEY: [two]}}`,
+			`{'${{ insert }}': {'${{ insert }}': {key: [one]}}, '${{ insert }}': {KEY: [two]}}`,
+			`{key: [one], '${{ insert }}': "${{ fromJSON('{\"KEY\":[\"two\"]}') }}"}`,
+		} {
+			t.Run(section+mapping, func(t *testing.T) {
+				_, errs := Parse([]byte(insertionSectionWorkflow(section, mapping)))
+				found := false
+				for _, err := range errs {
+					found = found || strings.Contains(err.Message, "is duplicated")
+				}
+				if !found {
+					t.Fatalf("missing expanded key collision: %v", errs)
+				}
+			})
+		}
+	}
+	// Ordinary section keys retain their duplicate-key checks.
+	_, errs := Parse([]byte("on: push\njobs: {}\n'${{ insert }}': {}\n'${{ insert }}': {}\n"))
+	found := false
+	for _, err := range errs {
+		found = found || strings.Contains(err.Message, "is duplicated")
+	}
+	if !found {
+		t.Fatalf("directive exempted outside supported sections: %v", errs)
+	}
+}
+
+func TestDockerInsertedReservedInputs(t *testing.T) {
+	for _, nested := range []bool{false, true} {
+		for _, entrypoint := range []string{"bash", ""} {
+			t.Run(fmt.Sprintf("nested=%v/entrypoint=%q", nested, entrypoint), func(t *testing.T) {
+				mapping := "{entrypoint: '" + entrypoint + "', args: hello}"
+				if nested {
+					mapping = "{'${{ insert }}': " + mapping + "}"
+				}
+				source := strings.Replace(insertionSectionWorkflow("with", "{'${{ insert }}': "+mapping+"}"), "example/action@v1", "docker://alpine:3", 1)
+				workflow, errs := Parse([]byte(source))
+				if entrypoint == "" {
+					if len(errs) != 1 || !strings.Contains(errs[0].Message, "empty") {
+						t.Fatalf("empty entrypoint accepted: %v", errs)
+					}
+					return
+				}
+				if len(errs) != 0 {
+					t.Fatal(errs)
+				}
+				action := workflow.Jobs["test"].Steps[0].Exec.(*ExecAction)
+				if action.Entrypoint == nil || action.Entrypoint.Value != "bash" || action.Args == nil || action.Args.Value != "hello" {
+					t.Fatalf("reserved inputs lost: %+v", action)
+				}
+			})
+		}
+	}
+}

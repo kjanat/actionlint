@@ -318,3 +318,39 @@ func TestMissingLocalActionSourceSuppression(t *testing.T) {
 		}
 	}
 }
+
+func TestInsertedCheckoutLocation(t *testing.T) {
+	root, _ := executableFixture(t)
+	for _, tc := range []struct {
+		name, with string
+		known      bool
+	}{
+		{"literal", "{'${{ insert }}': {path: vendor}}", true},
+		{"repeated", "{'${{ insert }}': {path: vendor}, '${{ insert }}': {clean: true}}", true},
+		{"nested", "{'${{ insert }}': {'${{ insert }}': {path: vendor}}}", true},
+		{"constant object", `{'${{ insert }}': "${{ fromJSON('{\"path\":\"vendor\"}') }}"}`, true},
+		{"whole constant object", `${{ fromJSON('{"path":"vendor"}') }}`, true},
+		{"literal expression", `{'${{ insert }}': {path: "${{ 'vendor' }}"}}`, true},
+		{"unknown name", "{'${{ insert }}': {'${{ vars.NAME }}': vendor}}", false},
+		{"known name", `{'${{ insert }}': {"${{ 'path' }}": vendor}}`, true},
+		{"unknown object", "{'${{ insert }}': '${{ fromJSON(vars.INPUTS) }}'}", false},
+		{"unknown path", "{'${{ insert }}': {path: '${{ vars.PATH }}'}}", false},
+		{"unknown sibling", "{path: vendor, '${{ insert }}': '${{ fromJSON(vars.INPUTS) }}'}", false},
+		{"foreign", "{'${{ insert }}': {path: vendor, repository: other/repo}}", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: "+tc.with+"\n- uses: ./vendor/missing\n- run: ./vendor/bad.sh", AnalysisOptions{})
+			for _, rule := range []string{"missing-local-action", "executable-bit"} {
+				found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == rule })
+				// The unknown local action invalidates executable state; test that rule independently.
+				if rule == "executable-bit" {
+					script := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: "+tc.with+"\n- run: ./vendor/bad.sh\n  shell: bash\n  working-directory: .", AnalysisOptions{})
+					found = slices.ContainsFunc(script.Diagnostics, func(d Diagnostic) bool { return d.Rule == rule })
+				}
+				if found != tc.known {
+					t.Fatalf("%s finding=%v, want=%v: %+v", rule, found, tc.known, result.Diagnostics)
+				}
+			}
+		})
+	}
+}

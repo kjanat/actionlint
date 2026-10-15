@@ -1,8 +1,9 @@
 //go:build conformance
 
-package actionlint
+package conformance_test
 
 import (
+	"actionlint.kjanat.dev"
 	"encoding/json"
 	"io/fs"
 	"regexp"
@@ -121,4 +122,28 @@ func loadRunnerExpressions(t *testing.T, root fs.FS) []upstreamCase {
 		cases = append(cases, c)
 	}
 	return cases
+}
+
+func TestUpstreamConformanceContextScope(t *testing.T) {
+	checker := actionlint.NewExprSemanticsChecker(false, nil)
+	contexts := map[string]actionlint.ExprType{"CUSTOM": actionlint.AnyType{}}
+	checker.SetContextTypes(contexts)
+	checker.SetContextAvailability([]string{"custom"})
+	delete(contexts, "CUSTOM")
+	parser := actionlint.ExprParser{}
+	custom, err := parser.Parse(actionlint.NewExprLexer("custom}}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, errs := checker.Check(custom); len(errs) != 0 {
+		t.Fatalf("scope was not normalized and copied: %v", errs)
+	}
+	other := actionlint.NewExprSemanticsChecker(false, nil)
+	if _, errs := other.Check(custom); len(errs) == 0 {
+		t.Fatal("custom scope leaked to another checker")
+	}
+	checker.SetContextTypes(nil)
+	if _, errs := checker.Check(custom); len(errs) == 0 {
+		t.Fatal("empty scope retained an old context")
+	}
 }

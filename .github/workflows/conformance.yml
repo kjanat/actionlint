@@ -19,9 +19,9 @@ jobs:
           ],
           "jobs": {
             "conformance": [
-              "*.go", "go.mod", "go.sum", "config_default.yaml", "sarif_template.txt", "cmd/**", "internal/**", "testdata/conformance/**",
+              "*.go", "go.mod", "go.sum", "config_default.yaml", "sarif_template.txt", "cmd/**", "internal/**",
               "scripts/fetch-conformance/**", "!cmd/**", "!internal/cli/**", "!internal/githubaction/**", "!**/*_test.go",
-              "upstream_conformance_test.go", "internal/conformance/**", "!**/*.md"
+              "internal/conformance/**", "!**/*.md"
             ]
           }
         }
@@ -47,9 +47,15 @@ jobs:
       - name: Fetch and verify pinned fixtures
         run: go run ./scripts/fetch-conformance
       - name: Compare actionlint with upstream expectations
-        run: go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m .
+        run: go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m ./internal/conformance
         env: { ACTIONLINT_CONFORMANCE_REPORT: .cache/conformance/results.json }
       - name: Upload comparison report
         if: ${{ always() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with: { name: "conformance-${{ runner.os }}", path: .cache/conformance/results.json, include-hidden-files: true, if-no-files-found: warn }
+        with:
+          name: "conformance-${{ runner.os }}"
+          path: |
+            .cache/conformance/results.json
+            .cache/conformance/results.json.assessments.json
+          include-hidden-files: true
+          if-no-files-found: warn
