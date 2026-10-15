@@ -1230,6 +1230,7 @@ func (p *parser) parseMatrixMapping(pos *Pos, n *yaml.Node, allowEmpty, evaluate
 		default:
 			if e.val.Kind == yaml.ScalarNode {
 				ret.Rows[e.id] = &MatrixRow{
+					Name:       e.key,
 					Expression: p.parseExpression(e.val, "array value for matrix variations"),
 				}
 				continue

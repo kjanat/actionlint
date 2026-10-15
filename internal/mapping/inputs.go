@@ -37,7 +37,7 @@ type Checks[S comparable] struct {
 func (r Resolver[S]) Check(inputs *Inputs[S], action string, checks Checks[S]) {
 	var zero S
 	r.Walk(inputs, checks.Mapping, func(entry Entry[S]) {
-		checks.String(entry.SourceName)
+		CheckSourceKey(entry.SourceName, entry.Evaluated, checks.String)
 		if entry.Evaluated {
 			return
 		}
@@ -134,4 +134,13 @@ func (r Resolver[S]) Names(mapping *Inputs[S]) (map[string]Input[S], bool) {
 		}
 	})
 	return inputs, complete
+}
+
+// CheckSourceKey validates original mapping keys, excluding keys produced as data
+// by an object expression. Evaluated strings must not be interpreted a second time.
+func CheckSourceKey[S comparable](source S, evaluated bool, check func(S)) {
+	var zero S
+	if !evaluated && source != zero {
+		check(source)
+	}
 }

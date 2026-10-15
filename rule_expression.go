@@ -1114,6 +1114,9 @@ func (rule *RuleExpression) checkMatrix(m *Matrix) *ObjectType {
 }
 
 func (rule *RuleExpression) checkMatrixRow(r *MatrixRow) ExprType {
+	mapping.CheckSourceKey(r.Name, r.evaluated, func(source *String) {
+		rule.checkString(source, "jobs.<job_id>.strategy")
+	})
 	if r.Expression != nil {
 		if a, ok := rule.checkArrayExpression(r.Expression, "matrix row", "jobs.<job_id>.strategy").(*ArrayType); ok {
 			return a.Elem

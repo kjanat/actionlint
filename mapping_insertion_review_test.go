@@ -251,3 +251,45 @@ func TestUnknownScriptInputNames(t *testing.T) {
 		}
 	}
 }
+
+func TestMatrixSourceKeyExpressions(t *testing.T) {
+	for _, tc := range []struct{ key, want string }{
+		{"${{ missing }}", `undefined variable "missing"`},
+		{"${{ env.NAME }}", `context "env" is not allowed`},
+		{"${{ 1 + }}", "unexpected character"},
+		{"${{ 'axis' }}", ""},
+		{"${{ vars.AXIS }}", ""},
+	} {
+		for _, value := range []string{"[one]", `"${{ fromJSON('[\"one\"]') }}"`} {
+			for depth := range 3 {
+				t.Run(fmt.Sprintf("%s/%s/depth=%d", tc.key, value, depth), func(t *testing.T) {
+					matrix := fmt.Sprintf("{%q: %s}", tc.key, value)
+					for range depth {
+						matrix = "{'${{ insert }}': " + matrix + "}"
+					}
+					source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + matrix + "\n    steps: [{run: echo ok}]\n"
+					errs := lintCredentialsExpressionTest(t, source)
+					if tc.want == "" {
+						if len(errs) != 0 {
+							t.Fatal(errs)
+						}
+						return
+					}
+					if len(errs) != 1 || errs[0].Kind != "expression" || !strings.Contains(errs[0].Message, tc.want) || errs[0].Line != 6 {
+						t.Fatalf("want one key diagnostic containing %q at line 6, got %v", tc.want, errs)
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestEvaluatedMatrixKeyIsData(t *testing.T) {
+	source := &String{Value: "${{ missing }}", Pos: &Pos{Line: 1, Col: 1}}
+	row := &MatrixRow{Name: source, evaluated: true, Values: []RawYAMLValue{&RawYAMLString{Value: "one", pos: source.Pos}}}
+	rule := NewRuleExpression(nil, nil)
+	rule.checkMatrixRow(row)
+	if errs := rule.Errs(); len(errs) != 0 {
+		t.Fatalf("evaluated key interpreted as source: %v", errs)
+	}
+}
