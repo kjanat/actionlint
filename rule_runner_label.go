@@ -355,11 +355,7 @@ func (rule *RuleRunnerLabel) tryToGetLabelsInMatrix(label *String, strategy *Str
 	}
 	m := strategy.Matrix
 	if m != nil && len(m.Insertions) != 0 {
-		var known bool
-		m, known = expandedMatrixInsertions(m)
-		if !known {
-			return nil
-		}
+		m, _ = expandedMatrixInsertions(m)
 	}
 	if m == nil {
 		return nil

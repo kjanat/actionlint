@@ -648,6 +648,10 @@ type ExecAction struct {
 	// Args represents optional 'args' field in 'with' section. Nil field means nothing specified
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepswithargs
 	Args *String
+
+	// Constant mapping results must not be interpreted as expression source.
+	entrypointEvaluated bool
+	argsEvaluated       bool
 }
 
 // Kind returns kind of the step execution.

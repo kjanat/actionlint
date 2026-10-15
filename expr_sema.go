@@ -487,7 +487,10 @@ func (sema *ExprSemanticsChecker) ensureGithubVarCopied() {
 	}
 	sema.ensureVarsCopied()
 
-	sema.vars["github"] = sema.vars["github"].DeepCopy()
+	if github := sema.vars["github"]; github != nil {
+		sema.vars["github"] = github.DeepCopy()
+	}
+	sema.githubVarCopied = true
 }
 
 // SetContextTypes replaces the expression's context names and types with a caller-supplied scope.

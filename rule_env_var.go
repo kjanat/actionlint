@@ -41,22 +41,30 @@ func (rule *RuleEnvVar) VisitWorkflowPre(n *Workflow) error {
 }
 
 func (rule *RuleEnvVar) checkEnv(env *Env) {
-	if env == nil || env.Expression != nil {
+	if env == nil {
 		return
+	}
+	if env.Expression != nil {
+		value, known := workflowExpressionLiteral(env.Expression)
+		if object, ok := value.(map[string]any); known && ok {
+			for name := range object {
+				rule.checkName(name, env.Expression.Pos)
+			}
+		}
 	}
 	for _, v := range env.Vars {
 		if v.Name.ContainsExpression() {
 			continue // Key name can contain expressions (#312)
 		}
-		if strings.ContainsAny(v.Name.Value, "&= 	") {
-			rule.Errorf(
-				v.Name.Pos,
-				"environment variable name %q is invalid. '&', '=' and spaces should not be contained",
-				v.Name.Value,
-			)
-		}
+		rule.checkName(v.Name.Value, v.Name.Pos)
 	}
 	for _, insertion := range env.Insertions {
 		rule.checkEnv(insertion)
+	}
+}
+
+func (rule *RuleEnvVar) checkName(name string, pos *Pos) {
+	if strings.ContainsAny(name, "&= \t") {
+		rule.Errorf(pos, "environment variable name %q is invalid. '&', '=' and spaces should not be contained", name)
 	}
 }

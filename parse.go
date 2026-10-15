@@ -1418,7 +1418,9 @@ func (p *parser) parseTimeoutMinutes(n *yaml.Node) *Float {
 
 func (p *parser) parseActionInputMapping(n *yaml.Node, allowEmpty bool, docker *ExecAction) *ActionInputMapping {
 	if n.Kind == yaml.ScalarNode {
-		return &ActionInputMapping{Expression: p.parseExpression(n, "mapping value for \"with\" section")}
+		expression := p.parseExpression(n, "mapping value for \"with\" section")
+		p.parseDockerInputExpression(n, expression, docker)
+		return &ActionInputMapping{Expression: expression}
 	}
 	mapping := &ActionInputMapping{Inputs: map[string]*Input{}}
 	for e := range p.parseMappingEntries(sprintf("%q section", "with"), n, allowEmpty, false, true) {
@@ -1427,13 +1429,46 @@ func (p *parser) parseActionInputMapping(n *yaml.Node, allowEmpty bool, docker *
 			mapping.Insertions = append(mapping.Insertions, p.parseActionInputMapping(e.val, true, docker))
 		case docker != nil && e.id == "entrypoint":
 			docker.Entrypoint = p.parseString(e.val, false)
+			docker.entrypointEvaluated = false
 		case docker != nil && e.id == "args":
 			docker.Args = p.parseString(e.val, true)
+			docker.argsEvaluated = false
 		default:
 			mapping.Inputs[e.id] = &Input{e.key, p.parseString(e.val, true)}
 		}
 	}
 	return mapping
+}
+
+func (p *parser) parseDockerInputExpression(n *yaml.Node, expression *String, docker *ExecAction) {
+	if docker == nil || expression == nil {
+		return
+	}
+	literal, known := workflowExpressionLiteral(expression)
+	object, isObject := literal.(map[string]any)
+	if !known || !isObject {
+		return
+	}
+	for _, name := range slices.Sorted(maps.Keys(object)) {
+		key := strings.ToLower(name)
+		if key != "entrypoint" && key != "args" {
+			continue
+		}
+		value, scalar := workflowScalarString(object[name])
+		if !scalar {
+			continue
+		}
+		if key == "entrypoint" && value == "" {
+			p.error(n, "string should not be empty")
+			continue
+		}
+		resolved := &String{Value: value, Pos: expression.Pos}
+		if key == "entrypoint" {
+			docker.Entrypoint, docker.entrypointEvaluated = resolved, true
+		} else {
+			docker.Args, docker.argsEvaluated = resolved, true
+		}
+	}
 }
 
 func (p *parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bool) *ExecAction {
@@ -1448,6 +1483,9 @@ func (p *parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 		case "with":
 			if expr := p.mayParseExpression(e.val); expr != nil {
 				ret.InputsExpression = expr
+				if isDocker {
+					p.parseDockerInputExpression(e.val, expr, ret)
+				}
 				continue
 			}
 			ret.Inputs = map[string]*Input{}
@@ -1462,9 +1500,11 @@ func (p *parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 					case "entrypoint":
 						// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepswithentrypoint
 						ret.Entrypoint = p.parseString(e.val, false)
+						ret.entrypointEvaluated = false
 					case "args":
 						// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepswithargs
 						ret.Args = p.parseString(e.val, true)
+						ret.argsEvaluated = false
 					default:
 						ret.Inputs[e.id] = &Input{e.key, p.parseString(e.val, true)}
 					}

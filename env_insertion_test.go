@@ -28,6 +28,10 @@ func TestEnvironmentMappingInsertions(t *testing.T) {
 			{"undefined source", "${{ fromJSON(missing.VALUE) }}", `undefined variable "missing"`},
 			{"undefined inserted expression", "{VALUE: '${{ missing }}'}", `undefined variable "missing"`},
 			{"invalid inserted name", "{'BAD NAME': value}", `environment variable name "BAD NAME" is invalid`},
+			{"invalid expression name", `${{ fromJSON('{"BAD NAME":"value"}') }}`, `environment variable name "BAD NAME" is invalid`},
+			{"invalid tab in expression name", `${{ fromJSON('{"BAD\tNAME":"value"}') }}`, `environment variable name "BAD\tNAME" is invalid`},
+			{"lowercase expression name", `${{ fromJSON('{"text":"value"}') }}`, ""},
+			{"invalid nested expression name", `{'${{ insert }}': "${{ fromJSON('{\"BAD NAME\":\"value\"}') }}"}`, `environment variable name "BAD NAME" is invalid`},
 			{"invalid literal array", "[]", "mapping node is expected"},
 		} {
 			t.Run(scope.name+"/"+tc.name, func(t *testing.T) {
