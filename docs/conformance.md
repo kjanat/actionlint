@@ -1,8 +1,8 @@
 # Upstream conformance tests
 
 The conformance job runs reference-project fixtures through actionlint's Go implementation. It compares the recorded
-contracts and keeps score of reviewed differences. A reference project's acceptance or rejection is an expectation to
-compare, not a verdict on working GitHub syntax; reference projects can have missing features or validation too.
+contracts and keeps score of reviewed differences. Reference expectations can reflect missing features or validation.
+Assessments use implementation or runtime evidence to explain each difference.
 
 For live GitHub expression evaluation, coercion and `fromJSON()` behavior, see the separate
 [expression reference and reproduction workflow](expression-behavior.md).
@@ -105,7 +105,8 @@ Assessment scopes are `fixture`, `feature`, and `diagnostic`. A diagnostic findi
 that observation's `actual` array. Feature findings can describe behavior such as insertion support independently
 of a fixture's unrelated diagnostics. Mixed fixtures can carry several findings and categories. Evidence may refer
 to a pinned implementation, a recorded runtime probe, or `fixture:<exact-case-id>` in the pinned corpus. These are
-reviewer-supplied evidence references; the harness validates the record structure, not the truth of its reasoning.
+reviewer-supplied evidence references. The harness validates the record structure; reviewers are responsible for
+checking the evidence and reasoning.
 
 | Assessment            | Meaning                                                                           |
 | --------------------- | --------------------------------------------------------------------------------- |
