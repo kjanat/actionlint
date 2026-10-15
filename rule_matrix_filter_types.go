@@ -40,7 +40,7 @@ func (rule *RuleMatrix) checkFilterSectionTypes(matrix *Matrix, filters *MatrixC
 				continue // Include may add properties which are not axes.
 			}
 			values := row.Values
-			valueExpressions := expressions
+			valueExpressions := expressions && !row.evaluated
 			if row.Expression != nil {
 				values = []RawYAMLValue{&RawYAMLString{Value: row.Expression.Value}}
 				if value, known := workflowExpressionLiteral(row.Expression); known {
@@ -71,7 +71,7 @@ func (rule *RuleMatrix) checkFilterSectionTypes(matrix *Matrix, filters *MatrixC
 				}
 				mismatch := false
 				for _, candidate := range candidates {
-					mismatch = mismatch || matrixFilterTypeMismatch(candidate, assign.Value, candidateExpressions, filterExpressions)
+					mismatch = mismatch || matrixFilterTypeMismatch(candidate, assign.Value, candidateExpressions, filterExpressions && !filter.evaluated)
 				}
 				if mismatch {
 					rule.errs = append(rule.errs, errorfAt(assign.Value.Pos(), "mixed-type-matrix-filters", "matrix filter for %q compares different or unknown scalar types using Actions loose equality; validate axis types before filtering", key))

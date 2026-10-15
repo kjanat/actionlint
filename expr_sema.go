@@ -405,6 +405,7 @@ var BuiltinGlobalVariableTypes = map[string]ExprType{
 // - https://docs.github.com/en/actions/learn-github-actions/contexts
 // - https://docs.github.com/en/actions/learn-github-actions/expressions
 type ExprSemanticsChecker struct {
+	skipEvaluation        bool
 	funcs                 map[string][]*FuncSignature
 	vars                  map[string]ExprType
 	errs                  []*ExprError
@@ -1020,6 +1021,9 @@ func checkFuncSignature(n *FuncCallNode, sig *FuncSignature, args []ExprType) *E
 }
 
 func (sema *ExprSemanticsChecker) checkBuiltinFuncCall(n *FuncCallNode, sig *FuncSignature) ExprType {
+	if sema.skipEvaluation && (strings.EqualFold(n.Callee, "fromJSON") || strings.EqualFold(n.Callee, "format")) {
+		return sig.Ret
+	}
 	sema.checkSpecialFunctionAvailability(n)
 	if sema.condition && sema.ruleConfig.diagnosticLevel("case-insensitive-conditions") != "off" && len(n.Args) == 2 {
 		switch strings.ToLower(n.Callee) {
@@ -1079,6 +1083,37 @@ func (sema *ExprSemanticsChecker) checkBuiltinFuncCall(n *FuncCallNode, sig *Fun
 	return sig.Ret
 }
 
+func (sema *ExprSemanticsChecker) checkExpressionBranch(node ExprNode, skipped bool) ExprType {
+	previous := sema.skipEvaluation
+	sema.skipEvaluation = previous || skipped
+	ty := sema.check(node)
+	sema.skipEvaluation = previous
+	return ty
+}
+
+func (sema *ExprSemanticsChecker) checkCaseCall(n *FuncCallNode) ExprType {
+	sema.checkSpecialFunctionAvailability(n)
+	remaining := true
+	for i := 0; i < len(n.Args)-1; i += 2 {
+		ty := sema.checkExpressionBranch(n.Args[i], !remaining)
+		if remaining && !sema.skipEvaluation {
+			switch ty.(type) {
+			case BoolType, AnyType:
+			default:
+				sema.errorf(n.Args[i], "case() predicate must be boolean but found %s", ty.String())
+			}
+		}
+		value, known := conditionConstantValue(n.Args[i])
+		predicate, boolean := value.(bool)
+		sema.checkExpressionBranch(n.Args[i+1], !remaining || known && boolean && !predicate)
+		if known && boolean && predicate {
+			remaining = false
+		}
+	}
+	sema.checkExpressionBranch(n.Args[len(n.Args)-1], !remaining)
+	return AnyType{}
+}
+
 func (sema *ExprSemanticsChecker) checkFuncCall(n *FuncCallNode) ExprType {
 	// Check function name in case insensitive. For example, toJson and toJSON are the same function.
 	callee := strings.ToLower(n.Callee)
@@ -1106,6 +1141,9 @@ func (sema *ExprSemanticsChecker) checkFuncCall(n *FuncCallNode) ExprType {
 		}}
 	}
 
+	if callee == "case" && len(n.Args) >= 3 && len(n.Args)%2 == 1 {
+		return sema.checkCaseCall(n)
+	}
 	tys := make([]ExprType, 0, len(n.Args))
 	for _, a := range n.Args {
 		tys = append(tys, sema.check(a))
@@ -1238,11 +1276,15 @@ func (sema *ExprSemanticsChecker) checkLogicalOp(n *LogicalOpNode) ExprType {
 	case LogicalOpNodeKindAnd:
 		// When `l` is false in `l && r`, its type is `typeof(l)`. Otherwise `typeof(r)`.
 		// Narrow the type of LHS expression by assuming its value is falsy.
-		return sema.checkWithNarrowing(n.Left, false).Merge(sema.check(n.Right))
+		left := sema.checkWithNarrowing(n.Left, false)
+		value, known := conditionConstantValue(n.Left)
+		return left.Merge(sema.checkExpressionBranch(n.Right, known && !expressionTruthy(value)))
 	case LogicalOpNodeKindOr:
 		// When `l` is true in `l || r`, its type is `typeof(l)`. Otherwise `typeof(r).
 		// Narrow the type of LHS expression by assuming its value is truthy.
-		return sema.checkWithNarrowing(n.Left, true).Merge(sema.check(n.Right))
+		left := sema.checkWithNarrowing(n.Left, true)
+		value, known := conditionConstantValue(n.Left)
+		return left.Merge(sema.checkExpressionBranch(n.Right, known && expressionTruthy(value)))
 	default:
 		sema.check(n.Left)
 		sema.check(n.Right)

@@ -91,12 +91,52 @@ function isCommentLine(line, lang) {
 		|| text.startsWith('* ');
 }
 
-/** @param {string} line */
-function isYamlExampleLine(line) {
-	const text = line.trimStart().replace(/^#\s?/, '');
-	return /^\s*(?:-\s+)?(?:[\w./*{}$-]+|"(?:[^"\\]|\\.)*"|'(?:[^']|'')*')\s*:(?:\s|$)/.test(text)
-		|| /^(?:\s+-\s+\S|-\s+["'[{])/.test(text)
-		|| /^\s*[[\]{}][\s,]*$/.test(text);
+/** @param {string[]} lines */
+function yamlExampleLines(lines) {
+	const examples = new Set();
+	const textLines = lines.map(line => isCommentLine(line, 'hash') ? line.trimStart().replace(/^#\s?/, '') : null);
+	/** @type {number | null} */
+	let parentIndent = null;
+	for (const [index, text] of textLines.entries()) {
+		if (text === null || text === undefined) {
+			parentIndent = null;
+			continue;
+		}
+		if (text.trimStart().startsWith('#')) continue;
+		const indent = text.length - text.trimStart().length;
+		const nested = parentIndent !== null && indent > parentIndent;
+		const mapping = /^\s*(?:-\s+)?(?:[\w./*{}$-]+|"(?:[^"\\]|\\.)*"|'(?:[^']|'')*')\s*:(?:\s+(.*))?$/.exec(text);
+		if (mapping !== null) {
+			const value = mapping[1]?.trim() ?? '';
+			const child = textLines.slice(index + 1).find(line =>
+				line === null || line !== undefined && !line.trimStart().startsWith('#')
+			);
+			const container = /^[[{]/.test(value) || value === '' && child !== null && child !== undefined
+					&& child.length - child.trimStart().length > indent
+					&& /^\s*(?:\S.*:|-)\s*/.test(child);
+			const scalar = /^(?:true|false|null|[-+]?\d+(?:\.\d+)?)(?:\s+#.*)?$/.test(value);
+			if (nested || container || scalar) examples.add(index + 1);
+			if (container && !nested) parentIndent = indent;
+			else if (!nested) parentIndent = null;
+		} else if (nested && (/^\s*-\s+\S/.test(text) || /^\s*[[\]{}][\s,]*$/.test(text))) {
+			examples.add(index + 1);
+		} else if (text.trim() !== '') {
+			parentIndent = null;
+		}
+	}
+	return examples;
+}
+
+/** @param {string} patch */
+function linesFromPatch(patch) {
+	/** @type {string[]} */
+	const lines = [];
+	let line = 0;
+	for (const raw of patch.split('\n')) {
+		if (raw.startsWith('@@')) line = Number(/\+(\d+)/.exec(raw)?.[1] ?? 1);
+		else if (line > 0 && (raw.startsWith('+') || raw.startsWith(' '))) lines[line++ - 1] = raw.slice(1);
+	}
+	return lines;
 }
 
 /** @param {string} line */
@@ -175,6 +215,7 @@ export function groupsFromPatch(path, patch, source) {
 	const markdown = lang === 'md';
 	const yaml = /\.ya?ml$/.test(path);
 	const sourceLines = source?.split('\n');
+	const yamlExamples = yaml ? yamlExampleLines(sourceLines ?? linesFromPatch(patch)) : new Set();
 	/** @type {Group[]} */
 	const groups = [];
 	/** @type {PendingGroup | null} */
@@ -202,7 +243,7 @@ export function groupsFromPatch(path, patch, source) {
 
 	/** @param {string} content */
 	const startsBlock = content => {
-		if (!markdown) return isCommentLine(content, lang) && !(yaml && isYamlExampleLine(content));
+		if (!markdown) return isCommentLine(content, lang) && !yamlExamples.has(newLine);
 		const nextFence = updateFence(fence, content);
 		if (nextFence !== fence) {
 			fence = nextFence;
@@ -335,7 +376,7 @@ export default async function run({ github, context, core }) {
 		}
 
 		let source;
-		if (file.filename.endsWith('.go') || langFor(file.filename) === 'md') {
+		if (/\.(?:go|ya?ml)$/.test(file.filename) || langFor(file.filename) === 'md') {
 			try {
 				const contentsUrl = requiredString(file.contents_url, `contents URL for ${file.filename}`);
 				const response = await github.request(contentsUrl, {

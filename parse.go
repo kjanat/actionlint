@@ -915,21 +915,29 @@ func (p *parser) parsePermissions(pos *Pos, n *yaml.Node) *Permissions {
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#env
 func (p *parser) parseEnv(n *yaml.Node) *Env {
+	return p.parseEnvMapping(n, false)
+}
+
+func (p *parser) parseEnvMapping(n *yaml.Node, allowEmpty bool) *Env {
 	if n.Kind == yaml.ScalarNode {
 		return &Env{
 			Expression: p.parseExpression(n, "mapping value for \"env\" section"),
 		}
 	}
 
-	vars := map[string]*EnvVar{}
-	for e := range p.parseSectionMapping("env", n, false, false) {
-		vars[e.id] = &EnvVar{
+	env := &Env{Vars: map[string]*EnvVar{}}
+	for e := range p.parseSectionMapping("env", n, allowEmpty, false) {
+		if isMappingInsertion(e.key.Value) {
+			env.Insertions = append(env.Insertions, p.parseEnvMapping(e.val, true))
+			continue
+		}
+		env.Vars[e.id] = &EnvVar{
 			Name:  e.key,
 			Value: p.parseString(e.val, true),
 		}
 	}
 
-	return &Env{Vars: vars}
+	return env
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#defaults
@@ -1166,6 +1174,10 @@ func (p *parser) parseMatrixCombinations(sec string, n *yaml.Node) *MatrixCombin
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategymatrix
 func (p *parser) parseMatrix(pos *Pos, n *yaml.Node) *Matrix {
+	return p.parseMatrixMapping(pos, n, false, false)
+}
+
+func (p *parser) parseMatrixMapping(pos *Pos, n *yaml.Node, allowEmpty, evaluated bool) *Matrix {
 	if n.Kind == yaml.ScalarNode {
 		return &Matrix{
 			Expression: p.parseExpression(n, "matrix"),
@@ -1175,7 +1187,11 @@ func (p *parser) parseMatrix(pos *Pos, n *yaml.Node) *Matrix {
 
 	ret := &Matrix{Pos: pos, Rows: make(map[string]*MatrixRow)}
 
-	for e := range p.parseSectionMapping("matrix", n, false, false) {
+	for e := range p.parseSectionMapping("matrix", n, allowEmpty, false) {
+		if !evaluated && isMappingInsertion(e.key.Value) {
+			ret.Insertions = append(ret.Insertions, p.parseMatrixMapping(e.key.Pos, e.val, true, false))
+			continue
+		}
 		switch e.id {
 		case "include":
 			ret.Include = p.parseMatrixCombinations("include", e.val)
@@ -1207,6 +1223,16 @@ func (p *parser) parseMatrix(pos *Pos, n *yaml.Node) *Matrix {
 		}
 	}
 
+	for _, row := range ret.Rows {
+		row.evaluated = evaluated
+	}
+	for _, filters := range []*MatrixCombinations{ret.Include, ret.Exclude} {
+		if filters != nil {
+			for _, combination := range filters.Combinations {
+				combination.evaluated = evaluated
+			}
+		}
+	}
 	return ret
 }
 
@@ -1369,6 +1395,21 @@ func (p *parser) parseTimeoutMinutes(n *yaml.Node) *Float {
 	return f
 }
 
+func (p *parser) parseActionInputMapping(n *yaml.Node, allowEmpty bool) *ActionInputMapping {
+	if n.Kind == yaml.ScalarNode {
+		return &ActionInputMapping{Expression: p.parseExpression(n, "mapping value for \"with\" section")}
+	}
+	mapping := &ActionInputMapping{Inputs: map[string]*Input{}}
+	for e := range p.parseSectionMapping("with", n, allowEmpty, false) {
+		if isMappingInsertion(e.key.Value) {
+			mapping.Insertions = append(mapping.Insertions, p.parseActionInputMapping(e.val, true))
+		} else {
+			mapping.Inputs[e.id] = &Input{e.key, p.parseString(e.val, true)}
+		}
+	}
+	return mapping
+}
+
 func (p *parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bool) *ExecAction {
 	ret := &ExecAction{}
 
@@ -1387,6 +1428,10 @@ func (p *parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 			with := p.parseSectionMapping("with", e.val, false, false)
 			if isDocker {
 				for e := range with {
+					if isMappingInsertion(e.key.Value) {
+						ret.InputInsertions = append(ret.InputInsertions, p.parseActionInputMapping(e.val, true))
+						continue
+					}
 					switch e.id {
 					case "entrypoint":
 						// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepswithentrypoint
@@ -1400,6 +1445,10 @@ func (p *parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 				}
 			} else {
 				for e := range with {
+					if isMappingInsertion(e.key.Value) {
+						ret.InputInsertions = append(ret.InputInsertions, p.parseActionInputMapping(e.val, true))
+						continue
+					}
 					ret.Inputs[e.id] = &Input{e.key, p.parseString(e.val, true)}
 				}
 			}

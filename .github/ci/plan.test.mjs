@@ -202,7 +202,8 @@ test('action tests, probe results, mixed documentation and source changes select
 	const ci = workflowFilters('ci');
 	const action = selectJobs(ci, ['packages/github-action/tests/reporters.test.ts']);
 	assert.deepEqual(Object.keys(action).filter(job => action[job]), ['javascript', 'action', 'action-tests']);
-	assert.ok(Object.values(selectJobs(ci, ['docs/usage.md'])).every(run => !run));
+	const documentation = selectJobs(ci, ['docs/usage.md']);
+	assert.deepEqual(Object.keys(documentation).filter(job => documentation[job]), ['release']);
 	assert.equal(selectJobs(ci, ['docs/usage.md', 'config.go']).unit, true);
 	assert.equal(
 		selectJobs(workflowFilters('expression-probe-tests'), [
@@ -225,4 +226,14 @@ test('Action smoke fixtures are re-included after the general testdata exclusion
 		assert.equal(selectJobs(ci, [path]).action, true, path);
 	}
 	assert.equal(selectJobs(ci, ['testdata/ok/other.yaml']).action, false);
+});
+
+test('release snapshots cover every archived documentation input', () => {
+	const ci = workflowFilters('ci');
+	for (
+		const path of ['README.md', 'LICENSE.txt', 'docs/usage.md', 'docs/releases/v1.18.0.md', 'docs/testdata/example.md']
+	) {
+		assert.equal(selectJobs(ci, [path]).release, true, path);
+	}
+	assert.equal(selectJobs(ci, ['CONTRIBUTING.md']).release, false);
 });

@@ -354,29 +354,30 @@ func (rule *RuleRunnerLabel) tryToGetLabelsInMatrix(label *String, strategy *Str
 		return knownStrategyRunnerLabels(strategy.Expression, prop)
 	}
 	m := strategy.Matrix
+	if m != nil && len(m.Insertions) != 0 {
+		var known bool
+		m, known = expandedMatrixInsertions(m)
+		if !known {
+			return nil
+		}
+	}
 	if m == nil {
 		return nil
 	}
 	var labels [][]*String
 
-	if m.Rows != nil {
-		if row, ok := m.Rows[prop]; ok {
-			for _, v := range row.Values {
-				if s, ok := v.(*RawYAMLString); ok && !ContainsExpression(s.Value) {
-					labels = append(labels, []*String{{s.Value, false, s.Pos()}})
-				}
+	if row := m.Rows[prop]; row != nil {
+		elements, _ := matrixRowElements(row, true)
+		for _, element := range elements {
+			if scalar, ok := element.value.(*RawYAMLString); ok && (!element.expressions || !ContainsExpression(scalar.Value)) {
+				labels = append(labels, []*String{{scalar.Value, false, scalar.Pos()}})
 			}
 		}
 	}
-
-	if m.Include != nil {
-		for _, combi := range m.Include.Combinations {
-			if combi.Assigns != nil {
-				if assign, ok := combi.Assigns[prop]; ok {
-					if s, ok := assign.Value.(*RawYAMLString); ok && !ContainsExpression(s.Value) {
-						labels = append(labels, []*String{{s.Value, false, s.Pos()}})
-					}
-				}
+	for _, combination := range matrixExcludeCombinations(m.Include, true) {
+		if assign := combination.combination.Assigns[prop]; assign != nil {
+			if scalar, ok := assign.Value.(*RawYAMLString); ok && (!combination.expressions || !ContainsExpression(scalar.Value)) {
+				labels = append(labels, []*String{{scalar.Value, false, scalar.Pos()}})
 			}
 		}
 	}
@@ -461,9 +462,27 @@ func knownRunnerMatrixCombinations(strategy *Strategy) ([]runnerMatrixCombinatio
 	if evaluated {
 		matrix = knownStrategyMatrix(strategy.Expression)
 	}
+	if matrix != nil && len(matrix.Insertions) != 0 {
+		var complete bool
+		matrix, complete = expandedMatrixInsertions(matrix)
+		if !complete {
+			return nil, false
+		}
+	}
 	if matrix == nil || matrix.Expression != nil {
 		return nil, false
 	}
+	resolved := *matrix
+	var complete bool
+	resolved.Include, complete = expandedMatrixCombinations(matrix.Include)
+	if !complete {
+		return nil, false
+	}
+	resolved.Exclude, complete = expandedMatrixCombinations(matrix.Exclude)
+	if !complete {
+		return nil, false
+	}
+	matrix = &resolved
 	known := func(value RawYAMLValue) bool { return evaluated || !ContainsExpression(value.String()) }
 	for _, combinations := range []*MatrixCombinations{matrix.Include, matrix.Exclude} {
 		if combinations == nil {
@@ -474,7 +493,7 @@ func knownRunnerMatrixCombinations(strategy *Strategy) ([]runnerMatrixCombinatio
 		}
 		for _, combination := range combinations.Combinations {
 			for _, assign := range combination.Assigns {
-				if !known(assign.Value) {
+				if !combination.evaluated && !known(assign.Value) {
 					return nil, false
 				}
 			}
@@ -489,19 +508,20 @@ func knownRunnerMatrixCombinations(strategy *Strategy) ([]runnerMatrixCombinatio
 	}
 	for _, name := range slices.Sorted(maps.Keys(matrix.Rows)) {
 		row := matrix.Rows[name]
-		if row.Expression != nil || len(row.Values) > 0 && len(originals) > limit/len(row.Values) {
+		elements, complete := matrixRowElements(row, !evaluated)
+		if !complete || len(elements) > 0 && len(originals) > limit/len(elements) {
 			return nil, false
 		}
-		for _, value := range row.Values {
-			if !known(value) {
+		for _, element := range elements {
+			if element.expressions && !known(element.value) {
 				return nil, false
 			}
 		}
-		expanded := make([]runnerMatrixCombination, 0, len(originals)*len(row.Values))
+		expanded := make([]runnerMatrixCombination, 0, len(originals)*len(elements))
 		for _, original := range originals {
-			for _, value := range row.Values {
+			for _, element := range elements {
 				combination := maps.Clone(original)
-				combination[name] = value
+				combination[name] = element.value
 				expanded = append(expanded, combination)
 			}
 		}

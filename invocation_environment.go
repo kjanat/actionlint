@@ -10,6 +10,11 @@ func checkoutEnvironmentUnknown(env *Env, platform platformKind) bool {
 	if env.Expression != nil {
 		return true
 	}
+	for _, insertion := range env.Insertions {
+		if checkoutEnvironmentUnknown(insertion, platform) {
+			return true
+		}
+	}
 	for _, variable := range env.Vars {
 		name, known := environmentLiteral(variable.Name)
 		if platform != platformKindMacOrLinux {

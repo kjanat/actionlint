@@ -325,6 +325,9 @@ func (rule *RuleExpression) VisitStep(n *Step) error {
 	case *ExecAction:
 		rule.checkString(e.Uses, "")
 		rule.checkWorkflowExpression(e.InputsExpression, "with", "jobs.<job_id>.steps.with", workflowStringMap)
+		for _, insertion := range e.InputInsertions {
+			rule.checkActionInputInsertion(insertion, e.Uses)
+		}
 		for n, i := range e.Inputs {
 			if e.Uses != nil && strings.HasPrefix(e.Uses.Value, "actions/github-script@") && n == "script" {
 				rule.checkScriptString(i.Value, "jobs.<job_id>.steps.with")
@@ -441,6 +444,9 @@ func (rule *RuleExpression) checkOneExpression(s *String, what, workflowKey stri
 		return nil
 	}
 
+	if value, known := workflowExpressionLiteral(s); known {
+		return typeOfJSONValue(value)
+	}
 	return ts[0].ty
 }
 
@@ -507,21 +513,40 @@ func (rule *RuleExpression) checkNumberExpression(s *String, what, workflowKey s
 	rule.checkNumberTy(ty, s.Pos, what)
 }
 
+func (rule *RuleExpression) checkActionInputInsertion(mapping *ActionInputMapping, uses *String) {
+	const key = "jobs.<job_id>.steps.with"
+	rule.checkWorkflowExpression(mapping.Expression, "with", key, workflowStringMap)
+	for name, input := range mapping.Inputs {
+		rule.checkString(input.Name, key)
+		if uses != nil && strings.HasPrefix(uses.Value, "actions/github-script@") && name == "script" {
+			rule.checkScriptString(input.Value, key)
+		} else {
+			rule.checkString(input.Value, key)
+		}
+	}
+	for _, insertion := range mapping.Insertions {
+		rule.checkActionInputInsertion(insertion, uses)
+	}
+}
+
 func (rule *RuleExpression) checkEnv(env *Env, workflowKey string) {
 	if env == nil {
 		return
 	}
 
-	if env.Vars != nil {
-		for _, e := range env.Vars {
-			rule.checkString(e.Name, workflowKey)
-			rule.checkString(e.Value, workflowKey)
-		}
+	if env.Expression != nil {
+		// When form of "env: ${{...}}"
+		rule.checkWorkflowExpression(env.Expression, "env", workflowKey, workflowStringMap)
 		return
 	}
 
-	// When form of "env: ${{...}}"
-	rule.checkWorkflowExpression(env.Expression, "env", workflowKey, workflowStringMap)
+	for _, e := range env.Vars {
+		rule.checkString(e.Name, workflowKey)
+		rule.checkString(e.Value, workflowKey)
+	}
+	for _, insertion := range env.Insertions {
+		rule.checkEnv(insertion, workflowKey)
+	}
 }
 
 func (rule *RuleExpression) checkContainer(c *Container, workflowKey, childWorkflowKeyPrefix string) {
@@ -1034,7 +1059,20 @@ func (rule *RuleExpression) checkMatrix(m *Matrix) *ObjectType {
 	}
 
 	o := NewEmptyStrictObjectType()
-
+	for _, insertion := range m.Insertions {
+		var inserted *ObjectType
+		if insertion.Expression != nil {
+			ty := rule.checkWorkflowExpression(insertion.Expression, "matrix insertion", "jobs.<job_id>.strategy", workflowStrategy.props["matrix"])
+			inserted = matrixTypeFromExpression(ty)
+		} else {
+			inserted = rule.checkMatrix(insertion)
+		}
+		if merged, ok := o.Merge(inserted).(*ObjectType); ok {
+			o = merged
+		} else {
+			o.Loose()
+		}
+	}
 	for n, r := range m.Rows {
 		o.Props[n] = rule.checkMatrixRow(r)
 	}
@@ -1218,6 +1256,9 @@ func (rule *RuleExpression) checkRawYAMLString(y *RawYAMLString) ExprType {
 	if isExprAssigned(y.Value) {
 		if !ok || len(ts) != 1 {
 			return AnyType{}
+		}
+		if value, known := workflowExpressionLiteral(&String{Value: y.Value}); known {
+			return typeOfJSONValue(value)
 		}
 		return ts[0].ty
 	}

@@ -21,6 +21,7 @@ func matrixValueContainsExpression(value RawYAMLValue) bool {
 // matrixRowElements retains expression provenance after inserting one array
 // level. Unknown elements leave the row open to additional runtime values.
 func matrixRowElements(row *MatrixRow, expressions bool) ([]matrixFilterElement, bool) {
+	expressions = expressions && !row.evaluated
 	values := row.Values
 	if row.Expression != nil {
 		literal, known := workflowExpressionLiteral(row.Expression)
@@ -87,7 +88,7 @@ func matrixExcludeCombinations(filters *MatrixCombinations, expressions bool) []
 			}
 			continue
 		}
-		combinations = append(combinations, matrixKnownCombination{combination, expressions})
+		combinations = append(combinations, matrixKnownCombination{combination, expressions && !combination.evaluated})
 	}
 	return combinations
 }

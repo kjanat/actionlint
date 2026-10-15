@@ -56,4 +56,7 @@ func (rule *RuleEnvVar) checkEnv(env *Env) {
 			)
 		}
 	}
+	for _, insertion := range env.Insertions {
+		rule.checkEnv(insertion)
+	}
 }

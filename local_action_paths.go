@@ -284,7 +284,7 @@ func (c *LocalActionsCache) observeCheckout(step *Step) {
 		c.restoreCheckout(&checkoutPlacement{directory: runDirectory{kind: directoryUnknown}, redirected: true})
 		return
 	}
-	if action.InputsExpression != nil {
+	if action.InputsExpression != nil || len(action.InputInsertions) != 0 {
 		c.setCheckout(runDirectory{kind: directoryUnknown})
 		return
 	}

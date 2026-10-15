@@ -1045,18 +1045,18 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			expected: AnyType{},
 		},
 		{
-			what:     "case() with number predicate (coerced to bool)",
-			input:    "case(1, 'a', 'b')",
+			what:     "case() with numeric comparison predicate",
+			input:    "case(1 == 1, 'a', 'b')",
 			expected: AnyType{},
 		},
 		{
-			what:     "case() with string predicate (coerced to bool)",
-			input:    "case('yes', 'a', 'b')",
+			what:     "case() with string comparison predicate",
+			input:    "case('yes' != '', 'a', 'b')",
 			expected: AnyType{},
 		},
 		{
-			what:     "case() with null predicate (coerced to bool)",
-			input:    "case(null, 'a', 'b')",
+			what:     "case() with null comparison predicate",
+			input:    "case(null == null, 'a', 'b')",
 			expected: AnyType{},
 		},
 		{

@@ -61,6 +61,31 @@ test('still scans prose list items in YAML comments', () => {
 	assert.deepEqual(groupsFromPatch('config.yml', patch).map(group => group.reasons), [['"X rather than Y"']]);
 });
 
+test('scans labeled YAML prose independently of nearby examples', () => {
+	const source = [
+		'# Note: use the robust wrapper rather than the default.',
+		'# tools:',
+		'#   ruff:',
+		'#     select: [F, B, S]',
+		'# Warning: use the robust wrapper rather than the default.',
+		'# note: robust',
+	].join('\n');
+	const patch = `@@ -0,0 +1,6 @@\n${source.split('\n').map(line => `+${line}`).join('\n')}`;
+	for (const contents of [undefined, source]) {
+		const groups = groupsFromPatch('config.yaml', patch, contents);
+		assert.deepEqual(groups.map(group => ({ start: group.start, reasons: group.reasons })), [
+			{ start: 1, reasons: ['"X rather than Y"', 'inflated diction'] },
+			{ start: 5, reasons: ['"X rather than Y"', 'inflated diction'] },
+		]);
+	}
+});
+
+test('recognizes unchanged YAML parents around partial diff hunks', () => {
+	const source = '# tools:\n#   ruff:\n#     select: [F, B, S]\n#     ignore: [F401]\n#     enabled: true';
+	const patch = '@@ -2,2 +2,4 @@\n #   ruff:\n+#     select: [F, B, S]\n+#     ignore: [F401]\n+#     enabled: true';
+	assert.deepEqual(groupsFromPatch('config.yml', patch, source), []);
+});
+
 test('does not flag the generated configuration examples by length', () => {
 	const source = readFileSync(new URL('../../../config_default.yaml', import.meta.url), 'utf8');
 	const lines = source.split('\n');
@@ -278,7 +303,13 @@ const firstGroup = {
 };
 
 /** @param {string[]} seenBodies @param {Error | undefined} submitError */
-function reviewHarness(seenBodies = [], submitError = undefined, files = reviewFiles, threadPath = 'docs/first.md') {
+function reviewHarness(
+	seenBodies = [],
+	submitError = undefined,
+	files = reviewFiles,
+	threadPath = 'docs/first.md',
+	source = 'Plain Markdown with no code fences.',
+) {
 	const createReview = mock.fn(async (/** @type {ReviewParams} */ params) => {
 		if (submitError) throw submitError;
 		return params;
@@ -304,7 +335,7 @@ function reviewHarness(seenBodies = [], submitError = undefined, files = reviewF
 		github: {
 			rest: { pulls: { listFiles: mock.fn(), createReview } },
 			paginate: mock.fn(async () => files),
-			request: mock.fn(async () => ({ data: 'Plain Markdown with no code fences.' })),
+			request: mock.fn(async () => ({ data: source })),
 			graphql,
 		},
 		context: {
@@ -405,7 +436,7 @@ test('resolves an existing finding caused by commented YAML data', async () => {
 		contents_url: 'config',
 		patch: `@@ -0,0 +1,3 @@\n${text.split('\n').map(line => `+${line}`).join('\n')}`,
 	}];
-	const h = reviewHarness([bodyFor(oldGroup)], undefined, files, path);
+	const h = reviewHarness([bodyFor(oldGroup)], undefined, files, path, text);
 	await run(h.args);
 
 	assert.equal(h.createReview.mock.callCount(), 0);
