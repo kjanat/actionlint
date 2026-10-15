@@ -9,7 +9,7 @@ import (
 	"io"
 	"syscall/js"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 // Set by the site build to reject catalogue/WASM deployment mismatches.

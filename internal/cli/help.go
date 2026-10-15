@@ -8,7 +8,7 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 	"github.com/fatih/color"
 	"github.com/mattn/go-colorable"
 	"github.com/spf13/cobra"

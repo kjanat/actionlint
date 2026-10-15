@@ -6,12 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
 	"unicode"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 	"actionlint.kjanat.dev/internal/genfile"
 	"actionlint.kjanat.dev/internal/ruff"
 	"github.com/invopop/jsonschema"
@@ -281,7 +282,7 @@ func documentFields(s *jsonschema.Schema) {
 func documentedReflector() (*jsonschema.Reflector, error) {
 	r := reflector()
 	for _, file := range []string{"config.go", "config_lint.go", "config_rule_settings.go", "rule_options.go", "config_file_overrides.go"} {
-		if err := r.AddGoComments("actionlint.kjanat.dev", file, jsonschema.WithFullComment()); err != nil {
+		if err := r.AddGoComments("actionlint.kjanat.dev", filepath.Join("internal", "engine", file), jsonschema.WithFullComment()); err != nil {
 			return nil, fmt.Errorf("read config comments: %w", err)
 		}
 	}
@@ -320,7 +321,7 @@ func generate() ([]byte, error) {
 	// Resolve tool schemas beside this document in Git checkouts and npm packages.
 	s.ID = ""
 	s.Title = "actionlint configuration"
-	s.Comments = "Generated from config.go by go generate -run generate-config-schema. DO NOT EDIT."
+	s.Comments = "Generated from internal/engine/config.go by go generate -run generate-config-schema. DO NOT EDIT."
 	return encodeSchema(s)
 }
 

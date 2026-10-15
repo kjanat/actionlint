@@ -7,8 +7,8 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev"
 	"actionlint.kjanat.dev/internal/actioncatalog"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 func (g *gen) writeCatalog(out io.Writer, actions map[string]*actionlint.ActionMetadata) error {

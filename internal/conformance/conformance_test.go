@@ -20,8 +20,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev"
 	"actionlint.kjanat.dev/internal/conformance"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 	"github.com/google/go-cmp/cmp"
 	"go.yaml.in/yaml/v4"
 )

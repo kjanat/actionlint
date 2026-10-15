@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 func TestDoctorRuffCompatibility(t *testing.T) {

@@ -3,12 +3,17 @@ ARG ALPINE_VER=3.24
 
 FROM golang:${GOLANG_VER} AS builder
 WORKDIR /go/src/app
-COPY go.* *.go config_default.yaml sarif_template.txt ./
+COPY go.* *.go ./
+COPY analyzer analyzer/
+COPY analysis analysis/
+COPY config config/
+COPY diagnostic diagnostic/
+COPY syntax syntax/
 COPY cmd cmd/
 COPY internal internal/
 ENV CGO_ENABLED=0
 ARG ACTIONLINT_VER=
-RUN go build -v -ldflags "-s -w -X actionlint.kjanat.dev.version=${ACTIONLINT_VER} -X 'actionlint.kjanat.dev.installedFrom=official Docker image'" -o . ./cmd/actionlint
+RUN go build -v -ldflags "-s -w -X actionlint.kjanat.dev/internal/engine.version=${ACTIONLINT_VER} -X 'actionlint.kjanat.dev/internal/engine.installedFrom=official Docker image'" -o . ./cmd/actionlint
 
 FROM koalaman/shellcheck-alpine:stable AS shellcheck
 # Release binaries support larger ARM64 page sizes, unlike Ruff's distroless build.

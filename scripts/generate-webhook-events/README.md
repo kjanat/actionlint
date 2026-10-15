@@ -1,6 +1,6 @@
 # generate-webhook-events
 
-This is a script for generating [`all_webhooks.go`](../../all_webhooks.go).
+This is a script for generating [`all_webhooks.go`](../../internal/engine/all_webhooks.go).
 
 It does:
 
@@ -17,13 +17,13 @@ generate-webhook-events [[srcfile] dstfile]
 Generate `all_webhooks.go` file:
 
 ```sh
-go run ./scripts/generate-webhook-events ./all_webhooks.go
+go run ./scripts/generate-webhook-events ./internal/engine/all_webhooks.go
 ```
 
 When the HTML file is in local:
 
 ```sh
-go run ./scripts/generate-webhook-events ./input.html ./all_webhooks.go
+go run ./scripts/generate-webhook-events ./input.html ./internal/engine/all_webhooks.go
 ```
 
 For debugging, specifying `-` to `dstfile` outputs the generated source to stdout:

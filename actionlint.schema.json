@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$comment": "Generated from config.go by go generate -run generate-config-schema. DO NOT EDIT.",
+  "$comment": "Generated from internal/engine/config.go by go generate -run generate-config-schema. DO NOT EDIT.",
   "title": "actionlint configuration",
   "description": "Configures validation of GitHub Actions workflows for this repository.\n\nDeclare custom runner labels and available variable or secret names, suppress selected diagnostics by file path, choose assumed token permissions, and enable repository policy checks. Save as `.github/actionlint.yaml` or `.github/actionlint.yml`, or select a file with `-config-file`. Every setting is optional; normal workflow correctness checks run without a configuration file.",
   "markdownDescription": "Configures validation of GitHub Actions workflows for this repository.\n\nDeclare custom runner labels and available variable or secret names, suppress selected diagnostics by file path, choose assumed token permissions, and enable repository policy checks. Save as `.github/actionlint.yaml` or `.github/actionlint.yml`, or select a file with `-config-file`. Every setting is optional; normal workflow correctness checks run without a configuration file.",

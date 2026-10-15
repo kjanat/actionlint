@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 	"actionlint.kjanat.dev/internal/genfile"
 	"actionlint.kjanat.dev/internal/ruff"
 	"github.com/google/go-cmp/cmp"

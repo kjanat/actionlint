@@ -3,7 +3,7 @@ package actionlint_fuzz
 import (
 	"testing"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 func parseWorkflowPanicFree(data []byte) *actionlint.Workflow {

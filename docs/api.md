@@ -1,87 +1,108 @@
-# Go API
+# Go library API
 
-[![API Document][api-badge]][apidoc]
+The Go library has one module, `actionlint.kjanat.dev`, with packages for distinct responsibilities. The v1.18.0 API
+intentionally breaks the former flat root API. The command-line interface and its output formats are separate contracts.
 
-This document describes how to use [actionlint](..) as Go library.
+| Package                            | Responsibility                                                            |
+| ---------------------------------- | ------------------------------------------------------------------------- |
+| `actionlint.kjanat.dev`            | Convenience `Analyze` entry point                                         |
+| `actionlint.kjanat.dev/analysis`   | Source requests, file/repository discovery, results and document outlines |
+| `actionlint.kjanat.dev/analyzer`   | Analyzer input, required facts, registration and returned diagnostics     |
+| `actionlint.kjanat.dev/diagnostic` | Diagnostics, source positions and suggested edits                         |
+| `actionlint.kjanat.dev/config`     | Configuration values, loading, composition and inspection                 |
+| `actionlint.kjanat.dev/syntax`     | Workflow syntax model and parser                                          |
 
-actionlint can be used from Go programs by importing the module.
+## Analyze loaded sources
 
 ```go
-import "actionlint.kjanat.dev"
+result, err := actionlint.Analyze(ctx, analysis.Request{
+    Sources: []analysis.Source{{
+        Path: "workflow.yml",
+        Content: source,
+        Config: cfg,
+    }},
+})
 ```
 
-See [the documentation][apidoc] to know the list of all APIs. It contains
-a workflow file parser built on top of `yaml/go-yaml` library, expression `${{ }}` lexer/parser/checker, etc.
+`Sources` supplies content and optional configuration explicitly. `Analyze` does not discover configuration files.
+`Path` selects workflow or action-manifest parsing and provides diagnostic locations. Findings are returned in
+`result.Diagnostics`; a finding does not itself produce a Go error. An error means the analysis was incomplete, and a
+non-nil result may still contain useful findings and document outlines. Always inspect both values.
 
-Followings are unexhaustive list of interesting APIs.
+`result.FileCount` includes clean documents. Document outlines are selected declarations, not a complete semantic graph.
+Positions are one-based Unicode character positions; range ends are exclusive. The library result can be marshalled to
+JSON, but it is not the CLI's versioned result envelope.
 
-- `AnalysisSession` discovers local workflows, resolves their configuration and returns an `AnalysisResult` without printing
-  diagnostics. `AnalysisOptions` supplies the context, external tools and discovery settings. Use `Analyze` with an
-  `AnalysisRequest` when workflow contents and configuration are already resolved.
-- `AnalysisRenderer` renders those results as text, structured output or a Go template. `AnalysisResult.FileCount()` counts
-  checked workflows, including those with no findings.
-- `InspectConfig` returns effective configuration and optional YAML origins. `BuiltinRules` lists available checks without
-  starting external tools.
-- `Linter` manages linter lifecycle and applies checks to given files. If you want to run actionlint checks in your
-  program, please use this struct.
-- `LinterOptions.OutputFormat` selects `OutputFormatText`, `OutputFormatOneline`, `OutputFormatJSON`, `OutputFormatJSONL`,
-  `OutputFormatSARIF`, or `OutputFormatGitHub`. Leave it empty to retain the existing `Format` and `Oneline` behavior. A nonempty `OutputFormat`
-  cannot be combined with `Format`. JSON emits a versioned `CheckResult`; JSONL emits `Diagnostic` records. Legacy `Format` templates retain `ErrorTemplateFields`.
-- `Project` and `Projects` detect a project (Git repository) in a given directory path and find configuration in it.
-- `Config` represents structure of `actionlint.yaml` config file. It can be decoded by [yaml/go-yaml][go-yaml] library.
-- `RequireJobTimeout(max)` enables the timeout policy with an optional maximum. `RequireJobTimeoutRange(min, max)` also
-  supports a minimum; zero omits a bound, and invalid ranges return an error. Assign the result to `Config.Policy.RequireJobTimeout`.
-- `RequirePermissions("workflow")` or `RequirePermissions("job")` enables the permissions policy at that scope; invalid scopes
-  return an error. Assign the result to `Config.Policy.RequirePermissions`. A nil policy is unset; a zero-value policy explicitly disables it.
-- `Workflow`, `Job`, `Step`, ... are nodes of workflow syntax tree. `Workflow` is a root node.
-- `Parse()` parses given contents into a workflow syntax tree. It tries to find syntax errors as much as possible and
-  returns found errors as slice.
-- `Pass` is a visitor to traverse a workflow syntax tree. Multiple passes can be applied at single pass using `Visitor`.
-- `Rule` is an interface for rule checkers and `RuneBase` is a base struct to implement a rule checker.
-  - `RuleExpression` is a rule checker to check expression syntax in `${{ }}`.
-  - `RuleShellcheck` is a rule checker to apply `shellcheck` command to `run:` sections and collect errors from it.
-  - `RuleJobNeeds` is a rule checker to check dependencies in `needs:` section. It can detect cyclic dependencies.
-  - ...
-- `ExprLexer` lexes expression syntax in `${{ }}` and returns slice of `Token`.
-- `ExprParser` parses given slice of `Token` and returns syntax tree for expression in `${{ }}`. `ExprNode` is an
-  interface for nodes in the expression syntax tree.
-  Built-in node types expose `Span() ExprSpan`, a half-open byte range in the decoded expression text. Function diagnostics
-  select the callee token when appropriate; `ExprError.Offset` and `EndOffset` carry the selected range.
-  Nodes constructed manually have no parser-owned span. Use keyed struct literals when constructing AST nodes; the structs
-  now contain private span storage. The `ExprNode` interface remains unchanged for custom node implementations.
-- `ExprType` is an interface of types in expression syntax `${{ }}`. `ObjectType`, `ArrayType`, `StringType`,
-  `NumberType`, ... are structs to represent actual types of expression.
-- `ExprSemanticsChecker` checks semantics of expression syntax `${{ }}`. It traverses given expression syntax tree and
-  deduces its type, checking types and resolving variables (contexts).
-- `ValidateRefGlob()` and `ValidatePathGlob()` validate [glob filter pattern][filter-pattern-doc] and returns all errors
-  found by the validator.
-- `ActionMetadata` is a struct for action metadata file (`action.yml`). It is used to check inputs specified at `with:`
-  and typing `steps.{id}.outputs` object strictly.
-- `PopularActions` global variable is the data set of popular actions' metadata collected by [the script](../scripts/generate-popular-actions).
-- `AllWebhookTypes` global variable is the mapping from all webhook names to their types collected by [the script](../scripts/generate-webhook-events).
-- `WorkflowKeyAvailability()` returns available context names and special function names for the given workflow key like
-  `jobs.<job_id>.outputs.<output_id>`. This function uses the data collected by [the script](../scripts/generate-availability).
+## Analyze files or a repository
 
-## Library versioning
+```go
+result, err := analysis.Files(ctx, paths, analysis.FileOptions{
+    Options: analysis.Options{WorkingDir: directory},
+    ConfigFile: "actionlint.yaml",
+})
+```
 
-The command frontend lives in `internal/cli`; `Command` is no longer exported by the root package. Programs that previously
-used it should call the analysis APIs above, or execute the binary when they need CLI argument parsing. Existing command-line
-invocations retain their behavior. Importing the root package does not load Cobra or pflag.
+`analysis.Repository(ctx, directory, options)` discovers workflows and action manifests. `FileOptions` adds configuration
+selection, overlays and `SkipProjectConfig` to the shared analysis options. These discovery settings do not appear in
+in-memory requests.
 
-The version of this repository is for command line tool `actionlint`. So it does not represent the version of the library.
-It means that the library does not follow semantic versioning and any patch version bump may introduce some breaking changes.
+`Options.ReadFile` supplies a concurrent-safe file reader for files read by actionlint. It does not sandbox external tools.
+External tools are disabled by default in the library. Enable them explicitly with `Options.ShellCheck` or `Options.Ruff`:
 
-## Go version compatibility
+```go
+options.Ruff = analysis.Tool{Executable: "ruff"}
+```
 
-Following the Go's official policy, last two major Go versions are supported. For example, when the latest Go version is
-v1.22, v1.21 and v1.22 are supported. Minimum supported Go version is written in the [`go.mod`](../go.mod) file in this
-repository.
+`Executable` is a literal executable name or path. `Arguments` supplies separate arguments; no shell command-line parsing
+is performed. An empty executable disables that tool. CLI environment discovery does not configure a library call.
 
----
+## Add an analyzer
 
-[Checks](checks.md) | [Installation](install.md) | [Usage](usage.md) | [Configuration](config.md) | [References](reference.md)
+Implement the following contract and supply it through `Options.Analyzers`:
 
-[api-badge]: https://pkg.go.dev/badge/actionlint.kjanat.dev.svg
-[apidoc]: https://pkg.go.dev/actionlint.kjanat.dev
-[go-yaml]: https://github.com/yaml/go-yaml
-[filter-pattern-doc]: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
+```go
+type Analyzer interface {
+    Descriptor() analyzer.Descriptor
+    Analyze(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error)
+}
+```
+
+A descriptor names the analyzer and declares required facts: source content, declared run scripts, or resolved mapping
+names. Each registration can supply JSON options. The host rejects unsupported or unavailable facts before invocation.
+Scripts expose their declared shell, not an inferred runner default. Mapping entries distinguish known, unknown and
+invalid keys and retain source text and evaluated-data provenance. `Complete` indicates whether all mapping names are
+statically known. A partial parse can supply partial facts; check `Input.ParseStatus` when completeness matters.
+
+The host gives each invocation independent slices, runs analyzers concurrently, and combines results in registration
+order before the normal diagnostic ordering and filtering. Missing diagnostic rule names and paths default to the
+analyzer name and input path. Findings and errors from one analyzer do not discard findings from another.
+
+An analyzer must finish its own work before returning and honor cancellation. The same instance may be called
+concurrently for different documents. The contract does not expose traversal callbacks, mutable built-in rules,
+process schedulers or caches. Built-in visitor adapters remain an internal implementation detail.
+
+## Configuration and syntax
+
+Use `config.Parse`, `config.Load` and `config.Inspect` to work with the existing configuration format. Configuration
+constructors include `RequireJobTimeout`, `RequireJobTimeoutRange` and `RequirePermissions`.
+`syntax.Parse` returns a workflow and structured parser diagnostics. Parsing does not execute semantic checks.
+
+The configuration and syntax packages currently expose selected model aliases backed by the internal engine. Their
+public names are the supported import surface. Treat unexported state as opaque and use keyed struct literals.
+
+## Migration from the flat API
+
+| Previous root API                                          | Replacement                                                                     |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `Analyze` with `AnalysisRequest` / `SourceUnit`            | `Analyze` with `analysis.Request` / `analysis.Source`                           |
+| `AnalysisSession.Files` / `Repository`                     | `analysis.Files` / `analysis.Repository`                                        |
+| `AnalysisResult.FileCount()`                               | `analysis.Result.FileCount`                                                     |
+| `Error`, diagnostic output fields                          | `diagnostic.Diagnostic`                                                         |
+| `Config`, `ParseConfig`, `ReadConfigFile`, `InspectConfig` | `config.Config`, `Parse`, `Load`, `Inspect`                                     |
+| `Workflow`, `Job`, `Step`, `Parse`                         | `syntax.Workflow`, `Job`, `Step`, `Parse`                                       |
+| `Rule`, `RuleBase`, `Visitor`, `OnRulesCreated`            | `analyzer.Analyzer` and registrations                                           |
+| `Linter`, `AnalysisRenderer`, CLI output selection         | Run the CLI for its presentation contract; consume library diagnostics directly |
+| Expression checker internals, process and cache types      | Internal implementation; no compatibility re-export                             |
+
+The architecture decision and remaining implementation boundaries are recorded in
+[the analysis contracts ADR](design/analysis-contracts.md).

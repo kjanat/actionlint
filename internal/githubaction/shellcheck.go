@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 	"go.yaml.in/yaml/v4"
 )
 

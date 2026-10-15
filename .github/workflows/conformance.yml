@@ -19,7 +19,7 @@ jobs:
           ],
           "jobs": {
             "conformance": [
-              "*.go", "go.mod", "go.sum", "config_default.yaml", "sarif_template.txt", "cmd/**", "internal/**",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**",
               "scripts/fetch-conformance/**", "!cmd/**", "!internal/cli/**", "!internal/githubaction/**", "!**/*_test.go",
               "internal/conformance/**", "!**/*.md"
             ]

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 	"github.com/spf13/pflag"
 )
 

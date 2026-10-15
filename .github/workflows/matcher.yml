@@ -20,7 +20,7 @@ jobs:
           ],
           "jobs": {
             "matcher": [
-              "*.go", "go.mod", "go.sum", "config_default.yaml", "sarif_template.txt", "cmd/**", "internal/**", "!**/*_test.go",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go",
               "scripts/generate-actionlint-matcher/**", ".github/actionlint-matcher.json", "testdata/**", "Makefile", ".node-version"
             ]
           }

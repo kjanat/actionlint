@@ -3,7 +3,7 @@
 package conformance_test
 
 import (
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 	"encoding/json"
 	"io/fs"
 	"regexp"

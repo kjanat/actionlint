@@ -28,7 +28,7 @@ When updating the bundled Ruff release:
 4. Run the Ruff configuration, schema, and selector generator tests.
 
 When changing the snapshot version, update the exact upstream file exclusion in
-`.dprint.jsonc`. Keep previously published schema paths available.
+`dprint.toml`. Keep previously published schema paths available.
 
 Only codes and prefixes matching at least one non-preview rule are supported.
 Human-readable names and categories require Ruff preview mode, which this
