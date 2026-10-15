@@ -1,9 +1,6 @@
 package actionlint
 
-import (
-	"maps"
-	"strings"
-)
+import "strings"
 
 // Resolve one input without interpreting evaluated strings as expression source.
 func actionInputValue(action *ExecAction, name string) (string, bool) {
@@ -64,7 +61,22 @@ func actionInputNames(action *ExecAction) (map[string]*Input, bool) {
 	var collect func(*ActionInputMapping) bool
 	collect = func(mapping *ActionInputMapping) bool {
 		complete := true
-		maps.Copy(inputs, mapping.Inputs)
+		for key, input := range mapping.Inputs {
+			if input.Name != nil && input.Name.ContainsExpression() {
+				name, known := environmentLiteral(input.Name)
+				if !known {
+					complete = false
+					continue
+				}
+				resolved := *input
+				resolvedName := *input.Name
+				resolvedName.Value = name
+				resolved.Name = &resolvedName
+				input = &resolved
+				key = strings.ToLower(name)
+			}
+			inputs[key] = input
+		}
 		if expression := mapping.Expression; expression != nil {
 			value, known := workflowExpressionLiteral(expression)
 			object, objectValue := value.(map[string]any)

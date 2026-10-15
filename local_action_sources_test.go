@@ -354,3 +354,30 @@ func TestInsertedCheckoutLocation(t *testing.T) {
 		})
 	}
 }
+
+func TestConstantEnvironmentInsertionCheckout(t *testing.T) {
+	root, _ := executableFixture(t)
+	for _, tc := range []struct {
+		name, env string
+		known     bool
+	}{
+		{"constant", `${{ fromJSON('{"VALUE":"text"}') }}`, true},
+		{"nested", `{'${{ insert }}': "${{ fromJSON('{\"VALUE\":\"text\"}') }}"}`, true},
+		{"unknown", `${{ fromJSON(vars.ENV) }}`, false},
+		{"loader", `${{ fromJSON('{"LD_PRELOAD":"custom.so"}') }}`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			checkout := "- uses: actions/checkout@v6\n  env:\n    ${{ insert }}: " + tc.env + "\n"
+			for _, tcRule := range []struct{ rule, step string }{
+				{"missing-local-action", "- uses: ./missing"},
+				{"executable-bit", "- run: ./bad.sh\n  shell: bash\n  working-directory: ."},
+			} {
+				result := compositeAnalysis(t, root, checkout+tcRule.step, AnalysisOptions{})
+				found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == tcRule.rule })
+				if found != tc.known {
+					t.Fatalf("%s finding=%v, want=%v: %+v", tcRule.rule, found, tc.known, result.Diagnostics)
+				}
+			}
+		})
+	}
+}

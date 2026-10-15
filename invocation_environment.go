@@ -4,23 +4,8 @@ import "strings"
 
 // Checkout inherits these settings; its files need not represent the local index.
 func checkoutEnvironmentUnknown(env *Env, platform platformKind) bool {
-	if env == nil {
-		return false
-	}
-	if env.Expression != nil {
-		return true
-	}
-	for _, insertion := range env.Insertions {
-		if checkoutEnvironmentUnknown(insertion, platform) {
-			return true
-		}
-	}
-	for _, variable := range env.Vars {
-		name, known := environmentLiteral(variable.Name)
-		if platform != platformKindMacOrLinux {
-			name = strings.ToUpper(name)
-		}
-		if !known || loaderEnvironmentUnknown(name, variable.Value) {
+	return environmentContains(env, platform, func(name, value string, known bool) bool {
+		if loaderEnvironmentUnknown(name, value, known) {
 			return true
 		}
 		switch name {
@@ -29,12 +14,54 @@ func checkoutEnvironmentUnknown(env *Env, platform platformKind) bool {
 			return true
 		case "HOME", "XDG_CONFIG_HOME", "NODE_OPTIONS", "GIT_SSH_COMMAND", "GIT_SSH", "GIT_ASKPASS", "SSH_ASKPASS",
 			"GIT_PROXY_COMMAND", "GIT_TEMPLATE_DIR", "GIT_EXEC_PATH", "GIT_ALLOW_PROTOCOL":
-			if value, known := environmentLiteral(variable.Value); !known || value != "" {
+			if !known || value != "" {
 				return true
 			}
 		case "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR",
 			"GIT_CONFIG", "GIT_CONFIG_SYSTEM", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT",
 			"GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE":
+			return true
+		}
+		return false
+	})
+}
+
+// Evaluate mapping expressions once; their names and values remain data.
+func environmentContains(env *Env, platform platformKind, matches func(string, string, bool) bool) bool {
+	if env == nil {
+		return false
+	}
+	check := func(name, value string, known bool) bool {
+		if platform != platformKindMacOrLinux {
+			name = strings.ToUpper(name)
+		}
+		return matches(name, value, known)
+	}
+	if env.Expression != nil {
+		literal, known := workflowExpressionLiteral(env.Expression)
+		object, isObject := literal.(map[string]any)
+		if !known || !isObject {
+			return true
+		}
+		for name, value := range object {
+			text, scalar := workflowScalarString(value)
+			if check(name, text, scalar) {
+				return true
+			}
+		}
+	}
+	for _, variable := range env.Vars {
+		name, known := environmentLiteral(variable.Name)
+		if !known {
+			return true
+		}
+		value, known := environmentLiteral(variable.Value)
+		if check(name, value, known) {
+			return true
+		}
+	}
+	for _, insertion := range env.Insertions {
+		if environmentContains(insertion, platform, matches) {
 			return true
 		}
 	}
@@ -54,10 +81,9 @@ func ubuntuRunner(runner *Runner) bool {
 }
 
 // A loader can run code or substitute libraries before the shell or Git starts.
-func loaderEnvironmentUnknown(name string, value *String) bool {
+func loaderEnvironmentUnknown(name, value string, known bool) bool {
 	switch name {
 	case "LD_PRELOAD", "LD_AUDIT", "DYLD_INSERT_LIBRARIES", "DYLD_IMAGE_SUFFIX", "DYLD_ROOT_PATH":
-		value, known := environmentLiteral(value)
 		return !known || value != ""
 	case "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "DYLD_FRAMEWORK_PATH", "DYLD_FALLBACK_LIBRARY_PATH", "DYLD_FALLBACK_FRAMEWORK_PATH":
 		// Empty search-path components may select the current directory.
