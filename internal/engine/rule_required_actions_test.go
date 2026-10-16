@@ -1,9 +1,10 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/internal/repoconfig"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/repoconfig"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )

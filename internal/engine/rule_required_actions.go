@@ -1,9 +1,10 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/internal/repoconfig"
 	"path"
 	"strings"
+
+	"actionlint.kjanat.dev/internal/repoconfig"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
@@ -42,6 +43,7 @@ func firstStepsJobPos(w *workflowlang.Workflow) *workflowlang.Pos {
 // requires. The "required-actions" policy in the configuration file enables it and lists the actions.
 type RuleRequiredActions struct {
 	RuleBase
+	ruleConfiguration
 	uses    []actionUse
 	unknown bool
 }

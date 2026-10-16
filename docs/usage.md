@@ -1212,3 +1212,29 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 [vim-ale]: https://github.com/dense-analysis/ale
 [vsc-extension]: https://marketplace.visualstudio.com/items?itemName=arahata.linter-actionlint
 [vscode]: https://code.visualstudio.com/
+
+## Editor, fixes and remote resolution
+
+`actionlint lsp` serves LSP over stdin/stdout. It supports UTF-16 positions,
+versioned open buffers, ranged changes, diagnostic publication, and versioned
+quick-fix edits. Open document changes invalidate analysis of open dependants.
+The client applies edits; the server never writes editor buffers to disk.
+
+`actionlint fix [files...]` previews source edits as JSON. `--apply` writes the
+validated edits and checks the files again. Only fixes marked safe are selected
+by default; `--include-suggested` also includes edits requiring review. Conflicting
+edits or stale source revisions abort preparation. Writes are atomic per file;
+an I/O failure during a multi-file application reports how many files were written.
+
+`--plugin PATH` accepts document-analyzer components or the Ruff core WebAssembly
+engine. The Ruff engine replaces the native Ruff process while retaining the
+host's workflow expression masking and YAML position mapping.
+
+Remote dependency resolution is opt-in: `--resolve-with EXECUTABLE` selects a
+provider, and repeatable `--resolver-arg VALUE` supplies literal arguments. Build
+the commitish provider with `cargo build --release --manifest-path
+plugins/commitish/Cargo.toml`. Its executable accepts `--token-env NAME` only when
+you explicitly choose a credential variable. It resolves action and reusable
+workflow references using their respective commitish semantics, and proposes
+reviewable commit pins. Provider errors fail analysis instead of implying absence.
+The default local analysis makes no resolution requests.

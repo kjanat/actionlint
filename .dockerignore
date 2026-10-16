@@ -8,8 +8,7 @@
 !cmd/**
 !internal
 !internal/**
-!scripts
-!scripts/docker-action.sh
+!internal/githubaction/container/docker-action.sh
 !analysis
 !analysis/**
 !config
@@ -24,3 +23,10 @@
 
 !document
 !document/**
+
+!rule
+!rule/**
+!source
+!source/**
+!resolver
+!resolver/**

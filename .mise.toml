@@ -17,7 +17,6 @@ node                                     = { prefix = "26" }
 "github:koalaman/shellcheck".prefix      = "0.11"
 "github:microsoft/TypeScript".prefix     = "7"
 "github:tombi-toml/tombi".prefix         = "1.8"
-"npm:yaml-language-server".prefix        = "1.25"
 ruff                                     = "0.17.0"
 tinygo                                   = { prefix = "0.43" }
 
@@ -72,7 +71,10 @@ config_roots = [
   ".github/actions/comment-cop",
   ".github/actions/shellcheck-versions",
   ".github/ci",
-  "scripts",
-  "scripts/expression-probe",
-  "scripts/generate-actionlint-matcher",
+  "internal/release",
+  "internal/toolchain",
+  "internal/githubaction/container",
+  "internal/githubaction/tooling",
+  "internal/expression/probe",
+  "internal/githubaction/matcher",
 ]

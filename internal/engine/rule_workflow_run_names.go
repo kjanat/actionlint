@@ -21,6 +21,7 @@ func workflowRunNamesAvailable(c ruleContext) bool {
 
 type workflowRunNamesRule struct {
 	RuleBase
+	ruleConfiguration
 	root  string
 	index *workflownames.Index
 }

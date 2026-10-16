@@ -28,7 +28,10 @@ jobs:
 		{"experimental disabled", nil, RulePresets{Experimental: new(false)}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			rule := NewRuleBase("custom-config", "")
+			rule := struct {
+				RuleBase
+				ruleConfiguration
+			}{RuleBase: NewRuleBase("custom-config", "")}
 			called := false
 			_, err := Analyze(context.Background(), AnalysisRequest{
 				Sources:     []SourceUnit{{Path: "test.yml", Content: content, Config: tc.config}},
@@ -52,7 +55,10 @@ jobs:
 	}
 	t.Run("legacy linter", func(t *testing.T) {
 		root := t.TempDir()
-		rule := NewRuleBase("custom-config", "")
+		rule := struct {
+			RuleBase
+			ruleConfiguration
+		}{RuleBase: NewRuleBase("custom-config", "")}
 		called := false
 		linter, err := NewLinter(io.Discard, &LinterOptions{
 			WorkingDir: root,
@@ -75,7 +81,7 @@ jobs:
 
 func TestNurserySelectionIsIndependent(t *testing.T) {
 	// Exercise the lifecycle without misclassifying a shipping rule as nursery.
-	descriptor := ruleDescriptor{Name: "under-development", Category: "nursery"}
+	descriptor := ruleDescriptor{Name: "under-development", Category: "correctness", Maturity: "nursery", Group: "nursery"}
 	for _, tc := range []struct {
 		rules   string
 		presets RulePresets

@@ -3,6 +3,18 @@ package kjanat:actionlint@0.1.0;
 /// A plugin analyzes one document at a time. The host hands over the document and
 /// the facts the plugin declared in its descriptor, and takes back diagnostics.
 interface analyzer {
+    record source-reference {
+        document: string,
+        revision: string,
+        node: string,
+        address: string,
+    }
+
+    record revision {
+        path: string,
+        digest: string,
+    }
+
     /// One-based Unicode character position in a document. Range ends are
     /// exclusive and may lie on a later line.
     record position {
@@ -33,6 +45,7 @@ interface analyzer {
     /// An empty `caller` means the analyzed document. `depth` counts composite
     /// calls from the analyzed document.
     record invocation {
+        reference: source-reference,
         caller: string,
         step: position,
         uses: string,
@@ -56,6 +69,7 @@ interface analyzer {
     /// reached through a composite action call. `runtime` is set when the
     /// `execution` fact was requested.
     record script {
+        reference: source-reference,
         job-id: string,
         step-id: string,
         text: string,
@@ -87,6 +101,7 @@ interface analyzer {
     /// Normalized names and source provenance for a declaration. `complete` is
     /// false when an insertion or key depends on runtime values.
     record mapping {
+        reference: source-reference,
         scope: string,
         complete: bool,
         entries: list<entry>,
@@ -99,13 +114,23 @@ interface analyzer {
         mappings,
         invocations,
         execution,
+        dependencies,
     }
 
     /// One document and its facts. `options` holds the JSON the host registered
     /// for this plugin, or an empty string. `scripts` are declared by the document
     /// itself. `invoked` scripts belong to composite actions the document calls and
     /// name their own `path`.
+    record dependency {
+        reference: source-reference,
+        uses: string,
+        kind: string,
+        start: position,
+        end: position,
+    }
+
     record input {
+        reference: source-reference,
         path: string,
         content: string,
         kind: string,
@@ -115,6 +140,7 @@ interface analyzer {
         scripts: list<script>,
         invoked: list<script>,
         mappings: list<mapping>,
+        dependencies: list<dependency>,
     }
 
     /// Replaces a half-open Unicode range in the original source file.
@@ -127,14 +153,28 @@ interface analyzer {
 
     /// One complete suggested change. All edits apply together.
     record fix {
+        applicability: string,
+        revisions: list<revision>,
         description: string,
         edits: list<edit>,
+    }
+
+    record related {
+        message: string,
+        path: string,
+        start: position,
+        end: position,
     }
 
     /// A finding. An empty `rule` takes the plugin name; an empty `path` takes the
     /// analyzed document. `code` and `severity` carry the plugin's own identifier
     /// and level when it has them.
     record diagnostic {
+        reference: option<source-reference>,
+        explanation: string,
+        help: string,
+        documentation-url: string,
+        related: list<related>,
         rule: string,
         code: string,
         severity: string,
@@ -145,8 +185,26 @@ interface analyzer {
         fixes: list<fix>,
     }
 
+    record example {
+        description: string,
+        before: string,
+        after: string,
+    }
+
     /// Plugin identity and the facts it needs before any document is analyzed.
     record descriptor {
+        description: string,
+        category: string,
+        subcategory: string,
+        maturity: string,
+        provider: string,
+        recommended: bool,
+        explanation: string,
+        help: string,
+        documentation-url: string,
+        fix-availability: string,
+        options-schema: string,
+        examples: list<example>,
         name: string,
         requires: list<fact>,
     }

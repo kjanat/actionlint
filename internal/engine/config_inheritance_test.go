@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yaml"
 )
 
 func TestConfigExtends(t *testing.T) {

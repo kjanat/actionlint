@@ -1,8 +1,9 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/internal/fsread"
 	"context"
+
+	"actionlint.kjanat.dev/internal/fsread"
 )
 
 func newShellcheckRunForTest(cmd *externalCommand) *shellcheckRun {

@@ -1,0 +1,3 @@
+[tasks.test]
+description = "Test subsystem tools"
+run         = 'node --test "*.test.mjs"'

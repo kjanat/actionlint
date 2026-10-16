@@ -22,6 +22,7 @@ var reImageDigest = regexp.MustCompile(`^[a-z0-9]+(?:[+._-][a-z0-9]+)*:[0-9a-fA-
 // image. The "require-commit-hash" policy in the configuration file enables it.
 type RuleRequireCommitHash struct {
 	RuleBase
+	ruleConfiguration
 }
 
 // NewRuleRequireCommitHash creates a new RuleRequireCommitHash instance.

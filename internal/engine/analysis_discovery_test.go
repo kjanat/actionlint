@@ -22,7 +22,7 @@ func TestRepositoryActionDiscovery(t *testing.T) {
 			}
 			writeShellcheckFixture(t, root, "generated/action.yml", "invalid: [\n")
 			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "files: {excludes: ['generated/**']}\n")
-			for _, directory := range []string{".git-cache/node_modules", "vendor", ".venv", "venv", ".cache", ".worktrees", "testdata", "scripts/testdata", "nested"} {
+			for _, directory := range []string{".git-cache/node_modules", "vendor", ".venv", "venv", ".cache", ".worktrees", "testdata", "internal/githubaction/tooling/testdata", "nested"} {
 				writeShellcheckFixture(t, root, directory+"/action.yml", "invalid: [\n")
 			}
 			writeShellcheckFixture(t, root, "nested/.git", "gitdir: elsewhere\n")

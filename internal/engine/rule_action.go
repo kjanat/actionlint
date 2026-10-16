@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/internal/checks/identifier"
+
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	stringutil "actionlint.kjanat.dev/internal/stringutil"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
@@ -349,6 +351,8 @@ func selfRepositoryUsesLocalSpec(spec string) (string, bool) {
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
 type RuleAction struct {
 	RuleBase
+	ruleLogger
+	ruleConfiguration
 	cache      *LocalActionsCache
 	validation *actionMetadataValidation
 	standalone *ActionMetadata
@@ -361,7 +365,7 @@ func NewRuleAction(cache *LocalActionsCache) *RuleAction {
 		validation = cache.validation
 	}
 	return &RuleAction{
-		RuleBase:   builtinRuleBase("action"),
+		RuleBase: builtinRuleBase("action"), tag: "action",
 		cache:      cache,
 		validation: validation,
 	}
@@ -539,7 +543,7 @@ func (rule *RuleAction) checkLocalCompositeActionRuns(meta *ActionMetadata, pos 
 		if s.id != nil && s.id.Value != "" {
 			id := s.id.Value
 			switch {
-			case !jobIDPattern.MatchString(id) || len(id) >= 100 || strings.HasPrefix(id, "__"):
+			case !identifier.Valid(id) || len(id) >= 100 || strings.HasPrefix(id, "__"):
 				rule.compositeStepErrorfAt(meta, i, s.id.Line, s.id.Column, nil, "has invalid ID %q; IDs must start with a letter or _, contain only alphanumeric characters, - or _, be shorter than 100 characters, and must not start with __", id)
 			case ids[strings.ToLower(id)]:
 				rule.compositeStepErrorfAt(meta, i, s.id.Line, s.id.Column, nil, "has duplicate ID %q; step IDs are case insensitive", id)

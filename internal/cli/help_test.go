@@ -197,7 +197,7 @@ func TestCommandJSONHelpAndVersion(t *testing.T) {
 		if err := json.Unmarshal([]byte(got.Stdout), &help); err != nil {
 			t.Fatalf("%+v: %v", got, err)
 		}
-		if got.Status != 0 || got.Stderr != "" || help.Name != "actionlint" || len(help.Commands) != 6 {
+		if got.Status != 0 || got.Stderr != "" || help.Name != "actionlint" || len(help.Commands) != 9 {
 			t.Fatalf("%+v", got)
 		}
 		for _, flag := range help.Flags {

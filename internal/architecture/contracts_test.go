@@ -131,3 +131,69 @@ func TestAnalyzerHostDoesNotImportTraversal(t *testing.T) {
 		}
 	}
 }
+
+func TestSemanticChecksAndYAMLBoundary(t *testing.T) {
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-json", "actionlint.kjanat.dev/internal/checks/...", "actionlint.kjanat.dev/internal/engine", "actionlint.kjanat.dev/internal/workflow", "actionlint.kjanat.dev/internal/mapping").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoder := json.NewDecoder(strings.NewReader(string(output)))
+	for decoder.More() {
+		var pkg struct {
+			ImportPath    string
+			Imports, Deps []string
+		}
+		if err := decoder.Decode(&pkg); err != nil {
+			t.Fatal(err)
+		}
+		for _, dependency := range pkg.Imports {
+			if dependency == "go.yaml.in/yaml/v4" {
+				t.Errorf("semantic package %s imports parser types", pkg.ImportPath)
+			}
+		}
+		if strings.Contains(pkg.ImportPath, "/internal/checks/") {
+			for _, dependency := range pkg.Deps {
+				if dependency == "actionlint.kjanat.dev/internal/engine" || dependency == "actionlint.kjanat.dev/internal/repoconfig" || dependency == "actionlint.kjanat.dev/internal/workflow" {
+					t.Errorf("check %s depends on traversal/configuration %s", pkg.ImportPath, dependency)
+				}
+			}
+		}
+	}
+}
+
+func TestNewContractsDoNotImportTheirImplementations(t *testing.T) {
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-json", "actionlint.kjanat.dev/rule", "actionlint.kjanat.dev/source", "actionlint.kjanat.dev/resolver", "actionlint.kjanat.dev/internal/langserver", "actionlint.kjanat.dev/internal/fix", "actionlint.kjanat.dev/internal/rulecatalog").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoder := json.NewDecoder(strings.NewReader(string(output)))
+	for decoder.More() {
+		var pkg struct {
+			ImportPath string
+			Deps       []string
+		}
+		if err := decoder.Decode(&pkg); err != nil {
+			t.Fatal(err)
+		}
+		for _, dependency := range pkg.Deps {
+			switch dependency {
+			case "actionlint.kjanat.dev/internal/engine", "actionlint.kjanat.dev/internal/cli", "actionlint.kjanat.dev/internal/localapp", "actionlint.kjanat.dev/internal/component", "actionlint.kjanat.dev/internal/repoconfig":
+				t.Errorf("%s imports host implementation %s", pkg.ImportPath, dependency)
+			}
+		}
+	}
+}
+
+// Configuration schemas are generated from their owning model and catalogue;
+// loading an analysis engine to discover configuration metadata breaks that boundary.
+func TestConfigurationGeneratorDoesNotImportEngine(t *testing.T) {
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/internal/repoconfig/generate").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for dependency := range strings.SplitSeq(string(output), "\n") {
+		if dependency == "actionlint.kjanat.dev/internal/engine" || dependency == "actionlint.kjanat.dev/internal/cli" {
+			t.Errorf("configuration generator imports host implementation %s", dependency)
+		}
+	}
+}

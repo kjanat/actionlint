@@ -35,6 +35,8 @@ type Error struct {
 	suppressionOrigin *suppressionOrigin
 	// ignoreOrigin identifies the logical invocation independently of anchor coordinates.
 	ignoreOrigin *diagnosticIgnoreOrigin
+	// owner is analysis provenance, populated independently of suppression settings.
+	owner *diagnosticOwner
 	// metadataFinding identifies a reusable validation finding independently of its caller.
 	metadataFinding *actionMetadataFinding
 	// metadataParsePath links caller parse failures to a selected manifest.
@@ -43,6 +45,7 @@ type Error struct {
 	code     string
 	severity string
 	fixes    []DiagnosticFix
+	details  *Diagnostic
 }
 
 // Error returns summary of the error as string.
@@ -170,7 +173,7 @@ func templateRules() []render.Rule {
 	var rules []render.Rule
 	for _, descriptor := range builtinRuleDescriptors() {
 		if descriptor.build == nil && descriptor.buildScripts == nil {
-			rules = append(rules, render.Rule{Name: descriptor.Name, Description: descriptor.Description})
+			rules = append(rules, descriptor.Clone())
 		}
 	}
 	return rules

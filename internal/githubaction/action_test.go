@@ -1,6 +1,7 @@
 package githubaction
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -261,7 +262,12 @@ func TestActionWritesOutputFile(t *testing.T) {
 		t.Errorf("wanted the repository relative path but got %q", run.outputs["output-file"])
 	}
 	content := read(t, filepath.Join(workspace, "results", "out.jsonl"))
-	if !strings.HasPrefix(content, `{"schema_version":1,"rule":"k","message":"m"`) || !strings.HasSuffix(content, "\n") {
+	var record struct {
+		SchemaVersion int    `json:"schema_version"`
+		Rule          string `json:"rule"`
+		Message       string `json:"message"`
+	}
+	if err := json.Unmarshal([]byte(content), &record); err != nil || record.SchemaVersion != 1 || record.Rule != "k" || record.Message != "m" || strings.Count(content, "\n") != 1 || !strings.HasSuffix(content, "\n") {
 		t.Errorf("wanted one JSON object per line but got %q", content)
 	}
 }

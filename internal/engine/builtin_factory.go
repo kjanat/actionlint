@@ -59,7 +59,7 @@ func builtinFactory(request AnalysisRequest, logger analysisLogger) func(ruleCon
 			if script != nil {
 				result.scripts = append(result.scripts, script)
 				result.resolveExecution = result.resolveExecution || descriptor.requiresScriptExecution
-				result.scriptInfo = append(result.scriptInfo, RuleInfo{Name: descriptor.Name, Description: descriptor.Description})
+				result.scriptInfo = append(result.scriptInfo, descriptor.Descriptor)
 			}
 		}
 		return result, nil

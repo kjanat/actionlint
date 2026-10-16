@@ -10,8 +10,8 @@ import (
 	"time"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/internal/yaml"
 	"github.com/google/go-cmp/cmp"
-	"go.yaml.in/yaml/v4"
 )
 
 type scalarReferenceCase struct {

@@ -24,6 +24,8 @@ type typedExpr struct {
 // - https://docs.github.com/en/actions/learn-github-actions/expressions
 type RuleExpression struct {
 	RuleBase
+	ruleLogger
+	ruleConfiguration
 	matrixTy         *exprlang.ObjectType
 	stepsTy          *exprlang.ObjectType
 	needsTy          *exprlang.ObjectType
@@ -41,7 +43,7 @@ type RuleExpression struct {
 // NewRuleExpression creates new RuleExpression instance.
 func NewRuleExpression(actionsCache *LocalActionsCache, workflowCache *LocalReusableWorkflowCache) *RuleExpression {
 	return &RuleExpression{
-		RuleBase:         builtinRuleBase("expression"),
+		RuleBase: builtinRuleBase("expression"), tag: "expression",
 		matrixTy:         nil,
 		stepsTy:          nil,
 		needsTy:          nil,

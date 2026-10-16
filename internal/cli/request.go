@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 
+	"actionlint.kjanat.dev/internal/localapp"
 	"actionlint.kjanat.dev/internal/processconfig"
 	"actionlint.kjanat.dev/internal/repoconfig"
 )
@@ -33,12 +34,17 @@ func (r versionRequest) run(_ context.Context, streams Command) (int, error) {
 }
 
 type rulesRequest struct {
-	Name string
-	JSON bool
+	Plugins []string
+	Name    string
+	JSON    bool
 }
 
-func (r rulesRequest) run(_ context.Context, streams Command) (int, error) {
-	return 0, writeRules(streams.Stdout, r.Name, r.JSON)
+func (r rulesRequest) run(ctx context.Context, streams Command) (int, error) {
+	rules, err := localapp.Rules(ctx, r.Plugins)
+	if err != nil {
+		return 0, commandUsageError{err}
+	}
+	return 0, writeRules(streams.Stdout, r.Name, r.JSON, rules)
 }
 
 type doctorRequest struct {

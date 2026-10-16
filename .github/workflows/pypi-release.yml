@@ -80,7 +80,7 @@ jobs:
           manifest_commit="$(jq -r .candidate "${assets}/release-candidate.json")"
           tag_commit="$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")"
           test "${manifest_commit}" = "${tag_commit}"
-          node scripts/release-candidate.mjs verify --directory "${assets}"
+          node internal/release/release-candidate.mjs verify --directory "${assets}"
           mkdir -p distribution/pypi/dist
           cp -- "${assets}"/*.whl distribution/pypi/dist/
       - name: Verify the build provenance of every released wheel
@@ -120,7 +120,7 @@ jobs:
             exit 0
           fi
           gh release download "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --dir "${RUNNER_TEMP}/candidate-assets"
-          node scripts/release-candidate.mjs verify --directory "${RUNNER_TEMP}/candidate-assets"
+          node internal/release/release-candidate.mjs verify --directory "${RUNNER_TEMP}/candidate-assets"
       - uses: $/.github/actions/pypi-wheels
         if: steps.source.outputs.wheels == 'false'
         with:

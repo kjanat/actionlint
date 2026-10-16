@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yaml"
 )
 
 func TestInlineSuppressionCompactScalarBoundary(t *testing.T) {

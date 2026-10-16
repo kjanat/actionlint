@@ -1,6 +1,8 @@
 module example.com/actionlint-plugin-insecure-download
 
-go 1.26
+go 1.27.0
+
+toolchain go1.27.2
 
 require (
 	github.com/coreos/go-semver v0.3.1 // indirect

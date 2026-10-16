@@ -68,7 +68,17 @@ const pipeWorkflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n   
 func TestRustPluginReportsPipeToShell(t *testing.T) {
 	plugin := loadPlugin(t, "pipe-to-shell", component.Options{})
 	descriptor := plugin.Descriptor()
-	if descriptor.Name != "pipe-to-shell" || strings.Join(factNames(descriptor.Requires), ",") != "scripts,invocations" {
+	changed := plugin.Descriptor()
+	if len(changed.Examples) != 1 {
+		t.Fatal("missing rule examples")
+	}
+	changed.Examples[0].Before = "mutated"
+	changed.OptionsSchema[0] = 'x'
+	if plugin.Descriptor().Examples[0].Before == "mutated" || plugin.Descriptor().OptionsSchema[0] == 'x' {
+		t.Fatal("descriptor aliases plugin metadata")
+	}
+
+	if len(descriptor.Examples) != 1 || descriptor.Category != "security" || descriptor.Provider != "example" || descriptor.Help == "" || len(descriptor.OptionsSchema) == 0 || descriptor.Name != "pipe-to-shell" || strings.Join(factNames(descriptor.Requires), ",") != "scripts,invocations" {
 		t.Fatalf("descriptor=%+v", descriptor)
 	}
 	if plugin.Limits() != (component.Limits{Timeout: component.DefaultTimeout, MemoryPages: component.DefaultMemoryPages}) {
@@ -80,7 +90,7 @@ func TestRustPluginReportsPipeToShell(t *testing.T) {
 		t.Fatalf("diagnostics=%+v", result.Diagnostics)
 	}
 	finding := result.Diagnostics[0]
-	if finding.Rule != "pipe-to-shell" || finding.Severity != "warning" || !strings.Contains(finding.Message, "into bash") {
+	if finding.Reference == nil || finding.Reference.Node == "" || !strings.HasSuffix(finding.Reference.Address, "steps[0]") || finding.Help == "" || finding.Rule != "pipe-to-shell" || finding.Severity != "warning" || !strings.Contains(finding.Message, "into bash") {
 		t.Fatalf("finding=%+v", finding)
 	}
 	if finding.Start != (diagnostic.Position{Line: 6, Column: 62}) || finding.End != (diagnostic.Position{Line: 6, Column: 66}) {
@@ -120,7 +130,7 @@ func factNames(facts []analyzer.Fact) []string {
 
 func TestLoadRefusesIncompatibleComponents(t *testing.T) {
 	for name, want := range map[string]string{
-		"wrong-version":    "plugin exports kjanat:actionlint/analyzer@0.2.0; this host supports kjanat:actionlint/analyzer@0.1.0",
+		"wrong-version":    "plugin exports kjanat:actionlint/analyzer@99.0.0; this host supports kjanat:actionlint/analyzer@0.1.0",
 		"forbidden-import": "plugin imports wasi:sockets/tcp-create-socket@0.2.9, which this host does not grant",
 		"unknown-import":   "plugin imports example:other/capability@1.0.0, which this host does not grant",
 		"no-analyzer":      "plugin does not export kjanat:actionlint/analyzer@0.1.0",

@@ -86,7 +86,7 @@ jobs:
             image_version="$(docker run --rm --platform "linux/${arch}" "${image}" --version)"
             grep -F -- "${VERSION}" <<< "${image_version}"
             docker run --rm --platform "linux/${arch}" --entrypoint shellcheck "${image}" --version
-            bash scripts/test-docker-ruff.bash "${image}" "linux/${arch}"
+            bash internal/githubaction/container/test-docker-ruff.bash "${image}" "linux/${arch}"
             docker run --rm --platform "linux/${arch}" --mount type=bind,source="${PWD}",target=/w,readonly \
               "${image}" testdata/ok/minimal.yaml
             lint_status=0

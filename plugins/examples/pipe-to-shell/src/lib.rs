@@ -4,7 +4,7 @@ wit_bindgen::generate!({
 });
 
 use exports::kjanat::actionlint::analyzer::{
-    Descriptor, Diagnostic, Fact, Guest, Input, Position, Script,
+    Descriptor, Diagnostic, Example, Fact, Guest, Input, Position, Script,
 };
 
 const DOWNLOADERS: &[&str] = &["curl", "wget"];
@@ -15,6 +15,22 @@ struct Plugin;
 impl Guest for Plugin {
     fn describe() -> Descriptor {
         Descriptor {
+            description: "Component analyzer".into(),
+            category: "security".into(),
+            subcategory: "scripts".into(),
+            maturity: "stable".into(),
+            provider: "example".into(),
+            recommended: false,
+            explanation: "Checks script invocations.".into(),
+            help: "Review the indicated command.".into(),
+            documentation_url: String::new(),
+            fix_availability: "none".into(),
+            options_schema: "{}".into(),
+            examples: vec![Example {
+                description: "Inspect downloads before running them".into(),
+                before: "run: curl https://example.test/install.sh | bash".into(),
+                after: "run: ./reviewed-install.sh".into(),
+            }],
             name: "pipe-to-shell".to_string(),
             requires: vec![Fact::Scripts, Fact::Invocations],
         }
@@ -39,10 +55,17 @@ fn check_script(script: &Script, findings: &mut Vec<Diagnostic>) {
             let end_column = column + shell.chars().count() as u32;
             let end = position(script, line_number, end_column, true).unwrap_or(start);
             findings.push(Diagnostic {
+                reference: Some(script.reference.clone()),
+                explanation: String::new(),
+                help: String::new(),
+                documentation_url: String::new(),
+                related: Vec::new(),
                 rule: String::new(),
                 code: String::new(),
                 severity: "warning".to_string(),
-                message: format!("script pipes a download into {shell}, which runs unverified remote code"),
+                message: format!(
+                    "script pipes a download into {shell}, which runs unverified remote code"
+                ),
                 path: script.path.clone(),
                 start,
                 end,
@@ -121,7 +144,8 @@ fn position(script: &Script, line: u32, column: u32, exclusive: bool) -> Option<
             continue;
         }
         let inside = if exclusive {
-            column > span.start && column <= span.end || span.start == span.end && column == span.start
+            column > span.start && column <= span.end
+                || span.start == span.end && column == span.start
         } else {
             column >= span.start && column < span.end
         };

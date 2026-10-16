@@ -13,7 +13,7 @@ import (
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	"actionlint.kjanat.dev/internal/fsread"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yaml"
 )
 
 func expectedMapping(where string, n *yaml.Node) error {

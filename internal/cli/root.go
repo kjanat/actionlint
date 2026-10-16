@@ -72,6 +72,17 @@ func newCommandApp(streams *Command) *commandApp {
 		ValidArgsFunction: cobra.FixedCompletions([]string{"yaml", "yml"}, cobra.ShellCompDirectiveFilterFileExt),
 	}
 	a.checkFlags(check, true)
+	fix := &cobra.Command{Use: "fix [flags] [--] [files...]", Short: "Preview or apply suggested source edits", Args: cobra.ArbitraryArgs,
+		RunE: func(c *cobra.Command, args []string) error {
+			a.inv.Check.Fix = true
+			return a.capture(operationCheck)(c, args)
+		},
+		ValidArgsFunction: cobra.FixedCompletions([]string{"yaml", "yml"}, cobra.ShellCompDirectiveFilterFileExt)}
+	a.checkFlags(fix, true)
+	fix.Flags().BoolVar(&a.inv.Check.ApplyFixes, "apply", false, "Apply edits and check the updated files")
+	fix.Flags().BoolVar(&a.inv.Check.IncludeSuggestedFixes, "include-suggested", false, "Include edits that require manual review")
+	annotateFlag(fix.Flags(), "apply", "Fixes")
+	annotateFlag(fix.Flags(), "include-suggested", "Fixes")
 	preCommit := &cobra.Command{
 		Use: "pre-commit [flags]", Short: "Check the repository for a pre-commit hook", Hidden: true,
 		Long: "Check every workflow in the nearest repository.\nA repository without workflow files passes.\nArguments that Git passes to a hook are ignored.",
@@ -124,6 +135,13 @@ func newCommandApp(streams *Command) *commandApp {
 		},
 	}
 	a.commonFlags(rules, rules.Flags())
+	rules.Flags().StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Include rules from a WebAssembly plugin")
+	annotateFlag(rules.Flags(), "plugin", "Rule selection")
+	plugins := &cobra.Command{Use: "plugin", Short: "Inspect WebAssembly plugin artifacts", Args: cobra.NoArgs,
+		RunE: func(c *cobra.Command, args []string) error { a.help(c, args); return nil }}
+	inspect := &cobra.Command{Use: "inspect <path-or-uri>", Short: "Read metadata without executing the plugin", Args: cobra.ExactArgs(1), RunE: a.capture(operationPluginInspect)}
+	a.commonFlags(inspect, inspect.Flags())
+	plugins.AddCommand(inspect)
 	doctor := &cobra.Command{Use: "doctor", Short: "Inspect configuration and external tool availability", Args: cobra.NoArgs, RunE: a.capture("doctor")}
 	a.commonFlags(doctor, doctor.Flags())
 	a.configFlags(doctor.Flags())
@@ -153,7 +171,12 @@ func newCommandApp(streams *Command) *commandApp {
 	init := &cobra.Command{Use: "init", Aliases: []string{"init-config"}, Hidden: true,
 		Short: "Alias for config init", Args: cobra.NoArgs, RunE: a.capture(operationConfigInit)}
 	a.commonFlags(init, init.Flags())
-	a.root.AddCommand(check, preCommit, config, rules, doctor, completion, version, init)
+	lsp := &cobra.Command{Use: "lsp", Short: "Serve the language server over stdin/stdout", Args: cobra.NoArgs, RunE: a.capture("lsp")}
+	a.configFlags(lsp.Flags())
+	a.toolFlags(lsp.Flags())
+	lsp.Flags().StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly analyzer or script engine from a path or URI")
+	annotateFlag(lsp.Flags(), "plugin", "Rule selection")
+	a.root.AddCommand(plugins, lsp, check, fix, preCommit, config, rules, doctor, completion, version, init)
 	return a
 }
 
@@ -192,6 +215,10 @@ func (a *commandApp) configFlags(f *pflag.FlagSet) {
 }
 
 func (a *commandApp) toolFlags(f *pflag.FlagSet) {
+	f.StringVar(&a.inv.Check.ResolverCommand, "resolve-with", "", "Resolve remote dependencies using this executable")
+	f.StringArrayVar(&a.inv.Check.ResolverArguments, "resolver-arg", nil, "Pass an argument to the remote resolver (repeatable)")
+	annotateFlag(f, "resolve-with", "Dependency resolution")
+	annotateFlag(f, "resolver-arg", "Dependency resolution")
 	f.StringVar(&a.inv.Check.Ruff, "ruff", "ruff", "Check Python scripts")
 	f.StringVar(&a.inv.Check.ShellCheck, "shellcheck", "shellcheck", "Check shell scripts")
 	f.BoolVar(&a.opts.noRuff, "no-ruff", false, "Disable Python script linting")
@@ -218,7 +245,7 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	annotateFlag(f, "strict", "Rule selection")
 	annotateFlag(f, "experimental", "Rule selection")
 	f.StringVar(&a.inv.Check.StdinFilename, "stdin-filename", "<stdin>", "Use `FILE` as the stdin filename")
-	f.StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly component plugin from `PATH` (repeatable)")
+	f.StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly analyzer or script engine from a path or `URI` (repeatable)")
 	annotateFlag(f, "plugin", "Rule selection")
 	f.StringArrayVar(&a.inv.Check.IgnoreRegex, "ignore-regex", nil, "Ignore messages matching `REGEX` (repeatable)")
 	f.Var(f.Lookup("ignore-regex").Value, "ignore", "Alias for --ignore-regex")
@@ -309,7 +336,7 @@ func (a *commandApp) capture(op operation) func(*cobra.Command, []string) error 
 		if !a.inv.Check.PreCommit {
 			a.inv.Check.Paths = args
 		}
-		check := c.Name() == "check" || a.inv.Check.PreCommit
+		check := c.Name() == "check" || c.Name() == "fix" || a.inv.Check.PreCommit
 		c.Flags().Visit(func(f *pflag.Flag) { a.set[f.Name] = true })
 		if check && (c.Flags().Changed("ignore-regex") || c.Flags().Changed("ignore")) {
 			a.inv.Check.IgnoreRegex = append(a.prefixIgnore, a.inv.Check.IgnoreRegex...)

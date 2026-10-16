@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/internal/yaml"
 	"actionlint.kjanat.dev/internal/yamlsource"
-	"go.yaml.in/yaml/v4"
 )
 
 func shellcheckFixSource(t *testing.T, input string) *workflowlang.ScriptSource {

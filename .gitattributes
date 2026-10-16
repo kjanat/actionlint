@@ -1,11 +1,11 @@
 * text=auto eol=lf
 /actup.schema.json linguist-generated=true -diff
 /internal/engine/sarif_template.txt -text
-/scripts/bump-version/testdata/** -text
-/scripts/generate-actionlint-matcher/testdata/** -text
-/scripts/generate-availability/testdata/** -text
-/scripts/generate-popular-actions/testdata/** -text
+/internal/release/bump-version/testdata/** -text
+/internal/githubaction/matcher/testdata/** -text
+/internal/workflowcontext/generate/testdata/** -text
+/internal/actioncatalog/generate/testdata/** -text
 /packages/github-action/tools/*.json linguist-generated=true
-/scripts/generate-webhook-events/testdata/** -text
+/internal/webhook/generate/testdata/** -text
 /testdata/** -text
 /.zed/*.json linguist-language=JSONC

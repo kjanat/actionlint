@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yaml"
 )
 
 func TestSelfRepositoryReferenceSuffix(t *testing.T) {

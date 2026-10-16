@@ -7,14 +7,13 @@ import (
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
-// RuleBase is a struct to be a base of rule structs.
-// Embed this struct to define default methods automatically
+// RuleBase is the legacy visitor adapter and finding accumulator. New checks
+// consume explicit inputs in internal/checks or implement analyzer.Analyzer.
+// Configuration and logging are separate capabilities, never inherited here.
 type RuleBase struct {
-	name   string
-	desc   string
-	errs   []*Error
-	dbg    io.Writer
-	config *Config
+	name string
+	desc string
+	errs []*Error
 }
 
 // NewRuleBase creates a new RuleBase instance.
@@ -68,17 +67,6 @@ func (r *RuleBase) errorfRange(start, end *workflowlang.Pos, format string, args
 	r.errs = append(r.errs, err)
 }
 
-// Debug prints debug log to the output.
-// The output is specified by the argument of EnableDebug method.
-// By default, no output is set so debug log is not printed.
-func (r *RuleBase) Debug(format string, args ...any) {
-	if r.dbg == nil {
-		return
-	}
-	format = fmt.Sprintf("[%s] %s\n", r.name, format)
-	_, _ = fmt.Fprintf(r.dbg, format, args...)
-}
-
 // Errs returns errors found by the rule.
 func (r *RuleBase) Errs() []*Error {
 	return r.errs
@@ -94,22 +82,42 @@ func (r *RuleBase) Description() string {
 	return r.desc
 }
 
+// ruleConfiguration is used only by adapters with configuration-dependent semantics.
+type ruleConfiguration struct{ config *Config }
+
+// ruleLogger is used only by adapters that produce trace output.
+type ruleLogger struct {
+	tag string
+	dbg io.Writer
+}
+
+// Debug prints debug log to the output.
+// The output is specified by the argument of EnableDebug method.
+// By default, no output is set so debug log is not printed.
+func (r *ruleLogger) Debug(format string, args ...any) {
+	if r.dbg == nil {
+		return
+	}
+	format = fmt.Sprintf("[%s] %s\n", r.tag, format)
+	_, _ = fmt.Fprintf(r.dbg, format, args...)
+}
+
 // EnableDebug enables debug output from the rule.
 // Given io.Writer instance is used to print debug information to console.
 // Setting nil means disabling debug output.
-func (r *RuleBase) EnableDebug(out io.Writer) {
+func (r *ruleLogger) EnableDebug(out io.Writer) {
 	r.dbg = out
 }
 
 // SetConfig populates user configuration of actionlint to the rule.
 // When no config is set, rules should behave as if the default configuration is set.
-func (r *RuleBase) SetConfig(cfg *Config) {
+func (r *ruleConfiguration) SetConfig(cfg *Config) {
 	r.config = cfg
 }
 
 // Config returns the user configuration of actionlint.
 // When no config was set to this rule by SetConfig, this method returns nil.
-func (r *RuleBase) Config() *Config {
+func (r *ruleConfiguration) Config() *Config {
 	return r.config
 }
 
@@ -131,10 +139,3 @@ type (
 	debugRule     interface{ EnableDebug(io.Writer) }
 	describedRule interface{ Description() string }
 )
-
-func ruleConfig(rule Rule) *Config {
-	if configured, ok := rule.(configuredRule); ok {
-		return configured.Config()
-	}
-	return nil
-}

@@ -8,8 +8,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestRuleBaseSetGetConfig(t *testing.T) {
-	r := NewRuleBase("", "")
+func TestRuleConfiguration(t *testing.T) {
+	r := ruleConfiguration{}
 	if r.Config() != nil {
 		t.Error("Config must be nil after creating a rule")
 	}
@@ -51,8 +51,8 @@ func TestRuleBaseErrorfAndErrs(t *testing.T) {
 	}
 }
 
-func TestRuleBaseDebugOutput(t *testing.T) {
-	r := NewRuleBase("dummy-name", "")
+func TestRuleLogger(t *testing.T) {
+	r := ruleLogger{tag: "dummy-name"}
 	r.Debug("this %s output", "is not")
 
 	b := &bytes.Buffer{}

@@ -125,7 +125,7 @@ Builtin context property types retain existing documentation-backed definitions;
 
 ## Verification
 
-`go test . ./scripts/generate-availability -run 'TestSchemaAudit|TestWorkflowKeyAvailability|TestSpecialFunctionNames|TestExprSemanticsCheck|TestExprBuiltinFunctionSignatures|TestOKWrite' -count=1` passes.
+`go test . ./internal/workflowcontext/generate -run 'TestSchemaAudit|TestWorkflowKeyAvailability|TestSpecialFunctionNames|TestExprSemanticsCheck|TestExprBuiltinFunctionSignatures|TestOKWrite' -count=1` passes.
 
 `schema_context_audit_test.go` includes complete availability profiles, special-function boundary and position tests, scalar AST checks, static required-flag rejections, and full visitor regressions for snapshots/background/static shell fields. Generator expected output was regenerated from its checked-in documentation fixture. Complete-suite results are reported by the integration audit; the command above is focused local verification. Remote CI was not run.
 

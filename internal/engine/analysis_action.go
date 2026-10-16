@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yaml"
 )
 
 func isActionInput(path string) bool {

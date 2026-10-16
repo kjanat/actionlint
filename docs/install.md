@@ -194,7 +194,7 @@ gh attestation verify -R kjanat/actionlint actionlint_1.17.0_linux_amd64.tar.gz
 
 ### Download script
 
-To install `actionlint` executable with one command, [the download script](../scripts/download-actionlint.bash) is available.
+To install `actionlint` executable with one command, [the download script](../distribution/install/download-actionlint.bash) is available.
 
 The examples pin the script to a commit. The separate version argument selects the binary release; `latest` resolves
 the newest release. Update the script pin when adopting script changes, independently of the binary version.

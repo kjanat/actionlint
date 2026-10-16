@@ -12,6 +12,8 @@ import (
 // RuleWorkflowCall is a rule checker to check workflow call at jobs.<job_id>.
 type RuleWorkflowCall struct {
 	RuleBase
+	ruleLogger
+	ruleConfiguration
 	workflowCallEventPos *workflowlang.Pos
 	workflowPath         string
 	workflowPermissions  *workflowlang.Permissions
@@ -23,7 +25,7 @@ type RuleWorkflowCall struct {
 // the workflow which is relative to a project root directory or an absolute path.
 func NewRuleWorkflowCall(workflowPath string, cache *LocalReusableWorkflowCache) *RuleWorkflowCall {
 	return &RuleWorkflowCall{
-		RuleBase:             builtinRuleBase("workflow-call"),
+		RuleBase: builtinRuleBase("workflow-call"), tag: "workflow-call",
 		workflowCallEventPos: nil,
 		workflowPath:         workflowPath,
 		cache:                cache,

@@ -1,34 +1,12 @@
 package engine
 
 import (
-	"slices"
+	"actionlint.kjanat.dev/internal/checks/permission"
 
-	stringutil "actionlint.kjanat.dev/internal/stringutil"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
-var allPermissionScopes = map[string][]string{
-	"actions":              {"read", "write", "none"},
-	"artifact-metadata":    {"read", "write", "none"},
-	"attestations":         {"read", "write", "none"},
-	"checks":               {"read", "write", "none"},
-	"code-quality":         {"read", "write", "none"},
-	"contents":             {"read", "write", "none"},
-	"copilot-requests":     {"write", "none"},
-	"deployments":          {"read", "write", "none"},
-	"discussions":          {"read", "write", "none"},
-	"drives":               {"read", "write", "none"},
-	"id-token":             {"write", "none"},
-	"issues":               {"read", "write", "none"},
-	"models":               {"read", "none"},
-	"packages":             {"read", "write", "none"},
-	"pages":                {"read", "write", "none"},
-	"pull-requests":        {"read", "write", "none"},
-	"repository-projects":  {"read", "write", "none"},
-	"security-events":      {"read", "write", "none"},
-	"statuses":             {"read", "write", "none"},
-	"vulnerability-alerts": {"read", "none"},
-}
+var allPermissionScopes = permission.Scopes()
 
 // RulePermissions is a rule checker to check permission configurations in a workflow.
 // https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#defining-access-for-the-github_token-scopes
@@ -59,31 +37,14 @@ func (rule *RulePermissions) checkPermissions(p *workflowlang.Permissions) {
 	if p == nil {
 		return
 	}
-
+	input := permission.Declaration{}
 	if p.All != nil {
-		switch p.All.Value {
-		case "write-all", "read-all":
-			// OK
-		default:
-			rule.Errorf(p.All.Pos, "%q is invalid for permission for all the scopes. available values are \"read-all\", \"write-all\" or {}", p.All.Value)
-		}
-		return
+		input.All = &permission.Value{Text: p.All.Value, Start: factPosition(p.All.Pos)}
 	}
-
-	for _, p := range p.Scopes {
-		n := p.Name.Value // Permission names are case-sensitive
-		s, ok := allPermissionScopes[n]
-		if !ok {
-			ss := make([]string, 0, len(allPermissionScopes))
-			for s := range allPermissionScopes {
-				ss = append(ss, s)
-			}
-			rule.Errorf(p.Name.Pos, "unknown permission scope %q. all available permission scopes are %s", n, stringutil.SortedQuotes(ss))
-			continue
-		}
-
-		if !slices.Contains(s, p.Value.Value) {
-			rule.Errorf(p.Value.Pos, "%q is invalid as permission of scope %q. available values are %s", p.Value.Value, n, stringutil.Quotes(s))
-		}
+	for _, scope := range p.Scopes {
+		input.Scopes = append(input.Scopes, permission.Scope{Name: permission.Value{Text: scope.Name.Value, Start: factPosition(scope.Name.Pos)}, Level: permission.Value{Text: scope.Value.Value, Start: factPosition(scope.Value.Pos)}})
+	}
+	for _, finding := range permission.Check(input) {
+		rule.errs = append(rule.errs, legacyDiagnosticError(finding))
 	}
 }

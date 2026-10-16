@@ -1,11 +1,12 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/internal/repoconfig"
 	"context"
 	"errors"
 	"fmt"
 	"slices"
+
+	"actionlint.kjanat.dev/internal/repoconfig"
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/analyzerhost"

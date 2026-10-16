@@ -7,22 +7,25 @@ import (
 	"encoding/json"
 
 	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/source"
 )
 
 // Fact identifies shared information requested by an analyzer.
 type Fact string
 
 const (
-	Source      Fact = "source"
-	Scripts     Fact = "scripts"
-	Mappings    Fact = "mappings"
-	Invocations Fact = "invocations"
-	Execution   Fact = "execution"
+	Source       Fact = "source"
+	Scripts      Fact = "scripts"
+	Mappings     Fact = "mappings"
+	Invocations  Fact = "invocations"
+	Execution    Fact = "execution"
+	Dependencies Fact = "dependencies"
 )
 
 // Descriptor declares identity and input requirements before execution.
 type Descriptor struct {
-	Name     string
+	rule.Descriptor
 	Requires []Fact
 }
 
@@ -46,15 +49,17 @@ type Registration struct {
 // declared by the document itself. Invoked scripts belong to composite actions
 // the document calls and name their own Path.
 type Input struct {
-	Path        string
-	Content     string
-	Kind        string
-	ParseStatus string
-	Available   []Fact
-	Options     json.RawMessage
-	Scripts     []Script
-	Invoked     []Script
-	Mappings    []Mapping
+	Reference    source.Reference
+	Path         string
+	Content      string
+	Kind         string
+	ParseStatus  string
+	Available    []Fact
+	Options      json.RawMessage
+	Scripts      []Script
+	Invoked      []Script
+	Mappings     []Mapping
+	Dependencies []Dependency
 }
 
 // Script is a declared run script. Shell contains the declared shell, without
@@ -63,6 +68,7 @@ type Input struct {
 // back to that document. Invocation is set for scripts reached through a
 // composite action call. Runtime is set when the Execution fact was requested.
 type Script struct {
+	Reference  source.Reference
 	JobID      string
 	StepID     string
 	Text       string
@@ -90,10 +96,11 @@ type Span struct {
 // action's script. Caller names the document containing that step; an empty
 // Caller means Input.Path. Depth counts composite calls from Input.Path.
 type Invocation struct {
-	Caller string
-	Step   diagnostic.Position
-	Uses   string
-	Depth  int
+	Reference source.Reference
+	Caller    string
+	Step      diagnostic.Position
+	Uses      string
+	Depth     int
 }
 
 // Runtime carries the shell and working directory the runner would use.
@@ -137,9 +144,10 @@ func (s Script) Position(line, column int, exclusive bool) (diagnostic.Position,
 // Mapping contains normalized names and source provenance for a declaration.
 // Complete is false when an insertion or key depends on runtime values.
 type Mapping struct {
-	Scope    string
-	Complete bool
-	Entries  []Entry
+	Reference source.Reference
+	Scope     string
+	Complete  bool
+	Entries   []Entry
 }
 
 // Entry separates an evaluated name from source expression text. Evaluated
@@ -160,3 +168,12 @@ const (
 	KnownKey   KeyState = "known"
 	InvalidKey KeyState = "invalid"
 )
+
+// Dependency is a statically known action or reusable-workflow reference.
+// Its range is the complete YAML scalar, including quotes when present.
+type Dependency struct {
+	Reference  source.Reference
+	Uses       string
+	Kind       string
+	Start, End diagnostic.Position
+}

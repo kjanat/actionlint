@@ -6,8 +6,8 @@ import (
 	"unicode/utf8"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/internal/yaml"
 	"actionlint.kjanat.dev/internal/yamlsource"
-	"go.yaml.in/yaml/v4"
 )
 
 var scalarDecoderInvariantCorpus = []string{

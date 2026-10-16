@@ -5,12 +5,16 @@ package analysis
 import (
 	"context"
 
+	"slices"
+
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/config"
 	"actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/document"
 	"actionlint.kjanat.dev/internal/application"
 	"actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/resolution"
+	"actionlint.kjanat.dev/resolver"
 )
 
 // Source is an in-memory workflow or action manifest with optional configuration.
@@ -40,6 +44,7 @@ type Tool struct {
 // Options controls configuration, external tools and filesystem access.
 // ReadFile must support concurrent calls. It does not sandbox external tools.
 type Options struct {
+	Resolver       resolver.Resolver
 	Analyzers      []analyzer.Registration
 	WorkingDir     string
 	ReadFile       func(string) ([]byte, error)
@@ -77,6 +82,12 @@ type Result struct {
 
 // Analyze checks already-loaded sources. It does not perform source discovery.
 func Analyze(ctx context.Context, request Request) (*Result, error) {
+	if request.Options.Resolver != nil {
+		if factory, ok := request.Options.Resolver.(resolver.SessionFactory); ok {
+			request.Options.Resolver = factory.NewSession()
+		}
+		request.Options.Analyzers = append(slices.Clone(request.Options.Analyzers), analyzer.Registration{Analyzer: resolution.Analyzer{Resolver: request.Options.Resolver}})
+	}
 	sources := make([]engine.SourceUnit, len(request.Sources))
 	for i, source := range request.Sources {
 		sources[i] = engine.SourceUnit{Path: source.Path, Content: source.Content, Config: source.Config}
@@ -112,7 +123,7 @@ func toolOptions(tool Process) *engine.ExternalCommandOptions {
 
 func fileOptions(options FileOptions) application.Options {
 	return application.Options{
-		Analyzers: options.Analyzers, WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile,
+		Resolver: options.Resolver, Analyzers: options.Analyzers, WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile,
 		ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig,
 		ReadFile: options.ReadFile, ShellcheckOptions: backendProcessOptions(options.ShellCheck),
 		RuffOptions: backendProcessOptions(options.Ruff), RuffBackend: options.Ruff.Backend,

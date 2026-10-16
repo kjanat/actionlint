@@ -183,14 +183,12 @@ func (a *commandApp) rootHelp(out io.Writer, width int, colored, links bool) {
 	_, _ = fmt.Fprintf(out, "\n%s\n  %s [flags] [files...]\n  %s [flags] -\n  %s <command>\n", heading.Sprint("Usage:"), command.Sprint(name), command.Sprint(name), command.Sprint(name))
 	_, _ = fmt.Fprintln(out, "\nNo files: discover workflows and actions. Use - for stdin.\nUse -- before filenames beginning with a dash.")
 	_, _ = fmt.Fprintln(out, "\n"+heading.Sprint("Commands:"))
-	for _, name := range []string{"check", "config", "rules", "doctor", "completion", "version"} {
-		for _, sub := range a.root.Commands() {
-			if sub.Name() == name {
-				_, _ = fmt.Fprintf(out, "  %s %s\n", command.Sprintf("%-12s", sub.Name()), sub.Short)
-				break
-			}
+	for _, sub := range a.root.Commands() {
+		if !sub.Hidden && sub.Name() != "help" {
+			_, _ = fmt.Fprintf(out, "  %s %s\n", command.Sprintf("%-12s", sub.Name()), sub.Short)
 		}
 	}
+
 	type flagHelp struct{ name, usage string }
 	for _, group := range []struct {
 		name  string

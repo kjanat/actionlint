@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/yaml"
 	"github.com/google/go-cmp/cmp"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestPermissionLevelString(t *testing.T) {

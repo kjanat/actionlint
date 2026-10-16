@@ -5,9 +5,15 @@ import (
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
+type diagnosticOwner struct {
+	Job  string
+	Step *workflowlang.Pos
+}
+
 // diagnosticIgnoreOrigin distinguishes executions of shared YAML anchors.
 // It never changes displayed locations or the scope of inline comments.
 type diagnosticIgnoreOrigin struct {
+	stepPosition                *workflowlang.Pos
 	job, stepID, stepName, uses string
 	// metadata uses the owning action's YAML location for inner selectors.
 	metadata bool
@@ -25,6 +31,7 @@ func newDiagnosticIgnoreOrigin(job string, step *workflowlang.Step) *diagnosticI
 		return s.Value
 	}
 	if step != nil {
+		origin.stepPosition = step.Pos
 		origin.stepID, origin.stepName = value(step.ID), value(step.Name)
 		if action, ok := step.Exec.(*workflowlang.ExecAction); ok {
 			origin.uses = value(action.Uses)
@@ -53,14 +60,21 @@ func jobDiagnosticIgnoreOrigin(job *workflowlang.Job) *diagnosticIgnoreOrigin {
 
 // Asynchronous analyzers snapshot the origin before scheduling their work.
 // Synchronous passes can safely annotate only the findings produced by this visit.
-func visitWithIgnoreOrigin(pass Pass, origin *diagnosticIgnoreOrigin, visit func() error) error {
+func visitWithIgnoreOrigin(pass Pass, origin *diagnosticIgnoreOrigin, hasIgnores bool, visit func() error) error {
 	rule, ok := pass.(Rule)
 	if !ok {
 		return visit()
 	}
+	before := len(rule.Errs())
+	defer func() {
+		for _, finding := range rule.Errs()[before:] {
+			if finding.owner == nil && finding.source == nil {
+				finding.owner = &diagnosticOwner{Job: origin.job, Step: origin.stepPosition}
+			}
+		}
+	}()
 	// Metadata can have file-specific ignores even when its caller has none.
 	_, actionRule := rule.(metadataParticipant)
-	hasIgnores := ruleConfig(rule) != nil && len(ruleConfig(rule).Ignores) != 0
 	if !actionRule && !hasIgnores {
 		return visit()
 	}
@@ -89,3 +103,5 @@ func visitWithIgnoreOrigin(pass Pass, origin *diagnosticIgnoreOrigin, visit func
 
 // originParticipant snapshots context for asynchronous diagnostic producers.
 type originParticipant interface{ setIgnoreOrigin(*diagnosticIgnoreOrigin) }
+
+func hasConfiguredIgnores(cfg *Config) bool { return cfg != nil && len(cfg.Ignores) != 0 }

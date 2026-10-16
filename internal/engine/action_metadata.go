@@ -13,7 +13,7 @@ import (
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	"actionlint.kjanat.dev/internal/fsread"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yaml"
 )
 
 // ActionMetadataInput is input metadata in "inputs" section in action.yml metadata file.
@@ -645,7 +645,7 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 
 		// Unwrap load errors when a single error occurs to simplify the error message
 		var m string
-		if es, ok := errors.AsType[*yaml.LoadErrors](err); ok {
+		if es, ok := errors.AsType[*yaml.DecodeError](err); ok {
 			if len(es.Errors) == 1 {
 				e := es.Errors[0]
 				if e.Mark.Line > 0 {

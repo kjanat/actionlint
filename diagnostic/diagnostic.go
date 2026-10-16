@@ -1,6 +1,8 @@
 // Package diagnostic defines findings and source edits shared by analysis and parsing.
 package diagnostic
 
+import "actionlint.kjanat.dev/source"
+
 // Position uses one-based Unicode character positions. Range ends are exclusive and may lie on a later line.
 type Position struct {
 	Line   int `json:"line"`
@@ -9,6 +11,12 @@ type Position struct {
 
 // Diagnostic is the structured CLI representation, separate from legacy template fields.
 type Diagnostic struct {
+	Reference        *source.Reference `json:"reference,omitempty"`
+	Explanation      string            `json:"explanation,omitempty"`
+	Help             string            `json:"help,omitempty"`
+	DocumentationURL string            `json:"documentation_url,omitempty"`
+	Related          []Related         `json:"related,omitempty"`
+
 	Rule string `json:"rule"`
 	// Code and Severity retain an external analyzer's identifier and native level.
 	// Empty values mean the rule did not supply this metadata.
@@ -24,6 +32,11 @@ type Diagnostic struct {
 
 // Fix is one complete suggested change. Apply all edits together.
 type Fix struct {
+	// Applicability is safe, unsafe or suggested. Missing values require review.
+	Applicability string `json:"applicability,omitempty"`
+	// Revisions bind edits to the source snapshots the analyzer checked.
+	Revisions map[string]string `json:"revisions,omitempty"`
+
 	Description string `json:"description"`
 	Edits       []Edit `json:"edits"`
 }
@@ -34,4 +47,12 @@ type Edit struct {
 	Start       Position `json:"start"`
 	End         Position `json:"end"`
 	Replacement string   `json:"replacement"`
+}
+
+// Related identifies another declaration relevant to a finding.
+type Related struct {
+	Message string   `json:"message"`
+	Path    string   `json:"path"`
+	Start   Position `json:"start"`
+	End     Position `json:"end"`
 }

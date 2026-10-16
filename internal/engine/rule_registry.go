@@ -6,6 +6,7 @@ import (
 	"actionlint.kjanat.dev/internal/repoconfig"
 	"actionlint.kjanat.dev/internal/ruff"
 	"actionlint.kjanat.dev/internal/workflownames"
+	"actionlint.kjanat.dev/rule"
 )
 
 type ruleConfigurationScope uint8
@@ -18,17 +19,15 @@ const (
 
 // ruleDescriptor joins a catalog entry with its host execution behaviour.
 type ruleDescriptor struct {
+	selected bool
+	rule.Descriptor
+	Group                   string
 	requiresScriptExecution bool
 	buildScripts            func(ruleContext) (scriptAnalyzer, error)
 	configurationScope      ruleConfigurationScope
 	skipWhenDisabled        bool
 	required                func(ruleContext) bool
 	supportsActions         bool
-	Name                    string `json:"name"`
-	Description             string `json:"description"`
-	Category                string `json:"category"`
-	Recommended             bool   `json:"recommended"`
-	newOptions              func() any
 	configure               func(*Config, RuleSetting)
 	build                   func(ruleContext) (Rule, error)
 	enabled                 func(ruleContext) bool
@@ -131,14 +130,10 @@ func builtinRuleDescriptors() []ruleDescriptor {
 			skipWhenDisabled:        behaviour.skipWhenDisabled,
 			required:                behaviour.required,
 			supportsActions:         rule.SupportsActions,
-			Name:                    rule.Name,
-			Description:             rule.Description,
-			Category:                rule.Category,
-			Recommended:             rule.Recommended,
-			newOptions:              rule.Options,
-			configure:               rule.Configure,
-			build:                   behaviour.build,
-			enabled:                 behaviour.enabled,
+			Descriptor:              rule.Descriptor, Group: rule.Group,
+			configure: rule.Configure,
+			build:     behaviour.build,
+			enabled:   behaviour.enabled,
 		}
 	}
 	return rules
@@ -164,7 +159,7 @@ func findRuleDescriptor(name string) (ruleDescriptor, bool) {
 	return ruleDescriptor{}, false
 }
 
-func (d ruleDescriptor) isNursery() bool { return d.Category == "nursery" }
+func (d ruleDescriptor) isNursery() bool { return d.Maturity == "nursery" }
 
 func (d ruleDescriptor) maturity() string {
 	if d.isNursery() {
@@ -183,15 +178,6 @@ func builtinRuleBase(name string) RuleBase {
 
 // RuleInfo describes an available check without constructing a rule or external process.
 type RuleInfo = repoconfig.RuleInfo
-
-// BuiltinRuleOptions returns an empty typed options value for schema generation,
-// or nil for a rule without options. Each call returns a fresh value.
-func BuiltinRuleOptions(name string) any {
-	if d, ok := findRuleDescriptor(name); ok && d.newOptions != nil {
-		return d.newOptions()
-	}
-	return nil
-}
 
 // BuiltinRules returns metadata for the registered built-in checks.
 func BuiltinRules() []RuleInfo { return repoconfig.RuleInfos() }

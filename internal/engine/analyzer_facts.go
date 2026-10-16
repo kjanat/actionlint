@@ -4,6 +4,10 @@ import (
 	"maps"
 	"slices"
 
+	"actionlint.kjanat.dev/internal/sourceid"
+	"actionlint.kjanat.dev/internal/yamlsource"
+	"actionlint.kjanat.dev/source"
+
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/mapping"
@@ -73,23 +77,75 @@ func scriptFact(unit scriptUnit, document, documentAbs string, execution bool) a
 	return script
 }
 
-func documentAnalyzerInput(path, pathAbs string, content []byte, workflow *workflowlang.Workflow, outline DocumentOutline, units []scriptUnit, facts factAvailability) analyzer.Input {
+func documentAnalyzerInput(path, pathAbs string, content []byte, workflow *workflowlang.Workflow, outline DocumentOutline, units []scriptUnit, facts factAvailability, sources map[string][]byte) analyzer.Input {
+	refs := workflowReferences(pathAbs, content, workflow, false)
 	input := analyzer.Input{Available: []analyzer.Fact{analyzer.Source}, Path: path, Content: string(content), Kind: "workflow", ParseStatus: "failed"}
 	switch outline := outline.(type) {
 	case WorkflowOutline:
 		input.ParseStatus = outline.ParseStatus
 	case ActionOutline:
+		refs = workflowReferences(pathAbs, content, workflow, true)
 		input.Kind = "action"
 		input.ParseStatus = outline.ParseStatus
+	}
+	input.Reference = refs.document
+	referencePath := func(p string) string {
+		if p == path || p == "" {
+			p = pathAbs
+		}
+		return sourceid.Document(p)
+	}
+	byPath := map[string]sourceReferences{refs.document.Document: refs}
+	// Caller actions may contain only uses steps, so they have no script unit.
+	// Index every loaded metadata source before linking invocation identities.
+	for filename, content := range sources {
+		key := referencePath(filename)
+		if _, exists := byPath[key]; exists {
+			continue
+		}
+		parsed := parseDocument(filename, filename, content)
+		workflow := parsed.workflow
+		if parsed.metadata != nil && workflow != nil {
+			workflow = actionFactsWorkflow(parsed.metadata)
+		}
+		byPath[key] = workflowReferences(filename, content, workflow, parsed.metadata != nil)
+	}
+	for _, unit := range units {
+		if len(unit.content) == 0 {
+			continue
+		}
+		key := referencePath(unit.path)
+		if _, exists := byPath[key]; exists {
+			continue
+		}
+		parsed := parseDocument(unit.path, unit.path, unit.content)
+		w := parsed.workflow
+		if parsed.metadata != nil && w != nil {
+			w = actionFactsWorkflow(parsed.metadata)
+		}
+		byPath[key] = workflowReferences(unit.path, unit.content, w, parsed.metadata != nil)
 	}
 	if workflow == nil {
 		return input
 	}
-	input.Available = append(input.Available, analyzer.Mappings)
+	input.Available = append(input.Available, analyzer.Mappings, analyzer.Dependencies)
 	if facts.scripts {
 		input.Available = append(input.Available, analyzer.Scripts, analyzer.Invocations)
 		for _, unit := range units {
 			script := scriptFact(unit, path, pathAbs, facts.execution)
+			if unit.origin != nil && unit.origin.stepPosition != nil {
+				// Aliased scripts share scalar positions, but retain distinct owners.
+				pos := unit.origin.stepPosition
+				script.Reference = byPath[referencePath(unit.path)].positions[[2]int{pos.Line, pos.Col}]
+			}
+			if script.Invocation != nil {
+				caller := pathAbs
+				if unit.scope != nil && unit.scope.caller != "" {
+					caller = unit.scope.caller
+				}
+				script.Invocation.Reference = byPath[referencePath(caller)].positions[[2]int{script.Invocation.Step.Line, script.Invocation.Step.Column}]
+			}
+
 			if script.Path == "" {
 				input.Scripts = append(input.Scripts, script)
 			} else {
@@ -100,11 +156,22 @@ func documentAnalyzerInput(path, pathAbs string, content []byte, workflow *workf
 	if facts.execution {
 		input.Available = append(input.Available, analyzer.Execution)
 	}
-	addMapping := func(scope string, values *mapping.Inputs[*workflowlang.String]) {
+	addDependency := func(value *workflowlang.String, kind string, ref source.Reference) {
+		if value == nil || value.ContainsExpression() {
+			return
+		}
+		start := factPosition(value.Pos)
+		end := start
+		if scalar, err := yamlsource.NewDocument(string(content)).Decode(yamlsource.Position{Line: start.Line, Column: start.Column}, yamlsource.Context{Indent: start.Column - 2}); err == nil && scalar.Value == value.Value {
+			end = diagnostic.Position{Line: scalar.End.Line, Column: scalar.End.Column}
+		}
+		input.Dependencies = append(input.Dependencies, analyzer.Dependency{Reference: ref, Uses: value.Value, Kind: kind, Start: start, End: end})
+	}
+	addMapping := func(scope string, owner source.Reference, values *mapping.Inputs[*workflowlang.String]) {
 		if values == nil {
 			return
 		}
-		record := analyzer.Mapping{Scope: scope}
+		record := analyzer.Mapping{Scope: scope, Reference: owner}
 		record.Complete = workflowlang.InputResolver.Walk(values, nil, func(entry mapping.Entry[*workflowlang.String]) {
 			item := analyzer.Entry{State: analyzer.UnknownKey, Evaluated: entry.Evaluated}
 			switch entry.State {
@@ -124,19 +191,21 @@ func documentAnalyzerInput(path, pathAbs string, content []byte, workflow *workf
 		})
 		input.Mappings = append(input.Mappings, record)
 	}
-	addEnv := func(scope string, env *workflowlang.Env) {
+	addEnv := func(scope string, owner source.Reference, env *workflowlang.Env) {
 		if env != nil {
-			addMapping(scope, workflowlang.EnvMappingView(env))
+			addMapping(scope, owner, workflowlang.EnvMappingView(env))
 		}
 	}
-	addEnv("env", workflow.Env)
+	addEnv("env", refs.document, workflow.Env)
 	var steps func(string, []*workflowlang.Step)
 	steps = func(scope string, nodes []*workflowlang.Step) {
 		for _, step := range nodes {
-			addEnv(scope+".env", step.Env)
+			ref := refs.steps[step]
+			addEnv(ref.Address+".env", ref, step.Env)
 			switch exec := step.Exec.(type) {
 			case *workflowlang.ExecAction:
-				addMapping(scope+".with", workflowlang.InputMapping(exec))
+				addDependency(exec.Uses, "action", ref)
+				addMapping(ref.Address+".with", ref, workflowlang.InputMapping(exec))
 			case *workflowlang.ExecParallel:
 				steps(scope+".parallel", exec.Steps)
 			}
@@ -144,18 +213,21 @@ func documentAnalyzerInput(path, pathAbs string, content []byte, workflow *workf
 	}
 	for _, id := range slices.Sorted(maps.Keys(workflow.Jobs)) {
 		job := workflow.Jobs[id]
-		scope := "jobs." + id
-		addEnv(scope+".env", job.Env)
+		scope := refs.jobs[id].Address
+		if job.WorkflowCall != nil {
+			addDependency(job.WorkflowCall.Uses, "workflow", refs.jobs[id])
+		}
+		addEnv(scope+".env", refs.jobs[id], job.Env)
 		if job.Container != nil {
-			addEnv(scope+".container.env", job.Container.Env)
+			addEnv(scope+".container.env", refs.jobs[id], job.Container.Env)
 		}
 		if job.Services != nil {
 			for _, name := range slices.Sorted(maps.Keys(job.Services.Value)) {
-				addEnv(scope+".services."+name+".env", job.Services.Value[name].Container.Env)
+				addEnv(scope+".services."+name+".env", refs.jobs[id], job.Services.Value[name].Container.Env)
 			}
 		}
 		if job.Strategy != nil && job.Strategy.Matrix != nil {
-			addMapping(scope+".strategy.matrix", matrixKeysView(job.Strategy.Matrix))
+			addMapping(scope+".strategy.matrix", refs.jobs[id], matrixKeysView(job.Strategy.Matrix))
 		}
 		steps(scope+".steps", job.Steps)
 	}

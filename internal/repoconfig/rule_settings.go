@@ -17,5 +17,5 @@ type Setting = lintconfig.Setting
 type Group = lintconfig.Group
 
 func (c *LintRulesConfig) Groups() map[string]Group {
-	return map[string]Group{"correctness": c.Correctness, "suspicious": c.Suspicious, "security": c.Security, "policy": c.Policy, "external": c.External, "nursery": c.Nursery}
+	return map[string]Group{"correctness": c.Correctness, "suspicious": c.Suspicious, "security": c.Security, "policy": c.Policy, "external": c.External, "nursery": c.Nursery, "plugins": c.Plugins}
 }

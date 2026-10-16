@@ -34,7 +34,8 @@ func (b *Backend) UnmarshalYAML(n *yaml.Node) error {
 
 // Module locates a core WebAssembly engine.
 type Module struct {
-	// Path is the raw or gzip-compressed module file. Relative paths resolve
+	// Path is a raw or gzip-compressed module path, file URI, or HTTP(S) URL.
+	// URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve
 	// from the declaring config file; inline configs use the analysis directory.
 	Path string `yaml:"path" jsonschema:"required"`
 }
@@ -113,7 +114,7 @@ func NormalizePaths(node *yaml.Node, directory string) {
 			executable.Value = filepath.Join(directory, executable.Value)
 		}
 		module := field(field(backend, "wasm"), "path")
-		if module != nil && module.Tag == "!!str" && module.Value != "" && !filepath.IsAbs(module.Value) {
+		if module != nil && module.Tag == "!!str" && module.Value != "" && !strings.Contains(module.Value, "://") && !filepath.IsAbs(module.Value) {
 			module.Value = filepath.Join(directory, module.Value)
 		}
 	}

@@ -24,6 +24,7 @@ import (
 	actionlint "actionlint.kjanat.dev/internal/engine"
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	ownedyaml "actionlint.kjanat.dev/internal/yaml"
 	"github.com/google/go-cmp/cmp"
 	"go.yaml.in/yaml/v4"
 )
@@ -104,7 +105,7 @@ func TestUpstreamConformance(t *testing.T) {
 	for _, source := range sources {
 		root, closeSource, err := source.Open(dir)
 		if err != nil {
-			t.Fatalf("%v; run go run ./scripts/fetch-conformance first", err)
+			t.Fatalf("%v; run go run ./internal/conformance/fetch first", err)
 		}
 		t.Cleanup(func() { _ = closeSource() })
 		cases := loadUpstreamCases(t, source.Name, root)
@@ -420,7 +421,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		return upstreamDiagnostics(errs)
 	case "action":
 		var meta actionlint.ActionMetadata
-		if err := yaml.Unmarshal([]byte(c.Input), &meta); err != nil {
+		if err := ownedyaml.Unmarshal([]byte(c.Input), &meta); err != nil {
 			return []string{err.Error()}
 		}
 		root := t.TempDir()

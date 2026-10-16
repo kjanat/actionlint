@@ -17,7 +17,7 @@ func main() {}
 
 func describe() analyzer.Descriptor {
 	return analyzer.Descriptor{
-		Name:     "insecure-download",
+		Name: "insecure-download", Description: "Detect disabled TLS verification", Category: "security", Subcategory: "scripts", Maturity: "stable", Provider: "example", Explanation: "Disabling TLS verification permits an intercepted download.", Help: "Remove the insecure flag and configure trusted certificates.", FixAvailability: "none", OptionsSchema: "{}",
 		Requires: cm.ToList([]analyzer.Fact{analyzer.FactScripts, analyzer.FactInvocations}),
 	}
 }
@@ -52,11 +52,12 @@ func checkScript(script analyzer.Script) []analyzer.Diagnostic {
 				end = start
 			}
 			findings = append(findings, analyzer.Diagnostic{
-				Severity: "warning",
-				Message:  "step disables TLS verification with " + flag.text + " for a download",
-				Path:     script.Path,
-				Start:    start,
-				End:      end,
+				Reference: cm.Some(script.Reference),
+				Severity:  "warning",
+				Message:   "step disables TLS verification with " + flag.text + " for a download",
+				Path:      script.Path,
+				Start:     start,
+				End:       end,
 			})
 		}
 	}

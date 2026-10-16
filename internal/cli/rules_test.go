@@ -51,8 +51,24 @@ func TestRulesGroupedTextAndStructuredJSON(t *testing.T) {
 		previous = name
 		delete(byName, name)
 	}
-	want := []string{"Correctness:", "Security:", "Suspicious:", "Policy:", "External linters:"}
+	want := []string{"Correctness:", "Security:", "Suspicious:", "Policy:"}
 	if !slices.Equal(headings, want) || len(byName) != 0 {
 		t.Fatalf("headings=%v, missing rules=%v", headings, byName)
+	}
+}
+
+func TestRulesIncludesSelectedPluginMetadata(t *testing.T) {
+	path := "internal/component/testdata/plugins/no-sudo.wasm"
+	got := testRunCommand("", "rules", "no-sudo", "--plugin", path, "--json")
+	var descriptor actionlint.RuleInfo
+	if err := json.Unmarshal([]byte(got.Stdout), &descriptor); err != nil || got.Status != 0 {
+		t.Fatalf("%+v %v", got, err)
+	}
+	if descriptor.Provider != "example" || descriptor.Category != "portability" || descriptor.Help == "" {
+		t.Fatal(descriptor)
+	}
+	got = testRunCommand("", "rules", "--plugin", path, "--plugin", path)
+	if got.Status == 0 || !strings.Contains(got.Stderr, "duplicate rule name") {
+		t.Fatal(got)
 	}
 }

@@ -24,9 +24,12 @@ func Run(ctx context.Context, input analyzer.Input, registrations []analyzer.Reg
 			if descriptor.Name == "" {
 				return nil, errors.New("analyzer name must not be empty")
 			}
+			if err := validateOptions(descriptor.OptionsSchema, registration.Options); err != nil {
+				return nil, fmt.Errorf("analyzer %q options: %w", descriptor.Name, err)
+			}
 			for _, requirement := range descriptor.Requires {
 				switch requirement {
-				case analyzer.Source, analyzer.Scripts, analyzer.Mappings, analyzer.Invocations, analyzer.Execution:
+				case analyzer.Source, analyzer.Scripts, analyzer.Mappings, analyzer.Invocations, analyzer.Execution, analyzer.Dependencies:
 					if !slices.Contains(input.Available, requirement) {
 						return nil, fmt.Errorf("analyzer %q requires unavailable fact %q", descriptor.Name, requirement)
 					}
@@ -39,12 +42,22 @@ func Run(ctx context.Context, input analyzer.Input, registrations []analyzer.Reg
 			supplied.Options = slices.Clone(registration.Options)
 			supplied.Scripts = cloneScripts(input.Scripts)
 			supplied.Invoked = cloneScripts(input.Invoked)
+			supplied.Dependencies = slices.Clone(input.Dependencies)
 			supplied.Mappings = slices.Clone(input.Mappings)
 			for i := range supplied.Mappings {
 				supplied.Mappings[i].Entries = slices.Clone(supplied.Mappings[i].Entries)
 			}
 			findings, err := registration.Analyzer.Analyze(ctx, supplied)
 			for i := range findings {
+				if findings[i].Explanation == "" {
+					findings[i].Explanation = descriptor.Explanation
+				}
+				if findings[i].Help == "" {
+					findings[i].Help = descriptor.Help
+				}
+				if findings[i].DocumentationURL == "" {
+					findings[i].DocumentationURL = descriptor.DocumentationURL
+				}
 				if findings[i].Rule == "" {
 					findings[i].Rule = descriptor.Name
 				}

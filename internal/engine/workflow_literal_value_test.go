@@ -7,6 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	sourceref "actionlint.kjanat.dev/source"
+
+	"github.com/google/go-cmp/cmp/cmpopts"
+
 	"actionlint.kjanat.dev/internal/workspace"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
@@ -75,7 +79,7 @@ jobs:
 				}
 				if uses == tc.uses {
 					plain = diagnostics
-				} else if diff := cmp.Diff(plain, diagnostics, cmp.AllowUnexported(Error{}, actionMetadataFinding{}, actionMetadataFindingKey{})); diff != "" {
+				} else if diff := cmp.Diff(plain, diagnostics, cmpopts.IgnoreFields(sourceref.Reference{}, "Revision"), cmp.AllowUnexported(Error{}, actionMetadataFinding{}, actionMetadataFindingKey{})); diff != "" {
 					t.Fatal(diff)
 				}
 			}

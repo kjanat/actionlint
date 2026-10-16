@@ -207,7 +207,7 @@ test('action tests, probe results, mixed documentation and source changes select
 	assert.equal(selectJobs(ci, ['docs/usage.md', 'config.go']).unit, true);
 	assert.equal(
 		selectJobs(workflowFilters('expression-probe-tests'), [
-			'scripts/expression-probe/results/run.json',
+			'internal/expression/probe/results/run.json',
 		])['expression-probe'],
 		false,
 	);

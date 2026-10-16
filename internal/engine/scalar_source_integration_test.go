@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/internal/render"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yaml"
 )
 
 func TestSourcedScriptRenderingPreservesPhysicalLines(t *testing.T) {

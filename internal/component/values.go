@@ -6,14 +6,15 @@ import (
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/rule"
 	"github.com/partite-ai/wacogo"
 )
 
 var factDiscriminants = map[analyzer.Fact]uint32{
-	analyzer.Source: 0, analyzer.Scripts: 1, analyzer.Mappings: 2, analyzer.Invocations: 3, analyzer.Execution: 4,
+	analyzer.Source: 0, analyzer.Scripts: 1, analyzer.Mappings: 2, analyzer.Invocations: 3, analyzer.Execution: 4, analyzer.Dependencies: 5,
 }
 
-var factNames = []analyzer.Fact{analyzer.Source, analyzer.Scripts, analyzer.Mappings, analyzer.Invocations, analyzer.Execution}
+var factNames = []analyzer.Fact{analyzer.Source, analyzer.Scripts, analyzer.Mappings, analyzer.Invocations, analyzer.Execution, analyzer.Dependencies}
 
 var keyStateDiscriminants = map[analyzer.KeyState]uint32{analyzer.UnknownKey: 0, analyzer.KnownKey: 1, analyzer.InvalidKey: 2}
 
@@ -64,7 +65,7 @@ func lowerScript(script analyzer.Script) *wacogo.ValRecord {
 	invocation := wacogo.ValOptionNone()
 	if script.Invocation != nil {
 		invocation = wacogo.ValOptionSome(wacogo.NewValRecord(
-			field("caller", wacogo.ValString(script.Invocation.Caller)), field("step", lowerPosition(script.Invocation.Step)),
+			field("reference", lowerReference(script.Invocation.Reference)), field("caller", wacogo.ValString(script.Invocation.Caller)), field("step", lowerPosition(script.Invocation.Step)),
 			field("uses", wacogo.ValString(script.Invocation.Uses)), field("depth", lowerU32(script.Invocation.Depth)),
 		))
 	}
@@ -77,7 +78,7 @@ func lowerScript(script analyzer.Script) *wacogo.ValRecord {
 		))
 	}
 	return wacogo.NewValRecord(
-		field("job-id", wacogo.ValString(script.JobID)), field("step-id", wacogo.ValString(script.StepID)),
+		field("reference", lowerReference(script.Reference)), field("job-id", wacogo.ValString(script.JobID)), field("step-id", wacogo.ValString(script.StepID)),
 		field("text", wacogo.ValString(script.Text)), field("shell", wacogo.ValString(script.Shell)),
 		field("start", lowerPosition(script.Start)), field("path", wacogo.ValString(script.Path)),
 		field("spans", wacogo.NewValListOf(spans...)), field("invocation", invocation), field("runtime", runtime),
@@ -104,7 +105,7 @@ func lowerMappings(mappings []analyzer.Mapping) *wacogo.ValList {
 			))
 		}
 		values = append(values, wacogo.NewValRecord(
-			field("scope", wacogo.ValString(mapping.Scope)), field("complete", wacogo.ValBool(mapping.Complete)),
+			field("reference", lowerReference(mapping.Reference)), field("scope", wacogo.ValString(mapping.Scope)), field("complete", wacogo.ValBool(mapping.Complete)),
 			field("entries", wacogo.NewValListOf(entries...)),
 		))
 	}
@@ -113,11 +114,11 @@ func lowerMappings(mappings []analyzer.Mapping) *wacogo.ValList {
 
 func lowerInput(input analyzer.Input) *wacogo.ValRecord {
 	return wacogo.NewValRecord(
-		field("path", wacogo.ValString(input.Path)), field("content", wacogo.ValString(input.Content)),
+		field("reference", lowerReference(input.Reference)), field("path", wacogo.ValString(input.Path)), field("content", wacogo.ValString(input.Content)),
 		field("kind", wacogo.ValString(input.Kind)), field("parse-status", wacogo.ValString(input.ParseStatus)),
 		field("available", lowerFacts(input.Available)), field("options", wacogo.ValString(string(input.Options))),
 		field("scripts", lowerScripts(input.Scripts)), field("invoked", lowerScripts(input.Invoked)),
-		field("mappings", lowerMappings(input.Mappings)),
+		field("mappings", lowerMappings(input.Mappings)), field("dependencies", lowerDependencies(input.Dependencies)),
 	)
 }
 
@@ -184,6 +185,47 @@ func liftDescriptor(v wacogo.Val) (analyzer.Descriptor, error) {
 		return analyzer.Descriptor{}, err
 	}
 	descriptor := analyzer.Descriptor{Name: name}
+	for key, dest := range map[string]*string{"description": &descriptor.Description, "category": &descriptor.Category, "subcategory": &descriptor.Subcategory, "maturity": &descriptor.Maturity, "provider": &descriptor.Provider, "explanation": &descriptor.Explanation, "help": &descriptor.Help, "documentation-url": &descriptor.DocumentationURL, "fix-availability": &descriptor.FixAvailability} {
+		value, err := liftString(record, key)
+		if err != nil {
+			return analyzer.Descriptor{}, err
+		}
+		*dest = value
+	}
+	recommended, ok := record.Field("recommended").(wacogo.ValBool)
+	if !ok {
+		return analyzer.Descriptor{}, liftError{"recommended", record.Field("recommended")}
+	}
+	descriptor.Recommended = bool(recommended)
+	schema, err := liftString(record, "options-schema")
+	if err != nil {
+		return analyzer.Descriptor{}, err
+	}
+	descriptor.OptionsSchema, err = validOptionsSchema(schema)
+	if err != nil {
+		return analyzer.Descriptor{}, err
+	}
+
+	examples, err := liftList(record.Field("examples"), "rule examples")
+	if err != nil {
+		return analyzer.Descriptor{}, err
+	}
+	for i := range examples.Len() {
+		record, err := liftRecord(examples.Get(i), "rule example")
+		if err != nil {
+			return analyzer.Descriptor{}, err
+		}
+		example := rule.Example{}
+		for name, dest := range map[string]*string{"description": &example.Description, "before": &example.Before, "after": &example.After} {
+			value, err := liftString(record, name)
+			if err != nil {
+				return analyzer.Descriptor{}, err
+			}
+			*dest = value
+		}
+		descriptor.Examples = append(descriptor.Examples, example)
+	}
+
 	for i := range requires.Len() {
 		fact, ok := requires.Get(i).(*wacogo.ValEnum)
 		if !ok {
@@ -241,6 +283,13 @@ func liftFixes(v wacogo.Val) ([]diagnostic.Fix, error) {
 			return nil, err
 		}
 		var fix diagnostic.Fix
+		if fix.Applicability, err = liftString(record, "applicability"); err != nil {
+			return nil, err
+		}
+		if fix.Revisions, err = liftRevisions(record.Field("revisions")); err != nil {
+			return nil, err
+		}
+
 		if fix.Description, err = liftString(record, "description"); err != nil {
 			return nil, err
 		}
@@ -258,7 +307,22 @@ func liftDiagnostic(v wacogo.Val) (diagnostic.Diagnostic, error) {
 		return diagnostic.Diagnostic{}, err
 	}
 	var d diagnostic.Diagnostic
-	for name, target := range map[string]*string{"rule": &d.Rule, "code": &d.Code, "severity": &d.Severity, "message": &d.Message, "path": &d.Path} {
+	reference, ok := record.Field("reference").(*wacogo.ValOption)
+	if !ok {
+		return d, liftError{"reference", record.Field("reference")}
+	}
+	if !reference.IsNone() {
+		ref, err := liftReference(reference.Val())
+		if err != nil {
+			return d, err
+		}
+		d.Reference = &ref
+	}
+	if d.Related, err = liftRelated(record.Field("related")); err != nil {
+		return d, err
+	}
+
+	for name, target := range map[string]*string{"rule": &d.Rule, "code": &d.Code, "severity": &d.Severity, "message": &d.Message, "path": &d.Path, "explanation": &d.Explanation, "help": &d.Help, "documentation-url": &d.DocumentationURL} {
 		if *target, err = liftString(record, name); err != nil {
 			return diagnostic.Diagnostic{}, err
 		}
@@ -300,4 +364,12 @@ func liftAnalysis(v wacogo.Val) ([]diagnostic.Diagnostic, error) {
 		diagnostics = append(diagnostics, d)
 	}
 	return diagnostics, nil
+}
+
+func lowerDependencies(deps []analyzer.Dependency) *wacogo.ValList {
+	values := make([]wacogo.Val, 0, len(deps))
+	for _, d := range deps {
+		values = append(values, wacogo.NewValRecord(field("reference", lowerReference(d.Reference)), field("uses", wacogo.ValString(d.Uses)), field("kind", wacogo.ValString(d.Kind)), field("start", lowerPosition(d.Start)), field("end", lowerPosition(d.End))))
+	}
+	return wacogo.NewValListOf(values...)
 }

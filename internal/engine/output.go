@@ -47,7 +47,8 @@ func (e *Error) diagnostic(source []byte) Diagnostic {
 		fixes = make([]DiagnosticFix, len(e.fixes))
 	}
 	for i, fix := range e.fixes {
-		fixes[i] = DiagnosticFix{Description: fix.Description, Edits: make([]DiagnosticEdit, len(fix.Edits))}
+		fixes[i] = fix
+		fixes[i].Edits = make([]DiagnosticEdit, len(fix.Edits))
 		for j, edit := range fix.Edits {
 			if edit.Path == "" {
 				edit.Path = e.Filepath
@@ -55,17 +56,28 @@ func (e *Error) diagnostic(source []byte) Diagnostic {
 			fixes[i].Edits[j] = edit
 		}
 	}
-	return Diagnostic{
+	d := Diagnostic{
 		Rule: e.Kind, Code: e.code, Severity: e.severity, Message: e.Message, Path: e.Filepath,
 		Start: DiagnosticPosition{Line: e.Line, Column: e.Column}, End: end, Snippet: snippet, Fixes: fixes,
 	}
+	if e.details != nil {
+		d.Reference = e.details.Reference
+		d.Help = e.details.Help
+		d.Explanation = e.details.Explanation
+		d.DocumentationURL = e.details.DocumentationURL
+		d.Related = e.details.Related
+	}
+	return d
 }
 
 // legacyDiagnosticError adapts a canonical half-open span to the legacy renderer's inclusive columns.
 func legacyDiagnosticError(d Diagnostic) *Error {
 	e := &Error{
 		Kind: d.Rule, Message: d.Message, Filepath: d.Path, Line: d.Start.Line, Column: d.Start.Column,
-		endPosition: &workflowlang.Pos{Line: d.End.Line, Col: d.End.Column}, code: d.Code, severity: d.Severity, fixes: d.Fixes,
+		code: d.Code, severity: d.Severity, fixes: d.Fixes, details: &d,
+	}
+	if d.End.Line > 0 && d.End.Column > 0 {
+		e.endPosition = &workflowlang.Pos{Line: d.End.Line, Col: d.End.Column}
 	}
 	if d.End.Line == d.Start.Line && d.End.Column > d.Start.Column {
 		e.endColumn = d.End.Column - 1

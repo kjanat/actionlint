@@ -15,7 +15,7 @@ runCommand "actionlint-nix-integration"
     ];
   }
   ''
-    bash ${../scripts/check-packaged-cli.bash} ${actionlint}/bin/actionlint
+    bash ${../internal/release/check-packaged-cli.bash} ${actionlint}/bin/actionlint
     ${actionlint}/bin/actionlint -version | grep -Fx 'actionlint.kjanat.dev ${actionlint.version}'
     expectedToolchain="$(sed -n 's/^toolchain //p' ${actionlint.src}/go.mod)"
     test -n "$expectedToolchain"

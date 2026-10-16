@@ -11,6 +11,18 @@ struct Plugin;
 impl Guest for Plugin {
     fn describe() -> Descriptor {
         Descriptor {
+            description: "Component analyzer".into(),
+            category: "security".into(),
+            subcategory: "scripts".into(),
+            maturity: "stable".into(),
+            provider: "example".into(),
+            recommended: false,
+            explanation: "Checks script invocations.".into(),
+            help: "Review the indicated command.".into(),
+            documentation_url: String::new(),
+            fix_availability: "none".into(),
+            options_schema: "{}".into(),
+            examples: vec![],
             name: "misbehave".to_string(),
             requires: vec![Fact::Scripts],
         }
@@ -35,7 +47,10 @@ impl Guest for Plugin {
                 Ok(content) => Err(format!("read host file: {content}")),
                 Err(error) => Err(format!("filesystem denied: {error}")),
             },
-            "environment" => Err(format!("environment: {:?}", std::env::vars().collect::<Vec<_>>())),
+            "environment" => Err(format!(
+                "environment: {:?}",
+                std::env::vars().collect::<Vec<_>>()
+            )),
             "log" => {
                 log(&format!("analyzing {}", input.path));
                 println!("stdout line");
@@ -59,6 +74,11 @@ impl Guest for Plugin {
                 Ok(Vec::new())
             }
             _ => Ok(vec![Diagnostic {
+                reference: None,
+                explanation: String::new(),
+                help: String::new(),
+                documentation_url: String::new(),
+                related: Vec::new(),
                 rule: String::new(),
                 code: "MB001".to_string(),
                 severity: "warning".to_string(),

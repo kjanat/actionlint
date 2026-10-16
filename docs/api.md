@@ -11,6 +11,9 @@ intentionally breaks the former flat root API. The command-line interface and it
 | `actionlint.kjanat.dev/document`   | Workflow/action outlines and structured action references             |
 | `actionlint.kjanat.dev/diagnostic` | Diagnostics, source positions and suggested edits                     |
 | `actionlint.kjanat.dev/config`     | Configuration values, loading, composition and inspection             |
+| `actionlint.kjanat.dev/rule`       | Shared rule metadata, categories, examples and capabilities           |
+| `actionlint.kjanat.dev/source`     | Document revision, node identity and structural address               |
+| `actionlint.kjanat.dev/resolver`   | Optional dependency resolver contract and provenance                  |
 | `actionlint.kjanat.dev/syntax`     | Workflow syntax model and parser                                      |
 
 ## Analyze loaded sources
@@ -150,3 +153,25 @@ filesystem-aware integration, including sourced-file diagnostics and fixes.
 These Go types are a host API, not a stable wire ABI. A core-WASM adapter can translate them to a versioned
 plugin operation; a future component adapter can use WIT types without imitating process arguments.
 No WASM runtime or component loader is included by this API change.
+
+## Catalogue and source identity
+
+`analysis.Rules(analyzers...)` returns sorted built-in and extension descriptors and
+rejects duplicate names. `rule.Descriptor` includes category/subcategory, maturity,
+provider, defaults, explanations, help, documentation, options schema and examples.
+A script backend implements its host rule rather than registering another rule name.
+
+Facts and findings carry `source.Reference`: document identity, content digest, node
+identity and structural address. Named job/step IDs survive content edits; anonymous
+nodes use content and occurrence identity. Anonymous content edits create a new identity.
+Addresses distinguish sibling and parallel steps within a snapshot.
+
+Diagnostic help, related locations and fix applicability are structured fields.
+Fix revisions bind edits to the checked content. Missing applicability requires review.
+The CLI and editor adapters validate ranges, revisions and overlaps before applying or
+offering edits.
+
+Set `analysis.Options.Resolver` to an implementation of `resolver.Resolver` to opt into
+network-backed reference resolution. The provider returns immutable repository/ref
+identity and evidence and must honor cancellation. An optional `resolver.SessionFactory`
+creates an analysis-scoped cache, including a fresh cache after an editor invalidation.

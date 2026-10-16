@@ -65,6 +65,7 @@ func (l traversalHost) traverse(path, root string, w *workflowlang.Workflow, met
 	}
 
 	v := NewVisitor()
+	v.trackIgnores = hasConfiguredIgnores(cfg)
 	for _, rule := range rules {
 		if participant, ok := rule.(resourceParticipant); ok {
 			participant.attachScope(proc.scope)
@@ -139,11 +140,15 @@ func (t *traversalResult) collect(log analysisLogger, usedRules *[]RuleInfo) []*
 	}
 	*usedRules = append(*usedRules, t.builtins.scriptInfo...)
 	for _, rule := range t.rules {
-		info := RuleInfo{Name: rule.Name()}
-		if described, ok := rule.(describedRule); ok {
-			info.Description = described.Description()
+		info, ok := repoconfig.FindRule(rule.Name())
+		metadata := info.Descriptor
+		if !ok {
+			metadata.Name = rule.Name()
 		}
-		*usedRules = append(*usedRules, info)
+		if described, ok := rule.(describedRule); ok {
+			metadata.Description = described.Description()
+		}
+		*usedRules = append(*usedRules, metadata)
 	}
 	return all
 }

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yaml"
 )
 
 func TestUpkeepGoToolchain(t *testing.T) {
@@ -66,7 +66,7 @@ func TestUpkeepGoToolchain(t *testing.T) {
 			// Here, verify the workflow validates releases and delegates correctly.
 			stubs := `curl() { printf '%s\n' "$UPKEEP_TEST_VERSION"; }
 node() {
-  [[ "$1" == scripts/update-go-toolchain.mjs && "$2" == "$UPKEEP_TEST_VERSION" ]] || return 1
+  [[ "$1" == internal/toolchain/update-go-toolchain.mjs && "$2" == "$UPKEEP_TEST_VERSION" ]] || return 1
   printf 'updater:%s\n' "$2"
 }
 `

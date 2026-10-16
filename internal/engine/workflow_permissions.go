@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yaml"
 )
 
 // PermissionLevel is an access level of a single permission scope of the GITHUB_TOKEN.

@@ -48,7 +48,7 @@ See the [full list][checks] of checks done by actionlint.
 
 <details><summary><h3>Example of a broken workflow</h3></summary>
 
-The same files the animation above records, run through both linters. This section is generated from them by [`scripts/check-readme`].
+The same files the animation above records, run through both linters. This section is generated from them by [`internal/documentation/check-readme`].
 
 <!-- BEGIN generated demo -->
 
@@ -241,7 +241,7 @@ actionlint is distributed under [the MIT license].
 [Scoop]: docs/install.md#scoop
 [WinGet]: docs/install.md#winget
 [Semantic Versioning for the supported CLI and configuration contracts]: CONTRIBUTING.md#release-versioning
-[`scripts/check-readme`]: scripts/check-readme
+[`internal/documentation/check-readme`]: internal/documentation/check-readme
 [apidoc-badge]: https://pkg.go.dev/badge/actionlint.kjanat.dev.svg
 [apidoc]: https://pkg.go.dev/actionlint.kjanat.dev
 [changelog]: CHANGELOG.md#upstream-history

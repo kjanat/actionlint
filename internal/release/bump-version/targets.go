@@ -1,0 +1,149 @@
+package main
+
+import (
+	"fmt"
+	"regexp"
+)
+
+type rule struct {
+	desc    string
+	pattern *regexp.Regexp
+	count   int
+}
+
+type target struct {
+	path      string
+	rules     []rule
+	unrelated []string
+	// generated covers version references that another tool measures and rewrites, so a bump must
+	// leave them alone. Each pattern must match at least once.
+	generated []*regexp.Regexp
+}
+
+func mustRule(desc, pattern string, count int) rule {
+	re := regexp.MustCompile(pattern)
+	if re.NumSubexp() != 1 {
+		panic(fmt.Sprintf("rule %q must capture the version with exactly one group but has %d", desc, re.NumSubexp()))
+	}
+	if count < 1 {
+		panic(fmt.Sprintf("rule %q must expect at least one occurrence", desc))
+	}
+	return rule{desc: desc, pattern: re, count: count}
+}
+
+const rshellcheckDependency = "github.com/kjanat/shellcheck-rs/go/cmd/shellcheck@v0.11.0-wrapper.1"
+
+var targets = []*target{
+	{
+		path: "flake.nix",
+		rules: []rule{
+			mustRule("Nix package version", `(?m)^      version = "(\d+\.\d+\.\d+)";\r?$`, 1),
+		},
+	},
+	{
+		path: ".pre-commit-hooks.yaml",
+		rules: []rule{
+			mustRule("pre-commit Docker image tag", `(?m)^  entry: ghcr\.io/kjanat/actionlint:(\d+\.\d+\.\d+|nightly) pre-commit\r?$`, 1),
+		},
+		unrelated: []string{
+			"minimum_pre_commit_version: 3.0.0",
+			rshellcheckDependency,
+		},
+	},
+	{
+		path: "distribution/install/download-actionlint.bash",
+		rules: []rule{
+			mustRule("default version of the download script", `(?m)^version="(\d+\.\d+\.\d+)"\r?$`, 1),
+		},
+		unrelated: []string{
+			"1.6.9",
+			"releases/download/v1.0.0/actionlint_1.0.0_linux_386.tar.gz",
+		},
+	},
+	{
+		path: "docs/usage.md",
+		rules: []rule{
+			mustRule("download script argument", `download-actionlint\.bash\) (\d+\.\d+\.\d+)`, 3),
+			mustRule("CLI image tag example", "`ghcr\\.io/kjanat/actionlint:(\\d+\\.\\d+\\.\\d+)`", 1),
+			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 2),
+			mustRule("Trunk linter version", ` actionlint@(\d+\.\d+\.\d+)`, 2),
+		},
+		unrelated: []string{
+			"sarif/v2.1.0/sarif-v2.1.0.html",
+			"git-scm.com/docs/git-hook/2.54.0",
+			"git-scm.com/docs/git-hook/2.55.0",
+			rshellcheckDependency,
+			"We recommend v1.76.2 or newer.",
+		},
+	},
+	{
+		path: "docs/install.md",
+		rules: []rule{
+			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
+			mustRule("gh release download tag", `--pattern '[^']+' v(\d+\.\d+\.\d+)`, 1),
+			mustRule("release asset name", `actionlint_(\d+\.\d+\.\d+)_linux_amd64\.tar\.gz`, 2),
+			mustRule("download script example description", `example installs v(\d+\.\d+\.\d+)`, 1),
+			mustRule("download script argument", `download-actionlint\.bash\) (\d+\.\d+\.\d+)`, 1),
+		},
+		unrelated: []string{
+			"was added after v1.17.0",
+			"has proposed switching the package to this fork at v1.16.0",
+			"mise 2026.9.7 release PR",
+			"On mise 2026.9.6,",
+		},
+	},
+	{
+		path: "README.md",
+		rules: []rule{
+			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
+		},
+		unrelated: []string{
+			"[v1.7.12](https://github.com/rhysd/actionlint/releases/tag/v1.7.12)",
+			"Its independent release series starts at v1.8.0.",
+		},
+		generated: []*regexp.Regexp{
+			regexp.MustCompile(`(?m)^\*\*(?:Upstream actionlint|This fork) \d+\.\d+\.\d+ reports`),
+		},
+	},
+	{
+		path: "man/actionlint.1.md",
+		rules: []rule{
+			mustRule("manual footer version", `(?m)^footer: actionlint (\d+\.\d+\.\d+)\r?$`, 1),
+			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 5),
+		},
+		unrelated: []string{"kjanat:actionlint/analyzer@0.1.0"},
+	},
+	{
+		path: ".github/workflows/npm-release.yml",
+		rules: []rule{
+			mustRule("npm workflow release tag example", `Release tag to publish \(e\.g\. v(\d+\.\d+\.\d+)\)`, 1),
+		},
+		generated: []*regexp.Regexp{
+			regexp.MustCompile(`(?m)uses: [\w.-]+/[\w./-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+\r?$`),
+		},
+	},
+	{
+		path: ".github/workflows/pypi-release.yml",
+		rules: []rule{
+			mustRule("PyPI workflow release tag example", `Release tag to publish \(e\.g\. v(\d+\.\d+\.\d+)\)`, 1),
+		},
+		generated: []*regexp.Regexp{
+			regexp.MustCompile(`(?m)uses: [\w.-]+/[\w./-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+\r?$`),
+		},
+	},
+	{
+		path: "distribution/npm/README.md",
+		rules: []rule{
+			mustRule("npm package build version", `INPUT_VERSION=(\d+\.\d+\.\d+)`, 1),
+		},
+		unrelated: []string{"0.0.0"}, // The unpublished workspace template, not a release version.
+	},
+	{
+		path: "distribution/aur/actionlint-kjanat-git/PKGBUILD",
+		rules: []rule{
+			mustRule("AUR git package base version", `(?m)^pkgver=(\d+\.\d+\.\d+)\.r0\.g0000000\r?$`, 1),
+			mustRule("AUR git describe example", `# v(\d+\.\d+\.\d+)-12-gabc1234`, 1),
+			mustRule("AUR pkgver example", `-> (\d+\.\d+\.\d+)\.r12\.gabc1234`, 1),
+		},
+	},
+}

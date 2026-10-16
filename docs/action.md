@@ -355,7 +355,7 @@ New defaults add a compact summary and independent PATH exports; turn each off w
 unwanted. JavaScript removes Docker's Linux/daemon requirement. Existing immutable
 Docker releases and digest pins remain untouched. Compatibility images continue
 as `action-X.Y.Z`, `action-vX.Y`, `action-vX`, and `action-latest`, using a thin
-wrapper around the ordinary binary. [Release maintainers](../scripts/bump-version/README.md)
+wrapper around the ordinary binary. [Release maintainers](../internal/release/bump-version/README.md)
 prepare, inspect and promote the same tested candidate.
 
 | Symptom                    | Check                                                                                                |

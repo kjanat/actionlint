@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { fetch-depth: 0 }
       - name: Test autofix change tracking
-        run: bash scripts/test-autofix-step.bash
+        run: bash internal/ci/test-autofix-step.bash
       - name: Select generators affected by this change
         id: inputs
         env:
@@ -57,33 +57,33 @@ jobs:
           else
             base=${BASE_SHA}
           fi
-          bash scripts/autofix-inputs.bash "${base}" "${HEAD_SHA}"
+          bash internal/ci/autofix-inputs.bash "${base}" "${HEAD_SHA}"
       # Without this action, dprint has to recompile the wasm plugins each time the action runs,
       # which is often, and wastes time, energy, and sanity.
       - uses: kjanat/install-dprint@c2cdca92154b44b2a2c15222d25d91d1cddfca1b # v2.2.0
       - { uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e, with: { go-version-file: go.mod } } # v7
       - name: x/tools/go/analysis modernize
         id: modernize
-        run: bash scripts/autofix-step.bash go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...
+        run: bash internal/ci/autofix-step.bash go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...
       - name: Regenerate the configuration schema
         id: schema
-        run: bash scripts/autofix-step.bash go generate -run generate-config-schema
+        run: bash internal/ci/autofix-step.bash go generate -run generate-config-schema
       - name: Regenerate affected Go tables
         id: tables
         if: steps.inputs.outputs.tables == 'true'
-        run: bash scripts/autofix-step.bash go generate -skip generate-config-schema
+        run: bash internal/ci/autofix-step.bash go generate -skip generate-config-schema
         env: { GH_TOKEN: "${{ github.token }}" }
       - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with: { cache: true, auto_update: true }
       - name: Refresh the affected README demo
         id: readme
         if: steps.inputs.outputs.readme == 'true'
-        run: bash scripts/autofix-step.bash go run ./scripts/check-readme -fix ./README.md
+        run: bash internal/ci/autofix-step.bash go run ./internal/documentation/check-readme -fix ./README.md
         env: { GITHUB_TOKEN: "${{ github.token }}" }
       - name: format the code
         id: format
         # autofix-ci will fail if the .github directory is touched
-        run: bash scripts/autofix-step.bash dprint fmt --allow-no-files --diff --excludes .github
+        run: bash internal/ci/autofix-step.bash dprint fmt --allow-no-files --diff --excludes .github
       - name: Describe applied fixes
         id: fixes
         env:

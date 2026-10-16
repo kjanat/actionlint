@@ -17,6 +17,8 @@ import (
 // of host filesystem permissions and of ShellCheck availability.
 type RuleExecutableBit struct {
 	RuleBase
+	ruleLogger
+	ruleConfiguration
 	executableState
 	context                             ruleContext
 	workflowDir, jobDir                 runDirectory
@@ -35,7 +37,7 @@ type RuleExecutableBit struct {
 }
 
 func newRuleExecutableBit(context ruleContext) *RuleExecutableBit {
-	return &RuleExecutableBit{RuleBase: builtinRuleBase("executable-bit"), context: context}
+	return &RuleExecutableBit{RuleBase: builtinRuleBase("executable-bit"), tag: "executable-bit", context: context}
 }
 
 func (rule *RuleExecutableBit) VisitWorkflowPre(workflow *workflowlang.Workflow) error {

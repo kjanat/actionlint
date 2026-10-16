@@ -6,7 +6,7 @@ import (
 	"unicode/utf8"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yaml"
 )
 
 // The cache belongs to parsed source metadata, never to an action invocation.

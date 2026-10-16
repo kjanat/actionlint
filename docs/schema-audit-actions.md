@@ -125,7 +125,7 @@ Passed focused commands:
 
 ```sh
 go test . -run '^(TestAction|TestComposite|TestLocalActions|TestSchemaAction)' -count=1
-go test ./scripts/generate-action-metadata -count=1
+go test ./internal/actioncatalog/metadata -count=1
 go test . -run '^TestLinterLintProject/project/(local_docker_action|local_composite_action|composite_action_steps|composite_action_context|action_metadata_expressions|local_action_invalid|local_action_invalid_runners|local_javascript_action|local_action_branding|local_action_yaml_1.1_boolean|local_action_case_insensitive|yaml_anchor_in_action|broken_local_action|local_action_empty)$' -count=1
 ```
 

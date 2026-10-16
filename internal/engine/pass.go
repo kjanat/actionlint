@@ -27,10 +27,11 @@ type Pass interface {
 
 // Visitor visits syntax tree from root in depth-first order
 type Visitor struct {
-	passes     []Pass
-	dbg        io.Writer
-	composites *compositeAnalyzer
-	jobID      string
+	passes       []Pass
+	trackIgnores bool
+	dbg          io.Writer
+	composites   *compositeAnalyzer
+	jobID        string
 }
 
 // NewVisitor creates Visitor instance
@@ -131,7 +132,7 @@ func (v *Visitor) visitJob(n *workflowlang.Job) error {
 	}
 
 	for _, p := range v.passes {
-		if err := visitWithIgnoreOrigin(p, jobDiagnosticIgnoreOrigin(n), func() error { return p.VisitJobPre(n) }); err != nil {
+		if err := visitWithIgnoreOrigin(p, jobDiagnosticIgnoreOrigin(n), v.trackIgnores, func() error { return p.VisitJobPre(n) }); err != nil {
 			return err
 		}
 	}
@@ -153,7 +154,7 @@ func (v *Visitor) visitJob(n *workflowlang.Job) error {
 	}
 
 	for _, p := range v.passes {
-		if err := visitWithIgnoreOrigin(p, jobDiagnosticIgnoreOrigin(n), func() error { return p.VisitJobPost(n) }); err != nil {
+		if err := visitWithIgnoreOrigin(p, jobDiagnosticIgnoreOrigin(n), v.trackIgnores, func() error { return p.VisitJobPost(n) }); err != nil {
 			return err
 		}
 	}
@@ -177,7 +178,7 @@ func (v *Visitor) visitStep(n *workflowlang.Step) error {
 		}
 	} else {
 		for _, p := range v.passes {
-			if err := visitWithIgnoreOrigin(p, newDiagnosticIgnoreOrigin(v.jobID, n), func() error { return p.VisitStep(n) }); err != nil {
+			if err := visitWithIgnoreOrigin(p, newDiagnosticIgnoreOrigin(v.jobID, n), v.trackIgnores, func() error { return p.VisitStep(n) }); err != nil {
 				return err
 			}
 		}

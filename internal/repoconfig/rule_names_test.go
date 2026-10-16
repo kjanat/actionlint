@@ -6,6 +6,8 @@ import (
 
 func TestAdditionalRulesAreScopedToResolution(t *testing.T) {
 	for _, source := range []string{
+		"lint: {rules: {plugins: {no-sudo: {level: warn, options: {key: value}}}}}",
+		"lint: {rules: {disable: [no-sudo]}}",
 		"ignores: [{rule: no-sudo, file: '**'}]",
 		"policy: {disallow-suppressions: {rules: [no-sudo]}}",
 		"lint: {rules: {policy: {disallow-suppressions: {level: error, options: {rules: [no-sudo]}}}}}",

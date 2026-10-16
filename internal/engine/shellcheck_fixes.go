@@ -88,7 +88,7 @@ func shellcheckDiagnosticFixes(source *workflowlang.ScriptSource, script shellch
 	if !shellcheckFixPreservesIndent(source, edits) {
 		return nil
 	}
-	return []DiagnosticFix{{Description: description, Edits: edits}}
+	return []DiagnosticFix{{Description: description, Applicability: "suggested", Edits: edits}}
 }
 
 func shellcheckFixPreservesIndent(source *workflowlang.ScriptSource, edits []DiagnosticEdit) bool {

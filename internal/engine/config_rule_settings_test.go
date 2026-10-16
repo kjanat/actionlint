@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"testing"
 
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yaml"
 )
 
 func TestCatalogRuleConfiguration(t *testing.T) {
 	for _, d := range builtinRuleDescriptors() {
 		t.Run(d.Name, func(t *testing.T) {
-			cfg, err := ParseConfig(fmt.Appendf(nil, "lint: {rules: {%s: {%s: off}}}", d.Category, d.Name))
+			cfg, err := ParseConfig(fmt.Appendf(nil, "lint: {rules: {%s: {%s: off}}}", d.Group, d.Name))
 			if err != nil {
 				t.Fatal(err)
 			}

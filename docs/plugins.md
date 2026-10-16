@@ -10,7 +10,7 @@ call with the facts it declared and returns diagnostics. Any language with a com
 actionlint --plugin ./pipe-to-shell.wasm --plugin ./no-sudo.wasm
 ```
 
-Each `--plugin` loads one component. Findings carry the plugin name as their rule, so `--ignore-regex`, inline
+Each `--plugin` loads one component or a supported core script engine. Findings carry the plugin name as their rule, so `--ignore-regex`, inline
 suppressions and configured ignores apply to them like built-in rules. `--log-level debug` prints the plugin's limits
 when it loads and forwards its log lines, stdout and stderr.
 
@@ -133,12 +133,107 @@ during allocation cleanup, discards that instance and fails the document's analy
 `plugin.LoadEngine` and set the result as `analysis.Tool.Backend`; library tool settings take precedence over the
 repository configuration.
 
+## Remote artifacts and static metadata
+
+`--plugin`, `tools.ruff.backend.wasm.path`, `plugin.Load`, and `plugin.LoadEngine`
+accept local paths, absolute `file://` URIs, and HTTP(S) URLs. Both module kinds
+accept raw WASM and gzip-compressed artifacts. Relative filesystem paths in
+configuration resolve from the declaring file; URIs are preserved.
+
+```sh
+actionlint check --plugin 'https://example.com/plugins/ruff.wasm.gz#sha256=<64-hex-digest>'
+actionlint plugin inspect 'https://example.com/plugins/ruff.wasm.gz' --json
+```
+
+Replace the example URL and digest with your artifact's location and SHA-256.
+The optional `#sha256=` fragment verifies the distributed file **before gzip
+decompression**. For a `.wasm.gz` artifact, use the checksum of the compressed
+file. The CLI caches pinned downloads under the user cache directory's
+`actionlint/artifacts` folder and verifies cached bytes on every use. Unpinned
+URLs are fetched on each invocation. A corrupted pinned cache entry is an error;
+remove that entry to download it again. Library callers opt into caching through
+`Options.Artifact.CacheDir` or `EngineOptions.Artifact.CacheDir`.
+
+Acquisition has a 30-second deadline and a 128 MiB limit on both downloaded and
+decompressed bytes. Redirects are bounded and cannot downgrade HTTPS to HTTP.
+HTTP is supported explicitly, including local development servers. Library
+callers can set acquisition limits through `ArtifactOptions`, independently of
+the runtime's execution limits. URI userinfo is rejected; query strings are
+omitted from reported artifact locations.
+
+`actionlint plugin inspect` and Go's `plugin.Inspect` read the binary header and
+the top-level `actionlint.plugin` custom section without compiling or executing
+the plugin. Inspection reports the binary kind, distributed checksum and size,
+decoded size, and the section's JSON metadata. It preserves the complete metadata
+object, including engine identity, rule descriptors, configuration schema, and
+advertised interfaces when supplied by the artifact. Nested modules cannot supply
+metadata for their enclosing component. Duplicate sections, duplicate JSON keys,
+invalid UTF-8, and metadata exceeding 1 MiB are rejected.
+
+Static metadata is a declaration; successful inspection does not establish that
+the plugin's code or ABI is valid. The selected runtime still checks the module.
+For core script engines, an incompatible ABI or transport in the custom section
+is rejected before compilation, and the runtime `metadata()` response must agree
+with the section, allowing differences in whitespace and object key order.
+Older engines without the section retain runtime metadata discovery. Component
+analyzers retain their WIT `describe` contract; their custom section is exposed
+for inspection but does not replace that contract.
+
 ## Contribute a rule
 
 Plugins live in their own repositories and ship a component. Open an issue in this repository to list a plugin in the
 documentation.
 
-Built-in rules are Go code: visitor rules in `internal/engine` with catalog entries in `internal/repoconfig/catalog.go`
-and documentation in [`docs/checks.md`](checks.md), or fact-based analyzers that implement `analyzer.Analyzer` as
-described in the [Go API](api.md#add-an-analyzer). Changes to the WIT contract keep `kjanat:actionlint/analyzer@0.1.0`
+Built-in rule metadata lives in `internal/rulecatalog`; configuration projections live in
+`internal/repoconfig`. Stateless checks in `internal/checks` accept explicit inputs and return diagnostics.
+The remaining visitor implementations in `internal/engine` are migration adapters. New document analyzers implement
+`analyzer.Analyzer` as described in the [Go API](api.md#add-an-analyzer). The catalogue generates
+[`docs/rules.md`](rules.md); behavior examples remain in [`docs/checks.md`](checks.md). Changes to the WIT contract keep `kjanat:actionlint/analyzer@0.1.0`
 usable and add a new version for incompatible changes.
+
+## Rule and source contracts
+
+Documents, scripts, invocations and mappings carry source references. Diagnostics
+carry structured help, related locations and revision-bound fixes. Descriptors are
+shared rule metadata with independent category, subcategory, maturity and provider.
+Plugins requiring `dependencies` receive literal action and reusable-workflow
+references, including source ranges and owning node identities. Dynamic references
+remain unknown and are not sent as literal dependencies.
+
+Core script engines use the version 1 JSON ABI because they analyze sanitized
+snippets, not workflow documents.
+`--plugin` accepts either binary kind and selects the appropriate host from its
+WebAssembly header. A failing component is never retried as a core module.
+
+The Ruff plugin is a script engine. It uses `tools.ruff` settings and the same
+expression sanitizer and YAML position mapper as native Ruff. Selecting it replaces
+the default Ruff executable; an explicitly configured competing backend is rejected.
+
+Inspect selected plugin metadata with `actionlint rules --plugin PATH --json`, or
+`actionlint rules RULE --plugin PATH` for its explanation. Duplicate document-analyzer
+rule names are rejected before analysis.
+
+## Configure registered rules
+
+Loading a document analyzer explicitly enables it by default. Configure it under
+`lint.rules.plugins`; semantic categories such as security remain metadata rather
+than configuration namespaces for third-party rules:
+
+```yaml
+lint:
+  rules:
+    plugins:
+      no-sudo: warn
+      organization-check:
+        level: error
+        options:
+          required-prefix: team-
+```
+
+Names must match analyzers registered by this invocation. Global/group presets,
+`lint.enabled`, `lint.rules.disable` and per-file overrides apply to plugin rules.
+An explicit `recommended` preset uses the descriptor's recommendation; `all`
+excludes nursery rules. Disabled analyzers are not executed. Options are checked
+against the descriptor's bundled JSON schema before execution; external schema
+references are refused. Go registration options override repository options.
+Core script engines continue to use their host rule and `tools.ruff` configuration.

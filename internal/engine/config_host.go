@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"slices"
 
+	"actionlint.kjanat.dev/analyzer"
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	"actionlint.kjanat.dev/internal/filefilter"
 	"actionlint.kjanat.dev/internal/repoconfig"
@@ -20,7 +21,7 @@ func presetLevel(p RulePreset, d ruleDescriptor, fallback RuleLevel) RuleLevel {
 		if !d.isNursery() {
 			return "on"
 		}
-		return fallback
+		return "off"
 	case "recommended":
 		if d.Recommended {
 			return "on"
@@ -33,7 +34,7 @@ func presetLevel(p RulePreset, d ruleDescriptor, fallback RuleLevel) RuleLevel {
 
 func ruleSetting(cfg *Config, d ruleDescriptor, p RulePresets) RuleSetting {
 	setting := RuleSetting{Level: "on"}
-	if !d.Recommended {
+	if !d.Recommended && !d.selected {
 		setting.Level = "off"
 	}
 	if d.configure != nil && d.enabled != nil {
@@ -53,8 +54,8 @@ func ruleSetting(cfg *Config, d ruleDescriptor, p RulePresets) RuleSetting {
 	if p.Experimental != nil && *p.Experimental && d.isNursery() {
 		setting.Level = "on"
 	}
-	group := rules.Groups()[d.Category]
-	if d.isNursery() && group.Preset == "all" {
+	group := rules.Groups()[d.Group]
+	if d.isNursery() && d.Group == "nursery" && group.Preset == "all" {
 		setting.Level = "on"
 	} else {
 		setting.Level = presetLevel(group.Preset, d, setting.Level)
@@ -89,8 +90,8 @@ func diagnosticLevel(cfg *Config, name string) RuleLevel {
 	return "on"
 }
 
-func applyRulePresets(p RulePresets, config *Config) *Config {
-	if config == nil && !p.Strict && p.Experimental == nil {
+func applyRulePresets(p RulePresets, config *Config, registrations ...analyzer.Registration) *Config {
+	if config == nil && !p.Strict && p.Experimental == nil && len(registrations) == 0 {
 		return nil
 	}
 	next := Config{}
@@ -99,7 +100,13 @@ func applyRulePresets(p RulePresets, config *Config) *Config {
 	}
 	resolved := make(map[string]RuleLevel)
 	next.Lint.Rules.SetResolved(resolved)
-	for _, d := range builtinRuleDescriptors() {
+	descriptors := builtinRuleDescriptors()
+	for _, registration := range registrations {
+		if registration.Analyzer != nil {
+			descriptors = append(descriptors, ruleDescriptor{Descriptor: registration.Analyzer.Descriptor().Clone(), Group: "plugins", selected: true})
+		}
+	}
+	for _, d := range descriptors {
 		setting := ruleSetting(config, d, p)
 		resolved[d.Name] = setting.Level
 		if d.configure != nil {

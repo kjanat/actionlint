@@ -2,10 +2,10 @@
 # directory over it whenever the directory is newer, so no built-in rule may apply here.
 MAKEFLAGS += --no-builtin-rules
 
-GO_FILES := $(wildcard *.go analysis/*.go config/*.go diagnostic/*.go document/*.go syntax/*.go analyzer/*.go cmd/*/*.go internal/*/*.go)
+GO_FILES := $(wildcard *.go analysis/*.go config/*.go diagnostic/*.go document/*.go syntax/*.go analyzer/*.go rule/*.go source/*.go resolver/*.go cmd/*/*.go internal/*/*.go internal/checks/*/*.go)
 SRCS := $(filter-out %_test.go, $(GO_FILES)) internal/repoconfig/config_default.yaml internal/actioncatalog/popular_actions.json go.mod go.sum
 TESTS := $(filter %_test.go, $(GO_FILES))
-TOOL := $(wildcard scripts/*/*.go)
+TOOL := $(wildcard internal/*/generate/*.go internal/*/metadata/*.go internal/release/bump-version/*.go internal/*/check-*/*.go)
 TESTDATA := $(wildcard \
 		testdata/examples/* \
 		testdata/err/* \
@@ -15,17 +15,17 @@ TESTDATA := $(wildcard \
 		testdata/projects/* \
 		testdata/reusable_workflow_metadata/* \
 	)
-GO_GEN_SRCS := $(filter-out %_test.go,$(wildcard scripts/generate-popular-actions/*.go scripts/generate-action-metadata/*.go)) \
-				scripts/generate-popular-actions/popular_actions.json \
-				scripts/generate-webhook-events/main.go \
-				scripts/generate-availability/main.go
+GO_GEN_SRCS := $(filter-out %_test.go,$(wildcard internal/actioncatalog/generate/*.go internal/actioncatalog/metadata/*.go)) \
+				internal/actioncatalog/generate/popular_actions.json \
+				internal/webhook/generate/main.go \
+				internal/workflowcontext/generate/main.go
 PANDOC := pandoc --standalone --from=markdown-smart --syntax-highlighting=none
 
 ifeq ($(OS),Windows_NT)
 	SHELL := powershell.exe
 	.SHELLFLAGS := -NoProfile -ExecutionPolicy Bypass -Command
 	TARGET = actionlint.exe
-	TOUCH = powershell -NoProfile -ExecutionPolicy Bypass scripts/touch.ps1
+	TOUCH = powershell -NoProfile -ExecutionPolicy Bypass internal/ci/touch.ps1
 	# It's hard to prepare C toolchain for CGO on Windows
 	RACE =
 else
@@ -77,7 +77,7 @@ test:
 
 .PHONY: conformance
 conformance:
-	go run ./scripts/fetch-conformance
+	go run ./internal/conformance/fetch
 	go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m ./internal/conformance
 
 coverage.out: $(TESTS) $(SRCS) $(TESTDATA) $(TOOL)
@@ -96,10 +96,10 @@ ifneq ($(OS),Windows_NT)
 	GOOS=js GOARCH=wasm golangci-lint run ./playground
 endif
 
-# Documentation examples also require Pyflakes; keep that dependency explicit.
+# Documentation examples use the configured external script checkers.
 .PHONY: lint-docs
 lint-docs:
-	go run ./scripts/check-checks -quiet ./docs/checks.md
+	go run ./internal/rulecatalog/check-docs -quiet ./docs/checks.md
 
 internal/actioncatalog/popular_actions.json internal/engine/all_webhooks.go internal/workflowcontext/availability.go internal/engine/action_metadata_availability.go internal/engine/action_runtimes.go: $(GO_GEN_SRCS)
 ifdef SKIP_GO_GENERATE
@@ -144,15 +144,15 @@ man: man/actionlint.1 man/actionlint.1.html
 bench:
 	go test -bench Lint -benchmem ./internal/engine
 
-.github/actionlint-matcher.json: scripts/generate-actionlint-matcher/main.mjs scripts/generate-actionlint-matcher/object.mjs
-	node ./scripts/generate-actionlint-matcher/main.mjs .github/actionlint-matcher.json
+.github/actionlint-matcher.json: internal/githubaction/matcher/main.mjs internal/githubaction/matcher/object.mjs
+	node ./internal/githubaction/matcher/main.mjs .github/actionlint-matcher.json
 
-scripts/generate-actionlint-matcher/testdata/escape.txt: $(TARGET)
-	./actionlint -color ./testdata/err/one_error.yaml > ./scripts/generate-actionlint-matcher/testdata/escape.txt || true
-scripts/generate-actionlint-matcher/testdata/no_escape.txt: $(TARGET)
-	./actionlint -no-color ./testdata/err/one_error.yaml > ./scripts/generate-actionlint-matcher/testdata/no_escape.txt || true
-scripts/generate-actionlint-matcher/testdata/want.json: $(TARGET)
-	./actionlint -format '{{json .}}' ./testdata/err/one_error.yaml > scripts/generate-actionlint-matcher/testdata/want.json || true
+internal/githubaction/matcher/testdata/escape.txt: $(TARGET)
+	./actionlint -color ./testdata/err/one_error.yaml > ./internal/githubaction/matcher/testdata/escape.txt || true
+internal/githubaction/matcher/testdata/no_escape.txt: $(TARGET)
+	./actionlint -no-color ./testdata/err/one_error.yaml > ./internal/githubaction/matcher/testdata/no_escape.txt || true
+internal/githubaction/matcher/testdata/want.json: $(TARGET)
+	./actionlint -format '{{json .}}' ./testdata/err/one_error.yaml > internal/githubaction/matcher/testdata/want.json || true
 
 PLUGIN_FIXTURES := internal/component/testdata/plugins
 PLUGIN_WAT := $(wildcard internal/component/testdata/wat/*.wat internal/corewasm/testdata/wat/*.wat)

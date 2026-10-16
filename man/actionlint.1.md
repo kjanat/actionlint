@@ -53,6 +53,12 @@ also accepts.
 
 # COMMANDS
 
+**fix** [**--apply**] [**--include-suggested**] [*FILES...*]
+: Preview edits as JSON; apply validated edits explicitly and recheck changed sources.
+
+**lsp**
+: Serve versioned editor buffers, diagnostics and quick fixes over stdin/stdout.
+
 **check** [*flags*] [*files*...]
 : Check workflows with the modern option grammar. Uses the same engine and
 repository discovery as the root invocation.
@@ -92,6 +98,12 @@ Missing optional tools are reported; malformed selected config returns status 3.
 : Show version and build details. Supports **--json**.
 
 # FLAGS
+
+**--resolve-with** *EXECUTABLE*
+: Opt in to remote dependency resolution with a literal provider executable.
+
+**--resolver-arg** *VALUE*
+: Pass a literal argument to the resolver. Repeat for multiple arguments.
 
 These options belong to the root and to **check**, unless noted otherwise.
 Root parsing retains the original single- and double-dash spellings; **check**

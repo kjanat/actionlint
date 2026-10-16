@@ -8,7 +8,7 @@ import (
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	"actionlint.kjanat.dev/internal/schemapath"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yaml"
 )
 
 type actionSchemaKind uint8
@@ -89,6 +89,11 @@ func (rule *RuleAction) actionSchemaError(meta *ActionMetadata, n *yaml.Node, pa
 }
 
 func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.Node, definition string, location schemapath.Path, depth int, evaluated bool) {
+	rule.checkActionSchemaMappingValue(meta, node, definition, location, depth, evaluated, nil)
+}
+
+// Insertions share their enclosing mapping namespace; child values start a new one.
+func (rule *RuleAction) checkActionSchemaMappingValue(meta *ActionMetadata, node *yaml.Node, definition string, location schemapath.Path, depth int, evaluated bool, seen map[string]bool) {
 	path := location.Schema()
 	n := actionSchemaNode(node)
 	if n == nil || definition == "any" {
@@ -132,7 +137,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 			}
 		}
 		if slices.Contains(d.variants, variant) {
-			rule.checkActionSchemaValue(meta, n, variant, location, depth, evaluated)
+			rule.checkActionSchemaMappingValue(meta, n, variant, location, depth, evaluated, seen)
 		}
 		return
 	}
@@ -208,7 +213,10 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 			}
 			return
 		}
-		seen := map[string]bool{}
+		ownMapping := seen == nil
+		if ownMapping {
+			seen = map[string]bool{}
+		}
 		for i := 0; i+1 < len(n.Content); i += 2 {
 			key, value := n.Content[i], n.Content[i+1]
 			if expr := yamlExprString(key); !evaluated && expr != nil && strings.Contains(expr.Value, "${{") && !actionLiteralExpression(expr.Value) {
@@ -217,7 +225,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 				} else if exprlang.IsMappingInsertion(expr.Value) {
 					// The template reader treats insert as a mapping directive,
 					// whose value is another mapping or a mapping expression.
-					rule.checkActionSchemaValue(meta, value, definition, location, depth+1, evaluated)
+					rule.checkActionSchemaMappingValue(meta, value, definition, location, depth+1, evaluated, seen)
 					continue
 				} else {
 					for _, violation := range actionExpressionViolationsWithInputs(expr.Value, false, path, meta.Inputs) {
@@ -256,7 +264,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 			rule.checkActionSchemaValue(meta, value, child, childPath, depth+1, evaluated)
 		}
 		for _, key := range d.required {
-			if !seen[key] && (path != "runs.steps.*" || !slices.Contains([]string{"run", "shell", "uses"}, key)) {
+			if ownMapping && !seen[key] && (path != "runs.steps.*" || !slices.Contains([]string{"run", "shell", "uses"}, key)) {
 				rule.actionSchemaError(meta, n, location, fmt.Sprintf("missing required key %q", key))
 			}
 		}

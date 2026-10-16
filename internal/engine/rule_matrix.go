@@ -8,12 +8,13 @@ import (
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	stringutil "actionlint.kjanat.dev/internal/stringutil"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yaml"
 )
 
 // RuleMatrix is a rule checker to check 'matrix' field of job.
 type RuleMatrix struct {
 	RuleBase
+	ruleConfiguration
 }
 
 // NewRuleMatrix creates new RuleMatrix instance.

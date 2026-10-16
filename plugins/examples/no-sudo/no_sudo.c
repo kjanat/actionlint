@@ -57,6 +57,11 @@ static void report(findings_t *findings, const script_t *script, uint32_t line, 
     }
     diagnostic_t *d = &findings->ptr[findings->len++];
     memset(d, 0, sizeof(*d));
+    d->reference.is_some = true;
+    plugin_string_dup_n(&d->reference.val.document, (const char *)script->reference.document.ptr, script->reference.document.len);
+    plugin_string_dup_n(&d->reference.val.revision, (const char *)script->reference.revision.ptr, script->reference.revision.len);
+    plugin_string_dup_n(&d->reference.val.node, (const char *)script->reference.node.ptr, script->reference.node.len);
+    plugin_string_dup_n(&d->reference.val.address, (const char *)script->reference.address.ptr, script->reference.address.len);
     plugin_string_dup(&d->severity, "warning");
     plugin_string_dup(&d->message, "step runs sudo, which self-hosted runners may not provide");
     plugin_string_dup_n(&d->path, (const char *)script->path.ptr, script->path.len);
@@ -111,7 +116,17 @@ static void check_script(const script_t *script, findings_t *findings) {
 }
 
 void exports_kjanat_actionlint_analyzer_describe(exports_kjanat_actionlint_analyzer_descriptor_t *ret) {
+    memset(ret, 0, sizeof(*ret));
     plugin_string_dup(&ret->name, "no-sudo");
+    plugin_string_dup(&ret->description, "Check runner privilege assumptions");
+    plugin_string_dup(&ret->category, "portability");
+    plugin_string_dup(&ret->subcategory, "scripts");
+    plugin_string_dup(&ret->maturity, "stable");
+    plugin_string_dup(&ret->provider, "example");
+    plugin_string_dup(&ret->explanation, "Self-hosted runners may not provide sudo.");
+    plugin_string_dup(&ret->help, "Run without privilege elevation or explicitly prepare the runner.");
+    plugin_string_dup(&ret->fix_availability, "none");
+    plugin_string_dup(&ret->options_schema, "{}");
     ret->requires_.ptr = malloc(2 * sizeof(exports_kjanat_actionlint_analyzer_fact_t));
     if (!ret->requires_.ptr) {
         abort();

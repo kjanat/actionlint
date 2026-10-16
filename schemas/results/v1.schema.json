@@ -308,8 +308,14 @@
         "code": {
           "type": "string"
         },
+        "documentation_url": {
+          "type": "string"
+        },
         "end": {
           "$ref": "#/definitions/position"
+        },
+        "explanation": {
+          "type": "string"
         },
         "fixes": {
           "type": "array",
@@ -317,12 +323,24 @@
             "$ref": "#/definitions/fix"
           }
         },
+        "help": {
+          "type": "string"
+        },
         "message": {
           "type": "string"
         },
         "path": {
           "description": "Analyzed source path; relative paths use the Action working directory.",
           "type": "string"
+        },
+        "reference": {
+          "$ref": "#/definitions/sourceReference"
+        },
+        "related": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/relatedLocation"
+          }
         },
         "rule": {
           "type": "string"
@@ -379,6 +397,13 @@
         "edits"
       ],
       "properties": {
+        "applicability": {
+          "enum": [
+            "safe",
+            "unsafe",
+            "suggested"
+          ]
+        },
         "description": {
           "type": "string"
         },
@@ -387,6 +412,12 @@
           "minItems": 1,
           "items": {
             "$ref": "#/definitions/edit"
+          }
+        },
+        "revisions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
           }
         }
       }
@@ -644,6 +675,52 @@
           }
         }
       ]
+    },
+    "relatedLocation": {
+      "type": "object",
+      "required": [
+        "end",
+        "message",
+        "path",
+        "start"
+      ],
+      "properties": {
+        "end": {
+          "$ref": "#/definitions/position"
+        },
+        "message": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "start": {
+          "$ref": "#/definitions/position"
+        }
+      }
+    },
+    "sourceReference": {
+      "type": "object",
+      "required": [
+        "address",
+        "document",
+        "node",
+        "revision"
+      ],
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "document": {
+          "type": "string"
+        },
+        "node": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      }
     },
     "step": {
       "type": "object",

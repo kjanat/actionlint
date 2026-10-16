@@ -62,7 +62,7 @@ paths     = [
 ]
 
 [[linters.exclusions.rules]]
-path    = '_test\.go$|^(scripts|\.github|cmd|fuzz|playground)/|^internal/(cli|githubaction|conformance|fsread)/'
+path    = '_test\.go$|^(\.github|cmd|fuzz|playground)/|^internal/(cli|githubaction|conformance|fsread)/|^internal/(actioncatalog/(generate|metadata)|repoconfig/generate|workflowcontext/generate|webhook/generate|ruffconfig/generate|rulecatalog/check-docs|documentation/check-readme|release/bump-version)/'
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]

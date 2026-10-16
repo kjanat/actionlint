@@ -30,7 +30,7 @@ The conformance fixture archive is separately pinned by [sources.json]. Its runn
 - `go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m ./internal/conformance`: passed against the pinned archives: 1,721 cases, 1,394 agreements, 327 recorded differences. This resolves 27 previous differences and records one new SchemaStore discrepancy: its composite example repeats a step ID rejected by runner conversion.
 - `golangci-lint run`: passed, zero issues.
 - `dprint check` on changed non-fixture sources and reports, CommentCop, and `git diff --check`: passed. The conformance JSON was also formatted and checked explicitly.
-- `scripts/check-checks`: all examples passed using a temporary copy that normalized one expected missing-file error to Windows path/error wording. The canonical document has no other regeneration differences. A Linux attempt could not run the shellcheck example because shellcheck/pyflakes are absent from WSL.
+- `internal/rulecatalog/check-docs`: all examples passed using a temporary copy that normalized one expected missing-file error to Windows path/error wording. The canonical document has no other regeneration differences. A Linux attempt could not run the shellcheck example because shellcheck/pyflakes are absent from WSL.
 
 These checks ran locally in the isolated checkout. No remote CI, workflow dispatch, commit or publication was performed. Investigation logs, the temporary platform-normalized document, and downloaded reference copies were removed after recording these results.
 

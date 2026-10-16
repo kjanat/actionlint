@@ -144,6 +144,7 @@ var defaultRunnerOSCompats = map[string]runnerOSCompat{
 // https://docs.github.com/en/actions/hosting-your-own-runners/using-self-hosted-runners-in-a-workflow .
 type RuleRunnerLabel struct {
 	RuleBase
+	ruleConfiguration
 	// Note: Using only one compatibility integer is enough to check compatibility. But we remember
 	// all past compatibility values here for better error message. If accumulating all compatibility
 	// values into one integer, we can no longer know what labels are conflicting.

@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yaml"
 )
 
 // Each invocation owns its rules: external callbacks must not share mutable
@@ -34,7 +34,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 		analysis.actions.observeOpaqueAction(call, action)
 		for _, rule := range parents {
 			compositeCheckoutPaths(rule, analysis.actions)
-			if err := visitWithIgnoreOrigin(rule, newDiagnosticIgnoreOrigin(analysis.jobID, call), func() error { return rule.VisitStep(call) }); err != nil {
+			if err := visitWithIgnoreOrigin(rule, newDiagnosticIgnoreOrigin(analysis.jobID, call), hasConfiguredIgnores(analysis.scriptConfig), func() error { return rule.VisitStep(call) }); err != nil {
 				return err
 			}
 		}
@@ -123,7 +123,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *ActionMetadata, ca
 			for _, pass := range analysis.passes {
 				if parent, enabled := pass.(metadataParticipant); enabled {
 					validation := parent.forMetadata(analysis.actions)
-					if err := visitWithIgnoreOrigin(validation, newDiagnosticIgnoreOrigin(analysis.jobID, step), func() error { return validation.VisitStep(step) }); err != nil {
+					if err := visitWithIgnoreOrigin(validation, newDiagnosticIgnoreOrigin(analysis.jobID, step), hasConfiguredIgnores(scriptConfig), func() error { return validation.VisitStep(step) }); err != nil {
 						return err
 					}
 					analysis.rules = append(analysis.rules, compositeScriptRules{meta, []Rule{validation}})
@@ -137,7 +137,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *ActionMetadata, ca
 		}
 		for _, rule := range children {
 			compositeCheckoutPaths(rule, analysis.actions)
-			if err := visitWithIgnoreOrigin(rule, newDiagnosticIgnoreOrigin(analysis.jobID, step), func() error { return rule.VisitStep(step) }); err != nil {
+			if err := visitWithIgnoreOrigin(rule, newDiagnosticIgnoreOrigin(analysis.jobID, step), hasConfiguredIgnores(scriptConfig), func() error { return rule.VisitStep(step) }); err != nil {
 				return err
 			}
 		}

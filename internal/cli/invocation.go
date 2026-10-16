@@ -24,22 +24,27 @@ type invocation struct {
 
 // checkInvocation contains analysis inputs. It carries no command-framework state.
 type checkInvocation struct {
-	Paths             []string
-	Config            repoconfig.Selection
-	StdinFilename     string
-	IgnoreRegex       []string
-	ShellCheck        string
-	Ruff              string
-	RuffOptions       *processconfig.Options
-	Pyflakes          string
-	Plugins           []string
-	ShellcheckOptions *processconfig.Options
-	Verbose           bool
-	Debug             bool
-	Strict            bool
-	Experimental      bool
-	ExperimentalSet   bool
-	PreCommit         bool
+	ResolverCommand       string
+	ResolverArguments     []string
+	Fix                   bool
+	ApplyFixes            bool
+	IncludeSuggestedFixes bool
+	Paths                 []string
+	Config                repoconfig.Selection
+	StdinFilename         string
+	IgnoreRegex           []string
+	ShellCheck            string
+	Ruff                  string
+	RuffOptions           *processconfig.Options
+	Pyflakes              string
+	Plugins               []string
+	ShellcheckOptions     *processconfig.Options
+	Verbose               bool
+	Debug                 bool
+	Strict                bool
+	Experimental          bool
+	ExperimentalSet       bool
+	PreCommit             bool
 }
 
 // renderOptions controls result presentation without changing analysis.
@@ -72,6 +77,7 @@ const (
 	operationCheck          operation = "check"
 	operationVersion        operation = "version"
 	operationRules          operation = "rules"
+	operationPluginInspect  operation = "plugin inspect"
 	operationDoctor         operation = "doctor"
 	operationConfigPath     operation = "config path"
 	operationConfigShow     operation = "config show"
@@ -151,10 +157,14 @@ func (a *commandApp) prepareInvocation() error {
 
 func (inv invocation) request() (commandRequest, error) {
 	switch inv.Operation {
+	case operationPluginInspect:
+		return pluginInspectRequest{Source: inv.Check.Paths[0], JSON: inv.JSON}, nil
+	case "lsp":
+		return lspRequest{inv.Check}, nil
 	case operationVersion:
 		return versionRequest{JSON: inv.JSON, Legacy: inv.Legacy}, nil
 	case operationRules:
-		return rulesRequest{Name: inv.Rule, JSON: inv.JSON}, nil
+		return rulesRequest{Name: inv.Rule, JSON: inv.JSON, Plugins: inv.Check.Plugins}, nil
 	case operationDoctor:
 		return doctorRequest{Config: inv.Check.Config, ShellCheck: inv.Check.ShellCheck,
 			Ruff: inv.Check.Ruff, RuffOptions: inv.Check.RuffOptions,

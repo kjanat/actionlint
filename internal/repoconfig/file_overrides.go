@@ -290,7 +290,7 @@ func expandLintShorthands(node *yaml.Node) *yaml.Node {
 	for category := range (&LintRulesConfig{}).Groups() {
 		node = expandRuleLevel(node, "rules", category)
 		for _, d := range Rules() {
-			if d.Category == category {
+			if d.Group == category {
 				node = expandRuleLevel(node, "rules", category, d.Name)
 			}
 		}

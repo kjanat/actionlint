@@ -6,7 +6,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-// LintConfig configures built-in analysis rules.
+// LintConfig configures built-in and registered analysis rules.
 type LintConfig struct {
 	source *yaml.Node
 	// Enabled controls lint diagnostics only, leaving other features independent.
@@ -25,6 +25,8 @@ type LintRulesConfig struct {
 	Security    Group `yaml:"security,omitempty"`
 	Policy      Group `yaml:"policy,omitempty"`
 	External    Group `yaml:"external,omitempty"`
+	// Plugins selects registered document analyzers by their unique rule names.
+	Plugins Group `yaml:"plugins,omitempty"`
 	// Nursery contains rules under development, excluded from stable presets.
 	Nursery  Group `yaml:"nursery,omitempty"`
 	resolved map[string]Level
@@ -52,15 +54,17 @@ func (c *LintRulesConfig) UnmarshalYAML(n *yaml.Node) error {
 	if err := n.Load(&next, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
 		return err
 	}
-	for _, name := range next.Disable {
-		if !Suppressible(name) {
-			return fmt.Errorf("yaml: unknown diagnostic rule %q in lint.rules.disable", name)
-		}
-	}
 	for category, group := range (*LintRulesConfig)(&next).Groups() {
 		for name, setting := range group.Rules {
+			if category == "plugins" {
+				if err := setting.DecodeOptions(func() any { return new(map[string]any) }); err != nil {
+					return fmt.Errorf("yaml: options for %q: %w", name, err)
+				}
+				group.Rules[name] = setting
+				continue
+			}
 			d, ok := FindRule(name)
-			if !ok || d.Category != category {
+			if !ok || d.Group != category {
 				return fmt.Errorf("yaml: unknown rule %q in lint.rules.%s", name, category)
 			}
 			if setting.Level != "" && !setting.Level.Valid() {

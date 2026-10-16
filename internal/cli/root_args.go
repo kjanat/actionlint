@@ -7,6 +7,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/spf13/pflag"
 )
@@ -121,6 +122,14 @@ func isCommandName(name string) bool {
 	return slices.Contains(commandNames(), name)
 }
 
-func commandNames() []string {
-	return []string{"check", "pre-commit", "config", "rules", "doctor", "completion", "completions", "version", "help", "init", "init-config"}
-}
+var registeredCommandNames = sync.OnceValue(func() []string {
+	app := newCommandApp(&Command{})
+	names := []string{"help"}
+	for _, command := range app.root.Commands() {
+		names = append(names, command.Name())
+		names = append(names, command.Aliases...)
+	}
+	return names
+})
+
+func commandNames() []string { return slices.Clone(registeredCommandNames()) }

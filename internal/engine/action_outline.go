@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yaml"
 )
 
 // ParseActionOutline parses a standalone action manifest without reading files

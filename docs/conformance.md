@@ -26,7 +26,7 @@ particular, a schema-valid example can still contain undefined context propertie
 ## Run locally
 
 ```sh
-go run ./scripts/fetch-conformance
+go run ./internal/conformance/fetch
 go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m ./internal/conformance
 ```
 

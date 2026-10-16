@@ -6,7 +6,10 @@ import (
 	"context"
 	"errors"
 	"io"
+	"reflect"
 	"slices"
+
+	"actionlint.kjanat.dev/internal/processconfig"
 
 	"actionlint.kjanat.dev/internal/application"
 )
@@ -31,6 +34,14 @@ func Check(ctx context.Context, options application.Options, input application.I
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, plugins.close(context.WithoutCancel(ctx))) }()
+	if len(plugins.engines) > 0 {
+		if options.RuffBackend != nil || options.RuffOptions != nil && !reflect.DeepEqual(*options.RuffOptions, processconfig.Options{Optional: true}) || (options.Ruff != "" && options.Ruff != "ruff") {
+			return nil, &PluginLoadError{errors.New("ruff plugin conflicts with an explicitly selected Ruff backend or command")}
+		}
+		options.Ruff = ""
+		options.RuffOptions = nil
+		options.RuffBackend = plugins.engines[0]
+	}
 	options.Analyzers = slices.Concat(options.Analyzers, plugins.registrations())
 	if options.LoadScriptEngine == nil {
 		options.LoadScriptEngine = scriptEngineLoader(log, options.Debug)

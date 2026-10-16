@@ -66,7 +66,7 @@ func (a *commandApp) applyEnvironment() error {
 		return err
 	}
 	switch i.Operation {
-	case operationCheck, operationDoctor, operationConfigPath, operationConfigShow, operationConfigValidate:
+	case "lsp", operationCheck, operationDoctor, operationConfigPath, operationConfigShow, operationConfigValidate:
 		if !a.anySet("config", "config-file", "no-config") {
 			a.envString("ACTIONLINT_CONFIG", &i.Check.Config.Path)
 			if err := a.envBool("ACTIONLINT_NO_CONFIG", &i.Check.Config.Disabled); err != nil {
@@ -77,7 +77,7 @@ func (a *commandApp) applyEnvironment() error {
 	if i.Operation == operationConfigShow {
 		return a.envBool("ACTIONLINT_CONFIG_ORIGIN", &i.Origin, "origin")
 	}
-	if i.Operation != operationCheck && i.Operation != operationDoctor {
+	if i.Operation != operationCheck && i.Operation != operationDoctor && i.Operation != "lsp" {
 		return nil
 	}
 	var err error

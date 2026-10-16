@@ -39,7 +39,8 @@ type sarifRule struct {
 	DefaultConfiguration sarifLevel          `json:"defaultConfiguration"`
 	Properties           sarifRuleProperties `json:"properties"`
 	FullDescription      sarifText           `json:"fullDescription"`
-	HelpURI              string              `json:"helpUri"`
+	HelpURI              string              `json:"helpUri,omitempty"`
+	Help                 *sarifText          `json:"help,omitempty"`
 }
 
 type sarifLevel struct {
@@ -52,12 +53,13 @@ type sarifRuleProperties struct {
 }
 
 type sarifResult struct {
-	RuleID     string                 `json:"ruleId"`
-	Message    sarifText              `json:"message"`
-	Level      string                 `json:"level"`
-	Properties *sarifResultProperties `json:"properties,omitempty"`
-	Fixes      []sarifFix             `json:"fixes,omitempty"`
-	Locations  []sarifLocation        `json:"locations"`
+	RuleID           string                 `json:"ruleId"`
+	Message          sarifText              `json:"message"`
+	Level            string                 `json:"level"`
+	Properties       *sarifResultProperties `json:"properties,omitempty"`
+	Fixes            []sarifFix             `json:"fixes,omitempty"`
+	Locations        []sarifLocation        `json:"locations"`
+	RelatedLocations []sarifRelatedLocation `json:"relatedLocations,omitempty"`
 }
 
 type sarifResultProperties struct {
@@ -65,6 +67,12 @@ type sarifResultProperties struct {
 }
 
 type sarifLocation struct {
+	PhysicalLocation sarifPhysicalLocation `json:"physicalLocation"`
+}
+
+type sarifRelatedLocation struct {
+	ID               int                   `json:"id"`
+	Message          sarifText             `json:"message"`
 	PhysicalLocation sarifPhysicalLocation `json:"physicalLocation"`
 }
 
@@ -160,10 +168,18 @@ func sarifFixes(fixes []diagnostic.Fix) []sarifFix {
 func sarifRules(rules []*Rule) []sarifRule {
 	result := make([]sarifRule, 0, len(rules))
 	for _, rule := range rules {
+		description := rule.Explanation
+		if description == "" {
+			description = rule.Description
+		}
+		var help *sarifText
+		if rule.Help != "" {
+			help = &sarifText{rule.Help}
+		}
 		result = append(result, sarifRule{
 			ID: rule.Name, Name: toPascalCase(rule.Name), DefaultConfiguration: sarifLevel{"error"},
-			Properties:      sarifRuleProperties{Description: rule.Description, QueryURI: "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"},
-			FullDescription: sarifText{rule.Description}, HelpURI: "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md",
+			Properties:      sarifRuleProperties{Description: rule.Description, QueryURI: rule.DocumentationURL},
+			FullDescription: sarifText{description}, HelpURI: rule.DocumentationURL, Help: help,
 		})
 	}
 	return result
@@ -181,6 +197,12 @@ func WriteSARIF(out io.Writer, version string, rules []*Rule, diagnostics []diag
 				ArtifactLocation: artifact,
 				Region:           sarifRegion{StartLine: d.Start.Line, StartColumn: d.Start.Column, EndLine: d.End.Line, EndColumn: d.End.Column, Snippet: &sarifText{d.Snippet}},
 			}}},
+		}
+		for i, related := range d.Related {
+			result.RelatedLocations = append(result.RelatedLocations, sarifRelatedLocation{
+				ID: i, Message: sarifText{related.Message},
+				PhysicalLocation: sarifPhysicalLocation{ArtifactLocation: sarifArtifact(related.Path), Region: sarifRegion{StartLine: related.Start.Line, StartColumn: related.Start.Column, EndLine: related.End.Line, EndColumn: related.End.Column}},
+			})
 		}
 		if d.Code != "" {
 			result.Properties = &sarifResultProperties{ExternalCode: d.Code}

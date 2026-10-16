@@ -98,7 +98,7 @@ func (analysis *compositeAnalyzer) visitStep(step *workflowlang.Step) error {
 				continue // Preserve checkout state while entering a local composite.
 			}
 		}
-		if err := visitWithIgnoreOrigin(pass, newDiagnosticIgnoreOrigin(analysis.jobID, step), func() error { return pass.VisitStep(step) }); err != nil {
+		if err := visitWithIgnoreOrigin(pass, newDiagnosticIgnoreOrigin(analysis.jobID, step), hasConfiguredIgnores(analysis.scriptConfig), func() error { return pass.VisitStep(step) }); err != nil {
 			return err
 		}
 	}

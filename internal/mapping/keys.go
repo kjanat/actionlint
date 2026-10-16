@@ -3,7 +3,7 @@ package mapping
 import (
 	"strings"
 
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yaml"
 )
 
 func (r Resolver[S]) InsertedKeys(node *yaml.Node, source func(*yaml.Node) S, insertion func(string) bool) map[string]S {

@@ -54,3 +54,18 @@ func TestNormalizePathsBindsModulesToTheirConfig(t *testing.T) {
 		}
 	}
 }
+
+func TestNormalizePathsPreservesPluginURIs(t *testing.T) {
+	for _, uri := range []string{"https://example.com/ruff.wasm.gz#sha256=abc", "file:///opt/ruff.wasm", "http://localhost:8123/ruff"} {
+		var node yaml.Node
+		input := "tools:\n  ruff:\n    backend:\n      wasm: {path: '" + uri + "'}\noverrides:\n  - files: ['*.yml']\n    tools:\n      ruff:\n        backend:\n          wasm: {path: '" + uri + "'}\n"
+		if err := yaml.Unmarshal([]byte(input), &node); err != nil {
+			t.Fatal(err)
+		}
+		NormalizePaths(&node, t.TempDir())
+		data, err := yaml.Marshal(&node)
+		if err != nil || strings.Count(string(data), "path: '"+uri+"'") != 2 {
+			t.Fatalf("URI rebased: %s %v", data, err)
+		}
+	}
+}

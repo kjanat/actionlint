@@ -11,6 +11,9 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/rulecatalog"
+	"actionlint.kjanat.dev/internal/sourceid"
+
 	actionlint "actionlint.kjanat.dev/internal/engine"
 	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"
@@ -182,6 +185,20 @@ func TestCommandNativeJSON(t *testing.T) {
 			expected := []actionlint.Diagnostic{}
 			for _, field := range want {
 				expected = append(expected, actionlint.Diagnostic{Rule: field.Kind, Message: field.Message, Path: field.Filepath, Start: actionlint.DiagnosticPosition{Line: field.Line, Column: field.Column}, End: actionlint.DiagnosticPosition{Line: field.Line, Column: field.EndColumn + 1}, Snippet: strings.Split(field.Snippet, "\n")[0]})
+			}
+			for i := range have.Diagnostics {
+				actual := have.Diagnostics[i]
+				if actual.Reference == nil || actual.Reference.Revision != sourceid.Digest([]byte(input)) || actual.Help == "" || actual.DocumentationURL == "" {
+					t.Fatalf("missing diagnostic context: %+v", actual)
+				}
+				expected[i].Reference = actual.Reference
+				descriptor, ok := rulecatalog.Find(actual.Rule)
+				if !ok {
+					t.Fatalf("unknown rule %s", actual.Rule)
+				}
+				expected[i].Help = descriptor.Help
+				expected[i].Explanation = descriptor.Explanation
+				expected[i].DocumentationURL = descriptor.DocumentationURL
 			}
 			if diff := cmp.Diff(expected, have.Diagnostics); diff != "" {
 				t.Fatal(diff)

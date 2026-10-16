@@ -35,7 +35,7 @@ func (r *AnalysisResult) RenderResult() render.Result {
 	index := 0
 	for _, file := range r.files {
 		for _, rule := range file.rules {
-			rendered.Rules = append(rendered.Rules, render.Rule{Name: rule.Name, Description: rule.Description})
+			rendered.Rules = append(rendered.Rules, rule.Clone())
 		}
 		for _, original := range file.errors {
 			finding := render.FindingOf(r.Diagnostics[index], original.sourceFor(file.source.Content))

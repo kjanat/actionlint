@@ -276,7 +276,7 @@ docker build --build-arg GOLANG_VER=1.27.2 --build-arg ALPINE_VER=3.24 -t action
 To move the defaults to newer base images:
 
 1. Pick the new tags from Docker Hub ([golang], [alpine]). `GOLANG_VER` tracks the preferred `toolchain` in `go.mod`, which CI reads through `go-version-file`. `ALPINE_VER` selects the final runtime image independently of the Go builder.
-2. For Go, run `node scripts/update-go-toolchain.mjs go<major>.<minor>.<patch>` with Node, `gh`, and Nix available. It verifies matching Nix compilers, then updates `go.mod`, the Docker builder default, this example, and the Nix pin and lock together. If no matching Nix compiler is available, it leaves the files unchanged. Update the Alpine `ARG` separately. CI and release builds use the Dockerfile defaults unless explicitly overridden.
+2. For Go, run `node internal/toolchain/update-go-toolchain.mjs go<major>.<minor>.<patch>` with Node, `gh`, and Nix available. It verifies matching Nix compilers, then updates `go.mod`, the Docker builder default, this example, and the Nix pin and lock together. If no matching Nix compiler is available, it leaves the files unchanged. Update the Alpine `ARG` separately. CI and release builds use the Dockerfile defaults unless explicitly overridden.
 3. Verify with `droast Dockerfile` and `docker build -t actionlint .`.
 4. Send the upgrade as its own pull request.
 
@@ -302,9 +302,9 @@ When releasing v1.2.3 as example:
 
 1. Describe the release in [CHANGELOG.md], either under the `Unreleased` heading or in a `v1.2.3` section written out in full, and write the release notes to `docs/releases/v1.2.3.md`. That file is the body of the GitHub release, GoReleaser's release notes and the WinGet manifest notes. `bump-version` refuses to run when the changelog describes nothing or the file is missing.
 2. Validate and commit the release changes on `master`, including the changelog, and push them to `origin`.
-3. Run `go run ./scripts/bump-version -check` to list every declared version reference and confirm the declaration is in sync with the repository
-4. Run `go run ./scripts/bump-version -push 1.2.3`. It updates version references, runs the Nix checks, commits and pushes the source changes, then dispatches [release preparation](.github/workflows/release-prepare.yml). Drop `-push` to leave the edits for review; `-commit` creates only the source commit. Neither creates a version tag. See [the script README] for prerequisites and recovery commands. On Windows, Nix can run through WSL.
-5. Wait for preparation to succeed and inspect the draft. It tests the candidate on Linux, macOS and Windows, checks Nix, and validates the container. Then run `node scripts/release-candidate.mjs promote --version 1.2.3 --run RUN_ID` locally. Promotion verifies the successful run and every draft asset against its immutable manifest artifact, signs `v1.2.3` at the tested commit, records its ancestry with an `ours` merge, atomically pushes `master` and the tag, and publishes the draft. The tag contains the complete source tree, root `action.mjs`, `SHA256SUMS`, and `.pre-commit-hooks.yaml` pinned to the release image; generated files and the pin never enter the `master` tree. [The CI release job] distributes the published artifacts. Eligible floating `v1` and `v1.2` tags advance after its checks pass. All three references support the Action. The signing key stays local.
+3. Run `go run ./internal/release/bump-version -check` to list every declared version reference and confirm the declaration is in sync with the repository
+4. Run `go run ./internal/release/bump-version -push 1.2.3`. It updates version references, runs the Nix checks, commits and pushes the source changes, then dispatches [release preparation](.github/workflows/release-prepare.yml). Drop `-push` to leave the edits for review; `-commit` creates only the source commit. Neither creates a version tag. See [the script README] for prerequisites and recovery commands. On Windows, Nix can run through WSL.
+5. Wait for preparation to succeed and inspect the draft. It tests the candidate on Linux, macOS and Windows, checks Nix, and validates the container. Then run `node internal/release/release-candidate.mjs promote --version 1.2.3 --run RUN_ID` locally. Promotion verifies the successful run and every draft asset against its immutable manifest artifact, signs `v1.2.3` at the tested commit, records its ancestry with an `ours` merge, atomically pushes `master` and the tag, and publishes the draft. The tag contains the complete source tree, root `action.mjs`, `SHA256SUMS`, and `.pre-commit-hooks.yaml` pinned to the release image; generated files and the pin never enter the `master` tree. [The CI release job] distributes the published artifacts. Eligible floating `v1` and `v1.2` tags advance after its checks pass. All three references support the Action. The signing key stays local.
 6. Verify the release assets, npm packages, distribution updates, and floating action tags. The bump script has already moved `Unreleased` entries into the dated release section with its anchor and comparison link; no manual post-release changelog edit is needed. Published release tags and assets are immutable; changing those requires a new version.
 7. To change the notes after publication, edit `docs/releases/v1.2.3.md` on `master`. [The release notes workflow](.github/workflows/release-notes.yml) copies every changed file to its GitHub release; a file for a version without a release waits for that release. Promotion publishes the draft with the file's content, so a draft edited by hand is overwritten. Keep the changelog concise and the notes rich: examples, explanations of changed behavior, practical benefits. Preserve contributor mentions and issue/PR references in both, and verify examples against the released binary.
 8. The Pages workflow redeploys the playground on pushes to `master` and after a successful release, deriving its version from Git. Upkeep refreshes the measured README demo after the release workflow succeeds.
@@ -347,7 +347,7 @@ run playground:preview
 
 ## Maintain auto-generated sources
 
-Some files are generated by scripts in [`scripts/`] directory. These files are kept up-to-date by CI workflows.
+Generators live with their owning subsystems under `internal/`: configuration schemas in `repoconfig/generate`, rule documentation in `rulecatalog/generate`, action data in `actioncatalog`, and expression context data in `workflowcontext/generate`. Release tools live in `internal/release`, installers in `distribution/install`, and conformance tools in `internal/conformance`. CI invokes these same entry points.
 
 ### Action metadata availability
 
@@ -355,11 +355,11 @@ Some files are generated by scripts in [`scripts/`] directory. These files are k
 
 The weekly `Upkeep` job includes this file in its usual generation PR. Review schema changes there before merging; incompatible schema changes fail generation without replacing the existing output. `Generated content` checks that regeneration matches the checked-in file. Both workflows provide `GH_TOKEN` for the GitHub API; local generation also accepts `GITHUB_TOKEN`, or uses the public API unauthenticated when neither is set.
 
-To refresh only these tables, run `go run ./scripts/generate-action-metadata`. Normal builds and lint runs use the checked-in Go data and do not fetch the schema. Workflow expression availability is maintained separately below.
+To refresh only these tables, run `go run ./internal/actioncatalog/metadata`. Normal builds and lint runs use the checked-in Go data and do not fetch the schema. Workflow expression availability is maintained separately below.
 
 ### JavaScript action runtime lifecycle
 
-`go run ./scripts/generate-action-metadata -runtimes` refreshes `internal/engine/action_runtimes.go`. It reads the runner's current and legacy manifest parsers for accepted `runs.using` values, `src/Misc/externals.sh` for bundled Node executables, and `Constants.cs` for deprecation notices and removal dates. The action template schema only requires a nonempty string at `runs.using`; it cannot supply the accepted versions or their lifecycle.
+`go run ./internal/actioncatalog/metadata -runtimes` refreshes `internal/engine/action_runtimes.go`. It reads the runner's current and legacy manifest parsers for accepted `runs.using` values, `src/Misc/externals.sh` for bundled Node executables, and `Constants.cs` for deprecation notices and removal dates. The action template schema only requires a nonempty string at `runs.using`; it cannot supply the accepted versions or their lifecycle.
 
 The generator resolves the newest commit touching those inputs and downloads all of them from jsDelivr at that revision. The generated header links that revision; `runtimeSourcePaths` in the generator lists the files. Parser disagreement, missing packaging data, or an unrecognized migration declaration fails generation before replacing the output. Review upstream source changes when that happens. No upstream source files are vendored, and ordinary builds and lint runs do not fetch anything.
 
@@ -425,7 +425,7 @@ Please see [the readme of the script][the readme of the script-2] for the usage 
 [Linus Torvalds's message on AI-assisted maintenance]: https://lore.kernel.org/linux-media/CAHk-=wi4zC+Ze8e+p3tMv8TtG_80KzsZ1syL9anBtmEh5Z40vg@mail.gmail.com/
 [Pages workflow]: ./.github/workflows/pages.yml
 [Problem-Matchers]: https://github.com/kjanat/actionlint/actions/workflows/matcher.yml
-[README.md at the script directory]: ./scripts/generate-webhook-events/README.md
+[README.md at the script directory]: ./internal/webhook/generate/README.md
 [Release]: https://github.com/kjanat/actionlint/actions/workflows/release.yml
 [Upkeep]: https://github.com/kjanat/actionlint/actions/workflows/upkeep.yml
 [Upstream conformance tests]: docs/conformance.md
@@ -436,20 +436,19 @@ Please see [the readme of the script][the readme of the script-2] for the usage 
 [`actionlint-matcher.json`]: .github/actionlint-matcher.json
 [`all_webhooks.go`]: ./internal/engine/all_webhooks.go
 [`availability.go`]: ./internal/workflowcontext/availability.go
-[`check-checks`]: ./scripts/check-checks
+[`check-checks`]: ./internal/rulecatalog/check-docs
 [`ci.yml`]: .github/workflows/ci.yml
 [`events-that-trigger-workflows.md`]: https://raw.githubusercontent.com/github/docs/refs/heads/main/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md
 [`fuzz/`]: ./fuzz
-[`generate-action-metadata`]: ./scripts/generate-action-metadata/main.go
-[`generate-actionlint-matcher`]: ./scripts/generate-actionlint-matcher
-[`generate-popular-actions`]: ./scripts/generate-popular-actions
-[`generate-webhook-events`]: ./scripts/generate-webhook-events
+[`generate-action-metadata`]: ./internal/actioncatalog/metadata/main.go
+[`generate-actionlint-matcher`]: ./internal/githubaction/matcher
+[`generate-popular-actions`]: ./internal/actioncatalog/generate
+[`generate-webhook-events`]: ./internal/webhook/generate
 [`man/actionlint.1.md`]: ./man/actionlint.1.md
 [`man/manual.css`]: ./man/manual.css
 [`playground/README.md`]: ./playground/README.md
 [`popular_actions.json`]: ./internal/actioncatalog/popular_actions.json
 [`release.yml`]: .github/workflows/release.yml
-[`scripts/`]: ./scripts
 [actions/workflows/upkeep.yml]: https://github.com/kjanat/actionlint/actions/workflows/upkeep.yml
 [active branches]: https://github.com/kjanat/actionlint/branches
 [alpine]: https://hub.docker.com/_/alpine
@@ -458,7 +457,7 @@ Please see [the readme of the script][the readme of the script-2] for the usage 
 [changelog-from-release]: https://github.com/rhysd/changelog-from-release
 [flake]: flake.nix
 [fork repository]: https://github.com/kjanat/winget-pkgs
-[generate-availability]: ./scripts/generate-availability
+[generate-availability]: ./internal/workflowcontext/generate
 [golang]: https://hub.docker.com/_/golang
 [golangci-lint]: https://golangci-lint.run/
 [govulncheck]: https://go.dev/doc/security/vuln/
@@ -476,8 +475,8 @@ Please see [the readme of the script][the readme of the script-2] for the usage 
 [the contexts document]: https://github.com/github/docs/blob/main/content/actions/learn-github-actions/contexts.md#context-availability
 [the document]: docs/usage.md#problem-matchers
 [the maintenance script]: #about-checks-doc
-[the readme of the script-2]: ./scripts/check-checks/README.md
-[the readme of the script]: ./scripts/generate-availability/README.md
-[the script README]: ./scripts/bump-version/README.md
+[the readme of the script-2]: ./internal/rulecatalog/check-docs/README.md
+[the readme of the script]: ./internal/workflowcontext/generate/README.md
+[the script README]: ./internal/release/bump-version/README.md
 [the upstream project]: https://github.com/rhysd/actionlint
 [the usage document]: docs/usage.md

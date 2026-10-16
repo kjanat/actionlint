@@ -14,10 +14,14 @@ import (
 
 	"actionlint.kjanat.dev/internal/repoconfig"
 
+	"errors"
+
 	"actionlint.kjanat.dev/analyzer"
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/internal/rulecatalog"
 	"actionlint.kjanat.dev/internal/workflownames"
+	"actionlint.kjanat.dev/rule"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -93,6 +97,17 @@ func Analyze(ctx context.Context, request AnalysisRequest) (*AnalysisResult, err
 }
 
 func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level LogLevel) (*AnalysisResult, error) {
+	var extensions []rule.Descriptor
+	for _, registration := range request.Analyzers {
+		if registration.Analyzer == nil {
+			return nil, errors.New("nil analyzer registration")
+		}
+		extensions = append(extensions, registration.Analyzer.Descriptor().Descriptor)
+	}
+	if _, err := rulecatalog.Combine(extensions...); err != nil {
+		return nil, err
+	}
+
 	if err := request.validateBackends(); err != nil {
 		return nil, err
 	}
@@ -330,6 +345,11 @@ func (r *AnalysisResult) collectDiagnostics() {
 				continue
 			}
 			diagnostic := finding.diagnostic(file.source.Content)
+			identityPath := file.source.InputPath
+			if finding.source != nil {
+				identityPath = diagnostic.Path
+			}
+			completeDiagnostic(&diagnostic, finding.sourceFor(file.source.Content), identityPath)
 			if identity := finding.metadataFinding; identity != nil && finding.Kind == "action" {
 				key := metadataLocation{project, finding.Kind, finding.severity, identity.key}
 				if !identity.declaration && declarations[declarationLocation{project, identity.key}] {

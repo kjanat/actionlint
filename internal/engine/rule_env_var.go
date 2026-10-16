@@ -1,7 +1,8 @@
 package engine
 
 import (
-	"strings"
+	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/internal/checks/envname"
 
 	"actionlint.kjanat.dev/internal/mapping"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
@@ -49,15 +50,13 @@ func (rule *RuleEnvVar) checkEnv(env *workflowlang.Env) {
 	if env == nil {
 		return
 	}
+	var entries []analyzer.Entry
 	workflowlang.InputResolver.Walk(workflowlang.EnvMappingView(env), nil, func(entry mapping.Entry[*workflowlang.String]) {
 		if entry.Name != nil {
-			rule.checkName(entry.Name.Value, entry.Name.Pos)
+			entries = append(entries, analyzer.Entry{Name: entry.Name.Value, State: analyzer.KnownKey, Start: factPosition(entry.Name.Pos)})
 		}
 	})
-}
-
-func (rule *RuleEnvVar) checkName(name string, pos *workflowlang.Pos) {
-	if strings.ContainsAny(name, "&= \t") {
-		rule.Errorf(pos, "environment variable name %q is invalid. '&', '=' and spaces should not be contained", name)
+	for _, finding := range envname.Check(entries) {
+		rule.errs = append(rule.errs, legacyDiagnosticError(finding))
 	}
 }

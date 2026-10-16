@@ -30,6 +30,9 @@ lint:
     # external:
     #   shellcheck: on
     #   ruff: on
+    # Document analyzers loaded with --plugin use their registered rule names.
+    # plugins:
+    #   no-sudo: warn
     # Nursery rules require explicit selection; stable presets exclude them.
     # nursery: {preset: none}
     # disable: []

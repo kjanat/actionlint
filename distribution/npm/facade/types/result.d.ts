@@ -1,8 +1,20 @@
 /** Public analysis result v1. Additive fields do not change schema_version. */
 export type Position = { line: number; column: number };
 export type Edit = { path: string; start: Position; end: Position; replacement: string };
-export type Fix = { description: string; edits: Edit[] };
+export type SourceReference = { document: string; revision: string; node: string; address: string };
+export type RelatedLocation = { message: string; path: string; start: Position; end: Position };
+export type Fix = {
+	description: string;
+	edits: Edit[];
+	applicability?: 'safe' | 'unsafe' | 'suggested';
+	revisions?: Record<string, string>;
+};
 export type Diagnostic = {
+	reference?: SourceReference;
+	explanation?: string;
+	help?: string;
+	documentation_url?: string;
+	related?: RelatedLocation[];
 	rule: string;
 	message: string;
 	path: string;

@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"slices"
 
+	"actionlint.kjanat.dev/internal/rulecatalog"
+	"actionlint.kjanat.dev/rule"
+
 	"actionlint.kjanat.dev/internal/lintconfig"
 	"go.yaml.in/yaml/v4"
 )
@@ -41,10 +44,8 @@ const (
 // Rule is the configuration vocabulary of one built-in check: identity, category,
 // default selection, option type and policy projection. Execution stays with the host.
 type Rule struct {
-	Name            string
-	Description     string
-	Category        string
-	Recommended     bool
+	rule.Descriptor
+	Group           string
 	SupportsActions bool
 	Scope           Scope
 	Options         func() any
@@ -52,51 +53,60 @@ type Rule struct {
 }
 
 // Nursery reports whether the rule is excluded from stable presets.
-func (r Rule) Nursery() bool { return r.Category == "nursery" }
+func (r Rule) Nursery() bool { return r.Maturity == "nursery" }
 
 // Rules lists the built-in checks in registration order.
 func Rules() []Rule {
-	return []Rule{
-		{Name: "workflow-run-names", Description: "Report workflow_run references to unknown repository workflows", Category: "correctness", Recommended: true},
-		{Name: "unsound-ternary", Description: "Report a && b || c expressions where b is always falsy", Category: "correctness", Recommended: true},
-		{Name: "ruff", Description: "Analyze embedded Python scripts with Ruff", Category: "external", Recommended: true, SupportsActions: true, Scope: CompositeScope},
-		{Name: "syntax-check", Description: "Validate GitHub Actions workflow syntax", Category: "correctness", Recommended: true, SupportsActions: true},
-		{Name: "inline-suppression", Description: "Validate inline suppression directives", Category: "correctness", Recommended: true, Scope: SourceScope},
-		{Name: "missing-local-action", Description: "Report local action references whose manifests cannot be found", Category: "correctness", Recommended: true},
-		{Name: "string-conditions", Description: "Flag string conditions whose truthiness may be misleading", Category: "suspicious"},
-		{Name: "mixed-type-comparisons", Description: "Flag condition comparisons that implicitly convert scalar types", Category: "suspicious"},
-		{Name: "case-insensitive-conditions", Description: "Flag case-insensitive identity comparisons", Category: "suspicious"},
-		{Name: "mixed-type-matrix-filters", Description: "Flag matrix filters that compare different or unknown scalar types", Category: "suspicious"},
-		{Name: "disallow-suppressions", Description: "Report suppressions forbidden by policy", Category: "policy", Scope: SourceScope, Options: func() any { return &SuppressionsPolicy{} }, Configure: configureSuppressionsPolicy},
-		{Name: "matrix", Description: "Validate matrix definitions, combinations, and filters", Category: "correctness", Recommended: true},
-		{Name: "credentials", Description: "Detect hardcoded passwords in job and service containers", Category: "security", Recommended: true},
-		{Name: "shell-name", Description: "Validate script shells for the selected runner", Category: "correctness", Recommended: true},
-		{Name: "runner-label", Description: "Report unknown or incompatible runner labels", Category: "correctness", Recommended: true},
-		{Name: "events", Description: "Validate workflow triggers and their options", Category: "correctness", Recommended: true},
-		{Name: "job-needs", Description: "Report undefined job dependencies and dependency cycles", Category: "correctness", Recommended: true},
-		{Name: "parallel-steps", Description: "Validate background-step references and restrictions within parallel groups", Category: "correctness", Recommended: true},
-		{Name: "action", Description: "Validate action references, inputs, outputs, and local metadata", Category: "correctness", Recommended: true, SupportsActions: true},
-		{Name: "executable-bit", Description: "Report directly invoked repository scripts not marked executable in Git", Category: "correctness", Recommended: true},
-		{Name: "env-var", Description: "Validate environment variable declarations", Category: "correctness", Recommended: true},
-		{Name: "id", Description: "Report invalid job or step IDs and duplicate step IDs", Category: "correctness", Recommended: true},
-		{Name: "glob", Description: "Validate branch, tag, and path filter patterns", Category: "correctness", Recommended: true},
-		{Name: "permissions", Description: "Validate token permission scopes and access levels", Category: "correctness", Recommended: true},
-		{Name: "workflow-call", Description: "Validate reusable workflow references and their declared inputs and outputs", Category: "correctness", Recommended: true},
-		{Name: "expression", Description: "Validate expression syntax, names, types, and context availability", Category: "correctness", Recommended: true},
-		{Name: "deprecated-commands", Description: "Report deprecated set-output, save-state, set-env, and add-path commands", Category: "correctness", Recommended: true, SupportsActions: true, Scope: SourceScope},
-		{Name: "if-cond", Description: "Report conditions that always evaluate to true or false", Category: "correctness", Recommended: true},
-		{Name: "require-commit-hash", Description: "Require full commit SHAs for actions and workflows, and digests for images", Category: "policy", Options: func() any { return &lintconfig.CommitHashOptions{} }, Configure: boolRuleOption(func(p *Policy) **bool { return &p.RequireCommitHash })},
-		{Name: "require-job-timeout", Description: "Require explicit job timeouts within configured bounds", Category: "policy", Options: func() any { return &JobTimeoutPolicy{} }, Configure: configureJobTimeout},
-		{Name: "require-permissions", Description: "Require explicit token permissions at workflow or job scope", Category: "policy", Options: func() any { return &PermissionsPolicy{} }, Configure: configurePermissions},
-		{Name: "required-actions", Description: "Require actions listed in the project policy", Category: "policy", Options: func() any { return &RequiredActionsOptions{} }, Configure: configureRequiredActions},
-		{Name: "cache-write-untrusted", Description: "Report cache write access granted on low-trust triggers", Category: "security", Recommended: true, Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheWriteUntrusted })},
-		{Name: "cache-call-unrestricted", Description: "Report reusable workflow calls without explicit cache limits on low-trust triggers", Category: "security", Recommended: true, Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheCallUnrestricted })},
-		{Name: "cache-operation", Description: "Report cache actions blocked by explicit cache access limits", Category: "correctness", Recommended: true, Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheOperation })},
-		{Name: "shellcheck", Description: "Analyze embedded shell scripts with ShellCheck", Category: "external", Recommended: true, SupportsActions: true, Scope: SourceScope},
+	rules := []Rule{
+		{Name: "workflow-run-names"},
+		{Name: "unsound-ternary"},
+		{Name: "ruff", SupportsActions: true, Scope: CompositeScope},
+		{Name: "syntax-check", SupportsActions: true},
+		{Name: "inline-suppression", Scope: SourceScope},
+		{Name: "missing-local-action"},
+		{Name: "string-conditions"},
+		{Name: "mixed-type-comparisons"},
+		{Name: "case-insensitive-conditions"},
+		{Name: "mixed-type-matrix-filters"},
+		{Name: "disallow-suppressions", Scope: SourceScope, Options: func() any { return &SuppressionsPolicy{} }, Configure: configureSuppressionsPolicy},
+		{Name: "matrix"},
+		{Name: "credentials"},
+		{Name: "shell-name"},
+		{Name: "runner-label"},
+		{Name: "events"},
+		{Name: "job-needs"},
+		{Name: "parallel-steps"},
+		{Name: "action", SupportsActions: true},
+		{Name: "executable-bit"},
+		{Name: "env-var"},
+		{Name: "id"},
+		{Name: "glob"},
+		{Name: "permissions"},
+		{Name: "workflow-call"},
+		{Name: "expression"},
+		{Name: "deprecated-commands", SupportsActions: true, Scope: SourceScope},
+		{Name: "if-cond"},
+		{Name: "require-commit-hash", Options: func() any { return &lintconfig.CommitHashOptions{} }, Configure: boolRuleOption(func(p *Policy) **bool { return &p.RequireCommitHash })},
+		{Name: "require-job-timeout", Options: func() any { return &JobTimeoutPolicy{} }, Configure: configureJobTimeout},
+		{Name: "require-permissions", Options: func() any { return &PermissionsPolicy{} }, Configure: configurePermissions},
+		{Name: "required-actions", Options: func() any { return &RequiredActionsOptions{} }, Configure: configureRequiredActions},
+		{Name: "cache-write-untrusted", Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheWriteUntrusted })},
+		{Name: "cache-call-unrestricted", Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheCallUnrestricted })},
+		{Name: "cache-operation", Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheOperation })},
+		{Name: "shellcheck", SupportsActions: true, Scope: SourceScope},
 	}
+	for i := range rules {
+		metadata, ok := rulecatalog.Find(rules[i].Name)
+		if !ok {
+			panic("missing rule metadata: " + rules[i].Name)
+		}
+		rules[i].Descriptor = metadata
+		rules[i].Group = rulecatalog.ConfigGroup(metadata.Name)
+	}
+	return rules
 }
 
-// FindRule returns the catalog entry with the given name.
+// FindRule returns the catalogue entry for name.
 func FindRule(name string) (Rule, bool) {
 	for _, rule := range Rules() {
 		if rule.Name == name {

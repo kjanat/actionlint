@@ -15,7 +15,7 @@ import (
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/diagnostic"
 	hostbind "actionlint.kjanat.dev/internal/component/bindings/kjanat/actionlint/host"
-	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/internal/pluginartifact"
 	"github.com/partite-ai/wacogo"
 	"github.com/partite-ai/wacogo/host"
 	"github.com/partite-ai/wacogo/wasi"
@@ -43,6 +43,8 @@ var grantedImportPrefixes = []string{"wasi:cli/", "wasi:clocks/", "wasi:io/", "w
 
 // Options configures a loaded plugin. Zero values select the defaults.
 type Options struct {
+	// Artifact configures URI resolution and verified download caching.
+	Artifact    pluginartifact.Options
 	Timeout     time.Duration
 	MemoryPages uint32
 	// Log receives host log lines and the plugin's stdout and stderr lines.
@@ -79,9 +81,22 @@ type Plugin struct {
 
 // Load reads and validates a component and asks it to describe itself.
 func Load(ctx context.Context, path string, options Options) (*Plugin, error) {
-	data, err := fsread.New(ctx, nil, nil).ReadFile(path)
+	artifact, err := pluginartifact.Resolve(ctx, path, options.Artifact)
 	if err != nil {
 		return nil, err
+	}
+	return LoadArtifact(ctx, artifact, options)
+}
+
+// LoadArtifact loads a resolved snapshot without reading its source again.
+func LoadArtifact(ctx context.Context, artifact *pluginartifact.Artifact, options Options) (*Plugin, error) {
+	path, data := artifact.Info.Source, artifact.Bytes
+	kind, _, err := pluginartifact.Sniff(data)
+	if err != nil {
+		return nil, err
+	}
+	if kind != pluginartifact.Component {
+		return nil, errors.New("analyzer requires a WebAssembly component")
 	}
 	limits := Limits{Timeout: options.Timeout, MemoryPages: options.MemoryPages}
 	if limits.Timeout <= 0 {
@@ -179,7 +194,7 @@ func (p *Plugin) Limits() Limits { return p.limits }
 
 // Descriptor returns the identity the plugin declared when it was loaded.
 func (p *Plugin) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: p.descriptor.Name, Requires: append([]analyzer.Fact(nil), p.descriptor.Requires...)}
+	return analyzer.Descriptor{Descriptor: p.descriptor.Clone(), Requires: append([]analyzer.Fact(nil), p.descriptor.Requires...)}
 }
 
 // Analyze runs the plugin on one document in a fresh instance. A trap, an

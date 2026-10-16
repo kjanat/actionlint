@@ -42,7 +42,7 @@ COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
 COPY --from=ruff /ruff /usr/local/bin/ruff
 
 FROM runtime AS action
-COPY --chmod=755 scripts/docker-action.sh /usr/local/bin/actionlint-action
+COPY --chmod=755 internal/githubaction/container/docker-action.sh /usr/local/bin/actionlint-action
 ENTRYPOINT ["/usr/local/bin/actionlint-action"]
 
 FROM runtime AS cli

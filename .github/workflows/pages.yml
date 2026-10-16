@@ -31,7 +31,7 @@ on:
       - "tsconfig.json"
       - "Makefile"
       - ".github/workflows/pages.yml"
-      - "scripts/update-go-toolchain.mjs"
+      - "internal/toolchain/update-go-toolchain.mjs"
       - "!**/*.md"
       - "man/actionlint.1.md"
   workflow_run: { workflows: [Release], types: [completed] }

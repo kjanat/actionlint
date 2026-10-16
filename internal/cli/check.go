@@ -5,10 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 
+	"actionlint.kjanat.dev/internal/fix"
+	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/render"
 	"actionlint.kjanat.dev/internal/repoconfig"
+	"actionlint.kjanat.dev/internal/resolution"
 
 	"actionlint.kjanat.dev/internal/application"
 	"actionlint.kjanat.dev/internal/localapp"
@@ -54,6 +58,9 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		Debug: c.Debug && !r.Quiet, LogWriter: log, LogSelection: inv.Legacy,
 		LegacyErrors: inv.Legacy, Presets: repoconfig.Presets{Strict: c.Strict},
 	}
+	if c.ResolverCommand != "" {
+		options.Resolver = &resolution.Process{Executable: c.ResolverCommand, Arguments: c.ResolverArguments}
+	}
 	if c.ExperimentalSet {
 		options.Presets.Experimental = &c.Experimental
 	}
@@ -90,6 +97,41 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 			if path != "" && sameCommandFile(path, r.OutputFile) {
 				return 0, fmt.Errorf("output file %q is also an input", r.OutputFile)
 			}
+		}
+	}
+	if c.Fix {
+		if input.Kind == application.Stdin {
+			return 0, commandUsageError{errors.New("fix requires files; stdin is read-only")}
+		}
+		allowed := map[string]bool{}
+		for _, path := range result.Inputs {
+			absolute, e := filepath.Abs(path)
+			if e != nil {
+				return 0, e
+			}
+			allowed[absolute] = true
+		}
+		disk := fsread.New(ctx, nil, nil)
+		reader := fsread.New(ctx, func(path string) ([]byte, error) {
+			if !allowed[path] {
+				return nil, fmt.Errorf("fix target %s was not an analysis input", path)
+			}
+			return disk.ReadFile(path)
+		}, nil)
+		plan, planErr := fix.Build(ctx, result.Diagnostics, reader, c.IncludeSuggestedFixes)
+		if planErr != nil {
+			return 0, planErr
+		}
+		if !c.ApplyFixes {
+			return 0, writeCommandJSON(out, plan)
+		}
+		written, applyErr := fix.Apply(ctx, plan, reader)
+		if applyErr != nil {
+			return 0, fmt.Errorf("fix stopped after writing %d files: %w", len(written), applyErr)
+		}
+		result, err = localapp.Check(ctx, options, input, c.Plugins)
+		if err != nil {
+			return 0, err
 		}
 	}
 	if err := renderCheckResult(ctx, out, r, inv.Legacy, renderer, result.Result); err != nil {

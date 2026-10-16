@@ -1,6 +1,9 @@
 package repoconfig
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 // ValidateRuleNames binds structurally decoded suppression settings to the
 // rules registered by this invocation. Additional names never change global state.
@@ -34,6 +37,16 @@ func ValidateRuleNames(config *Config, additional ...string) error {
 		}
 	}
 	for _, lint := range lints {
+		for _, name := range lint.Rules.Disable {
+			if !Suppressible(name, additional...) {
+				return fmt.Errorf("yaml: unknown diagnostic rule %q in lint.rules.disable", name)
+			}
+		}
+		for name := range lint.Rules.Plugins.Rules {
+			if !slices.Contains(additional, name) {
+				return fmt.Errorf("yaml: unknown registered rule %q in lint.rules.plugins", name)
+			}
+		}
 		for _, group := range lint.Rules.Groups() {
 			for _, setting := range group.Rules {
 				if policy, ok := setting.Options.(*SuppressionsPolicy); ok {

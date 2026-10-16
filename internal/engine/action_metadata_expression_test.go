@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/internal/yaml"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestActionExpressionFallbackDeduplication(t *testing.T) {

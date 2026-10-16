@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"actionlint.kjanat.dev/internal/repoconfig"
@@ -68,7 +69,11 @@ func (l *analysisEngine) check(
 	if err := repoconfig.ValidateRuleNames(cfg, additionalRules...); err != nil {
 		return nil, nil, err
 	}
-	cfg = applyRulePresets(l.rulePresets, cfg)
+	cfg = applyRulePresets(l.rulePresets, cfg, l.analyzers...)
+	registrations, err := configuredAnalyzers(cfg, l.analyzers)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	var start time.Time
 	if l.logLevel >= LogLevelVerbose {
@@ -102,7 +107,7 @@ func (l *analysisEngine) check(
 	var facts factAvailability
 
 	if w != nil {
-		host := traversalHost{analysisLogger: l.analysisLogger, ctx: l.ctx, buildRules: l.buildRules, workingDir: l.workingDir, reader: l.reader, gitModes: l.gitModes, workflowNames: l.workflowNames, onRulesCreated: l.onRulesCreated, rulePresets: l.rulePresets, requires: requiredFacts(l.analyzers)}
+		host := traversalHost{analysisLogger: l.analysisLogger, ctx: l.ctx, buildRules: l.buildRules, workingDir: l.workingDir, reader: l.reader, gitModes: l.gitModes, workflowNames: l.workflowNames, onRulesCreated: l.onRulesCreated, rulePresets: l.rulePresets, requires: requiredFacts(registrations)}
 		traversal, err := host.traverse(path, root, w, metadata, project, cfg, projectConfig, proc, localActions, localReusableWorkflows)
 		if traversal == nil {
 			return nil, outline, err
@@ -118,13 +123,61 @@ func (l *analysisEngine) check(
 		compositeConfigs = traversal.compositeConfigs
 	}
 
-	if len(l.analyzers) != 0 {
-		input := parsed.analyzerInput(path, configPath, content, units, facts)
-		externalFindings, externalErr := runDocumentAnalyzers(l.ctx, l.analyzers, input, metadataSources, usedRules)
+	if len(registrations) != 0 {
+		input := parsed.analyzerInput(path, configPath, content, units, facts, metadataSources)
+		externalFindings, externalErr := runDocumentAnalyzers(l.ctx, registrations, input, metadataSources, usedRules)
 		all = append(all, externalFindings...)
 		analysisErr = errors.Join(analysisErr, externalErr)
 	}
 
+	references := map[string]sourceReferences{}
+	rootWorkflow := w
+	if metadata != nil && w != nil {
+		rootWorkflow = actionFactsWorkflow(metadata)
+	}
+	references[configPath] = workflowReferences(configPath, content, rootWorkflow, metadata != nil)
+	for filename, source := range metadataSources {
+		parsed := parseDocument(filename, filename, source)
+		if parsed.metadata != nil && parsed.workflow != nil {
+			references[filename] = workflowReferences(filename, source, actionFactsWorkflow(parsed.metadata), true)
+		}
+	}
+	for _, finding := range all {
+		if finding.details != nil && finding.details.Reference != nil {
+			continue
+		}
+		filename := configPath
+		if finding.source != nil && finding.Filepath != "" {
+			filename = finding.Filepath
+		}
+		refs, ok := references[filename]
+		if !ok {
+			continue
+		}
+		ref := refs.document
+		if at, exists := refs.positions[[2]int{finding.Line, finding.Column}]; exists {
+			ref = at
+		}
+		owner := finding.owner
+		if owner == nil && finding.ignoreOrigin != nil {
+			owner = &diagnosticOwner{Job: finding.ignoreOrigin.job, Step: finding.ignoreOrigin.stepPosition}
+		}
+		if owner != nil && !finding.rawScriptSource {
+			if job, exists := refs.jobs[strings.ToLower(owner.Job)]; exists {
+				ref = job
+			}
+			if owner.Step != nil {
+				if step, exists := refs.positions[[2]int{owner.Step.Line, owner.Step.Col}]; exists {
+					ref = step
+				}
+			}
+		}
+
+		if finding.details == nil {
+			finding.details = &Diagnostic{}
+		}
+		finding.details.Reference = &ref
+	}
 	policy := diagnosticPolicy{analysisLogger: l.analysisLogger, path: path, configPath: configPath, root: root, workingDir: l.workingDir, content: content, project: project, config: cfg, projectConfig: projectConfig, metadata: metadata, presets: l.rulePresets, additionalRules: additionalRules, ignorePats: l.ignorePats}
 	all, policyErr := policy.apply(all, metadataSources, compositeConfigs)
 	if policyErr != nil {

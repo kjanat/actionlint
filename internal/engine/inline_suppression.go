@@ -1,10 +1,11 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/internal/repoconfig"
 	"slices"
 	"strconv"
 	"strings"
+
+	"actionlint.kjanat.dev/internal/repoconfig"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )

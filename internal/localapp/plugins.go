@@ -11,15 +11,33 @@ import (
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/component"
 	"actionlint.kjanat.dev/internal/corewasm"
+	"actionlint.kjanat.dev/internal/pluginartifact"
 )
 
 type loadedPlugins struct {
 	plugins []*component.Plugin
+	engines []*corewasm.Engine
 }
 
 func loadPlugins(ctx context.Context, paths []string, log io.Writer, debug bool) (*loadedPlugins, error) {
 	loaded := &loadedPlugins{}
 	for _, path := range paths {
+		artifact, err := pluginartifact.Resolve(ctx, path, artifactOptions())
+		if err != nil {
+			return nil, &PluginLoadError{errors.Join(err, loaded.close(context.WithoutCancel(ctx)))}
+		}
+		path = artifact.Info.Source
+		if artifact.Info.Kind == pluginartifact.Core {
+			engine, err := corewasm.LoadArtifact(ctx, artifact, corewasm.Options{CacheDir: engineCacheDir()})
+			if err != nil {
+				return nil, &PluginLoadError{errors.Join(err, loaded.close(context.WithoutCancel(ctx)))}
+			}
+			loaded.engines = append(loaded.engines, engine)
+			if engine.Metadata().Engine.Name != "ruff" || len(loaded.engines) > 1 {
+				return nil, &PluginLoadError{errors.Join(fmt.Errorf("unsupported or duplicate script engine in %s: %s", path, engine.Metadata().Engine.Name), loaded.close(context.WithoutCancel(ctx)))}
+			}
+			continue
+		}
 		var options component.Options
 		if debug {
 			name := filepath.Base(path)
@@ -27,7 +45,7 @@ func loadPlugins(ctx context.Context, paths []string, log io.Writer, debug bool)
 				_, _ = fmt.Fprintf(log, "[plugin %s] %s\n", name, line)
 			}
 		}
-		plugin, err := component.Load(ctx, path, options)
+		plugin, err := component.LoadArtifact(ctx, artifact, options)
 		if err != nil {
 			return nil, &PluginLoadError{errors.Join(err, loaded.close(context.WithoutCancel(ctx)))}
 		}
@@ -52,13 +70,17 @@ func (l *loadedPlugins) close(ctx context.Context) error {
 	for _, plugin := range l.plugins {
 		err = errors.Join(err, plugin.Close(ctx))
 	}
+	for _, engine := range l.engines {
+		err = errors.Join(err, engine.Close(ctx))
+	}
+	l.engines = nil
 	l.plugins = nil
 	return err
 }
 
 func scriptEngineLoader(log io.Writer, debug bool) func(context.Context, string) (analyzer.ScriptBackend, error) {
 	return func(ctx context.Context, path string) (analyzer.ScriptBackend, error) {
-		options := corewasm.Options{CacheDir: engineCacheDir()}
+		options := corewasm.Options{CacheDir: engineCacheDir(), Artifact: artifactOptions()}
 		if debug && options.CacheDir == "" {
 			_, _ = fmt.Fprintln(log, "[Linter] No user cache directory; compiling WebAssembly engines without a cache")
 		}
@@ -68,7 +90,7 @@ func scriptEngineLoader(log io.Writer, debug bool) func(context.Context, string)
 		}
 		if debug {
 			metadata := engine.Metadata()
-			_, _ = fmt.Fprintf(log, "[Linter] Loaded engine %q (%s %s) from %s (%s)\n", metadata.ID, metadata.Engine.Name, metadata.Engine.Version, path, engine.Limits())
+			_, _ = fmt.Fprintf(log, "[Linter] Loaded engine %q (%s %s) from %s (%s)\n", metadata.ID, metadata.Engine.Name, metadata.Engine.Version, engine.Path(), engine.Limits())
 		}
 		return engine, nil
 	}
@@ -84,4 +106,21 @@ func engineCacheDir() string {
 		return ""
 	}
 	return dir
+}
+
+func artifactOptions() pluginartifact.Options {
+	base, err := os.UserCacheDir()
+	if err != nil {
+		return pluginartifact.Options{}
+	}
+	return pluginartifact.Options{CacheDir: filepath.Join(base, "actionlint", "artifacts")}
+}
+
+// InspectPlugin resolves and reads metadata without creating a runtime.
+func InspectPlugin(ctx context.Context, source string) (pluginartifact.Info, error) {
+	artifact, err := pluginartifact.Resolve(ctx, source, artifactOptions())
+	if err != nil {
+		return pluginartifact.Info{}, err
+	}
+	return artifact.Info, nil
 }

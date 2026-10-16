@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/analyzer"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yaml"
 )
 
 // parsedDocument preserves an outline and syntax findings even when traversal is impossible.
@@ -41,10 +41,10 @@ func parseDocument(path, configPath string, content []byte) parsedDocument {
 	return parsedDocument{w, metadata, outline, all}
 }
 
-func (p parsedDocument) analyzerInput(path, configPath string, content []byte, units []scriptUnit, facts factAvailability) analyzer.Input {
+func (p parsedDocument) analyzerInput(path, configPath string, content []byte, units []scriptUnit, facts factAvailability, sources map[string][]byte) analyzer.Input {
 	workflow := p.workflow
 	if p.metadata != nil && workflow != nil {
 		workflow = actionFactsWorkflow(p.metadata)
 	}
-	return documentAnalyzerInput(path, configPath, content, workflow, p.outline, units, facts)
+	return documentAnalyzerInput(path, configPath, content, workflow, p.outline, units, facts, sources)
 }

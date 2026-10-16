@@ -19,7 +19,7 @@ func ForAction(config *Config, path, root string) (*Config, error) {
 	selected := map[string][]string{}
 	for _, descriptor := range Rules() {
 		if descriptor.SupportsActions || descriptor.Scope == SourceScope {
-			selected[descriptor.Category] = append(selected[descriptor.Category], descriptor.Name)
+			selected[descriptor.Group] = append(selected[descriptor.Group], descriptor.Name)
 		}
 	}
 	return scopedConfigForFile(config, path, root, func(node *yaml.Node) *yaml.Node {

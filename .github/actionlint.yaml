@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=../actionlint.schema.json
 local-actions:
-  ./.published-action-test: ./scripts/testdata/published-action
+  ./.published-action-test: ./internal/githubaction/tooling/testdata/published-action
 
 ignores:
   - rule: missing-local-action

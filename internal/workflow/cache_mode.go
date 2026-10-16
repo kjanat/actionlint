@@ -2,7 +2,7 @@ package workflow
 
 import (
 	exprlang "actionlint.kjanat.dev/internal/expression"
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yaml"
 )
 
 // CacheModeKind identifies the cache access granted to a workflow or job.

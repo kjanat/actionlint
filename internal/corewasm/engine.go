@@ -4,13 +4,11 @@ package corewasm
 
 import (
 	"bytes"
-	"compress/gzip"
 	"context"
 	"encoding/json"
 	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
-	"io"
 	"maps"
 	"path/filepath"
 	"slices"
@@ -19,7 +17,8 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/internal/pluginartifact"
+	"actionlint.kjanat.dev/rule"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 )
@@ -46,6 +45,8 @@ var requiredExports = map[string]struct{ params, results []api.ValueType }{
 
 // Options configures a loaded engine. Zero values select the defaults.
 type Options struct {
+	// Artifact configures URI resolution and verified download caching.
+	Artifact    pluginartifact.Options
 	Timeout     time.Duration
 	MemoryPages uint32
 	// CacheDir stores compiled machine code between runs. Empty disables the cache.
@@ -70,6 +71,7 @@ type Interface struct {
 
 // Metadata is the discovery object an engine returns from its metadata export.
 type Metadata struct {
+	Rules           []rule.Descriptor      `json:"rules"`
 	MetadataVersion int                    `json:"metadata_version"`
 	ABIVersion      int                    `json:"abi_version"`
 	Transport       string                 `json:"transport"`
@@ -123,17 +125,30 @@ type Engine struct {
 // exports, negotiates the operation versions it advertises and keeps one
 // instance ready.
 func Load(ctx context.Context, path string, options Options) (*Engine, error) {
-	data, err := fsread.New(ctx, nil, nil).ReadFile(path)
+	artifact, err := pluginartifact.Resolve(ctx, path, options.Artifact)
 	if err != nil {
 		return nil, err
 	}
-	if len(data) >= 2 && data[0] == 0x1f && data[1] == 0x8b {
-		reader, err := gzip.NewReader(bytes.NewReader(data))
-		if err != nil {
-			return nil, fmt.Errorf("engine %s: %w", path, err)
+	return LoadArtifact(ctx, artifact, options)
+}
+
+// LoadArtifact loads a resolved snapshot without reading its source again.
+func LoadArtifact(ctx context.Context, artifact *pluginartifact.Artifact, options Options) (*Engine, error) {
+	path, data := artifact.Info.Source, artifact.Bytes
+	kind, metadata, err := pluginartifact.Sniff(data)
+	if err != nil {
+		return nil, err
+	}
+	if kind != pluginartifact.Core {
+		return nil, fmt.Errorf("engine %s: requires a core WebAssembly module", path)
+	}
+	if metadata != nil {
+		var declared Metadata
+		if err := jsonv2.Unmarshal(metadata, &declared); err != nil {
+			return nil, fmt.Errorf("custom metadata: %w", err)
 		}
-		if data, err = io.ReadAll(reader); err != nil {
-			return nil, fmt.Errorf("engine %s: %w", path, err)
+		if declared.ABIVersion != int(ABIVersion) || (declared.Transport != "" && declared.Transport != transport) {
+			return nil, errors.New("custom metadata advertises an incompatible engine ABI or transport")
 		}
 	}
 	limits := Limits{Timeout: options.Timeout, MemoryPages: options.MemoryPages}
@@ -152,14 +167,14 @@ func Load(ctx context.Context, path string, options Options) (*Engine, error) {
 		config = config.WithCompilationCache(cache)
 	}
 	e := &Engine{path: path, limits: limits, runtime: wazero.NewRuntimeWithConfig(ctx, config), cache: cache, maxInput: defaultMaxInputBytes}
-	if err := e.load(ctx, data); err != nil {
+	if err := e.load(ctx, data, metadata); err != nil {
 		_ = e.Close(ctx)
 		return nil, e.failure(ctx, err)
 	}
 	return e, nil
 }
 
-func (e *Engine) load(ctx context.Context, data []byte) error {
+func (e *Engine) load(ctx context.Context, data, staticMetadata []byte) error {
 	ctx, cancel := context.WithTimeout(ctx, e.limits.Timeout)
 	defer cancel()
 	compiled, err := e.runtime.CompileModule(ctx, data)
@@ -205,6 +220,10 @@ func (e *Engine) load(ctx context.Context, data []byte) error {
 	if err != nil {
 		_ = instance.Close(ctx)
 		return err
+	}
+	if staticMetadata != nil && !pluginartifact.SameMetadata(staticMetadata, raw) {
+		_ = instance.Close(ctx)
+		return errors.New("actionlint.plugin custom metadata does not match runtime metadata")
 	}
 	if err := e.negotiate(raw); err != nil {
 		_ = instance.Close(ctx)
@@ -278,7 +297,19 @@ func (e *Engine) Path() string { return e.path }
 func (e *Engine) Limits() Limits { return e.limits }
 
 // Metadata returns the engine's discovery object.
-func (e *Engine) Metadata() Metadata { return e.metadata }
+func (e *Engine) Metadata() Metadata {
+	metadata := e.metadata
+	metadata.Rules = slices.Clone(metadata.Rules)
+	for i := range metadata.Rules {
+		metadata.Rules[i] = metadata.Rules[i].Clone()
+	}
+	metadata.ConfigSchema = slices.Clone(metadata.ConfigSchema)
+	metadata.Interfaces = maps.Clone(metadata.Interfaces)
+	for name, versions := range metadata.Interfaces {
+		metadata.Interfaces[name] = slices.Clone(versions)
+	}
+	return metadata
+}
 
 type response struct {
 	OK          bool                        `json:"ok"`

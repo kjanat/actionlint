@@ -3669,8 +3669,8 @@ test.yaml:9:14: could not parse as YAML: unknown anchor 'credentials' referenced
 [actions-cache]: https://github.com/actions/cache
 [permissions-doc]: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions
 [perm-config-doc]: https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#permissions
-[generate-webhook-events]: https://github.com/kjanat/actionlint/tree/HEAD/scripts/generate-webhook-events
-[generate-popular-actions]: https://github.com/kjanat/actionlint/tree/HEAD/scripts/generate-popular-actions
+[generate-webhook-events]: https://github.com/kjanat/actionlint/tree/HEAD/internal/webhook/generate
+[generate-popular-actions]: https://github.com/kjanat/actionlint/tree/HEAD/internal/actioncatalog/generate
 [issue-25]: https://github.com/rhysd/actionlint/issues/25
 [issue-40]: https://github.com/rhysd/actionlint/issues/40
 [security-doc]: https://docs.github.com/en/actions/reference/security/secure-use

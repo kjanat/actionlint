@@ -17,11 +17,14 @@ import (
 	"actionlint.kjanat.dev/internal/projectpath"
 	"actionlint.kjanat.dev/internal/render"
 	"actionlint.kjanat.dev/internal/repoconfig"
+	"actionlint.kjanat.dev/internal/resolution"
 	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/resolver"
 )
 
 // Options selects configuration and analysis backends for one application session.
 type Options struct {
+	Resolver                       resolver.Resolver
 	WorkingDir, ConfigFile         string
 	ConfigOverlays                 []repoconfig.Overlay
 	SkipProjectConfig              bool
@@ -69,6 +72,12 @@ type Result struct {
 // Check owns the complete runtime lifetime, including failed input selection and
 // cancellation. A non-nil result with an error retains partial analysis findings.
 func Check(ctx context.Context, options Options, input Input) (result *Result, err error) {
+	if options.Resolver != nil {
+		if factory, ok := options.Resolver.(resolver.SessionFactory); ok {
+			options.Resolver = factory.NewSession()
+		}
+		options.Analyzers = append(slices.Clone(options.Analyzers), analyzer.Registration{Analyzer: resolution.Analyzer{Resolver: options.Resolver}})
+	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}

@@ -1,0 +1,11 @@
+[package]
+name    = "actionlint-resolver-commitish"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+commitish        = { git = "https://github.com/kjanat/commitish", rev = "f3036b8a2e3ba773532e0d51cc2996f45e244572" }
+commitish-github = { git = "https://github.com/kjanat/commitish", rev = "f3036b8a2e3ba773532e0d51cc2996f45e244572" }
+serde            = { version = "1", features = ["derive"] }
+serde_json       = "1"

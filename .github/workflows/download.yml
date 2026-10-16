@@ -5,8 +5,8 @@ on:
     paths:
       - .github/workflows/download.yml
       - .goreleaser.yaml
-      - scripts/download-actionlint.bash
-      - scripts/test-download-actionlint.bash
+      - distribution/install/download-actionlint.bash
+      - distribution/install/test-download-actionlint.bash
   workflow_dispatch:
 
 permissions: { contents: read }
@@ -21,5 +21,5 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
-      - run: ./scripts/test-download-actionlint.bash
+      - run: ./distribution/install/test-download-actionlint.bash
         shell: bash

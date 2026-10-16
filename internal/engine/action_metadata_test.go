@@ -10,9 +10,9 @@ import (
 
 	"actionlint.kjanat.dev/internal/workspace"
 
+	"actionlint.kjanat.dev/internal/yaml"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"go.yaml.in/yaml/v4"
 )
 
 func testGetWantedActionMetadata() *ActionMetadata {
