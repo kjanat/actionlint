@@ -124,10 +124,10 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 	a := &AnalysisSession{
 		projects: NewProjects(), ctx: opts.Context, cwd: opts.WorkingDir,
 		stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected,
-		readFile:       opts.ReadFile,
-		logSelection:   !opts.QuietSelection,
-		request:        AnalysisRequest{Analyzers: opts.Analyzers, Ruff: opts.Ruff, RuffOptions: opts.RuffOptions, RuffBackend: opts.RuffBackend, ShellcheckBackend: opts.ShellcheckBackend, ShellCheck: opts.Shellcheck, ShellcheckRunner: opts.ShellcheckRunner, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, OnRulesCreated: opts.OnRulesCreated},
-		analysisLogger: analysisLogger{logOut: opts.LogWriter},
+		readFile:     opts.ReadFile,
+		logSelection: !opts.QuietSelection,
+		request:      AnalysisRequest{Analyzers: opts.Analyzers, Ruff: opts.Ruff, RuffOptions: opts.RuffOptions, RuffBackend: opts.RuffBackend, ShellcheckBackend: opts.ShellcheckBackend, ShellCheck: opts.Shellcheck, ShellcheckRunner: opts.ShellcheckRunner, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, OnRulesCreated: opts.OnRulesCreated},
+		logOut:       opts.LogWriter,
 	}
 	if err := a.request.validateBackends(); err != nil {
 		return nil, err

@@ -48,7 +48,7 @@ type Checker struct {
 
 // New creates a checker. The host must accept exit statuses 0 and 1, but not 2.
 func New(run Run, wait func() error, expressionEnd ExpressionEnd, flags ...string) *Checker {
-	return &Checker{run: run, wait: wait, expressionEnd: expressionEnd, commandPolicy: commandPolicy{flags: append([]string(nil), flags...)}}
+	return &Checker{run: run, wait: wait, expressionEnd: expressionEnd, flags: append([]string(nil), flags...)}
 }
 
 // NewBackend binds a transport-independent engine to actionlint's Python

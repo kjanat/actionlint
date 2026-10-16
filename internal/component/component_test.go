@@ -55,7 +55,7 @@ func analyzeRepository(t *testing.T, root string, plugin analyzer.Analyzer) *ana
 	t.Helper()
 	workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
 	result, err := analysis.Files(t.Context(), []string{workflow}, analysis.FileOptions{
-		Options: analysis.Options{WorkingDir: root, Analyzers: []analyzer.Registration{{Analyzer: plugin}}}, SkipProjectConfig: true,
+		WorkingDir: root, Analyzers: []analyzer.Registration{{Analyzer: plugin}}, SkipProjectConfig: true,
 	})
 	if err != nil {
 		t.Fatal(err)

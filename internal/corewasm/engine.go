@@ -7,6 +7,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -223,7 +224,7 @@ func typeNames(types []api.ValueType) string {
 
 func (e *Engine) negotiate(raw []byte) error {
 	var metadata Metadata
-	if err := json.Unmarshal(raw, &metadata); err != nil {
+	if err := jsonv2.Unmarshal(raw, &metadata); err != nil {
 		return fmt.Errorf("metadata: %w", err)
 	}
 	if metadata.ABIVersion != int(ABIVersion) {
@@ -351,7 +352,7 @@ func (e *Engine) call(ctx context.Context, operation string, body []byte) (*resp
 	}
 	e.release(instance)
 	var result response
-	if err := json.Unmarshal(raw, &result); err != nil {
+	if err := jsonv2.Unmarshal(raw, &result); err != nil {
 		return nil, fmt.Errorf("engine %s: %s returned invalid JSON: %w", e.name(), operation, err)
 	}
 	return &result, nil

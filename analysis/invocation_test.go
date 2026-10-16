@@ -60,7 +60,7 @@ func TestPublicCompositeInvocationFacts(t *testing.T) {
 	a := &invocationAnalyzer{}
 	workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
 	result, err := analysis.Files(t.Context(), []string{workflow}, analysis.FileOptions{
-		Options: analysis.Options{WorkingDir: root, Analyzers: []analyzer.Registration{{Analyzer: a}}}, SkipProjectConfig: true,
+		WorkingDir: root, Analyzers: []analyzer.Registration{{Analyzer: a}}, SkipProjectConfig: true,
 	})
 	if err != nil {
 		t.Fatal(err)

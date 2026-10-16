@@ -68,7 +68,7 @@ func TestPublicConfigSyntaxAndFiles(t *testing.T) {
 	if err := os.WriteFile(path, []byte(workflow), 0600); err != nil {
 		t.Fatal(err)
 	}
-	result, err := analysis.Files(t.Context(), []string{path}, analysis.FileOptions{Options: analysis.Options{WorkingDir: directory}, SkipProjectConfig: true})
+	result, err := analysis.Files(t.Context(), []string{path}, analysis.FileOptions{WorkingDir: directory, SkipProjectConfig: true})
 	if err != nil || result.FileCount != 1 || len(result.Diagnostics) != 0 {
 		t.Fatalf("result=%v err=%v", result, err)
 	}
