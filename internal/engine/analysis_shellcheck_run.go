@@ -236,7 +236,7 @@ func (run *shellcheckRun) runShellcheck(src string, source *workflowlang.ScriptS
 		}
 	}
 	// Native file-wide directives also work with --norc and never need a temp file.
-	prefix, err := inline.directives()
+	prefix, err := inline.Directives()
 	if err != nil {
 		return err
 	}

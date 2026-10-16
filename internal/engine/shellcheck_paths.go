@@ -71,14 +71,14 @@ func (run *shellcheckRun) prepareConfigPath() error {
 		return err
 	}
 	var selection ShellcheckConfigSelection
-	base := run.pathContext().configDir
+	base := run.pathContext().ConfigDir
 	if run.config != nil && run.config.Config != nil {
 		selection = run.config.Config
 		base = "" // Application paths retain their process-working-directory origin.
 	} else if config := run.cfg; config != nil {
-		if path := config.Tools.Shellcheck.Config.path(); path != "" {
+		if path := config.Tools.Shellcheck.Config.Path(); path != "" {
 			selection = ShellcheckRCFile(path)
-			if config.Tools.Shellcheck.Config.fromInput {
+			if config.Tools.Shellcheck.Config.FromInput() {
 				base = run.paths.analysis
 			}
 		}
@@ -105,7 +105,7 @@ func (run *shellcheckRun) prepareConfigPath() error {
 		}
 	case ShellcheckRCFile:
 		var err error
-		path, err = run.pathContext().resolveFrom(string(selected), base)
+		path, err = run.pathContext().ResolveFrom(string(selected), base)
 		if err == nil {
 			path, err = shellcheckRCFile(run.paths.reader, path)
 		}
@@ -125,7 +125,7 @@ func (run *shellcheckRun) prepareInlineConfig() error {
 	if config == nil {
 		return nil
 	}
-	inline := config.Tools.Shellcheck.Config.inline()
+	inline := config.Tools.Shellcheck.Config.Inline()
 	if inline == nil {
 		return nil
 	}
@@ -133,7 +133,7 @@ func (run *shellcheckRun) prepareInlineConfig() error {
 	resolved.SourcePath = make([]string, len(inline.SourcePath))
 	for i, path := range inline.SourcePath {
 		var err error
-		resolved.SourcePath[i], err = run.pathContext().expand(path)
+		resolved.SourcePath[i], err = run.pathContext().Expand(path)
 		if err != nil {
 			return fmt.Errorf("tools.shellcheck.config.source-path: %w", err)
 		}

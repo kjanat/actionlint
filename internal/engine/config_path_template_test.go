@@ -6,44 +6,9 @@ import (
 	"slices"
 	"strings"
 	"testing"
-)
 
-func TestConfigPathInterpolation(t *testing.T) {
-	root := t.TempDir()
-	context := configPathContext{
-		configDir: filepath.Join(root, "config with spaces"),
-		gitDir:    filepath.Join(root, "repo"), workspace: root,
-		actionPath: filepath.Join(root, "repo", ".github", "actions", "example"),
-	}
-	for _, tc := range []struct{ value, want string }{
-		{"${{ configdir }}/.shellcheckrc", filepath.Join(context.configDir, ".shellcheckrc")},
-		{"${{gitdir}}/scripts", filepath.Join(context.gitDir, "scripts")},
-		{"${{ GITHUB.WORKSPACE }}/shared", filepath.Join(root, "shared")},
-		{"${{ github.action_path }}/lib", filepath.Join(context.actionPath, "lib")},
-		{"./relative", filepath.Join(context.configDir, "relative")},
-	} {
-		got, err := context.resolve(tc.value)
-		if err != nil || got != tc.want {
-			t.Errorf("%q: got %q, %v; want %q", tc.value, got, err, tc.want)
-		}
-	}
-	for _, value := range []string{"${{ env.HOME }}", "${{ configdir", "${{ format('x') }}", "{configdir}/rc", "{gitdir}/rc"} {
-		if _, err := context.resolve(value); err == nil {
-			t.Errorf("accepted unsupported interpolation %q", value)
-		}
-	}
-	context.actionPath = ""
-	if _, err := context.expand("${{ github.action_path }}/lib"); err == nil {
-		t.Error("invented action path outside an action context")
-	}
-	for _, literal := range []string{"literal-${{ env.HOME }}", "literal-{gitdir}"} {
-		context.configDir = filepath.Join(root, literal)
-		got, err := context.resolve("${{ configdir }}/lib")
-		if err != nil || got != filepath.Join(context.configDir, "lib") {
-			t.Fatalf("replacement value was interpreted recursively: %q, %v", got, err)
-		}
-	}
-}
+	"actionlint.kjanat.dev/internal/repoconfig"
+)
 
 func TestShellcheckWorkflowPathValidation(t *testing.T) {
 	command := shellcheckForTest(t)
@@ -131,17 +96,17 @@ func TestShellcheckPathContext(t *testing.T) {
 	t.Setenv("GITHUB_WORKSPACE", workspace)
 	t.Setenv("GITHUB_ACTION_PATH", t.TempDir())
 	context := rule.pathContext()
-	if context.gitDir != repository || context.workspace != workspace || context.actionPath != action {
+	if context.GitDir != repository || context.Workspace != workspace || context.ActionPath != action {
 		t.Fatalf("runner paths replaced the analyzed repository/action: %+v", context)
 	}
 	t.Setenv("GITHUB_WORKSPACE", "")
 	t.Setenv("GITHUB_ACTION_PATH", action)
 	context = rule.pathContext()
-	if context.workspace != repository || context.actionPath != action {
+	if context.Workspace != repository || context.ActionPath != action {
 		t.Fatalf("local fallback or matching runner context lost: %+v", context)
 	}
 	rule.actionPath = ""
-	if got := rule.pathContext().actionPath; got != "" {
+	if got := rule.pathContext().ActionPath; got != "" {
 		t.Fatalf("unrelated ambient action context was accepted: %q", got)
 	}
 }
@@ -157,7 +122,11 @@ func TestShellcheckApplicationPathOrigin(t *testing.T) {
 		{"${{ configdir }}/.shellcheckrc", projectRC},
 	} {
 		rule := newShellcheckRunForTest(&externalCommand{})
-		rule.cfg = &Config{filename: configFile}
+		loaded, err := repoconfig.Load(configFile)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rule.cfg = loaded
 		rule.config = &ShellcheckSettings{Config: ShellcheckRCFile(tc.selected)}
 		if err := rule.prepareConfigPath(); err != nil {
 			t.Fatal(err)

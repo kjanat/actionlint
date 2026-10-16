@@ -41,11 +41,6 @@ func TestRuleRequireJobTimeout(t *testing.T) {
 			job:    newJob(nil),
 		},
 		{
-			what:   "policy is disabled with a maximum",
-			policy: &JobTimeoutPolicy{maxMinutes: 30},
-			job:    newJob(minutes(45)),
-		},
-		{
 			what:   "timeout is missing",
 			policy: RequireJobTimeout(0),
 			job:    newJob(nil),

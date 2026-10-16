@@ -15,11 +15,11 @@ func TestCatalogRuleConfiguration(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, p := range []RulePresets{{}, {Strict: true, Experimental: new(true)}} {
-				if got := p.apply(cfg).diagnosticLevel(d.Name); got != "off" {
+				if got := diagnosticLevel(applyRulePresets(p, cfg), d.Name); got != "off" {
 					t.Fatalf("explicit off overridden: %s", got)
 				}
 			}
-			if cfg.Lint.Rules.resolved != nil {
+			if _, ok := cfg.Lint.Rules.ResolvedLevel(d.Name); ok {
 				t.Fatal("shared config mutated")
 			}
 			if d.isNursery() && d.Recommended {
@@ -55,7 +55,7 @@ func TestRuleLevelPrecedence(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := tc.preset.apply(cfg).diagnosticLevel(tc.name); got != tc.want {
+			if got := diagnosticLevel(applyRulePresets(tc.preset, cfg), tc.name); got != tc.want {
 				t.Fatalf("got %s, want %s", got, tc.want)
 			}
 		})
@@ -116,7 +116,7 @@ func TestTypedRuleOptionsNull(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := (RulePresets{}).apply(cfg).RequiredActions(); len(got) != 0 {
+		if got := applyRulePresets(RulePresets{}, cfg).RequiredActions(); len(got) != 0 {
 			t.Fatalf("empty selection invented required actions: %v", got)
 		}
 	}
@@ -159,7 +159,7 @@ func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 				t.Fatal(err)
 			}
 			for range 2 {
-				if got := (RulePresets{}).apply(cfg).diagnosticLevel(tc.name); got != tc.want {
+				if got := diagnosticLevel(applyRulePresets(RulePresets{}, cfg), tc.name); got != tc.want {
 					t.Fatalf("got %s, want %s", got, tc.want)
 				}
 				encoded, err := yaml.Marshal(cfg)
@@ -193,7 +193,7 @@ func TestRuleLevelAliasesWithStrict(t *testing.T) {
 		if level == "off" || level == "false" {
 			want = "off"
 		}
-		if got := (RulePresets{Strict: true}).apply(cfg).diagnosticLevel("case-insensitive-conditions"); got != want {
+		if got := diagnosticLevel(applyRulePresets(RulePresets{Strict: true}, cfg), "case-insensitive-conditions"); got != want {
 			t.Fatalf("%s: got %s, want %s", level, got, want)
 		}
 	}
@@ -213,14 +213,14 @@ func TestRuleSettingsOptionsAndRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 2 {
-		got := (RulePresets{}).apply(cfg)
+		got := applyRulePresets(RulePresets{}, cfg)
 		if maximum, ok := got.RequiresJobTimeout().MaxMinutes(); !ok || maximum != 30 {
 			t.Fatal(got.Policy)
 		}
 		if got.RequiresPermissions().Scope() != "job" || len(got.RequiredActions()) != 1 || got.Policy.DisallowSuppressions.Report() != "violation" {
 			t.Fatal(got.Policy)
 		}
-		if got.diagnosticLevel("expression") != "warn" {
+		if diagnosticLevel(got, "expression") != "warn" {
 			t.Fatal(got.Lint)
 		}
 		encoded, err := yaml.Marshal(cfg)

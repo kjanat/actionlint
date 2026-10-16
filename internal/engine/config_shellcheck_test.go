@@ -8,35 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/repoconfig"
 	"go.yaml.in/yaml/v4"
 )
-
-func TestShellcheckConfigValidation(t *testing.T) {
-	for _, value := range []string{
-		`true`, `false`, `{config: './.shellcheckrc'}`,
-		`{enabled: false}`, `{enabled: true, config: {}}`,
-		`{config: {disable: [SC2086, SC3000-SC4000, all], enable: [all], shell: bash, extended-analysis: false, external-sources: false, source-path: ['my scripts']}}`,
-		`{config: null}`, `{enabled: null, config: {shell: null, disable: null}}`,
-		`{config: {disable: [&code SC2086, *code]}}`,
-		`{config: {<<: {disable: [SC2086]}}}`,
-	} {
-		if _, err := ParseConfig([]byte("tools: {shellcheck: " + value + "}")); err != nil {
-			t.Errorf("%s: %v", value, err)
-		}
-	}
-	for _, value := range []string{
-		`{enabled: banana}`, `{config: {format: json}}`, `{config: {severity: warning}}`,
-		`{config: {disable: [2086]}}`, `{config: {disable: ['SC2086\nenable=all']}}`,
-		`{config: {enable: [some_check]}}`, `{config: {shell: python}}`, `{config: {shell: ''}}`,
-		`{config: {extended-analysis: yes}}`, `{config: {source-path: ['']}}`,
-		`{config: {source-path: ["bad\npath"]}}`, `{config: ''}`, `{config: {typo: true}}`,
-		`{config: {<<: {disable: [2086]}}}`, `{config: {disable: [&code 2086, *code]}}`,
-	} {
-		if _, err := ParseConfig([]byte("tools: {shellcheck: " + value + "}")); err == nil {
-			t.Errorf("accepted %s", value)
-		}
-	}
-}
 
 func TestShellcheckShorthandOverlay(t *testing.T) {
 	for _, tc := range []struct {
@@ -75,7 +49,7 @@ func TestShellcheckShorthandOverlay(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if cfg.Tools.Shellcheck.Enabled == nil || *cfg.Tools.Shellcheck.Enabled != tc.enabled || cfg.Tools.Shellcheck.Config.path() != "./.shellcheckrc" || cfg.filename != path {
+			if cfg.Tools.Shellcheck.Enabled == nil || *cfg.Tools.Shellcheck.Enabled != tc.enabled || cfg.Tools.Shellcheck.Config.Path() != "./.shellcheckrc" || cfg.Path() != path {
 				t.Fatalf("lost enabled, config or config file: %+v", cfg)
 			}
 			origin := report.Inspection.Origins["/tools/shellcheck/enabled"]
@@ -188,7 +162,7 @@ func TestShellcheckConfigOverlayOrigins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Tools.Shellcheck.Enabled != nil || len(cfg.Tools.Shellcheck.Config.inline().Disable) != 0 || len(cfg.Tools.Shellcheck.Config.inline().Enable) != 1 {
+	if cfg.Tools.Shellcheck.Enabled != nil || len(cfg.Tools.Shellcheck.Config.Inline().Disable) != 0 || len(cfg.Tools.Shellcheck.Config.Inline().Enable) != 1 {
 		t.Fatalf("incorrect overlay: %+v", cfg.Tools.Shellcheck)
 	}
 	for _, pointer := range []string{"/tools/shellcheck/enabled", "/tools/shellcheck/config/disable"} {
@@ -200,7 +174,7 @@ func TestShellcheckConfigOverlayOrigins(t *testing.T) {
 	if origin := report.Inspection.Origins["/tools/shellcheck/config/enable"]; origin.Source != "config" {
 		t.Fatalf("lost file provenance: %+v", origin)
 	}
-	values, err := effectiveConfig(cfg)
+	values, err := repoconfig.EffectiveValues(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

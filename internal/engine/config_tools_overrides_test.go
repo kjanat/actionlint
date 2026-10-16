@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/repoconfig"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -22,7 +23,7 @@ overrides:
 		t.Fatal(err)
 	}
 	for range 2 {
-		got, err := configForFile(config, "action.yml", "")
+		got, err := repoconfig.ForFile(config, "action.yml", "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -33,11 +34,11 @@ overrides:
 		if err != nil {
 			t.Fatal(err)
 		}
-		rc := got.Tools.Shellcheck.Config.inline()
+		rc := got.Tools.Shellcheck.Config.Inline()
 		if rc == nil || len(rc.Disable) != 1 || rc.Disable[0] != "SC2086" || len(rc.Enable) != 1 || rc.Enable[0] != "all" {
 			t.Fatalf("settings lost: %s", encoded)
 		}
-		reset, err := configForFile(config, "reset.yml", "")
+		reset, err := repoconfig.ForFile(config, "reset.yml", "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -76,11 +77,11 @@ func TestFileOverrideToolConfigOrigins(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := configForFile(config, "ci.yml", "")
+			got, err := repoconfig.ForFile(config, "ci.yml", "")
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got.Tools.Shellcheck.Config == nil || !got.Tools.Shellcheck.Config.fromInput {
+			if got.Tools.Shellcheck.Config == nil || !got.Tools.Shellcheck.Config.FromInput() {
 				t.Fatal("lost working-directory origin for input-supplied tool configuration")
 			}
 		})
@@ -95,12 +96,12 @@ func TestFileOverrideInheritedToolConfigPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := configForFile(config, "ci.yml", "")
+	got, err := repoconfig.ForFile(config, "ci.yml", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := filepath.Join(root, "base", ".shellcheckrc"); got.Tools.Shellcheck.Config.path() != want {
-		t.Fatalf("got %q; want declaring-config-relative %q", got.Tools.Shellcheck.Config.path(), want)
+	if want := filepath.Join(root, "base", ".shellcheckrc"); got.Tools.Shellcheck.Config.Path() != want {
+		t.Fatalf("got %q; want declaring-config-relative %q", got.Tools.Shellcheck.Config.Path(), want)
 	}
 }
 

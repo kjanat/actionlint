@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/repoconfig"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -137,7 +138,7 @@ func TestRuffTargetVersionEmptyAndReset(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		resolved, err := effectiveConfig(cfg)
+		resolved, err := repoconfig.EffectiveValues(cfg)
 		if err != nil {
 			t.Fatal(err)
 		}

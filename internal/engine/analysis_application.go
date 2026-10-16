@@ -2,6 +2,7 @@ package engine
 
 import (
 	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/internal/repoconfig"
 	"context"
 	"errors"
 	"fmt"
@@ -145,12 +146,12 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 	}
 	var err error
 	if opts.ConfigFile != "" {
-		source, loadErr := readConfigSource(opts.ConfigFile, a.readFile)
+		source, loadErr := repoconfig.Read(opts.ConfigFile, a.readFile)
 		err = loadErr
 		if err != nil {
 			return nil, err
 		}
-		a.defaultConfig = source.config
+		a.defaultConfig = source.Config
 		a.defaultConfigPath = opts.ConfigFile
 		a.configState = &analysisConfigState{source: source}
 	}
@@ -362,7 +363,7 @@ func (a *AnalysisSession) readFiles(paths []string, project *Project) (*Analysis
 			root = absPath(proj.RootDir())
 		}
 		fullPath := absPath(path)
-		if !cfg.includesFile(fullPath, root) {
+		if !cfg.IncludesFile(fullPath, root) {
 			continue
 		}
 		content, err := a.readFile(path)

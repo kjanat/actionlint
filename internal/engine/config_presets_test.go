@@ -94,7 +94,7 @@ func TestNurserySelectionIsIndependent(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := cfg.ruleSetting(descriptor, tc.presets).Level; got != tc.want {
+		if got := ruleSetting(cfg, descriptor, tc.presets).Level; got != tc.want {
 			t.Fatalf("%s: got %s, want %s", tc.rules, got, tc.want)
 		}
 	}
@@ -115,14 +115,14 @@ lint: {rules: {disable: [require-commit-hash], suspicious: {case-insensitive-con
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := (RulePresets{Strict: true, Experimental: new(true)}).apply(cfg)
+	got := applyRulePresets(RulePresets{Strict: true, Experimental: new(true)}, cfg)
 	if got.Policy.RequireJobTimeout != cfg.Policy.RequireJobTimeout || got.Policy.RequirePermissions != cfg.Policy.RequirePermissions || got.Policy.DisallowSuppressions != cfg.Policy.DisallowSuppressions {
 		t.Fatal("preset replaced configured options")
 	}
-	if len(got.Lint.Rules.Disable) != 1 || got.diagnosticLevel("case-insensitive-conditions") != "off" || got.diagnosticLevel("string-conditions") == "off" {
+	if len(got.Lint.Rules.Disable) != 1 || diagnosticLevel(got, "case-insensitive-conditions") != "off" || diagnosticLevel(got, "string-conditions") == "off" {
 		t.Fatal(got.Lint.Rules)
 	}
-	if cfg.RequiresCommitHash() || cfg.diagnosticLevel("string-conditions") != "off" {
+	if cfg.RequiresCommitHash() || diagnosticLevel(cfg, "string-conditions") != "off" {
 		t.Fatal("preset mutated shared config")
 	}
 }

@@ -18,6 +18,8 @@ Keep one module and separate the public packages by responsibility. Root contain
 generation directives. The analysis host and remaining visitor rules live in `internal/engine`.
 `internal/workflow` owns workflow syntax, parsing and scalar source maps. `internal/expression` owns expression
 parsing, types, constant evaluation and semantic checks. Both implementations can run without the analysis host.
+`internal/repoconfig` owns the configuration document, its validation and the built-in rule catalog; the engine
+attaches execution behaviour to catalog entries by name.
 `internal/analyzerhost` owns generic execution and resource scopes. `internal/report` owns document models and their codecs; the public `document` package exposes those models without
 importing the engine. Existing focused internal packages retain ownership
 of mapping resolution, external checker logic, filesystem reads, configuration trees and suppressions.
@@ -34,7 +36,8 @@ flowchart TD
     Engine --> Contexts[internal/workflowcontext]
     Workflow --> Scalars[internal/yamlscalar]
     Expressions --> Scalars
-    Config[config] --> Engine
+    Config[config] --> RepoConfig[internal/repoconfig]
+    Engine --> RepoConfig
     Engine --> Host[internal/analyzerhost]
     Engine --> Mapping[internal/mapping]
     Factory[Built-in composition] --> Adapters[Internal visitor adapters]
@@ -86,10 +89,10 @@ shapes, and must not parse expression-looking text returned as data a second tim
 
 - One module makes these packages share a release and permits internal implementation imports. Separate modules would
   require independent compatibility and release contracts that this change does not establish.
-- Configuration still aliases engine-owned types. Syntax aliases the independent workflow implementation instead;
-  importing it no longer imports discovery, rule execution, configuration loading or native tools. The parser retains
+- Configuration and syntax alias independent implementations. Importing either public package no longer imports
+  discovery, rule execution or native tools. The parser retains
   decoded source maps alongside syntax because accurate diagnostics require both.
-- Remaining engine work includes repository configuration, discovery, action metadata, visitor rules and rendering.
+- Remaining engine work includes discovery, action metadata, visitor rules and rendering.
   These extractions remove two language subsystems; they do not make the engine a composition-only package yet.
 - Existing built-in checks still use a shared AST traversal internally. This change removes that traversal from the public
   extension contract and separates its resource/configuration/debug capabilities; it does not claim that every built-in
@@ -104,9 +107,9 @@ shapes, and must not parse expression-looking text returned as data a second tim
 External-package tests exercise the public root entry point, config and syntax packages, file analysis, custom analyzer
 partial results and composite-action scripts. Host tests cover input isolation, unavailable facts, cancellation and
 joining all resources once. Engine regressions cover traversal failure, cancellation with retained findings, independent script scopes and fallback
-when either ShellCheck range endpoint cannot be mapped. Import-boundary tests check that public analyzer, diagnostic and
-document and syntax contracts, together with the standalone language implementations, have no transitive dependency
-on the engine, CLI, configuration API or process execution. A separate guard prevents expression semantics from importing
+when either ShellCheck range endpoint cannot be mapped. Import-boundary tests check that the public analyzer, diagnostic,
+document, syntax and config contracts, together with the standalone language and configuration implementations, have
+no transitive dependency on the engine, CLI or process execution. A separate guard prevents expression semantics from importing
 workflow ASTs, analyzer execution or repository configuration trees. Existing semantic, CLI,
 generator and conformance suites remain applicable.
 

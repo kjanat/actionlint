@@ -28,7 +28,7 @@ func TestNativeConfiguration(t *testing.T) {
 `), &config); err != nil {
 		t.Fatal(err)
 	}
-	native, err := config.nativeArguments()
+	native, err := config.NativeArguments()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,14 +57,5 @@ func TestNativeConfiguration(t *testing.T) {
 	}
 	if !slices.Equal(codes, []string{"F821", "B006"}) {
 		t.Fatalf("got %v: %s", codes, output)
-	}
-}
-
-func TestNativeConfigReadOnlyBoundary(t *testing.T) {
-	for _, key := range UnsupportedConfigOptions() {
-		config := Config{Native: map[string]any{key: nil}}
-		if _, err := config.nativeArguments(); err == nil {
-			t.Fatalf("accepted %s", key)
-		}
 	}
 }

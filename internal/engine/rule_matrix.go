@@ -74,7 +74,7 @@ func (rule *RuleMatrix) VisitJobPre(n *workflowlang.Job) error {
 	//       sh: pwsh
 
 	rule.checkExclude(m, !evaluated)
-	if rule.config.diagnosticLevel("mixed-type-matrix-filters") != "off" {
+	if diagnosticLevel(rule.config, "mixed-type-matrix-filters") != "off" {
 		rule.checkFilterTypes(m, !evaluated)
 	}
 	return nil

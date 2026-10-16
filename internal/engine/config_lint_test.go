@@ -31,7 +31,7 @@ func TestStableSuspiciousRuleSelection(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := tc.presets.apply(cfg).diagnosticLevel(name); got != tc.want {
+			if got := diagnosticLevel(applyRulePresets(tc.presets, cfg), name); got != tc.want {
 				t.Fatalf("%s %s: got %s, want %s", name, tc.rules, got, tc.want)
 			}
 		}

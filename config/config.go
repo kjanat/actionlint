@@ -1,63 +1,63 @@
 // Package config loads and describes actionlint configuration.
 package config
 
-import "actionlint.kjanat.dev/internal/engine"
+import "actionlint.kjanat.dev/internal/repoconfig"
 
-type Config = engine.Config
-type Inspection = engine.ConfigInspection
-type Origin = engine.ConfigOrigin
-type Overlay = engine.ConfigOverlay
-type ConfigOverride = engine.ConfigOverride
-type Report = engine.ConfigReport
-type Selection = engine.ConfigSelection
-type Warning = engine.ConfigWarning
-type DefaultPermissionsAssumption = engine.DefaultPermissionsAssumption
-type FilesConfig = engine.FilesConfig
-type IgnoreConfig = engine.IgnoreConfig
-type IgnoreConfigs = engine.IgnoreConfigs
-type JobTimeoutPolicy = engine.JobTimeoutPolicy
-type LintConfig = engine.LintConfig
-type LintRulesConfig = engine.LintRulesConfig
-type LocalActionSources = engine.LocalActionSources
-type PathConfig = engine.PathConfig
-type PermissionsPolicy = engine.PermissionsPolicy
-type Policy = engine.Policy
-type RuffToolConfig = engine.RuffToolConfig
-type RuleGroupConfig = engine.RuleGroupConfig
-type RuleLevel = engine.RuleLevel
-type RulePreset = engine.RulePreset
-type Presets = engine.RulePresets
-type RuleSetting = engine.RuleSetting
-type SelfHostedRunnerConfig = engine.SelfHostedRunnerConfig
-type ShellcheckConfig = engine.ShellcheckConfig
-type ShellcheckConfigSource = engine.ShellcheckConfigSource
-type ShellcheckToolConfig = engine.ShellcheckToolConfig
-type SuppressionsPolicy = engine.SuppressionsPolicy
-type ToolsConfig = engine.ToolsConfig
+type Config = repoconfig.Config
+type Inspection = repoconfig.Inspection
+type Origin = repoconfig.Origin
+type Overlay = repoconfig.Overlay
+type ConfigOverride = repoconfig.Override
+type Report = repoconfig.Report
+type Selection = repoconfig.Selection
+type Warning = repoconfig.Warning
+type DefaultPermissionsAssumption = repoconfig.DefaultPermissionsAssumption
+type FilesConfig = repoconfig.FilesConfig
+type IgnoreConfig = repoconfig.IgnoreConfig
+type IgnoreConfigs = repoconfig.IgnoreConfigs
+type JobTimeoutPolicy = repoconfig.JobTimeoutPolicy
+type LintConfig = repoconfig.LintConfig
+type LintRulesConfig = repoconfig.LintRulesConfig
+type LocalActionSources = repoconfig.LocalActionSources
+type PathConfig = repoconfig.PathConfig
+type PermissionsPolicy = repoconfig.PermissionsPolicy
+type Policy = repoconfig.Policy
+type RuffToolConfig = repoconfig.RuffToolConfig
+type RuleGroupConfig = repoconfig.Group
+type RuleLevel = repoconfig.Level
+type RulePreset = repoconfig.Preset
+type Presets = repoconfig.Presets
+type RuleSetting = repoconfig.Setting
+type SelfHostedRunnerConfig = repoconfig.SelfHostedRunnerConfig
+type ShellcheckConfig = repoconfig.ShellcheckConfig
+type ShellcheckConfigSource = repoconfig.ShellcheckConfigSource
+type ShellcheckToolConfig = repoconfig.ShellcheckToolConfig
+type SuppressionsPolicy = repoconfig.SuppressionsPolicy
+type ToolsConfig = repoconfig.ToolsConfig
 
 const (
-	DefaultPermissionsAssumptionUnset      = engine.DefaultPermissionsAssumptionUnset
-	DefaultPermissionsAssumptionRestricted = engine.DefaultPermissionsAssumptionRestricted
-	DefaultPermissionsAssumptionPermissive = engine.DefaultPermissionsAssumptionPermissive
+	DefaultPermissionsAssumptionUnset      = repoconfig.DefaultPermissionsAssumptionUnset
+	DefaultPermissionsAssumptionRestricted = repoconfig.DefaultPermissionsAssumptionRestricted
+	DefaultPermissionsAssumptionPermissive = repoconfig.DefaultPermissionsAssumptionPermissive
 )
 
 // Parse decodes a standalone configuration document. Use Load to resolve extends.
-func Parse(source []byte) (*Config, error) { return engine.ParseConfig(source) }
+func Parse(source []byte) (*Config, error) { return repoconfig.Parse(source) }
 
 // Load reads a configuration file and resolves its inheritance.
-func Load(path string) (*Config, error) { return engine.ReadConfigFile(path) }
+func Load(path string) (*Config, error) { return repoconfig.Load(path) }
 
 // Inspect reports effective configuration and optionally its origins.
 func Inspect(selection Selection, origins bool) (Inspection, error) {
-	return engine.InspectConfig(selection, origins)
+	return repoconfig.Inspect(selection, origins)
 }
 
 func RequireJobTimeout(maxMinutes float64) *JobTimeoutPolicy {
-	return engine.RequireJobTimeout(maxMinutes)
+	return repoconfig.RequireJobTimeout(maxMinutes)
 }
 func RequireJobTimeoutRange(minMinutes, maxMinutes float64) (*JobTimeoutPolicy, error) {
-	return engine.RequireJobTimeoutRange(minMinutes, maxMinutes)
+	return repoconfig.RequireJobTimeoutRange(minMinutes, maxMinutes)
 }
 func RequirePermissions(scope string) (*PermissionsPolicy, error) {
-	return engine.RequirePermissions(scope)
+	return repoconfig.RequirePermissions(scope)
 }

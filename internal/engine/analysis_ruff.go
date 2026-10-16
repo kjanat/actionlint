@@ -91,7 +91,7 @@ func (r *ruffAnalyzer) AnalyzeScripts(ctx context.Context, batch scriptBatch) ([
 			failure = err
 			break
 		}
-		if script.config.diagnosticLevel("ruff") == "off" {
+		if diagnosticLevel(script.config, "ruff") == "off" {
 			continue
 		}
 		config := RuffToolConfig{}

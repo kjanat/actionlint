@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"actionlint.kjanat.dev/internal/repoconfig"
 	"path"
 	"path/filepath"
 	"slices"
@@ -54,7 +55,7 @@ func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirement
 		if project != nil {
 			root = project.RootDir()
 		}
-		if !config.includesFile(path, root) {
+		if !config.IncludesFile(path, root) {
 			continue
 		}
 		projectConfig := config
@@ -62,7 +63,7 @@ func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirement
 		if err != nil {
 			return needed, err
 		}
-		config = a.request.RulePresets.apply(config)
+		config = applyRulePresets(a.request.RulePresets, config)
 		c := ruleContext{
 			config: config, shellcheck: a.request.ShellCheck,
 			shellcheckOptions: a.request.ShellcheckOptions,
@@ -77,7 +78,7 @@ func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirement
 				needed.Ruff = needed.Ruff || (externalCommandEnabled(c.ruff, c.ruffOptions) && possible)
 				continue
 			}
-			if config.diagnosticLevel(rule.Name) == "off" {
+			if diagnosticLevel(config, rule.Name) == "off" {
 				continue
 			}
 			if rule.Name == "shellcheck" {
@@ -126,7 +127,7 @@ func ruffConfigMayEnable(config *Config) (bool, error) {
 		for i := start; i < len(candidates); i++ {
 			candidate := *candidates[i]
 			candidate.Overrides = []ConfigOverride{override}
-			resolved, err := configForFile(&candidate, "action.yml", "")
+			resolved, err := repoconfig.ForFile(&candidate, "action.yml", "")
 			if err != nil {
 				return false, err
 			}
@@ -145,7 +146,7 @@ func ruffConfigMayEnable(config *Config) (bool, error) {
 		candidates = unique
 	}
 	for _, candidate := range candidates {
-		if candidate.diagnosticLevel("ruff") != "off" && (candidate.Tools.Ruff.Enabled == nil || *candidate.Tools.Ruff.Enabled) {
+		if diagnosticLevel(candidate, "ruff") != "off" && (candidate.Tools.Ruff.Enabled == nil || *candidate.Tools.Ruff.Enabled) {
 			return true, nil
 		}
 	}
@@ -162,7 +163,7 @@ type ruffGateState struct {
 func ruffGateConfig(config *Config) ruffGateState {
 	rules := config.Lint.Rules
 	rule, explicit := rules.External.Rules["ruff"]
-	resolution, resolved := rules.resolved["ruff"]
+	resolution, resolved := rules.ResolvedLevel("ruff")
 	return ruffGateState{
 		tool:    config.Tools.Ruff.Enabled == nil || *config.Tools.Ruff.Enabled,
 		lint:    config.Lint.Enabled == nil || *config.Lint.Enabled,

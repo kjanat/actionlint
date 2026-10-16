@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"actionlint.kjanat.dev/internal/repoconfig"
 	"context"
 	"errors"
 	"maps"
@@ -67,7 +68,7 @@ func (l *analysisEngine) check(
 		w, all := Parse(content)
 		return nil, workflowOutline(path, w, len(all) != 0), configErr
 	}
-	cfg = l.rulePresets.apply(cfg)
+	cfg = applyRulePresets(l.rulePresets, cfg)
 
 	var start time.Time
 	if l.logLevel >= LogLevelVerbose {
@@ -151,11 +152,11 @@ func (l *analysisEngine) check(
 		}
 		v.composites = &compositeAnalyzer{ctx: l.ctx, actions: localActions, passes: v.passes, scriptConfig: cfg, scriptPaths: runPaths{workspace: root, analysis: c.workingDir, reader: c.reader}, collectScripts: len(builtins.scripts) != 0, resolveScriptExecution: builtins.resolveExecution}
 		v.composites.configForFile = func(path string) (*Config, error) {
-			config, err := actionConfigForFile(projectConfig, path, root)
+			config, err := repoconfig.ForAction(projectConfig, path, root)
 			if err != nil {
 				return nil, err
 			}
-			config = l.rulePresets.apply(config)
+			config = applyRulePresets(l.rulePresets, config)
 			compositeConfigs[path] = config
 			return config, nil
 		}
@@ -251,7 +252,7 @@ func (l *analysisEngine) check(
 		}
 	} else {
 		all = filterInlineSuppressions(content, all, suppressionPolicy)
-		all = filterConfigIgnores(configPath, root, content, all, cfg, false, cfg.diagnosticLevel)
+		all = filterConfigIgnores(configPath, root, content, all, cfg, false, diagnosticLevels(cfg))
 	}
 	var projectDir string
 	if project != nil {
@@ -311,15 +312,15 @@ func (l *analysisEngine) check(
 					}
 				}
 			}
-			return levelConfig.diagnosticLevel(kind)
+			return diagnosticLevel(levelConfig, kind)
 		}
 		if isMetadata && source != nil {
 			var err error
-			findingConfig, err = suppressionConfigForFile(projectConfig, sourcePath, root)
+			findingConfig, err = repoconfig.ForSuppressions(projectConfig, sourcePath, root)
 			if err != nil {
 				return nil, outline, err
 			}
-			findingConfig = l.rulePresets.apply(findingConfig)
+			findingConfig = applyRulePresets(l.rulePresets, findingConfig)
 			var policy *SuppressionsPolicy
 			if findingConfig != nil {
 				policy = findingConfig.Policy.DisallowSuppressions
@@ -390,12 +391,12 @@ func (l *analysisEngine) filterErrors(errs []*Error, cfgs []PathConfig) []*Error
 	filtered := make([]*Error, 0, len(errs))
 Loop:
 	for _, err := range errs {
-		if l.ignorePats.Match(err) {
+		if l.ignorePats.Match(err.Message) {
 			l.debug("Error %q is ignored due to -ignore command line option", err.Message)
 			continue Loop
 		}
 		for _, c := range cfgs {
-			if c.Ignore.Match(err) {
+			if c.Ignore.Match(err.Message) {
 				l.debug("Error %q is ignored due to the \"ignore\" config in the config file", err.Message)
 				continue Loop
 			}

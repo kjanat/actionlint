@@ -29,14 +29,14 @@ files: {includes: ['**/*.yml'], excludes: ['**/skip.yml']}
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolved := (RulePresets{}).apply(cfg)
+	resolved := applyRulePresets(RulePresets{}, cfg)
 	minimum, _ := resolved.RequiresJobTimeout().MinMinutes()
 	maximum, _ := resolved.RequiresJobTimeout().MaxMinutes()
-	if minimum != 5 || maximum != 60 || resolved.diagnosticLevel("if-cond") != "warn" || !slices.Equal(cfg.ConfigVariables, []string{"second"}) {
+	if minimum != 5 || maximum != 60 || diagnosticLevel(resolved, "if-cond") != "warn" || !slices.Equal(cfg.ConfigVariables, []string{"second"}) {
 		t.Fatalf("%+v", resolved)
 	}
-	if len(cfg.configFiles) != 3 {
-		t.Fatal(cfg.configFiles)
+	if len(cfg.Sources()) != 3 {
+		t.Fatal(cfg.Sources())
 	}
 	inspection, err := InspectConfig(ConfigSelection{Path: path}, true)
 	if err != nil {
@@ -48,7 +48,7 @@ files: {includes: ['**/*.yml'], excludes: ['**/skip.yml']}
 	if origin := inspection.Origins["/lint/rules/correctness/if-cond"]; !strings.HasSuffix(origin.File, "first.yml") || origin.Line != 1 {
 		t.Fatalf("lost shorthand origin during merging: %+v", origin)
 	}
-	if cfg.includesFile(".github/workflows/skip.yml", root) || !cfg.includesFile(".github/workflows/ci.yml", root) {
+	if cfg.IncludesFile(".github/workflows/skip.yml", root) || !cfg.IncludesFile(".github/workflows/ci.yml", root) {
 		t.Fatal(cfg.Files)
 	}
 	encoded, err := yaml.Marshal(cfg.Tools.Shellcheck.Config)
@@ -90,11 +90,11 @@ func TestRelativeConfigCallbackPath(t *testing.T) {
 				if inherited {
 					want = append(want, base)
 				}
-				if !slices.Equal(reads, want) || session.defaultConfig.diagnosticLevel("if-cond") != "warn" {
+				if !slices.Equal(reads, want) || diagnosticLevel(session.defaultConfig, "if-cond") != "warn" {
 					t.Fatalf("callback paths=%v, want=%v", reads, want)
 				}
-				if !slices.Contains(session.defaultConfig.configFiles, filepath.Join(root, "config.yml")) {
-					t.Fatalf("config origin did not remain absolute: %v", session.defaultConfig.configFiles)
+				if !slices.Contains(session.defaultConfig.Sources(), filepath.Join(root, "config.yml")) {
+					t.Fatalf("config origin did not remain absolute: %v", session.defaultConfig.Sources())
 				}
 			})
 		}

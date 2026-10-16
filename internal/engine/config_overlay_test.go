@@ -9,6 +9,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/repoconfig"
 )
 
 func TestConfigLoadedCallbackCanReenterSession(t *testing.T) {
@@ -146,7 +148,7 @@ paths:
 	if cfg.AssumeDefaultPermissions != DefaultPermissionsAssumptionPermissive || cfg.RequiresCommitHash() || cfg.Policy.RequireCommitHash == nil {
 		t.Errorf("file settings and explicit false must survive merging: %#v", cfg)
 	}
-	if !cfg.cachePolicyEnabled("cache-write-untrusted") {
+	if !cfg.CachePolicyEnabled("cache-write-untrusted") {
 		t.Error("null must restore the cache policy's enabled default")
 	}
 	minimum, _ := cfg.RequiresJobTimeout().MinMinutes()
@@ -179,7 +181,7 @@ paths:
 	if inspection.Path != path || inspection.Origins["/policy/require-job-timeout/max-minutes"].Input != "config" {
 		t.Errorf("lost file path or whole-config input: %+v", inspection)
 	}
-	serialized, err := effectiveConfig(cfg)
+	serialized, err := repoconfig.EffectiveValues(cfg)
 	if err != nil || !reflect.DeepEqual(inspection.Config, serialized) {
 		t.Fatalf("inspection differs from analyzed configuration: %#v, %v", inspection.Config, err)
 	}
@@ -255,7 +257,7 @@ func TestConfigOverlayPartialMappingAfterReset(t *testing.T) {
 				t.Fatalf("lost reset after partial mapping: %+v", report.Inspection)
 			}
 			origin = report.Inspection.Origins["/policy/cache-operation"]
-			if origin.Source != "input" || origin.Input != "policy" || origin.State != "value" || cfg.cachePolicyEnabled("cache-operation") {
+			if origin.Source != "input" || origin.Input != "policy" || origin.State != "value" || cfg.CachePolicyEnabled("cache-operation") {
 				t.Fatalf("lost setting after reset: %+v", report.Inspection)
 			}
 		})

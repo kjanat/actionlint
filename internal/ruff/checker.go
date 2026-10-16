@@ -7,6 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/analyzerhost"
+	"actionlint.kjanat.dev/internal/ruffconfig"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -189,7 +190,7 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		return err
 	}
 	if c.backend != nil {
-		options, err := config.engineOptions()
+		options, err := config.EngineOptions()
 		if err != nil {
 			return err
 		}
@@ -209,7 +210,7 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		})
 	} else {
 		defaults := arguments(config)
-		native, err := config.nativeArguments()
+		native, err := config.NativeArguments()
 		if err != nil {
 			return err
 		}
@@ -338,7 +339,7 @@ func pythonShellTarget(shell string) string {
 		command = "python" + version
 	}
 	if minor, ok := strings.CutPrefix(command, "python3."); ok {
-		if target := "py3" + minor; slices.Contains(SupportedTargetVersions(), target) {
+		if target := "py3" + minor; slices.Contains(ruffconfig.SupportedTargetVersions(), target) {
 			return target
 		}
 	}

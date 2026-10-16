@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"actionlint.kjanat.dev/internal/repoconfig"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,7 +12,7 @@ import (
 // Project represents one GitHub project. One Git repository corresponds to one project.
 type Project struct {
 	root       string
-	config     *loadedConfig
+	config     *repoconfig.Loaded
 	configPath string
 }
 
@@ -40,23 +41,6 @@ func physicalSourcePath(path string) string {
 		suffix = filepath.Join(filepath.Base(parent), suffix)
 		parent = next
 	}
-}
-
-// findProjectConfig finds the project to which the given path belongs.
-// A project must be a Git repository; action-only repositories need no workflows directory.
-func findProjectConfig(path string, skipConfig bool, readFile func(string) ([]byte, error)) (*Project, error) {
-	root := findProjectRoot(path)
-	if root == "" {
-		return nil, nil
-	}
-	if skipConfig {
-		return &Project{root: root}, nil
-	}
-	return newProject(root, readFile)
-}
-
-func findProjectRoot(path string) string {
-	return cachedProjectRoot(path, nil, os.Stat)
 }
 
 // Cache only paths actually visited: an unvisited descendant may be a nested
@@ -96,7 +80,7 @@ func NewProject(root string) (*Project, error) {
 }
 
 func newProject(root string, readFile func(string) ([]byte, error)) (*Project, error) {
-	c, path, err := loadRepoConfig(root, readFile)
+	c, path, err := repoconfig.LoadRepository(root, readFile)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +113,7 @@ func (p *Project) Config() *Config {
 	if p.config == nil {
 		return nil
 	}
-	return p.config.config
+	return p.config.Config
 }
 
 // Projects represents set of projects. It caches Project instances which was created previously

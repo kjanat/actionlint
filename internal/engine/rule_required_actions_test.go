@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"actionlint.kjanat.dev/internal/repoconfig"
 	"strings"
 	"testing"
 
@@ -40,7 +41,7 @@ func TestRuleRequiredActionsSplitActionRef(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.in, func(t *testing.T) {
-			name, ref := splitActionRef(tc.in)
+			name, ref := repoconfig.SplitActionRef(tc.in)
 			if name != tc.name || ref != tc.ref {
 				t.Fatalf("wanted (%q, %q) but got (%q, %q)", tc.name, tc.ref, name, ref)
 			}
@@ -214,7 +215,7 @@ func TestRuleRequiredActionsInvalidActionPattern(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.in, func(t *testing.T) {
-			p, ok := invalidActionPattern(tc.in)
+			p, ok := repoconfig.InvalidActionPattern(tc.in)
 			if ok != tc.ok || p != tc.want {
 				t.Fatalf("wanted (%q, %v) but got (%q, %v)", tc.want, tc.ok, p, ok)
 			}

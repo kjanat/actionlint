@@ -26,7 +26,7 @@ type workflowRunNamesRule struct {
 }
 
 func (r *workflowRunNamesRule) VisitWorkflowPre(w *workflowlang.Workflow) error {
-	if r.config.diagnosticLevel(r.Name()) == "off" {
+	if diagnosticLevel(r.config, r.Name()) == "off" {
 		return nil
 	}
 	var references []*workflowlang.String

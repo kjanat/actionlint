@@ -2,7 +2,7 @@
 
 # Unreleased
 
-- Break the flat Go library API into `analysis`, `analyzer`, `diagnostic`, `document`, `config` and `syntax` packages. Keep execution, traversal rules and caches internal. Add explicit analyzer facts/results and document-scoped resource completion, including early traversal failures. Run Ruff, ShellCheck and deprecated-command checks from prepared script inputs, with checker-owned completion and isolated per-script results. Keep document codecs independent of the analysis engine. See the [Go API migration](docs/api.md#migration-from-the-flat-api).
+- Break the flat Go library API into `analysis`, `analyzer`, `diagnostic`, `document`, `config` and `syntax` packages. Keep execution, traversal rules and caches internal. Add explicit analyzer facts/results and document-scoped resource completion, including early traversal failures. Run Ruff, ShellCheck and deprecated-command checks from prepared script inputs, with checker-owned completion and isolated per-script results. Keep document codecs, configuration and syntax independent of the analysis engine. See the [Go API migration](docs/api.md#migration-from-the-flat-api).
 
 - Support `${{ insert }}` in action `with:` mappings and matrix axes, retaining input validation, matrix filtering and runner-label checks. Preserve one-level matrix sequence splicing. Check `case()` predicates as booleans and skip evaluation-dependent diagnostics in branches that cannot execute.
 

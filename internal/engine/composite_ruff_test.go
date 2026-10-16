@@ -105,7 +105,7 @@ runs:
 				t.Fatal(err)
 			}
 			if tc.code != "" {
-				if enabled, err := ruffConfigMayEnable((RulePresets{}).apply(config)); err != nil || !enabled {
+				if enabled, err := ruffConfigMayEnable(applyRulePresets(RulePresets{}, config)); err != nil || !enabled {
 					t.Fatalf("composite checker cannot be provisioned: enabled=%v, error=%v", enabled, err)
 				}
 			}

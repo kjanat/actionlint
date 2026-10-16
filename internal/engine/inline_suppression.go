@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"actionlint.kjanat.dev/internal/repoconfig"
 	"slices"
 	"strconv"
 	"strings"
@@ -144,11 +145,11 @@ func applyInlineSuppressionsAt(errors []*Error, directives []inlineSuppressionDi
 	for _, directive := range directives {
 		var prohibited []string
 		for _, name := range directive.rules {
-			mode := policy.reportFor(name)
-			if mode == reportSuppression || mode == reportAll {
+			mode := policy.ReportFor(name)
+			if mode == repoconfig.ReportSuppression || mode == repoconfig.ReportAll {
 				prohibited = append(prohibited, name)
 			}
-			if mode == suppressionsAllowed || mode == reportSuppression {
+			if mode == repoconfig.SuppressionsAllowed || mode == repoconfig.ReportSuppression {
 				suppressed[name] = append(suppressed[name], lineRange{directive.targetLine, max(directive.targetLine, directive.endLine)})
 			}
 		}

@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"actionlint.kjanat.dev/internal/repoconfig"
 	"context"
 	"errors"
 	"slices"
@@ -59,12 +60,12 @@ func (analyzer *shellcheckAnalyzer) AnalyzeScripts(ctx context.Context, batch sc
 			failure = err
 			break
 		}
-		if scope.config != nil && (scope.config.diagnosticLevel("shellcheck") == "off" || scope.config.Tools.Shellcheck.Enabled != nil && !*scope.config.Tools.Shellcheck.Enabled) {
+		if scope.config != nil && (diagnosticLevel(scope.config, "shellcheck") == "off" || scope.config.Tools.Shellcheck.Enabled != nil && !*scope.config.Tools.Shellcheck.Enabled) {
 			continue
 		}
 		if analyzer.backend != nil {
 			run := &shellcheckRun{backend: analyzer.backend, cfg: scope.config, paths: scope.paths, actionPath: scope.actionPath, debug: analyzer.debug, rcArgs: []string{}}
-			if scope.config != nil && scope.config.Tools.Shellcheck.Config.path() != "" {
+			if scope.config != nil && scope.config.Tools.Shellcheck.Config.Path() != "" {
 				failure = errors.Join(failure, errors.New("ShellCheck backend needs inline configuration; rc-file access requires a process backend"))
 				continue
 			}
@@ -101,7 +102,7 @@ func (analyzer *shellcheckAnalyzer) AnalyzeScripts(ctx context.Context, batch sc
 			run.paths.analysis = "/"
 		}
 		if err := run.prepareConfigPath(); err != nil {
-			if !scope.composite && errors.Is(err, errConfigActionPathUnavailable) {
+			if !scope.composite && errors.Is(err, repoconfig.ErrActionPathUnavailable) {
 				deferred, deferredScope = err, scope
 				continue
 			}

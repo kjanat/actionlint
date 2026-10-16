@@ -945,7 +945,7 @@ func (rule *RuleExpression) checkSemanticsOfExprNode(expr exprlang.Node, line, c
 	for _, err := range errs {
 		rule.exprError(err, line, col)
 	}
-	if rule.config.diagnosticLevel("unsound-ternary") != "off" {
+	if diagnosticLevel(rule.config, "unsound-ternary") != "off" {
 		for _, finding := range exprlang.CheckUnsoundTernaries(expr) {
 			rule.exprError(finding, line, col)
 		}
@@ -1315,9 +1315,9 @@ func typeOfActionOutputs(meta *ActionMetadata) *exprlang.ObjectType {
 
 func expressionOptionsFromConfig(config *Config) *exprlang.Options {
 	options := &exprlang.Options{Checks: exprlang.Checks{
-		StringConditions:          config.diagnosticLevel("string-conditions") != "off",
-		MixedTypeComparisons:      config.diagnosticLevel("mixed-type-comparisons") != "off",
-		CaseInsensitiveConditions: config.diagnosticLevel("case-insensitive-conditions") != "off",
+		StringConditions:          diagnosticLevel(config, "string-conditions") != "off",
+		MixedTypeComparisons:      diagnosticLevel(config, "mixed-type-comparisons") != "off",
+		CaseInsensitiveConditions: diagnosticLevel(config, "case-insensitive-conditions") != "off",
 	}}
 	if config != nil {
 		options.Variables, options.Secrets = config.ConfigVariables, config.ConfigSecrets

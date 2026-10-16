@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"actionlint.kjanat.dev/internal/repoconfig"
 	"os"
 	"path/filepath"
 	"slices"
@@ -141,7 +142,7 @@ func TestRepositoryRelativeConfigAliasBoundaries(t *testing.T) {
 		{filepath.Join(root, "..", "missing", "ci.yml"), filepath.Join("..", "missing", "ci.yml")},
 		{"./ci.yml", "./ci.yml"},
 	} {
-		if got := repositoryRelativeConfigPath(tc.path, root); got != tc.want {
+		if got := repoconfig.RepositoryRelativePath(tc.path, root); got != tc.want {
 			t.Fatalf("path %q: got %q, want %q", tc.path, got, tc.want)
 		}
 	}

@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"actionlint.kjanat.dev/internal/repoconfig"
 	"path"
 	"strings"
 
@@ -13,25 +14,6 @@ type actionUse struct {
 	name string
 	ref  string
 	pos  *workflowlang.Pos
-}
-
-// splitActionRef splits an action reference, or a pattern for one, into its name and its ref at the
-// first "@". The ref is empty when the value contains no "@".
-func splitActionRef(s string) (string, string) {
-	name, ref, _ := strings.Cut(s, "@")
-	return name, ref
-}
-
-// invalidActionPattern returns the half of the entry which path.Match rejects as a pattern. The
-// second return value is false when both halves are valid.
-func invalidActionPattern(s string) (string, bool) {
-	name, ref := splitActionRef(s)
-	for _, p := range []string{name, ref} {
-		if _, err := path.Match(p, ""); err != nil {
-			return p, true
-		}
-	}
-	return "", false
 }
 
 // matchGlob reports whether the value matches the pattern. An invalid pattern matches nothing, so a
@@ -88,7 +70,7 @@ func (rule *RuleRequiredActions) VisitStep(n *workflowlang.Step) error {
 		rule.unknown = true
 		return nil
 	}
-	name, ref := splitActionRef(e.Uses.Value)
+	name, ref := repoconfig.SplitActionRef(e.Uses.Value)
 	rule.uses = append(rule.uses, actionUse{
 		spec: e.Uses.Value,
 		name: name,
@@ -114,7 +96,7 @@ func (rule *RuleRequiredActions) VisitWorkflowPost(n *workflowlang.Workflow) err
 }
 
 func (rule *RuleRequiredActions) report(required string, pos *workflowlang.Pos) {
-	name, ref := splitActionRef(required)
+	name, ref := repoconfig.SplitActionRef(required)
 	name = strings.ToLower(name)
 
 	var near *actionUse

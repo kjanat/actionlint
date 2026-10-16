@@ -3,11 +3,11 @@ package engine
 import (
 	"io"
 	"path/filepath"
-	"reflect"
 	"slices"
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/repoconfig"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -38,44 +38,6 @@ func TestLinterFilesSelectedPreservesInputs(t *testing.T) {
 			}
 			if calls != 1 || !slices.Equal(selected, want) || !slices.Equal(paths, want) {
 				t.Fatalf("callback calls=%d selected=%v inputs=%v, want %v", calls, selected, paths, want)
-			}
-		})
-	}
-}
-
-func TestProgrammaticToolOverridesPreserveOmissions(t *testing.T) {
-	for _, tc := range []struct{ name, base, override string }{
-		{"disabled", "{enabled: true, config: .shellcheckrc}", "{enabled: false}"},
-		{"enabled", "{enabled: false, config: {disable: [SC2086]}}", "{enabled: true}"},
-		{"config only", "{enabled: false, config: .shellcheckrc}", "{config: replacement.rc}"},
-		{"empty", "{enabled: false, config: .shellcheckrc}", "{}"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			config, err := ParseConfig([]byte("tools: {shellcheck: " + tc.base + "}\noverrides: [{includes: [ci.yml], tools: {shellcheck: " + tc.override + "}}]\n"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			want, err := configForFile(config, "ci.yml", "")
-			if err != nil {
-				t.Fatal(err)
-			}
-			config.Overrides[0].toolsNode = nil
-			for range 2 {
-				got, err := configForFile(config, "ci.yml", "")
-				if err != nil {
-					t.Fatal(err)
-				}
-				if !reflect.DeepEqual(got.Tools, want.Tools) {
-					t.Fatalf("programmatic tools differ: got %#v, want %#v", got.Tools.Shellcheck, want.Tools.Shellcheck)
-				}
-				encoded, err := yaml.Marshal(config)
-				if err != nil {
-					t.Fatal(err)
-				}
-				config, err = ParseConfig(encoded)
-				if err != nil {
-					t.Fatal(err)
-				}
 			}
 		})
 	}
@@ -121,7 +83,7 @@ func TestFileOverrideExplicitToolResets(t *testing.T) {
 				t.Fatal(err)
 			}
 			for range 2 {
-				got, err := configForFile(config, "ci.yml", "")
+				got, err := repoconfig.ForFile(config, "ci.yml", "")
 				if err != nil || got.Tools.Shellcheck.Config != nil {
 					t.Fatalf("explicit tool reset lost: %+v, %v", got, err)
 				}

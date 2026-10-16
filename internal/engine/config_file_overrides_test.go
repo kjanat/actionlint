@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/repoconfig"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -28,27 +29,27 @@ overrides:
 		t.Fatal(err)
 	}
 	for range 2 {
-		got, err := configForFile(cfg, ".github/workflows/test.yml", "")
+		got, err := repoconfig.ForFile(cfg, ".github/workflows/test.yml", "")
 		if err != nil {
 			t.Fatal(err)
 		}
-		got = (RulePresets{Strict: true}).apply(got)
-		if got.diagnosticLevel("if-cond") != "warn" || got.diagnosticLevel("expression") != "off" {
+		got = applyRulePresets(RulePresets{Strict: true}, got)
+		if diagnosticLevel(got, "if-cond") != "warn" || diagnosticLevel(got, "expression") != "off" {
 			t.Fatal(got.Lint.Rules)
 		}
 		minimum, _ := got.RequiresJobTimeout().MinMinutes()
 		maximum, _ := got.RequiresJobTimeout().MaxMinutes()
-		if minimum != 5 || maximum != 60 || got.diagnosticLevel("require-job-timeout") != "warn" {
+		if minimum != 5 || maximum != 60 || diagnosticLevel(got, "require-job-timeout") != "warn" {
 			t.Fatal(got.Policy)
 		}
-		reset, err := configForFile(cfg, ".github/workflows/reset.yml", "")
+		reset, err := repoconfig.ForFile(cfg, ".github/workflows/reset.yml", "")
 		if err != nil {
 			t.Fatal(err)
 		}
-		if reset.diagnosticLevel("expression") != "on" {
+		if diagnosticLevel(reset, "expression") != "on" {
 			t.Fatal(reset.Lint.Rules)
 		}
-		if cfg.diagnosticLevel("if-cond") != "off" {
+		if diagnosticLevel(cfg, "if-cond") != "off" {
 			t.Fatal("override mutated base")
 		}
 		encoded, err := yaml.Marshal(cfg)
@@ -88,8 +89,8 @@ func TestProgrammaticLintOverridePreservesUnsetFields(t *testing.T) {
 					cfg.Overrides = []ConfigOverride{{Includes: []string{"**"}, Lint: tc.lint}}
 				}
 				for range 2 {
-					effective, err := configForFile(cfg, "ci.yml", "")
-					if err != nil || effective.diagnosticLevel("expression") != tc.want {
+					effective, err := repoconfig.ForFile(cfg, "ci.yml", "")
+					if err != nil || diagnosticLevel(effective, "expression") != tc.want {
 						t.Fatalf("programmatic=%t: want %s, got %+v, %v", programmatic, tc.want, effective, err)
 					}
 					encoded, err := yaml.Marshal(cfg)
@@ -127,12 +128,12 @@ func TestRuleLevelAliasOverrides(t *testing.T) {
 			t.Fatal(err)
 		}
 		for range 2 {
-			got, err := configForFile(cfg, "ci.yml", "")
+			got, err := repoconfig.ForFile(cfg, "ci.yml", "")
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got.diagnosticLevel("expression") != tc.want {
-				t.Fatalf("%s -> %s: got %s, want %s", tc.base, tc.overlay, got.diagnosticLevel("expression"), tc.want)
+			if diagnosticLevel(got, "expression") != tc.want {
+				t.Fatalf("%s -> %s: got %s, want %s", tc.base, tc.overlay, diagnosticLevel(got, "expression"), tc.want)
 			}
 			encoded, err := yaml.Marshal(cfg)
 			if err != nil {
@@ -150,8 +151,8 @@ func TestRuleLevelAliasOverrides(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got.diagnosticLevel("expression") != tc.want {
-			t.Fatalf("extends %s -> %s: got %s, want %s", tc.base, tc.overlay, got.diagnosticLevel("expression"), tc.want)
+		if diagnosticLevel(got, "expression") != tc.want {
+			t.Fatalf("extends %s -> %s: got %s, want %s", tc.base, tc.overlay, diagnosticLevel(got, "expression"), tc.want)
 		}
 	}
 }
@@ -203,11 +204,11 @@ overrides:
 			t.Run(tc.file, func(t *testing.T) {
 				t.Parallel()
 				root := t.TempDir()
-				got, err := configForFile(cfg, filepath.Join(root, filepath.FromSlash(tc.file)), root)
+				got, err := repoconfig.ForFile(cfg, filepath.Join(root, filepath.FromSlash(tc.file)), root)
 				if err != nil {
 					t.Fatal(err)
 				}
-				if (len(got.Lint.Rules.Disable) != 0) != tc.expression || (got.diagnosticLevel("case-insensitive-conditions") != "off") != tc.cases || (got.diagnosticLevel("string-conditions") != "off") != tc.strings {
+				if (len(got.Lint.Rules.Disable) != 0) != tc.expression || (diagnosticLevel(got, "case-insensitive-conditions") != "off") != tc.cases || (diagnosticLevel(got, "string-conditions") != "off") != tc.strings {
 					t.Fatalf("%+v", got.Lint.Rules)
 				}
 			})

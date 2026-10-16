@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/repoconfig"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
@@ -26,7 +27,7 @@ func TestAnalysisSourceRanges(t *testing.T) {
 }
 
 func TestEffectiveConfigFieldCoverage(t *testing.T) {
-	resolved, err := effectiveConfig(&Config{})
+	resolved, err := repoconfig.EffectiveValues(&Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

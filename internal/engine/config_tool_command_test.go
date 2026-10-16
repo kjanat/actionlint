@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/repoconfig"
+
 	"actionlint.kjanat.dev/internal/toolconfig"
 )
 
@@ -64,7 +66,7 @@ overrides:
 	if got := cfg.Tools.Ruff.Backend.Process.Executable; got != filepath.Join(parentDir, "bin", "ruff") {
 		t.Fatal(got)
 	}
-	effective, err := configForFile(cfg, filepath.Join(root, "ci.yml"), root)
+	effective, err := repoconfig.ForFile(cfg, filepath.Join(root, "ci.yml"), root)
 	if err != nil {
 		t.Fatal(err)
 	}

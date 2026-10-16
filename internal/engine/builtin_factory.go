@@ -25,7 +25,7 @@ func builtinFactory(request AnalysisRequest, logger analysisLogger) func(ruleCon
 			if (descriptor.build == nil && descriptor.buildScripts == nil) || (action && !descriptor.supportsActions) {
 				continue
 			}
-			if descriptor.skipWhenDisabled && c.config.diagnosticLevel(descriptor.Name) == "off" {
+			if descriptor.skipWhenDisabled && diagnosticLevel(c.config, descriptor.Name) == "off" {
 				continue
 			}
 			if descriptor.enabled != nil && !descriptor.enabled(c) {

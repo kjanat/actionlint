@@ -105,7 +105,7 @@ func (f *inputFiles) list() []string {
 
 func (f *inputFiles) addConfig(config *Config, project *Project) {
 	if config != nil {
-		for _, path := range config.configFiles {
+		for _, path := range config.Sources() {
 			f.add(path)
 		}
 	}
@@ -157,7 +157,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 			path = filepath.Join(request.WorkingDir, path)
 		}
 		source.inputPath = path
-		if source.Config.includesFile(path, root) {
+		if source.Config.IncludesFile(path, root) {
 			selected = append(selected, source)
 		}
 	}

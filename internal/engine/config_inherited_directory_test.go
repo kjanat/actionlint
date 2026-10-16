@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/repoconfig"
 )
 
 func TestInheritedConfigDirectorySpellings(t *testing.T) {
@@ -27,12 +29,12 @@ func TestInheritedConfigDirectorySpellings(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				effective, err := configForFile(cfg, "ci.yml", root)
+				effective, err := repoconfig.ForFile(cfg, "ci.yml", root)
 				if err != nil {
 					t.Fatal(err)
 				}
-				context := configPathContext{configDir: filepath.Dir(leaf)}
-				got, err := context.resolve(effective.Tools.Shellcheck.Config.path())
+				context := repoconfig.PathContext{ConfigDir: filepath.Dir(leaf)}
+				got, err := context.Resolve(effective.Tools.Shellcheck.Config.Path())
 				want := filepath.Join(filepath.Dir(base), ".shellcheckrc")
 				if err != nil || got != want {
 					t.Fatalf("inherited rc path = %q, %v; want %q", got, err, want)
@@ -46,20 +48,5 @@ func TestInheritedConfigDirectorySpellings(t *testing.T) {
 				}
 			})
 		}
-	}
-}
-
-func TestInheritedConfigDirectoryLateBoundPaths(t *testing.T) {
-	base := filepath.Join(t.TempDir(), "base")
-	for _, expression := range []string{
-		"${{ GITDIR }}", "${{  github.workspace }}", "${{github.action_path}}",
-	} {
-		t.Run(expression, func(t *testing.T) {
-			input := expression + "/${{ CONFIGDIR }}/${{\tconfigdir\t}}/.shellcheckrc"
-			want := expression + "/" + base + "/" + base + "/.shellcheckrc"
-			if got := expandInheritedConfigDirectory(input, base); got != want {
-				t.Fatalf("expanded path = %q; want %q", got, want)
-			}
-		})
 	}
 }

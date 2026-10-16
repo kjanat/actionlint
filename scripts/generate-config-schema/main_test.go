@@ -16,7 +16,7 @@ import (
 
 	actionlint "actionlint.kjanat.dev/internal/engine"
 	"actionlint.kjanat.dev/internal/genfile"
-	"actionlint.kjanat.dev/internal/ruff"
+	"actionlint.kjanat.dev/internal/ruffconfig"
 	"github.com/google/go-cmp/cmp"
 	"github.com/invopop/jsonschema"
 	validator "github.com/santhosh-tekuri/jsonschema/v6"
@@ -58,7 +58,7 @@ func TestRuffTargetVersionSuggestions(t *testing.T) {
 	if len(target.OneOf) != 2 || target.OneOf[1].Type != "null" || target.OneOf[1].Extras["doNotSuggest"] != true {
 		t.Fatal("expected version choices and a hidden reset branch")
 	}
-	if target.OneOf[0].Ref != ruff.SchemaPath+"#/definitions/PythonVersion" || len(target.OneOf[0].Enum) != 0 {
+	if target.OneOf[0].Ref != ruffconfig.SchemaPath+"#/definitions/PythonVersion" || len(target.OneOf[0].Enum) != 0 {
 		t.Fatal("Ruff target choices must reference the unchanged upstream definition")
 	}
 }
@@ -67,7 +67,7 @@ func TestRuffSelectorSuggestions(t *testing.T) {
 	schema := mapYAMLType(reflect.TypeFor[actionlint.RuffToolConfig](), nil)
 	var root jsonschema.Schema
 	generated := generatedSchema(t)
-	if strings.Count(string(generated), `"`+ruff.SelectorSchemaPath+`"`) != 4 {
+	if strings.Count(string(generated), `"`+ruffconfig.SelectorSchemaPath+`"`) != 4 {
 		t.Fatal("base and override selections must share the selector definition")
 	}
 	if err := json.Unmarshal(generated, &root); err != nil {
@@ -85,7 +85,7 @@ func TestRuffSelectorSuggestions(t *testing.T) {
 			t.Fatalf("Ruff %s completion must use small safe examples, not an upstream or copied catalogue", key)
 		}
 		guard := property.Not
-		if guard == nil || guard.Type != "array" || guard.Contains == nil || guard.Contains.Not == nil || guard.Contains.Not.Ref != ruff.SelectorSchemaPath {
+		if guard == nil || guard.Type != "array" || guard.Contains == nil || guard.Contains.Not == nil || guard.Contains.Not.Ref != ruffconfig.SelectorSchemaPath {
 			t.Fatalf("Ruff %s must reject arrays containing an unsupported selector through the shared wrapper", key)
 		}
 	}
@@ -211,7 +211,7 @@ func addToolSchemas(t *testing.T, compiler *validator.Compiler, base string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, filename := range []string{shellcheckSchemaPath, ruff.SchemaPath, ruff.SelectorSchemaPath} {
+	for _, filename := range []string{shellcheckSchemaPath, ruffconfig.SchemaPath, ruffconfig.SelectorSchemaPath} {
 		data, err := os.ReadFile(filename)
 		if err != nil {
 			t.Fatal(err)
@@ -244,7 +244,7 @@ func TestRuffUpstreamSchemaParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	upstream, err := os.ReadFile(ruff.SchemaPath)
+	upstream, err := os.ReadFile(ruffconfig.SchemaPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,11 +256,11 @@ func TestRuffUpstreamSchemaParity(t *testing.T) {
 	if err := json.Unmarshal(upstream, &raw); err != nil {
 		t.Fatal(err)
 	}
-	if diff := cmp.Diff(raw.Definitions["PythonVersion"].Enum, ruff.SupportedTargetVersions()); diff != "" {
+	if diff := cmp.Diff(raw.Definitions["PythonVersion"].Enum, ruffconfig.SupportedTargetVersions()); diff != "" {
 		t.Fatalf("runtime targets differ from upstream (-upstream +runtime):\n%s", diff)
 	}
-	supported := ruff.SupportedRuleSelectors()
-	targets := ruff.SupportedTargetVersions()
+	supported := ruffconfig.SupportedRuleSelectors()
+	targets := ruffconfig.SupportedTargetVersions()
 	selectors := append(slices.Clone(raw.Definitions["RuleSelector"].Enum), supported...)
 	selectors = append(selectors, "XYZ", "F9999", "", "f821")
 	slices.Sort(selectors)

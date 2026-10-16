@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"actionlint.kjanat.dev/internal/repoconfig"
 	"errors"
 	"os"
 	"path/filepath"
@@ -61,7 +62,7 @@ func TestLocalActionSourceConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct{ path, want string }{{"ordinary.yml", "./source"}, {"special.yml", "./other"}, {"reset.yml", ""}} {
-		got, err := configForFile(config, tc.path, "")
+		got, err := repoconfig.ForFile(config, tc.path, "")
 		if err != nil || got.LocalActions["./generated"] != tc.want {
 			t.Fatalf("%s: %+v %v", tc.path, got, err)
 		}
@@ -70,7 +71,7 @@ func TestLocalActionSourceConfig(t *testing.T) {
 		t.Fatal("override mutated shared config")
 	}
 	programmatic := &Config{LocalActions: LocalActionSources{"$/generated/": "$/source"}, Overrides: []ConfigOverride{{Includes: []string{"special.yml"}, LocalActions: LocalActionSources{"$/generated": "$/other"}}}}
-	got, err := configForFile(programmatic, "special.yml", "")
+	got, err := repoconfig.ForFile(programmatic, "special.yml", "")
 	if err != nil || got.LocalActions["./generated"] != "./other" {
 		t.Fatalf("programmatic mappings: %+v %v", got, err)
 	}
