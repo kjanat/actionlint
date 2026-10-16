@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	"actionlint.kjanat.dev/internal/ruff"
 )
 
@@ -544,7 +546,7 @@ jobs:
     steps:
       - uses: $/python-action
 `
-	result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(src), Project: &Project{root: root}}}})
+	result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(src), Project: workspace.Identity(root)}}})
 	if err != nil {
 		t.Fatal(err)
 	}

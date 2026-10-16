@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/google/go-cmp/cmp"
 )
@@ -64,7 +66,7 @@ jobs:
 				if err != nil {
 					t.Fatal(err)
 				}
-				diagnostics, err := linter.Lint("workflow.yml", []byte(source), &Project{root: root})
+				diagnostics, err := linter.Lint("workflow.yml", []byte(source), workspace.Identity(root))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -118,7 +120,7 @@ jobs:
 		t.Fatal(errs)
 	}
 	root := t.TempDir()
-	cache := NewLocalReusableWorkflowCache(&Project{root: root}, root, nil)
+	cache := NewLocalReusableWorkflowCache(workspace.Identity(root), root, nil)
 	event, _ := w.FindWorkflowCallEvent()
 	cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, w)
 	fromAST, _, _ := cache.readCache("./callee.yaml")

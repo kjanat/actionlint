@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 func TestWorkflowRunSymlinkCheckout(t *testing.T) {
@@ -20,7 +22,7 @@ func TestWorkflowRunSymlinkCheckout(t *testing.T) {
 	for _, roots := range [][2]string{{realRoot, alias}, {alias, realRoot}} {
 		for _, name := range []string{"New", "Missing"} {
 			t.Run(roots[0]+name, func(t *testing.T) {
-				project := &Project{root: roots[1]}
+				project := workspace.Identity(roots[1])
 				consumer := "on: {workflow_run: {workflows: [" + name + `], types: [completed]}}
 jobs:
   test:
@@ -60,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     steps: [{run: echo ok}]
 `
-				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: ".github/workflows/consumer.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Project: &Project{root: root}}}})
+				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: ".github/workflows/consumer.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Project: workspace.Identity(root)}}})
 				if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "glob" || result.Diagnostics[0].Start.Line != 3 {
 					t.Fatalf("expected glob finding on line 3: %+v, %v", result.Diagnostics, err)
 				}
@@ -83,7 +85,7 @@ func TestWorkflowRunPatternScalarLineBreaks(t *testing.T) {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+strconv.Quote(ending), func(t *testing.T) {
 				root := t.TempDir()
-				project := &Project{root: root}
+				project := workspace.Identity(root)
 				source := `on:
   workflow_run:
     workflows:

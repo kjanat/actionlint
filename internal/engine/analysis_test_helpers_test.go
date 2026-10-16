@@ -38,6 +38,10 @@ func (l *Linter) check(path string, content []byte, project *Project, proc *conc
 		proc = newConcurrentProcess(l.ctx, 1)
 	}
 	var rules []RuleInfo
-	errs, _, err := engine.check(path, content, project, l.source(path, content, project).Config, proc, actions, workflows, &rules)
+	cfg := l.DefaultConfig
+	if cfg == nil && project != nil {
+		cfg = project.Config()
+	}
+	errs, _, err := engine.check(path, content, project, cfg, proc, actions, workflows, &rules)
 	return errs, err
 }

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	"actionlint.kjanat.dev/internal/fsread"
 )
 
@@ -80,7 +82,7 @@ func TestInvalidLocalActionSuppressionSourceCache(t *testing.T) {
 	path := writeShellcheckFixture(t, root, "inner/action.yml", source)
 	for _, spec := range []string{"./inner", "$/inner", "./INNER", "$/INNER"} {
 		t.Run(spec, func(t *testing.T) {
-			base := NewLocalActionsCache(&Project{root: root}, nil)
+			base := NewLocalActionsCache(workspace.Identity(root), nil)
 			var inputs []string
 			base.reader = fsread.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })
 			for attempt := range 2 {
@@ -339,7 +341,7 @@ jobs:
     steps:
       - run: echo ok
 `)
-	project := &Project{root: root}
+	project := workspace.Identity(root)
 	actions := NewLocalActionsCache(project, nil)
 	workflows := NewLocalReusableWorkflowCache(project, root, nil)
 	process := newConcurrentProcess(t.Context(), 1)

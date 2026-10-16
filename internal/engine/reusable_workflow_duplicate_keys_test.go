@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -39,7 +41,7 @@ func TestReusableWorkflowDuplicateKeyMetadataOrder(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
-			project := &Project{root: root}
+			project := workspace.Identity(root)
 			caller := []byte(`on: push
 cache-mode: read
 permissions: {contents: read}

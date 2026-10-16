@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
@@ -40,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps: [{run: echo ok}]
 `
-			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: ".github/workflows/consumer.yml", Content: []byte(workflow), Project: &Project{root: root}}}})
+			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: ".github/workflows/consumer.yml", Content: []byte(workflow), Project: workspace.Identity(root)}}})
 			if err != nil {
 				t.Fatal(err)
 			}

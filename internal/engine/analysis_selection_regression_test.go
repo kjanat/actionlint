@@ -1,12 +1,14 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/internal/repoconfig"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/repoconfig"
+	"actionlint.kjanat.dev/internal/workspace"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -69,7 +71,7 @@ func TestCallerRelativeSelection(t *testing.T) {
 	if err != nil || result.FileCount() != 1 || len(result.Diagnostics) == 0 || !slices.Contains(result.Inputs, workflow) {
 		t.Fatalf("caller-relative workflow was dropped: %+v, %v", result, err)
 	}
-	project, err := session.projects.At(workflow)
+	project, err := session.ProjectAt(workflow)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +226,7 @@ jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 		t.Fatal(err)
 	}
 	check(Analyze(t.Context(), AnalysisRequest{WorkingDir: "repo", Sources: []SourceUnit{{Path: ".github/workflows/ci.yml", Content: content, Config: cfg}}}))
-	check(Analyze(t.Context(), AnalysisRequest{WorkingDir: "repo", Sources: []SourceUnit{{Path: ".github/workflows/ci.yml", Content: content, Config: cfg, Project: &Project{root: "repo"}}}}))
+	check(Analyze(t.Context(), AnalysisRequest{WorkingDir: "repo", Sources: []SourceUnit{{Path: ".github/workflows/ci.yml", Content: content, Config: cfg, Project: workspace.Identity("repo")}}}))
 	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: "repo", ConfigFile: "repo/actionlint.yml"})
 	if err != nil {
 		t.Fatal(err)

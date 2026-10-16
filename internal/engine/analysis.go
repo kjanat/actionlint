@@ -10,6 +10,8 @@ import (
 	"slices"
 	"sync"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	"actionlint.kjanat.dev/internal/repoconfig"
 
 	"actionlint.kjanat.dev/analyzer"
@@ -20,14 +22,7 @@ import (
 )
 
 // SourceUnit is a workflow or action manifest and its resolved configuration.
-type SourceUnit struct {
-	Path    string
-	Content []byte
-	Config  *Config
-	Project *Project
-	// inputPath retains the opened path when Path is made relative for diagnostics.
-	inputPath string
-}
+type SourceUnit = workspace.Source
 
 // AnalysisRequest contains resolved sources and analysis settings.
 type AnalysisRequest struct {
@@ -59,6 +54,9 @@ type AnalysisRequest struct {
 	// LoadScriptEngine loads the core WebAssembly engine a configuration selects
 	// through tools.<name>.backend.wasm. Nil rejects such configurations.
 	LoadScriptEngine func(context.Context, string) (analyzer.ScriptBackend, error)
+	// LogWriter receives analysis logs; nil discards them.
+	LogWriter io.Writer
+	LogLevel  LogLevel
 }
 
 // AnalysisResult contains findings, their sources, and every local input read during analysis.
@@ -78,49 +76,20 @@ type analyzedFile struct {
 	outline DocumentOutline
 }
 
-type inputFiles struct {
-	mu    sync.Mutex
-	paths map[string]struct{}
-}
+type inputFiles struct{ workspace.Inputs }
 
-func (f *inputFiles) add(path string) {
-	if path == "" || path == "<stdin>" {
-		return
-	}
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.paths == nil {
-		f.paths = map[string]struct{}{}
-	}
-	f.paths[absPath(path)] = struct{}{}
-}
-
-func (f *inputFiles) list() []string {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	paths := make([]string, 0, len(f.paths))
-	for path := range f.paths {
-		paths = append(paths, path)
-	}
-	slices.Sort(paths)
-	return paths
-}
-
-func (f *inputFiles) addConfig(config *Config, project *Project) {
-	if config != nil {
-		for _, path := range config.Sources() {
-			f.add(path)
-		}
-	}
-	if project != nil {
-		f.add(project.configPath)
-	}
-}
+func (f *inputFiles) add(path string)                         { f.Add(path) }
+func (f *inputFiles) list() []string                          { return f.List() }
+func (f *inputFiles) addConfig(cfg *Config, project *Project) { f.AddConfig(cfg, project) }
 
 // Analyze checks resolved workflows and action manifests without rendering diagnostics.
 // On analysis failure, a non-nil result retains findings collected before the failure.
 func Analyze(ctx context.Context, request AnalysisRequest) (*AnalysisResult, error) {
-	return analyze(ctx, request, io.Discard, LogLevelNone)
+	log := request.LogWriter
+	if log == nil {
+		log = io.Discard
+	}
+	return analyze(ctx, request, log, request.LogLevel)
 }
 
 func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level LogLevel) (*AnalysisResult, error) {
@@ -152,14 +121,14 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		if source.Project != nil {
 			root = source.Project.RootDir()
 		}
-		path := source.inputPath
+		path := source.InputPath
 		if path == "" {
 			path = source.Path
 		}
 		if path != "<stdin>" && !filepath.IsAbs(path) {
 			path = filepath.Join(request.WorkingDir, path)
 		}
-		source.inputPath = path
+		source.InputPath = path
 		if source.Config.IncludesFile(path, root) {
 			selected = append(selected, source)
 		}
@@ -194,7 +163,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	sourceContents := map[string][]byte{}
 	sourcePaths := make([]string, 0, len(allSources))
 	for _, source := range allSources {
-		path := source.inputPath
+		path := source.InputPath
 		if path == "" {
 			path = source.Path
 		}
@@ -247,7 +216,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	group := errgroup.Group{}
 	group.SetLimit(runtime.NumCPU())
 	for i, source := range request.Sources {
-		path := source.inputPath
+		path := source.InputPath
 		if path == "" {
 			path = source.Path
 		}
@@ -275,7 +244,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	for _, file := range result.files {
 		result.Documents = append(result.Documents, file.outline)
 		if _, action := file.outline.(ActionOutline); action {
-			explicitActions[physicalSourcePath(file.source.inputPath)] = true
+			explicitActions[physicalSourcePath(file.source.InputPath)] = true
 		}
 	}
 	for _, document := range documents.list() {
@@ -342,7 +311,7 @@ func (r *AnalysisResult) collectDiagnostics() {
 		}
 		for _, finding := range file.errors {
 			if _, action := file.outline.(ActionOutline); action && finding.Kind == "syntax-check" {
-				parseDeclarations[physicalSourcePath(file.source.inputPath)] = true
+				parseDeclarations[physicalSourcePath(file.source.InputPath)] = true
 			}
 			if identity := finding.metadataFinding; identity != nil && identity.declaration && finding.Kind == "action" {
 				declarations[declarationLocation{project, identity.key}] = true

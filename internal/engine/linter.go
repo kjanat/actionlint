@@ -7,24 +7,13 @@ import (
 	"io"
 	"os"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	"actionlint.kjanat.dev/internal/repoconfig"
 
 	"actionlint.kjanat.dev/internal/render"
 	"github.com/fatih/color"
 	"github.com/mattn/go-colorable"
-)
-
-// LogLevel is log level of logger used in Linter instance.
-type LogLevel int
-
-const (
-	// LogLevelNone does not output any log output.
-	LogLevelNone LogLevel = 0
-	// LogLevelVerbose shows verbose log output. This is equivalent to specifying -verbose option
-	// to actionlint command.
-	LogLevelVerbose = 1
-	// LogLevelDebug shows all log output including debug information.
-	LogLevelDebug = 2
 )
 
 type ColorOptionKind = render.Color
@@ -149,11 +138,11 @@ func (l *Linter) GenerateDefaultConfig(dir string) error {
 
 func (l *Linter) generateDefaultConfig(dir string) (string, error) {
 	if dir == "" {
-		dir = l.cwd
+		dir = l.WorkingDir()
 	}
 
 	l.log("Generating default actionlint.yaml in repository:", dir)
-	return generateProjectConfig(l.projects, dir)
+	return GenerateProjectConfig(dir, false)
 }
 
 func generateProjectConfig(projects *Projects, dir string) (string, error) {
@@ -237,5 +226,5 @@ func newLegacyAnalysisSession(opts *LinterOptions) (*AnalysisSession, error) {
 // GenerateProjectConfig creates a repository config and returns its path without printing.
 // skipConfig permits creation checks without first parsing an existing config.
 func GenerateProjectConfig(dir string, skipConfig bool) (string, error) {
-	return generateProjectConfig(&Projects{skipConfig: skipConfig}, dir)
+	return generateProjectConfig(workspace.Discoverer(skipConfig), dir)
 }

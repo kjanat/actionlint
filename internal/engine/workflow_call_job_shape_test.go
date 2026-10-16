@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -54,7 +56,7 @@ jobs:
 						t.Fatal(err)
 					}
 				}
-				project := &Project{root: root}
+				project := workspace.Identity(root)
 				linter, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root, Shellcheck: "", Pyflakes: ""})
 				if err != nil {
 					t.Fatal(err)

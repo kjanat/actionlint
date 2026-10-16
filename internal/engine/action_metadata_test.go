@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"go.yaml.in/yaml/v4"
@@ -85,7 +87,7 @@ func testCheckCachedFlag(t *testing.T, want, have bool) {
 
 func TestLocalActionsFindMetadataOK(t *testing.T) {
 	testdir := filepath.Join("testdata", "action_metadata")
-	proj := &Project{root: testdir}
+	proj := workspace.Identity(testdir)
 	c := NewLocalActionsCache(proj, nil)
 
 	want := testGetWantedActionMetadata()
@@ -203,7 +205,7 @@ func TestLocalActionsFindMetadataOK(t *testing.T) {
 
 func TestLocalActionsFindConcurrently(t *testing.T) {
 	n := 10
-	proj := &Project{root: filepath.Join("testdata", "action_metadata")}
+	proj := workspace.Identity(filepath.Join("testdata", "action_metadata"))
 	c := NewLocalActionsCache(proj, nil)
 	ret := make(chan *ActionMetadata)
 	err := make(chan error)
@@ -256,7 +258,7 @@ func TestLocalActionsParsingSkipped(t *testing.T) {
 		},
 		{
 			what: "not a local action",
-			proj: &Project{root: ""},
+			proj: workspace.Identity(""),
 			spec: "actions/checkout@v4",
 		},
 	}
@@ -282,7 +284,7 @@ func TestLocalActionsMissingMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, spec := range []string{"./missing", "./empty", "./ }", "$/missing"} {
-		c := NewLocalActionsCache(&Project{root: root}, nil)
+		c := NewLocalActionsCache(workspace.Identity(root), nil)
 		for attempt := range 2 {
 			meta, cached, err := c.FindMetadata(spec)
 			if meta != nil || err == nil || !strings.Contains(err.Error(), "has no action.yml or action.yaml") {
@@ -301,7 +303,7 @@ func TestLocalActionsCaseScopedCache(t *testing.T) {
 description: test
 runs: {using: node24, main: index.js}
 `)
-	base := NewLocalActionsCache(&Project{root: root}, nil)
+	base := NewLocalActionsCache(workspace.Identity(root), nil)
 	folded := &LocalActionsCache{base: base, caseInsensitive: true}
 	exact := &LocalActionsCache{base: base}
 	for _, spec := range []string{"./LOCAL/nested", "$/LOCAL/nested", "./local/Nested"} {
@@ -330,7 +332,7 @@ func TestLocalActionsCaseCollision(t *testing.T) {
 		t.Skip("case-sensitive filesystem required for colliding directories")
 	}
 	writeShellcheckFixture(t, root, "LOCAL/action.yml", "name: upper\n")
-	base := NewLocalActionsCache(&Project{root: root}, nil)
+	base := NewLocalActionsCache(workspace.Identity(root), nil)
 	view := &LocalActionsCache{base: base, caseInsensitive: true}
 	for _, spec := range []string{"./local", "./LOCAL", "./Local", "$/LOCAL"} {
 		metadata, _, err := view.FindMetadata(spec)
@@ -341,7 +343,7 @@ func TestLocalActionsCaseCollision(t *testing.T) {
 }
 
 func TestLocalActionsIgnoreRemoteActions(t *testing.T) {
-	proj := &Project{root: filepath.Join("testdata", "action_metadata")}
+	proj := workspace.Identity(filepath.Join("testdata", "action_metadata"))
 	c := NewLocalActionsCache(proj, nil)
 	for _, spec := range []string{"actions/checkout@v2", "docker://example.com/foo/bar"} {
 		m, cached, err := c.FindMetadata(spec)
@@ -358,7 +360,7 @@ func TestLocalActionsIgnoreRemoteActions(t *testing.T) {
 func TestLocalActionsLogCacheHit(t *testing.T) {
 	dbg := &bytes.Buffer{}
 	testdir := filepath.Join("testdata", "action_metadata")
-	proj := &Project{root: testdir}
+	proj := workspace.Identity(testdir)
 	c := NewLocalActionsCache(proj, dbg)
 
 	want := testGetWantedActionMetadata()
@@ -408,7 +410,7 @@ func TestLocalActionsBrokenMetadata(t *testing.T) {
 		},
 	}
 
-	proj := &Project{root: filepath.Join("testdata", "action_metadata")}
+	proj := workspace.Identity(filepath.Join("testdata", "action_metadata"))
 	c := NewLocalActionsCache(proj, nil)
 
 	for _, tc := range tests {
@@ -437,7 +439,7 @@ func TestLocalActionsBrokenMetadata(t *testing.T) {
 }
 
 func TestLocalActionsDuplicateInputsOutputs(t *testing.T) {
-	proj := &Project{root: filepath.Join("testdata", "action_metadata")}
+	proj := workspace.Identity(filepath.Join("testdata", "action_metadata"))
 	c := NewLocalActionsCache(proj, nil)
 
 	for _, tc := range []struct {
@@ -469,7 +471,7 @@ func TestLocalActionsDuplicateInputsOutputs(t *testing.T) {
 
 func TestLocalActionsConcurrentFailures(t *testing.T) {
 	n := 10
-	proj := &Project{root: filepath.Join("testdata", "action_metadata")}
+	proj := workspace.Identity(filepath.Join("testdata", "action_metadata"))
 	c := NewLocalActionsCache(proj, nil)
 	errC := make(chan error)
 
@@ -503,7 +505,7 @@ func TestLocalActionsConcurrentFailures(t *testing.T) {
 }
 
 func TestLocalActionsConcurrentMultipleMetadataAndFailures(t *testing.T) {
-	proj := &Project{root: filepath.Join("testdata", "action_metadata")}
+	proj := workspace.Identity(filepath.Join("testdata", "action_metadata"))
 	c := NewLocalActionsCache(proj, nil)
 
 	inputs := []string{
@@ -866,10 +868,10 @@ func TestActionMetadataPreservesPartialDecode(t *testing.T) {
 
 func TestLocalActionsCacheFactory(t *testing.T) {
 	f := NewLocalActionsCacheFactory(io.Discard)
-	p1 := &Project{root: "path/to/project1"}
+	p1 := workspace.Identity("path/to/project1")
 	c1 := f.GetCache(p1)
 
-	p2 := &Project{root: "path/to/project2"}
+	p2 := workspace.Identity("path/to/project2")
 	c2 := f.GetCache(p2)
 	if c1 == c2 {
 		t.Errorf("different cache was not created: %v", c1)

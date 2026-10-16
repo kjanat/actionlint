@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 func TestWorkflowRunOrderedFilters(t *testing.T) {
@@ -51,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     steps: [{run: echo ok}]
 `)
-				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(strings.ReplaceAll(source.String(), "\n", ending)), Project: &Project{root: root}, Config: config}}})
+				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(strings.ReplaceAll(source.String(), "\n", ending)), Project: workspace.Identity(root), Config: config}}})
 				if err != nil {
 					t.Fatal(err)
 				}

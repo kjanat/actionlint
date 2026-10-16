@@ -15,6 +15,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	"actionlint.kjanat.dev/internal/buildinfo"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
@@ -30,7 +32,7 @@ func (r testErrorReader) Read(p []byte) (int, error) {
 
 func TestLinterMissingLocalAction(t *testing.T) {
 	root := t.TempDir()
-	proj := &Project{root: root}
+	proj := workspace.Identity(root)
 	for _, tc := range []struct {
 		steps string
 		want  int
@@ -44,7 +46,7 @@ func TestLinterMissingLocalAction(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		l.defaultConfig = &Config{}
+		l.DefaultConfig = &Config{}
 		source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" + tc.steps
 		errs, err := l.Lint("test.yaml", []byte(source), proj)
 		if err != nil || len(errs) != tc.want {
@@ -75,9 +77,9 @@ func TestMissingLocalActionRuleSelection(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			l.defaultConfig = cfg
+			l.DefaultConfig = cfg
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./missing\n      - uses: invalid\n"
-			findings, err := l.Lint("workflow.yml", []byte(source), &Project{root: t.TempDir()})
+			findings, err := l.Lint("workflow.yml", []byte(source), workspace.Identity(t.TempDir()))
 			if err != nil || len(findings) != 1 || findings[0].Kind != tc.want {
 				t.Fatalf("got %v, %v; want only %s", findings, err, tc.want)
 			}
@@ -104,7 +106,7 @@ func TestLinterLintOK(t *testing.T) {
 		}
 	}
 
-	proj := &Project{root: dir}
+	proj := workspace.Identity(dir)
 	shellcheck, _ := execabs.LookPath("shellcheck")
 
 	for _, f := range fs {
@@ -123,7 +125,7 @@ func TestLinterLintOK(t *testing.T) {
 			}
 
 			config := Config{}
-			linter.defaultConfig = &config
+			linter.DefaultConfig = &config
 
 			t.Log("Linting workflow file", f)
 			errs, err := linter.LintFile(f, proj)
@@ -216,7 +218,7 @@ func TestLinterLintError(t *testing.T) {
 			panic(err)
 		}
 
-		proj := &Project{root: dir}
+		proj := workspace.Identity(dir)
 
 		shellcheck := ""
 		if p, err := execabs.LookPath("shellcheck"); err == nil {
@@ -247,7 +249,7 @@ func TestLinterLintError(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				l.defaultConfig = &Config{}
+				l.DefaultConfig = &Config{}
 
 				errs, err := l.Lint("test.yaml", b, proj)
 				if err != nil {
@@ -272,7 +274,7 @@ func TestLinterLintAllErrorWorkflowsAtOnce(t *testing.T) {
 	}
 
 	// Root directory must be testdata/examples/ since some workflow assumes it
-	proj := &Project{root: dir}
+	proj := workspace.Identity(dir)
 
 	_, fs, err := testFindAllWorkflowsInDir("err")
 	if err != nil {
@@ -289,7 +291,7 @@ func TestLinterLintAllErrorWorkflowsAtOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	l.defaultConfig = &Config{}
+	l.DefaultConfig = &Config{}
 
 	errs, err := l.LintFiles(files, proj)
 	if err != nil {
@@ -323,7 +325,7 @@ func TestLintFindProjectFromPath(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		l.defaultConfig = &Config{}
+		l.DefaultConfig = &Config{}
 		errs, err := l.Lint(path, b, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -376,7 +378,7 @@ func TestLinterLintProject(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			proj := &Project{root: repo}
+			proj := workspace.Identity(repo)
 			errs, err := linter.LintDir(filepath.Join(repo, "workflows"), proj)
 			if err != nil {
 				t.Fatal(err)
@@ -407,7 +409,7 @@ func TestLinterFormatErrorMessageOK(t *testing.T) {
 	}
 
 	dir := filepath.Join("testdata", "format")
-	proj := &Project{root: dir}
+	proj := workspace.Identity(dir)
 	infile := filepath.Join(dir, "test.yaml")
 	for _, tc := range tests {
 		t.Run(tc.file, func(t *testing.T) {
@@ -419,7 +421,7 @@ func TestLinterFormatErrorMessageOK(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			l.defaultConfig = &Config{}
+			l.DefaultConfig = &Config{}
 			errs, err := l.LintFile(infile, proj)
 			if err != nil {
 				t.Fatal(err)
@@ -459,7 +461,7 @@ func TestLinterFormatErrorMessageInSARIF(t *testing.T) {
 	buildinfo.ReleaseVersion = "(devel)"
 
 	dir := filepath.Join("testdata", "format")
-	proj := &Project{root: dir}
+	proj := workspace.Identity(dir)
 	file := filepath.Join(dir, "test.yaml")
 
 	opts := LinterOptions{OutputFormat: OutputFormatSARIF}
@@ -469,7 +471,7 @@ func TestLinterFormatErrorMessageInSARIF(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	l.defaultConfig = &Config{}
+	l.DefaultConfig = &Config{}
 	errs, err := l.LintFile(file, proj)
 	if err != nil {
 		t.Fatal(err)
@@ -594,9 +596,9 @@ func TestLinterOnFilesSelectedHook(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	l.defaultConfig = &Config{}
+	l.DefaultConfig = &Config{}
 
-	if _, err := l.LintFiles(paths, &Project{root: "."}); err != nil {
+	if _, err := l.LintFiles(paths, workspace.Identity(".")); err != nil {
 		t.Fatal(err)
 	}
 	if !slices.Equal(selected, paths) {
@@ -634,7 +636,7 @@ func TestLinterAddCustomRuleOnRulesCreatedHook(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	l.defaultConfig = &Config{}
+	l.DefaultConfig = &Config{}
 
 	{
 		w := `on: push
@@ -697,7 +699,7 @@ func TestLinterRemoveRuleOnRulesCreatedHook(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	l.defaultConfig = &Config{}
+	l.DefaultConfig = &Config{}
 
 	f := filepath.Join("testdata", "err", "invalid_runner_labels.yaml")
 	errs, err := l.LintFile(f, nil)
@@ -735,7 +737,7 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 	small := filepath.Join("testdata", "bench", "small.yaml")
 	large := filepath.Join("testdata", "bench", "large.yaml")
 	minimal := filepath.Join("testdata", "bench", "minimal.yaml")
-	proj := &Project{root: "."}
+	proj := workspace.Identity(".")
 	shellcheck, err := execabs.LookPath("shellcheck")
 	if err != nil {
 		b.Skipf("shellcheck is not found: %s", err)
@@ -865,7 +867,7 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				l.defaultConfig = &Config{}
+				l.DefaultConfig = &Config{}
 
 				errs, err := l.LintFiles(bm.files, proj)
 				if err != nil {
@@ -885,7 +887,7 @@ func BenchmarkLintWorkflowContent(b *testing.B) {
 	if err != nil {
 		panic(err)
 	}
-	proj := &Project{root: dir}
+	proj := workspace.Identity(dir)
 
 	// Measure performance of traversing with checks except for external process rules (shellcheck, pyflakes)
 	// Reading file content is not included in benchmark measurement.
@@ -912,7 +914,7 @@ func BenchmarkLintWorkflowContent(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				l.defaultConfig = &Config{}
+				l.DefaultConfig = &Config{}
 				errs, err := l.Lint(f, content, proj)
 				if err != nil {
 					b.Fatal(err)
@@ -931,7 +933,7 @@ func BenchmarkExamplesLintFiles(b *testing.B) {
 		panic(err)
 	}
 
-	proj := &Project{root: dir}
+	proj := workspace.Identity(dir)
 	shellcheck, err := execabs.LookPath("shellcheck")
 	if err != nil {
 		b.Skipf("shellcheck is not found: %s", err)
@@ -946,7 +948,7 @@ func BenchmarkExamplesLintFiles(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		l.defaultConfig = &Config{}
+		l.DefaultConfig = &Config{}
 
 		errs, err := l.LintFiles(files, proj)
 		if err != nil {

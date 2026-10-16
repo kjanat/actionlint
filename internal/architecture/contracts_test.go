@@ -104,3 +104,30 @@ func TestApplicationDoesNotImportCLI(t *testing.T) {
 		}
 	}
 }
+
+// Input preparation must be usable without parsing, rules, or analyzer runtimes.
+func TestWorkspaceDoesNotImportAnalysis(t *testing.T) {
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/internal/workspace").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for dependency := range strings.SplitSeq(string(output), "\n") {
+		switch dependency {
+		case "actionlint.kjanat.dev/internal/engine", "actionlint.kjanat.dev/internal/application", "actionlint.kjanat.dev/internal/cli", "actionlint.kjanat.dev/internal/workflow", "actionlint.kjanat.dev/internal/analyzerhost", "actionlint.kjanat.dev/analyzer":
+			t.Errorf("input preparation imports analysis implementation %s", dependency)
+		}
+	}
+}
+
+func TestAnalyzerHostDoesNotImportTraversal(t *testing.T) {
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/internal/analyzerhost").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for dependency := range strings.SplitSeq(string(output), "\n") {
+		switch dependency {
+		case "actionlint.kjanat.dev/internal/engine", "actionlint.kjanat.dev/internal/workflow", "actionlint.kjanat.dev/internal/workspace", "actionlint.kjanat.dev/internal/repoconfig":
+			t.Errorf("analyzer scheduling imports traversal or input selection %s", dependency)
+		}
+	}
+}

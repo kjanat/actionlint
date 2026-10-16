@@ -90,11 +90,11 @@ func TestRelativeConfigCallbackPath(t *testing.T) {
 				if inherited {
 					want = append(want, base)
 				}
-				if !slices.Equal(reads, want) || diagnosticLevel(session.defaultConfig, "if-cond") != "warn" {
+				if !slices.Equal(reads, want) || diagnosticLevel(session.DefaultConfig, "if-cond") != "warn" {
 					t.Fatalf("callback paths=%v, want=%v", reads, want)
 				}
-				if !slices.Contains(session.defaultConfig.Sources(), filepath.Join(root, "config.yml")) {
-					t.Fatalf("config origin did not remain absolute: %v", session.defaultConfig.Sources())
+				if !slices.Contains(session.DefaultConfig.Sources(), filepath.Join(root, "config.yml")) {
+					t.Fatalf("config origin did not remain absolute: %v", session.DefaultConfig.Sources())
 				}
 			})
 		}

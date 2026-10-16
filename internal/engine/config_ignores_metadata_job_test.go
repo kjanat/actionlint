@@ -3,6 +3,8 @@ package engine
 import (
 	"path/filepath"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 func TestReusableIgnoresMetadataPerJob(t *testing.T) {
@@ -56,7 +58,7 @@ jobs:
 			}
 			result, err := Analyze(t.Context(), AnalysisRequest{
 				WorkingDir: root,
-				Sources:    []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: &Project{root: root}}},
+				Sources:    []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: workspace.Identity(root)}},
 			})
 			if err != nil {
 				t.Fatal(err)

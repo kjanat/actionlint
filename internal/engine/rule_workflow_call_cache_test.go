@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/google/go-cmp/cmp"
 )
@@ -39,7 +41,7 @@ jobs:
 					t.Fatal(err)
 				}
 			}
-			proj := &Project{root: root}
+			proj := workspace.Identity(root)
 			l, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root})
 			if err != nil {
 				t.Fatal(err)
@@ -93,7 +95,7 @@ jobs:
 func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, fromAST bool) []*Error {
 	t.Helper()
 	root := t.TempDir()
-	cache := NewLocalReusableWorkflowCache(&Project{root: root}, root, nil)
+	cache := NewLocalReusableWorkflowCache(workspace.Identity(root), root, nil)
 	for name, src := range callees {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(src), 0o600); err != nil {
 			t.Fatal(err)
@@ -359,7 +361,7 @@ jobs:
 		t.Fatalf("expected the invalid null declaration, got %v", errs)
 	}
 	root := t.TempDir()
-	cache := NewLocalReusableWorkflowCache(&Project{root: root}, root, nil)
+	cache := NewLocalReusableWorkflowCache(workspace.Identity(root), root, nil)
 	event, _ := w.FindWorkflowCallEvent()
 	cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, w)
 	fromAST, _, ok := cache.readCache("./callee.yaml")

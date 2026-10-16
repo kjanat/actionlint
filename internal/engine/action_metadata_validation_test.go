@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
@@ -49,7 +51,7 @@ func TestMetadataFirstVisibleInvocation(t *testing.T) {
 						source.WriteString(job)
 						source.WriteString(":\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n")
 					}
-					result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source.String()), Config: config, Project: &Project{root: root}}}})
+					result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source.String()), Config: config, Project: workspace.Identity(root)}}})
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -82,7 +84,7 @@ func TestMetadataValidationDebugLog(t *testing.T) {
 	writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\nruns: {using: node24, main: index.js}\n")
 	writeShellcheckFixture(t, root, "inner/index.js", "")
 	var cacheLog, ruleLog strings.Builder
-	rule := NewRuleAction(NewLocalActionsCache(&Project{root: root}, &cacheLog))
+	rule := NewRuleAction(NewLocalActionsCache(workspace.Identity(root), &cacheLog))
 	rule.EnableDebug(&ruleLog)
 	for i := 1; i <= 2; i++ {
 		rule.checkLocalAction("./inner", "./inner", &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &workflowlang.Pos{Line: i, Col: 1}}})
@@ -99,7 +101,7 @@ func TestMetadataValidationTemplatesDetached(t *testing.T) {
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\nruns: {using: node24, main: index.js}\n")
 	writeShellcheckFixture(t, root, "inner/index.js", "")
-	cache := NewLocalActionsCache(&Project{root: root}, nil)
+	cache := NewLocalActionsCache(workspace.Identity(root), nil)
 	rule := NewRuleAction(cache)
 	for i := 1; i <= 3; i++ {
 		action := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &workflowlang.Pos{Line: i, Col: 1}}}

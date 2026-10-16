@@ -7,6 +7,8 @@ import (
 	"slices"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	"actionlint.kjanat.dev/internal/fsread"
 )
 
@@ -59,7 +61,7 @@ jobs:
 		t.Skipf("the file stays readable, as for root: %q", data)
 	}
 	dir := filepath.Join(root, ".github", "workflows")
-	request := AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(dir, "consumer.yml"), Content: []byte(consumer), Project: &Project{root: root}}}}
+	request := AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(dir, "consumer.yml"), Content: []byte(consumer), Project: workspace.Identity(root)}}}
 	result, err := Analyze(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)

@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 const reusableIgnoreSource = `on: push
@@ -190,7 +192,7 @@ func TestReusableIgnoreCallerRelativeFile(t *testing.T) {
 				if err != nil || result.FileCount() != 1 || len(result.Diagnostics) != want {
 					t.Fatalf("session %s: %+v, %v", path, result, err)
 				}
-				result, err = Analyze(t.Context(), AnalysisRequest{WorkingDir: parent, Sources: []SourceUnit{{Path: path, Content: []byte(source), Project: &Project{root: root}, Config: cfg}}})
+				result, err = Analyze(t.Context(), AnalysisRequest{WorkingDir: parent, Sources: []SourceUnit{{Path: path, Content: []byte(source), Project: workspace.Identity(root), Config: cfg}}})
 				if err != nil || result.FileCount() != 1 || len(result.Diagnostics) != want {
 					t.Fatalf("direct %s: %+v, %v", path, result, err)
 				}

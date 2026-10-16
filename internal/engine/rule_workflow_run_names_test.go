@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 func TestWorkflowRunNames(t *testing.T) {
@@ -43,7 +45,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(src), Project: &Project{root: root}, Config: config}}})
+			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(src), Project: workspace.Identity(root), Config: config}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -77,7 +79,7 @@ func TestWorkflowRunNamesLiteralNames(t *testing.T) {
 		for _, inMemory := range []bool{false, true} {
 			t.Run(tc.name+tc.reference+strconv.FormatBool(inMemory), func(t *testing.T) {
 				root := t.TempDir()
-				project := &Project{root: root}
+				project := workspace.Identity(root)
 				producer := "name: " + tc.name + "\n" + commandGoodWorkflow
 				consumer := "on: {workflow_run: {workflows: ['" + tc.reference + `'], types: [completed]}}
 jobs:
@@ -117,7 +119,7 @@ func TestWorkflowRunNamesFilesystemPathCasing(t *testing.T) {
 				if _, err := os.Stat(strings.ToUpper(root)); err != nil {
 					t.Skip("requires a case-insensitive filesystem")
 				}
-				project := &Project{root: strings.ToUpper(root)}
+				project := workspace.Identity(strings.ToUpper(root))
 				consumer := "on: {workflow_run: {workflows: [" + reference + `], types: [completed]}}
 jobs:
   test:
@@ -201,7 +203,7 @@ func TestWorkflowRunNamesPatterns(t *testing.T) {
 	} {
 		t.Run(tc.name+tc.filters, func(t *testing.T) {
 			root := t.TempDir()
-			project := &Project{root: root}
+			project := workspace.Identity(root)
 			consumer := "on: {workflow_run: {workflows: [" + tc.filters + `], types: [completed]}}
 jobs:
   test:
@@ -240,7 +242,7 @@ func TestWorkflowRunNamesExcludedInMemory(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			project := &Project{root: root}
+			project := workspace.Identity(root)
 			// The excluded source also contains a lint finding that must remain excluded.
 			producerContent := `name: New
 env: {VALUE: '${{ nonexistent }}'}
@@ -285,7 +287,7 @@ jobs:
 					return nil, readErr
 				}
 				return os.ReadFile(path)
-			}, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: &Project{root: root}}}})
+			}, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: workspace.Identity(root)}}})
 			if !read {
 				t.Fatal("sibling was not read")
 			}
@@ -310,7 +312,7 @@ jobs:
     steps:
       - run: echo ok
 `
-	project := &Project{root: root}
+	project := workspace.Identity(root)
 	sources := []SourceUnit{{Path: producer, Content: []byte("name: New\n" + commandGoodWorkflow), Project: project}, {Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: project}}
 	result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: sources})
 	if err != nil || len(result.Diagnostics) != 0 {

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
@@ -36,7 +38,7 @@ overrides:
 				}
 				result, err := Analyze(t.Context(), AnalysisRequest{
 					WorkingDir: root,
-					Sources:    []SourceUnit{{Path: ".github/workflows/ci.yml", Content: []byte(commandGoodWorkflow), Config: cfg, Project: &Project{root: root}}},
+					Sources:    []SourceUnit{{Path: ".github/workflows/ci.yml", Content: []byte(commandGoodWorkflow), Config: cfg, Project: workspace.Identity(root)}},
 					OnRulesCreated: func([]Rule) []Rule {
 						rule := NewRuleBase("expression", "dependency finding")
 						rule.Error(&workflowlang.Pos{Line: 1, Col: 1}, "dependency finding")
@@ -191,7 +193,7 @@ func TestWorkflowOverridesApplyToDependencyDiagnostics(t *testing.T) {
 				}
 				result, err := Analyze(t.Context(), AnalysisRequest{
 					WorkingDir: root,
-					Sources:    []SourceUnit{{Path: ".github/workflows/ci.yml", Content: []byte(commandGoodWorkflow), Config: cfg, Project: &Project{root: root}}},
+					Sources:    []SourceUnit{{Path: ".github/workflows/ci.yml", Content: []byte(commandGoodWorkflow), Config: cfg, Project: workspace.Identity(root)}},
 					OnRulesCreated: func([]Rule) []Rule {
 						rule := NewRuleBase("expression", "dependency finding")
 						rule.Error(&workflowlang.Pos{Line: 1, Col: 1}, "dependency finding")
@@ -236,7 +238,7 @@ runs:
 				t.Fatal(err)
 			}
 			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{
-				Path: ".github/workflows/ci.yml", Config: cfg, Project: &Project{root: root},
+				Path: ".github/workflows/ci.yml", Config: cfg, Project: workspace.Identity(root),
 				Content: []byte(`on: push
 jobs:
   test:

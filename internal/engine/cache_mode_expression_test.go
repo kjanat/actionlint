@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/google/go-cmp/cmp"
 )
@@ -43,7 +45,7 @@ jobs:
 				if err := os.WriteFile(filepath.Join(root, "callee.yaml"), []byte(source), 0o600); err != nil {
 					t.Fatal(err)
 				}
-				project := &Project{root: root}
+				project := workspace.Identity(root)
 				fileCache := NewLocalReusableWorkflowCache(project, root, nil)
 				fromFile, err := fileCache.FindMetadata("./callee.yaml")
 				if err != nil {

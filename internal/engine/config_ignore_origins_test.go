@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 func TestReusableIgnoresDistinguishAliasedSteps(t *testing.T) {
@@ -91,7 +93,7 @@ jobs:
 		result, err := Analyze(t.Context(), AnalysisRequest{
 			WorkingDir: root, ShellCheck: command,
 			ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}},
-			Sources:           []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: &Project{root: root}}},
+			Sources:           []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: workspace.Identity(root)}},
 		})
 		if err != nil {
 			t.Fatal(err)

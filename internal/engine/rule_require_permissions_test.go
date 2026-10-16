@@ -46,7 +46,7 @@ func TestRuleRequirePermissions(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				linter.defaultConfig = cfg
+				linter.DefaultConfig = cfg
 				source := []byte("on: push\n" + tc.workflowPermissions + `jobs:
   test:
 ` + tc.job)

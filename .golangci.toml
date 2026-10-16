@@ -66,7 +66,7 @@ path    = '_test\.go$|^(scripts|\.github|cmd|fuzz|playground)/|^internal/(cli|gi
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
-path    = '^internal/(engine/(project|analysis_application)|repoconfig/(config|inspection))\.go$'
+path    = '^internal/(workspace/(project|session)|repoconfig/(config|inspection))\.go$'
 text    = "fsread\\.Disk"
 linters = ["forbidigo"]
 

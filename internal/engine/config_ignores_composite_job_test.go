@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 func TestReusableIgnoreCompositeJob(t *testing.T) {
@@ -38,7 +40,7 @@ func TestReusableIgnoreCompositeJob(t *testing.T) {
 					fmt.Fprintf(&source, "  %c:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: %s\n", job, uses)
 				}
 				path := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", source.String())
-				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: path, Content: []byte(source.String()), Config: config, Project: &Project{root: root}}}, ShellCheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}}})
+				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: path, Content: []byte(source.String()), Config: config, Project: workspace.Identity(root)}}, ShellCheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}}})
 				if err != nil {
 					t.Fatal(err)
 				}

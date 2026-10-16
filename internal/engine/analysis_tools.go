@@ -1,11 +1,13 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/internal/repoconfig"
 	"path"
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"actionlint.kjanat.dev/internal/repoconfig"
+	"actionlint.kjanat.dev/internal/workspace"
 
 	"actionlint.kjanat.dev/internal/fsread"
 )
@@ -24,13 +26,13 @@ type ExternalToolRequirements struct {
 func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirements, error) {
 	var needed ExternalToolRequirements
 	if len(paths) == 0 {
-		paths = []string{a.cwd}
-		project, err := a.projects.At(a.cwd)
+		paths = []string{a.WorkingDir()}
+		project, err := a.ProjectAt(a.WorkingDir())
 		if err != nil {
 			return needed, err
 		}
 		if project != nil {
-			paths, err = repositoryPaths(a.ctx, project, fsread.New(a.ctx, nil, nil))
+			paths, err = workspace.RepositoryPaths(a.ctx, project, fsread.New(a.ctx, nil, nil))
 			if err != nil {
 				return needed, err
 			}
@@ -41,9 +43,9 @@ func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirement
 			return needed, err
 		}
 		if !filepath.IsAbs(path) {
-			path = filepath.Join(a.cwd, path)
+			path = filepath.Join(a.WorkingDir(), path)
 		}
-		project, err := a.projects.At(path)
+		project, err := a.ProjectAt(path)
 		if err != nil {
 			return needed, err
 		}
@@ -51,7 +53,7 @@ func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirement
 		if err != nil {
 			return needed, err
 		}
-		root := a.cwd
+		root := a.WorkingDir()
 		if project != nil {
 			root = project.RootDir()
 		}

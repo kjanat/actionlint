@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	stringutil "actionlint.kjanat.dev/internal/stringutil"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
@@ -26,7 +28,7 @@ func TestWorkflowCallMetadataFailureSpelling(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
-				proj := &Project{root: root}
+				proj := workspace.Identity(root)
 				cache := NewLocalReusableWorkflowCache(proj, root, nil)
 				l, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root})
 				if err != nil {
@@ -109,7 +111,7 @@ jobs:
 					t.Fatal(err)
 				}
 			}
-			project := &Project{root: root}
+			project := workspace.Identity(root)
 			linter, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root, Shellcheck: "", Pyflakes: ""})
 			if err != nil {
 				t.Fatal(err)
@@ -271,7 +273,7 @@ func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
 	}
 
 	cwd := filepath.Join("path", "to", "project")
-	c := NewLocalReusableWorkflowCache(&Project{root: cwd}, cwd, nil)
+	c := NewLocalReusableWorkflowCache(workspace.Identity(cwd), cwd, nil)
 	r := NewRuleWorkflowCall("test-workflow.yaml", c)
 
 	if err := r.VisitWorkflowPre(w); err != nil {
@@ -307,7 +309,7 @@ func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
 
 func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 	cwd := filepath.Join("testdata", "reusable_workflow_metadata")
-	cache := NewLocalReusableWorkflowCache(&Project{root: cwd}, cwd, nil)
+	cache := NewLocalReusableWorkflowCache(workspace.Identity(cwd), cwd, nil)
 
 	for i, md := range []*ReusableWorkflowMetadata{
 		// workflow0.yaml
@@ -579,7 +581,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 		return msgs
 	}
 
-	fromFile := run(t, NewLocalReusableWorkflowCache(&Project{root: root}, root, nil))
+	fromFile := run(t, NewLocalReusableWorkflowCache(workspace.Identity(root), root, nil))
 
 	src, err := os.ReadFile(filepath.Join(root, "permissions.yaml"))
 	if err != nil {
@@ -598,7 +600,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 	if event == nil {
 		t.Fatal("callee has no workflow_call event")
 	}
-	astCache := NewLocalReusableWorkflowCache(&Project{root: root}, root, nil)
+	astCache := NewLocalReusableWorkflowCache(workspace.Identity(root), root, nil)
 	astCache.WriteWorkflowCallEventFromWorkflow("permissions.yaml", event, w)
 	fromNode := run(t, astCache)
 
@@ -810,7 +812,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
 			cwd := filepath.Join("path", "to", "project")
-			cache := NewLocalReusableWorkflowCache(&Project{root: cwd}, cwd, nil)
+			cache := NewLocalReusableWorkflowCache(workspace.Identity(cwd), cwd, nil)
 			cache.writeCache("./callee.yaml", &ReusableWorkflowMetadata{JobPermissions: tc.callee}, nil)
 
 			r := NewRuleWorkflowCall("caller.yaml", cache)

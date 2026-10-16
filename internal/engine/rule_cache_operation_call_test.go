@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -166,7 +168,7 @@ jobs:
 			t.Fatal(err)
 		}
 	}
-	project := &Project{root: root}
+	project := workspace.Identity(root)
 	l, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root, Shellcheck: "", Pyflakes: ""})
 	if err != nil {
 		t.Fatal(err)
@@ -255,7 +257,7 @@ jobs:
 						t.Fatal(err)
 					}
 				}
-				project := &Project{root: root}
+				project := workspace.Identity(root)
 				l, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root, Shellcheck: "", Pyflakes: ""})
 				if err != nil {
 					t.Fatal(err)
@@ -353,13 +355,13 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 			t.Fatal(err)
 		}
 	}
-	project := &Project{root: root}
+	project := workspace.Identity(root)
 	l, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root, Shellcheck: "", Pyflakes: ""})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if config != "" {
-		l.defaultConfig, err = ParseConfig([]byte(config))
+		l.DefaultConfig, err = ParseConfig([]byte(config))
 		if err != nil {
 			t.Fatal(err)
 		}

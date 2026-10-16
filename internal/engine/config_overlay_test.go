@@ -10,46 +10,10 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	"actionlint.kjanat.dev/internal/repoconfig"
 )
-
-func TestConfigLoadedCallbackCanReenterSession(t *testing.T) {
-	var session *AnalysisSession
-	var calls int
-	var reentered *AnalysisResult
-	var reentryErr error
-	session, err := NewAnalysisSession(AnalysisOptions{OnConfigLoaded: func(ConfigReport) {
-		calls++
-		if calls > 1 {
-			t.Error("reentry invoked the callback again")
-			return
-		}
-		// Fail without leaving a blocked reentrant call behind when the lock is held.
-		if !session.configState.TryLock() {
-			t.Error("OnConfigLoaded holds the configuration cache lock")
-			return
-		}
-		session.configState.Unlock()
-		reentered, reentryErr = session.ReadStdin(strings.NewReader(`on: push
-jobs: {}
-`), false)
-	}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err := session.ReadStdin(strings.NewReader(`on: push
-jobs: {}
-`), false)
-	if err != nil || result == nil || result.FileCount() != 1 {
-		t.Fatalf("outer analysis: %+v, %v", result, err)
-	}
-	if reentryErr != nil || reentered == nil || reentered.FileCount() != 1 {
-		t.Fatalf("reentrant analysis: %+v, %v", reentered, reentryErr)
-	}
-	if calls != 1 {
-		t.Fatalf("callback invoked %d times for the same project", calls)
-	}
-}
 
 func TestConfigLoadedCallbackOncePerConcurrentProject(t *testing.T) {
 	overlay, err := ParseConfigOverlay("config-variables", []byte("[ALLOWED]"))
@@ -64,7 +28,7 @@ func TestConfigLoadedCallbackOncePerConcurrentProject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	projects := []*Project{{root: "first"}, {root: "second"}}
+	projects := []*Project{workspace.Identity("first"), workspace.Identity("second")}
 	type loaded struct {
 		project int
 		config  *Config

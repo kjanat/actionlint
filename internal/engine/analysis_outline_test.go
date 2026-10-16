@@ -10,6 +10,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 func TestAnalysisWorkflowOutlines(t *testing.T) {
@@ -160,7 +162,7 @@ jobs:
       - uses: $/broken
       - uses: $/missing
 `
-	analysis, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Project: &Project{root: dir}}}, WorkingDir: dir})
+	analysis, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Project: workspace.Identity(dir)}}, WorkingDir: dir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +220,7 @@ jobs:
     steps:
       - uses: $/
 `
-			analysis, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Project: &Project{root: dir}}}, WorkingDir: dir})
+			analysis, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Project: workspace.Identity(dir)}}, WorkingDir: dir})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -394,7 +396,7 @@ jobs:
 		t.Run(tc.name, func(t *testing.T) {
 			var sources []SourceUnit
 			for _, path := range slices.Sorted(maps.Keys(tc.sources)) {
-				sources = append(sources, SourceUnit{Path: path, Content: []byte(tc.sources[path]), Project: &Project{root: root}, Config: tc.config})
+				sources = append(sources, SourceUnit{Path: path, Content: []byte(tc.sources[path]), Project: workspace.Identity(root), Config: tc.config})
 			}
 			analysis, err := Analyze(t.Context(), AnalysisRequest{Sources: sources, WorkingDir: root, Ruff: tc.ruff})
 			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -28,7 +30,7 @@ func TestReusableWorkflowDuplicateRootCacheModeMetadataOrder(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("%s/%s/%s/leaf=%s", tc.key, tc.first, tc.second, tc.leaf), func(t *testing.T) {
 			root := t.TempDir()
-			project := &Project{root: root}
+			project := workspace.Identity(root)
 			caller := []byte(`on: push
 cache-mode: read
 jobs:
@@ -148,7 +150,7 @@ func TestReusableWorkflowInvalidRootKeyMetadataOrder(t *testing.T) {
 		} {
 			t.Run(fmt.Sprintf("%s/%s/%s/leaf=%s", entry.key, tc.invalid, tc.valid, tc.leaf), func(t *testing.T) {
 				root := t.TempDir()
-				project := &Project{root: root}
+				project := workspace.Identity(root)
 				caller := []byte(`on: push
 cache-mode: read
 jobs:

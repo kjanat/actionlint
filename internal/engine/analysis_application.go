@@ -1,21 +1,12 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/repoconfig"
 	"context"
-	"errors"
-	"fmt"
 	"io"
-	"io/fs"
-	"os"
-	"path/filepath"
 	"slices"
-	"strings"
-	"sync"
 
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/projectpath"
+	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 // AnalysisOptions controls source discovery and analysis without selecting an output format.
@@ -65,87 +56,28 @@ type AnalysisOptions struct {
 	LoadScriptEngine func(context.Context, string) (analyzer.ScriptBackend, error)
 }
 
-// AnalysisSession resolves local inputs before handing them to Analyze.
-// It retains project discovery state for callers that reuse a Linter.
+// AnalysisSession adapts the legacy session API to independent preparation and analysis.
+// New application callers prepare inputs with workspace and invoke Analyze directly.
 type AnalysisSession struct {
+	*workspace.Session
 	analysisLogger
-	engines           *ScriptEngines
-	projects          *Projects
-	defaultConfig     *Config
-	defaultConfigPath string
-	configState       *analysisConfigState
-	request           AnalysisRequest
-	ctx               context.Context
-	cwd               string
-	stdin             string
-	onFilesSelected   func([]string)
-	readFile          func(string) ([]byte, error)
-	logSelection      bool
+	engines      *ScriptEngines
+	request      AnalysisRequest
+	ctx          context.Context
+	logSelection bool
 }
 
-type analysisLogger struct {
-	logOut   io.Writer
-	logLevel LogLevel
-}
-
-type analysisLogWriter struct {
-	mu  sync.Mutex
-	out io.Writer
-}
-
-func (w *analysisLogWriter) Write(p []byte) (int, error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	return w.out.Write(p)
-}
-
-func (l *analysisLogger) log(args ...any) {
-	if l.logLevel >= LogLevelVerbose {
-		_, _ = io.WriteString(l.logOut, "verbose: "+fmt.Sprintln(args...))
-	}
-}
-
-func (l *analysisLogger) debug(format string, args ...any) {
-	if l.logLevel >= LogLevelDebug {
-		_, _ = fmt.Fprintf(l.logOut, "[Linter] "+format+"\n", args...)
-	}
-}
-
-func (l *analysisLogger) debugWriter() io.Writer {
-	if l.logLevel < LogLevelDebug {
-		return nil
-	}
-	return l.logOut
-}
-
-// NewAnalysisSession prepares project discovery, configuration and external linters.
-// It does not read workflow inputs or render findings.
 func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
-	a := &AnalysisSession{
-		projects: NewProjects(), ctx: opts.Context, cwd: opts.WorkingDir,
-		stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected,
-		readFile:     opts.ReadFile,
-		logSelection: !opts.QuietSelection,
-		request:      AnalysisRequest{Analyzers: opts.Analyzers, Ruff: opts.Ruff, RuffOptions: opts.RuffOptions, RuffBackend: opts.RuffBackend, ShellcheckBackend: opts.ShellcheckBackend, ShellCheck: opts.Shellcheck, ShellcheckRunner: opts.ShellcheckRunner, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, OnRulesCreated: opts.OnRulesCreated},
-		logOut:       opts.LogWriter,
+	a := &AnalysisSession{ctx: opts.Context, logSelection: !opts.QuietSelection,
+		request: AnalysisRequest{Analyzers: opts.Analyzers, Ruff: opts.Ruff, RuffOptions: opts.RuffOptions, RuffBackend: opts.RuffBackend, ShellcheckBackend: opts.ShellcheckBackend, ShellCheck: opts.Shellcheck, ShellcheckRunner: opts.ShellcheckRunner, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, OnRulesCreated: opts.OnRulesCreated, ReadFile: opts.ReadFile, RulePresets: opts.RulePresets},
+		logOut:  opts.LogWriter,
 	}
 	if err := a.request.validateBackends(); err != nil {
 		return nil, err
 	}
-	if opts.LoadScriptEngine != nil {
-		a.engines = NewScriptEngines(opts.LoadScriptEngine)
-		a.request.LoadScriptEngine = a.engines.Load
-	}
 	if a.ctx == nil {
 		a.ctx = context.Background()
 	}
-	if a.readFile == nil {
-		a.readFile = fsread.Disk
-	}
-	a.projects.readFile = a.readFile
-	a.projects.ruleNames = registeredRuleNames(opts.Analyzers)
-	a.request.ReadFile = opts.ReadFile
-	a.request.RulePresets = opts.RulePresets
 	if a.logOut == nil {
 		a.logOut = io.Discard
 	}
@@ -155,336 +87,69 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 		a.logLevel = LogLevelDebug
 	}
 	var err error
-	if opts.ConfigFile != "" {
-		source, loadErr := repoconfig.Read(opts.ConfigFile, a.readFile, a.projects.ruleNames...)
-		err = loadErr
-		if err != nil {
-			return nil, err
-		}
-		a.defaultConfig = source.Config
-		a.defaultConfigPath = opts.ConfigFile
-		a.configState = &analysisConfigState{source: source}
-	}
-	if a.configState == nil {
-		a.configState = &analysisConfigState{}
-	}
-	a.configState.overlays = slices.Clone(opts.ConfigOverlays)
-	a.configState.onLoaded = opts.OnConfigLoaded
-	a.configState.loaded = make(map[*Project]*Config)
-	a.configState.reports = make(map[*Project]ConfigReport)
-	a.projects.skipConfig = opts.SkipProjectConfig
 	a.request.IgnorePatterns, err = CompileIgnorePatterns(opts.IgnorePatterns)
 	if err != nil {
 		return nil, err
 	}
-	if a.cwd == "" {
-		a.cwd, err = os.Getwd()
-		if err != nil {
-			a.cwd = "."
-		}
-	}
-	a.cwd, err = filepath.Abs(a.cwd)
+	a.Session, err = workspace.New(workspace.Options{Context: a.ctx, WorkingDir: opts.WorkingDir, StdinFileName: opts.StdinFileName, ConfigFile: opts.ConfigFile, ConfigOverlays: opts.ConfigOverlays, OnConfigLoaded: opts.OnConfigLoaded, SkipProjectConfig: opts.SkipProjectConfig, OnFilesSelected: opts.OnFilesSelected, ReadFile: opts.ReadFile, RuleNames: registeredRuleNames(opts.Analyzers), Log: a.selectionLog, LogWriter: a.logOut})
 	if err != nil {
 		return nil, err
 	}
-	if a.stdin == "" {
-		a.stdin = "<stdin>"
+	a.request.WorkingDir = a.WorkingDir()
+	if opts.LoadScriptEngine != nil {
+		a.engines = NewScriptEngines(opts.LoadScriptEngine)
+		a.request.LoadScriptEngine = a.engines.Load
 	}
-	a.request.WorkingDir = a.cwd
 	return a, nil
 }
-
 func (a *AnalysisSession) selectionLog(args ...any) {
 	if a.logSelection {
 		a.log(args...)
 	}
 }
-
-// Repository analyzes the nearest repository's workflows and actions. An empty dir uses WorkingDir.
 func (a *AnalysisSession) Repository(dir string) (*AnalysisResult, error) {
-	if dir == "" {
-		dir = a.cwd
-	}
-	a.selectionLog("Linting workflows and actions in repository:", dir)
-	project, err := a.projects.At(dir)
-	if err != nil {
-		return nil, err
-	}
-	if project == nil {
-		if found, expected := projectpath.WorkflowTypo(dir, fsread.New(a.ctx, nil, nil)); found != "" {
-			return nil, fmt.Errorf("no workflows directory was found: %q looks misspelled; rename it to %q", found, expected)
-		}
-		return nil, fmt.Errorf("no project was found in any parent directories of %q. run actionlint inside a Git repository or provide explicit file paths", dir)
-	}
-	a.selectionLog("Detected project:", project.RootDir())
-	if _, err := os.Stat(project.WorkflowsDir()); os.IsNotExist(err) {
-		if found, expected := projectpath.WorkflowTypo(dir, fsread.New(a.ctx, nil, nil)); found != "" {
-			return nil, fmt.Errorf("no workflows directory was found: %q looks misspelled; rename it to %q", found, expected)
-		}
-	}
-	metadata := &inputFiles{}
-	paths, err := repositoryPaths(a.ctx, project, fsread.New(a.ctx, nil, metadata.add))
-	if err != nil {
-		return nil, err
-	}
-	if len(paths) == 0 {
-		a.filesSelected(paths)
-		if found, expected := projectpath.WorkflowTypo(dir, fsread.New(a.ctx, nil, nil)); found != "" {
-			return nil, fmt.Errorf("no workflows directory was found: %q looks misspelled; rename it to %q", found, expected)
-		}
-		return nil, fmt.Errorf("no workflow or action files were found in %q", project.RootDir())
-	}
-	return a.discoveredFiles(paths, metadata.list(), project)
+	return a.run(a.Session.Repository(dir))
 }
-
 func (a *AnalysisSession) directory(dir string, project *Project) (*AnalysisResult, error) {
-	listed := &inputFiles{}
-	paths, err := workflowPaths(fsread.New(a.ctx, nil, listed.add), dir)
-	if err != nil {
-		return nil, err
-	}
-	if len(paths) == 0 {
-		a.filesSelected(paths)
-		return nil, fmt.Errorf("no YAML file was found in %q", dir)
-	}
-	return a.discoveredFiles(paths, listed.list(), project)
+	return a.run(a.Directory(dir, project))
 }
-
-func (a *AnalysisSession) discoveredFiles(paths, metadata []string, project *Project) (*AnalysisResult, error) {
-	a.selectionLog("Collected", len(paths), "YAML files")
-	result, err := a.Files(paths, project)
-	if result != nil {
-		// Discovery candidates remain protected from report replacement even
-		// when configuration excludes them from reading and analysis.
-		inputs := &inputFiles{}
-		for _, path := range result.Inputs {
-			inputs.add(path)
-		}
-		for _, path := range paths {
-			inputs.add(path)
-		}
-		for _, path := range metadata {
-			inputs.add(path)
-		}
-		result.Inputs = inputs.list()
-	}
-	return result, err
-}
-
-func repositoryPaths(ctx context.Context, project *Project, reader *fsread.Reader) ([]string, error) {
-	paths, err := projectpath.Actions(ctx, project.RootDir(), reader)
-	if err != nil {
-		return nil, err
-	}
-	workflows := project.WorkflowsDir()
-	if _, err := os.Stat(workflows); err == nil {
-		files, err := workflowPaths(reader, workflows)
-		if err != nil {
-			return nil, err
-		}
-		paths = append(paths, files...)
-	} else if !os.IsNotExist(err) {
-		return nil, err
-	}
-	slices.Sort(paths)
-	return slices.Compact(paths), nil
-}
-
-func workflowPaths(reader *fsread.Reader, dir string) ([]string, error) {
-	paths := []string{}
-	if err := reader.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if entry.IsDir() {
-			return nil
-		}
-		if strings.HasSuffix(path, ".yml") || strings.HasSuffix(path, ".yaml") {
-			paths = append(paths, path)
-		}
-		return nil
-	}); err != nil {
-		return nil, fmt.Errorf("could not read files in %q: %w", dir, err)
-	}
-	slices.Sort(paths)
-	return paths, nil
-}
-
-func (a *AnalysisSession) filesSelected(paths []string) {
-	if a.onFilesSelected != nil {
-		a.onFilesSelected(slices.Clone(paths))
-	}
-}
-
-// Files analyzes paths in order, discovering each file's project when project is nil.
 func (a *AnalysisSession) Files(paths []string, project *Project) (*AnalysisResult, error) {
-	a.filesSelected(paths)
-	if len(paths) == 0 {
-		return &AnalysisResult{Diagnostics: []Diagnostic{}}, nil
-	}
-	if len(paths) > 1 {
-		a.selectionLog("Linting", len(paths), "files")
-	}
-	return a.readFiles(paths, project)
+	return a.run(a.Session.Files(paths, project))
 }
-
-// Empty analyzes nothing. The result records the selected configuration of WorkingDir, explicit
-// or from its project, as an input with its report.
-func (a *AnalysisSession) Empty() (*AnalysisResult, error) {
-	project, err := a.projects.At(a.cwd)
+func (a *AnalysisSession) Empty() (*AnalysisResult, error) { return a.run(a.Session.Empty()) }
+func (a *AnalysisSession) readFiles(paths []string, project *Project) (*AnalysisResult, error) {
+	return a.run(a.ReadFiles(paths, project))
+}
+func (a *AnalysisSession) ReadStdin(reader io.Reader, normalize bool) (*AnalysisResult, error) {
+	return a.run(a.Session.ReadStdin(reader, normalize))
+}
+func (a *AnalysisSession) content(path string, content []byte, project *Project, normalize bool) (*AnalysisResult, error) {
+	return a.run(a.Content(path, content, project, normalize))
+}
+func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
+	return a.ConfigForProject(project)
+}
+func (a *AnalysisSession) run(selection *workspace.Selection, err error) (*AnalysisResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	result := &AnalysisResult{Diagnostics: []Diagnostic{}}
-	inputs := &inputFiles{}
-	inputs.add(a.defaultConfigPath)
-	if project != nil || a.defaultConfig != nil {
-		if _, err := a.configForProject(project); err != nil {
-			return nil, err
-		}
-		a.configState.Lock()
-		inputs.addConfig(a.configState.loaded[project], project)
-		result.Configurations = append(result.Configurations, a.configState.reports[project])
-		a.configState.Unlock()
-	}
-	result.Inputs = inputs.list()
-	return result, nil
-}
-
-func (a *AnalysisSession) readFiles(paths []string, project *Project) (*AnalysisResult, error) {
-	sources := make([]SourceUnit, 0, len(paths))
-	configProjects := make([]*Project, 0, len(paths))
-	for _, path := range paths {
-		proj := project
-		if proj == nil {
-			var err error
-			proj, err = a.projects.At(path)
-			if err != nil {
-				return nil, err
-			}
-		}
-		cfg, err := a.configForProject(proj)
-		if err != nil {
-			return nil, err
-		}
-		configProjects = append(configProjects, proj)
-		root := a.cwd
-		if proj != nil {
-			root = absPath(proj.RootDir())
-		}
-		fullPath := absPath(path)
-		if !cfg.IncludesFile(fullPath, root) {
-			continue
-		}
-		content, err := a.readFile(path)
-		if err != nil {
-			return nil, fmt.Errorf("could not read %q: %w", path, err)
-		}
-		displayPath := a.relativePath(fullPath)
-		if !filepath.IsAbs(path) && filepath.Clean(path) == displayPath {
-			displayPath = path
-		}
-		source := a.source(displayPath, content, proj)
-		source.inputPath = fullPath
-		sources = append(sources, source)
-	}
-	return a.analyze(sources, configProjects...)
-}
-
-func (a *AnalysisSession) relativePath(path string) string {
-	if rel, err := filepath.Rel(a.cwd, path); err == nil {
-		return rel
-	}
-	return path
-}
-
-// ReadStdin analyzes a reader using StdinFileName. normalizePath makes its diagnostic
-// path relative to WorkingDir; false preserves the caller's spelling.
-func (a *AnalysisSession) ReadStdin(stdin io.Reader, normalizePath bool) (*AnalysisResult, error) {
-	a.selectionLog("Reading the input from stdin")
-	content, err := io.ReadAll(stdin)
-	if err != nil {
-		return nil, fmt.Errorf("could not read stdin: %w", err)
-	}
-	return a.content(a.stdin, content, nil, normalizePath)
-}
-
-func (a *AnalysisSession) content(path string, content []byte, project *Project, normalizePath bool) (*AnalysisResult, error) {
-	if project == nil && path != "<stdin>" {
-		if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
-			var err error
-			project, err = a.projects.At(path)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-	source := a.source(path, content, project)
-	source.inputPath = path
-	if normalizePath {
-		source.Path = a.relativePath(path)
-	}
-	return a.analyze([]SourceUnit{source})
-}
-
-func (a *AnalysisSession) source(path string, content []byte, project *Project) SourceUnit {
-	cfg := a.defaultConfig
-	if cfg == nil && project != nil {
-		cfg = project.Config()
-	}
-	return SourceUnit{Path: path, Content: content, Config: cfg, Project: project}
-}
-
-func (a *AnalysisSession) analyze(sources []SourceUnit, configProjects ...*Project) (*AnalysisResult, error) {
-	for i := range sources {
-		cfg, err := a.configForProject(sources[i].Project)
-		if err != nil {
-			return nil, err
-		}
-		sources[i].Config = cfg
-	}
-	// Include the projects used during selection, without retaining unrelated
-	// configurations cached by an earlier invocation of this session.
-	projects := make([]*Project, 0, len(sources)+len(configProjects))
-	projects = append(projects, configProjects...)
-	for _, source := range sources {
-		projects = append(projects, source.Project)
+	if len(selection.Sources) == 0 {
+		return &AnalysisResult{Diagnostics: []Diagnostic{}, Inputs: selection.Inputs, Configurations: selection.Configurations}, nil
 	}
 	request := a.request
-	request.Sources = sources
+	request.Sources = selection.Sources
 	result, err := analyze(a.ctx, request, a.logOut, a.logLevel)
-	if result == nil {
-		return nil, err
+	if result != nil {
+		result.Configurations = selection.Configurations
+		result.Inputs = slices.Compact(slices.Sorted(slices.Values(append(result.Inputs, selection.Inputs...))))
 	}
-	inputs := &inputFiles{}
-	for _, path := range result.Inputs {
-		inputs.add(path)
-	}
-	inputs.add(a.defaultConfigPath)
-	// Keep provenance on the analysis itself, including cached selections when
-	// a library caller reuses this session. Preserve input order across projects.
-	a.configState.Lock()
-	seen := make(map[*Project]bool)
-	for _, project := range projects {
-		if !seen[project] {
-			seen[project] = true
-			inputs.addConfig(a.configState.loaded[project], project)
-			result.Configurations = append(result.Configurations, a.configState.reports[project])
-		}
-	}
-	a.configState.Unlock()
-	result.Inputs = inputs.list()
 	return result, err
 }
 
-// Completed writes the selection summary after a caller has successfully rendered a result.
+// Completed writes the selection summary after successful rendering.
 func (a *AnalysisSession) Completed(result *AnalysisResult) {
-	if len(result.files) > 1 {
-		a.selectionLog("Found", len(result.Diagnostics), "errors in", len(result.files), "files")
+	if result.FileCount() > 1 {
+		a.selectionLog("Found", len(result.Diagnostics), "errors in", result.FileCount(), "files")
 	}
 }
-
-// Close releases the WebAssembly engines the session loaded.
-func (a *AnalysisSession) Close(ctx context.Context) error {
-	return a.engines.Close(ctx)
-}
+func (a *AnalysisSession) Close(ctx context.Context) error { return a.engines.Close(ctx) }

@@ -5,6 +5,8 @@ import (
 	"sync"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"go.yaml.in/yaml/v4"
 )
@@ -47,7 +49,7 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 	checkSourceLess(decoded.Metadata)
 	root := t.TempDir()
 	writeShellcheckFixture(t, root, "source/action.yml", "name: source\ndescription: source\nruns: {using: composite, steps: []}\n")
-	base := NewLocalActionsCache(&Project{root: root}, nil)
+	base := NewLocalActionsCache(workspace.Identity(root), nil)
 	meta, _, err := base.FindMetadata("./source")
 	if err != nil || meta == nil || meta.positions == nil {
 		t.Fatalf("local metadata cache: %+v, %v", meta, err)

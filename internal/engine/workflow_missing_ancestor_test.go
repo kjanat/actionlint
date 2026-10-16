@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 func TestWorkflowRunMissingAncestorAlias(t *testing.T) {
@@ -22,7 +24,7 @@ func TestWorkflowRunMissingAncestorAlias(t *testing.T) {
 			for _, roots := range [][2]string{{root, alias}, {alias, root}} {
 				for _, name := range []string{"New", "Old", "Outside", "Missing"} {
 					t.Run(roots[0]+name, func(t *testing.T) {
-						project := &Project{root: roots[1]}
+						project := workspace.Identity(roots[1])
 						producer := filepath.Join(roots[0], ".github/workflows/build.yml")
 						consumer := "on: {workflow_run: {workflows: [" + name + `], types: [completed]}}
 jobs:

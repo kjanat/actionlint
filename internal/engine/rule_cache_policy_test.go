@@ -22,7 +22,7 @@ func lintCachePolicy(t *testing.T, source, config string) []*Error {
 		t.Fatal(err)
 	}
 	if config != "" {
-		l.defaultConfig, err = ParseConfig([]byte(config))
+		l.DefaultConfig, err = ParseConfig([]byte(config))
 		if err != nil {
 			t.Fatal(err)
 		}

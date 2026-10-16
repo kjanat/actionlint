@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 func TestCompositeAnalysisCancellation(t *testing.T) {
@@ -38,7 +40,7 @@ runs:
 			result, err := Analyze(ctx, AnalysisRequest{
 				WorkingDir: root,
 				Sources: []SourceUnit{{
-					Path: "workflow.yml", Project: &Project{root: root},
+					Path: "workflow.yml", Project: workspace.Identity(root),
 					Content: []byte(`on: push
 jobs:
   test:

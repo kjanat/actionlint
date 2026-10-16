@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 func TestRuffCompositeAliasConfiguration(t *testing.T) {
@@ -42,7 +44,7 @@ jobs:
       - uses: $/python-action
       - uses: $/python-alias
 `
-	result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: &Project{root: root}}}})
+	result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: workspace.Identity(root)}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +118,7 @@ jobs:
     steps:
       - uses: $/python-action
 `
-			result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: root, Sources: []SourceUnit{{Path: path, Content: []byte(source), Config: config, Project: &Project{root: root}}}})
+			result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: root, Sources: []SourceUnit{{Path: path, Content: []byte(source), Config: config, Project: workspace.Identity(root)}}})
 			if err != nil {
 				t.Fatal(err)
 			}

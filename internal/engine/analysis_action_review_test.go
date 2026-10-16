@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 func TestActionDiscoverySymlinkRoot(t *testing.T) {
@@ -55,7 +57,7 @@ func TestExplicitActionSnapshotAliasedRoot(t *testing.T) {
 				if err := os.Symlink(root, alias); err != nil {
 					t.Skipf("symlinks unavailable: %v", err)
 				}
-				project := &Project{root: root}
+				project := workspace.Identity(root)
 				workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n"
 				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: alias, Sources: []SourceUnit{
 					{Path: "ci.yml", Content: []byte(workflow), Project: project},
@@ -130,7 +132,7 @@ func TestExplicitActionSnapshotAndDeduplication(t *testing.T) {
 					}
 					manifest := "name: inner\ndescription: inner\nruns:\n  using: node24\n"
 					workflow := "on: push\njobs:\n  test:\n    runs-on: " + runner + "\n    steps:\n      - uses: ./inner\n        with: {unknown: value}\n"
-					project := &Project{root: root}
+					project := workspace.Identity(root)
 					sources := []SourceUnit{
 						{Path: "ci.yml", Content: []byte(workflow), Project: project},
 						{Path: "inner/action.yml", Content: []byte(manifest), Project: project},
@@ -216,7 +218,7 @@ func TestSelectedActionDeclarationPreference(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				project := &Project{root: root}
+				project := workspace.Identity(root)
 				workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n"
 				sources := []SourceUnit{
 					{Path: "ci.yml", Content: []byte(workflow), Project: project, Config: cfg},

@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"sync"
 
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	"actionlint.kjanat.dev/internal/filefilter"
@@ -174,71 +173,6 @@ func filterConfigIgnores(path, root string, source []byte, findings []*Error, cf
 		}
 	}
 	return filtered
-}
-
-type analysisConfigState struct {
-	sync.Mutex
-	source   *repoconfig.Loaded
-	overlays []ConfigOverlay
-	onLoaded func(ConfigReport)
-	loaded   map[*Project]*Config
-	reports  map[*Project]ConfigReport
-}
-
-func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
-	var cfg *Config
-	var source *repoconfig.Loaded
-	if a.defaultConfig != nil {
-		cfg = a.defaultConfig
-		if a.configState != nil {
-			source = a.configState.source
-		}
-	} else if project != nil {
-		cfg, source = project.Config(), project.config
-	}
-	s := a.configState
-	if s == nil {
-		return cfg, nil
-	}
-	s.Lock()
-	var notification *ConfigReport
-	defer func() {
-		s.Unlock()
-		if notification != nil && s.onLoaded != nil {
-			s.onLoaded(*notification)
-		}
-	}()
-	if loaded, ok := s.loaded[project]; ok {
-		return loaded, nil
-	}
-	report := ConfigReport{Explicit: a.defaultConfig != nil}
-	if project != nil {
-		report.Project = project.RootDir()
-	}
-	if source != nil {
-		report.File = source.Filename
-	}
-	for _, overlay := range s.overlays {
-		report.Overrides = append(report.Overrides, overlay.Name())
-	}
-	cfg, resolved, err := repoconfig.Overlaid(cfg, source, s.overlays, registeredRuleNames(a.request.Analyzers)...)
-	if err != nil {
-		return nil, err
-	}
-	report.Inspection = ConfigInspection{Path: report.File, Config: resolved.Values, Origins: resolved.Origins, Warnings: resolved.Warnings}
-	if s.onLoaded == nil {
-		for _, warning := range resolved.Warnings {
-			file := warning.File
-			if file == "" {
-				file = report.File
-			}
-			_, _ = fmt.Fprintf(a.logOut, "%s:%d:%d: warning: %s\n", file, warning.Line, warning.Column, warning.Message)
-		}
-	}
-	s.loaded[project] = cfg
-	s.reports[project] = report
-	notification = &report
-	return cfg, nil
 }
 
 func (run *shellcheckRun) pathContext() repoconfig.PathContext {

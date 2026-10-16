@@ -10,12 +10,14 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/internal/analyzerhost"
 	"actionlint.kjanat.dev/internal/engine"
 	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/processconfig"
 	"actionlint.kjanat.dev/internal/projectpath"
 	"actionlint.kjanat.dev/internal/render"
 	"actionlint.kjanat.dev/internal/repoconfig"
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 // Options selects configuration and analysis backends for one application session.
@@ -74,32 +76,53 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 	if log == nil {
 		log = io.Discard
 	}
-	session, err := engine.NewAnalysisSession(engine.AnalysisOptions{
-		Context: ctx, WorkingDir: options.WorkingDir, StdinFileName: input.Name,
-		ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays,
-		SkipProjectConfig: options.SkipProjectConfig, ReadFile: options.ReadFile,
-		Analyzers:        options.Analyzers,
-		LoadScriptEngine: options.LoadScriptEngine,
-		Shellcheck:       options.ShellCheck, Ruff: options.Ruff,
+
+	engines := analyzerhost.NewScriptEngines(options.LoadScriptEngine)
+	defer func() { err = errors.Join(err, engines.Close(context.WithoutCancel(ctx))) }()
+	request := engine.AnalysisRequest{
+		Analyzers: options.Analyzers, ReadFile: options.ReadFile, ShellCheck: options.ShellCheck, Ruff: options.Ruff,
 		ShellcheckOptions: options.ShellcheckOptions, RuffOptions: options.RuffOptions,
-		ShellcheckBackend: options.ShellcheckBackend, RuffBackend: options.RuffBackend,
-		RulePresets: options.Presets, IgnorePatterns: options.IgnorePatterns,
-		Verbose: options.Verbose, Debug: options.Debug, LogWriter: log,
-		QuietSelection: !options.LogSelection,
-	})
+		ShellcheckBackend: options.ShellcheckBackend, RuffBackend: options.RuffBackend, RulePresets: options.Presets,
+		LogWriter: log,
+	}
+	if options.LoadScriptEngine != nil {
+		request.LoadScriptEngine = engines.Load
+	}
+	if options.Verbose {
+		request.LogLevel = engine.LogLevelVerbose
+	} else if options.Debug {
+		request.LogLevel = engine.LogLevelDebug
+	}
+	request.IgnorePatterns, err = repoconfig.CompileIgnorePatterns(options.IgnorePatterns)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { err = errors.Join(err, session.Close(context.WithoutCancel(ctx))) }()
-	var analysis *engine.AnalysisResult
+	var names []string
+	for _, registration := range options.Analyzers {
+		if registration.Analyzer != nil {
+			names = append(names, registration.Analyzer.Descriptor().Name)
+		}
+	}
+	selectionLog := func(args ...any) {
+		if options.LogSelection && request.LogLevel >= engine.LogLevelVerbose {
+			_, _ = io.WriteString(log, "verbose: "+fmt.Sprintln(args...))
+		}
+	}
+	session, err := workspace.New(workspace.Options{Context: ctx, WorkingDir: options.WorkingDir, StdinFileName: input.Name,
+		ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig,
+		ReadFile: options.ReadFile, RuleNames: names, Log: selectionLog, LogWriter: log})
+	if err != nil {
+		return nil, err
+	}
+	var selection *workspace.Selection
 	switch input.Kind {
 	case Files:
-		analysis, err = session.Files(input.Paths, nil)
+		selection, err = session.Files(input.Paths, nil)
 	case Stdin:
 		if input.Reader == nil {
 			return nil, errors.New("stdin source requires a reader")
 		}
-		analysis, err = session.ReadStdin(input.Reader, input.NormalizePath)
+		selection, err = session.ReadStdin(input.Reader, input.NormalizePath)
 	case Repository:
 		var listed []string
 		empty := false
@@ -113,18 +136,26 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 			if options.Verbose {
 				_, _ = fmt.Fprintf(log, "verbose: No workflow files to check from %q\n", options.WorkingDir)
 			}
-			analysis, err = session.Empty()
+			selection, err = session.Empty()
 		} else {
-			analysis, err = session.Repository(input.Directory)
+			selection, err = session.Repository(input.Directory)
 		}
-		if analysis != nil {
-			analysis.Inputs = slices.Compact(slices.Sorted(slices.Values(append(analysis.Inputs, listed...))))
+		if selection != nil {
+			selection.Inputs = slices.Compact(slices.Sorted(slices.Values(append(selection.Inputs, listed...))))
 		}
 	default:
 		return nil, fmt.Errorf("unknown input kind %d", input.Kind)
 	}
-	if analysis != nil {
-		result = &Result{Result: analysis.RenderResult(), Inputs: analysis.Inputs}
+	if err == nil {
+		request.Sources = selection.Sources
+		request.WorkingDir = session.WorkingDir()
+		var analysis *engine.AnalysisResult
+		analysis, err = engine.Analyze(ctx, request)
+		if analysis != nil {
+			analysis.Configurations = selection.Configurations
+			inputs := slices.Compact(slices.Sorted(slices.Values(append(analysis.Inputs, selection.Inputs...))))
+			result = &Result{Result: analysis.RenderResult(), Inputs: inputs}
+		}
 	}
 	if options.LegacyErrors && err != nil {
 		err = engine.LegacyAnalysisError(err)

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workspace"
+
 	"golang.org/x/sys/execabs"
 )
 
@@ -154,7 +156,7 @@ func TestStandaloneActionExecutableBitRequiresCaller(t *testing.T) {
 	writeShellcheckFixture(t, root, "action.yml", manifest)
 	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - uses: ./\n"
 	for _, source := range []SourceUnit{{Path: "action.yml", Content: []byte(manifest)}, {Path: "ci.yml", Content: []byte(workflow)}} {
-		source.Project = &Project{root: root}
+		source.Project = workspace.Identity(root)
 		result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{source}})
 		if err != nil {
 			t.Fatal(err)
@@ -177,8 +179,8 @@ func TestStandaloneActionNestedAndReferenced(t *testing.T) {
 	writeShellcheckFixture(t, root, "inner/action.yml", inner)
 	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./outer\n"
 	result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{
-		{Path: "outer/action.yml", Content: []byte(outer), Project: &Project{root: root}},
-		{Path: "ci.yml", Content: []byte(workflow), Project: &Project{root: root}},
+		{Path: "outer/action.yml", Content: []byte(outer), Project: workspace.Identity(root)},
+		{Path: "ci.yml", Content: []byte(workflow), Project: workspace.Identity(root)},
 	}})
 	if err != nil {
 		t.Fatal(err)
@@ -253,7 +255,7 @@ func TestMixedActionShellcheckLevels(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			project := &Project{root: root}
+			project := workspace.Identity(root)
 			manifest := strings.Replace(standaloneComposite, "echo ok", "echo $UNQUOTED", 1)
 			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n"
 			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, ShellCheck: executable, Sources: []SourceUnit{
@@ -295,7 +297,7 @@ func TestActionSnapshotManifestPrecedence(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
-			cache := NewLocalActionsCache(&Project{root: root}, nil)
+			cache := NewLocalActionsCache(workspace.Identity(root), nil)
 			cache.explicitSources = make(map[string][]byte)
 			for name, content := range map[string]string{"action.yaml": tc.diskYAML, "action.yml": tc.diskYML} {
 				if content != "" {

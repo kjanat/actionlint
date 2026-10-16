@@ -1,20 +1,22 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/internal/repoconfig"
 	"errors"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/repoconfig"
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 func TestLocalActionSourceMappings(t *testing.T) {
 	root := t.TempDir()
 	first := writeShellcheckFixture(t, root, "source/action.yml", "name: Source\ndescription: Source\ninputs:\n  token:\n    description: Token\n    required: true\noutputs:\n  result:\n    description: Result\nruns:\n  using: composite\n  steps:\n    - run: echo test\n      shell: bash\n")
 	writeShellcheckFixture(t, root, "other/action.yml", "name: Other\ndescription: Other\nruns: {using: composite, steps: []}\n")
-	base := NewLocalActionsCache(&Project{root: root}, nil)
+	base := NewLocalActionsCache(workspace.Identity(root), nil)
 	view := &LocalActionsCache{base: base, sourceMappings: LocalActionSources{"./generated": "./source"}, usedSources: map[string][]byte{}}
 	for _, spec := range []string{"./generated", "$/generated", "./generated/../generated"} {
 		meta, _, err := view.FindMetadata(spec)
@@ -95,7 +97,7 @@ func TestLocalActionSourceSymlink(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(root, "source")); err != nil {
 		t.Skip(err)
 	}
-	view := &LocalActionsCache{base: NewLocalActionsCache(&Project{root: root}, nil), sourceMappings: LocalActionSources{"./generated": "./source"}}
+	view := &LocalActionsCache{base: NewLocalActionsCache(workspace.Identity(root), nil), sourceMappings: LocalActionSources{"./generated": "./source"}}
 	if _, _, err := view.FindMetadata("./generated"); err == nil || !strings.Contains(err.Error(), "outside the repository") {
 		t.Fatalf("got %v", err)
 	}
@@ -144,7 +146,7 @@ runs:
 func TestLocalActionSourceCaseInsensitive(t *testing.T) {
 	root := t.TempDir()
 	writeShellcheckFixture(t, root, "Source/action.yml", "name: Source\ndescription: Source\nruns: {using: composite, steps: []}\n")
-	view := &LocalActionsCache{base: NewLocalActionsCache(&Project{root: root}, nil), sourceMappings: LocalActionSources{"./generated": "./source"}, caseInsensitive: true}
+	view := &LocalActionsCache{base: NewLocalActionsCache(workspace.Identity(root), nil), sourceMappings: LocalActionSources{"./generated": "./source"}, caseInsensitive: true}
 	if meta, _, err := view.FindMetadata("./GENERATED"); err != nil || meta == nil {
 		t.Fatalf("%+v %v", meta, err)
 	}
@@ -171,7 +173,7 @@ func TestLocalActionSourceCustomReader(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, ReadFile: reader, Sources: []SourceUnit{{Path: ".github/workflows/test.yml", Content: content, Config: config, Project: &Project{root: root}}}})
+			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, ReadFile: reader, Sources: []SourceUnit{{Path: ".github/workflows/test.yml", Content: content, Config: config, Project: workspace.Identity(root)}}})
 			if err != nil || len(result.Diagnostics) != 0 || !slices.Contains(result.Inputs, manifest) {
 				t.Fatalf("direct analysis: %+v, %v", result, err)
 			}
@@ -228,7 +230,7 @@ func TestLocalActionUnknownCheckoutMissingMetadata(t *testing.T) {
 	for _, folded := range []bool{false, true} {
 		root := t.TempDir()
 		writeShellcheckFixture(t, root, "present/action.yml", "name: present\ndescription: present\nruns: {using: composite, steps: []}\n")
-		view := &LocalActionsCache{base: NewLocalActionsCache(&Project{root: root}, nil), caseInsensitive: folded}
+		view := &LocalActionsCache{base: NewLocalActionsCache(workspace.Identity(root), nil), caseInsensitive: folded}
 		view.setCheckout(runDirectory{kind: directoryUnknown})
 		for range 2 {
 			if meta, _, err := view.FindMetadata("./private/action"); err != nil || meta != nil {
@@ -256,7 +258,7 @@ func TestLocalActionUnknownCheckoutMissingMetadata(t *testing.T) {
 func TestMissingLocalActionMappedSourceDiagnostic(t *testing.T) {
 	for _, folded := range []bool{false, true} {
 		root := t.TempDir()
-		view := &LocalActionsCache{base: NewLocalActionsCache(&Project{root: root}, nil), sourceMappings: LocalActionSources{"./generated": "./absent-source"}, caseInsensitive: folded}
+		view := &LocalActionsCache{base: NewLocalActionsCache(workspace.Identity(root), nil), sourceMappings: LocalActionSources{"./generated": "./absent-source"}, caseInsensitive: folded}
 		_, _, err := view.FindMetadata("./generated")
 		if _, missing := errors.AsType[unresolvedLocalActionError](err); !missing {
 			t.Fatalf("folded=%v: expected missing-local-action: %v", folded, err)
@@ -302,7 +304,7 @@ func TestMissingLocalActionSourceSuppression(t *testing.T) {
 				comment = " # actionlint:ignore missing-local-action"
 			}
 			content := []byte("on: push\njobs:\n  test:\n    runs-on: " + runner + "\n    steps:\n      - uses: ./generated" + comment + "\n")
-			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: ".github/workflows/test.yml", Content: content, Config: config, Project: &Project{root: root}}}})
+			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: ".github/workflows/test.yml", Content: content, Config: config, Project: workspace.Identity(root)}}})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -1,0 +1,149 @@
+package engine
+
+import (
+	"context"
+
+	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/internal/repoconfig"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/internal/workflownames"
+)
+
+// traversalHost owns rule construction and AST visiting. Scheduling and policy
+// receive its result and cannot change the visitor while it is running.
+type traversalHost struct {
+	analysisLogger
+	ctx            context.Context
+	buildRules     func(ruleContext, bool) (builtinAnalyzers, error)
+	workingDir     string
+	reader         *fsread.Reader
+	gitModes       *gitModes
+	workflowNames  *workflownames.Index
+	onRulesCreated func([]Rule) []Rule
+	rulePresets    RulePresets
+	requires       map[analyzer.Fact]bool
+}
+
+// traversalResult owns the collectors and work discovered by visiting one document.
+// Traversal never starts script analyzers or waits for their tasks.
+type traversalResult struct {
+	rules            []Rule
+	builtins         builtinAnalyzers
+	composites       *compositeAnalyzer
+	metadataSources  map[string][]byte
+	compositeConfigs map[string]*Config
+}
+
+func (l traversalHost) traverse(path, root string, w *workflowlang.Workflow, metadata *ActionMetadata, project *Project, cfg, projectConfig *Config, proc *concurrentProcess, localActions *LocalActionsCache, localReusableWorkflows *LocalReusableWorkflowCache) (*traversalResult, error) {
+	compositeConfigs := map[string]*Config{}
+	dbg := l.debugWriter()
+	localActions = &LocalActionsCache{base: localActions, usedSources: make(map[string][]byte), validation: newActionMetadataValidation()}
+	if cfg != nil {
+		localActions.sourceMappings = cfg.LocalActions
+	}
+
+	c := ruleContext{
+		path: path, config: cfg, projectConfig: projectConfig, actions: localActions, workflows: localReusableWorkflows, process: proc,
+		workflowNames: l.workflowNames, workingDir: l.workingDir, reader: l.reader, gitModes: l.gitModes,
+	}
+	if project != nil {
+		c.projectRoot = project.RootDir()
+	}
+	build := l.buildRules
+	if build == nil {
+		build = builtinFactory(AnalysisRequest{}, l.analysisLogger)
+	}
+	builtins, err := build(c, metadata != nil)
+	if err != nil {
+		return nil, err
+	}
+
+	rules := builtins.rules
+	if l.onRulesCreated != nil && metadata == nil {
+		rules = l.onRulesCreated(rules)
+	}
+
+	v := NewVisitor()
+	for _, rule := range rules {
+		if participant, ok := rule.(resourceParticipant); ok {
+			participant.attachScope(proc.scope)
+		}
+		v.AddPass(rule)
+	}
+	requires := l.requires
+	v.composites = &compositeAnalyzer{
+		ctx: l.ctx, actions: localActions, passes: v.passes, scriptConfig: cfg, scriptPaths: runPaths{workspace: root, analysis: c.workingDir, reader: c.reader},
+		collectScripts:         len(builtins.scripts) != 0 || requires[analyzer.Scripts] || requires[analyzer.Invocations] || requires[analyzer.Execution],
+		resolveScriptExecution: builtins.resolveExecution || requires[analyzer.Execution],
+	}
+	v.composites.configForFile = func(path string) (*Config, error) {
+		config, err := repoconfig.ForAction(projectConfig, path, root)
+		if err != nil {
+			return nil, err
+		}
+		config = applyRulePresets(l.rulePresets, config)
+		compositeConfigs[path] = config
+		return config, nil
+	}
+	if dbg != nil {
+		v.EnableDebug(dbg)
+		for _, r := range rules {
+			if participant, ok := r.(debugRule); ok {
+				participant.EnableDebug(dbg)
+			}
+		}
+	}
+	if cfg != nil {
+		for _, r := range rules {
+			if participant, ok := r.(configuredRule); ok {
+				participant.SetConfig(cfg)
+			}
+		}
+	}
+
+	var visitErr error
+	if metadata != nil {
+		visitErr = visitStandaloneAction(metadata, rules, v.composites)
+	} else {
+		visitErr = v.Visit(w)
+	}
+	if visitErr != nil {
+		l.debug("Error occurred while visiting workflow syntax tree: %v", visitErr)
+	}
+
+	return &traversalResult{rules: rules, builtins: builtins, composites: v.composites, metadataSources: localActions.usedSources, compositeConfigs: compositeConfigs}, visitErr
+}
+
+// collect runs after analyzer work and traversal resources have been joined.
+func (t *traversalResult) collect(log analysisLogger, usedRules *[]RuleInfo) []*Error {
+	var all []*Error
+	for _, rule := range t.rules {
+		errs := rule.Errs()
+		log.debug("%s found %d errors", rule.Name(), len(errs))
+		all = append(all, errs...)
+	}
+	for _, composite := range t.composites.rules {
+		for _, rule := range composite.rules {
+			for _, finding := range rule.Errs() {
+				if origin := finding.suppressionOrigin; origin != nil && origin.path == "" {
+					origin.path = composite.meta.Path()
+				}
+				if finding.Filepath == "" {
+					finding.Filepath = composite.meta.Path()
+					finding.source = composite.meta.src
+				}
+				all = append(all, finding)
+			}
+		}
+	}
+	*usedRules = append(*usedRules, t.builtins.scriptInfo...)
+	for _, rule := range t.rules {
+		info := RuleInfo{Name: rule.Name()}
+		if described, ok := rule.(describedRule); ok {
+			info.Description = described.Description()
+		}
+		*usedRules = append(*usedRules, info)
+	}
+	return all
+}

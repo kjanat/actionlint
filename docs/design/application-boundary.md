@@ -12,7 +12,11 @@ flowchart TD
     Local --> App[internal/application]
     Local --> Runtime[component and corewasm runtimes]
     Library[analysis.Files and analysis.Repository] --> App
+    App --> Workspace[internal/workspace]
+    Workspace --> Config[internal/repoconfig]
     App --> Engine[internal/engine]
+    App --> Host[internal/analyzerhost]
+    Engine --> Host
     CLI --> Render[internal/render]
     CLI --> Config[internal/repoconfig]
     CLI --> Process[internal/processconfig]
@@ -27,9 +31,15 @@ are session-owned.
 
 ## Responsibilities
 
-- `application.Check` selects explicit files, stdin or repository discovery,
-  including the empty-repository convention used by pre-commit. It returns
-  source-aware findings, configuration provenance and consumed input paths.
+- `application.Check` coordinates input preparation, analysis and backend cleanup,
+  including the empty-repository convention used by pre-commit. It calls
+  `workspace` and `engine.Analyze` separately; it does not use the legacy session.
+- `workspace` owns repository discovery, configuration loading and overlays,
+  file selection, source reads and configuration provenance. Its `Selection`
+  carries resolved sources and all consumed paths, including excluded discovery
+  candidates. It has no parser or analyzer dependency.
+- `analyzerhost` owns concurrent analyzer scheduling and the pool of loaded
+  script backends. It has no traversal or repository-configuration dependency.
 - The result contains the rule descriptions and source text needed for rendering.
   Renderers do not inspect engine sessions or traversal state.
 - Cleanup runs with cancellation removed from its context. Cleanup errors are
@@ -56,16 +66,32 @@ This retains source fidelity without exposing the legacy engine result publicly.
 It does mean that file-analysis library calls currently prepare rendering data
 that the public result view discards.
 
-The legacy engine facade remains for internal callers and tests. The engine still
-contains repository/configuration discovery, rule traversal and tool scheduling;
-this change does not claim those internals are fully separated. The new boundary
-allows that work to proceed without changing CLI command handlers.
+The legacy engine session and project constructors remain as compatibility
+adapters for existing internal callers. They delegate input preparation to
+`workspace`; the application path bypasses them. Synthetic repository identities
+use `workspace.Identity` without reading configuration.
+
+Within analysis, parsing returns a document, syntax findings and an outline.
+`traversalHost` constructs rules and visits the AST, returning script work,
+collectors and referenced metadata. The scheduler consumes that prepared work;
+it does not walk the AST. The coordinator joins traversal resources before
+reading collectors, including on early failures. `diagnosticPolicy` then applies
+source-specific suppressions, severity, path filters and deduplication without
+access to traversal or scheduling. These phases retain the existing private
+source-mapping and diagnostic types inside the engine package.
+
+This keeps the built-in rule visitor adapter intact. Replacing its mutable rule
+contract is a separate change; the new phase boundaries do not require a new
+plugin protocol or expose the visitor to backend implementations.
 
 ## Enforcement
 
 Architecture tests reject direct CLI imports of engine and plugin-runtime
 implementations, application dependencies on the CLI or command framework, and
 concrete WASM runtime dependencies in the engine, application and public analysis
-API. Lifecycle tests cover successful checks, analysis failures, cleanup failures,
+API. Additional dependency checks keep input preparation independent of analysis
+and scheduling independent of traversal/configuration. Tests exercise preparation
+of malformed source without parsing, per-batch provenance, and traversal that
+collects scripts without executing them. Lifecycle tests cover successful checks, analysis failures, cleanup failures,
 combined failures and cancellation. Existing CLI tests cover report publication,
 format equivalence, pre-commit discovery and terminal behavior.
