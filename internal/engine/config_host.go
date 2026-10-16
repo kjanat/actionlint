@@ -1,16 +1,12 @@
 package engine
 
 import (
-	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"slices"
-	"strings"
 	"sync"
 
-	"actionlint.kjanat.dev/internal/buildinfo"
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	"actionlint.kjanat.dev/internal/filefilter"
 	"actionlint.kjanat.dev/internal/repoconfig"
@@ -265,18 +261,7 @@ func (run *shellcheckRun) pathContext() repoconfig.PathContext {
 	return repoconfig.PathContext{ConfigDir: configDir, GitDir: run.paths.workspace, Workspace: workspace, ActionPath: actionPath}
 }
 
-//go:embed config_default.yaml
-var defaultConfigTemplate string
-
-func writeDefaultConfigFile(path string) error {
-	info, _ := debug.ReadBuildInfo()
-	ref := buildinfo.SourceRef(Version(), info)
-	b := []byte(strings.Replace(defaultConfigTemplate, "/HEAD/actionlint.schema.json", "/"+ref+"/actionlint.schema.json", 1))
-	if err := os.WriteFile(path, b, 0644); err != nil {
-		return fmt.Errorf("could not write default configuration file at %q: %w", path, err)
-	}
-	return nil
-}
+func writeDefaultConfigFile(path string) error { return repoconfig.WriteDefaultFile(path, Version()) }
 
 func diagnosticLevels(cfg *Config) func(string) RuleLevel {
 	return func(name string) RuleLevel { return diagnosticLevel(cfg, name) }

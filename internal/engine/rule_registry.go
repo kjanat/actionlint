@@ -182,13 +182,7 @@ func builtinRuleBase(name string) RuleBase {
 }
 
 // RuleInfo describes an available check without constructing a rule or external process.
-type RuleInfo struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Category    string `json:"category"`
-	Maturity    string `json:"maturity"`
-	Recommended bool   `json:"recommended"`
-}
+type RuleInfo = repoconfig.RuleInfo
 
 // BuiltinRuleOptions returns an empty typed options value for schema generation,
 // or nil for a rule without options. Each call returns a fresh value.
@@ -200,11 +194,4 @@ func BuiltinRuleOptions(name string) any {
 }
 
 // BuiltinRules returns metadata for the registered built-in checks.
-func BuiltinRules() []RuleInfo {
-	descriptors := builtinRuleDescriptors()
-	result := make([]RuleInfo, len(descriptors))
-	for i, rule := range descriptors {
-		result[i] = RuleInfo{Name: rule.Name, Description: rule.Description, Category: rule.Category, Maturity: rule.maturity(), Recommended: rule.Recommended}
-	}
-	return result
-}
+func BuiltinRules() []RuleInfo { return repoconfig.RuleInfos() }

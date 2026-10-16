@@ -3,12 +3,14 @@
 package analysis
 
 import (
+	"context"
+
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/config"
 	"actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/document"
+	"actionlint.kjanat.dev/internal/application"
 	"actionlint.kjanat.dev/internal/engine"
-	"context"
 )
 
 // Source is an in-memory workflow or action manifest with optional configuration.
@@ -94,36 +96,36 @@ func Analyze(ctx context.Context, request Request) (*Result, error) {
 
 // Files checks explicit paths with project discovery and configuration loading.
 func Files(ctx context.Context, paths []string, options FileOptions) (*Result, error) {
-	session, err := engine.NewAnalysisSession(sessionOptions(ctx, options))
-	if err != nil {
-		return nil, err
-	}
-	result, err := session.Files(paths, nil)
-	return resultView(result), err
+	result, err := application.Check(ctx, fileOptions(options), application.Input{Kind: application.Files, Paths: paths})
+	return applicationResultView(result), err
 }
 
 // Repository discovers and checks workflows and actions under a repository.
 func Repository(ctx context.Context, directory string, options FileOptions) (*Result, error) {
-	session, err := engine.NewAnalysisSession(sessionOptions(ctx, options))
-	if err != nil {
-		return nil, err
-	}
-	result, err := session.Repository(directory)
-	return resultView(result), err
+	result, err := application.Check(ctx, fileOptions(options), application.Input{Kind: application.Repository, Directory: directory})
+	return applicationResultView(result), err
 }
 
 func toolOptions(tool Process) *engine.ExternalCommandOptions {
 	return &engine.ExternalCommandOptions{Executable: &tool.Executable, LauncherArguments: tool.Arguments, Environment: tool.Environment, WorkingDir: tool.WorkingDir}
 }
 
-func sessionOptions(ctx context.Context, options FileOptions) engine.AnalysisOptions {
-	return engine.AnalysisOptions{
-		Analyzers: options.Analyzers, Context: ctx, WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile,
+func fileOptions(options FileOptions) application.Options {
+	return application.Options{
+		Analyzers: options.Analyzers, WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile,
 		ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig,
 		ReadFile: options.ReadFile, ShellcheckOptions: backendProcessOptions(options.ShellCheck),
-		RuffOptions: backendProcessOptions(options.Ruff), RuffBackend: options.Ruff.Backend, ShellcheckBackend: options.ShellCheck.Backend, RulePresets: options.Presets,
-		IgnorePatterns: options.IgnorePatterns, QuietSelection: true,
+		RuffOptions: backendProcessOptions(options.Ruff), RuffBackend: options.Ruff.Backend,
+		ShellcheckBackend: options.ShellCheck.Backend, Presets: options.Presets,
+		IgnorePatterns: options.IgnorePatterns,
 	}
+}
+
+func applicationResultView(result *application.Result) *Result {
+	if result == nil {
+		return nil
+	}
+	return &Result{Diagnostics: result.Diagnostics, Documents: result.Documents, Inputs: result.Inputs, Configurations: result.Configurations, FileCount: result.FileCount}
 }
 
 func resultView(result *engine.AnalysisResult) *Result {

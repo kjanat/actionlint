@@ -1,15 +1,8 @@
 package engine
 
 import (
-	"runtime/debug"
-
+	"actionlint.kjanat.dev/internal/buildinfo"
 	"actionlint.kjanat.dev/internal/render"
-)
-
-// These variables might be modified by ldflags on building release binaries by GoReleaser. Do not modify manually.
-var (
-	version       = ""
-	installedFrom = ""
 )
 
 const (
@@ -23,30 +16,5 @@ const (
 	ExitStatusFailure = render.ExitFailure
 )
 
-// InstalledFrom describes how the binary was installed.
-func InstalledFrom() string {
-	if installedFrom != "" {
-		return installedFrom
-	}
-	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
-		for _, s := range info.Settings {
-			if s.Key == "vcs" {
-				return "from source"
-			}
-		}
-		return "go install"
-	}
-	return "from source"
-}
-
-// Version returns the release version or Go module build version.
-func Version() string {
-	if version != "" {
-		return version
-	}
-	info, ok := debug.ReadBuildInfo()
-	if !ok || info.Main.Version == "" {
-		return "unknown"
-	}
-	return info.Main.Version
-}
+func InstalledFrom() string { return buildinfo.InstalledFrom() }
+func Version() string       { return buildinfo.Version() }

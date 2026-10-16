@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 
+	"actionlint.kjanat.dev/internal/repoconfig"
+
+	"actionlint.kjanat.dev/internal/render"
 	"github.com/fatih/color"
 	"github.com/mattn/go-colorable"
 )
@@ -25,18 +27,12 @@ const (
 	LogLevelDebug = 2
 )
 
-// ColorOptionKind is kind of colorful output behavior.
-type ColorOptionKind int
+type ColorOptionKind = render.Color
 
 const (
-	// ColorOptionKindAuto is kind to determine to colorize errors output automatically. It is
-	// determined based on pty and $NO_COLOR environment variable. See document of fatih/color
-	// for more details.
-	ColorOptionKindAuto ColorOptionKind = iota
-	// ColorOptionKindAlways is kind to always colorize errors output.
-	ColorOptionKindAlways
-	// ColorOptionKindNever is kind never to colorize errors output.
-	ColorOptionKindNever
+	ColorOptionKindAuto   = render.ColorAuto
+	ColorOptionKindAlways = render.ColorAlways
+	ColorOptionKindNever  = render.ColorNever
 )
 
 // LinterOptions is set of options for Linter instance. This struct is used for NewLinter factory
@@ -161,30 +157,15 @@ func (l *Linter) generateDefaultConfig(dir string) (string, error) {
 }
 
 func generateProjectConfig(projects *Projects, dir string) (string, error) {
-	proj, err := projects.At(dir)
+	project, err := projects.At(dir)
 	if err != nil {
 		return "", err
 	}
-	if proj == nil {
-		return "", errors.New("project is not found. check current project is initialized as Git repository and \".github/workflows\" directory exists")
+	root := ""
+	if project != nil {
+		root = project.RootDir()
 	}
-
-	d := filepath.Join(proj.RootDir(), ".github")
-	for _, f := range []string{"actionlint.yaml", "actionlint.yml"} {
-		p := filepath.Join(d, f)
-		if _, err := os.Stat(p); err == nil {
-			return "", fmt.Errorf("config file already exists at %q", p)
-		}
-	}
-
-	p := filepath.Join(d, "actionlint.yaml")
-	if err := os.MkdirAll(d, 0755); err != nil {
-		return "", fmt.Errorf("could not create config directory %q: %w", d, err)
-	}
-	if err := writeDefaultConfigFile(p); err != nil {
-		return "", err
-	}
-	return p, nil
+	return repoconfig.Generate(root, true, Version())
 }
 
 // LintRepository finds workflows and actions in the nearest project and prints their findings.

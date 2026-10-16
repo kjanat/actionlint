@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/buildinfo"
+
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"
@@ -684,11 +686,11 @@ func TestErrorFormatterPrintToPascalCase(t *testing.T) {
 }
 
 func TestErrorFormatterPrintGetVersion(t *testing.T) {
-	saved := version
+	saved := buildinfo.ReleaseVersion
 	defer func() {
-		version = saved
+		buildinfo.ReleaseVersion = saved
 	}()
-	version = "dummy version"
+	buildinfo.ReleaseVersion = "dummy version"
 
 	f, err := NewErrorFormatter("{{getVersion}}")
 	if err != nil {

@@ -4,18 +4,18 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/buildinfo"
+
 	"github.com/google/go-cmp/cmp"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
-	previousVersion := version
-	version = "1.17.0"
-	t.Cleanup(func() { version = previousVersion })
+	previousVersion := buildinfo.ReleaseVersion
+	buildinfo.ReleaseVersion = "1.17.0"
+	t.Cleanup(func() { buildinfo.ReleaseVersion = previousVersion })
 	f := filepath.Join(t.TempDir(), "default-config-for-test.yml")
 	if err := writeDefaultConfigFile(f); err != nil {
 		t.Fatal(err)
@@ -78,27 +78,6 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 		if got, want := diagnosticLevel(c, rule.Name), diagnosticLevel(baseline, rule.Name); got != want {
 			t.Errorf("generated config changes %s from %s to %s", rule.Name, want, got)
 		}
-	}
-}
-
-func TestDefaultConfigReferenceExamples(t *testing.T) {
-	// Enable the commented YAML settings to check that the reference stays valid
-	// as the real configuration types and rule options evolve.
-	setting := regexp.MustCompile(`^\s*(?:[a-z][a-z-]*:|[".].*:|- )`)
-	var example strings.Builder
-	for line := range strings.SplitSeq(defaultConfigTemplate, "\n") {
-		indent := len(line) - len(strings.TrimLeft(line, " "))
-		if strings.HasPrefix(line[indent:], "# ") {
-			line = line[:indent] + line[indent+2:]
-		}
-		if setting.MatchString(line) {
-			example.WriteString(line)
-			example.WriteString("\n")
-		}
-	}
-	var config Config
-	if err := yaml.Unmarshal([]byte(example.String()), &config); err != nil {
-		t.Fatalf("invalid reference example: %v\n%s", err, example.String())
 	}
 }
 

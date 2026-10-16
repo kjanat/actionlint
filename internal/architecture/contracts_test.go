@@ -65,7 +65,7 @@ func TestExpressionDependencyDirection(t *testing.T) {
 }
 
 func TestEngineDoesNotImportPluginRuntime(t *testing.T) {
-	output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/internal/engine", "actionlint.kjanat.dev/analysis").Output()
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/internal/engine", "actionlint.kjanat.dev/internal/application", "actionlint.kjanat.dev/analysis").Output()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,6 +73,34 @@ func TestEngineDoesNotImportPluginRuntime(t *testing.T) {
 		switch {
 		case dependency == "actionlint.kjanat.dev/internal/component", strings.HasPrefix(dependency, "github.com/partite-ai/wacogo"), strings.HasPrefix(dependency, "github.com/tetratelabs/wazero"):
 			t.Errorf("engine imports plugin runtime %s", dependency)
+		}
+	}
+}
+
+// The terminal adapter must consume application and presentation contracts,
+// never the engine's sessions, traversal objects, or concrete plugin runtimes.
+func TestCLIDoesNotImportEngine(t *testing.T) {
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Imports "\n"}}`, "actionlint.kjanat.dev/internal/cli").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for dependency := range strings.SplitSeq(string(output), "\n") {
+		switch dependency {
+		case "actionlint.kjanat.dev/internal/engine", "actionlint.kjanat.dev/internal/component", "actionlint.kjanat.dev/internal/corewasm":
+			t.Errorf("CLI imports implementation %s", dependency)
+		}
+	}
+}
+
+func TestApplicationDoesNotImportCLI(t *testing.T) {
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/internal/application", "actionlint.kjanat.dev/internal/localapp").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for dependency := range strings.SplitSeq(string(output), "\n") {
+		switch dependency {
+		case "actionlint.kjanat.dev/internal/cli", "github.com/spf13/cobra", "github.com/spf13/pflag":
+			t.Errorf("application imports terminal adapter %s", dependency)
 		}
 	}
 }

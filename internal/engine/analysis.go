@@ -2,15 +2,15 @@ package engine
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"runtime"
 	"slices"
 	"sync"
+
+	"actionlint.kjanat.dev/internal/repoconfig"
 
 	"actionlint.kjanat.dev/analyzer"
 	exprlang "actionlint.kjanat.dev/internal/expression"
@@ -406,17 +406,8 @@ func (r *AnalysisResult) legacyErrors() []*Error {
 	return errors
 }
 
-// CompileIgnorePatterns validates message filters used by analysis and config initialization.
 func CompileIgnorePatterns(patterns []string) (IgnorePatterns, error) {
-	ignore := make(IgnorePatterns, 0, len(patterns))
-	for _, pattern := range patterns {
-		re, err := regexp.Compile(pattern)
-		if err != nil {
-			return nil, fmt.Errorf("invalid regular expression for ignore pattern %q: %w", pattern, err)
-		}
-		ignore = append(ignore, re)
-	}
-	return ignore, nil
+	return repoconfig.CompileIgnorePatterns(patterns)
 }
 
 // FileCount reports the number of explicit inputs analyzed, including clean files.

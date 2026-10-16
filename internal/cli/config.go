@@ -7,12 +7,16 @@ import (
 	"os"
 	"path/filepath"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/repoconfig"
+
+	"actionlint.kjanat.dev/internal/buildinfo"
+	"actionlint.kjanat.dev/internal/projectpath"
+	"actionlint.kjanat.dev/internal/render"
 	"go.yaml.in/yaml/v4"
 )
 
 func writeConfigPath(out io.Writer, req configPathRequest) error {
-	path, err := actionlint.SelectedConfigPath(req.Config)
+	path, err := repoconfig.SelectedPath(req.Config)
 	if err != nil {
 		return err
 	}
@@ -26,15 +30,15 @@ func writeConfigPath(out io.Writer, req configPathRequest) error {
 }
 
 func writeConfigValidation(out io.Writer, req configValidateRequest) error {
-	inspection, err := actionlint.InspectConfig(req.Config, false)
+	inspection, err := repoconfig.Inspect(req.Config, false)
 	if err != nil {
 		return err
 	}
 	if req.JSON {
 		return writeCommandJSON(out, struct {
-			Path     string                     `json:"path"`
-			Valid    bool                       `json:"valid"`
-			Warnings []actionlint.ConfigWarning `json:"warnings,omitempty"`
+			Path     string               `json:"path"`
+			Valid    bool                 `json:"valid"`
+			Warnings []repoconfig.Warning `json:"warnings,omitempty"`
 		}{inspection.Path, true, inspection.Warnings})
 	}
 	for _, warning := range inspection.Warnings {
@@ -55,7 +59,7 @@ func writeConfigValidation(out io.Writer, req configValidateRequest) error {
 }
 
 func writeConfigShow(out io.Writer, req configShowRequest) error {
-	inspection, err := actionlint.InspectConfig(req.Config, req.Origin)
+	inspection, err := repoconfig.Inspect(req.Config, req.Origin)
 	if err != nil {
 		return err
 	}
@@ -79,11 +83,11 @@ func initLegacyCommandConfig(streams Command, req legacyConfigInitRequest) error
 	}
 
 	if req.ConfigPath != "" {
-		if _, err := actionlint.ReadConfigFile(req.ConfigPath); err != nil {
+		if _, err := repoconfig.Load(req.ConfigPath); err != nil {
 			return err
 		}
 	}
-	if _, err := actionlint.CompileIgnorePatterns(req.IgnoreRegex); err != nil {
+	if _, err := repoconfig.CompileIgnorePatterns(req.IgnoreRegex); err != nil {
 		return err
 	}
 	options, err := resolveTemplate(renderOptions{Template: req.Template, TemplateFile: req.TemplateFile})
@@ -91,7 +95,7 @@ func initLegacyCommandConfig(streams Command, req legacyConfigInitRequest) error
 		return err
 	}
 	if options.Template != "" {
-		if _, err := actionlint.NewErrorFormatter(options.Template); err != nil {
+		if _, err := render.NewFormatter(options.Template, buildinfo.Version, nil); err != nil {
 			return err
 		}
 	}
@@ -112,7 +116,7 @@ func generateCommandConfig(out io.Writer, asJSON, withSchema bool, hyperlinks hy
 	if err != nil {
 		return err
 	}
-	path, err := actionlint.GenerateProjectConfig(cwd, withSchema)
+	path, err := repoconfig.Generate(projectpath.RepositoryRoot(cwd), withSchema, buildinfo.Version())
 	if err != nil {
 		return err
 	}

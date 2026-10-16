@@ -7,12 +7,12 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/repoconfig"
 )
 
-func commandRules() []actionlint.RuleInfo {
-	rules := actionlint.BuiltinRules()
-	slices.SortFunc(rules, func(a, b actionlint.RuleInfo) int { return strings.Compare(a.Name, b.Name) })
+func commandRules() []repoconfig.RuleInfo {
+	rules := repoconfig.RuleInfos()
+	slices.SortFunc(rules, func(a, b repoconfig.RuleInfo) int { return strings.Compare(a.Name, b.Name) })
 	return rules
 }
 
@@ -34,7 +34,7 @@ func writeRules(out io.Writer, name string, asJSON bool) error {
 		return writeCommandJSON(out, rules)
 	}
 	w := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
-	groups := map[string][]actionlint.RuleInfo{}
+	groups := map[string][]repoconfig.RuleInfo{}
 	for _, rule := range rules {
 		groups[rule.Category] = append(groups[rule.Category], rule)
 	}

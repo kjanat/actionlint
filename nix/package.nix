@@ -25,8 +25,8 @@ buildGoModule {
   ldflags = [
     "-s"
     "-w"
-    "-X actionlint.kjanat.dev/internal/engine.version=${version}"
-    "-X actionlint.kjanat.dev/internal/engine.installedFrom=Nix"
+    "-X actionlint.kjanat.dev/internal/buildinfo.ReleaseVersion=${version}"
+    "-X actionlint.kjanat.dev/internal/buildinfo.InstallOrigin=Nix"
   ];
 
   nativeBuildInputs = [

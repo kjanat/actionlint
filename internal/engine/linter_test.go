@@ -15,6 +15,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/buildinfo"
+
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/google/go-cmp/cmp"
 	"golang.org/x/sys/execabs"
@@ -450,11 +452,11 @@ func TestLinterFormatErrorMessageOK(t *testing.T) {
 }
 
 func TestLinterFormatErrorMessageInSARIF(t *testing.T) {
-	saved := version
+	saved := buildinfo.ReleaseVersion
 	t.Cleanup(func() {
-		version = saved
+		buildinfo.ReleaseVersion = saved
 	})
-	version = "(devel)"
+	buildinfo.ReleaseVersion = "(devel)"
 
 	dir := filepath.Join("testdata", "format")
 	proj := &Project{root: dir}

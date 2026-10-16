@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/internal/repoconfig"
 )
 
 // invocation holds parser state until it is converted to an operation-specific request.
@@ -23,15 +25,15 @@ type invocation struct {
 // checkInvocation contains analysis inputs. It carries no command-framework state.
 type checkInvocation struct {
 	Paths             []string
-	Config            actionlint.ConfigSelection
+	Config            repoconfig.Selection
 	StdinFilename     string
 	IgnoreRegex       []string
 	ShellCheck        string
 	Ruff              string
-	RuffOptions       *actionlint.ExternalCommandOptions
+	RuffOptions       *processconfig.Options
 	Pyflakes          string
 	Plugins           []string
-	ShellcheckOptions *actionlint.ExternalCommandOptions
+	ShellcheckOptions *processconfig.Options
 	Verbose           bool
 	Debug             bool
 	Strict            bool
@@ -45,11 +47,11 @@ type renderOptions struct {
 	PrettyJSON         bool
 	PrettyJSONExplicit bool
 	Hyperlinks         hyperlinkMode
-	Format             actionlint.OutputFormat
+	Format             render.Format
 	Template           string
 	TemplateFile       string
 	OutputFile         string
-	Color              actionlint.ColorOptionKind
+	Color              render.Color
 	Oneline            bool
 	Quiet              bool
 	Summary            bool
@@ -127,7 +129,7 @@ func (a *commandApp) prepareInvocation() error {
 	case "text", "oneline", "json", "jsonl", "sarif", "github":
 		if explicitOutput || i.JSON {
 			i.Render.Oneline = false
-			i.Render.Format = actionlint.OutputFormat(o.output)
+			i.Render.Format = render.Format(o.output)
 		}
 	default:
 		return commandUsageError{fmt.Errorf("invalid output mode %q: choose text, oneline, json, jsonl, sarif or github", o.output)}

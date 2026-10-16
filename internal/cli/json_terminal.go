@@ -9,14 +9,15 @@ import (
 	"os/exec"
 	"time"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/render"
+
 	"golang.org/x/sys/execabs"
 )
 
 type prettyJSONOutput struct {
 	io.Writer
 	ctx      context.Context
-	color    actionlint.ColorOptionKind
+	color    render.Color
 	explicit bool
 }
 
@@ -28,7 +29,7 @@ func (out *prettyJSONOutput) writeJSON(value any) error {
 	return writePrettyJSON(out.ctx, out.Writer, out.color, append(data, '\n'), out.explicit)
 }
 
-func writePrettyJSON(ctx context.Context, out io.Writer, mode actionlint.ColorOptionKind, data []byte, explicit bool) error {
+func writePrettyJSON(ctx context.Context, out io.Writer, mode render.Color, data []byte, explicit bool) error {
 	if explicit {
 		var formatted bytes.Buffer
 		if err := json.Indent(&formatted, bytes.TrimSpace(data), "", "  "); err != nil {
@@ -39,7 +40,7 @@ func writePrettyJSON(ctx context.Context, out io.Writer, mode actionlint.ColorOp
 	file, terminal := terminalFile(out)
 	if terminal {
 		if jq, err := execabs.LookPath("jq"); err == nil {
-			colored := mode == actionlint.ColorOptionKindAlways || (mode == actionlint.ColorOptionKindAuto && os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "dumb")
+			colored := mode == render.ColorAlways || (mode == render.ColorAuto && os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "dumb")
 			if formatted, err := formatJSONWithJQ(ctx, jq, data, colored); err == nil {
 				data = formatted
 				if colored {

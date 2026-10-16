@@ -13,7 +13,7 @@ on:
       - "syntax/**"
       - "go.mod"
       - "go.sum"
-      - "internal/engine/config_default.yaml"
+      - "internal/repoconfig/config_default.yaml"
       - "cmd/**"
       - "internal/**"
       - "playground/**"

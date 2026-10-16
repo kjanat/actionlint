@@ -22,13 +22,15 @@ func NewAnalysisRenderer(format OutputFormat, template string, oneline bool) (*A
 
 // Render writes findings using their original sources and the selected output format.
 func (r *AnalysisRenderer) Render(out io.Writer, result *AnalysisResult) error {
-	return r.renderer.Render(out, result.renderResult())
+	return r.renderer.Render(out, result.RenderResult())
 }
 
-func (r *AnalysisResult) renderResult() render.Result {
+// RenderResult snapshots source-aware findings for presentation outside the engine.
+func (r *AnalysisResult) RenderResult() render.Result {
 	rendered := render.Result{
 		FileCount: r.FileCount(), Diagnostics: r.Diagnostics, Documents: r.Documents, Configurations: r.Configurations,
 		Findings: make([]render.Finding, 0, len(r.Diagnostics)),
+		Rules:    templateRules(),
 	}
 	index := 0
 	for _, file := range r.files {
@@ -47,5 +49,5 @@ func (r *AnalysisResult) renderResult() render.Result {
 
 // CheckResult exports a completed analysis using the shared public result contract.
 func (r *AnalysisResult) CheckResult() CheckResult {
-	return r.renderResult().CheckResult()
+	return r.RenderResult().CheckResult()
 }

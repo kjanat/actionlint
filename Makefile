@@ -3,7 +3,7 @@
 MAKEFLAGS += --no-builtin-rules
 
 GO_FILES := $(wildcard *.go analysis/*.go config/*.go diagnostic/*.go document/*.go syntax/*.go analyzer/*.go cmd/*/*.go internal/*/*.go)
-SRCS := $(filter-out %_test.go, $(GO_FILES)) internal/engine/config_default.yaml internal/actioncatalog/popular_actions.json go.mod go.sum
+SRCS := $(filter-out %_test.go, $(GO_FILES)) internal/repoconfig/config_default.yaml internal/actioncatalog/popular_actions.json go.mod go.sum
 TESTS := $(filter %_test.go, $(GO_FILES))
 TOOL := $(wildcard scripts/*/*.go)
 TESTDATA := $(wildcard \
@@ -110,7 +110,7 @@ endif
 
 GIT_DESCRIBE := $(shell git describe --tags 2>/dev/null)
 ifneq ($(GIT_DESCRIBE),)
-BUILD_LDFLAGS = -ldflags "-X actionlint.kjanat.dev/internal/engine.version=$(GIT_DESCRIBE)"
+BUILD_LDFLAGS = -ldflags "-X actionlint.kjanat.dev/internal/buildinfo.ReleaseVersion=$(GIT_DESCRIBE)"
 endif
 
 # Creating or moving a tag changes the version stamp without touching a prerequisite.

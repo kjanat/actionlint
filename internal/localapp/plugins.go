@@ -1,7 +1,8 @@
-package cli
+package localapp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -28,8 +29,7 @@ func loadPlugins(ctx context.Context, paths []string, log io.Writer, debug bool)
 		}
 		plugin, err := component.Load(ctx, path, options)
 		if err != nil {
-			loaded.close(ctx)
-			return nil, commandUsageError{err}
+			return nil, &PluginLoadError{errors.Join(err, loaded.close(context.WithoutCancel(ctx)))}
 		}
 		if debug {
 			_, _ = fmt.Fprintf(log, "[Linter] Loaded plugin %q from %s (%s)\n", plugin.Descriptor().Name, path, plugin.Limits())
@@ -47,11 +47,13 @@ func (l *loadedPlugins) registrations() []analyzer.Registration {
 	return registrations
 }
 
-func (l *loadedPlugins) close(ctx context.Context) {
+func (l *loadedPlugins) close(ctx context.Context) error {
+	var err error
 	for _, plugin := range l.plugins {
-		_ = plugin.Close(ctx)
+		err = errors.Join(err, plugin.Close(ctx))
 	}
 	l.plugins = nil
+	return err
 }
 
 func scriptEngineLoader(log io.Writer, debug bool) func(context.Context, string) (analyzer.ScriptBackend, error) {

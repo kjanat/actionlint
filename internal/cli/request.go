@@ -3,7 +3,8 @@ package cli
 import (
 	"context"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/repoconfig"
 )
 
 // commandRequest is the execution boundary: each operation carries only its own inputs.
@@ -42,10 +43,10 @@ func (r rulesRequest) run(_ context.Context, streams Command) (int, error) {
 
 type doctorRequest struct {
 	Ruff              string
-	RuffOptions       *actionlint.ExternalCommandOptions
-	Config            actionlint.ConfigSelection
+	RuffOptions       *processconfig.Options
+	Config            repoconfig.Selection
 	ShellCheck        string
-	ShellcheckOptions *actionlint.ExternalCommandOptions
+	ShellcheckOptions *processconfig.Options
 	JSON              bool
 	Hyperlinks        hyperlinkMode
 }
@@ -55,7 +56,7 @@ func (r doctorRequest) run(ctx context.Context, streams Command) (int, error) {
 }
 
 type configPathRequest struct {
-	Config actionlint.ConfigSelection
+	Config repoconfig.Selection
 	JSON   bool
 }
 
@@ -64,7 +65,7 @@ func (r configPathRequest) run(_ context.Context, streams Command) (int, error) 
 }
 
 type configShowRequest struct {
-	Config       actionlint.ConfigSelection
+	Config       repoconfig.Selection
 	JSON, Origin bool
 }
 
@@ -73,7 +74,7 @@ func (r configShowRequest) run(_ context.Context, streams Command) (int, error) 
 }
 
 type configValidateRequest struct {
-	Config actionlint.ConfigSelection
+	Config repoconfig.Selection
 	JSON   bool
 }
 

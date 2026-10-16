@@ -28,7 +28,7 @@ jobs:
           ],
           "jobs": {
             "go": [
-              "**/*.go", "go.mod", "go.sum", "internal/engine/config_default.yaml", ".github/codeql/**", "!testdata/**", "!**/testdata/**",
+              "**/*.go", "go.mod", "go.sum", "internal/repoconfig/config_default.yaml", ".github/codeql/**", "!testdata/**", "!**/testdata/**",
               "!**/*_test.go"
             ],
             "javascript-typescript": [

@@ -2,6 +2,8 @@
 
 # Unreleased
 
+- Separate CLI presentation from application execution. CLI and Go file-analysis entry points share runtime cleanup and partial-result handling; terminal rendering and atomic report publication stay in the CLI. Move native command options, configuration creation, rule metadata and release identity to their owning packages. Build recipes now stamp `internal/buildinfo.ReleaseVersion` and `internal/buildinfo.InstallOrigin`.
+
 - Require Go 1.27 or later for source builds and library consumers. Decode core WebAssembly engine metadata and responses with `encoding/json/v2`, rejecting duplicate object keys and invalid UTF-8 and matching protocol fields case-sensitively. Keep unknown fields extensible and preserve existing JSON output formats.
 
 - Break the flat Go library API into `analysis`, `analyzer`, `diagnostic`, `document`, `config` and `syntax` packages. Keep execution, traversal rules and caches internal. Add explicit analyzer facts/results and document-scoped resource completion, including early traversal failures. Run Ruff, ShellCheck and deprecated-command checks from prepared script inputs, with checker-owned completion and isolated per-script results. Keep document codecs, configuration, syntax and rendering independent of the analysis engine. See the [Go API migration](docs/api.md#migration-from-the-flat-api).
