@@ -243,6 +243,11 @@ func (l *analysisEngine) check(
 		input := documentAnalyzerInput(path, configPath, content, factsWorkflow, outline, units, facts)
 		findings, err := analyzerhost.Run(l.ctx, input, l.analyzers)
 		analysisErr = errors.Join(analysisErr, err)
+		for _, registration := range l.analyzers {
+			if registration.Analyzer != nil {
+				*usedRules = append(*usedRules, RuleInfo{Name: registration.Analyzer.Descriptor().Name})
+			}
+		}
 		for _, finding := range findings {
 			legacy := legacyDiagnosticError(finding)
 			if legacy.Filepath != "" && legacy.Filepath != path {

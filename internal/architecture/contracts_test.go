@@ -19,6 +19,7 @@ func TestIndependentPackagesDoNotImportHost(t *testing.T) {
 		"actionlint.kjanat.dev/internal/repoconfig",
 		"actionlint.kjanat.dev/internal/ruffconfig",
 		"actionlint.kjanat.dev/internal/render",
+		"actionlint.kjanat.dev/internal/component",
 		"actionlint.kjanat.dev/internal/expression",
 		"actionlint.kjanat.dev/internal/workflow",
 		"actionlint.kjanat.dev/internal/workflowcontext",
@@ -57,6 +58,19 @@ func TestExpressionDependencyDirection(t *testing.T) {
 		switch dependency {
 		case "actionlint.kjanat.dev/internal/workflow", "actionlint.kjanat.dev/internal/analyzerhost", "actionlint.kjanat.dev/analyzer", "actionlint.kjanat.dev/internal/ruff", "actionlint.kjanat.dev/internal/configtree":
 			t.Errorf("expression semantics imports host domain %s", dependency)
+		}
+	}
+}
+
+func TestEngineDoesNotImportPluginRuntime(t *testing.T) {
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/internal/engine", "actionlint.kjanat.dev/analysis").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for dependency := range strings.SplitSeq(string(output), "\n") {
+		switch {
+		case dependency == "actionlint.kjanat.dev/internal/component", strings.HasPrefix(dependency, "github.com/partite-ai/wacogo"), strings.HasPrefix(dependency, "github.com/tetratelabs/wazero"):
+			t.Errorf("engine imports plugin runtime %s", dependency)
 		}
 	}
 }

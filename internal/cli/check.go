@@ -139,9 +139,14 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	if c.ExperimentalSet {
 		presets.Experimental = &c.Experimental
 	}
+	plugins, err := loadPlugins(ctx, c.Plugins, log, options.Debug)
+	if err != nil {
+		return 0, err
+	}
+	defer plugins.close(ctx)
 	app, err := actionlint.NewAnalysisSession(actionlint.AnalysisOptions{
-		RulePresets: presets,
-		Context:     ctx, WorkingDir: options.WorkingDir, StdinFileName: options.StdinFileName,
+		RulePresets: presets, Analyzers: plugins.registrations(),
+		Context: ctx, WorkingDir: options.WorkingDir, StdinFileName: options.StdinFileName,
 		ConfigFile: options.ConfigFile, Shellcheck: options.Shellcheck,
 		ShellcheckOptions: c.ShellcheckOptions,
 		Ruff:              c.Ruff, RuffOptions: c.RuffOptions,

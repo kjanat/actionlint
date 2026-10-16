@@ -176,6 +176,36 @@ The built-in deprecated-commands check consumes these facts through the same con
 to host state such as ignore origins and foreign sources. Public findings that name a composite action path are
 filtered with that file's inline suppressions and configuration. Other built-in rules still run as visitors.
 
+## Decision: run external analyzers as WebAssembly components
+
+`plugins/wit/analyzer.wit` is the plugin contract. It mirrors the Go `analyzer` package: a `describe` call returns the
+plugin name and required facts, and `analyze` receives one document with its declared and invoked scripts, spans,
+invocation context, runtime facts, mappings and registered options, and returns diagnostics or an error message. The
+host implements `kjanat:actionlint/host`, which currently carries one `log` function. Go host bindings for that import
+are generated from the WIT with `wacogo-witgen`; guest bindings come from `wit-bindgen` in each plugin's language.
+Exported calls use the runtime's reflective value API, so the host keeps one conversion layer per direction.
+
+The runtime is `wacogo` on `wazero`: pure Go, no cgo, and a component-model implementation that covers the value
+types this contract uses. `internal/component` loads a component, checks that it exports
+`kjanat:actionlint/analyzer@0.1.0` and imports only the host interface and the granted `wasi:cli`, `wasi:io`,
+`wasi:clocks`, `wasi:random` and `wasi:filesystem` interfaces, then calls `describe`. Every `analyze` call instantiates
+the component anew under a per-call deadline and a memory limit, with an empty environment, no preopened directories
+and stdio routed to the host log. Calls on one plugin are serialized. A trap, an exit through `wasi:cli/exit`, a
+failed allocation, a deadline or a cancellation returns an error that names the plugin and its limits; the document's
+analysis fails instead of reporting a clean result. The engine and the public `analysis` package do not import the
+runtime; the CLI loads plugins from `--plugin` and registers them as analyzers.
+
+Verification uses a Rust example built with `wit-bindgen` for `wasm32-wasip2`, a C example built with `wit-bindgen c`
+and wasi-sdk, hand-written components that export the wrong interface version, import a socket interface, import an
+unknown interface or export no analyzer, and a Rust test plugin that traps, panics, exits, allocates past the limit,
+loops, reads a file, reads the environment and logs on request. Architecture tests keep the engine free of the runtime
+and the loader free of the engine.
+
+Known limit: `wacogo` rejects a null pointer from `cabi_realloc` for a zero-size request, which the canonical ABI
+allows and TinyGo 0.42 produces, so TinyGo guests cannot run on this host until the runtime accepts it. Core WebAssembly
+JSON engines such as `actionlint-plugin-ruff` keep their own transport behind `analyzer.ScriptBackend`; a core-module
+adapter is a separate change.
+
 ## Decision: separate language analysis from the host
 
 Expression analysis receives `expression.Options`: allowed variable and secret names and explicit semantic-check

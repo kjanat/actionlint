@@ -30,6 +30,7 @@ type checkInvocation struct {
 	Ruff              string
 	RuffOptions       *actionlint.ExternalCommandOptions
 	Pyflakes          string
+	Plugins           []string
 	ShellcheckOptions *actionlint.ExternalCommandOptions
 	Verbose           bool
 	Debug             bool

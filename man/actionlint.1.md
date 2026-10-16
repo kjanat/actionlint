@@ -181,6 +181,11 @@ nonempty explicit config path. Also available on **config** and **doctor**.
 add patterns. **--ignore** is the
 supported legacy name.
 
+**--plugin** *PATH*
+: Load a WebAssembly component plugin that implements `kjanat:actionlint/analyzer@0.1.0`.
+Repeat to load several. Each analysis runs in a fresh instance with 64 MiB of memory and
+10 seconds; a trap, an exit or an exceeded limit fails that document's analysis.
+
 **--stdin-filename** *PATH*
 : Set the path used for stdin diagnostics and project detection. The default is
 `<stdin>`. Use an existing workflow path to select its repository context.

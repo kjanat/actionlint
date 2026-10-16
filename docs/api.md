@@ -91,6 +91,9 @@ An analyzer must finish its own work before returning and honor cancellation. Th
 concurrently for different documents. The contract does not expose traversal callbacks, mutable built-in rules,
 process schedulers or caches. Built-in visitor adapters remain an internal implementation detail.
 
+The same contract is available to other languages as the WebAssembly component interface described in
+[Plugins](plugins.md). The CLI loads such components with `--plugin`.
+
 ## Configuration and syntax
 
 Use `config.Parse`, `config.Load` and `config.Inspect` to work with the existing configuration format. Configuration

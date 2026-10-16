@@ -154,10 +154,33 @@ scripts/generate-actionlint-matcher/testdata/no_escape.txt: $(TARGET)
 scripts/generate-actionlint-matcher/testdata/want.json: $(TARGET)
 	./actionlint -format '{{json .}}' ./testdata/err/one_error.yaml > scripts/generate-actionlint-matcher/testdata/want.json || true
 
+PLUGIN_FIXTURES := internal/component/testdata/plugins
+PLUGIN_WAT := $(wildcard internal/component/testdata/wat/*.wat)
+
+.PHONY: plugins
+plugins: $(PLUGIN_FIXTURES)/pipe-to-shell.wasm $(PLUGIN_FIXTURES)/no-sudo.wasm $(PLUGIN_FIXTURES)/misbehave.wasm $(PLUGIN_WAT:.wat=.wasm)
+
+$(PLUGIN_FIXTURES)/pipe-to-shell.wasm: plugins/wit/analyzer.wit plugins/examples/pipe-to-shell/Cargo.toml plugins/examples/pipe-to-shell/Cargo.lock $(wildcard plugins/examples/pipe-to-shell/src/*.rs)
+	cargo build --locked --release --target wasm32-wasip2 --manifest-path plugins/examples/pipe-to-shell/Cargo.toml
+	cp plugins/examples/pipe-to-shell/target/wasm32-wasip2/release/actionlint_plugin_pipe_to_shell.wasm $@
+
+$(PLUGIN_FIXTURES)/misbehave.wasm: plugins/wit/analyzer.wit internal/component/testdata/misbehave/Cargo.toml internal/component/testdata/misbehave/Cargo.lock $(wildcard internal/component/testdata/misbehave/src/*.rs)
+	cargo build --locked --release --target wasm32-wasip2 --manifest-path internal/component/testdata/misbehave/Cargo.toml
+	cp internal/component/testdata/misbehave/target/wasm32-wasip2/release/actionlint_plugin_misbehave.wasm $@
+
+$(PLUGIN_FIXTURES)/no-sudo.wasm: plugins/wit/analyzer.wit plugins/examples/no-sudo/build.sh $(wildcard plugins/examples/no-sudo/*.c)
+	plugins/examples/no-sudo/build.sh $(abspath $@)
+
+internal/component/testdata/wat/%.wasm: internal/component/testdata/wat/%.wat
+	wasm-tools parse $< -o $@
+
+internal/component/bindings/kjanat/actionlint/host/host.go: plugins/wit/analyzer.wit internal/component/generate.go
+	go generate ./internal/component
+
 CHANGELOG.md:
 	changelog-from-release > CHANGELOG.md
 
 clean:
 	rm -f ./$(TARGET) ./man/actionlint.1 ./man/actionlint.1.html ./actionlint-workflow-ast
 
-.PHONY: all comment-cop test clean build lint fuzz man bench cov CHANGELOG.md FORCE
+.PHONY: all comment-cop test clean build lint fuzz man bench cov plugins CHANGELOG.md FORCE
