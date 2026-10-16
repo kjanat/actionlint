@@ -7,18 +7,22 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"actionlint.kjanat.dev/analyzer"
 )
 
 type recordingEngine struct {
+	mu       sync.Mutex
 	requests []analyzer.ScriptRequest
 	closed   bool
 }
 
 func (e *recordingEngine) Check(_ context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
+	e.mu.Lock()
 	e.requests = append(e.requests, request)
+	e.mu.Unlock()
 	return []analyzer.ScriptDiagnostic{{
 		Filename: request.Filename, Code: "F821", Message: "Undefined name `missing`", Severity: "error",
 		Location: analyzer.ScriptPosition{Row: 1, Column: 7}, EndLocation: analyzer.ScriptPosition{Row: 1, Column: 14},
