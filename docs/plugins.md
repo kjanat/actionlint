@@ -71,7 +71,8 @@ WASI_SDK_PATH=/opt/wasi-sdk ./build.sh no-sudo.wasm
 ### Other toolchains
 
 Any toolchain that emits a component for the `plugin` world works when its `cabi_realloc` returns a non-null pointer
-for a zero-size request. TinyGo 0.42 returns null there, which this host rejects.
+for a zero-size request. TinyGo 0.42 and 0.43 return null there, which this host rejects; see
+https://github.com/partite-ai/wacogo/issues/11.
 
 ### Build outside this repository
 

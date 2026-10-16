@@ -202,7 +202,9 @@ loops, reads a file, reads the environment and logs on request. Architecture tes
 and the loader free of the engine.
 
 Known limit: `wacogo` rejects a null pointer from `cabi_realloc` for a zero-size request, which the canonical ABI
-allows and TinyGo 0.42 produces, so TinyGo guests cannot run on this host until the runtime accepts it.
+allows and TinyGo 0.42 and 0.43 produce, so TinyGo guests cannot run on this host until the runtime accepts it.
+`internal/component/runtime_limit_test.go` pins the behaviour with a minimal component; the report is
+https://github.com/partite-ai/wacogo/issues/11.
 
 Core WebAssembly JSON engines such as `actionlint-plugin-ruff` keep their own transport behind
 `analyzer.ScriptBackend`. `internal/corewasm` runs them on `wazero` directly: it verifies the version 1 exports and
