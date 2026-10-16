@@ -163,6 +163,19 @@ An argv-only abstraction was rejected because it would force embedded engines to
 stdout protocols. A universal filesystem capability was deferred because the current Ruff plugin needs none
 and ShellCheck requires explicit source/dependency semantics before such a capability can be specified.
 
+## Decision: expose invocation context to analyzers
+
+A document declares scripts; a workflow also invokes scripts that composite actions declare. The analyzer contract keeps
+these apart: `Input.Scripts` holds the document's own run steps, `Input.Invoked` holds scripts reached through `uses:`
+calls, each with its declaring path, the calling step, the reference text and the call depth. Both carry spans that map
+script text to document positions, including decoded escapes and folded whitespace without a source, so an analyzer can
+place a finding without parsing YAML. The `execution` fact adds the shell and working directory the runner would use,
+with explicit known flags, and the host resolves it only when an analyzer asks.
+
+The built-in deprecated-commands check consumes these facts through the same contract; the engine adapts its findings
+to host state such as ignore origins and foreign sources. Public findings that name a composite action path are
+filtered with that file's inline suppressions and configuration. Other built-in rules still run as visitors.
+
 ## Decision: separate language analysis from the host
 
 Expression analysis receives `expression.Options`: allowed variable and secret names and explicit semantic-check

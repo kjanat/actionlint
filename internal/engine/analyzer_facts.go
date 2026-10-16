@@ -10,7 +10,60 @@ import (
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
-func documentAnalyzerInput(path string, content []byte, workflow *workflowlang.Workflow, outline DocumentOutline) analyzer.Input {
+type factAvailability struct {
+	scripts   bool
+	execution bool
+}
+
+func requiredFacts(registrations []analyzer.Registration) map[analyzer.Fact]bool {
+	facts := map[analyzer.Fact]bool{}
+	for _, registration := range registrations {
+		if registration.Analyzer == nil {
+			continue
+		}
+		for _, fact := range registration.Analyzer.Descriptor().Requires {
+			facts[fact] = true
+		}
+	}
+	return facts
+}
+
+func scriptFact(unit scriptUnit, document, documentAbs string, execution bool) analyzer.Script {
+	run := unit.run
+	script := analyzer.Script{Text: run.Run.Value, Shell: outlineString(run.Shell), Start: factPosition(run.Run.Pos)}
+	if unit.origin != nil {
+		script.JobID, script.StepID = unit.origin.job, unit.origin.stepID
+	}
+	if unit.path != "" && unit.path != document && unit.path != documentAbs {
+		script.Path = unit.path
+	}
+	for _, span := range run.Source.LineSpans() {
+		script.Spans = append(script.Spans, analyzer.Span{
+			Line: span.Line, Start: span.Start, End: span.End,
+			Document:    diagnostic.Position{Line: span.YamlLine, Column: span.YamlColumn},
+			DocumentEnd: diagnostic.Position{Line: span.YamlEndLine, Column: span.YamlEndColumn},
+		})
+	}
+	if scope := unit.scope; scope != nil && script.Path != "" && scope.call != nil {
+		invocation := &analyzer.Invocation{Step: factPosition(scope.call.Pos), Depth: scope.depth}
+		if scope.caller != document && scope.caller != documentAbs {
+			invocation.Caller = scope.caller
+		}
+		if action, ok := scope.call.Exec.(*workflowlang.ExecAction); ok && action.Uses != nil {
+			invocation.Uses = action.Uses.Value
+		}
+		script.Invocation = invocation
+	}
+	if execution {
+		script.Runtime = &analyzer.Runtime{
+			Shell: unit.execution.shell.name, ShellKnown: unit.execution.shell.name != "", ShellImplicit: unit.execution.shell.implicit,
+			Directory: unit.execution.directory.path, DirectoryKnown: unit.execution.directory.kind == directoryKnown,
+		}
+	}
+	return script
+}
+
+func documentAnalyzerInput(path, pathAbs string, content []byte, workflow *workflowlang.Workflow, outline DocumentOutline, units []scriptUnit, facts factAvailability) analyzer.Input {
 	input := analyzer.Input{Available: []analyzer.Fact{analyzer.Source}, Path: path, Content: string(content), Kind: "workflow", ParseStatus: "failed"}
 	switch outline := outline.(type) {
 	case WorkflowOutline:
@@ -22,7 +75,21 @@ func documentAnalyzerInput(path string, content []byte, workflow *workflowlang.W
 	if workflow == nil {
 		return input
 	}
-	input.Available = append(input.Available, analyzer.Scripts, analyzer.Mappings)
+	input.Available = append(input.Available, analyzer.Mappings)
+	if facts.scripts {
+		input.Available = append(input.Available, analyzer.Scripts, analyzer.Invocations)
+		for _, unit := range units {
+			script := scriptFact(unit, path, pathAbs, facts.execution)
+			if script.Path == "" {
+				input.Scripts = append(input.Scripts, script)
+			} else {
+				input.Invoked = append(input.Invoked, script)
+			}
+		}
+	}
+	if facts.execution {
+		input.Available = append(input.Available, analyzer.Execution)
+	}
 	addMapping := func(scope string, values *mapping.Inputs[*workflowlang.String]) {
 		if values == nil {
 			return
@@ -53,20 +120,15 @@ func documentAnalyzerInput(path string, content []byte, workflow *workflowlang.W
 		}
 	}
 	addEnv("env", workflow.Env)
-	var steps func(string, string, []*workflowlang.Step)
-	steps = func(jobID, scope string, nodes []*workflowlang.Step) {
+	var steps func(string, []*workflowlang.Step)
+	steps = func(scope string, nodes []*workflowlang.Step) {
 		for _, step := range nodes {
-			stepID := outlineString(step.ID)
 			addEnv(scope+".env", step.Env)
 			switch exec := step.Exec.(type) {
-			case *workflowlang.ExecRun:
-				if exec.Run != nil {
-					input.Scripts = append(input.Scripts, analyzer.Script{JobID: jobID, StepID: stepID, Text: exec.Run.Value, Shell: outlineString(exec.Shell), Start: factPosition(exec.Run.Pos)})
-				}
 			case *workflowlang.ExecAction:
 				addMapping(scope+".with", workflowlang.InputMapping(exec))
 			case *workflowlang.ExecParallel:
-				steps(jobID, scope+".parallel", exec.Steps)
+				steps(scope+".parallel", exec.Steps)
 			}
 		}
 	}
@@ -85,7 +147,7 @@ func documentAnalyzerInput(path string, content []byte, workflow *workflowlang.W
 		if job.Strategy != nil && job.Strategy.Matrix != nil {
 			addMapping(scope+".strategy.matrix", matrixKeysView(job.Strategy.Matrix))
 		}
-		steps(id, scope+".steps", job.Steps)
+		steps(scope+".steps", job.Steps)
 	}
 	return input
 }

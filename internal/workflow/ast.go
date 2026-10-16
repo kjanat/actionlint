@@ -1275,3 +1275,74 @@ func (w *Workflow) FindWorkflowCallEvent() (*WorkflowCallEvent, bool) {
 	}
 	return nil, false
 }
+
+// ScriptLineSpan maps the text columns [Start, End) of one decoded script line to the YAML source.
+// YamlEndLine and YamlEndColumn are nonzero for a decoded escape sequence.
+type ScriptLineSpan struct {
+	Line          int
+	Start         int
+	End           int
+	YamlLine      int
+	YamlColumn    int
+	YamlEndLine   int
+	YamlEndColumn int
+}
+
+// LineSpans projects the mapped spans onto text lines. A trailing newline or folded whitespace
+// without a source maps its exclusive end to the end of the final mapped text.
+func (s *ScriptSource) LineSpans() []ScriptLineSpan {
+	if s == nil {
+		return nil
+	}
+	var result []ScriptLineSpan
+	var last *ScriptSourceSpan
+	for i, line := range s.Lines {
+		limit := line.End
+		if limit < len(s.Value) {
+			limit++
+		}
+		for j := range s.Spans {
+			span := &s.Spans[j]
+			start, end := max(span.Start, line.Start), min(span.End, limit)
+			if span.Start >= span.End || start >= end {
+				continue
+			}
+			last = span
+			item := ScriptLineSpan{
+				Line:       i + 1,
+				Start:      utf8.RuneCountInString(s.Value[line.Start:start]) + 1,
+				End:        utf8.RuneCountInString(s.Value[line.Start:end]) + 1,
+				YamlLine:   span.YamlLine,
+				YamlColumn: span.YamlColumn + utf8.RuneCountInString(s.Value[span.Start:start]),
+			}
+			if span.YamlEndColumn != 0 {
+				item.YamlColumn, item.YamlEndLine, item.YamlEndColumn = span.YamlColumn, span.YamlEndLine, span.YamlEndColumn
+				if item.YamlEndLine == 0 {
+					item.YamlEndLine = span.YamlLine
+				}
+			}
+			result = append(result, item)
+			if end == limit && limit > line.End && i+1 < len(s.Lines) {
+				separator := ScriptLineSpan{Line: i + 2, Start: 1, End: 1, YamlLine: span.YamlLine, YamlColumn: span.YamlColumn + utf8.RuneCountInString(s.Value[span.Start:end])}
+				if span.YamlEndColumn != 0 {
+					separator.YamlLine, separator.YamlColumn = item.YamlEndLine, span.YamlEndColumn
+				}
+				result = append(result, separator)
+			}
+		}
+	}
+	if last != nil && last.End < len(s.Value) && strings.Trim(s.Value[last.End:], " \n") == "" {
+		tail := s.Lines[len(s.Lines)-1]
+		column := last.YamlColumn + utf8.RuneCountInString(s.Value[last.Start:last.End])
+		if last.YamlEndColumn != 0 {
+			column = last.YamlEndColumn
+		}
+		line := last.YamlLine
+		if last.YamlEndLine != 0 {
+			line = last.YamlEndLine
+		}
+		at := utf8.RuneCountInString(s.Value[tail.Start:]) + 1
+		result = append(result, ScriptLineSpan{Line: len(s.Lines), Start: at, End: at, YamlLine: line, YamlColumn: column})
+	}
+	return result
+}

@@ -75,9 +75,10 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *ActionMetadata, ca
 		}
 	}
 	parentScope := analysis.scriptScope
-	scope := &scriptScope{paths: analysis.scriptPaths, config: analysis.scriptConfig, composite: true}
+	scope := &scriptScope{paths: analysis.scriptPaths, config: analysis.scriptConfig, composite: true, document: meta.Path(), call: call, depth: 1}
 	if parentScope != nil {
 		scope.paths, scope.config = parentScope.paths, parentScope.config
+		scope.caller, scope.depth = parentScope.document, parentScope.depth+1
 	}
 	scope.actionPath = filepath.Dir(meta.Path())
 	if meta.sourceMapped {

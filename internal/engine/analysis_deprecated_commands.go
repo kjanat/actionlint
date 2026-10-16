@@ -2,45 +2,32 @@ package engine
 
 import (
 	"context"
-	"strings"
-	"unicode/utf8"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/workflowcommands"
 )
 
 type deprecatedCommandsAnalyzer struct{}
 
 func (deprecatedCommandsAnalyzer) AnalyzeScripts(ctx context.Context, batch scriptBatch) ([]*Error, error) {
-	scripts := batch.scripts
 	var findings []*Error
-	for _, script := range scripts {
+	for _, unit := range batch.scripts {
 		if err := ctx.Err(); err != nil {
 			return findings, err
 		}
-		run := script.run
-		for _, command := range workflowcommands.Deprecated(run.Run.Value) {
-			position := func(offset int, exclusive bool) (*workflowlang.Pos, bool) {
-				prefix := run.Run.Value[:offset]
-				line := strings.Count(prefix, "\n") + 1
-				column := utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1
-				if exclusive {
-					return run.Source.EndPos(line, column)
-				}
-				return run.Source.Position(line, column)
+		input := analyzer.Input{Scripts: []analyzer.Script{scriptFact(unit, unit.path, unit.path, false)}}
+		diagnostics, err := workflowcommands.Analyzer{}.Analyze(ctx, input)
+		for _, d := range diagnostics {
+			finding := legacyDiagnosticError(d)
+			if d.End == (diagnostic.Position{}) {
+				finding.endPosition = nil
 			}
-			start, startOK := position(command.Start, false)
-			end, endOK := position(command.End, true)
-			if !startOK || !endOK {
-				start, end = run.Run.Pos, nil
-			}
-			finding := errorfAt(start, "deprecated-commands", "workflow command %q was deprecated. use `%s` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions", command.Command, command.Replacement)
-			finding.endPosition = end
-			if end != nil && end.Line == start.Line && end.Col > start.Col {
-				finding.endColumn = end.Col - 1
-			}
-			finding.Filepath, finding.source, finding.ignoreOrigin = script.path, script.content, script.origin
+			finding.Filepath, finding.source, finding.ignoreOrigin = unit.path, unit.content, unit.origin
 			findings = append(findings, finding)
+		}
+		if err != nil {
+			return findings, err
 		}
 	}
 	return findings, nil

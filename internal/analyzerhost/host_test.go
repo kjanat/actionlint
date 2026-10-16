@@ -71,7 +71,7 @@ func TestRunIsolatesFactsAndRetainsPartialResults(t *testing.T) {
 }
 
 func TestRunRequirementsAndCancellation(t *testing.T) {
-	for _, requirement := range []analyzer.Fact{analyzer.Scripts, "future"} {
+	for _, requirement := range []analyzer.Fact{analyzer.Scripts, analyzer.Invocations, analyzer.Execution, "future"} {
 		a := testAnalyzer{analyzer.Descriptor{Name: "requires", Requires: []analyzer.Fact{requirement}}, func(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
 			t.Error("ran without required facts")
 			return nil, nil

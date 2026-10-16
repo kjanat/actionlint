@@ -70,11 +70,18 @@ type Analyzer interface {
 }
 ```
 
-A descriptor names the analyzer and declares required facts: source content, declared run scripts, or resolved mapping
-names. Each registration can supply JSON options. The host rejects unsupported or unavailable facts before invocation.
+A descriptor names the analyzer and declares required facts: source content, declared run scripts, resolved mapping
+names, scripts invoked through composite action calls, or runtime execution facts. Each registration can supply JSON options. The host rejects unsupported or unavailable facts before invocation.
 Scripts expose their declared shell, not an inferred runner default. Mapping entries distinguish known, unknown and
 invalid keys and retain source text and evaluated-data provenance. `Complete` indicates whether all mapping names are
 statically known. A partial parse can supply partial facts; check `Input.ParseStatus` when completeness matters.
+
+`Input.Invoked` lists the scripts of composite actions the document calls. Each names its own `Path` and carries an
+`Invocation` with the calling step, the `uses` reference and the nesting depth; findings for such a script name that
+path. `Script.Spans` map script text back to the declaring document and `Script.Position` resolves a line and column,
+reporting false for text without a source. With the `execution` fact, `Script.Runtime` carries the effective shell and
+working directory, each with an explicit known flag. The host collects these facts only when a registered analyzer
+requires them.
 
 The host gives each invocation independent slices, runs analyzers concurrently, and combines results in registration
 order before the normal diagnostic ordering and filtering. Missing diagnostic rule names and paths default to the

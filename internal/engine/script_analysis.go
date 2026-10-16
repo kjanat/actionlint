@@ -26,6 +26,10 @@ type scriptScope struct {
 	config     *Config
 	actionPath string
 	composite  bool
+	document   string
+	caller     string
+	call       *workflowlang.Step
+	depth      int
 }
 
 type scriptExecution struct {

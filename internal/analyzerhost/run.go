@@ -26,7 +26,7 @@ func Run(ctx context.Context, input analyzer.Input, registrations []analyzer.Reg
 			}
 			for _, requirement := range descriptor.Requires {
 				switch requirement {
-				case analyzer.Source, analyzer.Scripts, analyzer.Mappings:
+				case analyzer.Source, analyzer.Scripts, analyzer.Mappings, analyzer.Invocations, analyzer.Execution:
 					if !slices.Contains(input.Available, requirement) {
 						return nil, fmt.Errorf("analyzer %q requires unavailable fact %q", descriptor.Name, requirement)
 					}
@@ -37,7 +37,8 @@ func Run(ctx context.Context, input analyzer.Input, registrations []analyzer.Reg
 			supplied := input
 			supplied.Available = slices.Clone(input.Available)
 			supplied.Options = slices.Clone(registration.Options)
-			supplied.Scripts = slices.Clone(input.Scripts)
+			supplied.Scripts = cloneScripts(input.Scripts)
+			supplied.Invoked = cloneScripts(input.Invoked)
 			supplied.Mappings = slices.Clone(input.Mappings)
 			for i := range supplied.Mappings {
 				supplied.Mappings[i].Entries = slices.Clone(supplied.Mappings[i].Entries)
@@ -58,4 +59,24 @@ func Run(ctx context.Context, input analyzer.Input, registrations []analyzer.Reg
 		}
 	}
 	return RunTasks(ctx, tasks)
+}
+
+func cloneScripts(scripts []analyzer.Script) []analyzer.Script {
+	if scripts == nil {
+		return nil
+	}
+	cloned := make([]analyzer.Script, len(scripts))
+	for i, script := range scripts {
+		script.Spans = slices.Clone(script.Spans)
+		if script.Invocation != nil {
+			invocation := *script.Invocation
+			script.Invocation = &invocation
+		}
+		if script.Runtime != nil {
+			runtime := *script.Runtime
+			script.Runtime = &runtime
+		}
+		cloned[i] = script
+	}
+	return cloned
 }

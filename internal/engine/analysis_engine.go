@@ -1,13 +1,14 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/internal/repoconfig"
 	"context"
 	"errors"
 	"maps"
 	"path/filepath"
 	"slices"
 	"time"
+
+	"actionlint.kjanat.dev/internal/repoconfig"
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/analyzerhost"
@@ -115,6 +116,8 @@ func (l *analysisEngine) check(
 		l.log("Found", len(all), "parse errors in", elapsed.Milliseconds(), "ms for", path)
 	}
 
+	var units []scriptUnit
+	var facts factAvailability
 	if w != nil {
 		dbg := l.debugWriter()
 		localActions = &LocalActionsCache{base: localActions, usedSources: make(map[string][]byte), validation: newActionMetadataValidation()}
@@ -150,7 +153,12 @@ func (l *analysisEngine) check(
 			}
 			v.AddPass(rule)
 		}
-		v.composites = &compositeAnalyzer{ctx: l.ctx, actions: localActions, passes: v.passes, scriptConfig: cfg, scriptPaths: runPaths{workspace: root, analysis: c.workingDir, reader: c.reader}, collectScripts: len(builtins.scripts) != 0, resolveScriptExecution: builtins.resolveExecution}
+		requires := requiredFacts(l.analyzers)
+		v.composites = &compositeAnalyzer{
+			ctx: l.ctx, actions: localActions, passes: v.passes, scriptConfig: cfg, scriptPaths: runPaths{workspace: root, analysis: c.workingDir, reader: c.reader},
+			collectScripts:         len(builtins.scripts) != 0 || requires[analyzer.Scripts] || requires[analyzer.Invocations] || requires[analyzer.Execution],
+			resolveScriptExecution: builtins.resolveExecution || requires[analyzer.Execution],
+		}
 		v.composites.configForFile = func(path string) (*Config, error) {
 			config, err := repoconfig.ForAction(projectConfig, path, root)
 			if err != nil {
@@ -184,10 +192,11 @@ func (l *analysisEngine) check(
 		if analysisErr != nil {
 			l.debug("Error occurred while visiting workflow syntax tree: %v", analysisErr)
 		}
+		units, facts = v.composites.scripts, factAvailability{scripts: v.composites.collectScripts, execution: v.composites.resolveScriptExecution}
 		batch := scriptBatch{scopes: v.composites.scriptScopes, scripts: v.composites.scripts}
 		tasks := make([]analyzerhost.Task[*Error], len(builtins.scripts))
-		for i, analyzer := range builtins.scripts {
-			tasks[i] = func(ctx context.Context) ([]*Error, error) { return analyzer.AnalyzeScripts(ctx, batch) }
+		for i, builtin := range builtins.scripts {
+			tasks[i] = func(ctx context.Context) ([]*Error, error) { return builtin.AnalyzeScripts(ctx, batch) }
 		}
 		findings, scriptErr := analyzerhost.RunTasks(l.ctx, tasks)
 		all = append(all, findings...)
@@ -231,11 +240,17 @@ func (l *analysisEngine) check(
 		if metadata != nil && w != nil {
 			factsWorkflow = actionFactsWorkflow(metadata)
 		}
-		input := documentAnalyzerInput(path, content, factsWorkflow, outline)
+		input := documentAnalyzerInput(path, configPath, content, factsWorkflow, outline, units, facts)
 		findings, err := analyzerhost.Run(l.ctx, input, l.analyzers)
 		analysisErr = errors.Join(analysisErr, err)
 		for _, finding := range findings {
-			all = append(all, legacyDiagnosticError(finding))
+			legacy := legacyDiagnosticError(finding)
+			if legacy.Filepath != "" && legacy.Filepath != path {
+				if source, ok := metadataSources[legacy.Filepath]; ok {
+					legacy.source = source
+				}
+			}
+			all = append(all, legacy)
 		}
 	}
 
